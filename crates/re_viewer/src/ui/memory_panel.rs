@@ -68,22 +68,19 @@ impl MemoryPanel {
 
         if mem_use.resident.is_some() || mem_use.counted.is_some() {
             if let Some(resident) = mem_use.resident {
-                ui.label(format!("Resident: {}", format_bytes(resident as _)))
+                ui.label(format!("resident: {}", format_bytes(resident as _)))
                     .on_hover_text("Resident Set Size (or Working Set on Windows). Memory in RAM and not in swap.");
             }
 
             if let Some(counted) = mem_use.counted {
-                ui.label(format!("Counted: {}", format_bytes(counted as _)))
+                ui.label(format!("counted: {}", format_bytes(counted as _)))
                     .on_hover_text("Live bytes, counted by our own allocator.");
             } else if cfg!(debug_assertions) {
                 ui.label("Memory-tracking allocator not installed.");
             }
         }
 
-        let max_callstacks = 100;
-        if let Some(tracking_stats) =
-            re_memory::accounting_allocator::tracking_stats(max_callstacks)
-        {
+        if let Some(tracking_stats) = re_memory::accounting_allocator::tracking_stats() {
             ui.style_mut().wrap = Some(false);
             Self::tracking_stats(ui, tracking_stats);
         } else {
@@ -98,11 +95,16 @@ impl MemoryPanel {
         ui: &mut egui::Ui,
         tracking_stats: re_memory::accounting_allocator::TrackingStatistics,
     ) {
-        ui.label("counted = tracked + untracked + overhead");
+        ui.label("counted = fully_tracked + stochastically_tracked + untracked + overhead");
         ui.label(format!(
-            "tracked: {} in {} allocs",
-            format_bytes(tracking_stats.tracked.size as _),
-            format_usize(tracking_stats.tracked.count),
+            "fully_tracked: {} in {} allocs",
+            format_bytes(tracking_stats.fully_tracked.size as _),
+            format_usize(tracking_stats.fully_tracked.count),
+        ));
+        ui.label(format!(
+            "stochastically_tracked: {} in {} allocs",
+            format_bytes(tracking_stats.stochastically_tracked.size as _),
+            format_usize(tracking_stats.stochastically_tracked.count),
         ));
         ui.label(format!(
             "untracked: {} in {} allocs (all smaller than {})",
@@ -125,15 +127,24 @@ impl MemoryPanel {
                     .show(ui, |ui| {
                         ui.set_min_width(750.0);
                         for callstack in tracking_stats.top_callstacks {
+                            let stochastic_rate = callstack.stochastic_rate;
+                            let is_stochastic = stochastic_rate > 1;
+
                             if ui
                                 .button(format!(
-                                    "{} in {} allocs (≈{} / alloc) - {}",
-                                    format_bytes(callstack.extant.size as _),
-                                    format_usize(callstack.extant.count),
+                                    "{}{} in {} allocs (≈{} / alloc){} - {}",
+                                    if is_stochastic { "≈" } else { "" },
+                                    format_bytes((callstack.extant.size * stochastic_rate) as _),
+                                    format_usize(callstack.extant.count * stochastic_rate),
                                     format_bytes(
                                         callstack.extant.size as f64
                                             / callstack.extant.count as f64
                                     ),
+                                    if stochastic_rate <= 1 {
+                                        String::new()
+                                    } else {
+                                        format!(" ({} stochastic samples)", callstack.extant.count)
+                                    },
                                     summarize_callstack(&callstack.readable_backtrace.to_string())
                                 ))
                                 .on_hover_text("Click to copy callstack to clipboard")

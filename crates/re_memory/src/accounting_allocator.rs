@@ -2,13 +2,37 @@
 
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering::Relaxed};
 
+use once_cell::sync::Lazy;
+use parking_lot::Mutex;
+
 use crate::{
     allocation_tracker::{AllocationTracker, CallstackStatistics, PtrHash},
     CountAndSize,
 };
 
 /// Only track allocations of at least this size.
-const TRACK_MINIMUM: usize = 128; // TODO(emilk): make this setable by users
+const SMALL_SIZE: usize = 128; // TODO(emilk): make this setable by users
+
+/// Allocations smaller than are stochastically sampled.
+const MEDIUM_SIZE: usize = 4 * 1024; // TODO(emilk): make this setable by users
+
+// TODO(emilk): yet another tier would maybe make sense, with a different stochastic rate.
+
+/// Statistics about extant allocations larger than [`MEDIUM_SIZE`].
+static BIG_ALLOCATION_TRACKER: Lazy<Mutex<AllocationTracker>> =
+    Lazy::new(|| Mutex::new(AllocationTracker::with_stochastic_rate(1)));
+
+/// Statistics about some extant allocations larger than  [`SMALL_SIZE`] but smaller than [`MEDIUM_SIZE`].
+static MEDIUM_ALLOCATION_TRACKER: Lazy<Mutex<AllocationTracker>> =
+    Lazy::new(|| Mutex::new(AllocationTracker::with_stochastic_rate(64)));
+
+thread_local! {
+    /// Used to prevent re-entrancy when tracking allocations.
+    ///
+    /// Tracking an allocation (taking its backtrace etc) can itself create allocations.
+    /// We don't want to track those allocations, or we will have infinite recursion.
+    static IS_TRHEAD_IN_ALLOCATION_TRACKER: std::cell::Cell<bool> = std::cell::Cell::new(false);
+}
 
 // ----------------------------------------------------------------------------
 
@@ -56,8 +80,14 @@ struct GlobalStats {
     /// This is expensive, but sometimes useful!
     pub track_callstacks: AtomicBool,
 
-    /// The live allocations not tracked by [`AllocationTracker`].
+    /// The live allocations not tracked by any [`AllocationTracker`].
     pub untracked: AtomicCountAndSize,
+
+    /// All live allocations sampled by the stochastic medium [`AllocationTracker`].
+    pub stochastically_tracked: AtomicCountAndSize,
+
+    /// All live allocations tracked by the large [`AllocationTracker`].
+    pub fully_tracked: AtomicCountAndSize,
 
     /// The live allocations done by [`AllocationTracker`] used for internal book-keeping.
     pub overhead: AtomicCountAndSize,
@@ -69,6 +99,8 @@ static GLOBAL_STATS: GlobalStats = GlobalStats {
     live: AtomicCountAndSize::zero(),
     track_callstacks: AtomicBool::new(false),
     untracked: AtomicCountAndSize::zero(),
+    stochastically_tracked: AtomicCountAndSize::zero(),
+    fully_tracked: AtomicCountAndSize::zero(),
     overhead: AtomicCountAndSize::zero(),
 };
 
@@ -101,74 +133,69 @@ pub fn turn_on_tracking_if_env_var(env_var: &str) {
 
 // ----------------------------------------------------------------------------
 
-/// Statistics about extant allocations.
-///
-/// Activated by [`GlobalStats::track_callstacks`].
-static ALLOCATION_TRACKER: once_cell::sync::Lazy<parking_lot::Mutex<AllocationTracker>> =
-    once_cell::sync::Lazy::new(|| parking_lot::Mutex::new(AllocationTracker::default()));
-
-thread_local! {
-    /// Used to prevent re-entrancy when tracking allocations.
-    ///
-    /// Tracking an allocation (taking its backtrace etc) can itself create allocations.
-    /// We don't want to track those allocations, or we will have infinite recursion.
-    static IS_TRHEAD_IN_ALLOCATION_TRACKER: std::cell::Cell<bool> = std::cell::Cell::new(false);
-}
-
 const MAX_CALLSTACKS: usize = 128;
 
 pub struct TrackingStatistics {
-    /// All live allocations that we are tracking.
-    pub tracked: CountAndSize,
+    /// Allocations smaller than these are left untracked.
+    pub track_size_threshold: usize,
 
-    /// All live allocations that we are NOT tracking (because they are too small).
+    /// All live allocations that we are NOT tracking (because they were below [`track_size_threshold`]).
     pub untracked: CountAndSize,
+
+    /// All live allocations sampled by the stochastic medium [`AllocationTracker`].
+    pub stochastically_tracked: CountAndSize,
+
+    /// All live allocations tracked by the large [`AllocationTracker`].
+    pub fully_tracked: CountAndSize,
 
     /// All live allocations used for internal book-keeping.
     pub overhead: CountAndSize,
 
-    /// Allocations smaller than these are left untracked.
-    pub track_size_threshold: usize,
-
     /// The most popular callstacks.
-    ///
-    /// NOTE: we use a rather large [`smallvec::SmallVec`] here to avoid dynamic allocations,
-    /// which would otherwise confuse the memory tracking.
-    pub top_callstacks: smallvec::SmallVec<[CallstackStatistics; MAX_CALLSTACKS]>,
+    pub top_callstacks: Vec<CallstackStatistics>,
 }
 
 /// Gather statistics from the live tracking, if enabled.
 ///
 /// Enable this with [`set_tracking_callstacks`], preferably the first thing you do in `main`.
-pub fn tracking_stats(max_callstacks: usize) -> Option<TrackingStatistics> {
+pub fn tracking_stats() -> Option<TrackingStatistics> {
+    /// NOTE: we use a rather large [`smallvec::SmallVec`] here to avoid dynamic allocations,
+    /// which would otherwise confuse the memory tracking.
+    fn tracker_stats(
+        allocation_tracker: &AllocationTracker,
+    ) -> smallvec::SmallVec<[CallstackStatistics; MAX_CALLSTACKS]> {
+        let top_callstacks: smallvec::SmallVec<[CallstackStatistics; MAX_CALLSTACKS]> =
+            allocation_tracker
+                .top_callstacks(MAX_CALLSTACKS)
+                .into_iter()
+                .collect();
+        assert!(
+            !top_callstacks.spilled(),
+            "We shouldn't leak any allocations"
+        );
+        top_callstacks
+    }
+
     GLOBAL_STATS.track_callstacks.load(Relaxed).then(|| {
         IS_TRHEAD_IN_ALLOCATION_TRACKER.with(|is_thread_in_allocation_tracker| {
             // prevent double-lock of ALLOCATION_TRACKER:
             is_thread_in_allocation_tracker.set(true);
-
-            let untracked = GLOBAL_STATS.untracked.load();
-            let overhead = GLOBAL_STATS.overhead.load();
-
-            let allocation_tracker = ALLOCATION_TRACKER.lock();
-            let tracked = allocation_tracker.tracked_allocs_and_bytes();
-            let top_callstacks: smallvec::SmallVec<[CallstackStatistics; MAX_CALLSTACKS]> =
-                allocation_tracker
-                    .top_callstacks(max_callstacks.min(MAX_CALLSTACKS))
-                    .into_iter()
-                    .collect();
-
-            assert!(
-                !top_callstacks.spilled(),
-                "We shouldn't leak any allocations"
-            );
-
+            let mut top_big_callstacks = tracker_stats(&BIG_ALLOCATION_TRACKER.lock());
+            let mut top_medium_callstacks = tracker_stats(&MEDIUM_ALLOCATION_TRACKER.lock());
             is_thread_in_allocation_tracker.set(false);
 
+            let mut top_callstacks: Vec<_> = top_big_callstacks
+                .drain(..)
+                .chain(top_medium_callstacks.drain(..))
+                .collect();
+            top_callstacks.sort_by_key(|c| -(c.extant.size as i64));
+
             TrackingStatistics {
-                tracked,
-                untracked,
-                overhead,
-                track_size_threshold: TRACK_MINIMUM,
+                track_size_threshold: SMALL_SIZE,
+                untracked: GLOBAL_STATS.untracked.load(),
+                stochastically_tracked: GLOBAL_STATS.stochastically_tracked.load(),
+                fully_tracked: GLOBAL_STATS.fully_tracked.load(),
+                overhead: GLOBAL_STATS.overhead.load(),
                 top_callstacks,
             }
         })
@@ -255,18 +282,26 @@ fn note_alloc(ptr: *mut u8, size: usize) {
     GLOBAL_STATS.live.add(size);
 
     if GLOBAL_STATS.track_callstacks.load(Relaxed) {
-        if size < TRACK_MINIMUM {
+        if size < SMALL_SIZE {
             // Too small to track.
             GLOBAL_STATS.untracked.add(size);
         } else {
-            // TODO(emilk): stochastically sample medium-sized allocations (e.g. < 16 kB) based on pointer hash.
-
             // Big enough to track - but make sure we don't create a deadlock by trying to
             // track the allocations made by the allocation tracker:
+
             IS_TRHEAD_IN_ALLOCATION_TRACKER.with(|is_thread_in_allocation_tracker| {
                 if !is_thread_in_allocation_tracker.get() {
                     is_thread_in_allocation_tracker.set(true);
-                    ALLOCATION_TRACKER.lock().on_alloc(PtrHash::new(ptr), size);
+
+                    let ptr_hash = PtrHash::new(ptr);
+                    if size < MEDIUM_SIZE {
+                        GLOBAL_STATS.stochastically_tracked.add(size);
+                        MEDIUM_ALLOCATION_TRACKER.lock().on_alloc(ptr_hash, size);
+                    } else {
+                        GLOBAL_STATS.fully_tracked.add(size);
+                        BIG_ALLOCATION_TRACKER.lock().on_alloc(ptr_hash, size);
+                    }
+
                     is_thread_in_allocation_tracker.set(false);
                 } else {
                     // This is the ALLOCATION_TRACKER allocating memory.
@@ -282,7 +317,7 @@ fn note_dealloc(ptr: *mut u8, size: usize) {
     GLOBAL_STATS.live.sub(size);
 
     if GLOBAL_STATS.track_callstacks.load(Relaxed) {
-        if size < TRACK_MINIMUM {
+        if size < SMALL_SIZE {
             // Too small to track.
             GLOBAL_STATS.untracked.sub(size);
         } else {
@@ -291,9 +326,16 @@ fn note_dealloc(ptr: *mut u8, size: usize) {
             IS_TRHEAD_IN_ALLOCATION_TRACKER.with(|is_thread_in_allocation_tracker| {
                 if !is_thread_in_allocation_tracker.get() {
                     is_thread_in_allocation_tracker.set(true);
-                    ALLOCATION_TRACKER
-                        .lock()
-                        .on_dealloc(PtrHash::new(ptr), size);
+
+                    let ptr_hash = PtrHash::new(ptr);
+                    if size < MEDIUM_SIZE {
+                        GLOBAL_STATS.stochastically_tracked.sub(size);
+                        MEDIUM_ALLOCATION_TRACKER.lock().on_dealloc(ptr_hash, size);
+                    } else {
+                        GLOBAL_STATS.fully_tracked.sub(size);
+                        BIG_ALLOCATION_TRACKER.lock().on_dealloc(ptr_hash, size);
+                    }
+
                     is_thread_in_allocation_tracker.set(false);
                 } else {
                     // This is the ALLOCATION_TRACKER freeing memory.

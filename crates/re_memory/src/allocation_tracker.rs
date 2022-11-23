@@ -88,15 +88,23 @@ pub struct CallstackStatistics {
     /// For when we print this statistic.
     pub readable_backtrace: ReadableBacktrace,
 
+    /// If this was stochastically sampled - at what rate?
+    pub stochastic_rate: usize,
+
     /// Live allocations at this callstack.
+    ///
+    /// You should multiply this by [`Self::stochastic_rate`] to get an estimate
+    /// of the real data.
     pub extant: CountAndSize,
 }
 
 // ----------------------------------------------------------------------------
 
 /// Track the callstacks of allocations.
-#[derive(Default)]
 pub struct AllocationTracker {
+    /// Sample every N allocations. Must be power-of-two.
+    stochastic_rate: usize,
+
     /// De-duplicated readable backtraces.
     readable_backtraces: nohash_hasher::IntMap<BacktraceHash, ReadableBacktrace>,
 
@@ -108,7 +116,26 @@ pub struct AllocationTracker {
 }
 
 impl AllocationTracker {
+    pub fn with_stochastic_rate(stochastic_rate: usize) -> Self {
+        assert!(stochastic_rate != 0);
+        assert!(stochastic_rate.is_power_of_two());
+        Self {
+            stochastic_rate,
+            readable_backtraces: Default::default(),
+            live_allocs: Default::default(),
+            callstack_stats: Default::default(),
+        }
+    }
+
+    fn should_sample(&self, ptr: PtrHash) -> bool {
+        ptr.0 & (self.stochastic_rate as u64 - 1) == 0
+    }
+
     pub fn on_alloc(&mut self, ptr: PtrHash, size: usize) {
+        if !self.should_sample(ptr) {
+            return;
+        }
+
         let unresolved_backtrace = Backtrace::new_unresolved();
         let hash = hash_backtrace(&unresolved_backtrace);
 
@@ -124,6 +151,10 @@ impl AllocationTracker {
     }
 
     pub fn on_dealloc(&mut self, ptr: PtrHash, size: usize) {
+        if !self.should_sample(ptr) {
+            return;
+        }
+
         if let Some(hash) = self.live_allocs.remove(&ptr) {
             if let std::collections::hash_map::Entry::Occupied(mut entry) =
                 self.callstack_stats.entry(hash)
@@ -139,16 +170,6 @@ impl AllocationTracker {
         }
     }
 
-    /// Number of bytes in the live allocations we are tracking.
-    pub fn tracked_allocs_and_bytes(&self) -> CountAndSize {
-        let mut count_and_size = CountAndSize::ZERO;
-        for c in self.callstack_stats.values() {
-            count_and_size.count += c.count;
-            count_and_size.size += c.size;
-        }
-        count_and_size
-    }
-
     /// Return the `n` callstacks that currently is using the most memory.
     pub fn top_callstacks(&self, n: usize) -> Vec<CallstackStatistics> {
         let mut vec: Vec<_> = self
@@ -158,6 +179,7 @@ impl AllocationTracker {
             .filter_map(|(hash, c)| {
                 Some(CallstackStatistics {
                     readable_backtrace: self.readable_backtraces.get(hash)?.clone(),
+                    stochastic_rate: self.stochastic_rate,
                     extant: *c,
                 })
             })
