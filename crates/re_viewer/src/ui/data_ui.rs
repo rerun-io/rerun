@@ -8,7 +8,7 @@ use crate::misc::ViewerContext;
 use crate::ui::annotations::auto_color;
 use crate::ui::view_2d::view_class_description_map;
 
-use super::Preview;
+use super::{annotations::AnnotationMap, Annotations, Preview};
 
 pub(crate) fn view_object(
     ctx: &mut ViewerContext<'_>,
@@ -50,13 +50,11 @@ pub(crate) fn view_instance_generic(
     instance_id: &InstanceId,
     preview: Preview,
 ) -> Option<()> {
-    let store = ctx
-        .log_db
-        .obj_db
-        .store
-        .get(ctx.rec_cfg.time_ctrl.timeline())?;
+    let timeline = ctx.rec_cfg.time_ctrl.timeline();
+    let store = ctx.log_db.obj_db.store.get(timeline)?;
     let time_query = ctx.rec_cfg.time_ctrl.time_query()?;
     let obj_store = store.get(&instance_id.obj_path)?;
+
     egui::Grid::new("object_instance")
         .striped(true)
         .num_columns(2)
@@ -74,7 +72,16 @@ pub(crate) fn view_instance_generic(
                     Ok((_, data_vec)) => {
                         if data_vec.len() == 1 {
                             let data = data_vec.last().unwrap();
-                            crate::data_ui::ui_data(ctx, ui, &data, preview);
+                            let annotations =
+                                AnnotationMap::load_associated(ctx, &instance_id.obj_path);
+                            crate::data_ui::ui_data(
+                                ctx,
+                                ui,
+                                &data,
+                                Some(field_name),
+                                annotations,
+                                preview,
+                            );
                         } else {
                             ui_data_vec(ui, &data_vec);
                         }
@@ -133,7 +140,7 @@ pub(crate) fn show_detailed_data(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui,
     if let Data::Tensor(tensor) = data {
         crate::ui::view_2d::show_tensor(ctx, ui, tensor);
     } else {
-        crate::data_ui::ui_data(ctx, ui, data, Preview::Medium);
+        crate::data_ui::ui_data(ctx, ui, data, None, None, Preview::Medium);
     }
 }
 
@@ -317,11 +324,11 @@ pub(crate) fn ui_logged_data(
     match data {
         LoggedData::Null(data_type) => ui.label(format!("null: {:?}", data_type)),
         LoggedData::Batch { data, .. } => ui.label(format!("batch: {:?}", data)),
-        LoggedData::Single(data) => ui_data(ctx, ui, data, preview),
+        LoggedData::Single(data) => ui_data(ctx, ui, data, None, None, preview),
         LoggedData::BatchSplat(data) => {
             ui.horizontal(|ui| {
                 ui.label("Batch Splat:");
-                ui_data(ctx, ui, data, preview)
+                ui_data(ctx, ui, data, None, None, preview)
             })
             .response
         }
@@ -332,11 +339,46 @@ pub(crate) fn ui_data(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     data: &Data,
+    field_name: Option<&str>,
+    annotations: Option<Annotations>,
     preview: Preview,
 ) -> egui::Response {
     match data {
         Data::Bool(value) => ui.label(value.to_string()),
-        Data::I32(value) => ui.label(value.to_string()),
+        Data::I32(value) => {
+            // TODO(andreas): Workaround for not having a type for class ids. Likely to go away with new data model (?)
+            if let Some("class_id") = field_name {
+                ui.vertical(|ui| {
+                    ui.label(value.to_string());
+                    if let Some(class_description) = annotations.as_ref().and_then(|annotations| {
+                        annotations
+                            .context
+                            .class_map
+                            .get(&context::ClassId(*value as _))
+                    }) {
+                        ui.horizontal(|ui| {
+                            ui.label("label:");
+                            if let Some(label) = &class_description.info.label {
+                                ui.label(label.as_ref());
+                            } else {
+                                ui.label(egui::RichText::new("none").italics());
+                            }
+                        })
+                        .response
+                    } else if annotations.is_none() {
+                        ui.label(egui::RichText::new("no annotation context found").italics())
+                    } else {
+                        ui.label(
+                            egui::RichText::new("annotation context does not have this class_id")
+                                .italics(),
+                        )
+                    }
+                })
+                .response
+            } else {
+                ui.label(value.to_string())
+            }
+        }
         Data::F32(value) => ui.label(value.to_string()),
         Data::F64(value) => ui.label(value.to_string()),
         Data::Color([r, g, b, a]) => {

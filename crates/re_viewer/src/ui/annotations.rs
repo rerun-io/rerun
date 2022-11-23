@@ -2,7 +2,7 @@ use std::{collections::BTreeMap, sync::Arc};
 
 use lazy_static::lazy_static;
 use re_data_store::{FieldName, ObjPath};
-use re_log_types::{context::ClassId, AnnotationContext, MsgId};
+use re_log_types::{context::ClassId, AnnotationContext, Data, MsgId};
 
 use crate::{misc::ViewerContext, ui::scene::SceneQuery};
 
@@ -81,6 +81,46 @@ impl AnnotationMap {
                         })
                     });
                 });
+            }
+        }
+    }
+
+    pub(crate) fn load_associated(
+        ctx: &mut ViewerContext<'_>,
+        obj_path: &ObjPath,
+    ) -> Option<Annotations> {
+        let timeline = ctx.rec_cfg.time_ctrl.timeline();
+        let store = ctx.log_db.obj_db.store.get(timeline)?;
+        let time_query = ctx.rec_cfg.time_ctrl.time_query()?;
+
+        let mut path = obj_path.clone();
+        loop {
+            let Some(parent) = path.parent() else {
+                    break None;
+                };
+            path = parent;
+            let Some(store) = store.get(&path) else {
+                    continue;
+                };
+            let annotation_context = store.iter().find_map(|(field_name, field_store)| {
+                match field_store.query_field_to_datavec(&time_query, None) {
+                    Ok((meta, data_vec)) => {
+                        let data = data_vec.last().unwrap();
+                        if field_name.as_str() == "_annotation_context" {
+                            if let Data::AnnotationContext(context) = data {
+                                return Some(Annotations {
+                                    msg_id: meta.last().unwrap().1,
+                                    context,
+                                });
+                            }
+                        }
+                        None
+                    }
+                    Err(_) => None,
+                }
+            });
+            if annotation_context.is_some() {
+                break annotation_context;
             }
         }
     }
