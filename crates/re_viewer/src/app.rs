@@ -290,7 +290,7 @@ impl eframe::App for App {
             });
         } else {
             self.state
-                .show(egui_ctx, log_db, &self.design_tokens, render_ctx);
+                .show(egui_ctx, render_ctx, log_db, &self.design_tokens);
         }
 
         self.handle_dropping_files(egui_ctx);
@@ -546,9 +546,9 @@ impl AppState {
     fn show(
         &mut self,
         egui_ctx: &egui::Context,
+        render_ctx: &mut re_renderer::RenderContext,
         log_db: &LogDb,
         design_tokens: &DesignTokens,
-        render_ctx: &mut re_renderer::RenderContext,
     ) {
         crate::profile_function!();
 
@@ -558,6 +558,7 @@ impl AppState {
             selected_rec_id,
             recording_configs,
             panel_selection,
+            path_browser,
             event_log_view,
             blueprints,
             selection_panel,
@@ -565,7 +566,6 @@ impl AppState {
             #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
                 profiler: _,
             static_image_cache: _,
-            path_browser: _,
         } = self;
 
         let rec_cfg = recording_configs.entry(*selected_rec_id).or_default();
@@ -585,7 +585,7 @@ impl AppState {
         };
 
         let blueprint = blueprints.entry(selected_app_id.clone()).or_default();
-        selection_panel.show_panel(&mut ctx, blueprint, egui_ctx);
+        selection_panel.show_panel(&mut ctx, egui_ctx, blueprint, path_browser);
         time_panel.show_panel(&mut ctx, blueprint, egui_ctx);
 
         let central_panel_frame = egui::Frame {
@@ -716,16 +716,6 @@ fn top_panel(egui_ctx: &egui::Context, frame: &mut eframe::Frame, app: &mut App)
                 }
 
                 ui.separator();
-
-                if let Some(selection) = app.state.path_browser.show(egui_ctx, ui) {
-                    // TODO: eeeeeeeeeeeeh
-                    let rec_cfg = app
-                        .state
-                        .recording_configs
-                        .entry(app.state.selected_rec_id)
-                        .or_default();
-                    rec_cfg.selection = selection;
-                }
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if !WATERMARK {

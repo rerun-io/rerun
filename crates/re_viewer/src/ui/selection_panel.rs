@@ -1,7 +1,7 @@
 use re_data_store::log_db::LogDb;
 use re_log_types::LogMsg;
 
-use crate::{data_ui::*, ui::Blueprint, Preview, Selection, ViewerContext};
+use crate::{data_ui::*, misc::PathBrowser, ui::Blueprint, Preview, Selection, ViewerContext};
 
 use super::SpaceView;
 
@@ -15,8 +15,9 @@ impl SelectionPanel {
     pub fn show_panel(
         &mut self,
         ctx: &mut ViewerContext<'_>,
-        blueprint: &mut Blueprint,
         egui_ctx: &egui::Context,
+        blueprint: &mut Blueprint,
+        path_browser: &mut PathBrowser,
     ) {
         let shortcut = crate::ui::kb_shortcuts::TOGGLE_SELECTION_PANEL;
         blueprint.selection_panel_expanded ^= egui_ctx.input_mut().consume_shortcut(&shortcut);
@@ -62,7 +63,13 @@ impl SelectionPanel {
                         blueprint.selection_panel_expanded = false;
                     }
 
-                    self.contents(ctx, blueprint, ui);
+                    ui.separator();
+
+                    if let Some(new_selection) = path_browser.show(ctx, ui) {
+                        ctx.rec_cfg.selection = new_selection.selection;
+                    }
+
+                    self.contents(ui, ctx, blueprint);
                 }
             },
         );
@@ -71,9 +78,9 @@ impl SelectionPanel {
     #[allow(clippy::unused_self)]
     fn contents(
         &mut self,
+        ui: &mut egui::Ui,
         ctx: &mut ViewerContext<'_>,
         blueprint: &mut Blueprint,
-        ui: &mut egui::Ui,
     ) {
         crate::profile_function!();
 
