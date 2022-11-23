@@ -327,7 +327,7 @@ impl Scene3D {
                                 batch.extend(points.chunks_exact(2).map(|points| LineStrip {
                                     instance_id_hash,
                                     line_strip: re_renderer::renderer::LineStrip::line_segment(
-                                        (points[0].into(), points[0].into()),
+                                        (points[0].into(), points[1].into()),
                                         radius.0,
                                         color,
                                     ),
