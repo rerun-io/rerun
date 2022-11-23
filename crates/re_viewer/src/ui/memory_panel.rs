@@ -95,22 +95,24 @@ impl MemoryPanel {
         ui: &mut egui::Ui,
         tracking_stats: re_memory::accounting_allocator::TrackingStatistics,
     ) {
+        ui.label("counted = tracked + untracked + overhead");
         ui.label(format!(
-            "{} tracked in {} allocs",
+            "tracked: {} in {} allocs",
             format_bytes(tracking_stats.tracked.size as _),
             format_usize(tracking_stats.tracked.count),
         ));
         ui.label(format!(
-            "{} untracked in {} allocs (all smaller than {})",
+            "untracked: {} in {} allocs (all smaller than {})",
             format_bytes(tracking_stats.untracked.size as _),
             format_usize(tracking_stats.untracked.count),
             format_bytes(tracking_stats.track_size_threshold as _),
         ));
         ui.label(format!(
-            "{} in {} allocs used for the book-keeping of the allocation tracker",
-            format_bytes(tracking_stats.tracker_bookkeeping.size as _),
-            format_usize(tracking_stats.tracker_bookkeeping.count),
-        ));
+            "overhead: {} in {} allocs",
+            format_bytes(tracking_stats.overhead.size as _),
+            format_usize(tracking_stats.overhead.count),
+        ))
+        .on_hover_text("Used for the book-keeping of the allocation tracker");
 
         egui::CollapsingHeader::new("Top memory consumers")
             .default_open(true)

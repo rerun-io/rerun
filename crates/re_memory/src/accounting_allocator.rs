@@ -60,7 +60,7 @@ struct GlobalStats {
     pub untracked: AtomicCountAndSize,
 
     /// The live allocations done by [`AllocationTracker`] used for internal book-keeping.
-    pub tracker_bookkeeping: AtomicCountAndSize,
+    pub overhead: AtomicCountAndSize,
 }
 
 // ----------------------------------------------------------------------------
@@ -69,7 +69,7 @@ static GLOBAL_STATS: GlobalStats = GlobalStats {
     live: AtomicCountAndSize::zero(),
     track_callstacks: AtomicBool::new(false),
     untracked: AtomicCountAndSize::zero(),
-    tracker_bookkeeping: AtomicCountAndSize::zero(),
+    overhead: AtomicCountAndSize::zero(),
 };
 
 /// Total number of live allocations,
@@ -125,7 +125,7 @@ pub struct TrackingStatistics {
     pub untracked: CountAndSize,
 
     /// All live allocations used for internal book-keeping.
-    pub tracker_bookkeeping: CountAndSize,
+    pub overhead: CountAndSize,
 
     /// Allocations smaller than these are left untracked.
     pub track_size_threshold: usize,
@@ -147,7 +147,7 @@ pub fn tracking_stats(max_callstacks: usize) -> Option<TrackingStatistics> {
             is_thread_in_allocation_tracker.set(true);
 
             let untracked = GLOBAL_STATS.untracked.load();
-            let tracker_bookkeeping = GLOBAL_STATS.tracker_bookkeeping.load();
+            let overhead = GLOBAL_STATS.overhead.load();
 
             let allocation_tracker = ALLOCATION_TRACKER.lock();
             let tracked = allocation_tracker.tracked_allocs_and_bytes();
@@ -167,7 +167,7 @@ pub fn tracking_stats(max_callstacks: usize) -> Option<TrackingStatistics> {
             TrackingStatistics {
                 tracked,
                 untracked,
-                tracker_bookkeeping,
+                overhead,
                 track_size_threshold: TRACK_MINIMUM,
                 top_callstacks,
             }
@@ -268,7 +268,7 @@ fn note_alloc(ptr: *mut u8, size: usize) {
                     is_thread_in_allocation_tracker.set(false);
                 } else {
                     // This is the ALLOCATION_TRACKER allocating memory.
-                    GLOBAL_STATS.tracker_bookkeeping.add(size);
+                    GLOBAL_STATS.overhead.add(size);
                 }
             });
         }
@@ -293,7 +293,7 @@ fn note_dealloc(ptr: *mut u8, size: usize) {
                     is_thread_in_allocation_tracker.set(false);
                 } else {
                     // This is the ALLOCATION_TRACKER freeing memory.
-                    GLOBAL_STATS.tracker_bookkeeping.sub(size);
+                    GLOBAL_STATS.overhead.sub(size);
                 }
             });
         }
