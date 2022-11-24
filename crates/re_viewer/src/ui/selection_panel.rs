@@ -1,3 +1,4 @@
+use egui::RichText;
 use re_data_store::log_db::LogDb;
 use re_log_types::LogMsg;
 
@@ -247,6 +248,18 @@ pub struct HistoricalSelection {
     pub selection: Selection,
 }
 
+impl std::fmt::Display for HistoricalSelection {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&match &self.selection {
+            Selection::ObjTypePath(path) => path.to_string(),
+            Selection::Instance(path) => path.to_string(),
+            Selection::DataPath(path) => path.to_string(),
+            Selection::Space(path) => path.to_string(),
+            _ => unreachable!(), // `Self::select` ignores everything else.
+        })
+    }
+}
+
 impl From<(usize, Selection)> for HistoricalSelection {
     fn from((index, selection): (usize, Selection)) -> Self {
         Self { index, selection }
@@ -254,16 +267,6 @@ impl From<(usize, Selection)> for HistoricalSelection {
 }
 
 // ---
-
-// TODO:
-// - goto previous: go backwards in the stack, don't remove anything
-// - goto next: go forwards in the stack, don't add anything
-// - goto parent: go to parent "directory", clear stack upwards, add to the stack
-// - goto <clicked>: go to <clicked> "directory", clear stack upwards, add to the stack
-//
-// TODO:
-// - menu edit > undo/redo selection
-// - rolling list of history
 
 #[derive(Default, Clone, Debug, serde::Serialize, serde::Deserialize)]
 struct SelectionHistory {
@@ -318,21 +321,32 @@ impl SelectionHistory {
             .horizontal(|ui| {
                 let prev = self.show_prev_button(ui);
 
+                // let font_id = egui::TextStyle::Body.resolve(ui.style());
+                // let renderer_width = move |ui: &egui::Ui, text: String| {
+                //     ui.fonts()
+                //         .layout_delayed_color(text, (*font_id).clone(), f32::MAX)
+                //         .size()
+                //         .x
+                // };
+
                 let picked = egui::ComboBox::from_id_source("history_browser")
-                    .width(ui.available_width() * 0.5)
+                    .width(ui.available_width() * 0.55)
+                    // TODO: I cannot make `wrap(true)` work, it will always result in the
+                    // combobox trying to cover the entire screen, doesn't matter what `width()`
+                    // we pass above.
                     .wrap(false)
                     .selected_text(
                         self.current()
-                            .map(|sel| selection_to_string(&sel.selection).unwrap())
+                            .map(|sel| sel.to_string())
                             .unwrap_or_else(|| String::new()),
                     )
                     .show_ui(ui, |ui| {
                         for (i, sel) in self.stack.iter().enumerate() {
+                            let sel = HistoricalSelection::from((i, sel.clone()));
                             ui.horizontal(|ui| {
-                                let index_str = egui::RichText::new(format!("[{i}]")).monospace();
+                                let index_str = RichText::new(format!("[{i}]")).monospace();
                                 ui.weak(index_str);
-                                let str = selection_to_string(sel).unwrap();
-                                ui.selectable_value(&mut self.current, i, str);
+                                ui.selectable_value(&mut self.current, i, sel.to_string());
                             });
                         }
                     })
@@ -341,10 +355,10 @@ impl SelectionHistory {
 
                 let shortcut = &crate::ui::kb_shortcuts::SELECTION_DETAILED;
                 if ui
-                    .small_button(if self.show_detailed { "⏷" } else { "⏶" })
+                    .small_button(if self.show_detailed { "⏶" } else { "⏷" })
                     .on_hover_text(format!(
                         "{} detailed history view ({})",
-                        if self.show_detailed { "Collapsed" } else { "Expand" },
+                        if self.show_detailed { "Collapse" } else { "Expand" },
                         ui.ctx().format_shortcut(shortcut)
                     ))
                     .clicked()
@@ -361,7 +375,7 @@ impl SelectionHistory {
             })
             .inner;
 
-        if self.show_detailed {
+        if !self.show_detailed {
             return prev_next;
         }
 
@@ -386,10 +400,9 @@ impl SelectionHistory {
                         .add_enabled_ui(enabled, |ui| {
                             ui.horizontal(|ui| {
                                 let index_str =
-                                    egui::RichText::new(format!("[{}]", sel.index)).monospace();
+                                    RichText::new(format!("[{}]", sel.index)).monospace();
                                 ui.weak(index_str);
-                                let path = selection_to_string(&sel.selection).unwrap();
-                                ui.selectable_label(false, path).clicked()
+                                ui.selectable_label(false, sel.to_string()).clicked()
                             })
                             .inner
                         })
@@ -433,7 +446,7 @@ impl SelectionHistory {
                     "Go to previous selection ({}):\n[{}] {}",
                     ui.ctx().format_shortcut(shortcut),
                     previous.index,
-                    selection_to_string(&previous.selection).unwrap()
+                    previous.to_string(),
                 ))
                 .clicked()
                 // TODO(cmc): feels like using the shortcut should highlight the associated
@@ -465,7 +478,7 @@ impl SelectionHistory {
                     "Go to next selection ({}):\n[{}] {}",
                     ui.ctx().format_shortcut(shortcut),
                     next.index,
-                    selection_to_string(&next.selection).unwrap()
+                    next.to_string(),
                 ))
                 .clicked()
                 // TODO(cmc): feels like using the shortcut should highlight the associated
@@ -486,15 +499,4 @@ impl SelectionHistory {
 
         None
     }
-}
-
-fn selection_to_string(selection: &Selection) -> Option<String> {
-    match selection {
-        Selection::ObjTypePath(path) => path.to_string(),
-        Selection::Instance(path) => path.to_string(),
-        Selection::DataPath(path) => path.to_string(),
-        Selection::Space(path) => path.to_string(),
-        _ => return None,
-    }
-    .into()
 }
