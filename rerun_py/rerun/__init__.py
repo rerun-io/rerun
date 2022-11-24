@@ -384,11 +384,36 @@ def log_rects(
     rerun_sdk.log_rects(obj_path, rect_format.value, rects, colors, labels, timeless)
 
     if EXP_ARROW:
-        # TODO(jleibs) find the right build in np -> pa convrsoin for this
-        rect_arr = pa.array([[tuple(rect) for rect in rects]], type=components.RectField.type)
-        color_arr = pa.array([[u8_array_to_rgba(color) for color in colors]], type=components.ColorField.type)
-        arr = pa.StructArray.from_arrays([rect_arr, color_arr], fields=[components.RectField, components.ColorField])
-        rerun_sdk.log_arrow_msg(obj_path, "rect", arr)
+
+        arrays = []
+        fields = []
+
+        rects = np.asarray(rects)
+
+        if len(rects) == 0:
+            rects = rects.reshape((0, 4))
+
+        if rect_format == RectFormat.XYWH:
+            rects_array = pa.StructArray.from_arrays(
+                arrays=[pa.array(c, type=pa.float32()) for c in rects.T],
+                fields=[
+                    pa.field("x", pa.float32(), nullable=False),
+                    pa.field("y", pa.float32(), nullable=False),
+                    pa.field("w", pa.float32(), nullable=False),
+                    pa.field("h", pa.float32(), nullable=False),
+                ],
+            )
+            fields.append(pa.field("rect", type=rects_array.type, nullable=False))
+            arrays.append(rects_array)
+        else:
+            raise NotImplemented("RectFormat not yet implemented")
+
+        # if colors.any():
+        fields.append(pa.field("color_rgba", pa.uint32(), nullable=True))
+        arrays.append(pa.array([u8_array_to_rgba(c) for c in colors], type=pa.uint32()))
+
+        arr = pa.StructArray.from_arrays(arrays, fields=fields)
+        rerun_sdk.log_arrow_msg(obj_path, arr)
 
 
 def log_point(

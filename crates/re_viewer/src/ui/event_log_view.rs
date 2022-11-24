@@ -199,14 +199,15 @@ fn table_row(
         LogMsg::ArrowMsg(msg) => {
             let ArrowMsg {
                 msg_id,
-                time_point,
-                data_path,
+                //time_point,
+                //data_path,
                 data: _,
             } = msg;
 
             row.col(|ui| {
                 ui.monospace("ArrowMsg");
             });
+            /*
             for timeline in ctx.log_db.time_points.0.keys() {
                 row.col(|ui| {
                     if let Some(value) = time_point.0.get(timeline) {
@@ -217,6 +218,7 @@ fn table_row(
             row.col(|ui| {
                 ctx.data_path_button(ui, data_path);
             });
+            */
             row.col(|ui| {
                 crate::data_ui::ui_logged_arrow_data(
                     ctx,

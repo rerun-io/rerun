@@ -38,6 +38,8 @@ re_string_interner = { path = "../re_string_interner" }
 thiserror = "1.0"
 uuid = { version = "1.1", features = ["serde", "v4", "js"] }
 
+arrow2 = { version = "0.14" }
+
 # Optional dependencies:
 anyhow = { version = "1", optional = true }
 glam = { version = "0.20", optional = true }                            # can't update glam until a new version of `macaw` is released

@@ -307,8 +307,8 @@ pub(crate) fn show_arrow_msg(
 ) {
     let ArrowMsg {
         msg_id,
-        time_point: _,
-        data_path: _,
+        //time_point: _,
+        //data_path: _,
         data: _,
     } = msg;
 

@@ -126,7 +126,7 @@ impl App {
             design_tokens,
             rx,
             log_dbs,
-            arrow_db: re_arrow_store::LogDb::new(),
+            arrow_db: re_arrow_store::LogDb::default(),
             state,
             #[cfg(not(target_arch = "wasm32"))]
             ctrl_c,

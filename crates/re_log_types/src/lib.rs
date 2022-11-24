@@ -21,6 +21,7 @@
 #[cfg(any(feature = "save", feature = "load"))]
 pub mod encoding;
 
+pub mod arrow;
 pub mod context;
 pub mod coordinates;
 mod data;
@@ -274,10 +275,10 @@ pub struct ArrowMsg {
     /// If this is empty, the data is _timeless_.
     /// Timeless data will show up on all timelines, past and future,
     /// and will hit all time queries. In other words, it is always there.
-    pub time_point: TimePoint,
+    //pub time_point: TimePoint,
 
     /// What the data is targeting.
-    pub data_path: DataPath,
+    //pub data_path: DataPath,
 
     /// The arrow payload.
     pub data: Vec<u8>,

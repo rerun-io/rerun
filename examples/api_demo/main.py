@@ -95,11 +95,15 @@ def run_rects() -> None:
 
     # 20 random rectangles
     rerun.set_time_seconds("sim_time", 2)
-    rects_x = [random.randrange(0, 1024) for _ in range(20)]
-    rects_y = [random.randrange(0, 1024) for _ in range(20)]
-    rects_w = [random.randrange(0, 1024 - x + 1) for x in rects_x]
-    rects_h = [random.randrange(0, 1024 - y + 1) for y in rects_y]
-    rects = [(x, y, w, h) for x, y, w, h in zip(rects_x, rects_y, rects_w, rects_h)]
+    rects_xy = np.random.rand(20, 2) * 1024
+    rects_wh = np.random.rand(20, 2) * (1024 - rects_xy + 1)
+    rects = np.hstack((rects_xy, rects_wh))
+
+    # rects_x = [random.randrange(0, 1024) for _ in range(20)]
+    # rects_y = [random.randrange(0, 1024) for _ in range(20)]
+    # rects_w = [random.randrange(0, 1024 - x + 1) for x in rects_x]
+    # rects_h = [random.randrange(0, 1024 - y + 1) for y in rects_y]
+    # rects = [(x, y, w, h) for x, y, w, h in zip(rects_x, rects_y, rects_w, rects_h)]
     colors = np.array([[random.randrange(255) for _ in range(3)] for _ in range(20)])
     rerun.log_rects("rects_demo/rects", rects, colors=colors, rect_format=RectFormat.XYWH)
 

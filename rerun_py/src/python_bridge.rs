@@ -5,7 +5,8 @@
 use std::{borrow::Cow, collections::BTreeMap, io::Cursor, path::PathBuf, sync::Arc};
 
 use arrow2::{
-    array::{Array, StructArray},
+    array::{Array, ListArray, StructArray},
+    buffer::Buffer,
     chunk::Chunk,
     datatypes::{Field, Schema},
     io::ipc::write::StreamWriter,
@@ -18,7 +19,7 @@ use pyo3::{
     types::PyList,
 };
 
-use re_log_types::{context::ClassId, LoggedData, *};
+use re_log_types::{arrow::OBJPATH_KEY, context::ClassId, LoggedData, *};
 
 use crate::sdk::Sdk;
 
@@ -1708,7 +1709,7 @@ fn array_to_rust(arrow_array: &PyAny) -> PyResult<(Box<dyn Array>, Field)> {
 }
 
 #[pyfunction]
-fn log_arrow_msg(obj_path: &str, field_name: &str, msg: &PyAny) -> PyResult<()> {
+fn log_arrow_msg(obj_path: &str, msg: &PyAny) -> PyResult<()> {
     let mut sdk = Sdk::global();
 
     // We normally disallow logging to root, but we make an exception for class_descriptions
@@ -1718,8 +1719,6 @@ fn log_arrow_msg(obj_path: &str, field_name: &str, msg: &PyAny) -> PyResult<()> 
         parse_obj_path(obj_path)?
     };
 
-    let time_point = time(false);
-
     let (array, field) = array_to_rust(msg)?;
 
     let array = array
@@ -1727,61 +1726,68 @@ fn log_arrow_msg(obj_path: &str, field_name: &str, msg: &PyAny) -> PyResult<()> 
         .downcast_ref::<StructArray>()
         .ok_or_else(|| PyTypeError::new_err("Array should be a StructArray."))?;
 
-    re_log::info!("Logged an arrow msg at {} {:?}", obj_path, array);
+    re_log::info!(
+        "Logged an arrow msg to path '{}'  with components {:?}",
+        obj_path,
+        array
+            .fields()
+            .iter()
+            .map(|field| field.name.as_str())
+            .collect_vec()
+    );
 
+    let data_col = ListArray::<i32>::try_new(
+        ListArray::<i32>::default_datatype(array.data_type().clone()), // data_type
+        Buffer::from(vec![0, array.values()[0].len() as i32]),         // offsets
+        array.clone().boxed(),                                         // values
+        None,                                                          // validity
+    )
+    .map_err(|err| PyTypeError::new_err(err.to_string()))?;
+
+    // Build columns for timeline data
+    let (mut fields, mut cols): (Vec<Field>, Vec<Box<dyn Array>>) =
+        arrow::build_time_cols(&time(false)).unzip();
+
+    fields.push(arrow2::datatypes::Field::new(
+        "components",
+        data_col.data_type().clone(),
+        true,
+    ));
+    cols.push(data_col.boxed());
+
+    let metadata = BTreeMap::from([(OBJPATH_KEY.into(), obj_path.to_string())]);
+    let schema = Schema { fields, metadata };
+    let chunk = Chunk::new(cols);
+
+    let msg =
+        serialize_arrow_msg(schema, chunk).map_err(|err| PyTypeError::new_err(err.to_string()))?;
+
+    sdk.send(msg);
+    Ok(())
+}
+
+fn serialize_arrow_msg(
+    schema: Schema,
+    chunk: Chunk<Box<dyn Array>>,
+) -> Result<LogMsg, arrow2::error::Error> {
     // TODO(jleibs):
     // This stream-writer interface re-encodes and transmits the schema on every send
     // I believe We can optimize this using some combination of calls to:
     // https://docs.rs/arrow2/latest/arrow2/io/ipc/write/fn.write.html
 
-    let (mut fields, mut cols): (Vec<_>, Vec<_>) = time_point
-        .0
-        .iter()
-        .map(|(timeline, time)| {
-            let datatype = match timeline.typ() {
-                TimeType::Sequence => arrow2::datatypes::DataType::Int64,
-                TimeType::Time => arrow2::datatypes::DataType::Timestamp(
-                    arrow2::datatypes::TimeUnit::Nanosecond,
-                    None,
-                ),
-            };
-            let arr = arrow2::array::PrimitiveArray::from([Some(time.as_i64())]).to(datatype);
-            let field = Field::new(timeline.name().as_str(), arr.data_type().clone(), false);
-            (field, arr.boxed())
-        })
-        .unzip();
-
-    fields.extend_from_slice(array.fields());
-    cols.extend_from_slice(array.values());
-
-    let metadata = BTreeMap::from([
-        ("ARROW:extension:name".into(), "rerun.logmsg".into()),
-        ("ARROW:extension:metadata".into(), obj_path.to_string()),
-    ]);
-    let schema = Schema { fields, metadata };
-    let chunk = Chunk::new(cols);
     let mut data = Vec::<u8>::new();
     let mut writer = StreamWriter::new(&mut data, Default::default());
-    writer
-        .start(&schema, None)
-        .map_err(|err| PyTypeError::new_err(err.to_string()))?;
-    writer
-        .write(&chunk, None)
-        .map_err(|err| PyTypeError::new_err(err.to_string()))?;
-    writer
-        .finish()
-        .map_err(|err| PyTypeError::new_err(err.to_string()))?;
+    writer.start(&schema, None)?;
+    writer.write(&chunk, None)?;
+    writer.finish()?;
 
-    let data_path = DataPath::new(obj_path, FieldName::from(field_name));
+    //let data_path = DataPath::new(obj_path, FieldName::from(field_name));
 
     let msg = ArrowMsg {
         msg_id: MsgId::random(),
-        time_point,
-        data_path,
+        //data_path,
         data,
     };
 
-    sdk.send(LogMsg::ArrowMsg(msg));
-
-    Ok(())
+    Ok(LogMsg::ArrowMsg(msg))
 }
