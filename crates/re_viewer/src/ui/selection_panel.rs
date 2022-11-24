@@ -310,7 +310,9 @@ impl SelectionHistory {
         ui: &mut egui::Ui,
         blueprint: &Blueprint,
     ) -> Option<HistoricalSelection> {
-        let sel1 = self.show_control_bar(ui, blueprint);
+        let sel1 = ui
+            .horizontal(|ui| self.show_control_bar(ui, blueprint))
+            .inner;
 
         if !self.show_detailed {
             return sel1;
@@ -326,51 +328,73 @@ impl SelectionHistory {
         ui: &mut egui::Ui,
         blueprint: &Blueprint,
     ) -> Option<HistoricalSelection> {
-        ui.horizontal(|ui| {
-            let prev = self.show_prev_button(ui, blueprint);
+        use egui_extras::{Size, StripBuilder};
 
-            if ui
-                .small_button("↺")
-                .on_hover_text("Clear history")
-                .clicked()
-            {
-                self.clear();
-            }
+        let mut res = None;
+        StripBuilder::new(ui)
+            .size(Size::exact(50.0))
+            .size(Size::exact(15.0))
+            .size(Size::remainder().at_least(100.0))
+            .size(Size::exact(15.0))
+            .size(Size::exact(50.0))
+            // TODO(cmc): this doesn't seem to do anything unfortunately?
+            .cell_layout(egui::Layout::centered(egui::Direction::LeftToRight))
+            .horizontal(|mut strip| {
+                let mut prev = None;
+                strip.cell(|ui| {
+                    prev = self.show_prev_button(ui, blueprint);
+                });
 
-            let width = ui.available_width() * 0.55;
-            let picked = egui::ComboBox::from_id_source("history_browser")
-                .width(width)
-                // TODO: I cannot make `wrap(true)` work, it will always result in the
-                // combobox trying to cover the entire screen, doesn't matter what `width()`
-                // we pass above.
-                .wrap(false)
-                .selected_text(
-                    self.current()
-                        .map(|sel| {
-                            selection_to_clipped_string(ui, blueprint, &sel.selection, width)
-                        })
-                        .unwrap_or_else(|| String::new()),
-                    // .map(|sel| {
-                    //     let sel = selection_to_clipped_string(ui, blueprint, &sel.selection);
-                    //     RichText::new(sel).monospace()
-                    // })
-                    // .unwrap_or_else(|| RichText::new("")),
-                )
-                .show_ui(ui, |ui| {
-                    for (i, sel) in self.stack.iter().enumerate() {
-                        ui.horizontal(|ui| {
-                            show_selection_index(ui, i);
-                            show_selection_kind(ui, sel);
-                            let sel = selection_to_string(blueprint, sel);
-                            ui.selectable_value(&mut self.current, i, sel);
-                        });
+                strip.cell(|ui| {
+                    if ui
+                        .small_button("↺")
+                        .on_hover_text("Clear history")
+                        .clicked()
+                    {
+                        self.clear();
                     }
-                })
-                .inner
-                .and_then(|_| self.current());
+                });
 
-            let shortcut = &crate::ui::kb_shortcuts::SELECTION_DETAILED;
-            if ui
+                let mut picked = None;
+                strip.cell(|ui| {
+                    let w = ui.available_width() * 0.8;
+                    picked = egui::ComboBox::from_id_source("history_browser")
+                        .width(ui.available_width())
+                        // TODO: I cannot make `wrap(true)` work, it will always result in the
+                        // combobox trying to cover the entire screen, doesn't matter what `width()`
+                        // we pass above.
+                        .wrap(false)
+                        .selected_text(
+                            self.current()
+                                .map(|sel| {
+                                    selection_to_clipped_string(ui, blueprint, &sel.selection, w)
+                                    // selection_to_string(blueprint, &sel.selection)
+                                })
+                                .unwrap_or_else(|| String::new()),
+                            // .map(|sel| {
+                            //     let sel = selection_to_clipped_string(ui, blueprint, &sel.selection);
+                            //     RichText::new(sel).monospace()
+                            // })
+                            // .unwrap_or_else(|| RichText::new("")),
+                        )
+                        .show_ui(ui, |ui| {
+                            for (i, sel) in self.stack.iter().enumerate() {
+                                ui.horizontal(|ui| {
+                                    show_selection_index(ui, i);
+                                    show_selection_kind(ui, sel);
+                                    // let sel = selection_to_string(blueprint, sel);
+                                    let sel = selection_to_clipped_string(ui, blueprint, sel, w);
+                                    ui.selectable_value(&mut self.current, i, sel);
+                                });
+                            }
+                        })
+                        .inner
+                        .and_then(|_| self.current());
+                });
+
+                strip.cell(|ui| {
+                    let shortcut = &crate::ui::kb_shortcuts::SELECTION_DETAILED;
+                    if ui
                     .small_button(if self.show_detailed { "⏶" } else { "⏷" })
                     .on_hover_text(format!(
                         "{} detailed history view ({})",
@@ -381,15 +405,20 @@ impl SelectionHistory {
                     // TODO(cmc): feels like using the shortcut should highlight the associated
                     // button or something.
                     || ui.ctx().input_mut().consume_shortcut(shortcut)
-            {
-                self.show_detailed = !self.show_detailed;
-            }
+                    {
+                        self.show_detailed = !self.show_detailed;
+                    }
+                });
 
-            let next = self.show_next_button(ui, blueprint);
+                let mut next = None;
+                strip.cell(|ui| {
+                    next = self.show_next_button(ui, blueprint);
+                });
 
-            prev.or(picked).or(next)
-        })
-        .inner
+                res = prev.or(picked).or(next);
+            });
+
+        res
     }
 
     fn show_detailed_view(
