@@ -312,7 +312,7 @@ impl TimePanel {
 
         if !tree
             .prefix_times
-            .contains_key(ctx.rec_cfg.time_ctrl.timeline())
+            .has_timeline(ctx.rec_cfg.time_ctrl.timeline())
         {
             return; // ignore objects that have no data for the current timeline
         }
