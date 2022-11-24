@@ -172,6 +172,9 @@ impl Scene3D {
                 let mut show_labels = true;
                 let mut label_batch = Vec::new();
 
+                let annotations = self.annotation_map.find(obj_path);
+                let default_color = DefaultColor::ObjPath(obj_path);
+
                 visit_type_data_4(
                     obj_store,
                     &FieldName::from("pos"),
@@ -192,13 +195,8 @@ impl Scene3D {
                         let instance_id_hash =
                             InstanceIdHash::from_path_and_index(obj_path, instance_index);
 
-                        let annotations = self.annotation_map.find(obj_path);
                         let class_id = class_id.map(|i| ClassId(*i as _));
-                        let color = annotations.color(
-                            color,
-                            class_id.clone(),
-                            DefaultColor::ObjPath(obj_path),
-                        );
+                        let color = annotations.color(color, class_id.clone(), default_color);
 
                         show_labels = batch_size < 10;
                         if show_labels {
