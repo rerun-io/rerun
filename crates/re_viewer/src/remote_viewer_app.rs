@@ -31,19 +31,25 @@ impl RemoteViewerApp {
 
         re_log::info!("Connecting to WS server at {:?}…", self.url);
 
-        let connection = re_ws_comms::Connection::viewer_to_server(
-            self.url.clone(),
-            move |log_msg: re_log_types::LogMsg| {
-                if tx.send(log_msg).is_ok() {
-                    egui_ctx_clone.request_repaint(); // Wake up UI thread
-                    std::ops::ControlFlow::Continue(())
-                } else {
-                    re_log::info!("Failed to send log message to viewer - closing");
-                    std::ops::ControlFlow::Break(())
+        let connection =
+            re_ws_comms::Connection::viewer_to_server(self.url.clone(), move |binary: Vec<u8>| {
+                match re_ws_comms::decode_log_msg(&binary) {
+                    Ok(log_msg) => {
+                        if tx.send(log_msg).is_ok() {
+                            egui_ctx_clone.request_repaint(); // Wake up UI thread
+                            std::ops::ControlFlow::Continue(())
+                        } else {
+                            re_log::info!("Failed to send log message to viewer - closing");
+                            std::ops::ControlFlow::Break(())
+                        }
+                    }
+                    Err(err) => {
+                        re_log::error!("Failed to parse message: {}", re_error::format(&err));
+                        std::ops::ControlFlow::Break(())
+                    }
                 }
-            },
-        )
-        .unwrap(); // TODO(emilk): handle error
+            })
+            .unwrap(); // TODO(emilk): handle error
 
         let app = crate::App::from_receiver(egui_ctx, self.design_tokens, storage, rx);
 
