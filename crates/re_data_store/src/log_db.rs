@@ -257,8 +257,7 @@ impl LogDb {
 
         if time_point.is_timeless() {
             // Timeless data should be added to all existing timelines,
-            // as well to all future timelines,
-            // so we special-case it here.
+            // as well to all future timelines, so we special-case it here.
             // See https://linear.app/rerun/issue/PRO-97
 
             // Remember to add it to future timelines:
@@ -273,25 +272,24 @@ impl LogDb {
                 }
                 self.add_data_msg(msg_id, &time_point, data_path, data);
             }
+        } else {
+            // Not timeless data.
 
-            return; // done
-        }
-
-        self.obj_db
-            .add_data_msg(msg_id, time_point, data_path, data);
-
-        {
+            // First check if this data message adds a new timeline…
             let mut new_timelines = TimePoint::default();
-
             for timeline in time_point.timelines() {
                 let is_new_timeline = self.times_per_timeline().get(timeline).is_none();
-
                 if is_new_timeline {
                     re_log::debug!("New timeline added: {timeline:?}");
                     new_timelines.0.insert(*timeline, TimeInt::BEGINNING);
                 }
             }
 
+            // .…then add the data, remembering any new timelines…
+            self.obj_db
+                .add_data_msg(msg_id, time_point, data_path, data);
+
+            // …finally, if needed, add outstanding timeless data to any newly created timelines.
             if !new_timelines.0.is_empty() {
                 let timeless_data_messages = self
                     .timeless_message_ids
