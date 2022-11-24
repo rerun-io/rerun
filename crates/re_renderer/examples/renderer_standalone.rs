@@ -557,9 +557,7 @@ fn main() {
 
     #[cfg(not(target_arch = "wasm32"))]
     {
-        if std::env::var("RUST_LOG").is_err() {
-            std::env::set_var("RUST_LOG", "info,wgpu_core=warn,wgpu_hal=warn");
-        }
+        re_log::set_default_rust_log_env();
         tracing_subscriber::fmt::init();
 
         // Set size to a common physical resolution as a comparable start-up default.
@@ -599,7 +597,7 @@ fn redirect_tracing_to_console_log() {
     tracing::subscriber::set_global_default(
         tracing_subscriber::Registry::default()
             .with(tracing_subscriber::EnvFilter::new(
-                "debug,wgpu_core=warn,wgpu_hal=warn",
+                re_log::default_log_filter(),
             ))
             .with(tracing_wasm::WASMLayer::new(
                 tracing_wasm::WASMLayerConfig::default(),
