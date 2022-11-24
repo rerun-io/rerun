@@ -1,10 +1,3 @@
-use std::sync::Arc;
-
-use re_log_types::{
-    path::{IndexPath, ObjPathImpl, ObjTypePath},
-    ObjPathComp,
-};
-
 use super::{Selection, ViewerContext};
 
 // ---
@@ -33,14 +26,14 @@ impl From<(usize, Selection)> for HistoricalSelection {
 // - menu edit > undo/redo selection
 // - rolling list of history
 
-// TODO: so more like a selection browser, really.
 #[derive(Default, Clone, Debug, serde::Serialize, serde::Deserialize)]
-pub struct PathBrowser {
+pub struct SelectionHistory {
     current: usize, // index into `self.stack`
     stack: Vec<Selection>,
+    show_detailed: bool,
 }
 
-impl PathBrowser {
+impl SelectionHistory {
     pub fn current(&self) -> Option<HistoricalSelection> {
         self.stack
             .get(self.current)
@@ -82,66 +75,131 @@ impl PathBrowser {
         ctx: &mut ViewerContext,
         ui: &mut egui::Ui,
     ) -> Option<HistoricalSelection> {
-        ui.vertical(|ui| {
-            let mut new_selection = None;
+        let prev_next = ui
+            .horizontal(|ui| {
+                let prev = self.show_prev_button(ui);
 
-            // TODO: show scrollable combobox with everything
+                let picked = egui::ComboBox::from_id_source("history_browser")
+                    .width(ui.available_width() * 0.5)
+                    .wrap(false)
+                    .selected_text(
+                        self.current()
+                            .map(|sel| selection_to_string(&sel.selection).unwrap())
+                            .unwrap_or_else(|| String::new()),
+                    )
+                    .show_ui(ui, |ui| {
+                        for (i, sel) in self.stack.iter().enumerate() {
+                            ui.horizontal(|ui| {
+                                let index_str = egui::RichText::new(format!("[{i}]")).monospace();
+                                ui.weak(index_str);
+                                let str = selection_to_string(sel).unwrap();
+                                ui.selectable_value(&mut self.current, i, str);
+                            });
+                        }
+                    })
+                    .inner
+                    .and_then(|_| self.current());
 
-            egui::Grid::new("selection_history").show(ui, |ui| {
-                ui.label("Current");
-                ui.horizontal(|ui| {
-                    if let Some(current) = self.current() {
-                        ui.weak(format!("[{}]", current.index));
-                        let path = selection_to_string(&current.selection).unwrap();
-                        _ = ui.selectable_label(false, path);
-                    }
-                });
-                ui.end_row();
+                let shortcut = &crate::ui::kb_shortcuts::SELECTION_DETAILED;
+                if ui
+                    .small_button(if self.show_detailed { "⏷" } else { "⏶" })
+                    .on_hover_text(format!(
+                        "{} detailed history view ({})",
+                        if self.show_detailed { "Collapsed" } else { "Expand" },
+                        ui.ctx().format_shortcut(shortcut)
+                    ))
+                    .clicked()
+                    // TODO(cmc): feels like using the shortcut should highlight the associated
+                    // button or something.
+                    || ui.ctx().input_mut().consume_shortcut(shortcut)
+                {
+                    self.show_detailed = !self.show_detailed;
+                }
 
-                ui.label("Previous");
-                ui.horizontal(|ui| {
-                    if let Some(previous) = self.previous() {
-                        ui.weak(format!("[{}]", previous.index));
-                        let path = selection_to_string(&previous.selection).unwrap();
-                        if ui.selectable_label(false, path).clicked() {
-                            self.current = previous.index;
+                let next = self.show_next_button(ui);
+
+                prev.or(picked).or(next)
+            })
+            .inner;
+
+        if self.show_detailed {
+            return prev_next;
+        }
+
+        let new_selection = ui
+            .vertical(|ui| {
+                let mut new_selection = None;
+
+                fn show_row(
+                    ui: &mut egui::Ui,
+                    enabled: bool,
+                    label: &str,
+                    sel: Option<HistoricalSelection>,
+                ) -> bool {
+                    ui.label(label);
+
+                    let Some(sel) = sel else {
+                        ui.end_row();
+                        return false;
+                    };
+
+                    let clicked = ui
+                        .add_enabled_ui(enabled, |ui| {
+                            ui.horizontal(|ui| {
+                                let index_str =
+                                    egui::RichText::new(format!("[{}]", sel.index)).monospace();
+                                ui.weak(index_str);
+                                let path = selection_to_string(&sel.selection).unwrap();
+                                ui.selectable_label(false, path).clicked()
+                            })
+                            .inner
+                        })
+                        .inner;
+
+                    ui.end_row();
+
+                    clicked
+                }
+
+                egui::Grid::new("selection_history")
+                    .num_columns(3)
+                    .show(ui, |ui| {
+                        if show_row(ui, true, "Previous", self.previous()) {
+                            self.current -= 1;
                             new_selection = self.current();
                         }
-                    }
-                });
-                ui.end_row();
 
-                ui.label("Next");
-                ui.horizontal(|ui| {
-                    if let Some(next) = self.next() {
-                        ui.weak(format!("[{}]", next.index));
-                        let path = selection_to_string(&next.selection).unwrap();
-                        if ui.selectable_label(false, path).clicked() {
-                            self.current = next.index;
+                        _ = show_row(ui, false, "Current", self.current());
+
+                        if show_row(ui, true, "Next", self.next()) {
+                            self.current += 1;
                             new_selection = self.current();
                         }
-                    }
-                });
-                ui.end_row();
-            });
+                    });
 
-            new_selection
-        })
-        .inner
+                new_selection
+            })
+            .inner;
+
+        prev_next.or(new_selection)
     }
 
     fn show_prev_button(&mut self, ui: &mut egui::Ui) -> Option<HistoricalSelection> {
+        const PREV_BUTTON: &str = "⏴ Prev";
         if let Some(previous) = self.previous() {
+            let shortcut = &crate::ui::kb_shortcuts::SELECTION_PREVIOUS;
             if ui
-                .small_button("⏴")
+                .small_button(PREV_BUTTON)
                 .on_hover_text(format!(
-                    "Go to previous selection ({})\nThis will take you back to: [{}] {}",
-                    ui.ctx()
-                        .format_shortcut(&crate::ui::kb_shortcuts::SELECTION_PREVIOUS),
+                    "Go to previous selection ({}):\n[{}] {}",
+                    ui.ctx().format_shortcut(shortcut),
                     previous.index,
                     selection_to_string(&previous.selection).unwrap()
                 ))
                 .clicked()
+                // TODO(cmc): feels like using the shortcut should highlight the associated
+                // button or something.
+                || ui.ctx().input_mut().consume_shortcut(shortcut)
             {
                 if previous.index != self.current {
                     self.current = previous.index;
@@ -150,7 +208,7 @@ impl PathBrowser {
             }
         } else {
             // Creating a superfluous horizontal UI so that we can still have hover text.
-            ui.horizontal(|ui| ui.add_enabled(false, egui::Button::new("⏴")))
+            ui.horizontal(|ui| ui.add_enabled(false, egui::Button::new(PREV_BUTTON)))
                 .response
                 .on_hover_text("No past selections found");
         }
@@ -159,17 +217,21 @@ impl PathBrowser {
     }
 
     fn show_next_button(&mut self, ui: &mut egui::Ui) -> Option<HistoricalSelection> {
+        const NEXT_BUTTON: &str = "Next ⏵";
         if let Some(next) = self.next() {
+            let shortcut = &crate::ui::kb_shortcuts::SELECTION_NEXT;
             if ui
-                .small_button("⏴")
+                .small_button(NEXT_BUTTON)
                 .on_hover_text(format!(
-                    "Go to next selection ({})\nThis will take you back to: [{}] {}",
-                    ui.ctx()
-                        .format_shortcut(&crate::ui::kb_shortcuts::SELECTION_NEXT),
+                    "Go to next selection ({}):\n[{}] {}",
+                    ui.ctx().format_shortcut(shortcut),
                     next.index,
                     selection_to_string(&next.selection).unwrap()
                 ))
                 .clicked()
+                // TODO(cmc): feels like using the shortcut should highlight the associated
+                // button or something.
+                || ui.ctx().input_mut().consume_shortcut(shortcut)
             {
                 if next.index != self.current {
                     self.current = next.index;
@@ -178,9 +240,9 @@ impl PathBrowser {
             }
         } else {
             // Creating a superfluous horizontal UI so that we can still have hover text.
-            ui.horizontal(|ui| ui.add_enabled(false, egui::Button::new("⏴")))
+            ui.horizontal(|ui| ui.add_enabled(false, egui::Button::new(NEXT_BUTTON)))
                 .response
-                .on_hover_text("No past selections found");
+                .on_hover_text("No future selections found");
         }
 
         None

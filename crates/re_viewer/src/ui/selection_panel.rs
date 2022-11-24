@@ -1,7 +1,7 @@
 use re_data_store::log_db::LogDb;
 use re_log_types::LogMsg;
 
-use crate::{data_ui::*, misc::PathBrowser, ui::Blueprint, Preview, Selection, ViewerContext};
+use crate::{data_ui::*, misc::SelectionHistory, ui::Blueprint, Preview, Selection, ViewerContext};
 
 use super::SpaceView;
 
@@ -17,7 +17,7 @@ impl SelectionPanel {
         ctx: &mut ViewerContext<'_>,
         egui_ctx: &egui::Context,
         blueprint: &mut Blueprint,
-        path_browser: &mut PathBrowser,
+        path_browser: &mut SelectionHistory,
     ) {
         let shortcut = crate::ui::kb_shortcuts::TOGGLE_SELECTION_PANEL;
         blueprint.selection_panel_expanded ^= egui_ctx.input_mut().consume_shortcut(&shortcut);

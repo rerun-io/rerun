@@ -20,6 +20,8 @@ pub const TOGGLE_BLUEPRINT_PANEL: KeyboardShortcut = KeyboardShortcut::new(CTRL_
 pub const TOGGLE_SELECTION_PANEL: KeyboardShortcut = KeyboardShortcut::new(CTRL_SHIFT, Key::S);
 pub const TOGGLE_TIME_PANEL: KeyboardShortcut = KeyboardShortcut::new(CTRL_SHIFT, Key::T);
 
+pub const SELECTION_DETAILED: KeyboardShortcut = KeyboardShortcut::new(CTRL_SHIFT, Key::H);
 // TODO: I expect some resistance here :D
 pub const SELECTION_PREVIOUS: KeyboardShortcut = KeyboardShortcut::new(CTRL_SHIFT, Key::O);
 pub const SELECTION_NEXT: KeyboardShortcut = KeyboardShortcut::new(CTRL_SHIFT, Key::I);
+// TODO: mouse button shortcut support for Andreas!

@@ -12,7 +12,7 @@ mod viewer_context;
 use tensor_image_cache::ImageCache;
 
 mod path_browser;
-pub use self::path_browser::PathBrowser;
+pub use self::path_browser::SelectionHistory;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) use clipboard::Clipboard;

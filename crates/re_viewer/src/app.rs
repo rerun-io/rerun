@@ -12,7 +12,7 @@ use re_log_types::*;
 
 use crate::{
     design_tokens::DesignTokens,
-    misc::{Caches, Options, PathBrowser, RecordingConfig, ViewerContext},
+    misc::{Caches, Options, RecordingConfig, SelectionHistory, ViewerContext},
     ui::kb_shortcuts,
 };
 
@@ -521,7 +521,7 @@ struct AppState {
 
     selected_rec_id: RecordingId,
     // TODO: guess we get persistent goto for free then
-    path_browser: PathBrowser,
+    path_browser: SelectionHistory,
 
     /// Configuration for the current recording (found in [`LogDb`]).
     recording_configs: IntMap<RecordingId, RecordingConfig>,
