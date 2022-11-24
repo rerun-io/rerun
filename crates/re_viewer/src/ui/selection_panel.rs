@@ -69,7 +69,7 @@ impl SelectionPanel {
 
                     ui.separator();
 
-                    if let Some(new_selection) = self.history.show(ui) {
+                    if let Some(new_selection) = self.history.show(ui, blueprint) {
                         ctx.rec_cfg.selection = new_selection.selection;
                     }
 
@@ -243,9 +243,9 @@ fn ui_space_view(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, space_view: &mu
 // --- Selection history ---
 
 #[derive(Debug, Clone)]
-pub struct HistoricalSelection {
-    pub index: usize,
-    pub selection: Selection,
+struct HistoricalSelection {
+    index: usize,
+    selection: Selection,
 }
 
 impl From<(usize, Selection)> for HistoricalSelection {
@@ -300,44 +300,86 @@ impl SelectionHistory {
         self.current = self.stack.len() - 1;
     }
 
-    pub fn show(&mut self, ui: &mut egui::Ui) -> Option<HistoricalSelection> {
-        let prev_next = ui
-            .horizontal(|ui| {
-                let prev = self.show_prev_button(ui);
+    pub fn clear(&mut self) {
+        self.current = 0;
+        self.stack.clear();
+    }
 
-                // let font_id = egui::TextStyle::Body.resolve(ui.style());
-                // let renderer_width = move |ui: &egui::Ui, text: String| {
-                //     ui.fonts()
-                //         .layout_delayed_color(text, (*font_id).clone(), f32::MAX)
-                //         .size()
-                //         .x
-                // };
+    pub fn show(
+        &mut self,
+        ui: &mut egui::Ui,
+        blueprint: &Blueprint,
+    ) -> Option<HistoricalSelection> {
+        let sel1 = self.show_control_bar(ui, blueprint);
 
-                let picked = egui::ComboBox::from_id_source("history_browser")
-                    .width(ui.available_width() * 0.55)
-                    // TODO: I cannot make `wrap(true)` work, it will always result in the
-                    // combobox trying to cover the entire screen, doesn't matter what `width()`
-                    // we pass above.
-                    .wrap(false)
-                    .selected_text(
-                        self.current()
-                            .map(|sel| RichText::new(sel.selection.to_string()).monospace())
-                            .unwrap_or_else(|| RichText::new("")),
-                    )
-                    .show_ui(ui, |ui| {
-                        for (i, sel) in self.stack.iter().enumerate() {
-                            ui.horizontal(|ui| {
-                                show_selection_index(ui, i);
-                                show_selection_kind(ui, sel);
-                                ui.selectable_value(&mut self.current, i, sel.to_string());
-                            });
-                        }
-                    })
-                    .inner
-                    .and_then(|_| self.current());
+        if !self.show_detailed {
+            return sel1;
+        }
 
-                let shortcut = &crate::ui::kb_shortcuts::SELECTION_DETAILED;
-                if ui
+        let sel2 = self.show_detailed_view(ui, blueprint);
+
+        sel1.or(sel2)
+    }
+
+    fn show_control_bar(
+        &mut self,
+        ui: &mut egui::Ui,
+        blueprint: &Blueprint,
+    ) -> Option<HistoricalSelection> {
+        ui.horizontal(|ui| {
+            let prev = self.show_prev_button(ui, blueprint);
+
+            if ui
+                .small_button("↺")
+                .on_hover_text("Clear history")
+                .clicked()
+            {
+                self.clear();
+            }
+
+            // let font_id = egui::TextStyle::Body.resolve(ui.style());
+            // let renderer_width = move |ui: &egui::Ui, text: String| {
+            //     ui.fonts()
+            //         .layout_delayed_color(text, (*font_id).clone(), f32::MAX)
+            //         .size()
+            //         .x
+            // };
+            //
+            //
+            //↺
+
+            let picked = egui::ComboBox::from_id_source("history_browser")
+                // .width(ui.available_width() * 0.55)
+                // TODO: I cannot make `wrap(true)` work, it will always result in the
+                // combobox trying to cover the entire screen, doesn't matter what `width()`
+                // we pass above.
+                .wrap(false)
+                .selected_text(
+                    self.current()
+                        .map(|sel| {
+                            RichText::new(selection_to_string(blueprint, &sel.selection))
+                                .monospace()
+                        })
+                        .unwrap_or_else(|| RichText::new("")),
+                )
+                .show_ui(ui, |ui| {
+                    for (i, sel) in self.stack.iter().enumerate() {
+                        ui.horizontal(|ui| {
+                            show_selection_index(ui, i);
+                            show_selection_kind(ui, sel);
+                            ui.selectable_value(
+                                &mut self.current,
+                                i,
+                                selection_to_string(blueprint, sel),
+                            );
+                        });
+                    }
+                })
+                .inner
+                .and_then(|_| self.current());
+
+            let shortcut = &crate::ui::kb_shortcuts::SELECTION_DETAILED;
+            if ui
                     .small_button(if self.show_detailed { "⏶" } else { "⏷" })
                     .on_hover_text(format!(
                         "{} detailed history view ({})",
@@ -348,78 +390,85 @@ impl SelectionHistory {
                     // TODO(cmc): feels like using the shortcut should highlight the associated
                     // button or something.
                     || ui.ctx().input_mut().consume_shortcut(shortcut)
-                {
-                    self.show_detailed = !self.show_detailed;
-                }
+            {
+                self.show_detailed = !self.show_detailed;
+            }
 
-                let next = self.show_next_button(ui);
+            let next = self.show_next_button(ui, blueprint);
 
-                prev.or(picked).or(next)
-            })
-            .inner;
+            prev.or(picked).or(next)
+        })
+        .inner
+    }
 
-        if !self.show_detailed {
-            return prev_next;
-        }
+    fn show_detailed_view(
+        &mut self,
+        ui: &mut egui::Ui,
+        blueprint: &Blueprint,
+    ) -> Option<HistoricalSelection> {
+        ui.vertical(|ui| {
+            let mut picked = None;
 
-        let new_selection = ui
-            .vertical(|ui| {
-                let mut new_selection = None;
+            fn show_row(
+                ui: &mut egui::Ui,
+                blueprint: &Blueprint,
+                enabled: bool,
+                label: &str,
+                sel: Option<HistoricalSelection>,
+            ) -> bool {
+                ui.label(label);
 
-                fn show_row(
-                    ui: &mut egui::Ui,
-                    enabled: bool,
-                    label: &str,
-                    sel: Option<HistoricalSelection>,
-                ) -> bool {
-                    ui.label(label);
-
-                    let Some(sel) = sel else {
+                let Some(sel) = sel else {
                         ui.end_row();
                         return false;
                     };
 
-                    let clicked = ui
-                        .add_enabled_ui(enabled, |ui| {
-                            ui.horizontal(|ui| {
-                                show_selection_index(ui, sel.index);
-                                show_selection_kind(ui, &sel.selection);
-                                ui.selectable_label(false, sel.selection.to_string())
-                                    .clicked()
-                            })
-                            .inner
+                let clicked = ui
+                    .add_enabled_ui(enabled, |ui| {
+                        ui.horizontal(|ui| {
+                            show_selection_index(ui, sel.index);
+                            show_selection_kind(ui, &sel.selection);
+                            ui.selectable_label(
+                                false,
+                                selection_to_string(blueprint, &sel.selection),
+                            )
+                            .clicked()
                         })
-                        .inner;
+                        .inner
+                    })
+                    .inner;
 
-                    ui.end_row();
+                ui.end_row();
 
-                    clicked
-                }
+                clicked
+            }
 
-                egui::Grid::new("selection_history")
-                    .num_columns(3)
-                    .show(ui, |ui| {
-                        if show_row(ui, true, "Previous", self.previous()) {
-                            self.current -= 1;
-                            new_selection = self.current();
-                        }
+            egui::Grid::new("selection_history")
+                .num_columns(3)
+                .show(ui, |ui| {
+                    if show_row(ui, blueprint, true, "Previous", self.previous()) {
+                        self.current -= 1;
+                        picked = self.current();
+                    }
 
-                        _ = show_row(ui, false, "Current", self.current());
+                    _ = show_row(ui, blueprint, false, "Current", self.current());
 
-                        if show_row(ui, true, "Next", self.next()) {
-                            self.current += 1;
-                            new_selection = self.current();
-                        }
-                    });
+                    if show_row(ui, blueprint, true, "Next", self.next()) {
+                        self.current += 1;
+                        picked = self.current();
+                    }
+                });
 
-                new_selection
-            })
-            .inner;
-
-        prev_next.or(new_selection)
+            picked
+        })
+        .inner
     }
 
-    fn show_prev_button(&mut self, ui: &mut egui::Ui) -> Option<HistoricalSelection> {
+    fn show_prev_button(
+        &mut self,
+        ui: &mut egui::Ui,
+        blueprint: &Blueprint,
+    ) -> Option<HistoricalSelection> {
         const PREV_BUTTON: &str = "⏴ Prev";
         if let Some(previous) = self.previous() {
             let shortcut = &crate::ui::kb_shortcuts::SELECTION_PREVIOUS;
@@ -429,7 +478,7 @@ impl SelectionHistory {
                     "Go to previous selection ({}):\n[{}] {}",
                     ui.ctx().format_shortcut(shortcut),
                     previous.index,
-                    previous.selection.to_string(),
+                    selection_to_string(blueprint, &previous.selection),
                 ))
                 .clicked()
                 // TODO(cmc): feels like using the shortcut should highlight the associated
@@ -451,7 +500,11 @@ impl SelectionHistory {
         None
     }
 
-    fn show_next_button(&mut self, ui: &mut egui::Ui) -> Option<HistoricalSelection> {
+    fn show_next_button(
+        &mut self,
+        ui: &mut egui::Ui,
+        blueprint: &Blueprint,
+    ) -> Option<HistoricalSelection> {
         const NEXT_BUTTON: &str = "Next ⏵";
         if let Some(next) = self.next() {
             let shortcut = &crate::ui::kb_shortcuts::SELECTION_NEXT;
@@ -461,7 +514,7 @@ impl SelectionHistory {
                     "Go to next selection ({}):\n[{}] {}",
                     ui.ctx().format_shortcut(shortcut),
                     next.index,
-                    next.selection.to_string(),
+                    selection_to_string(blueprint, &next.selection),
                 ))
                 .clicked()
                 // TODO(cmc): feels like using the shortcut should highlight the associated
@@ -485,7 +538,7 @@ impl SelectionHistory {
 }
 
 fn show_selection_index(ui: &mut egui::Ui, index: usize) {
-    ui.weak(RichText::new(index.to_string()).monospace());
+    ui.weak(RichText::new(format!("{index:4}")).monospace());
 }
 
 // Different kinds can share the same path: we need to differentiate those in the UI to avoid
@@ -503,4 +556,14 @@ fn show_selection_kind(ui: &mut egui::Ui, sel: &Selection) {
         })
         .monospace(),
     );
+}
+
+fn selection_to_string(blueprint: &Blueprint, sel: &Selection) -> String {
+    if let Selection::SpaceView(id) = sel {
+        if let Some(space_view) = blueprint.viewport.get_space_view(id) {
+            return format!("{}", space_view.name);
+        }
+    }
+
+    sel.to_string()
 }

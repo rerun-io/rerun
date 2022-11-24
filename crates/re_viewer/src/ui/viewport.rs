@@ -82,6 +82,10 @@ impl ViewportBlueprint {
         blueprint
     }
 
+    pub(crate) fn get_space_view(&self, space_view: &SpaceViewId) -> Option<&SpaceView> {
+        self.space_views.get(space_view)
+    }
+
     pub(crate) fn get_space_view_mut(
         &mut self,
         space_view: &SpaceViewId,
