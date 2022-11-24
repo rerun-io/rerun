@@ -360,29 +360,19 @@ impl SelectionHistory {
                     let w = ui.available_width() * 0.8;
                     picked = egui::ComboBox::from_id_source("history_browser")
                         .width(ui.available_width())
-                        // TODO: I cannot make `wrap(true)` work, it will always result in the
-                        // combobox trying to cover the entire screen, doesn't matter what `width()`
-                        // we pass above.
                         .wrap(false)
                         .selected_text(
                             self.current()
                                 .map(|sel| {
                                     selection_to_clipped_string(ui, blueprint, &sel.selection, w)
-                                    // selection_to_string(blueprint, &sel.selection)
                                 })
                                 .unwrap_or_else(|| String::new()),
-                            // .map(|sel| {
-                            //     let sel = selection_to_clipped_string(ui, blueprint, &sel.selection);
-                            //     RichText::new(sel).monospace()
-                            // })
-                            // .unwrap_or_else(|| RichText::new("")),
                         )
                         .show_ui(ui, |ui| {
                             for (i, sel) in self.stack.iter().enumerate() {
                                 ui.horizontal(|ui| {
                                     show_selection_index(ui, i);
                                     show_selection_kind(ui, sel);
-                                    // let sel = selection_to_string(blueprint, sel);
                                     let sel = selection_to_clipped_string(ui, blueprint, sel, w);
                                     ui.selectable_value(&mut self.current, i, sel);
                                 });
@@ -595,19 +585,6 @@ fn selection_to_clipped_string(
     width: f32,
 ) -> String {
     let font_id = egui::TextStyle::Body.resolve(ui.style()); // TODO: cache
-
-    // let char_width = ui.fonts().glyph_width(&font_id, 'X');
-
-    // let nb_graphemes = ((width / char_width).floor() - 1.0).max(0.0) as usize;
-
-    // use unicode_segmentation::UnicodeSegmentation as _;
-    // let mut sel = selection_to_string(blueprint, sel)
-    //     .graphemes(true)
-    //     .rev()
-    //     .take(nb_graphemes)
-    //     .collect::<String>();
-    // sel += "…";
-    // sel = sel.graphemes(true).rev().collect();
 
     let mut width = width - ui.fonts().glyph_width(&font_id, '…');
     let mut sel = selection_to_string(blueprint, sel)
