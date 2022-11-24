@@ -1,4 +1,4 @@
-use std::{any::Any, sync::mpsc::Receiver};
+use std::any::Any;
 
 use ahash::HashMap;
 use egui_extras::RetainedImage;
@@ -13,6 +13,7 @@ use re_log_types::*;
 use crate::{
     design_tokens::DesignTokens,
     misc::{Caches, Options, RecordingConfig, ViewerContext},
+    smart_channel::SmartReceiver,
     ui::kb_shortcuts,
 };
 
@@ -27,7 +28,7 @@ const WATERMARK: bool = false; // Nice for recording media material
 pub struct App {
     design_tokens: DesignTokens,
 
-    rx: Option<Receiver<LogMsg>>,
+    rx: Option<SmartReceiver<LogMsg>>,
 
     /// Where the logs are stored.
     log_dbs: IntMap<RecordingId, LogDb>,
@@ -56,7 +57,7 @@ impl App {
         egui_ctx: &egui::Context,
         design_tokens: DesignTokens,
         storage: Option<&dyn eframe::Storage>,
-        rx: Receiver<LogMsg>,
+        rx: SmartReceiver<LogMsg>,
     ) -> Self {
         Self::new(
             egui_ctx,
@@ -93,7 +94,7 @@ impl App {
         _egui_ctx: &egui::Context,
         design_tokens: DesignTokens,
         storage: Option<&dyn eframe::Storage>,
-        rx: Option<Receiver<LogMsg>>,
+        rx: Option<SmartReceiver<LogMsg>>,
         log_db: LogDb,
     ) -> Self {
         #[cfg(not(target_arch = "wasm32"))]

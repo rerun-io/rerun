@@ -199,11 +199,18 @@ async fn host_web_viewer(_rerun_ws_server_url: String) -> anyhow::Result<()> {
     panic!("Can't host web-viewer - rerun was not compiled with the 'web' feature");
 }
 
+/// This wakes up the ui thread each time we receive a new message.
+///
+/// It also consumes a regular channel and turns it into a `smart_channel`, which
+/// is a channel that keeps track of its length and latency.
+///
+/// Ideally we should do that even earlier, but most of the expected latency will
+/// come after this point, due to a slow consumer (and this function should be a very fast consumer).
 fn wake_up_ui_thread_on_each_msg<T: Send + 'static>(
     rx: Receiver<T>,
     ctx: egui::Context,
-) -> Receiver<T> {
-    let (tx, new_rx) = std::sync::mpsc::channel();
+) -> re_viewer::smart_channel::SmartReceiver<T> {
+    let (tx, new_rx) = re_viewer::smart_channel::smart_channel();
     std::thread::Builder::new()
         .name("ui_waker".to_owned())
         .spawn(move || {
