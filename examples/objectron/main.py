@@ -284,6 +284,9 @@ def main() -> None:
 
     args = parser.parse_args()
 
+    if args.run_forever:
+        assert args.connect, "If you run forever, you need to --connect"
+
     rerun.init("objectron")
 
     if args.connect:
