@@ -36,9 +36,12 @@ pub fn run_native_app(app_creator: AppCreator) {
     );
 }
 
-pub fn run_native_viewer_with_rx(rx: Receiver<LogMsg>) {
+pub fn run_native_viewer_with_messages(log_messages: Vec<LogMsg>) {
+    let (tx, rx) = std::sync::mpsc::channel();
+    for log_msg in log_messages {
+        tx.send(log_msg).ok();
+    }
     run_native_app(Box::new(move |cc, design_tokens| {
-        let rx = wake_up_ui_thread_on_each_msg(rx, cc.egui_ctx.clone());
         Box::new(crate::App::from_receiver(
             &cc.egui_ctx,
             design_tokens,
