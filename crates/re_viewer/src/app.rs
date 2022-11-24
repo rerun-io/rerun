@@ -387,10 +387,13 @@ impl App {
 
             {
                 crate::profile_scope!("pruning");
-                re_log::info!(
-                    "Attempting to purge {:.1}% of used RAM…",
-                    100.0 * fraction_to_purge
-                );
+                if let Some(counted) = mem_use_before.counted {
+                    re_log::info!(
+                        "Attempting to purge {:.1}% of used RAM ({})…",
+                        100.0 * fraction_to_purge,
+                        format_bytes(counted as f64 * fraction_to_purge as f64)
+                    );
+                }
                 for log_db in self.log_dbs.values_mut() {
                     log_db.purge_memory(fraction_to_purge);
                 }
@@ -401,8 +404,14 @@ impl App {
 
             let freed_memory = mem_use_before - mem_use_after;
 
-            if let Some(counted_diff) = freed_memory.counted {
-                re_log::info!("Freed up {}", format_bytes(counted_diff as _));
+            if let (Some(counted_before), Some(counted_diff)) =
+                (mem_use_before.counted, freed_memory.counted)
+            {
+                re_log::info!(
+                    "Freed up {} ({:.1}%)",
+                    format_bytes(counted_diff as _),
+                    100.0 * counted_diff as f32 / counted_before as f32
+                );
             }
 
             self.latest_memory_purge = instant::Instant::now();
