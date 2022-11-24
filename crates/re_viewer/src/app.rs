@@ -12,7 +12,7 @@ use re_log_types::*;
 
 use crate::{
     design_tokens::DesignTokens,
-    misc::{Caches, Options, RecordingConfig, SelectionHistory, ViewerContext},
+    misc::{Caches, Options, RecordingConfig, ViewerContext},
     ui::kb_shortcuts,
 };
 
@@ -520,8 +520,6 @@ struct AppState {
     cache: Caches,
 
     selected_rec_id: RecordingId,
-    // TODO: guess we get persistent goto for free then
-    path_browser: SelectionHistory,
 
     /// Configuration for the current recording (found in [`LogDb`]).
     recording_configs: IntMap<RecordingId, RecordingConfig>,
@@ -558,7 +556,6 @@ impl AppState {
             selected_rec_id,
             recording_configs,
             panel_selection,
-            path_browser,
             event_log_view,
             blueprints,
             selection_panel,
@@ -585,7 +582,7 @@ impl AppState {
         };
 
         let blueprint = blueprints.entry(selected_app_id.clone()).or_default();
-        selection_panel.show_panel(&mut ctx, egui_ctx, blueprint, path_browser);
+        selection_panel.show_panel(&mut ctx, egui_ctx, blueprint);
         time_panel.show_panel(&mut ctx, blueprint, egui_ctx);
 
         let central_panel_frame = egui::Frame {
@@ -667,7 +664,9 @@ fn top_panel(egui_ctx: &egui::Context, frame: &mut eframe::Frame, app: &mut App)
         .recording_configs
         .entry(app.state.selected_rec_id)
         .or_default();
-    app.state.path_browser.select(&rec_cfg.selection);
+    app.state
+        .selection_panel
+        .update_selection(&rec_cfg.selection);
 
     egui::TopBottomPanel::top("top_bar")
         .frame(panel_frame)
