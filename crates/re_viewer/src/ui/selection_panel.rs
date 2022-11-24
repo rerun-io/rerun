@@ -248,18 +248,6 @@ pub struct HistoricalSelection {
     pub selection: Selection,
 }
 
-impl std::fmt::Display for HistoricalSelection {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&match &self.selection {
-            Selection::ObjTypePath(path) => path.to_string(),
-            Selection::Instance(path) => path.to_string(),
-            Selection::DataPath(path) => path.to_string(),
-            Selection::Space(path) => path.to_string(),
-            _ => unreachable!(), // `Self::select` ignores everything else.
-        })
-    }
-}
-
 impl From<(usize, Selection)> for HistoricalSelection {
     fn from((index, selection): (usize, Selection)) -> Self {
         Self { index, selection }
@@ -295,25 +283,21 @@ impl SelectionHistory {
     ///
     /// This is a no-op if selection == current_selection.
     pub fn select(&mut self, selection: &Selection) {
-        if matches!(
-            selection,
-            Selection::ObjTypePath(_)
-                | Selection::Instance(_)
-                | Selection::DataPath(_)
-                | Selection::Space(_)
-        ) {
-            if let Some(current) = self.current() {
-                if current.selection == *selection {
-                    return;
-                }
-            }
-
-            if !self.stack.is_empty() {
-                self.stack.drain(self.current + 1..);
-            }
-            self.stack.push(selection.clone());
-            self.current = self.stack.len() - 1;
+        if matches!(selection, Selection::None) {
+            return;
         }
+
+        if let Some(current) = self.current() {
+            if current.selection == *selection {
+                return;
+            }
+        }
+
+        if !self.stack.is_empty() {
+            self.stack.drain(self.current + 1..);
+        }
+        self.stack.push(selection.clone());
+        self.current = self.stack.len() - 1;
     }
 
     pub fn show(&mut self, ui: &mut egui::Ui) -> Option<HistoricalSelection> {
@@ -337,15 +321,14 @@ impl SelectionHistory {
                     .wrap(false)
                     .selected_text(
                         self.current()
-                            .map(|sel| sel.to_string())
-                            .unwrap_or_else(|| String::new()),
+                            .map(|sel| RichText::new(sel.selection.to_string()).monospace())
+                            .unwrap_or_else(|| RichText::new("")),
                     )
                     .show_ui(ui, |ui| {
                         for (i, sel) in self.stack.iter().enumerate() {
-                            let sel = HistoricalSelection::from((i, sel.clone()));
                             ui.horizontal(|ui| {
-                                let index_str = RichText::new(format!("[{i}]")).monospace();
-                                ui.weak(index_str);
+                                show_selection_index(ui, i);
+                                show_selection_kind(ui, sel);
                                 ui.selectable_value(&mut self.current, i, sel.to_string());
                             });
                         }
@@ -399,10 +382,10 @@ impl SelectionHistory {
                     let clicked = ui
                         .add_enabled_ui(enabled, |ui| {
                             ui.horizontal(|ui| {
-                                let index_str =
-                                    RichText::new(format!("[{}]", sel.index)).monospace();
-                                ui.weak(index_str);
-                                ui.selectable_label(false, sel.to_string()).clicked()
+                                show_selection_index(ui, sel.index);
+                                show_selection_kind(ui, &sel.selection);
+                                ui.selectable_label(false, sel.selection.to_string())
+                                    .clicked()
                             })
                             .inner
                         })
@@ -446,7 +429,7 @@ impl SelectionHistory {
                     "Go to previous selection ({}):\n[{}] {}",
                     ui.ctx().format_shortcut(shortcut),
                     previous.index,
-                    previous.to_string(),
+                    previous.selection.to_string(),
                 ))
                 .clicked()
                 // TODO(cmc): feels like using the shortcut should highlight the associated
@@ -478,7 +461,7 @@ impl SelectionHistory {
                     "Go to next selection ({}):\n[{}] {}",
                     ui.ctx().format_shortcut(shortcut),
                     next.index,
-                    next.to_string(),
+                    next.selection.to_string(),
                 ))
                 .clicked()
                 // TODO(cmc): feels like using the shortcut should highlight the associated
@@ -499,4 +482,25 @@ impl SelectionHistory {
 
         None
     }
+}
+
+fn show_selection_index(ui: &mut egui::Ui, index: usize) {
+    ui.weak(RichText::new(index.to_string()).monospace());
+}
+
+// Different kinds can share the same path: we need to differentiate those in the UI to avoid
+// confusion!
+fn show_selection_kind(ui: &mut egui::Ui, sel: &Selection) {
+    ui.weak(
+        RichText::new(match sel {
+            Selection::None => "NONE",
+            Selection::MsgId(_) => "MSG",
+            Selection::ObjTypePath(_) => "TYPE",
+            Selection::Instance(_) => "INST",
+            Selection::DataPath(_) => "DATA",
+            Selection::Space(_) => "SPACE",
+            Selection::SpaceView(_) => "VIEW",
+        })
+        .monospace(),
+    );
 }

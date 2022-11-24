@@ -272,6 +272,20 @@ pub enum Selection {
     SpaceView(crate::ui::SpaceViewId),
 }
 
+impl std::fmt::Display for Selection {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Selection::None => write!(f, "<empty>"),
+            Selection::MsgId(s) => s.fmt(f),
+            Selection::ObjTypePath(s) => s.fmt(f),
+            Selection::Instance(s) => s.fmt(f),
+            Selection::DataPath(s) => s.fmt(f),
+            Selection::Space(s) => s.fmt(f),
+            Selection::SpaceView(s) => write!(f, "{s:?}"), // TODO: fetch name via blueprint
+        }
+    }
+}
+
 impl Default for Selection {
     fn default() -> Self {
         Self::None
