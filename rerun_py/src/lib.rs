@@ -7,5 +7,11 @@
 #![doc = document_features::document_features!()]
 //!
 
+use re_memory::AccountingAllocator;
+
+#[global_allocator]
+static GLOBAL: AccountingAllocator<mimalloc::MiMalloc> =
+    AccountingAllocator::new(mimalloc::MiMalloc);
+
 mod python_bridge;
 pub(crate) mod sdk;

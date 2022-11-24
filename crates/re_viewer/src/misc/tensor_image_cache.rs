@@ -106,21 +106,20 @@ impl ImageCache {
     /// Call once per frame to (potentially) flush the cache.
     pub fn new_frame(&mut self, max_memory_use: u64) {
         if self.memory_used > max_memory_use {
-            let before = self.memory_used;
-            self.flush();
-            re_log::debug!(
-                "Flushed image cache. Before: {:.2} GB. After: {:.2} GB",
-                before as f64 / 1e9,
-                self.memory_used as f64 / 1e9,
-            );
+            self.purge_memory();
         }
 
         self.generation += 1;
     }
 
-    fn flush(&mut self) {
+    /// Attempt to free up memory.
+    pub fn purge_memory(&mut self) {
         crate::profile_function!();
+
         // Very aggressively flush everything not used in this frame
+
+        let before = self.memory_used;
+
         self.images.retain(|_, ci| {
             let retain = ci.last_use_generation == self.generation;
             if !retain {
@@ -128,6 +127,12 @@ impl ImageCache {
             }
             retain
         });
+
+        re_log::debug!(
+            "Flushed image cache. Before: {:.2} GB. After: {:.2} GB",
+            before as f64 / 1e9,
+            self.memory_used as f64 / 1e9,
+        );
     }
 }
 

@@ -132,7 +132,7 @@ impl ObjDb {
         }
     }
 
-    pub fn prune_everything_before(
+    pub fn purge_everything_before(
         &mut self,
         timeline: Timeline,
         cutoff_time: TimeInt,
@@ -146,9 +146,9 @@ impl ObjDb {
         } = self;
         {
             crate::profile_scope!("tree");
-            tree.prune_everything_before(timeline, cutoff_time, keep_msg_ids);
+            tree.purge_everything_before(timeline, cutoff_time, keep_msg_ids);
         }
-        store.prune_everything_before(timeline, cutoff_time);
+        store.purge_everything_before(timeline, cutoff_time);
     }
 }
 
@@ -326,8 +326,13 @@ impl LogDb {
     }
 
     /// Free up some RAM by forgetting the older parts of all timelines.
-    pub fn prune_memory(&mut self) {
+    pub fn purge_memory(&mut self, fraction_to_free: f32) {
         crate::profile_function!();
+
+        assert!((0.0..=1.0).contains(&fraction_to_free));
+
+        let fraction_of_index =
+            |len: usize| -> usize { (fraction_to_free * len as f32).round() as usize };
 
         let Self {
             chronological_message_ids,
@@ -338,10 +343,10 @@ impl LogDb {
             obj_db,
         } = self;
 
-        // Remove the first half of everything.
-
-        *chronological_message_ids =
-            chronological_message_ids[(chronological_message_ids.len() / 2)..].to_vec();
+        {
+            let first_kept_index = fraction_of_index(chronological_message_ids.len());
+            *chronological_message_ids = chronological_message_ids[first_kept_index..].to_vec();
+        }
 
         let keep_msg_ids: ahash::HashSet<MsgId> = {
             crate::profile_scope!("keep_msg_ids");
@@ -358,16 +363,17 @@ impl LogDb {
         }
 
         for (timeline, time_points) in &mut time_points.0 {
-            if let Some(cutoff_time) = time_points.iter().nth(time_points.len() / 2).copied() {
-                crate::profile_scope!("Prune timeline", timeline.name().as_str());
-                re_log::info!(
-                    "Pruning {} before {}",
+            let first_keep_index = fraction_of_index(time_points.len());
+            if let Some(cutoff_time) = time_points.iter().nth(first_keep_index).copied() {
+                crate::profile_scope!("purge_timeline", timeline.name().as_str());
+                re_log::debug!(
+                    "Purging {:?} before {}",
                     timeline.name(),
                     timeline.typ().format(cutoff_time)
                 );
 
                 time_points.retain(|&time| cutoff_time <= time);
-                obj_db.prune_everything_before(*timeline, cutoff_time, &keep_msg_ids);
+                obj_db.purge_everything_before(*timeline, cutoff_time, &keep_msg_ids);
             }
         }
     }

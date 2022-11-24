@@ -79,6 +79,11 @@ fn rerun_sdk(py: Python<'_>, m: &PyModule) -> PyResult<()> {
         std::env::set_var("RUST_LOG", "info,wgpu_core=warn,wgpu_hal=warn");
     }
 
+    #[cfg(feature = "re_viewer")]
+    re_memory::accounting_allocator::turn_on_tracking_if_env_var(
+        re_viewer::env_vars::RERUN_TRACK_ALLOCATIONS,
+    );
+
     // Log to stdout (if you run with `RUST_LOG=debug`).
     tracing_subscriber::fmt::init();
 
