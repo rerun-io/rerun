@@ -1,7 +1,8 @@
 use itertools::Itertools as _;
+
 use re_log_types::*;
 
-use crate::{Preview, ViewerContext};
+use crate::{ui::format_usize, Preview, ViewerContext};
 
 /// An event log, a table of all log messages.
 #[derive(Default, serde::Deserialize, serde::Serialize)]
@@ -13,7 +14,7 @@ impl EventLogView {
     pub fn ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         crate::profile_function!();
 
-        ui.label(format!("{} log lines", ctx.log_db.len()));
+        ui.label(format!("{} log lines", format_usize(ctx.log_db.len())));
         ui.separator();
 
         let messages = {

@@ -6,22 +6,22 @@ pub struct MemoryUse {
     /// Working Set on Windows.
     ///
     /// `None` if unknown.
-    pub gross: Option<i64>,
+    pub resident: Option<i64>,
 
     /// Bytes used by the application according to our own memory allocator's accounting.
     ///
-    /// This will be smaller than [`Self::gross`] because our memory allocator may not
+    /// This can be smaller than [`Self::resident`] because our memory allocator may not
     /// return all the memory we free to the OS.
     ///
-    /// `None` if [`crate::TrackingAllocator`] is not used.
-    pub net: Option<i64>,
+    /// `None` if [`crate::AccountingAllocator`] is not used.
+    pub counted: Option<i64>,
 }
 
 impl MemoryUse {
     pub fn capture() -> Self {
         Self {
-            gross: bytes_used_gross(),
-            net: bytes_used_net(),
+            resident: bytes_resident(),
+            counted: counted(),
         }
     }
 }
@@ -35,8 +35,8 @@ impl std::ops::Sub for MemoryUse {
         }
 
         MemoryUse {
-            gross: sub(self.gross, rhs.gross),
-            net: sub(self.net, rhs.net),
+            resident: sub(self.resident, rhs.resident),
+            counted: sub(self.counted, rhs.counted),
         }
     }
 }
@@ -48,24 +48,30 @@ impl std::ops::Sub for MemoryUse {
 /// Resident Set Size (RSS) on Linux, Android, Mac, iOS.
 /// Working Set on Windows.
 #[cfg(not(target_arch = "wasm32"))]
-fn bytes_used_gross() -> Option<i64> {
-    memory_stats::memory_stats().map(|usage| usage.physical_mem as i64)
+fn bytes_resident() -> Option<i64> {
+    // On Linux this can be very slow, 8ms or so
+    // https://github.com/Arc-blroth/memory-stats/issues/2
+    if cfg!(target_os = "macos") || cfg!(target_os = "windows") {
+        memory_stats::memory_stats().map(|usage| usage.physical_mem as i64)
+    } else {
+        None
+    }
 }
 
 #[cfg(target_arch = "wasm32")]
-fn bytes_used_gross() -> Option<i64> {
+fn bytes_resident() -> Option<i64> {
     // blocked on https://github.com/Arc-blroth/memory-stats/issues/1 and https://github.com/rustwasm/wasm-bindgen/issues/3159
     None
 }
 
 /// The amount of memory in use.
 ///
-/// The difference to [`bytes_used_gross`] is memory allocated by `MiMalloc`.
+/// The difference to [`bytes_resident`] is memory allocated by `MiMalloc`.
 /// that hasn't been returned to the OS.
 ///
-/// `None` if [`crate::TrackingAllocator`] is not used.
-fn bytes_used_net() -> Option<i64> {
-    let num_bytes = crate::global_allocs_and_bytes().1;
+/// `None` if [`crate::AccountingAllocator`] is not used.
+fn counted() -> Option<i64> {
+    let num_bytes = crate::accounting_allocator::global_allocs().size;
     if num_bytes == 0 {
         None
     } else {

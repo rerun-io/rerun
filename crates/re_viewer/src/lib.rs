@@ -9,6 +9,7 @@
 
 mod app;
 mod design_tokens;
+pub mod env_vars;
 pub mod math;
 mod misc;
 mod remote_viewer_app;
