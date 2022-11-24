@@ -133,7 +133,7 @@ impl App {
             ctrl_c,
             pending_promises: Default::default(),
             toasts: Toasts::new(),
-            latest_memory_purge: instant::Instant::now() - std::time::Duration::from_secs(10_000),
+            latest_memory_purge: instant::Instant::now(), // TODO(emilk): `Instant::MIN` when we have our own `Instant` that supports it.
             memory_panel: Default::default(),
             memory_panel_open: false,
         }
