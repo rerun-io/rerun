@@ -76,6 +76,7 @@ async fn run_impl(args: Args) -> anyhow::Result<()> {
             re_log::info!("Loading {path:?}…");
             load_file_to_channel(&path).with_context(|| format!("{path:?}"))?
         } else {
+            // We are connecting to a server at a websocket address:
             return connect_to_ws_url(&args, profiler, url_or_path.clone()).await;
         }
     } else {
@@ -205,7 +206,8 @@ async fn host_web_viewer(_rerun_ws_server_url: String) -> anyhow::Result<()> {
 /// is a channel that keeps track of its length and latency.
 ///
 /// Ideally we should do that even earlier, but most of the expected latency will
-/// come after this point, due to a slow consumer (and this function should be a very fast consumer).
+/// come after this point, due to slow data ingestion (putting messages in the data store).
+/// In comparison, this function is a very fast consumer.
 fn wake_up_ui_thread_on_each_msg<T: Send + 'static>(
     rx: Receiver<T>,
     ctx: egui::Context,

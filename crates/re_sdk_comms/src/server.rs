@@ -4,6 +4,8 @@ use std::sync::mpsc::{Receiver, Sender};
 
 use re_log_types::LogMsg;
 
+/// Listen to multiple SDK:s connecting to us over TCP.
+///
 /// ``` no_run
 /// # use re_sdk_comms::serve;
 /// let log_msg_rx = serve("127.0.0.1:80")?;
