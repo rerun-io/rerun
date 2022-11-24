@@ -120,7 +120,7 @@ async fn run_impl(args: Args) -> anyhow::Result<()> {
         anyhow::bail!("Can't host web-viewer - rerun was not compiled with the 'web' feature");
     } else {
         re_viewer::run_native_app(Box::new(move |cc, design_tokens| {
-            let rx = re_viewer::wake_up_ui_thread_on_each_msg(rx, cc.egui_ctx.clone());
+            let rx = wake_up_ui_thread_on_each_msg(rx, cc.egui_ctx.clone());
             let mut app =
                 re_viewer::App::from_receiver(&cc.egui_ctx, design_tokens, cc.storage, rx);
             app.set_profiler(profiler);
@@ -197,4 +197,25 @@ async fn host_web_viewer(rerun_ws_server_url: String) -> anyhow::Result<()> {
 #[cfg(not(feature = "web"))]
 async fn host_web_viewer(_rerun_ws_server_url: String) -> anyhow::Result<()> {
     panic!("Can't host web-viewer - rerun was not compiled with the 'web' feature");
+}
+
+fn wake_up_ui_thread_on_each_msg<T: Send + 'static>(
+    rx: Receiver<T>,
+    ctx: egui::Context,
+) -> Receiver<T> {
+    let (tx, new_rx) = std::sync::mpsc::channel();
+    std::thread::Builder::new()
+        .name("ui_waker".to_owned())
+        .spawn(move || {
+            while let Ok(msg) = rx.recv() {
+                if tx.send(msg).is_ok() {
+                    ctx.request_repaint();
+                } else {
+                    break;
+                }
+            }
+            re_log::debug!("Shutting down ui_waker thread");
+        })
+        .unwrap();
+    new_rx
 }

@@ -3476,6 +3476,7 @@ dependencies = [
  "anyhow",
  "clap 4.0.26",
  "document-features",
+ "egui",
  "mimalloc",
  "puffin",
  "puffin_http",

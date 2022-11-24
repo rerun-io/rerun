@@ -1,5 +1,3 @@
-use std::sync::mpsc::Receiver;
-
 use re_log_types::LogMsg;
 
 use crate::DesignTokens;
@@ -49,25 +47,4 @@ pub fn run_native_viewer_with_messages(log_messages: Vec<LogMsg>) {
             rx,
         ))
     }));
-}
-
-pub fn wake_up_ui_thread_on_each_msg<T: Send + 'static>(
-    rx: Receiver<T>,
-    ctx: egui::Context,
-) -> Receiver<T> {
-    let (tx, new_rx) = std::sync::mpsc::channel();
-    std::thread::Builder::new()
-        .name("ui_waker".to_owned())
-        .spawn(move || {
-            while let Ok(msg) = rx.recv() {
-                if tx.send(msg).is_ok() {
-                    ctx.request_repaint();
-                } else {
-                    break;
-                }
-            }
-            re_log::debug!("Shutting down ui_waker thread");
-        })
-        .unwrap();
-    new_rx
 }
