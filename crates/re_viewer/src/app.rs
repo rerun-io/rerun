@@ -672,58 +672,61 @@ fn top_panel(egui_ctx: &egui::Context, frame: &mut eframe::Frame, app: &mut App)
                     ui.add_space(gui_zoom * native_buttons_size_in_native_scale.x);
                 }
 
-                #[cfg(not(target_arch = "wasm32"))]
-                ui.menu_button("File", |ui| {
-                    file_menu(ui, app, frame);
-                });
-
-                ui.menu_button("View", |ui| {
-                    view_menu(ui, app, frame);
-                });
-
-                ui.menu_button("Recordings", |ui| {
-                    recordings_menu(ui, app);
-                });
-
-                #[cfg(debug_assertions)]
-                ui.menu_button("Debug", |ui| {
-                    debug_menu(ui);
-                });
-
-                ui.separator();
-
-                if !app.log_db().is_empty() {
-                    ui.selectable_value(
-                        &mut app.state.panel_selection,
-                        PanelSelection::Viewport,
-                        "Viewport",
-                    );
-
-                    ui.selectable_value(
-                        &mut app.state.panel_selection,
-                        PanelSelection::EventLog,
-                        "Event Log",
-                    );
-                }
-
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if !WATERMARK {
-                        let logo = app.state.static_image_cache.rerun_logo(ui.visuals());
-                        let response = ui
-                            .add(egui::ImageButton::new(
-                                logo.texture_id(egui_ctx),
-                                logo.size_vec2() * 16.0 / logo.size_vec2().y,
-                            ))
-                            .on_hover_text("https://rerun.io");
-                        if response.clicked() {
-                            ui.output().open_url =
-                                Some(egui::output::OpenUrl::new_tab("https://rerun.io"));
-                        }
-                    }
-                    egui::warn_if_debug_build(ui);
-                });
+                top_bar_ui(ui, frame, app);
             });
         });
+}
+
+fn top_bar_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &mut App) {
+    #[cfg(not(target_arch = "wasm32"))]
+    ui.menu_button("File", |ui| {
+        file_menu(ui, app, frame);
+    });
+
+    ui.menu_button("View", |ui| {
+        view_menu(ui, app, frame);
+    });
+
+    ui.menu_button("Recordings", |ui| {
+        recordings_menu(ui, app);
+    });
+
+    #[cfg(debug_assertions)]
+    ui.menu_button("Debug", |ui| {
+        debug_menu(ui);
+    });
+
+    ui.separator();
+
+    if !app.log_db().is_empty() {
+        ui.selectable_value(
+            &mut app.state.panel_selection,
+            PanelSelection::Viewport,
+            "Viewport",
+        );
+
+        ui.selectable_value(
+            &mut app.state.panel_selection,
+            PanelSelection::EventLog,
+            "Event Log",
+        );
+    }
+
+    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+        if !WATERMARK {
+            let logo = app.state.static_image_cache.rerun_logo(ui.visuals());
+            let response = ui
+                .add(egui::ImageButton::new(
+                    logo.texture_id(ui.ctx()),
+                    logo.size_vec2() * 16.0 / logo.size_vec2().y,
+                ))
+                .on_hover_text("https://rerun.io");
+            if response.clicked() {
+                ui.output().open_url = Some(egui::output::OpenUrl::new_tab("https://rerun.io"));
+            }
+        }
+        egui::warn_if_debug_build(ui);
+    });
 }
 
 // ---
