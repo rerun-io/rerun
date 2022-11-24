@@ -122,16 +122,18 @@ pub(crate) fn view_instance_generic(
                         }
                     } else {
                         ui.label(
-                            egui::RichText::new(format!("unknown class_id {}", class_id.0))
-                                .italics(),
+                            ctx.design_tokens.warning_text(
+                                format!("unknown class_id {}", class_id.0),
+                                ui.style(),
+                            ),
                         );
                     }
                 });
         } else {
-            ui.label(
-                egui::RichText::new("class_id specified, but no annotation context found")
-                    .italics(),
-            );
+            ui.label(ctx.design_tokens.warning_text(
+                "class_id specified, but no annotation context found",
+                ui.style(),
+            ));
         }
     }
 
