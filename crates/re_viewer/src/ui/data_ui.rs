@@ -102,7 +102,7 @@ pub(crate) fn view_instance_generic(
         ui.separator();
 
         if let Some((data_path, annotations)) =
-            AnnotationMap::find_associated(ctx, &instance_id.obj_path)
+            AnnotationMap::find_associated(ctx, instance_id.obj_path.clone())
         {
             ctx.data_path_button_to(ui, "Associated Annotation Context", &data_path);
             egui::Grid::new("class_description")
