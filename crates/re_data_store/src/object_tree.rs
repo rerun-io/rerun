@@ -9,6 +9,10 @@ use re_log_types::*;
 pub struct TimesPerTimeline(BTreeMap<Timeline, BTreeMap<TimeInt, BTreeSet<MsgId>>>);
 
 impl TimesPerTimeline {
+    pub fn timelines(&self) -> impl ExactSizeIterator<Item = &Timeline> {
+        self.0.keys()
+    }
+
     pub fn get(&self, timeline: &Timeline) -> Option<&BTreeMap<TimeInt, BTreeSet<MsgId>>> {
         self.0.get(timeline)
     }

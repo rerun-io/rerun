@@ -604,7 +604,7 @@ impl AppState {
         // move time last, so we get to see the first data first!
         ctx.rec_cfg
             .time_ctrl
-            .move_time(egui_ctx, &log_db.time_points);
+            .move_time(egui_ctx, log_db.times_per_timeline());
 
         if WATERMARK {
             self.watermark(egui_ctx);

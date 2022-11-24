@@ -5,6 +5,8 @@ use nohash_hasher::IntMap;
 
 use re_log_types::*;
 
+use crate::TimesPerTimeline;
+
 // ----------------------------------------------------------------------------
 
 /// An aggregate of [`TimePoint`]:s.
@@ -196,6 +198,10 @@ impl LogDb {
 
     pub fn timelines(&self) -> impl ExactSizeIterator<Item = &Timeline> {
         self.time_points.0.keys()
+    }
+
+    pub fn times_per_timeline(&self) -> &TimesPerTimeline {
+        &self.obj_db.tree.prefix_times
     }
 
     pub fn is_empty(&self) -> bool {

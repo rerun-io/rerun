@@ -107,13 +107,13 @@ impl TimePanel {
 
         ctx.rec_cfg
             .time_ctrl
-            .timeline_selector_ui(&ctx.log_db.time_points, ui);
+            .timeline_selector_ui(ctx.log_db.times_per_timeline(), ui);
 
         ui.separator();
 
         ctx.rec_cfg
             .time_ctrl
-            .play_pause_ui(&ctx.log_db.time_points, ui);
+            .play_pause_ui(ctx.log_db.times_per_timeline(), ui);
 
         ui.separator();
 
@@ -207,7 +207,7 @@ impl TimePanel {
                 .horizontal(|ui| {
                     ctx.rec_cfg
                         .time_ctrl
-                        .play_pause_ui(&ctx.log_db.time_points, ui);
+                        .play_pause_ui(ctx.log_db.times_per_timeline(), ui);
                 })
                 .response;
 
@@ -500,7 +500,7 @@ fn top_row_ui(ctx: &mut ViewerContext<'_>, blueprint: &mut Blueprint, ui: &mut e
 
         ctx.rec_cfg
             .time_ctrl
-            .timeline_selector_ui(&ctx.log_db.time_points, ui);
+            .timeline_selector_ui(ctx.log_db.times_per_timeline(), ui);
 
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             help_button(ui);
