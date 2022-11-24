@@ -374,8 +374,8 @@ impl App {
         let limit = re_memory::MemoryLimit::from_env_var(crate::env_vars::RERUN_MEMORY_LIMIT);
         let mem_use_before = MemoryUse::capture();
 
-        if let Some(minimum_fraction_to_free) = limit.is_exceeded_by(&mem_use_before) {
-            let fraction_to_free = (minimum_fraction_to_free + 0.2).clamp(0.25, 1.0);
+        if let Some(minimum_fraction_to_purge) = limit.is_exceeded_by(&mem_use_before) {
+            let fraction_to_purge = (minimum_fraction_to_purge + 0.2).clamp(0.25, 1.0);
 
             re_log::debug!("RAM limit: {}", format_limit(limit.limit));
             if let Some(resident) = mem_use_before.resident {
@@ -389,10 +389,10 @@ impl App {
                 crate::profile_scope!("pruning");
                 re_log::info!(
                     "Attempting to purge {:.1}% of used RAM…",
-                    100.0 * fraction_to_free
+                    100.0 * fraction_to_purge
                 );
                 for log_db in self.log_dbs.values_mut() {
-                    log_db.purge_memory(fraction_to_free);
+                    log_db.purge_memory(fraction_to_purge);
                 }
                 self.state.cache.purge_memory();
             }
