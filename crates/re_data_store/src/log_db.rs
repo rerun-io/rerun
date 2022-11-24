@@ -11,6 +11,12 @@ use re_log_types::*;
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 pub struct TimePoints(pub BTreeMap<Timeline, BTreeSet<TimeInt>>);
 
+impl TimePoints {
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
+
 // ----------------------------------------------------------------------------
 
 /// Stored objects and their types, with easy indexing of the paths.
@@ -188,6 +194,10 @@ impl LogDb {
         }
     }
 
+    pub fn timelines(&self) -> impl ExactSizeIterator<Item = &Timeline> {
+        self.time_points.0.keys()
+    }
+
     pub fn is_empty(&self) -> bool {
         self.log_messages.is_empty()
     }
@@ -265,10 +275,10 @@ impl LogDb {
             // Remember to add it to future timelines:
             self.timeless_message_ids.push(msg_id);
 
-            if !self.time_points.0.is_empty() {
+            if !self.time_points.is_empty() {
                 // Add to existing timelines (if any):
                 let mut time_point = TimePoint::default();
-                for &timeline in self.time_points.0.keys() {
+                for &timeline in self.timelines() {
                     time_point.0.insert(timeline, TimeInt::BEGINNING);
                 }
                 self.add_data_msg(msg_id, &time_point, data_path, data);
