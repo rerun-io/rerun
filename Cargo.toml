@@ -24,12 +24,12 @@ opt-level = 2
 debug = true
 
 [patch.crates-io]
-# 2022-11-21 - add support for thin space
-eframe = { git = "https://github.com/emilk/egui", rev = "8671aa26e1f65340c41f6b2c6f3ef2d6d80a6567" }
-egui = { git = "https://github.com/emilk/egui", rev = "8671aa26e1f65340c41f6b2c6f3ef2d6d80a6567" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "8671aa26e1f65340c41f6b2c6f3ef2d6d80a6567" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "8671aa26e1f65340c41f6b2c6f3ef2d6d80a6567" }
-emath = { git = "https://github.com/emilk/egui", rev = "8671aa26e1f65340c41f6b2c6f3ef2d6d80a6567" }
+# 2022-11-24 - license fix + less plot grid aliasing
+eframe = { git = "https://github.com/emilk/egui", rev = "7d8154971bae6df8af00e0e19c62ef852d223091" }
+egui = { git = "https://github.com/emilk/egui", rev = "7d8154971bae6df8af00e0e19c62ef852d223091" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "7d8154971bae6df8af00e0e19c62ef852d223091" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "7d8154971bae6df8af00e0e19c62ef852d223091" }
+emath = { git = "https://github.com/emilk/egui", rev = "7d8154971bae6df8af00e0e19c62ef852d223091" }
 
 # eframe = { path = "../../egui/crates/eframe" }
 # egui = { path = "../../egui/crates/egui" }
