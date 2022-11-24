@@ -22,18 +22,12 @@ atexit.register(rerun_shutdown)
 
 # -----------------------------------------------------------------------------
 
-# ArrayLike = Union[np.ndarray, Sequence]
 ColorDtype = Union[np.uint8, np.float32, np.float64]
 Colors = npt.NDArray[ColorDtype]
 Color = Union[npt.NDArray[ColorDtype], Sequence[Union[int, float]]]
 
-ClassIdDtype = Union[np.uint8, np.uint16]
-ClassIds = npt.NDArray[ClassIdDtype]
-OptionalClassIds = Optional[Union[int, ClassIds]]
-
-KeyPointIdDtype = Union[np.uint8, np.uint16]
-KeyPointIds = npt.NDArray[KeyPointIdDtype]
-OptionalKeyPointIds = Optional[Union[int, KeyPointIds]]
+OptionalClassIds = Optional[Union[int, npt.ArrayLike]]
+OptionalKeyPointIds = Optional[Union[int, npt.ArrayLike]]
 
 
 class MeshFormat(Enum):
@@ -491,7 +485,7 @@ def log_point(
     * `class_id`: Optional class id for the point.
         The class id provides color and label if not specified explicitly.
     * `keypoint_id`: Optional key point id for the point, identifying it within a class.
-        Only valid if a class_id was specified.
+        If keypoint_id is passed but no class_id was specified, class_id will be set to 0.
 
     Colors should either be in 0-255 gamma space or in 0-1 linear space.
     Colors can be RGB or RGBA. You can supply no colors, one color,
@@ -503,7 +497,7 @@ def log_point(
     * float32/float64: all color components should be in 0-1 linear space.
     """
     if keypoint_id is not None and class_id is None:
-        raise TypeError("Use of key point ids is only valid when also using class ids!")
+        class_id = 0
     if position is not None:
         position = np.require(position, dtype="float32")
 
@@ -531,7 +525,7 @@ def log_points(
     * `class_ids`: Optional class ids for the points.
       The class id provides colors and labels if not specified explicitly.
     * `keypoint_ids`: Optional key point ids for the points, identifying them within a class.
-        Only valid if class_ids were specified.
+        If keypoint_ids are passed in but no class_ids were specified, class_id will be set to 0.
 
     Colors should either be in 0-255 gamma space or in 0-1 linear space.
     Colors can be RGB or RGBA. You can supply no colors, one color,
@@ -544,7 +538,7 @@ def log_points(
 
     """
     if keypoint_ids is not None and class_ids is None:
-        raise TypeError("Use of key point ids is only valid when also using class ids!")
+        class_ids = 0
     if positions is None:
         positions = np.require([], dtype="float32")
     else:
@@ -578,11 +572,8 @@ def _normalize_ids(class_ids: OptionalClassIds = None) -> npt.NDArray[np.uint16]
     if class_ids is None:
         return np.array((), dtype=np.uint16)
     else:
-        class_ids_array = np.array(class_ids)
-        if class_ids_array.dtype == np.uint8:
-            class_ids_array = class_ids_array.astype(np.uint16)
-
-        return np.require(class_ids_array, np.uint16)
+        # TODO(andreas): Does this need optimizing for the case where class_ids is already an np array?
+        return np.array(class_ids, dtype=np.uint16)
 
 
 # -----------------------------------------------------------------------------
@@ -957,7 +948,7 @@ def log_depth_image(
 
 def log_segmentation_image(
     obj_path: str,
-    image: ClassIds,
+    image: npt.ArrayLike,
     *,
     timeless: bool = False,
 ) -> None:
@@ -971,6 +962,9 @@ def log_segmentation_image(
     * uint16: components should be 0-65535 class ids
 
     """
+    if not isinstance(image, np.ndarray):
+        image = np.array(image, dtype=np.uint16)
+
     # Catch some errors early:
     if len(image.shape) < 2 or 3 < len(image.shape):
         raise TypeError(f"Expected image, got array of shape {image.shape}")
@@ -980,8 +974,6 @@ def log_segmentation_image(
         if depth != 1:
             raise TypeError(f"Expected image depth of 1. Instead got array of shape {image.shape}")
 
-    if not isinstance(image, np.ndarray):
-        image = np.array(image)
     if image.dtype == "uint8":
         rerun_sdk.log_tensor_u8(obj_path, image, None, None, rerun_sdk.TensorDataMeaning.ClassId, timeless)
     elif image.dtype == "uint16":
@@ -1086,7 +1078,7 @@ class AnnotationInfo:
     The id refers either to a class or key-point id
     """
 
-    id: int
+    id: int = 0
     label: Optional[str] = None
     color: Optional[Color] = None
 
@@ -1108,12 +1100,12 @@ class ClassDescription:
 
     Typically a class description contains only a annotation info.
     However, within a class there might be several keypoints, each with its own annotation info.
-    Keypoints in turn may be connected to each other by skeleton edges.
+    Keypoints in turn may be connected to each other by connections (typically used for skeleton edges).
     """
 
     info: AnnotationInfo = None
-    keypoint_annotations: Optional[Sequence[AnnotationInfo]] = None
-    keypoint_skeleton_edges: Optional[Sequence[Tuple[int, int]]] = None
+    keypoint_annotations: Optional[Iterable[AnnotationInfoLike]] = None
+    keypoint_connections: Optional[Iterable[Tuple[int, int]]] = None
 
 
 ClassDescriptionLike = Union[AnnotationInfoLike, ClassDescription]
@@ -1128,7 +1120,7 @@ def coerce_class_description(arg: ClassDescriptionLike) -> ClassDescription:
 
 def log_annotation_context(
     obj_path: str,
-    class_descriptions: Sequence[ClassDescriptionLike],
+    class_descriptions: Union[ClassDescriptionLike, Iterable[ClassDescriptionLike]],
     *,
     timeless: bool = True,
 ) -> None:
@@ -1140,14 +1132,14 @@ def log_annotation_context(
     root ("/"), or if you want a per-object ClassDescriptions log it to the same path as
     your object.
 
-    Each ClassDescription must include an id, which will be used for matching
-    the class and may optionally include a label and color.  Colors should
-    either be in 0-255 gamma space or in 0-1 linear space.  Colors can be RGB or
+    Each ClassDescription must include an annotation info with an id, which will be used for matching
+    the class and may optionally include a label and color. Colors should
+    either be in 0-255 gamma space or in 0-1 linear space. Colors can be RGB or
     RGBA.
 
     These can either be specified verbosely as:
     ```
-    [ClassDescription(id=23, label='foo', color=(255, 0, 0)), ...]
+    [AnnotationInfo(id=23, label='foo', color=(255, 0, 0)), ...]
     ```
 
     Or using short-hand tuples.
@@ -1157,19 +1149,25 @@ def log_annotation_context(
 
     Unspecified colors will be filled in by the visualizer randomly.
     """
+    if not isinstance(class_descriptions, Iterable):
+        class_descriptions = [class_descriptions]
+
     # Coerce tuples into ClassDescription dataclass for convenience
     typed_class_descriptions = (coerce_class_description(d) for d in class_descriptions)
 
     # Convert back to fixed tuple for easy pyo3 conversion
     # This is pretty messy but will likely go away / be refactored with pending data-model changes.
     def info_to_tuple(info: AnnotationInfo) -> Tuple[int, str, Sequence[int]]:
-        return (info.id, info.label, _normalize_colors(info.color).tolist() or None)
+        if info is None:
+            return (0, None, None)
+        color = None if info.color is None else _normalize_colors(info.color).tolist()
+        return (info.id, info.label, color)
 
     tuple_class_descriptions = [
         (
             info_to_tuple(d.info),
-            tuple(info_to_tuple(a) for a in d.keypoint_annotations) if d.keypoint_annotations is not None else [],
-            d.keypoint_skeleton_edges or [],
+            tuple(info_to_tuple(coerce_annotation_info(a)) for a in d.keypoint_annotations or []),
+            list(d.keypoint_connections or []),
         )
         for d in typed_class_descriptions
     ]

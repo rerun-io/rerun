@@ -1735,7 +1735,7 @@ fn log_annotation_context(
                     .into_iter()
                     .map(|k| (KeypointId(k.0), k.into()))
                     .collect(),
-                skeleton_edges: keypoint_skeleton_edges
+                keypoint_connections: keypoint_skeleton_edges
                     .into_iter()
                     .map(|(a, b)| (KeypointId(a), KeypointId(b)))
                     .collect(),

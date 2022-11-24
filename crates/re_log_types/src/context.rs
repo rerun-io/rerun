@@ -22,18 +22,6 @@ pub struct KeypointId(pub u16);
 
 impl nohash_hasher::IsEnabled for KeypointId {}
 
-/// A semantic skeleton edge between two keypoints.
-///
-/// This indicates that an edge line should be drawn between two Keypoints.
-///
-/// `KeypointSkeletonEdges` are only meaningful within the context of a [`ClassDescription`].
-///
-/// Used to look up an [`AnnotationInfo`] for a `KeypointSkeletonEdge` within
-/// the [`AnnotationContext`].
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
-pub struct KeypointSkeletonEdge(pub KeypointId, pub KeypointId);
-
 /// Information about an Annotation.
 ///
 /// Can be looked up for a [`ClassId`], [`KeypointId`], or [`KeypointSkeletonEdge`]h
@@ -63,7 +51,12 @@ pub struct AnnotationInfo {
 pub struct ClassDescription {
     pub info: AnnotationInfo,
     pub keypoint_map: IntMap<KeypointId, AnnotationInfo>,
-    pub skeleton_edges: IntMap<KeypointId, KeypointId>,
+
+    /// Semantic connections between two keypoints.
+    ///
+    /// This indicates that an edge line should be drawn between two Keypoints.
+    /// Typically used for skeleton edges.
+    pub keypoint_connections: IntMap<KeypointId, KeypointId>,
 }
 
 /// The `AnnotationContext` provides aditional information on how to display
