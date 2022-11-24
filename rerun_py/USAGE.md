@@ -118,4 +118,4 @@ If you prefer, you can open the viewer directly from Python (blocking the Python
 To do so, don't call `rerun.connect()`. Instead, call `rerun.show()` at the end of your program and a window will pop up with your logged data.
 
 ## Troubleshooting
-You can set `RUST_LOG=debug,wgpu_core=warn,wgpu_hal=warn` before running your Python script and/or `rerun` process to get some verbose logging output.
+You can set `RUST_LOG=debug` before running your Python script and/or `rerun` process to get some verbose logging output.
