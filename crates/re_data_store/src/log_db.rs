@@ -177,7 +177,7 @@ pub struct LogDb {
     recording_info: Option<RecordingInfo>,
 
     /// All the points of time when we have some data.
-    pub time_points: TimePoints,
+    time_points: TimePoints,
 
     /// Where we store the objects.
     pub obj_db: ObjDb,
@@ -197,7 +197,7 @@ impl LogDb {
     }
 
     pub fn timelines(&self) -> impl ExactSizeIterator<Item = &Timeline> {
-        self.time_points.0.keys()
+        self.times_per_timeline().timelines()
     }
 
     pub fn times_per_timeline(&self) -> &TimesPerTimeline {

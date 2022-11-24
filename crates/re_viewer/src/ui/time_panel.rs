@@ -729,8 +729,7 @@ fn initialize_time_ranges_ui(
     crate::profile_function!();
     if let Some(time_points) = ctx
         .log_db
-        .time_points
-        .0
+        .times_per_timeline()
         .get(ctx.rec_cfg.time_ctrl.timeline())
     {
         let timeline_axis = TimelineAxis::new(ctx.rec_cfg.time_ctrl.time_type(), time_points);

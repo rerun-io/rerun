@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::collections::BTreeMap;
 
 use itertools::Itertools as _;
 
@@ -16,7 +16,7 @@ pub(crate) struct TimelineAxis {
 }
 
 impl TimelineAxis {
-    pub fn new(time_type: TimeType, values: &BTreeSet<TimeInt>) -> Self {
+    pub fn new<T>(time_type: TimeType, values: &BTreeMap<TimeInt, T>) -> Self {
         crate::profile_function!();
 
         // in seconds or sequences
@@ -40,7 +40,7 @@ impl TimelineAxis {
         let mut gap_sizes = {
             crate::profile_scope!("collect_gaps");
             values
-                .iter()
+                .keys()
                 .tuple_windows()
                 .map(|(a, b)| time_abs_diff(*a, *b))
                 .filter(|&gap_size| gap_size >= MIN_GAP_SIZE)
@@ -62,7 +62,7 @@ impl TimelineAxis {
         // ----
 
         crate::profile_scope!("create_ranges");
-        let mut values_it = values.iter();
+        let mut values_it = values.keys();
         let mut ranges = vec1::vec1![TimeRange::point(*values_it.next().unwrap())];
 
         for &new_value in values_it {
