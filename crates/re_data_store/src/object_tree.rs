@@ -207,7 +207,7 @@ impl ObjectTree {
         subtree_recursive(self, &path.to_components())
     }
 
-    pub fn prune_everything_before(
+    pub fn purge_everything_before(
         &mut self,
         timeline: Timeline,
         cutoff_time: TimeInt,
@@ -238,12 +238,12 @@ impl ObjectTree {
         {
             crate::profile_scope!("fields");
             for columns in fields.values_mut() {
-                columns.prune_everything_before(timeline, cutoff_time, keep_msg_ids);
+                columns.purge_everything_before(timeline, cutoff_time, keep_msg_ids);
             }
         }
 
         for child in children.values_mut() {
-            child.prune_everything_before(timeline, cutoff_time, keep_msg_ids);
+            child.purge_everything_before(timeline, cutoff_time, keep_msg_ids);
         }
     }
 }
@@ -320,7 +320,7 @@ impl DataColumns {
         summaries.join(", ")
     }
 
-    pub fn prune_everything_before(
+    pub fn purge_everything_before(
         &mut self,
         timeline: Timeline,
         cutoff_time: TimeInt,

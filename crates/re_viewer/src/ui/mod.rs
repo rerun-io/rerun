@@ -9,6 +9,9 @@ pub(crate) use self::viewport::{Blueprint, SpaceViewId};
 mod space_view;
 use self::space_view::SpaceView;
 
+mod format_numbers;
+pub use format_numbers::format_usize;
+
 mod scene;
 use self::scene::SceneQuery;
 

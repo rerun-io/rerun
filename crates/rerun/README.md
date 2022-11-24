@@ -8,5 +8,5 @@ This can act either as a server, a viewer, or both, depending on which options y
 This will host an SDK server that SDK:s can connect to:
 
 ```sh
-RUST_LOG=debug cargo run -p rerun
+cargo run -p rerun
 ```

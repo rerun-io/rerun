@@ -1,7 +1,8 @@
-use re_memory::TrackingAllocator;
+use re_memory::AccountingAllocator;
 
 #[global_allocator]
-static GLOBAL: TrackingAllocator<mimalloc::MiMalloc> = TrackingAllocator::new(mimalloc::MiMalloc);
+static GLOBAL: AccountingAllocator<mimalloc::MiMalloc> =
+    AccountingAllocator::new(mimalloc::MiMalloc);
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

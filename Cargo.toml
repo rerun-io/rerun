@@ -24,17 +24,18 @@ opt-level = 2
 debug = true
 
 [patch.crates-io]
-# 2022-11-21 - move `egui::util::History` to `emath::History`.
-eframe = { git = "https://github.com/emilk/egui", rev = "1c8cf9e3d59d8aee4c073b9e17695ee85c40bdbf" }
-egui = { git = "https://github.com/emilk/egui", rev = "1c8cf9e3d59d8aee4c073b9e17695ee85c40bdbf" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "1c8cf9e3d59d8aee4c073b9e17695ee85c40bdbf" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "1c8cf9e3d59d8aee4c073b9e17695ee85c40bdbf" }
-emath = { git = "https://github.com/emilk/egui", rev = "1c8cf9e3d59d8aee4c073b9e17695ee85c40bdbf" }
+# 2022-11-24 - license fix + less plot grid aliasing
+eframe = { git = "https://github.com/emilk/egui", rev = "7d8154971bae6df8af00e0e19c62ef852d223091" }
+egui = { git = "https://github.com/emilk/egui", rev = "7d8154971bae6df8af00e0e19c62ef852d223091" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "7d8154971bae6df8af00e0e19c62ef852d223091" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "7d8154971bae6df8af00e0e19c62ef852d223091" }
+emath = { git = "https://github.com/emilk/egui", rev = "7d8154971bae6df8af00e0e19c62ef852d223091" }
 
-# eframe = { path = "../egui/crates/eframe" }
-# egui = { path = "../egui/crates/egui" }
-# egui_extras = { path = "../egui/crates/egui_extras" }
-# egui-wgpu = { path = "../egui/crates/egui-wgpu" }
+# eframe = { path = "../../egui/crates/eframe" }
+# egui = { path = "../../egui/crates/egui" }
+# egui_extras = { path = "../../egui/crates/egui_extras" }
+# egui-wgpu = { path = "../../egui/crates/egui-wgpu" }
+# emath = { path = "../../egui/crates/emath" }
 
 # Because gltf hasn't published a new version: https://github.com/gltf-rs/gltf/issues/357
 gltf = { git = "https://github.com/rerun-io/gltf", rev = "3c14ded73755d1ce9e47010edb06db63cb7e2cca" }
