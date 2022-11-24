@@ -20,6 +20,12 @@ impl TimesPerTimeline {
     pub fn has_timeline(&self, timeline: &Timeline) -> bool {
         self.0.contains_key(timeline)
     }
+
+    pub fn iter(
+        &self,
+    ) -> impl ExactSizeIterator<Item = (&Timeline, &BTreeMap<TimeInt, BTreeSet<MsgId>>)> {
+        self.0.iter()
+    }
 }
 
 // ----------------------------------------------------------------------------

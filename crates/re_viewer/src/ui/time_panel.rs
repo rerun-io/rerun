@@ -727,12 +727,12 @@ fn initialize_time_ranges_ui(
     side_margin: f32,
 ) -> TimeRangesUi {
     crate::profile_function!();
-    if let Some(time_points) = ctx
+    if let Some(times) = ctx
         .log_db
         .times_per_timeline()
         .get(ctx.rec_cfg.time_ctrl.timeline())
     {
-        let timeline_axis = TimelineAxis::new(ctx.rec_cfg.time_ctrl.time_type(), time_points);
+        let timeline_axis = TimelineAxis::new(ctx.rec_cfg.time_ctrl.time_type(), times);
         let time_view = time_view
             .unwrap_or_else(|| view_everything(&time_x_range, &timeline_axis, side_margin));
 

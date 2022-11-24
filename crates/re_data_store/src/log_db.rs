@@ -1,23 +1,9 @@
-use std::collections::{BTreeMap, BTreeSet};
-
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 
 use re_log_types::*;
 
 use crate::TimesPerTimeline;
-
-// ----------------------------------------------------------------------------
-
-/// An aggregate of [`TimePoint`]:s.
-#[derive(Default, serde::Deserialize, serde::Serialize)]
-pub struct TimePoints(pub BTreeMap<Timeline, BTreeSet<TimeInt>>);
-
-impl TimePoints {
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
-}
 
 // ----------------------------------------------------------------------------
 
@@ -176,9 +162,6 @@ pub struct LogDb {
 
     recording_info: Option<RecordingInfo>,
 
-    /// All the points of time when we have some data.
-    time_points: TimePoints,
-
     /// Where we store the objects.
     pub obj_db: ObjDb,
 }
@@ -281,7 +264,8 @@ impl LogDb {
             // Remember to add it to future timelines:
             self.timeless_message_ids.push(msg_id);
 
-            if !self.time_points.is_empty() {
+            let has_any_timelines = self.timelines().next().is_some();
+            if has_any_timelines {
                 // Add to existing timelines (if any):
                 let mut time_point = TimePoint::default();
                 for &timeline in self.timelines() {
@@ -299,16 +283,13 @@ impl LogDb {
         {
             let mut new_timelines = TimePoint::default();
 
-            for (timeline, value) in &time_point.0 {
-                match self.time_points.0.entry(*timeline) {
-                    std::collections::btree_map::Entry::Vacant(entry) => {
-                        re_log::debug!("New timeline added: {timeline:?}");
-                        new_timelines.0.insert(*timeline, TimeInt::BEGINNING);
-                        entry.insert(Default::default())
-                    }
-                    std::collections::btree_map::Entry::Occupied(entry) => entry.into_mut(),
+            for timeline in time_point.timelines() {
+                let is_new_timeline = self.times_per_timeline().get(timeline).is_none();
+
+                if is_new_timeline {
+                    re_log::debug!("New timeline added: {timeline:?}");
+                    new_timelines.0.insert(*timeline, TimeInt::BEGINNING);
                 }
-                .insert(*value);
             }
 
             if !new_timelines.0.is_empty() {
@@ -355,7 +336,6 @@ impl LogDb {
             log_messages,
             timeless_message_ids,
             recording_info: _,
-            time_points,
             obj_db,
         } = self;
 
@@ -378,19 +358,22 @@ impl LogDb {
             timeless_message_ids.retain(|msg_id| keep_msg_ids.contains(msg_id));
         }
 
-        for (timeline, time_points) in &mut time_points.0 {
+        let mut timeline_cutoff_times = vec![];
+        for (timeline, time_points) in obj_db.tree.prefix_times.iter() {
             let first_keep_index = fraction_of_index(time_points.len());
-            if let Some(cutoff_time) = time_points.iter().nth(first_keep_index).copied() {
-                crate::profile_scope!("purge_timeline", timeline.name().as_str());
-                re_log::debug!(
-                    "Purging {:?} before {}",
-                    timeline.name(),
-                    timeline.typ().format(cutoff_time)
-                );
-
-                time_points.retain(|&time| cutoff_time <= time);
-                obj_db.purge_everything_before(*timeline, cutoff_time, &keep_msg_ids);
+            if let Some((cutoff_time, _)) = time_points.iter().nth(first_keep_index) {
+                timeline_cutoff_times.push((*timeline, *cutoff_time));
             }
+        }
+
+        for (timeline, cutoff_time) in timeline_cutoff_times {
+            crate::profile_scope!("purge_timeline", timeline.name().as_str());
+            re_log::debug!(
+                "Purging {:?} before {}",
+                timeline.name(),
+                timeline.typ().format(cutoff_time)
+            );
+            obj_db.purge_everything_before(timeline, cutoff_time, &keep_msg_ids);
         }
     }
 }
