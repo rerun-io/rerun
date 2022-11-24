@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use egui::{pos2, Color32, Pos2, Rect, Stroke};
+use nohash_hasher::IntMap;
 use re_data_store::{
     query::{visit_type_data_2, visit_type_data_4, visit_type_data_5},
     FieldName, InstanceIdHash,
@@ -12,7 +13,7 @@ use re_log_types::{
 
 use crate::{
     ui::{
-        annotations::{AnnotationMap, DefaultColor},
+        annotations::{auto_color, AnnotationMap, DefaultColor},
         Annotations, SceneQuery,
     },
     ViewerContext,
@@ -234,6 +235,10 @@ impl Scene2D {
                 let annotations = self.annotation_map.find(obj_path);
                 let default_color = DefaultColor::ObjPath(obj_path);
 
+                // If keypoints ids show up we may need to connect them later!
+                let mut keypoints: IntMap<ClassId, IntMap<KeypointId, Pos2>> =
+                Default::default();
+
                 visit_type_data_5(
                     obj_store,
                     &FieldName::from("pos"),
@@ -249,15 +254,25 @@ impl Scene2D {
                      class_id: Option<&i32>,
                      keypoint_id: Option<&i32>| {
                         let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
+                        let pos = Pos2::new(pos[0], pos[1]);
+
+                        let class_id = class_id.map(|i| ClassId(*i as _));
                         let class_description =
-                            annotations.class_description(class_id.map(|i| ClassId(*i as _)));
-                        let annotation_info = if let Some(keypoint_id) = keypoint_id {
-                            // TODO: Handle connections
-                            class_description
-                                .annotation_info_with_keypoint(&KeypointId(*keypoint_id as _))
-                        } else {
-                            class_description.annotation_info()
-                        };
+                            annotations.class_description(class_id);
+
+                            let annotation_info = if let Some(keypoint_id) = keypoint_id {
+                                let keypoint_id = KeypointId(*keypoint_id as _);
+                                if let Some(class_id) = class_id {
+                                    keypoints
+                                        .entry(class_id)
+                                        .or_insert_with(Default::default)
+                                        .insert(keypoint_id, pos);
+                                }
+
+                                class_description.annotation_info_with_keypoint(keypoint_id)
+                            } else {
+                                class_description.annotation_info()
+                            };
                         let color = annotation_info.color(color, default_color);
                         let label = annotation_info.label(label);
                         let paint_props = paint_properties(color, &None);
@@ -267,7 +282,7 @@ impl Scene2D {
                                 obj_path,
                                 instance_index,
                             ),
-                            pos: Pos2::new(pos[0], pos[1]),
+                            pos,
                             radius: radius.copied(),
                             paint_props,
                             label,
@@ -280,6 +295,31 @@ impl Scene2D {
                 if !show_labels {
                     for point in &mut batch {
                         point.label = None;
+                    }
+                }
+
+                // Generate keypoint connections if any.
+                let instance_hash = InstanceIdHash::from_path_and_index(obj_path, IndexHash::NONE);
+                for (class_id, keypoints_in_class) in &keypoints {
+                    let Some(class_description) = annotations.context.class_map.get(class_id) else {
+                        continue;
+                    };
+
+                    let color = class_description
+                        .info
+                        .color
+                        .unwrap_or_else(|| auto_color(class_description.info.id));
+
+                    for (a, b) in &class_description.keypoint_connections {
+                        let (Some(a), Some(b)) = (keypoints_in_class.get(a), keypoints_in_class.get(b)) else {
+                            continue;
+                        };
+                        self.line_segments.push(LineSegments2D {
+                            instance_hash,
+                            points: vec![*a, *b],
+                            stroke_width: None,
+                            paint_props: paint_properties(color, &None),
+                        });
                     }
                 }
 

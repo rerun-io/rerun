@@ -1103,16 +1103,28 @@ class ClassDescription:
     Keypoints in turn may be connected to each other by connections (typically used for skeleton edges).
     """
 
-    info: AnnotationInfo = None
+    info: AnnotationInfoLike = None
     keypoint_annotations: Optional[Iterable[AnnotationInfoLike]] = None
-    keypoint_connections: Optional[Iterable[Tuple[int, int]]] = None
+    keypoint_connections: Optional[Iterable[Union[int, Tuple[int, int]]]] = None
 
 
 ClassDescriptionLike = Union[AnnotationInfoLike, ClassDescription]
 
 
-def coerce_class_description(arg: ClassDescriptionLike) -> ClassDescription:
+def normalize_class_description_like(arg: ClassDescriptionLike) -> ClassDescription:
     if type(arg) is ClassDescription:
+        if arg.info is not None:
+            arg.info = coerce_annotation_info(arg.info)
+
+        if arg.keypoint_connections is not None:
+            arg.keypoint_connections = list(arg.keypoint_connections)
+            # flatten keypoint connections
+            if type(arg.keypoint_connections[0]) is tuple:
+                arg.keypoint_connections = [item for tuple in arg.keypoint_connections for item in tuple]
+
+        if arg.keypoint_annotations is not None:
+            arg.keypoint_annotations = [coerce_annotation_info(annotation) for annotation in arg.keypoint_annotations]
+
         return arg
     else:
         return ClassDescription(info=coerce_annotation_info(arg))  # type: ignore[misc]
@@ -1153,7 +1165,7 @@ def log_annotation_context(
         class_descriptions = [class_descriptions]
 
     # Coerce tuples into ClassDescription dataclass for convenience
-    typed_class_descriptions = (coerce_class_description(d) for d in class_descriptions)
+    typed_class_descriptions = (normalize_class_description_like(d) for d in class_descriptions)
 
     # Convert back to fixed tuple for easy pyo3 conversion
     # This is pretty messy but will likely go away / be refactored with pending data-model changes.
@@ -1166,8 +1178,8 @@ def log_annotation_context(
     tuple_class_descriptions = [
         (
             info_to_tuple(d.info),
-            tuple(info_to_tuple(coerce_annotation_info(a)) for a in d.keypoint_annotations or []),
-            list(d.keypoint_connections or []),
+            tuple(info_to_tuple(a) for a in d.keypoint_annotations or []),
+            d.keypoint_connections,
         )
         for d in typed_class_descriptions
     ]

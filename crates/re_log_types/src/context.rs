@@ -6,7 +6,7 @@ use nohash_hasher::IntMap;
 ///
 /// Used to look up a [`ClassDescription`] within the [`AnnotationContext`].
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ClassId(pub u16);
 
 impl nohash_hasher::IsEnabled for ClassId {}
@@ -17,7 +17,7 @@ impl nohash_hasher::IsEnabled for ClassId {}
 ///
 /// Used to look up an [`AnnotationInfo`] for a Keypoint within the [`AnnotationContext`].
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct KeypointId(pub u16);
 
 impl nohash_hasher::IsEnabled for KeypointId {}
@@ -28,6 +28,8 @@ impl nohash_hasher::IsEnabled for KeypointId {}
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct AnnotationInfo {
+    /// [`ClassId`] or [`KeypointId`] to which this annotation info belongs.
+    pub id: u16,
     pub label: Option<Arc<String>>,
     pub color: Option<[u8; 4]>,
 }
@@ -49,7 +51,6 @@ pub struct AnnotationInfo {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct ClassDescription {
-    pub id: ClassId,
     pub info: AnnotationInfo,
     pub keypoint_map: IntMap<KeypointId, AnnotationInfo>,
 
@@ -57,7 +58,7 @@ pub struct ClassDescription {
     ///
     /// This indicates that an edge line should be drawn between two Keypoints.
     /// Typically used for skeleton edges.
-    pub keypoint_connections: IntMap<KeypointId, KeypointId>,
+    pub keypoint_connections: Vec<(KeypointId, KeypointId)>,
 }
 
 /// The `AnnotationContext` provides aditional information on how to display

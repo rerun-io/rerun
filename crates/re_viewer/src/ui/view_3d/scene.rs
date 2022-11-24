@@ -3,6 +3,7 @@ use std::sync::Arc;
 use egui::NumExt as _;
 use glam::{vec3, Vec3};
 use itertools::Itertools as _;
+use nohash_hasher::IntMap;
 use smallvec::smallvec;
 
 use re_data_store::query::{
@@ -14,7 +15,7 @@ use re_log_types::{DataVec, IndexHash, MeshId, MsgId, ObjectType};
 
 use crate::misc::mesh_loader::CpuMesh;
 use crate::misc::Caches;
-use crate::ui::annotations::{AnnotationMap, DefaultColor};
+use crate::ui::annotations::{auto_color, AnnotationMap, DefaultColor};
 use crate::ui::SceneQuery;
 use crate::{math::line_segment_distance_sq_to_point_2d, misc::ViewerContext};
 
@@ -172,6 +173,10 @@ impl Scene3D {
                 let mut show_labels = true;
                 let mut label_batch = Vec::new();
 
+                // If keypoints ids show up we may need to connect them later!
+                let mut keypoints: IntMap<ClassId, IntMap<KeypointId, glam::Vec3>> =
+                    Default::default();
+
                 let annotations = self.annotation_map.find(obj_path);
                 let default_color = DefaultColor::ObjPath(obj_path);
 
@@ -191,16 +196,25 @@ impl Scene3D {
                      keypoint_id: Option<&i32>| {
                         batch_size += 1;
 
+                        let pos = Vec3::from_slice(pos);
+
                         let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
                         let instance_id_hash =
                             InstanceIdHash::from_path_and_index(obj_path, instance_index);
 
-                        let class_description =
-                            annotations.class_description(class_id.map(|i| ClassId(*i as _)));
+                        let class_id = class_id.map(|i| ClassId(*i as _));
+                        let class_description = annotations.class_description(class_id);
+
                         let annotation_info = if let Some(keypoint_id) = keypoint_id {
-                            // TODO: Handle connections
-                            class_description
-                                .annotation_info_with_keypoint(&KeypointId(*keypoint_id as _))
+                            let keypoint_id = KeypointId(*keypoint_id as _);
+                            if let Some(class_id) = class_id {
+                                keypoints
+                                    .entry(class_id)
+                                    .or_insert_with(Default::default)
+                                    .insert(keypoint_id, pos);
+                            }
+
+                            class_description.annotation_info_with_keypoint(keypoint_id)
                         } else {
                             class_description.annotation_info()
                         };
@@ -211,14 +225,14 @@ impl Scene3D {
                             if let Some(label) = annotation_info.label(label) {
                                 label_batch.push(Label3D {
                                     text: label,
-                                    origin: Vec3::from_slice(pos),
+                                    origin: pos,
                                 });
                             }
                         }
 
                         self.points.push(Point3D {
                             instance_id_hash,
-                            pos: Vec3::from_slice(pos),
+                            pos,
                             radius: radius.copied().map_or(Size::AUTO, Size::new_scene),
                             color,
                         });
@@ -227,6 +241,33 @@ impl Scene3D {
 
                 if show_labels {
                     self.labels.extend(label_batch);
+                }
+
+                // Generate keypoint connections if any.
+                let instance_id_hash = InstanceIdHash::from_path_and_index(obj_path, IndexHash::NONE);
+                for (class_id, keypoints_in_class) in &keypoints {
+                    let Some(class_description) = annotations.context.class_map.get(class_id) else {
+                        continue;
+                    };
+
+                    let color = class_description
+                        .info
+                        .color
+                        .unwrap_or_else(|| auto_color(class_description.info.id));
+
+                    for (a, b) in &class_description.keypoint_connections {
+                        let (Some(a), Some(b)) = (keypoints_in_class.get(a), keypoints_in_class.get(b)) else {
+                            continue;
+                        };
+                        self.line_strips.push(LineStrip {
+                            instance_id_hash,
+                            line_strip: re_renderer::renderer::LineStrip::line_segment(
+                                (*a, *b),
+                                Size::AUTO.0,
+                                color,
+                            ),
+                        });
+                    }
                 }
             });
     }

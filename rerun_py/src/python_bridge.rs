@@ -1692,8 +1692,9 @@ struct AnnotationInfoTuple(u16, Option<String>, Option<Vec<u8>>);
 
 impl From<AnnotationInfoTuple> for context::AnnotationInfo {
     fn from(tuple: AnnotationInfoTuple) -> Self {
-        let AnnotationInfoTuple(_id, label, color) = tuple;
+        let AnnotationInfoTuple(id, label, color) = tuple;
         Self {
+            id,
             label: label.map(Arc::new),
             color: color
                 .as_ref()
@@ -1702,11 +1703,7 @@ impl From<AnnotationInfoTuple> for context::AnnotationInfo {
     }
 }
 
-type ClassDescriptionTuple = (
-    AnnotationInfoTuple,
-    Vec<AnnotationInfoTuple>,
-    Vec<(u16, u16)>,
-);
+type ClassDescriptionTuple = (AnnotationInfoTuple, Vec<AnnotationInfoTuple>, Vec<u16>);
 
 #[pyfunction]
 fn log_annotation_context(
@@ -1730,15 +1727,14 @@ fn log_annotation_context(
             .class_map
             .entry(ClassId(info.0))
             .or_insert_with(|| context::ClassDescription {
-                id: ClassId(info.0),
                 info: info.into(),
                 keypoint_map: keypoint_annotations
                     .into_iter()
                     .map(|k| (KeypointId(k.0), k.into()))
                     .collect(),
                 keypoint_connections: keypoint_skeleton_edges
-                    .into_iter()
-                    .map(|(a, b)| (KeypointId(a), KeypointId(b)))
+                    .chunks_exact(2)
+                    .map(|pair| (KeypointId(pair[0]), KeypointId(pair[1])))
                     .collect(),
             });
     }

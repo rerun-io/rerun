@@ -23,32 +23,27 @@ impl Annotations {
     }
 }
 
-pub struct ResolvedClassDescription<'a>(Option<&'a ClassDescription>);
+pub struct ResolvedClassDescription<'a>(pub Option<&'a ClassDescription>);
 
 impl<'a> ResolvedClassDescription<'a> {
     pub fn annotation_info(&self) -> ResolvedAnnotationInfo {
-        ResolvedAnnotationInfo(self.0.map(|desc| (desc.info.clone(), desc.id.0)))
+        ResolvedAnnotationInfo(self.0.map(|desc| desc.info.clone()))
     }
 
     /// Merges class annotation info with keypoint annotation info (if existing respectively).
-    pub fn annotation_info_with_keypoint(
-        &self,
-        keypoint_id: &KeypointId,
-    ) -> ResolvedAnnotationInfo {
+    pub fn annotation_info_with_keypoint(&self, keypoint_id: KeypointId) -> ResolvedAnnotationInfo {
         if let Some(desc) = self.0 {
             // Assuming that keypoint annotation is the rarer case, merging the entire annotation ahead of time
-            // is cheaper than doing it lazily (which would cause more branches down the line for everyone)
-            if let Some(keypoint_annotation_info) = desc.keypoint_map.get(keypoint_id) {
-                ResolvedAnnotationInfo(Some((
-                    AnnotationInfo {
-                        label: keypoint_annotation_info
-                            .label
-                            .clone()
-                            .or_else(|| desc.info.label.clone()),
-                        color: keypoint_annotation_info.color.or(desc.info.color),
-                    },
-                    keypoint_id.0,
-                )))
+            // is cheaper than doing it lazily (which would cause more branches down the line for callsites without keypoints)
+            if let Some(keypoint_annotation_info) = desc.keypoint_map.get(&keypoint_id) {
+                ResolvedAnnotationInfo(Some(AnnotationInfo {
+                    id: keypoint_id.0,
+                    label: keypoint_annotation_info
+                        .label
+                        .clone()
+                        .or_else(|| desc.info.label.clone()),
+                    color: keypoint_annotation_info.color.or(desc.info.color),
+                }))
             } else {
                 self.annotation_info()
             }
@@ -65,7 +60,7 @@ pub enum DefaultColor<'a> {
     ObjPath(&'a ObjPath),
 }
 
-pub struct ResolvedAnnotationInfo(Option<(AnnotationInfo, u16)>);
+pub struct ResolvedAnnotationInfo(pub Option<AnnotationInfo>);
 
 impl ResolvedAnnotationInfo {
     pub fn color(&self, color: Option<&[u8; 4]>, default_color: DefaultColor<'_>) -> [u8; 4] {
@@ -74,7 +69,7 @@ impl ResolvedAnnotationInfo {
         } else if let Some(color) = self
             .0
             .as_ref()
-            .and_then(|info| info.0.color.or_else(|| Some(auto_color(info.1))))
+            .and_then(|info| info.color.or_else(|| Some(auto_color(info.id))))
         {
             color
         } else {
@@ -94,7 +89,7 @@ impl ResolvedAnnotationInfo {
         } else {
             self.0
                 .as_ref()
-                .and_then(|info| info.0.label.as_ref().map(ToString::to_string))
+                .and_then(|info| info.label.as_ref().map(ToString::to_string))
         }
     }
 }
