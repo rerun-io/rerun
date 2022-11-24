@@ -2,7 +2,10 @@ use std::{collections::BTreeMap, sync::Arc};
 
 use lazy_static::lazy_static;
 use re_data_store::{FieldName, ObjPath};
-use re_log_types::{context::ClassId, AnnotationContext, MsgId};
+use re_log_types::{
+    context::{AnnotationInfo, ClassDescription, ClassId, KeypointId},
+    AnnotationContext, MsgId,
+};
 
 use crate::{misc::ViewerContext, ui::scene::SceneQuery};
 
@@ -12,6 +15,49 @@ pub struct Annotations {
     pub context: AnnotationContext,
 }
 
+impl Annotations {
+    pub fn class_description(&self, class_id: Option<ClassId>) -> ResolvedClassDescription<'_> {
+        ResolvedClassDescription(
+            class_id.and_then(|class_id| self.context.class_map.get(&class_id)),
+        )
+    }
+}
+
+pub struct ResolvedClassDescription<'a>(Option<&'a ClassDescription>);
+
+impl<'a> ResolvedClassDescription<'a> {
+    pub fn annotation_info(&self) -> ResolvedAnnotationInfo {
+        ResolvedAnnotationInfo(self.0.map(|desc| (desc.info.clone(), desc.id.0)))
+    }
+
+    /// Merges class annotation info with keypoint annotation info (if existing respectively).
+    pub fn annotation_info_with_keypoint(
+        &self,
+        keypoint_id: &KeypointId,
+    ) -> ResolvedAnnotationInfo {
+        if let Some(desc) = self.0 {
+            // Assuming that keypoint annotation is the rarer case, merging the entire annotation ahead of time
+            // is cheaper than doing it lazily (which would cause more branches down the line for everyone)
+            if let Some(keypoint_annotation_info) = desc.keypoint_map.get(keypoint_id) {
+                ResolvedAnnotationInfo(Some((
+                    AnnotationInfo {
+                        label: keypoint_annotation_info
+                            .label
+                            .clone()
+                            .or_else(|| desc.info.label.clone()),
+                        color: keypoint_annotation_info.color.or(desc.info.color),
+                    },
+                    keypoint_id.0,
+                )))
+            } else {
+                self.annotation_info()
+            }
+        } else {
+            ResolvedAnnotationInfo(None)
+        }
+    }
+}
+
 #[derive(Clone, Copy)]
 pub enum DefaultColor<'a> {
     OpaqueWhite,
@@ -19,22 +65,17 @@ pub enum DefaultColor<'a> {
     ObjPath(&'a ObjPath),
 }
 
-impl Annotations {
-    pub fn color(
-        &self,
-        color: Option<&[u8; 4]>,
-        class_id: Option<ClassId>,
-        default_color: DefaultColor<'_>,
-    ) -> [u8; 4] {
+pub struct ResolvedAnnotationInfo(Option<(AnnotationInfo, u16)>);
+
+impl ResolvedAnnotationInfo {
+    pub fn color(&self, color: Option<&[u8; 4]>, default_color: DefaultColor<'_>) -> [u8; 4] {
         if let Some(color) = color {
             *color
-        } else if let Some(color) = class_id.and_then(|id| {
-            self.context
-                .class_map
-                .get(&id)
-                // If have a valid id, use it for color even if the context doesn't have one.
-                .map(|desc| desc.info.color.unwrap_or_else(|| auto_color(id.0)))
-        }) {
+        } else if let Some(color) = self
+            .0
+            .as_ref()
+            .and_then(|info| info.0.color.or_else(|| Some(auto_color(info.1))))
+        {
             color
         } else {
             match default_color {
@@ -47,16 +88,13 @@ impl Annotations {
         }
     }
 
-    pub fn label(&self, label: Option<&String>, class_id: Option<ClassId>) -> Option<String> {
+    pub fn label(&self, label: Option<&String>) -> Option<String> {
         if let Some(label) = label {
             Some(label.clone())
         } else {
-            class_id.and_then(|id| {
-                self.context
-                    .class_map
-                    .get(&id)
-                    .and_then(|desc| desc.info.label.as_ref().map(ToString::to_string))
-            })
+            self.0
+                .as_ref()
+                .and_then(|info| info.0.label.as_ref().map(ToString::to_string))
         }
     }
 }

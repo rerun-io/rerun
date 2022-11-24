@@ -236,11 +236,10 @@ fn tensor_to_dynamic_image(
                             .to_vec()
                             .iter()
                             .flat_map(|p| {
-                                annotations.color(
-                                    None,
-                                    Some(ClassId(*p as u16)),
-                                    DefaultColor::TransparentBlack,
-                                )
+                                annotations
+                                    .class_description(Some(ClassId(*p as u16)))
+                                    .annotation_info()
+                                    .color(None, DefaultColor::TransparentBlack)
                             })
                             .collect(),
                     )
@@ -256,11 +255,10 @@ fn tensor_to_dynamic_image(
                             .to_vec()
                             .iter()
                             .flat_map(|p| {
-                                annotations.color(
-                                    None,
-                                    Some(ClassId(*p)),
-                                    DefaultColor::TransparentBlack,
-                                )
+                                annotations
+                                    .class_description(Some(ClassId(*p)))
+                                    .annotation_info()
+                                    .color(None, DefaultColor::TransparentBlack)
                             })
                             .collect(),
                     )

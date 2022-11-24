@@ -6,10 +6,10 @@ use itertools::Itertools as _;
 use smallvec::smallvec;
 
 use re_data_store::query::{
-    visit_type_data_1, visit_type_data_2, visit_type_data_3, visit_type_data_4,
+    visit_type_data_1, visit_type_data_2, visit_type_data_3, visit_type_data_4, visit_type_data_5,
 };
 use re_data_store::{FieldName, InstanceIdHash};
-use re_log_types::context::ClassId;
+use re_log_types::context::{ClassId, KeypointId};
 use re_log_types::{DataVec, IndexHash, MeshId, MsgId, ObjectType};
 
 use crate::misc::mesh_loader::CpuMesh;
@@ -175,32 +175,40 @@ impl Scene3D {
                 let annotations = self.annotation_map.find(obj_path);
                 let default_color = DefaultColor::ObjPath(obj_path);
 
-                visit_type_data_4(
+                visit_type_data_5(
                     obj_store,
                     &FieldName::from("pos"),
                     &query.time_query,
-                    ("color", "radius", "label", "class_id"),
+                    ("color", "radius", "label", "class_id", "keypoint_id"),
                     |instance_index: Option<&IndexHash>,
                      _time: i64,
                      _msg_id: &MsgId,
                      pos: &[f32; 3],
                      color: Option<&[u8; 4]>,
                      radius: Option<&f32>,
-
                      label: Option<&String>,
-                     class_id: Option<&i32>| {
+                     class_id: Option<&i32>,
+                     keypoint_id: Option<&i32>| {
                         batch_size += 1;
 
                         let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
                         let instance_id_hash =
                             InstanceIdHash::from_path_and_index(obj_path, instance_index);
 
-                        let class_id = class_id.map(|i| ClassId(*i as _));
-                        let color = annotations.color(color, class_id.clone(), default_color);
+                        let class_description =
+                            annotations.class_description(class_id.map(|i| ClassId(*i as _)));
+                        let annotation_info = if let Some(keypoint_id) = keypoint_id {
+                            // TODO: Handle connections
+                            class_description
+                                .annotation_info_with_keypoint(&KeypointId(*keypoint_id as _))
+                        } else {
+                            class_description.annotation_info()
+                        };
+                        let color = annotation_info.color(color, default_color);
 
                         show_labels = batch_size < 10;
                         if show_labels {
-                            if let Some(label) = annotations.label(label, class_id) {
+                            if let Some(label) = annotation_info.label(label) {
                                 label_batch.push(Label3D {
                                     text: label,
                                     origin: Vec3::from_slice(pos),
@@ -229,6 +237,9 @@ impl Scene3D {
         for (_obj_type, obj_path, obj_store) in
             query.iter_object_stores(ctx.log_db, &[ObjectType::Box3D])
         {
+            let annotations = self.annotation_map.find(obj_path);
+            let default_color = DefaultColor::ObjPath(obj_path);
+
             visit_type_data_4(
                 obj_store,
                 &FieldName::from("obb"),
@@ -245,11 +256,11 @@ impl Scene3D {
                     let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
                     let line_radius = stroke_width.map_or(Size::AUTO, |w| Size::new_scene(w / 2.0));
 
-                    let annotations = self.annotation_map.find(obj_path);
-                    let class_id = class_id.map(|i| ClassId(*i as _));
-                    let color =
-                        annotations.color(color, class_id.clone(), DefaultColor::ObjPath(obj_path));
-                    let label = annotations.label(label, class_id);
+                    let annotation_info = annotations
+                        .class_description(class_id.map(|i| ClassId(*i as _)))
+                        .annotation_info();
+                    let color = annotation_info.color(color, default_color);
+                    let label = annotation_info.label(label);
 
                     self.add_box(
                         InstanceIdHash::from_path_and_index(obj_path, instance_index),
@@ -274,6 +285,9 @@ impl Scene3D {
             )
             .flat_map(|(obj_type, obj_path, obj_store)| {
                 let mut batch = Vec::new();
+                let annotations = self.annotation_map.find(obj_path);
+                let default_color = DefaultColor::ObjPath(obj_path);
+
                 visit_type_data_2(
                     obj_store,
                     &FieldName::from("points"),
@@ -298,12 +312,9 @@ impl Scene3D {
 
                         let radius = stroke_width.map_or(Size::AUTO, |w| Size::new_scene(w / 2.0));
 
-                        let annotations = self.annotation_map.find(obj_path);
-                        let color = annotations.color(
-                            color,
-                            None, // TODO(andreas): support class ids for lines
-                            DefaultColor::ObjPath(obj_path),
-                        );
+                        // TODO(andreas): support class ids for lines
+                        let annotation_info = annotations.class_description(None).annotation_info();
+                        let color = annotation_info.color(color, default_color);
 
                         // TODO(andreas): re_renderer should support our Size type directly!
                         match obj_type {
@@ -347,6 +358,9 @@ impl Scene3D {
         for (_obj_type, obj_path, obj_store) in
             query.iter_object_stores(ctx.log_db, &[ObjectType::Arrow3D])
         {
+            let annotations = self.annotation_map.find(obj_path);
+            let default_color = DefaultColor::ObjPath(obj_path);
+
             visit_type_data_3(
                 obj_store,
                 &FieldName::from("arrow3d"),
@@ -365,13 +379,10 @@ impl Scene3D {
 
                     let width = width_scale.copied().unwrap_or(1.0);
 
-                    let annotations = self.annotation_map.find(obj_path);
-                    let color = annotations.color(
-                        color,
-                        None, // TODO(andreas): support class ids for arrows
-                        DefaultColor::ObjPath(obj_path),
-                    );
-                    let label = annotations.label(label, None);
+                    // TODO(andreas): support class ids for arrows
+                    let annotation_info = annotations.class_description(None).annotation_info();
+                    let color = annotation_info.color(color, default_color);
+                    let label = annotation_info.label(label);
 
                     self.add_arrow(
                         ctx.cache,

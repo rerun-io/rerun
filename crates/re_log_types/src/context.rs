@@ -49,6 +49,7 @@ pub struct AnnotationInfo {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct ClassDescription {
+    pub id: ClassId,
     pub info: AnnotationInfo,
     pub keypoint_map: IntMap<KeypointId, AnnotationInfo>,
 

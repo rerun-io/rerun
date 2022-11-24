@@ -1730,6 +1730,7 @@ fn log_annotation_context(
             .class_map
             .entry(ClassId(info.0))
             .or_insert_with(|| context::ClassDescription {
+                id: ClassId(info.0),
                 info: info.into(),
                 keypoint_map: keypoint_annotations
                     .into_iter()
