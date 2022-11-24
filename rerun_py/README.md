@@ -94,7 +94,7 @@ pip3 install target/wheels/*.whl
 
 
 ## Troubleshooting
-You can run with `RUST_LOG=debug,wgpu_core=warn,wgpu_hal=warn` to get more output out of the rerun SDK.
+You can run with `RUST_LOG=debug` to get more output out of the rerun SDK.
 
 If you are using an Apple-silicon Mac, make sure `rustc -vV` outputs `host: aarch64-apple-darwin`. If not, this should fix it:
 
