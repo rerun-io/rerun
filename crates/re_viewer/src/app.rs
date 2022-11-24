@@ -9,11 +9,11 @@ use poll_promise::Promise;
 
 use re_data_store::log_db::LogDb;
 use re_log_types::*;
+use re_smart_channel::SmartReceiver;
 
 use crate::{
     design_tokens::DesignTokens,
     misc::{Caches, Options, RecordingConfig, ViewerContext},
-    smart_channel::SmartReceiver,
     ui::kb_shortcuts,
 };
 

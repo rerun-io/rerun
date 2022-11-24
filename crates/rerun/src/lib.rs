@@ -211,8 +211,8 @@ async fn host_web_viewer(_rerun_ws_server_url: String) -> anyhow::Result<()> {
 fn wake_up_ui_thread_on_each_msg<T: Send + 'static>(
     rx: Receiver<T>,
     ctx: egui::Context,
-) -> re_viewer::smart_channel::SmartReceiver<T> {
-    let (tx, new_rx) = re_viewer::smart_channel::smart_channel();
+) -> re_smart_channel::SmartReceiver<T> {
+    let (tx, new_rx) = re_smart_channel::smart_channel();
     std::thread::Builder::new()
         .name("ui_waker".to_owned())
         .spawn(move || {

@@ -1,3 +1,5 @@
+//! A channel that keeps track of latency and queue length.
+
 use std::sync::{
     atomic::{AtomicU64, AtomicUsize, Ordering::Relaxed},
     mpsc::{RecvError, SendError, TryRecvError},

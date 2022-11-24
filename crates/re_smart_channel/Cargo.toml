@@ -1,0 +1,10 @@
+[package]
+name = "re_smart_channel"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+instant = { version = "0.1", features = ["wasm-bindgen"] }

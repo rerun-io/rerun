@@ -3289,6 +3289,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_smart_channel"
+version = "0.1.0"
+dependencies = [
+ "instant",
+]
+
+[[package]]
 name = "re_string_interner"
 version = "0.1.0"
 dependencies = [
@@ -3359,6 +3366,7 @@ dependencies = [
  "re_log_types",
  "re_memory",
  "re_renderer",
+ "re_smart_channel",
  "re_string_interner",
  "re_tensor_ops",
  "re_ws_comms",
@@ -3485,6 +3493,7 @@ dependencies = [
  "re_log_types",
  "re_memory",
  "re_sdk_comms",
+ "re_smart_channel",
  "re_viewer",
  "re_web_server",
  "re_ws_comms",

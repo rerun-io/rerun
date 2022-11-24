@@ -20,7 +20,6 @@ pub(crate) use misc::*;
 pub(crate) use ui::*;
 
 pub use app::App;
-pub use misc::smart_channel;
 pub use remote_viewer_app::RemoteViewerApp;
 
 // ----------------------------------------------------------------------------

@@ -1,6 +1,5 @@
 pub(crate) mod color_map;
 pub(crate) mod mesh_loader;
-pub mod smart_channel;
 pub(crate) mod space_info;
 pub(crate) mod tensor_image_cache;
 pub(crate) mod time_axis;
