@@ -712,6 +712,22 @@ fn top_bar_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &mut App) {
         );
     }
 
+    if let Some(rx) = &app.rx {
+        let latency_sec = rx.latency_ns() as f32 / 1e9;
+        if latency_sec > 1.0 {
+            // TODO(emilk): we should have some unified place to show warnings.
+            ui.separator();
+            ui.colored_label(
+                ui.visuals().warn_fg_color,
+                format!(
+                    "Input queue: {}, latency: {:.1}s",
+                    rx.queue_len(),
+                    latency_sec
+                ),
+            );
+        }
+    }
+
     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
         if !WATERMARK {
             let logo = app.state.static_image_cache.rerun_logo(ui.visuals());
