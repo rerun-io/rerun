@@ -49,6 +49,8 @@ pub struct App {
     latest_memory_purge: instant::Instant,
     memory_panel: crate::memory_panel::MemoryPanel,
     memory_panel_open: bool,
+
+    latest_queue_interest: instant::Instant,
 }
 
 impl App {
@@ -137,6 +139,8 @@ impl App {
             latest_memory_purge: instant::Instant::now(), // TODO(emilk): `Instant::MIN` when we have our own `Instant` that supports it.
             memory_panel: Default::default(),
             memory_panel_open: false,
+
+            latest_queue_interest: instant::Instant::now(), // TODO(emilk): `Instant::MIN` when we have our own `Instant` that supports it.
         }
     }
 
@@ -696,9 +700,8 @@ fn top_bar_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &mut App) {
         debug_menu(ui);
     });
 
-    ui.separator();
-
     if !app.log_db().is_empty() {
+        ui.separator();
         ui.selectable_value(
             &mut app.state.panel_selection,
             PanelSelection::Viewport,
@@ -730,26 +733,37 @@ fn top_bar_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &mut App) {
 
         let queue_len = rx.len();
 
-        if is_latency_interesting {
-            let latency_sec = rx.latency_ns() as f32 / 1e9;
-            if queue_len > 0 && latency_sec > 2.0 {
-                // TODO(emilk): we should have some unified place to show warnings.
-                ui.separator();
-                let warning_text = format!(
-                    "Input latency: {:.1}s, {} messages in queue",
+        // empty queue == unreliable latency
+        let latency_sec = rx.latency_ns() as f32 / 1e9;
+        if queue_len > 0
+            && (!is_latency_interesting || app.state.options.warn_latency < latency_sec)
+        {
+            // we use this to avoid flicker
+            app.latest_queue_interest = instant::Instant::now();
+        }
+
+        if app.latest_queue_interest.elapsed().as_secs_f32() < 1.0 {
+            ui.separator();
+            if is_latency_interesting {
+                let text = format!(
+                    "Latency: {:.2}s, queue: {}",
                     latency_sec,
                     format_usize(queue_len),
                 );
-                ui.label(app.design_tokens.warning_text(warning_text, ui.style()))
-                .on_hover_text(
-                    "This latency does NOT include network latency, \
-                    but only the latency that comes from the viewer not being able to index the incoming data \
-                    at the same rate as is is being read from the network.");
+                let hover_text =
+                    "When more data is arriving over network than the Rerun Viewer can index, a queue starts building up, leading to latency and increased RAM use.\n\
+                    This latency does NOT include network latency.";
+
+                if latency_sec < app.state.options.warn_latency {
+                    ui.weak(text).on_hover_text(hover_text);
+                } else {
+                    ui.label(app.design_tokens.warning_text(text, ui.style()))
+                        .on_hover_text(hover_text);
+                }
+            } else {
+                ui.weak(format!("Queue: {}", format_usize(queue_len)))
+                    .on_hover_text("Number of messages in the inbound queue");
             }
-        } else if queue_len > 0 {
-            ui.separator();
-            ui.weak(format!("Queue: {}", format_usize(queue_len)))
-                .on_hover_text("Number of messages in the inbound queue");
         }
     }
 
@@ -770,7 +784,7 @@ fn top_bar_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &mut App) {
     });
 }
 
-// ---
+// ---n
 
 const FILE_SAVER_PROMISE: &str = "file_saver";
 const FILE_SAVER_NOTIF_DURATION: Option<std::time::Duration> =
