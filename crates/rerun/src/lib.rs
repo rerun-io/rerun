@@ -56,7 +56,7 @@ struct Args {
     /// and have longer and longer latency, if you are logging data faster
     /// than Rerun can index it.
     #[clap(long)]
-    max_latency: Option<String>,
+    drop_at_latency: Option<String>,
 }
 
 pub async fn run<I, T>(args: I) -> anyhow::Result<()>
@@ -94,7 +94,7 @@ async fn run_impl(args: Args) -> anyhow::Result<()> {
         {
             let bind_addr = format!("127.0.0.1:{}", args.port);
             let server_options = re_sdk_comms::ServerOptions {
-                max_latency_sec: parse_max_latency(args.max_latency.as_ref()),
+                max_latency_sec: parse_max_latency(args.drop_at_latency.as_ref()),
             };
             let rx = re_sdk_comms::serve(&bind_addr, server_options)
                 .with_context(|| format!("Failed to bind address {bind_addr:?}"))?;
