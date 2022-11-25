@@ -86,7 +86,7 @@ impl Sdk {
 
     #[cfg(feature = "web")]
     pub fn serve(&mut self) {
-        let (rerun_tx, rerun_rx) = crossbeam::channel::unbounded();
+        let (rerun_tx, rerun_rx) = re_smart_channel::smart_channel();
 
         let web_server_join_handle = self.tokio_rt.spawn(async {
             // This is the server which the web viewer will talk to:
@@ -231,7 +231,7 @@ enum Sender {
     #[cfg(feature = "web")]
     WebViewer(
         tokio::task::JoinHandle<()>,
-        crossbeam::channel::Sender<LogMsg>,
+        re_smart_channel::SmartSender<LogMsg>,
     ),
 }
 

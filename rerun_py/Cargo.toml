@@ -37,6 +37,7 @@ re_log = { path = "../crates/re_log" }
 re_log_types = { path = "../crates/re_log_types" }
 re_memory = { path = "../crates/re_memory" }
 re_sdk_comms = { path = "../crates/re_sdk_comms", features = ["client"] }
+re_smart_channel = { path = "../crates/re_smart_channel" }
 re_tensor_ops = { path = "../crates/re_tensor_ops" }
 re_viewer = { path = "../crates/re_viewer", optional = true }
 rerun = { path = "../crates/rerun" }

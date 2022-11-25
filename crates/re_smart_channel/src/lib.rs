@@ -25,6 +25,7 @@ struct SharedStats {
     latency_ns: AtomicU64,
 }
 
+#[derive(Clone)]
 pub struct SmartSender<T: Send> {
     tx: crossbeam::channel::Sender<(Instant, T)>,
     stats: Arc<SharedStats>,

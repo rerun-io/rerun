@@ -14,6 +14,7 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio_tungstenite::{accept_async, tungstenite::Error};
 
 use re_log_types::LogMsg;
+use re_smart_channel::SmartReceiver;
 
 // ----------------------------------------------------------------------------
 
@@ -38,7 +39,7 @@ impl Server {
     }
 
     /// Accept new connections forever
-    pub async fn listen(self, rx: crossbeam::channel::Receiver<LogMsg>) -> anyhow::Result<()> {
+    pub async fn listen(self, rx: SmartReceiver<LogMsg>) -> anyhow::Result<()> {
         use anyhow::Context as _;
 
         let history = Arc::new(Mutex::new(Vec::new()));
@@ -62,7 +63,7 @@ impl Server {
 }
 
 fn to_broadcast_stream(
-    log_rx: crossbeam::channel::Receiver<LogMsg>,
+    log_rx: SmartReceiver<LogMsg>,
     history: Arc<Mutex<Vec<Arc<[u8]>>>>,
 ) -> tokio::sync::broadcast::Sender<Arc<[u8]>> {
     let (tx, _) = tokio::sync::broadcast::channel(1024 * 1024);

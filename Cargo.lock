@@ -3253,6 +3253,7 @@ dependencies = [
  "document-features",
  "re_log",
  "re_log_types",
+ "re_smart_channel",
 ]
 
 [[package]]
@@ -3278,6 +3279,7 @@ dependencies = [
  "re_log_types",
  "re_memory",
  "re_sdk_comms",
+ "re_smart_channel",
  "re_tensor_ops",
  "re_viewer",
  "re_web_server",
@@ -3416,6 +3418,7 @@ dependencies = [
  "re_error",
  "re_log",
  "re_log_types",
+ "re_smart_channel",
  "tokio",
  "tokio-tungstenite",
  "tungstenite",

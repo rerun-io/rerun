@@ -7,9 +7,9 @@
 //!
 
 use anyhow::Context;
-use crossbeam::channel::Receiver;
 
 use re_log_types::LogMsg;
+use re_smart_channel::SmartReceiver;
 
 /// The Rerun Viewer and Server
 ///
@@ -158,12 +158,12 @@ async fn connect_to_ws_url(
     Ok(())
 }
 
-fn load_file_to_channel(path: &std::path::Path) -> anyhow::Result<Receiver<LogMsg>> {
+fn load_file_to_channel(path: &std::path::Path) -> anyhow::Result<SmartReceiver<LogMsg>> {
     use anyhow::Context as _;
     let file = std::fs::File::open(path).context("Failed to open file")?;
     let decoder = re_log_types::encoding::Decoder::new(file)?;
 
-    let (tx, rx) = crossbeam::channel::unbounded();
+    let (tx, rx) = re_smart_channel::smart_channel();
 
     std::thread::Builder::new()
         .name("rrd_file_reader".into())
@@ -201,21 +201,15 @@ async fn host_web_viewer(_rerun_ws_server_url: String) -> anyhow::Result<()> {
 }
 
 /// This wakes up the ui thread each time we receive a new message.
-///
-/// It also consumes a regular channel and turns it into a `smart_channel`, which
-/// is a channel that keeps track of its length and latency.
-///
-/// Ideally we should do that even earlier, but most of the expected latency will
-/// come after this point, due to slow data ingestion (putting messages in the data store).
-/// In comparison, this function is a very fast consumer.
 fn wake_up_ui_thread_on_each_msg<T: Send + 'static>(
-    rx: Receiver<T>,
+    rx: SmartReceiver<T>,
     ctx: egui::Context,
 ) -> re_smart_channel::SmartReceiver<T> {
     let (tx, new_rx) = re_smart_channel::smart_channel();
     std::thread::Builder::new()
         .name("ui_waker".to_owned())
         .spawn(move || {
+            // TODO: keep the latency measure
             while let Ok(msg) = rx.recv() {
                 if tx.send(msg).is_ok() {
                     ctx.request_repaint();
