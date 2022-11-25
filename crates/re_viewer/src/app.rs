@@ -713,7 +713,7 @@ fn top_bar_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &mut App) {
     }
 
     if let Some(rx) = &app.rx {
-        let queue_len = rx.queue_len();
+        let queue_len = rx.len();
         let latency_sec = rx.latency_ns() as f32 / 1e9;
         if queue_len > 0 && latency_sec > 2.0 {
             // TODO(emilk): we should have some unified place to show warnings.

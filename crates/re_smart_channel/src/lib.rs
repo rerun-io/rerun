@@ -37,8 +37,15 @@ impl<T: Send> SmartSender<T> {
             .map_err(|SendError((_, msg))| SendError(msg))
     }
 
+    /// Is the channel currently empty of messages?
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.tx.is_empty()
+    }
+
     /// Number of messages in the channel right now.
-    pub fn queue_len(&self) -> usize {
+    #[inline]
+    pub fn len(&self) -> usize {
         self.tx.len()
     }
 
@@ -68,8 +75,15 @@ impl<T: Send> SmartReceiver<T> {
         Ok(msg)
     }
 
+    /// Is the channel currently empty of messages?
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.rx.is_empty()
+    }
+
     /// Number of messages in the channel right now.
-    pub fn queue_len(&self) -> usize {
+    #[inline]
+    pub fn len(&self) -> usize {
         self.rx.len()
     }
 
@@ -83,21 +97,21 @@ impl<T: Send> SmartReceiver<T> {
 fn test_smart_channel() {
     let (tx, rx) = smart_channel();
 
-    assert_eq!(tx.queue_len(), 0);
-    assert_eq!(rx.queue_len(), 0);
+    assert_eq!(tx.len(), 0);
+    assert_eq!(rx.len(), 0);
     assert_eq!(tx.latency_ns(), 0);
 
     tx.send(42).unwrap();
 
-    assert_eq!(tx.queue_len(), 1);
-    assert_eq!(rx.queue_len(), 1);
+    assert_eq!(tx.len(), 1);
+    assert_eq!(rx.len(), 1);
     assert_eq!(tx.latency_ns(), 0);
 
     std::thread::sleep(std::time::Duration::from_millis(10));
 
     assert_eq!(rx.recv(), Ok(42));
 
-    assert_eq!(tx.queue_len(), 0);
-    assert_eq!(rx.queue_len(), 0);
+    assert_eq!(tx.len(), 0);
+    assert_eq!(rx.len(), 0);
     assert!(tx.latency_ns() > 1_000_000);
 }
