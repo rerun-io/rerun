@@ -50,6 +50,11 @@ impl ObjPathImpl {
         self.obj_type_path.is_root()
     }
 
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
     /// Number of components
     #[inline]
     pub fn len(&self) -> usize {

@@ -197,9 +197,9 @@ impl SelectionPanel {
     /// Updates the currently selected path, intended to be called once per frame with the
     /// current value.
     ///
-    /// This is a no-op if selection == current_selection.
+    /// This is a no-op if `selection` == `current_selection`.
     pub fn update_selection(&mut self, selection: &Selection) {
-        self.history.select(selection)
+        self.history.select(selection);
     }
 }
 
@@ -242,6 +242,7 @@ fn ui_space_view(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, space_view: &mu
 
 // --- Selection history ---
 
+/// A `Selection` and its index into the historical stack.
 #[derive(Debug, Clone)]
 struct HistoricalSelection {
     index: usize,
@@ -256,6 +257,7 @@ impl From<(usize, Selection)> for HistoricalSelection {
 
 // ---
 
+/// A stack of `Selection`s, used to implement "undo/redo"-like semantics for selections.
 #[derive(Default, Clone, Debug, serde::Serialize, serde::Deserialize)]
 struct SelectionHistory {
     current: usize, // index into `self.stack`
@@ -281,7 +283,7 @@ impl SelectionHistory {
     /// Updates the current selection, intended to be called once per frame with the
     /// current value.
     ///
-    /// This is a no-op if selection == current_selection.
+    /// This is a no-op if `selection` == `current_selection`.
     pub fn select(&mut self, selection: &Selection) {
         if matches!(selection, Selection::None) {
             return;
@@ -361,13 +363,9 @@ impl SelectionHistory {
                     picked = egui::ComboBox::from_id_source("history_browser")
                         .width(ui.available_width())
                         .wrap(false)
-                        .selected_text(
-                            self.current()
-                                .map(|sel| {
-                                    selection_to_clipped_string(ui, blueprint, &sel.selection, w)
-                                })
-                                .unwrap_or_else(|| String::new()),
-                        )
+                        .selected_text(self.current().map_or_else(String::new, |sel| {
+                            selection_to_clipped_string(ui, blueprint, &sel.selection, w)
+                        }))
                         .show_ui(ui, |ui| {
                             for (i, sel) in self.stack.iter().enumerate() {
                                 ui.horizontal(|ui| {
@@ -393,7 +391,8 @@ impl SelectionHistory {
                     ))
                     .clicked()
                     // TODO(cmc): feels like using the shortcut should highlight the associated
-                    // button or something.
+                    // button or something (but then again it, it'd make more sense to do that
+                    // at the egui level rather than specifically here).
                     || ui.ctx().input_mut().consume_shortcut(shortcut)
                     {
                         self.show_detailed = !self.show_detailed;
@@ -482,7 +481,7 @@ impl SelectionHistory {
         const PREV_BUTTON: &str = "⏴ Prev";
         if let Some(previous) = self.previous() {
             let shortcut = &crate::ui::kb_shortcuts::SELECTION_PREVIOUS;
-            if ui
+            let button_clicked = ui
                 .small_button(PREV_BUTTON)
                 .on_hover_text(format!(
                     "Go to previous selection ({}):\n[{}] {}",
@@ -490,15 +489,14 @@ impl SelectionHistory {
                     previous.index,
                     selection_to_string(blueprint, &previous.selection),
                 ))
-                .clicked()
-                // TODO(cmc): feels like using the shortcut should highlight the associated
-                // button or something.
-                || ui.ctx().input_mut().consume_shortcut(shortcut)
-            {
-                if previous.index != self.current {
-                    self.current = previous.index;
-                    return self.current();
-                }
+                .clicked();
+            // TODO(cmc): feels like using the shortcut should highlight the associated
+            // button or something (but then again it, it'd make more sense to do that
+            // at the egui level rather than specifically here).
+            let shortcut_used = ui.ctx().input_mut().consume_shortcut(shortcut);
+            if (button_clicked || shortcut_used) && previous.index != self.current {
+                self.current = previous.index;
+                return self.current();
             }
         } else {
             // Creating a superfluous horizontal UI so that we can still have hover text.
@@ -518,7 +516,7 @@ impl SelectionHistory {
         const NEXT_BUTTON: &str = "Next ⏵";
         if let Some(next) = self.next() {
             let shortcut = &crate::ui::kb_shortcuts::SELECTION_NEXT;
-            if ui
+            let button_clicked = ui
                 .small_button(NEXT_BUTTON)
                 .on_hover_text(format!(
                     "Go to next selection ({}):\n[{}] {}",
@@ -526,15 +524,14 @@ impl SelectionHistory {
                     next.index,
                     selection_to_string(blueprint, &next.selection),
                 ))
-                .clicked()
-                // TODO(cmc): feels like using the shortcut should highlight the associated
-                // button or something.
-                || ui.ctx().input_mut().consume_shortcut(shortcut)
-            {
-                if next.index != self.current {
-                    self.current = next.index;
-                    return self.current();
-                }
+                .clicked();
+            // TODO(cmc): feels like using the shortcut should highlight the associated
+            // button or something (but then again it, it'd make more sense to do that
+            // at the egui level rather than specifically here).
+            let shortcut_used = ui.ctx().input_mut().consume_shortcut(shortcut);
+            if (button_clicked || shortcut_used) && next.index != self.current {
+                self.current = next.index;
+                return self.current();
             }
         } else {
             // Creating a superfluous horizontal UI so that we can still have hover text.
@@ -571,7 +568,7 @@ fn show_selection_kind(ui: &mut egui::Ui, sel: &Selection) {
 fn selection_to_string(blueprint: &Blueprint, sel: &Selection) -> String {
     if let Selection::SpaceView(id) = sel {
         if let Some(space_view) = blueprint.viewport.get_space_view(id) {
-            return format!("{}", space_view.name);
+            return space_view.name.clone();
         }
     }
 

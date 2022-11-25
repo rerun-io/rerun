@@ -261,7 +261,7 @@ impl Default for Options {
 
 // ----------------------------------------------------------------------------
 
-#[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub enum Selection {
     None,
     MsgId(MsgId),
@@ -281,7 +281,7 @@ impl std::fmt::Display for Selection {
             Selection::Instance(s) => s.fmt(f),
             Selection::DataPath(s) => s.fmt(f),
             Selection::Space(s) => s.fmt(f),
-            Selection::SpaceView(s) => write!(f, "{s:?}"), // TODO: fetch name via blueprint
+            Selection::SpaceView(s) => write!(f, "{s:?}"),
         }
     }
 }

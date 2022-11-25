@@ -1,4 +1,4 @@
-use crate::{hash::Hash64, path::ObjTypePathComp, ObjPathComp};
+use crate::{hash::Hash64, path::ObjTypePathComp};
 
 /// The shared type path for all objects at a path with different indices
 ///
