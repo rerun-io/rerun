@@ -2,14 +2,14 @@ use std::sync::Arc;
 
 use ahash::HashMap;
 
-/// An 16-bit ID representing a type of semantic class.
+/// A 16-bit ID representing a type of semantic class.
 ///
 /// Used to look up a [`ClassDescription`] within the [`AnnotationContext`].
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ClassId(pub u16);
 
-/// An 16-bit ID representing a type of semantic keypoint within a class.
+/// A 16-bit ID representing a type of semantic keypoint within a class.
 ///
 /// `KeypointId`s are only meaningful within the context of a [`ClassDescription`].
 ///
