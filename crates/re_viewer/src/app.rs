@@ -712,6 +712,16 @@ fn top_bar_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &mut App) {
         );
     }
 
+    if let Some(count) = re_memory::accounting_allocator::global_allocs() {
+        ui.separator();
+        ui.weak(re_memory::util::format_bytes(count.size as _))
+            .on_hover_text(format!(
+                "Rerun Viewer is using {} of RAM in {} separate allocations.",
+                re_memory::util::format_bytes(count.size as _),
+                format_usize(count.count),
+            ));
+    }
+
     if let Some(rx) = &app.rx {
         let queue_len = rx.len();
         let latency_sec = rx.latency_ns() as f32 / 1e9;

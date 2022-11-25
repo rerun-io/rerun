@@ -107,9 +107,10 @@ static GLOBAL_STATS: GlobalStats = GlobalStats {
 /// Total number of live allocations,
 /// and the number of live bytes allocated as tracked by [`AccountingAllocator`].
 ///
-/// Returns (0,0) if [`AccountingAllocator`] is not used.
-pub fn global_allocs() -> CountAndSize {
-    GLOBAL_STATS.live.load()
+/// Returns `None` if [`AccountingAllocator`] is not used.
+pub fn global_allocs() -> Option<CountAndSize> {
+    let count_and_size = GLOBAL_STATS.live.load();
+    (count_and_size.count > 0).then_some(count_and_size)
 }
 
 /// Are we doing (rather expensive) tracking of the callstacks of large allocations?
