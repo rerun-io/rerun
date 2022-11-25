@@ -20,7 +20,7 @@ pub struct KeypointId(pub u16);
 
 /// Information about an Annotation.
 ///
-/// Can be looked up for a [`ClassId`], [`KeypointId`], or [`KeypointSkeletonEdge`]h
+/// Can be looked up for a [`ClassId`] or [`KeypointId`].
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct AnnotationInfo {
@@ -39,11 +39,11 @@ pub struct AnnotationInfo {
 /// [`KeypointId`] in which case we should defer to the label and color for the
 /// [`AnnotationInfo`] specifically associated with the Keypoint.
 ///
-/// Keypoints within the class can also be decorated with skeletal edges. The
-/// [`KeypointSkeletonEdge`] is simply a pair of [`KeypointId`]s. If an edge is
+/// Keypoints within the class can also be decorated with skeletal edges.
+/// Keypoint-connections are pairs of [`KeypointId`]s. If an edge is
 /// defined, and both keypoints exist within the instance of the class, then the
 /// keypoints shold be connected with an edge. The edge should be labeled and
-/// colored as described by the [`AnnotationInfo`].
+/// colored as described by the class's [`AnnotationInfo`].
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct ClassDescription {
