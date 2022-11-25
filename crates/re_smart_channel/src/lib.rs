@@ -8,14 +8,14 @@ use std::sync::{
 use crossbeam::channel::{RecvError, SendError, TryRecvError};
 use instant::Instant;
 
-pub fn smart_channel<T: Send>() -> (SmartSender<T>, SmartReceiver<T>) {
+pub fn smart_channel<T: Send>() -> (Sender<T>, Receiver<T>) {
     let (tx, rx) = crossbeam::channel::unbounded();
     let stats = Arc::new(SharedStats::default());
-    let sender = SmartSender {
+    let sender = Sender {
         tx,
         stats: stats.clone(),
     };
-    let receiver = SmartReceiver { rx, stats };
+    let receiver = Receiver { rx, stats };
     (sender, receiver)
 }
 
@@ -26,12 +26,12 @@ struct SharedStats {
 }
 
 #[derive(Clone)]
-pub struct SmartSender<T: Send> {
+pub struct Sender<T: Send> {
     tx: crossbeam::channel::Sender<(Instant, T)>,
     stats: Arc<SharedStats>,
 }
 
-impl<T: Send> SmartSender<T> {
+impl<T: Send> Sender<T> {
     pub fn send(&self, msg: T) -> Result<(), SendError<T>> {
         self.tx
             .send((Instant::now(), msg))
@@ -56,12 +56,12 @@ impl<T: Send> SmartSender<T> {
     }
 }
 
-pub struct SmartReceiver<T: Send> {
+pub struct Receiver<T: Send> {
     rx: crossbeam::channel::Receiver<(Instant, T)>,
     stats: Arc<SharedStats>,
 }
 
-impl<T: Send> SmartReceiver<T> {
+impl<T: Send> Receiver<T> {
     pub fn recv(&self) -> Result<T, RecvError> {
         let (sent, msg) = self.rx.recv()?;
         let latency_ns = sent.elapsed().as_nanos() as u64;

@@ -9,7 +9,7 @@
 use anyhow::Context;
 
 use re_log_types::LogMsg;
-use re_smart_channel::SmartReceiver;
+use re_smart_channel::Receiver;
 
 /// The Rerun Viewer and Server
 ///
@@ -158,7 +158,7 @@ async fn connect_to_ws_url(
     Ok(())
 }
 
-fn load_file_to_channel(path: &std::path::Path) -> anyhow::Result<SmartReceiver<LogMsg>> {
+fn load_file_to_channel(path: &std::path::Path) -> anyhow::Result<Receiver<LogMsg>> {
     use anyhow::Context as _;
     let file = std::fs::File::open(path).context("Failed to open file")?;
     let decoder = re_log_types::encoding::Decoder::new(file)?;
@@ -202,9 +202,9 @@ async fn host_web_viewer(_rerun_ws_server_url: String) -> anyhow::Result<()> {
 
 /// This wakes up the ui thread each time we receive a new message.
 fn wake_up_ui_thread_on_each_msg<T: Send + 'static>(
-    rx: SmartReceiver<T>,
+    rx: Receiver<T>,
     ctx: egui::Context,
-) -> re_smart_channel::SmartReceiver<T> {
+) -> re_smart_channel::Receiver<T> {
     let (tx, new_rx) = re_smart_channel::smart_channel();
     std::thread::Builder::new()
         .name("ui_waker".to_owned())

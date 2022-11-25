@@ -231,7 +231,7 @@ enum Sender {
     #[cfg(feature = "web")]
     WebViewer(
         tokio::task::JoinHandle<()>,
-        re_smart_channel::SmartSender<LogMsg>,
+        re_smart_channel::Sender<LogMsg>,
     ),
 }
 

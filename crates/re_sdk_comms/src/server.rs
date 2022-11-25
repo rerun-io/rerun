@@ -1,7 +1,7 @@
 //! TODO(emilk): use tokio instead
 
 use re_log_types::LogMsg;
-use re_smart_channel::{SmartReceiver, SmartSender};
+use re_smart_channel::{Receiver, Sender};
 
 /// Listen to multiple SDK:s connecting to us over TCP.
 ///
@@ -10,7 +10,7 @@ use re_smart_channel::{SmartReceiver, SmartSender};
 /// let log_msg_rx = serve("127.0.0.1:80")?;
 /// # Ok::<(), anyhow::Error>(())
 /// ```
-pub fn serve(addr: impl std::net::ToSocketAddrs) -> anyhow::Result<SmartReceiver<LogMsg>> {
+pub fn serve(addr: impl std::net::ToSocketAddrs) -> anyhow::Result<Receiver<LogMsg>> {
     let listener = std::net::TcpListener::bind(addr)?;
 
     let (tx, rx) = re_smart_channel::smart_channel();
@@ -35,7 +35,7 @@ pub fn serve(addr: impl std::net::ToSocketAddrs) -> anyhow::Result<SmartReceiver
     Ok(rx)
 }
 
-fn spawn_client(stream: std::net::TcpStream, tx: SmartSender<LogMsg>) {
+fn spawn_client(stream: std::net::TcpStream, tx: Sender<LogMsg>) {
     std::thread::Builder::new()
         .name(format!(
             "sdk-server-client-handler-{:?}",
@@ -51,7 +51,7 @@ fn spawn_client(stream: std::net::TcpStream, tx: SmartSender<LogMsg>) {
         .expect("Failed to spawn thread");
 }
 
-fn run_client(mut stream: std::net::TcpStream, tx: &SmartSender<LogMsg>) -> anyhow::Result<()> {
+fn run_client(mut stream: std::net::TcpStream, tx: &Sender<LogMsg>) -> anyhow::Result<()> {
     #![allow(clippy::read_zero_byte_vec)] // false positive: https://github.com/rust-lang/rust-clippy/issues/9274
 
     use std::io::Read as _;

@@ -9,7 +9,7 @@ use poll_promise::Promise;
 
 use re_data_store::log_db::LogDb;
 use re_log_types::*;
-use re_smart_channel::SmartReceiver;
+use re_smart_channel::Receiver;
 
 use crate::{
     design_tokens::DesignTokens,
@@ -28,7 +28,7 @@ const WATERMARK: bool = false; // Nice for recording media material
 pub struct App {
     design_tokens: DesignTokens,
 
-    rx: Option<SmartReceiver<LogMsg>>,
+    rx: Option<Receiver<LogMsg>>,
 
     /// Where the logs are stored.
     log_dbs: IntMap<RecordingId, LogDb>,
@@ -57,7 +57,7 @@ impl App {
         egui_ctx: &egui::Context,
         design_tokens: DesignTokens,
         storage: Option<&dyn eframe::Storage>,
-        rx: SmartReceiver<LogMsg>,
+        rx: Receiver<LogMsg>,
     ) -> Self {
         Self::new(
             egui_ctx,
@@ -94,7 +94,7 @@ impl App {
         _egui_ctx: &egui::Context,
         design_tokens: DesignTokens,
         storage: Option<&dyn eframe::Storage>,
-        rx: Option<SmartReceiver<LogMsg>>,
+        rx: Option<Receiver<LogMsg>>,
         log_db: LogDb,
     ) -> Self {
         #[cfg(not(target_arch = "wasm32"))]
