@@ -209,9 +209,8 @@ fn wake_up_ui_thread_on_each_msg<T: Send + 'static>(
     std::thread::Builder::new()
         .name("ui_waker".to_owned())
         .spawn(move || {
-            // TODO: keep the latency measure
-            while let Ok(msg) = rx.recv() {
-                if tx.send(msg).is_ok() {
+            while let Ok((sent_at, msg)) = rx.recv_with_send_time() {
+                if tx.send_at(sent_at, msg).is_ok() {
                     ctx.request_repaint();
                 } else {
                     break;

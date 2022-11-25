@@ -40,8 +40,13 @@ pub struct Sender<T: Send> {
 
 impl<T: Send> Sender<T> {
     pub fn send(&self, msg: T) -> Result<(), SendError<T>> {
+        self.send_at(Instant::now(), msg)
+    }
+
+    /// back-date a message
+    pub fn send_at(&self, time: Instant, msg: T) -> Result<(), SendError<T>> {
         self.tx
-            .send((Instant::now(), msg))
+            .send((time, msg))
             .map_err(|SendError((_, msg))| SendError(msg))
     }
 
@@ -71,10 +76,7 @@ pub struct Receiver<T: Send> {
 
 impl<T: Send> Receiver<T> {
     pub fn recv(&self) -> Result<T, RecvError> {
-        let (sent, msg) = self.rx.recv()?;
-        let latency_ns = sent.elapsed().as_nanos() as u64;
-        self.stats.latency_ns.store(latency_ns, Relaxed);
-        Ok(msg)
+        Ok(self.recv_with_send_time()?.1)
     }
 
     pub fn try_recv(&self) -> Result<T, TryRecvError> {
@@ -82,6 +84,13 @@ impl<T: Send> Receiver<T> {
         let latency_ns = sent.elapsed().as_nanos() as u64;
         self.stats.latency_ns.store(latency_ns, Relaxed);
         Ok(msg)
+    }
+
+    pub fn recv_with_send_time(&self) -> Result<(Instant, T), RecvError> {
+        let (sent, msg) = self.rx.recv()?;
+        let latency_ns = sent.elapsed().as_nanos() as u64;
+        self.stats.latency_ns.store(latency_ns, Relaxed);
+        Ok((sent, msg))
     }
 
     /// Where is the data coming from?
