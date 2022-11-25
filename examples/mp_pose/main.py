@@ -62,13 +62,13 @@ def log_skeleton(
 def read_landmark_positions_2d(
     results: Any,
     image_width: int,
-    image_hight: int,
+    image_height: int,
 ) -> Optional[npt.NDArray[np.float32]]:
     if results.pose_landmarks is None:
         return None
     else:
         normalized_landmarks = [results.pose_landmarks.landmark[l] for l in mp.solutions.pose.PoseLandmark]
-        return np.array([(image_width * l.x, image_hight * l.y) for l in normalized_landmarks])
+        return np.array([(image_width * l.x, image_height * l.y) for l in normalized_landmarks])
 
 
 def read_landmark_positions_3d(
