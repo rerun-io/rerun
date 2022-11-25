@@ -24,9 +24,13 @@ DATASET_URL_BASE: Final = "https://storage.googleapis.com/rerun-example-datasets
 def track_pose(video_path: str) -> None:
     mp_pose = mp.solutions.pose
 
-    pose_points_desc = [rr.ClassDescription(id=l.value, label=l.name) for l in mp_pose.PoseLandmark]
-    pose_points_ids = np.array([desc.id for desc in pose_points_desc])
-    rr.log_annotation_context("/", pose_points_desc)
+    rr.log_annotation_context(
+        "/",
+        rr.ClassDescription(
+            keypoint_annotations=[rr.AnnotationInfo(id=l.value, label=l.name) for l in mp_pose.PoseLandmark],
+            keypoint_connections=mp_pose.POSE_CONNECTIONS,
+        ),
+    )
     rr.log_view_coordinates("person", up="-Y", timeless=True)
 
     with closing(VideoSource(video_path)) as video_source:
@@ -41,22 +45,10 @@ def track_pose(video_path: str) -> None:
                 results = pose.process(rgb)
                 h, w, _ = rgb.shape
                 landmark_positions_2d = read_landmark_positions_2d(results, w, h)
-                rr.log_points("video/pose/points", landmark_positions_2d, class_ids=pose_points_ids)
-                log_skeleton("video/pose/skeleton", landmark_positions_2d, mp_pose.POSE_CONNECTIONS)
+                rr.log_points("video/pose/points", landmark_positions_2d, keypoint_ids=mp_pose.PoseLandmark)
 
                 landmark_positions_3d = read_landmark_positions_3d(results)
-                rr.log_points("person/pose/points", landmark_positions_3d, class_ids=pose_points_ids)
-                log_skeleton("person/pose/skeleton", landmark_positions_3d, mp_pose.POSE_CONNECTIONS)
-
-
-def log_skeleton(
-    path: str, landmark_positions: Optional[npt.NDArray[np.float32]], edges: List[Tuple[int, int]]
-) -> None:
-    if landmark_positions is None:
-        rr.log_cleared(path)
-    else:
-        skeleton_segments = np.array([landmark_positions[edge_idx, :] for edge in edges for edge_idx in edge])
-        rr.log_line_segments(path, skeleton_segments)
+                rr.log_points("person/pose/points", landmark_positions_3d, keypoint_ids=mp_pose.PoseLandmark)
 
 
 def read_landmark_positions_2d(
