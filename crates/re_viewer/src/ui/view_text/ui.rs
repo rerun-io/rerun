@@ -272,6 +272,8 @@ fn show_table(
     text_entries: &[TextEntry],
     scroll_to_row: Option<usize>,
 ) {
+    // dbg!(text_entries);
+
     const OBJ_PATH_HEADER: &str = "ObjPath";
     const LOG_LEVEL_HEADER: &str = "Level";
     const BODY_HEADER: &str = "Body";
@@ -285,6 +287,10 @@ fn show_table(
     // This is where the `Table` widget stores the current size of all columns (when
     // `resizable` == true): we'll need when auto-resizing things.
     state.resize_id = ui.id().with("__table_resize").into();
+    // dbg!(ui
+    //     .memory()
+    //     .data
+    //     .get_temp::<Vec<f32>>(state.resize_id.unwrap()));
 
     // Step 1: compute optimal sizes for all columns.
 
@@ -404,14 +410,6 @@ fn show_table(
         builder = builder.column(Size::remainder().at_least(body_size));
     }
     builder
-        .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-        .columns(
-            Size::initial(140.0).at_least(50.0), // timelines
-            timelines.len(),
-        ) // time(s)
-        .column(Size::initial(120.0).at_least(50.0)) // path
-        .column(Size::initial(50.0).at_least(50.0)) // level
-        .column(Size::remainder().at_least(200.0)) // body
         .header(HEADER_HEIGHT, |mut header| {
             for (timeline, _) in &timelines {
                 header.col(|ui| {
