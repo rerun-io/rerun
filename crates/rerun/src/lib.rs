@@ -47,6 +47,16 @@ struct Args {
     /// Start with the puffin profiler running.
     #[clap(long)]
     profile: bool,
+
+    /// Set a maximum input latency, e.g. "200ms" or "10s".
+    ///
+    /// If we go over this, we start dropping packets.
+    ///
+    /// The default is no limit, which means Rerun might eat more and more memory,
+    /// and have longer and longer latency, if you are logging data faster
+    /// than Rerun can index it.
+    #[clap(long)]
+    max_latency: Option<String>,
 }
 
 pub async fn run<I, T>(args: I) -> anyhow::Result<()>
@@ -83,7 +93,10 @@ async fn run_impl(args: Args) -> anyhow::Result<()> {
         #[cfg(feature = "server")]
         {
             let bind_addr = format!("127.0.0.1:{}", args.port);
-            let rx = re_sdk_comms::serve(&bind_addr)
+            let server_options = re_sdk_comms::ServerOptions {
+                max_latency_sec: parse_max_latency(args.max_latency.as_ref()),
+            };
+            let rx = re_sdk_comms::serve(&bind_addr, server_options)
                 .with_context(|| format!("Failed to bind address {bind_addr:?}"))?;
             re_log::info!("Hosting a SDK server over TCP at {bind_addr}");
             rx
@@ -220,4 +233,39 @@ fn wake_up_ui_thread_on_each_msg<T: Send + 'static>(
         })
         .unwrap();
     new_rx
+}
+
+fn parse_max_latency(max_latency: Option<&String>) -> f32 {
+    max_latency.as_ref().map_or(f32::INFINITY, |time| {
+        parse_duration(time)
+            .unwrap_or_else(|err| panic!("Failed to parse max_latency ({max_latency:?}): {err}"))
+    })
+}
+
+fn parse_duration(duration: &str) -> Result<f32, String> {
+    fn parse_num(s: &str) -> Result<f32, String> {
+        s.parse()
+            .map_err(|_ignored| format!("Expected a number, got {s:?}"))
+    }
+
+    if let Some(ms) = duration.strip_suffix("ms") {
+        Ok(parse_num(ms)? * 1e-3)
+    } else if let Some(s) = duration.strip_suffix('s') {
+        Ok(parse_num(s)?)
+    } else if let Some(s) = duration.strip_suffix('m') {
+        Ok(parse_num(s)? * 60.0)
+    } else if let Some(s) = duration.strip_suffix('h') {
+        Ok(parse_num(s)? * 60.0 * 60.0)
+    } else {
+        Err(format!(
+            "Expected a suffix of 'ms', 's', 'm' or 'h' in string {duration:?}"
+        ))
+    }
+}
+
+#[test]
+fn test_parse_duration() {
+    assert_eq!(parse_duration("3.2s"), Ok(3.2));
+    assert_eq!(parse_duration("250ms"), Ok(0.250));
+    assert_eq!(parse_duration("3m"), Ok(3.0 * 60.0));
 }

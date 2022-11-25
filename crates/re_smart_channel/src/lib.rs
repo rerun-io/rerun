@@ -66,6 +66,12 @@ impl<T: Send> Sender<T> {
     pub fn latency_ns(&self) -> u64 {
         self.stats.latency_ns.load(Relaxed)
     }
+
+    /// Latest known latency from sending a message to receiving it,
+    /// in seconds
+    pub fn latency_sec(&self) -> f32 {
+        self.latency_ns() as f32 / 1e9
+    }
 }
 
 pub struct Receiver<T: Send> {
@@ -114,6 +120,12 @@ impl<T: Send> Receiver<T> {
     /// Latest known latency from sending a message to receiving it, it nanoseconds.
     pub fn latency_ns(&self) -> u64 {
         self.stats.latency_ns.load(Relaxed)
+    }
+
+    /// Latest known latency from sending a message to receiving it,
+    /// in seconds
+    pub fn latency_sec(&self) -> f32 {
+        self.latency_ns() as f32 / 1e9
     }
 }
 
