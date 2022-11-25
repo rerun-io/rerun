@@ -26,7 +26,8 @@ def track_pose(video_path: str) -> None:
 
     pose_points_desc = [rr.ClassDescription(id=l.value, label=l.name) for l in mp_pose.PoseLandmark]
     pose_points_ids = np.array([desc.id for desc in pose_points_desc])
-    rr.log_annotation_context("video/pose", pose_points_desc)
+    rr.log_annotation_context("/", pose_points_desc)
+    rr.log_view_coordinates("person", up="-Y", timeless=True)
 
     with closing(VideoSource(video_path)) as video_source:
         with mp_pose.Pose() as pose:
@@ -44,8 +45,8 @@ def track_pose(video_path: str) -> None:
                 log_skeleton("video/pose/skeleton", landmark_positions_2d, mp_pose.POSE_CONNECTIONS)
 
                 landmark_positions_3d = read_landmark_positions_3d(results)
-                rr.log_points("world/pose/points", landmark_positions_3d, class_ids=pose_points_ids)
-                log_skeleton("world/pose/skeleton", landmark_positions_3d, mp_pose.POSE_CONNECTIONS)
+                rr.log_points("person/pose/points", landmark_positions_3d, class_ids=pose_points_ids)
+                log_skeleton("person/pose/skeleton", landmark_positions_3d, mp_pose.POSE_CONNECTIONS)
 
 
 def log_skeleton(
