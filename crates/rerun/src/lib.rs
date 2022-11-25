@@ -7,7 +7,7 @@
 //!
 
 use anyhow::Context;
-use std::sync::mpsc::Receiver;
+use crossbeam::channel::Receiver;
 
 use re_log_types::LogMsg;
 
@@ -163,7 +163,7 @@ fn load_file_to_channel(path: &std::path::Path) -> anyhow::Result<Receiver<LogMs
     let file = std::fs::File::open(path).context("Failed to open file")?;
     let decoder = re_log_types::encoding::Decoder::new(file)?;
 
-    let (tx, rx) = std::sync::mpsc::channel();
+    let (tx, rx) = crossbeam::channel::unbounded();
 
     std::thread::Builder::new()
         .name("rrd_file_reader".into())

@@ -86,7 +86,7 @@ impl Sdk {
 
     #[cfg(feature = "web")]
     pub fn serve(&mut self) {
-        let (rerun_tx, rerun_rx) = std::sync::mpsc::channel();
+        let (rerun_tx, rerun_rx) = crossbeam::channel::unbounded();
 
         let web_server_join_handle = self.tokio_rt.spawn(async {
             // This is the server which the web viewer will talk to:
@@ -229,7 +229,10 @@ enum Sender {
 
     /// Send it to the web viewer over WebSockets
     #[cfg(feature = "web")]
-    WebViewer(tokio::task::JoinHandle<()>, std::sync::mpsc::Sender<LogMsg>),
+    WebViewer(
+        tokio::task::JoinHandle<()>,
+        crossbeam::channel::Sender<LogMsg>,
+    ),
 }
 
 impl Default for Sender {

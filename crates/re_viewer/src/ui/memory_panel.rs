@@ -218,7 +218,7 @@ fn summarize_callstack(callstack: &str) -> String {
         ("image::image", "image"),
         // -----
         // Very general:
-        ("std::sync::mpsc::Sender", "std::sync::mpsc::Sender"),
+        ("crossbeam::channel::Sender", "crossbeam::channel::Sender"),
         ("epaint::texture_atlas", "egui font texture"),
         (
             "alloc::collections::btree::map::BTreeSet<K,V,A>",

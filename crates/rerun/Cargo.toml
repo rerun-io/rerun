@@ -32,6 +32,7 @@ re_viewer = { path = "../re_viewer", features = [
 re_ws_comms = { path = "../re_ws_comms", features = ["client"] }
 
 anyhow = "1.0"
+crossbeam = "0.8"
 document-features = "0.2"
 egui = { version = "0.19", default-features = false }
 puffin = "0.14"

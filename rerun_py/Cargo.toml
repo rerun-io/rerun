@@ -42,6 +42,7 @@ re_viewer = { path = "../crates/re_viewer", optional = true }
 rerun = { path = "../crates/rerun" }
 
 bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }
+crossbeam = "0.8"
 document-features = "0.2"
 glam = "0.20"
 image = { version = "0.24", default-features = false, features = [

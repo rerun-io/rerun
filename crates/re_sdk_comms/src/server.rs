@@ -1,6 +1,6 @@
 //! TODO(emilk): use tokio instead
 
-use std::sync::mpsc::{Receiver, Sender};
+use crossbeam::channel::{Receiver, Sender};
 
 use re_log_types::LogMsg;
 
@@ -14,7 +14,7 @@ use re_log_types::LogMsg;
 pub fn serve(addr: impl std::net::ToSocketAddrs) -> anyhow::Result<Receiver<LogMsg>> {
     let listener = std::net::TcpListener::bind(addr)?;
 
-    let (tx, rx) = std::sync::mpsc::channel();
+    let (tx, rx) = crossbeam::channel::unbounded();
 
     std::thread::Builder::new()
         .name("sdk-server".into())
