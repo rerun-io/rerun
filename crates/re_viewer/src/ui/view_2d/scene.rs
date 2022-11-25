@@ -312,6 +312,10 @@ impl Scene2D {
 
                     for (a, b) in &class_description.keypoint_connections {
                         let (Some(a), Some(b)) = (keypoints_in_class.get(a), keypoints_in_class.get(b)) else {
+                            re_log::warn_once!(
+                                "Keypoint connection from index {:?} to {:?} could not be resolved in object {:?}",
+                                a, b, obj_path
+                            );
                             continue;
                         };
                         self.line_segments.push(LineSegments2D {
