@@ -718,15 +718,13 @@ fn top_bar_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &mut App) {
         if queue_len > 0 && latency_sec > 2.0 {
             // TODO(emilk): we should have some unified place to show warnings.
             ui.separator();
-            ui.colored_label(
-                ui.visuals().warn_fg_color,
-                format!(
-                    "Input latency: {:.1}s, {} messages in queue",
-                    latency_sec,
-                    format_usize(queue_len),
-                ),
-            )
-            .on_hover_text("This latency comes from the viewer not being able to ingest messages at the same high rate as they are being read from network or disk.");
+            let warning_text = format!(
+                "Input latency: {:.1}s, {} messages in queue",
+                latency_sec,
+                format_usize(queue_len),
+            );
+            ui.label(app.design_tokens.warning_text(warning_text, ui.style()))
+                .on_hover_text("This latency comes from the viewer not being able to ingest messages at the same high rate as they are being read from network or disk.");
         }
     }
 
