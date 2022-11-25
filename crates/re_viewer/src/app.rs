@@ -659,14 +659,17 @@ fn top_panel(egui_ctx: &egui::Context, frame: &mut eframe::Frame, app: &mut App)
         egui_ctx.style().spacing.interact_size.y
     };
 
-    let rec_cfg = app
-        .state
-        .recording_configs
-        .entry(app.state.selected_rec_id)
-        .or_default();
-    app.state
-        .selection_panel
-        .update_selection(&rec_cfg.selection);
+    // Update the selection history with the current selection.
+    {
+        let rec_cfg = app
+            .state
+            .recording_configs
+            .entry(app.state.selected_rec_id)
+            .or_default();
+        app.state
+            .selection_panel
+            .update_selection(&rec_cfg.selection);
+    }
 
     egui::TopBottomPanel::top("top_bar")
         .frame(panel_frame)
@@ -713,8 +716,6 @@ fn top_panel(egui_ctx: &egui::Context, frame: &mut eframe::Frame, app: &mut App)
                         "Event Log",
                     );
                 }
-
-                ui.separator();
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if !WATERMARK {
