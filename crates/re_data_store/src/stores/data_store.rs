@@ -165,8 +165,8 @@ impl DataStore {
             obj_path_from_hash: _,
             index_from_hash: _,
         } = self;
-        for (timeline, (_, timeline_store)) in store_from_timeline {
-            profile_scope!("purge_timeline", timeline.name().as_str());
+        for (_timeline, (_, timeline_store)) in store_from_timeline {
+            profile_scope!("purge_timeline", _timeline.name().as_str());
             timeline_store.purge_everything_but(keep_msg_ids);
         }
     }
