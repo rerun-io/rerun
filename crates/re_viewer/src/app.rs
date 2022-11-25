@@ -379,8 +379,8 @@ impl App {
         let limit = re_memory::MemoryLimit::from_env_var(crate::env_vars::RERUN_MEMORY_LIMIT);
         let mem_use_before = MemoryUse::capture();
 
-        if let Some(minimum_fraction_to_free) = limit.is_exceeded_by(&mem_use_before) {
-            let fraction_to_free = (minimum_fraction_to_free + 0.2).clamp(0.25, 1.0);
+        if let Some(minimum_fraction_to_purge) = limit.is_exceeded_by(&mem_use_before) {
+            let fraction_to_purge = (minimum_fraction_to_purge + 0.2).clamp(0.25, 1.0);
 
             re_log::debug!("RAM limit: {}", format_limit(limit.limit));
             if let Some(resident) = mem_use_before.resident {
@@ -392,12 +392,15 @@ impl App {
 
             {
                 crate::profile_scope!("pruning");
-                re_log::info!(
-                    "Attempting to purge {:.1}% of used RAM…",
-                    100.0 * fraction_to_free
-                );
+                if let Some(counted) = mem_use_before.counted {
+                    re_log::info!(
+                        "Attempting to purge {:.1}% of used RAM ({})…",
+                        100.0 * fraction_to_purge,
+                        format_bytes(counted as f64 * fraction_to_purge as f64)
+                    );
+                }
                 for log_db in self.log_dbs.values_mut() {
-                    log_db.purge_memory(fraction_to_free);
+                    log_db.purge_fraction_of_ram(fraction_to_purge);
                 }
                 self.state.cache.purge_memory();
             }
@@ -406,8 +409,14 @@ impl App {
 
             let freed_memory = mem_use_before - mem_use_after;
 
-            if let Some(counted_diff) = freed_memory.counted {
-                re_log::info!("Freed up {}", format_bytes(counted_diff as _));
+            if let (Some(counted_before), Some(counted_diff)) =
+                (mem_use_before.counted, freed_memory.counted)
+            {
+                re_log::info!(
+                    "Freed up {} ({:.1}%)",
+                    format_bytes(counted_diff as _),
+                    100.0 * counted_diff as f32 / counted_before as f32
+                );
             }
 
             self.latest_memory_purge = instant::Instant::now();
