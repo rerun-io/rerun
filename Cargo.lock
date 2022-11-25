@@ -3253,6 +3253,7 @@ dependencies = [
  "document-features",
  "re_log",
  "re_log_types",
+ "re_smart_channel",
 ]
 
 [[package]]
@@ -3260,6 +3261,7 @@ name = "re_sdk_python"
 version = "0.1.0"
 dependencies = [
  "bytemuck",
+ "crossbeam",
  "document-features",
  "glam",
  "image",
@@ -3277,6 +3279,7 @@ dependencies = [
  "re_log_types",
  "re_memory",
  "re_sdk_comms",
+ "re_smart_channel",
  "re_tensor_ops",
  "re_viewer",
  "re_web_server",
@@ -3286,6 +3289,14 @@ dependencies = [
  "tracing-subscriber",
  "uuid",
  "webbrowser",
+]
+
+[[package]]
+name = "re_smart_channel"
+version = "0.1.0"
+dependencies = [
+ "crossbeam",
+ "instant",
 ]
 
 [[package]]
@@ -3359,6 +3370,7 @@ dependencies = [
  "re_log_types",
  "re_memory",
  "re_renderer",
+ "re_smart_channel",
  "re_string_interner",
  "re_tensor_ops",
  "re_ws_comms",
@@ -3397,6 +3409,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bincode",
+ "crossbeam",
  "document-features",
  "ewebsock",
  "futures-channel",
@@ -3405,6 +3418,7 @@ dependencies = [
  "re_error",
  "re_log",
  "re_log_types",
+ "re_smart_channel",
  "tokio",
  "tokio-tungstenite",
  "tungstenite",
@@ -3475,7 +3489,9 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap 4.0.26",
+ "crossbeam",
  "document-features",
+ "egui",
  "mimalloc",
  "puffin",
  "puffin_http",
@@ -3484,6 +3500,7 @@ dependencies = [
  "re_log_types",
  "re_memory",
  "re_sdk_comms",
+ "re_smart_channel",
  "re_viewer",
  "re_web_server",
  "re_ws_comms",

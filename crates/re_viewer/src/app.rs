@@ -1,4 +1,4 @@
-use std::{any::Any, sync::mpsc::Receiver};
+use std::any::Any;
 
 use ahash::HashMap;
 use egui_extras::RetainedImage;
@@ -9,11 +9,12 @@ use poll_promise::Promise;
 
 use re_data_store::log_db::LogDb;
 use re_log_types::*;
+use re_smart_channel::Receiver;
 
 use crate::{
     design_tokens::DesignTokens,
     misc::{Caches, Options, RecordingConfig, ViewerContext},
-    ui::kb_shortcuts,
+    ui::{format_usize, kb_shortcuts},
 };
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -48,6 +49,8 @@ pub struct App {
     latest_memory_purge: instant::Instant,
     memory_panel: crate::memory_panel::MemoryPanel,
     memory_panel_open: bool,
+
+    latest_queue_interest: instant::Instant,
 }
 
 impl App {
@@ -136,6 +139,8 @@ impl App {
             latest_memory_purge: instant::Instant::now(), // TODO(emilk): `Instant::MIN` when we have our own `Instant` that supports it.
             memory_panel: Default::default(),
             memory_panel_open: false,
+
+            latest_queue_interest: instant::Instant::now(), // TODO(emilk): `Instant::MIN` when we have our own `Instant` that supports it.
         }
     }
 
@@ -671,61 +676,115 @@ fn top_panel(egui_ctx: &egui::Context, frame: &mut eframe::Frame, app: &mut App)
                     ui.add_space(gui_zoom * native_buttons_size_in_native_scale.x);
                 }
 
-                #[cfg(not(target_arch = "wasm32"))]
-                ui.menu_button("File", |ui| {
-                    file_menu(ui, app, frame);
-                });
-
-                ui.menu_button("View", |ui| {
-                    view_menu(ui, app, frame);
-                });
-
-                ui.menu_button("Recordings", |ui| {
-                    recordings_menu(ui, app);
-                });
-
-                #[cfg(debug_assertions)]
-                ui.menu_button("Debug", |ui| {
-                    debug_menu(ui);
-                });
-
-                ui.separator();
-
-                if !app.log_db().is_empty() {
-                    ui.selectable_value(
-                        &mut app.state.panel_selection,
-                        PanelSelection::Viewport,
-                        "Viewport",
-                    );
-
-                    ui.selectable_value(
-                        &mut app.state.panel_selection,
-                        PanelSelection::EventLog,
-                        "Event Log",
-                    );
-                }
-
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if !WATERMARK {
-                        let logo = app.state.static_image_cache.rerun_logo(ui.visuals());
-                        let response = ui
-                            .add(egui::ImageButton::new(
-                                logo.texture_id(egui_ctx),
-                                logo.size_vec2() * 16.0 / logo.size_vec2().y,
-                            ))
-                            .on_hover_text("https://rerun.io");
-                        if response.clicked() {
-                            ui.output().open_url =
-                                Some(egui::output::OpenUrl::new_tab("https://rerun.io"));
-                        }
-                    }
-                    egui::warn_if_debug_build(ui);
-                });
+                top_bar_ui(ui, frame, app);
             });
         });
 }
 
-// ---
+fn top_bar_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &mut App) {
+    #[cfg(not(target_arch = "wasm32"))]
+    ui.menu_button("File", |ui| {
+        file_menu(ui, app, frame);
+    });
+
+    ui.menu_button("View", |ui| {
+        view_menu(ui, app, frame);
+    });
+
+    ui.menu_button("Recordings", |ui| {
+        recordings_menu(ui, app);
+    });
+
+    #[cfg(debug_assertions)]
+    ui.menu_button("Debug", |ui| {
+        debug_menu(ui);
+    });
+
+    if !app.log_db().is_empty() {
+        ui.separator();
+        ui.selectable_value(
+            &mut app.state.panel_selection,
+            PanelSelection::Viewport,
+            "Viewport",
+        );
+
+        ui.selectable_value(
+            &mut app.state.panel_selection,
+            PanelSelection::EventLog,
+            "Event Log",
+        );
+    }
+
+    if let Some(count) = re_memory::accounting_allocator::global_allocs() {
+        ui.separator();
+        ui.weak(re_memory::util::format_bytes(count.size as _))
+            .on_hover_text(format!(
+                "Rerun Viewer is using {} of RAM in {} separate allocations.",
+                re_memory::util::format_bytes(count.size as _),
+                format_usize(count.count),
+            ));
+    }
+
+    if let Some(rx) = &app.rx {
+        let is_latency_interesting = match rx.source() {
+            re_smart_channel::Source::Network => true, // presumable live
+            re_smart_channel::Source::File => false,   // pre-recorded. latency doesn't matter
+        };
+
+        let queue_len = rx.len();
+
+        // empty queue == unreliable latency
+        let latency_sec = rx.latency_ns() as f32 / 1e9;
+        if queue_len > 0
+            && (!is_latency_interesting || app.state.options.warn_latency < latency_sec)
+        {
+            // we use this to avoid flicker
+            app.latest_queue_interest = instant::Instant::now();
+        }
+
+        if app.latest_queue_interest.elapsed().as_secs_f32() < 1.0 {
+            ui.separator();
+            if is_latency_interesting {
+                let text = format!(
+                    "Latency: {:.2}s, queue: {}",
+                    latency_sec,
+                    format_usize(queue_len),
+                );
+                let hover_text =
+                    "When more data is arriving over network than the Rerun Viewer can index, a queue starts building up, leading to latency and increased RAM use.\n\
+                    This latency does NOT include network latency.";
+
+                if latency_sec < app.state.options.warn_latency {
+                    ui.weak(text).on_hover_text(hover_text);
+                } else {
+                    ui.label(app.design_tokens.warning_text(text, ui.style()))
+                        .on_hover_text(hover_text);
+                }
+            } else {
+                ui.weak(format!("Queue: {}", format_usize(queue_len)))
+                    .on_hover_text("Number of messages in the inbound queue");
+            }
+        }
+    }
+
+    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+        if !WATERMARK {
+            let logo = app.state.static_image_cache.rerun_logo(ui.visuals());
+            let response = ui
+                .add(egui::ImageButton::new(
+                    logo.texture_id(ui.ctx()),
+                    logo.size_vec2() * 16.0 / logo.size_vec2().y,
+                ))
+                .on_hover_text("https://rerun.io");
+            if response.clicked() {
+                ui.output().open_url = Some(egui::output::OpenUrl::new_tab("https://rerun.io"));
+            }
+        }
+        egui::warn_if_debug_build(ui);
+    });
+}
+
+// ---n
 
 const FILE_SAVER_PROMISE: &str = "file_saver";
 const FILE_SAVER_NOTIF_DURATION: Option<std::time::Duration> =
