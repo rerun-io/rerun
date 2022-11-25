@@ -1107,7 +1107,7 @@ class ClassDescription:
     Keypoints in turn may be connected to each other by connections (typically used for skeleton edges).
     """
 
-    info: AnnotationInfoLike = None
+    info: Optional[AnnotationInfoLike] = None
     keypoint_annotations: Optional[Iterable[AnnotationInfoLike]] = None
     keypoint_connections: Optional[Iterable[Union[int, Tuple[int, int]]]] = None
 
@@ -1115,23 +1115,11 @@ class ClassDescription:
 ClassDescriptionLike = Union[AnnotationInfoLike, ClassDescription]
 
 
-def normalize_class_description_like(arg: ClassDescriptionLike) -> ClassDescription:
+def coerce_class_descriptor_like(arg: ClassDescriptionLike) -> ClassDescription:
     if type(arg) is ClassDescription:
-        if arg.info is not None:
-            arg.info = coerce_annotation_info(arg.info)
-
-        if arg.keypoint_connections is not None:
-            arg.keypoint_connections = list(arg.keypoint_connections)
-            # flatten keypoint connections
-            if type(arg.keypoint_connections[0]) is tuple:
-                arg.keypoint_connections = [item for tuple in arg.keypoint_connections for item in tuple]
-
-        if arg.keypoint_annotations is not None:
-            arg.keypoint_annotations = [coerce_annotation_info(annotation) for annotation in arg.keypoint_annotations]
-
         return arg
     else:
-        return ClassDescription(info=coerce_annotation_info(arg))  # type: ignore[misc]
+        return ClassDescription(info=arg)  # type: ignore[arg-type]
 
 
 def log_annotation_context(
@@ -1169,21 +1157,33 @@ def log_annotation_context(
         class_descriptions = [class_descriptions]
 
     # Coerce tuples into ClassDescription dataclass for convenience
-    typed_class_descriptions = (normalize_class_description_like(d) for d in class_descriptions)
+    typed_class_descriptions = (coerce_class_descriptor_like(d) for d in class_descriptions)
 
     # Convert back to fixed tuple for easy pyo3 conversion
     # This is pretty messy but will likely go away / be refactored with pending data-model changes.
-    def info_to_tuple(info: AnnotationInfo) -> Tuple[int, str, Sequence[int]]:
+    def info_to_tuple(info: Optional[AnnotationInfoLike]) -> Tuple[int, Optional[str], Optional[Sequence[int]]]:
         if info is None:
             return (0, None, None)
+        info = coerce_annotation_info(info)
         color = None if info.color is None else _normalize_colors(info.color).tolist()
         return (info.id, info.label, color)
+
+    def keypoint_connections_to_flat_list(
+        keypoint_connections: Optional[Iterable[Union[int, Tuple[int, int]]]]
+    ) -> Sequence[int]:
+        if keypoint_connections is None:
+            return []
+        # flatten keypoint connections
+        connections = list(keypoint_connections)
+        if type(connections[0]) is tuple:
+            connections = [item for tuple in connections for item in tuple]  # type: ignore[union-attr]
+        return connections  # type: ignore[return-value]
 
     tuple_class_descriptions = [
         (
             info_to_tuple(d.info),
             tuple(info_to_tuple(a) for a in d.keypoint_annotations or []),
-            d.keypoint_connections or [],
+            keypoint_connections_to_flat_list(d.keypoint_connections),
         )
         for d in typed_class_descriptions
     ]
