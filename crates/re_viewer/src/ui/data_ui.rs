@@ -2,6 +2,7 @@ use egui::{color_picker, Vec2};
 
 use egui_extras::{Size, TableBuilder};
 use re_data_store::InstanceId;
+use re_log_types::context::AnnotationInfo;
 pub use re_log_types::*;
 
 use crate::misc::ViewerContext;
@@ -110,7 +111,11 @@ pub(crate) fn view_instance_generic(
         if let Some((data_path, annotations)) =
             AnnotationMap::find_associated(ctx, instance_id.obj_path.clone())
         {
-            ctx.data_path_button_to(ui, "Associated Annotation Context", &data_path);
+            ctx.data_path_button_to(
+                ui,
+                format!("Annotation Context at {}", data_path.obj_path),
+                &data_path,
+            );
             egui::Grid::new("class_description")
                 .striped(true)
                 .num_columns(2)
@@ -501,51 +506,103 @@ fn ui_view_coordinates(ui: &mut egui::Ui, system: &ViewCoordinates) -> egui::Res
     ui.label(system.describe())
 }
 
+const ROW_HEIGHT: f32 = 18.0;
+
+fn ui_annotation_info_table<'a>(
+    ui: &mut egui::Ui,
+    annotation_infos: impl Iterator<Item = &'a AnnotationInfo>,
+) {
+    let table = TableBuilder::new(ui)
+        .striped(true)
+        .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
+        .column(Size::initial(40.0).at_least(40.0))
+        .column(Size::initial(80.0).at_least(40.0))
+        .column(Size::remainder().at_least(60.0));
+
+    table
+        .header(20.0, |mut header| {
+            header.col(|ui| {
+                ui.heading("Id");
+            });
+            header.col(|ui| {
+                ui.heading("Label");
+            });
+            header.col(|ui| {
+                ui.heading("Color");
+            });
+        })
+        .body(|mut body| {
+            for info in annotation_infos {
+                body.row(ROW_HEIGHT, |mut row| {
+                    row.col(|ui| {
+                        ui.label(info.id.to_string());
+                    });
+                    row.col(|ui| {
+                        let label = if let Some(label) = &info.label {
+                            label.as_str()
+                        } else {
+                            ""
+                        };
+                        ui.label(label);
+                    });
+                    row.col(|ui| {
+                        // TODO(andreas): Make it obvious somehow when we fall back to a default color.
+                        let color = info.color.unwrap_or_else(|| auto_color(info.id));
+                        let color = egui::Color32::from_rgb(color[0], color[1], color[2]);
+
+                        color_picker::show_color(ui, color, Vec2::splat(64.0));
+                    });
+                });
+            }
+        });
+}
+
 fn ui_annotation_context(ui: &mut egui::Ui, context: &AnnotationContext) -> egui::Response {
     ui.vertical(|ui| {
-        let table = TableBuilder::new(ui)
-            .striped(true)
-            .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-            .column(Size::initial(60.0).at_least(40.0))
-            .column(Size::initial(60.0).at_least(40.0))
-            .column(Size::remainder().at_least(60.0));
+        ui_annotation_info_table(ui, context.class_map.iter().map(|(_, class)| &class.info));
 
-        table
-            .header(20.0, |mut header| {
-                header.col(|ui| {
-                    ui.heading("Id");
-                });
-                header.col(|ui| {
-                    ui.heading("Label");
-                });
-                header.col(|ui| {
-                    ui.heading("Color");
-                });
-            })
-            .body(|mut body| {
-                const ROW_HEIGHT: f32 = 18.0;
-                for (id, description) in &context.class_map {
-                    body.row(ROW_HEIGHT, |mut row| {
-                        row.col(|ui| {
-                            ui.label(id.0.to_string());
-                        });
-                        row.col(|ui| {
-                            let label = if let Some(label) = &description.info.label {
-                                label.as_str()
-                            } else {
-                                ""
-                            };
-                            ui.label(label);
-                        });
-                        row.col(|ui| {
-                            let color = description.info.color.unwrap_or_else(|| auto_color(id.0));
-                            let color = egui::Color32::from_rgb(color[0], color[1], color[2]);
+        for (id, class) in &context.class_map {
+            if class.keypoint_connections.is_empty() && class.keypoint_map.is_empty() {
+                continue;
+            }
 
-                            color_picker::show_color(ui, color, Vec2::splat(64.0));
+            ui.heading(format!("Keypoints for Class {}", id.0));
+            if !class.keypoint_connections.is_empty() {
+                ui.push_id(format!("keypoint_annotations_{}", id.0), |ui| {
+                    ui_annotation_info_table(ui, class.keypoint_map.values());
+                });
+            }
+            if !class.keypoint_connections.is_empty() {
+                ui.push_id(format!("keypoints_connections_{}", id.0), |ui| {
+                    let table = TableBuilder::new(ui)
+                        .striped(true)
+                        .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
+                        .column(Size::initial(50.0).at_least(50.0))
+                        .column(Size::remainder().at_least(50.0));
+                    table
+                        .header(20.0, |mut header| {
+                            header.col(|ui| {
+                                ui.heading("From");
+                            });
+                            header.col(|ui| {
+                                ui.heading("To");
+                            });
+                        })
+                        .body(|mut body| {
+                            for (from, to) in &class.keypoint_connections {
+                                body.row(ROW_HEIGHT, |mut row| {
+                                    row.col(|ui| {
+                                        ui.label(from.0.to_string());
+                                    });
+                                    row.col(|ui| {
+                                        ui.label(to.0.to_string());
+                                    });
+                                });
+                            }
                         });
-                    });
-                }
-            });
+                });
+            }
+        }
     })
     .response
 }
