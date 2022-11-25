@@ -2,6 +2,8 @@
 
 A rough time-line of major user-facing things added, removed and changed. Newest on top.
 
+* 2022-11-23: Associated annotation context & class description now reachable from any object with class_id: [#331](https://github.com/rerun-io/rerun/pull/331).
+* 2022-11-23: Fix 3D line segments being connected: [#330](https://github.com/rerun-io/rerun/pull/330).
 * 2022-11-22: Text logs view now support all kinds of filters: [#328](https://github.com/rerun-io/rerun/pull/328).
 * 2022-11-22: Support for labels and class ids on rects and obb: [#326](https://github.com/rerun-io/rerun/pull/326).
 * 2022-11-21: Support for labels and class ids on points: [#321](https://github.com/rerun-io/rerun/pull/321).

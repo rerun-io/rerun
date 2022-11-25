@@ -8,7 +8,7 @@ use crate::misc::ViewerContext;
 use crate::ui::annotations::auto_color;
 use crate::ui::view_2d::view_class_description_map;
 
-use super::Preview;
+use super::{annotations::AnnotationMap, Preview};
 
 pub(crate) fn view_object(
     ctx: &mut ViewerContext<'_>,
@@ -50,13 +50,13 @@ pub(crate) fn view_instance_generic(
     instance_id: &InstanceId,
     preview: Preview,
 ) -> Option<()> {
-    let store = ctx
-        .log_db
-        .obj_db
-        .store
-        .get(ctx.rec_cfg.time_ctrl.timeline())?;
+    let timeline = ctx.rec_cfg.time_ctrl.timeline();
+    let store = ctx.log_db.obj_db.store.get(timeline)?;
     let time_query = ctx.rec_cfg.time_ctrl.time_query()?;
     let obj_store = store.get(&instance_id.obj_path)?;
+
+    let mut class_id = None;
+
     egui::Grid::new("object_instance")
         .striped(true)
         .num_columns(2)
@@ -74,6 +74,11 @@ pub(crate) fn view_instance_generic(
                     Ok((_, data_vec)) => {
                         if data_vec.len() == 1 {
                             let data = data_vec.last().unwrap();
+                            if field_name.as_str() == "class_id" {
+                                if let Data::I32(id) = data {
+                                    class_id = Some(context::ClassId(id as _));
+                                }
+                            }
                             crate::data_ui::ui_data(ctx, ui, &data, preview);
                         } else {
                             ui_data_vec(ui, &data_vec);
@@ -91,6 +96,46 @@ pub(crate) fn view_instance_generic(
                 ui.end_row();
             }
         });
+
+    // If we have a class id, show some information about the resolved style!
+    if let Some(class_id) = class_id {
+        ui.separator();
+
+        if let Some((data_path, annotations)) =
+            AnnotationMap::find_associated(ctx, instance_id.obj_path.clone())
+        {
+            ctx.data_path_button_to(ui, "Associated Annotation Context", &data_path);
+            egui::Grid::new("class_description")
+                .striped(true)
+                .num_columns(2)
+                .show(ui, |ui| {
+                    if let Some(class_description) = annotations.context.class_map.get(&class_id) {
+                        if let Some(label) = &class_description.info.label {
+                            ui.label("label");
+                            ui.label(label.as_ref());
+                            ui.end_row();
+                        }
+                        if let Some(color) = &class_description.info.color {
+                            ui.label("color");
+                            ui_color_field(ui, color);
+                            ui.end_row();
+                        }
+                    } else {
+                        ui.label(
+                            ctx.design_tokens.warning_text(
+                                format!("unknown class_id {}", class_id.0),
+                                ui.style(),
+                            ),
+                        );
+                    }
+                });
+        } else {
+            ui.label(ctx.design_tokens.warning_text(
+                "class_id specified, but no annotation context found",
+                ui.style(),
+            ));
+        }
+    }
 
     Some(())
 }
@@ -339,16 +384,7 @@ pub(crate) fn ui_data(
         Data::I32(value) => ui.label(value.to_string()),
         Data::F32(value) => ui.label(value.to_string()),
         Data::F64(value) => ui.label(value.to_string()),
-        Data::Color([r, g, b, a]) => {
-            let color = egui::Color32::from_rgba_unmultiplied(*r, *g, *b, *a);
-            let response = egui::color_picker::show_color(ui, color, Vec2::new(32.0, 16.0));
-            ui.painter().rect_stroke(
-                response.rect,
-                1.0,
-                ui.visuals().widgets.noninteractive.fg_stroke,
-            );
-            response.on_hover_text(format!("Color #{:02x}{:02x}{:02x}{:02x}", r, g, b, a))
-        }
+        Data::Color(value) => ui_color_field(ui, value),
         Data::String(string) => ui.label(format!("{string:?}")),
 
         Data::Vec2([x, y]) => ui.label(format!("[{x:.1}, {y:.1}]")),
@@ -406,6 +442,18 @@ pub(crate) fn ui_data(
 
         Data::DataVec(data_vec) => ui_data_vec(ui, data_vec),
     }
+}
+
+fn ui_color_field(ui: &mut egui::Ui, value: &[u8; 4]) -> egui::Response {
+    let [r, g, b, a] = value;
+    let color = egui::Color32::from_rgba_unmultiplied(*r, *g, *b, *a);
+    let response = egui::color_picker::show_color(ui, color, Vec2::new(32.0, 16.0));
+    ui.painter().rect_stroke(
+        response.rect,
+        1.0,
+        ui.visuals().widgets.noninteractive.fg_stroke,
+    );
+    response.on_hover_text(format!("Color #{:02x}{:02x}{:02x}{:02x}", r, g, b, a))
 }
 
 pub(crate) fn ui_data_vec(ui: &mut egui::Ui, data_vec: &DataVec) -> egui::Response {

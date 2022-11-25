@@ -45,7 +45,7 @@ pub struct App {
     /// Toast notifications, using `egui-notify`.
     toasts: Toasts,
 
-    latest_memory_prune: instant::Instant,
+    latest_memory_purge: instant::Instant,
     memory_panel: crate::memory_panel::MemoryPanel,
     memory_panel_open: bool,
 }
@@ -133,7 +133,7 @@ impl App {
             ctrl_c,
             pending_promises: Default::default(),
             toasts: Toasts::new(),
-            latest_memory_prune: instant::Instant::now() - std::time::Duration::from_secs(10_000),
+            latest_memory_purge: instant::Instant::now(), // TODO(emilk): `Instant::MIN` when we have our own `Instant` that supports it.
             memory_panel: Default::default(),
             memory_panel_open: false,
         }
@@ -245,61 +245,13 @@ impl eframe::App for App {
 
         self.check_keyboard_shortcuts(egui_ctx, frame);
 
-        self.prune_memory_if_needed();
+        self.purge_memory_if_needed();
 
         self.state.cache.new_frame();
 
-        if let Some(rx) = &mut self.rx {
-            crate::profile_scope!("receive_messages");
-            let start = instant::Instant::now();
-            while let Ok(msg) = rx.try_recv() {
-                if let LogMsg::BeginRecordingMsg(msg) = &msg {
-                    re_log::info!("Beginning a new recording: {:?}", msg.info);
-                    self.state.selected_rec_id = msg.info.recording_id;
-                }
+        self.receive_messages(egui_ctx);
 
-                let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
-
-                log_db.add(msg);
-                if start.elapsed() > instant::Duration::from_millis(10) {
-                    egui_ctx.request_repaint(); // make sure we keep receiving messages asap
-                    break; // don't block the main thread for too long
-                }
-            }
-        }
-
-        {
-            // Cleanup:
-            self.log_dbs.retain(|_, log_db| !log_db.is_empty());
-
-            if !self.log_dbs.contains_key(&self.state.selected_rec_id) {
-                self.state.selected_rec_id =
-                    self.log_dbs.keys().next().cloned().unwrap_or_default();
-            }
-
-            // Make sure we don't persist old stuff we don't need:
-            self.state
-                .recording_configs
-                .retain(|recording_id, _| self.log_dbs.contains_key(recording_id));
-
-            if self.state.blueprints.len() > 100 {
-                re_log::debug!("Pruning blueprints…");
-
-                let used_app_ids: std::collections::HashSet<ApplicationId> = self
-                    .log_dbs
-                    .values()
-                    .filter_map(|log_db| {
-                        log_db
-                            .recording_info()
-                            .map(|recording_info| recording_info.application_id.clone())
-                    })
-                    .collect();
-
-                self.state
-                    .blueprints
-                    .retain(|application_id, _| used_app_ids.contains(application_id));
-            }
-        }
+        self.cleanup();
 
         file_saver_progress_ui(egui_ctx, self); // toasts for background file saver
         top_panel(egui_ctx, frame, self);
@@ -347,63 +299,115 @@ impl eframe::App for App {
 }
 
 impl App {
-    fn prune_memory_if_needed(&mut self) {
+    fn receive_messages(&mut self, egui_ctx: &egui::Context) {
+        if let Some(rx) = &mut self.rx {
+            crate::profile_function!();
+            let start = instant::Instant::now();
+
+            while let Ok(msg) = rx.try_recv() {
+                if let LogMsg::BeginRecordingMsg(msg) = &msg {
+                    re_log::info!("Beginning a new recording: {:?}", msg.info);
+                    self.state.selected_rec_id = msg.info.recording_id;
+                }
+
+                let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
+
+                log_db.add(msg);
+                if start.elapsed() > instant::Duration::from_millis(10) {
+                    egui_ctx.request_repaint(); // make sure we keep receiving messages asap
+                    break; // don't block the main thread for too long
+                }
+            }
+        }
+    }
+
+    fn cleanup(&mut self) {
         crate::profile_function!();
 
-        use re_memory::MemoryUse;
+        self.log_dbs.retain(|_, log_db| !log_db.is_empty());
 
-        if self.latest_memory_prune.elapsed() < instant::Duration::from_secs(30) {
+        if !self.log_dbs.contains_key(&self.state.selected_rec_id) {
+            self.state.selected_rec_id = self.log_dbs.keys().next().cloned().unwrap_or_default();
+        }
+
+        self.state
+            .recording_configs
+            .retain(|recording_id, _| self.log_dbs.contains_key(recording_id));
+
+        if self.state.blueprints.len() > 100 {
+            re_log::debug!("Pruning blueprints…");
+
+            let used_app_ids: std::collections::HashSet<ApplicationId> = self
+                .log_dbs
+                .values()
+                .filter_map(|log_db| {
+                    log_db
+                        .recording_info()
+                        .map(|recording_info| recording_info.application_id.clone())
+                })
+                .collect();
+
+            self.state
+                .blueprints
+                .retain(|application_id, _| used_app_ids.contains(application_id));
+        }
+    }
+
+    fn purge_memory_if_needed(&mut self) {
+        crate::profile_function!();
+
+        fn format_limit(limit: Option<i64>) -> String {
+            if let Some(bytes) = limit {
+                format_bytes(bytes as _)
+            } else {
+                "∞".to_owned()
+            }
+        }
+
+        use re_memory::{util::format_bytes, MemoryUse};
+
+        if self.latest_memory_purge.elapsed() < instant::Duration::from_secs(10) {
             // Pruning introduces stutter, and we don't want to stutter too often.
             return;
         }
 
-        let limit = re_memory::MemoryLimit::from_env_var("RERUN_MEMORY_LIMIT");
+        let limit = re_memory::MemoryLimit::from_env_var(crate::env_vars::RERUN_MEMORY_LIMIT);
         let mem_use_before = MemoryUse::capture();
 
-        if limit.is_exceeded_by(&mem_use_before) {
-            fn format_limit(limit: Option<i64>) -> String {
-                if let Some(bytes) = limit {
-                    format!("{:.2}", bytes as f32 / 1e9)
-                } else {
-                    "∞".to_owned()
-                }
-            }
+        if let Some(minimum_fraction_to_free) = limit.is_exceeded_by(&mem_use_before) {
+            let fraction_to_free = (minimum_fraction_to_free + 0.2).clamp(0.25, 1.0);
 
-            if let Some(gross) = mem_use_before.gross {
-                re_log::info!(
-                    "Using {:.2}/{:2} GB according to OS",
-                    gross as f32 / 1e9,
-                    format_limit(limit.gross),
-                );
+            re_log::debug!("RAM limit: {}", format_limit(limit.limit));
+            if let Some(resident) = mem_use_before.resident {
+                re_log::debug!("Resident: {}", format_bytes(resident as _),);
             }
-            if let Some(net) = mem_use_before.net {
-                re_log::info!(
-                    "Actually used: {:.2}/{:2} GB",
-                    net as f32 / 1e9,
-                    format_limit(limit.net),
-                );
+            if let Some(counted) = mem_use_before.counted {
+                re_log::debug!("Counted: {}", format_bytes(counted as _));
             }
 
             {
                 crate::profile_scope!("pruning");
+                re_log::info!(
+                    "Attempting to purge {:.1}% of used RAM…",
+                    100.0 * fraction_to_free
+                );
                 for log_db in self.log_dbs.values_mut() {
-                    log_db.prune_memory();
+                    log_db.purge_memory(fraction_to_free);
                 }
-                self.state.cache.prune_memory();
+                self.state.cache.purge_memory();
             }
 
             let mem_use_after = MemoryUse::capture();
 
             let freed_memory = mem_use_before - mem_use_after;
 
-            if let Some(net_diff) = freed_memory.net {
-                re_log::info!("Freed up {:.3} GB", net_diff as f32 / 1e9);
-            }
-            if let Some(gross_diff) = freed_memory.gross {
-                re_log::info!("Returned {:.3} GB to the OS", gross_diff as f32 / 1e9);
+            if let Some(counted_diff) = freed_memory.counted {
+                re_log::info!("Freed up {}", format_bytes(counted_diff as _));
             }
 
-            self.latest_memory_prune = instant::Instant::now();
+            self.latest_memory_purge = instant::Instant::now();
+
+            self.memory_panel.note_memory_purge();
         }
     }
 
@@ -600,7 +604,7 @@ impl AppState {
         // move time last, so we get to see the first data first!
         ctx.rec_cfg
             .time_ctrl
-            .move_time(egui_ctx, &log_db.time_points);
+            .move_time(egui_ctx, log_db.times_per_timeline());
 
         if WATERMARK {
             self.watermark(egui_ctx);

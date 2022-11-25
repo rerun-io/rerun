@@ -1,9 +1,10 @@
 use eframe::wasm_bindgen::{self, prelude::*};
 
-use re_memory::TrackingAllocator;
+use re_memory::AccountingAllocator;
 
 #[global_allocator]
-static GLOBAL: TrackingAllocator<std::alloc::System> = TrackingAllocator::new(std::alloc::System);
+static GLOBAL: AccountingAllocator<std::alloc::System> =
+    AccountingAllocator::new(std::alloc::System);
 
 /// This is the entry-point for all the web-assembly.
 /// This is called once from the HTML.
@@ -56,7 +57,7 @@ fn redirect_tracing_to_console_log() {
         tracing_subscriber::Registry::default()
             // Filtering out wgpu spam seems to mitigate https://linear.app/rerun/issue/PRO-256/wgpu-crashes-on-web
             .with(tracing_subscriber::EnvFilter::new(
-                "info,wgpu_core=warn,wgpu_hal=warn",
+                re_log::default_log_filter(),
             ))
             .with(tracing_wasm::WASMLayer::new(
                 tracing_wasm::WASMLayerConfig::default(),

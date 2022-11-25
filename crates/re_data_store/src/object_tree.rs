@@ -3,6 +3,33 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use itertools::Itertools;
 use re_log_types::*;
 
+// ----------------------------------------------------------------------------
+
+#[derive(Default)]
+pub struct TimesPerTimeline(BTreeMap<Timeline, BTreeMap<TimeInt, BTreeSet<MsgId>>>);
+
+impl TimesPerTimeline {
+    pub fn timelines(&self) -> impl ExactSizeIterator<Item = &Timeline> {
+        self.0.keys()
+    }
+
+    pub fn get(&self, timeline: &Timeline) -> Option<&BTreeMap<TimeInt, BTreeSet<MsgId>>> {
+        self.0.get(timeline)
+    }
+
+    pub fn has_timeline(&self, timeline: &Timeline) -> bool {
+        self.0.contains_key(timeline)
+    }
+
+    pub fn iter(
+        &self,
+    ) -> impl ExactSizeIterator<Item = (&Timeline, &BTreeMap<TimeInt, BTreeSet<MsgId>>)> {
+        self.0.iter()
+    }
+}
+
+// ----------------------------------------------------------------------------
+
 /// Tree of data paths.
 pub struct ObjectTree {
     /// Full path to the root of this tree.
@@ -13,7 +40,7 @@ pub struct ObjectTree {
     /// When do we or a child have data?
     ///
     /// Data logged at this exact path or any child path.
-    pub prefix_times: BTreeMap<Timeline, BTreeMap<TimeInt, BTreeSet<MsgId>>>,
+    pub prefix_times: TimesPerTimeline,
 
     /// Book-keeping around whether we should clear fields when data is added
     pub nonrecursive_clears: BTreeMap<MsgId, TimePoint>,
@@ -172,6 +199,7 @@ impl ObjectTree {
     ) -> &mut Self {
         for (timeline, time_value) in &time_point.0 {
             self.prefix_times
+                .0
                 .entry(*timeline)
                 .or_default()
                 .entry(*time_value)
@@ -207,7 +235,7 @@ impl ObjectTree {
         subtree_recursive(self, &path.to_components())
     }
 
-    pub fn prune_everything_before(
+    pub fn purge_everything_before(
         &mut self,
         timeline: Timeline,
         cutoff_time: TimeInt,
@@ -222,7 +250,7 @@ impl ObjectTree {
             fields,
         } = self;
 
-        if let Some(map) = prefix_times.get_mut(&timeline) {
+        if let Some(map) = prefix_times.0.get_mut(&timeline) {
             crate::profile_scope!("prefix_times");
             map.retain(|&time, _| cutoff_time <= time);
         }
@@ -238,12 +266,12 @@ impl ObjectTree {
         {
             crate::profile_scope!("fields");
             for columns in fields.values_mut() {
-                columns.prune_everything_before(timeline, cutoff_time, keep_msg_ids);
+                columns.purge_everything_before(timeline, cutoff_time, keep_msg_ids);
             }
         }
 
         for child in children.values_mut() {
-            child.prune_everything_before(timeline, cutoff_time, keep_msg_ids);
+            child.purge_everything_before(timeline, cutoff_time, keep_msg_ids);
         }
     }
 }
@@ -320,7 +348,7 @@ impl DataColumns {
         summaries.join(", ")
     }
 
-    pub fn prune_everything_before(
+    pub fn purge_everything_before(
         &mut self,
         timeline: Timeline,
         cutoff_time: TimeInt,

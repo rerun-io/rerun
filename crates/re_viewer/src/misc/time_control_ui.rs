@@ -1,20 +1,24 @@
-use std::collections::BTreeSet;
+use std::collections::BTreeMap;
 
 use egui::NumExt as _;
 
-use re_data_store::log_db::TimePoints;
+use re_data_store::TimesPerTimeline;
 use re_log_types::*;
 
 use super::{time_control::*, TimeRangeF, TimeReal};
 
 impl TimeControl {
-    pub fn timeline_selector_ui(&mut self, timeline_axes: &TimePoints, ui: &mut egui::Ui) {
-        self.select_a_valid_timeline(timeline_axes);
+    pub fn timeline_selector_ui(
+        &mut self,
+        times_per_timeline: &TimesPerTimeline,
+        ui: &mut egui::Ui,
+    ) {
+        self.select_a_valid_timeline(times_per_timeline);
 
         egui::ComboBox::from_id_source("timeline")
             .selected_text(self.timeline().name().as_str())
             .show_ui(ui, |ui| {
-                for timeline in timeline_axes.0.keys() {
+                for timeline in times_per_timeline.timelines() {
                     if ui
                         .selectable_label(timeline == self.timeline(), timeline.name().as_str())
                         .clicked()
@@ -97,7 +101,7 @@ impl TimeControl {
         });
     }
 
-    pub fn play_pause_ui(&mut self, time_points: &TimePoints, ui: &mut egui::Ui) {
+    pub fn play_pause_ui(&mut self, times_per_timeline: &TimesPerTimeline, ui: &mut egui::Ui) {
         // Toggle with space
         let anything_has_focus = ui.ctx().memory().focus().is_some();
         if !anything_has_focus
@@ -108,7 +112,7 @@ impl TimeControl {
             if self.is_playing() {
                 self.pause();
             } else {
-                self.play(time_points);
+                self.play(times_per_timeline);
             }
         }
 
@@ -117,7 +121,7 @@ impl TimeControl {
             .on_hover_text("Play. Toggle with SPACE")
             .clicked()
         {
-            self.play(time_points);
+            self.play(times_per_timeline);
         }
         if ui
             .selectable_label(!self.is_playing(), "⏸")
@@ -152,7 +156,7 @@ impl TimeControl {
             self.set_speed(speed);
         }
 
-        if let Some(time_values) = time_points.0.get(self.timeline()) {
+        if let Some(time_values) = times_per_timeline.get(self.timeline()) {
             let anything_has_kb_focus = ui.ctx().memory().focus().is_some();
             let step_back = ui
                 .button("⏴")
@@ -209,15 +213,15 @@ impl TimeControl {
     }
 }
 
-fn min(values: &BTreeSet<TimeInt>) -> TimeInt {
-    *values.iter().next().unwrap()
+fn min<T>(values: &BTreeMap<TimeInt, T>) -> TimeInt {
+    *values.keys().next().unwrap()
 }
 
-fn max(values: &BTreeSet<TimeInt>) -> TimeInt {
-    *values.iter().rev().next().unwrap()
+fn max<T>(values: &BTreeMap<TimeInt, T>) -> TimeInt {
+    *values.keys().rev().next().unwrap()
 }
 
-fn step_fwd_time(time: TimeReal, values: &BTreeSet<TimeInt>) -> TimeInt {
+fn step_fwd_time<T>(time: TimeReal, values: &BTreeMap<TimeInt, T>) -> TimeInt {
     if let Some(next) = values
         .range((
             std::ops::Bound::Excluded(time.floor()),
@@ -225,23 +229,23 @@ fn step_fwd_time(time: TimeReal, values: &BTreeSet<TimeInt>) -> TimeInt {
         ))
         .next()
     {
-        *next
+        *next.0
     } else {
         min(values)
     }
 }
 
-fn step_back_time(time: TimeReal, values: &BTreeSet<TimeInt>) -> TimeInt {
+fn step_back_time<T>(time: TimeReal, values: &BTreeMap<TimeInt, T>) -> TimeInt {
     if let Some(previous) = values.range(..time.ceil()).rev().next() {
-        *previous
+        *previous.0
     } else {
         max(values)
     }
 }
 
-fn step_fwd_time_looped(
+fn step_fwd_time_looped<T>(
     time: TimeReal,
-    values: &BTreeSet<TimeInt>,
+    values: &BTreeMap<TimeInt, T>,
     loop_range: &TimeRangeF,
 ) -> TimeReal {
     if time < loop_range.min || loop_range.max <= time {
@@ -253,15 +257,15 @@ fn step_fwd_time_looped(
         ))
         .next()
     {
-        TimeReal::from(*next)
+        TimeReal::from(*next.0)
     } else {
         step_fwd_time(time, values).into()
     }
 }
 
-fn step_back_time_looped(
+fn step_back_time_looped<T>(
     time: TimeReal,
-    values: &BTreeSet<TimeInt>,
+    values: &BTreeMap<TimeInt, T>,
     loop_range: &TimeRangeF,
 ) -> TimeReal {
     if time <= loop_range.min || loop_range.max < time {
@@ -271,7 +275,7 @@ fn step_back_time_looped(
         .rev()
         .next()
     {
-        TimeReal::from(*previous)
+        TimeReal::from(*previous.0)
     } else {
         step_back_time(time, values).into()
     }

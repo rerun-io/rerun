@@ -1,8 +1,8 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
 use egui::NumExt as _;
 
-use re_data_store::{log_db::TimePoints, TimeQuery};
+use re_data_store::{TimeQuery, TimesPerTimeline};
 use re_log_types::*;
 
 use super::{TimeRange, TimeRangeF, TimeReal};
@@ -146,14 +146,14 @@ impl TimeControl {
     }
 
     /// Update the current time
-    pub fn move_time(&mut self, egui_ctx: &egui::Context, time_points: &TimePoints) {
-        self.select_a_valid_timeline(time_points);
+    pub fn move_time(&mut self, egui_ctx: &egui::Context, times_per_timeline: &TimesPerTimeline) {
+        self.select_a_valid_timeline(times_per_timeline);
 
         if !self.playing {
             return;
         }
 
-        let Some(full_range) = self.full_range(time_points) else {
+        let Some(full_range) = self.full_range(times_per_timeline) else {
             return;
         };
 
@@ -245,13 +245,13 @@ impl TimeControl {
         self.playing
     }
 
-    pub fn play(&mut self, time_points: &TimePoints) {
+    pub fn play(&mut self, times_per_timeline: &TimesPerTimeline) {
         if self.playing {
             return;
         }
 
         // Start from beginning if we are at the end:
-        if let Some(axis) = time_points.0.get(&self.timeline) {
+        if let Some(axis) = times_per_timeline.get(&self.timeline) {
             if let Some(state) = self.states.get_mut(&self.timeline) {
                 if state.time >= max(axis) {
                     state.time = min(axis).into();
@@ -300,13 +300,13 @@ impl TimeControl {
     }
 
     /// Make sure the selected timeline is a valid one
-    pub fn select_a_valid_timeline(&mut self, time_points: &TimePoints) {
-        for timeline in time_points.0.keys() {
+    pub fn select_a_valid_timeline(&mut self, times_per_timeline: &TimesPerTimeline) {
+        for timeline in times_per_timeline.timelines() {
             if &self.timeline == timeline {
                 return; // it's valid
             }
         }
-        if let Some(timeline) = default_time_line(time_points.0.keys()) {
+        if let Some(timeline) = default_time_line(times_per_timeline.timelines()) {
             self.timeline = *timeline;
         } else {
             self.timeline = Default::default();
@@ -367,8 +367,8 @@ impl TimeControl {
     }
 
     /// The full range of times for the current timeline
-    pub fn full_range(&self, time_points: &TimePoints) -> Option<TimeRange> {
-        time_points.0.get(&self.timeline).map(range)
+    pub fn full_range(&self, times_per_timeline: &TimesPerTimeline) -> Option<TimeRange> {
+        times_per_timeline.get(&self.timeline).map(range)
     }
 
     /// Is the current time in the selection range (if any), or at the current time mark?
@@ -453,15 +453,15 @@ impl TimeControl {
     }
 }
 
-fn min(values: &BTreeSet<TimeInt>) -> TimeInt {
-    *values.iter().next().unwrap()
+fn min<T>(values: &BTreeMap<TimeInt, T>) -> TimeInt {
+    *values.keys().next().unwrap()
 }
 
-fn max(values: &BTreeSet<TimeInt>) -> TimeInt {
-    *values.iter().rev().next().unwrap()
+fn max<T>(values: &BTreeMap<TimeInt, T>) -> TimeInt {
+    *values.keys().rev().next().unwrap()
 }
 
-fn range(values: &BTreeSet<TimeInt>) -> TimeRange {
+fn range<T>(values: &BTreeMap<TimeInt, T>) -> TimeRange {
     TimeRange::new(min(values), max(values))
 }
 

@@ -60,10 +60,10 @@ impl<Time: 'static + Copy + Ord> TimelineStore<Time> {
             .insert_batch(field_name, time, msg_id, batch)
     }
 
-    pub fn prune_everything_before(&mut self, cutoff_time: Time) {
+    pub fn purge_everything_before(&mut self, cutoff_time: Time) {
         let Self { objects } = self;
         for obj_store in objects.values_mut() {
-            obj_store.prune_everything_before(cutoff_time);
+            obj_store.purge_everything_before(cutoff_time);
         }
     }
 }

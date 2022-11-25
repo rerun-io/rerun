@@ -1,7 +1,8 @@
 use itertools::Itertools as _;
+
 use re_log_types::*;
 
-use crate::{Preview, ViewerContext};
+use crate::{ui::format_usize, Preview, ViewerContext};
 
 /// An event log, a table of all log messages.
 #[derive(Default, serde::Deserialize, serde::Serialize)]
@@ -13,7 +14,7 @@ impl EventLogView {
     pub fn ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         crate::profile_function!();
 
-        ui.label(format!("{} log lines", ctx.log_db.len()));
+        ui.label(format!("{} log lines", format_usize(ctx.log_db.len())));
         ui.separator();
 
         let messages = {
@@ -40,7 +41,7 @@ pub(crate) fn message_table(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, mess
         .resizable(true)
         .columns(
             Size::initial(140.0).at_least(50.0), // timelines
-            ctx.log_db.time_points.0.len(),
+            ctx.log_db.timelines().count(),
         )
         .column(Size::initial(200.0).at_least(60.0)) // message type
         .column(Size::initial(240.0).at_least(50.0)) // path
@@ -49,7 +50,7 @@ pub(crate) fn message_table(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, mess
             header.col(|ui| {
                 ui.heading("Message Type");
             });
-            for timeline in ctx.log_db.time_points.0.keys() {
+            for timeline in ctx.log_db.timelines() {
                 header.col(|ui| {
                     ctx.timeline_button(ui, timeline);
                 });
@@ -107,7 +108,7 @@ fn table_row(
                 ui.monospace("BeginRecordingMsg");
                 ui.label(format!("Source: {recording_source}"));
             });
-            for _ in ctx.log_db.time_points.0.keys() {
+            for _ in ctx.log_db.timelines() {
                 row.col(|ui| {
                     ui.label("-");
                 });
@@ -129,7 +130,7 @@ fn table_row(
             row.col(|ui| {
                 ui.monospace("TypeMsg");
             });
-            for _ in ctx.log_db.time_points.0.keys() {
+            for _ in ctx.log_db.timelines() {
                 row.col(|ui| {
                     ui.label("-");
                 });
@@ -152,7 +153,7 @@ fn table_row(
             row.col(|ui| {
                 ui.monospace("DataMsg");
             });
-            for timeline in ctx.log_db.time_points.0.keys() {
+            for timeline in ctx.log_db.timelines() {
                 row.col(|ui| {
                     if let Some(value) = time_point.0.get(timeline) {
                         ctx.time_button(ui, timeline, *value);
@@ -176,7 +177,7 @@ fn table_row(
             row.col(|ui| {
                 ui.monospace("PathOpMsg");
             });
-            for timeline in ctx.log_db.time_points.0.keys() {
+            for timeline in ctx.log_db.timelines() {
                 row.col(|ui| {
                     if let Some(value) = time_point.0.get(timeline) {
                         ctx.time_button(ui, timeline, *value);

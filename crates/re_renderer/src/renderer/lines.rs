@@ -99,7 +99,7 @@ use std::num::NonZeroU32;
 
 use bitflags::bitflags;
 use bytemuck::Zeroable;
-use smallvec::smallvec;
+use smallvec::{smallvec, SmallVec};
 
 use crate::{
     include_file,
@@ -177,7 +177,7 @@ impl LineStripFlags {
 #[derive(Clone)]
 pub struct LineStrip {
     /// Connected points. Must be at least 2.
-    pub points: Vec<glam::Vec3>,
+    pub points: SmallVec<[glam::Vec3; 2]>,
 
     /// Radius of the line strip in world space
     /// TODO(andreas) Should be able to specify if this is in pixels, or both by providing a minimum in pixels.
@@ -191,6 +191,22 @@ pub struct LineStrip {
     // Value from 0 to 1. 0 makes a line invisible, 1 is filled out, 0.5 is half dashes.
     // TODO(andreas): unsupported right now.
     //pub stippling: f32,
+}
+
+impl LineStrip {
+    /// Creates line strips from a single line segment.
+    pub fn line_segment(
+        segment: (glam::Vec3, glam::Vec3),
+        radius: f32,
+        color: [u8; 4],
+    ) -> LineStrip {
+        LineStrip {
+            points: smallvec![segment.0, segment.1],
+            radius,
+            color,
+            flags: Default::default(),
+        }
+    }
 }
 
 impl LineDrawable {

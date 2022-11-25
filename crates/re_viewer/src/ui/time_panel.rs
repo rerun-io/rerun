@@ -107,13 +107,13 @@ impl TimePanel {
 
         ctx.rec_cfg
             .time_ctrl
-            .timeline_selector_ui(&ctx.log_db.time_points, ui);
+            .timeline_selector_ui(ctx.log_db.times_per_timeline(), ui);
 
         ui.separator();
 
         ctx.rec_cfg
             .time_ctrl
-            .play_pause_ui(&ctx.log_db.time_points, ui);
+            .play_pause_ui(ctx.log_db.times_per_timeline(), ui);
 
         ui.separator();
 
@@ -207,7 +207,7 @@ impl TimePanel {
                 .horizontal(|ui| {
                     ctx.rec_cfg
                         .time_ctrl
-                        .play_pause_ui(&ctx.log_db.time_points, ui);
+                        .play_pause_ui(ctx.log_db.times_per_timeline(), ui);
                 })
                 .response;
 
@@ -312,7 +312,7 @@ impl TimePanel {
 
         if !tree
             .prefix_times
-            .contains_key(ctx.rec_cfg.time_ctrl.timeline())
+            .has_timeline(ctx.rec_cfg.time_ctrl.timeline())
         {
             return; // ignore objects that have no data for the current timeline
         }
@@ -500,7 +500,7 @@ fn top_row_ui(ctx: &mut ViewerContext<'_>, blueprint: &mut Blueprint, ui: &mut e
 
         ctx.rec_cfg
             .time_ctrl
-            .timeline_selector_ui(&ctx.log_db.time_points, ui);
+            .timeline_selector_ui(ctx.log_db.times_per_timeline(), ui);
 
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             help_button(ui);
@@ -713,7 +713,7 @@ fn show_msg_ids_tooltip(ctx: &mut ViewerContext<'_>, egui_ctx: &egui::Context, m
                 });
             }
         } else {
-            ui.label(format!("{} messages", msg_ids.len()));
+            ui.label(format!("{} messages", super::format_usize(msg_ids.len())));
         }
     });
 }
@@ -727,13 +727,12 @@ fn initialize_time_ranges_ui(
     side_margin: f32,
 ) -> TimeRangesUi {
     crate::profile_function!();
-    if let Some(time_points) = ctx
+    if let Some(times) = ctx
         .log_db
-        .time_points
-        .0
+        .times_per_timeline()
         .get(ctx.rec_cfg.time_ctrl.timeline())
     {
-        let timeline_axis = TimelineAxis::new(ctx.rec_cfg.time_ctrl.time_type(), time_points);
+        let timeline_axis = TimelineAxis::new(ctx.rec_cfg.time_ctrl.time_type(), times);
         let time_view = time_view
             .unwrap_or_else(|| view_everything(&time_x_range, &timeline_axis, side_margin));
 

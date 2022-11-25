@@ -119,7 +119,7 @@ impl ViewTextFilters {
             row_log_levels,
         } = self;
 
-        for timeline in ctx.log_db.time_points.0.keys() {
+        for timeline in ctx.log_db.timelines() {
             col_timelines.entry(*timeline).or_insert(true);
         }
 
@@ -404,6 +404,14 @@ fn show_table(
         builder = builder.column(Size::remainder().at_least(body_size));
     }
     builder
+        .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
+        .columns(
+            Size::initial(140.0).at_least(50.0), // timelines
+            timelines.len(),
+        ) // time(s)
+        .column(Size::initial(120.0).at_least(50.0)) // path
+        .column(Size::initial(50.0).at_least(50.0)) // level
+        .column(Size::remainder().at_least(200.0)) // body
         .header(HEADER_HEIGHT, |mut header| {
             for (timeline, _) in &timelines {
                 header.col(|ui| {

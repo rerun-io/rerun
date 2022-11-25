@@ -1,14 +1,12 @@
-use re_memory::TrackingAllocator;
+use re_memory::AccountingAllocator;
 
 #[global_allocator]
-static GLOBAL: TrackingAllocator<mimalloc::MiMalloc> = TrackingAllocator::new(mimalloc::MiMalloc);
+static GLOBAL: AccountingAllocator<mimalloc::MiMalloc> =
+    AccountingAllocator::new(mimalloc::MiMalloc);
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    if std::env::var("RUST_LOG").is_err() {
-        // Enable logging unless the user opts-out of it.
-        std::env::set_var("RUST_LOG", "info,wgpu_core=warn,wgpu_hal=warn");
-    }
+    re_log::set_default_rust_log_env();
     tracing_subscriber::fmt::init(); // log to stdout
 
     rerun::run(std::env::args()).await
