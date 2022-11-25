@@ -105,6 +105,7 @@ fn run_client(
         re_log::trace!("Received log message of size {packet_size}.");
 
         if tx.latency_sec() > options.max_latency_sec {
+            // TODO: we don't get new and improved latency numbers if we drop _all_ packets.
             re_log::warn_once!(
                 "Input latency is over the max ({} s) - dropping packets.",
                 options.max_latency_sec

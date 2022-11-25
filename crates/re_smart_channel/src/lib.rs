@@ -16,8 +16,18 @@ pub enum Source {
 }
 
 pub fn smart_channel<T: Send>(source: Source) -> (Sender<T>, Receiver<T>) {
-    let (tx, rx) = crossbeam::channel::unbounded();
     let stats = Arc::new(SharedStats::default());
+    smart_channel_with_stats(source, stats)
+}
+
+/// Create a new channel using the same stats as some other.
+///
+/// This is a very leaky abstraction, and it would be nice to refactor some day
+fn smart_channel_with_stats<T: Send>(
+    source: Source,
+    stats: Arc<SharedStats>,
+) -> (Sender<T>, Receiver<T>) {
+    let (tx, rx) = crossbeam::channel::unbounded();
     let sender = Sender {
         tx,
         stats: stats.clone(),
@@ -26,6 +36,7 @@ pub fn smart_channel<T: Send>(source: Source) -> (Sender<T>, Receiver<T>) {
     (sender, receiver)
 }
 
+/// Stats for a channel, possibly shared between chained channels.
 #[derive(Default)]
 struct SharedStats {
     /// Latest known latency from sending a message to receiving it, it nanoseconds.
@@ -92,11 +103,11 @@ impl<T: Send> Receiver<T> {
         Ok(msg)
     }
 
+    /// Receives without registering the latency.
+    ///
+    /// This is for passing on to another channel using the same [`SharedStats`].
     pub fn recv_with_send_time(&self) -> Result<(Instant, T), RecvError> {
-        let (sent, msg) = self.rx.recv()?;
-        let latency_ns = sent.elapsed().as_nanos() as u64;
-        self.stats.latency_ns.store(latency_ns, Relaxed);
-        Ok((sent, msg))
+        self.rx.recv()
     }
 
     /// Where is the data coming from?
@@ -126,6 +137,16 @@ impl<T: Send> Receiver<T> {
     /// in seconds
     pub fn latency_sec(&self) -> f32 {
         self.latency_ns() as f32 / 1e9
+    }
+
+    /// Create a new channel that use the same stats as this one.
+    ///
+    /// This means both channels will see the same latency numbers.
+    ///
+    /// Care must be taken to use [`Self::recv_with_send_time`] and [`Sender::send_at`].
+    /// This is a very leaky abstraction, and it would be nice with a refactor.
+    pub fn chained_channel(&self) -> (Sender<T>, Receiver<T>) {
+        smart_channel_with_stats(self.source, self.stats.clone())
     }
 }
 
