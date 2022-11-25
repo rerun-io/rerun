@@ -56,6 +56,7 @@ pub(crate) fn view_instance_generic(
     let obj_store = store.get(&instance_id.obj_path)?;
 
     let mut class_id = None;
+    let mut keypoint_id = None;
 
     egui::Grid::new("object_instance")
         .striped(true)
@@ -77,6 +78,11 @@ pub(crate) fn view_instance_generic(
                             if field_name.as_str() == "class_id" {
                                 if let Data::I32(id) = data {
                                     class_id = Some(context::ClassId(id as _));
+                                }
+                            }
+                            if field_name.as_str() == "keypoint_id" {
+                                if let Data::I32(id) = data {
+                                    keypoint_id = Some(context::KeypointId(id as _));
                                 }
                             }
                             crate::data_ui::ui_data(ctx, ui, &data, preview);
@@ -110,12 +116,31 @@ pub(crate) fn view_instance_generic(
                 .num_columns(2)
                 .show(ui, |ui| {
                     if let Some(class_description) = annotations.context.class_map.get(&class_id) {
-                        if let Some(label) = &class_description.info.label {
+                        let class_annotation = &class_description.info;
+                        let mut keypoint_annotation = None;
+
+                        if let Some(keypoint_id) = keypoint_id {
+                            keypoint_annotation = class_description.keypoint_map.get(&keypoint_id);
+                            if keypoint_annotation.is_none() {
+                                ui.label(ctx.design_tokens.warning_text(
+                                    format!("unknown keypoint_id {}", keypoint_id.0),
+                                    ui.style(),
+                                ));
+                            }
+                        }
+
+                        if let Some(label) = keypoint_annotation
+                            .and_then(|a| a.label.as_ref())
+                            .or(class_annotation.label.as_ref())
+                        {
                             ui.label("label");
                             ui.label(label.as_ref());
                             ui.end_row();
                         }
-                        if let Some(color) = &class_description.info.color {
+                        if let Some(color) = keypoint_annotation
+                            .and_then(|a| a.color.as_ref())
+                            .or(class_annotation.color.as_ref())
+                        {
                             ui.label("color");
                             ui_color_field(ui, color);
                             ui.end_row();
