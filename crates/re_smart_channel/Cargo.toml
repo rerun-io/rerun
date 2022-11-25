@@ -7,4 +7,5 @@ license.workspace = true
 publish = false
 
 [dependencies]
+crossbeam = "0.8"
 instant = { version = "0.1", features = ["wasm-bindgen"] }
