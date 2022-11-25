@@ -486,6 +486,8 @@ def log_point(
         The class id provides color and label if not specified explicitly.
     * `keypoint_id`: Optional key point id for the point, identifying it within a class.
         If keypoint_id is passed but no class_id was specified, class_id will be set to 0.
+        This is useful to identify points within a single classification (which is identified with class_id).
+        E.g. the classification might be 'Person' and the keypoints refer to joints on a detected skeleton.
 
     Colors should either be in 0-255 gamma space or in 0-1 linear space.
     Colors can be RGB or RGBA. You can supply no colors, one color,
@@ -523,9 +525,11 @@ def log_points(
     * `color`: Optional colors of the points.
     * `labels`: Optional per-point text to show with the points
     * `class_ids`: Optional class ids for the points.
-      The class id provides colors and labels if not specified explicitly.
+        The class id provides colors and labels if not specified explicitly.
     * `keypoint_ids`: Optional key point ids for the points, identifying them within a class.
         If keypoint_ids are passed in but no class_ids were specified, class_id will be set to 0.
+        This is useful to identify points within a single classification (which is identified with class_id).
+        E.g. the classification might be 'Person' and the keypoints refer to joints on a detected skeleton.
 
     Colors should either be in 0-255 gamma space or in 0-1 linear space.
     Colors can be RGB or RGBA. You can supply no colors, one color,
