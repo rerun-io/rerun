@@ -562,7 +562,7 @@ def _normalize_colors(colors: Optional[npt.ArrayLike] = None) -> npt.NDArray[np.
         # An empty array represents no colors.
         return np.array((), dtype=np.uint8)
     else:
-        colors_array = np.array(colors)
+        colors_array = np.array(colors, copy=False)
 
         # Rust expects colors in 0-255 uint8
         if colors_array.dtype.type in [np.float32, np.float64]:
@@ -577,7 +577,7 @@ def _normalize_ids(class_ids: OptionalClassIds = None) -> npt.NDArray[np.uint16]
         return np.array((), dtype=np.uint16)
     else:
         # TODO(andreas): Does this need optimizing for the case where class_ids is already an np array?
-        return np.array(class_ids, dtype=np.uint16)
+        return np.array(class_ids, dtype=np.uint16, copy=False)
 
 
 # -----------------------------------------------------------------------------
@@ -1183,7 +1183,7 @@ def log_annotation_context(
         (
             info_to_tuple(d.info),
             tuple(info_to_tuple(a) for a in d.keypoint_annotations or []),
-            d.keypoint_connections,
+            d.keypoint_connections or [],
         )
         for d in typed_class_descriptions
     ]
