@@ -343,12 +343,11 @@ impl LogDb {
                 }
             }
 
-            for (msg_id, msg) in &self.log_messages {
-                if always_keep(msg) {
-                    keep_msg_ids.insert(*msg_id);
-                }
-            }
-
+            keep_msg_ids.extend(
+                self.log_messages
+                    .iter()
+                    .filter_map(|(msg_id, msg)| always_keep(msg).then_some(*msg_id)),
+            );
             keep_msg_ids
         };
 
