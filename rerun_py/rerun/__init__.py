@@ -14,6 +14,18 @@ from rerun.color_conversion import linear_to_gamma_u8_pixel
 from rerun import rerun_sdk  # type: ignore[attr-defined]
 
 
+def signal_handler(sig, frame):
+    import sys
+
+    print("You pressed Ctrl+C!")
+    sys.exit(0)
+
+
+import signal
+
+signal.signal(signal.SIGINT, signal_handler)
+
+
 def rerun_shutdown() -> None:
     rerun_sdk.flush()
 

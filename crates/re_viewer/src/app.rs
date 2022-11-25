@@ -35,9 +35,9 @@ pub struct App {
     /// What is serialized
     state: AppState,
 
-    /// Set to `true` on Ctrl-C.
+    /// Set to `true` on shutdown request.
     #[cfg(not(target_arch = "wasm32"))]
-    ctrl_c: std::sync::Arc<std::sync::atomic::AtomicBool>,
+    shutdown: std::sync::Arc<std::sync::atomic::AtomicBool>,
 
     /// Pending background tasks, using `poll_promise`.
     pending_promises: HashMap<String, Promise<Box<dyn Any + Send>>>,
@@ -48,6 +48,8 @@ pub struct App {
     latest_memory_purge: instant::Instant,
     memory_panel: crate::memory_panel::MemoryPanel,
     memory_panel_open: bool,
+
+    background_handler: Option<Fn() -> bool>,
 }
 
 impl App {
@@ -97,13 +99,13 @@ impl App {
         log_db: LogDb,
     ) -> Self {
         #[cfg(not(target_arch = "wasm32"))]
-        let ctrl_c = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let shutdown = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
 
         #[cfg(not(target_arch = "wasm32"))]
         {
             // Close viewer on Ctrl-C. TODO(emilk): maybe add to `eframe`?
 
-            let ctrl_c = ctrl_c.clone();
+            let ctrl_c = shutdown.clone();
             let egui_ctx = _egui_ctx.clone();
 
             ctrlc::set_handler(move || {
@@ -130,7 +132,7 @@ impl App {
             log_dbs,
             state,
             #[cfg(not(target_arch = "wasm32"))]
-            ctrl_c,
+            shutdown,
             pending_promises: Default::default(),
             toasts: Toasts::new(),
             latest_memory_purge: instant::Instant::now(), // TODO(emilk): `Instant::MIN` when we have our own `Instant` that supports it.
@@ -238,7 +240,7 @@ impl eframe::App for App {
         self.memory_panel.update(); // do first, before doing too many allocations
 
         #[cfg(not(target_arch = "wasm32"))]
-        if self.ctrl_c.load(std::sync::atomic::Ordering::Relaxed) {
+        if self.shutdown.load(std::sync::atomic::Ordering::Relaxed) {
             frame.close();
             return;
         }
