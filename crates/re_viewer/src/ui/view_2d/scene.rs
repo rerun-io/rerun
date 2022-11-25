@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
+use ahash::HashMap;
 use egui::{pos2, Color32, Pos2, Rect, Stroke};
-use nohash_hasher::IntMap;
 use re_data_store::{
     query::{visit_type_data_2, visit_type_data_4, visit_type_data_5},
     FieldName, InstanceIdHash,
@@ -236,7 +236,7 @@ impl Scene2D {
                 let default_color = DefaultColor::ObjPath(obj_path);
 
                 // If keypoints ids show up we may need to connect them later!
-                let mut keypoints: IntMap<ClassId, IntMap<KeypointId, Pos2>> =
+                let mut keypoints: HashMap<ClassId, HashMap<KeypointId, Pos2>> =
                 Default::default();
 
                 visit_type_data_5(

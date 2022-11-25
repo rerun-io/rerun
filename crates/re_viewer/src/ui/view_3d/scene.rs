@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
+use ahash::HashMap;
 use egui::NumExt as _;
 use glam::{vec3, Vec3};
 use itertools::Itertools as _;
-use nohash_hasher::IntMap;
 use smallvec::smallvec;
 
 use re_data_store::query::{
@@ -174,7 +174,7 @@ impl Scene3D {
                 let mut label_batch = Vec::new();
 
                 // If keypoints ids show up we may need to connect them later!
-                let mut keypoints: IntMap<ClassId, IntMap<KeypointId, glam::Vec3>> =
+                let mut keypoints: HashMap<ClassId, HashMap<KeypointId, glam::Vec3>> =
                     Default::default();
 
                 let annotations = self.annotation_map.find(obj_path);
