@@ -5,5 +5,5 @@ torch==1.13.0
 transformers==4.24.0
 # Avoid opencv-4.6 since it rotates images incorrectly:
 # See: https://github.com/opencv/opencv/issues/22088
-opencv-python==4.5.5.64
-opencv-contrib-python==4.5.5.64
+opencv-python<4.6
+opencv-contrib-python<4.6
