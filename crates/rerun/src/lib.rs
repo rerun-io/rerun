@@ -163,7 +163,7 @@ fn load_file_to_channel(path: &std::path::Path) -> anyhow::Result<Receiver<LogMs
     let file = std::fs::File::open(path).context("Failed to open file")?;
     let decoder = re_log_types::encoding::Decoder::new(file)?;
 
-    let (tx, rx) = re_smart_channel::smart_channel();
+    let (tx, rx) = re_smart_channel::smart_channel(re_smart_channel::Source::File);
 
     std::thread::Builder::new()
         .name("rrd_file_reader".into())
@@ -205,7 +205,7 @@ fn wake_up_ui_thread_on_each_msg<T: Send + 'static>(
     rx: Receiver<T>,
     ctx: egui::Context,
 ) -> re_smart_channel::Receiver<T> {
-    let (tx, new_rx) = re_smart_channel::smart_channel();
+    let (tx, new_rx) = re_smart_channel::smart_channel(rx.source());
     std::thread::Builder::new()
         .name("ui_waker".to_owned())
         .spawn(move || {

@@ -25,7 +25,7 @@ impl RemoteViewerApp {
     }
 
     fn connect(&mut self, egui_ctx: &egui::Context, storage: Option<&dyn eframe::Storage>) {
-        let (tx, rx) = re_smart_channel::smart_channel();
+        let (tx, rx) = re_smart_channel::smart_channel(re_smart_channel::Source::Network);
 
         let egui_ctx_clone = egui_ctx.clone();
 

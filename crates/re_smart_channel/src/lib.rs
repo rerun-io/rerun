@@ -8,14 +8,21 @@ use std::sync::{
 use crossbeam::channel::{RecvError, SendError, TryRecvError};
 use instant::Instant;
 
-pub fn smart_channel<T: Send>() -> (Sender<T>, Receiver<T>) {
+/// Where is the messages coming from?
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Source {
+    Network,
+    File,
+}
+
+pub fn smart_channel<T: Send>(source: Source) -> (Sender<T>, Receiver<T>) {
     let (tx, rx) = crossbeam::channel::unbounded();
     let stats = Arc::new(SharedStats::default());
     let sender = Sender {
         tx,
         stats: stats.clone(),
     };
-    let receiver = Receiver { rx, stats };
+    let receiver = Receiver { rx, stats, source };
     (sender, receiver)
 }
 
@@ -59,6 +66,7 @@ impl<T: Send> Sender<T> {
 pub struct Receiver<T: Send> {
     rx: crossbeam::channel::Receiver<(Instant, T)>,
     stats: Arc<SharedStats>,
+    source: Source,
 }
 
 impl<T: Send> Receiver<T> {
@@ -74,6 +82,12 @@ impl<T: Send> Receiver<T> {
         let latency_ns = sent.elapsed().as_nanos() as u64;
         self.stats.latency_ns.store(latency_ns, Relaxed);
         Ok(msg)
+    }
+
+    /// Where is the data coming from?
+    #[inline]
+    pub fn source(&self) -> Source {
+        self.source
     }
 
     /// Is the channel currently empty of messages?
@@ -96,7 +110,7 @@ impl<T: Send> Receiver<T> {
 
 #[test]
 fn test_smart_channel() {
-    let (tx, rx) = smart_channel();
+    let (tx, rx) = smart_channel(Source::Network);
 
     assert_eq!(tx.len(), 0);
     assert_eq!(rx.len(), 0);

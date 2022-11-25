@@ -13,7 +13,7 @@ use re_smart_channel::{Receiver, Sender};
 pub fn serve(addr: impl std::net::ToSocketAddrs) -> anyhow::Result<Receiver<LogMsg>> {
     let listener = std::net::TcpListener::bind(addr)?;
 
-    let (tx, rx) = re_smart_channel::smart_channel();
+    let (tx, rx) = re_smart_channel::smart_channel(re_smart_channel::Source::Network);
 
     std::thread::Builder::new()
         .name("sdk-server".into())
