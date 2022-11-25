@@ -1,6 +1,7 @@
 use egui::{color_picker, Vec2};
 
 use egui_extras::{Size, TableBuilder};
+use itertools::Itertools;
 use re_data_store::InstanceId;
 use re_log_types::context::AnnotationInfo;
 pub use re_log_types::*;
@@ -512,6 +513,7 @@ fn ui_annotation_info_table<'a>(
     ui: &mut egui::Ui,
     annotation_infos: impl Iterator<Item = &'a AnnotationInfo>,
 ) {
+    ui.spacing_mut().item_spacing.x += 12.0;
     let table = TableBuilder::new(ui)
         .striped(true)
         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
@@ -522,13 +524,13 @@ fn ui_annotation_info_table<'a>(
     table
         .header(20.0, |mut header| {
             header.col(|ui| {
-                ui.heading("Id");
+                ui.strong("Id");
             });
             header.col(|ui| {
-                ui.heading("Label");
+                ui.strong("Label");
             });
             header.col(|ui| {
-                ui.heading("Color");
+                ui.strong("Color");
             });
         })
         .body(|mut body| {
@@ -546,11 +548,14 @@ fn ui_annotation_info_table<'a>(
                         ui.label(label);
                     });
                     row.col(|ui| {
-                        // TODO(andreas): Make it obvious somehow when we fall back to a default color.
-                        let color = info.color.unwrap_or_else(|| auto_color(info.id));
-                        let color = egui::Color32::from_rgb(color[0], color[1], color[2]);
-
-                        color_picker::show_color(ui, color, Vec2::splat(64.0));
+                        ui.horizontal(|ui| {
+                            let color = info.color.unwrap_or_else(|| {
+                                ui.weak("auto");
+                                auto_color(info.id)
+                            });
+                            let color = egui::Color32::from_rgb(color[0], color[1], color[2]);
+                            color_picker::show_color(ui, color, Vec2::splat(64.0));
+                        });
                     });
                 });
             }
@@ -566,13 +571,22 @@ fn ui_annotation_context(ui: &mut egui::Ui, context: &AnnotationContext) -> egui
                 continue;
             }
 
+            ui.separator();
             ui.heading(format!("Keypoints for Class {}", id.0));
             if !class.keypoint_connections.is_empty() {
+                ui.heading("Keypoints Annotations");
                 ui.push_id(format!("keypoint_annotations_{}", id.0), |ui| {
-                    ui_annotation_info_table(ui, class.keypoint_map.values());
+                    ui_annotation_info_table(
+                        ui,
+                        class
+                            .keypoint_map
+                            .values()
+                            .sorted_by_key(|annotation| annotation.id),
+                    );
                 });
             }
             if !class.keypoint_connections.is_empty() {
+                ui.heading("Keypoints Connections");
                 ui.push_id(format!("keypoints_connections_{}", id.0), |ui| {
                     let table = TableBuilder::new(ui)
                         .striped(true)
@@ -591,12 +605,20 @@ fn ui_annotation_context(ui: &mut egui::Ui, context: &AnnotationContext) -> egui
                         .body(|mut body| {
                             for (from, to) in &class.keypoint_connections {
                                 body.row(ROW_HEIGHT, |mut row| {
-                                    row.col(|ui| {
-                                        ui.label(from.0.to_string());
-                                    });
-                                    row.col(|ui| {
-                                        ui.label(to.0.to_string());
-                                    });
+                                    for id in [from, to] {
+                                        row.col(|ui| {
+                                            ui.label(
+                                                class
+                                                    .keypoint_map
+                                                    .get(id)
+                                                    .and_then(|info| info.label.as_ref())
+                                                    .map_or_else(
+                                                        || format!("id {:?}", id),
+                                                        |label| String::clone(label),
+                                                    ),
+                                            );
+                                        });
+                                    }
                                 });
                             }
                         });
