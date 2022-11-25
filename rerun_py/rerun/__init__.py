@@ -408,9 +408,9 @@ def log_rects(
         else:
             raise NotImplemented("RectFormat not yet implemented")
 
-        # if colors.any():
-        fields.append(pa.field("color_rgba", pa.uint32(), nullable=True))
-        arrays.append(pa.array([u8_array_to_rgba(c) for c in colors], type=pa.uint32()))
+        if colors.any():
+            fields.append(pa.field("color_rgba", pa.uint32(), nullable=True))
+            arrays.append(pa.array([u8_array_to_rgba(c) for c in colors], type=pa.uint32()))
 
         arr = pa.StructArray.from_arrays(arrays, fields=fields)
         rerun_sdk.log_arrow_msg(obj_path, arr)

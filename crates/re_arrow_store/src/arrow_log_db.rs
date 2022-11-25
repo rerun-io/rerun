@@ -44,7 +44,7 @@ impl Default for LogDb {
             (
                 FieldName::from("pos3d"),
                 Field::new(
-                    "pos2d",
+                    "pos3d",
                     DataType::Struct(vec![
                         Field::new("x", DataType::Float32),
                         Field::new("y", DataType::Float32),

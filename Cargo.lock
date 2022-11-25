@@ -3534,6 +3534,8 @@ dependencies = [
 name = "re_arrow_store"
 version = "0.1.0"
 dependencies = [
+ "arrow2",
+ "nohash-hasher",
  "polars",
  "re_log",
  "re_log_types",
@@ -3581,6 +3583,7 @@ version = "0.1.0"
 dependencies = [
  "ahash 0.8.2",
  "anyhow",
+ "arrow2",
  "bytemuck",
  "chrono",
  "derive_more",
