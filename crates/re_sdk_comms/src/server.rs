@@ -1,5 +1,8 @@
 //! TODO(emilk): use tokio instead
 
+use std::time::Instant;
+
+use rand::{Rng, SeedableRng};
 use re_log_types::LogMsg;
 use re_smart_channel::{Receiver, Sender};
 
@@ -92,6 +95,8 @@ fn run_client(
         }
     }
 
+    let mut congestion_manager = CongestionManager::new(options.max_latency_sec);
+
     let mut packet = Vec::new();
 
     loop {
@@ -104,15 +109,66 @@ fn run_client(
 
         re_log::trace!("Received log message of size {packet_size}.");
 
-        if tx.latency_sec() > options.max_latency_sec {
-            // TODO: we don't get new and improved latency numbers if we drop _all_ packets.
+        if congestion_manager.accepts(tx.latency_sec()) {
+            let msg = crate::decode_log_msg(&packet)?;
+            tx.send(msg)?;
+        } else {
             re_log::warn_once!(
                 "Input latency is over the max ({} s) - dropping packets.",
                 options.max_latency_sec
             );
-        } else {
-            let msg = crate::decode_log_msg(&packet)?;
-            tx.send(msg)?;
         }
+    }
+}
+
+/// Decides how many messages to drop so that we achieve a desired maximum latency.
+struct CongestionManager {
+    max_latency: f32,
+    accept_rate: f32,
+    last_time: Instant,
+    rng: rand::rngs::SmallRng,
+}
+
+impl CongestionManager {
+    pub fn new(max_latency: f32) -> Self {
+        Self {
+            max_latency,
+            accept_rate: 1.0,
+            last_time: Instant::now(),
+            rng: rand::rngs::SmallRng::from_entropy(),
+        }
+    }
+
+    pub fn accepts(&mut self, current_latency: f32) -> bool {
+        let now = Instant::now();
+        let dt = (now - self.last_time).as_secs_f32();
+        self.last_time = now;
+
+        let is_good = current_latency < self.max_latency;
+
+        if is_good && self.accept_rate == 1.0 {
+            return true; // early out
+        }
+
+        /// If we let it go too low, we won't accept any messages,
+        /// and then we won't ever recover.
+        const MIN_ACCPET_RATE: f32 = 0.01;
+
+        // This is quite ad-hoc, but better than nothing.
+        // Perhaps it's worth investigating a more rigorous additive increase/multiplicative decrease congestion protocol.
+        if is_good {
+            // Slowly improve our accept-rate, slower the closer we are:
+            let goodness = (self.max_latency - current_latency) / self.max_latency;
+            self.accept_rate += goodness * dt / 25.0;
+        } else {
+            // Quickly decrease our accept-rate, quicker the worse we are:
+            let badness = (current_latency - self.max_latency) / self.max_latency;
+            let badness = badness.clamp(0.5, 2.0);
+            self.accept_rate -= badness * dt / 15.0;
+        }
+
+        self.accept_rate = self.accept_rate.clamp(MIN_ACCPET_RATE, 1.0);
+
+        self.rng.gen::<f32>() < self.accept_rate
     }
 }

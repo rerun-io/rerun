@@ -3251,6 +3251,8 @@ dependencies = [
  "crossbeam",
  "ctrlc",
  "document-features",
+ "emath",
+ "rand",
  "re_log",
  "re_log_types",
  "re_smart_channel",
