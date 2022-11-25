@@ -319,7 +319,7 @@ impl LogDb {
     }
 
     /// Free up some RAM by forgetting the older parts of all timelines.
-    pub fn purge_memory(&mut self, fraction_to_purge: f32) {
+    pub fn purge_fraction_of_ram(&mut self, fraction_to_purge: f32) {
         fn always_keep(msg: &LogMsg) -> bool {
             match msg {
                 LogMsg::BeginRecordingMsg(_) | LogMsg::TypeMsg(_) => true,

@@ -395,7 +395,7 @@ impl App {
                     );
                 }
                 for log_db in self.log_dbs.values_mut() {
-                    log_db.purge_memory(fraction_to_purge);
+                    log_db.purge_fraction_of_ram(fraction_to_purge);
                 }
                 self.state.cache.purge_memory();
             }
