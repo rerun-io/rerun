@@ -472,6 +472,11 @@ impl TimePoint {
     pub fn is_timeless(&self) -> bool {
         self.0.is_empty()
     }
+
+    #[inline]
+    pub fn timelines(&self) -> impl ExactSizeIterator<Item = &Timeline> {
+        self.0.keys()
+    }
 }
 
 // ----------------------------------------------------------------------------

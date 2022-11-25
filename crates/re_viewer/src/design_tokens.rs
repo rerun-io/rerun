@@ -28,6 +28,13 @@ impl DesignTokens {
             ..Default::default()
         }
     }
+
+    #[allow(clippy::unused_self)]
+    pub fn warning_text(&self, text: impl Into<String>, style: &egui::Style) -> egui::RichText {
+        egui::RichText::new(text)
+            .italics()
+            .color(style.visuals.warn_fg_color)
+    }
 }
 
 pub(crate) fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {

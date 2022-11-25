@@ -74,17 +74,12 @@ impl ThreadInfo {
 /// The python module is called "rerun_sdk".
 #[pymodule]
 fn rerun_sdk(py: Python<'_>, m: &PyModule) -> PyResult<()> {
-    if std::env::var("RUST_LOG").is_err() {
-        // Enable logging unless the user opts-out of it.
-        std::env::set_var("RUST_LOG", "info,wgpu_core=warn,wgpu_hal=warn");
-    }
-
     #[cfg(feature = "re_viewer")]
     re_memory::accounting_allocator::turn_on_tracking_if_env_var(
         re_viewer::env_vars::RERUN_TRACK_ALLOCATIONS,
     );
 
-    // Log to stdout (if you run with `RUST_LOG=debug`).
+    re_log::set_default_rust_log_env();
     tracing_subscriber::fmt::init();
 
     Sdk::global().set_recording_id(default_recording_id(py));
