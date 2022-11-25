@@ -723,18 +723,33 @@ fn top_bar_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &mut App) {
     }
 
     if let Some(rx) = &app.rx {
+        let is_latency_interesting = match rx.source() {
+            re_smart_channel::Source::Network => true, // presumable live
+            re_smart_channel::Source::File => false,   // pre-recorded. latency doesn't matter
+        };
+
         let queue_len = rx.len();
-        let latency_sec = rx.latency_ns() as f32 / 1e9;
-        if queue_len > 0 && latency_sec > 2.0 {
-            // TODO(emilk): we should have some unified place to show warnings.
+
+        if is_latency_interesting {
+            let latency_sec = rx.latency_ns() as f32 / 1e9;
+            if queue_len > 0 && latency_sec > 2.0 {
+                // TODO(emilk): we should have some unified place to show warnings.
+                ui.separator();
+                let warning_text = format!(
+                    "Input latency: {:.1}s, {} messages in queue",
+                    latency_sec,
+                    format_usize(queue_len),
+                );
+                ui.label(app.design_tokens.warning_text(warning_text, ui.style()))
+                .on_hover_text(
+                    "This latency does NOT include network latency, \
+                    but only the latency that comes from the viewer not being able to index the incoming data \
+                    at the same rate as is is being read from the network.");
+            }
+        } else if queue_len > 0 {
             ui.separator();
-            let warning_text = format!(
-                "Input latency: {:.1}s, {} messages in queue",
-                latency_sec,
-                format_usize(queue_len),
-            );
-            ui.label(app.design_tokens.warning_text(warning_text, ui.style()))
-                .on_hover_text("This latency comes from the viewer not being able to ingest messages at the same high rate as they are being read from network or disk.");
+            ui.weak(format!("Queue: {}", format_usize(queue_len)))
+                .on_hover_text("Number of messages in the inbound queue");
         }
     }
 
