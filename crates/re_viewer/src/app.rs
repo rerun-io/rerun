@@ -749,9 +749,7 @@ fn top_bar_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &mut App) {
         // we use monospace so the width doesn't fluctuate as the numbers change.
         let text = format!("{ms:.1} ms");
         ui.label(egui::RichText::new(text).monospace().color(color))
-            .on_hover_text(
-                "CPU time used by Rerun Viewer each frame. Lower is better.",
-            );
+            .on_hover_text("CPU time used by Rerun Viewer each frame. Lower is better.");
     }
 
     if let Some(count) = re_memory::accounting_allocator::global_allocs() {
