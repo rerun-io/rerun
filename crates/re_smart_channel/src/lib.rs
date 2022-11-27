@@ -93,7 +93,10 @@ pub struct Receiver<T: Send> {
 
 impl<T: Send> Receiver<T> {
     pub fn recv(&self) -> Result<T, RecvError> {
-        Ok(self.recv_with_send_time()?.1)
+        let (sent, msg) = self.rx.recv()?;
+        let latency_ns = sent.elapsed().as_nanos() as u64;
+        self.stats.latency_ns.store(latency_ns, Relaxed);
+        Ok(msg)
     }
 
     pub fn try_recv(&self) -> Result<T, TryRecvError> {
