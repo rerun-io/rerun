@@ -13,11 +13,19 @@ pub struct ServerOptions {
     pub max_latency_sec: f32,
 }
 
+impl Default for ServerOptions {
+    fn default() -> Self {
+        Self {
+            max_latency_sec: f32::INFINITY,
+        }
+    }
+}
+
 /// Listen to multiple SDK:s connecting to us over TCP.
 ///
 /// ``` no_run
-/// # use re_sdk_comms::serve;
-/// let log_msg_rx = serve("127.0.0.1:80")?;
+/// # use re_sdk_comms::{serve, ServerOptions};
+/// let log_msg_rx = serve("127.0.0.1:80", ServerOptions::default())?;
 /// # Ok::<(), anyhow::Error>(())
 /// ```
 pub fn serve(
