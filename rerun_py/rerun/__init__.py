@@ -427,8 +427,8 @@ def log_rects(
     rects: Optional[npt.ArrayLike],
     *,
     rect_format: RectFormat = RectFormat.XYWH,
-    identifiers: Sequence[Union[str, int]] = [],
-    colors: Optional[Colors] = None,
+    identifiers: Optional[Sequence[Union[str, int]]] = None,
+    colors: Optional[Union[Color, Colors]] = None,
     labels: Optional[Sequence[str]] = None,
     class_ids: OptionalClassIds = None,
     timeless: bool = False,
@@ -460,7 +460,7 @@ def log_rects(
     if rects is None:
         rects = []
     rects = np.require(rects, dtype="float32")
-    identifiers = [str(s) for s in identifiers]
+    identifiers = [] if identifiers is None else [str(s) for s in identifiers]
     colors = _normalize_colors(colors)
     class_ids = _normalize_class_ids(class_ids)
     if labels is None:
@@ -515,8 +515,8 @@ def log_points(
     obj_path: str,
     positions: Optional[npt.NDArray[np.float32]],
     *,
-    identifiers: Sequence[Union[str, int]] = [],
-    colors: Optional[Colors] = None,
+    identifiers: Optional[Sequence[Union[str, int]]] = None,
+    colors: Optional[Union[Color, Colors]] = None,
     labels: Optional[Sequence[str]] = None,
     class_ids: OptionalClassIds = None,
     timeless: bool = False,
@@ -548,7 +548,7 @@ def log_points(
     else:
         positions = np.require(positions, dtype="float32")
 
-    identifiers = [str(s) for s in identifiers]
+    identifiers = [] if identifiers is None else [str(s) for s in identifiers]
 
     colors = _normalize_colors(colors)
     class_ids = _normalize_class_ids(class_ids)

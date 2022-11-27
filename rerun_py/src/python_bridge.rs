@@ -861,6 +861,7 @@ fn log_class_ids(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 #[pyfunction]
 fn log_rects(
     obj_path: &str,
