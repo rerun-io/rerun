@@ -750,7 +750,7 @@ fn top_bar_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &mut App) {
         let text = format!("{ms:.1} ms");
         ui.label(egui::RichText::new(text).monospace().color(color))
             .on_hover_text(
-                "CPU time used by Return Viewer each frame (excluding rendering). Lower is better.",
+                "CPU time used by Rerun Viewer each frame. Lower is better.",
             );
     }
 
