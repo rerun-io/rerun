@@ -105,7 +105,8 @@ impl<T: Send> Receiver<T> {
 
     /// Receives without registering the latency.
     ///
-    /// This is for passing on to another channel using the same [`SharedStats`].
+    /// This is for use with [`Sender::send_at`] when chaining to another channel
+    /// created with [`Self::chained_channel`].
     pub fn recv_with_send_time(&self) -> Result<(Instant, T), RecvError> {
         self.rx.recv()
     }
