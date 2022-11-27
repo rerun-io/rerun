@@ -467,8 +467,9 @@ def log_rects(
         labels = []
 
     rerun_sdk.log_rects(
-        log_rects=obj_path,
+        obj_path=obj_path,
         rect_format=rect_format.value,
+        identifiers=identifiers,
         rects=rects,
         colors=colors,
         labels=labels,
