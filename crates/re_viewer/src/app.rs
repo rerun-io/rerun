@@ -231,6 +231,16 @@ impl App {
                 frame.info().native_pixels_per_point,
             );
         }
+
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            if egui_ctx
+                .input_mut()
+                .consume_shortcut(&kb_shortcuts::TOGGLE_FULLSCREEN)
+            {
+                frame.set_fullscreen(!frame.info().window_info.fullscreen);
+            }
+        }
     }
 }
 
@@ -949,6 +959,21 @@ fn view_menu(ui: &mut egui::Ui, app: &mut App, frame: &mut eframe::Frame) {
     // On the web the browser controls the zoom
     if !frame.is_web() {
         egui::gui_zoom::zoom_menu_buttons(ui, frame.info().native_pixels_per_point);
+        ui.separator();
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        if ui
+            .add(
+                egui::Button::new("Toggle fullscreen")
+                    .shortcut_text(ui.ctx().format_shortcut(&kb_shortcuts::TOGGLE_FULLSCREEN)),
+            )
+            .clicked()
+        {
+            frame.set_fullscreen(!frame.info().window_info.fullscreen);
+            ui.close_menu();
+        }
         ui.separator();
     }
 

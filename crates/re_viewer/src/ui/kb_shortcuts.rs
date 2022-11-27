@@ -8,6 +8,8 @@
 use egui::{Key, KeyboardShortcut, Modifiers};
 
 const CTRL_SHIFT: Modifiers = Modifiers::CTRL.plus(Modifiers::SHIFT);
+#[cfg(not(target_arch = "wasm32"))]
+const CMD_SHIFT: Modifiers = Modifiers::COMMAND.plus(Modifiers::SHIFT);
 
 pub const RESET_VIEWER: KeyboardShortcut = KeyboardShortcut::new(CTRL_SHIFT, Key::R);
 
@@ -19,3 +21,6 @@ pub const TOGGLE_MEMORY_PANEL: KeyboardShortcut = KeyboardShortcut::new(CTRL_SHI
 pub const TOGGLE_BLUEPRINT_PANEL: KeyboardShortcut = KeyboardShortcut::new(CTRL_SHIFT, Key::B);
 pub const TOGGLE_SELECTION_PANEL: KeyboardShortcut = KeyboardShortcut::new(CTRL_SHIFT, Key::S);
 pub const TOGGLE_TIME_PANEL: KeyboardShortcut = KeyboardShortcut::new(CTRL_SHIFT, Key::T);
+
+#[cfg(not(target_arch = "wasm32"))]
+pub const TOGGLE_FULLSCREEN: KeyboardShortcut = KeyboardShortcut::new(CMD_SHIFT, Key::F);
