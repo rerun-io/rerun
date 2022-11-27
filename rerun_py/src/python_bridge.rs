@@ -321,11 +321,7 @@ fn show() -> PyResult<()> {
     if log_messages.is_empty() {
         re_log::info!("Nothing logged, so nothing to show");
     } else {
-        let (tx, rx) = std::sync::mpsc::channel();
-        for log_msg in log_messages {
-            tx.send(log_msg).ok();
-        }
-        re_viewer::run_native_viewer_with_rx(rx);
+        re_viewer::run_native_viewer_with_messages(log_messages);
     }
 
     Ok(())

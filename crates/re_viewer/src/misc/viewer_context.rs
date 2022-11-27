@@ -244,10 +244,13 @@ impl Caches {
 
 // ----------------------------------------------------------------------------
 
-#[derive(Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, PartialEq, serde::Deserialize, serde::Serialize)]
 pub struct Options {
     pub show_camera_mesh_in_3d: bool,
     pub show_camera_axes_in_3d: bool,
+
+    pub low_latency: f32,
+    pub warn_latency: f32,
 }
 
 impl Default for Options {
@@ -255,6 +258,9 @@ impl Default for Options {
         Self {
             show_camera_mesh_in_3d: true,
             show_camera_axes_in_3d: true,
+
+            low_latency: 0.100,
+            warn_latency: 0.200,
         }
     }
 }

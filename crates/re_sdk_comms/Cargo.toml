@@ -18,6 +18,7 @@ server = []
 [dependencies]
 re_log = { path = "../re_log" }
 re_log_types = { path = "../re_log_types", features = ["serde"] }
+re_smart_channel = { path = "../re_smart_channel" }
 
 anyhow = "1.0.56"
 bincode = "1.3"
