@@ -215,6 +215,31 @@ fn time(timeless: bool) -> TimePoint {
     }
 }
 
+// TODO(emilk): ideally we would pass `Index` as something type-safe from Python.
+fn parse_indices(indices: Vec<String>) -> PyResult<Vec<Index>> {
+    indices.into_iter().map(parse_index).collect()
+}
+
+fn parse_index(s: String) -> PyResult<Index> {
+    use std::str::FromStr as _;
+
+    if let Some(seq) = s.strip_prefix('#') {
+        if let Ok(sequence) = u64::from_str(seq) {
+            Ok(Index::Sequence(sequence))
+        } else {
+            Err(PyTypeError::new_err(format!(
+                "Expected index starting with '#' to be a sequence, got {s:?}"
+            )))
+        }
+    } else if let Ok(integer) = i128::from_str(&s) {
+        Ok(Index::Integer(integer))
+    } else if let Ok(uuid) = uuid::Uuid::parse_str(&s) {
+        Ok(Index::Uuid(uuid))
+    } else {
+        Ok(Index::String(s))
+    }
+}
+
 // ----------------------------------------------------------------------------
 
 #[pyfunction]
@@ -986,6 +1011,7 @@ fn log_point(
 fn log_points(
     obj_path: &str,
     positions: numpy::PyReadonlyArrayDyn<'_, f32>,
+    identifiers: Vec<String>,
     colors: numpy::PyReadonlyArrayDyn<'_, u8>,
     labels: Vec<String>,
     class_ids: numpy::PyReadonlyArrayDyn<'_, u16>,
@@ -1017,7 +1043,18 @@ fn log_points(
 
     sdk.register_type(obj_path.obj_type_path(), obj_type);
 
-    let indices = BatchIndex::SequentialIndex(n);
+    let indices = if identifiers.is_empty() {
+        BatchIndex::SequentialIndex(n)
+    } else {
+        let indices = parse_indices(identifiers)?;
+        if indices.len() != n {
+            return Err(PyTypeError::new_err(format!(
+                "Get {n} positions but {} identifiers",
+                indices.len()
+            )));
+        }
+        BatchIndex::FullIndex(indices)
+    };
 
     let time_point = time(timeless);
 

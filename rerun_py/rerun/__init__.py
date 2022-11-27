@@ -504,6 +504,7 @@ def log_points(
     obj_path: str,
     positions: Optional[npt.NDArray[np.float32]],
     *,
+    identifiers: Sequence[Union[str, int]] = [],
     colors: Optional[Colors] = None,
     labels: Optional[Sequence[str]] = None,
     class_ids: OptionalClassIds = None,
@@ -515,6 +516,7 @@ def log_points(
     Logging again to the same `obj_path` will replace all the previous points.
 
     * `positions`: Nx2 or Nx3 array
+    * `identifiers`: per-point identifiers, so points can be tracked over time
     * `color`: Optional colors of the points.
     * `labels`: Optional per-point text to show with the points
     * `class_ids`: Optional class ids for the points.
@@ -534,12 +536,23 @@ def log_points(
         positions = np.require([], dtype="float32")
     else:
         positions = np.require(positions, dtype="float32")
+
+    identifiers = [str(s) for s in identifiers]
+
     colors = _normalize_colors(colors)
     class_ids = _normalize_class_ids(class_ids)
     if labels is None:
         labels = []
 
-    rerun_sdk.log_points(obj_path, positions, colors, labels, class_ids, timeless)
+    rerun_sdk.log_points(
+        obj_path=obj_path,
+        positions=positions,
+        identifiers=identifiers,
+        colors=colors,
+        labels=labels,
+        class_ids=class_ids,
+        timeless=timeless,
+    )
 
 
 def _normalize_colors(colors: Optional[npt.ArrayLike] = None) -> npt.NDArray[np.uint8]:
