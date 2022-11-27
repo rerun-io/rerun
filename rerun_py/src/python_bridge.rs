@@ -866,6 +866,7 @@ fn log_rects(
     obj_path: &str,
     rect_format: &str,
     rects: numpy::PyReadonlyArrayDyn<'_, f32>,
+    identifiers: Vec<String>,
     colors: numpy::PyReadonlyArrayDyn<'_, u8>,
     labels: Vec<String>,
     class_ids: numpy::PyReadonlyArrayDyn<'_, u16>,
@@ -897,7 +898,18 @@ fn log_rects(
 
     sdk.register_type(obj_path.obj_type_path(), ObjectType::BBox2D);
 
-    let indices = BatchIndex::SequentialIndex(n);
+    let indices = if identifiers.is_empty() {
+        BatchIndex::SequentialIndex(n)
+    } else {
+        let indices = parse_indices(identifiers)?;
+        if indices.len() != n {
+            return Err(PyTypeError::new_err(format!(
+                "Get {n} rectangles but {} identifiers",
+                indices.len()
+            )));
+        }
+        BatchIndex::FullIndex(indices)
+    };
 
     if !colors.is_empty() {
         let color_data = color_batch(&indices, colors)?;

@@ -427,6 +427,7 @@ def log_rects(
     rects: Optional[npt.ArrayLike],
     *,
     rect_format: RectFormat = RectFormat.XYWH,
+    identifiers: Sequence[Union[str, int]] = [],
     colors: Optional[Colors] = None,
     labels: Optional[Sequence[str]] = None,
     class_ids: OptionalClassIds = None,
@@ -440,6 +441,7 @@ def log_rects(
     * `rects`: Nx4 numpy array, where each row is [x, y, w, h], or some format you pick with the `rect_format`
     argument.
     * `rect_format`: how to interpret the `rect` argument
+    * `identifiers`: per-point identifiers, so points can be tracked over time
     * `labels`: Optional per-rectangle text to show inside the rectangle.
     * `class_ids`: Optional class ids for the rectangles.
       The class id provides colors and labels if not specified explicitly.
@@ -458,12 +460,21 @@ def log_rects(
     if rects is None:
         rects = []
     rects = np.require(rects, dtype="float32")
+    identifiers = [str(s) for s in identifiers]
     colors = _normalize_colors(colors)
     class_ids = _normalize_class_ids(class_ids)
     if labels is None:
         labels = []
 
-    rerun_sdk.log_rects(obj_path, rect_format.value, rects, colors, labels, class_ids, timeless)
+    rerun_sdk.log_rects(
+        log_rects=obj_path,
+        rect_format=rect_format.value,
+        rects=rects,
+        colors=colors,
+        labels=labels,
+        class_ids=class_ids,
+        timeless=timeless,
+    )
 
 
 def log_point(
