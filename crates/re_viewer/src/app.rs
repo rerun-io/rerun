@@ -671,9 +671,20 @@ fn top_panel(egui_ctx: &egui::Context, frame: &mut eframe::Frame, app: &mut App)
 
     // On Mac, we share the same space as the native red/yellow/green close/minimize/maximize buttons.
     // This means we need to make room for them.
+    let make_room_for_window_buttons = {
+        #[cfg(target_os = "macos")]
+        {
+            crate::FULLSIZE_CONTENT && !frame.info().window_info.fullscreen
+        }
+        #[cfg(not(target_os = "macos"))]
+        {
+            false
+        }
+    };
+
     let native_buttons_size_in_native_scale = egui::vec2(64.0, 24.0); // source: I measured /emilk
 
-    let bar_height = if crate::FULLSIZE_CONTENT {
+    let bar_height = if make_room_for_window_buttons {
         // Use more vertical space when zoomed in…
         let bar_height = native_buttons_size_in_native_scale.y;
 
@@ -690,7 +701,7 @@ fn top_panel(egui_ctx: &egui::Context, frame: &mut eframe::Frame, app: &mut App)
             egui::menu::bar(ui, |ui| {
                 ui.set_height(bar_height);
 
-                if crate::FULLSIZE_CONTENT {
+                if make_room_for_window_buttons {
                     // Always use the same width measured in native GUI coordinates:
                     ui.add_space(gui_zoom * native_buttons_size_in_native_scale.x);
                 }
