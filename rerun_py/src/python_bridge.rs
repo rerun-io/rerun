@@ -216,8 +216,19 @@ fn time(timeless: bool) -> TimePoint {
 }
 
 // TODO(emilk): ideally we would pass `Index` as something type-safe from Python.
-fn parse_indices(indices: Vec<String>) -> PyResult<Vec<Index>> {
-    indices.into_iter().map(parse_index).collect()
+fn parse_identifiers(identifiers: Vec<String>) -> PyResult<Vec<Index>> {
+    let identifiers = identifiers
+        .into_iter()
+        .map(parse_index)
+        .collect::<Result<Vec<_>, _>>()?;
+    let as_set: ahash::HashSet<_> = identifiers.iter().collect();
+    if as_set.len() == identifiers.len() {
+        Ok(identifiers)
+    } else {
+        Err(PyTypeError::new_err(
+            "The identifiers contained duplicates, but they need to be unique!",
+        ))
+    }
 }
 
 fn parse_index(s: String) -> PyResult<Index> {
@@ -902,7 +913,7 @@ fn log_rects(
     let indices = if identifiers.is_empty() {
         BatchIndex::SequentialIndex(n)
     } else {
-        let indices = parse_indices(identifiers)?;
+        let indices = parse_identifiers(identifiers)?;
         if indices.len() != n {
             return Err(PyTypeError::new_err(format!(
                 "Get {n} rectangles but {} identifiers",
@@ -1059,7 +1070,7 @@ fn log_points(
     let indices = if identifiers.is_empty() {
         BatchIndex::SequentialIndex(n)
     } else {
-        let indices = parse_indices(identifiers)?;
+        let indices = parse_identifiers(identifiers)?;
         if indices.len() != n {
             return Err(PyTypeError::new_err(format!(
                 "Get {n} positions but {} identifiers",
