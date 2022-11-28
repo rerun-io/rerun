@@ -158,7 +158,9 @@ pub fn show_zoomed_image_region(
                         ui.monospace(format!(
                             "Label: {}",
                             annotations
-                                .label(None, Some(ClassId(u16_val)))
+                                .class_description(Some(ClassId(u16_val)))
+                                .annotation_info()
+                                .label(None)
                                 .unwrap_or_default()
                         ));
                     };

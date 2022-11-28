@@ -12,7 +12,10 @@ use pyo3::{
     types::PyList,
 };
 
-use re_log_types::{context::ClassId, LoggedData, *};
+use re_log_types::{
+    context::{ClassId, KeypointId},
+    LoggedData, *,
+};
 
 use crate::sdk::Sdk;
 
@@ -801,38 +804,54 @@ fn log_labels(
     }
 }
 
-fn log_class_ids(
+#[derive(Copy, Clone)]
+enum IdType {
+    ClassId,
+    KeypointId,
+}
+
+impl IdType {
+    fn field_name(self) -> &'static str {
+        match self {
+            IdType::ClassId => "class_id",
+            IdType::KeypointId => "keypoint_id",
+        }
+    }
+}
+
+fn log_ids(
     sdk: &mut Sdk,
     obj_path: &ObjPath,
-    class_ids: &numpy::PyReadonlyArrayDyn<'_, u16>,
+    ids: &numpy::PyReadonlyArrayDyn<'_, u16>,
+    id_type: IdType,
     indices: &BatchIndex,
     time_point: &TimePoint,
     num_objects: usize,
 ) -> PyResult<()> {
-    match class_ids.len() {
+    match ids.len() {
         0 => Ok(()),
         1 => {
             sdk.send_data(
                 time_point,
-                (obj_path, "class_id"),
-                LoggedData::BatchSplat(Data::I32(class_ids.to_vec().unwrap()[0] as i32)),
+                (obj_path, id_type.field_name()),
+                LoggedData::BatchSplat(Data::I32(ids.to_vec().unwrap()[0] as i32)),
             );
             Ok(())
         }
-        num_class_ids if num_class_ids == num_objects => {
+        num_ids if num_ids == num_objects => {
             sdk.send_data(
                 time_point,
-                (obj_path, "class_id"),
+                (obj_path, id_type.field_name()),
                 LoggedData::Batch {
                     indices: indices.clone(),
                     // TODO(andreas): We don't have a u16 data type, do late conversion here. This will likely go away with new data model.
-                    data: DataVec::I32(class_ids.cast(false).unwrap().to_vec().unwrap()),
+                    data: DataVec::I32(ids.cast(false).unwrap().to_vec().unwrap()),
                 },
             );
             Ok(())
         }
-        num_class_ids => Err(PyTypeError::new_err(format!(
-            "Got {num_class_ids} class_id for {num_objects} objects"
+        num_ids => Err(PyTypeError::new_err(format!(
+            "Got {num_ids} class_id for {num_objects} objects"
         ))),
     }
 }
@@ -881,7 +900,15 @@ fn log_rects(
     }
 
     log_labels(&mut sdk, &obj_path, labels, &indices, &time_point, n)?;
-    log_class_ids(&mut sdk, &obj_path, &class_ids, &indices, &time_point, n)?;
+    log_ids(
+        &mut sdk,
+        &obj_path,
+        &class_ids,
+        IdType::ClassId,
+        &indices,
+        &time_point,
+        n,
+    )?;
 
     let rects = vec_from_np_array(&rects)
         .chunks_exact(4)
@@ -912,6 +939,7 @@ fn log_point(
     color: Option<Vec<u8>>,
     label: Option<String>,
     class_id: Option<u16>,
+    keypoint_id: Option<u16>,
     timeless: bool,
 ) -> PyResult<()> {
     let mut sdk = Sdk::global();
@@ -963,6 +991,14 @@ fn log_point(
         );
     }
 
+    if let Some(keypoint_id) = keypoint_id {
+        sdk.send_data(
+            &time_point,
+            (&obj_path, "keypoint_id"),
+            LoggedData::Single(Data::I32(keypoint_id as _)),
+        );
+    }
+
     let position = vec_from_np_array(&position);
     let pos_data = match obj_type {
         ObjectType::Point2D => Data::Vec2([position[0], position[1]]),
@@ -990,6 +1026,7 @@ fn log_points(
     colors: numpy::PyReadonlyArrayDyn<'_, u8>,
     labels: Vec<String>,
     class_ids: numpy::PyReadonlyArrayDyn<'_, u16>,
+    keypoint_ids: numpy::PyReadonlyArrayDyn<'_, u16>,
     timeless: bool,
 ) -> PyResult<()> {
     // Note: we cannot early-out here on `positions.empty()`, beacause logging
@@ -1028,7 +1065,24 @@ fn log_points(
     }
 
     log_labels(&mut sdk, &obj_path, labels, &indices, &time_point, n)?;
-    log_class_ids(&mut sdk, &obj_path, &class_ids, &indices, &time_point, n)?;
+    log_ids(
+        &mut sdk,
+        &obj_path,
+        &class_ids,
+        IdType::ClassId,
+        &indices,
+        &time_point,
+        n,
+    )?;
+    log_ids(
+        &mut sdk,
+        &obj_path,
+        &keypoint_ids,
+        IdType::KeypointId,
+        &indices,
+        &time_point,
+        n,
+    )?;
 
     let pos_data = match obj_type {
         ObjectType::Point2D => DataVec::Vec2(pod_collect_to_vec(&vec_from_np_array(&positions))),
@@ -1625,10 +1679,28 @@ fn log_image_file(
     Ok(())
 }
 
+#[derive(FromPyObject)]
+struct AnnotationInfoTuple(u16, Option<String>, Option<Vec<u8>>);
+
+impl From<AnnotationInfoTuple> for context::AnnotationInfo {
+    fn from(tuple: AnnotationInfoTuple) -> Self {
+        let AnnotationInfoTuple(id, label, color) = tuple;
+        Self {
+            id,
+            label: label.map(Arc::new),
+            color: color
+                .as_ref()
+                .map(|color| convert_color(color.clone()).unwrap()),
+        }
+    }
+}
+
+type ClassDescriptionTuple = (AnnotationInfoTuple, Vec<AnnotationInfoTuple>, Vec<u16>);
+
 #[pyfunction]
 fn log_annotation_context(
     obj_path: &str,
-    class_descriptions: Vec<(u16, Option<String>, Option<Vec<u8>>)>,
+    class_descriptions: Vec<ClassDescriptionTuple>,
     timeless: bool,
 ) -> PyResult<()> {
     let mut sdk = Sdk::global();
@@ -1642,18 +1714,20 @@ fn log_annotation_context(
 
     let mut annotation_context = AnnotationContext::default();
 
-    for (id, label, color) in class_descriptions {
+    for (info, keypoint_annotations, keypoint_skeleton_edges) in class_descriptions {
         annotation_context
             .class_map
-            .entry(ClassId(id))
+            .entry(ClassId(info.0))
             .or_insert_with(|| context::ClassDescription {
-                info: context::AnnotationInfo {
-                    label: label.map(Arc::new),
-                    color: color
-                        .as_ref()
-                        .map(|color| convert_color(color.clone()).unwrap()),
-                },
-                ..Default::default()
+                info: info.into(),
+                keypoint_map: keypoint_annotations
+                    .into_iter()
+                    .map(|k| (KeypointId(k.0), k.into()))
+                    .collect(),
+                keypoint_connections: keypoint_skeleton_edges
+                    .chunks_exact(2)
+                    .map(|pair| (KeypointId(pair[0]), KeypointId(pair[1])))
+                    .collect(),
             });
     }
 
