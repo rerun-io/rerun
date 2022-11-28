@@ -441,7 +441,7 @@ def log_rects(
     * `rects`: Nx4 numpy array, where each row is [x, y, w, h], or some format you pick with the `rect_format`
     argument.
     * `rect_format`: how to interpret the `rect` argument
-    * `identifiers`: per-point identifiers, so points can be tracked over time
+    * `identifiers`: per-point identifiers - unique names or numbers that show up when you hover the rectangles. In the future these will be used to track the rectangles over time.
     * `labels`: Optional per-rectangle text to show inside the rectangle.
     * `class_ids`: Optional class ids for the rectangles.
       The class id provides colors and labels if not specified explicitly.
@@ -528,7 +528,7 @@ def log_points(
     Logging again to the same `obj_path` will replace all the previous points.
 
     * `positions`: Nx2 or Nx3 array
-    * `identifiers`: per-point identifiers, so points can be tracked over time
+    * `identifiers`: per-point identifiers - unique names or numbers that show up when you hover the points. In the future these will be used to track the points over time.
     * `color`: Optional colors of the points.
     * `labels`: Optional per-point text to show with the points
     * `class_ids`: Optional class ids for the points.
