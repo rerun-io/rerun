@@ -307,7 +307,7 @@ def track_objects(video_path: str) -> None:
     with open(COCO_CATEGORIES_PATH) as f:
         coco_categories = json.load(f)
     class_descriptions = [
-        rerun.ClassDescription(id=cat["id"], color=cat["color"], label=cat["name"]) for cat in coco_categories
+        rerun.AnnotationInfo(id=cat["id"], color=cat["color"], label=cat["name"]) for cat in coco_categories
     ]
     rerun.log_annotation_context("/", class_descriptions, timeless=True)
 

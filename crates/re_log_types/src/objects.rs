@@ -54,11 +54,11 @@ impl ObjectType {
             Self::Scalar => &["scalar", "label", "color", "radius", "scattered"],
 
             Self::Image => &["color", "tensor", "meter"],
-            Self::Point2D => &["color", "pos", "radius", "label", "class_id"],
+            Self::Point2D => &["color", "pos", "radius", "label", "class_id", "keypoint_id"],
             Self::BBox2D => &["color", "bbox", "stroke_width", "label", "class_id"],
             Self::LineSegments2D => &["color", "points", "stroke_width"],
 
-            Self::Point3D => &["color", "pos", "radius", "label", "class_id"],
+            Self::Point3D => &["color", "pos", "radius", "label", "class_id", "keypoint_id"],
             Self::Box3D => &["color", "obb", "stroke_width", "label", "class_id"],
             Self::Path3D => &["color", "points", "stroke_width"],
             Self::LineSegments3D => &["color", "points", "stroke_width"],
