@@ -318,7 +318,8 @@ fn show() -> PyResult<()> {
     if log_messages.is_empty() {
         re_log::info!("Nothing logged, so nothing to show");
     } else {
-        re_viewer::run_native_viewer_with_messages(log_messages);
+        let startup_options = re_viewer::StartupOptions::default();
+        re_viewer::run_native_viewer_with_messages(startup_options, log_messages);
     }
 
     Ok(())

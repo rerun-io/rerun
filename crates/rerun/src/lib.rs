@@ -23,8 +23,6 @@ use re_smart_channel::Receiver;
 ///
 /// Environment variables:
 ///
-/// * `RERUN_MEMORY_LIMIT`: set an upper limit on how much memory the Rerun Viewer should use. Example `RERUN_MEMORY_LIMIT=16GB`
-///
 /// * `RERUN_TRACK_ALLOCATIONS`: track all allocations in order to find memory leaks in the viewer. WARNING: slows down the viewer by a lot!
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]
@@ -47,6 +45,14 @@ struct Args {
     /// Start with the puffin profiler running.
     #[clap(long)]
     profile: bool,
+
+    /// An upper limit on how much memory the Rerun Viewer should use.
+    ///
+    /// When this limit is used, Rerun will purge the oldest data.
+    ///
+    /// Example: `16GB`
+    #[clap(long)]
+    memory_limit: Option<String>,
 
     /// Set a maximum input latency, e.g. "200ms" or "10s".
     ///
@@ -79,6 +85,13 @@ async fn run_impl(args: Args) -> anyhow::Result<()> {
         profiler.start();
     }
 
+    let startup_options = re_viewer::StartupOptions {
+        memory_limit: args.memory_limit.as_ref().map_or(Default::default(), |l| {
+            re_memory::MemoryLimit::parse(l)
+                .unwrap_or_else(|err| panic!("Bad --memory-limit: {err}"))
+        }),
+    };
+
     // Where do we get the data from?
     let rx = if let Some(url_or_path) = &args.url_or_path {
         let path = std::path::Path::new(url_or_path).to_path_buf();
@@ -87,7 +100,7 @@ async fn run_impl(args: Args) -> anyhow::Result<()> {
             load_file_to_channel(&path).with_context(|| format!("{path:?}"))?
         } else {
             // We are connecting to a server at a websocket address:
-            return connect_to_ws_url(&args, profiler, url_or_path.clone()).await;
+            return connect_to_ws_url(&args, startup_options, profiler, url_or_path.clone()).await;
         }
     } else {
         #[cfg(feature = "server")]
@@ -135,8 +148,13 @@ async fn run_impl(args: Args) -> anyhow::Result<()> {
     } else {
         re_viewer::run_native_app(Box::new(move |cc, design_tokens| {
             let rx = wake_up_ui_thread_on_each_msg(rx, cc.egui_ctx.clone());
-            let mut app =
-                re_viewer::App::from_receiver(&cc.egui_ctx, design_tokens, cc.storage, rx);
+            let mut app = re_viewer::App::from_receiver(
+                &cc.egui_ctx,
+                startup_options,
+                design_tokens,
+                cc.storage,
+                rx,
+            );
             app.set_profiler(profiler);
             Box::new(app)
         }));
@@ -146,6 +164,7 @@ async fn run_impl(args: Args) -> anyhow::Result<()> {
 
 async fn connect_to_ws_url(
     args: &Args,
+    startup_options: re_viewer::StartupOptions,
     profiler: re_viewer::Profiler,
     mut rerun_server_ws_url: String,
 ) -> anyhow::Result<()> {
@@ -160,6 +179,7 @@ async fn connect_to_ws_url(
         re_viewer::run_native_app(Box::new(move |cc, design_tokens| {
             let mut app = re_viewer::RemoteViewerApp::new(
                 &cc.egui_ctx,
+                startup_options,
                 design_tokens,
                 cc.storage,
                 rerun_server_ws_url,

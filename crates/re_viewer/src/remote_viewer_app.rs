@@ -2,6 +2,7 @@ use crate::{design_tokens::DesignTokens, App};
 
 /// Connects to a server over `WebSockets`.
 pub struct RemoteViewerApp {
+    startup_options: crate::StartupOptions,
     design_tokens: DesignTokens,
     url: String,
     app: Option<(re_ws_comms::Connection, App)>,
@@ -11,11 +12,13 @@ impl RemoteViewerApp {
     /// url to rerun server
     pub fn new(
         egui_ctx: &egui::Context,
+        startup_options: crate::StartupOptions,
         design_tokens: crate::design_tokens::DesignTokens,
         storage: Option<&dyn eframe::Storage>,
         url: String,
     ) -> Self {
         let mut slf = Self {
+            startup_options,
             design_tokens,
             url,
             app: None,
@@ -51,7 +54,13 @@ impl RemoteViewerApp {
             })
             .unwrap(); // TODO(emilk): handle error
 
-        let app = crate::App::from_receiver(egui_ctx, self.design_tokens, storage, rx);
+        let app = crate::App::from_receiver(
+            egui_ctx,
+            self.startup_options,
+            self.design_tokens,
+            storage,
+            rx,
+        );
 
         self.app = Some((connection, app));
     }
