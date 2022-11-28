@@ -35,6 +35,7 @@ warn = [
   "clippy::fn_params_excessive_bools",
   "clippy::fn_to_numeric_cast_any",
   "clippy::from_iter_instead_of_collect",
+  "clippy::get_unwrap",
   "clippy::if_let_mutex",
   "clippy::implicit_clone",
   "clippy::imprecise_flops",

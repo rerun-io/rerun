@@ -19,3 +19,6 @@ pub const TOGGLE_MEMORY_PANEL: KeyboardShortcut = KeyboardShortcut::new(CTRL_SHI
 pub const TOGGLE_BLUEPRINT_PANEL: KeyboardShortcut = KeyboardShortcut::new(CTRL_SHIFT, Key::B);
 pub const TOGGLE_SELECTION_PANEL: KeyboardShortcut = KeyboardShortcut::new(CTRL_SHIFT, Key::S);
 pub const TOGGLE_TIME_PANEL: KeyboardShortcut = KeyboardShortcut::new(CTRL_SHIFT, Key::T);
+
+#[cfg(not(target_arch = "wasm32"))]
+pub const TOGGLE_FULLSCREEN: KeyboardShortcut = KeyboardShortcut::new(Modifiers::NONE, Key::F11);
