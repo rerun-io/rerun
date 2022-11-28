@@ -245,16 +245,9 @@ impl TimeControl {
         self.time_i64().map(TimeQuery::LatestAt)
     }
 
-    /// The current filtered time.
-    /// Returns a "point" range if we have no selection (normal play)
-    pub fn time_range(&self) -> Option<TimeRangeF> {
-        let state = self.states.get(&self.timeline)?;
-        Some(TimeRangeF::point(state.time)) // TODO: remove function
-    }
-
     /// The current loop range, iff looping is turned on
     pub fn loop_range(&self) -> Option<TimeRangeF> {
-        if self.loop_selection_active {
+        if self.looped && self.loop_selection_active {
             self.states.get(&self.timeline)?.loop_selection
         } else {
             None

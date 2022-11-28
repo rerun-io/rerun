@@ -521,29 +521,9 @@ fn help_button(ui: &mut egui::Ui) {
 }
 
 fn current_time_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
-    if let Some(range) = ctx.rec_cfg.time_ctrl.time_range() {
+    if let Some(time_int) = ctx.rec_cfg.time_ctrl.time_int() {
         let time_type = ctx.rec_cfg.time_ctrl.time_type();
-
-        if range.min == range.max {
-            ui.monospace(time_type.format(range.min.floor())); // floor makes sense for "latest at" queries
-        } else {
-            match time_type {
-                TimeType::Time => {
-                    ui.monospace(format!(
-                        "{} - {}",
-                        time_type.format(range.min.round()),
-                        time_type.format(range.max.round())
-                    ));
-                }
-                TimeType::Sequence => {
-                    ui.monospace(format!(
-                        "[{} - {})",
-                        time_type.format(range.min.ceil()),
-                        time_type.format(range.max.floor())
-                    ));
-                }
-            }
-        }
+        ui.monospace(time_type.format(time_int));
     }
 }
 
@@ -895,7 +875,7 @@ fn loop_selection_ui(
 
     let mut did_interact = false;
 
-    let is_active = time_ctrl.loop_selection_active;
+    let is_active = time_ctrl.looped() && time_ctrl.loop_selection_active;
 
     let pointer_pos = ui.input().pointer.hover_pos();
     let is_pointer_in_rect = pointer_pos.map_or(false, |pointer_pos| rect.contains(pointer_pos));
