@@ -160,7 +160,7 @@ impl CongestionManager {
 
         /// If we let it go too low, we won't accept any messages,
         /// and then we won't ever recover.
-        const MIN_ACCPET_RATE: f32 = 0.01;
+        const MIN_ACCEPT_RATE: f32 = 0.01;
 
         // This is quite ad-hoc, but better than nothing.
         // Perhaps it's worth investigating a more rigorous additive increase/multiplicative decrease congestion protocol.
@@ -175,7 +175,7 @@ impl CongestionManager {
             self.accept_rate -= badness * dt / 15.0;
         }
 
-        self.accept_rate = self.accept_rate.clamp(MIN_ACCPET_RATE, 1.0);
+        self.accept_rate = self.accept_rate.clamp(MIN_ACCEPT_RATE, 1.0);
 
         self.rng.gen::<f32>() < self.accept_rate
     }
