@@ -549,6 +549,8 @@ enum PanelSelection {
     Viewport,
 
     EventLog,
+
+    ArrowLog,
 }
 
 #[derive(Default, serde::Deserialize, serde::Serialize)]
@@ -568,8 +570,13 @@ struct AppState {
 
     blueprints: HashMap<ApplicationId, crate::ui::Blueprint>,
 
+    /// Which view panel is currently being shown
     panel_selection: PanelSelection,
+
     event_log_view: crate::event_log_view::EventLogView,
+
+    arrow_log_view: crate::arrow_log_view::ArrowLogView,
+
     selection_panel: crate::selection_panel::SelectionPanel,
     time_panel: crate::time_panel::TimePanel,
 
@@ -641,6 +648,7 @@ impl AppState {
                     .or_default()
                     .blueprint_panel_and_viewport(&mut ctx, ui),
                 PanelSelection::EventLog => event_log_view.ui(&mut ctx, ui),
+                PanelSelection::ArrowLog => arrow_log_view.ui(&mut ctx, ui),,
             });
 
         // move time last, so we get to see the first data first!
@@ -760,6 +768,12 @@ fn top_bar_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &mut App) {
             &mut app.state.panel_selection,
             PanelSelection::EventLog,
             "Event Log",
+        );
+
+        ui.selectable_value(
+            &mut app.state.panel_selection,
+            PanelSelection::ArrowLog,
+            "Arrow Log",
         );
     }
 

@@ -15,6 +15,7 @@ pub use format_numbers::format_usize;
 mod scene;
 use self::scene::SceneQuery;
 
+pub(crate) mod arrow_log_view;
 pub(crate) mod data_ui;
 pub(crate) mod event_log_view;
 pub(crate) mod kb_shortcuts;

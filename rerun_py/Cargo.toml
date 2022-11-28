@@ -31,7 +31,6 @@ extension-module = ["pyo3/extension-module"]
 web = ["rerun/web", "dep:re_ws_comms", "dep:re_web_server", "dep:webbrowser"]
 
 [dependencies]
-arrow2 = { version = "0.14.2", features = ["io_ipc"] }
 re_error = { path = "../crates/re_error" }
 re_log = { path = "../crates/re_log" }
 re_log_types = { path = "../crates/re_log_types" }
@@ -42,6 +41,7 @@ re_tensor_ops = { path = "../crates/re_tensor_ops" }
 re_viewer = { path = "../crates/re_viewer", optional = true }
 rerun = { path = "../crates/rerun" }
 
+arrow2 = { version = "0.14", features = ["io_ipc"] }
 bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }
 crossbeam = "0.8"
 document-features = "0.2"

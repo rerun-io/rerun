@@ -328,6 +328,7 @@ impl LogDb {
                 LogMsg::BeginRecordingMsg(_) | LogMsg::TypeMsg(_) => true,
                 LogMsg::DataMsg(msg) => msg.time_point.is_timeless(),
                 LogMsg::PathOpMsg(msg) => msg.time_point.is_timeless(),
+                LogMsg::ArrowMsg(_) => true,
             }
         }
 
