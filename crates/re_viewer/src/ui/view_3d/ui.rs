@@ -44,6 +44,7 @@ pub(crate) struct View3DState {
     spin: bool,
     show_axes: bool,
 
+    #[serde(skip)]
     last_eye_interact_time: f64,
 
     /// Filled in at the start of each frame

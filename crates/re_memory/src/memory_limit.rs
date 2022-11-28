@@ -1,4 +1,4 @@
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub struct MemoryLimit {
     /// Limit in bytes.
     ///
@@ -9,21 +9,10 @@ pub struct MemoryLimit {
 }
 
 impl MemoryLimit {
-    /// Read from the given environment variable.
-    #[cfg(not(target_arch = "wasm32"))]
-    pub fn from_env_var(env_var: &str) -> Self {
-        let limit = std::env::var(env_var).ok().map(|limit| {
-            parse_bytes(&limit)
-                .unwrap_or_else(|| panic!("{env_var}: expected e.g. '16GB', got {limit:?}"))
-        });
-
-        Self { limit }
-    }
-
-    #[cfg(target_arch = "wasm32")]
-    pub fn from_env_var(_env_var: &str) -> Self {
-        // TODO(emilk): some way to have memory limits on web.
-        Self { limit: None }
+    pub fn parse(limit: &str) -> Result<Self, String> {
+        parse_bytes(limit)
+            .map(|limit| Self { limit: Some(limit) })
+            .ok_or_else(|| format!("expected e.g. '16GB', got {limit:?}"))
     }
 
     /// Returns how large fraction of memory we should free to go down to the exact limit.
@@ -45,7 +34,6 @@ impl MemoryLimit {
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 fn parse_bytes(limit: &str) -> Option<i64> {
     if let Some(kb) = limit.strip_suffix("kB") {
         Some(kb.parse::<i64>().ok()? * 1_000)

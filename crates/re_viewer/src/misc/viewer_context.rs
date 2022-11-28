@@ -132,6 +132,21 @@ impl<'a> ViewerContext<'a> {
         response
     }
 
+    pub fn spsace_view_obj_path_button_to(
+        &mut self,
+        ui: &mut egui::Ui,
+        text: impl Into<egui::WidgetText>,
+        space_view_id: SpaceViewId,
+        obj_path: &ObjPath,
+    ) -> egui::Response {
+        let selection = Selection::SpaceViewObjPath(space_view_id, obj_path.clone());
+        let response = ui.selectable_label(self.rec_cfg.selection == selection, text);
+        if response.clicked() {
+            self.rec_cfg.selection = selection;
+        }
+        response
+    }
+
     pub fn time_button(
         &mut self,
         ui: &mut egui::Ui,
@@ -244,10 +259,13 @@ impl Caches {
 
 // ----------------------------------------------------------------------------
 
-#[derive(Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, PartialEq, serde::Deserialize, serde::Serialize)]
 pub struct Options {
     pub show_camera_mesh_in_3d: bool,
     pub show_camera_axes_in_3d: bool,
+
+    pub low_latency: f32,
+    pub warn_latency: f32,
 }
 
 impl Default for Options {
@@ -255,6 +273,9 @@ impl Default for Options {
         Self {
             show_camera_mesh_in_3d: true,
             show_camera_axes_in_3d: true,
+
+            low_latency: 0.100,
+            warn_latency: 0.200,
         }
     }
 }
@@ -270,6 +291,8 @@ pub enum Selection {
     DataPath(DataPath),
     Space(ObjPath),
     SpaceView(crate::ui::SpaceViewId),
+    /// An object within a space-view.
+    SpaceViewObjPath(crate::ui::SpaceViewId, ObjPath),
 }
 
 impl std::fmt::Display for Selection {

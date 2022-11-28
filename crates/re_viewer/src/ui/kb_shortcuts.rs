@@ -24,3 +24,6 @@ pub const TOGGLE_SELECTION_DETAILED: KeyboardShortcut = KeyboardShortcut::new(CT
 // TODO(cmc): mouse button shortcut support for Andreas!
 pub const SELECTION_PREVIOUS: KeyboardShortcut = KeyboardShortcut::new(CTRL_SHIFT, Key::O);
 pub const SELECTION_NEXT: KeyboardShortcut = KeyboardShortcut::new(CTRL_SHIFT, Key::I);
+
+#[cfg(not(target_arch = "wasm32"))]
+pub const TOGGLE_FULLSCREEN: KeyboardShortcut = KeyboardShortcut::new(Modifiers::NONE, Key::F11);

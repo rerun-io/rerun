@@ -21,7 +21,7 @@ impl MemoryUse {
     pub fn capture() -> Self {
         Self {
             resident: bytes_resident(),
-            counted: counted(),
+            counted: crate::accounting_allocator::global_allocs().map(|c| c.size as _),
         }
     }
 }
@@ -62,19 +62,4 @@ fn bytes_resident() -> Option<i64> {
 fn bytes_resident() -> Option<i64> {
     // blocked on https://github.com/Arc-blroth/memory-stats/issues/1 and https://github.com/rustwasm/wasm-bindgen/issues/3159
     None
-}
-
-/// The amount of memory in use.
-///
-/// The difference to [`bytes_resident`] is memory allocated by `MiMalloc`.
-/// that hasn't been returned to the OS.
-///
-/// `None` if [`crate::AccountingAllocator`] is not used.
-fn counted() -> Option<i64> {
-    let num_bytes = crate::accounting_allocator::global_allocs().size;
-    if num_bytes == 0 {
-        None
-    } else {
-        Some(num_bytes as _)
-    }
 }

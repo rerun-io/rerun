@@ -1,19 +1,21 @@
-use std::{any::Any, sync::mpsc::Receiver};
+use std::any::Any;
 
 use ahash::HashMap;
 use egui_extras::RetainedImage;
 use egui_notify::Toasts;
+use instant::Instant;
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 use poll_promise::Promise;
 
 use re_data_store::log_db::LogDb;
 use re_log_types::*;
+use re_smart_channel::Receiver;
 
 use crate::{
     design_tokens::DesignTokens,
     misc::{Caches, Options, RecordingConfig, ViewerContext},
-    ui::kb_shortcuts,
+    ui::{format_usize, kb_shortcuts},
 };
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -23,8 +25,17 @@ const WATERMARK: bool = false; // Nice for recording media material
 
 // ----------------------------------------------------------------------------
 
+/// Settings set once at startup (e.g. via command-line options) and not serialized.
+#[derive(Clone, Copy, Default)]
+pub struct StartupOptions {
+    pub memory_limit: re_memory::MemoryLimit,
+}
+
+// ----------------------------------------------------------------------------
+
 /// The Rerun viewer as an [`eframe`] application.
 pub struct App {
+    startup_options: StartupOptions,
     design_tokens: DesignTokens,
 
     rx: Option<Receiver<LogMsg>>,
@@ -48,18 +59,25 @@ pub struct App {
     latest_memory_purge: instant::Instant,
     memory_panel: crate::memory_panel::MemoryPanel,
     memory_panel_open: bool,
+
+    latest_queue_interest: instant::Instant,
+
+    /// Measures how long a frame takes to paint
+    frame_time_history: egui::util::History<f32>,
 }
 
 impl App {
     /// Create a viewer that receives new log messages over time
     pub fn from_receiver(
         egui_ctx: &egui::Context,
+        startup_options: StartupOptions,
         design_tokens: DesignTokens,
         storage: Option<&dyn eframe::Storage>,
         rx: Receiver<LogMsg>,
     ) -> Self {
         Self::new(
             egui_ctx,
+            startup_options,
             design_tokens,
             storage,
             Some(rx),
@@ -70,27 +88,37 @@ impl App {
     #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn from_log_db(
         egui_ctx: &egui::Context,
+        startup_options: StartupOptions,
         design_tokens: DesignTokens,
         storage: Option<&dyn eframe::Storage>,
         log_db: LogDb,
     ) -> Self {
-        Self::new(egui_ctx, design_tokens, storage, None, log_db)
+        Self::new(
+            egui_ctx,
+            startup_options,
+            design_tokens,
+            storage,
+            None,
+            log_db,
+        )
     }
 
     /// load a `.rrd` data file.
     #[cfg(not(target_arch = "wasm32"))]
     pub fn from_rrd_path(
         egui_ctx: &egui::Context,
+        startup_options: StartupOptions,
         design_tokens: DesignTokens,
         storage: Option<&dyn eframe::Storage>,
         path: &std::path::Path,
     ) -> Self {
         let log_db = load_file_path(path).unwrap_or_default(); // TODO(emilk): exit on error.
-        Self::from_log_db(egui_ctx, design_tokens, storage, log_db)
+        Self::from_log_db(egui_ctx, startup_options, design_tokens, storage, log_db)
     }
 
     fn new(
         _egui_ctx: &egui::Context,
+        startup_options: StartupOptions,
         design_tokens: DesignTokens,
         storage: Option<&dyn eframe::Storage>,
         rx: Option<Receiver<LogMsg>>,
@@ -125,6 +153,7 @@ impl App {
         }
 
         Self {
+            startup_options,
             design_tokens,
             rx,
             log_dbs,
@@ -136,6 +165,10 @@ impl App {
             latest_memory_purge: instant::Instant::now(), // TODO(emilk): `Instant::MIN` when we have our own `Instant` that supports it.
             memory_panel: Default::default(),
             memory_panel_open: false,
+
+            latest_queue_interest: instant::Instant::now(), // TODO(emilk): `Instant::MIN` when we have our own `Instant` that supports it.
+
+            frame_time_history: egui::util::History::new(1..100, 0.5),
         }
     }
 
@@ -226,6 +259,16 @@ impl App {
                 frame.info().native_pixels_per_point,
             );
         }
+
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            if egui_ctx
+                .input_mut()
+                .consume_shortcut(&kb_shortcuts::TOGGLE_FULLSCREEN)
+            {
+                frame.set_fullscreen(!frame.info().window_info.fullscreen);
+            }
+        }
     }
 }
 
@@ -235,6 +278,8 @@ impl eframe::App for App {
     }
 
     fn update(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
+        let frame_start = Instant::now();
+
         self.memory_panel.update(); // do first, before doing too many allocations
 
         #[cfg(not(target_arch = "wasm32"))]
@@ -260,7 +305,7 @@ impl eframe::App for App {
             .default_height(300.0)
             .resizable(true)
             .show_animated(egui_ctx, self.memory_panel_open, |ui| {
-                self.memory_panel.ui(ui);
+                self.memory_panel.ui(ui, &self.startup_options.memory_limit);
             });
 
         let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
@@ -295,6 +340,9 @@ impl eframe::App for App {
 
         self.handle_dropping_files(egui_ctx);
         self.toasts.show(egui_ctx);
+
+        self.frame_time_history
+            .add(egui_ctx.input().time, frame_start.elapsed().as_secs_f32());
     }
 }
 
@@ -371,11 +419,11 @@ impl App {
             return;
         }
 
-        let limit = re_memory::MemoryLimit::from_env_var(crate::env_vars::RERUN_MEMORY_LIMIT);
+        let limit = self.startup_options.memory_limit;
         let mem_use_before = MemoryUse::capture();
 
-        if let Some(minimum_fraction_to_free) = limit.is_exceeded_by(&mem_use_before) {
-            let fraction_to_free = (minimum_fraction_to_free + 0.2).clamp(0.25, 1.0);
+        if let Some(minimum_fraction_to_purge) = limit.is_exceeded_by(&mem_use_before) {
+            let fraction_to_purge = (minimum_fraction_to_purge + 0.2).clamp(0.25, 1.0);
 
             re_log::debug!("RAM limit: {}", format_limit(limit.limit));
             if let Some(resident) = mem_use_before.resident {
@@ -387,12 +435,15 @@ impl App {
 
             {
                 crate::profile_scope!("pruning");
-                re_log::info!(
-                    "Attempting to purge {:.1}% of used RAM…",
-                    100.0 * fraction_to_free
-                );
+                if let Some(counted) = mem_use_before.counted {
+                    re_log::info!(
+                        "Attempting to purge {:.1}% of used RAM ({})…",
+                        100.0 * fraction_to_purge,
+                        format_bytes(counted as f64 * fraction_to_purge as f64)
+                    );
+                }
                 for log_db in self.log_dbs.values_mut() {
-                    log_db.purge_memory(fraction_to_free);
+                    log_db.purge_fraction_of_ram(fraction_to_purge);
                 }
                 self.state.cache.purge_memory();
             }
@@ -401,8 +452,14 @@ impl App {
 
             let freed_memory = mem_use_before - mem_use_after;
 
-            if let Some(counted_diff) = freed_memory.counted {
-                re_log::info!("Freed up {}", format_bytes(counted_diff as _));
+            if let (Some(counted_before), Some(counted_diff)) =
+                (mem_use_before.counted, freed_memory.counted)
+            {
+                re_log::info!(
+                    "Freed up {} ({:.1}%)",
+                    format_bytes(counted_diff as _),
+                    100.0 * counted_diff as f32 / counted_before as f32
+                );
             }
 
             self.latest_memory_purge = instant::Instant::now();
@@ -647,9 +704,20 @@ fn top_panel(egui_ctx: &egui::Context, frame: &mut eframe::Frame, app: &mut App)
 
     // On Mac, we share the same space as the native red/yellow/green close/minimize/maximize buttons.
     // This means we need to make room for them.
+    let make_room_for_window_buttons = {
+        #[cfg(target_os = "macos")]
+        {
+            crate::FULLSIZE_CONTENT && !frame.info().window_info.fullscreen
+        }
+        #[cfg(not(target_os = "macos"))]
+        {
+            false
+        }
+    };
+
     let native_buttons_size_in_native_scale = egui::vec2(64.0, 24.0); // source: I measured /emilk
 
-    let bar_height = if crate::FULLSIZE_CONTENT {
+    let bar_height = if make_room_for_window_buttons {
         // Use more vertical space when zoomed in…
         let bar_height = native_buttons_size_in_native_scale.y;
 
@@ -678,66 +746,143 @@ fn top_panel(egui_ctx: &egui::Context, frame: &mut eframe::Frame, app: &mut App)
             egui::menu::bar(ui, |ui| {
                 ui.set_height(bar_height);
 
-                if crate::FULLSIZE_CONTENT {
+                if make_room_for_window_buttons {
                     // Always use the same width measured in native GUI coordinates:
                     ui.add_space(gui_zoom * native_buttons_size_in_native_scale.x);
                 }
 
-                #[cfg(not(target_arch = "wasm32"))]
-                ui.menu_button("File", |ui| {
-                    file_menu(ui, app, frame);
-                });
-
-                ui.menu_button("View", |ui| {
-                    view_menu(ui, app, frame);
-                });
-
-                ui.menu_button("Recordings", |ui| {
-                    recordings_menu(ui, app);
-                });
-
-                #[cfg(debug_assertions)]
-                ui.menu_button("Debug", |ui| {
-                    debug_menu(ui);
-                });
-
-                ui.separator();
-
-                if !app.log_db().is_empty() {
-                    ui.selectable_value(
-                        &mut app.state.panel_selection,
-                        PanelSelection::Viewport,
-                        "Viewport",
-                    );
-
-                    ui.selectable_value(
-                        &mut app.state.panel_selection,
-                        PanelSelection::EventLog,
-                        "Event Log",
-                    );
-                }
-
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if !WATERMARK {
-                        let logo = app.state.static_image_cache.rerun_logo(ui.visuals());
-                        let response = ui
-                            .add(egui::ImageButton::new(
-                                logo.texture_id(egui_ctx),
-                                logo.size_vec2() * 16.0 / logo.size_vec2().y,
-                            ))
-                            .on_hover_text("https://rerun.io");
-                        if response.clicked() {
-                            ui.output().open_url =
-                                Some(egui::output::OpenUrl::new_tab("https://rerun.io"));
-                        }
-                    }
-                    egui::warn_if_debug_build(ui);
-                });
+                top_bar_ui(ui, frame, app);
             });
         });
 }
 
-// ---
+fn top_bar_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &mut App) {
+    #[cfg(not(target_arch = "wasm32"))]
+    ui.menu_button("File", |ui| {
+        file_menu(ui, app, frame);
+    });
+
+    ui.menu_button("View", |ui| {
+        view_menu(ui, app, frame);
+    });
+
+    ui.menu_button("Recordings", |ui| {
+        recordings_menu(ui, app);
+    });
+
+    #[cfg(debug_assertions)]
+    ui.menu_button("Debug", |ui| {
+        debug_menu(ui);
+    });
+
+    if !app.log_db().is_empty() {
+        ui.separator();
+        ui.selectable_value(
+            &mut app.state.panel_selection,
+            PanelSelection::Viewport,
+            "Viewport",
+        );
+
+        ui.selectable_value(
+            &mut app.state.panel_selection,
+            PanelSelection::EventLog,
+            "Event Log",
+        );
+    }
+
+    if let Some(frame_time) = app.frame_time_history.average() {
+        ui.separator();
+        let ms = frame_time * 1e3;
+
+        let visuals = ui.visuals();
+        let color = if ms < 15.0 {
+            visuals.weak_text_color()
+        } else {
+            visuals.warn_fg_color
+        };
+
+        // we use monospace so the width doesn't fluctuate as the numbers change.
+        let text = format!("{ms:.1} ms");
+        ui.label(egui::RichText::new(text).monospace().color(color))
+            .on_hover_text("CPU time used by Rerun Viewer each frame. Lower is better.");
+    }
+
+    if let Some(count) = re_memory::accounting_allocator::global_allocs() {
+        ui.separator();
+        // we use monospace so the width doesn't fluctuate as the numbers change.
+        let bytes_used_text = re_memory::util::format_bytes(count.size as _);
+        ui.label(
+            egui::RichText::new(&bytes_used_text)
+                .monospace()
+                .color(ui.visuals().weak_text_color()),
+        )
+        .on_hover_text(format!(
+            "Rerun Viewer is using {} of RAM in {} separate allocations.",
+            bytes_used_text,
+            format_usize(count.count),
+        ));
+    }
+
+    if let Some(rx) = &app.rx {
+        let is_latency_interesting = match rx.source() {
+            re_smart_channel::Source::Network => true, // presumable live
+            re_smart_channel::Source::File => false,   // pre-recorded. latency doesn't matter
+        };
+
+        let queue_len = rx.len();
+
+        // empty queue == unreliable latency
+        let latency_sec = rx.latency_ns() as f32 / 1e9;
+        if queue_len > 0
+            && (!is_latency_interesting || app.state.options.warn_latency < latency_sec)
+        {
+            // we use this to avoid flicker
+            app.latest_queue_interest = instant::Instant::now();
+        }
+
+        if app.latest_queue_interest.elapsed().as_secs_f32() < 1.0 {
+            ui.separator();
+            if is_latency_interesting {
+                let text = format!(
+                    "Latency: {:.2}s, queue: {}",
+                    latency_sec,
+                    format_usize(queue_len),
+                );
+                let hover_text =
+                    "When more data is arriving over network than the Rerun Viewer can index, a queue starts building up, leading to latency and increased RAM use.\n\
+                    This latency does NOT include network latency.";
+
+                if latency_sec < app.state.options.warn_latency {
+                    ui.weak(text).on_hover_text(hover_text);
+                } else {
+                    ui.label(app.design_tokens.warning_text(text, ui.style()))
+                        .on_hover_text(hover_text);
+                }
+            } else {
+                ui.weak(format!("Queue: {}", format_usize(queue_len)))
+                    .on_hover_text("Number of messages in the inbound queue");
+            }
+        }
+    }
+
+    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+        if !WATERMARK {
+            let logo = app.state.static_image_cache.rerun_logo(ui.visuals());
+            let response = ui
+                .add(egui::ImageButton::new(
+                    logo.texture_id(ui.ctx()),
+                    logo.size_vec2() * 16.0 / logo.size_vec2().y,
+                ))
+                .on_hover_text("https://rerun.io");
+            if response.clicked() {
+                ui.output().open_url = Some(egui::output::OpenUrl::new_tab("https://rerun.io"));
+            }
+        }
+        egui::warn_if_debug_build(ui);
+    });
+}
+
+// ---n
 
 const FILE_SAVER_PROMISE: &str = "file_saver";
 const FILE_SAVER_NOTIF_DURATION: Option<std::time::Duration> =
@@ -893,6 +1038,21 @@ fn view_menu(ui: &mut egui::Ui, app: &mut App, frame: &mut eframe::Frame) {
     // On the web the browser controls the zoom
     if !frame.is_web() {
         egui::gui_zoom::zoom_menu_buttons(ui, frame.info().native_pixels_per_point);
+        ui.separator();
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        if ui
+            .add(
+                egui::Button::new("Toggle fullscreen")
+                    .shortcut_text(ui.ctx().format_shortcut(&kb_shortcuts::TOGGLE_FULLSCREEN)),
+            )
+            .clicked()
+        {
+            frame.set_fullscreen(!frame.info().window_info.fullscreen);
+            ui.close_menu();
+        }
         ui.separator();
     }
 

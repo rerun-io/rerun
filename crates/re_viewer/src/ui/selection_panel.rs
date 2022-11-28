@@ -1,5 +1,5 @@
 use egui::RichText;
-use re_data_store::log_db::LogDb;
+use re_data_store::{log_db::LogDb, ObjectProps};
 use re_log_types::LogMsg;
 
 use crate::{data_ui::*, ui::Blueprint, Preview, Selection, ViewerContext};
@@ -188,6 +188,30 @@ impl SelectionPanel {
                 if let Some(space_view) = blueprint.viewport.get_space_view_mut(space_view_id) {
                     ui.label("SpaceView");
                     ui_space_view(ctx, ui, space_view);
+                } else {
+                    ctx.rec_cfg.selection = Selection::None;
+                }
+            }
+            Selection::SpaceViewObjPath(space_view_id, obj_path) => {
+                if let Some(space_view) = blueprint.viewport.get_space_view_mut(space_view_id) {
+                    egui::Grid::new("space_view_id_obj_path")
+                        .striped(true)
+                        .show(ui, |ui| {
+                            ui.label("Space View:");
+                            ctx.space_view_button_to(ui, &space_view.name, *space_view_id);
+                            ui.end_row();
+
+                            ui.label("Object Path:");
+                            ctx.obj_path_button(ui, obj_path);
+                            ui.end_row();
+                        });
+
+                    let mut props = space_view.obj_tree_properties.projected.get(obj_path);
+                    obj_props_ui(ui, &mut props);
+                    space_view
+                        .obj_tree_properties
+                        .individual
+                        .set(obj_path.clone(), props);
                 } else {
                     ctx.rec_cfg.selection = Selection::None;
                 }
@@ -616,4 +640,9 @@ fn selection_to_clipped_string(
         sel += "…";
     }
     sel.chars().rev().collect()
+}
+
+fn obj_props_ui(ui: &mut egui::Ui, obj_props: &mut ObjectProps) {
+    let ObjectProps { visible } = obj_props;
+    ui.checkbox(visible, "Visible");
 }

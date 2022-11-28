@@ -17,7 +17,7 @@ pub use buffered_client::Client;
 mod server;
 
 #[cfg(feature = "server")]
-pub use server::serve;
+pub use server::{serve, ServerOptions};
 
 use re_log_types::LogMsg;
 
