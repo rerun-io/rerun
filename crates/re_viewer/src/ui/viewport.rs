@@ -111,9 +111,7 @@ impl ViewportBlueprint {
                 let space_view_ids = self
                     .space_views
                     .keys()
-                    .sorted_by_key(|space_view_id| {
-                        &self.space_views.get(space_view_id).unwrap().name
-                    })
+                    .sorted_by_key(|space_view_id| &self.space_views[space_view_id].name)
                     .copied()
                     .collect_vec();
 

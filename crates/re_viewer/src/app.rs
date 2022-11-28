@@ -3,6 +3,7 @@ use std::any::Any;
 use ahash::HashMap;
 use egui_extras::RetainedImage;
 use egui_notify::Toasts;
+use instant::Instant;
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 use poll_promise::Promise;
@@ -60,6 +61,9 @@ pub struct App {
     memory_panel_open: bool,
 
     latest_queue_interest: instant::Instant,
+
+    /// Measures how long a frame takes to paint
+    frame_time_history: egui::util::History<f32>,
 }
 
 impl App {
@@ -163,6 +167,8 @@ impl App {
             memory_panel_open: false,
 
             latest_queue_interest: instant::Instant::now(), // TODO(emilk): `Instant::MIN` when we have our own `Instant` that supports it.
+
+            frame_time_history: egui::util::History::new(1..100, 0.5),
         }
     }
 
@@ -253,6 +259,16 @@ impl App {
                 frame.info().native_pixels_per_point,
             );
         }
+
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            if egui_ctx
+                .input_mut()
+                .consume_shortcut(&kb_shortcuts::TOGGLE_FULLSCREEN)
+            {
+                frame.set_fullscreen(!frame.info().window_info.fullscreen);
+            }
+        }
     }
 }
 
@@ -262,6 +278,8 @@ impl eframe::App for App {
     }
 
     fn update(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
+        let frame_start = Instant::now();
+
         self.memory_panel.update(); // do first, before doing too many allocations
 
         #[cfg(not(target_arch = "wasm32"))]
@@ -322,6 +340,9 @@ impl eframe::App for App {
 
         self.handle_dropping_files(egui_ctx);
         self.toasts.show(egui_ctx);
+
+        self.frame_time_history
+            .add(egui_ctx.input().time, frame_start.elapsed().as_secs_f32());
     }
 }
 
@@ -683,9 +704,20 @@ fn top_panel(egui_ctx: &egui::Context, frame: &mut eframe::Frame, app: &mut App)
 
     // On Mac, we share the same space as the native red/yellow/green close/minimize/maximize buttons.
     // This means we need to make room for them.
+    let make_room_for_window_buttons = {
+        #[cfg(target_os = "macos")]
+        {
+            crate::FULLSIZE_CONTENT && !frame.info().window_info.fullscreen
+        }
+        #[cfg(not(target_os = "macos"))]
+        {
+            false
+        }
+    };
+
     let native_buttons_size_in_native_scale = egui::vec2(64.0, 24.0); // source: I measured /emilk
 
-    let bar_height = if crate::FULLSIZE_CONTENT {
+    let bar_height = if make_room_for_window_buttons {
         // Use more vertical space when zoomed in…
         let bar_height = native_buttons_size_in_native_scale.y;
 
@@ -702,7 +734,7 @@ fn top_panel(egui_ctx: &egui::Context, frame: &mut eframe::Frame, app: &mut App)
             egui::menu::bar(ui, |ui| {
                 ui.set_height(bar_height);
 
-                if crate::FULLSIZE_CONTENT {
+                if make_room_for_window_buttons {
                     // Always use the same width measured in native GUI coordinates:
                     ui.add_space(gui_zoom * native_buttons_size_in_native_scale.x);
                 }
@@ -746,14 +778,37 @@ fn top_bar_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &mut App) {
         );
     }
 
+    if let Some(frame_time) = app.frame_time_history.average() {
+        ui.separator();
+        let ms = frame_time * 1e3;
+
+        let visuals = ui.visuals();
+        let color = if ms < 15.0 {
+            visuals.weak_text_color()
+        } else {
+            visuals.warn_fg_color
+        };
+
+        // we use monospace so the width doesn't fluctuate as the numbers change.
+        let text = format!("{ms:.1} ms");
+        ui.label(egui::RichText::new(text).monospace().color(color))
+            .on_hover_text("CPU time used by Rerun Viewer each frame. Lower is better.");
+    }
+
     if let Some(count) = re_memory::accounting_allocator::global_allocs() {
         ui.separator();
-        ui.weak(re_memory::util::format_bytes(count.size as _))
-            .on_hover_text(format!(
-                "Rerun Viewer is using {} of RAM in {} separate allocations.",
-                re_memory::util::format_bytes(count.size as _),
-                format_usize(count.count),
-            ));
+        // we use monospace so the width doesn't fluctuate as the numbers change.
+        let bytes_used_text = re_memory::util::format_bytes(count.size as _);
+        ui.label(
+            egui::RichText::new(&bytes_used_text)
+                .monospace()
+                .color(ui.visuals().weak_text_color()),
+        )
+        .on_hover_text(format!(
+            "Rerun Viewer is using {} of RAM in {} separate allocations.",
+            bytes_used_text,
+            format_usize(count.count),
+        ));
     }
 
     if let Some(rx) = &app.rx {
@@ -971,6 +1026,21 @@ fn view_menu(ui: &mut egui::Ui, app: &mut App, frame: &mut eframe::Frame) {
     // On the web the browser controls the zoom
     if !frame.is_web() {
         egui::gui_zoom::zoom_menu_buttons(ui, frame.info().native_pixels_per_point);
+        ui.separator();
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        if ui
+            .add(
+                egui::Button::new("Toggle fullscreen")
+                    .shortcut_text(ui.ctx().format_shortcut(&kb_shortcuts::TOGGLE_FULLSCREEN)),
+            )
+            .clicked()
+        {
+            frame.set_fullscreen(!frame.info().window_info.fullscreen);
+            ui.close_menu();
+        }
         ui.separator();
     }
 

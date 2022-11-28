@@ -3,6 +3,7 @@
 A rough time-line of major user-facing things added, removed and changed. Newest on top.
 
 * 2022-11-28: Add `--memory-limit` and `--drop-at-latency` options: [#363](https://github.com/rerun-io/rerun/pull/363).
+* 2022-11-27: Toggle fullscreen with Ctrl-Shift-F or Cmd-Shift-F: [#364](https://github.com/rerun-io/rerun/pull/364).
 * 2022-11-23: Associated annotation context & class description now reachable from any object with class_id: [#331](https://github.com/rerun-io/rerun/pull/331).
 * 2022-11-23: Fix 3D line segments being connected: [#330](https://github.com/rerun-io/rerun/pull/330).
 * 2022-11-22: Support for labels and class ids on rects and obb: [#326](https://github.com/rerun-io/rerun/pull/326).
