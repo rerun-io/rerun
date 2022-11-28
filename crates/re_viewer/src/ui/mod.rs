@@ -1,3 +1,6 @@
+mod annotations;
+pub use annotations::{Annotations, DefaultColor};
+
 mod auto_layout;
 
 mod viewport;
@@ -5,6 +8,9 @@ pub(crate) use self::viewport::{Blueprint, SpaceViewId};
 
 mod space_view;
 use self::space_view::SpaceView;
+
+mod format_numbers;
+pub use format_numbers::format_usize;
 
 mod scene;
 use self::scene::SceneQuery;
@@ -17,8 +23,11 @@ pub(crate) mod time_panel;
 
 pub(crate) mod view_2d;
 pub(crate) mod view_3d;
+mod view_plot;
 mod view_tensor;
 mod view_text;
+
+pub(crate) mod memory_panel;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) enum Preview {

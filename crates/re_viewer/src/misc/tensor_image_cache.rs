@@ -3,9 +3,11 @@ use std::sync::Arc;
 use egui::{Color32, ColorImage};
 use egui_extras::RetainedImage;
 use image::DynamicImage;
-use re_log_types::{MsgId, Tensor, TensorDataMeaning, TensorDataStore, TensorDataType};
+use re_log_types::{
+    context::ClassId, MsgId, Tensor, TensorDataMeaning, TensorDataStore, TensorDataType, TensorId,
+};
 
-use crate::ui::view_2d::{Annotations, ColorMapping};
+use crate::ui::{Annotations, DefaultColor};
 
 // ---
 
@@ -33,11 +35,11 @@ pub struct TensorImageView<'store, 'cache> {
     pub retained_img: &'cache RetainedImage,
 }
 
-// Use a MsgIdPair for the cache index so that we don't cache across
+// Use this for the cache index so that we don't cache across
 // changes to the annotations
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 struct ImageCacheKey {
-    image_msg_id: MsgId,
+    tensor_id: TensorId,
     annotation_msg_id: Option<MsgId>,
 }
 impl nohash_hasher::IsEnabled for ImageCacheKey {}
@@ -47,10 +49,10 @@ impl nohash_hasher::IsEnabled for ImageCacheKey {}
 impl std::hash::Hash for ImageCacheKey {
     #[inline]
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        let msg_hash = self.image_msg_id.0.as_u128() as u64;
+        let msg_hash = self.tensor_id.0.as_u128() as u64;
 
         let annotation_hash = if let Some(annotation_msg_id) = self.annotation_msg_id {
-            (annotation_msg_id.0.as_u128() >> 1) as u64
+            (annotation_msg_id.as_u128() >> 1) as u64
         } else {
             0
         };
@@ -69,19 +71,18 @@ pub struct ImageCache {
 impl ImageCache {
     pub(crate) fn get_view_with_annotations<'store, 'cache>(
         &'cache mut self,
-        msg_id: &MsgId,
         tensor: &'store Tensor,
         annotations: &'store Option<Arc<Annotations>>,
     ) -> TensorImageView<'store, 'cache> {
         let ci = self
             .images
             .entry(ImageCacheKey {
-                image_msg_id: *msg_id,
+                tensor_id: tensor.tensor_id,
                 annotation_msg_id: annotations.as_ref().map(|seg_map| seg_map.msg_id),
             })
             .or_insert_with(|| {
-                // TODO(emilk): proper debug name for images
-                let ci = CachedImage::from_tensor(format!("{msg_id:?}"), tensor, annotations);
+                let debug_name = format!("tensor {:?}", tensor.shape);
+                let ci = CachedImage::from_tensor(debug_name, tensor, annotations);
                 self.memory_used += ci.memory_used;
                 ci
             });
@@ -97,30 +98,28 @@ impl ImageCache {
 
     pub(crate) fn get_view<'store, 'cache>(
         &'cache mut self,
-        msg_id: &MsgId,
         tensor: &'store Tensor,
     ) -> TensorImageView<'store, 'cache> {
-        self.get_view_with_annotations(msg_id, tensor, &None)
+        self.get_view_with_annotations(tensor, &None)
     }
 
     /// Call once per frame to (potentially) flush the cache.
     pub fn new_frame(&mut self, max_memory_use: u64) {
         if self.memory_used > max_memory_use {
-            let before = self.memory_used;
-            self.flush();
-            re_log::debug!(
-                "Flushed image cache. Before: {:.2} GB. After: {:.2} GB",
-                before as f64 / 1e9,
-                self.memory_used as f64 / 1e9,
-            );
+            self.purge_memory();
         }
 
         self.generation += 1;
     }
 
-    fn flush(&mut self) {
+    /// Attempt to free up memory.
+    pub fn purge_memory(&mut self) {
         crate::profile_function!();
-        // Very agressively flush everything not used in this frame
+
+        // Very aggressively flush everything not used in this frame
+
+        let before = self.memory_used;
+
         self.images.retain(|_, ci| {
             let retain = ci.last_use_generation == self.generation;
             if !retain {
@@ -128,6 +127,12 @@ impl ImageCache {
             }
             retain
         });
+
+        re_log::debug!(
+            "Flushed image cache. Before: {:.2} GB. After: {:.2} GB",
+            before as f64 / 1e9,
+            self.memory_used as f64 / 1e9,
+        );
     }
 }
 
@@ -230,7 +235,12 @@ fn tensor_to_dynamic_image(
                         bytes
                             .to_vec()
                             .iter()
-                            .flat_map(|p| annotations.map_color(*p as u16))
+                            .flat_map(|p| {
+                                annotations
+                                    .class_description(Some(ClassId(*p as u16)))
+                                    .annotation_info()
+                                    .color(None, DefaultColor::TransparentBlack)
+                            })
                             .collect(),
                     )
                     .context("Bad RGBA8")
@@ -244,7 +254,12 @@ fn tensor_to_dynamic_image(
                         bytemuck::cast_slice(bytes)
                             .to_vec()
                             .iter()
-                            .flat_map(|p| annotations.map_color(*p))
+                            .flat_map(|p| {
+                                annotations
+                                    .class_description(Some(ClassId(*p)))
+                                    .annotation_info()
+                                    .color(None, DefaultColor::TransparentBlack)
+                            })
                             .collect(),
                     )
                     .context("Bad RGBA8")

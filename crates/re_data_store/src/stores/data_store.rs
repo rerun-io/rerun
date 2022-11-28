@@ -4,8 +4,8 @@ use nohash_hasher::IntMap;
 use re_log_types::*;
 
 use crate::{
-    ArcBatch, BadBatchError, Batch, BatchOrSplat, FieldQueryOutput, Result, TimeQuery,
-    TimelineStore,
+    profile_scope, ArcBatch, BadBatchError, Batch, BatchOrSplat, FieldQueryOutput, Result,
+    TimeQuery, TimelineStore,
 };
 
 /// Stores all timelines of all objects.
@@ -155,6 +155,19 @@ impl DataStore {
             self.index_from_hash
                 .entry(*hash)
                 .or_insert_with(|| index.clone());
+        }
+    }
+
+    pub fn purge_everything_but(&mut self, keep_msg_ids: &ahash::HashSet<MsgId>) {
+        crate::profile_function!();
+        let Self {
+            store_from_timeline,
+            obj_path_from_hash: _,
+            index_from_hash: _,
+        } = self;
+        for (_timeline, (_, timeline_store)) in store_from_timeline {
+            profile_scope!("purge_timeline", _timeline.name().as_str());
+            timeline_store.purge_everything_but(keep_msg_ids);
         }
     }
 }

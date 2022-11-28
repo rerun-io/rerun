@@ -161,6 +161,20 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
 fn test_encode_decode() {
     use crate::*;
 
+    fn data_msg(
+        time_point: &TimePoint,
+        obj_path: impl Into<ObjPath>,
+        field_name: impl Into<FieldName>,
+        data: impl Into<LoggedData>,
+    ) -> DataMsg {
+        DataMsg {
+            time_point: time_point.clone(),
+            data_path: DataPath::new(obj_path.into(), field_name.into()),
+            data: data.into(),
+            msg_id: MsgId::random(),
+        }
+    }
+
     // Some fake log data
     let time_point = time_point([(
         "log_time",

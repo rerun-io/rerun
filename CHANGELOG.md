@@ -2,6 +2,13 @@
 
 A rough time-line of major user-facing things added, removed and changed. Newest on top.
 
+* 2022-11-28: Add keypoints & keypoint connections for sub-classifications of points within a class(_id/descriptor): [#356](https://github.com/rerun-io/rerun/pull/356).
+* 2022-11-27: Toggle fullscreen with F11: [#364](https://github.com/rerun-io/rerun/pull/364).
+* 2022-11-23: Associated annotation context & class description now reachable from any object with class_id: [#331](https://github.com/rerun-io/rerun/pull/331).
+* 2022-11-23: Fix 3D line segments being connected: [#330](https://github.com/rerun-io/rerun/pull/330).
+* 2022-11-22: Support for labels and class ids on rects and obb: [#326](https://github.com/rerun-io/rerun/pull/326).
+* 2022-11-21: Support for labels and class ids on points: [#321](https://github.com/rerun-io/rerun/pull/321).
+* 2022-11-17: Remove the `set_visible` API: [#298](https://github.com/rerun-io/rerun/pull/298).
 * 2022-11-17: Objects can be cleared more generically using `rerun.log_cleared`: [#285](https://github.com/rerun-io/rerun/pull/285).
 * 2022-11-16: Fix crash on zero sized space view in re_viewer (caused by resizing) [#302](https://github.com/rerun-io/rerun/pull/302).
 * 2022-11-15: Rename the Python library to `rerun` ([#300](https://github.com/rerun-io/rerun/pull/300)).

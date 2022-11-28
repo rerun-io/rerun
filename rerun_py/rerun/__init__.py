@@ -31,13 +31,12 @@ atexit.register(rerun_shutdown)
 
 # -----------------------------------------------------------------------------
 
-# ArrayLike = Union[np.ndarray, Sequence]
 ColorDtype = Union[np.uint8, np.float32, np.float64]
 Colors = npt.NDArray[ColorDtype]
 Color = Union[npt.NDArray[ColorDtype], Sequence[Union[int, float]]]
 
-ClassIdDtype = Union[np.uint8, np.uint16]
-ClassIds = npt.NDArray[ClassIdDtype]
+OptionalClassIds = Optional[Union[int, npt.ArrayLike]]
+OptionalKeyPointIds = Optional[Union[int, npt.ArrayLike]]
 
 
 class MeshFormat(Enum):
@@ -89,7 +88,7 @@ def set_recording_id(value: str) -> None:
     you will need to manually assign them all the same recording_id.
     Any random UUIDv4 will work, or copy the recording id for the parent process.
     """
-    rerun_sdk.set_recording_id(str)
+    rerun_sdk.set_recording_id(value)
 
 
 def init(application_id: str) -> None:
@@ -292,6 +291,99 @@ def log_text_entry(
     rerun_sdk.log_text_entry(obj_path, text, level, color, timeless)
 
 
+def log_scalar(
+    obj_path: str,
+    scalar: float,
+    label: Optional[str] = None,
+    color: Optional[Sequence[int]] = None,
+    radius: Optional[float] = None,
+    scattered: Optional[bool] = None,
+) -> None:
+    """
+    Log a double-precision scalar that will be visualized as a timeseries plot.
+
+    The current simulation time will be used for the time/X-axis, hence scalars cannot be
+    timeless!
+
+    See also examples/plots.
+
+    ## Understanding the plot and attributes hierarchy
+
+    Timeseries come in three parts: points, lines and finally the plots themselves.
+    As a user of the Rerun SDK, your one and only entrypoint into that hierarchy is through the
+    lowest-level layer: the points.
+
+    When logging scalars and their attributes (label, color, radius, scattered) through this
+    function, Rerun will turn them into points with similar attributes.
+    From these points, lines with appropriate attributes can then be inferred; and from these
+    inferred lines, plots with appropriate attributes will be inferred in turn!
+
+    In terms of actual hierarchy:
+    - Each space represents a single plot.
+    - Each object path within a space that contains scalar data is a line within that plot.
+    - Each logged scalar is a point.
+
+    E.g. the following:
+    ```
+    rerun.log_scalar("trig/sin", sin(t), label="sin(t)", color=RED)
+    rerun.log_scalar("trig/cos", cos(t), label="cos(t)", color=BLUE)
+    ```
+    will yield a single plot (space = `trig`), comprised of two lines (object paths `trig/sin`
+    and `trig/cos`).
+
+    ## Attributes
+
+    The attributes you assigned (or not) to a scalar will affect all layers: points, lines and
+    plots alike.
+
+    ### `label`
+
+    An optional label for the point.
+
+    This won't show up on points at the moment, as our plots don't yet support displaying labels
+    for individual points.
+
+    If all points within a single object path (i.e. a line) share the same label, then this label
+    will be used as the label for the line itself.
+    Otherwise, the line will be named after the object path.
+
+    The plot itself is named after the space it's in.
+
+    ### `color`
+
+    An optional color in the form of a RGB or RGBA triplet in 0-255 sRGB.
+    If left unspecified, a pseudo-random color will be used instead. That same color will apply
+    to all points residing in the same object path that don't have a color specified.
+
+    Points within a single line do not have to share the same color, the line will have
+    differently colored segments as appropriate.
+
+    If all points within a single object path (i.e. a line) share the same color, then this color
+    will be used as the line color in the plot legend.
+    Otherwise, the line will appear grey in the legend.
+
+    ### `radius`
+
+    An optional radius for the point.
+
+    Points within a single line do not have to share the same radius, the line will have
+    differently sized segments as appropriate.
+
+    If all points within a single object path (i.e. a line) share the same radius, then this radius
+    will be used as the line width too.
+    Otherwise, the line will use the default width of `1.0`.
+
+    ### `scattered`
+
+    Specifies whether the point should form a continuous line with its neighbours, or whether it
+    should stand on its own, akin to a scatter plot.
+
+    Points within a single line do not have to all share the same scatteredness: the line will
+    switch between a scattered and a continous representation as required.
+    """
+    rerun_sdk.log_scalar(obj_path, scalar, label, color, radius, scattered)
+
+
 # """ How to specify rectangles (axis-aligned bounding boxes). """
 class RectFormat(Enum):
     # """ [x,y,w,h], with x,y = left,top. """"
@@ -320,6 +412,7 @@ def log_rect(
     rect_format: RectFormat = RectFormat.XYWH,
     color: Optional[Sequence[int]] = None,
     label: Optional[str] = None,
+    class_id: Optional[int] = None,
     timeless: bool = False,
 ) -> None:
     """
@@ -328,10 +421,12 @@ def log_rect(
     * `rect`: the recangle in [x, y, w, h], or some format you pick with the
     `rect_format` argument.
     * `rect_format`: how to interpret the `rect` argument
-    * `label` is an optional text to show inside the rectangle.
-    * `color` is optional RGB or RGBA triplet in 0-255 sRGB.
+    * `color`: Optional RGB or RGBA triplet in 0-255 sRGB.
+    * `label`: Optional text to show inside the rectangle.
+    * `class_id`: Optional class id for the rectangle.
+       The class id provides color and label if not specified explicitly.
     """
-    rerun_sdk.log_rect(obj_path, rect_format.value, _to_sequence(rect), color, label, timeless)
+    rerun_sdk.log_rect(obj_path, rect_format.value, _to_sequence(rect), color, label, class_id, timeless)
 
     if EXP_ARROW:
         # TODO(jleibs): type registry?
@@ -351,6 +446,7 @@ def log_rects(
     rect_format: RectFormat = RectFormat.XYWH,
     colors: Optional[Colors] = None,
     labels: Optional[Sequence[str]] = None,
+    class_ids: OptionalClassIds = None,
     timeless: bool = False,
 ) -> None:
     """
@@ -361,7 +457,9 @@ def log_rects(
     * `rects`: Nx4 numpy array, where each row is [x, y, w, h], or some format you pick with the `rect_format`
     argument.
     * `rect_format`: how to interpret the `rect` argument
-    * `labels` is an optional per-rectangle text to show inside the rectangle.
+    * `labels`: Optional per-rectangle text to show inside the rectangle.
+    * `class_ids`: Optional class ids for the rectangles.
+      The class id provides colors and labels if not specified explicitly.
 
     Colors should either be in 0-255 gamma space or in 0-1 linear space.
     Colors can be RGB or RGBA. You can supply no colors, one color,
@@ -378,10 +476,11 @@ def log_rects(
         rects = []
     rects = np.require(rects, dtype="float32")
     colors = _normalize_colors(colors)
+    class_ids = _normalize_ids(class_ids)
     if labels is None:
         labels = []
 
-    rerun_sdk.log_rects(obj_path, rect_format.value, rects, colors, labels, timeless)
+    rerun_sdk.log_rects(obj_path, rect_format.value, rects, colors, labels, class_ids, timeless)
 
     if EXP_ARROW:
 
@@ -421,6 +520,9 @@ def log_point(
     position: Optional[npt.NDArray[np.float32]],
     *,
     color: Optional[Sequence[int]] = None,
+    label: Optional[str] = None,
+    class_id: Optional[int] = None,
+    keypoint_id: Optional[int] = None,
     timeless: bool = False,
 ) -> None:
     """
@@ -428,20 +530,31 @@ def log_point(
 
     Logging again to the same `obj_path` will replace the previous point.
 
-    `position`: 2x1 or 3x1 array
+    * `position`: 2x1 or 3x1 array
+    * `color`: Optional color of the point
+    * `label`: Optional text to show with the point
+    * `class_id`: Optional class id for the point.
+        The class id provides color and label if not specified explicitly.
+    * `keypoint_id`: Optional key point id for the point, identifying it within a class.
+        If keypoint_id is passed but no class_id was specified, class_id will be set to 0.
+        This is useful to identify points within a single classification (which is identified with class_id).
+        E.g. the classification might be 'Person' and the keypoints refer to joints on a detected skeleton.
 
     Colors should either be in 0-255 gamma space or in 0-1 linear space.
     Colors can be RGB or RGBA. You can supply no colors, one color,
     or one color per point in a Nx3 or Nx4 numpy array.
 
-    Supported `dtype`s for `colors`:
+    Supported `dtype`s for `color`:
     * uint8: color components should be in 0-255 sRGB gamma space, except for alpha which should be in 0-255 linear
     space.
     * float32/float64: all color components should be in 0-1 linear space.
     """
+    if keypoint_id is not None and class_id is None:
+        class_id = 0
     if position is not None:
         position = np.require(position, dtype="float32")
-    rerun_sdk.log_point(obj_path, position, color, timeless)
+
+    rerun_sdk.log_point(obj_path, position, color, label, class_id, keypoint_id, timeless)
 
 
 def log_points(
@@ -449,6 +562,9 @@ def log_points(
     positions: Optional[npt.NDArray[np.float32]],
     *,
     colors: Optional[Colors] = None,
+    labels: Optional[Sequence[str]] = None,
+    class_ids: OptionalClassIds = None,
+    keypoint_ids: OptionalKeyPointIds = None,
     timeless: bool = False,
 ) -> None:
     """
@@ -456,7 +572,15 @@ def log_points(
 
     Logging again to the same `obj_path` will replace all the previous points.
 
-    `positions`: Nx2 or Nx3 array
+    * `positions`: Nx2 or Nx3 array
+    * `color`: Optional colors of the points.
+    * `labels`: Optional per-point text to show with the points
+    * `class_ids`: Optional class ids for the points.
+        The class id provides colors and labels if not specified explicitly.
+    * `keypoint_ids`: Optional key point ids for the points, identifying them within a class.
+        If keypoint_ids are passed in but no class_ids were specified, class_id will be set to 0.
+        This is useful to identify points within a single classification (which is identified with class_id).
+        E.g. the classification might be 'Person' and the keypoints refer to joints on a detected skeleton.
 
     Colors should either be in 0-255 gamma space or in 0-1 linear space.
     Colors can be RGB or RGBA. You can supply no colors, one color,
@@ -466,14 +590,21 @@ def log_points(
     * uint8: color components should be in 0-255 sRGB gamma space, except for alpha which should be in 0-255 linear
     space.
     * float32/float64: all color components should be in 0-1 linear space.
+
     """
+    if keypoint_ids is not None and class_ids is None:
+        class_ids = 0
     if positions is None:
         positions = np.require([], dtype="float32")
     else:
         positions = np.require(positions, dtype="float32")
     colors = _normalize_colors(colors)
+    class_ids = _normalize_ids(class_ids)
+    keypoint_ids = _normalize_ids(keypoint_ids)
+    if labels is None:
+        labels = []
 
-    rerun_sdk.log_points(obj_path, positions, colors, timeless)
+    rerun_sdk.log_points(obj_path, positions, colors, labels, class_ids, keypoint_ids, timeless)
 
 
 def _normalize_colors(colors: Optional[npt.ArrayLike] = None) -> npt.NDArray[np.uint8]:
@@ -482,13 +613,22 @@ def _normalize_colors(colors: Optional[npt.ArrayLike] = None) -> npt.NDArray[np.
         # An empty array represents no colors.
         return np.array((), dtype=np.uint8)
     else:
-        colors_array = np.array(colors)
+        colors_array = np.array(colors, copy=False)
 
         # Rust expects colors in 0-255 uint8
         if colors_array.dtype.type in [np.float32, np.float64]:
             return linear_to_gamma_u8_pixel(linear=colors_array)
 
         return np.require(colors_array, np.uint8)
+
+
+def _normalize_ids(class_ids: OptionalClassIds = None) -> npt.NDArray[np.uint16]:
+    """Normalize flexible class id arrays."""
+    if class_ids is None:
+        return np.array((), dtype=np.uint16)
+    else:
+        # TODO(andreas): Does this need optimizing for the case where class_ids is already an np array?
+        return np.array(class_ids, dtype=np.uint16, copy=False)
 
 
 # -----------------------------------------------------------------------------
@@ -776,6 +916,7 @@ def log_obb(
     color: Optional[Sequence[int]] = None,
     stroke_width: Optional[float] = None,
     label: Optional[str] = None,
+    class_id: Optional[int] = None,
     timeless: bool = False,
 ) -> None:
     """
@@ -784,9 +925,11 @@ def log_obb(
     `half_size`: Array with [x, y, z] half dimensions of the OBB.
     `position`: Array with [x, y, z] position of the OBB in world space.
     `rotation_q`: Array with quaternion coordinates [x, y, z, w] for the rotation from model to world space
-    `color` is optional RGB or RGBA triplet in 0-255 sRGB.
-    `stroke_width`: width of the OBB edges.
-    `label` is an optional text label placed at `position`.
+    `color`: Optional RGB or RGBA triplet in 0-255 sRGB.
+    `stroke_width`: Optional width of the OBB edges.
+    `label` Optional text label placed at `position`.
+    `class_id`: Optional class id for the OBB.
+                 The class id provides colors and labels if not specified explicitly.
     """
     rerun_sdk.log_obb(
         obj_path,
@@ -797,6 +940,7 @@ def log_obb(
         stroke_width=stroke_width,
         label=label,
         timeless=timeless,
+        class_id=class_id,
     )
 
 
@@ -859,7 +1003,7 @@ def log_depth_image(
 
 def log_segmentation_image(
     obj_path: str,
-    image: ClassIds,
+    image: npt.ArrayLike,
     *,
     timeless: bool = False,
 ) -> None:
@@ -871,9 +1015,11 @@ def log_segmentation_image(
     Supported `dtype`s:
     * uint8: components should be 0-255 class ids
     * uint16: components should be 0-65535 class ids
-    * class_descriptions: obj_path for a class_descriptions object logged with `log_class_descriptions`
 
     """
+    if not isinstance(image, np.ndarray):
+        image = np.array(image, dtype=np.uint16)
+
     # Catch some errors early:
     if len(image.shape) < 2 or 3 < len(image.shape):
         raise TypeError(f"Expected image, got array of shape {image.shape}")
@@ -969,11 +1115,6 @@ def _to_sequence(array: Optional[npt.ArrayLike]) -> Optional[Sequence[float]]:
     return array  # type: ignore[return-value]
 
 
-def set_visible(obj_path: str, visibile: bool) -> None:
-    """Change the visibility of an object."""
-    rerun_sdk.set_visible(obj_path, visibile)
-
-
 def log_cleared(obj_path: str, *, recursive: bool = False) -> None:
     """
     Indicate that an object at a given path should no longer be displayed.
@@ -992,31 +1133,57 @@ def log_cleared(obj_path: str, *, recursive: bool = False) -> None:
 
 
 @dataclass
-class ClassDescription:
+class AnnotationInfo:
     """
-    Metadata about a class type identified by an id.
+    Annotation info annotating a class id or key-point id.
 
-    Color and label will be used to annotate objects which reference the id.
+    Color and label will be used to annotate objects/keypoints which reference the id.
+    The id refers either to a class or key-point id
     """
 
-    id: int
+    id: int = 0
     label: Optional[str] = None
     color: Optional[Color] = None
 
 
-ClassDescriptionLike = Union[Tuple[int, str], Tuple[int, str, Color], ClassDescription]
+AnnotationInfoLike = Union[Tuple[int, str], Tuple[int, str, Color], AnnotationInfo]
 
 
-def coerce_class_description(arg: ClassDescriptionLike) -> ClassDescription:
+def coerce_annotation_info(arg: AnnotationInfoLike) -> AnnotationInfo:
+    if type(arg) is AnnotationInfo:
+        return arg
+    else:
+        return AnnotationInfo(*arg)  # type: ignore[misc]
+
+
+@dataclass
+class ClassDescription:
+    """
+    Metadata about a class type identified by an id.
+
+    Typically a class description contains only a annotation info.
+    However, within a class there might be several keypoints, each with its own annotation info.
+    Keypoints in turn may be connected to each other by connections (typically used for skeleton edges).
+    """
+
+    info: Optional[AnnotationInfoLike] = None
+    keypoint_annotations: Optional[Iterable[AnnotationInfoLike]] = None
+    keypoint_connections: Optional[Iterable[Union[int, Tuple[int, int]]]] = None
+
+
+ClassDescriptionLike = Union[AnnotationInfoLike, ClassDescription]
+
+
+def coerce_class_descriptor_like(arg: ClassDescriptionLike) -> ClassDescription:
     if type(arg) is ClassDescription:
         return arg
     else:
-        return ClassDescription(*arg)  # type: ignore[misc]
+        return ClassDescription(info=arg)  # type: ignore[arg-type]
 
 
 def log_annotation_context(
     obj_path: str,
-    class_descriptions: Sequence[ClassDescriptionLike],
+    class_descriptions: Union[ClassDescriptionLike, Iterable[ClassDescriptionLike]],
     *,
     timeless: bool = True,
 ) -> None:
@@ -1028,14 +1195,14 @@ def log_annotation_context(
     root ("/"), or if you want a per-object ClassDescriptions log it to the same path as
     your object.
 
-    Each ClassDescription must include an id, which will be used for matching
-    the class and may optionally include a label and color.  Colors should
-    either be in 0-255 gamma space or in 0-1 linear space.  Colors can be RGB or
+    Each ClassDescription must include an annotation info with an id, which will be used for matching
+    the class and may optionally include a label and color. Colors should
+    either be in 0-255 gamma space or in 0-1 linear space. Colors can be RGB or
     RGBA.
 
     These can either be specified verbosely as:
     ```
-    [ClassDescription(id=23, label='foo', color=(255, 0, 0)), ...]
+    [AnnotationInfo(id=23, label='foo', color=(255, 0, 0)), ...]
     ```
 
     Or using short-hand tuples.
@@ -1045,12 +1212,53 @@ def log_annotation_context(
 
     Unspecified colors will be filled in by the visualizer randomly.
     """
+    if not isinstance(class_descriptions, Iterable):
+        class_descriptions = [class_descriptions]
+
     # Coerce tuples into ClassDescription dataclass for convenience
-    typed_class_descriptions = (coerce_class_description(d) for d in class_descriptions)
+    typed_class_descriptions = (coerce_class_descriptor_like(d) for d in class_descriptions)
 
     # Convert back to fixed tuple for easy pyo3 conversion
+    # This is pretty messy but will likely go away / be refactored with pending data-model changes.
+    def info_to_tuple(info: Optional[AnnotationInfoLike]) -> Tuple[int, Optional[str], Optional[Sequence[int]]]:
+        if info is None:
+            return (0, None, None)
+        info = coerce_annotation_info(info)
+        color = None if info.color is None else _normalize_colors(info.color).tolist()
+        return (info.id, info.label, color)
+
+    def keypoint_connections_to_flat_list(
+        keypoint_connections: Optional[Iterable[Union[int, Tuple[int, int]]]]
+    ) -> Sequence[int]:
+        if keypoint_connections is None:
+            return []
+        # flatten keypoint connections
+        connections = list(keypoint_connections)
+        if type(connections[0]) is tuple:
+            connections = [item for tuple in connections for item in tuple]  # type: ignore[union-attr]
+        return connections  # type: ignore[return-value]
+
     tuple_class_descriptions = [
-        (d.id, d.label, _normalize_colors(d.color).tolist() or None) for d in typed_class_descriptions
+        (
+            info_to_tuple(d.info),
+            tuple(info_to_tuple(a) for a in d.keypoint_annotations or []),
+            keypoint_connections_to_flat_list(d.keypoint_connections),
+        )
+        for d in typed_class_descriptions
     ]
 
     rerun_sdk.log_annotation_context(obj_path, tuple_class_descriptions, timeless)
+
+
+def set_visible(obj_path: str, visibile: bool) -> None:
+    """
+    set_visible has been deprecated.
+
+    The replacement is `log_cleared()`.
+    See: https://github.com/rerun-io/rerun/pull/285 for details
+    """
+    # This is a slight abose of DeprecationWarning compared to using
+    # warning.warn, but there is no function to call here anymore.
+    # this is (slightly) better than just failing on an undefined function
+    # TODO(jleibs) Remove after 11/25
+    raise DeprecationWarning("set_visible has been deprecated. please use log_cleared")

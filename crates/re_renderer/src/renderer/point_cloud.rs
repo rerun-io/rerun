@@ -22,15 +22,12 @@ use smallvec::smallvec;
 use crate::{
     include_file,
     renderer::utils::next_multiple_of,
-    resource_pools::{
-        bind_group_layout_pool::{BindGroupLayoutDesc, GpuBindGroupLayoutHandle},
-        bind_group_pool::{BindGroupDesc, BindGroupEntry, GpuBindGroupHandleStrong},
-        pipeline_layout_pool::PipelineLayoutDesc,
-        render_pipeline_pool::*,
-        shader_module_pool::ShaderModuleDesc,
-        texture_pool::TextureDesc,
-    },
     view_builder::ViewBuilder,
+    wgpu_resources::{
+        BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroupHandleStrong,
+        GpuBindGroupLayoutHandle, GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc,
+        ShaderModuleDesc, TextureDesc,
+    },
 };
 
 use super::*;
@@ -51,7 +48,7 @@ mod gpu_data {
 /// Expected to be recrated every frame.
 #[derive(Clone)]
 pub struct PointCloudDrawable {
-    bind_group: GpuBindGroupHandleStrong,
+    bind_group: Option<GpuBindGroupHandleStrong>,
     num_quads: u32,
 }
 
@@ -73,20 +70,28 @@ pub struct PointCloudPoint {
 }
 
 impl PointCloudDrawable {
-    pub fn new(
-        ctx: &mut RenderContext,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
-        points: &[PointCloudPoint],
-    ) -> anyhow::Result<Self> {
+    /// Transforms and uploads point cloud data to be consumed by gpu.
+    ///
+    /// Try to bundle all points  into a single drawable whenever possible.
+    /// As with all drawables, data is alive only for a single frame!
+    ///
+    /// If you pass point instances, None will be returned.
+    pub fn new(ctx: &mut RenderContext, points: &[PointCloudPoint]) -> anyhow::Result<Self> {
         crate::profile_function!();
 
-        let line_renderer = ctx.renderers.get_or_create::<_, PointCloudRenderer>(
+        let point_renderer = ctx.renderers.get_or_create::<_, PointCloudRenderer>(
             &ctx.shared_renderer_data,
             &mut ctx.resource_pools,
-            device,
+            &ctx.device,
             &mut ctx.resolver,
         );
+
+        if points.is_empty() {
+            return Ok(PointCloudDrawable {
+                bind_group: None,
+                num_quads: 0,
+            });
+        }
 
         // Textures are 2D since 1D textures are very limited in size (8k typically).
         // Need to keep this value in sync with point_cloud.wgsl!
@@ -130,9 +135,9 @@ impl PointCloudDrawable {
         let position_data_texture = ctx
             .resource_pools
             .textures
-            .alloc(device, &position_data_texture_desc);
+            .alloc(&ctx.device, &position_data_texture_desc);
         let color_texture = ctx.resource_pools.textures.alloc(
-            device,
+            &ctx.device,
             &TextureDesc {
                 label: "point cloud color data".into(),
                 dimension: wgpu::TextureDimension::D2,
@@ -176,7 +181,7 @@ impl PointCloudDrawable {
 
         {
             crate::profile_scope!("write_pos_size_texture");
-            queue.write_texture(
+            ctx.queue.write_texture(
                 wgpu::ImageCopyTexture {
                     texture: &ctx
                         .resource_pools
@@ -201,7 +206,7 @@ impl PointCloudDrawable {
 
         {
             crate::profile_scope!("write_color_texture");
-            queue.write_texture(
+            ctx.queue.write_texture(
                 wgpu::ImageCopyTexture {
                     texture: &ctx
                         .resource_pools
@@ -225,21 +230,21 @@ impl PointCloudDrawable {
         }
 
         Ok(PointCloudDrawable {
-            bind_group: ctx.resource_pools.bind_groups.alloc(
-                device,
+            bind_group: Some(ctx.resource_pools.bind_groups.alloc(
+                &ctx.device,
                 &BindGroupDesc {
                     label: "line drawable".into(),
                     entries: smallvec![
                         BindGroupEntry::DefaultTextureView(*position_data_texture),
                         BindGroupEntry::DefaultTextureView(*color_texture),
                     ],
-                    layout: line_renderer.bind_group_layout,
+                    layout: point_renderer.bind_group_layout,
                 },
                 &ctx.resource_pools.bind_group_layouts,
                 &ctx.resource_pools.textures,
                 &ctx.resource_pools.buffers,
                 &ctx.resource_pools.samplers,
-            ),
+            )),
             num_quads: points.len() as _,
         })
     }
@@ -355,12 +360,15 @@ impl Renderer for PointCloudRenderer {
         draw_data: &Self::DrawData,
     ) -> anyhow::Result<()> {
         crate::profile_function!();
+        let Some(bind_group) = &draw_data.bind_group else {
+            return Ok(()) // Empty drawable
+        };
 
         let pipeline = pools.render_pipelines.get_resource(self.render_pipeline)?;
-        let bind_group = pools.bind_groups.get_resource(&draw_data.bind_group)?;
+        let bind_group = pools.bind_groups.get_resource(bind_group)?;
 
-        pass.set_pipeline(&pipeline.pipeline);
-        pass.set_bind_group(1, &bind_group.bind_group, &[]);
+        pass.set_pipeline(pipeline);
+        pass.set_bind_group(1, bind_group, &[]);
         pass.draw(0..draw_data.num_quads * 6, 0..1);
 
         Ok(())

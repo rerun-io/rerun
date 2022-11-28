@@ -10,14 +10,12 @@ use crate::{
     include_file,
     mesh::{mesh_vertices, GpuMesh},
     resource_managers::{MeshHandle, MeshManager},
-    resource_pools::{
-        bind_group_layout_pool::{BindGroupLayoutDesc, GpuBindGroupLayoutHandle},
-        buffer_pool::{BufferDesc, GpuBufferHandleStrong},
-        pipeline_layout_pool::PipelineLayoutDesc,
-        render_pipeline_pool::{GpuRenderPipelineHandle, RenderPipelineDesc, VertexBufferLayout},
-        shader_module_pool::ShaderModuleDesc,
-    },
     view_builder::ViewBuilder,
+    wgpu_resources::{
+        BindGroupLayoutDesc, BufferDesc, GpuBindGroupLayoutHandle, GpuBufferHandleStrong,
+        GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc, ShaderModuleDesc,
+        VertexBufferLayout,
+    },
 };
 
 use super::*;
@@ -79,7 +77,7 @@ pub struct MeshDrawable {
     // There is a single instance buffer for all instances of all meshes.
     // This means we only ever need to bind the instance buffer once and then change the
     // instance range on every instanced draw call!
-    instance_buffer: GpuBufferHandleStrong,
+    instance_buffer: Option<GpuBufferHandleStrong>,
     batches: Vec<MeshBatch>,
 }
 
@@ -97,27 +95,35 @@ pub struct MeshInstance {
 }
 
 impl MeshDrawable {
-    pub fn new(
-        ctx: &mut RenderContext,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
-        instances: &[MeshInstance],
-    ) -> anyhow::Result<Self> {
+    /// Transforms and uploads mesh instance data to be consumed by gpu.
+    ///
+    /// Try bundling all mesh instances into a single drawable whenever possible.
+    /// As with all drawables, data is alive only for a single frame!
+    /// If you pass zero mesh instances, subsequent drawing will do nothing.
+    /// Mesh data itself is gpu uploaded if not already present.
+    pub fn new(ctx: &mut RenderContext, instances: &[MeshInstance]) -> anyhow::Result<Self> {
         crate::profile_function!();
 
         let _mesh_renderer = ctx.renderers.get_or_create::<_, MeshRenderer>(
             &ctx.shared_renderer_data,
             &mut ctx.resource_pools,
-            device,
+            &ctx.device,
             &mut ctx.resolver,
         );
+
+        if instances.is_empty() {
+            return Ok(MeshDrawable {
+                batches: Vec::new(),
+                instance_buffer: None,
+            });
+        }
 
         // Group by mesh to facilitate instancing.
 
         // TODO(andreas): Use a temp allocator
         let instance_buffer_size = (std::mem::size_of::<GpuInstanceData>() * instances.len()) as _;
         let instance_buffer = ctx.resource_pools.buffers.alloc(
-            device,
+            &ctx.device,
             &BufferDesc {
                 label: "MeshDrawable instance buffer".into(),
                 size: instance_buffer_size,
@@ -127,12 +133,11 @@ impl MeshDrawable {
 
         let mut mesh_runs = Vec::new();
         {
-            let mut instance_buffer_staging = queue.write_buffer_with(
-                &ctx.resource_pools
+            let mut instance_buffer_staging = ctx.queue.write_buffer_with(
+                ctx.resource_pools
                     .buffers
                     .get_resource(&instance_buffer)
-                    .unwrap()
-                    .buffer,
+                    .unwrap(),
                 0,
                 instance_buffer_size.try_into().unwrap(),
             );
@@ -164,14 +169,14 @@ impl MeshDrawable {
         let batches: Result<Vec<_>, _> = mesh_runs
             .into_iter()
             .map(|(mesh_handle, count)| {
-                MeshManager::get_or_create_gpu_resource(ctx, device, queue, mesh_handle)
+                MeshManager::get_or_create_gpu_resource(ctx, mesh_handle)
                     .map(|mesh| MeshBatch { mesh, count })
             })
             .collect();
 
         Ok(MeshDrawable {
             batches: batches?,
-            instance_buffer,
+            instance_buffer: Some(instance_buffer),
         })
     }
 }
@@ -274,11 +279,15 @@ impl Renderer for MeshRenderer {
     ) -> anyhow::Result<()> {
         crate::profile_function!();
 
-        let pipeline = pools.render_pipelines.get_resource(self.render_pipeline)?;
-        pass.set_pipeline(&pipeline.pipeline);
+        let Some(instance_buffer) = &draw_data.instance_buffer else {
+            return Ok(()); // Instance buffer was empty.
+        };
 
-        let instance_buffer = pools.buffers.get_resource(&draw_data.instance_buffer)?;
-        pass.set_vertex_buffer(0, instance_buffer.buffer.slice(..));
+        let pipeline = pools.render_pipelines.get_resource(self.render_pipeline)?;
+        pass.set_pipeline(pipeline);
+
+        let instance_buffer = pools.buffers.get_resource(instance_buffer)?;
+        pass.set_vertex_buffer(0, instance_buffer.slice(..));
         let mut instance_start_index = 0;
 
         for mesh_batch in &draw_data.batches {
@@ -289,20 +298,14 @@ impl Renderer for MeshRenderer {
 
             pass.set_vertex_buffer(
                 1,
-                vertex_buffer_combined
-                    .buffer
-                    .slice(mesh_batch.mesh.vertex_buffer_positions_range.clone()),
+                vertex_buffer_combined.slice(mesh_batch.mesh.vertex_buffer_positions_range.clone()),
             );
             pass.set_vertex_buffer(
                 2,
-                vertex_buffer_combined
-                    .buffer
-                    .slice(mesh_batch.mesh.vertex_buffer_data_range.clone()),
+                vertex_buffer_combined.slice(mesh_batch.mesh.vertex_buffer_data_range.clone()),
             );
             pass.set_index_buffer(
-                index_buffer
-                    .buffer
-                    .slice(mesh_batch.mesh.index_buffer_range.clone()),
+                index_buffer.slice(mesh_batch.mesh.index_buffer_range.clone()),
                 wgpu::IndexFormat::Uint32,
             );
 
@@ -312,7 +315,7 @@ impl Renderer for MeshRenderer {
                 debug_assert!(mesh_batch.count > 0);
 
                 let bind_group = pools.bind_groups.get_resource(&material.bind_group)?;
-                pass.set_bind_group(1, &bind_group.bind_group, &[]);
+                pass.set_bind_group(1, bind_group, &[]);
 
                 pass.draw_indexed(material.index_range.clone(), 0, instance_range.clone());
             }

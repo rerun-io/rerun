@@ -3,6 +3,33 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use itertools::Itertools;
 use re_log_types::*;
 
+// ----------------------------------------------------------------------------
+
+#[derive(Default)]
+pub struct TimesPerTimeline(BTreeMap<Timeline, BTreeMap<TimeInt, BTreeSet<MsgId>>>);
+
+impl TimesPerTimeline {
+    pub fn timelines(&self) -> impl ExactSizeIterator<Item = &Timeline> {
+        self.0.keys()
+    }
+
+    pub fn get(&self, timeline: &Timeline) -> Option<&BTreeMap<TimeInt, BTreeSet<MsgId>>> {
+        self.0.get(timeline)
+    }
+
+    pub fn has_timeline(&self, timeline: &Timeline) -> bool {
+        self.0.contains_key(timeline)
+    }
+
+    pub fn iter(
+        &self,
+    ) -> impl ExactSizeIterator<Item = (&Timeline, &BTreeMap<TimeInt, BTreeSet<MsgId>>)> {
+        self.0.iter()
+    }
+}
+
+// ----------------------------------------------------------------------------
+
 /// Tree of data paths.
 pub struct ObjectTree {
     /// Full path to the root of this tree.
@@ -13,7 +40,7 @@ pub struct ObjectTree {
     /// When do we or a child have data?
     ///
     /// Data logged at this exact path or any child path.
-    pub prefix_times: BTreeMap<Timeline, BTreeMap<TimeInt, BTreeSet<MsgId>>>,
+    pub prefix_times: TimesPerTimeline,
 
     /// Book-keeping around whether we should clear fields when data is added
     pub nonrecursive_clears: BTreeMap<MsgId, TimePoint>,
@@ -172,6 +199,7 @@ impl ObjectTree {
     ) -> &mut Self {
         for (timeline, time_value) in &time_point.0 {
             self.prefix_times
+                .0
                 .entry(*timeline)
                 .or_default()
                 .entry(*time_value)
@@ -205,6 +233,44 @@ impl ObjectTree {
         }
 
         subtree_recursive(self, &path.to_components())
+    }
+
+    pub fn purge_everything_but(&mut self, keep_msg_ids: &ahash::HashSet<MsgId>) {
+        let Self {
+            path: _,
+            children,
+            prefix_times,
+            nonrecursive_clears,
+            recursive_clears,
+            fields,
+        } = self;
+
+        for map in prefix_times.0.values_mut() {
+            crate::profile_scope!("prefix_times");
+            map.retain(|_, msg_ids| {
+                msg_ids.retain(|msg_id| keep_msg_ids.contains(msg_id));
+                !msg_ids.is_empty()
+            });
+        }
+        {
+            crate::profile_scope!("nonrecursive_clears");
+            nonrecursive_clears.retain(|msg_id, _| keep_msg_ids.contains(msg_id));
+        }
+        {
+            crate::profile_scope!("recursive_clears");
+            recursive_clears.retain(|msg_id, _| keep_msg_ids.contains(msg_id));
+        }
+
+        {
+            crate::profile_scope!("fields");
+            for columns in fields.values_mut() {
+                columns.purge_everything_but(keep_msg_ids);
+            }
+        }
+
+        for child in children.values_mut() {
+            child.purge_everything_but(keep_msg_ids);
+        }
     }
 }
 
@@ -251,7 +317,7 @@ impl DataColumns {
             let (stem, plur) = match typ {
                 DataType::Bool => ("bool", "s"),
                 DataType::I32 => ("integer", "s"),
-                DataType::F32 => ("float", "s"),
+                DataType::F32 | DataType::F64 => ("scalar", "s"),
                 DataType::Color => ("color", "s"),
                 DataType::String => ("string", "s"),
 
@@ -278,6 +344,20 @@ impl DataColumns {
         }
 
         summaries.join(", ")
+    }
+
+    pub fn purge_everything_but(&mut self, keep_msg_ids: &ahash::HashSet<MsgId>) {
+        let Self { times, per_type } = self;
+
+        for map in times.values_mut() {
+            map.retain(|_, msg_ids| {
+                msg_ids.retain(|msg_id| keep_msg_ids.contains(msg_id));
+                !msg_ids.is_empty()
+            });
+        }
+        for msg_set in per_type.values_mut() {
+            msg_set.retain(|msg_id| keep_msg_ids.contains(msg_id));
+        }
     }
 }
 

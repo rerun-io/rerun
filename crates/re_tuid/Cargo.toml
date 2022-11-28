@@ -1,0 +1,32 @@
+[package]
+name = "re_tuid"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+
+[features]
+default = []
+
+serde = ["dep:serde"]
+
+
+[dependencies]
+once_cell = "1.16"
+
+# Optional dependencies:
+serde = { version = "1", features = ["derive"], optional = true }
+
+# native dependencies:
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+getrandom = "0.2"
+
+[dev-dependencies]
+criterion = "0.3"
+
+
+[[bench]]
+name = "bench_tuid"
+harness = false

@@ -158,6 +158,7 @@ impl<Time: 'static + Copy + Ord> FieldStore<Time> {
             DataType::Bool => handle_type!(Bool, bool),
             DataType::I32 => handle_type!(I32, i32),
             DataType::F32 => handle_type!(F32, f32),
+            DataType::F64 => handle_type!(F64, f64),
             DataType::String => handle_type!(String, String),
             DataType::Color => handle_type!(Color, data_types::Color),
             DataType::Vec2 => handle_type!(Vec2, data_types::Vec2),
@@ -178,13 +179,67 @@ impl<Time: 'static + Copy + Ord> FieldStore<Time> {
             DataType::DataVec => handle_type!(DataVec, DataVec),
         }
     }
+
+    pub fn purge_everything_but(&mut self, keep_msg_ids: &ahash::HashSet<MsgId>) {
+        let Self {
+            data_store,
+            mono,
+            data_type,
+            _phantom,
+        } = self;
+
+        macro_rules! handle_type(
+            ($enum_variant: ident, $typ: ty) => {{
+                if *mono {
+                    if let Some(store) = data_store.downcast_mut::<MonoFieldStore<Time, $typ>>() {
+                        store.purge_everything_but(keep_msg_ids);
+                    } else {
+                        re_log::warn!("Expected mono-store");
+                    }
+                } else {
+                    if let Some(store) = data_store.downcast_mut::<MultiFieldStore<Time, $typ>>() {
+                        store.purge_everything_but(keep_msg_ids);
+                    } else {
+                        re_log::warn!("Expected multi-store");
+                    }
+                }
+            }}
+        );
+
+        use re_log_types::data_types;
+
+        match *data_type {
+            DataType::Bool => handle_type!(Bool, bool),
+            DataType::I32 => handle_type!(I32, i32),
+            DataType::F32 => handle_type!(F32, f32),
+            DataType::F64 => handle_type!(F64, f64),
+            DataType::String => handle_type!(String, String),
+            DataType::Color => handle_type!(Color, data_types::Color),
+            DataType::Vec2 => handle_type!(Vec2, data_types::Vec2),
+            DataType::BBox2D => handle_type!(BBox2D, re_log_types::BBox2D),
+            DataType::Vec3 => handle_type!(Vec3, data_types::Vec3),
+            DataType::Box3 => handle_type!(Box3, re_log_types::Box3),
+            DataType::Mesh3D => handle_type!(Mesh3D, re_log_types::Mesh3D),
+            DataType::Arrow3D => handle_type!(Arrow3D, re_log_types::Arrow3D),
+            DataType::Tensor => handle_type!(Tensor, re_log_types::Tensor),
+            DataType::ObjPath => handle_type!(ObjPath, ObjPath),
+            DataType::Transform => handle_type!(Transform, re_log_types::Transform),
+            DataType::ViewCoordinates => {
+                handle_type!(ViewCoordinates, re_log_types::ViewCoordinates);
+            }
+            DataType::AnnotationContext => {
+                handle_type!(AnnotationContext, re_log_types::AnnotationContext);
+            }
+            DataType::DataVec => handle_type!(DataVec, DataVec),
+        }
+    }
 }
 
 // ----------------------------------------------------------------------------
 
 /// Stores the history of a mono-field.
 pub struct MonoFieldStore<Time, T> {
-    pub(crate) history: BTreeMap<Time, (MsgId, Option<T>)>,
+    pub(crate) history: BTreeMap<(Time, MsgId), Option<T>>,
 }
 
 impl<Time, T> Default for MonoFieldStore<Time, T> {
@@ -201,7 +256,7 @@ impl<Time: 'static + Copy + Ord, T: DataTrait> MonoFieldStore<Time, T> {
         time_query: &TimeQuery<Time>,
         mut visit: impl FnMut(&Time, &MsgId, &'slf T),
     ) {
-        crate::query::query(&self.history, time_query, |time, (msg_id, value)| {
+        crate::query::query(&self.history, time_query, |time, msg_id, value| {
             if let Some(value) = value {
                 visit(time, msg_id, value);
             }
@@ -209,19 +264,24 @@ impl<Time: 'static + Copy + Ord, T: DataTrait> MonoFieldStore<Time, T> {
     }
 
     /// Get the latest value at the given time
-    pub fn latest_at<'s>(&'s self, query_time: &'_ Time) -> Option<(&'s Time, (&'s MsgId, &'s T))> {
-        let Some((time, (msg_id, Some(value)))) = self.history.range(..=query_time).rev().next()
+    pub fn latest_at<'s>(&'s self, query_time: &'_ Time) -> Option<(&'s Time, &'s MsgId, &'s T)> {
+        let Some(((time, msg_id), Some(value))) = self.history.range(..=(*query_time, MsgId::MAX)).rev().next()
             else { return None };
 
-        (time, (msg_id, value)).into()
+        (time, msg_id, value).into()
     }
 
     /// Get the latest value (unless empty)
-    pub fn latest(&self) -> Option<(&Time, (&MsgId, &T))> {
-        let Some((time, (msg_id, Some(value)))) = self.history.iter().rev().next()
+    pub fn latest(&self) -> Option<(&Time, &MsgId, &T)> {
+        let Some(((time, msg_id), Some(value))) = self.history.iter().rev().next()
             else { return None };
 
-        (time, (msg_id, value)).into()
+        (time, msg_id, value).into()
+    }
+
+    pub fn purge_everything_but(&mut self, keep_msg_ids: &ahash::HashSet<MsgId>) {
+        let Self { history } = self;
+        history.retain(|(_, msg_id), _| keep_msg_ids.contains(msg_id));
     }
 }
 
@@ -229,7 +289,7 @@ impl<Time: 'static + Copy + Ord, T: DataTrait> MonoFieldStore<Time, T> {
 
 /// Stores the history of a multi-field.
 pub(crate) struct MultiFieldStore<Time, T> {
-    pub(crate) history: BTreeMap<Time, (MsgId, BatchOrSplat<T>)>,
+    pub(crate) history: BTreeMap<(Time, MsgId), BatchOrSplat<T>>,
 }
 
 impl<Time, T> Default for MultiFieldStore<Time, T> {
@@ -246,8 +306,13 @@ impl<Time: 'static + Copy + Ord, T: DataTrait> MultiFieldStore<Time, T> {
         time_query: &TimeQuery<Time>,
         mut visit: impl FnMut(&Time, &MsgId, &'slf BatchOrSplat<T>),
     ) {
-        crate::query::query(&self.history, time_query, |time, (msg_id, batch)| {
+        crate::query::query(&self.history, time_query, |time, msg_id, batch| {
             visit(time, msg_id, batch);
         });
+    }
+
+    pub fn purge_everything_but(&mut self, keep_msg_ids: &ahash::HashSet<MsgId>) {
+        let Self { history } = self;
+        history.retain(|(_, msg_id), _| keep_msg_ids.contains(msg_id));
     }
 }

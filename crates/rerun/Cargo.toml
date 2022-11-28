@@ -24,13 +24,17 @@ web = ["re_ws_comms/server", "dep:re_web_server", "dep:webbrowser"]
 re_error = { path = "../re_error" }
 re_log = { path = "../re_log" }
 re_log_types = { path = "../re_log_types" }
+re_memory = { path = "../re_memory" }
+re_smart_channel = { path = "../re_smart_channel" }
 re_viewer = { path = "../re_viewer", features = [
   "puffin",
 ], default-features = false }
 re_ws_comms = { path = "../re_ws_comms", features = ["client"] }
 
 anyhow = "1.0"
+crossbeam = "0.8"
 document-features = "0.2"
+egui = { version = "0.19", default-features = false }
 puffin = "0.14"
 
 # Optional dependencies:

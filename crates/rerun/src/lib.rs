@@ -7,19 +7,27 @@
 //!
 
 use anyhow::Context;
-use std::sync::mpsc::Receiver;
 
 use re_log_types::LogMsg;
+use re_smart_channel::Receiver;
 
 /// The Rerun Viewer and Server
 ///
 /// Features:
 ///
 /// * Read `.rrd` (rerun recording files).
+///
 /// * Connect to a Rerun Server over web-sockets.
+///
 /// * Host a Rerun Server that Rerun SDK:s can connect to.
+///
+/// Environment variables:
+///
+/// * `RERUN_MEMORY_LIMIT`: set an upper limit on how much memory the Rerun Viewer should use. Example `RERUN_MEMORY_LIMIT=16GB`
+///
+/// * `RERUN_TRACK_ALLOCATIONS`: track all allocations in order to find memory leaks in the viewer. WARNING: slows down the viewer by a lot!
 #[derive(Debug, clap::Parser)]
-#[clap(author, version, about, long_about = None)]
+#[clap(author, version, about)]
 struct Args {
     /// Either a path to a `.rrd` file to load, or a websocket url to a Rerun Server from which to read data
     ///
@@ -46,6 +54,10 @@ where
     I: IntoIterator<Item = T>,
     T: Into<std::ffi::OsString> + Clone,
 {
+    re_memory::accounting_allocator::turn_on_tracking_if_env_var(
+        re_viewer::env_vars::RERUN_TRACK_ALLOCATIONS,
+    );
+
     use clap::Parser as _;
     let args = Args::parse_from(args);
     run_impl(args).await
@@ -64,6 +76,7 @@ async fn run_impl(args: Args) -> anyhow::Result<()> {
             re_log::info!("Loading {path:?}…");
             load_file_to_channel(&path).with_context(|| format!("{path:?}"))?
         } else {
+            // We are connecting to a server at a websocket address:
             return connect_to_ws_url(&args, profiler, url_or_path.clone()).await;
         }
     } else {
@@ -108,7 +121,7 @@ async fn run_impl(args: Args) -> anyhow::Result<()> {
         anyhow::bail!("Can't host web-viewer - rerun was not compiled with the 'web' feature");
     } else {
         re_viewer::run_native_app(Box::new(move |cc, design_tokens| {
-            let rx = re_viewer::wake_up_ui_thread_on_each_msg(rx, cc.egui_ctx.clone());
+            let rx = wake_up_ui_thread_on_each_msg(rx, cc.egui_ctx.clone());
             let mut app =
                 re_viewer::App::from_receiver(&cc.egui_ctx, design_tokens, cc.storage, rx);
             app.set_profiler(profiler);
@@ -150,7 +163,7 @@ fn load_file_to_channel(path: &std::path::Path) -> anyhow::Result<Receiver<LogMs
     let file = std::fs::File::open(path).context("Failed to open file")?;
     let decoder = re_log_types::encoding::Decoder::new(file)?;
 
-    let (tx, rx) = std::sync::mpsc::channel();
+    let (tx, rx) = re_smart_channel::smart_channel(re_smart_channel::Source::File);
 
     std::thread::Builder::new()
         .name("rrd_file_reader".into())
@@ -185,4 +198,26 @@ async fn host_web_viewer(rerun_ws_server_url: String) -> anyhow::Result<()> {
 #[cfg(not(feature = "web"))]
 async fn host_web_viewer(_rerun_ws_server_url: String) -> anyhow::Result<()> {
     panic!("Can't host web-viewer - rerun was not compiled with the 'web' feature");
+}
+
+/// This wakes up the ui thread each time we receive a new message.
+fn wake_up_ui_thread_on_each_msg<T: Send + 'static>(
+    rx: Receiver<T>,
+    ctx: egui::Context,
+) -> re_smart_channel::Receiver<T> {
+    let (tx, new_rx) = re_smart_channel::smart_channel(rx.source());
+    std::thread::Builder::new()
+        .name("ui_waker".to_owned())
+        .spawn(move || {
+            while let Ok((sent_at, msg)) = rx.recv_with_send_time() {
+                if tx.send_at(sent_at, msg).is_ok() {
+                    ctx.request_repaint();
+                } else {
+                    break;
+                }
+            }
+            re_log::debug!("Shutting down ui_waker thread");
+        })
+        .unwrap();
+    new_rx
 }

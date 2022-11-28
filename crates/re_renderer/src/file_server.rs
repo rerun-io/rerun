@@ -12,16 +12,28 @@ macro_rules! include_file {
         {
             let mut resolver = $crate::new_recommended_file_resolver();
 
+            // There's no guarantee that users will `cargo run` from the workspace root, so
+            // we need to know where that is and make sure we look for shaders from there.
+            //
+            // Note that we grab the env-var at _compile time_, that way this will work for
+            // all cases: `cargo run`, `./rerun`, `python example.py`.
+            //
+            // `CARGO_WORKSPACE_DIR` is instantiated by our workspace's cargo config, see
+            // `.cargo/config.toml`.
+            let workspace_path = env!("CARGO_WORKSPACE_DIR");
+
             // The path returned by the `file!()` macro is always hermetic, which is actually
             // an issue for us in this case since we allow non-hermetic imports in debug
             // builds (we encourage them, even!).
             //
             // Thus, we need to do an actual OS canonicalization here, but it turns out that
             // `FileServer::watch()` already does it for us, so we're covered.
-            let path = ::std::path::Path::new(file!())
+            let file_path = ::std::path::Path::new(file!())
                 .parent()
                 .unwrap()
                 .join($path);
+
+            let path = ::std::path::Path::new(&workspace_path).join(&file_path);
 
             $crate::FileServer::get_mut(|fs| fs.watch(&mut resolver, &path, false)).unwrap()
         }
@@ -67,7 +79,7 @@ mod file_server_impl {
     static FILE_SERVER: RwLock<Option<FileServer>> = RwLock::new(None);
 
     /// A file server capable of watching filesystem events in the background and
-    /// (soon) resolve #import clauses in files.
+    /// resolve #import clauses in files.
     pub struct FileServer {
         watcher: RecommendedWatcher,
         events_rx: Receiver<Event>,

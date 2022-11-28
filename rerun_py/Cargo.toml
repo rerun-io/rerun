@@ -35,12 +35,15 @@ arrow2 = { version = "0.14.2", features = ["io_ipc"] }
 re_error = { path = "../crates/re_error" }
 re_log = { path = "../crates/re_log" }
 re_log_types = { path = "../crates/re_log_types" }
+re_memory = { path = "../crates/re_memory" }
 re_sdk_comms = { path = "../crates/re_sdk_comms", features = ["client"] }
+re_smart_channel = { path = "../crates/re_smart_channel" }
 re_tensor_ops = { path = "../crates/re_tensor_ops" }
 re_viewer = { path = "../crates/re_viewer", optional = true }
 rerun = { path = "../crates/rerun" }
 
 bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }
+crossbeam = "0.8"
 document-features = "0.2"
 glam = "0.20"
 image = { version = "0.24", default-features = false, features = [
@@ -49,6 +52,7 @@ image = { version = "0.24", default-features = false, features = [
 ] }
 itertools = "0.10"
 macaw = "0.17"
+mimalloc = { version = "0.1.29", features = ["local_dynamic_tls"] }
 nohash-hasher = "0.2"
 numpy = "0.17"
 once_cell = "1.12"

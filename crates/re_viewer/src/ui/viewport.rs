@@ -111,9 +111,7 @@ impl ViewportBlueprint {
                 let space_view_ids = self
                     .space_views
                     .keys()
-                    .sorted_by_key(|space_view_id| {
-                        &self.space_views.get(space_view_id).unwrap().name
-                    })
+                    .sorted_by_key(|space_view_id| &self.space_views[space_view_id].name)
                     .copied()
                     .collect_vec();
 
@@ -147,6 +145,7 @@ impl ViewportBlueprint {
                 ViewCategory::ThreeD => ui.label("🔭"),
                 ViewCategory::Tensor => ui.label("🇹"),
                 ViewCategory::Text => ui.label("📃"),
+                ViewCategory::Plot => ui.label("📈"),
             };
 
             if ctx
@@ -283,7 +282,8 @@ impl ViewportBlueprint {
             dock_style.separator_width = 2.0;
             dock_style.show_close_buttons = false;
             dock_style.tab_include_scrollarea = false;
-            dock_style.expand_tabs = true;
+            // dock_style.expand_tabs = true; looks good, but decreases readability
+            dock_style.tab_text_color_unfocused = dock_style.tab_text_color_focused; // We don't treat focused tabs differently
 
             let mut tab_viewer = TabViewer {
                 ctx,
@@ -497,30 +497,22 @@ fn space_view_ui(
     space_view: &mut SpaceView,
 ) {
     let Some(space_info) = spaces_info.spaces.get(&space_view.space_path) else {
-        unknown_space_label(ui, &space_view.space_path);
-        return
+        ui.centered(|ui| {
+            ui.label(ctx.design_tokens.warning_text(
+                format!("Unknown space {:?}", space_view.space_path),
+                ui.style(),
+            ));
+        });
+        return;
     };
     let Some(time_query) = ctx.rec_cfg.time_ctrl.time_query() else {
-        invalid_space_label(ui);
+        ui.centered(|ui| {
+            ui.label(ctx.design_tokens.warning_text("No time selected", ui.style()));
+        });
         return
     };
 
     space_view.scene_ui(ctx, ui, spaces_info, space_info, time_query);
-}
-
-fn unknown_space_label(ui: &mut egui::Ui, space_path: &ObjPath) {
-    ui.centered(|ui| {
-        ui.colored_label(
-            ui.visuals().warn_fg_color,
-            format!("Unknown space {space_path:?}"),
-        );
-    });
-}
-
-fn invalid_space_label(ui: &mut egui::Ui) {
-    ui.centered(|ui| {
-        ui.colored_label(ui.visuals().warn_fg_color, "No time selected");
-    });
 }
 
 // ----------------------------------------------------------------------------

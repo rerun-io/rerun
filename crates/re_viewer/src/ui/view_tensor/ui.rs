@@ -32,6 +32,7 @@ pub struct ViewTensorState {
 
 fn empty_tensor() -> Tensor {
     Tensor {
+        tensor_id: re_log_types::TensorId(uuid::uuid!("7c8c3d2b-30f1-4206-844d-c43790912492")),
         shape: vec![TensorDimension::unnamed(0)],
         dtype: TensorDataType::U8,
         meaning: TensorDataMeaning::Unknown,

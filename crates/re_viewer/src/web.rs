@@ -1,11 +1,15 @@
-#[cfg(target_arch = "wasm32")]
 use eframe::wasm_bindgen::{self, prelude::*};
+
+use re_memory::AccountingAllocator;
+
+#[global_allocator]
+static GLOBAL: AccountingAllocator<std::alloc::System> =
+    AccountingAllocator::new(std::alloc::System);
 
 /// This is the entry-point for all the web-assembly.
 /// This is called once from the HTML.
 /// It loads the app, installs some callbacks, then returns.
 /// You can add more callbacks like this if you want to call in to your code.
-#[cfg(target_arch = "wasm32")]
 #[wasm_bindgen]
 pub async fn start(canvas_id: &str) -> std::result::Result<(), eframe::wasm_bindgen::JsValue> {
     // Make sure panics are logged using `console.error`.
@@ -17,10 +21,7 @@ pub async fn start(canvas_id: &str) -> std::result::Result<(), eframe::wasm_bind
     let web_options = eframe::WebOptions {
         follow_system_theme: false,
         default_theme: eframe::Theme::Dark,
-
         wgpu_options: crate::wgpu_options(),
-
-        ..Default::default()
     };
 
     eframe::start_web(
@@ -29,12 +30,7 @@ pub async fn start(canvas_id: &str) -> std::result::Result<(), eframe::wasm_bind
         Box::new(move |cc| {
             let design_tokens = crate::customize_eframe(cc);
             let url = get_url(&cc.integration_info);
-            let app = crate::RemoteViewerApp::new(
-                &cc.egui_ctx,
-                design_tokens,
-                cc.storage.as_deref(),
-                url,
-            );
+            let app = crate::RemoteViewerApp::new(&cc.egui_ctx, design_tokens, cc.storage, url);
             Box::new(app)
         }),
     )
@@ -61,7 +57,7 @@ fn redirect_tracing_to_console_log() {
         tracing_subscriber::Registry::default()
             // Filtering out wgpu spam seems to mitigate https://linear.app/rerun/issue/PRO-256/wgpu-crashes-on-web
             .with(tracing_subscriber::EnvFilter::new(
-                "info,wgpu_core=warn,wgpu_hal=warn",
+                re_log::default_log_filter(),
             ))
             .with(tracing_wasm::WASMLayer::new(
                 tracing_wasm::WASMLayerConfig::default(),

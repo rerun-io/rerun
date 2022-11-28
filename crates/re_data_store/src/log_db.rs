@@ -1,15 +1,9 @@
-use std::collections::{BTreeMap, BTreeSet};
-
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 
 use re_log_types::*;
 
-// ----------------------------------------------------------------------------
-
-/// An aggregate of [`TimePoint`]:s.
-#[derive(Default, serde::Deserialize, serde::Serialize)]
-pub struct TimePoints(pub BTreeMap<Timeline, BTreeSet<TimeInt>>);
+use crate::TimesPerTimeline;
 
 // ----------------------------------------------------------------------------
 
@@ -131,6 +125,23 @@ impl ObjDb {
             }
         }
     }
+
+    pub fn purge_everything_but(&mut self, keep_msg_ids: &ahash::HashSet<MsgId>) {
+        crate::profile_function!();
+
+        let Self {
+            types: _,
+            tree,
+            store,
+        } = self;
+
+        {
+            crate::profile_scope!("tree");
+            tree.purge_everything_but(keep_msg_ids);
+        }
+
+        store.purge_everything_but(keep_msg_ids);
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -140,7 +151,7 @@ impl ObjDb {
 pub struct LogDb {
     /// Messages in the order they arrived
     chronological_message_ids: Vec<MsgId>,
-    log_messages: IntMap<MsgId, LogMsg>,
+    log_messages: ahash::HashMap<MsgId, LogMsg>,
 
     /// Data that was logged with [`TimePoint::timeless`].
     /// We need to re-insert those in any new timelines
@@ -148,9 +159,6 @@ pub struct LogDb {
     timeless_message_ids: Vec<MsgId>,
 
     recording_info: Option<RecordingInfo>,
-
-    /// All the points of time when we have some data.
-    pub time_points: TimePoints,
 
     /// Where we store the objects.
     pub obj_db: ObjDb,
@@ -167,6 +175,14 @@ impl LogDb {
         } else {
             RecordingId::ZERO
         }
+    }
+
+    pub fn timelines(&self) -> impl ExactSizeIterator<Item = &Timeline> {
+        self.times_per_timeline().timelines()
+    }
+
+    pub fn times_per_timeline(&self) -> &TimesPerTimeline {
+        &self.obj_db.tree.prefix_times
     }
 
     pub fn is_empty(&self) -> bool {
@@ -242,43 +258,39 @@ impl LogDb {
 
         if time_point.is_timeless() {
             // Timeless data should be added to all existing timelines,
-            // as well to all future timelines,
-            // so we special-case it here.
+            // as well to all future timelines, so we special-case it here.
             // See https://linear.app/rerun/issue/PRO-97
 
             // Remember to add it to future timelines:
             self.timeless_message_ids.push(msg_id);
 
-            if !self.time_points.0.is_empty() {
+            let has_any_timelines = self.timelines().next().is_some();
+            if has_any_timelines {
                 // Add to existing timelines (if any):
                 let mut time_point = TimePoint::default();
-                for &timeline in self.time_points.0.keys() {
+                for &timeline in self.timelines() {
                     time_point.0.insert(timeline, TimeInt::BEGINNING);
                 }
                 self.add_data_msg(msg_id, &time_point, data_path, data);
             }
+        } else {
+            // Not timeless data.
 
-            return; // done
-        }
-
-        self.obj_db
-            .add_data_msg(msg_id, time_point, data_path, data);
-
-        {
+            // First check if this data message adds a new timeline…
             let mut new_timelines = TimePoint::default();
-
-            for (timeline, value) in &time_point.0 {
-                match self.time_points.0.entry(*timeline) {
-                    std::collections::btree_map::Entry::Vacant(entry) => {
-                        re_log::debug!("New timeline added: {timeline:?}");
-                        new_timelines.0.insert(*timeline, TimeInt::BEGINNING);
-                        entry.insert(Default::default())
-                    }
-                    std::collections::btree_map::Entry::Occupied(entry) => entry.into_mut(),
+            for timeline in time_point.timelines() {
+                let is_new_timeline = self.times_per_timeline().get(timeline).is_none();
+                if is_new_timeline {
+                    re_log::debug!("New timeline added: {timeline:?}");
+                    new_timelines.0.insert(*timeline, TimeInt::BEGINNING);
                 }
-                .insert(*value);
             }
 
+            // .…then add the data, remembering any new timelines…
+            self.obj_db
+                .add_data_msg(msg_id, time_point, data_path, data);
+
+            // …finally, if needed, add outstanding timeless data to any newly created timelines.
             if !new_timelines.0.is_empty() {
                 let timeless_data_messages = self
                     .timeless_message_ids
@@ -307,5 +319,60 @@ impl LogDb {
 
     pub fn get_log_msg(&self, msg_id: &MsgId) -> Option<&LogMsg> {
         self.log_messages.get(msg_id)
+    }
+
+    /// Free up some RAM by forgetting the older parts of all timelines.
+    pub fn purge_fraction_of_ram(&mut self, fraction_to_purge: f32) {
+        fn always_keep(msg: &LogMsg) -> bool {
+            match msg {
+                LogMsg::BeginRecordingMsg(_) | LogMsg::TypeMsg(_) => true,
+                LogMsg::DataMsg(msg) => msg.time_point.is_timeless(),
+                LogMsg::PathOpMsg(msg) => msg.time_point.is_timeless(),
+            }
+        }
+
+        crate::profile_function!();
+
+        assert!((0.0..=1.0).contains(&fraction_to_purge));
+
+        // Start by figuring out what `MsgId`:s to keep:
+        let keep_msg_ids = {
+            crate::profile_scope!("calc_what_to_keep");
+            let mut keep_msg_ids = ahash::HashSet::default();
+            for (_, time_points) in self.obj_db.tree.prefix_times.iter() {
+                let num_to_purge = (time_points.len() as f32 * fraction_to_purge).round() as usize;
+                for (_, msg_id) in time_points.iter().skip(num_to_purge) {
+                    keep_msg_ids.extend(msg_id);
+                }
+            }
+
+            keep_msg_ids.extend(
+                self.log_messages
+                    .iter()
+                    .filter_map(|(msg_id, msg)| always_keep(msg).then_some(*msg_id)),
+            );
+            keep_msg_ids
+        };
+
+        let Self {
+            chronological_message_ids,
+            log_messages,
+            timeless_message_ids,
+            recording_info: _,
+            obj_db,
+        } = self;
+
+        chronological_message_ids.retain(|msg_id| keep_msg_ids.contains(msg_id));
+
+        {
+            crate::profile_scope!("log_messages");
+            log_messages.retain(|msg_id, _| keep_msg_ids.contains(msg_id));
+        }
+        {
+            crate::profile_scope!("timeless_message_ids");
+            timeless_message_ids.retain(|msg_id| keep_msg_ids.contains(msg_id));
+        }
+
+        obj_db.purge_everything_but(&keep_msg_ids);
     }
 }

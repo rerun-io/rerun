@@ -1,17 +1,14 @@
 use itertools::Itertools as _;
-use re_log_types::*;
+use re_log_types::{context::ClassId, *};
 
 use crate::misc::{tensor_image_cache, ViewerContext};
-
-use super::LabelMapping as _;
 
 pub(crate) fn show_tensor(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    msg_id: &MsgId,
     tensor: &re_log_types::Tensor,
 ) {
-    let tensor_view = ctx.cache.image.get_view(msg_id, tensor);
+    let tensor_view = ctx.cache.image.get_view(tensor);
 
     let max_size = ui
         .available_size()
@@ -158,7 +155,14 @@ pub fn show_zoomed_image_region(
                         tensor_view.annotations,
                         raw_value.try_as_u16(),
                     ) {
-                        ui.monospace(format!("Label: {}", annotations.map_label(u16_val)));
+                        ui.monospace(format!(
+                            "Label: {}",
+                            annotations
+                                .class_description(Some(ClassId(u16_val)))
+                                .annotation_info()
+                                .label(None)
+                                .unwrap_or_default()
+                        ));
                     };
                 }
             } else if tensor_view.tensor.num_dim() == 3 {

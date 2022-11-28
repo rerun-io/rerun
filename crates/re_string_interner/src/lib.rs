@@ -12,7 +12,9 @@
 #[inline]
 fn hash(value: impl std::hash::Hash) -> u64 {
     use std::hash::Hasher as _;
-    let mut hasher = ahash::AHasher::default();
+    // Don't use ahash::AHasher::default() since it uses a random number for seeding the hasher on every application start.
+    let mut hasher =
+        std::hash::BuildHasher::build_hasher(&ahash::RandomState::with_seeds(0, 1, 2, 3));
     value.hash(&mut hasher);
     hasher.finish()
 }
@@ -161,6 +163,13 @@ impl StringInterner {
             string: static_ref_string,
         }
     }
+
+    pub fn bytes_used(&self) -> usize {
+        self.map
+            .iter()
+            .map(|(k, v)| std::mem::size_of_val(k) + std::mem::size_of_val(v) + v.len())
+            .sum()
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -270,13 +279,17 @@ macro_rules! declare_new_type {
 
 // ----------------------------------------------------------------------------
 
+use once_cell::sync::Lazy;
+use parking_lot::Mutex;
+static GLOBAL_INTERNER: Lazy<Mutex<StringInterner>> =
+    Lazy::new(|| Mutex::new(StringInterner::default()));
+
+pub fn bytes_used() -> usize {
+    GLOBAL_INTERNER.lock().bytes_used()
+}
+
 /// global interning function.
 fn global_intern(string: &str) -> InternedString {
-    use once_cell::sync::Lazy;
-    use parking_lot::Mutex;
-    static GLOBAL_INTERNER: Lazy<Mutex<StringInterner>> =
-        Lazy::new(|| Mutex::new(StringInterner::default()));
-
     GLOBAL_INTERNER.lock().intern(string)
 }
 

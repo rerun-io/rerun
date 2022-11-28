@@ -1,8 +1,8 @@
-use ewebsock::*;
-use re_log_types::LogMsg;
 use std::ops::ControlFlow;
 
-use crate::{decode_log_msg, Result};
+use ewebsock::*;
+
+use crate::Result;
 
 /// Represents a connection to the server.
 /// Disconnects on drop.
@@ -13,7 +13,7 @@ impl Connection {
     /// Connect viewer to server
     pub fn viewer_to_server(
         url: String,
-        on_log_msg: impl Fn(LogMsg) -> ControlFlow<()> + Send + 'static,
+        on_binary_msg: impl Fn(Vec<u8>) -> ControlFlow<()> + Send + 'static,
     ) -> Result<Self> {
         re_log::info!("Connecting to {url:?}…");
         let sender = ewebsock::ws_connect(
@@ -24,13 +24,7 @@ impl Connection {
                     ControlFlow::Continue(())
                 }
                 WsEvent::Message(message) => match message {
-                    WsMessage::Binary(binary) => match decode_log_msg(&binary) {
-                        Ok(log_msg) => on_log_msg(log_msg),
-                        Err(err) => {
-                            re_log::error!("Failed to parse message: {}", re_error::format(&err));
-                            ControlFlow::Break(())
-                        }
-                    },
+                    WsMessage::Binary(binary) => on_binary_msg(binary),
                     WsMessage::Text(text) => {
                         re_log::warn!("Unexpected text message: {:?}", text);
                         ControlFlow::Continue(())

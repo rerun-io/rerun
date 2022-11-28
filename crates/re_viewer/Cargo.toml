@@ -3,8 +3,15 @@ name = "re_viewer"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
-license.workspace = true
+license = "(MIT OR Apache-2.0) AND OFL-1.1"
 publish = false
+include = [
+  "../../LICENSE-APACHE",
+  "../../LICENSE-MIT",
+  "**/*.rs",
+  "Cargo.toml",
+  "data/*",
+]
 
 
 [lib]
@@ -30,10 +37,12 @@ re_arrow_store = { path = "../re_arrow_store" }
 re_error = { path = "../re_error" }
 re_log = { path = "../re_log" }
 re_log_types = { path = "../re_log_types", features = ["glam", "save", "load"] }
+re_memory = { path = "../re_memory" }
+re_renderer = { path = "../re_renderer" }
+re_smart_channel = { path = "../re_smart_channel" }
 re_string_interner = { path = "../re_string_interner" }
 re_tensor_ops = { path = "../re_tensor_ops" }
 re_ws_comms = { path = "../re_ws_comms", features = ["client"] }
-re_renderer = { path = "../re_renderer" }
 
 eframe = { version = "0.19", default-features = false, features = [
   "default_fonts",

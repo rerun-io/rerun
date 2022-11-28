@@ -305,6 +305,48 @@ fn apply_hover_effect(paint_props: &mut ObjectPaintProperties) {
     paint_props.fg_stroke.color = Color32::WHITE;
 }
 
+/// Adds an object label to the ui.
+/// Returns rect covered by it (to be used for hover detection)
+fn add_label(
+    ui: &mut egui::Ui,
+    label: &String,
+    paint_props: &ObjectPaintProperties,
+    wrap_width: f32,
+    text_anchor_pos: Pos2,
+    shapes: &mut Vec<Shape>,
+) -> egui::Rect {
+    let font_id = TextStyle::Body.resolve(ui.style());
+    let galley = ui.fonts().layout_job({
+        egui::text::LayoutJob {
+            sections: vec![egui::text::LayoutSection {
+                leading_space: 0.0,
+                byte_range: 0..label.len(),
+                format: TextFormat::simple(font_id, paint_props.fg_stroke.color),
+            }],
+            text: (*label).clone(),
+            wrap: TextWrapping {
+                max_width: wrap_width,
+                ..Default::default()
+            },
+            break_on_newline: true,
+            halign: Align::Center,
+            ..Default::default()
+        }
+    });
+
+    let text_rect =
+        Align2::CENTER_TOP.anchor_rect(Rect::from_min_size(text_anchor_pos, galley.size()));
+    let bg_rect = text_rect.expand2(vec2(4.0, 2.0));
+    shapes.push(Shape::rect_filled(
+        bg_rect,
+        3.0,
+        paint_props.bg_stroke.color,
+    ));
+    shapes.push(Shape::galley(text_rect.center_top(), galley));
+
+    bg_rect
+}
+
 /// Create the real 2D view inside the scrollable area
 fn view_2d_scrollable(
     desired_size: Vec2,
@@ -360,7 +402,6 @@ fn view_2d_scrollable(
 
     for (image_idx, img) in scene.images.iter().enumerate() {
         let Image {
-            msg_id,
             instance_hash,
             tensor,
             meter,
@@ -369,10 +410,7 @@ fn view_2d_scrollable(
             annotations: legend,
         } = img;
 
-        let tensor_view = ctx
-            .cache
-            .image
-            .get_view_with_annotations(msg_id, tensor, legend);
+        let tensor_view = ctx.cache.image.get_view_with_annotations(tensor, legend);
 
         let texture_id = tensor_view.retained_img.texture_id(parent_ui.ctx());
 
@@ -421,10 +459,8 @@ fn view_2d_scrollable(
                                 ui.separator();
                             }
 
-                            let tensor_view = ctx
-                                .cache
-                                .image
-                                .get_view_with_annotations(msg_id, tensor, legend);
+                            let tensor_view =
+                                ctx.cache.image.get_view_with_annotations(tensor, legend);
 
                             ui.horizontal(|ui| {
                                 super::image_ui::show_zoomed_image_region(
@@ -478,50 +514,24 @@ fn view_2d_scrollable(
             paint_props.fg_stroke,
         ));
 
-        let mut hover_dist = f32::INFINITY;
-
         if let Some(pointer_pos) = pointer_pos {
-            hover_dist = rect_in_ui.signed_distance_to_pos(pointer_pos).abs();
+            check_hovering(*instance_hash, rect_in_ui.distance_to_pos(pointer_pos));
         }
 
         if let Some(label) = label {
-            let wrap_width = (rect_in_ui.width() - 4.0).at_least(60.0);
-            let font_id = TextStyle::Body.resolve(parent_ui.style());
-            let galley = parent_ui.fonts().layout_job({
-                egui::text::LayoutJob {
-                    sections: vec![egui::text::LayoutSection {
-                        leading_space: 0.0,
-                        byte_range: 0..label.len(),
-                        format: TextFormat::simple(font_id, paint_props.fg_stroke.color),
-                    }],
-                    text: (*label).clone(),
-                    wrap: TextWrapping {
-                        max_width: wrap_width,
-                        ..Default::default()
-                    },
-                    break_on_newline: true,
-                    halign: Align::Center,
-                    ..Default::default()
-                }
-            });
-
-            // Place the text centered below the rect:
-            let text_anchor_pos = rect_in_ui.center_bottom() + vec2(0.0, 3.0);
-            let text_rect =
-                Align2::CENTER_TOP.anchor_rect(Rect::from_min_size(text_anchor_pos, galley.size()));
-            let bg_rect = text_rect.expand2(vec2(4.0, 2.0));
-            shapes.push(Shape::rect_filled(
-                bg_rect,
-                3.0,
-                paint_props.bg_stroke.color,
-            ));
-            shapes.push(Shape::galley(text_rect.center_top(), galley));
+            // Place the text centered below the rect
+            let rect = add_label(
+                parent_ui,
+                label,
+                paint_props,
+                (rect_in_ui.width() - 4.0).at_least(60.0),
+                rect_in_ui.center_bottom() + vec2(0.0, 3.0),
+                &mut shapes,
+            );
             if let Some(pointer_pos) = pointer_pos {
-                hover_dist = hover_dist.min(bg_rect.signed_distance_to_pos(pointer_pos));
+                check_hovering(*instance_hash, rect.distance_to_pos(pointer_pos).abs());
             }
         }
-
-        check_hovering(*instance_hash, hover_dist);
     }
 
     for segments in &scene.line_segments {
@@ -556,6 +566,7 @@ fn view_2d_scrollable(
             pos,
             radius,
             paint_props,
+            label,
         } = point;
 
         let radius = radius.unwrap_or(1.5);
@@ -571,6 +582,20 @@ fn view_2d_scrollable(
             radius,
             paint_props.fg_stroke.color,
         ));
+
+        if let Some(label) = label {
+            let rect = add_label(
+                parent_ui,
+                label,
+                paint_props,
+                f32::INFINITY,
+                pos_in_ui + vec2(0.0, 3.0),
+                &mut shapes,
+            );
+            if let Some(pointer_pos) = pointer_pos {
+                check_hovering(*instance_hash, rect.distance_to_pos(pointer_pos).abs());
+            }
+        }
 
         if let Some(pointer_pos) = pointer_pos {
             check_hovering(*instance_hash, pos_in_ui.distance(pointer_pos));

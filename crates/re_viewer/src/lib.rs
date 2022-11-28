@@ -9,6 +9,7 @@
 
 mod app;
 mod design_tokens;
+pub mod env_vars;
 pub mod math;
 mod misc;
 mod remote_viewer_app;
@@ -114,8 +115,8 @@ pub(crate) fn customize_eframe(cc: &eframe::CreationContext<'_>) -> crate::Desig
         };
 
         paint_callback_resources.insert(RenderContext::new(
-            &render_state.device,
-            &render_state.queue,
+            render_state.device.clone(),
+            render_state.queue.clone(),
             RenderContextConfig {
                 output_format_color,
                 hardware_tier: crate::hardware_tier(),

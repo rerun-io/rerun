@@ -3,11 +3,11 @@ use smallvec::smallvec;
 use crate::{
     context::SharedRendererData,
     include_file,
-    resource_pools::{
-        pipeline_layout_pool::*, render_pipeline_pool::*, shader_module_pool::ShaderModuleDesc,
+    view_builder::ViewBuilder,
+    wgpu_resources::{
+        GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc, ShaderModuleDesc,
         WgpuResourcePools,
     },
-    view_builder::ViewBuilder,
 };
 
 use super::*;
@@ -28,11 +28,11 @@ impl Drawable for GenericSkyboxDrawable {
 }
 
 impl GenericSkyboxDrawable {
-    pub fn new(ctx: &mut RenderContext, device: &wgpu::Device) -> Self {
+    pub fn new(ctx: &mut RenderContext) -> Self {
         ctx.renderers.get_or_create::<_, GenericSkybox>(
             &ctx.shared_renderer_data,
             &mut ctx.resource_pools,
-            device,
+            &ctx.device,
             &mut ctx.resolver,
         );
 
@@ -112,7 +112,7 @@ impl Renderer for GenericSkybox {
 
         let pipeline = pools.render_pipelines.get_resource(self.render_pipeline)?;
 
-        pass.set_pipeline(&pipeline.pipeline);
+        pass.set_pipeline(pipeline);
         pass.draw(0..3, 0..1);
 
         Ok(())

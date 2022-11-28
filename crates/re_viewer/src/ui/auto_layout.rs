@@ -64,8 +64,8 @@ pub(crate) fn tree_from_space_views(
                     Some(size.x / size.y)
                 }
                 ViewCategory::ThreeD => None, // 3D scenes can be pretty flexible
-                ViewCategory::Tensor => Some(1.0), // Not sure if we should do `None` here.
-                ViewCategory::Text => Some(2.0), // Make text logs wide
+                ViewCategory::Tensor | ViewCategory::Plot => Some(1.0), // Not sure if we should do `None` here.
+                ViewCategory::Text => Some(2.0),                        // Make text logs wide
             };
 
             SpaceMakeInfo {

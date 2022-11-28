@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use type_map::concurrent::{self, TypeMap};
 
 use crate::{
@@ -5,7 +7,7 @@ use crate::{
     global_bindings::GlobalBindings,
     renderer::Renderer,
     resource_managers::{MeshManager, TextureManager2D},
-    resource_pools::WgpuResourcePools,
+    wgpu_resources::WgpuResourcePools,
     FileResolver, FileServer, FileSystem, RecommendedFileResolver,
 };
 
@@ -14,6 +16,9 @@ use crate::{
 /// Any resource involving wgpu rendering which can be re-used across different scenes.
 /// I.e. render pipelines, resource pools, etc.
 pub struct RenderContext {
+    pub device: Arc<wgpu::Device>,
+    pub queue: Arc<wgpu::Queue>,
+
     pub(crate) shared_renderer_data: SharedRendererData,
     pub(crate) renderers: Renderers,
     pub(crate) resource_pools: WgpuResourcePools,
@@ -63,9 +68,13 @@ impl Renderers {
 }
 
 impl RenderContext {
-    pub fn new(device: &wgpu::Device, _queue: &wgpu::Queue, config: RenderContextConfig) -> Self {
+    pub fn new(
+        device: Arc<wgpu::Device>,
+        queue: Arc<wgpu::Queue>,
+        config: RenderContextConfig,
+    ) -> Self {
         let mut resource_pools = WgpuResourcePools::default();
-        let global_bindings = GlobalBindings::new(&mut resource_pools, device);
+        let global_bindings = GlobalBindings::new(&mut resource_pools, &device);
 
         // Validate capabilities of the device.
         assert!(
@@ -106,6 +115,9 @@ impl RenderContext {
         };
 
         RenderContext {
+            device,
+            queue,
+
             shared_renderer_data: SharedRendererData {
                 config,
                 global_bindings,
@@ -128,7 +140,12 @@ impl RenderContext {
         }
     }
 
-    pub fn frame_maintenance(&mut self, device: &wgpu::Device) {
+    /// Call this at the beginning of a new frame.
+    ///
+    /// Updates internal book-keeping, frame allocators and executes delayed events like shader reloading.
+    pub fn frame_maintenance(&mut self) {
+        self.frame_index += 1;
+
         // Tick the error tracker so that it knows when to reset!
         // Note that we're ticking on frame_maintenance rather than raw frames, which
         // makes a world of difference when we're in a poisoned state.
@@ -151,7 +168,7 @@ impl RenderContext {
 
         {
             let WgpuResourcePools {
-                bind_group_layouts: _,
+                bind_group_layouts,
                 bind_groups,
                 pipeline_layouts,
                 render_pipelines,
@@ -161,20 +178,19 @@ impl RenderContext {
                 buffers,
             } = &mut self.resource_pools; // not all pools require maintenance
 
-            // Render pipeline maintenance must come before shader module maintenance since
-            // it registers them.
-            render_pipelines.frame_maintenance(
-                device,
-                self.frame_index,
-                shader_modules,
-                pipeline_layouts,
-            );
-
+            // Shader module maintenance must come before render pipelines because render pipeline
+            // recompilation picks up all shaders that have been recompiled this frame.
             shader_modules.frame_maintenance(
-                device,
+                &self.device,
                 &mut self.resolver,
                 self.frame_index,
                 &modified_paths,
+            );
+            render_pipelines.frame_maintenance(
+                &self.device,
+                self.frame_index,
+                shader_modules,
+                pipeline_layouts,
             );
 
             // Bind group maintenance must come before texture/buffer maintenance since it
@@ -183,8 +199,10 @@ impl RenderContext {
 
             textures.frame_maintenance(self.frame_index);
             buffers.frame_maintenance(self.frame_index);
-        }
 
-        self.frame_index += 1;
+            pipeline_layouts.frame_maintenance(self.frame_index);
+            bind_group_layouts.frame_maintenance(self.frame_index);
+            samplers.frame_maintenance(self.frame_index);
+        }
     }
 }

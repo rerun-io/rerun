@@ -1,9 +1,10 @@
 //! TODO(emilk): use tokio instead
 
-use std::sync::mpsc::{Receiver, Sender};
-
 use re_log_types::LogMsg;
+use re_smart_channel::{Receiver, Sender};
 
+/// Listen to multiple SDK:s connecting to us over TCP.
+///
 /// ``` no_run
 /// # use re_sdk_comms::serve;
 /// let log_msg_rx = serve("127.0.0.1:80")?;
@@ -12,7 +13,7 @@ use re_log_types::LogMsg;
 pub fn serve(addr: impl std::net::ToSocketAddrs) -> anyhow::Result<Receiver<LogMsg>> {
     let listener = std::net::TcpListener::bind(addr)?;
 
-    let (tx, rx) = std::sync::mpsc::channel();
+    let (tx, rx) = re_smart_channel::smart_channel(re_smart_channel::Source::Network);
 
     std::thread::Builder::new()
         .name("sdk-server".into())

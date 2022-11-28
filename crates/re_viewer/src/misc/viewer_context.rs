@@ -160,10 +160,6 @@ impl<'a> ViewerContext<'a> {
         }
         response
     }
-
-    pub fn random_color(&mut self, obj_path: &ObjPath) -> [u8; 3] {
-        self.cache.random_color(obj_path)
-    }
 }
 
 // ----------------------------------------------------------------------------
@@ -228,9 +224,6 @@ pub(crate) struct Caches {
 
     /// For displaying meshes efficiently in immediate mode.
     pub cpu_mesh: crate::ui::view_3d::CpuMeshCache,
-
-    /// Auto-generated colors.
-    object_colors: nohash_hasher::IntMap<u64, [u8; 3]>,
 }
 
 impl Caches {
@@ -240,25 +233,24 @@ impl Caches {
         self.image.new_frame(max_image_cache_use);
     }
 
-    pub fn random_color(&mut self, obj_path: &ObjPath) -> [u8; 3] {
-        // TODO(emilk): ignore "temporary" indices when calculating the hash.
-        let hash = obj_path.hash64();
-
-        let color = *self
-            .object_colors
-            .entry(hash)
-            .or_insert_with(|| crate::misc::random_rgb(hash));
-
-        color
+    pub fn purge_memory(&mut self) {
+        let Self {
+            image,
+            cpu_mesh: _, // TODO(emilk)
+        } = self;
+        image.purge_memory();
     }
 }
 
 // ----------------------------------------------------------------------------
 
-#[derive(Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, PartialEq, serde::Deserialize, serde::Serialize)]
 pub struct Options {
     pub show_camera_mesh_in_3d: bool,
     pub show_camera_axes_in_3d: bool,
+
+    pub low_latency: f32,
+    pub warn_latency: f32,
 }
 
 impl Default for Options {
@@ -266,6 +258,9 @@ impl Default for Options {
         Self {
             show_camera_mesh_in_3d: true,
             show_camera_axes_in_3d: true,
+
+            low_latency: 0.100,
+            warn_latency: 0.200,
         }
     }
 }

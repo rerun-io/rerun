@@ -3,11 +3,12 @@
 
 Example usage:
 * Run all demos: `examples/api_demo/main.py`
-* Run specific demo: `examples/api_demo/main.py --demo set_visible`
+* Run specific demo: `examples/api_demo/main.py --demo rects`
 """
 
 import argparse
 import logging
+import math
 import os
 from pathlib import Path
 from time import sleep
@@ -16,7 +17,7 @@ from typing import Any, Final
 import numpy as np
 
 import rerun
-from rerun import ClassDescription, LoggingHandler, LogLevel, RectFormat
+from rerun import AnnotationInfo, LoggingHandler, LogLevel, RectFormat
 
 
 def run_misc() -> None:
@@ -48,9 +49,30 @@ def run_segmentation() -> None:
     segmentation_img[20:50, 90:110] = 99
     rerun.log_segmentation_image("seg_demo/img", segmentation_img)
 
+    # Log a bunch of classified 2D points
+    rerun.log_point("seg_demo/single_point", np.array([64, 64]), class_id=13)
+    rerun.log_point("seg_demo/single_point_labeled", np.array([90, 50]), class_id=13, label="labeled point")
+    rerun.log_points("seg_demo/several_points0", np.array([[20, 50], [100, 70], [60, 30]]), class_ids=42)
+    rerun.log_points(
+        "seg_demo/several_points1",
+        np.array([[40, 50], [120, 70], [80, 30]]),
+        class_ids=np.array([13, 42, 99], dtype=np.uint8),
+    )
+    rerun.log_points(
+        "seg_demo/many points",
+        np.array([[100 + (int(i / 5)) * 2, 100 + (i % 5) * 2] for i in range(25)]),
+        class_ids=np.array([42], dtype=np.uint8),
+    )
+
+    rerun.log_text_entry("seg_demo_log", "no rects, default colored points, a single point has a label")
+
     # Log an initial segmentation map with arbitrary colors
     rerun.set_time_seconds("sim_time", 2)
     rerun.log_annotation_context("seg_demo", [(13, "label1"), (42, "label2"), (99, "label3")], timeless=False)
+    rerun.log_text_entry(
+        "seg_demo_log",
+        "default colored rects, default colored points, " "all points except the bottom right clusters have labels",
+    )
 
     # Log an updated segmentation map with specific colors
     rerun.set_time_seconds("sim_time", 3)
@@ -59,28 +81,32 @@ def run_segmentation() -> None:
         [(13, "label1", (255, 0, 0)), (42, "label2", (0, 255, 0)), (99, "label3", (0, 0, 255))],
         timeless=False,
     )
+    rerun.log_text_entry("seg_demo_log", "points/rects with user specified colors")
 
     # Log with a mixture of set and unset colors / labels
     rerun.set_time_seconds("sim_time", 4)
     rerun.log_annotation_context(
         "seg_demo",
-        [ClassDescription(13, color=(255, 0, 0)), (42, "label2", (0, 255, 0)), ClassDescription(99, label="label3")],
+        [AnnotationInfo(13, color=(255, 0, 0)), (42, "label2", (0, 255, 0)), AnnotationInfo(99, label="label3")],
         timeless=False,
     )
+    rerun.log_text_entry("seg_demo_log", "label1 disappears and everything with label3 is now default colored again")
 
 
-def run_set_visible() -> None:
+def run_points_3d() -> None:
     rerun.set_time_seconds("sim_time", 1)
-    rerun.log_rect("vis_demo/rect/0", [5, 5, 4, 4], label="Rect1", color=(255, 0, 0))
-    rerun.log_rect("vis_demo/rect/1", [10, 5, 4, 4], label="Rect2", color=(0, 255, 0))
-    rerun.set_time_seconds("sim_time", 2)
-    rerun.set_visible("vis_demo/rect/0", False)
-    rerun.set_time_seconds("sim_time", 3)
-    rerun.set_visible("vis_demo/rect/1", False)
-    rerun.set_time_seconds("sim_time", 4)
-    rerun.set_visible("vis_demo/rect/0", True)
-    rerun.set_time_seconds("sim_time", 5)
-    rerun.set_visible("vis_demo/rect/1", True)
+    rerun.log_point("3d_points/single_point_unlabeled", np.array([10.0, 0.0, 0.0]))
+    rerun.log_point("3d_points/single_point_labeled", np.array([0.0, 0.0, 0.0]), label="labeled point")
+    rerun.log_points(
+        "3d_points/spiral_small",
+        np.array([[math.sin(i * 0.2) * 5, math.cos(i * 0.2) * 5 + 10.0, i * 4.0 - 5.0] for i in range(9)]),
+        labels=[str(i) for i in range(9)],
+    )
+    rerun.log_points(
+        "3d_points/spiral_big",
+        np.array([[math.sin(i * 0.2) * 5, math.cos(i * 0.2) * 5 - 10.0, i * 0.4 - 5.0] for i in range(100)]),
+        labels=[str(i) for i in range(100)],
+    )
 
 
 def run_rects() -> None:
@@ -139,10 +165,10 @@ def main() -> None:
     demos = {
         "misc": run_misc,
         "segmentation": run_segmentation,
-        "set_visible": run_set_visible,
         "rects": run_rects,
         "text": run_text_logs,
         "log_cleared": run_log_cleared,
+        "3d_points": run_points_3d,
     }
 
     parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")
