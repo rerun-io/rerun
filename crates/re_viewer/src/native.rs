@@ -34,7 +34,10 @@ pub fn run_native_app(app_creator: AppCreator) {
     );
 }
 
-pub fn run_native_viewer_with_messages(log_messages: Vec<LogMsg>) {
+pub fn run_native_viewer_with_messages(
+    startup_options: crate::StartupOptions,
+    log_messages: Vec<LogMsg>,
+) {
     let (tx, rx) = re_smart_channel::smart_channel(re_smart_channel::Source::File);
     for log_msg in log_messages {
         tx.send(log_msg).ok();
@@ -42,6 +45,7 @@ pub fn run_native_viewer_with_messages(log_messages: Vec<LogMsg>) {
     run_native_app(Box::new(move |cc, design_tokens| {
         Box::new(crate::App::from_receiver(
             &cc.egui_ctx,
+            startup_options,
             design_tokens,
             cc.storage,
             rx,
