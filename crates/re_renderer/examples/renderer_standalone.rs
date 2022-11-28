@@ -92,6 +92,18 @@ fn draw_views(
 
     let splits = split_resolution(resolution, 2, 2).collect::<Vec<_>>();
 
+    let projection_from_view = if state.perspective_projection {
+        Projection::Perspective {
+            vertical_fov: 70.0 * TAU / 360.0,
+            near_plane_distance: 0.01,
+        }
+    } else {
+        Projection::Orthographic {
+            vertical_world_size: 15.0,
+            far_plane_distance: 100000.0,
+        }
+    };
+
     // Using a macro here because `Drawable` isn't object safe and a closure cannot be
     // generic over its input type.
     #[rustfmt::skip]
@@ -104,10 +116,7 @@ fn draw_views(
                     resolution_in_pixel: [width as u32, height as u32],
                     origin_in_pixel: [x as u32, y as u32],
                     view_from_world,
-                    projection_from_view: Projection::Perspective {
-                        vertical_fov: 70.0 * TAU / 360.0,
-                        near_plane_distance: 0.01,
-                    },
+                    projection_from_view: projection_from_view.clone(),
                 },
                 &skybox,
                 &$name
@@ -386,6 +395,16 @@ impl Application {
                     self.window.request_redraw();
                 }
                 Event::WindowEvent {
+                    event: WindowEvent::KeyboardInput { input, .. },
+                    ..
+                } => {
+                    if input.virtual_keycode == Some(winit::event::VirtualKeyCode::O)
+                        && input.state == winit::event::ElementState::Pressed
+                    {
+                        self.state.perspective_projection = !self.state.perspective_projection;
+                    }
+                }
+                Event::WindowEvent {
                     event:
                         WindowEvent::ScaleFactorChanged {
                             scale_factor: _,
@@ -488,6 +507,7 @@ impl Time {
 
 struct AppState {
     time: Time,
+    perspective_projection: bool,
     model_mesh_instances: Vec<MeshInstance>,
     mesh_instance_positions_and_colors: Vec<(glam::Vec3, [u8; 4])>,
 
@@ -541,6 +561,7 @@ impl AppState {
                 start_time: Instant::now(),
                 last_draw_time: Instant::now(),
             },
+            perspective_projection: true,
             model_mesh_instances,
             mesh_instance_positions_and_colors,
             random_points,
