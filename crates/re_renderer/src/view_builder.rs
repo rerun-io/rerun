@@ -237,9 +237,11 @@ impl ViewBuilder {
                         0.5 * horizontal_world_size,
                         -0.5 * vertical_world_size,
                         0.5 * vertical_world_size,
-                        0.0,
+                        // Consistent perspective projection, we inverse z (here by swapping near and far plane).
                         far_plane_distance,
+                        0.0,
                     );
+
                     let tan_half_fov = glam::vec2(f32::INFINITY, f32::INFINITY);
                     let pixel_world_size_from_camera_distance =
                         vertical_world_size / config.resolution_in_pixel[1] as f32;
