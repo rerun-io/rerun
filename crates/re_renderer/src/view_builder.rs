@@ -183,6 +183,7 @@ impl ViewBuilder {
 
         let view_from_world = config.view_from_world.to_mat4();
         let camera_position = config.view_from_world.inverse().translation();
+        let camera_direction = view_from_world.row(2).truncate();
         let aspect_ratio =
             config.resolution_in_pixel[0] as f32 / config.resolution_in_pixel[1] as f32;
 
@@ -267,6 +268,7 @@ impl ViewBuilder {
                 projection_from_view: projection_from_view.into(),
                 projection_from_world: projection_from_world.into(),
                 camera_position: camera_position.into(),
+                camera_direction: camera_direction.into(),
                 tan_half_fov: tan_half_fov.into(),
                 pixel_world_size_from_camera_distance,
                 _padding: 0.0,

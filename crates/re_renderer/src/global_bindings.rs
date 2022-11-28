@@ -21,7 +21,11 @@ pub(crate) struct FrameUniformBuffer {
     pub projection_from_view: wgpu_buffer_types::Mat4,
     pub projection_from_world: wgpu_buffer_types::Mat4,
 
+    /// Camera position in world space.
     pub camera_position: wgpu_buffer_types::Vec3,
+    /// Camera direction in world space.
+    /// Same as Vec3(view_from_world[0].z, view_from_world[1].z, view_from_world[2].z)
+    pub camera_direction: wgpu_buffer_types::Vec3,
 
     /// (tan(fov_y / 2) * aspect_ratio, tan(fov_y /2)), i.e. half ratio of screen dimension to screen distance in x & y.
     /// Both values are set to positive infinity for orthographic projection
