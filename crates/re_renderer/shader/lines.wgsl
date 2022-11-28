@@ -116,13 +116,8 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     }
 
     // Span up the vertex away from the line's axis, orthogonal to the direction to the camera
-    var to_camera: Vec3;
-    if is_camera_perspective() {
-        to_camera = normalize(frame.camera_position - pos_data_current.pos);
-    } else {
-        to_camera = frame.camera_direction;
-    }
-    var dir_up = normalize(cross(to_camera, quad_dir));
+    let to_camera = camera_ray_to_world_pos(pos_data_current.pos).direction;
+    let dir_up = normalize(cross(to_camera, quad_dir));
     let pos = pos_data_current.pos + (strip_data.radius * top_bottom) * dir_up;
 
     // Output, transform to projection space and done.
