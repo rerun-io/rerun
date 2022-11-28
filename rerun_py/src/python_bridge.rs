@@ -2,15 +2,8 @@
 #![allow(clippy::borrow_deref_ref)] // False positive due to #[pufunction] macro
 #![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pufunction] macro
 
-use std::{borrow::Cow, collections::BTreeMap, io::Cursor, path::PathBuf, sync::Arc};
+use std::{borrow::Cow, io::Cursor, path::PathBuf, sync::Arc};
 
-use arrow2::{
-    array::{Array, ListArray, StructArray},
-    buffer::Buffer,
-    chunk::Chunk,
-    datatypes::{Field, Schema},
-    io::ipc::write::StreamWriter,
-};
 use bytemuck::allocation::pod_collect_to_vec;
 use itertools::Itertools as _;
 use pyo3::{
@@ -20,7 +13,6 @@ use pyo3::{
 };
 
 use re_log_types::{
-    arrow::OBJPATH_KEY,
     context::{ClassId, KeypointId},
     LoggedData, *,
 };

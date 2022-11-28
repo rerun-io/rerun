@@ -74,7 +74,7 @@ pub fn build_arrow_log_msg(
     array: &PyAny,
     time_point: TimePoint,
 ) -> PyResult<LogMsg> {
-    let (array, field) = array_to_rust(array)?;
+    let (array, _field) = array_to_rust(array)?;
 
     let array = array
         .as_any()
