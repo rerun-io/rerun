@@ -36,7 +36,7 @@ pub use stores::*;
 use re_log_types::DataType;
 
 pub use re_log_types::{
-    FieldName, Index, IndexPath, ObjPath, ObjPathComp, ObjTypePath, TimeInt, Timeline, TypePathComp,
+    FieldName, Index, IndexPath, ObjPath, ObjPathComp, ObjTypePath, TimeInt, Timeline, ObjTypePathComp,
 };
 
 // ----------------------------------------------------------------------------
