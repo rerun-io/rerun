@@ -24,9 +24,12 @@ pub(crate) struct FrameUniformBuffer {
     pub camera_position: wgpu_buffer_types::Vec3,
 
     /// (tan(fov_y / 2) * aspect_ratio, tan(fov_y /2)), i.e. half ratio of screen dimension to screen distance in x & y.
+    /// Both values are set to positive infinity for orthographic projection
     pub tan_half_fov: wgpu_buffer_types::Vec2,
-    /// Multiply this with a camera distance to get a measure of how wide a pixel is in world units.
+    /// For perspective: Multiply this with a camera distance to get a measure of how wide a pixel is in world units.
+    /// For orthographic: This is the world size value, independent of distance.
     pub pixel_world_size_from_camera_distance: f32,
+
     pub _padding: f32,
 }
 

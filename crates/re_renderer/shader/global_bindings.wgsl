@@ -4,9 +4,12 @@ struct FrameUniformBuffer {
     projection_from_world: mat4x4<f32>,
 
     camera_position: vec3<f32>,
+
     /// (tan(fov_y / 2) * aspect_ratio, tan(fov_y /2)), i.e. half ratio of screen dimension to screen distance in x & y.
+    /// Both values are set to positive infinity for orthographic projection
     tan_half_fov: vec2<f32>,
-    /// Multiply this with a camera distance to get a measure of how wide a pixel is in world units.
+    /// For perspective: Multiply this with a camera distance to get a measure of how wide a pixel is in world units.
+    /// For orthographic: This is the world size value, independent of distance.
     pixel_world_size_from_camera_distance: f32,
 };
 @group(0) @binding(0)

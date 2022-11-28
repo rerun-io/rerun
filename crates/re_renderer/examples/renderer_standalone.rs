@@ -27,7 +27,7 @@ use re_renderer::{
         PointCloudDrawable, PointCloudPoint, TestTriangleDrawable,
     },
     resource_managers::ResourceLifeTime,
-    view_builder::{TargetConfiguration, ViewBuilder},
+    view_builder::{Projection, TargetConfiguration, ViewBuilder},
     RenderContext,
 };
 use winit::{
@@ -104,8 +104,10 @@ fn draw_views(
                     resolution_in_pixel: [width as u32, height as u32],
                     origin_in_pixel: [x as u32, y as u32],
                     view_from_world,
-                    fov_y: 70.0 * TAU / 360.0,
-                    near_plane_distance: 0.01,
+                    projection_from_view: Projection::Perspective {
+                        vertical_fov: 70.0 * TAU / 360.0,
+                        near_plane_distance: 0.01,
+                    },
                 },
                 &skybox,
                 &$name
