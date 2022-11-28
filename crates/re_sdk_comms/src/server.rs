@@ -131,16 +131,16 @@ fn run_client(
 
 /// Decides how many messages to drop so that we achieve a desired maximum latency.
 struct CongestionManager {
-    max_latency: f32,
+    max_latency_sec: f32,
     accept_rate: f32,
     last_time: Instant,
     rng: rand::rngs::SmallRng,
 }
 
 impl CongestionManager {
-    pub fn new(max_latency: f32) -> Self {
+    pub fn new(max_latency_sec: f32) -> Self {
         Self {
-            max_latency,
+            max_latency_sec,
             accept_rate: 1.0,
             last_time: Instant::now(),
             rng: rand::rngs::SmallRng::from_entropy(),
@@ -152,7 +152,7 @@ impl CongestionManager {
         let dt = (now - self.last_time).as_secs_f32();
         self.last_time = now;
 
-        let is_good = current_latency < self.max_latency;
+        let is_good = current_latency < self.max_latency_sec;
 
         if is_good && self.accept_rate == 1.0 {
             return true; // early out
@@ -166,11 +166,11 @@ impl CongestionManager {
         // Perhaps it's worth investigating a more rigorous additive increase/multiplicative decrease congestion protocol.
         if is_good {
             // Slowly improve our accept-rate, slower the closer we are:
-            let goodness = (self.max_latency - current_latency) / self.max_latency;
+            let goodness = (self.max_latency_sec - current_latency) / self.max_latency_sec;
             self.accept_rate += goodness * dt / 25.0;
         } else {
             // Quickly decrease our accept-rate, quicker the worse we are:
-            let badness = (current_latency - self.max_latency) / self.max_latency;
+            let badness = (current_latency - self.max_latency_sec) / self.max_latency_sec;
             let badness = badness.clamp(0.5, 2.0);
             self.accept_rate -= badness * dt / 15.0;
         }
