@@ -76,6 +76,9 @@ impl ScenePlot {
             query.iter_object_stores(ctx.log_db, &[ObjectType::Scalar])
         {
             let mut points = Vec::new();
+            let annotations = self.annotation_map.find(obj_path);
+            let default_color = DefaultColor::ObjPath(obj_path);
+
             visit_type_data_5(
                 obj_store,
                 &FieldName::from("scalar"),
@@ -96,9 +99,9 @@ impl ScenePlot {
                     }
 
                     // TODO(andreas): Support object path
-                    let annotations = self.annotation_map.find(obj_path);
-                    let color = annotations.color(color, None, DefaultColor::ObjPath(obj_path));
-                    let label = annotations.label(label, None);
+                    let annotation_info = annotations.class_description(None).annotation_info();
+                    let color = annotation_info.color(color, default_color);
+                    let label = annotation_info.label(label);
 
                     points.push(PlotPoint {
                         time,

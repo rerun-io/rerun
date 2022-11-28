@@ -1,20 +1,21 @@
 use std::sync::Arc;
 
+use ahash::HashMap;
 use egui::NumExt as _;
 use glam::{vec3, Vec3};
 use itertools::Itertools as _;
 use smallvec::smallvec;
 
 use re_data_store::query::{
-    visit_type_data_1, visit_type_data_2, visit_type_data_3, visit_type_data_4,
+    visit_type_data_1, visit_type_data_2, visit_type_data_3, visit_type_data_4, visit_type_data_5,
 };
 use re_data_store::{FieldName, InstanceIdHash};
-use re_log_types::context::ClassId;
+use re_log_types::context::{ClassId, KeypointId};
 use re_log_types::{DataVec, IndexHash, MeshId, MsgId, ObjectType};
 
 use crate::misc::mesh_loader::CpuMesh;
 use crate::misc::Caches;
-use crate::ui::annotations::{AnnotationMap, DefaultColor};
+use crate::ui::annotations::{auto_color, AnnotationMap, DefaultColor};
 use crate::ui::SceneQuery;
 use crate::{math::line_segment_distance_sq_to_point_2d, misc::ViewerContext};
 
@@ -172,45 +173,66 @@ impl Scene3D {
                 let mut show_labels = true;
                 let mut label_batch = Vec::new();
 
+                // If keypoints ids show up we may need to connect them later!
+                let mut keypoints: HashMap<ClassId, HashMap<KeypointId, glam::Vec3>> =
+                    Default::default();
+
                 let annotations = self.annotation_map.find(obj_path);
                 let default_color = DefaultColor::ObjPath(obj_path);
 
-                visit_type_data_4(
+                visit_type_data_5(
                     obj_store,
                     &FieldName::from("pos"),
                     &query.time_query,
-                    ("color", "radius", "label", "class_id"),
+                    ("color", "radius", "label", "class_id", "keypoint_id"),
                     |instance_index: Option<&IndexHash>,
                      _time: i64,
                      _msg_id: &MsgId,
                      pos: &[f32; 3],
                      color: Option<&[u8; 4]>,
                      radius: Option<&f32>,
-
                      label: Option<&String>,
-                     class_id: Option<&i32>| {
+                     class_id: Option<&i32>,
+                     keypoint_id: Option<&i32>| {
                         batch_size += 1;
+
+                        let pos = Vec3::from_slice(pos);
 
                         let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
                         let instance_id_hash =
                             InstanceIdHash::from_path_and_index(obj_path, instance_index);
 
                         let class_id = class_id.map(|i| ClassId(*i as _));
-                        let color = annotations.color(color, class_id.clone(), default_color);
+                        let class_description = annotations.class_description(class_id);
+
+                        let annotation_info = if let Some(keypoint_id) = keypoint_id {
+                            let keypoint_id = KeypointId(*keypoint_id as _);
+                            if let Some(class_id) = class_id {
+                                keypoints
+                                    .entry(class_id)
+                                    .or_insert_with(Default::default)
+                                    .insert(keypoint_id, pos);
+                            }
+
+                            class_description.annotation_info_with_keypoint(keypoint_id)
+                        } else {
+                            class_description.annotation_info()
+                        };
+                        let color = annotation_info.color(color, default_color);
 
                         show_labels = batch_size < 10;
                         if show_labels {
-                            if let Some(label) = annotations.label(label, class_id) {
+                            if let Some(label) = annotation_info.label(label) {
                                 label_batch.push(Label3D {
                                     text: label,
-                                    origin: Vec3::from_slice(pos),
+                                    origin: pos,
                                 });
                             }
                         }
 
                         self.points.push(Point3D {
                             instance_id_hash,
-                            pos: Vec3::from_slice(pos),
+                            pos,
                             radius: radius.copied().map_or(Size::AUTO, Size::new_scene),
                             color,
                         });
@@ -219,6 +241,37 @@ impl Scene3D {
 
                 if show_labels {
                     self.labels.extend(label_batch);
+                }
+
+                // Generate keypoint connections if any.
+                let instance_id_hash = InstanceIdHash::from_path_and_index(obj_path, IndexHash::NONE);
+                for (class_id, keypoints_in_class) in &keypoints {
+                    let Some(class_description) = annotations.context.class_map.get(class_id) else {
+                        continue;
+                    };
+
+                    let color = class_description
+                        .info
+                        .color
+                        .unwrap_or_else(|| auto_color(class_description.info.id));
+
+                    for (a, b) in &class_description.keypoint_connections {
+                        let (Some(a), Some(b)) = (keypoints_in_class.get(a), keypoints_in_class.get(b)) else {
+                            re_log::warn_once!(
+                                "Keypoint connection from index {:?} to {:?} could not be resolved in object {:?}",
+                                a, b, obj_path
+                            );
+                            continue;
+                        };
+                        self.line_strips.push(LineStrip {
+                            instance_id_hash,
+                            line_strip: re_renderer::renderer::LineStrip::line_segment(
+                                (*a, *b),
+                                Size::AUTO.0,
+                                color,
+                            ),
+                        });
+                    }
                 }
             });
     }
@@ -229,6 +282,9 @@ impl Scene3D {
         for (_obj_type, obj_path, obj_store) in
             query.iter_object_stores(ctx.log_db, &[ObjectType::Box3D])
         {
+            let annotations = self.annotation_map.find(obj_path);
+            let default_color = DefaultColor::ObjPath(obj_path);
+
             visit_type_data_4(
                 obj_store,
                 &FieldName::from("obb"),
@@ -245,11 +301,11 @@ impl Scene3D {
                     let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
                     let line_radius = stroke_width.map_or(Size::AUTO, |w| Size::new_scene(w / 2.0));
 
-                    let annotations = self.annotation_map.find(obj_path);
-                    let class_id = class_id.map(|i| ClassId(*i as _));
-                    let color =
-                        annotations.color(color, class_id.clone(), DefaultColor::ObjPath(obj_path));
-                    let label = annotations.label(label, class_id);
+                    let annotation_info = annotations
+                        .class_description(class_id.map(|i| ClassId(*i as _)))
+                        .annotation_info();
+                    let color = annotation_info.color(color, default_color);
+                    let label = annotation_info.label(label);
 
                     self.add_box(
                         InstanceIdHash::from_path_and_index(obj_path, instance_index),
@@ -274,6 +330,9 @@ impl Scene3D {
             )
             .flat_map(|(obj_type, obj_path, obj_store)| {
                 let mut batch = Vec::new();
+                let annotations = self.annotation_map.find(obj_path);
+                let default_color = DefaultColor::ObjPath(obj_path);
+
                 visit_type_data_2(
                     obj_store,
                     &FieldName::from("points"),
@@ -298,12 +357,9 @@ impl Scene3D {
 
                         let radius = stroke_width.map_or(Size::AUTO, |w| Size::new_scene(w / 2.0));
 
-                        let annotations = self.annotation_map.find(obj_path);
-                        let color = annotations.color(
-                            color,
-                            None, // TODO(andreas): support class ids for lines
-                            DefaultColor::ObjPath(obj_path),
-                        );
+                        // TODO(andreas): support class ids for lines
+                        let annotation_info = annotations.class_description(None).annotation_info();
+                        let color = annotation_info.color(color, default_color);
 
                         // TODO(andreas): re_renderer should support our Size type directly!
                         match obj_type {
@@ -347,6 +403,9 @@ impl Scene3D {
         for (_obj_type, obj_path, obj_store) in
             query.iter_object_stores(ctx.log_db, &[ObjectType::Arrow3D])
         {
+            let annotations = self.annotation_map.find(obj_path);
+            let default_color = DefaultColor::ObjPath(obj_path);
+
             visit_type_data_3(
                 obj_store,
                 &FieldName::from("arrow3d"),
@@ -365,13 +424,10 @@ impl Scene3D {
 
                     let width = width_scale.copied().unwrap_or(1.0);
 
-                    let annotations = self.annotation_map.find(obj_path);
-                    let color = annotations.color(
-                        color,
-                        None, // TODO(andreas): support class ids for arrows
-                        DefaultColor::ObjPath(obj_path),
-                    );
-                    let label = annotations.label(label, None);
+                    // TODO(andreas): support class ids for arrows
+                    let annotation_info = annotations.class_description(None).annotation_info();
+                    let color = annotation_info.color(color, default_color);
+                    let label = annotation_info.label(label);
 
                     self.add_arrow(
                         ctx.cache,

@@ -17,7 +17,7 @@ from typing import Any, Final
 import numpy as np
 
 import rerun
-from rerun import ClassDescription, LoggingHandler, LogLevel, RectFormat
+from rerun import AnnotationInfo, LoggingHandler, LogLevel, RectFormat
 
 
 def run_misc() -> None:
@@ -87,7 +87,7 @@ def run_segmentation() -> None:
     rerun.set_time_seconds("sim_time", 4)
     rerun.log_annotation_context(
         "seg_demo",
-        [ClassDescription(13, color=(255, 0, 0)), (42, "label2", (0, 255, 0)), ClassDescription(99, label="label3")],
+        [AnnotationInfo(13, color=(255, 0, 0)), (42, "label2", (0, 255, 0)), AnnotationInfo(99, label="label3")],
         timeless=False,
     )
     rerun.log_text_entry("seg_demo_log", "label1 disappears and everything with label3 is now default colored again")
