@@ -42,13 +42,13 @@ fn test_timeless_data() {
         data_path: &DataPath,
         query_time: i64,
     ) -> String {
-        let (time_msgid_multiindex, data) = store
+        let (time_msgid_instance_index, data) = store
             .obj_db
             .store
             .query_data_path(timeline, &TimeQuery::LatestAt(query_time), data_path)
             .unwrap()
             .unwrap();
-        assert_eq!(time_msgid_multiindex.len(), 1);
+        assert_eq!(time_msgid_instance_index.len(), 1);
 
         if let DataVec::String(strings) = data {
             assert_eq!(strings.len(), 1);

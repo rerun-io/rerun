@@ -3,7 +3,7 @@ use re_memory::{
     MemoryHistory, MemoryLimit, MemoryUse,
 };
 
-use crate::env_vars::{RERUN_MEMORY_LIMIT, RERUN_TRACK_ALLOCATIONS};
+use crate::env_vars::RERUN_TRACK_ALLOCATIONS;
 
 use super::format_usize;
 
@@ -27,7 +27,7 @@ impl MemoryPanel {
         self.memory_purge_times.push(sec_since_start());
     }
 
-    pub fn ui(&self, ui: &mut egui::Ui) {
+    pub fn ui(&self, ui: &mut egui::Ui, limit: &MemoryLimit) {
         crate::profile_function!();
 
         // We show realtime stats, so keep showing the latest!
@@ -38,29 +38,25 @@ impl MemoryPanel {
             .min_width(250.0)
             .default_width(300.0)
             .show_inside(ui, |ui| {
-                Self::left_side(ui);
+                Self::left_side(ui, limit);
             });
 
         egui::CentralPanel::default().show_inside(ui, |ui| {
             ui.label("🗠 Rerun Viewer memory use over time");
-            self.plot(ui);
+            self.plot(ui, limit);
         });
     }
 
-    fn left_side(ui: &mut egui::Ui) {
+    fn left_side(ui: &mut egui::Ui, limit: &MemoryLimit) {
         ui.strong("Rerun Viewer memory usage");
         ui.separator();
 
-        let limit = MemoryLimit::from_env_var(RERUN_MEMORY_LIMIT);
         if let Some(limit) = limit.limit {
-            ui.label(format!(
-                "{RERUN_MEMORY_LIMIT}: {}",
-                format_bytes(limit as _)
-            ));
+            ui.label(format!("Memory limit: {}", format_bytes(limit as _)));
         } else {
-            ui.label(format!(
-                "You can set an upper limit of RAM use with e.g. {RERUN_MEMORY_LIMIT}=16GB."
-            ));
+            ui.label(
+                "You can set an upper limit of RAM use with the command-lime option --memory-limit",
+            );
             ui.separator();
         }
 
@@ -157,7 +153,7 @@ impl MemoryPanel {
             });
     }
 
-    fn plot(&self, ui: &mut egui::Ui) {
+    fn plot(&self, ui: &mut egui::Ui, limit: &MemoryLimit) {
         crate::profile_function!();
 
         use itertools::Itertools as _;
@@ -181,7 +177,6 @@ impl MemoryPanel {
             .include_y(0.0)
             // TODO(emilk): turn off plot interaction, and always do auto-sizing
             .show(ui, |plot_ui| {
-                let limit = MemoryLimit::from_env_var(RERUN_MEMORY_LIMIT);
                 if let Some(counted_limit) = limit.limit {
                     plot_ui.hline(
                         egui::plot::HLine::new(counted_limit as f64)

@@ -42,6 +42,7 @@ re_viewer = { path = "../crates/re_viewer", optional = true }
 rerun = { path = "../crates/rerun" }
 
 arrow2 = { version = "0.14", features = ["io_ipc"] }
+ahash = "0.8"
 bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }
 crossbeam = "0.8"
 document-features = "0.2"

@@ -169,6 +169,7 @@ impl ViewportBlueprint {
                         ui,
                         *is_space_view_visible,
                         &mut space_view.obj_tree_properties,
+                        *space_view_id,
                         space_info,
                         tree,
                     );
@@ -300,18 +301,20 @@ impl ViewportBlueprint {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn show_obj_tree(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     parent_is_visible: bool,
     obj_tree_properties: &mut ObjectTreeProperties,
+    space_view_id: SpaceViewId,
     space_info: &SpaceInfo,
     name: String,
     tree: &ObjectTree,
 ) {
     if tree.is_leaf() {
         ui.horizontal(|ui| {
-            ctx.obj_path_button_to(ui, name, &tree.path);
+            ctx.spsace_view_obj_path_button_to(ui, name, space_view_id, &tree.path);
             object_visibility_button(ui, parent_is_visible, obj_tree_properties, &tree.path);
         });
     } else {
@@ -323,7 +326,7 @@ fn show_obj_tree(
             default_open,
         )
         .show_header(ui, |ui| {
-            ctx.obj_path_button_to(ui, name, &tree.path);
+            ctx.spsace_view_obj_path_button_to(ui, name, space_view_id, &tree.path);
             object_visibility_button(ui, parent_is_visible, obj_tree_properties, &tree.path);
         })
         .body(|ui| {
@@ -332,6 +335,7 @@ fn show_obj_tree(
                 ui,
                 parent_is_visible,
                 obj_tree_properties,
+                space_view_id,
                 space_info,
                 tree,
             );
@@ -344,6 +348,7 @@ fn show_obj_tree_children(
     ui: &mut egui::Ui,
     parent_is_visible: bool,
     obj_tree_properties: &mut ObjectTreeProperties,
+    space_view_id: SpaceViewId,
     space_info: &SpaceInfo,
     tree: &ObjectTree,
 ) {
@@ -354,6 +359,7 @@ fn show_obj_tree_children(
                 ui,
                 parent_is_visible,
                 obj_tree_properties,
+                space_view_id,
                 space_info,
                 path_comp.to_string(),
                 child,

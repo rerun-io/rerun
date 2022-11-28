@@ -25,8 +25,17 @@ const WATERMARK: bool = false; // Nice for recording media material
 
 // ----------------------------------------------------------------------------
 
+/// Settings set once at startup (e.g. via command-line options) and not serialized.
+#[derive(Clone, Copy, Default)]
+pub struct StartupOptions {
+    pub memory_limit: re_memory::MemoryLimit,
+}
+
+// ----------------------------------------------------------------------------
+
 /// The Rerun viewer as an [`eframe`] application.
 pub struct App {
+    startup_options: StartupOptions,
     design_tokens: DesignTokens,
 
     rx: Option<Receiver<LogMsg>>,
@@ -63,12 +72,14 @@ impl App {
     /// Create a viewer that receives new log messages over time
     pub fn from_receiver(
         egui_ctx: &egui::Context,
+        startup_options: StartupOptions,
         design_tokens: DesignTokens,
         storage: Option<&dyn eframe::Storage>,
         rx: Receiver<LogMsg>,
     ) -> Self {
         Self::new(
             egui_ctx,
+            startup_options,
             design_tokens,
             storage,
             Some(rx),
@@ -79,27 +90,37 @@ impl App {
     #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn from_log_db(
         egui_ctx: &egui::Context,
+        startup_options: StartupOptions,
         design_tokens: DesignTokens,
         storage: Option<&dyn eframe::Storage>,
         log_db: LogDb,
     ) -> Self {
-        Self::new(egui_ctx, design_tokens, storage, None, log_db)
+        Self::new(
+            egui_ctx,
+            startup_options,
+            design_tokens,
+            storage,
+            None,
+            log_db,
+        )
     }
 
     /// load a `.rrd` data file.
     #[cfg(not(target_arch = "wasm32"))]
     pub fn from_rrd_path(
         egui_ctx: &egui::Context,
+        startup_options: StartupOptions,
         design_tokens: DesignTokens,
         storage: Option<&dyn eframe::Storage>,
         path: &std::path::Path,
     ) -> Self {
         let log_db = load_file_path(path).unwrap_or_default(); // TODO(emilk): exit on error.
-        Self::from_log_db(egui_ctx, design_tokens, storage, log_db)
+        Self::from_log_db(egui_ctx, startup_options, design_tokens, storage, log_db)
     }
 
     fn new(
         _egui_ctx: &egui::Context,
+        startup_options: StartupOptions,
         design_tokens: DesignTokens,
         storage: Option<&dyn eframe::Storage>,
         rx: Option<Receiver<LogMsg>>,
@@ -134,6 +155,7 @@ impl App {
         }
 
         Self {
+            startup_options,
             design_tokens,
             rx,
             log_dbs,
@@ -286,7 +308,7 @@ impl eframe::App for App {
             .default_height(300.0)
             .resizable(true)
             .show_animated(egui_ctx, self.memory_panel_open, |ui| {
-                self.memory_panel.ui(ui);
+                self.memory_panel.ui(ui, &self.startup_options.memory_limit);
             });
 
         let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
@@ -404,7 +426,7 @@ impl App {
             return;
         }
 
-        let limit = re_memory::MemoryLimit::from_env_var(crate::env_vars::RERUN_MEMORY_LIMIT);
+        let limit = self.startup_options.memory_limit;
         let mem_use_before = MemoryUse::capture();
 
         if let Some(minimum_fraction_to_purge) = limit.is_exceeded_by(&mem_use_before) {

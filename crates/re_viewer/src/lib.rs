@@ -19,7 +19,7 @@ pub(crate) use design_tokens::DesignTokens;
 pub(crate) use misc::*;
 pub(crate) use ui::*;
 
-pub use app::App;
+pub use app::{App, StartupOptions};
 pub use remote_viewer_app::RemoteViewerApp;
 
 // ----------------------------------------------------------------------------

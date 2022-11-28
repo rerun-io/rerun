@@ -443,7 +443,8 @@ def log_rects(
     rects: Optional[npt.ArrayLike],
     *,
     rect_format: RectFormat = RectFormat.XYWH,
-    colors: Optional[Colors] = None,
+    identifiers: Optional[Sequence[Union[str, int]]] = None,
+    colors: Optional[Union[Color, Colors]] = None,
     labels: Optional[Sequence[str]] = None,
     class_ids: OptionalClassIds = None,
     timeless: bool = False,
@@ -456,6 +457,8 @@ def log_rects(
     * `rects`: Nx4 numpy array, where each row is [x, y, w, h], or some format you pick with the `rect_format`
     argument.
     * `rect_format`: how to interpret the `rect` argument
+    * `identifiers`: per-point identifiers - unique names or numbers that show up when you hover the rectangles.
+      In the future these will be used to track the rectangles over time.
     * `labels`: Optional per-rectangle text to show inside the rectangle.
     * `class_ids`: Optional class ids for the rectangles.
       The class id provides colors and labels if not specified explicitly.
@@ -474,12 +477,22 @@ def log_rects(
     if rects is None:
         rects = []
     rects = np.require(rects, dtype="float32")
+    identifiers = [] if identifiers is None else [str(s) for s in identifiers]
     colors = _normalize_colors(colors)
     class_ids = _normalize_ids(class_ids)
     if labels is None:
         labels = []
 
-    rerun_sdk.log_rects(obj_path, rect_format.value, rects, colors, labels, class_ids, timeless)
+    rerun_sdk.log_rects(
+        obj_path=obj_path,
+        rect_format=rect_format.value,
+        identifiers=identifiers,
+        rects=rects,
+        colors=colors,
+        labels=labels,
+        class_ids=class_ids,
+        timeless=timeless,
+    )
 
     if EXP_ARROW:
 
@@ -560,7 +573,8 @@ def log_points(
     obj_path: str,
     positions: Optional[npt.NDArray[np.float32]],
     *,
-    colors: Optional[Colors] = None,
+    identifiers: Optional[Sequence[Union[str, int]]] = None,
+    colors: Optional[Union[Color, Colors]] = None,
     labels: Optional[Sequence[str]] = None,
     class_ids: OptionalClassIds = None,
     keypoint_ids: OptionalKeyPointIds = None,
@@ -572,6 +586,8 @@ def log_points(
     Logging again to the same `obj_path` will replace all the previous points.
 
     * `positions`: Nx2 or Nx3 array
+    * `identifiers`: per-point identifiers - unique names or numbers that show up when you hover the points.
+      In the future these will be used to track the points over time.
     * `color`: Optional colors of the points.
     * `labels`: Optional per-point text to show with the points
     * `class_ids`: Optional class ids for the points.
@@ -597,13 +613,25 @@ def log_points(
         positions = np.require([], dtype="float32")
     else:
         positions = np.require(positions, dtype="float32")
+
+    identifiers = [] if identifiers is None else [str(s) for s in identifiers]
+
     colors = _normalize_colors(colors)
     class_ids = _normalize_ids(class_ids)
     keypoint_ids = _normalize_ids(keypoint_ids)
     if labels is None:
         labels = []
 
-    rerun_sdk.log_points(obj_path, positions, colors, labels, class_ids, keypoint_ids, timeless)
+    rerun_sdk.log_points(
+        obj_path=obj_path,
+        positions=positions,
+        identifiers=identifiers,
+        colors=colors,
+        labels=labels,
+        class_ids=class_ids,
+        keypoint_ids=keypoint_ids,
+        timeless=timeless,
+    )
 
 
 def _normalize_colors(colors: Optional[npt.ArrayLike] = None) -> npt.NDArray[np.uint8]:

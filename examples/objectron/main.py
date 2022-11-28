@@ -162,12 +162,9 @@ def log_camera(cam: ARCamera) -> None:
 def log_point_cloud(point_cloud: ARPointCloud) -> None:
     """Logs a point cloud from an `ARFrame` using the Rerun SDK."""
 
-    rerun.log_cleared(f"world/points", recursive=True)
-    for i in range(point_cloud.count):
-        point_raw = point_cloud.point[i]
-        point = np.array([point_raw.x, point_raw.y, point_raw.z], dtype=np.float32)
-        ident = point_cloud.identifier[i]
-        rerun.log_point(f"world/points/{ident}", point, color=[255, 255, 255, 255])
+    positions = np.array([[p.x, p.y, p.z] for p in point_cloud.point]).astype(np.float32)
+    identifiers = point_cloud.identifier
+    rerun.log_points(f"world/points", positions=positions, identifiers=identifiers, colors=[255, 255, 255, 255])
 
 
 def log_annotated_bboxes(bboxes: Iterable[Object]) -> None:
