@@ -85,12 +85,6 @@ impl Default for TimeControl {
 }
 
 impl TimeControl {
-    pub fn has_selection(&self) -> bool {
-        self.states
-            .get(&self.timeline)
-            .map_or(false, |state| state.selection.is_some())
-    }
-
     /// Update the current time
     pub fn move_time(&mut self, egui_ctx: &egui::Context, times_per_timeline: &TimesPerTimeline) {
         self.select_a_valid_timeline(times_per_timeline);
@@ -109,7 +103,11 @@ impl TimeControl {
             .or_insert_with(|| TimeState::new(full_range.min));
 
         let loop_range = if self.looped {
-            state.selection.unwrap_or_else(|| full_range.into())
+            if self.loop_selection_active {
+                state.selection.unwrap_or_else(|| full_range.into())
+            } else {
+                full_range.into()
+            }
         } else {
             full_range.into()
         };

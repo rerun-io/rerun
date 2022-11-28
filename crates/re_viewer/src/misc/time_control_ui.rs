@@ -43,36 +43,19 @@ impl TimeControl {
     }
 
     pub fn selection_ui(&mut self, ui: &mut egui::Ui) {
-        use egui::SelectableLabel;
-
-        ui.label("Selection:");
-
-        let has_selection = self.has_selection();
-
-        if !has_selection {
-            self.loop_selection_active = false;
-        }
-
-        if ui
-            .add(SelectableLabel::new(!self.loop_selection_active, "None"))
-            .on_hover_text("Disable selection")
-            .clicked()
-        {
-            self.loop_selection_active = false;
-        }
-
-        ui.scope(|ui| {
-            ui.visuals_mut().selection.bg_fill =
-                crate::design_tokens::DesignTokens::time_selection_color();
-
-            let is_looping = self.loop_selection_active;
-
+        ui.add_enabled_ui(self.looped(), |ui| {
+            ui.label("Loop:");
             if ui
-                .add_enabled(has_selection, SelectableLabel::new(is_looping, "🔁"))
-                .on_hover_text("Loop in selection")
+                .selectable_label(!self.loop_selection_active, "Everything")
                 .clicked()
             {
-                self.loop_selection_active = is_looping;
+                self.loop_selection_active = false;
+            }
+            if ui
+                .selectable_label(self.loop_selection_active, "Selection")
+                .clicked()
+            {
+                self.loop_selection_active = true;
             }
         });
     }
