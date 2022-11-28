@@ -23,6 +23,8 @@ const WATERMARK: bool = false; // Nice for recording media material
 
 // ----------------------------------------------------------------------------
 
+pub(crate) type ShutdownHandler = dyn FnMut() -> std::ops::ControlFlow<()> + 'static;
+
 /// The Rerun viewer as an [`eframe`] application.
 pub struct App {
     design_tokens: DesignTokens,
@@ -49,7 +51,7 @@ pub struct App {
     memory_panel: crate::memory_panel::MemoryPanel,
     memory_panel_open: bool,
 
-    background_handler: Option<Fn() -> bool>,
+    shutdown_handler: Option<Box<ShutdownHandler>>,
 }
 
 impl App {
@@ -59,6 +61,7 @@ impl App {
         design_tokens: DesignTokens,
         storage: Option<&dyn eframe::Storage>,
         rx: Receiver<LogMsg>,
+        shutdown_handler: Option<Box<ShutdownHandler>>,
     ) -> Self {
         Self::new(
             egui_ctx,
@@ -66,6 +69,7 @@ impl App {
             storage,
             Some(rx),
             Default::default(),
+            shutdown_handler,
         )
     }
 
@@ -76,7 +80,7 @@ impl App {
         storage: Option<&dyn eframe::Storage>,
         log_db: LogDb,
     ) -> Self {
-        Self::new(egui_ctx, design_tokens, storage, None, log_db)
+        Self::new(egui_ctx, design_tokens, storage, None, log_db, None)
     }
 
     /// load a `.rrd` data file.
@@ -97,6 +101,7 @@ impl App {
         storage: Option<&dyn eframe::Storage>,
         rx: Option<Receiver<LogMsg>>,
         log_db: LogDb,
+        shutdown_handler: Option<Box<ShutdownHandler>>,
     ) -> Self {
         #[cfg(not(target_arch = "wasm32"))]
         let shutdown = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
@@ -138,6 +143,7 @@ impl App {
             latest_memory_purge: instant::Instant::now(), // TODO(emilk): `Instant::MIN` when we have our own `Instant` that supports it.
             memory_panel: Default::default(),
             memory_panel_open: false,
+            shutdown_handler,
         }
     }
 
@@ -238,6 +244,13 @@ impl eframe::App for App {
 
     fn update(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
         self.memory_panel.update(); // do first, before doing too many allocations
+
+        if let Some(handler) = &self.shutdown_handler {
+            //if (handler)() == std::ops::ControlFlow::Break(()) {
+            //    self.shutdown
+            //        .store(true, std::sync::atomic::Ordering::SeqCst);
+            //}
+        }
 
         #[cfg(not(target_arch = "wasm32"))]
         if self.shutdown.load(std::sync::atomic::Ordering::Relaxed) {

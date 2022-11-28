@@ -304,7 +304,9 @@ fn disconnect() {
 /// Blocked on <https://github.com/emilk/egui/issues/1918>.
 #[cfg(feature = "re_viewer")]
 #[pyfunction]
-fn show() -> PyResult<()> {
+fn show(py: Python<'_>) -> PyResult<()> {
+    use std::cell::RefCell;
+
     let mut sdk = Sdk::global();
     if sdk.is_connected() {
         return Err(PyRuntimeError::new_err(
@@ -315,6 +317,9 @@ fn show() -> PyResult<()> {
     let log_messages = sdk.drain_log_messages_buffer();
     drop(sdk);
 
+    let res = std::rc::Rc::new(RefCell::new(Ok(())));
+    let py = std::rc::Rc::new(py);
+
     if log_messages.is_empty() {
         re_log::info!("Nothing logged, so nothing to show");
     } else {
@@ -322,10 +327,24 @@ fn show() -> PyResult<()> {
         for log_msg in log_messages {
             tx.send(log_msg).ok();
         }
-        re_viewer::run_native_viewer_with_rx(rx);
+
+        let res = res.clone();
+        let py = py.clone();
+        re_viewer::run_native_viewer_with_rx(
+            rx,
+            Some(Box::new(move || {
+                py.check_signals()
+                    .map(|_| std::ops::ControlFlow::Continue(()))
+                    .unwrap_or_else(|e| {
+                        //*res.borrow_mut() = Err(e);
+                        std::ops::ControlFlow::Break(())
+                    })
+            })),
+        );
     }
 
-    Ok(())
+    std::rc::Rc::try_unwrap(res).unwrap().into_inner()
+    //res.into_inner()
 }
 
 #[pyfunction]

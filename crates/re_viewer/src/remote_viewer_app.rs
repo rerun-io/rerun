@@ -45,7 +45,7 @@ impl RemoteViewerApp {
         )
         .unwrap(); // TODO(emilk): handle error
 
-        let app = crate::App::from_receiver(egui_ctx, self.design_tokens, storage, rx);
+        let app = crate::App::from_receiver(egui_ctx, self.design_tokens, storage, rx, None);
 
         self.app = Some((connection, app));
     }

@@ -2,7 +2,7 @@ use std::sync::mpsc::Receiver;
 
 use re_log_types::LogMsg;
 
-use crate::DesignTokens;
+use crate::{app::ShutdownHandler, DesignTokens};
 
 type AppCreator =
     Box<dyn FnOnce(&eframe::CreationContext<'_>, DesignTokens) -> Box<dyn eframe::App>>;
@@ -36,7 +36,10 @@ pub fn run_native_app(app_creator: AppCreator) {
     );
 }
 
-pub fn run_native_viewer_with_rx(rx: Receiver<LogMsg>) {
+pub fn run_native_viewer_with_rx(
+    rx: Receiver<LogMsg>,
+    shutdown_handler: Option<Box<ShutdownHandler>>,
+) {
     run_native_app(Box::new(move |cc, design_tokens| {
         let rx = wake_up_ui_thread_on_each_msg(rx, cc.egui_ctx.clone());
         Box::new(crate::App::from_receiver(
@@ -44,6 +47,7 @@ pub fn run_native_viewer_with_rx(rx: Receiver<LogMsg>) {
             design_tokens,
             cc.storage,
             rx,
+            shutdown_handler,
         ))
     }));
 }

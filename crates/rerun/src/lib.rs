@@ -122,7 +122,7 @@ async fn run_impl(args: Args) -> anyhow::Result<()> {
         re_viewer::run_native_app(Box::new(move |cc, design_tokens| {
             let rx = re_viewer::wake_up_ui_thread_on_each_msg(rx, cc.egui_ctx.clone());
             let mut app =
-                re_viewer::App::from_receiver(&cc.egui_ctx, design_tokens, cc.storage, rx);
+                re_viewer::App::from_receiver(&cc.egui_ctx, design_tokens, cc.storage, rx, None);
             app.set_profiler(profiler);
             Box::new(app)
         }));
