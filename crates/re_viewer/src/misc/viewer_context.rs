@@ -305,6 +305,7 @@ impl std::fmt::Display for Selection {
             Selection::DataPath(s) => s.fmt(f),
             Selection::Space(s) => s.fmt(f),
             Selection::SpaceView(s) => write!(f, "{s:?}"),
+            Selection::SpaceViewObjPath(sid, path) => write!(f, "({sid:?}, {path})"),
         }
     }
 }

@@ -605,16 +605,25 @@ fn show_selection_kind(ui: &mut egui::Ui, sel: &Selection) {
             Selection::DataPath(_) => "DATA",
             Selection::Space(_) => "SPACE",
             Selection::SpaceView(_) => "VIEW",
+            Selection::SpaceViewObjPath(_, _) => "OBJ",
         })
         .monospace(),
     );
 }
 
 fn selection_to_string(blueprint: &Blueprint, sel: &Selection) -> String {
-    if let Selection::SpaceView(id) = sel {
-        if let Some(space_view) = blueprint.viewport.get_space_view(id) {
-            return space_view.name.clone();
+    match sel {
+        Selection::SpaceView(sid) => {
+            if let Some(space_view) = blueprint.viewport.get_space_view(sid) {
+                return space_view.name.clone();
+            }
         }
+        Selection::SpaceViewObjPath(sid, path) => {
+            if let Some(space_view) = blueprint.viewport.get_space_view(sid) {
+                return format!("{} in {}", path, space_view.name);
+            }
+        }
+        _ => {}
     }
 
     sel.to_string()
