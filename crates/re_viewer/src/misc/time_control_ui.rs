@@ -94,7 +94,7 @@ impl TimeControl {
             let mut looped = self.looped();
             ui.scope(|ui| {
                 ui.visuals_mut().selection.bg_fill =
-                    crate::design_tokens::DesignTokens::time_selection_color();
+                    crate::design_tokens::DesignTokens::loop_selection_color();
                 ui.toggle_value(&mut looped, "🔁")
                     .on_hover_text("Loop playback");
             });

@@ -32,7 +32,7 @@ struct TimeState {
 
     /// Selected time range, if any.
     #[serde(default)]
-    selection: Option<TimeRangeF>,
+    loop_selection: Option<TimeRangeF>,
 
     /// The time range we are currently zoomed in on.
     ///
@@ -48,7 +48,7 @@ impl TimeState {
         Self {
             time: time.into(),
             fps: 30.0, // TODO(emilk): estimate based on data
-            selection: Default::default(),
+            loop_selection: Default::default(),
             view: None,
         }
     }
@@ -104,7 +104,7 @@ impl TimeControl {
 
         let loop_range = if self.looped {
             if self.loop_selection_active {
-                state.selection.unwrap_or_else(|| full_range.into())
+                state.loop_selection.unwrap_or_else(|| full_range.into())
             } else {
                 full_range.into()
             }
@@ -255,7 +255,7 @@ impl TimeControl {
     /// The current loop range, iff looping is turned on
     pub fn loop_range(&self) -> Option<TimeRangeF> {
         if self.loop_selection_active {
-            self.states.get(&self.timeline)?.selection
+            self.states.get(&self.timeline)?.loop_selection
         } else {
             None
         }
@@ -313,15 +313,18 @@ impl TimeControl {
         }
     }
 
-    pub fn time_selection(&self) -> Option<TimeRangeF> {
-        self.states.get(&self.timeline)?.selection
+    /// The selected slice of time that is called the "loop selection".
+    ///
+    /// Note that looping can be off, or loop-selection can be off, and this will still return `Some`.
+    pub fn loop_selection(&self) -> Option<TimeRangeF> {
+        self.states.get(&self.timeline)?.loop_selection
     }
 
-    pub fn set_time_selection(&mut self, selection: TimeRangeF) {
+    pub fn set_loop_selection(&mut self, selection: TimeRangeF) {
         self.states
             .entry(self.timeline)
             .or_insert_with(|| TimeState::new(selection.min))
-            .selection = Some(selection);
+            .loop_selection = Some(selection);
     }
 }
 

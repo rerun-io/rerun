@@ -25,7 +25,7 @@ pub(crate) fn view_plot(
     crate::profile_function!();
 
     let time_ctrl = &ctx.rec_cfg.time_ctrl;
-    let current_time = time_ctrl.time_i64().unwrap();
+    let current_time = time_ctrl.time_i64();
     let time_type = time_ctrl.time_type();
     let timeline = time_ctrl.timeline();
 
@@ -99,13 +99,22 @@ pub(crate) fn view_plot(
                 }
             }
 
-            let time_x = (current_time - time_offset) as f64;
-            plot_ui.screen_from_plot([time_x, 0.0].into()).x
+            current_time.map(|current_time| {
+                let time_x = (current_time - time_offset) as f64;
+                plot_ui.screen_from_plot([time_x, 0.0].into()).x
+            })
         });
 
-    // TODO(emilk): allow interacting with the timeline (may require `egui::Plot` to return the `plot_from_screen` transform)
-    let stroke = ui.visuals().widgets.inactive.fg_stroke;
-    crate::ui::time_panel::paint_time_cursor(ui.painter(), time_x, response.rect.y_range(), stroke);
+    if let Some(time_x) = time_x {
+        // TODO(emilk): allow interacting with the timeline (may require `egui::Plot` to return the `plot_from_screen` transform)
+        let stroke = ui.visuals().widgets.inactive.fg_stroke;
+        crate::ui::time_panel::paint_time_cursor(
+            ui.painter(),
+            time_x,
+            response.rect.y_range(),
+            stroke,
+        );
+    }
 
     response
 }

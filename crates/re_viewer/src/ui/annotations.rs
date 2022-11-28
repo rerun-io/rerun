@@ -124,7 +124,7 @@ impl AnnotationMap {
     ) -> Option<(DataPath, Annotations)> {
         let timeline = ctx.rec_cfg.time_ctrl.timeline();
         let timeline_store = ctx.log_db.obj_db.store.get(timeline)?;
-        let query_time = ctx.rec_cfg.time_ctrl.time()?.floor().as_i64();
+        let query_time = ctx.rec_cfg.time_ctrl.time_i64()?;
         let field_name = FieldName::from("_annotation_context");
 
         let annotation_context_for_path = |obj_path: &ObjPath| {

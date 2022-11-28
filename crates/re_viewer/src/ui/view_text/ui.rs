@@ -93,7 +93,7 @@ fn show_table(
     let item_spacing = ui.spacing().item_spacing;
 
     let current_timeline = *ctx.rec_cfg.time_ctrl.timeline();
-    let current_time = ctx.rec_cfg.time_ctrl.time().map(|tr| tr.floor());
+    let current_time = ctx.rec_cfg.time_ctrl.time_int();
 
     let mut builder = egui_extras::TableBuilder::new(ui)
         .striped(true)

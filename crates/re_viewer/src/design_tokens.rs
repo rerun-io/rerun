@@ -36,7 +36,7 @@ impl DesignTokens {
             .color(style.visuals.warn_fg_color)
     }
 
-    pub fn time_selection_color() -> egui::Color32 {
+    pub fn loop_selection_color() -> egui::Color32 {
         egui::Color32::from_rgb(40, 200, 130)
     }
 }

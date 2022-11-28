@@ -185,13 +185,13 @@ impl TimePanel {
             SIDE_MARGIN,
         );
 
-        // includes the time selection and time ticks rows.
+        // includes the loop selection and time ticks rows.
         let time_area_rect = Rect::from_x_y_ranges(
             time_x_range.clone(),
             ui.min_rect().bottom()..=ui.max_rect().bottom(),
         );
 
-        let time_selection_rect = {
+        let loop_selection_rect = {
             let response = ui
                 .horizontal(|ui| {
                     ctx.rec_cfg.time_ctrl.selection_ui(ui);
@@ -227,17 +227,17 @@ impl TimePanel {
             &self.time_ranges_ui,
             ui,
             &time_area_painter,
-            time_selection_rect.top()..=timeline_rect.bottom(),
+            loop_selection_rect.top()..=timeline_rect.bottom(),
             // timeline_rect.y_range(),
             timeline_rect.top()..=time_area_rect.bottom(),
             ctx.rec_cfg.time_ctrl.time_type(),
         );
-        time_selection_ui(
+        loop_selection_ui(
             &self.time_ranges_ui,
             &mut ctx.rec_cfg.time_ctrl,
             ui,
             &time_area_painter,
-            &time_selection_rect,
+            &loop_selection_rect,
         );
         time_marker_ui(
             &self.time_ranges_ui,
@@ -584,7 +584,7 @@ fn show_data_over_time(
     let selected_time_range = if !ctx.rec_cfg.time_ctrl.loop_selection_active {
         None
     } else {
-        ctx.rec_cfg.time_ctrl.time_selection()
+        ctx.rec_cfg.time_ctrl.loop_selection()
     };
 
     struct Stretch<'a> {
@@ -869,29 +869,29 @@ fn initial_time_selection(
     }
 }
 
-fn time_selection_ui(
+fn loop_selection_ui(
     time_ranges_ui: &TimeRangesUi,
     time_ctrl: &mut TimeControl,
     ui: &mut egui::Ui,
     time_area_painter: &egui::Painter,
     rect: &Rect,
 ) {
-    if time_ctrl.time_selection().is_none() {
+    if time_ctrl.loop_selection().is_none() {
         // Helpfully select a time slice so that there always is a selection.
         // This helps new users ("what is that?").
         if let Some(selection) = initial_time_selection(time_ranges_ui, time_ctrl.time_type()) {
-            time_ctrl.set_time_selection(selection);
+            time_ctrl.set_loop_selection(selection);
         }
     }
 
-    if time_ctrl.time_selection().is_none() {
+    if time_ctrl.loop_selection().is_none() {
         time_ctrl.loop_selection_active = false;
     }
 
     // TODO(emilk): click to toggle on/off
     // when off, you cannot modify, just drag out a new one.
 
-    let selection_color = crate::design_tokens::DesignTokens::time_selection_color();
+    let selection_color = crate::design_tokens::DesignTokens::loop_selection_color();
 
     let mut did_interact = false;
 
@@ -911,7 +911,7 @@ fn time_selection_ui(
     let transparent = if ui.visuals().dark_mode { 0.06 } else { 0.3 };
 
     // Paint existing selection and detect drag starting and hovering:
-    if let Some(selected_range) = time_ctrl.time_selection() {
+    if let Some(selected_range) = time_ctrl.loop_selection() {
         let min_x = time_ranges_ui.x_from_time(selected_range.min);
         let max_x = time_ranges_ui.x_from_time(selected_range.max);
 
@@ -1010,7 +1010,7 @@ fn time_selection_ui(
             && ui.input().pointer.primary_down()
         {
             if let Some(time) = time_ranges_ui.time_from_x(pointer_pos.x) {
-                time_ctrl.set_time_selection(TimeRangeF::point(time));
+                time_ctrl.set_loop_selection(TimeRangeF::point(time));
                 did_interact = true;
                 ui.memory().set_dragged_id(right_edge_id);
             }
@@ -1019,7 +1019,7 @@ fn time_selection_ui(
 
     // Resize/move (interact)
     if let Some(pointer_pos) = pointer_pos {
-        if let Some(mut selected_range) = time_ctrl.time_selection() {
+        if let Some(mut selected_range) = time_ctrl.loop_selection() {
             // Use "smart_aim" to find a natural length of the time interval
             let aim_radius = ui.input().aim_radius();
             use egui::emath::smart_aim::best_in_range_f64;
@@ -1043,7 +1043,7 @@ fn time_selection_ui(
                         ui.memory().set_dragged_id(right_edge_id);
                     }
 
-                    time_ctrl.set_time_selection(selected_range);
+                    time_ctrl.set_loop_selection(selected_range);
                     did_interact = true;
                 }
             }
@@ -1067,7 +1067,7 @@ fn time_selection_ui(
                         ui.memory().set_dragged_id(left_edge_id);
                     }
 
-                    time_ctrl.set_time_selection(selected_range);
+                    time_ctrl.set_loop_selection(selected_range);
                     did_interact = true;
                 }
             }
@@ -1094,7 +1094,7 @@ fn time_selection_ui(
                         new_range.max = new_range.min + selected_range.length();
                     }
 
-                    time_ctrl.set_time_selection(new_range);
+                    time_ctrl.set_loop_selection(new_range);
                     did_interact = true;
                     Some(())
                 })();
@@ -1454,7 +1454,7 @@ impl TimeRangesUi {
         if let Some(time) = ctx.rec_cfg.time_ctrl.time() {
             let time = self.snap_time_to_segments(time);
             ctx.rec_cfg.time_ctrl.set_time(time);
-        } else if let Some(selection) = ctx.rec_cfg.time_ctrl.time_selection() {
+        } else if let Some(selection) = ctx.rec_cfg.time_ctrl.loop_selection() {
             let snapped_min = self.snap_time_to_segments(selection.min);
             let snapped_max = self.snap_time_to_segments(selection.max);
 
@@ -1466,7 +1466,7 @@ impl TimeRangesUi {
             }
 
             // Keeping max works better when looping
-            ctx.rec_cfg.time_ctrl.set_time_selection(TimeRangeF::new(
+            ctx.rec_cfg.time_ctrl.set_loop_selection(TimeRangeF::new(
                 snapped_max - selection.length(),
                 snapped_max,
             ));
