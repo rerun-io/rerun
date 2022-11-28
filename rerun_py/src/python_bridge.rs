@@ -218,6 +218,42 @@ fn time(timeless: bool) -> TimePoint {
     }
 }
 
+// TODO(emilk): ideally we would pass `Index` as something type-safe from Python.
+fn parse_identifiers(identifiers: Vec<String>) -> PyResult<Vec<Index>> {
+    let identifiers = identifiers
+        .into_iter()
+        .map(parse_index)
+        .collect::<Result<Vec<_>, _>>()?;
+    let as_set: ahash::HashSet<_> = identifiers.iter().collect();
+    if as_set.len() == identifiers.len() {
+        Ok(identifiers)
+    } else {
+        Err(PyTypeError::new_err(
+            "The identifiers contained duplicates, but they need to be unique!",
+        ))
+    }
+}
+
+fn parse_index(s: String) -> PyResult<Index> {
+    use std::str::FromStr as _;
+
+    if let Some(seq) = s.strip_prefix('#') {
+        if let Ok(sequence) = u64::from_str(seq) {
+            Ok(Index::Sequence(sequence))
+        } else {
+            Err(PyTypeError::new_err(format!(
+                "Expected index starting with '#' to be a sequence, got {s:?}"
+            )))
+        }
+    } else if let Ok(integer) = i128::from_str(&s) {
+        Ok(Index::Integer(integer))
+    } else if let Ok(uuid) = uuid::Uuid::parse_str(&s) {
+        Ok(Index::Uuid(uuid))
+    } else {
+        Ok(Index::String(s))
+    }
+}
+
 // ----------------------------------------------------------------------------
 
 #[pyfunction]
@@ -856,11 +892,13 @@ fn log_ids(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 #[pyfunction]
 fn log_rects(
     obj_path: &str,
     rect_format: &str,
     rects: numpy::PyReadonlyArrayDyn<'_, f32>,
+    identifiers: Vec<String>,
     colors: numpy::PyReadonlyArrayDyn<'_, u8>,
     labels: Vec<String>,
     class_ids: numpy::PyReadonlyArrayDyn<'_, u16>,
@@ -892,7 +930,18 @@ fn log_rects(
 
     sdk.register_type(obj_path.obj_type_path(), ObjectType::BBox2D);
 
-    let indices = BatchIndex::SequentialIndex(n);
+    let indices = if identifiers.is_empty() {
+        BatchIndex::SequentialIndex(n)
+    } else {
+        let indices = parse_identifiers(identifiers)?;
+        if indices.len() != n {
+            return Err(PyTypeError::new_err(format!(
+                "Get {n} rectangles but {} identifiers",
+                indices.len()
+            )));
+        }
+        BatchIndex::FullIndex(indices)
+    };
 
     if !colors.is_empty() {
         let color_data = color_batch(&indices, colors)?;
@@ -1019,10 +1068,12 @@ fn log_point(
 /// * `colors.len() == 0`: no colors
 /// * `colors.len() == 1`: same color for all points
 /// * `colors.len() == positions.len()`: a color per point
+#[allow(clippy::too_many_arguments)]
 #[pyfunction]
 fn log_points(
     obj_path: &str,
     positions: numpy::PyReadonlyArrayDyn<'_, f32>,
+    identifiers: Vec<String>,
     colors: numpy::PyReadonlyArrayDyn<'_, u8>,
     labels: Vec<String>,
     class_ids: numpy::PyReadonlyArrayDyn<'_, u16>,
@@ -1055,7 +1106,18 @@ fn log_points(
 
     sdk.register_type(obj_path.obj_type_path(), obj_type);
 
-    let indices = BatchIndex::SequentialIndex(n);
+    let indices = if identifiers.is_empty() {
+        BatchIndex::SequentialIndex(n)
+    } else {
+        let indices = parse_identifiers(identifiers)?;
+        if indices.len() != n {
+            return Err(PyTypeError::new_err(format!(
+                "Get {n} positions but {} identifiers",
+                indices.len()
+            )));
+        }
+        BatchIndex::FullIndex(indices)
+    };
 
     let time_point = time(timeless);
 
