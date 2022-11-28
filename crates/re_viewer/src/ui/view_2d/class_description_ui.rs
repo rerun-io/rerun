@@ -17,7 +17,7 @@ pub(crate) fn view_class_description_map(
         .obj_db
         .store
         .get(ctx.rec_cfg.time_ctrl.timeline())?;
-    let time_query = ctx.rec_cfg.time_ctrl.time_query()?;
+    let time_query = ctx.rec_cfg.time_ctrl.latest_at_time_query()?;
     let obj_store = store.get(&instance_id.obj_path)?;
 
     // TODO(jleibs) This should really used a shared implementation with objects.rs

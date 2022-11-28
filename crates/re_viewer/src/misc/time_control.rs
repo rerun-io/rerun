@@ -236,6 +236,15 @@ impl TimeControl {
         Some(self.time()?.floor())
     }
 
+    /// The current time.
+    pub fn time_i64(&self) -> Option<i64> {
+        Some(self.time()?.floor().as_i64())
+    }
+
+    pub fn latest_at_time_query(&self) -> Option<TimeQuery<i64>> {
+        self.time_i64().map(TimeQuery::LatestAt)
+    }
+
     /// The current filtered time.
     /// Returns a "point" range if we have no selection (normal play)
     pub fn time_range(&self) -> Option<TimeRangeF> {
@@ -313,10 +322,6 @@ impl TimeControl {
             .entry(self.timeline)
             .or_insert_with(|| TimeState::new(selection.min))
             .selection = Some(selection);
-    }
-
-    pub fn time_query(&self) -> Option<TimeQuery<i64>> {
-        Some(TimeQuery::LatestAt(self.time_int()?.as_i64()))
     }
 }
 
