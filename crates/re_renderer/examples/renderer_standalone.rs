@@ -31,7 +31,7 @@ use re_renderer::{
     RenderContext,
 };
 use winit::{
-    event::{Event, WindowEvent},
+    event::{ElementState, Event, VirtualKeyCode, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     window::Window,
 };
@@ -70,14 +70,9 @@ fn draw_views(
     backbuffer_view: &wgpu::TextureView,
     resolution: [u32; 2],
 ) -> impl Iterator<Item = wgpu::CommandBuffer> {
-    // Rotate camera around the center at a distance of 5, looking down at 45 deg
     let seconds_since_startup = state.time.seconds_since_startup();
-    let pos = Vec3::new(
-        seconds_since_startup.sin(),
-        0.5,
-        seconds_since_startup.cos(),
-    ) * 10.0;
-    let view_from_world = IsoTransform::look_at_rh(pos, Vec3::ZERO, Vec3::Y).unwrap();
+    let view_from_world =
+        IsoTransform::look_at_rh(state.camera_position, Vec3::ZERO, Vec3::Y).unwrap();
 
     let triangle = TestTriangleDrawable::new(re_ctx);
     let skybox = GenericSkyboxDrawable::new(re_ctx);
@@ -397,13 +392,20 @@ impl Application {
                 Event::WindowEvent {
                     event: WindowEvent::KeyboardInput { input, .. },
                     ..
-                } => {
-                    if input.virtual_keycode == Some(winit::event::VirtualKeyCode::O)
-                        && input.state == winit::event::ElementState::Pressed
-                    {
-                        self.state.perspective_projection = !self.state.perspective_projection;
+                } => match (input.state, input.virtual_keycode) {
+                    (ElementState::Pressed, Some(VirtualKeyCode::O)) => {
+                        self.state.perspective_projection = !self.state.perspective_projection
                     }
-                }
+
+                    (ElementState::Pressed, Some(VirtualKeyCode::Space)) => {
+                        self.state.camera_control = match self.state.camera_control {
+                            CameraControl::RotateAroundCenter => CameraControl::Manual,
+                            CameraControl::Manual => CameraControl::RotateAroundCenter,
+                        };
+                    }
+
+                    _ => {}
+                },
                 Event::WindowEvent {
                     event:
                         WindowEvent::ScaleFactorChanged {
@@ -446,6 +448,15 @@ impl Application {
                     let view = frame
                         .texture
                         .create_view(&wgpu::TextureViewDescriptor::default());
+
+                    if matches!(self.state.camera_control, CameraControl::RotateAroundCenter) {
+                        let seconds_since_startup = self.state.time.seconds_since_startup();
+                        self.state.camera_position = Vec3::new(
+                            seconds_since_startup.sin(),
+                            0.5,
+                            seconds_since_startup.cos(),
+                        ) * 10.0;
+                    }
 
                     let cmd_buffers = draw_views(
                         &self.state,
@@ -505,9 +516,21 @@ impl Time {
     }
 }
 
+enum CameraControl {
+    RotateAroundCenter,
+
+    // TODO(andreas): Only pauses rotation right now. Add camera controller.
+    Manual,
+}
+
 struct AppState {
     time: Time,
+
     perspective_projection: bool,
+
+    camera_control: CameraControl,
+    camera_position: glam::Vec3,
+
     model_mesh_instances: Vec<MeshInstance>,
     mesh_instance_positions_and_colors: Vec<(glam::Vec3, [u8; 4])>,
 
@@ -562,6 +585,10 @@ impl AppState {
                 last_draw_time: Instant::now(),
             },
             perspective_projection: true,
+
+            camera_control: CameraControl::RotateAroundCenter,
+            camera_position: glam::Vec3::ZERO,
+
             model_mesh_instances,
             mesh_instance_positions_and_colors,
             random_points,
