@@ -50,53 +50,29 @@ impl TimeControl {
         let has_selection = self.has_selection();
 
         if !has_selection {
-            self.selection_active = false;
+            self.loop_selection_active = false;
         }
 
         if ui
-            .add(SelectableLabel::new(!self.selection_active, "None"))
+            .add(SelectableLabel::new(!self.loop_selection_active, "None"))
             .on_hover_text("Disable selection")
             .clicked()
         {
-            self.selection_active = false;
+            self.loop_selection_active = false;
         }
 
         ui.scope(|ui| {
-            ui.visuals_mut().selection.bg_fill = TimeSelectionType::Loop.color(ui.visuals());
+            ui.visuals_mut().selection.bg_fill =
+                crate::design_tokens::DesignTokens::time_selection_color();
 
-            let is_looping =
-                self.selection_active && self.selection_type == TimeSelectionType::Loop;
+            let is_looping = self.loop_selection_active;
 
             if ui
                 .add_enabled(has_selection, SelectableLabel::new(is_looping, "🔁"))
                 .on_hover_text("Loop in selection")
                 .clicked()
             {
-                if is_looping {
-                    self.selection_active = false; // toggle off
-                } else {
-                    self.set_active_selection_type(Some(TimeSelectionType::Loop));
-                }
-            }
-        });
-
-        ui.scope(|ui| {
-            ui.visuals_mut().selection.bg_fill = TimeSelectionType::Filter.color(ui.visuals());
-
-            let is_filtering =
-                self.selection_active && self.selection_type == TimeSelectionType::Filter;
-
-            if ui
-                .add_enabled(has_selection, SelectableLabel::new(is_filtering, "⬌"))
-                .on_hover_text("Show everything in selection")
-                .clicked()
-            {
-                if is_filtering {
-                    self.selection_active = false; // toggle off
-                } else {
-                    self.set_active_selection_type(Some(TimeSelectionType::Filter));
-                    self.pause();
-                }
+                self.loop_selection_active = is_looping;
             }
         });
     }
@@ -134,12 +110,13 @@ impl TimeControl {
         {
             let mut looped = self.looped();
             ui.scope(|ui| {
-                ui.visuals_mut().selection.bg_fill = TimeSelectionType::Loop.color(ui.visuals());
+                ui.visuals_mut().selection.bg_fill =
+                    crate::design_tokens::DesignTokens::time_selection_color();
                 ui.toggle_value(&mut looped, "🔁")
                     .on_hover_text("Loop playback");
             });
-            if !looped && self.selection_type == TimeSelectionType::Loop {
-                self.selection_active = false;
+            if !looped {
+                self.loop_selection_active = false;
             }
             self.set_looped(looped);
         }
@@ -181,17 +158,7 @@ impl TimeControl {
             if step_back || step_fwd {
                 self.pause();
 
-                if let Some(time_range) = self.time_filter_range() {
-                    let length = time_range.length();
-                    let new_min = if step_back {
-                        step_back_time(time_range.min, time_values)
-                    } else {
-                        step_fwd_time(time_range.min, time_values)
-                    };
-                    let new_min = TimeReal::from(new_min);
-                    let new_max = new_min + length;
-                    self.set_time_selection(TimeRangeF::new(new_min, new_max));
-                } else if let Some(time) = self.time() {
+                if let Some(time) = self.time() {
                     #[allow(clippy::collapsible_else_if)]
                     let new_time = if let Some(loop_range) = self.loop_range() {
                         if step_back {

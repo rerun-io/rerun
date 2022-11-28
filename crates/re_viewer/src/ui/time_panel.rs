@@ -9,8 +9,8 @@ use re_data_store::{InstanceId, ObjectTree};
 use re_log_types::*;
 
 use crate::{
-    misc::time_control::TimeSelectionType, time_axis::TimelineAxis, Selection, TimeControl,
-    TimeRange, TimeRangeF, TimeReal, TimeView, ViewerContext,
+    time_axis::TimelineAxis, Selection, TimeControl, TimeRange, TimeRangeF, TimeReal, TimeView,
+    ViewerContext,
 };
 
 use super::Blueprint;
@@ -581,7 +581,7 @@ fn show_data_over_time(
             .linear_multiply(0.75)
     };
 
-    let selected_time_range = if !ctx.rec_cfg.time_ctrl.selection_active {
+    let selected_time_range = if !ctx.rec_cfg.time_ctrl.loop_selection_active {
         None
     } else {
         ctx.rec_cfg.time_ctrl.time_selection()
@@ -885,17 +885,17 @@ fn time_selection_ui(
     }
 
     if time_ctrl.time_selection().is_none() {
-        time_ctrl.selection_active = false;
+        time_ctrl.loop_selection_active = false;
     }
 
     // TODO(emilk): click to toggle on/off
     // when off, you cannot modify, just drag out a new one.
 
-    let selection_color = time_ctrl.selection_type.color(ui.visuals());
+    let selection_color = crate::design_tokens::DesignTokens::time_selection_color();
 
     let mut did_interact = false;
 
-    let is_active = time_ctrl.selection_active;
+    let is_active = time_ctrl.loop_selection_active;
 
     let pointer_pos = ui.input().pointer.hover_pos();
     let is_pointer_in_rect = pointer_pos.map_or(false, |pointer_pos| rect.contains(pointer_pos));
@@ -1113,13 +1113,8 @@ fn time_selection_ui(
     }
 
     if did_interact {
-        time_ctrl.selection_active = true;
-        if time_ctrl.active_selection_type() == Some(TimeSelectionType::Loop) {
-            time_ctrl.set_looped(true);
-        }
-        if time_ctrl.active_selection_type() == Some(TimeSelectionType::Filter) {
-            time_ctrl.pause();
-        }
+        time_ctrl.loop_selection_active = true;
+        time_ctrl.set_looped(true);
     }
 }
 
