@@ -606,6 +606,7 @@ impl AppState {
             recording_configs,
             panel_selection,
             event_log_view,
+            arrow_log_view,
             blueprints,
             selection_panel,
             time_panel,
@@ -648,7 +649,7 @@ impl AppState {
                     .or_default()
                     .blueprint_panel_and_viewport(&mut ctx, ui),
                 PanelSelection::EventLog => event_log_view.ui(&mut ctx, ui),
-                PanelSelection::ArrowLog => arrow_log_view.ui(&mut ctx, ui),,
+                PanelSelection::ArrowLog => arrow_log_view.ui(&mut ctx, ui),
             });
 
         // move time last, so we get to see the first data first!
