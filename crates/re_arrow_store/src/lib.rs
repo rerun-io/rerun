@@ -1,3 +1,5 @@
+#![allow(dead_code)] //TODO(john) remove this
+
 use std::borrow::Borrow;
 
 use polars::{prelude::*, series::IsSorted};
@@ -25,7 +27,7 @@ pub fn time_index(df: &DataFrame, col: &str, time: i64) -> Result<Option<usize>,
 }
 
 /// Perform a Rerun time query on the dataframe.
-pub fn time_query(df: &DataFrame, col: &str, time: i64) -> Result<DataFrame, PolarsError> {
+pub fn time_query(df: &DataFrame, _col: &str, time: i64) -> Result<DataFrame, PolarsError> {
     let row_idx = time_index(&df, "time", time)?;
     Ok(df
         .head(row_idx.map(|idx| idx + 1))

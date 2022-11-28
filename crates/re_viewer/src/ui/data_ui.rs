@@ -434,7 +434,7 @@ pub(crate) fn ui_logged_arrow_data(
 ) -> egui::Response {
     // TODO: more handling
     //let arr = msg.to_arrow_array();
-    ui.label(format!("Arrow Payload:"))
+    ui.label(format!("Arrow Payload: ({})", msg.data.len()))
 }
 
 pub(crate) fn ui_data(

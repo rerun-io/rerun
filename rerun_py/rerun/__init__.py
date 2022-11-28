@@ -2,6 +2,7 @@
 
 import atexit
 import logging
+import os
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
@@ -11,15 +12,13 @@ import numpy as np
 import numpy.typing as npt
 from rerun.color_conversion import linear_to_gamma_u8_pixel, u8_array_to_rgba
 
-
 from rerun import rerun_sdk  # type: ignore[attr-defined]
-
-import os
 
 EXP_ARROW = os.environ.get("RERUN_EXP_ARROW", "0").lower() in ("1", "true")
 
 if EXP_ARROW:
     import pyarrow as pa
+
     from . import components
 
 

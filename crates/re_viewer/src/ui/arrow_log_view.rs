@@ -5,5 +5,5 @@ use crate::misc::ViewerContext;
 pub(crate) struct ArrowLogView {}
 
 impl ArrowLogView {
-    pub fn ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {}
+    pub fn ui(&mut self, _ctx: &mut ViewerContext<'_>, _ui: &mut egui::Ui) {}
 }
