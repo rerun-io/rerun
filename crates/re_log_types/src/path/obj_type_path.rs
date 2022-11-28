@@ -1,4 +1,4 @@
-use crate::{hash::Hash64, path::ObjTypePathComp};
+use crate::{hash::Hash64, path::TypePathComp};
 
 /// The shared type path for all objects at a path with different indices
 ///
@@ -7,7 +7,7 @@ use crate::{hash::Hash64, path::ObjTypePathComp};
 pub struct ObjTypePath {
     // 64 bit is enough, because we will have at most a few thousand unique type paths - never a billion.
     hash: Hash64,
-    components: Vec<ObjTypePathComp>, // TODO(emilk): box?
+    components: Vec<TypePathComp>, // TODO(emilk): box?
 }
 
 impl ObjTypePath {
@@ -16,13 +16,13 @@ impl ObjTypePath {
         Self::new(vec![])
     }
 
-    pub fn new(components: Vec<ObjTypePathComp>) -> Self {
+    pub fn new(components: Vec<TypePathComp>) -> Self {
         let hash = Hash64::hash(&components);
         Self { components, hash }
     }
 
     #[inline]
-    pub fn as_slice(&self) -> &[ObjTypePathComp] {
+    pub fn as_slice(&self) -> &[TypePathComp] {
         self.components.as_slice()
     }
 
@@ -43,7 +43,7 @@ impl ObjTypePath {
         self.components.iter()
     }
 
-    pub fn push(&mut self, comp: ObjTypePathComp) {
+    pub fn push(&mut self, comp: TypePathComp) {
         self.components.push(comp);
         self.hash = Hash64::hash(&self.components);
     }
@@ -52,13 +52,13 @@ impl ObjTypePath {
         self.components
             .iter()
             .filter(|c| match c {
-                ObjTypePathComp::Name(_) => false,
-                ObjTypePathComp::Index => true,
+                TypePathComp::Name(_) => false,
+                TypePathComp::Index => true,
             })
             .count()
     }
 
-    pub fn to_components(&self) -> Vec<ObjTypePathComp> {
+    pub fn to_components(&self) -> Vec<TypePathComp> {
         self.components.clone()
     }
 }
@@ -77,7 +77,7 @@ impl serde::Serialize for ObjTypePath {
 impl<'de> serde::Deserialize<'de> for ObjTypePath {
     #[inline]
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        <Vec<ObjTypePathComp>>::deserialize(deserializer).map(ObjTypePath::new)
+        <Vec<TypePathComp>>::deserialize(deserializer).map(ObjTypePath::new)
     }
 }
 
@@ -113,11 +113,11 @@ impl std::cmp::Ord for ObjTypePath {
 
 // ----------------------------------------------------------------------------
 
-pub type Iter<'a> = std::slice::Iter<'a, ObjTypePathComp>;
+pub type Iter<'a> = std::slice::Iter<'a, TypePathComp>;
 
 impl<'a> IntoIterator for &'a ObjTypePath {
-    type Item = &'a ObjTypePathComp;
-    type IntoIter = std::slice::Iter<'a, ObjTypePathComp>;
+    type Item = &'a TypePathComp;
+    type IntoIter = std::slice::Iter<'a, TypePathComp>;
 
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
@@ -126,8 +126,8 @@ impl<'a> IntoIterator for &'a ObjTypePath {
 }
 
 impl IntoIterator for ObjTypePath {
-    type Item = ObjTypePathComp;
-    type IntoIter = <Vec<ObjTypePathComp> as IntoIterator>::IntoIter;
+    type Item = TypePathComp;
+    type IntoIter = <Vec<TypePathComp> as IntoIterator>::IntoIter;
 
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
@@ -163,31 +163,31 @@ impl std::fmt::Display for ObjTypePath {
 impl From<&str> for ObjTypePath {
     #[inline]
     fn from(component: &str) -> Self {
-        Self::new(vec![ObjTypePathComp::Name(component.into())])
+        Self::new(vec![TypePathComp::Name(component.into())])
     }
 }
 
-impl From<ObjTypePathComp> for ObjTypePath {
+impl From<TypePathComp> for ObjTypePath {
     #[inline]
-    fn from(component: ObjTypePathComp) -> Self {
+    fn from(component: TypePathComp) -> Self {
         Self::new(vec![component])
     }
 }
 
-impl std::ops::Div for ObjTypePathComp {
+impl std::ops::Div for TypePathComp {
     type Output = ObjTypePath;
 
     #[inline]
-    fn div(self, rhs: ObjTypePathComp) -> Self::Output {
+    fn div(self, rhs: TypePathComp) -> Self::Output {
         ObjTypePath::new(vec![self, rhs])
     }
 }
 
-impl std::ops::Div<ObjTypePathComp> for ObjTypePath {
+impl std::ops::Div<TypePathComp> for ObjTypePath {
     type Output = ObjTypePath;
 
     #[inline]
-    fn div(mut self, rhs: ObjTypePathComp) -> Self::Output {
+    fn div(mut self, rhs: TypePathComp) -> Self::Output {
         self.push(rhs);
         self
     }
@@ -198,7 +198,7 @@ impl std::ops::Div<&str> for ObjTypePath {
 
     #[inline]
     fn div(mut self, rhs: &str) -> Self::Output {
-        self.push(ObjTypePathComp::Name(rhs.into()));
+        self.push(TypePathComp::Name(rhs.into()));
         self
     }
 }

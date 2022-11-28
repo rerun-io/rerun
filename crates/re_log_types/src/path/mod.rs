@@ -52,10 +52,10 @@ pub enum ObjPathComp {
 }
 
 impl ObjPathComp {
-    pub fn to_type_path_comp(&self) -> ObjTypePathComp {
+    pub fn to_type_path_comp(&self) -> TypePathComp {
         match self {
-            Self::Name(name) => ObjTypePathComp::Name(*name),
-            Self::Index(_) => ObjTypePathComp::Index,
+            Self::Name(name) => TypePathComp::Name(*name),
+            Self::Index(_) => TypePathComp::Index,
         }
     }
 }
@@ -95,7 +95,7 @@ impl From<Index> for ObjPathComp {
 /// The different parts that make up a [`ObjTypePath`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum ObjTypePathComp {
+pub enum TypePathComp {
     /// Struct member
     Name(InternedString),
 
@@ -104,7 +104,7 @@ pub enum ObjTypePathComp {
     Index,
 }
 
-impl std::fmt::Display for ObjTypePathComp {
+impl std::fmt::Display for TypePathComp {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Name(name) => name.fmt(f),
