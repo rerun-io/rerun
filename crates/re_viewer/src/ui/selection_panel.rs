@@ -70,7 +70,7 @@ impl SelectionPanel {
 
                     ui.separator();
 
-                    if let Some(selection) = self.history.show(ui, blueprint) {
+                    if let Some(selection) = self.history.ui(ui, blueprint) {
                         ctx.rec_cfg.selection = selection;
                     }
 
@@ -185,7 +185,7 @@ impl SelectionPanel {
                 // I really don't know what we should show here.
             }
             Selection::SpaceView(space_view_id) => {
-                if let Some(space_view) = blueprint.viewport.get_space_view_mut(space_view_id) {
+                if let Some(space_view) = blueprint.viewport.space_view_mut(space_view_id) {
                     ui.label("SpaceView");
                     ui_space_view(ctx, ui, space_view);
                 } else {
@@ -193,7 +193,7 @@ impl SelectionPanel {
                 }
             }
             Selection::SpaceViewObjPath(space_view_id, obj_path) => {
-                if let Some(space_view) = blueprint.viewport.get_space_view_mut(space_view_id) {
+                if let Some(space_view) = blueprint.viewport.space_view_mut(space_view_id) {
                     egui::Grid::new("space_view_id_obj_path")
                         .striped(true)
                         .show(ui, |ui| {
@@ -301,8 +301,9 @@ impl SelectionHistory {
         (self.current > 0).then(|| (self.current - 1, self.stack[self.current - 1].clone()).into())
     }
     pub fn next(&self) -> Option<HistoricalSelection> {
-        (self.current < self.stack.len().saturating_sub(1))
-            .then(|| (self.current + 1, self.stack[self.current + 1].clone()).into())
+        self.stack
+            .get(self.current + 1)
+            .map(|sel| (self.current + 1, sel.clone()).into())
     }
 
     pub fn update_selection(&mut self, selection: &Selection) {
@@ -313,45 +314,27 @@ impl SelectionHistory {
 
         // Do not grow the history if the thing being selected is equal to the value that the
         // current history cursor points to.
-        if let Some(current) = self.current() {
-            if current.selection == *selection {
-                return;
-            }
+        if self.current().as_ref().map(|c| &c.selection) == Some(selection) {
+            return;
         }
 
         // Make sure to clear the entire redo history past this point: we are engaging in a
         // diverging timeline!
-        if !self.stack.is_empty() {
-            self.stack.drain(self.current + 1..);
-        }
+        self.stack.truncate(self.current + 1);
 
         self.stack.push(selection.clone());
         self.current = self.stack.len() - 1;
     }
 
-    pub fn clear(&mut self) {
-        self.current = 0;
-        self.stack.clear();
-    }
-
-    pub fn show(&mut self, ui: &mut egui::Ui, blueprint: &Blueprint) -> Option<Selection> {
-        let sel1 = ui
+    pub fn ui(&mut self, ui: &mut egui::Ui, blueprint: &Blueprint) -> Option<Selection> {
+        ui
             // so the strip doesn't try and occupy the entire vertical space
-            .horizontal(|ui| self.show_control_bar(ui, blueprint))
-            .inner;
-
-        if !self.show_detailed {
-            return sel1.map(|sel| sel.selection);
-        }
-
-        let sel2 = ui
-            .vertical(|ui| self.show_detailed_view(ui, blueprint))
-            .inner;
-
-        sel1.or(sel2).map(|sel| sel.selection)
+            .horizontal(|ui| self.control_bar_ui(ui, blueprint))
+            .inner
+            .map(|sel| sel.selection)
     }
 
-    fn show_control_bar(
+    fn control_bar_ui(
         &mut self,
         ui: &mut egui::Ui,
         blueprint: &Blueprint,
@@ -367,7 +350,6 @@ impl SelectionHistory {
         let mut res = None;
         StripBuilder::new(ui)
             .size(Size::exact(BIG_BUTTON_SIZE)) // prev
-            .size(Size::exact(TINY_BUTTON_SIZE)) // clear
             .size(Size::remainder().at_least(MIN_COMBOBOX_SIZE)) // browser
             .size(Size::exact(TINY_BUTTON_SIZE)) // expand/collapse
             .size(Size::exact(BIG_BUTTON_SIZE)) // next
@@ -378,21 +360,10 @@ impl SelectionHistory {
                     prev = self.show_prev_button(ui, blueprint);
                 });
 
-                // clear
-                strip.cell(|ui| {
-                    if ui
-                        .small_button("↺")
-                        .on_hover_text("Clear history")
-                        .clicked()
-                    {
-                        self.clear();
-                    }
-                });
-
                 // browser
                 let mut picked = None;
                 strip.cell(|ui| {
-                    let clipped_width = ui.available_width() * 0.8; // leave some space for the icon!
+                    let clipped_width = ui.available_width() - 30.0; // leave some space for the icon!
                     picked = egui::ComboBox::from_id_source("history_browser")
                         .width(ui.available_width())
                         .wrap(false)
@@ -411,40 +382,23 @@ impl SelectionHistory {
                             for (i, sel) in self.stack.iter().enumerate() {
                                 ui.horizontal(|ui| {
                                     show_selection_index(ui, i);
+                                    {
+                                        // vvvvvv borrow checker workaround
+                                        let sel = selection_to_clipped_string(
+                                            ui,
+                                            blueprint,
+                                            sel,
+                                            &font_id,
+                                            clipped_width,
+                                        );
+                                        ui.selectable_value(&mut self.current, i, sel);
+                                    }
                                     show_selection_kind(ui, sel);
-                                    let sel = selection_to_clipped_string(
-                                        ui,
-                                        blueprint,
-                                        sel,
-                                        &font_id,
-                                        clipped_width,
-                                    );
-                                    ui.selectable_value(&mut self.current, i, sel);
                                 });
                             }
                         })
                         .inner
                         .and_then(|_| self.current());
-                });
-
-                // collapse/expand
-                strip.cell(|ui| {
-                    let shortcut = &crate::ui::kb_shortcuts::TOGGLE_SELECTION_DETAILED;
-                    if ui
-                    .small_button(if self.show_detailed { "⏶" } else { "⏷" })
-                    .on_hover_text(format!(
-                        "{} detailed history view ({})",
-                        if self.show_detailed { "Collapse" } else { "Expand" },
-                        ui.ctx().format_shortcut(shortcut)
-                    ))
-                    .clicked()
-                    // TODO(cmc): feels like using the shortcut should highlight the associated
-                    // button or something (but then again it, it'd make more sense to do that
-                    // at the egui level rather than specifically here).
-                    || ui.ctx().input_mut().consume_shortcut(shortcut)
-                    {
-                        self.show_detailed = !self.show_detailed;
-                    }
                 });
 
                 // next
@@ -457,65 +411,6 @@ impl SelectionHistory {
             });
 
         res
-    }
-
-    fn show_detailed_view(
-        &mut self,
-        ui: &mut egui::Ui,
-        blueprint: &Blueprint,
-    ) -> Option<HistoricalSelection> {
-        let mut picked = None;
-
-        fn show_row(
-            ui: &mut egui::Ui,
-            blueprint: &Blueprint,
-            enabled: bool,
-            label: &str,
-            sel: Option<HistoricalSelection>,
-        ) -> bool {
-            ui.label(label);
-
-            let Some(sel) = sel else {
-                ui.end_row();
-                return false;
-            };
-
-            let clicked = ui
-                .add_enabled_ui(enabled, |ui| {
-                    ui.horizontal(|ui| {
-                        show_selection_index(ui, sel.index);
-                        show_selection_kind(ui, &sel.selection);
-                        // No clipping for the detailed view: this will resize the side
-                        // panel as needed!
-                        ui.selectable_label(false, selection_to_string(blueprint, &sel.selection))
-                            .clicked()
-                    })
-                    .inner
-                })
-                .inner;
-
-            ui.end_row();
-
-            clicked
-        }
-
-        egui::Grid::new("selection_history")
-            .num_columns(3)
-            .show(ui, |ui| {
-                if show_row(ui, blueprint, true, "Previous", self.previous()) {
-                    self.current -= 1;
-                    picked = self.current();
-                }
-
-                _ = show_row(ui, blueprint, false, "Current", self.current());
-
-                if show_row(ui, blueprint, true, "Next", self.next()) {
-                    self.current += 1;
-                    picked = self.current();
-                }
-            });
-
-        picked
     }
 
     fn show_prev_button(
@@ -596,33 +491,26 @@ fn show_selection_index(ui: &mut egui::Ui, index: usize) {
 // Different kinds of selections can share the same path in practice! We need to
 // differentiate those in the UI to avoid confusion.
 fn show_selection_kind(ui: &mut egui::Ui, sel: &Selection) {
-    ui.weak(
-        RichText::new(match sel {
-            Selection::None => "NONE",
-            Selection::MsgId(_) => "MSG",
-            Selection::ObjTypePath(_) => "TYPE",
-            Selection::Instance(_) => "INST",
-            Selection::DataPath(_) => "DATA",
-            Selection::Space(_) => "SPACE",
-            Selection::SpaceView(_) => "VIEW",
-            Selection::SpaceViewObjPath(_, _) => "OBJ",
-        })
-        .monospace(),
-    );
+    ui.weak(RichText::new(match sel {
+        Selection::None => "(none)",
+        Selection::MsgId(_) => "(msg)",
+        Selection::ObjTypePath(_) => "(type)",
+        Selection::Instance(_) => "(instance)",
+        Selection::DataPath(_) => "(field)",
+        Selection::Space(_) => "(space)",
+        Selection::SpaceView(_) => "(view)",
+        Selection::SpaceViewObjPath(_, _) => "(obj)",
+    }));
 }
 
 fn selection_to_string(blueprint: &Blueprint, sel: &Selection) -> String {
     match sel {
         Selection::SpaceView(sid) => {
-            if let Some(space_view) = blueprint.viewport.get_space_view(sid) {
+            if let Some(space_view) = blueprint.viewport.space_view(sid) {
                 return space_view.name.clone();
             }
         }
-        Selection::SpaceViewObjPath(sid, path) => {
-            if let Some(space_view) = blueprint.viewport.get_space_view(sid) {
-                return format!("{} in {}", path, space_view.name);
-            }
-        }
+        Selection::SpaceViewObjPath(_, obj_path) => return obj_path.to_string(),
         _ => {}
     }
 
