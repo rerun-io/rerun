@@ -43,21 +43,27 @@ impl TimeControl {
     }
 
     pub fn selection_ui(&mut self, ui: &mut egui::Ui) {
-        ui.add_enabled_ui(self.looped(), |ui| {
-            ui.label("Loop:");
-            if ui
-                .selectable_label(!self.loop_selection_active, "Everything")
-                .clicked()
-            {
-                self.loop_selection_active = false;
-            }
-            if ui
-                .selectable_label(self.loop_selection_active, "Selection")
-                .clicked()
-            {
-                self.loop_selection_active = true;
-            }
-        });
+        ui.label("Looping:");
+
+        if ui.selectable_label(!self.looped(), "Off").clicked() {
+            self.set_looped(false);
+        }
+
+        if ui
+            .selectable_label(self.looped() && self.loop_selection_active, "Selection")
+            .clicked()
+        {
+            self.set_looped(true);
+            self.loop_selection_active = true;
+        }
+
+        if ui
+            .selectable_label(self.looped() && !self.loop_selection_active, "All")
+            .clicked()
+        {
+            self.set_looped(true);
+            self.loop_selection_active = false;
+        }
     }
 
     pub fn play_pause_ui(&mut self, times_per_timeline: &TimesPerTimeline, ui: &mut egui::Ui) {
@@ -98,9 +104,6 @@ impl TimeControl {
                 ui.toggle_value(&mut looped, "🔁")
                     .on_hover_text("Loop playback");
             });
-            if !looped {
-                self.loop_selection_active = false;
-            }
             self.set_looped(looped);
         }
 
