@@ -2,7 +2,7 @@
 
 A rough time-line of major user-facing things added, removed and changed. Newest on top.
 
-* 2022-11-27: Add keypoints & keypoint connections for sub-classifications of points within a class(_id/descriptor): [#356](https://github.com/rerun-io/rerun/pull/356).
+* 2022-11-28: Add keypoints & keypoint connections for sub-classifications of points within a class(_id/descriptor): [#356](https://github.com/rerun-io/rerun/pull/356).
 * 2022-11-27: Toggle fullscreen with F11: [#364](https://github.com/rerun-io/rerun/pull/364).
 * 2022-11-23: Associated annotation context & class description now reachable from any object with class_id: [#331](https://github.com/rerun-io/rerun/pull/331).
 * 2022-11-23: Fix 3D line segments being connected: [#330](https://github.com/rerun-io/rerun/pull/330).

@@ -517,8 +517,8 @@ fn ui_annotation_info_table<'a>(
     let table = TableBuilder::new(ui)
         .striped(true)
         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-        .column(Size::initial(40.0).at_least(40.0))
-        .column(Size::initial(80.0).at_least(40.0))
+        .column(Size::initial(20.0).at_least(20.0))
+        .column(Size::initial(120.0).at_least(50.0))
         .column(Size::remainder().at_least(60.0));
 
     table
@@ -591,7 +591,7 @@ fn ui_annotation_context(ui: &mut egui::Ui, context: &AnnotationContext) -> egui
                     let table = TableBuilder::new(ui)
                         .striped(true)
                         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-                        .column(Size::initial(50.0).at_least(50.0))
+                        .column(Size::initial(120.0).at_least(50.0))
                         .column(Size::remainder().at_least(50.0));
                     table
                         .header(20.0, |mut header| {
