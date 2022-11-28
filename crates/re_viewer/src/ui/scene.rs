@@ -2,7 +2,8 @@ use ahash::HashMap;
 use nohash_hasher::IntSet;
 
 use re_data_store::{
-    FieldName, FieldStore, LogDb, ObjPath, ObjStore, ObjectsProperties, TimeQuery, Timeline,
+    FieldName, FieldStore, LogDb, ObjPath, ObjStore, ObjectsProperties, TimeInt, TimeQuery,
+    Timeline,
 };
 use re_log_types::ObjectType;
 
@@ -52,7 +53,7 @@ impl Scene {
 pub struct SceneQuery<'s> {
     pub obj_paths: &'s IntSet<ObjPath>,
     pub timeline: Timeline,
-    pub time_query: TimeQuery<i64>,
+    pub latest_at: TimeInt,
 
     /// Controls what objects are visible
     pub obj_props: &'s ObjectsProperties,
@@ -86,7 +87,7 @@ impl<'s> SceneQuery<'s> {
         &'a self,
         log_db: &'a LogDb,
         obj_types: &'a [ObjectType],
-    ) -> impl Iterator<Item = (ObjectType, &ObjPath, &ObjStore<i64>)> + 'a {
+    ) -> impl Iterator<Item = (ObjectType, &ObjPath, TimeQuery<i64>, &ObjStore<i64>)> + 'a {
         // For the appropriate timeline store...
         log_db
             .obj_db
@@ -97,8 +98,21 @@ impl<'s> SceneQuery<'s> {
                 // ...and for all visible object paths within that timeline store...
                 self.obj_paths
                     .iter()
-                    .filter(|obj_path| self.obj_props.get(obj_path).visible)
-                    .filter_map(|obj_path| {
+                    .map(|obj_path| (obj_path, self.obj_props.get(obj_path)))
+                    .filter(|(_obj_path, obj_props)| obj_props.visible)
+                    .filter_map(|(obj_path, obj_props)| {
+                        let extra_history = match self.timeline.typ() {
+                            re_log_types::TimeType::Time => obj_props.extra_history.nanos,
+                            re_log_types::TimeType::Sequence => obj_props.extra_history.sequences,
+                        };
+
+                        let latest_at = self.latest_at.as_i64();
+                        let time_query = if extra_history == 0 {
+                            TimeQuery::LatestAt(latest_at)
+                        } else {
+                            TimeQuery::Range((latest_at - extra_history as i64)..=latest_at)
+                        };
+
                         // ...whose datatypes are registered...
                         let obj_type = log_db.obj_db.types.get(obj_path.obj_type_path());
                         obj_type
@@ -106,9 +120,9 @@ impl<'s> SceneQuery<'s> {
                                 // ...and whose datatypes we care about...
                                 obj_types.contains(obj_type).then(|| {
                                     // ...then return the actual object store!
-                                    timeline_store
-                                        .get(obj_path)
-                                        .map(|obj_store| (*obj_type, obj_path, obj_store))
+                                    timeline_store.get(obj_path).map(|obj_store| {
+                                        (*obj_type, obj_path, time_query, obj_store)
+                                    })
                                 })
                             })
                             .flatten()

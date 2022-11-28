@@ -115,12 +115,12 @@ impl Scene2D {
 
         let images = query
             .iter_object_stores(ctx.log_db, &[ObjectType::Image])
-            .flat_map(|(_obj_type, obj_path, obj_store)| {
+            .flat_map(|(_obj_type, obj_path, time_query, obj_store)| {
                 let mut batch = Vec::new();
                 visit_type_data_2(
                     obj_store,
                     &FieldName::from("tensor"),
-                    &query.time_query,
+                    &time_query,
                     ("color", "meter"),
                     |instance_index: Option<&IndexHash>,
                      _time: i64,
@@ -175,12 +175,12 @@ impl Scene2D {
 
         let boxes = query
             .iter_object_stores(ctx.log_db, &[ObjectType::BBox2D])
-            .flat_map(|(_obj_type, obj_path, obj_store)| {
+            .flat_map(|(_obj_type, obj_path, time_query, obj_store)| {
                 let mut batch = Vec::new();
                 visit_type_data_4(
                     obj_store,
                     &FieldName::from("bbox"),
-                    &query.time_query,
+                    &time_query,
                     ("color", "stroke_width", "label", "class_id"),
                     |instance_index: Option<&IndexHash>,
                      _time: i64,
@@ -230,7 +230,7 @@ impl Scene2D {
 
         let points = query
             .iter_object_stores(ctx.log_db, &[ObjectType::Point2D])
-            .flat_map(|(_obj_type, obj_path, obj_store)| {
+            .flat_map(|(_obj_type, obj_path, time_query, obj_store)| {
                 let mut batch = Vec::new();
                 let annotations = self.annotation_map.find(obj_path);
                 let default_color = DefaultColor::ObjPath(obj_path);
@@ -242,7 +242,7 @@ impl Scene2D {
                 visit_type_data_5(
                     obj_store,
                     &FieldName::from("pos"),
-                    &query.time_query,
+                    &time_query,
                     ("color", "radius", "label", "class_id", "keypoint_id"),
                     |instance_index: Option<&IndexHash>,
                      _time: i64,
@@ -342,14 +342,14 @@ impl Scene2D {
 
         let segments = query
             .iter_object_stores(ctx.log_db, &[ObjectType::LineSegments2D])
-            .flat_map(|(_obj_type, obj_path, obj_store)| {
+            .flat_map(|(_obj_type, obj_path, time_query, obj_store)| {
                 let mut batch = Vec::new();
                 let annotations = self.annotation_map.find(obj_path);
 
                 visit_type_data_2(
                     obj_store,
                     &FieldName::from("points"),
-                    &query.time_query,
+                    &time_query,
                     ("color", "stroke_width"),
                     |instance_index: Option<&IndexHash>,
                      _time: i64,

@@ -1,5 +1,5 @@
 use lazy_static::lazy_static;
-use re_data_store::{FieldName, ObjPath};
+use re_data_store::{FieldName, ObjPath, TimeQuery};
 use re_log_types::{
     context::{AnnotationInfo, ClassDescription, ClassId, KeypointId},
     AnnotationContext, DataPath, MsgId,
@@ -105,7 +105,8 @@ impl AnnotationMap {
         {
             if let Ok(mono_field_store) = field_store.get_mono::<re_log_types::AnnotationContext>()
             {
-                mono_field_store.query(&query.time_query, |_time, msg_id, context| {
+                let time_query = TimeQuery::LatestAt(query.latest_at.as_i64());
+                mono_field_store.query(&time_query, |_time, msg_id, context| {
                     self.0.entry(obj_path.clone()).or_insert_with(|| {
                         Arc::new(Annotations {
                             msg_id: *msg_id,

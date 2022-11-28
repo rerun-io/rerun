@@ -72,7 +72,7 @@ impl ScenePlot {
     fn load_scalars(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
 
-        for (_obj_type, obj_path, obj_store) in
+        for (_obj_type, obj_path, _time_query, obj_store) in
             query.iter_object_stores(ctx.log_db, &[ObjectType::Scalar])
         {
             let mut points = Vec::new();

@@ -24,12 +24,12 @@ impl SceneTensor {
 
         let tensors = query
             .iter_object_stores(ctx.log_db, &[ObjectType::Image])
-            .filter_map(|(_obj_type, _obj_path, obj_store)| {
+            .filter_map(|(_obj_type, _obj_path, time_query, obj_store)| {
                 let mut tensors = Vec::new();
                 visit_type_data(
                     obj_store,
                     &FieldName::from("tensor"),
-                    &query.time_query,
+                    &time_query,
                     |_instance_index: Option<&IndexHash>,
                      _time: i64,
                      _msg_id: &MsgId,

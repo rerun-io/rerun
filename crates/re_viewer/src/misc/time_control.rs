@@ -336,6 +336,11 @@ impl TimeControl {
         self.states.get(&self.timeline).map(|state| state.time)
     }
 
+    /// The current time. Note that this only makes sense if there is no time selection!
+    pub fn time_int(&self) -> Option<TimeInt> {
+        Some(self.time()?.floor())
+    }
+
     /// The current filtered time.
     /// Returns a "point" range if we have no selection (normal play)
     pub fn time_range(&self) -> Option<TimeRangeF> {
@@ -449,7 +454,7 @@ impl TimeControl {
                 }
             }
         }
-        Some(TimeQuery::LatestAt(self.time()?.floor().as_i64()))
+        Some(TimeQuery::LatestAt(self.time_int()?.as_i64()))
     }
 }
 
