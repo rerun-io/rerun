@@ -211,6 +211,9 @@ impl LogDb {
                 } = msg;
                 self.obj_db.add_path_op(*msg_id, time_point, path_op);
             }
+            LogMsg::ArrowMsg(_) => {
+                // Ignore ArrowMsgs -- they should go to the other store
+            }
         }
         self.chronological_message_ids.push(msg.id());
         self.log_messages.insert(msg.id(), msg);
@@ -322,7 +325,8 @@ impl LogDb {
     pub fn purge_fraction_of_ram(&mut self, fraction_to_purge: f32) {
         fn always_keep(msg: &LogMsg) -> bool {
             match msg {
-                LogMsg::BeginRecordingMsg(_) | LogMsg::TypeMsg(_) => true,
+                //TODO(john) allow purging ArrowMsg
+                LogMsg::ArrowMsg(_) | LogMsg::BeginRecordingMsg(_) | LogMsg::TypeMsg(_) => true,
                 LogMsg::DataMsg(msg) => msg.time_point.is_timeless(),
                 LogMsg::PathOpMsg(msg) => msg.time_point.is_timeless(),
             }

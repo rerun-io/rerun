@@ -32,6 +32,7 @@ puffin = [
 
 
 [dependencies]
+re_arrow_store = { path = "../re_arrow_store" }
 re_data_store = { path = "../re_data_store", features = ["puffin", "serde"] }
 re_error = { path = "../re_error" }
 re_log = { path = "../re_log" }
@@ -43,23 +44,23 @@ re_string_interner = { path = "../re_string_interner" }
 re_tensor_ops = { path = "../re_tensor_ops" }
 re_ws_comms = { path = "../re_ws_comms", features = ["client"] }
 
+ahash = "0.8"
+anyhow = "1.0"
+bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }
+cgmath = { version = "0.18", features = ["mint"] }
+document-features = "0.2"
 eframe = { version = "0.19", default-features = false, features = [
   "default_fonts",
   "persistence",
   "wgpu",
 ] }
 egui = { version = "0.19", features = ["extra_debug_asserts", "tracing"] }
-egui_extras = { version = "0.19", features = ["tracing"] }
+egui-notify = "0.4"
 egui-wgpu = "0.19"
-
-ahash = "0.8"
-anyhow = "1.0"
-bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }
-document-features = "0.2"
 egui_dock = { git = "https://github.com/rerun-io/egui_dock", rev = "5f5a877a34d17ad31640b5a1a2eb771aff26a3a1", features = [
   "serde",
 ] } # 2022-10-07
-egui-notify = "0.4"
+egui_extras = { version = "0.19", features = ["tracing"] }
 fixed = { version = "1.17", features = ["serde"] }
 glam = { version = "0.20", features = [
   "mint",
@@ -85,7 +86,6 @@ typenum = "1.15"
 uuid = { version = "1.1", features = ["serde", "v4", "js"] }
 vec1 = "1.8"
 wgpu = "0.14"
-
 
 # native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

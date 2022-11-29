@@ -21,6 +21,7 @@
 #[cfg(any(feature = "save", feature = "load"))]
 pub mod encoding;
 
+pub mod arrow;
 pub mod context;
 pub mod coordinates;
 mod data;
@@ -172,6 +173,9 @@ pub enum LogMsg {
 
     /// Server-backed operation on an [`ObjPath`] or [`DataPath`].
     PathOpMsg(PathOpMsg),
+
+    /// Log an arrow message to a [`DataPath`].
+    ArrowMsg(ArrowMsg),
 }
 
 impl LogMsg {
@@ -181,6 +185,7 @@ impl LogMsg {
             Self::TypeMsg(msg) => msg.msg_id,
             Self::DataMsg(msg) => msg.msg_id,
             Self::PathOpMsg(msg) => msg.msg_id,
+            Self::ArrowMsg(msg) => msg.msg_id,
         }
     }
 }
@@ -189,6 +194,7 @@ impl_into_enum!(BeginRecordingMsg, LogMsg, BeginRecordingMsg);
 impl_into_enum!(TypeMsg, LogMsg, TypeMsg);
 impl_into_enum!(DataMsg, LogMsg, DataMsg);
 impl_into_enum!(PathOpMsg, LogMsg, PathOpMsg);
+impl_into_enum!(ArrowMsg, LogMsg, ArrowMsg);
 
 // ----------------------------------------------------------------------------
 
@@ -263,6 +269,17 @@ impl TypeMsg {
             obj_type,
         }
     }
+}
+/// The message sent to specify the data of a single field of an object.
+#[must_use]
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub struct ArrowMsg {
+    /// A unique id per [`DataMsg`].
+    pub msg_id: MsgId,
+
+    /// The arrow payload.
+    pub data: Vec<u8>,
 }
 
 // ----------------------------------------------------------------------------

@@ -2,6 +2,7 @@
 
 import atexit
 import logging
+import os
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
@@ -9,9 +10,16 @@ from typing import Final, Iterable, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import numpy.typing as npt
-from rerun.color_conversion import linear_to_gamma_u8_pixel
+from rerun.color_conversion import linear_to_gamma_u8_pixel, u8_array_to_rgba
 
 from rerun import rerun_sdk  # type: ignore[attr-defined]
+
+EXP_ARROW = os.environ.get("RERUN_EXP_ARROW", "0").lower() in ("1", "true")
+
+if EXP_ARROW:
+    import pyarrow as pa
+
+    from rerun import components
 
 
 def rerun_shutdown() -> None:
@@ -458,7 +466,10 @@ def log_rects(
     # Treat None the same as []
     if rects is None:
         rects = []
-    rects = np.require(rects, dtype="float32")
+    rects = np.asarray(rects, dtype="float32")
+    if len(rects) == 0:
+        rects = rects.reshape((0, 4))
+
     identifiers = [] if identifiers is None else [str(s) for s in identifiers]
     colors = _normalize_colors(colors)
     class_ids = _normalize_ids(class_ids)
@@ -475,6 +486,32 @@ def log_rects(
         class_ids=class_ids,
         timeless=timeless,
     )
+
+    if EXP_ARROW:
+        arrays = []
+        fields = []
+
+        if rect_format == RectFormat.XYWH:
+            rects_array = pa.StructArray.from_arrays(
+                arrays=[pa.array(c, type=pa.float32()) for c in rects.T],
+                fields=[
+                    pa.field("x", pa.float32(), nullable=False),
+                    pa.field("y", pa.float32(), nullable=False),
+                    pa.field("w", pa.float32(), nullable=False),
+                    pa.field("h", pa.float32(), nullable=False),
+                ],
+            )
+            fields.append(pa.field("rect", type=rects_array.type, nullable=False))
+            arrays.append(rects_array)
+        else:
+            raise NotImplementedError("RectFormat not yet implemented")
+
+        if colors.any():
+            fields.append(pa.field("color_rgba", pa.uint32(), nullable=True))
+            arrays.append(pa.array([u8_array_to_rgba(c) for c in colors], type=pa.uint32()))
+
+        arr = pa.StructArray.from_arrays(arrays, fields=fields)
+        rerun_sdk.log_arrow_msg(obj_path, arr)
 
 
 def log_point(
@@ -1099,6 +1136,14 @@ def log_cleared(obj_path: str, *, recursive: bool = False) -> None:
     If `recursive` is True this will also clear all sub-paths
     """
     rerun_sdk.log_cleared(obj_path, recursive)
+
+    if EXP_ARROW:
+        # TODO(jleibs): type registry?
+        # TODO(jleibs): proper handling of rect_format
+
+        cleared_arr = pa.array([True], type=components.ClearedField.type)
+        arr = pa.StructArray.from_arrays([cleared_arr], fields=[components.ClearedField])
+        rerun_sdk.log_arrow_msg(obj_path, "rect", arr)
 
 
 @dataclass

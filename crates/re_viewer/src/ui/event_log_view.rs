@@ -191,5 +191,22 @@ fn table_row(
                 crate::data_ui::ui_path_op(ctx, ui, path_op);
             });
         }
+        LogMsg::ArrowMsg(msg) => {
+            let ArrowMsg { msg_id, data: _ } = msg;
+
+            row.col(|ui| {
+                ui.monospace("ArrowMsg");
+            });
+
+            row.col(|ui| {
+                crate::data_ui::ui_logged_arrow_data(
+                    ctx,
+                    ui,
+                    msg_id,
+                    msg,
+                    Preview::Specific(row_height),
+                );
+            });
+        }
     }
 }
