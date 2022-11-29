@@ -29,7 +29,7 @@ fn camera_ray_to_world_pos(world_pos: Vec3) -> Ray {
     } else {
         // The ray originates on the camera plane, not from the camera position
         let to_pos = world_pos - frame.camera_position;
-        let camera_plane_distance = dot(to_pos, -frame.camera_forward);
+        let camera_plane_distance = dot(to_pos, frame.camera_forward);
         ray.origin = world_pos - frame.camera_forward * camera_plane_distance;
         ray.direction = frame.camera_forward;
     }
