@@ -28,8 +28,8 @@ impl Default for LogDb {
                 ),
             ),
             (
-                FieldName::from("color_rgba"),
-                Field::new("color_rgba", DataType::UInt32),
+                FieldName::from("color_srgba_unmultiplied"),
+                Field::new("color_srgba_unmultiplied", DataType::UInt32),
             ),
             (
                 FieldName::from("pos2d"),
