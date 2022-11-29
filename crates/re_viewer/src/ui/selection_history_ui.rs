@@ -45,7 +45,7 @@ impl SelectionHistory {
                 // browser
                 let mut picked = None;
                 strip.cell(|ui| {
-                    let clipped_width = ui.available_width() - 15.0; // leave some space for the icon!
+                    let clipped_width = ui.available_width() - 20.0; // leave some space for the icon!
                     picked = egui::ComboBox::from_id_source("history_browser")
                         .width(ui.available_width())
                         .wrap(false)
@@ -199,6 +199,8 @@ fn selection_to_string(blueprint: &Blueprint, sel: &Selection) -> String {
     sel.to_string()
 }
 
+// TODO(cmc): This is both ad-hoc and technically incorrect: we should be using egui's
+// `TextWrapping` job after patching it so that it can "wrap from the front".
 fn selection_to_clipped_string(
     ui: &mut egui::Ui,
     blueprint: &Blueprint,
