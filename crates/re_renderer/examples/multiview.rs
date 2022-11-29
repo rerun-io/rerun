@@ -182,6 +182,9 @@ impl Example for Multiview {
     }
 
     fn new(re_ctx: &mut RenderContext) -> Self {
+        re_log::info!("Switch between orthographic & perspective by pressing 'O'");
+        re_log::info!("Stop camera movement by pressing 'Space'");
+
         let mut rnd = <rand::rngs::StdRng as rand::SeedableRng>::seed_from_u64(42);
         let random_point_range = -5.0_f32..5.0_f32;
         let random_points = (0..500000)
