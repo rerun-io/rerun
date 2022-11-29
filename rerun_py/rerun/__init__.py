@@ -19,7 +19,7 @@ EXP_ARROW = os.environ.get("RERUN_EXP_ARROW", "0").lower() in ("1", "true")
 if EXP_ARROW:
     import pyarrow as pa
 
-    from . import components
+    from rerun import components
 
 
 def rerun_shutdown() -> None:
@@ -427,16 +427,6 @@ def log_rect(
     """
     rerun_sdk.log_rect(obj_path, rect_format.value, _to_sequence(rect), color, label, class_id, timeless)
 
-    if EXP_ARROW:
-        # TODO(jleibs): type registry?
-        # TODO(jleibs): proper handling of rect_format
-
-        rect_arr = pa.array([[tuple(rect) if rect else []]], type=components.RectField.type)
-        colors = _normalize_colors(color)
-        color_arr = pa.array([[u8_array_to_rgba(colors) if color else None]], type=components.ColorField.type)
-        arr = pa.StructArray.from_arrays([rect_arr, color_arr], fields=[components.RectField, components.ColorField])
-        rerun_sdk.log_arrow_msg(obj_path, "rect", arr)
-
 
 def log_rects(
     obj_path: str,
@@ -476,7 +466,10 @@ def log_rects(
     # Treat None the same as []
     if rects is None:
         rects = []
-    rects = np.require(rects, dtype="float32")
+    rects = np.asarray(rects, dtype="float32")
+    if len(rects) == 0:
+        rects = rects.reshape((0, 4))
+
     identifiers = [] if identifiers is None else [str(s) for s in identifiers]
     colors = _normalize_colors(colors)
     class_ids = _normalize_ids(class_ids)
@@ -495,14 +488,8 @@ def log_rects(
     )
 
     if EXP_ARROW:
-
         arrays = []
         fields = []
-
-        rects = np.asarray(rects)
-
-        if len(rects) == 0:
-            rects = rects.reshape((0, 4))
 
         if rect_format == RectFormat.XYWH:
             rects_array = pa.StructArray.from_arrays(
@@ -517,7 +504,7 @@ def log_rects(
             fields.append(pa.field("rect", type=rects_array.type, nullable=False))
             arrays.append(rects_array)
         else:
-            raise NotImplemented("RectFormat not yet implemented")
+            raise NotImplementedError("RectFormat not yet implemented")
 
         if colors.any():
             fields.append(pa.field("color_rgba", pa.uint32(), nullable=True))
