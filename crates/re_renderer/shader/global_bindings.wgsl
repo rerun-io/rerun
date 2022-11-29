@@ -7,7 +7,7 @@ struct FrameUniformBuffer {
     camera_position: vec3<f32>,
     /// Camera direction in world space.
     /// Same as -Vec3(view_from_world[0].z, view_from_world[1].z, view_from_world[2].z)
-    camera_direction: vec3<f32>,
+    camera_forward: vec3<f32>,
 
     /// (tan(fov_y / 2) * aspect_ratio, tan(fov_y /2)), i.e. half ratio of screen dimension to screen distance in x & y.
     /// Both values are set to positive infinity for orthographic projection
