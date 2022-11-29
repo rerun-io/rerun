@@ -60,6 +60,12 @@ macro_rules! impl_into_enum {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct MsgId(re_tuid::Tuid);
 
+impl std::fmt::Display for MsgId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:x}", self.0.as_u128())
+    }
+}
+
 impl MsgId {
     /// All zeroes.
     pub const ZERO: Self = Self(re_tuid::Tuid::ZERO);
@@ -560,6 +566,8 @@ impl TimeInt {
     // to be able to pan to before the `TimeInt::BEGINNING`, and so we need
     // a bit of leeway.
     pub const BEGINNING: TimeInt = TimeInt(i64::MIN / 2);
+
+    pub const MAX: TimeInt = TimeInt(i64::MAX);
 
     #[inline]
     pub fn as_i64(&self) -> i64 {

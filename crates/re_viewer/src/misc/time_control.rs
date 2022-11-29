@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use egui::NumExt as _;
 
-use re_data_store::{TimeQuery, TimesPerTimeline};
+use re_data_store::TimesPerTimeline;
 use re_log_types::*;
 
 use super::{TimeRange, TimeRangeF, TimeReal};
@@ -21,30 +21,6 @@ pub(crate) struct TimeView {
     pub time_spanned: f64,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
-pub(crate) enum TimeSelectionType {
-    // The selection is for looping the play marker.
-    Loop,
-    // The selection is for viewing a bunch of data at once, replacing the play marker.
-    Filter,
-}
-
-impl Default for TimeSelectionType {
-    fn default() -> Self {
-        Self::Loop
-    }
-}
-
-impl TimeSelectionType {
-    pub fn color(&self, visuals: &egui::Visuals) -> egui::Color32 {
-        use egui::Color32;
-        match self {
-            TimeSelectionType::Loop => Color32::from_rgb(40, 200, 130),
-            TimeSelectionType::Filter => visuals.selection.bg_fill, // it is a form of selection, so let's be consistent
-        }
-    }
-}
-
 /// State per timeline.
 #[derive(Clone, Copy, Debug, serde::Deserialize, serde::Serialize)]
 struct TimeState {
@@ -56,7 +32,7 @@ struct TimeState {
 
     /// Selected time range, if any.
     #[serde(default)]
-    selection: Option<TimeRangeF>,
+    loop_selection: Option<TimeRangeF>,
 
     /// The time range we are currently zoomed in on.
     ///
@@ -72,10 +48,24 @@ impl TimeState {
         Self {
             time: time.into(),
             fps: 30.0, // TODO(emilk): estimate based on data
-            selection: Default::default(),
+            loop_selection: Default::default(),
             view: None,
         }
     }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
+pub enum Looping {
+    /// Looping is off.
+    Off,
+
+    /// We are looping within the current loop selection.
+    Selection,
+
+    /// We are looping the entire recording.
+    ///
+    /// The loop selection is ignored.
+    All,
 }
 
 /// Controls the global view and progress of the time.
@@ -88,14 +78,9 @@ pub(crate) struct TimeControl {
     states: BTreeMap<Timeline, TimeState>,
 
     playing: bool,
-    looped: bool,
     speed: f32,
 
-    #[serde(default)]
-    pub selection_active: bool,
-
-    #[serde(default)]
-    pub selection_type: TimeSelectionType,
+    pub looping: Looping,
 }
 
 impl Default for TimeControl {
@@ -104,47 +89,13 @@ impl Default for TimeControl {
             timeline: Default::default(),
             states: Default::default(),
             playing: true,
-            looped: false,
             speed: 1.0,
-            selection_active: false,
-            selection_type: TimeSelectionType::default(),
+            looping: Looping::Off,
         }
     }
 }
 
 impl TimeControl {
-    /// None when not active
-    pub fn active_selection_type(&self) -> Option<TimeSelectionType> {
-        self.selection_active.then_some(self.selection_type)
-    }
-
-    /// None when not active
-    pub fn set_active_selection_type(&mut self, typ: Option<TimeSelectionType>) {
-        match typ {
-            None => {
-                self.selection_active = false;
-            }
-            Some(typ) => {
-                self.selection_active = true;
-                self.selection_type = typ;
-                if typ == TimeSelectionType::Loop {
-                    self.looped = true;
-                }
-            }
-        }
-    }
-
-    /// Is there a "filtering" selection, i.e. selecting a section of the timeline
-    pub fn is_time_filter_active(&self) -> bool {
-        self.selection_active && self.selection_type == TimeSelectionType::Filter
-    }
-
-    pub fn has_selection(&self) -> bool {
-        self.states
-            .get(&self.timeline)
-            .map_or(false, |state| state.selection.is_some())
-    }
-
     /// Update the current time
     pub fn move_time(&mut self, egui_ctx: &egui::Context, times_per_timeline: &TimesPerTimeline) {
         self.select_a_valid_timeline(times_per_timeline);
@@ -157,75 +108,28 @@ impl TimeControl {
             return;
         };
 
-        let active_selection_type = self.active_selection_type();
+        let dt = egui_ctx.input().stable_dt.at_most(0.1) * self.speed;
 
         let state = self
             .states
             .entry(self.timeline)
             .or_insert_with(|| TimeState::new(full_range.min));
 
-        let loop_range = if self.looped && active_selection_type == Some(TimeSelectionType::Loop) {
-            state.selection.unwrap_or_else(|| full_range.into())
-        } else {
-            full_range.into()
-        };
-
-        let dt = egui_ctx.input().stable_dt.at_most(0.1) * self.speed;
-
-        // ----
-        // Are we moving a selection or a single marker?
-
-        if active_selection_type == Some(TimeSelectionType::Filter) {
-            if let Some(time_selection) = state.selection {
-                // Move filter selection
-
-                let length = time_selection.length();
-
-                let mut new_min = time_selection.min;
-
-                if self.looped {
-                    // max must be in the range:
-                    new_min = new_min.max(loop_range.min - length);
-                }
-
-                if time_selection.max >= loop_range.max && !self.looped {
-                    // Don't pause or rewind, just stop moving time forward
-                    // until we receive more data!
-                    // This is important for "live view".
-                    return;
-                }
-
-                match self.timeline.typ() {
-                    TimeType::Sequence => {
-                        new_min += TimeReal::from(state.fps * dt);
-                    }
-                    TimeType::Time => new_min += TimeReal::from(Duration::from_secs(dt)),
-                }
-                egui_ctx.request_repaint(); // keep playing next frame
-
-                if new_min > loop_range.max && self.looped {
-                    // Put max just at start of loop:
-                    new_min = loop_range.min - length;
-                }
-
-                let new_max = new_min + length;
-                state.selection = Some(TimeRangeF::new(new_min, new_max));
-
-                return;
-            }
-        }
-
-        // Normal time marker:
-
-        if self.looped {
-            state.time = state.time.max(loop_range.min);
-        }
-
-        if state.time >= loop_range.max && !self.looped {
+        if self.looping == Looping::Off && state.time >= full_range.max {
             // Don't pause or rewind, just stop moving time forward
             // until we receive more data!
             // This is important for "live view".
             return;
+        }
+
+        let loop_range = match self.looping {
+            Looping::Off => None,
+            Looping::Selection => state.loop_selection,
+            Looping::All => Some(full_range.into()),
+        };
+
+        if let Some(loop_range) = loop_range {
+            state.time = state.time.max(loop_range.min);
         }
 
         match self.timeline.typ() {
@@ -236,8 +140,10 @@ impl TimeControl {
         }
         egui_ctx.request_repaint(); // keep playing next frame
 
-        if state.time > loop_range.max && self.looped {
-            state.time = loop_range.min;
+        if let Some(loop_range) = loop_range {
+            if state.time > loop_range.max {
+                state.time = loop_range.min;
+            }
         }
     }
 
@@ -246,18 +152,15 @@ impl TimeControl {
     }
 
     pub fn play(&mut self, times_per_timeline: &TimesPerTimeline) {
-        if self.playing {
-            return;
-        }
-
         // Start from beginning if we are at the end:
-        if let Some(axis) = times_per_timeline.get(&self.timeline) {
+        if let Some(time_points) = times_per_timeline.get(&self.timeline) {
             if let Some(state) = self.states.get_mut(&self.timeline) {
-                if state.time >= max(axis) {
-                    state.time = min(axis).into();
+                if state.time >= max(time_points) {
+                    state.time = min(time_points).into();
                 }
             } else {
-                self.states.insert(self.timeline, TimeState::new(min(axis)));
+                self.states
+                    .insert(self.timeline, TimeState::new(min(time_points)));
             }
         }
         self.playing = true;
@@ -289,16 +192,6 @@ impl TimeControl {
         }
     }
 
-    /// looped playback enabled?
-    pub fn looped(&self) -> bool {
-        self.looped
-    }
-
-    /// looped playback enabled?
-    pub fn set_looped(&mut self, looped: bool) {
-        self.looped = looped;
-    }
-
     /// Make sure the selected timeline is a valid one
     pub fn select_a_valid_timeline(&mut self, times_per_timeline: &TimesPerTimeline) {
         for timeline in times_per_timeline.timelines() {
@@ -327,40 +220,25 @@ impl TimeControl {
         self.timeline = timeline;
     }
 
-    /// The current time. Note that this only makes sense if there is no time selection!
+    /// The current time.
     pub fn time(&self) -> Option<TimeReal> {
-        if self.is_time_filter_active() {
-            return None; // no single time
-        }
-
         self.states.get(&self.timeline).map(|state| state.time)
     }
 
-    /// The current filtered time.
-    /// Returns a "point" range if we have no selection (normal play)
-    pub fn time_range(&self) -> Option<TimeRangeF> {
-        let state = self.states.get(&self.timeline)?;
-
-        if self.is_time_filter_active() {
-            state.selection
-        } else {
-            Some(TimeRangeF::point(state.time))
-        }
+    /// The current time.
+    pub fn time_int(&self) -> Option<TimeInt> {
+        Some(self.time()?.floor())
     }
 
-    /// If the time filter is active, what range does it cover?
-    pub fn time_filter_range(&self) -> Option<TimeRangeF> {
-        if self.is_time_filter_active() {
-            self.states.get(&self.timeline)?.selection
-        } else {
-            None
-        }
+    /// The current time.
+    pub fn time_i64(&self) -> Option<i64> {
+        Some(self.time()?.floor().as_i64())
     }
 
-    /// The current loop range, iff looping is turned on
-    pub fn loop_range(&self) -> Option<TimeRangeF> {
-        if self.selection_active && self.selection_type == TimeSelectionType::Loop {
-            self.states.get(&self.timeline)?.selection
+    /// The current loop range, iff selection looping is turned on.
+    pub fn active_loop_selection(&self) -> Option<TimeRangeF> {
+        if self.looping == Looping::Selection {
+            self.states.get(&self.timeline)?.loop_selection
         } else {
             None
         }
@@ -371,6 +249,21 @@ impl TimeControl {
         times_per_timeline.get(&self.timeline).map(range)
     }
 
+    /// The selected slice of time that is called the "loop selection".
+    ///
+    /// This can still return `Some` even if looping is currently off.
+    pub fn loop_selection(&self) -> Option<TimeRangeF> {
+        self.states.get(&self.timeline)?.loop_selection
+    }
+
+    /// Set the current loop selection without enabling looping.
+    pub fn set_loop_selection(&mut self, selection: TimeRangeF) {
+        self.states
+            .entry(self.timeline)
+            .or_insert_with(|| TimeState::new(selection.min))
+            .loop_selection = Some(selection);
+    }
+
     /// Is the current time in the selection range (if any), or at the current time mark?
     pub fn is_time_selected(&self, timeline: &Timeline, needle: TimeInt) -> bool {
         if timeline != &self.timeline {
@@ -378,12 +271,6 @@ impl TimeControl {
         }
 
         if let Some(state) = self.states.get(&self.timeline) {
-            if self.is_time_filter_active() {
-                if let Some(range) = state.selection {
-                    return range.contains(TimeReal::from(needle));
-                }
-            }
-
             state.time.floor() == needle
         } else {
             false
@@ -396,10 +283,6 @@ impl TimeControl {
     }
 
     pub fn set_time(&mut self, time: impl Into<TimeReal>) {
-        if self.is_time_filter_active() {
-            self.selection_active = false;
-        }
-
         let time = time.into();
 
         self.states
@@ -426,30 +309,6 @@ impl TimeControl {
         if let Some(state) = self.states.get_mut(&self.timeline) {
             state.view = None;
         }
-    }
-
-    pub fn time_selection(&self) -> Option<TimeRangeF> {
-        self.states.get(&self.timeline)?.selection
-    }
-
-    pub fn set_time_selection(&mut self, selection: TimeRangeF) {
-        self.states
-            .entry(self.timeline)
-            .or_insert_with(|| TimeState::new(selection.min))
-            .selection = Some(selection);
-    }
-
-    pub fn time_query(&self) -> Option<TimeQuery<i64>> {
-        if self.is_time_filter_active() {
-            if let Some(state) = self.states.get(&self.timeline) {
-                if let Some(range) = state.selection {
-                    return Some(TimeQuery::Range(
-                        range.min.ceil().as_i64()..=range.max.floor().as_i64(),
-                    ));
-                }
-            }
-        }
-        Some(TimeQuery::LatestAt(self.time()?.floor().as_i64()))
     }
 }
 

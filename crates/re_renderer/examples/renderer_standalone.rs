@@ -27,11 +27,11 @@ use re_renderer::{
         PointCloudDrawable, PointCloudPoint, TestTriangleDrawable,
     },
     resource_managers::ResourceLifeTime,
-    view_builder::{TargetConfiguration, ViewBuilder},
+    view_builder::{Projection, TargetConfiguration, ViewBuilder},
     RenderContext,
 };
 use winit::{
-    event::{Event, WindowEvent},
+    event::{ElementState, Event, VirtualKeyCode, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     window::Window,
 };
@@ -70,14 +70,9 @@ fn draw_views(
     backbuffer_view: &wgpu::TextureView,
     resolution: [u32; 2],
 ) -> impl Iterator<Item = wgpu::CommandBuffer> {
-    // Rotate camera around the center at a distance of 5, looking down at 45 deg
     let seconds_since_startup = state.time.seconds_since_startup();
-    let pos = Vec3::new(
-        seconds_since_startup.sin(),
-        0.5,
-        seconds_since_startup.cos(),
-    ) * 10.0;
-    let view_from_world = IsoTransform::look_at_rh(pos, Vec3::ZERO, Vec3::Y).unwrap();
+    let view_from_world =
+        IsoTransform::look_at_rh(state.camera_position, Vec3::ZERO, Vec3::Y).unwrap();
 
     let triangle = TestTriangleDrawable::new(re_ctx);
     let skybox = GenericSkyboxDrawable::new(re_ctx);
@@ -92,6 +87,18 @@ fn draw_views(
 
     let splits = split_resolution(resolution, 2, 2).collect::<Vec<_>>();
 
+    let projection_from_view = if state.perspective_projection {
+        Projection::Perspective {
+            vertical_fov: 70.0 * TAU / 360.0,
+            near_plane_distance: 0.01,
+        }
+    } else {
+        Projection::Orthographic {
+            vertical_world_size: 15.0,
+            far_plane_distance: 100000.0,
+        }
+    };
+
     // Using a macro here because `Drawable` isn't object safe and a closure cannot be
     // generic over its input type.
     #[rustfmt::skip]
@@ -104,8 +111,7 @@ fn draw_views(
                     resolution_in_pixel: [width as u32, height as u32],
                     origin_in_pixel: [x as u32, y as u32],
                     view_from_world,
-                    fov_y: 70.0 * TAU / 360.0,
-                    near_plane_distance: 0.01,
+                    projection_from_view: projection_from_view.clone(),
                 },
                 &skybox,
                 &$name
@@ -384,6 +390,23 @@ impl Application {
                     self.window.request_redraw();
                 }
                 Event::WindowEvent {
+                    event: WindowEvent::KeyboardInput { input, .. },
+                    ..
+                } => match (input.state, input.virtual_keycode) {
+                    (ElementState::Pressed, Some(VirtualKeyCode::O)) => {
+                        self.state.perspective_projection = !self.state.perspective_projection;
+                    }
+
+                    (ElementState::Pressed, Some(VirtualKeyCode::Space)) => {
+                        self.state.camera_control = match self.state.camera_control {
+                            CameraControl::RotateAroundCenter => CameraControl::Manual,
+                            CameraControl::Manual => CameraControl::RotateAroundCenter,
+                        };
+                    }
+
+                    _ => {}
+                },
+                Event::WindowEvent {
                     event:
                         WindowEvent::ScaleFactorChanged {
                             scale_factor: _,
@@ -425,6 +448,15 @@ impl Application {
                     let view = frame
                         .texture
                         .create_view(&wgpu::TextureViewDescriptor::default());
+
+                    if matches!(self.state.camera_control, CameraControl::RotateAroundCenter) {
+                        let seconds_since_startup = self.state.time.seconds_since_startup();
+                        self.state.camera_position = Vec3::new(
+                            seconds_since_startup.sin(),
+                            0.5,
+                            seconds_since_startup.cos(),
+                        ) * 10.0;
+                    }
 
                     let cmd_buffers = draw_views(
                         &self.state,
@@ -484,8 +516,21 @@ impl Time {
     }
 }
 
+enum CameraControl {
+    RotateAroundCenter,
+
+    // TODO(andreas): Only pauses rotation right now. Add camera controller.
+    Manual,
+}
+
 struct AppState {
     time: Time,
+
+    perspective_projection: bool,
+
+    camera_control: CameraControl,
+    camera_position: glam::Vec3,
+
     model_mesh_instances: Vec<MeshInstance>,
     mesh_instance_positions_and_colors: Vec<(glam::Vec3, [u8; 4])>,
 
@@ -495,6 +540,9 @@ struct AppState {
 
 impl AppState {
     fn new(re_ctx: &mut RenderContext) -> Self {
+        re_log::info!("Switch between orthographic & perspective by pressing 'O'");
+        re_log::info!("Stop camera movement by pressing 'Space'");
+
         let mut rnd = <rand::rngs::StdRng as rand::SeedableRng>::seed_from_u64(42);
         let random_point_range = -5.0_f32..5.0_f32;
         let random_points = (0..500000)
@@ -539,6 +587,11 @@ impl AppState {
                 start_time: Instant::now(),
                 last_draw_time: Instant::now(),
             },
+            perspective_projection: true,
+
+            camera_control: CameraControl::RotateAroundCenter,
+            camera_position: glam::Vec3::ZERO,
+
             model_mesh_instances,
             mesh_instance_positions_and_colors,
             random_points,
