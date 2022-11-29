@@ -308,15 +308,15 @@ impl ViewBuilder {
 
         let mut view_from_world = config.view_from_world.to_mat4();
         // For OrthographicCameraMode::TopLeftCorner, we want Z facing forward.
-        if matches!(
-            config.projection_from_view,
-            Projection::Orthographic {
-                camera_mode: OrthographicCameraMode::TopLeftCorner,
-                ..
-            }
-        ) {
-            *view_from_world.col_mut(2) = -view_from_world.col(2);
-        }
+        match config.projection_from_view {
+            Projection::Orthographic { camera_mode, .. } => match camera_mode {
+                OrthographicCameraMode::NearPlaneCenter => {
+                    *view_from_world.col_mut(2) = -view_from_world.col(2);
+                }
+                OrthographicCameraMode::TopLeftCorner => {}
+            },
+            Projection::Perspective { .. } => {}
+        };
         let camera_position = config.view_from_world.inverse().translation();
         let camera_forward = -view_from_world.row(2).truncate();
         let projection_from_world = projection_from_view * view_from_world;
