@@ -95,6 +95,12 @@ impl SelectionHistory {
         res
     }
 
+    // TODO(cmc): note that for now, we only check prev/next shortcuts in the UI code that
+    // shows the associated buttons... this means shortcuts only work when the selection panel
+    // is open!
+    // We might want to change this at some point, though the way things are currently designed,
+    // there isn't much point in selecting stuff while the selection panel is hidden anyway.
+
     fn prev_button_ui(
         &mut self,
         ui: &mut egui::Ui,
