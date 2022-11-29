@@ -168,7 +168,7 @@ pub enum LogMsg {
     /// Server-backed operation on an [`ObjPath`] or [`DataPath`].
     PathOpMsg(PathOpMsg),
 
-    /// Log an arrow message to data to a [`DataPath`].
+    /// Log an arrow message to a [`DataPath`].
     ArrowMsg(ArrowMsg),
 }
 
