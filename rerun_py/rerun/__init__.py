@@ -511,6 +511,7 @@ def log_rects(
             arrays.append(pa.array([u8_array_to_rgba(c) for c in colors], type=pa.uint32()))
 
         arr = pa.StructArray.from_arrays(arrays, fields=fields)
+        print(arr.to_string())
         rerun_sdk.log_arrow_msg(obj_path, arr)
 
 

@@ -3,7 +3,7 @@ use arrow2::buffer::Buffer;
 use nohash_hasher::IntMap;
 use polars::export::arrow::io::ipc::read::{read_stream_metadata, StreamReader, StreamState};
 use polars::prelude::*;
-use re_log_types::arrow::{filter_time_cols, OBJPATH_KEY};
+use re_log_types::arrow::{filter_time_cols, ENTITY_PATH_KEY};
 use re_log_types::{ArrowMsg, FieldName, ObjPath};
 
 pub struct LogDb {
@@ -170,7 +170,7 @@ impl LogDb {
         // Get the object path from the metadata
         let obj_path = arrow_schema
             .metadata
-            .get(OBJPATH_KEY)
+            .get(ENTITY_PATH_KEY)
             .map(|path| ObjPath::from(path.as_str()))
             .expect("Bad ObjPath");
 
