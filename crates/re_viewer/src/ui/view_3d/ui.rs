@@ -7,7 +7,7 @@ use re_data_store::{InstanceId, InstanceIdHash};
 use re_log_types::{ObjPath, ViewCoordinates};
 use re_renderer::{
     renderer::{GenericSkyboxDrawable, LineDrawable, MeshDrawable, PointCloudDrawable},
-    view_builder::{TargetConfiguration, ViewBuilder},
+    view_builder::{Projection, TargetConfiguration, ViewBuilder},
     RenderContext,
 };
 
@@ -510,8 +510,10 @@ fn paint_view(
                     origin_in_pixel,
 
                     view_from_world: eye.world_from_view.inverse(),
-                    fov_y: eye.fov_y,
-                    near_plane_distance: eye.near(),
+                    projection_from_view: Projection::Perspective {
+                        vertical_fov: eye.fov_y,
+                        near_plane_distance: eye.near(),
+                    },
                 },
             )
             .unwrap()
