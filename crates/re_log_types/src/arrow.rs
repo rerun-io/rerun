@@ -13,9 +13,9 @@ pub const TIMELINE_SEQUENCE: &str = "Sequence";
 pub const TIMELINE_TIME: &str = "Time";
 
 /// Build a iterator of (field, col) for all timelines in `time_point`
-pub fn build_time_cols<'tp>(
-    time_point: &'tp TimePoint,
-) -> impl Iterator<Item = (Field, Box<dyn Array>)> + 'tp {
+pub fn build_time_cols(
+    time_point: &TimePoint,
+) -> impl Iterator<Item = (Field, Box<dyn Array>)> + '_ {
     time_point.0.iter().map(|(timeline, time)| {
         let (datatype, meta_value) = match timeline.typ() {
             TimeType::Sequence => (DataType::Int64, TIMELINE_SEQUENCE),
