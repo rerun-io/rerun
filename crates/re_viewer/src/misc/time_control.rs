@@ -68,12 +68,6 @@ pub enum Looping {
     All,
 }
 
-impl Looping {
-    pub fn is_on(self) -> bool {
-        self != Self::Off
-    }
-}
-
 /// Controls the global view and progress of the time.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
@@ -122,21 +116,22 @@ impl TimeControl {
             .or_insert_with(|| TimeState::new(full_range.min));
 
         let loop_range = match self.looping {
-            Looping::Selection => state.loop_selection.unwrap_or_else(|| full_range.into()),
-            Looping::Off | Looping::All => full_range.into(),
+            Looping::Off => None,
+            Looping::Selection => state.loop_selection,
+            Looping::All => Some(full_range.into()),
         };
 
         // ----
 
-        if self.looping.is_on() {
+        if let Some(loop_range) = loop_range {
             state.time = state.time.max(loop_range.min);
-        }
 
-        if state.time >= loop_range.max && self.looping.is_on() {
-            // Don't pause or rewind, just stop moving time forward
-            // until we receive more data!
-            // This is important for "live view".
-            return;
+            if self.looping == Looping::All && state.time >= loop_range.max {
+                // Don't pause or rewind, just stop moving time forward
+                // until we receive more data!
+                // This is important for "live view".
+                return;
+            }
         }
 
         match self.timeline.typ() {
@@ -147,8 +142,10 @@ impl TimeControl {
         }
         egui_ctx.request_repaint(); // keep playing next frame
 
-        if state.time > loop_range.max && self.looping.is_on() {
-            state.time = loop_range.min;
+        if let Some(loop_range) = loop_range {
+            if state.time > loop_range.max {
+                state.time = loop_range.min;
+            }
         }
     }
 

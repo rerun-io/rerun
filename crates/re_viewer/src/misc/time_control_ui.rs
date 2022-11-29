@@ -74,12 +74,21 @@ impl TimeControl {
 
         {
             ui.scope(|ui| {
-                // Loop-buton cycled between stats
+                // Loop-button cycles between states:
                 match self.looping {
                     Looping::Off => {
                         if ui
                             .selectable_label(false, "🔁")
                             .on_hover_text("Looping is off")
+                            .clicked()
+                        {
+                            self.looping = Looping::All;
+                        }
+                    }
+                    Looping::All => {
+                        if ui
+                            .selectable_label(true, "🔁")
+                            .on_hover_text("Currently looping entire recording")
                             .clicked()
                         {
                             self.looping = Looping::Selection;
@@ -95,15 +104,6 @@ impl TimeControl {
                             .clicked()
                         {
                             self.looping = Looping::All;
-                        }
-                    }
-                    Looping::All => {
-                        if ui
-                            .selectable_label(true, "🔁")
-                            .on_hover_text("Currently looping entire recording")
-                            .clicked()
-                        {
-                            self.looping = Looping::Off;
                         }
                     }
                 }
