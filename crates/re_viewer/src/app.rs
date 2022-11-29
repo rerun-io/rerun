@@ -335,7 +335,7 @@ impl eframe::App for App {
             });
         } else {
             self.state
-                .show(egui_ctx, log_db, &self.design_tokens, render_ctx);
+                .show(egui_ctx, render_ctx, log_db, &self.design_tokens);
         }
 
         self.handle_dropping_files(egui_ctx);
@@ -586,6 +586,7 @@ struct AppState {
     panel_selection: PanelSelection,
     event_log_view: crate::event_log_view::EventLogView,
     selection_panel: crate::selection_panel::SelectionPanel,
+    selection_history: crate::SelectionHistory,
     time_panel: crate::time_panel::TimePanel,
 
     #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
@@ -601,9 +602,9 @@ impl AppState {
     fn show(
         &mut self,
         egui_ctx: &egui::Context,
+        render_ctx: &mut re_renderer::RenderContext,
         log_db: &LogDb,
         design_tokens: &DesignTokens,
-        render_ctx: &mut re_renderer::RenderContext,
     ) {
         crate::profile_function!();
 
@@ -616,6 +617,7 @@ impl AppState {
             event_log_view,
             blueprints,
             selection_panel,
+            selection_history,
             time_panel,
             #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
                 profiler: _,
@@ -634,12 +636,13 @@ impl AppState {
             cache,
             log_db,
             rec_cfg,
+            selection_history,
             design_tokens,
             render_ctx,
         };
 
         let blueprint = blueprints.entry(selected_app_id.clone()).or_default();
-        selection_panel.show_panel(&mut ctx, blueprint, egui_ctx);
+        selection_panel.show_panel(&mut ctx, egui_ctx, blueprint);
         time_panel.show_panel(&mut ctx, blueprint, egui_ctx);
 
         let central_panel_frame = egui::Frame {

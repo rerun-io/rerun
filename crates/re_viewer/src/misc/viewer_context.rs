@@ -3,7 +3,7 @@ use macaw::Ray3;
 use re_data_store::{log_db::LogDb, InstanceId, ObjTypePath};
 use re_log_types::{DataPath, MsgId, ObjPath, TimeInt, Timeline};
 
-use crate::ui::SpaceViewId;
+use crate::ui::{SelectionHistory, SpaceViewId};
 
 /// Common things needed by many parts of the viewer.
 pub(crate) struct ViewerContext<'a> {
@@ -18,6 +18,8 @@ pub(crate) struct ViewerContext<'a> {
 
     /// UI config for the current recording (found in [`LogDb`]).
     pub rec_cfg: &'a mut RecordingConfig,
+
+    pub selection_history: &'a mut SelectionHistory,
 
     /// The look and feel of the UI
     pub design_tokens: &'a crate::design_tokens::DesignTokens,
@@ -43,9 +45,9 @@ impl<'a> ViewerContext<'a> {
         type_path: &ObjTypePath,
     ) -> egui::Response {
         // TODO(emilk): common hover-effect of all buttons for the same type_path!
-        let response = ui.selectable_label(self.rec_cfg.selection.is_type_path(type_path), text);
+        let response = ui.selectable_label(self.selection().is_type_path(type_path), text);
         if response.clicked() {
-            self.rec_cfg.selection = Selection::ObjTypePath(type_path.clone());
+            self.set_selection(Selection::ObjTypePath(type_path.clone()));
         }
         response
     }
@@ -63,12 +65,12 @@ impl<'a> ViewerContext<'a> {
         obj_path: &ObjPath,
     ) -> egui::Response {
         // TODO(emilk): common hover-effect of all buttons for the same obj_path!
-        let response = ui.selectable_label(self.rec_cfg.selection.is_obj_path(obj_path), text);
+        let response = ui.selectable_label(self.selection().is_obj_path(obj_path), text);
         if response.clicked() {
-            self.rec_cfg.selection = Selection::Instance(InstanceId {
+            self.set_selection(Selection::Instance(InstanceId {
                 obj_path: obj_path.clone(),
                 instance_index: None,
-            });
+            }));
         }
         response
     }
@@ -90,10 +92,9 @@ impl<'a> ViewerContext<'a> {
         instance_id: &InstanceId,
     ) -> egui::Response {
         // TODO(emilk): common hover-effect of all buttons for the same instance_id!
-        let response =
-            ui.selectable_label(self.rec_cfg.selection.is_instance_id(instance_id), text);
+        let response = ui.selectable_label(self.selection().is_instance_id(instance_id), text);
         if response.clicked() {
-            self.rec_cfg.selection = Selection::Instance(instance_id.clone());
+            self.set_selection(Selection::Instance(instance_id.clone()));
         }
         response
     }
@@ -111,9 +112,9 @@ impl<'a> ViewerContext<'a> {
         data_path: &DataPath,
     ) -> egui::Response {
         // TODO(emilk): common hover-effect of all buttons for the same data_path!
-        let response = ui.selectable_label(self.rec_cfg.selection.is_data_path(data_path), text);
+        let response = ui.selectable_label(self.selection().is_data_path(data_path), text);
         if response.clicked() {
-            self.rec_cfg.selection = Selection::DataPath(data_path.clone());
+            self.set_selection(Selection::DataPath(data_path.clone()));
         }
         response
     }
@@ -124,10 +125,10 @@ impl<'a> ViewerContext<'a> {
         text: impl Into<egui::WidgetText>,
         space_view_id: SpaceViewId,
     ) -> egui::Response {
-        let is_selected = self.rec_cfg.selection == Selection::SpaceView(space_view_id);
+        let is_selected = self.selection() == Selection::SpaceView(space_view_id);
         let response = ui.selectable_label(is_selected, text);
         if response.clicked() {
-            self.rec_cfg.selection = Selection::SpaceView(space_view_id);
+            self.set_selection(Selection::SpaceView(space_view_id));
         }
         response
     }
@@ -140,9 +141,9 @@ impl<'a> ViewerContext<'a> {
         obj_path: &ObjPath,
     ) -> egui::Response {
         let selection = Selection::SpaceViewObjPath(space_view_id, obj_path.clone());
-        let response = ui.selectable_label(self.rec_cfg.selection == selection, text);
+        let response = ui.selectable_label(self.selection() == selection, text);
         if response.clicked() {
-            self.rec_cfg.selection = selection;
+            self.set_selection(selection);
         }
         response
     }
@@ -174,6 +175,26 @@ impl<'a> ViewerContext<'a> {
             self.rec_cfg.time_ctrl.pause();
         }
         response
+    }
+
+    /// Sets the current selection, updating history as needed.
+    ///
+    /// Returns the previous selection.
+    pub fn set_selection(&mut self, selection: Selection) -> Selection {
+        self.rec_cfg
+            .set_selection(self.selection_history, selection)
+    }
+
+    /// Clears the current selection.
+    ///
+    /// Returns the previous selection.
+    pub fn clear_selection(&mut self) -> Selection {
+        self.rec_cfg.clear_selection()
+    }
+
+    /// Returns the current selection.
+    pub fn selection(&self) -> Selection {
+        self.rec_cfg.selection()
     }
 }
 
@@ -209,7 +230,10 @@ pub(crate) struct RecordingConfig {
     pub time_ctrl: crate::TimeControl,
 
     /// Currently selected thing; shown in the [`crate::selection_panel::SelectionPanel`].
-    pub selection: Selection,
+    ///
+    /// Do not access this field directly! Use the helper methods instead, which will make sure
+    /// to properly maintain the undo/redo history.
+    selection: Selection,
 
     /// What space is the pointer hovering over? Read from this.
     #[serde(skip)]
@@ -227,6 +251,31 @@ impl RecordingConfig {
 
         self.hovered_space_previous_frame =
             std::mem::replace(&mut self.hovered_space_this_frame, HoveredSpace::None);
+    }
+
+    /// Sets the current selection, updating history as needed.
+    ///
+    /// Returns the previous selection.
+    pub fn set_selection(
+        &mut self,
+        history: &mut SelectionHistory,
+        selection: Selection,
+    ) -> Selection {
+        history.update_selection(&selection);
+        std::mem::replace(&mut self.selection, selection)
+    }
+
+    /// Clears the current selection.
+    ///
+    /// Returns the previous selection.
+    pub fn clear_selection(&mut self) -> Selection {
+        // NOTE: at least for now, we consider a lack of selection irrelevant history-wise.
+        std::mem::replace(&mut self.selection, Selection::None)
+    }
+
+    /// Returns the current selection.
+    pub fn selection(&self) -> Selection {
+        self.selection.clone()
     }
 }
 
@@ -282,8 +331,8 @@ impl Default for Options {
 
 // ----------------------------------------------------------------------------
 
-#[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
-pub(crate) enum Selection {
+#[derive(Clone, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+pub enum Selection {
     None,
     MsgId(MsgId),
     ObjTypePath(ObjTypePath),
@@ -293,6 +342,21 @@ pub(crate) enum Selection {
     SpaceView(crate::ui::SpaceViewId),
     /// An object within a space-view.
     SpaceViewObjPath(crate::ui::SpaceViewId, ObjPath),
+}
+
+impl std::fmt::Display for Selection {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Selection::None => write!(f, "<empty>"),
+            Selection::MsgId(s) => s.fmt(f),
+            Selection::ObjTypePath(s) => s.fmt(f),
+            Selection::Instance(s) => s.fmt(f),
+            Selection::DataPath(s) => s.fmt(f),
+            Selection::Space(s) => s.fmt(f),
+            Selection::SpaceView(s) => write!(f, "{s:?}"),
+            Selection::SpaceViewObjPath(sid, path) => write!(f, "({sid:?}, {path})"),
+        }
+    }
 }
 
 impl Default for Selection {
