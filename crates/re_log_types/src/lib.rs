@@ -59,6 +59,12 @@ macro_rules! impl_into_enum {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct MsgId(re_tuid::Tuid);
 
+impl std::fmt::Display for MsgId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:x}", self.0.as_u128())
+    }
+}
+
 impl MsgId {
     /// All zeroes.
     pub const ZERO: Self = Self(re_tuid::Tuid::ZERO);

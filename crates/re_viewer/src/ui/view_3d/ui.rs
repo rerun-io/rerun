@@ -7,7 +7,7 @@ use re_data_store::{InstanceId, InstanceIdHash};
 use re_log_types::{ObjPath, ViewCoordinates};
 use re_renderer::{
     renderer::{GenericSkyboxDrawable, LineDrawable, MeshDrawable, PointCloudDrawable},
-    view_builder::{TargetConfiguration, ViewBuilder},
+    view_builder::{Projection, TargetConfiguration, ViewBuilder},
     RenderContext,
 };
 
@@ -81,7 +81,7 @@ impl View3DState {
         if response.double_clicked() {
             // Reset eye
             if tracking_camera.is_some() {
-                ctx.rec_cfg.selection = Selection::None;
+                ctx.clear_selection();
             }
             self.interpolate_to_orbit_eye(default_eye(&self.scene_bbox, &self.space_specs));
         }
@@ -267,8 +267,8 @@ impl SpaceSpecs {
 
 /// If the path to a camera is selected, we follow that camera.
 fn tracking_camera(ctx: &ViewerContext<'_>, space_cameras: &[SpaceCamera]) -> Option<Eye> {
-    if let Selection::Instance(selected) = &ctx.rec_cfg.selection {
-        find_camera(space_cameras, selected)
+    if let Selection::Instance(selected) = ctx.selection() {
+        find_camera(space_cameras, &selected)
     } else {
         None
     }
@@ -298,7 +298,7 @@ fn click_object(
     state: &mut View3DState,
     instance_id: &InstanceId,
 ) {
-    ctx.rec_cfg.selection = crate::Selection::Instance(instance_id.clone());
+    ctx.set_selection(crate::Selection::Instance(instance_id.clone()));
 
     if let Some(camera) = find_camera(space_cameras, instance_id) {
         state.interpolate_to_eye(camera);
@@ -355,7 +355,7 @@ pub(crate) fn view_3d(
         state.last_eye_interact_time = ui.input().time;
         state.eye_interpolation = None;
         if tracking_camera.is_some() {
-            ctx.rec_cfg.selection = Selection::None;
+            ctx.clear_selection();
         }
     }
 
@@ -510,8 +510,10 @@ fn paint_view(
                     origin_in_pixel,
 
                     view_from_world: eye.world_from_view.inverse(),
-                    fov_y: eye.fov_y,
-                    near_plane_distance: eye.near(),
+                    projection_from_view: Projection::Perspective {
+                        vertical_fov: eye.fov_y,
+                        near_plane_distance: eye.near(),
+                    },
                 },
             )
             .unwrap()

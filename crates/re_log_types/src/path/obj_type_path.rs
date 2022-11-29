@@ -57,6 +57,10 @@ impl ObjTypePath {
             })
             .count()
     }
+
+    pub fn to_components(&self) -> Vec<ObjTypePathComp> {
+        self.components.clone()
+    }
 }
 
 // ----------------------------------------------------------------------------

@@ -5,6 +5,8 @@ use crate::{data_ui::*, ui::Blueprint, Preview, Selection, ViewerContext};
 
 use super::SpaceView;
 
+// ---
+
 /// The "Selection View" side-bar.
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
@@ -15,8 +17,8 @@ impl SelectionPanel {
     pub fn show_panel(
         &mut self,
         ctx: &mut ViewerContext<'_>,
-        blueprint: &mut Blueprint,
         egui_ctx: &egui::Context,
+        blueprint: &mut Blueprint,
     ) {
         let shortcut = crate::ui::kb_shortcuts::TOGGLE_SELECTION_PANEL;
         blueprint.selection_panel_expanded ^= egui_ctx.input_mut().consume_shortcut(&shortcut);
@@ -62,7 +64,13 @@ impl SelectionPanel {
                         blueprint.selection_panel_expanded = false;
                     }
 
-                    self.contents(ctx, blueprint, ui);
+                    ui.separator();
+
+                    if let Some(selection) = ctx.selection_history.selection_ui(ui, blueprint) {
+                        ctx.set_selection(selection);
+                    }
+
+                    self.contents(ui, ctx, blueprint);
                 }
             },
         );
@@ -71,9 +79,9 @@ impl SelectionPanel {
     #[allow(clippy::unused_self)]
     fn contents(
         &mut self,
+        ui: &mut egui::Ui,
         ctx: &mut ViewerContext<'_>,
         blueprint: &mut Blueprint,
-        ui: &mut egui::Ui,
     ) {
         crate::profile_function!();
 
@@ -93,7 +101,7 @@ impl SelectionPanel {
         blueprint: &mut Blueprint,
         ui: &mut egui::Ui,
     ) {
-        match &ctx.rec_cfg.selection.clone() {
+        match ctx.selection() {
             Selection::None => {
                 ui.weak("(nothing)");
             }
@@ -101,11 +109,11 @@ impl SelectionPanel {
                 // ui.label(format!("Selected msg_id: {:?}", msg_id));
                 ui.label("Selected a specific log message");
 
-                let msg = if let Some(msg) = ctx.log_db.get_log_msg(msg_id) {
+                let msg = if let Some(msg) = ctx.log_db.get_log_msg(&msg_id) {
                     msg
                 } else {
                     re_log::warn!("Unknown msg_id selected. Resetting selection");
-                    ctx.rec_cfg.selection = Selection::None;
+                    ctx.clear_selection();
                     return;
                 };
 
@@ -143,7 +151,7 @@ impl SelectionPanel {
                     ));
                 });
                 ui.separator();
-                view_instance(ctx, ui, instance_id, Preview::Medium);
+                view_instance(ctx, ui, &instance_id, Preview::Medium);
             }
             Selection::DataPath(data_path) => {
                 ui.label(format!("Selected data path: {}", data_path));
@@ -165,43 +173,42 @@ impl SelectionPanel {
 
                 ui.separator();
 
-                view_data(ctx, ui, data_path);
+                view_data(ctx, ui, &data_path);
             }
             Selection::Space(space) => {
-                let space = space.clone();
                 ui.label(format!("Selected space: {}", space));
                 // I really don't know what we should show here.
             }
             Selection::SpaceView(space_view_id) => {
-                if let Some(space_view) = blueprint.viewport.get_space_view_mut(space_view_id) {
+                if let Some(space_view) = blueprint.viewport.space_view_mut(&space_view_id) {
                     ui.label("SpaceView");
                     ui_space_view(ctx, ui, space_view);
                 } else {
-                    ctx.rec_cfg.selection = Selection::None;
+                    ctx.clear_selection();
                 }
             }
             Selection::SpaceViewObjPath(space_view_id, obj_path) => {
-                if let Some(space_view) = blueprint.viewport.get_space_view_mut(space_view_id) {
+                if let Some(space_view) = blueprint.viewport.space_view_mut(&space_view_id) {
                     egui::Grid::new("space_view_id_obj_path")
                         .striped(true)
                         .show(ui, |ui| {
                             ui.label("Space View:");
-                            ctx.space_view_button_to(ui, &space_view.name, *space_view_id);
+                            ctx.space_view_button_to(ui, &space_view.name, space_view_id);
                             ui.end_row();
 
                             ui.label("Object Path:");
-                            ctx.obj_path_button(ui, obj_path);
+                            ctx.obj_path_button(ui, &obj_path);
                             ui.end_row();
                         });
 
-                    let mut props = space_view.obj_tree_properties.projected.get(obj_path);
+                    let mut props = space_view.obj_tree_properties.projected.get(&obj_path);
                     obj_props_ui(ctx, ui, &mut props);
                     space_view
                         .obj_tree_properties
                         .individual
-                        .set(obj_path.clone(), props);
+                        .set(obj_path, props);
                 } else {
-                    ctx.rec_cfg.selection = Selection::None;
+                    ctx.clear_selection();
                 }
             }
         }

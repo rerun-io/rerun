@@ -536,8 +536,8 @@ fn show_data_over_time(
 ) {
     crate::profile_function!();
 
-    let is_selected =
-        ctx.rec_cfg.selection.is_some() && select_on_click.as_ref() == Some(&ctx.rec_cfg.selection);
+    let cur_selection = ctx.selection();
+    let is_selected = cur_selection.is_some() && select_on_click.as_ref() == Some(&cur_selection);
 
     // painting each data point as a separate circle is slow (too many circles!)
     // so we join time points that are close together.
@@ -657,9 +657,9 @@ fn show_data_over_time(
     if !hovered_messages.is_empty() {
         if time_area_response.clicked_by(egui::PointerButton::Primary) {
             if let Some(select_on_click) = select_on_click {
-                ctx.rec_cfg.selection = select_on_click;
+                ctx.set_selection(select_on_click);
             } else {
-                ctx.rec_cfg.selection = Selection::None;
+                ctx.clear_selection();
             }
 
             if let Some(hovered_time) = hovered_time {
