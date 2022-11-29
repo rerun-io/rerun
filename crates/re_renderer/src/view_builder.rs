@@ -137,8 +137,11 @@ impl ViewBuilder {
 
     /// Depth format used for the main target of the view builder.
     ///
-    /// 32 bit float is widely supported, has best possible precision (with reverse infinite z projection)
-    pub const MAIN_TARGET_DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
+    /// Consider using 32bit float depth buffer in the future if depth issues come up.
+    /// It is widely supported and has the best possible precision (with reverse infinite z projection which we're already using).
+    /// However, performance advice is still to use 24 bit depth buffering, see [Nvidia's Vulkan dos and dont's](https://developer.nvidia.com/blog/vulkan-dos-donts/):
+    /// > Don’t use 32-bit floating point depth formats, due to the performance cost, unless improved precision is actually required.
+    pub const MAIN_TARGET_DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth24Plus;
 
     /// Enable MSAA always. This makes our pipeline less variable as well, as we need MSAA resolve steps if we want any MSAA at all!
     ///
@@ -218,7 +221,7 @@ impl ViewBuilder {
 
         let view_from_world = config.view_from_world.to_mat4();
         let camera_position = config.view_from_world.inverse().translation();
-        let camera_direction = -view_from_world.row(2).truncate();
+        let camera_forward = -view_from_world.row(2).truncate();
         let aspect_ratio =
             config.resolution_in_pixel[0] as f32 / config.resolution_in_pixel[1] as f32;
 
@@ -315,7 +318,7 @@ impl ViewBuilder {
                 projection_from_view: projection_from_view.into(),
                 projection_from_world: projection_from_world.into(),
                 camera_position: camera_position.into(),
-                camera_direction: camera_direction.into(),
+                camera_forward: camera_forward.into(),
                 tan_half_fov: tan_half_fov.into(),
                 pixel_world_size_from_camera_distance,
                 _padding: 0.0,

@@ -9,8 +9,8 @@ use re_data_store::{InstanceId, ObjectTree};
 use re_log_types::*;
 
 use crate::{
-    misc::time_control::TimeSelectionType, time_axis::TimelineAxis, Selection, TimeControl,
-    TimeRange, TimeRangeF, TimeReal, TimeView, ViewerContext,
+    misc::time_control::Looping, time_axis::TimelineAxis, Selection, TimeControl, TimeRange,
+    TimeRangeF, TimeReal, TimeView, ViewerContext,
 };
 
 use super::Blueprint;
@@ -167,7 +167,9 @@ impl TimePanel {
         // play control and current time
         top_row_ui(ctx, blueprint, ui);
 
-        self.next_col_right = ui.min_rect().left(); // this will expand during the call
+        ui.add_space(2.0);
+
+        self.next_col_right = ui.min_rect().left(); // next_col_right will expand during the call
 
         let time_x_left = ui.min_rect().left() + self.prev_col_width + ui.spacing().item_spacing.x;
 
@@ -185,33 +187,20 @@ impl TimePanel {
             SIDE_MARGIN,
         );
 
-        // includes the time selection and time ticks rows.
+        // includes the loop selection and time ticks rows.
         let time_area_rect = Rect::from_x_y_ranges(
             time_x_range.clone(),
             ui.min_rect().bottom()..=ui.max_rect().bottom(),
         );
 
-        let time_selection_rect = {
-            let response = ui
-                .horizontal(|ui| {
-                    ctx.rec_cfg.time_ctrl.selection_ui(ui);
-                })
-                .response;
-            self.next_col_right = self.next_col_right.max(response.rect.right());
+        let loop_selection_rect = {
+            let response = ui.label(" "); // Add some vertical space large enough to fit text for the loop selection row.
             let y_range = response.rect.y_range();
             Rect::from_x_y_ranges(time_x_range.clone(), y_range)
         };
 
         let timeline_rect = {
-            let response = ui
-                .horizontal(|ui| {
-                    ctx.rec_cfg
-                        .time_ctrl
-                        .play_pause_ui(ctx.log_db.times_per_timeline(), ui);
-                })
-                .response;
-
-            self.next_col_right = self.next_col_right.max(response.rect.right());
+            let response = ui.weak("Streams");
             let y_range = response.rect.y_range();
             Rect::from_x_y_ranges(time_x_range.clone(), y_range)
         };
@@ -227,17 +216,16 @@ impl TimePanel {
             &self.time_ranges_ui,
             ui,
             &time_area_painter,
-            time_selection_rect.top()..=timeline_rect.bottom(),
-            // timeline_rect.y_range(),
+            loop_selection_rect.top()..=timeline_rect.bottom(),
             timeline_rect.top()..=time_area_rect.bottom(),
             ctx.rec_cfg.time_ctrl.time_type(),
         );
-        time_selection_ui(
+        loop_selection_ui(
             &self.time_ranges_ui,
             &mut ctx.rec_cfg.time_ctrl,
             ui,
             &time_area_painter,
-            &time_selection_rect,
+            &loop_selection_rect,
         );
         time_marker_ui(
             &self.time_ranges_ui,
@@ -326,7 +314,7 @@ impl TimePanel {
 
         let collapsing_header_id = ui.make_persistent_id(&tree.path);
         let default_open = tree.path.len() <= 1 && !tree.is_leaf();
-        let (header_response, _, body_returned) =
+        let (_collapsing_button_response, custom_header_response, body_returned) =
             egui::collapsing_header::CollapsingState::load_with_default_open(
                 ui.ctx(),
                 collapsing_header_id,
@@ -338,7 +326,7 @@ impl TimePanel {
             });
 
         let is_closed = body_returned.is_none();
-        let response = header_response;
+        let response = custom_header_response.response;
         let response_rect = response.rect;
         self.next_col_right = self.next_col_right.max(response_rect.right());
 
@@ -434,6 +422,8 @@ impl TimePanel {
                     })
                     .response;
 
+                self.next_col_right = self.next_col_right.max(response.rect.right());
+
                 let full_width_rect = Rect::from_x_y_ranges(
                     response.rect.left()..=ui.max_rect().right(),
                     response.rect.y_range(),
@@ -502,6 +492,12 @@ fn top_row_ui(ctx: &mut ViewerContext<'_>, blueprint: &mut Blueprint, ui: &mut e
             .time_ctrl
             .timeline_selector_ui(ctx.log_db.times_per_timeline(), ui);
 
+        ui.separator();
+
+        ctx.rec_cfg
+            .time_ctrl
+            .play_pause_ui(ctx.log_db.times_per_timeline(), ui);
+
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             help_button(ui);
             ui.vertical_centered(|ui| {
@@ -521,29 +517,9 @@ fn help_button(ui: &mut egui::Ui) {
 }
 
 fn current_time_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
-    if let Some(range) = ctx.rec_cfg.time_ctrl.time_range() {
+    if let Some(time_int) = ctx.rec_cfg.time_ctrl.time_int() {
         let time_type = ctx.rec_cfg.time_ctrl.time_type();
-
-        if range.min == range.max {
-            ui.monospace(time_type.format(range.min.floor())); // floor makes sense for "latest at" queries
-        } else {
-            match time_type {
-                TimeType::Time => {
-                    ui.monospace(format!(
-                        "{} - {}",
-                        time_type.format(range.min.round()),
-                        time_type.format(range.max.round())
-                    ));
-                }
-                TimeType::Sequence => {
-                    ui.monospace(format!(
-                        "[{} - {})",
-                        time_type.format(range.min.ceil()),
-                        time_type.format(range.max.floor())
-                    ));
-                }
-            }
-        }
+        ui.monospace(time_type.format(time_int));
     }
 }
 
@@ -560,8 +536,8 @@ fn show_data_over_time(
 ) {
     crate::profile_function!();
 
-    let is_selected =
-        ctx.rec_cfg.selection.is_some() && select_on_click.as_ref() == Some(&ctx.rec_cfg.selection);
+    let cur_selection = ctx.selection();
+    let is_selected = cur_selection.is_some() && select_on_click.as_ref() == Some(&cur_selection);
 
     // painting each data point as a separate circle is slow (too many circles!)
     // so we join time points that are close together.
@@ -579,12 +555,6 @@ fn show_data_over_time(
             .inactive
             .text_color()
             .linear_multiply(0.75)
-    };
-
-    let selected_time_range = if !ctx.rec_cfg.time_ctrl.selection_active {
-        None
-    } else {
-        ctx.rec_cfg.time_ctrl.time_selection()
     };
 
     struct Stretch<'a> {
@@ -643,6 +613,8 @@ fn show_data_over_time(
 
     let mut stretch: Option<Stretch<'_>> = None;
 
+    let selected_time_range = ctx.rec_cfg.time_ctrl.active_loop_selection();
+
     for (&time, msg_ids) in messages_over_time {
         let time_real = TimeReal::from(time);
 
@@ -685,9 +657,9 @@ fn show_data_over_time(
     if !hovered_messages.is_empty() {
         if time_area_response.clicked_by(egui::PointerButton::Primary) {
             if let Some(select_on_click) = select_on_click {
-                ctx.rec_cfg.selection = select_on_click;
+                ctx.set_selection(select_on_click);
             } else {
-                ctx.rec_cfg.selection = Selection::None;
+                ctx.clear_selection();
             }
 
             if let Some(hovered_time) = hovered_time {
@@ -869,33 +841,33 @@ fn initial_time_selection(
     }
 }
 
-fn time_selection_ui(
+fn loop_selection_ui(
     time_ranges_ui: &TimeRangesUi,
     time_ctrl: &mut TimeControl,
     ui: &mut egui::Ui,
     time_area_painter: &egui::Painter,
     rect: &Rect,
 ) {
-    if time_ctrl.time_selection().is_none() {
+    if time_ctrl.loop_selection().is_none() {
         // Helpfully select a time slice so that there always is a selection.
         // This helps new users ("what is that?").
         if let Some(selection) = initial_time_selection(time_ranges_ui, time_ctrl.time_type()) {
-            time_ctrl.set_time_selection(selection);
+            time_ctrl.set_loop_selection(selection);
         }
     }
 
-    if time_ctrl.time_selection().is_none() {
-        time_ctrl.selection_active = false;
+    if time_ctrl.loop_selection().is_none() && time_ctrl.looping == Looping::Selection {
+        time_ctrl.looping = Looping::Off;
     }
 
     // TODO(emilk): click to toggle on/off
     // when off, you cannot modify, just drag out a new one.
 
-    let selection_color = time_ctrl.selection_type.color(ui.visuals());
+    let selection_color = crate::design_tokens::DesignTokens::loop_selection_color();
 
     let mut did_interact = false;
 
-    let is_active = time_ctrl.selection_active;
+    let is_active = time_ctrl.looping == Looping::Selection;
 
     let pointer_pos = ui.input().pointer.hover_pos();
     let is_pointer_in_rect = pointer_pos.map_or(false, |pointer_pos| rect.contains(pointer_pos));
@@ -911,7 +883,7 @@ fn time_selection_ui(
     let transparent = if ui.visuals().dark_mode { 0.06 } else { 0.3 };
 
     // Paint existing selection and detect drag starting and hovering:
-    if let Some(selected_range) = time_ctrl.time_selection() {
+    if let Some(selected_range) = time_ctrl.loop_selection() {
         let min_x = time_ranges_ui.x_from_time(selected_range.min);
         let max_x = time_ranges_ui.x_from_time(selected_range.max);
 
@@ -1010,7 +982,7 @@ fn time_selection_ui(
             && ui.input().pointer.primary_down()
         {
             if let Some(time) = time_ranges_ui.time_from_x(pointer_pos.x) {
-                time_ctrl.set_time_selection(TimeRangeF::point(time));
+                time_ctrl.set_loop_selection(TimeRangeF::point(time));
                 did_interact = true;
                 ui.memory().set_dragged_id(right_edge_id);
             }
@@ -1019,7 +991,7 @@ fn time_selection_ui(
 
     // Resize/move (interact)
     if let Some(pointer_pos) = pointer_pos {
-        if let Some(mut selected_range) = time_ctrl.time_selection() {
+        if let Some(mut selected_range) = time_ctrl.loop_selection() {
             // Use "smart_aim" to find a natural length of the time interval
             let aim_radius = ui.input().aim_radius();
             use egui::emath::smart_aim::best_in_range_f64;
@@ -1043,7 +1015,7 @@ fn time_selection_ui(
                         ui.memory().set_dragged_id(right_edge_id);
                     }
 
-                    time_ctrl.set_time_selection(selected_range);
+                    time_ctrl.set_loop_selection(selected_range);
                     did_interact = true;
                 }
             }
@@ -1067,7 +1039,7 @@ fn time_selection_ui(
                         ui.memory().set_dragged_id(left_edge_id);
                     }
 
-                    time_ctrl.set_time_selection(selected_range);
+                    time_ctrl.set_loop_selection(selected_range);
                     did_interact = true;
                 }
             }
@@ -1094,7 +1066,7 @@ fn time_selection_ui(
                         new_range.max = new_range.min + selected_range.length();
                     }
 
-                    time_ctrl.set_time_selection(new_range);
+                    time_ctrl.set_loop_selection(new_range);
                     did_interact = true;
                     Some(())
                 })();
@@ -1113,13 +1085,7 @@ fn time_selection_ui(
     }
 
     if did_interact {
-        time_ctrl.selection_active = true;
-        if time_ctrl.active_selection_type() == Some(TimeSelectionType::Loop) {
-            time_ctrl.set_looped(true);
-        }
-        if time_ctrl.active_selection_type() == Some(TimeSelectionType::Filter) {
-            time_ctrl.pause();
-        }
+        time_ctrl.looping = Looping::Selection;
     }
 }
 
@@ -1459,7 +1425,7 @@ impl TimeRangesUi {
         if let Some(time) = ctx.rec_cfg.time_ctrl.time() {
             let time = self.snap_time_to_segments(time);
             ctx.rec_cfg.time_ctrl.set_time(time);
-        } else if let Some(selection) = ctx.rec_cfg.time_ctrl.time_selection() {
+        } else if let Some(selection) = ctx.rec_cfg.time_ctrl.loop_selection() {
             let snapped_min = self.snap_time_to_segments(selection.min);
             let snapped_max = self.snap_time_to_segments(selection.max);
 
@@ -1471,7 +1437,7 @@ impl TimeRangesUi {
             }
 
             // Keeping max works better when looping
-            ctx.rec_cfg.time_ctrl.set_time_selection(TimeRangeF::new(
+            ctx.rec_cfg.time_ctrl.set_loop_selection(TimeRangeF::new(
                 snapped_max - selection.length(),
                 snapped_max,
             ));

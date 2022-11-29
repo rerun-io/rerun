@@ -606,7 +606,7 @@ fn view_2d_scrollable(
 
     if let Some(instance_id) = &state.hovered_instance {
         if response.clicked() {
-            ctx.rec_cfg.selection = Selection::Instance(instance_id.clone());
+            ctx.set_selection(Selection::Instance(instance_id.clone()));
         }
         if !shown_tooltips.contains(&instance_id.hash()) {
             response = response.on_hover_ui_at_pointer(|ui| {

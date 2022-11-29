@@ -54,7 +54,7 @@ pub(crate) fn view_instance_generic(
 ) -> Option<()> {
     let timeline = ctx.rec_cfg.time_ctrl.timeline();
     let store = ctx.log_db.obj_db.store.get(timeline)?;
-    let time_query = ctx.rec_cfg.time_ctrl.time_query()?;
+    let time_query = re_data_store::TimeQuery::LatestAt(ctx.rec_cfg.time_ctrl.time_i64()?);
     let obj_store = store.get(&instance_id.obj_path)?;
 
     let mut class_id = None;
@@ -177,7 +177,7 @@ pub(crate) fn view_data(
     data_path: &DataPath,
 ) -> Option<()> {
     let timeline = ctx.rec_cfg.time_ctrl.timeline();
-    let time_query = ctx.rec_cfg.time_ctrl.time_query()?;
+    let time_query = re_data_store::TimeQuery::LatestAt(ctx.rec_cfg.time_ctrl.time_i64()?);
 
     match ctx
         .log_db

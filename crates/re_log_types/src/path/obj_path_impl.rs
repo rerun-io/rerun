@@ -8,7 +8,7 @@ use crate::{
 /// Wrapped by [`crate::ObjPath`] together with a hash.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub(crate) struct ObjPathImpl {
+pub struct ObjPathImpl {
     /// `camera / * / points / *`
     obj_type_path: ObjTypePath,
 
@@ -48,6 +48,11 @@ impl ObjPathImpl {
     #[inline]
     pub fn is_root(&self) -> bool {
         self.obj_type_path.is_root()
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 
     /// Number of components

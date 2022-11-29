@@ -335,7 +335,7 @@ impl eframe::App for App {
             });
         } else {
             self.state
-                .show(egui_ctx, log_db, &self.design_tokens, render_ctx);
+                .show(egui_ctx, render_ctx, log_db, &self.design_tokens);
         }
 
         self.handle_dropping_files(egui_ctx);
@@ -586,6 +586,7 @@ struct AppState {
     panel_selection: PanelSelection,
     event_log_view: crate::event_log_view::EventLogView,
     selection_panel: crate::selection_panel::SelectionPanel,
+    selection_history: crate::SelectionHistory,
     time_panel: crate::time_panel::TimePanel,
 
     #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
@@ -601,9 +602,9 @@ impl AppState {
     fn show(
         &mut self,
         egui_ctx: &egui::Context,
+        render_ctx: &mut re_renderer::RenderContext,
         log_db: &LogDb,
         design_tokens: &DesignTokens,
-        render_ctx: &mut re_renderer::RenderContext,
     ) {
         crate::profile_function!();
 
@@ -616,6 +617,7 @@ impl AppState {
             event_log_view,
             blueprints,
             selection_panel,
+            selection_history,
             time_panel,
             #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
                 profiler: _,
@@ -634,12 +636,13 @@ impl AppState {
             cache,
             log_db,
             rec_cfg,
+            selection_history,
             design_tokens,
             render_ctx,
         };
 
         let blueprint = blueprints.entry(selected_app_id.clone()).or_default();
-        selection_panel.show_panel(&mut ctx, blueprint, egui_ctx);
+        selection_panel.show_panel(&mut ctx, egui_ctx, blueprint);
         time_panel.show_panel(&mut ctx, blueprint, egui_ctx);
 
         let central_panel_frame = egui::Frame {
@@ -932,12 +935,12 @@ fn file_menu(ui: &mut egui::Ui, app: &mut App, frame: &mut eframe::Frame) {
                     ui.spinner();
                 });
                 ui.horizontal(|ui| {
-                    let _ = ui.button("Save Time Selection…");
+                    let _ = ui.button("Save Loop Selection…");
                     ui.spinner();
                 });
             });
         } else {
-            let (clicked, time_selection) = ui
+            let (clicked, loop_selection) = ui
                 .add_enabled_ui(!app.log_db().is_empty(), |ui| {
                     if ui
                         .button("Save…")
@@ -947,33 +950,33 @@ fn file_menu(ui: &mut egui::Ui, app: &mut App, frame: &mut eframe::Frame) {
                         return (true, None);
                     }
 
-                    // We need to know the time selection _before_ we can even display the
+                    // We need to know the loop selection _before_ we can even display the
                     // button, as this will determine wether its grayed out or not!
                     // TODO(cmc): In practice the loop (green) selection is always there
                     // at the moment so...
-                    let time_selection = app
+                    let loop_selection = app
                         .state
                         .recording_configs
                         .get(&app.state.selected_rec_id)
-                        // is there an active time selection?
+                        // is there an active loop selection?
                         .and_then(|rec_cfg| {
                             rec_cfg
                                 .time_ctrl
-                                .time_selection()
+                                .loop_selection()
                                 .map(|q| (*rec_cfg.time_ctrl.timeline(), q))
                         });
 
                     if ui
                         .add_enabled(
-                            time_selection.is_some(),
-                            egui::Button::new("Save time selection…"),
+                            loop_selection.is_some(),
+                            egui::Button::new("Save loop selection…"),
                         )
                         .on_hover_text(
-                            "Save data for the current time selection to a Rerun data file (.rrd)",
+                            "Save data for the current loop selection to a Rerun data file (.rrd)",
                         )
                         .clicked()
                     {
-                        return (true, time_selection);
+                        return (true, loop_selection);
                     }
 
                     (false, None)
@@ -985,7 +988,7 @@ fn file_menu(ui: &mut egui::Ui, app: &mut App, frame: &mut eframe::Frame) {
                 // the DB isn't empty: let's spawn a new one.
 
                 if let Some(path) = rfd::FileDialog::new().set_file_name("data.rrd").save_file() {
-                    let f = save_database_to_file(app, path, time_selection);
+                    let f = save_database_to_file(app, path, loop_selection);
                     if let Err(err) = app.spawn_threaded_promise(FILE_SAVER_PROMISE, f) {
                         // NOTE: Shouldn't even be possible as the "Save" button is already
                         // grayed out at this point... better safe than sorry though.
@@ -1155,6 +1158,7 @@ fn save_database_to_file(
             .chronological_log_messages()
             .cloned()
             .collect::<Vec<_>>(),
+
         // Query path: time to filter!
         Some((timeline, range)) => {
             use std::ops::RangeInclusive;

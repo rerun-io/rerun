@@ -260,6 +260,7 @@ fn wake_up_ui_thread_on_each_msg<T: Send + 'static>(
     new_rx
 }
 
+#[cfg(feature = "server")]
 fn parse_max_latency(max_latency: Option<&String>) -> f32 {
     max_latency.as_ref().map_or(f32::INFINITY, |time| {
         parse_duration(time)
@@ -267,6 +268,7 @@ fn parse_max_latency(max_latency: Option<&String>) -> f32 {
     })
 }
 
+#[cfg(feature = "server")]
 fn parse_duration(duration: &str) -> Result<f32, String> {
     fn parse_num(s: &str) -> Result<f32, String> {
         s.parse()
@@ -288,6 +290,7 @@ fn parse_duration(duration: &str) -> Result<f32, String> {
     }
 }
 
+#[cfg(feature = "server")]
 #[test]
 fn test_parse_duration() {
     assert_eq!(parse_duration("3.2s"), Ok(3.2));
