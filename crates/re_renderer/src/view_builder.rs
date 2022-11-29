@@ -55,8 +55,7 @@ pub enum Projection {
         /// Viewing angle in view space y direction (which is the vertical screen axis).
         vertical_fov: f32,
 
-        /// Distance of the near plane. Everything behind is clipped.
-        /// (we're looking into negative view-space z, but this is expected to be a positive value)
+        /// Distance of the near plane.
         near_plane_distance: f32,
     },
 
@@ -68,8 +67,7 @@ pub enum Projection {
         /// Size of the orthographic camera view space y direction (which is the vertical screen axis).
         vertical_world_size: f32,
 
-        /// Distance of the far plane to the camera
-        /// (we're looking into negative view-space z, but this is expected to be a positive value)
+        /// Distance of the far plane to the camera.
         far_plane_distance: f32,
     },
 }
@@ -238,7 +236,7 @@ impl ViewBuilder {
                         0.5 * horizontal_world_size,
                         -0.5 * vertical_world_size,
                         0.5 * vertical_world_size,
-                        // Consistent perspective projection, we inverse z (here by swapping near and far plane).
+                        // We inverse z (by swapping near and far plane) to be consistent with our perspective projection.
                         far_plane_distance,
                         0.0,
                     );

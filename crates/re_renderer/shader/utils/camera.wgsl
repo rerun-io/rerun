@@ -1,11 +1,17 @@
+// TODO(andreas): global_bindings are imported implicitely
+
+fn inf() -> f32 {
+    return 1.0 / 0.0;
+}
+
 // True if the camera is orthographic
 fn is_camera_orthographic() -> bool {
-    return frame.tan_half_fov.x == 1.0 / 0.0;
+    return frame.tan_half_fov.x == inf();
 }
 
 // True if the camera is perspective
 fn is_camera_perspective() -> bool {
-    return frame.tan_half_fov.x != 1.0 / 0.0;
+    return frame.tan_half_fov.x != inf();
 }
 
 struct Ray {
@@ -13,7 +19,7 @@ struct Ray {
     direction: Vec3,
 }
 
-// Returns origin of a ray from the camera to a given position.
+// Returns the ray from the camera to a given world position.
 fn camera_ray_to_world_pos(world_pos: Vec3) -> Ray {
     var ray: Ray;
 

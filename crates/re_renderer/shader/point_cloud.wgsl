@@ -128,6 +128,8 @@ fn sphere_distance(ray: Ray, sphere_origin: Vec3, sphere_radius: f32) -> Vec2 {
 
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) Vec4 {
+    // There's easier ways to compute anti-aliasing for when we are in ortho mode since it's just circles.
+    // But it's very nice to have mostly the same code path and this gives us the sphere world position along the way.
     let ray = camera_ray_to_world_pos(in.world_position);
 
     // Sphere intersection with anti-aliasing as described by Iq here
