@@ -174,7 +174,7 @@ impl Scene3D {
                 let mut label_batch = Vec::new();
 
                 // If keypoints ids show up we may need to connect them later!
-                // We include time in the key, so that the "Extra history" (time range queries) feature works.
+                // We include time in the key, so that the "Visible history" (time range queries) feature works.
                 let mut keypoints: HashMap<(ClassId, i64), HashMap<KeypointId, glam::Vec3>> =
                     Default::default();
 

@@ -68,14 +68,14 @@ impl ObjectsProperties {
 #[serde(default)]
 pub struct ObjectProps {
     pub visible: bool,
-    pub extra_history: ExtraQueryHistory,
+    pub visible_history: ExtraQueryHistory,
 }
 
 impl Default for ObjectProps {
     fn default() -> Self {
         Self {
             visible: true,
-            extra_history: ExtraQueryHistory::default(),
+            visible_history: ExtraQueryHistory::default(),
         }
     }
 }
@@ -85,7 +85,7 @@ impl ObjectProps {
     fn with_child(&self, child: &Self) -> Self {
         Self {
             visible: self.visible && child.visible,
-            extra_history: self.extra_history.with_child(&child.extra_history),
+            visible_history: self.visible_history.with_child(&child.visible_history),
         }
     }
 }
@@ -97,10 +97,10 @@ impl ObjectProps {
 #[serde(default)]
 pub struct ExtraQueryHistory {
     /// Zero = off.
-    pub nanos: u64,
+    pub nanos: i64,
 
     /// Zero = off.
-    pub sequences: u64,
+    pub sequences: i64,
 }
 
 impl ExtraQueryHistory {

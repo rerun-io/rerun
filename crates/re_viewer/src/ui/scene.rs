@@ -101,16 +101,16 @@ impl<'s> SceneQuery<'s> {
                     .map(|obj_path| (obj_path, self.obj_props.get(obj_path)))
                     .filter(|(_obj_path, obj_props)| obj_props.visible)
                     .filter_map(|(obj_path, obj_props)| {
-                        let extra_history = match self.timeline.typ() {
-                            re_log_types::TimeType::Time => obj_props.extra_history.nanos,
-                            re_log_types::TimeType::Sequence => obj_props.extra_history.sequences,
+                        let visible_history = match self.timeline.typ() {
+                            re_log_types::TimeType::Time => obj_props.visible_history.nanos,
+                            re_log_types::TimeType::Sequence => obj_props.visible_history.sequences,
                         };
 
                         let latest_at = self.latest_at.as_i64();
-                        let time_query = if extra_history == 0 {
+                        let time_query = if visible_history == 0 {
                             TimeQuery::LatestAt(latest_at)
                         } else {
-                            TimeQuery::Range((latest_at - extra_history as i64)..=latest_at)
+                            TimeQuery::Range(latest_at.saturating_sub(visible_history)..=latest_at)
                         };
 
                         // ...whose datatypes are registered...

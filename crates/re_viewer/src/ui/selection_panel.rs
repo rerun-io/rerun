@@ -250,16 +250,16 @@ fn obj_props_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, obj_props: &mut 
 
     let ObjectProps {
         visible,
-        extra_history,
+        visible_history,
     } = obj_props;
 
     ui.checkbox(visible, "Visible");
 
     ui.horizontal(|ui| {
-        ui.label("Extra history:");
+        ui.label("Visible history:");
         match ctx.rec_cfg.time_ctrl.timeline().typ() {
             TimeType::Time => {
-                let mut time_sec = extra_history.nanos as f32 / 1e9;
+                let mut time_sec = visible_history.nanos as f32 / 1e9;
                 let speed = (time_sec * 0.05).at_least(0.01);
                 ui.add(
                     egui::DragValue::new(&mut time_sec)
@@ -268,12 +268,12 @@ fn obj_props_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, obj_props: &mut 
                         .suffix("s"),
                 )
                 .on_hover_text("Include this much history of the object in the Space View");
-                extra_history.nanos = (time_sec * 1e9).round() as _;
+                visible_history.nanos = (time_sec * 1e9).round() as _;
             }
             TimeType::Sequence => {
-                let speed = (extra_history.sequences as f32 * 0.05).at_least(1.0);
+                let speed = (visible_history.sequences as f32 * 0.05).at_least(1.0);
                 ui.add(
-                    egui::DragValue::new(&mut extra_history.sequences)
+                    egui::DragValue::new(&mut visible_history.sequences)
                         .clamp_range(0.0..=f32::INFINITY)
                         .speed(speed),
                 )
