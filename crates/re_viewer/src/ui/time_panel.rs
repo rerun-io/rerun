@@ -197,13 +197,7 @@ impl TimePanel {
         };
 
         let timeline_rect = {
-            let response = ui
-                .horizontal(|ui| {
-                    ctx.rec_cfg
-                        .time_ctrl
-                        .play_pause_ui(ctx.log_db.times_per_timeline(), ui);
-                })
-                .response;
+            let response = ui.label(" "); // TODO: clean up
 
             self.next_col_right = self.next_col_right.max(response.rect.right());
             let y_range = response.rect.y_range();
@@ -495,6 +489,12 @@ fn top_row_ui(ctx: &mut ViewerContext<'_>, blueprint: &mut Blueprint, ui: &mut e
         ctx.rec_cfg
             .time_ctrl
             .timeline_selector_ui(ctx.log_db.times_per_timeline(), ui);
+
+        ui.separator();
+
+        ctx.rec_cfg
+            .time_ctrl
+            .play_pause_ui(ctx.log_db.times_per_timeline(), ui);
 
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             help_button(ui);
