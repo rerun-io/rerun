@@ -16,9 +16,9 @@ server = [
   "dep:futures-channel",
   "dep:futures-util",
   "dep:parking_lot",
+  "dep:re_smart_channel",
   "dep:tokio-tungstenite",
   "dep:tokio",
-  "tungstenite",
 ]
 
 ## Enable encryption using TLS support (`wss://`).
@@ -29,20 +29,19 @@ tls = [
 
 
 [dependencies]
-re_error = { path = "../re_error" }
 re_log = { path = "../re_log" }
 re_log_types = { path = "../re_log_types", features = ["serde"] }
-re_smart_channel = { path = "../re_smart_channel" }
 
 anyhow = "1.0.56"
 bincode = "1.3"
-crossbeam = "0.8"
 document-features = "0.2"
 
 # Client:
 ewebsock = { version = "0.2", optional = true }
 
 # Server:
+re_smart_channel = { path = "../re_smart_channel", optional = true }
+
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 futures-channel = { version = "0.3", optional = true }
 futures-util = { version = "0.3", optional = true, default-features = false, features = [
