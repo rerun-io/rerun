@@ -167,7 +167,9 @@ impl TimePanel {
         // play control and current time
         top_row_ui(ctx, blueprint, ui);
 
-        self.next_col_right = ui.min_rect().left(); // this will expand during the call
+        ui.add_space(2.0);
+
+        self.next_col_right = ui.min_rect().left(); // next_col_right will expand during the call
 
         let time_x_left = ui.min_rect().left() + self.prev_col_width + ui.spacing().item_spacing.x;
 
@@ -192,13 +194,13 @@ impl TimePanel {
         );
 
         let loop_selection_rect = {
-            let y_range = ui.label(" ").rect.y_range(); // TODO: clean up
+            let response = ui.label(" "); // Just to add some vertical space
+            let y_range = response.rect.y_range();
             Rect::from_x_y_ranges(time_x_range.clone(), y_range)
         };
 
         let timeline_rect = {
-            let response = ui.label(" "); // TODO: clean up
-            self.next_col_right = self.next_col_right.max(response.rect.right());
+            let response = ui.label(" "); // Just to add some vertical space
             let y_range = response.rect.y_range();
             Rect::from_x_y_ranges(time_x_range.clone(), y_range)
         };
@@ -215,7 +217,6 @@ impl TimePanel {
             ui,
             &time_area_painter,
             loop_selection_rect.top()..=timeline_rect.bottom(),
-            // timeline_rect.y_range(),
             timeline_rect.top()..=time_area_rect.bottom(),
             ctx.rec_cfg.time_ctrl.time_type(),
         );
