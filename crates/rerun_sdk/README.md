@@ -1,12 +1,6 @@
-The main Rerun binary.
+The main Rerun SDK.
 
-This can act either as a server, a viewer, or both, depending on which options you use when you start it.
+This includes both the user-facing Rust SDK as well as core SDK features other languages build on top of.
 
-`cargo run -p rerun -- --help`
-
-## Hosting an SDK server
-This will host an SDK server that SDK:s can connect to:
-
-```sh
-cargo run -p rerun
-```
+## Using the Rust SDK
+TODO(jleibs)
