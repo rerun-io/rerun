@@ -394,7 +394,7 @@ impl Application {
                     ..
                 } => match (input.state, input.virtual_keycode) {
                     (ElementState::Pressed, Some(VirtualKeyCode::O)) => {
-                        self.state.perspective_projection = !self.state.perspective_projection
+                        self.state.perspective_projection = !self.state.perspective_projection;
                     }
 
                     (ElementState::Pressed, Some(VirtualKeyCode::Space)) => {
