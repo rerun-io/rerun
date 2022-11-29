@@ -150,8 +150,8 @@ fn obj_mono_points(c: &mut Criterion) {
     let mut obj_types = IntMap::default();
     obj_types.insert(
         ObjTypePath::new(vec![
-            TypePathComp::Name("points".into()),
-            TypePathComp::Index,
+            ObjTypePathComp::Name("points".into()),
+            ObjTypePathComp::Index,
         ]),
         ObjectType::Point3D,
     );
@@ -181,7 +181,7 @@ fn obj_batch_points(c: &mut Criterion) {
 
     let mut obj_types = IntMap::default();
     obj_types.insert(
-        ObjTypePath::new(vec![TypePathComp::Name("points".into())]),
+        ObjTypePath::new(vec![ObjTypePathComp::Name("points".into())]),
         ObjectType::Point3D,
     );
 
@@ -210,7 +210,7 @@ fn obj_batch_points_sequential(c: &mut Criterion) {
 
     let mut obj_types = IntMap::default();
     obj_types.insert(
-        ObjTypePath::new(vec![TypePathComp::Name("points".into())]),
+        ObjTypePath::new(vec![ObjTypePathComp::Name("points".into())]),
         ObjectType::Point3D,
     );
 
