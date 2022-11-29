@@ -100,7 +100,10 @@ impl ViewBuilder {
 
     /// Depth format used for the main target of the view builder.
     ///
-    /// 32 bit float is widely supported, has best possible precision (with reverse infinite z projection)
+    /// Consider using 32bit float depth buffer in the future if depth issues come up
+    /// It is widely supported and has best possible precision (with reverse infinite z projection which we're already using)
+    /// However, performance advice is still to use 24 bit depth buffering, see https://developer.nvidia.com/blog/vulkan-dos-donts/:
+    /// > Don’t use 32-bit floating point depth formats, due to the performance cost, unless improved precision is actually required.
     pub const MAIN_TARGET_DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth24Plus;
 
     /// Enable MSAA always. This makes our pipeline less variable as well, as we need MSAA resolve steps if we want any MSAA at all!
