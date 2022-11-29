@@ -236,7 +236,8 @@ impl Scene2D {
                 let default_color = DefaultColor::ObjPath(obj_path);
 
                 // If keypoints ids show up we may need to connect them later!
-                let mut keypoints: HashMap<ClassId, HashMap<KeypointId, Pos2>> =
+                // We include time in the key, so that the "Extra history" (time range queries) feature works.
+                let mut keypoints: HashMap<(ClassId, i64), HashMap<KeypointId, Pos2>> =
                 Default::default();
 
                 visit_type_data_5(
@@ -245,7 +246,7 @@ impl Scene2D {
                     &time_query,
                     ("color", "radius", "label", "class_id", "keypoint_id"),
                     |instance_index: Option<&IndexHash>,
-                     _time: i64,
+                     time: i64,
                      _msg_id: &MsgId,
                      pos: &[f32; 2],
                      color: Option<&[u8; 4]>,
@@ -264,7 +265,7 @@ impl Scene2D {
                                 let keypoint_id = KeypointId(*keypoint_id as _);
                                 if let Some(class_id) = class_id {
                                     keypoints
-                                        .entry(class_id)
+                                        .entry((class_id, time))
                                         .or_insert_with(Default::default)
                                         .insert(keypoint_id, pos);
                                 }
@@ -300,7 +301,7 @@ impl Scene2D {
 
                 // Generate keypoint connections if any.
                 let instance_hash = InstanceIdHash::from_path_and_index(obj_path, IndexHash::NONE);
-                for (class_id, keypoints_in_class) in &keypoints {
+                for ((class_id, _time), keypoints_in_class) in &keypoints {
                     let Some(class_description) = annotations.context.class_map.get(class_id) else {
                         continue;
                     };

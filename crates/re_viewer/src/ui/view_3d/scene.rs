@@ -174,7 +174,8 @@ impl Scene3D {
                 let mut label_batch = Vec::new();
 
                 // If keypoints ids show up we may need to connect them later!
-                let mut keypoints: HashMap<ClassId, HashMap<KeypointId, glam::Vec3>> =
+                // We include time in the key, so that the "Extra history" (time range queries) feature works.
+                let mut keypoints: HashMap<(ClassId, i64), HashMap<KeypointId, glam::Vec3>> =
                     Default::default();
 
                 let annotations = self.annotation_map.find(obj_path);
@@ -186,7 +187,7 @@ impl Scene3D {
                     &time_query,
                     ("color", "radius", "label", "class_id", "keypoint_id"),
                     |instance_index: Option<&IndexHash>,
-                     _time: i64,
+                    time: i64,
                      _msg_id: &MsgId,
                      pos: &[f32; 3],
                      color: Option<&[u8; 4]>,
@@ -209,7 +210,7 @@ impl Scene3D {
                             let keypoint_id = KeypointId(*keypoint_id as _);
                             if let Some(class_id) = class_id {
                                 keypoints
-                                    .entry(class_id)
+                                    .entry((class_id, time))
                                     .or_insert_with(Default::default)
                                     .insert(keypoint_id, pos);
                             }
@@ -245,7 +246,7 @@ impl Scene3D {
 
                 // Generate keypoint connections if any.
                 let instance_id_hash = InstanceIdHash::from_path_and_index(obj_path, IndexHash::NONE);
-                for (class_id, keypoints_in_class) in &keypoints {
+                for ((class_id, _time), keypoints_in_class) in &keypoints {
                     let Some(class_description) = annotations.context.class_map.get(class_id) else {
                         continue;
                     };
