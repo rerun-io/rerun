@@ -1,3 +1,6 @@
+//! This is how we store and index logging data.
+//! TODO(john) better crate documentation.
+
 #![allow(dead_code)] //TODO(john) remove this
 
 use std::borrow::Borrow;
