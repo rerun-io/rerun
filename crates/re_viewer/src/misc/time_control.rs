@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use egui::NumExt as _;
 
-use re_data_store::{TimeQuery, TimesPerTimeline};
+use re_data_store::TimesPerTimeline;
 use re_log_types::*;
 
 use super::{TimeRange, TimeRangeF, TimeReal};
@@ -237,11 +237,7 @@ impl TimeControl {
         Some(self.time()?.floor().as_i64())
     }
 
-    pub fn latest_at_time_query(&self) -> Option<TimeQuery<i64>> {
-        self.time_i64().map(TimeQuery::LatestAt)
-    }
-
-    /// The current loop range, iff looping is turned on
+    /// The current loop range, iff selection looping is turned on.
     pub fn active_loop_selection(&self) -> Option<TimeRangeF> {
         if self.looping == Looping::Selection {
             self.states.get(&self.timeline)?.loop_selection
@@ -257,11 +253,12 @@ impl TimeControl {
 
     /// The selected slice of time that is called the "loop selection".
     ///
-    /// Note that looping can be off, or loop-selection can be off, and this will still return `Some`.
+    /// This can still return `Some` even if looping is currently off.
     pub fn loop_selection(&self) -> Option<TimeRangeF> {
         self.states.get(&self.timeline)?.loop_selection
     }
 
+    /// Set the current loop selection without enabling looping.
     pub fn set_loop_selection(&mut self, selection: TimeRangeF) {
         self.states
             .entry(self.timeline)

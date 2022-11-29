@@ -194,13 +194,13 @@ impl TimePanel {
         );
 
         let loop_selection_rect = {
-            let response = ui.label(" "); // Just to add some vertical space
+            let response = ui.label(" "); // Add some vertical space large enough to fit text for the loop selection row.
             let y_range = response.rect.y_range();
             Rect::from_x_y_ranges(time_x_range.clone(), y_range)
         };
 
         let timeline_rect = {
-            let response = ui.label(" "); // Just to add some vertical space
+            let response = ui.label(" "); // Add some vertical space large enough to fit text for the timeline ticks row.
             let y_range = response.rect.y_range();
             Rect::from_x_y_ranges(time_x_range.clone(), y_range)
         };
