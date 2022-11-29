@@ -49,10 +49,10 @@
             "cargo": {
                 "args": [
                     "build",
-                    "--example=renderer_standalone"
+                    "--example=multiview"
                 ],
                 "filter": {
-                    "name": "renderer_standalone",
+                    "name": "multiview",
                     "kind": "example"
                 }
             },

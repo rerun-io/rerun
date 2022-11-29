@@ -118,11 +118,11 @@ jobs:
           command: check
           args: --all-features --lib --target wasm32-unknown-unknown -p re_viewer
 
-      - name: Check renderer_stadalone wasm32
+      - name: Check re_renderer examples wasm32
         uses: actions-rs/cargo@v1
         with:
           command: check
-          args: --target wasm32-unknown-unknown --example renderer_standalone
+          args: --target wasm32-unknown-unknown --examples
 
       - name: wasm-bindgen
         uses: jetli/wasm-bindgen-action@v0.1.0
