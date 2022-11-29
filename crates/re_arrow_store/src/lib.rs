@@ -15,20 +15,16 @@ pub fn time_index(df: &DataFrame, col: &str, time: i64) -> Result<Option<usize>,
     if col.is_sorted() == IsSorted::Not {
         warn!("DataFrame is not sorted on col {col}.");
     }
-
     let ary = col.cast(&DataType::Time).and_then(|t| t.time().cloned())?;
-
     let slice = ary.cont_slice()?;
-    let x = slice
+    Ok(slice
         .binary_search(&time)
-        .map(|idx| Some(idx))
-        .unwrap_or_else(|idx| idx.checked_sub(1));
-    Ok(x)
+        .map_or_else(|idx| idx.checked_sub(1), Some))
 }
 
 /// Perform a Rerun time query on the dataframe.
 pub fn time_query(df: &DataFrame, _col: &str, time: i64) -> Result<DataFrame, PolarsError> {
-    let row_idx = time_index(&df, "time", time)?;
+    let row_idx = time_index(df, "time", time)?;
     Ok(df
         .head(row_idx.map(|idx| idx + 1))
         .fill_null(FillNullStrategy::Forward(None))
@@ -88,7 +84,7 @@ pub fn append_unified<'base>(
         }
 
         // Anything left in other_cols didn't exist in base, so hstack them as new columns.
-        for other_col in other_cols.into_iter() {
+        for other_col in other_cols {
             let mut new_col = Series::full_null(
                 other_col.name(),
                 base.height() - other_col.len(),
@@ -135,7 +131,6 @@ mod tests {
             struct_ary.boxed(),                                                 // values
             None,                                                               // validity
         );
-        dbg!(&ary);
         ary.boxed()
     }
 
@@ -144,8 +139,7 @@ mod tests {
         let mut s0 = Series::try_from(("rects", build_rect_series(5))).unwrap();
         let s1 = Series::try_from(("rects", build_rect_series(2))).unwrap();
         s0.append(&s1).unwrap();
-        let df0 = s0.into_frame();
-        dbg!(df0);
+        let _df0 = s0.into_frame();
     }
 
     #[test]
@@ -157,10 +151,8 @@ mod tests {
             "dat" => &[Some(99), None, Some(66)],
         )
         .unwrap();
-        dbg!(&df1);
 
-        let df_sorted = df1.sort_in_place(&["time"], false).unwrap();
-        dbg!(&df_sorted);
+        let _df_sorted = df1.sort_in_place(["time"], false).unwrap();
     }
 
     #[test]
@@ -178,7 +170,5 @@ mod tests {
         .unwrap();
 
         append_unified(&mut df1, &df2).unwrap();
-
-        dbg!(&df1);
     }
 }

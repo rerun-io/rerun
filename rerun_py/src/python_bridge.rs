@@ -1833,7 +1833,7 @@ fn log_arrow_msg(obj_path: &str, msg: &PyAny) -> PyResult<()> {
         parse_obj_path(obj_path)?
     };
 
-    let msg = crate::arrow::build_arrow_log_msg(obj_path, msg, time(false))?;
+    let msg = crate::arrow::build_arrow_log_msg(&obj_path, msg, &time(false))?;
 
     sdk.send(msg);
     Ok(())

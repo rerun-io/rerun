@@ -43,10 +43,10 @@ pub fn array_to_rust(arrow_array: &PyAny) -> PyResult<(Box<dyn Array>, Field)> {
     }
 }
 
-/// Create a LogMsg out of Arrow Schema and Chunk
+/// Create a `LogMsg` out of Arrow Schema and Chunk
 pub fn serialize_arrow_msg(
-    schema: Schema,
-    chunk: Chunk<Box<dyn Array>>,
+    schema: &Schema,
+    chunk: &Chunk<Box<dyn Array>>,
 ) -> Result<LogMsg, arrow2::error::Error> {
     // TODO(jleibs):
     // This stream-writer interface re-encodes and transmits the schema on every send
@@ -55,8 +55,8 @@ pub fn serialize_arrow_msg(
 
     let mut data = Vec::<u8>::new();
     let mut writer = StreamWriter::new(&mut data, Default::default());
-    writer.start(&schema, None)?;
-    writer.write(&chunk, None)?;
+    writer.start(schema, None)?;
+    writer.write(chunk, None)?;
     writer.finish()?;
 
     //let data_path = DataPath::new(obj_path, FieldName::from(field_name));
@@ -70,9 +70,9 @@ pub fn serialize_arrow_msg(
     Ok(LogMsg::ArrowMsg(msg))
 }
 pub fn build_arrow_log_msg(
-    obj_path: ObjPath,
+    obj_path: &ObjPath,
     array: &PyAny,
-    time_point: TimePoint,
+    time_point: &TimePoint,
 ) -> PyResult<LogMsg> {
     let (array, _field) = array_to_rust(array)?;
 
@@ -101,7 +101,7 @@ pub fn build_arrow_log_msg(
 
     // Build columns for timeline data
     let (mut fields, mut cols): (Vec<Field>, Vec<Box<dyn Array>>) =
-        build_time_cols(&time_point).unzip();
+        build_time_cols(time_point).unzip();
 
     fields.push(arrow2::datatypes::Field::new(
         "components",
@@ -114,5 +114,5 @@ pub fn build_arrow_log_msg(
     let schema = Schema { fields, metadata };
     let chunk = Chunk::new(cols);
 
-    serialize_arrow_msg(schema, chunk).map_err(|err| PyTypeError::new_err(err.to_string()))
+    serialize_arrow_msg(&schema, &chunk).map_err(|err| PyTypeError::new_err(err.to_string()))
 }
