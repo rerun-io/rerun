@@ -15,4 +15,3 @@ static GLOBAL: AccountingAllocator<mimalloc::MiMalloc> =
 
 pub(crate) mod arrow;
 mod python_bridge;
-pub(crate) mod sdk;

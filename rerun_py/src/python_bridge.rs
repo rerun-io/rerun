@@ -17,7 +17,7 @@ use re_log_types::{
     LoggedData, *,
 };
 
-use crate::sdk::Sdk;
+use rerun::sdk::Sdk;
 
 // ----------------------------------------------------------------------------
 
@@ -74,11 +74,6 @@ impl ThreadInfo {
 /// The python module is called "rerun_sdk".
 #[pymodule]
 fn rerun_sdk(py: Python<'_>, m: &PyModule) -> PyResult<()> {
-    #[cfg(feature = "re_viewer")]
-    re_memory::accounting_allocator::turn_on_tracking_if_env_var(
-        re_viewer::env_vars::RERUN_TRACK_ALLOCATIONS,
-    );
-
     re_log::set_default_rust_log_env();
     tracing_subscriber::fmt::init();
 
@@ -263,7 +258,7 @@ fn main(argv: Vec<String>) -> PyResult<()> {
         .enable_all()
         .build()
         .unwrap()
-        .block_on(rerun::run(argv))
+        .block_on(rerun::app::run(argv))
         .map_err(|err| PyRuntimeError::new_err(re_error::format(err)))
 }
 
@@ -353,14 +348,14 @@ fn show() -> PyResult<()> {
     }
 
     let log_messages = sdk.drain_log_messages_buffer();
-    drop(sdk);
 
     if log_messages.is_empty() {
         re_log::info!("Nothing logged, so nothing to show");
     } else {
-        let startup_options = re_viewer::StartupOptions::default();
-        re_viewer::run_native_viewer_with_messages(startup_options, log_messages);
+        sdk.show(log_messages);
     }
+    // TODO: understand the impact of moving this drop
+    drop(sdk);
 
     Ok(())
 }

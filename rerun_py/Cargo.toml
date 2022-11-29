@@ -15,7 +15,7 @@ name = "rerun_sdk"      # name of the Python library
 default = ["extension-module", "re_viewer"]
 
 ## Enable embedding the Rerun Viewer in the Python SDK.
-re_viewer = ["dep:re_viewer"]
+re_viewer = ["rerun/re_viewer"]
 
 # We need to enable the `pyo3/extension-module` when building the SDK,
 # but we cannot enable it when building tests and benchmarks, so we
@@ -38,7 +38,6 @@ re_memory = { path = "../crates/re_memory" }
 re_sdk_comms = { path = "../crates/re_sdk_comms", features = ["client"] }
 re_smart_channel = { path = "../crates/re_smart_channel" }
 re_tensor_ops = { path = "../crates/re_tensor_ops" }
-re_viewer = { path = "../crates/re_viewer", optional = true }
 rerun = { path = "../crates/rerun" }
 
 arrow2 = { version = "0.14", features = ["io_ipc"] }
@@ -54,9 +53,7 @@ image = { version = "0.24", default-features = false, features = [
 itertools = "0.10"
 macaw = "0.17"
 mimalloc = { version = "0.1.29", features = ["local_dynamic_tls"] }
-nohash-hasher = "0.2"
 numpy = "0.17"
-once_cell = "1.12"
 pyo3 = "0.17"
 rand = { version = "0.8", features = ["std_rng"] }
 tokio = { version = "1.16", features = ["rt-multi-thread"] }

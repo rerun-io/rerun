@@ -22,6 +22,11 @@ pub struct Sdk {
 
 impl Sdk {
     fn new() -> Self {
+        #[cfg(feature = "re_viewer")]
+        re_memory::accounting_allocator::turn_on_tracking_if_env_var(
+            re_viewer::env_vars::RERUN_TRACK_ALLOCATIONS,
+        );
+
         Self {
             #[cfg(feature = "web")]
             tokio_rt: tokio::runtime::Runtime::new().unwrap(),
@@ -219,6 +224,12 @@ impl Sdk {
             time_point: time_point.clone(),
             path_op,
         }));
+    }
+
+    #[cfg(feature = "re_viewer")]
+    pub fn show(&self, log_messages: Vec<LogMsg>) {
+        let startup_options = re_viewer::StartupOptions::default();
+        re_viewer::run_native_viewer_with_messages(startup_options, log_messages);
     }
 }
 
