@@ -46,12 +46,15 @@ struct ViewTargetSetup {
 /// Innermost field is an Option, so it can be consumed for `composite`.
 pub type SharedViewBuilder = Arc<RwLock<Option<ViewBuilder>>>;
 
-/// Configures the camera placement in the orthographic frustum.
+/// Configures the camera placement in the orthographic frustum,
+/// as well as the coordinate system convention.
 #[derive(Debug, Clone)]
 pub enum OrthographicCameraMode {
     /// Puts the view space origin into the middle of the screen.
     ///
     /// This is best for regular 3D content.
+    ///
+    /// Uses `RUB` (X=Right, Y=Up, Z=Back)
     NearPlaneCenter,
 
     /// Puts the view space origin at the top-left corner of the orthographic frustum and inverts the y axis,
@@ -60,6 +63,8 @@ pub enum OrthographicCameraMode {
     /// This means that for an identity camera, world coordinates map directly to pixel coordinates
     /// (if [`Projection::Orthographic::vertical_world_size`] is set to the y resolution).
     /// Best for pure 2D content.
+    ///
+    /// Uses `RDF` (X=Right, Y=Down, Z=Forward)
     TopLeftCorner,
 }
 
@@ -219,14 +224,11 @@ impl ViewBuilder {
             },
         );
 
-        let view_from_world = config.view_from_world.to_mat4();
-        let camera_position = config.view_from_world.inverse().translation();
-        let camera_forward = -view_from_world.row(2).truncate();
         let aspect_ratio =
             config.resolution_in_pixel[0] as f32 / config.resolution_in_pixel[1] as f32;
 
         let (projection_from_view, tan_half_fov, pixel_world_size_from_camera_distance) =
-            match config.projection_from_view {
+            match config.projection_from_view.clone() {
                 Projection::Perspective {
                     vertical_fov,
                     near_plane_distance,
@@ -272,13 +274,13 @@ impl ViewBuilder {
                     far_plane_distance,
                 } => {
                     let horizontal_world_size = vertical_world_size * aspect_ratio;
+                    // Note that we inverse z (by swapping near and far plane) to be consistent with our perspective projection.
                     let projection_from_view = match camera_mode {
                         OrthographicCameraMode::NearPlaneCenter => glam::Mat4::orthographic_rh(
                             -0.5 * horizontal_world_size,
                             0.5 * horizontal_world_size,
                             -0.5 * vertical_world_size,
                             0.5 * vertical_world_size,
-                            // We inverse z (by swapping near and far plane) to be consistent with our perspective projection.
                             far_plane_distance,
                             0.0,
                         ),
@@ -286,8 +288,7 @@ impl ViewBuilder {
                             0.0,
                             horizontal_world_size,
                             vertical_world_size,
-                            0.,
-                            // We inverse z (by swapping near and far plane) to be consistent with our perspective projection.
+                            0.0,
                             far_plane_distance,
                             0.0,
                         ),
@@ -305,6 +306,19 @@ impl ViewBuilder {
                 }
             };
 
+        let mut view_from_world = config.view_from_world.to_mat4();
+        // For OrthographicCameraMode::TopLeftCorner, we want Z facing forward.
+        if matches!(
+            config.projection_from_view,
+            Projection::Orthographic {
+                camera_mode: OrthographicCameraMode::TopLeftCorner,
+                ..
+            }
+        ) {
+            *view_from_world.col_mut(2) = -view_from_world.col(2);
+        }
+        let camera_position = config.view_from_world.inverse().translation();
+        let camera_forward = -view_from_world.row(2).truncate();
         let projection_from_world = projection_from_view * view_from_world;
 
         ctx.queue.write_buffer(
