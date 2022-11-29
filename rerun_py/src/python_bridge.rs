@@ -17,7 +17,7 @@ use re_log_types::{
     LoggedData, *,
 };
 
-use rerun::sdk::Sdk;
+use rerun_sdk::Sdk;
 
 // ----------------------------------------------------------------------------
 
@@ -71,9 +71,9 @@ impl ThreadInfo {
 
 // ----------------------------------------------------------------------------
 
-/// The python module is called "rerun_sdk".
+/// The python module is called "rerun_py_sdk".
 #[pymodule]
-fn rerun_sdk(py: Python<'_>, m: &PyModule) -> PyResult<()> {
+fn rerun_py_sdk(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     re_log::set_default_rust_log_env();
     tracing_subscriber::fmt::init();
 
@@ -258,7 +258,7 @@ fn main(argv: Vec<String>) -> PyResult<()> {
         .enable_all()
         .build()
         .unwrap()
-        .block_on(rerun::app::run(argv))
+        .block_on(rerun::run(argv))
         .map_err(|err| PyRuntimeError::new_err(re_error::format(err)))
 }
 

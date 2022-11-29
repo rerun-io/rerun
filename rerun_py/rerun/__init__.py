@@ -12,7 +12,7 @@ import numpy as np
 import numpy.typing as npt
 from rerun.color_conversion import linear_to_gamma_u8_pixel, u8_array_to_rgba
 
-from rerun import rerun_sdk  # type: ignore[attr-defined]
+from rerun import rerun_py_sdk as rerun_sdk  # type: ignore[attr-defined]
 
 EXP_ARROW = os.environ.get("RERUN_EXP_ARROW", "0").lower() in ("1", "true")
 

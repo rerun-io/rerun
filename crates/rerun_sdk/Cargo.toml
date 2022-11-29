@@ -1,47 +1,45 @@
 [package]
-name = "rerun"
+name = "rerun_sdk"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 publish = false
-default-run = "rerun"
-
 
 [features]
-default = ["server"]
+default = ["re_viewer"]
 
-## Support for running a HTTP server that listens to incoming log messages from a Rerun SDK.
-server = ["re_sdk_comms/server"]
+## Support for the viewer
+re_viewer = ["dep:re_viewer"]
 
 ## Support serving a web viewer over HTTP.
 ##
 ## Enabling this adds quite a bit to the compile time and binary size,
 ## since it requires compiling and bundling the viewer as wasm.
-web = ["re_ws_comms/server", "dep:re_web_server", "dep:webbrowser"]
+web = ["dep:re_ws_comms", "dep:re_web_server", "dep:webbrowser"]
+
 
 [dependencies]
 re_error = { path = "../re_error" }
 re_log = { path = "../re_log" }
 re_log_types = { path = "../re_log_types" }
 re_memory = { path = "../re_memory" }
+re_sdk_comms = { path = "../re_sdk_comms", features = ["client"] }
 re_smart_channel = { path = "../re_smart_channel" }
-re_viewer = { path = "../re_viewer", features = [
-  "puffin",
-], default-features = false }
-re_ws_comms = { path = "../re_ws_comms", features = ["client"] }
 
-anyhow = "1.0"
 crossbeam = "0.8"
 document-features = "0.2"
-egui = { version = "0.19", default-features = false }
-puffin = "0.14"
+nohash-hasher = "0.2"
+once_cell = "1.12"
 
 # Optional dependencies:
-re_sdk_comms = { path = "../re_sdk_comms", optional = true }
+re_ws_comms = { path = "../re_ws_comms", optional = true, features = [
+  "server",
+] }
+re_viewer = { path = "../re_viewer", features = [
+  "puffin",
+], default-features = false, optional = true }
 re_web_server = { path = "../re_web_server", optional = true }
-
-puffin_http = { version = "0.11", optional = true }
 webbrowser = { version = "0.8", optional = true }
 
 # Native dependencies:
