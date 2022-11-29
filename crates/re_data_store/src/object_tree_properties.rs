@@ -68,19 +68,47 @@ impl ObjectsProperties {
 #[serde(default)]
 pub struct ObjectProps {
     pub visible: bool,
+    pub visible_history: ExtraQueryHistory,
 }
 
 impl Default for ObjectProps {
     fn default() -> Self {
-        Self { visible: true }
+        Self {
+            visible: true,
+            visible_history: ExtraQueryHistory::default(),
+        }
     }
 }
 
 impl ObjectProps {
     /// Multiply/and these together.
-    fn with_child(&self, child: &ObjectProps) -> ObjectProps {
-        ObjectProps {
+    fn with_child(&self, child: &Self) -> Self {
+        Self {
             visible: self.visible && child.visible,
+            visible_history: self.visible_history.with_child(&child.visible_history),
+        }
+    }
+}
+
+// ----------------------------------------------------------------------------
+
+/// When showing an object in the history view, add this much history to it.
+#[derive(Clone, Copy, Default, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[serde(default)]
+pub struct ExtraQueryHistory {
+    /// Zero = off.
+    pub nanos: i64,
+
+    /// Zero = off.
+    pub sequences: i64,
+}
+
+impl ExtraQueryHistory {
+    /// Multiply/and these together.
+    fn with_child(&self, child: &Self) -> Self {
+        Self {
+            nanos: self.nanos.max(child.nanos),
+            sequences: self.sequences.max(child.sequences),
         }
     }
 }

@@ -37,7 +37,7 @@ impl SceneText {
 
         let text_entries = query
             .iter_object_stores(ctx.log_db, &[ObjectType::TextEntry])
-            .flat_map(|(_obj_type, obj_path, obj_store)| {
+            .flat_map(|(_obj_type, obj_path, _time_query, obj_store)| {
                 let mut batch = Vec::new();
                 // TODO(cmc): We're cloning full strings here, which is very much a bad idea.
                 // We need to change the internal storage so that we store ref-counted strings

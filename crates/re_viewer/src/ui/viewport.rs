@@ -12,7 +12,7 @@ use std::collections::BTreeMap;
 use ahash::HashMap;
 use itertools::Itertools as _;
 
-use re_data_store::{ObjPath, ObjectTree, ObjectTreeProperties, TimeQuery};
+use re_data_store::{ObjPath, ObjectTree, ObjectTreeProperties, TimeInt};
 
 use crate::misc::{space_info::*, Selection, ViewerContext};
 
@@ -67,7 +67,7 @@ impl ViewportBlueprint {
             let query = SceneQuery {
                 obj_paths: &space_info.objects,
                 timeline: *ctx.rec_cfg.time_ctrl.timeline(),
-                time_query: TimeQuery::LatestAt(i64::MAX),
+                latest_at: TimeInt::MAX,
                 obj_props: &Default::default(), // all visible
             };
             let scene = query.query(ctx);
@@ -201,7 +201,7 @@ impl ViewportBlueprint {
                     let query = SceneQuery {
                         obj_paths: &space_info.objects,
                         timeline: *ctx.rec_cfg.time_ctrl.timeline(),
-                        time_query: TimeQuery::LatestAt(i64::MAX),
+                        latest_at: TimeInt::MAX,
                         obj_props: &Default::default(), // all visible
                     };
                     let scene = query.query(ctx);
@@ -315,7 +315,7 @@ fn show_obj_tree(
 ) {
     if tree.is_leaf() {
         ui.horizontal(|ui| {
-            ctx.spsace_view_obj_path_button_to(ui, name, space_view_id, &tree.path);
+            ctx.space_view_obj_path_button_to(ui, name, space_view_id, &tree.path);
             object_visibility_button(ui, parent_is_visible, obj_tree_properties, &tree.path);
         });
     } else {
@@ -327,7 +327,7 @@ fn show_obj_tree(
             default_open,
         )
         .show_header(ui, |ui| {
-            ctx.spsace_view_obj_path_button_to(ui, name, space_view_id, &tree.path);
+            ctx.space_view_obj_path_button_to(ui, name, space_view_id, &tree.path);
             object_visibility_button(ui, parent_is_visible, obj_tree_properties, &tree.path);
         })
         .body(|ui| {
@@ -512,14 +512,14 @@ fn space_view_ui(
         });
         return;
     };
-    let Some(time_query) = ctx.rec_cfg.time_ctrl.time_query() else {
+    let Some(latest_at) = ctx.rec_cfg.time_ctrl.time_int() else {
         ui.centered(|ui| {
             ui.label(ctx.design_tokens.warning_text("No time selected", ui.style()));
         });
         return
     };
 
-    space_view.scene_ui(ctx, ui, spaces_info, space_info, time_query);
+    space_view.scene_ui(ctx, ui, spaces_info, space_info, latest_at);
 }
 
 // ----------------------------------------------------------------------------

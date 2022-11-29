@@ -202,7 +202,7 @@ impl SelectionPanel {
                         });
 
                     let mut props = space_view.obj_tree_properties.projected.get(&obj_path);
-                    obj_props_ui(ui, &mut props);
+                    obj_props_ui(ctx, ui, &mut props);
                     space_view
                         .obj_tree_properties
                         .individual
@@ -252,7 +252,40 @@ fn ui_space_view(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, space_view: &mu
     }
 }
 
-fn obj_props_ui(ui: &mut egui::Ui, obj_props: &mut ObjectProps) {
-    let ObjectProps { visible } = obj_props;
+fn obj_props_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, obj_props: &mut ObjectProps) {
+    use egui::NumExt;
+
+    let ObjectProps {
+        visible,
+        visible_history,
+    } = obj_props;
+
     ui.checkbox(visible, "Visible");
+
+    ui.horizontal(|ui| {
+        ui.label("Visible history:");
+        match ctx.rec_cfg.time_ctrl.timeline().typ() {
+            TimeType::Time => {
+                let mut time_sec = visible_history.nanos as f32 / 1e9;
+                let speed = (time_sec * 0.05).at_least(0.01);
+                ui.add(
+                    egui::DragValue::new(&mut time_sec)
+                        .clamp_range(0.0..=f32::INFINITY)
+                        .speed(speed)
+                        .suffix("s"),
+                )
+                .on_hover_text("Include this much history of the object in the Space View");
+                visible_history.nanos = (time_sec * 1e9).round() as _;
+            }
+            TimeType::Sequence => {
+                let speed = (visible_history.sequences as f32 * 0.05).at_least(1.0);
+                ui.add(
+                    egui::DragValue::new(&mut visible_history.sequences)
+                        .clamp_range(0.0..=f32::INFINITY)
+                        .speed(speed),
+                )
+                .on_hover_text("Include this much history of the object in the Space View");
+            }
+        }
+    });
 }

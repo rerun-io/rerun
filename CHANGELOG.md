@@ -2,7 +2,8 @@
 
 A rough time-line of major user-facing things added, removed and changed. Newest on top.
 
-* 2022-11-28: Introduced undo/redo selection history: [#340](https://github.com/rerun-io/rerun/pull/340).
+* 2022-11-29: Replaced the "time filter selection" with per-object "visible history": [#407](https://github.com/rerun-io/rerun/pull/407).
+* 2022-11-29: Introduced undo/redo selection history: [#340](https://github.com/rerun-io/rerun/pull/340).
 * 2022-11-28: Add `--memory-limit` and `--drop-at-latency` options: [#363](https://github.com/rerun-io/rerun/pull/363).
 * 2022-11-28: Add keypoints & keypoint connections for sub-classifications of points within a class(_id/descriptor): [#356](https://github.com/rerun-io/rerun/pull/356).
 * 2022-11-27: Toggle fullscreen with F11: [#364](https://github.com/rerun-io/rerun/pull/364).

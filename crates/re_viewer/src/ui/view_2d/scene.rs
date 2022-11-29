@@ -115,12 +115,12 @@ impl Scene2D {
 
         let images = query
             .iter_object_stores(ctx.log_db, &[ObjectType::Image])
-            .flat_map(|(_obj_type, obj_path, obj_store)| {
+            .flat_map(|(_obj_type, obj_path, time_query, obj_store)| {
                 let mut batch = Vec::new();
                 visit_type_data_2(
                     obj_store,
                     &FieldName::from("tensor"),
-                    &query.time_query,
+                    &time_query,
                     ("color", "meter"),
                     |instance_index: Option<&IndexHash>,
                      _time: i64,
@@ -175,12 +175,12 @@ impl Scene2D {
 
         let boxes = query
             .iter_object_stores(ctx.log_db, &[ObjectType::BBox2D])
-            .flat_map(|(_obj_type, obj_path, obj_store)| {
+            .flat_map(|(_obj_type, obj_path, time_query, obj_store)| {
                 let mut batch = Vec::new();
                 visit_type_data_4(
                     obj_store,
                     &FieldName::from("bbox"),
-                    &query.time_query,
+                    &time_query,
                     ("color", "stroke_width", "label", "class_id"),
                     |instance_index: Option<&IndexHash>,
                      _time: i64,
@@ -230,22 +230,23 @@ impl Scene2D {
 
         let points = query
             .iter_object_stores(ctx.log_db, &[ObjectType::Point2D])
-            .flat_map(|(_obj_type, obj_path, obj_store)| {
+            .flat_map(|(_obj_type, obj_path, time_query, obj_store)| {
                 let mut batch = Vec::new();
                 let annotations = self.annotation_map.find(obj_path);
                 let default_color = DefaultColor::ObjPath(obj_path);
 
                 // If keypoints ids show up we may need to connect them later!
-                let mut keypoints: HashMap<ClassId, HashMap<KeypointId, Pos2>> =
+                // We include time in the key, so that the "Visible history" (time range queries) feature works.
+                let mut keypoints: HashMap<(ClassId, i64), HashMap<KeypointId, Pos2>> =
                 Default::default();
 
                 visit_type_data_5(
                     obj_store,
                     &FieldName::from("pos"),
-                    &query.time_query,
+                    &time_query,
                     ("color", "radius", "label", "class_id", "keypoint_id"),
                     |instance_index: Option<&IndexHash>,
-                     _time: i64,
+                     time: i64,
                      _msg_id: &MsgId,
                      pos: &[f32; 2],
                      color: Option<&[u8; 4]>,
@@ -264,7 +265,7 @@ impl Scene2D {
                                 let keypoint_id = KeypointId(*keypoint_id as _);
                                 if let Some(class_id) = class_id {
                                     keypoints
-                                        .entry(class_id)
+                                        .entry((class_id, time))
                                         .or_insert_with(Default::default)
                                         .insert(keypoint_id, pos);
                                 }
@@ -300,7 +301,7 @@ impl Scene2D {
 
                 // Generate keypoint connections if any.
                 let instance_hash = InstanceIdHash::from_path_and_index(obj_path, IndexHash::NONE);
-                for (class_id, keypoints_in_class) in &keypoints {
+                for ((class_id, _time), keypoints_in_class) in &keypoints {
                     let Some(class_description) = annotations.context.class_map.get(class_id) else {
                         continue;
                     };
@@ -342,14 +343,14 @@ impl Scene2D {
 
         let segments = query
             .iter_object_stores(ctx.log_db, &[ObjectType::LineSegments2D])
-            .flat_map(|(_obj_type, obj_path, obj_store)| {
+            .flat_map(|(_obj_type, obj_path, time_query, obj_store)| {
                 let mut batch = Vec::new();
                 let annotations = self.annotation_map.find(obj_path);
 
                 visit_type_data_2(
                     obj_store,
                     &FieldName::from("points"),
-                    &query.time_query,
+                    &time_query,
                     ("color", "stroke_width"),
                     |instance_index: Option<&IndexHash>,
                      _time: i64,

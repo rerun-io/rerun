@@ -1,4 +1,4 @@
-use re_data_store::{ObjPath, ObjectTree, ObjectTreeProperties};
+use re_data_store::{ObjPath, ObjectTree, ObjectTreeProperties, TimeInt};
 use re_log_types::Transform;
 
 use crate::misc::{space_info::*, ViewerContext};
@@ -71,14 +71,14 @@ impl SpaceView {
         ui: &mut egui::Ui,
         spaces_info: &SpacesInfo,
         space_info: &SpaceInfo,
-        time_query: re_data_store::TimeQuery<i64>,
+        latest_at: TimeInt,
     ) {
         crate::profile_function!();
 
         let query = crate::ui::scene::SceneQuery {
             obj_paths: &space_info.objects,
             timeline: *ctx.rec_cfg.time_ctrl.timeline(),
-            time_query,
+            latest_at,
             obj_props: &self.obj_tree_properties.projected,
         };
 

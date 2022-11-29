@@ -133,7 +133,7 @@ impl<'a> ViewerContext<'a> {
         response
     }
 
-    pub fn spsace_view_obj_path_button_to(
+    pub fn space_view_obj_path_button_to(
         &mut self,
         ui: &mut egui::Ui,
         text: impl Into<egui::WidgetText>,

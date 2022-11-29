@@ -168,13 +168,14 @@ impl Scene3D {
 
         query
             .iter_object_stores(ctx.log_db, &[ObjectType::Point3D])
-            .for_each(|(_obj_type, obj_path, obj_store)| {
+            .for_each(|(_obj_type, obj_path, time_query, obj_store)| {
                 let mut batch_size = 0;
                 let mut show_labels = true;
                 let mut label_batch = Vec::new();
 
                 // If keypoints ids show up we may need to connect them later!
-                let mut keypoints: HashMap<ClassId, HashMap<KeypointId, glam::Vec3>> =
+                // We include time in the key, so that the "Visible history" (time range queries) feature works.
+                let mut keypoints: HashMap<(ClassId, i64), HashMap<KeypointId, glam::Vec3>> =
                     Default::default();
 
                 let annotations = self.annotation_map.find(obj_path);
@@ -183,10 +184,10 @@ impl Scene3D {
                 visit_type_data_5(
                     obj_store,
                     &FieldName::from("pos"),
-                    &query.time_query,
+                    &time_query,
                     ("color", "radius", "label", "class_id", "keypoint_id"),
                     |instance_index: Option<&IndexHash>,
-                     _time: i64,
+                    time: i64,
                      _msg_id: &MsgId,
                      pos: &[f32; 3],
                      color: Option<&[u8; 4]>,
@@ -209,7 +210,7 @@ impl Scene3D {
                             let keypoint_id = KeypointId(*keypoint_id as _);
                             if let Some(class_id) = class_id {
                                 keypoints
-                                    .entry(class_id)
+                                    .entry((class_id, time))
                                     .or_insert_with(Default::default)
                                     .insert(keypoint_id, pos);
                             }
@@ -245,7 +246,7 @@ impl Scene3D {
 
                 // Generate keypoint connections if any.
                 let instance_id_hash = InstanceIdHash::from_path_and_index(obj_path, IndexHash::NONE);
-                for (class_id, keypoints_in_class) in &keypoints {
+                for ((class_id, _time), keypoints_in_class) in &keypoints {
                     let Some(class_description) = annotations.context.class_map.get(class_id) else {
                         continue;
                     };
@@ -279,7 +280,7 @@ impl Scene3D {
     fn load_boxes(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
 
-        for (_obj_type, obj_path, obj_store) in
+        for (_obj_type, obj_path, time_query, obj_store) in
             query.iter_object_stores(ctx.log_db, &[ObjectType::Box3D])
         {
             let annotations = self.annotation_map.find(obj_path);
@@ -288,7 +289,7 @@ impl Scene3D {
             visit_type_data_4(
                 obj_store,
                 &FieldName::from("obb"),
-                &query.time_query,
+                &time_query,
                 ("color", "stroke_width", "label", "class_id"),
                 |instance_index: Option<&IndexHash>,
                  _time: i64,
@@ -328,7 +329,7 @@ impl Scene3D {
                 ctx.log_db,
                 &[ObjectType::Path3D, ObjectType::LineSegments3D],
             )
-            .flat_map(|(obj_type, obj_path, obj_store)| {
+            .flat_map(|(obj_type, obj_path, time_query, obj_store)| {
                 let mut batch = Vec::new();
                 let annotations = self.annotation_map.find(obj_path);
                 let default_color = DefaultColor::ObjPath(obj_path);
@@ -336,7 +337,7 @@ impl Scene3D {
                 visit_type_data_2(
                     obj_store,
                     &FieldName::from("points"),
-                    &query.time_query,
+                    &time_query,
                     ("color", "stroke_width"),
                     |instance_index: Option<&IndexHash>,
                      _time: i64,
@@ -400,7 +401,7 @@ impl Scene3D {
     fn load_arrows(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
 
-        for (_obj_type, obj_path, obj_store) in
+        for (_obj_type, obj_path, time_query, obj_store) in
             query.iter_object_stores(ctx.log_db, &[ObjectType::Arrow3D])
         {
             let annotations = self.annotation_map.find(obj_path);
@@ -409,7 +410,7 @@ impl Scene3D {
             visit_type_data_3(
                 obj_store,
                 &FieldName::from("arrow3d"),
-                &query.time_query,
+                &time_query,
                 ("color", "width_scale", "label"),
                 |instance_index: Option<&IndexHash>,
                  _time: i64,
@@ -447,12 +448,12 @@ impl Scene3D {
 
         let meshes = query
             .iter_object_stores(ctx.log_db, &[ObjectType::Mesh3D])
-            .flat_map(|(_obj_type, obj_path, obj_store)| {
+            .flat_map(|(_obj_type, obj_path, time_query, obj_store)| {
                 let mut batch = Vec::new();
                 visit_type_data_1(
                     obj_store,
                     &FieldName::from("mesh"),
-                    &query.time_query,
+                    &time_query,
                     ("color",),
                     |instance_index: Option<&IndexHash>,
                      _time: i64,

@@ -540,6 +540,8 @@ impl TimeInt {
     // a bit of leeway.
     pub const BEGINNING: TimeInt = TimeInt(i64::MIN / 2);
 
+    pub const MAX: TimeInt = TimeInt(i64::MAX);
+
     #[inline]
     pub fn as_i64(&self) -> i64 {
         self.0
