@@ -9,12 +9,11 @@ publish = false
 [dependencies]
 re_log = { path = "../re_log" }
 re_log_types = { path = "../re_log_types" }
-thiserror = "1.0"
 
+arrow2 = { version = "0.14", features = ["io_ipc"] }
 nohash-hasher = "0.2"
-
 polars = { version = "0.25", features = [
   "dtype-time",
   "dtype-struct",
 ], default-features = false }
-arrow2 = { version = "0.14", features = ["io_ipc"] }
+thiserror = "1.0"

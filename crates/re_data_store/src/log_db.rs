@@ -325,6 +325,7 @@ impl LogDb {
     pub fn purge_fraction_of_ram(&mut self, fraction_to_purge: f32) {
         fn always_keep(msg: &LogMsg) -> bool {
             match msg {
+                //TODO(john) allow purging ArrowMsg
                 LogMsg::ArrowMsg(_) | LogMsg::BeginRecordingMsg(_) | LogMsg::TypeMsg(_) => true,
                 LogMsg::DataMsg(msg) => msg.time_point.is_timeless(),
                 LogMsg::PathOpMsg(msg) => msg.time_point.is_timeless(),

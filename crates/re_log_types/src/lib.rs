@@ -278,16 +278,6 @@ pub struct ArrowMsg {
     /// A unique id per [`DataMsg`].
     pub msg_id: MsgId,
 
-    /// Time information (when it was logged, when it was received, …)
-    ///
-    /// If this is empty, the data is _timeless_.
-    /// Timeless data will show up on all timelines, past and future,
-    /// and will hit all time queries. In other words, it is always there.
-    //pub time_point: TimePoint,
-
-    /// What the data is targeting.
-    //pub data_path: DataPath,
-
     /// The arrow payload.
     pub data: Vec<u8>,
 }
