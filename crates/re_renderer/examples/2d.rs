@@ -1,4 +1,4 @@
-use re_renderer::view_builder::{self, Projection, ViewBuilder};
+use re_renderer::view_builder::{self, ViewBuilder};
 
 mod framework;
 
@@ -18,30 +18,26 @@ impl framework::Example for Render2D {
         re_ctx: &mut re_renderer::RenderContext,
         surface_configuration: &wgpu::SurfaceConfiguration,
         _time: &framework::Time,
-    ) -> Vec<(ViewBuilder, wgpu::CommandBuffer)> {
+    ) -> Vec<framework::ViewDrawResult> {
         let mut view_builder = ViewBuilder::default();
         view_builder
             .setup_view(
                 re_ctx,
-                view_builder::TargetConfiguration {
-                    name: "2D".into(),
-                    resolution_in_pixel: [
-                        surface_configuration.width,
-                        surface_configuration.height,
-                    ],
-                    origin_in_pixel: [0, 0],
-                    view_from_world: macaw::IsoTransform::IDENTITY,
-                    projection_from_view: Projection::Orthographic {
-                        vertical_world_size: surface_configuration.height as f32,
-                        far_plane_distance: 100.0,
-                    },
-                },
+                view_builder::TargetConfiguration::new_2d_target(
+                    "2D".into(),
+                    [surface_configuration.width, surface_configuration.height],
+                    1.0,
+                ),
             )
             .unwrap();
 
-        let cmd_buf = view_builder.draw(re_ctx).unwrap();
+        let command_buffer = view_builder.draw(re_ctx).unwrap();
 
-        vec![(view_builder, cmd_buf)]
+        vec![framework::ViewDrawResult {
+            view_builder,
+            command_buffer,
+            target_location: glam::Vec2::ZERO,
+        }]
     }
 
     fn on_keyboard_input(&mut self, _input: winit::event::KeyboardInput) {}

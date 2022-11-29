@@ -17,6 +17,12 @@ use winit::{
     window::Window,
 };
 
+pub struct ViewDrawResult {
+    pub view_builder: ViewBuilder,
+    pub command_buffer: wgpu::CommandBuffer,
+    pub target_location: glam::Vec2,
+}
+
 pub trait Example {
     fn title() -> &'static str;
 
@@ -27,7 +33,7 @@ pub trait Example {
         re_ctx: &mut RenderContext,
         surface_configuration: &wgpu::SurfaceConfiguration,
         time: &Time,
-    ) -> Vec<(ViewBuilder, wgpu::CommandBuffer)>;
+    ) -> Vec<ViewDrawResult>;
 
     fn on_keyboard_input(&mut self, input: winit::event::KeyboardInput);
 }
@@ -225,10 +231,11 @@ impl<E: Example + 'static> Application<E> {
 
                         view_builders
                             .into_iter()
-                            .map(|(vb, cmd_buf)| {
-                                vb.composite(&self.re_ctx, &mut composite_pass)
+                            .map(|r| {
+                                r.view_builder
+                                    .composite(&self.re_ctx, &mut composite_pass, r.target_location)
                                     .expect("Failed to composite view main surface");
-                                cmd_buf
+                                r.command_buffer
                             })
                             .collect::<Vec<_>>() // So we don't hold a reference to the render pass!
 

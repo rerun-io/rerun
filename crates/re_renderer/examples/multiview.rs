@@ -13,7 +13,7 @@ use re_renderer::{
         PointCloudDrawable, PointCloudPoint, TestTriangleDrawable,
     },
     resource_managers::ResourceLifeTime,
-    view_builder::{Projection, TargetConfiguration, ViewBuilder},
+    view_builder::{OrthographicCameraMode, Projection, TargetConfiguration, ViewBuilder},
     RenderContext,
 };
 use winit::event::{ElementState, VirtualKeyCode};
@@ -24,7 +24,7 @@ fn split_resolution(
     resolution: [u32; 2],
     nb_rows: usize,
     nb_cols: usize,
-) -> impl Iterator<Item = ((f32, f32), (f32, f32))> {
+) -> impl Iterator<Item = (glam::Vec2, (f32, f32))> {
     let total_width = resolution[0] as f32;
     let total_height = resolution[1] as f32;
     let width = total_width / nb_cols as f32;
@@ -35,7 +35,7 @@ fn split_resolution(
             // very quick'n'dirty (uneven) borders
             let y = f32::clamp(row as f32 * height + 2.0, 2.0, total_height - 2.0);
             let x = f32::clamp(col as f32 * width + 2.0, 2.0, total_width - 2.0);
-            ((x, y), (width - 4.0, height - 4.0))
+            (glam::vec2(x, y), (width - 4.0, height - 4.0))
         })
 }
 
@@ -241,7 +241,7 @@ impl Example for Multiview {
         re_ctx: &mut RenderContext,
         surface_configuration: &wgpu::SurfaceConfiguration,
         time: &framework::Time,
-    ) -> Vec<(ViewBuilder, wgpu::CommandBuffer)> {
+    ) -> Vec<framework::ViewDrawResult> {
         if matches!(self.camera_control, CameraControl::RotateAroundCenter) {
             let seconds_since_startup = time.seconds_since_startup();
             self.camera_position = Vec3::new(
@@ -276,6 +276,7 @@ impl Example for Multiview {
             }
         } else {
             Projection::Orthographic {
+                camera_mode: OrthographicCameraMode::NearPlaneCenter,
                 vertical_world_size: 15.0,
                 far_plane_distance: 100000.0,
             }
@@ -286,18 +287,22 @@ impl Example for Multiview {
         #[rustfmt::skip]
         macro_rules! draw {
             ($name:ident @ split #$n:expr) => {{
-                let ((x, y), (width, height)) = splits[$n];
-                draw_view(re_ctx,
+                let (target_location, (width, height)) = splits[$n];
+                let (view_builder, command_buffer) = draw_view(re_ctx,
                     TargetConfiguration {
                         name: stringify!($name).into(),
                         resolution_in_pixel: [width as u32, height as u32],
-                        origin_in_pixel: [x as u32, y as u32],
                         view_from_world,
                         projection_from_view: projection_from_view.clone(),
                     },
                     &skybox,
                     &$name
-                )
+                );
+                framework::ViewDrawResult {
+                    view_builder,
+                    command_buffer,
+                    target_location,
+                }
             }};
         }
 

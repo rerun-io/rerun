@@ -39,13 +39,29 @@ struct ViewTargetSetup {
     depth_buffer: GpuTextureHandleStrong,
 
     resolution_in_pixel: [u32; 2],
-    origin_in_pixel: [u32; 2],
 }
 
 /// [`ViewBuilder`] that can be shared between threads.
 ///
 /// Innermost field is an Option, so it can be consumed for `composite`.
 pub type SharedViewBuilder = Arc<RwLock<Option<ViewBuilder>>>;
+
+/// Configures the camera placement in the orthographic frustum.
+#[derive(Debug, Clone)]
+pub enum OrthographicCameraMode {
+    /// Puts the view space origin into the middle of the screen.
+    ///
+    /// This is best for regular 3D content.
+    NearPlaneCenter,
+
+    /// Puts the view space origin at the top-left corner of the orthographic frustum and inverts the y axis,
+    /// such that the bottom-right corner is at `glam::vec3(vertical_world_size * aspect_ratio, vertical_world_size, 0.0)` in view space.
+    ///
+    /// This means that for an identity camera, world coordinates map directly to pixel coordinates
+    /// (if [`Projection::Orthographic::vertical_world_size`] is set to the y resolution).
+    /// Best for pure 2D content.
+    TopLeftCorner,
+}
 
 /// How we project from 3D to 2D.
 #[derive(Debug, Clone)]
@@ -64,6 +80,8 @@ pub enum Projection {
     ///
     /// Near plane is at z==0, everything with view space z>0 is clipped.
     Orthographic {
+        camera_mode: OrthographicCameraMode,
+
         /// Size of the orthographic camera view space y direction (which is the vertical screen axis).
         vertical_world_size: f32,
 
@@ -76,12 +94,31 @@ pub enum Projection {
 #[derive(Debug, Clone)]
 pub struct TargetConfiguration {
     pub name: DebugLabel,
-
     pub resolution_in_pixel: [u32; 2],
-    pub origin_in_pixel: [u32; 2],
-
     pub view_from_world: macaw::IsoTransform,
     pub projection_from_view: Projection,
+}
+
+impl TargetConfiguration {
+    /// Utility method for a 2D target with world coordinates mapping to pixels.
+    ///
+    /// TODO(andreas): Once we start informing the renderer about points->pixels, this should have one world unit per *point*
+    pub fn new_2d_target(
+        name: DebugLabel,
+        resolution_in_pixel: [u32; 2],
+        zoom_factor: f32,
+    ) -> Self {
+        TargetConfiguration {
+            name,
+            resolution_in_pixel,
+            view_from_world: macaw::IsoTransform::IDENTITY,
+            projection_from_view: Projection::Orthographic {
+                camera_mode: OrthographicCameraMode::TopLeftCorner,
+                vertical_world_size: resolution_in_pixel[1] as f32 * zoom_factor,
+                far_plane_distance: 1000.0,
+            },
+        }
+    }
 }
 
 impl ViewBuilder {
@@ -227,19 +264,31 @@ impl ViewBuilder {
                     )
                 }
                 Projection::Orthographic {
+                    camera_mode,
                     vertical_world_size,
                     far_plane_distance,
                 } => {
                     let horizontal_world_size = vertical_world_size * aspect_ratio;
-                    let projection_from_view = glam::Mat4::orthographic_rh(
-                        -0.5 * horizontal_world_size,
-                        0.5 * horizontal_world_size,
-                        -0.5 * vertical_world_size,
-                        0.5 * vertical_world_size,
-                        // We inverse z (by swapping near and far plane) to be consistent with our perspective projection.
-                        far_plane_distance,
-                        0.0,
-                    );
+                    let projection_from_view = match camera_mode {
+                        OrthographicCameraMode::NearPlaneCenter => glam::Mat4::orthographic_rh(
+                            -0.5 * horizontal_world_size,
+                            0.5 * horizontal_world_size,
+                            -0.5 * vertical_world_size,
+                            0.5 * vertical_world_size,
+                            // We inverse z (by swapping near and far plane) to be consistent with our perspective projection.
+                            far_plane_distance,
+                            0.0,
+                        ),
+                        OrthographicCameraMode::TopLeftCorner => glam::Mat4::orthographic_rh(
+                            0.0,
+                            horizontal_world_size,
+                            vertical_world_size,
+                            0.,
+                            // We inverse z (by swapping near and far plane) to be consistent with our perspective projection.
+                            far_plane_distance,
+                            0.0,
+                        ),
+                    };
 
                     let tan_half_fov = glam::vec2(f32::INFINITY, f32::INFINITY);
                     let pixel_world_size_from_camera_distance =
@@ -287,7 +336,6 @@ impl ViewBuilder {
             main_target_resolved,
             depth_buffer,
             resolution_in_pixel: config.resolution_in_pixel,
-            origin_in_pixel: config.origin_in_pixel,
         });
 
         Ok(self)
@@ -392,13 +440,15 @@ impl ViewBuilder {
         Ok(encoder.finish())
     }
 
-    /// Applies tonemapping and draws the final result of a `ViewBuilder` to a given output `RenderPass`.
+    /// Composites the final result of a `ViewBuilder` to a given output `RenderPass`.
     ///
     /// The bound surface(s) on the `RenderPass` are expected to be the same format as specified on `Context` creation.
+    /// `screen_position` specifies where on the output pass the view is placed.
     pub fn composite<'a>(
         self,
         ctx: &'a RenderContext,
         pass: &mut wgpu::RenderPass<'a>,
+        screen_position: glam::Vec2,
     ) -> anyhow::Result<()> {
         crate::profile_function!();
 
@@ -407,8 +457,8 @@ impl ViewBuilder {
             .context("ViewBuilder::setup_view wasn't called yet")?;
 
         pass.set_viewport(
-            setup.origin_in_pixel[0] as f32,
-            setup.origin_in_pixel[1] as f32,
+            screen_position.x,
+            screen_position.y,
             setup.resolution_in_pixel[0] as f32,
             setup.resolution_in_pixel[1] as f32,
             0.0,
