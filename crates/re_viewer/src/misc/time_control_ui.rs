@@ -42,30 +42,6 @@ impl TimeControl {
         }
     }
 
-    pub fn selection_ui(&mut self, ui: &mut egui::Ui) {
-        ui.label("Looping:");
-
-        if ui.selectable_label(!self.looped(), "Off").clicked() {
-            self.set_looped(false);
-        }
-
-        if ui
-            .selectable_label(self.looped() && self.loop_selection_active, "Selection")
-            .clicked()
-        {
-            self.set_looped(true);
-            self.loop_selection_active = true;
-        }
-
-        if ui
-            .selectable_label(self.looped() && !self.loop_selection_active, "All")
-            .clicked()
-        {
-            self.set_looped(true);
-            self.loop_selection_active = false;
-        }
-    }
-
     pub fn play_pause_ui(&mut self, times_per_timeline: &TimesPerTimeline, ui: &mut egui::Ui) {
         // Toggle with space
         let anything_has_focus = ui.ctx().memory().focus().is_some();
@@ -97,14 +73,37 @@ impl TimeControl {
         }
 
         {
-            let mut looped = self.looped();
             ui.scope(|ui| {
-                ui.visuals_mut().selection.bg_fill =
-                    crate::design_tokens::DesignTokens::loop_selection_color();
-                ui.toggle_value(&mut looped, "🔁")
-                    .on_hover_text("Loop playback");
+                if !self.looped() {
+                    if ui
+                        .selectable_label(false, "🔁")
+                        .on_hover_text("Looping is off")
+                        .clicked()
+                    {
+                        self.set_looped(true);
+                    }
+                } else if !self.loop_selection_active {
+                    if ui
+                        .selectable_label(true, "🔁")
+                        .on_hover_text("Currently looping entire recording")
+                        .clicked()
+                    {
+                        self.loop_selection_active = true;
+                    }
+                } else {
+                    ui.visuals_mut().selection.bg_fill =
+                        crate::design_tokens::DesignTokens::loop_selection_color();
+                    #[allow(clippy::collapsible_else_if)]
+                    if ui
+                        .selectable_label(true, "🔂")
+                        .on_hover_text("Currently looping selection")
+                        .clicked()
+                    {
+                        self.loop_selection_active = false;
+                        self.set_looped(false);
+                    }
+                }
             });
-            self.set_looped(looped);
         }
 
         {

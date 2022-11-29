@@ -145,18 +145,15 @@ impl TimeControl {
     }
 
     pub fn play(&mut self, times_per_timeline: &TimesPerTimeline) {
-        if self.playing {
-            return;
-        }
-
         // Start from beginning if we are at the end:
-        if let Some(axis) = times_per_timeline.get(&self.timeline) {
+        if let Some(time_points) = times_per_timeline.get(&self.timeline) {
             if let Some(state) = self.states.get_mut(&self.timeline) {
-                if state.time >= max(axis) {
-                    state.time = min(axis).into();
+                if state.time >= max(time_points) {
+                    state.time = min(time_points).into();
                 }
             } else {
-                self.states.insert(self.timeline, TimeState::new(min(axis)));
+                self.states
+                    .insert(self.timeline, TimeState::new(min(time_points)));
             }
         }
         self.playing = true;

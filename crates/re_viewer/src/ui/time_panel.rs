@@ -192,13 +192,7 @@ impl TimePanel {
         );
 
         let loop_selection_rect = {
-            let response = ui
-                .horizontal(|ui| {
-                    ctx.rec_cfg.time_ctrl.selection_ui(ui);
-                })
-                .response;
-            self.next_col_right = self.next_col_right.max(response.rect.right());
-            let y_range = response.rect.y_range();
+            let y_range = ui.label(" ").rect.y_range(); // TODO: clean up
             Rect::from_x_y_ranges(time_x_range.clone(), y_range)
         };
 
