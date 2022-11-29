@@ -19,6 +19,7 @@ server = [
   "dep:re_smart_channel",
   "dep:tokio-tungstenite",
   "dep:tokio",
+  "tungstenite",
 ]
 
 ## Enable encryption using TLS support (`wss://`).
