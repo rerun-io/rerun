@@ -193,6 +193,17 @@ pub struct LineStrip {
     //pub stippling: f32,
 }
 
+impl Default for LineStrip {
+    fn default() -> Self {
+        Self {
+            points: Default::default(),
+            radius: 1.0,
+            srgb_color: [255, 255, 255, 255],
+            flags: LineStripFlags::empty(),
+        }
+    }
+}
+
 impl LineStrip {
     /// Creates line strips from a single line segment.
     pub fn line_segment(

@@ -5,16 +5,15 @@ use glam::Vec3;
 use itertools::Itertools;
 use macaw::IsoTransform;
 use rand::Rng;
-use smallvec::smallvec;
 
 use re_renderer::{
     renderer::{
-        GenericSkyboxDrawable, LineDrawable, LineStrip, LineStripFlags, MeshDrawable, MeshInstance,
+        GenericSkyboxDrawable, LineDrawable, LineStripFlags, MeshDrawable, MeshInstance,
         PointCloudDrawable, PointCloudPoint, TestTriangleDrawable,
     },
     resource_managers::ResourceLifeTime,
     view_builder::{OrthographicCameraMode, Projection, TargetConfiguration, ViewBuilder},
-    RenderContext,
+    LineStripSeriesBuilder, RenderContext,
 };
 use winit::event::{ElementState, VirtualKeyCode};
 
@@ -114,46 +113,44 @@ fn lorenz_points(seconds_since_startup: f32) -> Vec<glam::Vec3> {
 fn build_lines(re_ctx: &mut RenderContext, seconds_since_startup: f32) -> LineDrawable {
     // Calculate some points that look nice for an animated line.
     let lorenz_points = lorenz_points(seconds_since_startup);
-    LineDrawable::new(
-        re_ctx,
-        &[
-            // Complex orange line.
-            LineStrip {
-                points: lorenz_points.into(),
-                radius: 0.05,
-                srgb_color: [255, 191, 0, 255],
-                flags: LineStripFlags::empty(),
-            },
-            // Green Zig-Zag
-            LineStrip {
-                points: smallvec![
-                    glam::vec3(0.0, -1.0, 0.0),
-                    glam::vec3(1.0, 0.0, 0.0),
-                    glam::vec3(2.0, -1.0, 0.0),
-                    glam::vec3(3.0, 0.0, 0.0),
-                ],
-                radius: 0.1,
-                srgb_color: [50, 255, 50, 255],
-                flags: LineStripFlags::CAP_END_TRIANGLE,
-            },
-            // A blue spiral
-            LineStrip {
-                points: (0..1000)
-                    .map(|i| {
-                        glam::vec3(
-                            (i as f32 * 0.01).sin() * 2.0,
-                            i as f32 * 0.01 - 6.0,
-                            (i as f32 * 0.01).cos() * 2.0,
-                        )
-                    })
-                    .collect(),
-                radius: 0.1,
-                srgb_color: [50, 50, 255, 255],
-                flags: LineStripFlags::CAP_END_TRIANGLE,
-            },
-        ],
-    )
-    .unwrap()
+
+    let mut builder = LineStripSeriesBuilder::default();
+
+    // Complex orange line.
+    builder
+        .add_strip(lorenz_points.into_iter())
+        .color_rgb(255, 191, 0)
+        .radius(0.05);
+
+    // Green Zig-Zag arrow
+    builder
+        .add_strip(
+            [
+                glam::vec3(0.0, -1.0, 0.0),
+                glam::vec3(1.0, 0.0, 0.0),
+                glam::vec3(2.0, -1.0, 0.0),
+                glam::vec3(3.0, 0.0, 0.0),
+            ]
+            .into_iter(),
+        )
+        .color_rgb(50, 255, 50)
+        .radius(0.05)
+        .flags(LineStripFlags::CAP_END_TRIANGLE);
+
+    // Blue spiral
+    builder
+        .add_strip((0..1000).map(|i| {
+            glam::vec3(
+                (i as f32 * 0.01).sin() * 2.0,
+                i as f32 * 0.01 - 6.0,
+                (i as f32 * 0.01).cos() * 2.0,
+            )
+        }))
+        .color_rgb(50, 50, 255)
+        .radius(0.1)
+        .flags(LineStripFlags::CAP_END_TRIANGLE);
+
+    builder.to_drawable(re_ctx)
 }
 
 enum CameraControl {
