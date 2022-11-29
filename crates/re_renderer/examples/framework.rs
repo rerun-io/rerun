@@ -285,7 +285,7 @@ pub fn start<E: Example + 'static>() {
                     .ok()
             })
             .expect("couldn't append canvas to document body");
-        wasm_bindgen_futures::spawn_local(run(event_loop, window));
+        wasm_bindgen_futures::spawn_local(run::<E>(event_loop, window));
     }
 }
 
