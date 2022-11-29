@@ -1,12 +1,11 @@
 use egui::NumExt as _;
 use glam::Affine3A;
 use macaw::{vec3, Quat, Ray3, Vec3};
-use smallvec::smallvec;
 
 use re_data_store::{InstanceId, InstanceIdHash};
 use re_log_types::{ObjPath, ViewCoordinates};
 use re_renderer::{
-    renderer::{GenericSkyboxDrawable, LineDrawable, MeshDrawable, PointCloudDrawable},
+    renderer::{GenericSkyboxDrawable, MeshDrawable, PointCloudDrawable},
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
     RenderContext,
 };
@@ -16,7 +15,7 @@ use crate::{
     ViewerContext,
 };
 
-use super::{Eye, LineStrip, OrbitEye, Point3D, Scene3D, Size, SpaceCamera};
+use super::{Eye, OrbitEye, Point3D, Scene3D, Size, SpaceCamera};
 
 // ---
 
@@ -390,6 +389,9 @@ pub(crate) fn view_3d(
 
     project_onto_other_spaces(ctx, space_cameras, state, space, &response, orbit_eye);
     show_projections_from_2d_space(ctx, space_cameras, state, &mut scene);
+    if state.show_axes {
+        show_origin_axis(&mut scene);
+    }
 
     {
         let orbit_center_alpha = egui::remap_clamp(
@@ -421,7 +423,6 @@ pub(crate) fn view_3d(
         eye,
         rect,
         &scene,
-        state,
         ctx.render_ctx,
         &space.map_or("<unnamed>".to_owned(), |space| space.to_string()),
     );
@@ -434,7 +435,6 @@ fn paint_view(
     eye: Eye,
     rect: egui::Rect,
     scene: &Scene3D,
-    state: &mut View3DState,
     render_ctx: &mut RenderContext,
     name: &str,
 ) {
@@ -516,9 +516,7 @@ fn paint_view(
             .unwrap()
             .queue_draw(&GenericSkyboxDrawable::new(render_ctx))
             .queue_draw(&MeshDrawable::new(render_ctx, &scene.meshes()).unwrap())
-            .queue_draw(
-                &LineDrawable::new(render_ctx, &scene.line_strips(state.show_axes)).unwrap(),
-            )
+            .queue_draw(&scene.line_strips.to_drawable(render_ctx))
             .queue_draw(&PointCloudDrawable::new(render_ctx, &scene.point_cloud_points()).unwrap());
 
         let command_buffer = view_builder.draw(render_ctx).unwrap();
@@ -579,15 +577,9 @@ fn show_projections_from_2d_space(
                     let origin = ray.point_along(0.0);
                     let end = ray.point_along(length);
                     let radius = Size::new_ui(1.5);
-                    scene.line_strips.push(LineStrip {
-                        instance_id_hash: InstanceIdHash::NONE,
-                        line_strip: re_renderer::renderer::LineStrip {
-                            points: smallvec![origin, end],
-                            radius: radius.0,
-                            srgb_color: [255; 4],
-                            flags: Default::default(),
-                        },
-                    });
+
+                    scene.line_instance_ids.push(InstanceIdHash::NONE);
+                    scene.line_strips.add_segment(origin, end).radius(radius.0);
 
                     if let Some(pos) = hit_pos {
                         // Show where the ray hits the depth map:
@@ -641,6 +633,27 @@ fn project_onto_other_spaces(
         space_3d: space.cloned(),
         target_spaces,
     }
+}
+
+fn show_origin_axis(scene: &mut Scene3D) {
+    scene
+        .line_strips
+        .add_segment(glam::Vec3::ZERO, glam::Vec3::X)
+        .radius(0.01)
+        .color_rgb(255, 0, 0)
+        .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE);
+    scene
+        .line_strips
+        .add_segment(glam::Vec3::ZERO, glam::Vec3::Y)
+        .radius(0.01)
+        .color_rgb(0, 255, 0)
+        .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE);
+    scene
+        .line_strips
+        .add_segment(glam::Vec3::ZERO, glam::Vec3::Z)
+        .radius(0.01)
+        .color_rgb(0, 0, 255)
+        .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE);
 }
 
 fn default_eye(scene_bbox: &macaw::BoundingBox, space_specs: &SpaceSpecs) -> OrbitEye {

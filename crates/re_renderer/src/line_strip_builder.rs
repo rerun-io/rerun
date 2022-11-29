@@ -10,18 +10,18 @@ use crate::renderer::{LineDrawable, LineStrip, LineStripFlags};
 /// But before that we first need to sort out cpu->gpu transfers better by providing staging buffers.
 #[derive(Default)]
 pub struct LineStripSeriesBuilder {
-    pub lines: Vec<LineStrip>,
+    pub strips: Vec<LineStrip>,
 }
 
 impl LineStripSeriesBuilder {
     /// Adds a 3D series of line connected points.
     pub fn add_strip(&mut self, points: impl Iterator<Item = glam::Vec3>) -> LineStripBuilder<'_> {
-        let old_len = self.lines.len();
-        self.lines.push(LineStrip {
+        let old_len = self.strips.len();
+        self.strips.push(LineStrip {
             points: points.collect(),
             ..Default::default()
         });
-        LineStripBuilder(&mut self.lines[old_len..])
+        LineStripBuilder(&mut self.strips[old_len..])
     }
 
     /// Adds a single 3D line segment connecting two points.
@@ -34,16 +34,16 @@ impl LineStripSeriesBuilder {
         &mut self,
         segments: impl Iterator<Item = (glam::Vec3, glam::Vec3)>,
     ) -> LineStripBuilder<'_> {
-        let old_len = self.lines.len();
+        let old_len = self.strips.len();
         for (a, b) in segments {
             self.add_strip([a, b].into_iter());
         }
-        LineStripBuilder(&mut self.lines[old_len..])
+        LineStripBuilder(&mut self.strips[old_len..])
     }
 
     /// Finalizes the builder and returns a line drawable with all the lines added so far.
-    pub fn to_drawable(self, ctx: &mut crate::context::RenderContext) -> LineDrawable {
-        LineDrawable::new(ctx, &self.lines).unwrap()
+    pub fn to_drawable(&self, ctx: &mut crate::context::RenderContext) -> LineDrawable {
+        LineDrawable::new(ctx, &self.strips).unwrap()
     }
 }
 
@@ -62,6 +62,13 @@ impl<'a> LineStripBuilder<'a> {
             strip.srgb_color[0] = r;
             strip.srgb_color[1] = g;
             strip.srgb_color[2] = b;
+        }
+        self
+    }
+
+    pub fn color_rgba_slice(self, rgba: [u8; 4]) -> Self {
+        for strip in self.0.iter_mut() {
+            strip.srgb_color = rgba;
         }
         self
     }

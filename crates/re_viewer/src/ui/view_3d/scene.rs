@@ -4,7 +4,6 @@ use ahash::HashMap;
 use egui::NumExt as _;
 use glam::{vec3, Vec3};
 use itertools::Itertools as _;
-use smallvec::smallvec;
 
 use re_data_store::query::{
     visit_type_data_1, visit_type_data_2, visit_type_data_3, visit_type_data_4, visit_type_data_5,
@@ -104,11 +103,6 @@ pub struct Point3D {
     pub color: [u8; 4],
 }
 
-pub struct LineStrip {
-    pub instance_id_hash: InstanceIdHash,
-    pub line_strip: re_renderer::renderer::LineStrip,
-}
-
 pub enum MeshSourceData {
     Mesh3D(re_log_types::Mesh3D),
 
@@ -144,7 +138,10 @@ pub struct Scene3D {
     pub annotation_map: AnnotationMap,
 
     pub points: Vec<Point3D>,
-    pub line_strips: Vec<LineStrip>,
+
+    pub line_instance_ids: Vec<InstanceIdHash>,
+    pub line_strips: re_renderer::LineStripSeriesBuilder,
+
     pub meshes: Vec<MeshSource>,
     pub labels: Vec<Label3D>,
 }
@@ -264,14 +261,8 @@ impl Scene3D {
                             );
                             continue;
                         };
-                        self.line_strips.push(LineStrip {
-                            instance_id_hash,
-                            line_strip: re_renderer::renderer::LineStrip::line_segment(
-                                (*a, *b),
-                                Size::AUTO.0,
-                                color,
-                            ),
-                        });
+                        self.line_instance_ids.push(instance_id_hash);
+                        self.line_strips.add_segment(*a, *b).radius(Size::AUTO.0).color_rgba_slice(color);
                     }
                 }
             });
@@ -324,78 +315,63 @@ impl Scene3D {
     fn load_lines(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
 
-        let segments = query
-            .iter_object_stores(
-                ctx.log_db,
-                &[ObjectType::Path3D, ObjectType::LineSegments3D],
-            )
-            .flat_map(|(obj_type, obj_path, time_query, obj_store)| {
-                let mut batch = Vec::new();
-                let annotations = self.annotation_map.find(obj_path);
-                let default_color = DefaultColor::ObjPath(obj_path);
+        for (obj_type, obj_path, time_query, obj_store) in query.iter_object_stores(
+            ctx.log_db,
+            &[ObjectType::Path3D, ObjectType::LineSegments3D],
+        ) {
+            let annotations = self.annotation_map.find(obj_path);
+            let default_color = DefaultColor::ObjPath(obj_path);
 
-                visit_type_data_2(
-                    obj_store,
-                    &FieldName::from("points"),
-                    &time_query,
-                    ("color", "stroke_width"),
-                    |instance_index: Option<&IndexHash>,
-                     _time: i64,
-                     _msg_id: &MsgId,
-                     points: &DataVec,
-                     color: Option<&[u8; 4]>,
-                     stroke_width: Option<&f32>| {
-                        let what = match obj_type {
-                            ObjectType::Path3D => "Path3D::points",
-                            ObjectType::LineSegments3D => "LineSegments3D::points",
-                            _ => return,
-                        };
-                        let Some(points) = points.as_vec_of_vec3(what) else { return };
+            visit_type_data_2(
+                obj_store,
+                &FieldName::from("points"),
+                &time_query,
+                ("color", "stroke_width"),
+                |instance_index: Option<&IndexHash>,
+                 _time: i64,
+                 _msg_id: &MsgId,
+                 points: &DataVec,
+                 color: Option<&[u8; 4]>,
+                 stroke_width: Option<&f32>| {
+                    let what = match obj_type {
+                        ObjectType::Path3D => "Path3D::points",
+                        ObjectType::LineSegments3D => "LineSegments3D::points",
+                        _ => return,
+                    };
+                    let Some(points) = points.as_vec_of_vec3(what) else { return };
 
-                        let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
-                        let instance_id_hash =
-                            InstanceIdHash::from_path_and_index(obj_path, instance_index);
+                    let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
+                    let instance_id_hash =
+                        InstanceIdHash::from_path_and_index(obj_path, instance_index);
 
-                        let radius = stroke_width.map_or(Size::AUTO, |w| Size::new_scene(w / 2.0));
+                    let radius = stroke_width.map_or(Size::AUTO, |w| Size::new_scene(w / 2.0));
 
-                        // TODO(andreas): support class ids for lines
-                        let annotation_info = annotations.class_description(None).annotation_info();
-                        let color = annotation_info.color(color, default_color);
+                    // TODO(andreas): support class ids for lines
+                    let annotation_info = annotations.class_description(None).annotation_info();
+                    let color = annotation_info.color(color, default_color);
 
-                        // TODO(andreas): re_renderer should support our Size type directly!
-                        match obj_type {
-                            ObjectType::Path3D => {
-                                batch.push(LineStrip {
-                                    instance_id_hash,
-                                    line_strip: re_renderer::renderer::LineStrip {
-                                        points: points
-                                            .iter()
-                                            .map(|v| Vec3::from_slice(v))
-                                            .collect(),
-                                        radius: radius.0,
-                                        srgb_color: color,
-                                        flags: Default::default(),
-                                    },
-                                });
-                            }
-                            ObjectType::LineSegments3D => {
-                                batch.extend(points.chunks_exact(2).map(|points| LineStrip {
-                                    instance_id_hash,
-                                    line_strip: re_renderer::renderer::LineStrip::line_segment(
-                                        (points[0].into(), points[1].into()),
-                                        radius.0,
-                                        color,
-                                    ),
-                                }));
-                            }
-                            _ => (),
-                        };
-                    },
-                );
-                batch
-            });
+                    let num_line_strips_before = self.line_strips.strips.len();
+                    match obj_type {
+                        ObjectType::Path3D => self
+                            .line_strips
+                            .add_strip(points.iter().map(|v| Vec3::from_slice(v))),
+                        ObjectType::LineSegments3D => self.line_strips.add_segments(
+                            points
+                                .chunks_exact(2)
+                                .map(|points| (points[0].into(), points[1].into())),
+                        ),
+                        _ => unreachable!("already early outed earlier"),
+                    }
+                    .radius(radius.0) // TODO(andreas): re_renderer should support our Size type directly!
+                    .color_rgba_slice(color);
 
-        self.line_strips.extend(segments);
+                    self.line_instance_ids.extend(
+                        std::iter::repeat(instance_id_hash)
+                            .take(self.line_strips.strips.len() - num_line_strips_before),
+                    );
+                },
+            );
+        }
     }
 
     fn load_arrows(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
@@ -561,14 +537,11 @@ impl Scene3D {
                     let axis_end = world_from_cam.transform_point3(scale * *dir);
                     let color = axis_color(axis_index);
 
-                    self.line_strips.push(LineStrip {
-                        instance_id_hash: instance_id,
-                        line_strip: re_renderer::renderer::LineStrip::line_segment(
-                            (cam_origin, axis_end),
-                            radius,
-                            color,
-                        ),
-                    });
+                    self.line_instance_ids.push(instance_id);
+                    self.line_strips
+                        .add_segment(cam_origin, axis_end)
+                        .radius(radius)
+                        .color_rgba_slice(color);
                 }
             }
 
@@ -597,6 +570,7 @@ impl Scene3D {
         let Self {
             annotation_map: _,
             points,
+            line_instance_ids,
             line_strips,
             meshes,
             labels: _, // always has final size. TODO(emilk): tint on hover!
@@ -641,38 +615,39 @@ impl Scene3D {
 
         {
             crate::profile_scope!("lines");
-            for line_strip in line_strips {
-                if Size(line_strip.line_strip.radius).is_auto() {
-                    line_strip.line_strip.radius = default_line_radius.0;
+            assert_eq!(line_strips.strips.len(), line_instance_ids.len());
+            for (line_strip, instance_id) in
+                line_strips.strips.iter_mut().zip(line_instance_ids.iter())
+            {
+                if Size(line_strip.radius).is_auto() {
+                    line_strip.radius = default_line_radius.0;
                 }
-                if let Some(size_in_points) = Size(line_strip.line_strip.radius).ui() {
+                if let Some(size_in_points) = Size(line_strip.radius).ui() {
                     // TODO(andreas): Ui size doesn't work properly for line strips with more than two points right now.
                     // Resolving this in the shader would be quite easy (since we can reason with projected coordinates there)
                     // but if we move it there, cpu sided hovering logic won't work as is!
                     let dist_to_eye = if true {
                         // This works much better when one line segment is very close to the camera
                         let mut closest = f32::INFINITY;
-                        for p in &line_strip.line_strip.points {
+                        for p in &line_strip.points {
                             closest = closest.min(eye_camera_plane.distance(*p));
                         }
                         closest
                     } else {
                         let mut centroid = glam::DVec3::ZERO;
-                        for p in &line_strip.line_strip.points {
+                        for p in &line_strip.points {
                             centroid += p.as_dvec3();
                         }
-                        let centroid =
-                            centroid.as_vec3() / (2.0 * line_strip.line_strip.points.len() as f32);
+                        let centroid = centroid.as_vec3() / (2.0 * line_strip.points.len() as f32);
                         eye_camera_plane.distance(centroid)
                     }
                     .at_least(0.0);
 
-                    line_strip.line_strip.radius =
-                        dist_to_eye * size_in_points * point_size_at_one_meter;
+                    line_strip.radius = dist_to_eye * size_in_points * point_size_at_one_meter;
                 }
-                if line_strip.instance_id_hash == hovered_instance_id_hash {
-                    line_strip.line_strip.radius *= hover_size_boost;
-                    line_strip.line_strip.srgb_color = HOVER_COLOR;
+                if *instance_id == hovered_instance_id_hash {
+                    line_strip.radius *= hover_size_boost;
+                    line_strip.srgb_color = HOVER_COLOR;
                 }
             }
         }
@@ -715,27 +690,23 @@ impl Scene3D {
 
         let center = camera.position();
 
-        self.line_strips.extend(
-            [
-                (center, corners[0]),     // frustum corners
-                (center, corners[1]),     // frustum corners
-                (center, corners[2]),     // frustum corners
-                (center, corners[3]),     // frustum corners
-                (corners[0], corners[1]), // `d` distance plane sides
-                (corners[1], corners[2]), // `d` distance plane sides
-                (corners[2], corners[3]), // `d` distance plane sides
-                (corners[3], corners[0]), // `d` distance plane sides
-            ]
-            .into_iter()
-            .map(|segment| LineStrip {
-                instance_id_hash: instance_id,
-                line_strip: re_renderer::renderer::LineStrip::line_segment(
-                    segment,
-                    line_radius.0, // TODO(andreas): re_renderer should be able to handle our size type directly
-                    color,
-                ),
-            }),
-        );
+        let segments = [
+            (center, corners[0]),     // frustum corners
+            (center, corners[1]),     // frustum corners
+            (center, corners[2]),     // frustum corners
+            (center, corners[3]),     // frustum corners
+            (corners[0], corners[1]), // `d` distance plane sides
+            (corners[1], corners[2]), // `d` distance plane sides
+            (corners[2], corners[3]), // `d` distance plane sides
+            (corners[3], corners[0]), // `d` distance plane sides
+        ];
+
+        self.line_instance_ids
+            .extend(std::iter::repeat(instance_id).take(segments.len()));
+        self.line_strips
+            .add_segments(segments.into_iter())
+            .radius(line_radius.0)
+            .color_rgba_slice(color);
 
         Some(())
     }
@@ -761,15 +732,12 @@ impl Scene3D {
         let tip_length = LineStripFlags::get_triangle_cap_tip_length(radius);
         let vector_len = vector.length();
         let end = origin + vector * ((vector_len - tip_length) / vector_len);
-        self.line_strips.push(LineStrip {
-            instance_id_hash,
-            line_strip: re_renderer::renderer::LineStrip {
-                points: smallvec![origin, end],
-                radius,
-                srgb_color: color,
-                flags: re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE,
-            },
-        });
+        self.line_instance_ids.push(instance_id_hash);
+        self.line_strips
+            .add_segment(origin, end)
+            .radius(radius)
+            .color_rgba_slice(color)
+            .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE);
     }
 
     fn add_box(
@@ -809,80 +777,43 @@ impl Scene3D {
             });
         }
 
-        self.line_strips.extend(
-            [
-                // bottom:
-                (corners[0b000], corners[0b001]),
-                (corners[0b000], corners[0b010]),
-                (corners[0b011], corners[0b001]),
-                (corners[0b011], corners[0b010]),
-                // top:
-                (corners[0b100], corners[0b101]),
-                (corners[0b100], corners[0b110]),
-                (corners[0b111], corners[0b101]),
-                (corners[0b111], corners[0b110]),
-                // sides:
-                (corners[0b000], corners[0b100]),
-                (corners[0b001], corners[0b101]),
-                (corners[0b010], corners[0b110]),
-                (corners[0b011], corners[0b111]),
-            ]
-            .into_iter()
-            .map(|segment| LineStrip {
-                instance_id_hash: instance_id,
-                line_strip: re_renderer::renderer::LineStrip::line_segment(
-                    segment,
-                    line_radius.0,
-                    color,
-                ),
-            }),
-        );
+        let segments = [
+            // bottom:
+            (corners[0b000], corners[0b001]),
+            (corners[0b000], corners[0b010]),
+            (corners[0b011], corners[0b001]),
+            (corners[0b011], corners[0b010]),
+            // top:
+            (corners[0b100], corners[0b101]),
+            (corners[0b100], corners[0b110]),
+            (corners[0b111], corners[0b101]),
+            (corners[0b111], corners[0b110]),
+            // sides:
+            (corners[0b000], corners[0b100]),
+            (corners[0b001], corners[0b101]),
+            (corners[0b010], corners[0b110]),
+            (corners[0b011], corners[0b111]),
+        ];
+
+        self.line_instance_ids
+            .extend(std::iter::repeat(instance_id).take(segments.len()));
+        self.line_strips
+            .add_segments(segments.into_iter())
+            .radius(line_radius.0)
+            .color_rgba_slice(color);
     }
 
     pub fn is_empty(&self) -> bool {
         let Self {
             annotation_map: _,
             points,
+            line_instance_ids: _,
             line_strips,
             meshes,
             labels,
         } = self;
 
-        points.is_empty() && line_strips.is_empty() && meshes.is_empty() && labels.is_empty()
-    }
-
-    pub fn line_strips(&self, show_origin_axis: bool) -> Vec<re_renderer::renderer::LineStrip> {
-        crate::profile_function!();
-        // TODO(andreas): We should be able to avoid this copy by not wrapping the re_renderer type in this way!
-        let mut line_strips = self
-            .line_strips
-            .iter()
-            .map(|s| s.line_strip.clone())
-            .collect::<Vec<_>>();
-
-        // TODO(andreas): Should have added earlier?
-        if show_origin_axis {
-            line_strips.push(re_renderer::renderer::LineStrip {
-                points: smallvec![glam::Vec3::ZERO, glam::Vec3::X],
-                radius: 0.01,
-                srgb_color: [255, 0, 0, 255],
-                flags: re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE,
-            });
-            line_strips.push(re_renderer::renderer::LineStrip {
-                points: smallvec![glam::Vec3::ZERO, glam::Vec3::Y],
-                radius: 0.01,
-                srgb_color: [0, 255, 0, 255],
-                flags: re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE,
-            });
-            line_strips.push(re_renderer::renderer::LineStrip {
-                points: smallvec![glam::Vec3::ZERO, glam::Vec3::Z],
-                radius: 0.01,
-                srgb_color: [0, 0, 255, 255],
-                flags: re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE,
-            });
-        }
-
-        line_strips
+        points.is_empty() && line_strips.strips.is_empty() && meshes.is_empty() && labels.is_empty()
     }
 
     pub fn meshes(&self) -> Vec<MeshInstance> {
@@ -945,6 +876,7 @@ impl Scene3D {
             annotation_map: _,
             points,
             line_strips,
+            line_instance_ids,
             meshes,
             labels: _,
         } = self;
@@ -981,26 +913,29 @@ impl Scene3D {
 
         {
             crate::profile_scope!("line_segments");
-            for line_strip in line_strips {
-                if line_strip.instance_id_hash.is_some() {
-                    // TODO(emilk): take line segment radius into account
-                    use egui::pos2;
+            for (line_strip, instance_id_hash) in
+                line_strips.strips.iter().zip(line_instance_ids.iter())
+            {
+                if !instance_id_hash.is_some() {
+                    continue;
+                }
+                // TODO(emilk): take line segment radius into account
+                use egui::pos2;
 
-                    for (start, end) in line_strip.line_strip.points.iter().tuple_windows() {
-                        let a = ui_from_world.project_point3(*start);
-                        let b = ui_from_world.project_point3(*end);
-                        let dist_sq = line_segment_distance_sq_to_point_2d(
-                            [pos2(a.x, a.y), pos2(b.x, b.y)],
-                            pointer_in_ui,
-                        );
+                for (start, end) in line_strip.points.iter().tuple_windows() {
+                    let a = ui_from_world.project_point3(*start);
+                    let b = ui_from_world.project_point3(*end);
+                    let dist_sq = line_segment_distance_sq_to_point_2d(
+                        [pos2(a.x, a.y), pos2(b.x, b.y)],
+                        pointer_in_ui,
+                    );
 
-                        if dist_sq < max_side_dist_sq {
-                            let t = a.z.abs(); // not very accurate
-                            if t < closest_z || dist_sq < closest_side_dist_sq {
-                                closest_z = t;
-                                closest_side_dist_sq = dist_sq;
-                                closest_instance_id = Some(line_strip.instance_id_hash);
-                            }
+                    if dist_sq < max_side_dist_sq {
+                        let t = a.z.abs(); // not very accurate
+                        if t < closest_z || dist_sq < closest_side_dist_sq {
+                            closest_z = t;
+                            closest_side_dist_sq = dist_sq;
+                            closest_instance_id = Some(*instance_id_hash);
                         }
                     }
                 }
@@ -1047,6 +982,7 @@ impl Scene3D {
             annotation_map: _,
             points,
             line_strips,
+            line_instance_ids: _,
             meshes,
             labels,
         } = self;
@@ -1055,8 +991,8 @@ impl Scene3D {
             bbox.extend(point.pos);
         }
 
-        for line_strip in line_strips {
-            for p in &line_strip.line_strip.points {
+        for line_strip in &line_strips.strips {
+            for p in &line_strip.points {
                 bbox.extend(*p);
             }
         }
