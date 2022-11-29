@@ -196,6 +196,7 @@ impl LogDb {
     }
 }
 
+#[cfg(feature = "disabled")]
 #[test]
 fn tester() {
     let mut logdb = LogDb::default();
