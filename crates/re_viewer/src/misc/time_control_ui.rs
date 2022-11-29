@@ -103,7 +103,7 @@ impl TimeControl {
                             .on_hover_text("Currently looping selection")
                             .clicked()
                         {
-                            self.looping = Looping::All;
+                            self.looping = Looping::Off;
                         }
                     }
                 }
