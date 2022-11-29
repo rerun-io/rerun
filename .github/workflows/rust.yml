@@ -122,7 +122,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: check
-          args: --target wasm32-unknown-unknown --examples
+          args: --target wasm32-unknown-unknown -p re_renderer --examples
 
       - name: wasm-bindgen
         uses: jetli/wasm-bindgen-action@v0.1.0
