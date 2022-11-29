@@ -1,5 +1,4 @@
 use egui::RichText;
-use re_data_store::ObjectProps;
 
 use super::{HistoricalSelection, SelectionHistory};
 use crate::{ui::Blueprint, Selection};
@@ -66,7 +65,7 @@ impl SelectionHistory {
                                 ui.horizontal(|ui| {
                                     show_selection_index(ui, i);
                                     {
-                                        // vvvvvv borrow checker workaround
+                                        // borrow checker workaround
                                         let sel = selection_to_clipped_string(
                                             ui,
                                             blueprint,
@@ -220,9 +219,4 @@ fn selection_to_clipped_string(
         sel += "…";
     }
     sel.chars().rev().collect()
-}
-
-fn obj_props_ui(ui: &mut egui::Ui, obj_props: &mut ObjectProps) {
-    let ObjectProps { visible } = obj_props;
-    ui.checkbox(visible, "Visible");
 }

@@ -586,6 +586,7 @@ struct AppState {
     panel_selection: PanelSelection,
     event_log_view: crate::event_log_view::EventLogView,
     selection_panel: crate::selection_panel::SelectionPanel,
+    selection_history: crate::SelectionHistory,
     time_panel: crate::time_panel::TimePanel,
 
     #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
@@ -616,6 +617,7 @@ impl AppState {
             event_log_view,
             blueprints,
             selection_panel,
+            selection_history,
             time_panel,
             #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
                 profiler: _,
@@ -634,6 +636,7 @@ impl AppState {
             cache,
             log_db,
             rec_cfg,
+            selection_history,
             design_tokens,
             render_ctx,
         };
@@ -726,18 +729,6 @@ fn top_panel(egui_ctx: &egui::Context, frame: &mut eframe::Frame, app: &mut App)
     } else {
         egui_ctx.style().spacing.interact_size.y
     };
-
-    // Update the selection history with the current selection.
-    {
-        let rec_cfg = app
-            .state
-            .recording_configs
-            .entry(app.state.selected_rec_id)
-            .or_default();
-        app.state
-            .selection_panel
-            .update_selection(&rec_cfg.selection);
-    }
 
     egui::TopBottomPanel::top("top_bar")
         .frame(panel_frame)

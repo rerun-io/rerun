@@ -469,17 +469,17 @@ fn space_view_options_link(
     text: &str,
 ) {
     let is_selected =
-        ctx.rec_cfg.selection == Selection::SpaceView(space_view_id) && *selection_panel_expanded;
+        ctx.selection() == Selection::SpaceView(space_view_id) && *selection_panel_expanded;
     if ui
         .selectable_label(is_selected, text)
         .on_hover_text("Space View options")
         .clicked()
     {
         if is_selected {
-            ctx.rec_cfg.selection = Selection::None;
+            ctx.clear_selection();
             *selection_panel_expanded = false;
         } else {
-            ctx.rec_cfg.selection = Selection::SpaceView(space_view_id);
+            ctx.set_selection(Selection::SpaceView(space_view_id));
             *selection_panel_expanded = true;
         }
     }

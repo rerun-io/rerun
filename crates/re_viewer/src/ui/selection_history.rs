@@ -59,8 +59,4 @@ impl SelectionHistory {
         self.stack.push(selection.clone());
         self.current = self.stack.len() - 1;
     }
-
-    pub fn iter(&self) -> impl Iterator<Item = &Selection> {
-        self.stack.iter()
-    }
 }
