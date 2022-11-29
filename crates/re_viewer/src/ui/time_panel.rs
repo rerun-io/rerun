@@ -198,7 +198,6 @@ impl TimePanel {
 
         let timeline_rect = {
             let response = ui.label(" "); // TODO: clean up
-
             self.next_col_right = self.next_col_right.max(response.rect.right());
             let y_range = response.rect.y_range();
             Rect::from_x_y_ranges(time_x_range.clone(), y_range)
@@ -314,7 +313,7 @@ impl TimePanel {
 
         let collapsing_header_id = ui.make_persistent_id(&tree.path);
         let default_open = tree.path.len() <= 1 && !tree.is_leaf();
-        let (header_response, _, body_returned) =
+        let (_collapsing_button_response, custom_header_response, body_returned) =
             egui::collapsing_header::CollapsingState::load_with_default_open(
                 ui.ctx(),
                 collapsing_header_id,
@@ -326,7 +325,7 @@ impl TimePanel {
             });
 
         let is_closed = body_returned.is_none();
-        let response = header_response;
+        let response = custom_header_response.response;
         let response_rect = response.rect;
         self.next_col_right = self.next_col_right.max(response_rect.right());
 
@@ -421,6 +420,8 @@ impl TimePanel {
                         ctx.data_path_button_to(ui, field_name.as_str(), &data_path);
                     })
                     .response;
+
+                self.next_col_right = self.next_col_right.max(response.rect.right());
 
                 let full_width_rect = Rect::from_x_y_ranges(
                     response.rect.left()..=ui.max_rect().right(),
