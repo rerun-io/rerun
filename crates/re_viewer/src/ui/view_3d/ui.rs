@@ -485,7 +485,10 @@ fn paint_view(
         let max = (rect.max.to_vec2() * ppp).round();
         let resolution = max - min;
 
-        ([resolution.x as u32, resolution.y as u32], min)
+        (
+            [resolution.x as u32, resolution.y as u32],
+            glam::vec2(min.x, min.y),
+        )
     };
     if resolution_in_pixel[0] == 0 || resolution_in_pixel[1] == 0 {
         return;
