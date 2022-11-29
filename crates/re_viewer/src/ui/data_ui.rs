@@ -375,12 +375,7 @@ pub(crate) fn show_arrow_msg(
     msg: &ArrowMsg,
     preview: Preview,
 ) {
-    let ArrowMsg {
-        msg_id,
-        //time_point: _,
-        //data_path: _,
-        data: _,
-    } = msg;
+    let ArrowMsg { msg_id, data: _ } = msg;
 
     // TODO(jleibs): Better ArrowMsg view
     ui_logged_arrow_data(ctx, ui, msg_id, msg, preview);
