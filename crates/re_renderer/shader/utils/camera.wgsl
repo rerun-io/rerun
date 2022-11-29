@@ -29,18 +29,18 @@ fn camera_ray_to_world_pos(world_pos: Vec3) -> Ray {
     } else {
         // The ray originates on the camera plane, not from the camera position
         let to_pos = world_pos - frame.camera_position;
-        let camera_plane_distance = dot(to_pos, frame.camera_direction);
-        ray.origin = world_pos + frame.camera_direction * camera_plane_distance;
-        ray.direction = frame.camera_direction;
+        let camera_plane_distance = dot(to_pos, -frame.camera_forward);
+        ray.origin = world_pos - frame.camera_forward * camera_plane_distance;
+        ray.direction = frame.camera_forward;
     }
 
     return ray;
 }
 
-// Returns the camera direction given screen uv coordinates (ranging from 0 to 1, i.e. NOT ndc coordinates)
-fn camera_dir_from_screenuv(texcoord: Vec2) -> vec3<f32> {
+// Returns the camera ray direction through a given screen uv coordinates (ranging from 0 to 1, i.e. NOT ndc coordinates)
+fn camera_ray_direction_from_screenuv(texcoord: Vec2) -> vec3<f32> {
     if is_camera_orthographic() {
-        return frame.camera_direction;
+        return frame.camera_forward;
     }
 
     // convert [0, 1] to [-1, +1 (Normalized Device Coordinates)

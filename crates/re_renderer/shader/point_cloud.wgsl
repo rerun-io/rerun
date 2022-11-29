@@ -70,7 +70,7 @@ fn span_quad_perspective(point_pos: Vec3, point_radius: f32, top_bottom: f32, le
 }
 
 fn span_quad_orthographic(point_pos: Vec3, point_radius: f32, top_bottom: f32, left_right: f32) -> Vec3 {
-    let quad_normal = frame.camera_direction;
+    let quad_normal = frame.camera_forward;
     let quad_right = normalize(cross(quad_normal, frame.view_from_world[1].xyz)); // It's spheres so any orthogonal vector would do.
     let quad_up = cross(quad_right, quad_normal);
     let pos_in_quad = top_bottom * quad_up + left_right * quad_right;
