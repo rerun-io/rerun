@@ -7,6 +7,7 @@ use instant::Instant;
 
 use re_renderer::{
     config::{supported_backends, HardwareTier, RenderContextConfig},
+    view_builder::ViewBuilder,
     RenderContext,
 };
 
@@ -24,10 +25,9 @@ pub trait Example {
     fn draw(
         &mut self,
         re_ctx: &mut RenderContext,
-        surface_view: wgpu::TextureView,
         surface_configuration: &wgpu::SurfaceConfiguration,
         time: &Time,
-    ) -> Vec<wgpu::CommandBuffer>;
+    ) -> Vec<(ViewBuilder, wgpu::CommandBuffer)>;
 
     fn on_keyboard_input(&mut self, input: winit::event::KeyboardInput);
 }
@@ -198,11 +198,48 @@ impl<E: Example + 'static> Application<E> {
                         .texture
                         .create_view(&wgpu::TextureViewDescriptor::default());
 
-                    let cmd_buffers =
+                    let view_builders =
                         self.example
-                            .draw(&mut self.re_ctx, view, &self.surface_config, &self.time);
+                            .draw(&mut self.re_ctx, &self.surface_config, &self.time);
 
-                    self.re_ctx.queue.submit(cmd_buffers);
+                    let mut composite_cmd_encoder = self.re_ctx.device.create_command_encoder(
+                        &wgpu::CommandEncoderDescriptor {
+                            label: "composite_encoder".into(),
+                        },
+                    );
+
+                    let view_cmd_buffers = {
+                        let mut composite_pass =
+                            composite_cmd_encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                                label: None,
+                                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                                    view: &view,
+                                    resolve_target: None,
+                                    ops: wgpu::Operations {
+                                        load: wgpu::LoadOp::Clear(wgpu::Color::GREEN),
+                                        store: true,
+                                    },
+                                })],
+                                depth_stencil_attachment: None,
+                            });
+
+                        view_builders
+                            .into_iter()
+                            .map(|(vb, cmd_buf)| {
+                                vb.composite(&self.re_ctx, &mut composite_pass)
+                                    .expect("Failed to composite view main surface");
+                                cmd_buf
+                            })
+                            .collect::<Vec<_>>() // So we don't hold a reference to the render pass!
+
+                        // drop the pass so we can finish() the main encoder!
+                    };
+
+                    self.re_ctx.queue.submit(
+                        view_cmd_buffers
+                            .into_iter()
+                            .chain(std::iter::once(composite_cmd_encoder.finish())),
+                    );
                     frame.present();
 
                     // Note that this measures time spent on CPU, not GPU

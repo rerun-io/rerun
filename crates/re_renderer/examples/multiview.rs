@@ -236,10 +236,9 @@ impl Example for Multiview {
     fn draw(
         &mut self,
         re_ctx: &mut RenderContext,
-        surface_view: wgpu::TextureView,
         surface_configuration: &wgpu::SurfaceConfiguration,
         time: &framework::Time,
-    ) -> Vec<wgpu::CommandBuffer> {
+    ) -> Vec<(ViewBuilder, wgpu::CommandBuffer)> {
         if matches!(self.camera_control, CameraControl::RotateAroundCenter) {
             let seconds_since_startup = time.seconds_since_startup();
             self.camera_position = Vec3::new(
@@ -299,51 +298,12 @@ impl Example for Multiview {
             }};
         }
 
-        let view_builders = [
+        vec![
             draw!(triangle @ split #0),
             draw!(lines @ split #1),
             draw!(meshes @ split #2),
             draw!(point_cloud @ split #3),
-        ];
-
-        let mut composite_cmd_encoder =
-            re_ctx
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: "composite_encoder".into(),
-                });
-
-        let view_cmd_buffers = {
-            let mut composite_pass =
-                composite_cmd_encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                    label: None,
-                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                        view: &surface_view,
-                        resolve_target: None,
-                        ops: wgpu::Operations {
-                            load: wgpu::LoadOp::Clear(wgpu::Color::GREEN),
-                            store: true,
-                        },
-                    })],
-                    depth_stencil_attachment: None,
-                });
-
-            view_builders
-                .into_iter()
-                .map(|(vb, cmd_buf)| {
-                    vb.composite(re_ctx, &mut composite_pass)
-                        .expect("Failed to composite view main surface");
-                    cmd_buf
-                })
-                .collect::<Vec<_>>() // So we don't hold a reference to the render pass!
-
-            // drop the pass so we can finish() the main encoder!
-        };
-
-        view_cmd_buffers
-            .into_iter()
-            .chain(std::iter::once(composite_cmd_encoder.finish()))
-            .collect()
+        ]
     }
 
     fn on_keyboard_input(&mut self, input: winit::event::KeyboardInput) {
