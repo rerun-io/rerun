@@ -483,13 +483,11 @@ fn paint_view(
         let ppp = ui.ctx().pixels_per_point();
         let min = (rect.min.to_vec2() * ppp).round();
         let max = (rect.max.to_vec2() * ppp).round();
-
         let resolution = max - min;
-        let origin = min;
 
         (
             [resolution.x as u32, resolution.y as u32],
-            [origin.x as u32, origin.y as u32],
+            glam::vec2(min.x, min.y),
         )
     };
     if resolution_in_pixel[0] == 0 || resolution_in_pixel[1] == 0 {
@@ -507,7 +505,6 @@ fn paint_view(
                     name: name.into(),
 
                     resolution_in_pixel,
-                    origin_in_pixel,
 
                     view_from_world: eye.world_from_view.inverse(),
                     projection_from_view: Projection::Perspective {
@@ -548,7 +545,7 @@ fn paint_view(
                     let mut view_builder = view_builder.lock();
                     std::mem::replace(&mut *view_builder, None)
                         .expect("egui_wgpu paint callback called more than once")
-                        .composite(ctx, render_pass)
+                        .composite(ctx, render_pass, origin_in_pixel)
                         .unwrap();
                 }),
         ),

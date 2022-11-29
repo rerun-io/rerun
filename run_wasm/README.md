@@ -7,5 +7,5 @@ This is a temporary solution while we're in the process of building our own `xta
 
 You can try it e.g. with the standalone re_renderer demo:
 ```
-cargo run-wasm --example renderer_standalone
+cargo run-wasm --example 2d
 ```

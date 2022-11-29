@@ -3632,6 +3632,7 @@ dependencies = [
  "clean-path",
  "console_error_panic_hook",
  "crossbeam",
+ "getrandom",
  "glam",
  "glob",
  "gltf",
