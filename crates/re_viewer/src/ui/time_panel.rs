@@ -200,7 +200,7 @@ impl TimePanel {
         };
 
         let timeline_rect = {
-            let response = ui.label(" "); // Add some vertical space large enough to fit text for the timeline ticks row.
+            let response = ui.weak("Streams");
             let y_range = response.rect.y_range();
             Rect::from_x_y_ranges(time_x_range.clone(), y_range)
         };
