@@ -195,19 +195,3 @@ impl LogDb {
         }
     }
 }
-
-#[cfg(feature = "disabled")]
-#[test]
-fn tester() {
-    let mut logdb = LogDb::default();
-    for path in [
-        "/Users/john/Source/rerun/data0",
-        "/Users/john/Source/rerun/data1",
-    ] {
-        let mut file = std::fs::File::open(path).unwrap();
-        let metadata = read_stream_metadata(&mut file).unwrap();
-        let stream = StreamReader::new(file, metadata, None);
-        logdb.consume_stream(stream);
-    }
-    logdb.debug_object_contents();
-}
