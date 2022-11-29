@@ -115,23 +115,21 @@ impl TimeControl {
             .entry(self.timeline)
             .or_insert_with(|| TimeState::new(full_range.min));
 
+        if self.looping == Looping::Off && state.time >= full_range.max {
+            // Don't pause or rewind, just stop moving time forward
+            // until we receive more data!
+            // This is important for "live view".
+            return;
+        }
+
         let loop_range = match self.looping {
             Looping::Off => None,
             Looping::Selection => state.loop_selection,
             Looping::All => Some(full_range.into()),
         };
 
-        // ----
-
         if let Some(loop_range) = loop_range {
             state.time = state.time.max(loop_range.min);
-
-            if self.looping == Looping::All && state.time >= loop_range.max {
-                // Don't pause or rewind, just stop moving time forward
-                // until we receive more data!
-                // This is important for "live view".
-                return;
-            }
         }
 
         match self.timeline.typ() {
