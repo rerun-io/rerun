@@ -48,36 +48,36 @@ impl framework::Example for Render2D {
                 // Green lines filling border
                 LineStrip {
                     points: smallvec![
-                        glam::vec3(line_radius, line_radius, 0.0),
-                        glam::vec3(screen_size.x - line_radius, line_radius, 0.0),
+                        glam::vec3(line_radius, line_radius, 1.0),
+                        glam::vec3(screen_size.x - line_radius, line_radius, 1.0),
                         glam::vec3(
                             screen_size.x - line_radius,
                             screen_size.y - line_radius,
                             0.0
                         ),
-                        glam::vec3(line_radius, screen_size.y - line_radius, 0.0),
-                        glam::vec3(line_radius, line_radius, 0.0),
+                        glam::vec3(line_radius, screen_size.y - line_radius, 1.0),
+                        glam::vec3(line_radius, line_radius, 1.0),
                     ],
                     radius: line_radius,
-                    color: [50, 255, 50, 255],
+                    srgb_color: [50, 255, 50, 255],
                     flags: LineStripFlags::empty(),
                 },
                 // Blue lines around the top left quarter.
                 // TODO(andreas): This lines should be on top now, but they're below (for me at least, surprised there is no z-fighting)
                 LineStrip {
                     points: smallvec![
-                        glam::vec3(line_radius, line_radius, 0.0),
-                        glam::vec3(screen_size.x * 0.5 - line_radius, line_radius, 0.0),
+                        glam::vec3(line_radius, line_radius, 2.0),
+                        glam::vec3(screen_size.x * 0.5 - line_radius, line_radius, 2.0),
                         glam::vec3(
                             screen_size.x * 0.5 - line_radius,
                             screen_size.y * 0.5 - line_radius,
-                            0.0
+                            2.0
                         ),
-                        glam::vec3(line_radius, screen_size.y * 0.5 - line_radius, 0.0),
-                        glam::vec3(line_radius, line_radius, 0.0),
+                        glam::vec3(line_radius, screen_size.y * 0.5 - line_radius, 2.0),
+                        glam::vec3(line_radius, line_radius, 2.0),
                     ],
                     radius: line_radius,
-                    color: [50, 50, 255, 255],
+                    srgb_color: [50, 50, 255, 255],
                     flags: LineStripFlags::empty(),
                 },
             ],

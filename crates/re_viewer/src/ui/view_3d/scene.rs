@@ -373,7 +373,7 @@ impl Scene3D {
                                             .map(|v| Vec3::from_slice(v))
                                             .collect(),
                                         radius: radius.0,
-                                        color,
+                                        srgb_color: color,
                                         flags: Default::default(),
                                     },
                                 });
@@ -672,7 +672,7 @@ impl Scene3D {
                 }
                 if line_strip.instance_id_hash == hovered_instance_id_hash {
                     line_strip.line_strip.radius *= hover_size_boost;
-                    line_strip.line_strip.color = HOVER_COLOR;
+                    line_strip.line_strip.srgb_color = HOVER_COLOR;
                 }
             }
         }
@@ -766,7 +766,7 @@ impl Scene3D {
             line_strip: re_renderer::renderer::LineStrip {
                 points: smallvec![origin, end],
                 radius,
-                color,
+                srgb_color: color,
                 flags: re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE,
             },
         });
@@ -865,19 +865,19 @@ impl Scene3D {
             line_strips.push(re_renderer::renderer::LineStrip {
                 points: smallvec![glam::Vec3::ZERO, glam::Vec3::X],
                 radius: 0.01,
-                color: [255, 0, 0, 255],
+                srgb_color: [255, 0, 0, 255],
                 flags: re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE,
             });
             line_strips.push(re_renderer::renderer::LineStrip {
                 points: smallvec![glam::Vec3::ZERO, glam::Vec3::Y],
                 radius: 0.01,
-                color: [0, 255, 0, 255],
+                srgb_color: [0, 255, 0, 255],
                 flags: re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE,
             });
             line_strips.push(re_renderer::renderer::LineStrip {
                 points: smallvec![glam::Vec3::ZERO, glam::Vec3::Z],
                 radius: 0.01,
-                color: [0, 0, 255, 255],
+                srgb_color: [0, 0, 255, 255],
                 flags: re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE,
             });
         }

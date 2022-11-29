@@ -184,7 +184,7 @@ pub struct LineStrip {
     pub radius: f32,
 
     /// srgb color. Alpha unused right now
-    pub color: [u8; 4],
+    pub srgb_color: [u8; 4],
 
     /// Additional properties for the linestrip.
     pub flags: LineStripFlags,
@@ -203,7 +203,7 @@ impl LineStrip {
         LineStrip {
             points: smallvec![segment.0, segment.1],
             radius,
-            color,
+            srgb_color: color,
             flags: Default::default(),
         }
     }
@@ -339,7 +339,7 @@ impl LineDrawable {
             Vec::with_capacity(next_multiple_of(num_line_strips, LINE_STRIP_TEXTURE_SIZE) as usize);
         line_strip_info_staging.extend(line_strips.iter().map(|line_strip| {
             gpu_data::LineStripInfo {
-                srgb_color: line_strip.color,
+                srgb_color: line_strip.srgb_color,
                 radius: half::f16::from_f32(line_strip.radius),
                 stippling: 0, //(line_strip.stippling.clamp(0.0, 1.0) * 255.0) as u8,
                 flags: line_strip.flags,

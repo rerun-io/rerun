@@ -121,7 +121,7 @@ fn build_lines(re_ctx: &mut RenderContext, seconds_since_startup: f32) -> LineDr
             LineStrip {
                 points: lorenz_points.into(),
                 radius: 0.05,
-                color: [255, 191, 0, 255],
+                srgb_color: [255, 191, 0, 255],
                 flags: LineStripFlags::empty(),
             },
             // Green Zig-Zag
@@ -133,7 +133,7 @@ fn build_lines(re_ctx: &mut RenderContext, seconds_since_startup: f32) -> LineDr
                     glam::vec3(3.0, 0.0, 0.0),
                 ],
                 radius: 0.1,
-                color: [50, 255, 50, 255],
+                srgb_color: [50, 255, 50, 255],
                 flags: LineStripFlags::CAP_END_TRIANGLE,
             },
             // A blue spiral
@@ -148,7 +148,7 @@ fn build_lines(re_ctx: &mut RenderContext, seconds_since_startup: f32) -> LineDr
                     })
                     .collect(),
                 radius: 0.1,
-                color: [50, 50, 255, 255],
+                srgb_color: [50, 50, 255, 255],
                 flags: LineStripFlags::CAP_END_TRIANGLE,
             },
         ],

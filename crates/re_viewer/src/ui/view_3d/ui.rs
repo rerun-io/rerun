@@ -584,7 +584,7 @@ fn show_projections_from_2d_space(
                         line_strip: re_renderer::renderer::LineStrip {
                             points: smallvec![origin, end],
                             radius: radius.0,
-                            color: [255; 4],
+                            srgb_color: [255; 4],
                             flags: Default::default(),
                         },
                     });
