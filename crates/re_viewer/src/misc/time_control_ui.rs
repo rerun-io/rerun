@@ -74,33 +74,37 @@ impl TimeControl {
 
         {
             ui.scope(|ui| {
-                if !self.looped() {
-                    if ui
-                        .selectable_label(false, "🔁")
-                        .on_hover_text("Looping is off")
-                        .clicked()
-                    {
-                        self.set_looped(true);
+                // Loop-buton cycled between stats
+                match self.looping {
+                    Looping::Off => {
+                        if ui
+                            .selectable_label(false, "🔁")
+                            .on_hover_text("Looping is off")
+                            .clicked()
+                        {
+                            self.looping = Looping::Selection;
+                        }
                     }
-                } else if !self.loop_selection_active {
-                    if ui
-                        .selectable_label(true, "🔁")
-                        .on_hover_text("Currently looping entire recording")
-                        .clicked()
-                    {
-                        self.loop_selection_active = true;
+                    Looping::Selection => {
+                        ui.visuals_mut().selection.bg_fill =
+                            crate::design_tokens::DesignTokens::loop_selection_color();
+                        #[allow(clippy::collapsible_else_if)]
+                        if ui
+                            .selectable_label(true, "🔂")
+                            .on_hover_text("Currently looping selection")
+                            .clicked()
+                        {
+                            self.looping = Looping::All;
+                        }
                     }
-                } else {
-                    ui.visuals_mut().selection.bg_fill =
-                        crate::design_tokens::DesignTokens::loop_selection_color();
-                    #[allow(clippy::collapsible_else_if)]
-                    if ui
-                        .selectable_label(true, "🔂")
-                        .on_hover_text("Currently looping selection")
-                        .clicked()
-                    {
-                        self.loop_selection_active = false;
-                        self.set_looped(false);
+                    Looping::All => {
+                        if ui
+                            .selectable_label(true, "🔁")
+                            .on_hover_text("Currently looping entire recording")
+                            .clicked()
+                        {
+                            self.looping = Looping::Off;
+                        }
                     }
                 }
             });
@@ -145,7 +149,7 @@ impl TimeControl {
 
                 if let Some(time) = self.time() {
                     #[allow(clippy::collapsible_else_if)]
-                    let new_time = if let Some(loop_range) = self.loop_range() {
+                    let new_time = if let Some(loop_range) = self.active_loop_selection() {
                         if step_back {
                             step_back_time_looped(time, time_values, &loop_range)
                         } else {

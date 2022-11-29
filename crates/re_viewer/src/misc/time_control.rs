@@ -54,6 +54,26 @@ impl TimeState {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
+pub enum Looping {
+    /// Looping is off.
+    Off,
+
+    /// We are looping within the current loop selection.
+    Selection,
+
+    /// We are looping the entire recording.
+    ///
+    /// The loop selection is ignored.
+    All,
+}
+
+impl Looping {
+    pub fn is_on(self) -> bool {
+        self != Self::Off
+    }
+}
+
 /// Controls the global view and progress of the time.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
@@ -64,11 +84,9 @@ pub(crate) struct TimeControl {
     states: BTreeMap<Timeline, TimeState>,
 
     playing: bool,
-    looped: bool,
     speed: f32,
 
-    #[serde(default)]
-    pub loop_selection_active: bool,
+    pub looping: Looping,
 }
 
 impl Default for TimeControl {
@@ -77,9 +95,8 @@ impl Default for TimeControl {
             timeline: Default::default(),
             states: Default::default(),
             playing: true,
-            looped: false,
             speed: 1.0,
-            loop_selection_active: false,
+            looping: Looping::Off,
         }
     }
 }
@@ -97,30 +114,25 @@ impl TimeControl {
             return;
         };
 
+        let dt = egui_ctx.input().stable_dt.at_most(0.1) * self.speed;
+
         let state = self
             .states
             .entry(self.timeline)
             .or_insert_with(|| TimeState::new(full_range.min));
 
-        let loop_range = if self.looped {
-            if self.loop_selection_active {
-                state.loop_selection.unwrap_or_else(|| full_range.into())
-            } else {
-                full_range.into()
-            }
-        } else {
-            full_range.into()
+        let loop_range = match self.looping {
+            Looping::Selection => state.loop_selection.unwrap_or_else(|| full_range.into()),
+            Looping::Off | Looping::All => full_range.into(),
         };
-
-        let dt = egui_ctx.input().stable_dt.at_most(0.1) * self.speed;
 
         // ----
 
-        if self.looped {
+        if self.looping.is_on() {
             state.time = state.time.max(loop_range.min);
         }
 
-        if state.time >= loop_range.max && !self.looped {
+        if state.time >= loop_range.max && self.looping.is_on() {
             // Don't pause or rewind, just stop moving time forward
             // until we receive more data!
             // This is important for "live view".
@@ -135,7 +147,7 @@ impl TimeControl {
         }
         egui_ctx.request_repaint(); // keep playing next frame
 
-        if state.time > loop_range.max && self.looped {
+        if state.time > loop_range.max && self.looping.is_on() {
             state.time = loop_range.min;
         }
     }
@@ -183,16 +195,6 @@ impl TimeControl {
         if let Some(state) = self.states.get_mut(&self.timeline) {
             state.fps = fps;
         }
-    }
-
-    /// looped playback enabled?
-    pub fn looped(&self) -> bool {
-        self.looped
-    }
-
-    /// looped playback enabled?
-    pub fn set_looped(&mut self, looped: bool) {
-        self.looped = looped;
     }
 
     /// Make sure the selected timeline is a valid one
@@ -243,8 +245,8 @@ impl TimeControl {
     }
 
     /// The current loop range, iff looping is turned on
-    pub fn loop_range(&self) -> Option<TimeRangeF> {
-        if self.looped && self.loop_selection_active {
+    pub fn active_loop_selection(&self) -> Option<TimeRangeF> {
+        if self.looping == Looping::Selection {
             self.states.get(&self.timeline)?.loop_selection
         } else {
             None
@@ -254,6 +256,20 @@ impl TimeControl {
     /// The full range of times for the current timeline
     pub fn full_range(&self, times_per_timeline: &TimesPerTimeline) -> Option<TimeRange> {
         times_per_timeline.get(&self.timeline).map(range)
+    }
+
+    /// The selected slice of time that is called the "loop selection".
+    ///
+    /// Note that looping can be off, or loop-selection can be off, and this will still return `Some`.
+    pub fn loop_selection(&self) -> Option<TimeRangeF> {
+        self.states.get(&self.timeline)?.loop_selection
+    }
+
+    pub fn set_loop_selection(&mut self, selection: TimeRangeF) {
+        self.states
+            .entry(self.timeline)
+            .or_insert_with(|| TimeState::new(selection.min))
+            .loop_selection = Some(selection);
     }
 
     /// Is the current time in the selection range (if any), or at the current time mark?
@@ -301,20 +317,6 @@ impl TimeControl {
         if let Some(state) = self.states.get_mut(&self.timeline) {
             state.view = None;
         }
-    }
-
-    /// The selected slice of time that is called the "loop selection".
-    ///
-    /// Note that looping can be off, or loop-selection can be off, and this will still return `Some`.
-    pub fn loop_selection(&self) -> Option<TimeRangeF> {
-        self.states.get(&self.timeline)?.loop_selection
-    }
-
-    pub fn set_loop_selection(&mut self, selection: TimeRangeF) {
-        self.states
-            .entry(self.timeline)
-            .or_insert_with(|| TimeState::new(selection.min))
-            .loop_selection = Some(selection);
     }
 }
 

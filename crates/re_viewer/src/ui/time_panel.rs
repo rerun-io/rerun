@@ -9,8 +9,8 @@ use re_data_store::{InstanceId, ObjectTree};
 use re_log_types::*;
 
 use crate::{
-    time_axis::TimelineAxis, Selection, TimeControl, TimeRange, TimeRangeF, TimeReal, TimeView,
-    ViewerContext,
+    misc::time_control::Looping, time_axis::TimelineAxis, Selection, TimeControl, TimeRange,
+    TimeRangeF, TimeReal, TimeView, ViewerContext,
 };
 
 use super::Blueprint;
@@ -555,12 +555,6 @@ fn show_data_over_time(
             .linear_multiply(0.75)
     };
 
-    let selected_time_range = if !ctx.rec_cfg.time_ctrl.loop_selection_active {
-        None
-    } else {
-        ctx.rec_cfg.time_ctrl.loop_selection()
-    };
-
     struct Stretch<'a> {
         start_x: f32,
         start_time: TimeInt,
@@ -616,6 +610,8 @@ fn show_data_over_time(
     };
 
     let mut stretch: Option<Stretch<'_>> = None;
+
+    let selected_time_range = ctx.rec_cfg.time_ctrl.active_loop_selection();
 
     for (&time, msg_ids) in messages_over_time {
         let time_real = TimeReal::from(time);
@@ -858,8 +854,8 @@ fn loop_selection_ui(
         }
     }
 
-    if time_ctrl.loop_selection().is_none() {
-        time_ctrl.loop_selection_active = false;
+    if time_ctrl.loop_selection().is_none() && time_ctrl.looping == Looping::Selection {
+        time_ctrl.looping = Looping::Off;
     }
 
     // TODO(emilk): click to toggle on/off
@@ -869,7 +865,7 @@ fn loop_selection_ui(
 
     let mut did_interact = false;
 
-    let is_active = time_ctrl.looped() && time_ctrl.loop_selection_active;
+    let is_active = time_ctrl.looping == Looping::Selection;
 
     let pointer_pos = ui.input().pointer.hover_pos();
     let is_pointer_in_rect = pointer_pos.map_or(false, |pointer_pos| rect.contains(pointer_pos));
@@ -1087,8 +1083,7 @@ fn loop_selection_ui(
     }
 
     if did_interact {
-        time_ctrl.loop_selection_active = true;
-        time_ctrl.set_looped(true);
+        time_ctrl.looping = Looping::Selection;
     }
 }
 
