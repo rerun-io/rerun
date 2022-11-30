@@ -13,6 +13,7 @@ re_log_types = { path = "../re_log_types" }
 
 # External
 arrow2 = { version = "0.14", features = ["io_ipc"] }
+anyhow = "1.0"
 nohash-hasher = "0.2"
 polars = { version = "0.25", features = [
   "dtype-time",

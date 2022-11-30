@@ -3537,6 +3537,7 @@ dependencies = [
 name = "re_arrow_store"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "arrow2",
  "nohash-hasher",
  "polars",
