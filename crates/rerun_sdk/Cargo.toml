@@ -20,6 +20,7 @@ web = ["dep:re_ws_comms", "dep:re_web_server", "dep:webbrowser"]
 
 
 [dependencies]
+arrow2 = "0.14.2"
 re_error = { path = "../re_error" }
 re_log = { path = "../re_log" }
 re_log_types = { path = "../re_log_types" }
@@ -48,3 +49,6 @@ clap = { version = "4.0", features = ["derive"] }
 mimalloc = "0.1.29"
 tokio = { version = "1.16", features = ["macros", "rt-multi-thread"] }
 tracing-subscriber = "0.3"
+
+[dev-dependencies]
+arrow2_convert = { version = "0.3" }

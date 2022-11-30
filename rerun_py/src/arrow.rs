@@ -1,23 +1,15 @@
 //! Methods for handling Arrow datamodel log ingest
 
-use std::collections::BTreeMap;
-
 use arrow2::{
-    array::{Array, ListArray, StructArray},
-    buffer::Buffer,
-    chunk::Chunk,
-    datatypes::{Field, Schema},
+    array::{Array, StructArray},
+    datatypes::Field,
     ffi,
-    io::ipc::write::StreamWriter,
 };
 use pyo3::{exceptions::PyTypeError, ffi::Py_uintptr_t, PyAny, PyResult};
-use re_log_types::{
-    arrow::{build_time_cols, OBJPATH_KEY},
-    ArrowMsg, LogMsg, MsgId, ObjPath, TimePoint,
-};
+use re_log_types::{LogMsg, ObjPath, TimePoint};
 
 /// Perform conversion between a pyarrow array to arrow2 types.
-pub fn array_to_rust(arrow_array: &PyAny) -> PyResult<(Box<dyn Array>, Field)> {
+fn array_to_rust(arrow_array: &PyAny) -> PyResult<(Box<dyn Array>, Field)> {
     // prepare pointers to receive the Array struct
     let array = Box::new(ffi::ArrowArray::empty());
     let schema = Box::new(ffi::ArrowSchema::empty());
@@ -43,33 +35,7 @@ pub fn array_to_rust(arrow_array: &PyAny) -> PyResult<(Box<dyn Array>, Field)> {
     }
 }
 
-/// Create a `LogMsg` out of Arrow Schema and Chunk
-pub fn serialize_arrow_msg(
-    schema: &Schema,
-    chunk: &Chunk<Box<dyn Array>>,
-) -> Result<LogMsg, arrow2::error::Error> {
-    // TODO(jleibs):
-    // This stream-writer interface re-encodes and transmits the schema on every send
-    // I believe We can optimize this using some combination of calls to:
-    // https://docs.rs/arrow2/latest/arrow2/io/ipc/write/fn.write.html
-
-    let mut data = Vec::<u8>::new();
-    let mut writer = StreamWriter::new(&mut data, Default::default());
-    writer.start(schema, None)?;
-    writer.write(chunk, None)?;
-    writer.finish()?;
-
-    //let data_path = DataPath::new(obj_path, FieldName::from(field_name));
-
-    let msg = ArrowMsg {
-        msg_id: MsgId::random(),
-        //data_path,
-        data,
-    };
-
-    Ok(LogMsg::ArrowMsg(msg))
-}
-pub fn build_arrow_log_msg(
+pub fn build_arrow_log_msg_from_py(
     obj_path: &ObjPath,
     array: &PyAny,
     time_point: &TimePoint,
@@ -91,28 +57,6 @@ pub fn build_arrow_log_msg(
             .collect::<Vec<_>>()
     );
 
-    let data_col = ListArray::<i32>::try_new(
-        ListArray::<i32>::default_datatype(array.data_type().clone()), // data_type
-        Buffer::from(vec![0, array.values()[0].len() as i32]),         // offsets
-        array.clone().boxed(),                                         // values
-        None,                                                          // validity
-    )
-    .map_err(|err| PyTypeError::new_err(err.to_string()))?;
-
-    // Build columns for timeline data
-    let (mut fields, mut cols): (Vec<Field>, Vec<Box<dyn Array>>) =
-        build_time_cols(time_point).unzip();
-
-    fields.push(arrow2::datatypes::Field::new(
-        "components",
-        data_col.data_type().clone(),
-        true,
-    ));
-    cols.push(data_col.boxed());
-
-    let metadata = BTreeMap::from([(OBJPATH_KEY.into(), obj_path.to_string())]);
-    let schema = Schema { fields, metadata };
-    let chunk = Chunk::new(cols);
-
-    serialize_arrow_msg(&schema, &chunk).map_err(|err| PyTypeError::new_err(err.to_string()))
+    rerun_sdk::build_arrow_log_msg(obj_path, array, time_point)
+        .map_err(|err| PyTypeError::new_err(err.to_string()))
 }
