@@ -1,12 +1,17 @@
 use std::collections::{BTreeMap, HashMap};
 
-use arrow2::array::{Array, ListArray, StructArray};
+use anyhow::{anyhow, bail, ensure};
+use arrow2::array::{Array, ListArray, PrimitiveArray, StructArray};
 use arrow2::buffer::Buffer;
 use arrow2::chunk::Chunk;
 use arrow2::datatypes::Schema;
 use nohash_hasher::IntMap;
-use re_log_types::arrow::{filter_time_cols, ENTITY_PATH_KEY};
-use re_log_types::{ArrowMsg, FieldName, ObjPath as EntityPath, TimeInt, Timeline};
+
+use polars::prelude::IndexOfSchema;
+use re_log_types::arrow::{
+    filter_time_cols, ENTITY_PATH_KEY, TIMELINE_KEY, TIMELINE_SEQUENCE, TIMELINE_TIME,
+};
+use re_log_types::{ObjPath as EntityPath, TimeInt, TimeType, Timeline};
 
 // TODO: feels like arrow schema shouldn't have top-level fields at all.
 //
@@ -34,15 +39,25 @@ use re_log_types::{ArrowMsg, FieldName, ObjPath as EntityPath, TimeInt, Timeline
 // - read path
 // - purge / GC
 
+// TODO:
+// - keeping low level _for now_ (i.e. no polars at this layer)
+//    - need to get familiar with what's actually going on under the good
+//    - don't add layers until we have a use case for them
+
 // ---
 
 // https://www.notion.so/rerunio/Arrow-Table-Design-cd77528c77ae4aa4a8c566e2ec29f84f
 
+// TODO: perf probes
+// TODO: every error and assert paths must be _TESTED_!!!
+
 type ComponentName = String;
+type ComponentNameRef<'a> = &'a str;
 type RowIndex = u64;
 type TimeIntRange = std::ops::Range<TimeInt>;
 
 /// The complete data store: covers all timelines, all entities, everything.
+#[derive(Default)]
 pub struct DataStore {
     /// Maps an entity to its index, for a specific timeline.
     indices: HashMap<(Timeline, EntityPath), IndexTable>,
@@ -58,22 +73,95 @@ impl DataStore {
     //         self.main_tables[(timeline, obj_path)]
     //             .insert(time, instance_row, pos_row);
     //     }
-    pub fn insert(
-        &mut self,
-        ent_path: &EntityPath,
-        schema: &Schema,
-        chunk: Chunk<Box<dyn Array>>,
-        components: &[Box<dyn Array>],
-    ) -> anyhow::Result<()> {
-        // 1. fetch the index
-        //
-        // 2. for each component:
-        // 2.1. fetch the
+    pub fn insert(&mut self, schema: &Schema, msg: Chunk<Box<dyn Array>>) -> anyhow::Result<()> {
+        let ent_path = schema
+            .metadata
+            .get(ENTITY_PATH_KEY)
+            .ok_or_else(|| anyhow!("expect entity path in top-level message's metadata"))
+            .map(|path| EntityPath::from(path.as_str()))?;
 
-        //
+        let timelines = extract_timelines(schema, &msg)?;
+
+        for timeline in timelines {
+            dbg!((&ent_path, timeline));
+        }
 
         Ok(())
     }
+}
+
+// TODO: document the datamodel here: 1 timestamp per message per timeline.
+fn extract_timelines<'data>(
+    schema: &Schema,
+    msg: &'data Chunk<Box<dyn Array>>,
+    // ) -> anyhow::Result<&'data [Box<dyn Array>]> {
+) -> anyhow::Result<Vec<(Timeline, TimeInt)>> {
+    let timelines = schema
+        .index_of("timelines") // TODO
+        .and_then(|idx| msg.columns().get(idx))
+        .ok_or_else(|| anyhow!("expect top-level `timelines` field`"))?;
+
+    let timelines = timelines
+        .as_any()
+        .downcast_ref::<ListArray<i32>>()
+        .ok_or_else(|| anyhow!("expect top-level `timelines` to be a `ListArray<i32>`"))?;
+    // dbg!(timelines.values());
+
+    let timelines = timelines
+        .values()
+        .as_any()
+        .downcast_ref::<StructArray>()
+        .ok_or_else(|| anyhow!("expect timeline values to be `StructArray`s"))?;
+
+    let timelines: Result<Vec<_>, _> = timelines
+        .fields()
+        .iter()
+        .zip(timelines.values())
+        .map(
+            |(timeline, time)| match timeline.metadata.get(TIMELINE_KEY).map(|s| s.as_str()) {
+                Some(TIMELINE_TIME) => {
+                    let timeline = Timeline::new(timeline.name.clone(), TimeType::Time);
+
+                    let time = time
+                        .as_any()
+                        .downcast_ref::<PrimitiveArray<i64>>()
+                        .ok_or_else(|| {
+                            anyhow!("expect time-like timeline to be a `PrimitiveArray<i64>")
+                        })?;
+                    ensure!(
+                        time.len() == 1,
+                        "expect only one timestamp per message per timeline"
+                    );
+
+                    Ok((timeline, TimeInt::from(time.values()[0])))
+                }
+                Some(TIMELINE_SEQUENCE) => {
+                    let timeline = Timeline::new(timeline.name.clone(), TimeType::Sequence);
+
+                    let time = time
+                        .as_any()
+                        .downcast_ref::<PrimitiveArray<i64>>()
+                        .ok_or_else(|| {
+                            anyhow!("expect sequence-like timeline to be a `PrimitiveArray<i64>")
+                        })?;
+                    ensure!(
+                        time.len() == 1,
+                        "expect only one timestamp per message per timeline"
+                    );
+
+                    Ok((timeline, TimeInt::from(time.values()[0])))
+                }
+                Some(unknown) => {
+                    bail!("unknown timeline kind: {unknown:?}")
+                }
+                None => {
+                    bail!("missing timeline kind")
+                }
+            },
+        )
+        .collect();
+
+    timelines
 }
 
 /// A chunked index, bucketized over time and space (whichever comes first).
@@ -210,6 +298,7 @@ mod tests {
         chunk::Chunk,
         datatypes::{self, DataType, Field, Schema, TimeUnit},
     };
+    use polars::export::num::ToPrimitive;
     use re_log_types::arrow::{TIMELINE_KEY, TIMELINE_SEQUENCE, TIMELINE_TIME};
 
     use super::*;
@@ -222,18 +311,16 @@ mod tests {
             let log_time = log_time
                 .duration_since(SystemTime::UNIX_EPOCH)
                 .unwrap()
-                .as_secs();
+                .as_nanos()
+                .to_u64()
+                .unwrap();
 
-            let datatype = DataType::Timestamp(TimeUnit::Second, None);
+            let datatype = DataType::Timestamp(TimeUnit::Nanosecond, None);
 
             let data = PrimitiveArray::from([Some(log_time as i64)]).to(datatype.clone());
 
-            let fields = [
-                Field::new("log_time", datatype, false).with_metadata(BTreeMap::from([(
-                    TIMELINE_KEY.to_owned(),
-                    TIMELINE_TIME.to_owned(),
-                )])),
-            ]
+            let fields = [Field::new("log_time", datatype, false)
+                .with_metadata([(TIMELINE_KEY.to_owned(), TIMELINE_TIME.to_owned())].into())]
             .to_vec();
 
             let schema = Schema {
@@ -247,12 +334,8 @@ mod tests {
         fn build_frame_nr(frame_nr: i64) -> (Schema, PrimitiveArray<i64>) {
             let data = PrimitiveArray::from([Some(frame_nr)]);
 
-            let fields = [
-                Field::new("frame_nr", DataType::Int64, false).with_metadata(BTreeMap::from([(
-                    TIMELINE_KEY.to_owned(),
-                    TIMELINE_SEQUENCE.to_owned(),
-                )])),
-            ]
+            let fields = [Field::new("frame_nr", DataType::Int64, false)
+                .with_metadata([(TIMELINE_KEY.to_owned(), TIMELINE_SEQUENCE.to_owned())].into())]
             .to_vec();
 
             let schema = Schema {
@@ -337,7 +420,6 @@ mod tests {
             (schema, data)
         }
 
-        // TODO: probably shouldn't be a struct, it's whatever for now.
         fn pack_components(
             components: impl Iterator<Item = (Schema, Box<dyn Array>)>,
         ) -> (Schema, ListArray<i32>) {
@@ -403,9 +485,13 @@ mod tests {
             (schema, Chunk::new(cols))
         }
 
+        let mut store = DataStore::default();
+
         let ent_path = EntityPath::from("this/that");
-        let (schema, chunk) = build_message(&ent_path, 10);
-        dbg!(schema);
-        dbg!(chunk);
+        let (schema, components) = build_message(&ent_path, 10);
+        // dbg!(schema);
+        // dbg!(components);
+
+        store.insert(&schema, components).unwrap();
     }
 }
