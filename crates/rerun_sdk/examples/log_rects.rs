@@ -1,7 +1,8 @@
 use arrow2::array::Array;
 use arrow2_convert::{serialize::TryIntoArrow, ArrowField};
-use re_log_types::ObjPath;
+use clap::Parser;
 
+use re_log_types::ObjPath;
 use rerun_sdk as rerun;
 
 // Setup the rerun allocator
@@ -66,31 +67,63 @@ fn build_some_colors(len: usize) -> Box<dyn Array> {
     v.try_into_arrow().unwrap()
 }
 
+#[derive(Debug, clap::Parser)]
+#[clap(author, version, about)]
+struct Args {
+    /// Connect to an external viewer
+    #[clap(long)]
+    connect: bool,
+
+    /// External Address
+    #[clap(long)]
+    addr: Option<String>,
+}
+
 fn main() {
-    tracing_subscriber::fmt::init(); // log to stdout
-    re_log::info!("Log points example!");
+    // Make sure rerun logging goes to stdout
+    tracing_subscriber::fmt::init();
 
     let mut sdk = rerun::Sdk::global();
 
-    // Timestamp
-    let time_point = rerun::log_time();
+    // Arg-parsing boiler-plate
+    let args = Args::parse();
 
-    // Object-path
+    // Connect if requested
+    if args.connect {
+        let addr = if let Some(addr) = &args.addr {
+            addr.parse()
+        } else {
+            Ok(re_sdk_comms::default_server_addr())
+        };
+
+        match addr {
+            Ok(addr) => {
+                sdk.connect(addr);
+            }
+            Err(err) => {
+                panic!("Bad address: {:?}. {:?}", args.addr, err);
+            }
+        }
+    }
+
+    // Capture the log_time and object_path
+    let time_point = rerun::log_time();
     let obj_path = ObjPath::from("world/points");
 
-    // Build the StructArray of components
-
+    // Build up some rect data into an arrow array
     let rects = build_some_rects(5);
     let colors = build_some_colors(5);
-
     let array = rerun::components_as_struct_array(&[("rect", rects), ("color_rgba", colors)]);
 
-    let msg = rerun::build_arrow_log_msg(&obj_path, &array, &time_point)
-        .ok()
-        .unwrap();
-
+    // Create and send the message to the sdk
+    let msg = rerun::build_arrow_log_msg(&obj_path, &array, &time_point).unwrap();
     sdk.send(msg);
 
-    let log_messages = sdk.drain_log_messages_buffer();
-    sdk.show(log_messages);
+    // If not connected, show the GUI inline
+    if args.connect {
+        sdk.flush();
+    } else {
+        let log_messages = sdk.drain_log_messages_buffer();
+        sdk.show(log_messages);
+    }
 }
