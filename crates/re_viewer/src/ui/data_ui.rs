@@ -558,7 +558,7 @@ fn ui_annotation_info_table<'a>(
         .max_scroll_height(TABLE_SCROLL_AREA_HEIGHT)
         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
         .column(Column::auto()) // id
-        .column(Column::auto()) // label
+        .column(Column::auto().clip(true).at_least(40.0)) // label
         .column(Column::auto()); // color
 
     table
@@ -649,8 +649,8 @@ fn ui_annotation_context(ui: &mut egui::Ui, context: &AnnotationContext) -> egui
                         .min_scrolled_height(TABLE_SCROLL_AREA_HEIGHT)
                         .max_scroll_height(TABLE_SCROLL_AREA_HEIGHT)
                         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-                        .column(Column::auto())
-                        .column(Column::auto());
+                        .column(Column::auto().clip(true).at_least(40.0))
+                        .column(Column::auto().clip(true).at_least(40.0));
                     table
                         .header(20.0, |mut header| {
                             header.col(|ui| {
