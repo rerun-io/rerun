@@ -2,7 +2,7 @@ use re_renderer::{
     renderer::{
         LineDrawable, LineStrip, LineStripFlags, Rectangle, RectangleDrawData, TextureFilter,
     },
-    resource_managers::{Texture2D, Texture2DHandle},
+    resource_managers::{ResourceLifeTime, Texture2D, Texture2DHandle},
     view_builder::{self, ViewBuilder},
 };
 
@@ -12,6 +12,8 @@ mod framework;
 
 struct Render2D {
     rerun_logo_texture: Texture2DHandle,
+    rerun_logo_texture_width: u32,
+    rerun_logo_texture_height: u32,
 }
 
 impl framework::Example for Render2D {
@@ -20,8 +22,35 @@ impl framework::Example for Render2D {
     }
 
     fn new(re_ctx: &mut re_renderer::RenderContext) -> Self {
-        let rerun_logo_texture = re_ctx.texture_manager_2d.white_texture();
-        Render2D { rerun_logo_texture }
+        let rerun_logo =
+            image::load_from_memory(include_bytes!("../../re_viewer/data/logo_dark_mode.png"))
+                .unwrap();
+
+        let mut image_data = rerun_logo.as_rgba8().unwrap().to_vec();
+        // Premultiply alpha (not doing any alpha blending, so this will look better on a black ground)
+        for color in image_data.chunks_exact_mut(4) {
+            let alpha = color[3] as f32 / 255.0;
+            color[0] = (color[0] as f32 * alpha) as u8;
+            color[1] = (color[1] as f32 * alpha) as u8;
+            color[2] = (color[2] as f32 * alpha) as u8;
+        }
+
+        let rerun_logo_texture = re_ctx.texture_manager_2d.store_resource(
+            Texture2D {
+                label: "rerun logo".into(),
+                data: image_data,
+                format: wgpu::TextureFormat::Rgba8UnormSrgb,
+                width: rerun_logo.width(),
+                height: rerun_logo.height(),
+            },
+            ResourceLifeTime::LongLived,
+        );
+        Render2D {
+            rerun_logo_texture,
+
+            rerun_logo_texture_width: rerun_logo.width(),
+            rerun_logo_texture_height: rerun_logo.height(),
+        }
     }
 
     fn draw(
@@ -90,15 +119,33 @@ impl framework::Example for Render2D {
         )
         .unwrap();
 
+        let image_scale = 8.0;
         let rectangle_draw_data = RectangleDrawData::new(
             re_ctx,
-            &[Rectangle {
-                top_left_corner_position: (screen_size * 0.25).extend(-0.05),
-                extent_u: glam::vec3(screen_size.x * 0.5, 0.0, 0.0),
-                extent_v: glam::vec3(0.0, screen_size.y * 0.5, 0.0),
-                texture: self.rerun_logo_texture,
-                texture_filter: TextureFilter::Nearest,
-            }],
+            &[
+                Rectangle {
+                    top_left_corner_position: glam::vec3(100.0, 100.0, -0.05),
+                    extent_u: glam::vec3(self.rerun_logo_texture_width as f32, 0.0, 0.0)
+                        * image_scale,
+                    extent_v: glam::vec3(0.0, self.rerun_logo_texture_height as f32, 0.0)
+                        * image_scale,
+                    texture: self.rerun_logo_texture,
+                    texture_filter: TextureFilter::Nearest,
+                },
+                Rectangle {
+                    top_left_corner_position: glam::vec3(
+                        100.0,
+                        150.0 + self.rerun_logo_texture_height as f32 * image_scale,
+                        -0.05,
+                    ),
+                    extent_u: glam::vec3(self.rerun_logo_texture_width as f32, 0.0, 0.0)
+                        * image_scale,
+                    extent_v: glam::vec3(0.0, self.rerun_logo_texture_height as f32, 0.0)
+                        * image_scale,
+                    texture: self.rerun_logo_texture,
+                    texture_filter: TextureFilter::LinearNoMipMapping,
+                },
+            ],
         )
         .unwrap();
 

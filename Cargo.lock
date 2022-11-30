@@ -3637,6 +3637,7 @@ dependencies = [
  "glob",
  "gltf",
  "half 2.1.0",
+ "image",
  "instant",
  "itertools",
  "log",

@@ -70,6 +70,7 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 winit = "0.27"
 zip = { version = "0.6", default-features = false, features = ["deflate"] }
+image = { version = "0.24", default-features = false, features = ["png"] }
 
 # native
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]

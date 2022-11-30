@@ -42,7 +42,7 @@ mod gpu_data {
 pub enum TextureFilter {
     LinearNoMipMapping,
     Nearest,
-    // TODO(andreas): Offer mipmaping here?
+    // TODO(andreas): Offer mipmapping here? Could also do more advanced filters like cubic!
 }
 
 pub struct Rectangle {

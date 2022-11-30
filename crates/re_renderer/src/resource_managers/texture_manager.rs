@@ -107,15 +107,18 @@ impl TextureManager2D {
         mut resource: Texture2D,
         lifetime: ResourceLifeTime,
     ) -> Texture2DHandle {
-        if !resource.width.is_power_of_two() || !resource.width.is_power_of_two() {
-            re_log::warn!(
-                "Texture {:?} has the non-power-of-two (NPOT) resolution of {}x{}. \
-                NPOT textures are slower and on WebGL can't handle mipmapping, UV wrapping and UV tiling",
-                resource.label,
-                resource.width,
-                resource.height
-            );
-        }
+        // TODO(andreas): Disabled the warning as we're moving towards using this texture manager for arbitrary images.
+        // However, it's still very much a concern especially once we add mipmapping. Something we need to keep in mind.
+        //
+        // if !resource.width.is_power_of_two() || !resource.width.is_power_of_two() {
+        //     re_log::warn!(
+        //         "Texture {:?} has the non-power-of-two (NPOT) resolution of {}x{}. \
+        //         NPOT textures are slower and on WebGL can't handle mipmapping, UV wrapping and UV tiling",
+        //         resource.label,
+        //         resource.width,
+        //         resource.height
+        //     );
+        // }
         if resource.needs_row_alignment() {
             re_log::warn!(
                 "Texture {:?} byte rows are not aligned to {}. Adding padding now.",
