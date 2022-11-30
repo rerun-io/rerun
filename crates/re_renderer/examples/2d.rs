@@ -28,9 +28,11 @@ impl framework::Example for Render2D {
                 .unwrap();
 
         let mut image_data = rerun_logo.as_rgba8().unwrap().to_vec();
-        // Premultiply alpha (not doing any alpha blending, so this will look better on a black ground)
+        // Premultiply alpha (not doing any alpha blending, so this will look better on a black ground).
         for color in image_data.chunks_exact_mut(4) {
-            let alpha = color[3] as f32 / 255.0;
+            // Approximate doing pre-multiplication in linear by apply gamma to alpha.
+            // Proper thing to do is to convert the entire color to linear and multiply with alpha and then convert back to srgb.
+            let alpha = (color[3] as f32 / 255.0).powf(1.0 / 2.2);
             color[0] = (color[0] as f32 * alpha) as u8;
             color[1] = (color[1] as f32 * alpha) as u8;
             color[2] = (color[2] as f32 * alpha) as u8;
@@ -81,7 +83,7 @@ impl framework::Example for Render2D {
         let line_drawable = LineDrawable::new(
             re_ctx,
             &[
-                // Green lines filling border
+                // Green lines filling border.
                 LineStrip {
                     points: smallvec![
                         glam::vec3(line_radius, line_radius, 0.0),
@@ -99,7 +101,7 @@ impl framework::Example for Render2D {
                     flags: LineStripFlags::empty(),
                 },
                 // Blue lines around the top left quarter.
-                // TODO(andreas): This lines should be on top now, but they're below (for me at least, surprised there is no z-fighting)
+                // TODO(andreas): This lines should be on top now, but they're below (for me at least, surprised there is no z-fighting).
                 LineStrip {
                     points: smallvec![
                         glam::vec3(line_radius, line_radius, 0.0),
