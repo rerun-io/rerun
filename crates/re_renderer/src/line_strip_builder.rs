@@ -115,43 +115,42 @@ impl LineStripSeriesBuilder {
     pub fn iter_strips_mut_with_vertices(
         &mut self,
     ) -> impl Iterator<Item = (&mut LineStripInfo, impl Iterator<Item = &LineVertex>)> {
-        self.strips
-            .iter_mut()
-            .zip(self.strip_to_vertex_offsets.iter())
-            .enumerate()
-            .map(|(i, (strip, offset))| {
-                (
-                    strip,
-                    Self::vertices_of_strip(&self.vertices, *offset, i as u32),
-                )
-            })
+        Self::vertices_of_strip(
+            self.strips.iter_mut(),
+            &self.strip_to_vertex_offsets,
+            &self.vertices,
+        )
     }
 
     /// Iterates over all line strips together with their respective vertices.
     pub fn iter_strips_with_vertices(
         &self,
     ) -> impl Iterator<Item = (&LineStripInfo, impl Iterator<Item = &LineVertex>)> {
-        self.strips
-            .iter()
-            .zip(self.strip_to_vertex_offsets.iter())
-            .enumerate()
-            .map(|(i, (strip, offset))| {
-                (
-                    strip,
-                    Self::vertices_of_strip(&self.vertices, *offset, i as u32),
-                )
-            })
+        Self::vertices_of_strip(
+            self.strips.iter(),
+            &self.strip_to_vertex_offsets,
+            &self.vertices,
+        )
     }
 
-    fn vertices_of_strip(
-        vertices: &[LineVertex],
-        first_vertex_of_strip: usize,
-        strip_index: u32,
-    ) -> impl Iterator<Item = &LineVertex> {
-        vertices
-            .iter()
-            .skip(first_vertex_of_strip)
-            .take_while(move |v| v.strip_index == strip_index)
+    fn vertices_of_strip<'a, S>(
+        strip_iter: impl Iterator<Item = S>,
+        strip_to_vertex_offsets: &'a [usize],
+        vertices: &'a [LineVertex],
+    ) -> impl Iterator<Item = (S, impl Iterator<Item = &'a LineVertex>)> {
+        // TODO(andreas): By using `batching` it should be possible to not need strip_to_vertex_offsets, but the implementation isn't entirely straight forward.
+        strip_iter
+            .zip(strip_to_vertex_offsets.iter())
+            .enumerate()
+            .map(move |(i, (strip, offset))| {
+                (strip, {
+                    let strip_index = i as u32;
+                    vertices
+                        .iter()
+                        .skip(*offset)
+                        .take_while(move |v| v.strip_index == strip_index)
+                })
+            })
     }
 }
 
