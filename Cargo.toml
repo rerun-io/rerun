@@ -25,12 +25,12 @@ opt-level = 2
 debug = true
 
 [patch.crates-io]
-# 2022-11-24 - license fix + less plot grid aliasing
-eframe = { git = "https://github.com/emilk/egui", rev = "7d8154971bae6df8af00e0e19c62ef852d223091" }
-egui = { git = "https://github.com/emilk/egui", rev = "7d8154971bae6df8af00e0e19c62ef852d223091" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "7d8154971bae6df8af00e0e19c62ef852d223091" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "7d8154971bae6df8af00e0e19c62ef852d223091" }
-emath = { git = "https://github.com/emilk/egui", rev = "7d8154971bae6df8af00e0e19c62ef852d223091" }
+# 2022-11-30 - table improvement (TODO: switch to master commit hash!)
+eframe = { git = "https://github.com/emilk/egui", rev = "f3aa4c25ac899c2cf5a792ebabd3e2ed25c722c6" }
+egui = { git = "https://github.com/emilk/egui", rev = "f3aa4c25ac899c2cf5a792ebabd3e2ed25c722c6" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "f3aa4c25ac899c2cf5a792ebabd3e2ed25c722c6" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "f3aa4c25ac899c2cf5a792ebabd3e2ed25c722c6" }
+emath = { git = "https://github.com/emilk/egui", rev = "f3aa4c25ac899c2cf5a792ebabd3e2ed25c722c6" }
 
 # eframe = { path = "../../egui/crates/eframe" }
 # egui = { path = "../../egui/crates/egui" }
