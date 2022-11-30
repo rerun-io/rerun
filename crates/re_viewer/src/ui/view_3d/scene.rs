@@ -262,7 +262,7 @@ impl Scene3D {
                             continue;
                         };
                         self.line_instance_ids.push(instance_id_hash);
-                        self.line_strips.add_segment(*a, *b).radius(Size::AUTO.0).color_rgba_slice(color);
+                        self.line_strips.add_segment(*a, *b).radius(Size::AUTO.0).color_rgbx_slice(color);
                     }
                 }
             });
@@ -363,7 +363,7 @@ impl Scene3D {
                         _ => unreachable!("already early outed earlier"),
                     }
                     .radius(radius.0) // TODO(andreas): re_renderer should support our Size type directly!
-                    .color_rgba_slice(color);
+                    .color_rgbx_slice(color);
 
                     self.line_instance_ids.extend(
                         std::iter::repeat(instance_id_hash)
@@ -541,7 +541,7 @@ impl Scene3D {
                     self.line_strips
                         .add_segment(cam_origin, axis_end)
                         .radius(radius)
-                        .color_rgba_slice(color);
+                        .color_rgbx_slice(color);
                 }
             }
 
@@ -710,7 +710,7 @@ impl Scene3D {
         self.line_strips
             .add_segments(segments.into_iter())
             .radius(line_radius.0)
-            .color_rgba_slice(color);
+            .color_rgbx_slice(color);
 
         Some(())
     }
@@ -740,7 +740,7 @@ impl Scene3D {
         self.line_strips
             .add_segment(origin, end)
             .radius(radius)
-            .color_rgba_slice(color)
+            .color_rgbx_slice(color)
             .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE);
     }
 
@@ -804,7 +804,7 @@ impl Scene3D {
         self.line_strips
             .add_segments(segments.into_iter())
             .radius(line_radius.0)
-            .color_rgba_slice(color);
+            .color_rgbx_slice(color);
     }
 
     pub fn is_empty(&self) -> bool {

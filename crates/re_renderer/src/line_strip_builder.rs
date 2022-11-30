@@ -157,7 +157,7 @@ impl<'a> LineStripBuilder<'a> {
         self
     }
 
-    pub fn color_rgba_slice(self, rgba: [u8; 4]) -> Self {
+    pub fn color_rgbx_slice(self, rgba: [u8; 4]) -> Self {
         for strip in self.0.iter_mut() {
             strip.srgb_color = rgba;
         }
