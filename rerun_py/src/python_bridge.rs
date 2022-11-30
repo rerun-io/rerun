@@ -71,9 +71,9 @@ impl ThreadInfo {
 
 // ----------------------------------------------------------------------------
 
-/// The python module is called "rerun_py_sdk".
+/// The python module is called "rerun_bindings".
 #[pymodule]
-fn rerun_py_sdk(py: Python<'_>, m: &PyModule) -> PyResult<()> {
+fn rerun_bindings(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     re_log::set_default_rust_log_env();
     tracing_subscriber::fmt::init();
 
