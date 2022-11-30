@@ -916,7 +916,7 @@ impl Scene3D {
 
         {
             crate::profile_scope!("line_segments");
-            for ((line_strip, vertices), instance_id_hash) in line_strips
+            for ((_line_strip, vertices), instance_id_hash) in line_strips
                 .iter_strips_with_vertices()
                 .zip(line_instance_ids.iter())
             {

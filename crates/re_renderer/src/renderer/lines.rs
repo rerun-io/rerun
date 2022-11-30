@@ -99,7 +99,6 @@ use std::num::NonZeroU32;
 
 use bitflags::bitflags;
 use bytemuck::Zeroable;
-use itertools::Itertools;
 use smallvec::smallvec;
 
 use crate::{
@@ -251,23 +250,6 @@ impl LineDrawable {
             num_strips <= LINE_STRIP_TEXTURE_SIZE * LINE_STRIP_TEXTURE_SIZE,
             "Too many line strips! The maximum is {} but passed were {num_strips}",
             LINE_STRIP_TEXTURE_SIZE * LINE_STRIP_TEXTURE_SIZE
-        );
-
-        anyhow::ensure!(
-            vertices
-                .iter()
-                .batching(|iter| {
-                    match iter.next() {
-                        Some(vertex) => Some(
-                            iter.take_while(|v| v.strip_index == vertex.strip_index)
-                                .count()
-                                + 1,
-                        ),
-                        None => None,
-                    }
-                })
-                .all(|count_in_group| count_in_group >= 2),
-            "Line strips need to have at least two points each."
         );
         anyhow::ensure!(
             vertices.iter().all(|v| v.strip_index < num_strips),
