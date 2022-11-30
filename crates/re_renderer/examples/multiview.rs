@@ -19,25 +19,6 @@ use winit::event::{ElementState, VirtualKeyCode};
 
 mod framework;
 
-fn split_resolution(
-    resolution: [u32; 2],
-    nb_rows: usize,
-    nb_cols: usize,
-) -> impl Iterator<Item = (glam::Vec2, (f32, f32))> {
-    let total_width = resolution[0] as f32;
-    let total_height = resolution[1] as f32;
-    let width = total_width / nb_cols as f32;
-    let height = total_height / nb_rows as f32;
-    (0..nb_rows)
-        .flat_map(move |row| (0..nb_cols).map(move |col| (row, col)))
-        .map(move |(row, col)| {
-            // very quick'n'dirty (uneven) borders
-            let y = f32::clamp(row as f32 * height + 2.0, 2.0, total_height - 2.0);
-            let x = f32::clamp(col as f32 * width + 2.0, 2.0, total_width - 2.0);
-            (glam::vec2(x, y), (width - 4.0, height - 4.0))
-        })
-}
-
 fn draw_view<'a, D: 'static + re_renderer::renderer::Drawable + Sync + Send + Clone>(
     re_ctx: &'a mut RenderContext,
     target_cfg: TargetConfiguration,
@@ -236,7 +217,7 @@ impl Example for Multiview {
     fn draw(
         &mut self,
         re_ctx: &mut RenderContext,
-        surface_configuration: &wgpu::SurfaceConfiguration,
+        resolution: [u32; 2],
         time: &framework::Time,
     ) -> Vec<framework::ViewDrawResult> {
         if matches!(self.camera_control, CameraControl::RotateAroundCenter) {
@@ -248,7 +229,6 @@ impl Example for Multiview {
             ) * 10.0;
         }
 
-        let resolution = [surface_configuration.width, surface_configuration.height];
         let seconds_since_startup = time.seconds_since_startup();
         let view_from_world =
             IsoTransform::look_at_rh(self.camera_position, Vec3::ZERO, Vec3::Y).unwrap();
@@ -264,7 +244,7 @@ impl Example for Multiview {
             seconds_since_startup,
         );
 
-        let splits = split_resolution(resolution, 2, 2).collect::<Vec<_>>();
+        let splits = framework::split_resolution(resolution, 2, 2).collect::<Vec<_>>();
 
         let projection_from_view = if self.perspective_projection {
             Projection::Perspective {
@@ -284,11 +264,10 @@ impl Example for Multiview {
         #[rustfmt::skip]
         macro_rules! draw {
             ($name:ident @ split #$n:expr) => {{
-                let (target_location, (width, height)) = splits[$n];
                 let (view_builder, command_buffer) = draw_view(re_ctx,
                     TargetConfiguration {
                         name: stringify!($name).into(),
-                        resolution_in_pixel: [width as u32, height as u32],
+                        resolution_in_pixel: splits[$n].resolution_in_pixel,
                         view_from_world,
                         projection_from_view: projection_from_view.clone(),
                     },
@@ -298,7 +277,7 @@ impl Example for Multiview {
                 framework::ViewDrawResult {
                     view_builder,
                     command_buffer,
-                    target_location,
+                    target_location: splits[$n].target_location,
                 }
             }};
         }

@@ -25,7 +25,7 @@ impl LineStripSeriesBuilder {
     /// Every time we add a 2d line, we advance the z coordinate given to the next by this.
     /// We want it to be as small as possible so that if the camera shits around to 3d, things still looks like it's on a plane
     /// But if we make it too small we risk ambiguous z values (known as z fighting) under some circumstances
-    const NEXT_2D_Z_STEP: f32 = -0.01;
+    const NEXT_2D_Z_STEP: f32 = -0.05;
 
     /// Adds a 3D series of line connected points.
     pub fn add_strip(&mut self, points: impl Iterator<Item = glam::Vec3>) -> LineStripBuilder<'_> {
