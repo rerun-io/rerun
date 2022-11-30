@@ -1,14 +1,17 @@
-pub mod generic_skybox;
+mod generic_skybox;
 pub use generic_skybox::GenericSkyboxDrawable;
 
-pub mod lines;
+mod lines;
 pub use lines::{LineDrawable, LineStrip, LineStripFlags};
 
-pub mod point_cloud;
+mod point_cloud;
 pub use point_cloud::{PointCloudDrawable, PointCloudPoint};
 
-pub mod test_triangle;
+mod test_triangle;
 pub use test_triangle::TestTriangleDrawable;
+
+mod rectangles;
+pub use rectangles::{Rectangle, RectangleDrawData, TextureFilter};
 
 mod mesh_renderer;
 pub(crate) use mesh_renderer::MeshRenderer;

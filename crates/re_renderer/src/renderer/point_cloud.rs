@@ -322,21 +322,13 @@ impl Renderer for PointCloudRenderer {
                 vertex_handle: shader_module,
                 fragment_entrypoint: "fs_main".into(),
                 fragment_handle: shader_module,
-
-                // Instance buffer with pairwise overlapping instances!
                 vertex_buffers: smallvec![],
                 render_targets: smallvec![Some(ViewBuilder::MAIN_TARGET_COLOR_FORMAT.into())],
                 primitive: wgpu::PrimitiveState {
                     topology: wgpu::PrimitiveTopology::TriangleList,
                     ..Default::default()
                 },
-                depth_stencil: Some(wgpu::DepthStencilState {
-                    format: ViewBuilder::MAIN_TARGET_DEPTH_FORMAT,
-                    depth_compare: wgpu::CompareFunction::Greater,
-                    depth_write_enabled: true,
-                    stencil: Default::default(),
-                    bias: Default::default(),
-                }),
+                depth_stencil: ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE,
                 multisample: wgpu::MultisampleState {
                     // We discard pixels to do the round cutout, therefore we need to calculate our own sampling mask.
                     alpha_to_coverage_enabled: true,

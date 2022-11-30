@@ -98,7 +98,7 @@ impl GpuBindGroupPool {
         &mut self,
         device: &wgpu::Device,
         desc: &BindGroupDesc,
-        bind_group_layout: &GpuBindGroupLayoutPool,
+        bind_group_layouts: &GpuBindGroupLayoutPool,
         textures: &GpuTexturePool,
         buffers: &GpuBufferPool,
         samplers: &GpuSamplerPool,
@@ -133,7 +133,7 @@ impl GpuBindGroupPool {
                         },
                     })
                     .collect::<Vec<_>>(),
-                layout: bind_group_layout.get_resource(desc.layout).unwrap(),
+                layout: bind_group_layouts.get_resource(desc.layout).unwrap(),
             })
         });
 

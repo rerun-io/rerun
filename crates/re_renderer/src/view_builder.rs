@@ -163,6 +163,25 @@ impl ViewBuilder {
         alpha_to_coverage_enabled: false,
     };
 
+    /// Default depth state for enabled depth write & read.
+    pub const MAIN_TARGET_DEFAULT_DEPTH_STATE: Option<wgpu::DepthStencilState> =
+        Some(wgpu::DepthStencilState {
+            format: Self::MAIN_TARGET_DEPTH_FORMAT,
+            depth_compare: wgpu::CompareFunction::Greater,
+            depth_write_enabled: true,
+            stencil: wgpu::StencilState {
+                front: wgpu::StencilFaceState::IGNORE,
+                back: wgpu::StencilFaceState::IGNORE,
+                read_mask: 0,
+                write_mask: 0,
+            },
+            bias: wgpu::DepthBiasState {
+                constant: 0,
+                slope_scale: 0.0,
+                clamp: 0.0,
+            },
+        });
+
     pub fn setup_view(
         &mut self,
         ctx: &mut RenderContext,

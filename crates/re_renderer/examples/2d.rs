@@ -1,5 +1,8 @@
 use re_renderer::{
-    renderer::{LineDrawable, LineStrip, LineStripFlags},
+    renderer::{
+        LineDrawable, LineStrip, LineStripFlags, Rectangle, RectangleDrawData, TextureFilter,
+    },
+    resource_managers::{Texture2D, Texture2DHandle},
     view_builder::{self, ViewBuilder},
 };
 
@@ -7,15 +10,18 @@ use smallvec::smallvec;
 
 mod framework;
 
-struct Render2D {}
+struct Render2D {
+    rerun_logo_texture: Texture2DHandle,
+}
 
 impl framework::Example for Render2D {
     fn title() -> &'static str {
         "2D Rendering"
     }
 
-    fn new(_re_ctx: &mut re_renderer::RenderContext) -> Self {
-        Render2D {}
+    fn new(re_ctx: &mut re_renderer::RenderContext) -> Self {
+        let rerun_logo_texture = re_ctx.texture_manager_2d.white_texture();
+        Render2D { rerun_logo_texture }
     }
 
     fn draw(
@@ -83,7 +89,21 @@ impl framework::Example for Render2D {
             ],
         )
         .unwrap();
+
+        let rectangle_draw_data = RectangleDrawData::new(
+            re_ctx,
+            &[Rectangle {
+                top_left_corner_position: (screen_size * 0.25).extend(-0.05),
+                extent_u: glam::vec3(screen_size.x * 0.5, 0.0, 0.0),
+                extent_v: glam::vec3(0.0, screen_size.y * 0.5, 0.0),
+                texture: self.rerun_logo_texture,
+                texture_filter: TextureFilter::Nearest,
+            }],
+        )
+        .unwrap();
+
         view_builder.queue_draw(&line_drawable);
+        view_builder.queue_draw(&rectangle_draw_data);
 
         let command_buffer = view_builder.draw(re_ctx).unwrap();
 
