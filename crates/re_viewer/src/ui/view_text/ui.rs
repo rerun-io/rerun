@@ -95,7 +95,8 @@ fn show_table(
     let mut table_builder = egui_extras::TableBuilder::new(ui)
         .striped(true)
         .resizable(true)
-        .vscroll(true);
+        .vscroll(true)
+        .auto_shrink([false; 2]); // expand to take up the whole Space View
 
     if let Some(scroll_to_row) = scroll_to_row {
         table_builder = table_builder.scroll_to_row(scroll_to_row, Some(egui::Align::Center));
