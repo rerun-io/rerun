@@ -52,6 +52,8 @@ pub type SharedViewBuilder = Arc<RwLock<Option<ViewBuilder>>>;
 pub enum OrthographicCameraMode {
     /// Puts the view space origin into the middle of the screen.
     ///
+    /// Near plane is at z==0, everything with view space z>0 is clipped.
+    ///
     /// This is best for regular 3D content.
     ///
     /// Uses `RUB` (X=Right, Y=Up, Z=Back)
@@ -60,12 +62,14 @@ pub enum OrthographicCameraMode {
     /// Puts the view space origin at the top-left corner of the orthographic frustum and inverts the y axis,
     /// such that the bottom-right corner is at `glam::vec3(vertical_world_size * aspect_ratio, vertical_world_size, 0.0)` in view space.
     ///
+    /// Near plane is at z==-far_plane_distance, allowing the same z range both negative and positive.
+    ///
     /// This means that for an identity camera, world coordinates map directly to pixel coordinates
     /// (if [`Projection::Orthographic::vertical_world_size`] is set to the y resolution).
     /// Best for pure 2D content.
     ///
     /// Uses `RDF` (X=Right, Y=Down, Z=Forward)
-    TopLeftCorner,
+    TopLeftCornerAndExtendZ,
 }
 
 /// How we project from 3D to 2D.
@@ -82,8 +86,6 @@ pub enum Projection {
 
     /// Orthographic projection with the camera position at the near plane's center,
     /// looking along the negative z view space axis.
-    ///
-    /// Near plane is at z==0, everything with view space z>0 is clipped.
     Orthographic {
         camera_mode: OrthographicCameraMode,
 
@@ -118,7 +120,7 @@ impl TargetConfiguration {
             resolution_in_pixel,
             view_from_world: macaw::IsoTransform::IDENTITY,
             projection_from_view: Projection::Orthographic {
-                camera_mode: OrthographicCameraMode::TopLeftCorner,
+                camera_mode: OrthographicCameraMode::TopLeftCornerAndExtendZ,
                 vertical_world_size: resolution_in_pixel[1] as f32 * zoom_factor,
                 far_plane_distance: 1000.0,
             },
@@ -284,14 +286,16 @@ impl ViewBuilder {
                             far_plane_distance,
                             0.0,
                         ),
-                        OrthographicCameraMode::TopLeftCorner => glam::Mat4::orthographic_rh(
-                            0.0,
-                            horizontal_world_size,
-                            vertical_world_size,
-                            0.0,
-                            far_plane_distance,
-                            0.0,
-                        ),
+                        OrthographicCameraMode::TopLeftCornerAndExtendZ => {
+                            glam::Mat4::orthographic_rh(
+                                0.0,
+                                horizontal_world_size,
+                                vertical_world_size,
+                                0.0,
+                                far_plane_distance,
+                                -far_plane_distance,
+                            )
+                        }
                     };
 
                     let tan_half_fov = glam::vec2(f32::INFINITY, f32::INFINITY);
@@ -310,10 +314,10 @@ impl ViewBuilder {
         // For OrthographicCameraMode::TopLeftCorner, we want Z facing forward.
         match config.projection_from_view {
             Projection::Orthographic { camera_mode, .. } => match camera_mode {
-                OrthographicCameraMode::NearPlaneCenter => {
+                OrthographicCameraMode::TopLeftCornerAndExtendZ => {
                     *view_from_world.col_mut(2) = -view_from_world.col(2);
                 }
-                OrthographicCameraMode::TopLeftCorner => {}
+                OrthographicCameraMode::NearPlaneCenter => {}
             },
             Projection::Perspective { .. } => {}
         };
