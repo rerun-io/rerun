@@ -1,10 +1,11 @@
 use std::collections::{BTreeMap, HashMap};
 
 use anyhow::{anyhow, bail, ensure};
-use arrow2::array::{Array, ListArray, PrimitiveArray, StructArray};
+use arrow2::array::{new_empty_array, Array, Int64Array, ListArray, PrimitiveArray, StructArray};
 use arrow2::buffer::Buffer;
 use arrow2::chunk::Chunk;
-use arrow2::datatypes::Schema;
+use arrow2::compute::concatenate::concatenate;
+use arrow2::datatypes::{DataType, Schema};
 use nohash_hasher::IntMap;
 
 use polars::prelude::IndexOfSchema;
@@ -13,31 +14,14 @@ use re_log_types::arrow::{
 };
 use re_log_types::{ObjPath as EntityPath, TimeInt, TimeType, Timeline};
 
-// TODO: feels like arrow schema shouldn't have top-level fields at all.
-//
-// today it looks like this:
-// - "timeline #1"
-// - "timeline #2"
-// - "timeline #N"
-// - "components"
-//    - "component #1"
-//    - "component #2"
-//    - "component #N"
-//
-// i think it might as well look like this:
-// - "timelines"
-//    - "timeline #1"
-//    - "timeline #2"
-//    - "timeline #N"
-// - "components"
-//    - "component #1"
-//    - "component #2"
-//    - "component #N"
+// TODO: going for the usual principles here:
+// - be liberal in what you accept, be strict in what you return
+// - 1) make it work 2) make it correct (i.e. _tested_) 3) make it fast
 
 // TODO:
 // - write path
 // - read path
-// - purge / GC
+// - purge / GC (later)
 
 // TODO:
 // - keeping low level _for now_ (i.e. no polars at this layer)
@@ -74,6 +58,9 @@ impl DataStore {
     //             .insert(time, instance_row, pos_row);
     //     }
     pub fn insert(&mut self, schema: &Schema, msg: Chunk<Box<dyn Array>>) -> anyhow::Result<()> {
+        dbg!(&schema);
+        dbg!(&msg);
+
         let ent_path = schema
             .metadata
             .get(ENTITY_PATH_KEY)
@@ -82,19 +69,40 @@ impl DataStore {
 
         let timelines = extract_timelines(schema, &msg)?;
 
-        for timeline in timelines {
+        // TODO: Let's start the very dumb way: one bucket per TimeInt, then we'll deal with
+        // actual ranges.
+        for (timeline, time) in &timelines {
             dbg!((&ent_path, timeline));
+            let index = self
+                .indices
+                .entry((timeline.clone(), ent_path.clone()))
+                .or_insert(Default::default());
+        }
+
+        let components = extract_components(schema, &msg)?;
+        dbg!(&components);
+
+        // let mut indices = HashMap::with_capacity(components.len());
+        for (name, component) in components {
+            let table = self
+                .components
+                .entry(name.to_owned())
+                .or_insert(ComponentTable::new(component.data_type().clone()));
+
+            let row_idx = table.insert(&timelines, component);
+            dbg!(row_idx);
         }
 
         Ok(())
     }
+
+    pub fn query() {}
 }
 
 // TODO: document the datamodel here: 1 timestamp per message per timeline.
 fn extract_timelines<'data>(
     schema: &Schema,
     msg: &'data Chunk<Box<dyn Array>>,
-    // ) -> anyhow::Result<&'data [Box<dyn Array>]> {
 ) -> anyhow::Result<Vec<(Timeline, TimeInt)>> {
     let timelines = schema
         .index_of("timelines") // TODO
@@ -105,7 +113,6 @@ fn extract_timelines<'data>(
         .as_any()
         .downcast_ref::<ListArray<i32>>()
         .ok_or_else(|| anyhow!("expect top-level `timelines` to be a `ListArray<i32>`"))?;
-    // dbg!(timelines.values());
 
     let timelines = timelines
         .values()
@@ -113,6 +120,7 @@ fn extract_timelines<'data>(
         .downcast_ref::<StructArray>()
         .ok_or_else(|| anyhow!("expect timeline values to be `StructArray`s"))?;
 
+    // implicit Vec<Result> to Result<Vec> collection
     let timelines: Result<Vec<_>, _> = timelines
         .fields()
         .iter()
@@ -124,10 +132,8 @@ fn extract_timelines<'data>(
 
                     let time = time
                         .as_any()
-                        .downcast_ref::<PrimitiveArray<i64>>()
-                        .ok_or_else(|| {
-                            anyhow!("expect time-like timeline to be a `PrimitiveArray<i64>")
-                        })?;
+                        .downcast_ref::<Int64Array>()
+                        .ok_or_else(|| anyhow!("expect time-like timeline to be a `Int64Array"))?;
                     ensure!(
                         time.len() == 1,
                         "expect only one timestamp per message per timeline"
@@ -138,12 +144,9 @@ fn extract_timelines<'data>(
                 Some(TIMELINE_SEQUENCE) => {
                     let timeline = Timeline::new(timeline.name.clone(), TimeType::Sequence);
 
-                    let time = time
-                        .as_any()
-                        .downcast_ref::<PrimitiveArray<i64>>()
-                        .ok_or_else(|| {
-                            anyhow!("expect sequence-like timeline to be a `PrimitiveArray<i64>")
-                        })?;
+                    let time = time.as_any().downcast_ref::<Int64Array>().ok_or_else(|| {
+                        anyhow!("expect sequence-like timeline to be a `Int64Array")
+                    })?;
                     ensure!(
                         time.len() == 1,
                         "expect only one timestamp per message per timeline"
@@ -162,6 +165,35 @@ fn extract_timelines<'data>(
         .collect();
 
     timelines
+}
+
+fn extract_components<'data>(
+    schema: &Schema,
+    msg: &'data Chunk<Box<dyn Array>>,
+) -> anyhow::Result<Vec<(ComponentNameRef<'data>, &'data Box<dyn Array>)>> {
+    let components = schema
+        .index_of("components") // TODO
+        .and_then(|idx| msg.columns().get(idx))
+        .ok_or_else(|| anyhow!("expect top-level `components` field`"))?;
+
+    let components = components
+        .as_any()
+        .downcast_ref::<ListArray<i32>>()
+        .ok_or_else(|| anyhow!("expect top-level `components` to be a `ListArray<i32>`"))?;
+
+    let components = components
+        .values()
+        .as_any()
+        .downcast_ref::<StructArray>()
+        .ok_or_else(|| anyhow!("expect component values to be `StructArray`s"))?;
+
+    // TODO: check validity using component registry and such
+    Ok(components
+        .fields()
+        .iter()
+        .zip(components.values())
+        .map(|(field, comp)| (field.name.as_str(), comp))
+        .collect())
 }
 
 /// A chunked index, bucketized over time and space (whichever comes first).
@@ -192,6 +224,7 @@ fn extract_timelines<'data>(
 //
 //
 // Each entry is a row index. It's nullable, with `null` = no entry.
+#[derive(Default)]
 pub struct IndexTable {
     buckets: BTreeMap<TimeInt, IndexBucket>,
 }
@@ -243,13 +276,26 @@ pub struct ComponentTable {
 }
 
 impl ComponentTable {
+    fn new(datatype: DataType) -> Self {
+        ComponentTable {
+            buckets: [(0, ComponentBucket::new(datatype, 0))].into(),
+        }
+    }
+
     //     pub fn push(&mut self, time_points, values) -> u64 {
     //         if self.last().len() > TOO_LARGE {
     //             self.push(ComponentTableBucket::new());
     //         }
     //         self.last().push(time_points, values)
     //     }
-    pub fn insert() {}
+    pub fn insert(
+        &mut self,
+        timelines: &[(Timeline, TimeInt)],
+        data: &Box<dyn Array>,
+    ) -> anyhow::Result<RowIndex> {
+        // TODO: Let's start the very dumb way: one bucket only, then we'll deal with splitting.
+        self.buckets.get_mut(&0).unwrap().insert(timelines, data)
+    }
 }
 
 /// TODO
@@ -264,6 +310,8 @@ pub struct ComponentBucket {
     // Used when to figure out if we can purge it.
     // Out-of-order inserts can create huge time ranges here,
     // making some buckets impossible to purge, but we accept that risk.
+    //
+    // TODO: this is for purging only
     time_ranges: HashMap<Timeline, TimeIntRange>,
 
     // TODO
@@ -276,12 +324,45 @@ pub struct ComponentBucket {
     //
     // maps a row index to a list of values (e.g. a list of colors).
     //
-    // TODO(cmc): do we really need a dataframe or should this just be some raw arrow data?
-    data: (),
+    // TODO: growable array
+    data: Box<dyn Array>,
+}
+
+impl ComponentBucket {
+    pub fn new(datatype: DataType, row_offset: RowIndex) -> Self {
+        Self {
+            row_offset,
+            time_ranges: Default::default(),
+            data: new_empty_array(dbg!(datatype)),
+        }
+    }
+
+    pub fn insert(
+        &mut self,
+        timelines: &[(Timeline, TimeInt)],
+        data: &Box<dyn Array>,
+    ) -> anyhow::Result<RowIndex> {
+        for (timeline, time) in timelines {
+            // prob should own it at this point
+            let time = *time;
+            let time_plus_one = time + TimeInt::from(1);
+            self.time_ranges
+                .entry(timeline.clone())
+                .and_modify(|range| *range = range.start.min(time)..range.end.max(time_plus_one))
+                .or_insert_with(|| time..time_plus_one);
+        }
+
+        // TODO: actual mutable array :)
+        self.data = concatenate(&[&*self.data, &**data])?;
+        dbg!(&self.data);
+
+        Ok(self.row_offset + self.data.len() as u64 - 1)
+    }
 }
 
 // TODO: scenarios
 // - insert a single component for a single instance and query it back
+// - insert a single component at t1 then another one at t2 then query at t0, t1, t2, t3
 //
 // TODO: messy ones
 // - multiple components, different number of rows or something
@@ -293,7 +374,7 @@ mod tests {
     };
 
     use arrow2::{
-        array::{Array, Float32Array, ListArray, PrimitiveArray, StructArray},
+        array::{Array, Float32Array, ListArray, PrimitiveArray, StructArray, UInt32Array},
         buffer::Buffer,
         chunk::Chunk,
         datatypes::{self, DataType, Field, Schema, TimeUnit},
@@ -305,9 +386,7 @@ mod tests {
 
     #[test]
     fn single_entity_single_component_roundtrip() {
-        // TODO: go for the usual "be liberal in what you accept, be strict in what you give back"
-
-        fn build_log_time(log_time: SystemTime) -> (Schema, PrimitiveArray<i64>) {
+        fn build_log_time(log_time: SystemTime) -> (Schema, Int64Array) {
             let log_time = log_time
                 .duration_since(SystemTime::UNIX_EPOCH)
                 .unwrap()
@@ -331,7 +410,7 @@ mod tests {
             (schema, data)
         }
 
-        fn build_frame_nr(frame_nr: i64) -> (Schema, PrimitiveArray<i64>) {
+        fn build_frame_nr(frame_nr: i64) -> (Schema, Int64Array) {
             let data = PrimitiveArray::from([Some(frame_nr)]);
 
             let fields = [Field::new("frame_nr", DataType::Int64, false)
@@ -373,7 +452,7 @@ mod tests {
             (schema, packed)
         }
 
-        fn build_instances(nb_rows: usize) -> (Schema, PrimitiveArray<u32>) {
+        fn build_instances(nb_rows: usize) -> (Schema, UInt32Array) {
             use rand::Rng as _;
 
             let mut rng = rand::thread_rng();
