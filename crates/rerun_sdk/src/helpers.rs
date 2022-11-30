@@ -23,7 +23,7 @@ pub fn log_time() -> TimePoint {
     )
 }
 
-/// Create a StructArray from an array of (name, Array) tuples
+/// Create a [`StructArray`] from an array of (name, Array) tuples
 pub fn components_as_struct_array(components: &[(&str, Box<dyn Array>)]) -> StructArray {
     let data_types = DataType::Struct(
         components
@@ -64,7 +64,7 @@ pub fn serialize_arrow_msg(
     Ok(LogMsg::ArrowMsg(msg))
 }
 
-/// Build the LogMsg from the StructArray
+/// Build the [`LogMsg`] from the [`StructArray`]
 pub fn build_arrow_log_msg(
     obj_path: &ObjPath,
     array: &StructArray,
