@@ -117,16 +117,12 @@ impl LineStripSeriesBuilder {
     ) -> impl Iterator<Item = (&mut LineStripInfo, impl Iterator<Item = &LineVertex>)> {
         self.strips
             .iter_mut()
+            .zip(self.strip_to_vertex_offsets.iter())
             .enumerate()
-            .map(|(strip_index, strip)| {
-                let first_vertex_of_strip = self.strip_to_vertex_offsets[strip_index];
-                let strip_index = strip_index as u32;
+            .map(|(i, (strip, offset))| {
                 (
                     strip,
-                    self.vertices
-                        .iter()
-                        .skip(first_vertex_of_strip)
-                        .take_while(move |v| v.strip_index == strip_index),
+                    Self::vertices_of_strip(&self.vertices, *offset, i as u32),
                 )
             })
     }
@@ -135,17 +131,27 @@ impl LineStripSeriesBuilder {
     pub fn iter_strips_with_vertices(
         &self,
     ) -> impl Iterator<Item = (&LineStripInfo, impl Iterator<Item = &LineVertex>)> {
-        self.strips.iter().enumerate().map(|(strip_index, strip)| {
-            let first_vertex_of_strip = self.strip_to_vertex_offsets[strip_index];
-            let strip_index = strip_index as u32;
-            (
-                strip,
-                self.vertices
-                    .iter()
-                    .skip(first_vertex_of_strip)
-                    .take_while(move |v| v.strip_index == strip_index),
-            )
-        })
+        self.strips
+            .iter()
+            .zip(self.strip_to_vertex_offsets.iter())
+            .enumerate()
+            .map(|(i, (strip, offset))| {
+                (
+                    strip,
+                    Self::vertices_of_strip(&self.vertices, *offset, i as u32),
+                )
+            })
+    }
+
+    fn vertices_of_strip(
+        vertices: &[LineVertex],
+        first_vertex_of_strip: usize,
+        strip_index: u32,
+    ) -> impl Iterator<Item = &LineVertex> {
+        vertices
+            .iter()
+            .skip(first_vertex_of_strip)
+            .take_while(move |v| v.strip_index == strip_index)
     }
 }
 
