@@ -226,18 +226,16 @@ mod tests {
                 .unwrap()
                 .as_secs();
 
-            let data = PrimitiveArray::from([Some(log_time as i64)])
-                .to(DataType::Timestamp(TimeUnit::Second, None));
+            let datatype = DataType::Timestamp(TimeUnit::Second, None);
 
-            let fields = [Field::new(
-                "log_time",
-                DataType::Timestamp(TimeUnit::Second, None),
-                false,
-            )
-            .with_metadata(BTreeMap::from([(
-                TIMELINE_KEY.to_owned(),
-                TIMELINE_TIME.to_owned(),
-            )]))]
+            let data = PrimitiveArray::from([Some(log_time as i64)]).to(datatype.clone());
+
+            let fields = [
+                Field::new("log_time", datatype, false).with_metadata(BTreeMap::from([(
+                    TIMELINE_KEY.to_owned(),
+                    TIMELINE_TIME.to_owned(),
+                )])),
+            ]
             .to_vec();
 
             let schema = Schema {
@@ -267,26 +265,24 @@ mod tests {
             (schema, data)
         }
 
-        // TODO: probably shouldn't be a struct, it's whatever for now.
+        // TODO: implicit assumption here is that one message = one timestamp per timeline, i.e.
+        // you can send data for multiple times in one single message.
         fn pack_timelines(
             timelines: impl Iterator<Item = (Schema, Box<dyn Array>)>,
-        ) -> (Schema, StructArray) {
-            // let mut schema = Schema::default();
-            // let mut cols: Vec<Box<dyn Array>> = Vec::new();
-
-            // for (timeline_schema, timeline_data) in timelines {
-            //     schema.fields.extend(timeline_schema.fields);
-            //     cols.push(timeline_data.to_boxed());
-            // }
-
+        ) -> (Schema, ListArray<i32>) {
             let (timeline_schemas, timeline_cols): (Vec<_>, Vec<_>) = timelines.unzip();
             let timeline_fields = timeline_schemas
                 .into_iter()
                 .flat_map(|schema| schema.fields)
                 .collect();
-            dbg!(&timeline_fields);
-            dbg!(&timeline_cols);
             let packed = StructArray::new(DataType::Struct(timeline_fields), timeline_cols, None);
+
+            let packed = ListArray::<i32>::from_data(
+                ListArray::<i32>::default_datatype(packed.data_type().clone()), // datatype
+                Buffer::from(vec![0, 1i32]),                                    // offsets
+                packed.boxed(),                                                 // values
+                None,                                                           // validity
+            );
 
             let schema = Schema {
                 fields: [Field::new("timelines", packed.data_type().clone(), false)].to_vec(),
@@ -296,9 +292,26 @@ mod tests {
             (schema, packed)
         }
 
-        // TODO:
-        // - pack timelines
-        // - pack components
+        fn build_instances(nb_rows: usize) -> (Schema, PrimitiveArray<u32>) {
+            use rand::Rng as _;
+
+            let mut rng = rand::thread_rng();
+            let data = PrimitiveArray::from(
+                (0..nb_rows)
+                    .into_iter()
+                    .map(|_| Some(rng.gen()))
+                    .collect::<Vec<Option<u32>>>(),
+            );
+
+            let fields = [Field::new("instances", data.data_type().clone(), false)].to_vec();
+
+            let schema = Schema {
+                fields,
+                ..Default::default()
+            };
+
+            (schema, data)
+        }
 
         fn build_rects(nb_rows: usize) -> (Schema, StructArray) {
             let data = {
@@ -326,19 +339,41 @@ mod tests {
             (schema, data)
         }
 
+        // TODO: probably shouldn't be a struct, it's whatever for now.
+        fn pack_components(
+            components: impl Iterator<Item = (Schema, Box<dyn Array>)>,
+        ) -> (Schema, ListArray<i32>) {
+            let (component_schemas, component_cols): (Vec<_>, Vec<_>) = components.unzip();
+            let component_fields = component_schemas
+                .into_iter()
+                .flat_map(|schema| schema.fields)
+                .collect();
+
+            let nb_rows = component_cols[0].len();
+            let packed = StructArray::new(DataType::Struct(component_fields), component_cols, None);
+
+            let packed = ListArray::<i32>::from_data(
+                ListArray::<i32>::default_datatype(packed.data_type().clone()), // datatype
+                Buffer::from(vec![0, nb_rows as i32]),                          // offsets
+                packed.boxed(),                                                 // values
+                None,                                                           // validity
+            );
+
+            let schema = Schema {
+                fields: [Field::new("components", packed.data_type().clone(), false)].to_vec(),
+                ..Default::default()
+            };
+
+            (schema, packed)
+        }
+
         fn build_message(ent_path: &EntityPath, nb_rows: usize) -> (Schema, Chunk<Box<dyn Array>>) {
-            // TODO:
-            // - components
-            //    - instances
-            //    - instances
-
-            // TODO: build all of the above piece by piece then merge it all
-
             let mut schema = Schema::default();
             let mut cols: Vec<Box<dyn Array>> = Vec::new();
 
             schema.metadata = BTreeMap::from([(ENTITY_PATH_KEY.into(), ent_path.to_string())]);
 
+            // Build & pack timelines
             let (log_time_schema, log_time_data) = build_log_time(SystemTime::now());
             let (frame_nr_schema, frame_nr_data) = build_frame_nr(42);
             let (timelines_schema, timelines_data) = pack_timelines(
@@ -352,26 +387,26 @@ mod tests {
             schema.metadata.extend(timelines_schema.metadata);
             cols.push(timelines_data.boxed());
 
-            // let (log_time_schema, log_time_data) = build_log_time(SystemTime::now());
-            // schema.fields.extend(log_time_schema.fields);
-            // schema.metadata.extend(log_time_schema.metadata);
-            // cols.push(log_time_data.boxed());
-
-            // let (frame_nr_schema, frame_nr_data) = build_frame_nr(42);
-            // schema.fields.extend(frame_nr_schema.fields);
-            // schema.metadata.extend(frame_nr_schema.metadata);
-            // cols.push(frame_nr_data.boxed());
-
-            // let (rects_schema, rects_data) = build_rects(10);
-            // schema.fields.extend(rects_schema.fields);
-            // schema.metadata.extend(rects_schema.metadata);
-            // cols.push(rects_data.boxed());
+            // Build & pack components
+            // TODO: what about when nb_rows differs between components? is that legal?
+            let (instances_schema, instances_data) = build_instances(nb_rows);
+            let (rects_schema, rects_data) = build_rects(nb_rows);
+            let (components_schema, components_data) = pack_components(
+                [
+                    (instances_schema, instances_data.boxed()),
+                    (rects_schema, rects_data.boxed()),
+                ]
+                .into_iter(),
+            );
+            schema.fields.extend(components_schema.fields);
+            schema.metadata.extend(components_schema.metadata);
+            cols.push(components_data.boxed());
 
             (schema, Chunk::new(cols))
         }
 
         let ent_path = EntityPath::from("this/that");
-        let (schema, chunk) = build_message(&ent_path, 1);
+        let (schema, chunk) = build_message(&ent_path, 10);
         dbg!(schema);
         dbg!(chunk);
     }

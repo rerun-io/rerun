@@ -3540,6 +3540,7 @@ dependencies = [
  "arrow2",
  "nohash-hasher",
  "polars",
+ "rand",
  "re_log",
  "re_log_types",
  "thiserror",
