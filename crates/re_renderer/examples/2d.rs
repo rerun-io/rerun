@@ -125,10 +125,8 @@ impl framework::Example for Render2D {
             &[
                 Rectangle {
                     top_left_corner_position: glam::vec3(100.0, 100.0, -0.05),
-                    extent_u: glam::vec3(self.rerun_logo_texture_width as f32, 0.0, 0.0)
-                        * image_scale,
-                    extent_v: glam::vec3(0.0, self.rerun_logo_texture_height as f32, 0.0)
-                        * image_scale,
+                    extent_u: self.rerun_logo_texture_width as f32 * image_scale * glam::Vec3::X,
+                    extent_v: self.rerun_logo_texture_height as f32 * image_scale * glam::Vec3::Y,
                     texture: self.rerun_logo_texture,
                     texture_filter: TextureFilter::Nearest,
                 },
@@ -138,10 +136,8 @@ impl framework::Example for Render2D {
                         150.0 + self.rerun_logo_texture_height as f32 * image_scale,
                         -0.05,
                     ),
-                    extent_u: glam::vec3(self.rerun_logo_texture_width as f32, 0.0, 0.0)
-                        * image_scale,
-                    extent_v: glam::vec3(0.0, self.rerun_logo_texture_height as f32, 0.0)
-                        * image_scale,
+                    extent_u: self.rerun_logo_texture_width as f32 * image_scale * glam::Vec3::X,
+                    extent_v: self.rerun_logo_texture_height as f32 * image_scale * glam::Vec3::Y,
                     texture: self.rerun_logo_texture,
                     texture_filter: TextureFilter::LinearNoMipMapping,
                 },

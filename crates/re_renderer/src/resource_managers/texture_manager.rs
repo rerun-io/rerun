@@ -107,7 +107,7 @@ impl TextureManager2D {
         mut resource: Texture2D,
         lifetime: ResourceLifeTime,
     ) -> Texture2DHandle {
-        // TODO(andreas): Disabled the warning as we're moving towards using this texture manager for arbitrary images.
+        // TODO(andreas): Disabled the warning as we're moving towards using this texture manager for user-logged images.
         // However, it's still very much a concern especially once we add mipmapping. Something we need to keep in mind.
         //
         // if !resource.width.is_power_of_two() || !resource.width.is_power_of_two() {

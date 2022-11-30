@@ -134,7 +134,7 @@ impl ViewBuilder {
     /// Applying MSAA resolve before tonemapping is problematic as it means we're doing msaa in linear.
     /// This is especially problematic at bright/dark edges where we may loose "smoothness"!
     /// For a nice illustration see [this blog post by MRP](https://therealmjp.github.io/posts/msaa-overview/)
-    /// We either would need to keep the MSAA target and tonemap it,
+    /// We either would need to keep the MSAA target and tonemap it, or
     /// apply a manual resolve where we inverse-tonemap non-fully-covered pixel before averaging.
     /// (an optimized variant of this is described [by AMD here](https://gpuopen.com/learn/optimized-reversible-tonemapper-for-resolve/))
     /// In any case, this gets us onto a potentially much costlier rendering path, especially for tiling GPUs.
