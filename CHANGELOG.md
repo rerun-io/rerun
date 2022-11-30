@@ -2,6 +2,7 @@
 
 A rough time-line of major user-facing things added, removed and changed. Newest on top.
 
+* 2022-11-30: Fix text log table bugs: [#420](https://github.com/rerun-io/rerun/pull/420).
 * 2022-11-29: Replaced the "time filter selection" with per-object "visible history": [#407](https://github.com/rerun-io/rerun/pull/407).
 * 2022-11-29: Introduced undo/redo selection history: [#340](https://github.com/rerun-io/rerun/pull/340).
 * 2022-11-28: Add `--memory-limit` and `--drop-at-latency` options: [#363](https://github.com/rerun-io/rerun/pull/363).
