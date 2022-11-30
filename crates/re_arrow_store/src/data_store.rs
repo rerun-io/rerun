@@ -348,7 +348,12 @@ impl ComponentBucket {
 
         // TODO: actual mutable array :)
         self.data = concatenate(&[&*self.data, &**data])?;
+        dbg!(self.data.data_type());
         dbg!(&self.data);
+
+        let series = polars::prelude::Series::try_from(("component", self.data.clone())).unwrap();
+        let df = polars::prelude::DataFrame::new(vec![series]).unwrap();
+        dbg!(df);
 
         Ok(self.row_offset + self.data.len() as u64 - 1)
     }

@@ -18,6 +18,7 @@ nohash-hasher = "0.2"
 polars = { version = "0.25", features = [
   "dtype-time",
   "dtype-struct",
+  "fmt",
 ], default-features = false }
 thiserror = "1.0"
 
