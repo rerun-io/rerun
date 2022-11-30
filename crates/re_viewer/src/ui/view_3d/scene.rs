@@ -635,13 +635,14 @@ impl Scene3D {
                         }
                         closest
                     } else {
-                        let mut centroid = glam::Vec3::ZERO;
+                        let mut centroid = glam::DVec3::ZERO;
                         let mut count = 0;
                         for v in line_strip_vertices {
-                            centroid += v.pos;
+                            let pos = v.pos; // Needed to fix alignment warning.
+                            centroid += pos.as_dvec3();
                             count += 1;
                         }
-                        let centroid = centroid / (2.0 * count as f32);
+                        let centroid = centroid.as_vec3() / (2.0 * count as f32);
                         eye_camera_plane.distance(centroid)
                     }
                     .at_least(0.0);

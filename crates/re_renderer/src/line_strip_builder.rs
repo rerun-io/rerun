@@ -11,12 +11,6 @@ pub struct LineStripSeriesBuilder {
     pub strips: Vec<LineStripInfo>,
     pub vertices: Vec<LineVertex>,
 
-    /// Helper for iterating over vertices of a given strip.
-    ///
-    /// Gives the offset into the vertices array for each strip.
-    /// (not needed for creating the drawable)
-    strip_to_vertex_offsets: Vec<usize>,
-
     /// z value given to the next 2d line strip.
     next_2d_z: f32,
 }
@@ -31,7 +25,6 @@ impl LineStripSeriesBuilder {
     pub fn add_strip(&mut self, points: impl Iterator<Item = glam::Vec3>) -> LineStripBuilder<'_> {
         let old_len = self.strips.len();
         let strip_index = old_len as _;
-        self.strip_to_vertex_offsets.push(self.vertices.len());
         self.vertices
             .extend(points.map(|pos| LineVertex { pos, strip_index }));
         self.strips.push(LineStripInfo::default());
@@ -54,7 +47,6 @@ impl LineStripSeriesBuilder {
         // color/radius/tag properties.
         // However, if we don't assign different strip indices, we don't know when a strip (==segment) starts and ends.
         for (a, b) in segments {
-            self.strip_to_vertex_offsets.push(self.vertices.len());
             self.vertices.extend(
                 [
                     LineVertex {
@@ -72,8 +64,9 @@ impl LineStripSeriesBuilder {
         }
 
         let old_len = self.strips.len();
-        self.strips
-            .extend(std::iter::repeat(Default::default()).take(num_strips as usize - old_len));
+        self.strips.extend(
+            std::iter::repeat(LineStripInfo::default()).take(num_strips as usize - old_len),
+        );
         LineStripBuilder(&mut self.strips[old_len..])
     }
 
@@ -115,42 +108,33 @@ impl LineStripSeriesBuilder {
     pub fn iter_strips_mut_with_vertices(
         &mut self,
     ) -> impl Iterator<Item = (&mut LineStripInfo, impl Iterator<Item = &LineVertex>)> {
-        Self::vertices_of_strip(
-            self.strips.iter_mut(),
-            &self.strip_to_vertex_offsets,
-            &self.vertices,
-        )
+        Self::iter_strips_with_vertices_internal(self.strips.iter_mut(), &self.vertices)
     }
 
     /// Iterates over all line strips together with their respective vertices.
     pub fn iter_strips_with_vertices(
         &self,
     ) -> impl Iterator<Item = (&LineStripInfo, impl Iterator<Item = &LineVertex>)> {
-        Self::vertices_of_strip(
-            self.strips.iter(),
-            &self.strip_to_vertex_offsets,
-            &self.vertices,
-        )
+        Self::iter_strips_with_vertices_internal(self.strips.iter(), &self.vertices)
     }
 
-    fn vertices_of_strip<'a, S>(
+    fn iter_strips_with_vertices_internal<S>(
         strip_iter: impl Iterator<Item = S>,
-        strip_to_vertex_offsets: &'a [usize],
-        vertices: &'a [LineVertex],
-    ) -> impl Iterator<Item = (S, impl Iterator<Item = &'a LineVertex>)> {
-        // TODO(andreas): By using `batching` it should be possible to not need strip_to_vertex_offsets, but the implementation isn't entirely straight forward.
-        strip_iter
-            .zip(strip_to_vertex_offsets.iter())
-            .enumerate()
-            .map(move |(i, (strip, offset))| {
-                (strip, {
-                    let strip_index = i as u32;
-                    vertices
-                        .iter()
-                        .skip(*offset)
-                        .take_while(move |v| v.strip_index == strip_index)
-                })
+        vertices: &[LineVertex],
+    ) -> impl Iterator<Item = (S, impl Iterator<Item = &LineVertex>)> {
+        let mut cumulative_offset = 0;
+        strip_iter.enumerate().map(move |(strip_index, strip)| {
+            (strip, {
+                let offset = cumulative_offset;
+                let strip_index = strip_index as u32;
+                let vertex_iterator = vertices
+                    .iter()
+                    .skip(offset)
+                    .take_while(move |v| v.strip_index == strip_index);
+                cumulative_offset += vertex_iterator.clone().count();
+                vertex_iterator
             })
+        })
     }
 }
 
