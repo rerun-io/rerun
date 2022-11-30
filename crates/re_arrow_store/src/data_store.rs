@@ -28,6 +28,9 @@ use re_log_types::{ObjPath as EntityPath, TimeInt, TimeType, Timeline};
 //    - need to get familiar with what's actually going on under the good
 //    - don't add layers until we have a use case for them
 
+// TODO:
+// - pretty debug dumps
+
 // ---
 
 // https://www.notion.so/rerunio/Arrow-Table-Design-cd77528c77ae4aa4a8c566e2ec29f84f
@@ -61,6 +64,9 @@ impl DataStore {
         dbg!(&schema);
         dbg!(&msg);
 
+        // TODO: might make sense to turn the entire top-level message into a list, to help
+        // with batching on the client side.
+
         let ent_path = schema
             .metadata
             .get(ENTITY_PATH_KEY)
@@ -72,7 +78,6 @@ impl DataStore {
         // TODO: Let's start the very dumb way: one bucket per TimeInt, then we'll deal with
         // actual ranges.
         for (timeline, time) in &timelines {
-            dbg!((&ent_path, timeline));
             let index = self
                 .indices
                 .entry((timeline.clone(), ent_path.clone()))
@@ -80,7 +85,6 @@ impl DataStore {
         }
 
         let components = extract_components(schema, &msg)?;
-        dbg!(&components);
 
         // let mut indices = HashMap::with_capacity(components.len());
         for (name, component) in components {
@@ -100,6 +104,7 @@ impl DataStore {
 }
 
 // TODO: document the datamodel here: 1 timestamp per message per timeline.
+// TODO: is that the right data model for this? is it optimal? etc
 fn extract_timelines<'data>(
     schema: &Schema,
     msg: &'data Chunk<Box<dyn Array>>,
@@ -161,6 +166,7 @@ fn extract_timelines<'data>(
     timelines
 }
 
+// TODO: is that the right data model for this? is it optimal? etc
 fn extract_components<'data>(
     schema: &Schema,
     msg: &'data Chunk<Box<dyn Array>>,
@@ -171,12 +177,6 @@ fn extract_components<'data>(
         .ok_or_else(|| anyhow!("expect top-level `components` field`"))?;
 
     let components = components
-        .as_any()
-        .downcast_ref::<ListArray<i32>>()
-        .ok_or_else(|| anyhow!("expect top-level `components` to be a `ListArray<i32>`"))?;
-
-    let components = components
-        .values()
         .as_any()
         .downcast_ref::<StructArray>()
         .ok_or_else(|| anyhow!("expect component values to be `StructArray`s"))?;
@@ -327,7 +327,7 @@ impl ComponentBucket {
         Self {
             row_offset,
             time_ranges: Default::default(),
-            data: new_empty_array(dbg!(datatype)),
+            data: new_empty_array(datatype),
         }
     }
 
@@ -357,6 +357,7 @@ impl ComponentBucket {
 // TODO: scenarios
 // - insert a single component for a single instance and query it back
 // - insert a single component at t1 then another one at t2 then query at t0, t1, t2, t3
+// - send one message with multiple lists vs. multiple messages with 1/N lists
 //
 // TODO: messy ones
 // - multiple components, different number of rows or something
@@ -364,7 +365,7 @@ impl ComponentBucket {
 mod tests {
     use std::{
         collections::BTreeMap,
-        time::{Instant, SystemTime},
+        time::{Duration, Instant, SystemTime},
     };
 
     use arrow2::{
@@ -439,7 +440,7 @@ mod tests {
             (schema, packed)
         }
 
-        fn build_instances(nb_rows: usize) -> (Schema, UInt32Array) {
+        fn build_instances(nb_rows: usize) -> (Schema, ListArray<i32>) {
             use rand::Rng as _;
 
             let mut rng = rand::thread_rng();
@@ -448,6 +449,13 @@ mod tests {
                     .into_iter()
                     .map(|_| Some(rng.gen()))
                     .collect::<Vec<Option<u32>>>(),
+            );
+
+            let data = ListArray::<i32>::from_data(
+                ListArray::<i32>::default_datatype(data.data_type().clone()), // datatype
+                Buffer::from(vec![0, nb_rows as i32]),                        // offsets
+                data.boxed(),                                                 // values
+                None,                                                         // validity
             );
 
             let fields = [Field::new("instances", data.data_type().clone(), false)].to_vec();
@@ -460,7 +468,7 @@ mod tests {
             (schema, data)
         }
 
-        fn build_rects(nb_rows: usize) -> (Schema, StructArray) {
+        fn build_rects(nb_rows: usize) -> (Schema, ListArray<i32>) {
             let data = {
                 let data: Box<[_]> = (0..nb_rows).into_iter().map(|i| i as f32 / 10.0).collect();
                 let x = Float32Array::from_slice(&data).boxed();
@@ -476,6 +484,13 @@ mod tests {
                 StructArray::new(DataType::Struct(fields), vec![x, y, w, h], None)
             };
 
+            let data = ListArray::<i32>::from_data(
+                ListArray::<i32>::default_datatype(data.data_type().clone()), // datatype
+                Buffer::from(vec![0, nb_rows as i32]),                        // offsets
+                data.boxed(),                                                 // values
+                None,                                                         // validity
+            );
+
             let fields = [Field::new("rect", data.data_type().clone(), false)].to_vec();
 
             let schema = Schema {
@@ -488,22 +503,14 @@ mod tests {
 
         fn pack_components(
             components: impl Iterator<Item = (Schema, Box<dyn Array>)>,
-        ) -> (Schema, ListArray<i32>) {
+        ) -> (Schema, StructArray) {
             let (component_schemas, component_cols): (Vec<_>, Vec<_>) = components.unzip();
             let component_fields = component_schemas
                 .into_iter()
                 .flat_map(|schema| schema.fields)
                 .collect();
 
-            let nb_rows = component_cols[0].len();
             let packed = StructArray::new(DataType::Struct(component_fields), component_cols, None);
-
-            let packed = ListArray::<i32>::from_data(
-                ListArray::<i32>::default_datatype(packed.data_type().clone()), // datatype
-                Buffer::from(vec![0, nb_rows as i32]),                          // offsets
-                packed.boxed(),                                                 // values
-                None,                                                           // validity
-            );
 
             let schema = Schema {
                 fields: [Field::new("components", packed.data_type().clone(), false)].to_vec(),
@@ -554,10 +561,13 @@ mod tests {
         let mut store = DataStore::default();
 
         let ent_path = EntityPath::from("this/that");
-        let (schema, components) = build_message(&ent_path, 10);
-        // dbg!(schema);
-        // dbg!(components);
 
+        let (schema, components) = build_message(&ent_path, 10);
+        store.insert(&schema, components).unwrap();
+
+        std::thread::sleep(Duration::from_millis(10));
+
+        let (schema, components) = build_message(&ent_path, 20);
         store.insert(&schema, components).unwrap();
     }
 }
