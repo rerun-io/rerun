@@ -616,8 +616,9 @@ impl Scene3D {
         {
             crate::profile_scope!("lines");
             assert_eq!(line_strips.strips.len(), line_instance_ids.len());
-            for (line_strip, instance_id) in
-                line_strips.strips.iter_mut().zip(line_instance_ids.iter())
+            for ((line_strip, line_strip_vertices), instance_id) in line_strips
+                .iter_strips_mut_with_vertices()
+                .zip(line_instance_ids.iter())
             {
                 if Size(line_strip.radius).is_auto() {
                     line_strip.radius = default_line_radius.0;
@@ -629,16 +630,18 @@ impl Scene3D {
                     let dist_to_eye = if true {
                         // This works much better when one line segment is very close to the camera
                         let mut closest = f32::INFINITY;
-                        for p in &line_strip.points {
-                            closest = closest.min(eye_camera_plane.distance(*p));
+                        for v in line_strip_vertices {
+                            closest = closest.min(eye_camera_plane.distance(v.pos));
                         }
                         closest
                     } else {
-                        let mut centroid = glam::DVec3::ZERO;
-                        for p in &line_strip.points {
-                            centroid += p.as_dvec3();
+                        let mut centroid = glam::Vec3::ZERO;
+                        let mut count = 0;
+                        for v in line_strip_vertices {
+                            centroid += v.pos;
+                            count += 1;
                         }
-                        let centroid = centroid.as_vec3() / (2.0 * line_strip.points.len() as f32);
+                        let centroid = centroid / (2.0 * count as f32);
                         eye_camera_plane.distance(centroid)
                     }
                     .at_least(0.0);
@@ -913,8 +916,9 @@ impl Scene3D {
 
         {
             crate::profile_scope!("line_segments");
-            for (line_strip, instance_id_hash) in
-                line_strips.strips.iter().zip(line_instance_ids.iter())
+            for ((line_strip, vertices), instance_id_hash) in line_strips
+                .iter_strips_with_vertices()
+                .zip(line_instance_ids.iter())
             {
                 if !instance_id_hash.is_some() {
                     continue;
@@ -922,9 +926,9 @@ impl Scene3D {
                 // TODO(emilk): take line segment radius into account
                 use egui::pos2;
 
-                for (start, end) in line_strip.points.iter().tuple_windows() {
-                    let a = ui_from_world.project_point3(*start);
-                    let b = ui_from_world.project_point3(*end);
+                for (start, end) in vertices.tuple_windows() {
+                    let a = ui_from_world.project_point3(start.pos);
+                    let b = ui_from_world.project_point3(end.pos);
                     let dist_sq = line_segment_distance_sq_to_point_2d(
                         [pos2(a.x, a.y), pos2(b.x, b.y)],
                         pointer_in_ui,
@@ -991,10 +995,8 @@ impl Scene3D {
             bbox.extend(point.pos);
         }
 
-        for line_strip in &line_strips.strips {
-            for p in &line_strip.points {
-                bbox.extend(*p);
-            }
+        for vertex in &line_strips.vertices {
+            bbox.extend(vertex.pos);
         }
 
         for mesh in meshes {

@@ -1,9 +1,7 @@
 use re_renderer::{
-    renderer::{LineDrawable, LineStrip, LineStripFlags},
     view_builder::{self, ViewBuilder},
+    LineStripSeriesBuilder,
 };
-
-use smallvec::smallvec;
 
 mod framework;
 
@@ -42,48 +40,41 @@ impl framework::Example for Render2D {
         );
 
         let line_radius = 5.0;
-        let line_drawable = LineDrawable::new(
-            re_ctx,
-            &[
-                // Green lines filling border
-                LineStrip {
-                    points: smallvec![
-                        glam::vec3(line_radius, line_radius, 1.0),
-                        glam::vec3(screen_size.x - line_radius, line_radius, 1.0),
-                        glam::vec3(
-                            screen_size.x - line_radius,
-                            screen_size.y - line_radius,
-                            0.0
-                        ),
-                        glam::vec3(line_radius, screen_size.y - line_radius, 1.0),
-                        glam::vec3(line_radius, line_radius, 1.0),
-                    ],
-                    radius: line_radius,
-                    srgb_color: [50, 255, 50, 255],
-                    flags: LineStripFlags::empty(),
-                },
-                // Blue lines around the top left quarter.
-                // TODO(andreas): This lines should be on top now, but they're below (for me at least, surprised there is no z-fighting)
-                LineStrip {
-                    points: smallvec![
-                        glam::vec3(line_radius, line_radius, 2.0),
-                        glam::vec3(screen_size.x * 0.5 - line_radius, line_radius, 2.0),
-                        glam::vec3(
-                            screen_size.x * 0.5 - line_radius,
-                            screen_size.y * 0.5 - line_radius,
-                            2.0
-                        ),
-                        glam::vec3(line_radius, screen_size.y * 0.5 - line_radius, 2.0),
-                        glam::vec3(line_radius, line_radius, 2.0),
-                    ],
-                    radius: line_radius,
-                    srgb_color: [50, 50, 255, 255],
-                    flags: LineStripFlags::empty(),
-                },
-            ],
-        )
-        .unwrap();
-        view_builder.queue_draw(&line_drawable);
+
+        let mut line_strip_builder = LineStripSeriesBuilder::default();
+        // Green lines filling border
+        line_strip_builder
+            .add_strip_2d(
+                [
+                    glam::vec2(line_radius, line_radius),
+                    glam::vec2(screen_size.x - line_radius, line_radius),
+                    glam::vec2(screen_size.x - line_radius, screen_size.y - line_radius),
+                    glam::vec2(line_radius, screen_size.y - line_radius),
+                    glam::vec2(line_radius, line_radius),
+                ]
+                .into_iter(),
+            )
+            .radius(line_radius)
+            .color_rgb(50, 255, 50);
+
+        // Blue lines around the top left quarter.
+        line_strip_builder
+            .add_strip_2d(
+                [
+                    glam::vec2(line_radius, line_radius),
+                    glam::vec2(screen_size.x * 0.5 - line_radius, line_radius),
+                    glam::vec2(
+                        screen_size.x * 0.5 - line_radius,
+                        screen_size.y * 0.5 - line_radius,
+                    ),
+                    glam::vec2(line_radius, screen_size.y * 0.5 - line_radius),
+                    glam::vec2(line_radius, line_radius),
+                ]
+                .into_iter(),
+            )
+            .radius(line_radius)
+            .color_rgb(50, 50, 255);
+        view_builder.queue_draw(&line_strip_builder.to_drawable(re_ctx));
 
         let command_buffer = view_builder.draw(re_ctx).unwrap();
 

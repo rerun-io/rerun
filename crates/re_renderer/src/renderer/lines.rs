@@ -99,7 +99,8 @@ use std::num::NonZeroU32;
 
 use bitflags::bitflags;
 use bytemuck::Zeroable;
-use smallvec::{smallvec, SmallVec};
+use itertools::Itertools;
+use smallvec::smallvec;
 
 use crate::{
     include_file,
@@ -114,21 +115,21 @@ use crate::{
 
 use super::*;
 
-mod gpu_data {
+pub mod gpu_data {
     // Don't use `wgsl_buffer_types` since none of this data goes into a buffer, so its alignment rules don't apply.
 
     use super::LineStripFlags;
 
     #[repr(C, packed)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
-    pub struct PositionData {
+    pub struct LineVertex {
         pub pos: glam::Vec3,
         // TODO(andreas): If we limit ourselves to 65536 line strip (we do as of writing!), we get 16bit extra storage here.
         // We probably want to store accumulated line length in there so that we can do stippling in the fragment shader
         pub strip_index: u32,
     }
     // (unlike the fields in a uniform buffer)
-    static_assertions::assert_eq_size!(PositionData, glam::Vec4);
+    static_assertions::assert_eq_size!(LineVertex, glam::Vec4);
 
     #[repr(C, packed)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
@@ -173,12 +174,9 @@ impl LineStripFlags {
     }
 }
 
-/// Description of series of connected line segments that share a radius and a color.
+/// Style information for a line strip.
 #[derive(Clone)]
-pub struct LineStrip {
-    /// Connected points. Must be at least 2.
-    pub points: SmallVec<[glam::Vec3; 2]>,
-
+pub struct LineStripInfo {
     /// Radius of the line strip in world space
     /// TODO(andreas) Should be able to specify if this is in pixels, or both by providing a minimum in pixels.
     pub radius: f32,
@@ -193,29 +191,12 @@ pub struct LineStrip {
     //pub stippling: f32,
 }
 
-impl Default for LineStrip {
+impl Default for LineStripInfo {
     fn default() -> Self {
         Self {
-            points: Default::default(),
             radius: 1.0,
             srgb_color: [255, 255, 255, 255],
             flags: LineStripFlags::empty(),
-        }
-    }
-}
-
-impl LineStrip {
-    /// Creates line strips from a single line segment.
-    pub fn line_segment(
-        segment: (glam::Vec3, glam::Vec3),
-        radius: f32,
-        color: [u8; 4],
-    ) -> LineStrip {
-        LineStrip {
-            points: smallvec![segment.0, segment.1],
-            radius,
-            srgb_color: color,
-            flags: Default::default(),
         }
     }
 }
@@ -226,7 +207,11 @@ impl LineDrawable {
     /// Try to bundle all line strips into a single drawable whenever possible.
     /// As with all drawables, data is alive only for a single frame!
     /// If you pass zero lines instances, subsequent drawing will do nothing.
-    pub fn new(ctx: &mut RenderContext, line_strips: &[LineStrip]) -> anyhow::Result<Self> {
+    pub fn new(
+        ctx: &mut RenderContext,
+        vertices: &[gpu_data::LineVertex],
+        strips: &[LineStripInfo],
+    ) -> anyhow::Result<Self> {
         let line_renderer = ctx.renderers.get_or_create::<_, LineRenderer>(
             &ctx.shared_renderer_data,
             &mut ctx.resource_pools,
@@ -234,7 +219,7 @@ impl LineDrawable {
             &mut ctx.resolver,
         );
 
-        if line_strips.is_empty() {
+        if strips.is_empty() {
             return Ok(LineDrawable {
                 bind_group: None,
                 num_quads: 0,
@@ -248,7 +233,7 @@ impl LineDrawable {
 
         // Make sure the size of a row is a multiple of the row byte alignment to make buffer copies easier.
         static_assertions::const_assert_eq!(
-            POSITION_TEXTURE_SIZE * std::mem::size_of::<gpu_data::PositionData>() as u32
+            POSITION_TEXTURE_SIZE * std::mem::size_of::<gpu_data::LineVertex>() as u32
                 % wgpu::COPY_BYTES_PER_ROW_ALIGNMENT,
             0
         );
@@ -258,40 +243,54 @@ impl LineDrawable {
             0
         );
 
-        let num_line_strips = line_strips.len() as u32;
-        let num_positions = line_strips
-            .iter()
-            .map(|strip| strip.points.len())
-            .sum::<usize>() as u32;
+        let num_strips = strips.len() as u32;
+        let num_vertices = vertices.len() as u32;
 
         // TODO(andreas): just create more draw work items each with its own texture to become "unlimited"
         anyhow::ensure!(
-            num_line_strips <= LINE_STRIP_TEXTURE_SIZE * LINE_STRIP_TEXTURE_SIZE,
-            "Too many line strips! The maximum is {} but passed were {num_line_strips}",
+            num_strips <= LINE_STRIP_TEXTURE_SIZE * LINE_STRIP_TEXTURE_SIZE,
+            "Too many line strips! The maximum is {} but passed were {num_strips}",
             LINE_STRIP_TEXTURE_SIZE * LINE_STRIP_TEXTURE_SIZE
         );
+
         anyhow::ensure!(
-            line_strips.iter().any(|strip| strip.points.len() >= 2),
+            vertices
+                .iter()
+                .batching(|iter| {
+                    match iter.next() {
+                        Some(vertex) => Some(
+                            iter.take_while(|v| v.strip_index == vertex.strip_index)
+                                .count()
+                                + 1,
+                        ),
+                        None => None,
+                    }
+                })
+                .all(|count_in_group| count_in_group >= 2),
             "Line strips need to have at least two points each."
+        );
+        anyhow::ensure!(
+            vertices.iter().all(|v| v.strip_index < num_strips),
+            "Line vertex refers to unknown line strip."
         );
         // TODO(andreas): just create more draw work items each with its own texture to become "unlimited".
         //              (note that this one is a bit trickier to fix than extra line-strips, as we need to split a strip!)
-        anyhow::ensure!(num_positions <= POSITION_TEXTURE_SIZE * POSITION_TEXTURE_SIZE,
-                "Too many line segments! The maximum number of positions is {} but specified were {num_positions}",
+        anyhow::ensure!(num_vertices <= POSITION_TEXTURE_SIZE * POSITION_TEXTURE_SIZE,
+                "Too many line segments! The maximum number of positions is {} but specified were {num_vertices}",
                 POSITION_TEXTURE_SIZE * POSITION_TEXTURE_SIZE
             );
 
         // No index buffer, so after each strip we have a quad that is discarded or turned into an arrow cap.
         // This means from a geometry perspective there is only ONE strip, i.e. 2 less quads than there are half-PositionDatas!
-        let num_quads = if line_strips
+        let num_quads = if strips
             .last()
             .unwrap()
             .flags
             .contains(LineStripFlags::CAP_END_TRIANGLE)
         {
-            num_positions
+            num_vertices
         } else {
-            num_positions - 1
+            num_vertices - 1
         };
 
         // TODO(andreas): We want a "stack allocation" here that lives for one frame.
@@ -333,22 +332,17 @@ impl LineDrawable {
         //                  These staging buffers would be provided by the belt.
         // To make the data upload simpler (and have it be done in one go), we always update full rows of each of our textures
         let mut position_data_staging =
-            Vec::with_capacity(next_multiple_of(num_positions, POSITION_TEXTURE_SIZE) as usize);
-        for (strip_index, line_strip) in line_strips.iter().enumerate() {
-            position_data_staging.extend(line_strip.points.iter().map(|&pos| {
-                gpu_data::PositionData {
-                    pos,
-                    strip_index: strip_index as _,
-                }
-            }));
-        }
-        position_data_staging.extend(std::iter::repeat(gpu_data::PositionData::zeroed()).take(
-            (next_multiple_of(num_positions, POSITION_TEXTURE_SIZE) - num_positions) as usize,
-        ));
+            Vec::with_capacity(next_multiple_of(num_vertices, POSITION_TEXTURE_SIZE) as usize);
+        position_data_staging.extend(vertices.iter());
+        position_data_staging.extend(
+            std::iter::repeat(gpu_data::LineVertex::zeroed()).take(
+                (next_multiple_of(num_vertices, POSITION_TEXTURE_SIZE) - num_vertices) as usize,
+            ),
+        );
 
         let mut line_strip_info_staging =
-            Vec::with_capacity(next_multiple_of(num_line_strips, LINE_STRIP_TEXTURE_SIZE) as usize);
-        line_strip_info_staging.extend(line_strips.iter().map(|line_strip| {
+            Vec::with_capacity(next_multiple_of(num_strips, LINE_STRIP_TEXTURE_SIZE) as usize);
+        line_strip_info_staging.extend(strips.iter().map(|line_strip| {
             gpu_data::LineStripInfo {
                 srgb_color: line_strip.srgb_color,
                 radius: half::f16::from_f32(line_strip.radius),
@@ -356,9 +350,11 @@ impl LineDrawable {
                 flags: line_strip.flags,
             }
         }));
-        line_strip_info_staging.extend(std::iter::repeat(gpu_data::LineStripInfo::zeroed()).take(
-            (next_multiple_of(num_line_strips, LINE_STRIP_TEXTURE_SIZE) - num_line_strips) as usize,
-        ));
+        line_strip_info_staging.extend(
+            std::iter::repeat(gpu_data::LineStripInfo::zeroed()).take(
+                (next_multiple_of(num_strips, LINE_STRIP_TEXTURE_SIZE) - num_strips) as usize,
+            ),
+        );
 
         // Upload data from staging buffers to gpu.
         ctx.queue.write_texture(
@@ -376,13 +372,13 @@ impl LineDrawable {
             wgpu::ImageDataLayout {
                 offset: 0,
                 bytes_per_row: NonZeroU32::new(
-                    POSITION_TEXTURE_SIZE * std::mem::size_of::<gpu_data::PositionData>() as u32,
+                    POSITION_TEXTURE_SIZE * std::mem::size_of::<gpu_data::LineVertex>() as u32,
                 ),
                 rows_per_image: None,
             },
             wgpu::Extent3d {
                 width: POSITION_TEXTURE_SIZE,
-                height: (num_positions + POSITION_TEXTURE_SIZE - 1) / POSITION_TEXTURE_SIZE,
+                height: (num_vertices + POSITION_TEXTURE_SIZE - 1) / POSITION_TEXTURE_SIZE,
                 depth_or_array_layers: 1,
             },
         );
@@ -407,7 +403,7 @@ impl LineDrawable {
             },
             wgpu::Extent3d {
                 width: LINE_STRIP_TEXTURE_SIZE,
-                height: (num_line_strips + LINE_STRIP_TEXTURE_SIZE - 1) / LINE_STRIP_TEXTURE_SIZE,
+                height: (num_strips + LINE_STRIP_TEXTURE_SIZE - 1) / LINE_STRIP_TEXTURE_SIZE,
                 depth_or_array_layers: 1,
             },
         );
