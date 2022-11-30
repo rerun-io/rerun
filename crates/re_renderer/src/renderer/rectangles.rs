@@ -16,8 +16,8 @@ use crate::{
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, BufferDesc, GpuBindGroupHandleStrong,
-        GpuBindGroupLayoutHandle, GpuRenderPipelineHandle, GpuSamplerHandle, PipelineLayoutDesc,
-        RenderPipelineDesc, SamplerDesc, ShaderModuleDesc,
+        GpuBindGroupLayoutHandle, GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc,
+        SamplerDesc, ShaderModuleDesc,
     },
 };
 
@@ -36,13 +36,20 @@ mod gpu_data {
     }
 }
 
-/// Texture filter setting.
-///
-/// TODO(andreas): Move elsewhere or namespace to be specific for rectangles.
-pub enum TextureFilter {
-    LinearNoMipMapping,
+/// Texture filter setting for magnification (a texel covers several pixels).
+#[derive(Debug)]
+pub enum TextureFilterMag {
+    Linear,
     Nearest,
-    // TODO(andreas): Offer mipmapping here? Could also do more advanced filters like cubic!
+    // TODO(andreas): Offer advanced (shader implemented) filters like cubic?
+}
+
+/// Texture filter setting for minification (several texels fall to one pixel).
+#[derive(Debug)]
+pub enum TextureFilterMin {
+    Linear,
+    Nearest,
+    // TODO(andreas): Offer mipmapping here?
 }
 
 pub struct Rectangle {
@@ -56,8 +63,8 @@ pub struct Rectangle {
     /// Texture that fills the rectangle
     pub texture: Texture2DHandle,
 
-    /// Texture filtering that should be applied.
-    pub texture_filter: TextureFilter,
+    pub texture_filter_magnification: TextureFilterMag,
+    pub texture_filter_minification: TextureFilterMin,
     // TODO(andreas): additional options like color map, tinting etc.
 }
 
@@ -140,10 +147,27 @@ impl RectangleDrawData {
                 rectangle.texture,
             )?;
 
-            let sampler = match rectangle.texture_filter {
-                TextureFilter::LinearNoMipMapping => rectangle_renderer.sampler_linear,
-                TextureFilter::Nearest => rectangle_renderer.sampler_nearest,
-            };
+            let sampler = ctx.resource_pools.samplers.get_or_create(
+                &ctx.device,
+                &SamplerDesc {
+                    label: format!(
+                        "rectangle sampler mag {:?} min {:?}",
+                        rectangle.texture_filter_magnification,
+                        rectangle.texture_filter_minification
+                    )
+                    .into(),
+                    mag_filter: match rectangle.texture_filter_magnification {
+                        TextureFilterMag::Linear => wgpu::FilterMode::Linear,
+                        TextureFilterMag::Nearest => wgpu::FilterMode::Nearest,
+                    },
+                    min_filter: match rectangle.texture_filter_minification {
+                        TextureFilterMin::Linear => wgpu::FilterMode::Linear,
+                        TextureFilterMin::Nearest => wgpu::FilterMode::Nearest,
+                    },
+                    mipmap_filter: wgpu::FilterMode::Nearest,
+                    ..Default::default()
+                },
+            );
 
             bind_groups.push(ctx.resource_pools.bind_groups.alloc(
                 &ctx.device,
@@ -174,9 +198,6 @@ impl RectangleDrawData {
 pub struct RectangleRenderer {
     render_pipeline: GpuRenderPipelineHandle,
     bind_group_layout: GpuBindGroupLayoutHandle,
-
-    sampler_nearest: GpuSamplerHandle,
-    sampler_linear: GpuSamplerHandle,
 }
 
 impl Renderer for RectangleRenderer {
@@ -274,24 +295,6 @@ impl Renderer for RectangleRenderer {
         RectangleRenderer {
             render_pipeline,
             bind_group_layout,
-
-            sampler_nearest: pools.samplers.get_or_create(
-                device,
-                &SamplerDesc {
-                    label: "nearest".into(),
-                    ..Default::default()
-                },
-            ),
-            sampler_linear: pools.samplers.get_or_create(
-                device,
-                &SamplerDesc {
-                    label: "linear (no mipmap)".into(),
-                    mag_filter: wgpu::FilterMode::Linear,
-                    min_filter: wgpu::FilterMode::Linear,
-                    mipmap_filter: wgpu::FilterMode::Nearest,
-                    ..Default::default()
-                },
-            ),
         }
     }
 

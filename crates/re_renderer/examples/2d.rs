@@ -1,6 +1,7 @@
 use re_renderer::{
     renderer::{
-        LineDrawable, LineStrip, LineStripFlags, Rectangle, RectangleDrawData, TextureFilter,
+        LineDrawable, LineStrip, LineStripFlags, Rectangle, RectangleDrawData, TextureFilterMag,
+        TextureFilterMin,
     },
     resource_managers::{ResourceLifeTime, Texture2D, Texture2DHandle},
     view_builder::{self, ViewBuilder},
@@ -128,7 +129,8 @@ impl framework::Example for Render2D {
                     extent_u: self.rerun_logo_texture_width as f32 * image_scale * glam::Vec3::X,
                     extent_v: self.rerun_logo_texture_height as f32 * image_scale * glam::Vec3::Y,
                     texture: self.rerun_logo_texture,
-                    texture_filter: TextureFilter::Nearest,
+                    texture_filter_magnification: TextureFilterMag::Nearest,
+                    texture_filter_minification: TextureFilterMin::Linear,
                 },
                 Rectangle {
                     top_left_corner_position: glam::vec3(
@@ -139,7 +141,8 @@ impl framework::Example for Render2D {
                     extent_u: self.rerun_logo_texture_width as f32 * image_scale * glam::Vec3::X,
                     extent_v: self.rerun_logo_texture_height as f32 * image_scale * glam::Vec3::Y,
                     texture: self.rerun_logo_texture,
-                    texture_filter: TextureFilter::LinearNoMipMapping,
+                    texture_filter_magnification: TextureFilterMag::Linear,
+                    texture_filter_minification: TextureFilterMin::Linear,
                 },
             ],
         )
