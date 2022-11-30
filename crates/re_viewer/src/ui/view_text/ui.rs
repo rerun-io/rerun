@@ -114,6 +114,7 @@ fn show_table(
         .column(Column::auto().clip(true).at_least(32.0)) // path
         .column(Column::auto().at_least(30.0)) // level
         .column(Column::remainder().at_least(100.0)) // body
+        .min_scrolled_height(0.0) // we can go as small as we need to be in order to fit within the space view!
         .header(HEADER_HEIGHT, |mut header| {
             for timeline in ctx.log_db.timelines() {
                 header.col(|ui| {
