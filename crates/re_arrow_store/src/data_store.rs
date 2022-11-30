@@ -111,14 +111,8 @@ fn extract_timelines<'data>(
 
     let timelines = timelines
         .as_any()
-        .downcast_ref::<ListArray<i32>>()
-        .ok_or_else(|| anyhow!("expect top-level `timelines` to be a `ListArray<i32>`"))?;
-
-    let timelines = timelines
-        .values()
-        .as_any()
         .downcast_ref::<StructArray>()
-        .ok_or_else(|| anyhow!("expect timeline values to be `StructArray`s"))?;
+        .ok_or_else(|| anyhow!("expect top-level `timelines` to be a `StructArray`"))?;
 
     // implicit Vec<Result> to Result<Vec> collection
     let timelines: Result<Vec<_>, _> = timelines
@@ -429,20 +423,13 @@ mod tests {
         // you can send data for multiple times in one single message.
         fn pack_timelines(
             timelines: impl Iterator<Item = (Schema, Box<dyn Array>)>,
-        ) -> (Schema, ListArray<i32>) {
+        ) -> (Schema, StructArray) {
             let (timeline_schemas, timeline_cols): (Vec<_>, Vec<_>) = timelines.unzip();
             let timeline_fields = timeline_schemas
                 .into_iter()
                 .flat_map(|schema| schema.fields)
                 .collect();
             let packed = StructArray::new(DataType::Struct(timeline_fields), timeline_cols, None);
-
-            let packed = ListArray::<i32>::from_data(
-                ListArray::<i32>::default_datatype(packed.data_type().clone()), // datatype
-                Buffer::from(vec![0, 1i32]),                                    // offsets
-                packed.boxed(),                                                 // values
-                None,                                                           // validity
-            );
 
             let schema = Schema {
                 fields: [Field::new("timelines", packed.data_type().clone(), false)].to_vec(),
