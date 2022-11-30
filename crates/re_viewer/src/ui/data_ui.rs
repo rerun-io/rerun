@@ -1,6 +1,5 @@
 use egui::{color_picker, Vec2};
 
-use egui_extras::{Size, TableBuilder};
 use itertools::Itertools;
 use re_data_store::InstanceId;
 use re_log_types::context::AnnotationInfo;
@@ -463,12 +462,19 @@ pub(crate) fn ui_data(
             ))
         }
         Data::Transform(transform) => match preview {
-            Preview::Small | Preview::Specific(_) => ui.label("Transform"),
+            Preview::Small | Preview::Specific(_) => ui.monospace("Transform"),
             Preview::Medium => ui_transform(ui, transform),
         },
-        Data::ViewCoordinates(coordinates) => ui_view_coordinates(ui, coordinates),
-        Data::AnnotationContext(context) => ui_annotation_context(ui, context),
-
+        Data::ViewCoordinates(coordinates) => match preview {
+            Preview::Small | Preview::Specific(_) => {
+                ui.label(format!("ViewCoordinates: {}", coordinates.describe()))
+            }
+            Preview::Medium => ui_view_coordinates(ui, coordinates),
+        },
+        Data::AnnotationContext(context) => match preview {
+            Preview::Small | Preview::Specific(_) => ui.monospace("AnnotationContext"),
+            Preview::Medium => ui_annotation_context(ui, context),
+        },
         Data::Tensor(tensor) => {
             let tensor_view = ctx.cache.image.get_view(tensor);
 
@@ -536,18 +542,24 @@ fn ui_view_coordinates(ui: &mut egui::Ui, system: &ViewCoordinates) -> egui::Res
 }
 
 const ROW_HEIGHT: f32 = 18.0;
+const TABLE_SCROLL_AREA_HEIGHT: f32 = 500.0; // add scroll-bars when we get to this height
 
 fn ui_annotation_info_table<'a>(
     ui: &mut egui::Ui,
     annotation_infos: impl Iterator<Item = &'a AnnotationInfo>,
 ) {
-    ui.spacing_mut().item_spacing.x += 12.0;
+    ui.spacing_mut().item_spacing.x = 20.0; // column spacing.
+
+    use egui_extras::{Column, TableBuilder};
+
     let table = TableBuilder::new(ui)
         .striped(true)
+        .min_scrolled_height(TABLE_SCROLL_AREA_HEIGHT)
+        .max_scroll_height(TABLE_SCROLL_AREA_HEIGHT)
         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-        .column(Size::initial(20.0).at_least(20.0))
-        .column(Size::initial(120.0).at_least(50.0))
-        .column(Size::remainder().at_least(60.0));
+        .column(Column::auto()) // id
+        .column(Column::auto().clip(true).at_least(40.0)) // label
+        .column(Column::auto()); // color
 
     table
         .header(20.0, |mut header| {
@@ -577,12 +589,15 @@ fn ui_annotation_info_table<'a>(
                     });
                     row.col(|ui| {
                         ui.horizontal(|ui| {
-                            let color = info.color.unwrap_or_else(|| {
-                                ui.weak("auto");
-                                auto_color(info.id)
-                            });
+                            ui.spacing_mut().item_spacing.x = 8.0;
+                            let color = info.color.unwrap_or_else(|| auto_color(info.id));
                             let color = egui::Color32::from_rgb(color[0], color[1], color[2]);
-                            color_picker::show_color(ui, color, Vec2::splat(64.0));
+                            color_picker::show_color(ui, color, Vec2::new(64.0, ROW_HEIGHT));
+                            if info.color.is_none() {
+                                ui.weak("(auto)").on_hover_text(
+                                    "Color chosen automatically, since it was not logged.",
+                                );
+                            }
                         });
                     });
                 });
@@ -592,7 +607,14 @@ fn ui_annotation_info_table<'a>(
 
 fn ui_annotation_context(ui: &mut egui::Ui, context: &AnnotationContext) -> egui::Response {
     ui.vertical(|ui| {
-        ui_annotation_info_table(ui, context.class_map.iter().map(|(_, class)| &class.info));
+        ui_annotation_info_table(
+            ui,
+            context
+                .class_map
+                .iter()
+                .map(|(_, class)| &class.info)
+                .sorted_by_key(|info| info.id),
+        );
 
         for (id, class) in &context.class_map {
             if class.keypoint_connections.is_empty() && class.keypoint_map.is_empty() {
@@ -601,7 +623,9 @@ fn ui_annotation_context(ui: &mut egui::Ui, context: &AnnotationContext) -> egui
 
             ui.separator();
             ui.heading(format!("Keypoints for Class {}", id.0));
+
             if !class.keypoint_connections.is_empty() {
+                ui.add_space(8.0);
                 ui.heading("Keypoints Annotations");
                 ui.push_id(format!("keypoint_annotations_{}", id.0), |ui| {
                     ui_annotation_info_table(
@@ -613,21 +637,27 @@ fn ui_annotation_context(ui: &mut egui::Ui, context: &AnnotationContext) -> egui
                     );
                 });
             }
+
             if !class.keypoint_connections.is_empty() {
-                ui.heading("Keypoints Connections");
+                ui.add_space(8.0);
+                ui.heading("Keypoint Connections");
                 ui.push_id(format!("keypoints_connections_{}", id.0), |ui| {
+                    use egui_extras::{Column, TableBuilder};
+
                     let table = TableBuilder::new(ui)
                         .striped(true)
+                        .min_scrolled_height(TABLE_SCROLL_AREA_HEIGHT)
+                        .max_scroll_height(TABLE_SCROLL_AREA_HEIGHT)
                         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-                        .column(Size::initial(120.0).at_least(50.0))
-                        .column(Size::remainder().at_least(50.0));
+                        .column(Column::auto().clip(true).at_least(40.0))
+                        .column(Column::auto().clip(true).at_least(40.0));
                     table
                         .header(20.0, |mut header| {
                             header.col(|ui| {
-                                ui.heading("From");
+                                ui.strong("From");
                             });
                             header.col(|ui| {
-                                ui.heading("To");
+                                ui.strong("To");
                             });
                         })
                         .body(|mut body| {

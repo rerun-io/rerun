@@ -1123,7 +1123,7 @@ fn recordings_menu(ui: &mut egui::Ui, app: &mut App) {
         let info = if let Some(rec_info) = log_db.recording_info() {
             format!(
                 "{} - {}",
-                rec_info.recording_source,
+                rec_info.application_id,
                 rec_info.started.format()
             )
         } else {

@@ -1,7 +1,6 @@
 use std::collections::BTreeMap;
 
 use egui::{color_picker, Vec2};
-use egui_extras::{Size, TableBuilder};
 use re_data_store::{query::visit_type_data_2, FieldName, InstanceId};
 use re_log_types::{IndexHash, MsgId};
 
@@ -43,12 +42,14 @@ pub(crate) fn view_class_description_map(
         },
     );
 
+    use egui_extras::{Column, TableBuilder};
+
     let table = TableBuilder::new(ui)
         .striped(true)
         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-        .column(Size::initial(60.0).at_least(40.0))
-        .column(Size::initial(60.0).at_least(40.0))
-        .column(Size::remainder().at_least(60.0));
+        .column(Column::auto()) // id
+        .column(Column::auto().clip(true).at_least(40.0)) // label
+        .column(Column::auto()); // color
 
     table
         .header(20.0, |mut header| {
