@@ -5,7 +5,7 @@ use re_log_types::{
     PathOp, RecordingId, RecordingInfo, Time, TimePoint, TypeMsg,
 };
 
-pub struct Sdk {
+pub struct Session {
     #[cfg(feature = "web")]
     tokio_rt: tokio::runtime::Runtime,
 
@@ -20,8 +20,8 @@ pub struct Sdk {
     has_sent_begin_recording_msg: bool,
 }
 
-impl Sdk {
-    fn new() -> Self {
+impl Session {
+    pub fn new() -> Self {
         #[cfg(feature = "re_viewer")]
         re_memory::accounting_allocator::turn_on_tracking_if_env_var(
             re_viewer::env_vars::RERUN_TRACK_ALLOCATIONS,
@@ -37,15 +37,6 @@ impl Sdk {
             recording_id: None,
             has_sent_begin_recording_msg: false,
         }
-    }
-
-    /// Access the global [`Sdk`]. This is a singleton.
-    pub fn global() -> std::sync::MutexGuard<'static, Self> {
-        use once_cell::sync::OnceCell;
-        use std::sync::Mutex;
-        static INSTANCE: OnceCell<Mutex<Sdk>> = OnceCell::new();
-        let mutex = INSTANCE.get_or_init(|| Mutex::new(Sdk::new()));
-        mutex.lock().unwrap()
     }
 
     pub fn set_application_id(&mut self, application_id: ApplicationId) {
@@ -224,12 +215,6 @@ impl Sdk {
             time_point: time_point.clone(),
             path_op,
         }));
-    }
-
-    #[cfg(feature = "re_viewer")]
-    pub fn show(&self, log_messages: Vec<LogMsg>) {
-        let startup_options = re_viewer::StartupOptions::default();
-        re_viewer::run_native_viewer_with_messages(startup_options, log_messages);
     }
 }
 

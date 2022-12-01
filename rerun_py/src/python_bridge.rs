@@ -17,7 +17,7 @@ use re_log_types::{
     LoggedData, *,
 };
 
-use rerun_sdk::Sdk;
+use rerun_sdk::global_session;
 
 // ----------------------------------------------------------------------------
 
@@ -77,7 +77,7 @@ fn rerun_bindings(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     re_log::set_default_rust_log_env();
     tracing_subscriber::fmt::init();
 
-    Sdk::global().set_recording_id(default_recording_id(py));
+    global_session().set_recording_id(default_recording_id(py));
 
     m.add_function(wrap_pyfunction!(main, m)?)?;
 
@@ -264,7 +264,7 @@ fn main(argv: Vec<String>) -> PyResult<()> {
 
 #[pyfunction]
 fn get_recording_id() -> PyResult<String> {
-    Sdk::global()
+    global_session()
         .recording_id()
         .ok_or_else(|| PyTypeError::new_err("module has not been initialized"))
         .map(|recording_id| recording_id.to_string())
@@ -273,7 +273,7 @@ fn get_recording_id() -> PyResult<String> {
 #[pyfunction]
 fn set_recording_id(recording_id: &str) -> PyResult<()> {
     if let Ok(recording_id) = recording_id.parse() {
-        Sdk::global().set_recording_id(recording_id);
+        global_session().set_recording_id(recording_id);
         Ok(())
     } else {
         Err(PyTypeError::new_err(format!(
@@ -285,7 +285,7 @@ fn set_recording_id(recording_id: &str) -> PyResult<()> {
 
 #[pyfunction]
 fn init(application_id: String) {
-    Sdk::global().set_application_id(ApplicationId(application_id));
+    global_session().set_application_id(ApplicationId(application_id));
 }
 
 #[pyfunction]
@@ -295,7 +295,7 @@ fn connect(addr: Option<String>) -> PyResult<()> {
     } else {
         re_sdk_comms::default_server_addr()
     };
-    Sdk::global().connect(addr);
+    global_session().connect(addr);
     Ok(())
 }
 
@@ -305,7 +305,7 @@ fn connect(addr: Option<String>) -> PyResult<()> {
 fn serve() -> PyResult<()> {
     #[cfg(feature = "web")]
     {
-        Sdk::global().serve();
+        global_session().serve();
         Ok(())
     }
 
@@ -318,7 +318,7 @@ fn serve() -> PyResult<()> {
 /// Wait until all logged data have been sent to the remove server (if any).
 #[pyfunction]
 fn flush() {
-    Sdk::global().flush();
+    global_session().flush();
 }
 
 /// Disconnect from remote server (if any).
@@ -328,7 +328,7 @@ fn flush() {
 #[cfg(feature = "re_viewer")]
 #[pyfunction]
 fn disconnect() {
-    Sdk::global().disconnect();
+    global_session().disconnect();
 }
 
 /// Show the buffered log data.
@@ -340,7 +340,7 @@ fn disconnect() {
 #[cfg(feature = "re_viewer")]
 #[pyfunction]
 fn show() -> PyResult<()> {
-    let mut sdk = Sdk::global();
+    let mut sdk = global_session();
     if sdk.is_connected() {
         return Err(PyRuntimeError::new_err(
             "Can't show the log messages: Rerun was configured to send the data to a server!",
@@ -348,14 +348,14 @@ fn show() -> PyResult<()> {
     }
 
     let log_messages = sdk.drain_log_messages_buffer();
+    drop(sdk);
 
     if log_messages.is_empty() {
         re_log::info!("Nothing logged, so nothing to show");
     } else {
-        sdk.show(log_messages);
+        rerun_sdk::viewer::show(log_messages);
     }
     // TODO: understand the impact of moving this drop
-    drop(sdk);
 
     Ok(())
 }
@@ -364,7 +364,7 @@ fn show() -> PyResult<()> {
 fn save(path: &str) -> PyResult<()> {
     re_log::trace!("Saving file to {path:?}…");
 
-    let mut sdk = Sdk::global();
+    let mut sdk = global_session();
     if sdk.is_connected() {
         return Err(PyRuntimeError::new_err(
             "Can't show the log messages: Rerun was configured to send the data to a server!",
@@ -496,7 +496,7 @@ fn log_transform(
         // Stop people from logging a transform to a root-object, such as "world" (which doesn't have a parent).
         return Err(PyTypeError::new_err("Transforms are between a child object and its parent, so root objects cannot have transforms"));
     }
-    let mut sdk = Sdk::global();
+    let mut sdk = global_session();
     let time_point = time(timeless);
     sdk.send_data(
         &time_point,
@@ -560,7 +560,7 @@ fn log_view_coordinates(
         re_log::warn_once!("Left-handed coordinate systems are not yet fully supported by Rerun");
     }
 
-    let mut sdk = Sdk::global();
+    let mut sdk = global_session();
     let obj_path = parse_obj_path(obj_path)?;
     let time_point = time(timeless);
     sdk.send_data(
@@ -583,7 +583,7 @@ fn log_text_entry(
     color: Option<Vec<u8>>,
     timeless: bool,
 ) -> PyResult<()> {
-    let mut sdk = Sdk::global();
+    let mut sdk = global_session();
 
     let obj_path = parse_obj_path(obj_path)?;
     sdk.register_type(obj_path.obj_type_path(), ObjectType::TextEntry);
@@ -644,7 +644,7 @@ fn log_scalar(
     radius: Option<f32>,
     scattered: Option<bool>,
 ) -> PyResult<()> {
-    let mut sdk = Sdk::global();
+    let mut sdk = global_session();
 
     let obj_path = parse_obj_path(obj_path)?;
     sdk.register_type(obj_path.obj_type_path(), ObjectType::Scalar);
@@ -751,7 +751,7 @@ fn log_rect(
 ) -> PyResult<()> {
     let rect_format = RectFormat::parse(rect_format)?;
 
-    let mut sdk = Sdk::global();
+    let mut sdk = global_session();
 
     let time_point = time(timeless);
 
@@ -802,7 +802,7 @@ fn log_rect(
 }
 
 fn log_labels(
-    sdk: &mut Sdk,
+    sdk: &mut rerun_sdk::Session,
     obj_path: &ObjPath,
     labels: Vec<String>,
     indices: &BatchIndex,
@@ -852,7 +852,7 @@ impl IdType {
 }
 
 fn log_ids(
-    sdk: &mut Sdk,
+    sdk: &mut rerun_sdk::Session,
     obj_path: &ObjPath,
     ids: &numpy::PyReadonlyArrayDyn<'_, u16>,
     id_type: IdType,
@@ -902,7 +902,7 @@ fn log_rects(
 ) -> PyResult<()> {
     // Note: we cannot early-out here on `rects.empty()`, beacause logging
     // an empty batch is same as deleting previous batch.
-    let mut sdk = Sdk::global();
+    let mut sdk = global_session();
 
     let time_point = time(timeless);
 
@@ -987,7 +987,7 @@ fn log_point(
     keypoint_id: Option<u16>,
     timeless: bool,
 ) -> PyResult<()> {
-    let mut sdk = Sdk::global();
+    let mut sdk = global_session();
 
     let time_point = time(timeless);
 
@@ -1079,7 +1079,7 @@ fn log_points(
     // Note: we cannot early-out here on `positions.empty()`, beacause logging
     // an empty batch is same as deleting previous batch.
 
-    let mut sdk = Sdk::global();
+    let mut sdk = global_session();
 
     let time_point = time(timeless);
 
@@ -1232,7 +1232,7 @@ fn log_path(
     color: Option<Vec<u8>>,
     timeless: bool,
 ) -> PyResult<()> {
-    let mut sdk = Sdk::global();
+    let mut sdk = global_session();
 
     let time_point = time(timeless);
 
@@ -1296,7 +1296,7 @@ fn log_line_segments(
         )));
     }
 
-    let mut sdk = Sdk::global();
+    let mut sdk = global_session();
 
     let time_point = time(timeless);
 
@@ -1367,7 +1367,7 @@ fn log_arrow(
     width_scale: Option<f32>,
     timeless: bool,
 ) -> PyResult<()> {
-    let mut sdk = Sdk::global();
+    let mut sdk = global_session();
 
     let obj_path = parse_obj_path(obj_path)?;
 
@@ -1439,7 +1439,7 @@ fn log_obb(
     class_id: Option<u16>,
     timeless: bool,
 ) -> PyResult<()> {
-    let mut sdk = Sdk::global();
+    let mut sdk = global_session();
 
     let obj_path = parse_obj_path(obj_path)?;
     sdk.register_type(obj_path.obj_type_path(), ObjectType::Box3D);
@@ -1561,7 +1561,7 @@ fn log_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
     meaning: Option<TensorDataMeaning>,
     timeless: bool,
 ) -> PyResult<()> {
-    let mut sdk = Sdk::global();
+    let mut sdk = global_session();
 
     let obj_path = parse_obj_path(obj_path)?;
     sdk.register_type(obj_path.obj_type_path(), ObjectType::Image);
@@ -1645,7 +1645,7 @@ fn log_mesh_file(
         ]
     };
 
-    let mut sdk = Sdk::global();
+    let mut sdk = global_session();
 
     sdk.register_type(obj_path.obj_type_path(), ObjectType::Mesh3D);
 
@@ -1712,7 +1712,7 @@ fn log_image_file(
         }
     };
 
-    let mut sdk = Sdk::global();
+    let mut sdk = global_session();
 
     sdk.register_type(obj_path.obj_type_path(), ObjectType::Image);
 
@@ -1761,7 +1761,7 @@ fn log_annotation_context(
     class_descriptions: Vec<ClassDescriptionTuple>,
     timeless: bool,
 ) -> PyResult<()> {
-    let mut sdk = Sdk::global();
+    let mut sdk = global_session();
 
     // We normally disallow logging to root, but we make an exception for class_descriptions
     let obj_path = if obj_path == "/" {
@@ -1802,7 +1802,7 @@ fn log_annotation_context(
 
 #[pyfunction]
 fn log_cleared(obj_path: &str, recursive: bool) -> PyResult<()> {
-    let mut sdk = Sdk::global();
+    let mut sdk = global_session();
 
     let obj_path = parse_obj_path(obj_path)?;
 
@@ -1819,7 +1819,7 @@ fn log_cleared(obj_path: &str, recursive: bool) -> PyResult<()> {
 
 #[pyfunction]
 fn log_arrow_msg(obj_path: &str, msg: &PyAny) -> PyResult<()> {
-    let mut sdk = Sdk::global();
+    let mut sdk = global_session();
 
     // We normally disallow logging to root, but we make an exception for class_descriptions
     let obj_path = if obj_path == "/" {

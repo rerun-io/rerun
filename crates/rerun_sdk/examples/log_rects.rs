@@ -83,7 +83,7 @@ fn main() {
     // Make sure rerun logging goes to stdout
     tracing_subscriber::fmt::init();
 
-    let mut sdk = rerun::Sdk::global();
+    let mut session = rerun_sdk::Session::new();
 
     // Arg-parsing boiler-plate
     let args = Args::parse();
@@ -98,7 +98,7 @@ fn main() {
 
         match addr {
             Ok(addr) => {
-                sdk.connect(addr);
+                session.connect(addr);
             }
             Err(err) => {
                 panic!("Bad address: {:?}. {:?}", args.addr, err);
@@ -118,13 +118,13 @@ fn main() {
 
     // Create and send the message to the sdk
     let msg = rerun::arrow::build_arrow_log_msg(&obj_path, &array, &time_point).unwrap();
-    sdk.send(msg);
+    session.send(msg);
 
     // If not connected, show the GUI inline
     if args.connect {
-        sdk.flush();
+        session.flush();
     } else {
-        let log_messages = sdk.drain_log_messages_buffer();
-        sdk.show(log_messages);
+        let log_messages = session.drain_log_messages_buffer();
+        rerun_sdk::viewer::show(log_messages);
     }
 }
