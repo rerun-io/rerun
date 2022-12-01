@@ -892,10 +892,52 @@ fn top_bar_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &mut App) {
             }
         }
         egui::warn_if_debug_build(ui);
+
+        if let Some(log_db) = app.log_dbs.get(&app.state.selected_rec_id) {
+            let selected_app_id = log_db
+                .recording_info()
+                .map_or_else(ApplicationId::unknown, |rec_info| {
+                    rec_info.application_id.clone()
+                });
+
+            let blueprint = app.state.blueprints.entry(selected_app_id).or_default();
+
+            use crate::ui::kb_shortcuts::{
+                TOGGLE_BLUEPRINT_PANEL, TOGGLE_SELECTION_PANEL, TOGGLE_TIME_PANEL,
+            };
+
+            {
+                let mut input = ui.ctx().input_mut();
+                blueprint.blueprint_panel_expanded ^=
+                    input.consume_shortcut(&TOGGLE_BLUEPRINT_PANEL);
+                blueprint.time_panel_expanded ^= input.consume_shortcut(&TOGGLE_TIME_PANEL);
+                blueprint.selection_panel_expanded ^=
+                    input.consume_shortcut(&TOGGLE_SELECTION_PANEL);
+            }
+
+            // From right-to-left:
+            ui.toggle_value(&mut blueprint.selection_panel_expanded, "S")
+                .on_hover_text(format!(
+                    "Toggle Selection View ({})",
+                    ui.ctx().format_shortcut(&TOGGLE_SELECTION_PANEL)
+                ));
+
+            ui.toggle_value(&mut blueprint.time_panel_expanded, "T")
+                .on_hover_text(format!(
+                    "Toggle Timeline View ({})",
+                    ui.ctx().format_shortcut(&TOGGLE_TIME_PANEL)
+                ));
+
+            ui.toggle_value(&mut blueprint.blueprint_panel_expanded, "B")
+                .on_hover_text(format!(
+                    "Toggle Blueprint View ({})",
+                    ui.ctx().format_shortcut(&TOGGLE_BLUEPRINT_PANEL)
+                ));
+        }
     });
 }
 
-// ---n
+// ----------------------------------------------------------------------------
 
 const FILE_SAVER_PROMISE: &str = "file_saver";
 const FILE_SAVER_NOTIF_DURATION: Option<std::time::Duration> =
