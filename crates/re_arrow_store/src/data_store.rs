@@ -4,7 +4,7 @@ use std::sync::Arc;
 use anyhow::{anyhow, bail, ensure};
 use arrow2::array::{
     new_empty_array, Array, Int64Array, Int64Vec, ListArray, MutableArray, MutableListArray,
-    MutableStructArray, PrimitiveArray, StructArray, TryPush, UInt64Array, UInt64Vec,
+    MutableStructArray, PrimitiveArray, StructArray, TryPush, UInt64Array, UInt64Vec, Utf8Array,
 };
 use arrow2::buffer::Buffer;
 use arrow2::chunk::Chunk;
@@ -46,7 +46,7 @@ use re_log_types::{ObjPath as EntityPath, TimeInt, TimeType, Timeline};
 type ComponentName = String;
 type ComponentNameRef<'a> = &'a str;
 type RowIndex = u64;
-type TimeIntRange = std::ops::Range<TimeInt>;
+type TimeIntRange = std::ops::Range<TypedTimeInt>;
 
 /// The complete data store: covers all timelines, all entities, everything.
 #[derive(Default)]
@@ -150,7 +150,7 @@ impl DataStore {
 fn extract_timelines<'data>(
     schema: &Schema,
     msg: &'data Chunk<Box<dyn Array>>,
-) -> anyhow::Result<Vec<(Timeline, TimeInt)>> {
+) -> anyhow::Result<Vec<(Timeline, TypedTimeInt)>> {
     let timelines = schema
         .index_of("timelines") // TODO
         .and_then(|idx| msg.columns().get(idx))
@@ -180,7 +180,10 @@ fn extract_timelines<'data>(
                         "expect only one timestamp per message per timeline"
                     );
 
-                    Ok((timeline, TimeInt::from(time.values()[0])))
+                    Ok((
+                        timeline,
+                        TypedTimeInt::from((TimeType::Time, time.values()[0])),
+                    ))
                 }
                 Some(TIMELINE_SEQUENCE) => {
                     let timeline = Timeline::new(timeline.name.clone(), TimeType::Sequence);
@@ -193,7 +196,10 @@ fn extract_timelines<'data>(
                         "expect only one timestamp per message per timeline"
                     );
 
-                    Ok((timeline, TimeInt::from(time.values()[0])))
+                    Ok((
+                        timeline,
+                        TypedTimeInt::from((TimeType::Sequence, time.values()[0])),
+                    ))
                 }
                 Some(unknown) => {
                     bail!("unknown timeline kind: {unknown:?}")
@@ -266,7 +272,7 @@ fn extract_components<'data>(
 struct IndexTable {
     timeline: Timeline,
     ent_path: EntityPath,
-    buckets: BTreeMap<TimeInt, IndexBucket>,
+    buckets: BTreeMap<TypedTimeInt, IndexBucket>,
 }
 
 impl std::fmt::Display for IndexTable {
@@ -311,13 +317,17 @@ impl IndexTable {
         Self {
             timeline,
             ent_path,
-            buckets: [(TimeInt::from(0), IndexBucket::new())].into(),
+            buckets: [(
+                TypedTimeInt::from((timeline.typ(), 0)),
+                IndexBucket::new(timeline),
+            )]
+            .into(),
         }
     }
 
     pub fn insert(
         &mut self,
-        time: TimeInt,
+        time: TypedTimeInt,
         indices: &HashMap<ComponentNameRef<'_>, RowIndex>,
     ) -> anyhow::Result<()> {
         // TODO: at this point, indices _must_ contains an entry for 'instances'.
@@ -374,8 +384,17 @@ impl std::fmt::Display for IndexBucket {
             time_range.start, time_range.end,
         ))?;
 
-        let series =
-            vec![polars::prelude::Series::try_from(("time", times.clone().as_box())).unwrap()];
+        let typ = self.time_range.start.0;
+        let times = Utf8Array::<i32>::from(
+            times
+                .values()
+                .iter()
+                .map(|time| Some(TypedTimeInt::from((typ, *time)).to_string()))
+                .collect::<Vec<_>>(),
+        )
+        .boxed();
+
+        let series = vec![polars::prelude::Series::try_from(("time", times)).unwrap()];
         let df = polars::prelude::DataFrame::new(series).unwrap();
         f.write_fmt(format_args!("data (sorted={is_sorted}): {df:?}\n"))?;
 
@@ -396,9 +415,11 @@ impl std::fmt::Display for IndexBucket {
 }
 
 impl IndexBucket {
-    pub fn new() -> Self {
+    pub fn new(timeline: Timeline) -> Self {
+        let start = TypedTimeInt::from((timeline.typ(), i64::MIN));
+        let end = TypedTimeInt::from((timeline.typ(), i64::MAX));
         Self {
-            time_range: TimeInt::from(i64::MIN)..TimeInt::from(i64::MAX),
+            time_range: start..end,
             is_sorted: true,
             times: Int64Vec::default(),
             indices: Default::default(),
@@ -407,7 +428,7 @@ impl IndexBucket {
 
     pub fn insert(
         &mut self,
-        time: TimeInt,
+        time: TypedTimeInt,
         indices: &HashMap<ComponentNameRef<'_>, RowIndex>,
     ) -> anyhow::Result<()> {
         fn create_array() -> MutableStructArray {
@@ -530,7 +551,7 @@ impl ComponentTable {
     //     }
     pub fn insert(
         &mut self,
-        timelines: &[(Timeline, TimeInt)],
+        timelines: &[(Timeline, TypedTimeInt)],
         data: &Box<dyn Array>,
     ) -> anyhow::Result<RowIndex> {
         // TODO: Let's start the very dumb way: one bucket only, then we'll deal with splitting.
@@ -614,13 +635,13 @@ impl ComponentBucket {
 
     pub fn insert(
         &mut self,
-        timelines: &[(Timeline, TimeInt)],
+        timelines: &[(Timeline, TypedTimeInt)],
         data: &Box<dyn Array>,
     ) -> anyhow::Result<RowIndex> {
         for (timeline, time) in timelines {
             // TODO: prob should own it at this point
             let time = *time;
-            let time_plus_one = time + TimeInt::from(1);
+            let time_plus_one = time + 1;
             self.time_ranges
                 .entry(timeline.clone())
                 .and_modify(|range| *range = range.start.min(time)..range.end.max(time_plus_one))
@@ -633,5 +654,62 @@ impl ComponentBucket {
         // dbg!(&self.data);
 
         Ok(self.row_offset + self.data.len() as u64 - 1)
+    }
+}
+
+// ---
+
+// TODO: move it with the rest of them?
+
+#[derive(Clone, Copy, Debug)]
+pub struct TypedTimeInt(TimeType, TimeInt);
+
+impl std::ops::Add<i64> for TypedTimeInt {
+    type Output = Self;
+
+    fn add(self, rhs: i64) -> Self::Output {
+        Self(self.0, self.1 + TimeInt::from(rhs))
+    }
+}
+
+impl TypedTimeInt {
+    pub fn as_i64(&self) -> i64 {
+        self.1.as_i64()
+    }
+}
+
+impl From<(TimeType, i64)> for TypedTimeInt {
+    fn from((typ, time): (TimeType, i64)) -> Self {
+        Self(typ, TimeInt::from(time))
+    }
+}
+
+impl std::fmt::Display for TypedTimeInt {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0.format(self.1))
+    }
+}
+
+impl Ord for TypedTimeInt {
+    fn cmp(&self, rhs: &Self) -> std::cmp::Ordering {
+        self.1.cmp(&rhs.1)
+    }
+}
+impl PartialOrd for TypedTimeInt {
+    fn partial_cmp(&self, rhs: &Self) -> Option<std::cmp::Ordering> {
+        self.1.partial_cmp(&rhs.1)
+    }
+}
+
+impl Eq for TypedTimeInt {}
+impl PartialEq for TypedTimeInt {
+    fn eq(&self, rhs: &Self) -> bool {
+        self.1.eq(&rhs.1)
+    }
+}
+
+impl std::hash::Hash for TypedTimeInt {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.1.hash(state)
     }
 }
