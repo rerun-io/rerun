@@ -46,16 +46,14 @@ enum SplitDirection {
 
 pub(crate) fn tree_from_space_views(
     viewport_size: egui::Vec2,
-    visible: &BTreeMap<SpaceViewId, bool>,
+    visible: &std::collections::BTreeSet<SpaceViewId>,
     space_views: &HashMap<SpaceViewId, SpaceView>,
 ) -> egui_dock::Tree<SpaceViewId> {
     let mut tree = egui_dock::Tree::new(vec![]);
 
     let mut space_make_infos = space_views
         .iter()
-        .filter(|(space_view_id, _space_view)| {
-            visible.get(space_view_id).copied().unwrap_or_default()
-        })
+        .filter(|(space_view_id, _space_view)| visible.contains(space_view_id))
         .map(|(space_view_id, space_view)| {
             let aspect_ratio = match space_view.category {
                 ViewCategory::TwoD => {

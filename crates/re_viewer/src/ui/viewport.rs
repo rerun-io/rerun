@@ -7,8 +7,6 @@
 //! * [ ] Controlling visibility of objects inside each Space View
 //! * [ ] Transforming objects between spaces
 
-use std::collections::BTreeMap;
-
 use ahash::HashMap;
 use itertools::Itertools as _;
 
@@ -46,7 +44,8 @@ fn query_scene(ctx: &mut ViewerContext<'_>, space_info: &SpaceInfo) -> super::sc
 
 // ----------------------------------------------------------------------------
 
-type VisibilitySet = BTreeMap<SpaceViewId, bool>;
+/// What views are visible?
+type VisibilitySet = std::collections::BTreeSet<SpaceViewId>;
 
 /// Describes the layout and contents of the Viewport Panel.
 #[derive(Default, serde::Deserialize, serde::Serialize)]
@@ -112,7 +111,7 @@ impl ViewportBlueprint {
 
                             let space_view_id = SpaceViewId::random();
                             blueprint.space_views.insert(space_view_id, space_view);
-                            blueprint.visible.insert(space_view_id, true);
+                            blueprint.visible.insert(space_view_id);
                         }
                     }
 
@@ -125,7 +124,7 @@ impl ViewportBlueprint {
                     let space_view = SpaceView::new(&scene, category, path.clone());
                     let space_view_id = SpaceViewId::random();
                     blueprint.space_views.insert(space_view_id, space_view);
-                    blueprint.visible.insert(space_view_id, true);
+                    blueprint.visible.insert(space_view_id);
                 }
             }
         }
@@ -209,17 +208,22 @@ impl ViewportBlueprint {
                 }
             }
 
-            let is_space_view_visible = self.visible.entry(*space_view_id).or_insert(true);
-            visibility_button(ui, true, is_space_view_visible);
+            let mut is_space_view_visible = self.visible.contains(space_view_id);
+            visibility_button(ui, true, &mut is_space_view_visible);
+            if is_space_view_visible {
+                self.visible.insert(*space_view_id);
+            } else {
+                self.visible.remove(space_view_id);
+            }
         })
         .body(|ui| {
             if let Some(space_info) = spaces_info.spaces.get(space_path) {
                 if let Some(tree) = obj_tree.subtree(space_path) {
-                    let is_space_view_visible = self.visible.entry(*space_view_id).or_insert(true);
+                    let is_space_view_visible = self.visible.contains(space_view_id);
                     show_obj_tree_children(
                         ctx,
                         ui,
-                        *is_space_view_visible,
+                        is_space_view_visible,
                         &mut space_view.obj_tree_properties,
                         *space_view_id,
                         space_info,
@@ -233,7 +237,7 @@ impl ViewportBlueprint {
     fn add_space_view(&mut self, space_view: SpaceView) {
         let space_view_id = SpaceViewId::random();
         self.space_views.insert(space_view_id, space_view);
-        self.visible.insert(space_view_id, true);
+        self.visible.insert(space_view_id);
         self.trees.clear(); // Reset them
     }
 
