@@ -113,9 +113,6 @@ impl DataStore {
     //             .insert(time, instance_row, pos_row);
     //     }
     pub fn insert(&mut self, schema: &Schema, msg: Chunk<Box<dyn Array>>) -> anyhow::Result<()> {
-        // dbg!(&schema);
-        // dbg!(&msg);
-
         // TODO: might make sense to turn the entire top-level message into a list, to help
         // with batching on the client side.
 
@@ -150,8 +147,6 @@ impl DataStore {
             index.insert(*time, &indices)?;
         }
 
-        // dbg!(&indices);
-
         Ok(())
     }
 
@@ -162,7 +157,7 @@ impl DataStore {
         time_query: TimeQuery,
         ent_path: &EntityPath,
         components: &[ComponentNameRef<'_>],
-    ) -> DataFrame {
+    ) -> anyhow::Result<DataFrame> {
         let latest_at = match time_query {
             TimeQuery::LatestAt(latest_at) => latest_at,
             TimeQuery::Range(_) => unimplemented!(), // TODO
@@ -174,7 +169,6 @@ impl DataStore {
             .get_mut(&(timeline.clone(), ent_path.clone()))
             .map(|index| index.latest_at(latest_at, components))
             .unwrap();
-        // dbg!(row_indices);
 
         let mut series: HashMap<_, _> = row_indices
             .into_iter()
@@ -189,7 +183,7 @@ impl DataStore {
             .iter()
             .map(|name| series.remove(name).unwrap())
             .collect();
-        DataFrame::new(series_ordered).unwrap()
+        DataFrame::new(series_ordered).map_err(Into::into)
     }
 }
 
@@ -825,8 +819,6 @@ impl ComponentBucket {
 
         // TODO: actual mutable array :)
         self.data = concatenate(&[&*self.data, &**data])?;
-        // dbg!(self.data.data_type());
-        // dbg!(&self.data);
 
         Ok(self.row_offset + self.data.len() as u64 - 1)
     }
@@ -834,8 +826,6 @@ impl ComponentBucket {
     // TODO: obviously shouldn't be allocating, should return some kind of ref
     pub fn get(&self, row_idx: u64) -> Box<dyn Array> {
         let row_idx = row_idx - self.row_offset;
-
-        dbg!((&*self.name, row_idx, self.data.len()));
         self.data.slice(row_idx as usize, 1)
     }
 }

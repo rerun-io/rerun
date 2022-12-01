@@ -50,6 +50,17 @@ fn single_entity_multi_timelines_multi_components_roundtrip() {
     // TODO: play with differing nb_instances inbetween inserts
     let nb_instances = 3;
 
+    let expected_rects = build_rects(nb_instances);
+    let (schema, components) = build_message(
+        &ent_path,
+        [build_log_time(now_minus_20ms), build_frame_nr(frame43)],
+        [expected_rects.clone()],
+    );
+    // eprintln!("inserting into '{ent_path}':\nschema: {schema:#?}\ncomponents: {components:#?}");
+    eprintln!("---\ninserting into '{ent_path}': [log_time, frame_nr], [rects]");
+    store.insert(&schema, components).unwrap();
+    eprintln!("{store}");
+
     let (schema, components) = build_message(
         &ent_path,
         [build_log_time(now_plus_20ms), build_frame_nr(frame41)],
@@ -60,30 +71,22 @@ fn single_entity_multi_timelines_multi_components_roundtrip() {
     store.insert(&schema, components).unwrap();
     eprintln!("{store}");
 
-    let (schema, components) = build_message(
-        &ent_path,
-        [build_log_time(now_minus_20ms), build_frame_nr(frame43)],
-        [build_rects(nb_instances)],
-    );
-    // eprintln!("inserting into '{ent_path}':\nschema: {schema:#?}\ncomponents: {components:#?}");
-    eprintln!("---\ninserting into '{ent_path}': [log_time, frame_nr], [rects]");
-    store.insert(&schema, components).unwrap();
-    eprintln!("{store}");
-
+    let expected_instances = build_instances(nb_instances);
     let (schema, components) = build_message(
         &ent_path,
         [build_log_time(now), build_frame_nr(frame42)],
-        [build_instances(nb_instances)],
+        [expected_instances.clone(), build_rects(nb_instances)],
     );
     // eprintln!("inserting into '{ent_path}':\nschema: {schema:#?}\ncomponents: {components:#?}");
     eprintln!("---\ninserting into '{ent_path}': [log_time, frame_nr], [instances]");
     store.insert(&schema, components).unwrap();
     eprintln!("{store}");
 
+    let expected_positions = build_positions(nb_instances);
     let (schema, components) = build_message(
         &ent_path,
         [build_log_time(now_minus_10ms), build_frame_nr(frame42)],
-        [build_positions(nb_instances)],
+        [expected_positions.clone()],
     );
     // eprintln!("inserting into '{ent_path}':\nschema: {schema:#?}\ncomponents: {components:#?}");
     eprintln!("---\ninserting into '{ent_path}': [log_time, frame_nr], [positions]");
@@ -91,18 +94,30 @@ fn single_entity_multi_timelines_multi_components_roundtrip() {
     eprintln!("{store}");
 
     // TODO: push to a single timeline
+    // TODO: pushing a component multiple times on the same timeline+time
 
     // TODO:
     // - query at 40, 41, 42, 43, 44
 
     let timeline = Timeline::new("frame_nr", TimeType::Sequence);
-    let res = store.query(
-        &timeline,
-        TimeQuery::LatestAt(44),
-        &ent_path,
-        &["instances", "rects", "positions"],
-    );
-    dbg!(res);
+    let components = &["instances", "rects", "positions"];
+    let df = store
+        .query(&timeline, TimeQuery::LatestAt(44), &ent_path, components)
+        .unwrap();
+
+    use polars::prelude::Series;
+
+    let instances = df.select_series(["instances"]).unwrap().pop().unwrap();
+    let expected_instances = Series::try_from(("instances", expected_instances.1.boxed())).unwrap();
+    assert_eq!(expected_instances, instances);
+
+    let positions = df.select_series(["positions"]).unwrap().pop().unwrap();
+    let expected_positions = Series::try_from(("positions", expected_positions.1.boxed())).unwrap();
+    assert_eq!(expected_positions, positions);
+
+    let rects = df.select_series(["rects"]).unwrap().pop().unwrap();
+    let expected_rects = Series::try_from(("rects", expected_rects.1.boxed())).unwrap();
+    assert_eq!(expected_rects, rects);
 }
 
 // --- helpers ---
