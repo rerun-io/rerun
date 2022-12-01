@@ -116,7 +116,7 @@ impl SpaceView {
                 ui.add_space(extra_headroom - line_height - ui.spacing().item_spacing.y); // we don't need the full headroom - the logs has the number of entries at the top
 
                 let mut scene = view_text::SceneText::default();
-                scene.load_objects(ctx, &query);
+                scene.load_objects(ctx, &query, &self.view_state.state_text.filters);
                 self.view_state.ui_text(ctx, ui, &scene);
             }
             ViewCategory::Plot => {

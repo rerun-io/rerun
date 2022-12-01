@@ -1,12 +1,15 @@
+use std::collections::BTreeMap;
+
 use egui::{Color32, RichText};
 
+use re_data_store::{ObjPath, Timeline};
 use re_log_types::{LogMsg, TimePoint};
 
 use crate::ViewerContext;
 
 use super::{SceneText, TextEntry};
 
-// ---
+// --- Main view ---
 
 #[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
@@ -16,6 +19,8 @@ pub struct ViewTextState {
     /// We need this because we want the user to be able to manually scroll the
     /// text entry window however they please when the time cursor isn't moving.
     latest_time: i64,
+
+    pub filters: ViewTextFilters,
 }
 
 pub(crate) fn view_text(
@@ -25,6 +30,9 @@ pub(crate) fn view_text(
     scene: &SceneText,
 ) -> egui::Response {
     crate::profile_function!();
+
+    // Update filters if necessary.
+    state.filters.update(ctx, &scene.text_entries);
 
     let time = ctx
         .rec_cfg
@@ -51,10 +59,186 @@ pub(crate) fn view_text(
 
         egui::ScrollArea::horizontal().show(ui, |ui| {
             crate::profile_scope!("render table");
-            show_table(ctx, ui, &scene.text_entries, scroll_to_row);
+            show_table(ctx, ui, state, &scene.text_entries, scroll_to_row);
         })
     })
     .response
+}
+
+// --- Filters ---
+
+// TODO(cmc): implement "body contains <value>" filter.
+// TODO(cmc): beyond filters, it'd be nice to be able to swap columns at some point.
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
+pub struct ViewTextFilters {
+    // Column filters: which columns should be visible?
+    // Timelines are special: each one has a dedicated column.
+    pub col_timelines: BTreeMap<Timeline, bool>,
+    pub col_obj_path: bool,
+    pub col_log_level: bool,
+
+    // Row filters: which rows should be visible?
+    pub row_obj_paths: BTreeMap<ObjPath, bool>,
+    pub row_log_levels: BTreeMap<String, bool>,
+}
+
+pub(crate) fn text_filters_ui(ui: &mut egui::Ui, state: &mut ViewTextState) -> egui::Response {
+    ui.vertical(|ui| state.filters.ui(ui)).response
+}
+
+impl Default for ViewTextFilters {
+    fn default() -> Self {
+        Self {
+            col_obj_path: true,
+            col_log_level: true,
+            col_timelines: Default::default(),
+            row_obj_paths: Default::default(),
+            row_log_levels: Default::default(),
+        }
+    }
+}
+
+impl ViewTextFilters {
+    pub fn is_obj_path_visible(&self, obj_path: &ObjPath) -> bool {
+        self.row_obj_paths.get(obj_path).copied().unwrap_or(true)
+    }
+
+    pub fn is_log_level_visible(&self, level: &str) -> bool {
+        self.row_log_levels.get(level).copied().unwrap_or(true)
+    }
+
+    // Checks whether new values are available for any of the filters, and updates everything
+    // accordingly.
+    fn update(&mut self, ctx: &mut ViewerContext<'_>, text_entries: &[TextEntry]) {
+        crate::profile_function!();
+
+        let Self {
+            col_timelines,
+            col_obj_path: _,
+            col_log_level: _,
+            row_obj_paths,
+            row_log_levels,
+        } = self;
+
+        for timeline in ctx.log_db.timelines() {
+            col_timelines.entry(*timeline).or_insert(true);
+        }
+
+        for obj_path in text_entries.iter().map(|te| &te.obj_path) {
+            row_obj_paths.entry(obj_path.clone()).or_insert(true);
+        }
+
+        for level in text_entries.iter().filter_map(|te| te.level.as_ref()) {
+            row_log_levels.entry(level.clone()).or_insert(true);
+        }
+    }
+
+    // Display the filter configuration UI (lotta checkboxes!).
+    pub(crate) fn ui(&mut self, ui: &mut egui::Ui) {
+        crate::profile_function!();
+
+        let Self {
+            col_timelines,
+            col_obj_path,
+            col_log_level,
+            row_obj_paths,
+            row_log_levels,
+        } = self;
+
+        let has_obj_path_row_filters = row_obj_paths.values().filter(|v| **v).count() > 0;
+        let has_log_lvl_row_filters = row_log_levels.values().filter(|v| **v).count() > 0;
+        let has_any_row_filters = has_obj_path_row_filters || has_log_lvl_row_filters;
+
+        let has_timeline_col_filters = col_timelines.values().filter(|v| **v).count() > 0;
+        let has_any_col_filters = has_timeline_col_filters || *col_obj_path || *col_log_level;
+
+        let clear_or_select = ["Select all", "Clear all"];
+
+        // ---
+
+        ui.group(|ui| {
+            ui.horizontal(|ui| {
+                ui.strong("Visible columns");
+                if ui
+                    .button(clear_or_select[has_any_col_filters as usize])
+                    .clicked()
+                {
+                    for v in col_timelines.values_mut() {
+                        *v = !has_any_col_filters;
+                    }
+                    *col_obj_path = !has_any_col_filters;
+                    *col_log_level = !has_any_col_filters;
+                }
+            });
+
+            ui.add_space(2.0);
+
+            for (timeline, visible) in col_timelines {
+                ui.checkbox(visible, format!("Timeline: {}", timeline.name()));
+            }
+            ui.checkbox(col_obj_path, "Object path");
+            ui.checkbox(col_log_level, "Log level");
+        });
+
+        ui.add_space(4.0);
+
+        ui.group(|ui| {
+            ui.horizontal(|ui| {
+                ui.strong("Row filters");
+                if ui
+                    .button(clear_or_select[has_any_row_filters as usize])
+                    .clicked()
+                {
+                    for v in row_obj_paths.values_mut() {
+                        *v = !has_any_row_filters;
+                    }
+                    for v in row_log_levels.values_mut() {
+                        *v = !has_any_row_filters;
+                    }
+                }
+            });
+
+            ui.add_space(4.0);
+
+            ui.group(|ui| {
+                ui.horizontal(|ui| {
+                    ui.label("Object paths");
+                    if ui
+                        .button(clear_or_select[has_obj_path_row_filters as usize])
+                        .clicked()
+                    {
+                        for v in row_obj_paths.values_mut() {
+                            *v = !has_obj_path_row_filters;
+                        }
+                    }
+                });
+                for (obj_path, visible) in row_obj_paths {
+                    ui.horizontal(|ui| {
+                        ui.checkbox(visible, &obj_path.to_string());
+                    });
+                }
+            });
+
+            ui.add_space(4.0);
+
+            ui.group(|ui| {
+                ui.horizontal(|ui| {
+                    ui.label("Log levels");
+                    if ui
+                        .button(clear_or_select[has_log_lvl_row_filters as usize])
+                        .clicked()
+                    {
+                        for v in row_log_levels.values_mut() {
+                            *v = !has_log_lvl_row_filters;
+                        }
+                    }
+                });
+                for (log_level, visible) in row_log_levels {
+                    ui.checkbox(visible, level_to_rich_text(ui, log_level));
+                }
+            });
+        });
+    }
 }
 
 // ---
@@ -82,9 +266,17 @@ fn get_time_point(ctx: &ViewerContext<'_>, entry: &TextEntry) -> Option<TimePoin
 fn show_table(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
+    state: &mut ViewTextState,
     text_entries: &[TextEntry],
     scroll_to_row: Option<usize>,
 ) {
+    let timelines = state
+        .filters
+        .col_timelines
+        .iter()
+        .filter_map(|(timeline, visible)| visible.then_some(timeline))
+        .collect::<Vec<_>>();
+
     use egui_extras::Column;
     const ROW_HEIGHT: f32 = 18.0;
     const HEADER_HEIGHT: f32 = 20.0;
@@ -96,7 +288,9 @@ fn show_table(
         .striped(true)
         .resizable(true)
         .vscroll(true)
-        .auto_shrink([false; 2]); // expand to take up the whole Space View
+        .auto_shrink([false; 2]) // expand to take up the whole Space View
+        .min_scrolled_height(0.0) // we can go as small as we need to be in order to fit within the space view!
+        .cell_layout(egui::Layout::left_to_right(egui::Align::Center));
 
     if let Some(scroll_to_row) = scroll_to_row {
         table_builder = table_builder.scroll_to_row(scroll_to_row, Some(egui::Align::Center));
@@ -105,29 +299,39 @@ fn show_table(
     let mut body_clip_rect = None;
     let mut current_time_y = None;
 
+    {
+        // timeline(s)
+        table_builder =
+            table_builder.columns(Column::auto().clip(true).at_least(32.0), timelines.len());
+
+        // object path
+        if state.filters.col_obj_path {
+            table_builder = table_builder.column(Column::auto().clip(true).at_least(32.0));
+        }
+        // log level
+        if state.filters.col_log_level {
+            table_builder = table_builder.column(Column::auto().at_least(30.0));
+        }
+        // body
+        table_builder = table_builder.column(Column::remainder().at_least(100.0));
+    }
     table_builder
-        .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-        .columns(
-            // timelines(s):
-            Column::auto().clip(true).at_least(32.0),
-            ctx.log_db.timelines().count(),
-        )
-        .column(Column::auto().clip(true).at_least(32.0)) // path
-        .column(Column::auto().at_least(30.0)) // level
-        .column(Column::remainder().at_least(100.0)) // body
-        .min_scrolled_height(0.0) // we can go as small as we need to be in order to fit within the space view!
         .header(HEADER_HEIGHT, |mut header| {
-            for timeline in ctx.log_db.timelines() {
+            for timeline in &timelines {
                 header.col(|ui| {
                     ctx.timeline_button(ui, timeline);
                 });
             }
-            header.col(|ui| {
-                ui.strong("Path");
-            });
-            header.col(|ui| {
-                ui.strong("Level");
-            });
+            if state.filters.col_obj_path {
+                header.col(|ui| {
+                    ui.strong("Object Path");
+                });
+            }
+            if state.filters.col_log_level {
+                header.col(|ui| {
+                    ui.strong("Level");
+                });
+            }
             header.col(|ui| {
                 ui.strong("Body");
             });
@@ -152,13 +356,13 @@ fn show_table(
                     return;
                 };
 
-                // time(s)
-                for timeline in ctx.log_db.timelines() {
+                // timeline(s)
+                for timeline in &timelines {
                     row.col(|ui| {
                         if let Some(value) = time_point.0.get(timeline).copied() {
                             if let Some(current_time) = current_time {
                                 if current_time_y.is_none()
-                                    && timeline == &current_timeline
+                                    && *timeline == &current_timeline
                                     && value >= current_time
                                 {
                                     current_time_y = Some(ui.max_rect().top());
@@ -171,18 +375,22 @@ fn show_table(
                 }
 
                 // path
-                row.col(|ui| {
-                    ctx.obj_path_button(ui, &text_entry.obj_path);
-                });
+                if state.filters.col_obj_path {
+                    row.col(|ui| {
+                        ctx.obj_path_button(ui, &text_entry.obj_path);
+                    });
+                }
 
                 // level
-                row.col(|ui| {
-                    if let Some(lvl) = &text_entry.level {
-                        ui.label(level_to_rich_text(ui, lvl));
-                    } else {
-                        ui.label("-");
-                    }
-                });
+                if state.filters.col_log_level {
+                    row.col(|ui| {
+                        if let Some(lvl) = &text_entry.level {
+                            ui.label(level_to_rich_text(ui, lvl));
+                        } else {
+                            ui.label("-");
+                        }
+                    });
+                }
 
                 // body
                 row.col(|ui| {
@@ -196,6 +404,7 @@ fn show_table(
             });
         });
 
+    // TODO(cmc): this draws on top of the headers :(
     if let (Some(body_clip_rect), Some(current_time_y)) = (body_clip_rect, current_time_y) {
         // Show that the current time is here:
         ui.painter().with_clip_rect(body_clip_rect).hline(
