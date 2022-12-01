@@ -17,14 +17,28 @@ let POSITION_DATA_TEXTURE_SIZE: i32 = 256;
 // Flags
 // See lines.wgsl#LineStripFlags
 let CAP_END_TRIANGLE: u32 = 1u;
+let CAP_END_ROUND: u32 = 2u;
+let CAP_START_TRIANGLE: u32 = 4u;
+let CAP_START_ROUND: u32 = 8u;
 
 struct VertexOut {
-    @builtin(position) position: Vec4,
-    @location(0) color: Vec4,
-    @location(1) position_world: Vec3,
-    // World position of the line
-    @location(2) position_world_line: Vec3,
-    @location(3) line_radius: f32,
+    @builtin(position)
+    position: Vec4,
+
+    @location(0) @interpolate(flat)
+    color: Vec4,
+
+    @location(1) @interpolate(perspective)
+    position_world: Vec3,
+
+    @location(2) @interpolate(perspective)
+    closest_line_skeleton_position: Vec3,
+
+    @location(3) @interpolate(flat)
+    line_radius: f32,
+
+    @location(4) @interpolate(flat)
+    round_cap: u32,
 };
 
 struct LineStripData {
@@ -65,6 +79,10 @@ fn read_position_data(idx: i32) -> PositionData {
     return data;
 }
 
+fn has_any_flag(flags: u32, flags_to_check: u32) -> bool {
+    return (flags & flags_to_check) > 0u;
+}
+
 @vertex
 fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     // Basic properties of the vertex we're at.
@@ -91,49 +109,73 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     // Data valid for the entire strip that this vertex belongs to.
     var strip_data = read_strip_data(pos_data_quad_begin.strip_index);
 
-    // True if this quad should turn into an end cap.
-    let is_triangle_end_cap = ((strip_data.flags & CAP_END_TRIANGLE) > 0u) && is_trailing_quad;
+    // Check if we should generate an end cap
+    if is_trailing_quad {
+
+    }
 
     // Calculate the direction the current quad is facing in.
     var quad_dir: Vec3;
-    if is_triangle_end_cap {
-        quad_dir = pos_data_quad_begin.pos - read_position_data(quad_idx - 1).pos;
-        quad_dir = normalize(quad_dir);
+    var center_position = pos_data_current.pos; // line center of the quad (triangle for caps) we're spanning.
+    var closest_line_skeleton_position = pos_data_current.pos;
+    var round_cap = 0u;
+    if is_trailing_quad {
+        if has_any_flag(strip_data.flags, CAP_END_TRIANGLE | CAP_END_ROUND) && local_idx < 3u {
+            quad_dir = pos_data_quad_begin.pos - read_position_data(quad_idx - 1).pos;
+            quad_dir = normalize(quad_dir);
 
-        if is_at_quad_end {
-            // The pointy end.
-            pos_data_current.pos = pos_data_quad_begin.pos + quad_dir * (strip_data.radius * 4.0);
-            strip_data.radius = 0.0;
+            round_cap = u32(has_any_flag(strip_data.flags, CAP_END_ROUND));
+
+            var size_factor = 1.0 + f32(has_any_flag(strip_data.flags, CAP_END_TRIANGLE));
+
+            if is_at_quad_end {
+                // The pointy end.
+                closest_line_skeleton_position = pos_data_quad_begin.pos;
+                center_position = pos_data_quad_begin.pos +
+                                       quad_dir * (strip_data.radius * 4.0);
+                strip_data.radius = 0.0;
+            } else if round_cap == 0u {
+                // Thick start of the triangle cap.
+                strip_data.radius *= 2.0;
+            }
         } else {
-            // Thick start of the triangle cap.
-            strip_data.radius *= 2.0;
+            quad_dir = ZERO;
         }
-    } else if is_trailing_quad {
-        quad_dir = ZERO;
     } else {
         quad_dir = pos_data_quad_begin.pos - pos_data_quad_end.pos;
         quad_dir = normalize(quad_dir);
     }
 
     // Span up the vertex away from the line's axis, orthogonal to the direction to the camera
-    let to_camera = camera_ray_to_world_pos(pos_data_current.pos).direction;
+    let to_camera = camera_ray_to_world_pos(center_position).direction;
     let dir_up = normalize(cross(to_camera, quad_dir));
-    let pos = pos_data_current.pos + (strip_data.radius * top_bottom) * dir_up;
+    let pos = center_position + (strip_data.radius * top_bottom) * dir_up;
 
     // Output, transform to projection space and done.
     var out: VertexOut;
     out.position = frame.projection_from_world * Vec4(pos, 1.0);
     out.position_world = pos;
-    out.position_world_line = pos_data_current.pos;
+    out.closest_line_skeleton_position = closest_line_skeleton_position;
     out.color = strip_data.color;
     out.line_radius = strip_data.radius;
+    out.round_cap = round_cap;
 
     return out;
 }
 
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) Vec4 {
-    // TODO(andreas): Rounded caps, proper shading/lighting, etc.
-    let shading = max(0.2, 1.2 - length(in.position_world - in.position_world_line) / in.line_radius);
+    let distance_to_skeleton = length(in.position_world - in.closest_line_skeleton_position);
+    let relative_distance_to_skeleton = distance_to_skeleton / in.line_radius;
+
+    var coverage = 1.0;
+    if in.round_cap != 0u {
+        if relative_distance_to_skeleton > 1.0 {
+            discard;
+        }
+    }
+
+    // TODO(andreas): proper shading/lighting, etc.
+    let shading = max(0.2, 1.2 - relative_distance_to_skeleton);
     return in.color * shading;
 }
