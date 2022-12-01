@@ -94,7 +94,6 @@ fn check_hermeticity(root_path: impl AsRef<Path>, file_path: impl AsRef<Path>) {
             let clause = line.parse::<ImportClause>()?;
             let clause_path = dir_path.join(&clause.path);
             let clause_path = std::fs::canonicalize(&clause_path)?;
-            let root_path = std::fs::canonicalize(&root_path)?;
             ensure!(
                 clause_path.starts_with(&root_path),
                 "trying to import {:?} which lives outside of the workspace, \
@@ -120,6 +119,14 @@ fn main() {
 
     let root_path = Path::new(&std::env::var("CARGO_WORKSPACE_DIR").unwrap()).to_owned();
     let manifest_path = Path::new(&std::env::var("CARGO_MANIFEST_DIR").unwrap()).to_owned();
+    // On windows at least, it's been shown that the paths we get out of these env-vars can
+    // actually turn out _not_ to be canonicalized in practice, which of course will break
+    // hermeticity checks later down the line.
+    //
+    // So: canonicalize them all, just in case... ¯\_(ツ)_/¯
+    let root_path = std::fs::canonicalize(root_path).unwrap();
+    let manifest_path = std::fs::canonicalize(manifest_path).unwrap();
+
     let src_path = manifest_path.join("src");
     let file_path = src_path.join("workspace_shaders.rs");
 
@@ -179,7 +186,7 @@ fn main() {
         // Make sure we're not referencing anything outside of the workspace!
         //
         // TODO(cmc): At the moment we only look for breaches of hermiticity at the import level
-        // and completely ignore top-level, e.g. `#import </tmp/shader.wgsl>` will be fail as
+        // and completely ignore top-level, e.g. `#import </tmp/shader.wgsl>` will fail as
         // expected in release builds, while `include_file!("/tmp/shader.wgsl")` won't!
         //
         // The only way to make hermeticity checks work for top-level files would be to read all
