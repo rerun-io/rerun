@@ -1184,7 +1184,7 @@ version = "0.19.0"
 source = "git+https://github.com/emilk/egui?rev=7133818c59269fee8cff8d182e776bda8858a727#7133818c59269fee8cff8d182e776bda8858a727"
 dependencies = [
  "ahash 0.8.2",
- "epaint",
+ "epaint 0.19.0 (git+https://github.com/emilk/egui?rev=7133818c59269fee8cff8d182e776bda8858a727)",
  "nohash-hasher",
  "ron",
  "serde",
@@ -1291,6 +1291,20 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "epaint"
+version = "0.19.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5ba04741be7f6602b1a1b28f1082cce45948a7032961c52814f8946b28493300"
+dependencies = [
+ "ab_glyph",
+ "ahash 0.8.2",
+ "atomic_refcell",
+ "emath",
+ "nohash-hasher",
+ "parking_lot",
 ]
 
 [[package]]
@@ -3633,6 +3647,7 @@ dependencies = [
  "clean-path",
  "console_error_panic_hook",
  "crossbeam",
+ "epaint 0.19.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "getrandom",
  "glam",
  "glob",

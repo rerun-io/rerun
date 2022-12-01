@@ -24,14 +24,13 @@ impl framework::Example for Render2D {
                 .unwrap();
 
         let mut image_data = rerun_logo.as_rgba8().unwrap().to_vec();
+
         // Premultiply alpha (not doing any alpha blending, so this will look better on a black ground).
         for color in image_data.chunks_exact_mut(4) {
-            // Approximate doing pre-multiplication in linear by apply gamma to alpha.
-            // Proper thing to do is to convert the entire color to linear and multiply with alpha and then convert back to srgb.
-            let alpha = (color[3] as f32 / 255.0).powf(1.0 / 2.2);
-            color[0] = (color[0] as f32 * alpha) as u8;
-            color[1] = (color[1] as f32 * alpha) as u8;
-            color[2] = (color[2] as f32 * alpha) as u8;
+            color.clone_from_slice(
+                &epaint::Color32::from_rgba_unmultiplied(color[0], color[1], color[2], color[3])
+                    .to_array(),
+            );
         }
 
         let rerun_logo_texture = re_ctx.texture_manager_2d.store_resource(
