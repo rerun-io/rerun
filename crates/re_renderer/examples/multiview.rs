@@ -5,39 +5,19 @@ use glam::Vec3;
 use itertools::Itertools;
 use macaw::IsoTransform;
 use rand::Rng;
-use smallvec::smallvec;
 
 use re_renderer::{
     renderer::{
-        GenericSkyboxDrawable, LineDrawable, LineStrip, LineStripFlags, MeshDrawable, MeshInstance,
+        GenericSkyboxDrawable, LineDrawable, LineStripFlags, MeshDrawable, MeshInstance,
         PointCloudDrawable, PointCloudPoint, TestTriangleDrawable,
     },
     resource_managers::ResourceLifeTime,
     view_builder::{OrthographicCameraMode, Projection, TargetConfiguration, ViewBuilder},
-    RenderContext,
+    LineStripSeriesBuilder, RenderContext,
 };
 use winit::event::{ElementState, VirtualKeyCode};
 
 mod framework;
-
-fn split_resolution(
-    resolution: [u32; 2],
-    nb_rows: usize,
-    nb_cols: usize,
-) -> impl Iterator<Item = (glam::Vec2, (f32, f32))> {
-    let total_width = resolution[0] as f32;
-    let total_height = resolution[1] as f32;
-    let width = total_width / nb_cols as f32;
-    let height = total_height / nb_rows as f32;
-    (0..nb_rows)
-        .flat_map(move |row| (0..nb_cols).map(move |col| (row, col)))
-        .map(move |(row, col)| {
-            // very quick'n'dirty (uneven) borders
-            let y = f32::clamp(row as f32 * height + 2.0, 2.0, total_height - 2.0);
-            let x = f32::clamp(col as f32 * width + 2.0, 2.0, total_width - 2.0);
-            (glam::vec2(x, y), (width - 4.0, height - 4.0))
-        })
-}
 
 fn draw_view<'a, D: 'static + re_renderer::renderer::Drawable + Sync + Send + Clone>(
     re_ctx: &'a mut RenderContext,
@@ -114,46 +94,44 @@ fn lorenz_points(seconds_since_startup: f32) -> Vec<glam::Vec3> {
 fn build_lines(re_ctx: &mut RenderContext, seconds_since_startup: f32) -> LineDrawable {
     // Calculate some points that look nice for an animated line.
     let lorenz_points = lorenz_points(seconds_since_startup);
-    LineDrawable::new(
-        re_ctx,
-        &[
-            // Complex orange line.
-            LineStrip {
-                points: lorenz_points.into(),
-                radius: 0.05,
-                color: [255, 191, 0, 255],
-                flags: LineStripFlags::empty(),
-            },
-            // Green Zig-Zag
-            LineStrip {
-                points: smallvec![
-                    glam::vec3(0.0, -1.0, 0.0),
-                    glam::vec3(1.0, 0.0, 0.0),
-                    glam::vec3(2.0, -1.0, 0.0),
-                    glam::vec3(3.0, 0.0, 0.0),
-                ],
-                radius: 0.1,
-                color: [50, 255, 50, 255],
-                flags: LineStripFlags::CAP_END_TRIANGLE,
-            },
-            // A blue spiral
-            LineStrip {
-                points: (0..1000)
-                    .map(|i| {
-                        glam::vec3(
-                            (i as f32 * 0.01).sin() * 2.0,
-                            i as f32 * 0.01 - 6.0,
-                            (i as f32 * 0.01).cos() * 2.0,
-                        )
-                    })
-                    .collect(),
-                radius: 0.1,
-                color: [50, 50, 255, 255],
-                flags: LineStripFlags::CAP_END_TRIANGLE,
-            },
-        ],
-    )
-    .unwrap()
+
+    let mut builder = LineStripSeriesBuilder::default();
+
+    // Complex orange line.
+    builder
+        .add_strip(lorenz_points.into_iter())
+        .color_rgb(255, 191, 0)
+        .radius(0.05);
+
+    // Green Zig-Zag arrow
+    builder
+        .add_strip(
+            [
+                glam::vec3(0.0, -1.0, 0.0),
+                glam::vec3(1.0, 0.0, 0.0),
+                glam::vec3(2.0, -1.0, 0.0),
+                glam::vec3(3.0, 0.0, 0.0),
+            ]
+            .into_iter(),
+        )
+        .color_rgb(50, 255, 50)
+        .radius(0.05)
+        .flags(LineStripFlags::CAP_END_TRIANGLE);
+
+    // Blue spiral
+    builder
+        .add_strip((0..1000).map(|i| {
+            glam::vec3(
+                (i as f32 * 0.01).sin() * 2.0,
+                i as f32 * 0.01 - 6.0,
+                (i as f32 * 0.01).cos() * 2.0,
+            )
+        }))
+        .color_rgb(50, 50, 255)
+        .radius(0.1)
+        .flags(LineStripFlags::CAP_END_TRIANGLE);
+
+    builder.to_drawable(re_ctx)
 }
 
 enum CameraControl {
@@ -239,7 +217,7 @@ impl Example for Multiview {
     fn draw(
         &mut self,
         re_ctx: &mut RenderContext,
-        surface_configuration: &wgpu::SurfaceConfiguration,
+        resolution: [u32; 2],
         time: &framework::Time,
     ) -> Vec<framework::ViewDrawResult> {
         if matches!(self.camera_control, CameraControl::RotateAroundCenter) {
@@ -251,7 +229,6 @@ impl Example for Multiview {
             ) * 10.0;
         }
 
-        let resolution = [surface_configuration.width, surface_configuration.height];
         let seconds_since_startup = time.seconds_since_startup();
         let view_from_world =
             IsoTransform::look_at_rh(self.camera_position, Vec3::ZERO, Vec3::Y).unwrap();
@@ -267,7 +244,7 @@ impl Example for Multiview {
             seconds_since_startup,
         );
 
-        let splits = split_resolution(resolution, 2, 2).collect::<Vec<_>>();
+        let splits = framework::split_resolution(resolution, 2, 2).collect::<Vec<_>>();
 
         let projection_from_view = if self.perspective_projection {
             Projection::Perspective {
@@ -287,11 +264,10 @@ impl Example for Multiview {
         #[rustfmt::skip]
         macro_rules! draw {
             ($name:ident @ split #$n:expr) => {{
-                let (target_location, (width, height)) = splits[$n];
                 let (view_builder, command_buffer) = draw_view(re_ctx,
                     TargetConfiguration {
                         name: stringify!($name).into(),
-                        resolution_in_pixel: [width as u32, height as u32],
+                        resolution_in_pixel: splits[$n].resolution_in_pixel,
                         view_from_world,
                         projection_from_view: projection_from_view.clone(),
                     },
@@ -301,7 +277,7 @@ impl Example for Multiview {
                 framework::ViewDrawResult {
                     view_builder,
                     command_buffer,
-                    target_location,
+                    target_location: splits[$n].target_location,
                 }
             }};
         }
