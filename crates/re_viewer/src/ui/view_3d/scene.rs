@@ -139,8 +139,7 @@ pub struct Scene3D {
 
     pub points: Vec<Point3D>,
 
-    pub line_instance_ids: Vec<InstanceIdHash>,
-    pub line_strips: re_renderer::LineStripSeriesBuilder,
+    pub line_strips: re_renderer::LineStripSeriesBuilder<InstanceIdHash>,
 
     pub meshes: Vec<MeshSource>,
     pub labels: Vec<Label3D>,
@@ -261,8 +260,7 @@ impl Scene3D {
                             );
                             continue;
                         };
-                        self.line_instance_ids.push(instance_id_hash);
-                        self.line_strips.add_segment(*a, *b).radius(Size::AUTO.0).color_rgbx_slice(color);
+                        self.line_strips.add_segment(*a, *b).radius(Size::AUTO.0).color_rgbx_slice(color).user_data(instance_id_hash);
                     }
                 }
             });
@@ -350,7 +348,6 @@ impl Scene3D {
                     let annotation_info = annotations.class_description(None).annotation_info();
                     let color = annotation_info.color(color, default_color);
 
-                    let num_line_strips_before = self.line_strips.strips.len();
                     match obj_type {
                         ObjectType::Path3D => self
                             .line_strips
@@ -363,12 +360,8 @@ impl Scene3D {
                         _ => unreachable!("already early outed earlier"),
                     }
                     .radius(radius.0) // TODO(andreas): re_renderer should support our Size type directly!
-                    .color_rgbx_slice(color);
-
-                    self.line_instance_ids.extend(
-                        std::iter::repeat(instance_id_hash)
-                            .take(self.line_strips.strips.len() - num_line_strips_before),
-                    );
+                    .color_rgbx_slice(color)
+                    .user_data(instance_id_hash);
                 },
             );
         }
@@ -537,11 +530,11 @@ impl Scene3D {
                     let axis_end = world_from_cam.transform_point3(scale * *dir);
                     let color = axis_color(axis_index);
 
-                    self.line_instance_ids.push(instance_id);
                     self.line_strips
                         .add_segment(cam_origin, axis_end)
                         .radius(radius)
-                        .color_rgbx_slice(color);
+                        .color_rgbx_slice(color)
+                        .user_data(instance_id);
                 }
             }
 
@@ -570,7 +563,6 @@ impl Scene3D {
         let Self {
             annotation_map: _,
             points,
-            line_instance_ids,
             line_strips,
             meshes,
             labels: _, // always has final size. TODO(emilk): tint on hover!
@@ -607,7 +599,7 @@ impl Scene3D {
                         Size::new_scene(dist_to_eye * size_in_points * point_size_at_one_meter);
                 }
                 if hovered_instance_id_hash.is_some()
-                    && point.instance_id == hovered_instance_id_hash
+                    && point.instance_id_hash == hovered_instance_id_hash
                 {
                     point.radius *= hover_size_boost;
                     point.color = HOVER_COLOR;
@@ -617,10 +609,8 @@ impl Scene3D {
 
         {
             crate::profile_scope!("lines");
-            assert_eq!(line_strips.strips.len(), line_instance_ids.len());
-            for ((line_strip, line_strip_vertices), instance_id) in line_strips
-                .iter_strips_mut_with_vertices()
-                .zip(line_instance_ids.iter())
+            for ((line_strip, instance_id), line_strip_vertices) in
+                line_strips.iter_strips_mut_with_vertices()
             {
                 if Size(line_strip.radius).is_auto() {
                     line_strip.radius = default_line_radius.0;
@@ -707,12 +697,11 @@ impl Scene3D {
             (corners[3], corners[0]), // `d` distance plane sides
         ];
 
-        self.line_instance_ids
-            .extend(std::iter::repeat(instance_id).take(segments.len()));
         self.line_strips
             .add_segments(segments.into_iter())
             .radius(line_radius.0)
-            .color_rgbx_slice(color);
+            .color_rgbx_slice(color)
+            .user_data(instance_id);
 
         Some(())
     }
@@ -738,12 +727,12 @@ impl Scene3D {
         let tip_length = LineStripFlags::get_triangle_cap_tip_length(radius);
         let vector_len = vector.length();
         let end = origin + vector * ((vector_len - tip_length) / vector_len);
-        self.line_instance_ids.push(instance_id_hash);
         self.line_strips
             .add_segment(origin, end)
             .radius(radius)
             .color_rgbx_slice(color)
-            .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE);
+            .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE)
+            .user_data(instance_id_hash);
     }
 
     fn add_box(
@@ -801,19 +790,17 @@ impl Scene3D {
             (corners[0b011], corners[0b111]),
         ];
 
-        self.line_instance_ids
-            .extend(std::iter::repeat(instance_id).take(segments.len()));
         self.line_strips
             .add_segments(segments.into_iter())
             .radius(line_radius.0)
-            .color_rgbx_slice(color);
+            .color_rgbx_slice(color)
+            .user_data(instance_id);
     }
 
     pub fn is_empty(&self) -> bool {
         let Self {
             annotation_map: _,
             points,
-            line_instance_ids: _,
             line_strips,
             meshes,
             labels,
@@ -882,7 +869,6 @@ impl Scene3D {
             annotation_map: _,
             points,
             line_strips,
-            line_instance_ids,
             meshes,
             labels: _,
         } = self;
@@ -921,7 +907,7 @@ impl Scene3D {
             crate::profile_scope!("line_segments");
             for ((_line_strip, vertices), instance_id_hash) in line_strips
                 .iter_strips_with_vertices()
-                .zip(line_instance_ids.iter())
+                .zip(line_strips.strip_user_data.iter())
             {
                 if !instance_id_hash.is_some() {
                     continue;
@@ -989,7 +975,6 @@ impl Scene3D {
             annotation_map: _,
             points,
             line_strips,
-            line_instance_ids: _,
             meshes,
             labels,
         } = self;

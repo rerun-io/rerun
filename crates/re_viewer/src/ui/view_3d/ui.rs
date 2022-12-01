@@ -578,7 +578,6 @@ fn show_projections_from_2d_space(
                     let end = ray.point_along(length);
                     let radius = Size::new_ui(1.5);
 
-                    scene.line_instance_ids.push(InstanceIdHash::NONE);
                     scene.line_strips.add_segment(origin, end).radius(radius.0);
 
                     if let Some(pos) = hit_pos {
@@ -636,9 +635,6 @@ fn project_onto_other_spaces(
 }
 
 fn show_origin_axis(scene: &mut Scene3D) {
-    scene
-        .line_instance_ids
-        .extend(std::iter::repeat(InstanceIdHash::NONE).take(3));
     scene
         .line_strips
         .add_segment(glam::Vec3::ZERO, glam::Vec3::X)

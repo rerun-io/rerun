@@ -65,7 +65,7 @@ impl framework::Example for Render2D {
         );
         let line_radius = 5.0;
 
-        let mut line_strip_builder = LineStripSeriesBuilder::default();
+        let mut line_strip_builder = LineStripSeriesBuilder::<()>::default();
         // Green lines filling border
         line_strip_builder
             .add_strip_2d(
