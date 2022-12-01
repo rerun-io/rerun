@@ -3,7 +3,7 @@ use re_log_types::{IndexHash, MsgId, ObjectType};
 
 use crate::{ui::SceneQuery, ViewerContext};
 
-use super::ViewTextState;
+use super::ui::ViewTextFilters;
 
 // ---
 
@@ -32,18 +32,18 @@ impl SceneText {
         &mut self,
         ctx: &ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        state: &ViewTextState,
+        filters: &ViewTextFilters,
     ) {
         crate::profile_function!();
 
-        self.load_text_entries(ctx, query, state);
+        self.load_text_entries(ctx, query, filters);
     }
 
     fn load_text_entries(
         &mut self,
         ctx: &ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        state: &ViewTextState,
+        filters: &ViewTextFilters,
     ) {
         crate::profile_function!();
 
@@ -54,12 +54,8 @@ impl SceneText {
 
                 // Early filtering: if we're not showing it the view, there isn't much point
                 // in querying it to begin with... at least for now.
-                let is_obj_path_visible = state
-                    .filters
-                    .row_obj_paths
-                    .get(obj_path)
-                    .copied()
-                    .unwrap_or(true);
+                let is_obj_path_visible =
+                    filters.row_obj_paths.get(obj_path).copied().unwrap_or(true);
                 if !is_obj_path_visible {
                     return batch;
                 }
@@ -98,12 +94,7 @@ impl SceneText {
                     // Early filtering once more, see above.
                     .filter(|te| {
                         te.level.as_ref().map_or(true, |lvl| {
-                            state
-                                .filters
-                                .row_log_levels
-                                .get(lvl)
-                                .copied()
-                                .unwrap_or(true)
+                            filters.row_log_levels.get(lvl).copied().unwrap_or(true)
                         })
                     })
                     .collect()
