@@ -192,7 +192,7 @@ impl SelectionPanel {
                         ctx.clear_selection();
                     } else {
                         ui.add_space(4.0);
-                    ui_space_view(ctx, ui, space_view);
+                        ui_space_view(ctx, ui, space_view);
                     }
                 } else {
                     ctx.clear_selection();
@@ -235,15 +235,18 @@ fn obj_type_name(log_db: &LogDb, obj_type_path: &ObjTypePath) -> String {
 }
 
 fn ui_space_view(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, space_view: &mut SpaceView) {
-    egui::Grid::new("space_view").striped(true).show(ui, |ui| {
-        ui.label("Name:");
-        ui.label(&space_view.name);
-        ui.end_row();
+    egui::Grid::new("space_view")
+        .striped(true)
+        .num_columns(2)
+        .show(ui, |ui| {
+            ui.label("Name:");
+            ui.text_edit_singleline(&mut space_view.name);
+            ui.end_row();
 
-        ui.label("Path:");
-        ctx.obj_path_button(ui, &space_view.space_path);
-        ui.end_row();
-    });
+            ui.label("Path:");
+            ctx.obj_path_button(ui, &space_view.space_path);
+            ui.end_row();
+        });
 
     ui.separator();
 
