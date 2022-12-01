@@ -754,7 +754,13 @@ impl Blueprint {
                     ui.separator();
 
                     ui.vertical_centered(|ui| {
-                        if ui.button("Reset space views").clicked() {
+                        if ui
+                            .button("Auto-populate Viewport")
+                            .on_hover_text(
+                                "Re-populate Viewport with automatically chosen Space Views",
+                            )
+                            .clicked()
+                        {
                             self.viewport = ViewportBlueprint::new(ctx, spaces_info);
                         }
                     });
