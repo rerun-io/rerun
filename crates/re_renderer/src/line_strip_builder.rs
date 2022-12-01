@@ -8,8 +8,10 @@ use crate::renderer::{LineDrawable, LineStripFlags, LineStripInfo, LineVertex};
 /// But before that we first need to sort out cpu->gpu transfers better by providing staging buffers.
 #[derive(Default)]
 pub struct LineStripSeriesBuilder<PerStripUserData> {
+    // Number of elements in strips and strip_user_data should be equal at all times.
     pub strips: Vec<LineStripInfo>,
     pub strip_user_data: Vec<PerStripUserData>,
+
     pub vertices: Vec<LineVertex>,
 
     /// z value given to the next 2d line strip.
@@ -34,6 +36,8 @@ where
         let strip_index = old_len as _;
         self.vertices
             .extend(points.map(|pos| LineVertex { pos, strip_index }));
+
+        debug_assert_eq!(self.strips.len(), self.strip_user_data.len());
         self.strips.push(LineStripInfo::default());
         self.strip_user_data.push(PerStripUserData::default());
 
@@ -81,6 +85,8 @@ where
 
         let old_len = self.strips.len();
         let num_strips_added = num_strips as usize - old_len;
+
+        debug_assert_eq!(self.strips.len(), self.strip_user_data.len());
         self.strips
             .extend(std::iter::repeat(LineStripInfo::default()).take(num_strips_added));
         self.strip_user_data
