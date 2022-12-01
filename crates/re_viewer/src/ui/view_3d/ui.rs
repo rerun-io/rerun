@@ -637,6 +637,9 @@ fn project_onto_other_spaces(
 
 fn show_origin_axis(scene: &mut Scene3D) {
     scene
+        .line_instance_ids
+        .extend(std::iter::repeat(InstanceIdHash::NONE).take(3));
+    scene
         .line_strips
         .add_segment(glam::Vec3::ZERO, glam::Vec3::X)
         .radius(0.01)

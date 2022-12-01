@@ -649,7 +649,7 @@ impl Scene3D {
 
                     line_strip.radius = dist_to_eye * size_in_points * point_size_at_one_meter;
                 }
-                if *instance_id == hovered_instance_id_hash {
+                if hovered_instance_id_hash.is_some() && *instance_id == hovered_instance_id_hash {
                     line_strip.radius *= hover_size_boost;
                     line_strip.srgb_color = HOVER_COLOR;
                 }
