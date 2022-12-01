@@ -32,7 +32,7 @@ struct VertexOut {
     position_world: Vec3,
 
     @location(2) @interpolate(perspective)
-    closest_line_skeleton_position: Vec3,
+    closest_strip_position: Vec3,
 
     @location(3) @interpolate(flat)
     line_radius: f32,
@@ -117,54 +117,58 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     // Data valid for the entire strip that this vertex belongs to.
     var strip_data = read_strip_data(strip_index);
 
-    // Calculate the direction the current quad is facing in.
-    var quad_dir: Vec3;
+    // Calculate the direction the current quad is facing in and adjust various parameters if this is a cap.
+    var quad_dir = ZERO; // If this remains zero, the quad is discarded automatically.
     var center_position = pos_data_current.pos; // line center of the quad (triangle for caps) we're spanning.
-    var closest_line_skeleton_position = pos_data_current.pos;
+    var closest_strip_position = center_position;
     var round_cap = 0u;
-    if is_trailing_quad {
-        if has_any_flag(strip_data.flags, CAP_END_TRIANGLE | CAP_END_ROUND) && is_end_cap_triangle {
+
+    // For a (triangle) end cap:
+    // s == closest_strip_position
+    // c == center_position
+    //              | \
+    // _____________|   \
+    //                    \
+    //              s       c
+    // _____________      /
+    //              |   /
+    //              | /
+    // For non-caps s == c!
+
+    if is_trailing_quad { // A end quad, potentially used for caps.
+        var pointy_end = false;
+
+        // Determine the direction of the cap if any.
+        // Despite only working with a single triangle we're still thinking in terms of quads here!
+        // We're now either a quad before the actual strip or a quad after the strip we belong to,
+        // therefore we need to look-up a new position to make sense of the quad dir.
+        if is_end_cap_triangle && has_any_flag(strip_data.flags, CAP_END_TRIANGLE | CAP_END_ROUND) {
             quad_dir = pos_data_quad_begin.pos - read_position_data(quad_idx - 1).pos;
-            quad_dir = normalize(quad_dir);
-
-            round_cap = u32(has_any_flag(strip_data.flags, CAP_END_ROUND));
-
-            var size_factor = 1.0 + f32(has_any_flag(strip_data.flags, CAP_END_TRIANGLE));
-
-            if is_at_quad_end {
-                // The pointy end.
-                closest_line_skeleton_position = pos_data_quad_begin.pos;
-                center_position = pos_data_quad_begin.pos +
-                                       quad_dir * (strip_data.radius * 4.0);
-                strip_data.radius = 0.0;
-            } else if round_cap == 0u {
-                // Thick start of the triangle cap.
-                strip_data.radius *= 2.0;
+            pointy_end = is_at_quad_end;
+            if pointy_end {
+                closest_strip_position = pos_data_quad_begin.pos; // The last point of this strip
             }
-        }  else if has_any_flag(strip_data.flags, CAP_START_TRIANGLE | CAP_START_ROUND) && !is_end_cap_triangle {
-            quad_dir = read_position_data(quad_idx + 2).pos - pos_data_quad_end.pos;
-            quad_dir = normalize(quad_dir);
-
-            round_cap = u32(has_any_flag(strip_data.flags, CAP_START_ROUND));
-
-            var size_factor = 1.0 + f32(has_any_flag(strip_data.flags, CAP_START_TRIANGLE));
-
-            if !is_at_quad_end {
-                // The pointy end.
-                closest_line_skeleton_position = pos_data_quad_end.pos;
-                center_position = pos_data_quad_end.pos -
-                                       quad_dir * (strip_data.radius * 4.0);
-                strip_data.radius = 0.0;
-            } else if round_cap == 0u {
-                // Thick start of the triangle cap.
-                strip_data.radius *= 2.0;
+        } else if !is_end_cap_triangle && has_any_flag(strip_data.flags, CAP_START_TRIANGLE | CAP_START_ROUND) {
+            quad_dir = pos_data_quad_end.pos - read_position_data(quad_idx + 2).pos;
+            pointy_end = !is_at_quad_end;
+            if pointy_end {
+                closest_strip_position = pos_data_quad_end.pos; // The first point of this strip
             }
         }
 
-        else {
-            quad_dir = ZERO;
+        round_cap = u32(has_any_flag(strip_data.flags, CAP_END_ROUND | CAP_START_ROUND));
+        quad_dir = normalize(quad_dir);
+
+        if pointy_end {
+            // The pointy end is an extension of the line, need to calculate it and collapse the thickness
+            center_position = closest_strip_position + quad_dir * (strip_data.radius * 4.0);
+            strip_data.radius = 0.0;
+        } else if round_cap == 0u {
+            // If this is nit a round cap and not the pointy end, we blow up our ("virtual") quad by twice the size
+            strip_data.radius *= 2.0;
         }
     } else {
+        // Regular "body" quad of the line.
         quad_dir = pos_data_quad_begin.pos - pos_data_quad_end.pos;
         quad_dir = normalize(quad_dir);
     }
@@ -178,7 +182,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     var out: VertexOut;
     out.position = frame.projection_from_world * Vec4(pos, 1.0);
     out.position_world = pos;
-    out.closest_line_skeleton_position = closest_line_skeleton_position;
+    out.closest_strip_position = closest_strip_position;
     out.color = strip_data.color;
     out.line_radius = strip_data.radius;
     out.round_cap = round_cap;
@@ -188,7 +192,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
 
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) Vec4 {
-    let distance_to_skeleton = length(in.position_world - in.closest_line_skeleton_position);
+    let distance_to_skeleton = length(in.position_world - in.closest_strip_position);
     let relative_distance_to_skeleton = distance_to_skeleton / in.line_radius;
 
     var coverage = 1.0;
