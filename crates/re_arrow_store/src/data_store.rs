@@ -156,12 +156,24 @@ impl DataStore {
 
     // TODO: that one can probably return an actual DataFrame!
     pub fn query(
-        timeline: Timeline,
+        &mut self,
+        timeline: &Timeline,
         time_query: TimeQuery,
         ent_path: &EntityPath,
         components: &[&str],
-    ) -> anyhow::Result<()> {
-        todo!()
+    ) {
+        let latest_at = match time_query {
+            TimeQuery::LatestAt(latest_at) => latest_at,
+            TimeQuery::Range(_) => unimplemented!(), // TODO
+        };
+
+        // TODO: those clones suck
+        let row_indices = self
+            .indices
+            .get_mut(&(timeline.clone(), ent_path.clone()))
+            .map(|index| index.latest_at(latest_at, components));
+
+        dbg!(row_indices);
     }
 }
 
@@ -352,12 +364,18 @@ impl IndexTable {
         indices: &HashMap<ComponentNameRef<'_>, RowIndex>,
     ) -> anyhow::Result<()> {
         // TODO: at this point, indices _must_ contains an entry for 'instances'.
-        self.buckets
-            .iter_mut()
-            .next()
-            .unwrap()
-            .1
-            .insert(time, indices)
+        // TODO: ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ remember what I meant :D
+
+        // TODO: real bucketing!
+        let bucket = self.buckets.iter_mut().next().unwrap().1;
+
+        bucket.insert(time, indices)
+    }
+
+    pub fn latest_at(&mut self, at: i64, components: &[&str]) -> Vec<RowIndex> {
+        // TODO: real bucketing!
+        let bucket = self.buckets.iter_mut().next().unwrap().1;
+        bucket.latest_at(at, components)
     }
 }
 
@@ -463,7 +481,7 @@ impl IndexBucket {
         // the components' indices.
         //
         // What we are _not_ guaranteed, though, is that existing component indices that weren't
-        // affected by this update, are appended with null values so that they stay aligned with
+        // affected by this update are appended with null values so that they stay aligned with
         // the length of the time index.
         // Step 2 below takes care of that.
         for (name, row_idx) in row_indices {
@@ -472,9 +490,6 @@ impl IndexBucket {
                 index.extend_constant(self.times.len().saturating_sub(1), None);
                 index
             });
-            if name == &"positions" {
-                dbg!(Some(*row_idx));
-            }
             index.push(Some(*row_idx))
         }
 
@@ -564,6 +579,41 @@ impl IndexBucket {
         self.is_sorted = true;
 
         Ok(())
+    }
+
+    pub fn latest_at(&mut self, at: i64, components: &[&str]) -> Vec<RowIndex> {
+        self.sort_indices().unwrap(); // TODO
+
+        let times = self.times.values();
+
+        let time_idx = match times.binary_search(&at) {
+            Ok(time_idx) => time_idx as i64,
+            Err(time_idx_closest) => time_idx_closest.clamp(0, times.len() - 1) as i64,
+        };
+
+        let mut row_indices = Vec::with_capacity(components.len());
+
+        // assert!(self.times.is_valid(time_idx as usize));
+        // row_indices.push(times[time_idx as usize]);
+
+        for (_, index) in self
+            .indices
+            .iter()
+            .filter(|(name, _)| components.contains(&name.as_str()))
+        {
+            let mut idx = time_idx;
+            while !index.is_valid(idx as _) {
+                idx -= 1;
+                // TODO: I'm actually not sure that's even possible, need to think about it
+                // (means every single row is null!)
+                assert!(idx >= 0);
+            }
+
+            assert!(index.is_valid(idx as usize));
+            row_indices.push(index.values()[idx as usize]);
+        }
+
+        row_indices
     }
 }
 

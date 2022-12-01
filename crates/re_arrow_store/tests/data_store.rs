@@ -21,7 +21,7 @@ use arrow2::{
 };
 use polars::export::num::ToPrimitive;
 
-use re_arrow_store::DataStore;
+use re_arrow_store::{DataStore, TimeQuery};
 use re_log_types::arrow::{
     filter_time_cols, ENTITY_PATH_KEY, TIMELINE_KEY, TIMELINE_SEQUENCE, TIMELINE_TIME,
 };
@@ -31,7 +31,7 @@ use re_log_types::{ObjPath as EntityPath, TimeInt, TimeType, Timeline};
 
 // TODO: same thing, but as a benchmark
 #[test]
-fn single_entity_single_component_roundtrip() {
+fn single_entity_multi_timelines_multi_components_roundtrip() {
     let mut store = DataStore::default();
 
     let ent_path = EntityPath::from("this/that");
@@ -42,6 +42,7 @@ fn single_entity_single_component_roundtrip() {
     let now_plus_10ms = now + Duration::from_millis(10);
     let now_plus_20ms = now + Duration::from_millis(20);
 
+    // TODO: test holes!
     let frame41 = 41;
     let frame42 = 42;
     let frame43 = 43;
@@ -79,8 +80,6 @@ fn single_entity_single_component_roundtrip() {
     store.insert(&schema, components).unwrap();
     eprintln!("{store}");
 
-    return;
-
     let (schema, components) = build_message(
         &ent_path,
         [build_log_time(now_minus_10ms), build_frame_nr(frame42)],
@@ -92,6 +91,18 @@ fn single_entity_single_component_roundtrip() {
     eprintln!("{store}");
 
     // TODO: push to a single timeline
+
+    // TODO:
+    // - query at 40, 41, 42, 43, 44
+
+    let timeline = Timeline::new("frame_nr", TimeType::Sequence);
+    let res = store.query(
+        &timeline,
+        TimeQuery::LatestAt(44),
+        &ent_path,
+        &["instances", "rects", "positions"],
+    );
+    dbg!(res);
 }
 
 // --- helpers ---
