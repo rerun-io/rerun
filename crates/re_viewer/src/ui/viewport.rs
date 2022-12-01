@@ -66,6 +66,11 @@ pub struct ViewportBlueprint {
 
     /// Show one tab as maximized?
     maximized: Option<SpaceViewId>,
+
+    /// Set to `true` the first time the user messes around with the viewport blueprint.
+    /// Before this is set we automatically add new spaces to the viewport
+    /// when they show up in the data.
+    has_been_user_edited: bool,
 }
 
 impl ViewportBlueprint {
@@ -146,7 +151,10 @@ impl ViewportBlueprint {
             visible,
             trees,
             maximized,
+            has_been_user_edited,
         } = self;
+
+        *has_been_user_edited = true;
 
         trees.retain(|vis_set, _| !vis_set.contains(space_view_id));
 
@@ -227,11 +235,13 @@ impl ViewportBlueprint {
             }
 
             let mut is_space_view_visible = self.visible.contains(space_view_id);
-            visibility_button(ui, true, &mut is_space_view_visible);
-            if is_space_view_visible {
-                self.visible.insert(*space_view_id);
-            } else {
-                self.visible.remove(space_view_id);
+            if visibility_button(ui, true, &mut is_space_view_visible).changed() {
+                self.has_been_user_edited = true;
+                if is_space_view_visible {
+                    self.visible.insert(*space_view_id);
+                } else {
+                    self.visible.remove(space_view_id);
+                }
             }
         })
         .body(|ui| {
@@ -274,16 +284,20 @@ impl ViewportBlueprint {
     fn on_frame_start(&mut self, ctx: &mut ViewerContext<'_>, spaces_info: &SpacesInfo) {
         crate::profile_function!();
 
-        if self.space_views.is_empty() {
-            *self = Self::new(ctx, spaces_info);
-        } else {
-            crate::profile_scope!("look for missing space views");
+        if !self.has_been_user_edited {
+            // Automatically populate the viewport based on the data:
 
-            // Check if the blueprint is missing a space,
-            // maybe one that has been added by new data:
-            for (path, space_info) in &spaces_info.spaces {
-                if !self.has_space(path) {
-                    self.add_space_view_for(ctx, path, space_info);
+            if self.space_views.is_empty() {
+                *self = Self::new(ctx, spaces_info);
+            } else {
+                crate::profile_scope!("look for missing space views");
+
+                // Check if the blueprint is missing a space,
+                // maybe one that has been added by new data:
+                for (path, space_info) in &spaces_info.spaces {
+                    if !self.has_space(path) {
+                        self.add_space_view_for(ctx, path, space_info);
+                    }
                 }
             }
         }
