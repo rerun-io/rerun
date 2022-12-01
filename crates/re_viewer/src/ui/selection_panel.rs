@@ -184,8 +184,16 @@ impl SelectionPanel {
             }
             Selection::SpaceView(space_view_id) => {
                 if let Some(space_view) = blueprint.viewport.space_view_mut(&space_view_id) {
-                    ui.label("SpaceView");
+                    ui.heading("SpaceView");
+                    ui.add_space(4.0);
+
+                    if ui.button("Remove from Viewport").clicked() {
+                        blueprint.viewport.remove(&space_view_id);
+                        ctx.clear_selection();
+                    } else {
+                        ui.add_space(4.0);
                     ui_space_view(ctx, ui, space_view);
+                    }
                 } else {
                     ctx.clear_selection();
                 }

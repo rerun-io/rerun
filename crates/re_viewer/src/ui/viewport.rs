@@ -136,8 +136,26 @@ impl ViewportBlueprint {
         self.space_views.get(space_view)
     }
 
-    pub(crate) fn space_view_mut(&mut self, space_view: &SpaceViewId) -> Option<&mut SpaceView> {
-        self.space_views.get_mut(space_view)
+    pub(crate) fn space_view_mut(&mut self, space_view_id: &SpaceViewId) -> Option<&mut SpaceView> {
+        self.space_views.get_mut(space_view_id)
+    }
+
+    pub(crate) fn remove(&mut self, space_view_id: &SpaceViewId) -> Option<SpaceView> {
+        let Self {
+            space_views,
+            visible,
+            trees,
+            maximized,
+        } = self;
+
+        trees.retain(|vis_set, _| !vis_set.contains(space_view_id));
+
+        if *maximized == Some(*space_view_id) {
+            *maximized = None;
+        }
+
+        visible.remove(space_view_id);
+        space_views.remove(space_view_id)
     }
 
     fn has_space(&self, space_path: &ObjPath) -> bool {
