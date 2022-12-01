@@ -32,12 +32,15 @@ struct VertexOut {
     position_world: Vec3,
 
     @location(2) @interpolate(perspective)
-    closest_strip_position: Vec3,
+    center_position: Vec3,
 
     @location(3) @interpolate(flat)
-    strip_radius: f32,
+    radius: f32,
 
-    @location(4) @interpolate(flat)
+    @location(4) @interpolate(perspective)
+    closest_strip_position: Vec3,
+
+    @location(5) @interpolate(flat)
     round_cap: u32,
 };
 
@@ -184,9 +187,10 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     var out: VertexOut;
     out.position = frame.projection_from_world * Vec4(pos, 1.0);
     out.position_world = pos;
+    out.center_position = center_position;
     out.closest_strip_position = closest_strip_position;
     out.color = strip_data.color;
-    out.strip_radius = strip_data.radius;
+    out.radius = radius;
     out.round_cap = round_cap;
 
     return out;
@@ -194,20 +198,21 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
 
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) Vec4 {
-    let distance_to_skeleton = length(in.position_world - in.closest_strip_position);
-    let relative_distance_to_skeleton = distance_to_skeleton / in.strip_radius;
 
     var coverage = 1.0;
     if in.round_cap != 0u {
+        let distance_to_skeleton = length(in.position_world - in.closest_strip_position);
         let pixel_world_size = pixel_world_size_at(length(in.position_world - frame.camera_position));
-        let signed_distance_to_border = distance_to_skeleton - in.strip_radius;
+        let signed_distance_to_border = distance_to_skeleton - in.radius;
         if signed_distance_to_border > pixel_world_size {
             discard;
         }
         coverage = 1.0 - saturate(signed_distance_to_border / pixel_world_size);
     }
 
-    // TODO(andreas): proper shading/lighting, etc.
-    let shading = max(0.2, 1.2 - relative_distance_to_skeleton);
+    // TODO(andreas): lighting setup
+    let to_center = in.position_world - in.center_position;
+    let relative_distance_to_center = dot(to_center, to_center) / (in.radius * in.radius);
+    let shading = max(0.2, 1.0 - relative_distance_to_center) * 0.9;
     return vec4<f32>(in.color.rgb * shading, coverage);
 }
