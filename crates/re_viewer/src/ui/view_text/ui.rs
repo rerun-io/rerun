@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use egui::{Color32, RichText};
+
 use re_data_store::{ObjPath, Timeline};
 use re_log_types::{LogMsg, TimePoint};
 
@@ -269,9 +270,6 @@ fn show_table(
     text_entries: &[TextEntry],
     scroll_to_row: Option<usize>,
 ) {
-    let current_timeline = *ctx.rec_cfg.time_ctrl.timeline();
-    let current_time = ctx.rec_cfg.time_ctrl.time_int();
-
     let timelines = state
         .filters
         .col_timelines
@@ -282,6 +280,9 @@ fn show_table(
     use egui_extras::Column;
     const ROW_HEIGHT: f32 = 18.0;
     const HEADER_HEIGHT: f32 = 20.0;
+
+    let current_timeline = *ctx.rec_cfg.time_ctrl.timeline();
+    let current_time = ctx.rec_cfg.time_ctrl.time_int();
 
     let mut table_builder = egui_extras::TableBuilder::new(ui)
         .striped(true)

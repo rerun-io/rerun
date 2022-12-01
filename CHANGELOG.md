@@ -2,6 +2,7 @@
 
 A rough time-line of major user-facing things added, removed and changed. Newest on top.
 
+* 2022-12-01: Text logs view now support all kinds of filters: [#328](https://github.com/rerun-io/rerun/pull/328).
 * 2022-11-30: Fix text log table bugs: [#420](https://github.com/rerun-io/rerun/pull/420).
 * 2022-11-29: Replaced the "time filter selection" with per-object "visible history": [#407](https://github.com/rerun-io/rerun/pull/407).
 * 2022-11-29: Introduced undo/redo selection history: [#340](https://github.com/rerun-io/rerun/pull/340).
@@ -10,7 +11,6 @@ A rough time-line of major user-facing things added, removed and changed. Newest
 * 2022-11-27: Toggle fullscreen with F11: [#364](https://github.com/rerun-io/rerun/pull/364).
 * 2022-11-23: Associated annotation context & class description now reachable from any object with class_id: [#331](https://github.com/rerun-io/rerun/pull/331).
 * 2022-11-23: Fix 3D line segments being connected: [#330](https://github.com/rerun-io/rerun/pull/330).
-* 2022-11-22: Text logs view now support all kinds of filters: [#328](https://github.com/rerun-io/rerun/pull/328).
 * 2022-11-22: Support for labels and class ids on rects and obb: [#326](https://github.com/rerun-io/rerun/pull/326).
 * 2022-11-21: Support for labels and class ids on points: [#321](https://github.com/rerun-io/rerun/pull/321).
 * 2022-11-17: Remove the `set_visible` API: [#298](https://github.com/rerun-io/rerun/pull/298).
