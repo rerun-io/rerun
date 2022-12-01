@@ -1,22 +1,17 @@
-use std::{collections::BTreeMap, marker::PhantomData};
-
 use arrow2::{
     array::{
-        Array, ListArray, MapArray, MutableArray, MutableMapArray, MutablePrimitiveArray,
-        MutableStructArray, MutableUtf8Array, PrimitiveArray, StructArray, UInt64Array, Utf8Array,
+        Array, MutableArray, MutableMapArray, MutablePrimitiveArray, MutableStructArray,
+        MutableUtf8Array,
     },
-    buffer::Buffer,
-    chunk::Chunk,
-    datatypes::{DataType, Field, Schema, TimeUnit},
+    datatypes::{DataType, Field},
 };
 
 use arrow2_convert::{
     field::ArrowField,
     serialize::{ArrowSerialize, TryIntoArrow},
-    ArrowField,
 };
 
-use crate::{field_types, MsgId, ObjPath, Time, TimePoint, TimeType, Timeline};
+use crate::{MsgId, ObjPath, Time, TimePoint, TimeType, Timeline};
 
 arrow2_convert::arrow_enable_vec_for_type!(TimePoint);
 impl ArrowField for TimePoint {
@@ -256,11 +251,10 @@ pub const ENTITY_PATH_KEY: &str = "RERUN:entity_path";
 
     /// Wrap `field_array` in a single-element `ListArray`
     pub fn wrap_in_listarray(field_array: Box<dyn Array>) -> Result<ListArray<i32>, Error> {
-        ListArray::<i32>::try_new(
-            ListArray::<i32>::default_datatype(field_array.data_type().clone()), // data_type
-            Buffer::from(vec![0, field_array.len() as i32]),                     // offsets
-            field_array,                                                         // values
-            None,                                                                // validity
-        )
+        let datatype = ListArray::<i32>::default_datatype(field_array.data_type().clone());
+        let offsets = Buffer::from(vec![0, field_array.len() as i32]);
+        let values = field_array;
+        let validity = None;
+        ListArray::<i32>::try_new(datatype, offsets, values, validity)
     }
 }

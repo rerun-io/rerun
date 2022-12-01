@@ -4,11 +4,11 @@
 
 mod arrow {
     use arrow2::{
-        array::{MutableArray, MutableStructArray, StructArray, TryPush},
+        array::{MutableArray, MutableStructArray, TryPush},
         datatypes::DataType,
     };
     use arrow2_convert::{
-        arrow_enable_vec_for_type, deserialize::ArrowDeserialize, field::ArrowField,
+        arrow_enable_vec_for_type, field::ArrowField,
         serialize::ArrowSerialize,
     };
 
