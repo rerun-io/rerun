@@ -606,7 +606,9 @@ impl Scene3D {
                     point.radius =
                         Size::new_scene(dist_to_eye * size_in_points * point_size_at_one_meter);
                 }
-                if point.instance_id_hash == hovered_instance_id_hash {
+                if hovered_instance_id_hash.is_some()
+                    && point.instance_id == hovered_instance_id_hash
+                {
                     point.radius *= hover_size_boost;
                     point.color = HOVER_COLOR;
                 }
