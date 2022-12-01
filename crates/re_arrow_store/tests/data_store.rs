@@ -55,8 +55,9 @@ fn single_entity_single_component_roundtrip() {
         [build_instances(nb_instances), build_rects(nb_instances)],
     );
     // eprintln!("inserting into '{ent_path}':\nschema: {schema:#?}\ncomponents: {components:#?}");
+    eprintln!("---\ninserting into '{ent_path}': [log_time, frame_nr], [instances, rects]");
     store.insert(&schema, components).unwrap();
-    eprintln!("---\n{store}");
+    eprintln!("{store}");
 
     let (schema, components) = build_message(
         &ent_path,
@@ -64,8 +65,9 @@ fn single_entity_single_component_roundtrip() {
         [build_rects(nb_instances)],
     );
     // eprintln!("inserting into '{ent_path}':\nschema: {schema:#?}\ncomponents: {components:#?}");
+    eprintln!("---\ninserting into '{ent_path}': [log_time, frame_nr], [rects]");
     store.insert(&schema, components).unwrap();
-    eprintln!("---\n{store}");
+    eprintln!("{store}");
 
     let (schema, components) = build_message(
         &ent_path,
@@ -73,8 +75,11 @@ fn single_entity_single_component_roundtrip() {
         [build_instances(nb_instances)],
     );
     // eprintln!("inserting into '{ent_path}':\nschema: {schema:#?}\ncomponents: {components:#?}");
+    eprintln!("---\ninserting into '{ent_path}': [log_time, frame_nr], [instances]");
     store.insert(&schema, components).unwrap();
-    eprintln!("---\n{store}");
+    eprintln!("{store}");
+
+    return;
 
     let (schema, components) = build_message(
         &ent_path,
@@ -82,8 +87,11 @@ fn single_entity_single_component_roundtrip() {
         [build_positions(nb_instances)],
     );
     // eprintln!("inserting into '{ent_path}':\nschema: {schema:#?}\ncomponents: {components:#?}");
+    eprintln!("---\ninserting into '{ent_path}': [log_time, frame_nr], [positions]");
     store.insert(&schema, components).unwrap();
-    eprintln!("---\n{store}");
+    eprintln!("{store}");
+
+    // TODO: push to a single timeline
 }
 
 // --- helpers ---
@@ -295,9 +303,6 @@ fn build_message(
     cols.push(timelines_data.boxed());
 
     // Build & pack components
-    // TODO: what about when nb_instances differs between components? is that legal?
-    // let (instances_schema, instances_data) = build_instances(nb_instances);
-    // let (rects_schema, rects_data) = build_rects(nb_instances);
     let (components_schema, components_data) = pack_components(
         components
             .into_iter()

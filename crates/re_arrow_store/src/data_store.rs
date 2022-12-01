@@ -7,11 +7,13 @@ use arrow2::array::{
     MutableListArray, MutableStructArray, PrimitiveArray, StructArray, TryPush, UInt64Array,
     UInt64Vec, Utf8Array,
 };
+use arrow2::bitmap::Bitmap;
 use arrow2::buffer::Buffer;
 use arrow2::chunk::Chunk;
 use arrow2::compute::concatenate::concatenate;
 use arrow2::datatypes::{DataType, Field, Schema};
 use nohash_hasher::IntMap;
+use polars::export::num::Integer;
 use polars::prelude::IndexOfSchema;
 
 use re_log_types::arrow::{
@@ -45,7 +47,6 @@ use crate::TimeInt;
 // TODO: perf probes
 // TODO: every error and assert paths must be _TESTED_!!!
 
-// TODO: recursive Display impls for everything
 // TODO: recursive Iterator impls for everything
 
 // TODO: splats!
@@ -147,6 +148,8 @@ impl DataStore {
                 .or_insert_with(|| IndexTable::new(timeline.clone(), ent_path.clone()));
             index.insert(*time, &indices)?;
         }
+
+        // dbg!(&indices);
 
         Ok(())
     }
@@ -469,6 +472,9 @@ impl IndexBucket {
                 index.extend_constant(self.times.len().saturating_sub(1), None);
                 index
             });
+            if name == &"positions" {
+                dbg!(Some(*row_idx));
+            }
             index.push(Some(*row_idx))
         }
 
@@ -510,23 +516,47 @@ impl IndexBucket {
             swaps.sort_by_key(|&i| &times[i]);
             swaps
         };
-        let swaps = &swaps[0..swaps.len() / 2 + 1];
+
+        // TODO: don't clone to swap
 
         // time
         {
+            assert!(self.times.validity().is_none()); // TODO: explain
+
+            let source = self.times.values().clone();
             let values = self.times.values_mut_slice();
+
             for (from, to) in swaps.iter().enumerate() {
-                values.swap(from, *to);
+                values[*to] = source[from];
+            }
+        }
+
+        fn reshuffle_index(index: &mut UInt64Vec, swaps: &[usize]) {
+            // shuffle data
+            {
+                let source = index.values().clone();
+                let values = index.values_mut_slice();
+
+                for (from, to) in swaps.iter().enumerate() {
+                    values[*to] = source[from];
+                }
+            }
+
+            // shuffle validity bitmaps
+            let validity_before = index.validity().cloned();
+            let validity_after = validity_before.clone();
+            if let (Some(validity_before), Some(mut validity_after)) =
+                (validity_before, validity_after)
+            {
+                for (from, to) in swaps.iter().enumerate() {
+                    validity_after.set(*to, validity_before.get(from));
+                }
+                assert_eq!(validity_before.unset_bits(), validity_after.unset_bits());
+                index.set_validity(Some(validity_after));
             }
         }
 
         // everything else
-        fn reshuffle_index(index: &mut UInt64Vec, swaps: &[usize]) {
-            let values = index.values_mut_slice();
-            for (from, to) in swaps.iter().enumerate() {
-                values.swap(from, *to);
-            }
-        }
         for (_, index) in &mut self.indices {
             reshuffle_index(index, &swaps);
         }
