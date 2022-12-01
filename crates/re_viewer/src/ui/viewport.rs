@@ -34,10 +34,23 @@ impl SpaceViewId {
 
 // ----------------------------------------------------------------------------
 
+fn query_scene(ctx: &mut ViewerContext<'_>, space_info: &SpaceInfo) -> super::scene::Scene {
+    let query = SceneQuery {
+        obj_paths: &space_info.objects,
+        timeline: *ctx.rec_cfg.time_ctrl.timeline(),
+        latest_at: TimeInt::MAX,
+        obj_props: &Default::default(), // all visible
+    };
+    query.query(ctx)
+}
+
+// ----------------------------------------------------------------------------
+
 type VisibilitySet = BTreeMap<SpaceViewId, bool>;
 
 /// Describes the layout and contents of the Viewport Panel.
 #[derive(Default, serde::Deserialize, serde::Serialize)]
+#[serde(default)]
 pub struct ViewportBlueprint {
     /// Where the space views are stored.
     space_views: HashMap<SpaceViewId, SpaceView>,
@@ -64,13 +77,7 @@ impl ViewportBlueprint {
         let mut blueprint = Self::default();
 
         for (path, space_info) in &spaces_info.spaces {
-            let query = SceneQuery {
-                obj_paths: &space_info.objects,
-                timeline: *ctx.rec_cfg.time_ctrl.timeline(),
-                latest_at: TimeInt::MAX,
-                obj_props: &Default::default(), // all visible
-            };
-            let scene = query.query(ctx);
+            let scene = query_scene(ctx, space_info);
             for category in scene.categories() {
                 if category == ViewCategory::TwoD && scene.two_d.images.len() > 1 {
                     // Multiple images (e.g. depth and rgb, or rgb and segmentation) in the same 2D scene.
@@ -230,6 +237,18 @@ impl ViewportBlueprint {
         self.trees.clear(); // Reset them
     }
 
+    fn add_space_view_for(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        path: &ObjPath,
+        space_info: &SpaceInfo,
+    ) {
+        let scene = query_scene(ctx, space_info);
+        for category in scene.categories() {
+            self.add_space_view(SpaceView::new(&scene, category, path.clone()));
+        }
+    }
+
     fn on_frame_start(&mut self, ctx: &mut ViewerContext<'_>, spaces_info: &SpacesInfo) {
         crate::profile_function!();
 
@@ -242,16 +261,7 @@ impl ViewportBlueprint {
             // maybe one that has been added by new data:
             for (path, space_info) in &spaces_info.spaces {
                 if !self.has_space(path) {
-                    let query = SceneQuery {
-                        obj_paths: &space_info.objects,
-                        timeline: *ctx.rec_cfg.time_ctrl.timeline(),
-                        latest_at: TimeInt::MAX,
-                        obj_props: &Default::default(), // all visible
-                    };
-                    let scene = query.query(ctx);
-                    for category in scene.categories() {
-                        self.add_space_view(SpaceView::new(&scene, category, path.clone()));
-                    }
+                    self.add_space_view_for(ctx, path, space_info);
                 }
             }
         }
@@ -343,6 +353,27 @@ impl ViewportBlueprint {
                 .style(dock_style)
                 .show_inside(ui, &mut tab_viewer);
         }
+    }
+
+    fn create_new_blueprint_ui(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        spaces_info: &SpacesInfo,
+    ) {
+        ui.menu_button("Add new space view…", |ui| {
+            ui.style_mut().wrap = Some(false);
+            for (path, space_info) in &spaces_info.spaces {
+                let scene = query_scene(ctx, space_info);
+                if !scene.categories().is_empty() && ui.button(path.to_string()).clicked() {
+                    ui.close_menu();
+
+                    for category in scene.categories() {
+                        self.add_space_view(SpaceView::new(&scene, category, path.clone()));
+                    }
+                }
+            }
+        });
     }
 }
 
@@ -687,8 +718,22 @@ impl Blueprint {
 
                     ui.separator();
 
-                    self.viewport
-                        .tree_ui(ctx, ui, spaces_info, &ctx.log_db.obj_db.tree);
+                    egui_extras::StripBuilder::new(ui)
+                        .size(egui_extras::Size::remainder())
+                        .size(egui_extras::Size::exact(20.0))
+                        .vertical(|mut strip| {
+                            strip.cell(|ui| {
+                                self.viewport.tree_ui(
+                                    ctx,
+                                    ui,
+                                    spaces_info,
+                                    &ctx.log_db.obj_db.tree,
+                                );
+                            });
+                            strip.cell(|ui| {
+                                self.viewport.create_new_blueprint_ui(ctx, ui, spaces_info);
+                            });
+                        });
                 }
             },
         );
