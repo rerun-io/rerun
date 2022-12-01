@@ -203,11 +203,15 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
     if in.round_cap != 0u {
         let distance_to_skeleton = length(in.position_world - in.closest_strip_position);
         let pixel_world_size = pixel_world_size_at(length(in.position_world - frame.camera_position));
+
+        // It's important that we do antialias both inwards and outwards of the exact border.
+        // If we do only outwards, rectangle outlines won't line up nicely
+        let half_pixel_world_size = pixel_world_size * 0.5;
         let signed_distance_to_border = distance_to_skeleton - in.radius;
-        if signed_distance_to_border > pixel_world_size {
+        if signed_distance_to_border > half_pixel_world_size {
             discard;
         }
-        coverage = 1.0 - saturate(signed_distance_to_border / pixel_world_size);
+        coverage = 1.0 - saturate((signed_distance_to_border + half_pixel_world_size) / pixel_world_size);
     }
 
     // TODO(andreas): lighting setup

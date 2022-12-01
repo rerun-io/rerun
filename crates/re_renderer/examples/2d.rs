@@ -63,39 +63,30 @@ impl framework::Example for Render2D {
             splits[0].resolution_in_pixel[0] as f32,
             splits[0].resolution_in_pixel[1] as f32,
         );
-        let line_radius = 5.0;
 
         let mut line_strip_builder = LineStripSeriesBuilder::default();
-        // Green lines filling border
-        line_strip_builder
-            .add_strip_2d(
-                [
-                    glam::vec2(line_radius, line_radius),
-                    glam::vec2(screen_size.x - line_radius, line_radius),
-                    glam::vec2(screen_size.x - line_radius, screen_size.y - line_radius),
-                    glam::vec2(line_radius, screen_size.y - line_radius),
-                    glam::vec2(line_radius, line_radius),
-                ]
-                .into_iter(),
-            )
-            .radius(line_radius)
-            .color_rgb(50, 255, 50);
 
-        // Blue lines around the bottom right quarter.
+        // Blue rect outline around the bottom right quarter.
+        let line_radius = 10.0;
         let blue_rect_position = screen_size * 0.5 - glam::vec2(line_radius, line_radius);
         line_strip_builder
-            .add_strip_2d(
-                [
-                    blue_rect_position,
-                    blue_rect_position + glam::vec2(screen_size.x * 0.5, 0.0),
-                    blue_rect_position + glam::vec2(screen_size.x * 0.5, screen_size.y * 0.5),
-                    blue_rect_position + glam::vec2(0.0, screen_size.y * 0.5),
-                    blue_rect_position,
-                ]
-                .into_iter(),
+            .add_rectangle_outline_2d(
+                blue_rect_position,
+                glam::vec2(screen_size.x * 0.5, 0.0),
+                glam::vec2(0.0, screen_size.y * 0.5),
             )
             .radius(line_radius)
             .color_rgb(50, 50, 255);
+
+        // .. within, a orange rectangle
+        line_strip_builder
+            .add_rectangle_outline_2d(
+                blue_rect_position + screen_size * 0.125,
+                glam::vec2(screen_size.x * 0.25, 0.0),
+                glam::vec2(0.0, screen_size.y * 0.25),
+            )
+            .radius(5.0)
+            .color_rgb(255, 100, 1);
 
         // All variations of line caps
         for (i, flags) in [
