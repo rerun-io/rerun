@@ -70,6 +70,10 @@ impl LineStripSeriesBuilder {
         LineStripBuilder(&mut self.strips[old_len..])
     }
 
+    /// Add rectangle outlines.
+    ///
+    /// Internally adds 4 line segments with rounded line heads.
+    /// Disables color gradient since we don't support gradients in this setup yet (i.e. enabling them does not look good)
     pub fn add_rectangle_outline(
         &mut self,
         top_left_corner: glam::Vec3,
@@ -127,6 +131,10 @@ impl LineStripSeriesBuilder {
         self.add_segments(segments.map(|(a, b)| (a.extend(z), b.extend(z))))
     }
 
+    /// Add 2D rectangle outlines.
+    ///
+    /// Internally adds 4 2D line segments with rounded line heads.
+    /// Disables color gradient since we don't support gradients in this setup yet (i.e. enabling them does not look good)
     pub fn add_rectangle_outline_2d(
         &mut self,
         top_left_corner: glam::Vec2,
