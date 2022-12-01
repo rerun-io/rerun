@@ -31,9 +31,7 @@ Steps to reproduce the behavior:
 <!-- If this is a crash, include the backtrace in a code-block (```[STACKTRACE]```). -->
 
 **Desktop (please complete the following information):**
- - OS: <!-- e.g. iOS -->
- - Browser <!-- e.g. chrome, safari -->
- - Version <!-- e.g. 22 -->
+ - OS: <!-- e.g. macOS Monterey 12.6 -->
 
 **Additional context**
 <!-- Add any other context about the problem here. -->
