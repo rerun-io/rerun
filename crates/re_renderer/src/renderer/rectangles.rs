@@ -129,12 +129,23 @@ impl RectangleDrawData {
 
             for (i, rectangle) in rectangles.iter().enumerate() {
                 let offset = i * allocation_size_per_uniform_buffer as usize;
-                let target_buffer = bytemuck::from_bytes_mut::<gpu_data::UniformBuffer>(
-                    &mut staging_buffer[offset..(offset + uniform_buffer_size)],
+
+                // CAREFUL: Memory from `write_buffer_with` may not be aligned, causing bytemuck to fail at runtime if we use it to cast the memory to a slice!
+                // I.e. this will crash randomly:
+                //
+                // let target_buffer = bytemuck::from_bytes_mut::<gpu_data::UniformBuffer>(
+                //     &mut staging_buffer[offset..(offset + uniform_buffer_size)],
+                // );
+                //
+                // TODO(andreas): with our own staging buffers we could fix this very easily
+
+                staging_buffer[offset..(offset + uniform_buffer_size)].copy_from_slice(
+                    bytemuck::bytes_of(&gpu_data::UniformBuffer {
+                        top_left_corner_position: rectangle.top_left_corner_position.into(),
+                        extent_u: rectangle.extent_u.into(),
+                        extent_v: rectangle.extent_v.into(),
+                    }),
                 );
-                target_buffer.top_left_corner_position = rectangle.top_left_corner_position.into();
-                target_buffer.extent_u = rectangle.extent_u.into();
-                target_buffer.extent_v = rectangle.extent_v.into();
             }
         }
 
