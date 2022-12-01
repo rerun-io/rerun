@@ -49,20 +49,25 @@ fn single_entity_single_component_roundtrip() {
     let (schema, components) = build_message(&ent_path, now_plus_20ms, frame41, 10);
     // eprintln!("inserting into '{ent_path}':\nschema: {schema:#?}\ncomponents: {components:#?}");
     store.insert(&schema, components).unwrap();
-    eprintln!("{store}");
+    eprintln!("---\n{store}");
 
     let (schema, components) = build_message(&ent_path, now_minus_20ms, frame43, 20);
     // eprintln!("inserting into '{ent_path}':\nschema: {schema:#?}\ncomponents: {components:#?}");
     store.insert(&schema, components).unwrap();
-    eprintln!("{store}");
+    eprintln!("---\n{store}");
 
     let (schema, components) = build_message(&ent_path, now, frame42, 1);
     // eprintln!("inserting into '{ent_path}':\nschema: {schema:#?}\ncomponents: {components:#?}");
     store.insert(&schema, components).unwrap();
-    eprintln!("{store}");
+    eprintln!("---\n{store}");
 }
 
 // --- helpers ---
+
+// TODO: the list around components still fields kinda weird no?
+// TODO: the entire message should be a list, for client-side batching!
+
+// TODO: share all of these with benchmark (datagen crate/module?)
 
 fn build_log_time(log_time: SystemTime) -> (Schema, Int64Array) {
     let log_time = log_time
@@ -203,6 +208,7 @@ fn pack_components(
     (schema, packed)
 }
 
+// TODO: make this more generic
 fn build_message(
     ent_path: &EntityPath,
     log_time: SystemTime,

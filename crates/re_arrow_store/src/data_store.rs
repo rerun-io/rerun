@@ -510,7 +510,7 @@ struct ComponentTable {
     /// The component's datatype.
     datatype: DataType,
     /// Each bucket covers an arbitrary range of rows.
-    /// How large is that range will depend on the size of the actual data, which is the actual
+    /// How large that range is will depend on the size of the actual data, which is the actual
     /// trigger for chunking.
     buckets: BTreeMap<RowIndex, ComponentBucket>,
 }
@@ -525,8 +525,10 @@ impl std::fmt::Display for ComponentTable {
 
         f.write_fmt(format_args!("name: {}\n", name))?;
         // TODO: doc
-        if std::env::var("RERUN_DATA_STORE_DISPLAY_SCHEMAS").is_ok() {
-            f.write_fmt(format_args!("datatype: {:#?}\n", datatype))?;
+        if let Ok(v) = std::env::var("RERUN_DATA_STORE_DISPLAY_SCHEMAS") {
+            if v == "1" {
+                f.write_fmt(format_args!("datatype: {:#?}\n", datatype))?;
+            }
         }
 
         f.write_str("buckets: [\n")?;
@@ -597,7 +599,7 @@ struct ComponentBucket {
     //
     // maps a row index to a list of values (e.g. a list of colors).
     //
-    // TODO: growable array
+    // TODO: MutableArray!
     data: Box<dyn Array>,
 }
 
@@ -622,9 +624,11 @@ impl std::fmt::Display for ComponentBucket {
             ))?;
         }
 
+        use polars::prelude::{DataFrame, Series};
+
         // TODO: I'm sure there's no need to clone here
-        let series = polars::prelude::Series::try_from((name.as_str(), data.clone())).unwrap();
-        let df = polars::prelude::DataFrame::new(vec![series]).unwrap();
+        let series = Series::try_from((name.as_str(), data.clone())).unwrap();
+        let df = DataFrame::new(vec![series]).unwrap();
         f.write_fmt(format_args!("data: {df:?}\n"))?;
 
         Ok(())
@@ -633,11 +637,32 @@ impl std::fmt::Display for ComponentBucket {
 
 impl ComponentBucket {
     pub fn new(name: Arc<String>, datatype: DataType, row_offset: RowIndex) -> Self {
+        // If this is the first bucket of this table, we need to insert an empty list at
+        // row index #0!
+        let data = if row_offset == 0 {
+            let inner_datatype = match &datatype {
+                DataType::List(field) => field.data_type().clone(),
+                _ => todo!("throw an error here, this should always be a list"), // TODO
+            };
+
+            let empty = ListArray::<i32>::from_data(
+                ListArray::<i32>::default_datatype(inner_datatype.clone()),
+                Buffer::from(vec![0, 0 as i32]),
+                new_empty_array(inner_datatype),
+                None,
+            );
+
+            // TODO: throw error
+            concatenate(&[&*new_empty_array(datatype), &*empty.boxed()]).unwrap()
+        } else {
+            new_empty_array(datatype)
+        };
+
         Self {
             name,
             row_offset,
             time_ranges: Default::default(),
-            data: new_empty_array(datatype),
+            data,
         }
     }
 
