@@ -103,16 +103,19 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
         pos_data_current = pos_data_quad_begin;
     }
 
-    // True if this is a trailing end quad - should either turn into a cap for the previous strip or collapse!
+    // True if this is a trailing quad - should either turn into a cap(s) or collapse!
     let is_trailing_quad = pos_data_quad_begin.strip_index != pos_data_quad_end.strip_index;
 
-    // Data valid for the entire strip that this vertex belongs to.
-    var strip_data = read_strip_data(pos_data_quad_begin.strip_index);
-
-    // Check if we should generate an end cap
-    if is_trailing_quad {
-
+    // The first triangle (local_index 0-2) forms an end cap of the "current" strip,
+    // the second triangle (local_index 3-5) is a start cap for the next strip!
+    var strip_index = pos_data_quad_end.strip_index;
+    let is_end_cap_triangle = is_trailing_quad && local_idx < 3u;
+    if is_end_cap_triangle {
+        strip_index = pos_data_quad_begin.strip_index;
     }
+
+    // Data valid for the entire strip that this vertex belongs to.
+    var strip_data = read_strip_data(strip_index);
 
     // Calculate the direction the current quad is facing in.
     var quad_dir: Vec3;
@@ -120,7 +123,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     var closest_line_skeleton_position = pos_data_current.pos;
     var round_cap = 0u;
     if is_trailing_quad {
-        if has_any_flag(strip_data.flags, CAP_END_TRIANGLE | CAP_END_ROUND) && local_idx < 3u {
+        if has_any_flag(strip_data.flags, CAP_END_TRIANGLE | CAP_END_ROUND) && is_end_cap_triangle {
             quad_dir = pos_data_quad_begin.pos - read_position_data(quad_idx - 1).pos;
             quad_dir = normalize(quad_dir);
 
@@ -138,7 +141,27 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
                 // Thick start of the triangle cap.
                 strip_data.radius *= 2.0;
             }
-        } else {
+        }  else if has_any_flag(strip_data.flags, CAP_START_TRIANGLE | CAP_START_ROUND) && !is_end_cap_triangle {
+            quad_dir = read_position_data(quad_idx + 2).pos - pos_data_quad_end.pos;
+            quad_dir = normalize(quad_dir);
+
+            round_cap = u32(has_any_flag(strip_data.flags, CAP_START_ROUND));
+
+            var size_factor = 1.0 + f32(has_any_flag(strip_data.flags, CAP_START_TRIANGLE));
+
+            if !is_at_quad_end {
+                // The pointy end.
+                closest_line_skeleton_position = pos_data_quad_end.pos;
+                center_position = pos_data_quad_end.pos -
+                                       quad_dir * (strip_data.radius * 4.0);
+                strip_data.radius = 0.0;
+            } else if round_cap == 0u {
+                // Thick start of the triangle cap.
+                strip_data.radius *= 2.0;
+            }
+        }
+
+        else {
             quad_dir = ZERO;
         }
     } else {
@@ -170,6 +193,7 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
 
     var coverage = 1.0;
     if in.round_cap != 0u {
+        // TODO: fill out coverage value.
         if relative_distance_to_skeleton > 1.0 {
             discard;
         }
