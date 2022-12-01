@@ -145,18 +145,19 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
         if is_end_cap_triangle && has_any_flag(strip_data.flags, CAP_END_TRIANGLE | CAP_END_ROUND) {
             quad_dir = pos_data_quad_begin.pos - read_position_data(quad_idx - 1).pos;
             pointy_end = is_at_quad_end;
+            round_cap = u32(has_any_flag(strip_data.flags, CAP_END_ROUND));
             if pointy_end {
                 closest_strip_position = pos_data_quad_begin.pos; // The last point of this strip
             }
         } else if !is_end_cap_triangle && has_any_flag(strip_data.flags, CAP_START_TRIANGLE | CAP_START_ROUND) {
             quad_dir = pos_data_quad_end.pos - read_position_data(quad_idx + 2).pos;
             pointy_end = !is_at_quad_end;
+            round_cap = u32(has_any_flag(strip_data.flags, CAP_START_ROUND));
             if pointy_end {
                 closest_strip_position = pos_data_quad_end.pos; // The first point of this strip
             }
         }
 
-        round_cap = u32(has_any_flag(strip_data.flags, CAP_END_ROUND | CAP_START_ROUND));
         quad_dir = normalize(quad_dir);
 
         if pointy_end {
