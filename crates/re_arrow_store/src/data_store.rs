@@ -3,8 +3,9 @@ use std::sync::Arc;
 
 use anyhow::{anyhow, bail, ensure};
 use arrow2::array::{
-    new_empty_array, Array, Int64Array, Int64Vec, ListArray, MutableArray, MutableListArray,
-    MutableStructArray, PrimitiveArray, StructArray, TryPush, UInt64Array, UInt64Vec, Utf8Array,
+    new_empty_array, Array, Int32Array, Int64Array, Int64Vec, ListArray, MutableArray,
+    MutableListArray, MutableStructArray, PrimitiveArray, StructArray, TryPush, UInt64Array,
+    UInt64Vec, Utf8Array,
 };
 use arrow2::buffer::Buffer;
 use arrow2::chunk::Chunk;
@@ -33,6 +34,8 @@ use re_log_types::{ObjPath as EntityPath, TimeInt, TimeType, Timeline};
 //    - need to grab performance metrics baselines
 //    - don't add layers until we have a use case for them
 
+// TODO: I'm actually starting to think that not having a registry is kinda awesome?
+
 // --- Data store ---
 
 // https://www.notion.so/rerunio/Arrow-Table-Design-cd77528c77ae4aa4a8c566e2ec29f84f
@@ -57,6 +60,7 @@ pub struct DataStore {
     components: HashMap<ComponentName, ComponentTable>,
 }
 
+// TODO: turn this into an actual rerun view!
 impl std::fmt::Display for DataStore {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
@@ -240,6 +244,8 @@ fn extract_components<'data>(
 
 // --- Indices ---
 
+// TODO: all tables must have empty components at zero!!!
+
 /// A chunked index, bucketized over time and space (whichever comes first).
 ///
 /// Each bucket covers a half-open time range.
@@ -363,11 +369,8 @@ struct IndexBucket {
     // sorted by the first column, time (if [`Self::is_sorted`])
     //
     // TODO: some components are always present: timelines, instances
-    // TODO: growable arrays
-    // TODO: ideally we want everything in the same "table", so that in case where 2 components
-    // have been updated at the same time, we can get away with a single binsearch
     times: Int64Vec,
-    indices: HashMap<ComponentName, MutableStructArray>,
+    indices: HashMap<ComponentName, UInt64Vec>,
 }
 
 impl std::fmt::Display for IndexBucket {
@@ -380,35 +383,31 @@ impl std::fmt::Display for IndexBucket {
         } = self;
 
         f.write_fmt(format_args!(
-            "time range: from {:?} (inclusive) to {:?} (exlusive)\n",
+            "time range: from {} (inclusive) to {} (exlusive)\n",
             time_range.start, time_range.end,
         ))?;
 
+        use polars::prelude::{DataFrame, NamedFrom, Series};
+
         let typ = self.time_range.start.0;
-        let times = Utf8Array::<i32>::from(
+        let times = Series::new(
+            "time",
             times
                 .values()
                 .iter()
-                .map(|time| Some(TypedTimeInt::from((typ, *time)).to_string()))
+                .map(|time| TypedTimeInt::from((typ, *time)).to_string())
                 .collect::<Vec<_>>(),
-        )
-        .boxed();
+        );
 
-        let series = vec![polars::prelude::Series::try_from(("time", times)).unwrap()];
-        let df = polars::prelude::DataFrame::new(series).unwrap();
+        let series = std::iter::once(times)
+            .chain(
+                indices
+                    .into_iter()
+                    .map(|(name, index)| Series::new(name.as_str(), index.values().as_slice())),
+            )
+            .collect::<Vec<_>>();
+        let df = DataFrame::new(series).unwrap();
         f.write_fmt(format_args!("data (sorted={is_sorted}): {df:?}\n"))?;
-
-        // let series = indices
-        //     .into_iter()
-        //     .map(|(name, index)| {
-        //         // TODO: I'm sure there's no need to clone here
-        //         let values = index.values();
-        //         let index = StructArray::new(index.data_type().clone(), *values.clone(), None);
-        //         polars::prelude::Series::try_from((name.as_str(), index)).unwrap()
-        //     })
-        //     .collect::<Vec<_>>();
-        // let df = polars::prelude::DataFrame::new(series).unwrap();
-        // f.write_fmt(format_args!("data (sorted={is_sorted}): {df:?}\n"))?;
 
         Ok(())
     }
@@ -431,65 +430,71 @@ impl IndexBucket {
         time: TypedTimeInt,
         indices: &HashMap<ComponentNameRef<'_>, RowIndex>,
     ) -> anyhow::Result<()> {
-        fn create_array() -> MutableStructArray {
-            let time = Box::new(Int64Vec::new());
-            let index = Box::new(UInt64Vec::new());
-            let fields = vec![
-                Field::new("time", DataType::Int64, false),
-                Field::new("index", DataType::UInt64, false),
-            ];
-            MutableStructArray::new(DataType::Struct(fields), vec![time, index])
-        }
-
         self.times.push(time.as_i64().into());
 
         // everything else
         for (name, row_idx) in indices {
             // TODO: new component needs to create an array filled with nulls
-            let index = self
+            let index = self.indices.entry(name.to_string()).or_insert_with(|| {
+                let mut index = UInt64Vec::default();
+                index.extend_constant(self.times.len().saturating_sub(1), None);
+                index
+            });
+            index.push(Some(*row_idx))
+        }
+
+        // All indices (+ time!) should always have the exact same length.
+        {
+            let expected_len = self.times.len();
+            assert!(self
                 .indices
-                .entry(name.to_string())
-                .or_insert_with(create_array);
-            index
-                .value::<Int64Vec>(0)
-                .unwrap()
-                .push(time.as_i64().into());
-            index.value::<UInt64Vec>(1).unwrap().push(Some(*row_idx));
+                .values()
+                .map(|index| index.len())
+                .all(|len| len == expected_len));
         }
 
         self.is_sorted = false;
-
-        // self.sort_indices();
+        self.sort_indices()?; // TODO: move to read path!
 
         Ok(())
     }
 
     /// Sort all indices by time.
-    pub fn sort_indices(&mut self) {
+    pub fn sort_indices(&mut self) -> anyhow::Result<()> {
         if self.is_sorted {
-            return;
+            return Ok(());
         }
 
-        use arrow2::compute::sort::{lexsort, SortColumn, SortOptions};
+        let swaps = {
+            let times = self.times.values();
+            let mut swaps = (0..times.len()).collect::<Vec<_>>();
+            swaps.sort_by_key(|&i| &times[i]);
+            swaps
+        };
+        let swaps = &swaps[0..swaps.len() / 2 + 1];
 
-        for (name, index) in &mut self.indices {
-            let time = index.value::<Int64Vec>(0).unwrap();
-            dbg!(&time);
+        // time
+        {
+            let values = self.times.values_mut_slice();
+            for (from, to) in swaps.iter().enumerate() {
+                values.swap(from, *to);
+            }
+        }
 
-            let sorted_chunk = lexsort::<i32>(
-                &vec![SortColumn {
-                    values: &*time.as_box(),
-                    options: None,
-                }],
-                None,
-            )
-            .unwrap();
-            dbg!(sorted_chunk);
-
-            let index = index.value::<UInt64Vec>(1).unwrap();
+        // everything else
+        fn reshuffle_index(index: &mut UInt64Vec, swaps: &[usize]) {
+            let values = index.values_mut_slice();
+            for (from, to) in swaps.iter().enumerate() {
+                values.swap(from, *to);
+            }
+        }
+        for (_, index) in &mut self.indices {
+            reshuffle_index(index, &swaps);
         }
 
         self.is_sorted = true;
+
+        Ok(())
     }
 }
 
@@ -519,7 +524,10 @@ impl std::fmt::Display for ComponentTable {
         } = self;
 
         f.write_fmt(format_args!("name: {}\n", name))?;
-        f.write_fmt(format_args!("datatype: {:#?}\n", datatype))?;
+        // TODO: doc
+        if std::env::var("RERUN_DATA_STORE_DISPLAY_SCHEMAS").is_ok() {
+            f.write_fmt(format_args!("datatype: {:#?}\n", datatype))?;
+        }
 
         f.write_str("buckets: [\n")?;
         for (_, bucket) in buckets {
@@ -607,7 +615,7 @@ impl std::fmt::Display for ComponentBucket {
         f.write_str("time ranges:\n")?;
         for (timeline, time_range) in time_ranges {
             f.write_fmt(format_args!(
-                "    - {}: from {:?} (inclusive) to {:?} (exlusive)\n",
+                "    - {}: from {} (inclusive) to {} (exlusive)\n",
                 timeline.name(),
                 time_range.start,
                 time_range.end,

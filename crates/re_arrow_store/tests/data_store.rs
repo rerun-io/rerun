@@ -47,17 +47,17 @@ fn single_entity_single_component_roundtrip() {
     let frame43 = 43;
 
     let (schema, components) = build_message(&ent_path, now_plus_20ms, frame41, 10);
-    eprintln!("inserting into '{ent_path}':\nschema: {schema:#?}\ncomponents: {components:#?}");
+    // eprintln!("inserting into '{ent_path}':\nschema: {schema:#?}\ncomponents: {components:#?}");
     store.insert(&schema, components).unwrap();
     eprintln!("{store}");
 
     let (schema, components) = build_message(&ent_path, now_minus_20ms, frame43, 20);
-    eprintln!("inserting into '{ent_path}':\nschema: {schema:#?}\ncomponents: {components:#?}");
+    // eprintln!("inserting into '{ent_path}':\nschema: {schema:#?}\ncomponents: {components:#?}");
     store.insert(&schema, components).unwrap();
     eprintln!("{store}");
 
     let (schema, components) = build_message(&ent_path, now, frame42, 1);
-    eprintln!("inserting into '{ent_path}':\nschema: {schema:#?}\ncomponents: {components:#?}");
+    // eprintln!("inserting into '{ent_path}':\nschema: {schema:#?}\ncomponents: {components:#?}");
     store.insert(&schema, components).unwrap();
     eprintln!("{store}");
 }
