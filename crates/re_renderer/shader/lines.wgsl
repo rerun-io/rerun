@@ -199,7 +199,7 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
 
     var coverage = 1.0;
     if in.round_cap != 0u {
-        let pixel_world_size = get_pixel_world_size_at(length(in.position_world - frame.camera_position));
+        let pixel_world_size = pixel_world_size_at(length(in.position_world - frame.camera_position));
         let signed_distance_to_border = distance_to_skeleton - in.strip_radius;
         if signed_distance_to_border > pixel_world_size {
             discard;
