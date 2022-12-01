@@ -47,15 +47,13 @@ impl SceneText {
     ) {
         crate::profile_function!();
 
-        let text_entries = query
+        query
             .iter_object_stores(ctx.log_db, &[ObjectType::TextEntry])
-            .flat_map(|(_obj_type, obj_path, _time_query, obj_store)| {
-                let mut batch = Vec::new();
-
+            .for_each(|(_obj_type, obj_path, _time_query, obj_store)| {
                 // Early filtering: if we're not showing it the view, there isn't much point
                 // in querying it to begin with... at least for now.
                 if !filters.is_obj_path_visible(obj_path) {
-                    return batch;
+                    return;
                 }
 
                 // TODO(cmc): We're cloning full strings here, which is very much a bad idea.
@@ -76,29 +74,24 @@ impl SceneText {
                      body: &String,
                      level: Option<&String>,
                      color: Option<&[u8; 4]>| {
-                        batch.push(TextEntry {
-                            msg_id: *msg_id,
-                            obj_path: obj_path.clone(),
-                            time,
-                            color: color.copied(),
-                            level: level.map(ToOwned::to_owned),
-                            body: body.clone(),
-                        });
+                        // Early filtering once more, see above.
+                        let is_visible = level
+                            .as_ref()
+                            .map_or(true, |lvl| filters.is_log_level_visible(lvl));
+
+                        if is_visible {
+                            self.text_entries.push(TextEntry {
+                                msg_id: *msg_id,
+                                obj_path: obj_path.clone(),
+                                time,
+                                color: color.copied(),
+                                level: level.map(ToOwned::to_owned),
+                                body: body.clone(),
+                            });
+                        }
                     },
                 );
-
-                batch
-                    .into_iter()
-                    // Early filtering once more, see above.
-                    .filter(|te| {
-                        te.level
-                            .as_ref()
-                            .map_or(true, |lvl| filters.is_log_level_visible(lvl))
-                    })
-                    .collect()
             });
-
-        self.text_entries.extend(text_entries);
 
         // We want to show the log messages in order.
         // The most important order is the the `time` for whatever timeline we are on.
