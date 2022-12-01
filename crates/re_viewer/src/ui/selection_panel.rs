@@ -210,17 +210,17 @@ fn ui_space_view(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, space_view: &mu
     use super::space_view::ViewCategory;
     match space_view.category {
         ViewCategory::ThreeD => {
-            ui.label("3D view.");
+            ui.strong("3D view");
             view_3d::show_settings_ui(ctx, ui, &mut space_view.view_state.state_3d);
         }
         ViewCategory::Tensor => {
             if let Some(state_tensor) = &mut space_view.view_state.state_tensor {
-                ui.label("Tensor view.");
+                ui.strong("Tensor view");
                 state_tensor.ui(ui);
             }
         }
         ViewCategory::Text => {
-            ui.label("Text view.");
+            ui.strong("Text view");
             ui.add_space(4.0);
             view_text::text_filters_ui(ui, &mut space_view.view_state.state_text);
         }

@@ -89,7 +89,7 @@ pub struct ViewTextFilters {
 }
 
 pub(crate) fn text_filters_ui(ui: &mut egui::Ui, state: &mut ViewTextState) -> egui::Response {
-    ui.vertical(|ui| state.filters.show(ui, state.resize_id))
+    ui.vertical(|ui| state.filters.ui(ui, state.resize_id))
         .response
 }
 
@@ -141,7 +141,7 @@ impl ViewTextFilters {
     }
 
     // Display the filter configuration UI (lotta checkboxes!).
-    pub(crate) fn show(&mut self, ui: &mut egui::Ui, resize_id: Option<egui::Id>) {
+    pub(crate) fn ui(&mut self, ui: &mut egui::Ui, resize_id: Option<egui::Id>) {
         crate::profile_function!();
 
         if ui
@@ -171,80 +171,95 @@ impl ViewTextFilters {
 
         let clear_or_select = ["Select all", "Clear all"];
 
-        ui.horizontal(|ui| {
-            ui.strong("Column filters");
-            if ui
-                .button(clear_or_select[has_any_col_filters as usize])
-                .clicked()
-            {
-                for v in col_timelines.values_mut() {
-                    *v = !has_any_col_filters;
+        // ---
+        // Column filters
+
+        ui.group(|ui| {
+            ui.horizontal(|ui| {
+                ui.strong("Column filters");
+                if ui
+                    .button(clear_or_select[has_any_col_filters as usize])
+                    .clicked()
+                {
+                    for v in col_timelines.values_mut() {
+                        *v = !has_any_col_filters;
+                    }
+                    *col_obj_path = !has_any_col_filters;
+                    *col_log_level = !has_any_col_filters;
                 }
-                *col_obj_path = !has_any_col_filters;
-                *col_log_level = !has_any_col_filters;
+            });
+
+            ui.add_space(2.0);
+
+            for (timeline, visible) in col_timelines {
+                ui.checkbox(visible, format!("Timeline: {}", timeline.name()));
             }
+            ui.checkbox(col_obj_path, "Object path");
+            ui.checkbox(col_log_level, "Log level");
         });
 
-        ui.add_space(2.0);
-
-        for (timeline, visible) in &mut self.col_timelines {
-            ui.checkbox(visible, format!("Timeline: {}", timeline.name()));
-        }
-        ui.checkbox(&mut self.col_obj_path, "Object path");
-        ui.checkbox(&mut self.col_log_level, "Log level");
+        // ---
 
         ui.add_space(4.0);
 
-        ui.horizontal(|ui| {
-            ui.strong("Row filters");
-            if ui
-                .button(clear_or_select[has_any_row_filters as usize])
-                .clicked()
-            {
-                for v in row_obj_paths.values_mut() {
-                    *v = !has_any_row_filters;
-                }
-                for v in row_log_levels.values_mut() {
-                    *v = !has_any_row_filters;
-                }
-            }
-        });
+        // ---
 
-        ui.add_space(2.0);
-
-        ui.horizontal(|ui| {
-            ui.label("Object paths");
-            if ui
-                .button(clear_or_select[has_obj_path_row_filters as usize])
-                .clicked()
-            {
-                for v in row_obj_paths.values_mut() {
-                    *v = !has_obj_path_row_filters;
-                }
-            }
-        });
-        for (obj_path, visible) in row_obj_paths {
+        ui.group(|ui| {
             ui.horizontal(|ui| {
-                ui.checkbox(visible, &obj_path.to_string());
-            });
-        }
-
-        ui.add_space(2.0);
-
-        ui.horizontal(|ui| {
-            ui.label("Log levels");
-            if ui
-                .button(clear_or_select[has_log_lvl_row_filters as usize])
-                .clicked()
-            {
-                for v in row_log_levels.values_mut() {
-                    *v = !has_log_lvl_row_filters;
+                ui.strong("Row filters");
+                if ui
+                    .button(clear_or_select[has_any_row_filters as usize])
+                    .clicked()
+                {
+                    for v in row_obj_paths.values_mut() {
+                        *v = !has_any_row_filters;
+                    }
+                    for v in row_log_levels.values_mut() {
+                        *v = !has_any_row_filters;
+                    }
                 }
-            }
+            });
+
+            ui.add_space(4.0);
+
+            ui.group(|ui| {
+                ui.horizontal(|ui| {
+                    ui.label("Object paths");
+                    if ui
+                        .button(clear_or_select[has_obj_path_row_filters as usize])
+                        .clicked()
+                    {
+                        for v in row_obj_paths.values_mut() {
+                            *v = !has_obj_path_row_filters;
+                        }
+                    }
+                });
+                for (obj_path, visible) in row_obj_paths {
+                    ui.horizontal(|ui| {
+                        ui.checkbox(visible, &obj_path.to_string());
+                    });
+                }
+            });
+
+            ui.add_space(4.0);
+
+            ui.group(|ui| {
+                ui.horizontal(|ui| {
+                    ui.label("Log levels");
+                    if ui
+                        .button(clear_or_select[has_log_lvl_row_filters as usize])
+                        .clicked()
+                    {
+                        for v in row_log_levels.values_mut() {
+                            *v = !has_log_lvl_row_filters;
+                        }
+                    }
+                });
+                for (log_level, visible) in row_log_levels {
+                    ui.checkbox(visible, level_to_rich_text(ui, log_level));
+                }
+            });
         });
-        for (log_level, visible) in row_log_levels {
-            ui.checkbox(visible, level_to_rich_text(ui, log_level));
-        }
     }
 }
 
