@@ -106,6 +106,14 @@ impl Default for ViewTextFilters {
 }
 
 impl ViewTextFilters {
+    pub fn is_obj_path_visible(&self, obj_path: &ObjPath) -> bool {
+        self.row_obj_paths.get(obj_path).copied().unwrap_or(true)
+    }
+
+    pub fn is_log_level_visible(&self, level: &str) -> bool {
+        self.row_log_levels.get(level).copied().unwrap_or(true)
+    }
+
     // Checks whether new values are available for any of the filters, and updates everything
     // accordingly.
     fn update(&mut self, ctx: &mut ViewerContext<'_>, text_entries: &[TextEntry]) {

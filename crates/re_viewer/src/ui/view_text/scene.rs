@@ -54,9 +54,7 @@ impl SceneText {
 
                 // Early filtering: if we're not showing it the view, there isn't much point
                 // in querying it to begin with... at least for now.
-                let is_obj_path_visible =
-                    filters.row_obj_paths.get(obj_path).copied().unwrap_or(true);
-                if !is_obj_path_visible {
+                if !filters.is_obj_path_visible(obj_path) {
                     return batch;
                 }
 
@@ -93,9 +91,9 @@ impl SceneText {
                     .into_iter()
                     // Early filtering once more, see above.
                     .filter(|te| {
-                        te.level.as_ref().map_or(true, |lvl| {
-                            filters.row_log_levels.get(lvl).copied().unwrap_or(true)
-                        })
+                        te.level
+                            .as_ref()
+                            .map_or(true, |lvl| filters.is_log_level_visible(lvl))
                     })
                     .collect()
             });
