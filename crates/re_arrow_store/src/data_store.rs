@@ -17,7 +17,9 @@ use polars::prelude::IndexOfSchema;
 use re_log_types::arrow::{
     filter_time_cols, ENTITY_PATH_KEY, TIMELINE_KEY, TIMELINE_SEQUENCE, TIMELINE_TIME,
 };
-use re_log_types::{ObjPath as EntityPath, TimeInt, TimeType, Timeline};
+use re_log_types::{ObjPath as EntityPath, TimeType, Timeline};
+
+use crate::TimeInt;
 
 // TODO: going for the usual principles here:
 // - be liberal in what you accept, be strict in what you return
@@ -46,8 +48,12 @@ use re_log_types::{ObjPath as EntityPath, TimeInt, TimeType, Timeline};
 // TODO: recursive Display impls for everything
 // TODO: recursive Iterator impls for everything
 
-type ComponentName = String;
-type ComponentNameRef<'a> = &'a str;
+// TODO: splats!
+// TODO: delete
+
+pub type ComponentName = String;
+pub type ComponentNameRef<'a> = &'a str;
+
 type RowIndex = u64;
 type TimeIntRange = std::ops::Range<TypedTimeInt>;
 
@@ -146,7 +152,14 @@ impl DataStore {
     }
 
     // TODO: that one can probably return an actual DataFrame!
-    pub fn query() {}
+    pub fn query(
+        timeline: Timeline,
+        time_query: TimeQuery,
+        ent_path: &EntityPath,
+        components: &[&str],
+    ) -> anyhow::Result<()> {
+        todo!()
+    }
 }
 
 // TODO: document the datamodel here: 1 timestamp per message per timeline.
@@ -234,6 +247,7 @@ fn extract_components<'data>(
         .ok_or_else(|| anyhow!("expect component values to be `StructArray`s"))?;
 
     // TODO: check validity using component registry and such
+    // TODO: they all should be list, no matter what!!!
     Ok(components
         .fields()
         .iter()
@@ -243,8 +257,6 @@ fn extract_components<'data>(
 }
 
 // --- Indices ---
-
-// TODO: all tables must have empty components at zero!!!
 
 /// A chunked index, bucketized over time and space (whichever comes first).
 ///
@@ -400,11 +412,15 @@ impl std::fmt::Display for IndexBucket {
         );
 
         let series = std::iter::once(times)
-            .chain(
-                indices
+            .chain(indices.into_iter().map(|(name, index)| {
+                let index = index
+                    .values()
                     .into_iter()
-                    .map(|(name, index)| Series::new(name.as_str(), index.values().as_slice())),
-            )
+                    .enumerate()
+                    .map(|(i, v)| index.is_valid(i).then_some(*v))
+                    .collect::<Vec<_>>();
+                Series::new(name.as_str(), index)
+            }))
             .collect::<Vec<_>>();
         let df = DataFrame::new(series).unwrap();
         f.write_fmt(format_args!("data (sorted={is_sorted}): {df:?}\n"))?;
@@ -428,19 +444,42 @@ impl IndexBucket {
     pub fn insert(
         &mut self,
         time: TypedTimeInt,
-        indices: &HashMap<ComponentNameRef<'_>, RowIndex>,
+        row_indices: &HashMap<ComponentNameRef<'_>, RowIndex>,
     ) -> anyhow::Result<()> {
+        // append time
         self.times.push(time.as_i64().into());
 
-        // everything else
-        for (name, row_idx) in indices {
-            // TODO: new component needs to create an array filled with nulls
+        // append everything else!
+
+        // Step 1: for all row indices, check whether the index for the associated component
+        // exists:
+        // - if it does, append the new row index to it
+        // - otherwise, create a new one, fill it with nulls, and append the new row index to it
+        //
+        // After this step, we are guaranteed that all new row indices have been inserted into
+        // the components' indices.
+        //
+        // What we are _not_ guaranteed, though, is that existing component indices that weren't
+        // affected by this update, are appended with null values so that they stay aligned with
+        // the length of the time index.
+        // Step 2 below takes care of that.
+        for (name, row_idx) in row_indices {
             let index = self.indices.entry(name.to_string()).or_insert_with(|| {
                 let mut index = UInt64Vec::default();
                 index.extend_constant(self.times.len().saturating_sub(1), None);
                 index
             });
             index.push(Some(*row_idx))
+        }
+
+        // Step 2: for all component indices, check whether they were affected by the current
+        // insertion:
+        // - if they weren't, append null values appropriately
+        // - otherwise, do nothing, step 1 already took care of it
+        for (name, index) in &mut self.indices {
+            if !row_indices.contains_key(name.as_str()) {
+                index.push_null();
+            }
         }
 
         // All indices (+ time!) should always have the exact same length.
@@ -697,17 +736,17 @@ impl ComponentBucket {
 #[derive(Clone, Copy, Debug)]
 pub struct TypedTimeInt(TimeType, TimeInt);
 
+impl TypedTimeInt {
+    pub fn as_i64(&self) -> i64 {
+        self.1.as_i64()
+    }
+}
+
 impl std::ops::Add<i64> for TypedTimeInt {
     type Output = Self;
 
     fn add(self, rhs: i64) -> Self::Output {
         Self(self.0, self.1 + TimeInt::from(rhs))
-    }
-}
-
-impl TypedTimeInt {
-    pub fn as_i64(&self) -> i64 {
-        self.1.as_i64()
     }
 }
 
@@ -745,4 +784,24 @@ impl std::hash::Hash for TypedTimeInt {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.1.hash(state)
     }
+}
+
+// ---
+
+/// A query in time.
+#[derive(Clone, Debug)]
+pub enum TimeQuery {
+    /// Get the latest version of the data available at this time.
+    LatestAt(i64),
+
+    /// Get all the data within this time interval, plus the latest
+    /// one before the start of the interval.
+    ///
+    /// Motivation: all data is considered alive untl the next logging
+    /// to the same data path.
+    Range(std::ops::RangeInclusive<i64>),
+}
+
+impl TimeQuery {
+    pub const EVERYTHING: Self = Self::Range(i64::MIN..=i64::MAX);
 }
