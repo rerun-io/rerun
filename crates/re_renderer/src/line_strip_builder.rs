@@ -91,7 +91,11 @@ impl LineStripSeriesBuilder {
             ]
             .into_iter(),
         )
-        .flags(LineStripFlags::CAP_END_ROUND | LineStripFlags::CAP_START_ROUND)
+        .flags(
+            LineStripFlags::CAP_END_ROUND
+                | LineStripFlags::CAP_START_ROUND
+                | LineStripFlags::NO_COLOR_GRADIENT,
+        )
     }
 
     /// Adds a 2D series of line connected points.

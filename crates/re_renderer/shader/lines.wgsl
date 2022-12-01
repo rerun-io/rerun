@@ -20,6 +20,7 @@ let CAP_END_TRIANGLE: u32 = 1u;
 let CAP_END_ROUND: u32 = 2u;
 let CAP_START_TRIANGLE: u32 = 4u;
 let CAP_START_ROUND: u32 = 8u;
+let NO_COLOR_GRADIENT: u32 = 16u;
 
 struct VertexOut {
     @builtin(position)
@@ -41,7 +42,7 @@ struct VertexOut {
     closest_strip_position: Vec3,
 
     @location(5) @interpolate(flat)
-    round_cap: u32,
+    active_flags: u32,
 };
 
 struct LineStripData {
@@ -120,12 +121,14 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     // Data valid for the entire strip that this vertex belongs to.
     let strip_data = read_strip_data(strip_index);
 
-    // Calculate the direction the current quad is facing in and adjust various parameters if this is a cap.
+
     var quad_dir = ZERO; // If this remains zero, the quad is discarded automatically.
     var center_position = pos_data_current.pos; // line center of the quad (triangle for caps) we're spanning.
     var closest_strip_position = center_position;
     var radius = strip_data.radius;
-    var round_cap = 0u;
+
+    // caps are inactive for the fragment shader unless specified otherwise.
+    var active_flags = strip_data.flags & (~(CAP_START_TRIANGLE | CAP_END_TRIANGLE | CAP_START_ROUND | CAP_END_ROUND));
 
     // For a (triangle) end cap:
     // s == closest_strip_position
@@ -139,6 +142,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     //              | /
     // For non-caps s == c!
 
+    // Calculate the direction the current quad is facing in and adjust various parameters if this is a cap.
     if is_trailing_quad { // A end quad, potentially used for caps.
         var pointy_end = false;
 
@@ -147,16 +151,18 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
         // We're now either a quad before the actual strip or a quad after the strip we belong to,
         // therefore we need to look-up a new position to make sense of the quad dir.
         if is_end_cap_triangle && has_any_flag(strip_data.flags, CAP_END_TRIANGLE | CAP_END_ROUND) {
+            active_flags |= strip_data.flags & (CAP_END_TRIANGLE | CAP_END_ROUND);
             quad_dir = pos_data_quad_begin.pos - read_position_data(quad_idx - 1).pos;
+
             pointy_end = is_at_quad_end;
-            round_cap = u32(has_any_flag(strip_data.flags, CAP_END_ROUND));
             if pointy_end {
                 closest_strip_position = pos_data_quad_begin.pos; // The last point of this strip
             }
         } else if !is_end_cap_triangle && has_any_flag(strip_data.flags, CAP_START_TRIANGLE | CAP_START_ROUND) {
+            active_flags |= strip_data.flags & (CAP_START_TRIANGLE | CAP_START_ROUND);
             quad_dir = pos_data_quad_end.pos - read_position_data(quad_idx + 2).pos;
+
             pointy_end = !is_at_quad_end;
-            round_cap = u32(has_any_flag(strip_data.flags, CAP_START_ROUND));
             if pointy_end {
                 closest_strip_position = pos_data_quad_end.pos; // The first point of this strip
             }
@@ -168,8 +174,8 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
             // The pointy end is an extension of the line, need to calculate it and collapse the thickness
             center_position = closest_strip_position + quad_dir * (strip_data.radius * 4.0);
             radius = 0.0;
-        } else if round_cap == 0u {
-            // If this is nit a round cap and not the pointy end, we blow up our ("virtual") quad by twice the size
+        } else if has_any_flag(active_flags, CAP_START_TRIANGLE | CAP_END_TRIANGLE ) {
+            // If this is a triangle cap and not the pointy end, we blow up our ("virtual") quad by twice the size
             radius *= 2.0;
         }
     } else {
@@ -191,7 +197,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     out.closest_strip_position = closest_strip_position;
     out.color = strip_data.color;
     out.radius = radius;
-    out.round_cap = round_cap;
+    out.active_flags = active_flags;
 
     return out;
 }
@@ -200,7 +206,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
 fn fs_main(in: VertexOut) -> @location(0) Vec4 {
 
     var coverage = 1.0;
-    if in.round_cap != 0u {
+    if has_any_flag(in.active_flags, CAP_START_ROUND | CAP_END_ROUND) {
         let distance_to_skeleton = length(in.position_world - in.closest_strip_position);
         let pixel_world_size = pixel_world_size_at(length(in.position_world - frame.camera_position));
 
@@ -215,8 +221,12 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
     }
 
     // TODO(andreas): lighting setup
-    let to_center = in.position_world - in.center_position;
-    let relative_distance_to_center = dot(to_center, to_center) / (in.radius * in.radius);
-    let shading = max(0.2, 1.0 - relative_distance_to_center) * 0.9;
+    var shading = 1.0;
+    if !has_any_flag(in.active_flags, NO_COLOR_GRADIENT) {
+        let to_center = in.position_world - in.center_position;
+        let relative_distance_to_center = dot(to_center, to_center) / (in.radius * in.radius);
+        shading = max(0.2, 1.0 - relative_distance_to_center) * 0.9;
+    }
+
     return vec4<f32>(in.color.rgb * shading, coverage);
 }

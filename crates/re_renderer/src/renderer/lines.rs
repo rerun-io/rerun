@@ -164,11 +164,13 @@ bitflags! {
         const CAP_END_TRIANGLE = 0b0000_0001;
         /// Adds a round cap at the end of a line strip (excludes other end caps).
         const CAP_END_ROUND = 0b0000_0010;
-
         /// Puts a equilateral triangle at the start of the line strip (excludes other start caps).
         const CAP_START_TRIANGLE = 0b0000_0100;
         /// Adds a round cap at the start of a line strip (excludes other start caps).
         const CAP_START_ROUND = 0b0000_1000;
+
+        /// Disable color gradient which is on by default
+        const NO_COLOR_GRADIENT = 0b0001_0000;
     }
 }
 
