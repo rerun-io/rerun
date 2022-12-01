@@ -22,11 +22,6 @@ pub struct Session {
 
 impl Session {
     pub fn new() -> Self {
-        #[cfg(feature = "re_viewer")]
-        re_memory::accounting_allocator::turn_on_tracking_if_env_var(
-            re_viewer::env_vars::RERUN_TRACK_ALLOCATIONS,
-        );
-
         Self {
             #[cfg(feature = "web")]
             tokio_rt: tokio::runtime::Runtime::new().unwrap(),
