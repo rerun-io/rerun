@@ -2,6 +2,78 @@
 //!
 //! Time-ordered unique 128-bit identifiers.
 
+mod arrow {
+    use arrow2::{
+        array::{MutableArray, MutableStructArray, StructArray, TryPush},
+        datatypes::DataType,
+    };
+    use arrow2_convert::{
+        arrow_enable_vec_for_type, deserialize::ArrowDeserialize, field::ArrowField,
+        serialize::ArrowSerialize,
+    };
+
+    use crate::Tuid;
+
+    arrow_enable_vec_for_type!(Tuid);
+
+    impl ArrowField for Tuid {
+        type Type = Self;
+
+        fn data_type() -> arrow2::datatypes::DataType {
+            DataType::Extension(
+                "Tuid".to_owned(),
+                Box::new(DataType::Struct(vec![
+                    <u64 as ArrowField>::field("time_ns"),
+                    <u64 as ArrowField>::field("inc"),
+                ])),
+                None,
+            )
+        }
+    }
+
+    impl ArrowSerialize for Tuid {
+        type MutableArrayType = MutableStructArray;
+
+        #[inline]
+        fn new_array() -> Self::MutableArrayType {
+            let time_ns = Box::new(<u64 as ArrowSerialize>::new_array()) as Box<dyn MutableArray>;
+            let inc = Box::new(<u64 as ArrowSerialize>::new_array()) as Box<dyn MutableArray>;
+            MutableStructArray::from_data(
+                <Tuid as ArrowField>::data_type(),
+                vec![time_ns, inc],
+                None,
+            )
+        }
+
+        #[inline]
+        fn arrow_serialize(
+            v: &<Self as ArrowField>::Type,
+            array: &mut Self::MutableArrayType,
+        ) -> arrow2::error::Result<()> {
+            array
+                .value::<<u64 as ArrowSerialize>::MutableArrayType>(0)
+                .unwrap()
+                .try_push(Some(v.time_ns))?;
+            array
+                .value::<<u64 as ArrowSerialize>::MutableArrayType>(1)
+                .unwrap()
+                .try_push(Some(v.inc))?;
+            array.push(true);
+            Ok(())
+        }
+    }
+
+    //impl ArrowDeserialize for Tuid {
+    //    type ArrayType = StructArray;
+
+    //    fn arrow_deserialize(
+    //        v: <&Self::ArrayType as IntoIterator>::Item,
+    //    ) -> Option<<Self as ArrowField>::Type> {
+    //        todo!()
+    //    }
+    //}
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Tuid {

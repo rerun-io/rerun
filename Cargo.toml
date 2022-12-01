@@ -47,3 +47,5 @@ gltf = { git = "https://github.com/rerun-io/gltf", rev = "3c14ded73755d1ce9e4701
 wgpu = { git = "https://github.com/gfx-rs/wgpu.git", ref = "a377ae2b7fe6c1c9412751166f0917e617164e49" }
 wgpu-core = { git = "https://github.com/gfx-rs/wgpu.git", ref = "a377ae2b7fe6c1c9412751166f0917e617164e49" }
 #wgpu = { path = "../wgpu/wgpu" }
+
+arrow2 = { path = "../arrow2" }

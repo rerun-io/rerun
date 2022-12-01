@@ -31,6 +31,7 @@ pub use arrow_msg::ArrowMsg;
 pub mod context;
 pub mod coordinates;
 mod data;
+pub mod field_types;
 pub mod hash;
 mod index;
 pub mod objects;

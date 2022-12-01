@@ -14,15 +14,15 @@ pub struct Rect2D {
 
 #[derive(Debug, PartialEq, ArrowField)]
 pub struct Point2D {
-    x: f32,
-    y: f32,
+    pub x: f32,
+    pub y: f32,
 }
 
 #[derive(Debug, PartialEq, ArrowField)]
 pub struct Point3D {
-    x: f32,
-    y: f32,
-    z: f32,
+    pub x: f32,
+    pub y: f32,
+    pub z: f32,
 }
 
 #[allow(dead_code)]
