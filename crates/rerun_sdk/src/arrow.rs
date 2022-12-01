@@ -10,18 +10,8 @@ use arrow2::{
 
 use re_log_types::{
     arrow::{build_time_cols, OBJPATH_KEY},
-    ArrowMsg, LogMsg, MsgId, ObjPath, Time, TimePoint, TimeType, Timeline,
+    ArrowMsg, LogMsg, MsgId, ObjPath, TimePoint,
 };
-
-pub fn log_time() -> TimePoint {
-    TimePoint(
-        [(
-            Timeline::new("log_time", TimeType::Time),
-            Time::now().into(),
-        )]
-        .into(),
-    )
-}
 
 /// Create a [`StructArray`] from an array of (name, Array) tuples
 pub fn components_as_struct_array(components: &[(&str, Box<dyn Array>)]) -> StructArray {

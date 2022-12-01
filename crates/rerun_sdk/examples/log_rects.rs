@@ -113,10 +113,11 @@ fn main() {
     // Build up some rect data into an arrow array
     let rects = build_some_rects(5);
     let colors = build_some_colors(5);
-    let array = rerun::components_as_struct_array(&[("rect", rects), ("color_rgba", colors)]);
+    let array =
+        rerun::arrow::components_as_struct_array(&[("rect", rects), ("color_rgba", colors)]);
 
     // Create and send the message to the sdk
-    let msg = rerun::build_arrow_log_msg(&obj_path, &array, &time_point).unwrap();
+    let msg = rerun::arrow::build_arrow_log_msg(&obj_path, &array, &time_point).unwrap();
     sdk.send(msg);
 
     // If not connected, show the GUI inline

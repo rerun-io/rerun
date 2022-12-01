@@ -57,6 +57,6 @@ pub fn build_arrow_log_msg_from_py(
             .collect::<Vec<_>>()
     );
 
-    rerun_sdk::build_arrow_log_msg(obj_path, array, time_point)
+    rerun_sdk::arrow::build_arrow_log_msg(obj_path, array, time_point)
         .map_err(|err| PyTypeError::new_err(err.to_string()))
 }

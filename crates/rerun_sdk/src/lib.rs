@@ -6,7 +6,13 @@
 #![doc = document_features::document_features!()]
 //!
 
-mod helpers;
-pub use self::helpers::*;
-mod sdk;
-pub use self::sdk::Sdk;
+// Convert data into arrow types
+pub mod arrow;
+
+// Work with timestamps
+pub mod time;
+pub use time::log_time;
+
+// Send data to a rerun session
+mod session;
+pub use self::session::Sdk;
