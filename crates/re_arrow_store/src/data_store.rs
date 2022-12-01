@@ -15,6 +15,7 @@ use arrow2::datatypes::{DataType, Field, Schema};
 use nohash_hasher::IntMap;
 use polars::export::num::Integer;
 use polars::prelude::IndexOfSchema;
+use polars::prelude::{DataFrame, NamedFrom, Series};
 
 use re_log_types::arrow::{
     filter_time_cols, ENTITY_PATH_KEY, TIMELINE_KEY, TIMELINE_SEQUENCE, TIMELINE_TIME,
@@ -160,8 +161,8 @@ impl DataStore {
         timeline: &Timeline,
         time_query: TimeQuery,
         ent_path: &EntityPath,
-        components: &[&str],
-    ) {
+        components: &[ComponentNameRef<'_>],
+    ) -> DataFrame {
         let latest_at = match time_query {
             TimeQuery::LatestAt(latest_at) => latest_at,
             TimeQuery::Range(_) => unimplemented!(), // TODO
@@ -171,9 +172,24 @@ impl DataStore {
         let row_indices = self
             .indices
             .get_mut(&(timeline.clone(), ent_path.clone()))
-            .map(|index| index.latest_at(latest_at, components));
+            .map(|index| index.latest_at(latest_at, components))
+            .unwrap();
+        // dbg!(row_indices);
 
-        dbg!(row_indices);
+        let mut series: HashMap<_, _> = row_indices
+            .into_iter()
+            .map(|(name, row_idx)| {
+                let table = &self.components[name]; // TODO
+                let data = table.get(row_idx);
+                (name, Series::try_from((name, data)).unwrap())
+            })
+            .collect();
+
+        let series_ordered = components
+            .iter()
+            .map(|name| series.remove(name).unwrap())
+            .collect();
+        DataFrame::new(series_ordered).unwrap()
     }
 }
 
@@ -372,7 +388,12 @@ impl IndexTable {
         bucket.insert(time, indices)
     }
 
-    pub fn latest_at(&mut self, at: i64, components: &[&str]) -> Vec<RowIndex> {
+    /// Returns a vector of `RowIndex`: one for each component, in the exact same order.
+    pub fn latest_at<'a>(
+        &mut self,
+        at: i64,
+        components: &[ComponentNameRef<'a>],
+    ) -> HashMap<ComponentNameRef<'a>, RowIndex> {
         // TODO: real bucketing!
         let bucket = self.buckets.iter_mut().next().unwrap().1;
         bucket.latest_at(at, components)
@@ -419,8 +440,6 @@ impl std::fmt::Display for IndexBucket {
             "time range: from {} (inclusive) to {} (exlusive)\n",
             time_range.start, time_range.end,
         ))?;
-
-        use polars::prelude::{DataFrame, NamedFrom, Series};
 
         let typ = self.time_range.start.0;
         let times = Series::new(
@@ -581,7 +600,11 @@ impl IndexBucket {
         Ok(())
     }
 
-    pub fn latest_at(&mut self, at: i64, components: &[&str]) -> Vec<RowIndex> {
+    pub fn latest_at<'a>(
+        &mut self,
+        at: i64,
+        components: &[ComponentNameRef<'a>],
+    ) -> HashMap<ComponentNameRef<'a>, RowIndex> {
         self.sort_indices().unwrap(); // TODO
 
         let times = self.times.values();
@@ -591,29 +614,22 @@ impl IndexBucket {
             Err(time_idx_closest) => time_idx_closest.clamp(0, times.len() - 1) as i64,
         };
 
-        let mut row_indices = Vec::with_capacity(components.len());
-
-        // assert!(self.times.is_valid(time_idx as usize));
-        // row_indices.push(times[time_idx as usize]);
-
-        for (_, index) in self
-            .indices
+        components
             .iter()
-            .filter(|(name, _)| components.contains(&name.as_str()))
-        {
-            let mut idx = time_idx;
-            while !index.is_valid(idx as _) {
-                idx -= 1;
-                // TODO: I'm actually not sure that's even possible, need to think about it
-                // (means every single row is null!)
-                assert!(idx >= 0);
-            }
+            .filter_map(|name| self.indices.get(*name).map(|index| (name, index)))
+            .map(|(name, index)| {
+                let mut idx = time_idx;
+                while !index.is_valid(idx as _) {
+                    idx -= 1;
+                    // TODO: I'm actually not sure that's even possible, need to think about it
+                    // (means every single row is null!)
+                    assert!(idx >= 0);
+                }
 
-            assert!(index.is_valid(idx as usize));
-            row_indices.push(index.values()[idx as usize]);
-        }
-
-        row_indices
+                assert!(index.is_valid(idx as usize));
+                (*name, index.values()[idx as usize])
+            })
+            .collect()
     }
 }
 
@@ -684,7 +700,16 @@ impl ComponentTable {
         data: &Box<dyn Array>,
     ) -> anyhow::Result<RowIndex> {
         // TODO: Let's start the very dumb way: one bucket only, then we'll deal with splitting.
+        // TODO: real bucketing!
         self.buckets.get_mut(&0).unwrap().insert(timelines, data)
+    }
+
+    // TODO: obviously shouldn't be allocating, should return some kind of ref
+    pub fn get(&self, row_idx: u64) -> Box<dyn Array> {
+        // TODO: real bucketing!
+        let bucket = self.buckets.get(&0).unwrap();
+
+        bucket.get(row_idx)
     }
 }
 
@@ -742,8 +767,6 @@ impl std::fmt::Display for ComponentBucket {
                 time_range.end,
             ))?;
         }
-
-        use polars::prelude::{DataFrame, Series};
 
         // TODO: I'm sure there's no need to clone here
         let series = Series::try_from((name.as_str(), data.clone())).unwrap();
@@ -806,6 +829,14 @@ impl ComponentBucket {
         // dbg!(&self.data);
 
         Ok(self.row_offset + self.data.len() as u64 - 1)
+    }
+
+    // TODO: obviously shouldn't be allocating, should return some kind of ref
+    pub fn get(&self, row_idx: u64) -> Box<dyn Array> {
+        let row_idx = row_idx - self.row_offset;
+
+        dbg!((&*self.name, row_idx, self.data.len()));
+        self.data.slice(row_idx as usize, 1)
     }
 }
 

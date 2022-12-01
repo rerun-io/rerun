@@ -48,7 +48,7 @@ fn single_entity_multi_timelines_multi_components_roundtrip() {
     let frame43 = 43;
 
     // TODO: play with differing nb_instances inbetween inserts
-    let nb_instances = 10;
+    let nb_instances = 3;
 
     let (schema, components) = build_message(
         &ent_path,
@@ -201,10 +201,7 @@ fn build_instances(nb_instances: usize) -> (Schema, ListArray<i32>) {
 
 fn build_rects(nb_instances: usize) -> (Schema, ListArray<i32>) {
     let data = {
-        let data: Box<[_]> = (0..nb_instances)
-            .into_iter()
-            .map(|i| i as f32 / 10.0)
-            .collect();
+        let data: Box<[_]> = (0..nb_instances).into_iter().map(|i| i as f32).collect();
         let x = Float32Array::from_slice(&data).boxed();
         let y = Float32Array::from_slice(&data).boxed();
         let w = Float32Array::from_slice(&data).boxed();
