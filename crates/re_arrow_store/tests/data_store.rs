@@ -46,14 +46,13 @@ fn single_entity_single_component_roundtrip() {
     let frame42 = 42;
     let frame43 = 43;
 
+    // TODO: play with differing nb_instances inbetween inserts
+    let nb_instances = 10;
+
     let (schema, components) = build_message(
         &ent_path,
         [build_log_time(now_plus_20ms), build_frame_nr(frame41)],
-        [
-            // TODO: play with differing nb_instances
-            build_instances(10),
-            build_rects(10),
-        ],
+        [build_instances(nb_instances), build_rects(nb_instances)],
     );
     // eprintln!("inserting into '{ent_path}':\nschema: {schema:#?}\ncomponents: {components:#?}");
     store.insert(&schema, components).unwrap();
@@ -62,11 +61,7 @@ fn single_entity_single_component_roundtrip() {
     let (schema, components) = build_message(
         &ent_path,
         [build_log_time(now_minus_20ms), build_frame_nr(frame43)],
-        [
-            // TODO: play with differing nb_instances
-            build_instances(20),
-            build_rects(20),
-        ],
+        [build_rects(nb_instances)],
     );
     // eprintln!("inserting into '{ent_path}':\nschema: {schema:#?}\ncomponents: {components:#?}");
     store.insert(&schema, components).unwrap();
@@ -75,11 +70,16 @@ fn single_entity_single_component_roundtrip() {
     let (schema, components) = build_message(
         &ent_path,
         [build_log_time(now), build_frame_nr(frame42)],
-        [
-            // TODO: play with differing nb_instances
-            build_instances(1),
-            build_rects(1),
-        ],
+        [build_instances(nb_instances)],
+    );
+    // eprintln!("inserting into '{ent_path}':\nschema: {schema:#?}\ncomponents: {components:#?}");
+    store.insert(&schema, components).unwrap();
+    eprintln!("---\n{store}");
+
+    let (schema, components) = build_message(
+        &ent_path,
+        [build_log_time(now_minus_10ms), build_frame_nr(frame42)],
+        [build_positions(nb_instances)],
     );
     // eprintln!("inserting into '{ent_path}':\nschema: {schema:#?}\ncomponents: {components:#?}");
     store.insert(&schema, components).unwrap();
@@ -245,7 +245,7 @@ fn build_positions(nb_instances: usize) -> (Schema, ListArray<i32>) {
         None,
     );
 
-    let fields = [Field::new("rects", data.data_type().clone(), false)].to_vec();
+    let fields = [Field::new("positions", data.data_type().clone(), false)].to_vec();
 
     let schema = Schema {
         fields,

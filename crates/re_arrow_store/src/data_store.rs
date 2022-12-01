@@ -306,9 +306,9 @@ impl std::fmt::Display for IndexTable {
 
         f.write_str("buckets: [\n")?;
         for (_, bucket) in buckets {
-            f.write_str(&indent::indent_all_by(8, "IndexBucket {\n"))?;
-            f.write_str(&indent::indent_all_by(12, bucket.to_string() + "\n"))?;
-            f.write_str(&indent::indent_all_by(8, "}\n"))?;
+            f.write_str(&indent::indent_all_by(4, "IndexBucket {\n"))?;
+            f.write_str(&indent::indent_all_by(8, bucket.to_string() + "\n"))?;
+            f.write_str(&indent::indent_all_by(4, "}\n"))?;
         }
         f.write_str("]")?;
 
@@ -572,9 +572,9 @@ impl std::fmt::Display for ComponentTable {
 
         f.write_str("buckets: [\n")?;
         for (_, bucket) in buckets {
-            f.write_str(&indent::indent_all_by(8, "ComponentBucket {\n"))?;
-            f.write_str(&indent::indent_all_by(12, bucket.to_string() + "\n"))?;
-            f.write_str(&indent::indent_all_by(8, "}\n"))?;
+            f.write_str(&indent::indent_all_by(4, "ComponentBucket {\n"))?;
+            f.write_str(&indent::indent_all_by(8, bucket.to_string() + "\n"))?;
+            f.write_str(&indent::indent_all_by(4, "}\n"))?;
         }
         f.write_str("]")?;
 
