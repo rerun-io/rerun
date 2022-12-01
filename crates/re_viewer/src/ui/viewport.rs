@@ -402,20 +402,22 @@ impl ViewportBlueprint {
         ui: &mut egui::Ui,
         spaces_info: &SpacesInfo,
     ) {
-        ui.menu_button("Add new space view…", |ui| {
-            ui.style_mut().wrap = Some(false);
-            for (path, space_info) in &spaces_info.spaces {
-                let scene = query_scene(ctx, space_info);
-                if !scene.categories().is_empty() && ui.button(path.to_string()).clicked() {
-                    ui.close_menu();
+        ui.vertical_centered(|ui| {
+            ui.menu_button("Add new space view…", |ui| {
+                ui.style_mut().wrap = Some(false);
+                for (path, space_info) in &spaces_info.spaces {
+                    let scene = query_scene(ctx, space_info);
+                    if !scene.categories().is_empty() && ui.button(path.to_string()).clicked() {
+                        ui.close_menu();
 
-                    for category in scene.categories() {
-                        let new_space_view_id =
-                            self.add_space_view(SpaceView::new(&scene, category, path.clone()));
-                        ctx.set_selection(Selection::SpaceView(new_space_view_id));
+                        for category in scene.categories() {
+                            let new_space_view_id =
+                                self.add_space_view(SpaceView::new(&scene, category, path.clone()));
+                            ctx.set_selection(Selection::SpaceView(new_space_view_id));
+                        }
                     }
                 }
-            }
+            });
         });
     }
 }
