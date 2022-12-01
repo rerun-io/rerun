@@ -189,10 +189,12 @@ impl SelectionPanel {
 
                     if ui.button("Remove from Viewport").clicked() {
                         blueprint.viewport.remove(&space_view_id);
+                        blueprint.viewport.mark_user_interaction();
                         ctx.clear_selection();
                     } else {
                         if ui.button("Clone Space View").clicked() {
                             blueprint.viewport.add_space_view(space_view.clone());
+                            blueprint.viewport.mark_user_interaction();
                         }
 
                         if let Some(space_view) = blueprint.viewport.space_view_mut(&space_view_id)

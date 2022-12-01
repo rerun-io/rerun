@@ -262,6 +262,10 @@ impl ViewportBlueprint {
         });
     }
 
+    pub(crate) fn mark_user_interaction(&mut self) {
+        self.has_been_user_edited = true;
+    }
+
     pub(crate) fn add_space_view(&mut self, space_view: SpaceView) -> SpaceViewId {
         let space_view_id = SpaceViewId::random();
         self.space_views.insert(space_view_id, space_view);
