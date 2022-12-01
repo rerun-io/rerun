@@ -222,7 +222,7 @@ fn ui_space_view(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, space_view: &mu
         ViewCategory::Text => {
             ui.label("Text view.");
             ui.add_space(4.0);
-            view_text::view_filters(ui, &mut space_view.view_state.state_text);
+            view_text::text_filters_ui(ui, &mut space_view.view_state.state_text);
         }
         ViewCategory::TwoD | ViewCategory::Plot => {}
     }

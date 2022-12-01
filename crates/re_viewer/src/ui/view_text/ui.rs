@@ -88,7 +88,7 @@ pub struct ViewTextFilters {
     pub row_log_levels: BTreeMap<String, bool>,
 }
 
-pub(crate) fn view_filters(ui: &mut egui::Ui, state: &mut ViewTextState) -> egui::Response {
+pub(crate) fn text_filters_ui(ui: &mut egui::Ui, state: &mut ViewTextState) -> egui::Response {
     ui.vertical(|ui| state.filters.show(ui, state.resize_id))
         .response
 }
@@ -164,10 +164,10 @@ impl ViewTextFilters {
 
         let has_obj_path_row_filters = row_obj_paths.values().filter(|v| **v).count() > 0;
         let has_log_lvl_row_filters = row_log_levels.values().filter(|v| **v).count() > 0;
-        let has_any_row_filters = has_obj_path_row_filters | has_log_lvl_row_filters;
+        let has_any_row_filters = has_obj_path_row_filters || has_log_lvl_row_filters;
 
         let has_timeline_col_filters = col_timelines.values().filter(|v| **v).count() > 0;
-        let has_any_col_filters = has_timeline_col_filters | *col_obj_path | *col_log_level;
+        let has_any_col_filters = has_timeline_col_filters || *col_obj_path || *col_log_level;
 
         let clear_or_select = ["Select all", "Clear all"];
 
@@ -225,10 +225,7 @@ impl ViewTextFilters {
         });
         for (obj_path, visible) in row_obj_paths {
             ui.horizontal(|ui| {
-                ui.checkbox(visible, "");
-                if ui.selectable_label(false, &obj_path.to_string()).clicked() {
-                    *visible = !*visible;
-                }
+                ui.checkbox(visible, &obj_path.to_string());
             });
         }
 
