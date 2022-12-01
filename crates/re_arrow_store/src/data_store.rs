@@ -2,11 +2,14 @@ use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 
 use anyhow::{anyhow, bail, ensure};
-use arrow2::array::{new_empty_array, Array, Int64Array, ListArray, PrimitiveArray, StructArray};
+use arrow2::array::{
+    new_empty_array, Array, Int64Array, Int64Vec, ListArray, MutableArray, MutableListArray,
+    MutableStructArray, PrimitiveArray, StructArray, TryPush, UInt64Array, UInt64Vec,
+};
 use arrow2::buffer::Buffer;
 use arrow2::chunk::Chunk;
 use arrow2::compute::concatenate::concatenate;
-use arrow2::datatypes::{DataType, Schema};
+use arrow2::datatypes::{DataType, Field, Schema};
 use nohash_hasher::IntMap;
 use polars::prelude::IndexOfSchema;
 
@@ -27,12 +30,10 @@ use re_log_types::{ObjPath as EntityPath, TimeInt, TimeType, Timeline};
 // TODO:
 // - keeping low level _for now_ (i.e. no polars at this layer)
 //    - need to get familiar with what's actually going on under the good
+//    - need to grab performance metrics baselines
 //    - don't add layers until we have a use case for them
 
-// TODO:
-// - pretty debug dumps
-
-// ---
+// --- Data store ---
 
 // https://www.notion.so/rerunio/Arrow-Table-Design-cd77528c77ae4aa4a8c566e2ec29f84f
 
@@ -63,16 +64,28 @@ impl std::fmt::Display for DataStore {
             components,
         } = self;
 
-        // TODO: indices
-
         f.write_str("DataStore {\n")?;
-        f.write_str(&indent::indent_all_by(4, "components: [\n"))?;
-        for (_, comp) in components {
-            f.write_str(&indent::indent_all_by(8, "ComponentTable {\n"))?;
-            f.write_str(&indent::indent_all_by(12, comp.to_string() + "\n"))?;
-            f.write_str(&indent::indent_all_by(8, "}\n"))?;
+
+        {
+            f.write_str(&indent::indent_all_by(4, "indices: [\n"))?;
+            for (_, index) in indices {
+                f.write_str(&indent::indent_all_by(8, "IndexTable {\n"))?;
+                f.write_str(&indent::indent_all_by(12, index.to_string() + "\n"))?;
+                f.write_str(&indent::indent_all_by(8, "}\n"))?;
+            }
+            f.write_str(&indent::indent_all_by(4, "]\n"))?;
         }
-        f.write_str(&indent::indent_all_by(4, "]\n"))?;
+
+        {
+            f.write_str(&indent::indent_all_by(4, "components: [\n"))?;
+            for (_, comp) in components {
+                f.write_str(&indent::indent_all_by(8, "ComponentTable {\n"))?;
+                f.write_str(&indent::indent_all_by(12, comp.to_string() + "\n"))?;
+                f.write_str(&indent::indent_all_by(8, "}\n"))?;
+            }
+            f.write_str(&indent::indent_all_by(4, "]\n"))?;
+        }
+
         f.write_str("}")?;
 
         Ok(())
@@ -101,6 +114,19 @@ impl DataStore {
             .map(|path| EntityPath::from(path.as_str()))?;
 
         let timelines = extract_timelines(schema, &msg)?;
+        let components = extract_components(schema, &msg)?;
+
+        // TODO: sort the "instances" component, and everything else accordingly!
+
+        let mut indices = HashMap::with_capacity(components.len());
+        for (name, component) in components {
+            let table = self.components.entry(name.to_owned()).or_insert_with(|| {
+                ComponentTable::new(name.to_owned(), component.data_type().clone())
+            });
+
+            let row_idx = table.insert(&timelines, component)?;
+            indices.insert(name, row_idx);
+        }
 
         // TODO: Let's start the very dumb way: one bucket per TimeInt, then we'll deal with
         // actual ranges.
@@ -108,24 +134,14 @@ impl DataStore {
             let index = self
                 .indices
                 .entry((timeline.clone(), ent_path.clone()))
-                .or_insert(Default::default());
-        }
-
-        let components = extract_components(schema, &msg)?;
-
-        // let mut indices = HashMap::with_capacity(components.len());
-        for (name, component) in components {
-            let table = self.components.entry(name.to_owned()).or_insert_with(|| {
-                ComponentTable::new(name.to_owned(), component.data_type().clone())
-            });
-
-            let row_idx = table.insert(&timelines, component);
-            // dbg!(row_idx);
+                .or_insert_with(|| IndexTable::new(timeline.clone(), ent_path.clone()));
+            index.insert(*time, &indices)?;
         }
 
         Ok(())
     }
 
+    // TODO: that one can probably return an actual DataFrame!
     pub fn query() {}
 }
 
@@ -216,6 +232,8 @@ fn extract_components<'data>(
         .collect())
 }
 
+// --- Indices ---
+
 /// A chunked index, bucketized over time and space (whichever comes first).
 ///
 /// Each bucket covers a half-open time range.
@@ -244,14 +262,33 @@ fn extract_components<'data>(
 //
 //
 // Each entry is a row index. It's nullable, with `null` = no entry.
-#[derive(Default, Debug)]
+#[derive(Debug)]
 struct IndexTable {
+    timeline: Timeline,
+    ent_path: EntityPath,
     buckets: BTreeMap<TimeInt, IndexBucket>,
 }
 
 impl std::fmt::Display for IndexTable {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        todo!()
+        let Self {
+            timeline,
+            ent_path,
+            buckets,
+        } = self;
+
+        f.write_fmt(format_args!("timeline: {}\n", timeline.name()))?;
+        f.write_fmt(format_args!("entity: {}\n", ent_path))?;
+
+        f.write_str("buckets: [\n")?;
+        for (_, bucket) in buckets {
+            f.write_str(&indent::indent_all_by(8, "IndexBucket {\n"))?;
+            f.write_str(&indent::indent_all_by(12, bucket.to_string() + "\n"))?;
+            f.write_str(&indent::indent_all_by(8, "}\n"))?;
+        }
+        f.write_str("]")?;
+
+        Ok(())
     }
 }
 
@@ -269,6 +306,28 @@ impl IndexTable {
     //         }
     //     }
     // }
+
+    pub fn new(timeline: Timeline, ent_path: EntityPath) -> Self {
+        Self {
+            timeline,
+            ent_path,
+            buckets: [(TimeInt::from(0), IndexBucket::new())].into(),
+        }
+    }
+
+    pub fn insert(
+        &mut self,
+        time: TimeInt,
+        indices: &HashMap<ComponentNameRef<'_>, RowIndex>,
+    ) -> anyhow::Result<()> {
+        // TODO: at this point, indices _must_ contains an entry for 'instances'.
+        self.buckets
+            .iter_mut()
+            .next()
+            .unwrap()
+            .1
+            .insert(time, indices)
+    }
 }
 
 /// TODO
@@ -281,6 +340,11 @@ struct IndexBucket {
     /// The time range covered by this bucket.
     time_range: TimeIntRange,
 
+    /// Whether the indices are currently sorted.
+    ///
+    /// Querying an `IndexBucket` will always trigger a sort if the indices aren't already sorted.
+    is_sorted: bool,
+
     /// All indices for this bucket.
     ///
     /// Each column in this dataframe corresponds to a component.
@@ -288,15 +352,127 @@ struct IndexBucket {
     // new columns may be added at any time
     // sorted by the first column, time (if [`Self::is_sorted`])
     //
-    // TODO(cmc): some components are always present: timelines, instances
-    indices: (),
+    // TODO: some components are always present: timelines, instances
+    // TODO: growable arrays
+    // TODO: ideally we want everything in the same "table", so that in case where 2 components
+    // have been updated at the same time, we can get away with a single binsearch
+    times: Int64Vec,
+    indices: HashMap<ComponentName, MutableStructArray>,
 }
 
 impl std::fmt::Display for IndexBucket {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        todo!()
+        let Self {
+            time_range,
+            is_sorted,
+            times,
+            indices,
+        } = self;
+
+        f.write_fmt(format_args!(
+            "time range: from {:?} (inclusive) to {:?} (exlusive)\n",
+            time_range.start, time_range.end,
+        ))?;
+
+        let series =
+            vec![polars::prelude::Series::try_from(("time", times.clone().as_box())).unwrap()];
+        let df = polars::prelude::DataFrame::new(series).unwrap();
+        f.write_fmt(format_args!("data (sorted={is_sorted}): {df:?}\n"))?;
+
+        // let series = indices
+        //     .into_iter()
+        //     .map(|(name, index)| {
+        //         // TODO: I'm sure there's no need to clone here
+        //         let values = index.values();
+        //         let index = StructArray::new(index.data_type().clone(), *values.clone(), None);
+        //         polars::prelude::Series::try_from((name.as_str(), index)).unwrap()
+        //     })
+        //     .collect::<Vec<_>>();
+        // let df = polars::prelude::DataFrame::new(series).unwrap();
+        // f.write_fmt(format_args!("data (sorted={is_sorted}): {df:?}\n"))?;
+
+        Ok(())
     }
 }
+
+impl IndexBucket {
+    pub fn new() -> Self {
+        Self {
+            time_range: TimeInt::from(i64::MIN)..TimeInt::from(i64::MAX),
+            is_sorted: true,
+            times: Int64Vec::default(),
+            indices: Default::default(),
+        }
+    }
+
+    pub fn insert(
+        &mut self,
+        time: TimeInt,
+        indices: &HashMap<ComponentNameRef<'_>, RowIndex>,
+    ) -> anyhow::Result<()> {
+        fn create_array() -> MutableStructArray {
+            let time = Box::new(Int64Vec::new());
+            let index = Box::new(UInt64Vec::new());
+            let fields = vec![
+                Field::new("time", DataType::Int64, false),
+                Field::new("index", DataType::UInt64, false),
+            ];
+            MutableStructArray::new(DataType::Struct(fields), vec![time, index])
+        }
+
+        self.times.push(time.as_i64().into());
+
+        // everything else
+        for (name, row_idx) in indices {
+            // TODO: new component needs to create an array filled with nulls
+            let index = self
+                .indices
+                .entry(name.to_string())
+                .or_insert_with(create_array);
+            index
+                .value::<Int64Vec>(0)
+                .unwrap()
+                .push(time.as_i64().into());
+            index.value::<UInt64Vec>(1).unwrap().push(Some(*row_idx));
+        }
+
+        self.is_sorted = false;
+
+        // self.sort_indices();
+
+        Ok(())
+    }
+
+    /// Sort all indices by time.
+    pub fn sort_indices(&mut self) {
+        if self.is_sorted {
+            return;
+        }
+
+        use arrow2::compute::sort::{lexsort, SortColumn, SortOptions};
+
+        for (name, index) in &mut self.indices {
+            let time = index.value::<Int64Vec>(0).unwrap();
+            dbg!(&time);
+
+            let sorted_chunk = lexsort::<i32>(
+                &vec![SortColumn {
+                    values: &*time.as_box(),
+                    options: None,
+                }],
+                None,
+            )
+            .unwrap();
+            dbg!(sorted_chunk);
+
+            let index = index.value::<UInt64Vec>(1).unwrap();
+        }
+
+        self.is_sorted = true;
+    }
+}
+
+// --- Components ---
 
 /// A chunked component table (i.e. a single column), bucketized by size only.
 //

@@ -12,7 +12,7 @@ re_log = { path = "../re_log" }
 re_log_types = { path = "../re_log_types" }
 
 # External
-arrow2 = { version = "0.14", features = ["io_ipc", "compute_concatenate"] }
+arrow2 = { version = "0.14", features = ["io_ipc", "compute_concatenate", "compute_sort"] }
 anyhow = "1.0"
 indent = "0.1"
 nohash-hasher = "0.2"
