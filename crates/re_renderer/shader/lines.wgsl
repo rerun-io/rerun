@@ -35,7 +35,7 @@ struct VertexOut {
     closest_strip_position: Vec3,
 
     @location(3) @interpolate(flat)
-    line_radius: f32,
+    strip_radius: f32,
 
     @location(4) @interpolate(flat)
     round_cap: u32,
@@ -115,12 +115,13 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     }
 
     // Data valid for the entire strip that this vertex belongs to.
-    var strip_data = read_strip_data(strip_index);
+    let strip_data = read_strip_data(strip_index);
 
     // Calculate the direction the current quad is facing in and adjust various parameters if this is a cap.
     var quad_dir = ZERO; // If this remains zero, the quad is discarded automatically.
     var center_position = pos_data_current.pos; // line center of the quad (triangle for caps) we're spanning.
     var closest_strip_position = center_position;
+    var radius = strip_data.radius;
     var round_cap = 0u;
 
     // For a (triangle) end cap:
@@ -163,10 +164,10 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
         if pointy_end {
             // The pointy end is an extension of the line, need to calculate it and collapse the thickness
             center_position = closest_strip_position + quad_dir * (strip_data.radius * 4.0);
-            strip_data.radius = 0.0;
+            radius = 0.0;
         } else if round_cap == 0u {
             // If this is nit a round cap and not the pointy end, we blow up our ("virtual") quad by twice the size
-            strip_data.radius *= 2.0;
+            radius *= 2.0;
         }
     } else {
         // Regular "body" quad of the line.
@@ -177,7 +178,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     // Span up the vertex away from the line's axis, orthogonal to the direction to the camera
     let to_camera = camera_ray_to_world_pos(center_position).direction;
     let dir_up = normalize(cross(to_camera, quad_dir));
-    let pos = center_position + (strip_data.radius * top_bottom) * dir_up;
+    let pos = center_position + (radius * top_bottom) * dir_up;
 
     // Output, transform to projection space and done.
     var out: VertexOut;
@@ -185,7 +186,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     out.position_world = pos;
     out.closest_strip_position = closest_strip_position;
     out.color = strip_data.color;
-    out.line_radius = strip_data.radius;
+    out.strip_radius = strip_data.radius;
     out.round_cap = round_cap;
 
     return out;
@@ -194,18 +195,19 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) Vec4 {
     let distance_to_skeleton = length(in.position_world - in.closest_strip_position);
-    let relative_distance_to_skeleton = distance_to_skeleton / in.line_radius;
+    let relative_distance_to_skeleton = distance_to_skeleton / in.strip_radius;
 
     var coverage = 1.0;
     if in.round_cap != 0u {
         let pixel_world_size = get_pixel_world_size_at(length(in.position_world - frame.camera_position));
-        coverage = 1.0 - distance_to_skeleton + in.line_radius - pixel_world_size;
-        if coverage < 0.0 {
+        let signed_distance_to_border = distance_to_skeleton - in.strip_radius;
+        if signed_distance_to_border > pixel_world_size {
             discard;
         }
+        coverage = 1.0 - saturate(signed_distance_to_border / pixel_world_size);
     }
 
     // TODO(andreas): proper shading/lighting, etc.
     let shading = max(0.2, 1.2 - relative_distance_to_skeleton);
-    return Vec4(in.color.rgb * shading, coverage);
+    return vec4<f32>(in.color.rgb * shading, coverage);
 }

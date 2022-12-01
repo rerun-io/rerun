@@ -116,7 +116,7 @@ fn build_lines(re_ctx: &mut RenderContext, seconds_since_startup: f32) -> LineDr
         )
         .color_rgb(50, 255, 50)
         .radius(0.05)
-        .flags(LineStripFlags::CAP_END_TRIANGLE);
+        .flags(LineStripFlags::CAP_END_TRIANGLE | LineStripFlags::CAP_START_ROUND);
 
     // Blue spiral
     builder
