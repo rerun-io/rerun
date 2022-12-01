@@ -6,3 +6,5 @@ labels: ''
 assignees: ''
 
 ---
+
+If you are asking a question, use [the Rerun discussions forum](https://github.com/rerun-io/rerun/discussions/categories/q-a) instead!
