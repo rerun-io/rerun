@@ -46,17 +46,41 @@ fn single_entity_single_component_roundtrip() {
     let frame42 = 42;
     let frame43 = 43;
 
-    let (schema, components) = build_message(&ent_path, now_plus_20ms, frame41, 10);
+    let (schema, components) = build_message(
+        &ent_path,
+        [build_log_time(now_plus_20ms), build_frame_nr(frame41)],
+        [
+            // TODO: play with differing nb_instances
+            build_instances(10),
+            build_rects(10),
+        ],
+    );
     // eprintln!("inserting into '{ent_path}':\nschema: {schema:#?}\ncomponents: {components:#?}");
     store.insert(&schema, components).unwrap();
     eprintln!("---\n{store}");
 
-    let (schema, components) = build_message(&ent_path, now_minus_20ms, frame43, 20);
+    let (schema, components) = build_message(
+        &ent_path,
+        [build_log_time(now_minus_20ms), build_frame_nr(frame43)],
+        [
+            // TODO: play with differing nb_instances
+            build_instances(20),
+            build_rects(20),
+        ],
+    );
     // eprintln!("inserting into '{ent_path}':\nschema: {schema:#?}\ncomponents: {components:#?}");
     store.insert(&schema, components).unwrap();
     eprintln!("---\n{store}");
 
-    let (schema, components) = build_message(&ent_path, now, frame42, 1);
+    let (schema, components) = build_message(
+        &ent_path,
+        [build_log_time(now), build_frame_nr(frame42)],
+        [
+            // TODO: play with differing nb_instances
+            build_instances(1),
+            build_rects(1),
+        ],
+    );
     // eprintln!("inserting into '{ent_path}':\nschema: {schema:#?}\ncomponents: {components:#?}");
     store.insert(&schema, components).unwrap();
     eprintln!("---\n{store}");
@@ -128,12 +152,12 @@ fn pack_timelines(
     (schema, packed)
 }
 
-fn build_instances(nb_rows: usize) -> (Schema, ListArray<i32>) {
+fn build_instances(nb_instances: usize) -> (Schema, ListArray<i32>) {
     use rand::Rng as _;
 
     let mut rng = rand::thread_rng();
     let data = PrimitiveArray::from(
-        (0..nb_rows)
+        (0..nb_instances)
             .into_iter()
             .map(|_| Some(rng.gen()))
             .collect::<Vec<Option<u32>>>(),
@@ -141,7 +165,7 @@ fn build_instances(nb_rows: usize) -> (Schema, ListArray<i32>) {
 
     let data = ListArray::<i32>::from_data(
         ListArray::<i32>::default_datatype(data.data_type().clone()), // datatype
-        Buffer::from(vec![0, nb_rows as i32]),                        // offsets
+        Buffer::from(vec![0, nb_instances as i32]),                   // offsets
         data.boxed(),                                                 // values
         None,                                                         // validity
     );
@@ -156,9 +180,12 @@ fn build_instances(nb_rows: usize) -> (Schema, ListArray<i32>) {
     (schema, data)
 }
 
-fn build_rects(nb_rows: usize) -> (Schema, ListArray<i32>) {
+fn build_rects(nb_instances: usize) -> (Schema, ListArray<i32>) {
     let data = {
-        let data: Box<[_]> = (0..nb_rows).into_iter().map(|i| i as f32 / 10.0).collect();
+        let data: Box<[_]> = (0..nb_instances)
+            .into_iter()
+            .map(|i| i as f32 / 10.0)
+            .collect();
         let x = Float32Array::from_slice(&data).boxed();
         let y = Float32Array::from_slice(&data).boxed();
         let w = Float32Array::from_slice(&data).boxed();
@@ -174,12 +201,51 @@ fn build_rects(nb_rows: usize) -> (Schema, ListArray<i32>) {
 
     let data = ListArray::<i32>::from_data(
         ListArray::<i32>::default_datatype(data.data_type().clone()), // datatype
-        Buffer::from(vec![0, nb_rows as i32]),                        // offsets
+        Buffer::from(vec![0, nb_instances as i32]),                   // offsets
         data.boxed(),                                                 // values
         None,                                                         // validity
     );
 
-    let fields = [Field::new("rect", data.data_type().clone(), false)].to_vec();
+    let fields = [Field::new("rects", data.data_type().clone(), false)].to_vec();
+
+    let schema = Schema {
+        fields,
+        ..Default::default()
+    };
+
+    (schema, data)
+}
+
+fn build_positions(nb_instances: usize) -> (Schema, ListArray<i32>) {
+    use rand::Rng as _;
+    let mut rng = rand::thread_rng();
+
+    let data = {
+        let xs: Box<[_]> = (0..nb_instances)
+            .into_iter()
+            .map(|_| rng.gen_range(0.0..10.0))
+            .collect();
+        let ys: Box<[_]> = (0..nb_instances)
+            .into_iter()
+            .map(|_| rng.gen_range(0.0..10.0))
+            .collect();
+        let x = Float32Array::from_slice(&xs).boxed();
+        let y = Float32Array::from_slice(&ys).boxed();
+        let fields = vec![
+            Field::new("x", DataType::Float32, false),
+            Field::new("y", DataType::Float32, false),
+        ];
+        StructArray::new(DataType::Struct(fields), vec![x, y], None)
+    };
+
+    let data = ListArray::<i32>::from_data(
+        ListArray::<i32>::default_datatype(data.data_type().clone()),
+        Buffer::from(vec![0, nb_instances as i32]),
+        data.boxed(),
+        None,
+    );
+
+    let fields = [Field::new("rects", data.data_type().clone(), false)].to_vec();
 
     let schema = Schema {
         fields,
@@ -208,12 +274,10 @@ fn pack_components(
     (schema, packed)
 }
 
-// TODO: make this more generic
 fn build_message(
     ent_path: &EntityPath,
-    log_time: SystemTime,
-    frame_nr: i64,
-    nb_rows: usize,
+    timelines: impl IntoIterator<Item = (Schema, Int64Array)>,
+    components: impl IntoIterator<Item = (Schema, ListArray<i32>)>,
 ) -> (Schema, Chunk<Box<dyn Array>>) {
     let mut schema = Schema::default();
     let mut cols: Vec<Box<dyn Array>> = Vec::new();
@@ -221,29 +285,23 @@ fn build_message(
     schema.metadata = BTreeMap::from([(ENTITY_PATH_KEY.into(), ent_path.to_string())]);
 
     // Build & pack timelines
-    let (log_time_schema, log_time_data) = build_log_time(log_time);
-    let (frame_nr_schema, frame_nr_data) = build_frame_nr(frame_nr);
     let (timelines_schema, timelines_data) = pack_timelines(
-        [
-            (log_time_schema, log_time_data.boxed()),
-            (frame_nr_schema, frame_nr_data.boxed()),
-        ]
-        .into_iter(),
+        timelines
+            .into_iter()
+            .map(|(schema, data)| (schema, data.boxed())),
     );
     schema.fields.extend(timelines_schema.fields);
     schema.metadata.extend(timelines_schema.metadata);
     cols.push(timelines_data.boxed());
 
     // Build & pack components
-    // TODO: what about when nb_rows differs between components? is that legal?
-    let (instances_schema, instances_data) = build_instances(nb_rows);
-    let (rects_schema, rects_data) = build_rects(nb_rows);
+    // TODO: what about when nb_instances differs between components? is that legal?
+    // let (instances_schema, instances_data) = build_instances(nb_instances);
+    // let (rects_schema, rects_data) = build_rects(nb_instances);
     let (components_schema, components_data) = pack_components(
-        [
-            (instances_schema, instances_data.boxed()),
-            (rects_schema, rects_data.boxed()),
-        ]
-        .into_iter(),
+        components
+            .into_iter()
+            .map(|(schema, data)| (schema, data.boxed())),
     );
     schema.fields.extend(components_schema.fields);
     schema.metadata.extend(components_schema.metadata);
