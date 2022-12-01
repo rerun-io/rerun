@@ -250,7 +250,9 @@ impl LineDrawable {
         );
 
         let num_strips = strips.len() as u32;
-        let num_vertices = vertices.len() as u32;
+        // Add a placeholder vertex at the beginning to simplify line cap handling
+        // (need this only if the first line starts with a cap, but not specialcasing this makes things easier!)
+        let num_vertices = vertices.len() as u32 + 1;
 
         // TODO(andreas): just create more draw work items each with its own texture to become "unlimited"
         anyhow::ensure!(
@@ -268,19 +270,6 @@ impl LineDrawable {
                 "Too many line segments! The maximum number of positions is {} but specified were {num_vertices}",
                 POSITION_TEXTURE_SIZE * POSITION_TEXTURE_SIZE
             );
-
-        // No index buffer, so after each strip we have a quad that is discarded or turned into an arrow cap.
-        // This means from a geometry perspective there is only ONE strip, i.e. 2 less quads than there are half-PositionDatas!
-        let num_quads = if strips
-            .last()
-            .unwrap()
-            .flags
-            .contains(LineStripFlags::CAP_END_TRIANGLE)
-        {
-            num_vertices
-        } else {
-            num_vertices - 1
-        };
 
         // TODO(andreas): We want a "stack allocation" here that lives for one frame.
         //                  Note also that this doesn't protect against sharing the same texture with several LineDrawable!
@@ -322,6 +311,11 @@ impl LineDrawable {
         // To make the data upload simpler (and have it be done in one go), we always update full rows of each of our textures
         let mut position_data_staging =
             Vec::with_capacity(next_multiple_of(num_vertices, POSITION_TEXTURE_SIZE) as usize);
+        // placeholder at the beginning to facilitate start-caps
+        position_data_staging.push(LineVertex {
+            pos: glam::vec3(f32::INFINITY, f32::INFINITY, f32::INFINITY),
+            strip_index: u32::MAX,
+        });
         position_data_staging.extend(vertices.iter());
         position_data_staging.extend(
             std::iter::repeat(gpu_data::LineVertex::zeroed()).take(
@@ -413,7 +407,7 @@ impl LineDrawable {
                 &ctx.resource_pools.buffers,
                 &ctx.resource_pools.samplers,
             )),
-            num_quads,
+            num_quads: num_vertices,
         })
     }
 }
