@@ -2,6 +2,7 @@
 #import <./global_bindings.wgsl>
 #import <./utils/srgb.wgsl>
 #import <./utils/encoding.wgsl>
+#import <./utils/camera.wgsl>
 
 @group(1) @binding(0)
 var line_strip_texture: texture_2d<f32>;
@@ -115,7 +116,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     }
 
     // Span up the vertex away from the line's axis, orthogonal to the direction to the camera
-    let to_camera = normalize(frame.camera_position - pos_data_current.pos);
+    let to_camera = camera_ray_to_world_pos(pos_data_current.pos).direction;
     let dir_up = normalize(cross(to_camera, quad_dir));
     let pos = pos_data_current.pos + (strip_data.radius * top_bottom) * dir_up;
 

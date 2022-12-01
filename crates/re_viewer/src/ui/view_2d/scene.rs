@@ -1,15 +1,19 @@
 use std::sync::Arc;
 
+use ahash::HashMap;
 use egui::{pos2, Color32, Pos2, Rect, Stroke};
 use re_data_store::{
-    query::{visit_type_data_2, visit_type_data_4},
+    query::{visit_type_data_2, visit_type_data_4, visit_type_data_5},
     FieldName, InstanceIdHash,
 };
-use re_log_types::{context::ClassId, DataVec, IndexHash, MsgId, ObjectType, Tensor};
+use re_log_types::{
+    context::{ClassId, KeypointId},
+    DataVec, IndexHash, MsgId, ObjectType, Tensor,
+};
 
 use crate::{
     ui::{
-        annotations::{AnnotationMap, DefaultColor},
+        annotations::{auto_color, AnnotationMap, DefaultColor},
         Annotations, SceneQuery,
     },
     ViewerContext,
@@ -111,12 +115,12 @@ impl Scene2D {
 
         let images = query
             .iter_object_stores(ctx.log_db, &[ObjectType::Image])
-            .flat_map(|(_obj_type, obj_path, obj_store)| {
+            .flat_map(|(_obj_type, obj_path, time_query, obj_store)| {
                 let mut batch = Vec::new();
                 visit_type_data_2(
                     obj_store,
                     &FieldName::from("tensor"),
-                    &query.time_query,
+                    &time_query,
                     ("color", "meter"),
                     |instance_index: Option<&IndexHash>,
                      _time: i64,
@@ -132,7 +136,10 @@ impl Scene2D {
                         let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
 
                         let annotations = self.annotation_map.find(obj_path);
-                        let color = annotations.color(color, None, DefaultColor::OpaqueWhite);
+                        let color = annotations
+                            .class_description(None)
+                            .annotation_info()
+                            .color(color, DefaultColor::OpaqueWhite);
 
                         let paint_props = paint_properties(color, &None);
 
@@ -168,12 +175,12 @@ impl Scene2D {
 
         let boxes = query
             .iter_object_stores(ctx.log_db, &[ObjectType::BBox2D])
-            .flat_map(|(_obj_type, obj_path, obj_store)| {
+            .flat_map(|(_obj_type, obj_path, time_query, obj_store)| {
                 let mut batch = Vec::new();
                 visit_type_data_4(
                     obj_store,
                     &FieldName::from("bbox"),
-                    &query.time_query,
+                    &time_query,
                     ("color", "stroke_width", "label", "class_id"),
                     |instance_index: Option<&IndexHash>,
                      _time: i64,
@@ -187,13 +194,11 @@ impl Scene2D {
                         let stroke_width = stroke_width.copied();
 
                         let annotations = self.annotation_map.find(obj_path);
-                        let class_id = class_id.map(|i| ClassId(*i as _));
-                        let color = annotations.color(
-                            color,
-                            class_id.clone(),
-                            DefaultColor::ObjPath(obj_path),
-                        );
-                        let label = annotations.label(label, class_id);
+                        let annotation_info = annotations
+                            .class_description(class_id.map(|i| ClassId(*i as _)))
+                            .annotation_info();
+                        let color = annotation_info.color(color, DefaultColor::ObjPath(obj_path));
+                        let label = annotation_info.label(label);
 
                         let paint_props = paint_properties(color, &stroke_width);
 
@@ -225,33 +230,52 @@ impl Scene2D {
 
         let points = query
             .iter_object_stores(ctx.log_db, &[ObjectType::Point2D])
-            .flat_map(|(_obj_type, obj_path, obj_store)| {
+            .flat_map(|(_obj_type, obj_path, time_query, obj_store)| {
                 let mut batch = Vec::new();
+                let annotations = self.annotation_map.find(obj_path);
+                let default_color = DefaultColor::ObjPath(obj_path);
 
-                visit_type_data_4(
+                // If keypoints ids show up we may need to connect them later!
+                // We include time in the key, so that the "Visible history" (time range queries) feature works.
+                let mut keypoints: HashMap<(ClassId, i64), HashMap<KeypointId, Pos2>> =
+                Default::default();
+
+                visit_type_data_5(
                     obj_store,
                     &FieldName::from("pos"),
-                    &query.time_query,
-                    ("color", "radius", "label", "class_id"),
+                    &time_query,
+                    ("color", "radius", "label", "class_id", "keypoint_id"),
                     |instance_index: Option<&IndexHash>,
-                     _time: i64,
+                     time: i64,
                      _msg_id: &MsgId,
                      pos: &[f32; 2],
                      color: Option<&[u8; 4]>,
                      radius: Option<&f32>,
                      label: Option<&String>,
-                     class_id: Option<&i32>| {
+                     class_id: Option<&i32>,
+                     keypoint_id: Option<&i32>| {
                         let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
+                        let pos = Pos2::new(pos[0], pos[1]);
 
-                        let annotations = self.annotation_map.find(obj_path);
                         let class_id = class_id.map(|i| ClassId(*i as _));
-                        let color = annotations.color(
-                            color,
-                            class_id.clone(),
-                            DefaultColor::ObjPath(obj_path),
-                        );
-                        let label = annotations.label(label, class_id);
+                        let class_description =
+                            annotations.class_description(class_id);
 
+                            let annotation_info = if let Some(keypoint_id) = keypoint_id {
+                                let keypoint_id = KeypointId(*keypoint_id as _);
+                                if let Some(class_id) = class_id {
+                                    keypoints
+                                        .entry((class_id, time))
+                                        .or_insert_with(Default::default)
+                                        .insert(keypoint_id, pos);
+                                }
+
+                                class_description.annotation_info_with_keypoint(keypoint_id)
+                            } else {
+                                class_description.annotation_info()
+                            };
+                        let color = annotation_info.color(color, default_color);
+                        let label = annotation_info.label(label);
                         let paint_props = paint_properties(color, &None);
 
                         batch.push(Point2D {
@@ -259,7 +283,7 @@ impl Scene2D {
                                 obj_path,
                                 instance_index,
                             ),
-                            pos: Pos2::new(pos[0], pos[1]),
+                            pos,
                             radius: radius.copied(),
                             paint_props,
                             label,
@@ -272,6 +296,35 @@ impl Scene2D {
                 if !show_labels {
                     for point in &mut batch {
                         point.label = None;
+                    }
+                }
+
+                // Generate keypoint connections if any.
+                let instance_hash = InstanceIdHash::from_path_and_index(obj_path, IndexHash::NONE);
+                for ((class_id, _time), keypoints_in_class) in &keypoints {
+                    let Some(class_description) = annotations.context.class_map.get(class_id) else {
+                        continue;
+                    };
+
+                    let color = class_description
+                        .info
+                        .color
+                        .unwrap_or_else(|| auto_color(class_description.info.id));
+
+                    for (a, b) in &class_description.keypoint_connections {
+                        let (Some(a), Some(b)) = (keypoints_in_class.get(a), keypoints_in_class.get(b)) else {
+                            re_log::warn_once!(
+                                "Keypoint connection from index {:?} to {:?} could not be resolved in object {:?}",
+                                a, b, obj_path
+                            );
+                            continue;
+                        };
+                        self.line_segments.push(LineSegments2D {
+                            instance_hash,
+                            points: vec![*a, *b],
+                            stroke_width: None,
+                            paint_props: paint_properties(color, &None),
+                        });
                     }
                 }
 
@@ -290,12 +343,14 @@ impl Scene2D {
 
         let segments = query
             .iter_object_stores(ctx.log_db, &[ObjectType::LineSegments2D])
-            .flat_map(|(_obj_type, obj_path, obj_store)| {
+            .flat_map(|(_obj_type, obj_path, time_query, obj_store)| {
                 let mut batch = Vec::new();
+                let annotations = self.annotation_map.find(obj_path);
+
                 visit_type_data_2(
                     obj_store,
                     &FieldName::from("points"),
-                    &query.time_query,
+                    &time_query,
                     ("color", "stroke_width"),
                     |instance_index: Option<&IndexHash>,
                      _time: i64,
@@ -309,9 +364,9 @@ impl Scene2D {
                         let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
                         let stroke_width = stroke_width.copied();
 
-                        let annotations = self.annotation_map.find(obj_path);
                         // TODO(andreas): support class ids for line segments
-                        let color = annotations.color(color, None, DefaultColor::ObjPath(obj_path));
+                        let annotation_info = annotations.class_description(None).annotation_info();
+                        let color = annotation_info.color(color, DefaultColor::ObjPath(obj_path));
 
                         let paint_props = paint_properties(color, &None);
 

@@ -1,6 +1,9 @@
 use lazy_static::lazy_static;
-use re_data_store::{FieldName, ObjPath};
-use re_log_types::{context::ClassId, AnnotationContext, DataPath, MsgId};
+use re_data_store::{FieldName, ObjPath, TimeQuery};
+use re_log_types::{
+    context::{AnnotationInfo, ClassDescription, ClassId, KeypointId},
+    AnnotationContext, DataPath, MsgId,
+};
 use std::{collections::BTreeMap, sync::Arc};
 
 use crate::{misc::ViewerContext, ui::scene::SceneQuery};
@@ -11,6 +14,44 @@ pub struct Annotations {
     pub context: AnnotationContext,
 }
 
+impl Annotations {
+    pub fn class_description(&self, class_id: Option<ClassId>) -> ResolvedClassDescription<'_> {
+        ResolvedClassDescription(
+            class_id.and_then(|class_id| self.context.class_map.get(&class_id)),
+        )
+    }
+}
+
+pub struct ResolvedClassDescription<'a>(pub Option<&'a ClassDescription>);
+
+impl<'a> ResolvedClassDescription<'a> {
+    pub fn annotation_info(&self) -> ResolvedAnnotationInfo {
+        ResolvedAnnotationInfo(self.0.map(|desc| desc.info.clone()))
+    }
+
+    /// Merges class annotation info with keypoint annotation info (if existing respectively).
+    pub fn annotation_info_with_keypoint(&self, keypoint_id: KeypointId) -> ResolvedAnnotationInfo {
+        if let Some(desc) = self.0 {
+            // Assuming that keypoint annotation is the rarer case, merging the entire annotation ahead of time
+            // is cheaper than doing it lazily (which would cause more branches down the line for callsites without keypoints)
+            if let Some(keypoint_annotation_info) = desc.keypoint_map.get(&keypoint_id) {
+                ResolvedAnnotationInfo(Some(AnnotationInfo {
+                    id: keypoint_id.0,
+                    label: keypoint_annotation_info
+                        .label
+                        .clone()
+                        .or_else(|| desc.info.label.clone()),
+                    color: keypoint_annotation_info.color.or(desc.info.color),
+                }))
+            } else {
+                self.annotation_info()
+            }
+        } else {
+            ResolvedAnnotationInfo(None)
+        }
+    }
+}
+
 #[derive(Clone, Copy)]
 pub enum DefaultColor<'a> {
     OpaqueWhite,
@@ -18,22 +59,17 @@ pub enum DefaultColor<'a> {
     ObjPath(&'a ObjPath),
 }
 
-impl Annotations {
-    pub fn color(
-        &self,
-        color: Option<&[u8; 4]>,
-        class_id: Option<ClassId>,
-        default_color: DefaultColor<'_>,
-    ) -> [u8; 4] {
+pub struct ResolvedAnnotationInfo(pub Option<AnnotationInfo>);
+
+impl ResolvedAnnotationInfo {
+    pub fn color(&self, color: Option<&[u8; 4]>, default_color: DefaultColor<'_>) -> [u8; 4] {
         if let Some(color) = color {
             *color
-        } else if let Some(color) = class_id.and_then(|id| {
-            self.context
-                .class_map
-                .get(&id)
-                // If have a valid id, use it for color even if the context doesn't have one.
-                .map(|desc| desc.info.color.unwrap_or_else(|| auto_color(id.0)))
-        }) {
+        } else if let Some(color) = self
+            .0
+            .as_ref()
+            .and_then(|info| info.color.or_else(|| Some(auto_color(info.id))))
+        {
             color
         } else {
             match default_color {
@@ -46,16 +82,13 @@ impl Annotations {
         }
     }
 
-    pub fn label(&self, label: Option<&String>, class_id: Option<ClassId>) -> Option<String> {
+    pub fn label(&self, label: Option<&String>) -> Option<String> {
         if let Some(label) = label {
             Some(label.clone())
         } else {
-            class_id.and_then(|id| {
-                self.context
-                    .class_map
-                    .get(&id)
-                    .and_then(|desc| desc.info.label.as_ref().map(ToString::to_string))
-            })
+            self.0
+                .as_ref()
+                .and_then(|info| info.label.as_ref().map(ToString::to_string))
         }
     }
 }
@@ -72,7 +105,8 @@ impl AnnotationMap {
         {
             if let Ok(mono_field_store) = field_store.get_mono::<re_log_types::AnnotationContext>()
             {
-                mono_field_store.query(&query.time_query, |_time, msg_id, context| {
+                let time_query = TimeQuery::LatestAt(query.latest_at.as_i64());
+                mono_field_store.query(&time_query, |_time, msg_id, context| {
                     self.0.entry(obj_path.clone()).or_insert_with(|| {
                         Arc::new(Annotations {
                             msg_id: *msg_id,
@@ -90,7 +124,7 @@ impl AnnotationMap {
     ) -> Option<(DataPath, Annotations)> {
         let timeline = ctx.rec_cfg.time_ctrl.timeline();
         let timeline_store = ctx.log_db.obj_db.store.get(timeline)?;
-        let query_time = ctx.rec_cfg.time_ctrl.time()?.floor().as_i64();
+        let query_time = ctx.rec_cfg.time_ctrl.time_i64()?;
         let field_name = FieldName::from("_annotation_context");
 
         let annotation_context_for_path = |obj_path: &ObjPath| {

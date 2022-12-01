@@ -7,7 +7,7 @@ use re_data_store::{InstanceId, InstanceIdHash};
 use re_log_types::{ObjPath, ViewCoordinates};
 use re_renderer::{
     renderer::{GenericSkyboxDrawable, LineDrawable, MeshDrawable, PointCloudDrawable},
-    view_builder::{TargetConfiguration, ViewBuilder},
+    view_builder::{Projection, TargetConfiguration, ViewBuilder},
     RenderContext,
 };
 
@@ -44,6 +44,7 @@ pub(crate) struct View3DState {
     spin: bool,
     show_axes: bool,
 
+    #[serde(skip)]
     last_eye_interact_time: f64,
 
     /// Filled in at the start of each frame
@@ -80,7 +81,7 @@ impl View3DState {
         if response.double_clicked() {
             // Reset eye
             if tracking_camera.is_some() {
-                ctx.rec_cfg.selection = Selection::None;
+                ctx.clear_selection();
             }
             self.interpolate_to_orbit_eye(default_eye(&self.scene_bbox, &self.space_specs));
         }
@@ -266,8 +267,8 @@ impl SpaceSpecs {
 
 /// If the path to a camera is selected, we follow that camera.
 fn tracking_camera(ctx: &ViewerContext<'_>, space_cameras: &[SpaceCamera]) -> Option<Eye> {
-    if let Selection::Instance(selected) = &ctx.rec_cfg.selection {
-        find_camera(space_cameras, selected)
+    if let Selection::Instance(selected) = ctx.selection() {
+        find_camera(space_cameras, &selected)
     } else {
         None
     }
@@ -297,7 +298,7 @@ fn click_object(
     state: &mut View3DState,
     instance_id: &InstanceId,
 ) {
-    ctx.rec_cfg.selection = crate::Selection::Instance(instance_id.clone());
+    ctx.set_selection(crate::Selection::Instance(instance_id.clone()));
 
     if let Some(camera) = find_camera(space_cameras, instance_id) {
         state.interpolate_to_eye(camera);
@@ -354,7 +355,7 @@ pub(crate) fn view_3d(
         state.last_eye_interact_time = ui.input().time;
         state.eye_interpolation = None;
         if tracking_camera.is_some() {
-            ctx.rec_cfg.selection = Selection::None;
+            ctx.clear_selection();
         }
     }
 
@@ -482,13 +483,11 @@ fn paint_view(
         let ppp = ui.ctx().pixels_per_point();
         let min = (rect.min.to_vec2() * ppp).round();
         let max = (rect.max.to_vec2() * ppp).round();
-
         let resolution = max - min;
-        let origin = min;
 
         (
             [resolution.x as u32, resolution.y as u32],
-            [origin.x as u32, origin.y as u32],
+            glam::vec2(min.x, min.y),
         )
     };
     if resolution_in_pixel[0] == 0 || resolution_in_pixel[1] == 0 {
@@ -506,11 +505,12 @@ fn paint_view(
                     name: name.into(),
 
                     resolution_in_pixel,
-                    origin_in_pixel,
 
                     view_from_world: eye.world_from_view.inverse(),
-                    fov_y: eye.fov_y,
-                    near_plane_distance: eye.near(),
+                    projection_from_view: Projection::Perspective {
+                        vertical_fov: eye.fov_y,
+                        near_plane_distance: eye.near(),
+                    },
                 },
             )
             .unwrap()
@@ -545,7 +545,7 @@ fn paint_view(
                     let mut view_builder = view_builder.lock();
                     std::mem::replace(&mut *view_builder, None)
                         .expect("egui_wgpu paint callback called more than once")
-                        .composite(ctx, render_pass)
+                        .composite(ctx, render_pass, origin_in_pixel)
                         .unwrap();
                 }),
         ),

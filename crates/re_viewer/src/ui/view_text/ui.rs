@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use egui::{Color32, NumExt as _, RichText};
+use egui::{Color32, RichText};
 use re_data_store::{ObjPath, Timeline};
 use re_log_types::{LogMsg, TimePoint};
 
@@ -36,11 +36,8 @@ pub(crate) fn view_text(
     let time = ctx
         .rec_cfg
         .time_ctrl
-        .time_query()
-        .map_or(state.latest_time, |q| match q {
-            re_data_store::TimeQuery::LatestAt(time) => time,
-            re_data_store::TimeQuery::Range(range) => *range.start(),
-        });
+        .time_i64()
+        .unwrap_or(state.latest_time);
 
     // Did the time cursor move since last time?
     // - If it did, time to autoscroll appropriately.
@@ -273,7 +270,7 @@ fn show_table(
     scroll_to_row: Option<usize>,
 ) {
     let current_timeline = *ctx.rec_cfg.time_ctrl.timeline();
-    let current_time = ctx.rec_cfg.time_ctrl.time().map(|tr| tr.floor());
+    let current_time = ctx.rec_cfg.time_ctrl.time_int();
 
     let timelines = state
         .filters
@@ -282,51 +279,40 @@ fn show_table(
         .filter_map(|(timeline, visible)| visible.then_some(timeline))
         .collect::<Vec<_>>();
 
-    use egui_extras::Size;
+    use egui_extras::Column;
     const ROW_HEIGHT: f32 = 18.0;
     const HEADER_HEIGHT: f32 = 20.0;
-
-    let max_content_height = ui.available_height() - HEADER_HEIGHT;
-    let item_spacing = ui.spacing().item_spacing;
 
     let mut table_builder = egui_extras::TableBuilder::new(ui)
         .striped(true)
         .resizable(true)
-        .scroll(true)
+        .vscroll(true)
+        .auto_shrink([false; 2]) // expand to take up the whole Space View
+        .min_scrolled_height(0.0) // we can go as small as we need to be in order to fit within the space view!
         .cell_layout(egui::Layout::left_to_right(egui::Align::Center));
 
-    if let Some(index) = scroll_to_row {
-        let row_height_full = ROW_HEIGHT + item_spacing.y;
-        let scroll_to_offset = index as f32 * row_height_full;
-
-        // Scroll to center:
-        let scroll_to_offset = scroll_to_offset - max_content_height / 2.0;
-
-        // Don't over-scroll:
-        let scroll_to_offset = scroll_to_offset.clamp(
-            0.0,
-            (text_entries.len() as f32 * row_height_full - max_content_height).at_least(0.0),
-        );
-
-        table_builder = table_builder.vertical_scroll_offset(scroll_to_offset);
+    if let Some(scroll_to_row) = scroll_to_row {
+        table_builder = table_builder.scroll_to_row(scroll_to_row, Some(egui::Align::Center));
     }
 
+    let mut body_clip_rect = None;
     let mut current_time_y = None;
 
     {
         // timeline(s)
-        table_builder = table_builder.columns(Size::initial(100.0), timelines.len());
+        table_builder =
+            table_builder.columns(Column::auto().clip(true).at_least(32.0), timelines.len());
 
         // object path
         if state.filters.col_obj_path {
-            table_builder = table_builder.column(Size::initial(100.0));
+            table_builder = table_builder.column(Column::auto().clip(true).at_least(32.0));
         }
         // log level
         if state.filters.col_log_level {
-            table_builder = table_builder.column(Size::initial(100.0));
+            table_builder = table_builder.column(Column::auto().at_least(30.0));
         }
         // body
-        table_builder = table_builder.column(Size::remainder().at_least(100.0));
+        table_builder = table_builder.column(Column::remainder().at_least(100.0));
     }
     table_builder
         .header(HEADER_HEIGHT, |mut header| {
@@ -350,6 +336,7 @@ fn show_table(
             });
         })
         .body(|body| {
+            body_clip_rect = Some(body.max_rect());
             body.rows(ROW_HEIGHT, text_entries.len(), |index, mut row| {
                 let text_entry = &text_entries[index];
 
@@ -417,9 +404,9 @@ fn show_table(
         });
 
     // TODO(cmc): this draws on top of the headers :(
-    if let Some(current_time_y) = current_time_y {
+    if let (Some(body_clip_rect), Some(current_time_y)) = (body_clip_rect, current_time_y) {
         // Show that the current time is here:
-        ui.painter().hline(
+        ui.painter().with_clip_rect(body_clip_rect).hline(
             ui.max_rect().x_range(),
             current_time_y,
             (1.0, Color32::WHITE),

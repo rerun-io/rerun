@@ -1,7 +1,6 @@
 use std::collections::BTreeMap;
 
 use egui::{color_picker, Vec2};
-use egui_extras::{Size, TableBuilder};
 use re_data_store::{query::visit_type_data_2, FieldName, InstanceId};
 use re_log_types::{IndexHash, MsgId};
 
@@ -12,12 +11,9 @@ pub(crate) fn view_class_description_map(
     ui: &mut egui::Ui,
     instance_id: &InstanceId,
 ) -> Option<()> {
-    let store = ctx
-        .log_db
-        .obj_db
-        .store
-        .get(ctx.rec_cfg.time_ctrl.timeline())?;
-    let time_query = ctx.rec_cfg.time_ctrl.time_query()?;
+    let timeline = ctx.rec_cfg.time_ctrl.timeline();
+    let store = ctx.log_db.obj_db.store.get(timeline)?;
+    let time_query = re_data_store::TimeQuery::LatestAt(ctx.rec_cfg.time_ctrl.time_i64()?);
     let obj_store = store.get(&instance_id.obj_path)?;
 
     // TODO(jleibs) This should really used a shared implementation with objects.rs
@@ -46,12 +42,14 @@ pub(crate) fn view_class_description_map(
         },
     );
 
+    use egui_extras::{Column, TableBuilder};
+
     let table = TableBuilder::new(ui)
         .striped(true)
         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-        .column(Size::initial(60.0).at_least(40.0))
-        .column(Size::initial(60.0).at_least(40.0))
-        .column(Size::remainder().at_least(60.0));
+        .column(Column::auto()) // id
+        .column(Column::auto().clip(true).at_least(40.0)) // label
+        .column(Column::auto()); // color
 
     table
         .header(20.0, |mut header| {

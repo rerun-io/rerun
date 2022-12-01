@@ -7,9 +7,9 @@
 //!
 
 use anyhow::Context;
-use std::sync::mpsc::Receiver;
 
 use re_log_types::LogMsg;
+use re_smart_channel::Receiver;
 
 /// The Rerun Viewer and Server
 ///
@@ -22,8 +22,6 @@ use re_log_types::LogMsg;
 /// * Host a Rerun Server that Rerun SDK:s can connect to.
 ///
 /// Environment variables:
-///
-/// * `RERUN_MEMORY_LIMIT`: set an upper limit on how much memory the Rerun Viewer should use. Example `RERUN_MEMORY_LIMIT=16GB`
 ///
 /// * `RERUN_TRACK_ALLOCATIONS`: track all allocations in order to find memory leaks in the viewer. WARNING: slows down the viewer by a lot!
 #[derive(Debug, clap::Parser)]
@@ -47,6 +45,24 @@ struct Args {
     /// Start with the puffin profiler running.
     #[clap(long)]
     profile: bool,
+
+    /// An upper limit on how much memory the Rerun Viewer should use.
+    ///
+    /// When this limit is used, Rerun will purge the oldest data.
+    ///
+    /// Example: `16GB`
+    #[clap(long)]
+    memory_limit: Option<String>,
+
+    /// Set a maximum input latency, e.g. "200ms" or "10s".
+    ///
+    /// If we go over this, we start dropping packets.
+    ///
+    /// The default is no limit, which means Rerun might eat more and more memory,
+    /// and have longer and longer latency, if you are logging data faster
+    /// than Rerun can index it.
+    #[clap(long)]
+    drop_at_latency: Option<String>,
 }
 
 pub async fn run<I, T>(args: I) -> anyhow::Result<()>
@@ -69,6 +85,13 @@ async fn run_impl(args: Args) -> anyhow::Result<()> {
         profiler.start();
     }
 
+    let startup_options = re_viewer::StartupOptions {
+        memory_limit: args.memory_limit.as_ref().map_or(Default::default(), |l| {
+            re_memory::MemoryLimit::parse(l)
+                .unwrap_or_else(|err| panic!("Bad --memory-limit: {err}"))
+        }),
+    };
+
     // Where do we get the data from?
     let rx = if let Some(url_or_path) = &args.url_or_path {
         let path = std::path::Path::new(url_or_path).to_path_buf();
@@ -76,13 +99,17 @@ async fn run_impl(args: Args) -> anyhow::Result<()> {
             re_log::info!("Loading {path:?}…");
             load_file_to_channel(&path).with_context(|| format!("{path:?}"))?
         } else {
-            return connect_to_ws_url(&args, profiler, url_or_path.clone()).await;
+            // We are connecting to a server at a websocket address:
+            return connect_to_ws_url(&args, startup_options, profiler, url_or_path.clone()).await;
         }
     } else {
         #[cfg(feature = "server")]
         {
             let bind_addr = format!("127.0.0.1:{}", args.port);
-            let rx = re_sdk_comms::serve(&bind_addr)
+            let server_options = re_sdk_comms::ServerOptions {
+                max_latency_sec: parse_max_latency(args.drop_at_latency.as_ref()),
+            };
+            let rx = re_sdk_comms::serve(&bind_addr, server_options)
                 .with_context(|| format!("Failed to bind address {bind_addr:?}"))?;
             re_log::info!("Hosting a SDK server over TCP at {bind_addr}");
             rx
@@ -120,9 +147,14 @@ async fn run_impl(args: Args) -> anyhow::Result<()> {
         anyhow::bail!("Can't host web-viewer - rerun was not compiled with the 'web' feature");
     } else {
         re_viewer::run_native_app(Box::new(move |cc, design_tokens| {
-            let rx = re_viewer::wake_up_ui_thread_on_each_msg(rx, cc.egui_ctx.clone());
-            let mut app =
-                re_viewer::App::from_receiver(&cc.egui_ctx, design_tokens, cc.storage, rx);
+            let rx = wake_up_ui_thread_on_each_msg(rx, cc.egui_ctx.clone());
+            let mut app = re_viewer::App::from_receiver(
+                &cc.egui_ctx,
+                startup_options,
+                design_tokens,
+                cc.storage,
+                rx,
+            );
             app.set_profiler(profiler);
             Box::new(app)
         }));
@@ -132,6 +164,7 @@ async fn run_impl(args: Args) -> anyhow::Result<()> {
 
 async fn connect_to_ws_url(
     args: &Args,
+    startup_options: re_viewer::StartupOptions,
     profiler: re_viewer::Profiler,
     mut rerun_server_ws_url: String,
 ) -> anyhow::Result<()> {
@@ -146,6 +179,7 @@ async fn connect_to_ws_url(
         re_viewer::run_native_app(Box::new(move |cc, design_tokens| {
             let mut app = re_viewer::RemoteViewerApp::new(
                 &cc.egui_ctx,
+                startup_options,
                 design_tokens,
                 cc.storage,
                 rerun_server_ws_url,
@@ -162,7 +196,7 @@ fn load_file_to_channel(path: &std::path::Path) -> anyhow::Result<Receiver<LogMs
     let file = std::fs::File::open(path).context("Failed to open file")?;
     let decoder = re_log_types::encoding::Decoder::new(file)?;
 
-    let (tx, rx) = std::sync::mpsc::channel();
+    let (tx, rx) = re_smart_channel::smart_channel(re_smart_channel::Source::File);
 
     std::thread::Builder::new()
         .name("rrd_file_reader".into())
@@ -197,4 +231,69 @@ async fn host_web_viewer(rerun_ws_server_url: String) -> anyhow::Result<()> {
 #[cfg(not(feature = "web"))]
 async fn host_web_viewer(_rerun_ws_server_url: String) -> anyhow::Result<()> {
     panic!("Can't host web-viewer - rerun was not compiled with the 'web' feature");
+}
+
+/// This wakes up the ui thread each time we receive a new message.
+fn wake_up_ui_thread_on_each_msg<T: Send + 'static>(
+    rx: Receiver<T>,
+    ctx: egui::Context,
+) -> re_smart_channel::Receiver<T> {
+    // We need to intercept messages to wake up the ui thread.
+    // For that, we need a new channel.
+    // However, we want to make sure the channel latency numbers are from the start
+    // of the first channel, to the end of the second.
+    // For that we need to use `chained_channel`, `recv_with_send_time` and `send_at`.
+    let (tx, new_rx) = rx.chained_channel();
+    std::thread::Builder::new()
+        .name("ui_waker".to_owned())
+        .spawn(move || {
+            while let Ok((sent_at, msg)) = rx.recv_with_send_time() {
+                if tx.send_at(sent_at, msg).is_ok() {
+                    ctx.request_repaint();
+                } else {
+                    break;
+                }
+            }
+            re_log::debug!("Shutting down ui_waker thread");
+        })
+        .unwrap();
+    new_rx
+}
+
+#[cfg(feature = "server")]
+fn parse_max_latency(max_latency: Option<&String>) -> f32 {
+    max_latency.as_ref().map_or(f32::INFINITY, |time| {
+        parse_duration(time)
+            .unwrap_or_else(|err| panic!("Failed to parse max_latency ({max_latency:?}): {err}"))
+    })
+}
+
+#[cfg(feature = "server")]
+fn parse_duration(duration: &str) -> Result<f32, String> {
+    fn parse_num(s: &str) -> Result<f32, String> {
+        s.parse()
+            .map_err(|_ignored| format!("Expected a number, got {s:?}"))
+    }
+
+    if let Some(ms) = duration.strip_suffix("ms") {
+        Ok(parse_num(ms)? * 1e-3)
+    } else if let Some(s) = duration.strip_suffix('s') {
+        Ok(parse_num(s)?)
+    } else if let Some(s) = duration.strip_suffix('m') {
+        Ok(parse_num(s)? * 60.0)
+    } else if let Some(s) = duration.strip_suffix('h') {
+        Ok(parse_num(s)? * 60.0 * 60.0)
+    } else {
+        Err(format!(
+            "Expected a suffix of 'ms', 's', 'm' or 'h' in string {duration:?}"
+        ))
+    }
+}
+
+#[cfg(feature = "server")]
+#[test]
+fn test_parse_duration() {
+    assert_eq!(parse_duration("3.2s"), Ok(3.2));
+    assert_eq!(parse_duration("250ms"), Ok(0.250));
+    assert_eq!(parse_duration("3m"), Ok(3.0 * 60.0));
 }

@@ -21,6 +21,7 @@
 #[cfg(any(feature = "save", feature = "load"))]
 pub mod encoding;
 
+pub mod arrow;
 pub mod context;
 pub mod coordinates;
 mod data;
@@ -58,6 +59,12 @@ macro_rules! impl_into_enum {
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct MsgId(re_tuid::Tuid);
+
+impl std::fmt::Display for MsgId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:x}", self.0.as_u128())
+    }
+}
 
 impl MsgId {
     /// All zeroes.
@@ -166,6 +173,9 @@ pub enum LogMsg {
 
     /// Server-backed operation on an [`ObjPath`] or [`DataPath`].
     PathOpMsg(PathOpMsg),
+
+    /// Log an arrow message to a [`DataPath`].
+    ArrowMsg(ArrowMsg),
 }
 
 impl LogMsg {
@@ -175,6 +185,7 @@ impl LogMsg {
             Self::TypeMsg(msg) => msg.msg_id,
             Self::DataMsg(msg) => msg.msg_id,
             Self::PathOpMsg(msg) => msg.msg_id,
+            Self::ArrowMsg(msg) => msg.msg_id,
         }
     }
 }
@@ -183,6 +194,7 @@ impl_into_enum!(BeginRecordingMsg, LogMsg, BeginRecordingMsg);
 impl_into_enum!(TypeMsg, LogMsg, TypeMsg);
 impl_into_enum!(DataMsg, LogMsg, DataMsg);
 impl_into_enum!(PathOpMsg, LogMsg, PathOpMsg);
+impl_into_enum!(ArrowMsg, LogMsg, ArrowMsg);
 
 // ----------------------------------------------------------------------------
 
@@ -257,6 +269,17 @@ impl TypeMsg {
             obj_type,
         }
     }
+}
+/// The message sent to specify the data of a single field of an object.
+#[must_use]
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub struct ArrowMsg {
+    /// A unique id per [`DataMsg`].
+    pub msg_id: MsgId,
+
+    /// The arrow payload.
+    pub data: Vec<u8>,
 }
 
 // ----------------------------------------------------------------------------
@@ -533,6 +556,8 @@ impl TimeInt {
     // to be able to pan to before the `TimeInt::BEGINNING`, and so we need
     // a bit of leeway.
     pub const BEGINNING: TimeInt = TimeInt(i64::MIN / 2);
+
+    pub const MAX: TimeInt = TimeInt(i64::MAX);
 
     #[inline]
     pub fn as_i64(&self) -> i64 {

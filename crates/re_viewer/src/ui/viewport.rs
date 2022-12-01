@@ -12,7 +12,7 @@ use std::collections::BTreeMap;
 use ahash::HashMap;
 use itertools::Itertools as _;
 
-use re_data_store::{ObjPath, ObjectTree, ObjectTreeProperties, TimeQuery};
+use re_data_store::{ObjPath, ObjectTree, ObjectTreeProperties, TimeInt};
 
 use crate::misc::{space_info::*, Selection, ViewerContext};
 
@@ -67,7 +67,7 @@ impl ViewportBlueprint {
             let query = SceneQuery {
                 obj_paths: &space_info.objects,
                 timeline: *ctx.rec_cfg.time_ctrl.timeline(),
-                time_query: TimeQuery::LatestAt(i64::MAX),
+                latest_at: TimeInt::MAX,
                 obj_props: &Default::default(), // all visible
             };
             let scene = query.query(ctx);
@@ -82,10 +82,11 @@ impl ViewportBlueprint {
         blueprint
     }
 
-    pub(crate) fn get_space_view_mut(
-        &mut self,
-        space_view: &SpaceViewId,
-    ) -> Option<&mut SpaceView> {
+    pub(crate) fn space_view(&self, space_view: &SpaceViewId) -> Option<&SpaceView> {
+        self.space_views.get(space_view)
+    }
+
+    pub(crate) fn space_view_mut(&mut self, space_view: &SpaceViewId) -> Option<&mut SpaceView> {
         self.space_views.get_mut(space_view)
     }
 
@@ -111,9 +112,7 @@ impl ViewportBlueprint {
                 let space_view_ids = self
                     .space_views
                     .keys()
-                    .sorted_by_key(|space_view_id| {
-                        &self.space_views.get(space_view_id).unwrap().name
-                    })
+                    .sorted_by_key(|space_view_id| &self.space_views[space_view_id].name)
                     .copied()
                     .collect_vec();
 
@@ -171,6 +170,7 @@ impl ViewportBlueprint {
                         ui,
                         *is_space_view_visible,
                         &mut space_view.obj_tree_properties,
+                        *space_view_id,
                         space_info,
                         tree,
                     );
@@ -201,7 +201,7 @@ impl ViewportBlueprint {
                     let query = SceneQuery {
                         obj_paths: &space_info.objects,
                         timeline: *ctx.rec_cfg.time_ctrl.timeline(),
-                        time_query: TimeQuery::LatestAt(i64::MAX),
+                        latest_at: TimeInt::MAX,
                         obj_props: &Default::default(), // all visible
                     };
                     let scene = query.query(ctx);
@@ -302,18 +302,20 @@ impl ViewportBlueprint {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn show_obj_tree(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     parent_is_visible: bool,
     obj_tree_properties: &mut ObjectTreeProperties,
+    space_view_id: SpaceViewId,
     space_info: &SpaceInfo,
     name: String,
     tree: &ObjectTree,
 ) {
     if tree.is_leaf() {
         ui.horizontal(|ui| {
-            ctx.obj_path_button_to(ui, name, &tree.path);
+            ctx.space_view_obj_path_button_to(ui, name, space_view_id, &tree.path);
             object_visibility_button(ui, parent_is_visible, obj_tree_properties, &tree.path);
         });
     } else {
@@ -325,7 +327,7 @@ fn show_obj_tree(
             default_open,
         )
         .show_header(ui, |ui| {
-            ctx.obj_path_button_to(ui, name, &tree.path);
+            ctx.space_view_obj_path_button_to(ui, name, space_view_id, &tree.path);
             object_visibility_button(ui, parent_is_visible, obj_tree_properties, &tree.path);
         })
         .body(|ui| {
@@ -334,6 +336,7 @@ fn show_obj_tree(
                 ui,
                 parent_is_visible,
                 obj_tree_properties,
+                space_view_id,
                 space_info,
                 tree,
             );
@@ -346,6 +349,7 @@ fn show_obj_tree_children(
     ui: &mut egui::Ui,
     parent_is_visible: bool,
     obj_tree_properties: &mut ObjectTreeProperties,
+    space_view_id: SpaceViewId,
     space_info: &SpaceInfo,
     tree: &ObjectTree,
 ) {
@@ -356,6 +360,7 @@ fn show_obj_tree_children(
                 ui,
                 parent_is_visible,
                 obj_tree_properties,
+                space_view_id,
                 space_info,
                 path_comp.to_string(),
                 child,
@@ -464,17 +469,17 @@ fn space_view_options_link(
     text: &str,
 ) {
     let is_selected =
-        ctx.rec_cfg.selection == Selection::SpaceView(space_view_id) && *selection_panel_expanded;
+        ctx.selection() == Selection::SpaceView(space_view_id) && *selection_panel_expanded;
     if ui
         .selectable_label(is_selected, text)
         .on_hover_text("Space View options")
         .clicked()
     {
         if is_selected {
-            ctx.rec_cfg.selection = Selection::None;
+            ctx.clear_selection();
             *selection_panel_expanded = false;
         } else {
-            ctx.rec_cfg.selection = Selection::SpaceView(space_view_id);
+            ctx.set_selection(Selection::SpaceView(space_view_id));
             *selection_panel_expanded = true;
         }
     }
@@ -507,14 +512,14 @@ fn space_view_ui(
         });
         return;
     };
-    let Some(time_query) = ctx.rec_cfg.time_ctrl.time_query() else {
+    let Some(latest_at) = ctx.rec_cfg.time_ctrl.time_int() else {
         ui.centered(|ui| {
             ui.label(ctx.design_tokens.warning_text("No time selected", ui.style()));
         });
         return
     };
 
-    space_view.scene_ui(ctx, ui, spaces_info, space_info, time_query);
+    space_view.scene_ui(ctx, ui, spaces_info, space_info, latest_at);
 }
 
 // ----------------------------------------------------------------------------

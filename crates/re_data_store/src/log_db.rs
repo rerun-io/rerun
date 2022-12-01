@@ -126,23 +126,21 @@ impl ObjDb {
         }
     }
 
-    pub fn purge_everything_before(
-        &mut self,
-        timeline: Timeline,
-        cutoff_time: TimeInt,
-        keep_msg_ids: &ahash::HashSet<MsgId>,
-    ) {
+    pub fn purge_everything_but(&mut self, keep_msg_ids: &ahash::HashSet<MsgId>) {
         crate::profile_function!();
+
         let Self {
             types: _,
             tree,
             store,
         } = self;
+
         {
             crate::profile_scope!("tree");
-            tree.purge_everything_before(timeline, cutoff_time, keep_msg_ids);
+            tree.purge_everything_but(keep_msg_ids);
         }
-        store.purge_everything_before(timeline, cutoff_time);
+
+        store.purge_everything_but(keep_msg_ids);
     }
 }
 
@@ -212,6 +210,9 @@ impl LogDb {
                     path_op,
                 } = msg;
                 self.obj_db.add_path_op(*msg_id, time_point, path_op);
+            }
+            LogMsg::ArrowMsg(_) => {
+                // Ignore ArrowMsgs -- they should go to the other store
             }
         }
         self.chronological_message_ids.push(msg.id());
@@ -321,13 +322,38 @@ impl LogDb {
     }
 
     /// Free up some RAM by forgetting the older parts of all timelines.
-    pub fn purge_memory(&mut self, fraction_to_free: f32) {
+    pub fn purge_fraction_of_ram(&mut self, fraction_to_purge: f32) {
+        fn always_keep(msg: &LogMsg) -> bool {
+            match msg {
+                //TODO(john) allow purging ArrowMsg
+                LogMsg::ArrowMsg(_) | LogMsg::BeginRecordingMsg(_) | LogMsg::TypeMsg(_) => true,
+                LogMsg::DataMsg(msg) => msg.time_point.is_timeless(),
+                LogMsg::PathOpMsg(msg) => msg.time_point.is_timeless(),
+            }
+        }
+
         crate::profile_function!();
 
-        assert!((0.0..=1.0).contains(&fraction_to_free));
+        assert!((0.0..=1.0).contains(&fraction_to_purge));
 
-        let fraction_of_index =
-            |len: usize| -> usize { (fraction_to_free * len as f32).round() as usize };
+        // Start by figuring out what `MsgId`:s to keep:
+        let keep_msg_ids = {
+            crate::profile_scope!("calc_what_to_keep");
+            let mut keep_msg_ids = ahash::HashSet::default();
+            for (_, time_points) in self.obj_db.tree.prefix_times.iter() {
+                let num_to_purge = (time_points.len() as f32 * fraction_to_purge).round() as usize;
+                for (_, msg_id) in time_points.iter().skip(num_to_purge) {
+                    keep_msg_ids.extend(msg_id);
+                }
+            }
+
+            keep_msg_ids.extend(
+                self.log_messages
+                    .iter()
+                    .filter_map(|(msg_id, msg)| always_keep(msg).then_some(*msg_id)),
+            );
+            keep_msg_ids
+        };
 
         let Self {
             chronological_message_ids,
@@ -337,15 +363,7 @@ impl LogDb {
             obj_db,
         } = self;
 
-        {
-            let first_kept_index = fraction_of_index(chronological_message_ids.len());
-            *chronological_message_ids = chronological_message_ids[first_kept_index..].to_vec();
-        }
-
-        let keep_msg_ids: ahash::HashSet<MsgId> = {
-            crate::profile_scope!("keep_msg_ids");
-            chronological_message_ids.iter().copied().collect()
-        };
+        chronological_message_ids.retain(|msg_id| keep_msg_ids.contains(msg_id));
 
         {
             crate::profile_scope!("log_messages");
@@ -356,22 +374,6 @@ impl LogDb {
             timeless_message_ids.retain(|msg_id| keep_msg_ids.contains(msg_id));
         }
 
-        let mut timeline_cutoff_times = vec![];
-        for (timeline, time_points) in obj_db.tree.prefix_times.iter() {
-            let first_keep_index = fraction_of_index(time_points.len());
-            if let Some((cutoff_time, _)) = time_points.iter().nth(first_keep_index) {
-                timeline_cutoff_times.push((*timeline, *cutoff_time));
-            }
-        }
-
-        for (timeline, cutoff_time) in timeline_cutoff_times {
-            crate::profile_scope!("purge_timeline", timeline.name().as_str());
-            re_log::debug!(
-                "Purging {:?} before {}",
-                timeline.name(),
-                timeline.typ().format(cutoff_time)
-            );
-            obj_db.purge_everything_before(timeline, cutoff_time, &keep_msg_ids);
-        }
+        obj_db.purge_everything_but(&keep_msg_ids);
     }
 }

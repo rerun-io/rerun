@@ -1,7 +1,8 @@
 use egui::{color_picker, Vec2};
 
-use egui_extras::{Size, TableBuilder};
+use itertools::Itertools;
 use re_data_store::InstanceId;
+use re_log_types::context::AnnotationInfo;
 pub use re_log_types::*;
 
 use crate::misc::ViewerContext;
@@ -52,10 +53,11 @@ pub(crate) fn view_instance_generic(
 ) -> Option<()> {
     let timeline = ctx.rec_cfg.time_ctrl.timeline();
     let store = ctx.log_db.obj_db.store.get(timeline)?;
-    let time_query = ctx.rec_cfg.time_ctrl.time_query()?;
+    let time_query = re_data_store::TimeQuery::LatestAt(ctx.rec_cfg.time_ctrl.time_i64()?);
     let obj_store = store.get(&instance_id.obj_path)?;
 
     let mut class_id = None;
+    let mut keypoint_id = None;
 
     egui::Grid::new("object_instance")
         .striped(true)
@@ -77,6 +79,11 @@ pub(crate) fn view_instance_generic(
                             if field_name.as_str() == "class_id" {
                                 if let Data::I32(id) = data {
                                     class_id = Some(context::ClassId(id as _));
+                                }
+                            }
+                            if field_name.as_str() == "keypoint_id" {
+                                if let Data::I32(id) = data {
+                                    keypoint_id = Some(context::KeypointId(id as _));
                                 }
                             }
                             crate::data_ui::ui_data(ctx, ui, &data, preview);
@@ -104,18 +111,41 @@ pub(crate) fn view_instance_generic(
         if let Some((data_path, annotations)) =
             AnnotationMap::find_associated(ctx, instance_id.obj_path.clone())
         {
-            ctx.data_path_button_to(ui, "Associated Annotation Context", &data_path);
+            ctx.data_path_button_to(
+                ui,
+                format!("Annotation Context at {}", data_path.obj_path),
+                &data_path,
+            );
             egui::Grid::new("class_description")
                 .striped(true)
                 .num_columns(2)
                 .show(ui, |ui| {
                     if let Some(class_description) = annotations.context.class_map.get(&class_id) {
-                        if let Some(label) = &class_description.info.label {
+                        let class_annotation = &class_description.info;
+                        let mut keypoint_annotation = None;
+
+                        if let Some(keypoint_id) = keypoint_id {
+                            keypoint_annotation = class_description.keypoint_map.get(&keypoint_id);
+                            if keypoint_annotation.is_none() {
+                                ui.label(ctx.design_tokens.warning_text(
+                                    format!("unknown keypoint_id {}", keypoint_id.0),
+                                    ui.style(),
+                                ));
+                            }
+                        }
+
+                        if let Some(label) = keypoint_annotation
+                            .and_then(|a| a.label.as_ref())
+                            .or(class_annotation.label.as_ref())
+                        {
                             ui.label("label");
                             ui.label(label.as_ref());
                             ui.end_row();
                         }
-                        if let Some(color) = &class_description.info.color {
+                        if let Some(color) = keypoint_annotation
+                            .and_then(|a| a.color.as_ref())
+                            .or(class_annotation.color.as_ref())
+                        {
                             ui.label("color");
                             ui_color_field(ui, color);
                             ui.end_row();
@@ -146,7 +176,7 @@ pub(crate) fn view_data(
     data_path: &DataPath,
 ) -> Option<()> {
     let timeline = ctx.rec_cfg.time_ctrl.timeline();
-    let time_query = ctx.rec_cfg.time_ctrl.time_query()?;
+    let time_query = re_data_store::TimeQuery::LatestAt(ctx.rec_cfg.time_ctrl.time_i64()?);
 
     match ctx
         .log_db
@@ -239,6 +269,9 @@ pub(crate) fn show_log_msg(
         }
         LogMsg::PathOpMsg(msg) => {
             show_path_op_msg(ctx, ui, msg);
+        }
+        LogMsg::ArrowMsg(msg) => {
+            show_arrow_msg(ctx, ui, msg, preview);
         }
     }
 }
@@ -335,6 +368,18 @@ pub(crate) fn show_path_op_msg(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, m
         });
 }
 
+pub(crate) fn show_arrow_msg(
+    ctx: &mut ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    msg: &ArrowMsg,
+    preview: Preview,
+) {
+    let ArrowMsg { msg_id, data: _ } = msg;
+
+    // TODO(jleibs): Better ArrowMsg view
+    ui_logged_arrow_data(ctx, ui, msg_id, msg, preview);
+}
+
 pub(crate) fn ui_time_point(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
@@ -373,6 +418,19 @@ pub(crate) fn ui_logged_data(
     }
 }
 
+// TODO(jleibs): Better ArrowMsg view
+pub(crate) fn ui_logged_arrow_data(
+    _ctx: &mut ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    _msg_id: &MsgId,
+    msg: &ArrowMsg,
+    _preview: Preview,
+) -> egui::Response {
+    // TODO(john): more handling
+    //let arr = msg.to_arrow_array();
+    ui.label(format!("Arrow Payload: ({})", msg.data.len()))
+}
+
 pub(crate) fn ui_data(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
@@ -404,12 +462,19 @@ pub(crate) fn ui_data(
             ))
         }
         Data::Transform(transform) => match preview {
-            Preview::Small | Preview::Specific(_) => ui.label("Transform"),
+            Preview::Small | Preview::Specific(_) => ui.monospace("Transform"),
             Preview::Medium => ui_transform(ui, transform),
         },
-        Data::ViewCoordinates(coordinates) => ui_view_coordinates(ui, coordinates),
-        Data::AnnotationContext(context) => ui_annotation_context(ui, context),
-
+        Data::ViewCoordinates(coordinates) => match preview {
+            Preview::Small | Preview::Specific(_) => {
+                ui.label(format!("ViewCoordinates: {}", coordinates.describe()))
+            }
+            Preview::Medium => ui_view_coordinates(ui, coordinates),
+        },
+        Data::AnnotationContext(context) => match preview {
+            Preview::Small | Preview::Specific(_) => ui.monospace("AnnotationContext"),
+            Preview::Medium => ui_annotation_context(ui, context),
+        },
         Data::Tensor(tensor) => {
             let tensor_view = ctx.cache.image.get_view(tensor);
 
@@ -476,51 +541,148 @@ fn ui_view_coordinates(ui: &mut egui::Ui, system: &ViewCoordinates) -> egui::Res
     ui.label(system.describe())
 }
 
-fn ui_annotation_context(ui: &mut egui::Ui, context: &AnnotationContext) -> egui::Response {
-    ui.vertical(|ui| {
-        let table = TableBuilder::new(ui)
-            .striped(true)
-            .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-            .column(Size::initial(60.0).at_least(40.0))
-            .column(Size::initial(60.0).at_least(40.0))
-            .column(Size::remainder().at_least(60.0));
+const ROW_HEIGHT: f32 = 18.0;
+const TABLE_SCROLL_AREA_HEIGHT: f32 = 500.0; // add scroll-bars when we get to this height
 
-        table
-            .header(20.0, |mut header| {
-                header.col(|ui| {
-                    ui.heading("Id");
-                });
-                header.col(|ui| {
-                    ui.heading("Label");
-                });
-                header.col(|ui| {
-                    ui.heading("Color");
-                });
-            })
-            .body(|mut body| {
-                const ROW_HEIGHT: f32 = 18.0;
-                for (id, description) in &context.class_map {
-                    body.row(ROW_HEIGHT, |mut row| {
-                        row.col(|ui| {
-                            ui.label(id.0.to_string());
-                        });
-                        row.col(|ui| {
-                            let label = if let Some(label) = &description.info.label {
-                                label.as_str()
-                            } else {
-                                ""
-                            };
-                            ui.label(label);
-                        });
-                        row.col(|ui| {
-                            let color = description.info.color.unwrap_or_else(|| auto_color(id.0));
+fn ui_annotation_info_table<'a>(
+    ui: &mut egui::Ui,
+    annotation_infos: impl Iterator<Item = &'a AnnotationInfo>,
+) {
+    ui.spacing_mut().item_spacing.x = 20.0; // column spacing.
+
+    use egui_extras::{Column, TableBuilder};
+
+    let table = TableBuilder::new(ui)
+        .striped(true)
+        .min_scrolled_height(TABLE_SCROLL_AREA_HEIGHT)
+        .max_scroll_height(TABLE_SCROLL_AREA_HEIGHT)
+        .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
+        .column(Column::auto()) // id
+        .column(Column::auto().clip(true).at_least(40.0)) // label
+        .column(Column::auto()); // color
+
+    table
+        .header(20.0, |mut header| {
+            header.col(|ui| {
+                ui.strong("Id");
+            });
+            header.col(|ui| {
+                ui.strong("Label");
+            });
+            header.col(|ui| {
+                ui.strong("Color");
+            });
+        })
+        .body(|mut body| {
+            for info in annotation_infos {
+                body.row(ROW_HEIGHT, |mut row| {
+                    row.col(|ui| {
+                        ui.label(info.id.to_string());
+                    });
+                    row.col(|ui| {
+                        let label = if let Some(label) = &info.label {
+                            label.as_str()
+                        } else {
+                            ""
+                        };
+                        ui.label(label);
+                    });
+                    row.col(|ui| {
+                        ui.horizontal(|ui| {
+                            ui.spacing_mut().item_spacing.x = 8.0;
+                            let color = info.color.unwrap_or_else(|| auto_color(info.id));
                             let color = egui::Color32::from_rgb(color[0], color[1], color[2]);
-
-                            color_picker::show_color(ui, color, Vec2::splat(64.0));
+                            color_picker::show_color(ui, color, Vec2::new(64.0, ROW_HEIGHT));
+                            if info.color.is_none() {
+                                ui.weak("(auto)").on_hover_text(
+                                    "Color chosen automatically, since it was not logged.",
+                                );
+                            }
                         });
                     });
-                }
-            });
+                });
+            }
+        });
+}
+
+fn ui_annotation_context(ui: &mut egui::Ui, context: &AnnotationContext) -> egui::Response {
+    ui.vertical(|ui| {
+        ui_annotation_info_table(
+            ui,
+            context
+                .class_map
+                .iter()
+                .map(|(_, class)| &class.info)
+                .sorted_by_key(|info| info.id),
+        );
+
+        for (id, class) in &context.class_map {
+            if class.keypoint_connections.is_empty() && class.keypoint_map.is_empty() {
+                continue;
+            }
+
+            ui.separator();
+            ui.heading(format!("Keypoints for Class {}", id.0));
+
+            if !class.keypoint_connections.is_empty() {
+                ui.add_space(8.0);
+                ui.heading("Keypoints Annotations");
+                ui.push_id(format!("keypoint_annotations_{}", id.0), |ui| {
+                    ui_annotation_info_table(
+                        ui,
+                        class
+                            .keypoint_map
+                            .values()
+                            .sorted_by_key(|annotation| annotation.id),
+                    );
+                });
+            }
+
+            if !class.keypoint_connections.is_empty() {
+                ui.add_space(8.0);
+                ui.heading("Keypoint Connections");
+                ui.push_id(format!("keypoints_connections_{}", id.0), |ui| {
+                    use egui_extras::{Column, TableBuilder};
+
+                    let table = TableBuilder::new(ui)
+                        .striped(true)
+                        .min_scrolled_height(TABLE_SCROLL_AREA_HEIGHT)
+                        .max_scroll_height(TABLE_SCROLL_AREA_HEIGHT)
+                        .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
+                        .column(Column::auto().clip(true).at_least(40.0))
+                        .column(Column::auto().clip(true).at_least(40.0));
+                    table
+                        .header(20.0, |mut header| {
+                            header.col(|ui| {
+                                ui.strong("From");
+                            });
+                            header.col(|ui| {
+                                ui.strong("To");
+                            });
+                        })
+                        .body(|mut body| {
+                            for (from, to) in &class.keypoint_connections {
+                                body.row(ROW_HEIGHT, |mut row| {
+                                    for id in [from, to] {
+                                        row.col(|ui| {
+                                            ui.label(
+                                                class
+                                                    .keypoint_map
+                                                    .get(id)
+                                                    .and_then(|info| info.label.as_ref())
+                                                    .map_or_else(
+                                                        || format!("id {:?}", id),
+                                                        |label| String::clone(label),
+                                                    ),
+                                            );
+                                        });
+                                    }
+                                });
+                            }
+                        });
+                });
+            }
+        }
     })
     .response
 }

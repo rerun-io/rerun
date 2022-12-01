@@ -33,22 +33,23 @@ impl EventLogView {
 pub(crate) fn message_table(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, messages: &[&LogMsg]) {
     crate::profile_function!();
 
-    use egui_extras::Size;
+    use egui_extras::{Column, TableBuilder};
 
-    egui_extras::TableBuilder::new(ui)
+    TableBuilder::new(ui)
         .striped(true)
         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
         .resizable(true)
+        .column(Column::initial(130.0).at_least(50.0).clip(true)) // message type
         .columns(
-            Size::initial(140.0).at_least(50.0), // timelines
+            // timeline(s):
+            Column::auto().clip(true).at_least(50.0),
             ctx.log_db.timelines().count(),
         )
-        .column(Size::initial(200.0).at_least(60.0)) // message type
-        .column(Size::initial(240.0).at_least(50.0)) // path
-        .column(Size::remainder().at_least(180.0)) // payload
+        .column(Column::auto().clip(true).at_least(50.0)) // path
+        .column(Column::remainder()) // payload
         .header(20.0, |mut header| {
             header.col(|ui| {
-                ui.heading("Message Type");
+                ui.strong("Message Type");
             });
             for timeline in ctx.log_db.timelines() {
                 header.col(|ui| {
@@ -56,10 +57,10 @@ pub(crate) fn message_table(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, mess
                 });
             }
             header.col(|ui| {
-                ui.heading("Path");
+                ui.strong("Path");
             });
             header.col(|ui| {
-                ui.heading("Payload");
+                ui.strong("Payload");
             });
         })
         .body(|body| {
@@ -189,6 +190,23 @@ fn table_row(
             });
             row.col(|ui| {
                 crate::data_ui::ui_path_op(ctx, ui, path_op);
+            });
+        }
+        LogMsg::ArrowMsg(msg) => {
+            let ArrowMsg { msg_id, data: _ } = msg;
+
+            row.col(|ui| {
+                ui.monospace("ArrowMsg");
+            });
+
+            row.col(|ui| {
+                crate::data_ui::ui_logged_arrow_data(
+                    ctx,
+                    ui,
+                    msg_id,
+                    msg,
+                    Preview::Specific(row_height),
+                );
             });
         }
     }

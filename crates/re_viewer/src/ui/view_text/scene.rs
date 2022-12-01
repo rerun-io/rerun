@@ -49,7 +49,7 @@ impl SceneText {
 
         let text_entries = query
             .iter_object_stores(ctx.log_db, &[ObjectType::TextEntry])
-            .flat_map(|(_obj_type, obj_path, obj_store)| {
+            .flat_map(|(_obj_type, obj_path, _time_query, obj_store)| {
                 let mut batch = Vec::new();
 
                 // Early filtering: if we're not showing it the view, there isn't much point

@@ -16,6 +16,7 @@ server = [
   "dep:futures-channel",
   "dep:futures-util",
   "dep:parking_lot",
+  "dep:re_smart_channel",
   "dep:tokio-tungstenite",
   "dep:tokio",
   "tungstenite",
@@ -29,7 +30,6 @@ tls = [
 
 
 [dependencies]
-re_error = { path = "../re_error" }
 re_log = { path = "../re_log" }
 re_log_types = { path = "../re_log_types", features = ["serde"] }
 
@@ -41,6 +41,8 @@ document-features = "0.2"
 ewebsock = { version = "0.2", optional = true }
 
 # Server:
+re_smart_channel = { path = "../re_smart_channel", optional = true }
+
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 futures-channel = { version = "0.3", optional = true }
 futures-util = { version = "0.3", optional = true, default-features = false, features = [
