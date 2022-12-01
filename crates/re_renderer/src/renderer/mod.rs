@@ -2,7 +2,7 @@ mod generic_skybox;
 pub use generic_skybox::GenericSkyboxDrawable;
 
 mod lines;
-pub use lines::{LineDrawable, LineStrip, LineStripFlags};
+pub use lines::{gpu_data::LineVertex, LineDrawable, LineStripFlags, LineStripInfo};
 
 mod point_cloud;
 pub use point_cloud::{PointCloudDrawable, PointCloudPoint};

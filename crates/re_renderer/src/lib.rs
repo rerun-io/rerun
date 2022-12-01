@@ -17,6 +17,9 @@ pub use self::debug_label::DebugLabel;
 
 mod global_bindings;
 
+mod line_strip_builder;
+pub use self::line_strip_builder::{LineStripBuilder, LineStripSeriesBuilder};
+
 pub mod mesh;
 
 mod wgpu_buffer_types;

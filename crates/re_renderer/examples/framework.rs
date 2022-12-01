@@ -31,11 +31,38 @@ pub trait Example {
     fn draw(
         &mut self,
         re_ctx: &mut RenderContext,
-        surface_configuration: &wgpu::SurfaceConfiguration,
+        resolution: [u32; 2],
         time: &Time,
     ) -> Vec<ViewDrawResult>;
 
     fn on_keyboard_input(&mut self, input: winit::event::KeyboardInput);
+}
+
+pub struct SplitView {
+    pub target_location: glam::Vec2,
+    pub resolution_in_pixel: [u32; 2],
+}
+
+pub fn split_resolution(
+    resolution: [u32; 2],
+    nb_rows: usize,
+    nb_cols: usize,
+) -> impl Iterator<Item = SplitView> {
+    let total_width = resolution[0] as f32;
+    let total_height = resolution[1] as f32;
+    let width = total_width / nb_cols as f32;
+    let height = total_height / nb_rows as f32;
+    (0..nb_rows)
+        .flat_map(move |row| (0..nb_cols).map(move |col| (row, col)))
+        .map(move |(row, col)| {
+            // very quick'n'dirty (uneven) borders
+            let y = f32::clamp(row as f32 * height + 2.0, 2.0, total_height - 2.0);
+            let x = f32::clamp(col as f32 * width + 2.0, 2.0, total_width - 2.0);
+            SplitView {
+                target_location: glam::vec2(x, y),
+                resolution_in_pixel: [(width - 4.0) as u32, (height - 4.0) as u32],
+            }
+        })
 }
 
 pub struct Time {
@@ -204,9 +231,11 @@ impl<E: Example + 'static> Application<E> {
                         .texture
                         .create_view(&wgpu::TextureViewDescriptor::default());
 
-                    let view_builders =
-                        self.example
-                            .draw(&mut self.re_ctx, &self.surface_config, &self.time);
+                    let view_builders = self.example.draw(
+                        &mut self.re_ctx,
+                        [self.surface_config.width, self.surface_config.height],
+                        &self.time,
+                    );
 
                     let mut composite_cmd_encoder = self.re_ctx.device.create_command_encoder(
                         &wgpu::CommandEncoderDescriptor {
@@ -222,7 +251,7 @@ impl<E: Example + 'static> Application<E> {
                                     view: &view,
                                     resolve_target: None,
                                     ops: wgpu::Operations {
-                                        load: wgpu::LoadOp::Clear(wgpu::Color::GREEN),
+                                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
                                         store: true,
                                     },
                                 })],

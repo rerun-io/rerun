@@ -6,7 +6,7 @@
 //! Points are rendered as quads and stenciled out by a fragment shader.
 //! Quad spanning happens in the vertex shader, uploaded are only the data for the actual points (no vertex buffer!).
 //!
-//! Like with the [`super::lines::LineRenderer`], we're rendering as all quads in a single triangle list draw call.
+//! Like with the `super::lines::LineRenderer`, we're rendering as all quads in a single triangle list draw call.
 //! (Rationale for this can be found in the [`lines.rs`]'s documentation)
 //!
 //! For WebGL compatibility, data is uploaded as textures. Color is stored in a separate srgb texture, meaning

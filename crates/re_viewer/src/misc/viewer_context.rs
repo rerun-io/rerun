@@ -169,7 +169,9 @@ impl<'a> ViewerContext<'a> {
     pub fn timeline_button(&mut self, ui: &mut egui::Ui, timeline: &Timeline) -> egui::Response {
         let is_selected = self.rec_cfg.time_ctrl.timeline() == timeline;
 
-        let response = ui.selectable_label(is_selected, timeline.name().as_str());
+        let response = ui
+            .selectable_label(is_selected, timeline.name().as_str())
+            .on_hover_text("Click to switch to this timeline");
         if response.clicked() {
             self.rec_cfg.time_ctrl.set_timeline(*timeline);
             self.rec_cfg.time_ctrl.pause();

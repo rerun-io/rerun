@@ -1,4 +1,4 @@
-use egui::{Color32, NumExt as _, RichText};
+use egui::{Color32, RichText};
 
 use re_log_types::{LogMsg, TimePoint};
 
@@ -85,48 +85,37 @@ fn show_table(
     text_entries: &[TextEntry],
     scroll_to_row: Option<usize>,
 ) {
-    use egui_extras::Size;
+    use egui_extras::Column;
     const ROW_HEIGHT: f32 = 18.0;
     const HEADER_HEIGHT: f32 = 20.0;
-
-    let max_content_height = ui.available_height() - HEADER_HEIGHT;
-    let item_spacing = ui.spacing().item_spacing;
 
     let current_timeline = *ctx.rec_cfg.time_ctrl.timeline();
     let current_time = ctx.rec_cfg.time_ctrl.time_int();
 
-    let mut builder = egui_extras::TableBuilder::new(ui)
+    let mut table_builder = egui_extras::TableBuilder::new(ui)
         .striped(true)
         .resizable(true)
-        .scroll(true);
+        .vscroll(true)
+        .auto_shrink([false; 2]); // expand to take up the whole Space View
 
-    if let Some(index) = scroll_to_row {
-        let row_height_full = ROW_HEIGHT + item_spacing.y;
-        let scroll_to_offset = index as f32 * row_height_full;
-
-        // Scroll to center:
-        let scroll_to_offset = scroll_to_offset - max_content_height / 2.0;
-
-        // Don't over-scroll:
-        let scroll_to_offset = scroll_to_offset.clamp(
-            0.0,
-            (text_entries.len() as f32 * row_height_full - max_content_height).at_least(0.0),
-        );
-
-        builder = builder.vertical_scroll_offset(scroll_to_offset);
+    if let Some(scroll_to_row) = scroll_to_row {
+        table_builder = table_builder.scroll_to_row(scroll_to_row, Some(egui::Align::Center));
     }
 
+    let mut body_clip_rect = None;
     let mut current_time_y = None;
 
-    builder
+    table_builder
         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
         .columns(
-            Size::initial(140.0).at_least(50.0), // timelines
+            // timelines(s):
+            Column::auto().clip(true).at_least(32.0),
             ctx.log_db.timelines().count(),
-        ) // time(s)
-        .column(Size::initial(120.0).at_least(50.0)) // path
-        .column(Size::initial(50.0).at_least(50.0)) // level
-        .column(Size::remainder().at_least(200.0)) // body
+        )
+        .column(Column::auto().clip(true).at_least(32.0)) // path
+        .column(Column::auto().at_least(30.0)) // level
+        .column(Column::remainder().at_least(100.0)) // body
+        .min_scrolled_height(0.0) // we can go as small as we need to be in order to fit within the space view!
         .header(HEADER_HEIGHT, |mut header| {
             for timeline in ctx.log_db.timelines() {
                 header.col(|ui| {
@@ -144,6 +133,7 @@ fn show_table(
             });
         })
         .body(|body| {
+            body_clip_rect = Some(body.max_rect());
             body.rows(ROW_HEIGHT, text_entries.len(), |index, mut row| {
                 let text_entry = &text_entries[index];
 
@@ -206,9 +196,9 @@ fn show_table(
             });
         });
 
-    if let Some(current_time_y) = current_time_y {
+    if let (Some(body_clip_rect), Some(current_time_y)) = (body_clip_rect, current_time_y) {
         // Show that the current time is here:
-        ui.painter().hline(
+        ui.painter().with_clip_rect(body_clip_rect).hline(
             ui.max_rect().x_range(),
             current_time_y,
             (1.0, Color32::WHITE),
