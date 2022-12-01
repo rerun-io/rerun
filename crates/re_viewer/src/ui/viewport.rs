@@ -406,7 +406,9 @@ impl ViewportBlueprint {
                     ui.close_menu();
 
                     for category in scene.categories() {
-                        self.add_space_view(SpaceView::new(&scene, category, path.clone()));
+                        let new_space_view_id =
+                            self.add_space_view(SpaceView::new(&scene, category, path.clone()));
+                        ctx.set_selection(Selection::SpaceView(new_space_view_id));
                     }
                 }
             }
