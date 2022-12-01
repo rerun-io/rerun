@@ -197,13 +197,14 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
 
     var coverage = 1.0;
     if in.round_cap != 0u {
-        // TODO: fill out coverage value.
-        if relative_distance_to_skeleton > 1.0 {
+        let pixel_world_size = get_pixel_world_size_at(length(in.position_world - frame.camera_position));
+        coverage = 1.0 - distance_to_skeleton + in.line_radius - pixel_world_size;
+        if coverage < 0.0 {
             discard;
         }
     }
 
     // TODO(andreas): proper shading/lighting, etc.
     let shading = max(0.2, 1.2 - relative_distance_to_skeleton);
-    return in.color * shading;
+    return Vec4(in.color.rgb * shading, coverage);
 }

@@ -56,3 +56,9 @@ fn camera_ray_direction_from_screenuv(texcoord: Vec2) -> vec3<f32> {
 
     return normalize(world_space_dir);
 }
+
+// Returns the projected size of a pixel at a given distance from the camera.
+fn get_pixel_world_size_at(camera_distance: f32) -> f32 {
+    return select(frame.pixel_world_size_from_camera_distance,
+        camera_distance * frame.pixel_world_size_from_camera_distance, is_camera_perspective());
+}
