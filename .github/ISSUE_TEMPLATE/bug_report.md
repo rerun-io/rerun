@@ -27,6 +27,9 @@ Steps to reproduce the behavior:
 **Screenshots**
 <!-- If applicable, add screenshots to help explain your problem. -->
 
+**Backtrace**
+<!-- If this is a crash, include the backtrace in a code-block (```[STACKTRACE]```). -->
+
 **Desktop (please complete the following information):**
  - OS: <!-- e.g. iOS -->
  - Browser <!-- e.g. chrome, safari -->
