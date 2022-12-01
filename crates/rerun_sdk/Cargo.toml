@@ -20,7 +20,6 @@ web = ["dep:re_ws_comms", "dep:re_web_server", "dep:webbrowser"]
 
 
 [dependencies]
-arrow2 = "0.14.2"
 re_error = { path = "../re_error" }
 re_log = { path = "../re_log" }
 re_log_types = { path = "../re_log_types" }
@@ -28,6 +27,7 @@ re_memory = { path = "../re_memory" }
 re_sdk_comms = { path = "../re_sdk_comms", features = ["client"] }
 re_smart_channel = { path = "../re_smart_channel" }
 
+arrow2 = "0.14.2"
 crossbeam = "0.8"
 document-features = "0.2"
 nohash-hasher = "0.2"
