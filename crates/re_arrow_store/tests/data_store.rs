@@ -104,6 +104,7 @@ fn single_entity_multi_timelines_multi_components_roundtrip() {
     let df = store
         .query(&timeline, TimeQuery::LatestAt(44), &ent_path, components)
         .unwrap();
+    dbg!(&df);
 
     use polars::prelude::Series;
 
