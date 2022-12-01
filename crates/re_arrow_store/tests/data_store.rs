@@ -2,6 +2,7 @@
 // - insert a single component for a single instance and query it back
 // - insert a single component at t1 then another one at t2 then query at t0, t1, t2, t3
 // - send one message with multiple lists vs. multiple messages with 1/N lists
+// - multiple messages to multiple different timelines
 //
 // TODO: messy ones
 // - multiple components, different number of rows or something
@@ -211,10 +212,14 @@ fn single_entity_single_component_roundtrip() {
     let ent_path = EntityPath::from("this/that");
 
     let (schema, components) = build_message(&ent_path, 10);
+    eprintln!("inserting into '{ent_path}':\nschema: {schema:#?}\ncomponents: {components:#?}");
     store.insert(&schema, components).unwrap();
+    eprintln!("{store}");
 
     std::thread::sleep(Duration::from_millis(10));
 
     let (schema, components) = build_message(&ent_path, 20);
+    eprintln!("inserting into '{ent_path}':\nschema: {schema:#?}\ncomponents: {components:#?}");
     store.insert(&schema, components).unwrap();
+    eprintln!("{store}");
 }

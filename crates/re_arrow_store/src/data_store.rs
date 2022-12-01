@@ -1,4 +1,5 @@
 use std::collections::{BTreeMap, HashMap};
+use std::sync::Arc;
 
 use anyhow::{anyhow, bail, ensure};
 use arrow2::array::{new_empty_array, Array, Int64Array, ListArray, PrimitiveArray, StructArray};
@@ -38,6 +39,9 @@ use re_log_types::{ObjPath as EntityPath, TimeInt, TimeType, Timeline};
 // TODO: perf probes
 // TODO: every error and assert paths must be _TESTED_!!!
 
+// TODO: recursive Display impls for everything
+// TODO: recursive Iterator impls for everything
+
 type ComponentName = String;
 type ComponentNameRef<'a> = &'a str;
 type RowIndex = u64;
@@ -52,6 +56,29 @@ pub struct DataStore {
     components: HashMap<ComponentName, ComponentTable>,
 }
 
+impl std::fmt::Display for DataStore {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self {
+            indices,
+            components,
+        } = self;
+
+        // TODO: indices
+
+        f.write_str("DataStore {\n")?;
+        f.write_str(&indent::indent_all_by(4, "components: [\n"))?;
+        for (_, comp) in components {
+            f.write_str(&indent::indent_all_by(8, "ComponentTable {\n"))?;
+            f.write_str(&indent::indent_all_by(12, comp.to_string() + "\n"))?;
+            f.write_str(&indent::indent_all_by(8, "}\n"))?;
+        }
+        f.write_str(&indent::indent_all_by(4, "]\n"))?;
+        f.write_str("}")?;
+
+        Ok(())
+    }
+}
+
 impl DataStore {
     //     fn insert_components(&mut self, timeline, time, obj_path,
     //         components: Map<ComponentName, ArrowStore>) {
@@ -61,8 +88,8 @@ impl DataStore {
     //             .insert(time, instance_row, pos_row);
     //     }
     pub fn insert(&mut self, schema: &Schema, msg: Chunk<Box<dyn Array>>) -> anyhow::Result<()> {
-        dbg!(&schema);
-        dbg!(&msg);
+        // dbg!(&schema);
+        // dbg!(&msg);
 
         // TODO: might make sense to turn the entire top-level message into a list, to help
         // with batching on the client side.
@@ -88,13 +115,12 @@ impl DataStore {
 
         // let mut indices = HashMap::with_capacity(components.len());
         for (name, component) in components {
-            let table = self
-                .components
-                .entry(name.to_owned())
-                .or_insert(ComponentTable::new(component.data_type().clone()));
+            let table = self.components.entry(name.to_owned()).or_insert_with(|| {
+                ComponentTable::new(name.to_owned(), component.data_type().clone())
+            });
 
             let row_idx = table.insert(&timelines, component);
-            dbg!(row_idx);
+            // dbg!(row_idx);
         }
 
         Ok(())
@@ -218,9 +244,15 @@ fn extract_components<'data>(
 //
 //
 // Each entry is a row index. It's nullable, with `null` = no entry.
-#[derive(Default)]
-pub struct IndexTable {
+#[derive(Default, Debug)]
+struct IndexTable {
     buckets: BTreeMap<TimeInt, IndexBucket>,
+}
+
+impl std::fmt::Display for IndexTable {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        todo!()
+    }
 }
 
 impl IndexTable {
@@ -244,7 +276,8 @@ impl IndexTable {
 // Has a max size of 128MB OR 10k rows, whatever comes first.
 // The size-limit is so we can purge memory in small buckets
 // The row-limit is to avoid slow re-sorting at query-time
-pub struct IndexBucket {
+#[derive(Debug)]
+struct IndexBucket {
     /// The time range covered by this bucket.
     time_range: TimeIntRange,
 
@@ -259,20 +292,57 @@ pub struct IndexBucket {
     indices: (),
 }
 
+impl std::fmt::Display for IndexBucket {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        todo!()
+    }
+}
+
 /// A chunked component table (i.e. a single column), bucketized by size only.
 //
 // The ComponentTable maps a row index to a list of values (e.g. a list of colors).
-pub struct ComponentTable {
+#[derive(Debug)]
+struct ComponentTable {
+    /// The component's name.
+    name: Arc<String>,
+    /// The component's datatype.
+    datatype: DataType,
     /// Each bucket covers an arbitrary range of rows.
     /// How large is that range will depend on the size of the actual data, which is the actual
     /// trigger for chunking.
     buckets: BTreeMap<RowIndex, ComponentBucket>,
 }
 
+impl std::fmt::Display for ComponentTable {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self {
+            name,
+            datatype,
+            buckets,
+        } = self;
+
+        f.write_fmt(format_args!("name: {}\n", name))?;
+        f.write_fmt(format_args!("datatype: {:#?}\n", datatype))?;
+
+        f.write_str("buckets: [\n")?;
+        for (_, bucket) in buckets {
+            f.write_str(&indent::indent_all_by(8, "ComponentBucket {\n"))?;
+            f.write_str(&indent::indent_all_by(12, bucket.to_string() + "\n"))?;
+            f.write_str(&indent::indent_all_by(8, "}\n"))?;
+        }
+        f.write_str("]")?;
+
+        Ok(())
+    }
+}
+
 impl ComponentTable {
-    fn new(datatype: DataType) -> Self {
+    fn new(name: String, datatype: DataType) -> Self {
+        let name = Arc::new(name);
         ComponentTable {
-            buckets: [(0, ComponentBucket::new(datatype, 0))].into(),
+            name: Arc::clone(&name),
+            datatype: datatype.clone(),
+            buckets: [(0, ComponentBucket::new(name, datatype, 0))].into(),
         }
     }
 
@@ -296,7 +366,11 @@ impl ComponentTable {
 //
 // Has a max-size of 128MB or so.
 // We bucket the component table so we can purge older parts when needed.
-pub struct ComponentBucket {
+#[derive(Debug)]
+struct ComponentBucket {
+    /// The component's name.
+    name: Arc<String>,
+
     /// The time ranges (plural!) covered by this bucket.
     ///
     /// Buckets are never sorted over time, time ranges can grow arbitrarily large.
@@ -306,7 +380,7 @@ pub struct ComponentBucket {
     // making some buckets impossible to purge, but we accept that risk.
     //
     // TODO: this is for purging only
-    time_ranges: HashMap<Timeline, TimeIntRange>,
+    time_ranges: HashMap<Timeline, TimeIntRange>, // TODO: timetype
 
     // TODO
     row_offset: RowIndex,
@@ -322,9 +396,40 @@ pub struct ComponentBucket {
     data: Box<dyn Array>,
 }
 
+impl std::fmt::Display for ComponentBucket {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self {
+            name,
+            time_ranges,
+            row_offset,
+            data,
+        } = self;
+
+        f.write_fmt(format_args!("row offset: {}\n", row_offset))?;
+
+        f.write_str("time ranges:\n")?;
+        for (timeline, time_range) in time_ranges {
+            f.write_fmt(format_args!(
+                "    - {}: from {:?} (inclusive) to {:?} (exlusive)\n",
+                timeline.name(),
+                time_range.start,
+                time_range.end,
+            ))?;
+        }
+
+        // TODO: I'm sure there's no need to clone here
+        let series = polars::prelude::Series::try_from((name.as_str(), data.clone())).unwrap();
+        let df = polars::prelude::DataFrame::new(vec![series]).unwrap();
+        f.write_fmt(format_args!("data: {df:?}\n"))?;
+
+        Ok(())
+    }
+}
+
 impl ComponentBucket {
-    pub fn new(datatype: DataType, row_offset: RowIndex) -> Self {
+    pub fn new(name: Arc<String>, datatype: DataType, row_offset: RowIndex) -> Self {
         Self {
+            name,
             row_offset,
             time_ranges: Default::default(),
             data: new_empty_array(datatype),
@@ -337,7 +442,7 @@ impl ComponentBucket {
         data: &Box<dyn Array>,
     ) -> anyhow::Result<RowIndex> {
         for (timeline, time) in timelines {
-            // prob should own it at this point
+            // TODO: prob should own it at this point
             let time = *time;
             let time_plus_one = time + TimeInt::from(1);
             self.time_ranges
@@ -348,12 +453,8 @@ impl ComponentBucket {
 
         // TODO: actual mutable array :)
         self.data = concatenate(&[&*self.data, &**data])?;
-        dbg!(self.data.data_type());
-        dbg!(&self.data);
-
-        let series = polars::prelude::Series::try_from(("component", self.data.clone())).unwrap();
-        let df = polars::prelude::DataFrame::new(vec![series]).unwrap();
-        dbg!(df);
+        // dbg!(self.data.data_type());
+        // dbg!(&self.data);
 
         Ok(self.row_offset + self.data.len() as u64 - 1)
     }
