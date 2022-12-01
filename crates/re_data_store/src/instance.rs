@@ -97,3 +97,9 @@ impl InstanceIdHash {
         &self.obj_path_hash == obj_path.hash() && self.instance_index_hash == instance_index
     }
 }
+
+impl Default for InstanceIdHash {
+    fn default() -> Self {
+        Self::NONE
+    }
+}
