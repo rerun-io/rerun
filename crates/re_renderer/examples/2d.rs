@@ -1,20 +1,54 @@
 use re_renderer::{
-    renderer::LineStripFlags,
+    renderer::{LineStripFlags, Rectangle, RectangleDrawData, TextureFilterMag, TextureFilterMin},
+    resource_managers::{ResourceLifeTime, Texture2D, Texture2DHandle},
     view_builder::{self, Projection, ViewBuilder},
     LineStripSeriesBuilder,
 };
 
 mod framework;
 
-struct Render2D {}
+struct Render2D {
+    rerun_logo_texture: Texture2DHandle,
+    rerun_logo_texture_width: u32,
+    rerun_logo_texture_height: u32,
+}
 
 impl framework::Example for Render2D {
     fn title() -> &'static str {
         "2D Rendering"
     }
 
-    fn new(_re_ctx: &mut re_renderer::RenderContext) -> Self {
-        Render2D {}
+    fn new(re_ctx: &mut re_renderer::RenderContext) -> Self {
+        let rerun_logo =
+            image::load_from_memory(include_bytes!("../../re_viewer/data/logo_dark_mode.png"))
+                .unwrap();
+
+        let mut image_data = rerun_logo.as_rgba8().unwrap().to_vec();
+
+        // Premultiply alpha (not doing any alpha blending, so this will look better on a black ground).
+        for color in image_data.chunks_exact_mut(4) {
+            color.clone_from_slice(
+                &epaint::Color32::from_rgba_unmultiplied(color[0], color[1], color[2], color[3])
+                    .to_array(),
+            );
+        }
+
+        let rerun_logo_texture = re_ctx.texture_manager_2d.store_resource(
+            Texture2D {
+                label: "rerun logo".into(),
+                data: image_data,
+                format: wgpu::TextureFormat::Rgba8UnormSrgb,
+                width: rerun_logo.width(),
+                height: rerun_logo.height(),
+            },
+            ResourceLifeTime::LongLived,
+        );
+        Render2D {
+            rerun_logo_texture,
+
+            rerun_logo_texture_width: rerun_logo.width(),
+            rerun_logo_texture_height: rerun_logo.height(),
+        }
     }
 
     fn draw(
@@ -79,6 +113,35 @@ impl framework::Example for Render2D {
             .radius(line_radius)
             .color_rgb(255, 50, 50)
             .flags(LineStripFlags::CAP_END_TRIANGLE);
+        let line_strip_draw_data = line_strip_builder.to_drawable(re_ctx);
+
+        let image_scale = 8.0;
+        let rectangle_draw_data = RectangleDrawData::new(
+            re_ctx,
+            &[
+                Rectangle {
+                    top_left_corner_position: glam::vec3(100.0, 100.0, -0.05),
+                    extent_u: self.rerun_logo_texture_width as f32 * image_scale * glam::Vec3::X,
+                    extent_v: self.rerun_logo_texture_height as f32 * image_scale * glam::Vec3::Y,
+                    texture: self.rerun_logo_texture,
+                    texture_filter_magnification: TextureFilterMag::Nearest,
+                    texture_filter_minification: TextureFilterMin::Linear,
+                },
+                Rectangle {
+                    top_left_corner_position: glam::vec3(
+                        100.0,
+                        150.0 + self.rerun_logo_texture_height as f32 * image_scale,
+                        -0.05,
+                    ),
+                    extent_u: self.rerun_logo_texture_width as f32 * image_scale * glam::Vec3::X,
+                    extent_v: self.rerun_logo_texture_height as f32 * image_scale * glam::Vec3::Y,
+                    texture: self.rerun_logo_texture,
+                    texture_filter_magnification: TextureFilterMag::Linear,
+                    texture_filter_minification: TextureFilterMin::Linear,
+                },
+            ],
+        )
+        .unwrap();
 
         vec![
             // 2d view to the left
@@ -94,7 +157,8 @@ impl framework::Example for Render2D {
                         ),
                     )
                     .unwrap();
-                view_builder.queue_draw(&line_strip_builder.to_drawable(re_ctx));
+                view_builder.queue_draw(&line_strip_draw_data);
+                view_builder.queue_draw(&rectangle_draw_data);
                 let command_buffer = view_builder.draw(re_ctx).unwrap();
                 framework::ViewDrawResult {
                     view_builder,
@@ -133,7 +197,8 @@ impl framework::Example for Render2D {
                             },
                         )
                         .unwrap();
-                    view_builder.queue_draw(&line_strip_builder.to_drawable(re_ctx));
+                    view_builder.queue_draw(&line_strip_draw_data);
+                    view_builder.queue_draw(&rectangle_draw_data);
                     let command_buffer = view_builder.draw(re_ctx).unwrap();
                     framework::ViewDrawResult {
                         view_builder,

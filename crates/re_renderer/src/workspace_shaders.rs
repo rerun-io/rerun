@@ -63,6 +63,12 @@ pub fn init() {
     }
 
     {
+        let virtpath = ::std::path::Path::new("crates/re_renderer/shader/rectangle.wgsl");
+        fs.create_file(virtpath, include_str!("../shader/rectangle.wgsl").into())
+            .unwrap();
+    }
+
+    {
         let virtpath = ::std::path::Path::new("crates/re_renderer/shader/screen_triangle.wgsl");
         fs.create_file(
             virtpath,

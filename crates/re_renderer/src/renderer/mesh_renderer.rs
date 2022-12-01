@@ -252,13 +252,7 @@ impl Renderer for MeshRenderer {
                     cull_mode: None, //Some(wgpu::Face::Back), // TODO(andreas): Need to specify from outside if mesh is CW or CCW?
                     ..Default::default()
                 },
-                depth_stencil: Some(wgpu::DepthStencilState {
-                    format: ViewBuilder::MAIN_TARGET_DEPTH_FORMAT,
-                    depth_compare: wgpu::CompareFunction::Greater,
-                    depth_write_enabled: true,
-                    stencil: Default::default(),
-                    bias: Default::default(),
-                }),
+                depth_stencil: ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE,
                 multisample: ViewBuilder::MAIN_TARGET_DEFAULT_MSAA_STATE,
             },
             &pools.pipeline_layouts,
