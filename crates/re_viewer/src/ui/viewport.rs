@@ -72,10 +72,54 @@ impl ViewportBlueprint {
             };
             let scene = query.query(ctx);
             for category in scene.categories() {
-                let space_view = SpaceView::new(&scene, category, path.clone());
-                let space_view_id = SpaceViewId::random();
-                blueprint.space_views.insert(space_view_id, space_view);
-                blueprint.visible.insert(space_view_id, true);
+                if category == ViewCategory::TwoD && scene.two_d.images.len() > 1 {
+                    // Multiple images (e.g. depth and rgb, or rgb and segmentation) in the same 2D scene.
+                    // Stacking them on top of each other works, but is often confusing.
+                    // Let's create one space view for each image, where the other images are disabled:
+
+                    let store = &ctx.log_db.obj_db.store;
+
+                    for visible_image in &scene.two_d.images {
+                        if let Some(visible_instance_id) =
+                            visible_image.instance_hash.resolve(store)
+                        {
+                            let mut space_view = SpaceView::new(&scene, category, path.clone());
+                            space_view.name = visible_instance_id.obj_path.to_string();
+
+                            for other_image in &scene.two_d.images {
+                                if let Some(image_instance_id) =
+                                    other_image.instance_hash.resolve(store)
+                                {
+                                    let visible =
+                                        visible_instance_id.obj_path == image_instance_id.obj_path;
+
+                                    space_view.obj_tree_properties.individual.set(
+                                        image_instance_id.obj_path,
+                                        re_data_store::ObjectProps {
+                                            visible,
+                                            ..Default::default()
+                                        },
+                                    );
+                                }
+                            }
+
+                            let space_view_id = SpaceViewId::random();
+                            blueprint.space_views.insert(space_view_id, space_view);
+                            blueprint.visible.insert(space_view_id, true);
+                        }
+                    }
+
+                    // We _also_ want to create the stacked version, e.g. rgb + segmentation
+                    // so we keep going here.
+                }
+
+                // Create one SpaceView for the whole space:
+                {
+                    let space_view = SpaceView::new(&scene, category, path.clone());
+                    let space_view_id = SpaceViewId::random();
+                    blueprint.space_views.insert(space_view_id, space_view);
+                    blueprint.visible.insert(space_view_id, true);
+                }
             }
         }
 
