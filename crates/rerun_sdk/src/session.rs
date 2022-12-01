@@ -213,6 +213,12 @@ impl Session {
     }
 }
 
+impl Default for Session {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 enum Sender {
     Remote(re_sdk_comms::Client),
 

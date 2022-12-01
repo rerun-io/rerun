@@ -355,7 +355,6 @@ fn show() -> PyResult<()> {
     } else {
         rerun_sdk::viewer::show(log_messages);
     }
-    // TODO: understand the impact of moving this drop
 
     Ok(())
 }
