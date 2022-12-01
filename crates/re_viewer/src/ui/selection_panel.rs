@@ -183,7 +183,7 @@ impl SelectionPanel {
                 // I really don't know what we should show here.
             }
             Selection::SpaceView(space_view_id) => {
-                if let Some(space_view) = blueprint.viewport.space_view_mut(&space_view_id) {
+                if let Some(space_view) = blueprint.viewport.space_view(&space_view_id) {
                     ui.heading("SpaceView");
                     ui.add_space(4.0);
 
@@ -191,8 +191,15 @@ impl SelectionPanel {
                         blueprint.viewport.remove(&space_view_id);
                         ctx.clear_selection();
                     } else {
-                        ui.add_space(4.0);
-                        ui_space_view(ctx, ui, space_view);
+                        if ui.button("Clone Space View").clicked() {
+                            blueprint.viewport.add_space_view(space_view.clone());
+                        }
+
+                        if let Some(space_view) = blueprint.viewport.space_view_mut(&space_view_id)
+                        {
+                            ui.add_space(4.0);
+                            ui_space_view(ctx, ui, space_view);
+                        }
                     }
                 } else {
                     ctx.clear_selection();

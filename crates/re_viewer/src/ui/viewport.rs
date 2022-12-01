@@ -262,11 +262,12 @@ impl ViewportBlueprint {
         });
     }
 
-    fn add_space_view(&mut self, space_view: SpaceView) {
+    pub(crate) fn add_space_view(&mut self, space_view: SpaceView) -> SpaceViewId {
         let space_view_id = SpaceViewId::random();
         self.space_views.insert(space_view_id, space_view);
         self.visible.insert(space_view_id);
         self.trees.clear(); // Reset them
+        space_view_id
     }
 
     fn add_space_view_for(
