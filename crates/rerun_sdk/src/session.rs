@@ -5,7 +5,7 @@ use re_log_types::{
     PathOp, RecordingId, RecordingInfo, Time, TimePoint, TypeMsg,
 };
 
-pub struct Sdk {
+pub struct Session {
     #[cfg(feature = "web")]
     tokio_rt: tokio::runtime::Runtime,
 
@@ -20,8 +20,8 @@ pub struct Sdk {
     has_sent_begin_recording_msg: bool,
 }
 
-impl Sdk {
-    fn new() -> Self {
+impl Session {
+    pub fn new() -> Self {
         Self {
             #[cfg(feature = "web")]
             tokio_rt: tokio::runtime::Runtime::new().unwrap(),
@@ -32,15 +32,6 @@ impl Sdk {
             recording_id: None,
             has_sent_begin_recording_msg: false,
         }
-    }
-
-    /// Access the global [`Sdk`]. This is a singleton.
-    pub fn global() -> std::sync::MutexGuard<'static, Self> {
-        use once_cell::sync::OnceCell;
-        use std::sync::Mutex;
-        static INSTANCE: OnceCell<Mutex<Sdk>> = OnceCell::new();
-        let mutex = INSTANCE.get_or_init(|| Mutex::new(Sdk::new()));
-        mutex.lock().unwrap()
     }
 
     pub fn set_application_id(&mut self, application_id: ApplicationId) {
@@ -219,6 +210,12 @@ impl Sdk {
             time_point: time_point.clone(),
             path_op,
         }));
+    }
+}
+
+impl Default for Session {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

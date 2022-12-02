@@ -3782,9 +3782,7 @@ dependencies = [
  "itertools",
  "macaw",
  "mimalloc",
- "nohash-hasher",
  "numpy",
- "once_cell",
  "pyo3",
  "pyo3-build-config",
  "rand",
@@ -3793,16 +3791,12 @@ dependencies = [
  "re_log_types",
  "re_memory",
  "re_sdk_comms",
- "re_smart_channel",
  "re_tensor_ops",
- "re_viewer",
- "re_web_server",
- "re_ws_comms",
  "rerun",
+ "rerun_sdk",
  "tokio",
  "tracing-subscriber",
  "uuid",
- "webbrowser",
 ]
 
 [[package]]
@@ -4010,6 +4004,32 @@ dependencies = [
  "mimalloc",
  "puffin",
  "puffin_http",
+ "re_error",
+ "re_log",
+ "re_log_types",
+ "re_memory",
+ "re_sdk_comms",
+ "re_smart_channel",
+ "re_viewer",
+ "re_web_server",
+ "re_ws_comms",
+ "tokio",
+ "tracing-subscriber",
+ "webbrowser",
+]
+
+[[package]]
+name = "rerun_sdk"
+version = "0.1.0"
+dependencies = [
+ "arrow2",
+ "arrow2_convert",
+ "clap 4.0.26",
+ "crossbeam",
+ "document-features",
+ "mimalloc",
+ "nohash-hasher",
+ "once_cell",
  "re_error",
  "re_log",
  "re_log_types",

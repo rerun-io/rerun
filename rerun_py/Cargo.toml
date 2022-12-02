@@ -8,14 +8,14 @@ version.workspace = true
 
 [lib]
 crate-type = ["cdylib"]
-name = "rerun_sdk"      # name of the Python library
+name = "rerun_bindings" # name of the .so library that the Python module will import
 
 
 [features]
 default = ["extension-module", "re_viewer"]
 
 ## Enable embedding the Rerun Viewer in the Python SDK.
-re_viewer = ["dep:re_viewer"]
+re_viewer = ["rerun_sdk/re_viewer"]
 
 # We need to enable the `pyo3/extension-module` when building the SDK,
 # but we cannot enable it when building tests and benchmarks, so we
@@ -28,7 +28,7 @@ extension-module = ["pyo3/extension-module"]
 ##
 ## Enabling this adds quite a bit to the compile time and binary size,
 ## since it requires compiling and bundling the viewer as wasm.
-web = ["rerun/web", "dep:re_ws_comms", "dep:re_web_server", "dep:webbrowser"]
+web = ["rerun/web", "rerun_sdk/web"]
 
 [dependencies]
 re_error = { path = "../crates/re_error" }
@@ -36,10 +36,9 @@ re_log = { path = "../crates/re_log" }
 re_log_types = { path = "../crates/re_log_types" }
 re_memory = { path = "../crates/re_memory" }
 re_sdk_comms = { path = "../crates/re_sdk_comms", features = ["client"] }
-re_smart_channel = { path = "../crates/re_smart_channel" }
 re_tensor_ops = { path = "../crates/re_tensor_ops" }
-re_viewer = { path = "../crates/re_viewer", optional = true }
 rerun = { path = "../crates/rerun" }
+rerun_sdk = { path = "../crates/rerun_sdk" }
 
 arrow2 = { version = "0.14", features = ["io_ipc"] }
 ahash = "0.8"
@@ -54,25 +53,15 @@ image = { version = "0.24", default-features = false, features = [
 itertools = "0.10"
 macaw = "0.17"
 mimalloc = { version = "0.1.29", features = ["local_dynamic_tls"] }
-nohash-hasher = "0.2"
 numpy = "0.17"
-once_cell = "1.12"
 pyo3 = "0.17"
 rand = { version = "0.8", features = ["std_rng"] }
 tokio = { version = "1.16", features = ["rt-multi-thread"] }
 tracing-subscriber = "0.3"
 uuid = "1.1"
 
-# Optional dependencies:
-re_ws_comms = { path = "../crates/re_ws_comms", optional = true, features = [
-  "server",
-] }
-re_web_server = { path = "../crates/re_web_server", optional = true }
-webbrowser = { version = "0.8", optional = true }
-
-
 [build-dependencies]
 pyo3-build-config = "0.17"
 
 [package.metadata.maturin]
-name = "rerun.rerun_sdk"
+name = "rerun.rerun_bindings"
