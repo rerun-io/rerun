@@ -908,33 +908,75 @@ fn top_bar_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &mut App) {
 
             {
                 let mut input = ui.ctx().input_mut();
-                blueprint.blueprint_panel_expanded ^=
-                    input.consume_shortcut(&TOGGLE_BLUEPRINT_PANEL);
-                blueprint.time_panel_expanded ^= input.consume_shortcut(&TOGGLE_TIME_PANEL);
                 blueprint.selection_panel_expanded ^=
                     input.consume_shortcut(&TOGGLE_SELECTION_PANEL);
+                blueprint.time_panel_expanded ^= input.consume_shortcut(&TOGGLE_TIME_PANEL);
+                blueprint.blueprint_panel_expanded ^=
+                    input.consume_shortcut(&TOGGLE_BLUEPRINT_PANEL);
             }
 
             // From right-to-left:
-            ui.toggle_value(&mut blueprint.selection_panel_expanded, "S")
-                .on_hover_text(format!(
-                    "Toggle Selection View ({})",
-                    ui.ctx().format_shortcut(&TOGGLE_SELECTION_PANEL)
-                ));
+            medium_toggle_icon_button(
+                ui,
+                &mut app.state.static_image_cache,
+                "toggle_selection_view_medium",
+                include_bytes!("../data/icons/right_panel_toggle.png"),
+                &mut blueprint.selection_panel_expanded,
+            )
+            .on_hover_text(format!(
+                "Toggle Selection View ({})",
+                ui.ctx().format_shortcut(&TOGGLE_SELECTION_PANEL)
+            ));
 
-            ui.toggle_value(&mut blueprint.time_panel_expanded, "T")
-                .on_hover_text(format!(
-                    "Toggle Timeline View ({})",
-                    ui.ctx().format_shortcut(&TOGGLE_TIME_PANEL)
-                ));
+            medium_toggle_icon_button(
+                ui,
+                &mut app.state.static_image_cache,
+                "toggle_time_panel_view_medium",
+                include_bytes!("../data/icons/bottom_panel_toggle.png"),
+                &mut blueprint.time_panel_expanded,
+            )
+            .on_hover_text(format!(
+                "Toggle Timeline View ({})",
+                ui.ctx().format_shortcut(&TOGGLE_TIME_PANEL)
+            ));
 
-            ui.toggle_value(&mut blueprint.blueprint_panel_expanded, "B")
-                .on_hover_text(format!(
-                    "Toggle Blueprint View ({})",
-                    ui.ctx().format_shortcut(&TOGGLE_BLUEPRINT_PANEL)
-                ));
+            medium_toggle_icon_button(
+                ui,
+                &mut app.state.static_image_cache,
+                "toggle_blueprint_panel_view_medium",
+                include_bytes!("../data/icons/left_panel_toggle.png"),
+                &mut blueprint.blueprint_panel_expanded,
+            )
+            .on_hover_text(format!(
+                "Toggle Blueprint View ({})",
+                ui.ctx().format_shortcut(&TOGGLE_BLUEPRINT_PANEL)
+            ));
         }
     });
+}
+
+fn medium_toggle_icon_button(
+    ui: &mut egui::Ui,
+    image_cache: &mut StaticImageCache,
+    id: &'static str,
+    png_bytes: &'static [u8],
+    selected: &mut bool,
+) -> egui::Response {
+    let size_points = egui::Vec2::splat(16.0); // TODO(emilk): get from DesignTokens
+
+    let image = image_cache.get(id, png_bytes);
+    let texture_id = image.texture_id(ui.ctx());
+    let tint = if *selected {
+        ui.visuals().widgets.inactive.fg_stroke.color
+    } else {
+        egui::Color32::from_gray(100) // TODO(emilk): get from DesignTokens
+    };
+    let mut response = ui.add(egui::ImageButton::new(texture_id, size_points).tint(tint));
+    if response.clicked() {
+        *selected = !*selected;
+        response.mark_changed();
+    }
+    response
 }
 
 // ----------------------------------------------------------------------------
@@ -1331,9 +1373,13 @@ struct StaticImageCache {
 }
 
 impl StaticImageCache {
-    pub fn get(&mut self, name: &'static str, image_bytes: &[u8]) -> &RetainedImage {
-        self.images.entry(name).or_insert_with(|| {
-            RetainedImage::from_color_image(name, load_image_bytes(image_bytes).unwrap())
+    pub fn get(&mut self, id: &'static str, image_bytes: &'static [u8]) -> &RetainedImage {
+        self.images.entry(id).or_insert_with(|| {
+            RetainedImage::from_color_image(
+                id,
+                load_image_bytes(image_bytes)
+                    .unwrap_or_else(|err| panic!("Failed to load image {id:?}: {err:?}")),
+            )
         })
     }
 
