@@ -6,6 +6,9 @@ use image::DynamicImage;
 use re_log_types::{
     context::ClassId, MsgId, Tensor, TensorDataMeaning, TensorDataStore, TensorDataType, TensorId,
 };
+use re_renderer::resource_managers::{
+    ResourceLifeTime, Texture2D, Texture2DHandle, TextureManager2D,
+};
 
 use crate::ui::{Annotations, DefaultColor};
 
@@ -33,6 +36,9 @@ pub struct TensorImageView<'store, 'cache> {
 
     /// For egui
     pub retained_img: &'cache RetainedImage,
+
+    /// For rendering with re_renderer
+    pub texture_handle: Texture2DHandle,
 }
 
 // Use this for the cache index so that we don't cache across
@@ -73,6 +79,7 @@ impl ImageCache {
         &'cache mut self,
         tensor: &'store Tensor,
         annotations: &'store Option<Arc<Annotations>>,
+        texture_manager: &mut TextureManager2D,
     ) -> TensorImageView<'store, 'cache> {
         let ci = self
             .images
@@ -82,7 +89,7 @@ impl ImageCache {
             })
             .or_insert_with(|| {
                 let debug_name = format!("tensor {:?}", tensor.shape);
-                let ci = CachedImage::from_tensor(debug_name, tensor, annotations);
+                let ci = CachedImage::from_tensor(debug_name, tensor, annotations, texture_manager);
                 self.memory_used += ci.memory_used;
                 ci
             });
@@ -93,14 +100,16 @@ impl ImageCache {
             annotations,
             dynamic_img: &ci.dynamic_img,
             retained_img: &ci.retained_img,
+            texture_handle: ci.texture_handle,
         }
     }
 
     pub(crate) fn get_view<'store, 'cache>(
         &'cache mut self,
         tensor: &'store Tensor,
+        texture_manager: &mut TextureManager2D,
     ) -> TensorImageView<'store, 'cache> {
-        self.get_view_with_annotations(tensor, &None)
+        self.get_view_with_annotations(tensor, &None, texture_manager)
     }
 
     /// Call once per frame to (potentially) flush the cache.
@@ -138,7 +147,11 @@ impl ImageCache {
 
 struct CachedImage {
     /// For egui
+    /// TODO(andreas): This is partially redundant to the renderer texture
     retained_img: RetainedImage,
+
+    /// For rendering with re_renderer.
+    texture_handle: Texture2DHandle,
 
     /// For easily zooming into it in the UI
     dynamic_img: DynamicImage,
@@ -155,6 +168,7 @@ impl CachedImage {
         debug_name: String,
         tensor: &Tensor,
         annotations: &Option<Arc<Annotations>>,
+        texture_manager: &mut TextureManager2D,
     ) -> Self {
         crate::profile_function!();
         let dynamic_img = match tensor_to_dynamic_image(tensor, annotations) {
@@ -170,6 +184,23 @@ impl CachedImage {
         let memory_used = egui_color_image.pixels.len() * std::mem::size_of::<egui::Color32>()
             + dynamic_img.as_bytes().len();
 
+        // TODO(andreas): The renderer should ingest images with less conversion (e.g. keep luma as 8bit texture, don't flip bits on bgra etc.)
+        // TODO: Need to figure out how to free this texture again. Very concerning! How does egui do that?
+        let renderer_texture_handle = texture_manager.store_resource(
+            Texture2D {
+                label: debug_name.clone().into(),
+                data: egui_color_image
+                    .pixels
+                    .iter()
+                    .flat_map(|p| p.to_array())
+                    .collect(),
+                format: wgpu::TextureFormat::Rgba8UnormSrgb,
+                width: egui_color_image.width() as u32,
+                height: egui_color_image.height() as u32,
+            },
+            ResourceLifeTime::LongLived,
+        );
+
         let options = egui::TextureOptions {
             // This is best for low-res depth-images and the like
             magnification: egui::TextureFilter::Nearest,
@@ -182,6 +213,7 @@ impl CachedImage {
             dynamic_img,
             retained_img,
             memory_used: memory_used as u64,
+            texture_handle: renderer_texture_handle,
             last_use_generation: 0,
         }
     }

@@ -407,7 +407,11 @@ fn view_2d_scrollable(
             annotations: legend,
         } = img;
 
-        let tensor_view = ctx.cache.image.get_view_with_annotations(tensor, legend);
+        let tensor_view = ctx.cache.image.get_view_with_annotations(
+            tensor,
+            legend,
+            &mut ctx.render_ctx.texture_manager_2d,
+        );
 
         let texture_id = tensor_view.retained_img.texture_id(parent_ui.ctx());
 
@@ -456,8 +460,11 @@ fn view_2d_scrollable(
                                 ui.separator();
                             }
 
-                            let tensor_view =
-                                ctx.cache.image.get_view_with_annotations(tensor, legend);
+                            let tensor_view = ctx.cache.image.get_view_with_annotations(
+                                tensor,
+                                legend,
+                                &mut ctx.render_ctx.texture_manager_2d,
+                            );
 
                             ui.horizontal(|ui| {
                                 super::image_ui::show_zoomed_image_region(

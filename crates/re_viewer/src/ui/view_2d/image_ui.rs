@@ -8,7 +8,10 @@ pub(crate) fn show_tensor(
     ui: &mut egui::Ui,
     tensor: &re_log_types::Tensor,
 ) {
-    let tensor_view = ctx.cache.image.get_view(tensor);
+    let tensor_view = ctx
+        .cache
+        .image
+        .get_view(tensor, &mut ctx.render_ctx.texture_manager_2d);
 
     let max_size = ui
         .available_size()
