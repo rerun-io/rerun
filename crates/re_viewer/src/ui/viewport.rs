@@ -7,8 +7,6 @@
 //! * [ ] Controlling visibility of objects inside each Space View
 //! * [ ] Transforming objects between spaces
 
-use std::collections::BTreeMap;
-
 use ahash::HashMap;
 use itertools::Itertools as _;
 
@@ -34,10 +32,24 @@ impl SpaceViewId {
 
 // ----------------------------------------------------------------------------
 
-type VisibilitySet = BTreeMap<SpaceViewId, bool>;
+fn query_scene(ctx: &mut ViewerContext<'_>, space_info: &SpaceInfo) -> super::scene::Scene {
+    let query = SceneQuery {
+        obj_paths: &space_info.objects,
+        timeline: *ctx.rec_cfg.time_ctrl.timeline(),
+        latest_at: TimeInt::MAX,
+        obj_props: &Default::default(), // all visible
+    };
+    query.query(ctx)
+}
+
+// ----------------------------------------------------------------------------
+
+/// What views are visible?
+type VisibilitySet = std::collections::BTreeSet<SpaceViewId>;
 
 /// Describes the layout and contents of the Viewport Panel.
 #[derive(Default, serde::Deserialize, serde::Serialize)]
+#[serde(default)]
 pub struct ViewportBlueprint {
     /// Where the space views are stored.
     space_views: HashMap<SpaceViewId, SpaceView>,
@@ -54,6 +66,11 @@ pub struct ViewportBlueprint {
 
     /// Show one tab as maximized?
     maximized: Option<SpaceViewId>,
+
+    /// Set to `true` the first time the user messes around with the viewport blueprint.
+    /// Before this is set we automatically add new spaces to the viewport
+    /// when they show up in the data.
+    has_been_user_edited: bool,
 }
 
 impl ViewportBlueprint {
@@ -64,20 +81,61 @@ impl ViewportBlueprint {
         let mut blueprint = Self::default();
 
         for (path, space_info) in &spaces_info.spaces {
-            let query = SceneQuery {
-                obj_paths: &space_info.objects,
-                timeline: *ctx.rec_cfg.time_ctrl.timeline(),
-                latest_at: TimeInt::MAX,
-                obj_props: &Default::default(), // all visible
-            };
-            let scene = query.query(ctx);
+            let scene = query_scene(ctx, space_info);
             for category in scene.categories() {
-                let space_view = SpaceView::new(&scene, category, path.clone());
-                let space_view_id = SpaceViewId::random();
-                blueprint.space_views.insert(space_view_id, space_view);
-                blueprint.visible.insert(space_view_id, true);
+                if category == ViewCategory::TwoD && scene.two_d.images.len() > 1 {
+                    // Multiple images (e.g. depth and rgb, or rgb and segmentation) in the same 2D scene.
+                    // Stacking them on top of each other works, but is often confusing.
+                    // Let's create one space view for each image, where the other images are disabled:
+
+                    let store = &ctx.log_db.obj_db.store;
+
+                    for visible_image in &scene.two_d.images {
+                        if let Some(visible_instance_id) =
+                            visible_image.instance_hash.resolve(store)
+                        {
+                            let mut space_view = SpaceView::new(&scene, category, path.clone());
+                            space_view.name = visible_instance_id.obj_path.to_string();
+
+                            for other_image in &scene.two_d.images {
+                                if let Some(image_instance_id) =
+                                    other_image.instance_hash.resolve(store)
+                                {
+                                    let visible =
+                                        visible_instance_id.obj_path == image_instance_id.obj_path;
+
+                                    space_view.obj_tree_properties.individual.set(
+                                        image_instance_id.obj_path,
+                                        re_data_store::ObjectProps {
+                                            visible,
+                                            ..Default::default()
+                                        },
+                                    );
+                                }
+                            }
+
+                            let space_view_id = SpaceViewId::random();
+                            blueprint.space_views.insert(space_view_id, space_view);
+                            blueprint.visible.insert(space_view_id);
+                        }
+                    }
+
+                    // We _also_ want to create the stacked version, e.g. rgb + segmentation
+                    // so we keep going here.
+                }
+
+                // Create one SpaceView for the whole space:
+                {
+                    let space_view = SpaceView::new(&scene, category, path.clone());
+                    let space_view_id = SpaceViewId::random();
+                    blueprint.space_views.insert(space_view_id, space_view);
+                    blueprint.visible.insert(space_view_id);
+                }
             }
         }
+
+        // Make sure the visibility flags in the SpaceView::obj_tree_properties get updated:
+        blueprint.on_frame_start(ctx, spaces_info);
 
         blueprint
     }
@@ -86,8 +144,29 @@ impl ViewportBlueprint {
         self.space_views.get(space_view)
     }
 
-    pub(crate) fn space_view_mut(&mut self, space_view: &SpaceViewId) -> Option<&mut SpaceView> {
-        self.space_views.get_mut(space_view)
+    pub(crate) fn space_view_mut(&mut self, space_view_id: &SpaceViewId) -> Option<&mut SpaceView> {
+        self.space_views.get_mut(space_view_id)
+    }
+
+    pub(crate) fn remove(&mut self, space_view_id: &SpaceViewId) -> Option<SpaceView> {
+        let Self {
+            space_views,
+            visible,
+            trees,
+            maximized,
+            has_been_user_edited,
+        } = self;
+
+        *has_been_user_edited = true;
+
+        trees.retain(|vis_set, _| !vis_set.contains(space_view_id));
+
+        if *maximized == Some(*space_view_id) {
+            *maximized = None;
+        }
+
+        visible.remove(space_view_id);
+        space_views.remove(space_view_id)
     }
 
     fn has_space(&self, space_path: &ObjPath) -> bool {
@@ -158,17 +237,24 @@ impl ViewportBlueprint {
                 }
             }
 
-            let is_space_view_visible = self.visible.entry(*space_view_id).or_insert(true);
-            visibility_button(ui, true, is_space_view_visible);
+            let mut is_space_view_visible = self.visible.contains(space_view_id);
+            if visibility_button(ui, true, &mut is_space_view_visible).changed() {
+                self.has_been_user_edited = true;
+                if is_space_view_visible {
+                    self.visible.insert(*space_view_id);
+                } else {
+                    self.visible.remove(space_view_id);
+                }
+            }
         })
         .body(|ui| {
             if let Some(space_info) = spaces_info.spaces.get(space_path) {
                 if let Some(tree) = obj_tree.subtree(space_path) {
-                    let is_space_view_visible = self.visible.entry(*space_view_id).or_insert(true);
+                    let is_space_view_visible = self.visible.contains(space_view_id);
                     show_obj_tree_children(
                         ctx,
                         ui,
-                        *is_space_view_visible,
+                        is_space_view_visible,
                         &mut space_view.obj_tree_properties,
                         *space_view_id,
                         space_info,
@@ -179,34 +265,46 @@ impl ViewportBlueprint {
         });
     }
 
-    fn add_space_view(&mut self, space_view: SpaceView) {
+    pub(crate) fn mark_user_interaction(&mut self) {
+        self.has_been_user_edited = true;
+    }
+
+    pub(crate) fn add_space_view(&mut self, space_view: SpaceView) -> SpaceViewId {
         let space_view_id = SpaceViewId::random();
         self.space_views.insert(space_view_id, space_view);
-        self.visible.insert(space_view_id, true);
+        self.visible.insert(space_view_id);
         self.trees.clear(); // Reset them
+        space_view_id
+    }
+
+    fn add_space_view_for(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        path: &ObjPath,
+        space_info: &SpaceInfo,
+    ) {
+        let scene = query_scene(ctx, space_info);
+        for category in scene.categories() {
+            self.add_space_view(SpaceView::new(&scene, category, path.clone()));
+        }
     }
 
     fn on_frame_start(&mut self, ctx: &mut ViewerContext<'_>, spaces_info: &SpacesInfo) {
         crate::profile_function!();
 
-        if self.space_views.is_empty() {
-            *self = Self::new(ctx, spaces_info);
-        } else {
-            crate::profile_scope!("look for missing space views");
+        if !self.has_been_user_edited {
+            // Automatically populate the viewport based on the data:
 
-            // Check if the blueprint is missing a space,
-            // maybe one that has been added by new data:
-            for (path, space_info) in &spaces_info.spaces {
-                if !self.has_space(path) {
-                    let query = SceneQuery {
-                        obj_paths: &space_info.objects,
-                        timeline: *ctx.rec_cfg.time_ctrl.timeline(),
-                        latest_at: TimeInt::MAX,
-                        obj_props: &Default::default(), // all visible
-                    };
-                    let scene = query.query(ctx);
-                    for category in scene.categories() {
-                        self.add_space_view(SpaceView::new(&scene, category, path.clone()));
+            if self.space_views.is_empty() {
+                *self = Self::new(ctx, spaces_info);
+            } else {
+                crate::profile_scope!("look for missing space views");
+
+                // Check if the blueprint is missing a space,
+                // maybe one that has been added by new data:
+                for (path, space_info) in &spaces_info.spaces {
+                    if !self.has_space(path) {
+                        self.add_space_view_for(ctx, path, space_info);
                     }
                 }
             }
@@ -299,6 +397,31 @@ impl ViewportBlueprint {
                 .style(dock_style)
                 .show_inside(ui, &mut tab_viewer);
         }
+    }
+
+    fn create_new_blueprint_ui(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        spaces_info: &SpacesInfo,
+    ) {
+        ui.vertical_centered(|ui| {
+            ui.menu_button("Add new space view…", |ui| {
+                ui.style_mut().wrap = Some(false);
+                for (path, space_info) in &spaces_info.spaces {
+                    let scene = query_scene(ctx, space_info);
+                    if !scene.categories().is_empty() && ui.button(path.to_string()).clicked() {
+                        ui.close_menu();
+
+                        for category in scene.categories() {
+                            let new_space_view_id =
+                                self.add_space_view(SpaceView::new(&scene, category, path.clone()));
+                            ctx.set_selection(Selection::SpaceView(new_space_view_id));
+                        }
+                    }
+                }
+            });
+        });
     }
 }
 
@@ -636,15 +759,35 @@ impl Blueprint {
                     ui.separator();
 
                     ui.vertical_centered(|ui| {
-                        if ui.button("Reset space views").clicked() {
+                        if ui
+                            .button("Auto-populate Viewport")
+                            .on_hover_text(
+                                "Re-populate Viewport with automatically chosen Space Views",
+                            )
+                            .clicked()
+                        {
                             self.viewport = ViewportBlueprint::new(ctx, spaces_info);
                         }
                     });
 
                     ui.separator();
 
-                    self.viewport
-                        .tree_ui(ctx, ui, spaces_info, &ctx.log_db.obj_db.tree);
+                    egui_extras::StripBuilder::new(ui)
+                        .size(egui_extras::Size::remainder())
+                        .size(egui_extras::Size::exact(20.0))
+                        .vertical(|mut strip| {
+                            strip.cell(|ui| {
+                                self.viewport.tree_ui(
+                                    ctx,
+                                    ui,
+                                    spaces_info,
+                                    &ctx.log_db.obj_db.tree,
+                                );
+                            });
+                            strip.cell(|ui| {
+                                self.viewport.create_new_blueprint_ui(ctx, ui, spaces_info);
+                            });
+                        });
                 }
             },
         );
