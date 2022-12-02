@@ -340,15 +340,15 @@ fn disconnect() {
 #[cfg(feature = "re_viewer")]
 #[pyfunction]
 fn show() -> PyResult<()> {
-    let mut sdk = global_session();
-    if sdk.is_connected() {
+    let mut session = global_session();
+    if session.is_connected() {
         return Err(PyRuntimeError::new_err(
             "Can't show the log messages: Rerun was configured to send the data to a server!",
         ));
     }
 
-    let log_messages = sdk.drain_log_messages_buffer();
-    drop(sdk);
+    let log_messages = session.drain_log_messages_buffer();
+    drop(session);
 
     if log_messages.is_empty() {
         re_log::info!("Nothing logged, so nothing to show");
@@ -363,15 +363,15 @@ fn show() -> PyResult<()> {
 fn save(path: &str) -> PyResult<()> {
     re_log::trace!("Saving file to {path:?}…");
 
-    let mut sdk = global_session();
-    if sdk.is_connected() {
+    let mut session = global_session();
+    if session.is_connected() {
         return Err(PyRuntimeError::new_err(
             "Can't show the log messages: Rerun was configured to send the data to a server!",
         ));
     }
 
-    let log_messages = sdk.drain_log_messages_buffer();
-    drop(sdk);
+    let log_messages = session.drain_log_messages_buffer();
+    drop(session);
 
     if log_messages.is_empty() {
         re_log::info!("Nothing logged, so nothing to save");
@@ -495,9 +495,9 @@ fn log_transform(
         // Stop people from logging a transform to a root-object, such as "world" (which doesn't have a parent).
         return Err(PyTypeError::new_err("Transforms are between a child object and its parent, so root objects cannot have transforms"));
     }
-    let mut sdk = global_session();
+    let mut session = global_session();
     let time_point = time(timeless);
-    sdk.send_data(
+    session.send_data(
         &time_point,
         (&obj_path, "_transform"),
         LoggedData::Single(Data::Transform(transform)),
@@ -559,10 +559,10 @@ fn log_view_coordinates(
         re_log::warn_once!("Left-handed coordinate systems are not yet fully supported by Rerun");
     }
 
-    let mut sdk = global_session();
+    let mut session = global_session();
     let obj_path = parse_obj_path(obj_path)?;
     let time_point = time(timeless);
-    sdk.send_data(
+    session.send_data(
         &time_point,
         (&obj_path, "_view_coordinates"),
         LoggedData::Single(Data::ViewCoordinates(coordinates)),
@@ -582,21 +582,21 @@ fn log_text_entry(
     color: Option<Vec<u8>>,
     timeless: bool,
 ) -> PyResult<()> {
-    let mut sdk = global_session();
+    let mut session = global_session();
 
     let obj_path = parse_obj_path(obj_path)?;
-    sdk.register_type(obj_path.obj_type_path(), ObjectType::TextEntry);
+    session.register_type(obj_path.obj_type_path(), ObjectType::TextEntry);
 
     let time_point = time(timeless);
 
     let Some(text) = text
     else {
-        sdk.send_path_op(&time_point, PathOp::ClearFields(obj_path));
+        session.send_path_op(&time_point, PathOp::ClearFields(obj_path));
         return Ok(());
     };
 
     if let Some(lvl) = level {
-        sdk.send_data(
+        session.send_data(
             &time_point,
             (&obj_path, "level"),
             LoggedData::Single(Data::String(lvl.to_owned())),
@@ -605,14 +605,14 @@ fn log_text_entry(
 
     if let Some(color) = color {
         let color = convert_color(color)?;
-        sdk.send_data(
+        session.send_data(
             &time_point,
             (&obj_path, "color"),
             LoggedData::Single(Data::Color(color)),
         );
     }
 
-    sdk.send_data(
+    session.send_data(
         &time_point,
         (&obj_path, "body"),
         LoggedData::Single(Data::String(text.to_owned())),
@@ -643,21 +643,21 @@ fn log_scalar(
     radius: Option<f32>,
     scattered: Option<bool>,
 ) -> PyResult<()> {
-    let mut sdk = global_session();
+    let mut session = global_session();
 
     let obj_path = parse_obj_path(obj_path)?;
-    sdk.register_type(obj_path.obj_type_path(), ObjectType::Scalar);
+    session.register_type(obj_path.obj_type_path(), ObjectType::Scalar);
 
     let time_point = time(false);
 
-    sdk.send_data(
+    session.send_data(
         &time_point,
         (&obj_path, "scalar"),
         LoggedData::Single(Data::F64(scalar)),
     );
 
     if let Some(label) = label {
-        sdk.send_data(
+        session.send_data(
             &time_point,
             (&obj_path, "label"),
             LoggedData::Single(Data::String(label)),
@@ -666,7 +666,7 @@ fn log_scalar(
 
     if let Some(color) = color {
         let color = convert_color(color)?;
-        sdk.send_data(
+        session.send_data(
             &time_point,
             (&obj_path, "color"),
             LoggedData::Single(Data::Color(color)),
@@ -674,7 +674,7 @@ fn log_scalar(
     }
 
     if let Some(radius) = radius {
-        sdk.send_data(
+        session.send_data(
             &time_point,
             (&obj_path, "radius"),
             LoggedData::Single(Data::F32(radius)),
@@ -682,7 +682,7 @@ fn log_scalar(
     }
 
     if let Some(scattered) = scattered {
-        sdk.send_data(
+        session.send_data(
             &time_point,
             (&obj_path, "scattered"),
             LoggedData::Single(Data::Bool(scattered)),
@@ -750,7 +750,7 @@ fn log_rect(
 ) -> PyResult<()> {
     let rect_format = RectFormat::parse(rect_format)?;
 
-    let mut sdk = global_session();
+    let mut session = global_session();
 
     let time_point = time(timeless);
 
@@ -758,17 +758,17 @@ fn log_rect(
 
     let Some(rect) = rect
     else {
-        sdk.send_path_op(&time_point, PathOp::ClearFields(obj_path));
+        session.send_path_op(&time_point, PathOp::ClearFields(obj_path));
         return Ok(());
     };
 
     let bbox = rect_format.to_bbox(rect);
 
-    sdk.register_type(obj_path.obj_type_path(), ObjectType::BBox2D);
+    session.register_type(obj_path.obj_type_path(), ObjectType::BBox2D);
 
     if let Some(color) = color {
         let color = convert_color(color)?;
-        sdk.send_data(
+        session.send_data(
             &time_point,
             (&obj_path, "color"),
             LoggedData::Single(Data::Color(color)),
@@ -776,7 +776,7 @@ fn log_rect(
     }
 
     if let Some(label) = label {
-        sdk.send_data(
+        session.send_data(
             &time_point,
             (&obj_path, "label"),
             LoggedData::Single(Data::String(label)),
@@ -784,14 +784,14 @@ fn log_rect(
     }
 
     if let Some(class_id) = class_id {
-        sdk.send_data(
+        session.send_data(
             &time_point,
             (&obj_path, "class_id"),
             LoggedData::Single(Data::I32(class_id)),
         );
     }
 
-    sdk.send_data(
+    session.send_data(
         &time_point,
         (&obj_path, "bbox"),
         LoggedData::Single(Data::BBox2D(bbox)),
@@ -801,7 +801,7 @@ fn log_rect(
 }
 
 fn log_labels(
-    sdk: &mut rerun_sdk::Session,
+    session: &mut rerun_sdk::Session,
     obj_path: &ObjPath,
     labels: Vec<String>,
     indices: &BatchIndex,
@@ -811,7 +811,7 @@ fn log_labels(
     match labels.len() {
         0 => Ok(()),
         1 => {
-            sdk.send_data(
+            session.send_data(
                 time_point,
                 (obj_path, "label"),
                 LoggedData::BatchSplat(Data::String(labels[0].clone())),
@@ -819,7 +819,7 @@ fn log_labels(
             Ok(())
         }
         num_labels if num_labels == num_objects => {
-            sdk.send_data(
+            session.send_data(
                 time_point,
                 (obj_path, "label"),
                 LoggedData::Batch {
@@ -851,7 +851,7 @@ impl IdType {
 }
 
 fn log_ids(
-    sdk: &mut rerun_sdk::Session,
+    session: &mut rerun_sdk::Session,
     obj_path: &ObjPath,
     ids: &numpy::PyReadonlyArrayDyn<'_, u16>,
     id_type: IdType,
@@ -862,7 +862,7 @@ fn log_ids(
     match ids.len() {
         0 => Ok(()),
         1 => {
-            sdk.send_data(
+            session.send_data(
                 time_point,
                 (obj_path, id_type.field_name()),
                 LoggedData::BatchSplat(Data::I32(ids.to_vec().unwrap()[0] as i32)),
@@ -870,7 +870,7 @@ fn log_ids(
             Ok(())
         }
         num_ids if num_ids == num_objects => {
-            sdk.send_data(
+            session.send_data(
                 time_point,
                 (obj_path, id_type.field_name()),
                 LoggedData::Batch {
@@ -901,14 +901,14 @@ fn log_rects(
 ) -> PyResult<()> {
     // Note: we cannot early-out here on `rects.empty()`, beacause logging
     // an empty batch is same as deleting previous batch.
-    let mut sdk = global_session();
+    let mut session = global_session();
 
     let time_point = time(timeless);
 
     let obj_path = parse_obj_path(obj_path)?;
 
     if rects.is_empty() {
-        sdk.send_path_op(&time_point, PathOp::ClearFields(obj_path));
+        session.send_path_op(&time_point, PathOp::ClearFields(obj_path));
         return Ok(());
     }
 
@@ -923,7 +923,7 @@ fn log_rects(
         }
     };
 
-    sdk.register_type(obj_path.obj_type_path(), ObjectType::BBox2D);
+    session.register_type(obj_path.obj_type_path(), ObjectType::BBox2D);
 
     let indices = if identifiers.is_empty() {
         BatchIndex::SequentialIndex(n)
@@ -940,12 +940,12 @@ fn log_rects(
 
     if !colors.is_empty() {
         let color_data = color_batch(&indices, colors)?;
-        sdk.send_data(&time_point, (&obj_path, "color"), color_data);
+        session.send_data(&time_point, (&obj_path, "color"), color_data);
     }
 
-    log_labels(&mut sdk, &obj_path, labels, &indices, &time_point, n)?;
+    log_labels(&mut session, &obj_path, labels, &indices, &time_point, n)?;
     log_ids(
-        &mut sdk,
+        &mut session,
         &obj_path,
         &class_ids,
         IdType::ClassId,
@@ -959,7 +959,7 @@ fn log_rects(
         .map(|r| rect_format.to_bbox([r[0], r[1], r[2], r[3]]))
         .collect();
 
-    sdk.send_data(
+    session.send_data(
         &time_point,
         (&obj_path, "bbox"),
         LoggedData::Batch {
@@ -986,7 +986,7 @@ fn log_point(
     keypoint_id: Option<u16>,
     timeless: bool,
 ) -> PyResult<()> {
-    let mut sdk = global_session();
+    let mut session = global_session();
 
     let time_point = time(timeless);
 
@@ -994,7 +994,7 @@ fn log_point(
 
     let Some(position) = position
     else {
-        sdk.send_path_op(&time_point, PathOp::ClearFields(obj_path));
+        session.send_path_op(&time_point, PathOp::ClearFields(obj_path));
         return Ok(());
     };
 
@@ -1008,11 +1008,11 @@ fn log_point(
         }
     };
 
-    sdk.register_type(obj_path.obj_type_path(), obj_type);
+    session.register_type(obj_path.obj_type_path(), obj_type);
 
     if let Some(color) = color {
         let color = convert_color(color)?;
-        sdk.send_data(
+        session.send_data(
             &time_point,
             (&obj_path, "color"),
             LoggedData::Single(Data::Color(color)),
@@ -1020,7 +1020,7 @@ fn log_point(
     }
 
     if let Some(label) = label {
-        sdk.send_data(
+        session.send_data(
             &time_point,
             (&obj_path, "label"),
             LoggedData::Single(Data::String(label)),
@@ -1028,7 +1028,7 @@ fn log_point(
     }
 
     if let Some(class_id) = class_id {
-        sdk.send_data(
+        session.send_data(
             &time_point,
             (&obj_path, "class_id"),
             LoggedData::Single(Data::I32(class_id as _)),
@@ -1036,7 +1036,7 @@ fn log_point(
     }
 
     if let Some(keypoint_id) = keypoint_id {
-        sdk.send_data(
+        session.send_data(
             &time_point,
             (&obj_path, "keypoint_id"),
             LoggedData::Single(Data::I32(keypoint_id as _)),
@@ -1050,7 +1050,7 @@ fn log_point(
         _ => unreachable!(),
     };
 
-    sdk.send_data(
+    session.send_data(
         &time_point,
         (&obj_path, "pos"),
         LoggedData::Single(pos_data),
@@ -1078,14 +1078,14 @@ fn log_points(
     // Note: we cannot early-out here on `positions.empty()`, beacause logging
     // an empty batch is same as deleting previous batch.
 
-    let mut sdk = global_session();
+    let mut session = global_session();
 
     let time_point = time(timeless);
 
     let obj_path = parse_obj_path(obj_path)?;
 
     if positions.is_empty() {
-        sdk.send_path_op(&time_point, PathOp::ClearFields(obj_path));
+        session.send_path_op(&time_point, PathOp::ClearFields(obj_path));
         return Ok(());
     }
 
@@ -1099,7 +1099,7 @@ fn log_points(
         }
     };
 
-    sdk.register_type(obj_path.obj_type_path(), obj_type);
+    session.register_type(obj_path.obj_type_path(), obj_type);
 
     let indices = if identifiers.is_empty() {
         BatchIndex::SequentialIndex(n)
@@ -1118,12 +1118,12 @@ fn log_points(
 
     if !colors.is_empty() {
         let color_data = color_batch(&indices, colors)?;
-        sdk.send_data(&time_point, (&obj_path, "color"), color_data);
+        session.send_data(&time_point, (&obj_path, "color"), color_data);
     }
 
-    log_labels(&mut sdk, &obj_path, labels, &indices, &time_point, n)?;
+    log_labels(&mut session, &obj_path, labels, &indices, &time_point, n)?;
     log_ids(
-        &mut sdk,
+        &mut session,
         &obj_path,
         &class_ids,
         IdType::ClassId,
@@ -1132,7 +1132,7 @@ fn log_points(
         n,
     )?;
     log_ids(
-        &mut sdk,
+        &mut session,
         &obj_path,
         &keypoint_ids,
         IdType::KeypointId,
@@ -1147,7 +1147,7 @@ fn log_points(
         _ => unreachable!(),
     };
 
-    sdk.send_data(
+    session.send_data(
         &time_point,
         (&obj_path, "pos"),
         LoggedData::Batch {
@@ -1231,7 +1231,7 @@ fn log_path(
     color: Option<Vec<u8>>,
     timeless: bool,
 ) -> PyResult<()> {
-    let mut sdk = global_session();
+    let mut session = global_session();
 
     let time_point = time(timeless);
 
@@ -1239,7 +1239,7 @@ fn log_path(
 
     let Some(positions) = positions
     else {
-        sdk.send_path_op(&time_point, PathOp::ClearFields(obj_path));
+        session.send_path_op(&time_point, PathOp::ClearFields(obj_path));
         return Ok(());
     };
 
@@ -1250,13 +1250,13 @@ fn log_path(
         )));
     }
 
-    sdk.register_type(obj_path.obj_type_path(), ObjectType::Path3D);
+    session.register_type(obj_path.obj_type_path(), ObjectType::Path3D);
 
     let positions = pod_collect_to_vec(&vec_from_np_array(&positions));
 
     if let Some(color) = color {
         let color = convert_color(color)?;
-        sdk.send_data(
+        session.send_data(
             &time_point,
             (&obj_path, "color"),
             LoggedData::Single(Data::Color(color)),
@@ -1264,14 +1264,14 @@ fn log_path(
     }
 
     if let Some(stroke_width) = stroke_width {
-        sdk.send_data(
+        session.send_data(
             &time_point,
             (&obj_path, "stroke_width"),
             LoggedData::Single(Data::F32(stroke_width)),
         );
     }
 
-    sdk.send_data(
+    session.send_data(
         &time_point,
         (&obj_path, "points"),
         LoggedData::Single(Data::DataVec(DataVec::Vec3(positions))),
@@ -1295,14 +1295,14 @@ fn log_line_segments(
         )));
     }
 
-    let mut sdk = global_session();
+    let mut session = global_session();
 
     let time_point = time(timeless);
 
     let obj_path = parse_obj_path(obj_path)?;
 
     if positions.is_empty() {
-        sdk.send_path_op(&time_point, PathOp::ClearFields(obj_path));
+        session.send_path_op(&time_point, PathOp::ClearFields(obj_path));
         return Ok(());
     }
 
@@ -1317,7 +1317,7 @@ fn log_line_segments(
         }
     };
 
-    sdk.register_type(obj_path.obj_type_path(), obj_type);
+    session.register_type(obj_path.obj_type_path(), obj_type);
 
     let positions = match obj_type {
         ObjectType::LineSegments2D => Data::DataVec(DataVec::Vec2(pod_collect_to_vec(
@@ -1329,7 +1329,7 @@ fn log_line_segments(
         _ => unreachable!(),
     };
 
-    sdk.send_data(
+    session.send_data(
         &time_point,
         (&obj_path, "points"),
         LoggedData::Single(positions),
@@ -1337,7 +1337,7 @@ fn log_line_segments(
 
     if let Some(color) = color {
         let color = convert_color(color)?;
-        sdk.send_data(
+        session.send_data(
             &time_point,
             (&obj_path, "color"),
             LoggedData::Single(Data::Color(color)),
@@ -1345,7 +1345,7 @@ fn log_line_segments(
     }
 
     if let Some(stroke_width) = stroke_width {
-        sdk.send_data(
+        session.send_data(
             &time_point,
             (&obj_path, "stroke_width"),
             LoggedData::Single(Data::F32(stroke_width)),
@@ -1366,11 +1366,11 @@ fn log_arrow(
     width_scale: Option<f32>,
     timeless: bool,
 ) -> PyResult<()> {
-    let mut sdk = global_session();
+    let mut session = global_session();
 
     let obj_path = parse_obj_path(obj_path)?;
 
-    sdk.register_type(obj_path.obj_type_path(), ObjectType::Arrow3D);
+    session.register_type(obj_path.obj_type_path(), ObjectType::Arrow3D);
 
     let time_point = time(timeless);
 
@@ -1378,7 +1378,7 @@ fn log_arrow(
         (Some(origin), Some(vector)) => re_log_types::Arrow3D { origin, vector },
         (None, None) => {
             // None, None means to clear the arrow
-            sdk.send_path_op(&time_point, PathOp::ClearFields(obj_path));
+            session.send_path_op(&time_point, PathOp::ClearFields(obj_path));
             return Ok(());
         }
         _ => {
@@ -1390,7 +1390,7 @@ fn log_arrow(
 
     if let Some(color) = color {
         let color = convert_color(color)?;
-        sdk.send_data(
+        session.send_data(
             &time_point,
             (&obj_path, "color"),
             LoggedData::Single(Data::Color(color)),
@@ -1398,7 +1398,7 @@ fn log_arrow(
     }
 
     if let Some(width_scale) = width_scale {
-        sdk.send_data(
+        session.send_data(
             &time_point,
             (&obj_path, "width_scale"),
             LoggedData::Single(Data::F32(width_scale)),
@@ -1406,14 +1406,14 @@ fn log_arrow(
     }
 
     if let Some(label) = label {
-        sdk.send_data(
+        session.send_data(
             &time_point,
             (&obj_path, "label"),
             LoggedData::Single(Data::String(label)),
         );
     }
 
-    sdk.send_data(
+    session.send_data(
         &time_point,
         (&obj_path, "arrow3d"),
         LoggedData::Single(Data::Arrow3D(arrow)),
@@ -1438,10 +1438,10 @@ fn log_obb(
     class_id: Option<u16>,
     timeless: bool,
 ) -> PyResult<()> {
-    let mut sdk = global_session();
+    let mut session = global_session();
 
     let obj_path = parse_obj_path(obj_path)?;
-    sdk.register_type(obj_path.obj_type_path(), ObjectType::Box3D);
+    session.register_type(obj_path.obj_type_path(), ObjectType::Box3D);
 
     let time_point = time(timeless);
 
@@ -1454,7 +1454,7 @@ fn log_obb(
             },
             (None, None, None) => {
                 // None, None means to clear the arrow
-                sdk.send_path_op(&time_point, PathOp::ClearFields(obj_path));
+                session.send_path_op(&time_point, PathOp::ClearFields(obj_path));
                 return Ok(());
             }
             _ => return Err(PyTypeError::new_err(
@@ -1464,7 +1464,7 @@ fn log_obb(
 
     if let Some(color) = color {
         let color = convert_color(color)?;
-        sdk.send_data(
+        session.send_data(
             &time_point,
             (&obj_path, "color"),
             LoggedData::Single(Data::Color(color)),
@@ -1472,7 +1472,7 @@ fn log_obb(
     }
 
     if let Some(stroke_width) = stroke_width {
-        sdk.send_data(
+        session.send_data(
             &time_point,
             (&obj_path, "stroke_width"),
             LoggedData::Single(Data::F32(stroke_width)),
@@ -1480,7 +1480,7 @@ fn log_obb(
     }
 
     if let Some(label) = label {
-        sdk.send_data(
+        session.send_data(
             &time_point,
             (&obj_path, "label"),
             LoggedData::Single(Data::String(label)),
@@ -1488,14 +1488,14 @@ fn log_obb(
     }
 
     if let Some(class_id) = class_id {
-        sdk.send_data(
+        session.send_data(
             &time_point,
             (&obj_path, "class_id"),
             LoggedData::Single(Data::I32(class_id as _)),
         );
     }
 
-    sdk.send_data(
+    session.send_data(
         &time_point,
         (&obj_path, "obb"),
         LoggedData::Single(Data::Box3(obb)),
@@ -1560,10 +1560,10 @@ fn log_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
     meaning: Option<TensorDataMeaning>,
     timeless: bool,
 ) -> PyResult<()> {
-    let mut sdk = global_session();
+    let mut session = global_session();
 
     let obj_path = parse_obj_path(obj_path)?;
-    sdk.register_type(obj_path.obj_type_path(), ObjectType::Image);
+    session.register_type(obj_path.obj_type_path(), ObjectType::Image);
 
     let time_point = time(timeless);
 
@@ -1576,7 +1576,7 @@ fn log_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
         _ => re_log_types::TensorDataMeaning::Unknown,
     };
 
-    sdk.send_data(
+    session.send_data(
         &time_point,
         (&obj_path, "tensor"),
         LoggedData::Single(Data::Tensor(
@@ -1586,7 +1586,7 @@ fn log_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
     );
 
     if let Some(meter) = meter {
-        sdk.send_data(
+        session.send_data(
             &time_point,
             (&obj_path, "meter"),
             LoggedData::Single(Data::F32(meter)),
@@ -1644,13 +1644,13 @@ fn log_mesh_file(
         ]
     };
 
-    let mut sdk = global_session();
+    let mut session = global_session();
 
-    sdk.register_type(obj_path.obj_type_path(), ObjectType::Mesh3D);
+    session.register_type(obj_path.obj_type_path(), ObjectType::Mesh3D);
 
     let time_point = time(timeless);
 
-    sdk.send_data(
+    session.send_data(
         &time_point,
         (&obj_path, "mesh"),
         LoggedData::Single(Data::Mesh3D(Mesh3D::Encoded(EncodedMesh3D {
@@ -1711,13 +1711,13 @@ fn log_image_file(
         }
     };
 
-    let mut sdk = global_session();
+    let mut session = global_session();
 
-    sdk.register_type(obj_path.obj_type_path(), ObjectType::Image);
+    session.register_type(obj_path.obj_type_path(), ObjectType::Image);
 
     let time_point = time(timeless);
 
-    sdk.send_data(
+    session.send_data(
         &time_point,
         (&obj_path, "tensor"),
         LoggedData::Single(Data::Tensor(re_log_types::Tensor {
@@ -1760,7 +1760,7 @@ fn log_annotation_context(
     class_descriptions: Vec<ClassDescriptionTuple>,
     timeless: bool,
 ) -> PyResult<()> {
-    let mut sdk = global_session();
+    let mut session = global_session();
 
     // We normally disallow logging to root, but we make an exception for class_descriptions
     let obj_path = if obj_path == "/" {
@@ -1790,7 +1790,7 @@ fn log_annotation_context(
 
     let time_point = time(timeless);
 
-    sdk.send_data(
+    session.send_data(
         &time_point,
         (&obj_path, "_annotation_context"),
         LoggedData::Single(Data::AnnotationContext(annotation_context)),
@@ -1801,16 +1801,16 @@ fn log_annotation_context(
 
 #[pyfunction]
 fn log_cleared(obj_path: &str, recursive: bool) -> PyResult<()> {
-    let mut sdk = global_session();
+    let mut session = global_session();
 
     let obj_path = parse_obj_path(obj_path)?;
 
     let time_point = time(false);
 
     if recursive {
-        sdk.send_path_op(&time_point, PathOp::ClearRecursive(obj_path));
+        session.send_path_op(&time_point, PathOp::ClearRecursive(obj_path));
     } else {
-        sdk.send_path_op(&time_point, PathOp::ClearFields(obj_path));
+        session.send_path_op(&time_point, PathOp::ClearFields(obj_path));
     }
 
     Ok(())
@@ -1818,7 +1818,7 @@ fn log_cleared(obj_path: &str, recursive: bool) -> PyResult<()> {
 
 #[pyfunction]
 fn log_arrow_msg(obj_path: &str, msg: &PyAny) -> PyResult<()> {
-    let mut sdk = global_session();
+    let mut session = global_session();
 
     // We normally disallow logging to root, but we make an exception for class_descriptions
     let obj_path = if obj_path == "/" {
@@ -1829,6 +1829,6 @@ fn log_arrow_msg(obj_path: &str, msg: &PyAny) -> PyResult<()> {
 
     let msg = crate::arrow::build_arrow_log_msg_from_py(&obj_path, msg, &time(false))?;
 
-    sdk.send(msg);
+    session.send(msg);
     Ok(())
 }
