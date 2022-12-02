@@ -43,7 +43,7 @@ pub struct App {
     /// Where the logs are stored.
     log_dbs: IntMap<RecordingId, LogDb>,
 
-    arrow_db: re_arrow_store::LogDb,
+    arrow_dbs: IntMap<RecordingId, re_arrow_store::DataStore>,
 
     /// What is serialized
     state: AppState,
@@ -159,7 +159,7 @@ impl App {
             design_tokens,
             rx,
             log_dbs,
-            arrow_db: re_arrow_store::LogDb::default(),
+            arrow_dbs: Default::default(),
             state,
             #[cfg(not(target_arch = "wasm32"))]
             ctrl_c,
@@ -363,8 +363,22 @@ impl App {
 
                 let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
 
+                let arrow_db = self
+                    .arrow_dbs
+                    .entry(self.state.selected_rec_id)
+                    .or_default();
+
                 if let LogMsg::ArrowMsg(msg) = msg {
-                    self.arrow_db.consume_msg(msg);
+                    let stream = re_arrow_store::build_stream_reader(&msg.data);
+                    let schema = stream.metadata().schema.clone();
+                    //TODO(john) this filters out `StreamState::Waiting`, which on a fixed buffer should never
+                    //happen, but if we're consuming an actual stream should be handled differently.
+                    for chunk in stream.filter_map(|state| match state {
+                        Ok(re_arrow_store::StreamState::Some(chunk)) => Some(chunk),
+                        _ => None,
+                    }) {
+                        arrow_db.insert(&schema, &chunk).unwrap();
+                    }
                 } else {
                     log_db.add(msg);
                     if start.elapsed() > instant::Duration::from_millis(10) {

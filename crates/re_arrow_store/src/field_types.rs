@@ -25,4 +25,5 @@ pub struct Point3D {
     z: f32,
 }
 
+#[allow(dead_code)]
 pub type ColorRGBA = u32;
