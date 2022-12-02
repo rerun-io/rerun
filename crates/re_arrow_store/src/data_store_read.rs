@@ -41,7 +41,7 @@ impl DataStore {
     ) -> anyhow::Result<DataFrame> {
         let latest_at = match time_query {
             TimeQuery::LatestAt(latest_at) => latest_at,
-            TimeQuery::Range(_) => unimplemented!(), // TODO
+            TimeQuery::Range(_) => todo!(),
         };
 
         let row_indices = self
@@ -59,9 +59,6 @@ impl DataStore {
             })
             .collect();
 
-        // TODO(cmc): what do we want those results to look like for missing components?
-        // TODO(cmc): flatten those series: the user expects a table looking thing, not a single
-        // row with a bunch of lists!
         let series_ordered = components
             .iter()
             .filter_map(|name| series.remove(name))
@@ -78,7 +75,6 @@ impl IndexTable {
         at: i64,
         components: &[ComponentNameRef<'a>],
     ) -> HashMap<ComponentNameRef<'a>, RowIndex> {
-        // TODO(cmc): real bucketing!
         let bucket = self.buckets.iter_mut().next().unwrap().1;
         bucket.latest_at(at, components)
     }
@@ -97,8 +93,6 @@ impl IndexBucket {
             swaps.sort_by_key(|&i| &times[i]);
             swaps
         };
-
-        // TODO(cmc): do swaps the smart way, not the dumb clone-everything way :)
 
         // shuffle time index back into a sorted state
         {
@@ -187,7 +181,6 @@ impl IndexBucket {
 
 impl ComponentTable {
     pub fn get(&self, row_idx: u64) -> Box<dyn Array> {
-        // TODO(cmc): real bucketing!
         let bucket = self.buckets.get(&0).unwrap();
 
         bucket.get(row_idx)
@@ -195,7 +188,6 @@ impl ComponentTable {
 }
 
 impl ComponentBucket {
-    // TODO(cmc): obviously shouldn't be allocating, should return some kind of ref
     pub fn get(&self, row_idx: u64) -> Box<dyn Array> {
         let row_idx = row_idx - self.row_offset;
         self.data.slice(row_idx as usize, 1)

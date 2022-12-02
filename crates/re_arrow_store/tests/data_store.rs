@@ -17,7 +17,6 @@ use re_log_types::{ObjPath as EntityPath, TimeType, Timeline};
 
 // ---
 
-// TODO(cmc): same thing, but as a benchmark
 #[test]
 fn single_entity_multi_timelines_multi_components_roundtrip() {
     let mut store = DataStore::default();
@@ -30,12 +29,12 @@ fn single_entity_multi_timelines_multi_components_roundtrip() {
     // let now_plus_10ms = now + Duration::from_millis(10);
     let now_plus_20ms = now + Duration::from_millis(20);
 
-    // TODO: test holes!
+    // TODO(cmc): test holes!
     let frame41 = 41;
     let frame42 = 42;
     let frame43 = 43;
 
-    // TODO: play with differing nb_instances inbetween inserts
+    // TODO(cmc): play with differing nb_instances inbetween inserts
     let nb_instances = 3;
 
     let expected_rects = build_rects(nb_instances);
@@ -45,19 +44,21 @@ fn single_entity_multi_timelines_multi_components_roundtrip() {
         [expected_rects.clone()],
     );
     // eprintln!("inserting into '{ent_path}':\nschema: {schema:#?}\ncomponents: {components:#?}");
-    eprintln!("---\ninserting into '{ent_path}': [log_time, frame_nr], [rects]");
+    // eprintln!("---\ninserting into '{ent_path}': [log_time, frame_nr], [rects]");
     store.insert(&schema, components).unwrap();
-    eprintln!("{store}");
+    // eprintln!("{store}");
 
     let (schema, components) = build_message(
         &ent_path,
         [build_log_time(now_plus_20ms), build_frame_nr(frame41)],
         [build_instances(nb_instances), build_rects(nb_instances)],
     );
-    // eprintln!("inserting into '{ent_path}':\nschema: {schema:#?}\ncomponents: {components:#?}");
-    eprintln!("---\ninserting into '{ent_path}': [log_time, frame_nr], [instances, rects]");
+    eprintln!("inserting into '{ent_path}':\nschema: {schema:#?}\ncomponents: {components:#?}");
+    // eprintln!("---\ninserting into '{ent_path}': [log_time, frame_nr], [instances, rects]");
     store.insert(&schema, components).unwrap();
-    eprintln!("{store}");
+    // eprintln!("{store}");
+
+    return;
 
     let expected_instances = build_instances(nb_instances);
     let (schema, components) = build_message(

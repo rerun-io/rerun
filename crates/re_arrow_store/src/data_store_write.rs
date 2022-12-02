@@ -143,7 +143,6 @@ fn extract_components<'data>(
         .downcast_ref::<StructArray>()
         .ok_or_else(|| anyhow!("expect component values to be `StructArray`s"))?;
 
-    // TODO(cmc): they all should be lists, no matter what!!!
     Ok(components
         .fields()
         .iter()
@@ -172,7 +171,6 @@ impl IndexTable {
         time: TypedTimeInt,
         indices: &HashMap<ComponentNameRef<'_>, RowIndex>,
     ) -> anyhow::Result<()> {
-        // TODO(cmc): real bucketing!
         let bucket = self.buckets.iter_mut().next().unwrap().1;
         bucket.insert(time, indices)
     }
@@ -264,7 +262,6 @@ impl ComponentTable {
         timelines: &[(Timeline, TypedTimeInt)],
         data: &Box<dyn Array>,
     ) -> anyhow::Result<RowIndex> {
-        // TODO(cmc): real bucketing!
         self.buckets.get_mut(&0).unwrap().insert(timelines, data)
     }
 }
@@ -276,7 +273,7 @@ impl ComponentBucket {
         let data = if row_offset == 0 {
             let inner_datatype = match &datatype {
                 DataType::List(field) => field.data_type().clone(),
-                _ => todo!("throw an error here, this should always be a list"), // TODO
+                _ => todo!("throw an error here, this should always be a list"), // TODO(cmc)
             };
 
             let empty = ListArray::<i32>::from_data(
@@ -286,7 +283,7 @@ impl ComponentBucket {
                 None,
             );
 
-            // TODO(cmc): throw error
+            // TODO(cmc): throw error (or just implement mutable array)
             concatenate(&[&*new_empty_array(datatype), &*empty.boxed()]).unwrap()
         } else {
             new_empty_array(datatype)

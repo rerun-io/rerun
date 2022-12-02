@@ -9,112 +9,6 @@ use re_log_types::{ObjPath as EntityPath, Timeline};
 
 use crate::TypedTimeInt;
 
-// --- Task log ---
-//
-// High-level tasks that need work, ideally in some kind of decreasing importance order.
-//
-// General progress on the "make it" scale (status: in progress)
-// - make it work (i.e. implemented) (status: in progress)
-// - make it correct (i.e. _tested_!) (status: in progress)
-// - make it fast (i.e. _benchmarked_!) (status: to do)
-
-// Deduplication across timelines (status: should be done?)
-//
-// - deduplicate across timelines when inserting to multiple timelines in one call
-// - does not cover deduplicating across timelines across different calls
-
-// Standardize and put into writing insert-payload schema (status: to do)
-//
-// - should the entire payload be a list, for client-side batching?
-
-// Index bucketing support (status: to do)
-//
-// - all index tables should be bucketized on a time range
-// - the actual bucket-splitting is driven by size:
-//    - the number of rows
-//    - the size of the data (i.e. roughly nb_rows * nb_cols * sizeof(u64))
-//
-// - note: the bucket hierarchy is already there, it's just never splitted!
-
-// Component bucketing support (status: to do)
-//
-// - all component tables should be bucketized on a row index range
-// - the actual bucket-splitting is driven by the size of the actual data
-//
-// - note: the bucket hierarchy is already there, it's just never splitted!
-
-// Support for non-numerical instance IDs
-//
-// - not sure where we stand on this
-
-// Deletion endpoint (status: to do)
-//
-// - should just be a matter of inserting zeroes, the empty rows are already in there
-
-// Serialization (status: to do)
-//
-// - support both serialization & deserialization, for .rrd
-
-// Support for splats (status: to do)
-//
-// - many instances paired with a single-entry component = treat as splat
-
-// Better resulting DataFrames for queries (status: to do)
-//
-// - component lists should probably be flattened at that point, behaving more like a table?
-// - how should missing components be represented?
-
-// First pass of correctness work (status: todo)
-//
-// - integration test suite for standard write, read & write+read paths
-// - dedicated tests for all..
-//    - ..features
-//    - ..documented edge cases
-//    - ..special paths due to optimization
-//    - ..assertions
-//    - ..errors & illegal state
-
-// Performance pass for latest-at queries (status: to do)
-//
-// - get rid of useless clones in sort() code
-// - optimize the per-component backwards search with per-component btrees?
-
-// Range queries (status: to do)
-//
-// - have we actually settled on how we want these to behave precisely?
-
-// First pass of performance work (status: to do)
-//
-// - put performance probes everywhere
-// - provide helpers to gather detailed metrics: global, per-table, per-table-per-bucket
-// - a lot of clones & copies need to go away
-// - need integration benchmark suites
-//    - write path, read path, write+read path
-
-// Data purging (status: to do)
-//
-// - offer a way to drop both index & component buckets beyond a certain date
-
-// Data store GUI browser (status: to do)
-//
-// - the store currently provides a very thorough Display implementation that makes it manageable
-//   to keep track of what's going on internally
-// - it'd be even better to have something similar but as an interactive UI panel, akin to
-//   a SQL browser
-// Inline / small-list optimization (status: to do)
-//
-// - if there is exactly ONE element in a component row, store it inline instead of a row index
-
-// Schema registry / runtime payload validation (status: to do)
-//
-// - builtin components
-// - opening the registration process to user-defined components.
-
-// General deduplication (status: to do)
-//
-// - deduplicate across timelines across multiple calls
-// - automagically deduplicate within a component table
-
 // --- Data store ---
 
 pub type ComponentName = String;
@@ -454,13 +348,12 @@ pub struct ComponentBucket {
     /// Buckets are never sorted over time, so these time ranges can grow arbitrarily large.
     ///
     /// These are only used for garbage collection.
-    pub(crate) time_ranges: HashMap<Timeline, TypedTimeIntRange>, // TODO: timetype
+    pub(crate) time_ranges: HashMap<Timeline, TypedTimeIntRange>,
 
     /// What's the offset of that bucket in the shared table?
     pub(crate) row_offset: RowIndex,
 
     /// All the data for this bucket. This is a single column!
-    // TODO: MutableArray!
     pub(crate) data: Box<dyn Array>,
 }
 
@@ -485,7 +378,7 @@ impl std::fmt::Display for ComponentBucket {
             ))?;
         }
 
-        // TODO: I'm sure there's no need to clone here
+        // TODO(cmc): I'm sure there's no need to clone here
         let series = Series::try_from((name.as_str(), data.clone())).unwrap();
         let df = DataFrame::new(vec![series]).unwrap();
         f.write_fmt(format_args!("data: {df:?}\n"))?;
