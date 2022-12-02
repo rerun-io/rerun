@@ -161,7 +161,7 @@ impl framework::Example for Render2D {
                 view_builder.queue_draw(&line_strip_draw_data);
                 view_builder.queue_draw(&rectangle_draw_data);
                 let command_buffer = view_builder
-                    .draw(re_ctx, ValueRgba8UnormSrgb::default())
+                    .draw(re_ctx, ValueRgba8UnormSrgb::TRANSPARENT)
                     .unwrap();
                 framework::ViewDrawResult {
                     view_builder,
@@ -203,7 +203,7 @@ impl framework::Example for Render2D {
                     view_builder.queue_draw(&line_strip_draw_data);
                     view_builder.queue_draw(&rectangle_draw_data);
                     let command_buffer = view_builder
-                        .draw(re_ctx, ValueRgba8UnormSrgb::default())
+                        .draw(re_ctx, ValueRgba8UnormSrgb::TRANSPARENT)
                         .unwrap();
                     framework::ViewDrawResult {
                         view_builder,

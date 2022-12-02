@@ -7,8 +7,8 @@
 ///
 /// It has 8 bit per channel and it's assumed to be in srgb gamma color space.
 /// Conversions from and to non-srgb types require a conversion.
-/// It does *not* specify whether alpha pre-multiplied or not.
-#[derive(Copy, Clone, Default)]
+/// It does *not* specify whether alpha is pre-multiplied or not.
+#[derive(Copy, Clone)]
 pub struct ValueRgba8UnormSrgb {
     pub r: u8,
     pub g: u8,
@@ -23,16 +23,24 @@ impl ValueRgba8UnormSrgb {
         b: 255,
         a: 255,
     };
+
+    pub const TRANSPARENT: ValueRgba8UnormSrgb = ValueRgba8UnormSrgb {
+        r: 0,
+        g: 0,
+        b: 0,
+        a: 0,
+    };
 }
 
 impl From<ValueRgba8UnormSrgb> for wgpu::Color {
+    #[inline]
     fn from(rgba: ValueRgba8UnormSrgb) -> Self {
-        let rgbaf: ValueRgba32Float = rgba.into();
-        rgbaf.into()
+        ValueRgba32Float::from(rgba).into()
     }
 }
 
 impl From<[u8; 4]> for ValueRgba8UnormSrgb {
+    #[inline]
     fn from(array: [u8; 4]) -> ValueRgba8UnormSrgb {
         Self {
             r: array[0],
@@ -47,7 +55,7 @@ impl From<[u8; 4]> for ValueRgba8UnormSrgb {
 ///
 /// It has 32 bit floats per channel but its semantics are not known!
 /// (It does *not* specify color space or whether alpha pre-multiplied or not)
-#[derive(Copy, Clone, Default)]
+#[derive(Copy, Clone)]
 pub struct ValueRgba32Float {
     pub r: f32,
     pub g: f32,
@@ -56,6 +64,7 @@ pub struct ValueRgba32Float {
 }
 
 impl From<ValueRgba32Float> for wgpu::Color {
+    #[inline]
     fn from(rgbaf: ValueRgba32Float) -> wgpu::Color {
         wgpu::Color {
             r: rgbaf.r as f64,
@@ -67,6 +76,7 @@ impl From<ValueRgba32Float> for wgpu::Color {
 }
 
 impl From<ValueRgba8UnormSrgb> for ValueRgba32Float {
+    #[inline]
     fn from(srgb8: ValueRgba8UnormSrgb) -> ValueRgba32Float {
         let srgb = glam::vec3(srgb8.r as f32, srgb8.g as f32, srgb8.b as f32) / 255.0;
         let cutoff = (srgb - glam::vec3(0.04045, 0.04045, 0.04045)).ceil();

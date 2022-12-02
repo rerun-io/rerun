@@ -32,7 +32,7 @@ fn draw_view<'a, D: 'static + re_renderer::renderer::Drawable + Sync + Send + Cl
         .unwrap()
         .queue_draw(skybox)
         .queue_draw(drawable)
-        .draw(re_ctx, ValueRgba8UnormSrgb::default())
+        .draw(re_ctx, ValueRgba8UnormSrgb::TRANSPARENT)
         .unwrap();
 
     (view_builder, command_buffer)

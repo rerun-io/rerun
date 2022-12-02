@@ -6,6 +6,7 @@ use re_data_store::{InstanceId, InstanceIdHash};
 use re_log_types::{ObjPath, ViewCoordinates};
 use re_renderer::{
     renderer::{GenericSkyboxDrawable, MeshDrawable, PointCloudDrawable},
+    texture_values::ValueRgba8UnormSrgb,
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
     RenderContext,
 };
@@ -519,7 +520,9 @@ fn paint_view(
             .queue_draw(&scene.line_strips.to_drawable(render_ctx))
             .queue_draw(&PointCloudDrawable::new(render_ctx, &scene.point_cloud_points()).unwrap());
 
-        let command_buffer = view_builder.draw(render_ctx, Default::default()).unwrap();
+        let command_buffer = view_builder
+            .draw(render_ctx, ValueRgba8UnormSrgb::TRANSPARENT)
+            .unwrap();
         (view_builder, command_buffer)
     };
 
