@@ -12,12 +12,11 @@ use super::*;
 
 /// Wrap `field_array` in a single-element `ListArray`
 fn wrap_in_listarray(field_array: Box<dyn Array>) -> ListArray<i32> {
-    ListArray::<i32>::from_data(
-        ListArray::<i32>::default_datatype(field_array.data_type().clone()), // datatype
-        Buffer::from(vec![0, field_array.len() as i32]),                     // offsets
-        field_array,                                                         // values
-        None,                                                                // validity
-    )
+    let datatype = ListArray::<i32>::default_datatype(field_array.data_type().clone());
+    let offsets = Buffer::from(vec![0, field_array.len() as i32]);
+    let values = field_array;
+    let validity = None;
+    ListArray::<i32>::from_data(datatype, offsets, values, validity)
 }
 
 //TODO(john) move these build test functions into an example
@@ -37,7 +36,6 @@ fn build_some_rects(len: usize) -> Box<dyn Array> {
 }
 
 /// Create `len` dummy colors
-
 fn build_some_colors(len: usize) -> Box<dyn Array> {
     let v = (0..len)
         .into_iter()
