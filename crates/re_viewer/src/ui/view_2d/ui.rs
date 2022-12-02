@@ -4,6 +4,7 @@ use egui::{
     Shape, TextFormat, TextStyle, Vec2,
 };
 use re_data_store::{InstanceId, InstanceIdHash, ObjPath};
+use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
 
 use crate::{misc::HoveredSpace, Selection, ViewerContext};
 
@@ -369,14 +370,7 @@ fn view_2d_scrollable(
 
     state.update(&response, space_from_ui, available_size);
 
-    // ------------------------------------------------------------------------
-
-    // Paint background in case there is no image covering it all:
-    let mut shapes = vec![Shape::rect_filled(
-        ui_from_space.transform_rect(scene_bbox),
-        3.0,
-        parent_ui.visuals().extreme_bg_color,
-    )];
+    let mut shapes = Vec::new();
 
     // ------------------------------------------------------------------------
 
@@ -596,11 +590,79 @@ fn view_2d_scrollable(
                 check_hovering(*instance_hash, rect.distance_to_pos(pointer_pos).abs());
             }
         }
-
-        if let Some(pointer_pos) = pointer_pos {
-            check_hovering(*instance_hash, pos_in_ui.distance(pointer_pos));
-        }
     }
+
+    // ------------------------------------------------------------------------
+
+    // Draw a re_renderer driven view.
+    // The coordinate system is in points.
+
+    let (resolution_in_pixel, origin_in_pixel) = {
+        let rect = painter.clip_rect();
+        let ppp = painter.ctx().pixels_per_point();
+        let min = (rect.min.to_vec2() * ppp).round();
+        let max = (rect.max.to_vec2() * ppp).round();
+        let resolution = max - min;
+
+        (
+            [resolution.x as u32, resolution.y as u32],
+            glam::vec2(min.x, min.y),
+        )
+    };
+    if resolution_in_pixel[0] == 0 || resolution_in_pixel[1] == 0 {
+        return response;
+    }
+
+    let (view_builder, command_buffer) = {
+        crate::profile_scope!("build command buffer for 2D view"); // TODO(andreas): What is the name of this space view?
+
+        let mut view_builder = ViewBuilder::default();
+        view_builder
+            .setup_view(
+                ctx.render_ctx,
+                // TODO(andreas): What is the name of this space view?
+                TargetConfiguration::new_2d_target(
+                    "2d space view".into(),
+                    resolution_in_pixel,
+                    painter.ctx().pixels_per_point(),
+                ),
+            )
+            .unwrap();
+
+        let command_buffer = view_builder
+            .draw(
+                ctx.render_ctx,
+                parent_ui.visuals().extreme_bg_color.to_array().into(),
+            )
+            .unwrap();
+        (view_builder, command_buffer)
+    };
+
+    // egui paint callback are copyable / not a FnOnce (this in turn is because egui primitives can be callbacks and are copyable)
+    let command_buffer = std::sync::Arc::new(egui::mutex::Mutex::new(Some(command_buffer)));
+    let view_builder = std::sync::Arc::new(egui::mutex::Mutex::new(Some(view_builder)));
+    painter.add(egui::PaintCallback {
+        rect: painter.clip_rect(),
+        callback: std::sync::Arc::new(
+            egui_wgpu::CallbackFn::new()
+                .prepare(
+                    move |_device, _queue, _encoder, _paint_callback_resources| {
+                        let mut command_buffer = command_buffer.lock();
+                        vec![std::mem::replace(&mut *command_buffer, None)
+                            .expect("egui_wgpu prepare callback called more than once")]
+                    },
+                )
+                .paint(move |_info, render_pass, paint_callback_resources| {
+                    crate::profile_scope!("paint");
+                    let ctx = paint_callback_resources.get().unwrap();
+                    let mut view_builder = view_builder.lock();
+                    std::mem::replace(&mut *view_builder, None)
+                        .expect("egui_wgpu paint callback called more than once")
+                        .composite(ctx, render_pass, origin_in_pixel)
+                        .unwrap();
+                }),
+        ),
+    });
 
     // ------------------------------------------------------------------------
 
