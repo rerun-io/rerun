@@ -35,7 +35,7 @@ impl MeshManager {
             .get_or_create_gpu_resource(handle, |resource, _lifetime| {
                 // TODO(andreas): Use stack allocators for short lived meshes!
                 GpuMesh::new(
-                    &mut ctx.resource_pools,
+                    &mut ctx.gpu_resources,
                     &mut ctx.texture_manager_2d,
                     ctx.renderers.get::<MeshRenderer>().unwrap(),
                     &ctx.device,

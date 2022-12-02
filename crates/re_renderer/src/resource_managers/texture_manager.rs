@@ -1,7 +1,7 @@
 use std::num::NonZeroU32;
 
 use crate::{
-    wgpu_resources::{GpuTextureHandleStrong, TextureDesc, WgpuResourcePools},
+    wgpu_resources::{GpuTextureHandleStrong, GpuTexturePool, TextureDesc, WgpuResourcePools},
     DebugLabel,
 };
 
@@ -104,6 +104,8 @@ impl TextureManager2D {
     /// Takes ownership of a new mesh.
     pub fn store_resource(
         &mut self,
+        queue: &wgpu::Queue,
+        gpu_resources: &mut WgpuResourcePools,
         mut resource: Texture2D,
         lifetime: ResourceLifeTime,
     ) -> Texture2DHandle {

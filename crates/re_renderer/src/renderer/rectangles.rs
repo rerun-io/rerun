@@ -86,7 +86,7 @@ impl RectangleDrawData {
 
         let rectangle_renderer = ctx.renderers.get_or_create::<_, RectangleRenderer>(
             &ctx.shared_renderer_data,
-            &mut ctx.resource_pools,
+            &mut ctx.gpu_resources,
             &ctx.device,
             &mut ctx.resolver,
         );
@@ -106,7 +106,7 @@ impl RectangleDrawData {
 
         // Allocate all constant buffers at once.
         // TODO(andreas): This should come from a per-frame allocator!
-        let uniform_buffer = ctx.resource_pools.buffers.alloc(
+        let uniform_buffer = ctx.gpu_resources.buffers.alloc(
             &ctx.device,
             &BufferDesc {
                 label: "rectangle uniform buffers".into(),
@@ -119,7 +119,7 @@ impl RectangleDrawData {
         {
             // TODO(andreas): This should come from a staging buffer.
             let mut staging_buffer = ctx.queue.write_buffer_with(
-                ctx.resource_pools
+                ctx.gpu_resources
                     .buffers
                     .get_resource(&uniform_buffer)
                     .unwrap(),
@@ -152,13 +152,13 @@ impl RectangleDrawData {
         let mut bind_groups = Vec::with_capacity(rectangles.len());
         for (i, rectangle) in rectangles.iter().enumerate() {
             let texture = ctx.texture_manager_2d.get_or_create_gpu_resource(
-                &mut ctx.resource_pools,
+                &mut ctx.gpu_resources,
                 &ctx.device,
                 &ctx.queue,
                 rectangle.texture,
             )?;
 
-            let sampler = ctx.resource_pools.samplers.get_or_create(
+            let sampler = ctx.gpu_resources.samplers.get_or_create(
                 &ctx.device,
                 &SamplerDesc {
                     label: format!(
@@ -180,7 +180,7 @@ impl RectangleDrawData {
                 },
             );
 
-            bind_groups.push(ctx.resource_pools.bind_groups.alloc(
+            bind_groups.push(ctx.gpu_resources.bind_groups.alloc(
                 &ctx.device,
                 &BindGroupDesc {
                     label: "rectangle".into(),
@@ -195,10 +195,10 @@ impl RectangleDrawData {
                     ],
                     layout: rectangle_renderer.bind_group_layout,
                 },
-                &ctx.resource_pools.bind_group_layouts,
-                &ctx.resource_pools.textures,
-                &ctx.resource_pools.buffers,
-                &ctx.resource_pools.samplers,
+                &ctx.gpu_resources.bind_group_layouts,
+                &ctx.gpu_resources.textures,
+                &ctx.gpu_resources.buffers,
+                &ctx.gpu_resources.samplers,
             ));
         }
 

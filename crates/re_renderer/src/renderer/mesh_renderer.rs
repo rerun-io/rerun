@@ -106,7 +106,7 @@ impl MeshDrawable {
 
         let _mesh_renderer = ctx.renderers.get_or_create::<_, MeshRenderer>(
             &ctx.shared_renderer_data,
-            &mut ctx.resource_pools,
+            &mut ctx.gpu_resources,
             &ctx.device,
             &mut ctx.resolver,
         );
@@ -122,7 +122,7 @@ impl MeshDrawable {
 
         // TODO(andreas): Use a temp allocator
         let instance_buffer_size = (std::mem::size_of::<GpuInstanceData>() * instances.len()) as _;
-        let instance_buffer = ctx.resource_pools.buffers.alloc(
+        let instance_buffer = ctx.gpu_resources.buffers.alloc(
             &ctx.device,
             &BufferDesc {
                 label: "MeshDrawable instance buffer".into(),
@@ -134,7 +134,7 @@ impl MeshDrawable {
         let mut mesh_runs = Vec::new();
         {
             let mut instance_buffer_staging = ctx.queue.write_buffer_with(
-                ctx.resource_pools
+                ctx.gpu_resources
                     .buffers
                     .get_resource(&instance_buffer)
                     .unwrap(),

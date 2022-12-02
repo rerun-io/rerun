@@ -35,6 +35,8 @@ impl framework::Example for Render2D {
         }
 
         let rerun_logo_texture = re_ctx.texture_manager_2d.store_resource(
+            &re_ctx.queue,
+            &mut re_ctx.gpu_resources,
             Texture2D {
                 label: "rerun logo".into(),
                 data: image_data,

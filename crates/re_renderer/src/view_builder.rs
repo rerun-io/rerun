@@ -211,11 +211,11 @@ impl ViewBuilder {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
         };
         let hdr_render_target_msaa = ctx
-            .resource_pools
+            .gpu_resources
             .textures
             .alloc(&ctx.device, &main_target_desc);
         // Like hdr_render_target, but with MSAA resolved.
-        let main_target_resolved = ctx.resource_pools.textures.alloc(
+        let main_target_resolved = ctx.gpu_resources.textures.alloc(
             &ctx.device,
             &TextureDesc {
                 label: format!("{:?} - main target resolved", config.name).into(),
@@ -225,7 +225,7 @@ impl ViewBuilder {
                 ..main_target_desc
             },
         );
-        let depth_buffer = ctx.resource_pools.textures.alloc(
+        let depth_buffer = ctx.gpu_resources.textures.alloc(
             &ctx.device,
             &TextureDesc {
                 label: format!("{:?} - depth buffer", config.name).into(),
@@ -237,7 +237,7 @@ impl ViewBuilder {
         let tonemapping_drawable = CompositorDrawable::new(ctx, &main_target_resolved);
 
         // Setup frame uniform buffer
-        let frame_uniform_buffer = ctx.resource_pools.buffers.alloc(
+        let frame_uniform_buffer = ctx.gpu_resources.buffers.alloc(
             &ctx.device,
             &BufferDesc {
                 label: format!("{:?} - frame uniform buffer", config.name).into(),
@@ -346,7 +346,7 @@ impl ViewBuilder {
         let projection_from_world = projection_from_view * view_from_world;
 
         ctx.queue.write_buffer(
-            ctx.resource_pools
+            ctx.gpu_resources
                 .buffers
                 .get_resource(&frame_uniform_buffer)
                 .unwrap(),
@@ -364,7 +364,7 @@ impl ViewBuilder {
         );
 
         let bind_group_0 = ctx.shared_renderer_data.global_bindings.create_bind_group(
-            &mut ctx.resource_pools,
+            &mut ctx.gpu_resources,
             &ctx.device,
             &frame_uniform_buffer,
         );
@@ -396,7 +396,7 @@ impl ViewBuilder {
                     .renderers
                     .get::<D::Renderer>()
                     .context("failed to retrieve renderer")?;
-                renderer.draw(&ctx.resource_pools, pass, &draw_data)
+                renderer.draw(&ctx.gpu_resources, pass, &draw_data)
             }),
             sorting_index: D::Renderer::draw_order(),
         });
@@ -418,17 +418,17 @@ impl ViewBuilder {
             .context("ViewBuilder::setup_view wasn't called yet")?;
 
         let color_msaa = ctx
-            .resource_pools
+            .gpu_resources
             .textures
             .get_resource(&setup.main_target_msaa)
             .context("hdr render target msaa")?;
         let color_resolved = ctx
-            .resource_pools
+            .gpu_resources
             .textures
             .get_resource(&setup.main_target_resolved)
             .context("hdr render target resolved")?;
         let depth = ctx
-            .resource_pools
+            .gpu_resources
             .textures
             .get_resource(&setup.depth_buffer)
             .context("depth buffer")?;
@@ -468,7 +468,7 @@ impl ViewBuilder {
 
             pass.set_bind_group(
                 0,
-                ctx.resource_pools
+                ctx.gpu_resources
                     .bind_groups
                     .get_resource(&setup.bind_group_0)
                     .context("get global bind group")?,
@@ -512,7 +512,7 @@ impl ViewBuilder {
 
         pass.set_bind_group(
             0,
-            ctx.resource_pools
+            ctx.gpu_resources
                 .bind_groups
                 .get_resource(&setup.bind_group_0)
                 .context("get global bind group")?,
@@ -524,7 +524,7 @@ impl ViewBuilder {
             .get::<Compositor>()
             .context("get compositor")?;
         tonemapper
-            .draw(&ctx.resource_pools, pass, &setup.tonemapping_drawable)
+            .draw(&ctx.gpu_resources, pass, &setup.tonemapping_drawable)
             .context("composite into main view")
     }
 }

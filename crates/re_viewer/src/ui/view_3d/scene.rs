@@ -433,8 +433,7 @@ impl Scene3D {
                         let Some(mesh) = ctx.cache.cpu_mesh.load(
                                 &obj_path.to_string(),
                                 &MeshSourceData::Mesh3D(mesh.clone()),
-                                &mut ctx.render_ctx.mesh_manager,
-                                &mut ctx.render_ctx.texture_manager_2d,
+                                &mut ctx.render_ctx
                             )
                             .map(|cpu_mesh| MeshSource {
                                 instance_id_hash: InstanceIdHash::from_path_and_index(
@@ -506,8 +505,7 @@ impl Scene3D {
                             mesh_id,
                             include_bytes!("../../../data/camera.glb"),
                         ),
-                        &mut ctx.render_ctx.mesh_manager,
-                        &mut ctx.render_ctx.texture_manager_2d,
+                        &mut ctx.render_ctx,
                     ) {
                         self.meshes.push(MeshSource {
                             instance_id_hash: instance_id,

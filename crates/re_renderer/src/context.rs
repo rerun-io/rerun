@@ -21,11 +21,11 @@ pub struct RenderContext {
 
     pub(crate) shared_renderer_data: SharedRendererData,
     pub(crate) renderers: Renderers,
-    pub(crate) resource_pools: WgpuResourcePools,
     pub(crate) resolver: RecommendedFileResolver,
     #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
     pub(crate) err_tracker: std::sync::Arc<crate::error_tracker::ErrorTracker>,
 
+    pub gpu_resources: WgpuResourcePools,
     pub mesh_manager: MeshManager,
     pub texture_manager_2d: TextureManager2D,
 
@@ -126,7 +126,7 @@ impl RenderContext {
             renderers: Renderers {
                 renderers: TypeMap::new(),
             },
-            resource_pools,
+            gpu_resources: resource_pools,
 
             mesh_manager: MeshManager::default(),
             texture_manager_2d: TextureManager2D::default(),
@@ -176,7 +176,7 @@ impl RenderContext {
                 shader_modules,
                 textures,
                 buffers,
-            } = &mut self.resource_pools; // not all pools require maintenance
+            } = &mut self.gpu_resources; // not all pools require maintenance
 
             // Shader module maintenance must come before render pipelines because render pipeline
             // recompilation picks up all shaders that have been recompiled this frame.

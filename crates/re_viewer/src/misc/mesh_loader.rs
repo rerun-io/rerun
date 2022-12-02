@@ -1,5 +1,8 @@
 use re_log_types::{EncodedMesh3D, Mesh3D, MeshFormat, RawMesh3D};
-use re_renderer::resource_managers::{MeshManager, ResourceLifeTime, TextureManager2D};
+use re_renderer::{
+    resource_managers::{MeshManager, ResourceLifeTime, TextureManager2D},
+    RenderContext,
+};
 
 pub struct CpuMesh {
     name: String,
@@ -15,22 +18,16 @@ impl CpuMesh {
     pub fn load(
         name: String,
         mesh: &Mesh3D,
-        mesh_manager: &mut MeshManager,
-        texture_manager: &mut TextureManager2D,
+        render_ctx: &mut RenderContext,
     ) -> anyhow::Result<Self> {
         // TODO(emilk): load CpuMesh in background thread.
         match mesh {
             // Mesh from user logging some triangles.
             Mesh3D::Encoded(encoded_mesh) => {
-                Self::load_encoded_mesh(name, encoded_mesh, mesh_manager, texture_manager)
+                Self::load_encoded_mesh(name, encoded_mesh, render_ctx)
             }
             // Mesh from some file format. File passed in bytes.
-            Mesh3D::Raw(raw_mesh) => Ok(Self::load_raw_mesh(
-                name,
-                raw_mesh,
-                mesh_manager,
-                texture_manager,
-            )),
+            Mesh3D::Raw(raw_mesh) => Ok(Self::load_raw_mesh(name, raw_mesh, render_ctx)),
         }
     }
 
@@ -38,8 +35,7 @@ impl CpuMesh {
         name: String,
         format: MeshFormat,
         bytes: &[u8],
-        mesh_manager: &mut MeshManager,
-        texture_manager: &mut TextureManager2D,
+        render_ctx: &mut RenderContext,
     ) -> anyhow::Result<Self> {
         crate::profile_function!();
 
@@ -49,12 +45,17 @@ impl CpuMesh {
                     &name,
                     bytes,
                     ResourceLifeTime::LongLived,
-                    mesh_manager,
-                    texture_manager,
+                    &render_ctx.queue,
+                    &mut render_ctx.gpu_resources,
+                    &mut render_ctx.mesh_manager,
+                    &mut render_ctx.texture_manager_2d,
                 )
             }
         }?;
-        let bbox = re_renderer::importer::calculate_bounding_box(mesh_manager, &mesh_instances);
+        let bbox = re_renderer::importer::calculate_bounding_box(
+            &render_ctx.mesh_manager,
+            &mesh_instances,
+        );
 
         Ok(Self {
             name,
@@ -66,8 +67,7 @@ impl CpuMesh {
     fn load_encoded_mesh(
         name: String,
         encoded_mesh: &EncodedMesh3D,
-        mesh_manager: &mut MeshManager,
-        texture_manager: &mut TextureManager2D,
+        render_ctx: &mut RenderContext,
     ) -> anyhow::Result<Self> {
         crate::profile_function!();
         let EncodedMesh3D {
@@ -77,7 +77,7 @@ impl CpuMesh {
             transform,
         } = encoded_mesh;
 
-        let mut slf = Self::load_raw(name, *format, bytes, mesh_manager, texture_manager)?;
+        let mut slf = Self::load_raw(name, *format, bytes, render_ctx)?;
 
         let (scale, rotation, translation) =
             glam::Affine3A::from_cols_array_2d(transform).to_scale_rotation_translation();
@@ -89,17 +89,15 @@ impl CpuMesh {
         for instance in &mut slf.mesh_instances {
             instance.world_from_mesh = transform * instance.world_from_mesh;
         }
-        slf.bbox = re_renderer::importer::calculate_bounding_box(mesh_manager, &slf.mesh_instances);
+        slf.bbox = re_renderer::importer::calculate_bounding_box(
+            &render_ctx.mesh_manager,
+            &slf.mesh_instances,
+        );
 
         Ok(slf)
     }
 
-    fn load_raw_mesh(
-        name: String,
-        raw_mesh: &RawMesh3D,
-        mesh_manager: &mut MeshManager,
-        texture_manager: &mut TextureManager2D,
-    ) -> Self {
+    fn load_raw_mesh(name: String, raw_mesh: &RawMesh3D, render_ctx: &mut RenderContext) -> Self {
         crate::profile_function!();
 
         let bbox = macaw::BoundingBox::from_points(
@@ -107,7 +105,7 @@ impl CpuMesh {
         );
 
         let mesh_instances = vec![re_renderer::renderer::MeshInstance {
-            mesh: mesh_manager.store_resource(
+            mesh: render_ctx.mesh_manager.store_resource(
                 re_renderer::mesh::Mesh {
                     label: name.clone().into(),
                     indices: raw_mesh.indices.iter().flatten().cloned().collect(),
@@ -128,7 +126,7 @@ impl CpuMesh {
                     materials: smallvec::smallvec![re_renderer::mesh::Material {
                         label: name.clone().into(),
                         index_range: 0..raw_mesh.indices.len() as _,
-                        albedo: texture_manager.white_texture(),
+                        albedo: render_ctx.texture_manager_2d.white_texture(),
                     }],
                 },
                 ResourceLifeTime::LongLived,

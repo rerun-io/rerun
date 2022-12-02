@@ -9,6 +9,7 @@ use crate::{
     resource_managers::{
         MeshHandle, MeshManager, ResourceLifeTime, Texture2D, Texture2DHandle, TextureManager2D,
     },
+    wgpu_resources::WgpuResourcePools,
 };
 
 use super::to_uniform_scale;
@@ -18,6 +19,8 @@ pub fn load_gltf_from_buffer(
     mesh_name: &str,
     buffer: &[u8],
     lifetime: ResourceLifeTime,
+    queue: &wgpu::Queue,
+    gpu_resources: &mut WgpuResourcePools,
     mesh_manager: &mut MeshManager,
     texture_manager: &mut TextureManager2D,
 ) -> anyhow::Result<Vec<MeshInstance>> {
@@ -68,7 +71,12 @@ pub fn load_gltf_from_buffer(
         };
         texture.pad_rows_if_necessary();
 
-        images_as_textures.push(texture_manager.store_resource(texture, lifetime));
+        images_as_textures.push(texture_manager.store_resource(
+            queue,
+            gpu_resources,
+            texture,
+            lifetime,
+        ));
     }
 
     let mut meshes = HashMap::with_capacity(doc.meshes().len());
