@@ -1,6 +1,7 @@
 //! This is how we store and index logging data.
 //! TODO(john) better crate documentation.
 
+pub mod field_types;
 mod util;
 
 mod arrow_log_db;
@@ -16,3 +17,6 @@ pub use self::data_store_read::TimeQuery;
 mod data_store_write;
 
 pub use re_log_types::{TimeInt, TypedTimeInt}; // for politeness sake
+
+#[cfg(test)]
+mod tests;

@@ -2,6 +2,7 @@
 
 A rough time-line of major user-facing things added, removed and changed. Newest on top.
 
+* 2022-12-01: In the Viewport, Space Views can now be created, cloned, removed and renamed [#421](https://github.com/rerun-io/rerun/pull/421).
 * 2022-12-01: Text logs view now support all kinds of filters: [#328](https://github.com/rerun-io/rerun/pull/328).
 * 2022-11-30: Fix text log table bugs: [#420](https://github.com/rerun-io/rerun/pull/420).
 * 2022-11-29: Replaced the "time filter selection" with per-object "visible history": [#407](https://github.com/rerun-io/rerun/pull/407).

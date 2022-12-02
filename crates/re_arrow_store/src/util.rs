@@ -1,11 +1,14 @@
-#![allow(dead_code)]
+//! This is how we store and index logging data.
+//! TODO(john) better crate documentation.
+
+#![allow(dead_code)] //TODO(john) remove this
 
 use std::borrow::Borrow;
 
 use polars::{prelude::*, series::IsSorted};
-use re_log::warn;
 
-// ---
+pub use crate::LogDb;
+use re_log::warn;
 
 /// Find the "Rerun-latest" index in `col` that matches `time`. Returns None if `time` is before any values.
 pub fn time_index(df: &DataFrame, col: &str, time: i64) -> Result<Option<usize>, PolarsError> {
@@ -94,79 +97,4 @@ pub fn append_unified<'base>(
     }
 
     Ok(base)
-}
-
-#[cfg(test)]
-mod tests {
-    use arrow2::{
-        array::{Array, Float32Array, ListArray, StructArray},
-        buffer::Buffer,
-    };
-    use polars::export::arrow::datatypes::{DataType, Field};
-
-    use super::*;
-
-    fn build_struct_array(len: usize) -> StructArray {
-        let data: Box<[_]> = (0..len).into_iter().map(|i| i as f32 / 10.0).collect();
-        let x = Float32Array::from_slice(&data).boxed();
-        let y = Float32Array::from_slice(&data).boxed();
-        let w = Float32Array::from_slice(&data).boxed();
-        let h = Float32Array::from_slice(&data).boxed();
-        let fields = vec![
-            Field::new("x", DataType::Float32, false),
-            Field::new("y", DataType::Float32, false),
-            Field::new("w", DataType::Float32, false),
-            Field::new("h", DataType::Float32, false),
-        ];
-        StructArray::new(DataType::Struct(fields), vec![x, y, w, h], None)
-    }
-
-    fn build_rect_series(len: usize) -> Box<dyn Array> {
-        let struct_ary = build_struct_array(len);
-        let ary = ListArray::<i32>::from_data(
-            ListArray::<i32>::default_datatype(struct_ary.data_type().clone()), // datatype
-            Buffer::from(vec![0, len as i32]),                                  // offsets
-            struct_ary.boxed(),                                                 // values
-            None,                                                               // validity
-        );
-        ary.boxed()
-    }
-
-    #[test]
-    fn tester() {
-        let mut s0 = Series::try_from(("rects", build_rect_series(5))).unwrap();
-        let s1 = Series::try_from(("rects", build_rect_series(2))).unwrap();
-        s0.append(&s1).unwrap();
-        let _df0 = s0.into_frame();
-    }
-
-    #[test]
-    fn test_time_query() {
-        let mut df1: DataFrame = df!(
-            "time" => &[1, 3, 2],
-            "numeric" => &[None, None, Some(3)],
-            "object" => &[None, Some("b"), None],
-            "dat" => &[Some(99), None, Some(66)],
-        )
-        .unwrap();
-
-        let _df_sorted = df1.sort_in_place(["time"], false).unwrap();
-    }
-
-    #[test]
-    fn test_append_unified() {
-        let mut df1 = df!(
-            "colA" => [1, 2, 3],
-            "colB" => ["one", "two", "three"],
-        )
-        .unwrap();
-
-        let df2 = df!(
-            "colA" => [4, 5, 6],
-            "colC" => [Some(0.0), Some(0.1), None],
-        )
-        .unwrap();
-
-        append_unified(&mut df1, &df2).unwrap();
-    }
 }

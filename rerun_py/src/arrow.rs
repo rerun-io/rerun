@@ -12,12 +12,11 @@ use arrow2::{
 };
 use pyo3::{exceptions::PyTypeError, ffi::Py_uintptr_t, PyAny, PyResult};
 use re_log_types::{
-    arrow::{build_time_cols, ENTITY_PATH_KEY},
+    arrow::{build_time_cols, OBJPATH_KEY},
     ArrowMsg, LogMsg, MsgId, ObjPath, TimePoint,
 };
 
 /// Perform conversion between a pyarrow array to arrow2 types.
-/// This operation does not copy data.
 pub fn array_to_rust(arrow_array: &PyAny) -> PyResult<(Box<dyn Array>, Field)> {
     // prepare pointers to receive the Array struct
     let array = Box::new(ffi::ArrowArray::empty());
@@ -70,7 +69,6 @@ pub fn serialize_arrow_msg(
 
     Ok(LogMsg::ArrowMsg(msg))
 }
-
 pub fn build_arrow_log_msg(
     obj_path: &ObjPath,
     array: &PyAny,
@@ -112,13 +110,9 @@ pub fn build_arrow_log_msg(
     ));
     cols.push(data_col.boxed());
 
-    let metadata = BTreeMap::from([(ENTITY_PATH_KEY.into(), obj_path.to_string())]);
-    dbg!(&metadata);
+    let metadata = BTreeMap::from([(OBJPATH_KEY.into(), obj_path.to_string())]);
     let schema = Schema { fields, metadata };
     let chunk = Chunk::new(cols);
-
-    dbg!(&schema);
-    dbg!(&chunk);
 
     serialize_arrow_msg(&schema, &chunk).map_err(|err| PyTypeError::new_err(err.to_string()))
 }

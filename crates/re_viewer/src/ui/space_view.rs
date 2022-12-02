@@ -31,7 +31,7 @@ pub enum ViewCategory {
 // ----------------------------------------------------------------------------
 
 /// A view of a space.
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(Clone, serde::Deserialize, serde::Serialize)]
 pub(crate) struct SpaceView {
     pub name: String,
     pub space_path: ObjPath,
@@ -152,7 +152,7 @@ fn show_help_button_overlay(
 // ----------------------------------------------------------------------------
 
 /// Camera position and similar.
-#[derive(Default, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
 pub(crate) struct ViewState {
     pub state_2d: view_2d::View2DState,
     pub state_3d: view_3d::View3DState,

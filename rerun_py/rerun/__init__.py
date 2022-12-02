@@ -1,4 +1,4 @@
-"""The Rerun Python SDK, which is a wrapper around the Rust crate rerun_sdk."""
+"""The Rerun Python SDK, which is a wrapper around the rerun_sdk crate."""
 
 import atexit
 import logging
@@ -12,7 +12,7 @@ import numpy as np
 import numpy.typing as npt
 from rerun.color_conversion import linear_to_gamma_u8_pixel, u8_array_to_rgba
 
-from rerun import rerun_sdk  # type: ignore[attr-defined]
+from rerun import rerun_bindings  # type: ignore[attr-defined]
 
 EXP_ARROW = os.environ.get("RERUN_EXP_ARROW", "0").lower() in ("1", "true")
 
@@ -23,7 +23,7 @@ if EXP_ARROW:
 
 
 def rerun_shutdown() -> None:
-    rerun_sdk.flush()
+    rerun_bindings.flush()
 
 
 atexit.register(rerun_shutdown)
@@ -71,7 +71,7 @@ def get_recording_id() -> str:
     you will need to manually assign them all the same recording_id.
     Any random UUIDv4 will work, or copy the recording id for the parent process.
     """
-    return str(rerun_sdk.get_recording_id())
+    return str(rerun_bindings.get_recording_id())
 
 
 def set_recording_id(value: str) -> None:
@@ -87,7 +87,7 @@ def set_recording_id(value: str) -> None:
     you will need to manually assign them all the same recording_id.
     Any random UUIDv4 will work, or copy the recording id for the parent process.
     """
-    rerun_sdk.set_recording_id(value)
+    rerun_bindings.set_recording_id(value)
 
 
 def init(application_id: str) -> None:
@@ -101,12 +101,12 @@ def init(application_id: str) -> None:
     and another doing camera calibration, you could have
     `rerun.init("object_detector")` and `rerun.init("calibrator")`.
     """
-    rerun_sdk.init(application_id)
+    rerun_bindings.init(application_id)
 
 
 def connect(addr: Optional[str] = None) -> None:
     """Connect to a remote Rerun Viewer on the given ip:port."""
-    rerun_sdk.connect(addr)
+    rerun_bindings.connect(addr)
 
 
 def serve() -> None:
@@ -115,12 +115,12 @@ def serve() -> None:
 
     WARNING: This is an experimental feature.
     """
-    rerun_sdk.serve()
+    rerun_bindings.serve()
 
 
 def disconnect() -> None:
     """Disconnect from the remote rerun server (if any)."""
-    rerun_sdk.disconnect()
+    rerun_bindings.disconnect()
 
 
 def show() -> None:
@@ -133,7 +133,7 @@ def show() -> None:
 
     NOTE: There is a bug which causes this function to only work once on some platforms.
     """
-    rerun_sdk.show()
+    rerun_bindings.show()
 
 
 def save(path: str) -> None:
@@ -144,7 +144,7 @@ def save(path: str) -> None:
 
     This will clear the logged data after saving.
     """
-    rerun_sdk.save(path)
+    rerun_bindings.save(path)
 
 
 def set_time_sequence(timeline: str, sequence: Optional[int]) -> None:
@@ -160,7 +160,7 @@ def set_time_sequence(timeline: str, sequence: Optional[int]) -> None:
 
     There is no requirement of monoticity. You can move the time backwards if you like.
     """
-    rerun_sdk.set_time_sequence(timeline, sequence)
+    rerun_bindings.set_time_sequence(timeline, sequence)
 
 
 def set_time_seconds(timeline: str, seconds: Optional[float]) -> None:
@@ -177,12 +177,12 @@ def set_time_seconds(timeline: str, seconds: Optional[float]) -> None:
     The argument should be in seconds, and should be measured either from the
     unix epoch (1970-01-01), or from some recent time (e.g. your program startup).
 
-    The rerun_sdk has a built-in time which is `log_time`, and is logged as seconds
+    The rerun_bindings has a built-in time which is `log_time`, and is logged as seconds
     since unix epoch.
 
     There is no requirement of monoticity. You can move the time backwards if you like.
     """
-    rerun_sdk.set_time_seconds(timeline, seconds)
+    rerun_bindings.set_time_seconds(timeline, seconds)
 
 
 def set_time_nanos(timeline: str, nanos: Optional[int]) -> None:
@@ -199,12 +199,12 @@ def set_time_nanos(timeline: str, nanos: Optional[int]) -> None:
     The argument should be in nanoseconds, and should be measured either from the
     unix epoch (1970-01-01), or from some recent time (e.g. your program startup).
 
-    The rerun_sdk has a built-in time which is `log_time`, and is logged as nanos since
+    The rerun_bindings has a built-in time which is `log_time`, and is logged as nanos since
     unix epoch.
 
     There is no requirement of monoticity. You can move the time backwards if you like.
     """
-    rerun_sdk.set_time_nanos(timeline, nanos)
+    rerun_bindings.set_time_nanos(timeline, nanos)
 
 
 @dataclass
@@ -287,7 +287,7 @@ def log_text_entry(
     * If no `level` is given, it will default to `LogLevel.INFO`.
     * `color` is optional RGB or RGBA triplet in 0-255 sRGB.
     """
-    rerun_sdk.log_text_entry(obj_path, text, level, color, timeless)
+    rerun_bindings.log_text_entry(obj_path, text, level, color, timeless)
 
 
 def log_scalar(
@@ -380,7 +380,7 @@ def log_scalar(
     Points within a single line do not have to all share the same scatteredness: the line will
     switch between a scattered and a continous representation as required.
     """
-    rerun_sdk.log_scalar(obj_path, scalar, label, color, radius, scattered)
+    rerun_bindings.log_scalar(obj_path, scalar, label, color, radius, scattered)
 
 
 # """ How to specify rectangles (axis-aligned bounding boxes). """
@@ -425,7 +425,7 @@ def log_rect(
     * `class_id`: Optional class id for the rectangle.
        The class id provides color and label if not specified explicitly.
     """
-    rerun_sdk.log_rect(obj_path, rect_format.value, _to_sequence(rect), color, label, class_id, timeless)
+    rerun_bindings.log_rect(obj_path, rect_format.value, _to_sequence(rect), color, label, class_id, timeless)
 
 
 def log_rects(
@@ -476,7 +476,7 @@ def log_rects(
     if labels is None:
         labels = []
 
-    rerun_sdk.log_rects(
+    rerun_bindings.log_rects(
         obj_path=obj_path,
         rect_format=rect_format.value,
         identifiers=identifiers,
@@ -511,8 +511,7 @@ def log_rects(
             arrays.append(pa.array([u8_array_to_rgba(c) for c in colors], type=pa.uint32()))
 
         arr = pa.StructArray.from_arrays(arrays, fields=fields)
-        print(arr.to_string())
-        rerun_sdk.log_arrow_msg(obj_path, arr)
+        rerun_bindings.log_arrow_msg(obj_path, arr)
 
 
 def log_point(
@@ -554,7 +553,7 @@ def log_point(
     if position is not None:
         position = np.require(position, dtype="float32")
 
-    rerun_sdk.log_point(obj_path, position, color, label, class_id, keypoint_id, timeless)
+    rerun_bindings.log_point(obj_path, position, color, label, class_id, keypoint_id, timeless)
 
 
 def log_points(
@@ -610,7 +609,7 @@ def log_points(
     if labels is None:
         labels = []
 
-    rerun_sdk.log_points(
+    rerun_bindings.log_points(
         obj_path=obj_path,
         positions=positions,
         identifiers=identifiers,
@@ -651,7 +650,7 @@ def _normalize_ids(class_ids: OptionalClassIds = None) -> npt.NDArray[np.uint16]
 
 def log_unknown_transform(obj_path: str, timeless: bool = False) -> None:
     """Log that this object is NOT in the same space as the parent, but you do not (yet) know how they relate."""
-    rerun_sdk.log_unknown_transform(obj_path, timeless=timeless)
+    rerun_bindings.log_unknown_transform(obj_path, timeless=timeless)
 
 
 def log_rigid3(
@@ -703,7 +702,7 @@ def log_rigid3(
         raise TypeError("Set either parent_from_child or child_from_parent, but not both")
     elif parent_from_child:
         (t, q) = parent_from_child
-        rerun_sdk.log_rigid3(
+        rerun_bindings.log_rigid3(
             obj_path,
             parent_from_child=True,
             rotation_q=_to_sequence(q),
@@ -712,7 +711,7 @@ def log_rigid3(
         )
     elif child_from_parent:
         (t, q) = child_from_parent
-        rerun_sdk.log_rigid3(
+        rerun_bindings.log_rigid3(
             obj_path,
             parent_from_child=False,
             rotation_q=_to_sequence(q),
@@ -751,7 +750,7 @@ def log_pinhole(
     `resolution`: Array with [width, height] image resolution in pixels.
 
     """
-    rerun_sdk.log_pinhole(
+    rerun_bindings.log_pinhole(
         obj_path,
         resolution=[width, height],
         child_from_parent=np.asarray(child_from_parent).T.tolist(),
@@ -808,11 +807,11 @@ def log_view_coordinates(
     if xyz != "" and up != "":
         raise TypeError("You must set either 'xyz' or 'up', but not both")
     if xyz != "":
-        rerun_sdk.log_view_coordinates_xyz(obj_path, xyz, right_handed, timeless)
+        rerun_bindings.log_view_coordinates_xyz(obj_path, xyz, right_handed, timeless)
     else:
         if right_handed is None:
             right_handed = True
-        rerun_sdk.log_view_coordinates_up_handedness(obj_path, up, right_handed, timeless)
+        rerun_bindings.log_view_coordinates_up_handedness(obj_path, up, right_handed, timeless)
 
 
 # -----------------------------------------------------------------------------
@@ -844,7 +843,7 @@ def log_path(
     """
     if positions is not None:
         positions = np.require(positions, dtype="float32")
-    rerun_sdk.log_path(obj_path, positions, stroke_width, color, timeless)
+    rerun_bindings.log_path(obj_path, positions, stroke_width, color, timeless)
 
 
 def log_line_segments(
@@ -872,7 +871,7 @@ def log_line_segments(
     if positions is None:
         positions = []
     positions = np.require(positions, dtype="float32")
-    rerun_sdk.log_line_segments(obj_path, positions, stroke_width, color, timeless)
+    rerun_bindings.log_line_segments(obj_path, positions, stroke_width, color, timeless)
 
 
 def log_arrow(
@@ -912,7 +911,7 @@ def log_arrow(
         Object is not time-dependent, and will be visible at any time point.
 
     """
-    rerun_sdk.log_arrow(
+    rerun_bindings.log_arrow(
         obj_path,
         origin=_to_sequence(origin),
         vector=_to_sequence(vector),
@@ -946,7 +945,7 @@ def log_obb(
     `class_id`: Optional class id for the OBB.
                  The class id provides colors and labels if not specified explicitly.
     """
-    rerun_sdk.log_obb(
+    rerun_bindings.log_obb(
         obj_path,
         half_size=_to_sequence(half_size),
         position=_to_sequence(position),
@@ -1045,9 +1044,9 @@ def log_segmentation_image(
             raise TypeError(f"Expected image depth of 1. Instead got array of shape {image.shape}")
 
     if image.dtype == "uint8":
-        rerun_sdk.log_tensor_u8(obj_path, image, None, None, rerun_sdk.TensorDataMeaning.ClassId, timeless)
+        rerun_bindings.log_tensor_u8(obj_path, image, None, None, rerun_bindings.TensorDataMeaning.ClassId, timeless)
     elif image.dtype == "uint16":
-        rerun_sdk.log_tensor_u16(obj_path, image, None, None, rerun_sdk.TensorDataMeaning.ClassId, timeless)
+        rerun_bindings.log_tensor_u16(obj_path, image, None, None, rerun_bindings.TensorDataMeaning.ClassId, timeless)
     else:
         raise TypeError(f"Unsupported dtype: {image.dtype}")
 
@@ -1065,13 +1064,13 @@ def log_tensor(
         assert len(tensor.shape) == len(names)
 
     if tensor.dtype == "uint8":
-        rerun_sdk.log_tensor_u8(obj_path, tensor, names, meter, None, timeless)
+        rerun_bindings.log_tensor_u8(obj_path, tensor, names, meter, None, timeless)
     elif tensor.dtype == "uint16":
-        rerun_sdk.log_tensor_u16(obj_path, tensor, names, meter, None, timeless)
+        rerun_bindings.log_tensor_u16(obj_path, tensor, names, meter, None, timeless)
     elif tensor.dtype == "float32":
-        rerun_sdk.log_tensor_f32(obj_path, tensor, names, meter, None, timeless)
+        rerun_bindings.log_tensor_f32(obj_path, tensor, names, meter, None, timeless)
     elif tensor.dtype == "float64":
-        rerun_sdk.log_tensor_f32(obj_path, tensor.astype("float32"), names, meter, None, timeless)
+        rerun_bindings.log_tensor_f32(obj_path, tensor.astype("float32"), names, meter, None, timeless)
     else:
         raise TypeError(f"Unsupported dtype: {tensor.dtype}")
 
@@ -1105,7 +1104,7 @@ def log_mesh_file(
     else:
         transform = np.require(transform, dtype="float32")
 
-    rerun_sdk.log_mesh_file(obj_path, mesh_format.value, mesh_file, transform, timeless)
+    rerun_bindings.log_mesh_file(obj_path, mesh_format.value, mesh_file, transform, timeless)
 
 
 def log_image_file(
@@ -1120,7 +1119,7 @@ def log_image_file(
     If no `img_format` is specified, we will try and guess it.
     """
     img_format = getattr(img_format, "value", None)
-    rerun_sdk.log_image_file(obj_path, img_path, img_format, timeless)
+    rerun_bindings.log_image_file(obj_path, img_path, img_format, timeless)
 
 
 def _to_sequence(array: Optional[npt.ArrayLike]) -> Optional[Sequence[float]]:
@@ -1136,7 +1135,7 @@ def log_cleared(obj_path: str, *, recursive: bool = False) -> None:
 
     If `recursive` is True this will also clear all sub-paths
     """
-    rerun_sdk.log_cleared(obj_path, recursive)
+    rerun_bindings.log_cleared(obj_path, recursive)
 
     if EXP_ARROW:
         # TODO(jleibs): type registry?
@@ -1144,7 +1143,7 @@ def log_cleared(obj_path: str, *, recursive: bool = False) -> None:
 
         cleared_arr = pa.array([True], type=components.ClearedField.type)
         arr = pa.StructArray.from_arrays([cleared_arr], fields=[components.ClearedField])
-        rerun_sdk.log_arrow_msg(obj_path, "rect", arr)
+        rerun_bindings.log_arrow_msg(obj_path, "rect", arr)
 
 
 @dataclass
@@ -1262,7 +1261,7 @@ def log_annotation_context(
         for d in typed_class_descriptions
     ]
 
-    rerun_sdk.log_annotation_context(obj_path, tuple_class_descriptions, timeless)
+    rerun_bindings.log_annotation_context(obj_path, tuple_class_descriptions, timeless)
 
 
 def set_visible(obj_path: str, visibile: bool) -> None:
