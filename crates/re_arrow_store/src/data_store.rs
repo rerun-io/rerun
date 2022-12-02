@@ -43,6 +43,10 @@ use crate::TypedTimeInt;
 //
 // - note: the bucket hierarchy is already there, it's just never splitted!
 
+// Support for non-numerical instance IDs
+//
+// - not sure where we stand on this
+
 // Deletion endpoint (status: to do)
 //
 // - should just be a matter of inserting zeroes, the empty rows are already in there
@@ -118,13 +122,24 @@ pub type ComponentNameRef<'a> = &'a str;
 pub type RowIndex = u64;
 pub type TypedTimeIntRange = std::ops::Range<TypedTimeInt>;
 
-/// The complete data store: covers all timelines, all entities, everything.
+/// A complete data store: covers all timelines, all entities, everything.
+///
+/// `DataStore` provides a very thorough `Display` implementation that makes it manageable to
+/// know what's going on internally.
+/// For even more information, you can set `RERUN_DATA_STORE_DISPLAY_SCHEMAS=1` in your
+/// environment, which will result in additional schema information being printed out.
 #[derive(Default)]
 pub struct DataStore {
     /// Maps an entity to its index, for a specific timeline.
-    // TODO: needs a dedicated struct for the key, so we don't have to clone() everywhere.
+    ///
+    /// An index maps specific points in time to rows in component tables.
+    //
+    // TODO(cmc): needs a dedicated struct for the key instead of a tuple, so we don't have to
+    // clone() everywhere.
     pub(crate) indices: HashMap<(Timeline, EntityPath), IndexTable>,
-    /// Maps a component to its data, for all timelines and all entities.
+    /// Maps a component name to its associated table, for all timelines and all entities.
+    ///
+    /// A component table holds all the values ever inserted for a given component.
     pub(crate) components: HashMap<ComponentName, ComponentTable>,
 }
 
@@ -165,38 +180,73 @@ impl std::fmt::Display for DataStore {
 
 // --- Indices ---
 
-/// A chunked index, bucketized over time and space (whichever comes first).
+/// An `IndexTable` maps specific points in time to rows in component tables.
 ///
-/// Each bucket covers a half-open time range.
-/// These time ranges are guaranteed to be non-overlapping.
-///
+/// Example of a time-based index table:
 /// ```text
-/// Bucket #1: #202..#206
+/// IndexTable {
+///     timeline: log_time
+///     entity: this/that
+///     buckets: [
+///         IndexBucket {
+///             time range: from -∞ (inclusive) to +9223372036.855s (exlusive)
+///             data (sorted=true): shape: (4, 4)
+///             ┌──────────────────┬───────────┬───────────┬───────┐
+///             │ time             ┆ positions ┆ instances ┆ rects │
+///             │ ---              ┆ ---       ┆ ---       ┆ ---   │
+///             │ str              ┆ u64       ┆ u64       ┆ u64   │
+///             ╞══════════════════╪═══════════╪═══════════╪═══════╡
+///             │ 10:03:24.825158Z ┆ null      ┆ null      ┆ 1     │
+///             ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┤
+///             │ 10:03:24.865158Z ┆ null      ┆ 1         ┆ 2     │
+///             ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┤
+///             │ 10:03:24.835158Z ┆ 1         ┆ null      ┆ null  │
+///             ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┤
+///             │ 10:03:24.845158Z ┆ null      ┆ 2         ┆ 3     │
+///             └──────────────────┴───────────┴───────────┴───────┘
 ///
-/// time | instances | comp#1 | comp#2 | … | comp#N |
-/// ---------------------------------------|--------|
-/// #202 | 2         | 2      | -      | … | 1      |
-/// #203 | 3         | -      | 3      | … | 4      |
-/// #204 | 4         | 6      | -      | … | -      |
-/// #204 | 4         | 8      | 8      | … | -      |
-/// #205 | 0         | 0      | 0      | … | -      |
-/// #205 | 5         | -      | 9      | … | 2      |
+///         }
+///     ]
+/// }
 /// ```
 ///
-/// TODO:
-/// - talk about out of order data and the effect it has
-/// - talk about deletion
-/// - talk about _lack of_ smallvec optimization
-/// - talk (and test) append-only behavior
+/// Example of a sequence-based index table:
+/// ```text
+/// IndexTable {
+///     timeline: frame_nr
+///     entity: this/that
+///     buckets: [
+///         IndexBucket {
+///             time range: from -∞ (inclusive) to #9223372036854775807 (exlusive)
+///             data (sorted=true): shape: (4, 4)
+///             ┌──────┬───────────┬───────┬───────────┐
+///             │ time ┆ positions ┆ rects ┆ instances │
+///             │ ---  ┆ ---       ┆ ---   ┆ ---       │
+///             │ str  ┆ u64       ┆ u64   ┆ u64       │
+///             ╞══════╪═══════════╪═══════╪═══════════╡
+///             │ #41  ┆ null      ┆ 2     ┆ 1         │
+///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
+///             │ #42  ┆ null      ┆ 3     ┆ 2         │
+///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
+///             │ #42  ┆ 1         ┆ null  ┆ null      │
+///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
+///             │ #43  ┆ null      ┆ 1     ┆ null      │
+///             └──────┴───────────┴───────┴───────────┘
+///
+///         }
+///     ]
+/// }
+/// ```
 ///
 /// See also: [`Self::IndexBucket`].
-//
-//
-// Each entry is a row index. It's nullable, with `null` = no entry.
 #[derive(Debug)]
 pub struct IndexTable {
+    /// The timeline this table operates in, for debugging purposes.
     pub(crate) timeline: Timeline,
+    /// The entity this table is related to, for debugging purposes.
     pub(crate) ent_path: EntityPath,
+
+    /// The actual buckets, where the indices are stored.
     pub(crate) buckets: BTreeMap<TypedTimeInt, IndexBucket>,
 }
 
@@ -223,30 +273,34 @@ impl std::fmt::Display for IndexTable {
     }
 }
 
-/// TODO
-//
-// Has a max size of 128MB OR 10k rows, whatever comes first.
-// The size-limit is so we can purge memory in small buckets
-// The row-limit is to avoid slow re-sorting at query-time
+/// An `IndexBucket` holds a size-delimited (data size and/or number of rows) chunk of a
+/// [`Self::IndexTable`].
+///
+/// - The data size limit is for garbage collection purposes.
+/// - The number of rows limit is to bound sorting costs on the read path.
+///
+/// See [`Self::IndexTable`] to get an idea of what an `IndexBucket` looks like in practice.
 #[derive(Debug)]
 pub struct IndexBucket {
     /// The time range covered by this bucket.
     pub(crate) time_range: TypedTimeIntRange,
 
-    /// Whether the indices are currently sorted.
+    /// Whether the indices (all of them!) are currently sorted.
     ///
     /// Querying an `IndexBucket` will always trigger a sort if the indices aren't already sorted.
     pub(crate) is_sorted: bool,
 
-    /// All indices for this bucket.
-    ///
-    /// Each column in this dataframe corresponds to a component.
+    // The primary time index, which is guaranteed to be dense, and "drives" all other indices.
     //
-    // new columns may be added at any time
-    // sorted by the first column, time (if [`Self::is_sorted`])
-    //
-    // TODO: some components are always present: timelines, instances
+    // All secondary indices are guaranteed to follow the same sort order and be the same length.
     pub(crate) times: Int64Vec,
+
+    /// All secondary indices for this bucket (i.e. everything but time).
+    ///
+    /// One index per component: new components (and as such, new indices) can be added at any
+    /// time!
+    /// When that happens, they will be retro-filled with nulls so that they share the same
+    /// length as the primary index.
     pub(crate) indices: HashMap<ComponentName, UInt64Vec>,
 }
 
@@ -294,18 +348,71 @@ impl std::fmt::Display for IndexBucket {
 
 // --- Components ---
 
-/// A chunked component table (i.e. a single column), bucketized by size only.
-//
-// The ComponentTable maps a row index to a list of values (e.g. a list of colors).
+/// A `ComponentTable` holds all the values ever inserted for a given component (provided they
+/// are still alive, i.e. not GC'd).
+///
+/// Example of a component table holding instance IDs:
+/// ```text
+/// ComponentTable {
+///     name: instances
+///     buckets: [
+///         ComponentBucket {
+///             row offset: 0
+///             time ranges:
+///                 - frame_nr: from #41 (inclusive) to #43 (exlusive)
+///                 - log_time: from 10:24:21.735485Z (inclusive) to 10:24:21.755485Z (exlusive)
+///             data: shape: (3, 1)
+///             ┌─────────────────────────────────────┐
+///             │ instances                           │
+///             │ ---                                 │
+///             │ list[u32]                           │
+///             ╞═════════════════════════════════════╡
+///             │ []                                  │
+///             ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+///             │ [478150623, 125728625, 4153899129]  │
+///             ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+///             │ [1827991721, 3089121314, 427290248] │
+///             └─────────────────────────────────────┘
+///
+///         }
+///     ]
+/// }
+/// ```
+///
+/// Example of a component-table holding 2D positions:
+///
+/// ```text
+/// ComponentTable {
+///     name: positions
+///     buckets: [
+///         ComponentBucket {
+///             row offset: 0
+///             time ranges:
+///                 - log_time: from 10:24:21.725485Z (inclusive) to 10:24:21.725485Z (exlusive)
+///                 - frame_nr: from #42 (inclusive) to #43 (exlusive)
+///             data: shape: (2, 1)
+///             ┌────────────────────────────────────────────────────────────────┐
+///             │ positions                                                      │
+///             │ ---                                                            │
+///             │ list[struct[2]]                                                │
+///             ╞════════════════════════════════════════════════════════════════╡
+///             │ []                                                             │
+///             ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+///             │ [{6.172664,8.383976}, {2.059066,8.037471}, {0.42883,1.250902}] │
+///             └────────────────────────────────────────────────────────────────┘
+///
+///         }
+///     ]
+/// }
+/// ```
 #[derive(Debug)]
 pub struct ComponentTable {
-    /// The component's name.
+    /// The component's name that this table is related to, for debugging purposes.
     pub(crate) name: Arc<String>,
-    /// The component's datatype.
+    /// The component's datatype that this table is related to, for debugging purposes.
     pub(crate) datatype: DataType,
-    /// Each bucket covers an arbitrary range of rows.
-    /// How large that range is will depend on the size of the actual data, which is the actual
-    /// trigger for chunking.
+
+    /// The actual buckets, where the component data is stored.
     pub(crate) buckets: BTreeMap<RowIndex, ComponentBucket>,
 }
 
@@ -318,7 +425,6 @@ impl std::fmt::Display for ComponentTable {
         } = self;
 
         f.write_fmt(format_args!("name: {}\n", name))?;
-        // TODO: doc
         if let Ok(v) = std::env::var("RERUN_DATA_STORE_DISPLAY_SCHEMAS") {
             if v == "1" {
                 f.write_fmt(format_args!("datatype: {:#?}\n", datatype))?;
@@ -337,36 +443,22 @@ impl std::fmt::Display for ComponentTable {
     }
 }
 
-/// TODO
-//
-// Has a max-size of 128MB or so.
-// We bucket the component table so we can purge older parts when needed.
+/// A `ComponentBucket` holds a size-delimited (data size) chunk of a [`Self::ComponentTable`].
 #[derive(Debug)]
 pub struct ComponentBucket {
-    /// The component's name.
+    /// The component's name, for debugging purposes.
     pub(crate) name: Arc<String>,
 
     /// The time ranges (plural!) covered by this bucket.
+    /// Buckets are never sorted over time, so these time ranges can grow arbitrarily large.
     ///
-    /// Buckets are never sorted over time, time ranges can grow arbitrarily large.
-    //
-    // Used when to figure out if we can purge it.
-    // Out-of-order inserts can create huge time ranges here,
-    // making some buckets impossible to purge, but we accept that risk.
-    //
-    // TODO: this is for purging only
+    /// These are only used for garbage collection.
     pub(crate) time_ranges: HashMap<Timeline, TypedTimeIntRange>, // TODO: timetype
 
-    // TODO
+    /// What's the offset of that bucket in the shared table?
     pub(crate) row_offset: RowIndex,
 
     /// All the data for this bucket. This is a single column!
-    ///
-    /// Each row contains the data for all instances.
-    /// Instances within a row are sorted
-    //
-    // maps a row index to a list of values (e.g. a list of colors).
-    //
     // TODO: MutableArray!
     pub(crate) data: Box<dyn Array>,
 }

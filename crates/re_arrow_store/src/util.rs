@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::borrow::Borrow;
 
 use polars::{prelude::*, series::IsSorted};
