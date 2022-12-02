@@ -114,15 +114,18 @@ impl TargetConfiguration {
     pub fn new_2d_target(
         name: DebugLabel,
         resolution_in_pixel: [u32; 2],
-        zoom_factor: f32,
+        pixels_per_point: f32,
+        top_left_position_in_points: glam::Vec2,
     ) -> Self {
         TargetConfiguration {
             name,
             resolution_in_pixel,
-            view_from_world: macaw::IsoTransform::IDENTITY,
+            view_from_world: macaw::IsoTransform::from_translation(
+                -top_left_position_in_points.extend(0.0),
+            ),
             projection_from_view: Projection::Orthographic {
                 camera_mode: OrthographicCameraMode::TopLeftCornerAndExtendZ,
-                vertical_world_size: resolution_in_pixel[1] as f32 * zoom_factor,
+                vertical_world_size: resolution_in_pixel[1] as f32 / pixels_per_point,
                 far_plane_distance: 1000.0,
             },
         }

@@ -152,6 +152,7 @@ impl framework::Example for Render2D {
                             "2D".into(),
                             splits[0].resolution_in_pixel,
                             1.0,
+                            glam::Vec2::ZERO,
                         ),
                     )
                     .unwrap();

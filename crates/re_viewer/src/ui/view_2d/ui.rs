@@ -4,7 +4,10 @@ use egui::{
     Shape, TextFormat, TextStyle, Vec2,
 };
 use re_data_store::{InstanceId, InstanceIdHash, ObjPath};
-use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
+use re_renderer::{
+    renderer::{PointCloudDrawable, PointCloudPoint},
+    view_builder::{TargetConfiguration, ViewBuilder},
+};
 
 use crate::{misc::HoveredSpace, Selection, ViewerContext};
 
@@ -364,7 +367,7 @@ fn view_2d_scrollable(
     let (mut response, painter) =
         parent_ui.allocate_painter(desired_size, egui::Sense::click_and_drag());
 
-    // Create our transforms
+    // Create our transforms. TODO(andreas): re_renderer should be able to apply this via the camera
     let ui_from_space = egui::emath::RectTransform::from_to(scene_bbox, response.rect);
     let space_from_ui = ui_from_space.inverse();
 
@@ -554,6 +557,7 @@ fn view_2d_scrollable(
         check_hovering(*instance_hash, min_dist_sq.sqrt());
     }
 
+    let mut render_points = Vec::with_capacity(scene.points.capacity() * 2);
     for point in &scene.points {
         let Point2D {
             instance_hash,
@@ -566,16 +570,18 @@ fn view_2d_scrollable(
         let radius = radius.unwrap_or(1.5);
 
         let pos_in_ui = ui_from_space.transform_pos(*pos);
-        shapes.push(Shape::circle_filled(
-            pos_in_ui,
-            radius + 1.0,
-            paint_props.bg_stroke.color,
-        ));
-        shapes.push(Shape::circle_filled(
-            pos_in_ui,
+
+        // TODO(andreas): Make point renderer support one point (!) outline. Note that background color is hardcoded to Color32::from_black_alpha(196);
+        render_points.push(PointCloudPoint {
+            position: glam::vec3(pos_in_ui.x, pos_in_ui.y, 0.1),
+            radius: radius + 1.0,
+            srgb_color: paint_props.bg_stroke.color.to_array().into(),
+        });
+        render_points.push(PointCloudPoint {
+            position: glam::vec3(pos_in_ui.x, pos_in_ui.y, 0.0),
             radius,
-            paint_props.fg_stroke.color,
-        ));
+            srgb_color: paint_props.fg_stroke.color.to_array().into(),
+        });
 
         if let Some(label) = label {
             let rect = add_label(
@@ -595,7 +601,7 @@ fn view_2d_scrollable(
     // ------------------------------------------------------------------------
 
     // Draw a re_renderer driven view.
-    // The coordinate system is in points.
+    // Camera & projection are currently configured to be able to ingest ui positions directly.
 
     let (resolution_in_pixel, origin_in_pixel) = {
         let rect = painter.clip_rect();
@@ -625,9 +631,11 @@ fn view_2d_scrollable(
                     "2d space view".into(),
                     resolution_in_pixel,
                     painter.ctx().pixels_per_point(),
+                    glam::vec2(ui_from_space.to().min.x, ui_from_space.to().min.y),
                 ),
             )
-            .unwrap();
+            .unwrap()
+            .queue_draw(&PointCloudDrawable::new(ctx.render_ctx, &render_points).unwrap());
 
         let command_buffer = view_builder
             .draw(

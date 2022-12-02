@@ -59,6 +59,7 @@ pub struct LineSegments2D {
     pub paint_props: ObjectPaintProperties,
 }
 
+// TODO(andreas) make this go away just like with lines
 pub struct Point2D {
     pub instance_hash: InstanceIdHash,
 
