@@ -2,7 +2,7 @@
 //! TODO(john) better crate documentation.
 
 pub mod field_types;
-mod util;
+pub mod util;
 
 mod arrow_log_db;
 pub use self::arrow_log_db::LogDb;
