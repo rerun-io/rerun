@@ -79,8 +79,9 @@ struct Args {
     addr: Option<String>,
 }
 
-fn main() {
+fn main() -> std::process::ExitCode {
     // Make sure rerun logging goes to stdout
+    re_log::set_default_rust_log_env();
     tracing_subscriber::fmt::init();
 
     let mut session = rerun_sdk::Session::new();
@@ -101,7 +102,8 @@ fn main() {
                 session.connect(addr);
             }
             Err(err) => {
-                panic!("Bad address: {:?}. {:?}", args.addr, err);
+                eprintln!("Bad address: {:?}. {:?}", args.addr, err);
+                return std::process::ExitCode::FAILURE;
             }
         }
     }
@@ -127,4 +129,6 @@ fn main() {
         let log_messages = session.drain_log_messages_buffer();
         rerun_sdk::viewer::show(log_messages);
     }
+
+    std::process::ExitCode::SUCCESS
 }

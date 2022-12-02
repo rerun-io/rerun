@@ -70,12 +70,11 @@ pub fn build_arrow_log_msg(
             .collect::<Vec<_>>()
     );
 
-    let data_col = ListArray::<i32>::try_new(
-        ListArray::<i32>::default_datatype(array.data_type().clone()), // data_type
-        Buffer::from(vec![0, array.values()[0].len() as i32]),         // offsets
-        array.clone().boxed(),                                         // values
-        None,                                                          // validity
-    )?;
+    let data_type = ListArray::<i32>::default_datatype(array.data_type().clone());
+    let offsets = Buffer::from(vec![0, array.values()[0].len() as i32]);
+    let values = array.clone().boxed();
+    let validity = None;
+    let data_col = ListArray::<i32>::try_new(data_type, offsets, values, validity)?;
 
     // Build columns for timeline data
     let (mut fields, mut cols): (Vec<Field>, Vec<Box<dyn Array>>) =
