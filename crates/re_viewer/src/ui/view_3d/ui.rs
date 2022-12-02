@@ -519,7 +519,7 @@ fn paint_view(
             .queue_draw(&scene.line_strips.to_drawable(render_ctx))
             .queue_draw(&PointCloudDrawable::new(render_ctx, &scene.point_cloud_points()).unwrap());
 
-        let command_buffer = view_builder.draw(render_ctx).unwrap();
+        let command_buffer = view_builder.draw(render_ctx, Default::default()).unwrap();
         (view_builder, command_buffer)
     };
 

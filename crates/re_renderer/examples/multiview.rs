@@ -12,6 +12,7 @@ use re_renderer::{
         PointCloudDrawable, PointCloudPoint, TestTriangleDrawable,
     },
     resource_managers::ResourceLifeTime,
+    texture_values::ValueRgba8UnormSrgb,
     view_builder::{OrthographicCameraMode, Projection, TargetConfiguration, ViewBuilder},
     LineStripSeriesBuilder, RenderContext,
 };
@@ -31,7 +32,7 @@ fn draw_view<'a, D: 'static + re_renderer::renderer::Drawable + Sync + Send + Cl
         .unwrap()
         .queue_draw(skybox)
         .queue_draw(drawable)
-        .draw(re_ctx)
+        .draw(re_ctx, ValueRgba8UnormSrgb::default())
         .unwrap();
 
     (view_builder, command_buffer)

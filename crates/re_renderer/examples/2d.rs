@@ -1,6 +1,7 @@
 use re_renderer::{
     renderer::{LineStripFlags, Rectangle, RectangleDrawData, TextureFilterMag, TextureFilterMin},
     resource_managers::{ResourceLifeTime, Texture2D, Texture2DHandle},
+    texture_values::ValueRgba8UnormSrgb,
     view_builder::{self, Projection, ViewBuilder},
     LineStripSeriesBuilder,
 };
@@ -159,7 +160,9 @@ impl framework::Example for Render2D {
                     .unwrap();
                 view_builder.queue_draw(&line_strip_draw_data);
                 view_builder.queue_draw(&rectangle_draw_data);
-                let command_buffer = view_builder.draw(re_ctx).unwrap();
+                let command_buffer = view_builder
+                    .draw(re_ctx, ValueRgba8UnormSrgb::default())
+                    .unwrap();
                 framework::ViewDrawResult {
                     view_builder,
                     command_buffer,
@@ -199,7 +202,9 @@ impl framework::Example for Render2D {
                         .unwrap();
                     view_builder.queue_draw(&line_strip_draw_data);
                     view_builder.queue_draw(&rectangle_draw_data);
-                    let command_buffer = view_builder.draw(re_ctx).unwrap();
+                    let command_buffer = view_builder
+                        .draw(re_ctx, ValueRgba8UnormSrgb::default())
+                        .unwrap();
                     framework::ViewDrawResult {
                         view_builder,
                         command_buffer,
