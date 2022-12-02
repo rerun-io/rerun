@@ -43,7 +43,7 @@ fn single_entity_multi_timelines_multi_components_roundtrip() {
         [build_log_time(now_minus_20ms), build_frame_nr(frame43)],
         [expected_rects.clone()],
     );
-    // eprintln!("inserting into '{ent_path}':\nschema: {schema:#?}\ncomponents: {components:#?}");
+    eprintln!("inserting into '{ent_path}':\nschema: {schema:#?}\ncomponents: {components:#?}");
     // eprintln!("---\ninserting into '{ent_path}': [log_time, frame_nr], [rects]");
     store.insert(&schema, components).unwrap();
     // eprintln!("{store}");
@@ -58,16 +58,14 @@ fn single_entity_multi_timelines_multi_components_roundtrip() {
     store.insert(&schema, components).unwrap();
     // eprintln!("{store}");
 
-    return;
-
     let expected_instances = build_instances(nb_instances);
     let (schema, components) = build_message(
         &ent_path,
         [build_log_time(now), build_frame_nr(frame42)],
         [expected_instances.clone(), build_rects(nb_instances)],
     );
-    // eprintln!("inserting into '{ent_path}':\nschema: {schema:#?}\ncomponents: {components:#?}");
-    eprintln!("---\ninserting into '{ent_path}': [log_time, frame_nr], [instances]");
+    eprintln!("inserting into '{ent_path}':\nschema: {schema:#?}\ncomponents: {components:#?}");
+    // eprintln!("---\ninserting into '{ent_path}': [log_time, frame_nr], [instances]");
     store.insert(&schema, components).unwrap();
     eprintln!("{store}");
 
@@ -77,8 +75,8 @@ fn single_entity_multi_timelines_multi_components_roundtrip() {
         [build_log_time(now_minus_10ms), build_frame_nr(frame42)],
         [expected_positions.clone()],
     );
-    // eprintln!("inserting into '{ent_path}':\nschema: {schema:#?}\ncomponents: {components:#?}");
-    eprintln!("---\ninserting into '{ent_path}': [log_time, frame_nr], [positions]");
+    eprintln!("inserting into '{ent_path}':\nschema: {schema:#?}\ncomponents: {components:#?}");
+    // eprintln!("---\ninserting into '{ent_path}': [log_time, frame_nr], [positions]");
     store.insert(&schema, components).unwrap();
     eprintln!("{store}");
 

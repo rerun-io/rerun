@@ -18,12 +18,22 @@ arrow2_convert = { version = "0.3" }
 chrono = "0.4"
 indent = "0.1"
 nohash-hasher = "0.2"
+thiserror = "1.0"
+
+# native dependencies:
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 polars = { version = "0.25", features = [
   "dtype-time",
   "dtype-struct",
   "fmt",
 ], default-features = false }
-thiserror = "1.0"
+
+# web dependencies:
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+polars = { version = "0.25", features = [
+  "dtype-time",
+  "dtype-struct",
+], default-features = false }
 
 [dev-dependencies]
 rand = "0.8.5"

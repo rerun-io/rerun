@@ -1,9 +1,8 @@
 use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 
-use arrow2::array::{Array, Int64Vec, MutableArray, UInt64Vec};
+use arrow2::array::{Array, Int64Vec, UInt64Vec};
 use arrow2::datatypes::DataType;
-use polars::prelude::{DataFrame, NamedFrom, Series};
 
 use re_log_types::{ObjPath as EntityPath, Timeline};
 
@@ -213,29 +212,43 @@ impl std::fmt::Display for IndexBucket {
             time_range.start, time_range.end,
         ))?;
 
-        let typ = self.time_range.start.typ();
-        let times = Series::new(
-            "time",
-            times
-                .values()
-                .iter()
-                .map(|time| TypedTimeInt::from((typ, *time)).to_string())
-                .collect::<Vec<_>>(),
-        );
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            use arrow2::array::MutableArray as _;
+            use polars::prelude::{DataFrame, NamedFrom as _, Series};
 
-        let series = std::iter::once(times)
-            .chain(indices.into_iter().map(|(name, index)| {
-                let index = index
+            let typ = self.time_range.start.typ();
+            let times = Series::new(
+                "time",
+                times
                     .values()
-                    .into_iter()
-                    .enumerate()
-                    .map(|(i, v)| index.is_valid(i).then_some(*v))
-                    .collect::<Vec<_>>();
-                Series::new(name.as_str(), index)
-            }))
-            .collect::<Vec<_>>();
-        let df = DataFrame::new(series).unwrap();
-        f.write_fmt(format_args!("data (sorted={is_sorted}): {df:?}\n"))?;
+                    .iter()
+                    .map(|time| TypedTimeInt::from((typ, *time)).to_string())
+                    .collect::<Vec<_>>(),
+            );
+
+            let series = std::iter::once(times)
+                .chain(indices.into_iter().map(|(name, index)| {
+                    let index = index
+                        .values()
+                        .into_iter()
+                        .enumerate()
+                        .map(|(i, v)| index.is_valid(i).then_some(*v))
+                        .collect::<Vec<_>>();
+                    Series::new(name.as_str(), index)
+                }))
+                .collect::<Vec<_>>();
+            let df = DataFrame::new(series).unwrap();
+            f.write_fmt(format_args!("data (sorted={is_sorted}): {df:?}\n"))?;
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            _ = time_range;
+            _ = is_sorted;
+            _ = times;
+            _ = indices;
+        }
 
         Ok(())
     }
@@ -378,10 +391,22 @@ impl std::fmt::Display for ComponentBucket {
             ))?;
         }
 
-        // TODO(cmc): I'm sure there's no need to clone here
-        let series = Series::try_from((name.as_str(), data.clone())).unwrap();
-        let df = DataFrame::new(vec![series]).unwrap();
-        f.write_fmt(format_args!("data: {df:?}\n"))?;
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            use polars::prelude::{DataFrame, Series};
+            // TODO(cmc): I'm sure there's no need to clone here
+            let series = Series::try_from((name.as_str(), data.clone())).unwrap();
+            let df = DataFrame::new(vec![series]).unwrap();
+            f.write_fmt(format_args!("data: {df:?}\n"))?;
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            _ = name;
+            _ = time_ranges;
+            _ = row_offset;
+            _ = data;
+        }
 
         Ok(())
     }

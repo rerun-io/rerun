@@ -717,7 +717,7 @@ impl PartialEq for TypedTimeInt {
 
 impl std::hash::Hash for TypedTimeInt {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.1.hash(state)
+        self.1.hash(state);
     }
 }
 

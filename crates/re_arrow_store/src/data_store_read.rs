@@ -41,7 +41,7 @@ impl DataStore {
     ) -> anyhow::Result<DataFrame> {
         let latest_at = match time_query {
             TimeQuery::LatestAt(latest_at) => latest_at,
-            TimeQuery::Range(_) => todo!(),
+            TimeQuery::Range(_) => todo!("implement range queries!"),
         };
 
         let row_indices = self
