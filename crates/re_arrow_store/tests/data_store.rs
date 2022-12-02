@@ -1,31 +1,19 @@
-// TODO: scenarios
-// - send some rects then some positions, shared instances
-// - insert a single component for a single instance and query it back
-// - insert a single component at t1 then another one at t2 then query at t0, t1, t2, t3
-// - send one message with multiple lists vs. multiple messages with 1/N lists
-// - multiple messages to multiple different timelines
-//
-// TODO: messy ones
-// - multiple components, different number of rows or something
-
 use std::{
     collections::BTreeMap,
-    time::{Duration, Instant, SystemTime},
+    time::{Duration, SystemTime},
 };
 
 use arrow2::{
-    array::{Array, Float32Array, Int64Array, ListArray, PrimitiveArray, StructArray, UInt32Array},
+    array::{Array, Float32Array, Int64Array, ListArray, PrimitiveArray, StructArray},
     buffer::Buffer,
     chunk::Chunk,
-    datatypes::{self, DataType, Field, Schema, TimeUnit},
+    datatypes::{DataType, Field, Schema, TimeUnit},
 };
 use polars::export::num::ToPrimitive;
 
 use re_arrow_store::{DataStore, TimeQuery};
-use re_log_types::arrow::{
-    filter_time_cols, ENTITY_PATH_KEY, TIMELINE_KEY, TIMELINE_SEQUENCE, TIMELINE_TIME,
-};
-use re_log_types::{ObjPath as EntityPath, TimeInt, TimeType, Timeline};
+use re_log_types::arrow::{ENTITY_PATH_KEY, TIMELINE_KEY, TIMELINE_SEQUENCE, TIMELINE_TIME};
+use re_log_types::{ObjPath as EntityPath, TimeType, Timeline};
 
 // ---
 
@@ -39,7 +27,7 @@ fn single_entity_multi_timelines_multi_components_roundtrip() {
     let now = SystemTime::now();
     let now_minus_10ms = now - Duration::from_millis(10);
     let now_minus_20ms = now - Duration::from_millis(20);
-    let now_plus_10ms = now + Duration::from_millis(10);
+    // let now_plus_10ms = now + Duration::from_millis(10);
     let now_plus_20ms = now + Duration::from_millis(20);
 
     // TODO: test holes!
@@ -93,11 +81,9 @@ fn single_entity_multi_timelines_multi_components_roundtrip() {
     store.insert(&schema, components).unwrap();
     eprintln!("{store}");
 
-    // TODO: push to a single timeline
-    // TODO: pushing a component multiple times on the same timeline+time
-
-    // TODO:
-    // - query at 40, 41, 42, 43, 44
+    // TODO(cmc): push to a single timeline
+    // TODO(cmc): pushing a component multiple times on the same timeline+time
+    // TODO(cmc): query at 40, 41, 42, 43, 44
 
     let timeline = Timeline::new("frame_nr", TimeType::Sequence);
     let components = &["instances", "rects", "positions"];
@@ -123,10 +109,7 @@ fn single_entity_multi_timelines_multi_components_roundtrip() {
 
 // --- helpers ---
 
-// TODO: the list around components still fields kinda weird no?
-// TODO: the entire message should be a list, for client-side batching!
-
-// TODO: share all of these with benchmark (datagen crate/module?)
+// TODO(cmc): share all of these with benchmark (datagen crate/module?)
 
 fn build_log_time(log_time: SystemTime) -> (Schema, Int64Array) {
     let log_time = log_time
@@ -167,8 +150,6 @@ fn build_frame_nr(frame_nr: i64) -> (Schema, Int64Array) {
     (schema, data)
 }
 
-// TODO: implicit assumption here is that one message = one timestamp per timeline, i.e.
-// you can send data for multiple times in one single message.
 fn pack_timelines(
     timelines: impl Iterator<Item = (Schema, Box<dyn Array>)>,
 ) -> (Schema, StructArray) {

@@ -7,6 +7,12 @@ mod arrow_log_db;
 pub use self::arrow_log_db::LogDb;
 
 mod data_store;
-pub use self::data_store::{ComponentName, ComponentNameRef, DataStore, TimeQuery};
+pub(crate) use self::data_store::{ComponentBucket, ComponentTable, IndexBucket, IndexTable};
+pub use self::data_store::{ComponentName, ComponentNameRef, DataStore, RowIndex};
 
-pub use re_log_types::TimeInt; // to be polite
+mod data_store_read;
+pub use self::data_store_read::TimeQuery;
+
+mod data_store_write;
+
+pub use re_log_types::{TimeInt, TypedTimeInt}; // for politeness sake
