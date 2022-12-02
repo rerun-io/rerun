@@ -29,6 +29,11 @@ pub fn set_default_rust_log_env() {
     }
 
     std::env::set_var("RUST_LOG", rust_log);
+
+    if std::env::var("RUST_BACKTRACE").is_err() {
+        // Make sure we always produce backtraces for the (hopefully rare) cases when we crash!
+        std::env::set_var("RUST_BACKTRACE", "1");
+    }
 }
 
 pub fn default_log_filter() -> String {
