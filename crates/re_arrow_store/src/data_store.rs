@@ -38,6 +38,7 @@ pub struct DataStore {
 }
 
 impl std::fmt::Display for DataStore {
+    #[allow(clippy::string_add)]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
             indices,
@@ -48,7 +49,7 @@ impl std::fmt::Display for DataStore {
 
         {
             f.write_str(&indent::indent_all_by(4, "indices: [\n"))?;
-            for (_, index) in indices {
+            for index in indices.values() {
                 f.write_str(&indent::indent_all_by(8, "IndexTable {\n"))?;
                 f.write_str(&indent::indent_all_by(12, index.to_string() + "\n"))?;
                 f.write_str(&indent::indent_all_by(8, "}\n"))?;
@@ -58,7 +59,7 @@ impl std::fmt::Display for DataStore {
 
         {
             f.write_str(&indent::indent_all_by(4, "components: [\n"))?;
-            for (_, comp) in components {
+            for comp in components.values() {
                 f.write_str(&indent::indent_all_by(8, "ComponentTable {\n"))?;
                 f.write_str(&indent::indent_all_by(12, comp.to_string() + "\n"))?;
                 f.write_str(&indent::indent_all_by(8, "}\n"))?;
@@ -145,6 +146,7 @@ pub struct IndexTable {
 }
 
 impl std::fmt::Display for IndexTable {
+    #[allow(clippy::string_add)]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
             timeline,
@@ -156,7 +158,7 @@ impl std::fmt::Display for IndexTable {
         f.write_fmt(format_args!("entity: {}\n", ent_path))?;
 
         f.write_str("buckets: [\n")?;
-        for (_, bucket) in buckets {
+        for bucket in buckets.values() {
             f.write_str(&indent::indent_all_by(4, "IndexBucket {\n"))?;
             f.write_str(&indent::indent_all_by(8, bucket.to_string() + "\n"))?;
             f.write_str(&indent::indent_all_by(4, "}\n"))?;
@@ -228,10 +230,10 @@ impl std::fmt::Display for IndexBucket {
             );
 
             let series = std::iter::once(times)
-                .chain(indices.into_iter().map(|(name, index)| {
+                .chain(indices.iter().map(|(name, index)| {
                     let index = index
                         .values()
-                        .into_iter()
+                        .iter()
                         .enumerate()
                         .map(|(i, v)| index.is_valid(i).then_some(*v))
                         .collect::<Vec<_>>();
@@ -325,6 +327,7 @@ pub struct ComponentTable {
 }
 
 impl std::fmt::Display for ComponentTable {
+    #[allow(clippy::string_add)]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
             name,
@@ -340,7 +343,7 @@ impl std::fmt::Display for ComponentTable {
         }
 
         f.write_str("buckets: [\n")?;
-        for (_, bucket) in buckets {
+        for bucket in buckets.values() {
             f.write_str(&indent::indent_all_by(4, "ComponentBucket {\n"))?;
             f.write_str(&indent::indent_all_by(8, bucket.to_string() + "\n"))?;
             f.write_str(&indent::indent_all_by(4, "}\n"))?;

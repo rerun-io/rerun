@@ -35,18 +35,19 @@ impl DataStore {
     pub fn query(
         &mut self,
         timeline: &Timeline,
-        time_query: TimeQuery,
+        time_query: &TimeQuery,
         ent_path: &EntityPath,
         components: &[ComponentNameRef<'_>],
     ) -> anyhow::Result<DataFrame> {
         let latest_at = match time_query {
-            TimeQuery::LatestAt(latest_at) => latest_at,
+            TimeQuery::LatestAt(latest_at) => *latest_at,
+            #[allow(clippy::todo)]
             TimeQuery::Range(_) => todo!("implement range queries!"),
         };
 
         let row_indices = self
             .indices
-            .get_mut(&(timeline.clone(), ent_path.clone()))
+            .get_mut(&(*timeline, ent_path.clone()))
             .map(|index| index.latest_at(latest_at, components))
             .unwrap();
 
@@ -94,6 +95,9 @@ impl IndexBucket {
             swaps
         };
 
+        // Yep, the reshuffle implentation is very dumb and very slow :)
+        // TODO(#442): re_datastore: implement efficient shuffling on the read path.
+
         // shuffle time index back into a sorted state
         {
             // The time index must always be dense, thus it shouldn't even have a validity
@@ -137,7 +141,7 @@ impl IndexBucket {
         }
 
         // shuffle component indices back into a sorted state
-        for (_, index) in &mut self.indices {
+        for index in self.indices.values_mut() {
             reshuffle_index(index, &swaps);
         }
 
@@ -181,8 +185,7 @@ impl IndexBucket {
 
 impl ComponentTable {
     pub fn get(&self, row_idx: u64) -> Box<dyn Array> {
-        let bucket = self.buckets.get(&0).unwrap();
-
+        let bucket = &self.buckets[&0];
         bucket.get(row_idx)
     }
 }

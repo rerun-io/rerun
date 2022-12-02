@@ -166,7 +166,6 @@ impl LogDb {
 
     pub fn consume_stream(&mut self, stream: StreamReader<impl std::io::Read>) {
         let arrow_schema = stream.metadata().schema.clone();
-        dbg!(&arrow_schema);
 
         // Get the entity path from the metadata
         let entity_path = arrow_schema

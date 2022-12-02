@@ -45,7 +45,7 @@ fn single_entity_multi_timelines_multi_components_roundtrip() {
     );
     eprintln!("inserting into '{ent_path}':\nschema: {schema:#?}\ncomponents: {components:#?}");
     // eprintln!("---\ninserting into '{ent_path}': [log_time, frame_nr], [rects]");
-    store.insert(&schema, components).unwrap();
+    store.insert(&schema, &components).unwrap();
     // eprintln!("{store}");
 
     let (schema, components) = build_message(
@@ -55,7 +55,7 @@ fn single_entity_multi_timelines_multi_components_roundtrip() {
     );
     eprintln!("inserting into '{ent_path}':\nschema: {schema:#?}\ncomponents: {components:#?}");
     // eprintln!("---\ninserting into '{ent_path}': [log_time, frame_nr], [instances, rects]");
-    store.insert(&schema, components).unwrap();
+    store.insert(&schema, &components).unwrap();
     // eprintln!("{store}");
 
     let expected_instances = build_instances(nb_instances);
@@ -66,7 +66,7 @@ fn single_entity_multi_timelines_multi_components_roundtrip() {
     );
     eprintln!("inserting into '{ent_path}':\nschema: {schema:#?}\ncomponents: {components:#?}");
     // eprintln!("---\ninserting into '{ent_path}': [log_time, frame_nr], [instances]");
-    store.insert(&schema, components).unwrap();
+    store.insert(&schema, &components).unwrap();
     eprintln!("{store}");
 
     let expected_positions = build_positions(nb_instances);
@@ -77,7 +77,7 @@ fn single_entity_multi_timelines_multi_components_roundtrip() {
     );
     eprintln!("inserting into '{ent_path}':\nschema: {schema:#?}\ncomponents: {components:#?}");
     // eprintln!("---\ninserting into '{ent_path}': [log_time, frame_nr], [positions]");
-    store.insert(&schema, components).unwrap();
+    store.insert(&schema, &components).unwrap();
     eprintln!("{store}");
 
     // TODO(cmc): push to a single timeline
@@ -89,25 +89,25 @@ fn single_entity_multi_timelines_multi_components_roundtrip() {
 
     // Querying at a time where no data exists.
     let df = store
-        .query(&timeline, TimeQuery::LatestAt(40), &ent_path, components)
+        .query(&timeline, &TimeQuery::LatestAt(40), &ent_path, components)
         .unwrap();
-    dbg!(&df);
+    eprintln!("{df}");
 
     // Querying a bunch of components that don't exist.
     let df = store
         .query(
             &timeline,
-            TimeQuery::LatestAt(40),
+            &TimeQuery::LatestAt(40),
             &ent_path,
             &["they", "dont", "exist"],
         )
         .unwrap();
-    dbg!(&df);
+    eprintln!("{df}");
 
     let df = store
-        .query(&timeline, TimeQuery::LatestAt(44), &ent_path, components)
+        .query(&timeline, &TimeQuery::LatestAt(44), &ent_path, components)
         .unwrap();
-    dbg!(&df);
+    eprintln!("{df}");
 
     use polars::prelude::Series;
 

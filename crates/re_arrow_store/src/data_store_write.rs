@@ -28,15 +28,15 @@ impl DataStore {
     /// - the entity path,
     /// - the targeted timelines & timepoints,
     /// - and all the components data.
-    pub fn insert(&mut self, schema: &Schema, msg: Chunk<Box<dyn Array>>) -> anyhow::Result<()> {
+    pub fn insert(&mut self, schema: &Schema, msg: &Chunk<Box<dyn Array>>) -> anyhow::Result<()> {
         let ent_path = schema
             .metadata
             .get(ENTITY_PATH_KEY)
             .ok_or_else(|| anyhow!("expect entity path in top-level message's metadata"))
             .map(|path| EntityPath::from(path.as_str()))?;
 
-        let timelines = extract_timelines(schema, &msg)?;
-        let components = extract_components(schema, &msg)?;
+        let timelines = extract_timelines(schema, msg)?;
+        let components = extract_components(schema, msg)?;
 
         // TODO(cmc): sort the "instances" component, and everything else accordingly!
 
@@ -53,8 +53,8 @@ impl DataStore {
         for (timeline, time) in &timelines {
             let index = self
                 .indices
-                .entry((timeline.clone(), ent_path.clone()))
-                .or_insert_with(|| IndexTable::new(timeline.clone(), ent_path.clone()));
+                .entry((*timeline, ent_path.clone()))
+                .or_insert_with(|| IndexTable::new(*timeline, ent_path.clone()));
             index.insert(*time, &indices)?;
         }
 
@@ -62,9 +62,9 @@ impl DataStore {
     }
 }
 
-fn extract_timelines<'data>(
+fn extract_timelines(
     schema: &Schema,
-    msg: &'data Chunk<Box<dyn Array>>,
+    msg: &Chunk<Box<dyn Array>>,
 ) -> anyhow::Result<Vec<(Timeline, TypedTimeInt)>> {
     let timelines = schema
         .index_of("timelines") // TODO(cmc): maybe at least a constant or something
@@ -132,7 +132,7 @@ fn extract_timelines<'data>(
 fn extract_components<'data>(
     schema: &Schema,
     msg: &'data Chunk<Box<dyn Array>>,
-) -> anyhow::Result<Vec<(ComponentNameRef<'data>, &'data Box<dyn Array>)>> {
+) -> anyhow::Result<Vec<(ComponentNameRef<'data>, &'data dyn Array)>> {
     let components = schema
         .index_of("components") // TODO(cmc): maybe at least a constant or something
         .and_then(|idx| msg.columns().get(idx))
@@ -147,7 +147,7 @@ fn extract_components<'data>(
         .fields()
         .iter()
         .zip(components.values())
-        .map(|(field, comp)| (field.name.as_str(), comp))
+        .map(|(field, comp)| (field.name.as_str(), comp.as_ref()))
         .collect())
 }
 
@@ -188,6 +188,7 @@ impl IndexBucket {
         }
     }
 
+    #[allow(clippy::unnecessary_wraps)]
     pub fn insert(
         &mut self,
         time: TypedTimeInt,
@@ -211,12 +212,12 @@ impl IndexBucket {
         // the length of the time index.
         // Step 2 below takes care of that.
         for (name, row_idx) in row_indices {
-            let index = self.indices.entry(name.to_string()).or_insert_with(|| {
+            let index = self.indices.entry((*name).to_owned()).or_insert_with(|| {
                 let mut index = UInt64Vec::default();
                 index.extend_constant(self.times.len().saturating_sub(1), None);
                 index
             });
-            index.push(Some(*row_idx))
+            index.push(Some(*row_idx));
         }
 
         // Step 2: for all component indices, check whether they were affected by the current
@@ -239,6 +240,7 @@ impl IndexBucket {
                 .all(|len| len == expected_len));
         }
 
+        // TODO(#433): re_datastore: properly handle already sorted data during insertion
         self.is_sorted = false;
 
         Ok(())
@@ -260,7 +262,7 @@ impl ComponentTable {
     pub fn insert(
         &mut self,
         timelines: &[(Timeline, TypedTimeInt)],
-        data: &Box<dyn Array>,
+        data: &dyn Array,
     ) -> anyhow::Result<RowIndex> {
         self.buckets.get_mut(&0).unwrap().insert(timelines, data)
     }
@@ -273,17 +275,18 @@ impl ComponentBucket {
         let data = if row_offset == 0 {
             let inner_datatype = match &datatype {
                 DataType::List(field) => field.data_type().clone(),
-                _ => todo!("throw an error here, this should always be a list"), // TODO(cmc)
+                #[allow(clippy::todo)]
+                _ => todo!("throw an error here, this should always be a list"),
             };
 
             let empty = ListArray::<i32>::from_data(
                 ListArray::<i32>::default_datatype(inner_datatype.clone()),
-                Buffer::from(vec![0, 0 as i32]),
+                Buffer::from(vec![0, 0i32]),
                 new_empty_array(inner_datatype),
                 None,
             );
 
-            // TODO(cmc): throw error (or just implement mutable array)
+            // TODO(#451): throw error (or just implement mutable array)
             concatenate(&[&*new_empty_array(datatype), &*empty.boxed()]).unwrap()
         } else {
             new_empty_array(datatype)
@@ -300,20 +303,20 @@ impl ComponentBucket {
     pub fn insert(
         &mut self,
         timelines: &[(Timeline, TypedTimeInt)],
-        data: &Box<dyn Array>,
+        data: &dyn Array,
     ) -> anyhow::Result<RowIndex> {
         for (timeline, time) in timelines {
-            // TODO(cmc): prob should own it at this point
+            // TODO(#451): prob should own it at this point
             let time = *time;
             let time_plus_one = time + 1;
             self.time_ranges
-                .entry(timeline.clone())
+                .entry(*timeline)
                 .and_modify(|range| *range = range.start.min(time)..range.end.max(time_plus_one))
                 .or_insert_with(|| time..time_plus_one);
         }
 
         // TODO(cmc): replace with an actual mutable array!
-        self.data = concatenate(&[&*self.data, &**data])?;
+        self.data = concatenate(&[&*self.data, data])?;
 
         Ok(self.row_offset + self.data.len() as u64 - 1)
     }
