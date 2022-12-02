@@ -3,55 +3,122 @@ use std::sync::Arc;
 
 use anyhow::{anyhow, bail, ensure};
 use arrow2::array::{
-    new_empty_array, Array, Int32Array, Int64Array, Int64Vec, ListArray, MutableArray,
-    MutableListArray, MutableStructArray, PrimitiveArray, StructArray, TryPush, UInt64Array,
-    UInt64Vec, Utf8Array,
+    new_empty_array, Array, Int64Array, Int64Vec, ListArray, MutableArray, StructArray, UInt64Vec,
 };
-use arrow2::bitmap::Bitmap;
 use arrow2::buffer::Buffer;
 use arrow2::chunk::Chunk;
 use arrow2::compute::concatenate::concatenate;
-use arrow2::datatypes::{DataType, Field, Schema};
-use nohash_hasher::IntMap;
-use polars::export::num::Integer;
+use arrow2::datatypes::{DataType, Schema};
 use polars::prelude::IndexOfSchema;
 use polars::prelude::{DataFrame, NamedFrom, Series};
 
-use re_log_types::arrow::{
-    filter_time_cols, ENTITY_PATH_KEY, TIMELINE_KEY, TIMELINE_SEQUENCE, TIMELINE_TIME,
-};
+use re_log_types::arrow::{ENTITY_PATH_KEY, TIMELINE_KEY, TIMELINE_SEQUENCE, TIMELINE_TIME};
 use re_log_types::{ObjPath as EntityPath, TimeType, Timeline};
 
 use crate::TimeInt;
 
-// TODO: going for the usual principles here:
-// - be liberal in what you accept, be strict in what you return
-// - 1) make it work 2) make it correct (i.e. _tested_) 3) make it fast
+// --- Task log ---
+//
+// High-level tasks that need work, ideally in some kind of decreasing importance order.
+//
+// General progress on the "make it" scale (status: in progress)
+// - make it work (i.e. implemented) (status: in progress)
+// - make it correct (i.e. _tested_!) (status: in progress)
+// - make it fast (i.e. _benchmarked_!) (status: to do)
 
-// TODO:
-// - write path
-// - read path
-// - purge / GC (later)
+// Deduplication across timelines (status: should be done?)
+//
+// - deduplicate across timelines when inserting to multiple timelines in one call
+// - does not cover deduplicating across timelines across different calls
 
-// TODO:
-// - keeping low level _for now_ (i.e. no polars at this layer)
-//    - need to get familiar with what's actually going on under the good
-//    - need to grab performance metrics baselines
-//    - don't add layers until we have a use case for them
+// Standardize and put into writing insert-payload schema (status: to do)
+//
+// - should the entire payload be a list, for client-side batching?
 
-// TODO: I'm actually starting to think that not having a registry is kinda awesome?
+// Index bucketing support (status: to do)
+//
+// - all index tables should be bucketized on a time range
+// - the actual bucket-splitting is driven by size:
+//    - the number of rows
+//    - the size of the data (i.e. roughly nb_rows * nb_cols * sizeof(u64))
+//
+// - note: the bucket hierarchy is already there, it's just never splitted!
+
+// Component bucketing support (status: to do)
+//
+// - all component tables should be bucketized on a row index range
+// - the actual bucket-splitting is driven by the size of the actual data
+//
+// - note: the bucket hierarchy is already there, it's just never splitted!
+
+// Deletion endpoint (status: to do)
+//
+// - should just be a matter of inserting zeroes, the empty rows are already in there
+
+// Serialization (status: to do)
+//
+// - support both serialization & deserialization, for .rrd
+
+// Support for splats (status: to do)
+//
+// - many instances paired with a single-entry component = treat as splat
+
+// Better resulting DataFrames for queries (status: to do)
+//
+// - component lists should probably be flattened at that point, behaving more like a table?
+
+// First pass of correctness work (status: todo)
+//
+// - integration test suite for standard write, read & write+read paths
+// - dedicated tests for all..
+//    - ..features
+//    - ..documented edge cases
+//    - ..special paths due to optimization
+//    - ..assertions
+//    - ..errors & illegal state
+
+// Performance pass for latest-at queries (status: to do)
+//
+// - get rid of useless clones in sort() code
+// - optimize the per-component backwards search with per-component btrees?
+
+// Range queries (status: to do)
+//
+// - have we actually settled on how we want these to behave precisely?
+
+// First pass of performance work (status: to do)
+//
+// - put performance probes everywhere
+// - provide helpers to gather detailed metrics: global, per-table, per-table-per-bucket
+// - a lot of clones & copies need to go away
+// - need integration benchmark suites
+//    - write path, read path, write+read path
+
+// Data purging (status: to do)
+//
+// - offer a way to drop both index & component buckets beyond a certain date
+
+// Data store GUI browser (status: to do)
+//
+// - the store currently provides a very thorough Display implementation that makes it manageable
+//   to keep track of what's going on internally
+// - it'd be even better to have something similar but as an interactive UI panel, akin to
+//   a SQL browser
+// Inline / small-list optimization (status: to do)
+//
+// - if there is exactly ONE element in a component row, store it inline instead of a row index
+
+// Schema registry / runtime payload validation (status: to do)
+//
+// - builtin components
+// - opening the registration process to user-defined components.
+
+// General deduplication (status: to do)
+//
+// - deduplicate across timelines across multiple calls
+// - automagically deduplicate within a component table
 
 // --- Data store ---
-
-// https://www.notion.so/rerunio/Arrow-Table-Design-cd77528c77ae4aa4a8c566e2ec29f84f
-
-// TODO: perf probes
-// TODO: every error and assert paths must be _TESTED_!!!
-
-// TODO: recursive Iterator impls for everything
-
-// TODO: splats!
-// TODO: delete
 
 pub type ComponentName = String;
 pub type ComponentNameRef<'a> = &'a str;
@@ -63,12 +130,12 @@ type TimeIntRange = std::ops::Range<TypedTimeInt>;
 #[derive(Default)]
 pub struct DataStore {
     /// Maps an entity to its index, for a specific timeline.
+    // TODO: needs a dedicated struct for the key, so we don't have to clone() everywhere.
     indices: HashMap<(Timeline, EntityPath), IndexTable>,
     /// Maps a component to its data, for all timelines and all entities.
     components: HashMap<ComponentName, ComponentTable>,
 }
 
-// TODO: turn this into an actual rerun view!
 impl std::fmt::Display for DataStore {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
@@ -105,17 +172,13 @@ impl std::fmt::Display for DataStore {
 }
 
 impl DataStore {
-    //     fn insert_components(&mut self, timeline, time, obj_path,
-    //         components: Map<ComponentName, ArrowStore>) {
-    //         let instance_row = self.components["instance_keys"].push(instance_keys);
-    //         let pos_row = self.components["positions"].push(positions);
-    //         self.main_tables[(timeline, obj_path)]
-    //             .insert(time, instance_row, pos_row);
-    //     }
+    /// Inserts a payload of Arrow data into the datastore.
+    ///
+    /// The payload is expected to hold:
+    /// - the entity path,
+    /// - the targeted timelines & timepoints,
+    /// - and all the components data.
     pub fn insert(&mut self, schema: &Schema, msg: Chunk<Box<dyn Array>>) -> anyhow::Result<()> {
-        // TODO: might make sense to turn the entire top-level message into a list, to help
-        // with batching on the client side.
-
         let ent_path = schema
             .metadata
             .get(ENTITY_PATH_KEY)
@@ -137,8 +200,6 @@ impl DataStore {
             indices.insert(name, row_idx);
         }
 
-        // TODO: Let's start the very dumb way: one bucket per TimeInt, then we'll deal with
-        // actual ranges.
         for (timeline, time) in &timelines {
             let index = self
                 .indices
@@ -150,7 +211,6 @@ impl DataStore {
         Ok(())
     }
 
-    // TODO: that one can probably return an actual DataFrame!
     pub fn query(
         &mut self,
         timeline: &Timeline,
@@ -179,6 +239,8 @@ impl DataStore {
             })
             .collect();
 
+        // TODO: flatten those series: the user expects a table looking thing, not a single
+        // row with a bunch of lists!
         let series_ordered = components
             .iter()
             .map(|name| series.remove(name).unwrap())
@@ -342,20 +404,6 @@ impl std::fmt::Display for IndexTable {
 }
 
 impl IndexTable {
-    // impl Index {
-    //     pub fn insert(&mut self, time, instance_row, pos_row) {
-    //         self.find_batch(time).insert(time, instance_row, pos_row)
-    //     }
-
-    //     pub fn find_batch(&mut self, time) {
-    //         if let Some(bucket) = self.range(time..).next() {
-    //             // if it is too big, split it in two
-    //         } else {
-    //             // create new bucket
-    //         }
-    //     }
-    // }
-
     pub fn new(timeline: Timeline, ent_path: EntityPath) -> Self {
         Self {
             timeline,
@@ -373,12 +421,8 @@ impl IndexTable {
         time: TypedTimeInt,
         indices: &HashMap<ComponentNameRef<'_>, RowIndex>,
     ) -> anyhow::Result<()> {
-        // TODO: at this point, indices _must_ contains an entry for 'instances'.
-        // TODO: ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ remember what I meant :D
-
         // TODO: real bucketing!
         let bucket = self.buckets.iter_mut().next().unwrap().1;
-
         bucket.insert(time, indices)
     }
 
@@ -545,11 +589,13 @@ impl IndexBucket {
             swaps
         };
 
-        // TODO: don't clone to swap
+        // TODO: do swaps the smart way, not the dumb clone-everything way :)
 
-        // time
+        // shuffle time index back into a sorted state
         {
-            assert!(self.times.validity().is_none()); // TODO: explain
+            // It shouldn't be possible for the time index to ever have "holes", so it shouldn't
+            // even have a validity bitmap attached to it to begin with.
+            assert!(self.times.validity().is_none());
 
             let source = self.times.values().clone();
             let values = self.times.values_mut_slice();
@@ -579,12 +625,15 @@ impl IndexBucket {
                 for (from, to) in swaps.iter().enumerate() {
                     validity_after.set(*to, validity_before.get(from));
                 }
+
+                // we expect as many nulls before and after.
                 assert_eq!(validity_before.unset_bits(), validity_after.unset_bits());
+
                 index.set_validity(Some(validity_after));
             }
         }
 
-        // everything else
+        // shuffle component indices back into a sorted state
         for (_, index) in &mut self.indices {
             reshuffle_index(index, &swaps);
         }
@@ -601,8 +650,8 @@ impl IndexBucket {
     ) -> HashMap<ComponentNameRef<'a>, RowIndex> {
         self.sort_indices().unwrap(); // TODO
 
+        // find the corresponding row within the time index
         let times = self.times.values();
-
         let time_idx = match times.binary_search(&at) {
             Ok(time_idx) => time_idx as i64,
             Err(time_idx_closest) => time_idx_closest.clamp(0, times.len() - 1) as i64,
