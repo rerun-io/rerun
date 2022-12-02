@@ -6,6 +6,7 @@ use crate::{
     context::*,
     global_bindings::FrameUniformBuffer,
     renderer::{compositor::*, Drawable, Renderer},
+    texture_values::ValueRgba8UnormSrgb,
     wgpu_resources::{BufferDesc, GpuBindGroupHandleStrong, GpuTextureHandleStrong, TextureDesc},
     DebugLabel,
 };
@@ -404,7 +405,11 @@ impl ViewBuilder {
     }
 
     /// Draws the frame as instructed to a temporary HDR target.
-    pub fn draw(&mut self, ctx: &RenderContext) -> anyhow::Result<wgpu::CommandBuffer> {
+    pub fn draw(
+        &mut self,
+        ctx: &RenderContext,
+        clear_color: ValueRgba8UnormSrgb,
+    ) -> anyhow::Result<wgpu::CommandBuffer> {
         crate::profile_function!();
 
         let setup = self
@@ -443,7 +448,7 @@ impl ViewBuilder {
                     view: &color_msaa.default_view,
                     resolve_target: Some(&color_resolved.default_view),
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                        load: wgpu::LoadOp::Clear(clear_color.into()),
                         // Don't care about the result, it's going to be resolved to the resolve target.
                         // This can have be much better perf, especially on tiler gpus.
                         store: false,
