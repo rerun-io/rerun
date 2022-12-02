@@ -62,6 +62,7 @@ use crate::TypedTimeInt;
 // Better resulting DataFrames for queries (status: to do)
 //
 // - component lists should probably be flattened at that point, behaving more like a table?
+// - how should missing components be represented?
 
 // First pass of correctness work (status: todo)
 //

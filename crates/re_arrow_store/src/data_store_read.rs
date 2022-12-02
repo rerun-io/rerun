@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use arrow2::array::{Array, MutableArray, UInt64Vec};
-use polars::prelude::{DataFrame, NamedFrom, Series};
+use polars::prelude::{DataFrame, Series};
 
 use re_log_types::{ObjPath as EntityPath, Timeline};
 
@@ -53,18 +53,19 @@ impl DataStore {
 
         let mut series: HashMap<_, _> = row_indices
             .into_iter()
-            .map(|(name, row_idx)| {
-                let table = &self.components[name]; // TODO
-                let data = table.get(row_idx);
-                (name, Series::try_from((name, data)).unwrap())
+            .filter_map(|(name, row_idx)| {
+                self.components
+                    .get(name)
+                    .map(|table| (name, Series::try_from((name, table.get(row_idx))).unwrap()))
             })
             .collect();
 
-        // TODO: flatten those series: the user expects a table looking thing, not a single
+        // TODO(cmc): what do we want those results to look like for missing components?
+        // TODO(cmc): flatten those series: the user expects a table looking thing, not a single
         // row with a bunch of lists!
         let series_ordered = components
             .iter()
-            .map(|name| series.remove(name).unwrap())
+            .filter_map(|name| series.remove(name))
             .collect();
         DataFrame::new(series_ordered).map_err(Into::into)
     }
@@ -73,13 +74,12 @@ impl DataStore {
 // --- Indices ---
 
 impl IndexTable {
-    /// Returns a vector of `RowIndex`: one for each component, in the exact same order.
     pub fn latest_at<'a>(
         &mut self,
         at: i64,
         components: &[ComponentNameRef<'a>],
     ) -> HashMap<ComponentNameRef<'a>, RowIndex> {
-        // TODO: real bucketing!
+        // TODO(cmc): real bucketing!
         let bucket = self.buckets.iter_mut().next().unwrap().1;
         bucket.latest_at(at, components)
     }
@@ -99,7 +99,7 @@ impl IndexBucket {
             swaps
         };
 
-        // TODO: do swaps the smart way, not the dumb clone-everything way :)
+        // TODO(cmc): do swaps the smart way, not the dumb clone-everything way :)
 
         // shuffle time index back into a sorted state
         {
@@ -160,27 +160,27 @@ impl IndexBucket {
     ) -> HashMap<ComponentNameRef<'a>, RowIndex> {
         self.sort_indices().unwrap(); // TODO
 
-        // find the corresponding row within the time index
+        // find the corresponding row index within the time index
         let times = self.times.values();
-        let time_idx = match times.binary_search(&at) {
-            Ok(time_idx) => time_idx as i64,
-            Err(time_idx_closest) => time_idx_closest.clamp(0, times.len() - 1) as i64,
+        let time_row_idx = match times.binary_search(&at) {
+            Ok(time_row_idx) => time_row_idx as i64,
+            Err(time_row_idx_closest) => time_row_idx_closest.clamp(0, times.len() - 1) as i64,
         };
 
         components
             .iter()
             .filter_map(|name| self.indices.get(*name).map(|index| (name, index)))
-            .map(|(name, index)| {
-                let mut idx = time_idx;
-                while !index.is_valid(idx as _) {
-                    idx -= 1;
-                    // TODO: I'm actually not sure that's even possible, need to think about it
-                    // (means every single row is null!)
-                    assert!(idx >= 0);
+            .filter_map(|(name, index)| {
+                let mut row_idx = time_row_idx;
+                while !index.is_valid(row_idx as _) {
+                    row_idx -= 1;
+                    if row_idx < 0 {
+                        return None;
+                    }
                 }
 
-                assert!(index.is_valid(idx as usize));
-                (*name, index.values()[idx as usize])
+                assert!(index.is_valid(row_idx as usize));
+                (*name, index.values()[row_idx as usize]).into()
             })
             .collect()
     }
@@ -189,7 +189,7 @@ impl IndexBucket {
 // --- Components ---
 
 impl ComponentTable {
-    // TODO: obviously shouldn't be allocating, should return some kind of ref
+    // TODO(cmc): obviously shouldn't be allocating, should return some kind of ref
     pub fn get(&self, row_idx: u64) -> Box<dyn Array> {
         // TODO: real bucketing!
         let bucket = self.buckets.get(&0).unwrap();
@@ -199,7 +199,7 @@ impl ComponentTable {
 }
 
 impl ComponentBucket {
-    // TODO: obviously shouldn't be allocating, should return some kind of ref
+    // TODO(cmc): obviously shouldn't be allocating, should return some kind of ref
     pub fn get(&self, row_idx: u64) -> Box<dyn Array> {
         let row_idx = row_idx - self.row_offset;
         self.data.slice(row_idx as usize, 1)

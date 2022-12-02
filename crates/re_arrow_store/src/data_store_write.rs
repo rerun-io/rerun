@@ -9,7 +9,7 @@ use arrow2::buffer::Buffer;
 use arrow2::chunk::Chunk;
 use arrow2::compute::concatenate::concatenate;
 use arrow2::datatypes::{DataType, Schema};
-use polars::prelude::{IndexOfSchema, NamedFrom};
+use polars::prelude::IndexOfSchema;
 
 use re_log_types::arrow::{ENTITY_PATH_KEY, TIMELINE_KEY, TIMELINE_SEQUENCE, TIMELINE_TIME};
 use re_log_types::{ObjPath as EntityPath, TimeType, Timeline};

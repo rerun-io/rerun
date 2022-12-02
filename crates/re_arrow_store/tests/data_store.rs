@@ -17,7 +17,7 @@ use re_log_types::{ObjPath as EntityPath, TimeType, Timeline};
 
 // ---
 
-// TODO: same thing, but as a benchmark
+// TODO(cmc): same thing, but as a benchmark
 #[test]
 fn single_entity_multi_timelines_multi_components_roundtrip() {
     let mut store = DataStore::default();
@@ -87,6 +87,24 @@ fn single_entity_multi_timelines_multi_components_roundtrip() {
 
     let timeline = Timeline::new("frame_nr", TimeType::Sequence);
     let components = &["instances", "rects", "positions"];
+
+    // Querying at a time where no data exists.
+    let df = store
+        .query(&timeline, TimeQuery::LatestAt(40), &ent_path, components)
+        .unwrap();
+    dbg!(&df);
+
+    // Querying a bunch of components that don't exist.
+    let df = store
+        .query(
+            &timeline,
+            TimeQuery::LatestAt(40),
+            &ent_path,
+            &["they", "dont", "exist"],
+        )
+        .unwrap();
+    dbg!(&df);
+
     let df = store
         .query(&timeline, TimeQuery::LatestAt(44), &ent_path, components)
         .unwrap();
@@ -170,24 +188,17 @@ fn pack_timelines(
 
 fn build_instances(nb_instances: usize) -> (Schema, ListArray<i32>) {
     use rand::Rng as _;
-
     let mut rng = rand::thread_rng();
+
     let data = PrimitiveArray::from(
         (0..nb_instances)
             .into_iter()
             .map(|_| Some(rng.gen()))
             .collect::<Vec<Option<u32>>>(),
     );
-
-    let data = ListArray::<i32>::from_data(
-        ListArray::<i32>::default_datatype(data.data_type().clone()), // datatype
-        Buffer::from(vec![0, nb_instances as i32]),                   // offsets
-        data.boxed(),                                                 // values
-        None,                                                         // validity
-    );
+    let data = wrap_in_list(data.boxed(), nb_instances);
 
     let fields = [Field::new("instances", data.data_type().clone(), false)].to_vec();
-
     let schema = Schema {
         fields,
         ..Default::default()
@@ -211,16 +222,9 @@ fn build_rects(nb_instances: usize) -> (Schema, ListArray<i32>) {
         ];
         StructArray::new(DataType::Struct(fields), vec![x, y, w, h], None)
     };
-
-    let data = ListArray::<i32>::from_data(
-        ListArray::<i32>::default_datatype(data.data_type().clone()), // datatype
-        Buffer::from(vec![0, nb_instances as i32]),                   // offsets
-        data.boxed(),                                                 // values
-        None,                                                         // validity
-    );
+    let data = wrap_in_list(data.boxed(), nb_instances);
 
     let fields = [Field::new("rects", data.data_type().clone(), false)].to_vec();
-
     let schema = Schema {
         fields,
         ..Default::default()
@@ -250,16 +254,9 @@ fn build_positions(nb_instances: usize) -> (Schema, ListArray<i32>) {
         ];
         StructArray::new(DataType::Struct(fields), vec![x, y], None)
     };
-
-    let data = ListArray::<i32>::from_data(
-        ListArray::<i32>::default_datatype(data.data_type().clone()),
-        Buffer::from(vec![0, nb_instances as i32]),
-        data.boxed(),
-        None,
-    );
+    let data = wrap_in_list(data.boxed(), nb_instances);
 
     let fields = [Field::new("positions", data.data_type().clone(), false)].to_vec();
-
     let schema = Schema {
         fields,
         ..Default::default()
@@ -318,4 +315,13 @@ fn build_message(
     cols.push(components_data.boxed());
 
     (schema, Chunk::new(cols))
+}
+
+fn wrap_in_list(data: Box<dyn Array>, len: usize) -> ListArray<i32> {
+    ListArray::<i32>::from_data(
+        ListArray::<i32>::default_datatype(data.data_type().clone()),
+        Buffer::from(vec![0, len as i32]),
+        data,
+        None,
+    )
 }
