@@ -38,7 +38,7 @@ impl DataStore {
         let timelines = extract_timelines(schema, &msg)?;
         let components = extract_components(schema, &msg)?;
 
-        // TODO: sort the "instances" component, and everything else accordingly!
+        // TODO(cmc): sort the "instances" component, and everything else accordingly!
 
         let mut indices = HashMap::with_capacity(components.len());
         for (name, component) in components {
@@ -62,14 +62,12 @@ impl DataStore {
     }
 }
 
-// TODO: document the datamodel here: 1 timestamp per message per timeline.
-// TODO: is that the right data model for this? is it optimal? etc
 fn extract_timelines<'data>(
     schema: &Schema,
     msg: &'data Chunk<Box<dyn Array>>,
 ) -> anyhow::Result<Vec<(Timeline, TypedTimeInt)>> {
     let timelines = schema
-        .index_of("timelines") // TODO
+        .index_of("timelines") // TODO(cmc): maybe at least a constant or something
         .and_then(|idx| msg.columns().get(idx))
         .ok_or_else(|| anyhow!("expect top-level `timelines` field`"))?;
 
@@ -131,13 +129,12 @@ fn extract_timelines<'data>(
     timelines
 }
 
-// TODO: is that the right data model for this? is it optimal? etc
 fn extract_components<'data>(
     schema: &Schema,
     msg: &'data Chunk<Box<dyn Array>>,
 ) -> anyhow::Result<Vec<(ComponentNameRef<'data>, &'data Box<dyn Array>)>> {
     let components = schema
-        .index_of("components") // TODO
+        .index_of("components") // TODO(cmc): maybe at least a constant or something
         .and_then(|idx| msg.columns().get(idx))
         .ok_or_else(|| anyhow!("expect top-level `components` field`"))?;
 
@@ -146,8 +143,7 @@ fn extract_components<'data>(
         .downcast_ref::<StructArray>()
         .ok_or_else(|| anyhow!("expect component values to be `StructArray`s"))?;
 
-    // TODO: check validity using component registry and such
-    // TODO: they all should be list, no matter what!!!
+    // TODO(cmc): they all should be lists, no matter what!!!
     Ok(components
         .fields()
         .iter()
@@ -176,7 +172,7 @@ impl IndexTable {
         time: TypedTimeInt,
         indices: &HashMap<ComponentNameRef<'_>, RowIndex>,
     ) -> anyhow::Result<()> {
-        // TODO: real bucketing!
+        // TODO(cmc): real bucketing!
         let bucket = self.buckets.iter_mut().next().unwrap().1;
         bucket.insert(time, indices)
     }
@@ -199,10 +195,10 @@ impl IndexBucket {
         time: TypedTimeInt,
         row_indices: &HashMap<ComponentNameRef<'_>, RowIndex>,
     ) -> anyhow::Result<()> {
-        // append time
+        // append time to primary index
         self.times.push(time.as_i64().into());
 
-        // append everything else!
+        // append components to secondary indices (2-way merge)
 
         // Step 1: for all row indices, check whether the index for the associated component
         // exists:
@@ -246,7 +242,6 @@ impl IndexBucket {
         }
 
         self.is_sorted = false;
-        self.sort_indices()?; // TODO: move to read path!
 
         Ok(())
     }
@@ -264,19 +259,12 @@ impl ComponentTable {
         }
     }
 
-    //     pub fn push(&mut self, time_points, values) -> u64 {
-    //         if self.last().len() > TOO_LARGE {
-    //             self.push(ComponentTableBucket::new());
-    //         }
-    //         self.last().push(time_points, values)
-    //     }
     pub fn insert(
         &mut self,
         timelines: &[(Timeline, TypedTimeInt)],
         data: &Box<dyn Array>,
     ) -> anyhow::Result<RowIndex> {
-        // TODO: Let's start the very dumb way: one bucket only, then we'll deal with splitting.
-        // TODO: real bucketing!
+        // TODO(cmc): real bucketing!
         self.buckets.get_mut(&0).unwrap().insert(timelines, data)
     }
 }
@@ -298,7 +286,7 @@ impl ComponentBucket {
                 None,
             );
 
-            // TODO: throw error
+            // TODO(cmc): throw error
             concatenate(&[&*new_empty_array(datatype), &*empty.boxed()]).unwrap()
         } else {
             new_empty_array(datatype)
@@ -318,7 +306,7 @@ impl ComponentBucket {
         data: &Box<dyn Array>,
     ) -> anyhow::Result<RowIndex> {
         for (timeline, time) in timelines {
-            // TODO: prob should own it at this point
+            // TODO(cmc): prob should own it at this point
             let time = *time;
             let time_plus_one = time + 1;
             self.time_ranges
@@ -327,7 +315,7 @@ impl ComponentBucket {
                 .or_insert_with(|| time..time_plus_one);
         }
 
-        // TODO: actual mutable array :)
+        // TODO(cmc): replace with an actual mutable array!
         self.data = concatenate(&[&*self.data, &**data])?;
 
         Ok(self.row_offset + self.data.len() as u64 - 1)

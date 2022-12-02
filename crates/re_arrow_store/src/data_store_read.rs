@@ -44,7 +44,6 @@ impl DataStore {
             TimeQuery::Range(_) => unimplemented!(), // TODO
         };
 
-        // TODO: those clones suck
         let row_indices = self
             .indices
             .get_mut(&(timeline.clone(), ent_path.clone()))
@@ -87,9 +86,9 @@ impl IndexTable {
 
 impl IndexBucket {
     /// Sort all indices by time.
-    pub fn sort_indices(&mut self) -> anyhow::Result<()> {
+    pub fn sort_indices(&mut self) {
         if self.is_sorted {
-            return Ok(());
+            return;
         }
 
         let swaps = {
@@ -103,8 +102,8 @@ impl IndexBucket {
 
         // shuffle time index back into a sorted state
         {
-            // It shouldn't be possible for the time index to ever have "holes", so it shouldn't
-            // even have a validity bitmap attached to it to begin with.
+            // The time index must always be dense, thus it shouldn't even have a validity
+            // bitmap attached to it to begin with.
             assert!(self.times.validity().is_none());
 
             let source = self.times.values().clone();
@@ -149,8 +148,6 @@ impl IndexBucket {
         }
 
         self.is_sorted = true;
-
-        Ok(())
     }
 
     pub fn latest_at<'a>(
@@ -158,7 +155,7 @@ impl IndexBucket {
         at: i64,
         components: &[ComponentNameRef<'a>],
     ) -> HashMap<ComponentNameRef<'a>, RowIndex> {
-        self.sort_indices().unwrap(); // TODO
+        self.sort_indices();
 
         // find the corresponding row index within the time index
         let times = self.times.values();
@@ -189,9 +186,8 @@ impl IndexBucket {
 // --- Components ---
 
 impl ComponentTable {
-    // TODO(cmc): obviously shouldn't be allocating, should return some kind of ref
     pub fn get(&self, row_idx: u64) -> Box<dyn Array> {
-        // TODO: real bucketing!
+        // TODO(cmc): real bucketing!
         let bucket = self.buckets.get(&0).unwrap();
 
         bucket.get(row_idx)
