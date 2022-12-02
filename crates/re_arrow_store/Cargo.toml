@@ -11,9 +11,14 @@ re_log = { path = "../re_log" }
 re_log_types = { path = "../re_log_types" }
 
 arrow2 = { version = "0.14", features = ["io_ipc"] }
+arrow2_convert = { version = "0.3" }
+chrono = "0.4"
 nohash-hasher = "0.2"
 polars = { version = "0.25", features = [
   "dtype-time",
   "dtype-struct",
 ], default-features = false }
 thiserror = "1.0"
+
+[dev-dependencies]
+polars = { version = "0.25", features = ["fmt"], default-features = false }
