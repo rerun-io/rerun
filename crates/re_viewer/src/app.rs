@@ -919,7 +919,7 @@ fn top_bar_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &mut App) {
             medium_toggle_icon_button(
                 ui,
                 &mut app.state.static_image_cache,
-                "toggle_selection_view_medium",
+                "right_panel_toggle",
                 include_bytes!("../data/icons/right_panel_toggle.png"),
                 &mut blueprint.selection_panel_expanded,
             )
@@ -931,7 +931,7 @@ fn top_bar_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &mut App) {
             medium_toggle_icon_button(
                 ui,
                 &mut app.state.static_image_cache,
-                "toggle_time_panel_view_medium",
+                "bottom_panel_toggle",
                 include_bytes!("../data/icons/bottom_panel_toggle.png"),
                 &mut blueprint.time_panel_expanded,
             )
@@ -943,7 +943,7 @@ fn top_bar_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &mut App) {
             medium_toggle_icon_button(
                 ui,
                 &mut app.state.static_image_cache,
-                "toggle_blueprint_panel_view_medium",
+                "left_panel_toggle",
                 include_bytes!("../data/icons/left_panel_toggle.png"),
                 &mut blueprint.blueprint_panel_expanded,
             )
