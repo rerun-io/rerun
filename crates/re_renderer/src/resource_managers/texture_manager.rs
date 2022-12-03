@@ -5,13 +5,15 @@ use crate::{
     DebugLabel,
 };
 
-use super::{
-    resource_manager::ResourceManager, ResourceHandle, ResourceLifeTime, ResourceManagerError,
-};
+use super::ResourceManagerError;
 
-slotmap::new_key_type! { pub struct Texture2DHandleInner; }
-
-pub type GpuTexture2DHandle = ResourceHandle<Texture2DHandleInner>; // TODO: Make this an alias/struct for strong texture handle.
+/// Handle to a 2D resource.
+///
+/// Currently, this is solely a more strongly typed regular gpu texture handle.
+/// Since all textures have "long lived" behavior (no temp allocation, alive until unused),
+/// there is no difference as with buffer reliant data like meshes or most contents of draw-data.
+#[derive(Clone)]
+pub struct GpuTexture2DHandle(GpuTextureHandleStrong);
 
 /// Data required to create a texture 2d resource.
 ///
@@ -57,8 +59,9 @@ impl<'a> Texture2DCreationDesc<'a> {
 /// This manager in contrast, deals with user provided texture data!
 /// We might revisit this later and make this texture manager more general purpose.
 pub struct TextureManager2D {
-    // TODO: cut out this middle man for the time being.
-    manager: ResourceManager<Texture2DHandleInner, GpuTextureHandleStrong>,
+    // Long lived/short lived doesn't make sense for textures since we don't yet know a way to
+    // optimize for short lived textures as we do with buffer data.
+    //manager: ResourceManager<Texture2DHandleInner, GpuTextureHandleStrong>,
     white_texture: GpuTexture2DHandle,
 
     // For convenience to reduce amount of times we need to pass them around
@@ -72,26 +75,20 @@ impl TextureManager2D {
         queue: Arc<wgpu::Queue>,
         texture_pool: &mut GpuTexturePool,
     ) -> Self {
-        let mut manager = ResourceManager::default();
-
-        let white_texture = manager.store_resource(
-            Self::create_and_upload_texture(
-                &device,
-                &queue,
-                texture_pool,
-                &Texture2DCreationDesc {
-                    label: "placeholder".into(),
-                    data: &[255, 255, 255, 255],
-                    format: wgpu::TextureFormat::Rgba8UnormSrgb,
-                    width: 1,
-                    height: 1,
-                },
-            ),
-            ResourceLifeTime::LongLived,
+        let white_texture = Self::create_and_upload_texture(
+            &device,
+            &queue,
+            texture_pool,
+            &Texture2DCreationDesc {
+                label: "placeholder".into(),
+                data: &[255, 255, 255, 255],
+                format: wgpu::TextureFormat::Rgba8UnormSrgb,
+                width: 1,
+                height: 1,
+            },
         );
 
         Self {
-            manager,
             white_texture,
             device,
             queue,
@@ -99,11 +96,11 @@ impl TextureManager2D {
     }
 
     /// Creates a new 2D texture resource and schedules data upload to the GPU.
+    #[allow(clippy::unused_self)]
     pub fn create(
         &mut self,
         texture_pool: &mut GpuTexturePool,
         creation_desc: &Texture2DCreationDesc<'_>,
-        lifetime: ResourceLifeTime,
     ) -> GpuTexture2DHandle {
         // TODO(andreas): Disabled the warning as we're moving towards using this texture manager for user-logged images.
         // However, it's still very much a concern especially once we add mipmapping. Something we need to keep in mind.
@@ -118,10 +115,10 @@ impl TextureManager2D {
         //     );
         // }
 
-        let texture_handle =
-            Self::create_and_upload_texture(&self.device, &self.queue, texture_pool, creation_desc);
+        // Currently we don't store any data in the the texture manager.
+        // In the future we might handle (lazy?) mipmap generation in here or keep track of lazy upload processing.
 
-        self.manager.store_resource(texture_handle, lifetime)
+        Self::create_and_upload_texture(&self.device, &self.queue, texture_pool, creation_desc)
     }
 
     /// Returns a single pixel white pixel.
@@ -134,7 +131,7 @@ impl TextureManager2D {
         queue: &wgpu::Queue,
         texture_pool: &mut GpuTexturePool,
         creation_desc: &Texture2DCreationDesc<'_>,
-    ) -> GpuTextureHandleStrong {
+    ) -> GpuTexture2DHandle {
         let size = wgpu::Extent3d {
             width: creation_desc.width,
             height: creation_desc.height,
@@ -198,17 +195,23 @@ impl TextureManager2D {
 
         // TODO(andreas): mipmap generation
 
-        texture_handle
+        GpuTexture2DHandle(texture_handle)
     }
 
-    pub(crate) fn get(
+    /// Retrieves gpu handle.
+    ///
+    /// TODO(andreas): Lifetime dependency from incoming and returned handle will likely be removed in the future.
+    #[allow(clippy::unnecessary_wraps, clippy::unused_self)]
+    pub(crate) fn get<'a>(
         &self,
-        handle: &GpuTexture2DHandle,
-    ) -> Result<&GpuTextureHandleStrong, ResourceManagerError> {
-        self.manager.get(handle)
+        handle: &'a GpuTexture2DHandle,
+    ) -> Result<&'a GpuTextureHandleStrong, ResourceManagerError> {
+        Ok(&handle.0)
     }
 
-    pub(crate) fn frame_maintenance(&mut self, frame_index: u64) {
-        self.manager.frame_maintenance(frame_index);
+    #[allow(clippy::unused_self)]
+    pub(crate) fn frame_maintenance(&mut self, _frame_index: u64) {
+        // no-op.
+        // In the future we might add handling of background processing or introduce frame-lived textures.
     }
 }

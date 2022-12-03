@@ -70,11 +70,10 @@ pub fn load_gltf_from_buffer(
             height: image.height,
         };
 
-        images_as_textures.push(ctx.texture_manager_2d.create(
-            &mut ctx.gpu_resources.textures,
-            &texture,
-            lifetime,
-        ));
+        images_as_textures.push(
+            ctx.texture_manager_2d
+                .create(&mut ctx.gpu_resources.textures, &texture),
+        );
     }
 
     let mut meshes = HashMap::with_capacity(doc.meshes().len());

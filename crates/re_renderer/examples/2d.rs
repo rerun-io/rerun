@@ -1,6 +1,6 @@
 use re_renderer::{
     renderer::{LineStripFlags, Rectangle, RectangleDrawData, TextureFilterMag, TextureFilterMin},
-    resource_managers::{GpuTexture2DHandle, ResourceLifeTime, Texture2DCreationDesc},
+    resource_managers::{GpuTexture2DHandle, Texture2DCreationDesc},
     texture_values::ValueRgba8UnormSrgb,
     view_builder::{self, Projection, ViewBuilder},
     LineStripSeriesBuilder,
@@ -43,7 +43,6 @@ impl framework::Example for Render2D {
                 width: rerun_logo.width(),
                 height: rerun_logo.height(),
             },
-            ResourceLifeTime::LongLived,
         );
         Render2D {
             rerun_logo_texture,
