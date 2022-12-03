@@ -55,7 +55,7 @@ pub enum ResourceLifeTime {
     LongLived,
 }
 
-pub struct ResourceManager<InnerHandle: Key, Res> {
+pub struct ResourceManager<InnerHandle: Key, GpuRes> {
     /// We store a refcounted handle along side every long lived resource so we can tell if it is still alive.
     /// This mechanism is similar to [`crate::wgpu_resources::DynamicResourcePool`], only that we don't retain for another frame.
     ///
@@ -63,13 +63,13 @@ pub struct ResourceManager<InnerHandle: Key, Res> {
     /// If we get *a lot* of resources this might scale poorly (well, linearly)
     /// If this happens, we need to make the handle more complex and give it an Arc<Mutex<>> of a free list where it can enter itself.
     /// (which makes passing the handles & having many short lived handles more costly)
-    long_lived_resources: SlotMap<InnerHandle, (Res, Arc<InnerHandle>)>,
-    single_frame_resources: SlotMap<InnerHandle, Res>,
+    long_lived_resources: SlotMap<InnerHandle, (GpuRes, Arc<InnerHandle>)>,
+    single_frame_resources: SlotMap<InnerHandle, GpuRes>,
 
     frame_index: u64,
 }
 
-impl<InnerHandle: Key, Res> Default for ResourceManager<InnerHandle, Res> {
+impl<InnerHandle: Key, GpuRes> Default for ResourceManager<InnerHandle, GpuRes> {
     fn default() -> Self {
         Self {
             long_lived_resources: Default::default(),
@@ -79,15 +79,15 @@ impl<InnerHandle: Key, Res> Default for ResourceManager<InnerHandle, Res> {
     }
 }
 
-impl<InnerHandle, Res> ResourceManager<InnerHandle, Res>
+impl<InnerHandle, GpuRes> ResourceManager<InnerHandle, GpuRes>
 where
     InnerHandle: Key,
-    Res: Clone,
+    GpuRes: Clone,
 {
     /// Creates a new resource.
     pub fn store_resource(
         &mut self,
-        resource: Res,
+        resource: GpuRes,
         lifetime: ResourceLifeTime,
     ) -> ResourceHandle<InnerHandle> {
         match lifetime {
@@ -109,7 +109,7 @@ where
     pub(crate) fn get(
         &self,
         handle: &ResourceHandle<InnerHandle>,
-    ) -> Result<&Res, ResourceManagerError> {
+    ) -> Result<&GpuRes, ResourceManagerError> {
         match handle {
             ResourceHandle::LongLived(key) => self
                 .long_lived_resources
