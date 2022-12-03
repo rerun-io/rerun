@@ -18,17 +18,17 @@ pub struct Compositor {
 }
 
 #[derive(Clone)]
-pub struct CompositorDrawable {
+pub struct CompositorDrawData {
     /// [`GpuBindGroupHandleStrong`] pointing at the current image source and
     /// a uniform buffer for describing a tonemapper/compositor configuration.
     bind_group: GpuBindGroupHandleStrong,
 }
 
-impl Drawable for CompositorDrawable {
+impl DrawData for CompositorDrawData {
     type Renderer = Compositor;
 }
 
-impl CompositorDrawable {
+impl CompositorDrawData {
     pub fn new(ctx: &mut RenderContext, target: &GpuTextureHandleStrong) -> Self {
         let pools = &mut ctx.resource_pools;
         let compositor = ctx.renderers.get_or_create::<_, Compositor>(
@@ -37,7 +37,7 @@ impl CompositorDrawable {
             &ctx.device,
             &mut ctx.resolver,
         );
-        CompositorDrawable {
+        CompositorDrawData {
             bind_group: pools.bind_groups.alloc(
                 &ctx.device,
                 &BindGroupDesc {
@@ -55,7 +55,7 @@ impl CompositorDrawable {
 }
 
 impl Renderer for Compositor {
-    type DrawData = CompositorDrawable;
+    type RendererDrawData = CompositorDrawData;
 
     fn create_renderer<Fs: FileSystem>(
         shared_data: &SharedRendererData,
@@ -130,7 +130,7 @@ impl Renderer for Compositor {
         &self,
         pools: &'a WgpuResourcePools,
         pass: &mut wgpu::RenderPass<'a>,
-        draw_data: &CompositorDrawable,
+        draw_data: &CompositorDrawData,
     ) -> anyhow::Result<()> {
         let pipeline = pools.render_pipelines.get_resource(self.render_pipeline)?;
         let bind_group = pools.bind_groups.get_resource(&draw_data.bind_group)?;

@@ -114,7 +114,7 @@ impl framework::Example for Render2D {
             .radius(line_radius)
             .color_rgb(255, 50, 50)
             .flags(LineStripFlags::CAP_END_TRIANGLE);
-        let line_strip_draw_data = line_strip_builder.to_drawable(re_ctx);
+        let line_strip_draw_data = line_strip_builder.to_draw_data(re_ctx);
 
         let image_scale = 8.0;
         let rectangle_draw_data = RectangleDrawData::new(
