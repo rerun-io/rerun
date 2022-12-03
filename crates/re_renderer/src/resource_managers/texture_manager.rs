@@ -16,47 +16,24 @@ pub type GpuTexture2DHandle = ResourceHandle<Texture2DHandleInner>; // TODO: Mak
 /// Data required to create a texture 2d resource.
 ///
 /// It is *not* stored along side the resulting texture resource!
-pub struct Texture2DCreationDesc {
+pub struct Texture2DCreationDesc<'a> {
     pub label: DebugLabel,
     /// Data for the highest mipmap level.
     /// Must be padded according to wgpu rules and ready for upload.
     /// TODO(andreas): This should be a kind of factory function/builder instead which gets target memory passed in.
-    pub data: Vec<u8>, // TODO: make this a slice
+    pub data: &'a [u8],
     pub format: wgpu::TextureFormat,
     pub width: u32,
     pub height: u32,
     //generate_mip_maps: bool, // TODO(andreas): generate mipmaps!
 }
 
-impl Texture2DCreationDesc {
+impl<'a> Texture2DCreationDesc<'a> {
     pub fn convert_rgb8_to_rgba8(rgb_pixels: &[u8]) -> Vec<u8> {
         rgb_pixels
             .chunks_exact(3)
             .flat_map(|color| [color[0], color[1], color[2], 255])
             .collect()
-    }
-
-    /// Ensures that the data has correct row padding.
-    pub fn pad_rows_if_necessary(&mut self) {
-        if !self.needs_row_alignment() {
-            return;
-        }
-
-        let bytes_per_row = self.bytes_per_row();
-
-        let num_padding_bytes = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT
-            - (bytes_per_row % wgpu::COPY_BYTES_PER_ROW_ALIGNMENT);
-
-        self.data = self
-            .data
-            .chunks_exact(bytes_per_row as usize)
-            .flat_map(|unpadded_row| {
-                unpadded_row
-                    .iter()
-                    .cloned()
-                    .chain(std::iter::repeat(255).take(num_padding_bytes as usize))
-            })
-            .collect();
     }
 
     /// Bytes per row the texture should (!) have.
@@ -104,7 +81,7 @@ impl TextureManager2D {
                 texture_pool,
                 &Texture2DCreationDesc {
                     label: "placeholder".into(),
-                    data: vec![255, 255, 255, 255],
+                    data: &[255, 255, 255, 255],
                     format: wgpu::TextureFormat::Rgba8UnormSrgb,
                     width: 1,
                     height: 1,
@@ -125,7 +102,7 @@ impl TextureManager2D {
     pub fn create(
         &mut self,
         texture_pool: &mut GpuTexturePool,
-        mut creation_desc: Texture2DCreationDesc,
+        creation_desc: &Texture2DCreationDesc<'_>,
         lifetime: ResourceLifeTime,
     ) -> GpuTexture2DHandle {
         // TODO(andreas): Disabled the warning as we're moving towards using this texture manager for user-logged images.
@@ -140,21 +117,9 @@ impl TextureManager2D {
         //         resource.height
         //     );
         // }
-        if creation_desc.needs_row_alignment() {
-            re_log::warn!(
-                "Texture {:?} byte rows are not aligned to {}. Adding padding now.",
-                creation_desc.label,
-                wgpu::COPY_BYTES_PER_ROW_ALIGNMENT
-            );
-            creation_desc.pad_rows_if_necessary();
-        }
 
-        let texture_handle = Self::create_and_upload_texture(
-            &self.device,
-            &self.queue,
-            texture_pool,
-            &creation_desc,
-        );
+        let texture_handle =
+            Self::create_and_upload_texture(&self.device, &self.queue, texture_pool, creation_desc);
 
         self.manager.store_resource(texture_handle, lifetime)
     }
@@ -168,7 +133,7 @@ impl TextureManager2D {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         texture_pool: &mut GpuTexturePool,
-        creation_desc: &Texture2DCreationDesc,
+        creation_desc: &Texture2DCreationDesc<'_>,
     ) -> GpuTextureHandleStrong {
         let size = wgpu::Extent3d {
             width: creation_desc.width,
@@ -188,6 +153,30 @@ impl TextureManager2D {
             },
         );
         let texture = texture_pool.get_resource(&texture_handle).unwrap();
+        let bytes_per_row = creation_desc.bytes_per_row();
+
+        // TODO(andreas): Once we have our own temp buffer for uploading, we can do the padding inplace
+        // I.e. the only difference will be if we do one memcopy or one memcopy per row, making row padding a nuissance!
+        let mut data = creation_desc.data;
+        let mut padded_rows_copy_if_necessary = Vec::new();
+
+        if creation_desc.needs_row_alignment() {
+            let num_padding_bytes = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT
+                - (bytes_per_row % wgpu::COPY_BYTES_PER_ROW_ALIGNMENT);
+            padded_rows_copy_if_necessary.extend(
+                creation_desc
+                    .data
+                    .chunks_exact(bytes_per_row as usize)
+                    .flat_map(|unpadded_row| {
+                        unpadded_row
+                            .iter()
+                            .cloned()
+                            .chain(std::iter::repeat(255).take(num_padding_bytes as usize))
+                    }),
+            );
+
+            data = &padded_rows_copy_if_necessary[..];
+        };
 
         // TODO(andreas): temp allocator for staging data?
         // We don't do any further validation of the buffer here as wgpu does so extensively.
@@ -198,12 +187,10 @@ impl TextureManager2D {
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,
             },
-            &creation_desc.data,
+            data,
             wgpu::ImageDataLayout {
                 offset: 0,
-                bytes_per_row: Some(
-                    NonZeroU32::new(creation_desc.bytes_per_row()).expect("invalid bytes per row"),
-                ),
+                bytes_per_row: Some(NonZeroU32::new(bytes_per_row).expect("invalid bytes per row")),
                 rows_per_image: None,
             },
             size,

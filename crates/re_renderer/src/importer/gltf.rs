@@ -57,23 +57,22 @@ pub fn load_gltf_from_buffer(
         #[cfg(not(debug_assertions))]
         let texture_names = "";
 
-        let mut texture = Texture2DCreationDesc {
+        let texture = Texture2DCreationDesc {
             label: if texture_names.is_empty() {
                 format!("unnamed gltf image in {mesh_name}")
             } else {
                 format!("gltf image used by {texture_names} in {mesh_name}")
             }
             .into(),
-            data,
+            data: &data,
             format,
             width: image.width,
             height: image.height,
         };
-        texture.pad_rows_if_necessary();
 
         images_as_textures.push(ctx.texture_manager_2d.create(
             &mut ctx.gpu_resources.textures,
-            texture,
+            &texture,
             lifetime,
         ));
     }

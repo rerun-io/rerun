@@ -36,9 +36,9 @@ impl framework::Example for Render2D {
 
         let rerun_logo_texture = re_ctx.texture_manager_2d.create(
             &mut re_ctx.gpu_resources.textures,
-            Texture2DCreationDesc {
+            &Texture2DCreationDesc {
                 label: "rerun logo".into(),
-                data: image_data,
+                data: &image_data,
                 format: wgpu::TextureFormat::Rgba8UnormSrgb,
                 width: rerun_logo.width(),
                 height: rerun_logo.height(),
