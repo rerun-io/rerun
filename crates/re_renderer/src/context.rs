@@ -73,8 +73,8 @@ impl RenderContext {
         queue: Arc<wgpu::Queue>,
         config: RenderContextConfig,
     ) -> Self {
-        let mut resource_pools = WgpuResourcePools::default();
-        let global_bindings = GlobalBindings::new(&mut resource_pools, &device);
+        let mut gpu_resources = WgpuResourcePools::default();
+        let global_bindings = GlobalBindings::new(&mut gpu_resources, &device);
 
         // Validate capabilities of the device.
         assert!(
@@ -114,24 +114,42 @@ impl RenderContext {
             err_tracker
         };
 
+        let shared_renderer_data = SharedRendererData {
+            config,
+            global_bindings,
+        };
+
+        let mut resolver = crate::new_recommended_file_resolver();
+        let mut renderers = Renderers {
+            renderers: TypeMap::new(),
+        };
+
+        let mesh_manager = MeshManager::new(
+            device.clone(),
+            queue.clone(),
+            renderers.get_or_create(
+                &shared_renderer_data,
+                &mut gpu_resources,
+                &device,
+                &mut resolver,
+            ),
+        );
+        let texture_manager_2d =
+            TextureManager2D::new(device.clone(), queue.clone(), &mut gpu_resources.textures);
+
         RenderContext {
             device,
             queue,
 
-            shared_renderer_data: SharedRendererData {
-                config,
-                global_bindings,
-            },
+            shared_renderer_data,
 
-            renderers: Renderers {
-                renderers: TypeMap::new(),
-            },
-            gpu_resources: resource_pools,
+            renderers,
+            gpu_resources,
 
-            mesh_manager: MeshManager::default(),
-            texture_manager_2d: TextureManager2D::default(),
+            mesh_manager,
+            texture_manager_2d,
 
-            resolver: crate::new_recommended_file_resolver(),
+            resolver,
 
             #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
             err_tracker,

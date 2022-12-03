@@ -1,6 +1,6 @@
 use re_renderer::{
     renderer::{LineStripFlags, Rectangle, RectangleDrawData, TextureFilterMag, TextureFilterMin},
-    resource_managers::{ResourceLifeTime, Texture2D, Texture2DHandle},
+    resource_managers::{GpuTexture2DHandle, ResourceLifeTime, Texture2DCreationDesc},
     texture_values::ValueRgba8UnormSrgb,
     view_builder::{self, Projection, ViewBuilder},
     LineStripSeriesBuilder,
@@ -9,7 +9,7 @@ use re_renderer::{
 mod framework;
 
 struct Render2D {
-    rerun_logo_texture: Texture2DHandle,
+    rerun_logo_texture: GpuTexture2DHandle,
     rerun_logo_texture_width: u32,
     rerun_logo_texture_height: u32,
 }
@@ -34,10 +34,9 @@ impl framework::Example for Render2D {
             );
         }
 
-        let rerun_logo_texture = re_ctx.texture_manager_2d.store_resource(
-            &re_ctx.queue,
-            &mut re_ctx.gpu_resources,
-            Texture2D {
+        let rerun_logo_texture = re_ctx.texture_manager_2d.create(
+            &mut re_ctx.gpu_resources.textures,
+            Texture2DCreationDesc {
                 label: "rerun logo".into(),
                 data: image_data,
                 format: wgpu::TextureFormat::Rgba8UnormSrgb,
@@ -126,7 +125,7 @@ impl framework::Example for Render2D {
                     top_left_corner_position: glam::vec3(100.0, 100.0, -0.05),
                     extent_u: self.rerun_logo_texture_width as f32 * image_scale * glam::Vec3::X,
                     extent_v: self.rerun_logo_texture_height as f32 * image_scale * glam::Vec3::Y,
-                    texture: self.rerun_logo_texture,
+                    texture: self.rerun_logo_texture.clone(),
                     texture_filter_magnification: TextureFilterMag::Nearest,
                     texture_filter_minification: TextureFilterMin::Linear,
                 },
@@ -138,7 +137,7 @@ impl framework::Example for Render2D {
                     ),
                     extent_u: self.rerun_logo_texture_width as f32 * image_scale * glam::Vec3::X,
                     extent_v: self.rerun_logo_texture_height as f32 * image_scale * glam::Vec3::Y,
-                    texture: self.rerun_logo_texture,
+                    texture: self.rerun_logo_texture.clone(),
                     texture_filter_magnification: TextureFilterMag::Linear,
                     texture_filter_minification: TextureFilterMin::Linear,
                 },

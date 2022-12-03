@@ -62,6 +62,6 @@ pub struct WgpuResourcePools {
 
     pub(crate) bind_groups: GpuBindGroupPool,
 
-    pub(crate) buffers: GpuBufferPool,
-    pub(crate) textures: GpuTexturePool,
+    pub buffers: GpuBufferPool,
+    pub textures: GpuTexturePool,
 }

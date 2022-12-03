@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use anyhow::Context;
 use macaw::Conformal3;
 use smallvec::smallvec;
@@ -5,14 +7,15 @@ use smallvec::smallvec;
 use crate::{
     mesh::{mesh_vertices::MeshVertexData, Material, Mesh},
     renderer::MeshInstance,
-    resource_managers::{MeshManager, ResourceLifeTime, TextureManager2D},
+    resource_managers::ResourceLifeTime,
+    RenderContext,
 };
 
+/// Loads an obj into the mesh & texture manager.
 pub fn load_obj_from_buffer(
     buffer: &[u8],
     lifetime: ResourceLifeTime,
-    mesh_manager: &mut MeshManager,
-    texture_manager: &mut TextureManager2D,
+    ctx: &mut RenderContext,
 ) -> anyhow::Result<Vec<MeshInstance>> {
     let (models, _materials) = tobj::load_obj_buf(
         &mut std::io::Cursor::new(buffer),
@@ -45,27 +48,34 @@ pub fn load_obj_from_buffer(
                 })
                 .collect();
 
-            let texture = texture_manager.white_texture();
+            let texture = ctx.texture_manager_2d.white_texture();
 
             let num_indices = mesh.indices.len();
 
-            let mesh = mesh_manager.store_resource(
-                Mesh {
-                    label: model.name.into(),
-                    indices: mesh.indices,
-                    vertex_positions,
-                    vertex_data,
-                    // TODO(andreas): proper material loading
-                    materials: smallvec![Material {
-                        label: "default material".into(),
-                        index_range: 0..num_indices as u32,
-                        albedo: texture,
-                    }],
-                },
-                lifetime,
-            );
+            let mesh = Mesh {
+                label: model.name.into(),
+                indices: mesh.indices,
+                vertex_positions,
+                vertex_data,
+                // TODO(andreas): proper material loading
+                materials: smallvec![Material {
+                    label: "default material".into(),
+                    index_range: 0..num_indices as u32,
+                    albedo: texture.clone(),
+                }],
+            };
+            let gpu_mesh = ctx
+                .mesh_manager
+                .create(
+                    &mut ctx.gpu_resources,
+                    &ctx.texture_manager_2d,
+                    &mesh,
+                    lifetime,
+                )
+                .unwrap(); // TODO(andreas): Handle error
             MeshInstance {
-                mesh,
+                gpu_mesh,
+                mesh: Some(Arc::new(mesh)),
                 world_from_mesh: Conformal3::IDENTITY,
                 additive_tint_srgb: [0, 0, 0, 0],
             }

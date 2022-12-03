@@ -12,7 +12,7 @@ use smallvec::smallvec;
 use crate::{
     include_file,
     renderer::utils::next_multiple_of,
-    resource_managers::{ResourceManagerError, Texture2DHandle},
+    resource_managers::{GpuTexture2DHandle, ResourceManagerError},
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, BufferDesc, GpuBindGroupHandleStrong,
@@ -61,7 +61,7 @@ pub struct Rectangle {
     pub extent_v: glam::Vec3,
 
     /// Texture that fills the rectangle
-    pub texture: Texture2DHandle,
+    pub texture: GpuTexture2DHandle,
 
     pub texture_filter_magnification: TextureFilterMag,
     pub texture_filter_minification: TextureFilterMin,
@@ -151,12 +151,7 @@ impl RectangleDrawData {
 
         let mut bind_groups = Vec::with_capacity(rectangles.len());
         for (i, rectangle) in rectangles.iter().enumerate() {
-            let texture = ctx.texture_manager_2d.get_or_create_gpu_resource(
-                &mut ctx.gpu_resources,
-                &ctx.device,
-                &ctx.queue,
-                rectangle.texture,
-            )?;
+            let texture = ctx.texture_manager_2d.get(&rectangle.texture)?;
 
             let sampler = ctx.gpu_resources.samplers.get_or_create(
                 &ctx.device,
@@ -190,7 +185,7 @@ impl RectangleDrawData {
                             offset: i as u64 * allocation_size_per_uniform_buffer,
                             size: NonZeroU64::new(uniform_buffer_size as u64),
                         },
-                        BindGroupEntry::DefaultTextureView(*texture),
+                        BindGroupEntry::DefaultTextureView(**texture),
                         BindGroupEntry::Sampler(sampler)
                     ],
                     layout: rectangle_renderer.bind_group_layout,

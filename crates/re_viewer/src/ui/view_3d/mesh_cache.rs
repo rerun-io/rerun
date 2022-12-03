@@ -6,10 +6,7 @@ use crate::mesh_loader::CpuMesh;
 
 use super::scene::MeshSourceData;
 
-use re_renderer::{
-    resource_managers::{MeshManager, TextureManager2D},
-    RenderContext,
-};
+use re_renderer::RenderContext;
 
 // ----------------------------------------------------------------------------
 

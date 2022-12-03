@@ -1,8 +1,5 @@
 use re_log_types::{EncodedMesh3D, Mesh3D, MeshFormat, RawMesh3D};
-use re_renderer::{
-    resource_managers::{MeshManager, ResourceLifeTime, TextureManager2D},
-    RenderContext,
-};
+use re_renderer::{resource_managers::ResourceLifeTime, RenderContext};
 
 pub struct CpuMesh {
     name: String,
@@ -27,7 +24,7 @@ impl CpuMesh {
                 Self::load_encoded_mesh(name, encoded_mesh, render_ctx)
             }
             // Mesh from some file format. File passed in bytes.
-            Mesh3D::Raw(raw_mesh) => Ok(Self::load_raw_mesh(name, raw_mesh, render_ctx)),
+            Mesh3D::Raw(raw_mesh) => Ok(Self::load_raw_mesh(name, raw_mesh, render_ctx)?),
         }
     }
 
@@ -45,17 +42,11 @@ impl CpuMesh {
                     &name,
                     bytes,
                     ResourceLifeTime::LongLived,
-                    &render_ctx.queue,
-                    &mut render_ctx.gpu_resources,
-                    &mut render_ctx.mesh_manager,
-                    &mut render_ctx.texture_manager_2d,
+                    render_ctx,
                 )
             }
         }?;
-        let bbox = re_renderer::importer::calculate_bounding_box(
-            &render_ctx.mesh_manager,
-            &mesh_instances,
-        );
+        let bbox = re_renderer::importer::calculate_bounding_box(&mesh_instances);
 
         Ok(Self {
             name,
@@ -89,15 +80,16 @@ impl CpuMesh {
         for instance in &mut slf.mesh_instances {
             instance.world_from_mesh = transform * instance.world_from_mesh;
         }
-        slf.bbox = re_renderer::importer::calculate_bounding_box(
-            &render_ctx.mesh_manager,
-            &slf.mesh_instances,
-        );
+        slf.bbox = re_renderer::importer::calculate_bounding_box(&slf.mesh_instances);
 
         Ok(slf)
     }
 
-    fn load_raw_mesh(name: String, raw_mesh: &RawMesh3D, render_ctx: &mut RenderContext) -> Self {
+    fn load_raw_mesh(
+        name: String,
+        raw_mesh: &RawMesh3D,
+        render_ctx: &mut RenderContext,
+    ) -> anyhow::Result<Self> {
         crate::profile_function!();
 
         let bbox = macaw::BoundingBox::from_points(
@@ -105,8 +97,10 @@ impl CpuMesh {
         );
 
         let mesh_instances = vec![re_renderer::renderer::MeshInstance {
-            mesh: render_ctx.mesh_manager.store_resource(
-                re_renderer::mesh::Mesh {
+            gpu_mesh: render_ctx.mesh_manager.create(
+                &mut render_ctx.gpu_resources,
+                &render_ctx.texture_manager_2d,
+                &re_renderer::mesh::Mesh {
                     label: name.clone().into(),
                     indices: raw_mesh.indices.iter().flatten().cloned().collect(),
                     vertex_positions: raw_mesh
@@ -126,20 +120,21 @@ impl CpuMesh {
                     materials: smallvec::smallvec![re_renderer::mesh::Material {
                         label: name.clone().into(),
                         index_range: 0..raw_mesh.indices.len() as _,
-                        albedo: render_ctx.texture_manager_2d.white_texture(),
+                        albedo: render_ctx.texture_manager_2d.white_texture().clone(),
                     }],
                 },
                 ResourceLifeTime::LongLived,
-            ),
+            )?,
+            mesh: None, // Don't need to keep cpu-mesh data around, we already have everything we wanted from it (the bounding box)
             world_from_mesh: Default::default(),
             additive_tint_srgb: [0, 0, 0, 0],
         }];
 
-        Self {
+        Ok(Self {
             name,
             bbox,
             mesh_instances,
-        }
+        })
     }
 
     #[allow(dead_code)]
