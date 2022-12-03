@@ -57,7 +57,7 @@ pub enum ResourceLifeTime {
 
 pub struct ResourceManager<InnerHandle: Key, GpuRes> {
     /// We store a refcounted handle along side every long lived resource so we can tell if it is still alive.
-    /// This mechanism is similar to [`crate::wgpu_resources::DynamicResourcePool`], only that we don't retain for another frame.
+    /// This mechanism is similar to `crate::wgpu_resources::DynamicResourcePool`, only that we don't retain for another frame.
     ///
     /// Perf note:
     /// If we get *a lot* of resources this might scale poorly (well, linearly)
