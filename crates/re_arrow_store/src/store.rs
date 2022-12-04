@@ -133,7 +133,7 @@ impl std::fmt::Display for DataStore {
 /// }
 /// ```
 ///
-/// See also: [`Self::IndexBucket`].
+/// See also: [`IndexBucket`].
 #[derive(Debug)]
 pub struct IndexTable {
     /// The timeline this table operates in, for debugging purposes.
@@ -170,12 +170,12 @@ impl std::fmt::Display for IndexTable {
 }
 
 /// An `IndexBucket` holds a size-delimited (data size and/or number of rows) chunk of a
-/// [`Self::IndexTable`].
+/// [`IndexTable`].
 ///
 /// - The data size limit is for garbage collection purposes.
 /// - The number of rows limit is to bound sorting costs on the read path.
 ///
-/// See [`Self::IndexTable`] to get an idea of what an `IndexBucket` looks like in practice.
+/// See [`IndexTable`] to get an idea of what an `IndexBucket` looks like in practice.
 #[derive(Debug)]
 pub struct IndexBucket {
     /// The time range covered by this bucket.
@@ -354,7 +354,7 @@ impl std::fmt::Display for ComponentTable {
     }
 }
 
-/// A `ComponentBucket` holds a size-delimited (data size) chunk of a [`Self::ComponentTable`].
+/// A `ComponentBucket` holds a size-delimited (data size) chunk of a [`ComponentTable`].
 #[derive(Debug)]
 pub struct ComponentBucket {
     /// The component's name, for debugging purposes.
