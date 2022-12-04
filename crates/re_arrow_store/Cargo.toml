@@ -41,3 +41,6 @@ polars = { version = "0.25", features = [
   "dtype-time",
   "dtype-struct",
 ], default-features = false }
+
+[dev-dependencies]
+tracing-subscriber = "0.3"

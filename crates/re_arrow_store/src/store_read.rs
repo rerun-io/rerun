@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use arrow2::array::{Array, MutableArray, UInt64Vec};
 use polars::prelude::{DataFrame, Series};
 
+use re_log::debug;
 use re_log_types::{ObjPath as EntityPath, Timeline};
 
 use crate::{
@@ -39,6 +40,14 @@ impl DataStore {
         ent_path: &EntityPath,
         components: &[ComponentNameRef<'_>],
     ) -> anyhow::Result<DataFrame> {
+        debug!(
+            ?timeline,
+            ?time_query,
+            %ent_path,
+            ?components,
+            "query started..."
+        );
+
         let latest_at = match time_query {
             TimeQuery::LatestAt(latest_at) => *latest_at,
             #[allow(clippy::todo)]
@@ -49,7 +58,15 @@ impl DataStore {
             .indices
             .get_mut(&(*timeline, ent_path.clone()))
             .map(|index| index.latest_at(latest_at, components))
-            .unwrap();
+            .unwrap_or_default();
+        debug!(
+            ?timeline,
+            ?time_query,
+            %ent_path,
+            ?components,
+            ?row_indices,
+            "row indices fetched"
+        );
 
         let mut series: HashMap<_, _> = row_indices
             .into_iter()
@@ -155,27 +172,45 @@ impl IndexBucket {
     ) -> HashMap<ComponentNameRef<'a>, RowIndex> {
         self.sort_indices();
 
+        debug!(
+            at,
+            ?components,
+            "searching for primary & secondary row indices..."
+        );
+
         // find the corresponding row index within the time index
         let times = self.times.values();
-        let time_row_idx = match times.binary_search(&at) {
-            Ok(time_row_idx) => time_row_idx as i64,
-            Err(time_row_idx_closest) => time_row_idx_closest.clamp(0, times.len() - 1) as i64,
+        let primary_idx = match times.binary_search(&at) {
+            Ok(primary_idx) => primary_idx as i64,
+            Err(primary_idx_closest) => {
+                // Trying to query _before_ the beginning of time... there's nothing there.
+                if primary_idx_closest == 0 {
+                    return HashMap::default();
+                }
+                primary_idx_closest.min(times.len() - 1) as i64
+            }
         };
+        debug!(%primary_idx, "found primary index");
 
         components
             .iter()
             .filter_map(|name| self.indices.get(*name).map(|index| (name, index)))
             .filter_map(|(name, index)| {
-                let mut row_idx = time_row_idx;
-                while !index.is_valid(row_idx as _) {
-                    row_idx -= 1;
-                    if row_idx < 0 {
+                let mut secondary_idx = primary_idx;
+                while !index.is_valid(secondary_idx as _) {
+                    secondary_idx -= 1;
+                    if secondary_idx < 0 {
+                        debug!(%name, "no secondary index found");
                         return None;
                     }
                 }
 
-                assert!(index.is_valid(row_idx as usize));
-                (*name, index.values()[row_idx as usize]).into()
+                assert!(index.is_valid(secondary_idx as usize));
+                let row_idx = index.values()[secondary_idx as usize];
+
+                debug!(%name, %secondary_idx, %row_idx, "found secondary index + row index");
+
+                (*name, row_idx).into()
             })
             .collect()
     }

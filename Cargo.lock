@@ -3631,6 +3631,7 @@ dependencies = [
  "re_log",
  "re_log_types",
  "thiserror",
+ "tracing-subscriber",
 ]
 
 [[package]]
