@@ -152,8 +152,11 @@ pub fn build_instances(nb_instances: usize) -> (ComponentNameRef<'static>, Schem
 }
 
 pub fn build_rects(nb_instances: usize) -> (ComponentNameRef<'static>, Schema, ListArray<i32>) {
+    use rand::Rng as _;
+    let mut rng = rand::thread_rng();
+
     let data = {
-        let data: Box<[_]> = (0..nb_instances).into_iter().map(|i| i as f32).collect();
+        let data: Box<[_]> = (0..nb_instances).into_iter().map(|_| rng.gen()).collect();
         let x = Float32Array::from_slice(&data).boxed();
         let y = Float32Array::from_slice(&data).boxed();
         let w = Float32Array::from_slice(&data).boxed();

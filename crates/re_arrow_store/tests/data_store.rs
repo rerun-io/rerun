@@ -161,12 +161,13 @@ fn single_entity_multi_timelines_multi_components_out_of_order_roundtrip() {
     let ent_path = EntityPath::from("this/that");
 
     let now = SystemTime::now();
-    let now_minus_20ms = now - Duration::from_millis(20);
     let now_minus_10ms = now - Duration::from_millis(10);
+    let now_minus_10ms_nanos = systemtime_to_nanos(now_minus_10ms);
     let now_plus_10ms = now + Duration::from_millis(10);
+    let now_plus_10ms_nanos = systemtime_to_nanos(now_plus_10ms);
     let now_plus_20ms = now + Duration::from_millis(20);
+    let now_plus_20ms_nanos = systemtime_to_nanos(now_plus_20ms);
 
-    let frame40 = 40;
     let frame41 = 41;
     let frame42 = 42;
     let frame43 = 43;
@@ -203,7 +204,7 @@ fn single_entity_multi_timelines_multi_components_out_of_order_roundtrip() {
     }
 
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
-    // let timeline_log_time = Timeline::new("log_time", TimeType::Time);
+    let timeline_log_time = Timeline::new("log_time", TimeType::Time);
     let components_all = &["instances", "rects", "positions"];
 
     // TODO(cmc): test log_times too!
@@ -225,7 +226,18 @@ fn single_entity_multi_timelines_multi_components_out_of_order_roundtrip() {
 
     // Scenario: query all components at `last log_time + 10ms`.
     // Expected: latest data for all components.
-    // TODO
+    tracker.assert_scenario(
+        &mut store,
+        &timeline_log_time,
+        &TimeQuery::LatestAt(now_plus_20ms_nanos),
+        &ent_path,
+        components_all,
+        [
+            ("instances", TypedTimeInt::new_time(now_plus_10ms_nanos)),
+            ("rects", TypedTimeInt::new_time(now_plus_10ms_nanos)),
+            ("positions", TypedTimeInt::new_time(now_minus_10ms_nanos)),
+        ],
+    );
 }
 
 // --- Helpers ---
@@ -249,16 +261,16 @@ impl DataTracker {
             for (name, _, comp) in &components {
                 assert!(self
                     .all_data
-                    .insert((name, time.clone()), comp.clone().boxed())
+                    .insert((name, *time), comp.clone().boxed())
                     .is_none());
             }
         }
 
         let (schema, components) = build_message(ent_path, times, components);
-        eprintln!("inserting into '{ent_path}':\nschema: {schema:#?}\ncomponents: {components:#?}");
+        // eprintln!("inserting into '{ent_path}':\nschema: {schema:#?}\ncomponents: {components:#?}");
         // eprintln!("---\ninserting into '{ent_path}': [log_time, frame_nr], [rects]");
         store.insert(&schema, &components).unwrap();
-        eprintln!("{store}");
+        // eprintln!("{store}");
     }
 
     fn assert_scenario<const N: usize>(
@@ -281,6 +293,8 @@ impl DataTracker {
             .collect::<Vec<_>>();
         let expected = DataFrame::new(series).unwrap();
 
+        store.sort_indices();
+        eprintln!("{store}");
         assert_eq!(expected, df);
     }
 }
