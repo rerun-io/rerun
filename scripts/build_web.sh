@@ -89,7 +89,7 @@ if [[ "${RELEASE}" = true ]]; then
   wasm-opt ${BUILD_DIR}/${CRATE_NAME}_bg.wasm -O2 --fast-math -o ${BUILD_DIR}/${CRATE_NAME}_bg.wasm # add -g to get debug symbols
 fi
 
-echo "Finished: ${BUILD_DIR}/${CRATE_NAME_SNAKE_CASE}.wasm"
+echo "Finished: ${BUILD_DIR}/${CRATE_NAME_SNAKE_CASE}_bg.wasm"
 
 if [ "${OPEN}" = true ]; then
   if [[ "$OSTYPE" == "linux-gnu"* ]]; then

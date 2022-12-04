@@ -22,58 +22,19 @@ impl SelectionPanel {
         egui_ctx: &egui::Context,
         blueprint: &mut Blueprint,
     ) {
-        let shortcut = crate::ui::kb_shortcuts::TOGGLE_SELECTION_PANEL;
-        blueprint.selection_panel_expanded ^= egui_ctx.input_mut().consume_shortcut(&shortcut);
-
-        let panel_frame = ctx.design_tokens.panel_frame(egui_ctx);
-
-        let collapsed = egui::SidePanel::right("selection_view_collapsed")
-            .resizable(false)
-            .frame(panel_frame)
-            .default_width(16.0);
-        let expanded = egui::SidePanel::right("selection_view_expanded")
+        let panel = egui::SidePanel::right("selection_view")
             .resizable(true)
-            .frame(panel_frame);
+            .frame(ctx.design_tokens.panel_frame(egui_ctx));
 
-        egui::SidePanel::show_animated_between(
+        panel.show_animated(
             egui_ctx,
             blueprint.selection_panel_expanded,
-            collapsed,
-            expanded,
-            |ui: &mut egui::Ui, expansion: f32| {
-                if expansion < 1.0 {
-                    // Collapsed, or animating:
-                    if ui
-                        .small_button("⏴")
-                        .on_hover_text(format!(
-                            "Expand Selection View ({})",
-                            egui_ctx.format_shortcut(&shortcut)
-                        ))
-                        .clicked()
-                    {
-                        blueprint.selection_panel_expanded = true;
-                    }
-                } else {
-                    // Expanded:
-                    if ui
-                        .small_button("⏵")
-                        .on_hover_text(format!(
-                            "Collapse Selection View ({})",
-                            egui_ctx.format_shortcut(&shortcut)
-                        ))
-                        .clicked()
-                    {
-                        blueprint.selection_panel_expanded = false;
-                    }
-
-                    ui.separator();
-
-                    if let Some(selection) = ctx.selection_history.selection_ui(ui, blueprint) {
-                        ctx.set_selection(selection);
-                    }
-
-                    self.contents(ui, ctx, blueprint);
+            |ui: &mut egui::Ui| {
+                if let Some(selection) = ctx.selection_history.selection_ui(ui, blueprint) {
+                    ctx.set_selection(selection);
                 }
+
+                self.contents(ui, ctx, blueprint);
             },
         );
     }
