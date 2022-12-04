@@ -270,6 +270,7 @@ impl TypeMsg {
         }
     }
 }
+
 /// The message sent to specify the data of a single field of an object.
 #[must_use]
 #[derive(Clone, Debug, PartialEq, Eq)]
