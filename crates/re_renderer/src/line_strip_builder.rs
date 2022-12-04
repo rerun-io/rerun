@@ -1,6 +1,6 @@
-use crate::renderer::{LineDrawable, LineStripFlags, LineStripInfo, LineVertex};
+use crate::renderer::{LineDrawData, LineStripFlags, LineStripInfo, LineVertex};
 
-/// Builder for a vector of line strips, making it easy to create [`crate::renderer::LineDrawable`].
+/// Builder for a vector of line strips, making it easy to create [`crate::renderer::LineDrawData`].
 ///
 /// TODO(andreas): We could make significant optimizations here by making this builder capable
 /// of writing to a GPU readable memory location.
@@ -181,9 +181,9 @@ where
         )
     }
 
-    /// Finalizes the builder and returns a line drawable with all the lines added so far.
-    pub fn to_drawable(&self, ctx: &mut crate::context::RenderContext) -> LineDrawable {
-        LineDrawable::new(ctx, &self.vertices, &self.strips).unwrap()
+    /// Finalizes the builder and returns a line draw data with all the lines added so far.
+    pub fn to_draw_data(&self, ctx: &mut crate::context::RenderContext) -> LineDrawData {
+        LineDrawData::new(ctx, &self.vertices, &self.strips).unwrap()
     }
 
     /// Iterates over all line strips together with their respective vertices.

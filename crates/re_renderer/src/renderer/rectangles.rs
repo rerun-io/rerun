@@ -73,7 +73,7 @@ pub struct RectangleDrawData {
     bind_groups: Vec<GpuBindGroupHandleStrong>,
 }
 
-impl Drawable for RectangleDrawData {
+impl DrawData for RectangleDrawData {
     type Renderer = RectangleRenderer;
 }
 
@@ -212,7 +212,7 @@ pub struct RectangleRenderer {
 }
 
 impl Renderer for RectangleRenderer {
-    type DrawData = RectangleDrawData;
+    type RendererDrawData = RectangleDrawData;
 
     fn create_renderer<Fs: FileSystem>(
         shared_data: &SharedRendererData,
@@ -313,7 +313,7 @@ impl Renderer for RectangleRenderer {
         &self,
         pools: &'a WgpuResourcePools,
         pass: &mut wgpu::RenderPass<'a>,
-        draw_data: &Self::DrawData,
+        draw_data: &Self::RendererDrawData,
     ) -> anyhow::Result<()> {
         crate::profile_function!();
         if draw_data.bind_groups.is_empty() {

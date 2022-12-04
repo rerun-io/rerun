@@ -7,6 +7,7 @@ pub mod config;
 pub mod importer;
 pub mod renderer;
 pub mod resource_managers;
+pub mod texture_values;
 pub mod view_builder;
 
 mod context;

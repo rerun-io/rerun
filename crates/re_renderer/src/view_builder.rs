@@ -5,7 +5,8 @@ use std::sync::Arc;
 use crate::{
     context::*,
     global_bindings::FrameUniformBuffer,
-    renderer::{compositor::*, Drawable, Renderer},
+    renderer::{compositor::*, DrawData, Renderer},
+    texture_values::ValueRgba8UnormSrgb,
     wgpu_resources::{BufferDesc, GpuBindGroupHandleStrong, GpuTextureHandleStrong, TextureDesc},
     DebugLabel,
 };
@@ -31,7 +32,7 @@ pub struct ViewBuilder {
 struct ViewTargetSetup {
     name: DebugLabel,
 
-    tonemapping_drawable: CompositorDrawable,
+    tonemapping_draw_data: CompositorDrawData,
 
     bind_group_0: GpuBindGroupHandleStrong,
     main_target_msaa: GpuTextureHandleStrong,
@@ -233,7 +234,7 @@ impl ViewBuilder {
             },
         );
 
-        let tonemapping_drawable = CompositorDrawable::new(ctx, &main_target_resolved);
+        let tonemapping_draw_data = CompositorDrawData::new(ctx, &main_target_resolved);
 
         // Setup frame uniform buffer
         let frame_uniform_buffer = ctx.resource_pools.buffers.alloc(
@@ -370,7 +371,7 @@ impl ViewBuilder {
 
         self.setup = Some(ViewTargetSetup {
             name: config.name,
-            tonemapping_drawable,
+            tonemapping_draw_data,
             bind_group_0,
             main_target_msaa: hdr_render_target_msaa,
             main_target_resolved,
@@ -381,7 +382,7 @@ impl ViewBuilder {
         Ok(self)
     }
 
-    pub fn queue_draw<D: Drawable + Sync + Send + Clone + 'static>(
+    pub fn queue_draw<D: DrawData + Sync + Send + Clone + 'static>(
         &mut self,
         draw_data: &D,
     ) -> &mut Self {
@@ -404,7 +405,11 @@ impl ViewBuilder {
     }
 
     /// Draws the frame as instructed to a temporary HDR target.
-    pub fn draw(&mut self, ctx: &RenderContext) -> anyhow::Result<wgpu::CommandBuffer> {
+    pub fn draw(
+        &mut self,
+        ctx: &RenderContext,
+        clear_color: ValueRgba8UnormSrgb,
+    ) -> anyhow::Result<wgpu::CommandBuffer> {
         crate::profile_function!();
 
         let setup = self
@@ -443,7 +448,7 @@ impl ViewBuilder {
                     view: &color_msaa.default_view,
                     resolve_target: Some(&color_resolved.default_view),
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                        load: wgpu::LoadOp::Clear(clear_color.into()),
                         // Don't care about the result, it's going to be resolved to the resolve target.
                         // This can have be much better perf, especially on tiler gpus.
                         store: false,
@@ -519,7 +524,7 @@ impl ViewBuilder {
             .get::<Compositor>()
             .context("get compositor")?;
         tonemapper
-            .draw(&ctx.resource_pools, pass, &setup.tonemapping_drawable)
+            .draw(&ctx.resource_pools, pass, &setup.tonemapping_draw_data)
             .context("composite into main view")
     }
 }

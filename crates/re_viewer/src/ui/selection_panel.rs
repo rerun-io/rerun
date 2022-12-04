@@ -22,58 +22,19 @@ impl SelectionPanel {
         egui_ctx: &egui::Context,
         blueprint: &mut Blueprint,
     ) {
-        let shortcut = crate::ui::kb_shortcuts::TOGGLE_SELECTION_PANEL;
-        blueprint.selection_panel_expanded ^= egui_ctx.input_mut().consume_shortcut(&shortcut);
-
-        let panel_frame = ctx.design_tokens.panel_frame(egui_ctx);
-
-        let collapsed = egui::SidePanel::right("selection_view_collapsed")
-            .resizable(false)
-            .frame(panel_frame)
-            .default_width(16.0);
-        let expanded = egui::SidePanel::right("selection_view_expanded")
+        let panel = egui::SidePanel::right("selection_view")
             .resizable(true)
-            .frame(panel_frame);
+            .frame(ctx.design_tokens.panel_frame(egui_ctx));
 
-        egui::SidePanel::show_animated_between(
+        panel.show_animated(
             egui_ctx,
             blueprint.selection_panel_expanded,
-            collapsed,
-            expanded,
-            |ui: &mut egui::Ui, expansion: f32| {
-                if expansion < 1.0 {
-                    // Collapsed, or animating:
-                    if ui
-                        .small_button("⏴")
-                        .on_hover_text(format!(
-                            "Expand Selection View ({})",
-                            egui_ctx.format_shortcut(&shortcut)
-                        ))
-                        .clicked()
-                    {
-                        blueprint.selection_panel_expanded = true;
-                    }
-                } else {
-                    // Expanded:
-                    if ui
-                        .small_button("⏵")
-                        .on_hover_text(format!(
-                            "Collapse Selection View ({})",
-                            egui_ctx.format_shortcut(&shortcut)
-                        ))
-                        .clicked()
-                    {
-                        blueprint.selection_panel_expanded = false;
-                    }
-
-                    ui.separator();
-
-                    if let Some(selection) = ctx.selection_history.selection_ui(ui, blueprint) {
-                        ctx.set_selection(selection);
-                    }
-
-                    self.contents(ui, ctx, blueprint);
+            |ui: &mut egui::Ui| {
+                if let Some(selection) = ctx.selection_history.selection_ui(ui, blueprint) {
+                    ctx.set_selection(selection);
                 }
+
+                self.contents(ui, ctx, blueprint);
             },
         );
     }
@@ -183,9 +144,26 @@ impl SelectionPanel {
                 // I really don't know what we should show here.
             }
             Selection::SpaceView(space_view_id) => {
-                if let Some(space_view) = blueprint.viewport.space_view_mut(&space_view_id) {
-                    ui.label("SpaceView");
-                    ui_space_view(ctx, ui, space_view);
+                if let Some(space_view) = blueprint.viewport.space_view(&space_view_id) {
+                    ui.heading("SpaceView");
+                    ui.add_space(4.0);
+
+                    if ui.button("Remove from Viewport").clicked() {
+                        blueprint.viewport.remove(&space_view_id);
+                        blueprint.viewport.mark_user_interaction();
+                        ctx.clear_selection();
+                    } else {
+                        if ui.button("Clone Space View").clicked() {
+                            blueprint.viewport.add_space_view(space_view.clone());
+                            blueprint.viewport.mark_user_interaction();
+                        }
+
+                        if let Some(space_view) = blueprint.viewport.space_view_mut(&space_view_id)
+                        {
+                            ui.add_space(4.0);
+                            ui_space_view(ctx, ui, space_view);
+                        }
+                    }
                 } else {
                     ctx.clear_selection();
                 }
@@ -227,15 +205,18 @@ fn obj_type_name(log_db: &LogDb, obj_type_path: &ObjTypePath) -> String {
 }
 
 fn ui_space_view(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, space_view: &mut SpaceView) {
-    egui::Grid::new("space_view").striped(true).show(ui, |ui| {
-        ui.label("Name:");
-        ui.label(&space_view.name);
-        ui.end_row();
+    egui::Grid::new("space_view")
+        .striped(true)
+        .num_columns(2)
+        .show(ui, |ui| {
+            ui.label("Name:");
+            ui.text_edit_singleline(&mut space_view.name);
+            ui.end_row();
 
-        ui.label("Path:");
-        ctx.obj_path_button(ui, &space_view.space_path);
-        ui.end_row();
-    });
+            ui.label("Path:");
+            ctx.obj_path_button(ui, &space_view.space_path);
+            ui.end_row();
+        });
 
     ui.separator();
 

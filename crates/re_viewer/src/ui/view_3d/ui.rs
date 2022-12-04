@@ -5,7 +5,8 @@ use macaw::{vec3, Quat, Ray3, Vec3};
 use re_data_store::{InstanceId, InstanceIdHash};
 use re_log_types::{ObjPath, ViewCoordinates};
 use re_renderer::{
-    renderer::{GenericSkyboxDrawable, MeshDrawable, PointCloudDrawable},
+    renderer::{GenericSkyboxDrawData, MeshDrawData, PointCloudDrawData},
+    texture_values::ValueRgba8UnormSrgb,
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
     RenderContext,
 };
@@ -514,12 +515,14 @@ fn paint_view(
                 },
             )
             .unwrap()
-            .queue_draw(&GenericSkyboxDrawable::new(render_ctx))
-            .queue_draw(&MeshDrawable::new(render_ctx, &scene.meshes()).unwrap())
-            .queue_draw(&scene.line_strips.to_drawable(render_ctx))
-            .queue_draw(&PointCloudDrawable::new(render_ctx, &scene.point_cloud_points()).unwrap());
+            .queue_draw(&GenericSkyboxDrawData::new(render_ctx))
+            .queue_draw(&MeshDrawData::new(render_ctx, &scene.meshes()).unwrap())
+            .queue_draw(&scene.line_strips.to_draw_data(render_ctx))
+            .queue_draw(&PointCloudDrawData::new(render_ctx, &scene.point_cloud_points()).unwrap());
 
-        let command_buffer = view_builder.draw(render_ctx).unwrap();
+        let command_buffer = view_builder
+            .draw(render_ctx, ValueRgba8UnormSrgb::TRANSPARENT)
+            .unwrap();
         (view_builder, command_buffer)
     };
 

@@ -50,10 +50,6 @@ impl TimePanel {
         blueprint: &mut Blueprint,
         egui_ctx: &egui::Context,
     ) {
-        blueprint.time_panel_expanded ^= egui_ctx
-            .input_mut()
-            .consume_shortcut(&crate::ui::kb_shortcuts::TOGGLE_TIME_PANEL);
-
         let panel_frame = ctx.design_tokens.panel_frame(egui_ctx);
 
         let collapsed = egui::TopBottomPanel::bottom("time_panel_collapsed")
@@ -74,37 +70,18 @@ impl TimePanel {
                 if expansion < 1.0 {
                     // Collapsed or animating
                     ui.horizontal(|ui| {
-                        self.collapsed_ui(ctx, blueprint, ui);
+                        self.collapsed_ui(ctx, ui);
                     });
                 } else {
                     // Expanded:
-                    self.expanded_ui(ctx, blueprint, ui);
+                    self.expanded_ui(ctx, ui);
                 }
             },
         );
     }
 
     #[allow(clippy::unused_self)]
-    fn collapsed_ui(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        blueprint: &mut Blueprint,
-        ui: &mut egui::Ui,
-    ) {
-        if ui
-            .small_button("⏶")
-            .on_hover_text(format!(
-                "Expand Timeline View ({})",
-                ui.ctx()
-                    .format_shortcut(&crate::ui::kb_shortcuts::TOGGLE_TIME_PANEL)
-            ))
-            .clicked()
-        {
-            blueprint.time_panel_expanded = true;
-        }
-
-        ui.separator();
-
+    fn collapsed_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         ctx.rec_cfg
             .time_ctrl
             .timeline_selector_ui(ctx.log_db.times_per_timeline(), ui);
@@ -156,16 +133,11 @@ impl TimePanel {
         });
     }
 
-    fn expanded_ui(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        blueprint: &mut Blueprint,
-        ui: &mut egui::Ui,
-    ) {
+    fn expanded_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         crate::profile_function!();
 
         // play control and current time
-        top_row_ui(ctx, blueprint, ui);
+        top_row_ui(ctx, ui);
 
         ui.add_space(2.0);
 
@@ -472,22 +444,8 @@ impl TimePanel {
     }
 }
 
-fn top_row_ui(ctx: &mut ViewerContext<'_>, blueprint: &mut Blueprint, ui: &mut egui::Ui) {
+fn top_row_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
     ui.horizontal(|ui| {
-        if ui
-            .small_button("⏷")
-            .on_hover_text(format!(
-                "Collapse Timeline View ({})",
-                ui.ctx()
-                    .format_shortcut(&crate::ui::kb_shortcuts::TOGGLE_TIME_PANEL)
-            ))
-            .clicked()
-        {
-            blueprint.time_panel_expanded = false;
-        }
-
-        ui.separator();
-
         ctx.rec_cfg
             .time_ctrl
             .timeline_selector_ui(ctx.log_db.times_per_timeline(), ui);
