@@ -702,95 +702,46 @@ impl Blueprint {
         ui: &mut egui::Ui,
         spaces_info: &SpacesInfo,
     ) {
-        let shortcut = crate::ui::kb_shortcuts::TOGGLE_BLUEPRINT_PANEL;
-
-        self.blueprint_panel_expanded ^= ui.input_mut().consume_shortcut(&shortcut);
-
-        let panel_frame = ctx.design_tokens.panel_frame(ui.ctx());
-
-        let collapsed_panel = egui::SidePanel::left("blueprint_panel_collapsed")
-            .resizable(false)
-            .frame(panel_frame)
-            .default_width(16.0);
-
-        let expanded_panel = egui::SidePanel::left("blueprint_panel_expanded")
+        let panel = egui::SidePanel::left("blueprint_panel")
             .resizable(true)
-            .frame(panel_frame)
+            .frame(ctx.design_tokens.panel_frame(ui.ctx()))
             .min_width(120.0)
             .default_width(200.0);
 
-        egui::SidePanel::show_animated_between_inside(
-            ui,
-            self.blueprint_panel_expanded,
-            collapsed_panel,
-            expanded_panel,
-            |ui: &mut egui::Ui, expansion: f32| {
-                if expansion < 1.0 {
-                    // Collapsed, or animating:
-                    if ui
-                        .small_button("⏵")
-                        .on_hover_text(format!(
-                            "Expand Blueprint View ({})",
-                            ui.ctx().format_shortcut(&shortcut)
-                        ))
-                        .clicked()
-                    {
-                        self.blueprint_panel_expanded = true;
-                    }
-                } else {
-                    // Expanded:
-                    ui.horizontal(|ui| {
-                        if ui
-                            .small_button("⏴")
-                            .on_hover_text(format!(
-                                "Collapse Blueprint View ({})",
-                                ui.ctx().format_shortcut(&shortcut)
-                            ))
-                            .clicked()
-                        {
-                            self.blueprint_panel_expanded = false;
-                        }
+        panel.show_animated_inside(ui, self.blueprint_panel_expanded, |ui: &mut egui::Ui| {
+            ui.horizontal(|ui| {
+                ui.vertical_centered(|ui| {
+                    ui.label("Blueprint");
+                });
+            });
 
-                        ui.vertical_centered(|ui| {
-                            ui.label("Blueprint");
-                        });
-                    });
+            ui.separator();
 
-                    ui.separator();
-
-                    ui.vertical_centered(|ui| {
-                        if ui
-                            .button("Auto-populate Viewport")
-                            .on_hover_text(
-                                "Re-populate Viewport with automatically chosen Space Views",
-                            )
-                            .clicked()
-                        {
-                            self.viewport = ViewportBlueprint::new(ctx, spaces_info);
-                        }
-                    });
-
-                    ui.separator();
-
-                    egui_extras::StripBuilder::new(ui)
-                        .size(egui_extras::Size::remainder())
-                        .size(egui_extras::Size::exact(20.0))
-                        .vertical(|mut strip| {
-                            strip.cell(|ui| {
-                                self.viewport.tree_ui(
-                                    ctx,
-                                    ui,
-                                    spaces_info,
-                                    &ctx.log_db.obj_db.tree,
-                                );
-                            });
-                            strip.cell(|ui| {
-                                self.viewport.create_new_blueprint_ui(ctx, ui, spaces_info);
-                            });
-                        });
+            ui.vertical_centered(|ui| {
+                if ui
+                    .button("Auto-populate Viewport")
+                    .on_hover_text("Re-populate Viewport with automatically chosen Space Views")
+                    .clicked()
+                {
+                    self.viewport = ViewportBlueprint::new(ctx, spaces_info);
                 }
-            },
-        );
+            });
+
+            ui.separator();
+
+            egui_extras::StripBuilder::new(ui)
+                .size(egui_extras::Size::remainder())
+                .size(egui_extras::Size::exact(20.0))
+                .vertical(|mut strip| {
+                    strip.cell(|ui| {
+                        self.viewport
+                            .tree_ui(ctx, ui, spaces_info, &ctx.log_db.obj_db.tree);
+                    });
+                    strip.cell(|ui| {
+                        self.viewport.create_new_blueprint_ui(ctx, ui, spaces_info);
+                    });
+                });
+        });
     }
 }
 
