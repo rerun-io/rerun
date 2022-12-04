@@ -891,7 +891,6 @@ fn top_bar_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &mut App) {
                 ui.output().open_url = Some(egui::output::OpenUrl::new_tab("https://rerun.io"));
             }
         }
-        egui::warn_if_debug_build(ui);
 
         if let Some(log_db) = app.log_dbs.get(&app.state.selected_rec_id) {
             let selected_app_id = log_db
@@ -950,6 +949,12 @@ fn top_bar_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &mut App) {
                 "Toggle Blueprint View ({})",
                 ui.ctx().format_shortcut(&TOGGLE_BLUEPRINT_PANEL)
             ));
+
+            ui.vertical_centered(|ui| {
+                ui.style_mut().wrap = Some(false);
+                ui.add_space(6.0); // TODO(emilk): in egui, add a proper way of centering a single widget in a UI.
+                egui::warn_if_debug_build(ui);
+            });
         }
     });
 }
