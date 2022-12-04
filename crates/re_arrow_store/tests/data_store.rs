@@ -1,8 +1,9 @@
 use std::time::{Duration, SystemTime};
 
-use crate::{tests::*, DataStore, TimeQuery};
-
+use re_arrow_store::{DataStore, TimeQuery};
 use re_log_types::{ObjPath as EntityPath, TimeType, Timeline};
+
+use re_arrow_store::datagen::*;
 
 #[test]
 fn single_entity_multi_timelines_multi_components_roundtrip() {
@@ -33,7 +34,7 @@ fn single_entity_multi_timelines_multi_components_roundtrip() {
     eprintln!("inserting into '{ent_path}':\nschema: {schema:#?}\ncomponents: {components:#?}");
     // eprintln!("---\ninserting into '{ent_path}': [log_time, frame_nr], [rects]");
     store.insert(&schema, &components).unwrap();
-    // eprintln!("{store}");
+    eprintln!("{store}");
 
     let (schema, components) = build_message(
         &ent_path,
@@ -43,7 +44,7 @@ fn single_entity_multi_timelines_multi_components_roundtrip() {
     eprintln!("inserting into '{ent_path}':\nschema: {schema:#?}\ncomponents: {components:#?}");
     // eprintln!("---\ninserting into '{ent_path}': [log_time, frame_nr], [instances, rects]");
     store.insert(&schema, &components).unwrap();
-    // eprintln!("{store}");
+    eprintln!("{store}");
 
     let expected_instances = build_instances(nb_instances);
     let (schema, components) = build_message(

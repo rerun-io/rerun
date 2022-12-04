@@ -5,8 +5,9 @@ mod field_types;
 mod store;
 mod store_read;
 mod store_write;
-#[cfg(test)]
-pub mod tests;
+
+#[cfg(feature = "datagen")]
+pub mod datagen;
 
 pub(crate) use self::store::{ComponentBucket, ComponentTable, IndexBucket, IndexTable};
 pub use self::store::{ComponentName, ComponentNameRef, DataStore, RowIndex};

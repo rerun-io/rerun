@@ -6,6 +6,10 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
+[features]
+default = ["datagen"]
+datagen = ["dep:rand"]
+
 [dependencies]
 # Rerun
 re_log = { path = "../re_log" }
@@ -19,6 +23,9 @@ chrono = "0.4"
 indent = "0.1"
 nohash-hasher = "0.2"
 thiserror = "1.0"
+
+# External (optional)
+rand = { version = "0.8.5", optional = true }
 
 # native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
@@ -34,6 +41,3 @@ polars = { version = "0.25", features = [
   "dtype-time",
   "dtype-struct",
 ], default-features = false }
-
-[dev-dependencies]
-rand = "0.8.5"

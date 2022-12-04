@@ -1,5 +1,3 @@
-mod data_store;
-
 use std::{collections::BTreeMap, time::SystemTime};
 
 use arrow2::{
@@ -178,7 +176,7 @@ pub fn build_rects(nb_instances: usize) -> (Schema, ListArray<i32>) {
     (schema, data)
 }
 
-fn build_positions(nb_instances: usize) -> (Schema, ListArray<i32>) {
+pub fn build_positions(nb_instances: usize) -> (Schema, ListArray<i32>) {
     use rand::Rng as _;
     let mut rng = rand::thread_rng();
 
@@ -210,7 +208,7 @@ fn build_positions(nb_instances: usize) -> (Schema, ListArray<i32>) {
     (schema, data)
 }
 
-fn pack_components(
+pub fn pack_components(
     components: impl Iterator<Item = (Schema, Box<dyn Array>)>,
 ) -> (Schema, StructArray) {
     let (component_schemas, component_cols): (Vec<_>, Vec<_>) = components.unzip();
@@ -229,7 +227,7 @@ fn pack_components(
     (schema, packed)
 }
 
-fn build_message(
+pub fn build_message(
     ent_path: &EntityPath,
     timelines: impl IntoIterator<Item = (Schema, Int64Array)>,
     components: impl IntoIterator<Item = (Schema, ListArray<i32>)>,
