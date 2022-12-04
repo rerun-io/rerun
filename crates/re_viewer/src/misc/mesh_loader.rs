@@ -120,7 +120,7 @@ impl CpuMesh {
                     materials: smallvec::smallvec![re_renderer::mesh::Material {
                         label: name.clone().into(),
                         index_range: 0..raw_mesh.indices.len() as _,
-                        albedo: render_ctx.texture_manager_2d.white_texture().clone(),
+                        albedo: render_ctx.texture_manager_2d.white_texture_handle().clone(),
                     }],
                 },
                 ResourceLifeTime::LongLived,

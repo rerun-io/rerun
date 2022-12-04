@@ -138,7 +138,7 @@ fn map_format(format: gltf::image::Format) -> Option<wgpu::TextureFormat> {
 fn import_mesh(
     mesh: &gltf::Mesh<'_>,
     buffers: &[gltf::buffer::Data],
-    images: &[GpuTexture2DHandle],
+    gpu_image_handles: &[GpuTexture2DHandle],
     texture_manager: &mut TextureManager2D, //imported_materials: HashMap<usize, Material>,
 ) -> anyhow::Result<Mesh> {
     let mut indices = Vec::new();
@@ -226,9 +226,9 @@ fn import_mesh(
                 );
             }
 
-            images[texture.source().index()].clone()
+            gpu_image_handles[texture.source().index()].clone()
         } else {
-            texture_manager.white_texture().clone()
+            texture_manager.white_texture_handle().clone()
         };
 
         materials.push(Material {

@@ -122,7 +122,7 @@ impl TextureManager2D {
     }
 
     /// Returns a single pixel white pixel.
-    pub fn white_texture(&self) -> &GpuTexture2DHandle {
+    pub fn white_texture_handle(&self) -> &GpuTexture2DHandle {
         &self.white_texture
     }
 

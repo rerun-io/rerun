@@ -48,7 +48,7 @@ pub fn load_obj_from_buffer(
                 })
                 .collect();
 
-            let texture = ctx.texture_manager_2d.white_texture();
+            let texture = ctx.texture_manager_2d.white_texture_handle();
 
             let num_indices = mesh.indices.len();
 
