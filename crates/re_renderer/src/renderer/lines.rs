@@ -144,12 +144,12 @@ pub mod gpu_data {
 /// A line drawing operation. Encompasses several lines, each consisting of a list of positions.
 /// Expected to be recrated every frame.
 #[derive(Clone)]
-pub struct LineDrawable {
+pub struct LineDrawData {
     bind_group: Option<GpuBindGroupHandleStrong>,
     num_quads: u32,
 }
 
-impl Drawable for LineDrawable {
+impl DrawData for LineDrawData {
     type Renderer = LineRenderer;
 }
 
@@ -200,11 +200,10 @@ impl Default for LineStripInfo {
     }
 }
 
-impl LineDrawable {
+impl LineDrawData {
     /// Transforms and uploads line strip data to be consumed by gpu.
     ///
-    /// Try to bundle all line strips into a single drawable whenever possible.
-    /// As with all drawables, data is alive only for a single frame!
+    /// Try to bundle all line strips into a single draw data instance whenever possible.
     /// If you pass zero lines instances, subsequent drawing will do nothing.
     pub fn new(
         ctx: &mut RenderContext,
@@ -219,7 +218,7 @@ impl LineDrawable {
         );
 
         if strips.is_empty() {
-            return Ok(LineDrawable {
+            return Ok(LineDrawData {
                 bind_group: None,
                 num_quads: 0,
             });
@@ -276,7 +275,7 @@ impl LineDrawable {
         };
 
         // TODO(andreas): We want a "stack allocation" here that lives for one frame.
-        //                  Note also that this doesn't protect against sharing the same texture with several LineDrawable!
+        //                  Note also that this doesn't protect against sharing the same texture with several LineDrawData!
         let position_data_texture = ctx.resource_pools.textures.alloc(
             &ctx.device,
             &TextureDesc {
@@ -390,11 +389,11 @@ impl LineDrawable {
             },
         );
 
-        Ok(LineDrawable {
+        Ok(LineDrawData {
             bind_group: Some(ctx.resource_pools.bind_groups.alloc(
                 &ctx.device,
                 &BindGroupDesc {
-                    label: "line drawable".into(),
+                    label: "line draw data".into(),
                     entries: smallvec![
                         BindGroupEntry::DefaultTextureView(*position_data_texture),
                         BindGroupEntry::DefaultTextureView(*line_strip_texture),
@@ -417,7 +416,7 @@ pub struct LineRenderer {
 }
 
 impl Renderer for LineRenderer {
-    type DrawData = LineDrawable;
+    type RendererDrawData = LineDrawData;
 
     fn create_renderer<Fs: FileSystem>(
         shared_data: &SharedRendererData,
@@ -504,7 +503,7 @@ impl Renderer for LineRenderer {
         &self,
         pools: &'a WgpuResourcePools,
         pass: &mut wgpu::RenderPass<'a>,
-        draw_data: &Self::DrawData,
+        draw_data: &Self::RendererDrawData,
     ) -> anyhow::Result<()> {
         let Some(bind_group) = &draw_data.bind_group else {
             return Ok(()); // No lines submitted.

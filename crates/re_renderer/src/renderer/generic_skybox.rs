@@ -21,13 +21,13 @@ pub struct GenericSkybox {
 }
 
 #[derive(Clone)]
-pub struct GenericSkyboxDrawable {}
+pub struct GenericSkyboxDrawData {}
 
-impl Drawable for GenericSkyboxDrawable {
+impl DrawData for GenericSkyboxDrawData {
     type Renderer = GenericSkybox;
 }
 
-impl GenericSkyboxDrawable {
+impl GenericSkyboxDrawData {
     pub fn new(ctx: &mut RenderContext) -> Self {
         ctx.renderers.get_or_create::<_, GenericSkybox>(
             &ctx.shared_renderer_data,
@@ -36,12 +36,12 @@ impl GenericSkyboxDrawable {
             &mut ctx.resolver,
         );
 
-        GenericSkyboxDrawable {}
+        GenericSkyboxDrawData {}
     }
 }
 
 impl Renderer for GenericSkybox {
-    type DrawData = GenericSkyboxDrawable;
+    type RendererDrawData = GenericSkyboxDrawData;
 
     fn create_renderer<Fs: FileSystem>(
         shared_data: &SharedRendererData,
@@ -106,7 +106,7 @@ impl Renderer for GenericSkybox {
         &self,
         pools: &'a WgpuResourcePools,
         pass: &mut wgpu::RenderPass<'a>,
-        _draw_data: &GenericSkyboxDrawable,
+        _draw_data: &GenericSkyboxDrawData,
     ) -> anyhow::Result<()> {
         crate::profile_function!();
 
