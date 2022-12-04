@@ -75,7 +75,7 @@ struct MeshBatch {
 }
 
 #[derive(Clone)]
-pub struct MeshDrawable {
+pub struct MeshDrawData {
     // There is a single instance buffer for all instances of all meshes.
     // This means we only ever need to bind the instance buffer once and then change the
     // instance range on every instanced draw call!
@@ -83,7 +83,7 @@ pub struct MeshDrawable {
     batches: Vec<MeshBatch>,
 }
 
-impl Drawable for MeshDrawable {
+impl DrawData for MeshDrawData {
     type Renderer = MeshRenderer;
 }
 
@@ -102,11 +102,10 @@ pub struct MeshInstance {
     pub additive_tint_srgb: [u8; 4],
 }
 
-impl MeshDrawable {
+impl MeshDrawData {
     /// Transforms and uploads mesh instance data to be consumed by gpu.
     ///
-    /// Try bundling all mesh instances into a single drawable whenever possible.
-    /// As with all drawables, data is alive only for a single frame!
+    /// Try bundling all mesh instances into a single draw data instance whenever possible.
     /// If you pass zero mesh instances, subsequent drawing will do nothing.
     /// Mesh data itself is gpu uploaded if not already present.
     pub fn new(ctx: &mut RenderContext, instances: &[MeshInstance]) -> anyhow::Result<Self> {
@@ -120,7 +119,7 @@ impl MeshDrawable {
         );
 
         if instances.is_empty() {
-            return Ok(MeshDrawable {
+            return Ok(MeshDrawData {
                 batches: Vec::new(),
                 instance_buffer: None,
             });
@@ -133,7 +132,7 @@ impl MeshDrawable {
         let instance_buffer = ctx.gpu_resources.buffers.alloc(
             &ctx.device,
             &BufferDesc {
-                label: "MeshDrawable instance buffer".into(),
+                label: "MeshDrawData instance buffer".into(),
                 size: instance_buffer_size,
                 usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
             },
@@ -183,7 +182,7 @@ impl MeshDrawable {
             })
             .collect();
 
-        Ok(MeshDrawable {
+        Ok(MeshDrawData {
             batches: batches?,
             instance_buffer: Some(instance_buffer),
         })
@@ -196,7 +195,7 @@ pub struct MeshRenderer {
 }
 
 impl Renderer for MeshRenderer {
-    type DrawData = MeshDrawable;
+    type RendererDrawData = MeshDrawData;
 
     fn create_renderer<Fs: FileSystem>(
         shared_data: &SharedRendererData,
@@ -278,7 +277,7 @@ impl Renderer for MeshRenderer {
         &self,
         pools: &'a WgpuResourcePools,
         pass: &mut wgpu::RenderPass<'a>,
-        draw_data: &Self::DrawData,
+        draw_data: &Self::RendererDrawData,
     ) -> anyhow::Result<()> {
         crate::profile_function!();
 

@@ -47,12 +47,12 @@ mod gpu_data {
 /// A point cloud drawing operation.
 /// Expected to be recrated every frame.
 #[derive(Clone)]
-pub struct PointCloudDrawable {
+pub struct PointCloudDrawData {
     bind_group: Option<GpuBindGroupHandleStrong>,
     num_quads: u32,
 }
 
-impl Drawable for PointCloudDrawable {
+impl DrawData for PointCloudDrawData {
     type Renderer = PointCloudRenderer;
 }
 
@@ -69,11 +69,10 @@ pub struct PointCloudPoint {
     pub srgb_color: [u8; 4],
 }
 
-impl PointCloudDrawable {
+impl PointCloudDrawData {
     /// Transforms and uploads point cloud data to be consumed by gpu.
     ///
-    /// Try to bundle all points  into a single drawable whenever possible.
-    /// As with all drawables, data is alive only for a single frame!
+    /// Try to bundle all points into a single draw data instance whenever possible.
     ///
     /// If you pass point instances, None will be returned.
     pub fn new(ctx: &mut RenderContext, points: &[PointCloudPoint]) -> anyhow::Result<Self> {
@@ -87,7 +86,7 @@ impl PointCloudDrawable {
         );
 
         if points.is_empty() {
-            return Ok(PointCloudDrawable {
+            return Ok(PointCloudDrawData {
                 bind_group: None,
                 num_quads: 0,
             });
@@ -117,7 +116,7 @@ impl PointCloudDrawable {
         );
 
         // TODO(andreas): We want a "stack allocation" here that lives for one frame.
-        //                  Note also that this doesn't protect against sharing the same texture with several PointDrawable!
+        //                  Note also that this doesn't protect against sharing the same texture with several PointDrawData!
         let position_data_texture_desc = TextureDesc {
             label: "point cloud position data".into(),
             size: wgpu::Extent3d {
@@ -229,11 +228,11 @@ impl PointCloudDrawable {
             );
         }
 
-        Ok(PointCloudDrawable {
+        Ok(PointCloudDrawData {
             bind_group: Some(ctx.gpu_resources.bind_groups.alloc(
                 &ctx.device,
                 &BindGroupDesc {
-                    label: "line drawable".into(),
+                    label: "line drawdata".into(),
                     entries: smallvec![
                         BindGroupEntry::DefaultTextureView(*position_data_texture),
                         BindGroupEntry::DefaultTextureView(*color_texture),
@@ -256,7 +255,7 @@ pub struct PointCloudRenderer {
 }
 
 impl Renderer for PointCloudRenderer {
-    type DrawData = PointCloudDrawable;
+    type RendererDrawData = PointCloudDrawData;
 
     fn create_renderer<Fs: FileSystem>(
         shared_data: &SharedRendererData,
@@ -349,11 +348,11 @@ impl Renderer for PointCloudRenderer {
         &self,
         pools: &'a WgpuResourcePools,
         pass: &mut wgpu::RenderPass<'a>,
-        draw_data: &Self::DrawData,
+        draw_data: &Self::RendererDrawData,
     ) -> anyhow::Result<()> {
         crate::profile_function!();
         let Some(bind_group) = &draw_data.bind_group else {
-            return Ok(()) // Empty drawable
+            return Ok(()) // Empty drawdata
         };
 
         let pipeline = pools.render_pipelines.get_resource(self.render_pipeline)?;

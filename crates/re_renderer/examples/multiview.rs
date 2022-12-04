@@ -8,8 +8,8 @@ use rand::Rng;
 
 use re_renderer::{
     renderer::{
-        GenericSkyboxDrawable, LineDrawable, LineStripFlags, MeshDrawable, MeshInstance,
-        PointCloudDrawable, PointCloudPoint, TestTriangleDrawable,
+        GenericSkyboxDrawData, LineDrawData, LineStripFlags, MeshDrawData, MeshInstance,
+        PointCloudDrawData, PointCloudPoint, TestTriangleDrawData,
     },
     resource_managers::ResourceLifeTime,
     texture_values::ValueRgba8UnormSrgb,
@@ -20,18 +20,18 @@ use winit::event::{ElementState, VirtualKeyCode};
 
 mod framework;
 
-fn draw_view<'a, D: 'static + re_renderer::renderer::Drawable + Sync + Send + Clone>(
+fn draw_view<'a, D: 'static + re_renderer::renderer::DrawData + Sync + Send + Clone>(
     re_ctx: &'a mut RenderContext,
     target_cfg: TargetConfiguration,
-    skybox: &GenericSkyboxDrawable,
-    drawable: &D,
+    skybox: &GenericSkyboxDrawData,
+    draw_data: &D,
 ) -> (ViewBuilder, wgpu::CommandBuffer) {
     let mut view_builder = ViewBuilder::default();
     let command_buffer = view_builder
         .setup_view(re_ctx, target_cfg)
         .unwrap()
         .queue_draw(skybox)
-        .queue_draw(drawable)
+        .queue_draw(draw_data)
         .draw(re_ctx, ValueRgba8UnormSrgb::TRANSPARENT)
         .unwrap();
 
@@ -43,7 +43,7 @@ fn build_mesh_instances(
     model_mesh_instances: &[MeshInstance],
     mesh_instance_positions_and_colors: &[(glam::Vec3, [u8; 4])],
     seconds_since_startup: f32,
-) -> MeshDrawable {
+) -> MeshDrawData {
     let mesh_instances = mesh_instance_positions_and_colors
         .chunks_exact(model_mesh_instances.len())
         .enumerate()
@@ -62,7 +62,7 @@ fn build_mesh_instances(
             )
         })
         .collect_vec();
-    MeshDrawable::new(re_ctx, &mesh_instances).unwrap()
+    MeshDrawData::new(re_ctx, &mesh_instances).unwrap()
 }
 
 fn lorenz_points(seconds_since_startup: f32) -> Vec<glam::Vec3> {
@@ -93,7 +93,7 @@ fn lorenz_points(seconds_since_startup: f32) -> Vec<glam::Vec3> {
     .collect()
 }
 
-fn build_lines(re_ctx: &mut RenderContext, seconds_since_startup: f32) -> LineDrawable {
+fn build_lines(re_ctx: &mut RenderContext, seconds_since_startup: f32) -> LineDrawData {
     // Calculate some points that look nice for an animated line.
     let lorenz_points = lorenz_points(seconds_since_startup);
 
@@ -133,7 +133,7 @@ fn build_lines(re_ctx: &mut RenderContext, seconds_since_startup: f32) -> LineDr
         .radius(0.1)
         .flags(LineStripFlags::CAP_END_TRIANGLE);
 
-    builder.to_drawable(re_ctx)
+    builder.to_draw_data(re_ctx)
 }
 
 enum CameraControl {
@@ -234,10 +234,10 @@ impl Example for Multiview {
         let view_from_world =
             IsoTransform::look_at_rh(self.camera_position, Vec3::ZERO, Vec3::Y).unwrap();
 
-        let triangle = TestTriangleDrawable::new(re_ctx);
-        let skybox = GenericSkyboxDrawable::new(re_ctx);
+        let triangle = TestTriangleDrawData::new(re_ctx);
+        let skybox = GenericSkyboxDrawData::new(re_ctx);
         let lines = build_lines(re_ctx, seconds_since_startup);
-        let point_cloud = PointCloudDrawable::new(re_ctx, &self.random_points).unwrap();
+        let point_cloud = PointCloudDrawData::new(re_ctx, &self.random_points).unwrap();
         let meshes = build_mesh_instances(
             re_ctx,
             &self.model_mesh_instances,
@@ -260,7 +260,7 @@ impl Example for Multiview {
             }
         };
 
-        // Using a macro here because `Drawable` isn't object safe and a closure cannot be
+        // Using a macro here because `DrawData` isn't object safe and a closure cannot be
         // generic over its input type.
         #[rustfmt::skip]
         macro_rules! draw {
