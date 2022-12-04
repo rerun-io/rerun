@@ -915,12 +915,13 @@ fn top_bar_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &mut App) {
                     input.consume_shortcut(&TOGGLE_BLUEPRINT_PANEL);
             }
 
+            use crate::ui::icons;
+
             // From right-to-left:
             medium_toggle_icon_button(
                 ui,
                 &mut app.state.static_image_cache,
-                "right_panel_toggle",
-                include_bytes!("../data/icons/right_panel_toggle.png"),
+                &icons::RIGHT_PANEL_TOGGLE,
                 &mut blueprint.selection_panel_expanded,
             )
             .on_hover_text(format!(
@@ -931,8 +932,7 @@ fn top_bar_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &mut App) {
             medium_toggle_icon_button(
                 ui,
                 &mut app.state.static_image_cache,
-                "bottom_panel_toggle",
-                include_bytes!("../data/icons/bottom_panel_toggle.png"),
+                &icons::BOTTOM_PANEL_TOGGLE,
                 &mut blueprint.time_panel_expanded,
             )
             .on_hover_text(format!(
@@ -943,8 +943,7 @@ fn top_bar_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &mut App) {
             medium_toggle_icon_button(
                 ui,
                 &mut app.state.static_image_cache,
-                "left_panel_toggle",
-                include_bytes!("../data/icons/left_panel_toggle.png"),
+                &icons::LEFT_PANEL_TOGGLE,
                 &mut blueprint.blueprint_panel_expanded,
             )
             .on_hover_text(format!(
@@ -958,13 +957,12 @@ fn top_bar_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &mut App) {
 fn medium_toggle_icon_button(
     ui: &mut egui::Ui,
     image_cache: &mut StaticImageCache,
-    id: &'static str,
-    png_bytes: &'static [u8],
+    icon: &crate::ui::icons::Icon,
     selected: &mut bool,
 ) -> egui::Response {
     let size_points = egui::Vec2::splat(16.0); // TODO(emilk): get from DesignTokens
 
-    let image = image_cache.get(id, png_bytes);
+    let image = image_cache.get(icon.id, icon.png_bytes);
     let texture_id = image.texture_id(ui.ctx());
     let tint = if *selected {
         ui.visuals().widgets.inactive.fg_stroke.color
