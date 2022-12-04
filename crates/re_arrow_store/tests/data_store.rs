@@ -76,16 +76,16 @@ fn single_entity_multi_timelines_multi_components_out_of_order_roundtrip() {
     let timeline_log_time = Timeline::new("log_time", TimeType::Time);
     let components_all = &["instances", "rects", "positions"];
 
-    // TODO(cmc): broken
-    // // Scenario: query at frame #40, no data exists yet!
-    // assert_scenario(
-    //     &mut store,
-    //     &timeline_frame_nr,
-    //     &TimeQuery::LatestAt(frame40),
-    //     &ent_path,
-    //     components_all,
-    //     DataFrame::empty(),
-    // );
+    // Scenario: query at frame #40, no data supposed to exist yet!
+    // Expected: empty dataframe.
+    assert_scenario(
+        &mut store,
+        &timeline_frame_nr,
+        &TimeQuery::LatestAt(frame40),
+        &ent_path,
+        components_all,
+        [],
+    );
 
     // TODO(cmc): broken
     // // Scenario: query a non-existing entity path.
@@ -99,6 +99,7 @@ fn single_entity_multi_timelines_multi_components_out_of_order_roundtrip() {
     // );
 
     // Scenario: query a bunch of non-existing components.
+    // Expected: empty dataframe.
     assert_scenario(
         &mut store,
         &timeline_frame_nr,
@@ -110,7 +111,8 @@ fn single_entity_multi_timelines_multi_components_out_of_order_roundtrip() {
 
     // TODO(cmc): test log_times too!
 
-    // Scenario: query all components at `last frame + 1`
+    // Scenario: query all components at `last frame + 1`.
+    // Expected: latest data for all components.
     assert_scenario(
         &mut store,
         &timeline_frame_nr,
