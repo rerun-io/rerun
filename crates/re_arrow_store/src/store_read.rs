@@ -83,6 +83,13 @@ impl DataStore {
             .collect();
         DataFrame::new(series_ordered).map_err(Into::into)
     }
+
+    /// Force the sorting of all indices.
+    pub fn sort_indices(&mut self) {
+        for index in self.indices.values_mut() {
+            index.sort_indices();
+        }
+    }
 }
 
 // --- Indices ---
@@ -95,6 +102,13 @@ impl IndexTable {
     ) -> HashMap<ComponentNameRef<'a>, RowIndex> {
         let bucket = self.buckets.iter_mut().next().unwrap().1;
         bucket.latest_at(at, components)
+    }
+
+    /// Force the sorting of all buckets.
+    pub fn sort_indices(&mut self) {
+        for bucket in self.buckets.values_mut() {
+            bucket.sort_indices();
+        }
     }
 }
 
@@ -110,9 +124,14 @@ impl IndexBucket {
             let mut swaps = (0..times.len()).collect::<Vec<_>>();
             swaps.sort_by_key(|&i| &times[i]);
             swaps
+                .iter()
+                .copied()
+                .enumerate()
+                .map(|(to, from)| (from, to))
+                .collect::<Vec<_>>()
         };
 
-        // Yep, the reshuffle implentation is very dumb and very slow :)
+        // Yep, the reshuffle implementation is very dumb and very slow :)
         // TODO(#442): re_datastore: implement efficient shuffling on the read path.
 
         // shuffle time index back into a sorted state
@@ -124,19 +143,19 @@ impl IndexBucket {
             let source = self.times.values().clone();
             let values = self.times.values_mut_slice();
 
-            for (from, to) in swaps.iter().enumerate() {
-                values[*to] = source[from];
+            for (from, to) in swaps.iter().copied() {
+                values[to] = source[from];
             }
         }
 
-        fn reshuffle_index(index: &mut UInt64Vec, swaps: &[usize]) {
+        fn reshuffle_index(index: &mut UInt64Vec, swaps: &[(usize, usize)]) {
             // shuffle data
             {
                 let source = index.values().clone();
                 let values = index.values_mut_slice();
 
-                for (from, to) in swaps.iter().enumerate() {
-                    values[*to] = source[from];
+                for (from, to) in swaps.iter().copied() {
+                    values[to] = source[from];
                 }
             }
 
@@ -146,8 +165,8 @@ impl IndexBucket {
             if let (Some(validity_before), Some(mut validity_after)) =
                 (validity_before, validity_after)
             {
-                for (from, to) in swaps.iter().enumerate() {
-                    validity_after.set(*to, validity_before.get(from));
+                for (from, to) in swaps.iter().copied() {
+                    validity_after.set(to, validity_before.get(from));
                 }
 
                 // we expect as many nulls before and after.
