@@ -1,5 +1,6 @@
 use std::{
     collections::HashMap,
+    sync::atomic::{AtomicBool, Ordering::SeqCst},
     time::{Duration, SystemTime},
 };
 
@@ -16,8 +17,7 @@ use re_log_types::{ObjPath as EntityPath, TimeType, Timeline};
 
 #[test]
 fn empty_query_edge_cases() {
-    re_log::set_default_rust_log_env();
-    tracing_subscriber::fmt::init(); // log to stdout
+    init_logs();
 
     let mut store = DataStore::default();
 
@@ -30,11 +30,10 @@ fn empty_query_edge_cases() {
     let frame40 = 40;
     let nb_instances = 3;
 
-    let mut all_data = HashMap::new();
+    let mut tracker = DataTracker::default();
     {
-        insert_data(
+        tracker.insert_data(
             &mut store,
-            &mut all_data,
             &ent_path,
             [build_log_time(now), build_frame_nr(frame40)],
             [build_instances(nb_instances)],
@@ -49,39 +48,29 @@ fn empty_query_edge_cases() {
 
     // Scenario: query at `last_frame`.
     // Expected: dataframe with our instances in it.
-    assert_scenario(
+    tracker.assert_scenario(
         &mut store,
         &timeline_frame_nr,
         &TimeQuery::LatestAt(frame40),
         &ent_path,
         components_all,
-        [(
-            "instances",
-            all_data
-                .remove(&("instances", TypedTimeInt::new_seq(frame40)))
-                .unwrap(),
-        )],
+        [("instances", TypedTimeInt::new_seq(frame40))],
     );
 
     // Scenario: query at `last_log_time`.
     // Expected: dataframe with our instances in it.
-    assert_scenario(
+    tracker.assert_scenario(
         &mut store,
         &timeline_log_time,
         &TimeQuery::LatestAt(now_nanos),
         &ent_path,
         components_all,
-        [(
-            "instances",
-            all_data
-                .remove(&("instances", TypedTimeInt::new_time(now_nanos)))
-                .unwrap(),
-        )],
+        [("instances", TypedTimeInt::new_time(now_nanos))],
     );
 
     // Scenario: query an empty store at `first_frame - 1`.
     // Expected: empty dataframe.
-    assert_scenario(
+    tracker.assert_scenario(
         &mut store,
         &timeline_frame_nr,
         &TimeQuery::LatestAt(frame39),
@@ -92,7 +81,7 @@ fn empty_query_edge_cases() {
 
     // Scenario: query an empty store at `first_log_time - 10ms`.
     // Expected: empty dataframe.
-    assert_scenario(
+    tracker.assert_scenario(
         &mut store,
         &timeline_log_time,
         &TimeQuery::LatestAt(now_minus_10ms_nanos),
@@ -103,7 +92,7 @@ fn empty_query_edge_cases() {
 
     // Scenario: query a non-existing entity path.
     // Expected: empty dataframe.
-    assert_scenario(
+    tracker.assert_scenario(
         &mut store,
         &timeline_frame_nr,
         &TimeQuery::LatestAt(frame40),
@@ -114,7 +103,7 @@ fn empty_query_edge_cases() {
 
     // Scenario: query a bunch of non-existing components.
     // Expected: empty dataframe.
-    assert_scenario(
+    tracker.assert_scenario(
         &mut store,
         &timeline_frame_nr,
         &TimeQuery::LatestAt(frame40),
@@ -125,7 +114,7 @@ fn empty_query_edge_cases() {
 
     // Scenario: query with an empty list of components.
     // Expected: empty dataframe.
-    assert_scenario(
+    tracker.assert_scenario(
         &mut store,
         &timeline_frame_nr,
         &TimeQuery::LatestAt(frame40),
@@ -136,7 +125,7 @@ fn empty_query_edge_cases() {
 
     // Scenario: query with wrong timeline name.
     // Expected: empty dataframe.
-    assert_scenario(
+    tracker.assert_scenario(
         &mut store,
         &timeline_wrong_name,
         &TimeQuery::LatestAt(frame40),
@@ -147,7 +136,7 @@ fn empty_query_edge_cases() {
 
     // Scenario: query with wrong timeline kind.
     // Expected: empty dataframe.
-    assert_scenario(
+    tracker.assert_scenario(
         &mut store,
         &timeline_wrong_kind,
         &TimeQuery::LatestAt(frame40),
@@ -165,8 +154,7 @@ fn empty_query_edge_cases() {
 /// - no weird stuff (duplicated components etc)
 #[test]
 fn single_entity_multi_timelines_multi_components_out_of_order_roundtrip() {
-    re_log::set_default_rust_log_env();
-    tracing_subscriber::fmt::init(); // log to stdout
+    init_logs();
 
     let mut store = DataStore::default();
 
@@ -186,32 +174,28 @@ fn single_entity_multi_timelines_multi_components_out_of_order_roundtrip() {
 
     let nb_instances = 3;
 
-    let mut all_data = HashMap::new();
+    let mut tracker = DataTracker::default();
     {
-        insert_data(
+        tracker.insert_data(
             &mut store,
-            &mut all_data,
             &ent_path,
-            [build_log_time(now_minus_20ms), build_frame_nr(frame43)],
+            [build_log_time(now_minus_10ms), build_frame_nr(frame43)],
             [build_rects(nb_instances)],
         );
-        insert_data(
+        tracker.insert_data(
             &mut store,
-            &mut all_data,
             &ent_path,
-            [build_log_time(now_plus_20ms), build_frame_nr(frame41)],
+            [build_log_time(now_plus_10ms), build_frame_nr(frame41)],
             [build_instances(nb_instances), build_rects(nb_instances)],
         );
-        insert_data(
+        tracker.insert_data(
             &mut store,
-            &mut all_data,
             &ent_path,
             [build_log_time(now), build_frame_nr(frame42)],
             [build_instances(nb_instances), build_rects(nb_instances)],
         );
-        insert_data(
+        tracker.insert_data(
             &mut store,
-            &mut all_data,
             &ent_path,
             [build_log_time(now_minus_10ms), build_frame_nr(frame42)],
             [build_positions(nb_instances)],
@@ -219,119 +203,95 @@ fn single_entity_multi_timelines_multi_components_out_of_order_roundtrip() {
     }
 
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
-    let timeline_log_time = Timeline::new("log_time", TimeType::Time);
+    // let timeline_log_time = Timeline::new("log_time", TimeType::Time);
     let components_all = &["instances", "rects", "positions"];
-
-    // TODO: move edge cases to another test
-
-    // Scenario: query at frame #40, no data supposed to exist yet!
-    // Expected: empty dataframe.
-    assert_scenario(
-        &mut store,
-        &timeline_frame_nr,
-        &TimeQuery::LatestAt(frame40),
-        &ent_path,
-        components_all,
-        [],
-    );
-
-    // Scenario: query a non-existing entity path.
-    assert_scenario(
-        &mut store,
-        &timeline_frame_nr,
-        &TimeQuery::LatestAt(frame44),
-        &EntityPath::from("does/not/exist"),
-        components_all,
-        [],
-    );
-
-    // Scenario: query a bunch of non-existing components.
-    // Expected: empty dataframe.
-    assert_scenario(
-        &mut store,
-        &timeline_frame_nr,
-        &TimeQuery::LatestAt(frame44),
-        &ent_path,
-        &["they", "dont", "exist"],
-        [],
-    );
 
     // TODO(cmc): test log_times too!
 
     // Scenario: query all components at `last frame + 1`.
     // Expected: latest data for all components.
-    assert_scenario(
+    tracker.assert_scenario(
         &mut store,
         &timeline_frame_nr,
         &TimeQuery::LatestAt(frame44),
         &ent_path,
         components_all,
         [
-            (
-                "instances",
-                all_data
-                    .remove(&("instances", TypedTimeInt::new_seq(frame42)))
-                    .unwrap(),
-            ),
-            (
-                "rects",
-                all_data
-                    .remove(&("rects", TypedTimeInt::new_seq(frame43)))
-                    .unwrap(),
-            ),
-            (
-                "positions",
-                all_data
-                    .remove(&("positions", TypedTimeInt::new_seq(frame42)))
-                    .unwrap(),
-            ),
+            ("instances", TypedTimeInt::new_seq(frame42)),
+            ("rects", TypedTimeInt::new_seq(frame43)),
+            ("positions", TypedTimeInt::new_seq(frame42)),
         ],
     );
+
+    // Scenario: query all components at `last log_time + 10ms`.
+    // Expected: latest data for all components.
+    // TODO
 }
 
 // --- Helpers ---
 
-fn insert_data<const N: usize, const M: usize>(
-    store: &mut DataStore,
-    all_data: &mut HashMap<(ComponentNameRef<'_>, TypedTimeInt), Box<dyn Array>>,
-    ent_path: &EntityPath,
-    times: [(TypedTimeInt, Schema, Int64Array); N],
-    components: [(ComponentNameRef<'static>, Schema, ListArray<i32>); M],
-) {
-    for (time, _, _) in &times {
-        for (name, _, comp) in &components {
-            assert!(all_data
-                .insert((name, time.clone()), comp.clone().boxed())
-                .is_none());
-        }
-    }
+type DataEntry = (ComponentNameRef<'static>, TypedTimeInt);
 
-    let (schema, components) = build_message(ent_path, times, components);
-    eprintln!("inserting into '{ent_path}':\nschema: {schema:#?}\ncomponents: {components:#?}");
-    // eprintln!("---\ninserting into '{ent_path}': [log_time, frame_nr], [rects]");
-    store.insert(&schema, &components).unwrap();
-    eprintln!("{store}");
+#[derive(Default)]
+struct DataTracker {
+    all_data: HashMap<(ComponentNameRef<'static>, TypedTimeInt), Box<dyn Array>>,
 }
 
-fn assert_scenario<const N: usize>(
-    store: &mut DataStore,
-    timeline: &Timeline,
-    time_query: &TimeQuery,
-    ent_path: &EntityPath,
-    components: &[ComponentNameRef<'_>],
-    expected: [(ComponentNameRef<'_>, Box<dyn Array>); N],
-) {
-    let df = store
-        .query(timeline, time_query, ent_path, components)
-        .unwrap();
+impl DataTracker {
+    fn insert_data<const N: usize, const M: usize>(
+        &mut self,
+        store: &mut DataStore,
+        ent_path: &EntityPath,
+        times: [(TypedTimeInt, Schema, Int64Array); N],
+        components: [(ComponentNameRef<'static>, Schema, ListArray<i32>); M],
+    ) {
+        for (time, _, _) in &times {
+            for (name, _, comp) in &components {
+                assert!(self
+                    .all_data
+                    .insert((name, time.clone()), comp.clone().boxed())
+                    .is_none());
+            }
+        }
 
-    let series = expected
-        .into_iter()
-        .map(|(name, data)| Series::try_from((name, data)).unwrap())
-        .collect::<Vec<_>>();
-    let expected = DataFrame::new(series).unwrap();
+        let (schema, components) = build_message(ent_path, times, components);
+        eprintln!("inserting into '{ent_path}':\nschema: {schema:#?}\ncomponents: {components:#?}");
+        // eprintln!("---\ninserting into '{ent_path}': [log_time, frame_nr], [rects]");
+        store.insert(&schema, &components).unwrap();
+        eprintln!("{store}");
+    }
 
-    assert_eq!(expected, df);
+    fn assert_scenario<const N: usize>(
+        &self,
+        store: &mut DataStore,
+        timeline: &Timeline,
+        time_query: &TimeQuery,
+        ent_path: &EntityPath,
+        components: &[ComponentNameRef<'_>],
+        expected: [DataEntry; N],
+    ) {
+        let df = store
+            .query(timeline, time_query, ent_path, components)
+            .unwrap();
+
+        let series = expected
+            .into_iter()
+            .map(|(name, time)| (name, self.all_data[&(name, time)].clone()))
+            .map(|(name, data)| Series::try_from((name, data)).unwrap())
+            .collect::<Vec<_>>();
+        let expected = DataFrame::new(series).unwrap();
+
+        assert_eq!(expected, df);
+    }
+}
+
+fn init_logs() {
+    static INIT: AtomicBool = AtomicBool::new(false);
+
+    if INIT.compare_exchange(false, true, SeqCst, SeqCst).is_ok() {
+        re_log::set_default_rust_log_env();
+        tracing_subscriber::fmt::init(); // log to stdout
+    }
 }
 
 fn systemtime_to_nanos(time: SystemTime) -> i64 {
