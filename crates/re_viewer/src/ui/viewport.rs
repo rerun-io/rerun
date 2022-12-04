@@ -135,7 +135,9 @@ impl ViewportBlueprint {
         }
 
         // Make sure the visibility flags in the SpaceView::obj_tree_properties get updated:
-        blueprint.on_frame_start(ctx, spaces_info);
+        for space_view in blueprint.space_views.values_mut() {
+            space_view.on_frame_start(&ctx.log_db.obj_db.tree);
+        }
 
         blueprint
     }
