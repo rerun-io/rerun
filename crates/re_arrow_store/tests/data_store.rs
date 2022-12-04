@@ -14,6 +14,149 @@ use re_log_types::{ObjPath as EntityPath, TimeType, Timeline};
 
 // --- Scenarios ---
 
+#[test]
+fn empty_query_edge_cases() {
+    re_log::set_default_rust_log_env();
+    tracing_subscriber::fmt::init(); // log to stdout
+
+    let mut store = DataStore::default();
+
+    let ent_path = EntityPath::from("this/that");
+    let now = SystemTime::now();
+    let now_nanos = systemtime_to_nanos(now);
+    let now_minus_10ms = now - Duration::from_millis(10);
+    let now_minus_10ms_nanos = systemtime_to_nanos(now_minus_10ms);
+    let frame39 = 39;
+    let frame40 = 40;
+    let nb_instances = 3;
+
+    let mut all_data = HashMap::new();
+    {
+        insert_data(
+            &mut store,
+            &mut all_data,
+            &ent_path,
+            [build_log_time(now), build_frame_nr(frame40)],
+            [build_instances(nb_instances)],
+        );
+    }
+
+    let timeline_wrong_name = Timeline::new("lag_time", TimeType::Time);
+    let timeline_wrong_kind = Timeline::new("log_time", TimeType::Sequence);
+    let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
+    let timeline_log_time = Timeline::new("log_time", TimeType::Time);
+    let components_all = &["instances"];
+
+    // Scenario: query at `last_frame`.
+    // Expected: dataframe with our instances in it.
+    assert_scenario(
+        &mut store,
+        &timeline_frame_nr,
+        &TimeQuery::LatestAt(frame40),
+        &ent_path,
+        components_all,
+        [(
+            "instances",
+            all_data
+                .remove(&("instances", TypedTimeInt::new_seq(frame40)))
+                .unwrap(),
+        )],
+    );
+
+    // Scenario: query at `last_log_time`.
+    // Expected: dataframe with our instances in it.
+    assert_scenario(
+        &mut store,
+        &timeline_log_time,
+        &TimeQuery::LatestAt(now_nanos),
+        &ent_path,
+        components_all,
+        [(
+            "instances",
+            all_data
+                .remove(&("instances", TypedTimeInt::new_time(now_nanos)))
+                .unwrap(),
+        )],
+    );
+
+    // Scenario: query an empty store at `first_frame - 1`.
+    // Expected: empty dataframe.
+    assert_scenario(
+        &mut store,
+        &timeline_frame_nr,
+        &TimeQuery::LatestAt(frame39),
+        &ent_path,
+        components_all,
+        [],
+    );
+
+    // Scenario: query an empty store at `first_log_time - 10ms`.
+    // Expected: empty dataframe.
+    assert_scenario(
+        &mut store,
+        &timeline_log_time,
+        &TimeQuery::LatestAt(now_minus_10ms_nanos),
+        &ent_path,
+        components_all,
+        [],
+    );
+
+    // Scenario: query a non-existing entity path.
+    // Expected: empty dataframe.
+    assert_scenario(
+        &mut store,
+        &timeline_frame_nr,
+        &TimeQuery::LatestAt(frame40),
+        &EntityPath::from("does/not/exist"),
+        components_all,
+        [],
+    );
+
+    // Scenario: query a bunch of non-existing components.
+    // Expected: empty dataframe.
+    assert_scenario(
+        &mut store,
+        &timeline_frame_nr,
+        &TimeQuery::LatestAt(frame40),
+        &ent_path,
+        &["they", "dont", "exist"],
+        [],
+    );
+
+    // Scenario: query with an empty list of components.
+    // Expected: empty dataframe.
+    assert_scenario(
+        &mut store,
+        &timeline_frame_nr,
+        &TimeQuery::LatestAt(frame40),
+        &ent_path,
+        &[],
+        [],
+    );
+
+    // Scenario: query with wrong timeline name.
+    // Expected: empty dataframe.
+    assert_scenario(
+        &mut store,
+        &timeline_wrong_name,
+        &TimeQuery::LatestAt(frame40),
+        &ent_path,
+        components_all,
+        [],
+    );
+
+    // Scenario: query with wrong timeline kind.
+    // Expected: empty dataframe.
+    assert_scenario(
+        &mut store,
+        &timeline_wrong_kind,
+        &TimeQuery::LatestAt(frame40),
+        &ent_path,
+        components_all,
+        [],
+    );
+}
+
 /// Covering a very common end-to-end use case:
 /// - single entity path
 /// - static set of instances
@@ -22,6 +165,9 @@ use re_log_types::{ObjPath as EntityPath, TimeType, Timeline};
 /// - no weird stuff (duplicated components etc)
 #[test]
 fn single_entity_multi_timelines_multi_components_out_of_order_roundtrip() {
+    re_log::set_default_rust_log_env();
+    tracing_subscriber::fmt::init(); // log to stdout
+
     let mut store = DataStore::default();
 
     let ent_path = EntityPath::from("this/that");
@@ -29,7 +175,7 @@ fn single_entity_multi_timelines_multi_components_out_of_order_roundtrip() {
     let now = SystemTime::now();
     let now_minus_20ms = now - Duration::from_millis(20);
     let now_minus_10ms = now - Duration::from_millis(10);
-    let now_plus_10ms = now + Duration::from_millis(20);
+    let now_plus_10ms = now + Duration::from_millis(10);
     let now_plus_20ms = now + Duration::from_millis(20);
 
     let frame40 = 40;
@@ -76,6 +222,8 @@ fn single_entity_multi_timelines_multi_components_out_of_order_roundtrip() {
     let timeline_log_time = Timeline::new("log_time", TimeType::Time);
     let components_all = &["instances", "rects", "positions"];
 
+    // TODO: move edge cases to another test
+
     // Scenario: query at frame #40, no data supposed to exist yet!
     // Expected: empty dataframe.
     assert_scenario(
@@ -87,16 +235,15 @@ fn single_entity_multi_timelines_multi_components_out_of_order_roundtrip() {
         [],
     );
 
-    // TODO(cmc): broken
-    // // Scenario: query a non-existing entity path.
-    // assert_scenario(
-    //     &mut store,
-    //     &timeline_frame_nr,
-    //     &TimeQuery::LatestAt(frame44),
-    //     &EntityPath::from("does/not/exist"),
-    //     components_all,
-    //     [],
-    // );
+    // Scenario: query a non-existing entity path.
+    assert_scenario(
+        &mut store,
+        &timeline_frame_nr,
+        &TimeQuery::LatestAt(frame44),
+        &EntityPath::from("does/not/exist"),
+        components_all,
+        [],
+    );
 
     // Scenario: query a bunch of non-existing components.
     // Expected: empty dataframe.
@@ -185,4 +332,10 @@ fn assert_scenario<const N: usize>(
     let expected = DataFrame::new(series).unwrap();
 
     assert_eq!(expected, df);
+}
+
+fn systemtime_to_nanos(time: SystemTime) -> i64 {
+    time.duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap()
+        .as_nanos() as i64
 }
