@@ -2,19 +2,19 @@
 //! TODO(john) better crate documentation.
 
 mod field_types;
-mod read;
 mod store;
+mod store_read;
+mod store_write;
 #[cfg(test)]
 pub mod tests;
-mod write;
 
-pub use self::read::TimeQuery;
 pub(crate) use self::store::{ComponentBucket, ComponentTable, IndexBucket, IndexTable};
 pub use self::store::{ComponentName, ComponentNameRef, DataStore, RowIndex};
-pub use re_log_types::{TimeInt, TypedTimeInt}; // for politeness sake
+pub use self::store_read::TimeQuery;
 
-// Re-export
+// Re-exports
 pub use arrow2::io::ipc::read::{StreamReader, StreamState};
+pub use re_log_types::{TimeInt, TypedTimeInt}; // for politeness sake
 
 /// Build a [`StreamReader`] from a slice of `u8`
 pub fn build_stream_reader(data: &[u8]) -> StreamReader<impl std::io::Read + '_> {
