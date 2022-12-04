@@ -7,11 +7,10 @@ use arrow2::{
     datatypes::{DataType, Field, Schema, TimeUnit},
 };
 use arrow2_convert::serialize::TryIntoArrow;
-use polars::export::num::ToPrimitive;
 use re_log_types::arrow::{ENTITY_PATH_KEY, TIMELINE_KEY, TIMELINE_SEQUENCE, TIMELINE_TIME};
 use re_log_types::ObjPath as EntityPath;
 
-use crate::field_types;
+use crate::{field_types, ComponentNameRef, TypedTimeInt};
 
 /// Wrap `field_array` in a single-element `ListArray`
 pub fn wrap_in_listarray(field_array: Box<dyn Array>) -> ListArray<i32> {
@@ -72,17 +71,15 @@ pub fn build_test_rect_chunk() -> (Chunk<Box<dyn Array>>, Schema) {
     (chunk, schema)
 }
 
-pub fn build_log_time(log_time: SystemTime) -> (Schema, Int64Array) {
+pub fn build_log_time(log_time: SystemTime) -> (TypedTimeInt, Schema, Int64Array) {
     let log_time = log_time
         .duration_since(SystemTime::UNIX_EPOCH)
         .unwrap()
-        .as_nanos()
-        .to_u64()
-        .unwrap();
+        .as_nanos() as i64;
 
     let datatype = DataType::Timestamp(TimeUnit::Nanosecond, None);
 
-    let data = PrimitiveArray::from([Some(log_time as i64)]).to(datatype.clone());
+    let data = PrimitiveArray::from([Some(log_time)]).to(datatype.clone());
 
     let fields = [Field::new("log_time", datatype, false)
         .with_metadata([(TIMELINE_KEY.to_owned(), TIMELINE_TIME.to_owned())].into())]
@@ -93,10 +90,12 @@ pub fn build_log_time(log_time: SystemTime) -> (Schema, Int64Array) {
         ..Default::default()
     };
 
-    (schema, data)
+    let time = TypedTimeInt::new_time(log_time);
+
+    (time, schema, data)
 }
 
-pub fn build_frame_nr(frame_nr: i64) -> (Schema, Int64Array) {
+pub fn build_frame_nr(frame_nr: i64) -> (TypedTimeInt, Schema, Int64Array) {
     let data = PrimitiveArray::from([Some(frame_nr)]);
 
     let fields = [Field::new("frame_nr", DataType::Int64, false)
@@ -108,7 +107,9 @@ pub fn build_frame_nr(frame_nr: i64) -> (Schema, Int64Array) {
         ..Default::default()
     };
 
-    (schema, data)
+    let time = TypedTimeInt::new_seq(frame_nr);
+
+    (time, schema, data)
 }
 
 pub fn pack_timelines(
@@ -129,7 +130,7 @@ pub fn pack_timelines(
     (schema, packed)
 }
 
-pub fn build_instances(nb_instances: usize) -> (Schema, ListArray<i32>) {
+pub fn build_instances(nb_instances: usize) -> (ComponentNameRef<'static>, Schema, ListArray<i32>) {
     use rand::Rng as _;
     let mut rng = rand::thread_rng();
 
@@ -147,10 +148,10 @@ pub fn build_instances(nb_instances: usize) -> (Schema, ListArray<i32>) {
         ..Default::default()
     };
 
-    (schema, data)
+    ("instances", schema, data)
 }
 
-pub fn build_rects(nb_instances: usize) -> (Schema, ListArray<i32>) {
+pub fn build_rects(nb_instances: usize) -> (ComponentNameRef<'static>, Schema, ListArray<i32>) {
     let data = {
         let data: Box<[_]> = (0..nb_instances).into_iter().map(|i| i as f32).collect();
         let x = Float32Array::from_slice(&data).boxed();
@@ -173,10 +174,10 @@ pub fn build_rects(nb_instances: usize) -> (Schema, ListArray<i32>) {
         ..Default::default()
     };
 
-    (schema, data)
+    ("rects", schema, data)
 }
 
-pub fn build_positions(nb_instances: usize) -> (Schema, ListArray<i32>) {
+pub fn build_positions(nb_instances: usize) -> (ComponentNameRef<'static>, Schema, ListArray<i32>) {
     use rand::Rng as _;
     let mut rng = rand::thread_rng();
 
@@ -205,7 +206,7 @@ pub fn build_positions(nb_instances: usize) -> (Schema, ListArray<i32>) {
         ..Default::default()
     };
 
-    (schema, data)
+    ("positions", schema, data)
 }
 
 pub fn pack_components(
@@ -229,8 +230,8 @@ pub fn pack_components(
 
 pub fn build_message(
     ent_path: &EntityPath,
-    timelines: impl IntoIterator<Item = (Schema, Int64Array)>,
-    components: impl IntoIterator<Item = (Schema, ListArray<i32>)>,
+    timelines: impl IntoIterator<Item = (TypedTimeInt, Schema, Int64Array)>,
+    components: impl IntoIterator<Item = (ComponentNameRef<'static>, Schema, ListArray<i32>)>,
 ) -> (Schema, Chunk<Box<dyn Array>>) {
     let mut schema = Schema::default();
     let mut cols: Vec<Box<dyn Array>> = Vec::new();
@@ -241,7 +242,7 @@ pub fn build_message(
     let (timelines_schema, timelines_data) = pack_timelines(
         timelines
             .into_iter()
-            .map(|(schema, data)| (schema, data.boxed())),
+            .map(|(_, schema, data)| (schema, data.boxed())),
     );
     schema.fields.extend(timelines_schema.fields);
     schema.metadata.extend(timelines_schema.metadata);
@@ -251,7 +252,7 @@ pub fn build_message(
     let (components_schema, components_data) = pack_components(
         components
             .into_iter()
-            .map(|(schema, data)| (schema, data.boxed())),
+            .map(|(_, schema, data)| (schema, data.boxed())),
     );
     schema.fields.extend(components_schema.fields);
     schema.metadata.extend(components_schema.metadata);

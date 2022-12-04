@@ -15,7 +15,7 @@ pub use self::store_read::TimeQuery;
 
 // Re-exports
 pub use arrow2::io::ipc::read::{StreamReader, StreamState};
-pub use re_log_types::{TimeInt, TypedTimeInt}; // for politeness sake
+pub use re_log_types::{TimeInt, TimeType, TypedTimeInt}; // for politeness sake
 
 /// Build a [`StreamReader`] from a slice of `u8`
 pub fn build_stream_reader(data: &[u8]) -> StreamReader<impl std::io::Read + '_> {

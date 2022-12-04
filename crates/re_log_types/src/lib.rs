@@ -665,6 +665,13 @@ impl std::iter::Sum for TimeInt {
 pub struct TypedTimeInt(TimeType, TimeInt);
 
 impl TypedTimeInt {
+    pub fn new_time(time: i64) -> Self {
+        Self(TimeType::Time, time.into())
+    }
+    pub fn new_seq(seq: i64) -> Self {
+        Self(TimeType::Sequence, seq.into())
+    }
+
     pub fn typ(&self) -> TimeType {
         self.0
     }
