@@ -16,7 +16,7 @@ use crate::MsgId;
 #[must_use]
 #[derive(Clone, Debug)]
 pub struct ArrowMsg {
-    /// A unique id per [`LogMsg`].
+    /// A unique id per `LogMsg`.
     pub msg_id: MsgId,
     /// Arrow schema
     pub schema: Schema,
