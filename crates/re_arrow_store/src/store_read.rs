@@ -202,7 +202,19 @@ impl IndexBucket {
         // find the corresponding row index within the time index
         let times = self.times.values();
         let primary_idx = match times.binary_search(&at) {
-            Ok(primary_idx) => primary_idx as i64,
+            Ok(mut primary_idx) => {
+                // We've found one index that matches the value we're looking for... it doesn't
+                // mean there aren't others, higher in the chain, which take priority.
+                loop {
+                    let next_primary_idx = primary_idx + 1;
+                    if next_primary_idx < times.len() && times[next_primary_idx] == at {
+                        primary_idx = next_primary_idx;
+                    } else {
+                        break;
+                    }
+                }
+                primary_idx as i64
+            }
             Err(primary_idx_closest) => {
                 // Trying to query _before_ the beginning of time... there's nothing there.
                 if primary_idx_closest == 0 {
