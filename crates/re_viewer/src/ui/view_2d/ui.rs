@@ -447,10 +447,9 @@ fn view_2d_scrollable(
 
         if *is_hovered {
             line_builder
-                .add_rectangle_outline_2d(
+                .add_axis_aligned_rectangle_outline_2d(
                     glam::Vec2::ZERO,
-                    glam::Vec2::X * tensor.shape[1].size as f32,
-                    glam::Vec2::Y * tensor.shape[0].size as f32,
+                    glam::vec2(tensor.shape[1].size as f32, tensor.shape[0].size as f32),
                 )
                 .color_rgbx_slice(paint_props.fg_stroke.color.to_array())
                 .radius(paint_props.fg_stroke.width * 0.5 * space_from_points);
@@ -528,17 +527,15 @@ fn view_2d_scrollable(
 
         let rect_in_ui =
             ui_from_space.transform_rect(Rect::from_min_max(bbox.min.into(), bbox.max.into()));
-        let rounding = 2.0;
-        shapes.push(Shape::rect_stroke(
-            rect_in_ui,
-            rounding,
-            paint_props.bg_stroke,
-        ));
-        shapes.push(Shape::rect_stroke(
-            rect_in_ui,
-            rounding,
-            paint_props.fg_stroke,
-        ));
+
+        line_builder
+            .add_axis_aligned_rectangle_outline_2d(bbox.min.into(), bbox.max.into())
+            .color_rgbx_slice(paint_props.bg_stroke.color.to_array())
+            .radius(paint_props.bg_stroke.width * 0.5 * space_from_points);
+        line_builder
+            .add_axis_aligned_rectangle_outline_2d(bbox.min.into(), bbox.max.into())
+            .color_rgbx_slice(paint_props.fg_stroke.color.to_array())
+            .radius(paint_props.fg_stroke.width * 0.5 * space_from_points);
 
         if let Some(pointer_pos) = pointer_pos {
             check_hovering(*instance_hash, rect_in_ui.distance_to_pos(pointer_pos));

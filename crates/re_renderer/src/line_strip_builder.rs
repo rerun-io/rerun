@@ -181,6 +181,24 @@ where
         )
     }
 
+    /// Add 2D rectangle outlines with axis along X and Y.
+    ///
+    /// Internally adds 4 2D line segments with rounded line heads.
+    /// Disables color gradient since we don't support gradients in this setup yet (i.e. enabling them does not look good)
+    pub fn add_axis_aligned_rectangle_outline_2d(
+        &mut self,
+        min: glam::Vec2,
+        max: glam::Vec2,
+    ) -> LineStripBuilder<'_, PerStripUserData> {
+        let z = self.next_2d_z;
+        self.next_2d_z += Self::NEXT_2D_Z_STEP;
+        self.add_rectangle_outline(
+            min.extend(z),
+            glam::Vec3::X * (max.x - min.x),
+            glam::Vec3::Y * (max.y - min.y),
+        )
+    }
+
     /// Finalizes the builder and returns a line draw data with all the lines added so far.
     pub fn to_draw_data(&self, ctx: &mut crate::context::RenderContext) -> LineDrawData {
         LineDrawData::new(ctx, &self.vertices, &self.strips).unwrap()
