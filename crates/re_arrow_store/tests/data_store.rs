@@ -54,7 +54,7 @@ fn empty_query_edge_cases() {
         &TimeQuery::LatestAt(frame40),
         &ent_path,
         components_all,
-        [("instances", TypedTimeInt::new_seq(frame40))],
+        vec![("instances", TypedTimeInt::new_seq(frame40))],
     );
 
     // Scenario: query at `last_log_time`.
@@ -65,7 +65,7 @@ fn empty_query_edge_cases() {
         &TimeQuery::LatestAt(now_nanos),
         &ent_path,
         components_all,
-        [("instances", TypedTimeInt::new_time(now_nanos))],
+        vec![("instances", TypedTimeInt::new_time(now_nanos))],
     );
 
     // Scenario: query an empty store at `first_frame - 1`.
@@ -76,7 +76,7 @@ fn empty_query_edge_cases() {
         &TimeQuery::LatestAt(frame39),
         &ent_path,
         components_all,
-        [],
+        vec![],
     );
 
     // Scenario: query an empty store at `first_log_time - 10ms`.
@@ -87,7 +87,7 @@ fn empty_query_edge_cases() {
         &TimeQuery::LatestAt(now_minus_10ms_nanos),
         &ent_path,
         components_all,
-        [],
+        vec![],
     );
 
     // Scenario: query a non-existing entity path.
@@ -98,7 +98,7 @@ fn empty_query_edge_cases() {
         &TimeQuery::LatestAt(frame40),
         &EntityPath::from("does/not/exist"),
         components_all,
-        [],
+        vec![],
     );
 
     // Scenario: query a bunch of non-existing components.
@@ -109,7 +109,7 @@ fn empty_query_edge_cases() {
         &TimeQuery::LatestAt(frame40),
         &ent_path,
         &["they", "dont", "exist"],
-        [],
+        vec![],
     );
 
     // Scenario: query with an empty list of components.
@@ -120,7 +120,7 @@ fn empty_query_edge_cases() {
         &TimeQuery::LatestAt(frame40),
         &ent_path,
         &[],
-        [],
+        vec![],
     );
 
     // Scenario: query with wrong timeline name.
@@ -131,7 +131,7 @@ fn empty_query_edge_cases() {
         &TimeQuery::LatestAt(frame40),
         &ent_path,
         components_all,
-        [],
+        vec![],
     );
 
     // Scenario: query with wrong timeline kind.
@@ -142,7 +142,7 @@ fn empty_query_edge_cases() {
         &TimeQuery::LatestAt(frame40),
         &ent_path,
         components_all,
-        [],
+        vec![],
     );
 }
 
@@ -166,7 +166,6 @@ fn single_entity_multi_timelines_multi_components_out_of_order_roundtrip() {
     let now_plus_10ms = now + Duration::from_millis(10);
     let now_plus_10ms_nanos = systemtime_to_nanos(now_plus_10ms);
     let now_plus_20ms = now + Duration::from_millis(20);
-    let now_plus_20ms_nanos = systemtime_to_nanos(now_plus_20ms);
 
     let frame40 = 40;
     let frame41 = 41;
@@ -214,97 +213,91 @@ fn single_entity_multi_timelines_multi_components_out_of_order_roundtrip() {
     let timeline_log_time = Timeline::new("log_time", TimeType::Time);
     let components_all = &["instances", "rects", "positions"];
 
-    // TODO(cmc): test frames 43, 44
-    // TODO(cmc): test log_times -10, +0, +10, +20
-
     // --- Testing at all frames ---
 
-    // Scenario: query all components at frame #40 (i.e. before first frame).
-    // Expected: empy dataframe.
-    tracker.assert_scenario(
-        &mut store,
-        &timeline_frame_nr,
-        &TimeQuery::LatestAt(frame40),
-        &ent_path,
-        components_all,
-        [],
-    );
+    let scenarios = [
+        // Scenario: query all components at frame #40 (i.e. before first frame).
+        // Expected: empy dataframe.
+        (frame40, vec![]),
+        // Scenario: query all components at frame #41 (i.e. first frame with data)
+        // Expected: data at that point in time.
+        (
+            frame41,
+            vec![
+                ("instances", TypedTimeInt::new_seq(frame41)),
+                ("rects", TypedTimeInt::new_seq(frame41)),
+            ],
+        ),
+        // Scenario: query all components at frame #42 (i.e. second frame with data)
+        // Expected: data at that point in time.
+        (
+            frame42,
+            vec![
+                ("instances", TypedTimeInt::new_seq(frame42)),
+                ("rects", TypedTimeInt::new_seq(frame42)),
+                ("positions", TypedTimeInt::new_seq(frame42)),
+            ],
+        ),
+        // Scenario: query all components at frame #43 (i.e. last frame with data)
+        // Expected: latest data for all components.
+        (
+            frame43,
+            vec![
+                ("instances", TypedTimeInt::new_seq(frame42)),
+                ("rects", TypedTimeInt::new_seq(frame43)),
+                ("positions", TypedTimeInt::new_seq(frame42)),
+            ],
+        ),
+        // Scenario: query all components at frame #44 (i.e. after last frame)
+        // Expected: latest data for all components.
+        (
+            frame44,
+            vec![
+                ("instances", TypedTimeInt::new_seq(frame42)),
+                ("rects", TypedTimeInt::new_seq(frame43)),
+                ("positions", TypedTimeInt::new_seq(frame42)),
+            ],
+        ),
+    ];
 
-    // Scenario: query all components at frame frame #41 (i.e. first frame with data)
-    // Expected: data at that point in time.
-    tracker.assert_scenario(
-        &mut store,
-        &timeline_frame_nr,
-        &TimeQuery::LatestAt(frame41),
-        &ent_path,
-        components_all,
-        [
-            ("instances", TypedTimeInt::new_seq(frame41)),
-            ("rects", TypedTimeInt::new_seq(frame41)),
-        ],
-    );
-
-    // Scenario: query all components at frame frame #42 (i.e. second frame with data)
-    // Expected: data at that point in time.
-    tracker.assert_scenario(
-        &mut store,
-        &timeline_frame_nr,
-        &TimeQuery::LatestAt(frame42),
-        &ent_path,
-        components_all,
-        [
-            ("instances", TypedTimeInt::new_seq(frame42)),
-            ("rects", TypedTimeInt::new_seq(frame42)),
-            ("positions", TypedTimeInt::new_seq(frame42)),
-        ],
-    );
-
-    // Scenario: query all components at frame #43 (i.e. last frame with data)
-    // Expected: latest data for all components.
-    tracker.assert_scenario(
-        &mut store,
-        &timeline_frame_nr,
-        &TimeQuery::LatestAt(frame43),
-        &ent_path,
-        components_all,
-        [
-            ("instances", TypedTimeInt::new_seq(frame42)),
-            ("rects", TypedTimeInt::new_seq(frame43)),
-            ("positions", TypedTimeInt::new_seq(frame42)),
-        ],
-    );
-
-    // Scenario: query all components at frame #44 (i.e. after last frame)
-    // Expected: latest data for all components.
-    tracker.assert_scenario(
-        &mut store,
-        &timeline_frame_nr,
-        &TimeQuery::LatestAt(frame44),
-        &ent_path,
-        components_all,
-        [
-            ("instances", TypedTimeInt::new_seq(frame42)),
-            ("rects", TypedTimeInt::new_seq(frame43)),
-            ("positions", TypedTimeInt::new_seq(frame42)),
-        ],
-    );
+    for (frame_nr, expected) in scenarios {
+        tracker.assert_scenario(
+            &mut store,
+            &timeline_frame_nr,
+            &TimeQuery::LatestAt(frame_nr),
+            &ent_path,
+            components_all,
+            expected,
+        );
+    }
 
     // --- Testing at all times ---
 
-    // Scenario: query all components at `last log_time + 10ms`.
-    // Expected: latest data for all components.
-    tracker.assert_scenario(
-        &mut store,
-        &timeline_log_time,
-        &TimeQuery::LatestAt(now_plus_20ms_nanos),
-        &ent_path,
-        components_all,
-        [
-            ("instances", TypedTimeInt::new_time(now_plus_10ms_nanos)),
-            ("rects", TypedTimeInt::new_time(now_plus_10ms_nanos)),
-            ("positions", TypedTimeInt::new_time(now_minus_10ms_nanos)),
-        ],
-    );
+    // TODO(cmc): test log_times -10, +0, +10, +20
+
+    let scenarios = [
+        // Scenario: query all components at +20ms (i.e. after last update).
+        // Expected: latest data for all components.
+        (
+            now_plus_20ms,
+            vec![
+                ("instances", TypedTimeInt::new_time(now_plus_10ms_nanos)),
+                ("rects", TypedTimeInt::new_time(now_plus_10ms_nanos)),
+                ("positions", TypedTimeInt::new_time(now_minus_10ms_nanos)),
+            ],
+        ),
+    ];
+
+    for (log_time, expected) in scenarios {
+        tracker.assert_scenario(
+            &mut store,
+            &timeline_log_time,
+            &TimeQuery::LatestAt(systemtime_to_nanos(log_time)),
+            &ent_path,
+            components_all,
+            expected,
+        );
+    }
 }
 
 // --- Helpers ---
@@ -340,14 +333,14 @@ impl DataTracker {
         // eprintln!("{store}");
     }
 
-    fn assert_scenario<const N: usize>(
+    fn assert_scenario(
         &self,
         store: &mut DataStore,
         timeline: &Timeline,
         time_query: &TimeQuery,
         ent_path: &EntityPath,
         components: &[ComponentNameRef<'_>],
-        expected: [DataEntry; N],
+        expected: Vec<DataEntry>,
     ) {
         let df = store
             .query(timeline, time_query, ent_path, components)
