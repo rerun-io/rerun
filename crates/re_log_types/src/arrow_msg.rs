@@ -6,7 +6,7 @@ use crate::MsgId;
 #[must_use]
 #[derive(Clone, Debug)]
 pub struct ArrowMsg {
-    /// A unique id per `LogMsg`.
+    /// A unique id per [`crate::LogMsg`].
     pub msg_id: MsgId,
     /// Arrow schema
     pub schema: Schema,
@@ -91,6 +91,7 @@ impl<'de> serde::Deserialize<'de> for ArrowMsg {
     }
 }
 
+#[cfg(test)]
 impl PartialEq for ArrowMsg {
     fn eq(&self, other: &Self) -> bool {
         self.msg_id == other.msg_id
