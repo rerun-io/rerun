@@ -371,11 +371,12 @@ impl App {
                 if let LogMsg::ArrowMsg(msg) = msg {
                     let stream = re_arrow_store::build_stream_reader(&msg.data);
                     let schema = stream.metadata().schema.clone();
-                    //TODO(john) this filters out `StreamState::Waiting`, which on a fixed buffer should never
-                    //happen, but if we're consuming an actual stream should be handled differently.
-                    for chunk in stream.filter_map(|state| match state {
-                        Ok(re_arrow_store::StreamState::Some(chunk)) => Some(chunk),
-                        _ => None,
+                    // TODO(john) this filters out `StreamState::Waiting`, which on a fixed
+                    // buffer should never happen, but if we're consuming an actual stream
+                    // should be handled differently.
+                    for chunk in stream.map(|state| match state {
+                        Ok(re_arrow_store::StreamState::Some(chunk)) => chunk,
+                        _ => unreachable!("cannot be waiting on a fixed buffer"),
                     }) {
                         arrow_db.insert(&schema, &chunk).unwrap();
                     }
