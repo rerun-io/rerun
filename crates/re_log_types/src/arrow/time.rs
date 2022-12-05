@@ -1,9 +1,9 @@
 use arrow2::{
     array::{
-        Int64Array, MapArray, MutableArray, MutableMapArray, MutablePrimitiveArray,
-        MutableUtf8Array, StructArray, Utf8Array,
+        DictionaryArray, DictionaryKey, Int64Array, MapArray, MutableArray, MutableMapArray,
+        MutablePrimitiveArray, MutableUtf8Array, PrimitiveArray, StructArray, Utf8Array,
     },
-    datatypes::{DataType, Field},
+    datatypes::{DataType, Field, IntegerType},
 };
 use arrow2_convert::{deserialize::ArrowDeserialize, field::ArrowField, serialize::ArrowSerialize};
 
@@ -16,11 +16,20 @@ impl ArrowField for TimePoint {
 
     #[inline]
     fn data_type() -> DataType {
+        //TODO(john) Use a Dictionary type for `type`
+        let time_type_values = Utf8Array::<i32>::from_slice(["Time", "Sequence"]);
+        let _time_type = DataType::Dictionary(
+            i32::KEY_TYPE,
+            Box::new(time_type_values.data_type().clone()),
+            false,
+        );
+
         DataType::Map(
             Box::new(Field::new(
                 "entries",
                 DataType::Struct(vec![
                     Field::new("timeline", DataType::Utf8, false),
+                    Field::new("type", DataType::UInt8, false),
                     Field::new("time", DataType::Int64, false),
                 ]),
                 true,
@@ -36,10 +45,11 @@ impl ArrowSerialize for TimePoint {
     #[inline]
     fn new_array() -> Self::MutableArrayType {
         let timeline_array: Box<dyn MutableArray> = Box::new(MutableUtf8Array::<i32>::new());
+        let time_type_array: Box<dyn MutableArray> = Box::new(MutablePrimitiveArray::<u8>::new());
         let time_array: Box<dyn MutableArray> = Box::new(MutablePrimitiveArray::<i64>::new());
         MutableMapArray::try_new(
             <TimePoint as ArrowField>::data_type(),
-            vec![timeline_array, time_array],
+            vec![timeline_array, time_type_array, time_array],
         )
         .unwrap()
     }
