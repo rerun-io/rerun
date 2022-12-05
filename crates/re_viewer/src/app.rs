@@ -19,7 +19,7 @@ use crate::{
 };
 
 #[cfg(not(target_arch = "wasm32"))]
-use crate::misc::TimeRangeF;
+use re_log_types::TimeRangeF;
 
 const WATERMARK: bool = false; // Nice for recording media material
 

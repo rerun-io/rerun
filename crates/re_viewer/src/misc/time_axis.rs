@@ -2,9 +2,7 @@ use std::collections::BTreeMap;
 
 use itertools::Itertools as _;
 
-use re_log_types::{Duration, TimeInt, TimeType};
-
-use super::TimeRange;
+use re_log_types::{Duration, TimeInt, TimeRange, TimeType};
 
 /// A piece-wise linear view of a single timeline.
 ///

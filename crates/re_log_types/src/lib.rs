@@ -30,7 +30,11 @@ mod index;
 pub mod objects;
 pub mod path;
 mod time;
+mod time_range;
+mod time_real;
 
+pub use self::time_range::{TimeRange, TimeRangeF};
+pub use self::time_real::TimeReal;
 pub use context::AnnotationContext;
 pub use coordinates::ViewCoordinates;
 pub use data::*;
@@ -656,75 +660,6 @@ impl std::iter::Sum for TimeInt {
             sum += item;
         }
         sum
-    }
-}
-
-// ----------------------------------------------------------------------------
-
-#[derive(Clone, Copy, Debug)]
-pub struct TypedTimeInt(TimeType, TimeInt);
-
-impl TypedTimeInt {
-    pub fn new_time(time: i64) -> Self {
-        Self(TimeType::Time, time.into())
-    }
-    pub fn new_seq(seq: i64) -> Self {
-        Self(TimeType::Sequence, seq.into())
-    }
-
-    pub fn typ(&self) -> TimeType {
-        self.0
-    }
-    pub fn time(&self) -> TimeInt {
-        self.1
-    }
-
-    pub fn as_i64(&self) -> i64 {
-        self.1.as_i64()
-    }
-}
-
-impl std::ops::Add<i64> for TypedTimeInt {
-    type Output = Self;
-
-    fn add(self, rhs: i64) -> Self::Output {
-        Self(self.0, self.1 + TimeInt::from(rhs))
-    }
-}
-
-impl From<(TimeType, i64)> for TypedTimeInt {
-    fn from((typ, time): (TimeType, i64)) -> Self {
-        Self(typ, TimeInt::from(time))
-    }
-}
-
-impl std::fmt::Display for TypedTimeInt {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self.0.format(self.1))
-    }
-}
-
-impl Ord for TypedTimeInt {
-    fn cmp(&self, rhs: &Self) -> std::cmp::Ordering {
-        self.1.cmp(&rhs.1)
-    }
-}
-impl PartialOrd for TypedTimeInt {
-    fn partial_cmp(&self, rhs: &Self) -> Option<std::cmp::Ordering> {
-        self.1.partial_cmp(&rhs.1)
-    }
-}
-
-impl Eq for TypedTimeInt {}
-impl PartialEq for TypedTimeInt {
-    fn eq(&self, rhs: &Self) -> bool {
-        self.1.eq(&rhs.1)
-    }
-}
-
-impl std::hash::Hash for TypedTimeInt {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.1.hash(state);
     }
 }
 

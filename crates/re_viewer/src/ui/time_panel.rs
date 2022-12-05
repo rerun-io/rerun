@@ -9,8 +9,8 @@ use re_data_store::{InstanceId, ObjectTree};
 use re_log_types::*;
 
 use crate::{
-    misc::time_control::Looping, time_axis::TimelineAxis, Selection, TimeControl, TimeRange,
-    TimeRangeF, TimeReal, TimeView, ViewerContext,
+    misc::time_control::Looping, time_axis::TimelineAxis, Selection, TimeControl, TimeView,
+    ViewerContext,
 };
 
 use super::Blueprint;
