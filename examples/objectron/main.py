@@ -83,7 +83,7 @@ def read_ar_frames(dirpath: Path, nb_frames: int, run_forever: bool, per_frame_s
             data = data[next_len:]
             frame_idx += 1
 
-            if run_forever:
+            if run_forever and per_frame_sleep > 0.0:
                 time.sleep(per_frame_sleep)
 
         if run_forever:

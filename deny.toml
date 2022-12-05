@@ -27,7 +27,7 @@ deny = [
 ]
 
 skip = [
-  { name = "ahash" }, # Old version via dark-light
+  { name = "ahash" }, # Popular crate + fast release schedule = lots of crates still using old versions
   { name = "nix" },   # Too many to protect against
 ]
 skip-tree = [
