@@ -208,14 +208,14 @@ pub enum HoveredSpace {
     None,
     /// Hovering in a 2D space.
     TwoD {
-        space_2d: Option<ObjPath>,
+        space_2d: ObjPath,
         /// Where in this 2D space (+ depth)?
         pos: glam::Vec3,
     },
     /// Hovering in a 3D space.
     ThreeD {
         /// The 3D space with the camera(s)
-        space_3d: Option<ObjPath>,
+        space_3d: ObjPath,
 
         /// 2D spaces and pixel coordinates (with Z=depth)
         target_spaces: Vec<(ObjPath, Option<Ray3>, Option<glam::Vec3>)>,

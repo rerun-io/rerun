@@ -8,7 +8,7 @@ use arrow2::{
 };
 
 use re_log_types::{
-    arrow::{build_time_cols, OBJPATH_KEY},
+    arrow::{build_time_cols, ENTITY_PATH_KEY},
     ArrowMsg, LogMsg, MsgId, ObjPath, TimePoint,
 };
 
@@ -59,7 +59,7 @@ pub fn build_arrow_log_msg(
     ));
     cols.push(data_col.boxed());
 
-    let metadata = BTreeMap::from([(OBJPATH_KEY.into(), obj_path.to_string())]);
+    let metadata = BTreeMap::from([(ENTITY_PATH_KEY.into(), obj_path.to_string())]);
     let schema = Schema { fields, metadata };
     let chunk = Chunk::new(cols);
 

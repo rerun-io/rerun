@@ -27,17 +27,23 @@ serde = ["dep:serde", "re_string_interner/serde", "re_tuid/serde"]
 
 
 [dependencies]
+
+# Rerun
+re_log = { path = "../re_log" }
+re_string_interner = { path = "../re_string_interner" }
+re_tuid = { path = "../re_tuid" }
+
+# External
 ahash = "0.8"
 arrow2 = { version = "0.14", features = ["io_ipc"] }
 bytemuck = "1.11"
 chrono = { version = "0.4", features = ["js-sys", "wasmbind"] }
 derive_more = "0.99"
 document-features = "0.2"
+fixed = { version = "1.17", features = ["serde"] }
 nohash-hasher = "0.2"
-re_log = { path = "../re_log" }
-re_string_interner = { path = "../re_string_interner" }
-re_tuid = { path = "../re_tuid" }
 thiserror = "1.0"
+typenum = "1.15"
 uuid = { version = "1.1", features = ["serde", "v4", "js"] }
 
 # Optional dependencies:

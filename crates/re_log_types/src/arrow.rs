@@ -7,7 +7,7 @@ use arrow2::{
 
 use crate::{TimePoint, TimeType};
 
-pub const OBJPATH_KEY: &str = "RERUN:object_path";
+pub const ENTITY_PATH_KEY: &str = "RERUN:entity_path";
 pub const TIMELINE_KEY: &str = "RERUN:timeline";
 pub const TIMELINE_SEQUENCE: &str = "Sequence";
 pub const TIMELINE_TIME: &str = "Time";

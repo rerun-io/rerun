@@ -19,7 +19,7 @@ use crate::{
 };
 
 #[cfg(not(target_arch = "wasm32"))]
-use crate::misc::TimeRangeF;
+use re_log_types::TimeRangeF;
 
 const WATERMARK: bool = false; // Nice for recording media material
 
@@ -43,7 +43,7 @@ pub struct App {
     /// Where the logs are stored.
     log_dbs: IntMap<RecordingId, LogDb>,
 
-    arrow_db: re_arrow_store::LogDb,
+    arrow_dbs: IntMap<RecordingId, re_arrow_store::DataStore>,
 
     /// What is serialized
     state: AppState,
@@ -159,7 +159,7 @@ impl App {
             design_tokens,
             rx,
             log_dbs,
-            arrow_db: re_arrow_store::LogDb::default(),
+            arrow_dbs: Default::default(),
             state,
             #[cfg(not(target_arch = "wasm32"))]
             ctrl_c,
@@ -363,8 +363,13 @@ impl App {
 
                 let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
 
+                let arrow_db = self
+                    .arrow_dbs
+                    .entry(self.state.selected_rec_id)
+                    .or_default();
+                    
                 if let LogMsg::ArrowMsg(ref msg) = msg {
-                    self.arrow_db.add_msg(msg);
+                    arrow_db.add_msg(msg);
                 }
 
                 log_db.add(msg);
