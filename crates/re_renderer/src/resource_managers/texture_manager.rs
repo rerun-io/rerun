@@ -1,6 +1,7 @@
 use std::{num::NonZeroU32, sync::Arc};
 
 use crate::{
+    next_multiple_of,
     wgpu_resources::{GpuTextureHandleStrong, GpuTexturePool, TextureDesc},
     DebugLabel,
 };
@@ -36,18 +37,6 @@ impl<'a> Texture2DCreationDesc<'a> {
             .chunks_exact(3)
             .flat_map(|color| [color[0], color[1], color[2], 255])
             .collect()
-    }
-
-    /// Bytes per row the texture should (!) have.
-    fn bytes_per_row(&self) -> u32 {
-        let format_info = self.format.describe();
-        let width_blocks = self.width / format_info.block_dimensions.0 as u32;
-        width_blocks * format_info.block_size as u32
-    }
-
-    fn needs_row_alignment(&self) -> bool {
-        self.data.len() as u32 > wgpu::COPY_BYTES_PER_ROW_ALIGNMENT
-            && self.data.len() as u32 % wgpu::COPY_BYTES_PER_ROW_ALIGNMENT != 0
     }
 }
 
@@ -150,25 +139,29 @@ impl TextureManager2D {
             },
         );
         let texture = texture_pool.get_resource(&texture_handle).unwrap();
-        let bytes_per_row = creation_desc.bytes_per_row();
+
+        let format_info = creation_desc.format.describe();
+        let width_blocks = creation_desc.width / format_info.block_dimensions.0 as u32;
+        let bytes_per_row_unaligned = width_blocks * format_info.block_size as u32;
+        let bytes_per_row_aligned =
+            next_multiple_of(bytes_per_row_unaligned, wgpu::COPY_BYTES_PER_ROW_ALIGNMENT);
 
         // TODO(andreas): Once we have our own temp buffer for uploading, we can do the padding inplace
         // I.e. the only difference will be if we do one memcopy or one memcopy per row, making row padding a nuissance!
         let mut data = creation_desc.data;
         let mut padded_rows_copy_if_necessary = Vec::new();
 
-        if creation_desc.needs_row_alignment() {
-            let num_padding_bytes = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT
-                - (bytes_per_row % wgpu::COPY_BYTES_PER_ROW_ALIGNMENT);
+        if bytes_per_row_aligned != bytes_per_row_unaligned {
+            let num_padding_bytes_per_row = bytes_per_row_aligned - bytes_per_row_unaligned;
             padded_rows_copy_if_necessary.extend(
                 creation_desc
                     .data
-                    .chunks_exact(bytes_per_row as usize)
+                    .chunks_exact(bytes_per_row_unaligned as usize)
                     .flat_map(|unpadded_row| {
                         unpadded_row
                             .iter()
                             .cloned()
-                            .chain(std::iter::repeat(255).take(num_padding_bytes as usize))
+                            .chain(std::iter::repeat(0).take(num_padding_bytes_per_row as usize))
                     }),
             );
 
@@ -187,7 +180,9 @@ impl TextureManager2D {
             data,
             wgpu::ImageDataLayout {
                 offset: 0,
-                bytes_per_row: Some(NonZeroU32::new(bytes_per_row).expect("invalid bytes per row")),
+                bytes_per_row: Some(
+                    NonZeroU32::new(bytes_per_row_aligned).expect("invalid bytes per row"),
+                ),
                 rows_per_image: None,
             },
             size,

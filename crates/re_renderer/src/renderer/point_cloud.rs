@@ -20,8 +20,7 @@ use itertools::Itertools;
 use smallvec::smallvec;
 
 use crate::{
-    include_file,
-    renderer::utils::next_multiple_of,
+    include_file, next_multiple_of,
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroupHandleStrong,
