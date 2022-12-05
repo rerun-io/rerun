@@ -160,8 +160,17 @@ bitflags! {
     #[repr(C)]
     #[derive(Default, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct LineStripFlags : u8 {
-        /// Puts a equilateral triangle at the end of the line strip.
+        /// Puts a equilateral triangle at the end of the line strip (excludes other end caps).
         const CAP_END_TRIANGLE = 0b0000_0001;
+        /// Adds a round cap at the end of a line strip (excludes other end caps).
+        const CAP_END_ROUND = 0b0000_0010;
+        /// Puts a equilateral triangle at the start of the line strip (excludes other start caps).
+        const CAP_START_TRIANGLE = 0b0000_0100;
+        /// Adds a round cap at the start of a line strip (excludes other start caps).
+        const CAP_START_ROUND = 0b0000_1000;
+
+        /// Disable color gradient which is on by default
+        const NO_COLOR_GRADIENT = 0b0001_0000;
     }
 }
 
@@ -242,7 +251,9 @@ impl LineDrawData {
         );
 
         let num_strips = strips.len() as u32;
-        let num_vertices = vertices.len() as u32;
+        // Add a placeholder vertex at the beginning to simplify line cap handling
+        // (need this only if the first line starts with a cap, but not specialcasing this makes things easier!)
+        let num_quads = vertices.len() as u32 + 1;
 
         // TODO(andreas): just create more draw work items each with its own texture to become "unlimited"
         anyhow::ensure!(
@@ -256,23 +267,12 @@ impl LineDrawData {
         );
         // TODO(andreas): just create more draw work items each with its own texture to become "unlimited".
         //              (note that this one is a bit trickier to fix than extra line-strips, as we need to split a strip!)
-        anyhow::ensure!(num_vertices <= POSITION_TEXTURE_SIZE * POSITION_TEXTURE_SIZE,
-                "Too many line segments! The maximum number of positions is {} but specified were {num_vertices}",
-                POSITION_TEXTURE_SIZE * POSITION_TEXTURE_SIZE
-            );
-
-        // No index buffer, so after each strip we have a quad that is discarded or turned into an arrow cap.
-        // This means from a geometry perspective there is only ONE strip, i.e. 2 less quads than there are half-PositionDatas!
-        let num_quads = if strips
-            .last()
-            .unwrap()
-            .flags
-            .contains(LineStripFlags::CAP_END_TRIANGLE)
-        {
-            num_vertices
-        } else {
-            num_vertices - 1
-        };
+        anyhow::ensure!(
+            num_quads < POSITION_TEXTURE_SIZE * POSITION_TEXTURE_SIZE,
+            "Too many line segments! The maximum number of positions is {} but specified were {}",
+            POSITION_TEXTURE_SIZE * POSITION_TEXTURE_SIZE - 1,
+            vertices.len()
+        );
 
         // TODO(andreas): We want a "stack allocation" here that lives for one frame.
         //                  Note also that this doesn't protect against sharing the same texture with several LineDrawData!
@@ -313,12 +313,16 @@ impl LineDrawData {
         //                  These staging buffers would be provided by the belt.
         // To make the data upload simpler (and have it be done in one go), we always update full rows of each of our textures
         let mut position_data_staging =
-            Vec::with_capacity(next_multiple_of(num_vertices, POSITION_TEXTURE_SIZE) as usize);
+            Vec::with_capacity(next_multiple_of(num_quads, POSITION_TEXTURE_SIZE) as usize);
+        // placeholder at the beginning to facilitate start-caps
+        position_data_staging.push(LineVertex {
+            pos: glam::vec3(f32::INFINITY, f32::INFINITY, f32::INFINITY),
+            strip_index: u32::MAX,
+        });
         position_data_staging.extend(vertices.iter());
         position_data_staging.extend(
-            std::iter::repeat(gpu_data::LineVertex::zeroed()).take(
-                (next_multiple_of(num_vertices, POSITION_TEXTURE_SIZE) - num_vertices) as usize,
-            ),
+            std::iter::repeat(gpu_data::LineVertex::zeroed())
+                .take((next_multiple_of(num_quads, POSITION_TEXTURE_SIZE) - num_quads) as usize),
         );
 
         let mut line_strip_info_staging =
@@ -359,7 +363,7 @@ impl LineDrawData {
             },
             wgpu::Extent3d {
                 width: POSITION_TEXTURE_SIZE,
-                height: (num_vertices + POSITION_TEXTURE_SIZE - 1) / POSITION_TEXTURE_SIZE,
+                height: (num_quads + POSITION_TEXTURE_SIZE - 1) / POSITION_TEXTURE_SIZE,
                 depth_or_array_layers: 1,
             },
         );
@@ -487,7 +491,11 @@ impl Renderer for LineRenderer {
                     ..Default::default()
                 },
                 depth_stencil: ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE,
-                multisample: ViewBuilder::MAIN_TARGET_DEFAULT_MSAA_STATE,
+                multisample: wgpu::MultisampleState {
+                    // We discard pixels to do the round cutout, therefore we need to calculate our own sampling mask.
+                    alpha_to_coverage_enabled: true,
+                    ..ViewBuilder::MAIN_TARGET_DEFAULT_MSAA_STATE
+                },
             },
             &pools.pipeline_layouts,
             &pools.shader_modules,
