@@ -5,8 +5,6 @@ pub(crate) mod tensor_image_cache;
 pub(crate) mod time_axis;
 pub(crate) mod time_control;
 pub(crate) mod time_control_ui;
-mod time_range;
-mod time_real;
 mod viewer_context;
 
 use tensor_image_cache::ImageCache;
@@ -15,8 +13,6 @@ use tensor_image_cache::ImageCache;
 pub(crate) use clipboard::Clipboard;
 
 pub(crate) use time_control::{TimeControl, TimeView};
-pub(crate) use time_range::{TimeRange, TimeRangeF};
-pub(crate) use time_real::TimeReal;
 pub(crate) use viewer_context::*;
 
 #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]

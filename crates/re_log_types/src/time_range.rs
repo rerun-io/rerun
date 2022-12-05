@@ -1,12 +1,12 @@
 use std::ops::RangeInclusive;
 
-use super::TimeReal;
-use re_log_types::TimeInt;
+use crate::{TimeInt, TimeReal};
 
 // ----------------------------------------------------------------------------
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
-pub(crate) struct TimeRange {
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub struct TimeRange {
     pub min: TimeInt,
     pub max: TimeInt,
 }
@@ -48,8 +48,9 @@ impl From<&TimeRange> for RangeInclusive<TimeInt> {
 // ----------------------------------------------------------------------------
 
 /// Like [`TimeRange`], but using [`TimeReal`] for improved precison.
-#[derive(Clone, Copy, Debug, serde::Deserialize, serde::Serialize)]
-pub(crate) struct TimeRangeF {
+#[derive(Clone, Copy, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub struct TimeRangeF {
     pub min: TimeReal,
     pub max: TimeReal,
 }

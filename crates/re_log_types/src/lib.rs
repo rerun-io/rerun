@@ -30,7 +30,11 @@ mod index;
 pub mod objects;
 pub mod path;
 mod time;
+mod time_range;
+mod time_real;
 
+pub use self::time_range::{TimeRange, TimeRangeF};
+pub use self::time_real::TimeReal;
 pub use context::AnnotationContext;
 pub use coordinates::ViewCoordinates;
 pub use data::*;
