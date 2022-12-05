@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::sync::Arc;
 
 use arrow2::array::{Array, Int64Vec, UInt64Vec};
@@ -15,6 +15,39 @@ pub type ComponentNameRef<'a> = &'a str;
 
 pub type RowIndex = u64;
 
+#[derive(Debug)]
+pub struct DataStoreConfig {
+    /// The maximum size of a component bucket before triggering a split.
+    ///
+    /// This effectively controls how fine grained the garbage collection of components is.
+    /// The lower the size, the more fine-grained the garbage collection is, at the cost of more
+    /// metadata overhead.
+    ///
+    /// Note that this cannot split a single huge row: if a user inserts a single row that's
+    /// larger than the threshold, then that bucket will become larger than the threshold, and
+    /// we will split from there on.
+    ///
+    /// See [`Self::default`] for defaults.
+    pub component_bucket_size_bytes: u64,
+    /// The maximum number of rows in a component bucket before triggering a split.
+    ///
+    /// This effectively controls how fine grained the garbage collection of components is.
+    /// The lower the number, the more fine-grained the garbage collection is, at the cost of more
+    /// metadata overhead.
+    ///
+    /// See [`Self::default`] for defaults.
+    pub component_bucket_nb_rows: u64,
+}
+
+impl Default for DataStoreConfig {
+    fn default() -> Self {
+        Self {
+            component_bucket_size_bytes: 32 * 1024 * 1024, // 32MiB
+            component_bucket_nb_rows: u64::MAX,
+        }
+    }
+}
+
 /// A complete data store: covers all timelines, all entities, everything.
 ///
 /// `DataStore` provides a very thorough `Display` implementation that makes it manageable to
@@ -23,6 +56,9 @@ pub type RowIndex = u64;
 /// environment, which will result in additional schema information being printed out.
 #[derive(Default)]
 pub struct DataStore {
+    /// The configuration of the data store (e.g. bucket sizes).
+    pub(crate) config: DataStoreConfig,
+
     /// Maps an entity to its index, for a specific timeline.
     ///
     /// An index maps specific points in time to rows in component tables.
@@ -34,15 +70,28 @@ pub struct DataStore {
     pub(crate) components: HashMap<ComponentName, ComponentTable>,
 }
 
+impl DataStore {
+    pub fn new(config: DataStoreConfig) -> Self {
+        Self {
+            config,
+            indices: HashMap::default(),
+            components: HashMap::default(),
+        }
+    }
+}
+
 impl std::fmt::Display for DataStore {
     #[allow(clippy::string_add)]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
+            config,
             indices,
             components,
         } = self;
 
         f.write_str("DataStore {\n")?;
+
+        f.write_str(&indent::indent_all_by(4, format!("config: {config:?}\n")))?;
 
         {
             f.write_str(&indent::indent_all_by(4, "indices: [\n"))?;
@@ -318,12 +367,12 @@ impl std::fmt::Display for IndexBucket {
 #[derive(Debug)]
 pub struct ComponentTable {
     /// The component's name that this table is related to, for debugging purposes.
-    pub(crate) name: Arc<String>,
+    pub(crate) name: Arc<ComponentName>,
     /// The component's datatype that this table is related to, for debugging purposes.
     pub(crate) datatype: DataType,
 
     /// The actual buckets, where the component data is stored.
-    pub(crate) buckets: BTreeMap<RowIndex, ComponentBucket>,
+    pub(crate) buckets: VecDeque<(RowIndex, ComponentBucket)>,
 }
 
 impl std::fmt::Display for ComponentTable {
@@ -344,7 +393,7 @@ impl std::fmt::Display for ComponentTable {
         }
 
         f.write_str("buckets: [\n")?;
-        for bucket in buckets.values() {
+        for (_, bucket) in buckets {
             f.write_str(&indent::indent_all_by(4, "ComponentBucket {\n"))?;
             f.write_str(&indent::indent_all_by(8, bucket.to_string() + "\n"))?;
             f.write_str(&indent::indent_all_by(4, "}\n"))?;
@@ -383,7 +432,11 @@ impl std::fmt::Display for ComponentBucket {
             data,
         } = self;
 
-        f.write_fmt(format_args!("row offset: {}\n", row_offset))?;
+        f.write_fmt(format_args!(
+            "row range: from {} to {} (all inclusive)\n",
+            row_offset,
+            row_offset + data.len() as u64,
+        ))?;
 
         f.write_str("time ranges:\n")?;
         for (timeline, time_range) in time_ranges {

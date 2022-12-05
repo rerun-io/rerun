@@ -249,7 +249,7 @@ impl IndexBucket {
 impl ComponentTable {
     // Panics on out-of-bounds
     pub fn get(&self, row_idx: u64) -> Box<dyn Array> {
-        let bucket = &self.buckets[&0];
+        let (_, bucket) = self.buckets.back().unwrap();
         bucket.get(row_idx)
     }
 }

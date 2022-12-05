@@ -19,7 +19,7 @@ mod store_write;
 pub mod datagen;
 
 pub(crate) use self::store::{ComponentBucket, ComponentTable, IndexBucket, IndexTable};
-pub use self::store::{ComponentName, ComponentNameRef, DataStore, RowIndex};
+pub use self::store::{ComponentName, ComponentNameRef, DataStore, DataStoreConfig, RowIndex};
 pub use self::store_read::TimeQuery;
 
 // Re-exports

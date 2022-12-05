@@ -9,13 +9,14 @@ use arrow2::buffer::Buffer;
 use arrow2::chunk::Chunk;
 use arrow2::compute::concatenate::concatenate;
 use arrow2::datatypes::{DataType, Schema};
-use polars::prelude::IndexOfSchema;
+use polars::prelude::{IndexOfSchema, ValueSize};
 
 use re_log_types::arrow::{ENTITY_PATH_KEY, TIMELINE_KEY, TIMELINE_SEQUENCE, TIMELINE_TIME};
 use re_log_types::{ObjPath as EntityPath, TimeInt, TimeRange, TimeType, Timeline};
 
 use crate::{
-    ComponentBucket, ComponentNameRef, ComponentTable, DataStore, IndexBucket, IndexTable, RowIndex,
+    ComponentBucket, ComponentNameRef, ComponentTable, DataStore, DataStoreConfig, IndexBucket,
+    IndexTable, RowIndex,
 };
 
 // --- Data store ---
@@ -46,7 +47,7 @@ impl DataStore {
                 ComponentTable::new(name.to_owned(), component.data_type().clone())
             });
 
-            let row_idx = table.insert(&timelines, component)?;
+            let row_idx = table.insert(&self.config, &timelines, component)?;
             indices.insert(name, row_idx);
         }
 
@@ -189,6 +190,8 @@ impl IndexBucket {
 
         // append components to secondary indices (2-way merge)
 
+        // TODO(cmc): this is the worst explanation I've ever seen.
+
         // Step 1: for all row indices, check whether the index for the associated component
         // exists:
         // - if it does, append the new row index to it
@@ -251,10 +254,15 @@ impl ComponentTable {
 
     pub fn insert(
         &mut self,
+        _config: &DataStoreConfig,
         timelines: &[(Timeline, TimeInt)],
         data: &dyn Array,
     ) -> anyhow::Result<RowIndex> {
-        self.buckets.get_mut(&0).unwrap().insert(timelines, data)
+        // TODO
+        // Split lazily: no reason to split if there won't ever be any more data coming in.
+
+        let (_, bucket) = self.buckets.back_mut().unwrap();
+        bucket.insert(timelines, data)
     }
 }
 
@@ -310,5 +318,13 @@ impl ComponentBucket {
         self.data = concatenate(&[&*self.data, data])?;
 
         Ok(self.row_offset + self.data.len() as u64 - 1)
+    }
+
+    pub fn len(&self) -> usize {
+        self.data.len()
+    }
+
+    pub fn size_bytes(&self) -> u64 {
+        self.data.get_values_size() as u64
     }
 }
