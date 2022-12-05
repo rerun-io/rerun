@@ -295,9 +295,10 @@ impl ComponentTable {
                 "allocating new bucket, previous one overflowed"
             );
 
+            let row_offset = row_offset + len;
             self.buckets.push_back((
-                row_offset + len,
-                ComponentBucket::new(Arc::clone(&self.name), self.datatype.clone(), 0),
+                row_offset,
+                ComponentBucket::new(Arc::clone(&self.name), self.datatype.clone(), row_offset),
             ));
         }
 

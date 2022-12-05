@@ -74,9 +74,11 @@ impl DataStore {
         let mut series: HashMap<_, _> = row_indices
             .into_iter()
             .filter_map(|(name, row_idx)| {
-                self.components
-                    .get(name)
-                    .map(|table| (name, Series::try_from((name, table.get(row_idx))).unwrap()))
+                self.components.get(name).and_then(|table| {
+                    table
+                        .get(row_idx)
+                        .map(|data| (name, Series::try_from((name, data)).unwrap()))
+                })
             })
             .collect();
 
@@ -247,10 +249,28 @@ impl IndexBucket {
 // --- Components ---
 
 impl ComponentTable {
-    // Panics on out-of-bounds
-    pub fn get(&self, row_idx: u64) -> Box<dyn Array> {
-        let (_, bucket) = self.buckets.back().unwrap();
-        bucket.get(row_idx)
+    pub fn get(&self, row_idx: u64) -> Option<Box<dyn Array>> {
+        let mut bucket_nr = self
+            .buckets
+            .partition_point(|(row_offset, _)| row_idx >= *row_offset);
+
+        // TODO: explain
+        debug_assert!(bucket_nr > 0);
+        bucket_nr -= 1;
+
+        if let Some((row_offset, bucket)) = self.buckets.get(bucket_nr) {
+            debug!(
+                name = self.name.as_str(),
+                row_idx, bucket_nr, row_offset, "fetching component data"
+            );
+            Some(bucket.get(row_idx))
+        } else {
+            debug!(
+                name = self.name.as_str(),
+                row_idx, bucket_nr, "row index is out of bounds"
+            );
+            None
+        }
     }
 }
 impl ComponentBucket {
