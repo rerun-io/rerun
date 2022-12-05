@@ -1,4 +1,9 @@
-//! Renderer that makes it easy to draw textured 2d rectangles
+//! Renderer that makes it easy to draw textured 2d rectangles with transparency
+//!
+//! Transparency: (TODO(andreas):)
+//! We're not performing any sorting on transparency yet, so the transparent rectangles pretty much
+//! only work correctly when they are directly layered in front of another opaque rectangle.
+//! We do *not* disable depth write.
 //!
 //! Implementation details:
 //! We assume the standard usecase are individual textured rectangles.
@@ -18,12 +23,13 @@ use crate::{
         GpuBindGroupLayoutHandle, GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc,
         SamplerDesc, ShaderModuleDesc,
     },
+    ColorRgba8SrgbPremultiplied,
 };
 
 use super::*;
 
 mod gpu_data {
-    use crate::wgpu_buffer_types;
+    use crate::{texture_values::ValueRgba32Float, wgpu_buffer_types};
 
     // Keep in sync with mirror in rectangle.wgsl
     #[repr(C)]
@@ -32,6 +38,7 @@ mod gpu_data {
         pub top_left_corner_position: wgpu_buffer_types::Vec3,
         pub extent_u: wgpu_buffer_types::Vec3,
         pub extent_v: wgpu_buffer_types::Vec3,
+        pub multiplicative_tint: ValueRgba32Float,
     }
 }
 
@@ -64,7 +71,9 @@ pub struct Rectangle {
 
     pub texture_filter_magnification: TextureFilterMag,
     pub texture_filter_minification: TextureFilterMin,
-    // TODO(andreas): additional options like color map, tinting etc.
+
+    // Tint that is multiplied to the rect, supports pre-multiplied alpha.
+    pub multiplicative_tint: ColorRgba8SrgbPremultiplied,
 }
 
 #[derive(Clone)]
@@ -143,6 +152,7 @@ impl RectangleDrawData {
                         top_left_corner_position: rectangle.top_left_corner_position.into(),
                         extent_u: rectangle.extent_u.into(),
                         extent_v: rectangle.extent_v.into(),
+                        multiplicative_tint: rectangle.multiplicative_tint.0.into(),
                     }),
                 );
             }
@@ -223,7 +233,7 @@ impl Renderer for RectangleRenderer {
                 entries: vec![
                     wgpu::BindGroupLayoutEntry {
                         binding: 0,
-                        visibility: wgpu::ShaderStages::VERTEX,
+                        visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
                         ty: wgpu::BindingType::Buffer {
                             ty: wgpu::BufferBindingType::Uniform,
                             // We could use dynamic offset here into a single large buffer.
@@ -284,12 +294,17 @@ impl Renderer for RectangleRenderer {
                 fragment_entrypoint: "fs_main".into(),
                 fragment_handle: shader_module,
                 vertex_buffers: smallvec![],
-                render_targets: smallvec![Some(ViewBuilder::MAIN_TARGET_COLOR_FORMAT.into())],
+                render_targets: smallvec![Some(wgpu::ColorTargetState {
+                    format: ViewBuilder::MAIN_TARGET_COLOR_FORMAT,
+                    blend: Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
                 primitive: wgpu::PrimitiveState {
                     topology: wgpu::PrimitiveTopology::TriangleStrip,
                     cull_mode: None,
                     ..Default::default()
                 },
+                // We're rendering with transparency, so disable depth write.
                 depth_stencil: ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE,
                 multisample: ViewBuilder::MAIN_TARGET_DEFAULT_MSAA_STATE,
             },
@@ -324,5 +339,9 @@ impl Renderer for RectangleRenderer {
         }
 
         Ok(())
+    }
+
+    fn draw_order() -> u32 {
+        DrawOrder::Transparent as u32
     }
 }

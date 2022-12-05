@@ -8,7 +8,6 @@ use re_data_store::{InstanceId, InstanceIdHash, ObjPath};
 use re_renderer::{
     renderer::{PointCloudDrawData, PointCloudPoint, RectangleDrawData},
     view_builder::{TargetConfiguration, ViewBuilder},
-    LineStripSeriesBuilder,
 };
 
 use crate::{misc::HoveredSpace, Selection, ViewerContext};
@@ -343,6 +342,9 @@ fn add_label(
     let text_rect =
         Align2::CENTER_TOP.anchor_rect(Rect::from_min_size(text_anchor_pos, galley.size()));
     let bg_rect = text_rect.expand2(vec2(4.0, 2.0));
+
+    // TODO(andreas): Should we render this shape with re_renderer as well? Once we do,
+    // the only thing not rendered by re_renderer are the galley shapes themselves.
     shapes.push(Shape::rect_filled(
         bg_rect,
         3.0,
@@ -377,13 +379,11 @@ fn view_2d_scrollable(
 
     state.update(&response, space_from_ui, available_size);
 
-    let mut shapes = Vec::new();
+    let mut label_shapes = Vec::new();
 
     // ------------------------------------------------------------------------
 
     let mut line_builder = re_renderer::LineStripSeriesBuilder::<()>::default();
-
-    let total_num_images = scene.images.len();
 
     let hover_radius = 5.0; // TODO(emilk): from egui?
 
@@ -405,6 +405,7 @@ fn view_2d_scrollable(
 
     let mut renderer_filled_rectangles = Vec::new();
 
+    let total_num_images = scene.images.len();
     for (image_idx, img) in scene.images.iter().enumerate() {
         let Image {
             instance_hash,
@@ -420,29 +421,32 @@ fn view_2d_scrollable(
             .image
             .get_view_with_annotations(tensor, legend, ctx.render_ctx);
 
-        //let texture_id = tensor_view.retained_img.texture_id(parent_ui.ctx());
-
         let rect_in_ui = ui_from_space.transform_rect(Rect::from_min_size(
             Pos2::ZERO,
             vec2(tensor.shape[1].size as _, tensor.shape[0].size as _),
         ));
 
-        // TODO: transparency? uhoh.
-        // let opacity = if image_idx == 0 {
-        //     1.0 // bottom image
-        // } else {
-        //     // make top images transparent
-        //     1.0 / total_num_images.at_most(20) as f32 // avoid precision problems in framebuffer
-        // };
-        //let tint = paint_props.fg_stroke.color.linear_multiply(opacity);
-        //shapes.push(egui::Shape::image(texture_id, rect_in_ui, uv, tint));
+        let opacity = if image_idx == 0 {
+            1.0 // bottom image
+        } else {
+            // make top images transparent
+            1.0 / total_num_images.at_most(20) as f32 // avoid precision problems in framebuffer
+        };
+        let tint = paint_props.fg_stroke.color.linear_multiply(opacity);
+
         renderer_filled_rectangles.push(re_renderer::renderer::Rectangle {
-            top_left_corner_position: glam::vec3(0.0, 0.0, 0.1),
+            top_left_corner_position: glam::vec3(
+                0.0,
+                0.0,
+                // TODO(andreas): Depth value handling here is weird!
+                (total_num_images - image_idx - 1) as f32 * 0.1,
+            ),
             extent_u: glam::Vec3::X * tensor.shape[1].size as f32,
             extent_v: glam::Vec3::Y * tensor.shape[0].size as f32,
             texture: tensor_view.texture_handle.clone(),
             texture_filter_magnification: re_renderer::renderer::TextureFilterMag::Nearest,
             texture_filter_minification: re_renderer::renderer::TextureFilterMin::Linear,
+            multiplicative_tint: tint.to_array().into(),
         });
 
         if *is_hovered {
@@ -549,7 +553,7 @@ fn view_2d_scrollable(
                 paint_props,
                 (rect_in_ui.width() - 4.0).at_least(60.0),
                 rect_in_ui.center_bottom() + vec2(0.0, 3.0),
-                &mut shapes,
+                &mut label_shapes,
             );
             if let Some(pointer_pos) = pointer_pos {
                 check_hovering(*instance_hash, rect.distance_to_pos(pointer_pos).abs());
@@ -635,7 +639,7 @@ fn view_2d_scrollable(
                 paint_props,
                 f32::INFINITY,
                 pos_in_ui + vec2(0.0, 3.0),
-                &mut shapes,
+                &mut label_shapes,
             );
             if let Some(pointer_pos) = pointer_pos {
                 check_hovering(*instance_hash, rect.distance_to_pos(pointer_pos).abs());
@@ -750,11 +754,11 @@ fn view_2d_scrollable(
         f32::INFINITY
     };
     project_onto_other_spaces(ctx, space, &response, &space_from_ui, depth_at_pointer);
-    show_projections_from_3d_space(ctx, parent_ui, space, &ui_from_space, &mut shapes);
+    show_projections_from_3d_space(ctx, parent_ui, space, &ui_from_space, &mut label_shapes);
 
     // ------------------------------------------------------------------------
 
-    painter.extend(shapes);
+    painter.extend(label_shapes);
 
     state.hovered_instance = closest_instance_id_hash.resolve(&ctx.log_db.obj_db.store);
 

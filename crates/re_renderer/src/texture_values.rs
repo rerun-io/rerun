@@ -9,7 +9,7 @@
 /// Conversions from and to non-srgb types require a conversion.
 /// It does *not* specify whether alpha is pre-multiplied or not.
 #[repr(C)]
-#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct ValueRgba8UnormSrgb {
     pub r: u8,
     pub g: u8,
@@ -57,7 +57,7 @@ impl From<[u8; 4]> for ValueRgba8UnormSrgb {
 /// It has 32 bit floats per channel but its semantics are not known!
 /// (It does *not* specify color space or whether alpha pre-multiplied or not)
 #[repr(C)]
-#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct ValueRgba32Float {
     pub r: f32,
     pub g: f32,
