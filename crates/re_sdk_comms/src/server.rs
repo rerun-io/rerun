@@ -172,7 +172,7 @@ impl CongestionManager {
             LogMsg::DataMsg(data_msg) => self.should_send_time_point(&data_msg.time_point),
 
             LogMsg::ArrowMsg(_) => {
-                true // TODO(emilk): parse TimePoints from ArrowMsg
+                true // TODO(emilk): parse TimePoints from ArrowMsg (https://github.com/rerun-io/rerun/issues/464)
             }
         }
     }
