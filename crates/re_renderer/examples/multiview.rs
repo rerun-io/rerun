@@ -50,7 +50,8 @@ fn build_mesh_instances(
         .flat_map(|(i, positions_and_colors)| {
             model_mesh_instances.iter().zip(positions_and_colors).map(
                 move |(model_mesh_instances, (p, c))| MeshInstance {
-                    mesh: model_mesh_instances.mesh,
+                    gpu_mesh: model_mesh_instances.gpu_mesh.clone(),
+                    mesh: None,
                     world_from_mesh: macaw::Conformal3::from_scale_rotation_translation(
                         0.025 + (i % 10) as f32 * 0.01,
                         glam::Quat::from_rotation_y(i as f32 + seconds_since_startup * 5.0),
@@ -187,8 +188,7 @@ impl Example for Multiview {
             re_renderer::importer::obj::load_obj_from_buffer(
                 &obj_data,
                 ResourceLifeTime::LongLived,
-                &mut re_ctx.mesh_manager,
-                &mut re_ctx.texture_manager_2d,
+                re_ctx,
             )
             .unwrap()
         };
