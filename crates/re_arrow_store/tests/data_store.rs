@@ -207,7 +207,8 @@ fn single_entity_multi_timelines_multi_components_out_of_order_roundtrip() {
     let timeline_log_time = Timeline::new("log_time", TimeType::Time);
     let components_all = &["instances", "rects", "positions"];
 
-    // TODO(cmc): test log_times too!
+    // TODO(cmc): test frames 41, 42, 43, 44
+    // TODO(cmc): test log_times -10, +0, +10, +20
 
     // Scenario: query all components at `last frame + 1`.
     // Expected: latest data for all components.

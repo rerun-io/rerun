@@ -43,4 +43,11 @@ polars = { version = "0.25", features = [
 ], default-features = false }
 
 [dev-dependencies]
+criterion = "0.3"
+itertools = "0.10"
+mimalloc = "0.1"
 tracing-subscriber = "0.3"
+
+[[bench]]
+name = "data_store"
+harness = false
