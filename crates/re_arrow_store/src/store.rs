@@ -334,10 +334,11 @@ impl std::fmt::Display for ComponentTable {
         } = self;
 
         f.write_fmt(format_args!("name: {}\n", name))?;
-        if let Ok(v) = std::env::var("RERUN_DATA_STORE_DISPLAY_SCHEMAS") {
-            if v == "1" {
-                f.write_fmt(format_args!("datatype: {:#?}\n", datatype))?;
-            }
+        if matches!(
+            std::env::var("RERUN_DATA_STORE_DISPLAY_SCHEMAS").as_deref(),
+            Ok("1")
+        ) {
+            f.write_fmt(format_args!("datatype: {:#?}\n", datatype))?;
         }
 
         f.write_str("buckets: [\n")?;

@@ -21,7 +21,7 @@ pub enum TimeQuery {
     /// Get all the data within this time interval, plus the latest
     /// one before the start of the interval.
     ///
-    /// Motivation: all data is considered alive untl the next logging
+    /// Motivation: all data is considered alive until the next logging
     /// to the same data path.
     Range(std::ops::RangeInclusive<i64>),
 }
@@ -186,6 +186,7 @@ impl IndexBucket {
         self.is_sorted = true;
     }
 
+    // TODO(cmc): bucketing support!
     pub fn latest_at<'a>(
         &mut self,
         at: i64,
@@ -203,8 +204,8 @@ impl IndexBucket {
         let times = self.times.values();
         let primary_idx = match times.binary_search(&at) {
             Ok(mut primary_idx) => {
-                // We've found one index that matches the value we're looking for... it doesn't
-                // mean there aren't others, higher in the chain, which take priority.
+                // We've found one index that matches the value we're looking for...
+                // but there could still be others, higher in the chain, which take priority.
                 loop {
                     let next_primary_idx = primary_idx + 1;
                     if next_primary_idx < times.len() && times[next_primary_idx] == at {
@@ -252,13 +253,14 @@ impl IndexBucket {
 // --- Components ---
 
 impl ComponentTable {
+    // Panics on out-of-bounds
     pub fn get(&self, row_idx: u64) -> Box<dyn Array> {
         let bucket = &self.buckets[&0];
         bucket.get(row_idx)
     }
 }
-
 impl ComponentBucket {
+    // Panics on out-of-bounds
     pub fn get(&self, row_idx: u64) -> Box<dyn Array> {
         let row_idx = row_idx - self.row_offset;
         self.data.slice(row_idx as usize, 1)

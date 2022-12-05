@@ -1,6 +1,15 @@
 //! This is how we store and index logging data.
 //! TODO(john) better crate documentation.
 
+//! The Rerun Arrow-based datastore.
+//!
+//! See `src/store.rs` for an overview of the core datastructures.
+//!
+//! ## Feature flags
+//!
+#![doc = document_features::document_features!()]
+//!
+
 mod field_types;
 mod store;
 mod store_read;

@@ -233,7 +233,7 @@ impl IndexBucket {
         // All indices (+ time!) should always have the exact same length.
         {
             let expected_len = self.times.len();
-            assert!(self
+            debug_assert!(self
                 .indices
                 .values()
                 .map(|index| index.len())

@@ -7,7 +7,9 @@ license.workspace = true
 publish = false
 
 [features]
-default = ["datagen"]
+## Enables the `datagen` module, which exposes a number of tools for generating random data for
+## tests and benchmarks.
+default = []
 datagen = ["dep:rand"]
 
 [dependencies]
@@ -20,6 +22,7 @@ anyhow = "1.0"
 arrow2 = { version = "0.14", features = ["io_ipc", "compute_concatenate"] }
 arrow2_convert = { version = "0.3" }
 chrono = "0.4"
+document-features = "0.2"
 indent = "0.1"
 nohash-hasher = "0.2"
 thiserror = "1.0"

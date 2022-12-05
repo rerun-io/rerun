@@ -1,3 +1,5 @@
+//! Generate random data for tests and benchmarks.
+
 use std::{collections::BTreeMap, time::SystemTime};
 
 use arrow2::{
