@@ -19,7 +19,11 @@ re_log_types = { path = "../re_log_types" }
 
 # External
 anyhow = "1.0"
-arrow2 = { version = "0.14", features = ["io_ipc", "compute_concatenate", "compute_aggregate"] }
+arrow2 = { version = "0.14", features = [
+  "io_ipc",
+  "compute_concatenate",
+  "compute_aggregate",
+] }
 arrow2_convert = { version = "0.3" }
 chrono = "0.4"
 document-features = "0.2"
