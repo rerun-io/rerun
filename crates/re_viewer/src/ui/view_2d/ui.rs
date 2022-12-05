@@ -5,7 +5,7 @@ use egui::{
 };
 use re_data_store::{InstanceId, InstanceIdHash, ObjPath};
 use re_renderer::{
-    renderer::{PointCloudDrawData, PointCloudPoint},
+    renderer::{PointCloudDrawData, PointCloudPoint, RectangleDrawData},
     view_builder::{TargetConfiguration, ViewBuilder},
 };
 
@@ -367,9 +367,11 @@ fn view_2d_scrollable(
     let (mut response, painter) =
         parent_ui.allocate_painter(desired_size, egui::Sense::click_and_drag());
 
-    // Create our transforms. TODO(andreas): re_renderer should be able to apply this via the camera
+    // Create our transforms.
     let ui_from_space = egui::emath::RectTransform::from_to(scene_bbox, response.rect);
     let space_from_ui = ui_from_space.inverse();
+    let space_from_points = space_from_ui.scale().y;
+    let space_from_pixel = space_from_points / painter.ctx().pixels_per_point();
 
     state.update(&response, space_from_ui, available_size);
 
@@ -397,6 +399,8 @@ fn view_2d_scrollable(
 
     let mut depths_at_pointer = vec![];
 
+    let mut renderer_filled_rectangles = Vec::new();
+
     for (image_idx, img) in scene.images.iter().enumerate() {
         let Image {
             instance_hash,
@@ -412,22 +416,30 @@ fn view_2d_scrollable(
             .image
             .get_view_with_annotations(tensor, legend, ctx.render_ctx);
 
-        let texture_id = tensor_view.retained_img.texture_id(parent_ui.ctx());
+        //let texture_id = tensor_view.retained_img.texture_id(parent_ui.ctx());
 
         let rect_in_ui = ui_from_space.transform_rect(Rect::from_min_size(
             Pos2::ZERO,
             vec2(tensor.shape[1].size as _, tensor.shape[0].size as _),
         ));
-        let uv = Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0));
 
-        let opacity = if image_idx == 0 {
-            1.0 // bottom image
-        } else {
-            // make top images transparent
-            1.0 / total_num_images.at_most(20) as f32 // avoid precision problems in framebuffer
-        };
-        let tint = paint_props.fg_stroke.color.linear_multiply(opacity);
-        shapes.push(egui::Shape::image(texture_id, rect_in_ui, uv, tint));
+        // TODO: transparency? uhoh.
+        // let opacity = if image_idx == 0 {
+        //     1.0 // bottom image
+        // } else {
+        //     // make top images transparent
+        //     1.0 / total_num_images.at_most(20) as f32 // avoid precision problems in framebuffer
+        // };
+        //let tint = paint_props.fg_stroke.color.linear_multiply(opacity);
+        //shapes.push(egui::Shape::image(texture_id, rect_in_ui, uv, tint));
+        renderer_filled_rectangles.push(re_renderer::renderer::Rectangle {
+            top_left_corner_position: glam::Vec3::ZERO,
+            extent_u: glam::Vec3::X * tensor.shape[1].size as f32,
+            extent_v: glam::Vec3::Y * tensor.shape[0].size as f32,
+            texture: tensor_view.texture_handle.clone(),
+            texture_filter_magnification: re_renderer::renderer::TextureFilterMag::Nearest,
+            texture_filter_minification: re_renderer::renderer::TextureFilterMin::Linear,
+        });
 
         if *is_hovered {
             shapes.push(Shape::rect_stroke(rect_in_ui, 0.0, paint_props.fg_stroke));
@@ -575,19 +587,19 @@ fn view_2d_scrollable(
 
         let radius = radius.unwrap_or(1.5);
 
-        let pos_in_ui = ui_from_space.transform_pos(*pos);
-
         // TODO(andreas): Make point renderer support one point (!) outline. Note that background color is hardcoded to Color32::from_black_alpha(196);
         render_points.push(PointCloudPoint {
-            position: glam::vec3(pos_in_ui.x, pos_in_ui.y, 0.1),
-            radius: radius + 1.0,
+            position: glam::vec3(pos.x, pos.y, 0.1),
+            radius: space_from_points * (radius + 1.0),
             srgb_color: paint_props.bg_stroke.color.to_array().into(),
         });
         render_points.push(PointCloudPoint {
-            position: glam::vec3(pos_in_ui.x, pos_in_ui.y, 0.0),
-            radius,
+            position: glam::vec3(pos.x, pos.y, 0.0),
+            radius: space_from_points * radius,
             srgb_color: paint_props.fg_stroke.color.to_array().into(),
         });
+
+        let pos_in_ui = ui_from_space.transform_pos(*pos);
 
         if let Some(label) = label {
             let rect = add_label(
@@ -602,12 +614,16 @@ fn view_2d_scrollable(
                 check_hovering(*instance_hash, rect.distance_to_pos(pointer_pos).abs());
             }
         }
+
+        if let Some(pointer_pos) = pointer_pos {
+            check_hovering(*instance_hash, pos_in_ui.distance(pointer_pos));
+        }
     }
 
     // ------------------------------------------------------------------------
 
     // Draw a re_renderer driven view.
-    // Camera & projection are currently configured to be able to ingest ui positions directly.
+    // Camera & projection are configured to ingest space coordinates directly.
 
     let (resolution_in_pixel, origin_in_pixel) = {
         let rect = painter.clip_rect();
@@ -636,12 +652,15 @@ fn view_2d_scrollable(
                 TargetConfiguration::new_2d_target(
                     "2d space view".into(),
                     resolution_in_pixel,
-                    painter.ctx().pixels_per_point(),
-                    glam::vec2(ui_from_space.to().min.x, ui_from_space.to().min.y),
+                    space_from_pixel,
+                    glam::vec2(scene_bbox.min.x, scene_bbox.min.y),
                 ),
             )
             .unwrap()
-            .queue_draw(&PointCloudDrawData::new(ctx.render_ctx, &render_points).unwrap());
+            .queue_draw(&PointCloudDrawData::new(ctx.render_ctx, &render_points).unwrap())
+            .queue_draw(
+                &RectangleDrawData::new(ctx.render_ctx, &renderer_filled_rectangles).unwrap(),
+            );
 
         let command_buffer = view_builder
             .draw(

@@ -114,7 +114,7 @@ impl TargetConfiguration {
     pub fn new_2d_target(
         name: DebugLabel,
         resolution_in_pixel: [u32; 2],
-        pixels_per_point: f32,
+        units_per_pixel: f32,
         top_left_position_in_points: glam::Vec2,
     ) -> Self {
         TargetConfiguration {
@@ -125,7 +125,7 @@ impl TargetConfiguration {
             ),
             projection_from_view: Projection::Orthographic {
                 camera_mode: OrthographicCameraMode::TopLeftCornerAndExtendZ,
-                vertical_world_size: resolution_in_pixel[1] as f32 / pixels_per_point,
+                vertical_world_size: units_per_pixel * resolution_in_pixel[1] as f32,
                 far_plane_distance: 1000.0,
             },
         }
