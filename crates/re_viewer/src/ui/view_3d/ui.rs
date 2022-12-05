@@ -330,7 +330,7 @@ pub(crate) fn view_3d(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &mut View3DState,
-    space: Option<&ObjPath>,
+    space: &ObjPath,
     mut scene: Scene3D,
     space_cameras: &[SpaceCamera],
 ) -> egui::Response {
@@ -419,14 +419,7 @@ pub(crate) fn view_3d(
         hovered_instance.map_or(InstanceIdHash::NONE, |id| id.hash()),
     );
 
-    paint_view(
-        ui,
-        eye,
-        rect,
-        &scene,
-        ctx.render_ctx,
-        &space.map_or("<unnamed>".to_owned(), |space| space.to_string()),
-    );
+    paint_view(ui, eye, rect, &scene, ctx.render_ctx, &space.to_string());
 
     response
 }
@@ -561,7 +554,7 @@ fn show_projections_from_2d_space(
 ) {
     if let HoveredSpace::TwoD { space_2d, pos } = &ctx.rec_cfg.hovered_space_previous_frame {
         for cam in space_cameras {
-            if &cam.target_space == space_2d {
+            if cam.target_space.as_ref() == Some(space_2d) {
                 if let Some(ray) = cam.unproject_as_ray(glam::vec2(pos.x, pos.y)) {
                     // TODO(emilk): better visualization of a ray
                     let mut hit_pos = None;
@@ -602,7 +595,7 @@ fn project_onto_other_spaces(
     ctx: &mut ViewerContext<'_>,
     space_cameras: &[SpaceCamera],
     state: &mut View3DState,
-    space: Option<&ObjPath>,
+    space: &ObjPath,
     response: &egui::Response,
     orbit_eye: OrbitEye,
 ) {
@@ -632,7 +625,7 @@ fn project_onto_other_spaces(
         }
     }
     ctx.rec_cfg.hovered_space_this_frame = HoveredSpace::ThreeD {
-        space_3d: space.cloned(),
+        space_3d: space.clone(),
         target_spaces,
     }
 }
