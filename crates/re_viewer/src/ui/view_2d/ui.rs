@@ -644,6 +644,9 @@ fn view_2d_scrollable(
     let (view_builder, command_buffer) = {
         crate::profile_scope!("build command buffer for 2D view"); // TODO(andreas): What is the name of this space view?
 
+        // The re_renderer camera is at the top left corner of the *clip* rect, but in space units!
+        let camera_position_space = space_from_ui.transform_pos(painter.clip_rect().min);
+
         let mut view_builder = ViewBuilder::default();
         view_builder
             .setup_view(
@@ -653,7 +656,7 @@ fn view_2d_scrollable(
                     "2d space view".into(),
                     resolution_in_pixel,
                     space_from_pixel,
-                    glam::vec2(scene_bbox.min.x, scene_bbox.min.y),
+                    glam::vec2(camera_position_space.x, camera_position_space.y),
                 ),
             )
             .unwrap()
