@@ -200,32 +200,23 @@ impl IndexBucket {
             "searching for primary & secondary row indices..."
         );
 
-        // find the corresponding row index within the time index
+        // find the primary index's row.
         let times = self.times.values();
-        let primary_idx = match times.binary_search(&at) {
-            Ok(mut primary_idx) => {
-                // We've found one index that matches the value we're looking for...
-                // but there could still be others, higher in the chain, which take priority.
-                loop {
-                    let next_primary_idx = primary_idx + 1;
-                    if next_primary_idx < times.len() && times[next_primary_idx] == at {
-                        primary_idx = next_primary_idx;
-                    } else {
-                        break;
-                    }
-                }
-                primary_idx as i64
-            }
-            Err(primary_idx_closest) => {
-                // Trying to query _before_ the beginning of time... there's nothing there.
-                if primary_idx_closest == 0 {
-                    return HashMap::default();
-                }
-                primary_idx_closest.min(times.len() - 1) as i64
-            }
-        };
+        let primary_idx = times.partition_point(|time| *time <= at) as i64;
+
+        // The partition point is always _beyond_ the index that we're looking for.
+        // A partition point of 0 thus means that we're trying to query for data that lives
+        // _before_ the beginning of time... there's nothing to be found there.
+        if primary_idx == 0 {
+            return HashMap::default();
+        }
+
+        // The partition point is always _beyond_ the index that we're looking for; we need
+        // to step back to find what we came for.
+        let primary_idx = primary_idx - 1;
         debug!(%primary_idx, "found primary index");
 
+        // find the secondary indices' rows, and the associated row indices.
         components
             .iter()
             .filter_map(|name| self.indices.get(*name).map(|index| (name, index)))
