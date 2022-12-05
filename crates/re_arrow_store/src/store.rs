@@ -8,16 +8,15 @@ use re_log_types::{
     ObjPath as EntityPath, ObjPathHash as EntityPathHash, TimeInt, TimeRange, Timeline,
 };
 
+pub type ComponentName = String;
+pub type ComponentNameRef<'a> = &'a str;
+pub type RowIndex = u64;
+
 // --- Data store ---
 
 // TODO: use those human formatter that we have around here somewhere?
 
-pub type ComponentName = String;
-pub type ComponentNameRef<'a> = &'a str;
-
-pub type RowIndex = u64;
-
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DataStoreConfig {
     /// The maximum size of a component bucket before triggering a split.
     ///
@@ -43,12 +42,20 @@ pub struct DataStoreConfig {
 
 impl Default for DataStoreConfig {
     fn default() -> Self {
+        Self::const_default()
+    }
+}
+
+impl DataStoreConfig {
+    pub const fn const_default() -> Self {
         Self {
             component_bucket_size_bytes: 32 * 1024 * 1024, // 32MiB
             component_bucket_nb_rows: u64::MAX,
         }
     }
 }
+
+// ---
 
 /// A complete data store: covers all timelines, all entities, everything.
 ///
