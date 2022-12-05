@@ -80,7 +80,7 @@ impl PointCloudDrawData {
 
         let point_renderer = ctx.renderers.get_or_create::<_, PointCloudRenderer>(
             &ctx.shared_renderer_data,
-            &mut ctx.resource_pools,
+            &mut ctx.gpu_resources,
             &ctx.device,
             &mut ctx.resolver,
         );
@@ -132,10 +132,10 @@ impl PointCloudDrawData {
         };
 
         let position_data_texture = ctx
-            .resource_pools
+            .gpu_resources
             .textures
             .alloc(&ctx.device, &position_data_texture_desc);
-        let color_texture = ctx.resource_pools.textures.alloc(
+        let color_texture = ctx.gpu_resources.textures.alloc(
             &ctx.device,
             &TextureDesc {
                 label: "point cloud color data".into(),
@@ -183,7 +183,7 @@ impl PointCloudDrawData {
             ctx.queue.write_texture(
                 wgpu::ImageCopyTexture {
                     texture: &ctx
-                        .resource_pools
+                        .gpu_resources
                         .textures
                         .get_resource(&position_data_texture)?
                         .texture,
@@ -208,7 +208,7 @@ impl PointCloudDrawData {
             ctx.queue.write_texture(
                 wgpu::ImageCopyTexture {
                     texture: &ctx
-                        .resource_pools
+                        .gpu_resources
                         .textures
                         .get_resource(&color_texture)?
                         .texture,
@@ -229,7 +229,7 @@ impl PointCloudDrawData {
         }
 
         Ok(PointCloudDrawData {
-            bind_group: Some(ctx.resource_pools.bind_groups.alloc(
+            bind_group: Some(ctx.gpu_resources.bind_groups.alloc(
                 &ctx.device,
                 &BindGroupDesc {
                     label: "line drawdata".into(),
@@ -239,10 +239,10 @@ impl PointCloudDrawData {
                     ],
                     layout: point_renderer.bind_group_layout,
                 },
-                &ctx.resource_pools.bind_group_layouts,
-                &ctx.resource_pools.textures,
-                &ctx.resource_pools.buffers,
-                &ctx.resource_pools.samplers,
+                &ctx.gpu_resources.bind_group_layouts,
+                &ctx.gpu_resources.textures,
+                &ctx.gpu_resources.buffers,
+                &ctx.gpu_resources.samplers,
             )),
             num_quads: points.len() as _,
         })

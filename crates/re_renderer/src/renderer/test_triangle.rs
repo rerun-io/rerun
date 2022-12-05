@@ -26,7 +26,7 @@ impl TestTriangleDrawData {
     pub fn new(ctx: &mut RenderContext) -> Self {
         ctx.renderers.get_or_create::<_, TestTriangle>(
             &ctx.shared_renderer_data,
-            &mut ctx.resource_pools,
+            &mut ctx.gpu_resources,
             &ctx.device,
             &mut ctx.resolver,
         );

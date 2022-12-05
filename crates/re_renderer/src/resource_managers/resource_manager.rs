@@ -1,12 +1,17 @@
-use slotmap::{Key, SecondaryMap, SlotMap};
+use std::sync::Arc;
+
+use slotmap::{Key, SlotMap};
 
 use crate::wgpu_resources::PoolError;
 
 /// Handle to a resource that is stored in a resource manager.
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ResourceHandle<InnerHandle: slotmap::Key> {
-    /// Handle that is valid until user explicitly removes the resource from respective resource manager.
-    LongLived(InnerHandle),
+    /// Resource handle that keeps the resource alive as long as there are handles.
+    ///
+    /// Once the user drops the last handle, the resource will be discarded on next frame maintenance.
+    /// (actual reclaiming of GPU resources may take longer)
+    LongLived(Arc<InnerHandle>),
 
     /// Handle that is valid for a single frame
     Frame {
@@ -44,35 +49,37 @@ pub enum ResourceLifeTime {
     /// This allows us to use a more efficient allocation strategy for gpu data.
     SingleFrame,
 
-    /// A resource that lives for an indefinite (user specified) amount of time
-    /// until explicitly deallocated.
-    /// TODO(andreas): Deallocation is not yet possible.
+    /// A resource that lives until its last handle was dropped.
+    ///
+    /// Once the last handle is dropped, it freed during frame maintenance.
     LongLived,
 }
 
-pub struct ResourceManager<InnerHandle: Key, Res, GpuRes> {
-    long_lived_resources: SlotMap<InnerHandle, Res>,
-    long_lived_resources_gpu: SecondaryMap<InnerHandle, GpuRes>,
-
-    single_frame_resources: SlotMap<InnerHandle, Res>,
-    single_frame_resources_gpu: SecondaryMap<InnerHandle, GpuRes>,
+pub struct ResourceManager<InnerHandle: Key, GpuRes> {
+    /// We store a refcounted handle along side every long lived resource so we can tell if it is still alive.
+    /// This mechanism is similar to `crate::wgpu_resources::DynamicResourcePool`, only that we don't retain for another frame.
+    ///
+    /// Perf note:
+    /// If we get *a lot* of resources this might scale poorly (well, linearly)
+    /// If this happens, we need to make the handle more complex and give it an Arc<Mutex<>> of a free list where it can enter itself.
+    /// (which makes passing the handles & having many short lived handles more costly)
+    long_lived_resources: SlotMap<InnerHandle, (GpuRes, Arc<InnerHandle>)>,
+    single_frame_resources: SlotMap<InnerHandle, GpuRes>,
 
     frame_index: u64,
 }
 
-impl<InnerHandle: Key, Res, GpuRes> Default for ResourceManager<InnerHandle, Res, GpuRes> {
+impl<InnerHandle: Key, GpuRes> Default for ResourceManager<InnerHandle, GpuRes> {
     fn default() -> Self {
         Self {
             long_lived_resources: Default::default(),
-            long_lived_resources_gpu: Default::default(),
             single_frame_resources: Default::default(),
-            single_frame_resources_gpu: Default::default(),
             frame_index: Default::default(),
         }
     }
 }
 
-impl<InnerHandle, Res, GpuRes> ResourceManager<InnerHandle, Res, GpuRes>
+impl<InnerHandle, GpuRes> ResourceManager<InnerHandle, GpuRes>
 where
     InnerHandle: Key,
     GpuRes: Clone,
@@ -80,7 +87,7 @@ where
     /// Creates a new resource.
     pub fn store_resource(
         &mut self,
-        resource: Res,
+        resource: GpuRes,
         lifetime: ResourceLifeTime,
     ) -> ResourceHandle<InnerHandle> {
         match lifetime {
@@ -89,34 +96,46 @@ where
                 valid_frame_index: self.frame_index,
             },
             ResourceLifeTime::LongLived => {
-                ResourceHandle::<InnerHandle>::LongLived(self.long_lived_resources.insert(resource))
+                let mut ref_counted_key = Arc::new(Default::default());
+                self.long_lived_resources.insert_with_key(|key| {
+                    ref_counted_key = Arc::new(key);
+                    (resource, ref_counted_key.clone())
+                });
+                ResourceHandle::<InnerHandle>::LongLived(ref_counted_key)
             }
         }
     }
 
-    /// Accesses a given resource under a read lock.
     pub(crate) fn get(
         &self,
-        handle: ResourceHandle<InnerHandle>,
-    ) -> Result<&Res, ResourceManagerError> {
-        let (slotmap, key) = match handle {
-            ResourceHandle::LongLived(key) => (&self.long_lived_resources, key),
+        handle: &ResourceHandle<InnerHandle>,
+    ) -> Result<&GpuRes, ResourceManagerError> {
+        match handle {
+            ResourceHandle::LongLived(key) => self
+                .long_lived_resources
+                .get(**key)
+                .map(|(res, _)| res)
+                .ok_or_else(|| {
+                    if key.is_null() {
+                        ResourceManagerError::NullHandle
+                    } else {
+                        ResourceManagerError::ResourceNotFound
+                    }
+                }),
             ResourceHandle::Frame {
                 key,
                 valid_frame_index,
             } => {
-                self.check_frame_resource_lifetime(valid_frame_index)?;
-                (&self.single_frame_resources, key)
+                self.check_frame_resource_lifetime(*valid_frame_index)?;
+                self.single_frame_resources.get(*key).ok_or_else(|| {
+                    if key.is_null() {
+                        ResourceManagerError::NullHandle
+                    } else {
+                        ResourceManagerError::ResourceNotFound
+                    }
+                })
             }
-        };
-
-        slotmap.get(key).ok_or_else(|| {
-            if key.is_null() {
-                ResourceManagerError::NullHandle
-            } else {
-                ResourceManagerError::ResourceNotFound
-            }
-        })
+        }
     }
 
     fn check_frame_resource_lifetime(
@@ -133,59 +152,19 @@ where
         }
     }
 
-    /// Retrieve gpu representation of a resource.
-    ///
-    /// Uploads to gpu if not already done.
-    pub(crate) fn get_or_create_gpu_resource<F>(
-        &mut self,
-        handle: ResourceHandle<InnerHandle>,
-        create_gpu_resource: F,
-    ) -> anyhow::Result<GpuRes, ResourceManagerError>
-    where
-        F: FnOnce(&Res, ResourceLifeTime) -> anyhow::Result<GpuRes, ResourceManagerError>,
-    {
-        let (slotmap, slotmap_gpu, key, lifetime) = match handle {
-            ResourceHandle::<InnerHandle>::LongLived(key) => (
-                &self.long_lived_resources,
-                &mut self.long_lived_resources_gpu,
-                key,
-                ResourceLifeTime::LongLived,
-            ),
-            ResourceHandle::<InnerHandle>::Frame {
-                key,
-                valid_frame_index,
-            } => {
-                self.check_frame_resource_lifetime(valid_frame_index)?;
-                (
-                    &self.single_frame_resources,
-                    &mut self.single_frame_resources_gpu,
-                    key,
-                    ResourceLifeTime::SingleFrame,
-                )
-            }
-        };
-
-        Ok(if let Some(gpu_resource) = slotmap_gpu.get(key) {
-            gpu_resource.clone()
-        } else {
-            let resource = slotmap.get(key).ok_or_else(|| {
-                if key.is_null() {
-                    ResourceManagerError::NullHandle
-                } else {
-                    ResourceManagerError::ResourceNotFound
-                }
-            })?;
-
-            // TODO(andreas): Should we throw out the cpu data now, at least for long lived Resources?
-            let resource_gpu = create_gpu_resource(resource, lifetime)?;
-            slotmap_gpu.insert(key, resource_gpu.clone());
-            resource_gpu
-        })
-    }
-
     pub(crate) fn frame_maintenance(&mut self, frame_index: u64) {
+        // Kill single frame resources.
         self.single_frame_resources.clear();
-        self.single_frame_resources_gpu.clear();
+
+        // And figure out which long lived ones need to be garbage collected.
+        // If the strong count went down to 1, we must be the only ones holding on to handle.
+        //
+        // thread safety:
+        // Since the count is pushed from 1 to 2 by `alloc`, it should not be possible to ever
+        // get temporarily get back down to 1 without dropping the last user available copy of the Arc<Handle>.
+        self.long_lived_resources
+            .retain(|_, (_, strong_handle)| Arc::strong_count(strong_handle) > 1);
+
         self.frame_index = frame_index;
     }
 }
