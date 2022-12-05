@@ -268,7 +268,7 @@ impl LineDrawData {
         // TODO(andreas): just create more draw work items each with its own texture to become "unlimited".
         //              (note that this one is a bit trickier to fix than extra line-strips, as we need to split a strip!)
         anyhow::ensure!(
-            num_quads <= POSITION_TEXTURE_SIZE * POSITION_TEXTURE_SIZE - 1,
+            num_quads < POSITION_TEXTURE_SIZE * POSITION_TEXTURE_SIZE,
             "Too many line segments! The maximum number of positions is {} but specified were {}",
             POSITION_TEXTURE_SIZE * POSITION_TEXTURE_SIZE - 1,
             vertices.len()
