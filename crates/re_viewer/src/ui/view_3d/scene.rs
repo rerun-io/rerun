@@ -123,7 +123,7 @@ pub struct MeshSource {
     pub instance_id_hash: InstanceIdHash,
     // TODO(andreas): Make this Conformal3 once glow is gone?
     pub world_from_mesh: macaw::Affine3A,
-    pub cpu_mesh: Arc<CpuMesh>,
+    pub mesh: Arc<CpuMesh>,
     pub tint: Option<[u8; 4]>,
 }
 
@@ -433,8 +433,7 @@ impl Scene3D {
                         let Some(mesh) = ctx.cache.cpu_mesh.load(
                                 &obj_path.to_string(),
                                 &MeshSourceData::Mesh3D(mesh.clone()),
-                                &mut ctx.render_ctx.mesh_manager,
-                                &mut ctx.render_ctx.texture_manager_2d,
+                                ctx.render_ctx
                             )
                             .map(|cpu_mesh| MeshSource {
                                 instance_id_hash: InstanceIdHash::from_path_and_index(
@@ -442,7 +441,7 @@ impl Scene3D {
                                     instance_index,
                                 ),
                                 world_from_mesh: Default::default(),
-                                cpu_mesh,
+                                mesh: cpu_mesh,
                                 tint: None,
                             }) else { return };
 
@@ -506,13 +505,12 @@ impl Scene3D {
                             mesh_id,
                             include_bytes!("../../../data/camera.glb"),
                         ),
-                        &mut ctx.render_ctx.mesh_manager,
-                        &mut ctx.render_ctx.texture_manager_2d,
+                        ctx.render_ctx,
                     ) {
                         self.meshes.push(MeshSource {
                             instance_id_hash: instance_id,
                             world_from_mesh,
-                            cpu_mesh,
+                            mesh: cpu_mesh,
                             tint: None,
                         });
                     }
@@ -822,11 +820,12 @@ impl Scene3D {
                     rotation,
                     translation,
                 );
-                mesh.cpu_mesh
+                mesh.mesh
                     .mesh_instances
                     .iter()
                     .map(move |instance| MeshInstance {
-                        mesh: instance.mesh,
+                        gpu_mesh: instance.gpu_mesh.clone(),
+                        mesh: None, // Don't care.
                         world_from_mesh: base_transform * instance.world_from_mesh,
                         additive_tint_srgb: mesh.tint.unwrap_or([0, 0, 0, 0]),
                     })
@@ -940,7 +939,7 @@ impl Scene3D {
             for mesh in meshes {
                 if mesh.instance_id_hash.is_some() {
                     let ray_in_mesh = (mesh.world_from_mesh.inverse() * ray_in_world).normalize();
-                    let t = crate::math::ray_bbox_intersect(&ray_in_mesh, mesh.cpu_mesh.bbox());
+                    let t = crate::math::ray_bbox_intersect(&ray_in_mesh, mesh.mesh.bbox());
 
                     if t < f32::INFINITY {
                         let dist_sq = 0.0;
@@ -988,10 +987,7 @@ impl Scene3D {
         }
 
         for mesh in meshes {
-            let mesh_bbox = mesh
-                .cpu_mesh
-                .bbox()
-                .transform_affine3(&mesh.world_from_mesh);
+            let mesh_bbox = mesh.mesh.bbox().transform_affine3(&mesh.world_from_mesh);
             bbox = bbox.union(mesh_bbox);
         }
 

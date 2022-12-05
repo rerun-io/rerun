@@ -6,7 +6,7 @@ pub mod gltf;
 
 use macaw::Vec3Ext as _;
 
-use crate::{renderer::MeshInstance, resource_managers::MeshManager};
+use crate::renderer::MeshInstance;
 
 pub fn to_uniform_scale(scale: glam::Vec3) -> f32 {
     if scale.has_equal_components(0.00001) {
@@ -18,14 +18,17 @@ pub fn to_uniform_scale(scale: glam::Vec3) -> f32 {
     }
 }
 
-pub fn calculate_bounding_box(
-    mesh_manager: &MeshManager,
-    instances: &[MeshInstance],
-) -> macaw::BoundingBox {
-    macaw::BoundingBox::from_points(instances.iter().flat_map(|i| {
-        let mesh = mesh_manager.get(i.mesh).unwrap();
-        mesh.vertex_positions
+pub fn calculate_bounding_box(instances: &[MeshInstance]) -> macaw::BoundingBox {
+    macaw::BoundingBox::from_points(
+        instances
             .iter()
-            .map(|p| i.world_from_mesh.transform_point3(*p))
-    }))
+            .filter_map(|instance| {
+                instance.mesh.as_ref().map(|mesh| {
+                    mesh.vertex_positions
+                        .iter()
+                        .map(|p| instance.world_from_mesh.transform_point3(*p))
+                })
+            })
+            .flatten(),
+    )
 }

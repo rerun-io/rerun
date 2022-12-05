@@ -4,11 +4,10 @@ use smallvec::{smallvec, SmallVec};
 
 use crate::{
     debug_label::DebugLabel,
-    renderer::MeshRenderer,
-    resource_managers::{ResourceManagerError, Texture2DHandle, TextureManager2D},
+    resource_managers::{GpuTexture2DHandle, ResourceManagerError, TextureManager2D},
     wgpu_resources::{
-        BindGroupDesc, BindGroupEntry, BufferDesc, GpuBindGroupHandleStrong, GpuBufferHandleStrong,
-        WgpuResourcePools,
+        BindGroupDesc, BindGroupEntry, BufferDesc, GpuBindGroupHandleStrong,
+        GpuBindGroupLayoutHandle, GpuBufferHandleStrong, WgpuResourcePools,
     },
 };
 
@@ -98,7 +97,7 @@ pub struct Material {
 
     /// Base color texture, also known as albedo.
     /// (not optional, needs to be at least a 1pix texture with a color!)
-    pub albedo: Texture2DHandle,
+    pub albedo: GpuTexture2DHandle,
 }
 
 #[derive(Clone)]
@@ -130,8 +129,8 @@ pub(crate) struct GpuMaterial {
 impl GpuMesh {
     pub fn new(
         pools: &mut WgpuResourcePools,
-        texture_manager: &mut TextureManager2D,
-        mesh_renderer: &MeshRenderer,
+        texture_manager: &TextureManager2D,
+        mesh_bound_group_layout: GpuBindGroupLayoutHandle,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         data: &Mesh,
@@ -201,18 +200,13 @@ impl GpuMesh {
 
         let mut materials = SmallVec::with_capacity(data.materials.len());
         for material in &data.materials {
-            let texture = texture_manager.get_or_create_gpu_resource(
-                pools,
-                device,
-                queue,
-                material.albedo,
-            )?;
+            let texture = texture_manager.get(&material.albedo)?;
             let bind_group = pools.bind_groups.alloc(
                 device,
                 &BindGroupDesc {
                     label: material.label.clone(),
-                    entries: smallvec![BindGroupEntry::DefaultTextureView(*texture)],
-                    layout: mesh_renderer.bind_group_layout,
+                    entries: smallvec![BindGroupEntry::DefaultTextureView(**texture)],
+                    layout: mesh_bound_group_layout,
                 },
                 &pools.bind_group_layouts,
                 &pools.textures,

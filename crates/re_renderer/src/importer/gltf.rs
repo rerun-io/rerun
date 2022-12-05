@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use ahash::{HashMap, HashMapExt};
 use anyhow::Context as _;
 use gltf::texture::WrappingMode;
@@ -7,19 +9,20 @@ use crate::{
     mesh::{mesh_vertices::MeshVertexData, Material, Mesh},
     renderer::MeshInstance,
     resource_managers::{
-        MeshHandle, MeshManager, ResourceLifeTime, Texture2D, Texture2DHandle, TextureManager2D,
+        GpuMeshHandle, GpuTexture2DHandle, ResourceLifeTime, Texture2DCreationDesc,
+        TextureManager2D,
     },
+    RenderContext,
 };
 
 use super::to_uniform_scale;
 
-/// Loads both gltf and glb.
+/// Loads both gltf and glb into the mesh & texture manager.
 pub fn load_gltf_from_buffer(
     mesh_name: &str,
     buffer: &[u8],
     lifetime: ResourceLifeTime,
-    mesh_manager: &mut MeshManager,
-    texture_manager: &mut TextureManager2D,
+    ctx: &mut RenderContext,
 ) -> anyhow::Result<Vec<MeshInstance>> {
     let (doc, buffers, images) = gltf::import_slice(buffer)?;
 
@@ -33,7 +36,7 @@ pub fn load_gltf_from_buffer(
                 re_log::debug!("Converting Rgb8 to Rgba8");
                 (
                     wgpu::TextureFormat::Rgba8UnormSrgb,
-                    Texture2D::convert_rgb8_to_rgba8(&image.pixels),
+                    Texture2DCreationDesc::convert_rgb8_to_rgba8(&image.pixels),
                 )
             } else {
                 anyhow::bail!("Unsupported texture format {:?}", image.format);
@@ -54,28 +57,46 @@ pub fn load_gltf_from_buffer(
         #[cfg(not(debug_assertions))]
         let texture_names = "";
 
-        let mut texture = Texture2D {
+        let texture = Texture2DCreationDesc {
             label: if texture_names.is_empty() {
                 format!("unnamed gltf image in {mesh_name}")
             } else {
                 format!("gltf image used by {texture_names} in {mesh_name}")
             }
             .into(),
-            data,
+            data: &data,
             format,
             width: image.width,
             height: image.height,
         };
-        texture.pad_rows_if_necessary();
 
-        images_as_textures.push(texture_manager.store_resource(texture, lifetime));
+        images_as_textures.push(
+            ctx.texture_manager_2d
+                .create(&mut ctx.gpu_resources.textures, &texture),
+        );
     }
 
     let mut meshes = HashMap::with_capacity(doc.meshes().len());
     for ref mesh in doc.meshes() {
-        let re_mesh = import_mesh(mesh, &buffers, &images_as_textures, texture_manager)
-            .with_context(|| format!("mesh {} (name {:?})", mesh.index(), mesh.name()))?;
-        meshes.insert(mesh.index(), mesh_manager.store_resource(re_mesh, lifetime));
+        let re_mesh = import_mesh(
+            mesh,
+            &buffers,
+            &images_as_textures,
+            &mut ctx.texture_manager_2d,
+        )
+        .with_context(|| format!("mesh {} (name {:?})", mesh.index(), mesh.name()))?;
+        meshes.insert(
+            mesh.index(),
+            (
+                ctx.mesh_manager.create(
+                    &mut ctx.gpu_resources,
+                    &ctx.texture_manager_2d,
+                    &re_mesh,
+                    lifetime,
+                )?,
+                Arc::new(re_mesh),
+            ),
+        );
     }
 
     let mut instances = Vec::new();
@@ -117,7 +138,7 @@ fn map_format(format: gltf::image::Format) -> Option<wgpu::TextureFormat> {
 fn import_mesh(
     mesh: &gltf::Mesh<'_>,
     buffers: &[gltf::buffer::Data],
-    images: &[Texture2DHandle],
+    gpu_image_handles: &[GpuTexture2DHandle],
     texture_manager: &mut TextureManager2D, //imported_materials: HashMap<usize, Material>,
 ) -> anyhow::Result<Mesh> {
     let mut indices = Vec::new();
@@ -205,9 +226,9 @@ fn import_mesh(
                 );
             }
 
-            images[texture.source().index()]
+            gpu_image_handles[texture.source().index()].clone()
         } else {
-            texture_manager.white_texture()
+            texture_manager.white_texture_handle().clone()
         };
 
         materials.push(Material {
@@ -233,7 +254,7 @@ fn gather_instances_recursive(
     instances: &mut Vec<MeshInstance>,
     node: &gltf::Node<'_>,
     transform: &macaw::Conformal3,
-    meshes: &HashMap<usize, MeshHandle>,
+    meshes: &HashMap<usize, (GpuMeshHandle, Arc<Mesh>)>,
 ) {
     let (scale, rotation, translation) = match node.transform() {
         gltf::scene::Transform::Matrix { matrix } => {
@@ -264,9 +285,10 @@ fn gather_instances_recursive(
     }
 
     if let Some(mesh) = node.mesh() {
-        if let Some(mesh) = meshes.get(&mesh.index()) {
+        if let Some((gpu_mesh, mesh)) = meshes.get(&mesh.index()) {
             instances.push(MeshInstance {
-                mesh: *mesh,
+                gpu_mesh: gpu_mesh.clone(),
+                mesh: Some(mesh.clone()),
                 world_from_mesh: transform,
                 additive_tint_srgb: [0, 0, 0, 0],
             });

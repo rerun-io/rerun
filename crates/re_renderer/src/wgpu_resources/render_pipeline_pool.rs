@@ -158,10 +158,9 @@ impl GpuRenderPipelinePool {
 
             match desc.create_render_pipeline(device, pipeline_layouts, shader_modules) {
                 Ok(sm) => {
-                    re_log::debug!(
-                        label = desc.label.get(),
-                        "successfully recompiled render pipeline"
-                    );
+                    // We don't know yet if this actually succeeded.
+                    // But it's good to get feedback to the user that _something_ happened!
+                    re_log::info!(label = desc.label.get(), "recompiled render pipeline");
                     Some(sm)
                 }
                 Err(err) => {

@@ -144,12 +144,12 @@ pub mod gpu_data {
 /// A line drawing operation. Encompasses several lines, each consisting of a list of positions.
 /// Expected to be recrated every frame.
 #[derive(Clone)]
-pub struct LineDrawable {
+pub struct LineDrawData {
     bind_group: Option<GpuBindGroupHandleStrong>,
     num_quads: u32,
 }
 
-impl Drawable for LineDrawable {
+impl DrawData for LineDrawData {
     type Renderer = LineRenderer;
 }
 
@@ -160,8 +160,17 @@ bitflags! {
     #[repr(C)]
     #[derive(Default, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct LineStripFlags : u8 {
-        /// Puts a equilateral triangle at the end of the line strip.
+        /// Puts a equilateral triangle at the end of the line strip (excludes other end caps).
         const CAP_END_TRIANGLE = 0b0000_0001;
+        /// Adds a round cap at the end of a line strip (excludes other end caps).
+        const CAP_END_ROUND = 0b0000_0010;
+        /// Puts a equilateral triangle at the start of the line strip (excludes other start caps).
+        const CAP_START_TRIANGLE = 0b0000_0100;
+        /// Adds a round cap at the start of a line strip (excludes other start caps).
+        const CAP_START_ROUND = 0b0000_1000;
+
+        /// Disable color gradient which is on by default
+        const NO_COLOR_GRADIENT = 0b0001_0000;
     }
 }
 
@@ -200,11 +209,10 @@ impl Default for LineStripInfo {
     }
 }
 
-impl LineDrawable {
+impl LineDrawData {
     /// Transforms and uploads line strip data to be consumed by gpu.
     ///
-    /// Try to bundle all line strips into a single drawable whenever possible.
-    /// As with all drawables, data is alive only for a single frame!
+    /// Try to bundle all line strips into a single draw data instance whenever possible.
     /// If you pass zero lines instances, subsequent drawing will do nothing.
     pub fn new(
         ctx: &mut RenderContext,
@@ -213,13 +221,13 @@ impl LineDrawable {
     ) -> anyhow::Result<Self> {
         let line_renderer = ctx.renderers.get_or_create::<_, LineRenderer>(
             &ctx.shared_renderer_data,
-            &mut ctx.resource_pools,
+            &mut ctx.gpu_resources,
             &ctx.device,
             &mut ctx.resolver,
         );
 
         if strips.is_empty() {
-            return Ok(LineDrawable {
+            return Ok(LineDrawData {
                 bind_group: None,
                 num_quads: 0,
             });
@@ -243,7 +251,9 @@ impl LineDrawable {
         );
 
         let num_strips = strips.len() as u32;
-        let num_vertices = vertices.len() as u32;
+        // Add a placeholder vertex at the beginning to simplify line cap handling
+        // (need this only if the first line starts with a cap, but not specialcasing this makes things easier!)
+        let num_quads = vertices.len() as u32 + 1;
 
         // TODO(andreas): just create more draw work items each with its own texture to become "unlimited"
         anyhow::ensure!(
@@ -257,27 +267,16 @@ impl LineDrawable {
         );
         // TODO(andreas): just create more draw work items each with its own texture to become "unlimited".
         //              (note that this one is a bit trickier to fix than extra line-strips, as we need to split a strip!)
-        anyhow::ensure!(num_vertices <= POSITION_TEXTURE_SIZE * POSITION_TEXTURE_SIZE,
-                "Too many line segments! The maximum number of positions is {} but specified were {num_vertices}",
-                POSITION_TEXTURE_SIZE * POSITION_TEXTURE_SIZE
-            );
-
-        // No index buffer, so after each strip we have a quad that is discarded or turned into an arrow cap.
-        // This means from a geometry perspective there is only ONE strip, i.e. 2 less quads than there are half-PositionDatas!
-        let num_quads = if strips
-            .last()
-            .unwrap()
-            .flags
-            .contains(LineStripFlags::CAP_END_TRIANGLE)
-        {
-            num_vertices
-        } else {
-            num_vertices - 1
-        };
+        anyhow::ensure!(
+            num_quads < POSITION_TEXTURE_SIZE * POSITION_TEXTURE_SIZE,
+            "Too many line segments! The maximum number of positions is {} but specified were {}",
+            POSITION_TEXTURE_SIZE * POSITION_TEXTURE_SIZE - 1,
+            vertices.len()
+        );
 
         // TODO(andreas): We want a "stack allocation" here that lives for one frame.
-        //                  Note also that this doesn't protect against sharing the same texture with several LineDrawable!
-        let position_data_texture = ctx.resource_pools.textures.alloc(
+        //                  Note also that this doesn't protect against sharing the same texture with several LineDrawData!
+        let position_data_texture = ctx.gpu_resources.textures.alloc(
             &ctx.device,
             &TextureDesc {
                 label: "line position data".into(),
@@ -293,7 +292,7 @@ impl LineDrawable {
                 usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
             },
         );
-        let line_strip_texture = ctx.resource_pools.textures.alloc(
+        let line_strip_texture = ctx.gpu_resources.textures.alloc(
             &ctx.device,
             &TextureDesc {
                 label: "line strips".into(),
@@ -314,12 +313,16 @@ impl LineDrawable {
         //                  These staging buffers would be provided by the belt.
         // To make the data upload simpler (and have it be done in one go), we always update full rows of each of our textures
         let mut position_data_staging =
-            Vec::with_capacity(next_multiple_of(num_vertices, POSITION_TEXTURE_SIZE) as usize);
+            Vec::with_capacity(next_multiple_of(num_quads, POSITION_TEXTURE_SIZE) as usize);
+        // placeholder at the beginning to facilitate start-caps
+        position_data_staging.push(LineVertex {
+            pos: glam::vec3(f32::INFINITY, f32::INFINITY, f32::INFINITY),
+            strip_index: u32::MAX,
+        });
         position_data_staging.extend(vertices.iter());
         position_data_staging.extend(
-            std::iter::repeat(gpu_data::LineVertex::zeroed()).take(
-                (next_multiple_of(num_vertices, POSITION_TEXTURE_SIZE) - num_vertices) as usize,
-            ),
+            std::iter::repeat(gpu_data::LineVertex::zeroed())
+                .take((next_multiple_of(num_quads, POSITION_TEXTURE_SIZE) - num_quads) as usize),
         );
 
         let mut line_strip_info_staging =
@@ -342,7 +345,7 @@ impl LineDrawable {
         ctx.queue.write_texture(
             wgpu::ImageCopyTexture {
                 texture: &ctx
-                    .resource_pools
+                    .gpu_resources
                     .textures
                     .get_resource(&position_data_texture)?
                     .texture,
@@ -360,14 +363,14 @@ impl LineDrawable {
             },
             wgpu::Extent3d {
                 width: POSITION_TEXTURE_SIZE,
-                height: (num_vertices + POSITION_TEXTURE_SIZE - 1) / POSITION_TEXTURE_SIZE,
+                height: (num_quads + POSITION_TEXTURE_SIZE - 1) / POSITION_TEXTURE_SIZE,
                 depth_or_array_layers: 1,
             },
         );
         ctx.queue.write_texture(
             wgpu::ImageCopyTexture {
                 texture: &ctx
-                    .resource_pools
+                    .gpu_resources
                     .textures
                     .get_resource(&line_strip_texture)?
                     .texture,
@@ -390,21 +393,21 @@ impl LineDrawable {
             },
         );
 
-        Ok(LineDrawable {
-            bind_group: Some(ctx.resource_pools.bind_groups.alloc(
+        Ok(LineDrawData {
+            bind_group: Some(ctx.gpu_resources.bind_groups.alloc(
                 &ctx.device,
                 &BindGroupDesc {
-                    label: "line drawable".into(),
+                    label: "line draw data".into(),
                     entries: smallvec![
                         BindGroupEntry::DefaultTextureView(*position_data_texture),
                         BindGroupEntry::DefaultTextureView(*line_strip_texture),
                     ],
                     layout: line_renderer.bind_group_layout,
                 },
-                &ctx.resource_pools.bind_group_layouts,
-                &ctx.resource_pools.textures,
-                &ctx.resource_pools.buffers,
-                &ctx.resource_pools.samplers,
+                &ctx.gpu_resources.bind_group_layouts,
+                &ctx.gpu_resources.textures,
+                &ctx.gpu_resources.buffers,
+                &ctx.gpu_resources.samplers,
             )),
             num_quads,
         })
@@ -417,7 +420,7 @@ pub struct LineRenderer {
 }
 
 impl Renderer for LineRenderer {
-    type DrawData = LineDrawable;
+    type RendererDrawData = LineDrawData;
 
     fn create_renderer<Fs: FileSystem>(
         shared_data: &SharedRendererData,
@@ -488,7 +491,11 @@ impl Renderer for LineRenderer {
                     ..Default::default()
                 },
                 depth_stencil: ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE,
-                multisample: ViewBuilder::MAIN_TARGET_DEFAULT_MSAA_STATE,
+                multisample: wgpu::MultisampleState {
+                    // We discard pixels to do the round cutout, therefore we need to calculate our own sampling mask.
+                    alpha_to_coverage_enabled: true,
+                    ..ViewBuilder::MAIN_TARGET_DEFAULT_MSAA_STATE
+                },
             },
             &pools.pipeline_layouts,
             &pools.shader_modules,
@@ -504,7 +511,7 @@ impl Renderer for LineRenderer {
         &self,
         pools: &'a WgpuResourcePools,
         pass: &mut wgpu::RenderPass<'a>,
-        draw_data: &Self::DrawData,
+        draw_data: &Self::RendererDrawData,
     ) -> anyhow::Result<()> {
         let Some(bind_group) = &draw_data.bind_group else {
             return Ok(()); // No lines submitted.

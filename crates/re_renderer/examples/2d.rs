@@ -1,6 +1,6 @@
 use re_renderer::{
     renderer::{LineStripFlags, Rectangle, RectangleDrawData, TextureFilterMag, TextureFilterMin},
-    resource_managers::{ResourceLifeTime, Texture2D, Texture2DHandle},
+    resource_managers::{GpuTexture2DHandle, Texture2DCreationDesc},
     texture_values::ValueRgba8UnormSrgb,
     view_builder::{self, Projection, ViewBuilder},
     LineStripSeriesBuilder,
@@ -9,7 +9,7 @@ use re_renderer::{
 mod framework;
 
 struct Render2D {
-    rerun_logo_texture: Texture2DHandle,
+    rerun_logo_texture: GpuTexture2DHandle,
     rerun_logo_texture_width: u32,
     rerun_logo_texture_height: u32,
 }
@@ -34,15 +34,15 @@ impl framework::Example for Render2D {
             );
         }
 
-        let rerun_logo_texture = re_ctx.texture_manager_2d.store_resource(
-            Texture2D {
+        let rerun_logo_texture = re_ctx.texture_manager_2d.create(
+            &mut re_ctx.gpu_resources.textures,
+            &Texture2DCreationDesc {
                 label: "rerun logo".into(),
-                data: image_data,
+                data: &image_data,
                 format: wgpu::TextureFormat::Rgba8UnormSrgb,
                 width: rerun_logo.width(),
                 height: rerun_logo.height(),
             },
-            ResourceLifeTime::LongLived,
         );
         Render2D {
             rerun_logo_texture,
@@ -64,79 +64,76 @@ impl framework::Example for Render2D {
             splits[0].resolution_in_pixel[0] as f32,
             splits[0].resolution_in_pixel[1] as f32,
         );
-        let line_radius = 5.0;
 
         let mut line_strip_builder = LineStripSeriesBuilder::<()>::default();
-        // Green lines filling border
-        line_strip_builder
-            .add_strip_2d(
-                [
-                    glam::vec2(line_radius, line_radius),
-                    glam::vec2(screen_size.x - line_radius, line_radius),
-                    glam::vec2(screen_size.x - line_radius, screen_size.y - line_radius),
-                    glam::vec2(line_radius, screen_size.y - line_radius),
-                    glam::vec2(line_radius, line_radius),
-                ]
-                .into_iter(),
-            )
-            .radius(line_radius)
-            .color_rgb(50, 255, 50);
 
-        // Blue lines around the top left quarter.
+        // Blue rect outline around the bottom right quarter.
+        let line_radius = 10.0;
+        let blue_rect_position = screen_size * 0.5 - glam::vec2(line_radius, line_radius);
         line_strip_builder
-            .add_strip_2d(
-                [
-                    glam::vec2(line_radius, line_radius),
-                    glam::vec2(screen_size.x * 0.5 - line_radius, line_radius),
-                    glam::vec2(
-                        screen_size.x * 0.5 - line_radius,
-                        screen_size.y * 0.5 - line_radius,
-                    ),
-                    glam::vec2(line_radius, screen_size.y * 0.5 - line_radius),
-                    glam::vec2(line_radius, line_radius),
-                ]
-                .into_iter(),
+            .add_rectangle_outline_2d(
+                blue_rect_position,
+                glam::vec2(screen_size.x * 0.5, 0.0),
+                glam::vec2(0.0, screen_size.y * 0.5),
             )
             .radius(line_radius)
             .color_rgb(50, 50, 255);
 
-        // Red Zig-Zag arrow in the middle
+        // .. within, a orange rectangle
         line_strip_builder
-            .add_strip_2d(
-                [
-                    screen_size * 0.5 - screen_size * 0.25,
-                    screen_size * 0.5 + glam::vec2(-screen_size.x * 0.125, screen_size.x * 0.25),
-                    screen_size * 0.5 - glam::vec2(-screen_size.x * 0.125, screen_size.x * 0.25),
-                    screen_size * 0.5 + screen_size * 0.25,
-                ]
-                .into_iter(),
+            .add_rectangle_outline_2d(
+                blue_rect_position + screen_size * 0.125,
+                glam::vec2(screen_size.x * 0.25, 0.0),
+                glam::vec2(0.0, screen_size.y * 0.25),
             )
-            .radius(line_radius)
-            .color_rgb(255, 50, 50)
-            .flags(LineStripFlags::CAP_END_TRIANGLE);
-        let line_strip_draw_data = line_strip_builder.to_drawable(re_ctx);
+            .radius(5.0)
+            .color_rgb(255, 100, 1);
 
-        let image_scale = 8.0;
+        // All variations of line caps
+        for (i, flags) in [
+            LineStripFlags::empty(),
+            LineStripFlags::CAP_START_ROUND,
+            LineStripFlags::CAP_END_ROUND,
+            LineStripFlags::CAP_START_TRIANGLE,
+            LineStripFlags::CAP_END_TRIANGLE,
+            LineStripFlags::CAP_START_ROUND | LineStripFlags::CAP_END_ROUND,
+            LineStripFlags::CAP_START_ROUND | LineStripFlags::CAP_END_TRIANGLE,
+            LineStripFlags::CAP_START_TRIANGLE | LineStripFlags::CAP_END_ROUND,
+            LineStripFlags::CAP_START_TRIANGLE | LineStripFlags::CAP_END_TRIANGLE,
+        ]
+        .iter()
+        .enumerate()
+        {
+            let y = (i + 1) as f32 * 80.0;
+            line_strip_builder
+                .add_segment_2d(glam::vec2(70.0, y), glam::vec2(400.0, y))
+                .radius(20.0)
+                .flags(*flags);
+        }
+
+        let line_strip_draw_data = line_strip_builder.to_draw_data(re_ctx);
+
+        let image_scale = 4.0;
         let rectangle_draw_data = RectangleDrawData::new(
             re_ctx,
             &[
                 Rectangle {
-                    top_left_corner_position: glam::vec3(100.0, 100.0, -0.05),
+                    top_left_corner_position: glam::vec3(500.0, 100.0, -0.05),
                     extent_u: self.rerun_logo_texture_width as f32 * image_scale * glam::Vec3::X,
                     extent_v: self.rerun_logo_texture_height as f32 * image_scale * glam::Vec3::Y,
-                    texture: self.rerun_logo_texture,
+                    texture: self.rerun_logo_texture.clone(),
                     texture_filter_magnification: TextureFilterMag::Nearest,
                     texture_filter_minification: TextureFilterMin::Linear,
                 },
                 Rectangle {
                     top_left_corner_position: glam::vec3(
-                        100.0,
+                        500.0,
                         150.0 + self.rerun_logo_texture_height as f32 * image_scale,
                         -0.05,
                     ),
                     extent_u: self.rerun_logo_texture_width as f32 * image_scale * glam::Vec3::X,
                     extent_v: self.rerun_logo_texture_height as f32 * image_scale * glam::Vec3::Y,
-                    texture: self.rerun_logo_texture,
+                    texture: self.rerun_logo_texture.clone(),
                     texture_filter_magnification: TextureFilterMag::Linear,
                     texture_filter_minification: TextureFilterMin::Linear,
                 },

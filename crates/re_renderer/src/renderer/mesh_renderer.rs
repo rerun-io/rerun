@@ -3,13 +3,15 @@
 //! Uses instancing to render instances of the same mesh in a single draw call.
 //! Instance data is kept in an instance-stepped vertex data, see [`GpuInstanceData`].
 
+use std::sync::Arc;
+
 use itertools::Itertools as _;
 use smallvec::smallvec;
 
 use crate::{
     include_file,
-    mesh::{mesh_vertices, GpuMesh},
-    resource_managers::{MeshHandle, MeshManager},
+    mesh::{mesh_vertices, GpuMesh, Mesh},
+    resource_managers::GpuMeshHandle,
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupLayoutDesc, BufferDesc, GpuBindGroupLayoutHandle, GpuBufferHandleStrong,
@@ -73,7 +75,7 @@ struct MeshBatch {
 }
 
 #[derive(Clone)]
-pub struct MeshDrawable {
+pub struct MeshDrawData {
     // There is a single instance buffer for all instances of all meshes.
     // This means we only ever need to bind the instance buffer once and then change the
     // instance range on every instanced draw call!
@@ -81,12 +83,18 @@ pub struct MeshDrawable {
     batches: Vec<MeshBatch>,
 }
 
-impl Drawable for MeshDrawable {
+impl DrawData for MeshDrawData {
     type Renderer = MeshRenderer;
 }
 
 pub struct MeshInstance {
-    pub mesh: MeshHandle,
+    /// Gpu mesh this instance refers to.
+    pub gpu_mesh: GpuMeshHandle,
+
+    /// Optional cpu representation of the mesh, not needed for rendering.
+    pub mesh: Option<Arc<Mesh>>,
+
+    /// Where this instance is placed in world space and how its oriented & scaled.
     pub world_from_mesh: macaw::Conformal3,
 
     /// Per-instance (as opposed to per-material/mesh!) tint color that is added to the albedo texture.
@@ -94,11 +102,10 @@ pub struct MeshInstance {
     pub additive_tint_srgb: [u8; 4],
 }
 
-impl MeshDrawable {
+impl MeshDrawData {
     /// Transforms and uploads mesh instance data to be consumed by gpu.
     ///
-    /// Try bundling all mesh instances into a single drawable whenever possible.
-    /// As with all drawables, data is alive only for a single frame!
+    /// Try bundling all mesh instances into a single draw data instance whenever possible.
     /// If you pass zero mesh instances, subsequent drawing will do nothing.
     /// Mesh data itself is gpu uploaded if not already present.
     pub fn new(ctx: &mut RenderContext, instances: &[MeshInstance]) -> anyhow::Result<Self> {
@@ -106,13 +113,13 @@ impl MeshDrawable {
 
         let _mesh_renderer = ctx.renderers.get_or_create::<_, MeshRenderer>(
             &ctx.shared_renderer_data,
-            &mut ctx.resource_pools,
+            &mut ctx.gpu_resources,
             &ctx.device,
             &mut ctx.resolver,
         );
 
         if instances.is_empty() {
-            return Ok(MeshDrawable {
+            return Ok(MeshDrawData {
                 batches: Vec::new(),
                 instance_buffer: None,
             });
@@ -122,10 +129,10 @@ impl MeshDrawable {
 
         // TODO(andreas): Use a temp allocator
         let instance_buffer_size = (std::mem::size_of::<GpuInstanceData>() * instances.len()) as _;
-        let instance_buffer = ctx.resource_pools.buffers.alloc(
+        let instance_buffer = ctx.gpu_resources.buffers.alloc(
             &ctx.device,
             &BufferDesc {
-                label: "MeshDrawable instance buffer".into(),
+                label: "MeshDrawData instance buffer".into(),
                 size: instance_buffer_size,
                 usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
             },
@@ -134,7 +141,7 @@ impl MeshDrawable {
         let mut mesh_runs = Vec::new();
         {
             let mut instance_buffer_staging = ctx.queue.write_buffer_with(
-                ctx.resource_pools
+                ctx.gpu_resources
                     .buffers
                     .get_resource(&instance_buffer)
                     .unwrap(),
@@ -145,7 +152,7 @@ impl MeshDrawable {
                 bytemuck::cast_slice_mut(&mut instance_buffer_staging);
 
             let mut num_processed_instances = 0;
-            for (mesh, instances) in &instances.iter().group_by(|instance| instance.mesh) {
+            for (mesh, instances) in &instances.iter().group_by(|instance| &instance.gpu_mesh) {
                 let mut count = 0;
                 for (instance, gpu_instance) in instances.zip(
                     instance_buffer_staging
@@ -165,16 +172,17 @@ impl MeshDrawable {
         }
 
         // We resolve the meshes here already, so the actual draw call doesn't need to know about the MeshManager.
-        // Also, it helps failing early if something is wrong with a mesh!
         let batches: Result<Vec<_>, _> = mesh_runs
             .into_iter()
             .map(|(mesh_handle, count)| {
-                MeshManager::get_or_create_gpu_resource(ctx, mesh_handle)
-                    .map(|mesh| MeshBatch { mesh, count })
+                ctx.mesh_manager.get(mesh_handle).map(|mesh| MeshBatch {
+                    mesh: mesh.clone(),
+                    count,
+                })
             })
             .collect();
 
-        Ok(MeshDrawable {
+        Ok(MeshDrawData {
             batches: batches?,
             instance_buffer: Some(instance_buffer),
         })
@@ -187,7 +195,7 @@ pub struct MeshRenderer {
 }
 
 impl Renderer for MeshRenderer {
-    type DrawData = MeshDrawable;
+    type RendererDrawData = MeshDrawData;
 
     fn create_renderer<Fs: FileSystem>(
         shared_data: &SharedRendererData,
@@ -269,7 +277,7 @@ impl Renderer for MeshRenderer {
         &self,
         pools: &'a WgpuResourcePools,
         pass: &mut wgpu::RenderPass<'a>,
-        draw_data: &Self::DrawData,
+        draw_data: &Self::RendererDrawData,
     ) -> anyhow::Result<()> {
         crate::profile_function!();
 
