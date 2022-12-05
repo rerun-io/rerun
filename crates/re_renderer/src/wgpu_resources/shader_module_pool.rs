@@ -116,4 +116,8 @@ impl GpuShaderModulePool {
     ) -> Result<&ResourceStatistics, PoolError> {
         self.pool.get_statistics(handle)
     }
+
+    pub fn num_resources(&self) -> usize {
+        self.pool.num_resources()
+    }
 }

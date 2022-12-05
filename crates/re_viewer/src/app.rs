@@ -10,6 +10,7 @@ use poll_promise::Promise;
 
 use re_data_store::log_db::LogDb;
 use re_log_types::*;
+use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::Receiver;
 
 use crate::{
@@ -283,13 +284,27 @@ impl eframe::App for App {
     fn update(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
         let frame_start = Instant::now();
 
-        self.memory_panel.update(); // do first, before doing too many allocations
-
         #[cfg(not(target_arch = "wasm32"))]
         if self.ctrl_c.load(std::sync::atomic::Ordering::Relaxed) {
             frame.close();
             return;
         }
+
+        let gpu_resource_statistics = {
+            // TODO(andreas): store the re_renderer somewhere else.
+            let egui_renderer = {
+                let render_state = frame.wgpu_render_state().unwrap();
+                &mut render_state.renderer.write()
+            };
+            let render_ctx = egui_renderer
+                .paint_callback_resources
+                .get_mut::<re_renderer::RenderContext>()
+                .unwrap();
+            render_ctx.frame_maintenance();
+            render_ctx.gpu_resources.statistics()
+        };
+
+        self.memory_panel.update(); // do first, before doing too many allocations
 
         self.check_keyboard_shortcuts(egui_ctx, frame);
 
@@ -302,7 +317,7 @@ impl eframe::App for App {
         self.cleanup();
 
         file_saver_progress_ui(egui_ctx, self); // toasts for background file saver
-        top_panel(egui_ctx, frame, self);
+        top_panel(egui_ctx, frame, self, &gpu_resource_statistics);
 
         egui::TopBottomPanel::bottom("memory_panel")
             .default_height(300.0)
@@ -319,17 +334,6 @@ impl eframe::App for App {
             .or_default()
             .on_frame_start();
 
-        // TODO(andreas): store the re_renderer somewhere else.
-        let egui_renderer = {
-            let render_state = frame.wgpu_render_state().unwrap();
-            &mut render_state.renderer.write()
-        };
-        let render_ctx = egui_renderer
-            .paint_callback_resources
-            .get_mut::<re_renderer::RenderContext>()
-            .unwrap();
-        render_ctx.frame_maintenance();
-
         if log_db.is_empty() && self.rx.is_some() {
             egui::CentralPanel::default().show(egui_ctx, |ui| {
                 ui.centered_and_justified(|ui| {
@@ -337,6 +341,17 @@ impl eframe::App for App {
                 });
             });
         } else {
+            // TODO(andreas): store the re_renderer somewhere else.
+            let egui_renderer = {
+                let render_state = frame.wgpu_render_state().unwrap();
+                &mut render_state.renderer.write()
+            };
+            let render_ctx = egui_renderer
+                .paint_callback_resources
+                .get_mut::<re_renderer::RenderContext>()
+                .unwrap();
+            render_ctx.frame_maintenance();
+
             self.state
                 .show(egui_ctx, render_ctx, log_db, &self.design_tokens);
         }
@@ -704,7 +719,12 @@ impl AppState {
     }
 }
 
-fn top_panel(egui_ctx: &egui::Context, frame: &mut eframe::Frame, app: &mut App) {
+fn top_panel(
+    egui_ctx: &egui::Context,
+    frame: &mut eframe::Frame,
+    app: &mut App,
+    gpu_resource_statistics: &WgpuResourcePoolStatistics,
+) {
     crate::profile_function!();
 
     let panel_frame = {
@@ -758,12 +778,17 @@ fn top_panel(egui_ctx: &egui::Context, frame: &mut eframe::Frame, app: &mut App)
                     ui.add_space(gui_zoom * native_buttons_size_in_native_scale.x);
                 }
 
-                top_bar_ui(ui, frame, app);
+                top_bar_ui(ui, frame, app, gpu_resource_statistics);
             });
         });
 }
 
-fn top_bar_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &mut App) {
+fn top_bar_ui(
+    ui: &mut egui::Ui,
+    frame: &mut eframe::Frame,
+    app: &mut App,
+    gpu_resource_statistics: &WgpuResourcePoolStatistics,
+) {
     #[cfg(not(target_arch = "wasm32"))]
     ui.menu_button("File", |ui| {
         file_menu(ui, app, frame);
@@ -825,7 +850,7 @@ fn top_bar_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &mut App) {
         // we use monospace so the width doesn't fluctuate as the numbers change.
         let bytes_used_text = re_memory::util::format_bytes(count.size as _);
         ui.label(
-            egui::RichText::new(&bytes_used_text)
+            egui::RichText::new(&format!("RAM: {}", bytes_used_text))
                 .monospace()
                 .color(ui.visuals().weak_text_color()),
         )
@@ -833,6 +858,26 @@ fn top_bar_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &mut App) {
             "Rerun Viewer is using {} of RAM in {} separate allocations.",
             bytes_used_text,
             format_usize(count.count),
+        ));
+    }
+
+    {
+        ui.separator();
+        let total_bytes = gpu_resource_statistics.total_buffer_size_in_bytes
+            + gpu_resource_statistics.total_texture_size_in_bytes;
+
+        // we use monospace so the width doesn't fluctuate as the numbers change.
+        let bytes_used_text = re_memory::util::format_bytes(total_bytes as _);
+        ui.label(
+            egui::RichText::new(&format!("VRAM: {}", bytes_used_text))
+                .monospace()
+                .color(ui.visuals().weak_text_color()),
+        )
+        .on_hover_text(format!(
+            "Rerun Viewer is using {} of gpu memory in {} textures and {} buffers.",
+            bytes_used_text,
+            format_usize(gpu_resource_statistics.num_textures),
+            format_usize(gpu_resource_statistics.num_buffers),
         ));
     }
 
