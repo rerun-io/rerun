@@ -1,25 +1,23 @@
 mod generic_skybox;
-pub use generic_skybox::GenericSkyboxDrawable;
+pub use generic_skybox::GenericSkyboxDrawData;
 
 mod lines;
-pub use lines::{gpu_data::LineVertex, LineDrawable, LineStripFlags, LineStripInfo};
+pub use lines::{gpu_data::LineVertex, LineDrawData, LineStripFlags, LineStripInfo};
 
 mod point_cloud;
-pub use point_cloud::{PointCloudDrawable, PointCloudPoint};
+pub use point_cloud::{PointCloudDrawData, PointCloudPoint};
 
 mod test_triangle;
-pub use test_triangle::TestTriangleDrawable;
+pub use test_triangle::TestTriangleDrawData;
 
 mod rectangles;
 pub use rectangles::{Rectangle, RectangleDrawData, TextureFilterMag, TextureFilterMin};
 
 mod mesh_renderer;
 pub(crate) use mesh_renderer::MeshRenderer;
-pub use mesh_renderer::{MeshDrawable, MeshInstance};
+pub use mesh_renderer::{MeshDrawData, MeshInstance};
 
 pub mod compositor;
-
-mod utils;
 
 use crate::{
     context::{RenderContext, SharedRendererData},
@@ -28,17 +26,20 @@ use crate::{
 };
 
 /// GPU sided data used by a [`Renderer`] to draw things to the screen.
-pub trait Drawable {
-    type Renderer: Renderer<DrawData = Self>;
+///
+/// Valid only for the frame in which it was created (typically uses temp allocations!)
+/// TODO(andreas): Add a mechanism to validate this.
+pub trait DrawData {
+    type Renderer: Renderer<RendererDrawData = Self>;
 }
 
 /// A Renderer encapsulate the knowledge of how to render a certain kind of primitives.
 ///
 /// It is an immutable, long-lived datastructure that only holds onto resources that will be needed
 /// for each of its [`Renderer::draw`] invocations.
-/// Any data that might be different per specific [`Renderer::draw`] invocation is stored in [`Drawable`].
+/// Any data that might be different per specific [`Renderer::draw`] invocation is stored in [`DrawData`].
 pub trait Renderer {
-    type DrawData: Drawable;
+    type RendererDrawData: DrawData;
 
     fn create_renderer<Fs: FileSystem>(
         shared_data: &SharedRendererData,
@@ -62,11 +63,11 @@ pub trait Renderer {
         &self,
         pools: &'a WgpuResourcePools,
         pass: &mut wgpu::RenderPass<'a>,
-        draw_data: &Self::DrawData,
+        draw_data: &Self::RendererDrawData,
     ) -> anyhow::Result<()>;
 
     /// Relative location in the rendering process when this renderer should be executed.
-    /// TODO(andreas): We might want to take [`Drawable`] into account for this.
+    /// TODO(andreas): We might want to take [`DrawData`] into account for this.
     ///                But this touches on the [`Renderer::draw`] method might be split in the future, which haven't designed yet.
     fn draw_order() -> u32 {
         DrawOrder::Opaque as u32

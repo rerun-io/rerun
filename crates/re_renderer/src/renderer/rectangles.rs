@@ -10,9 +10,8 @@ use std::num::NonZeroU64;
 use smallvec::smallvec;
 
 use crate::{
-    include_file,
-    renderer::utils::next_multiple_of,
-    resource_managers::{ResourceManagerError, Texture2DHandle},
+    include_file, next_multiple_of,
+    resource_managers::{GpuTexture2DHandle, ResourceManagerError},
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, BufferDesc, GpuBindGroupHandleStrong,
@@ -61,7 +60,7 @@ pub struct Rectangle {
     pub extent_v: glam::Vec3,
 
     /// Texture that fills the rectangle
-    pub texture: Texture2DHandle,
+    pub texture: GpuTexture2DHandle,
 
     pub texture_filter_magnification: TextureFilterMag,
     pub texture_filter_minification: TextureFilterMin,
@@ -73,7 +72,7 @@ pub struct RectangleDrawData {
     bind_groups: Vec<GpuBindGroupHandleStrong>,
 }
 
-impl Drawable for RectangleDrawData {
+impl DrawData for RectangleDrawData {
     type Renderer = RectangleRenderer;
 }
 
@@ -86,7 +85,7 @@ impl RectangleDrawData {
 
         let rectangle_renderer = ctx.renderers.get_or_create::<_, RectangleRenderer>(
             &ctx.shared_renderer_data,
-            &mut ctx.resource_pools,
+            &mut ctx.gpu_resources,
             &ctx.device,
             &mut ctx.resolver,
         );
@@ -106,7 +105,7 @@ impl RectangleDrawData {
 
         // Allocate all constant buffers at once.
         // TODO(andreas): This should come from a per-frame allocator!
-        let uniform_buffer = ctx.resource_pools.buffers.alloc(
+        let uniform_buffer = ctx.gpu_resources.buffers.alloc(
             &ctx.device,
             &BufferDesc {
                 label: "rectangle uniform buffers".into(),
@@ -119,7 +118,7 @@ impl RectangleDrawData {
         {
             // TODO(andreas): This should come from a staging buffer.
             let mut staging_buffer = ctx.queue.write_buffer_with(
-                ctx.resource_pools
+                ctx.gpu_resources
                     .buffers
                     .get_resource(&uniform_buffer)
                     .unwrap(),
@@ -151,14 +150,9 @@ impl RectangleDrawData {
 
         let mut bind_groups = Vec::with_capacity(rectangles.len());
         for (i, rectangle) in rectangles.iter().enumerate() {
-            let texture = ctx.texture_manager_2d.get_or_create_gpu_resource(
-                &mut ctx.resource_pools,
-                &ctx.device,
-                &ctx.queue,
-                rectangle.texture,
-            )?;
+            let texture = ctx.texture_manager_2d.get(&rectangle.texture)?;
 
-            let sampler = ctx.resource_pools.samplers.get_or_create(
+            let sampler = ctx.gpu_resources.samplers.get_or_create(
                 &ctx.device,
                 &SamplerDesc {
                     label: format!(
@@ -180,7 +174,7 @@ impl RectangleDrawData {
                 },
             );
 
-            bind_groups.push(ctx.resource_pools.bind_groups.alloc(
+            bind_groups.push(ctx.gpu_resources.bind_groups.alloc(
                 &ctx.device,
                 &BindGroupDesc {
                     label: "rectangle".into(),
@@ -190,15 +184,15 @@ impl RectangleDrawData {
                             offset: i as u64 * allocation_size_per_uniform_buffer,
                             size: NonZeroU64::new(uniform_buffer_size as u64),
                         },
-                        BindGroupEntry::DefaultTextureView(*texture),
+                        BindGroupEntry::DefaultTextureView(**texture),
                         BindGroupEntry::Sampler(sampler)
                     ],
                     layout: rectangle_renderer.bind_group_layout,
                 },
-                &ctx.resource_pools.bind_group_layouts,
-                &ctx.resource_pools.textures,
-                &ctx.resource_pools.buffers,
-                &ctx.resource_pools.samplers,
+                &ctx.gpu_resources.bind_group_layouts,
+                &ctx.gpu_resources.textures,
+                &ctx.gpu_resources.buffers,
+                &ctx.gpu_resources.samplers,
             ));
         }
 
@@ -212,7 +206,7 @@ pub struct RectangleRenderer {
 }
 
 impl Renderer for RectangleRenderer {
-    type DrawData = RectangleDrawData;
+    type RendererDrawData = RectangleDrawData;
 
     fn create_renderer<Fs: FileSystem>(
         shared_data: &SharedRendererData,
@@ -313,7 +307,7 @@ impl Renderer for RectangleRenderer {
         &self,
         pools: &'a WgpuResourcePools,
         pass: &mut wgpu::RenderPass<'a>,
-        draw_data: &Self::DrawData,
+        draw_data: &Self::RendererDrawData,
     ) -> anyhow::Result<()> {
         crate::profile_function!();
         if draw_data.bind_groups.is_empty() {

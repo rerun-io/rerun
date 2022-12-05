@@ -6,7 +6,7 @@ use crate::mesh_loader::CpuMesh;
 
 use super::scene::MeshSourceData;
 
-use re_renderer::resource_managers::{MeshManager, TextureManager2D};
+use re_renderer::RenderContext;
 
 // ----------------------------------------------------------------------------
 
@@ -18,8 +18,7 @@ impl CpuMeshCache {
         &mut self,
         name: &str,
         mesh_data: &MeshSourceData,
-        mesh_manager: &mut MeshManager,
-        texture_manager: &mut TextureManager2D,
+        render_ctx: &mut RenderContext,
     ) -> Option<Arc<CpuMesh>> {
         crate::profile_function!();
 
@@ -32,15 +31,11 @@ impl CpuMeshCache {
 
                 let result = match mesh_data {
                     MeshSourceData::Mesh3D(mesh3d) => {
-                        CpuMesh::load(name.to_owned(), mesh3d, mesh_manager, texture_manager)
+                        CpuMesh::load(name.to_owned(), mesh3d, render_ctx)
                     }
-                    MeshSourceData::StaticGlb(_mesh_id, glb_bytes) => CpuMesh::load_raw(
-                        name.to_owned(),
-                        MeshFormat::Glb,
-                        glb_bytes,
-                        mesh_manager,
-                        texture_manager,
-                    ),
+                    MeshSourceData::StaticGlb(_mesh_id, glb_bytes) => {
+                        CpuMesh::load_raw(name.to_owned(), MeshFormat::Glb, glb_bytes, render_ctx)
+                    }
                 };
 
                 match result {
