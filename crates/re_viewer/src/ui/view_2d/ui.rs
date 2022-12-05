@@ -3,10 +3,12 @@ use egui::{
     epaint, pos2, vec2, Align, Align2, Color32, NumExt as _, Pos2, Rect, Response, ScrollArea,
     Shape, TextFormat, TextStyle, Vec2,
 };
+use itertools::Itertools;
 use re_data_store::{InstanceId, InstanceIdHash, ObjPath};
 use re_renderer::{
     renderer::{PointCloudDrawData, PointCloudPoint, RectangleDrawData},
     view_builder::{TargetConfiguration, ViewBuilder},
+    LineStripSeriesBuilder,
 };
 
 use crate::{misc::HoveredSpace, Selection, ViewerContext};
@@ -379,6 +381,8 @@ fn view_2d_scrollable(
 
     // ------------------------------------------------------------------------
 
+    let mut line_builder = re_renderer::LineStripSeriesBuilder::<()>::default();
+
     let total_num_images = scene.images.len();
 
     let hover_radius = 5.0; // TODO(emilk): from egui?
@@ -433,7 +437,7 @@ fn view_2d_scrollable(
         //let tint = paint_props.fg_stroke.color.linear_multiply(opacity);
         //shapes.push(egui::Shape::image(texture_id, rect_in_ui, uv, tint));
         renderer_filled_rectangles.push(re_renderer::renderer::Rectangle {
-            top_left_corner_position: glam::Vec3::ZERO,
+            top_left_corner_position: glam::vec3(0.0, 0.0, 0.1),
             extent_u: glam::Vec3::X * tensor.shape[1].size as f32,
             extent_v: glam::Vec3::Y * tensor.shape[0].size as f32,
             texture: tensor_view.texture_handle.clone(),
@@ -442,7 +446,14 @@ fn view_2d_scrollable(
         });
 
         if *is_hovered {
-            shapes.push(Shape::rect_stroke(rect_in_ui, 0.0, paint_props.fg_stroke));
+            line_builder
+                .add_rectangle_outline_2d(
+                    glam::Vec2::ZERO,
+                    glam::Vec2::X * tensor.shape[1].size as f32,
+                    glam::Vec2::Y * tensor.shape[0].size as f32,
+                )
+                .color_rgbx_slice(paint_props.fg_stroke.color.to_array())
+                .radius(paint_props.fg_stroke.width * 0.5 * space_from_points);
         }
 
         if let Some(pointer_pos) = pointer_pos {
@@ -559,11 +570,29 @@ fn view_2d_scrollable(
 
         let mut min_dist_sq = f32::INFINITY;
 
+        // TODO(andreas): support outlines directly by re_renderer (need only 1 and 2 *point* black outlines)
+        line_builder
+            .add_segments_2d(
+                points
+                    .iter()
+                    .tuple_windows()
+                    .map(|(a, b)| (glam::vec2(a.x, a.y), glam::vec2(b.x, b.y))),
+            )
+            .color_rgbx_slice(paint_props.bg_stroke.color.to_array())
+            .radius(paint_props.bg_stroke.width * 0.5 * space_from_points);
+        line_builder
+            .add_segments_2d(
+                points
+                    .iter()
+                    .tuple_windows()
+                    .map(|(a, b)| (glam::vec2(a.x, a.y), glam::vec2(b.x, b.y))),
+            )
+            .color_rgbx_slice(paint_props.fg_stroke.color.to_array())
+            .radius(paint_props.fg_stroke.width * 0.5 * space_from_points);
+
         for &[a, b] in bytemuck::cast_slice::<_, [egui::Pos2; 2]>(points) {
             let a = ui_from_space.transform_pos(a);
             let b = ui_from_space.transform_pos(b);
-            shapes.push(Shape::line_segment([a, b], paint_props.bg_stroke));
-            shapes.push(Shape::line_segment([a, b], paint_props.fg_stroke));
 
             if let Some(pointer_pos) = pointer_pos {
                 let line_segment_distance_sq =
@@ -588,13 +617,14 @@ fn view_2d_scrollable(
         let radius = radius.unwrap_or(1.5);
 
         // TODO(andreas): Make point renderer support one point (!) outline. Note that background color is hardcoded to Color32::from_black_alpha(196);
+        let depth = line_builder.next_2d_z; // put the points in front of all the lines we have so far.
         render_points.push(PointCloudPoint {
-            position: glam::vec3(pos.x, pos.y, 0.1),
+            position: glam::vec3(pos.x, pos.y, depth),
             radius: space_from_points * (radius + 1.0),
             srgb_color: paint_props.bg_stroke.color.to_array().into(),
         });
         render_points.push(PointCloudPoint {
-            position: glam::vec3(pos.x, pos.y, 0.0),
+            position: glam::vec3(pos.x, pos.y, depth - 0.1),
             radius: space_from_points * radius,
             srgb_color: paint_props.fg_stroke.color.to_array().into(),
         });
@@ -660,6 +690,7 @@ fn view_2d_scrollable(
                 ),
             )
             .unwrap()
+            .queue_draw(&line_builder.to_draw_data(ctx.render_ctx))
             .queue_draw(&PointCloudDrawData::new(ctx.render_ctx, &render_points).unwrap())
             .queue_draw(
                 &RectangleDrawData::new(ctx.render_ctx, &renderer_filled_rectangles).unwrap(),

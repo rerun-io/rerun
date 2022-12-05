@@ -15,7 +15,7 @@ pub struct LineStripSeriesBuilder<PerStripUserData> {
     pub vertices: Vec<LineVertex>,
 
     /// z value given to the next 2d line strip.
-    next_2d_z: f32,
+    pub next_2d_z: f32,
 }
 
 impl<PerStripUserData> LineStripSeriesBuilder<PerStripUserData>
