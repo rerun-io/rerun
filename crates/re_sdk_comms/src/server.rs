@@ -271,7 +271,7 @@ impl Throttling {
             // Quickly decrease our accept-rate, quicker the worse we are:
             let badness = (current_latency - self.max_latency_sec) / self.max_latency_sec;
             let badness = badness.clamp(0.5, 2.0);
-            self.accept_rate -= badness * dt / 15.0;
+            self.accept_rate -= badness * dt / 5.0;
         }
 
         self.accept_rate = self.accept_rate.clamp(MIN_ACCEPT_RATE, 1.0);
