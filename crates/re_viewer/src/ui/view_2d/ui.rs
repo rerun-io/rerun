@@ -5,7 +5,7 @@ use egui::{
 };
 use re_data_store::{InstanceId, InstanceIdHash, ObjPath};
 use re_renderer::{
-    renderer::{PointCloudDrawable, PointCloudPoint},
+    renderer::{PointCloudDrawData, PointCloudPoint},
     view_builder::{TargetConfiguration, ViewBuilder},
 };
 
@@ -407,11 +407,10 @@ fn view_2d_scrollable(
             annotations: legend,
         } = img;
 
-        let tensor_view = ctx.cache.image.get_view_with_annotations(
-            tensor,
-            legend,
-            &mut ctx.render_ctx.texture_manager_2d,
-        );
+        let tensor_view = ctx
+            .cache
+            .image
+            .get_view_with_annotations(tensor, legend, ctx.render_ctx);
 
         let texture_id = tensor_view.retained_img.texture_id(parent_ui.ctx());
 
@@ -463,7 +462,7 @@ fn view_2d_scrollable(
                             let tensor_view = ctx.cache.image.get_view_with_annotations(
                                 tensor,
                                 legend,
-                                &mut ctx.render_ctx.texture_manager_2d,
+                                ctx.render_ctx,
                             );
 
                             ui.horizontal(|ui| {
@@ -642,7 +641,7 @@ fn view_2d_scrollable(
                 ),
             )
             .unwrap()
-            .queue_draw(&PointCloudDrawable::new(ctx.render_ctx, &render_points).unwrap());
+            .queue_draw(&PointCloudDrawData::new(ctx.render_ctx, &render_points).unwrap());
 
         let command_buffer = view_builder
             .draw(

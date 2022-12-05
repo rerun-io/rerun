@@ -9,6 +9,7 @@ pub mod renderer;
 pub mod resource_managers;
 pub mod texture_values;
 pub mod view_builder;
+pub mod wgpu_resources;
 
 mod context;
 pub use context::RenderContext;
@@ -24,7 +25,6 @@ pub use self::line_strip_builder::{LineStripBuilder, LineStripSeriesBuilder};
 pub mod mesh;
 
 mod wgpu_buffer_types;
-mod wgpu_resources;
 
 mod file_system;
 pub use self::file_system::{get_filesystem, FileSystem};
