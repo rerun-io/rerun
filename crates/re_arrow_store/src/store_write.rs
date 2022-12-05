@@ -12,11 +12,10 @@ use arrow2::datatypes::{DataType, Schema};
 use polars::prelude::IndexOfSchema;
 
 use re_log_types::arrow::{ENTITY_PATH_KEY, TIMELINE_KEY, TIMELINE_SEQUENCE, TIMELINE_TIME};
-use re_log_types::{ObjPath as EntityPath, TimeType, Timeline};
+use re_log_types::{ObjPath as EntityPath, TimeInt, TimeRange, TimeType, Timeline};
 
 use crate::{
-    ComponentBucket, ComponentNameRef, ComponentTable, DataStore, IndexBucket, IndexTable,
-    RowIndex, TypedTimeInt,
+    ComponentBucket, ComponentNameRef, ComponentTable, DataStore, IndexBucket, IndexTable, RowIndex,
 };
 
 // --- Data store ---
@@ -65,7 +64,7 @@ impl DataStore {
 fn extract_timelines(
     schema: &Schema,
     msg: &Chunk<Box<dyn Array>>,
-) -> anyhow::Result<Vec<(Timeline, TypedTimeInt)>> {
+) -> anyhow::Result<Vec<(Timeline, TimeInt)>> {
     let timelines = schema
         .index_of("timelines") // TODO(cmc): maybe at least a constant or something
         .and_then(|idx| msg.columns().get(idx))
@@ -95,10 +94,7 @@ fn extract_timelines(
                         "expect only one timestamp per message per timeline"
                     );
 
-                    Ok((
-                        timeline,
-                        TypedTimeInt::from((TimeType::Time, time.values()[0])),
-                    ))
+                    Ok((timeline, time.values()[0].into()))
                 }
                 Some(TIMELINE_SEQUENCE) => {
                     let timeline = Timeline::new(timeline.name.clone(), TimeType::Sequence);
@@ -111,10 +107,7 @@ fn extract_timelines(
                         "expect only one timestamp per message per timeline"
                     );
 
-                    Ok((
-                        timeline,
-                        TypedTimeInt::from((TimeType::Sequence, time.values()[0])),
-                    ))
+                    Ok((timeline, time.values()[0].into()))
                 }
                 Some(unknown) => {
                     bail!("unknown timeline kind: {unknown:?}")
@@ -158,17 +151,13 @@ impl IndexTable {
         Self {
             timeline,
             ent_path,
-            buckets: [(
-                TypedTimeInt::from((timeline.typ(), 0)),
-                IndexBucket::new(timeline),
-            )]
-            .into(),
+            buckets: [(0.into(), IndexBucket::new(timeline))].into(),
         }
     }
 
     pub fn insert(
         &mut self,
-        time: TypedTimeInt,
+        time: TimeInt,
         indices: &HashMap<ComponentNameRef<'_>, RowIndex>,
     ) -> anyhow::Result<()> {
         let bucket = self.buckets.iter_mut().next().unwrap().1;
@@ -178,10 +167,9 @@ impl IndexTable {
 
 impl IndexBucket {
     pub fn new(timeline: Timeline) -> Self {
-        let start = TypedTimeInt::from((timeline.typ(), i64::MIN));
-        let end = TypedTimeInt::from((timeline.typ(), i64::MAX));
         Self {
-            time_range: start..end,
+            timeline,
+            time_range: TimeRange::new(i64::MIN.into(), i64::MAX.into()),
             is_sorted: true,
             times: Int64Vec::default(),
             indices: Default::default(),
@@ -191,7 +179,7 @@ impl IndexBucket {
     #[allow(clippy::unnecessary_wraps)]
     pub fn insert(
         &mut self,
-        time: TypedTimeInt,
+        time: TimeInt,
         row_indices: &HashMap<ComponentNameRef<'_>, RowIndex>,
     ) -> anyhow::Result<()> {
         // append time to primary index
@@ -261,7 +249,7 @@ impl ComponentTable {
 
     pub fn insert(
         &mut self,
-        timelines: &[(Timeline, TypedTimeInt)],
+        timelines: &[(Timeline, TimeInt)],
         data: &dyn Array,
     ) -> anyhow::Result<RowIndex> {
         self.buckets.get_mut(&0).unwrap().insert(timelines, data)
@@ -302,17 +290,18 @@ impl ComponentBucket {
 
     pub fn insert(
         &mut self,
-        timelines: &[(Timeline, TypedTimeInt)],
+        timelines: &[(Timeline, TimeInt)],
         data: &dyn Array,
     ) -> anyhow::Result<RowIndex> {
         for (timeline, time) in timelines {
             // TODO(#451): prob should own it at this point
             let time = *time;
-            let time_plus_one = time + 1;
             self.time_ranges
                 .entry(*timeline)
-                .and_modify(|range| *range = range.start.min(time)..range.end.max(time_plus_one))
-                .or_insert_with(|| time..time_plus_one);
+                .and_modify(|range| {
+                    *range = TimeRange::new(range.min.min(time), range.max.max(time));
+                })
+                .or_insert_with(|| TimeRange::new(time, time));
         }
 
         // TODO(cmc): replace with an actual mutable array!

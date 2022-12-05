@@ -10,7 +10,7 @@ use arrow2::{
 };
 use polars::prelude::{DataFrame, Series};
 
-use re_arrow_store::{datagen::*, ComponentNameRef, DataStore, TimeQuery, TypedTimeInt};
+use re_arrow_store::{datagen::*, ComponentNameRef, DataStore, TimeInt, TimeQuery};
 use re_log_types::{ObjPath as EntityPath, TimeType, Timeline};
 
 // --- Scenarios ---
@@ -54,7 +54,7 @@ fn empty_query_edge_cases() {
         &TimeQuery::LatestAt(frame40),
         &ent_path,
         components_all,
-        vec![("instances", TypedTimeInt::new_seq(frame40))],
+        vec![("instances", frame40.into())],
     );
 
     // Scenario: query at `last_log_time`.
@@ -65,7 +65,7 @@ fn empty_query_edge_cases() {
         &TimeQuery::LatestAt(now_nanos),
         &ent_path,
         components_all,
-        vec![("instances", TypedTimeInt::new_time(now_nanos))],
+        vec![("instances", now_nanos.into())],
     );
 
     // Scenario: query an empty store at `first_frame - 1`.
@@ -223,19 +223,16 @@ fn single_entity_multi_timelines_multi_components_out_of_order_roundtrip() {
         // Expected: data at that point in time.
         (
             frame41,
-            vec![
-                ("instances", TypedTimeInt::new_seq(frame41)),
-                ("rects", TypedTimeInt::new_seq(frame41)),
-            ],
+            vec![("instances", frame41.into()), ("rects", frame41.into())],
         ),
         // Scenario: query all components at frame #42 (i.e. second frame with data)
         // Expected: data at that point in time.
         (
             frame42,
             vec![
-                ("instances", TypedTimeInt::new_seq(frame42)),
-                ("rects", TypedTimeInt::new_seq(frame42)),
-                ("positions", TypedTimeInt::new_seq(frame42)),
+                ("instances", frame42.into()),
+                ("rects", frame42.into()),
+                ("positions", frame42.into()),
             ],
         ),
         // Scenario: query all components at frame #43 (i.e. last frame with data)
@@ -243,9 +240,9 @@ fn single_entity_multi_timelines_multi_components_out_of_order_roundtrip() {
         (
             frame43,
             vec![
-                ("instances", TypedTimeInt::new_seq(frame42)),
-                ("rects", TypedTimeInt::new_seq(frame43)),
-                ("positions", TypedTimeInt::new_seq(frame42)),
+                ("instances", frame42.into()),
+                ("rects", frame43.into()),
+                ("positions", frame42.into()),
             ],
         ),
         // Scenario: query all components at frame #44 (i.e. after last frame)
@@ -253,9 +250,9 @@ fn single_entity_multi_timelines_multi_components_out_of_order_roundtrip() {
         (
             frame44,
             vec![
-                ("instances", TypedTimeInt::new_seq(frame42)),
-                ("rects", TypedTimeInt::new_seq(frame43)),
-                ("positions", TypedTimeInt::new_seq(frame42)),
+                ("instances", frame42.into()),
+                ("rects", frame43.into()),
+                ("positions", frame42.into()),
             ],
         ),
     ];
@@ -281,9 +278,9 @@ fn single_entity_multi_timelines_multi_components_out_of_order_roundtrip() {
         (
             now_plus_20ms,
             vec![
-                ("instances", TypedTimeInt::new_time(now_plus_10ms_nanos)),
-                ("rects", TypedTimeInt::new_time(now_plus_10ms_nanos)),
-                ("positions", TypedTimeInt::new_time(now_minus_10ms_nanos)),
+                ("instances", now_plus_10ms_nanos.into()),
+                ("rects", now_plus_10ms_nanos.into()),
+                ("positions", now_minus_10ms_nanos.into()),
             ],
         ),
     ];
@@ -302,11 +299,11 @@ fn single_entity_multi_timelines_multi_components_out_of_order_roundtrip() {
 
 // --- Helpers ---
 
-type DataEntry = (ComponentNameRef<'static>, TypedTimeInt);
+type DataEntry = (ComponentNameRef<'static>, TimeInt);
 
 #[derive(Default)]
 struct DataTracker {
-    all_data: HashMap<(ComponentNameRef<'static>, TypedTimeInt), Box<dyn Array>>,
+    all_data: HashMap<(ComponentNameRef<'static>, TimeInt), Box<dyn Array>>,
 }
 
 impl DataTracker {
@@ -314,7 +311,7 @@ impl DataTracker {
         &mut self,
         store: &mut DataStore,
         ent_path: &EntityPath,
-        times: [(TypedTimeInt, Schema, Int64Array); N],
+        times: [(TimeInt, Schema, Int64Array); N],
         components: [(ComponentNameRef<'static>, Schema, ListArray<i32>); M],
     ) {
         for (time, _, _) in &times {

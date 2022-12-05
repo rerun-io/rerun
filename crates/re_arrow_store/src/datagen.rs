@@ -10,9 +10,9 @@ use arrow2::{
 };
 use arrow2_convert::serialize::TryIntoArrow;
 use re_log_types::arrow::{ENTITY_PATH_KEY, TIMELINE_KEY, TIMELINE_SEQUENCE, TIMELINE_TIME};
-use re_log_types::ObjPath as EntityPath;
+use re_log_types::{ObjPath as EntityPath, TimeInt};
 
-use crate::{field_types, ComponentNameRef, TypedTimeInt};
+use crate::{field_types, ComponentNameRef};
 
 /// Wrap `field_array` in a single-element `ListArray`
 pub fn wrap_in_listarray(field_array: Box<dyn Array>) -> ListArray<i32> {
@@ -73,7 +73,7 @@ pub fn build_test_rect_chunk() -> (Chunk<Box<dyn Array>>, Schema) {
     (chunk, schema)
 }
 
-pub fn build_log_time(log_time: SystemTime) -> (TypedTimeInt, Schema, Int64Array) {
+pub fn build_log_time(log_time: SystemTime) -> (TimeInt, Schema, Int64Array) {
     let log_time = log_time
         .duration_since(SystemTime::UNIX_EPOCH)
         .unwrap()
@@ -92,12 +92,10 @@ pub fn build_log_time(log_time: SystemTime) -> (TypedTimeInt, Schema, Int64Array
         ..Default::default()
     };
 
-    let time = TypedTimeInt::new_time(log_time);
-
-    (time, schema, data)
+    (log_time.into(), schema, data)
 }
 
-pub fn build_frame_nr(frame_nr: i64) -> (TypedTimeInt, Schema, Int64Array) {
+pub fn build_frame_nr(frame_nr: i64) -> (TimeInt, Schema, Int64Array) {
     let data = PrimitiveArray::from([Some(frame_nr)]);
 
     let fields = [Field::new("frame_nr", DataType::Int64, false)
@@ -109,9 +107,7 @@ pub fn build_frame_nr(frame_nr: i64) -> (TypedTimeInt, Schema, Int64Array) {
         ..Default::default()
     };
 
-    let time = TypedTimeInt::new_seq(frame_nr);
-
-    (time, schema, data)
+    (frame_nr.into(), schema, data)
 }
 
 pub fn pack_timelines(
@@ -235,7 +231,7 @@ pub fn pack_components(
 
 pub fn build_message(
     ent_path: &EntityPath,
-    timelines: impl IntoIterator<Item = (TypedTimeInt, Schema, Int64Array)>,
+    timelines: impl IntoIterator<Item = (TimeInt, Schema, Int64Array)>,
     components: impl IntoIterator<Item = (ComponentNameRef<'static>, Schema, ListArray<i32>)>,
 ) -> (Schema, Chunk<Box<dyn Array>>) {
     let mut schema = Schema::default();

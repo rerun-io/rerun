@@ -4,9 +4,7 @@ use std::sync::Arc;
 use arrow2::array::{Array, Int64Vec, UInt64Vec};
 use arrow2::datatypes::DataType;
 
-use re_log_types::{ObjPath as EntityPath, Timeline};
-
-use crate::TypedTimeInt;
+use re_log_types::{ObjPath as EntityPath, TimeInt, TimeRange, Timeline};
 
 // --- Data store ---
 
@@ -14,7 +12,6 @@ pub type ComponentName = String;
 pub type ComponentNameRef<'a> = &'a str;
 
 pub type RowIndex = u64;
-pub type TypedTimeIntRange = std::ops::Range<TypedTimeInt>;
 
 /// A complete data store: covers all timelines, all entities, everything.
 ///
@@ -140,7 +137,7 @@ pub struct IndexTable {
     pub(crate) ent_path: EntityPath,
 
     /// The actual buckets, where the indices are stored.
-    pub(crate) buckets: BTreeMap<TypedTimeInt, IndexBucket>,
+    pub(crate) buckets: BTreeMap<TimeInt, IndexBucket>,
 }
 
 impl std::fmt::Display for IndexTable {
@@ -176,8 +173,11 @@ impl std::fmt::Display for IndexTable {
 /// See [`IndexTable`] to get an idea of what an `IndexBucket` looks like in practice.
 #[derive(Debug)]
 pub struct IndexBucket {
+    /// The timeline the bucket's parent table operates in, for debugging purposes.
+    pub(crate) timeline: Timeline,
+
     /// The time range covered by this bucket.
-    pub(crate) time_range: TypedTimeIntRange,
+    pub(crate) time_range: TimeRange,
 
     /// Whether the indices (all of them!) are currently sorted.
     ///
@@ -201,6 +201,7 @@ pub struct IndexBucket {
 impl std::fmt::Display for IndexBucket {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
+            timeline,
             time_range,
             is_sorted,
             times,
@@ -208,8 +209,9 @@ impl std::fmt::Display for IndexBucket {
         } = self;
 
         f.write_fmt(format_args!(
-            "time range: from {} (inclusive) to {} (exlusive)\n",
-            time_range.start, time_range.end,
+            "time range: from {} to {} (all inclusive)\n",
+            timeline.typ().format(time_range.min),
+            timeline.typ().format(time_range.max),
         ))?;
 
         #[cfg(not(target_arch = "wasm32"))]
@@ -217,13 +219,13 @@ impl std::fmt::Display for IndexBucket {
             use arrow2::array::MutableArray as _;
             use polars::prelude::{DataFrame, NamedFrom as _, Series};
 
-            let typ = self.time_range.start.typ();
+            let typ = timeline.typ();
             let times = Series::new(
                 "time",
                 times
                     .values()
                     .iter()
-                    .map(|time| TypedTimeInt::from((typ, *time)).to_string())
+                    .map(|time| typ.format(TimeInt::from(*time)))
                     .collect::<Vec<_>>(),
             );
 
@@ -363,7 +365,7 @@ pub struct ComponentBucket {
     /// Buckets are never sorted over time, so these time ranges can grow arbitrarily large.
     ///
     /// These are only used for garbage collection.
-    pub(crate) time_ranges: HashMap<Timeline, TypedTimeIntRange>,
+    pub(crate) time_ranges: HashMap<Timeline, TimeRange>,
 
     /// What's the offset of that bucket in the shared table?
     pub(crate) row_offset: RowIndex,
@@ -386,10 +388,10 @@ impl std::fmt::Display for ComponentBucket {
         f.write_str("time ranges:\n")?;
         for (timeline, time_range) in time_ranges {
             f.write_fmt(format_args!(
-                "    - {}: from {} (inclusive) to {} (exlusive)\n",
+                "    - {}: from {} to {} (all inclusive)\n",
                 timeline.name(),
-                time_range.start,
-                time_range.end,
+                timeline.typ().format(time_range.min),
+                timeline.typ().format(time_range.max),
             ))?;
         }
 

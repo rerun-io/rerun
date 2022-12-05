@@ -3625,6 +3625,7 @@ dependencies = [
  "arrow2_convert",
  "chrono",
  "criterion",
+ "document-features",
  "indent",
  "itertools",
  "mimalloc",
@@ -3682,6 +3683,7 @@ dependencies = [
  "chrono",
  "derive_more",
  "document-features",
+ "fixed",
  "glam",
  "macaw",
  "nohash-hasher",
@@ -3693,6 +3695,7 @@ dependencies = [
  "ruzstd",
  "serde",
  "thiserror",
+ "typenum",
  "uuid",
  "zstd",
 ]
