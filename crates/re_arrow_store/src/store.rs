@@ -10,6 +10,8 @@ use re_log_types::{
 
 // --- Data store ---
 
+// TODO: use those human formatter that we have around here somewhere?
+
 pub type ComponentName = String;
 pub type ComponentNameRef<'a> = &'a str;
 
@@ -104,6 +106,15 @@ impl std::fmt::Display for DataStore {
         }
 
         {
+            f.write_str(&indent::indent_all_by(
+                4,
+                format!(
+                    "{} component tables, for a total of {} bytes across {} total rows\n",
+                    self.components.len(),
+                    self.total_component_size_bytes(),
+                    self.total_component_rows()
+                ),
+            ))?;
             f.write_str(&indent::indent_all_by(4, "components: [\n"))?;
             for comp in components.values() {
                 f.write_str(&indent::indent_all_by(8, "ComponentTable {\n"))?;
@@ -366,9 +377,9 @@ impl std::fmt::Display for IndexBucket {
 /// ```
 #[derive(Debug)]
 pub struct ComponentTable {
-    /// The component's name that this table is related to, for debugging purposes.
+    /// Name of the underlying component.
     pub(crate) name: Arc<ComponentName>,
-    /// The component's datatype that this table is related to, for debugging purposes.
+    /// Type of the underlying component.
     pub(crate) datatype: DataType,
 
     /// The actual buckets, where the component data is stored.
@@ -392,6 +403,12 @@ impl std::fmt::Display for ComponentTable {
             f.write_fmt(format_args!("datatype: {:#?}\n", datatype))?;
         }
 
+        f.write_fmt(format_args!(
+            "size: {} buckets for a total of {} bytes across {} total rows\n",
+            self.buckets.len(),
+            self.total_size_bytes(),
+            self.total_rows(),
+        ))?;
         f.write_str("buckets: [\n")?;
         for (_, bucket) in buckets {
             f.write_str(&indent::indent_all_by(4, "ComponentBucket {\n"))?;
@@ -409,15 +426,14 @@ impl std::fmt::Display for ComponentTable {
 pub struct ComponentBucket {
     /// The component's name, for debugging purposes.
     pub(crate) name: Arc<String>,
+    /// The offset of this bucket is the global table, for debugging purposes.
+    pub(crate) row_offset: RowIndex,
 
     /// The time ranges (plural!) covered by this bucket.
     /// Buckets are never sorted over time, so these time ranges can grow arbitrarily large.
     ///
     /// These are only used for garbage collection.
     pub(crate) time_ranges: HashMap<Timeline, TimeRange>,
-
-    /// What's the offset of that bucket in the shared table?
-    pub(crate) row_offset: RowIndex,
 
     /// All the data for this bucket. This is a single column!
     pub(crate) data: Box<dyn Array>,
@@ -433,9 +449,15 @@ impl std::fmt::Display for ComponentBucket {
         } = self;
 
         f.write_fmt(format_args!(
+            "size: {} bytes across {} rows\n",
+            self.total_size_bytes(),
+            self.total_rows(),
+        ))?;
+
+        f.write_fmt(format_args!(
             "row range: from {} to {} (all inclusive)\n",
             row_offset,
-            row_offset + data.len() as u64,
+            row_offset + data.len().saturating_sub(1) as u64,
         ))?;
 
         f.write_str("time ranges:\n")?;

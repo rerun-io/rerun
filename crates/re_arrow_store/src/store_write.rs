@@ -9,8 +9,9 @@ use arrow2::buffer::Buffer;
 use arrow2::chunk::Chunk;
 use arrow2::compute::concatenate::concatenate;
 use arrow2::datatypes::{DataType, Schema};
-use polars::prelude::{IndexOfSchema, ValueSize};
+use polars::prelude::IndexOfSchema;
 
+use re_log::debug;
 use re_log_types::arrow::{ENTITY_PATH_KEY, TIMELINE_KEY, TIMELINE_SEQUENCE, TIMELINE_TIME};
 use re_log_types::{ObjPath as EntityPath, TimeInt, TimeRange, TimeType, Timeline};
 
@@ -61,6 +62,24 @@ impl DataStore {
         }
 
         Ok(())
+    }
+
+    /// Returns the number of component rows stored across this entire store, i.e. the sum of
+    /// the number of rows across all of its component tables.
+    pub fn total_component_rows(&self) -> usize {
+        self.components
+            .values()
+            .map(|table| table.total_rows())
+            .sum()
+    }
+
+    /// Returns the size of the data stored across this entire store, i.e. the sum of the size
+    /// of the data stored across all of its component tables, in bytes.
+    pub fn total_component_size_bytes(&self) -> u64 {
+        self.components
+            .values()
+            .map(|table| table.total_size_bytes())
+            .sum()
     }
 }
 
@@ -254,15 +273,54 @@ impl ComponentTable {
 
     pub fn insert(
         &mut self,
-        _config: &DataStoreConfig,
+        config: &DataStoreConfig,
         timelines: &[(Timeline, TimeInt)],
         data: &dyn Array,
     ) -> anyhow::Result<RowIndex> {
-        // TODO
-        // Split lazily: no reason to split if there won't ever be any more data coming in.
+        let (row_offset, bucket) = self.buckets.back().unwrap();
+
+        let size = bucket.total_size_bytes();
+        let size_overflow = bucket.total_size_bytes() >= config.component_bucket_size_bytes;
+
+        let len = bucket.total_rows() as u64;
+        let len_overflow = len >= config.component_bucket_nb_rows;
+
+        if size_overflow || len_overflow {
+            debug!(
+                ?config,
+                size,
+                size_overflow,
+                len,
+                len_overflow,
+                "allocating new bucket, previous one overflowed"
+            );
+
+            self.buckets.push_back((
+                row_offset + len,
+                ComponentBucket::new(Arc::clone(&self.name), self.datatype.clone(), 0),
+            ));
+        }
 
         let (_, bucket) = self.buckets.back_mut().unwrap();
         bucket.insert(timelines, data)
+    }
+
+    /// Returns the number of rows stored across this entire table, i.e. the sum of the number
+    /// of rows stored across all of its buckets.
+    pub fn total_rows(&self) -> usize {
+        self.buckets
+            .iter()
+            .map(|(_, bucket)| bucket.total_rows())
+            .sum()
+    }
+
+    /// Returns the size of data stored across this entire table, i.e. the sum of the size of
+    /// the data stored across all of its buckets, in bytes.
+    pub fn total_size_bytes(&self) -> u64 {
+        self.buckets
+            .iter()
+            .map(|(_, bucket)| bucket.total_size_bytes())
+            .sum()
     }
 }
 
@@ -320,11 +378,15 @@ impl ComponentBucket {
         Ok(self.row_offset + self.data.len() as u64 - 1)
     }
 
-    pub fn len(&self) -> usize {
+    /// Returns the number of rows stored across this bucket.
+    pub fn total_rows(&self) -> usize {
         self.data.len()
     }
 
-    pub fn size_bytes(&self) -> u64 {
-        self.data.get_values_size() as u64
+    /// Returns the size of the data stored across this bucket, in bytes.
+    pub fn total_size_bytes(&self) -> u64 {
+        // TODO: test this cause the docs and online discussions are not that clear to me with
+        // regards to the limitations here
+        arrow2::compute::aggregate::estimated_bytes_size(&*self.data) as u64
     }
 }
