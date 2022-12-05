@@ -14,7 +14,7 @@ pub type RowIndex = u64;
 
 // --- Data store ---
 
-// TODO: use those human formatter that we have around here somewhere?
+// TODO: I think we have human formatter for both bytes and length around here somewhere?
 
 #[derive(Debug, Clone)]
 pub struct DataStoreConfig {
@@ -28,7 +28,7 @@ pub struct DataStoreConfig {
     /// larger than the threshold, then that bucket will become larger than the threshold, and
     /// we will split from there on.
     ///
-    /// See [`Self::default`] for defaults.
+    /// See [`Self::const_default`] for defaults.
     pub component_bucket_size_bytes: u64,
     /// The maximum number of rows in a component bucket before triggering a split.
     ///
@@ -36,7 +36,7 @@ pub struct DataStoreConfig {
     /// The lower the number, the more fine-grained the garbage collection is, at the cost of more
     /// metadata overhead.
     ///
-    /// See [`Self::default`] for defaults.
+    /// See [`Self::const_default`] for defaults.
     pub component_bucket_nb_rows: u64,
 }
 
