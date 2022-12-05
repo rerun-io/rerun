@@ -290,7 +290,7 @@ impl eframe::App for App {
             return;
         }
 
-        let gpu_resource_statistics = {
+        let gpu_resource_stats = {
             // TODO(andreas): store the re_renderer somewhere else.
             let egui_renderer = {
                 let render_state = frame.wgpu_render_state().unwrap();
@@ -304,7 +304,7 @@ impl eframe::App for App {
             render_ctx.gpu_resources.statistics()
         };
 
-        self.memory_panel.update(); // do first, before doing too many allocations
+        self.memory_panel.update(&gpu_resource_stats); // do first, before doing too many allocations
 
         self.check_keyboard_shortcuts(egui_ctx, frame);
 
@@ -317,13 +317,14 @@ impl eframe::App for App {
         self.cleanup();
 
         file_saver_progress_ui(egui_ctx, self); // toasts for background file saver
-        top_panel(egui_ctx, frame, self, &gpu_resource_statistics);
+        top_panel(egui_ctx, frame, self, &gpu_resource_stats);
 
         egui::TopBottomPanel::bottom("memory_panel")
             .default_height(300.0)
             .resizable(true)
             .show_animated(egui_ctx, self.memory_panel_open, |ui| {
-                self.memory_panel.ui(ui, &self.startup_options.memory_limit);
+                self.memory_panel
+                    .ui(ui, &self.startup_options.memory_limit, &gpu_resource_stats);
             });
 
         let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
@@ -723,7 +724,7 @@ fn top_panel(
     egui_ctx: &egui::Context,
     frame: &mut eframe::Frame,
     app: &mut App,
-    gpu_resource_statistics: &WgpuResourcePoolStatistics,
+    gpu_resource_stats: &WgpuResourcePoolStatistics,
 ) {
     crate::profile_function!();
 
@@ -778,7 +779,7 @@ fn top_panel(
                     ui.add_space(gui_zoom * native_buttons_size_in_native_scale.x);
                 }
 
-                top_bar_ui(ui, frame, app, gpu_resource_statistics);
+                top_bar_ui(ui, frame, app, gpu_resource_stats);
             });
         });
 }
@@ -787,7 +788,7 @@ fn top_bar_ui(
     ui: &mut egui::Ui,
     frame: &mut eframe::Frame,
     app: &mut App,
-    gpu_resource_statistics: &WgpuResourcePoolStatistics,
+    gpu_resource_stats: &WgpuResourcePoolStatistics,
 ) {
     #[cfg(not(target_arch = "wasm32"))]
     ui.menu_button("File", |ui| {
@@ -863,8 +864,8 @@ fn top_bar_ui(
 
     {
         ui.separator();
-        let total_bytes = gpu_resource_statistics.total_buffer_size_in_bytes
-            + gpu_resource_statistics.total_texture_size_in_bytes;
+        let total_bytes = gpu_resource_stats.total_buffer_size_in_bytes
+            + gpu_resource_stats.total_texture_size_in_bytes;
 
         // we use monospace so the width doesn't fluctuate as the numbers change.
         let bytes_used_text = re_memory::util::format_bytes(total_bytes as _);
@@ -876,8 +877,8 @@ fn top_bar_ui(
         .on_hover_text(format!(
             "Rerun Viewer is using {} of gpu memory in {} textures and {} buffers.",
             bytes_used_text,
-            format_usize(gpu_resource_statistics.num_textures),
-            format_usize(gpu_resource_statistics.num_buffers),
+            format_usize(gpu_resource_stats.num_textures),
+            format_usize(gpu_resource_stats.num_buffers),
         ));
     }
 
