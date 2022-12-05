@@ -218,6 +218,8 @@ impl CongestionManager {
                     timeline_history.send_time.remove(&oldest_time);
                 }
 
+                re_log::trace!("Send {timeline} {time}: {send_it}");
+
                 send_it
             }
             std::collections::btree_map::Entry::Occupied(entry) => {
@@ -235,6 +237,7 @@ struct Throttling {
     max_latency_sec: f32,
     accept_rate: f32,
     last_time: Instant,
+    last_log_time: Instant,
 }
 
 impl Throttling {
@@ -243,6 +246,7 @@ impl Throttling {
             max_latency_sec,
             accept_rate: 1.0,
             last_time: Instant::now(),
+            last_log_time: Instant::now(),
         }
     }
 
@@ -275,5 +279,13 @@ impl Throttling {
         }
 
         self.accept_rate = self.accept_rate.clamp(MIN_ACCEPT_RATE, 1.0);
+
+        if self.last_log_time.elapsed().as_secs_f32() > 1.0 {
+            re_log::debug!(
+                "Currently dropping {:.2}% of messages to keep latency low",
+                100.0 * (1.0 - self.accept_rate)
+            );
+            self.last_log_time = Instant::now();
+        }
     }
 }
