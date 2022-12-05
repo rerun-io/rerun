@@ -168,6 +168,7 @@ fn single_entity_multi_timelines_multi_components_out_of_order_roundtrip() {
     let now_plus_20ms = now + Duration::from_millis(20);
     let now_plus_20ms_nanos = systemtime_to_nanos(now_plus_20ms);
 
+    let frame40 = 40;
     let frame41 = 41;
     let frame42 = 42;
     let frame43 = 43;
@@ -186,6 +187,12 @@ fn single_entity_multi_timelines_multi_components_out_of_order_roundtrip() {
         tracker.insert_data(
             &mut store,
             &ent_path,
+            [build_log_time(now), build_frame_nr(frame42)],
+            [build_rects(nb_instances)],
+        );
+        tracker.insert_data(
+            &mut store,
+            &ent_path,
             [build_log_time(now_plus_10ms), build_frame_nr(frame41)],
             [build_instances(nb_instances), build_rects(nb_instances)],
         );
@@ -193,7 +200,7 @@ fn single_entity_multi_timelines_multi_components_out_of_order_roundtrip() {
             &mut store,
             &ent_path,
             [build_log_time(now), build_frame_nr(frame42)],
-            [build_instances(nb_instances), build_rects(nb_instances)],
+            [build_instances(nb_instances)],
         );
         tracker.insert_data(
             &mut store,
@@ -207,10 +214,67 @@ fn single_entity_multi_timelines_multi_components_out_of_order_roundtrip() {
     let timeline_log_time = Timeline::new("log_time", TimeType::Time);
     let components_all = &["instances", "rects", "positions"];
 
-    // TODO(cmc): test frames 41, 42, 43, 44
+    // TODO(cmc): test frames 43, 44
     // TODO(cmc): test log_times -10, +0, +10, +20
 
-    // Scenario: query all components at `last frame + 1`.
+    // --- Testing at all frames ---
+
+    // Scenario: query all components at frame #40 (i.e. before first frame).
+    // Expected: empy dataframe.
+    tracker.assert_scenario(
+        &mut store,
+        &timeline_frame_nr,
+        &TimeQuery::LatestAt(frame40),
+        &ent_path,
+        components_all,
+        [],
+    );
+
+    // Scenario: query all components at frame frame #41 (i.e. first frame with data)
+    // Expected: data at that point in time.
+    tracker.assert_scenario(
+        &mut store,
+        &timeline_frame_nr,
+        &TimeQuery::LatestAt(frame41),
+        &ent_path,
+        components_all,
+        [
+            ("instances", TypedTimeInt::new_seq(frame41)),
+            ("rects", TypedTimeInt::new_seq(frame41)),
+        ],
+    );
+
+    // Scenario: query all components at frame frame #42 (i.e. second frame with data)
+    // Expected: data at that point in time.
+    tracker.assert_scenario(
+        &mut store,
+        &timeline_frame_nr,
+        &TimeQuery::LatestAt(frame42),
+        &ent_path,
+        components_all,
+        [
+            ("instances", TypedTimeInt::new_seq(frame42)),
+            ("rects", TypedTimeInt::new_seq(frame42)),
+            ("positions", TypedTimeInt::new_seq(frame42)),
+        ],
+    );
+
+    // Scenario: query all components at frame #43 (i.e. last frame with data)
+    // Expected: latest data for all components.
+    tracker.assert_scenario(
+        &mut store,
+        &timeline_frame_nr,
+        &TimeQuery::LatestAt(frame43),
+        &ent_path,
+        components_all,
+        [
+            ("instances", TypedTimeInt::new_seq(frame42)),
+            ("rects", TypedTimeInt::new_seq(frame43)),
+            ("positions", TypedTimeInt::new_seq(frame42)),
+        ],
+    );
+
+    // Scenario: query all components at frame #44 (i.e. after last frame)
     // Expected: latest data for all components.
     tracker.assert_scenario(
         &mut store,
@@ -224,6 +288,8 @@ fn single_entity_multi_timelines_multi_components_out_of_order_roundtrip() {
             ("positions", TypedTimeInt::new_seq(frame42)),
         ],
     );
+
+    // --- Testing at all times ---
 
     // Scenario: query all components at `last log_time + 10ms`.
     // Expected: latest data for all components.
