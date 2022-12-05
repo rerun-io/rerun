@@ -10,8 +10,7 @@ use std::num::NonZeroU64;
 use smallvec::smallvec;
 
 use crate::{
-    include_file,
-    renderer::utils::next_multiple_of,
+    include_file, next_multiple_of,
     resource_managers::{GpuTexture2DHandle, ResourceManagerError},
     view_builder::ViewBuilder,
     wgpu_resources::{

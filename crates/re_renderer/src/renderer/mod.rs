@@ -19,8 +19,6 @@ pub use mesh_renderer::{MeshDrawData, MeshInstance};
 
 pub mod compositor;
 
-mod utils;
-
 use crate::{
     context::{RenderContext, SharedRendererData},
     wgpu_resources::WgpuResourcePools,
