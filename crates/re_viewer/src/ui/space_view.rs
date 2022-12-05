@@ -171,7 +171,7 @@ impl ViewState {
     ) -> egui::Response {
         let response = ui
             .scope(|ui| {
-                view_2d::view_2d(ctx, ui, &mut self.state_2d, Some(space), scene);
+                view_2d::view_2d(ctx, ui, &mut self.state_2d, space, scene);
             })
             .response;
 
@@ -196,7 +196,7 @@ impl ViewState {
             state.space_specs = view_3d::SpaceSpecs::from_view_coordinates(coordinates);
             let response = ui
                 .scope(|ui| {
-                    view_3d::view_3d(ctx, ui, state, Some(space), scene, space_cameras);
+                    view_3d::view_3d(ctx, ui, state, space, scene, space_cameras);
                 })
                 .response;
 
