@@ -81,7 +81,9 @@ impl DataStore {
             .iter()
             .filter_map(|name| series.remove(name))
             .collect();
-        DataFrame::new(series_ordered).map_err(Into::into)
+        let df = DataFrame::new(series_ordered)?;
+
+        df.explode(df.get_column_names()).map_err(Into::into)
     }
 
     /// Force the sorting of all indices.

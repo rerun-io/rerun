@@ -293,6 +293,7 @@ impl DataTracker {
             .map(|(name, data)| Series::try_from((name, data)).unwrap())
             .collect::<Vec<_>>();
         let expected = DataFrame::new(series).unwrap();
+        let expected = expected.explode(expected.get_column_names()).unwrap();
 
         store.sort_indices();
         eprintln!("{store}");

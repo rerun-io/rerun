@@ -1,18 +1,14 @@
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
-use arrow2::{
-    array::{Array, Int64Array, ListArray},
-    chunk::Chunk,
-    datatypes::Schema,
-};
+use arrow2::{array::Array, chunk::Chunk, datatypes::Schema};
 use criterion::{criterion_group, criterion_main, Criterion};
-use itertools::Itertools;
-use nohash_hasher::IntMap;
-use polars::prelude::{DataFrame, Series};
+use polars::prelude::DataFrame;
 
 use re_arrow_store::{datagen::*, DataStore, TimeQuery};
 use re_log_types::{ObjPath as EntityPath, TimeType, Timeline};
+
+// ---
 
 #[cfg(not(debug_assertions))]
 const NUM_FRAMES: i64 = 100;
@@ -25,44 +21,7 @@ const NUM_FRAMES: i64 = 1;
 #[cfg(debug_assertions)]
 const NUM_RECTS: i64 = 1;
 
-fn build_messages(n: usize) -> Vec<(Schema, Chunk<Box<dyn Array>>)> {
-    let ent_path = EntityPath::from("rects");
-
-    let messages = (0..NUM_FRAMES)
-        .into_iter()
-        .map(|frame_idx| {
-            build_message(
-                &ent_path,
-                [build_frame_nr(frame_idx as _)],
-                [build_positions(n), build_rects(n)],
-            )
-        })
-        .collect::<Vec<_>>();
-
-    messages
-}
-
-fn insert_messages(msgs: &[(Schema, Chunk<Box<dyn Array>>)]) -> DataStore {
-    let mut store = DataStore::default();
-    for (schema, data) in msgs {
-        store.insert(schema, data).unwrap();
-    }
-    store
-}
-
-fn query_messages(store: &mut DataStore) -> DataFrame {
-    let time_query = TimeQuery::LatestAt(NUM_FRAMES / 2);
-    let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
-    let ent_path = EntityPath::from("rects");
-
-    let mut df = store
-        .query(&timeline_frame_nr, &time_query, &ent_path, &["rects"])
-        .unwrap();
-    dbg!(&df);
-    assert_eq!(NUM_RECTS as usize, df.select_at_idx(0).unwrap().len());
-
-    df
-}
+// --- Benchmarks ---
 
 fn batch_rects(c: &mut Criterion) {
     let msgs = build_messages(NUM_RECTS as usize);
@@ -89,3 +48,41 @@ fn batch_rects(c: &mut Criterion) {
 
 criterion_group!(benches, batch_rects);
 criterion_main!(benches);
+
+// --- Helpers ---
+
+fn build_messages(n: usize) -> Vec<(Schema, Chunk<Box<dyn Array>>)> {
+    let ent_path = EntityPath::from("rects");
+
+    (0..NUM_FRAMES)
+        .into_iter()
+        .map(|frame_idx| {
+            build_message(
+                &ent_path,
+                [build_frame_nr(frame_idx)],
+                [build_positions(n), build_rects(n)],
+            )
+        })
+        .collect()
+}
+
+fn insert_messages(msgs: &[(Schema, Chunk<Box<dyn Array>>)]) -> DataStore {
+    let mut store = DataStore::default();
+    for (schema, data) in msgs {
+        store.insert(schema, data).unwrap();
+    }
+    store
+}
+
+fn query_messages(store: &mut DataStore) -> DataFrame {
+    let time_query = TimeQuery::LatestAt(NUM_FRAMES / 2);
+    let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
+    let ent_path = EntityPath::from("rects");
+
+    let df = store
+        .query(&timeline_frame_nr, &time_query, &ent_path, &["rects"])
+        .unwrap();
+    assert_eq!(NUM_RECTS as usize, df.select_at_idx(0).unwrap().len());
+
+    df
+}
