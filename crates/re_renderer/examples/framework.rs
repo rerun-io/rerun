@@ -288,7 +288,6 @@ impl<E: Example + 'static> Application<E> {
                     self.time.last_draw_time = current_time;
 
                     // TODO(andreas): Display a median over n frames and while we're on it also stddev thereof.
-                    // Repeatedly setting the title causes issues on some platforms
                     // Do it only every second.
                     let time_until_next_report = 1.0 - self.time.seconds_since_startup().fract();
                     if time_until_next_report - time_passed.as_secs_f32() < 0.0 {
@@ -297,7 +296,6 @@ impl<E: Example + 'static> Application<E> {
                             time_passed.as_secs_f32() * 1000.0,
                             1.0 / time_passed.as_secs_f32()
                         );
-                        self.window.set_title(&time_info_str);
                         re_log::info!("{time_info_str}");
                     }
                 }
@@ -322,7 +320,7 @@ async fn run<E: Example + 'static>(event_loop: EventLoop<()>, window: Window) {
 pub fn start<E: Example + 'static>() {
     let event_loop = EventLoop::new();
     let window = winit::window::WindowBuilder::new()
-        .with_title(E::title())
+        .with_title(format!("re_renderer sample - {}", E::title()))
         .build(&event_loop)
         .unwrap();
 
