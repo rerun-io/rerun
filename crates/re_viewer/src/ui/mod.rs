@@ -15,7 +15,6 @@ pub use format_numbers::format_usize;
 mod scene;
 use self::scene::SceneQuery;
 
-pub(crate) mod arrow_log_view;
 mod selection_history;
 mod selection_history_ui;
 pub use self::selection_history::{HistoricalSelection, SelectionHistory};

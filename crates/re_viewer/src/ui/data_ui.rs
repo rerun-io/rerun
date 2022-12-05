@@ -374,7 +374,11 @@ pub(crate) fn show_arrow_msg(
     msg: &ArrowMsg,
     preview: Preview,
 ) {
-    let ArrowMsg { msg_id, data: _ } = msg;
+    let ArrowMsg {
+        msg_id,
+        schema: _,
+        chunk: _,
+    } = msg;
 
     // TODO(jleibs): Better ArrowMsg view
     ui_logged_arrow_data(ctx, ui, msg_id, msg, preview);
@@ -428,7 +432,7 @@ pub(crate) fn ui_logged_arrow_data(
 ) -> egui::Response {
     // TODO(john): more handling
     //let arr = msg.to_arrow_array();
-    ui.label(format!("Arrow Payload: ({})", msg.data.len()))
+    ui.label(format!("Arrow Payload: ({:?})", msg.schema))
 }
 
 pub(crate) fn ui_data(

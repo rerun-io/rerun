@@ -1,7 +1,6 @@
 use arrow2::array::{Array, ListArray, StructArray};
 use arrow2::buffer::Buffer;
 use nohash_hasher::IntMap;
-use polars::export::arrow::io::ipc::read::{read_stream_metadata, StreamReader, StreamState};
 use polars::prelude::*;
 use re_log_types::arrow::{filter_time_cols, OBJPATH_KEY};
 use re_log_types::{ArrowMsg, FieldName, ObjPath};
@@ -147,39 +146,22 @@ impl LogDb {
         Ok(())
     }
 
-    pub fn consume_msg(&mut self, msg: ArrowMsg) {
-        let ArrowMsg { msg_id: _, data } = msg;
-
-        if std::env::var("ARROW_DUMP").is_ok() {
-            static CNT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
-            let path = &format!("data{}", CNT.load(std::sync::atomic::Ordering::Relaxed));
-            re_log::info!("Dumping received Arrow stream to {path:?}");
-            std::fs::write(path, data.as_slice()).unwrap();
-            CNT.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-        }
-
-        let mut cursor = std::io::Cursor::new(&data);
-        let metadata = read_stream_metadata(&mut cursor).unwrap();
-        let stream = StreamReader::new(cursor, metadata, None);
-        self.consume_stream(stream);
-    }
-
-    pub fn consume_stream(&mut self, stream: StreamReader<impl std::io::Read>) {
-        let arrow_schema = stream.metadata().schema.clone();
+    pub fn add_msg(&mut self, msg: &ArrowMsg) {
+        let ArrowMsg {
+            msg_id: _,
+            schema,
+            chunk,
+        } = msg;
 
         // Get the object path from the metadata
-        let obj_path = arrow_schema
+        let obj_path = schema
             .metadata
             .get(OBJPATH_KEY)
             .map(|path| ObjPath::from(path.as_str()))
             .expect("Bad ObjPath");
 
-        for item in stream {
-            if let StreamState::Some(chunk) = item.unwrap() {
-                self.push_new_columns(&obj_path, &arrow_schema, chunk.columns())
-                    .unwrap();
-            }
-        }
+        self.push_new_columns(&obj_path, schema, chunk.columns())
+            .unwrap();
     }
 
     pub fn debug_object_contents(&self) {

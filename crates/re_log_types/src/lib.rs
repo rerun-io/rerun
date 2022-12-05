@@ -22,6 +22,8 @@
 pub mod encoding;
 
 pub mod arrow;
+mod arrow_msg;
+pub use arrow_msg::ArrowMsg;
 pub mod context;
 pub mod coordinates;
 mod data;
@@ -175,6 +177,7 @@ pub enum LogMsg {
     PathOpMsg(PathOpMsg),
 
     /// Log an arrow message to a [`DataPath`].
+    #[serde(with = "arrow_msg")]
     ArrowMsg(ArrowMsg),
 }
 
@@ -269,17 +272,6 @@ impl TypeMsg {
             obj_type,
         }
     }
-}
-/// The message sent to specify the data of a single field of an object.
-#[must_use]
-#[derive(Clone, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct ArrowMsg {
-    /// A unique id per [`DataMsg`].
-    pub msg_id: MsgId,
-
-    /// The arrow payload.
-    pub data: Vec<u8>,
 }
 
 // ----------------------------------------------------------------------------
