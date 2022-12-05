@@ -253,7 +253,7 @@ impl LineDrawData {
         let num_strips = strips.len() as u32;
         // Add a placeholder vertex at the beginning to simplify line cap handling
         // (need this only if the first line starts with a cap, but not specialcasing this makes things easier!)
-        let num_vertices = vertices.len() as u32 + 1;
+        let num_quads = vertices.len() as u32 + 1;
 
         // TODO(andreas): just create more draw work items each with its own texture to become "unlimited"
         anyhow::ensure!(
@@ -267,10 +267,12 @@ impl LineDrawData {
         );
         // TODO(andreas): just create more draw work items each with its own texture to become "unlimited".
         //              (note that this one is a bit trickier to fix than extra line-strips, as we need to split a strip!)
-        anyhow::ensure!(num_vertices <= POSITION_TEXTURE_SIZE * POSITION_TEXTURE_SIZE,
-                "Too many line segments! The maximum number of positions is {} but specified were {num_vertices}",
-                POSITION_TEXTURE_SIZE * POSITION_TEXTURE_SIZE
-            );
+        anyhow::ensure!(
+            num_quads <= POSITION_TEXTURE_SIZE * POSITION_TEXTURE_SIZE - 1,
+            "Too many line segments! The maximum number of positions is {} but specified were {}",
+            POSITION_TEXTURE_SIZE * POSITION_TEXTURE_SIZE - 1,
+            vertices.len()
+        );
 
         // TODO(andreas): We want a "stack allocation" here that lives for one frame.
         //                  Note also that this doesn't protect against sharing the same texture with several LineDrawData!
@@ -311,7 +313,7 @@ impl LineDrawData {
         //                  These staging buffers would be provided by the belt.
         // To make the data upload simpler (and have it be done in one go), we always update full rows of each of our textures
         let mut position_data_staging =
-            Vec::with_capacity(next_multiple_of(num_vertices, POSITION_TEXTURE_SIZE) as usize);
+            Vec::with_capacity(next_multiple_of(num_quads, POSITION_TEXTURE_SIZE) as usize);
         // placeholder at the beginning to facilitate start-caps
         position_data_staging.push(LineVertex {
             pos: glam::vec3(f32::INFINITY, f32::INFINITY, f32::INFINITY),
@@ -319,9 +321,8 @@ impl LineDrawData {
         });
         position_data_staging.extend(vertices.iter());
         position_data_staging.extend(
-            std::iter::repeat(gpu_data::LineVertex::zeroed()).take(
-                (next_multiple_of(num_vertices, POSITION_TEXTURE_SIZE) - num_vertices) as usize,
-            ),
+            std::iter::repeat(gpu_data::LineVertex::zeroed())
+                .take((next_multiple_of(num_quads, POSITION_TEXTURE_SIZE) - num_quads) as usize),
         );
 
         let mut line_strip_info_staging =
@@ -362,7 +363,7 @@ impl LineDrawData {
             },
             wgpu::Extent3d {
                 width: POSITION_TEXTURE_SIZE,
-                height: (num_vertices + POSITION_TEXTURE_SIZE - 1) / POSITION_TEXTURE_SIZE,
+                height: (num_quads + POSITION_TEXTURE_SIZE - 1) / POSITION_TEXTURE_SIZE,
                 depth_or_array_layers: 1,
             },
         );
@@ -408,7 +409,7 @@ impl LineDrawData {
                 &ctx.gpu_resources.buffers,
                 &ctx.gpu_resources.samplers,
             )),
-            num_quads: num_vertices,
+            num_quads,
         })
     }
 }
