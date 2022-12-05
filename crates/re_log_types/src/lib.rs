@@ -274,6 +274,7 @@ impl TypeMsg {
     }
 }
 
+
 // ----------------------------------------------------------------------------
 
 /// The message sent to specify the data of a single field of an object.
