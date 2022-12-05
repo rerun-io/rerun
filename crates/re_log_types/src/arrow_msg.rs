@@ -24,11 +24,9 @@ pub struct ArrowMsg {
     pub chunk: Chunk<Box<dyn Array>>,
 }
 
-impl Eq for ArrowMsg {}
-
 impl PartialEq for ArrowMsg {
     fn eq(&self, other: &Self) -> bool {
-        self.msg_id == other.msg_id && self.schema == other.schema
+        self.msg_id == other.msg_id
     }
 }
 
