@@ -186,7 +186,6 @@ impl CachedImage {
             + dynamic_img.as_bytes().len();
 
         // TODO(andreas): The renderer should ingest images with less conversion (e.g. keep luma as 8bit texture, don't flip bits on bgra etc.)
-        // TODO: Need to figure out how to free this texture again. Very concerning! How does egui do that?
         let renderer_texture_handle = render_ctx.texture_manager_2d.create(
             &mut render_ctx.gpu_resources.textures,
             &Texture2DCreationDesc {
