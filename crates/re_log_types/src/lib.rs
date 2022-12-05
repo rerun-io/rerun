@@ -177,7 +177,6 @@ pub enum LogMsg {
     PathOpMsg(PathOpMsg),
 
     /// Log an arrow message to a [`DataPath`].
-    #[serde(with = "arrow_msg")]
     ArrowMsg(ArrowMsg),
 }
 
