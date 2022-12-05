@@ -72,6 +72,9 @@ impl<'de> serde::Deserialize<'de> for ArrowMsg {
                     let chunk = stream
                         .find_map(|state| match state {
                             Ok(StreamState::Some(chunk)) => Some(chunk),
+                            Ok(StreamState::Waiting) => {
+                                unreachable!("cannot be waiting on a fixed buffer")
+                            }
                             _ => None,
                         })
                         .ok_or_else(|| serde::de::Error::custom("No Chunk found in stream"))?;

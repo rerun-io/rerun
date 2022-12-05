@@ -367,9 +367,9 @@ impl App {
                     .arrow_dbs
                     .entry(self.state.selected_rec_id)
                     .or_default();
-                    
+
                 if let LogMsg::ArrowMsg(ref msg) = msg {
-                    arrow_db.add_msg(msg);
+                    arrow_db.insert(&msg.schema, &msg.chunk).unwrap();
                 }
 
                 log_db.add(msg);
