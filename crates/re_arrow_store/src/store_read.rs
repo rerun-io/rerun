@@ -40,10 +40,13 @@ impl DataStore {
         ent_path: &EntityPath,
         components: &[ComponentNameRef<'_>],
     ) -> anyhow::Result<DataFrame> {
+        let ent_path_hash = ent_path.hash();
+
         debug!(
             ?timeline,
             ?time_query,
             %ent_path,
+            ?ent_path_hash,
             ?components,
             "query started..."
         );
@@ -56,7 +59,7 @@ impl DataStore {
 
         let row_indices = self
             .indices
-            .get_mut(&(*timeline, ent_path.clone()))
+            .get_mut(&(*timeline, *ent_path_hash))
             .map(|index| index.latest_at(latest_at, components))
             .unwrap_or_default();
         debug!(

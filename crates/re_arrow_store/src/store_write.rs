@@ -33,6 +33,7 @@ impl DataStore {
             .get(ENTITY_PATH_KEY)
             .ok_or_else(|| anyhow!("expect entity path in top-level message's metadata"))
             .map(|path| EntityPath::from(path.as_str()))?;
+        let ent_path_hash = *ent_path.hash();
 
         let timelines = extract_timelines(schema, msg)?;
         let components = extract_components(schema, msg)?;
@@ -50,10 +51,11 @@ impl DataStore {
         }
 
         for (timeline, time) in &timelines {
+            let ent_path = ent_path.clone(); // shallow
             let index = self
                 .indices
-                .entry((*timeline, ent_path.clone()))
-                .or_insert_with(|| IndexTable::new(*timeline, ent_path.clone()));
+                .entry((*timeline, ent_path_hash))
+                .or_insert_with(|| IndexTable::new(*timeline, ent_path));
             index.insert(*time, &indices)?;
         }
 

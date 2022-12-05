@@ -4,7 +4,9 @@ use std::sync::Arc;
 use arrow2::array::{Array, Int64Vec, UInt64Vec};
 use arrow2::datatypes::DataType;
 
-use re_log_types::{ObjPath as EntityPath, TimeInt, TimeRange, Timeline};
+use re_log_types::{
+    ObjPath as EntityPath, ObjPathHash as EntityPathHash, TimeInt, TimeRange, Timeline,
+};
 
 // --- Data store ---
 
@@ -24,10 +26,8 @@ pub struct DataStore {
     /// Maps an entity to its index, for a specific timeline.
     ///
     /// An index maps specific points in time to rows in component tables.
-    //
-    // TODO(cmc): needs a dedicated struct for the key instead of a tuple, so we don't have to
-    // clone() everywhere.
-    pub(crate) indices: HashMap<(Timeline, EntityPath), IndexTable>,
+    pub(crate) indices: HashMap<(Timeline, EntityPathHash), IndexTable>,
+
     /// Maps a component name to its associated table, for all timelines and all entities.
     ///
     /// A component table holds all the values ever inserted for a given component.
