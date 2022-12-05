@@ -300,7 +300,7 @@ impl eframe::App for App {
                 .paint_callback_resources
                 .get_mut::<re_renderer::RenderContext>()
                 .unwrap();
-            render_ctx.frame_maintenance();
+            // Query statistics before frame_maintenance as this might be more accurate if there's resources that we recreate every frame.
             render_ctx.gpu_resources.statistics()
         };
 
