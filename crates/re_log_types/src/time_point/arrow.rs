@@ -1,10 +1,9 @@
 use arrow2::{
     array::{
-        DictionaryArray, DictionaryKey, Int64Array, MapArray, MutableArray, MutableDictionaryArray,
-        MutableMapArray, MutablePrimitiveArray, MutableStructArray, MutableUtf8Array,
-        PrimitiveArray, StructArray, TryPush, UInt8Array, Utf8Array,
+        Int64Array, MutableArray, MutablePrimitiveArray, MutableStructArray, MutableUtf8Array,
+        StructArray, UInt8Array, Utf8Array,
     },
-    datatypes::{DataType, Field, IntegerType},
+    datatypes::{DataType, Field},
 };
 use arrow2_convert::{deserialize::ArrowDeserialize, field::ArrowField, serialize::ArrowSerialize};
 
@@ -65,7 +64,7 @@ impl ArrowSerialize for TimePoint {
                 array.value(0).unwrap(),
             )?;
             <u8 as ArrowSerialize>::arrow_serialize(
-                &(timeline.typ as u8),
+                &(timeline.typ() as u8),
                 array.value(1).unwrap(),
             )?;
             <i64 as ArrowSerialize>::arrow_serialize(&time.as_i64(), array.value(2).unwrap())?;
@@ -152,20 +151,8 @@ fn test_timepoint_roundtrip() {
 
     let time_points_in = vec![TimePoint(
         [
-            (
-                Timeline {
-                    name: "log_time".into(),
-                    typ: TimeType::Time,
-                },
-                TimeInt(100),
-            ),
-            (
-                Timeline {
-                    name: "seq1".into(),
-                    typ: TimeType::Sequence,
-                },
-                1234.into(),
-            ),
+            (Timeline::new("log_time", TimeType::Time), TimeInt(100)),
+            (Timeline::new("seq1", TimeType::Sequence), 1234.into()),
         ]
         .into(),
     )];

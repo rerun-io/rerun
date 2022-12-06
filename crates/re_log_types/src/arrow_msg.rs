@@ -1,3 +1,8 @@
+//! [`ArrowMsg`] is the [`crate::LogMsg`] sub-type containing an Arrow payload.
+//!
+//! We have custom implementations of [`serde::Serialize`] and [`serde::Deserialize`] that wraps
+//! the inner Arrow serialization of [`Schema`] and [`Chunk`].
+
 use arrow2::{array::Array, chunk::Chunk, datatypes::Schema};
 
 use crate::MsgId;

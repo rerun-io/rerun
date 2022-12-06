@@ -2,8 +2,8 @@
 
 use std::{collections::BTreeMap, time::SystemTime};
 
-use crate::arrow::{ENTITY_PATH_KEY, TIMELINE_KEY, TIMELINE_SEQUENCE, TIMELINE_TIME};
-use crate::{ObjPath as EntityPath, TimeInt};
+use crate::{ComponentNameRef, ObjPath as EntityPath, TimeInt};
+use crate::{ENTITY_PATH_KEY, TIMELINE_KEY, TIMELINE_SEQUENCE, TIMELINE_TIME};
 use arrow2::{
     array::{Array, Float32Array, Int64Array, ListArray, PrimitiveArray, StructArray},
     buffer::Buffer,
@@ -12,7 +12,7 @@ use arrow2::{
 };
 use arrow2_convert::serialize::TryIntoArrow;
 
-use crate::{field_types, ComponentNameRef};
+use crate::field_types;
 
 /// Wrap `field_array` in a single-element `ListArray`
 pub fn wrap_in_listarray(field_array: Box<dyn Array>) -> ListArray<i32> {

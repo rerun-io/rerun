@@ -1,7 +1,3 @@
-pub mod field_types;
-mod time;
-pub use time::*;
-
 use arrow2::{array::MutableStructArray, datatypes::DataType};
 
 use arrow2_convert::{field::ArrowField, serialize::ArrowSerialize};
@@ -10,7 +6,7 @@ pub mod exports {
     pub use arrow2_convert::serialize::TryIntoArrow;
 }
 
-use crate::{MsgId, ObjPath, Time, TimePoint, TimeType, Timeline};
+use crate::{field_types, MsgId, ObjPath, Time, TimePoint, TimeType, Timeline};
 
 pub struct ArrowLogMsg<C>
 where
@@ -109,6 +105,7 @@ fn test_arrow_log_msg() {
     println!("{:#?}", array);
 }
 
+#[cfg(feature = "disable")]
 pub mod util {
     use std::collections::BTreeMap;
 
@@ -122,14 +119,6 @@ pub mod util {
     use arrow2_convert::serialize::ArrowSerialize;
 
     use crate::{MsgId, TimePoint, TimeType};
-
-pub type ComponentName = String;
-pub type ComponentNameRef<'a> = &'a str;
-
-pub const ENTITY_PATH_KEY: &str = "RERUN:entity_path";
-    pub const TIMELINE_KEY: &str = "RERUN:timeline";
-    pub const TIMELINE_SEQUENCE: &str = "Sequence";
-    pub const TIMELINE_TIME: &str = "Time";
 
     pub fn build_log_msg_array(
         msg_id: MsgId,

@@ -28,8 +28,6 @@ pub mod arrow;
 mod arrow_msg;
 pub mod field_types;
 pub use arrow_msg::ArrowMsg;
-use num_traits::FromPrimitive;
-use typenum::Integer;
 pub mod context;
 pub mod coordinates;
 mod data;
@@ -44,7 +42,6 @@ mod time_real;
 
 pub use self::time_range::{TimeRange, TimeRangeF};
 pub use self::time_real::TimeReal;
-pub use arrow::{ComponentName, ComponentNameRef};
 pub use context::AnnotationContext;
 pub use coordinates::ViewCoordinates;
 pub use data::*;
@@ -54,6 +51,14 @@ pub use path::*;
 pub use time::{Duration, Time};
 
 pub use time_point::*;
+
+pub type ComponentName = String;
+pub type ComponentNameRef<'a> = &'a str;
+
+pub const ENTITY_PATH_KEY: &str = "RERUN:entity_path";
+pub const TIMELINE_KEY: &str = "RERUN:timeline";
+pub const TIMELINE_SEQUENCE: &str = "Sequence";
+pub const TIMELINE_TIME: &str = "Time";
 
 #[macro_export]
 macro_rules! impl_into_enum {
