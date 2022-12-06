@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use anyhow::{anyhow, bail, ensure};
+use anyhow::{anyhow, ensure};
 use arrow2::array::{
-    new_empty_array, Array, Int64Array, Int64Vec, ListArray, MutableArray, StructArray, UInt64Vec,
+    new_empty_array, Array, Int64Vec, ListArray, MutableArray, StructArray, UInt64Vec,
 };
 use arrow2::buffer::Buffer;
 use arrow2::chunk::Chunk;
@@ -11,9 +11,10 @@ use arrow2::compute::concatenate::concatenate;
 use arrow2::datatypes::{DataType, Schema};
 use polars::prelude::IndexOfSchema;
 
+use re_log_types::external::arrow2_convert::deserialize::arrow_array_deserialize_iterator;
 use re_log_types::{
-    ComponentNameRef, ObjPath as EntityPath, TimeInt, TimeRange, TimeType, Timeline,
-    ENTITY_PATH_KEY, TIMELINE_KEY, TIMELINE_SEQUENCE, TIMELINE_TIME,
+    ComponentNameRef, ObjPath as EntityPath, TimeInt, TimePoint, TimeRange, Timeline,
+    ENTITY_PATH_KEY,
 };
 
 use crate::{ComponentBucket, ComponentTable, DataStore, IndexBucket, IndexTable, RowIndex};
@@ -72,56 +73,18 @@ fn extract_timelines(
         .and_then(|idx| msg.columns().get(idx))
         .ok_or_else(|| anyhow!("expect top-level `timelines` field`"))?;
 
-    let timelines = timelines
-        .as_any()
-        .downcast_ref::<StructArray>()
-        .ok_or_else(|| anyhow!("expect top-level `timelines` to be a `StructArray`"))?;
+    let mut timepoints_iter = arrow_array_deserialize_iterator::<TimePoint>(timelines.as_ref())?;
 
-    // implicit Vec<Result> to Result<Vec> collection
-    let timelines: Result<Vec<_>, _> = timelines
-        .fields()
-        .iter()
-        .zip(timelines.values())
-        .map(
-            |(timeline, time)| match timeline.metadata.get(TIMELINE_KEY).map(|s| s.as_str()) {
-                Some(TIMELINE_TIME) => {
-                    let timeline = Timeline::new(timeline.name.clone(), TimeType::Time);
+    let timepoint = timepoints_iter
+        .next()
+        .ok_or_else(|| anyhow!("No rows in timelines."))?;
 
-                    let time = time
-                        .as_any()
-                        .downcast_ref::<Int64Array>()
-                        .ok_or_else(|| anyhow!("expect time-like timeline to be a `Int64Array"))?;
-                    ensure!(
-                        time.len() == 1,
-                        "expect only one timestamp per message per timeline"
-                    );
+    ensure!(
+        timepoints_iter.next().is_none(),
+        "Expected a single TimePoint, but found more!"
+    );
 
-                    Ok((timeline, time.values()[0].into()))
-                }
-                Some(TIMELINE_SEQUENCE) => {
-                    let timeline = Timeline::new(timeline.name.clone(), TimeType::Sequence);
-
-                    let time = time.as_any().downcast_ref::<Int64Array>().ok_or_else(|| {
-                        anyhow!("expect sequence-like timeline to be a `Int64Array")
-                    })?;
-                    ensure!(
-                        time.len() == 1,
-                        "expect only one timestamp per message per timeline"
-                    );
-
-                    Ok((timeline, time.values()[0].into()))
-                }
-                Some(unknown) => {
-                    bail!("unknown timeline kind: {unknown:?}")
-                }
-                None => {
-                    bail!("missing timeline kind")
-                }
-            },
-        )
-        .collect();
-
-    timelines
+    Ok(timepoint.0.into_iter().collect())
 }
 
 fn extract_components<'data>(

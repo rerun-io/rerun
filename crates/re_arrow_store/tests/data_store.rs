@@ -1,17 +1,16 @@
 use std::{
     collections::HashMap,
     sync::atomic::{AtomicBool, Ordering::SeqCst},
-    time::{Duration, SystemTime},
 };
 
-use arrow2::{
-    array::{Array, Int64Array, ListArray},
-    datatypes::Schema,
-};
+use arrow2::{array::Array, datatypes::Schema};
 use polars::prelude::{DataFrame, Series};
 
 use re_arrow_store::{DataStore, TimeInt, TimeQuery};
-use re_log_types::{datagen::*, ComponentNameRef, ObjPath as EntityPath, TimeType, Timeline};
+use re_log_types::{
+    datagen::*, ComponentNameRef, Duration, ObjPath as EntityPath, Time, TimePoint, TimeType,
+    Timeline,
+};
 
 // --- Scenarios ---
 
@@ -22,10 +21,10 @@ fn empty_query_edge_cases() {
     let mut store = DataStore::default();
 
     let ent_path = EntityPath::from("this/that");
-    let now = SystemTime::now();
-    let now_nanos = systemtime_to_nanos(now);
+    let now = Time::now();
+    let now_nanos = now.nanos_since_epoch();
     let now_minus_10ms = now - Duration::from_millis(10);
-    let now_minus_10ms_nanos = systemtime_to_nanos(now_minus_10ms);
+    let now_minus_10ms_nanos = now_minus_10ms.nanos_since_epoch();
     let frame39 = 39;
     let frame40 = 40;
     let nb_instances = 3;
@@ -35,7 +34,7 @@ fn empty_query_edge_cases() {
         tracker.insert_data(
             &mut store,
             &ent_path,
-            [build_log_time(now), build_frame_nr(frame40)],
+            &TimePoint([build_log_time(now), build_frame_nr(frame40)].into()),
             [build_instances(nb_instances)],
         );
     }
@@ -160,11 +159,11 @@ fn single_entity_multi_timelines_multi_components_out_of_order_roundtrip() {
 
     let ent_path = EntityPath::from("this/that");
 
-    let now = SystemTime::now();
+    let now = Time::now();
     let now_minus_10ms = now - Duration::from_millis(10);
-    let now_minus_10ms_nanos = systemtime_to_nanos(now_minus_10ms);
+    let now_minus_10ms_nanos = now_minus_10ms.nanos_since_epoch();
     let now_plus_10ms = now + Duration::from_millis(10);
-    let now_plus_10ms_nanos = systemtime_to_nanos(now_plus_10ms);
+    let now_plus_10ms_nanos = now_plus_10ms.nanos_since_epoch();
     let now_plus_20ms = now + Duration::from_millis(20);
 
     let frame40 = 40;
@@ -180,31 +179,31 @@ fn single_entity_multi_timelines_multi_components_out_of_order_roundtrip() {
         tracker.insert_data(
             &mut store,
             &ent_path,
-            [build_log_time(now_minus_10ms), build_frame_nr(frame43)],
+            &TimePoint([build_log_time(now_minus_10ms), build_frame_nr(frame43)].into()),
             [build_rects(nb_instances)],
         );
         tracker.insert_data(
             &mut store,
             &ent_path,
-            [build_log_time(now), build_frame_nr(frame42)],
+            &TimePoint([build_log_time(now), build_frame_nr(frame42)].into()),
             [build_rects(nb_instances)],
         );
         tracker.insert_data(
             &mut store,
             &ent_path,
-            [build_log_time(now_plus_10ms), build_frame_nr(frame41)],
+            &TimePoint([build_log_time(now_plus_10ms), build_frame_nr(frame41)].into()),
             [build_instances(nb_instances), build_rects(nb_instances)],
         );
         tracker.insert_data(
             &mut store,
             &ent_path,
-            [build_log_time(now), build_frame_nr(frame42)],
+            &TimePoint([build_log_time(now), build_frame_nr(frame42)].into()),
             [build_instances(nb_instances)],
         );
         tracker.insert_data(
             &mut store,
             &ent_path,
-            [build_log_time(now_minus_10ms), build_frame_nr(frame42)],
+            &TimePoint([build_log_time(now_minus_10ms), build_frame_nr(frame42)].into()),
             [build_positions(nb_instances)],
         );
     }
@@ -289,7 +288,7 @@ fn single_entity_multi_timelines_multi_components_out_of_order_roundtrip() {
         tracker.assert_scenario(
             &mut store,
             &timeline_log_time,
-            &TimeQuery::LatestAt(systemtime_to_nanos(log_time)),
+            &TimeQuery::LatestAt(log_time.nanos_since_epoch()),
             &ent_path,
             components_all,
             expected,
@@ -307,23 +306,20 @@ struct DataTracker {
 }
 
 impl DataTracker {
-    fn insert_data<const N: usize, const M: usize>(
+    fn insert_data<const M: usize>(
         &mut self,
         store: &mut DataStore,
         ent_path: &EntityPath,
-        times: [(TimeInt, Schema, Int64Array); N],
-        components: [(ComponentNameRef<'static>, Schema, ListArray<i32>); M],
+        timepoint: &TimePoint,
+        components: [(ComponentNameRef<'static>, Schema, Box<dyn Array>); M],
     ) {
-        for (time, _, _) in &times {
+        for time in timepoint.0.values() {
             for (name, _, comp) in &components {
-                assert!(self
-                    .all_data
-                    .insert((name, *time), comp.clone().boxed())
-                    .is_none());
+                assert!(self.all_data.insert((name, *time), comp.clone()).is_none());
             }
         }
 
-        let (schema, components) = build_message(ent_path, times, components);
+        let (schema, components) = build_message(ent_path, timepoint, components);
         // eprintln!("inserting into '{ent_path}':\nschema: {schema:#?}\ncomponents: {components:#?}");
         // eprintln!("---\ninserting into '{ent_path}': [log_time, frame_nr], [rects]");
         store.insert(&schema, &components).unwrap();
@@ -364,10 +360,4 @@ fn init_logs() {
         re_log::set_default_rust_log_env();
         tracing_subscriber::fmt::init(); // log to stdout
     }
-}
-
-fn systemtime_to_nanos(time: SystemTime) -> i64 {
-    time.duration_since(SystemTime::UNIX_EPOCH)
-        .unwrap()
-        .as_nanos() as i64
 }

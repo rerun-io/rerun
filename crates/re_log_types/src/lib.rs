@@ -40,6 +40,11 @@ pub mod time_point;
 mod time_range;
 mod time_real;
 
+pub mod external {
+    pub use arrow2;
+    pub use arrow2_convert;
+}
+
 pub use self::time_range::{TimeRange, TimeRangeF};
 pub use self::time_real::TimeReal;
 pub use context::AnnotationContext;
@@ -49,7 +54,6 @@ pub use index::*;
 pub use objects::ObjectType;
 pub use path::*;
 pub use time::{Duration, Time};
-
 pub use time_point::*;
 
 pub type ComponentName = String;

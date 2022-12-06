@@ -31,9 +31,9 @@ impl ArrowField for TimePoint {
             Field::new("time", DataType::Int64, false),
         ]);
 
-        let list_type = ListArray::<i32>::default_datatype(struct_type);
-
-        DataType::Extension("TimePoint".to_owned(), Box::new(list_type), None)
+        ListArray::<i32>::default_datatype(struct_type)
+        //TODO(john) Wrapping the DataType in Extension exposes a bug in arrow2::io::ipc
+        //DataType::Extension("TimePoint".to_owned(), Box::new(list_type), None)
     }
 }
 
@@ -48,12 +48,10 @@ impl ArrowSerialize for TimePoint {
 
         let data_type = Self::data_type();
         if let DataType::List(inner) = data_type.to_logical_type() {
-            let str_array = MutableStructArray::try_new(
+            let str_array = MutableStructArray::new(
                 inner.data_type.clone(),
                 vec![timeline_array, time_type_array, time_array],
-                None,
-            )
-            .unwrap();
+            );
             MutableListArray::new_from(str_array, data_type, 0)
         } else {
             panic!("Outer datatype should be List");
@@ -85,9 +83,7 @@ impl ArrowSerialize for TimePoint {
 }
 
 pub struct TimePointIterator<'a> {
-    timelines: <&'a <String as ArrowDeserialize>::ArrayType as IntoIterator>::IntoIter,
-    types: <&'a <u8 as ArrowDeserialize>::ArrayType as IntoIterator>::IntoIter,
-    times: <&'a <i64 as ArrowDeserialize>::ArrayType as IntoIterator>::IntoIter,
+    time_points: <&'a ListArray<i32> as IntoIterator>::IntoIter,
 }
 
 impl<'a> Iterator for TimePointIterator<'a> {
@@ -95,21 +91,42 @@ impl<'a> Iterator for TimePointIterator<'a> {
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        if let (Some(timeline), Some(ty), Some(time)) = (
-            self.timelines.next().flatten(),
-            self.types.next().flatten(),
-            self.times.next().flatten(),
-        ) {
-            Some(TimePoint(
-                [(
-                    Timeline::new(
-                        timeline,
-                        num_traits::FromPrimitive::from_u8(*ty).expect("valid TimeType"),
-                    ),
-                    TimeInt::from(*time),
-                )]
-                .into(),
-            ))
+        if let Some(time_point) = self.time_points.next().flatten() {
+            let struct_arr = time_point
+                .as_any()
+                .downcast_ref::<StructArray>()
+                .expect("StructArray");
+            let values = struct_arr.values();
+            let timelines = values[0]
+                .as_any()
+                .downcast_ref::<Utf8Array<i32>>()
+                .expect("timelines");
+            let types = values[1]
+                .as_any()
+                .downcast_ref::<UInt8Array>()
+                .expect("types");
+            let times = values[2]
+                .as_any()
+                .downcast_ref::<Int64Array>()
+                .expect("times");
+
+            let time_points = timelines
+                .iter()
+                .zip(types.iter())
+                .zip(times.iter())
+                .map(|((timeline, ty), time)| {
+                    (
+                        Timeline::new(
+                            timeline.unwrap(),
+                            num_traits::FromPrimitive::from_u8(*ty.unwrap())
+                                .expect("valid TimeType"),
+                        ),
+                        TimeInt::from(*time.unwrap()),
+                    )
+                })
+                .collect();
+
+            Some(TimePoint(time_points))
         } else {
             None
         }
@@ -132,16 +149,11 @@ impl arrow2_convert::deserialize::ArrowArray for TimePointArray {
     #[inline]
     fn iter_from_array_ref(b: &dyn arrow2::array::Array) -> <&Self as IntoIterator>::IntoIter {
         let arr = b.as_any().downcast_ref::<ListArray<i32>>().unwrap();
-        todo!();
+        assert_eq!(arr.validity(), None, "TimePoints should be non-null");
 
-        //let values = arr.values();
-        //assert_eq!(arr.validity(), None, "TimePoints should be non-null");
-
-        //TimePointIterator {
-        //    timelines: Utf8Array::<i32>::iter_from_array_ref(&*values[0]),
-        //    types: UInt8Array::iter_from_array_ref(&*values[1]),
-        //    times: Int64Array::iter_from_array_ref(&*values[2]),
-        //}
+        TimePointIterator {
+            time_points: arr.into_iter(),
+        }
     }
 }
 
@@ -179,7 +191,6 @@ fn test_timepoint_roundtrip() {
     ];
 
     let array: Box<dyn Array> = time_points_in.try_into_arrow().unwrap();
-    dbg!(&array);
-    //let time_points_out: Vec<TimePoint> = TryIntoCollection::try_into_collection(array).unwrap();
-    //assert_eq!(time_points_in, time_points_out);
+    let time_points_out: Vec<TimePoint> = TryIntoCollection::try_into_collection(array).unwrap();
+    assert_eq!(time_points_in, time_points_out);
 }

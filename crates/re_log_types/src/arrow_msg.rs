@@ -102,10 +102,11 @@ impl<'de> serde::Deserialize<'de> for ArrowMsg {
 #[cfg(test)]
 #[cfg(feature = "serde")]
 mod tests {
+    use arrow2_convert::serialize::TryIntoArrow;
     use serde_test::{assert_tokens, Token};
 
     use super::*;
-    use crate::{datagen::*, ObjPath};
+    use crate::{datagen::*, ObjPath, TimePoint, TimeType, Timeline};
 
     #[test]
     fn test_serialized_tokens() {
@@ -149,11 +150,16 @@ mod tests {
 
     #[test]
     fn test_roundtrip_payload() {
+        let time_point =
+            TimePoint([(Timeline::new("frame_nr", TimeType::Sequence), 0.into())].into());
+
         let (schema, chunk) = build_message(
             &ObjPath::from("rects"),
-            [build_frame_nr(0)],
-            [build_positions(5), build_rects(5)],
+            &time_point,
+            [build_positions(1), build_rects(1)],
         );
+
+        eprintln!("{}", arrow2::io::print::write(&[chunk.clone()], &["chunk"]));
 
         let msg_in = ArrowMsg {
             msg_id: MsgId::random(),
@@ -166,3 +172,28 @@ mod tests {
         assert_eq!(msg_in, msg_out);
     }
 }
+
+#[test]
+fn test() {
+    use arrow2::datatypes::{DataType, Field};
+    let mut schema = Schema::default();
+
+    let f0 = Field::new(
+        "field0",
+        DataType::Extension("Ext".into(), Box::new(DataType::Binary), None),
+        false,
+    );
+
+    let f1 = Field::new("field1", DataType::Binary, false);
+
+    schema.fields.push(f0);
+    schema.fields.push(f1);
+
+    //let buf = arrow2::io::ipc::write::schema_to_bytes(&schema, &[]);
+    //let (schema_out, _) = arrow2::io::ipc::read::deserialize_schema(buf.as_slice()).unwrap();
+}
+
+//  left: `schema: Schema { fields: [
+//    Field { name: "timelines", data_type: Extension("TimePoint", List(Field { name: "item", data_type: Struct([Field { name: "timeline", data_type: Utf8, is_nullable: false, metadata: {} }, Field { name: "type", data_type: UInt8, is_nullable: false, metadata: {} }, Field { name: "time", data_type: Int64, is_nullable: false, metadata: {} }]), is_nullable: true, metadata: {} }), None), is_nullable: false, metadata: {} },
+// right: `schema: Schema { fields: [
+//    Field { name: "timelines", data_type: Extension("TimePoint", List(Field { name: "item", data_type: Struct([Field { name: "timeline", data_type: Utf8, is_nullable: false, metadata: {} }, Field { name: "type", data_type: UInt8, is_nullable: false, metadata: {} }, Field { name: "time", data_type: Int64, is_nullable: false, metadata: {} }]), is_nullable: true, metadata: {} }), None), is_nullable: false, metadata: {"ARROW:extension:name": "TimePoint"} },
