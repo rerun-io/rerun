@@ -21,8 +21,12 @@
 #[cfg(any(feature = "save", feature = "load"))]
 pub mod encoding;
 
+#[cfg(feature = "datagen")]
+pub mod datagen;
+
 pub mod arrow;
 mod arrow_msg;
+pub mod field_types;
 pub use arrow_msg::ArrowMsg;
 pub mod context;
 pub mod coordinates;
@@ -37,6 +41,7 @@ mod time_real;
 
 pub use self::time_range::{TimeRange, TimeRangeF};
 pub use self::time_real::TimeReal;
+pub use arrow::{ComponentName, ComponentNameRef};
 pub use context::AnnotationContext;
 pub use coordinates::ViewCoordinates;
 pub use data::*;

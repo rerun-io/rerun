@@ -10,8 +10,8 @@ use arrow2::{
 };
 use polars::prelude::{DataFrame, Series};
 
-use re_arrow_store::{datagen::*, ComponentNameRef, DataStore, TimeInt, TimeQuery};
-use re_log_types::{ObjPath as EntityPath, TimeType, Timeline};
+use re_arrow_store::{DataStore, TimeInt, TimeQuery};
+use re_log_types::{datagen::*, ComponentNameRef, ObjPath as EntityPath, TimeType, Timeline};
 
 // --- Scenarios ---
 

@@ -2,7 +2,7 @@ use arrow2::{array::Array, chunk::Chunk, datatypes::Schema};
 
 use crate::MsgId;
 
-/// The message sent to specify the data of a single field of an object.
+/// Message containing an Arrow payload
 #[must_use]
 #[derive(Clone, Debug)]
 pub struct ArrowMsg {

@@ -12,11 +12,11 @@ use arrow2::datatypes::{DataType, Schema};
 use polars::prelude::IndexOfSchema;
 
 use re_log_types::arrow::{ENTITY_PATH_KEY, TIMELINE_KEY, TIMELINE_SEQUENCE, TIMELINE_TIME};
-use re_log_types::{ObjPath as EntityPath, TimeInt, TimeRange, TimeType, Timeline};
-
-use crate::{
-    ComponentBucket, ComponentNameRef, ComponentTable, DataStore, IndexBucket, IndexTable, RowIndex,
+use re_log_types::{
+    ComponentNameRef, ObjPath as EntityPath, TimeInt, TimeRange, TimeType, Timeline,
 };
+
+use crate::{ComponentBucket, ComponentTable, DataStore, IndexBucket, IndexTable, RowIndex};
 
 // --- Data store ---
 

@@ -8,7 +8,7 @@ publish = false
 
 
 [features]
-default = []
+default = ["datagen"]
 
 ## Enable loading data from a file.
 load = ["anyhow", "rmp-serde", "serde", "zstd", "ruzstd"]
@@ -25,6 +25,10 @@ save = ["anyhow", "rmp-serde", "serde", "zstd"]
 ## Enable (de)serialization using serde.
 serde = ["dep:serde", "re_string_interner/serde", "re_tuid/serde"]
 
+## Enables the `datagen` module, which exposes a number of tools for generating random data for
+## tests and benchmarks.
+datagen = ["dep:rand"]
+
 
 [dependencies]
 
@@ -36,6 +40,7 @@ re_tuid = { path = "../re_tuid" }
 # External
 ahash = "0.8"
 arrow2 = { version = "0.14", features = ["io_ipc"] }
+arrow2_convert = { version = "0.3" }
 bytemuck = "1.11"
 chrono = { version = "0.4", features = ["js-sys", "wasmbind"] }
 derive_more = "0.99"
@@ -53,6 +58,7 @@ macaw = { version = "0.17", optional = true }
 puffin = { version = "0.14", optional = true }
 rmp-serde = { version = "1", optional = true }
 serde = { version = "1", features = ["derive", "rc"], optional = true }
+rand = { version = "0.8", optional = true }
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
