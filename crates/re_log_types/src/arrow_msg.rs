@@ -4,7 +4,7 @@ use crate::MsgId;
 
 /// Message containing an Arrow payload
 #[must_use]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ArrowMsg {
     /// A unique id per [`crate::LogMsg`].
     pub msg_id: MsgId,
@@ -95,13 +95,6 @@ impl<'de> serde::Deserialize<'de> for ArrowMsg {
 }
 
 #[cfg(test)]
-impl PartialEq for ArrowMsg {
-    fn eq(&self, other: &Self) -> bool {
-        self.msg_id == other.msg_id
-    }
-}
-
-#[cfg(test)]
 #[cfg(feature = "serde")]
 mod tests {
     use serde_test::{assert_tokens, Token};
@@ -165,9 +158,6 @@ mod tests {
 
         let buf = rmp_serde::to_vec(&msg_in).unwrap();
         let msg_out: ArrowMsg = rmp_serde::from_slice(&buf).unwrap();
-
-        assert_eq!(msg_in.msg_id, msg_out.msg_id);
-        assert_eq!(msg_in.schema, msg_out.schema);
-        assert_eq!(msg_in.chunk, msg_out.chunk);
+        assert_eq!(msg_in, msg_out);
     }
 }
