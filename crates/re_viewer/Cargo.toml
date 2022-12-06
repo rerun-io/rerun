@@ -35,6 +35,7 @@ puffin = [
 re_arrow_store = { path = "../re_arrow_store" }
 re_data_store = { path = "../re_data_store", features = ["puffin", "serde"] }
 re_error = { path = "../re_error" }
+re_format = { path = "../re_format" }
 re_log = { path = "../re_log" }
 re_log_types = { path = "../re_log_types", features = ["glam", "save", "load"] }
 re_memory = { path = "../re_memory" }

@@ -1,11 +1,7 @@
-use re_memory::{
-    util::{format_bytes, sec_since_start},
-    MemoryHistory, MemoryLimit, MemoryUse,
-};
+use re_format::{format_bytes, format_usize};
+use re_memory::{util::sec_since_start, MemoryHistory, MemoryLimit, MemoryUse};
 
 use crate::env_vars::RERUN_TRACK_ALLOCATIONS;
-
-use super::format_usize;
 
 // ----------------------------------------------------------------------------
 
