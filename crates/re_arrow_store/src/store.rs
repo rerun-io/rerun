@@ -18,6 +18,9 @@ pub type RowIndex = u64;
 pub struct DataStoreConfig {
     /// The maximum size of a component bucket before triggering a split.
     ///
+    /// ⚠ When configuring this threshold, do keep in mind that component tables are shared
+    /// across all timelines and all entities!
+    ///
     /// This effectively controls how fine grained the garbage collection of components is.
     /// The lower the size, the more fine-grained the garbage collection is, at the cost of more
     /// metadata overhead.
@@ -29,6 +32,9 @@ pub struct DataStoreConfig {
     /// See [`Self::const_default`] for defaults.
     pub component_bucket_size_bytes: u64,
     /// The maximum number of rows in a component bucket before triggering a split.
+    ///
+    /// ⚠ When configuring this threshold, do keep in mind that component tables are shared
+    /// across all timelines and all entities!
     ///
     /// This effectively controls how fine grained the garbage collection of components is.
     /// The lower the number, the more fine-grained the garbage collection is, at the cost of more
