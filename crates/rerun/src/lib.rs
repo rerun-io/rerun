@@ -148,12 +148,7 @@ async fn run_impl(args: Args) -> anyhow::Result<()> {
     } else {
         re_viewer::run_native_app(Box::new(move |cc, re_ui| {
             let rx = wake_up_ui_thread_on_each_msg(rx, cc.egui_ctx.clone());
-            let mut app = re_viewer::App::from_receiver(
-                startup_options,
-                re_ui,
-                cc.storage,
-                rx,
-            );
+            let mut app = re_viewer::App::from_receiver(startup_options, re_ui, cc.storage, rx);
             app.set_profiler(profiler);
             Box::new(app)
         }));
