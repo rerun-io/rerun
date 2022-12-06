@@ -49,15 +49,13 @@ impl MemoryHistory {
     pub fn capture(&mut self, counted_gpu: Option<i64>) {
         let mem_use = crate::MemoryUse::capture();
         let now = crate::util::sec_since_start();
-        if mem_use.resident.is_some() || mem_use.counted.is_some() {
-            if let Some(resident) = mem_use.resident {
-                self.resident.add(now, resident);
-            }
-            if let Some(counted) = mem_use.counted {
-                self.counted.add(now, counted);
-            }
-        }
 
+        if let Some(resident) = mem_use.resident {
+            self.resident.add(now, resident);
+        }
+        if let Some(counted) = mem_use.counted {
+            self.counted.add(now, counted);
+        }
         if let Some(counted_gpu) = counted_gpu {
             self.counted_gpu.add(now, counted_gpu);
         }

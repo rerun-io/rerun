@@ -220,6 +220,7 @@ mod tests {
                 drop_counter_before + initial_resource_descs.len() * 2,
                 drop_counter_now
             );
+            assert_eq!(pool.total_resource_size_in_bytes(), 0);
         }
 
         // Holding on to a handle avoids both re-use and dropping.
@@ -249,6 +250,7 @@ mod tests {
         expect_allocation: bool,
     ) {
         let drop_counter_before = RESOURCE_DROP_COUNTER.load(Ordering::Relaxed);
+        let byte_count_before = pool.total_resource_size_in_bytes();
         for &desc in descs {
             // Previous loop iteration didn't drop Resources despite dropping a handle.
             assert_eq!(
@@ -265,6 +267,19 @@ mod tests {
 
             // Resource pool keeps the handle alive, but otherwise we're the only owners.
             assert_eq!(Arc::strong_count(&handle), 2);
+        }
+
+        if expect_allocation {
+            assert_eq!(
+                byte_count_before
+                    + descs
+                        .iter()
+                        .map(|d| ConcreteResourceDesc(*d).resource_size_in_bytes())
+                        .sum::<u64>(),
+                pool.total_resource_size_in_bytes()
+            );
+        } else {
+            assert_eq!(byte_count_before, pool.total_resource_size_in_bytes());
         }
     }
 

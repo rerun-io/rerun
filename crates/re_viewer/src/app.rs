@@ -294,11 +294,11 @@ impl eframe::App for App {
             // TODO(andreas): store the re_renderer somewhere else.
             let egui_renderer = {
                 let render_state = frame.wgpu_render_state().unwrap();
-                &mut render_state.renderer.write()
+                &mut render_state.renderer.read()
             };
             let render_ctx = egui_renderer
                 .paint_callback_resources
-                .get_mut::<re_renderer::RenderContext>()
+                .get::<re_renderer::RenderContext>()
                 .unwrap();
             // Query statistics before frame_maintenance as this might be more accurate if there's resources that we recreate every frame.
             render_ctx.gpu_resources.statistics()
@@ -875,7 +875,7 @@ fn top_bar_ui(
                 .color(ui.visuals().weak_text_color()),
         )
         .on_hover_text(format!(
-            "Rerun Viewer is using {} of gpu memory in {} textures and {} buffers.",
+            "Rerun Viewer is using {} of GPU memory in {} textures and {} buffers.",
             bytes_used_text,
             format_usize(gpu_resource_stats.num_textures),
             format_usize(gpu_resource_stats.num_buffers),
