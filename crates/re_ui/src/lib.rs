@@ -1,3 +1,5 @@
+//! Rerun GUI theme and helpers, built around [`egui`](https://www.egui.rs/).
+
 mod design_tokens;
 pub mod icons;
 mod static_image_cache;
