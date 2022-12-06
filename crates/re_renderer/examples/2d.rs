@@ -132,6 +132,10 @@ impl framework::Example for Render2D {
             .add_segment_2d(glam::vec2(500.0, 60.0), glam::vec2(1000.0, 60.0))
             .radius(Size::AUTO)
             .color_rgb(255, 180, 1);
+        line_strip_builder
+            .add_segment_2d(glam::vec2(500.0, 90.0), glam::vec2(1000.0, 90.0))
+            .radius(Size::AUTO_LARGE)
+            .color_rgb(255, 180, 1);
 
         let line_strip_draw_data = line_strip_builder.to_draw_data(re_ctx);
 
@@ -142,18 +146,23 @@ impl framework::Example for Render2D {
         // The third point is automatic thickness which is determined by the point renderer implementation.
         let points = vec![
             PointCloudPoint {
-                position: glam::vec3(500.0, 90.0, 0.0),
+                position: glam::vec3(500.0, 120.0, 0.0),
                 radius: Size::new_scene(4.0),
                 srgb_color: [55, 180, 1, 255].into(),
             },
             PointCloudPoint {
-                position: glam::vec3(520.0, 90.0, 0.0),
+                position: glam::vec3(520.0, 120.0, 0.0),
                 radius: Size::new_points(4.0),
                 srgb_color: [55, 180, 1, 255].into(),
             },
             PointCloudPoint {
-                position: glam::vec3(540.0, 90.0, 0.0),
+                position: glam::vec3(540.0, 120.0, 0.0),
                 radius: Size::AUTO,
+                srgb_color: [55, 180, 1, 255].into(),
+            },
+            PointCloudPoint {
+                position: glam::vec3(560.0, 120.0, 0.0),
+                radius: Size::AUTO_LARGE,
                 srgb_color: [55, 180, 1, 255].into(),
             },
         ];

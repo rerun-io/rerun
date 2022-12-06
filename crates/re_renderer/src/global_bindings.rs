@@ -22,21 +22,29 @@ pub(crate) struct FrameUniformBuffer {
     pub projection_from_world: wgpu_buffer_types::Mat4,
 
     /// Camera position in world space.
-    pub camera_position: wgpu_buffer_types::Vec3,
-    /// Camera direction in world space.
-    /// Same as `-view_from_world.row(2).truncate()`
-    pub camera_forward: wgpu_buffer_types::Vec3,
+    pub camera_position: glam::Vec3,
 
-    /// (tan(fov_y / 2) * aspect_ratio, tan(fov_y /2)), i.e. half ratio of screen dimension to screen distance in x & y.
-    /// Both values are set to positive infinity for orthographic projection
-    pub tan_half_fov: wgpu_buffer_types::Vec2,
     /// For perspective: Multiply this with a camera distance to get a measure of how wide a pixel is in world units.
     /// For orthographic: This is the world size value, independent of distance.
     pub pixel_world_size_from_camera_distance: f32,
 
+    /// Camera direction in world space.
+    /// Same as `-view_from_world.row(2).truncate()`
+    pub camera_forward: glam::Vec3,
+
     /// How many pixels there are per point.
     /// I.e. the ui scaling factor.
     pub pixels_from_point: f32,
+
+    /// (tan(fov_y / 2) * aspect_ratio, tan(fov_y /2)), i.e. half ratio of screen dimension to screen distance in x & y.
+    /// Both values are set to positive infinity for orthographic projection
+    pub tan_half_fov: wgpu_buffer_types::Vec2,
+
+    /// Size used for all sizes given with Size::AUTO
+    pub auto_size_in_points: f32,
+
+    /// Size used for all sizes given with Size::AUTO_LARGE
+    pub auto_size_large_in_points: f32,
 }
 
 pub(crate) struct GlobalBindings {

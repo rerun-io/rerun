@@ -11,8 +11,11 @@
 pub struct Size(pub f32);
 
 impl Size {
-    /// Automatically sized based on how many there are in the scene etc.
-    pub const AUTO: Self = Self(f32::NAN);
+    /// Automatically sized based the screen size.
+    pub const AUTO: Self = Self(f32::INFINITY);
+
+    /// Automatically sized based the screen size, but larger.
+    pub const AUTO_LARGE: Self = Self(-f32::INFINITY);
 
     #[inline]
     pub fn new_scene(size: f32) -> Self {
@@ -28,7 +31,7 @@ impl Size {
 
     #[inline]
     pub fn is_auto(&self) -> bool {
-        self.0.is_nan()
+        self.0.is_infinite()
     }
 
     /// Get the scene-size of this, if stored as a scene size.

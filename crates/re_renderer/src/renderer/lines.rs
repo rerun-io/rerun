@@ -121,6 +121,13 @@ pub mod gpu_data {
 
     use super::LineStripFlags;
 
+    #[repr(C)]
+    #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+    pub struct UniformBuffer {
+        line_auto_size: f32,
+        line_auto_size_large: f32,
+    }
+
     #[repr(C, packed)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct LineVertex {

@@ -352,9 +352,12 @@ impl ViewBuilder {
         let camera_forward = -view_from_world.row(2).truncate();
         let projection_from_world = projection_from_view * view_from_world;
 
-        // TODO:
-        //        let default_line_radius =
-        //            Size::new_points((0.0005 * viewport_size.length()).clamp(1.5, 5.0));
+        let viewport_size_in_points = glam::vec2(
+            config.resolution_in_pixel[0] as f32 / config.pixels_from_point,
+            config.resolution_in_pixel[1] as f32 / config.pixels_from_point,
+        );
+        let auto_size_in_points = (0.0005 * viewport_size_in_points.length()).clamp(1.5, 5.0);
+        let auto_size_large_in_points = auto_size_in_points * 1.5; // TODO(andreas): Make configurable?
 
         // let default_point_radius = Size::new_points(
         //     (0.3 * (viewport_area / (points.len() + 1) as f32).sqrt()).clamp(0.1, 5.0),
@@ -370,11 +373,14 @@ impl ViewBuilder {
                 view_from_world: glam::Affine3A::from_mat4(view_from_world).into(),
                 projection_from_view: projection_from_view.into(),
                 projection_from_world: projection_from_world.into(),
-                camera_position: camera_position.into(),
-                camera_forward: camera_forward.into(),
+                camera_position,
+                camera_forward,
                 tan_half_fov: tan_half_fov.into(),
                 pixel_world_size_from_camera_distance,
                 pixels_from_point: config.pixels_from_point,
+
+                auto_size_in_points,
+                auto_size_large_in_points,
             }),
         );
 
