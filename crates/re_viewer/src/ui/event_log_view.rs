@@ -1,8 +1,9 @@
 use itertools::Itertools as _;
 
+use re_format::format_usize;
 use re_log_types::*;
 
-use crate::{ui::format_usize, Preview, ViewerContext};
+use crate::{Preview, ViewerContext};
 
 /// An event log, a table of all log messages.
 #[derive(Default, serde::Deserialize, serde::Serialize)]

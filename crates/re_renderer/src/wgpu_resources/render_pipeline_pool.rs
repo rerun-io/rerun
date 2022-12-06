@@ -180,4 +180,8 @@ impl GpuRenderPipelinePool {
     ) -> Result<&wgpu::RenderPipeline, PoolError> {
         self.pool.get_resource(handle)
     }
+
+    pub fn num_resources(&self) -> usize {
+        self.pool.num_resources()
+    }
 }

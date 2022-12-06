@@ -3663,6 +3663,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_format"
+version = "0.1.0"
+
+[[package]]
 name = "re_log"
 version = "0.1.0"
 dependencies = [
@@ -3714,6 +3718,7 @@ dependencies = [
  "nohash-hasher",
  "once_cell",
  "parking_lot",
+ "re_format",
  "re_log",
  "smallvec",
 ]
@@ -3893,6 +3898,7 @@ dependencies = [
  "re_arrow_store",
  "re_data_store",
  "re_error",
+ "re_format",
  "re_log",
  "re_log_types",
  "re_memory",
@@ -4022,6 +4028,7 @@ dependencies = [
  "puffin",
  "puffin_http",
  "re_error",
+ "re_format",
  "re_log",
  "re_log_types",
  "re_memory",

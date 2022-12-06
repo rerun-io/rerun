@@ -1,11 +1,8 @@
-use re_memory::{
-    util::{format_bytes, sec_since_start},
-    MemoryHistory, MemoryLimit, MemoryUse,
-};
+use re_format::{format_bytes, format_usize};
+use re_memory::{util::sec_since_start, MemoryHistory, MemoryLimit, MemoryUse};
+use re_renderer::WgpuResourcePoolStatistics;
 
 use crate::env_vars::RERUN_TRACK_ALLOCATIONS;
-
-use super::format_usize;
 
 // ----------------------------------------------------------------------------
 
@@ -17,9 +14,12 @@ pub struct MemoryPanel {
 
 impl MemoryPanel {
     /// Call once per frame
-    pub fn update(&mut self) {
+    pub fn update(&mut self, gpu_resource_stats: &WgpuResourcePoolStatistics) {
         crate::profile_function!();
-        self.history.capture();
+        self.history.capture(Some(
+            (gpu_resource_stats.total_buffer_size_in_bytes
+                + gpu_resource_stats.total_texture_size_in_bytes) as _,
+        ));
     }
 
     /// Note that we purged memory at this time, to show in stats.
@@ -27,7 +27,12 @@ impl MemoryPanel {
         self.memory_purge_times.push(sec_since_start());
     }
 
-    pub fn ui(&self, ui: &mut egui::Ui, limit: &MemoryLimit) {
+    pub fn ui(
+        &self,
+        ui: &mut egui::Ui,
+        limit: &MemoryLimit,
+        gpu_resource_stats: &WgpuResourcePoolStatistics,
+    ) {
         crate::profile_function!();
 
         // We show realtime stats, so keep showing the latest!
@@ -38,7 +43,7 @@ impl MemoryPanel {
             .min_width(250.0)
             .default_width(300.0)
             .show_inside(ui, |ui| {
-                Self::left_side(ui, limit);
+                Self::left_side(ui, limit, gpu_resource_stats);
             });
 
         egui::CentralPanel::default().show_inside(ui, |ui| {
@@ -47,7 +52,11 @@ impl MemoryPanel {
         });
     }
 
-    fn left_side(ui: &mut egui::Ui, limit: &MemoryLimit) {
+    fn left_side(
+        ui: &mut egui::Ui,
+        limit: &MemoryLimit,
+        gpu_resource_stats: &WgpuResourcePoolStatistics,
+    ) {
         ui.strong("Rerun Viewer memory usage");
         ui.separator();
 
@@ -85,6 +94,61 @@ impl MemoryPanel {
                 "Set {RERUN_TRACK_ALLOCATIONS}=1 to turn on detailed allocation tracking."
             ));
         }
+
+        ui.separator();
+        ui.strong("GPU Resources:");
+        Self::gpu_stats(ui, gpu_resource_stats);
+    }
+
+    fn gpu_stats(ui: &mut egui::Ui, gpu_resource_stats: &WgpuResourcePoolStatistics) {
+        egui::Grid::new("gpu resource grid")
+            .num_columns(2)
+            .striped(true)
+            .show(ui, |ui| {
+                let WgpuResourcePoolStatistics {
+                    num_bind_group_layouts,
+                    num_pipeline_layouts,
+                    num_render_pipelines,
+                    num_samplers,
+                    num_shader_modules,
+                    num_bind_groups,
+                    num_buffers,
+                    num_textures,
+                    total_buffer_size_in_bytes,
+                    total_texture_size_in_bytes,
+                } = gpu_resource_stats;
+
+                ui.label("# Bind Group Layouts:");
+                ui.label(num_bind_group_layouts.to_string());
+                ui.end_row();
+                ui.label("# Pipeline Layouts:");
+                ui.label(num_pipeline_layouts.to_string());
+                ui.end_row();
+                ui.label("# Render Pipelines:");
+                ui.label(num_render_pipelines.to_string());
+                ui.end_row();
+                ui.label("# Samplers:");
+                ui.label(num_samplers.to_string());
+                ui.end_row();
+                ui.label("# Shader Modules:");
+                ui.label(num_shader_modules.to_string());
+                ui.end_row();
+                ui.label("# Bind Groups:");
+                ui.label(num_bind_groups.to_string());
+                ui.end_row();
+                ui.label("# Buffers:");
+                ui.label(num_buffers.to_string());
+                ui.end_row();
+                ui.label("# Textures:");
+                ui.label(num_textures.to_string());
+                ui.end_row();
+                ui.label("Buffer Memory:");
+                ui.label(re_format::format_bytes(*total_buffer_size_in_bytes as _));
+                ui.end_row();
+                ui.label("Texture Memory:");
+                ui.label(re_format::format_bytes(*total_texture_size_in_bytes as _));
+                ui.end_row();
+            });
     }
 
     fn tracking_stats(
@@ -196,6 +260,11 @@ impl MemoryPanel {
 
                 plot_ui.line(to_line(&self.history.resident).name("Resident").width(1.5));
                 plot_ui.line(to_line(&self.history.counted).name("Counted").width(1.5));
+                plot_ui.line(
+                    to_line(&self.history.counted_gpu)
+                        .name("Counted GPU")
+                        .width(1.5),
+                );
             });
     }
 }
