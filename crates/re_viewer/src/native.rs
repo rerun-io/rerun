@@ -15,7 +15,7 @@ pub fn run_native_app(app_creator: AppCreator) {
         default_theme: eframe::Theme::Dark,
 
         #[cfg(target_os = "macos")]
-        fullsize_content: crate::FULLSIZE_CONTENT,
+        fullsize_content: re_ui::FULLSIZE_CONTENT,
 
         wgpu_options: crate::wgpu_options(),
 

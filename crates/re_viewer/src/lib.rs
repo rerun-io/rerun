@@ -41,12 +41,6 @@ pub use web::start;
 
 // ---------------------------------------------------------------------------
 
-/// If true, we fill the entire window, except for the close/maximize/minimize buttons in the top-left.
-/// See <https://github.com/emilk/egui/pull/2049>
-pub const FULLSIZE_CONTENT: bool = cfg!(target_os = "macos");
-
-// ---------------------------------------------------------------------------
-
 /// Profiling macro for feature "puffin"
 #[doc(hidden)]
 #[macro_export]

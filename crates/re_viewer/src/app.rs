@@ -694,48 +694,26 @@ fn top_panel(egui_ctx: &egui::Context, frame: &mut eframe::Frame, app: &mut App)
         }
     };
 
-    let gui_zoom = if let Some(native_pixels_per_point) = frame.info().native_pixels_per_point {
-        native_pixels_per_point / egui_ctx.pixels_per_point()
-    } else {
-        1.0
-    };
-
-    // On Mac, we share the same space as the native red/yellow/green close/minimize/maximize buttons.
-    // This means we need to make room for them.
-    let make_room_for_window_buttons = {
+    let native_pixels_per_point = frame.info().native_pixels_per_point;
+    let fullscreen = {
         #[cfg(target_os = "macos")]
         {
-            crate::FULLSIZE_CONTENT && !frame.info().window_info.fullscreen
+            frame.info().window_info.fullscreen
         }
         #[cfg(not(target_os = "macos"))]
         {
             false
         }
     };
-
-    let native_buttons_size_in_native_scale = egui::vec2(64.0, 24.0); // source: I measured /emilk
-
-    let bar_height = if make_room_for_window_buttons {
-        // Use more vertical space when zoomed in…
-        let bar_height = native_buttons_size_in_native_scale.y;
-
-        // …but never shrink below the native button height when zoomed out.
-        bar_height.max(gui_zoom * native_buttons_size_in_native_scale.y)
-    } else {
-        egui_ctx.style().spacing.interact_size.y
-    };
+    let top_bar_style = app.re_ui.top_bar_style(native_pixels_per_point, fullscreen);
 
     egui::TopBottomPanel::top("top_bar")
         .frame(panel_frame)
-        .exact_height(bar_height)
+        .exact_height(top_bar_style.height)
         .show(egui_ctx, |ui| {
             egui::menu::bar(ui, |ui| {
-                ui.set_height(bar_height);
-
-                if make_room_for_window_buttons {
-                    // Always use the same width measured in native GUI coordinates:
-                    ui.add_space(gui_zoom * native_buttons_size_in_native_scale.x);
-                }
+                ui.set_height(top_bar_style.height);
+                ui.add_space(top_bar_style.indent);
 
                 top_bar_ui(ui, frame, app);
             });

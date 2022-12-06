@@ -4,6 +4,23 @@ mod static_image_cache;
 pub use design_tokens::DesignTokens;
 pub use static_image_cache::StaticImageCache;
 
+// ---------------------------------------------------------------------------
+
+/// If true, we fill the entire window, except for the close/maximize/minimize buttons in the top-left.
+/// See <https://github.com/emilk/egui/pull/2049>
+pub const FULLSIZE_CONTENT: bool = cfg!(target_os = "macos");
+
+// ----------------------------------------------------------------------------
+
+pub struct TopBarStyle {
+    /// Height of the top bar
+    pub height: f32,
+
+    /// Extra horizontal space in the top left corner to make room for
+    /// close/minimize/maximize buttons (on Mac)
+    pub indent: f32,
+}
+
 // ----------------------------------------------------------------------------
 
 use parking_lot::Mutex;
@@ -91,5 +108,51 @@ impl ReUi {
         let uv = Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0));
         mesh.add_rect_with_uv(rect, uv, Color32::WHITE);
         self.egui_ctx.debug_painter().add(Shape::mesh(mesh));
+    }
+
+    pub fn top_bar_style(
+        &self,
+        native_pixels_per_point: Option<f32>,
+        fullscreen: bool,
+    ) -> TopBarStyle {
+        let gui_zoom = if let Some(native_pixels_per_point) = native_pixels_per_point {
+            native_pixels_per_point / self.egui_ctx.pixels_per_point()
+        } else {
+            1.0
+        };
+
+        // On Mac, we share the same space as the native red/yellow/green close/minimize/maximize buttons.
+        // This means we need to make room for them.
+        let make_room_for_window_buttons = {
+            #[cfg(target_os = "macos")]
+            {
+                crate::FULLSIZE_CONTENT && !fullscreen
+            }
+            #[cfg(not(target_os = "macos"))]
+            {
+                false
+            }
+        };
+
+        let native_buttons_size_in_native_scale = egui::vec2(64.0, 24.0); // source: I measured /emilk
+
+        let height = if make_room_for_window_buttons {
+            // Use more vertical space when zoomed in…
+            let height = native_buttons_size_in_native_scale.y;
+
+            // …but never shrink below the native button height when zoomed out.
+            height.max(gui_zoom * native_buttons_size_in_native_scale.y)
+        } else {
+            self.egui_ctx.style().spacing.interact_size.y
+        };
+
+        let indent = if make_room_for_window_buttons {
+            // Always use the same width measured in native GUI coordinates:
+            gui_zoom * native_buttons_size_in_native_scale.x
+        } else {
+            0.0
+        };
+
+        TopBarStyle { height, indent }
     }
 }
