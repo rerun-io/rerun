@@ -343,8 +343,6 @@ fn add_label(
         Align2::CENTER_TOP.anchor_rect(Rect::from_min_size(text_anchor_pos, galley.size()));
     let bg_rect = text_rect.expand2(vec2(4.0, 2.0));
 
-    // TODO(andreas): Should we render this shape with re_renderer as well? Once we do,
-    // the only thing not rendered by re_renderer are the galley shapes themselves.
     shapes.push(Shape::rect_filled(
         bg_rect,
         3.0,
@@ -375,7 +373,8 @@ fn view_2d_scrollable(
     let ui_from_space = egui::emath::RectTransform::from_to(scene_bbox, response.rect);
     let space_from_ui = ui_from_space.inverse();
     let space_from_points = space_from_ui.scale().y;
-    let space_from_pixel = space_from_points / painter.ctx().pixels_per_point();
+    let points_from_pixels = 1.0 / painter.ctx().pixels_per_point();
+    let space_from_pixel = space_from_points * points_from_pixels;
 
     state.update(&response, space_from_ui, available_size);
 
@@ -383,6 +382,7 @@ fn view_2d_scrollable(
 
     // ------------------------------------------------------------------------
 
+    // All primitives passed to re_renderer are passed in space coordinates.
     let mut line_builder = re_renderer::LineStripSeriesBuilder::<()>::default();
 
     let hover_radius = 5.0; // TODO(emilk): from egui?
@@ -421,10 +421,9 @@ fn view_2d_scrollable(
             .image
             .get_view_with_annotations(tensor, legend, ctx.render_ctx);
 
-        let rect_in_ui = ui_from_space.transform_rect(Rect::from_min_size(
-            Pos2::ZERO,
-            vec2(tensor.shape[1].size as _, tensor.shape[0].size as _),
-        ));
+        let (w, h) = (tensor.shape[1].size as f32, tensor.shape[0].size as f32);
+
+        let rect_in_ui = ui_from_space.transform_rect(Rect::from_min_size(Pos2::ZERO, vec2(w, h)));
 
         let opacity = if image_idx == 0 {
             1.0 // bottom image
@@ -438,11 +437,11 @@ fn view_2d_scrollable(
             top_left_corner_position: glam::vec3(
                 0.0,
                 0.0,
-                // TODO(andreas): Depth value handling here is weird!
+                // We use RDF (X=Right, Y=Down, Z=Forward) for 2D spaces, so we want lower Z in order to put images on top
                 (total_num_images - image_idx - 1) as f32 * 0.1,
             ),
-            extent_u: glam::Vec3::X * tensor.shape[1].size as f32,
-            extent_v: glam::Vec3::Y * tensor.shape[0].size as f32,
+            extent_u: glam::Vec3::X * w,
+            extent_v: glam::Vec3::Y * h,
             texture: tensor_view.texture_handle.clone(),
             texture_filter_magnification: re_renderer::renderer::TextureFilterMag::Nearest,
             texture_filter_minification: re_renderer::renderer::TextureFilterMin::Linear,
@@ -451,12 +450,9 @@ fn view_2d_scrollable(
 
         if *is_hovered {
             line_builder
-                .add_axis_aligned_rectangle_outline_2d(
-                    glam::Vec2::ZERO,
-                    glam::vec2(tensor.shape[1].size as f32, tensor.shape[0].size as f32),
-                )
+                .add_axis_aligned_rectangle_outline_2d(glam::Vec2::ZERO, glam::vec2(w, h))
                 .color_rgbx_slice(paint_props.fg_stroke.color.to_array())
-                .radius(paint_props.fg_stroke.width * 0.5 * space_from_points);
+                .radius(space_from_points * paint_props.fg_stroke.width * 0.5);
         }
 
         if let Some(pointer_pos) = pointer_pos {
@@ -535,11 +531,11 @@ fn view_2d_scrollable(
         line_builder
             .add_axis_aligned_rectangle_outline_2d(bbox.min.into(), bbox.max.into())
             .color_rgbx_slice(paint_props.bg_stroke.color.to_array())
-            .radius(paint_props.bg_stroke.width * 0.5 * space_from_points);
+            .radius(space_from_points * paint_props.bg_stroke.width * 0.5);
         line_builder
             .add_axis_aligned_rectangle_outline_2d(bbox.min.into(), bbox.max.into())
             .color_rgbx_slice(paint_props.fg_stroke.color.to_array())
-            .radius(paint_props.fg_stroke.width * 0.5 * space_from_points);
+            .radius(space_from_points * paint_props.fg_stroke.width * 0.5);
 
         if let Some(pointer_pos) = pointer_pos {
             check_hovering(*instance_hash, rect_in_ui.distance_to_pos(pointer_pos));
@@ -617,7 +613,7 @@ fn view_2d_scrollable(
 
         let radius = radius.unwrap_or(1.5);
 
-        // TODO(andreas): Make point renderer support one point (!) outline. Note that background color is hardcoded to Color32::from_black_alpha(196);
+        // TODO(andreas): Make point renderer support an outline of one ui-point. Note that background color is hardcoded to Color32::from_black_alpha(196);
         let depth = line_builder.next_2d_z; // put the points in front of all the lines we have so far.
         render_points.push(PointCloudPoint {
             position: glam::vec3(pos.x, pos.y, depth),
