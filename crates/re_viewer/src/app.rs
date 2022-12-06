@@ -335,6 +335,17 @@ impl eframe::App for App {
             .or_default()
             .on_frame_start();
 
+        // TODO(andreas): store the re_renderer somewhere else.
+        let egui_renderer = {
+            let render_state = frame.wgpu_render_state().unwrap();
+            &mut render_state.renderer.write()
+        };
+        let render_ctx = egui_renderer
+            .paint_callback_resources
+            .get_mut::<re_renderer::RenderContext>()
+            .unwrap();
+        render_ctx.frame_maintenance();
+
         if log_db.is_empty() && self.rx.is_some() {
             egui::CentralPanel::default().show(egui_ctx, |ui| {
                 ui.centered_and_justified(|ui| {
@@ -342,17 +353,6 @@ impl eframe::App for App {
                 });
             });
         } else {
-            // TODO(andreas): store the re_renderer somewhere else.
-            let egui_renderer = {
-                let render_state = frame.wgpu_render_state().unwrap();
-                &mut render_state.renderer.write()
-            };
-            let render_ctx = egui_renderer
-                .paint_callback_resources
-                .get_mut::<re_renderer::RenderContext>()
-                .unwrap();
-            render_ctx.frame_maintenance();
-
             self.state
                 .show(egui_ctx, render_ctx, log_db, &self.design_tokens);
         }

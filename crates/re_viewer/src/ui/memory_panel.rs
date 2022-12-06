@@ -1,4 +1,3 @@
-use eframe::emath::History;
 use re_memory::{
     util::{format_bytes, sec_since_start},
     MemoryHistory, MemoryLimit, MemoryUse,
@@ -8,27 +7,6 @@ use re_renderer::WgpuResourcePoolStatistics;
 use crate::env_vars::RERUN_TRACK_ALLOCATIONS;
 
 use super::format_usize;
-
-// ----------------------------------------------------------------------------
-
-/// Tracks memory use over time.
-pub struct GpuMemoryHistory {
-    /// Bytes used by the application according to our own renderer's own accounting.
-    ///
-    /// This can be smaller than resident because we don't track memory allocated by
-    /// egui, wgpu itself and the driver as well.
-    pub counted_buffer_and_textures: History<u64>,
-}
-
-impl Default for GpuMemoryHistory {
-    fn default() -> Self {
-        let max_elems = 32 * 1024;
-        let max_seconds = f32::INFINITY;
-        Self {
-            counted_buffer_and_textures: History::new(0..max_elems, max_seconds),
-        }
-    }
-}
 
 // ----------------------------------------------------------------------------
 
@@ -290,7 +268,11 @@ impl MemoryPanel {
 
                 plot_ui.line(to_line(&self.history.resident).name("Resident").width(1.5));
                 plot_ui.line(to_line(&self.history.counted).name("Counted").width(1.5));
-                plot_ui.line(to_line(&self.history.counted_gpu).name("GPU").width(1.5));
+                plot_ui.line(
+                    to_line(&self.history.counted_gpu)
+                        .name("Counted GPU")
+                        .width(1.5),
+                );
             });
     }
 }
