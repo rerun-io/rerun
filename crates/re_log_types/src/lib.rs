@@ -21,7 +21,7 @@
 #[cfg(any(feature = "save", feature = "load"))]
 pub mod encoding;
 
-#[cfg(feature = "datagen")]
+#[cfg(feature = "arrow_datagen")]
 pub mod datagen;
 
 pub mod arrow;

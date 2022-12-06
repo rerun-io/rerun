@@ -103,7 +103,7 @@ mod tests {
     use crate::{datagen::*, ObjPath};
 
     #[test]
-    fn test_roundtrip_empty() {
+    fn test_serialized_tokens() {
         let schema = Schema::default();
         let chunk = Chunk::new(vec![]);
         let msg = ArrowMsg {
