@@ -8,6 +8,8 @@ struct UniformBuffer {
     extent_u: Vec3,
     /// Vector that spans up the rectangle from its top left corner along the v axis of the texture.
     extent_v: Vec3,
+    /// Tint multiplied with the texture color.
+    multiplicative_tint: Vec4,
 };
 @group(1) @binding(0)
 var<uniform> rect_info: UniformBuffer;
@@ -40,5 +42,5 @@ fn vs_main(@builtin(vertex_index) v_idx: u32) -> VertexOut {
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) Vec4 {
     let texture_color = textureSample(texture, texture_sampler, in.texcoord);
-    return texture_color;
+    return texture_color * rect_info.multiplicative_tint;
 }

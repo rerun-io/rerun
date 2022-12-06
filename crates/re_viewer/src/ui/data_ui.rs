@@ -476,7 +476,7 @@ pub(crate) fn ui_data(
             Preview::Medium => ui_annotation_context(ui, context),
         },
         Data::Tensor(tensor) => {
-            let tensor_view = ctx.cache.image.get_view(tensor);
+            let tensor_view = ctx.cache.image.get_view(tensor, ctx.render_ctx);
 
             ui.horizontal_centered(|ui| {
                 let max_width = match preview {
