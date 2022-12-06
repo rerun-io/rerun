@@ -8,7 +8,7 @@ mod space_camera;
 pub use self::space_camera::SpaceCamera;
 
 mod scene;
-pub use self::scene::{Label3D, MeshSource, MeshSourceData, Point3D, Scene3D, Size};
+pub use self::scene::{Label3D, MeshSource, MeshSourceData, Point3D, Scene3D};
 
 mod ui;
 pub(crate) use self::ui::{show_settings_ui, view_3d, SpaceSpecs, View3DState, HELP_TEXT};

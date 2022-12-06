@@ -8,7 +8,7 @@ use re_renderer::{
     renderer::{GenericSkyboxDrawData, MeshDrawData, PointCloudDrawData},
     texture_values::ValueRgba8UnormSrgb,
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
-    RenderContext,
+    RenderContext, Size,
 };
 
 use crate::{
@@ -16,7 +16,7 @@ use crate::{
     ViewerContext,
 };
 
-use super::{Eye, OrbitEye, Point3D, Scene3D, Size, SpaceCamera};
+use super::{Eye, OrbitEye, Point3D, Scene3D, SpaceCamera};
 
 // ---
 
@@ -415,7 +415,6 @@ pub(crate) fn view_3d(
 
     scene.finalize_sizes_and_colors(
         rect.size(),
-        &eye,
         hovered_instance.map_or(InstanceIdHash::NONE, |id| id.hash()),
     );
 
@@ -473,10 +472,10 @@ fn paint_view(
     );
 
     // Determine view port resolution and position.
+    let pixels_from_point = ui.ctx().pixels_per_point();
     let (resolution_in_pixel, origin_in_pixel) = {
-        let ppp = ui.ctx().pixels_per_point();
-        let min = (rect.min.to_vec2() * ppp).round();
-        let max = (rect.max.to_vec2() * ppp).round();
+        let min = (rect.min.to_vec2() * pixels_from_point).round();
+        let max = (rect.max.to_vec2() * pixels_from_point).round();
         let resolution = max - min;
 
         (
@@ -505,6 +504,8 @@ fn paint_view(
                         vertical_fov: eye.fov_y,
                         near_plane_distance: eye.near(),
                     },
+
+                    pixels_from_point,
                 },
             )
             .unwrap()
@@ -572,9 +573,9 @@ fn show_projections_from_2d_space(
                     };
                     let origin = ray.point_along(0.0);
                     let end = ray.point_along(length);
-                    let radius = Size::new_ui(1.5);
+                    let radius = Size::new_points(1.5);
 
-                    scene.line_strips.add_segment(origin, end).radius(radius.0);
+                    scene.line_strips.add_segment(origin, end).radius(radius);
 
                     if let Some(pos) = hit_pos {
                         // Show where the ray hits the depth map:
@@ -634,19 +635,19 @@ fn show_origin_axis(scene: &mut Scene3D) {
     scene
         .line_strips
         .add_segment(glam::Vec3::ZERO, glam::Vec3::X)
-        .radius(0.01)
+        .radius(Size::new_points(8.0))
         .color_rgb(255, 0, 0)
         .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE);
     scene
         .line_strips
         .add_segment(glam::Vec3::ZERO, glam::Vec3::Y)
-        .radius(0.01)
+        .radius(Size::new_points(8.0))
         .color_rgb(0, 255, 0)
         .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE);
     scene
         .line_strips
         .add_segment(glam::Vec3::ZERO, glam::Vec3::Z)
-        .radius(0.01)
+        .radius(Size::new_points(8.0))
         .color_rgb(0, 0, 255)
         .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE);
 }

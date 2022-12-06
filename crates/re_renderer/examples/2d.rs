@@ -3,7 +3,7 @@ use re_renderer::{
     resource_managers::{GpuTexture2DHandle, Texture2DCreationDesc},
     texture_values::ValueRgba8UnormSrgb,
     view_builder::{self, Projection, ViewBuilder},
-    LineStripSeriesBuilder,
+    LineStripSeriesBuilder, Size,
 };
 
 mod framework;
@@ -76,7 +76,7 @@ impl framework::Example for Render2D {
                 glam::vec2(screen_size.x * 0.5, 0.0),
                 glam::vec2(0.0, screen_size.y * 0.5),
             )
-            .radius(line_radius)
+            .radius(Size::new_scene(line_radius))
             .color_rgb(50, 50, 255);
 
         // .. within, a orange rectangle
@@ -86,7 +86,7 @@ impl framework::Example for Render2D {
                 glam::vec2(screen_size.x * 0.25, 0.0),
                 glam::vec2(0.0, screen_size.y * 0.25),
             )
-            .radius(5.0)
+            .radius(Size::new_scene(5.0))
             .color_rgb(255, 100, 1);
 
         // All variations of line caps
@@ -107,7 +107,7 @@ impl framework::Example for Render2D {
             let y = (i + 1) as f32 * 80.0;
             line_strip_builder
                 .add_segment_2d(glam::vec2(70.0, y), glam::vec2(400.0, y))
-                .radius(20.0)
+                .radius(Size::new_scene(20.0))
                 .flags(*flags);
         }
 
@@ -143,6 +143,7 @@ impl framework::Example for Render2D {
         )
         .unwrap();
 
+        let pixels_from_point = 1.0; // TODO
         vec![
             // 2d view to the left
             {
@@ -154,6 +155,7 @@ impl framework::Example for Render2D {
                             "2D".into(),
                             splits[0].resolution_in_pixel,
                             1.0,
+                            pixels_from_point,
                             glam::Vec2::ZERO,
                         ),
                     )
@@ -197,6 +199,7 @@ impl framework::Example for Render2D {
                                     vertical_fov: 70.0 * std::f32::consts::TAU / 360.0,
                                     near_plane_distance: 0.01,
                                 },
+                                pixels_from_point,
                             },
                         )
                         .unwrap();

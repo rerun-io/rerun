@@ -34,7 +34,9 @@ pub(crate) struct FrameUniformBuffer {
     /// For orthographic: This is the world size value, independent of distance.
     pub pixel_world_size_from_camera_distance: f32,
 
-    pub _padding: f32,
+    /// How many pixels there are per point.
+    /// I.e. the ui scaling factor.
+    pub pixels_from_point: f32,
 }
 
 pub(crate) struct GlobalBindings {

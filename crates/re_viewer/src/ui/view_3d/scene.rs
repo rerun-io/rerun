@@ -18,81 +18,9 @@ use crate::ui::annotations::{auto_color, AnnotationMap, DefaultColor};
 use crate::ui::SceneQuery;
 use crate::{math::line_segment_distance_sq_to_point_2d, misc::ViewerContext};
 
-use re_renderer::renderer::*;
+use re_renderer::{renderer::*, Size};
 
 use super::{eye::Eye, SpaceCamera};
-
-// ----------------------------------------------------------------------------
-
-/// A size of something in either scene-units, screen-units, or unsized.
-///
-/// Implementation:
-/// * If positive, this is in scene units.
-/// * If negative, this is in ui points.
-/// * If NaN, auto-size it.
-/// Resolved in [`Scene3D::finalize_sizes_and_colors`].
-#[derive(Clone, Copy, Debug)]
-pub struct Size(pub f32);
-
-impl Size {
-    /// Automatically sized based on how many there are in the scene etc.
-    const AUTO: Self = Self(f32::NAN);
-
-    #[inline]
-    pub fn new_scene(size: f32) -> Self {
-        debug_assert!(size.is_finite() && size >= 0.0, "Bad size: {size}");
-        Self(size)
-    }
-
-    #[inline]
-    pub fn new_ui(size: f32) -> Self {
-        debug_assert!(size.is_finite() && size >= 0.0, "Bad size: {size}");
-        Self(-size)
-    }
-
-    #[inline]
-    pub fn is_auto(&self) -> bool {
-        self.0.is_nan()
-    }
-
-    /// Get the scene-size of this, if stored as a scene size.
-    #[inline]
-    #[allow(unused)] // wgpu is not yet using this
-    pub fn scene(&self) -> Option<f32> {
-        (self.0.is_finite() && self.0 >= 0.0).then_some(self.0)
-    }
-
-    /// Get the ui-size of this, if stored as a ui size.
-    #[inline]
-    pub fn ui(&self) -> Option<f32> {
-        (self.0.is_finite() && self.0 <= 0.0).then_some(-self.0)
-    }
-}
-
-impl PartialEq for Size {
-    #[inline]
-    fn eq(&self, other: &Self) -> bool {
-        self.0.is_nan() && other.0.is_nan() || self.0 == other.0
-    }
-}
-
-impl std::ops::Mul<f32> for Size {
-    type Output = Size;
-
-    #[inline]
-    fn mul(self, rhs: f32) -> Self::Output {
-        debug_assert!(rhs.is_finite() && rhs >= 0.0);
-        Self(self.0 * rhs)
-    }
-}
-
-impl std::ops::MulAssign<f32> for Size {
-    #[inline]
-    fn mul_assign(&mut self, rhs: f32) {
-        debug_assert!(rhs.is_finite() && rhs >= 0.0);
-        self.0 *= rhs;
-    }
-}
 
 // ----------------------------------------------------------------------------
 
@@ -260,7 +188,7 @@ impl Scene3D {
                             );
                             continue;
                         };
-                        self.line_strips.add_segment(*a, *b).radius(Size::AUTO.0).color_rgbx_slice(color).user_data(instance_id_hash);
+                        self.line_strips.add_segment(*a, *b).radius(Size::AUTO).color_rgbx_slice(color).user_data(instance_id_hash);
                     }
                 }
             });
@@ -359,7 +287,7 @@ impl Scene3D {
                         ),
                         _ => unreachable!("already early outed earlier"),
                     }
-                    .radius(radius.0) // TODO(andreas): re_renderer should support our Size type directly!
+                    .radius(radius)
                     .color_rgbx_slice(color)
                     .user_data(instance_id_hash);
                 },
@@ -466,12 +394,8 @@ impl Scene3D {
     ) {
         crate::profile_function!();
 
-        let line_radius_in_points = (0.0005 * viewport_size.length()).clamp(1.5, 5.0);
-
         // Size of a pixel (in meters), when projected out one meter:
         let point_size_at_one_meter = eye.fov_y / viewport_size.y;
-
-        let line_radius_from_distance = line_radius_in_points * point_size_at_one_meter;
 
         let eye_camera_plane =
             macaw::Plane3::from_normal_point(eye.forward_in_world(), eye.pos_in_world());
@@ -522,7 +446,6 @@ impl Scene3D {
 
                 // TODO(emilk): include the names of the axes ("Right", "Down", "Forward", etc)
                 let cam_origin = camera.position();
-                let radius = dist_to_eye * line_radius_from_distance * 2.0;
 
                 for (axis_index, dir) in [Vec3::X, Vec3::Y, Vec3::Z].iter().enumerate() {
                     let axis_end = world_from_cam.transform_point3(scale * *dir);
@@ -530,14 +453,19 @@ impl Scene3D {
 
                     self.line_strips
                         .add_segment(cam_origin, axis_end)
-                        .radius(radius)
+                        .radius(Size::new_points(2.0))
                         .color_rgbx_slice(color)
                         .user_data(instance_id);
                 }
             }
 
-            let line_radius = Size::new_scene(dist_to_eye * line_radius_from_distance);
-            self.add_camera_frustum(camera, scene_bbox, instance_id, line_radius, color);
+            self.add_camera_frustum(
+                camera,
+                scene_bbox,
+                instance_id,
+                Size::new_points(2.0),
+                color,
+            );
         }
     }
 
@@ -553,7 +481,6 @@ impl Scene3D {
     pub fn finalize_sizes_and_colors(
         &mut self,
         viewport_size: egui::Vec2,
-        eye: &Eye,
         hovered_instance_id_hash: InstanceIdHash,
     ) {
         crate::profile_function!();
@@ -571,30 +498,18 @@ impl Scene3D {
 
         let viewport_area = (viewport_size.x * viewport_size.y).at_least(1.0);
 
-        // Size of a ui point (in meters), when projected out one meter:
-        let point_size_at_one_meter = eye.fov_y / viewport_size.y.at_least(1.0);
-
-        let eye_camera_plane =
-            macaw::Plane3::from_normal_point(eye.forward_in_world(), eye.pos_in_world());
-
         // More points -> smaller points
-        let default_point_radius = Size::new_ui(
+        let default_point_radius = Size::new_points(
             (0.3 * (viewport_area / (points.len() + 1) as f32).sqrt()).clamp(0.1, 5.0),
         );
 
         // TODO(emilk): more line segments -> thinner lines
-        let default_line_radius = Size::new_ui((0.0005 * viewport_size.length()).clamp(1.5, 5.0));
 
         {
             crate::profile_scope!("points");
             for point in points {
                 if point.radius.is_auto() {
                     point.radius = default_point_radius;
-                }
-                if let Some(size_in_points) = point.radius.ui() {
-                    let dist_to_eye = eye_camera_plane.distance(point.pos).at_least(0.0);
-                    point.radius =
-                        Size::new_scene(dist_to_eye * size_in_points * point_size_at_one_meter);
                 }
                 if hovered_instance_id_hash.is_some()
                     && point.instance_id_hash == hovered_instance_id_hash
@@ -606,39 +521,13 @@ impl Scene3D {
         }
 
         {
+            // TODO(andreas): Move to line creation.
             crate::profile_scope!("lines");
-            for ((line_strip, instance_id), line_strip_vertices) in
-                line_strips.iter_strips_mut_with_vertices()
+            for (line_strip, instance_id) in line_strips
+                .strips
+                .iter_mut()
+                .zip(line_strips.strip_user_data.iter())
             {
-                if Size(line_strip.radius).is_auto() {
-                    line_strip.radius = default_line_radius.0;
-                }
-                if let Some(size_in_points) = Size(line_strip.radius).ui() {
-                    // TODO(andreas): Ui size doesn't work properly for line strips with more than two points right now.
-                    // Resolving this in the shader would be quite easy (since we can reason with projected coordinates there)
-                    // but if we move it there, cpu sided hovering logic won't work as is!
-                    let dist_to_eye = if true {
-                        // This works much better when one line segment is very close to the camera
-                        let mut closest = f32::INFINITY;
-                        for v in line_strip_vertices {
-                            closest = closest.min(eye_camera_plane.distance(v.pos));
-                        }
-                        closest
-                    } else {
-                        let mut centroid = glam::DVec3::ZERO;
-                        let mut count = 0;
-                        for v in line_strip_vertices {
-                            let pos = v.pos; // Needed to fix alignment warning.
-                            centroid += pos.as_dvec3();
-                            count += 1;
-                        }
-                        let centroid = centroid.as_vec3() / (2.0 * count as f32);
-                        eye_camera_plane.distance(centroid)
-                    }
-                    .at_least(0.0);
-
-                    line_strip.radius = dist_to_eye * size_in_points * point_size_at_one_meter;
-                }
                 if hovered_instance_id_hash.is_some() && *instance_id == hovered_instance_id_hash {
                     line_strip.radius *= hover_size_boost;
                     line_strip.srgb_color = HOVER_COLOR;
@@ -697,7 +586,7 @@ impl Scene3D {
 
         self.line_strips
             .add_segments(segments.into_iter())
-            .radius(line_radius.0)
+            .radius(line_radius)
             .color_rgbx_slice(color)
             .user_data(instance_id);
 
@@ -727,7 +616,7 @@ impl Scene3D {
         let end = origin + vector * ((vector_len - tip_length) / vector_len);
         self.line_strips
             .add_segment(origin, end)
-            .radius(radius)
+            .radius(Size::new_scene(radius))
             .color_rgbx_slice(color)
             .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE)
             .user_data(instance_id_hash);
@@ -790,7 +679,7 @@ impl Scene3D {
 
         self.line_strips
             .add_segments(segments.into_iter())
-            .radius(line_radius.0)
+            .radius(line_radius)
             .color_rgbx_slice(color)
             .user_data(instance_id);
     }

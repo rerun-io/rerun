@@ -14,7 +14,7 @@ use re_renderer::{
     resource_managers::ResourceLifeTime,
     texture_values::ValueRgba8UnormSrgb,
     view_builder::{OrthographicCameraMode, Projection, TargetConfiguration, ViewBuilder},
-    LineStripSeriesBuilder, RenderContext,
+    LineStripSeriesBuilder, RenderContext, Size,
 };
 use winit::event::{ElementState, VirtualKeyCode};
 
@@ -103,7 +103,7 @@ fn build_lines(re_ctx: &mut RenderContext, seconds_since_startup: f32) -> LineDr
     builder
         .add_strip(lorenz_points.into_iter())
         .color_rgb(255, 191, 0)
-        .radius(0.05);
+        .radius(Size::new_scene(0.05));
 
     // Green Zig-Zag arrow
     builder
@@ -117,7 +117,7 @@ fn build_lines(re_ctx: &mut RenderContext, seconds_since_startup: f32) -> LineDr
             .into_iter(),
         )
         .color_rgb(50, 255, 50)
-        .radius(0.05)
+        .radius(Size::new_scene(0.05))
         .flags(LineStripFlags::CAP_END_TRIANGLE | LineStripFlags::CAP_START_ROUND);
 
     // Blue spiral
@@ -130,7 +130,7 @@ fn build_lines(re_ctx: &mut RenderContext, seconds_since_startup: f32) -> LineDr
             )
         }))
         .color_rgb(50, 50, 255)
-        .radius(0.1)
+        .radius(Size::new_scene(0.1))
         .flags(LineStripFlags::CAP_END_TRIANGLE);
 
     builder.to_draw_data(re_ctx)
@@ -260,6 +260,8 @@ impl Example for Multiview {
             }
         };
 
+        let pixels_from_point = 1.0; // TODO:
+
         // Using a macro here because `DrawData` isn't object safe and a closure cannot be
         // generic over its input type.
         #[rustfmt::skip]
@@ -271,6 +273,7 @@ impl Example for Multiview {
                         resolution_in_pixel: splits[$n].resolution_in_pixel,
                         view_from_world,
                         projection_from_view: projection_from_view.clone(),
+                        pixels_from_point,
                     },
                     &skybox,
                     &$name

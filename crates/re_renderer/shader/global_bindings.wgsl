@@ -15,6 +15,10 @@ struct FrameUniformBuffer {
     /// For perspective: Multiply this with a camera distance to get a measure of how wide a pixel is in world units.
     /// For orthographic: This is the world size value, independent of distance.
     pixel_world_size_from_camera_distance: f32,
+
+    /// How many pixels there are per point.
+    /// I.e. the ui scaling factor.
+    pixels_from_point: f32,
 };
 @group(0) @binding(0)
 var<uniform> frame: FrameUniformBuffer;

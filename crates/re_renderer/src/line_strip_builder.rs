@@ -1,4 +1,7 @@
-use crate::renderer::{LineDrawData, LineStripFlags, LineStripInfo, LineVertex};
+use crate::{
+    renderer::{LineDrawData, LineStripFlags, LineStripInfo, LineVertex},
+    Size,
+};
 
 /// Builder for a vector of line strips, making it easy to create [`crate::renderer::LineDrawData`].
 ///
@@ -263,7 +266,7 @@ impl<'a, PerStripUserData> LineStripBuilder<'a, PerStripUserData>
 where
     PerStripUserData: Clone,
 {
-    pub fn radius(self, radius: f32) -> Self {
+    pub fn radius(self, radius: Size) -> Self {
         for strip in self.strips.iter_mut() {
             strip.radius = radius;
         }

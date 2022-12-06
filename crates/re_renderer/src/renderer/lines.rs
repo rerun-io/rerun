@@ -103,6 +103,7 @@ use smallvec::smallvec;
 
 use crate::{
     include_file, next_multiple_of,
+    size::Size,
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroupHandleStrong,
@@ -115,6 +116,8 @@ use super::*;
 
 pub mod gpu_data {
     // Don't use `wgsl_buffer_types` since none of this data goes into a buffer, so its alignment rules don't apply.
+
+    use crate::size::SizeHalf;
 
     use super::LineStripFlags;
 
@@ -135,7 +138,7 @@ pub mod gpu_data {
         pub srgb_color: [u8; 4], // alpha unused right now
         pub stippling: u8,
         pub flags: LineStripFlags,
-        pub radius: half::f16,
+        pub radius: SizeHalf,
     }
     static_assertions::assert_eq_size!(LineStripInfo, [u32; 2]);
 }
@@ -185,8 +188,7 @@ impl LineStripFlags {
 #[derive(Clone)]
 pub struct LineStripInfo {
     /// Radius of the line strip in world space
-    /// TODO(andreas) Should be able to specify if this is in pixels, or both by providing a minimum in pixels.
-    pub radius: f32,
+    pub radius: Size,
 
     /// srgb color. Alpha unused right now
     pub srgb_color: [u8; 4],
@@ -201,7 +203,7 @@ pub struct LineStripInfo {
 impl Default for LineStripInfo {
     fn default() -> Self {
         Self {
-            radius: 1.0,
+            radius: Size::new_points(1.0),
             srgb_color: [255, 255, 255, 255],
             flags: LineStripFlags::empty(),
         }
@@ -329,7 +331,7 @@ impl LineDrawData {
         line_strip_info_staging.extend(strips.iter().map(|line_strip| {
             gpu_data::LineStripInfo {
                 srgb_color: line_strip.srgb_color,
-                radius: half::f16::from_f32(line_strip.radius),
+                radius: line_strip.radius.into(),
                 stippling: 0, //(line_strip.stippling.clamp(0.0, 1.0) * 255.0) as u8,
                 flags: line_strip.flags,
             }
