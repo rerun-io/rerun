@@ -15,28 +15,53 @@ fn main() {
         native_options,
         Box::new(move |cc| {
             let re_ui = re_ui::ReUi::load_and_apply(&cc.egui_ctx);
-            Box::new(ExampleApp { re_ui })
+            Box::new(ExampleApp {
+                re_ui,
+
+                left_panel: true,
+                right_panel: true,
+                bottom_panel: true,
+            })
         }),
     );
 }
 
 pub struct ExampleApp {
     re_ui: re_ui::ReUi,
+
+    left_panel: bool,
+    right_panel: bool,
+    bottom_panel: bool,
 }
 
 impl eframe::App for ExampleApp {
     fn update(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
         self.top_bar(egui_ctx, frame);
 
+        egui::SidePanel::left("left_panel").show_animated(egui_ctx, self.left_panel, |ui| {
+            ui.label("Left panel");
+        });
+        egui::SidePanel::right("right_panel").show_animated(egui_ctx, self.right_panel, |ui| {
+            ui.label("Right panel");
+        });
+        egui::TopBottomPanel::bottom("bottom_panel").show_animated(
+            egui_ctx,
+            self.bottom_panel,
+            |ui| {
+                ui.label("Bottom panel");
+            },
+        );
+
         egui::CentralPanel::default().show(egui_ctx, |ui| {
             egui::warn_if_debug_build(ui);
-            ui.label("Hello world!");
+            ui.label("Hover me for a tooltip")
+                .on_hover_text("This is a tooltip");
         });
     }
 }
 
 impl ExampleApp {
-    fn top_bar(&self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
+    fn top_bar(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
         let panel_frame = {
             egui::Frame {
                 inner_margin: egui::style::Margin::symmetric(8.0, 2.0),
@@ -67,6 +92,22 @@ impl ExampleApp {
                 egui::menu::bar(ui, |ui| {
                     ui.set_height(top_bar_style.height);
                     ui.add_space(top_bar_style.indent);
+
+                    self.re_ui.medium_icon_toggle_button(
+                        ui,
+                        &re_ui::icons::LEFT_PANEL_TOGGLE,
+                        &mut self.left_panel,
+                    );
+                    self.re_ui.medium_icon_toggle_button(
+                        ui,
+                        &re_ui::icons::BOTTOM_PANEL_TOGGLE,
+                        &mut self.bottom_panel,
+                    );
+                    self.re_ui.medium_icon_toggle_button(
+                        ui,
+                        &re_ui::icons::RIGHT_PANEL_TOGGLE,
+                        &mut self.right_panel,
+                    );
 
                     ui.centered_and_justified(|ui| {
                         ui.strong("re_ui example app");
