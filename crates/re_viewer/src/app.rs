@@ -1,7 +1,6 @@
 use std::any::Any;
 
 use ahash::HashMap;
-use egui_extras::RetainedImage;
 use egui_notify::Toasts;
 use instant::Instant;
 use itertools::Itertools as _;
@@ -623,7 +622,7 @@ struct AppState {
 
     // TODO(emilk): use an image cache
     #[serde(skip)]
-    static_image_cache: StaticImageCache,
+    static_image_cache: re_ui::StaticImageCache,
 }
 
 impl AppState {
@@ -975,7 +974,7 @@ fn top_bar_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &mut App) {
 
 fn medium_toggle_icon_button(
     ui: &mut egui::Ui,
-    image_cache: &mut StaticImageCache,
+    image_cache: &mut re_ui::StaticImageCache,
     icon: &crate::ui::icons::Icon,
     selected: &mut bool,
 ) -> egui::Response {
@@ -1382,46 +1381,4 @@ fn load_file_contents(name: &str, read: impl std::io::Read) -> Option<LogDb> {
             None
         }
     }
-}
-
-#[derive(Default)]
-struct StaticImageCache {
-    images: std::collections::HashMap<&'static str, RetainedImage>,
-}
-
-impl StaticImageCache {
-    pub fn get(&mut self, id: &'static str, image_bytes: &'static [u8]) -> &RetainedImage {
-        self.images.entry(id).or_insert_with(|| {
-            RetainedImage::from_color_image(
-                id,
-                load_image_bytes(image_bytes)
-                    .unwrap_or_else(|err| panic!("Failed to load image {id:?}: {err:?}")),
-            )
-        })
-    }
-
-    pub fn rerun_logo(&mut self, visuals: &egui::Visuals) -> &RetainedImage {
-        if visuals.dark_mode {
-            self.get(
-                "logo_dark_mode",
-                include_bytes!("../data/logo_dark_mode.png"),
-            )
-        } else {
-            self.get(
-                "logo_light_mode",
-                include_bytes!("../data/logo_light_mode.png"),
-            )
-        }
-    }
-}
-
-pub fn load_image_bytes(image_bytes: &[u8]) -> Result<egui::ColorImage, String> {
-    let image = image::load_from_memory(image_bytes).map_err(|err| err.to_string())?;
-    let image = image.into_rgba8();
-    let size = [image.width() as _, image.height() as _];
-    let pixels = image.as_flat_samples();
-    Ok(egui::ColorImage::from_rgba_unmultiplied(
-        size,
-        pixels.as_slice(),
-    ))
 }

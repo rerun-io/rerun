@@ -3863,6 +3863,8 @@ version = "0.1.0"
 dependencies = [
  "eframe",
  "egui",
+ "egui_extras",
+ "image",
  "serde",
  "serde_json",
 ]
