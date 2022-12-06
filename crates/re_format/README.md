@@ -1,1 +1,1 @@
-Helpers for handling errors.
+Miscellaneous formatting tools.
