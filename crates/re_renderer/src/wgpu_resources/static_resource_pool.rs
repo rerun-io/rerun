@@ -93,6 +93,10 @@ where
             handle,
         )
     }
+
+    pub fn num_resources(&self) -> usize {
+        self.resources.len()
+    }
 }
 
 #[cfg(test)]

@@ -11,6 +11,10 @@ use smallvec::{smallvec, SmallVec};
 
 use super::resource::*;
 
+pub trait SizedResourceDesc {
+    fn resource_size_in_bytes(&self) -> u64;
+}
+
 /// Generic resource pool for all resources that have varying contents beyond their description.
 ///
 /// Unlike in [`super::static_resource_pool::StaticResourcePool`], a resource is not uniquely identified by its description.
@@ -31,6 +35,7 @@ pub(super) struct DynamicResourcePool<Handle: Key, Desc, Res> {
     last_frame_deallocated: HashMap<Desc, SmallVec<[Arc<Handle>; 4]>>,
 
     current_frame_index: u64,
+    total_resource_size_in_bytes: u64,
 }
 
 /// We cannot #derive(Default) as that would require Handle/Desc/Res to implement Default too.
@@ -41,6 +46,7 @@ impl<Handle: Key, Desc, Res> Default for DynamicResourcePool<Handle, Desc, Res> 
             alive_handles: Default::default(),
             last_frame_deallocated: Default::default(),
             current_frame_index: Default::default(),
+            total_resource_size_in_bytes: 0,
         }
     }
 }
@@ -48,7 +54,7 @@ impl<Handle: Key, Desc, Res> Default for DynamicResourcePool<Handle, Desc, Res> 
 impl<Handle, Desc, Res> DynamicResourcePool<Handle, Desc, Res>
 where
     Handle: Key,
-    Desc: Clone + Eq + Hash + Debug,
+    Desc: Clone + Eq + Hash + Debug + SizedResourceDesc,
 {
     pub fn alloc<F: FnOnce(&Desc) -> Res>(&mut self, desc: &Desc, creation_func: F) -> Arc<Handle> {
         // First check if we can reclaim a resource we have around from a previous frame.
@@ -64,6 +70,7 @@ where
             // Otherwise create a new resource
             } else {
                 let resource = creation_func(desc);
+                self.total_resource_size_in_bytes += desc.resource_size_in_bytes();
                 Arc::new(self.resources.insert((desc.clone(), resource)))
             };
 
@@ -96,6 +103,7 @@ where
             );
             for handle in handles {
                 self.resources.remove(*handle);
+                self.total_resource_size_in_bytes -= desc.resource_size_in_bytes();
             }
         }
 
@@ -127,6 +135,14 @@ where
     pub(super) fn get_strong_handle(&self, handle: Handle) -> &Arc<Handle> {
         &self.alive_handles[handle]
     }
+
+    pub fn num_resources(&self) -> usize {
+        self.resources.len()
+    }
+
+    pub fn total_resource_size_in_bytes(&self) -> u64 {
+        self.total_resource_size_in_bytes
+    }
 }
 
 #[cfg(test)]
@@ -141,13 +157,19 @@ mod tests {
 
     use slotmap::Key;
 
-    use super::DynamicResourcePool;
+    use super::{DynamicResourcePool, SizedResourceDesc};
     use crate::wgpu_resources::resource::PoolError;
 
     slotmap::new_key_type! { pub struct ConcreteHandle; }
 
     #[derive(Clone, PartialEq, Eq, Hash, Debug)]
     pub struct ConcreteResourceDesc(u32);
+
+    impl SizedResourceDesc for ConcreteResourceDesc {
+        fn resource_size_in_bytes(&self) -> u64 {
+            1
+        }
+    }
 
     #[derive(PartialEq, Eq, Debug)]
     pub struct ConcreteResource(u32);
@@ -198,6 +220,7 @@ mod tests {
                 drop_counter_before + initial_resource_descs.len() * 2,
                 drop_counter_now
             );
+            assert_eq!(pool.total_resource_size_in_bytes(), 0);
         }
 
         // Holding on to a handle avoids both re-use and dropping.
@@ -227,6 +250,7 @@ mod tests {
         expect_allocation: bool,
     ) {
         let drop_counter_before = RESOURCE_DROP_COUNTER.load(Ordering::Relaxed);
+        let byte_count_before = pool.total_resource_size_in_bytes();
         for &desc in descs {
             // Previous loop iteration didn't drop Resources despite dropping a handle.
             assert_eq!(
@@ -243,6 +267,19 @@ mod tests {
 
             // Resource pool keeps the handle alive, but otherwise we're the only owners.
             assert_eq!(Arc::strong_count(&handle), 2);
+        }
+
+        if expect_allocation {
+            assert_eq!(
+                byte_count_before
+                    + descs
+                        .iter()
+                        .map(|d| ConcreteResourceDesc(*d).resource_size_in_bytes())
+                        .sum::<u64>(),
+                pool.total_resource_size_in_bytes()
+            );
+        } else {
+            assert_eq!(byte_count_before, pool.total_resource_size_in_bytes());
         }
     }
 
