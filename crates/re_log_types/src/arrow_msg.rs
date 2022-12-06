@@ -100,3 +100,32 @@ impl PartialEq for ArrowMsg {
         self.msg_id == other.msg_id
     }
 }
+
+#[cfg(test)]
+#[cfg(feature = "serde")]
+mod tests {
+    use super::*;
+    use crate::{datagen::*, ObjPath};
+
+    #[test]
+    fn test_serde_roundtrip() {
+        let (schema, chunk) = build_message(
+            &ObjPath::from("rects"),
+            [build_frame_nr(0)],
+            [build_positions(5), build_rects(5)],
+        );
+
+        let msg_in = ArrowMsg {
+            msg_id: MsgId::random(),
+            schema,
+            chunk,
+        };
+
+        let buf = rmp_serde::to_vec(&msg_in).unwrap();
+        let msg_out: ArrowMsg = rmp_serde::from_slice(&buf).unwrap();
+
+        assert_eq!(msg_in.msg_id, msg_out.msg_id);
+        assert_eq!(msg_in.schema, msg_out.schema);
+        assert_eq!(msg_in.chunk, msg_out.chunk);
+    }
+}
