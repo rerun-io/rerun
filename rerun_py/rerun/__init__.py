@@ -507,7 +507,7 @@ def log_rects(
             raise NotImplementedError("RectFormat not yet implemented")
 
         if colors.any():
-            fields.append(pa.field("color_rgba", pa.uint32(), nullable=True))
+            fields.append(pa.field("color_srgba_unmultiplied", pa.uint32(), nullable=True))
             arrays.append(pa.array([u8_array_to_rgba(c) for c in colors], type=pa.uint32()))
 
         arr = pa.StructArray.from_arrays(arrays, fields=fields)

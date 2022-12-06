@@ -61,7 +61,6 @@ egui_dock = { git = "https://github.com/rerun-io/egui_dock", rev = "5f5a877a34d1
   "serde",
 ] } # 2022-10-07
 egui_extras = { version = "0.19", features = ["tracing"] }
-fixed = { version = "1.17", features = ["serde"] }
 glam = { version = "0.20", features = [
   "mint",
 ] } # can't update glam until a new version of `macaw` is released
@@ -82,7 +81,6 @@ rfd = "0.10"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 smallvec = "1.10"
-typenum = "1.15"
 uuid = { version = "1.1", features = ["serde", "v4", "js"] }
 vec1 = "1.8"
 wgpu = "0.14"

@@ -230,7 +230,7 @@ pub(crate) fn view_2d(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &mut View2DState,
-    space: Option<&ObjPath>,
+    space: &ObjPath,
     mut scene: Scene2D,
 ) -> egui::Response {
     crate::profile_function!();
@@ -360,7 +360,7 @@ fn view_2d_scrollable(
     ctx: &mut ViewerContext<'_>,
     parent_ui: &mut egui::Ui,
     state: &mut View2DState,
-    space: Option<&ObjPath>,
+    space: &ObjPath,
     scene: &Scene2D,
 ) -> egui::Response {
     state.scene_bbox_accum = state.scene_bbox_accum.union(scene.bbox);
@@ -765,7 +765,7 @@ fn view_2d_scrollable(
 
 fn project_onto_other_spaces(
     ctx: &mut ViewerContext<'_>,
-    space: Option<&ObjPath>,
+    space: &ObjPath,
     response: &Response,
     space_from_ui: &RectTransform,
     z: f32,
@@ -773,7 +773,7 @@ fn project_onto_other_spaces(
     if let Some(pointer_in_screen) = response.hover_pos() {
         let pointer_in_space = space_from_ui.transform_pos(pointer_in_screen);
         ctx.rec_cfg.hovered_space_this_frame = HoveredSpace::TwoD {
-            space_2d: space.cloned(),
+            space_2d: space.clone(),
             pos: glam::vec3(pointer_in_space.x, pointer_in_space.y, z),
         };
     }
@@ -782,13 +782,13 @@ fn project_onto_other_spaces(
 fn show_projections_from_3d_space(
     ctx: &ViewerContext<'_>,
     ui: &egui::Ui,
-    space: Option<&ObjPath>,
+    space: &ObjPath,
     ui_from_space: &RectTransform,
     shapes: &mut Vec<Shape>,
 ) {
     if let HoveredSpace::ThreeD { target_spaces, .. } = &ctx.rec_cfg.hovered_space_previous_frame {
         for (space_2d, ray_2d, pos_2d) in target_spaces {
-            if Some(space_2d) == space {
+            if space_2d == space {
                 if let Some(pos_2d) = pos_2d {
                     // User is hovering a 2D point inside a 3D view.
                     let pos_in_ui = ui_from_space.transform_pos(pos2(pos_2d.x, pos_2d.y));

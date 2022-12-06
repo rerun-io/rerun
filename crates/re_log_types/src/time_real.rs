@@ -1,10 +1,10 @@
 use fixed::{traits::LossyInto as _, FixedI128};
 
-use re_log_types::TimeInt;
+use crate::TimeInt;
 
 /// Either nanoseconds or sequence numbers.
 ///
-/// Must be matched with a [`re_log_types::TimeType`] to know what.
+/// Must be matched with a [`crate::TimeType`] to know what.
 ///
 /// Used both for time points and durations.
 ///
@@ -15,9 +15,8 @@ use re_log_types::TimeInt;
 ///
 /// We use 64+64 bit fixed point representation in order to support
 /// large numbers (nanos since unix epoch) with sub-integer precision.
-#[derive(
-    Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Deserialize, serde::Serialize,
-)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct TimeReal(FixedI128<typenum::U64>);
 
 impl TimeReal {
@@ -85,28 +84,28 @@ impl From<TimeInt> for TimeReal {
     }
 }
 
-impl From<re_log_types::Duration> for TimeReal {
+impl From<crate::Duration> for TimeReal {
     #[inline]
-    fn from(duration: re_log_types::Duration) -> Self {
+    fn from(duration: crate::Duration) -> Self {
         Self::from(duration.as_nanos())
     }
 }
 
-impl From<re_log_types::Time> for TimeReal {
+impl From<crate::Time> for TimeReal {
     #[inline]
-    fn from(time: re_log_types::Time) -> Self {
+    fn from(time: crate::Time) -> Self {
         Self::from(time.nanos_since_epoch())
     }
 }
 
-impl From<TimeReal> for re_log_types::Time {
+impl From<TimeReal> for crate::Time {
     #[inline]
     fn from(int: TimeReal) -> Self {
         Self::from_ns_since_epoch(int.round().as_i64())
     }
 }
 
-impl From<TimeReal> for re_log_types::Duration {
+impl From<TimeReal> for crate::Duration {
     #[inline]
     fn from(int: TimeReal) -> Self {
         Self::from_nanos(int.round().as_i64())

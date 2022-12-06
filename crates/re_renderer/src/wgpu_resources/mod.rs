@@ -65,3 +65,34 @@ pub struct WgpuResourcePools {
     pub buffers: GpuBufferPool,
     pub textures: GpuTexturePool,
 }
+
+#[derive(Default)]
+pub struct WgpuResourcePoolStatistics {
+    pub num_bind_group_layouts: usize,
+    pub num_pipeline_layouts: usize,
+    pub num_render_pipelines: usize,
+    pub num_samplers: usize,
+    pub num_shader_modules: usize,
+    pub num_bind_groups: usize,
+    pub num_buffers: usize,
+    pub num_textures: usize,
+    pub total_buffer_size_in_bytes: u64,
+    pub total_texture_size_in_bytes: u64,
+}
+
+impl WgpuResourcePools {
+    pub fn statistics(&self) -> WgpuResourcePoolStatistics {
+        WgpuResourcePoolStatistics {
+            num_bind_group_layouts: self.bind_group_layouts.num_resources(),
+            num_pipeline_layouts: self.pipeline_layouts.num_resources(),
+            num_render_pipelines: self.render_pipelines.num_resources(),
+            num_samplers: self.samplers.num_resources(),
+            num_shader_modules: self.shader_modules.num_resources(),
+            num_bind_groups: self.bind_groups.num_resources(),
+            num_buffers: self.buffers.num_resources(),
+            num_textures: self.textures.num_resources(),
+            total_buffer_size_in_bytes: self.buffers.total_gpu_size_in_bytes(),
+            total_texture_size_in_bytes: self.textures.total_gpu_size_in_bytes(),
+        }
+    }
+}

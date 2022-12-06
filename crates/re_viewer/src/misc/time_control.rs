@@ -5,8 +5,6 @@ use egui::NumExt as _;
 use re_data_store::TimesPerTimeline;
 use re_log_types::*;
 
-use super::{TimeRange, TimeRangeF, TimeReal};
-
 /// The time range we are currently zoomed in on.
 #[derive(Clone, Copy, Debug, serde::Deserialize, serde::Serialize)]
 pub(crate) struct TimeView {

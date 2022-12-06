@@ -16,7 +16,7 @@ import logging
 import rerun
 
 
-def log_stuff() -> None:
+def setup_logging() -> None:
     # That's really all there is to it: attach a Rerun logging handler to one
     # or more loggers of your choosing and your logs will be forwarded.
     #
@@ -28,6 +28,8 @@ def log_stuff() -> None:
     logging.getLogger().addHandler(rerun.LoggingHandler())
     logging.getLogger().setLevel(-1)
 
+
+def log_stuff(frame_offset: int) -> None:
     # The usual
     logging.critical("catastrophic failure")
     logging.error("not going too well")
@@ -44,7 +46,7 @@ def log_stuff() -> None:
     # Test that we can log multiple times to the same sequence timeline and still
     # have the log messages show up in the correct chronological order in the viewer:
     for frame_nr in range(2):
-        rerun.set_time_sequence("frame_nr", frame_nr)
+        rerun.set_time_sequence("frame_nr", 2 * frame_offset + frame_nr)
         logging.info(f"Log one thing during frame {frame_nr}")
         logging.info(f"Log second thing during the same frame {frame_nr}")
         logging.info(f"Log third thing during the same frame {frame_nr}")
@@ -61,7 +63,7 @@ def log_stuff() -> None:
         other_logger.debug("look ma, got my very own view!")
 
 
-if __name__ == "__main__":
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="demonstrates how to integrate python's native `logging` with the Rerun SDK"
     )
@@ -88,8 +90,9 @@ if __name__ == "__main__":
         # which is `127.0.0.1:9876`.
         rerun.connect(args.addr)
 
-    for _ in range(args.repeat):
-        log_stuff()
+    setup_logging()
+    for frame_offset in range(args.repeat):
+        log_stuff(frame_offset)
 
     if args.serve:
         print("Sleeping while serving the web viewer. Abort with Ctrl-C")
@@ -105,3 +108,7 @@ if __name__ == "__main__":
         pass
     elif not args.connect:
         rerun.show()
+
+
+if __name__ == "__main__":
+    main()

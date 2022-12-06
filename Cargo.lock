@@ -2199,6 +2199,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "indent"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d9f1a0777d972970f204fdf8ef319f1f4f8459131636d7e3c96c5d59570d0fa6"
+
+[[package]]
 name = "indexmap"
 version = "1.9.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3614,14 +3620,22 @@ dependencies = [
 name = "re_arrow_store"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "arrow2",
  "arrow2_convert",
  "chrono",
+ "criterion",
+ "document-features",
+ "indent",
+ "itertools",
+ "mimalloc",
  "nohash-hasher",
  "polars",
+ "rand",
  "re_log",
  "re_log_types",
  "thiserror",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -3669,6 +3683,7 @@ dependencies = [
  "chrono",
  "derive_more",
  "document-features",
+ "fixed",
  "glam",
  "macaw",
  "nohash-hasher",
@@ -3680,6 +3695,7 @@ dependencies = [
  "ruzstd",
  "serde",
  "thiserror",
+ "typenum",
  "uuid",
  "zstd",
 ]
@@ -3756,6 +3772,7 @@ dependencies = [
 name = "re_sdk_comms"
 version = "0.1.0"
 dependencies = [
+ "ahash 0.8.2",
  "anyhow",
  "bincode",
  "crossbeam",
@@ -3858,7 +3875,6 @@ dependencies = [
  "egui-wgpu",
  "egui_dock",
  "egui_extras",
- "fixed",
  "glam",
  "image",
  "instant",
@@ -3890,7 +3906,6 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "tracing-wasm",
- "typenum",
  "uuid",
  "vec1",
  "wasm-bindgen-futures",

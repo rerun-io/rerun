@@ -3,31 +3,32 @@
 //! A wgpu based renderer [wgpu](https://github.com/gfx-rs/wgpu/) for all your visualization needs.
 //! Used in `re_runner` to display the contents of any view contents other than pure UI.
 
+mod color;
 pub mod config;
 pub mod importer;
 pub mod renderer;
 pub mod resource_managers;
 pub mod texture_values;
 pub mod view_builder;
-pub mod wgpu_resources;
-
-mod color;
 pub use color::*;
 
 mod context;
 pub use context::RenderContext;
 
 mod debug_label;
-pub use self::debug_label::DebugLabel;
+pub use debug_label::DebugLabel;
 
 mod global_bindings;
 
 mod line_strip_builder;
-pub use self::line_strip_builder::{LineStripBuilder, LineStripSeriesBuilder};
+pub use line_strip_builder::{LineStripBuilder, LineStripSeriesBuilder};
 
 pub mod mesh;
 
 mod wgpu_buffer_types;
+
+mod wgpu_resources;
+pub use wgpu_resources::WgpuResourcePoolStatistics;
 
 mod file_system;
 pub use self::file_system::{get_filesystem, FileSystem};

@@ -5,7 +5,7 @@ use egui::NumExt as _;
 use re_data_store::TimesPerTimeline;
 use re_log_types::*;
 
-use super::{time_control::*, TimeRangeF, TimeReal};
+use super::time_control::*;
 
 impl TimeControl {
     pub fn timeline_selector_ui(

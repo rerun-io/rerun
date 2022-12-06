@@ -53,4 +53,8 @@ impl GpuPipelineLayoutPool {
     pub fn frame_maintenance(&mut self, frame_index: u64) {
         self.pool.current_frame_index = frame_index;
     }
+
+    pub fn num_resources(&self) -> usize {
+        self.pool.num_resources()
+    }
 }
