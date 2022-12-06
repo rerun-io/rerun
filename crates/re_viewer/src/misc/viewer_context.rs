@@ -22,7 +22,7 @@ pub(crate) struct ViewerContext<'a> {
     pub selection_history: &'a mut SelectionHistory,
 
     /// The look and feel of the UI
-    pub design_tokens: &'a crate::design_tokens::DesignTokens,
+    pub design_tokens: &'a re_ui::DesignTokens,
 
     pub render_ctx: &'a mut re_renderer::RenderContext,
 }

@@ -16,19 +16,14 @@ fn main() {
         "re_ui example app",
         native_options,
         Box::new(move |cc| {
-            // let design_tokens = crate::customize_eframe(cc);
-            Box::new(TemplateApp::default())
+            let _design_tokens = re_ui::apply_design_tokens(&cc.egui_ctx);
+            Box::new(TemplateApp { _design_tokens })
         }),
     );
 }
 
-#[derive(Default)]
-pub struct TemplateApp {}
-
-impl TemplateApp {
-    pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
-        Default::default()
-    }
+pub struct TemplateApp {
+    _design_tokens: re_ui::DesignTokens,
 }
 
 impl eframe::App for TemplateApp {

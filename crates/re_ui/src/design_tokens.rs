@@ -41,7 +41,7 @@ impl DesignTokens {
     }
 }
 
-pub(crate) fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
+pub fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
     let apply_font = true;
     let apply_font_size = true;
 

@@ -8,14 +8,12 @@
 //!
 
 mod app;
-mod design_tokens;
 pub mod env_vars;
 pub mod math;
 mod misc;
 mod remote_viewer_app;
 mod ui;
 
-pub(crate) use design_tokens::DesignTokens;
 pub(crate) use misc::*;
 pub(crate) use ui::*;
 
@@ -101,7 +99,8 @@ pub(crate) fn wgpu_options() -> egui_wgpu::WgpuConfiguration {
         }
 }
 
-pub(crate) fn customize_eframe(cc: &eframe::CreationContext<'_>) -> crate::DesignTokens {
+#[must_use]
+pub(crate) fn customize_eframe(cc: &eframe::CreationContext<'_>) -> re_ui::DesignTokens {
     if let Some(render_state) = &cc.wgpu_render_state {
         use re_renderer::{config::RenderContextConfig, RenderContext};
 
@@ -124,5 +123,5 @@ pub(crate) fn customize_eframe(cc: &eframe::CreationContext<'_>) -> crate::Desig
         ));
     }
 
-    design_tokens::apply_design_tokens(&cc.egui_ctx)
+    re_ui::apply_design_tokens(&cc.egui_ctx)
 }

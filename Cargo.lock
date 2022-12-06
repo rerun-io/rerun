@@ -3863,6 +3863,8 @@ version = "0.1.0"
 dependencies = [
  "eframe",
  "egui",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -3906,10 +3908,10 @@ dependencies = [
  "re_smart_channel",
  "re_string_interner",
  "re_tensor_ops",
+ "re_ui",
  "re_ws_comms",
  "rfd",
  "serde",
- "serde_json",
  "smallvec",
  "tracing",
  "tracing-subscriber",

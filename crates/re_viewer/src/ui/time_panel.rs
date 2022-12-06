@@ -821,7 +821,7 @@ fn loop_selection_ui(
     // TODO(emilk): click to toggle on/off
     // when off, you cannot modify, just drag out a new one.
 
-    let selection_color = crate::design_tokens::DesignTokens::loop_selection_color();
+    let selection_color = re_ui::DesignTokens::loop_selection_color();
 
     let mut did_interact = false;
 

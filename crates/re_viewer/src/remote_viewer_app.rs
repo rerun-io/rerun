@@ -1,9 +1,9 @@
-use crate::{design_tokens::DesignTokens, App};
+use crate::App;
 
 /// Connects to a server over `WebSockets`.
 pub struct RemoteViewerApp {
     startup_options: crate::StartupOptions,
-    design_tokens: DesignTokens,
+    design_tokens: re_ui::DesignTokens,
     url: String,
     app: Option<(re_ws_comms::Connection, App)>,
 }
@@ -13,7 +13,7 @@ impl RemoteViewerApp {
     pub fn new(
         egui_ctx: &egui::Context,
         startup_options: crate::StartupOptions,
-        design_tokens: crate::design_tokens::DesignTokens,
+        design_tokens: re_ui::DesignTokens,
         storage: Option<&dyn eframe::Storage>,
         url: String,
     ) -> Self {

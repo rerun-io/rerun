@@ -1,9 +1,7 @@
 use re_log_types::LogMsg;
 
-use crate::DesignTokens;
-
 type AppCreator =
-    Box<dyn FnOnce(&eframe::CreationContext<'_>, DesignTokens) -> Box<dyn eframe::App>>;
+    Box<dyn FnOnce(&eframe::CreationContext<'_>, re_ui::DesignTokens) -> Box<dyn eframe::App>>;
 
 pub fn run_native_app(app_creator: AppCreator) {
     let native_options = eframe::NativeOptions {

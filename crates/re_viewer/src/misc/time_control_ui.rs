@@ -96,7 +96,7 @@ impl TimeControl {
                     }
                     Looping::Selection => {
                         ui.visuals_mut().selection.bg_fill =
-                            crate::design_tokens::DesignTokens::loop_selection_color();
+                            re_ui::DesignTokens::loop_selection_color();
                         #[allow(clippy::collapsible_else_if)]
                         if ui
                             .selectable_label(true, "🔂")

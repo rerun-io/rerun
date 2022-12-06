@@ -13,7 +13,6 @@ use re_log_types::*;
 use re_smart_channel::Receiver;
 
 use crate::{
-    design_tokens::DesignTokens,
     misc::{Caches, Options, RecordingConfig, ViewerContext},
     ui::{format_usize, kb_shortcuts},
 };
@@ -36,7 +35,7 @@ pub struct StartupOptions {
 /// The Rerun viewer as an [`eframe`] application.
 pub struct App {
     startup_options: StartupOptions,
-    design_tokens: DesignTokens,
+    design_tokens: re_ui::DesignTokens,
 
     rx: Option<Receiver<LogMsg>>,
 
@@ -73,7 +72,7 @@ impl App {
     pub fn from_receiver(
         egui_ctx: &egui::Context,
         startup_options: StartupOptions,
-        design_tokens: DesignTokens,
+        design_tokens: re_ui::DesignTokens,
         storage: Option<&dyn eframe::Storage>,
         rx: Receiver<LogMsg>,
     ) -> Self {
@@ -91,7 +90,7 @@ impl App {
     pub(crate) fn from_log_db(
         egui_ctx: &egui::Context,
         startup_options: StartupOptions,
-        design_tokens: DesignTokens,
+        design_tokens: re_ui::DesignTokens,
         storage: Option<&dyn eframe::Storage>,
         log_db: LogDb,
     ) -> Self {
@@ -110,7 +109,7 @@ impl App {
     pub fn from_rrd_path(
         egui_ctx: &egui::Context,
         startup_options: StartupOptions,
-        design_tokens: DesignTokens,
+        design_tokens: re_ui::DesignTokens,
         storage: Option<&dyn eframe::Storage>,
         path: &std::path::Path,
     ) -> Self {
@@ -121,7 +120,7 @@ impl App {
     fn new(
         _egui_ctx: &egui::Context,
         startup_options: StartupOptions,
-        design_tokens: DesignTokens,
+        design_tokens: re_ui::DesignTokens,
         storage: Option<&dyn eframe::Storage>,
         rx: Option<Receiver<LogMsg>>,
         log_db: LogDb,
@@ -633,7 +632,7 @@ impl AppState {
         egui_ctx: &egui::Context,
         render_ctx: &mut re_renderer::RenderContext,
         log_db: &LogDb,
-        design_tokens: &DesignTokens,
+        design_tokens: &re_ui::DesignTokens,
     ) {
         crate::profile_function!();
 
@@ -980,14 +979,14 @@ fn medium_toggle_icon_button(
     icon: &crate::ui::icons::Icon,
     selected: &mut bool,
 ) -> egui::Response {
-    let size_points = egui::Vec2::splat(16.0); // TODO(emilk): get from DesignTokens
+    let size_points = egui::Vec2::splat(16.0); // TODO(emilk): get from re_ui::DesignTokens
 
     let image = image_cache.get(icon.id, icon.png_bytes);
     let texture_id = image.texture_id(ui.ctx());
     let tint = if *selected {
         ui.visuals().widgets.inactive.fg_stroke.color
     } else {
-        egui::Color32::from_gray(100) // TODO(emilk): get from DesignTokens
+        egui::Color32::from_gray(100) // TODO(emilk): get from re_ui::DesignTokens
     };
     let mut response = ui.add(egui::ImageButton::new(texture_id, size_points).tint(tint));
     if response.clicked() {
