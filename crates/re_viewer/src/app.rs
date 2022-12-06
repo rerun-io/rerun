@@ -385,24 +385,14 @@ impl App {
                     .entry(self.state.selected_rec_id)
                     .or_default();
 
-                if let LogMsg::ArrowMsg(msg) = msg {
-                    let stream = re_arrow_store::build_stream_reader(&msg.data);
-                    let schema = stream.metadata().schema.clone();
-                    // TODO(john) this filters out `StreamState::Waiting`, which on a fixed
-                    // buffer should never happen, but if we're consuming an actual stream
-                    // should be handled differently.
-                    for chunk in stream.map(|state| match state {
-                        Ok(re_arrow_store::StreamState::Some(chunk)) => chunk,
-                        _ => unreachable!("cannot be waiting on a fixed buffer"),
-                    }) {
-                        arrow_db.insert(&schema, &chunk).unwrap();
-                    }
-                } else {
-                    log_db.add(msg);
-                    if start.elapsed() > instant::Duration::from_millis(10) {
-                        egui_ctx.request_repaint(); // make sure we keep receiving messages asap
-                        break; // don't block the main thread for too long
-                    }
+                if let LogMsg::ArrowMsg(ref msg) = msg {
+                    arrow_db.insert(&msg.schema, &msg.chunk).unwrap();
+                }
+
+                log_db.add(msg);
+                if start.elapsed() > instant::Duration::from_millis(10) {
+                    egui_ctx.request_repaint(); // make sure we keep receiving messages asap
+                    break; // don't block the main thread for too long
                 }
             }
         }
@@ -604,8 +594,6 @@ enum PanelSelection {
     Viewport,
 
     EventLog,
-
-    ArrowLog,
 }
 
 #[derive(Default, serde::Deserialize, serde::Serialize)]
@@ -629,8 +617,6 @@ struct AppState {
     panel_selection: PanelSelection,
 
     event_log_view: crate::event_log_view::EventLogView,
-
-    arrow_log_view: crate::arrow_log_view::ArrowLogView,
 
     selection_panel: crate::selection_panel::SelectionPanel,
     selection_history: crate::SelectionHistory,
@@ -662,7 +648,6 @@ impl AppState {
             recording_configs,
             panel_selection,
             event_log_view,
-            arrow_log_view,
             blueprints,
             selection_panel,
             selection_history,
@@ -707,7 +692,6 @@ impl AppState {
                     .or_default()
                     .blueprint_panel_and_viewport(&mut ctx, ui),
                 PanelSelection::EventLog => event_log_view.ui(&mut ctx, ui),
-                PanelSelection::ArrowLog => arrow_log_view.ui(&mut ctx, ui),
             });
 
         // move time last, so we get to see the first data first!
@@ -837,12 +821,6 @@ fn top_bar_ui(
             &mut app.state.panel_selection,
             PanelSelection::EventLog,
             "Event Log",
-        );
-
-        ui.selectable_value(
-            &mut app.state.panel_selection,
-            PanelSelection::ArrowLog,
-            "Arrow Log",
         );
     }
 

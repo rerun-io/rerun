@@ -5,13 +5,11 @@ use arrow2::array::{Array, Int64Vec, UInt64Vec};
 use arrow2::datatypes::DataType;
 
 use re_log_types::{
-    ObjPath as EntityPath, ObjPathHash as EntityPathHash, TimeInt, TimeRange, Timeline,
+    ComponentName, ObjPath as EntityPath, ObjPathHash as EntityPathHash, TimeInt, TimeRange,
+    Timeline,
 };
 
 // --- Data store ---
-
-pub type ComponentName = String;
-pub type ComponentNameRef<'a> = &'a str;
 
 pub type RowIndex = u64;
 

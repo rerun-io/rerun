@@ -40,6 +40,7 @@ pub(crate) fn message_table(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, mess
         .striped(true)
         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
         .resizable(true)
+        .column(Column::initial(100.0).at_least(50.0).clip(true)) // msg_id
         .column(Column::initial(130.0).at_least(50.0).clip(true)) // message type
         .columns(
             // timeline(s):
@@ -49,6 +50,9 @@ pub(crate) fn message_table(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, mess
         .column(Column::auto().clip(true).at_least(50.0)) // path
         .column(Column::remainder()) // payload
         .header(20.0, |mut header| {
+            header.col(|ui| {
+                ui.strong("MsgID");
+            });
             header.col(|ui| {
                 ui.strong("Message Type");
             });
@@ -98,7 +102,7 @@ fn table_row(
 ) {
     match msg {
         LogMsg::BeginRecordingMsg(msg) => {
-            let BeginRecordingMsg { msg_id: _, info } = msg;
+            let BeginRecordingMsg { msg_id, info } = msg;
             let RecordingInfo {
                 application_id,
                 recording_id,
@@ -106,6 +110,9 @@ fn table_row(
                 recording_source,
             } = info;
 
+            row.col(|ui| {
+                ui.label(msg_id.to_string());
+            });
             row.col(|ui| {
                 ui.monospace("BeginRecordingMsg");
                 ui.label(format!("Source: {recording_source}"));
@@ -124,11 +131,14 @@ fn table_row(
         }
         LogMsg::TypeMsg(msg) => {
             let TypeMsg {
-                msg_id: _,
+                msg_id,
                 type_path,
                 obj_type,
             } = msg;
 
+            row.col(|ui| {
+                ui.label(msg_id.to_string());
+            });
             row.col(|ui| {
                 ui.monospace("TypeMsg");
             });
@@ -146,12 +156,15 @@ fn table_row(
         }
         LogMsg::DataMsg(msg) => {
             let DataMsg {
-                msg_id: _,
+                msg_id,
                 time_point,
                 data_path,
                 data,
             } = msg;
 
+            row.col(|ui| {
+                ui.label(msg_id.to_string());
+            });
             row.col(|ui| {
                 ui.monospace("DataMsg");
             });
@@ -171,11 +184,14 @@ fn table_row(
         }
         LogMsg::PathOpMsg(msg) => {
             let PathOpMsg {
-                msg_id: _,
+                msg_id,
                 time_point,
                 path_op,
             } = msg;
 
+            row.col(|ui| {
+                ui.label(msg_id.to_string());
+            });
             row.col(|ui| {
                 ui.monospace("PathOpMsg");
             });
@@ -194,10 +210,27 @@ fn table_row(
             });
         }
         LogMsg::ArrowMsg(msg) => {
-            let ArrowMsg { msg_id, data: _ } = msg;
+            let ArrowMsg {
+                msg_id,
+                schema: _,
+                chunk: _,
+            } = msg;
 
             row.col(|ui| {
+                ui.label(msg_id.to_string());
+            });
+            row.col(|ui| {
                 ui.monospace("ArrowMsg");
+            });
+            //TODO(john) extract timelines
+            for _timeline in ctx.log_db.timelines() {
+                row.col(|ui| {
+                    ui.label("-");
+                });
+            }
+            //TODO(john) extract object path
+            row.col(|ui| {
+                ui.label("-");
             });
 
             row.col(|ui| {

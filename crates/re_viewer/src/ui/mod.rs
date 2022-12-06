@@ -12,7 +12,6 @@ use self::space_view::SpaceView;
 mod scene;
 use self::scene::SceneQuery;
 
-pub(crate) mod arrow_log_view;
 mod selection_history;
 mod selection_history_ui;
 pub use self::selection_history::{HistoricalSelection, SelectionHistory};
