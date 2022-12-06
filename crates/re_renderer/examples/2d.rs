@@ -57,6 +57,7 @@ impl framework::Example for Render2D {
         re_ctx: &mut re_renderer::RenderContext,
         resolution: [u32; 2],
         time: &framework::Time,
+        pixels_from_point: f32,
     ) -> Vec<framework::ViewDrawResult> {
         let splits = framework::split_resolution(resolution, 1, 2).collect::<Vec<_>>();
 
@@ -104,12 +105,30 @@ impl framework::Example for Render2D {
         .iter()
         .enumerate()
         {
-            let y = (i + 1) as f32 * 80.0;
+            let y = (i + 1) as f32 * 70.0;
             line_strip_builder
                 .add_segment_2d(glam::vec2(70.0, y), glam::vec2(400.0, y))
-                .radius(Size::new_scene(20.0))
+                .radius(Size::new_scene(15.0))
                 .flags(*flags);
         }
+
+        // Lines with different kinds of radius
+        // The first two lines are the same thickness if there no (!) scaling.
+        // Moving the windows to a high dpi screen makes the second one bigger.
+        // Also, it looks different under perspective projection.
+        // The third line is automatic thickness which is determined by the line renderer implementation.
+        line_strip_builder
+            .add_segment_2d(glam::vec2(500.0, 10.0), glam::vec2(1000.0, 10.0))
+            .radius(Size::new_scene(4.0))
+            .color_rgb(255, 180, 1);
+        line_strip_builder
+            .add_segment_2d(glam::vec2(500.0, 30.0), glam::vec2(1000.0, 30.0))
+            .radius(Size::new_points(4.0))
+            .color_rgb(255, 180, 1);
+        line_strip_builder
+            .add_segment_2d(glam::vec2(500.0, 60.0), glam::vec2(1000.0, 60.0))
+            .radius(Size::AUTO)
+            .color_rgb(255, 180, 1);
 
         let line_strip_draw_data = line_strip_builder.to_draw_data(re_ctx);
 
@@ -143,7 +162,6 @@ impl framework::Example for Render2D {
         )
         .unwrap();
 
-        let pixels_from_point = 1.0; // TODO
         vec![
             // 2d view to the left
             {

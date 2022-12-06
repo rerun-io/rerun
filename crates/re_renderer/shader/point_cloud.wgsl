@@ -138,7 +138,7 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
     let d = sphere_distance(ray, in.point_center, in.radius);
     let smallest_distance_to_sphere = d.x;
     let closest_ray_dist = d.y;
-    let pixel_world_size = pixel_world_size_at(closest_ray_dist);
+    let pixel_world_size = approx_pixel_world_size_at(closest_ray_dist);
     if  smallest_distance_to_sphere > pixel_world_size {
         discard;
     }

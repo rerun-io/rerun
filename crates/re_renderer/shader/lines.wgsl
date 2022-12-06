@@ -215,7 +215,7 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
     var coverage = 1.0;
     if has_any_flag(in.currently_active_flags, CAP_START_ROUND | CAP_END_ROUND) {
         let distance_to_skeleton = length(in.position_world - in.closest_strip_position);
-        let pixel_world_size = pixel_world_size_at(length(in.position_world - frame.camera_position));
+        let pixel_world_size = approx_pixel_world_size_at(length(in.position_world - frame.camera_position));
 
         // It's important that we do antialias both inwards and outwards of the exact border.
         // If we do only outwards, rectangle outlines won't line up nicely

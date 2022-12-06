@@ -103,7 +103,7 @@ fn build_lines(re_ctx: &mut RenderContext, seconds_since_startup: f32) -> LineDr
     builder
         .add_strip(lorenz_points.into_iter())
         .color_rgb(255, 191, 0)
-        .radius(Size::new_scene(0.05));
+        .radius(Size::new_points(1.0));
 
     // Green Zig-Zag arrow
     builder
@@ -220,6 +220,7 @@ impl Example for Multiview {
         re_ctx: &mut RenderContext,
         resolution: [u32; 2],
         time: &framework::Time,
+        pixels_from_point: f32,
     ) -> Vec<framework::ViewDrawResult> {
         if matches!(self.camera_control, CameraControl::RotateAroundCenter) {
             let seconds_since_startup = time.seconds_since_startup();
@@ -259,8 +260,6 @@ impl Example for Multiview {
                 far_plane_distance: 100000.0,
             }
         };
-
-        let pixels_from_point = 1.0; // TODO:
 
         // Using a macro here because `DrawData` isn't object safe and a closure cannot be
         // generic over its input type.

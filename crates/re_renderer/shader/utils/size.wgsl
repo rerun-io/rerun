@@ -13,5 +13,5 @@ fn size_to_world(unresolved_size: f32, default_pixel_size: f32, camera_distance:
         pixel_size = frame.pixels_from_point * -unresolved_size;
     }
 
-    return pixel_world_size_at(camera_distance) * pixel_size;
+    return approx_pixel_world_size_at(camera_distance) * pixel_size;
 }
