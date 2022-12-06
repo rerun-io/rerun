@@ -252,7 +252,12 @@ impl ComponentTable {
             .buckets
             .partition_point(|(row_offset, _)| row_idx >= *row_offset);
 
-        // TODO: explain
+        // The partition point will give us the index of the first bucket that has a row offset
+        // strictly greater than the row index we're looking for, therefore we need to take a
+        // step back to find what we're looking for.
+        //
+        // Since component tables always spawn with a default bucket at offset 0, the smallest
+        // partition point that can ever be returned is one, thus this operation is overflow-safe.
         debug_assert!(bucket_nr > 0);
         bucket_nr -= 1;
 
