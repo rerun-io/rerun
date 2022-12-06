@@ -84,7 +84,7 @@ impl SpaceView {
 
         // Extra headroom required for the hovering controls at the top of the space view.
         let extra_headroom = {
-            let frame = ctx.design_tokens.hovering_frame(ui.style());
+            let frame = ctx.re_ui.hovering_frame();
             frame.total_margin().sum().y + ui.spacing().interact_size.y
         };
 
@@ -141,11 +141,9 @@ fn show_help_button_overlay(
 ) {
     {
         let mut ui = ui.child_ui(rect, egui::Layout::right_to_left(egui::Align::TOP));
-        ctx.design_tokens
-            .hovering_frame(ui.style())
-            .show(&mut ui, |ui| {
-                crate::misc::help_hover_button(ui).on_hover_text(help_text);
-            });
+        ctx.re_ui.hovering_frame().show(&mut ui, |ui| {
+            crate::misc::help_hover_button(ui).on_hover_text(help_text);
+        });
     }
 }
 

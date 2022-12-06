@@ -127,10 +127,10 @@ pub(crate) fn view_instance_generic(
                         if let Some(keypoint_id) = keypoint_id {
                             keypoint_annotation = class_description.keypoint_map.get(&keypoint_id);
                             if keypoint_annotation.is_none() {
-                                ui.label(ctx.design_tokens.warning_text(
-                                    format!("unknown keypoint_id {}", keypoint_id.0),
-                                    ui.style(),
-                                ));
+                                ui.label(ctx.re_ui.warning_text(format!(
+                                    "unknown keypoint_id {}",
+                                    keypoint_id.0
+                                )));
                             }
                         }
 
@@ -152,18 +152,16 @@ pub(crate) fn view_instance_generic(
                         }
                     } else {
                         ui.label(
-                            ctx.design_tokens.warning_text(
-                                format!("unknown class_id {}", class_id.0),
-                                ui.style(),
-                            ),
+                            ctx.re_ui
+                                .warning_text(format!("unknown class_id {}", class_id.0)),
                         );
                     }
                 });
         } else {
-            ui.label(ctx.design_tokens.warning_text(
-                "class_id specified, but no annotation context found",
-                ui.style(),
-            ));
+            ui.label(
+                ctx.re_ui
+                    .warning_text("class_id specified, but no annotation context found"),
+            );
         }
     }
 

@@ -1,33 +1,22 @@
 use egui_extras::RetainedImage;
+use std::sync::Arc;
 
 #[derive(Default)]
 pub struct StaticImageCache {
-    images: std::collections::HashMap<&'static str, RetainedImage>,
+    images: std::collections::HashMap<&'static str, Arc<RetainedImage>>,
 }
 
 impl StaticImageCache {
-    pub fn get(&mut self, id: &'static str, image_bytes: &'static [u8]) -> &RetainedImage {
-        self.images.entry(id).or_insert_with(|| {
-            RetainedImage::from_color_image(
-                id,
-                load_image_bytes(image_bytes)
-                    .unwrap_or_else(|err| panic!("Failed to load image {id:?}: {err:?}")),
-            )
-        })
-    }
-
-    pub fn rerun_logo(&mut self, visuals: &egui::Visuals) -> &RetainedImage {
-        if visuals.dark_mode {
-            self.get(
-                "logo_dark_mode",
-                include_bytes!("../data/logo_dark_mode.png"),
-            )
-        } else {
-            self.get(
-                "logo_light_mode",
-                include_bytes!("../data/logo_light_mode.png"),
-            )
-        }
+    pub fn get(&mut self, id: &'static str, image_bytes: &'static [u8]) -> Arc<RetainedImage> {
+        self.images
+            .entry(id)
+            .or_insert_with(|| {
+                let color_image = load_image_bytes(image_bytes)
+                    .unwrap_or_else(|err| panic!("Failed to load image {id:?}: {err:?}"));
+                let retained_img = RetainedImage::from_color_image(id, color_image);
+                Arc::new(retained_img)
+            })
+            .clone()
     }
 }
 

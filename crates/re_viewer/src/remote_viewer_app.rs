@@ -3,7 +3,7 @@ use crate::App;
 /// Connects to a server over `WebSockets`.
 pub struct RemoteViewerApp {
     startup_options: crate::StartupOptions,
-    design_tokens: re_ui::DesignTokens,
+    re_ui: re_ui::ReUi,
     url: String,
     app: Option<(re_ws_comms::Connection, App)>,
 }
@@ -11,26 +11,25 @@ pub struct RemoteViewerApp {
 impl RemoteViewerApp {
     /// url to rerun server
     pub fn new(
-        egui_ctx: &egui::Context,
         startup_options: crate::StartupOptions,
-        design_tokens: re_ui::DesignTokens,
+        re_ui: re_ui::ReUi,
         storage: Option<&dyn eframe::Storage>,
         url: String,
     ) -> Self {
         let mut slf = Self {
             startup_options,
-            design_tokens,
+            re_ui,
             url,
             app: None,
         };
-        slf.connect(egui_ctx, storage);
+        slf.connect(storage);
         slf
     }
 
-    fn connect(&mut self, egui_ctx: &egui::Context, storage: Option<&dyn eframe::Storage>) {
+    fn connect(&mut self, storage: Option<&dyn eframe::Storage>) {
         let (tx, rx) = re_smart_channel::smart_channel(re_smart_channel::Source::Network);
 
-        let egui_ctx_clone = egui_ctx.clone();
+        let egui_ctx = self.re_ui.egui_ctx.clone();
 
         re_log::info!("Connecting to WS server at {:?}…", self.url);
 
@@ -39,7 +38,7 @@ impl RemoteViewerApp {
                 match re_ws_comms::decode_log_msg(&binary) {
                     Ok(log_msg) => {
                         if tx.send(log_msg).is_ok() {
-                            egui_ctx_clone.request_repaint(); // Wake up UI thread
+                            egui_ctx.request_repaint(); // Wake up UI thread
                             std::ops::ControlFlow::Continue(())
                         } else {
                             re_log::info!("Failed to send log message to viewer - closing");
@@ -54,13 +53,7 @@ impl RemoteViewerApp {
             })
             .unwrap(); // TODO(emilk): handle error
 
-        let app = crate::App::from_receiver(
-            egui_ctx,
-            self.startup_options,
-            self.design_tokens,
-            storage,
-            rx,
-        );
+        let app = crate::App::from_receiver(self.startup_options, self.re_ui.clone(), storage, rx);
 
         self.app = Some((connection, app));
     }
@@ -92,7 +85,7 @@ impl eframe::App for RemoteViewerApp {
                             app.save(storage);
                         }
                     }
-                    self.connect(egui_ctx, frame.storage());
+                    self.connect(frame.storage());
                 }
             });
         });

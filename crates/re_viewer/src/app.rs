@@ -34,7 +34,7 @@ pub struct StartupOptions {
 /// The Rerun viewer as an [`eframe`] application.
 pub struct App {
     startup_options: StartupOptions,
-    design_tokens: re_ui::DesignTokens,
+    re_ui: re_ui::ReUi,
 
     rx: Option<Receiver<LogMsg>>,
 
@@ -69,16 +69,14 @@ pub struct App {
 impl App {
     /// Create a viewer that receives new log messages over time
     pub fn from_receiver(
-        egui_ctx: &egui::Context,
         startup_options: StartupOptions,
-        design_tokens: re_ui::DesignTokens,
+        re_ui: re_ui::ReUi,
         storage: Option<&dyn eframe::Storage>,
         rx: Receiver<LogMsg>,
     ) -> Self {
         Self::new(
-            egui_ctx,
             startup_options,
-            design_tokens,
+            re_ui,
             storage,
             Some(rx),
             Default::default(),
@@ -87,39 +85,29 @@ impl App {
 
     #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn from_log_db(
-        egui_ctx: &egui::Context,
         startup_options: StartupOptions,
-        design_tokens: re_ui::DesignTokens,
+        re_ui: re_ui::ReUi,
         storage: Option<&dyn eframe::Storage>,
         log_db: LogDb,
     ) -> Self {
-        Self::new(
-            egui_ctx,
-            startup_options,
-            design_tokens,
-            storage,
-            None,
-            log_db,
-        )
+        Self::new(startup_options, re_ui, storage, None, log_db)
     }
 
     /// load a `.rrd` data file.
     #[cfg(not(target_arch = "wasm32"))]
     pub fn from_rrd_path(
-        egui_ctx: &egui::Context,
         startup_options: StartupOptions,
-        design_tokens: re_ui::DesignTokens,
+        re_ui: re_ui::ReUi,
         storage: Option<&dyn eframe::Storage>,
         path: &std::path::Path,
     ) -> Self {
         let log_db = load_file_path(path).unwrap_or_default(); // TODO(emilk): exit on error.
-        Self::from_log_db(egui_ctx, startup_options, design_tokens, storage, log_db)
+        Self::from_log_db(startup_options, re_ui, storage, log_db)
     }
 
     fn new(
-        _egui_ctx: &egui::Context,
         startup_options: StartupOptions,
-        design_tokens: re_ui::DesignTokens,
+        re_ui: re_ui::ReUi,
         storage: Option<&dyn eframe::Storage>,
         rx: Option<Receiver<LogMsg>>,
         log_db: LogDb,
@@ -132,7 +120,7 @@ impl App {
             // Close viewer on Ctrl-C. TODO(emilk): maybe add to `eframe`?
 
             let ctrl_c = ctrl_c.clone();
-            let egui_ctx = _egui_ctx.clone();
+            let egui_ctx = re_ui.egui_ctx.clone();
 
             ctrlc::set_handler(move || {
                 re_log::debug!("Ctrl-C detected - Closing viewer.");
@@ -154,7 +142,7 @@ impl App {
 
         Self {
             startup_options,
-            design_tokens,
+            re_ui,
             rx,
             log_dbs,
             arrow_dbs: Default::default(),
@@ -335,8 +323,7 @@ impl eframe::App for App {
                 });
             });
         } else {
-            self.state
-                .show(egui_ctx, render_ctx, log_db, &self.design_tokens);
+            self.state.show(egui_ctx, render_ctx, log_db, &self.re_ui);
         }
 
         self.handle_dropping_files(egui_ctx);
@@ -619,10 +606,6 @@ struct AppState {
     #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
     #[serde(skip)]
     profiler: crate::Profiler,
-
-    // TODO(emilk): use an image cache
-    #[serde(skip)]
-    static_image_cache: re_ui::StaticImageCache,
 }
 
 impl AppState {
@@ -631,7 +614,7 @@ impl AppState {
         egui_ctx: &egui::Context,
         render_ctx: &mut re_renderer::RenderContext,
         log_db: &LogDb,
-        design_tokens: &re_ui::DesignTokens,
+        re_ui: &re_ui::ReUi,
     ) {
         crate::profile_function!();
 
@@ -649,7 +632,6 @@ impl AppState {
             time_panel,
             #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
                 profiler: _,
-            static_image_cache: _,
         } = self;
 
         let rec_cfg = recording_configs.entry(*selected_rec_id).or_default();
@@ -665,7 +647,7 @@ impl AppState {
             log_db,
             rec_cfg,
             selection_history,
-            design_tokens,
+            re_ui,
             render_ctx,
         };
 
@@ -696,15 +678,13 @@ impl AppState {
             .move_time(egui_ctx, log_db.times_per_timeline());
 
         if WATERMARK {
-            self.watermark(egui_ctx);
+            self.watermark(egui_ctx, re_ui);
         }
     }
 
-    fn watermark(&mut self, egui_ctx: &egui::Context) {
+    fn watermark(&self, egui_ctx: &egui::Context, re_ui: &re_ui::ReUi) {
         use egui::*;
-        let logo = self
-            .static_image_cache
-            .rerun_logo(&egui_ctx.style().visuals);
+        let logo = re_ui.rerun_logo();
         let screen_rect = egui_ctx.input().screen_rect;
         let size = logo.size_vec2();
         let rect = Align2::RIGHT_BOTTOM
@@ -723,7 +703,7 @@ fn top_panel(egui_ctx: &egui::Context, frame: &mut eframe::Frame, app: &mut App)
     let panel_frame = {
         egui::Frame {
             inner_margin: egui::style::Margin::symmetric(8.0, 2.0),
-            fill: app.design_tokens.top_bar_color,
+            fill: app.re_ui.design_tokens.top_bar_color,
             ..Default::default()
         }
     };
@@ -881,7 +861,7 @@ fn top_bar_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &mut App) {
                 if latency_sec < app.state.options.warn_latency {
                     ui.weak(text).on_hover_text(hover_text);
                 } else {
-                    ui.label(app.design_tokens.warning_text(text, ui.style()))
+                    ui.label(app.re_ui.warning_text(text))
                         .on_hover_text(hover_text);
                 }
             } else {
@@ -893,7 +873,7 @@ fn top_bar_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &mut App) {
 
     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
         if !WATERMARK {
-            let logo = app.state.static_image_cache.rerun_logo(ui.visuals());
+            let logo = app.re_ui.rerun_logo();
             let response = ui
                 .add(egui::ImageButton::new(
                     logo.texture_id(ui.ctx()),
@@ -932,7 +912,7 @@ fn top_bar_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &mut App) {
             // From right-to-left:
             medium_toggle_icon_button(
                 ui,
-                &mut app.state.static_image_cache,
+                &app.re_ui,
                 &icons::RIGHT_PANEL_TOGGLE,
                 &mut blueprint.selection_panel_expanded,
             )
@@ -943,7 +923,7 @@ fn top_bar_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &mut App) {
 
             medium_toggle_icon_button(
                 ui,
-                &mut app.state.static_image_cache,
+                &app.re_ui,
                 &icons::BOTTOM_PANEL_TOGGLE,
                 &mut blueprint.time_panel_expanded,
             )
@@ -954,7 +934,7 @@ fn top_bar_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &mut App) {
 
             medium_toggle_icon_button(
                 ui,
-                &mut app.state.static_image_cache,
+                &app.re_ui,
                 &icons::LEFT_PANEL_TOGGLE,
                 &mut blueprint.blueprint_panel_expanded,
             )
@@ -974,18 +954,18 @@ fn top_bar_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &mut App) {
 
 fn medium_toggle_icon_button(
     ui: &mut egui::Ui,
-    image_cache: &mut re_ui::StaticImageCache,
+    re_ui: &re_ui::ReUi,
     icon: &crate::ui::icons::Icon,
     selected: &mut bool,
 ) -> egui::Response {
-    let size_points = egui::Vec2::splat(16.0); // TODO(emilk): get from re_ui::DesignTokens
+    let size_points = egui::Vec2::splat(16.0); // TODO(emilk): get from re_ui::ReUi
 
-    let image = image_cache.get(icon.id, icon.png_bytes);
+    let image = re_ui.static_image_cache.lock().get(icon.id, icon.png_bytes);
     let texture_id = image.texture_id(ui.ctx());
     let tint = if *selected {
         ui.visuals().widgets.inactive.fg_stroke.color
     } else {
-        egui::Color32::from_gray(100) // TODO(emilk): get from re_ui::DesignTokens
+        egui::Color32::from_gray(100) // TODO(emilk): get from re_ui::ReUi
     };
     let mut response = ui.add(egui::ImageButton::new(texture_id, size_points).tint(tint));
     if response.clicked() {

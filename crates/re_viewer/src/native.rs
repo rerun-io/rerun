@@ -1,7 +1,7 @@
 use re_log_types::LogMsg;
 
 type AppCreator =
-    Box<dyn FnOnce(&eframe::CreationContext<'_>, re_ui::DesignTokens) -> Box<dyn eframe::App>>;
+    Box<dyn FnOnce(&eframe::CreationContext<'_>, re_ui::ReUi) -> Box<dyn eframe::App>>;
 
 pub fn run_native_app(app_creator: AppCreator) {
     let native_options = eframe::NativeOptions {
@@ -26,8 +26,8 @@ pub fn run_native_app(app_creator: AppCreator) {
         "Rerun Viewer",
         native_options,
         Box::new(move |cc| {
-            let design_tokens = crate::customize_eframe(cc);
-            app_creator(cc, design_tokens)
+            let re_ui = crate::customize_eframe(cc);
+            app_creator(cc, re_ui)
         }),
     );
 }
@@ -40,11 +40,10 @@ pub fn run_native_viewer_with_messages(
     for log_msg in log_messages {
         tx.send(log_msg).ok();
     }
-    run_native_app(Box::new(move |cc, design_tokens| {
+    run_native_app(Box::new(move |cc, re_ui| {
         Box::new(crate::App::from_receiver(
-            &cc.egui_ctx,
             startup_options,
-            design_tokens,
+            re_ui,
             cc.storage,
             rx,
         ))

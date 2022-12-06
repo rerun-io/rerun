@@ -100,7 +100,7 @@ pub(crate) fn wgpu_options() -> egui_wgpu::WgpuConfiguration {
 }
 
 #[must_use]
-pub(crate) fn customize_eframe(cc: &eframe::CreationContext<'_>) -> re_ui::DesignTokens {
+pub(crate) fn customize_eframe(cc: &eframe::CreationContext<'_>) -> re_ui::ReUi {
     if let Some(render_state) = &cc.wgpu_render_state {
         use re_renderer::{config::RenderContextConfig, RenderContext};
 
@@ -123,5 +123,5 @@ pub(crate) fn customize_eframe(cc: &eframe::CreationContext<'_>) -> re_ui::Desig
         ));
     }
 
-    re_ui::apply_design_tokens(&cc.egui_ctx)
+    re_ui::ReUi::load_and_apply(&cc.egui_ctx)
 }

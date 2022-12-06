@@ -24,7 +24,7 @@ impl SelectionPanel {
     ) {
         let panel = egui::SidePanel::right("selection_view")
             .resizable(true)
-            .frame(ctx.design_tokens.panel_frame(egui_ctx));
+            .frame(ctx.re_ui.panel_frame());
 
         panel.show_animated(
             egui_ctx,

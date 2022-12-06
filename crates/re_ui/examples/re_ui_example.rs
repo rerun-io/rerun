@@ -16,14 +16,14 @@ fn main() {
         "re_ui example app",
         native_options,
         Box::new(move |cc| {
-            let _design_tokens = re_ui::apply_design_tokens(&cc.egui_ctx);
-            Box::new(TemplateApp { _design_tokens })
+            let _re_ui = re_ui::ReUi::load_and_apply(&cc.egui_ctx);
+            Box::new(TemplateApp { _re_ui })
         }),
     );
 }
 
 pub struct TemplateApp {
-    _design_tokens: re_ui::DesignTokens,
+    _re_ui: re_ui::ReUi,
 }
 
 impl eframe::App for TemplateApp {
