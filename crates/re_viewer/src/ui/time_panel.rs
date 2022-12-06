@@ -50,7 +50,7 @@ impl TimePanel {
         blueprint: &mut Blueprint,
         egui_ctx: &egui::Context,
     ) {
-        let panel_frame = ctx.design_tokens.panel_frame(egui_ctx);
+        let panel_frame = ctx.re_ui.panel_frame();
 
         let collapsed = egui::TopBottomPanel::bottom("time_panel_collapsed")
             .resizable(false)
@@ -824,7 +824,7 @@ fn loop_selection_ui(
     // TODO(emilk): click to toggle on/off
     // when off, you cannot modify, just drag out a new one.
 
-    let selection_color = crate::design_tokens::DesignTokens::loop_selection_color();
+    let selection_color = re_ui::ReUi::loop_selection_color();
 
     let mut did_interact = false;
 
@@ -1168,7 +1168,7 @@ pub fn paint_time_cursor(
     painter.add(egui::Shape::convex_polygon(
         triangle,
         stroke.color,
-        egui::Stroke::none(),
+        egui::Stroke::NONE,
     ));
     painter.vline(x, (y_min + w)..=y_max, stroke);
 }

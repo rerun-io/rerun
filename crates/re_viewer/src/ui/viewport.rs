@@ -354,7 +354,7 @@ impl ViewportBlueprint {
                 .scope(|ui| space_view_ui(ctx, ui, spaces_info, space_view))
                 .response;
 
-            let frame = ctx.design_tokens.hovering_frame(ui.style());
+            let frame = ctx.re_ui.hovering_frame();
             hovering_panel(ui, frame, response.rect, |ui| {
                 space_view_options_link(ctx, selection_panel_expanded, space_view_id, ui, "⛭");
             });
@@ -368,7 +368,7 @@ impl ViewportBlueprint {
                 .scope(|ui| space_view_ui(ctx, ui, spaces_info, space_view))
                 .response;
 
-            let frame = ctx.design_tokens.hovering_frame(ui.style());
+            let frame = ctx.re_ui.hovering_frame();
             hovering_panel(ui, frame, response.rect, |ui| {
                 if ui
                     .button("⬅")
@@ -553,7 +553,7 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
             .response;
 
         // Show buttons for maximize and space view options:
-        let frame = self.ctx.design_tokens.hovering_frame(ui.style());
+        let frame = self.ctx.re_ui.hovering_frame();
         hovering_panel(ui, frame, response.rect, |ui| {
             if ui
                 .button("🗖")
@@ -629,17 +629,14 @@ fn space_view_ui(
     space_view: &mut SpaceView,
 ) {
     let Some(space_info) = spaces_info.spaces.get(&space_view.space_path) else {
-        ui.centered(|ui| {
-            ui.label(ctx.design_tokens.warning_text(
-                format!("Unknown space {:?}", space_view.space_path),
-                ui.style(),
-            ));
+        ui.centered_and_justified(|ui| {
+            ui.label(ctx.re_ui.warning_text(format!("Unknown space {:?}", space_view.space_path)));
         });
         return;
     };
     let Some(latest_at) = ctx.rec_cfg.time_ctrl.time_int() else {
-        ui.centered(|ui| {
-            ui.label(ctx.design_tokens.warning_text("No time selected", ui.style()));
+        ui.centered_and_justified(|ui| {
+            ui.label(ctx.re_ui.warning_text("No time selected"));
         });
         return
     };
@@ -706,7 +703,7 @@ impl Blueprint {
     ) {
         let panel = egui::SidePanel::left("blueprint_panel")
             .resizable(true)
-            .frame(ctx.design_tokens.panel_frame(ui.ctx()))
+            .frame(ctx.re_ui.panel_frame())
             .min_width(120.0)
             .default_width(200.0);
 
