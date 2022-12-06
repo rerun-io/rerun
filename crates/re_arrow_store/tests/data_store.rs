@@ -87,6 +87,7 @@ const TEST_CONFIGS: &[DataStoreConfig] = &[
         index_bucket_size_bytes: 64,
         ..DataStoreConfig::const_default()
     },
+    // TODO: both
 ];
 
 // --- Scenarios ---

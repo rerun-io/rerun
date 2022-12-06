@@ -4,7 +4,7 @@ use arrow2::array::{Array, MutableArray, UInt64Vec};
 use polars::prelude::{DataFrame, Series};
 
 use re_log::debug;
-use re_log_types::{ComponentNameRef, ObjPath as EntityPath, Timeline};
+use re_log_types::{ComponentNameRef, ObjPath as EntityPath, TimeInt, Timeline};
 
 use crate::{ComponentBucket, ComponentTable, DataStore, IndexBucket, IndexTable, RowIndex};
 
@@ -105,7 +105,14 @@ impl IndexTable {
         at: i64,
         components: &[ComponentNameRef<'a>],
     ) -> HashMap<ComponentNameRef<'a>, RowIndex> {
-        let bucket = self.buckets.iter_mut().next().unwrap().1;
+        // TODO: explain why this cannot fail (and perhaps wrap in a method)
+        let (_, bucket) = self
+            .buckets
+            .range_mut(..=TimeInt::from(at))
+            .rev()
+            .take(1)
+            .next()
+            .unwrap();
         bucket.latest_at(at, components)
     }
 
