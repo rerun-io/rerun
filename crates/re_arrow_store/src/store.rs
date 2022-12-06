@@ -1,7 +1,8 @@
 use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::sync::Arc;
 
-use arrow2::array::{Array, Int64Vec, UInt64Vec};
+use arrow2::array::{Array, Int64Vec, MutableArray, UInt64Vec};
+use arrow2::bitmap::MutableBitmap;
 use arrow2::datatypes::DataType;
 
 use re_format::{format_bytes, format_number};
@@ -42,6 +43,39 @@ pub struct DataStoreConfig {
     ///
     /// See [`Self::DEFAULT`] for defaults.
     pub component_bucket_nb_rows: u64,
+
+    /// The maximum size of an index bucket before triggering a split.
+    ///
+    /// ⚠ When configuring this threshold, do keep in mind that index tables are always scoped
+    /// to a specific timeline _and_ a specific entity.
+    ///
+    /// This effectively controls two aspects of the runtime:
+    /// - how fine grained the garbage collection of indices is,
+    /// - and how many rows will have to be sorted in the worst case when an index gets out
+    ///   of order.
+    /// The lower the size, the more fine-grained the garbage collection is and smaller the
+    /// number of rows to sort gets, at the cost of more metadata overhead.
+    ///
+    /// Note that this cannot split a single huge row: if a user inserts a single row that's
+    /// larger than the threshold, then that bucket will become larger than the threshold, and
+    /// we will split from there on.
+    ///
+    /// See [`Self::const_default`] for defaults.
+    pub index_bucket_size_bytes: u64,
+    /// The maximum number of rows in a component bucket before triggering a split.
+    ///
+    /// ⚠ When configuring this threshold, do keep in mind that index tables are always scoped
+    /// to a specific timeline _and_ a specific entity.
+    ///
+    /// This effectively controls two aspects of the runtime:
+    /// - how fine grained the garbage collection of indices is,
+    /// - and how many rows will have to be sorted in the worst case when an index gets out
+    ///   of order.
+    /// The lower the size, the more fine-grained the garbage collection is and smaller the
+    /// number of rows to sort gets, at the cost of more metadata overhead.
+    ///
+    /// See [`Self::const_default`] for defaults.
+    pub index_bucket_nb_rows: u64,
 }
 
 impl Default for DataStoreConfig {
@@ -54,6 +88,8 @@ impl DataStoreConfig {
     pub const DEFAULT: Self = Self {
         component_bucket_size_bytes: 32 * 1024 * 1024, // 32MiB
         component_bucket_nb_rows: u64::MAX,
+        index_bucket_size_bytes: 32 * 1024, // 32kiB
+        index_bucket_nb_rows: 1024,
     };
 }
 
@@ -90,6 +126,21 @@ impl DataStore {
         }
     }
 
+    /// Returns the number of index rows stored across this entire store, i.e. the sum of
+    /// the number of rows across all of its index tables.
+    pub fn total_index_rows(&self) -> usize {
+        self.indices.values().map(|table| table.total_rows()).sum()
+    }
+
+    /// Returns the size of the index data stored across this entire store, i.e. the sum of
+    /// the size of the data stored across all of its index tables, in bytes.
+    pub fn total_index_size_bytes(&self) -> u64 {
+        self.indices
+            .values()
+            .map(|table| table.total_size_bytes())
+            .sum()
+    }
+
     /// Returns the number of component rows stored across this entire store, i.e. the sum of
     /// the number of rows across all of its component tables.
     pub fn total_component_rows(&self) -> u64 {
@@ -123,6 +174,15 @@ impl std::fmt::Display for DataStore {
         f.write_str(&indent::indent_all_by(4, format!("config: {config:?}\n")))?;
 
         {
+            f.write_str(&indent::indent_all_by(
+                4,
+                format!(
+                    "{} index tables, for a total of {} across {} total rows\n",
+                    self.indices.len(),
+                    format_bytes(self.total_index_size_bytes() as _),
+                    format_usize(self.total_index_rows())
+                ),
+            ))?;
             f.write_str(&indent::indent_all_by(4, "indices: [\n"))?;
             for index in indices.values() {
                 f.write_str(&indent::indent_all_by(8, "IndexTable {\n"))?;
@@ -136,7 +196,7 @@ impl std::fmt::Display for DataStore {
             f.write_str(&indent::indent_all_by(
                 4,
                 format!(
-                    "{} component tables, for a total of {} bytes across {} total rows\n",
+                    "{} component tables, for a total of {} across {} total rows\n",
                     self.components.len(),
                     format_bytes(self.total_component_size_bytes() as _),
                     format_number(self.total_component_rows() as _)
@@ -239,6 +299,12 @@ impl std::fmt::Display for IndexTable {
         f.write_fmt(format_args!("timeline: {}\n", timeline.name()))?;
         f.write_fmt(format_args!("entity: {}\n", ent_path))?;
 
+        f.write_fmt(format_args!(
+            "size: {} buckets for a total of {} across {} total rows\n",
+            self.buckets.len(),
+            format_bytes(self.total_size_bytes() as _),
+            format_usize(self.total_rows()),
+        ))?;
         f.write_str("buckets: [\n")?;
         for bucket in buckets.values() {
             f.write_str(&indent::indent_all_by(4, "IndexBucket {\n"))?;
@@ -248,6 +314,26 @@ impl std::fmt::Display for IndexTable {
         f.write_str("]")?;
 
         Ok(())
+    }
+}
+
+impl IndexTable {
+    /// Returns the number of rows stored across this entire table, i.e. the sum of the number
+    /// of rows stored across all of its buckets.
+    pub fn total_rows(&self) -> usize {
+        self.buckets
+            .iter()
+            .map(|(_, bucket)| bucket.total_rows())
+            .sum()
+    }
+
+    /// Returns the size of data stored across this entire table, i.e. the sum of the size of
+    /// the data stored across all of its buckets, in bytes.
+    pub fn total_size_bytes(&self) -> u64 {
+        self.buckets
+            .iter()
+            .map(|(_, bucket)| bucket.total_size_bytes())
+            .sum()
     }
 }
 
@@ -296,6 +382,12 @@ impl std::fmt::Display for IndexBucket {
         } = self;
 
         f.write_fmt(format_args!(
+            "size: {} across {} rows\n",
+            format_bytes(self.total_size_bytes() as _),
+            format_usize(self.total_rows()),
+        ))?;
+
+        f.write_fmt(format_args!(
             "time range: from {} to {} (all inclusive)\n",
             timeline.typ().format(time_range.min),
             timeline.typ().format(time_range.max),
@@ -340,6 +432,37 @@ impl std::fmt::Display for IndexBucket {
         }
 
         Ok(())
+    }
+}
+
+impl IndexBucket {
+    /// Returns the number of rows stored across this bucket.
+    pub fn total_rows(&self) -> usize {
+        self.times.len()
+            + self
+                .indices
+                .values()
+                .map(|index| index.len())
+                .sum::<usize>()
+    }
+
+    /// Returns the size of the data stored across this bucket, in bytes.
+    // NOTE: for mutable, non-erased arrays, it's actually easier to compute ourselves.
+    pub fn total_size_bytes(&self) -> u64 {
+        fn size_of_validity(bitmap: Option<&MutableBitmap>) -> u64 {
+            bitmap.map_or(0, |bitmap| std::mem::size_of_val(bitmap.as_slice())) as _
+        }
+        fn size_of_values<T>(values: &Vec<T>) -> u64 {
+            std::mem::size_of_val(values.as_slice()) as _
+        }
+
+        size_of_validity(self.times.validity())
+            + size_of_values(self.times.values())
+            + self
+                .indices
+                .values()
+                .map(|index| size_of_validity(index.validity()) + size_of_values(index.values()))
+                .sum::<u64>()
     }
 }
 
@@ -438,7 +561,7 @@ impl std::fmt::Display for ComponentTable {
         }
 
         f.write_fmt(format_args!(
-            "size: {} buckets for a total of {} bytes across {} total rows\n",
+            "size: {} buckets for a total of {} across {} total rows\n",
             self.buckets.len(),
             format_bytes(self.total_size_bytes() as _),
             format_number(self.total_rows() as _),
@@ -500,7 +623,7 @@ impl std::fmt::Display for ComponentBucket {
         } = self;
 
         f.write_fmt(format_args!(
-            "size: {} bytes across {} rows\n",
+            "size: {} across {} rows\n",
             format_bytes(self.total_size_bytes() as _),
             format_number(self.total_rows() as _),
         ))?;
