@@ -679,7 +679,7 @@ impl Blueprint {
         self.blueprint_panel(ctx, ui, &spaces_info);
 
         let viewport_frame = egui::Frame {
-            fill: ui.style().visuals.window_fill(),
+            fill: ui.style().visuals.panel_fill,
             ..Default::default()
         };
 

@@ -659,7 +659,7 @@ impl AppState {
         time_panel.show_panel(&mut ctx, blueprint, egui_ctx);
 
         let central_panel_frame = egui::Frame {
-            fill: egui_ctx.style().visuals.window_fill(),
+            fill: egui_ctx.style().visuals.panel_fill,
             inner_margin: egui::style::Margin::same(0.0),
             ..Default::default()
         };

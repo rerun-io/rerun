@@ -68,7 +68,7 @@ impl ReUi {
     pub fn panel_frame(&self) -> egui::Frame {
         let style = self.egui_ctx.style();
         egui::Frame {
-            fill: style.visuals.window_fill(),
+            fill: style.visuals.panel_fill,
             inner_margin: egui::style::Margin::same(4.0),
             ..Default::default()
         }
