@@ -1165,7 +1165,7 @@ pub fn paint_time_cursor(
     painter.add(egui::Shape::convex_polygon(
         triangle,
         stroke.color,
-        egui::Stroke::none(),
+        egui::Stroke::NONE,
     ));
     painter.vline(x, (y_min + w)..=y_max, stroke);
 }

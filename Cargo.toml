@@ -25,13 +25,13 @@ opt-level = 2
 debug = true
 
 [patch.crates-io]
-# 2022-11-30 - table improvements
-eframe = { git = "https://github.com/emilk/egui", rev = "7133818c59269fee8cff8d182e776bda8858a727" }
-egui = { git = "https://github.com/emilk/egui", rev = "7133818c59269fee8cff8d182e776bda8858a727" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "7133818c59269fee8cff8d182e776bda8858a727" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "7133818c59269fee8cff8d182e776bda8858a727" }
-emath = { git = "https://github.com/emilk/egui", rev = "7133818c59269fee8cff8d182e776bda8858a727" }
-epaint = { git = "https://github.com/emilk/egui", rev = "7133818c59269fee8cff8d182e776bda8858a727" }
+# 2022-12-06 - last fixes before egui 0.20 release
+eframe = { git = "https://github.com/emilk/egui", rev = "9145893066d622aa6c39391346aef34c6ae103db" }
+egui = { git = "https://github.com/emilk/egui", rev = "9145893066d622aa6c39391346aef34c6ae103db" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "9145893066d622aa6c39391346aef34c6ae103db" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "9145893066d622aa6c39391346aef34c6ae103db" }
+emath = { git = "https://github.com/emilk/egui", rev = "9145893066d622aa6c39391346aef34c6ae103db" }
+epaint = { git = "https://github.com/emilk/egui", rev = "9145893066d622aa6c39391346aef34c6ae103db" }
 
 # eframe = { path = "../../egui/crates/eframe" }
 # egui = { path = "../../egui/crates/egui" }

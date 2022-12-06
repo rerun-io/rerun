@@ -629,13 +629,13 @@ fn space_view_ui(
     space_view: &mut SpaceView,
 ) {
     let Some(space_info) = spaces_info.spaces.get(&space_view.space_path) else {
-        ui.centered(|ui| {
+        ui.centered_and_justified(|ui| {
             ui.label(ctx.re_ui.warning_text(format!("Unknown space {:?}", space_view.space_path)));
         });
         return;
     };
     let Some(latest_at) = ctx.rec_cfg.time_ctrl.time_int() else {
-        ui.centered(|ui| {
+        ui.centered_and_justified(|ui| {
             ui.label(ctx.re_ui.warning_text("No time selected"));
         });
         return
