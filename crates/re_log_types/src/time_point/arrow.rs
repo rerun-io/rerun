@@ -1,7 +1,7 @@
 use arrow2::{
     array::{
-        Int64Array, MutableArray, MutablePrimitiveArray, MutableStructArray, MutableUtf8Array,
-        StructArray, UInt8Array, Utf8Array,
+        Int64Array, ListArray, MutableArray, MutableListArray, MutablePrimitiveArray,
+        MutableStructArray, MutableUtf8Array, StructArray, UInt8Array, Utf8Array,
     },
     datatypes::{DataType, Field},
 };
@@ -25,20 +25,20 @@ impl ArrowField for TimePoint {
         //);
         let time_type = DataType::UInt8;
 
-        DataType::Extension(
-            "TimePoint".to_owned(),
-            Box::new(DataType::Struct(vec![
-                Field::new("timeline", DataType::Utf8, false),
-                Field::new("type", time_type, false),
-                Field::new("time", DataType::Int64, false),
-            ])),
-            None,
-        )
+        let struct_type = DataType::Struct(vec![
+            Field::new("timeline", DataType::Utf8, false),
+            Field::new("type", time_type, false),
+            Field::new("time", DataType::Int64, false),
+        ]);
+
+        let list_type = ListArray::<i32>::default_datatype(struct_type);
+
+        DataType::Extension("TimePoint".to_owned(), Box::new(list_type), None)
     }
 }
 
 impl ArrowSerialize for TimePoint {
-    type MutableArrayType = MutableStructArray;
+    type MutableArrayType = MutableListArray<i32, MutableStructArray>;
 
     #[inline]
     fn new_array() -> Self::MutableArrayType {
@@ -46,31 +46,41 @@ impl ArrowSerialize for TimePoint {
         let time_type_array: Box<dyn MutableArray> = Box::new(MutablePrimitiveArray::<u8>::new());
         let time_array: Box<dyn MutableArray> = Box::new(MutablePrimitiveArray::<i64>::new());
 
-        MutableStructArray::try_new(
-            <TimePoint as ArrowField>::data_type(),
-            vec![timeline_array, time_type_array, time_array],
-            None,
-        )
-        .unwrap()
+        let data_type = Self::data_type();
+        if let DataType::List(inner) = data_type.to_logical_type() {
+            let str_array = MutableStructArray::try_new(
+                inner.data_type.clone(),
+                vec![timeline_array, time_type_array, time_array],
+                None,
+            )
+            .unwrap();
+            MutableListArray::new_from(str_array, data_type, 0)
+        } else {
+            panic!("Outer datatype should be List");
+        }
     }
 
     fn arrow_serialize(
         v: &<Self as ArrowField>::Type,
         array: &mut Self::MutableArrayType,
     ) -> arrow2::error::Result<()> {
+        let struct_array = array.mut_values();
         for (timeline, time) in &v.0 {
             <String as ArrowSerialize>::arrow_serialize(
                 &timeline.name().to_string(),
-                array.value(0).unwrap(),
+                struct_array.value(0).unwrap(),
             )?;
             <u8 as ArrowSerialize>::arrow_serialize(
                 &(timeline.typ() as u8),
-                array.value(1).unwrap(),
+                struct_array.value(1).unwrap(),
             )?;
-            <i64 as ArrowSerialize>::arrow_serialize(&time.as_i64(), array.value(2).unwrap())?;
-            array.push(true);
+            <i64 as ArrowSerialize>::arrow_serialize(
+                &time.as_i64(),
+                struct_array.value(2).unwrap(),
+            )?;
+            struct_array.push(true);
         }
-        Ok(())
+        array.try_push_valid()
     }
 }
 
@@ -121,15 +131,17 @@ impl arrow2_convert::deserialize::ArrowArray for TimePointArray {
 
     #[inline]
     fn iter_from_array_ref(b: &dyn arrow2::array::Array) -> <&Self as IntoIterator>::IntoIter {
-        let arr = b.as_any().downcast_ref::<StructArray>().unwrap();
-        let values = arr.values();
-        assert_eq!(arr.validity(), None, "TimePoints should be non-null");
+        let arr = b.as_any().downcast_ref::<ListArray<i32>>().unwrap();
+        todo!();
 
-        TimePointIterator {
-            timelines: Utf8Array::<i32>::iter_from_array_ref(&*values[0]),
-            types: UInt8Array::iter_from_array_ref(&*values[1]),
-            times: Int64Array::iter_from_array_ref(&*values[2]),
-        }
+        //let values = arr.values();
+        //assert_eq!(arr.validity(), None, "TimePoints should be non-null");
+
+        //TimePointIterator {
+        //    timelines: Utf8Array::<i32>::iter_from_array_ref(&*values[0]),
+        //    types: UInt8Array::iter_from_array_ref(&*values[1]),
+        //    times: Int64Array::iter_from_array_ref(&*values[2]),
+        //}
     }
 }
 
@@ -149,15 +161,25 @@ fn test_timepoint_roundtrip() {
     use arrow2::array::Array;
     use arrow2_convert::{deserialize::TryIntoCollection, serialize::TryIntoArrow};
 
-    let time_points_in = vec![TimePoint(
-        [
-            (Timeline::new("log_time", TimeType::Time), TimeInt(100)),
-            (Timeline::new("seq1", TimeType::Sequence), 1234.into()),
-        ]
-        .into(),
-    )];
+    let time_points_in = vec![
+        TimePoint(
+            [
+                (Timeline::new("log_time", TimeType::Time), TimeInt(100)),
+                (Timeline::new("seq1", TimeType::Sequence), 1234.into()),
+            ]
+            .into(),
+        ),
+        TimePoint(
+            [
+                (Timeline::new("log_time", TimeType::Time), TimeInt(200)),
+                (Timeline::new("seq1", TimeType::Sequence), 2345.into()),
+            ]
+            .into(),
+        ),
+    ];
 
     let array: Box<dyn Array> = time_points_in.try_into_arrow().unwrap();
-    let time_points_out: Vec<TimePoint> = TryIntoCollection::try_into_collection(array).unwrap();
-    assert_eq!(time_points_in, time_points_out);
+    dbg!(&array);
+    //let time_points_out: Vec<TimePoint> = TryIntoCollection::try_into_collection(array).unwrap();
+    //assert_eq!(time_points_in, time_points_out);
 }
