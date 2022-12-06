@@ -871,41 +871,39 @@ fn top_bar_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &mut App) {
                     input.consume_shortcut(&TOGGLE_BLUEPRINT_PANEL);
             }
 
-            use crate::ui::icons;
-
             // From right-to-left:
-            medium_toggle_icon_button(
-                ui,
-                &app.re_ui,
-                &icons::RIGHT_PANEL_TOGGLE,
-                &mut blueprint.selection_panel_expanded,
-            )
-            .on_hover_text(format!(
-                "Toggle Selection View ({})",
-                ui.ctx().format_shortcut(&TOGGLE_SELECTION_PANEL)
-            ));
+            app.re_ui
+                .medium_icon_toggle_button(
+                    ui,
+                    &re_ui::icons::RIGHT_PANEL_TOGGLE,
+                    &mut blueprint.selection_panel_expanded,
+                )
+                .on_hover_text(format!(
+                    "Toggle Selection View ({})",
+                    ui.ctx().format_shortcut(&TOGGLE_SELECTION_PANEL)
+                ));
 
-            medium_toggle_icon_button(
-                ui,
-                &app.re_ui,
-                &icons::BOTTOM_PANEL_TOGGLE,
-                &mut blueprint.time_panel_expanded,
-            )
-            .on_hover_text(format!(
-                "Toggle Timeline View ({})",
-                ui.ctx().format_shortcut(&TOGGLE_TIME_PANEL)
-            ));
+            app.re_ui
+                .medium_icon_toggle_button(
+                    ui,
+                    &re_ui::icons::BOTTOM_PANEL_TOGGLE,
+                    &mut blueprint.time_panel_expanded,
+                )
+                .on_hover_text(format!(
+                    "Toggle Timeline View ({})",
+                    ui.ctx().format_shortcut(&TOGGLE_TIME_PANEL)
+                ));
 
-            medium_toggle_icon_button(
-                ui,
-                &app.re_ui,
-                &icons::LEFT_PANEL_TOGGLE,
-                &mut blueprint.blueprint_panel_expanded,
-            )
-            .on_hover_text(format!(
-                "Toggle Blueprint View ({})",
-                ui.ctx().format_shortcut(&TOGGLE_BLUEPRINT_PANEL)
-            ));
+            app.re_ui
+                .medium_icon_toggle_button(
+                    ui,
+                    &re_ui::icons::LEFT_PANEL_TOGGLE,
+                    &mut blueprint.blueprint_panel_expanded,
+                )
+                .on_hover_text(format!(
+                    "Toggle Blueprint View ({})",
+                    ui.ctx().format_shortcut(&TOGGLE_BLUEPRINT_PANEL)
+                ));
 
             ui.vertical_centered(|ui| {
                 ui.style_mut().wrap = Some(false);
@@ -914,29 +912,6 @@ fn top_bar_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &mut App) {
             });
         }
     });
-}
-
-fn medium_toggle_icon_button(
-    ui: &mut egui::Ui,
-    re_ui: &re_ui::ReUi,
-    icon: &crate::ui::icons::Icon,
-    selected: &mut bool,
-) -> egui::Response {
-    let size_points = egui::Vec2::splat(16.0); // TODO(emilk): get from re_ui::ReUi
-
-    let image = re_ui.static_image_cache.lock().get(icon.id, icon.png_bytes);
-    let texture_id = image.texture_id(ui.ctx());
-    let tint = if *selected {
-        ui.visuals().widgets.inactive.fg_stroke.color
-    } else {
-        egui::Color32::from_gray(100) // TODO(emilk): get from re_ui::ReUi
-    };
-    let mut response = ui.add(egui::ImageButton::new(texture_id, size_points).tint(tint));
-    if response.clicked() {
-        *selected = !*selected;
-        response.mark_changed();
-    }
-    response
 }
 
 // ----------------------------------------------------------------------------

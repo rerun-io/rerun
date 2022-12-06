@@ -1,7 +1,9 @@
 mod design_tokens;
+pub mod icons;
 mod static_image_cache;
 
 pub use design_tokens::DesignTokens;
+pub use icons::Icon;
 pub use static_image_cache::StaticImageCache;
 
 // ---------------------------------------------------------------------------
@@ -130,6 +132,7 @@ impl ReUi {
             }
             #[cfg(not(target_os = "macos"))]
             {
+                _ = fullscreen;
                 false
             }
         };
@@ -154,5 +157,28 @@ impl ReUi {
         };
 
         TopBarStyle { height, indent }
+    }
+
+    pub fn medium_icon_toggle_button(
+        &self,
+        ui: &mut egui::Ui,
+        icon: &Icon,
+        selected: &mut bool,
+    ) -> egui::Response {
+        let size_points = egui::Vec2::splat(16.0); // TODO(emilk): get from design tokens
+
+        let image = self.static_image_cache.lock().get(icon.id, icon.png_bytes);
+        let texture_id = image.texture_id(ui.ctx());
+        let tint = if *selected {
+            ui.visuals().widgets.inactive.fg_stroke.color
+        } else {
+            egui::Color32::from_gray(100) // TODO(emilk): get from design tokens
+        };
+        let mut response = ui.add(egui::ImageButton::new(texture_id, size_points).tint(tint));
+        if response.clicked() {
+            *selected = !*selected;
+            response.mark_changed();
+        }
+        response
     }
 }

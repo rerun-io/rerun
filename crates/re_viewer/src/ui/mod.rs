@@ -26,7 +26,6 @@ pub(crate) mod kb_shortcuts;
 pub(crate) mod selection_panel;
 pub(crate) mod time_panel;
 
-pub mod icons;
 pub(crate) mod view_2d;
 pub(crate) mod view_3d;
 mod view_plot;
