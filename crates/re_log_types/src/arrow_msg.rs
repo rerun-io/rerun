@@ -37,7 +37,7 @@ impl serde::Serialize for ArrowMsg {
 
         let mut inner = serializer.serialize_tuple(2)?;
         inner.serialize_element(&self.msg_id)?;
-        inner.serialize_element(buf.as_slice())?;
+        inner.serialize_element(&serde_bytes::ByteBuf::from(buf))?;
         inner.end()
     }
 }
@@ -63,7 +63,7 @@ impl<'de> serde::Deserialize<'de> for ArrowMsg {
                 A: serde::de::SeqAccess<'de>,
             {
                 let msg_id: Option<MsgId> = seq.next_element()?;
-                let buf: Option<&[u8]> = seq.next_element()?;
+                let buf: Option<serde_bytes::ByteBuf> = seq.next_element()?;
 
                 if let (Some(msg_id), Some(buf)) = (msg_id, buf) {
                     let mut cursor = std::io::Cursor::new(buf);
@@ -104,11 +104,53 @@ impl PartialEq for ArrowMsg {
 #[cfg(test)]
 #[cfg(feature = "serde")]
 mod tests {
+    use serde_test::{assert_tokens, Token};
+
     use super::*;
     use crate::{datagen::*, ObjPath};
 
     #[test]
-    fn test_serde_roundtrip() {
+    fn test_roundtrip_empty() {
+        let schema = Schema::default();
+        let chunk = Chunk::new(vec![]);
+        let msg = ArrowMsg {
+            msg_id: MsgId::ZERO,
+            schema,
+            chunk,
+        };
+
+        assert_tokens(
+            &msg,
+            &[
+                Token::Tuple { len: 2 },
+                // MsgId portion
+                Token::NewtypeStruct { name: "MsgId" },
+                Token::Struct {
+                    name: "Tuid",
+                    len: 2,
+                },
+                Token::Str("time_ns"),
+                Token::U64(0),
+                Token::Str("inc"),
+                Token::U64(0),
+                Token::StructEnd,
+                // Arrow buffer portion. This is flatbuffers encoded schema+chunk.
+                Token::Bytes(&[
+                    255, 255, 255, 255, 48, 0, 0, 0, 4, 0, 0, 0, 242, 255, 255, 255, 20, 0, 0, 0,
+                    4, 0, 1, 0, 0, 0, 10, 0, 11, 0, 8, 0, 10, 0, 4, 0, 248, 255, 255, 255, 12, 0,
+                    0, 0, 8, 0, 8, 0, 0, 0, 4, 0, 0, 0, 0, 0, 255, 255, 255, 255, 72, 0, 0, 0, 8,
+                    0, 0, 0, 0, 0, 0, 0, 242, 255, 255, 255, 20, 0, 0, 0, 4, 0, 3, 0, 0, 0, 10, 0,
+                    11, 0, 8, 0, 10, 0, 4, 0, 242, 255, 255, 255, 28, 0, 0, 0, 16, 0, 0, 0, 0, 0,
+                    10, 0, 12, 0, 0, 0, 4, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    255, 255, 255, 255, 0, 0, 0, 0,
+                ]),
+                Token::TupleEnd,
+            ],
+        );
+    }
+
+    #[test]
+    fn test_roundtrip_payload() {
         let (schema, chunk) = build_message(
             &ObjPath::from("rects"),
             [build_frame_nr(0)],

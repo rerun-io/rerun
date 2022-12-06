@@ -23,7 +23,12 @@ puffin = ["dep:puffin"]
 save = ["anyhow", "rmp-serde", "serde", "zstd"]
 
 ## Enable (de)serialization using serde.
-serde = ["dep:serde", "re_string_interner/serde", "re_tuid/serde"]
+serde = [
+  "dep:serde",
+  "dep:serde_bytes",
+  "re_string_interner/serde",
+  "re_tuid/serde",
+]
 
 ## Enables the `datagen` module, which exposes a number of tools for generating random data for
 ## tests and benchmarks.
@@ -58,6 +63,7 @@ macaw = { version = "0.17", optional = true }
 puffin = { version = "0.14", optional = true }
 rmp-serde = { version = "1", optional = true }
 serde = { version = "1", features = ["derive", "rc"], optional = true }
+serde_bytes = { version = "0.11", optional = true }
 rand = { version = "0.8", optional = true }
 
 # Native dependencies:
@@ -67,3 +73,6 @@ zstd = { version = "0.11.0", optional = true } # native only
 # Web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 ruzstd = { version = "0.3.0", optional = true } # works on wasm
+
+[dev-dependencies]
+serde_test = { version = "1" }
