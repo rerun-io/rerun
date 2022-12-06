@@ -77,4 +77,19 @@ impl ReUi {
     pub fn loop_selection_color() -> egui::Color32 {
         egui::Color32::from_rgb(40, 200, 130)
     }
+
+    /// Paint a watermark
+    pub fn paint_watermark(&self) {
+        use egui::*;
+        let logo = self.rerun_logo();
+        let screen_rect = self.egui_ctx.input().screen_rect;
+        let size = logo.size_vec2();
+        let rect = Align2::RIGHT_BOTTOM
+            .align_size_within_rect(size, screen_rect)
+            .translate(-Vec2::splat(16.0));
+        let mut mesh = Mesh::with_texture(logo.texture_id(&self.egui_ctx));
+        let uv = Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0));
+        mesh.add_rect_with_uv(rect, uv, Color32::WHITE);
+        self.egui_ctx.debug_painter().add(Shape::mesh(mesh));
+    }
 }
