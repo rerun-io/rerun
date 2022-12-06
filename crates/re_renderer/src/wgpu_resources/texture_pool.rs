@@ -2,7 +2,10 @@ use std::hash::Hash;
 
 use crate::debug_label::DebugLabel;
 
-use super::{dynamic_resource_pool::DynamicResourcePool, resource::*};
+use super::{
+    dynamic_resource_pool::{DynamicResourcePool, SizedResourceDesc},
+    resource::*,
+};
 
 slotmap::new_key_type! { pub struct GpuTextureHandle; }
 
@@ -40,6 +43,30 @@ pub struct TextureDesc {
 
     /// Allowed usages of the texture. If used in other ways, the operation will panic.
     pub usage: wgpu::TextureUsages,
+}
+
+impl SizedResourceDesc for TextureDesc {
+    /// Number of bytes this texture is expected to take.
+    ///
+    /// The actual number might be both bigger (padding) and lower (gpu sided compression).
+    fn resource_size_in_bytes(&self) -> u64 {
+        let mut size_in_bytes = 0;
+        let format_desc = self.format.describe();
+        let pixels_per_block =
+            format_desc.block_dimensions.0 as u64 * format_desc.block_dimensions.1 as u64;
+
+        for mip in 0..self.size.max_mips(self.dimension) {
+            let mip_size = self
+                .size
+                .mip_level_size(mip, self.dimension == wgpu::TextureDimension::D3)
+                .physical_size(self.format);
+            let num_pixels = mip_size.width * mip_size.height * mip_size.depth_or_array_layers;
+            let num_blocks = num_pixels as u64 / pixels_per_block;
+            size_in_bytes += num_blocks * format_desc.block_size as u64;
+        }
+
+        size_in_bytes
+    }
 }
 
 impl TextureDesc {
@@ -97,5 +124,13 @@ impl GpuTexturePool {
     /// without inrementing the ref-count (note the returned reference!).
     pub(super) fn get_strong_handle(&self, handle: GpuTextureHandle) -> &GpuTextureHandleStrong {
         self.pool.get_strong_handle(handle)
+    }
+
+    pub fn num_resources(&self) -> usize {
+        self.pool.num_resources()
+    }
+
+    pub fn total_gpu_size_in_bytes(&self) -> u64 {
+        self.pool.total_resource_size_in_bytes()
     }
 }
