@@ -63,24 +63,6 @@ impl DataStore {
 
         Ok(())
     }
-
-    /// Returns the number of component rows stored across this entire store, i.e. the sum of
-    /// the number of rows across all of its component tables.
-    pub fn total_component_rows(&self) -> usize {
-        self.components
-            .values()
-            .map(|table| table.total_rows())
-            .sum()
-    }
-
-    /// Returns the size of the data stored across this entire store, i.e. the sum of the size
-    /// of the data stored across all of its component tables, in bytes.
-    pub fn total_component_size_bytes(&self) -> u64 {
-        self.components
-            .values()
-            .map(|table| table.total_size_bytes())
-            .sum()
-    }
 }
 
 fn extract_timelines(
@@ -209,20 +191,9 @@ impl IndexBucket {
 
         // append components to secondary indices (2-way merge)
 
-        // TODO(cmc): this is the worst explanation I've ever seen.
-
-        // Step 1: for all row indices, check whether the index for the associated component
-        // exists:
-        // - if it does, append the new row index to it
-        // - otherwise, create a new one, fill it with nulls, and append the new row index to it
+        // 2-way merge, step1: left-to-right
         //
-        // After this step, we are guaranteed that all new row indices have been inserted into
-        // the components' indices.
-        //
-        // What we are _not_ guaranteed, though, is that existing component indices that weren't
-        // affected by this update are appended with null values so that they stay aligned with
-        // the length of the time index.
-        // Step 2 below takes care of that.
+        // push new row indices to their associated secondary index
         for (name, row_idx) in row_indices {
             let index = self.indices.entry((*name).to_owned()).or_insert_with(|| {
                 let mut index = UInt64Vec::default();
@@ -232,10 +203,9 @@ impl IndexBucket {
             index.push(Some(*row_idx));
         }
 
-        // Step 2: for all component indices, check whether they were affected by the current
-        // insertion:
-        // - if they weren't, append null values appropriately
-        // - otherwise, do nothing, step 1 already took care of it
+        // 2-way merge, step2: right-to-left
+        //
+        // fill unimpacted secondary indices with null values
         for (name, index) in &mut self.indices {
             if !row_indices.contains_key(name.as_str()) {
                 index.push_null();
@@ -277,6 +247,8 @@ impl ComponentTable {
         timelines: &[(Timeline, TimeInt)],
         data: &dyn Array,
     ) -> anyhow::Result<RowIndex> {
+        // All component tables spawn with an initial bucket at row offset 0, thus this cannot
+        // fail.
         let (row_offset, bucket) = self.buckets.back().unwrap();
 
         let size = bucket.total_size_bytes();
@@ -287,12 +259,13 @@ impl ComponentTable {
 
         if size_overflow || len_overflow {
             debug!(
+                name = self.name.as_str(),
                 ?config,
                 size,
                 size_overflow,
                 len,
                 len_overflow,
-                "allocating new bucket, previous one overflowed"
+                "allocating new component bucket, previous one overflowed"
             );
 
             let row_offset = row_offset + len;
@@ -302,26 +275,13 @@ impl ComponentTable {
             ));
         }
 
+        // Two possible cases:
+        // - If the table has not just underwent an overflow, then this is panic-safe for the
+        //   same reason as above: all component tables spawn with an initial bucket at row
+        //   offset 0, thus this cannot fail.
+        // - If the table has just overflowed, then we've just pushed a bucket to the dequeue.
         let (_, bucket) = self.buckets.back_mut().unwrap();
         bucket.insert(timelines, data)
-    }
-
-    /// Returns the number of rows stored across this entire table, i.e. the sum of the number
-    /// of rows stored across all of its buckets.
-    pub fn total_rows(&self) -> usize {
-        self.buckets
-            .iter()
-            .map(|(_, bucket)| bucket.total_rows())
-            .sum()
-    }
-
-    /// Returns the size of data stored across this entire table, i.e. the sum of the size of
-    /// the data stored across all of its buckets, in bytes.
-    pub fn total_size_bytes(&self) -> u64 {
-        self.buckets
-            .iter()
-            .map(|(_, bucket)| bucket.total_size_bytes())
-            .sum()
     }
 }
 
@@ -377,17 +337,5 @@ impl ComponentBucket {
         self.data = concatenate(&[&*self.data, data])?;
 
         Ok(self.row_offset + self.data.len() as u64 - 1)
-    }
-
-    /// Returns the number of rows stored across this bucket.
-    pub fn total_rows(&self) -> usize {
-        self.data.len()
-    }
-
-    /// Returns the size of the data stored across this bucket, in bytes.
-    pub fn total_size_bytes(&self) -> u64 {
-        // TODO: test this cause the docs and online discussions are not that clear to me with
-        // regards to the limitations here
-        arrow2::compute::aggregate::estimated_bytes_size(&*self.data) as u64
     }
 }

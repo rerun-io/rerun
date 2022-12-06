@@ -4,6 +4,7 @@ use std::sync::Arc;
 use arrow2::array::{Array, Int64Vec, UInt64Vec};
 use arrow2::datatypes::DataType;
 
+use re_format::{format_bytes_base2, format_usize};
 use re_log_types::{
     ObjPath as EntityPath, ObjPathHash as EntityPathHash, TimeInt, TimeRange, Timeline,
 };
@@ -87,6 +88,24 @@ impl DataStore {
             components: HashMap::default(),
         }
     }
+
+    /// Returns the number of component rows stored across this entire store, i.e. the sum of
+    /// the number of rows across all of its component tables.
+    pub fn total_component_rows(&self) -> usize {
+        self.components
+            .values()
+            .map(|table| table.total_rows())
+            .sum()
+    }
+
+    /// Returns the size of the component data stored across this entire store, i.e. the sum of
+    /// the size of the data stored across all of its component tables, in bytes.
+    pub fn total_component_size_bytes(&self) -> u64 {
+        self.components
+            .values()
+            .map(|table| table.total_size_bytes())
+            .sum()
+    }
 }
 
 impl std::fmt::Display for DataStore {
@@ -118,8 +137,8 @@ impl std::fmt::Display for DataStore {
                 format!(
                     "{} component tables, for a total of {} bytes across {} total rows\n",
                     self.components.len(),
-                    self.total_component_size_bytes(),
-                    self.total_component_rows()
+                    format_bytes_base2(self.total_component_size_bytes() as _),
+                    format_usize(self.total_component_rows())
                 ),
             ))?;
             f.write_str(&indent::indent_all_by(4, "components: [\n"))?;
@@ -413,8 +432,8 @@ impl std::fmt::Display for ComponentTable {
         f.write_fmt(format_args!(
             "size: {} buckets for a total of {} bytes across {} total rows\n",
             self.buckets.len(),
-            self.total_size_bytes(),
-            self.total_rows(),
+            format_bytes_base2(self.total_size_bytes() as _),
+            format_usize(self.total_rows()),
         ))?;
         f.write_str("buckets: [\n")?;
         for (_, bucket) in buckets {
@@ -428,12 +447,32 @@ impl std::fmt::Display for ComponentTable {
     }
 }
 
+impl ComponentTable {
+    /// Returns the number of rows stored across this entire table, i.e. the sum of the number
+    /// of rows stored across all of its buckets.
+    pub fn total_rows(&self) -> usize {
+        self.buckets
+            .iter()
+            .map(|(_, bucket)| bucket.total_rows())
+            .sum()
+    }
+
+    /// Returns the size of data stored across this entire table, i.e. the sum of the size of
+    /// the data stored across all of its buckets, in bytes.
+    pub fn total_size_bytes(&self) -> u64 {
+        self.buckets
+            .iter()
+            .map(|(_, bucket)| bucket.total_size_bytes())
+            .sum()
+    }
+}
+
 /// A `ComponentBucket` holds a size-delimited (data size) chunk of a [`ComponentTable`].
 #[derive(Debug)]
 pub struct ComponentBucket {
     /// The component's name, for debugging purposes.
     pub(crate) name: Arc<String>,
-    /// The offset of this bucket is the global table, for debugging purposes.
+    /// The offset of this bucket in the global table, for debugging purposes.
     pub(crate) row_offset: RowIndex,
 
     /// The time ranges (plural!) covered by this bucket.
@@ -457,8 +496,8 @@ impl std::fmt::Display for ComponentBucket {
 
         f.write_fmt(format_args!(
             "size: {} bytes across {} rows\n",
-            self.total_size_bytes(),
-            self.total_rows(),
+            format_bytes_base2(self.total_size_bytes() as _),
+            format_usize(self.total_rows()),
         ))?;
 
         f.write_fmt(format_args!(
@@ -495,5 +534,19 @@ impl std::fmt::Display for ComponentBucket {
         }
 
         Ok(())
+    }
+}
+
+impl ComponentBucket {
+    /// Returns the number of rows stored across this bucket.
+    pub fn total_rows(&self) -> usize {
+        self.data.len()
+    }
+
+    /// Returns the size of the data stored across this bucket, in bytes.
+    pub fn total_size_bytes(&self) -> u64 {
+        // TODO: test this cause the docs and online discussions are not that clear to me with
+        // regards to the limitations here
+        arrow2::compute::aggregate::estimated_bytes_size(&*self.data) as u64
     }
 }

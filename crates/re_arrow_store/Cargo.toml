@@ -9,11 +9,12 @@ publish = false
 [features]
 ## Enables the `datagen` module, which exposes a number of tools for generating random data for
 ## tests and benchmarks.
-default = []
+default = ["datagen"] # TODO: remove
 datagen = ["dep:rand"]
 
 [dependencies]
 # Rerun
+re_format = { path = "../re_format" }
 re_log = { path = "../re_log" }
 re_log_types = { path = "../re_log_types" }
 

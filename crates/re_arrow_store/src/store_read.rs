@@ -249,7 +249,7 @@ impl IndexBucket {
 // --- Components ---
 
 impl ComponentTable {
-    pub fn get(&self, row_idx: u64) -> Option<Box<dyn Array>> {
+    pub fn get(&self, row_idx: RowIndex) -> Option<Box<dyn Array>> {
         let mut bucket_nr = self
             .buckets
             .partition_point(|(row_offset, _)| row_idx >= *row_offset);
