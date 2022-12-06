@@ -2,7 +2,10 @@ use std::hash::Hash;
 
 use crate::debug_label::DebugLabel;
 
-use super::{dynamic_resource_pool::DynamicResourcePool, resource::*};
+use super::{
+    dynamic_resource_pool::{DynamicResourcePool, SizedResourceDesc},
+    resource::*,
+};
 
 slotmap::new_key_type! { pub struct GpuBufferHandle; }
 
@@ -21,6 +24,12 @@ pub struct BufferDesc {
     /// Usages of a buffer. If the buffer is used in any way that isn't specified here, the operation
     /// will panic.
     pub usage: wgpu::BufferUsages,
+}
+
+impl SizedResourceDesc for BufferDesc {
+    fn resource_size_in_bytes(&self) -> u64 {
+        self.size
+    }
 }
 
 #[derive(Default)]
@@ -67,5 +76,13 @@ impl GpuBufferPool {
     /// without inrementing the ref-count (note the returned reference!).
     pub(super) fn get_strong_handle(&self, handle: GpuBufferHandle) -> &GpuBufferHandleStrong {
         self.pool.get_strong_handle(handle)
+    }
+
+    pub fn num_resources(&self) -> usize {
+        self.pool.num_resources()
+    }
+
+    pub fn total_gpu_size_in_bytes(&self) -> u64 {
+        self.pool.total_resource_size_in_bytes()
     }
 }
