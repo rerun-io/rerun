@@ -37,7 +37,7 @@ pub(crate) fn message_table(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, mess
     use egui_extras::{Column, TableBuilder};
 
     TableBuilder::new(ui)
-        .striped(true)
+        .striped(re_ui::ReUi::striped())
         .max_scroll_height(f32::INFINITY) // Fill up whole height
         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
         .resizable(true)

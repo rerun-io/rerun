@@ -171,7 +171,7 @@ impl SelectionPanel {
             Selection::SpaceViewObjPath(space_view_id, obj_path) => {
                 if let Some(space_view) = blueprint.viewport.space_view_mut(&space_view_id) {
                     egui::Grid::new("space_view_id_obj_path")
-                        .striped(true)
+                        .striped(re_ui::ReUi::striped())
                         .show(ui, |ui| {
                             ui.label("Space View:");
                             ctx.space_view_button_to(ui, &space_view.name, space_view_id);
@@ -206,7 +206,7 @@ fn obj_type_name(log_db: &LogDb, obj_type_path: &ObjTypePath) -> String {
 
 fn ui_space_view(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, space_view: &mut SpaceView) {
     egui::Grid::new("space_view")
-        .striped(true)
+        .striped(re_ui::ReUi::striped())
         .num_columns(2)
         .show(ui, |ui| {
             ui.label("Name:");

@@ -60,7 +60,7 @@ pub(crate) fn view_instance_generic(
     let mut keypoint_id = None;
 
     egui::Grid::new("object_instance")
-        .striped(true)
+        .striped(re_ui::ReUi::striped())
         .num_columns(2)
         .show(ui, |ui| {
             for (field_name, field_store) in obj_store.iter() {
@@ -117,7 +117,7 @@ pub(crate) fn view_instance_generic(
                 &data_path,
             );
             egui::Grid::new("class_description")
-                .striped(true)
+                .striped(re_ui::ReUi::striped())
                 .num_columns(2)
                 .show(ui, |ui| {
                     if let Some(class_description) = annotations.context.class_map.get(&class_id) {
@@ -225,7 +225,7 @@ pub(crate) fn show_detailed_data_msg(
     let is_image = matches!(msg.data, LoggedData::Single(Data::Tensor(_)));
 
     egui::Grid::new("fields")
-        .striped(true)
+        .striped(re_ui::ReUi::striped())
         .num_columns(2)
         .show(ui, |ui| {
             ui.monospace("data_path:");
@@ -285,7 +285,7 @@ pub(crate) fn show_begin_recording_msg(ui: &mut egui::Ui, msg: &BeginRecordingMs
     } = info;
 
     egui::Grid::new("fields")
-        .striped(true)
+        .striped(re_ui::ReUi::striped())
         .num_columns(2)
         .show(ui, |ui| {
             ui.monospace("application_id:");
@@ -328,7 +328,7 @@ pub(crate) fn show_data_msg(
     } = msg;
 
     egui::Grid::new("fields")
-        .striped(true)
+        .striped(re_ui::ReUi::striped())
         .num_columns(2)
         .show(ui, |ui| {
             ui.monospace("data_path:");
@@ -353,7 +353,7 @@ pub(crate) fn show_path_op_msg(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, m
     } = msg;
 
     egui::Grid::new("fields")
-        .striped(true)
+        .striped(re_ui::ReUi::striped())
         .num_columns(2)
         .show(ui, |ui| {
             ui.monospace("time_point:");
@@ -555,7 +555,7 @@ fn ui_annotation_info_table<'a>(
     use egui_extras::{Column, TableBuilder};
 
     let table = TableBuilder::new(ui)
-        .striped(true)
+        .striped(re_ui::ReUi::striped())
         .min_scrolled_height(TABLE_SCROLL_AREA_HEIGHT)
         .max_scroll_height(TABLE_SCROLL_AREA_HEIGHT)
         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
@@ -647,7 +647,7 @@ fn ui_annotation_context(ui: &mut egui::Ui, context: &AnnotationContext) -> egui
                     use egui_extras::{Column, TableBuilder};
 
                     let table = TableBuilder::new(ui)
-                        .striped(true)
+                        .striped(re_ui::ReUi::striped())
                         .min_scrolled_height(TABLE_SCROLL_AREA_HEIGHT)
                         .max_scroll_height(TABLE_SCROLL_AREA_HEIGHT)
                         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
@@ -698,7 +698,7 @@ fn ui_rigid3(ui: &mut egui::Ui, rigid3: &Rigid3) -> egui::Response {
         ui.label("Rigid3");
         ui.indent("rigid3", |ui| {
             egui::Grid::new("rigid3")
-                .striped(true)
+                .striped(re_ui::ReUi::striped())
                 .num_columns(2)
                 .show(ui, |ui| {
                     ui.label("rotation");
@@ -724,7 +724,7 @@ fn ui_pinhole(ui: &mut egui::Ui, pinhole: &Pinhole) -> egui::Response {
         ui.label("Pinhole");
         ui.indent("pinole", |ui| {
             egui::Grid::new("pinole")
-                .striped(true)
+                .striped(re_ui::ReUi::striped())
                 .num_columns(2)
                 .show(ui, |ui| {
                     ui.label("image from view");

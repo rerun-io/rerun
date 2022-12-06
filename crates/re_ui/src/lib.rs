@@ -64,6 +64,11 @@ impl ReUi {
         }
     }
 
+    /// Add stripes to grids and tables?
+    pub fn striped() -> bool {
+        false
+    }
+
     #[allow(clippy::unused_self)]
     pub fn panel_frame(&self) -> egui::Frame {
         let style = self.egui_ctx.style();

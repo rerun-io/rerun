@@ -45,7 +45,7 @@ pub(crate) fn view_class_description_map(
     use egui_extras::{Column, TableBuilder};
 
     let table = TableBuilder::new(ui)
-        .striped(true)
+        .striped(re_ui::ReUi::striped())
         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
         .column(Column::auto()) // id
         .column(Column::auto().clip(true).at_least(40.0)) // label
