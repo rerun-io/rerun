@@ -55,6 +55,38 @@ const TEST_CONFIGS: &[DataStoreConfig] = &[
         component_bucket_size_bytes: 64,
         ..DataStoreConfig::DEFAULT
     },
+    DataStoreConfig {
+        index_bucket_nb_rows: 0,
+        ..DataStoreConfig::const_default()
+    },
+    DataStoreConfig {
+        index_bucket_nb_rows: 1,
+        ..DataStoreConfig::const_default()
+    },
+    DataStoreConfig {
+        index_bucket_nb_rows: 2,
+        ..DataStoreConfig::const_default()
+    },
+    DataStoreConfig {
+        index_bucket_nb_rows: 3,
+        ..DataStoreConfig::const_default()
+    },
+    DataStoreConfig {
+        index_bucket_size_bytes: 0,
+        ..DataStoreConfig::const_default()
+    },
+    DataStoreConfig {
+        index_bucket_size_bytes: 16,
+        ..DataStoreConfig::const_default()
+    },
+    DataStoreConfig {
+        index_bucket_size_bytes: 32,
+        ..DataStoreConfig::const_default()
+    },
+    DataStoreConfig {
+        index_bucket_size_bytes: 64,
+        ..DataStoreConfig::const_default()
+    },
 ];
 
 // --- Scenarios ---
