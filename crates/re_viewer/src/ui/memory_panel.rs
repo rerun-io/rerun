@@ -1,12 +1,8 @@
-use re_memory::{
-    util::{format_bytes, sec_since_start},
-    MemoryHistory, MemoryLimit, MemoryUse,
-};
+use re_format::{format_bytes, format_usize};
+use re_memory::{util::sec_since_start, MemoryHistory, MemoryLimit, MemoryUse};
 use re_renderer::WgpuResourcePoolStatistics;
 
 use crate::env_vars::RERUN_TRACK_ALLOCATIONS;
-
-use super::format_usize;
 
 // ----------------------------------------------------------------------------
 
@@ -147,14 +143,10 @@ impl MemoryPanel {
                 ui.label(num_textures.to_string());
                 ui.end_row();
                 ui.label("Buffer Memory:");
-                ui.label(re_memory::util::format_bytes(
-                    *total_buffer_size_in_bytes as _,
-                ));
+                ui.label(re_format::format_bytes(*total_buffer_size_in_bytes as _));
                 ui.end_row();
                 ui.label("Texture Memory:");
-                ui.label(re_memory::util::format_bytes(
-                    *total_texture_size_in_bytes as _,
-                ));
+                ui.label(re_format::format_bytes(*total_texture_size_in_bytes as _));
                 ui.end_row();
             });
     }

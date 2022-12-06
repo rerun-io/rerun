@@ -1,4 +1,6 @@
-use crate::{misc::ViewerContext, ui::format_usize};
+use re_format::format_usize;
+
+use crate::misc::ViewerContext;
 
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]

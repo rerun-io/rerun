@@ -9,6 +9,7 @@ use nohash_hasher::IntMap;
 use poll_promise::Promise;
 
 use re_data_store::log_db::LogDb;
+use re_format::format_usize;
 use re_log_types::*;
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::Receiver;
@@ -16,7 +17,7 @@ use re_smart_channel::Receiver;
 use crate::{
     design_tokens::DesignTokens,
     misc::{Caches, Options, RecordingConfig, ViewerContext},
-    ui::{format_usize, kb_shortcuts},
+    ui::kb_shortcuts,
 };
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -450,7 +451,8 @@ impl App {
             }
         }
 
-        use re_memory::{util::format_bytes, MemoryUse};
+        use re_format::format_bytes;
+        use re_memory::MemoryUse;
 
         if self.latest_memory_purge.elapsed() < instant::Duration::from_secs(10) {
             // Pruning introduces stutter, and we don't want to stutter too often.
@@ -864,7 +866,7 @@ fn top_bar_ui(
     if let Some(count) = re_memory::accounting_allocator::global_allocs() {
         ui.separator();
         // we use monospace so the width doesn't fluctuate as the numbers change.
-        let bytes_used_text = re_memory::util::format_bytes(count.size as _);
+        let bytes_used_text = re_format::format_bytes(count.size as _);
         ui.label(
             egui::RichText::new(&format!("RAM: {}", bytes_used_text))
                 .monospace()
@@ -883,7 +885,7 @@ fn top_bar_ui(
             + gpu_resource_stats.total_texture_size_in_bytes;
 
         // we use monospace so the width doesn't fluctuate as the numbers change.
-        let bytes_used_text = re_memory::util::format_bytes(total_bytes as _);
+        let bytes_used_text = re_format::format_bytes(total_bytes as _);
         ui.label(
             egui::RichText::new(&format!("VRAM: {}", bytes_used_text))
                 .monospace()
