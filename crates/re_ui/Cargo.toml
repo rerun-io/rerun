@@ -1,0 +1,19 @@
+[package]
+name = "re_ui"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+
+[features]
+default = []
+
+
+[dependencies]
+egui = "0.19"
+
+
+[dev-dependencies]
+eframe = { version = "0.19", default-features = false, features = ["wgpu"] }
