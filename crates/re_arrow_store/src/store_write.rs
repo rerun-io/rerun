@@ -5,6 +5,7 @@ use anyhow::{anyhow, bail, ensure};
 use arrow2::array::{
     new_empty_array, Array, Int64Array, Int64Vec, ListArray, MutableArray, StructArray, UInt64Vec,
 };
+use arrow2::bitmap::MutableBitmap;
 use arrow2::buffer::Buffer;
 use arrow2::chunk::Chunk;
 use arrow2::compute::concatenate::concatenate;
@@ -59,7 +60,7 @@ impl DataStore {
                 .indices
                 .entry((*timeline, ent_path_hash))
                 .or_insert_with(|| IndexTable::new(*timeline, ent_path));
-            index.insert(*time, &indices)?;
+            index.insert(&self.config, *time, &indices)?;
         }
 
         Ok(())
@@ -162,10 +163,43 @@ impl IndexTable {
 
     pub fn insert(
         &mut self,
+        config: &DataStoreConfig,
         time: TimeInt,
         indices: &HashMap<ComponentNameRef<'_>, RowIndex>,
     ) -> anyhow::Result<()> {
-        let bucket = self.buckets.iter_mut().next().unwrap().1;
+        // TODO: explain why this cannot fail
+        let (_, bucket) = self
+            .buckets
+            .range_mut(..=time)
+            .rev()
+            .take(1)
+            .next()
+            .unwrap();
+
+        let size = bucket.total_size_bytes();
+        let size_overflow = bucket.total_size_bytes() >= config.index_bucket_size_bytes;
+
+        let len = bucket.total_rows() as u64;
+        let len_overflow = len >= config.index_bucket_nb_rows;
+
+        if size_overflow || len_overflow {
+            debug!(
+                timeline = %self.timeline.name(),
+                entity = %self.ent_path,
+                ?config,
+                size,
+                size_overflow,
+                len,
+                len_overflow,
+                "allocating new component bucket, previous one overflowed"
+            );
+
+            if let Some(second_half) = bucket.split() {
+                self.buckets.insert(second_half.time_range.min, second_half);
+                return self.insert(config, time, indices);
+            }
+        }
+
         bucket.insert(time, indices)
     }
 }
@@ -214,9 +248,10 @@ impl IndexBucket {
         }
 
         // All indices (+ time!) should always have the exact same length.
+        #[cfg(debug_assertions)]
         {
             let expected_len = self.times.len();
-            debug_assert!(self
+            assert!(self
                 .indices
                 .values()
                 .map(|index| index.len())
@@ -227,6 +262,150 @@ impl IndexBucket {
         self.is_sorted = false;
 
         Ok(())
+    }
+
+    /// Splits the bucket in two, returning the second half.
+    pub fn split(&mut self) -> Option<Self> {
+        if self.times.len() < 2 {
+            return None; // early exit: can't split the unsplittable
+        }
+
+        self.sort_indices();
+
+        #[cfg(debug_assertions)]
+        let times_len = self.times.len();
+        #[cfg(debug_assertions)]
+        let total_rows = self.total_rows();
+
+        let Self {
+            timeline,
+            time_range: time_range1,
+            is_sorted: _,
+            times: times1,
+            indices: indices1,
+        } = self;
+
+        let timeline = *timeline;
+        // TODO: explain forward walk (and maybe express in a better way)
+        let half_row = {
+            let times = times1.values();
+
+            let mut half_row = times1.len() / 2;
+            let time = times[half_row];
+            while half_row + 1 < times.len() && times[half_row] == time {
+                half_row += 1;
+            }
+
+            half_row
+        };
+
+        // TODO: one day we might need to be able to split on a single timestamp i guess
+        // today is not that day
+        if half_row + 1 >= times1.len() {
+            return None; // early exit: can't split in the middle of a timepoint
+        }
+
+        // split existing time range in two, and create new time tange for the second half
+        let time_range2 = TimeRange::new(times1.values()[half_row].into(), time_range1.max);
+        // TODO: explain why this cannot underflow
+        time_range1.max = times1.values()[half_row - 1].into();
+
+        // The time index must always be dense, thus it shouldn't even have a validity
+        // bitmap attached to it to begin with.
+        debug_assert!(times1.validity().is_none());
+
+        // split primary index in two, and build a new one for the second half
+        let (datatype, mut data1, _) = std::mem::take(times1).into_data();
+        let data2 = data1.split_off(half_row);
+        *times1 = Int64Vec::from_data(datatype.clone(), data1, None);
+        let times2 = Int64Vec::from_data(datatype.clone(), data2, None);
+
+        #[cfg(debug_assertions)]
+        {
+            // both resulting time halves must be smaller or equal than the halfway point
+            assert!(times1.len() <= half_row);
+            assert!(times2.len() <= half_row);
+            // both resulting halves must sum up to the length of the original time index
+            assert_eq!(times_len, times1.len() + times2.len());
+        }
+
+        fn split_index_off(index1: &mut UInt64Vec, half_row: usize) -> UInt64Vec {
+            let (datatype, mut data1, validity1) = std::mem::take(index1).into_data();
+            let data2 = data1.split_off(half_row);
+            if let Some((validity1, validity2)) = validity1.map(|validity1| {
+                let mut validity1 = validity1.into_iter().collect::<Vec<_>>();
+                let validity2 = validity1.split_off(half_row);
+                (
+                    MutableBitmap::from_iter(validity1),
+                    MutableBitmap::from_iter(validity2),
+                )
+            }) {
+                *index1 = UInt64Vec::from_data(datatype.clone(), data1, Some(validity1));
+                UInt64Vec::from_data(datatype.clone(), data2, Some(validity2))
+            } else {
+                *index1 = UInt64Vec::from_data(datatype.clone(), data1, None);
+                UInt64Vec::from_data(datatype.clone(), data2, None)
+            }
+        }
+
+        // split all secondary indices in two, and build new ones for the second halves
+        let indices2: HashMap<_, _> = indices1
+            .iter_mut()
+            .map(|(name, index1)| {
+                let index2 = split_index_off(index1, half_row);
+
+                #[cfg(debug_assertions)]
+                {
+                    // both resulting time halves must be smaller or equal than the halfway point
+                    assert!(index1.len() <= half_row);
+                    assert!(index2.len() <= half_row);
+                    // both resulting halves must sum up to the length of the original time index
+                    assert_eq!(times_len, index1.len() + index2.len());
+                }
+
+                ((*name).clone(), index2)
+            })
+            .collect();
+
+        let second_half = Self {
+            timeline,
+            time_range: time_range2,
+            is_sorted: true,
+            times: times2,
+            indices: indices2,
+        };
+
+        // corruption checks
+        #[cfg(debug_assertions)]
+        {
+            // All indices (+ time!) should always have the exact same length..
+            {
+                let expected_len = dbg!(self.times.len());
+                assert!(self
+                    .indices
+                    .values()
+                    .map(|index| index.len())
+                    .all(|len| len == expected_len));
+            }
+            // ..and that's true for both halves!
+            {
+                let expected_len = second_half.times.len();
+                assert!(second_half
+                    .indices
+                    .values()
+                    .map(|index| index.len())
+                    .all(|len| len == expected_len));
+            }
+
+            let total_rows1 = self.total_rows() as i64;
+            let total_rows2 = second_half.total_rows() as i64;
+
+            assert!(total_rows1.abs_diff(total_rows2) < 2);
+            assert_eq!(total_rows as i64, total_rows1 + total_rows2);
+        }
+
+        // return the second half!
+        Some(second_half)
     }
 }
 
