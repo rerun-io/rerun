@@ -8,6 +8,7 @@ use re_data_store::{InstanceId, InstanceIdHash, ObjPath};
 use re_renderer::{
     renderer::{PointCloudDrawData, PointCloudPoint, RectangleDrawData},
     view_builder::{TargetConfiguration, ViewBuilder},
+    RenderContext,
 };
 
 use crate::{misc::HoveredSpace, Selection, ViewerContext};
@@ -651,82 +652,37 @@ fn view_2d_scrollable(
 
     // Draw a re_renderer driven view.
     // Camera & projection are configured to ingest space coordinates directly.
+    {
+        crate::profile_scope!("build command buffer for 2D view {}", space.to_string());
 
-    let (resolution_in_pixel, origin_in_pixel) = {
-        let rect = painter.clip_rect();
-        let ppp = painter.ctx().pixels_per_point();
-        let min = (rect.min.to_vec2() * ppp).round();
-        let max = (rect.max.to_vec2() * ppp).round();
-        let resolution = max - min;
+        let Ok(mut view_builder) = setup_view_builder(
+            ctx.render_ctx,
+            &painter,
+            space_from_ui,
+            space_from_pixel,
+            &space.to_string(),
+        ) else {
+            return response;
+        };
 
-        (
-            [resolution.x as u32, resolution.y as u32],
-            glam::vec2(min.x, min.y),
-        )
-    };
-    if resolution_in_pixel[0] == 0 || resolution_in_pixel[1] == 0 {
-        return response;
-    }
-
-    let (view_builder, command_buffer) = {
-        crate::profile_scope!("build command buffer for 2D view"); // TODO(andreas): What is the name of this space view?
-
-        // The re_renderer camera is at the top left corner of the *clip* rect, but in space units!
-        let camera_position_space = space_from_ui.transform_pos(painter.clip_rect().min);
-
-        let mut view_builder = ViewBuilder::default();
-        view_builder
-            .setup_view(
-                ctx.render_ctx,
-                // TODO(andreas): What is the name of this space view?
-                TargetConfiguration::new_2d_target(
-                    "2d space view".into(),
-                    resolution_in_pixel,
-                    space_from_pixel,
-                    glam::vec2(camera_position_space.x, camera_position_space.y),
-                ),
-            )
-            .unwrap()
+        let command_buffer = view_builder
             .queue_draw(&line_builder.to_draw_data(ctx.render_ctx))
             .queue_draw(&PointCloudDrawData::new(ctx.render_ctx, &render_points).unwrap())
             .queue_draw(
                 &RectangleDrawData::new(ctx.render_ctx, &renderer_filled_rectangles).unwrap(),
-            );
-
-        let command_buffer = view_builder
+            )
             .draw(
                 ctx.render_ctx,
                 parent_ui.visuals().extreme_bg_color.to_array().into(),
             )
             .unwrap();
-        (view_builder, command_buffer)
-    };
 
-    // egui paint callback are copyable / not a FnOnce (this in turn is because egui primitives can be callbacks and are copyable)
-    let command_buffer = std::sync::Arc::new(egui::mutex::Mutex::new(Some(command_buffer)));
-    let view_builder = std::sync::Arc::new(egui::mutex::Mutex::new(Some(view_builder)));
-    painter.add(egui::PaintCallback {
-        rect: painter.clip_rect(),
-        callback: std::sync::Arc::new(
-            egui_wgpu::CallbackFn::new()
-                .prepare(
-                    move |_device, _queue, _encoder, _paint_callback_resources| {
-                        let mut command_buffer = command_buffer.lock();
-                        vec![std::mem::replace(&mut *command_buffer, None)
-                            .expect("egui_wgpu prepare callback called more than once")]
-                    },
-                )
-                .paint(move |_info, render_pass, paint_callback_resources| {
-                    crate::profile_scope!("paint");
-                    let ctx = paint_callback_resources.get().unwrap();
-                    let mut view_builder = view_builder.lock();
-                    std::mem::replace(&mut *view_builder, None)
-                        .expect("egui_wgpu paint callback called more than once")
-                        .composite(ctx, render_pass, origin_in_pixel)
-                        .unwrap();
-                }),
-        ),
-    });
+        painter.add(renderer_paint_callback(
+            command_buffer,
+            view_builder,
+            painter.clip_rect(),
+        ));
+    }
 
     // ------------------------------------------------------------------------
 
@@ -759,6 +715,76 @@ fn view_2d_scrollable(
     state.hovered_instance = closest_instance_id_hash.resolve(&ctx.log_db.obj_db.store);
 
     response
+}
+
+fn renderer_paint_callback(
+    command_buffer: wgpu::CommandBuffer,
+    view_builder: ViewBuilder,
+    clip_rect: egui::Rect,
+) -> egui::PaintCallback {
+    // egui paint callback are copyable / not a FnOnce (this in turn is because egui primitives can be callbacks and are copyable)
+    let command_buffer = std::sync::Arc::new(egui::mutex::Mutex::new(Some(command_buffer)));
+    let view_builder = std::sync::Arc::new(egui::mutex::Mutex::new(Some(view_builder)));
+
+    egui::PaintCallback {
+        rect: clip_rect,
+        callback: std::sync::Arc::new(
+            egui_wgpu::CallbackFn::new()
+                .prepare(
+                    move |_device, _queue, _encoder, _paint_callback_resources| {
+                        let mut command_buffer = command_buffer.lock();
+                        vec![std::mem::replace(&mut *command_buffer, None)
+                            .expect("egui_wgpu prepare callback called more than once")]
+                    },
+                )
+                .paint(move |info, render_pass, paint_callback_resources| {
+                    crate::profile_scope!("paint");
+                    let clip_rect = info.clip_rect_in_pixels();
+
+                    let ctx = paint_callback_resources.get().unwrap();
+                    let mut view_builder = view_builder.lock();
+                    std::mem::replace(&mut *view_builder, None)
+                        .expect("egui_wgpu paint callback called more than once")
+                        .composite(
+                            ctx,
+                            render_pass,
+                            glam::vec2(clip_rect.left_px, clip_rect.top_px),
+                        )
+                        .unwrap();
+                }),
+        ),
+    }
+}
+
+fn setup_view_builder(
+    render_ctx: &mut RenderContext,
+    painter: &egui::Painter,
+    space_from_ui: RectTransform,
+    space_from_pixel: f32,
+    space_name: &str,
+) -> anyhow::Result<ViewBuilder> {
+    let resolution_in_pixel = {
+        let rect = painter.clip_rect();
+        let ppp = painter.ctx().pixels_per_point();
+        let resolution = (rect.size() * ppp).round();
+
+        [resolution.x as u32, resolution.y as u32]
+    };
+    anyhow::ensure!(resolution_in_pixel[0] > 0 && resolution_in_pixel[1] > 0);
+
+    let camera_position_space = space_from_ui.transform_pos(painter.clip_rect().min);
+    let mut view_builder = ViewBuilder::default();
+    view_builder.setup_view(
+        render_ctx,
+        TargetConfiguration::new_2d_target(
+            space_name.into(),
+            resolution_in_pixel,
+            space_from_pixel,
+            glam::vec2(camera_position_space.x, camera_position_space.y),
+        ),
+    )?;
+
+    Ok(view_builder)
 }
 
 // ------------------------------------------------------------------------
