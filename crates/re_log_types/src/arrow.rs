@@ -7,6 +7,9 @@ use arrow2::{
 
 use crate::{TimePoint, TimeType};
 
+pub type ComponentName = String;
+pub type ComponentNameRef<'a> = &'a str;
+
 pub const ENTITY_PATH_KEY: &str = "RERUN:entity_path";
 pub const TIMELINE_KEY: &str = "RERUN:timeline";
 pub const TIMELINE_SEQUENCE: &str = "Sequence";

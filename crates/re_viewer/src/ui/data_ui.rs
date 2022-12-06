@@ -374,7 +374,11 @@ pub(crate) fn show_arrow_msg(
     msg: &ArrowMsg,
     preview: Preview,
 ) {
-    let ArrowMsg { msg_id, data: _ } = msg;
+    let ArrowMsg {
+        msg_id,
+        schema: _,
+        chunk: _,
+    } = msg;
 
     // TODO(jleibs): Better ArrowMsg view
     ui_logged_arrow_data(ctx, ui, msg_id, msg, preview);
@@ -428,7 +432,7 @@ pub(crate) fn ui_logged_arrow_data(
 ) -> egui::Response {
     // TODO(john): more handling
     //let arr = msg.to_arrow_array();
-    ui.label(format!("Arrow Payload: ({})", msg.data.len()))
+    ui.label(format!("Arrow Payload: ({:?})", msg.schema))
 }
 
 pub(crate) fn ui_data(
@@ -476,7 +480,7 @@ pub(crate) fn ui_data(
             Preview::Medium => ui_annotation_context(ui, context),
         },
         Data::Tensor(tensor) => {
-            let tensor_view = ctx.cache.image.get_view(tensor);
+            let tensor_view = ctx.cache.image.get_view(tensor, ctx.render_ctx);
 
             ui.horizontal_centered(|ui| {
                 let max_width = match preview {

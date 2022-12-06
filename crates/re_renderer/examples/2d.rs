@@ -124,6 +124,7 @@ impl framework::Example for Render2D {
                     texture: self.rerun_logo_texture.clone(),
                     texture_filter_magnification: TextureFilterMag::Nearest,
                     texture_filter_minification: TextureFilterMin::Linear,
+                    multiplicative_tint: re_renderer::ColorRgba8SrgbPremultiplied::WHITE,
                 },
                 Rectangle {
                     top_left_corner_position: glam::vec3(
@@ -136,6 +137,7 @@ impl framework::Example for Render2D {
                     texture: self.rerun_logo_texture.clone(),
                     texture_filter_magnification: TextureFilterMag::Linear,
                     texture_filter_minification: TextureFilterMin::Linear,
+                    multiplicative_tint: re_renderer::ColorRgba8SrgbPremultiplied::WHITE,
                 },
             ],
         )
@@ -152,6 +154,7 @@ impl framework::Example for Render2D {
                             "2D".into(),
                             splits[0].resolution_in_pixel,
                             1.0,
+                            glam::Vec2::ZERO,
                         ),
                     )
                     .unwrap();

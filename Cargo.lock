@@ -3622,7 +3622,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "arrow2",
- "arrow2_convert",
  "chrono",
  "criterion",
  "document-features",
@@ -3631,7 +3630,6 @@ dependencies = [
  "mimalloc",
  "nohash-hasher",
  "polars",
- "rand",
  "re_format",
  "re_log",
  "re_log_types",
@@ -3684,6 +3682,7 @@ dependencies = [
  "ahash 0.8.2",
  "anyhow",
  "arrow2",
+ "arrow2_convert",
  "bytemuck",
  "chrono",
  "derive_more",
@@ -3693,12 +3692,15 @@ dependencies = [
  "macaw",
  "nohash-hasher",
  "puffin",
+ "rand",
  "re_log",
  "re_string_interner",
  "re_tuid",
  "rmp-serde",
  "ruzstd",
  "serde",
+ "serde_bytes",
+ "serde_test",
  "thiserror",
  "typenum",
  "uuid",
@@ -3717,6 +3719,7 @@ dependencies = [
  "nohash-hasher",
  "once_cell",
  "parking_lot",
+ "re_format",
  "re_log",
  "smallvec",
 ]
@@ -3896,6 +3899,7 @@ dependencies = [
  "re_arrow_store",
  "re_data_store",
  "re_error",
+ "re_format",
  "re_log",
  "re_log_types",
  "re_memory",
@@ -4025,6 +4029,7 @@ dependencies = [
  "puffin",
  "puffin_http",
  "re_error",
+ "re_format",
  "re_log",
  "re_log_types",
  "re_memory",
@@ -4284,6 +4289,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_bytes"
+version = "0.11.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cfc50e8183eeeb6178dcb167ae34a8051d63535023ae38b5d8d12beae193d37b"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "serde_cbor"
 version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4312,6 +4326,15 @@ checksum = "020ff22c755c2ed3f8cf162dbb41a7268d934702f3ed3631656ea597e08fc3db"
 dependencies = [
  "itoa 1.0.4",
  "ryu",
+ "serde",
+]
+
+[[package]]
+name = "serde_test"
+version = "1.0.149"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3434c4787dcd7c8c0837ffbb01e6e34091f8983b2df9655e66393a867f99f7aa"
+dependencies = [
  "serde",
 ]
 

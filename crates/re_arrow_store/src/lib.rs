@@ -5,21 +5,13 @@
 //!
 //! See `src/store.rs` for an overview of the core datastructures.
 //!
-//! ## Feature flags
-//!
-#![doc = document_features::document_features!()]
-//!
 
-mod field_types;
 mod store;
 mod store_read;
 mod store_write;
 
-#[cfg(feature = "datagen")]
-pub mod datagen;
-
 pub(crate) use self::store::{ComponentBucket, ComponentTable, IndexBucket, IndexTable};
-pub use self::store::{ComponentName, ComponentNameRef, DataStore, DataStoreConfig, RowIndex};
+pub use self::store::{DataStore, DataStoreConfig, RowIndex};
 pub use self::store_read::TimeQuery;
 
 // Re-exports

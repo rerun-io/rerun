@@ -15,7 +15,7 @@ pub struct LineStripSeriesBuilder<PerStripUserData> {
     pub vertices: Vec<LineVertex>,
 
     /// z value given to the next 2d line strip.
-    next_2d_z: f32,
+    pub next_2d_z: f32,
 }
 
 impl<PerStripUserData> LineStripSeriesBuilder<PerStripUserData>
@@ -178,6 +178,24 @@ where
             top_left_corner.extend(z),
             extent_u.extend(0.0),
             extent_v.extend(0.0),
+        )
+    }
+
+    /// Add 2D rectangle outlines with axis along X and Y.
+    ///
+    /// Internally adds 4 2D line segments with rounded line heads.
+    /// Disables color gradient since we don't support gradients in this setup yet (i.e. enabling them does not look good)
+    pub fn add_axis_aligned_rectangle_outline_2d(
+        &mut self,
+        min: glam::Vec2,
+        max: glam::Vec2,
+    ) -> LineStripBuilder<'_, PerStripUserData> {
+        let z = self.next_2d_z;
+        self.next_2d_z += Self::NEXT_2D_Z_STEP;
+        self.add_rectangle_outline(
+            min.extend(z),
+            glam::Vec3::X * (max.x - min.x),
+            glam::Vec3::Y * (max.y - min.y),
         )
     }
 

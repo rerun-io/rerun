@@ -4,13 +4,12 @@ use std::sync::Arc;
 use arrow2::array::{Array, Int64Vec, UInt64Vec};
 use arrow2::datatypes::DataType;
 
-use re_format::{format_bytes_base2, format_usize};
+use re_format::{format_bytes, format_usize};
 use re_log_types::{
-    ObjPath as EntityPath, ObjPathHash as EntityPathHash, TimeInt, TimeRange, Timeline,
+    ComponentName, ObjPath as EntityPath, ObjPathHash as EntityPathHash, TimeInt, TimeRange,
+    Timeline,
 };
 
-pub type ComponentName = String;
-pub type ComponentNameRef<'a> = &'a str;
 pub type RowIndex = u64;
 
 // --- Data store ---
@@ -137,7 +136,7 @@ impl std::fmt::Display for DataStore {
                 format!(
                     "{} component tables, for a total of {} bytes across {} total rows\n",
                     self.components.len(),
-                    format_bytes_base2(self.total_component_size_bytes() as _),
+                    format_bytes(self.total_component_size_bytes() as _),
                     format_usize(self.total_component_rows())
                 ),
             ))?;
@@ -432,7 +431,7 @@ impl std::fmt::Display for ComponentTable {
         f.write_fmt(format_args!(
             "size: {} buckets for a total of {} bytes across {} total rows\n",
             self.buckets.len(),
-            format_bytes_base2(self.total_size_bytes() as _),
+            format_bytes(self.total_size_bytes() as _),
             format_usize(self.total_rows()),
         ))?;
         f.write_str("buckets: [\n")?;
@@ -496,7 +495,7 @@ impl std::fmt::Display for ComponentBucket {
 
         f.write_fmt(format_args!(
             "size: {} bytes across {} rows\n",
-            format_bytes_base2(self.total_size_bytes() as _),
+            format_bytes(self.total_size_bytes() as _),
             format_usize(self.total_rows()),
         ))?;
 

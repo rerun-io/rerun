@@ -2,6 +2,8 @@
 
 use std::{collections::BTreeMap, time::SystemTime};
 
+use crate::arrow::{ENTITY_PATH_KEY, TIMELINE_KEY, TIMELINE_SEQUENCE, TIMELINE_TIME};
+use crate::{ObjPath as EntityPath, TimeInt};
 use arrow2::{
     array::{Array, Float32Array, Int64Array, ListArray, PrimitiveArray, StructArray},
     buffer::Buffer,
@@ -9,8 +11,6 @@ use arrow2::{
     datatypes::{DataType, Field, Schema, TimeUnit},
 };
 use arrow2_convert::serialize::TryIntoArrow;
-use re_log_types::arrow::{ENTITY_PATH_KEY, TIMELINE_KEY, TIMELINE_SEQUENCE, TIMELINE_TIME};
-use re_log_types::{ObjPath as EntityPath, TimeInt};
 
 use crate::{field_types, ComponentNameRef};
 

@@ -21,7 +21,13 @@
 #[cfg(any(feature = "save", feature = "load"))]
 pub mod encoding;
 
+#[cfg(feature = "arrow_datagen")]
+pub mod datagen;
+
 pub mod arrow;
+mod arrow_msg;
+pub mod field_types;
+pub use arrow_msg::ArrowMsg;
 pub mod context;
 pub mod coordinates;
 mod data;
@@ -35,6 +41,7 @@ mod time_real;
 
 pub use self::time_range::{TimeRange, TimeRangeF};
 pub use self::time_real::TimeReal;
+pub use arrow::{ComponentName, ComponentNameRef};
 pub use context::AnnotationContext;
 pub use coordinates::ViewCoordinates;
 pub use data::*;
@@ -161,8 +168,9 @@ impl ApplicationId {
 
 /// The most general log message sent from the SDK to the server.
 #[must_use]
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[cfg_attr(test, derive(PartialEq))]
 #[allow(clippy::large_enum_variant)]
 pub enum LogMsg {
     /// A new recording has begun.
@@ -273,18 +281,6 @@ impl TypeMsg {
             obj_type,
         }
     }
-}
-
-/// The message sent to specify the data of a single field of an object.
-#[must_use]
-#[derive(Clone, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct ArrowMsg {
-    /// A unique id per [`DataMsg`].
-    pub msg_id: MsgId,
-
-    /// The arrow payload.
-    pub data: Vec<u8>,
 }
 
 // ----------------------------------------------------------------------------

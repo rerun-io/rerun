@@ -8,6 +8,7 @@
 
 use anyhow::Context;
 
+use re_format::parse_duration;
 use re_log_types::LogMsg;
 use re_smart_channel::Receiver;
 
@@ -266,34 +267,4 @@ fn parse_max_latency(max_latency: Option<&String>) -> f32 {
         parse_duration(time)
             .unwrap_or_else(|err| panic!("Failed to parse max_latency ({max_latency:?}): {err}"))
     })
-}
-
-#[cfg(feature = "server")]
-fn parse_duration(duration: &str) -> Result<f32, String> {
-    fn parse_num(s: &str) -> Result<f32, String> {
-        s.parse()
-            .map_err(|_ignored| format!("Expected a number, got {s:?}"))
-    }
-
-    if let Some(ms) = duration.strip_suffix("ms") {
-        Ok(parse_num(ms)? * 1e-3)
-    } else if let Some(s) = duration.strip_suffix('s') {
-        Ok(parse_num(s)?)
-    } else if let Some(s) = duration.strip_suffix('m') {
-        Ok(parse_num(s)? * 60.0)
-    } else if let Some(s) = duration.strip_suffix('h') {
-        Ok(parse_num(s)? * 60.0 * 60.0)
-    } else {
-        Err(format!(
-            "Expected a suffix of 'ms', 's', 'm' or 'h' in string {duration:?}"
-        ))
-    }
-}
-
-#[cfg(feature = "server")]
-#[test]
-fn test_parse_duration() {
-    assert_eq!(parse_duration("3.2s"), Ok(3.2));
-    assert_eq!(parse_duration("250ms"), Ok(0.250));
-    assert_eq!(parse_duration("3m"), Ok(3.0 * 60.0));
 }

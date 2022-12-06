@@ -5,7 +5,6 @@ use arrow2::{
     buffer::Buffer,
     chunk::Chunk,
     datatypes::{DataType, Field, Schema},
-    io::ipc::write::StreamWriter,
 };
 
 use re_log_types::{
@@ -25,33 +24,6 @@ pub fn components_as_struct_array(components: &[(&str, Box<dyn Array>)]) -> Stru
     let data_arrays = components.iter().map(|(_, data)| data.clone()).collect();
 
     StructArray::new(data_types, data_arrays, None)
-}
-
-/// Create a `LogMsg` out of Arrow Schema and Chunk
-pub fn serialize_arrow_msg(
-    schema: &Schema,
-    chunk: &Chunk<Box<dyn Array>>,
-) -> Result<LogMsg, arrow2::error::Error> {
-    // TODO(jleibs):
-    // This stream-writer interface re-encodes and transmits the schema on every send
-    // I believe We can optimize this using some combination of calls to:
-    // https://docs.rs/arrow2/latest/arrow2/io/ipc/write/fn.write.html
-
-    let mut data = Vec::<u8>::new();
-    let mut writer = StreamWriter::new(&mut data, Default::default());
-    writer.start(schema, None)?;
-    writer.write(chunk, None)?;
-    writer.finish()?;
-
-    //let data_path = DataPath::new(obj_path, FieldName::from(field_name));
-
-    let msg = ArrowMsg {
-        msg_id: MsgId::random(),
-        //data_path,
-        data,
-    };
-
-    Ok(LogMsg::ArrowMsg(msg))
 }
 
 /// Build the [`LogMsg`] from the [`StructArray`]
@@ -91,5 +63,9 @@ pub fn build_arrow_log_msg(
     let schema = Schema { fields, metadata };
     let chunk = Chunk::new(cols);
 
-    serialize_arrow_msg(&schema, &chunk)
+    Ok(LogMsg::ArrowMsg(ArrowMsg {
+        msg_id: MsgId::random(),
+        schema,
+        chunk,
+    }))
 }

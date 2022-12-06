@@ -3,12 +3,14 @@
 //! A wgpu based renderer [wgpu](https://github.com/gfx-rs/wgpu/) for all your visualization needs.
 //! Used in `re_runner` to display the contents of any view contents other than pure UI.
 
+mod color;
 pub mod config;
 pub mod importer;
 pub mod renderer;
 pub mod resource_managers;
 pub mod texture_values;
 pub mod view_builder;
+pub use color::*;
 
 mod context;
 pub use context::RenderContext;
@@ -24,6 +26,7 @@ pub use line_strip_builder::{LineStripBuilder, LineStripSeriesBuilder};
 pub mod mesh;
 
 mod wgpu_buffer_types;
+
 mod wgpu_resources;
 pub use wgpu_resources::WgpuResourcePoolStatistics;
 
@@ -50,7 +53,7 @@ mod error_tracker;
 // ---------------------------------------------------------------------------
 
 // part of std, but unstable https://github.com/rust-lang/rust/issues/88581
-pub const fn next_multiple_of(cur: u32, rhs: u32) -> u32 {
+pub(crate) const fn next_multiple_of(cur: u32, rhs: u32) -> u32 {
     match cur % rhs {
         0 => cur,
         r => cur + (rhs - r),

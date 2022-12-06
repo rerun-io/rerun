@@ -4,11 +4,9 @@ use arrow2::array::{Array, MutableArray, UInt64Vec};
 use polars::prelude::{DataFrame, Series};
 
 use re_log::debug;
-use re_log_types::{ObjPath as EntityPath, Timeline};
+use re_log_types::{ComponentNameRef, ObjPath as EntityPath, Timeline};
 
-use crate::{
-    ComponentBucket, ComponentNameRef, ComponentTable, DataStore, IndexBucket, IndexTable, RowIndex,
-};
+use crate::{ComponentBucket, ComponentTable, DataStore, IndexBucket, IndexTable, RowIndex};
 
 // ---
 

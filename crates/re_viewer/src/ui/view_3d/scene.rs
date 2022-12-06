@@ -841,7 +841,7 @@ impl Scene3D {
             .map(|point| PointCloudPoint {
                 position: point.pos,
                 radius: point.radius.0,
-                srgb_color: point.color,
+                srgb_color: point.color.into(),
             })
             .collect()
     }

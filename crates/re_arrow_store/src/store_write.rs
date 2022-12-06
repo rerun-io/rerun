@@ -13,11 +13,12 @@ use polars::prelude::IndexOfSchema;
 
 use re_log::debug;
 use re_log_types::arrow::{ENTITY_PATH_KEY, TIMELINE_KEY, TIMELINE_SEQUENCE, TIMELINE_TIME};
-use re_log_types::{ObjPath as EntityPath, TimeInt, TimeRange, TimeType, Timeline};
+use re_log_types::{
+    ComponentNameRef, ObjPath as EntityPath, TimeInt, TimeRange, TimeType, Timeline,
+};
 
 use crate::{
-    ComponentBucket, ComponentNameRef, ComponentTable, DataStore, DataStoreConfig, IndexBucket,
-    IndexTable, RowIndex,
+    ComponentBucket, ComponentTable, DataStore, DataStoreConfig, IndexBucket, IndexTable, RowIndex,
 };
 
 // --- Data store ---

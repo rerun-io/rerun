@@ -175,7 +175,7 @@ impl Example for Multiview {
                     rnd.gen_range(random_point_range.clone()),
                 ),
                 radius: rnd.gen_range(0.005..0.05),
-                srgb_color: [rnd.gen(), rnd.gen(), rnd.gen(), 255],
+                srgb_color: [rnd.gen(), rnd.gen(), rnd.gen(), 255].into(),
             })
             .collect_vec();
 
