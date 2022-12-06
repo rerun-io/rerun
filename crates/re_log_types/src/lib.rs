@@ -28,6 +28,8 @@ pub mod arrow;
 mod arrow_msg;
 pub mod field_types;
 pub use arrow_msg::ArrowMsg;
+use num_traits::FromPrimitive;
+use typenum::Integer;
 pub mod context;
 pub mod coordinates;
 mod data;
@@ -51,6 +53,7 @@ pub use path::*;
 pub use time::{Duration, Time};
 
 use std::collections::BTreeMap;
+use std::num::TryFromIntError;
 
 #[macro_export]
 macro_rules! impl_into_enum {
@@ -506,7 +509,7 @@ impl TimePoint {
 // ----------------------------------------------------------------------------
 
 /// The type of a [`TimeInt`].
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, num_derive::FromPrimitive)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum TimeType {
     /// Normal wall time.

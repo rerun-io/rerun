@@ -1,7 +1,8 @@
 use arrow2::{
     array::{
-        DictionaryArray, DictionaryKey, Int64Array, MapArray, MutableArray, MutableMapArray,
-        MutablePrimitiveArray, MutableUtf8Array, PrimitiveArray, StructArray, Utf8Array,
+        DictionaryArray, DictionaryKey, Int64Array, MapArray, MutableArray, MutableDictionaryArray,
+        MutableMapArray, MutablePrimitiveArray, MutableStructArray, MutableUtf8Array,
+        PrimitiveArray, StructArray, TryPush, UInt8Array, Utf8Array,
     },
     datatypes::{DataType, Field, IntegerType},
 };
@@ -16,40 +17,40 @@ impl ArrowField for TimePoint {
 
     #[inline]
     fn data_type() -> DataType {
-        //TODO(john) Use a Dictionary type for `type`
-        let time_type_values = Utf8Array::<i32>::from_slice(["Time", "Sequence"]);
-        let _time_type = DataType::Dictionary(
-            i32::KEY_TYPE,
-            Box::new(time_type_values.data_type().clone()),
-            false,
-        );
+        //TODO(john) Use Dictionary type
+        //let time_type_values = Utf8Array::<i32>::from_slice(["Time", "Sequence"]);
+        //let time_type = DataType::Dictionary(
+        //    i32::KEY_TYPE,
+        //    Box::new(time_type_values.data_type().clone()),
+        //    false,
+        //);
+        let time_type = DataType::UInt8;
 
-        DataType::Map(
-            Box::new(Field::new(
-                "entries",
-                DataType::Struct(vec![
-                    Field::new("timeline", DataType::Utf8, false),
-                    Field::new("type", DataType::UInt8, false),
-                    Field::new("time", DataType::Int64, false),
-                ]),
-                true,
-            )),
-            false,
+        DataType::Extension(
+            "TimePoint".to_owned(),
+            Box::new(DataType::Struct(vec![
+                Field::new("timeline", DataType::Utf8, false),
+                Field::new("type", time_type, false),
+                Field::new("time", DataType::Int64, false),
+            ])),
+            None,
         )
     }
 }
 
 impl ArrowSerialize for TimePoint {
-    type MutableArrayType = MutableMapArray;
+    type MutableArrayType = MutableStructArray;
 
     #[inline]
     fn new_array() -> Self::MutableArrayType {
         let timeline_array: Box<dyn MutableArray> = Box::new(MutableUtf8Array::<i32>::new());
         let time_type_array: Box<dyn MutableArray> = Box::new(MutablePrimitiveArray::<u8>::new());
         let time_array: Box<dyn MutableArray> = Box::new(MutablePrimitiveArray::<i64>::new());
-        MutableMapArray::try_new(
+
+        MutableStructArray::try_new(
             <TimePoint as ArrowField>::data_type(),
             vec![timeline_array, time_type_array, time_array],
+            None,
         )
         .unwrap()
     }
@@ -58,34 +59,44 @@ impl ArrowSerialize for TimePoint {
         v: &<Self as ArrowField>::Type,
         array: &mut Self::MutableArrayType,
     ) -> arrow2::error::Result<()> {
-        let (keys, values): (&mut MutableUtf8Array<i32>, &mut MutablePrimitiveArray<i64>) =
-            array.keys_values().ok_or_else(|| {
-                arrow2::error::Error::InvalidArgumentError("Error extracting map fields".to_owned())
-            })?;
-
         for (timeline, time) in &v.0 {
-            keys.push(Some(timeline.name()));
-            values.push(Some(time.as_i64()));
+            <String as ArrowSerialize>::arrow_serialize(
+                &timeline.name().to_string(),
+                array.value(0).unwrap(),
+            )?;
+            <u8 as ArrowSerialize>::arrow_serialize(
+                &(timeline.typ as u8),
+                array.value(1).unwrap(),
+            )?;
+            <i64 as ArrowSerialize>::arrow_serialize(&time.as_i64(), array.value(2).unwrap())?;
+            array.push(true);
         }
-        array.try_push_valid()
+        Ok(())
     }
 }
 
-pub struct TimePointIterator<'a>{
-  timelines: < &'a<String as arrow2_convert::deserialize::ArrowDeserialize> ::ArrayType as IntoIterator> ::IntoIter,
-  times: < &'a<i64 as arrow2_convert::deserialize::ArrowDeserialize> ::ArrayType as IntoIterator> ::IntoIter,
+pub struct TimePointIterator<'a> {
+    timelines: <&'a <String as ArrowDeserialize>::ArrayType as IntoIterator>::IntoIter,
+    types: <&'a <u8 as ArrowDeserialize>::ArrayType as IntoIterator>::IntoIter,
+    times: <&'a <i64 as ArrowDeserialize>::ArrayType as IntoIterator>::IntoIter,
 }
 
 impl<'a> Iterator for TimePointIterator<'a> {
     type Item = TimePoint;
+
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        if let (Some(timeline), Some(time)) =
-            (self.timelines.next().flatten(), self.times.next().flatten())
-        {
+        if let (Some(timeline), Some(ty), Some(time)) = (
+            self.timelines.next().flatten(),
+            self.types.next().flatten(),
+            self.times.next().flatten(),
+        ) {
             Some(TimePoint(
                 [(
-                    Timeline::new(timeline, crate::TimeType::Time),
+                    Timeline::new(
+                        timeline,
+                        num_traits::FromPrimitive::from_u8(*ty).expect("valid TimeType"),
+                    ),
                     TimeInt::from(*time),
                 )]
                 .into(),
@@ -111,14 +122,14 @@ impl arrow2_convert::deserialize::ArrowArray for TimePointArray {
 
     #[inline]
     fn iter_from_array_ref(b: &dyn arrow2::array::Array) -> <&Self as IntoIterator>::IntoIter {
-        let arr = b.as_any().downcast_ref::<MapArray>().unwrap();
-        let field = arr.field().as_any().downcast_ref::<StructArray>().unwrap();
-        let values = field.values();
-        assert_eq!(field.validity(), None, "TimePoints should be non-null");
+        let arr = b.as_any().downcast_ref::<StructArray>().unwrap();
+        let values = arr.values();
+        assert_eq!(arr.validity(), None, "TimePoints should be non-null");
 
         TimePointIterator {
             timelines: Utf8Array::<i32>::iter_from_array_ref(&*values[0]),
-            times: Int64Array::iter_from_array_ref(&*values[1]),
+            types: UInt8Array::iter_from_array_ref(&*values[1]),
+            times: Int64Array::iter_from_array_ref(&*values[2]),
         }
     }
 }
@@ -135,30 +146,31 @@ impl ArrowDeserialize for TimePoint {
 
 #[test]
 fn test_timepoint_roundtrip() {
-    use crate::{Time, TimeType, Timeline};
+    use crate::{TimeType, Timeline};
     use arrow2::array::Array;
     use arrow2_convert::{deserialize::TryIntoCollection, serialize::TryIntoArrow};
 
-    let mut time_point = TimePoint::default();
-    time_point.0.insert(
-        Timeline::new("log_time", TimeType::Time),
-        Time::from_ns_since_epoch(100).into(),
-    );
-    let array: Box<dyn Array> = vec![time_point].try_into_arrow().unwrap();
-
-    let time_points: Vec<TimePoint> = TryIntoCollection::try_into_collection(array).unwrap();
-
-    assert_eq!(
-        time_points,
-        vec![TimePoint(
-            [(
+    let time_points_in = vec![TimePoint(
+        [
+            (
                 Timeline {
                     name: "log_time".into(),
-                    typ: TimeType::Time
+                    typ: TimeType::Time,
                 },
-                TimeInt(100)
-            )]
-            .into()
-        )]
-    );
+                TimeInt(100),
+            ),
+            (
+                Timeline {
+                    name: "seq1".into(),
+                    typ: TimeType::Sequence,
+                },
+                1234.into(),
+            ),
+        ]
+        .into(),
+    )];
+
+    let array: Box<dyn Array> = time_points_in.try_into_arrow().unwrap();
+    let time_points_out: Vec<TimePoint> = TryIntoCollection::try_into_collection(array).unwrap();
+    assert_eq!(time_points_in, time_points_out);
 }
