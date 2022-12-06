@@ -39,7 +39,7 @@ fn test_format_usize() {
 /// Pretty format bytes, e.g.
 ///
 /// ```
-/// # use re_memory::util::format_bytes;
+/// # use re_format::format_bytes;
 /// assert_eq!(format_bytes(123 as _), "123 B");
 /// assert_eq!(format_bytes(12_345 as _), "12 kB");
 /// assert_eq!(format_bytes(1_234_567 as _), "1.2 MB");
