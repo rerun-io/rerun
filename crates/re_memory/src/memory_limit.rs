@@ -10,7 +10,7 @@ pub struct MemoryLimit {
 
 impl MemoryLimit {
     pub fn parse(limit: &str) -> Result<Self, String> {
-        parse_bytes(limit)
+        re_format::parse_bytes(limit)
             .map(|limit| Self { limit: Some(limit) })
             .ok_or_else(|| format!("expected e.g. '16GB', got {limit:?}"))
     }
@@ -32,23 +32,4 @@ impl MemoryLimit {
 
         None
     }
-}
-
-fn parse_bytes(limit: &str) -> Option<i64> {
-    if let Some(kb) = limit.strip_suffix("kB") {
-        Some(kb.parse::<i64>().ok()? * 1_000)
-    } else if let Some(mb) = limit.strip_suffix("MB") {
-        Some(mb.parse::<i64>().ok()? * 1_000_000)
-    } else if let Some(gb) = limit.strip_suffix("GB") {
-        Some(gb.parse::<i64>().ok()? * 1_000_000_000)
-    } else if let Some(tb) = limit.strip_suffix("TB") {
-        Some(tb.parse::<i64>().ok()? * 1_000_000_000_000)
-    } else {
-        None
-    }
-}
-
-#[test]
-fn test_parse_bytes() {
-    assert_eq!(parse_bytes("10MB"), Some(10_000_000));
 }

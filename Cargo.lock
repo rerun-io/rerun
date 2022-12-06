@@ -3716,6 +3716,7 @@ dependencies = [
  "nohash-hasher",
  "once_cell",
  "parking_lot",
+ "re_format",
  "re_log",
  "smallvec",
 ]
@@ -4025,6 +4026,7 @@ dependencies = [
  "puffin",
  "puffin_http",
  "re_error",
+ "re_format",
  "re_log",
  "re_log_types",
  "re_memory",
