@@ -469,20 +469,8 @@ impl Scene3D {
         }
     }
 
-    // TODO(andreas): A lof of the things this method does, the renderer should be able to do for us
-    /// Translate screen-space sizes (ui points) and missing sizes, into proper
-    /// scene-space sizes.
-    ///
-    /// Also does hover-effects (changing colors and sizes)
-    ///
-    /// Non-finite sizes are given default sizes.
-    /// Negative sizes are interpreted as ui points, and are translated
-    /// to screen-space sizes (based on distance).
-    pub fn finalize_sizes_and_colors(
-        &mut self,
-        viewport_size: egui::Vec2,
-        hovered_instance_id_hash: InstanceIdHash,
-    ) {
+    /// Does hover-effects (changing colors and sizes)
+    pub fn finalize_sizes_and_colors(&mut self, hovered_instance_id_hash: InstanceIdHash) {
         crate::profile_function!();
 
         let Self {
@@ -496,25 +484,15 @@ impl Scene3D {
         let hover_size_boost = 1.5;
         const HOVER_COLOR: [u8; 4] = [255, 200, 200, 255];
 
-        let viewport_area = (viewport_size.x * viewport_size.y).at_least(1.0);
-
-        // More points -> smaller points
-        let default_point_radius = Size::new_points(
-            (0.3 * (viewport_area / (points.len() + 1) as f32).sqrt()).clamp(0.1, 5.0),
-        );
-
         // TODO(emilk): more line segments -> thinner lines
 
         {
             crate::profile_scope!("points");
             for point in points {
-                if point.radius.is_auto() {
-                    point.radius = default_point_radius;
-                }
                 if hovered_instance_id_hash.is_some()
                     && point.instance_id_hash == hovered_instance_id_hash
                 {
-                    point.radius *= hover_size_boost;
+                    point.radius *= hover_size_boost; // TODO: But what if it is auto-sized
                     point.color = HOVER_COLOR;
                 }
             }
@@ -529,7 +507,7 @@ impl Scene3D {
                 .zip(line_strips.strip_user_data.iter())
             {
                 if hovered_instance_id_hash.is_some() && *instance_id == hovered_instance_id_hash {
-                    line_strip.radius *= hover_size_boost;
+                    line_strip.radius *= hover_size_boost; // TODO: But what if it is auto-sized
                     line_strip.srgb_color = HOVER_COLOR;
                 }
             }
@@ -729,7 +707,7 @@ impl Scene3D {
             .iter()
             .map(|point| PointCloudPoint {
                 position: point.pos,
-                radius: point.radius.0,
+                radius: point.radius,
                 srgb_color: point.color.into(),
             })
             .collect()

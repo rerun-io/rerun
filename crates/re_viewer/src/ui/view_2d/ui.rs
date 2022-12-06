@@ -618,12 +618,12 @@ fn view_2d_scrollable(
         let depth = line_builder.next_2d_z; // put the points in front of all the lines we have so far.
         render_points.push(PointCloudPoint {
             position: glam::vec3(pos.x, pos.y, depth),
-            radius: space_from_points * (radius + 1.0),
+            radius: Size::new_points(radius + 1.0),
             srgb_color: paint_props.bg_stroke.color.to_array().into(),
         });
         render_points.push(PointCloudPoint {
             position: glam::vec3(pos.x, pos.y, depth - 0.1),
-            radius: space_from_points * radius,
+            radius: Size::new_points(radius),
             srgb_color: paint_props.fg_stroke.color.to_array().into(),
         });
 

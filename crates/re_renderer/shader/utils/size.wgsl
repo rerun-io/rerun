@@ -1,4 +1,6 @@
-fn size_to_world(unresolved_size: f32, default_pixel_size: f32, camera_distance: f32) -> f32 {
+// TODO(andreas): Lot of assumed includes here. need pragma once behavior.
+
+fn unresolved_size_to_world(unresolved_size: f32, default_pixel_size: f32, camera_distance: f32) -> f32 {
     if unresolved_size > 0.0 {
         // It's already a world size.
         return unresolved_size;

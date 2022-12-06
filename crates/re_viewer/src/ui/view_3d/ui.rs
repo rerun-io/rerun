@@ -413,10 +413,7 @@ pub(crate) fn view_3d(
         }
     }
 
-    scene.finalize_sizes_and_colors(
-        rect.size(),
-        hovered_instance.map_or(InstanceIdHash::NONE, |id| id.hash()),
-    );
+    scene.finalize_sizes_and_colors(hovered_instance.map_or(InstanceIdHash::NONE, |id| id.hash()));
 
     paint_view(ui, eye, rect, &scene, ctx.render_ctx, &space.to_string());
 

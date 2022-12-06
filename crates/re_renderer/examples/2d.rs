@@ -1,5 +1,8 @@
 use re_renderer::{
-    renderer::{LineStripFlags, Rectangle, RectangleDrawData, TextureFilterMag, TextureFilterMin},
+    renderer::{
+        LineStripFlags, PointCloudDrawData, PointCloudPoint, Rectangle, RectangleDrawData,
+        TextureFilterMag, TextureFilterMin,
+    },
     resource_managers::{GpuTexture2DHandle, Texture2DCreationDesc},
     texture_values::ValueRgba8UnormSrgb,
     view_builder::{self, Projection, ViewBuilder},
@@ -132,12 +135,37 @@ impl framework::Example for Render2D {
 
         let line_strip_draw_data = line_strip_builder.to_draw_data(re_ctx);
 
+        // Points with different kinds of radius
+        // The first two points are the same thickness if there no (!) scaling.
+        // Moving the windows to a high dpi screen makes the second one bigger.
+        // Also, it looks different under perspective projection.
+        // The third point is automatic thickness which is determined by the point renderer implementation.
+        let points = vec![
+            PointCloudPoint {
+                position: glam::vec3(500.0, 90.0, 0.0),
+                radius: Size::new_scene(4.0),
+                srgb_color: [55, 180, 1, 255].into(),
+            },
+            PointCloudPoint {
+                position: glam::vec3(520.0, 90.0, 0.0),
+                radius: Size::new_points(4.0),
+                srgb_color: [55, 180, 1, 255].into(),
+            },
+            PointCloudPoint {
+                position: glam::vec3(540.0, 90.0, 0.0),
+                radius: Size::AUTO,
+                srgb_color: [55, 180, 1, 255].into(),
+            },
+        ];
+
+        let point_draw_data = PointCloudDrawData::new(re_ctx, &points).unwrap();
+
         let image_scale = 4.0;
         let rectangle_draw_data = RectangleDrawData::new(
             re_ctx,
             &[
                 Rectangle {
-                    top_left_corner_position: glam::vec3(500.0, 100.0, -0.05),
+                    top_left_corner_position: glam::vec3(500.0, 120.0, -0.05),
                     extent_u: self.rerun_logo_texture_width as f32 * image_scale * glam::Vec3::X,
                     extent_v: self.rerun_logo_texture_height as f32 * image_scale * glam::Vec3::Y,
                     texture: self.rerun_logo_texture.clone(),
@@ -148,7 +176,7 @@ impl framework::Example for Render2D {
                 Rectangle {
                     top_left_corner_position: glam::vec3(
                         500.0,
-                        150.0 + self.rerun_logo_texture_height as f32 * image_scale,
+                        170.0 + self.rerun_logo_texture_height as f32 * image_scale,
                         -0.05,
                     ),
                     extent_u: self.rerun_logo_texture_width as f32 * image_scale * glam::Vec3::X,
@@ -179,6 +207,7 @@ impl framework::Example for Render2D {
                     )
                     .unwrap();
                 view_builder.queue_draw(&line_strip_draw_data);
+                view_builder.queue_draw(&point_draw_data);
                 view_builder.queue_draw(&rectangle_draw_data);
                 let command_buffer = view_builder
                     .draw(re_ctx, ValueRgba8UnormSrgb::TRANSPARENT)
@@ -222,6 +251,7 @@ impl framework::Example for Render2D {
                         )
                         .unwrap();
                     view_builder.queue_draw(&line_strip_draw_data);
+                    view_builder.queue_draw(&point_draw_data);
                     view_builder.queue_draw(&rectangle_draw_data);
                     let command_buffer = view_builder
                         .draw(re_ctx, ValueRgba8UnormSrgb::TRANSPARENT)

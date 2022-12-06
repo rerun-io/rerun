@@ -177,8 +177,8 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
 
     // Now that we know the world position of the closest skeleton point, we can resolve the radius and some other things alongside.
     let camera_ray = camera_ray_to_world_pos(closest_strip_position);
-    // TODO(andreas): Some redundant computation, we already normalized the camera direction earlier.
-    var radius = size_to_world(strip_data.unresolved_radius, 1.0, length(camera_ray.origin - closest_strip_position));
+    // (!) Some redundant computation here, we already normalized the camera direction earlier.
+    var radius = unresolved_size_to_world(strip_data.unresolved_radius, 1.0, length(camera_ray.origin - closest_strip_position));
 
     // Make radius and position adjustments depending on cap properties.
     if is_trailing_quad {

@@ -1,6 +1,7 @@
 #import <./types.wgsl>
 #import <./global_bindings.wgsl>
 #import <./utils/camera.wgsl>
+#import <./utils/size.wgsl>
 
 @group(1) @binding(0)
 var position_data_texture: texture_2d<f32>;
@@ -22,7 +23,7 @@ struct VertexOut {
 
 struct PointData {
     pos: Vec3,
-    radius: f32,
+    unresolved_radius: f32,
     color: Vec4
 }
 
@@ -34,15 +35,21 @@ fn read_data(idx: i32) -> PointData {
 
     var data: PointData;
     data.pos = position_data.xyz;
-    data.radius = position_data.w;
+    data.unresolved_radius = position_data.w;
     data.color = color;
     return data;
 }
 
-fn span_quad_perspective(point_pos: Vec3, point_radius: f32, top_bottom: f32, left_right: f32) -> Vec3 {
-    let to_camera = frame.camera_position - point_pos;
-    let distance_to_camera_sq = dot(to_camera, to_camera);
-    let distance_to_camera_inv = inverseSqrt(distance_to_camera_sq); // needed later
+fn span_quad_perspective(
+    point_pos: Vec3,
+    point_radius: f32,
+    top_bottom: f32,
+    left_right: f32,
+    to_camera: Vec3,
+    camera_distance: f32
+) -> Vec3 {
+    let distance_to_camera_sq = camera_distance * camera_distance; // (passing on micro-optimization here for splitting this out of earlier length calculation)
+    let distance_to_camera_inv = 1.0 / camera_distance;
     let quad_normal = to_camera * distance_to_camera_inv;
     let quad_right = normalize(cross(quad_normal, frame.view_from_world[1].xyz)); // It's spheres so any orthogonal vector would do.
     let quad_up = cross(quad_right, quad_normal);
@@ -58,7 +65,7 @@ fn span_quad_perspective(point_pos: Vec3, point_radius: f32, top_bottom: f32, le
 
     // We're computing a coverage mask in the fragment shader - make sure the quad doesn't cut off our antialiasing.
     // It's fairly subtle but if we don't do this our spheres look slightly squarish
-    modified_radius += frame.pixel_world_size_from_camera_distance / distance_to_camera_inv;
+    modified_radius += frame.pixel_world_size_from_camera_distance * camera_distance;
 
     return point_pos + pos_in_quad * modified_radius + camera_offset * quad_normal;
 
@@ -92,20 +99,24 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
 
     // Read point data (valid for the entire quad)
     let point_data = read_data(quad_idx);
+    // Resolve radius to a world size. We need the camera distance for this, which is useful later on.
+    let to_camera = frame.camera_position - point_data.pos;
+    let camera_distance = length(to_camera);
+    let radius = unresolved_size_to_world(point_data.unresolved_radius, 1.0, camera_distance);
 
     // Span quad
     var pos: Vec3;
     if is_camera_perspective() {
-        pos = span_quad_perspective(point_data.pos, point_data.radius, top_bottom, left_right);
+        pos = span_quad_perspective(point_data.pos, radius, top_bottom, left_right, to_camera, camera_distance);
     } else {
-        pos = span_quad_orthographic(point_data.pos, point_data.radius, top_bottom, left_right);
+        pos = span_quad_orthographic(point_data.pos, radius, top_bottom, left_right);
     }
 
     // Output, transform to projection space and done.
     var out: VertexOut;
     out.position = frame.projection_from_world * Vec4(pos, 1.0);
     out.color = point_data.color;
-    out.radius = point_data.radius;
+    out.radius = radius;
     out.world_position = pos;
     out.point_center = point_data.pos;
 
