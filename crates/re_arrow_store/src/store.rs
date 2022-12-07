@@ -409,7 +409,11 @@ impl IndexTable {
                 let &[t1, t2] = time_ranges else { unreachable!() };
                 ensure!(
                     t1.max.as_i64() < t2.min.as_i64(),
-                    "found overlapping index buckets: {t1:?} <-> {t2:?}"
+                    "found overlapping index buckets: {} ({}) <-> {} ({})",
+                    self.timeline.typ().format(t1.max),
+                    t1.max.as_i64(),
+                    self.timeline.typ().format(t2.min),
+                    t2.max.as_i64(),
                 );
             }
         }

@@ -321,9 +321,11 @@ impl IndexBucket {
         // TODO: explain why this cannot underflow
         time_range1.max = times1.values()[half_row - 1].into();
 
-        // The time index must always be dense, thus it shouldn't even have a validity
-        // bitmap attached to it to begin with.
-        debug_assert!(times1.validity().is_none());
+        debug_assert!(
+            times1.validity().is_none(),
+            "The time index must always be dense, thus it shouldn't even have a validity\n
+                bitmap attached to it to begin with."
+        );
 
         // split primary index in two, and build a new one for the second half
         let (datatype, mut data1, _) = std::mem::take(times1).into_data();
@@ -333,11 +335,20 @@ impl IndexBucket {
 
         #[cfg(debug_assertions)]
         {
-            // both resulting time halves must be smaller or equal than the halfway point
-            assert!(times1.len() <= half_row);
-            assert!(times2.len() <= half_row);
-            // both resulting halves must sum up to the length of the original time index
-            assert_eq!(total_rows as usize, times1.len() + times2.len());
+            assert!(
+                times1.len() <= half_row && times2.len() <= half_row,
+                "expected both halves to be smaller or equal than the halfway point: \
+                    got half={half_row} times1={} times2={}",
+                times1.len(),
+                times2.len(),
+            );
+            assert!(
+                total_rows as usize == times1.len() + times2.len(),
+                "expected both halves to sum up to the length of the original time index: \
+                    got times={} vs. times1+times2={}",
+                total_rows,
+                times1.len() + times2.len(),
+            );
         }
 
         fn split_index_off(index1: &mut UInt64Vec, half_row: usize) -> UInt64Vec {
@@ -367,11 +378,20 @@ impl IndexBucket {
 
                 #[cfg(debug_assertions)]
                 {
-                    // both resulting time halves must be smaller or equal than the halfway point
-                    assert!(index1.len() <= half_row);
-                    assert!(index2.len() <= half_row);
-                    // both resulting halves must sum up to the length of the original time index
-                    assert_eq!(total_rows as usize, index1.len() + index2.len());
+                    assert!(
+                        index1.len() <= half_row && index2.len() <= half_row,
+                        "expected both halves to be smaller or equal than the halfway point: \
+                            got half={half_row} index1={} index2={}",
+                        index1.len(),
+                        index2.len(),
+                    );
+                    assert!(
+                        total_rows as usize == index1.len() + index2.len(),
+                        "expected both halves to sum up to the length of the original time index: \
+                            got times={} vs. index1+index2={}",
+                        total_rows,
+                        index1.len() + index2.len(),
+                    );
                 }
 
                 ((*name).clone(), index2)
@@ -394,8 +414,13 @@ impl IndexBucket {
 
             let total_rows1 = self.total_rows() as i64;
             let total_rows2 = bucket2.total_rows() as i64;
-
-            assert!(total_rows1.abs_diff(total_rows2) < 2);
+            assert!(
+                total_rows as i64 == total_rows1 + total_rows2,
+                "expected both buckets to sum up to the length of the original bucket: \
+                    got bucket={} vs. bucket1+bucket2={}",
+                total_rows,
+                total_rows1 + total_rows2,
+            );
             assert_eq!(total_rows as i64, total_rows1 + total_rows2);
         }
 
