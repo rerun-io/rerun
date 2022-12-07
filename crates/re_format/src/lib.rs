@@ -2,7 +2,7 @@
 
 // --- Numbers ---
 
-/// Using thousands separators for readability.
+/// Pretty format a number by using thousands separators for readability.
 pub fn format_number(number: usize) -> String {
     let number = number.to_string();
     let mut chars = number.chars().rev().peekable();
@@ -34,72 +34,69 @@ fn test_format_number() {
     assert_eq!(format_number(1_234_567), "1 234 567");
 }
 
-// --- Bytes ---
-
-/// Pretty format bytes in base10, e.g.
+/// Pretty format a large number by using SI notation (base 10), e.g.
 ///
 /// ```
-/// # use re_format::format_bytes;
-/// assert_eq!(format_bytes(123 as _), "123 B");
-/// assert_eq!(format_bytes(12_345 as _), "12 kB");
-/// assert_eq!(format_bytes(1_234_567 as _), "1.2 MB");
-/// assert_eq!(format_bytes(123_456_789 as _), "123 MB");
+/// # use re_format::format_large_number;
+/// assert_eq!(format_large_number(123 as _), "123");
+/// assert_eq!(format_large_number(12_345 as _), "12k");
+/// assert_eq!(format_large_number(1_234_567 as _), "1.2M");
+/// assert_eq!(format_large_number(123_456_789 as _), "123M");
 /// ```
-pub fn format_bytes(number_of_bytes: f64) -> String {
-    if number_of_bytes < 0.0 {
-        return format!("-{}", format_bytes(-number_of_bytes));
+pub fn format_large_number(number: f64) -> String {
+    if number < 0.0 {
+        return format!("-{}", format_large_number(-number));
     }
 
-    if number_of_bytes < 1000.0 {
-        format!("{:.0} B", number_of_bytes)
-    } else if number_of_bytes < 1_000_000.0 {
-        let decimals = (number_of_bytes < 10_000.0) as usize;
-        format!("{:.*} kB", decimals, number_of_bytes / 1_000.0)
-    } else if number_of_bytes < 1_000_000_000.0 {
-        let decimals = (number_of_bytes < 10_000_000.0) as usize;
-        format!("{:.*} MB", decimals, number_of_bytes / 1_000_000.0)
+    if number < 1000.0 {
+        format!("{:.0}", number)
+    } else if number < 1_000_000.0 {
+        let decimals = (number < 10_000.0) as usize;
+        format!("{:.*}k", decimals, number / 1_000.0)
+    } else if number < 1_000_000_000.0 {
+        let decimals = (number < 10_000_000.0) as usize;
+        format!("{:.*}M", decimals, number / 1_000_000.0)
     } else {
-        let decimals = (number_of_bytes < 10_000_000_000.0) as usize;
-        format!("{:.*} GB", decimals, number_of_bytes / 1_000_000_000.0)
+        let decimals = (number < 10_000_000_000.0) as usize;
+        format!("{:.*}G", decimals, number / 1_000_000_000.0)
     }
-}
-pub fn format_bytes_base10(number_of_bytes: f64) -> String {
-    format_bytes(number_of_bytes)
 }
 
 #[test]
-fn test_format_bytes() {
+fn test_format_large_number() {
     let test_cases = [
-        (999.0, "999 B"),
-        (1000.0, "1.0 kB"),
-        (1001.0, "1.0 kB"),
-        (999_999.0, "1000 kB"),
-        (1_000_000.0, "1.0 MB"),
-        (999_999_999.0, "1000 MB"),
-        (1_000_000_000.0, "1.0 GB"),
-        (999_999_999_999.0, "1000 GB"),
-        (1_000_000_000_000.0, "1000 GB"),
-        (123.0, "123 B"),
-        (12_345.0, "12 kB"),
-        (1_234_567.0, "1.2 MB"),
-        (123_456_789.0, "123 MB"),
+        (999.0, "999"),
+        (1000.0, "1.0k"),
+        (1001.0, "1.0k"),
+        (999_999.0, "1000k"),
+        (1_000_000.0, "1.0M"),
+        (999_999_999.0, "1000M"),
+        (1_000_000_000.0, "1.0G"),
+        (999_999_999_999.0, "1000G"),
+        (1_000_000_000_000.0, "1000G"),
+        (123.0, "123"),
+        (12_345.0, "12k"),
+        (1_234_567.0, "1.2M"),
+        (123_456_789.0, "123M"),
     ];
 
     for (value, expected) in test_cases {
-        assert_eq!(expected, format_bytes(value));
+        assert_eq!(expected, format_large_number(value));
     }
 }
 
-/// Pretty format bytes in base2, e.g.
+// --- Bytes ---
+
+/// Pretty format a number of bytes by using SI notation in base2, e.g.
 ///
 /// ```
-/// # use re_format::format_bytes_base2;
-/// assert_eq!(format_bytes_base2(123.0), "123 B");
-/// assert_eq!(format_bytes_base2(12_345.0), "12.1 kiB");
-/// assert_eq!(format_bytes_base2(1_234_567.0), "1.2 MiB");
-/// assert_eq!(format_bytes_base2(123_456_789.0), "117.7 MiB");
+/// # use re_format::format_bytes;
+/// assert_eq!(format_bytes(123.0), "123 B");
+/// assert_eq!(format_bytes(12_345.0), "12.1 kiB");
+/// assert_eq!(format_bytes(1_234_567.0), "1.2 MiB");
+/// assert_eq!(format_bytes(123_456_789.0), "117.7 MiB");
 /// ```
-pub fn format_bytes_base2(number_of_bytes: f64) -> String {
+pub fn format_bytes(number_of_bytes: f64) -> String {
     if number_of_bytes < 0.0 {
         return format!("-{}", format_bytes(-number_of_bytes));
     }
@@ -119,7 +116,7 @@ pub fn format_bytes_base2(number_of_bytes: f64) -> String {
 }
 
 #[test]
-fn test_format_bytes_base2() {
+fn test_format_bytes() {
     let test_cases = [
         (999.0, "999 B"),
         (1000.0, "1000 B"),
@@ -143,7 +140,7 @@ fn test_format_bytes_base2() {
     ];
 
     for (value, expected) in test_cases {
-        assert_eq!(expected, format_bytes_base2(value));
+        assert_eq!(expected, format_bytes(value));
     }
 }
 
