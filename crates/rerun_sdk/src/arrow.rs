@@ -1,13 +1,9 @@
-use std::collections::BTreeMap;
-
 use arrow2::{
-    array::{Array, ListArray, StructArray},
-    buffer::Buffer,
-    chunk::Chunk,
+    array::{Array, StructArray},
     datatypes::{DataType, Field, Schema},
 };
 
-use re_log_types::{datagen, ArrowMsg, LogMsg, MsgId, ObjPath, TimePoint, ENTITY_PATH_KEY};
+use re_log_types::{datagen, ArrowMsg, LogMsg, MsgId, ObjPath, TimePoint};
 
 /// Create a [`StructArray`] from an array of (name, Array) tuples
 pub fn components_as_struct_array(components: &[(&str, Box<dyn Array>)]) -> StructArray {
@@ -45,12 +41,8 @@ pub fn build_arrow_log_msg(
         .zip(array.values().iter())
         .map(|(field, array)| ("", Schema::from(vec![field.clone()]), array.clone()));
 
+    //TODO(john) Fix this
     let (schema, chunk) = datagen::build_message(obj_path, time_point, components);
-
-    // Build columns for timeline data
-    //let (mut fields, mut cols): (Vec<Field>, Vec<Box<dyn Array>>) = build_time_cols(time_point).unzip();
-    //fields.push(arrow2::datatypes::Field::new( "components", data_col.data_type().clone(), true,));
-    //cols.push(data_col.boxed());
 
     Ok(LogMsg::ArrowMsg(ArrowMsg {
         msg_id: MsgId::random(),

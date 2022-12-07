@@ -169,22 +169,22 @@ impl ArrowDeserialize for TimePoint {
 
 #[test]
 fn test_timepoint_roundtrip() {
-    use crate::{TimeType, Timeline};
+    use crate::datagen;
     use arrow2::array::Array;
     use arrow2_convert::{deserialize::TryIntoCollection, serialize::TryIntoArrow};
 
     let time_points_in = vec![
         TimePoint(
             [
-                (Timeline::new("log_time", TimeType::Time), TimeInt(100)),
-                (Timeline::new("seq1", TimeType::Sequence), 1234.into()),
+                datagen::build_log_time(crate::Time::from_ns_since_epoch(100)),
+                datagen::build_frame_nr(1234),
             ]
             .into(),
         ),
         TimePoint(
             [
-                (Timeline::new("log_time", TimeType::Time), TimeInt(200)),
-                (Timeline::new("seq1", TimeType::Sequence), 2345.into()),
+                datagen::build_log_time(crate::Time::from_ns_since_epoch(200)),
+                datagen::build_frame_nr(2345),
             ]
             .into(),
         ),
