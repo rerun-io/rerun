@@ -178,9 +178,13 @@ fn drop_target_ui<R>(
 
 pub fn dimension_mapping_ui(
     ui: &mut egui::Ui,
-    dimension_mapping: &mut DimensionMapping,
+    dim_mapping: &mut DimensionMapping,
     shape: &[TensorDimension],
 ) {
+    if !dim_mapping.is_valid(shape.len()) {
+        *dim_mapping = DimensionMapping::create(shape.len());
+    }
+
     let mut drop_source = DragDropAddress::None;
     let mut drop_target = DragDropAddress::None;
 
@@ -196,13 +200,13 @@ pub fn dimension_mapping_ui(
             egui::Grid::new("imagegrid").num_columns(2).show(ui, |ui| {
                 ui.horizontal(|ui| {
                     ui.label("Width:");
-                    ui.toggle_value(&mut dimension_mapping.invert_width, "Flip");
+                    ui.toggle_value(&mut dim_mapping.invert_width, "Flip");
                 });
                 tensor_dimension_ui(
                     ui,
                     drag_context_id,
                     can_accept_dragged,
-                    dimension_mapping.width,
+                    dim_mapping.width,
                     DragDropAddress::Width,
                     shape,
                     &mut drop_source,
@@ -212,13 +216,13 @@ pub fn dimension_mapping_ui(
 
                 ui.horizontal(|ui| {
                     ui.label("Height:");
-                    ui.toggle_value(&mut dimension_mapping.invert_height, "Flip");
+                    ui.toggle_value(&mut dim_mapping.invert_height, "Flip");
                 });
                 tensor_dimension_ui(
                     ui,
                     drag_context_id,
                     can_accept_dragged,
-                    dimension_mapping.height,
+                    dim_mapping.height,
                     DragDropAddress::Height,
                     shape,
                     &mut drop_source,
@@ -231,7 +235,7 @@ pub fn dimension_mapping_ui(
                     ui,
                     drag_context_id,
                     can_accept_dragged,
-                    dimension_mapping.channel,
+                    dim_mapping.channel,
                     DragDropAddress::Channel,
                     shape,
                     &mut drop_source,
@@ -249,8 +253,7 @@ pub fn dimension_mapping_ui(
             egui::Grid::new("selectiongrid")
                 .num_columns(1)
                 .show(ui, |ui| {
-                    for (selector_idx, &mut dim_idx) in
-                        dimension_mapping.selectors.iter_mut().enumerate()
+                    for (selector_idx, &mut dim_idx) in dim_mapping.selectors.iter_mut().enumerate()
                     {
                         tensor_dimension_ui(
                             ui,
@@ -281,9 +284,9 @@ pub fn dimension_mapping_ui(
 
     // persist drag/drop
     if drop_target.is_some() && drop_source.is_some() && ui.input().pointer.any_released() {
-        let previous_value_source = drop_source.read_from_address(dimension_mapping);
-        let previous_value_target = drop_target.read_from_address(dimension_mapping);
-        drop_source.write_to_address(dimension_mapping, previous_value_target);
-        drop_target.write_to_address(dimension_mapping, previous_value_source);
+        let previous_value_source = drop_source.read_from_address(dim_mapping);
+        let previous_value_target = drop_target.read_from_address(dim_mapping);
+        drop_source.write_to_address(dim_mapping, previous_value_target);
+        drop_target.write_to_address(dim_mapping, previous_value_source);
     }
 }
