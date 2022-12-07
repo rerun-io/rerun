@@ -237,7 +237,7 @@ pub(crate) fn view_2d(
     ui: &mut egui::Ui,
     state: &mut View2DState,
     space: &ObjPath,
-    scene: &Scene2D,
+    scene: Scene2D,
 ) -> egui::Response {
     crate::profile_function!();
 
@@ -256,7 +256,7 @@ pub(crate) fn view_2d(
         .auto_shrink([false, false]);
 
     let scroll_out = scroll_area.show(ui, |ui| {
-        view_2d_scrollable(desired_size, available_size, ctx, ui, state, space, &scene)
+        view_2d_scrollable(desired_size, available_size, ctx, ui, state, space, scene)
     });
 
     // Update the scroll area based on the computed offset
@@ -292,58 +292,56 @@ fn view_2d_scrollable(
 
     state.update(&response, space_from_ui, available_size);
 
-    let mut label_shapes = Vec::new();
-
     // ------------------------------------------------------------------------
 
-    let hover_radius = 5.0; // TODO(emilk): from egui?
+    // Add egui driven labels on top of re_renderer content.
+    // Needs to come before hovering checks because it adds more objects for hovering.
+    let mut shapes = create_labels(&mut scene, ui_from_space, parent_ui);
 
-    let mut closest_dist = hover_radius;
-    let mut closest_instance_id_hash = InstanceIdHash::NONE;
-    let pointer_pos = response.hover_pos();
-
-    let mut check_hovering = |instance_hash, dist: f32| {
-        if dist <= closest_dist {
-            closest_dist = dist;
-            closest_instance_id_hash = instance_hash;
-        }
-    };
+    // ------------------------------------------------------------------------
 
     // What tooltips we've shown so far
     let mut shown_tooltips = ahash::HashSet::default();
     let mut depths_at_pointer = vec![];
+    let mut closest_instance_id_hash = InstanceIdHash::NONE;
 
     // Check if we're hovering any hover primitive.
-    if let Some(pointer_pos) = pointer_pos {
-        // TODO: cursor should be in scene coordinates.
+    if let Some(pointer_pos_ui) = response.hover_pos() {
+        // All hover primitives have their coordinates in space units.
+        // Transform the pointer pos so we don't have to transform anything else!
+        let pointer_pos_space = space_from_ui.transform_pos(pointer_pos_ui);
+
+        let hover_radius = space_from_ui.scale().y * 5.0; // TODO(emilk): from egui?
+        let mut closest_dist = hover_radius;
+
+        let mut check_hovering = |instance_hash, dist: f32| {
+            if dist <= closest_dist {
+                closest_dist = dist;
+                closest_instance_id_hash = instance_hash;
+            }
+        };
 
         for (bbox, instance_hash) in &scene.hoverable_rects {
-            let rect_in_ui =
-                ui_from_space.transform_rect(Rect::from_min_max(bbox.min.into(), bbox.max.into()));
-            check_hovering(*instance_hash, rect_in_ui.distance_to_pos(pointer_pos));
+            check_hovering(*instance_hash, bbox.distance_to_pos(pointer_pos_space));
         }
 
         for (point, instance_hash) in &scene.hoverable_points {
-            let pos_in_ui = ui_from_space.transform_pos(*point);
-            check_hovering(*instance_hash, pos_in_ui.distance(pointer_pos));
+            check_hovering(*instance_hash, point.distance(pointer_pos_space));
         }
 
         for (points, instance_hash) in &scene.hoverable_line_strips {
             let mut min_dist_sq = f32::INFINITY;
 
             for &[a, b] in bytemuck::cast_slice::<_, [egui::Pos2; 2]>(points) {
-                let a = ui_from_space.transform_pos(a);
-                let b = ui_from_space.transform_pos(b);
-
                 let line_segment_distance_sq =
-                    crate::math::line_segment_distance_sq_to_point_2d([a, b], pointer_pos);
+                    crate::math::line_segment_distance_sq_to_point_2d([a, b], pointer_pos_space);
                 min_dist_sq = min_dist_sq.min(line_segment_distance_sq);
             }
 
             check_hovering(*instance_hash, min_dist_sq.sqrt());
         }
 
-        for img in scene.hoverable_images.iter() {
+        for img in &scene.hoverable_images {
             let HoverableImage {
                 instance_hash,
                 tensor,
@@ -352,14 +350,13 @@ fn view_2d_scrollable(
             } = img;
 
             let (w, h) = (tensor.shape[1].size as f32, tensor.shape[0].size as f32);
-            let rect_in_ui =
-                ui_from_space.transform_rect(Rect::from_min_size(Pos2::ZERO, vec2(w, h)));
-            let dist = rect_in_ui.distance_sq_to_pos(pointer_pos).sqrt();
+            let rect = Rect::from_min_size(Pos2::ZERO, vec2(w, h));
+            let dist = rect.distance_sq_to_pos(pointer_pos_space).sqrt();
             let dist = dist.at_least(hover_radius); // allow stuff on top of us to "win"
             check_hovering(*instance_hash, dist);
 
             // Show tooltips for all images, not just the "most hovered" one.
-            if rect_in_ui.contains(pointer_pos) {
+            if rect.contains(pointer_pos_space) {
                 response = response
                     .on_hover_cursor(egui::CursorIcon::ZoomIn)
                     .on_hover_ui_at_pointer(|ui| {
@@ -391,8 +388,8 @@ fn view_2d_scrollable(
                                     parent_ui,
                                     ui,
                                     &tensor_view,
-                                    rect_in_ui,
-                                    pointer_pos,
+                                    ui_from_space.transform_rect(rect),
+                                    pointer_pos_ui,
                                     *meter,
                                 );
                             });
@@ -403,10 +400,10 @@ fn view_2d_scrollable(
             }
 
             if let Some(meter) = *meter {
-                let pos_in_image = space_from_ui.transform_pos(pointer_pos);
-                if let Some(raw_value) =
-                    tensor.get(&[pos_in_image.y.round() as _, pos_in_image.x.round() as _])
-                {
+                if let Some(raw_value) = tensor.get(&[
+                    pointer_pos_space.y.round() as _,
+                    pointer_pos_space.x.round() as _,
+                ]) {
                     let raw_value = raw_value.as_f64();
                     let depth_in_meters = raw_value / meter as f64;
                     depths_at_pointer.push(depth_in_meters);
@@ -414,9 +411,6 @@ fn view_2d_scrollable(
             }
         }
     }
-
-    // Add egui driven labels on top of re_renderer content.
-    let shapes = create_labels(&mut scene, ui_from_space, parent_ui);
 
     // ------------------------------------------------------------------------
 
@@ -473,11 +467,11 @@ fn view_2d_scrollable(
         f32::INFINITY
     };
     project_onto_other_spaces(ctx, space, &response, &space_from_ui, depth_at_pointer);
-    show_projections_from_3d_space(ctx, parent_ui, space, &ui_from_space, &mut label_shapes);
+    show_projections_from_3d_space(ctx, parent_ui, space, &ui_from_space, &mut shapes);
 
     // ------------------------------------------------------------------------
 
-    painter.extend(label_shapes);
+    painter.extend(shapes);
 
     state.hovered_instance = closest_instance_id_hash.resolve(&ctx.log_db.obj_db.store);
 
