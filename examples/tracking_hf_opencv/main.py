@@ -390,6 +390,9 @@ def main() -> None:
     parser.add_argument("--video_path", type=str, default="", help="Full path to video to run on. Overrides `--video`.")
 
     args = parser.parse_args()
+
+    rerun.init("tracking_hf_opencv")
+
     setup_looging()
 
     video_path = args.video_path  # type: str
