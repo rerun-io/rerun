@@ -26,8 +26,8 @@ jobs:
     container:
       image: jleibsrerun/ci_docker:0.1
       env:
-        RUSTFLAGS: $RUSTFLAGS
-        RUSTDOCFLAGS: $RUSTDOCFLAGS
+        RUSTFLAGS: ${{env.RUSTFLAGS}}
+        RUSTDOCFLAGS: ${{env.RUSTDOCFLAGS}}
     steps:
       - uses: actions/checkout@v2
 
@@ -92,8 +92,8 @@ jobs:
     container:
       image: jleibsrerun/ci_docker:0.1
       env:
-        RUSTFLAGS: $RUSTFLAGS
-        RUSTDOCFLAGS: $RUSTDOCFLAGS
+        RUSTFLAGS: ${{env.RUSTFLAGS}}
+        RUSTDOCFLAGS: ${{env.RUSTDOCFLAGS}}
     steps:
       - uses: actions/checkout@v2
 
@@ -131,8 +131,8 @@ jobs:
     container:
       image: jleibsrerun/ci_docker:0.1
       env:
-        RUSTFLAGS: $RUSTFLAGS
-        RUSTDOCFLAGS: $RUSTDOCFLAGS
+        RUSTFLAGS: ${{env.RUSTFLAGS}}
+        RUSTDOCFLAGS: ${{env.RUSTDOCFLAGS}}
     steps:
       - uses: actions/checkout@v2
 
