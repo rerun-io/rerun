@@ -410,7 +410,14 @@ pub struct ComponentTable {
     pub(crate) datatype: DataType,
 
     /// The actual buckets, where the component data is stored.
-    pub(crate) buckets: VecDeque<(RowIndex, ComponentBucket)>,
+    ///
+    /// Component buckets are append-only, they can never be written to in an out of order
+    /// fashion.
+    /// As such, a double-ended queue covers all our needs:
+    /// - poping from the front for garbage collection
+    /// - pushing to the back for insertions
+    /// - binary search for queries
+    pub(crate) buckets: VecDeque<ComponentBucket>,
 }
 
 impl std::fmt::Display for ComponentTable {
@@ -437,7 +444,7 @@ impl std::fmt::Display for ComponentTable {
             format_usize(self.total_rows()),
         ))?;
         f.write_str("buckets: [\n")?;
-        for (_, bucket) in buckets {
+        for bucket in buckets {
             f.write_str(&indent::indent_all_by(4, "ComponentBucket {\n"))?;
             f.write_str(&indent::indent_all_by(8, bucket.to_string() + "\n"))?;
             f.write_str(&indent::indent_all_by(4, "}\n"))?;
@@ -452,10 +459,7 @@ impl ComponentTable {
     /// Returns the number of rows stored across this entire table, i.e. the sum of the number
     /// of rows stored across all of its buckets.
     pub fn total_rows(&self) -> usize {
-        self.buckets
-            .iter()
-            .map(|(_, bucket)| bucket.total_rows())
-            .sum()
+        self.buckets.iter().map(|bucket| bucket.total_rows()).sum()
     }
 
     /// Returns the size of data stored across this entire table, i.e. the sum of the size of
@@ -463,7 +467,7 @@ impl ComponentTable {
     pub fn total_size_bytes(&self) -> u64 {
         self.buckets
             .iter()
-            .map(|(_, bucket)| bucket.total_size_bytes())
+            .map(|bucket| bucket.total_size_bytes())
             .sum()
     }
 }
@@ -473,7 +477,7 @@ impl ComponentTable {
 pub struct ComponentBucket {
     /// The component's name, for debugging purposes.
     pub(crate) name: Arc<String>,
-    /// The offset of this bucket in the global table, for debugging purposes.
+    /// The offset of this bucket in the global table.
     pub(crate) row_offset: RowIndex,
 
     /// The time ranges (plural!) covered by this bucket.
@@ -504,7 +508,12 @@ impl std::fmt::Display for ComponentBucket {
         f.write_fmt(format_args!(
             "row range: from {} to {} (all inclusive)\n",
             row_offset,
-            row_offset + data.len().saturating_sub(1) as u64,
+            // Component buckets can never be empty at the moment:
+            // - the first bucket is always initialized with a single empty row
+            // - all buckets that follow are lazily instantiated when data get inserted
+            //
+            // TODO(#439): is that still true with deletion?
+            row_offset + data.len().checked_sub(1).expect("buckets are never empty") as u64,
         ))?;
 
         f.write_str("time ranges:\n")?;

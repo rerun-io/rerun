@@ -250,7 +250,7 @@ impl ComponentTable {
     pub fn get(&self, row_idx: RowIndex) -> Option<Box<dyn Array>> {
         let mut bucket_nr = self
             .buckets
-            .partition_point(|(row_offset, _)| row_idx >= *row_offset);
+            .partition_point(|bucket| row_idx >= bucket.row_offset);
 
         // The partition point will give us the index of the first bucket that has a row offset
         // strictly greater than the row index we're looking for, therefore we need to take a
@@ -261,10 +261,10 @@ impl ComponentTable {
         debug_assert!(bucket_nr > 0);
         bucket_nr -= 1;
 
-        if let Some((row_offset, bucket)) = self.buckets.get(bucket_nr) {
+        if let Some(bucket) = self.buckets.get(bucket_nr) {
             debug!(
                 name = self.name.as_str(),
-                row_idx, bucket_nr, row_offset, "fetching component data"
+                row_idx, bucket_nr, bucket.row_offset, "fetching component data"
             );
             Some(bucket.get(row_idx))
         } else {

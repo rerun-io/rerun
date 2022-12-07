@@ -238,7 +238,7 @@ impl ComponentTable {
         ComponentTable {
             name: Arc::clone(&name),
             datatype: datatype.clone(),
-            buckets: [(0, ComponentBucket::new(name, datatype, 0))].into(),
+            buckets: [ComponentBucket::new(name, datatype, 0)].into(),
         }
     }
 
@@ -250,7 +250,7 @@ impl ComponentTable {
     ) -> anyhow::Result<RowIndex> {
         // All component tables spawn with an initial bucket at row offset 0, thus this cannot
         // fail.
-        let (row_offset, bucket) = self.buckets.back().unwrap();
+        let bucket = self.buckets.back().unwrap();
 
         let size = bucket.total_size_bytes();
         let size_overflow = bucket.total_size_bytes() >= config.component_bucket_size_bytes;
@@ -269,10 +269,11 @@ impl ComponentTable {
                 "allocating new component bucket, previous one overflowed"
             );
 
-            let row_offset = row_offset + len;
-            self.buckets.push_back((
+            let row_offset = bucket.row_offset + len;
+            self.buckets.push_back(ComponentBucket::new(
+                Arc::clone(&self.name),
+                self.datatype.clone(),
                 row_offset,
-                ComponentBucket::new(Arc::clone(&self.name), self.datatype.clone(), row_offset),
             ));
         }
 
@@ -281,8 +282,7 @@ impl ComponentTable {
         //   same reason as above: all component tables spawn with an initial bucket at row
         //   offset 0, thus this cannot fail.
         // - If the table has just overflowed, then we've just pushed a bucket to the dequeue.
-        let (_, bucket) = self.buckets.back_mut().unwrap();
-        bucket.insert(timelines, data)
+        self.buckets.back_mut().unwrap().insert(timelines, data)
     }
 }
 
