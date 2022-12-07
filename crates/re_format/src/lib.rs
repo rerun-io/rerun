@@ -3,7 +3,7 @@
 // --- Numbers ---
 
 /// Using thousands separators for readability.
-pub fn format_usize(number: usize) -> String {
+pub fn format_number(number: usize) -> String {
     let number = number.to_string();
     let mut chars = number.chars().rev().peekable();
 
@@ -26,12 +26,12 @@ pub fn format_usize(number: usize) -> String {
 }
 
 #[test]
-fn test_format_usize() {
-    assert_eq!(format_usize(42), "42");
-    assert_eq!(format_usize(999), "999");
-    assert_eq!(format_usize(1_000), "1 000");
-    assert_eq!(format_usize(123_456), "123 456");
-    assert_eq!(format_usize(1_234_567), "1 234 567");
+fn test_format_number() {
+    assert_eq!(format_number(42), "42");
+    assert_eq!(format_number(999), "999");
+    assert_eq!(format_number(1_000), "1 000");
+    assert_eq!(format_number(123_456), "123 456");
+    assert_eq!(format_number(1_234_567), "1 234 567");
 }
 
 // --- Bytes ---
