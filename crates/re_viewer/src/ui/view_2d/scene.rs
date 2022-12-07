@@ -551,7 +551,7 @@ pub struct ObjectPaintProperties {
     pub fg_stroke: Stroke,
 }
 
-// TODO: remove
+// TODO(andreas): we're no longer using egui strokes. Replace this.
 fn paint_properties(color: [u8; 4], stroke_width: Option<&f32>) -> ObjectPaintProperties {
     let bg_color = Color32::from_black_alpha(196);
     let fg_color = to_egui_color(color);
