@@ -90,7 +90,7 @@ jobs:
     name: Check Rust web build (wasm32 + wasm-bindgen)
     runs-on: ubuntu-latest-16-cores
     container:
-      image: $IMAGE
+      image: rerunio/ci_docker:0.1
       env:
         RUSTFLAGS: ${{env.RUSTFLAGS}}
         RUSTDOCFLAGS: ${{env.RUSTDOCFLAGS}}
@@ -129,7 +129,7 @@ jobs:
     name: Check Rust dependencies (cargo-deny)
     runs-on: ubuntu-latest-16-cores
     container:
-      image: $IMAGE
+      image: rerunio/ci_docker:0.1
       env:
         RUSTFLAGS: ${{env.RUSTFLAGS}}
         RUSTDOCFLAGS: ${{env.RUSTDOCFLAGS}}
@@ -153,7 +153,7 @@ jobs:
     name: Build Rust SDK Maturin Wheel (Linux)
     runs-on: ubuntu-latest-16-cores
     container:
-      image: $IMAGE
+      image: rerunio/ci_docker:0.1
     steps:
       - uses: actions/checkout@v2
 
