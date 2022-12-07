@@ -645,7 +645,7 @@ fn show_msg_ids_tooltip(ctx: &mut ViewerContext<'_>, egui_ctx: &egui::Context, m
         } else {
             ui.label(format!(
                 "{} messages",
-                re_format::format_usize(msg_ids.len())
+                re_format::format_number(msg_ids.len())
             ));
         }
     });
