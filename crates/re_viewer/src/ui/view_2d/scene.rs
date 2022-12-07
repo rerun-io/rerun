@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use ahash::HashMap;
 use egui::{pos2, Pos2, Rect, Stroke};
+use itertools::Itertools as _;
 use re_data_store::{
     query::{visit_type_data_2, visit_type_data_4, visit_type_data_5},
     FieldName, InstanceIdHash,
@@ -21,6 +22,8 @@ use crate::{
 
 use re_renderer::{renderer::PointCloudPoint, Color32, LineStripSeriesBuilder, Size};
 
+use smallvec::smallvec;
+
 // ---
 
 pub struct Image {
@@ -39,15 +42,6 @@ pub struct Image {
 
     /// If true, draw a frame around it
     pub is_hovered: bool,
-}
-
-pub struct LineSegments2D {
-    pub instance_hash: InstanceIdHash,
-
-    /// Connected pair-wise even-odd.
-    pub points: Vec<Pos2>,
-    pub stroke_width: Option<f32>,
-    pub paint_props: ObjectPaintProperties,
 }
 
 pub enum LabelTarget {
@@ -74,7 +68,6 @@ pub struct Scene2D {
     pub annotation_map: AnnotationMap,
 
     pub images: Vec<Image>,
-    pub line_segments: Vec<LineSegments2D>,
     pub points: Vec<PointCloudPoint>,
     pub lines: LineStripSeriesBuilder<()>,
 
@@ -85,6 +78,9 @@ pub struct Scene2D {
 
     /// Hoverable points in scene units and their instance id hashes
     pub hoverable_points: Vec<(egui::Pos2, InstanceIdHash)>,
+
+    /// Hoverable line strips in scene units and their instance id hashes
+    pub hoverable_line_strips: Vec<(smallvec::SmallVec<[egui::Pos2; 2]>, InstanceIdHash)>,
 }
 
 impl Default for Scene2D {
@@ -93,12 +89,12 @@ impl Default for Scene2D {
             bbox: Rect::NOTHING,
             annotation_map: Default::default(),
             images: Default::default(),
-            line_segments: Default::default(),
             points: Default::default(),
             lines: Default::default(),
             labels: Default::default(),
             hoverable_rects: Default::default(),
             hoverable_points: Default::default(),
+            hoverable_line_strips: Default::default(),
         }
     }
 }
@@ -275,7 +271,9 @@ impl Scene2D {
     ) {
         crate::profile_function!();
 
-        let depth = self.lines.next_2d_z; // put the points in front of all the lines we have so far.
+        // Ensure keypoint connection lines are behind points.
+        let connection_depth = self.lines.next_2d_z;
+        let point_depth = self.lines.next_2d_z - 0.1;
 
         for (_obj_type, obj_path, time_query, obj_store) in
             query.iter_object_stores(ctx.log_db, &[ObjectType::Point2D])
@@ -335,12 +333,12 @@ impl Scene2D {
                     }
 
                     self.points.push(PointCloudPoint {
-                        position: pos.extend(depth),
+                        position: pos.extend(point_depth),
                         radius: Size::new_points(paint_props.bg_stroke.width * 0.5),
                         color: paint_props.bg_stroke.color,
                     });
                     self.points.push(PointCloudPoint {
-                        position: pos.extend(depth - 0.1),
+                        position: pos.extend(point_depth - 0.1),
                         radius: Size::new_points(paint_props.fg_stroke.width * 0.5),
                         color: paint_props.fg_stroke.color,
                     });
@@ -387,11 +385,15 @@ impl Scene2D {
                             continue;
                         };
                     // TODO(andreas): No outlines for these?
+                    // Specify depth explicitly so we're behind the points.
                     self.lines
-                        .add_segment_2d(*a, *b)
+                        .add_segment(a.extend(connection_depth), b.extend(connection_depth))
                         .color(to_egui_color(color));
 
-                    // TODO: hoverable object
+                    self.hoverable_line_strips.push((
+                        smallvec![egui::pos2(a.x, a.y), egui::pos2(b.x, b.y)],
+                        instance_hash,
+                    ));
                 }
             }
         }
@@ -409,55 +411,68 @@ impl Scene2D {
     ) {
         crate::profile_function!();
 
-        let segments = query
-            .iter_object_stores(ctx.log_db, &[ObjectType::LineSegments2D])
-            .flat_map(|(_obj_type, obj_path, time_query, obj_store)| {
-                let mut batch = Vec::new();
-                let annotations = self.annotation_map.find(obj_path);
+        for (_obj_type, obj_path, time_query, obj_store) in
+            query.iter_object_stores(ctx.log_db, &[ObjectType::LineSegments2D])
+        {
+            let annotations = self.annotation_map.find(obj_path);
 
-                visit_type_data_2(
-                    obj_store,
-                    &FieldName::from("points"),
-                    &time_query,
-                    ("color", "stroke_width"),
-                    |instance_index: Option<&IndexHash>,
-                     _time: i64,
-                     _msg_id: &MsgId,
-                     points: &DataVec,
-                     color: Option<&[u8; 4]>,
-                     stroke_width: Option<&f32>| {
-                        let Some(points) = points.as_vec_of_vec2("LineSegments2D::points")
+            visit_type_data_2(
+                obj_store,
+                &FieldName::from("points"),
+                &time_query,
+                ("color", "stroke_width"),
+                |instance_index: Option<&IndexHash>,
+                 _time: i64,
+                 _msg_id: &MsgId,
+                 points: &DataVec,
+                 color: Option<&[u8; 4]>,
+                 stroke_width: Option<&f32>| {
+                    let Some(points) = points.as_vec_of_vec2("LineSegments2D::points")
                                 else { return };
 
-                        let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
-                        let stroke_width = stroke_width.copied();
+                    let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
+                    let instance_hash =
+                        InstanceIdHash::from_path_and_index(obj_path, instance_index);
 
-                        // TODO(andreas): support class ids for line segments
-                        let annotation_info = annotations.class_description(None).annotation_info();
-                        let color = annotation_info.color(color, DefaultColor::ObjPath(obj_path));
+                    // TODO(andreas): support class ids for line segments
+                    let annotation_info = annotations.class_description(None).annotation_info();
+                    let color = annotation_info.color(color, DefaultColor::ObjPath(obj_path));
 
-                        let paint_props = paint_properties(color, None);
+                    let mut paint_props = paint_properties(color, stroke_width);
+                    if hovered_instance == instance_hash {
+                        apply_hover_effect(&mut paint_props);
+                    }
 
-                        batch.push(LineSegments2D {
-                            instance_hash: InstanceIdHash::from_path_and_index(
-                                obj_path,
-                                instance_index,
-                            ),
-                            points: points.iter().map(|p| Pos2::new(p[0], p[1])).collect(),
-                            stroke_width,
-                            paint_props,
-                        });
-                    },
-                );
-                batch
-            });
+                    // TODO(andreas): support outlines directly by re_renderer (need only 1 and 2 *point* black outlines)
+                    self.lines
+                        .add_segments_2d(
+                            points
+                                .iter()
+                                .tuple_windows()
+                                .map(|(a, b)| (glam::vec2(a[0], a[1]), glam::vec2(b[0], b[1]))),
+                        )
+                        .color(paint_props.bg_stroke.color)
+                        .radius(Size::new_points(paint_props.bg_stroke.width * 0.5));
+                    self.lines
+                        .add_segments_2d(
+                            points
+                                .iter()
+                                .tuple_windows()
+                                .map(|(a, b)| (glam::vec2(a[0], a[1]), glam::vec2(b[0], b[1]))),
+                        )
+                        .color(paint_props.fg_stroke.color)
+                        .radius(Size::new_points(paint_props.fg_stroke.width * 0.5));
 
-        self.line_segments.extend(segments);
+                    self.hoverable_line_strips.push((
+                        points.iter().map(|p| egui::pos2(p[0], p[1])).collect(),
+                        instance_hash,
+                    ));
 
-        for segment in &self.line_segments {
-            for &point in &segment.points {
-                self.bbox.extend_with(point);
-            }
+                    for p in points {
+                        self.bbox.extend_with(egui::pos2(p[0], p[1]));
+                    }
+                },
+            );
         }
     }
 }
@@ -468,19 +483,15 @@ impl Scene2D {
             bbox: _,
             annotation_map: _,
             images,
-            line_segments,
             points,
             lines,
             hoverable_rects: _,
             labels,
             hoverable_points: _,
+            hoverable_line_strips: _,
         } = self;
 
-        images.is_empty()
-            && lines.is_empty()
-            && line_segments.is_empty()
-            && points.is_empty()
-            && labels.is_empty()
+        images.is_empty() && lines.is_empty() && points.is_empty() && labels.is_empty()
     }
 }
 

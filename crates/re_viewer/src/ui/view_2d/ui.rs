@@ -3,7 +3,6 @@ use egui::{
     epaint, pos2, vec2, Align, Align2, Color32, NumExt as _, Pos2, Rect, Response, ScrollArea,
     Shape, TextFormat, TextStyle, Vec2,
 };
-use itertools::Itertools;
 use re_data_store::{InstanceId, InstanceIdHash, ObjPath};
 use re_renderer::{
     renderer::{PointCloudDrawData, RectangleDrawData},
@@ -13,7 +12,7 @@ use re_renderer::{
 
 use crate::{misc::HoveredSpace, Selection, ViewerContext};
 
-use super::{Image, LineSegments2D, ObjectPaintProperties, Scene2D};
+use super::{Image, ObjectPaintProperties, Scene2D};
 
 // ---
 
@@ -273,27 +272,9 @@ pub(crate) fn view_2d(
 fn hover_effect(scene: &mut Scene2D, hovered: InstanceIdHash) {
     crate::profile_function!();
 
-    let Scene2D {
-        bbox: _,
-        annotation_map: _,
-
-        images,
-        line_segments,
-        points,
-        lines,
-        hoverable_rects: _,
-        labels,
-        hoverable_points,
-    } = scene;
-
-    for obj in images {
+    for obj in &mut scene.images {
         obj.is_hovered = obj.instance_hash == hovered;
         if obj.is_hovered {
-            apply_hover_effect(&mut obj.paint_props);
-        }
-    }
-    for obj in line_segments {
-        if obj.instance_hash == hovered {
             apply_hover_effect(&mut obj.paint_props);
         }
     }
@@ -309,45 +290,6 @@ fn apply_hover_effect(paint_props: &mut ObjectPaintProperties) {
 }
 
 const BACKGROUND_COLOR: Color32 = Color32::from_black_alpha(196);
-
-/// Adds an object label to the ui.
-/// Returns rect covered by it (to be used for hover detection)
-fn add_label(
-    ui: &mut egui::Ui,
-    label: &String,
-    color: Color32,
-    wrap_width: f32,
-    text_anchor_pos: Pos2,
-    shapes: &mut Vec<Shape>,
-) -> egui::Rect {
-    let font_id = TextStyle::Body.resolve(ui.style());
-    let galley = ui.fonts().layout_job({
-        egui::text::LayoutJob {
-            sections: vec![egui::text::LayoutSection {
-                leading_space: 0.0,
-                byte_range: 0..label.len(),
-                format: TextFormat::simple(font_id, color),
-            }],
-            text: (*label).clone(),
-            wrap: TextWrapping {
-                max_width: wrap_width,
-                ..Default::default()
-            },
-            break_on_newline: true,
-            halign: Align::Center,
-            ..Default::default()
-        }
-    });
-
-    let text_rect =
-        Align2::CENTER_TOP.anchor_rect(Rect::from_min_size(text_anchor_pos, galley.size()));
-    let bg_rect = text_rect.expand2(vec2(4.0, 2.0));
-
-    shapes.push(Shape::rect_filled(bg_rect, 3.0, BACKGROUND_COLOR));
-    shapes.push(Shape::galley(text_rect.center_top(), galley));
-
-    bg_rect
-}
 
 /// Create the real 2D view inside the scrollable area
 fn view_2d_scrollable(
@@ -512,6 +454,7 @@ fn view_2d_scrollable(
         }
     }
 
+    // Check if we're hovering any hover primitive.
     if let Some(pointer_pos) = pointer_pos {
         // TODO: cursor should be in scene coordinates.
 
@@ -524,6 +467,21 @@ fn view_2d_scrollable(
         for (point, instance_hash) in &scene.hoverable_points {
             let pos_in_ui = ui_from_space.transform_pos(*point);
             check_hovering(*instance_hash, pos_in_ui.distance(pointer_pos));
+        }
+
+        for (points, instance_hash) in &scene.hoverable_line_strips {
+            let mut min_dist_sq = f32::INFINITY;
+
+            for &[a, b] in bytemuck::cast_slice::<_, [egui::Pos2; 2]>(points) {
+                let a = ui_from_space.transform_pos(a);
+                let b = ui_from_space.transform_pos(b);
+
+                let line_segment_distance_sq =
+                    crate::math::line_segment_distance_sq_to_point_2d([a, b], pointer_pos);
+                min_dist_sq = min_dist_sq.min(line_segment_distance_sq);
+            }
+
+            check_hovering(*instance_hash, min_dist_sq.sqrt());
         }
     }
 
@@ -576,50 +534,6 @@ fn view_2d_scrollable(
                 bg_rect.distance_to_pos(pointer_pos).abs(),
             );
         }
-    }
-
-    for segments in &scene.line_segments {
-        let LineSegments2D {
-            instance_hash,
-            points,
-            stroke_width: _,
-            paint_props,
-        } = segments;
-
-        let mut min_dist_sq = f32::INFINITY;
-
-        // TODO(andreas): support outlines directly by re_renderer (need only 1 and 2 *point* black outlines)
-        line_builder
-            .add_segments_2d(
-                points
-                    .iter()
-                    .tuple_windows()
-                    .map(|(a, b)| (glam::vec2(a.x, a.y), glam::vec2(b.x, b.y))),
-            )
-            .color(paint_props.bg_stroke.color)
-            .radius(Size::new_points(paint_props.bg_stroke.width * 0.5));
-        line_builder
-            .add_segments_2d(
-                points
-                    .iter()
-                    .tuple_windows()
-                    .map(|(a, b)| (glam::vec2(a.x, a.y), glam::vec2(b.x, b.y))),
-            )
-            .color(paint_props.fg_stroke.color)
-            .radius(Size::new_points(paint_props.fg_stroke.width * 0.5));
-
-        for &[a, b] in bytemuck::cast_slice::<_, [egui::Pos2; 2]>(points) {
-            let a = ui_from_space.transform_pos(a);
-            let b = ui_from_space.transform_pos(b);
-
-            if let Some(pointer_pos) = pointer_pos {
-                let line_segment_distance_sq =
-                    crate::math::line_segment_distance_sq_to_point_2d([a, b], pointer_pos);
-                min_dist_sq = min_dist_sq.min(line_segment_distance_sq);
-            }
-        }
-
-        check_hovering(*instance_hash, min_dist_sq.sqrt());
     }
 
     // ------------------------------------------------------------------------
