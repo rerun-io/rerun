@@ -25,13 +25,14 @@ opt-level = 2
 debug = true
 
 [patch.crates-io]
-# 2022-12-06 - last fixes before egui 0.20 release
-eframe = { git = "https://github.com/emilk/egui", rev = "e30ac7f91a35d1f1ba3d8981154cbbc09f2d00d1" }
-egui = { git = "https://github.com/emilk/egui", rev = "e30ac7f91a35d1f1ba3d8981154cbbc09f2d00d1" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "e30ac7f91a35d1f1ba3d8981154cbbc09f2d00d1" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "e30ac7f91a35d1f1ba3d8981154cbbc09f2d00d1" }
-emath = { git = "https://github.com/emilk/egui", rev = "e30ac7f91a35d1f1ba3d8981154cbbc09f2d00d1" }
-epaint = { git = "https://github.com/emilk/egui", rev = "e30ac7f91a35d1f1ba3d8981154cbbc09f2d00d1" }
+# 2022-12-06 - Split out ecolor crate
+eframe = { git = "https://github.com/emilk/egui", rev = "5effc68ba4f6dc0f9f9792193bb6e0eeca6dccef" }
+egui = { git = "https://github.com/emilk/egui", rev = "5effc68ba4f6dc0f9f9792193bb6e0eeca6dccef" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "5effc68ba4f6dc0f9f9792193bb6e0eeca6dccef" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "5effc68ba4f6dc0f9f9792193bb6e0eeca6dccef" }
+emath = { git = "https://github.com/emilk/egui", rev = "5effc68ba4f6dc0f9f9792193bb6e0eeca6dccef" }
+epaint = { git = "https://github.com/emilk/egui", rev = "5effc68ba4f6dc0f9f9792193bb6e0eeca6dccef" }
+ecolor = { git = "https://github.com/emilk/egui", rev = "5effc68ba4f6dc0f9f9792193bb6e0eeca6dccef" }
 
 # eframe = { path = "../../egui/crates/eframe" }
 # egui = { path = "../../egui/crates/egui" }
