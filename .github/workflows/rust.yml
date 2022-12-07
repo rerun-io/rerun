@@ -24,7 +24,7 @@ jobs:
     name: Rust lints (fmt, check, cranky, tests, doc)
     runs-on: ubuntu-latest-16-cores
     steps:
-      - uses: actions/checkout@v2
+      - uses: emilkrerun/ci_docker:0.1
 
       - uses: actions-rs/toolchain@v1
         with:
