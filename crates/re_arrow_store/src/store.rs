@@ -92,7 +92,7 @@ impl DataStore {
 
     /// Returns the number of component rows stored across this entire store, i.e. the sum of
     /// the number of rows across all of its component tables.
-    pub fn total_component_rows(&self) -> usize {
+    pub fn total_component_rows(&self) -> u64 {
         self.components
             .values()
             .map(|table| table.total_rows())
@@ -139,7 +139,7 @@ impl std::fmt::Display for DataStore {
                     "{} component tables, for a total of {} bytes across {} total rows\n",
                     self.components.len(),
                     format_bytes(self.total_component_size_bytes() as _),
-                    format_usize(self.total_component_rows())
+                    format_usize(self.total_component_rows() as _)
                 ),
             ))?;
             f.write_str(&indent::indent_all_by(4, "components: [\n"))?;
@@ -441,7 +441,7 @@ impl std::fmt::Display for ComponentTable {
             "size: {} buckets for a total of {} bytes across {} total rows\n",
             self.buckets.len(),
             format_bytes(self.total_size_bytes() as _),
-            format_usize(self.total_rows()),
+            format_usize(self.total_rows() as _),
         ))?;
         f.write_str("buckets: [\n")?;
         for bucket in buckets {
@@ -458,7 +458,7 @@ impl std::fmt::Display for ComponentTable {
 impl ComponentTable {
     /// Returns the number of rows stored across this entire table, i.e. the sum of the number
     /// of rows stored across all of its buckets.
-    pub fn total_rows(&self) -> usize {
+    pub fn total_rows(&self) -> u64 {
         self.buckets.iter().map(|bucket| bucket.total_rows()).sum()
     }
 
@@ -502,7 +502,7 @@ impl std::fmt::Display for ComponentBucket {
         f.write_fmt(format_args!(
             "size: {} bytes across {} rows\n",
             format_bytes(self.total_size_bytes() as _),
-            format_usize(self.total_rows()),
+            format_usize(self.total_rows() as _),
         ))?;
 
         f.write_fmt(format_args!(
@@ -549,8 +549,8 @@ impl std::fmt::Display for ComponentBucket {
 
 impl ComponentBucket {
     /// Returns the number of rows stored across this bucket.
-    pub fn total_rows(&self) -> usize {
-        self.data.len()
+    pub fn total_rows(&self) -> u64 {
+        self.data.len() as u64
     }
 
     /// Returns the size of the data stored across this bucket, in bytes.
