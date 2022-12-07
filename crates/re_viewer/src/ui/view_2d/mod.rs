@@ -1,5 +1,5 @@
 mod scene;
-pub use self::scene::{Image, ObjectPaintProperties, Scene2D};
+pub use self::scene::{HoverableImage, ObjectPaintProperties, Scene2D};
 
 mod ui;
 pub(crate) use self::ui::{view_2d, View2DState, HELP_TEXT};

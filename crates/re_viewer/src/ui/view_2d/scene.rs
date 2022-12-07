@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use ahash::HashMap;
-use egui::{pos2, Pos2, Rect, Stroke};
+use egui::{pos2, NumExt, Pos2, Rect, Stroke};
 use itertools::Itertools as _;
 use re_data_store::{
     query::{visit_type_data_2, visit_type_data_4, visit_type_data_5},
@@ -26,7 +26,7 @@ use smallvec::smallvec;
 
 // ---
 
-pub struct Image {
+pub struct HoverableImage {
     pub instance_hash: InstanceIdHash,
 
     pub tensor: Tensor,
@@ -36,12 +36,9 @@ pub struct Image {
     /// `meter == 1000.0` for millimeter precision
     /// up to a ~65m range.
     pub meter: Option<f32>,
-    pub paint_props: ObjectPaintProperties,
-    /// A thing that provides additional semantic context for your dtype.
-    pub annotations: Option<Arc<Annotations>>,
 
-    /// If true, draw a frame around it
-    pub is_hovered: bool,
+    /// A thing that provides additional semantic context for your dtype.
+    pub annotations: Arc<Annotations>,
 }
 
 pub enum LabelTarget {
@@ -51,7 +48,6 @@ pub enum LabelTarget {
     Point(egui::Pos2),
 }
 
-// TODO(andreas) shouldn't distinguish between rect and point labels?
 pub struct Label2D {
     pub text: String,
     pub color: Color32,
@@ -67,7 +63,7 @@ pub struct Scene2D {
     pub bbox: Rect,
     pub annotation_map: AnnotationMap,
 
-    pub images: Vec<Image>,
+    pub textured_rectangles: Vec<re_renderer::renderer::Rectangle>,
     pub points: Vec<PointCloudPoint>,
     pub lines: LineStripSeriesBuilder<()>,
 
@@ -75,6 +71,9 @@ pub struct Scene2D {
 
     /// Hoverable rects in scene units and their instance id hashes
     pub hoverable_rects: Vec<(Rect, InstanceIdHash)>,
+
+    /// Images are a special case of rects where we're storing some extra information to allow minature previews etc.
+    pub hoverable_images: Vec<HoverableImage>,
 
     /// Hoverable points in scene units and their instance id hashes
     pub hoverable_points: Vec<(egui::Pos2, InstanceIdHash)>,
@@ -88,7 +87,8 @@ impl Default for Scene2D {
         Self {
             bbox: Rect::NOTHING,
             annotation_map: Default::default(),
-            images: Default::default(),
+            hoverable_images: Default::default(),
+            textured_rectangles: Default::default(),
             points: Default::default(),
             lines: Default::default(),
             labels: Default::default(),
@@ -126,6 +126,26 @@ impl Scene2D {
         self.load_boxes(ctx, query, hovered_instance);
         self.load_line_segments(ctx, query, hovered_instance);
         self.load_points(ctx, query, hovered_instance);
+
+        self.recalculate_bounding_box();
+    }
+
+    fn recalculate_bounding_box(&mut self) {
+        for image in &self.hoverable_images {
+            let [h, w] = [image.tensor.shape[0].size, image.tensor.shape[1].size];
+            self.bbox.extend_with(Pos2::ZERO);
+            self.bbox.extend_with(pos2(w as _, h as _));
+        }
+
+        for (point, _) in &self.hoverable_points {
+            self.bbox.extend_with(*point);
+        }
+
+        for (points, _) in &self.hoverable_line_strips {
+            for p in points {
+                self.bbox.extend_with(*p);
+            }
+        }
     }
 
     fn load_images(
@@ -136,60 +156,93 @@ impl Scene2D {
     ) {
         crate::profile_function!();
 
-        let images = query
-            .iter_object_stores(ctx.log_db, &[ObjectType::Image])
-            .flat_map(|(_obj_type, obj_path, time_query, obj_store)| {
-                let mut batch = Vec::new();
-                visit_type_data_2(
-                    obj_store,
-                    &FieldName::from("tensor"),
-                    &time_query,
-                    ("color", "meter"),
-                    |instance_index: Option<&IndexHash>,
-                     _time: i64,
-                     _msg_id: &MsgId,
-                     tensor: &re_log_types::Tensor,
-                     color: Option<&[u8; 4]>,
-                     meter: Option<&f32>| {
-                        let two_or_three_dims = 2 <= tensor.shape.len() && tensor.shape.len() <= 3;
-                        if !two_or_three_dims {
-                            return;
-                        }
+        for (_obj_type, obj_path, time_query, obj_store) in
+            query.iter_object_stores(ctx.log_db, &[ObjectType::Image])
+        {
+            visit_type_data_2(
+                obj_store,
+                &FieldName::from("tensor"),
+                &time_query,
+                ("color", "meter"),
+                |instance_index: Option<&IndexHash>,
+                 _time: i64,
+                 _msg_id: &MsgId,
+                 tensor: &re_log_types::Tensor,
+                 color: Option<&[u8; 4]>,
+                 meter: Option<&f32>| {
+                    let two_or_three_dims = 2 <= tensor.shape.len() && tensor.shape.len() <= 3;
+                    if !two_or_three_dims {
+                        return;
+                    }
+                    let (w, h) = (tensor.shape[1].size as f32, tensor.shape[0].size as f32);
 
-                        let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
+                    let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
+                    let instance_hash =
+                        InstanceIdHash::from_path_and_index(obj_path, instance_index);
 
-                        let annotations = self.annotation_map.find(obj_path);
-                        let color = annotations
-                            .class_description(None)
-                            .annotation_info()
-                            .color(color, DefaultColor::OpaqueWhite);
+                    let annotations = self.annotation_map.find(obj_path);
+                    let color = annotations
+                        .class_description(None)
+                        .annotation_info()
+                        .color(color, DefaultColor::OpaqueWhite);
 
-                        let paint_props = paint_properties(color, None);
+                    let paint_props = paint_properties(color, None);
 
-                        let image = Image {
-                            instance_hash: InstanceIdHash::from_path_and_index(
-                                obj_path,
-                                instance_index,
-                            ),
-                            tensor: tensor.clone(), // shallow
-                            meter: meter.copied(),
-                            annotations: Some(annotations),
-                            paint_props,
-                            is_hovered: false, // Will be filled in later
-                        };
+                    if hovered_instance == instance_hash {
+                        self.lines
+                            .add_axis_aligned_rectangle_outline_2d(
+                                glam::Vec2::ZERO,
+                                glam::vec2(w, h),
+                            )
+                            .color(paint_props.fg_stroke.color)
+                            .radius(Size::new_points(paint_props.fg_stroke.width * 0.5));
+                    }
 
-                        batch.push(image);
-                    },
-                );
-                batch
-            });
+                    let legend = Some(annotations.clone());
+                    let tensor_view =
+                        ctx.cache
+                            .image
+                            .get_view_with_annotations(tensor, &legend, ctx.render_ctx);
 
-        self.images.extend(images);
+                    self.textured_rectangles
+                        .push(re_renderer::renderer::Rectangle {
+                            top_left_corner_position: glam::Vec3::ZERO,
+                            extent_u: glam::Vec3::X * w,
+                            extent_v: glam::Vec3::Y * h,
+                            texture: tensor_view.texture_handle,
+                            texture_filter_magnification:
+                                re_renderer::renderer::TextureFilterMag::Nearest,
+                            texture_filter_minification:
+                                re_renderer::renderer::TextureFilterMin::Linear,
+                            multiplicative_tint: paint_props.fg_stroke.color.into(),
+                        });
 
-        for image in &self.images {
-            let [h, w] = [image.tensor.shape[0].size, image.tensor.shape[1].size];
-            self.bbox.extend_with(Pos2::ZERO);
-            self.bbox.extend_with(pos2(w as _, h as _));
+                    self.hoverable_images.push(HoverableImage {
+                        instance_hash,
+                        tensor: tensor.clone(),
+                        meter: meter.copied(),
+                        annotations,
+                    });
+                },
+            );
+        }
+
+        let total_num_images = self.textured_rectangles.len();
+        for (image_idx, img) in self.textured_rectangles.iter_mut().enumerate() {
+            img.top_left_corner_position = glam::vec3(
+                0.0,
+                0.0,
+                // We use RDF (X=Right, Y=Down, Z=Forward) for 2D spaces, so we want lower Z in order to put images on top
+                (total_num_images - image_idx - 1) as f32 * 0.1,
+            );
+
+            let opacity = if image_idx == 0 {
+                1.0 // bottom image
+            } else {
+                // make top images transparent
+                1.0 / total_num_images.at_most(20) as f32 // avoid precision problems in framebuffer
+            };
+            img.multiplicative_tint = img.multiplicative_tint.multiply(opacity);
         }
     }
 
@@ -255,11 +308,6 @@ impl Scene2D {
                     }
                 },
             );
-        }
-
-        for (bbox, id) in &self.hoverable_rects {
-            self.bbox.extend_with(bbox.min.into());
-            self.bbox.extend_with(bbox.max.into());
         }
     }
 
@@ -353,7 +401,7 @@ impl Scene2D {
                                 color: paint_props.fg_stroke.color,
                                 target: LabelTarget::Point(pos),
                                 labled_instance: instance_hash,
-                            })
+                            });
                         }
                     }
                 },
@@ -396,10 +444,6 @@ impl Scene2D {
                     ));
                 }
             }
-        }
-
-        for (point, _) in &self.hoverable_points {
-            self.bbox.extend_with(*point);
         }
     }
 
@@ -482,16 +526,21 @@ impl Scene2D {
         let Self {
             bbox: _,
             annotation_map: _,
-            images,
+            hoverable_images: images,
             points,
             lines,
-            hoverable_rects: _,
+            textured_rectangles,
             labels,
+            hoverable_rects: _,
             hoverable_points: _,
             hoverable_line_strips: _,
         } = self;
 
-        images.is_empty() && lines.is_empty() && points.is_empty() && labels.is_empty()
+        images.is_empty()
+            && lines.is_empty()
+            && points.is_empty()
+            && labels.is_empty()
+            && textured_rectangles.is_empty()
     }
 }
 
