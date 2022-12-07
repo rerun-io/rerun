@@ -17,7 +17,10 @@ use crate::ui::annotations::{auto_color, AnnotationMap, DefaultColor};
 use crate::ui::SceneQuery;
 use crate::{math::line_segment_distance_sq_to_point_2d, misc::ViewerContext};
 
-use re_renderer::{renderer::*, Size};
+use re_renderer::{
+    Color32,
+    {renderer::*, Size},
+};
 
 use super::{eye::Eye, SpaceCamera};
 
@@ -27,7 +30,7 @@ pub struct Point3D {
     pub instance_id_hash: InstanceIdHash,
     pub pos: Vec3,
     pub radius: Size,
-    pub color: [u8; 4],
+    pub color: Color32,
 }
 
 pub enum MeshSourceData {
@@ -51,13 +54,18 @@ pub struct MeshSource {
     // TODO(andreas): Make this Conformal3 once glow is gone?
     pub world_from_mesh: macaw::Affine3A,
     pub mesh: Arc<CpuMesh>,
-    pub tint: Option<[u8; 4]>,
+    pub additive_tint: Option<Color32>,
 }
 
 pub struct Label3D {
     pub(crate) text: String,
     /// Origin of the label
     pub(crate) origin: Vec3,
+}
+
+fn to_ecolor([r, g, b, a]: [u8; 4]) -> Color32 {
+    // TODO(andreas): ecolor should have a utility to get an array
+    Color32::from_rgba_premultiplied(r, g, b, a)
 }
 
 #[derive(Default)]
@@ -91,7 +99,7 @@ impl Scene3D {
         self.load_meshes(ctx, query, hovered_instance);
     }
 
-    const HOVER_COLOR: [u8; 4] = [255, 200, 200, 255];
+    const HOVER_COLOR: Color32 = Color32::from_rgb(255, 200, 200);
 
     fn hover_size_boost(size: Size) -> Size {
         if size.is_auto() {
@@ -163,7 +171,7 @@ impl Scene3D {
                             class_description.annotation_info()
                         };
 
-                        let mut color = annotation_info.color(color, default_color);
+                        let mut color = to_ecolor(annotation_info.color(color, default_color));
                         let mut radius = radius.copied().map_or(Size::AUTO, Size::new_scene);
 
                         if instance_id_hash == hovered_instance {
@@ -214,7 +222,7 @@ impl Scene3D {
                             );
                             continue;
                         };
-                        self.line_strips.add_segment(*a, *b).radius(Size::AUTO).color_rgbx_slice(color).user_data(instance_id_hash);
+                        self.line_strips.add_segment(*a, *b).radius(Size::AUTO).color(to_ecolor(color)).user_data(instance_id_hash);
                     }
                 }
             });
@@ -254,7 +262,7 @@ impl Scene3D {
                     let annotation_info = annotations
                         .class_description(class_id.map(|i| ClassId(*i as _)))
                         .annotation_info();
-                    let mut color = annotation_info.color(color, default_color);
+                    let mut color = to_ecolor(annotation_info.color(color, default_color));
                     let label = annotation_info.label(label);
 
                     let instance_id_hash =
@@ -312,7 +320,7 @@ impl Scene3D {
 
                     // TODO(andreas): support class ids for lines
                     let annotation_info = annotations.class_description(None).annotation_info();
-                    let mut color = annotation_info.color(color, default_color);
+                    let mut color = to_ecolor(annotation_info.color(color, default_color));
 
                     if instance_id_hash == hovered_instance {
                         color = Self::HOVER_COLOR;
@@ -331,7 +339,7 @@ impl Scene3D {
                         _ => unreachable!("already early outed earlier"),
                     }
                     .radius(radius)
-                    .color_rgbx_slice(color)
+                    .color(color)
                     .user_data(instance_id_hash);
                 },
             );
@@ -415,7 +423,7 @@ impl Scene3D {
                         let instance_id_hash =
                             InstanceIdHash::from_path_and_index(obj_path, instance_index);
 
-                        let tint = if hovered_instance == instance_id_hash {
+                        let additive_tint = if hovered_instance == instance_id_hash {
                             Some(Self::HOVER_COLOR)
                         } else {
                             None
@@ -430,7 +438,7 @@ impl Scene3D {
                                 instance_id_hash,
                                 world_from_mesh: Default::default(),
                                 mesh: cpu_mesh,
-                                tint,
+                                additive_tint,
                             }) else { return };
 
                         batch.push(mesh);
@@ -468,14 +476,14 @@ impl Scene3D {
             };
             let is_hovered = instance_id == hovered_instance;
 
-            let dist_to_eye = eye_camera_plane.distance(camera.position()).at_least(0.0);
-            let color = if is_hovered {
-                Self::HOVER_COLOR
+            let (line_radius, line_color) = if is_hovered {
+                (Size::AUTO_LARGE, Self::HOVER_COLOR)
             } else {
-                [255, 128, 128, 255]
+                (Size::AUTO, Color32::from_rgb(255, 128, 128))
             }; // TODO(emilk): camera color
 
             let scale_based_on_scene_size = 0.05 * scene_bbox.size().length();
+            let dist_to_eye = eye_camera_plane.distance(camera.position()).at_least(0.0);
             let scale_based_on_distance = dist_to_eye * point_size_at_one_meter * 50.0; // shrink as we get very close. TODO(emilk): fade instead!
             let scale = scale_based_on_scene_size.min(scale_based_on_distance);
 
@@ -497,13 +505,13 @@ impl Scene3D {
                         ),
                         ctx.render_ctx,
                     ) {
-                        let tint = is_hovered.then_some(Self::HOVER_COLOR);
+                        let additive_tint = is_hovered.then_some(Self::HOVER_COLOR);
 
                         self.meshes.push(MeshSource {
                             instance_id_hash: instance_id,
                             world_from_mesh,
                             mesh: cpu_mesh,
-                            tint,
+                            additive_tint,
                         });
                     }
                 }
@@ -522,18 +530,12 @@ impl Scene3D {
                     self.line_strips
                         .add_segment(cam_origin, axis_end)
                         .radius(Size::new_points(2.0))
-                        .color_rgbx_slice(color)
+                        .color(color)
                         .user_data(instance_id);
                 }
             }
 
-            self.add_camera_frustum(
-                camera,
-                scene_bbox,
-                instance_id,
-                Size::new_points(2.0),
-                color,
-            );
+            self.add_camera_frustum(camera, scene_bbox, instance_id, line_radius, line_color);
         }
     }
 
@@ -544,7 +546,7 @@ impl Scene3D {
         scene_bbox: &macaw::BoundingBox,
         instance_id: InstanceIdHash,
         line_radius: Size,
-        color: [u8; 4],
+        color: Color32,
     ) -> Option<()> {
         let world_from_image = camera.world_from_image()?;
         let [w, h] = camera.pinhole?.resolution?;
@@ -579,7 +581,7 @@ impl Scene3D {
         self.line_strips
             .add_segments(segments.into_iter())
             .radius(line_radius)
-            .color_rgbx_slice(color)
+            .color(color)
             .user_data(instance_id);
 
         Some(())
@@ -589,7 +591,7 @@ impl Scene3D {
         &mut self,
         instance_id_hash: InstanceIdHash,
         hovered_instance: InstanceIdHash,
-        mut color: [u8; 4],
+        color: [u8; 4],
         width_scale: Option<f32>,
         label: Option<String>,
         arrow: &re_log_types::Arrow3D,
@@ -607,6 +609,7 @@ impl Scene3D {
         let vector_len = vector.length();
         let end = origin + vector * ((vector_len - tip_length) / vector_len);
 
+        let mut color = to_ecolor(color);
         if instance_id_hash == hovered_instance {
             color = Self::HOVER_COLOR;
             radius = Self::hover_size_boost(radius);
@@ -615,7 +618,7 @@ impl Scene3D {
         self.line_strips
             .add_segment(origin, end)
             .radius(radius)
-            .color_rgbx_slice(color)
+            .color(color)
             .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE)
             .user_data(instance_id_hash);
     }
@@ -623,7 +626,7 @@ impl Scene3D {
     fn add_box(
         &mut self,
         instance_id: InstanceIdHash,
-        color: [u8; 4],
+        color: Color32,
         line_radius: Size,
         label: Option<String>,
         box3: &re_log_types::Box3,
@@ -678,7 +681,7 @@ impl Scene3D {
         self.line_strips
             .add_segments(segments.into_iter())
             .radius(line_radius)
-            .color_rgbx_slice(color)
+            .color(color)
             .user_data(instance_id);
     }
 
@@ -714,7 +717,7 @@ impl Scene3D {
                         gpu_mesh: instance.gpu_mesh.clone(),
                         mesh: None, // Don't care.
                         world_from_mesh: base_transform * instance.world_from_mesh,
-                        additive_tint_srgb: mesh.tint.unwrap_or([0, 0, 0, 0]),
+                        additive_tint: mesh.additive_tint.unwrap_or(Color32::TRANSPARENT),
                     })
             })
             .collect()
@@ -728,7 +731,7 @@ impl Scene3D {
             .map(|point| PointCloudPoint {
                 position: point.pos,
                 radius: point.radius,
-                srgb_color: point.color.into(),
+                color: point.color,
             })
             .collect()
     }
@@ -886,11 +889,11 @@ impl Scene3D {
     }
 }
 
-fn axis_color(axis: usize) -> [u8; 4] {
+fn axis_color(axis: usize) -> Color32 {
     match axis {
-        0 => [255, 25, 25, 255],
-        1 => [0, 240, 0, 255],
-        2 => [80, 80, 255, 255],
+        0 => Color32::from_rgb(255, 25, 25),
+        1 => Color32::from_rgb(0, 240, 0),
+        2 => Color32::from_rgb(80, 80, 255),
         _ => unreachable!("Axis should be one of 0,1,2; got {axis}"),
     }
 }

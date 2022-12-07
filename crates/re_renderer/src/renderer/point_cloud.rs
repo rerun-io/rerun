@@ -15,13 +15,13 @@
 
 use std::num::NonZeroU32;
 
+use crate::Color32;
 use bytemuck::Zeroable;
 use itertools::Itertools;
 use smallvec::smallvec;
 
 use crate::{
     include_file, next_multiple_of,
-    texture_values::ValueRgba8UnormSrgb,
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroupHandleStrong,
@@ -68,7 +68,7 @@ pub struct PointCloudPoint {
     pub radius: Size,
 
     /// The points color in srgb color space. Alpha unused right now
-    pub srgb_color: ValueRgba8UnormSrgb,
+    pub color: Color32,
 }
 
 impl PointCloudDrawData {
@@ -168,8 +168,8 @@ impl PointCloudDrawData {
             crate::profile_scope!("collect_colors");
             points
                 .iter()
-                .map(|point| point.srgb_color)
-                .chain(std::iter::repeat(ValueRgba8UnormSrgb::TRANSPARENT).take(num_points_zeroed))
+                .map(|point| point.color)
+                .chain(std::iter::repeat(Color32::TRANSPARENT).take(num_points_zeroed))
                 .collect_vec()
         };
 

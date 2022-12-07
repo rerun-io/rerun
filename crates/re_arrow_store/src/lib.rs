@@ -11,7 +11,7 @@ mod store_read;
 mod store_write;
 
 pub(crate) use self::store::{ComponentBucket, ComponentTable, IndexBucket, IndexTable};
-pub use self::store::{DataStore, RowIndex};
+pub use self::store::{DataStore, DataStoreConfig, RowIndex};
 pub use self::store_read::TimeQuery;
 
 // Re-exports

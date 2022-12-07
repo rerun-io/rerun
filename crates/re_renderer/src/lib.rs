@@ -2,16 +2,12 @@
 //!
 //! A wgpu based renderer [wgpu](https://github.com/gfx-rs/wgpu/) for all your visualization needs.
 //! Used in `re_runner` to display the contents of any view contents other than pure UI.
-//!
+
 pub mod config;
 pub mod importer;
 pub mod renderer;
 pub mod resource_managers;
-pub mod texture_values;
 pub mod view_builder;
-
-mod color;
-pub use color::*;
 
 mod size;
 pub use size::Size;
@@ -53,6 +49,9 @@ mod workspace_shaders;
 
 #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
 mod error_tracker;
+
+// Re-export used color types.
+pub use ecolor::{Color32, Rgba};
 
 // ---------------------------------------------------------------------------
 

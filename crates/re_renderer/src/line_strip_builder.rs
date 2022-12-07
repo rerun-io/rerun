@@ -1,6 +1,6 @@
 use crate::{
     renderer::{LineDrawData, LineStripFlags, LineStripInfo, LineVertex},
-    Size,
+    Color32, Size,
 };
 
 /// Builder for a vector of line strips, making it easy to create [`crate::renderer::LineDrawData`].
@@ -273,18 +273,9 @@ where
         self
     }
 
-    pub fn color_rgb(self, r: u8, g: u8, b: u8) -> Self {
+    pub fn color(self, color: Color32) -> Self {
         for strip in self.strips.iter_mut() {
-            strip.srgb_color[0] = r;
-            strip.srgb_color[1] = g;
-            strip.srgb_color[2] = b;
-        }
-        self
-    }
-
-    pub fn color_rgbx_slice(self, rgba: [u8; 4]) -> Self {
-        for strip in self.strips.iter_mut() {
-            strip.srgb_color = rgba;
+            strip.color = color;
         }
         self
     }

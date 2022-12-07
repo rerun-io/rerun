@@ -72,9 +72,11 @@ impl DataStore {
         let mut series: HashMap<_, _> = row_indices
             .into_iter()
             .filter_map(|(name, row_idx)| {
-                self.components
-                    .get(name)
-                    .map(|table| (name, Series::try_from((name, table.get(row_idx))).unwrap()))
+                self.components.get(name).and_then(|table| {
+                    table
+                        .get(row_idx)
+                        .map(|data| (name, Series::try_from((name, data)).unwrap()))
+                })
             })
             .collect();
 
@@ -245,10 +247,33 @@ impl IndexBucket {
 // --- Components ---
 
 impl ComponentTable {
-    // Panics on out-of-bounds
-    pub fn get(&self, row_idx: u64) -> Box<dyn Array> {
-        let bucket = &self.buckets[&0];
-        bucket.get(row_idx)
+    pub fn get(&self, row_idx: RowIndex) -> Option<Box<dyn Array>> {
+        let mut bucket_nr = self
+            .buckets
+            .partition_point(|bucket| row_idx >= bucket.row_offset);
+
+        // The partition point will give us the index of the first bucket that has a row offset
+        // strictly greater than the row index we're looking for, therefore we need to take a
+        // step back to find what we're looking for.
+        //
+        // Since component tables always spawn with a default bucket at offset 0, the smallest
+        // partition point that can ever be returned is one, thus this operation is overflow-safe.
+        debug_assert!(bucket_nr > 0);
+        bucket_nr -= 1;
+
+        if let Some(bucket) = self.buckets.get(bucket_nr) {
+            debug!(
+                name = self.name.as_str(),
+                row_idx, bucket_nr, bucket.row_offset, "fetching component data"
+            );
+            Some(bucket.get(row_idx))
+        } else {
+            debug!(
+                name = self.name.as_str(),
+                row_idx, bucket_nr, "row index is out of bounds"
+            );
+            None
+        }
     }
 }
 impl ComponentBucket {

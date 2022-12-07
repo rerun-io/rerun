@@ -18,6 +18,7 @@ use crate::{
         GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc, ShaderModuleDesc,
         VertexBufferLayout,
     },
+    Color32,
 };
 
 use super::*;
@@ -32,7 +33,7 @@ struct GpuInstanceData {
     // (staging buffer might be 4 byte aligned only!)
     translation_and_scale: [f32; 4],
     rotation: [f32; 4],
-    additive_tint_srgb: [u8; 4],
+    additive_tint: Color32,
 }
 
 impl GpuInstanceData {
@@ -60,7 +61,7 @@ impl GpuInstanceData {
                 // Tint color
                 wgpu::VertexAttribute {
                     format: wgpu::VertexFormat::Unorm8x4,
-                    offset: memoffset::offset_of!(GpuInstanceData, additive_tint_srgb) as _,
+                    offset: memoffset::offset_of!(GpuInstanceData, additive_tint) as _,
                     shader_location: shader_start_location + 2,
                 },
             ],
@@ -99,7 +100,7 @@ pub struct MeshInstance {
 
     /// Per-instance (as opposed to per-material/mesh!) tint color that is added to the albedo texture.
     /// Alpha channel is currently unused.
-    pub additive_tint_srgb: [u8; 4],
+    pub additive_tint: Color32,
 }
 
 impl MeshDrawData {
@@ -163,7 +164,7 @@ impl MeshDrawData {
                     gpu_instance.translation_and_scale =
                         instance.world_from_mesh.translation_and_scale().into();
                     gpu_instance.rotation = instance.world_from_mesh.rotation().into();
-                    gpu_instance.additive_tint_srgb = instance.additive_tint_srgb;
+                    gpu_instance.additive_tint = instance.additive_tint;
                 }
                 num_processed_instances += count;
                 mesh_runs.push((mesh, count as u32));
