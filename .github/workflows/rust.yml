@@ -130,10 +130,16 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - uses: EmbarkStudios/cargo-deny-action@v1
+      - name: cargo deny
+        uses: actions-rs/cargo@v1
         with:
-          rust-version: "1.65.0"
-          arguments: --log-level error
+          command: deny
+          args: --log-level=error check
+
+      #- uses: EmbarkStudios/cargo-deny-action@v1
+        #with:
+          #rust-version: "1.65.0"
+          #arguments: --log-level error
 
   # ---------------------------------------------------------------------------
 
