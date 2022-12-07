@@ -195,7 +195,7 @@ impl IndexTable {
         let len_overflow = len >= config.index_bucket_nb_rows;
 
         // TODO: explain!!
-        let can_split = !bucket.times.values().binary_search(&time.as_i64()).is_ok();
+        let can_split = bucket.times.values().binary_search(&time.as_i64()).is_err();
         if can_split && (size_overflow || len_overflow) {
             debug!(
                 kind = "insert",
@@ -209,7 +209,7 @@ impl IndexTable {
                 "allocating new index bucket, previous one overflowed"
             );
 
-            if let Some(second_half) = bucket.split(time) {
+            if let Some(second_half) = bucket.split() {
                 self.buckets.insert(second_half.time_range.min, second_half);
                 return self.insert(config, time, indices);
             }
@@ -283,7 +283,7 @@ impl IndexBucket {
     /// Splits the bucket in two (if possible), returning the second half.
     ///
     /// Returns `None` if the bucket is already too small to be splitted any further.
-    pub fn split(&mut self, time: TimeInt) -> Option<Self> {
+    pub fn split(&mut self) -> Option<Self> {
         if self.times.len() < 2 {
             return None; // early exit: can't split the unsplittable
         }
@@ -320,7 +320,7 @@ impl IndexBucket {
         let (datatype, mut data1, _) = std::mem::take(times1).into_data();
         let data2 = data1.split_off(half_row);
         *times1 = Int64Vec::from_data(datatype.clone(), data1, None);
-        let times2 = Int64Vec::from_data(datatype.clone(), data2, None);
+        let times2 = Int64Vec::from_data(datatype, data2, None);
 
         #[cfg(debug_assertions)]
         {
@@ -352,10 +352,10 @@ impl IndexBucket {
                 )
             }) {
                 *index1 = UInt64Vec::from_data(datatype.clone(), data1, Some(validity1));
-                UInt64Vec::from_data(datatype.clone(), data2, Some(validity2))
+                UInt64Vec::from_data(datatype, data2, Some(validity2))
             } else {
                 *index1 = UInt64Vec::from_data(datatype.clone(), data1, None);
-                UInt64Vec::from_data(datatype.clone(), data2, None)
+                UInt64Vec::from_data(datatype, data2, None)
             }
         }
 
@@ -434,8 +434,8 @@ impl IndexBucket {
     }
 }
 
-fn split_primary_index_off() {}
-fn split_secondary_index_off() {}
+// fn split_primary_index_off() {}
+// fn split_secondary_index_off() {}
 
 // --- Components ---
 

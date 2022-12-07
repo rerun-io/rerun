@@ -94,8 +94,8 @@ const INDEX_CONFIGS: &[DataStoreConfig] = &[
 ];
 
 fn all_configs() -> impl Iterator<Item = DataStoreConfig> {
-    COMPONENT_CONFIGS.into_iter().flat_map(|comp| {
-        INDEX_CONFIGS.into_iter().map(|idx| DataStoreConfig {
+    COMPONENT_CONFIGS.iter().flat_map(|comp| {
+        INDEX_CONFIGS.iter().map(|idx| DataStoreConfig {
             component_bucket_size_bytes: comp.component_bucket_size_bytes,
             component_bucket_nb_rows: comp.component_bucket_nb_rows,
             index_bucket_size_bytes: idx.index_bucket_size_bytes,
@@ -372,7 +372,7 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
         ),
     ];
 
-    for (frame_nr, expected) in scenarios.into_iter() {
+    for (frame_nr, expected) in scenarios {
         tracker.assert_scenario(
             store,
             &timeline_frame_nr,
