@@ -9,7 +9,7 @@
         },
         "Floating": {
           "description": "Background color for floating elements like menus, dropdown options, notifications etc.",
-          "value": "{Global.Color.Grey.0}",
+          "value": "{Global.Color.Grey.175}",
           "type": "color"
         }
       },
@@ -31,7 +31,7 @@
         },
         "Pressed": {
           "description": "Background color for supressed UI elements, like a select that is currently showing a menu",
-          "value": "{Global.Color.Grey.50}",
+          "value": "{Global.Color.Grey.250}",
           "type": "color"
         }
       },
