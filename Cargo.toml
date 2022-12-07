@@ -25,13 +25,16 @@ opt-level = 2
 debug = true
 
 [patch.crates-io]
-eframe = { git = "https://github.com/emilk/egui", rev = "71d70597bb92c3ac104fd846f230a0cd01c443a3" }      # TODO: don't merge this!
-egui = { git = "https://github.com/emilk/egui", rev = "71d70597bb92c3ac104fd846f230a0cd01c443a3" }        # TODO: don't merge this!
-egui_extras = { git = "https://github.com/emilk/egui", rev = "71d70597bb92c3ac104fd846f230a0cd01c443a3" } # TODO: don't merge this!
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "71d70597bb92c3ac104fd846f230a0cd01c443a3" }   # TODO: don't merge this!
-emath = { git = "https://github.com/emilk/egui", rev = "71d70597bb92c3ac104fd846f230a0cd01c443a3" }       # TODO: don't merge this!
-epaint = { git = "https://github.com/emilk/egui", rev = "71d70597bb92c3ac104fd846f230a0cd01c443a3" }      # TODO: don't merge this!
+# 2022-12-07 - egui style tweaks   TODO: update to `main` rev – this is currently on a branch at https://github.com/emilk/egui/pull/2406
+ecolor = { git = "https://github.com/emilk/egui", rev = "62925d1c1a5a6767c5adf932c7cfeaa6af86f81f" }
+eframe = { git = "https://github.com/emilk/egui", rev = "62925d1c1a5a6767c5adf932c7cfeaa6af86f81f" }
+egui = { git = "https://github.com/emilk/egui", rev = "62925d1c1a5a6767c5adf932c7cfeaa6af86f81f" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "62925d1c1a5a6767c5adf932c7cfeaa6af86f81f" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "62925d1c1a5a6767c5adf932c7cfeaa6af86f81f" }
+emath = { git = "https://github.com/emilk/egui", rev = "62925d1c1a5a6767c5adf932c7cfeaa6af86f81f" }
+epaint = { git = "https://github.com/emilk/egui", rev = "62925d1c1a5a6767c5adf932c7cfeaa6af86f81f" }
 
+# ecolor = { path = "../../egui/crates/ecolor" }
 # eframe = { path = "../../egui/crates/eframe" }
 # egui = { path = "../../egui/crates/egui" }
 # egui_extras = { path = "../../egui/crates/egui_extras" }

@@ -21,7 +21,7 @@ anyhow = "1.0"
 bitflags = "1.3"
 bytemuck = { version = "1.12", features = ["derive"] }
 clean-path = "0.2"
-ecolor = { git = "https://github.com/emilk/egui", rev = "5effc68ba4f6dc0f9f9792193bb6e0eeca6dccef", features = [
+ecolor = { git = "https://github.com/emilk/egui", rev = "62925d1c1a5a6767c5adf932c7cfeaa6af86f81f", features = [
   "bytemuck",
 ] } # TODO(andreas): point to published version once out.
 glam = { version = "0.20", features = [
