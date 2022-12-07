@@ -120,6 +120,11 @@ pub struct DataStore {
     ///
     /// A component table holds all the values ever inserted for a given component.
     pub(crate) components: HashMap<ComponentName, ComponentTable>,
+
+    /// Monotically increasing ID for insertions.
+    pub(crate) insert_id: u64,
+    /// Monotically increasing ID for queries.
+    pub(crate) query_id: u64,
 }
 
 impl DataStore {
@@ -128,6 +133,8 @@ impl DataStore {
             config,
             indices: HashMap::default(),
             components: HashMap::default(),
+            insert_id: 0,
+            query_id: 0,
         }
     }
 
@@ -216,6 +223,8 @@ impl std::fmt::Display for DataStore {
             config,
             indices,
             components,
+            insert_id: _,
+            query_id: _,
         } = self;
 
         f.write_str("DataStore {\n")?;
@@ -496,6 +505,7 @@ impl std::fmt::Display for IndexBucket {
                     Series::new(name.as_str(), index)
                 }))
                 .collect::<Vec<_>>();
+            // TODO: sort
             let df = DataFrame::new(series).unwrap();
             f.write_fmt(format_args!("data (sorted={is_sorted}): {df:?}\n"))?;
         }
@@ -516,11 +526,6 @@ impl IndexBucket {
     /// Returns the number of rows stored across this bucket.
     pub fn total_rows(&self) -> u64 {
         self.times.len() as u64
-            + self
-                .indices
-                .values()
-                .map(|index| index.len() as u64)
-                .sum::<u64>()
     }
 
     /// Returns the size of the data stored across this bucket, in bytes.

@@ -32,6 +32,9 @@ impl DataStore {
     /// - the targeted timelines & timepoints,
     /// - and all the components data.
     pub fn insert(&mut self, schema: &Schema, msg: &Chunk<Box<dyn Array>>) -> anyhow::Result<()> {
+        // TODO(cmc): kind & insert_id need to somehow propagate through the span system.
+        self.insert_id += 1;
+
         let ent_path = schema
             .metadata
             .get(ENTITY_PATH_KEY)
@@ -41,6 +44,18 @@ impl DataStore {
 
         let timelines = extract_timelines(schema, msg)?;
         let components = extract_components(schema, msg)?;
+
+        debug!(
+            kind = "insert",
+            id = self.insert_id,
+            timelines = ?timelines
+                .iter()
+                .map(|(timeline, time)| (timeline.name(), timeline.typ().format(*time)))
+                .collect::<Vec<_>>(),
+            entity = %ent_path,
+            components = ?components.iter().map(|(name, _)| name).collect::<Vec<_>>(),
+            "insertion started..."
+        );
 
         // TODO(cmc): sort the "instances" component, and everything else accordingly!
 
@@ -167,14 +182,11 @@ impl IndexTable {
         time: TimeInt,
         indices: &HashMap<ComponentNameRef<'_>, RowIndex>,
     ) -> anyhow::Result<()> {
-        // TODO: explain why this cannot fail
-        let (_, bucket) = self
-            .buckets
-            .range_mut(..=time)
-            .rev()
-            .take(1)
-            .next()
-            .unwrap();
+        // borrowck workaround
+        let timeline = self.timeline;
+        let ent_path = self.ent_path.clone(); // shallow
+
+        let bucket = self.find_bucket_mut(time.as_i64());
 
         let size = bucket.total_size_bytes();
         let size_overflow = bucket.total_size_bytes() >= config.index_bucket_size_bytes;
@@ -184,13 +196,14 @@ impl IndexTable {
 
         if size_overflow || len_overflow {
             debug!(
-                timeline = %self.timeline.name(),
-                entity = %self.ent_path,
-                ?config,
-                size,
-                size_overflow,
-                len,
-                len_overflow,
+                kind = "insert",
+                timeline = %timeline.name(),
+                time = timeline.typ().format(time),
+                entity = %ent_path,
+                size_limit = config.component_bucket_size_bytes,
+                len_limit = config.component_bucket_nb_rows,
+                size, size_overflow,
+                len, len_overflow,
                 "allocating new index bucket, previous one overflowed"
             );
 
@@ -199,6 +212,15 @@ impl IndexTable {
                 return self.insert(config, time, indices);
             }
         }
+
+        debug!(
+            kind = "insert",
+            timeline = %timeline.name(),
+            time = timeline.typ().format(time),
+            entity = %ent_path,
+            components = ?indices.iter().collect::<Vec<_>>(),
+            "inserted into index table"
+        );
 
         bucket.insert(time, indices)
     }
@@ -256,18 +278,19 @@ impl IndexBucket {
         Ok(())
     }
 
-    /// Splits the bucket in two, returning the second half.
+    /// Splits the bucket in two (if possible), returning the second half.
+    ///
+    /// Returns `None` if the bucket is already too small to be splitted any further.
     pub fn split(&mut self) -> Option<Self> {
         if self.times.len() < 2 {
-            eprintln!("EARLY 1");
             return None; // early exit: can't split the unsplittable
         }
+
+        // TODO: debug log some more info about the split maybe
 
         self.sort_indices();
 
         // Used down the line to assert that we've left everything in a sane state.
-        #[cfg(debug_assertions)]
-        let times_len = self.times.len();
         #[cfg(debug_assertions)]
         let total_rows = self.total_rows();
 
@@ -314,7 +337,7 @@ impl IndexBucket {
             assert!(times1.len() <= half_row);
             assert!(times2.len() <= half_row);
             // both resulting halves must sum up to the length of the original time index
-            assert_eq!(times_len, times1.len() + times2.len());
+            assert_eq!(total_rows as usize, times1.len() + times2.len());
         }
 
         fn split_index_off(index1: &mut UInt64Vec, half_row: usize) -> UInt64Vec {
@@ -348,14 +371,14 @@ impl IndexBucket {
                     assert!(index1.len() <= half_row);
                     assert!(index2.len() <= half_row);
                     // both resulting halves must sum up to the length of the original time index
-                    assert_eq!(times_len, index1.len() + index2.len());
+                    assert_eq!(total_rows as usize, index1.len() + index2.len());
                 }
 
                 ((*name).clone(), index2)
             })
             .collect();
 
-        let second_half = Self {
+        let bucket2 = Self {
             timeline,
             time_range: time_range2,
             is_sorted: true,
@@ -367,19 +390,22 @@ impl IndexBucket {
         #[cfg(debug_assertions)]
         {
             self.sanity_check().unwrap();
-            second_half.sanity_check().unwrap();
+            bucket2.sanity_check().unwrap();
 
             let total_rows1 = self.total_rows() as i64;
-            let total_rows2 = second_half.total_rows() as i64;
+            let total_rows2 = bucket2.total_rows() as i64;
 
             assert!(total_rows1.abs_diff(total_rows2) < 2);
             assert_eq!(total_rows as i64, total_rows1 + total_rows2);
         }
 
-        // return the second half!
-        Some(second_half)
+        Some(bucket2)
     }
 }
+
+fn find_half_row() {}
+fn split_primary_index_off() {}
+fn split_secondary_index_off() {}
 
 // --- Components ---
 
@@ -411,8 +437,10 @@ impl ComponentTable {
 
         if size_overflow || len_overflow {
             debug!(
-                name = self.name.as_str(),
-                ?config,
+                kind = "insert",
+                component = self.name.as_str(),
+                size_limit = config.component_bucket_size_bytes,
+                len_limit = config.component_bucket_nb_rows,
                 size,
                 size_overflow,
                 len,
@@ -433,7 +461,20 @@ impl ComponentTable {
         //   same reason as above: all component tables spawn with an initial bucket at row
         //   offset 0, thus this cannot fail.
         // - If the table has just overflowed, then we've just pushed a bucket to the dequeue.
-        self.buckets.back_mut().unwrap().insert(timelines, data)
+        let row_idx = self.buckets.back_mut().unwrap().insert(timelines, data)?;
+
+        debug!(
+            kind = "insert",
+            timelines = ?timelines
+                .iter()
+                .map(|(timeline, time)| (timeline.name(), timeline.typ().format(*time)))
+                .collect::<Vec<_>>(),
+            component = self.name.as_str(),
+            row_idx,
+            "inserted into component table"
+        );
+
+        Ok(row_idx)
     }
 }
 

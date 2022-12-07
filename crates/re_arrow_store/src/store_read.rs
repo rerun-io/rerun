@@ -38,16 +38,10 @@ impl DataStore {
         ent_path: &EntityPath,
         components: &[ComponentNameRef<'_>],
     ) -> anyhow::Result<DataFrame> {
-        let ent_path_hash = ent_path.hash();
+        // TODO(cmc): kind & query_id need to somehow propagate through the span system.
+        self.query_id += 1;
 
-        debug!(
-            ?timeline,
-            ?time_query,
-            %ent_path,
-            ?ent_path_hash,
-            ?components,
-            "query started..."
-        );
+        let ent_path_hash = ent_path.hash();
 
         let latest_at = match time_query {
             TimeQuery::LatestAt(latest_at) => *latest_at,
@@ -55,15 +49,26 @@ impl DataStore {
             TimeQuery::Range(_) => todo!("implement range queries!"),
         };
 
+        debug!(
+            kind = "query",
+            id = self.query_id,
+            timeline = %timeline.name(),
+            time = timeline.typ().format(latest_at.into()),
+            entity = %ent_path,
+            ?components,
+            "query started..."
+        );
+
         let row_indices = self
             .indices
             .get_mut(&(*timeline, *ent_path_hash))
             .map(|index| index.latest_at(latest_at, components))
             .unwrap_or_default();
         debug!(
-            ?timeline,
-            ?time_query,
-            %ent_path,
+            kind = "query",
+            timeline = %timeline.name(),
+            time = timeline.typ().format(latest_at.into()),
+            entity = %ent_path,
             ?components,
             ?row_indices,
             "row indices fetched"
@@ -105,15 +110,42 @@ impl IndexTable {
         at: i64,
         components: &[ComponentNameRef<'a>],
     ) -> HashMap<ComponentNameRef<'a>, RowIndex> {
-        // TODO: explain why this cannot fail (and perhaps wrap in a method)
-        let (_, bucket) = self
-            .buckets
+        let mut results = HashMap::with_capacity(components.len());
+
+        let timeline = self.timeline;
+        for &name in components {
+            'for_each_bucket: for (i, bucket) in self.iter_bucket_mut(at).enumerate() {
+                debug!(
+                    kind = "query",
+                    component = name,
+                    timeline = %timeline.name(),
+                    time = timeline.typ().format(at.into()),
+                    attempt = i,
+                    time_range = ?bucket.time_range.min.as_i64()..=bucket.time_range.max.as_i64(),
+                    "found candidate bucket"
+                );
+                if let Some(row_idx) = bucket.latest_at(at, name) {
+                    results.insert(name, row_idx);
+                    break 'for_each_bucket; // better safe than sorry
+                }
+            }
+        }
+
+        results
+    }
+
+    // TODO: doc
+    pub fn find_bucket_mut(&mut self, at: i64) -> &mut IndexBucket {
+        // TODO: explain why this cannot fail
+        self.iter_bucket_mut(at).next().unwrap()
+    }
+
+    // TODO: doc
+    pub fn iter_bucket_mut(&mut self, at: i64) -> impl Iterator<Item = &mut IndexBucket> {
+        self.buckets
             .range_mut(..=TimeInt::from(at))
             .rev()
-            .take(1)
-            .next()
-            .unwrap();
-        bucket.latest_at(at, components)
+            .map(|(_, bucket)| bucket)
     }
 
     /// Force the sorting of all buckets.
@@ -196,17 +228,14 @@ impl IndexBucket {
         self.is_sorted = true;
     }
 
-    // TODO(cmc): bucketing support!
-    pub fn latest_at<'a>(
-        &mut self,
-        at: i64,
-        components: &[ComponentNameRef<'a>],
-    ) -> HashMap<ComponentNameRef<'a>, RowIndex> {
+    pub fn latest_at<'a>(&mut self, at: i64, component: ComponentNameRef<'a>) -> Option<RowIndex> {
         self.sort_indices();
 
         debug!(
-            at,
-            ?components,
+            kind = "query",
+            component,
+            timeline = %self.timeline.name(),
+            time = self.timeline.typ().format(at.into()),
             "searching for primary & secondary row indices..."
         );
 
@@ -218,24 +247,37 @@ impl IndexBucket {
         // A partition point of 0 thus means that we're trying to query for data that lives
         // _before_ the beginning of time... there's nothing to be found there.
         if primary_idx == 0 {
-            return HashMap::default();
+            return None;
         }
 
         // The partition point is always _beyond_ the index that we're looking for; we need
         // to step back to find what we came for.
         let primary_idx = primary_idx - 1;
-        debug!(%primary_idx, "found primary index");
+        debug!(
+            kind = "query",
+            component,
+            timeline = %self.timeline.name(),
+            time = self.timeline.typ().format(at.into()),
+            %primary_idx,
+            "found primary index",
+        );
 
         // find the secondary indices' rows, and the associated row indices.
-        components
-            .iter()
-            .filter_map(|name| self.indices.get(*name).map(|index| (name, index)))
-            .filter_map(|(name, index)| {
+        self.indices
+            .get_key_value(component)
+            .and_then(|(name, index)| {
                 let mut secondary_idx = primary_idx;
                 while !index.is_valid(secondary_idx as _) {
                     secondary_idx -= 1;
                     if secondary_idx < 0 {
-                        debug!(%name, "no secondary index found");
+                        debug!(
+                            kind = "query",
+                            component = name,
+                            timeline = %self.timeline.name(),
+                            time = self.timeline.typ().format(at.into()),
+                            %primary_idx,
+                            "no secondary index found",
+                        );
                         return None;
                     }
                 }
@@ -243,11 +285,17 @@ impl IndexBucket {
                 assert!(index.is_valid(secondary_idx as usize));
                 let row_idx = index.values()[secondary_idx as usize];
 
-                debug!(%name, %secondary_idx, %row_idx, "found secondary index + row index");
+                debug!(
+                    kind = "query",
+                    component = name,
+                    timeline = %self.timeline.name(),
+                    time = self.timeline.typ().format(at.into()),
+                    %primary_idx, %secondary_idx, %row_idx,
+                    "found secondary index + row index",
+                );
 
-                (*name, row_idx).into()
+                Some(row_idx)
             })
-            .collect()
     }
 }
 
@@ -270,14 +318,21 @@ impl ComponentTable {
 
         if let Some(bucket) = self.buckets.get(bucket_nr) {
             debug!(
-                name = self.name.as_str(),
-                row_idx, bucket_nr, bucket.row_offset, "fetching component data"
+                kind = "query",
+                component = self.name.as_str(),
+                row_idx,
+                bucket_nr,
+                bucket.row_offset,
+                "fetching component data"
             );
             Some(bucket.get(row_idx))
         } else {
             debug!(
-                name = self.name.as_str(),
-                row_idx, bucket_nr, "row index is out of bounds"
+                kind = "query",
+                component = self.name.as_str(),
+                row_idx,
+                bucket_nr,
+                "row index is out of bounds"
             );
             None
         }
