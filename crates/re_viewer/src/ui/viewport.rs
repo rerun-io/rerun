@@ -215,7 +215,14 @@ impl ViewportBlueprint {
 
         let space_path = &space_view.space_path;
         let collapsing_header_id = ui.make_persistent_id(space_view_id);
-        let default_open = true;
+        let mut default_open = true;
+
+        if let Some(tree) = obj_tree.subtree(space_path) {
+            if tree.children.is_empty() {
+                default_open = false;
+            }
+        }
+
         egui::collapsing_header::CollapsingState::load_with_default_open(
             ui.ctx(),
             collapsing_header_id,
@@ -479,6 +486,11 @@ fn show_obj_tree_children(
     space_info: &SpaceInfo,
     tree: &ObjectTree,
 ) {
+    if tree.children.is_empty() {
+        ui.weak("(nothing)");
+        return;
+    }
+
     for (path_comp, child) in &tree.children {
         if space_info.objects.contains(&child.path) {
             show_obj_tree(
@@ -711,7 +723,7 @@ impl Blueprint {
         panel.show_animated_inside(ui, self.blueprint_panel_expanded, |ui: &mut egui::Ui| {
             ui.horizontal(|ui| {
                 ui.vertical_centered(|ui| {
-                    ui.label("Blueprint");
+                    ui.strong("Blueprint");
                 });
             });
 
