@@ -250,9 +250,8 @@ impl TextureSettings {
             TextureScaling::Fill => {
                 let desired_size = ui.available_size() - margin;
                 if self.keep_aspect_ratio {
-                    let ar = img_size.x / img_size.y;
                     let scale = (desired_size / img_size).min_elem();
-                    img_size * ar * scale
+                    img_size * scale
                 } else {
                     desired_size
                 }
