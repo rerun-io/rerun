@@ -278,8 +278,7 @@ fn show_table(
         .collect::<Vec<_>>();
 
     use egui_extras::Column;
-    const ROW_HEIGHT: f32 = 18.0;
-    const HEADER_HEIGHT: f32 = 20.0;
+    let row_height = re_ui::ReUi::table_line_height();
 
     let current_timeline = *ctx.rec_cfg.time_ctrl.timeline();
     let current_time = ctx.rec_cfg.time_ctrl.time_int();
@@ -316,7 +315,7 @@ fn show_table(
         table_builder = table_builder.column(Column::remainder().at_least(100.0));
     }
     table_builder
-        .header(HEADER_HEIGHT, |mut header| {
+        .header(re_ui::ReUi::table_header_height(), |mut header| {
             for timeline in &timelines {
                 header.col(|ui| {
                     ctx.timeline_button(ui, timeline);
@@ -338,7 +337,7 @@ fn show_table(
         })
         .body(|body| {
             body_clip_rect = Some(body.max_rect());
-            body.rows(ROW_HEIGHT, text_entries.len(), |index, mut row| {
+            body.rows(row_height, text_entries.len(), |index, mut row| {
                 let text_entry = &text_entries[index];
 
                 // NOTE: `try_from_props` is where we actually fetch data from the underlying

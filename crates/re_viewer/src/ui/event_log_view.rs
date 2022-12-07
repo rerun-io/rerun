@@ -56,7 +56,7 @@ pub(crate) fn message_table(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, mess
         )
         .column(Column::auto().clip(true).at_least(50.0)) // path
         .column(Column::remainder()) // payload
-        .header(20.0, |mut header| {
+        .header(re_ui::ReUi::table_header_height(), |mut header| {
             header.col(|ui| {
                 ui.strong("MsgID");
             });
@@ -86,9 +86,9 @@ pub(crate) fn message_table(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, mess
                     },
                 );
             } else {
-                const ROW_HEIGHT: f32 = 18.0;
-                body.rows(ROW_HEIGHT, messages.len(), |index, mut row| {
-                    table_row(ctx, &mut row, messages[index], ROW_HEIGHT);
+                let row_height = re_ui::ReUi::table_line_height();
+                body.rows(row_height, messages.len(), |index, mut row| {
+                    table_row(ctx, &mut row, messages[index], row_height);
                 });
             }
         });
@@ -97,7 +97,7 @@ pub(crate) fn message_table(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, mess
 fn row_height(msg: &LogMsg) -> f32 {
     match msg {
         LogMsg::DataMsg(msg) if msg.data.data_type() == DataType::Tensor => 48.0,
-        _ => 18.0,
+        _ => re_ui::ReUi::table_line_height(),
     }
 }
 

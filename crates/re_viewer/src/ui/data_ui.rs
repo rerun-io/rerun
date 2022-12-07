@@ -543,13 +543,14 @@ fn ui_view_coordinates(ui: &mut egui::Ui, system: &ViewCoordinates) -> egui::Res
     ui.label(system.describe())
 }
 
-const ROW_HEIGHT: f32 = 18.0;
 const TABLE_SCROLL_AREA_HEIGHT: f32 = 500.0; // add scroll-bars when we get to this height
 
 fn ui_annotation_info_table<'a>(
     ui: &mut egui::Ui,
     annotation_infos: impl Iterator<Item = &'a AnnotationInfo>,
 ) {
+    let row_height = re_ui::ReUi::table_line_height();
+
     ui.spacing_mut().item_spacing.x = 20.0; // column spacing.
 
     use egui_extras::{Column, TableBuilder};
@@ -564,7 +565,7 @@ fn ui_annotation_info_table<'a>(
         .column(Column::auto()); // color
 
     table
-        .header(20.0, |mut header| {
+        .header(re_ui::ReUi::table_header_height(), |mut header| {
             header.col(|ui| {
                 ui.strong("Id");
             });
@@ -577,7 +578,7 @@ fn ui_annotation_info_table<'a>(
         })
         .body(|mut body| {
             for info in annotation_infos {
-                body.row(ROW_HEIGHT, |mut row| {
+                body.row(row_height, |mut row| {
                     row.col(|ui| {
                         ui.label(info.id.to_string());
                     });
@@ -594,7 +595,7 @@ fn ui_annotation_info_table<'a>(
                             ui.spacing_mut().item_spacing.x = 8.0;
                             let color = info.color.unwrap_or_else(|| auto_color(info.id));
                             let color = egui::Color32::from_rgb(color[0], color[1], color[2]);
-                            color_picker::show_color(ui, color, Vec2::new(64.0, ROW_HEIGHT));
+                            color_picker::show_color(ui, color, Vec2::new(64.0, row_height));
                             if info.color.is_none() {
                                 ui.weak("(auto)").on_hover_text(
                                     "Color chosen automatically, since it was not logged.",
@@ -608,6 +609,7 @@ fn ui_annotation_info_table<'a>(
 }
 
 fn ui_annotation_context(ui: &mut egui::Ui, context: &AnnotationContext) -> egui::Response {
+    let row_height = re_ui::ReUi::table_line_height();
     ui.vertical(|ui| {
         ui_annotation_info_table(
             ui,
@@ -654,7 +656,7 @@ fn ui_annotation_context(ui: &mut egui::Ui, context: &AnnotationContext) -> egui
                         .column(Column::auto().clip(true).at_least(40.0))
                         .column(Column::auto().clip(true).at_least(40.0));
                     table
-                        .header(20.0, |mut header| {
+                        .header(re_ui::ReUi::table_header_height(), |mut header| {
                             header.col(|ui| {
                                 ui.strong("From");
                             });
@@ -664,7 +666,7 @@ fn ui_annotation_context(ui: &mut egui::Ui, context: &AnnotationContext) -> egui
                         })
                         .body(|mut body| {
                             for (from, to) in &class.keypoint_connections {
-                                body.row(ROW_HEIGHT, |mut row| {
+                                body.row(row_height, |mut row| {
                                     for id in [from, to] {
                                         row.col(|ui| {
                                             ui.label(

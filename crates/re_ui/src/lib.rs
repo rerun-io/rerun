@@ -79,6 +79,14 @@ impl ReUi {
         6.0
     }
 
+    pub fn table_line_height() -> f32 {
+        14.0
+    }
+
+    pub fn table_header_height() -> f32 {
+        20.0
+    }
+
     #[allow(clippy::unused_self)]
     pub fn panel_frame(&self) -> egui::Frame {
         let style = self.egui_ctx.style();

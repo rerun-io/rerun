@@ -52,7 +52,7 @@ pub(crate) fn view_class_description_map(
         .column(Column::auto()); // color
 
     table
-        .header(20.0, |mut header| {
+        .header(re_ui::ReUi::table_header_height(), |mut header| {
             header.col(|ui| {
                 ui.heading("Id");
             });
@@ -64,9 +64,9 @@ pub(crate) fn view_class_description_map(
             });
         })
         .body(|mut body| {
-            const ROW_HEIGHT: f32 = 18.0;
+            let row_height = re_ui::ReUi::table_line_height();
             for (id, (label, color)) in map {
-                body.row(ROW_HEIGHT, |mut row| {
+                body.row(row_height, |mut row| {
                     row.col(|ui| {
                         ui.label(id.to_string());
                     });
