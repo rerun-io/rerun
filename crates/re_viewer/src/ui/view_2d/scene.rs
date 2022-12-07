@@ -19,7 +19,7 @@ use crate::{
     ViewerContext,
 };
 
-use re_renderer::Color32;
+use re_renderer::{Color32, LineStripSeriesBuilder, Size};
 
 // ---
 
@@ -39,15 +39,6 @@ pub struct Image {
 
     /// If true, draw a frame around it
     pub is_hovered: bool,
-}
-
-pub struct Box2D {
-    pub instance_hash: InstanceIdHash,
-
-    pub bbox: re_log_types::BBox2D,
-    pub stroke_width: Option<f32>,
-    pub label: Option<String>,
-    pub paint_props: ObjectPaintProperties,
 }
 
 pub struct LineSegments2D {
@@ -70,6 +61,16 @@ pub struct Point2D {
     pub label: Option<String>,
 }
 
+// TODO(andreas) shouldn't distinguish between rect and regular labels?
+pub struct RectLabel2D {
+    pub text: String,
+    pub color: Color32,
+    /// The rect this label is labeling in space coordinates.
+    pub labled_rect: Rect,
+    /// What is hovered if this label is hovered.
+    pub labled_instance: InstanceIdHash,
+}
+
 /// A 2D scene, with everything needed to render it.
 pub struct Scene2D {
     /// Estimated bounding box of all data. Accumulated.
@@ -77,9 +78,13 @@ pub struct Scene2D {
     pub annotation_map: AnnotationMap,
 
     pub images: Vec<Image>,
-    pub boxes: Vec<Box2D>,
     pub line_segments: Vec<LineSegments2D>,
     pub points: Vec<Point2D>,
+    pub lines: LineStripSeriesBuilder<()>,
+    pub rect_labels: Vec<RectLabel2D>,
+
+    /// Hoverable rects in scene units and their instance id hashes
+    pub hoverable_rects: Vec<(Rect, InstanceIdHash)>,
 }
 
 impl Default for Scene2D {
@@ -88,11 +93,21 @@ impl Default for Scene2D {
             bbox: Rect::NOTHING,
             annotation_map: Default::default(),
             images: Default::default(),
-            boxes: Default::default(),
             line_segments: Default::default(),
             points: Default::default(),
+            lines: Default::default(),
+            hoverable_rects: Default::default(),
+            rect_labels: Default::default(),
         }
     }
+}
+
+fn apply_hover_effect(paint_props: &mut ObjectPaintProperties) {
+    paint_props.bg_stroke.width *= 2.0;
+    paint_props.bg_stroke.color = Color32::BLACK;
+
+    paint_props.fg_stroke.width *= 2.0;
+    paint_props.fg_stroke.color = Color32::WHITE;
 }
 
 impl Scene2D {
@@ -100,18 +115,28 @@ impl Scene2D {
     ///
     /// In addition to the query, we also pass in the 2D state from last frame, so that we can
     /// compute custom paint properties for hovered items.
-    pub(crate) fn load_objects(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
+    pub(crate) fn load_objects(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        query: &SceneQuery<'_>,
+        hovered_instance: InstanceIdHash,
+    ) {
         crate::profile_function!();
 
         self.annotation_map.load(ctx, query);
 
-        self.load_images(ctx, query);
-        self.load_boxes(ctx, query);
-        self.load_points(ctx, query);
-        self.load_line_segments(ctx, query);
+        self.load_images(ctx, query, hovered_instance);
+        self.load_boxes(ctx, query, hovered_instance);
+        self.load_points(ctx, query, hovered_instance);
+        self.load_line_segments(ctx, query, hovered_instance);
     }
 
-    fn load_images(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
+    fn load_images(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        query: &SceneQuery<'_>,
+        hovered_instance: InstanceIdHash,
+    ) {
         crate::profile_function!();
 
         let images = query
@@ -171,62 +196,84 @@ impl Scene2D {
         }
     }
 
-    fn load_boxes(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
+    fn load_boxes(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        query: &SceneQuery<'_>,
+        hovered_instance: InstanceIdHash,
+    ) {
         crate::profile_function!();
 
-        let boxes = query
-            .iter_object_stores(ctx.log_db, &[ObjectType::BBox2D])
-            .flat_map(|(_obj_type, obj_path, time_query, obj_store)| {
-                let mut batch = Vec::new();
-                visit_type_data_4(
-                    obj_store,
-                    &FieldName::from("bbox"),
-                    &time_query,
-                    ("color", "stroke_width", "label", "class_id"),
-                    |instance_index: Option<&IndexHash>,
-                     _time: i64,
-                     _msg_id: &MsgId,
-                     bbox: &re_log_types::BBox2D,
-                     color: Option<&[u8; 4]>,
-                     stroke_width: Option<&f32>,
-                     label: Option<&String>,
-                     class_id: Option<&i32>| {
-                        let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
-                        let stroke_width = stroke_width.copied();
+        for (_obj_type, obj_path, time_query, obj_store) in
+            query.iter_object_stores(ctx.log_db, &[ObjectType::BBox2D])
+        {
+            visit_type_data_4(
+                obj_store,
+                &FieldName::from("bbox"),
+                &time_query,
+                ("color", "stroke_width", "label", "class_id"),
+                |instance_index: Option<&IndexHash>,
+                 _time: i64,
+                 _msg_id: &MsgId,
+                 bbox: &re_log_types::BBox2D,
+                 color: Option<&[u8; 4]>,
+                 stroke_width: Option<&f32>,
+                 label: Option<&String>,
+                 class_id: Option<&i32>| {
+                    let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
+                    let stroke_width = stroke_width.copied();
 
-                        let annotations = self.annotation_map.find(obj_path);
-                        let annotation_info = annotations
-                            .class_description(class_id.map(|i| ClassId(*i as _)))
-                            .annotation_info();
-                        let color = annotation_info.color(color, DefaultColor::ObjPath(obj_path));
-                        let label = annotation_info.label(label);
+                    let annotations = self.annotation_map.find(obj_path);
+                    let annotation_info = annotations
+                        .class_description(class_id.map(|i| ClassId(*i as _)))
+                        .annotation_info();
+                    let color = annotation_info.color(color, DefaultColor::ObjPath(obj_path));
+                    let label = annotation_info.label(label);
 
-                        let paint_props = paint_properties(color, &stroke_width);
+                    let instance_hash =
+                        InstanceIdHash::from_path_and_index(obj_path, instance_index);
 
-                        batch.push(Box2D {
-                            instance_hash: InstanceIdHash::from_path_and_index(
-                                obj_path,
-                                instance_index,
-                            ),
-                            bbox: bbox.clone(),
-                            stroke_width,
-                            label,
-                            paint_props,
+                    let rect = Rect::from_min_max(bbox.min.into(), bbox.max.into());
+                    self.hoverable_rects.push((rect, instance_hash));
+
+                    let mut paint_props = paint_properties(color, &stroke_width);
+                    if hovered_instance == instance_hash {
+                        apply_hover_effect(&mut paint_props);
+                    }
+
+                    self.lines
+                        .add_axis_aligned_rectangle_outline_2d(bbox.min.into(), bbox.max.into())
+                        .color(paint_props.bg_stroke.color)
+                        .radius(Size::new_points(paint_props.bg_stroke.width * 0.5));
+                    self.lines
+                        .add_axis_aligned_rectangle_outline_2d(bbox.min.into(), bbox.max.into())
+                        .color(paint_props.fg_stroke.color)
+                        .radius(Size::new_points(paint_props.fg_stroke.width * 0.5));
+
+                    if let Some(label) = label {
+                        self.rect_labels.push(RectLabel2D {
+                            text: label,
+                            color: paint_props.fg_stroke.color,
+                            labled_rect: rect,
+                            labled_instance: instance_hash,
                         });
-                    },
-                );
-                batch
-            });
+                    }
+                },
+            );
+        }
 
-        self.boxes.extend(boxes);
-
-        for bbox in &self.boxes {
-            self.bbox.extend_with(bbox.bbox.min.into());
-            self.bbox.extend_with(bbox.bbox.max.into());
+        for (bbox, id) in &self.hoverable_rects {
+            self.bbox.extend_with(bbox.min.into());
+            self.bbox.extend_with(bbox.max.into());
         }
     }
 
-    fn load_points(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
+    fn load_points(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        query: &SceneQuery<'_>,
+        hovered_instance: InstanceIdHash,
+    ) {
         crate::profile_function!();
 
         let points = query
@@ -339,7 +386,12 @@ impl Scene2D {
         }
     }
 
-    fn load_line_segments(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
+    fn load_line_segments(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        query: &SceneQuery<'_>,
+        hovered_instance: InstanceIdHash,
+    ) {
         crate::profile_function!();
 
         let segments = query
@@ -401,12 +453,18 @@ impl Scene2D {
             bbox: _,
             annotation_map: _,
             images,
-            boxes: bboxes,
             line_segments,
             points,
+            lines,
+            hoverable_rects: _,
+            rect_labels,
         } = self;
 
-        images.is_empty() && bboxes.is_empty() && line_segments.is_empty() && points.is_empty()
+        images.is_empty()
+            && lines.is_empty()
+            && line_segments.is_empty()
+            && points.is_empty()
+            && rect_labels.is_empty()
     }
 }
 

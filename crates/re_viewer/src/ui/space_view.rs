@@ -96,7 +96,11 @@ impl SpaceView {
                 _ = extra_headroom; // ignored - put overlay buttons on top of the view.
 
                 let mut scene = view_2d::Scene2D::default();
-                scene.load_objects(ctx, &query);
+                scene.load_objects(
+                    ctx,
+                    &query,
+                    self.view_state.state_2d.hovered_instance_hash(),
+                );
                 self.view_state.ui_2d(ctx, ui, &self.space_path, scene);
             }
             ViewCategory::ThreeD => {

@@ -255,6 +255,10 @@ where
             })
         })
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.strips.is_empty()
+    }
 }
 
 pub struct LineStripBuilder<'a, PerStripUserData> {

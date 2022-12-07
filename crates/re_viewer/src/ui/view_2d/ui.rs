@@ -13,7 +13,7 @@ use re_renderer::{
 
 use crate::{misc::HoveredSpace, Selection, ViewerContext};
 
-use super::{Box2D, Image, LineSegments2D, ObjectPaintProperties, Point2D, Scene2D};
+use super::{Image, LineSegments2D, ObjectPaintProperties, Point2D, Scene2D};
 
 // ---
 
@@ -220,6 +220,12 @@ impl View2DState {
             }
         }
     }
+
+    pub fn hovered_instance_hash(&self) -> InstanceIdHash {
+        self.hovered_instance
+            .as_ref()
+            .map_or(InstanceIdHash::NONE, |i| i.hash())
+    }
 }
 
 pub const HELP_TEXT: &str = "Ctrl-scroll  to zoom (⌘-scroll or Mac).\n\
@@ -272,19 +278,16 @@ fn hover_effect(scene: &mut Scene2D, hovered: InstanceIdHash) {
         annotation_map: _,
 
         images,
-        boxes,
         line_segments,
         points,
+        lines,
+        hoverable_rects: _,
+        rect_labels: _,
     } = scene;
 
     for obj in images {
         obj.is_hovered = obj.instance_hash == hovered;
         if obj.is_hovered {
-            apply_hover_effect(&mut obj.paint_props);
-        }
-    }
-    for obj in boxes {
-        if obj.instance_hash == hovered {
             apply_hover_effect(&mut obj.paint_props);
         }
     }
@@ -311,12 +314,14 @@ fn apply_hover_effect(paint_props: &mut ObjectPaintProperties) {
     paint_props.fg_stroke.color = Color32::WHITE;
 }
 
+const BACKGROUND_COLOR: Color32 = Color32::from_black_alpha(196);
+
 /// Adds an object label to the ui.
 /// Returns rect covered by it (to be used for hover detection)
 fn add_label(
     ui: &mut egui::Ui,
     label: &String,
-    paint_props: &ObjectPaintProperties,
+    color: Color32,
     wrap_width: f32,
     text_anchor_pos: Pos2,
     shapes: &mut Vec<Shape>,
@@ -327,7 +332,7 @@ fn add_label(
             sections: vec![egui::text::LayoutSection {
                 leading_space: 0.0,
                 byte_range: 0..label.len(),
-                format: TextFormat::simple(font_id, paint_props.fg_stroke.color),
+                format: TextFormat::simple(font_id, color),
             }],
             text: (*label).clone(),
             wrap: TextWrapping {
@@ -344,11 +349,7 @@ fn add_label(
         Align2::CENTER_TOP.anchor_rect(Rect::from_min_size(text_anchor_pos, galley.size()));
     let bg_rect = text_rect.expand2(vec2(4.0, 2.0));
 
-    shapes.push(Shape::rect_filled(
-        bg_rect,
-        3.0,
-        paint_props.bg_stroke.color,
-    ));
+    shapes.push(Shape::rect_filled(bg_rect, 3.0, BACKGROUND_COLOR));
     shapes.push(Shape::galley(text_rect.center_top(), galley));
 
     bg_rect
@@ -517,44 +518,32 @@ fn view_2d_scrollable(
         }
     }
 
-    for bbox in &scene.boxes {
-        let Box2D {
-            instance_hash,
-            bbox,
-            stroke_width: _,
-            label,
-            paint_props,
-        } = bbox;
-
-        let rect_in_ui =
-            ui_from_space.transform_rect(Rect::from_min_max(bbox.min.into(), bbox.max.into()));
-
-        line_builder
-            .add_axis_aligned_rectangle_outline_2d(bbox.min.into(), bbox.max.into())
-            .color(paint_props.bg_stroke.color)
-            .radius(Size::new_points(paint_props.bg_stroke.width * 0.5));
-        line_builder
-            .add_axis_aligned_rectangle_outline_2d(bbox.min.into(), bbox.max.into())
-            .color(paint_props.fg_stroke.color)
-            .radius(Size::new_points(paint_props.fg_stroke.width * 0.5));
-
-        if let Some(pointer_pos) = pointer_pos {
+    if let Some(pointer_pos) = pointer_pos {
+        for (bbox, instance_hash) in &scene.hoverable_rects {
+            // TODO: cursor should be in scene coordinates.
+            let rect_in_ui =
+                ui_from_space.transform_rect(Rect::from_min_max(bbox.min.into(), bbox.max.into()));
             check_hovering(*instance_hash, rect_in_ui.distance_to_pos(pointer_pos));
         }
+    }
 
-        if let Some(label) = label {
-            // Place the text centered below the rect
-            let rect = add_label(
-                parent_ui,
-                label,
-                paint_props,
-                (rect_in_ui.width() - 4.0).at_least(60.0),
-                rect_in_ui.center_bottom() + vec2(0.0, 3.0),
-                &mut label_shapes,
+    for rect_label in &scene.rect_labels {
+        let rect_in_ui = ui_from_space.transform_rect(rect_label.labled_rect);
+
+        // Place the text centered below the rect
+        let rect = add_label(
+            parent_ui,
+            &rect_label.text,
+            rect_label.color,
+            (rect_in_ui.width() - 4.0).at_least(60.0),
+            rect_in_ui.center_bottom() + vec2(0.0, 3.0),
+            &mut label_shapes,
+        );
+        if let Some(pointer_pos) = pointer_pos {
+            check_hovering(
+                rect_label.labled_instance,
+                rect.distance_to_pos(pointer_pos).abs(),
             );
-            if let Some(pointer_pos) = pointer_pos {
-                check_hovering(*instance_hash, rect.distance_to_pos(pointer_pos).abs());
-            }
         }
     }
 
@@ -633,7 +622,7 @@ fn view_2d_scrollable(
             let rect = add_label(
                 parent_ui,
                 label,
-                paint_props,
+                paint_props.fg_stroke.color,
                 f32::INFINITY,
                 pos_in_ui + vec2(0.0, 3.0),
                 &mut label_shapes,
@@ -667,6 +656,7 @@ fn view_2d_scrollable(
 
         let command_buffer = view_builder
             .queue_draw(&line_builder.to_draw_data(ctx.render_ctx))
+            .queue_draw(&scene.lines.to_draw_data(ctx.render_ctx))
             .queue_draw(&PointCloudDrawData::new(ctx.render_ctx, &render_points).unwrap())
             .queue_draw(
                 &RectangleDrawData::new(ctx.render_ctx, &renderer_filled_rectangles).unwrap(),

@@ -70,7 +70,7 @@ impl<'s> SceneQuery<'s> {
             tensor,
             plot,
         } = &mut scene;
-        two_d.load_objects(ctx, self);
+        two_d.load_objects(ctx, self, InstanceIdHash::NONE);
         three_d.load_objects(ctx, self, InstanceIdHash::NONE);
         text.load_objects(ctx, self, &view_text::ViewTextFilters::default());
         tensor.load_objects(ctx, self);
