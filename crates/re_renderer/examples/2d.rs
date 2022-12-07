@@ -1,9 +1,8 @@
 use re_renderer::{
     renderer::{LineStripFlags, Rectangle, RectangleDrawData, TextureFilterMag, TextureFilterMin},
     resource_managers::{GpuTexture2DHandle, Texture2DCreationDesc},
-    texture_values::ValueRgba8UnormSrgb,
     view_builder::{self, Projection, ViewBuilder},
-    LineStripSeriesBuilder,
+    Color32, LineStripSeriesBuilder, Rgba,
 };
 
 mod framework;
@@ -21,15 +20,14 @@ impl framework::Example for Render2D {
 
     fn new(re_ctx: &mut re_renderer::RenderContext) -> Self {
         let rerun_logo =
-            image::load_from_memory(include_bytes!("../../re_viewer/data/logo_dark_mode.png"))
-                .unwrap();
+            image::load_from_memory(include_bytes!("../../re_ui/data/logo_dark_mode.png")).unwrap();
 
         let mut image_data = rerun_logo.as_rgba8().unwrap().to_vec();
 
-        // Premultiply alpha (not doing any alpha blending, so this will look better on a black ground).
+        // Premultiply alpha.
         for color in image_data.chunks_exact_mut(4) {
             color.clone_from_slice(
-                &epaint::Color32::from_rgba_unmultiplied(color[0], color[1], color[2], color[3])
+                &ecolor::Color32::from_rgba_unmultiplied(color[0], color[1], color[2], color[3])
                     .to_array(),
             );
         }
@@ -77,7 +75,7 @@ impl framework::Example for Render2D {
                 glam::vec2(0.0, screen_size.y * 0.5),
             )
             .radius(line_radius)
-            .color_rgb(50, 50, 255);
+            .color(Color32::BLUE);
 
         // .. within, a orange rectangle
         line_strip_builder
@@ -87,7 +85,7 @@ impl framework::Example for Render2D {
                 glam::vec2(0.0, screen_size.y * 0.25),
             )
             .radius(5.0)
-            .color_rgb(255, 100, 1);
+            .color(Color32::from_rgb(255, 100, 1));
 
         // All variations of line caps
         for (i, flags) in [
@@ -124,7 +122,7 @@ impl framework::Example for Render2D {
                     texture: self.rerun_logo_texture.clone(),
                     texture_filter_magnification: TextureFilterMag::Nearest,
                     texture_filter_minification: TextureFilterMin::Linear,
-                    multiplicative_tint: re_renderer::ColorRgba8SrgbPremultiplied::WHITE,
+                    multiplicative_tint: Rgba::WHITE,
                 },
                 Rectangle {
                     top_left_corner_position: glam::vec3(
@@ -137,7 +135,7 @@ impl framework::Example for Render2D {
                     texture: self.rerun_logo_texture.clone(),
                     texture_filter_magnification: TextureFilterMag::Linear,
                     texture_filter_minification: TextureFilterMin::Linear,
-                    multiplicative_tint: re_renderer::ColorRgba8SrgbPremultiplied::WHITE,
+                    multiplicative_tint: Rgba::WHITE,
                 },
             ],
         )
@@ -161,7 +159,7 @@ impl framework::Example for Render2D {
                 view_builder.queue_draw(&line_strip_draw_data);
                 view_builder.queue_draw(&rectangle_draw_data);
                 let command_buffer = view_builder
-                    .draw(re_ctx, ValueRgba8UnormSrgb::TRANSPARENT)
+                    .draw(re_ctx, ecolor::Rgba::TRANSPARENT)
                     .unwrap();
                 framework::ViewDrawResult {
                     view_builder,
@@ -171,45 +169,43 @@ impl framework::Example for Render2D {
             },
             // and 3d view of the same scene to the right
             {
-                {
-                    let mut view_builder = ViewBuilder::default();
-                    let seconds_since_startup = time.seconds_since_startup();
-                    let camera_rotation_center = screen_size.extend(0.0) * 0.5;
-                    let camera_position = glam::vec3(
-                        seconds_since_startup.sin(),
-                        0.5,
-                        seconds_since_startup.cos(),
-                    ) * screen_size.x.max(screen_size.y)
-                        + camera_rotation_center;
-                    view_builder
-                        .setup_view(
-                            re_ctx,
-                            view_builder::TargetConfiguration {
-                                name: "3D".into(),
-                                resolution_in_pixel: splits[1].resolution_in_pixel,
-                                view_from_world: macaw::IsoTransform::look_at_rh(
-                                    camera_position,
-                                    camera_rotation_center,
-                                    glam::Vec3::Y,
-                                )
-                                .unwrap(),
-                                projection_from_view: Projection::Perspective {
-                                    vertical_fov: 70.0 * std::f32::consts::TAU / 360.0,
-                                    near_plane_distance: 0.01,
-                                },
+                let mut view_builder = ViewBuilder::default();
+                let seconds_since_startup = time.seconds_since_startup();
+                let camera_rotation_center = screen_size.extend(0.0) * 0.5;
+                let camera_position = glam::vec3(
+                    seconds_since_startup.sin(),
+                    0.5,
+                    seconds_since_startup.cos(),
+                ) * screen_size.x.max(screen_size.y)
+                    + camera_rotation_center;
+                view_builder
+                    .setup_view(
+                        re_ctx,
+                        view_builder::TargetConfiguration {
+                            name: "3D".into(),
+                            resolution_in_pixel: splits[1].resolution_in_pixel,
+                            view_from_world: macaw::IsoTransform::look_at_rh(
+                                camera_position,
+                                camera_rotation_center,
+                                glam::Vec3::Y,
+                            )
+                            .unwrap(),
+                            projection_from_view: Projection::Perspective {
+                                vertical_fov: 70.0 * std::f32::consts::TAU / 360.0,
+                                near_plane_distance: 0.01,
                             },
-                        )
-                        .unwrap();
-                    view_builder.queue_draw(&line_strip_draw_data);
-                    view_builder.queue_draw(&rectangle_draw_data);
-                    let command_buffer = view_builder
-                        .draw(re_ctx, ValueRgba8UnormSrgb::TRANSPARENT)
-                        .unwrap();
-                    framework::ViewDrawResult {
-                        view_builder,
-                        command_buffer,
-                        target_location: splits[1].target_location,
-                    }
+                        },
+                    )
+                    .unwrap();
+                view_builder.queue_draw(&line_strip_draw_data);
+                view_builder.queue_draw(&rectangle_draw_data);
+                let command_buffer = view_builder
+                    .draw(re_ctx, ecolor::Rgba::TRANSPARENT)
+                    .unwrap();
+                framework::ViewDrawResult {
+                    view_builder,
+                    command_buffer,
+                    target_location: splits[1].target_location,
                 }
             },
         ]

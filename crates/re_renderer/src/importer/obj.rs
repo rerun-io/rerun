@@ -8,7 +8,7 @@ use crate::{
     mesh::{mesh_vertices::MeshVertexData, Material, Mesh},
     renderer::MeshInstance,
     resource_managers::ResourceLifeTime,
-    RenderContext,
+    Color32, RenderContext,
 };
 
 /// Loads an obj into the mesh & texture manager.
@@ -77,7 +77,7 @@ pub fn load_obj_from_buffer(
                 gpu_mesh,
                 mesh: Some(Arc::new(mesh)),
                 world_from_mesh: Conformal3::IDENTITY,
-                additive_tint_srgb: [0, 0, 0, 0],
+                additive_tint: Color32::TRANSPARENT,
             }
         })
         .collect())

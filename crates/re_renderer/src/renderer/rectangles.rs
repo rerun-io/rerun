@@ -10,9 +10,8 @@
 //! Since we're not allowed to bind many textures at once (no widespread bindless support!),
 //! we are forced to have individual bind groups per rectangle and thus a draw call per rectangle.
 
-use std::num::NonZeroU64;
-
 use smallvec::smallvec;
+use std::num::NonZeroU64;
 
 use crate::{
     include_file, next_multiple_of,
@@ -23,13 +22,13 @@ use crate::{
         GpuBindGroupLayoutHandle, GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc,
         SamplerDesc, ShaderModuleDesc,
     },
-    ColorRgba8SrgbPremultiplied,
+    Rgba,
 };
 
 use super::*;
 
 mod gpu_data {
-    use crate::{texture_values::ValueRgba32Float, wgpu_buffer_types};
+    use crate::wgpu_buffer_types;
 
     // Keep in sync with mirror in rectangle.wgsl
     #[repr(C)]
@@ -38,7 +37,7 @@ mod gpu_data {
         pub top_left_corner_position: wgpu_buffer_types::Vec3,
         pub extent_u: wgpu_buffer_types::Vec3,
         pub extent_v: wgpu_buffer_types::Vec3,
-        pub multiplicative_tint: ValueRgba32Float,
+        pub multiplicative_tint: crate::Rgba,
     }
 }
 
@@ -73,7 +72,7 @@ pub struct Rectangle {
     pub texture_filter_minification: TextureFilterMin,
 
     // Tint that is multiplied to the rect, supports pre-multiplied alpha.
-    pub multiplicative_tint: ColorRgba8SrgbPremultiplied,
+    pub multiplicative_tint: Rgba,
 }
 
 #[derive(Clone)]
@@ -152,7 +151,7 @@ impl RectangleDrawData {
                         top_left_corner_position: rectangle.top_left_corner_position.into(),
                         extent_u: rectangle.extent_u.into(),
                         extent_v: rectangle.extent_v.into(),
-                        multiplicative_tint: rectangle.multiplicative_tint.0.into(),
+                        multiplicative_tint: rectangle.multiplicative_tint,
                     }),
                 );
             }

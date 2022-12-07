@@ -293,7 +293,7 @@ fn histogram_ui(ui: &mut egui::Ui, rgb_image: &image::RgbImage) -> egui::Respons
                             .width(0.9)
                             .fill(fill)
                             .vertical()
-                            .stroke(egui::Stroke::none())
+                            .stroke(egui::Stroke::NONE)
                     })
                     .collect(),
             )

@@ -3,7 +3,6 @@ name = "re_viewer"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
-license = "(MIT OR Apache-2.0) AND OFL-1.1"
 publish = false
 include = [
   "../../LICENSE-APACHE",
@@ -43,6 +42,7 @@ re_renderer = { path = "../re_renderer" }
 re_smart_channel = { path = "../re_smart_channel" }
 re_string_interner = { path = "../re_string_interner" }
 re_tensor_ops = { path = "../re_tensor_ops" }
+re_ui = { path = "../re_ui" }
 re_ws_comms = { path = "../re_ws_comms", features = ["client"] }
 
 ahash = "0.8"
@@ -80,7 +80,6 @@ poll-promise = "0.1"
 rand = { version = "0.8", features = ["small_rng"] }
 rfd = "0.10"
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
 smallvec = "1.10"
 uuid = { version = "1.1", features = ["serde", "v4", "js"] }
 vec1 = "1.8"

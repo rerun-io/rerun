@@ -1,5 +1,6 @@
 use std::{f32::consts::TAU, io::Read};
 
+use ecolor::Hsva;
 use framework::Example;
 use glam::Vec3;
 use itertools::Itertools;
@@ -12,9 +13,8 @@ use re_renderer::{
         PointCloudDrawData, PointCloudPoint, TestTriangleDrawData,
     },
     resource_managers::ResourceLifeTime,
-    texture_values::ValueRgba8UnormSrgb,
     view_builder::{OrthographicCameraMode, Projection, TargetConfiguration, ViewBuilder},
-    LineStripSeriesBuilder, RenderContext,
+    Color32, LineStripSeriesBuilder, RenderContext, Rgba,
 };
 use winit::event::{ElementState, VirtualKeyCode};
 
@@ -32,7 +32,7 @@ fn draw_view<'a, D: 'static + re_renderer::renderer::DrawData + Sync + Send + Cl
         .unwrap()
         .queue_draw(skybox)
         .queue_draw(draw_data)
-        .draw(re_ctx, ValueRgba8UnormSrgb::TRANSPARENT)
+        .draw(re_ctx, Rgba::TRANSPARENT)
         .unwrap();
 
     (view_builder, command_buffer)
@@ -41,7 +41,7 @@ fn draw_view<'a, D: 'static + re_renderer::renderer::DrawData + Sync + Send + Cl
 fn build_mesh_instances(
     re_ctx: &mut RenderContext,
     model_mesh_instances: &[MeshInstance],
-    mesh_instance_positions_and_colors: &[(glam::Vec3, [u8; 4])],
+    mesh_instance_positions_and_colors: &[(glam::Vec3, Color32)],
     seconds_since_startup: f32,
 ) -> MeshDrawData {
     let mesh_instances = mesh_instance_positions_and_colors
@@ -57,7 +57,7 @@ fn build_mesh_instances(
                         glam::Quat::from_rotation_y(i as f32 + seconds_since_startup * 5.0),
                         *p,
                     ) * model_mesh_instances.world_from_mesh,
-                    additive_tint_srgb: *c,
+                    additive_tint: *c,
                 },
             )
         })
@@ -102,7 +102,7 @@ fn build_lines(re_ctx: &mut RenderContext, seconds_since_startup: f32) -> LineDr
     // Complex orange line.
     builder
         .add_strip(lorenz_points.into_iter())
-        .color_rgb(255, 191, 0)
+        .color(Color32::from_rgb(255, 191, 0))
         .radius(0.05);
 
     // Green Zig-Zag arrow
@@ -116,7 +116,7 @@ fn build_lines(re_ctx: &mut RenderContext, seconds_since_startup: f32) -> LineDr
             ]
             .into_iter(),
         )
-        .color_rgb(50, 255, 50)
+        .color(Color32::GREEN)
         .radius(0.05)
         .flags(LineStripFlags::CAP_END_TRIANGLE | LineStripFlags::CAP_START_ROUND);
 
@@ -129,7 +129,7 @@ fn build_lines(re_ctx: &mut RenderContext, seconds_since_startup: f32) -> LineDr
                 (i as f32 * 0.01).cos() * 2.0,
             )
         }))
-        .color_rgb(50, 50, 255)
+        .color(Color32::BLUE)
         .radius(0.1)
         .flags(LineStripFlags::CAP_END_TRIANGLE);
 
@@ -150,10 +150,20 @@ struct Multiview {
     camera_position: glam::Vec3,
 
     model_mesh_instances: Vec<MeshInstance>,
-    mesh_instance_positions_and_colors: Vec<(glam::Vec3, [u8; 4])>,
+    mesh_instance_positions_and_colors: Vec<(glam::Vec3, Color32)>,
 
     // Want to have a large cloud of random points, but doing rng for all of them every frame is too slow
     random_points: Vec<PointCloudPoint>,
+}
+
+fn random_color(rnd: &mut impl rand::Rng) -> Color32 {
+    Hsva {
+        h: rnd.gen::<f32>(),
+        s: rnd.gen::<f32>() * 0.5 + 0.5,
+        v: rnd.gen::<f32>() * 0.5 + 0.5,
+        a: 1.0,
+    }
+    .into()
 }
 
 impl Example for Multiview {
@@ -175,7 +185,7 @@ impl Example for Multiview {
                     rnd.gen_range(random_point_range.clone()),
                 ),
                 radius: rnd.gen_range(0.005..0.05),
-                srgb_color: [rnd.gen(), rnd.gen(), rnd.gen(), 255].into(),
+                color: random_color(&mut rnd),
             })
             .collect_vec();
 
@@ -198,7 +208,7 @@ impl Example for Multiview {
             .flat_map(|p| {
                 model_mesh_instances.iter().map(|_| {
                     let mut rnd = rand::thread_rng();
-                    (*p, [rnd.gen(), rnd.gen(), rnd.gen(), 255])
+                    (*p, random_color(&mut rnd))
                 })
             })
             .collect();

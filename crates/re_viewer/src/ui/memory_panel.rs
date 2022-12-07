@@ -1,4 +1,4 @@
-use re_format::{format_bytes, format_usize};
+use re_format::{format_bytes, format_number};
 use re_memory::{util::sec_since_start, MemoryHistory, MemoryLimit, MemoryUse};
 use re_renderer::WgpuResourcePoolStatistics;
 
@@ -159,23 +159,23 @@ impl MemoryPanel {
         ui.label(format!(
             "fully_tracked: {} in {} allocs",
             format_bytes(tracking_stats.fully_tracked.size as _),
-            format_usize(tracking_stats.fully_tracked.count),
+            format_number(tracking_stats.fully_tracked.count),
         ));
         ui.label(format!(
             "stochastically_tracked: {} in {} allocs",
             format_bytes(tracking_stats.stochastically_tracked.size as _),
-            format_usize(tracking_stats.stochastically_tracked.count),
+            format_number(tracking_stats.stochastically_tracked.count),
         ));
         ui.label(format!(
             "untracked: {} in {} allocs (all smaller than {})",
             format_bytes(tracking_stats.untracked.size as _),
-            format_usize(tracking_stats.untracked.count),
+            format_number(tracking_stats.untracked.count),
             format_bytes(tracking_stats.track_size_threshold as _),
         ));
         ui.label(format!(
             "overhead: {} in {} allocs",
             format_bytes(tracking_stats.overhead.size as _),
-            format_usize(tracking_stats.overhead.count),
+            format_number(tracking_stats.overhead.count),
         ))
         .on_hover_text("Used for the book-keeping of the allocation tracker");
 
@@ -195,7 +195,7 @@ impl MemoryPanel {
                                     "{}{} in {} allocs (≈{} / alloc){} - {}",
                                     if is_stochastic { "≈" } else { "" },
                                     format_bytes((callstack.extant.size * stochastic_rate) as _),
-                                    format_usize(callstack.extant.count * stochastic_rate),
+                                    format_number(callstack.extant.count * stochastic_rate),
                                     format_bytes(
                                         callstack.extant.size as f64
                                             / callstack.extant.count as f64

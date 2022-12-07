@@ -1,0 +1,31 @@
+[package]
+name = "re_ui"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license = "(MIT OR Apache-2.0) AND OFL-1.1"
+publish = false
+include = [
+  "../../LICENSE-APACHE",
+  "../../LICENSE-MIT",
+  "**/*.rs",
+  "Cargo.toml",
+  "data/*",
+]
+
+
+[features]
+default = []
+
+
+[dependencies]
+egui = { version = "0.19", features = ["extra_debug_asserts", "tracing"] }
+egui_extras = { version = "0.19", features = ["tracing"] }
+image = { version = "0.24", default-features = false, features = ["png"] }
+parking_lot = "0.12"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+
+[dev-dependencies]
+eframe = { version = "0.19", default-features = false, features = ["wgpu"] }

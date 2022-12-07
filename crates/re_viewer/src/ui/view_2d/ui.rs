@@ -446,13 +446,13 @@ fn view_2d_scrollable(
             texture: tensor_view.texture_handle.clone(),
             texture_filter_magnification: re_renderer::renderer::TextureFilterMag::Nearest,
             texture_filter_minification: re_renderer::renderer::TextureFilterMin::Linear,
-            multiplicative_tint: tint.to_array().into(),
+            multiplicative_tint: tint.into(),
         });
 
         if *is_hovered {
             line_builder
                 .add_axis_aligned_rectangle_outline_2d(glam::Vec2::ZERO, glam::vec2(w, h))
-                .color_rgbx_slice(paint_props.fg_stroke.color.to_array())
+                .color(paint_props.fg_stroke.color)
                 .radius(space_from_points * paint_props.fg_stroke.width * 0.5);
         }
 
@@ -531,11 +531,11 @@ fn view_2d_scrollable(
 
         line_builder
             .add_axis_aligned_rectangle_outline_2d(bbox.min.into(), bbox.max.into())
-            .color_rgbx_slice(paint_props.bg_stroke.color.to_array())
+            .color(paint_props.bg_stroke.color)
             .radius(space_from_points * paint_props.bg_stroke.width * 0.5);
         line_builder
             .add_axis_aligned_rectangle_outline_2d(bbox.min.into(), bbox.max.into())
-            .color_rgbx_slice(paint_props.fg_stroke.color.to_array())
+            .color(paint_props.fg_stroke.color)
             .radius(space_from_points * paint_props.fg_stroke.width * 0.5);
 
         if let Some(pointer_pos) = pointer_pos {
@@ -576,7 +576,7 @@ fn view_2d_scrollable(
                     .tuple_windows()
                     .map(|(a, b)| (glam::vec2(a.x, a.y), glam::vec2(b.x, b.y))),
             )
-            .color_rgbx_slice(paint_props.bg_stroke.color.to_array())
+            .color(paint_props.bg_stroke.color)
             .radius(paint_props.bg_stroke.width * 0.5 * space_from_points);
         line_builder
             .add_segments_2d(
@@ -585,7 +585,7 @@ fn view_2d_scrollable(
                     .tuple_windows()
                     .map(|(a, b)| (glam::vec2(a.x, a.y), glam::vec2(b.x, b.y))),
             )
-            .color_rgbx_slice(paint_props.fg_stroke.color.to_array())
+            .color(paint_props.fg_stroke.color)
             .radius(paint_props.fg_stroke.width * 0.5 * space_from_points);
 
         for &[a, b] in bytemuck::cast_slice::<_, [egui::Pos2; 2]>(points) {
@@ -619,12 +619,12 @@ fn view_2d_scrollable(
         render_points.push(PointCloudPoint {
             position: glam::vec3(pos.x, pos.y, depth),
             radius: space_from_points * (radius + 1.0),
-            srgb_color: paint_props.bg_stroke.color.to_array().into(),
+            color: paint_props.bg_stroke.color,
         });
         render_points.push(PointCloudPoint {
             position: glam::vec3(pos.x, pos.y, depth - 0.1),
             radius: space_from_points * radius,
-            srgb_color: paint_props.fg_stroke.color.to_array().into(),
+            color: paint_props.fg_stroke.color,
         });
 
         let pos_in_ui = ui_from_space.transform_pos(*pos);
@@ -671,10 +671,7 @@ fn view_2d_scrollable(
             .queue_draw(
                 &RectangleDrawData::new(ctx.render_ctx, &renderer_filled_rectangles).unwrap(),
             )
-            .draw(
-                ctx.render_ctx,
-                parent_ui.visuals().extreme_bg_color.to_array().into(),
-            )
+            .draw(ctx.render_ctx, parent_ui.visuals().extreme_bg_color.into())
             .unwrap();
 
         painter.add(renderer_paint_callback(

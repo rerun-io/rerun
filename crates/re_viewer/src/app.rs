@@ -1,7 +1,6 @@
 use std::any::Any;
 
 use ahash::HashMap;
-use egui_extras::RetainedImage;
 use egui_notify::Toasts;
 use instant::Instant;
 use itertools::Itertools as _;
@@ -9,13 +8,12 @@ use nohash_hasher::IntMap;
 use poll_promise::Promise;
 
 use re_data_store::log_db::LogDb;
-use re_format::format_usize;
+use re_format::format_number;
 use re_log_types::*;
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::Receiver;
 
 use crate::{
-    design_tokens::DesignTokens,
     misc::{Caches, Options, RecordingConfig, ViewerContext},
     ui::kb_shortcuts,
 };
@@ -38,7 +36,7 @@ pub struct StartupOptions {
 /// The Rerun viewer as an [`eframe`] application.
 pub struct App {
     startup_options: StartupOptions,
-    design_tokens: DesignTokens,
+    re_ui: re_ui::ReUi,
 
     rx: Option<Receiver<LogMsg>>,
 
@@ -73,16 +71,14 @@ pub struct App {
 impl App {
     /// Create a viewer that receives new log messages over time
     pub fn from_receiver(
-        egui_ctx: &egui::Context,
         startup_options: StartupOptions,
-        design_tokens: DesignTokens,
+        re_ui: re_ui::ReUi,
         storage: Option<&dyn eframe::Storage>,
         rx: Receiver<LogMsg>,
     ) -> Self {
         Self::new(
-            egui_ctx,
             startup_options,
-            design_tokens,
+            re_ui,
             storage,
             Some(rx),
             Default::default(),
@@ -91,39 +87,29 @@ impl App {
 
     #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn from_log_db(
-        egui_ctx: &egui::Context,
         startup_options: StartupOptions,
-        design_tokens: DesignTokens,
+        re_ui: re_ui::ReUi,
         storage: Option<&dyn eframe::Storage>,
         log_db: LogDb,
     ) -> Self {
-        Self::new(
-            egui_ctx,
-            startup_options,
-            design_tokens,
-            storage,
-            None,
-            log_db,
-        )
+        Self::new(startup_options, re_ui, storage, None, log_db)
     }
 
     /// load a `.rrd` data file.
     #[cfg(not(target_arch = "wasm32"))]
     pub fn from_rrd_path(
-        egui_ctx: &egui::Context,
         startup_options: StartupOptions,
-        design_tokens: DesignTokens,
+        re_ui: re_ui::ReUi,
         storage: Option<&dyn eframe::Storage>,
         path: &std::path::Path,
     ) -> Self {
         let log_db = load_file_path(path).unwrap_or_default(); // TODO(emilk): exit on error.
-        Self::from_log_db(egui_ctx, startup_options, design_tokens, storage, log_db)
+        Self::from_log_db(startup_options, re_ui, storage, log_db)
     }
 
     fn new(
-        _egui_ctx: &egui::Context,
         startup_options: StartupOptions,
-        design_tokens: DesignTokens,
+        re_ui: re_ui::ReUi,
         storage: Option<&dyn eframe::Storage>,
         rx: Option<Receiver<LogMsg>>,
         log_db: LogDb,
@@ -136,7 +122,7 @@ impl App {
             // Close viewer on Ctrl-C. TODO(emilk): maybe add to `eframe`?
 
             let ctrl_c = ctrl_c.clone();
-            let egui_ctx = _egui_ctx.clone();
+            let egui_ctx = re_ui.egui_ctx.clone();
 
             ctrlc::set_handler(move || {
                 re_log::debug!("Ctrl-C detected - Closing viewer.");
@@ -158,7 +144,7 @@ impl App {
 
         Self {
             startup_options,
-            design_tokens,
+            re_ui,
             rx,
             log_dbs,
             arrow_dbs: Default::default(),
@@ -354,8 +340,7 @@ impl eframe::App for App {
                 });
             });
         } else {
-            self.state
-                .show(egui_ctx, render_ctx, log_db, &self.design_tokens);
+            self.state.show(egui_ctx, render_ctx, log_db, &self.re_ui);
         }
 
         self.handle_dropping_files(egui_ctx);
@@ -625,10 +610,6 @@ struct AppState {
     #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
     #[serde(skip)]
     profiler: crate::Profiler,
-
-    // TODO(emilk): use an image cache
-    #[serde(skip)]
-    static_image_cache: StaticImageCache,
 }
 
 impl AppState {
@@ -637,7 +618,7 @@ impl AppState {
         egui_ctx: &egui::Context,
         render_ctx: &mut re_renderer::RenderContext,
         log_db: &LogDb,
-        design_tokens: &DesignTokens,
+        re_ui: &re_ui::ReUi,
     ) {
         crate::profile_function!();
 
@@ -654,7 +635,6 @@ impl AppState {
             time_panel,
             #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
                 profiler: _,
-            static_image_cache: _,
         } = self;
 
         let rec_cfg = recording_configs.entry(*selected_rec_id).or_default();
@@ -670,7 +650,7 @@ impl AppState {
             log_db,
             rec_cfg,
             selection_history,
-            design_tokens,
+            re_ui,
             render_ctx,
         };
 
@@ -700,24 +680,8 @@ impl AppState {
             .move_time(egui_ctx, log_db.times_per_timeline());
 
         if WATERMARK {
-            self.watermark(egui_ctx);
+            re_ui.paint_watermark();
         }
-    }
-
-    fn watermark(&mut self, egui_ctx: &egui::Context) {
-        use egui::*;
-        let logo = self
-            .static_image_cache
-            .rerun_logo(&egui_ctx.style().visuals);
-        let screen_rect = egui_ctx.input().screen_rect;
-        let size = logo.size_vec2();
-        let rect = Align2::RIGHT_BOTTOM
-            .align_size_within_rect(size, screen_rect)
-            .translate(-Vec2::splat(16.0));
-        let mut mesh = Mesh::with_texture(logo.texture_id(egui_ctx));
-        let uv = Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0));
-        mesh.add_rect_with_uv(rect, uv, Color32::WHITE);
-        egui_ctx.debug_painter().add(Shape::mesh(mesh));
     }
 }
 
@@ -732,53 +696,31 @@ fn top_panel(
     let panel_frame = {
         egui::Frame {
             inner_margin: egui::style::Margin::symmetric(8.0, 2.0),
-            fill: app.design_tokens.top_bar_color,
+            fill: app.re_ui.design_tokens.top_bar_color,
             ..Default::default()
         }
     };
 
-    let gui_zoom = if let Some(native_pixels_per_point) = frame.info().native_pixels_per_point {
-        native_pixels_per_point / egui_ctx.pixels_per_point()
-    } else {
-        1.0
-    };
-
-    // On Mac, we share the same space as the native red/yellow/green close/minimize/maximize buttons.
-    // This means we need to make room for them.
-    let make_room_for_window_buttons = {
+    let native_pixels_per_point = frame.info().native_pixels_per_point;
+    let fullscreen = {
         #[cfg(target_os = "macos")]
         {
-            crate::FULLSIZE_CONTENT && !frame.info().window_info.fullscreen
+            frame.info().window_info.fullscreen
         }
         #[cfg(not(target_os = "macos"))]
         {
             false
         }
     };
-
-    let native_buttons_size_in_native_scale = egui::vec2(64.0, 24.0); // source: I measured /emilk
-
-    let bar_height = if make_room_for_window_buttons {
-        // Use more vertical space when zoomed in…
-        let bar_height = native_buttons_size_in_native_scale.y;
-
-        // …but never shrink below the native button height when zoomed out.
-        bar_height.max(gui_zoom * native_buttons_size_in_native_scale.y)
-    } else {
-        egui_ctx.style().spacing.interact_size.y
-    };
+    let top_bar_style = app.re_ui.top_bar_style(native_pixels_per_point, fullscreen);
 
     egui::TopBottomPanel::top("top_bar")
         .frame(panel_frame)
-        .exact_height(bar_height)
+        .exact_height(top_bar_style.height)
         .show(egui_ctx, |ui| {
             egui::menu::bar(ui, |ui| {
-                ui.set_height(bar_height);
-
-                if make_room_for_window_buttons {
-                    // Always use the same width measured in native GUI coordinates:
-                    ui.add_space(gui_zoom * native_buttons_size_in_native_scale.x);
-                }
+                ui.set_height(top_bar_style.height);
+                ui.add_space(top_bar_style.indent);
 
                 top_bar_ui(ui, frame, app, gpu_resource_stats);
             });
@@ -853,7 +795,7 @@ fn top_bar_ui(
         .on_hover_text(format!(
             "Rerun Viewer is using {} of RAM in {} separate allocations.",
             bytes_used_text,
-            format_usize(count.count),
+            format_number(count.count),
         ));
     }
 
@@ -872,8 +814,8 @@ fn top_bar_ui(
         .on_hover_text(format!(
             "Rerun Viewer is using {} of GPU memory in {} textures and {} buffers.",
             bytes_used_text,
-            format_usize(gpu_resource_stats.num_textures),
-            format_usize(gpu_resource_stats.num_buffers),
+            format_number(gpu_resource_stats.num_textures),
+            format_number(gpu_resource_stats.num_buffers),
         ));
     }
 
@@ -900,7 +842,7 @@ fn top_bar_ui(
                 let text = format!(
                     "Latency: {:.2}s, queue: {}",
                     latency_sec,
-                    format_usize(queue_len),
+                    format_number(queue_len),
                 );
                 let hover_text =
                     "When more data is arriving over network than the Rerun Viewer can index, a queue starts building up, leading to latency and increased RAM use.\n\
@@ -909,11 +851,11 @@ fn top_bar_ui(
                 if latency_sec < app.state.options.warn_latency {
                     ui.weak(text).on_hover_text(hover_text);
                 } else {
-                    ui.label(app.design_tokens.warning_text(text, ui.style()))
+                    ui.label(app.re_ui.warning_text(text))
                         .on_hover_text(hover_text);
                 }
             } else {
-                ui.weak(format!("Queue: {}", format_usize(queue_len)))
+                ui.weak(format!("Queue: {}", format_number(queue_len)))
                     .on_hover_text("Number of messages in the inbound queue");
             }
         }
@@ -921,7 +863,7 @@ fn top_bar_ui(
 
     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
         if !WATERMARK {
-            let logo = app.state.static_image_cache.rerun_logo(ui.visuals());
+            let logo = app.re_ui.rerun_logo();
             let response = ui
                 .add(egui::ImageButton::new(
                     logo.texture_id(ui.ctx()),
@@ -955,41 +897,39 @@ fn top_bar_ui(
                     input.consume_shortcut(&TOGGLE_BLUEPRINT_PANEL);
             }
 
-            use crate::ui::icons;
-
             // From right-to-left:
-            medium_toggle_icon_button(
-                ui,
-                &mut app.state.static_image_cache,
-                &icons::RIGHT_PANEL_TOGGLE,
-                &mut blueprint.selection_panel_expanded,
-            )
-            .on_hover_text(format!(
-                "Toggle Selection View ({})",
-                ui.ctx().format_shortcut(&TOGGLE_SELECTION_PANEL)
-            ));
+            app.re_ui
+                .medium_icon_toggle_button(
+                    ui,
+                    &re_ui::icons::RIGHT_PANEL_TOGGLE,
+                    &mut blueprint.selection_panel_expanded,
+                )
+                .on_hover_text(format!(
+                    "Toggle Selection View ({})",
+                    ui.ctx().format_shortcut(&TOGGLE_SELECTION_PANEL)
+                ));
 
-            medium_toggle_icon_button(
-                ui,
-                &mut app.state.static_image_cache,
-                &icons::BOTTOM_PANEL_TOGGLE,
-                &mut blueprint.time_panel_expanded,
-            )
-            .on_hover_text(format!(
-                "Toggle Timeline View ({})",
-                ui.ctx().format_shortcut(&TOGGLE_TIME_PANEL)
-            ));
+            app.re_ui
+                .medium_icon_toggle_button(
+                    ui,
+                    &re_ui::icons::BOTTOM_PANEL_TOGGLE,
+                    &mut blueprint.time_panel_expanded,
+                )
+                .on_hover_text(format!(
+                    "Toggle Timeline View ({})",
+                    ui.ctx().format_shortcut(&TOGGLE_TIME_PANEL)
+                ));
 
-            medium_toggle_icon_button(
-                ui,
-                &mut app.state.static_image_cache,
-                &icons::LEFT_PANEL_TOGGLE,
-                &mut blueprint.blueprint_panel_expanded,
-            )
-            .on_hover_text(format!(
-                "Toggle Blueprint View ({})",
-                ui.ctx().format_shortcut(&TOGGLE_BLUEPRINT_PANEL)
-            ));
+            app.re_ui
+                .medium_icon_toggle_button(
+                    ui,
+                    &re_ui::icons::LEFT_PANEL_TOGGLE,
+                    &mut blueprint.blueprint_panel_expanded,
+                )
+                .on_hover_text(format!(
+                    "Toggle Blueprint View ({})",
+                    ui.ctx().format_shortcut(&TOGGLE_BLUEPRINT_PANEL)
+                ));
 
             ui.vertical_centered(|ui| {
                 ui.style_mut().wrap = Some(false);
@@ -998,29 +938,6 @@ fn top_bar_ui(
             });
         }
     });
-}
-
-fn medium_toggle_icon_button(
-    ui: &mut egui::Ui,
-    image_cache: &mut StaticImageCache,
-    icon: &crate::ui::icons::Icon,
-    selected: &mut bool,
-) -> egui::Response {
-    let size_points = egui::Vec2::splat(16.0); // TODO(emilk): get from DesignTokens
-
-    let image = image_cache.get(icon.id, icon.png_bytes);
-    let texture_id = image.texture_id(ui.ctx());
-    let tint = if *selected {
-        ui.visuals().widgets.inactive.fg_stroke.color
-    } else {
-        egui::Color32::from_gray(100) // TODO(emilk): get from DesignTokens
-    };
-    let mut response = ui.add(egui::ImageButton::new(texture_id, size_points).tint(tint));
-    if response.clicked() {
-        *selected = !*selected;
-        response.mark_changed();
-    }
-    response
 }
 
 // ----------------------------------------------------------------------------
@@ -1409,46 +1326,4 @@ fn load_file_contents(name: &str, read: impl std::io::Read) -> Option<LogDb> {
             None
         }
     }
-}
-
-#[derive(Default)]
-struct StaticImageCache {
-    images: std::collections::HashMap<&'static str, RetainedImage>,
-}
-
-impl StaticImageCache {
-    pub fn get(&mut self, id: &'static str, image_bytes: &'static [u8]) -> &RetainedImage {
-        self.images.entry(id).or_insert_with(|| {
-            RetainedImage::from_color_image(
-                id,
-                load_image_bytes(image_bytes)
-                    .unwrap_or_else(|err| panic!("Failed to load image {id:?}: {err:?}")),
-            )
-        })
-    }
-
-    pub fn rerun_logo(&mut self, visuals: &egui::Visuals) -> &RetainedImage {
-        if visuals.dark_mode {
-            self.get(
-                "logo_dark_mode",
-                include_bytes!("../data/logo_dark_mode.png"),
-            )
-        } else {
-            self.get(
-                "logo_light_mode",
-                include_bytes!("../data/logo_light_mode.png"),
-            )
-        }
-    }
-}
-
-pub fn load_image_bytes(image_bytes: &[u8]) -> Result<egui::ColorImage, String> {
-    let image = image::load_from_memory(image_bytes).map_err(|err| err.to_string())?;
-    let image = image.into_rgba8();
-    let size = [image.width() as _, image.height() as _];
-    let pixels = image.as_flat_samples();
-    Ok(egui::ColorImage::from_rgba_unmultiplied(
-        size,
-        pixels.as_slice(),
-    ))
 }

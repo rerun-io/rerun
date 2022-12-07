@@ -6,11 +6,49 @@ use std::{
 use arrow2::{array::Array, datatypes::Schema};
 use polars::prelude::{DataFrame, Series};
 
-use re_arrow_store::{DataStore, TimeInt, TimeQuery};
+use re_arrow_store::{DataStore, DataStoreConfig, TimeInt, TimeQuery};
 use re_log_types::{
     datagen::*, ComponentNameRef, Duration, ObjPath as EntityPath, Time, TimePoint, TimeType,
     Timeline,
 };
+
+// ---
+
+const TEST_CONFIGS: &[DataStoreConfig] = &[
+    DataStoreConfig::DEFAULT,
+    DataStoreConfig {
+        component_bucket_nb_rows: 0,
+        ..DataStoreConfig::DEFAULT
+    },
+    DataStoreConfig {
+        component_bucket_nb_rows: 1,
+        ..DataStoreConfig::DEFAULT
+    },
+    DataStoreConfig {
+        component_bucket_nb_rows: 2,
+        ..DataStoreConfig::DEFAULT
+    },
+    DataStoreConfig {
+        component_bucket_nb_rows: 3,
+        ..DataStoreConfig::DEFAULT
+    },
+    DataStoreConfig {
+        component_bucket_size_bytes: 0,
+        ..DataStoreConfig::DEFAULT
+    },
+    DataStoreConfig {
+        component_bucket_size_bytes: 16,
+        ..DataStoreConfig::DEFAULT
+    },
+    DataStoreConfig {
+        component_bucket_size_bytes: 32,
+        ..DataStoreConfig::DEFAULT
+    },
+    DataStoreConfig {
+        component_bucket_size_bytes: 64,
+        ..DataStoreConfig::DEFAULT
+    },
+];
 
 // --- Scenarios ---
 
@@ -18,8 +56,12 @@ use re_log_types::{
 fn empty_query_edge_cases() {
     init_logs();
 
-    let mut store = DataStore::default();
-
+    for config in TEST_CONFIGS {
+        let mut store = DataStore::new(config.clone());
+        empty_query_edge_cases_impl(&mut store);
+    }
+}
+fn empty_query_edge_cases_impl(store: &mut DataStore) {
     let ent_path = EntityPath::from("this/that");
     let now = Time::now();
     let now_nanos = now.nanos_since_epoch();
@@ -32,7 +74,7 @@ fn empty_query_edge_cases() {
     let mut tracker = DataTracker::default();
     {
         tracker.insert_data(
-            &mut store,
+            store,
             &ent_path,
             &TimePoint([build_log_time(now), build_frame_nr(frame40)].into()),
             [build_instances(nb_instances)],
@@ -48,7 +90,7 @@ fn empty_query_edge_cases() {
     // Scenario: query at `last_frame`.
     // Expected: dataframe with our instances in it.
     tracker.assert_scenario(
-        &mut store,
+        store,
         &timeline_frame_nr,
         &TimeQuery::LatestAt(frame40),
         &ent_path,
@@ -59,7 +101,7 @@ fn empty_query_edge_cases() {
     // Scenario: query at `last_log_time`.
     // Expected: dataframe with our instances in it.
     tracker.assert_scenario(
-        &mut store,
+        store,
         &timeline_log_time,
         &TimeQuery::LatestAt(now_nanos),
         &ent_path,
@@ -70,7 +112,7 @@ fn empty_query_edge_cases() {
     // Scenario: query an empty store at `first_frame - 1`.
     // Expected: empty dataframe.
     tracker.assert_scenario(
-        &mut store,
+        store,
         &timeline_frame_nr,
         &TimeQuery::LatestAt(frame39),
         &ent_path,
@@ -81,7 +123,7 @@ fn empty_query_edge_cases() {
     // Scenario: query an empty store at `first_log_time - 10ms`.
     // Expected: empty dataframe.
     tracker.assert_scenario(
-        &mut store,
+        store,
         &timeline_log_time,
         &TimeQuery::LatestAt(now_minus_10ms_nanos),
         &ent_path,
@@ -92,7 +134,7 @@ fn empty_query_edge_cases() {
     // Scenario: query a non-existing entity path.
     // Expected: empty dataframe.
     tracker.assert_scenario(
-        &mut store,
+        store,
         &timeline_frame_nr,
         &TimeQuery::LatestAt(frame40),
         &EntityPath::from("does/not/exist"),
@@ -103,7 +145,7 @@ fn empty_query_edge_cases() {
     // Scenario: query a bunch of non-existing components.
     // Expected: empty dataframe.
     tracker.assert_scenario(
-        &mut store,
+        store,
         &timeline_frame_nr,
         &TimeQuery::LatestAt(frame40),
         &ent_path,
@@ -114,7 +156,7 @@ fn empty_query_edge_cases() {
     // Scenario: query with an empty list of components.
     // Expected: empty dataframe.
     tracker.assert_scenario(
-        &mut store,
+        store,
         &timeline_frame_nr,
         &TimeQuery::LatestAt(frame40),
         &ent_path,
@@ -125,7 +167,7 @@ fn empty_query_edge_cases() {
     // Scenario: query with wrong timeline name.
     // Expected: empty dataframe.
     tracker.assert_scenario(
-        &mut store,
+        store,
         &timeline_wrong_name,
         &TimeQuery::LatestAt(frame40),
         &ent_path,
@@ -136,7 +178,7 @@ fn empty_query_edge_cases() {
     // Scenario: query with wrong timeline kind.
     // Expected: empty dataframe.
     tracker.assert_scenario(
-        &mut store,
+        store,
         &timeline_wrong_kind,
         &TimeQuery::LatestAt(frame40),
         &ent_path,
@@ -152,11 +194,15 @@ fn empty_query_edge_cases() {
 /// - multiple timelines with non-monotically increasing updates
 /// - no weird stuff (duplicated components etc)
 #[test]
-fn single_entity_multi_timelines_multi_components_out_of_order_roundtrip() {
+fn end_to_end_roundtrip_standard() {
     init_logs();
 
-    let mut store = DataStore::default();
-
+    for config in TEST_CONFIGS {
+        let mut store = DataStore::new(config.clone());
+        end_to_end_roundtrip_standard_impl(&mut store);
+    }
+}
+fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
     let ent_path = EntityPath::from("this/that");
 
     let now = Time::now();
@@ -177,31 +223,31 @@ fn single_entity_multi_timelines_multi_components_out_of_order_roundtrip() {
     let mut tracker = DataTracker::default();
     {
         tracker.insert_data(
-            &mut store,
+            store,
             &ent_path,
             &TimePoint([build_log_time(now_minus_10ms), build_frame_nr(frame43)].into()),
             [build_rects(nb_instances)],
         );
         tracker.insert_data(
-            &mut store,
+            store,
             &ent_path,
             &TimePoint([build_log_time(now), build_frame_nr(frame42)].into()),
             [build_rects(nb_instances)],
         );
         tracker.insert_data(
-            &mut store,
+            store,
             &ent_path,
             &TimePoint([build_log_time(now_plus_10ms), build_frame_nr(frame41)].into()),
             [build_instances(nb_instances), build_rects(nb_instances)],
         );
         tracker.insert_data(
-            &mut store,
+            store,
             &ent_path,
             &TimePoint([build_log_time(now), build_frame_nr(frame42)].into()),
             [build_instances(nb_instances)],
         );
         tracker.insert_data(
-            &mut store,
+            store,
             &ent_path,
             &TimePoint([build_log_time(now_minus_10ms), build_frame_nr(frame42)].into()),
             [build_positions(nb_instances)],
@@ -258,7 +304,7 @@ fn single_entity_multi_timelines_multi_components_out_of_order_roundtrip() {
 
     for (frame_nr, expected) in scenarios {
         tracker.assert_scenario(
-            &mut store,
+            store,
             &timeline_frame_nr,
             &TimeQuery::LatestAt(frame_nr),
             &ent_path,
@@ -286,7 +332,7 @@ fn single_entity_multi_timelines_multi_components_out_of_order_roundtrip() {
 
     for (log_time, expected) in scenarios {
         tracker.assert_scenario(
-            &mut store,
+            store,
             &timeline_log_time,
             &TimeQuery::LatestAt(log_time.nanos_since_epoch()),
             &ent_path,

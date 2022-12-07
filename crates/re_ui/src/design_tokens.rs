@@ -8,40 +8,13 @@ pub struct DesignTokens {
 }
 
 impl DesignTokens {
-    #[allow(clippy::unused_self)]
-    pub fn panel_frame(&self, egui_ctx: &egui::Context) -> egui::Frame {
-        egui::Frame {
-            fill: egui_ctx.style().visuals.window_fill(),
-            inner_margin: egui::style::Margin::same(4.0),
-            ..Default::default()
-        }
-    }
-
-    #[allow(clippy::unused_self)]
-    pub fn hovering_frame(&self, style: &egui::Style) -> egui::Frame {
-        egui::Frame {
-            inner_margin: egui::style::Margin::same(2.0),
-            outer_margin: egui::style::Margin::same(4.0),
-            rounding: 4.0.into(),
-            fill: style.visuals.window_fill(),
-            stroke: style.visuals.window_stroke(),
-            ..Default::default()
-        }
-    }
-
-    #[allow(clippy::unused_self)]
-    pub fn warning_text(&self, text: impl Into<String>, style: &egui::Style) -> egui::RichText {
-        egui::RichText::new(text)
-            .italics()
-            .color(style.visuals.warn_fg_color)
-    }
-
-    pub fn loop_selection_color() -> egui::Color32 {
-        egui::Color32::from_rgb(40, 200, 130)
+    /// Create [`DesignTokens`] and apply style to the given egui context.
+    pub fn load_and_apply(ctx: &egui::Context) -> Self {
+        apply_design_tokens(ctx)
     }
 }
 
-pub(crate) fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
+fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
     let apply_font = true;
     let apply_font_size = true;
 

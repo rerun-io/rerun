@@ -109,12 +109,15 @@ use crate::{
         GpuBindGroupLayoutHandle, GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc,
         ShaderModuleDesc, TextureDesc,
     },
+    Color32,
 };
 
 use super::*;
 
 pub mod gpu_data {
     // Don't use `wgsl_buffer_types` since none of this data goes into a buffer, so its alignment rules don't apply.
+
+    use crate::Color32;
 
     use super::LineStripFlags;
 
@@ -132,7 +135,7 @@ pub mod gpu_data {
     #[repr(C, packed)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct LineStripInfo {
-        pub srgb_color: [u8; 4], // alpha unused right now
+        pub color: Color32, // alpha unused right now
         pub stippling: u8,
         pub flags: LineStripFlags,
         pub radius: half::f16,
@@ -189,7 +192,7 @@ pub struct LineStripInfo {
     pub radius: f32,
 
     /// srgb color. Alpha unused right now
-    pub srgb_color: [u8; 4],
+    pub color: Color32,
 
     /// Additional properties for the linestrip.
     pub flags: LineStripFlags,
@@ -202,7 +205,7 @@ impl Default for LineStripInfo {
     fn default() -> Self {
         Self {
             radius: 1.0,
-            srgb_color: [255, 255, 255, 255],
+            color: Color32::WHITE,
             flags: LineStripFlags::empty(),
         }
     }
@@ -328,7 +331,7 @@ impl LineDrawData {
             Vec::with_capacity(next_multiple_of(num_strips, LINE_STRIP_TEXTURE_SIZE) as usize);
         line_strip_info_staging.extend(strips.iter().map(|line_strip| {
             gpu_data::LineStripInfo {
-                srgb_color: line_strip.srgb_color,
+                color: line_strip.color,
                 radius: half::f16::from_f32(line_strip.radius),
                 stippling: 0, //(line_strip.stippling.clamp(0.0, 1.0) * 255.0) as u8,
                 flags: line_strip.flags,

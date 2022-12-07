@@ -12,12 +12,15 @@ use arrow2::datatypes::{DataType, Schema};
 use polars::prelude::IndexOfSchema;
 
 use re_log_types::external::arrow2_convert::deserialize::arrow_array_deserialize_iterator;
+use re_log::debug;
 use re_log_types::{
     ComponentNameRef, ObjPath as EntityPath, TimeInt, TimePoint, TimeRange, Timeline,
     ENTITY_PATH_KEY,
 };
 
-use crate::{ComponentBucket, ComponentTable, DataStore, IndexBucket, IndexTable, RowIndex};
+use crate::{
+    ComponentBucket, ComponentTable, DataStore, DataStoreConfig, IndexBucket, IndexTable, RowIndex,
+};
 
 // --- Data store ---
 
@@ -47,7 +50,7 @@ impl DataStore {
                 ComponentTable::new(name.to_owned(), component.data_type().clone())
             });
 
-            let row_idx = table.insert(&timelines, component)?;
+            let row_idx = table.insert(&self.config, &timelines, component)?;
             indices.insert(name, row_idx);
         }
 
@@ -152,18 +155,9 @@ impl IndexBucket {
 
         // append components to secondary indices (2-way merge)
 
-        // Step 1: for all row indices, check whether the index for the associated component
-        // exists:
-        // - if it does, append the new row index to it
-        // - otherwise, create a new one, fill it with nulls, and append the new row index to it
+        // 2-way merge, step1: left-to-right
         //
-        // After this step, we are guaranteed that all new row indices have been inserted into
-        // the components' indices.
-        //
-        // What we are _not_ guaranteed, though, is that existing component indices that weren't
-        // affected by this update are appended with null values so that they stay aligned with
-        // the length of the time index.
-        // Step 2 below takes care of that.
+        // push new row indices to their associated secondary index
         for (name, row_idx) in row_indices {
             let index = self.indices.entry((*name).to_owned()).or_insert_with(|| {
                 let mut index = UInt64Vec::default();
@@ -173,10 +167,9 @@ impl IndexBucket {
             index.push(Some(*row_idx));
         }
 
-        // Step 2: for all component indices, check whether they were affected by the current
-        // insertion:
-        // - if they weren't, append null values appropriately
-        // - otherwise, do nothing, step 1 already took care of it
+        // 2-way merge, step2: right-to-left
+        //
+        // fill unimpacted secondary indices with null values
         for (name, index) in &mut self.indices {
             if !row_indices.contains_key(name.as_str()) {
                 index.push_null();
@@ -208,16 +201,51 @@ impl ComponentTable {
         ComponentTable {
             name: Arc::clone(&name),
             datatype: datatype.clone(),
-            buckets: [(0, ComponentBucket::new(name, datatype, 0))].into(),
+            buckets: [ComponentBucket::new(name, datatype, 0)].into(),
         }
     }
 
     pub fn insert(
         &mut self,
+        config: &DataStoreConfig,
         timelines: &[(Timeline, TimeInt)],
         data: &dyn Array,
     ) -> anyhow::Result<RowIndex> {
-        self.buckets.get_mut(&0).unwrap().insert(timelines, data)
+        // All component tables spawn with an initial bucket at row offset 0, thus this cannot
+        // fail.
+        let bucket = self.buckets.back().unwrap();
+
+        let size = bucket.total_size_bytes();
+        let size_overflow = bucket.total_size_bytes() >= config.component_bucket_size_bytes;
+
+        let len = bucket.total_rows();
+        let len_overflow = len >= config.component_bucket_nb_rows;
+
+        if size_overflow || len_overflow {
+            debug!(
+                name = self.name.as_str(),
+                ?config,
+                size,
+                size_overflow,
+                len,
+                len_overflow,
+                "allocating new component bucket, previous one overflowed"
+            );
+
+            let row_offset = bucket.row_offset + len;
+            self.buckets.push_back(ComponentBucket::new(
+                Arc::clone(&self.name),
+                self.datatype.clone(),
+                row_offset,
+            ));
+        }
+
+        // Two possible cases:
+        // - If the table has not just underwent an overflow, then this is panic-safe for the
+        //   same reason as above: all component tables spawn with an initial bucket at row
+        //   offset 0, thus this cannot fail.
+        // - If the table has just overflowed, then we've just pushed a bucket to the dequeue.
+        self.buckets.back_mut().unwrap().insert(timelines, data)
     }
 }
 

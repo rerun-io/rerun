@@ -1,6 +1,6 @@
 use itertools::Itertools as _;
 
-use re_format::format_usize;
+use re_format::format_number;
 use re_log_types::*;
 
 use crate::{Preview, ViewerContext};
@@ -15,7 +15,7 @@ impl EventLogView {
     pub fn ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         crate::profile_function!();
 
-        ui.label(format!("{} log lines", format_usize(ctx.log_db.len())));
+        ui.label(format!("{} log lines", format_number(ctx.log_db.len())));
         ui.separator();
 
         let messages = {
@@ -38,6 +38,7 @@ pub(crate) fn message_table(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, mess
 
     TableBuilder::new(ui)
         .striped(true)
+        .max_scroll_height(f32::INFINITY) // Fill up whole height
         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
         .resizable(true)
         .column(Column::initial(100.0).at_least(50.0).clip(true)) // msg_id
