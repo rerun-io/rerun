@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use ahash::HashMap;
-use egui::{pos2, Color32, Pos2, Rect, Stroke};
+use egui::{pos2, Pos2, Rect, Stroke};
 use re_data_store::{
     query::{visit_type_data_2, visit_type_data_4, visit_type_data_5},
     FieldName, InstanceIdHash,
@@ -19,9 +19,9 @@ use crate::{
     ViewerContext,
 };
 
-// ---
+use re_renderer::Color32;
 
-// TODO(cmc): just turn all colors into Color32?
+// ---
 
 pub struct Image {
     pub instance_hash: InstanceIdHash,

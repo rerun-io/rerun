@@ -1252,9 +1252,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4f94fa09c2aeea5b8839e414b7b841bf429fd25b9c522116ac97ee87856d88b2"
 
 [[package]]
+name = "ecolor"
+version = "0.19.0"
+source = "git+https://github.com/emilk/egui?rev=5effc68ba4f6dc0f9f9792193bb6e0eeca6dccef#5effc68ba4f6dc0f9f9792193bb6e0eeca6dccef"
+dependencies = [
+ "bytemuck",
+ "serde",
+]
+
+[[package]]
 name = "eframe"
 version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=e30ac7f91a35d1f1ba3d8981154cbbc09f2d00d1#e30ac7f91a35d1f1ba3d8981154cbbc09f2d00d1"
+source = "git+https://github.com/emilk/egui?rev=5effc68ba4f6dc0f9f9792193bb6e0eeca6dccef#5effc68ba4f6dc0f9f9792193bb6e0eeca6dccef"
 dependencies = [
  "bytemuck",
  "directories-next",
@@ -1279,7 +1288,7 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=e30ac7f91a35d1f1ba3d8981154cbbc09f2d00d1#e30ac7f91a35d1f1ba3d8981154cbbc09f2d00d1"
+source = "git+https://github.com/emilk/egui?rev=5effc68ba4f6dc0f9f9792193bb6e0eeca6dccef#5effc68ba4f6dc0f9f9792193bb6e0eeca6dccef"
 dependencies = [
  "accesskit",
  "ahash 0.8.2",
@@ -1302,7 +1311,7 @@ dependencies = [
 [[package]]
 name = "egui-wgpu"
 version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=e30ac7f91a35d1f1ba3d8981154cbbc09f2d00d1#e30ac7f91a35d1f1ba3d8981154cbbc09f2d00d1"
+source = "git+https://github.com/emilk/egui?rev=5effc68ba4f6dc0f9f9792193bb6e0eeca6dccef#5effc68ba4f6dc0f9f9792193bb6e0eeca6dccef"
 dependencies = [
  "bytemuck",
  "egui",
@@ -1317,7 +1326,7 @@ dependencies = [
 [[package]]
 name = "egui-winit"
 version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=e30ac7f91a35d1f1ba3d8981154cbbc09f2d00d1#e30ac7f91a35d1f1ba3d8981154cbbc09f2d00d1"
+source = "git+https://github.com/emilk/egui?rev=5effc68ba4f6dc0f9f9792193bb6e0eeca6dccef#5effc68ba4f6dc0f9f9792193bb6e0eeca6dccef"
 dependencies = [
  "arboard",
  "egui",
@@ -1342,7 +1351,7 @@ dependencies = [
 [[package]]
 name = "egui_extras"
 version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=e30ac7f91a35d1f1ba3d8981154cbbc09f2d00d1#e30ac7f91a35d1f1ba3d8981154cbbc09f2d00d1"
+source = "git+https://github.com/emilk/egui?rev=5effc68ba4f6dc0f9f9792193bb6e0eeca6dccef#5effc68ba4f6dc0f9f9792193bb6e0eeca6dccef"
 dependencies = [
  "egui",
  "serde",
@@ -1352,7 +1361,7 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=e30ac7f91a35d1f1ba3d8981154cbbc09f2d00d1#e30ac7f91a35d1f1ba3d8981154cbbc09f2d00d1"
+source = "git+https://github.com/emilk/egui?rev=5effc68ba4f6dc0f9f9792193bb6e0eeca6dccef#5effc68ba4f6dc0f9f9792193bb6e0eeca6dccef"
 dependencies = [
  "bytemuck",
  "egui",
@@ -1374,7 +1383,7 @@ checksum = "90e5c1c8368803113bf0c9584fc495a58b86dc8a29edbf8fe877d21d9507e797"
 [[package]]
 name = "emath"
 version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=e30ac7f91a35d1f1ba3d8981154cbbc09f2d00d1#e30ac7f91a35d1f1ba3d8981154cbbc09f2d00d1"
+source = "git+https://github.com/emilk/egui?rev=5effc68ba4f6dc0f9f9792193bb6e0eeca6dccef#5effc68ba4f6dc0f9f9792193bb6e0eeca6dccef"
 dependencies = [
  "bytemuck",
  "serde",
@@ -1417,12 +1426,13 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=e30ac7f91a35d1f1ba3d8981154cbbc09f2d00d1#e30ac7f91a35d1f1ba3d8981154cbbc09f2d00d1"
+source = "git+https://github.com/emilk/egui?rev=5effc68ba4f6dc0f9f9792193bb6e0eeca6dccef#5effc68ba4f6dc0f9f9792193bb6e0eeca6dccef"
 dependencies = [
  "ab_glyph",
  "ahash 0.8.2",
  "atomic_refcell",
  "bytemuck",
+ "ecolor",
  "emath",
  "nohash-hasher",
  "parking_lot",
@@ -3714,7 +3724,7 @@ dependencies = [
  "clean-path",
  "console_error_panic_hook",
  "crossbeam",
- "epaint",
+ "ecolor",
  "getrandom",
  "glam",
  "glob",

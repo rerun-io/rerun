@@ -127,7 +127,7 @@ impl CpuMesh {
             )?,
             mesh: None, // Don't need to keep cpu-mesh data around, we already have everything we wanted from it (the bounding box)
             world_from_mesh: Default::default(),
-            additive_tint_srgb: [0, 0, 0, 0],
+            additive_tint: egui::Color32::TRANSPARENT,
         }];
 
         Ok(Self {
