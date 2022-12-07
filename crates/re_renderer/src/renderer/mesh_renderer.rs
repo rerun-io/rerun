@@ -18,6 +18,7 @@ use crate::{
         GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc, ShaderModuleDesc,
         VertexBufferLayout,
     },
+    Color32,
 };
 
 use super::*;
@@ -32,7 +33,7 @@ struct GpuInstanceData {
     // (staging buffer might be 4 byte aligned only!)
     translation_and_scale: [f32; 4],
     rotation: [f32; 4],
-    additive_tint: ecolor::Color32,
+    additive_tint: Color32,
 }
 
 impl GpuInstanceData {
@@ -99,7 +100,7 @@ pub struct MeshInstance {
 
     /// Per-instance (as opposed to per-material/mesh!) tint color that is added to the albedo texture.
     /// Alpha channel is currently unused.
-    pub additive_tint: ecolor::Color32,
+    pub additive_tint: Color32,
 }
 
 impl MeshDrawData {

@@ -10,9 +10,8 @@
 //! Since we're not allowed to bind many textures at once (no widespread bindless support!),
 //! we are forced to have individual bind groups per rectangle and thus a draw call per rectangle.
 
-use std::num::NonZeroU64;
-
 use smallvec::smallvec;
+use std::num::NonZeroU64;
 
 use crate::{
     include_file, next_multiple_of,
@@ -23,6 +22,7 @@ use crate::{
         GpuBindGroupLayoutHandle, GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc,
         SamplerDesc, ShaderModuleDesc,
     },
+    Rgba,
 };
 
 use super::*;
@@ -37,7 +37,7 @@ mod gpu_data {
         pub top_left_corner_position: wgpu_buffer_types::Vec3,
         pub extent_u: wgpu_buffer_types::Vec3,
         pub extent_v: wgpu_buffer_types::Vec3,
-        pub multiplicative_tint: ecolor::Rgba,
+        pub multiplicative_tint: crate::Rgba,
     }
 }
 
@@ -72,7 +72,7 @@ pub struct Rectangle {
     pub texture_filter_minification: TextureFilterMin,
 
     // Tint that is multiplied to the rect, supports pre-multiplied alpha.
-    pub multiplicative_tint: ecolor::Rgba,
+    pub multiplicative_tint: Rgba,
 }
 
 #[derive(Clone)]

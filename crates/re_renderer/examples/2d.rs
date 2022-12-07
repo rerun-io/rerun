@@ -1,9 +1,8 @@
-use ecolor::Color32;
 use re_renderer::{
     renderer::{LineStripFlags, Rectangle, RectangleDrawData, TextureFilterMag, TextureFilterMin},
     resource_managers::{GpuTexture2DHandle, Texture2DCreationDesc},
     view_builder::{self, Projection, ViewBuilder},
-    LineStripSeriesBuilder,
+    Color32, LineStripSeriesBuilder, Rgba,
 };
 
 mod framework;
@@ -123,7 +122,7 @@ impl framework::Example for Render2D {
                     texture: self.rerun_logo_texture.clone(),
                     texture_filter_magnification: TextureFilterMag::Nearest,
                     texture_filter_minification: TextureFilterMin::Linear,
-                    multiplicative_tint: ecolor::Rgba::WHITE,
+                    multiplicative_tint: Rgba::WHITE,
                 },
                 Rectangle {
                     top_left_corner_position: glam::vec3(
@@ -136,7 +135,7 @@ impl framework::Example for Render2D {
                     texture: self.rerun_logo_texture.clone(),
                     texture_filter_magnification: TextureFilterMag::Linear,
                     texture_filter_minification: TextureFilterMin::Linear,
-                    multiplicative_tint: ecolor::Rgba::WHITE,
+                    multiplicative_tint: Rgba::WHITE,
                 },
             ],
         )

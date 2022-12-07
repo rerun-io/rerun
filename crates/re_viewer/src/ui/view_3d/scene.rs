@@ -18,7 +18,7 @@ use crate::ui::annotations::{auto_color, AnnotationMap, DefaultColor};
 use crate::ui::SceneQuery;
 use crate::{math::line_segment_distance_sq_to_point_2d, misc::ViewerContext};
 
-use re_renderer::renderer::*;
+use re_renderer::{renderer::*, Color32};
 
 use super::{eye::Eye, SpaceCamera};
 
@@ -100,7 +100,7 @@ pub struct Point3D {
     pub instance_id_hash: InstanceIdHash,
     pub pos: Vec3,
     pub radius: Size,
-    pub color: egui::Color32,
+    pub color: Color32,
 }
 
 pub enum MeshSourceData {
@@ -124,7 +124,7 @@ pub struct MeshSource {
     // TODO(andreas): Make this Conformal3 once glow is gone?
     pub world_from_mesh: macaw::Affine3A,
     pub mesh: Arc<CpuMesh>,
-    pub additive_tint: Option<egui::Color32>,
+    pub additive_tint: Option<Color32>,
 }
 
 pub struct Label3D {
@@ -133,9 +133,9 @@ pub struct Label3D {
     pub(crate) origin: Vec3,
 }
 
-fn to_ecolor(color: [u8; 4]) -> egui::Color32 {
-    // TODO(andreas): ecolor should make this easier.
-    egui::Color32::from_rgba_premultiplied(color[0], color[1], color[2], color[3])
+fn to_ecolor([r, g, b, a]: [u8; 4]) -> Color32 {
+    // TODO(andreas): ecolor should have a utility to get an array
+    Color32::from_rgba_premultiplied(r, g, b, a)
 }
 
 #[derive(Default)]
@@ -572,8 +572,7 @@ impl Scene3D {
         } = self;
 
         let hover_size_boost = 1.5;
-        const HOVER_COLOR: egui::Color32 =
-            egui::Color32::from_rgba_premultiplied(255, 200, 200, 255);
+        const HOVER_COLOR: Color32 = Color32::from_rgb(255, 200, 200);
 
         let viewport_area = (viewport_size.x * viewport_size.y).at_least(1.0);
 
@@ -833,7 +832,7 @@ impl Scene3D {
                         gpu_mesh: instance.gpu_mesh.clone(),
                         mesh: None, // Don't care.
                         world_from_mesh: base_transform * instance.world_from_mesh,
-                        additive_tint: mesh.additive_tint.unwrap_or(egui::Color32::TRANSPARENT),
+                        additive_tint: mesh.additive_tint.unwrap_or(Color32::TRANSPARENT),
                     })
             })
             .collect()

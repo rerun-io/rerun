@@ -7,7 +7,7 @@ use crate::{
     global_bindings::FrameUniformBuffer,
     renderer::{compositor::*, DrawData, Renderer},
     wgpu_resources::{BufferDesc, GpuBindGroupHandleStrong, GpuTextureHandleStrong, TextureDesc},
-    DebugLabel,
+    DebugLabel, Rgba,
 };
 
 type DrawFn = dyn for<'a, 'b> Fn(&'b RenderContext, &'a mut wgpu::RenderPass<'b>) -> anyhow::Result<()>
@@ -408,7 +408,7 @@ impl ViewBuilder {
     pub fn draw(
         &mut self,
         ctx: &RenderContext,
-        clear_color: ecolor::Rgba,
+        clear_color: Rgba,
     ) -> anyhow::Result<wgpu::CommandBuffer> {
         crate::profile_function!();
 

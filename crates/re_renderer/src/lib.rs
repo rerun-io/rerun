@@ -47,6 +47,9 @@ mod workspace_shaders;
 #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
 mod error_tracker;
 
+// Re-export used color types.
+pub use ecolor::{Color32, Rgba};
+
 // ---------------------------------------------------------------------------
 
 // part of std, but unstable https://github.com/rust-lang/rust/issues/88581

@@ -99,7 +99,6 @@ use std::num::NonZeroU32;
 
 use bitflags::bitflags;
 use bytemuck::Zeroable;
-use ecolor::Color32;
 use smallvec::smallvec;
 
 use crate::{
@@ -110,6 +109,7 @@ use crate::{
         GpuBindGroupLayoutHandle, GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc,
         ShaderModuleDesc, TextureDesc,
     },
+    Color32,
 };
 
 use super::*;
@@ -117,7 +117,7 @@ use super::*;
 pub mod gpu_data {
     // Don't use `wgsl_buffer_types` since none of this data goes into a buffer, so its alignment rules don't apply.
 
-    use ecolor::Color32;
+    use crate::Color32;
 
     use super::LineStripFlags;
 

@@ -1,6 +1,7 @@
-use ecolor::Color32;
-
-use crate::renderer::{LineDrawData, LineStripFlags, LineStripInfo, LineVertex};
+use crate::{
+    renderer::{LineDrawData, LineStripFlags, LineStripInfo, LineVertex},
+    Color32,
+};
 
 /// Builder for a vector of line strips, making it easy to create [`crate::renderer::LineDrawData`].
 ///

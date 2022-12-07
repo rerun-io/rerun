@@ -15,8 +15,8 @@
 
 use std::num::NonZeroU32;
 
+use crate::Color32;
 use bytemuck::Zeroable;
-use ecolor::Color32;
 use itertools::Itertools;
 use smallvec::smallvec;
 

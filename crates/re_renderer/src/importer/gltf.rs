@@ -12,7 +12,7 @@ use crate::{
         GpuMeshHandle, GpuTexture2DHandle, ResourceLifeTime, Texture2DCreationDesc,
         TextureManager2D,
     },
-    RenderContext,
+    Color32, RenderContext,
 };
 
 use super::to_uniform_scale;
@@ -290,7 +290,7 @@ fn gather_instances_recursive(
                 gpu_mesh: gpu_mesh.clone(),
                 mesh: Some(mesh.clone()),
                 world_from_mesh: transform,
-                additive_tint: ecolor::Color32::TRANSPARENT,
+                additive_tint: Color32::TRANSPARENT,
             });
         }
     }

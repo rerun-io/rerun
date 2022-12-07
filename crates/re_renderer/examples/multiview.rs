@@ -1,6 +1,6 @@
 use std::{f32::consts::TAU, io::Read};
 
-use ecolor::Color32;
+use ecolor::Hsva;
 use framework::Example;
 use glam::Vec3;
 use itertools::Itertools;
@@ -14,7 +14,7 @@ use re_renderer::{
     },
     resource_managers::ResourceLifeTime,
     view_builder::{OrthographicCameraMode, Projection, TargetConfiguration, ViewBuilder},
-    LineStripSeriesBuilder, RenderContext,
+    Color32, LineStripSeriesBuilder, RenderContext, Rgba,
 };
 use winit::event::{ElementState, VirtualKeyCode};
 
@@ -32,7 +32,7 @@ fn draw_view<'a, D: 'static + re_renderer::renderer::DrawData + Sync + Send + Cl
         .unwrap()
         .queue_draw(skybox)
         .queue_draw(draw_data)
-        .draw(re_ctx, ecolor::Rgba::TRANSPARENT)
+        .draw(re_ctx, Rgba::TRANSPARENT)
         .unwrap();
 
     (view_builder, command_buffer)
@@ -41,7 +41,7 @@ fn draw_view<'a, D: 'static + re_renderer::renderer::DrawData + Sync + Send + Cl
 fn build_mesh_instances(
     re_ctx: &mut RenderContext,
     model_mesh_instances: &[MeshInstance],
-    mesh_instance_positions_and_colors: &[(glam::Vec3, ecolor::Color32)],
+    mesh_instance_positions_and_colors: &[(glam::Vec3, Color32)],
     seconds_since_startup: f32,
 ) -> MeshDrawData {
     let mesh_instances = mesh_instance_positions_and_colors
@@ -156,8 +156,8 @@ struct Multiview {
     random_points: Vec<PointCloudPoint>,
 }
 
-fn random_color(rnd: &mut impl rand::Rng) -> ecolor::Color32 {
-    ecolor::Hsva {
+fn random_color(rnd: &mut impl rand::Rng) -> Color32 {
+    Hsva {
         h: rnd.gen::<f32>(),
         s: rnd.gen::<f32>() * 0.5 + 0.5,
         v: rnd.gen::<f32>() * 0.5 + 0.5,
