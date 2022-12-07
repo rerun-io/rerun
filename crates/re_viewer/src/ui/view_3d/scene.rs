@@ -100,7 +100,7 @@ pub struct Point3D {
     pub instance_id_hash: InstanceIdHash,
     pub pos: Vec3,
     pub radius: Size,
-    pub color: [u8; 4],
+    pub color: egui::Color32,
 }
 
 pub enum MeshSourceData {
@@ -124,13 +124,18 @@ pub struct MeshSource {
     // TODO(andreas): Make this Conformal3 once glow is gone?
     pub world_from_mesh: macaw::Affine3A,
     pub mesh: Arc<CpuMesh>,
-    pub tint: Option<[u8; 4]>,
+    pub additive_tint: Option<egui::Color32>,
 }
 
 pub struct Label3D {
     pub(crate) text: String,
     /// Origin of the label
     pub(crate) origin: Vec3,
+}
+
+fn to_ecolor(color: [u8; 4]) -> egui::Color32 {
+    // TODO(andreas): ecolor should make this easier.
+    egui::Color32::from_rgba_premultiplied(color[0], color[1], color[2], color[3])
 }
 
 #[derive(Default)]
@@ -231,7 +236,7 @@ impl Scene3D {
                             instance_id_hash,
                             pos,
                             radius: radius.copied().map_or(Size::AUTO, Size::new_scene),
-                            color,
+                            color: to_ecolor(color),
                         });
                     },
                 );
@@ -260,7 +265,7 @@ impl Scene3D {
                             );
                             continue;
                         };
-                        self.line_strips.add_segment(*a, *b).radius(Size::AUTO.0).color_rgbx_slice(color).user_data(instance_id_hash);
+                        self.line_strips.add_segment(*a, *b).radius(Size::AUTO.0).color(to_ecolor(color)).user_data(instance_id_hash);
                     }
                 }
             });
@@ -360,7 +365,7 @@ impl Scene3D {
                         _ => unreachable!("already early outed earlier"),
                     }
                     .radius(radius.0) // TODO(andreas): re_renderer should support our Size type directly!
-                    .color_rgbx_slice(color)
+                    .color(to_ecolor(color))
                     .user_data(instance_id_hash);
                 },
             );
@@ -442,7 +447,7 @@ impl Scene3D {
                                 ),
                                 world_from_mesh: Default::default(),
                                 mesh: cpu_mesh,
-                                tint: None,
+                                additive_tint: None,
                             }) else { return };
 
                         batch.push(mesh);
@@ -511,7 +516,7 @@ impl Scene3D {
                             instance_id_hash: instance_id,
                             world_from_mesh,
                             mesh: cpu_mesh,
-                            tint: None,
+                            additive_tint: None,
                         });
                     }
                 }
@@ -531,7 +536,7 @@ impl Scene3D {
                     self.line_strips
                         .add_segment(cam_origin, axis_end)
                         .radius(radius)
-                        .color_rgbx_slice(color)
+                        .color(to_ecolor(color))
                         .user_data(instance_id);
                 }
             }
@@ -567,7 +572,8 @@ impl Scene3D {
         } = self;
 
         let hover_size_boost = 1.5;
-        const HOVER_COLOR: [u8; 4] = [255, 200, 200, 255];
+        const HOVER_COLOR: egui::Color32 =
+            egui::Color32::from_rgba_premultiplied(255, 200, 200, 255);
 
         let viewport_area = (viewport_size.x * viewport_size.y).at_least(1.0);
 
@@ -641,7 +647,7 @@ impl Scene3D {
                 }
                 if hovered_instance_id_hash.is_some() && *instance_id == hovered_instance_id_hash {
                     line_strip.radius *= hover_size_boost;
-                    line_strip.srgb_color = HOVER_COLOR;
+                    line_strip.color = HOVER_COLOR;
                 }
             }
         }
@@ -650,7 +656,7 @@ impl Scene3D {
             crate::profile_scope!("meshes");
             for mesh in meshes {
                 if mesh.instance_id_hash == hovered_instance_id_hash {
-                    mesh.tint = Some(HOVER_COLOR);
+                    mesh.additive_tint = Some(HOVER_COLOR);
                 }
             }
         }
@@ -698,7 +704,7 @@ impl Scene3D {
         self.line_strips
             .add_segments(segments.into_iter())
             .radius(line_radius.0)
-            .color_rgbx_slice(color)
+            .color(to_ecolor(color))
             .user_data(instance_id);
 
         Some(())
@@ -728,7 +734,7 @@ impl Scene3D {
         self.line_strips
             .add_segment(origin, end)
             .radius(radius)
-            .color_rgbx_slice(color)
+            .color(to_ecolor(color))
             .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE)
             .user_data(instance_id_hash);
     }
@@ -791,7 +797,7 @@ impl Scene3D {
         self.line_strips
             .add_segments(segments.into_iter())
             .radius(line_radius.0)
-            .color_rgbx_slice(color)
+            .color(to_ecolor(color))
             .user_data(instance_id);
     }
 
@@ -827,7 +833,7 @@ impl Scene3D {
                         gpu_mesh: instance.gpu_mesh.clone(),
                         mesh: None, // Don't care.
                         world_from_mesh: base_transform * instance.world_from_mesh,
-                        additive_tint_srgb: mesh.tint.unwrap_or([0, 0, 0, 0]),
+                        additive_tint: mesh.additive_tint.unwrap_or(egui::Color32::TRANSPARENT),
                     })
             })
             .collect()
@@ -841,7 +847,7 @@ impl Scene3D {
             .map(|point| PointCloudPoint {
                 position: point.pos,
                 radius: point.radius.0,
-                srgb_color: point.color.into(),
+                color: point.color,
             })
             .collect()
     }

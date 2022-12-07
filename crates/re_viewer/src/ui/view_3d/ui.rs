@@ -6,7 +6,6 @@ use re_data_store::{InstanceId, InstanceIdHash};
 use re_log_types::{ObjPath, ViewCoordinates};
 use re_renderer::{
     renderer::{GenericSkyboxDrawData, MeshDrawData, PointCloudDrawData},
-    texture_values::ValueRgba8UnormSrgb,
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
     RenderContext,
 };
@@ -407,7 +406,7 @@ pub(crate) fn view_3d(
                 instance_id_hash: InstanceIdHash::NONE,
                 pos: orbit_eye.orbit_center,
                 radius: Size::new_scene(orbit_eye.orbit_radius * 0.01),
-                color: [255, 0, 255, (orbit_center_alpha * 255.0) as u8],
+                color: egui::Rgba::from_rgba_unmultiplied(1.0, 0.0, 1.0, orbit_center_alpha).into(),
             });
             ui.ctx().request_repaint(); // let it fade out
         }
@@ -514,7 +513,7 @@ fn paint_view(
             .queue_draw(&PointCloudDrawData::new(render_ctx, &scene.point_cloud_points()).unwrap());
 
         let command_buffer = view_builder
-            .draw(render_ctx, ValueRgba8UnormSrgb::TRANSPARENT)
+            .draw(render_ctx, egui::Rgba::TRANSPARENT)
             .unwrap();
         (view_builder, command_buffer)
     };
@@ -582,7 +581,7 @@ fn show_projections_from_2d_space(
                             instance_id_hash: InstanceIdHash::NONE,
                             pos,
                             radius: radius * 3.0,
-                            color: [255; 4],
+                            color: egui::Color32::WHITE,
                         });
                     }
                 }
@@ -635,19 +634,19 @@ fn show_origin_axis(scene: &mut Scene3D) {
         .line_strips
         .add_segment(glam::Vec3::ZERO, glam::Vec3::X)
         .radius(0.01)
-        .color_rgb(255, 0, 0)
+        .color(egui::Color32::RED)
         .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE);
     scene
         .line_strips
         .add_segment(glam::Vec3::ZERO, glam::Vec3::Y)
         .radius(0.01)
-        .color_rgb(0, 255, 0)
+        .color(egui::Color32::GREEN)
         .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE);
     scene
         .line_strips
         .add_segment(glam::Vec3::ZERO, glam::Vec3::Z)
         .radius(0.01)
-        .color_rgb(0, 0, 255)
+        .color(egui::Color32::BLUE)
         .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE);
 }
 

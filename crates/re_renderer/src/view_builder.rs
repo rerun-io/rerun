@@ -6,7 +6,6 @@ use crate::{
     context::*,
     global_bindings::FrameUniformBuffer,
     renderer::{compositor::*, DrawData, Renderer},
-    texture_values::ValueRgba8UnormSrgb,
     wgpu_resources::{BufferDesc, GpuBindGroupHandleStrong, GpuTextureHandleStrong, TextureDesc},
     DebugLabel,
 };
@@ -409,7 +408,7 @@ impl ViewBuilder {
     pub fn draw(
         &mut self,
         ctx: &RenderContext,
-        clear_color: ValueRgba8UnormSrgb,
+        clear_color: ecolor::Rgba,
     ) -> anyhow::Result<wgpu::CommandBuffer> {
         crate::profile_function!();
 
@@ -449,7 +448,12 @@ impl ViewBuilder {
                     view: &color_msaa.default_view,
                     resolve_target: Some(&color_resolved.default_view),
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(clear_color.into()),
+                        load: wgpu::LoadOp::Clear(wgpu::Color {
+                            r: clear_color.r() as f64,
+                            g: clear_color.g() as f64,
+                            b: clear_color.b() as f64,
+                            a: clear_color.a() as f64,
+                        }),
                         // Don't care about the result, it's going to be resolved to the resolve target.
                         // This can have be much better perf, especially on tiler gpus.
                         store: false,

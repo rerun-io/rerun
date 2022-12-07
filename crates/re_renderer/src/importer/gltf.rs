@@ -290,7 +290,7 @@ fn gather_instances_recursive(
                 gpu_mesh: gpu_mesh.clone(),
                 mesh: Some(mesh.clone()),
                 world_from_mesh: transform,
-                additive_tint_srgb: [0, 0, 0, 0],
+                additive_tint: ecolor::Color32::TRANSPARENT,
             });
         }
     }

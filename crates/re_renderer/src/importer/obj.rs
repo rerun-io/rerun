@@ -77,7 +77,7 @@ pub fn load_obj_from_buffer(
                 gpu_mesh,
                 mesh: Some(Arc::new(mesh)),
                 world_from_mesh: Conformal3::IDENTITY,
-                additive_tint_srgb: [0, 0, 0, 0],
+                additive_tint: ecolor::Color32::TRANSPARENT,
             }
         })
         .collect())

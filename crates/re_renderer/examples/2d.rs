@@ -1,7 +1,7 @@
+use ecolor::Color32;
 use re_renderer::{
     renderer::{LineStripFlags, Rectangle, RectangleDrawData, TextureFilterMag, TextureFilterMin},
     resource_managers::{GpuTexture2DHandle, Texture2DCreationDesc},
-    texture_values::ValueRgba8UnormSrgb,
     view_builder::{self, Projection, ViewBuilder},
     LineStripSeriesBuilder,
 };
@@ -76,7 +76,7 @@ impl framework::Example for Render2D {
                 glam::vec2(0.0, screen_size.y * 0.5),
             )
             .radius(line_radius)
-            .color_rgb(50, 50, 255);
+            .color(Color32::BLUE);
 
         // .. within, a orange rectangle
         line_strip_builder
@@ -86,7 +86,7 @@ impl framework::Example for Render2D {
                 glam::vec2(0.0, screen_size.y * 0.25),
             )
             .radius(5.0)
-            .color_rgb(255, 100, 1);
+            .color(Color32::from_rgb(255, 100, 1));
 
         // All variations of line caps
         for (i, flags) in [
@@ -160,7 +160,7 @@ impl framework::Example for Render2D {
                 view_builder.queue_draw(&line_strip_draw_data);
                 view_builder.queue_draw(&rectangle_draw_data);
                 let command_buffer = view_builder
-                    .draw(re_ctx, ValueRgba8UnormSrgb::TRANSPARENT)
+                    .draw(re_ctx, ecolor::Rgba::TRANSPARENT)
                     .unwrap();
                 framework::ViewDrawResult {
                     view_builder,
@@ -170,45 +170,43 @@ impl framework::Example for Render2D {
             },
             // and 3d view of the same scene to the right
             {
-                {
-                    let mut view_builder = ViewBuilder::default();
-                    let seconds_since_startup = time.seconds_since_startup();
-                    let camera_rotation_center = screen_size.extend(0.0) * 0.5;
-                    let camera_position = glam::vec3(
-                        seconds_since_startup.sin(),
-                        0.5,
-                        seconds_since_startup.cos(),
-                    ) * screen_size.x.max(screen_size.y)
-                        + camera_rotation_center;
-                    view_builder
-                        .setup_view(
-                            re_ctx,
-                            view_builder::TargetConfiguration {
-                                name: "3D".into(),
-                                resolution_in_pixel: splits[1].resolution_in_pixel,
-                                view_from_world: macaw::IsoTransform::look_at_rh(
-                                    camera_position,
-                                    camera_rotation_center,
-                                    glam::Vec3::Y,
-                                )
-                                .unwrap(),
-                                projection_from_view: Projection::Perspective {
-                                    vertical_fov: 70.0 * std::f32::consts::TAU / 360.0,
-                                    near_plane_distance: 0.01,
-                                },
+                let mut view_builder = ViewBuilder::default();
+                let seconds_since_startup = time.seconds_since_startup();
+                let camera_rotation_center = screen_size.extend(0.0) * 0.5;
+                let camera_position = glam::vec3(
+                    seconds_since_startup.sin(),
+                    0.5,
+                    seconds_since_startup.cos(),
+                ) * screen_size.x.max(screen_size.y)
+                    + camera_rotation_center;
+                view_builder
+                    .setup_view(
+                        re_ctx,
+                        view_builder::TargetConfiguration {
+                            name: "3D".into(),
+                            resolution_in_pixel: splits[1].resolution_in_pixel,
+                            view_from_world: macaw::IsoTransform::look_at_rh(
+                                camera_position,
+                                camera_rotation_center,
+                                glam::Vec3::Y,
+                            )
+                            .unwrap(),
+                            projection_from_view: Projection::Perspective {
+                                vertical_fov: 70.0 * std::f32::consts::TAU / 360.0,
+                                near_plane_distance: 0.01,
                             },
-                        )
-                        .unwrap();
-                    view_builder.queue_draw(&line_strip_draw_data);
-                    view_builder.queue_draw(&rectangle_draw_data);
-                    let command_buffer = view_builder
-                        .draw(re_ctx, ValueRgba8UnormSrgb::TRANSPARENT)
-                        .unwrap();
-                    framework::ViewDrawResult {
-                        view_builder,
-                        command_buffer,
-                        target_location: splits[1].target_location,
-                    }
+                        },
+                    )
+                    .unwrap();
+                view_builder.queue_draw(&line_strip_draw_data);
+                view_builder.queue_draw(&rectangle_draw_data);
+                let command_buffer = view_builder
+                    .draw(re_ctx, ecolor::Rgba::TRANSPARENT)
+                    .unwrap();
+                framework::ViewDrawResult {
+                    view_builder,
+                    command_buffer,
+                    target_location: splits[1].target_location,
                 }
             },
         ]
