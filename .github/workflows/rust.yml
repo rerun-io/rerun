@@ -22,7 +22,7 @@ env:
 jobs:
   rs-lints:
     name: Rust lints (fmt, check, cranky, tests, doc)
-    runs-on: ubuntu-latest-16-cores
+    runs-on: ubuntu-latest
     container:
       image: rerunio/ci_docker:0.1
       env:
@@ -88,7 +88,7 @@ jobs:
 
   rs-check-wasm:
     name: Check Rust web build (wasm32 + wasm-bindgen)
-    runs-on: ubuntu-latest-16-cores
+    runs-on: ubuntu-latest
     container:
       image: rerunio/ci_docker:0.1
       env:
@@ -127,7 +127,7 @@ jobs:
 
   rs-cargo-deny:
     name: Check Rust dependencies (cargo-deny)
-    runs-on: ubuntu-latest-16-cores
+    runs-on: ubuntu-latest
     container:
       image: rerunio/ci_docker:0.1
       env:
@@ -146,7 +146,7 @@ jobs:
 
   rs-maturin-linux:
     name: Build Rust SDK Maturin Wheel (Linux)
-    runs-on: ubuntu-latest-16-cores
+    runs-on: ubuntu-latest
     container:
       image: rerunio/ci_docker:0.1
     steps:
