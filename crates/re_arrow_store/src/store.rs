@@ -1,17 +1,63 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::sync::Arc;
 
 use arrow2::array::{Array, Int64Vec, UInt64Vec};
 use arrow2::datatypes::DataType;
 
+use re_format::{format_bytes, format_usize};
 use re_log_types::{
     ComponentName, ObjPath as EntityPath, ObjPathHash as EntityPathHash, TimeInt, TimeRange,
     Timeline,
 };
 
+pub type RowIndex = u64;
+
 // --- Data store ---
 
-pub type RowIndex = u64;
+#[derive(Debug, Clone)]
+pub struct DataStoreConfig {
+    /// The maximum size of a component bucket before triggering a split.
+    ///
+    /// ⚠ When configuring this threshold, do keep in mind that component tables are shared
+    /// across all timelines and all entities!
+    ///
+    /// This effectively controls how fine grained the garbage collection of components is.
+    /// The lower the size, the more fine-grained the garbage collection is, at the cost of more
+    /// metadata overhead.
+    ///
+    /// Note that this cannot split a single huge row: if a user inserts a single row that's
+    /// larger than the threshold, then that bucket will become larger than the threshold, and
+    /// we will split from there on.
+    ///
+    /// See [`Self::DEFAULT`] for defaults.
+    pub component_bucket_size_bytes: u64,
+    /// The maximum number of rows in a component bucket before triggering a split.
+    ///
+    /// ⚠ When configuring this threshold, do keep in mind that component tables are shared
+    /// across all timelines and all entities!
+    ///
+    /// This effectively controls how fine grained the garbage collection of components is.
+    /// The lower the number, the more fine-grained the garbage collection is, at the cost of more
+    /// metadata overhead.
+    ///
+    /// See [`Self::DEFAULT`] for defaults.
+    pub component_bucket_nb_rows: u64,
+}
+
+impl Default for DataStoreConfig {
+    fn default() -> Self {
+        Self::DEFAULT
+    }
+}
+
+impl DataStoreConfig {
+    pub const DEFAULT: Self = Self {
+        component_bucket_size_bytes: 32 * 1024 * 1024, // 32MiB
+        component_bucket_nb_rows: u64::MAX,
+    };
+}
+
+// ---
 
 /// A complete data store: covers all timelines, all entities, everything.
 ///
@@ -21,6 +67,9 @@ pub type RowIndex = u64;
 /// environment, which will result in additional schema information being printed out.
 #[derive(Default)]
 pub struct DataStore {
+    /// The configuration of the data store (e.g. bucket sizes).
+    pub(crate) config: DataStoreConfig,
+
     /// Maps an entity to its index, for a specific timeline.
     ///
     /// An index maps specific points in time to rows in component tables.
@@ -32,15 +81,46 @@ pub struct DataStore {
     pub(crate) components: HashMap<ComponentName, ComponentTable>,
 }
 
+impl DataStore {
+    pub fn new(config: DataStoreConfig) -> Self {
+        Self {
+            config,
+            indices: HashMap::default(),
+            components: HashMap::default(),
+        }
+    }
+
+    /// Returns the number of component rows stored across this entire store, i.e. the sum of
+    /// the number of rows across all of its component tables.
+    pub fn total_component_rows(&self) -> u64 {
+        self.components
+            .values()
+            .map(|table| table.total_rows())
+            .sum()
+    }
+
+    /// Returns the size of the component data stored across this entire store, i.e. the sum of
+    /// the size of the data stored across all of its component tables, in bytes.
+    pub fn total_component_size_bytes(&self) -> u64 {
+        self.components
+            .values()
+            .map(|table| table.total_size_bytes())
+            .sum()
+    }
+}
+
 impl std::fmt::Display for DataStore {
     #[allow(clippy::string_add)]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
+            config,
             indices,
             components,
         } = self;
 
         f.write_str("DataStore {\n")?;
+
+        f.write_str(&indent::indent_all_by(4, format!("config: {config:?}\n")))?;
 
         {
             f.write_str(&indent::indent_all_by(4, "indices: [\n"))?;
@@ -53,6 +133,15 @@ impl std::fmt::Display for DataStore {
         }
 
         {
+            f.write_str(&indent::indent_all_by(
+                4,
+                format!(
+                    "{} component tables, for a total of {} bytes across {} total rows\n",
+                    self.components.len(),
+                    format_bytes(self.total_component_size_bytes() as _),
+                    format_usize(self.total_component_rows() as _)
+                ),
+            ))?;
             f.write_str(&indent::indent_all_by(4, "components: [\n"))?;
             for comp in components.values() {
                 f.write_str(&indent::indent_all_by(8, "ComponentTable {\n"))?;
@@ -315,13 +404,20 @@ impl std::fmt::Display for IndexBucket {
 /// ```
 #[derive(Debug)]
 pub struct ComponentTable {
-    /// The component's name that this table is related to, for debugging purposes.
-    pub(crate) name: Arc<String>,
-    /// The component's datatype that this table is related to, for debugging purposes.
+    /// Name of the underlying component.
+    pub(crate) name: Arc<ComponentName>,
+    /// Type of the underlying component.
     pub(crate) datatype: DataType,
 
     /// The actual buckets, where the component data is stored.
-    pub(crate) buckets: BTreeMap<RowIndex, ComponentBucket>,
+    ///
+    /// Component buckets are append-only, they can never be written to in an out of order
+    /// fashion.
+    /// As such, a double-ended queue covers all our needs:
+    /// - poping from the front for garbage collection
+    /// - pushing to the back for insertions
+    /// - binary search for queries
+    pub(crate) buckets: VecDeque<ComponentBucket>,
 }
 
 impl std::fmt::Display for ComponentTable {
@@ -341,8 +437,14 @@ impl std::fmt::Display for ComponentTable {
             f.write_fmt(format_args!("datatype: {:#?}\n", datatype))?;
         }
 
+        f.write_fmt(format_args!(
+            "size: {} buckets for a total of {} bytes across {} total rows\n",
+            self.buckets.len(),
+            format_bytes(self.total_size_bytes() as _),
+            format_usize(self.total_rows() as _),
+        ))?;
         f.write_str("buckets: [\n")?;
-        for bucket in buckets.values() {
+        for bucket in buckets {
             f.write_str(&indent::indent_all_by(4, "ComponentBucket {\n"))?;
             f.write_str(&indent::indent_all_by(8, bucket.to_string() + "\n"))?;
             f.write_str(&indent::indent_all_by(4, "}\n"))?;
@@ -353,20 +455,36 @@ impl std::fmt::Display for ComponentTable {
     }
 }
 
+impl ComponentTable {
+    /// Returns the number of rows stored across this entire table, i.e. the sum of the number
+    /// of rows stored across all of its buckets.
+    pub fn total_rows(&self) -> u64 {
+        self.buckets.iter().map(|bucket| bucket.total_rows()).sum()
+    }
+
+    /// Returns the size of data stored across this entire table, i.e. the sum of the size of
+    /// the data stored across all of its buckets, in bytes.
+    pub fn total_size_bytes(&self) -> u64 {
+        self.buckets
+            .iter()
+            .map(|bucket| bucket.total_size_bytes())
+            .sum()
+    }
+}
+
 /// A `ComponentBucket` holds a size-delimited (data size) chunk of a [`ComponentTable`].
 #[derive(Debug)]
 pub struct ComponentBucket {
     /// The component's name, for debugging purposes.
     pub(crate) name: Arc<String>,
+    /// The offset of this bucket in the global table.
+    pub(crate) row_offset: RowIndex,
 
     /// The time ranges (plural!) covered by this bucket.
     /// Buckets are never sorted over time, so these time ranges can grow arbitrarily large.
     ///
     /// These are only used for garbage collection.
     pub(crate) time_ranges: HashMap<Timeline, TimeRange>,
-
-    /// What's the offset of that bucket in the shared table?
-    pub(crate) row_offset: RowIndex,
 
     /// All the data for this bucket. This is a single column!
     pub(crate) data: Box<dyn Array>,
@@ -381,7 +499,22 @@ impl std::fmt::Display for ComponentBucket {
             data,
         } = self;
 
-        f.write_fmt(format_args!("row offset: {}\n", row_offset))?;
+        f.write_fmt(format_args!(
+            "size: {} bytes across {} rows\n",
+            format_bytes(self.total_size_bytes() as _),
+            format_usize(self.total_rows() as _),
+        ))?;
+
+        f.write_fmt(format_args!(
+            "row range: from {} to {} (all inclusive)\n",
+            row_offset,
+            // Component buckets can never be empty at the moment:
+            // - the first bucket is always initialized with a single empty row
+            // - all buckets that follow are lazily instantiated when data get inserted
+            //
+            // TODO(#439): is that still true with deletion?
+            row_offset + data.len().checked_sub(1).expect("buckets are never empty") as u64,
+        ))?;
 
         f.write_str("time ranges:\n")?;
         for (timeline, time_range) in time_ranges {
@@ -411,5 +544,186 @@ impl std::fmt::Display for ComponentBucket {
         }
 
         Ok(())
+    }
+}
+
+impl ComponentBucket {
+    /// Returns the number of rows stored across this bucket.
+    pub fn total_rows(&self) -> u64 {
+        self.data.len() as u64
+    }
+
+    /// Returns the size of the data stored across this bucket, in bytes.
+    pub fn total_size_bytes(&self) -> u64 {
+        arrow2::compute::aggregate::estimated_bytes_size(&*self.data) as u64
+    }
+}
+
+// This test exists because the documentation and online discussions revolving around
+// arrow2's `estimated_bytes_size()` function indicate that there's a lot of limitations and
+// edge cases to be aware of.
+//
+// Also, it's just plain hard to be sure that the answer you get is the answer you're looking
+// for with these kinds of tools. When in doubt.. test everything we're going to need from it.
+//
+// In many ways, this is a specification of what we mean when we ask "what's the size of this
+// Arrow array?".
+#[test]
+#[allow(clippy::from_iter_instead_of_collect)]
+fn test_arrow_estimated_size_bytes() {
+    use arrow2::{
+        array::{Float64Array, ListArray, StructArray, UInt64Array, Utf8Array},
+        buffer::Buffer,
+        compute::aggregate::estimated_bytes_size,
+        datatypes::{DataType, Field},
+    };
+
+    // simple primitive array
+    {
+        let data = vec![42u64; 100];
+        let array = UInt64Array::from_vec(data.clone()).boxed();
+        assert_eq!(
+            std::mem::size_of_val(data.as_slice()),
+            estimated_bytes_size(&*array)
+        );
+    }
+
+    // utf8 strings array
+    {
+        let data = vec![Some("some very, very, very long string indeed"); 100];
+        let array = Utf8Array::<i32>::from(data.clone()).to_boxed();
+
+        let raw_size_bytes = data
+            .iter()
+            // headers + bodies!
+            .map(|s| std::mem::size_of_val(s) + std::mem::size_of_val(s.unwrap().as_bytes()))
+            .sum::<usize>();
+        let arrow_size_bytes = estimated_bytes_size(&*array);
+
+        assert_eq!(5600, raw_size_bytes);
+        assert_eq!(4404, arrow_size_bytes); // smaller because validity bitmaps instead of opts
+    }
+
+    // simple primitive list array
+    {
+        let data = std::iter::repeat(vec![42u64; 100])
+            .take(50)
+            .collect::<Vec<_>>();
+        let array = {
+            let array_flattened =
+                UInt64Array::from_vec(data.clone().into_iter().flatten().collect()).boxed();
+
+            let mut i = 0i32;
+            let indices = std::iter::from_fn(move || {
+                let ret = i;
+                i += 50;
+                Some(ret)
+            });
+
+            ListArray::<i32>::from_data(
+                ListArray::<i32>::default_datatype(DataType::UInt64),
+                Buffer::from_iter(indices.take(50)),
+                array_flattened,
+                None,
+            )
+            .boxed()
+        };
+
+        let raw_size_bytes = data
+            .iter()
+            // headers + bodies!
+            .map(|s| std::mem::size_of_val(s) + std::mem::size_of_val(s.as_slice()))
+            .sum::<usize>();
+        let arrow_size_bytes = estimated_bytes_size(&*array);
+
+        assert_eq!(41200, raw_size_bytes);
+        assert_eq!(40200, arrow_size_bytes); // smaller because smaller inner headers
+    }
+
+    // compound type array
+    {
+        #[derive(Clone, Copy)]
+        struct Point {
+            x: f64,
+            y: f64,
+        }
+        impl Default for Point {
+            fn default() -> Self {
+                Self { x: 42.0, y: 666.0 }
+            }
+        }
+
+        let data = vec![Point::default(); 100];
+        let array = {
+            let x = Float64Array::from_vec(data.iter().map(|p| p.x).collect()).boxed();
+            let y = Float64Array::from_vec(data.iter().map(|p| p.y).collect()).boxed();
+            let fields = vec![
+                Field::new("x", DataType::Float64, false),
+                Field::new("y", DataType::Float64, false),
+            ];
+            StructArray::new(DataType::Struct(fields), vec![x, y], None).boxed()
+        };
+
+        let raw_size_bytes = std::mem::size_of_val(data.as_slice());
+        let arrow_size_bytes = estimated_bytes_size(&*array);
+
+        assert_eq!(1600, raw_size_bytes);
+        assert_eq!(1600, arrow_size_bytes);
+    }
+
+    // compound type list array
+    {
+        #[derive(Clone, Copy)]
+        struct Point {
+            x: f64,
+            y: f64,
+        }
+        impl Default for Point {
+            fn default() -> Self {
+                Self { x: 42.0, y: 666.0 }
+            }
+        }
+
+        let data = std::iter::repeat(vec![Point::default(); 100])
+            .take(50)
+            .collect::<Vec<_>>();
+        let array: Box<dyn Array> = {
+            let array = {
+                let x =
+                    Float64Array::from_vec(data.iter().flatten().map(|p| p.x).collect()).boxed();
+                let y =
+                    Float64Array::from_vec(data.iter().flatten().map(|p| p.y).collect()).boxed();
+                let fields = vec![
+                    Field::new("x", DataType::Float64, false),
+                    Field::new("y", DataType::Float64, false),
+                ];
+                StructArray::new(DataType::Struct(fields), vec![x, y], None)
+            };
+
+            let mut i = 0i32;
+            let indices = std::iter::from_fn(move || {
+                let ret = i;
+                i += 50;
+                Some(ret)
+            });
+
+            ListArray::<i32>::from_data(
+                ListArray::<i32>::default_datatype(array.data_type().clone()),
+                Buffer::from_iter(indices.take(50)),
+                array.boxed(),
+                None,
+            )
+            .boxed()
+        };
+
+        let raw_size_bytes = data
+            .iter()
+            // headers + bodies!
+            .map(|s| std::mem::size_of_val(s) + std::mem::size_of_val(s.as_slice()))
+            .sum::<usize>();
+        let arrow_size_bytes = estimated_bytes_size(&*array);
+
+        assert_eq!(81200, raw_size_bytes);
+        assert_eq!(80200, arrow_size_bytes); // smaller because smaller inner headers
     }
 }

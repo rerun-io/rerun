@@ -8,12 +8,17 @@ publish = false
 
 [dependencies]
 # Rerun
+re_format = { path = "../re_format" }
 re_log = { path = "../re_log" }
 re_log_types = { path = "../re_log_types" }
 
 # External
 anyhow = "1.0"
-arrow2 = { version = "0.14", features = ["io_ipc", "compute_concatenate"] }
+arrow2 = { version = "0.14", features = [
+  "io_ipc",
+  "compute_concatenate",
+  "compute_aggregate",
+] }
 chrono = "0.4"
 document-features = "0.2"
 indent = "0.1"

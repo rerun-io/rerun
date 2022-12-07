@@ -3608,6 +3608,7 @@ dependencies = [
  "mimalloc",
  "nohash-hasher",
  "polars",
+ "re_format",
  "re_log",
  "re_log_types",
  "thiserror",
