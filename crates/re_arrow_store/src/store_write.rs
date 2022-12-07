@@ -191,7 +191,7 @@ impl IndexTable {
                 size_overflow,
                 len,
                 len_overflow,
-                "allocating new component bucket, previous one overflowed"
+                "allocating new index bucket, previous one overflowed"
             );
 
             if let Some(second_half) = bucket.split() {
@@ -272,6 +272,7 @@ impl IndexBucket {
 
         self.sort_indices();
 
+        // Used down the line to assert that we've left everything in a sane state.
         #[cfg(debug_assertions)]
         let times_len = self.times.len();
         #[cfg(debug_assertions)]
@@ -375,12 +376,12 @@ impl IndexBucket {
             indices: indices2,
         };
 
-        // corruption checks
+        // sanity checks
         #[cfg(debug_assertions)]
         {
             // All indices (+ time!) should always have the exact same length..
             {
-                let expected_len = dbg!(self.times.len());
+                let expected_len = self.times.len();
                 assert!(self
                     .indices
                     .values()

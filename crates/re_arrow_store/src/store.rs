@@ -41,6 +41,10 @@ pub struct DataStoreConfig {
     /// The lower the number, the more fine-grained the garbage collection is, at the cost of more
     /// metadata overhead.
     ///
+    /// Note: since component buckets aren't sorted, the number of rows isn't necessarily a great
+    /// metric to use as a threshold, although we do expose it if only for symmetry.
+    /// Prefer using [`Self::component_bucket_size_bytes`], or both.
+    ///
     /// See [`Self::DEFAULT`] for defaults.
     pub component_bucket_nb_rows: u64,
 
