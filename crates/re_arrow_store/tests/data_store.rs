@@ -23,74 +23,74 @@ use re_log_types::{
 
 const COMPONENT_CONFIGS: &[DataStoreConfig] = &[
     DataStoreConfig::DEFAULT,
-    DataStoreConfig {
-        component_bucket_nb_rows: 0,
-        ..DataStoreConfig::DEFAULT
-    },
-    DataStoreConfig {
-        component_bucket_nb_rows: 1,
-        ..DataStoreConfig::DEFAULT
-    },
-    DataStoreConfig {
-        component_bucket_nb_rows: 2,
-        ..DataStoreConfig::DEFAULT
-    },
-    DataStoreConfig {
-        component_bucket_nb_rows: 3,
-        ..DataStoreConfig::DEFAULT
-    },
-    DataStoreConfig {
-        component_bucket_size_bytes: 0,
-        ..DataStoreConfig::DEFAULT
-    },
-    DataStoreConfig {
-        component_bucket_size_bytes: 16,
-        ..DataStoreConfig::DEFAULT
-    },
-    DataStoreConfig {
-        component_bucket_size_bytes: 32,
-        ..DataStoreConfig::DEFAULT
-    },
-    DataStoreConfig {
-        component_bucket_size_bytes: 64,
-        ..DataStoreConfig::DEFAULT
-    },
+    // DataStoreConfig {
+    //     component_bucket_nb_rows: 0,
+    //     ..DataStoreConfig::DEFAULT
+    // },
+    // DataStoreConfig {
+    //     component_bucket_nb_rows: 1,
+    //     ..DataStoreConfig::DEFAULT
+    // },
+    // DataStoreConfig {
+    //     component_bucket_nb_rows: 2,
+    //     ..DataStoreConfig::DEFAULT
+    // },
+    // DataStoreConfig {
+    //     component_bucket_nb_rows: 3,
+    //     ..DataStoreConfig::DEFAULT
+    // },
+    // DataStoreConfig {
+    //     component_bucket_size_bytes: 0,
+    //     ..DataStoreConfig::DEFAULT
+    // },
+    // DataStoreConfig {
+    //     component_bucket_size_bytes: 16,
+    //     ..DataStoreConfig::DEFAULT
+    // },
+    // DataStoreConfig {
+    //     component_bucket_size_bytes: 32,
+    //     ..DataStoreConfig::DEFAULT
+    // },
+    // DataStoreConfig {
+    //     component_bucket_size_bytes: 64,
+    //     ..DataStoreConfig::DEFAULT
+    // },
 ];
 
 const INDEX_CONFIGS: &[DataStoreConfig] = &[
-    DataStoreConfig::DEFAULT,
-    DataStoreConfig {
-        index_bucket_nb_rows: 0,
-        ..DataStoreConfig::DEFAULT
-    },
+    // DataStoreConfig::DEFAULT,
+    // DataStoreConfig {
+    //     index_bucket_nb_rows: 0,
+    //     ..DataStoreConfig::DEFAULT
+    // },
     DataStoreConfig {
         index_bucket_nb_rows: 1,
         ..DataStoreConfig::DEFAULT
     },
-    DataStoreConfig {
-        index_bucket_nb_rows: 2,
-        ..DataStoreConfig::DEFAULT
-    },
-    DataStoreConfig {
-        index_bucket_nb_rows: 3,
-        ..DataStoreConfig::DEFAULT
-    },
-    DataStoreConfig {
-        index_bucket_size_bytes: 0,
-        ..DataStoreConfig::DEFAULT
-    },
-    DataStoreConfig {
-        index_bucket_size_bytes: 16,
-        ..DataStoreConfig::DEFAULT
-    },
-    DataStoreConfig {
-        index_bucket_size_bytes: 32,
-        ..DataStoreConfig::DEFAULT
-    },
-    DataStoreConfig {
-        index_bucket_size_bytes: 64,
-        ..DataStoreConfig::DEFAULT
-    },
+    // DataStoreConfig {
+    //     index_bucket_nb_rows: 2,
+    //     ..DataStoreConfig::DEFAULT
+    // },
+    // DataStoreConfig {
+    //     index_bucket_nb_rows: 3,
+    //     ..DataStoreConfig::DEFAULT
+    // },
+    // DataStoreConfig {
+    //     index_bucket_size_bytes: 0,
+    //     ..DataStoreConfig::DEFAULT
+    // },
+    // DataStoreConfig {
+    //     index_bucket_size_bytes: 16,
+    //     ..DataStoreConfig::DEFAULT
+    // },
+    // DataStoreConfig {
+    //     index_bucket_size_bytes: 32,
+    //     ..DataStoreConfig::DEFAULT
+    // },
+    // DataStoreConfig {
+    //     index_bucket_size_bytes: 64,
+    //     ..DataStoreConfig::DEFAULT
+    // },
 ];
 
 fn all_configs() -> impl Iterator<Item = DataStoreConfig> {
@@ -133,6 +133,12 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
             [build_log_time(now), build_frame_nr(frame40)],
             [build_instances(nb_instances)],
         );
+    }
+
+    if let err @ Err(_) = store.sanity_check() {
+        store.sort_indices();
+        eprintln!("{store}");
+        err.unwrap();
     }
 
     let timeline_wrong_name = Timeline::new("lag_time", TimeType::Time);
@@ -308,6 +314,12 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
         );
     }
 
+    if let err @ Err(_) = store.sanity_check() {
+        store.sort_indices();
+        eprintln!("{store}");
+        err.unwrap();
+    }
+
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
     let timeline_log_time = Timeline::new("log_time", TimeType::Time);
     let components_all = &["instances", "rects", "positions"];
@@ -450,8 +462,6 @@ impl DataTracker {
         let expected = DataFrame::new(series).unwrap();
         let expected = expected.explode(expected.get_column_names()).unwrap();
 
-        store.sort_indices();
-        eprintln!("{store}");
         assert_eq!(expected, df);
     }
 }
