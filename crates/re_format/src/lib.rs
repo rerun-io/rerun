@@ -87,7 +87,7 @@ fn test_format_large_number() {
 
 // --- Bytes ---
 
-/// Pretty format a number of bytes by using SI notation in base2, e.g.
+/// Pretty format a number of bytes by using SI notation (base2), e.g.
 ///
 /// ```
 /// # use re_format::format_bytes;
