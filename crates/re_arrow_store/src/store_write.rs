@@ -267,6 +267,7 @@ impl IndexBucket {
     /// Splits the bucket in two, returning the second half.
     pub fn split(&mut self) -> Option<Self> {
         if self.times.len() < 2 {
+            eprintln!("EARLY 1");
             return None; // early exit: can't split the unsplittable
         }
 
@@ -299,12 +300,6 @@ impl IndexBucket {
 
             half_row
         };
-
-        // TODO: one day we might need to be able to split on a single timestamp i guess
-        // today is not that day
-        if half_row + 1 >= times1.len() {
-            return None; // early exit: can't split in the middle of a timepoint
-        }
 
         // split existing time range in two, and create new time tange for the second half
         let time_range2 = TimeRange::new(times1.values()[half_row].into(), time_range1.max);
