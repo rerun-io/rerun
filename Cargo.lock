@@ -1257,13 +1257,21 @@ version = "0.19.0"
 source = "git+https://github.com/emilk/egui?rev=5effc68ba4f6dc0f9f9792193bb6e0eeca6dccef#5effc68ba4f6dc0f9f9792193bb6e0eeca6dccef"
 dependencies = [
  "bytemuck",
+]
+
+[[package]]
+name = "ecolor"
+version = "0.19.0"
+source = "git+https://github.com/emilk/egui?rev=71d70597bb92c3ac104fd846f230a0cd01c443a3#71d70597bb92c3ac104fd846f230a0cd01c443a3"
+dependencies = [
+ "bytemuck",
  "serde",
 ]
 
 [[package]]
 name = "eframe"
 version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=5effc68ba4f6dc0f9f9792193bb6e0eeca6dccef#5effc68ba4f6dc0f9f9792193bb6e0eeca6dccef"
+source = "git+https://github.com/emilk/egui?rev=71d70597bb92c3ac104fd846f230a0cd01c443a3#71d70597bb92c3ac104fd846f230a0cd01c443a3"
 dependencies = [
  "bytemuck",
  "directories-next",
@@ -1288,7 +1296,7 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=5effc68ba4f6dc0f9f9792193bb6e0eeca6dccef#5effc68ba4f6dc0f9f9792193bb6e0eeca6dccef"
+source = "git+https://github.com/emilk/egui?rev=71d70597bb92c3ac104fd846f230a0cd01c443a3#71d70597bb92c3ac104fd846f230a0cd01c443a3"
 dependencies = [
  "accesskit",
  "ahash 0.8.2",
@@ -1311,7 +1319,7 @@ dependencies = [
 [[package]]
 name = "egui-wgpu"
 version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=5effc68ba4f6dc0f9f9792193bb6e0eeca6dccef#5effc68ba4f6dc0f9f9792193bb6e0eeca6dccef"
+source = "git+https://github.com/emilk/egui?rev=71d70597bb92c3ac104fd846f230a0cd01c443a3#71d70597bb92c3ac104fd846f230a0cd01c443a3"
 dependencies = [
  "bytemuck",
  "egui",
@@ -1326,7 +1334,7 @@ dependencies = [
 [[package]]
 name = "egui-winit"
 version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=5effc68ba4f6dc0f9f9792193bb6e0eeca6dccef#5effc68ba4f6dc0f9f9792193bb6e0eeca6dccef"
+source = "git+https://github.com/emilk/egui?rev=71d70597bb92c3ac104fd846f230a0cd01c443a3#71d70597bb92c3ac104fd846f230a0cd01c443a3"
 dependencies = [
  "arboard",
  "egui",
@@ -1351,7 +1359,7 @@ dependencies = [
 [[package]]
 name = "egui_extras"
 version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=5effc68ba4f6dc0f9f9792193bb6e0eeca6dccef#5effc68ba4f6dc0f9f9792193bb6e0eeca6dccef"
+source = "git+https://github.com/emilk/egui?rev=71d70597bb92c3ac104fd846f230a0cd01c443a3#71d70597bb92c3ac104fd846f230a0cd01c443a3"
 dependencies = [
  "egui",
  "serde",
@@ -1361,7 +1369,7 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=5effc68ba4f6dc0f9f9792193bb6e0eeca6dccef#5effc68ba4f6dc0f9f9792193bb6e0eeca6dccef"
+source = "git+https://github.com/emilk/egui?rev=71d70597bb92c3ac104fd846f230a0cd01c443a3#71d70597bb92c3ac104fd846f230a0cd01c443a3"
 dependencies = [
  "bytemuck",
  "egui",
@@ -1383,7 +1391,7 @@ checksum = "90e5c1c8368803113bf0c9584fc495a58b86dc8a29edbf8fe877d21d9507e797"
 [[package]]
 name = "emath"
 version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=5effc68ba4f6dc0f9f9792193bb6e0eeca6dccef#5effc68ba4f6dc0f9f9792193bb6e0eeca6dccef"
+source = "git+https://github.com/emilk/egui?rev=71d70597bb92c3ac104fd846f230a0cd01c443a3#71d70597bb92c3ac104fd846f230a0cd01c443a3"
 dependencies = [
  "bytemuck",
  "serde",
@@ -1426,13 +1434,13 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=5effc68ba4f6dc0f9f9792193bb6e0eeca6dccef#5effc68ba4f6dc0f9f9792193bb6e0eeca6dccef"
+source = "git+https://github.com/emilk/egui?rev=71d70597bb92c3ac104fd846f230a0cd01c443a3#71d70597bb92c3ac104fd846f230a0cd01c443a3"
 dependencies = [
  "ab_glyph",
  "ahash 0.8.2",
  "atomic_refcell",
  "bytemuck",
- "ecolor",
+ "ecolor 0.19.0 (git+https://github.com/emilk/egui?rev=71d70597bb92c3ac104fd846f230a0cd01c443a3)",
  "emath",
  "nohash-hasher",
  "parking_lot",
@@ -3724,7 +3732,7 @@ dependencies = [
  "clean-path",
  "console_error_panic_hook",
  "crossbeam",
- "ecolor",
+ "ecolor 0.19.0 (git+https://github.com/emilk/egui?rev=5effc68ba4f6dc0f9f9792193bb6e0eeca6dccef)",
  "getrandom",
  "glam",
  "glob",
