@@ -46,17 +46,15 @@ pub struct DataStoreConfig {
 
 impl Default for DataStoreConfig {
     fn default() -> Self {
-        Self::const_default()
+        Self::DEFAULT
     }
 }
 
 impl DataStoreConfig {
-    pub const fn const_default() -> Self {
-        Self {
-            component_bucket_size_bytes: 32 * 1024 * 1024, // 32MiB
-            component_bucket_nb_rows: u64::MAX,
-        }
-    }
+    pub const DEFAULT: Self = Self {
+        component_bucket_size_bytes: 32 * 1024 * 1024, // 32MiB
+        component_bucket_nb_rows: u64::MAX,
+    };
 }
 
 // ---

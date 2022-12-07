@@ -16,38 +16,38 @@ use re_log_types::{datagen::*, ComponentNameRef, ObjPath as EntityPath, TimeType
 // ---
 
 const TEST_CONFIGS: &[DataStoreConfig] = &[
-    DataStoreConfig::const_default(),
+    DataStoreConfig::DEFAULT,
     DataStoreConfig {
-        component_bucket_size_bytes: u64::MAX,
         component_bucket_nb_rows: 0,
+        ..DataStoreConfig::DEFAULT
     },
     DataStoreConfig {
-        component_bucket_size_bytes: u64::MAX,
         component_bucket_nb_rows: 1,
+        ..DataStoreConfig::DEFAULT
     },
     DataStoreConfig {
-        component_bucket_size_bytes: u64::MAX,
         component_bucket_nb_rows: 2,
+        ..DataStoreConfig::DEFAULT
     },
     DataStoreConfig {
-        component_bucket_size_bytes: u64::MAX,
         component_bucket_nb_rows: 3,
+        ..DataStoreConfig::DEFAULT
     },
     DataStoreConfig {
         component_bucket_size_bytes: 0,
-        component_bucket_nb_rows: u64::MAX,
+        ..DataStoreConfig::DEFAULT
     },
     DataStoreConfig {
         component_bucket_size_bytes: 16,
-        component_bucket_nb_rows: u64::MAX,
+        ..DataStoreConfig::DEFAULT
     },
     DataStoreConfig {
         component_bucket_size_bytes: 32,
-        component_bucket_nb_rows: u64::MAX,
+        ..DataStoreConfig::DEFAULT
     },
     DataStoreConfig {
         component_bucket_size_bytes: 64,
-        component_bucket_nb_rows: u64::MAX,
+        ..DataStoreConfig::DEFAULT
     },
 ];
 
