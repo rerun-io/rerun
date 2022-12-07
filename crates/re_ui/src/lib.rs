@@ -87,6 +87,13 @@ impl ReUi {
         20.0
     }
 
+    pub fn setup_table_header(_header: &mut egui_extras::TableRow<'_, '_>) {}
+
+    pub fn setup_table_body(body: &mut egui_extras::TableBody<'_>) {
+        // Make sure buttons don't visually overflow:
+        body.ui_mut().spacing_mut().interact_size.y = Self::table_line_height();
+    }
+
     #[allow(clippy::unused_self)]
     pub fn panel_frame(&self) -> egui::Frame {
         let style = self.egui_ctx.style();

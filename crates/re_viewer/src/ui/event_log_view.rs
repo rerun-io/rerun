@@ -57,6 +57,7 @@ pub(crate) fn message_table(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, mess
         .column(Column::auto().clip(true).at_least(50.0)) // path
         .column(Column::remainder()) // payload
         .header(re_ui::ReUi::table_header_height(), |mut header| {
+            re_ui::ReUi::setup_table_header(&mut header);
             header.col(|ui| {
                 ui.strong("MsgID");
             });
@@ -75,7 +76,9 @@ pub(crate) fn message_table(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, mess
                 ui.strong("Payload");
             });
         })
-        .body(|body| {
+        .body(|mut body| {
+            re_ui::ReUi::setup_table_body(&mut body);
+
             // for MANY messages, `heterogeneous_rows` is too slow. TODO(emilk): how many?
             if messages.len() < 10_000_000 {
                 body.heterogeneous_rows(

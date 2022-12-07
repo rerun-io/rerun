@@ -53,6 +53,7 @@ pub(crate) fn view_class_description_map(
 
     table
         .header(re_ui::ReUi::table_header_height(), |mut header| {
+            re_ui::ReUi::setup_table_header(&mut header);
             header.col(|ui| {
                 ui.heading("Id");
             });
@@ -64,6 +65,8 @@ pub(crate) fn view_class_description_map(
             });
         })
         .body(|mut body| {
+            re_ui::ReUi::setup_table_body(&mut body);
+
             let row_height = re_ui::ReUi::table_line_height();
             for (id, (label, color)) in map {
                 body.row(row_height, |mut row| {

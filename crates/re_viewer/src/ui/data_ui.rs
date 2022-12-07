@@ -566,6 +566,7 @@ fn ui_annotation_info_table<'a>(
 
     table
         .header(re_ui::ReUi::table_header_height(), |mut header| {
+            re_ui::ReUi::setup_table_header(&mut header);
             header.col(|ui| {
                 ui.strong("Id");
             });
@@ -577,6 +578,8 @@ fn ui_annotation_info_table<'a>(
             });
         })
         .body(|mut body| {
+            re_ui::ReUi::setup_table_body(&mut body);
+
             for info in annotation_infos {
                 body.row(row_height, |mut row| {
                     row.col(|ui| {
@@ -657,6 +660,7 @@ fn ui_annotation_context(ui: &mut egui::Ui, context: &AnnotationContext) -> egui
                         .column(Column::auto().clip(true).at_least(40.0));
                     table
                         .header(re_ui::ReUi::table_header_height(), |mut header| {
+                            re_ui::ReUi::setup_table_header(&mut header);
                             header.col(|ui| {
                                 ui.strong("From");
                             });
@@ -665,6 +669,8 @@ fn ui_annotation_context(ui: &mut egui::Ui, context: &AnnotationContext) -> egui
                             });
                         })
                         .body(|mut body| {
+                            re_ui::ReUi::setup_table_body(&mut body);
+
                             for (from, to) in &class.keypoint_connections {
                                 body.row(row_height, |mut row| {
                                     for id in [from, to] {

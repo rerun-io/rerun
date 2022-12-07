@@ -316,6 +316,7 @@ fn show_table(
     }
     table_builder
         .header(re_ui::ReUi::table_header_height(), |mut header| {
+            re_ui::ReUi::setup_table_header(&mut header);
             for timeline in &timelines {
                 header.col(|ui| {
                     ctx.timeline_button(ui, timeline);
@@ -335,7 +336,9 @@ fn show_table(
                 ui.strong("Body");
             });
         })
-        .body(|body| {
+        .body(|mut body| {
+            re_ui::ReUi::setup_table_body(&mut body);
+
             body_clip_rect = Some(body.max_rect());
             body.rows(row_height, text_entries.len(), |index, mut row| {
                 let text_entry = &text_entries[index];
