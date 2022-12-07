@@ -29,15 +29,9 @@ pub async fn start(canvas_id: &str) -> std::result::Result<(), eframe::wasm_bind
         web_options,
         Box::new(move |cc| {
             let startup_options = crate::StartupOptions::default();
-            let design_tokens = crate::customize_eframe(cc);
+            let re_ui = crate::customize_eframe(cc);
             let url = get_url(&cc.integration_info);
-            let app = crate::RemoteViewerApp::new(
-                &cc.egui_ctx,
-                startup_options,
-                design_tokens,
-                cc.storage,
-                url,
-            );
+            let app = crate::RemoteViewerApp::new(startup_options, re_ui, cc.storage, url);
             Box::new(app)
         }),
     )

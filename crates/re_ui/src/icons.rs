@@ -14,13 +14,13 @@ impl Icon {
 
 pub const RIGHT_PANEL_TOGGLE: Icon = Icon::new(
     "right_panel_toggle",
-    include_bytes!("../../data/icons/right_panel_toggle.png"),
+    include_bytes!("../data/icons/right_panel_toggle.png"),
 );
 pub const BOTTOM_PANEL_TOGGLE: Icon = Icon::new(
     "bottom_panel_toggle",
-    include_bytes!("../../data/icons/bottom_panel_toggle.png"),
+    include_bytes!("../data/icons/bottom_panel_toggle.png"),
 );
 pub const LEFT_PANEL_TOGGLE: Icon = Icon::new(
     "left_panel_toggle",
-    include_bytes!("../../data/icons/left_panel_toggle.png"),
+    include_bytes!("../data/icons/left_panel_toggle.png"),
 );

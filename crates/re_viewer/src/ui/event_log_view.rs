@@ -38,6 +38,7 @@ pub(crate) fn message_table(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, mess
 
     TableBuilder::new(ui)
         .striped(true)
+        .max_scroll_height(f32::INFINITY) // Fill up whole height
         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
         .resizable(true)
         .column(Column::initial(100.0).at_least(50.0).clip(true)) // msg_id

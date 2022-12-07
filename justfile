@@ -84,4 +84,4 @@ toml-lint:
 # Update the design_tokens.json used to style the GUI.
 # See https://rerun-design-guidelines.netlify.app/tokens for their meanings.
 download-design-tokens:
-    curl https://rerun-design-guidelines.netlify.app/api/tokens | jq > crates/re_viewer/data/design_tokens.json
+    curl https://rerun-design-guidelines.netlify.app/api/tokens | jq > crates/re_ui/data/design_tokens.json
