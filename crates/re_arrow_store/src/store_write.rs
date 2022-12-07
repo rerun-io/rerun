@@ -179,7 +179,7 @@ impl IndexTable {
         let size = bucket.total_size_bytes();
         let size_overflow = bucket.total_size_bytes() >= config.index_bucket_size_bytes;
 
-        let len = bucket.total_rows() as u64;
+        let len = bucket.total_rows();
         let len_overflow = len >= config.index_bucket_nb_rows;
 
         if size_overflow || len_overflow {

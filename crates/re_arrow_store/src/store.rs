@@ -132,7 +132,7 @@ impl DataStore {
 
     /// Returns the number of index rows stored across this entire store, i.e. the sum of
     /// the number of rows across all of its index tables.
-    pub fn total_index_rows(&self) -> usize {
+    pub fn total_index_rows(&self) -> u64 {
         self.indices.values().map(|table| table.total_rows()).sum()
     }
 
@@ -184,7 +184,7 @@ impl std::fmt::Display for DataStore {
                     "{} index tables, for a total of {} across {} total rows\n",
                     self.indices.len(),
                     format_bytes(self.total_index_size_bytes() as _),
-                    format_usize(self.total_index_rows())
+                    format_usize(self.total_index_rows() as _)
                 ),
             ))?;
             f.write_str(&indent::indent_all_by(4, "indices: [\n"))?;
@@ -307,7 +307,7 @@ impl std::fmt::Display for IndexTable {
             "size: {} buckets for a total of {} across {} total rows\n",
             self.buckets.len(),
             format_bytes(self.total_size_bytes() as _),
-            format_usize(self.total_rows()),
+            format_usize(self.total_rows() as _),
         ))?;
         f.write_str("buckets: [\n")?;
         for bucket in buckets.values() {
@@ -324,7 +324,7 @@ impl std::fmt::Display for IndexTable {
 impl IndexTable {
     /// Returns the number of rows stored across this entire table, i.e. the sum of the number
     /// of rows stored across all of its buckets.
-    pub fn total_rows(&self) -> usize {
+    pub fn total_rows(&self) -> u64 {
         self.buckets
             .iter()
             .map(|(_, bucket)| bucket.total_rows())
@@ -388,7 +388,7 @@ impl std::fmt::Display for IndexBucket {
         f.write_fmt(format_args!(
             "size: {} across {} rows\n",
             format_bytes(self.total_size_bytes() as _),
-            format_usize(self.total_rows()),
+            format_usize(self.total_rows() as _),
         ))?;
 
         f.write_fmt(format_args!(
@@ -441,13 +441,13 @@ impl std::fmt::Display for IndexBucket {
 
 impl IndexBucket {
     /// Returns the number of rows stored across this bucket.
-    pub fn total_rows(&self) -> usize {
-        self.times.len()
+    pub fn total_rows(&self) -> u64 {
+        self.times.len() as u64
             + self
                 .indices
                 .values()
-                .map(|index| index.len())
-                .sum::<usize>()
+                .map(|index| index.len() as u64)
+                .sum::<u64>()
     }
 
     /// Returns the size of the data stored across this bucket, in bytes.
