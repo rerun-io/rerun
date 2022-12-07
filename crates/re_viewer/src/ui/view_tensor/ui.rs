@@ -148,7 +148,7 @@ struct ColorMapping {
 impl Default for ColorMapping {
     fn default() -> Self {
         Self {
-            turbo: false,
+            turbo: true,
             gamma: 1.0,
         }
     }
@@ -172,7 +172,7 @@ fn color_mapping_ui(ui: &mut egui::Ui, color_mapping: &mut ColorMapping) {
     ui.group(|ui| {
         ui.strong("Color map");
 
-    ui.horizontal(|ui| {
+        ui.horizontal(|ui| {
             ui.radio_value(&mut color_mapping.turbo, false, "Grayscale");
             ui.radio_value(&mut color_mapping.turbo, true, "Turbo");
         });
