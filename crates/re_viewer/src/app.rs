@@ -490,14 +490,10 @@ impl App {
         self.state = Default::default();
         self.state.selected_rec_id = selected_rec_id;
 
-        // Keep dark/light mode setting:
-        let is_dark_mode = egui_ctx.style().visuals.dark_mode;
+        // Keep the style:
+        let style = egui_ctx.style();
         *egui_ctx.memory() = Default::default();
-        egui_ctx.set_visuals(if is_dark_mode {
-            egui::Visuals::dark()
-        } else {
-            egui::Visuals::light()
-        });
+        egui_ctx.set_style((*style).clone());
     }
 
     fn log_db(&mut self) -> &mut LogDb {
