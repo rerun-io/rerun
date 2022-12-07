@@ -44,7 +44,7 @@ re_tuid = { path = "../re_tuid" }
 
 # External
 ahash = "0.8"
-arrow2 = { version = "0.14", features = ["io_ipc", "io_print"] }
+arrow2 = { version = "0.14", features = ["io_ipc"] }
 arrow2_convert = { version = "0.3" }
 bytemuck = "1.11"
 chrono = { version = "0.4", features = ["js-sys", "wasmbind"] }

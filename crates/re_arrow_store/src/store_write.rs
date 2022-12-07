@@ -11,8 +11,8 @@ use arrow2::compute::concatenate::concatenate;
 use arrow2::datatypes::{DataType, Schema};
 use polars::prelude::IndexOfSchema;
 
-use re_log_types::external::arrow2_convert::deserialize::arrow_array_deserialize_iterator;
 use re_log::debug;
+use re_log_types::external::arrow2_convert::deserialize::arrow_array_deserialize_iterator;
 use re_log_types::{
     ComponentNameRef, ObjPath as EntityPath, TimeInt, TimePoint, TimeRange, Timeline,
     ENTITY_PATH_KEY,

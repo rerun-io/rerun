@@ -157,8 +157,6 @@ mod tests {
             [build_positions(1), build_rects(1)],
         );
 
-        println!("{}", arrow2::io::print::write(&[chunk.clone()], &["chunk"]));
-
         let msg_in = ArrowMsg {
             msg_id: MsgId::random(),
             schema,

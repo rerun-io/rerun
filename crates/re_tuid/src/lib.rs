@@ -7,10 +7,7 @@ mod arrow {
         array::{MutableArray, MutableStructArray, TryPush},
         datatypes::DataType,
     };
-    use arrow2_convert::{
-        arrow_enable_vec_for_type, field::ArrowField,
-        serialize::ArrowSerialize,
-    };
+    use arrow2_convert::{arrow_enable_vec_for_type, field::ArrowField, serialize::ArrowSerialize};
 
     use crate::Tuid;
 
@@ -62,16 +59,6 @@ mod arrow {
             Ok(())
         }
     }
-
-    //impl ArrowDeserialize for Tuid {
-    //    type ArrayType = StructArray;
-
-    //    fn arrow_deserialize(
-    //        v: <&Self::ArrayType as IntoIterator>::Item,
-    //    ) -> Option<<Self as ArrowField>::Type> {
-    //        todo!()
-    //    }
-    //}
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
