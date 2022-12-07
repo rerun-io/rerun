@@ -82,45 +82,32 @@ impl SpaceView {
             obj_props: &self.obj_tree_properties.projected,
         };
 
-        // Extra headroom required for the hovering controls at the top of the space view.
-        let extra_headroom = {
-            let frame = ctx.re_ui.hovering_frame();
-            frame.total_margin().sum().y + ui.spacing().interact_size.y
-        };
-
         match self.category {
             ViewCategory::TwoD => {
-                _ = extra_headroom; // ignored - put overlay buttons on top of the view.
-
                 let mut scene = view_2d::Scene2D::default();
                 scene.load_objects(ctx, &query);
                 self.view_state.ui_2d(ctx, ui, &self.space_path, scene);
             }
             ViewCategory::ThreeD => {
-                _ = extra_headroom; // ignored - put overlay buttons on top of the view.
-
                 let mut scene = view_3d::Scene3D::default();
                 scene.load_objects(ctx, &query);
                 self.view_state
                     .ui_3d(ctx, ui, &self.space_path, spaces_info, space_info, scene);
             }
+
             ViewCategory::Tensor => {
-                ui.add_space(extra_headroom);
+                ui.add_space(16.0); // Extra headroom required for the hovering controls at the top of the space view.
 
                 let mut scene = view_tensor::SceneTensor::default();
                 scene.load_objects(ctx, &query);
                 self.view_state.ui_tensor(ui, &scene);
             }
             ViewCategory::Text => {
-                _ = extra_headroom; // ignored - the text view comes with ample padding
-
                 let mut scene = view_text::SceneText::default();
                 scene.load_objects(ctx, &query, &self.view_state.state_text.filters);
                 self.view_state.ui_text(ctx, ui, &scene);
             }
             ViewCategory::Plot => {
-                _ = extra_headroom; // ignored - put overlay buttons on top of the view.
-
                 let mut scene = view_plot::ScenePlot::default();
                 scene.load_objects(ctx, &query);
                 self.view_state.ui_plot(ctx, ui, &scene);
@@ -210,8 +197,15 @@ impl ViewState {
             let state_tensor = self
                 .state_tensor
                 .get_or_insert_with(|| view_tensor::ViewTensorState::create(tensor));
-            ui.vertical(|ui| {
-                view_tensor::view_tensor(ui, state_tensor, tensor);
+
+            egui::Frame {
+                inner_margin: re_ui::ReUi::view_padding().into(),
+                ..egui::Frame::default()
+            }
+            .show(ui, |ui| {
+                ui.vertical(|ui| {
+                    view_tensor::view_tensor(ui, state_tensor, tensor);
+                });
             });
         } else {
             ui.centered_and_justified(|ui| {
