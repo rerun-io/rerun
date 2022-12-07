@@ -356,12 +356,12 @@ impl ViewBuilder {
             config.resolution_in_pixel[0] as f32 / config.pixels_from_point,
             config.resolution_in_pixel[1] as f32 / config.pixels_from_point,
         );
-        let auto_size_in_points = (0.0005 * viewport_size_in_points.length()).clamp(1.5, 5.0);
-        let auto_size_large_in_points = auto_size_in_points * 1.5; // TODO(andreas): Make configurable?
 
-        // let default_point_radius = Size::new_points(
-        //     (0.3 * (viewport_area / (points.len() + 1) as f32).sqrt()).clamp(0.1, 5.0),
-        // );
+        // TODO(andreas): Make configurable?
+        // TODO(andreas): Different for different primitives?
+        // TODO(andreas): Different for amount of primitives? (done by re_renderer user?)
+        let auto_size_in_points = (0.0005 * viewport_size_in_points.length()).clamp(1.5, 5.0);
+        let auto_size_large_in_points = auto_size_in_points * 1.5;
 
         ctx.queue.write_buffer(
             ctx.gpu_resources

@@ -14,7 +14,7 @@ impl Size {
     /// Automatically sized based the screen size.
     pub const AUTO: Self = Self(f32::INFINITY);
 
-    /// Automatically sized based the screen size, but larger.
+    /// Automatically sized based the screen size, but larger by a renderer defined factor.
     pub const AUTO_LARGE: Self = Self(-f32::INFINITY);
 
     #[inline]

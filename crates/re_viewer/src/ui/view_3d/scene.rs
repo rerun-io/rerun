@@ -484,7 +484,13 @@ impl Scene3D {
         let hover_size_boost = 1.5;
         const HOVER_COLOR: [u8; 4] = [255, 200, 200, 255];
 
-        // TODO(emilk): more line segments -> thinner lines
+        fn hover_size(size: Size, hover_size_boost: f32) -> Size {
+            if size.is_auto() {
+                Size::AUTO_LARGE
+            } else {
+                size * hover_size_boost
+            }
+        }
 
         {
             crate::profile_scope!("points");
@@ -492,7 +498,7 @@ impl Scene3D {
                 if hovered_instance_id_hash.is_some()
                     && point.instance_id_hash == hovered_instance_id_hash
                 {
-                    point.radius *= hover_size_boost; // TODO: But what if it is auto-sized
+                    point.radius = hover_size(point.radius, hover_size_boost);
                     point.color = HOVER_COLOR;
                 }
             }
@@ -507,7 +513,7 @@ impl Scene3D {
                 .zip(line_strips.strip_user_data.iter())
             {
                 if hovered_instance_id_hash.is_some() && *instance_id == hovered_instance_id_hash {
-                    line_strip.radius *= hover_size_boost; // TODO: But what if it is auto-sized
+                    line_strip.radius = hover_size(line_strip.radius, hover_size_boost);
                     line_strip.srgb_color = HOVER_COLOR;
                 }
             }
