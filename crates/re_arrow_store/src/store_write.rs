@@ -194,6 +194,7 @@ impl IndexTable {
         let len = bucket.total_rows();
         let len_overflow = len >= config.index_bucket_nb_rows;
 
+        // TODO: edge case of death
         if size_overflow || len_overflow {
             debug!(
                 kind = "insert",
@@ -206,6 +207,11 @@ impl IndexTable {
                 len, len_overflow,
                 "allocating new index bucket, previous one overflowed"
             );
+
+            let half_row = bucket.find_half_row();
+            if bucket.times.values()[half_row] == time.as_i64() {
+                panic!("there you go");
+            }
 
             if let Some(second_half) = bucket.split() {
                 self.buckets.insert(second_half.time_range.min, second_half);
@@ -426,9 +432,25 @@ impl IndexBucket {
 
         Some(bucket2)
     }
+
+    fn find_half_row(&self) -> usize {
+        // TODO: explain forward walk (and maybe express in a better way)
+        let half_row = {
+            let times = self.times.values();
+
+            let mut half_row = self.times.len() / 2;
+            let time = times[half_row];
+            while half_row + 1 < times.len() && times[half_row] == time {
+                half_row += 1;
+            }
+
+            half_row
+        };
+
+        half_row
+    }
 }
 
-fn find_half_row() {}
 fn split_primary_index_off() {}
 fn split_secondary_index_off() {}
 
