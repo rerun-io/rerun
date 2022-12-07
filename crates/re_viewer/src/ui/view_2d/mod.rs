@@ -1,5 +1,5 @@
 mod scene;
-pub use self::scene::{Image, LineSegments2D, ObjectPaintProperties, Point2D, Scene2D};
+pub use self::scene::{Image, LineSegments2D, ObjectPaintProperties, Scene2D};
 
 mod ui;
 pub(crate) use self::ui::{view_2d, View2DState, HELP_TEXT};

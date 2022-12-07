@@ -19,7 +19,7 @@ use crate::{
     ViewerContext,
 };
 
-use re_renderer::{Color32, LineStripSeriesBuilder, Size};
+use re_renderer::{renderer::PointCloudPoint, Color32, LineStripSeriesBuilder, Size};
 
 // ---
 
@@ -50,23 +50,19 @@ pub struct LineSegments2D {
     pub paint_props: ObjectPaintProperties,
 }
 
-// TODO(andreas) make this go away just like with lines
-pub struct Point2D {
-    pub instance_hash: InstanceIdHash,
-
-    pub pos: Pos2,
-    pub radius: Option<f32>,
-    pub paint_props: ObjectPaintProperties,
-
-    pub label: Option<String>,
+pub enum LabelTarget {
+    /// Labels a given rect (in scene coordinates)
+    Rect(Rect),
+    /// Labels a given point (in scene coordinates)
+    Point(egui::Pos2),
 }
 
-// TODO(andreas) shouldn't distinguish between rect and regular labels?
-pub struct RectLabel2D {
+// TODO(andreas) shouldn't distinguish between rect and point labels?
+pub struct Label2D {
     pub text: String,
     pub color: Color32,
-    /// The rect this label is labeling in space coordinates.
-    pub labled_rect: Rect,
+    /// The shape being labled.
+    pub target: LabelTarget,
     /// What is hovered if this label is hovered.
     pub labled_instance: InstanceIdHash,
 }
@@ -79,12 +75,16 @@ pub struct Scene2D {
 
     pub images: Vec<Image>,
     pub line_segments: Vec<LineSegments2D>,
-    pub points: Vec<Point2D>,
+    pub points: Vec<PointCloudPoint>,
     pub lines: LineStripSeriesBuilder<()>,
-    pub rect_labels: Vec<RectLabel2D>,
+
+    pub labels: Vec<Label2D>,
 
     /// Hoverable rects in scene units and their instance id hashes
     pub hoverable_rects: Vec<(Rect, InstanceIdHash)>,
+
+    /// Hoverable points in scene units and their instance id hashes
+    pub hoverable_points: Vec<(egui::Pos2, InstanceIdHash)>,
 }
 
 impl Default for Scene2D {
@@ -96,8 +96,9 @@ impl Default for Scene2D {
             line_segments: Default::default(),
             points: Default::default(),
             lines: Default::default(),
+            labels: Default::default(),
             hoverable_rects: Default::default(),
-            rect_labels: Default::default(),
+            hoverable_points: Default::default(),
         }
     }
 }
@@ -127,8 +128,8 @@ impl Scene2D {
 
         self.load_images(ctx, query, hovered_instance);
         self.load_boxes(ctx, query, hovered_instance);
-        self.load_points(ctx, query, hovered_instance);
         self.load_line_segments(ctx, query, hovered_instance);
+        self.load_points(ctx, query, hovered_instance);
     }
 
     fn load_images(
@@ -167,7 +168,7 @@ impl Scene2D {
                             .annotation_info()
                             .color(color, DefaultColor::OpaqueWhite);
 
-                        let paint_props = paint_properties(color, &None);
+                        let paint_props = paint_properties(color, None);
 
                         let image = Image {
                             instance_hash: InstanceIdHash::from_path_and_index(
@@ -221,7 +222,8 @@ impl Scene2D {
                  label: Option<&String>,
                  class_id: Option<&i32>| {
                     let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
-                    let stroke_width = stroke_width.copied();
+                    let instance_hash =
+                        InstanceIdHash::from_path_and_index(obj_path, instance_index);
 
                     let annotations = self.annotation_map.find(obj_path);
                     let annotation_info = annotations
@@ -230,13 +232,10 @@ impl Scene2D {
                     let color = annotation_info.color(color, DefaultColor::ObjPath(obj_path));
                     let label = annotation_info.label(label);
 
-                    let instance_hash =
-                        InstanceIdHash::from_path_and_index(obj_path, instance_index);
-
                     let rect = Rect::from_min_max(bbox.min.into(), bbox.max.into());
                     self.hoverable_rects.push((rect, instance_hash));
 
-                    let mut paint_props = paint_properties(color, &stroke_width);
+                    let mut paint_props = paint_properties(color, stroke_width);
                     if hovered_instance == instance_hash {
                         apply_hover_effect(&mut paint_props);
                     }
@@ -251,10 +250,10 @@ impl Scene2D {
                         .radius(Size::new_points(paint_props.fg_stroke.width * 0.5));
 
                     if let Some(label) = label {
-                        self.rect_labels.push(RectLabel2D {
+                        self.labels.push(Label2D {
                             text: label,
                             color: paint_props.fg_stroke.color,
-                            labled_rect: rect,
+                            target: LabelTarget::Rect(rect),
                             labled_instance: instance_hash,
                         });
                     }
@@ -276,113 +275,129 @@ impl Scene2D {
     ) {
         crate::profile_function!();
 
-        let points = query
-            .iter_object_stores(ctx.log_db, &[ObjectType::Point2D])
-            .flat_map(|(_obj_type, obj_path, time_query, obj_store)| {
-                let mut batch = Vec::new();
-                let annotations = self.annotation_map.find(obj_path);
-                let default_color = DefaultColor::ObjPath(obj_path);
+        let depth = self.lines.next_2d_z; // put the points in front of all the lines we have so far.
 
-                // If keypoints ids show up we may need to connect them later!
-                // We include time in the key, so that the "Visible history" (time range queries) feature works.
-                let mut keypoints: HashMap<(ClassId, i64), HashMap<KeypointId, Pos2>> =
+        for (_obj_type, obj_path, time_query, obj_store) in
+            query.iter_object_stores(ctx.log_db, &[ObjectType::Point2D])
+        {
+            let mut label_batch = Vec::new();
+            let max_num_labels = 10;
+
+            let annotations = self.annotation_map.find(obj_path);
+            let default_color = DefaultColor::ObjPath(obj_path);
+
+            // If keypoints ids show up we may need to connect them later!
+            // We include time in the key, so that the "Visible history" (time range queries) feature works.
+            let mut keypoints: HashMap<(ClassId, i64), HashMap<KeypointId, glam::Vec2>> =
                 Default::default();
 
-                visit_type_data_5(
-                    obj_store,
-                    &FieldName::from("pos"),
-                    &time_query,
-                    ("color", "radius", "label", "class_id", "keypoint_id"),
-                    |instance_index: Option<&IndexHash>,
-                     time: i64,
-                     _msg_id: &MsgId,
-                     pos: &[f32; 2],
-                     color: Option<&[u8; 4]>,
-                     radius: Option<&f32>,
-                     label: Option<&String>,
-                     class_id: Option<&i32>,
-                     keypoint_id: Option<&i32>| {
-                        let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
-                        let pos = Pos2::new(pos[0], pos[1]);
+            visit_type_data_5(
+                obj_store,
+                &FieldName::from("pos"),
+                &time_query,
+                ("color", "radius", "label", "class_id", "keypoint_id"),
+                |instance_index: Option<&IndexHash>,
+                 time: i64,
+                 _msg_id: &MsgId,
+                 pos: &[f32; 2],
+                 color: Option<&[u8; 4]>,
+                 radius: Option<&f32>,
+                 label: Option<&String>,
+                 class_id: Option<&i32>,
+                 keypoint_id: Option<&i32>| {
+                    let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
+                    let instance_hash =
+                        InstanceIdHash::from_path_and_index(obj_path, instance_index);
+                    let pos = glam::vec2(pos[0], pos[1]);
 
-                        let class_id = class_id.map(|i| ClassId(*i as _));
-                        let class_description =
-                            annotations.class_description(class_id);
+                    let class_id = class_id.map(|i| ClassId(*i as _));
+                    let class_description = annotations.class_description(class_id);
 
-                            let annotation_info = if let Some(keypoint_id) = keypoint_id {
-                                let keypoint_id = KeypointId(*keypoint_id as _);
-                                if let Some(class_id) = class_id {
-                                    keypoints
-                                        .entry((class_id, time))
-                                        .or_insert_with(Default::default)
-                                        .insert(keypoint_id, pos);
-                                }
+                    let annotation_info = if let Some(keypoint_id) = keypoint_id {
+                        let keypoint_id = KeypointId(*keypoint_id as _);
+                        if let Some(class_id) = class_id {
+                            keypoints
+                                .entry((class_id, time))
+                                .or_insert_with(Default::default)
+                                .insert(keypoint_id, pos);
+                        }
 
-                                class_description.annotation_info_with_keypoint(keypoint_id)
-                            } else {
-                                class_description.annotation_info()
-                            };
-                        let color = annotation_info.color(color, default_color);
-                        let label = annotation_info.label(label);
-                        let paint_props = paint_properties(color, &None);
+                        class_description.annotation_info_with_keypoint(keypoint_id)
+                    } else {
+                        class_description.annotation_info()
+                    };
+                    let color = annotation_info.color(color, default_color);
+                    let label = annotation_info.label(label);
 
-                        batch.push(Point2D {
-                            instance_hash: InstanceIdHash::from_path_and_index(
-                                obj_path,
-                                instance_index,
-                            ),
-                            pos,
-                            radius: radius.copied(),
-                            paint_props,
-                            label,
-                        });
-                    },
-                );
-
-                // TODO(andreas): Make user configurable with this as the default.
-                let show_labels = batch.len() < 10;
-                if !show_labels {
-                    for point in &mut batch {
-                        point.label = None;
+                    let mut paint_props = paint_properties(color, radius);
+                    if hovered_instance == instance_hash {
+                        apply_hover_effect(&mut paint_props);
                     }
-                }
 
-                // Generate keypoint connections if any.
-                let instance_hash = InstanceIdHash::from_path_and_index(obj_path, IndexHash::NONE);
-                for ((class_id, _time), keypoints_in_class) in &keypoints {
-                    let Some(class_description) = annotations.context.class_map.get(class_id) else {
+                    self.points.push(PointCloudPoint {
+                        position: pos.extend(depth),
+                        radius: Size::new_points(paint_props.bg_stroke.width * 0.5),
+                        color: paint_props.bg_stroke.color,
+                    });
+                    self.points.push(PointCloudPoint {
+                        position: pos.extend(depth - 0.1),
+                        radius: Size::new_points(paint_props.fg_stroke.width * 0.5),
+                        color: paint_props.fg_stroke.color,
+                    });
+
+                    let pos = egui::pos2(pos.x, pos.y);
+                    self.hoverable_points.push((pos, instance_hash));
+
+                    if let Some(label) = label {
+                        if label_batch.len() < max_num_labels {
+                            label_batch.push(Label2D {
+                                text: label,
+                                color: paint_props.fg_stroke.color,
+                                target: LabelTarget::Point(pos),
+                                labled_instance: instance_hash,
+                            })
+                        }
+                    }
+                },
+            );
+
+            // TODO(andreas): Make user configurable with this as the default.
+            if label_batch.len() < max_num_labels {
+                self.labels.extend(label_batch.into_iter());
+            }
+
+            // Generate keypoint connections if any.
+            let instance_hash = InstanceIdHash::from_path_and_index(obj_path, IndexHash::NONE);
+            for ((class_id, _time), keypoints_in_class) in &keypoints {
+                let Some(class_description) = annotations.context.class_map.get(class_id) else {
                         continue;
                     };
 
-                    let color = class_description
-                        .info
-                        .color
-                        .unwrap_or_else(|| auto_color(class_description.info.id));
+                let color = class_description
+                    .info
+                    .color
+                    .unwrap_or_else(|| auto_color(class_description.info.id));
 
-                    for (a, b) in &class_description.keypoint_connections {
-                        let (Some(a), Some(b)) = (keypoints_in_class.get(a), keypoints_in_class.get(b)) else {
+                for (a, b) in &class_description.keypoint_connections {
+                    let (Some(a), Some(b)) = (keypoints_in_class.get(a), keypoints_in_class.get(b)) else {
                             re_log::warn_once!(
                                 "Keypoint connection from index {:?} to {:?} could not be resolved in object {:?}",
                                 a, b, obj_path
                             );
                             continue;
                         };
-                        self.line_segments.push(LineSegments2D {
-                            instance_hash,
-                            points: vec![*a, *b],
-                            stroke_width: None,
-                            paint_props: paint_properties(color, &None),
-                        });
-                    }
+                    // TODO(andreas): No outlines for these?
+                    self.lines
+                        .add_segment_2d(*a, *b)
+                        .color(to_egui_color(color));
+
+                    // TODO: hoverable object
                 }
+            }
+        }
 
-                batch
-            });
-
-        self.points.extend(points);
-
-        for point in &self.points {
-            self.bbox.extend_with(point.pos);
+        for (point, _) in &self.hoverable_points {
+            self.bbox.extend_with(*point);
         }
     }
 
@@ -421,7 +436,7 @@ impl Scene2D {
                         let annotation_info = annotations.class_description(None).annotation_info();
                         let color = annotation_info.color(color, DefaultColor::ObjPath(obj_path));
 
-                        let paint_props = paint_properties(color, &None);
+                        let paint_props = paint_properties(color, None);
 
                         batch.push(LineSegments2D {
                             instance_hash: InstanceIdHash::from_path_and_index(
@@ -457,14 +472,15 @@ impl Scene2D {
             points,
             lines,
             hoverable_rects: _,
-            rect_labels,
+            labels,
+            hoverable_points: _,
         } = self;
 
         images.is_empty()
             && lines.is_empty()
             && line_segments.is_empty()
             && points.is_empty()
-            && rect_labels.is_empty()
+            && labels.is_empty()
     }
 }
 
@@ -475,10 +491,11 @@ pub struct ObjectPaintProperties {
     pub fg_stroke: Stroke,
 }
 
-fn paint_properties(color: [u8; 4], stroke_width: &Option<f32>) -> ObjectPaintProperties {
+// TODO: remove
+fn paint_properties(color: [u8; 4], stroke_width: Option<&f32>) -> ObjectPaintProperties {
     let bg_color = Color32::from_black_alpha(196);
     let fg_color = to_egui_color(color);
-    let stroke_width = stroke_width.unwrap_or(1.5);
+    let stroke_width = stroke_width.map_or(1.5, |w| *w);
     let bg_stroke = Stroke::new(stroke_width + 2.0, bg_color);
     let fg_stroke = Stroke::new(stroke_width, fg_color);
 

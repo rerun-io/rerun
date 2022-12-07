@@ -6,14 +6,14 @@ use egui::{
 use itertools::Itertools;
 use re_data_store::{InstanceId, InstanceIdHash, ObjPath};
 use re_renderer::{
-    renderer::{PointCloudDrawData, PointCloudPoint, RectangleDrawData},
+    renderer::{PointCloudDrawData, RectangleDrawData},
     view_builder::{TargetConfiguration, ViewBuilder},
     RenderContext, Size,
 };
 
 use crate::{misc::HoveredSpace, Selection, ViewerContext};
 
-use super::{Image, LineSegments2D, ObjectPaintProperties, Point2D, Scene2D};
+use super::{Image, LineSegments2D, ObjectPaintProperties, Scene2D};
 
 // ---
 
@@ -282,7 +282,8 @@ fn hover_effect(scene: &mut Scene2D, hovered: InstanceIdHash) {
         points,
         lines,
         hoverable_rects: _,
-        rect_labels: _,
+        labels,
+        hoverable_points,
     } = scene;
 
     for obj in images {
@@ -296,16 +297,9 @@ fn hover_effect(scene: &mut Scene2D, hovered: InstanceIdHash) {
             apply_hover_effect(&mut obj.paint_props);
         }
     }
-    for obj in points {
-        if obj.instance_hash == hovered {
-            apply_hover_effect(&mut obj.paint_props);
-            if let Some(radius) = &mut obj.radius {
-                *radius *= 2.0;
-            }
-        }
-    }
 }
 
+// TODO: this is a temp dupl
 fn apply_hover_effect(paint_props: &mut ObjectPaintProperties) {
     paint_props.bg_stroke.width *= 2.0;
     paint_props.bg_stroke.color = Color32::BLACK;
@@ -519,30 +513,67 @@ fn view_2d_scrollable(
     }
 
     if let Some(pointer_pos) = pointer_pos {
+        // TODO: cursor should be in scene coordinates.
+
         for (bbox, instance_hash) in &scene.hoverable_rects {
-            // TODO: cursor should be in scene coordinates.
             let rect_in_ui =
                 ui_from_space.transform_rect(Rect::from_min_max(bbox.min.into(), bbox.max.into()));
             check_hovering(*instance_hash, rect_in_ui.distance_to_pos(pointer_pos));
         }
+
+        for (point, instance_hash) in &scene.hoverable_points {
+            let pos_in_ui = ui_from_space.transform_pos(*point);
+            check_hovering(*instance_hash, pos_in_ui.distance(pointer_pos));
+        }
     }
 
-    for rect_label in &scene.rect_labels {
-        let rect_in_ui = ui_from_space.transform_rect(rect_label.labled_rect);
+    // Add egui driven labels on top of re_renderer content.
+    for label in &scene.labels {
+        let (wrap_width, text_anchor_pos) = match label.target {
+            super::scene::LabelTarget::Rect(rect) => {
+                let rect_in_ui = ui_from_space.transform_rect(rect);
+                (
+                    // Place the text centered below the rect
+                    (rect_in_ui.width() - 4.0).at_least(60.0),
+                    rect_in_ui.center_bottom() + vec2(0.0, 3.0),
+                )
+            }
+            super::scene::LabelTarget::Point(pos) => {
+                let pos_in_ui = ui_from_space.transform_pos(pos);
+                (f32::INFINITY, pos_in_ui + vec2(0.0, 3.0))
+            }
+        };
 
-        // Place the text centered below the rect
-        let rect = add_label(
-            parent_ui,
-            &rect_label.text,
-            rect_label.color,
-            (rect_in_ui.width() - 4.0).at_least(60.0),
-            rect_in_ui.center_bottom() + vec2(0.0, 3.0),
-            &mut label_shapes,
-        );
+        let font_id = TextStyle::Body.resolve(parent_ui.style());
+        let galley = parent_ui.fonts().layout_job({
+            egui::text::LayoutJob {
+                sections: vec![egui::text::LayoutSection {
+                    leading_space: 0.0,
+                    byte_range: 0..label.text.len(),
+                    format: TextFormat::simple(font_id, label.color),
+                }],
+                text: label.text.clone(),
+                wrap: TextWrapping {
+                    max_width: wrap_width,
+                    ..Default::default()
+                },
+                break_on_newline: true,
+                halign: Align::Center,
+                ..Default::default()
+            }
+        });
+
+        let text_rect =
+            Align2::CENTER_TOP.anchor_rect(Rect::from_min_size(text_anchor_pos, galley.size()));
+        let bg_rect = text_rect.expand2(vec2(4.0, 2.0));
+
+        label_shapes.push(Shape::rect_filled(bg_rect, 3.0, BACKGROUND_COLOR));
+        label_shapes.push(Shape::galley(text_rect.center_top(), galley));
+
         if let Some(pointer_pos) = pointer_pos {
             check_hovering(
-                rect_label.labled_instance,
-                rect.distance_to_pos(pointer_pos).abs(),
+                label.labled_instance,
+                bg_rect.distance_to_pos(pointer_pos).abs(),
             );
         }
     }
@@ -591,52 +622,6 @@ fn view_2d_scrollable(
         check_hovering(*instance_hash, min_dist_sq.sqrt());
     }
 
-    let mut render_points = Vec::with_capacity(scene.points.capacity() * 2);
-    for point in &scene.points {
-        let Point2D {
-            instance_hash,
-            pos,
-            radius,
-            paint_props,
-            label,
-        } = point;
-
-        let radius = radius.unwrap_or(1.5);
-
-        // TODO(andreas): Make point renderer support an outline of one ui-point. Note that background color is hardcoded to Color32::from_black_alpha(196);
-        let depth = line_builder.next_2d_z; // put the points in front of all the lines we have so far.
-        render_points.push(PointCloudPoint {
-            position: glam::vec3(pos.x, pos.y, depth),
-            radius: Size::new_points(radius + 1.0),
-            color: paint_props.bg_stroke.color,
-        });
-        render_points.push(PointCloudPoint {
-            position: glam::vec3(pos.x, pos.y, depth - 0.1),
-            radius: Size::new_points(radius),
-            color: paint_props.fg_stroke.color,
-        });
-
-        let pos_in_ui = ui_from_space.transform_pos(*pos);
-
-        if let Some(label) = label {
-            let rect = add_label(
-                parent_ui,
-                label,
-                paint_props.fg_stroke.color,
-                f32::INFINITY,
-                pos_in_ui + vec2(0.0, 3.0),
-                &mut label_shapes,
-            );
-            if let Some(pointer_pos) = pointer_pos {
-                check_hovering(*instance_hash, rect.distance_to_pos(pointer_pos).abs());
-            }
-        }
-
-        if let Some(pointer_pos) = pointer_pos {
-            check_hovering(*instance_hash, pos_in_ui.distance(pointer_pos));
-        }
-    }
-
     // ------------------------------------------------------------------------
 
     // Draw a re_renderer driven view.
@@ -657,7 +642,7 @@ fn view_2d_scrollable(
         let command_buffer = view_builder
             .queue_draw(&line_builder.to_draw_data(ctx.render_ctx))
             .queue_draw(&scene.lines.to_draw_data(ctx.render_ctx))
-            .queue_draw(&PointCloudDrawData::new(ctx.render_ctx, &render_points).unwrap())
+            .queue_draw(&PointCloudDrawData::new(ctx.render_ctx, &scene.points).unwrap())
             .queue_draw(
                 &RectangleDrawData::new(ctx.render_ctx, &renderer_filled_rectangles).unwrap(),
             )
