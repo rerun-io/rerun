@@ -25,18 +25,16 @@ jobs:
     runs-on: ubuntu-latest-16-cores
     container:
       image: jleibsrerun/ci_docker:0.1
+      env:
+        RUSTFLAGS: $RUSTFLAGS
+        RUSTDOCFLAGS: $RUSTDOCFLAGS
     steps:
       - uses: actions/checkout@v2
 
-      #- uses: actions-rs/toolchain@v1
-        #with:
-          #profile: minimal
-          #toolchain: 1.65.0
-          #override: true
-          #components: rustfmt, clippy
-
-      # - name: Set up cargo cache
-      #   uses: Swatinem/rust-cache@v2
+      - name: Set up cargo cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          env-vars: CARGO CC CFLAGS CXX CMAKE RUST CACHE_KEY
 
       - name: Rustfmt
         uses: actions-rs/cargo@v1
@@ -93,6 +91,9 @@ jobs:
     runs-on: ubuntu-latest-16-cores
     container:
       image: jleibsrerun/ci_docker:0.1
+      env:
+        RUSTFLAGS: $RUSTFLAGS
+        RUSTDOCFLAGS: $RUSTDOCFLAGS
     steps:
       - uses: actions/checkout@v2
 
@@ -103,8 +104,10 @@ jobs:
           target: wasm32-unknown-unknown
           override: true
 
-      # - name: Set up cargo cache
-      #   uses: Swatinem/rust-cache@v2
+      - name: Set up cargo cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          env-vars: CARGO CC CFLAGS CXX CMAKE RUST CACHE_KEY
 
       - name: Check re_viewer wasm32
         uses: actions-rs/cargo@v1
@@ -127,6 +130,9 @@ jobs:
     runs-on: ubuntu-latest-16-cores
     container:
       image: jleibsrerun/ci_docker:0.1
+      env:
+        RUSTFLAGS: $RUSTFLAGS
+        RUSTDOCFLAGS: $RUSTDOCFLAGS
     steps:
       - uses: actions/checkout@v2
 
@@ -151,15 +157,10 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      #- uses: actions-rs/toolchain@v1
-        #with:
-          #profile: minimal
-          #toolchain: 1.65.0
-          #override: true
-          #components: rustfmt
-
-      # - name: Set up cargo cache
-      #   uses: Swatinem/rust-cache@v2
+      - name: Set up cargo cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          env-vars: CARGO CC CFLAGS CXX CMAKE RUST CACHE_KEY
 
       - name: Build wheels
         run: maturin build -m rerun_py/Cargo.toml -o dist

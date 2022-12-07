@@ -33,3 +33,6 @@ RUN pip install -r requirements-build.txt
 
 # Install some additional versioned cargo tools
 RUN cargo install wasm-bindgen-cli@0.2.83
+
+# Increment this to invalidate cache
+ENV CACHE_KEY=rerun_docker_v0.1
