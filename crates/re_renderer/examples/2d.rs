@@ -25,10 +25,10 @@ impl framework::Example for Render2D {
 
         let mut image_data = rerun_logo.as_rgba8().unwrap().to_vec();
 
-        // Premultiply alpha (not doing any alpha blending, so this will look better on a black ground).
+        // Premultiply alpha.
         for color in image_data.chunks_exact_mut(4) {
             color.clone_from_slice(
-                &epaint::Color32::from_rgba_unmultiplied(color[0], color[1], color[2], color[3])
+                &ecolor::Color32::from_rgba_unmultiplied(color[0], color[1], color[2], color[3])
                     .to_array(),
             );
         }

@@ -65,7 +65,6 @@ wgpu = { version = "0.14", default-features = false, features = [
 ## Examples
 
 [dev-dependencies]
-epaint = "0.19"
 image = { version = "0.24", default-features = false, features = ["png"] }
 instant = { version = "0.1", features = ["wasm-bindgen"] }
 log = "0.4"

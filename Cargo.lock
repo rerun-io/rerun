@@ -3725,7 +3725,6 @@ dependencies = [
  "console_error_panic_hook",
  "crossbeam",
  "ecolor",
- "epaint",
  "getrandom",
  "glam",
  "glob",
