@@ -11,6 +11,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
+  IMAGE: rerunio/ci_docker:0.1
   # web_sys_unstable_apis is required to enable the web_sys clipboard API which egui_web uses
   # https://rustwasm.github.io/wasm-bindgen/api/web_sys/struct.Clipboard.html
   # https://rustwasm.github.io/docs/wasm-bindgen/web-sys/unstable-apis.html
@@ -24,7 +25,7 @@ jobs:
     name: Rust lints (fmt, check, cranky, tests, doc)
     runs-on: ubuntu-latest-16-cores
     container:
-      image: jleibsrerun/ci_docker:0.1
+      image: ${{env.IMAGE}}
       env:
         RUSTFLAGS: ${{env.RUSTFLAGS}}
         RUSTDOCFLAGS: ${{env.RUSTDOCFLAGS}}
@@ -90,7 +91,7 @@ jobs:
     name: Check Rust web build (wasm32 + wasm-bindgen)
     runs-on: ubuntu-latest-16-cores
     container:
-      image: jleibsrerun/ci_docker:0.1
+      image: ${{env.IMAGE}}
       env:
         RUSTFLAGS: ${{env.RUSTFLAGS}}
         RUSTDOCFLAGS: ${{env.RUSTDOCFLAGS}}
@@ -129,7 +130,7 @@ jobs:
     name: Check Rust dependencies (cargo-deny)
     runs-on: ubuntu-latest-16-cores
     container:
-      image: jleibsrerun/ci_docker:0.1
+      image: ${{env.IMAGE}}
       env:
         RUSTFLAGS: ${{env.RUSTFLAGS}}
         RUSTDOCFLAGS: ${{env.RUSTDOCFLAGS}}
@@ -153,7 +154,7 @@ jobs:
     name: Build Rust SDK Maturin Wheel (Linux)
     runs-on: ubuntu-latest-16-cores
     container:
-      image: jleibsrerun/ci_docker:0.1
+      image: ${{env.IMAGE}}
     steps:
       - uses: actions/checkout@v2
 
