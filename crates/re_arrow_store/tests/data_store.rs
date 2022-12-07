@@ -23,74 +23,74 @@ use re_log_types::{
 
 const COMPONENT_CONFIGS: &[DataStoreConfig] = &[
     DataStoreConfig::DEFAULT,
-    // DataStoreConfig {
-    //     component_bucket_nb_rows: 0,
-    //     ..DataStoreConfig::DEFAULT
-    // },
-    // DataStoreConfig {
-    //     component_bucket_nb_rows: 1,
-    //     ..DataStoreConfig::DEFAULT
-    // },
-    // DataStoreConfig {
-    //     component_bucket_nb_rows: 2,
-    //     ..DataStoreConfig::DEFAULT
-    // },
-    // DataStoreConfig {
-    //     component_bucket_nb_rows: 3,
-    //     ..DataStoreConfig::DEFAULT
-    // },
-    // DataStoreConfig {
-    //     component_bucket_size_bytes: 0,
-    //     ..DataStoreConfig::DEFAULT
-    // },
-    // DataStoreConfig {
-    //     component_bucket_size_bytes: 16,
-    //     ..DataStoreConfig::DEFAULT
-    // },
-    // DataStoreConfig {
-    //     component_bucket_size_bytes: 32,
-    //     ..DataStoreConfig::DEFAULT
-    // },
-    // DataStoreConfig {
-    //     component_bucket_size_bytes: 64,
-    //     ..DataStoreConfig::DEFAULT
-    // },
+    DataStoreConfig {
+        component_bucket_nb_rows: 0,
+        ..DataStoreConfig::DEFAULT
+    },
+    DataStoreConfig {
+        component_bucket_nb_rows: 1,
+        ..DataStoreConfig::DEFAULT
+    },
+    DataStoreConfig {
+        component_bucket_nb_rows: 2,
+        ..DataStoreConfig::DEFAULT
+    },
+    DataStoreConfig {
+        component_bucket_nb_rows: 3,
+        ..DataStoreConfig::DEFAULT
+    },
+    DataStoreConfig {
+        component_bucket_size_bytes: 0,
+        ..DataStoreConfig::DEFAULT
+    },
+    DataStoreConfig {
+        component_bucket_size_bytes: 16,
+        ..DataStoreConfig::DEFAULT
+    },
+    DataStoreConfig {
+        component_bucket_size_bytes: 32,
+        ..DataStoreConfig::DEFAULT
+    },
+    DataStoreConfig {
+        component_bucket_size_bytes: 64,
+        ..DataStoreConfig::DEFAULT
+    },
 ];
 
 const INDEX_CONFIGS: &[DataStoreConfig] = &[
-    // DataStoreConfig::DEFAULT,
-    // DataStoreConfig {
-    //     index_bucket_nb_rows: 0,
-    //     ..DataStoreConfig::DEFAULT
-    // },
+    DataStoreConfig::DEFAULT,
+    DataStoreConfig {
+        index_bucket_nb_rows: 0,
+        ..DataStoreConfig::DEFAULT
+    },
     DataStoreConfig {
         index_bucket_nb_rows: 1,
         ..DataStoreConfig::DEFAULT
     },
-    // DataStoreConfig {
-    //     index_bucket_nb_rows: 2,
-    //     ..DataStoreConfig::DEFAULT
-    // },
-    // DataStoreConfig {
-    //     index_bucket_nb_rows: 3,
-    //     ..DataStoreConfig::DEFAULT
-    // },
-    // DataStoreConfig {
-    //     index_bucket_size_bytes: 0,
-    //     ..DataStoreConfig::DEFAULT
-    // },
-    // DataStoreConfig {
-    //     index_bucket_size_bytes: 16,
-    //     ..DataStoreConfig::DEFAULT
-    // },
-    // DataStoreConfig {
-    //     index_bucket_size_bytes: 32,
-    //     ..DataStoreConfig::DEFAULT
-    // },
-    // DataStoreConfig {
-    //     index_bucket_size_bytes: 64,
-    //     ..DataStoreConfig::DEFAULT
-    // },
+    DataStoreConfig {
+        index_bucket_nb_rows: 2,
+        ..DataStoreConfig::DEFAULT
+    },
+    DataStoreConfig {
+        index_bucket_nb_rows: 3,
+        ..DataStoreConfig::DEFAULT
+    },
+    DataStoreConfig {
+        index_bucket_size_bytes: 0,
+        ..DataStoreConfig::DEFAULT
+    },
+    DataStoreConfig {
+        index_bucket_size_bytes: 16,
+        ..DataStoreConfig::DEFAULT
+    },
+    DataStoreConfig {
+        index_bucket_size_bytes: 32,
+        ..DataStoreConfig::DEFAULT
+    },
+    DataStoreConfig {
+        index_bucket_size_bytes: 64,
+        ..DataStoreConfig::DEFAULT
+    },
 ];
 
 fn all_configs() -> impl Iterator<Item = DataStoreConfig> {
@@ -334,7 +334,11 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
         // Expected: data at that point in time.
         (
             frame41,
-            vec![("instances", frame41.into()), ("rects", frame41.into())],
+            vec![
+                ("instances", frame41.into()),
+                ("rects", frame41.into()),
+                // don't fold pls
+            ],
         ),
         // Scenario: query all components at frame #42 (i.e. second frame with data)
         // Expected: data at that point in time.
@@ -368,7 +372,7 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
         ),
     ];
 
-    for (frame_nr, expected) in scenarios {
+    for (frame_nr, expected) in scenarios.into_iter() {
         tracker.assert_scenario(
             store,
             &timeline_frame_nr,
@@ -438,6 +442,7 @@ impl DataTracker {
         // eprintln!("inserting into '{ent_path}':\nschema: {schema:#?}\ncomponents: {components:#?}");
         // eprintln!("---\ninserting into '{ent_path}': [log_time, frame_nr], [rects]");
         store.insert(&schema, &components).unwrap();
+        store.sort_indices();
         // eprintln!("{store}");
     }
 
@@ -462,7 +467,8 @@ impl DataTracker {
         let expected = DataFrame::new(series).unwrap();
         let expected = expected.explode(expected.get_column_names()).unwrap();
 
-        assert_eq!(expected, df);
+        store.sort_indices();
+        assert_eq!(expected, df, "\n{store}");
     }
 }
 

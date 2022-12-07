@@ -194,8 +194,9 @@ impl IndexTable {
         let len = bucket.total_rows();
         let len_overflow = len >= config.index_bucket_nb_rows;
 
-        // TODO: edge case of death
-        if size_overflow || len_overflow {
+        // TODO: explain!!
+        let can_split = !bucket.times.values().binary_search(&time.as_i64()).is_ok();
+        if can_split && (size_overflow || len_overflow) {
             debug!(
                 kind = "insert",
                 timeline = %timeline.name(),
@@ -208,12 +209,7 @@ impl IndexTable {
                 "allocating new index bucket, previous one overflowed"
             );
 
-            let half_row = bucket.find_half_row();
-            if bucket.times.values()[half_row] == time.as_i64() {
-                panic!("there you go");
-            }
-
-            if let Some(second_half) = bucket.split() {
+            if let Some(second_half) = bucket.split(time) {
                 self.buckets.insert(second_half.time_range.min, second_half);
                 return self.insert(config, time, indices);
             }
@@ -287,14 +283,13 @@ impl IndexBucket {
     /// Splits the bucket in two (if possible), returning the second half.
     ///
     /// Returns `None` if the bucket is already too small to be splitted any further.
-    pub fn split(&mut self) -> Option<Self> {
+    pub fn split(&mut self, time: TimeInt) -> Option<Self> {
         if self.times.len() < 2 {
             return None; // early exit: can't split the unsplittable
         }
 
-        // TODO: debug log some more info about the split maybe
-
         self.sort_indices();
+        let half_row = self.find_half_row();
 
         // Used down the line to assert that we've left everything in a sane state.
         #[cfg(debug_assertions)]
@@ -309,18 +304,6 @@ impl IndexBucket {
         } = self;
 
         let timeline = *timeline;
-        // TODO: explain forward walk (and maybe express in a better way)
-        let half_row = {
-            let times = times1.values();
-
-            let mut half_row = times1.len() / 2;
-            let time = times[half_row];
-            while half_row + 1 < times.len() && times[half_row] == time {
-                half_row += 1;
-            }
-
-            half_row
-        };
 
         // split existing time range in two, and create new time tange for the second half
         let time_range2 = TimeRange::new(times1.values()[half_row].into(), time_range1.max);

@@ -716,7 +716,7 @@ impl ComponentTable {
             for row_ranges in row_ranges.windows(2) {
                 let &[r1, r2] = &row_ranges else { unreachable!() };
                 ensure!(
-                    r1.end < r2.start,
+                    !r1.contains(&r2.start),
                     "found overlapping component buckets: {r1:?} <-> {r2:?}"
                 );
             }
