@@ -164,6 +164,12 @@ impl View3DState {
             self.orbit_eye = Some(target);
         }
     }
+
+    pub fn hovered_instance_hash(&self) -> InstanceIdHash {
+        self.hovered_instance
+            .as_ref()
+            .map_or(InstanceIdHash::NONE, |i| i.hash())
+    }
 }
 
 #[derive(Clone)]
@@ -349,7 +355,14 @@ pub(crate) fn view_3d(
     let orbit_eye = *orbit_eye;
     let eye = orbit_eye.to_eye();
 
-    scene.add_cameras(ctx, &state.scene_bbox, rect.size(), &eye, space_cameras);
+    scene.add_cameras(
+        ctx,
+        &state.scene_bbox,
+        rect.size(),
+        &eye,
+        space_cameras,
+        state.hovered_instance_hash(),
+    );
 
     if did_interact_wth_eye {
         state.last_eye_interact_time = ui.input().time;
@@ -412,8 +425,6 @@ pub(crate) fn view_3d(
             ui.ctx().request_repaint(); // let it fade out
         }
     }
-
-    scene.finalize_sizes_and_colors(hovered_instance.map_or(InstanceIdHash::NONE, |id| id.hash()));
 
     paint_view(ui, eye, rect, &scene, ctx.render_ctx, &space.to_string());
 
