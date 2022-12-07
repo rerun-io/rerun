@@ -82,6 +82,8 @@ impl ArrowSerialize for TimePoint {
     }
 }
 
+// ----------------------------------------------------------------------------
+
 pub struct TimePointIterator<'a> {
     time_points: <&'a ListArray<i32> as IntoIterator>::IntoIter,
 }
@@ -133,6 +135,7 @@ impl<'a> Iterator for TimePointIterator<'a> {
     }
 }
 
+// ----------------------------------------------------------------------------
 pub struct TimePointArray;
 
 impl<'a> IntoIterator for &'a TimePointArray {
