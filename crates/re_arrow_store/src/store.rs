@@ -65,7 +65,7 @@ pub struct DataStoreConfig {
     /// larger than the threshold, then that bucket will become larger than the threshold, and
     /// we will split from there on.
     ///
-    /// See [`Self::const_default`] for defaults.
+    /// See [`Self::DEFAULT`] for defaults.
     pub index_bucket_size_bytes: u64,
     /// The maximum number of rows in a component bucket before triggering a split.
     ///
@@ -79,7 +79,7 @@ pub struct DataStoreConfig {
     /// The lower the size, the more fine-grained the garbage collection is and smaller the
     /// number of rows to sort gets, at the cost of more metadata overhead.
     ///
-    /// See [`Self::const_default`] for defaults.
+    /// See [`Self::DEFAULT`] for defaults.
     pub index_bucket_nb_rows: u64,
 }
 
