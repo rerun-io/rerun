@@ -446,7 +446,7 @@ fn view_2d_scrollable(
             texture: tensor_view.texture_handle.clone(),
             texture_filter_magnification: re_renderer::renderer::TextureFilterMag::Nearest,
             texture_filter_minification: re_renderer::renderer::TextureFilterMin::Linear,
-            multiplicative_tint: tint.to_array().into(),
+            multiplicative_tint: tint.into(),
         });
 
         if *is_hovered {

@@ -244,8 +244,8 @@ fn tensor_to_dynamic_image(
     type Rgb16Image = image::ImageBuffer<image::Rgb<u16>, Vec<u16>>;
     type Rgba16Image = image::ImageBuffer<image::Rgba<u16>, Vec<u16>>;
 
-    use egui::epaint::color::gamma_u8_from_linear_f32;
-    use egui::epaint::color::linear_u8_from_linear_f32;
+    use egui::epaint::ecolor::gamma_u8_from_linear_f32;
+    use egui::epaint::ecolor::linear_u8_from_linear_f32;
 
     match &tensor.data {
         TensorDataStore::Dense(bytes) => {

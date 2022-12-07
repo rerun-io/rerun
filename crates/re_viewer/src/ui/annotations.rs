@@ -187,6 +187,6 @@ lazy_static! {
 pub fn auto_color(val: u16) -> [u8; 4] {
     let golden_ratio = (5.0_f32.sqrt() - 1.0) / 2.0; // 0.61803398875
     let h = val as f32 * golden_ratio;
-    let color = egui::Color32::from(egui::color::Hsva::new(h, 0.85, 0.5, 1.0));
+    let color = egui::Color32::from(egui::ecolor::Hsva::new(h, 0.85, 0.5, 1.0));
     color.to_array()
 }
