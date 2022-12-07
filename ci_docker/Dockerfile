@@ -28,7 +28,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     rm -rf /var/lib/apt/lists/*
 
 # Install the python build dependencies
-ADD requirements-build.txt requirements-build.txt
+ADD rerun_py/requirements-build.txt requirements-build.txt
 RUN pip install -r requirements-build.txt
 
 # Install some additional versioned cargo tools
