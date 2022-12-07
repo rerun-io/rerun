@@ -21,7 +21,7 @@ use re_log_types::{
 
 // ---
 
-const TEST_CONFIGS: &[DataStoreConfig] = &[
+const COMPONENT_CONFIGS: &[DataStoreConfig] = &[
     DataStoreConfig::DEFAULT,
     DataStoreConfig {
         component_bucket_nb_rows: 0,
@@ -55,6 +55,10 @@ const TEST_CONFIGS: &[DataStoreConfig] = &[
         component_bucket_size_bytes: 64,
         ..DataStoreConfig::DEFAULT
     },
+];
+
+const INDEX_CONFIGS: &[DataStoreConfig] = &[
+    DataStoreConfig::DEFAULT,
     DataStoreConfig {
         index_bucket_nb_rows: 0,
         ..DataStoreConfig::DEFAULT
@@ -87,8 +91,18 @@ const TEST_CONFIGS: &[DataStoreConfig] = &[
         index_bucket_size_bytes: 64,
         ..DataStoreConfig::DEFAULT
     },
-    // TODO: both
 ];
+
+fn all_configs() -> impl Iterator<Item = DataStoreConfig> {
+    COMPONENT_CONFIGS.into_iter().flat_map(|comp| {
+        INDEX_CONFIGS.into_iter().map(|idx| DataStoreConfig {
+            component_bucket_size_bytes: comp.component_bucket_size_bytes,
+            component_bucket_nb_rows: comp.component_bucket_nb_rows,
+            index_bucket_size_bytes: idx.index_bucket_size_bytes,
+            index_bucket_nb_rows: idx.index_bucket_nb_rows,
+        })
+    })
+}
 
 // --- Scenarios ---
 
@@ -96,7 +110,7 @@ const TEST_CONFIGS: &[DataStoreConfig] = &[
 fn empty_query_edge_cases() {
     init_logs();
 
-    for config in TEST_CONFIGS {
+    for config in all_configs() {
         let mut store = DataStore::new(config.clone());
         empty_query_edge_cases_impl(&mut store);
     }
@@ -237,7 +251,7 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
 fn end_to_end_roundtrip_standard() {
     init_logs();
 
-    for config in TEST_CONFIGS {
+    for config in all_configs() {
         let mut store = DataStore::new(config.clone());
         end_to_end_roundtrip_standard_impl(&mut store);
     }
