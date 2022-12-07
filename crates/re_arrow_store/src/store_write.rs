@@ -247,16 +247,8 @@ impl IndexBucket {
             }
         }
 
-        // All indices (+ time!) should always have the exact same length.
         #[cfg(debug_assertions)]
-        {
-            let expected_len = self.times.len();
-            assert!(self
-                .indices
-                .values()
-                .map(|index| index.len())
-                .all(|len| len == expected_len));
-        }
+        self.sanity_check().unwrap();
 
         // TODO(#433): re_datastore: properly handle already sorted data during insertion
         self.is_sorted = false;
@@ -374,24 +366,8 @@ impl IndexBucket {
         // sanity checks
         #[cfg(debug_assertions)]
         {
-            // All indices (+ time!) should always have the exact same length..
-            {
-                let expected_len = self.times.len();
-                assert!(self
-                    .indices
-                    .values()
-                    .map(|index| index.len())
-                    .all(|len| len == expected_len));
-            }
-            // ..and that's true for both halves!
-            {
-                let expected_len = second_half.times.len();
-                assert!(second_half
-                    .indices
-                    .values()
-                    .map(|index| index.len())
-                    .all(|len| len == expected_len));
-            }
+            self.sanity_check().unwrap();
+            second_half.sanity_check().unwrap();
 
             let total_rows1 = self.total_rows() as i64;
             let total_rows2 = second_half.total_rows() as i64;

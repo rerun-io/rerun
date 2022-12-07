@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::sync::Arc;
 
+use anyhow::ensure;
 use arrow2::array::{Array, Int64Vec, MutableArray, UInt64Vec};
 use arrow2::bitmap::MutableBitmap;
 use arrow2::datatypes::DataType;
@@ -161,6 +162,50 @@ impl DataStore {
             .values()
             .map(|table| table.total_size_bytes())
             .sum()
+    }
+
+    /// Runs the sanity check suite for the entire datastore.
+    ///
+    /// Panics if anything looks wrong.
+    pub fn sanity_check(&self) -> anyhow::Result<()> {
+        // Row indices should be continuous across all index tables.
+        // TODO(#449): update this one appropriately when GC lands.
+        {
+            let mut row_indices: HashMap<_, Vec<RowIndex>> = HashMap::new();
+            for table in self.indices.values() {
+                for bucket in table.buckets.values() {
+                    for (comp, index) in &bucket.indices {
+                        row_indices
+                            .entry(comp)
+                            .and_modify(|row_indices| row_indices.extend(index.values()))
+                            .or_default();
+                    }
+                }
+            }
+
+            for (comp, mut row_indices) in row_indices {
+                row_indices.sort();
+                row_indices.dedup();
+                for pair in row_indices.windows(2) {
+                    let &[i1, i2] = pair else { unreachable!() };
+                    ensure!(
+                        i1 + 1 == i2,
+                        "found hole in index coverage for {comp:?}: \
+                            in {row_indices:?}, {i1} -> {i2}"
+                    );
+                }
+            }
+        }
+
+        for table in self.indices.values() {
+            table.sanity_check()?;
+        }
+
+        for table in self.components.values() {
+            table.sanity_check()?;
+        }
+
+        Ok(())
     }
 }
 
@@ -339,6 +384,34 @@ impl IndexTable {
             .map(|(_, bucket)| bucket.total_size_bytes())
             .sum()
     }
+
+    /// Runs the sanity check suite for the entire table.
+    ///
+    /// Panics if anything looks wrong.
+    pub fn sanity_check(&self) -> anyhow::Result<()> {
+        // No two buckets should ever overlap time-range-wise.
+        {
+            let time_ranges = self
+                .buckets
+                .values()
+                .map(|bucket| bucket.time_range)
+                .collect::<Vec<_>>();
+            for time_ranges in time_ranges.windows(2) {
+                let &[t1, t2] = time_ranges else { unreachable!() };
+                ensure!(
+                    t1.max.as_i64() < t2.min.as_i64(),
+                    "found overlapping index buckets: {t1:?} <-> {t2:?}"
+                );
+            }
+        }
+
+        // Run individual bucket sanity check suites too.
+        for bucket in self.buckets.values() {
+            bucket.sanity_check()?;
+        }
+
+        Ok(())
+    }
 }
 
 /// An `IndexBucket` holds a size-delimited (data size and/or number of rows) chunk of a
@@ -468,6 +541,28 @@ impl IndexBucket {
                 .map(|index| size_of_validity(index.validity()) + size_of_values(index.values()))
                 .sum::<u64>()
     }
+
+    /// Runs the sanity check suite for the entire bucket.
+    ///
+    /// Panics if anything looks wrong.
+    pub fn sanity_check(&self) -> anyhow::Result<()> {
+        // All indices should contain the exact same number of rows as the time index.
+        {
+            let primary_len = self.times.len();
+            for (comp, index) in &self.indices {
+                let secondary_len = index.len();
+                if secondary_len != primary_len {
+                    ensure!(
+                        primary_len == secondary_len,
+                        "found rogue secondary index for {comp:?}: \
+                            expected {primary_len} rows, got {secondary_len} instead",
+                    );
+                }
+            }
+        }
+
+        Ok(())
+    }
 }
 
 // --- Components ---
@@ -596,6 +691,29 @@ impl ComponentTable {
             .iter()
             .map(|bucket| bucket.total_size_bytes())
             .sum()
+    }
+
+    /// Runs the sanity check suite for the entire table.
+    ///
+    /// Panics if anything looks wrong.
+    pub fn sanity_check(&self) -> anyhow::Result<()> {
+        // No two buckets should ever overlap row-range-wise.
+        {
+            let row_ranges = self
+                .buckets
+                .iter()
+                .map(|bucket| bucket.row_offset..bucket.row_offset + bucket.total_rows())
+                .collect::<Vec<_>>();
+            for row_ranges in row_ranges.windows(2) {
+                let &[r1, r2] = &row_ranges else { unreachable!() };
+                ensure!(
+                    r1.end < r2.start,
+                    "found overlapping component buckets: {r1:?} <-> {r2:?}"
+                );
+            }
+        }
+
+        Ok(())
     }
 }
 
