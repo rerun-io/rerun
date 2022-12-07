@@ -82,6 +82,16 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
     egui_style.visuals.window_stroke = egui::Stroke::NONE;
     egui_style.visuals.panel_fill = panel_bg_color;
 
+    let rounding = crate::ReUi::rounding();
+    egui_style.visuals.window_rounding = rounding.into();
+    egui_style.visuals.widgets.noninteractive.rounding = rounding.into();
+    egui_style.visuals.widgets.inactive.rounding = rounding.into();
+    egui_style.visuals.widgets.hovered.rounding = rounding.into();
+    egui_style.visuals.widgets.active.rounding = rounding.into();
+    egui_style.visuals.widgets.open.rounding = rounding.into();
+
+    egui_style.spacing.item_spacing = egui::vec2(8.0, 4.0);
+
     ctx.set_style(egui_style);
 
     DesignTokens {

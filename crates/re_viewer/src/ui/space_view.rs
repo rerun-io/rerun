@@ -112,8 +112,7 @@ impl SpaceView {
                 self.view_state.ui_tensor(ui, &scene);
             }
             ViewCategory::Text => {
-                let line_height = egui::TextStyle::Body.resolve(ui.style()).size;
-                ui.add_space(extra_headroom - line_height - ui.spacing().item_spacing.y); // we don't need the full headroom - the logs has the number of entries at the top
+                _ = extra_headroom; // ignored - the text view comes with ample padding
 
                 let mut scene = view_text::SceneText::default();
                 scene.load_objects(ctx, &query, &self.view_state.state_text.filters);
@@ -226,8 +225,14 @@ impl ViewState {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         scene: &view_text::SceneText,
-    ) -> egui::Response {
-        view_text::view_text(ctx, ui, &mut self.state_text, scene)
+    ) {
+        egui::Frame {
+            inner_margin: re_ui::ReUi::view_padding().into(),
+            ..egui::Frame::default()
+        }
+        .show(ui, |ui| {
+            view_text::view_text(ctx, ui, &mut self.state_text, scene);
+        });
     }
 
     fn ui_plot(

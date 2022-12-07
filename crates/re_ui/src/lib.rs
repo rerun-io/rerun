@@ -69,23 +69,34 @@ impl ReUi {
         false
     }
 
+    /// Margin on the side of views
+    pub fn view_padding() -> f32 {
+        16.0
+    }
+
+    /// Default border radius
+    pub fn rounding() -> f32 {
+        6.0
+    }
+
     #[allow(clippy::unused_self)]
     pub fn panel_frame(&self) -> egui::Frame {
         let style = self.egui_ctx.style();
         egui::Frame {
             fill: style.visuals.panel_fill,
-            inner_margin: egui::style::Margin::same(4.0),
+            inner_margin: Self::view_padding().into(),
             ..Default::default()
         }
     }
 
+    /// Used for the hovering controls over a Space View
     #[allow(clippy::unused_self)]
     pub fn hovering_frame(&self) -> egui::Frame {
         let style = self.egui_ctx.style();
         egui::Frame {
             inner_margin: egui::style::Margin::same(2.0),
             outer_margin: egui::style::Margin::same(4.0),
-            rounding: 4.0.into(),
+            rounding: Self::rounding().into(),
             fill: style.visuals.window_fill(),
             stroke: style.visuals.window_stroke(),
             ..Default::default()

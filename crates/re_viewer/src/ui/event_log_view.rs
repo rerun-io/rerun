@@ -15,19 +15,25 @@ impl EventLogView {
     pub fn ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         crate::profile_function!();
 
-        ui.label(format!("{} log lines", format_number(ctx.log_db.len())));
-        ui.separator();
-
         let messages = {
             crate::profile_scope!("Collecting messages");
             ctx.log_db.chronological_log_messages().collect_vec()
         };
 
-        egui::ScrollArea::horizontal()
-            .auto_shrink([false; 2])
-            .show(ui, |ui| {
-                message_table(ctx, ui, &messages);
-            });
+        egui::Frame {
+            inner_margin: re_ui::ReUi::view_padding().into(),
+            ..egui::Frame::default()
+        }
+        .show(ui, |ui| {
+            ui.label(format!("{} log lines", format_number(ctx.log_db.len())));
+            ui.separator();
+
+            egui::ScrollArea::horizontal()
+                .auto_shrink([false; 2])
+                .show(ui, |ui| {
+                    message_table(ctx, ui, &messages);
+                });
+        });
     }
 }
 
