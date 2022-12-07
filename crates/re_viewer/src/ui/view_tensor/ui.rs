@@ -169,8 +169,14 @@ impl ColorMapping {
 }
 
 fn color_mapping_ui(ui: &mut egui::Ui, color_mapping: &mut ColorMapping) {
+    ui.group(|ui| {
+        ui.strong("Color map");
+
     ui.horizontal(|ui| {
-        ui.label("Color map:");
+            ui.radio_value(&mut color_mapping.turbo, false, "Grayscale");
+            ui.radio_value(&mut color_mapping.turbo, true, "Turbo");
+        });
+
         let mut brightness = 1.0 / color_mapping.gamma;
         ui.add(
             egui::Slider::new(&mut brightness, 0.1..=10.0)
@@ -178,7 +184,6 @@ fn color_mapping_ui(ui: &mut egui::Ui, color_mapping: &mut ColorMapping) {
                 .text("Brightness"),
         );
         color_mapping.gamma = 1.0 / brightness;
-        ui.checkbox(&mut color_mapping.turbo, "Turbo colormap");
     });
 }
 
