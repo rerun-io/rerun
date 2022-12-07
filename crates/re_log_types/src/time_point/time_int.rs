@@ -2,7 +2,7 @@ use crate::time::{Duration, Time};
 
 /// Either nanoseconds or sequence numbers.
 ///
-/// Must be matched with a [`TimeType`] to know what.
+/// Must be matched with a [`crate::TimeType`] to know what.
 ///
 /// Used both for time points and durations.
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
