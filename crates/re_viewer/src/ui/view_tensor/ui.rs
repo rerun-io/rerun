@@ -189,13 +189,13 @@ fn color_mapping_ui(ui: &mut egui::Ui, color_mapping: &mut ColorMapping) {
 enum TextureScaling {
     /// No scaling, texture size will match the tensor's width/height dimensions.
     None,
-    /// Scale the texture to fill the remaining space in the UI container.
-    Fill,
+    /// Scale the texture for the largest possible fit in the UI container.
+    Fit,
 }
 
 impl Default for TextureScaling {
     fn default() -> Self {
-        Self::Fill
+        Self::Fit
     }
 }
 
@@ -203,7 +203,7 @@ impl Display for TextureScaling {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             TextureScaling::None => "None".fmt(f),
-            TextureScaling::Fill => "Fill".fmt(f),
+            TextureScaling::Fit => "Fit".fmt(f),
         }
     }
 }
@@ -247,7 +247,7 @@ impl TextureSettings {
         let img_size = Vec2::max(Vec2::splat(1.0), img_size); // better safe than sorry
         let desired_size = match self.scaling {
             TextureScaling::None => img_size + margin,
-            TextureScaling::Fill => {
+            TextureScaling::Fit => {
                 let desired_size = ui.available_size() - margin;
                 if self.keep_aspect_ratio {
                     let scale = (desired_size / img_size).min_elem();
@@ -287,7 +287,7 @@ impl TextureSettings {
                             ui.selectable_value(&mut self.scaling, e, e.to_string())
                         };
                         selectable_value(ui, TextureScaling::None);
-                        selectable_value(ui, TextureScaling::Fill);
+                        selectable_value(ui, TextureScaling::Fit);
                     });
                 ui.checkbox(&mut self.keep_aspect_ratio, "Keep aspect ratio");
             });
