@@ -442,7 +442,6 @@ impl DataTracker {
         // eprintln!("inserting into '{ent_path}':\nschema: {schema:#?}\ncomponents: {components:#?}");
         // eprintln!("---\ninserting into '{ent_path}': [log_time, frame_nr], [rects]");
         store.insert(&schema, &components).unwrap();
-        store.sort_indices();
         // eprintln!("{store}");
     }
 

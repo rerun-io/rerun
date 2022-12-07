@@ -238,7 +238,7 @@ impl std::fmt::Display for DataStore {
                     "{} index tables, for a total of {} across {} total rows\n",
                     self.indices.len(),
                     format_bytes(self.total_index_size_bytes() as _),
-                    format_usize(self.total_index_rows() as _)
+                    format_number(self.total_index_rows() as _)
                 ),
             ))?;
             f.write_str(&indent::indent_all_by(4, "indices: [\n"))?;
@@ -361,7 +361,7 @@ impl std::fmt::Display for IndexTable {
             "size: {} buckets for a total of {} across {} total rows\n",
             self.buckets.len(),
             format_bytes(self.total_size_bytes() as _),
-            format_usize(self.total_rows() as _),
+            format_number(self.total_rows() as _),
         ))?;
         f.write_str("buckets: [\n")?;
         for bucket in buckets.values() {
@@ -474,7 +474,7 @@ impl std::fmt::Display for IndexBucket {
         f.write_fmt(format_args!(
             "size: {} across {} rows\n",
             format_bytes(self.total_size_bytes() as _),
-            format_usize(self.total_rows() as _),
+            format_number(self.total_rows() as _),
         ))?;
 
         f.write_fmt(format_args!(
