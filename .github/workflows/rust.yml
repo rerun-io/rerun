@@ -25,7 +25,7 @@ jobs:
     name: Rust lints (fmt, check, cranky, tests, doc)
     runs-on: ubuntu-latest-16-cores
     container:
-      image: ${{env.IMAGE}}
+      image: $IMAGE
       env:
         RUSTFLAGS: ${{env.RUSTFLAGS}}
         RUSTDOCFLAGS: ${{env.RUSTDOCFLAGS}}
