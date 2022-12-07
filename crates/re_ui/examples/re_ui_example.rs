@@ -43,6 +43,7 @@ impl eframe::App for ExampleApp {
         });
         egui::SidePanel::right("right_panel").show_animated(egui_ctx, self.right_panel, |ui| {
             ui.label("Right panel");
+            selection_buttons(ui);
         });
         egui::TopBottomPanel::bottom("bottom_panel").show_animated(
             egui_ctx,
@@ -115,4 +116,39 @@ impl ExampleApp {
                 });
             });
     }
+}
+
+fn selection_buttons(ui: &mut egui::Ui) {
+    use egui_extras::{Size, StripBuilder};
+
+    const BUTTON_SIZE: f32 = 20.0;
+    const MIN_COMBOBOX_SIZE: f32 = 100.0;
+
+    ui.horizontal(|ui| {
+        StripBuilder::new(ui)
+            .cell_layout(egui::Layout::centered_and_justified(
+                egui::Direction::TopDown, // whatever
+            ))
+            .size(Size::exact(BUTTON_SIZE)) // prev
+            .size(Size::remainder().at_least(MIN_COMBOBOX_SIZE)) // browser
+            .size(Size::exact(BUTTON_SIZE)) // next
+            .horizontal(|mut strip| {
+                strip.cell(|ui| {
+                    let _ = ui.small_button("⏴");
+                });
+
+                strip.cell(|ui| {
+                    egui::ComboBox::from_id_source("foo")
+                        .width(ui.available_width())
+                        .selected_text("ComboBox")
+                        .show_ui(ui, |ui| {
+                            ui.label("contents");
+                        });
+                });
+
+                strip.cell(|ui| {
+                    let _ = ui.small_button("⏵");
+                });
+            });
+    });
 }
