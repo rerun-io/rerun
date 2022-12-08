@@ -100,10 +100,11 @@ pub(crate) fn message_table(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, mess
 }
 
 fn row_height(msg: &LogMsg) -> f32 {
-    match msg {
-        LogMsg::DataMsg(msg) if msg.data.data_type() == DataType::Tensor => 48.0,
-        _ => re_ui::ReUi::table_line_height(),
-    }
+    re_ui::ReUi::table_line_height()
+        * match msg {
+            LogMsg::DataMsg(msg) if msg.data.data_type() == DataType::Tensor => 3.0,
+            _ => 1.0,
+        }
 }
 
 fn table_row(
