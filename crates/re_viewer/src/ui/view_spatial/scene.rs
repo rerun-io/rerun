@@ -118,6 +118,7 @@ pub struct SceneSpatialPrimitives {
     /// Estimated bounding box of all data in scene coordinates. Accumulated.
     bounding_box: macaw::BoundingBox,
 
+    /// TODO(andreas): Need to decide of this should be used for hovering as well. If so add another builder with meta-data?
     pub textured_rectangles: Vec<re_renderer::renderer::Rectangle>,
     pub line_strips: LineStripSeriesBuilder<InstanceIdHash>,
     pub points: Vec<PointCloudPoint>,
@@ -250,7 +251,7 @@ impl SceneSpatial {
                     &time_query,
                     ("color", "radius", "label", "class_id", "keypoint_id"),
                     |instance_index: Option<&IndexHash>,
-                    time: i64,
+                     time: i64,
                      _msg_id: &MsgId,
                      pos: &[f32; 3],
                      color: Option<&[u8; 4]>,
@@ -301,7 +302,11 @@ impl SceneSpatial {
                             }
                         }
 
-                        self.primitives.points.push(PointCloudPoint { position: pos.into(), radius, color });
+                        self.primitives.points.push(PointCloudPoint {
+                            position: pos.into(),
+                            radius,
+                            color,
+                        });
                         self.primitives.point_ids.push(instance_id_hash);
                     },
                 );
@@ -310,34 +315,44 @@ impl SceneSpatial {
                     self.ui.labels_3d.extend(label_batch);
                 }
 
-                // Generate keypoint connections if any.
-                let instance_id_hash = InstanceIdHash::from_path_and_index(obj_path, IndexHash::NONE);
-                for ((class_id, _time), keypoints_in_class) in &keypoints {
-                    let Some(class_description) = annotations.context.class_map.get(class_id) else {
-                        continue;
-                    };
-
-                    let color = class_description
-                        .info
-                        .color
-                        .unwrap_or_else(|| auto_color(class_description.info.id));
-
-                    for (a, b) in &class_description.keypoint_connections {
-                        let (Some(a), Some(b)) = (keypoints_in_class.get(a), keypoints_in_class.get(b)) else {
-                            re_log::warn_once!(
-                                "Keypoint connection from index {:?} to {:?} could not be resolved in object {:?}",
-                                a, b, obj_path
-                            );
-                            continue;
-                        };
-                        self.primitives.line_strips
-                            .add_segment(*a, *b)
-                            .radius(Size::AUTO)
-                            .color(to_ecolor(color))
-                            .user_data(instance_id_hash);
-                    }
-                }
+                self.load_keypoint_connections(obj_path, keypoints, annotations);
             });
+    }
+
+    fn load_keypoint_connections(
+        &mut self,
+        obj_path: &re_data_store::ObjPath,
+        keypoints: HashMap<(ClassId, i64), HashMap<KeypointId, glam::Vec3>>,
+        annotations: Arc<Annotations>,
+    ) {
+        // Generate keypoint connections if any.
+        let instance_id_hash = InstanceIdHash::from_path_and_index(obj_path, IndexHash::NONE);
+        for ((class_id, _time), keypoints_in_class) in keypoints.into_iter() {
+            let Some(class_description) = annotations.context.class_map.get(&class_id) else {
+                continue;
+            };
+
+            let color = class_description
+                .info
+                .color
+                .unwrap_or_else(|| auto_color(class_description.info.id));
+
+            for (a, b) in &class_description.keypoint_connections {
+                let (Some(a), Some(b)) = (keypoints_in_class.get(a), keypoints_in_class.get(b)) else {
+                    re_log::warn_once!(
+                        "Keypoint connection from index {:?} to {:?} could not be resolved in object {:?}",
+                        a, b, obj_path
+                    );
+                    continue;
+                };
+                self.primitives
+                    .line_strips
+                    .add_segment(*a, *b)
+                    .radius(Size::AUTO)
+                    .color(to_ecolor(color))
+                    .user_data(instance_id_hash);
+            }
+        }
     }
 
     fn load_boxes(
@@ -756,7 +771,7 @@ impl SceneSpatial {
 
             // If keypoints ids show up we may need to connect them later!
             // We include time in the key, so that the "Visible history" (time range queries) feature works.
-            let mut keypoints: HashMap<(ClassId, i64), HashMap<KeypointId, glam::Vec2>> =
+            let mut keypoints: HashMap<(ClassId, i64), HashMap<KeypointId, glam::Vec3>> =
                 Default::default();
 
             visit_type_data_5(
@@ -787,7 +802,7 @@ impl SceneSpatial {
                             keypoints
                                 .entry((class_id, time))
                                 .or_insert_with(Default::default)
-                                .insert(keypoint_id, pos);
+                                .insert(keypoint_id, pos.extend(connection_depth));
                         }
 
                         class_description.annotation_info_with_keypoint(keypoint_id)
@@ -834,34 +849,7 @@ impl SceneSpatial {
             }
 
             // Generate keypoint connections if any.
-            let instance_hash = InstanceIdHash::from_path_and_index(obj_path, IndexHash::NONE);
-            for ((class_id, _time), keypoints_in_class) in &keypoints {
-                let Some(class_description) = annotations.context.class_map.get(class_id) else {
-                        continue;
-                    };
-
-                let color = class_description
-                    .info
-                    .color
-                    .unwrap_or_else(|| auto_color(class_description.info.id));
-
-                for (a, b) in &class_description.keypoint_connections {
-                    let (Some(a), Some(b)) = (keypoints_in_class.get(a), keypoints_in_class.get(b)) else {
-                            re_log::warn_once!(
-                                "Keypoint connection from index {:?} to {:?} could not be resolved in object {:?}",
-                                a, b, obj_path
-                            );
-                            continue;
-                        };
-                    // TODO(andreas): No outlines for these?
-                    // Specify depth explicitly so we're behind the points.
-                    self.primitives
-                        .line_strips
-                        .add_segment(a.extend(connection_depth), b.extend(connection_depth))
-                        .color(to_ecolor(color))
-                        .user_data(instance_hash);
-                }
-            }
+            self.load_keypoint_connections(obj_path, keypoints, annotations);
         }
     }
 
