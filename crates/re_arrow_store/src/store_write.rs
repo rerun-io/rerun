@@ -7,6 +7,7 @@ use arrow2::compute::concatenate::concatenate;
 use arrow2::datatypes::DataType;
 
 use re_log::debug;
+use re_log_types::msg_bundle::ComponentBundle;
 use re_log_types::{
     ComponentNameRef, ObjPath as EntityPath, TimeInt, TimePoint, TimeRange, Timeline,
 };
@@ -24,23 +25,32 @@ impl DataStore {
     /// - the entity path,
     /// - the targeted timelines & timepoints,
     /// - and all the components data.
-    pub fn insert(
+    pub fn insert<'a>(
         &mut self,
         ent_path: &EntityPath,
         time_point: &TimePoint,
-        components: impl ExactSizeIterator<Item = (ComponentNameRef<'static>, Box<dyn Array>)>,
+        components: impl ExactSizeIterator<Item = &'a ComponentBundle<'static>>,
     ) -> anyhow::Result<()> {
         // TODO(cmc): sort the "instances" component, and everything else accordingly!
         let ent_path_hash = *ent_path.hash();
 
         let mut indices = HashMap::with_capacity(components.len());
-        for (name, component) in components {
-            let table = self.components.entry(name.to_owned()).or_insert_with(|| {
-                ComponentTable::new(name.to_owned(), component.data_type().clone())
-            });
+
+        for ComponentBundle {
+            name,
+            field: _,
+            component,
+        } in components
+        {
+            let table = self
+                .components
+                .entry((*name).to_owned())
+                .or_insert_with(|| {
+                    ComponentTable::new((*name).to_owned(), component.data_type().clone())
+                });
 
             let row_idx = table.insert(&self.config, time_point.iter(), component.as_ref())?;
-            indices.insert(name, row_idx);
+            indices.insert(*name, row_idx);
         }
 
         for (timeline, time) in time_point.iter() {

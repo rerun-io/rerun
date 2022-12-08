@@ -2,6 +2,7 @@
 
 use std::collections::BTreeMap;
 
+use crate::msg_bundle::ComponentBundle;
 use crate::ENTITY_PATH_KEY;
 use crate::{
     ComponentNameRef, ObjPath as EntityPath, Time, TimeInt, TimePoint, TimeType, Timeline,
@@ -107,7 +108,7 @@ pub fn pack_timelines(
     (schema, packed)
 }
 
-pub fn build_instances(nb_instances: usize) -> (ComponentNameRef<'static>, Schema, Box<dyn Array>) {
+pub fn build_instances(nb_instances: usize) -> ComponentBundle<'static> {
     use rand::Rng as _;
     let mut rng = rand::thread_rng();
 
@@ -119,16 +120,16 @@ pub fn build_instances(nb_instances: usize) -> (ComponentNameRef<'static>, Schem
     );
     let data = wrap_in_listarray(data.boxed());
 
-    let fields = [Field::new("instances", data.data_type().clone(), false)].to_vec();
-    let schema = Schema {
-        fields,
-        ..Default::default()
-    };
+    let field = Field::new("instances", data.data_type().clone(), false);
 
-    ("instances", schema, data.boxed())
+    ComponentBundle {
+        name: "instances",
+        field,
+        component: data.boxed(),
+    }
 }
 
-pub fn build_rects(nb_instances: usize) -> (ComponentNameRef<'static>, Schema, Box<dyn Array>) {
+pub fn build_rects(nb_instances: usize) -> ComponentBundle<'static> {
     use rand::Rng as _;
     let mut rng = rand::thread_rng();
 
@@ -148,16 +149,16 @@ pub fn build_rects(nb_instances: usize) -> (ComponentNameRef<'static>, Schema, B
     };
     let data = wrap_in_listarray(data.boxed());
 
-    let fields = [Field::new("rects", data.data_type().clone(), false)].to_vec();
-    let schema = Schema {
-        fields,
-        ..Default::default()
-    };
+    let field = Field::new("rects", data.data_type().clone(), false);
 
-    ("rects", schema, data.boxed())
+    ComponentBundle {
+        name: "rects",
+        field,
+        component: data.boxed(),
+    }
 }
 
-pub fn build_positions(nb_instances: usize) -> (ComponentNameRef<'static>, Schema, Box<dyn Array>) {
+pub fn build_positions(nb_instances: usize) -> ComponentBundle<'static> {
     use rand::Rng as _;
     let mut rng = rand::thread_rng();
 
@@ -180,11 +181,11 @@ pub fn build_positions(nb_instances: usize) -> (ComponentNameRef<'static>, Schem
     };
     let data = wrap_in_listarray(data.boxed());
 
-    let fields = [Field::new("positions", data.data_type().clone(), false)].to_vec();
-    let schema = Schema {
-        fields,
-        ..Default::default()
-    };
+    let field = Field::new("positions", data.data_type().clone(), false);
 
-    ("positions", schema, data.boxed())
+    ComponentBundle {
+        name: "positions",
+        field,
+        component: data.boxed(),
+    }
 }

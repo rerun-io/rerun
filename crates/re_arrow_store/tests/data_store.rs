@@ -3,15 +3,13 @@ use std::{
     sync::atomic::{AtomicBool, Ordering::SeqCst},
 };
 
-use arrow2::{array::Array, datatypes::Schema};
+use arrow2::array::Array;
 use polars::prelude::{DataFrame, Series};
 
 use re_arrow_store::{DataStore, DataStoreConfig, TimeInt, TimeQuery};
 use re_log_types::{
-    datagen::{
-        build_frame_nr, build_instances, build_log_time, build_message, build_positions,
-        build_rects,
-    },
+    datagen::{build_frame_nr, build_instances, build_log_time, build_positions, build_rects},
+    msg_bundle::ComponentBundle,
     ComponentNameRef, Duration, ObjPath as EntityPath, Time, TimePoint, TimeType, Timeline,
 };
 
@@ -360,21 +358,29 @@ impl DataTracker {
         store: &mut DataStore,
         ent_path: &EntityPath,
         times: [(Timeline, TimeInt); N],
-        components: [(ComponentNameRef<'static>, Schema, Box<dyn Array>); M],
+        components: [ComponentBundle<'static>; M],
     ) {
         let timepoint = TimePoint::from(times);
 
         for time in timepoint.times() {
-            for (name, _, comp) in &components {
-                assert!(self.all_data.insert((name, *time), comp.clone()).is_none());
+            for ComponentBundle {
+                name,
+                field: _,
+                component,
+            } in &components
+            {
+                assert!(self
+                    .all_data
+                    .insert((name, *time), component.clone())
+                    .is_none());
             }
         }
 
-        let components = components.into_iter().map(|(name, _, array)| (name, array));
-
         // eprintln!("inserting into '{ent_path}':\nschema: {schema:#?}\ncomponents: {components:#?}");
         // eprintln!("---\ninserting into '{ent_path}': [log_time, frame_nr], [rects]");
-        store.insert(ent_path, &timepoint, components).unwrap();
+        store
+            .insert(ent_path, &timepoint, components.iter())
+            .unwrap();
         // eprintln!("{store}");
     }
 

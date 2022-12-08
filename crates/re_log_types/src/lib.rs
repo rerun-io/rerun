@@ -32,6 +32,7 @@ pub mod coordinates;
 mod data;
 pub mod hash;
 mod index;
+pub mod msg_bundle;
 pub mod objects;
 pub mod path;
 mod time;
