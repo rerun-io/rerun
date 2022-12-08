@@ -47,15 +47,12 @@ impl ArrowSerialize for TimePoint {
         let time_array: Box<dyn MutableArray> = Box::new(MutablePrimitiveArray::<i64>::new());
 
         let data_type = Self::data_type();
-        if let DataType::List(inner) = data_type.to_logical_type() {
-            let str_array = MutableStructArray::new(
-                inner.data_type.clone(),
-                vec![timeline_array, time_type_array, time_array],
-            );
-            MutableListArray::new_from(str_array, data_type, 0)
-        } else {
-            panic!("Outer datatype should be List");
-        }
+        let DataType::List(inner) = data_type.to_logical_type() else { unreachable!() };
+        let str_array = MutableStructArray::new(
+            inner.data_type.clone(),
+            vec![timeline_array, time_type_array, time_array],
+        );
+        MutableListArray::new_from(str_array, data_type, 0)
     }
 
     fn arrow_serialize(
