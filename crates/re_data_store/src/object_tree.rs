@@ -283,7 +283,7 @@ pub enum MonoOrMulti {
     Multi,
 }
 
-/// Column transform of [`Data`].
+/// Column transform of [`re_log_types::Data`].
 #[derive(Default)]
 pub struct DataColumns {
     /// When do we have data?
