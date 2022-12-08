@@ -16,13 +16,6 @@ pub struct ComponentBundle<'data> {
     pub component: Box<dyn Array>,
 }
 
-//impl<'data> FromIterator< for Vec<ComponentBundle<'data>> {
-//    fn from_iter<T: IntoIterator<Item = A>>(iter: T) -> Self {
-//        todo!()
-//    }
-//}
-//(ComponentNameRef<'static>, Schema, Box<dyn Array>)
-
 pub struct MessageBundle<'data> {
     pub obj_path: ObjPath,
     pub time_point: TimePoint,
@@ -89,7 +82,7 @@ pub fn pack_components<'data>(
                  name: _,
                  field,
                  component,
-             }| (field.clone(), component.to_boxed()),
+             }| (field, component.to_boxed()),
         )
         .unzip();
 
