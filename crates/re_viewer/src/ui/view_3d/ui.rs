@@ -5,14 +5,16 @@ use macaw::{vec3, Quat, Ray3, Vec3};
 use re_data_store::{InstanceId, InstanceIdHash};
 use re_log_types::{ObjPath, ViewCoordinates};
 use re_renderer::{
-    renderer::{GenericSkyboxDrawData, MeshDrawData, PointCloudDrawData},
-    view_builder::{Projection, TargetConfiguration, ViewBuilder},
+    view_builder::{Projection, TargetConfiguration},
     RenderContext, Size,
 };
 
 use crate::{
     misc::{HoveredSpace, Selection},
-    ui::view_spatial::{AXIS_COLOR_X, AXIS_COLOR_Y, AXIS_COLOR_Z},
+    ui::view_spatial::{
+        ui_renderer_bridge::{create_scene_paint_callback, get_viewport, ScreenBackground},
+        AXIS_COLOR_X, AXIS_COLOR_Y, AXIS_COLOR_Z,
+    },
     ViewerContext,
 };
 
@@ -485,78 +487,33 @@ fn paint_view(
 
     // Determine view port resolution and position.
     let pixels_from_point = ui.ctx().pixels_per_point();
-    let (resolution_in_pixel, origin_in_pixel) = {
-        let min = (rect.min.to_vec2() * pixels_from_point).round();
-        let max = (rect.max.to_vec2() * pixels_from_point).round();
-        let resolution = max - min;
-
-        (
-            [resolution.x as u32, resolution.y as u32],
-            glam::vec2(min.x, min.y),
-        )
-    };
+    let resolution_in_pixel = get_viewport(rect, pixels_from_point);
     if resolution_in_pixel[0] == 0 || resolution_in_pixel[1] == 0 {
         return;
     }
+    let target_config = TargetConfiguration {
+        name: name.into(),
 
-    let (view_builder, command_buffer) = {
-        crate::profile_scope!("build command buffer for view");
+        resolution_in_pixel,
 
-        let mut view_builder = ViewBuilder::default();
-        view_builder
-            .setup_view(
-                render_ctx,
-                TargetConfiguration {
-                    name: name.into(),
+        view_from_world: eye.world_from_view.inverse(),
+        projection_from_view: Projection::Perspective {
+            vertical_fov: eye.fov_y,
+            near_plane_distance: eye.near(),
+        },
 
-                    resolution_in_pixel,
-
-                    view_from_world: eye.world_from_view.inverse(),
-                    projection_from_view: Projection::Perspective {
-                        vertical_fov: eye.fov_y,
-                        near_plane_distance: eye.near(),
-                    },
-
-                    pixels_from_point,
-                },
-            )
-            .unwrap()
-            .queue_draw(&GenericSkyboxDrawData::new(render_ctx))
-            .queue_draw(&MeshDrawData::new(render_ctx, &scene.meshes()).unwrap())
-            .queue_draw(&scene.primitives.line_strips.to_draw_data(render_ctx))
-            .queue_draw(&PointCloudDrawData::new(render_ctx, &scene.primitives.points).unwrap());
-
-        let command_buffer = view_builder
-            .draw(render_ctx, egui::Rgba::TRANSPARENT)
-            .unwrap();
-        (view_builder, command_buffer)
+        pixels_from_point,
     };
 
-    // egui paint callback are copyable / not a FnOnce (this in turn is because egui primitives can be callbacks and are copyable)
-    let command_buffer = std::sync::Arc::new(egui::mutex::Mutex::new(Some(command_buffer)));
-    let view_builder = std::sync::Arc::new(egui::mutex::Mutex::new(Some(view_builder)));
-    ui.painter().add(egui::PaintCallback {
+    let Ok(callback) = create_scene_paint_callback(
+        render_ctx,
+        target_config,
         rect,
-        callback: std::sync::Arc::new(
-            egui_wgpu::CallbackFn::new()
-                .prepare(
-                    move |_device, _queue, _encoder, _paint_callback_resources| {
-                        let mut command_buffer = command_buffer.lock();
-                        vec![std::mem::replace(&mut *command_buffer, None)
-                            .expect("egui_wgpu prepare callback called more than once")]
-                    },
-                )
-                .paint(move |_info, render_pass, paint_callback_resources| {
-                    crate::profile_scope!("paint");
-                    let ctx = paint_callback_resources.get().unwrap();
-                    let mut view_builder = view_builder.lock();
-                    std::mem::replace(&mut *view_builder, None)
-                        .expect("egui_wgpu paint callback called more than once")
-                        .composite(ctx, render_pass, origin_in_pixel)
-                        .unwrap();
-                }),
-        ),
-    });
+        &scene.primitives, &ScreenBackground::GenericSkybox)
+    else {
+        return;
+    };
+    ui.painter().add(callback);
 }
 
 fn show_projections_from_2d_space(

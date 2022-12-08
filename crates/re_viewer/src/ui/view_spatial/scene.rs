@@ -166,6 +166,32 @@ impl SceneSpatialPrimitives {
             self.bounding_box = self.bounding_box.union(*mesh.mesh.bbox());
         }
     }
+
+    pub fn mesh_instances(&self) -> Vec<MeshInstance> {
+        crate::profile_function!();
+        self.meshes
+            .iter()
+            .flat_map(|mesh| {
+                let (scale, rotation, translation) =
+                    mesh.world_from_mesh.to_scale_rotation_translation();
+                // TODO(andreas): The renderer should make it easy to apply a transform to a bunch of meshes
+                let base_transform = macaw::Conformal3::from_scale_rotation_translation(
+                    re_renderer::importer::to_uniform_scale(scale),
+                    rotation,
+                    translation,
+                );
+                mesh.mesh
+                    .mesh_instances
+                    .iter()
+                    .map(move |instance| MeshInstance {
+                        gpu_mesh: instance.gpu_mesh.clone(),
+                        mesh: None, // Don't care.
+                        world_from_mesh: base_transform * instance.world_from_mesh,
+                        additive_tint: mesh.additive_tint.unwrap_or(Color32::TRANSPARENT),
+                    })
+            })
+            .collect()
+    }
 }
 
 #[derive(Default)]
@@ -1167,33 +1193,6 @@ impl SceneSpatial {
         // Otherwise relative z extent of bounding box
         let bbox_size = self.primitives.bounding_box().size();
         bbox_size.z < 0.25 * bbox_size.x || bbox_size.z < 0.25 * bbox_size.y
-    }
-
-    pub fn meshes(&self) -> Vec<MeshInstance> {
-        crate::profile_function!();
-        self.primitives
-            .meshes
-            .iter()
-            .flat_map(|mesh| {
-                let (scale, rotation, translation) =
-                    mesh.world_from_mesh.to_scale_rotation_translation();
-                // TODO(andreas): The renderer should make it easy to apply a transform to a bunch of meshes
-                let base_transform = macaw::Conformal3::from_scale_rotation_translation(
-                    re_renderer::importer::to_uniform_scale(scale),
-                    rotation,
-                    translation,
-                );
-                mesh.mesh
-                    .mesh_instances
-                    .iter()
-                    .map(move |instance| MeshInstance {
-                        gpu_mesh: instance.gpu_mesh.clone(),
-                        mesh: None, // Don't care.
-                        world_from_mesh: base_transform * instance.world_from_mesh,
-                        additive_tint: mesh.additive_tint.unwrap_or(Color32::TRANSPARENT),
-                    })
-            })
-            .collect()
     }
 
     pub fn picking(

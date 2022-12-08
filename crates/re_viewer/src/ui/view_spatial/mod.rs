@@ -12,6 +12,8 @@ pub use self::scene::{
     Image, Label2D, Label2DTarget, Label3D, MeshSource, MeshSourceData, SceneSpatial,
 };
 
+pub mod ui_renderer_bridge;
+
 use re_renderer::Color32;
 
 pub const AXIS_COLOR_X: Color32 = Color32::from_rgb(255, 25, 25);

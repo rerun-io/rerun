@@ -5,15 +5,14 @@ use egui::{
 };
 use itertools::Itertools;
 use re_data_store::{InstanceId, InstanceIdHash, ObjPath};
-use re_renderer::{
-    renderer::{PointCloudDrawData, RectangleDrawData},
-    view_builder::{TargetConfiguration, ViewBuilder},
-    RenderContext,
-};
+use re_renderer::view_builder::TargetConfiguration;
 
 use crate::{
     misc::HoveredSpace,
-    ui::view_spatial::{Image, Label2DTarget, SceneSpatial},
+    ui::view_spatial::{
+        ui_renderer_bridge::{create_scene_paint_callback, get_viewport, ScreenBackground},
+        Image, Label2DTarget, SceneSpatial,
+    },
     Selection, ViewerContext,
 };
 
@@ -441,8 +440,7 @@ fn view_2d_scrollable(
     {
         crate::profile_scope!("build command buffer for 2D view {}", space.to_string());
 
-        let Ok(mut view_builder) = setup_view_builder(
-            ctx.render_ctx,
+        let Ok(target_config) = setup_target_config(
             &painter,
             space_from_ui,
             space_from_pixel,
@@ -451,21 +449,16 @@ fn view_2d_scrollable(
             return response;
         };
 
-        let command_buffer = view_builder
-            .queue_draw(&scene.primitives.line_strips.to_draw_data(ctx.render_ctx))
-            .queue_draw(&PointCloudDrawData::new(ctx.render_ctx, &scene.primitives.points).unwrap())
-            .queue_draw(
-                &RectangleDrawData::new(ctx.render_ctx, &scene.primitives.textured_rectangles)
-                    .unwrap(),
-            )
-            .draw(ctx.render_ctx, parent_ui.visuals().extreme_bg_color.into())
-            .unwrap();
+        let Ok(callback) = create_scene_paint_callback(
+            ctx.render_ctx,
+            target_config, painter.clip_rect(),
+            &scene.primitives,
+            &ScreenBackground::ClearColor(parent_ui.visuals().extreme_bg_color.into()),
+        ) else {
+            return response;
+        };
 
-        painter.add(renderer_paint_callback(
-            command_buffer,
-            view_builder,
-            painter.clip_rect(),
-        ));
+        painter.add(callback);
     }
 
     // ------------------------------------------------------------------------
@@ -556,75 +549,25 @@ fn create_labels(
     label_shapes
 }
 
-fn renderer_paint_callback(
-    command_buffer: wgpu::CommandBuffer,
-    view_builder: ViewBuilder,
-    clip_rect: egui::Rect,
-) -> egui::PaintCallback {
-    // egui paint callback are copyable / not a FnOnce (this in turn is because egui primitives can be callbacks and are copyable)
-    let command_buffer = std::sync::Arc::new(egui::mutex::Mutex::new(Some(command_buffer)));
-    let view_builder = std::sync::Arc::new(egui::mutex::Mutex::new(Some(view_builder)));
-
-    egui::PaintCallback {
-        rect: clip_rect,
-        callback: std::sync::Arc::new(
-            egui_wgpu::CallbackFn::new()
-                .prepare(
-                    move |_device, _queue, _encoder, _paint_callback_resources| {
-                        let mut command_buffer = command_buffer.lock();
-                        vec![std::mem::replace(&mut *command_buffer, None)
-                            .expect("egui_wgpu prepare callback called more than once")]
-                    },
-                )
-                .paint(move |info, render_pass, paint_callback_resources| {
-                    crate::profile_scope!("paint");
-                    let clip_rect = info.clip_rect_in_pixels();
-
-                    let ctx = paint_callback_resources.get().unwrap();
-                    let mut view_builder = view_builder.lock();
-                    std::mem::replace(&mut *view_builder, None)
-                        .expect("egui_wgpu paint callback called more than once")
-                        .composite(
-                            ctx,
-                            render_pass,
-                            glam::vec2(clip_rect.left_px, clip_rect.top_px),
-                        )
-                        .unwrap();
-                }),
-        ),
-    }
-}
-
-fn setup_view_builder(
-    render_ctx: &mut RenderContext,
+fn setup_target_config(
     painter: &egui::Painter,
     space_from_ui: RectTransform,
     space_from_pixel: f32,
     space_name: &str,
-) -> anyhow::Result<ViewBuilder> {
+) -> anyhow::Result<TargetConfiguration> {
     let pixels_from_points = painter.ctx().pixels_per_point();
-    let resolution_in_pixel = {
-        let rect = painter.clip_rect();
-        let resolution = (rect.size() * pixels_from_points).round();
-
-        [resolution.x as u32, resolution.y as u32]
-    };
+    let resolution_in_pixel = get_viewport(painter.clip_rect(), pixels_from_points);
     anyhow::ensure!(resolution_in_pixel[0] > 0 && resolution_in_pixel[1] > 0);
 
     let camera_position_space = space_from_ui.transform_pos(painter.clip_rect().min);
-    let mut view_builder = ViewBuilder::default();
-    view_builder.setup_view(
-        render_ctx,
-        TargetConfiguration::new_2d_target(
-            space_name.into(),
-            resolution_in_pixel,
-            space_from_pixel,
-            pixels_from_points,
-            glam::vec2(camera_position_space.x, camera_position_space.y),
-        ),
-    )?;
 
-    Ok(view_builder)
+    Ok(TargetConfiguration::new_2d_target(
+        space_name.into(),
+        resolution_in_pixel,
+        space_from_pixel,
+        pixels_from_points,
+        glam::vec2(camera_position_space.x, camera_position_space.y),
+    ))
 }
 
 // ------------------------------------------------------------------------
