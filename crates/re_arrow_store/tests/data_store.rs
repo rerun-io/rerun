@@ -297,7 +297,13 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
         tracker.insert_data(
             store,
             &ent_path,
-            [build_log_time(now_plus_10ms), build_frame_nr(frame41)],
+            [build_log_time(now_plus_10ms)],
+            [build_instances(nb_instances), build_rects(nb_instances)],
+        );
+        tracker.insert_data(
+            store,
+            &ent_path,
+            [build_frame_nr(frame41)],
             [build_instances(nb_instances), build_rects(nb_instances)],
         );
         tracker.insert_data(
