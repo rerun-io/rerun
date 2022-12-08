@@ -166,6 +166,8 @@ pub struct LogDb {
 
     /// Where we store the objects.
     pub obj_db: ObjDb,
+
+    pub arrow_db: re_arrow_store::DataStore,
 }
 
 impl LogDb {
@@ -365,6 +367,7 @@ impl LogDb {
             timeless_message_ids,
             recording_info: _,
             obj_db,
+            arrow_db: _,
         } = self;
 
         chronological_message_ids.retain(|msg_id| keep_msg_ids.contains(msg_id));
@@ -379,5 +382,7 @@ impl LogDb {
         }
 
         obj_db.purge_everything_but(&keep_msg_ids);
+
+        //TODO(john,clement) wire up purging to the ArrowStore
     }
 }

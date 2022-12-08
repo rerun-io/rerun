@@ -1,9 +1,10 @@
 use arrow2::{
     array::{
-        Int64Array, ListArray, MutableArray, MutableListArray, MutablePrimitiveArray,
+        Array, Int64Array, ListArray, MutableArray, MutableListArray, MutablePrimitiveArray,
         MutableStructArray, MutableUtf8Array, StructArray, UInt8Array, Utf8Array,
     },
-    datatypes::{DataType, Field},
+    chunk::Chunk,
+    datatypes::{DataType, Field, Schema},
 };
 use arrow2_convert::{deserialize::ArrowDeserialize, field::ArrowField, serialize::ArrowSerialize};
 
@@ -161,6 +162,8 @@ impl ArrowDeserialize for TimePoint {
         Some(v)
     }
 }
+
+// ----------------------------------------------------------------------------
 
 #[test]
 fn test_timepoint_roundtrip() {

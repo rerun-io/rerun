@@ -370,10 +370,11 @@ impl DataTracker {
             }
         }
 
-        let (schema, components) = build_message(ent_path, &timepoint, components);
+        let components = components.into_iter().map(|(name, _, array)| (name, array));
+
         // eprintln!("inserting into '{ent_path}':\nschema: {schema:#?}\ncomponents: {components:#?}");
         // eprintln!("---\ninserting into '{ent_path}': [log_time, frame_nr], [rects]");
-        store.insert(&schema, &components).unwrap();
+        store.insert(ent_path, &timepoint, components).unwrap();
         // eprintln!("{store}");
     }
 

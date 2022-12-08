@@ -21,6 +21,7 @@ serde = ["dep:serde", "re_log_types/serde"]
 re_log = { path = "../re_log" }
 re_log_types = { path = "../re_log_types" }
 re_string_interner = { path = "../re_string_interner" }
+re_arrow_store = { path = "../re_arrow_store" }
 
 ahash = "0.8"
 document-features = "0.2"

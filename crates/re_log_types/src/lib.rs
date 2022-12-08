@@ -24,7 +24,7 @@ pub mod encoding;
 #[cfg(feature = "arrow_datagen")]
 pub mod datagen;
 
-mod arrow_msg;
+pub mod arrow_msg;
 pub mod field_types;
 pub use arrow_msg::ArrowMsg;
 pub mod context;

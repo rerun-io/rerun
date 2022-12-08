@@ -43,8 +43,6 @@ pub struct App {
     /// Where the logs are stored.
     log_dbs: IntMap<RecordingId, LogDb>,
 
-    arrow_dbs: IntMap<RecordingId, re_arrow_store::DataStore>,
-
     /// What is serialized
     state: AppState,
 
@@ -147,7 +145,6 @@ impl App {
             re_ui,
             rx,
             log_dbs,
-            arrow_dbs: Default::default(),
             state,
             #[cfg(not(target_arch = "wasm32"))]
             ctrl_c,
@@ -364,15 +361,6 @@ impl App {
                 }
 
                 let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
-
-                let arrow_db = self
-                    .arrow_dbs
-                    .entry(self.state.selected_rec_id)
-                    .or_default();
-
-                if let LogMsg::ArrowMsg(ref msg) = msg {
-                    arrow_db.insert(&msg.schema, &msg.chunk).unwrap();
-                }
 
                 log_db.add(msg);
                 if start.elapsed() > instant::Duration::from_millis(10) {
