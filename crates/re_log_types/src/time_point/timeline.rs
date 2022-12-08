@@ -28,7 +28,8 @@ pub struct Timeline {
 impl Default for Timeline {
     fn default() -> Self {
         Self {
-            name: TimelineName::new(""),
+        Self {
+            name: TimelineName::default(),
             typ: TimeType::Sequence,
         }
     }
