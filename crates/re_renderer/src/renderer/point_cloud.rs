@@ -30,7 +30,10 @@ use crate::{
     },
 };
 
-use super::*;
+use super::{
+    DrawData, FileResolver, FileSystem, RenderContext, Renderer, SharedRendererData,
+    WgpuResourcePools,
+};
 
 mod gpu_data {
     // Don't use `wgsl_buffer_types` since none of this data goes into a buffer, so its alignment rules don't apply.

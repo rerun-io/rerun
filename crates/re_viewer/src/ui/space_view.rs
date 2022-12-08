@@ -1,7 +1,10 @@
 use re_data_store::{ObjPath, ObjectTree, ObjectTreeProperties, TimeInt};
 use re_log_types::Transform;
 
-use crate::misc::{space_info::*, ViewerContext};
+use crate::misc::{
+    space_info::{SpaceInfo, SpacesInfo},
+    ViewerContext,
+};
 
 use super::{view_2d, view_3d, view_plot, view_tensor, view_text};
 

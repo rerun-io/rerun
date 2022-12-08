@@ -1,7 +1,11 @@
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 
-use re_log_types::*;
+use re_log_types::{
+    objects, BatchIndex, BeginRecordingMsg, DataMsg, DataPath, DataVec, LogMsg, LoggedData, MsgId,
+    ObjTypePath, ObjectType, PathOp, PathOpMsg, RecordingId, RecordingInfo, TimeInt, TimePoint,
+    Timeline, TypeMsg,
+};
 
 use crate::TimesPerTimeline;
 
