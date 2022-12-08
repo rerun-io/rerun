@@ -207,7 +207,7 @@ impl IndexTable {
                 "allocating new index bucket, previous one overflowed"
             );
 
-            if let Some(second_half) = bucket.split(time.as_i64()) {
+            if let Some(second_half) = bucket.split() {
                 self.buckets.insert(second_half.time_range.min, second_half);
                 return self.insert(config, time, indices);
             }
@@ -278,81 +278,18 @@ impl IndexBucket {
         Ok(())
     }
 
-    /// Splits the bucket in two in place (if possible), and returns a new bucket that
-    /// corresponds to the second half.
+    /// Splits the bucket into two, potentially uneven, optimal parts.
+    ///
+    /// The first part is done in place (i.e. modifies `self`), while the second part is returned
+    /// as a new bucket.
     ///
     /// Returns `None` if the bucket cannot be split any further.
-    pub fn split(&mut self, time: i64) -> Option<Self> {
+    pub fn split(&mut self) -> Option<Self> {
         if self.times.len() < 2 {
             return None; // early exit: can't split the unsplittable
         }
 
         self.sort_indices();
-
-        // The datastore and query path operate under the general assumption that _all of the
-        // index data_ for a given timepoint will reside in _one and only one_ bucket.
-        // This condition makes sure to uphold that restriction.
-        //
-        // Here's an example of an index table configured to have a maximum of two rows, where we
-        // can see the 2nd bucket exceeding this limit in order to still uphold the restriction:
-        // ```
-        // IndexTable {
-        //     timeline: frame_nr
-        //     entity: this/that
-        //     size: 3 buckets for a total of 142 B across 5 total rows
-        //     buckets: [
-        //         IndexBucket {
-        //             size: 26 B across 1 rows
-        //             time range: from -∞ to #41 (all inclusive)
-        //             data (sorted=true): shape: (1, 3)
-        //             ┌──────┬───────────┬───────┐
-        //             │ time ┆ instances ┆ rects │
-        //             │ ---  ┆ ---       ┆ ---   │
-        //             │ str  ┆ u64       ┆ u64   │
-        //             ╞══════╪═══════════╪═══════╡
-        //             │ #41  ┆ 1         ┆ 3     │
-        //             └──────┴───────────┴───────┘
-        //         }
-        //         IndexBucket {
-        //             size: 99 B across 3 rows
-        //             time range: from #42 to #42 (all inclusive)
-        //             data (sorted=true): shape: (3, 4)
-        //             ┌──────┬───────────┬───────┬───────────┐
-        //             │ time ┆ instances ┆ rects ┆ positions │
-        //             │ ---  ┆ ---       ┆ ---   ┆ ---       │
-        //             │ str  ┆ u64       ┆ u64   ┆ u64       │
-        //             ╞══════╪═══════════╪═══════╪═══════════╡
-        //             │ #42  ┆ null      ┆ 2     ┆ null      │
-        //             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
-        //             │ #42  ┆ 2         ┆ null  ┆ null      │
-        //             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
-        //             │ #42  ┆ null      ┆ null  ┆ 1         │
-        //             └──────┴───────────┴───────┴───────────┘
-        //         }
-        //         IndexBucket {
-        //             size: 17 B across 1 rows
-        //             time range: from #43 to +∞ (all inclusive)
-        //             data (sorted=true): shape: (1, 2)
-        //             ┌──────┬───────┐
-        //             │ time ┆ rects │
-        //             │ ---  ┆ ---   │
-        //             │ str  ┆ u64   │
-        //             ╞══════╪═══════╡
-        //             │ #43  ┆ 1     │
-        //             └──────┴───────┘
-        //
-        //         }
-        //     ]
-        // }
-        // ```
-        //
-        // There are various ways to either lift this restriction and/or uphold it in a
-        // finer-grained fashion, but for now this is good enough.
-        //
-        // TODO(cmc): improve on this.
-        if self.times.values().binary_search(&time).is_ok() {
-            return None;
-        }
 
         // Used down the line to assert that we've left everything in a sane state.
         #[cfg(debug_assertions)]
@@ -367,24 +304,30 @@ impl IndexBucket {
         } = self;
 
         let timeline = *timeline;
-        let half_row = times1.values().len() / 2;
 
-        let time_range2 = split_time_range_off(half_row, times1, time_range1);
-        let times2 = split_primary_index_off(half_row, times1);
-        let indices2: HashMap<_, _> = indices1
-            .iter_mut()
-            .map(|(name, index1)| {
-                let index2 = split_secondary_index_off(half_row, index1);
-                ((*name).clone(), index2)
-            })
-            .collect();
-
-        let bucket2 = Self {
-            timeline,
-            time_range: time_range2,
-            is_sorted: true,
-            times: times2,
-            indices: indices2,
+        let bucket2 = if let Some(split_idx) = find_split_index(times1) {
+            let time_range2 = split_time_range_off(split_idx, times1, time_range1);
+            let times2 = split_primary_index_off(split_idx, times1);
+            let indices2: HashMap<_, _> = indices1
+                .iter_mut()
+                .map(|(name, index1)| {
+                    let index2 = split_secondary_index_off(split_idx, index1);
+                    ((*name).clone(), index2)
+                })
+                .collect();
+            Self {
+                timeline,
+                time_range: time_range2,
+                is_sorted: true,
+                times: times2,
+                indices: indices2,
+            }
+        } else {
+            // We couldn't find an optimal split index, so we'll just append to the current bucket,
+            // even though this is sub-optimal.
+            // The good news is that we are now guaranteed to split the next time an insertion is
+            // scheduled for that bucket.
+            return None;
         };
 
         // sanity checks
@@ -409,34 +352,205 @@ impl IndexBucket {
     }
 }
 
-/// Given a time index and a desired splitting index, splits off the given time range in place,
-/// and returns a new time range corresponding to the second half.
+/// Finds a split index that is both optimal _and_ still upholds the guarantee that a specific
+/// timepoint won't end up being splitted across multiple buckets.
+///
+/// The returned index is _exclusive_: `[0, split_idx)` + `[split_idx; len)`.
+///
+/// # What's the deal with timepoints splitted across multiple buckets?
+///
+/// The datastore and query path operate under the general assumption that _all of the
+/// index data_ for a given timepoint will reside in _one and only one_ bucket.
+/// This condition makes sure to uphold that restriction.
+///
+/// Here's an example of an index table configured to have a maximum of 2 rows per bucket: we
+/// can see that the 1st and 2nd buckets exceed this maximum in order to uphold the restriction
+/// described above:
+/// ```text
+/// IndexTable {
+///     timeline: frame_nr
+///     entity: this/that
+///     size: 3 buckets for a total of 265 B across 8 total rows
+///     buckets: [
+///         IndexBucket {
+///             size: 99 B across 3 rows
+///             time range: from -∞ to #41 (all inclusive)
+///             data (sorted=true): shape: (3, 4)
+///             ┌──────┬───────────┬───────────┬───────┐
+///             │ time ┆ instances ┆ positions ┆ rects │
+///             │ ---  ┆ ---       ┆ ---       ┆ ---   │
+///             │ str  ┆ u64       ┆ u64       ┆ u64   │
+///             ╞══════╪═══════════╪═══════════╪═══════╡
+///             │ #41  ┆ 1         ┆ null      ┆ null  │
+///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┤
+///             │ #41  ┆ null      ┆ 1         ┆ null  │
+///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┤
+///             │ #41  ┆ null      ┆ null      ┆ 3     │
+///             └──────┴───────────┴───────────┴───────┘
+///         }
+///         IndexBucket {
+///             size: 99 B across 3 rows
+///             time range: from #42 to #42 (all inclusive)
+///             data (sorted=true): shape: (3, 4)
+///             ┌──────┬───────────┬───────┬───────────┐
+///             │ time ┆ instances ┆ rects ┆ positions │
+///             │ ---  ┆ ---       ┆ ---   ┆ ---       │
+///             │ str  ┆ u64       ┆ u64   ┆ u64       │
+///             ╞══════╪═══════════╪═══════╪═══════════╡
+///             │ #42  ┆ null      ┆ 1     ┆ null      │
+///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
+///             │ #42  ┆ 3         ┆ null  ┆ null      │
+///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
+///             │ #42  ┆ null      ┆ null  ┆ 2         │
+///             └──────┴───────────┴───────┴───────────┘
+///         }
+///         IndexBucket {
+///             size: 67 B across 2 rows
+///             time range: from #43 to +∞ (all inclusive)
+///             data (sorted=true): shape: (2, 4)
+///             ┌──────┬───────────┬───────────┬───────┐
+///             │ time ┆ positions ┆ instances ┆ rects │
+///             │ ---  ┆ ---       ┆ ---       ┆ ---   │
+///             │ str  ┆ u64       ┆ u64       ┆ u64   │
+///             ╞══════╪═══════════╪═══════════╪═══════╡
+///             │ #43  ┆ null      ┆ null      ┆ 4     │
+///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┤
+///             │ #44  ┆ 3         ┆ null      ┆ null  │
+///             └──────┴───────────┴───────────┴───────┘
+///         }
+///     ]
+/// }
+/// ```
+fn find_split_index(times: &Int64Vec) -> Option<usize> {
+    debug_assert!(
+        times.validity().is_none(),
+        "The time index must always be dense, thus it shouldn't even have a validity\
+            bitmap attached to it to begin with."
+    );
+    let times = times.values();
+
+    // This can never be lesser than 1 as we never split buckets smaller than 2 entries.
+    let split_idx = times.len() / 2;
+
+    // Are we about to split in the middle of a continuous run?
+    // We'll walk backwards to figure it out.
+    let split_idx1 = {
+        let time = times[split_idx];
+        let mut split_idx = split_idx as i64;
+        loop {
+            if split_idx < 0 {
+                break None;
+            }
+            if times[split_idx as usize] != time {
+                break Some(split_idx as usize + 1); // +1 because exclusive
+            }
+            split_idx -= 1;
+        }
+    };
+
+    // Are we about to split in the middle of a continuous run?
+    // We'll now walk forwards to figure it out.
+    let split_idx2 = {
+        let time = times[split_idx];
+        let mut split_idx = split_idx;
+        loop {
+            if split_idx >= times.len() {
+                break None;
+            }
+            if times[split_idx] != time {
+                break Some(split_idx);
+            }
+            split_idx += 1;
+        }
+    };
+
+    // Are we in the middle of a backwards continuous run? a forwards continuous run? both?
+    match (split_idx1, split_idx2) {
+        (None, None) => None,
+        // Backwards run, let's use the first split index.
+        (Some(split_idx1), None) => Some(split_idx1),
+        // Forwards run, let's use the second split index.
+        (None, Some(split_idx2)) => Some(split_idx2),
+        // The run goes both backwards and forwards from the half point: use the split index
+        // that's the closest to halfway.
+        (Some(split_idx1), Some(split_idx2)) => {
+            if split_idx.abs_diff(split_idx1) < split_idx.abs_diff(split_idx2) {
+                split_idx1
+            } else {
+                split_idx2
+            }
+            .into()
+        }
+    }
+}
+
+#[test]
+fn test_find_split_index() {
+    let test_cases = [
+        (vec![1, 1], None),
+        //
+        (vec![1, 1, 1], None),
+        (vec![1, 1, 2], Some(2)),
+        (vec![0, 1, 1], Some(1)),
+        //
+        (vec![1, 1, 1, 1], None),
+        (vec![1, 1, 1, 2], Some(3)),
+        (vec![0, 1, 1, 1], Some(1)),
+        //
+        (vec![1, 1, 1, 1, 1], None),
+        (vec![1, 1, 1, 1, 2], Some(4)),
+        (vec![0, 1, 1, 1, 1], Some(1)),
+        (vec![0, 1, 1, 1, 2], Some(1)), // first one wins when equal distances
+        (vec![0, 1, 1, 2, 2], Some(3)), // second one is closer
+        (vec![0, 0, 1, 2, 2], Some(2)), // first one wins when equal distances
+        (vec![0, 0, 2, 2, 2], Some(2)), // second one is closer
+        (vec![0, 0, 0, 2, 2], Some(3)), // first one is closer
+    ];
+
+    for (times, expected) in test_cases {
+        let times = Int64Vec::from_vec(times);
+        let got = find_split_index(&times);
+        assert_eq!(expected, got);
+    }
+}
+
+/// Given a time index and a desired split index, splits off the given time range in place,
+/// and returns a new time range corresponding to the second part.
+///
+/// The split index is exclusive: everything up to `split_idx` (excluded) will end up in the
+/// first split.
 ///
 /// The two resulting time range halves are guaranteed to never overlap.
 fn split_time_range_off(
-    half_row: usize,
+    split_idx: usize,
     times1: &Int64Vec,
     time_range1: &mut TimeRange,
 ) -> TimeRange {
+    let times1 = times1.values();
+
+    let time_range2 = TimeRange::new(times1[split_idx].into(), time_range1.max);
+
     // This can never fail (underflow or OOB) because we never split buckets smaller than 2
     // entries.
-    time_range1.max = times1.values()[half_row - 1].into();
-
-    let time_range2 = TimeRange::new(times1.values()[half_row].into(), time_range1.max);
+    time_range1.max = times1[split_idx - 1].into();
 
     debug_assert!(
         time_range1.max.as_i64() < time_range2.min.as_i64(),
-        "split resulted in overlapping time ranges: {} <-> {}",
+        "split resulted in overlapping time ranges: {} <-> {}\n{:#?}",
         time_range1.max.as_i64(),
         time_range2.min.as_i64(),
+        (&time_range1, &time_range2),
     );
 
     time_range2
 }
 
-/// Given a primary time index and a desired splitting index, splits off the time index in place,
-/// and returns a new time index corresponding to the second half.
-fn split_primary_index_off(half_row: usize, times1: &mut Int64Vec) -> Int64Vec {
+/// Given a primary time index and a desired split index, splits off the time index in place,
+/// and returns a new time index corresponding to the second part.
+///
+/// The split index is exclusive: everything up to `split_idx` (excluded) will end up in the
+/// first split.
+fn split_primary_index_off(split_idx: usize, times1: &mut Int64Vec) -> Int64Vec {
     debug_assert!(
         times1.validity().is_none(),
         "The time index must always be dense, thus it shouldn't even have a validity\
@@ -446,65 +560,44 @@ fn split_primary_index_off(half_row: usize, times1: &mut Int64Vec) -> Int64Vec {
     let total_rows = times1.len();
 
     let (datatype, mut data1, _) = std::mem::take(times1).into_data();
-    let data2 = data1.split_off(half_row);
+    let data2 = data1.split_off(split_idx);
     let times2 = Int64Vec::from_data(datatype.clone(), data2, None);
 
     *times1 = Int64Vec::from_data(datatype, data1, None);
 
-    #[cfg(debug_assertions)]
-    {
-        assert!(
-            times1.len() <= half_row && times2.len() <= half_row,
-            "expected both halves to be smaller or equal than the halfway point: \
-                got half={half_row} times1={} times2={}",
-            times1.len(),
-            times2.len(),
-        );
-        assert!(
-            total_rows == times1.len() + times2.len(),
-            "expected both halves to sum up to the length of the original time index: \
-                got times={} vs. times1+times2={}",
-            total_rows,
-            times1.len() + times2.len(),
-        );
-    }
+    debug_assert!(
+        total_rows == times1.len() + times2.len(),
+        "expected both halves to sum up to the length of the original time index: \
+            got times={} vs. times1+times2={}",
+        total_rows,
+        times1.len() + times2.len(),
+    );
 
     times2
 }
 
-/// Given a secondary index of any kind and a desired splitting index, splits off the index
-/// in place, and returns a new index of the same kind that corresponds to the second half.
-fn split_secondary_index_off(half_row: usize, index1: &mut UInt64Vec) -> UInt64Vec {
-    fn split_index_off(index1: &mut UInt64Vec, half_row: usize) -> UInt64Vec {
-        let (datatype, mut data1, validity1) = std::mem::take(index1).into_data();
-        let data2 = data1.split_off(half_row);
-        if let Some((validity1, validity2)) = validity1.map(|validity1| {
-            let mut validity1 = validity1.into_iter().collect::<Vec<_>>();
-            let validity2 = validity1.split_off(half_row);
-            (
-                MutableBitmap::from_iter(validity1),
-                MutableBitmap::from_iter(validity2),
-            )
-        }) {
-            *index1 = UInt64Vec::from_data(datatype.clone(), data1, Some(validity1));
-            UInt64Vec::from_data(datatype, data2, Some(validity2))
-        } else {
-            *index1 = UInt64Vec::from_data(datatype.clone(), data1, None);
-            UInt64Vec::from_data(datatype, data2, None)
-        }
+/// Given a secondary index of any kind and a desired split index, splits off the index
+/// in place, and returns a new index of the same kind that corresponds to the second part.
+///
+/// The split index is exclusive: everything up to `split_idx` (excluded) will end up in the
+/// first split.
+fn split_secondary_index_off(split_idx: usize, index1: &mut UInt64Vec) -> UInt64Vec {
+    let (datatype, mut data1, validity1) = std::mem::take(index1).into_data();
+    let data2 = data1.split_off(split_idx);
+    if let Some((validity1, validity2)) = validity1.map(|validity1| {
+        let mut validity1 = validity1.into_iter().collect::<Vec<_>>();
+        let validity2 = validity1.split_off(split_idx);
+        (
+            MutableBitmap::from_iter(validity1),
+            MutableBitmap::from_iter(validity2),
+        )
+    }) {
+        *index1 = UInt64Vec::from_data(datatype.clone(), data1, Some(validity1));
+        UInt64Vec::from_data(datatype, data2, Some(validity2))
+    } else {
+        *index1 = UInt64Vec::from_data(datatype.clone(), data1, None);
+        UInt64Vec::from_data(datatype, data2, None)
     }
-
-    let index2 = split_index_off(index1, half_row);
-
-    debug_assert!(
-        index1.len() <= half_row && index2.len() <= half_row,
-        "expected both halves to be smaller or equal than the halfway point: \
-            got half={half_row} index1={} index2={}",
-        index1.len(),
-        index2.len(),
-    );
-
-    index2
 }
 
 // --- Components ---

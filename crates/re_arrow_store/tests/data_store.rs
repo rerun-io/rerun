@@ -24,7 +24,7 @@ use re_log_types::{
 const COMPONENT_CONFIGS: &[DataStoreConfig] = &[
     DataStoreConfig::DEFAULT,
     DataStoreConfig {
-        component_bucket_nb_rows: 0,
+        component_bucket_nb_rows: 2,
         ..DataStoreConfig::DEFAULT
     },
     DataStoreConfig {
@@ -119,8 +119,8 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
     let ent_path = EntityPath::from("this/that");
     let now = SystemTime::now();
     let now_nanos = systemtime_to_nanos(now);
-    let now_minus_10ms = now - Duration::from_millis(10);
-    let now_minus_10ms_nanos = systemtime_to_nanos(now_minus_10ms);
+    let now_minus_1s = now - Duration::from_secs(1);
+    let now_minus_1s_nanos = systemtime_to_nanos(now_minus_1s);
     let frame39 = 39;
     let frame40 = 40;
     let nb_instances = 3;
@@ -180,12 +180,12 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
         vec![],
     );
 
-    // Scenario: query an empty store at `first_log_time - 10ms`.
+    // Scenario: query an empty store at `first_log_time - 1s`.
     // Expected: empty dataframe.
     tracker.assert_scenario(
         store,
         &timeline_log_time,
-        &TimeQuery::LatestAt(now_minus_10ms_nanos),
+        &TimeQuery::LatestAt(now_minus_1s_nanos),
         &ent_path,
         components_all,
         vec![],
@@ -266,11 +266,11 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
     let ent_path = EntityPath::from("this/that");
 
     let now = SystemTime::now();
-    let now_minus_10ms = now - Duration::from_millis(10);
-    let now_minus_10ms_nanos = systemtime_to_nanos(now_minus_10ms);
-    let now_plus_10ms = now + Duration::from_millis(10);
-    let now_plus_10ms_nanos = systemtime_to_nanos(now_plus_10ms);
-    let now_plus_20ms = now + Duration::from_millis(20);
+    let now_minus_1s = now - Duration::from_secs(1);
+    let now_minus_1s_nanos = systemtime_to_nanos(now_minus_1s);
+    let now_plus_1s = now + Duration::from_secs(1);
+    let now_plus_1s_nanos = systemtime_to_nanos(now_plus_1s);
+    let now_plus_2s = now + Duration::from_secs(2);
 
     let frame40 = 40;
     let frame41 = 41;
@@ -303,7 +303,7 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
         tracker.insert_data(
             store,
             &ent_path,
-            [build_log_time(now_plus_10ms)],
+            [build_log_time(now_plus_1s)],
             [build_instances(nb_instances), build_rects(nb_instances)],
         );
         tracker.insert_data(
@@ -321,14 +321,20 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
         tracker.insert_data(
             store,
             &ent_path,
-            [build_log_time(now_minus_10ms), build_frame_nr(frame42)],
+            [build_log_time(now_minus_1s), build_frame_nr(frame42)],
             [build_positions(nb_instances)],
         );
         tracker.insert_data(
             store,
             &ent_path,
-            [build_log_time(now_minus_10ms), build_frame_nr(frame43)],
+            [build_log_time(now_minus_1s), build_frame_nr(frame43)],
             [build_rects(nb_instances)],
+        );
+        tracker.insert_data(
+            store,
+            &ent_path,
+            [build_frame_nr(frame44)],
+            [build_positions(nb_instances)],
         );
     }
 
@@ -385,7 +391,7 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
             vec![
                 ("instances", frame42.into()),
                 ("rects", frame43.into()),
-                ("positions", frame42.into()),
+                ("positions", frame44.into()),
             ],
         ),
     ];
@@ -406,14 +412,14 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
     // TODO(cmc): test log_times -10, +0, +10, +20
 
     let scenarios = [
-        // Scenario: query all components at +20ms (i.e. after last update).
+        // Scenario: query all components at +2s (i.e. after last update).
         // Expected: latest data for all components.
         (
-            now_plus_20ms,
+            now_plus_2s,
             vec![
-                ("instances", now_plus_10ms_nanos.into()),
-                ("rects", now_plus_10ms_nanos.into()),
-                ("positions", now_minus_10ms_nanos.into()),
+                ("instances", now_plus_1s_nanos.into()),
+                ("rects", now_plus_1s_nanos.into()),
+                ("positions", now_minus_1s_nanos.into()),
             ],
         ),
     ];

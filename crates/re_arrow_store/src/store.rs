@@ -275,54 +275,108 @@ impl std::fmt::Display for DataStore {
 
 /// An `IndexTable` maps specific points in time to rows in component tables.
 ///
-/// Example of a time-based index table:
+/// Example of a time-based index table (`MAX_ROWS_PER_BUCKET=2`):
 /// ```text
 /// IndexTable {
 ///     timeline: log_time
 ///     entity: this/that
+///     size: 3 buckets for a total of 160 B across 5 total rows
 ///     buckets: [
 ///         IndexBucket {
-///             time range: from -∞ (inclusive) to +9223372036.855s (exlusive)
-///             data (sorted=true): shape: (4, 4)
-///             ┌──────────────────┬───────────┬───────┬───────────┐
-///             │ time             ┆ positions ┆ rects ┆ instances │
-///             │ ---              ┆ ---       ┆ ---   ┆ ---       │
-///             │ str              ┆ u64       ┆ u64   ┆ u64       │
-///             ╞══════════════════╪═══════════╪═══════╪═══════════╡
-///             │ 18:04:35.284851Z ┆ null      ┆ 1     ┆ null      │
-///             ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
-///             │ 18:04:35.284851Z ┆ 1         ┆ null  ┆ null      │
-///             ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
-///             │ 18:04:35.294851Z ┆ null      ┆ 3     ┆ 2         │
-///             ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
-///             │ 18:04:35.304851Z ┆ null      ┆ 2     ┆ 1         │
-///             └──────────────────┴───────────┴───────┴───────────┘
+///             size: 67 B across 2 rows
+///             time range: from -∞ to 18:24:23.712311Z (all inclusive)
+///             data (sorted=true): shape: (2, 4)
+///             ┌──────────────────┬───────┬───────────┬───────────┐
+///             │ time             ┆ rects ┆ instances ┆ positions │
+///             │ ---              ┆ ---   ┆ ---       ┆ ---       │
+///             │ str              ┆ u64   ┆ u64       ┆ u64       │
+///             ╞══════════════════╪═══════╪═══════════╪═══════════╡
+///             │ 18:24:23.712311Z ┆ null  ┆ null      ┆ 2         │
+///             ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
+///             │ 18:24:23.712311Z ┆ 4     ┆ null      ┆ null      │
+///             └──────────────────┴───────┴───────────┴───────────┘
+///         }
+///         IndexBucket {
+///             size: 67 B across 2 rows
+///             time range: from 18:24:24.712311Z to 18:24:24.712311Z (all inclusive)
+///             data (sorted=true): shape: (2, 4)
+///             ┌──────────────────┬───────┬───────────┬───────────┐
+///             │ time             ┆ rects ┆ instances ┆ positions │
+///             │ ---              ┆ ---   ┆ ---       ┆ ---       │
+///             │ str              ┆ u64   ┆ u64       ┆ u64       │
+///             ╞══════════════════╪═══════╪═══════════╪═══════════╡
+///             │ 18:24:24.712311Z ┆ 1     ┆ null      ┆ null      │
+///             ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
+///             │ 18:24:24.712311Z ┆ null  ┆ 3         ┆ null      │
+///             └──────────────────┴───────┴───────────┴───────────┘
+///         }
+///         IndexBucket {
+///             size: 26 B across 1 rows
+///             time range: from 18:24:25.712311Z to +∞ (all inclusive)
+///             data (sorted=true): shape: (1, 3)
+///             ┌──────────────────┬───────┬───────────┐
+///             │ time             ┆ rects ┆ instances │
+///             │ ---              ┆ ---   ┆ ---       │
+///             │ str              ┆ u64   ┆ u64       │
+///             ╞══════════════════╪═══════╪═══════════╡
+///             │ 18:24:25.712311Z ┆ 2     ┆ 2         │
+///             └──────────────────┴───────┴───────────┘
 ///         }
 ///     ]
 /// }
 /// ```
 ///
-/// Example of a sequence-based index table:
+/// Example of a sequence-based index table (`MAX_ROWS_PER_BUCKET=2`):
 /// ```text
 /// IndexTable {
 ///     timeline: frame_nr
 ///     entity: this/that
+///     size: 3 buckets for a total of 265 B across 8 total rows
 ///     buckets: [
 ///         IndexBucket {
-///             time range: from -∞ (inclusive) to #9223372036854775807 (exlusive)
-///             data (sorted=true): shape: (4, 4)
+///             size: 99 B across 3 rows
+///             time range: from -∞ to #41 (all inclusive)
+///             data (sorted=true): shape: (3, 4)
 ///             ┌──────┬───────────┬───────────┬───────┐
 ///             │ time ┆ instances ┆ positions ┆ rects │
 ///             │ ---  ┆ ---       ┆ ---       ┆ ---   │
 ///             │ str  ┆ u64       ┆ u64       ┆ u64   │
 ///             ╞══════╪═══════════╪═══════════╪═══════╡
-///             │ #41  ┆ 1         ┆ null      ┆ 2     │
+///             │ #41  ┆ 1         ┆ null      ┆ null  │
 ///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┤
-///             │ #42  ┆ 2         ┆ null      ┆ 3     │
+///             │ #41  ┆ null      ┆ 1         ┆ null  │
 ///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┤
-///             │ #42  ┆ null      ┆ 1         ┆ null  │
+///             │ #41  ┆ null      ┆ null      ┆ 3     │
+///             └──────┴───────────┴───────────┴───────┘
+///         }
+///         IndexBucket {
+///             size: 99 B across 3 rows
+///             time range: from #42 to #42 (all inclusive)
+///             data (sorted=true): shape: (3, 4)
+///             ┌──────┬───────────┬───────┬───────────┐
+///             │ time ┆ instances ┆ rects ┆ positions │
+///             │ ---  ┆ ---       ┆ ---   ┆ ---       │
+///             │ str  ┆ u64       ┆ u64   ┆ u64       │
+///             ╞══════╪═══════════╪═══════╪═══════════╡
+///             │ #42  ┆ null      ┆ 1     ┆ null      │
+///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
+///             │ #42  ┆ 3         ┆ null  ┆ null      │
+///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
+///             │ #42  ┆ null      ┆ null  ┆ 2         │
+///             └──────┴───────────┴───────┴───────────┘
+///         }
+///         IndexBucket {
+///             size: 67 B across 2 rows
+///             time range: from #43 to +∞ (all inclusive)
+///             data (sorted=true): shape: (2, 4)
+///             ┌──────┬───────────┬───────────┬───────┐
+///             │ time ┆ positions ┆ instances ┆ rects │
+///             │ ---  ┆ ---       ┆ ---       ┆ ---   │
+///             │ str  ┆ u64       ┆ u64       ┆ u64   │
+///             ╞══════╪═══════════╪═══════════╪═══════╡
+///             │ #43  ┆ null      ┆ null      ┆ 4     │
 ///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┤
-///             │ #43  ┆ null      ┆ null      ┆ 1     │
+///             │ #44  ┆ 3         ┆ null      ┆ null  │
 ///             └──────┴───────────┴───────────┴───────┘
 ///         }
 ///     ]
