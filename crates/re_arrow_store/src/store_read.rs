@@ -154,7 +154,7 @@ impl IndexTable {
     /// Returns an iterator that is guaranteed to yield at least one bucket, which is the bucket
     /// whose time range covers the given `time`.
     ///
-    /// It then continues yielding buckets indefinitely, in decreasing time range order.
+    /// It then continues yielding buckets until it runs out, in decreasing time range order.
     pub fn iter_bucket_mut(&mut self, time: i64) -> impl Iterator<Item = &mut IndexBucket> {
         self.buckets
             .range_mut(..=TimeInt::from(time))

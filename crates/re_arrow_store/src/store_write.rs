@@ -291,11 +291,10 @@ impl IndexBucket {
 
         // The datastore and query path operate under the general assumption that _all of the
         // index data_ for a given timepoint will reside in _one and only one_ bucket.
-        // As such, we need to always make sure that splitting an index bucket will never result
-        // in any kind of ambiguity on that end.
+        // This condition makes sure to uphold that restriction.
         //
         // Here's an example of an index table configured to have a maximum of two rows, where we
-        // can see the 2nd bucket exceeding its legal uses in order to uphold these guarantees:
+        // can see the 2nd bucket exceeding this limit in order to still uphold the restriction:
         // ```
         // IndexTable {
         //     timeline: frame_nr
@@ -347,10 +346,10 @@ impl IndexBucket {
         // }
         // ```
         //
-        // There are various ways to either lift this restriction and/or uphold it in finer-grained
-        // ways, but for now this is good enough.
+        // There are various ways to either lift this restriction and/or uphold it in a
+        // finer-grained fashion, but for now this is good enough.
         //
-        // TODO(cmc): improve this
+        // TODO(cmc): improve on this.
         if self.times.values().binary_search(&time).is_ok() {
             return None;
         }
@@ -437,13 +436,11 @@ fn split_time_range_off(
 
 /// Given a primary time index and a desired splitting index, splits off the time index in place,
 /// and returns a new time index corresponding to the second half.
-///
-/// The two resulting time index halves are guaranteed to never overlap.
 fn split_primary_index_off(half_row: usize, times1: &mut Int64Vec) -> Int64Vec {
     debug_assert!(
         times1.validity().is_none(),
-        "The time index must always be dense, thus it shouldn't even have a validity\n
-                bitmap attached to it to begin with."
+        "The time index must always be dense, thus it shouldn't even have a validity\
+            bitmap attached to it to begin with."
     );
 
     let total_rows = times1.len();
@@ -459,14 +456,14 @@ fn split_primary_index_off(half_row: usize, times1: &mut Int64Vec) -> Int64Vec {
         assert!(
             times1.len() <= half_row && times2.len() <= half_row,
             "expected both halves to be smaller or equal than the halfway point: \
-                    got half={half_row} times1={} times2={}",
+                got half={half_row} times1={} times2={}",
             times1.len(),
             times2.len(),
         );
         assert!(
             total_rows == times1.len() + times2.len(),
             "expected both halves to sum up to the length of the original time index: \
-                    got times={} vs. times1+times2={}",
+                got times={} vs. times1+times2={}",
             total_rows,
             times1.len() + times2.len(),
         );
@@ -477,8 +474,6 @@ fn split_primary_index_off(half_row: usize, times1: &mut Int64Vec) -> Int64Vec {
 
 /// Given a secondary index of any kind and a desired splitting index, splits off the index
 /// in place, and returns a new index of the same kind that corresponds to the second half.
-///
-/// The two resulting index halves are guaranteed to never overlap.
 fn split_secondary_index_off(half_row: usize, index1: &mut UInt64Vec) -> UInt64Vec {
     fn split_index_off(index1: &mut UInt64Vec, half_row: usize) -> UInt64Vec {
         let (datatype, mut data1, validity1) = std::mem::take(index1).into_data();
@@ -504,7 +499,7 @@ fn split_secondary_index_off(half_row: usize, index1: &mut UInt64Vec) -> UInt64V
     debug_assert!(
         index1.len() <= half_row && index2.len() <= half_row,
         "expected both halves to be smaller or equal than the halfway point: \
-                            got half={half_row} index1={} index2={}",
+            got half={half_row} index1={} index2={}",
         index1.len(),
         index2.len(),
     );
