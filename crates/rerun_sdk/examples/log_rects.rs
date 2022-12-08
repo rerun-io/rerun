@@ -110,16 +110,32 @@ fn main() -> std::process::ExitCode {
 
     // Capture the log_time and object_path
     let time_point = rerun::log_time();
-    let obj_path = ObjPath::from("world/points");
+    let obj_path = ObjPath::from("world/rects");
 
     // Build up some rect data into an arrow array
     let rects = build_some_rects(5);
     let colors = build_some_colors(5);
-    let array =
-        rerun::arrow::components_as_struct_array(&[("rect", rects), ("color_rgba", colors)]);
 
-    // Create and send the message to the sdk
-    let msg = rerun::arrow::build_arrow_log_msg(&obj_path, &array, &time_point).unwrap();
+    // Create and send one message to the sdk
+    let msg = rerun::arrow::build_arrow_log_msg(
+        &obj_path,
+        &time_point,
+        [("rect", rects), ("color_rgba", colors)],
+    )
+    .unwrap();
+    session.send(msg);
+
+    // Create and send a second message to the sdk
+    let time_point = rerun::log_time();
+    let rects = build_some_rects(5);
+    let colors = build_some_colors(5);
+
+    let msg = rerun::arrow::build_arrow_log_msg(
+        &obj_path,
+        &time_point,
+        [("rect", rects), ("color_rgba", colors)],
+    )
+    .unwrap();
     session.send(msg);
 
     // If not connected, show the GUI inline

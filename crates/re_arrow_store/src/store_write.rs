@@ -29,7 +29,7 @@ impl DataStore {
         &mut self,
         ent_path: &EntityPath,
         time_point: &TimePoint,
-        components: impl ExactSizeIterator<Item = &'a ComponentBundle<'static>>,
+        components: impl ExactSizeIterator<Item = &'a ComponentBundle<'a>>,
     ) -> anyhow::Result<()> {
         // TODO(cmc): sort the "instances" component, and everything else accordingly!
         let ent_path_hash = *ent_path.hash();

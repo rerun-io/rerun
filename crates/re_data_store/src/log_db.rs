@@ -2,9 +2,9 @@ use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 
 use re_log_types::{
-    objects, ArrowMsg, BatchIndex, BeginRecordingMsg, DataMsg, DataPath, DataVec, FieldName,
-    LogMsg, LoggedData, MsgId, ObjPath, ObjTypePath, ObjectType, PathOp, PathOpMsg, RecordingId,
-    RecordingInfo, TimeInt, TimePoint, Timeline, TypeMsg,
+    msg_bundle::MessageBundle, objects, ArrowMsg, BatchIndex, BeginRecordingMsg, DataMsg, DataPath,
+    DataVec, FieldName, LogMsg, LoggedData, MsgId, ObjTypePath, ObjectType, PathOp, PathOpMsg,
+    RecordingId, RecordingInfo, TimeInt, TimePoint, Timeline, TypeMsg,
 };
 
 use crate::TimesPerTimeline;
@@ -107,16 +107,28 @@ impl ObjDb {
     }
 
     fn add_arrow_data_msg(&mut self, msg: &ArrowMsg) {
-        //TODO:These need to come out of the arrow object
-        let time_point: TimePoint = Default::default();
-        let data_path: DataPath = DataPath::new(ObjPath::from("/foo/bar"), FieldName::from("baz"));
+        // TODO: Error Handling
+        let msg_bundle = MessageBundle::try_from((msg.schema.clone(), &msg.chunk))
+            .ok()
+            .unwrap();
 
-        //self.arrow_store.insert(&msg.schema, &msg.chunk).unwrap();
+        for component in &msg_bundle.components {
+            //TODO(jleibs): Actually handle pending clears
+            let _pending_clears = self.tree.add_data_msg(
+                msg.msg_id,
+                &msg_bundle.time_point,
+                &DataPath::new(msg_bundle.obj_path.clone(), FieldName::from(component.name)),
+                None,
+            );
+        }
 
-        //TODO(jleibs): Handle pending clears
-        let _pending_clears = self
-            .tree
-            .add_data_msg(msg.msg_id, &time_point, &data_path, None);
+        self.arrow_store
+            .insert(
+                &msg_bundle.obj_path,
+                &msg_bundle.time_point,
+                msg_bundle.components.iter(),
+            )
+            .unwrap();
     }
 
     fn add_path_op(&mut self, msg_id: MsgId, time_point: &TimePoint, path_op: &PathOp) {

@@ -1,10 +1,9 @@
 use arrow2::{
     array::{
-        Array, Int64Array, ListArray, MutableArray, MutableListArray, MutablePrimitiveArray,
+        Int64Array, ListArray, MutableArray, MutableListArray, MutablePrimitiveArray,
         MutableStructArray, MutableUtf8Array, StructArray, UInt8Array, Utf8Array,
     },
-    chunk::Chunk,
-    datatypes::{DataType, Field, Schema},
+    datatypes::{DataType, Field},
 };
 use arrow2_convert::{deserialize::ArrowDeserialize, field::ArrowField, serialize::ArrowSerialize};
 

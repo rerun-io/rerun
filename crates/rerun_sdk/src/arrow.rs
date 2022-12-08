@@ -1,48 +1,40 @@
 use arrow2::{
-    array::{Array, StructArray},
-    datatypes::{DataType, Field, Schema},
+    array::Array,
+    chunk::Chunk,
+    datatypes::{Field, Schema},
 };
 
-use re_log_types::{datagen, ArrowMsg, LogMsg, MsgId, ObjPath, TimePoint};
-
-/// Create a [`StructArray`] from an array of (name, Array) tuples
-pub fn components_as_struct_array(components: &[(&str, Box<dyn Array>)]) -> StructArray {
-    let data_types = DataType::Struct(
-        components
-            .iter()
-            .map(|(name, data)| Field::new(*name, data.data_type().clone(), true))
-            .collect(),
-    );
-
-    let data_arrays = components.iter().map(|(_, data)| data.clone()).collect();
-
-    StructArray::new(data_types, data_arrays, None)
-}
+//use arrow2_convert::field::ArrowField;
+use re_log_types::{
+    datagen::wrap_in_listarray,
+    msg_bundle::{ComponentBundle, MessageBundle},
+    ArrowMsg, ComponentNameRef, LogMsg, MsgId, ObjPath, TimePoint,
+};
 
 /// Build the [`LogMsg`] from the [`StructArray`]
 pub fn build_arrow_log_msg(
     obj_path: &ObjPath,
-    array: &StructArray,
     time_point: &TimePoint,
+    components: impl IntoIterator<Item = (ComponentNameRef<'static>, Box<dyn Array>)>,
 ) -> Result<LogMsg, arrow2::error::Error> {
-    re_log::info!(
-        "Logged an arrow msg to path '{}'  with components {:?}",
-        obj_path,
-        array
-            .fields()
-            .iter()
-            .map(|field| field.name.as_str())
-            .collect::<Vec<_>>()
-    );
+    let message_bundle = MessageBundle {
+        obj_path: obj_path.clone(),
+        time_point: time_point.clone(),
+        components: components
+            .into_iter()
+            .map(|(name, arr)| {
+                let wrapped = wrap_in_listarray(arr).boxed();
+                ComponentBundle {
+                    name,
+                    field: Field::new(name, wrapped.data_type().clone(), false),
+                    component: wrapped,
+                }
+            })
+            .collect(),
+    };
 
-    let components = array
-        .fields()
-        .iter()
-        .zip(array.values().iter())
-        .map(|(field, array)| ("", Schema::from(vec![field.clone()]), array.clone()));
-
-    //TODO(john) Fix this
-    let (schema, chunk) = datagen::build_message(obj_path, time_point, components);
+    let (schema, chunk) =
+        TryInto::<(Schema, Chunk<Box<dyn Array>>)>::try_into(message_bundle).unwrap();
 
     Ok(LogMsg::ArrowMsg(ArrowMsg {
         msg_id: MsgId::random(),

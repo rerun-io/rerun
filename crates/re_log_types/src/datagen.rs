@@ -1,19 +1,13 @@
 //! Generate random data for tests and benchmarks.
 
-use std::collections::BTreeMap;
-
 use crate::msg_bundle::ComponentBundle;
-use crate::ENTITY_PATH_KEY;
-use crate::{
-    ComponentNameRef, ObjPath as EntityPath, Time, TimeInt, TimePoint, TimeType, Timeline,
-};
+use crate::{Time, TimeInt, TimeType, Timeline};
 use arrow2::{
     array::{Array, Float32Array, ListArray, PrimitiveArray, StructArray},
     buffer::Buffer,
     chunk::Chunk,
     datatypes::{DataType, Field, Schema},
 };
-use arrow2_convert::field::ArrowField;
 use arrow2_convert::serialize::TryIntoArrow;
 
 use crate::field_types;

@@ -78,7 +78,7 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
             store,
             &ent_path,
             [build_log_time(now), build_frame_nr(frame40)],
-            [build_instances(nb_instances)],
+            &[build_instances(nb_instances)],
         );
     }
 
@@ -227,31 +227,31 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
             store,
             &ent_path,
             [build_log_time(now_minus_10ms), build_frame_nr(frame43)],
-            [build_rects(nb_instances)],
+            &[build_rects(nb_instances)],
         );
         tracker.insert_data(
             store,
             &ent_path,
             [build_log_time(now), build_frame_nr(frame42)],
-            [build_rects(nb_instances)],
+            &[build_rects(nb_instances)],
         );
         tracker.insert_data(
             store,
             &ent_path,
             [build_log_time(now_plus_10ms), build_frame_nr(frame41)],
-            [build_instances(nb_instances), build_rects(nb_instances)],
+            &[build_instances(nb_instances), build_rects(nb_instances)],
         );
         tracker.insert_data(
             store,
             &ent_path,
             [build_log_time(now), build_frame_nr(frame42)],
-            [build_instances(nb_instances)],
+            &[build_instances(nb_instances)],
         );
         tracker.insert_data(
             store,
             &ent_path,
             [build_log_time(now_minus_10ms), build_frame_nr(frame42)],
-            [build_positions(nb_instances)],
+            &[build_positions(nb_instances)],
         );
     }
 
@@ -358,7 +358,7 @@ impl DataTracker {
         store: &mut DataStore,
         ent_path: &EntityPath,
         times: [(Timeline, TimeInt); N],
-        components: [ComponentBundle<'static>; M],
+        components: &[ComponentBundle<'static>; M],
     ) {
         let timepoint = TimePoint::from(times);
 
@@ -367,7 +367,7 @@ impl DataTracker {
                 name,
                 field: _,
                 component,
-            } in &components
+            } in components
             {
                 assert!(self
                     .all_data
