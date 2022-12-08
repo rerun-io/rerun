@@ -25,6 +25,8 @@ jobs:
 
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@v2
+        with:
+          save-if: ${{ github.event_name == 'push'}}
 
       - name: Install taplo-cli
         uses: baptiste0928/cargo-install@v1

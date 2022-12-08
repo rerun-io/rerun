@@ -56,6 +56,8 @@ jobs:
 
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@v2
+        with:
+          save-if: ${{ github.event_name == 'push'}}
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -86,6 +88,8 @@ jobs:
 
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@v2
+        with:
+          save-if: ${{ github.event_name == 'push'}}
 
       - name: Setup python for building wheel
         uses: actions/setup-python@v4
@@ -125,6 +129,8 @@ jobs:
 
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@v2
+        with:
+          save-if: ${{ github.event_name == 'push'}}
 
       - name: Setup python for building wheel
         uses: actions/setup-python@v4
