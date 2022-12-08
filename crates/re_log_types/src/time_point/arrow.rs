@@ -134,8 +134,7 @@ impl<'a> IntoIterator for &'a TimePointArray {
     type Item = TimePoint;
     type IntoIter = TimePointIterator<'a>;
     fn into_iter(self) -> Self::IntoIter {
-        //NB(john) This is a quirk of the way the traits work in arrow2_convert.
-        panic!("Use iter_from_array_ref");
+        panic!("Use iter_from_array_ref. This is a quirk of the way the traits work in arrow2_convert.");
     }
 }
 
