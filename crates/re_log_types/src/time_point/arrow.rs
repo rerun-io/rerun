@@ -93,7 +93,7 @@ impl<'a> Iterator for TimePointIterator<'a> {
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        if let Some(time_point) = self.time_points.next().flatten() {
+        self.time_points.next().flatten().map(|time_point| {
             let struct_arr = time_point
                 .as_any()
                 .downcast_ref::<StructArray>()
@@ -125,10 +125,8 @@ impl<'a> Iterator for TimePointIterator<'a> {
                 },
             );
 
-            Some(time_points.collect())
-        } else {
-            None
-        }
+            time_points.collect()
+        })
     }
 }
 
@@ -139,7 +137,8 @@ impl<'a> IntoIterator for &'a TimePointArray {
     type Item = TimePoint;
     type IntoIter = TimePointIterator<'a>;
     fn into_iter(self) -> Self::IntoIter {
-        unreachable!("Use iter_from_array_ref");
+        //NB(john) This is a quirk of the way the traits work in arrow2_convert.
+        panic!("Use iter_from_array_ref");
     }
 }
 

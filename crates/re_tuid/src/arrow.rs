@@ -50,3 +50,16 @@ impl ArrowSerialize for Tuid {
         Ok(())
     }
 }
+
+//TODO(john) enable this when ArrowDeserialize is implemented for Tuid
+#[cfg(feature = "disabled")]
+#[test]
+fn test_tuid_roundtrip() {
+    use arrow2::array::Array;
+    use arrow2_convert::{deserialize::TryIntoCollection, serialize::TryIntoArrow};
+
+    let tuid_in = vec![Tuid::random(), Tuid::random()];
+    let array: Box<dyn Array> = tuid_in.try_into_arrow().unwrap();
+    let tuid_out: Vec<Tuid> = TryIntoCollection::try_into_collection(array).unwrap();
+    assert_eq!(tuid_in, tuid_out);
+}
