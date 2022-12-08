@@ -113,7 +113,10 @@ use crate::{
     Color32,
 };
 
-use super::*;
+use super::{
+    DrawData, FileResolver, FileSystem, LineVertex, RenderContext, Renderer, SharedRendererData,
+    WgpuResourcePools,
+};
 
 pub mod gpu_data {
     // Don't use `wgsl_buffer_types` since none of this data goes into a buffer, so its alignment rules don't apply.

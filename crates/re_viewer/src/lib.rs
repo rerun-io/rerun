@@ -14,8 +14,10 @@ mod misc;
 mod remote_viewer_app;
 mod ui;
 
-pub(crate) use misc::*;
-pub(crate) use ui::*;
+pub(crate) use misc::{mesh_loader, time_axis, Selection, TimeControl, TimeView, ViewerContext};
+pub(crate) use ui::{
+    data_ui, event_log_view, memory_panel, selection_panel, time_panel, Preview, SelectionHistory,
+};
 
 pub use app::{App, StartupOptions};
 pub use remote_viewer_app::RemoteViewerApp;
@@ -26,7 +28,7 @@ pub use remote_viewer_app::RemoteViewerApp;
 #[cfg(not(target_arch = "wasm32"))]
 mod native;
 #[cfg(not(target_arch = "wasm32"))]
-pub use native::*;
+pub use native::{run_native_app, run_native_viewer_with_messages};
 
 #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
 pub use misc::profiler::Profiler;

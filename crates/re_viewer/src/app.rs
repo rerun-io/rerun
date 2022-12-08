@@ -8,8 +8,8 @@ use nohash_hasher::IntMap;
 use poll_promise::Promise;
 
 use re_data_store::log_db::LogDb;
-use re_format::format_usize;
-use re_log_types::*;
+use re_format::format_number;
+use re_log_types::{ApplicationId, LogMsg, RecordingId};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::Receiver;
 
@@ -541,7 +541,7 @@ impl App {
 }
 
 fn preview_files_being_dropped(egui_ctx: &egui::Context) {
-    use egui::*;
+    use egui::{Align2, Color32, Id, LayerId, Order, TextStyle};
 
     // Preview hovering files:
     if !egui_ctx.input().raw.hovered_files.is_empty() {
@@ -795,7 +795,7 @@ fn top_bar_ui(
         .on_hover_text(format!(
             "Rerun Viewer is using {} of RAM in {} separate allocations.",
             bytes_used_text,
-            format_usize(count.count),
+            format_number(count.count),
         ));
     }
 
@@ -814,8 +814,8 @@ fn top_bar_ui(
         .on_hover_text(format!(
             "Rerun Viewer is using {} of GPU memory in {} textures and {} buffers.",
             bytes_used_text,
-            format_usize(gpu_resource_stats.num_textures),
-            format_usize(gpu_resource_stats.num_buffers),
+            format_number(gpu_resource_stats.num_textures),
+            format_number(gpu_resource_stats.num_buffers),
         ));
     }
 
@@ -842,7 +842,7 @@ fn top_bar_ui(
                 let text = format!(
                     "Latency: {:.2}s, queue: {}",
                     latency_sec,
-                    format_usize(queue_len),
+                    format_number(queue_len),
                 );
                 let hover_text =
                     "When more data is arriving over network than the Rerun Viewer can index, a queue starts building up, leading to latency and increased RAM use.\n\
@@ -855,7 +855,7 @@ fn top_bar_ui(
                         .on_hover_text(hover_text);
                 }
             } else {
-                ui.weak(format!("Queue: {}", format_usize(queue_len)))
+                ui.weak(format!("Queue: {}", format_number(queue_len)))
                     .on_hover_text("Number of messages in the inbound queue");
             }
         }
@@ -1216,8 +1216,10 @@ fn debug_menu(ui: &mut egui::Ui) {
 fn save_database_to_file(
     app: &mut App,
     path: std::path::PathBuf,
-    time_selection: Option<(Timeline, TimeRangeF)>,
+    time_selection: Option<(re_data_store::Timeline, TimeRangeF)>,
 ) -> impl FnOnce() -> anyhow::Result<std::path::PathBuf> {
+    use re_log_types::{DataMsg, PathOpMsg, TimeInt};
+
     let msgs = match time_selection {
         // Fast path: no query, just dump everything.
         None => app

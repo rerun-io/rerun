@@ -3,9 +3,9 @@ use std::collections::BTreeMap;
 use egui::NumExt as _;
 
 use re_data_store::TimesPerTimeline;
-use re_log_types::*;
+use re_log_types::{TimeInt, TimeRangeF, TimeReal, TimeType};
 
-use super::time_control::*;
+use super::time_control::{Looping, TimeControl};
 
 impl TimeControl {
     pub fn timeline_selector_ui(

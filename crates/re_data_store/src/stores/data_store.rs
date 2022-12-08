@@ -1,7 +1,10 @@
 use itertools::Itertools;
 use nohash_hasher::IntMap;
 
-use re_log_types::*;
+use re_log_types::{
+    BatchIndex, DataMsg, DataPath, Index, IndexHash, LoggedData, MsgId, ObjPath, ObjPathHash,
+    TimePoint, TimeType, Timeline,
+};
 
 use crate::{
     profile_scope, ArcBatch, BadBatchError, Batch, BatchOrSplat, FieldQueryOutput, Result,

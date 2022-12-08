@@ -11,7 +11,13 @@ use arrow2::{
 use polars::prelude::{DataFrame, Series};
 
 use re_arrow_store::{DataStore, DataStoreConfig, TimeInt, TimeQuery};
-use re_log_types::{datagen::*, ComponentNameRef, ObjPath as EntityPath, TimeType, Timeline};
+use re_log_types::{
+    datagen::{
+        build_frame_nr, build_instances, build_log_time, build_message, build_positions,
+        build_rects,
+    },
+    ComponentNameRef, ObjPath as EntityPath, TimeType, Timeline,
+};
 
 // ---
 

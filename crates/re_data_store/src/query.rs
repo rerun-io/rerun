@@ -2,7 +2,9 @@ use std::collections::BTreeMap;
 
 use re_log_types::{DataTrait, FieldName, IndexHash, MsgId};
 
-use crate::*;
+use crate::{
+    Batch, BatchIndexLookup, BatchOrSplat, MonoFieldStore, MultiFieldStore, ObjStore, TimeQuery,
+};
 
 fn latest_at<'data, Time: 'static + Copy + Ord, T: 'static>(
     data_over_time: &'data BTreeMap<(Time, MsgId), T>,

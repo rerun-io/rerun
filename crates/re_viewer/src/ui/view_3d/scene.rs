@@ -18,8 +18,8 @@ use crate::ui::SceneQuery;
 use crate::{math::line_segment_distance_sq_to_point_2d, misc::ViewerContext};
 
 use re_renderer::{
+    renderer::{LineStripFlags, MeshInstance, PointCloudPoint},
     Color32,
-    {renderer::*, Size},
 };
 
 use super::{eye::Eye, SpaceCamera};
