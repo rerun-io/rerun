@@ -4,7 +4,6 @@ use ahash::HashMap;
 use egui::NumExt as _;
 use glam::{vec3, Vec3};
 use itertools::Itertools as _;
-use smallvec::smallvec;
 
 use re_data_store::query::{
     visit_type_data_1, visit_type_data_2, visit_type_data_3, visit_type_data_4, visit_type_data_5,
@@ -115,16 +114,13 @@ pub struct SceneSpatialUiElements {
     pub labels_2d: Vec<Label2D>,
 
     /// Hoverable rects in scene units and their instance id hashes
-    pub hoverable_rects: Vec<(egui::Rect, InstanceIdHash)>,
+    pub rects: Vec<(egui::Rect, InstanceIdHash)>,
 
     /// Images are a special case of rects where we're storing some extra information to allow minature previews etc.
-    pub hoverable_images: Vec<HoverableImage>,
+    pub images: Vec<HoverableImage>,
 
     /// Hoverable points in scene units and their instance id hashes
-    pub hoverable_points: Vec<(egui::Pos2, InstanceIdHash)>,
-
-    /// Hoverable line strips in scene units and their instance id hashes
-    pub hoverable_line_strips: Vec<(smallvec::SmallVec<[egui::Pos2; 2]>, InstanceIdHash)>,
+    pub points: Vec<(egui::Pos2, InstanceIdHash)>,
 }
 
 #[derive(Default)]
@@ -134,9 +130,7 @@ pub struct SceneSpatialRenderPrimitives {
 
     pub textured_rectangles: Vec<re_renderer::renderer::Rectangle>,
 
-    // TODO(andreas) should not distinguish 2d & 3d line strips. Currently need to since we do hover checking on them directly.
-    pub line_strips_3d: LineStripSeriesBuilder<InstanceIdHash>,
-    pub line_strips_2d: LineStripSeriesBuilder<()>,
+    pub line_strips: LineStripSeriesBuilder<InstanceIdHash>,
 
     pub points_3d: Vec<Point3D>,
     pub points_2d: Vec<PointCloudPoint>, // TODO(andreas): Separate hover & render
@@ -174,10 +168,7 @@ impl SceneSpatialRenderPrimitives {
             self.bounding_box.extend(point.position);
         }
 
-        for vertex in &self.line_strips_3d.vertices {
-            self.bounding_box.extend(vertex.pos);
-        }
-        for vertex in &self.line_strips_2d.vertices {
+        for vertex in &self.line_strips.vertices {
             self.bounding_box.extend(vertex.pos);
         }
 
@@ -353,7 +344,11 @@ impl SceneSpatial {
                             );
                             continue;
                         };
-                        self.render_primitives.line_strips_3d.add_segment(*a, *b).radius(Size::AUTO).color(to_ecolor(color)).user_data(instance_id_hash);
+                        self.render_primitives.line_strips
+                            .add_segment(*a, *b)
+                            .radius(Size::AUTO)
+                            .color(to_ecolor(color))
+                            .user_data(instance_id_hash);
                     }
                 }
             });
@@ -458,13 +453,14 @@ impl SceneSpatial {
                         radius = Self::hover_size_boost(radius);
                     }
 
+                    // Add renderer primitive
                     match obj_type {
                         ObjectType::Path3D => self
                             .render_primitives
-                            .line_strips_3d
+                            .line_strips
                             .add_strip(points.iter().map(|v| Vec3::from_slice(v))),
                         ObjectType::LineSegments3D => {
-                            self.render_primitives.line_strips_3d.add_segments(
+                            self.render_primitives.line_strips.add_segments(
                                 points
                                     .chunks_exact(2)
                                     .map(|points| (points[0].into(), points[1].into())),
@@ -626,7 +622,7 @@ impl SceneSpatial {
 
                     if hovered_instance == instance_hash {
                         self.render_primitives
-                            .line_strips_2d
+                            .line_strips
                             .add_axis_aligned_rectangle_outline_2d(
                                 glam::Vec2::ZERO,
                                 glam::vec2(w, h),
@@ -655,7 +651,7 @@ impl SceneSpatial {
                         },
                     );
 
-                    self.ui_elements.hoverable_images.push(HoverableImage {
+                    self.ui_elements.images.push(HoverableImage {
                         instance_hash,
                         tensor: tensor.clone(),
                         meter: meter.copied(),
@@ -724,21 +720,23 @@ impl SceneSpatial {
                     let color = annotation_info.color(color, DefaultColor::ObjPath(obj_path));
                     let label = annotation_info.label(label);
 
+                    // Hovering with a rect.
                     let rect = egui::Rect::from_min_max(bbox.min.into(), bbox.max.into());
-                    self.ui_elements.hoverable_rects.push((rect, instance_hash));
+                    self.ui_elements.rects.push((rect, instance_hash));
 
                     let mut paint_props = paint_properties(color, stroke_width);
                     if hovered_instance == instance_hash {
                         apply_hover_effect(&mut paint_props);
                     }
 
+                    // Lines don't associated with instance (i.e. won't participate in hovering)
                     self.render_primitives
-                        .line_strips_2d
+                        .line_strips
                         .add_axis_aligned_rectangle_outline_2d(bbox.min.into(), bbox.max.into())
                         .color(paint_props.bg_stroke.color)
                         .radius(Size::new_points(paint_props.bg_stroke.width * 0.5));
                     self.render_primitives
-                        .line_strips_2d
+                        .line_strips
                         .add_axis_aligned_rectangle_outline_2d(bbox.min.into(), bbox.max.into())
                         .color(paint_props.fg_stroke.color)
                         .radius(Size::new_points(paint_props.fg_stroke.width * 0.5));
@@ -765,8 +763,8 @@ impl SceneSpatial {
         crate::profile_function!();
 
         // Ensure keypoint connection lines are behind points.
-        let connection_depth = self.render_primitives.line_strips_2d.next_2d_z;
-        let point_depth = self.render_primitives.line_strips_2d.next_2d_z - 0.1;
+        let connection_depth = self.render_primitives.line_strips.next_2d_z;
+        let point_depth = self.render_primitives.line_strips.next_2d_z - 0.1;
 
         for (_obj_type, obj_path, time_query, obj_store) in
             query.iter_object_stores(ctx.log_db, &[ObjectType::Point2D])
@@ -837,7 +835,7 @@ impl SceneSpatial {
                     });
 
                     let pos = egui::pos2(pos.x, pos.y);
-                    self.ui_elements.hoverable_points.push((pos, instance_hash));
+                    self.ui_elements.points.push((pos, instance_hash));
 
                     if let Some(label) = label {
                         if label_batch.len() < max_num_labels {
@@ -880,14 +878,10 @@ impl SceneSpatial {
                     // TODO(andreas): No outlines for these?
                     // Specify depth explicitly so we're behind the points.
                     self.render_primitives
-                        .line_strips_2d
+                        .line_strips
                         .add_segment(a.extend(connection_depth), b.extend(connection_depth))
-                        .color(to_ecolor(color));
-
-                    self.ui_elements.hoverable_line_strips.push((
-                        smallvec![egui::pos2(a.x, a.y), egui::pos2(b.x, b.y)],
-                        instance_hash,
-                    ));
+                        .color(to_ecolor(color))
+                        .user_data(instance_hash);
                 }
             }
         }
@@ -935,7 +929,7 @@ impl SceneSpatial {
 
                     // TODO(andreas): support outlines directly by re_renderer (need only 1 and 2 *point* black outlines)
                     self.render_primitives
-                        .line_strips_2d
+                        .line_strips
                         .add_segments_2d(
                             points
                                 .iter()
@@ -943,9 +937,10 @@ impl SceneSpatial {
                                 .map(|(a, b)| (glam::vec2(a[0], a[1]), glam::vec2(b[0], b[1]))),
                         )
                         .color(paint_props.bg_stroke.color)
-                        .radius(Size::new_points(paint_props.bg_stroke.width * 0.5));
+                        .radius(Size::new_points(paint_props.bg_stroke.width * 0.5))
+                        .user_data(instance_hash);
                     self.render_primitives
-                        .line_strips_2d
+                        .line_strips
                         .add_segments_2d(
                             points
                                 .iter()
@@ -954,11 +949,6 @@ impl SceneSpatial {
                         )
                         .color(paint_props.fg_stroke.color)
                         .radius(Size::new_points(paint_props.fg_stroke.width * 0.5));
-
-                    self.ui_elements.hoverable_line_strips.push((
-                        points.iter().map(|p| egui::pos2(p[0], p[1])).collect(),
-                        instance_hash,
-                    ));
                 },
             );
         }
@@ -1042,7 +1032,7 @@ impl SceneSpatial {
                     let color = axis_color(axis_index);
 
                     self.render_primitives
-                        .line_strips_3d
+                        .line_strips
                         .add_segment(cam_origin, axis_end)
                         .radius(Size::new_points(2.0))
                         .color(color)
@@ -1094,7 +1084,7 @@ impl SceneSpatial {
         ];
 
         self.render_primitives
-            .line_strips_3d
+            .line_strips
             .add_segments(segments.into_iter())
             .radius(line_radius)
             .color(color)
@@ -1132,7 +1122,7 @@ impl SceneSpatial {
         }
 
         self.render_primitives
-            .line_strips_3d
+            .line_strips
             .add_segment(origin, end)
             .radius(radius)
             .color(color)
@@ -1196,7 +1186,7 @@ impl SceneSpatial {
         ];
 
         self.render_primitives
-            .line_strips_3d
+            .line_strips
             .add_segments(segments.into_iter())
             .radius(line_radius)
             .color(color)
@@ -1210,7 +1200,7 @@ impl SceneSpatial {
     /// Heuristic whether the default way of looking at this scene should be 2d or 3d.
     pub fn prefer_2d_mode(&self) -> bool {
         // If any 2D interactable picture is there we regard it as 2d.
-        if !self.ui_elements.hoverable_images.is_empty() {
+        if !self.ui_elements.images.is_empty() {
             return true;
         }
 
@@ -1267,7 +1257,7 @@ impl SceneSpatial {
 
     pub fn picking(
         &self,
-        pointer_in_ui: egui::Pos2,
+        pointer_in_ui: glam::Vec2,
         rect: &egui::Rect,
         eye: &Eye,
     ) -> Option<(InstanceIdHash, Vec3)> {
@@ -1306,7 +1296,7 @@ impl SceneSpatial {
                     if pos_in_ui.z < 0.0 {
                         continue; // TODO(emilk): don't we expect negative Z!? RHS etc
                     }
-                    let dist_sq = egui::pos2(pos_in_ui.x, pos_in_ui.y).distance_sq(pointer_in_ui);
+                    let dist_sq = pos_in_ui.truncate().distance_squared(pointer_in_ui);
                     if dist_sq < max_side_dist_sq {
                         let t = pos_in_ui.z.abs();
                         if t < closest_z || dist_sq < closest_side_dist_sq {
@@ -1322,21 +1312,20 @@ impl SceneSpatial {
         {
             crate::profile_scope!("line_segments 3d");
             for ((_line_strip, vertices), instance_id_hash) in render_primitives
-                .line_strips_3d
+                .line_strips
                 .iter_strips_with_vertices()
-                .zip(render_primitives.line_strips_3d.strip_user_data.iter())
+                .zip(render_primitives.line_strips.strip_user_data.iter())
             {
                 if !instance_id_hash.is_some() {
                     continue;
                 }
                 // TODO(emilk): take line segment radius into account
-                use egui::pos2;
 
                 for (start, end) in vertices.tuple_windows() {
                     let a = ui_from_world.project_point3(start.pos);
                     let b = ui_from_world.project_point3(end.pos);
                     let dist_sq = line_segment_distance_sq_to_point_2d(
-                        [pos2(a.x, a.y), pos2(b.x, b.y)],
+                        [a.truncate(), b.truncate()],
                         pointer_in_ui,
                     );
 

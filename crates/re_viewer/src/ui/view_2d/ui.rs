@@ -3,6 +3,7 @@ use egui::{
     epaint, pos2, vec2, Align, Align2, Color32, NumExt as _, Pos2, Rect, Response, ScrollArea,
     Shape, TextFormat, TextStyle, Vec2,
 };
+use itertools::Itertools;
 use re_data_store::{InstanceId, InstanceIdHash, ObjPath};
 use re_renderer::{
     renderer::{PointCloudDrawData, RectangleDrawData},
@@ -325,27 +326,37 @@ fn view_2d_scrollable(
             }
         };
 
-        for (bbox, instance_hash) in &scene.ui_elements.hoverable_rects {
+        for (bbox, instance_hash) in &scene.ui_elements.rects {
             check_hovering(*instance_hash, bbox.distance_to_pos(pointer_pos_space));
         }
 
-        for (point, instance_hash) in &scene.ui_elements.hoverable_points {
+        for (point, instance_hash) in &scene.ui_elements.points {
             check_hovering(*instance_hash, point.distance(pointer_pos_space));
         }
 
-        for (points, instance_hash) in &scene.ui_elements.hoverable_line_strips {
+        for ((_info, instance_hash), vertices) in scene
+            .render_primitives
+            .line_strips
+            .iter_strips_with_vertices()
+        {
+            if !instance_hash.is_some() {
+                continue;
+            }
+
             let mut min_dist_sq = f32::INFINITY;
 
-            for &[a, b] in bytemuck::cast_slice::<_, [egui::Pos2; 2]>(points) {
-                let line_segment_distance_sq =
-                    crate::math::line_segment_distance_sq_to_point_2d([a, b], pointer_pos_space);
+            for (a, b) in vertices.tuple_windows() {
+                let line_segment_distance_sq = crate::math::line_segment_distance_sq_to_point_2d(
+                    [a.pos.truncate(), b.pos.truncate()],
+                    glam::vec2(pointer_pos_space.x, pointer_pos_space.y),
+                );
                 min_dist_sq = min_dist_sq.min(line_segment_distance_sq);
             }
 
             check_hovering(*instance_hash, min_dist_sq.sqrt());
         }
 
-        for img in &scene.ui_elements.hoverable_images {
+        for img in &scene.ui_elements.images {
             let HoverableImage {
                 instance_hash,
                 tensor,
@@ -437,7 +448,7 @@ fn view_2d_scrollable(
             .queue_draw(
                 &scene
                     .render_primitives
-                    .line_strips_2d
+                    .line_strips
                     .to_draw_data(ctx.render_ctx),
             )
             .queue_draw(
@@ -545,7 +556,7 @@ fn create_labels(
 
         scene
             .ui_elements
-            .hoverable_rects
+            .rects
             .push((bg_rect, label.labled_instance));
     }
 

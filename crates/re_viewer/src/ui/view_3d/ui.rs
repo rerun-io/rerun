@@ -390,9 +390,9 @@ pub(crate) fn view_3d(
         });
     }
 
-    let hovered = response
-        .hover_pos()
-        .and_then(|pointer_pos| scene.picking(pointer_pos, &rect, &eye));
+    let hovered = response.hover_pos().and_then(|pointer_pos| {
+        scene.picking(glam::vec2(pointer_pos.x, pointer_pos.y), &rect, &eye)
+    });
 
     state.hovered_instance = None;
     state.hovered_point = None;
@@ -521,12 +521,7 @@ fn paint_view(
             .unwrap()
             .queue_draw(&GenericSkyboxDrawData::new(render_ctx))
             .queue_draw(&MeshDrawData::new(render_ctx, &scene.meshes()).unwrap())
-            .queue_draw(
-                &scene
-                    .render_primitives
-                    .line_strips_3d
-                    .to_draw_data(render_ctx),
-            )
+            .queue_draw(&scene.render_primitives.line_strips.to_draw_data(render_ctx))
             .queue_draw(&PointCloudDrawData::new(render_ctx, &scene.point_cloud_points()).unwrap());
 
         let command_buffer = view_builder
@@ -592,7 +587,7 @@ fn show_projections_from_2d_space(
 
                     scene
                         .render_primitives
-                        .line_strips_3d
+                        .line_strips
                         .add_segment(origin, end)
                         .radius(radius);
 
@@ -655,21 +650,21 @@ fn show_origin_axis(scene: &mut SceneSpatial) {
 
     scene
         .render_primitives
-        .line_strips_3d
+        .line_strips
         .add_segment(glam::Vec3::ZERO, glam::Vec3::X)
         .radius(radius)
         .color(AXIS_COLOR_X)
         .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE);
     scene
         .render_primitives
-        .line_strips_3d
+        .line_strips
         .add_segment(glam::Vec3::ZERO, glam::Vec3::Y)
         .radius(radius)
         .color(AXIS_COLOR_Y)
         .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE);
     scene
         .render_primitives
-        .line_strips_3d
+        .line_strips
         .add_segment(glam::Vec3::ZERO, glam::Vec3::Z)
         .radius(radius)
         .color(AXIS_COLOR_Z)

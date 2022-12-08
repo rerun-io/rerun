@@ -86,23 +86,21 @@ impl ViewportBlueprint {
         for (path, space_info) in &spaces_info.spaces {
             let scene = query_scene(ctx, space_info);
             for category in scene.categories() {
-                if category == ViewCategory::TwoD
-                    && scene.spatial.ui_elements.hoverable_images.len() > 1
-                {
+                if category == ViewCategory::TwoD && scene.spatial.ui_elements.images.len() > 1 {
                     // Multiple images (e.g. depth and rgb, or rgb and segmentation) in the same 2D scene.
                     // Stacking them on top of each other works, but is often confusing.
                     // Let's create one space view for each image, where the other images are disabled:
 
                     let store = &ctx.log_db.obj_db.store;
 
-                    for visible_image in &scene.spatial.ui_elements.hoverable_images {
+                    for visible_image in &scene.spatial.ui_elements.images {
                         if let Some(visible_instance_id) =
                             visible_image.instance_hash.resolve(store)
                         {
                             let mut space_view = SpaceView::new(&scene, category, path.clone());
                             space_view.name = visible_instance_id.obj_path.to_string();
 
-                            for other_image in &scene.spatial.ui_elements.hoverable_images {
+                            for other_image in &scene.spatial.ui_elements.images {
                                 if let Some(image_instance_id) =
                                     other_image.instance_hash.resolve(store)
                                 {
