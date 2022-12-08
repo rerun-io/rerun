@@ -4,24 +4,29 @@ use ahash::HashMap;
 use egui::NumExt as _;
 use glam::{vec3, Vec3};
 use itertools::Itertools as _;
+use smallvec::smallvec;
 
 use re_data_store::query::{
     visit_type_data_1, visit_type_data_2, visit_type_data_3, visit_type_data_4, visit_type_data_5,
 };
 use re_data_store::{FieldName, InstanceIdHash};
-use re_log_types::context::{ClassId, KeypointId};
-use re_log_types::{DataVec, IndexHash, MeshId, MsgId, ObjectType, Tensor};
-use re_renderer::LineStripSeriesBuilder;
-
-use crate::misc::mesh_loader::CpuMesh;
-use crate::ui::annotations::{auto_color, AnnotationMap, DefaultColor};
-use crate::ui::view_spatial::axis_color;
-use crate::ui::{Annotations, SceneQuery};
-use crate::{math::line_segment_distance_sq_to_point_2d, misc::ViewerContext};
-
+use re_log_types::{
+    context::{ClassId, KeypointId},
+    DataVec, IndexHash, MeshId, MsgId, ObjectType, Tensor,
+};
 use re_renderer::{
     renderer::{LineStripFlags, MeshInstance, PointCloudPoint},
-    Color32, Size,
+    Color32, LineStripSeriesBuilder, Size,
+};
+
+use crate::{
+    math::line_segment_distance_sq_to_point_2d,
+    misc::{mesh_loader::CpuMesh, ViewerContext},
+    ui::{
+        annotations::{auto_color, AnnotationMap, DefaultColor},
+        view_spatial::axis_color,
+        Annotations, SceneQuery,
+    },
 };
 
 use super::{eye::Eye, SpaceCamera3D};
@@ -179,6 +184,13 @@ impl SceneSpatial {
         self.load_lines(ctx, query, hovered_instance);
         self.load_arrows(ctx, query, hovered_instance);
         self.load_meshes(ctx, query, hovered_instance);
+
+        self.load_images(ctx, query, hovered_instance);
+        self.load_boxes_2d(ctx, query, hovered_instance);
+        self.load_line_segments_2d(ctx, query, hovered_instance);
+        self.load_points_2d(ctx, query, hovered_instance);
+
+        self.recalculate_bounding_box();
     }
 
     const HOVER_COLOR: Color32 = Color32::from_rgb(255, 200, 200);
@@ -532,6 +544,396 @@ impl SceneSpatial {
         self.meshes.extend(meshes);
     }
 
+    fn recalculate_bounding_box(&mut self) {
+        for image in &self.hoverable_images {
+            let [h, w] = [image.tensor.shape[0].size, image.tensor.shape[1].size];
+            self.bounding_rect.extend_with(egui::Pos2::ZERO);
+            self.bounding_rect.extend_with(egui::pos2(w as _, h as _));
+        }
+
+        for (point, _) in &self.hoverable_points {
+            self.bounding_rect.extend_with(*point);
+        }
+
+        for (points, _) in &self.hoverable_line_strips {
+            for p in points {
+                self.bounding_rect.extend_with(*p);
+            }
+        }
+    }
+
+    fn load_images(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        query: &SceneQuery<'_>,
+        hovered_instance: InstanceIdHash,
+    ) {
+        crate::profile_function!();
+
+        for (_obj_type, obj_path, time_query, obj_store) in
+            query.iter_object_stores(ctx.log_db, &[ObjectType::Image])
+        {
+            visit_type_data_2(
+                obj_store,
+                &FieldName::from("tensor"),
+                &time_query,
+                ("color", "meter"),
+                |instance_index: Option<&IndexHash>,
+                 _time: i64,
+                 _msg_id: &MsgId,
+                 tensor: &re_log_types::Tensor,
+                 color: Option<&[u8; 4]>,
+                 meter: Option<&f32>| {
+                    let two_or_three_dims = 2 <= tensor.shape.len() && tensor.shape.len() <= 3;
+                    if !two_or_three_dims {
+                        return;
+                    }
+                    let (w, h) = (tensor.shape[1].size as f32, tensor.shape[0].size as f32);
+
+                    let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
+                    let instance_hash =
+                        InstanceIdHash::from_path_and_index(obj_path, instance_index);
+
+                    let annotations = self.annotation_map.find(obj_path);
+                    let color = annotations
+                        .class_description(None)
+                        .annotation_info()
+                        .color(color, DefaultColor::OpaqueWhite);
+
+                    let paint_props = paint_properties(color, None);
+
+                    if hovered_instance == instance_hash {
+                        self.line_strips_2d
+                            .add_axis_aligned_rectangle_outline_2d(
+                                glam::Vec2::ZERO,
+                                glam::vec2(w, h),
+                            )
+                            .color(paint_props.fg_stroke.color)
+                            .radius(Size::new_points(paint_props.fg_stroke.width * 0.5));
+                    }
+
+                    let legend = Some(annotations.clone());
+                    let tensor_view =
+                        ctx.cache
+                            .image
+                            .get_view_with_annotations(tensor, &legend, ctx.render_ctx);
+
+                    self.textured_rectangles
+                        .push(re_renderer::renderer::Rectangle {
+                            top_left_corner_position: glam::Vec3::ZERO,
+                            extent_u: glam::Vec3::X * w,
+                            extent_v: glam::Vec3::Y * h,
+                            texture: tensor_view.texture_handle,
+                            texture_filter_magnification:
+                                re_renderer::renderer::TextureFilterMag::Nearest,
+                            texture_filter_minification:
+                                re_renderer::renderer::TextureFilterMin::Linear,
+                            multiplicative_tint: paint_props.fg_stroke.color.into(),
+                        });
+
+                    self.hoverable_images.push(HoverableImage {
+                        instance_hash,
+                        tensor: tensor.clone(),
+                        meter: meter.copied(),
+                        annotations,
+                    });
+                },
+            );
+        }
+
+        let total_num_images = self.textured_rectangles.len();
+        for (image_idx, img) in self.textured_rectangles.iter_mut().enumerate() {
+            img.top_left_corner_position = glam::vec3(
+                0.0,
+                0.0,
+                // We use RDF (X=Right, Y=Down, Z=Forward) for 2D spaces, so we want lower Z in order to put images on top
+                (total_num_images - image_idx - 1) as f32 * 0.1,
+            );
+
+            let opacity = if image_idx == 0 {
+                1.0 // bottom image
+            } else {
+                // make top images transparent
+                1.0 / total_num_images.at_most(20) as f32 // avoid precision problems in framebuffer
+            };
+            img.multiplicative_tint = img.multiplicative_tint.multiply(opacity);
+        }
+    }
+
+    fn load_boxes_2d(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        query: &SceneQuery<'_>,
+        hovered_instance: InstanceIdHash,
+    ) {
+        crate::profile_function!();
+
+        for (_obj_type, obj_path, time_query, obj_store) in
+            query.iter_object_stores(ctx.log_db, &[ObjectType::BBox2D])
+        {
+            visit_type_data_4(
+                obj_store,
+                &FieldName::from("bbox"),
+                &time_query,
+                ("color", "stroke_width", "label", "class_id"),
+                |instance_index: Option<&IndexHash>,
+                 _time: i64,
+                 _msg_id: &MsgId,
+                 bbox: &re_log_types::BBox2D,
+                 color: Option<&[u8; 4]>,
+                 stroke_width: Option<&f32>,
+                 label: Option<&String>,
+                 class_id: Option<&i32>| {
+                    let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
+                    let instance_hash =
+                        InstanceIdHash::from_path_and_index(obj_path, instance_index);
+
+                    let annotations = self.annotation_map.find(obj_path);
+                    let annotation_info = annotations
+                        .class_description(class_id.map(|i| ClassId(*i as _)))
+                        .annotation_info();
+                    let color = annotation_info.color(color, DefaultColor::ObjPath(obj_path));
+                    let label = annotation_info.label(label);
+
+                    let rect = egui::Rect::from_min_max(bbox.min.into(), bbox.max.into());
+                    self.hoverable_rects.push((rect, instance_hash));
+
+                    let mut paint_props = paint_properties(color, stroke_width);
+                    if hovered_instance == instance_hash {
+                        apply_hover_effect(&mut paint_props);
+                    }
+
+                    self.line_strips_2d
+                        .add_axis_aligned_rectangle_outline_2d(bbox.min.into(), bbox.max.into())
+                        .color(paint_props.bg_stroke.color)
+                        .radius(Size::new_points(paint_props.bg_stroke.width * 0.5));
+                    self.line_strips_2d
+                        .add_axis_aligned_rectangle_outline_2d(bbox.min.into(), bbox.max.into())
+                        .color(paint_props.fg_stroke.color)
+                        .radius(Size::new_points(paint_props.fg_stroke.width * 0.5));
+
+                    if let Some(label) = label {
+                        self.labels_2d.push(Label2D {
+                            text: label,
+                            color: paint_props.fg_stroke.color,
+                            target: Label2DTarget::Rect(rect),
+                            labled_instance: instance_hash,
+                        });
+                    }
+                },
+            );
+        }
+    }
+
+    fn load_points_2d(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        query: &SceneQuery<'_>,
+        hovered_instance: InstanceIdHash,
+    ) {
+        crate::profile_function!();
+
+        // Ensure keypoint connection lines are behind points.
+        let connection_depth = self.line_strips_2d.next_2d_z;
+        let point_depth = self.line_strips_2d.next_2d_z - 0.1;
+
+        for (_obj_type, obj_path, time_query, obj_store) in
+            query.iter_object_stores(ctx.log_db, &[ObjectType::Point2D])
+        {
+            let mut label_batch = Vec::new();
+            let max_num_labels = 10;
+
+            let annotations = self.annotation_map.find(obj_path);
+            let default_color = DefaultColor::ObjPath(obj_path);
+
+            // If keypoints ids show up we may need to connect them later!
+            // We include time in the key, so that the "Visible history" (time range queries) feature works.
+            let mut keypoints: HashMap<(ClassId, i64), HashMap<KeypointId, glam::Vec2>> =
+                Default::default();
+
+            visit_type_data_5(
+                obj_store,
+                &FieldName::from("pos"),
+                &time_query,
+                ("color", "radius", "label", "class_id", "keypoint_id"),
+                |instance_index: Option<&IndexHash>,
+                 time: i64,
+                 _msg_id: &MsgId,
+                 pos: &[f32; 2],
+                 color: Option<&[u8; 4]>,
+                 radius: Option<&f32>,
+                 label: Option<&String>,
+                 class_id: Option<&i32>,
+                 keypoint_id: Option<&i32>| {
+                    let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
+                    let instance_hash =
+                        InstanceIdHash::from_path_and_index(obj_path, instance_index);
+                    let pos = glam::vec2(pos[0], pos[1]);
+
+                    let class_id = class_id.map(|i| ClassId(*i as _));
+                    let class_description = annotations.class_description(class_id);
+
+                    let annotation_info = if let Some(keypoint_id) = keypoint_id {
+                        let keypoint_id = KeypointId(*keypoint_id as _);
+                        if let Some(class_id) = class_id {
+                            keypoints
+                                .entry((class_id, time))
+                                .or_insert_with(Default::default)
+                                .insert(keypoint_id, pos);
+                        }
+
+                        class_description.annotation_info_with_keypoint(keypoint_id)
+                    } else {
+                        class_description.annotation_info()
+                    };
+                    let color = annotation_info.color(color, default_color);
+                    let label = annotation_info.label(label);
+
+                    let mut paint_props = paint_properties(color, radius);
+                    if hovered_instance == instance_hash {
+                        apply_hover_effect(&mut paint_props);
+                    }
+
+                    self.points_2d.push(PointCloudPoint {
+                        position: pos.extend(point_depth),
+                        radius: Size::new_points(paint_props.bg_stroke.width * 0.5),
+                        color: paint_props.bg_stroke.color,
+                    });
+                    self.points_2d.push(PointCloudPoint {
+                        position: pos.extend(point_depth - 0.1),
+                        radius: Size::new_points(paint_props.fg_stroke.width * 0.5),
+                        color: paint_props.fg_stroke.color,
+                    });
+
+                    let pos = egui::pos2(pos.x, pos.y);
+                    self.hoverable_points.push((pos, instance_hash));
+
+                    if let Some(label) = label {
+                        if label_batch.len() < max_num_labels {
+                            label_batch.push(Label2D {
+                                text: label,
+                                color: paint_props.fg_stroke.color,
+                                target: Label2DTarget::Point(pos),
+                                labled_instance: instance_hash,
+                            });
+                        }
+                    }
+                },
+            );
+
+            // TODO(andreas): Make user configurable with this as the default.
+            if label_batch.len() < max_num_labels {
+                self.labels_2d.extend(label_batch.into_iter());
+            }
+
+            // Generate keypoint connections if any.
+            let instance_hash = InstanceIdHash::from_path_and_index(obj_path, IndexHash::NONE);
+            for ((class_id, _time), keypoints_in_class) in &keypoints {
+                let Some(class_description) = annotations.context.class_map.get(class_id) else {
+                        continue;
+                    };
+
+                let color = class_description
+                    .info
+                    .color
+                    .unwrap_or_else(|| auto_color(class_description.info.id));
+
+                for (a, b) in &class_description.keypoint_connections {
+                    let (Some(a), Some(b)) = (keypoints_in_class.get(a), keypoints_in_class.get(b)) else {
+                            re_log::warn_once!(
+                                "Keypoint connection from index {:?} to {:?} could not be resolved in object {:?}",
+                                a, b, obj_path
+                            );
+                            continue;
+                        };
+                    // TODO(andreas): No outlines for these?
+                    // Specify depth explicitly so we're behind the points.
+                    self.line_strips_2d
+                        .add_segment(a.extend(connection_depth), b.extend(connection_depth))
+                        .color(to_ecolor(color));
+
+                    self.hoverable_line_strips.push((
+                        smallvec![egui::pos2(a.x, a.y), egui::pos2(b.x, b.y)],
+                        instance_hash,
+                    ));
+                }
+            }
+        }
+    }
+
+    fn load_line_segments_2d(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        query: &SceneQuery<'_>,
+        hovered_instance: InstanceIdHash,
+    ) {
+        crate::profile_function!();
+
+        for (_obj_type, obj_path, time_query, obj_store) in
+            query.iter_object_stores(ctx.log_db, &[ObjectType::LineSegments2D])
+        {
+            let annotations = self.annotation_map.find(obj_path);
+
+            visit_type_data_2(
+                obj_store,
+                &FieldName::from("points"),
+                &time_query,
+                ("color", "stroke_width"),
+                |instance_index: Option<&IndexHash>,
+                 _time: i64,
+                 _msg_id: &MsgId,
+                 points: &DataVec,
+                 color: Option<&[u8; 4]>,
+                 stroke_width: Option<&f32>| {
+                    let Some(points) = points.as_vec_of_vec2("LineSegments2D::points")
+                                else { return };
+
+                    let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
+                    let instance_hash =
+                        InstanceIdHash::from_path_and_index(obj_path, instance_index);
+
+                    // TODO(andreas): support class ids for line segments
+                    let annotation_info = annotations.class_description(None).annotation_info();
+                    let color = annotation_info.color(color, DefaultColor::ObjPath(obj_path));
+
+                    let mut paint_props = paint_properties(color, stroke_width);
+                    if hovered_instance == instance_hash {
+                        apply_hover_effect(&mut paint_props);
+                    }
+
+                    // TODO(andreas): support outlines directly by re_renderer (need only 1 and 2 *point* black outlines)
+                    self.line_strips_2d
+                        .add_segments_2d(
+                            points
+                                .iter()
+                                .tuple_windows()
+                                .map(|(a, b)| (glam::vec2(a[0], a[1]), glam::vec2(b[0], b[1]))),
+                        )
+                        .color(paint_props.bg_stroke.color)
+                        .radius(Size::new_points(paint_props.bg_stroke.width * 0.5));
+                    self.line_strips_2d
+                        .add_segments_2d(
+                            points
+                                .iter()
+                                .tuple_windows()
+                                .map(|(a, b)| (glam::vec2(a[0], a[1]), glam::vec2(b[0], b[1]))),
+                        )
+                        .color(paint_props.fg_stroke.color)
+                        .radius(Size::new_points(paint_props.fg_stroke.width * 0.5));
+
+                    self.hoverable_line_strips.push((
+                        points.iter().map(|p| egui::pos2(p[0], p[1])).collect(),
+                        instance_hash,
+                    ));
+
+                    for p in points {
+                        self.bounding_rect.extend_with(egui::pos2(p[0], p[1]));
+                    }
+                },
+            );
+        }
+    }
+
     // ---
 
     pub(crate) fn add_cameras(
@@ -768,11 +1170,37 @@ impl SceneSpatial {
     }
 
     pub fn is_empty(&self) -> bool {
-        // TODO(andreas): Just check bounding box instead?
         let Self {
             annotation_map: _,
-            points_3d: points,
-            line_strips_3d: line_strips,
+            bounding_rect: _,
+            points_3d,
+            line_strips_3d,
+            meshes,
+            labels_3d: _,
+            labels_2d: _,
+            textured_rectangles,
+            line_strips_2d,
+            points_2d,
+            hoverable_rects,
+            hoverable_images,
+            hoverable_points,
+            hoverable_line_strips,
+        } = self;
+
+        // TODO(andreas): Just check bounding box instead?
+        points_2d.is_empty()
+            && points_3d.is_empty()
+            && line_strips_3d.is_empty()
+            && line_strips_2d.is_empty()
+            && meshes.is_empty()
+    }
+
+    /// TODO(andreas): Probably the wrong question to ask. A scene is not either 2d or 3d but a 2d or 3d camera & ui might be preferred.
+    pub fn is_3d(&self) -> bool {
+        let Self {
+            annotation_map: _,
+            points_3d,
+            line_strips_3d,
             meshes,
             labels_3d: labels,
             bounding_rect,
@@ -786,8 +1214,8 @@ impl SceneSpatial {
             hoverable_line_strips,
         } = self;
 
-        // TODO: incorrect
-        points.is_empty() && line_strips.strips.is_empty() && meshes.is_empty() && labels.is_empty()
+        // TODO: Should just check the bounding box instead?
+        !points_3d.is_empty() || !line_strips_3d.strips.is_empty() || !meshes.is_empty()
     }
 
     pub fn meshes(&self) -> Vec<MeshInstance> {
@@ -998,4 +1426,31 @@ impl SceneSpatial {
 
         bbox
     }
+}
+
+pub struct ObjectPaintProperties {
+    pub bg_stroke: egui::Stroke,
+    pub fg_stroke: egui::Stroke,
+}
+
+// TODO(andreas): we're no longer using egui strokes. Replace this.
+fn paint_properties(color: [u8; 4], stroke_width: Option<&f32>) -> ObjectPaintProperties {
+    let bg_color = Color32::from_black_alpha(196);
+    let fg_color = to_ecolor(color);
+    let stroke_width = stroke_width.map_or(1.5, |w| *w);
+    let bg_stroke = egui::Stroke::new(stroke_width + 2.0, bg_color);
+    let fg_stroke = egui::Stroke::new(stroke_width, fg_color);
+
+    ObjectPaintProperties {
+        bg_stroke,
+        fg_stroke,
+    }
+}
+
+fn apply_hover_effect(paint_props: &mut ObjectPaintProperties) {
+    paint_props.bg_stroke.width *= 2.0;
+    paint_props.bg_stroke.color = Color32::BLACK;
+
+    paint_props.fg_stroke.width *= 2.0;
+    paint_props.fg_stroke.color = Color32::WHITE;
 }

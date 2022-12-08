@@ -55,7 +55,7 @@ impl SpaceView {
 
         if category == ViewCategory::TwoD {
             // A good start:
-            view_state.state_2d.scene_bbox_accum = scene.two_d.bounding_rect;
+            view_state.state_2d.scene_bbox_accum = scene.spatial.bounding_rect;
         }
 
         Self {
@@ -98,7 +98,7 @@ impl SpaceView {
             ViewCategory::TwoD => {
                 _ = extra_headroom; // ignored - put overlay buttons on top of the view.
 
-                let mut scene = view_2d::Scene2D::default();
+                let mut scene = view_spatial::SceneSpatial::default();
                 scene.load_objects(
                     ctx,
                     &query,
@@ -179,7 +179,7 @@ impl ViewState {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         space: &ObjPath,
-        scene: view_2d::Scene2D,
+        scene: view_spatial::SceneSpatial,
     ) -> egui::Response {
         let response = ui
             .scope(|ui| {

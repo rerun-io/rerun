@@ -10,9 +10,11 @@ use re_renderer::{
     RenderContext,
 };
 
-use crate::{misc::HoveredSpace, Selection, ViewerContext};
-
-use super::{HoverableImage, Scene2D};
+use crate::{
+    misc::HoveredSpace,
+    ui::view_spatial::{HoverableImage, Label2DTarget, SceneSpatial},
+    Selection, ViewerContext,
+};
 
 // ---
 
@@ -237,7 +239,7 @@ pub(crate) fn view_2d(
     ui: &mut egui::Ui,
     state: &mut View2DState,
     space: &ObjPath,
-    scene: Scene2D,
+    scene: SceneSpatial,
 ) -> egui::Response {
     crate::profile_function!();
 
@@ -275,7 +277,7 @@ fn view_2d_scrollable(
     parent_ui: &mut egui::Ui,
     state: &mut View2DState,
     space: &ObjPath,
-    mut scene: Scene2D,
+    mut scene: SceneSpatial,
 ) -> egui::Response {
     state.scene_bbox_accum = state.scene_bbox_accum.union(scene.bounding_rect);
     let scene_bbox = state.scene_bbox_accum;
@@ -479,7 +481,7 @@ fn view_2d_scrollable(
 }
 
 fn create_labels(
-    scene: &mut Scene2D,
+    scene: &mut SceneSpatial,
     ui_from_space: RectTransform,
     parent_ui: &mut egui::Ui,
 ) -> Vec<Shape> {
@@ -487,7 +489,7 @@ fn create_labels(
 
     for label in &scene.labels_2d {
         let (wrap_width, text_anchor_pos) = match label.target {
-            super::scene::LabelTarget::Rect(rect) => {
+            Label2DTarget::Rect(rect) => {
                 let rect_in_ui = ui_from_space.transform_rect(rect);
                 (
                     // Place the text centered below the rect
@@ -495,7 +497,7 @@ fn create_labels(
                     rect_in_ui.center_bottom() + vec2(0.0, 3.0),
                 )
             }
-            super::scene::LabelTarget::Point(pos) => {
+            Label2DTarget::Point(pos) => {
                 let pos_in_ui = ui_from_space.transform_pos(pos);
                 (f32::INFINITY, pos_in_ui + vec2(0.0, 3.0))
             }
