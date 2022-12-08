@@ -14,12 +14,13 @@ use re_log_types::{DataVec, IndexHash, MeshId, MsgId, ObjectType};
 
 use crate::misc::mesh_loader::CpuMesh;
 use crate::ui::annotations::{auto_color, AnnotationMap, DefaultColor};
+use crate::ui::view_3d::axis_color;
 use crate::ui::SceneQuery;
 use crate::{math::line_segment_distance_sq_to_point_2d, misc::ViewerContext};
 
 use re_renderer::{
     renderer::{LineStripFlags, MeshInstance, PointCloudPoint},
-    Color32,
+    Color32, Size,
 };
 
 use super::{eye::Eye, SpaceCamera};
@@ -886,14 +887,5 @@ impl Scene3D {
         }
 
         bbox
-    }
-}
-
-fn axis_color(axis: usize) -> Color32 {
-    match axis {
-        0 => Color32::from_rgb(255, 25, 25),
-        1 => Color32::from_rgb(0, 240, 0),
-        2 => Color32::from_rgb(80, 80, 255),
-        _ => unreachable!("Axis should be one of 0,1,2; got {axis}"),
     }
 }

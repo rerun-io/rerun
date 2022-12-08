@@ -15,7 +15,9 @@ use crate::{
     ViewerContext,
 };
 
-use super::{Eye, OrbitEye, Point3D, Scene3D, SpaceCamera};
+use super::{
+    Eye, OrbitEye, Point3D, Scene3D, SpaceCamera, AXIS_COLOR_X, AXIS_COLOR_Y, AXIS_COLOR_Z,
+};
 
 // ---
 
@@ -639,23 +641,25 @@ fn project_onto_other_spaces(
 }
 
 fn show_origin_axis(scene: &mut Scene3D) {
+    let radius = Size::new_points(8.0);
+
     scene
         .line_strips
         .add_segment(glam::Vec3::ZERO, glam::Vec3::X)
-        .radius(Size::new_points(8.0))
-        .color(egui::Color32::RED)
+        .radius(radius)
+        .color(AXIS_COLOR_X)
         .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE);
     scene
         .line_strips
         .add_segment(glam::Vec3::ZERO, glam::Vec3::Y)
-        .radius(Size::new_points(8.0))
-        .color(egui::Color32::GREEN)
+        .radius(radius)
+        .color(AXIS_COLOR_Y)
         .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE);
     scene
         .line_strips
         .add_segment(glam::Vec3::ZERO, glam::Vec3::Z)
-        .radius(Size::new_points(8.0))
-        .color(egui::Color32::BLUE)
+        .radius(radius)
+        .color(AXIS_COLOR_Z)
         .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE);
 }
 
