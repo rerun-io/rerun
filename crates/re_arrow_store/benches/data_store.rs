@@ -6,9 +6,9 @@ use criterion::{criterion_group, criterion_main, Criterion};
 use polars::prelude::DataFrame;
 
 use re_arrow_store::{DataStore, TimeQuery};
-use re_log_types::{TimePoint,
+use re_log_types::{
     datagen::{build_frame_nr, build_message, build_positions, build_rects},
-    ObjPath as EntityPath, TimeType, Timeline,
+    ObjPath as EntityPath, TimePoint, TimeType, Timeline,
 };
 
 // ---
