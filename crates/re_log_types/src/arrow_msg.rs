@@ -148,12 +148,9 @@ mod tests {
 
     #[test]
     fn test_roundtrip_payload() {
-        let time_point =
-            TimePoint([(Timeline::new("frame_nr", TimeType::Sequence), 0.into())].into());
-
         let (schema, chunk) = build_message(
             &ObjPath::from("rects"),
-            &time_point,
+            &TimePoint([build_frame_nr(0)].into()),
             [build_positions(1), build_rects(1)],
         );
 

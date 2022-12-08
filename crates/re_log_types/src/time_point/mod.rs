@@ -74,14 +74,16 @@ impl TimeType {
 
 // ----------------------------------------------------------------------------
 
-#[inline]
-pub fn time_point(
-    fields: impl IntoIterator<Item = (&'static str, TimeType, TimeInt)>,
-) -> TimePoint {
-    TimePoint(
-        fields
-            .into_iter()
-            .map(|(name, tt, ti)| (Timeline::new(name, tt), ti))
-            .collect(),
-    )
+impl<I> From<I> for TimePoint
+where
+    I: IntoIterator<Item = (&'static str, TimeType, TimeInt)>,
+{
+    #[inline]
+    fn from(into: I) -> Self {
+        Self(
+            into.into_iter()
+                .map(|(name, tt, ti)| (Timeline::new(name, tt), ti))
+                .collect(),
+        )
+    }
 }

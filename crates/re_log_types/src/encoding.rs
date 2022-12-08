@@ -176,11 +176,13 @@ fn test_encode_decode() {
     }
 
     // Some fake log data
-    let time_point = time_point([(
+    let time_point = [(
         "log_time",
         TimeType::Time,
         Time::from_ns_since_epoch(1_649_934_625_012_345_678).into(),
-    )]);
+    )]
+    .into();
+
     let messages = vec![
         LogMsg::from(data_msg(&time_point, obj_path!("foo", "bar"), "baz", 42)),
         LogMsg::from(data_msg(
