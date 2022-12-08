@@ -9,7 +9,7 @@ use poll_promise::Promise;
 
 use re_data_store::log_db::LogDb;
 use re_format::format_number;
-use re_log_types::{ApplicationId, DataMsg, LogMsg, PathOpMsg, RecordingId, TimeInt, Timeline};
+use re_log_types::{ApplicationId, LogMsg, RecordingId};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::Receiver;
 
@@ -1216,8 +1216,10 @@ fn debug_menu(ui: &mut egui::Ui) {
 fn save_database_to_file(
     app: &mut App,
     path: std::path::PathBuf,
-    time_selection: Option<(Timeline, TimeRangeF)>,
+    time_selection: Option<(re_data_store::Timeline, TimeRangeF)>,
 ) -> impl FnOnce() -> anyhow::Result<std::path::PathBuf> {
+    use re_log_types::{DataMsg, PathOpMsg, TimeInt};
+
     let msgs = match time_selection {
         // Fast path: no query, just dump everything.
         None => app

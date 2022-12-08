@@ -1,5 +1,6 @@
 use itertools::Itertools as _;
-use re_log_types::{context::ClassId, TensorDataMeaning, TensorDataStore};
+
+use re_log_types::{context::ClassId, TensorDataMeaning};
 
 use crate::misc::{tensor_image_cache, ViewerContext};
 
@@ -326,7 +327,7 @@ fn image_options(
     #[cfg(not(target_arch = "wasm32"))]
     if ui.button("Click to copy image").clicked() {
         let rgba = dynamic_image.to_rgba8();
-        crate::Clipboard::with(|clipboard| {
+        crate::misc::Clipboard::with(|clipboard| {
             clipboard.set_image(
                 [rgba.width() as _, rgba.height() as _],
                 bytemuck::cast_slice(rgba.as_raw()),
@@ -337,6 +338,8 @@ fn image_options(
     // TODO(emilk): support saving images on web
     #[cfg(not(target_arch = "wasm32"))]
     if ui.button("Save image…").clicked() {
+        use re_log_types::TensorDataStore;
+
         match &tensor.data {
             TensorDataStore::Dense(_) => {
                 if let Some(path) = rfd::FileDialog::new()
