@@ -169,7 +169,7 @@ impl DataStore {
 
     /// Runs the sanity check suite for the entire datastore.
     ///
-    /// Panics if anything looks wrong.
+    /// Returns an error if anything looks wrong.
     pub fn sanity_check(&self) -> anyhow::Result<()> {
         // Row indices should be continuous across all index tables.
         // TODO(#449): update this one appropriately when GC lands.
@@ -392,7 +392,7 @@ impl IndexTable {
 
     /// Runs the sanity check suite for the entire table.
     ///
-    /// Panics if anything looks wrong.
+    /// Returns an error if anything looks wrong.
     pub fn sanity_check(&self) -> anyhow::Result<()> {
         // No two buckets should ever overlap time-range-wise.
         {
@@ -549,7 +549,7 @@ impl IndexBucket {
 
     /// Runs the sanity check suite for the entire bucket.
     ///
-    /// Panics if anything looks wrong.
+    /// Returns an error if anything looks wrong.
     pub fn sanity_check(&self) -> anyhow::Result<()> {
         // All indices should contain the exact same number of rows as the time index.
         {
@@ -700,7 +700,7 @@ impl ComponentTable {
 
     /// Runs the sanity check suite for the entire table.
     ///
-    /// Panics if anything looks wrong.
+    /// Returns an error if anything looks wrong.
     pub fn sanity_check(&self) -> anyhow::Result<()> {
         // No two buckets should ever overlap row-range-wise.
         {
