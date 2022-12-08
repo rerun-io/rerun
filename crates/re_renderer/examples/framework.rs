@@ -33,6 +33,7 @@ pub trait Example {
         re_ctx: &mut RenderContext,
         resolution: [u32; 2],
         time: &Time,
+        pixels_from_point: f32,
     ) -> Vec<ViewDrawResult>;
 
     fn on_keyboard_input(&mut self, input: winit::event::KeyboardInput);
@@ -235,6 +236,7 @@ impl<E: Example + 'static> Application<E> {
                         &mut self.re_ctx,
                         [self.surface_config.width, self.surface_config.height],
                         &self.time,
+                        self.window.scale_factor() as f32,
                     );
 
                     let mut composite_cmd_encoder = self.re_ctx.device.create_command_encoder(

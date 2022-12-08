@@ -7,7 +7,7 @@ use re_log_types::{ObjPath, ViewCoordinates};
 use re_renderer::{
     renderer::{GenericSkyboxDrawData, MeshDrawData, PointCloudDrawData},
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
-    RenderContext,
+    RenderContext, Size,
 };
 
 use crate::{
@@ -15,7 +15,9 @@ use crate::{
     ViewerContext,
 };
 
-use super::{Eye, OrbitEye, Point3D, Scene3D, Size, SpaceCamera};
+use super::{
+    Eye, OrbitEye, Point3D, Scene3D, SpaceCamera, AXIS_COLOR_X, AXIS_COLOR_Y, AXIS_COLOR_Z,
+};
 
 // ---
 
@@ -162,6 +164,12 @@ impl View3DState {
         } else {
             self.orbit_eye = Some(target);
         }
+    }
+
+    pub fn hovered_instance_hash(&self) -> InstanceIdHash {
+        self.hovered_instance
+            .as_ref()
+            .map_or(InstanceIdHash::NONE, |i| i.hash())
     }
 }
 
@@ -348,7 +356,14 @@ pub(crate) fn view_3d(
     let orbit_eye = *orbit_eye;
     let eye = orbit_eye.to_eye();
 
-    scene.add_cameras(ctx, &state.scene_bbox, rect.size(), &eye, space_cameras);
+    scene.add_cameras(
+        ctx,
+        &state.scene_bbox,
+        rect.size(),
+        &eye,
+        space_cameras,
+        state.hovered_instance_hash(),
+    );
 
     if did_interact_wth_eye {
         state.last_eye_interact_time = ui.input().time;
@@ -412,12 +427,6 @@ pub(crate) fn view_3d(
         }
     }
 
-    scene.finalize_sizes_and_colors(
-        rect.size(),
-        &eye,
-        hovered_instance.map_or(InstanceIdHash::NONE, |id| id.hash()),
-    );
-
     paint_view(ui, eye, rect, &scene, ctx.render_ctx, &space.to_string());
 
     response
@@ -472,10 +481,10 @@ fn paint_view(
     );
 
     // Determine view port resolution and position.
+    let pixels_from_point = ui.ctx().pixels_per_point();
     let (resolution_in_pixel, origin_in_pixel) = {
-        let ppp = ui.ctx().pixels_per_point();
-        let min = (rect.min.to_vec2() * ppp).round();
-        let max = (rect.max.to_vec2() * ppp).round();
+        let min = (rect.min.to_vec2() * pixels_from_point).round();
+        let max = (rect.max.to_vec2() * pixels_from_point).round();
         let resolution = max - min;
 
         (
@@ -504,6 +513,8 @@ fn paint_view(
                         vertical_fov: eye.fov_y,
                         near_plane_distance: eye.near(),
                     },
+
+                    pixels_from_point,
                 },
             )
             .unwrap()
@@ -571,9 +582,9 @@ fn show_projections_from_2d_space(
                     };
                     let origin = ray.point_along(0.0);
                     let end = ray.point_along(length);
-                    let radius = Size::new_ui(1.5);
+                    let radius = Size::new_points(1.5);
 
-                    scene.line_strips.add_segment(origin, end).radius(radius.0);
+                    scene.line_strips.add_segment(origin, end).radius(radius);
 
                     if let Some(pos) = hit_pos {
                         // Show where the ray hits the depth map:
@@ -630,23 +641,25 @@ fn project_onto_other_spaces(
 }
 
 fn show_origin_axis(scene: &mut Scene3D) {
+    let radius = Size::new_points(8.0);
+
     scene
         .line_strips
         .add_segment(glam::Vec3::ZERO, glam::Vec3::X)
-        .radius(0.01)
-        .color(egui::Color32::RED)
+        .radius(radius)
+        .color(AXIS_COLOR_X)
         .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE);
     scene
         .line_strips
         .add_segment(glam::Vec3::ZERO, glam::Vec3::Y)
-        .radius(0.01)
-        .color(egui::Color32::GREEN)
+        .radius(radius)
+        .color(AXIS_COLOR_Y)
         .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE);
     scene
         .line_strips
         .add_segment(glam::Vec3::ZERO, glam::Vec3::Z)
-        .radius(0.01)
-        .color(egui::Color32::BLUE)
+        .radius(radius)
+        .color(AXIS_COLOR_Z)
         .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE);
 }
 

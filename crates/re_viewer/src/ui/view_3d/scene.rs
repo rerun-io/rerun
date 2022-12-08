@@ -13,89 +13,17 @@ use re_log_types::context::{ClassId, KeypointId};
 use re_log_types::{DataVec, IndexHash, MeshId, MsgId, ObjectType};
 
 use crate::misc::mesh_loader::CpuMesh;
-use crate::misc::Caches;
 use crate::ui::annotations::{auto_color, AnnotationMap, DefaultColor};
+use crate::ui::view_3d::axis_color;
 use crate::ui::SceneQuery;
 use crate::{math::line_segment_distance_sq_to_point_2d, misc::ViewerContext};
 
 use re_renderer::{
     renderer::{LineStripFlags, MeshInstance, PointCloudPoint},
-    Color32,
+    Color32, Size,
 };
 
 use super::{eye::Eye, SpaceCamera};
-
-// ----------------------------------------------------------------------------
-
-/// A size of something in either scene-units, screen-units, or unsized.
-///
-/// Implementation:
-/// * If positive, this is in scene units.
-/// * If negative, this is in ui points.
-/// * If NaN, auto-size it.
-/// Resolved in [`Scene3D::finalize_sizes_and_colors`].
-#[derive(Clone, Copy, Debug)]
-pub struct Size(pub f32);
-
-impl Size {
-    /// Automatically sized based on how many there are in the scene etc.
-    const AUTO: Self = Self(f32::NAN);
-
-    #[inline]
-    pub fn new_scene(size: f32) -> Self {
-        debug_assert!(size.is_finite() && size >= 0.0, "Bad size: {size}");
-        Self(size)
-    }
-
-    #[inline]
-    pub fn new_ui(size: f32) -> Self {
-        debug_assert!(size.is_finite() && size >= 0.0, "Bad size: {size}");
-        Self(-size)
-    }
-
-    #[inline]
-    pub fn is_auto(&self) -> bool {
-        self.0.is_nan()
-    }
-
-    /// Get the scene-size of this, if stored as a scene size.
-    #[inline]
-    #[allow(unused)] // wgpu is not yet using this
-    pub fn scene(&self) -> Option<f32> {
-        (self.0.is_finite() && self.0 >= 0.0).then_some(self.0)
-    }
-
-    /// Get the ui-size of this, if stored as a ui size.
-    #[inline]
-    pub fn ui(&self) -> Option<f32> {
-        (self.0.is_finite() && self.0 <= 0.0).then_some(-self.0)
-    }
-}
-
-impl PartialEq for Size {
-    #[inline]
-    fn eq(&self, other: &Self) -> bool {
-        self.0.is_nan() && other.0.is_nan() || self.0 == other.0
-    }
-}
-
-impl std::ops::Mul<f32> for Size {
-    type Output = Size;
-
-    #[inline]
-    fn mul(self, rhs: f32) -> Self::Output {
-        debug_assert!(rhs.is_finite() && rhs >= 0.0);
-        Self(self.0 * rhs)
-    }
-}
-
-impl std::ops::MulAssign<f32> for Size {
-    #[inline]
-    fn mul_assign(&mut self, rhs: f32) {
-        debug_assert!(rhs.is_finite() && rhs >= 0.0);
-        self.0 *= rhs;
-    }
-}
 
 // ----------------------------------------------------------------------------
 
@@ -155,19 +83,39 @@ pub struct Scene3D {
 
 impl Scene3D {
     /// Loads all 3D objects into the scene according to the given query.
-    pub(crate) fn load_objects(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
+    pub(crate) fn load_objects(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        query: &SceneQuery<'_>,
+        hovered_instance: InstanceIdHash,
+    ) {
         crate::profile_function!();
 
         self.annotation_map.load(ctx, query);
 
-        self.load_points(ctx, query);
-        self.load_boxes(ctx, query);
-        self.load_lines(ctx, query);
-        self.load_arrows(ctx, query);
-        self.load_meshes(ctx, query);
+        self.load_points(ctx, query, hovered_instance);
+        self.load_boxes(ctx, query, hovered_instance);
+        self.load_lines(ctx, query, hovered_instance);
+        self.load_arrows(ctx, query, hovered_instance);
+        self.load_meshes(ctx, query, hovered_instance);
     }
 
-    fn load_points(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
+    const HOVER_COLOR: Color32 = Color32::from_rgb(255, 200, 200);
+
+    fn hover_size_boost(size: Size) -> Size {
+        if size.is_auto() {
+            Size::AUTO_LARGE
+        } else {
+            size * 1.5
+        }
+    }
+
+    fn load_points(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        query: &SceneQuery<'_>,
+        hovered_instance: InstanceIdHash,
+    ) {
         crate::profile_function!();
 
         query
@@ -223,7 +171,14 @@ impl Scene3D {
                         } else {
                             class_description.annotation_info()
                         };
-                        let color = annotation_info.color(color, default_color);
+
+                        let mut color = to_ecolor(annotation_info.color(color, default_color));
+                        let mut radius = radius.copied().map_or(Size::AUTO, Size::new_scene);
+
+                        if instance_id_hash == hovered_instance {
+                            color = Self::HOVER_COLOR;
+                            radius = Self::hover_size_boost(radius);
+                        }
 
                         show_labels = batch_size < 10;
                         if show_labels {
@@ -238,8 +193,8 @@ impl Scene3D {
                         self.points.push(Point3D {
                             instance_id_hash,
                             pos,
-                            radius: radius.copied().map_or(Size::AUTO, Size::new_scene),
-                            color: to_ecolor(color),
+                            radius,
+                            color,
                         });
                     },
                 );
@@ -268,13 +223,18 @@ impl Scene3D {
                             );
                             continue;
                         };
-                        self.line_strips.add_segment(*a, *b).radius(Size::AUTO.0).color(to_ecolor(color)).user_data(instance_id_hash);
+                        self.line_strips.add_segment(*a, *b).radius(Size::AUTO).color(to_ecolor(color)).user_data(instance_id_hash);
                     }
                 }
             });
     }
 
-    fn load_boxes(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
+    fn load_boxes(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        query: &SceneQuery<'_>,
+        hovered_instance: InstanceIdHash,
+    ) {
         crate::profile_function!();
 
         for (_obj_type, obj_path, time_query, obj_store) in
@@ -297,28 +257,35 @@ impl Scene3D {
                  label: Option<&String>,
                  class_id: Option<&i32>| {
                     let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
-                    let line_radius = stroke_width.map_or(Size::AUTO, |w| Size::new_scene(w / 2.0));
+                    let mut line_radius =
+                        stroke_width.map_or(Size::AUTO, |w| Size::new_scene(w / 2.0));
 
                     let annotation_info = annotations
                         .class_description(class_id.map(|i| ClassId(*i as _)))
                         .annotation_info();
-                    let color = annotation_info.color(color, default_color);
+                    let mut color = to_ecolor(annotation_info.color(color, default_color));
                     let label = annotation_info.label(label);
 
-                    self.add_box(
-                        InstanceIdHash::from_path_and_index(obj_path, instance_index),
-                        color,
-                        line_radius,
-                        label,
-                        obb,
-                    );
+                    let instance_id_hash =
+                        InstanceIdHash::from_path_and_index(obj_path, instance_index);
+                    if instance_id_hash == hovered_instance {
+                        color = Self::HOVER_COLOR;
+                        line_radius = Self::hover_size_boost(line_radius);
+                    }
+
+                    self.add_box(instance_id_hash, color, line_radius, label, obb);
                 },
             );
         }
     }
 
     /// Both `Path3D` and `LineSegments3D`.
-    fn load_lines(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
+    fn load_lines(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        query: &SceneQuery<'_>,
+        hovered_instance: InstanceIdHash,
+    ) {
         crate::profile_function!();
 
         for (obj_type, obj_path, time_query, obj_store) in query.iter_object_stores(
@@ -350,11 +317,16 @@ impl Scene3D {
                     let instance_id_hash =
                         InstanceIdHash::from_path_and_index(obj_path, instance_index);
 
-                    let radius = stroke_width.map_or(Size::AUTO, |w| Size::new_scene(w / 2.0));
+                    let mut radius = stroke_width.map_or(Size::AUTO, |w| Size::new_scene(w / 2.0));
 
                     // TODO(andreas): support class ids for lines
                     let annotation_info = annotations.class_description(None).annotation_info();
-                    let color = annotation_info.color(color, default_color);
+                    let mut color = to_ecolor(annotation_info.color(color, default_color));
+
+                    if instance_id_hash == hovered_instance {
+                        color = Self::HOVER_COLOR;
+                        radius = Self::hover_size_boost(radius);
+                    }
 
                     match obj_type {
                         ObjectType::Path3D => self
@@ -367,15 +339,20 @@ impl Scene3D {
                         ),
                         _ => unreachable!("already early outed earlier"),
                     }
-                    .radius(radius.0) // TODO(andreas): re_renderer should support our Size type directly!
-                    .color(to_ecolor(color))
+                    .radius(radius)
+                    .color(color)
                     .user_data(instance_id_hash);
                 },
             );
         }
     }
 
-    fn load_arrows(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
+    fn load_arrows(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        query: &SceneQuery<'_>,
+        hovered_instance: InstanceIdHash,
+    ) {
         crate::profile_function!();
 
         for (_obj_type, obj_path, time_query, obj_store) in
@@ -408,8 +385,8 @@ impl Scene3D {
                     let label = annotation_info.label(label);
 
                     self.add_arrow(
-                        ctx.cache,
                         instance_id_hash,
+                        hovered_instance,
                         color,
                         Some(width),
                         label,
@@ -420,7 +397,12 @@ impl Scene3D {
         }
     }
 
-    fn load_meshes(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
+    fn load_meshes(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        query: &SceneQuery<'_>,
+        hovered_instance: InstanceIdHash,
+    ) {
         crate::profile_function!();
 
         let meshes = query
@@ -438,19 +420,26 @@ impl Scene3D {
                      mesh: &re_log_types::Mesh3D,
                      _color: Option<&[u8; 4]>| {
                         let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
+
+                        let instance_id_hash =
+                            InstanceIdHash::from_path_and_index(obj_path, instance_index);
+
+                        let additive_tint = if hovered_instance == instance_id_hash {
+                            Some(Self::HOVER_COLOR)
+                        } else {
+                            None
+                        };
+
                         let Some(mesh) = ctx.cache.cpu_mesh.load(
                                 &obj_path.to_string(),
                                 &MeshSourceData::Mesh3D(mesh.clone()),
                                 ctx.render_ctx
                             )
                             .map(|cpu_mesh| MeshSource {
-                                instance_id_hash: InstanceIdHash::from_path_and_index(
-                                    obj_path,
-                                    instance_index,
-                                ),
+                                instance_id_hash,
                                 world_from_mesh: Default::default(),
                                 mesh: cpu_mesh,
-                                additive_tint: None,
+                                additive_tint,
                             }) else { return };
 
                         batch.push(mesh);
@@ -471,15 +460,12 @@ impl Scene3D {
         viewport_size: egui::Vec2,
         eye: &Eye,
         cameras: &[SpaceCamera],
+        hovered_instance: InstanceIdHash,
     ) {
         crate::profile_function!();
 
-        let line_radius_in_points = (0.0005 * viewport_size.length()).clamp(1.5, 5.0);
-
         // Size of a pixel (in meters), when projected out one meter:
         let point_size_at_one_meter = eye.fov_y / viewport_size.y;
-
-        let line_radius_from_distance = line_radius_in_points * point_size_at_one_meter;
 
         let eye_camera_plane =
             macaw::Plane3::from_normal_point(eye.forward_in_world(), eye.pos_in_world());
@@ -489,11 +475,16 @@ impl Scene3D {
                 obj_path_hash: *camera.camera_obj_path.hash(),
                 instance_index_hash: camera.instance_index_hash,
             };
+            let is_hovered = instance_id == hovered_instance;
 
-            let dist_to_eye = eye_camera_plane.distance(camera.position()).at_least(0.0);
-            let color = [255, 128, 128, 255]; // TODO(emilk): camera color
+            let (line_radius, line_color) = if is_hovered {
+                (Size::AUTO_LARGE, Self::HOVER_COLOR)
+            } else {
+                (Size::AUTO, Color32::from_rgb(255, 128, 128))
+            }; // TODO(emilk): camera color
 
             let scale_based_on_scene_size = 0.05 * scene_bbox.size().length();
+            let dist_to_eye = eye_camera_plane.distance(camera.position()).at_least(0.0);
             let scale_based_on_distance = dist_to_eye * point_size_at_one_meter * 50.0; // shrink as we get very close. TODO(emilk): fade instead!
             let scale = scale_based_on_scene_size.min(scale_based_on_distance);
 
@@ -515,11 +506,13 @@ impl Scene3D {
                         ),
                         ctx.render_ctx,
                     ) {
+                        let additive_tint = is_hovered.then_some(Self::HOVER_COLOR);
+
                         self.meshes.push(MeshSource {
                             instance_id_hash: instance_id,
                             world_from_mesh,
                             mesh: cpu_mesh,
-                            additive_tint: None,
+                            additive_tint,
                         });
                     }
                 }
@@ -530,7 +523,6 @@ impl Scene3D {
 
                 // TODO(emilk): include the names of the axes ("Right", "Down", "Forward", etc)
                 let cam_origin = camera.position();
-                let radius = dist_to_eye * line_radius_from_distance * 2.0;
 
                 for (axis_index, dir) in [Vec3::X, Vec3::Y, Vec3::Z].iter().enumerate() {
                     let axis_end = world_from_cam.transform_point3(scale * *dir);
@@ -538,129 +530,13 @@ impl Scene3D {
 
                     self.line_strips
                         .add_segment(cam_origin, axis_end)
-                        .radius(radius)
-                        .color(to_ecolor(color))
+                        .radius(Size::new_points(2.0))
+                        .color(color)
                         .user_data(instance_id);
                 }
             }
 
-            let line_radius = Size::new_scene(dist_to_eye * line_radius_from_distance);
-            self.add_camera_frustum(camera, scene_bbox, instance_id, line_radius, color);
-        }
-    }
-
-    // TODO(andreas): A lof of the things this method does, the renderer should be able to do for us
-    /// Translate screen-space sizes (ui points) and missing sizes, into proper
-    /// scene-space sizes.
-    ///
-    /// Also does hover-effects (changing colors and sizes)
-    ///
-    /// Non-finite sizes are given default sizes.
-    /// Negative sizes are interpreted as ui points, and are translated
-    /// to screen-space sizes (based on distance).
-    pub fn finalize_sizes_and_colors(
-        &mut self,
-        viewport_size: egui::Vec2,
-        eye: &Eye,
-        hovered_instance_id_hash: InstanceIdHash,
-    ) {
-        crate::profile_function!();
-
-        let Self {
-            annotation_map: _,
-            points,
-            line_strips,
-            meshes,
-            labels: _, // always has final size. TODO(emilk): tint on hover!
-        } = self;
-
-        let hover_size_boost = 1.5;
-        const HOVER_COLOR: Color32 = Color32::from_rgb(255, 200, 200);
-
-        let viewport_area = (viewport_size.x * viewport_size.y).at_least(1.0);
-
-        // Size of a ui point (in meters), when projected out one meter:
-        let point_size_at_one_meter = eye.fov_y / viewport_size.y.at_least(1.0);
-
-        let eye_camera_plane =
-            macaw::Plane3::from_normal_point(eye.forward_in_world(), eye.pos_in_world());
-
-        // More points -> smaller points
-        let default_point_radius = Size::new_ui(
-            (0.3 * (viewport_area / (points.len() + 1) as f32).sqrt()).clamp(0.1, 5.0),
-        );
-
-        // TODO(emilk): more line segments -> thinner lines
-        let default_line_radius = Size::new_ui((0.0005 * viewport_size.length()).clamp(1.5, 5.0));
-
-        {
-            crate::profile_scope!("points");
-            for point in points {
-                if point.radius.is_auto() {
-                    point.radius = default_point_radius;
-                }
-                if let Some(size_in_points) = point.radius.ui() {
-                    let dist_to_eye = eye_camera_plane.distance(point.pos).at_least(0.0);
-                    point.radius =
-                        Size::new_scene(dist_to_eye * size_in_points * point_size_at_one_meter);
-                }
-                if hovered_instance_id_hash.is_some()
-                    && point.instance_id_hash == hovered_instance_id_hash
-                {
-                    point.radius *= hover_size_boost;
-                    point.color = HOVER_COLOR;
-                }
-            }
-        }
-
-        {
-            crate::profile_scope!("lines");
-            for ((line_strip, instance_id), line_strip_vertices) in
-                line_strips.iter_strips_mut_with_vertices()
-            {
-                if Size(line_strip.radius).is_auto() {
-                    line_strip.radius = default_line_radius.0;
-                }
-                if let Some(size_in_points) = Size(line_strip.radius).ui() {
-                    // TODO(andreas): Ui size doesn't work properly for line strips with more than two points right now.
-                    // Resolving this in the shader would be quite easy (since we can reason with projected coordinates there)
-                    // but if we move it there, cpu sided hovering logic won't work as is!
-                    let dist_to_eye = if true {
-                        // This works much better when one line segment is very close to the camera
-                        let mut closest = f32::INFINITY;
-                        for v in line_strip_vertices {
-                            closest = closest.min(eye_camera_plane.distance(v.pos));
-                        }
-                        closest
-                    } else {
-                        let mut centroid = glam::DVec3::ZERO;
-                        let mut count = 0;
-                        for v in line_strip_vertices {
-                            let pos = v.pos; // Needed to fix alignment warning.
-                            centroid += pos.as_dvec3();
-                            count += 1;
-                        }
-                        let centroid = centroid.as_vec3() / (2.0 * count as f32);
-                        eye_camera_plane.distance(centroid)
-                    }
-                    .at_least(0.0);
-
-                    line_strip.radius = dist_to_eye * size_in_points * point_size_at_one_meter;
-                }
-                if hovered_instance_id_hash.is_some() && *instance_id == hovered_instance_id_hash {
-                    line_strip.radius *= hover_size_boost;
-                    line_strip.color = HOVER_COLOR;
-                }
-            }
-        }
-
-        {
-            crate::profile_scope!("meshes");
-            for mesh in meshes {
-                if mesh.instance_id_hash == hovered_instance_id_hash {
-                    mesh.additive_tint = Some(HOVER_COLOR);
-                }
-            }
+            self.add_camera_frustum(camera, scene_bbox, instance_id, line_radius, line_color);
         }
     }
 
@@ -671,7 +547,7 @@ impl Scene3D {
         scene_bbox: &macaw::BoundingBox,
         instance_id: InstanceIdHash,
         line_radius: Size,
-        color: [u8; 4],
+        color: Color32,
     ) -> Option<()> {
         let world_from_image = camera.world_from_image()?;
         let [w, h] = camera.pinhole?.resolution?;
@@ -705,8 +581,8 @@ impl Scene3D {
 
         self.line_strips
             .add_segments(segments.into_iter())
-            .radius(line_radius.0)
-            .color(to_ecolor(color))
+            .radius(line_radius)
+            .color(color)
             .user_data(instance_id);
 
         Some(())
@@ -714,8 +590,8 @@ impl Scene3D {
 
     fn add_arrow(
         &mut self,
-        _caches: &mut Caches,
         instance_id_hash: InstanceIdHash,
+        hovered_instance: InstanceIdHash,
         color: [u8; 4],
         width_scale: Option<f32>,
         label: Option<String>,
@@ -729,14 +605,21 @@ impl Scene3D {
         let vector = Vec3::from_slice(vector);
         let origin = Vec3::from_slice(origin);
 
-        let radius = width_scale * 0.5;
-        let tip_length = LineStripFlags::get_triangle_cap_tip_length(radius);
+        let mut radius = Size::new_scene(width_scale * 0.5);
+        let tip_length = LineStripFlags::get_triangle_cap_tip_length(radius.0);
         let vector_len = vector.length();
         let end = origin + vector * ((vector_len - tip_length) / vector_len);
+
+        let mut color = to_ecolor(color);
+        if instance_id_hash == hovered_instance {
+            color = Self::HOVER_COLOR;
+            radius = Self::hover_size_boost(radius);
+        }
+
         self.line_strips
             .add_segment(origin, end)
             .radius(radius)
-            .color(to_ecolor(color))
+            .color(color)
             .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE)
             .user_data(instance_id_hash);
     }
@@ -744,7 +627,7 @@ impl Scene3D {
     fn add_box(
         &mut self,
         instance_id: InstanceIdHash,
-        color: [u8; 4],
+        color: Color32,
         line_radius: Size,
         label: Option<String>,
         box3: &re_log_types::Box3,
@@ -798,8 +681,8 @@ impl Scene3D {
 
         self.line_strips
             .add_segments(segments.into_iter())
-            .radius(line_radius.0)
-            .color(to_ecolor(color))
+            .radius(line_radius)
+            .color(color)
             .user_data(instance_id);
     }
 
@@ -848,7 +731,7 @@ impl Scene3D {
             .iter()
             .map(|point| PointCloudPoint {
                 position: point.pos,
-                radius: point.radius.0,
+                radius: point.radius,
                 color: point.color,
             })
             .collect()
@@ -1004,14 +887,5 @@ impl Scene3D {
         }
 
         bbox
-    }
-}
-
-fn axis_color(axis: usize) -> [u8; 4] {
-    match axis {
-        0 => [255, 25, 25, 255],
-        1 => [0, 240, 0, 255],
-        2 => [80, 80, 255, 255],
-        _ => unreachable!("Axis should be one of 0,1,2; got {axis}"),
     }
 }

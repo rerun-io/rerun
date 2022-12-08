@@ -1,8 +1,11 @@
 use re_renderer::{
-    renderer::{LineStripFlags, Rectangle, RectangleDrawData, TextureFilterMag, TextureFilterMin},
+    renderer::{
+        LineStripFlags, PointCloudDrawData, PointCloudPoint, Rectangle, RectangleDrawData,
+        TextureFilterMag, TextureFilterMin,
+    },
     resource_managers::{GpuTexture2DHandle, Texture2DCreationDesc},
     view_builder::{self, Projection, ViewBuilder},
-    Color32, LineStripSeriesBuilder, Rgba,
+    Color32, LineStripSeriesBuilder, Rgba, Size,
 };
 
 mod framework;
@@ -55,6 +58,7 @@ impl framework::Example for Render2D {
         re_ctx: &mut re_renderer::RenderContext,
         resolution: [u32; 2],
         time: &framework::Time,
+        pixels_from_point: f32,
     ) -> Vec<framework::ViewDrawResult> {
         let splits = framework::split_resolution(resolution, 1, 2).collect::<Vec<_>>();
 
@@ -74,7 +78,7 @@ impl framework::Example for Render2D {
                 glam::vec2(screen_size.x * 0.5, 0.0),
                 glam::vec2(0.0, screen_size.y * 0.5),
             )
-            .radius(line_radius)
+            .radius(Size::new_scene(line_radius))
             .color(Color32::BLUE);
 
         // .. within, a orange rectangle
@@ -84,7 +88,7 @@ impl framework::Example for Render2D {
                 glam::vec2(screen_size.x * 0.25, 0.0),
                 glam::vec2(0.0, screen_size.y * 0.25),
             )
-            .radius(5.0)
+            .radius(Size::new_scene(5.0))
             .color(Color32::from_rgb(255, 100, 1));
 
         // All variations of line caps
@@ -102,21 +106,73 @@ impl framework::Example for Render2D {
         .iter()
         .enumerate()
         {
-            let y = (i + 1) as f32 * 80.0;
+            let y = (i + 1) as f32 * 70.0;
             line_strip_builder
                 .add_segment_2d(glam::vec2(70.0, y), glam::vec2(400.0, y))
-                .radius(20.0)
+                .radius(Size::new_scene(15.0))
                 .flags(*flags);
         }
 
+        // Lines with different kinds of radius
+        // The first two lines are the same thickness if there no (!) scaling.
+        // Moving the windows to a high dpi screen makes the second one bigger.
+        // Also, it looks different under perspective projection.
+        // The third line is automatic thickness which is determined by the line renderer implementation.
+        line_strip_builder
+            .add_segment_2d(glam::vec2(500.0, 10.0), glam::vec2(1000.0, 10.0))
+            .radius(Size::new_scene(4.0))
+            .color(Color32::from_rgb(255, 180, 1));
+        line_strip_builder
+            .add_segment_2d(glam::vec2(500.0, 30.0), glam::vec2(1000.0, 30.0))
+            .radius(Size::new_points(4.0))
+            .color(Color32::from_rgb(255, 180, 1));
+        line_strip_builder
+            .add_segment_2d(glam::vec2(500.0, 60.0), glam::vec2(1000.0, 60.0))
+            .radius(Size::AUTO)
+            .color(Color32::from_rgb(255, 180, 1));
+        line_strip_builder
+            .add_segment_2d(glam::vec2(500.0, 90.0), glam::vec2(1000.0, 90.0))
+            .radius(Size::AUTO_LARGE)
+            .color(Color32::from_rgb(255, 180, 1));
+
         let line_strip_draw_data = line_strip_builder.to_draw_data(re_ctx);
+
+        // Points with different kinds of radius
+        // The first two points are the same thickness if there no (!) scaling.
+        // Moving the windows to a high dpi screen makes the second one bigger.
+        // Also, it looks different under perspective projection.
+        // The third point is automatic thickness which is determined by the point renderer implementation.
+        let points = vec![
+            PointCloudPoint {
+                position: glam::vec3(500.0, 120.0, 0.0),
+                radius: Size::new_scene(4.0),
+                color: Color32::from_rgb(55, 180, 1),
+            },
+            PointCloudPoint {
+                position: glam::vec3(520.0, 120.0, 0.0),
+                radius: Size::new_points(4.0),
+                color: Color32::from_rgb(55, 180, 1),
+            },
+            PointCloudPoint {
+                position: glam::vec3(540.0, 120.0, 0.0),
+                radius: Size::AUTO,
+                color: Color32::from_rgb(55, 180, 1),
+            },
+            PointCloudPoint {
+                position: glam::vec3(560.0, 120.0, 0.0),
+                radius: Size::AUTO_LARGE,
+                color: Color32::from_rgb(55, 180, 1),
+            },
+        ];
+
+        let point_draw_data = PointCloudDrawData::new(re_ctx, &points).unwrap();
 
         let image_scale = 4.0;
         let rectangle_draw_data = RectangleDrawData::new(
             re_ctx,
             &[
                 Rectangle {
-                    top_left_corner_position: glam::vec3(500.0, 100.0, -0.05),
+                    top_left_corner_position: glam::vec3(500.0, 120.0, -0.05),
                     extent_u: self.rerun_logo_texture_width as f32 * image_scale * glam::Vec3::X,
                     extent_v: self.rerun_logo_texture_height as f32 * image_scale * glam::Vec3::Y,
                     texture: self.rerun_logo_texture.clone(),
@@ -127,7 +183,7 @@ impl framework::Example for Render2D {
                 Rectangle {
                     top_left_corner_position: glam::vec3(
                         500.0,
-                        150.0 + self.rerun_logo_texture_height as f32 * image_scale,
+                        170.0 + self.rerun_logo_texture_height as f32 * image_scale,
                         -0.05,
                     ),
                     extent_u: self.rerun_logo_texture_width as f32 * image_scale * glam::Vec3::X,
@@ -152,11 +208,13 @@ impl framework::Example for Render2D {
                             "2D".into(),
                             splits[0].resolution_in_pixel,
                             1.0,
+                            pixels_from_point,
                             glam::Vec2::ZERO,
                         ),
                     )
                     .unwrap();
                 view_builder.queue_draw(&line_strip_draw_data);
+                view_builder.queue_draw(&point_draw_data);
                 view_builder.queue_draw(&rectangle_draw_data);
                 let command_buffer = view_builder
                     .draw(re_ctx, ecolor::Rgba::TRANSPARENT)
@@ -194,10 +252,12 @@ impl framework::Example for Render2D {
                                 vertical_fov: 70.0 * std::f32::consts::TAU / 360.0,
                                 near_plane_distance: 0.01,
                             },
+                            pixels_from_point,
                         },
                     )
                     .unwrap();
                 view_builder.queue_draw(&line_strip_draw_data);
+                view_builder.queue_draw(&point_draw_data);
                 view_builder.queue_draw(&rectangle_draw_data);
                 let command_buffer = view_builder
                     .draw(re_ctx, ecolor::Rgba::TRANSPARENT)

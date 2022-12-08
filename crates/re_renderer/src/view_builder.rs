@@ -107,6 +107,10 @@ pub struct TargetConfiguration {
     pub resolution_in_pixel: [u32; 2],
     pub view_from_world: macaw::IsoTransform,
     pub projection_from_view: Projection,
+
+    /// How many pixels are there per point.
+    /// I.e. the ui scaling factor.
+    pub pixels_from_point: f32,
 }
 
 impl TargetConfiguration {
@@ -116,7 +120,8 @@ impl TargetConfiguration {
     pub fn new_2d_target(
         name: DebugLabel,
         resolution_in_pixel: [u32; 2],
-        units_per_pixel: f32,
+        units_from_pixel: f32,
+        pixels_from_point: f32,
         top_left_position: glam::Vec2,
     ) -> Self {
         TargetConfiguration {
@@ -125,9 +130,10 @@ impl TargetConfiguration {
             view_from_world: macaw::IsoTransform::from_translation(-top_left_position.extend(0.0)),
             projection_from_view: Projection::Orthographic {
                 camera_mode: OrthographicCameraMode::TopLeftCornerAndExtendZ,
-                vertical_world_size: units_per_pixel * resolution_in_pixel[1] as f32,
+                vertical_world_size: units_from_pixel * resolution_in_pixel[1] as f32,
                 far_plane_distance: 1000.0,
             },
+            pixels_from_point,
         }
     }
 }
@@ -348,6 +354,17 @@ impl ViewBuilder {
         let camera_forward = -view_from_world.row(2).truncate();
         let projection_from_world = projection_from_view * view_from_world;
 
+        let viewport_size_in_points = glam::vec2(
+            config.resolution_in_pixel[0] as f32 / config.pixels_from_point,
+            config.resolution_in_pixel[1] as f32 / config.pixels_from_point,
+        );
+
+        // TODO(andreas): Make configurable?
+        // TODO(andreas): Different for different primitives?
+        // TODO(andreas): Different for amount of primitives? (done by re_renderer user?)
+        let auto_size_in_points = (0.0005 * viewport_size_in_points.length()).clamp(1.5, 5.0);
+        let auto_size_large_in_points = auto_size_in_points * 1.5;
+
         ctx.queue.write_buffer(
             ctx.gpu_resources
                 .buffers
@@ -358,11 +375,14 @@ impl ViewBuilder {
                 view_from_world: glam::Affine3A::from_mat4(view_from_world).into(),
                 projection_from_view: projection_from_view.into(),
                 projection_from_world: projection_from_world.into(),
-                camera_position: camera_position.into(),
-                camera_forward: camera_forward.into(),
+                camera_position,
+                camera_forward,
                 tan_half_fov: tan_half_fov.into(),
                 pixel_world_size_from_camera_distance,
-                _padding: 0.0,
+                pixels_from_point: config.pixels_from_point,
+
+                auto_size_in_points,
+                auto_size_large_in_points,
             }),
         );
 
