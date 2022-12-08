@@ -23,7 +23,7 @@ use re_renderer::{
     Color32, Size,
 };
 
-use super::{eye::Eye, SpaceCamera};
+use super::{eye::Eye, SpaceCamera3D};
 
 // ----------------------------------------------------------------------------
 
@@ -459,7 +459,7 @@ impl Scene3D {
         scene_bbox: &macaw::BoundingBox,
         viewport_size: egui::Vec2,
         eye: &Eye,
-        cameras: &[SpaceCamera],
+        cameras: &[SpaceCamera3D],
         hovered_instance: InstanceIdHash,
     ) {
         crate::profile_function!();
@@ -543,7 +543,7 @@ impl Scene3D {
     /// Paint frustum lines
     fn add_camera_frustum(
         &mut self,
-        camera: &SpaceCamera,
+        camera: &SpaceCamera3D,
         scene_bbox: &macaw::BoundingBox,
         instance_id: InstanceIdHash,
         line_radius: Size,

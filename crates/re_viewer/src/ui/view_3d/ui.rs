@@ -16,7 +16,7 @@ use crate::{
 };
 
 use super::{
-    Eye, OrbitEye, Point3D, Scene3D, SpaceCamera, AXIS_COLOR_X, AXIS_COLOR_Y, AXIS_COLOR_Z,
+    Eye, OrbitEye, Point3D, Scene3D, SpaceCamera3D, AXIS_COLOR_X, AXIS_COLOR_Y, AXIS_COLOR_Z,
 };
 
 // ---
@@ -52,7 +52,7 @@ pub(crate) struct View3DState {
     #[serde(skip)]
     pub(crate) space_specs: SpaceSpecs,
     #[serde(skip)]
-    space_camera: Vec<SpaceCamera>,
+    space_camera: Vec<SpaceCamera3D>,
 }
 
 impl Default for View3DState {
@@ -273,7 +273,7 @@ impl SpaceSpecs {
 }
 
 /// If the path to a camera is selected, we follow that camera.
-fn tracking_camera(ctx: &ViewerContext<'_>, space_cameras: &[SpaceCamera]) -> Option<Eye> {
+fn tracking_camera(ctx: &ViewerContext<'_>, space_cameras: &[SpaceCamera3D]) -> Option<Eye> {
     if let Selection::Instance(selected) = ctx.selection() {
         find_camera(space_cameras, &selected)
     } else {
@@ -281,7 +281,7 @@ fn tracking_camera(ctx: &ViewerContext<'_>, space_cameras: &[SpaceCamera]) -> Op
     }
 }
 
-fn find_camera(space_cameras: &[SpaceCamera], needle: &InstanceId) -> Option<Eye> {
+fn find_camera(space_cameras: &[SpaceCamera3D], needle: &InstanceId) -> Option<Eye> {
     let mut found_camera = None;
 
     for camera in space_cameras {
@@ -301,7 +301,7 @@ fn find_camera(space_cameras: &[SpaceCamera], needle: &InstanceId) -> Option<Eye
 
 fn click_object(
     ctx: &mut ViewerContext<'_>,
-    space_cameras: &[SpaceCamera],
+    space_cameras: &[SpaceCamera3D],
     state: &mut View3DState,
     instance_id: &InstanceId,
 ) {
@@ -339,7 +339,7 @@ pub(crate) fn view_3d(
     state: &mut View3DState,
     space: &ObjPath,
     mut scene: Scene3D,
-    space_cameras: &[SpaceCamera],
+    space_cameras: &[SpaceCamera3D],
 ) -> egui::Response {
     crate::profile_function!();
 
@@ -558,7 +558,7 @@ fn paint_view(
 
 fn show_projections_from_2d_space(
     ctx: &mut ViewerContext<'_>,
-    space_cameras: &[SpaceCamera],
+    space_cameras: &[SpaceCamera3D],
     state: &mut View3DState,
     scene: &mut Scene3D,
 ) {
@@ -603,7 +603,7 @@ fn show_projections_from_2d_space(
 
 fn project_onto_other_spaces(
     ctx: &mut ViewerContext<'_>,
-    space_cameras: &[SpaceCamera],
+    space_cameras: &[SpaceCamera3D],
     state: &mut View3DState,
     space: &ObjPath,
     response: &egui::Response,

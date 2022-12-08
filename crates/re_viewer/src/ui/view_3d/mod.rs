@@ -4,8 +4,8 @@ pub use self::eye::{Eye, OrbitEye};
 mod mesh_cache;
 pub use mesh_cache::CpuMeshCache;
 
-mod space_camera;
-pub use self::space_camera::SpaceCamera;
+mod space_camera_3d;
+pub use self::space_camera_3d::SpaceCamera3D;
 
 mod scene;
 pub use self::scene::{Label3D, MeshSource, MeshSourceData, Point3D, Scene3D};
