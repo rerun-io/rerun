@@ -14,7 +14,7 @@ use re_log_types::{DataVec, IndexHash, MeshId, MsgId, ObjectType};
 
 use crate::misc::mesh_loader::CpuMesh;
 use crate::ui::annotations::{auto_color, AnnotationMap, DefaultColor};
-use crate::ui::view_3d::axis_color;
+use crate::ui::view_spatial::axis_color;
 use crate::ui::SceneQuery;
 use crate::{math::line_segment_distance_sq_to_point_2d, misc::ViewerContext};
 
@@ -453,7 +453,7 @@ impl Scene3D {
 
     // ---
 
-    pub(super) fn add_cameras(
+    pub(crate) fn add_cameras(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         scene_bbox: &macaw::BoundingBox,

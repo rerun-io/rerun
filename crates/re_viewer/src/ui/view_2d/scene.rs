@@ -24,8 +24,6 @@ use re_renderer::{renderer::PointCloudPoint, Color32, LineStripSeriesBuilder, Si
 
 use smallvec::smallvec;
 
-// ---
-
 pub struct HoverableImage {
     pub instance_hash: InstanceIdHash,
 

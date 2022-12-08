@@ -7,7 +7,7 @@ use re_data_store::{
 };
 use re_log_types::ObjectType;
 
-use super::{space_view::ViewCategory, view_2d, view_3d, view_plot, view_tensor, view_text};
+use super::{space_view::ViewCategory, view_2d, view_plot, view_spatial, view_tensor, view_text};
 
 // ---
 
@@ -15,7 +15,7 @@ use super::{space_view::ViewCategory, view_2d, view_3d, view_plot, view_tensor, 
 #[derive(Default)]
 pub struct Scene {
     pub two_d: view_2d::Scene2D,
-    pub three_d: view_3d::Scene3D,
+    pub three_d: view_spatial::Scene3D,
     pub text: view_text::SceneText,
     pub tensor: view_tensor::SceneTensor,
     pub plot: view_plot::ScenePlot,

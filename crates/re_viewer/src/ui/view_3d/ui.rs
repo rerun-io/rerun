@@ -12,12 +12,11 @@ use re_renderer::{
 
 use crate::{
     misc::{HoveredSpace, Selection},
+    ui::view_spatial::{AXIS_COLOR_X, AXIS_COLOR_Y, AXIS_COLOR_Z},
     ViewerContext,
 };
 
-use super::{
-    Eye, OrbitEye, Point3D, Scene3D, SpaceCamera3D, AXIS_COLOR_X, AXIS_COLOR_Y, AXIS_COLOR_Z,
-};
+use crate::ui::view_spatial::{Eye, OrbitEye, Point3D, Scene3D, SpaceCamera3D};
 
 // ---
 
