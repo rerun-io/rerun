@@ -169,21 +169,11 @@ impl SceneSpatialPrimitives {
     }
 }
 
+#[derive(Default)]
 pub struct SceneSpatial {
     pub annotation_map: AnnotationMap,
-
     pub primitives: SceneSpatialPrimitives,
     pub ui: SceneSpatialUiData,
-}
-
-impl Default for SceneSpatial {
-    fn default() -> Self {
-        Self {
-            annotation_map: Default::default(),
-            primitives: Default::default(),
-            ui: Default::default(),
-        }
-    }
 }
 
 impl SceneSpatial {
@@ -261,7 +251,7 @@ impl SceneSpatial {
                      keypoint_id: Option<&i32>| {
                         batch_size += 1;
 
-                        let pos = Vec3::from_slice(pos);
+                        let position = Vec3::from_slice(pos);
 
                         let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
                         let instance_id_hash =
@@ -276,7 +266,7 @@ impl SceneSpatial {
                                 keypoints
                                     .entry((class_id, time))
                                     .or_insert_with(Default::default)
-                                    .insert(keypoint_id, pos);
+                                    .insert(keypoint_id, position);
                             }
 
                             class_description.annotation_info_with_keypoint(keypoint_id)
@@ -297,13 +287,13 @@ impl SceneSpatial {
                             if let Some(label) = annotation_info.label(label) {
                                 label_batch.push(Label3D {
                                     text: label,
-                                    origin: pos,
+                                    origin: position,
                                 });
                             }
                         }
 
                         self.primitives.points.push(PointCloudPoint {
-                            position: pos.into(),
+                            position,
                             radius,
                             color,
                         });
@@ -315,7 +305,7 @@ impl SceneSpatial {
                     self.ui.labels_3d.extend(label_batch);
                 }
 
-                self.load_keypoint_connections(obj_path, keypoints, annotations);
+                self.load_keypoint_connections(obj_path, keypoints, &annotations);
             });
     }
 
@@ -323,11 +313,11 @@ impl SceneSpatial {
         &mut self,
         obj_path: &re_data_store::ObjPath,
         keypoints: HashMap<(ClassId, i64), HashMap<KeypointId, glam::Vec3>>,
-        annotations: Arc<Annotations>,
+        annotations: &Arc<Annotations>,
     ) {
         // Generate keypoint connections if any.
         let instance_id_hash = InstanceIdHash::from_path_and_index(obj_path, IndexHash::NONE);
-        for ((class_id, _time), keypoints_in_class) in keypoints.into_iter() {
+        for ((class_id, _time), keypoints_in_class) in keypoints {
             let Some(class_description) = annotations.context.class_map.get(&class_id) else {
                 continue;
             };
@@ -849,7 +839,7 @@ impl SceneSpatial {
             }
 
             // Generate keypoint connections if any.
-            self.load_keypoint_connections(obj_path, keypoints, annotations);
+            self.load_keypoint_connections(obj_path, keypoints, &annotations);
         }
     }
 
@@ -1225,11 +1215,14 @@ impl SceneSpatial {
             macaw::Ray3::from_origin_dir(eye.pos_in_world(), ray_dir.normalize())
         };
 
-        let Self {
-            annotation_map,
-            primitives: render_primitives,
-            ui: ui_elements,
-        } = self;
+        let SceneSpatialPrimitives {
+            bounding_box: _,
+            textured_rectangles: _, // TODO(andreas): Should be able to pick 2d rectangles!
+            line_strips,
+            points,
+            point_ids,
+            meshes,
+        } = &self.primitives;
 
         // in points
         let max_side_dist_sq = 5.0 * 5.0; // TODO(emilk): interaction radius from egui
@@ -1241,15 +1234,8 @@ impl SceneSpatial {
 
         {
             crate::profile_scope!("points 3d");
-            debug_assert_eq!(
-                render_primitives.point_ids.len(),
-                render_primitives.points.len()
-            );
-            for (point, instance_id_hash) in render_primitives
-                .points
-                .iter()
-                .zip(render_primitives.point_ids.iter())
-            {
+            debug_assert_eq!(point_ids.len(), points.len());
+            for (point, instance_id_hash) in points.iter().zip(point_ids.iter()) {
                 if !instance_id_hash.is_some() {
                     continue;
                 }
@@ -1273,10 +1259,9 @@ impl SceneSpatial {
 
         {
             crate::profile_scope!("line_segments 3d");
-            for ((_line_strip, vertices), instance_id_hash) in render_primitives
-                .line_strips
+            for ((_line_strip, vertices), instance_id_hash) in line_strips
                 .iter_strips_with_vertices()
-                .zip(render_primitives.line_strips.strip_user_data.iter())
+                .zip(line_strips.strip_user_data.iter())
             {
                 if !instance_id_hash.is_some() {
                     continue;
@@ -1305,18 +1290,19 @@ impl SceneSpatial {
 
         {
             crate::profile_scope!("meshes");
-            for mesh in &render_primitives.meshes {
-                if mesh.instance_id_hash.is_some() {
-                    let ray_in_mesh = (mesh.world_from_mesh.inverse() * ray_in_world).normalize();
-                    let t = crate::math::ray_bbox_intersect(&ray_in_mesh, mesh.mesh.bbox());
+            for mesh in meshes {
+                if !mesh.instance_id_hash.is_some() {
+                    continue;
+                }
+                let ray_in_mesh = (mesh.world_from_mesh.inverse() * ray_in_world).normalize();
+                let t = crate::math::ray_bbox_intersect(&ray_in_mesh, mesh.mesh.bbox());
 
-                    if t < f32::INFINITY {
-                        let dist_sq = 0.0;
-                        if t < closest_z || dist_sq < closest_side_dist_sq {
-                            closest_z = t; // TODO(emilk): I think this is wrong
-                            closest_side_dist_sq = dist_sq;
-                            closest_instance_id = Some(mesh.instance_id_hash);
-                        }
+                if t < f32::INFINITY {
+                    let dist_sq = 0.0;
+                    if t < closest_z || dist_sq < closest_side_dist_sq {
+                        closest_z = t; // TODO(emilk): I think this is wrong
+                        closest_side_dist_sq = dist_sq;
+                        closest_instance_id = Some(mesh.instance_id_hash);
                     }
                 }
             }
