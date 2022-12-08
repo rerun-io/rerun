@@ -111,9 +111,6 @@ pub struct SceneSpatialUiElements {
 
     /// Images are a special case of rects where we're storing some extra information to allow minature previews etc.
     pub images: Vec<Image>,
-
-    /// Hoverable points in scene units and their instance id hashes
-    pub points: Vec<(egui::Pos2, InstanceIdHash)>,
 }
 
 #[derive(Default)]
@@ -125,12 +122,12 @@ pub struct SceneSpatialRenderPrimitives {
 
     pub line_strips: LineStripSeriesBuilder<InstanceIdHash>,
 
-    pub points: Vec<PointCloudPoint>, // TODO(andreas): Separate hover & render
+    pub points: Vec<PointCloudPoint>,
     /// Assigns an instance id to every point. Needs to have as many elements as points
     /// TODO(andreas): Should introduce a builder to separate data & allow metadata. See LineStripSeriesBuilder
     pub point_ids: Vec<InstanceIdHash>,
 
-    pub meshes: Vec<MeshSource>, // TODO(andreas): Separate hover & render
+    pub meshes: Vec<MeshSource>,
 }
 
 impl SceneSpatialRenderPrimitives {
@@ -821,16 +818,15 @@ impl SceneSpatial {
                         radius: Size::new_points(paint_props.fg_stroke.width * 0.5),
                         color: paint_props.fg_stroke.color,
                     });
-
-                    let pos = egui::pos2(pos.x, pos.y);
-                    self.ui_elements.points.push((pos, instance_hash));
+                    self.render_primitives.point_ids.push(instance_hash);
+                    self.render_primitives.point_ids.push(InstanceIdHash::NONE);
 
                     if let Some(label) = label {
                         if label_batch.len() < max_num_labels {
                             label_batch.push(Label2D {
                                 text: label,
                                 color: paint_props.fg_stroke.color,
-                                target: Label2DTarget::Point(pos),
+                                target: Label2DTarget::Point(egui::pos2(pos.x, pos.y)),
                                 labled_instance: instance_hash,
                             });
                         }

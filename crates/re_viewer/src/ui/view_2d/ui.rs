@@ -315,6 +315,7 @@ fn view_2d_scrollable(
         // All hover primitives have their coordinates in space units.
         // Transform the pointer pos so we don't have to transform anything else!
         let pointer_pos_space = space_from_ui.transform_pos(pointer_pos_ui);
+        let pointer_pos_space_glam = glam::vec2(pointer_pos_space.x, pointer_pos_space.y);
 
         let hover_radius = space_from_ui.scale().y * 5.0; // TODO(emilk): from egui?
         let mut closest_dist = hover_radius;
@@ -330,8 +331,16 @@ fn view_2d_scrollable(
             check_hovering(*instance_hash, bbox.distance_to_pos(pointer_pos_space));
         }
 
-        for (point, instance_hash) in &scene.ui_elements.points {
-            check_hovering(*instance_hash, point.distance(pointer_pos_space));
+        for (point, instance_hash) in scene
+            .render_primitives
+            .points
+            .iter()
+            .zip(scene.render_primitives.point_ids.iter())
+        {
+            check_hovering(
+                *instance_hash,
+                point.position.truncate().distance(pointer_pos_space_glam),
+            );
         }
 
         for ((_info, instance_hash), vertices) in scene
@@ -348,7 +357,7 @@ fn view_2d_scrollable(
             for (a, b) in vertices.tuple_windows() {
                 let line_segment_distance_sq = crate::math::line_segment_distance_sq_to_point_2d(
                     [a.pos.truncate(), b.pos.truncate()],
-                    glam::vec2(pointer_pos_space.x, pointer_pos_space.y),
+                    pointer_pos_space_glam,
                 );
                 min_dist_sq = min_dist_sq.min(line_segment_distance_sq);
             }
