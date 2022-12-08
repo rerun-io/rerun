@@ -32,7 +32,6 @@ use super::{eye::Eye, SpaceCamera3D};
 
 // ----------------------------------------------------------------------------
 
-/// TODO(andreas): Scene shouldn't need to care about source?
 pub enum MeshSourceData {
     Mesh3D(re_log_types::Mesh3D),
 
@@ -188,10 +187,10 @@ impl SceneSpatial {
 
         self.annotation_map.load(ctx, query);
 
-        self.load_points(ctx, query, hovered_instance);
-        self.load_boxes(ctx, query, hovered_instance);
-        self.load_lines(ctx, query, hovered_instance);
-        self.load_arrows(ctx, query, hovered_instance);
+        self.load_points_3d(ctx, query, hovered_instance);
+        self.load_boxes_3d(ctx, query, hovered_instance);
+        self.load_lines_3d(ctx, query, hovered_instance);
+        self.load_arrows_3d(ctx, query, hovered_instance);
         self.load_meshes(ctx, query, hovered_instance);
 
         self.load_images(ctx, query, hovered_instance);
@@ -212,7 +211,7 @@ impl SceneSpatial {
         }
     }
 
-    fn load_points(
+    fn load_points_3d(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
@@ -345,7 +344,7 @@ impl SceneSpatial {
         }
     }
 
-    fn load_boxes(
+    fn load_boxes_3d(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
@@ -389,14 +388,14 @@ impl SceneSpatial {
                         line_radius = Self::hover_size_boost(line_radius);
                     }
 
-                    self.add_box(instance_id_hash, color, line_radius, label, obb);
+                    self.add_box_3d(instance_id_hash, color, line_radius, label, obb);
                 },
             );
         }
     }
 
     /// Both `Path3D` and `LineSegments3D`.
-    fn load_lines(
+    fn load_lines_3d(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
@@ -465,7 +464,7 @@ impl SceneSpatial {
         }
     }
 
-    fn load_arrows(
+    fn load_arrows_3d(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
@@ -1086,7 +1085,7 @@ impl SceneSpatial {
             .user_data(instance_id_hash);
     }
 
-    fn add_box(
+    fn add_box_3d(
         &mut self,
         instance_id: InstanceIdHash,
         color: Color32,
