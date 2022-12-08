@@ -285,8 +285,14 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
         tracker.insert_data(
             store,
             &ent_path,
-            [build_log_time(now_minus_10ms), build_frame_nr(frame43)],
-            [build_rects(nb_instances)],
+            [build_frame_nr(frame41)],
+            [build_instances(nb_instances)],
+        );
+        tracker.insert_data(
+            store,
+            &ent_path,
+            [build_frame_nr(frame41)],
+            [build_positions(nb_instances)],
         );
         tracker.insert_data(
             store,
@@ -304,7 +310,7 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
             store,
             &ent_path,
             [build_frame_nr(frame41)],
-            [build_instances(nb_instances), build_rects(nb_instances)],
+            [build_rects(nb_instances)],
         );
         tracker.insert_data(
             store,
@@ -317,6 +323,12 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
             &ent_path,
             [build_log_time(now_minus_10ms), build_frame_nr(frame42)],
             [build_positions(nb_instances)],
+        );
+        tracker.insert_data(
+            store,
+            &ent_path,
+            [build_log_time(now_minus_10ms), build_frame_nr(frame43)],
+            [build_rects(nb_instances)],
         );
     }
 
@@ -343,7 +355,7 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
             vec![
                 ("instances", frame41.into()),
                 ("rects", frame41.into()),
-                // don't fold pls
+                ("positions", frame41.into()),
             ],
         ),
         // Scenario: query all components at frame #42 (i.e. second frame with data)
