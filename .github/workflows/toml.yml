@@ -26,6 +26,7 @@ jobs:
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@v2
         with:
+          # See: https://github.com/rerun-io/rerun/pull/497
           save-if: ${{ github.event_name == 'push'}}
 
       - name: Install taplo-cli
