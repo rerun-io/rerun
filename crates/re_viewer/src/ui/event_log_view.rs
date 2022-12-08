@@ -173,7 +173,7 @@ fn table_row(
             });
             for timeline in ctx.log_db.timelines() {
                 row.col(|ui| {
-                    if let Some(value) = time_point.0.get(timeline) {
+                    if let Some(value) = time_point.get(timeline) {
                         ctx.time_button(ui, timeline, *value);
                     }
                 });
@@ -200,7 +200,7 @@ fn table_row(
             });
             for timeline in ctx.log_db.timelines() {
                 row.col(|ui| {
-                    if let Some(value) = time_point.0.get(timeline) {
+                    if let Some(value) = time_point.get(timeline) {
                         ctx.time_button(ui, timeline, *value);
                     }
                 });

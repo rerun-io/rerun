@@ -359,7 +359,7 @@ fn show_table(
                 // timeline(s)
                 for timeline in &timelines {
                     row.col(|ui| {
-                        if let Some(value) = time_point.0.get(timeline).copied() {
+                        if let Some(value) = time_point.get(timeline).copied() {
                             if let Some(current_time) = current_time {
                                 if current_time_y.is_none()
                                     && *timeline == &current_timeline

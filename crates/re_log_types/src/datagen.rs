@@ -1,18 +1,21 @@
 //! Generate random data for tests and benchmarks.
 
-use std::{collections::BTreeMap, time::SystemTime};
+use std::collections::BTreeMap;
 
-use crate::arrow::{ENTITY_PATH_KEY, TIMELINE_KEY, TIMELINE_SEQUENCE, TIMELINE_TIME};
-use crate::{ObjPath as EntityPath, TimeInt};
+use crate::ENTITY_PATH_KEY;
+use crate::{
+    ComponentNameRef, ObjPath as EntityPath, Time, TimeInt, TimePoint, TimeType, Timeline,
+};
 use arrow2::{
-    array::{Array, Float32Array, Int64Array, ListArray, PrimitiveArray, StructArray},
+    array::{Array, Float32Array, ListArray, PrimitiveArray, StructArray},
     buffer::Buffer,
     chunk::Chunk,
-    datatypes::{DataType, Field, Schema, TimeUnit},
+    datatypes::{DataType, Field, Schema},
 };
+use arrow2_convert::field::ArrowField;
 use arrow2_convert::serialize::TryIntoArrow;
 
-use crate::{field_types, ComponentNameRef};
+use crate::field_types;
 
 /// Wrap `field_array` in a single-element `ListArray`
 pub fn wrap_in_listarray(field_array: Box<dyn Array>) -> ListArray<i32> {
@@ -41,7 +44,7 @@ pub fn build_some_rects(len: usize) -> Box<dyn Array> {
 pub fn build_some_colors(len: usize) -> Box<dyn Array> {
     let v = (0..len)
         .into_iter()
-        .map(|i| i as field_types::ColorRGBA)
+        .map(|i| field_types::ColorRGBA(i as u32))
         .collect::<Vec<_>>();
     v.try_into_arrow().unwrap()
 }
@@ -73,41 +76,17 @@ pub fn build_test_rect_chunk() -> (Chunk<Box<dyn Array>>, Schema) {
     (chunk, schema)
 }
 
-pub fn build_log_time(log_time: SystemTime) -> (TimeInt, Schema, Int64Array) {
-    let log_time = log_time
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .unwrap()
-        .as_nanos() as i64;
-
-    let datatype = DataType::Timestamp(TimeUnit::Nanosecond, None);
-
-    let data = PrimitiveArray::from([Some(log_time)]).to(datatype.clone());
-
-    let fields = [Field::new("log_time", datatype, false)
-        .with_metadata([(TIMELINE_KEY.to_owned(), TIMELINE_TIME.to_owned())].into())]
-    .to_vec();
-
-    let schema = Schema {
-        fields,
-        ..Default::default()
-    };
-
-    (log_time.into(), schema, data)
+/// Build a ([`Timeline`], [`TimeInt`]) tuple from `log_time` suitable for inserting in a [`TimePoint`].
+pub fn build_log_time(log_time: Time) -> (Timeline, TimeInt) {
+    (Timeline::new("log_time", TimeType::Time), log_time.into())
 }
 
-pub fn build_frame_nr(frame_nr: i64) -> (TimeInt, Schema, Int64Array) {
-    let data = PrimitiveArray::from([Some(frame_nr)]);
-
-    let fields = [Field::new("frame_nr", DataType::Int64, false)
-        .with_metadata([(TIMELINE_KEY.to_owned(), TIMELINE_SEQUENCE.to_owned())].into())]
-    .to_vec();
-
-    let schema = Schema {
-        fields,
-        ..Default::default()
-    };
-
-    (frame_nr.into(), schema, data)
+/// Build a ([`Timeline`], [`TimeInt`]) tuple from `frame_nr` suitable for inserting in a [`TimePoint`].
+pub fn build_frame_nr(frame_nr: i64) -> (Timeline, TimeInt) {
+    (
+        Timeline::new("frame_nr", TimeType::Sequence),
+        frame_nr.into(),
+    )
 }
 
 pub fn pack_timelines(
@@ -128,7 +107,7 @@ pub fn pack_timelines(
     (schema, packed)
 }
 
-pub fn build_instances(nb_instances: usize) -> (ComponentNameRef<'static>, Schema, ListArray<i32>) {
+pub fn build_instances(nb_instances: usize) -> (ComponentNameRef<'static>, Schema, Box<dyn Array>) {
     use rand::Rng as _;
     let mut rng = rand::thread_rng();
 
@@ -146,10 +125,10 @@ pub fn build_instances(nb_instances: usize) -> (ComponentNameRef<'static>, Schem
         ..Default::default()
     };
 
-    ("instances", schema, data)
+    ("instances", schema, data.boxed())
 }
 
-pub fn build_rects(nb_instances: usize) -> (ComponentNameRef<'static>, Schema, ListArray<i32>) {
+pub fn build_rects(nb_instances: usize) -> (ComponentNameRef<'static>, Schema, Box<dyn Array>) {
     use rand::Rng as _;
     let mut rng = rand::thread_rng();
 
@@ -175,10 +154,10 @@ pub fn build_rects(nb_instances: usize) -> (ComponentNameRef<'static>, Schema, L
         ..Default::default()
     };
 
-    ("rects", schema, data)
+    ("rects", schema, data.boxed())
 }
 
-pub fn build_positions(nb_instances: usize) -> (ComponentNameRef<'static>, Schema, ListArray<i32>) {
+pub fn build_positions(nb_instances: usize) -> (ComponentNameRef<'static>, Schema, Box<dyn Array>) {
     use rand::Rng as _;
     let mut rng = rand::thread_rng();
 
@@ -207,7 +186,7 @@ pub fn build_positions(nb_instances: usize) -> (ComponentNameRef<'static>, Schem
         ..Default::default()
     };
 
-    ("positions", schema, data)
+    ("positions", schema, data.boxed())
 }
 
 pub fn pack_components(
@@ -229,10 +208,11 @@ pub fn pack_components(
     (schema, packed)
 }
 
+/// Build a single log message
 pub fn build_message(
     ent_path: &EntityPath,
-    timelines: impl IntoIterator<Item = (TimeInt, Schema, Int64Array)>,
-    components: impl IntoIterator<Item = (ComponentNameRef<'static>, Schema, ListArray<i32>)>,
+    timepoint: &TimePoint,
+    components: impl IntoIterator<Item = (ComponentNameRef<'static>, Schema, Box<dyn Array>)>,
 ) -> (Schema, Chunk<Box<dyn Array>>) {
     let mut schema = Schema::default();
     let mut cols: Vec<Box<dyn Array>> = Vec::new();
@@ -240,20 +220,17 @@ pub fn build_message(
     schema.metadata = BTreeMap::from([(ENTITY_PATH_KEY.into(), ent_path.to_string())]);
 
     // Build & pack timelines
-    let (timelines_schema, timelines_data) = pack_timelines(
-        timelines
-            .into_iter()
-            .map(|(_, schema, data)| (schema, data.boxed())),
-    );
-    schema.fields.extend(timelines_schema.fields);
-    schema.metadata.extend(timelines_schema.metadata);
-    cols.push(timelines_data.boxed());
+    let timelines_field = Field::new("timelines", TimePoint::data_type(), false);
+    let timelines_col = [timepoint].try_into_arrow().unwrap();
+
+    schema.fields.push(timelines_field);
+    cols.push(timelines_col);
 
     // Build & pack components
     let (components_schema, components_data) = pack_components(
         components
             .into_iter()
-            .map(|(_, schema, data)| (schema, data.boxed())),
+            .map(|(_, schema, data)| (schema, data)),
     );
     schema.fields.extend(components_schema.fields);
     schema.metadata.extend(components_schema.metadata);

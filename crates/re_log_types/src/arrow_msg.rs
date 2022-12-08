@@ -1,3 +1,8 @@
+//! [`ArrowMsg`] is the [`crate::LogMsg`] sub-type containing an Arrow payload.
+//!
+//! We have custom implementations of [`serde::Serialize`] and [`serde::Deserialize`] that wraps
+//! the inner Arrow serialization of [`Schema`] and [`Chunk`].
+
 use arrow2::{array::Array, chunk::Chunk, datatypes::Schema};
 
 use crate::MsgId;
@@ -99,10 +104,10 @@ impl<'de> serde::Deserialize<'de> for ArrowMsg {
 mod tests {
     use serde_test::{assert_tokens, Token};
 
-    use super::*;
+    use super::{ArrowMsg, Chunk, MsgId, Schema};
     use crate::{
         datagen::{build_frame_nr, build_message, build_positions, build_rects},
-        ObjPath,
+        ObjPath, TimePoint,
     };
 
     #[test]
@@ -149,8 +154,8 @@ mod tests {
     fn test_roundtrip_payload() {
         let (schema, chunk) = build_message(
             &ObjPath::from("rects"),
-            [build_frame_nr(0)],
-            [build_positions(5), build_rects(5)],
+            &TimePoint::from([build_frame_nr(0)]),
+            [build_positions(1), build_rects(1)],
         );
 
         let msg_in = ArrowMsg {

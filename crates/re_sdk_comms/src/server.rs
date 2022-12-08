@@ -178,7 +178,7 @@ impl CongestionManager {
     }
 
     fn should_send_time_point(&mut self, time_point: &TimePoint) -> bool {
-        for (timeline, time) in &time_point.0 {
+        for (timeline, time) in time_point.iter() {
             if timeline.typ() == TimeType::Sequence {
                 // We want to accept everything from the same sequence (e.g. frame nr) or nothing.
                 // See https://github.com/rerun-io/rerun/issues/430 for why.

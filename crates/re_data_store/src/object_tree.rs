@@ -200,7 +200,7 @@ impl ObjectTree {
         msg_id: MsgId,
         time_point: &TimePoint,
     ) -> &mut Self {
-        for (timeline, time_value) in &time_point.0 {
+        for (timeline, time_value) in time_point.iter() {
             self.prefix_times
                 .0
                 .entry(*timeline)
@@ -293,7 +293,7 @@ pub struct DataColumns {
 
 impl DataColumns {
     pub fn add(&mut self, msg_id: MsgId, time_point: &TimePoint, data: &LoggedData) {
-        for (timeline, time_value) in &time_point.0 {
+        for (timeline, time_value) in time_point.iter() {
             self.times
                 .entry(*timeline)
                 .or_default()

@@ -171,14 +171,15 @@ mod tests {
         }
     }
 
-    #[derive(PartialEq, Eq, Debug)]
-    pub struct ConcreteResource(u32);
-
-    static RESOURCE_DROP_COUNTER: AtomicUsize = AtomicUsize::new(0);
+    #[derive(Debug)]
+    pub struct ConcreteResource {
+        id: u32,
+        drop_counter: Arc<AtomicUsize>,
+    }
 
     impl Drop for ConcreteResource {
         fn drop(&mut self) {
-            RESOURCE_DROP_COUNTER.fetch_add(1, Ordering::Relaxed);
+            self.drop_counter.fetch_add(1, Ordering::Release);
         }
     }
 
@@ -187,35 +188,33 @@ mod tests {
     #[test]
     fn resource_alloc_and_reuse() {
         let mut pool = Pool::default();
+        let drop_counter = Arc::new(AtomicUsize::new(0));
 
         let initial_resource_descs = [0, 0, 1, 2, 2, 3];
 
         // Alloc on a new pool always returns a new resource.
-        allocate_resources(&initial_resource_descs, &mut pool, true);
+        allocate_resources(&initial_resource_descs, &mut pool, true, &drop_counter);
 
         // After frame maintenance we get used resources.
         // Still, no resources were dropped.
         {
-            let drop_counter_before = RESOURCE_DROP_COUNTER.load(Ordering::Relaxed);
+            let drop_counter_before = drop_counter.load(Ordering::Acquire);
             pool.frame_maintenance(1);
 
-            assert_eq!(
-                drop_counter_before,
-                RESOURCE_DROP_COUNTER.load(Ordering::Relaxed),
-            );
+            assert_eq!(drop_counter_before, drop_counter.load(Ordering::Acquire),);
         }
 
         // Allocate the same resources again, this should *not* create any new resources.
-        allocate_resources(&initial_resource_descs, &mut pool, false);
+        allocate_resources(&initial_resource_descs, &mut pool, false, &drop_counter);
         // Doing it again, it will again create resources.
-        allocate_resources(&initial_resource_descs, &mut pool, true);
+        allocate_resources(&initial_resource_descs, &mut pool, true, &drop_counter);
 
         // Doing frame maintenance twice will drop all resources
         {
-            let drop_counter_before = RESOURCE_DROP_COUNTER.load(Ordering::Relaxed);
+            let drop_counter_before = drop_counter.load(Ordering::Acquire);
             pool.frame_maintenance(2);
             pool.frame_maintenance(3);
-            let drop_counter_now = RESOURCE_DROP_COUNTER.load(Ordering::Relaxed);
+            let drop_counter_now = drop_counter.load(Ordering::Acquire);
             assert_eq!(
                 drop_counter_before + initial_resource_descs.len() * 2,
                 drop_counter_now
@@ -225,21 +224,24 @@ mod tests {
 
         // Holding on to a handle avoids both re-use and dropping.
         {
-            let drop_counter_before = RESOURCE_DROP_COUNTER.load(Ordering::Relaxed);
-            let handle0 = pool.alloc(&ConcreteResourceDesc(0), |d| ConcreteResource(d.0));
-            let handle1 = pool.alloc(&ConcreteResourceDesc(0), |d| ConcreteResource(d.0));
+            let drop_counter_before = drop_counter.load(Ordering::Acquire);
+            let handle0 = pool.alloc(&ConcreteResourceDesc(0), |d| ConcreteResource {
+                id: d.0,
+                drop_counter: drop_counter.clone(),
+            });
+            let handle1 = pool.alloc(&ConcreteResourceDesc(0), |d| ConcreteResource {
+                id: d.0,
+                drop_counter: drop_counter.clone(),
+            });
             assert_ne!(handle0, handle1);
             drop(handle1);
 
             pool.frame_maintenance(4);
-            assert_eq!(
-                drop_counter_before,
-                RESOURCE_DROP_COUNTER.load(Ordering::Relaxed),
-            );
+            assert_eq!(drop_counter_before, drop_counter.load(Ordering::Acquire),);
             pool.frame_maintenance(5);
             assert_eq!(
                 drop_counter_before + 1,
-                RESOURCE_DROP_COUNTER.load(Ordering::Relaxed),
+                drop_counter.load(Ordering::Acquire),
             );
         }
     }
@@ -248,20 +250,21 @@ mod tests {
         descs: &[u32],
         pool: &mut DynamicResourcePool<ConcreteHandle, ConcreteResourceDesc, ConcreteResource>,
         expect_allocation: bool,
+        drop_counter: &Arc<AtomicUsize>,
     ) {
-        let drop_counter_before = RESOURCE_DROP_COUNTER.load(Ordering::Relaxed);
+        let drop_counter_before = drop_counter.load(Ordering::Acquire);
         let byte_count_before = pool.total_resource_size_in_bytes();
         for &desc in descs {
             // Previous loop iteration didn't drop Resources despite dropping a handle.
-            assert_eq!(
-                drop_counter_before,
-                RESOURCE_DROP_COUNTER.load(Ordering::Relaxed),
-            );
+            assert_eq!(drop_counter_before, drop_counter.load(Ordering::Acquire));
 
             let new_resource_created = Cell::new(false);
             let handle = pool.alloc(&ConcreteResourceDesc(desc), |d| {
                 new_resource_created.set(true);
-                ConcreteResource(d.0)
+                ConcreteResource {
+                    id: d.0,
+                    drop_counter: drop_counter.clone(),
+                }
             });
             assert_eq!(new_resource_created.get(), expect_allocation);
 
@@ -286,26 +289,36 @@ mod tests {
     #[test]
     fn get_resource() {
         let mut pool = Pool::default();
+        let drop_counter = Arc::new(AtomicUsize::new(0));
 
         // Query with valid handle
-        let handle = pool.alloc(&ConcreteResourceDesc(0), |d| ConcreteResource(d.0));
+        let handle = pool.alloc(&ConcreteResourceDesc(0), |d| ConcreteResource {
+            id: d.0,
+            drop_counter: drop_counter.clone(),
+        });
         assert!(pool.get_resource(*handle).is_ok());
-        assert_eq!(*pool.get_resource(*handle).unwrap(), ConcreteResource(0));
+        assert!(matches!(
+            *pool.get_resource(*handle).unwrap(),
+            ConcreteResource {
+                id: 0,
+                drop_counter: _
+            }
+        ));
 
         // Query with null handle
-        assert_eq!(
+        assert!(matches!(
             pool.get_resource(ConcreteHandle::null()),
             Err(PoolError::NullHandle)
-        );
+        ));
 
         // Query with invalid handle
         let inner_handle = *handle;
         drop(handle);
         pool.frame_maintenance(0);
         pool.frame_maintenance(1);
-        assert_eq!(
+        assert!(matches!(
             pool.get_resource(inner_handle),
             Err(PoolError::ResourceNotAvailable)
-        );
+        ));
     }
 }
