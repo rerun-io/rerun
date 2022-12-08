@@ -7,7 +7,7 @@ re_string_interner::declare_new_type!(
 
 impl Default for TimelineName {
     fn default() -> Self {
-        Self::new("")
+        Self::from(String::default())
     }
 }
 
@@ -27,7 +27,6 @@ pub struct Timeline {
 
 impl Default for Timeline {
     fn default() -> Self {
-        Self {
         Self {
             name: TimelineName::default(),
             typ: TimeType::Sequence,
