@@ -200,6 +200,36 @@ pub fn query_entity_with_primary<const N: usize>(
     Ok(joined?)
 }
 
+/// Visit all of the components in a dataframe
+pub fn visit_components<C1: Component>(df: &DataFrame, mut visit: impl FnMut(Option<&C1>))
+where
+    C1: ArrowDeserialize + ArrowField<Type = C1> + 'static,
+    for<'b> &'b <C1 as ArrowDeserialize>::ArrayType: IntoIterator,
+{
+    if let Ok(col) = df.column(C1::name()) {
+        for chunk_idx in 0..col.n_chunks() {
+            // TODO(jleibs): This is an ugly work-around but gets our serializers working again
+            // Explanation:
+            // Polars Series appear make all fields nullable. Polars doesn't even have a way to
+            // express non-nullable types.
+            // However, our `field_types` `Component` definitions have non-nullable fields.
+            // This causes a "Data type mismatch" on the deserialization and keeps us from
+            // getting at our data.
+            let col_arrow = col
+                .array_ref(chunk_idx)
+                .as_any()
+                .downcast_ref::<StructArray>()
+                .unwrap();
+            let component_typed_col =
+                StructArray::new(C1::data_type(), col_arrow.clone().into_data().1, None);
+
+            if let Ok(iterable) = arrow_array_deserialize_iterator::<C1>(&component_typed_col) {
+                iterable.for_each(|data| visit(Some(&data)));
+            };
+        }
+    }
+}
+
 #[cfg(test)]
 use re_log_types::external::arrow2_convert::{field::ArrowField, serialize::ArrowSerialize};
 
