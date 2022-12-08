@@ -324,7 +324,7 @@ impl IndexBucket {
 ///
 /// The datastore and query path operate under the general assumption that _all of the
 /// index data_ for a given timepoint will reside in _one and only one_ bucket.
-/// This condition makes sure to uphold that restriction.
+/// This function makes sure to uphold that restriction.
 ///
 /// Here's an example of an index table configured to have a maximum of 2 rows per bucket: we
 /// can see that the 1st and 2nd buckets exceed this maximum in order to uphold the restriction
