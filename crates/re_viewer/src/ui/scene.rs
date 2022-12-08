@@ -29,8 +29,8 @@ impl Scene {
             plot,
         } = self;
 
-        let has_2d = !spatial.is_empty() && !spatial.is_3d() && tensor.is_empty();
-        let has_3d = !spatial.is_empty();
+        let has_2d = !spatial.is_empty() && spatial.prefer_2d_mode() && tensor.is_empty();
+        let has_3d = !spatial.is_empty() && !spatial.prefer_2d_mode();
         let has_text = !text.is_empty();
         let has_tensor = !tensor.is_empty();
         let has_plot = !plot.is_empty();

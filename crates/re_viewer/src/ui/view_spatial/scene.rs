@@ -109,30 +109,11 @@ fn to_ecolor([r, g, b, a]: [u8; 4]) -> Color32 {
     Color32::from_rgba_premultiplied(r, g, b, a)
 }
 
-pub struct SceneSpatial {
-    pub annotation_map: AnnotationMap,
-    /// Estimated bounding box of all data. Accumulated.
-    /// TODO(andreas): Make it a bounding box!
-    pub bounding_rect: egui::Rect,
-
+#[derive(Default)]
+pub struct SceneSpatialUiElements {
     pub labels_3d: Vec<Label3D>,
     pub labels_2d: Vec<Label2D>,
 
-    // Pure rendering primitives
-    // --------------------------------
-    pub textured_rectangles: Vec<re_renderer::renderer::Rectangle>,
-
-    // TODO(andreas) should not distinguish 2d & 3d line strips. Currently need to since we do hover checking on them directly.
-    pub line_strips_3d: LineStripSeriesBuilder<InstanceIdHash>,
-    pub line_strips_2d: LineStripSeriesBuilder<()>,
-
-    pub points_3d: Vec<Point3D>,
-    pub points_2d: Vec<PointCloudPoint>, // TODO(andreas): Separate hover & render
-
-    pub meshes: Vec<MeshSource>, // TODO(andreas): Separate hover & render
-
-    // Hovering Primitives
-    // --------------------------------
     /// Hoverable rects in scene units and their instance id hashes
     pub hoverable_rects: Vec<(egui::Rect, InstanceIdHash)>,
 
@@ -146,23 +127,79 @@ pub struct SceneSpatial {
     pub hoverable_line_strips: Vec<(smallvec::SmallVec<[egui::Pos2; 2]>, InstanceIdHash)>,
 }
 
+#[derive(Default)]
+pub struct SceneSpatialRenderPrimitives {
+    /// Estimated bounding box of all data in scene coordinates. Accumulated.
+    bounding_box: macaw::BoundingBox,
+
+    pub textured_rectangles: Vec<re_renderer::renderer::Rectangle>,
+
+    // TODO(andreas) should not distinguish 2d & 3d line strips. Currently need to since we do hover checking on them directly.
+    pub line_strips_3d: LineStripSeriesBuilder<InstanceIdHash>,
+    pub line_strips_2d: LineStripSeriesBuilder<()>,
+
+    pub points_3d: Vec<Point3D>,
+    pub points_2d: Vec<PointCloudPoint>, // TODO(andreas): Separate hover & render
+
+    pub meshes: Vec<MeshSource>, // TODO(andreas): Separate hover & render
+}
+
+impl SceneSpatialRenderPrimitives {
+    /// 2D truncated bounding rectangle.
+    pub fn bounding_rect(&self) -> egui::Rect {
+        egui::Rect::from_min_max(
+            self.bounding_box.min.truncate().to_array().into(),
+            self.bounding_box.max.truncate().to_array().into(),
+        )
+    }
+
+    /// bounding box covering the rendered scene
+    pub fn bounding_box(&self) -> &macaw::BoundingBox {
+        &self.bounding_box
+    }
+
+    pub fn recalculate_bounding_box(&mut self) {
+        for rect in &self.textured_rectangles {
+            self.bounding_box.extend(rect.top_left_corner_position);
+            self.bounding_box
+                .extend(rect.top_left_corner_position + rect.extent_u);
+            self.bounding_box
+                .extend(rect.top_left_corner_position + rect.extent_v);
+        }
+
+        for point in &self.points_3d {
+            self.bounding_box.extend(point.pos)
+        }
+        for point in &self.points_2d {
+            self.bounding_box.extend(point.position);
+        }
+
+        for vertex in &self.line_strips_3d.vertices {
+            self.bounding_box.extend(vertex.pos);
+        }
+        for vertex in &self.line_strips_2d.vertices {
+            self.bounding_box.extend(vertex.pos);
+        }
+
+        for mesh in &self.meshes {
+            self.bounding_box = self.bounding_box.union(*mesh.mesh.bbox());
+        }
+    }
+}
+
+pub struct SceneSpatial {
+    pub annotation_map: AnnotationMap,
+
+    pub render_primitives: SceneSpatialRenderPrimitives,
+    pub ui_elements: SceneSpatialUiElements,
+}
+
 impl Default for SceneSpatial {
     fn default() -> Self {
         Self {
             annotation_map: Default::default(),
-            bounding_rect: egui::Rect::NOTHING,
-            labels_3d: Default::default(),
-            labels_2d: Default::default(),
-            textured_rectangles: Default::default(),
-            line_strips_3d: Default::default(),
-            line_strips_2d: Default::default(),
-            points_3d: Default::default(),
-            points_2d: Default::default(),
-            meshes: Default::default(),
-            hoverable_rects: Default::default(),
-            hoverable_images: Default::default(),
-            hoverable_points: Default::default(),
-            hoverable_line_strips: Default::default(),
+            render_primitives: Default::default(),
+            ui_elements: Default::default(),
         }
     }
 }
@@ -190,7 +227,7 @@ impl SceneSpatial {
         self.load_line_segments_2d(ctx, query, hovered_instance);
         self.load_points_2d(ctx, query, hovered_instance);
 
-        self.recalculate_bounding_box();
+        self.render_primitives.recalculate_bounding_box();
     }
 
     const HOVER_COLOR: Color32 = Color32::from_rgb(255, 200, 200);
@@ -283,7 +320,7 @@ impl SceneSpatial {
                             }
                         }
 
-                        self.points_3d.push(Point3D {
+                        self.render_primitives.points_3d.push(Point3D {
                             instance_id_hash,
                             pos,
                             radius,
@@ -293,7 +330,7 @@ impl SceneSpatial {
                 );
 
                 if show_labels {
-                    self.labels_3d.extend(label_batch);
+                    self.ui_elements.labels_3d.extend(label_batch);
                 }
 
                 // Generate keypoint connections if any.
@@ -316,7 +353,7 @@ impl SceneSpatial {
                             );
                             continue;
                         };
-                        self.line_strips_3d.add_segment(*a, *b).radius(Size::AUTO).color(to_ecolor(color)).user_data(instance_id_hash);
+                        self.render_primitives.line_strips_3d.add_segment(*a, *b).radius(Size::AUTO).color(to_ecolor(color)).user_data(instance_id_hash);
                     }
                 }
             });
@@ -423,13 +460,16 @@ impl SceneSpatial {
 
                     match obj_type {
                         ObjectType::Path3D => self
+                            .render_primitives
                             .line_strips_3d
                             .add_strip(points.iter().map(|v| Vec3::from_slice(v))),
-                        ObjectType::LineSegments3D => self.line_strips_3d.add_segments(
-                            points
-                                .chunks_exact(2)
-                                .map(|points| (points[0].into(), points[1].into())),
-                        ),
+                        ObjectType::LineSegments3D => {
+                            self.render_primitives.line_strips_3d.add_segments(
+                                points
+                                    .chunks_exact(2)
+                                    .map(|points| (points[0].into(), points[1].into())),
+                            )
+                        }
                         _ => unreachable!("already early outed earlier"),
                     }
                     .radius(radius)
@@ -541,25 +581,7 @@ impl SceneSpatial {
                 batch
             });
 
-        self.meshes.extend(meshes);
-    }
-
-    fn recalculate_bounding_box(&mut self) {
-        for image in &self.hoverable_images {
-            let [h, w] = [image.tensor.shape[0].size, image.tensor.shape[1].size];
-            self.bounding_rect.extend_with(egui::Pos2::ZERO);
-            self.bounding_rect.extend_with(egui::pos2(w as _, h as _));
-        }
-
-        for (point, _) in &self.hoverable_points {
-            self.bounding_rect.extend_with(*point);
-        }
-
-        for (points, _) in &self.hoverable_line_strips {
-            for p in points {
-                self.bounding_rect.extend_with(*p);
-            }
-        }
+        self.render_primitives.meshes.extend(meshes);
     }
 
     fn load_images(
@@ -603,7 +625,8 @@ impl SceneSpatial {
                     let paint_props = paint_properties(color, None);
 
                     if hovered_instance == instance_hash {
-                        self.line_strips_2d
+                        self.render_primitives
+                            .line_strips_2d
                             .add_axis_aligned_rectangle_outline_2d(
                                 glam::Vec2::ZERO,
                                 glam::vec2(w, h),
@@ -618,8 +641,8 @@ impl SceneSpatial {
                             .image
                             .get_view_with_annotations(tensor, &legend, ctx.render_ctx);
 
-                    self.textured_rectangles
-                        .push(re_renderer::renderer::Rectangle {
+                    self.render_primitives.textured_rectangles.push(
+                        re_renderer::renderer::Rectangle {
                             top_left_corner_position: glam::Vec3::ZERO,
                             extent_u: glam::Vec3::X * w,
                             extent_v: glam::Vec3::Y * h,
@@ -629,9 +652,10 @@ impl SceneSpatial {
                             texture_filter_minification:
                                 re_renderer::renderer::TextureFilterMin::Linear,
                             multiplicative_tint: paint_props.fg_stroke.color.into(),
-                        });
+                        },
+                    );
 
-                    self.hoverable_images.push(HoverableImage {
+                    self.ui_elements.hoverable_images.push(HoverableImage {
                         instance_hash,
                         tensor: tensor.clone(),
                         meter: meter.copied(),
@@ -641,8 +665,13 @@ impl SceneSpatial {
             );
         }
 
-        let total_num_images = self.textured_rectangles.len();
-        for (image_idx, img) in self.textured_rectangles.iter_mut().enumerate() {
+        let total_num_images = self.render_primitives.textured_rectangles.len();
+        for (image_idx, img) in self
+            .render_primitives
+            .textured_rectangles
+            .iter_mut()
+            .enumerate()
+        {
             img.top_left_corner_position = glam::vec3(
                 0.0,
                 0.0,
@@ -696,24 +725,26 @@ impl SceneSpatial {
                     let label = annotation_info.label(label);
 
                     let rect = egui::Rect::from_min_max(bbox.min.into(), bbox.max.into());
-                    self.hoverable_rects.push((rect, instance_hash));
+                    self.ui_elements.hoverable_rects.push((rect, instance_hash));
 
                     let mut paint_props = paint_properties(color, stroke_width);
                     if hovered_instance == instance_hash {
                         apply_hover_effect(&mut paint_props);
                     }
 
-                    self.line_strips_2d
+                    self.render_primitives
+                        .line_strips_2d
                         .add_axis_aligned_rectangle_outline_2d(bbox.min.into(), bbox.max.into())
                         .color(paint_props.bg_stroke.color)
                         .radius(Size::new_points(paint_props.bg_stroke.width * 0.5));
-                    self.line_strips_2d
+                    self.render_primitives
+                        .line_strips_2d
                         .add_axis_aligned_rectangle_outline_2d(bbox.min.into(), bbox.max.into())
                         .color(paint_props.fg_stroke.color)
                         .radius(Size::new_points(paint_props.fg_stroke.width * 0.5));
 
                     if let Some(label) = label {
-                        self.labels_2d.push(Label2D {
+                        self.ui_elements.labels_2d.push(Label2D {
                             text: label,
                             color: paint_props.fg_stroke.color,
                             target: Label2DTarget::Rect(rect),
@@ -734,8 +765,8 @@ impl SceneSpatial {
         crate::profile_function!();
 
         // Ensure keypoint connection lines are behind points.
-        let connection_depth = self.line_strips_2d.next_2d_z;
-        let point_depth = self.line_strips_2d.next_2d_z - 0.1;
+        let connection_depth = self.render_primitives.line_strips_2d.next_2d_z;
+        let point_depth = self.render_primitives.line_strips_2d.next_2d_z - 0.1;
 
         for (_obj_type, obj_path, time_query, obj_store) in
             query.iter_object_stores(ctx.log_db, &[ObjectType::Point2D])
@@ -794,19 +825,19 @@ impl SceneSpatial {
                         apply_hover_effect(&mut paint_props);
                     }
 
-                    self.points_2d.push(PointCloudPoint {
+                    self.render_primitives.points_2d.push(PointCloudPoint {
                         position: pos.extend(point_depth),
                         radius: Size::new_points(paint_props.bg_stroke.width * 0.5),
                         color: paint_props.bg_stroke.color,
                     });
-                    self.points_2d.push(PointCloudPoint {
+                    self.render_primitives.points_2d.push(PointCloudPoint {
                         position: pos.extend(point_depth - 0.1),
                         radius: Size::new_points(paint_props.fg_stroke.width * 0.5),
                         color: paint_props.fg_stroke.color,
                     });
 
                     let pos = egui::pos2(pos.x, pos.y);
-                    self.hoverable_points.push((pos, instance_hash));
+                    self.ui_elements.hoverable_points.push((pos, instance_hash));
 
                     if let Some(label) = label {
                         if label_batch.len() < max_num_labels {
@@ -823,7 +854,7 @@ impl SceneSpatial {
 
             // TODO(andreas): Make user configurable with this as the default.
             if label_batch.len() < max_num_labels {
-                self.labels_2d.extend(label_batch.into_iter());
+                self.ui_elements.labels_2d.extend(label_batch.into_iter());
             }
 
             // Generate keypoint connections if any.
@@ -848,11 +879,12 @@ impl SceneSpatial {
                         };
                     // TODO(andreas): No outlines for these?
                     // Specify depth explicitly so we're behind the points.
-                    self.line_strips_2d
+                    self.render_primitives
+                        .line_strips_2d
                         .add_segment(a.extend(connection_depth), b.extend(connection_depth))
                         .color(to_ecolor(color));
 
-                    self.hoverable_line_strips.push((
+                    self.ui_elements.hoverable_line_strips.push((
                         smallvec![egui::pos2(a.x, a.y), egui::pos2(b.x, b.y)],
                         instance_hash,
                     ));
@@ -902,7 +934,8 @@ impl SceneSpatial {
                     }
 
                     // TODO(andreas): support outlines directly by re_renderer (need only 1 and 2 *point* black outlines)
-                    self.line_strips_2d
+                    self.render_primitives
+                        .line_strips_2d
                         .add_segments_2d(
                             points
                                 .iter()
@@ -911,7 +944,8 @@ impl SceneSpatial {
                         )
                         .color(paint_props.bg_stroke.color)
                         .radius(Size::new_points(paint_props.bg_stroke.width * 0.5));
-                    self.line_strips_2d
+                    self.render_primitives
+                        .line_strips_2d
                         .add_segments_2d(
                             points
                                 .iter()
@@ -921,14 +955,10 @@ impl SceneSpatial {
                         .color(paint_props.fg_stroke.color)
                         .radius(Size::new_points(paint_props.fg_stroke.width * 0.5));
 
-                    self.hoverable_line_strips.push((
+                    self.ui_elements.hoverable_line_strips.push((
                         points.iter().map(|p| egui::pos2(p[0], p[1])).collect(),
                         instance_hash,
                     ));
-
-                    for p in points {
-                        self.bounding_rect.extend_with(egui::pos2(p[0], p[1]));
-                    }
                 },
             );
         }
@@ -991,7 +1021,7 @@ impl SceneSpatial {
                     ) {
                         let additive_tint = is_hovered.then_some(Self::HOVER_COLOR);
 
-                        self.meshes.push(MeshSource {
+                        self.render_primitives.meshes.push(MeshSource {
                             instance_id_hash: instance_id,
                             world_from_mesh,
                             mesh: cpu_mesh,
@@ -1011,7 +1041,8 @@ impl SceneSpatial {
                     let axis_end = world_from_cam.transform_point3(scale * *dir);
                     let color = axis_color(axis_index);
 
-                    self.line_strips_3d
+                    self.render_primitives
+                        .line_strips_3d
                         .add_segment(cam_origin, axis_end)
                         .radius(Size::new_points(2.0))
                         .color(color)
@@ -1062,7 +1093,8 @@ impl SceneSpatial {
             (corners[3], corners[0]), // `d` distance plane sides
         ];
 
-        self.line_strips_3d
+        self.render_primitives
+            .line_strips_3d
             .add_segments(segments.into_iter())
             .radius(line_radius)
             .color(color)
@@ -1099,7 +1131,8 @@ impl SceneSpatial {
             radius = Self::hover_size_boost(radius);
         }
 
-        self.line_strips_3d
+        self.render_primitives
+            .line_strips_3d
             .add_segment(origin, end)
             .radius(radius)
             .color(color)
@@ -1138,7 +1171,7 @@ impl SceneSpatial {
         ];
 
         if let Some(label) = label {
-            self.labels_3d.push(Label3D {
+            self.ui_elements.labels_3d.push(Label3D {
                 text: label,
                 origin: translation,
             });
@@ -1162,7 +1195,8 @@ impl SceneSpatial {
             (corners[0b011], corners[0b111]),
         ];
 
-        self.line_strips_3d
+        self.render_primitives
+            .line_strips_3d
             .add_segments(segments.into_iter())
             .radius(line_radius)
             .color(color)
@@ -1170,57 +1204,36 @@ impl SceneSpatial {
     }
 
     pub fn is_empty(&self) -> bool {
-        let Self {
-            annotation_map: _,
-            bounding_rect: _,
-            points_3d,
-            line_strips_3d,
-            meshes,
-            labels_3d: _,
-            labels_2d: _,
-            textured_rectangles,
-            line_strips_2d,
-            points_2d,
-            hoverable_rects,
-            hoverable_images,
-            hoverable_points,
-            hoverable_line_strips,
-        } = self;
-
+        // TODO:
         // TODO(andreas): Just check bounding box instead?
-        points_2d.is_empty()
-            && points_3d.is_empty()
-            && line_strips_3d.is_empty()
-            && line_strips_2d.is_empty()
-            && meshes.is_empty()
+        self.render_primitives.points_2d.is_empty()
+            && self.render_primitives.points_3d.is_empty()
+            && self.render_primitives.line_strips_3d.is_empty()
+            && self.render_primitives.line_strips_2d.is_empty()
+            && self.render_primitives.meshes.is_empty()
     }
 
-    /// TODO(andreas): Probably the wrong question to ask. A scene is not either 2d or 3d but a 2d or 3d camera & ui might be preferred.
-    pub fn is_3d(&self) -> bool {
-        let Self {
-            annotation_map: _,
-            points_3d,
-            line_strips_3d,
-            meshes,
-            labels_3d: labels,
-            bounding_rect,
-            labels_2d,
-            textured_rectangles,
-            line_strips_2d,
-            points_2d,
-            hoverable_rects,
-            hoverable_images,
-            hoverable_points,
-            hoverable_line_strips,
-        } = self;
+    /// Heuristic whether the default way of looking at this scene should be 2d or 3d.
+    pub fn prefer_2d_mode(&self) -> bool {
+        // If any 2D interactable picture is there we regard it as 2d.
+        if !self.ui_elements.hoverable_images.is_empty() {
+            return true;
+        }
 
-        // TODO: Should just check the bounding box instead?
-        !points_3d.is_empty() || !line_strips_3d.strips.is_empty() || !meshes.is_empty()
+        // Instead a mesh indicates 3d.
+        if !self.render_primitives.meshes.is_empty() {
+            return false;
+        }
+
+        // Otherwise relative z extent of bounding box
+        let bbox_size = self.render_primitives.bounding_box().size();
+        bbox_size.z < 0.25 * bbox_size.x || bbox_size.z < 0.25 * bbox_size.y
     }
 
     pub fn meshes(&self) -> Vec<MeshInstance> {
         crate::profile_function!();
-        self.meshes
+        self.render_primitives
+            .meshes
             .iter()
             .flat_map(|mesh| {
                 let (scale, rotation, translation) =
@@ -1247,7 +1260,8 @@ impl SceneSpatial {
     // TODO(cmc): maybe we just store that from the beginning once glow is gone?
     pub fn point_cloud_points(&self) -> Vec<PointCloudPoint> {
         crate::profile_function!();
-        self.points_3d
+        self.render_primitives
+            .points_3d
             .iter()
             .map(|point| PointCloudPoint {
                 position: point.pos,
@@ -1276,20 +1290,9 @@ impl SceneSpatial {
         };
 
         let Self {
-            annotation_map: _,
-            points_3d: points,
-            line_strips_3d: line_strips,
-            meshes,
-            labels_3d: _,
-            bounding_rect,
-            labels_2d,
-            textured_rectangles,
-            line_strips_2d,
-            points_2d,
-            hoverable_rects,
-            hoverable_images,
-            hoverable_points,
-            hoverable_line_strips,
+            annotation_map,
+            render_primitives,
+            ui_elements,
         } = self;
 
         // in points
@@ -1301,8 +1304,8 @@ impl SceneSpatial {
         let mut closest_instance_id = None;
 
         {
-            crate::profile_scope!("points");
-            for point in points {
+            crate::profile_scope!("points 3d");
+            for point in &render_primitives.points_3d {
                 if point.instance_id_hash.is_some() {
                     // TODO(emilk): take point radius into account
                     let pos_in_ui = ui_from_world.project_point3(point.pos);
@@ -1323,10 +1326,11 @@ impl SceneSpatial {
         }
 
         {
-            crate::profile_scope!("line_segments");
-            for ((_line_strip, vertices), instance_id_hash) in line_strips
+            crate::profile_scope!("line_segments 3d");
+            for ((_line_strip, vertices), instance_id_hash) in render_primitives
+                .line_strips_3d
                 .iter_strips_with_vertices()
-                .zip(line_strips.strip_user_data.iter())
+                .zip(render_primitives.line_strips_3d.strip_user_data.iter())
             {
                 if !instance_id_hash.is_some() {
                     continue;
@@ -1356,7 +1360,7 @@ impl SceneSpatial {
 
         {
             crate::profile_scope!("meshes");
-            for mesh in meshes {
+            for mesh in &render_primitives.meshes {
                 if mesh.instance_id_hash.is_some() {
                     let ray_in_mesh = (mesh.world_from_mesh.inverse() * ray_in_world).normalize();
                     let t = crate::math::ray_bbox_intersect(&ray_in_mesh, mesh.mesh.bbox());
@@ -1383,48 +1387,6 @@ impl SceneSpatial {
         } else {
             None
         }
-    }
-
-    pub fn calc_bbox(&self) -> macaw::BoundingBox {
-        crate::profile_function!();
-
-        let mut bbox = macaw::BoundingBox::nothing();
-
-        let Self {
-            annotation_map: _,
-            points_3d: points,
-            line_strips_3d: line_strips,
-            meshes,
-            labels_3d: labels,
-            bounding_rect,
-            labels_2d,
-            textured_rectangles,
-            line_strips_2d,
-            points_2d,
-            hoverable_rects,
-            hoverable_images,
-            hoverable_points,
-            hoverable_line_strips,
-        } = self;
-
-        for point in points {
-            bbox.extend(point.pos);
-        }
-
-        for vertex in &line_strips.vertices {
-            bbox.extend(vertex.pos);
-        }
-
-        for mesh in meshes {
-            let mesh_bbox = mesh.mesh.bbox().transform_affine3(&mesh.world_from_mesh);
-            bbox = bbox.union(mesh_bbox);
-        }
-
-        for label in labels {
-            bbox.extend(label.origin);
-        }
-
-        bbox
     }
 }
 

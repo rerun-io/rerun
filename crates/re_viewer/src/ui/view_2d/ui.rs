@@ -279,7 +279,9 @@ fn view_2d_scrollable(
     space: &ObjPath,
     mut scene: SceneSpatial,
 ) -> egui::Response {
-    state.scene_bbox_accum = state.scene_bbox_accum.union(scene.bounding_rect);
+    state.scene_bbox_accum = state
+        .scene_bbox_accum
+        .union(scene.render_primitives.bounding_rect());
     let scene_bbox = state.scene_bbox_accum;
 
     let (mut response, painter) =
@@ -323,15 +325,15 @@ fn view_2d_scrollable(
             }
         };
 
-        for (bbox, instance_hash) in &scene.hoverable_rects {
+        for (bbox, instance_hash) in &scene.ui_elements.hoverable_rects {
             check_hovering(*instance_hash, bbox.distance_to_pos(pointer_pos_space));
         }
 
-        for (point, instance_hash) in &scene.hoverable_points {
+        for (point, instance_hash) in &scene.ui_elements.hoverable_points {
             check_hovering(*instance_hash, point.distance(pointer_pos_space));
         }
 
-        for (points, instance_hash) in &scene.hoverable_line_strips {
+        for (points, instance_hash) in &scene.ui_elements.hoverable_line_strips {
             let mut min_dist_sq = f32::INFINITY;
 
             for &[a, b] in bytemuck::cast_slice::<_, [egui::Pos2; 2]>(points) {
@@ -343,7 +345,7 @@ fn view_2d_scrollable(
             check_hovering(*instance_hash, min_dist_sq.sqrt());
         }
 
-        for img in &scene.hoverable_images {
+        for img in &scene.ui_elements.hoverable_images {
             let HoverableImage {
                 instance_hash,
                 tensor,
@@ -432,10 +434,22 @@ fn view_2d_scrollable(
         };
 
         let command_buffer = view_builder
-            .queue_draw(&scene.line_strips_2d.to_draw_data(ctx.render_ctx))
-            .queue_draw(&PointCloudDrawData::new(ctx.render_ctx, &scene.points_2d).unwrap())
             .queue_draw(
-                &RectangleDrawData::new(ctx.render_ctx, &scene.textured_rectangles).unwrap(),
+                &scene
+                    .render_primitives
+                    .line_strips_2d
+                    .to_draw_data(ctx.render_ctx),
+            )
+            .queue_draw(
+                &PointCloudDrawData::new(ctx.render_ctx, &scene.render_primitives.points_2d)
+                    .unwrap(),
+            )
+            .queue_draw(
+                &RectangleDrawData::new(
+                    ctx.render_ctx,
+                    &scene.render_primitives.textured_rectangles,
+                )
+                .unwrap(),
             )
             .draw(ctx.render_ctx, parent_ui.visuals().extreme_bg_color.into())
             .unwrap();
@@ -485,9 +499,9 @@ fn create_labels(
     ui_from_space: RectTransform,
     parent_ui: &mut egui::Ui,
 ) -> Vec<Shape> {
-    let mut label_shapes = Vec::with_capacity(scene.labels_2d.len() * 2);
+    let mut label_shapes = Vec::with_capacity(scene.ui_elements.labels_2d.len() * 2);
 
-    for label in &scene.labels_2d {
+    for label in &scene.ui_elements.labels_2d {
         let (wrap_width, text_anchor_pos) = match label.target {
             Label2DTarget::Rect(rect) => {
                 let rect_in_ui = ui_from_space.transform_rect(rect);
@@ -529,7 +543,10 @@ fn create_labels(
         label_shapes.push(Shape::rect_filled(bg_rect, 3.0, BACKGROUND_COLOR));
         label_shapes.push(Shape::galley(text_rect.center_top(), galley));
 
-        scene.hoverable_rects.push((bg_rect, label.labled_instance));
+        scene
+            .ui_elements
+            .hoverable_rects
+            .push((bg_rect, label.labled_instance));
     }
 
     label_shapes
