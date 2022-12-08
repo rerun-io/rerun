@@ -181,7 +181,7 @@ impl DataStore {
                         row_indices
                             .entry(comp)
                             .and_modify(|row_indices| row_indices.extend(index.values()))
-                            .or_default();
+                            .or_insert_with(|| index.values().clone());
                     }
                 }
             }
