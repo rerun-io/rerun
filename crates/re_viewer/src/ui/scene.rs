@@ -15,7 +15,7 @@ use super::{space_view::ViewCategory, view_2d, view_plot, view_spatial, view_ten
 #[derive(Default)]
 pub struct Scene {
     pub two_d: view_2d::Scene2D,
-    pub three_d: view_spatial::Scene3D,
+    pub three_d: view_spatial::SceneSpatial,
     pub text: view_text::SceneText,
     pub tensor: view_tensor::SceneTensor,
     pub plot: view_plot::ScenePlot,

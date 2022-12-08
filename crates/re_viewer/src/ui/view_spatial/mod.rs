@@ -8,7 +8,7 @@ mod space_camera_3d;
 pub use self::space_camera_3d::SpaceCamera3D;
 
 mod scene;
-pub use self::scene::{Label3D, MeshSource, MeshSourceData, Point3D, Scene3D};
+pub use self::scene::{Label3D, MeshSource, MeshSourceData, Point3D, SceneSpatial};
 
 use re_renderer::Color32;
 

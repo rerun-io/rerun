@@ -11,6 +11,7 @@ use re_data_store::query::{
 use re_data_store::{FieldName, InstanceIdHash};
 use re_log_types::context::{ClassId, KeypointId};
 use re_log_types::{DataVec, IndexHash, MeshId, MsgId, ObjectType, Tensor};
+use re_renderer::LineStripSeriesBuilder;
 
 use crate::misc::mesh_loader::CpuMesh;
 use crate::ui::annotations::{auto_color, AnnotationMap, DefaultColor};
@@ -27,6 +28,7 @@ use super::{eye::Eye, SpaceCamera3D};
 
 // ----------------------------------------------------------------------------
 
+/// TODO(andreas): Remove by separating rendering & hovering primitive
 pub struct Point3D {
     pub instance_id_hash: InstanceIdHash,
     pub pos: Vec3,
@@ -34,6 +36,7 @@ pub struct Point3D {
     pub color: Color32,
 }
 
+/// TODO(andreas): Scene shouldn't need to care about source?
 pub enum MeshSourceData {
     Mesh3D(re_log_types::Mesh3D),
 
@@ -50,18 +53,13 @@ impl MeshSourceData {
     }
 }
 
+/// TODO(andreas): Scene should only care about converted rendering primitive.
 pub struct MeshSource {
     pub instance_id_hash: InstanceIdHash,
     // TODO(andreas): Make this Conformal3 once glow is gone?
     pub world_from_mesh: macaw::Affine3A,
     pub mesh: Arc<CpuMesh>,
     pub additive_tint: Option<Color32>,
-}
-
-pub struct Label3D {
-    pub(crate) text: String,
-    /// Origin of the label
-    pub(crate) origin: Vec3,
 }
 
 pub struct HoverableImage {
@@ -95,25 +93,76 @@ pub struct Label2D {
     pub labled_instance: InstanceIdHash,
 }
 
+pub struct Label3D {
+    pub(crate) text: String,
+    /// Origin of the label
+    pub(crate) origin: Vec3,
+}
+
 fn to_ecolor([r, g, b, a]: [u8; 4]) -> Color32 {
     // TODO(andreas): ecolor should have a utility to get an array
     Color32::from_rgba_premultiplied(r, g, b, a)
 }
 
-#[derive(Default)]
-pub struct Scene3D {
+pub struct SceneSpatial {
     pub annotation_map: AnnotationMap,
+    /// Estimated bounding box of all data. Accumulated.
+    /// TODO(andreas): Make it a bounding box!
+    pub bounding_rect: egui::Rect,
 
-    pub points_3d: Vec<Point3D>,
+    pub labels_3d: Vec<Label3D>,
+    pub labels_2d: Vec<Label2D>,
+
+    // Pure rendering primitives
+    // --------------------------------
+    pub textured_rectangles: Vec<re_renderer::renderer::Rectangle>,
 
     // TODO(andreas) should not distinguish 2d & 3d line strips. Currently need to since we do hover checking on them directly.
-    pub line_strips_3d: re_renderer::LineStripSeriesBuilder<InstanceIdHash>,
+    pub line_strips_3d: LineStripSeriesBuilder<InstanceIdHash>,
+    pub line_strips_2d: LineStripSeriesBuilder<()>,
 
-    pub meshes: Vec<MeshSource>,
-    pub labels_3d: Vec<Label3D>,
+    pub points_3d: Vec<Point3D>,
+    pub points_2d: Vec<PointCloudPoint>, // TODO(andreas): Separate hover & render
+
+    pub meshes: Vec<MeshSource>, // TODO(andreas): Separate hover & render
+
+    // Hovering Primitives
+    // --------------------------------
+    /// Hoverable rects in scene units and their instance id hashes
+    pub hoverable_rects: Vec<(egui::Rect, InstanceIdHash)>,
+
+    /// Images are a special case of rects where we're storing some extra information to allow minature previews etc.
+    pub hoverable_images: Vec<HoverableImage>,
+
+    /// Hoverable points in scene units and their instance id hashes
+    pub hoverable_points: Vec<(egui::Pos2, InstanceIdHash)>,
+
+    /// Hoverable line strips in scene units and their instance id hashes
+    pub hoverable_line_strips: Vec<(smallvec::SmallVec<[egui::Pos2; 2]>, InstanceIdHash)>,
 }
 
-impl Scene3D {
+impl Default for SceneSpatial {
+    fn default() -> Self {
+        Self {
+            annotation_map: Default::default(),
+            bounding_rect: egui::Rect::NOTHING,
+            labels_3d: Default::default(),
+            labels_2d: Default::default(),
+            textured_rectangles: Default::default(),
+            line_strips_3d: Default::default(),
+            line_strips_2d: Default::default(),
+            points_3d: Default::default(),
+            points_2d: Default::default(),
+            meshes: Default::default(),
+            hoverable_rects: Default::default(),
+            hoverable_images: Default::default(),
+            hoverable_points: Default::default(),
+            hoverable_line_strips: Default::default(),
+        }
+    }
+}
+
+impl SceneSpatial {
     /// Loads all 3D objects into the scene according to the given query.
     pub(crate) fn load_objects(
         &mut self,
@@ -719,14 +768,25 @@ impl Scene3D {
     }
 
     pub fn is_empty(&self) -> bool {
+        // TODO(andreas): Just check bounding box instead?
         let Self {
             annotation_map: _,
             points_3d: points,
             line_strips_3d: line_strips,
             meshes,
             labels_3d: labels,
+            bounding_rect,
+            labels_2d,
+            textured_rectangles,
+            line_strips_2d,
+            points_2d,
+            hoverable_rects,
+            hoverable_images,
+            hoverable_points,
+            hoverable_line_strips,
         } = self;
 
+        // TODO: incorrect
         points.is_empty() && line_strips.strips.is_empty() && meshes.is_empty() && labels.is_empty()
     }
 
@@ -793,6 +853,15 @@ impl Scene3D {
             line_strips_3d: line_strips,
             meshes,
             labels_3d: _,
+            bounding_rect,
+            labels_2d,
+            textured_rectangles,
+            line_strips_2d,
+            points_2d,
+            hoverable_rects,
+            hoverable_images,
+            hoverable_points,
+            hoverable_line_strips,
         } = self;
 
         // in points
@@ -899,6 +968,15 @@ impl Scene3D {
             line_strips_3d: line_strips,
             meshes,
             labels_3d: labels,
+            bounding_rect,
+            labels_2d,
+            textured_rectangles,
+            line_strips_2d,
+            points_2d,
+            hoverable_rects,
+            hoverable_images,
+            hoverable_points,
+            hoverable_line_strips,
         } = self;
 
         for point in points {

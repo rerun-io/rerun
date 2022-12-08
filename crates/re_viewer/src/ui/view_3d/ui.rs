@@ -16,7 +16,7 @@ use crate::{
     ViewerContext,
 };
 
-use crate::ui::view_spatial::{Eye, OrbitEye, Point3D, Scene3D, SpaceCamera3D};
+use crate::ui::view_spatial::{Eye, OrbitEye, Point3D, SceneSpatial, SpaceCamera3D};
 
 // ---
 
@@ -337,7 +337,7 @@ pub(crate) fn view_3d(
     ui: &mut egui::Ui,
     state: &mut View3DState,
     space: &ObjPath,
-    mut scene: Scene3D,
+    mut scene: SceneSpatial,
     space_cameras: &[SpaceCamera3D],
 ) -> egui::Response {
     crate::profile_function!();
@@ -435,7 +435,7 @@ fn paint_view(
     ui: &mut egui::Ui,
     eye: Eye,
     rect: egui::Rect,
-    scene: &Scene3D,
+    scene: &SceneSpatial,
     render_ctx: &mut RenderContext,
     name: &str,
 ) {
@@ -559,7 +559,7 @@ fn show_projections_from_2d_space(
     ctx: &mut ViewerContext<'_>,
     space_cameras: &[SpaceCamera3D],
     state: &mut View3DState,
-    scene: &mut Scene3D,
+    scene: &mut SceneSpatial,
 ) {
     if let HoveredSpace::TwoD { space_2d, pos } = &ctx.rec_cfg.hovered_space_previous_frame {
         for cam in space_cameras {
@@ -639,7 +639,7 @@ fn project_onto_other_spaces(
     }
 }
 
-fn show_origin_axis(scene: &mut Scene3D) {
+fn show_origin_axis(scene: &mut SceneSpatial) {
     let radius = Size::new_points(8.0);
 
     scene

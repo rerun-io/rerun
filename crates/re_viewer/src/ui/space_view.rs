@@ -109,7 +109,7 @@ impl SpaceView {
             ViewCategory::ThreeD => {
                 _ = extra_headroom; // ignored - put overlay buttons on top of the view.
 
-                let mut scene = view_spatial::Scene3D::default();
+                let mut scene = view_spatial::SceneSpatial::default();
                 scene.load_objects(
                     ctx,
                     &query,
@@ -199,7 +199,7 @@ impl ViewState {
         space: &ObjPath,
         spaces_info: &SpacesInfo,
         space_info: &SpaceInfo,
-        scene: view_spatial::Scene3D,
+        scene: view_spatial::SceneSpatial,
     ) -> egui::Response {
         ui.vertical(|ui| {
             let state = &mut self.state_3d;
