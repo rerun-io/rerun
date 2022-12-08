@@ -413,7 +413,7 @@ impl IndexTable {
                     self.timeline.typ().format(t1.max),
                     t1.max.as_i64(),
                     self.timeline.typ().format(t2.min),
-                    t2.max.as_i64(),
+                    t2.min.as_i64(),
                 );
             }
         }
@@ -509,9 +509,9 @@ impl std::fmt::Display for IndexBucket {
                     Series::new(name.as_str(), index)
                 }))
                 .collect::<Vec<_>>();
-            // TODO: sort
+            // TODO(cmc): sort component columns (not time!)
             let df = DataFrame::new(series).unwrap();
-            f.write_fmt(format_args!("data (sorted={is_sorted}): {df:?}\n"))?;
+            f.write_fmt(format_args!("data (sorted={is_sorted}): {df:?}"))?;
         }
 
         #[cfg(target_arch = "wasm32")]
@@ -786,7 +786,7 @@ impl std::fmt::Display for ComponentBucket {
             // TODO(cmc): I'm sure there's no need to clone here
             let series = Series::try_from((name.as_str(), data.clone())).unwrap();
             let df = DataFrame::new(vec![series]).unwrap();
-            f.write_fmt(format_args!("data: {df:?}\n"))?;
+            f.write_fmt(format_args!("data: {df:?}"))?;
         }
 
         #[cfg(target_arch = "wasm32")]

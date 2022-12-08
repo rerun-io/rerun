@@ -194,9 +194,7 @@ impl IndexTable {
         let len = bucket.total_rows();
         let len_overflow = len >= config.index_bucket_nb_rows;
 
-        // TODO: explain!!
-        let can_split = bucket.times.values().binary_search(&time.as_i64()).is_err();
-        if can_split && (size_overflow || len_overflow) {
+        if size_overflow || len_overflow {
             debug!(
                 kind = "insert",
                 timeline = %timeline.name(),
@@ -209,7 +207,7 @@ impl IndexTable {
                 "allocating new index bucket, previous one overflowed"
             );
 
-            if let Some(second_half) = bucket.split() {
+            if let Some(second_half) = bucket.split(time.as_i64()) {
                 self.buckets.insert(second_half.time_range.min, second_half);
                 return self.insert(config, time, indices);
             }
@@ -280,16 +278,82 @@ impl IndexBucket {
         Ok(())
     }
 
-    /// Splits the bucket in two (if possible), returning the second half.
+    /// Splits the bucket in two in place (if possible), and returns a new bucket that
+    /// corresponds to the second half.
     ///
-    /// Returns `None` if the bucket is already too small to be splitted any further.
-    pub fn split(&mut self) -> Option<Self> {
+    /// Returns `None` if the bucket cannot be split any further.
+    pub fn split(&mut self, time: i64) -> Option<Self> {
         if self.times.len() < 2 {
             return None; // early exit: can't split the unsplittable
         }
 
         self.sort_indices();
-        let half_row = self.find_half_row();
+
+        // The datastore and query path operate under the general assumption that _all of the
+        // index data_ for a given timepoint will reside in _one and only one_ bucket.
+        // As such, we need to always make sure that splitting an index bucket will never result
+        // in any kind of ambiguity on that end.
+        //
+        // Here's an example of an index table configured to have a maximum of two rows, where we
+        // can see the 2nd bucket exceeding its legal uses in order to uphold these guarantees:
+        // ```
+        // IndexTable {
+        //     timeline: frame_nr
+        //     entity: this/that
+        //     size: 3 buckets for a total of 142 B across 5 total rows
+        //     buckets: [
+        //         IndexBucket {
+        //             size: 26 B across 1 rows
+        //             time range: from -∞ to #41 (all inclusive)
+        //             data (sorted=true): shape: (1, 3)
+        //             ┌──────┬───────────┬───────┐
+        //             │ time ┆ instances ┆ rects │
+        //             │ ---  ┆ ---       ┆ ---   │
+        //             │ str  ┆ u64       ┆ u64   │
+        //             ╞══════╪═══════════╪═══════╡
+        //             │ #41  ┆ 1         ┆ 3     │
+        //             └──────┴───────────┴───────┘
+        //         }
+        //         IndexBucket {
+        //             size: 99 B across 3 rows
+        //             time range: from #42 to #42 (all inclusive)
+        //             data (sorted=true): shape: (3, 4)
+        //             ┌──────┬───────────┬───────┬───────────┐
+        //             │ time ┆ instances ┆ rects ┆ positions │
+        //             │ ---  ┆ ---       ┆ ---   ┆ ---       │
+        //             │ str  ┆ u64       ┆ u64   ┆ u64       │
+        //             ╞══════╪═══════════╪═══════╪═══════════╡
+        //             │ #42  ┆ null      ┆ 2     ┆ null      │
+        //             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
+        //             │ #42  ┆ 2         ┆ null  ┆ null      │
+        //             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
+        //             │ #42  ┆ null      ┆ null  ┆ 1         │
+        //             └──────┴───────────┴───────┴───────────┘
+        //         }
+        //         IndexBucket {
+        //             size: 17 B across 1 rows
+        //             time range: from #43 to +∞ (all inclusive)
+        //             data (sorted=true): shape: (1, 2)
+        //             ┌──────┬───────┐
+        //             │ time ┆ rects │
+        //             │ ---  ┆ ---   │
+        //             │ str  ┆ u64   │
+        //             ╞══════╪═══════╡
+        //             │ #43  ┆ 1     │
+        //             └──────┴───────┘
+        //
+        //         }
+        //     ]
+        // }
+        // ```
+        //
+        // There are various ways to either lift this restriction and/or uphold it in finer-grained
+        // ways, but for now this is good enough.
+        //
+        // TODO(cmc): improve this
+        if self.times.values().binary_search(&time).is_ok() {
+            return None;
+        }
 
         // Used down the line to assert that we've left everything in a sane state.
         #[cfg(debug_assertions)]
@@ -304,85 +368,14 @@ impl IndexBucket {
         } = self;
 
         let timeline = *timeline;
+        let half_row = times1.values().len() / 2;
 
-        // split existing time range in two, and create new time tange for the second half
-        let time_range2 = TimeRange::new(times1.values()[half_row].into(), time_range1.max);
-        // TODO: explain why this cannot underflow
-        time_range1.max = times1.values()[half_row - 1].into();
-
-        debug_assert!(
-            times1.validity().is_none(),
-            "The time index must always be dense, thus it shouldn't even have a validity\n
-                bitmap attached to it to begin with."
-        );
-
-        // split primary index in two, and build a new one for the second half
-        let (datatype, mut data1, _) = std::mem::take(times1).into_data();
-        let data2 = data1.split_off(half_row);
-        *times1 = Int64Vec::from_data(datatype.clone(), data1, None);
-        let times2 = Int64Vec::from_data(datatype, data2, None);
-
-        #[cfg(debug_assertions)]
-        {
-            assert!(
-                times1.len() <= half_row && times2.len() <= half_row,
-                "expected both halves to be smaller or equal than the halfway point: \
-                    got half={half_row} times1={} times2={}",
-                times1.len(),
-                times2.len(),
-            );
-            assert!(
-                total_rows as usize == times1.len() + times2.len(),
-                "expected both halves to sum up to the length of the original time index: \
-                    got times={} vs. times1+times2={}",
-                total_rows,
-                times1.len() + times2.len(),
-            );
-        }
-
-        fn split_index_off(index1: &mut UInt64Vec, half_row: usize) -> UInt64Vec {
-            let (datatype, mut data1, validity1) = std::mem::take(index1).into_data();
-            let data2 = data1.split_off(half_row);
-            if let Some((validity1, validity2)) = validity1.map(|validity1| {
-                let mut validity1 = validity1.into_iter().collect::<Vec<_>>();
-                let validity2 = validity1.split_off(half_row);
-                (
-                    MutableBitmap::from_iter(validity1),
-                    MutableBitmap::from_iter(validity2),
-                )
-            }) {
-                *index1 = UInt64Vec::from_data(datatype.clone(), data1, Some(validity1));
-                UInt64Vec::from_data(datatype, data2, Some(validity2))
-            } else {
-                *index1 = UInt64Vec::from_data(datatype.clone(), data1, None);
-                UInt64Vec::from_data(datatype, data2, None)
-            }
-        }
-
-        // split all secondary indices in two, and build new ones for the second halves
+        let time_range2 = split_time_range_off(half_row, times1, time_range1);
+        let times2 = split_primary_index_off(half_row, times1);
         let indices2: HashMap<_, _> = indices1
             .iter_mut()
             .map(|(name, index1)| {
-                let index2 = split_index_off(index1, half_row);
-
-                #[cfg(debug_assertions)]
-                {
-                    assert!(
-                        index1.len() <= half_row && index2.len() <= half_row,
-                        "expected both halves to be smaller or equal than the halfway point: \
-                            got half={half_row} index1={} index2={}",
-                        index1.len(),
-                        index2.len(),
-                    );
-                    assert!(
-                        total_rows as usize == index1.len() + index2.len(),
-                        "expected both halves to sum up to the length of the original time index: \
-                            got times={} vs. index1+index2={}",
-                        total_rows,
-                        index1.len() + index2.len(),
-                    );
-                }
-
+                let index2 = split_secondary_index_off(half_row, index1);
                 ((*name).clone(), index2)
             })
             .collect();
@@ -415,27 +408,109 @@ impl IndexBucket {
 
         Some(bucket2)
     }
-
-    fn find_half_row(&self) -> usize {
-        // TODO: explain forward walk (and maybe express in a better way)
-        let half_row = {
-            let times = self.times.values();
-
-            let mut half_row = self.times.len() / 2;
-            let time = times[half_row];
-            while half_row + 1 < times.len() && times[half_row] == time {
-                half_row += 1;
-            }
-
-            half_row
-        };
-
-        half_row
-    }
 }
 
-// fn split_primary_index_off() {}
-// fn split_secondary_index_off() {}
+/// Given a time index and a desired splitting index, splits off the given time range in place,
+/// and returns a new time range corresponding to the second half.
+///
+/// The two resulting time range halves are guaranteed to never overlap.
+fn split_time_range_off(
+    half_row: usize,
+    times1: &Int64Vec,
+    time_range1: &mut TimeRange,
+) -> TimeRange {
+    // This can never fail (underflow or OOB) because we never split buckets smaller than 2
+    // entries.
+    time_range1.max = times1.values()[half_row - 1].into();
+
+    let time_range2 = TimeRange::new(times1.values()[half_row].into(), time_range1.max);
+
+    debug_assert!(
+        time_range1.max.as_i64() < time_range2.min.as_i64(),
+        "split resulted in overlapping time ranges: {} <-> {}",
+        time_range1.max.as_i64(),
+        time_range2.min.as_i64(),
+    );
+
+    time_range2
+}
+
+/// Given a primary time index and a desired splitting index, splits off the time index in place,
+/// and returns a new time index corresponding to the second half.
+///
+/// The two resulting time index halves are guaranteed to never overlap.
+fn split_primary_index_off(half_row: usize, times1: &mut Int64Vec) -> Int64Vec {
+    debug_assert!(
+        times1.validity().is_none(),
+        "The time index must always be dense, thus it shouldn't even have a validity\n
+                bitmap attached to it to begin with."
+    );
+
+    let total_rows = times1.len();
+
+    let (datatype, mut data1, _) = std::mem::take(times1).into_data();
+    let data2 = data1.split_off(half_row);
+    let times2 = Int64Vec::from_data(datatype.clone(), data2, None);
+
+    *times1 = Int64Vec::from_data(datatype, data1, None);
+
+    #[cfg(debug_assertions)]
+    {
+        assert!(
+            times1.len() <= half_row && times2.len() <= half_row,
+            "expected both halves to be smaller or equal than the halfway point: \
+                    got half={half_row} times1={} times2={}",
+            times1.len(),
+            times2.len(),
+        );
+        assert!(
+            total_rows == times1.len() + times2.len(),
+            "expected both halves to sum up to the length of the original time index: \
+                    got times={} vs. times1+times2={}",
+            total_rows,
+            times1.len() + times2.len(),
+        );
+    }
+
+    times2
+}
+
+/// Given a secondary index of any kind and a desired splitting index, splits off the index
+/// in place, and returns a new index of the same kind that corresponds to the second half.
+///
+/// The two resulting index halves are guaranteed to never overlap.
+fn split_secondary_index_off(half_row: usize, index1: &mut UInt64Vec) -> UInt64Vec {
+    fn split_index_off(index1: &mut UInt64Vec, half_row: usize) -> UInt64Vec {
+        let (datatype, mut data1, validity1) = std::mem::take(index1).into_data();
+        let data2 = data1.split_off(half_row);
+        if let Some((validity1, validity2)) = validity1.map(|validity1| {
+            let mut validity1 = validity1.into_iter().collect::<Vec<_>>();
+            let validity2 = validity1.split_off(half_row);
+            (
+                MutableBitmap::from_iter(validity1),
+                MutableBitmap::from_iter(validity2),
+            )
+        }) {
+            *index1 = UInt64Vec::from_data(datatype.clone(), data1, Some(validity1));
+            UInt64Vec::from_data(datatype, data2, Some(validity2))
+        } else {
+            *index1 = UInt64Vec::from_data(datatype.clone(), data1, None);
+            UInt64Vec::from_data(datatype, data2, None)
+        }
+    }
+
+    let index2 = split_index_off(index1, half_row);
+
+    debug_assert!(
+        index1.len() <= half_row && index2.len() <= half_row,
+        "expected both halves to be smaller or equal than the halfway point: \
+                            got half={half_row} index1={} index2={}",
+        index1.len(),
+        index2.len(),
+    );
+
+    index2
+}
 
 // --- Components ---
 

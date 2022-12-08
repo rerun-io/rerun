@@ -107,26 +107,36 @@ impl DataStore {
 impl IndexTable {
     pub fn latest_at<'a>(
         &mut self,
-        at: i64,
+        time: i64,
         components: &[ComponentNameRef<'a>],
     ) -> HashMap<ComponentNameRef<'a>, RowIndex> {
         let mut results = HashMap::with_capacity(components.len());
 
         let timeline = self.timeline;
+
+        // The time we're looking for gives us an upper bound: all components must be indexed
+        // in either this bucket _or any of those that come before_!
+        //
+        // That is because secondary indices allow for null values, which forces us to not only
+        // walk backwards within an index bucket, but sometimes even walk backwards across
+        // multiple index buckets within the same table!
+        //
+        // Besides, components are _independently_ nullable, and so this two-level backwards walk
+        // needs to be done on a per-component basis.
         for &name in components {
-            'for_each_bucket: for (i, bucket) in self.iter_bucket_mut(at).enumerate() {
+            'for_each_bucket: for (i, bucket) in self.iter_bucket_mut(time).enumerate() {
                 debug!(
                     kind = "query",
                     component = name,
                     timeline = %timeline.name(),
-                    time = timeline.typ().format(at.into()),
+                    time = timeline.typ().format(time.into()),
                     attempt = i,
                     time_range = ?bucket.time_range.min.as_i64()..=bucket.time_range.max.as_i64(),
                     "found candidate bucket"
                 );
-                if let Some(row_idx) = bucket.latest_at(at, name) {
+                if let Some(row_idx) = bucket.latest_at(time, name) {
                     results.insert(name, row_idx);
-                    break 'for_each_bucket; // better safe than sorry
+                    break 'for_each_bucket;
                 }
             }
         }
@@ -134,16 +144,20 @@ impl IndexTable {
         results
     }
 
-    // TODO: doc
-    pub fn find_bucket_mut(&mut self, at: i64) -> &mut IndexBucket {
-        // TODO: explain why this cannot fail
-        self.iter_bucket_mut(at).next().unwrap()
+    /// Returns the index bucket whose time range covers the given `time`.
+    pub fn find_bucket_mut(&mut self, time: i64) -> &mut IndexBucket {
+        // This cannot fail, `iter_bucket_mut` is guaranteed to always yield at least one bucket,
+        // since index tables always spawn with a default bucket that covers [-∞;+∞].
+        self.iter_bucket_mut(time).next().unwrap()
     }
 
-    // TODO: doc
-    pub fn iter_bucket_mut(&mut self, at: i64) -> impl Iterator<Item = &mut IndexBucket> {
+    /// Returns an iterator that is guaranteed to yield at least one bucket, which is the bucket
+    /// whose time range covers the given `time`.
+    ///
+    /// It then continues yielding buckets indefinitely, in decreasing time range order.
+    pub fn iter_bucket_mut(&mut self, time: i64) -> impl Iterator<Item = &mut IndexBucket> {
         self.buckets
-            .range_mut(..=TimeInt::from(at))
+            .range_mut(..=TimeInt::from(time))
             .rev()
             .map(|(_, bucket)| bucket)
     }
@@ -228,20 +242,24 @@ impl IndexBucket {
         self.is_sorted = true;
     }
 
-    pub fn latest_at<'a>(&mut self, at: i64, component: ComponentNameRef<'a>) -> Option<RowIndex> {
+    pub fn latest_at<'a>(
+        &mut self,
+        time: i64,
+        component: ComponentNameRef<'a>,
+    ) -> Option<RowIndex> {
         self.sort_indices();
 
         debug!(
             kind = "query",
             component,
             timeline = %self.timeline.name(),
-            time = self.timeline.typ().format(at.into()),
+            time = self.timeline.typ().format(time.into()),
             "searching for primary & secondary row indices..."
         );
 
         // find the primary index's row.
         let times = self.times.values();
-        let primary_idx = times.partition_point(|time| *time <= at) as i64;
+        let primary_idx = times.partition_point(|t| *t <= time) as i64;
 
         // The partition point is always _beyond_ the index that we're looking for.
         // A partition point of 0 thus means that we're trying to query for data that lives
@@ -257,7 +275,7 @@ impl IndexBucket {
             kind = "query",
             component,
             timeline = %self.timeline.name(),
-            time = self.timeline.typ().format(at.into()),
+            time = self.timeline.typ().format(time.into()),
             %primary_idx,
             "found primary index",
         );
@@ -274,7 +292,7 @@ impl IndexBucket {
                             kind = "query",
                             component = name,
                             timeline = %self.timeline.name(),
-                            time = self.timeline.typ().format(at.into()),
+                            time = self.timeline.typ().format(time.into()),
                             %primary_idx,
                             "no secondary index found",
                         );
@@ -289,7 +307,7 @@ impl IndexBucket {
                     kind = "query",
                     component = name,
                     timeline = %self.timeline.name(),
-                    time = self.timeline.typ().format(at.into()),
+                    time = self.timeline.typ().format(time.into()),
                     %primary_idx, %secondary_idx, %row_idx,
                     "found secondary index + row index",
                 );
