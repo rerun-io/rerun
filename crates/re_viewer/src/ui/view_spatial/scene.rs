@@ -1204,13 +1204,7 @@ impl SceneSpatial {
     }
 
     pub fn is_empty(&self) -> bool {
-        // TODO:
-        // TODO(andreas): Just check bounding box instead?
-        self.render_primitives.points_2d.is_empty()
-            && self.render_primitives.points_3d.is_empty()
-            && self.render_primitives.line_strips_3d.is_empty()
-            && self.render_primitives.line_strips_2d.is_empty()
-            && self.render_primitives.meshes.is_empty()
+        self.render_primitives.bounding_box().is_nothing()
     }
 
     /// Heuristic whether the default way of looking at this scene should be 2d or 3d.
