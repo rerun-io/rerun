@@ -115,7 +115,7 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
     let ent_path = EntityPath::from("this/that");
     let now = Time::now();
     let now_nanos = now.nanos_since_epoch();
-    let now_minus_1s = now - Duration::from_secs(1);
+    let now_minus_1s = now - Duration::from_secs(1.0);
     let now_minus_1s_nanos = now_minus_1s.nanos_since_epoch();
     let frame39 = 39;
     let frame40 = 40;
@@ -262,11 +262,11 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
     let ent_path = EntityPath::from("this/that");
 
     let now = Time::now();
-    let now_minus_1s = now - Duration::from_secs(1);
+    let now_minus_1s = now - Duration::from_secs(1.0);
     let now_minus_1s_nanos = now_minus_1s.nanos_since_epoch();
-    let now_plus_1s = now + Duration::from_secs(1);
+    let now_plus_1s = now + Duration::from_secs(1.0);
     let now_plus_1s_nanos = now_plus_1s.nanos_since_epoch();
-    let now_plus_20ms = now + Duration::from_secs(2);
+    let now_plus_2s = now + Duration::from_secs(2.0);
 
     let frame40 = 40;
     let frame41 = 41;
