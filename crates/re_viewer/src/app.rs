@@ -1241,7 +1241,6 @@ fn save_database_to_file(
                         | LogMsg::PathOpMsg(PathOpMsg { time_point, .. }) => {
                             time_point.is_timeless() || {
                                 let is_within_range = time_point
-                                    .0
                                     .get(&timeline)
                                     .map_or(false, |t| range.contains(t));
                                 is_within_range

@@ -57,7 +57,7 @@ impl ThreadInfo {
 
     fn now(&self) -> TimePoint {
         let mut time_point = self.time_point.clone();
-        time_point.0.insert(
+        time_point.insert(
             Timeline::new("log_time", TimeType::Time),
             Time::now().into(),
         );
@@ -66,9 +66,9 @@ impl ThreadInfo {
 
     fn set_time(&mut self, timeline: Timeline, time_int: Option<TimeInt>) {
         if let Some(time_int) = time_int {
-            self.time_point.0.insert(timeline, time_int);
+            self.time_point.insert(timeline, time_int);
         } else {
-            self.time_point.0.remove(&timeline);
+            self.time_point.remove(&timeline);
         }
     }
 }

@@ -160,8 +160,8 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
 #[test]
 fn test_encode_decode() {
     use crate::{
-        obj_path, time_point, Data, DataMsg, DataPath, FieldName, LogMsg, LoggedData, MsgId,
-        ObjPath, ObjPathComp, Time, TimePoint, TimeType,
+        obj_path, Data, DataMsg, DataPath, FieldName, LogMsg, LoggedData, MsgId, ObjPath,
+        ObjPathComp, Time, TimePoint, TimeType, Timeline,
     };
 
     fn data_msg(
@@ -179,11 +179,12 @@ fn test_encode_decode() {
     }
 
     // Some fake log data
-    let time_point = time_point([(
-        "log_time",
-        TimeType::Time,
+    let time_point = [(
+        Timeline::new("log_time", TimeType::Time),
         Time::from_ns_since_epoch(1_649_934_625_012_345_678).into(),
-    )]);
+    )]
+    .into();
+
     let messages = vec![
         LogMsg::from(data_msg(&time_point, obj_path!("foo", "bar"), "baz", 42)),
         LogMsg::from(data_msg(

@@ -394,7 +394,7 @@ pub(crate) fn ui_time_point(
     ui.vertical(|ui| {
         egui::Grid::new("time_point").num_columns(2).show(ui, |ui| {
             ui.spacing_mut().item_spacing.x = 0.0;
-            for (timeline, value) in &time_point.0 {
+            for (timeline, value) in time_point.iter() {
                 ctx.timeline_button(ui, timeline);
                 ui.label(": ");
                 ctx.time_button(ui, timeline, *value);
