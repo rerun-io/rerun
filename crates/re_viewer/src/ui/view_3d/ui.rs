@@ -342,9 +342,7 @@ pub(crate) fn view_3d(
 ) -> egui::Response {
     crate::profile_function!();
 
-    state.scene_bbox = state
-        .scene_bbox
-        .union(*scene.render_primitives.bounding_box());
+    state.scene_bbox = state.scene_bbox.union(*scene.primitives.bounding_box());
     state.space_camera = space_cameras.to_vec();
 
     let (rect, mut response) =
@@ -419,7 +417,7 @@ pub(crate) fn view_3d(
         if orbit_center_alpha > 0.0 {
             // Show center of orbit camera when interacting with camera (it's quite helpful).
             scene
-                .render_primitives
+                .primitives
                 .points
                 .push(re_renderer::renderer::PointCloudPoint {
                     position: orbit_eye.orbit_center,
@@ -427,7 +425,7 @@ pub(crate) fn view_3d(
                     color: egui::Rgba::from_rgba_unmultiplied(1.0, 0.0, 1.0, orbit_center_alpha)
                         .into(),
                 });
-            scene.render_primitives.point_ids.push(InstanceIdHash::NONE);
+            scene.primitives.point_ids.push(InstanceIdHash::NONE);
             ui.ctx().request_repaint(); // let it fade out
         }
     }
@@ -453,7 +451,7 @@ fn paint_view(
         |ui| {
             crate::profile_function!("labels");
             let ui_from_world = eye.ui_from_world(&rect);
-            for label in &scene.ui_elements.labels_3d {
+            for label in &scene.ui.labels_3d {
                 let pos_in_ui = ui_from_world * label.origin.extend(1.0);
                 if pos_in_ui.w <= 0.0 {
                     continue; // behind camera
@@ -525,10 +523,8 @@ fn paint_view(
             .unwrap()
             .queue_draw(&GenericSkyboxDrawData::new(render_ctx))
             .queue_draw(&MeshDrawData::new(render_ctx, &scene.meshes()).unwrap())
-            .queue_draw(&scene.render_primitives.line_strips.to_draw_data(render_ctx))
-            .queue_draw(
-                &PointCloudDrawData::new(render_ctx, &scene.render_primitives.points).unwrap(),
-            );
+            .queue_draw(&scene.primitives.line_strips.to_draw_data(render_ctx))
+            .queue_draw(&PointCloudDrawData::new(render_ctx, &scene.primitives.points).unwrap());
 
         let command_buffer = view_builder
             .draw(render_ctx, egui::Rgba::TRANSPARENT)
@@ -592,21 +588,22 @@ fn show_projections_from_2d_space(
                     let radius = Size::new_points(1.5);
 
                     scene
-                        .render_primitives
+                        .primitives
                         .line_strips
                         .add_segment(origin, end)
                         .radius(radius);
 
                     if let Some(pos) = hit_pos {
                         // Show where the ray hits the depth map:
-                        scene.render_primitives.points.push(
-                            re_renderer::renderer::PointCloudPoint {
+                        scene
+                            .primitives
+                            .points
+                            .push(re_renderer::renderer::PointCloudPoint {
                                 position: pos,
                                 radius: radius * 3.0,
                                 color: egui::Color32::WHITE,
-                            },
-                        );
-                        scene.render_primitives.point_ids.push(InstanceIdHash::NONE);
+                            });
+                        scene.primitives.point_ids.push(InstanceIdHash::NONE);
                     }
                 }
             }
@@ -657,21 +654,21 @@ fn show_origin_axis(scene: &mut SceneSpatial) {
     let radius = Size::new_points(8.0);
 
     scene
-        .render_primitives
+        .primitives
         .line_strips
         .add_segment(glam::Vec3::ZERO, glam::Vec3::X)
         .radius(radius)
         .color(AXIS_COLOR_X)
         .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE);
     scene
-        .render_primitives
+        .primitives
         .line_strips
         .add_segment(glam::Vec3::ZERO, glam::Vec3::Y)
         .radius(radius)
         .color(AXIS_COLOR_Y)
         .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE);
     scene
-        .render_primitives
+        .primitives
         .line_strips
         .add_segment(glam::Vec3::ZERO, glam::Vec3::Z)
         .radius(radius)

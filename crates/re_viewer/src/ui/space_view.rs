@@ -55,7 +55,7 @@ impl SpaceView {
 
         if category == ViewCategory::TwoD {
             // A good start:
-            view_state.state_2d.scene_bbox_accum = scene.spatial.render_primitives.bounding_rect();
+            view_state.state_2d.scene_bbox_accum = scene.spatial.primitives.bounding_rect();
         }
 
         Self {
