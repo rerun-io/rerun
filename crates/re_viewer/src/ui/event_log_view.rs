@@ -1,7 +1,9 @@
 use itertools::Itertools as _;
 
 use re_format::format_number;
-use re_log_types::*;
+use re_log_types::{
+    ArrowMsg, BeginRecordingMsg, DataMsg, DataType, LogMsg, PathOpMsg, RecordingInfo, TypeMsg,
+};
 
 use crate::{Preview, ViewerContext};
 

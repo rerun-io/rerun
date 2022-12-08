@@ -12,7 +12,10 @@ use itertools::Itertools as _;
 
 use re_data_store::{ObjPath, ObjectTree, ObjectTreeProperties, TimeInt};
 
-use crate::misc::{space_info::*, Selection, ViewerContext};
+use crate::misc::{
+    space_info::{SpaceInfo, SpacesInfo},
+    Selection, ViewerContext,
+};
 
 use super::{space_view::ViewCategory, SceneQuery, SpaceView};
 

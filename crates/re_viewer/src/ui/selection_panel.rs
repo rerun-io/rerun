@@ -1,8 +1,11 @@
 use re_data_store::{log_db::LogDb, ObjectProps};
-use re_log_types::LogMsg;
+use re_log_types::{LogMsg, ObjTypePath, TimeType};
 
 use crate::{
-    data_ui::*,
+    data_ui::{
+        show_arrow_msg, show_begin_recording_msg, show_detailed_data_msg, show_path_op_msg,
+        show_type_msg, view_data, view_instance, view_object,
+    },
     ui::{view_3d, view_text, Blueprint, SpaceView},
     Preview, Selection, ViewerContext,
 };

@@ -132,7 +132,7 @@ impl ReUi {
 
     /// Paint a watermark
     pub fn paint_watermark(&self) {
-        use egui::*;
+        use egui::{pos2, Align2, Color32, Mesh, Rect, Shape, Vec2};
         let logo = self.rerun_logo();
         let screen_rect = self.egui_ctx.input().screen_rect;
         let size = logo.size_vec2();

@@ -1,6 +1,6 @@
 use std::ops::ControlFlow;
 
-use ewebsock::*;
+use ewebsock::{WsEvent, WsMessage, WsSender};
 
 use crate::Result;
 

@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use egui::NumExt as _;
 
 use re_data_store::TimesPerTimeline;
-use re_log_types::*;
+use re_log_types::{Duration, TimeInt, TimeRange, TimeRangeF, TimeReal, TimeType, Timeline};
 
 /// The time range we are currently zoomed in on.
 #[derive(Clone, Copy, Debug, serde::Deserialize, serde::Serialize)]

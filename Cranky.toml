@@ -102,6 +102,8 @@ warn = [
   "clippy::unused_self",
   "clippy::useless_transmute",
   "clippy::verbose_file_reads",
+  "clippy::wildcard_dependencies",
+  "clippy::wildcard_imports",
   "clippy::zero_sized_map_values",
   "elided_lifetimes_in_paths",
   "future_incompatible",
@@ -121,6 +123,6 @@ allow = [
   # TODO(emilk): enable more lints
   "clippy::cloned_instead_of_copied",
   "clippy::missing_errors_doc",
-  "unused_qualifications",
   "trivial_casts",
+  "unused_qualifications",
 ]

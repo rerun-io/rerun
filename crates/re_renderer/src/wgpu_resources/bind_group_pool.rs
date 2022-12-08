@@ -8,7 +8,7 @@ use super::{
     bind_group_layout_pool::{GpuBindGroupLayoutHandle, GpuBindGroupLayoutPool},
     buffer_pool::{GpuBufferHandle, GpuBufferHandleStrong, GpuBufferPool},
     dynamic_resource_pool::{DynamicResourcePool, SizedResourceDesc},
-    resource::*,
+    resource::PoolError,
     sampler_pool::{GpuSamplerHandle, GpuSamplerPool},
     texture_pool::{GpuTextureHandle, GpuTextureHandleStrong, GpuTexturePool},
 };

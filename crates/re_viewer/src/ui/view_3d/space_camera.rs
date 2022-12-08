@@ -1,4 +1,4 @@
-use glam::*;
+use glam::{vec3, Affine3A, Mat3, Quat, Vec2, Vec3};
 use macaw::{IsoTransform, Ray3};
 
 use re_data_store::ObjPath;
