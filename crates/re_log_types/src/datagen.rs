@@ -44,7 +44,7 @@ pub fn build_some_rects(len: usize) -> Box<dyn Array> {
 pub fn build_some_colors(len: usize) -> Box<dyn Array> {
     let v = (0..len)
         .into_iter()
-        .map(|i| i as field_types::ColorRGBA)
+        .map(|i| field_types::ColorRGBA(i as u32))
         .collect::<Vec<_>>();
     v.try_into_arrow().unwrap()
 }
