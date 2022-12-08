@@ -58,14 +58,14 @@ pub struct Label2D {
 /// A 2D scene, with everything needed to render it.
 pub struct Scene2D {
     /// Estimated bounding box of all data. Accumulated.
-    pub bbox: Rect,
+    pub bounding_rect: Rect,
     pub annotation_map: AnnotationMap,
 
     pub textured_rectangles: Vec<re_renderer::renderer::Rectangle>,
-    pub points: Vec<PointCloudPoint>,
-    pub lines: LineStripSeriesBuilder<()>,
+    pub points_2d: Vec<PointCloudPoint>,
+    pub line_strips_2d: LineStripSeriesBuilder<()>,
 
-    pub labels: Vec<Label2D>,
+    pub labels_2d: Vec<Label2D>,
 
     /// Hoverable rects in scene units and their instance id hashes
     pub hoverable_rects: Vec<(Rect, InstanceIdHash)>,
@@ -83,13 +83,13 @@ pub struct Scene2D {
 impl Default for Scene2D {
     fn default() -> Self {
         Self {
-            bbox: Rect::NOTHING,
+            bounding_rect: Rect::NOTHING,
             annotation_map: Default::default(),
             hoverable_images: Default::default(),
             textured_rectangles: Default::default(),
-            points: Default::default(),
-            lines: Default::default(),
-            labels: Default::default(),
+            points_2d: Default::default(),
+            line_strips_2d: Default::default(),
+            labels_2d: Default::default(),
             hoverable_rects: Default::default(),
             hoverable_points: Default::default(),
             hoverable_line_strips: Default::default(),
@@ -131,17 +131,17 @@ impl Scene2D {
     fn recalculate_bounding_box(&mut self) {
         for image in &self.hoverable_images {
             let [h, w] = [image.tensor.shape[0].size, image.tensor.shape[1].size];
-            self.bbox.extend_with(Pos2::ZERO);
-            self.bbox.extend_with(pos2(w as _, h as _));
+            self.bounding_rect.extend_with(Pos2::ZERO);
+            self.bounding_rect.extend_with(pos2(w as _, h as _));
         }
 
         for (point, _) in &self.hoverable_points {
-            self.bbox.extend_with(*point);
+            self.bounding_rect.extend_with(*point);
         }
 
         for (points, _) in &self.hoverable_line_strips {
             for p in points {
-                self.bbox.extend_with(*p);
+                self.bounding_rect.extend_with(*p);
             }
         }
     }
@@ -187,7 +187,7 @@ impl Scene2D {
                     let paint_props = paint_properties(color, None);
 
                     if hovered_instance == instance_hash {
-                        self.lines
+                        self.line_strips_2d
                             .add_axis_aligned_rectangle_outline_2d(
                                 glam::Vec2::ZERO,
                                 glam::vec2(w, h),
@@ -287,17 +287,17 @@ impl Scene2D {
                         apply_hover_effect(&mut paint_props);
                     }
 
-                    self.lines
+                    self.line_strips_2d
                         .add_axis_aligned_rectangle_outline_2d(bbox.min.into(), bbox.max.into())
                         .color(paint_props.bg_stroke.color)
                         .radius(Size::new_points(paint_props.bg_stroke.width * 0.5));
-                    self.lines
+                    self.line_strips_2d
                         .add_axis_aligned_rectangle_outline_2d(bbox.min.into(), bbox.max.into())
                         .color(paint_props.fg_stroke.color)
                         .radius(Size::new_points(paint_props.fg_stroke.width * 0.5));
 
                     if let Some(label) = label {
-                        self.labels.push(Label2D {
+                        self.labels_2d.push(Label2D {
                             text: label,
                             color: paint_props.fg_stroke.color,
                             target: LabelTarget::Rect(rect),
@@ -318,8 +318,8 @@ impl Scene2D {
         crate::profile_function!();
 
         // Ensure keypoint connection lines are behind points.
-        let connection_depth = self.lines.next_2d_z;
-        let point_depth = self.lines.next_2d_z - 0.1;
+        let connection_depth = self.line_strips_2d.next_2d_z;
+        let point_depth = self.line_strips_2d.next_2d_z - 0.1;
 
         for (_obj_type, obj_path, time_query, obj_store) in
             query.iter_object_stores(ctx.log_db, &[ObjectType::Point2D])
@@ -378,12 +378,12 @@ impl Scene2D {
                         apply_hover_effect(&mut paint_props);
                     }
 
-                    self.points.push(PointCloudPoint {
+                    self.points_2d.push(PointCloudPoint {
                         position: pos.extend(point_depth),
                         radius: Size::new_points(paint_props.bg_stroke.width * 0.5),
                         color: paint_props.bg_stroke.color,
                     });
-                    self.points.push(PointCloudPoint {
+                    self.points_2d.push(PointCloudPoint {
                         position: pos.extend(point_depth - 0.1),
                         radius: Size::new_points(paint_props.fg_stroke.width * 0.5),
                         color: paint_props.fg_stroke.color,
@@ -407,7 +407,7 @@ impl Scene2D {
 
             // TODO(andreas): Make user configurable with this as the default.
             if label_batch.len() < max_num_labels {
-                self.labels.extend(label_batch.into_iter());
+                self.labels_2d.extend(label_batch.into_iter());
             }
 
             // Generate keypoint connections if any.
@@ -432,9 +432,9 @@ impl Scene2D {
                         };
                     // TODO(andreas): No outlines for these?
                     // Specify depth explicitly so we're behind the points.
-                    self.lines
+                    self.line_strips_2d
                         .add_segment(a.extend(connection_depth), b.extend(connection_depth))
-                        .color(to_egui_color(color));
+                        .color(to_ecolor(color));
 
                     self.hoverable_line_strips.push((
                         smallvec![egui::pos2(a.x, a.y), egui::pos2(b.x, b.y)],
@@ -486,7 +486,7 @@ impl Scene2D {
                     }
 
                     // TODO(andreas): support outlines directly by re_renderer (need only 1 and 2 *point* black outlines)
-                    self.lines
+                    self.line_strips_2d
                         .add_segments_2d(
                             points
                                 .iter()
@@ -495,7 +495,7 @@ impl Scene2D {
                         )
                         .color(paint_props.bg_stroke.color)
                         .radius(Size::new_points(paint_props.bg_stroke.width * 0.5));
-                    self.lines
+                    self.line_strips_2d
                         .add_segments_2d(
                             points
                                 .iter()
@@ -511,7 +511,7 @@ impl Scene2D {
                     ));
 
                     for p in points {
-                        self.bbox.extend_with(egui::pos2(p[0], p[1]));
+                        self.bounding_rect.extend_with(egui::pos2(p[0], p[1]));
                     }
                 },
             );
@@ -522,13 +522,13 @@ impl Scene2D {
 impl Scene2D {
     pub fn is_empty(&self) -> bool {
         let Self {
-            bbox: _,
+            bounding_rect: _,
             annotation_map: _,
             hoverable_images: images,
-            points,
-            lines,
+            points_2d: points,
+            line_strips_2d: lines,
             textured_rectangles,
-            labels,
+            labels_2d: labels,
             hoverable_rects: _,
             hoverable_points: _,
             hoverable_line_strips: _,
@@ -552,7 +552,7 @@ pub struct ObjectPaintProperties {
 // TODO(andreas): we're no longer using egui strokes. Replace this.
 fn paint_properties(color: [u8; 4], stroke_width: Option<&f32>) -> ObjectPaintProperties {
     let bg_color = Color32::from_black_alpha(196);
-    let fg_color = to_egui_color(color);
+    let fg_color = to_ecolor(color);
     let stroke_width = stroke_width.map_or(1.5, |w| *w);
     let bg_stroke = Stroke::new(stroke_width + 2.0, bg_color);
     let fg_stroke = Stroke::new(stroke_width, fg_color);
@@ -563,6 +563,6 @@ fn paint_properties(color: [u8; 4], stroke_width: Option<&f32>) -> ObjectPaintPr
     }
 }
 
-fn to_egui_color([r, g, b, a]: [u8; 4]) -> Color32 {
+fn to_ecolor([r, g, b, a]: [u8; 4]) -> Color32 {
     Color32::from_rgba_unmultiplied(r, g, b, a)
 }

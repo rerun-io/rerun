@@ -277,7 +277,7 @@ fn view_2d_scrollable(
     space: &ObjPath,
     mut scene: Scene2D,
 ) -> egui::Response {
-    state.scene_bbox_accum = state.scene_bbox_accum.union(scene.bbox);
+    state.scene_bbox_accum = state.scene_bbox_accum.union(scene.bounding_rect);
     let scene_bbox = state.scene_bbox_accum;
 
     let (mut response, painter) =
@@ -430,8 +430,8 @@ fn view_2d_scrollable(
         };
 
         let command_buffer = view_builder
-            .queue_draw(&scene.lines.to_draw_data(ctx.render_ctx))
-            .queue_draw(&PointCloudDrawData::new(ctx.render_ctx, &scene.points).unwrap())
+            .queue_draw(&scene.line_strips_2d.to_draw_data(ctx.render_ctx))
+            .queue_draw(&PointCloudDrawData::new(ctx.render_ctx, &scene.points_2d).unwrap())
             .queue_draw(
                 &RectangleDrawData::new(ctx.render_ctx, &scene.textured_rectangles).unwrap(),
             )
@@ -483,9 +483,9 @@ fn create_labels(
     ui_from_space: RectTransform,
     parent_ui: &mut egui::Ui,
 ) -> Vec<Shape> {
-    let mut label_shapes = Vec::with_capacity(scene.labels.len() * 2);
+    let mut label_shapes = Vec::with_capacity(scene.labels_2d.len() * 2);
 
-    for label in &scene.labels {
+    for label in &scene.labels_2d {
         let (wrap_width, text_anchor_pos) = match label.target {
             super::scene::LabelTarget::Rect(rect) => {
                 let rect_in_ui = ui_from_space.transform_rect(rect);

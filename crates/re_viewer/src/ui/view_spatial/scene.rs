@@ -10,12 +10,12 @@ use re_data_store::query::{
 };
 use re_data_store::{FieldName, InstanceIdHash};
 use re_log_types::context::{ClassId, KeypointId};
-use re_log_types::{DataVec, IndexHash, MeshId, MsgId, ObjectType};
+use re_log_types::{DataVec, IndexHash, MeshId, MsgId, ObjectType, Tensor};
 
 use crate::misc::mesh_loader::CpuMesh;
 use crate::ui::annotations::{auto_color, AnnotationMap, DefaultColor};
 use crate::ui::view_spatial::axis_color;
-use crate::ui::SceneQuery;
+use crate::ui::{Annotations, SceneQuery};
 use crate::{math::line_segment_distance_sq_to_point_2d, misc::ViewerContext};
 
 use re_renderer::{
@@ -64,6 +64,37 @@ pub struct Label3D {
     pub(crate) origin: Vec3,
 }
 
+pub struct HoverableImage {
+    pub instance_hash: InstanceIdHash,
+
+    pub tensor: Tensor,
+    /// If this is a depth map, how long is a meter?
+    ///
+    /// For instance, with a `u16` dtype one might have
+    /// `meter == 1000.0` for millimeter precision
+    /// up to a ~65m range.
+    pub meter: Option<f32>,
+
+    /// A thing that provides additional semantic context for your dtype.
+    pub annotations: Arc<Annotations>,
+}
+
+pub enum Label2DTarget {
+    /// Labels a given rect (in scene coordinates)
+    Rect(egui::Rect),
+    /// Labels a given point (in scene coordinates)
+    Point(egui::Pos2),
+}
+
+pub struct Label2D {
+    pub text: String,
+    pub color: Color32,
+    /// The shape being labled.
+    pub target: Label2DTarget,
+    /// What is hovered if this label is hovered.
+    pub labled_instance: InstanceIdHash,
+}
+
 fn to_ecolor([r, g, b, a]: [u8; 4]) -> Color32 {
     // TODO(andreas): ecolor should have a utility to get an array
     Color32::from_rgba_premultiplied(r, g, b, a)
@@ -73,12 +104,13 @@ fn to_ecolor([r, g, b, a]: [u8; 4]) -> Color32 {
 pub struct Scene3D {
     pub annotation_map: AnnotationMap,
 
-    pub points: Vec<Point3D>,
+    pub points_3d: Vec<Point3D>,
 
-    pub line_strips: re_renderer::LineStripSeriesBuilder<InstanceIdHash>,
+    // TODO(andreas) should not distinguish 2d & 3d line strips. Currently need to since we do hover checking on them directly.
+    pub line_strips_3d: re_renderer::LineStripSeriesBuilder<InstanceIdHash>,
 
     pub meshes: Vec<MeshSource>,
-    pub labels: Vec<Label3D>,
+    pub labels_3d: Vec<Label3D>,
 }
 
 impl Scene3D {
@@ -190,7 +222,7 @@ impl Scene3D {
                             }
                         }
 
-                        self.points.push(Point3D {
+                        self.points_3d.push(Point3D {
                             instance_id_hash,
                             pos,
                             radius,
@@ -200,7 +232,7 @@ impl Scene3D {
                 );
 
                 if show_labels {
-                    self.labels.extend(label_batch);
+                    self.labels_3d.extend(label_batch);
                 }
 
                 // Generate keypoint connections if any.
@@ -223,7 +255,7 @@ impl Scene3D {
                             );
                             continue;
                         };
-                        self.line_strips.add_segment(*a, *b).radius(Size::AUTO).color(to_ecolor(color)).user_data(instance_id_hash);
+                        self.line_strips_3d.add_segment(*a, *b).radius(Size::AUTO).color(to_ecolor(color)).user_data(instance_id_hash);
                     }
                 }
             });
@@ -330,9 +362,9 @@ impl Scene3D {
 
                     match obj_type {
                         ObjectType::Path3D => self
-                            .line_strips
+                            .line_strips_3d
                             .add_strip(points.iter().map(|v| Vec3::from_slice(v))),
-                        ObjectType::LineSegments3D => self.line_strips.add_segments(
+                        ObjectType::LineSegments3D => self.line_strips_3d.add_segments(
                             points
                                 .chunks_exact(2)
                                 .map(|points| (points[0].into(), points[1].into())),
@@ -528,7 +560,7 @@ impl Scene3D {
                     let axis_end = world_from_cam.transform_point3(scale * *dir);
                     let color = axis_color(axis_index);
 
-                    self.line_strips
+                    self.line_strips_3d
                         .add_segment(cam_origin, axis_end)
                         .radius(Size::new_points(2.0))
                         .color(color)
@@ -579,7 +611,7 @@ impl Scene3D {
             (corners[3], corners[0]), // `d` distance plane sides
         ];
 
-        self.line_strips
+        self.line_strips_3d
             .add_segments(segments.into_iter())
             .radius(line_radius)
             .color(color)
@@ -616,7 +648,7 @@ impl Scene3D {
             radius = Self::hover_size_boost(radius);
         }
 
-        self.line_strips
+        self.line_strips_3d
             .add_segment(origin, end)
             .radius(radius)
             .color(color)
@@ -655,7 +687,7 @@ impl Scene3D {
         ];
 
         if let Some(label) = label {
-            self.labels.push(Label3D {
+            self.labels_3d.push(Label3D {
                 text: label,
                 origin: translation,
             });
@@ -679,7 +711,7 @@ impl Scene3D {
             (corners[0b011], corners[0b111]),
         ];
 
-        self.line_strips
+        self.line_strips_3d
             .add_segments(segments.into_iter())
             .radius(line_radius)
             .color(color)
@@ -689,10 +721,10 @@ impl Scene3D {
     pub fn is_empty(&self) -> bool {
         let Self {
             annotation_map: _,
-            points,
-            line_strips,
+            points_3d: points,
+            line_strips_3d: line_strips,
             meshes,
-            labels,
+            labels_3d: labels,
         } = self;
 
         points.is_empty() && line_strips.strips.is_empty() && meshes.is_empty() && labels.is_empty()
@@ -727,7 +759,7 @@ impl Scene3D {
     // TODO(cmc): maybe we just store that from the beginning once glow is gone?
     pub fn point_cloud_points(&self) -> Vec<PointCloudPoint> {
         crate::profile_function!();
-        self.points
+        self.points_3d
             .iter()
             .map(|point| PointCloudPoint {
                 position: point.pos,
@@ -757,10 +789,10 @@ impl Scene3D {
 
         let Self {
             annotation_map: _,
-            points,
-            line_strips,
+            points_3d: points,
+            line_strips_3d: line_strips,
             meshes,
-            labels: _,
+            labels_3d: _,
         } = self;
 
         // in points
@@ -863,10 +895,10 @@ impl Scene3D {
 
         let Self {
             annotation_map: _,
-            points,
-            line_strips,
+            points_3d: points,
+            line_strips_3d: line_strips,
             meshes,
-            labels,
+            labels_3d: labels,
         } = self;
 
         for point in points {

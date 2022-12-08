@@ -416,7 +416,7 @@ pub(crate) fn view_3d(
 
         if orbit_center_alpha > 0.0 {
             // Show center of orbit camera when interacting with camera (it's quite helpful).
-            scene.points.push(Point3D {
+            scene.points_3d.push(Point3D {
                 instance_id_hash: InstanceIdHash::NONE,
                 pos: orbit_eye.orbit_center,
                 radius: Size::new_scene(orbit_eye.orbit_radius * 0.01),
@@ -447,7 +447,7 @@ fn paint_view(
         |ui| {
             crate::profile_function!("labels");
             let ui_from_world = eye.ui_from_world(&rect);
-            for label in &scene.labels {
+            for label in &scene.labels_3d {
                 let pos_in_ui = ui_from_world * label.origin.extend(1.0);
                 if pos_in_ui.w <= 0.0 {
                     continue; // behind camera
@@ -519,7 +519,7 @@ fn paint_view(
             .unwrap()
             .queue_draw(&GenericSkyboxDrawData::new(render_ctx))
             .queue_draw(&MeshDrawData::new(render_ctx, &scene.meshes()).unwrap())
-            .queue_draw(&scene.line_strips.to_draw_data(render_ctx))
+            .queue_draw(&scene.line_strips_3d.to_draw_data(render_ctx))
             .queue_draw(&PointCloudDrawData::new(render_ctx, &scene.point_cloud_points()).unwrap());
 
         let command_buffer = view_builder
@@ -583,11 +583,11 @@ fn show_projections_from_2d_space(
                     let end = ray.point_along(length);
                     let radius = Size::new_points(1.5);
 
-                    scene.line_strips.add_segment(origin, end).radius(radius);
+                    scene.line_strips_3d.add_segment(origin, end).radius(radius);
 
                     if let Some(pos) = hit_pos {
                         // Show where the ray hits the depth map:
-                        scene.points.push(Point3D {
+                        scene.points_3d.push(Point3D {
                             instance_id_hash: InstanceIdHash::NONE,
                             pos,
                             radius: radius * 3.0,
@@ -643,19 +643,19 @@ fn show_origin_axis(scene: &mut Scene3D) {
     let radius = Size::new_points(8.0);
 
     scene
-        .line_strips
+        .line_strips_3d
         .add_segment(glam::Vec3::ZERO, glam::Vec3::X)
         .radius(radius)
         .color(AXIS_COLOR_X)
         .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE);
     scene
-        .line_strips
+        .line_strips_3d
         .add_segment(glam::Vec3::ZERO, glam::Vec3::Y)
         .radius(radius)
         .color(AXIS_COLOR_Y)
         .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE);
     scene
-        .line_strips
+        .line_strips_3d
         .add_segment(glam::Vec3::ZERO, glam::Vec3::Z)
         .radius(radius)
         .color(AXIS_COLOR_Z)
