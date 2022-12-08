@@ -16,7 +16,7 @@ use crate::{
     ViewerContext,
 };
 
-use crate::ui::view_spatial::{Eye, OrbitEye, Point3D, SceneSpatial, SpaceCamera3D};
+use crate::ui::view_spatial::{Eye, OrbitEye, SceneSpatial, SpaceCamera3D};
 
 // ---
 
@@ -418,12 +418,16 @@ pub(crate) fn view_3d(
 
         if orbit_center_alpha > 0.0 {
             // Show center of orbit camera when interacting with camera (it's quite helpful).
-            scene.render_primitives.points_3d.push(Point3D {
-                instance_id_hash: InstanceIdHash::NONE,
-                pos: orbit_eye.orbit_center,
-                radius: Size::new_scene(orbit_eye.orbit_radius * 0.01),
-                color: egui::Rgba::from_rgba_unmultiplied(1.0, 0.0, 1.0, orbit_center_alpha).into(),
-            });
+            scene
+                .render_primitives
+                .points
+                .push(re_renderer::renderer::PointCloudPoint {
+                    position: orbit_eye.orbit_center,
+                    radius: Size::new_scene(orbit_eye.orbit_radius * 0.01),
+                    color: egui::Rgba::from_rgba_unmultiplied(1.0, 0.0, 1.0, orbit_center_alpha)
+                        .into(),
+                });
+            scene.render_primitives.point_ids.push(InstanceIdHash::NONE);
             ui.ctx().request_repaint(); // let it fade out
         }
     }
@@ -522,7 +526,9 @@ fn paint_view(
             .queue_draw(&GenericSkyboxDrawData::new(render_ctx))
             .queue_draw(&MeshDrawData::new(render_ctx, &scene.meshes()).unwrap())
             .queue_draw(&scene.render_primitives.line_strips.to_draw_data(render_ctx))
-            .queue_draw(&PointCloudDrawData::new(render_ctx, &scene.point_cloud_points()).unwrap());
+            .queue_draw(
+                &PointCloudDrawData::new(render_ctx, &scene.render_primitives.points).unwrap(),
+            );
 
         let command_buffer = view_builder
             .draw(render_ctx, egui::Rgba::TRANSPARENT)
@@ -593,12 +599,14 @@ fn show_projections_from_2d_space(
 
                     if let Some(pos) = hit_pos {
                         // Show where the ray hits the depth map:
-                        scene.render_primitives.points_3d.push(Point3D {
-                            instance_id_hash: InstanceIdHash::NONE,
-                            pos,
-                            radius: radius * 3.0,
-                            color: egui::Color32::WHITE,
-                        });
+                        scene.render_primitives.points.push(
+                            re_renderer::renderer::PointCloudPoint {
+                                position: pos,
+                                radius: radius * 3.0,
+                                color: egui::Color32::WHITE,
+                            },
+                        );
+                        scene.render_primitives.point_ids.push(InstanceIdHash::NONE);
                     }
                 }
             }

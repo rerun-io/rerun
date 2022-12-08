@@ -32,14 +32,6 @@ use super::{eye::Eye, SpaceCamera3D};
 
 // ----------------------------------------------------------------------------
 
-/// TODO(andreas): Remove by separating rendering & hovering primitive
-pub struct Point3D {
-    pub instance_id_hash: InstanceIdHash,
-    pub pos: Vec3,
-    pub radius: Size,
-    pub color: Color32,
-}
-
 /// TODO(andreas): Scene shouldn't need to care about source?
 pub enum MeshSourceData {
     Mesh3D(re_log_types::Mesh3D),
@@ -66,7 +58,7 @@ pub struct MeshSource {
     pub additive_tint: Option<Color32>,
 }
 
-pub struct HoverableImage {
+pub struct Image {
     pub instance_hash: InstanceIdHash,
 
     pub tensor: Tensor,
@@ -88,6 +80,7 @@ pub enum Label2DTarget {
     Point(egui::Pos2),
 }
 
+// TODO(andreas): Merge Label2D and Label3D
 pub struct Label2D {
     pub text: String,
     pub color: Color32,
@@ -117,7 +110,7 @@ pub struct SceneSpatialUiElements {
     pub rects: Vec<(egui::Rect, InstanceIdHash)>,
 
     /// Images are a special case of rects where we're storing some extra information to allow minature previews etc.
-    pub images: Vec<HoverableImage>,
+    pub images: Vec<Image>,
 
     /// Hoverable points in scene units and their instance id hashes
     pub points: Vec<(egui::Pos2, InstanceIdHash)>,
@@ -132,8 +125,10 @@ pub struct SceneSpatialRenderPrimitives {
 
     pub line_strips: LineStripSeriesBuilder<InstanceIdHash>,
 
-    pub points_3d: Vec<Point3D>,
-    pub points_2d: Vec<PointCloudPoint>, // TODO(andreas): Separate hover & render
+    pub points: Vec<PointCloudPoint>, // TODO(andreas): Separate hover & render
+    /// Assigns an instance id to every point. Needs to have as many elements as points
+    /// TODO(andreas): Should introduce a builder to separate data & allow metadata. See LineStripSeriesBuilder
+    pub point_ids: Vec<InstanceIdHash>,
 
     pub meshes: Vec<MeshSource>, // TODO(andreas): Separate hover & render
 }
@@ -161,10 +156,7 @@ impl SceneSpatialRenderPrimitives {
                 .extend(rect.top_left_corner_position + rect.extent_v);
         }
 
-        for point in &self.points_3d {
-            self.bounding_box.extend(point.pos)
-        }
-        for point in &self.points_2d {
+        for point in &self.points {
             self.bounding_box.extend(point.position);
         }
 
@@ -311,12 +303,8 @@ impl SceneSpatial {
                             }
                         }
 
-                        self.render_primitives.points_3d.push(Point3D {
-                            instance_id_hash,
-                            pos,
-                            radius,
-                            color,
-                        });
+                        self.render_primitives.points.push(PointCloudPoint { position: pos.into(), radius, color });
+                        self.render_primitives.point_ids.push(instance_id_hash);
                     },
                 );
 
@@ -651,7 +639,7 @@ impl SceneSpatial {
                         },
                     );
 
-                    self.ui_elements.images.push(HoverableImage {
+                    self.ui_elements.images.push(Image {
                         instance_hash,
                         tensor: tensor.clone(),
                         meter: meter.copied(),
@@ -823,12 +811,12 @@ impl SceneSpatial {
                         apply_hover_effect(&mut paint_props);
                     }
 
-                    self.render_primitives.points_2d.push(PointCloudPoint {
+                    self.render_primitives.points.push(PointCloudPoint {
                         position: pos.extend(point_depth),
                         radius: Size::new_points(paint_props.bg_stroke.width * 0.5),
                         color: paint_props.bg_stroke.color,
                     });
-                    self.render_primitives.points_2d.push(PointCloudPoint {
+                    self.render_primitives.points.push(PointCloudPoint {
                         position: pos.extend(point_depth - 0.1),
                         radius: Size::new_points(paint_props.fg_stroke.width * 0.5),
                         color: paint_props.fg_stroke.color,
@@ -1241,20 +1229,6 @@ impl SceneSpatial {
             .collect()
     }
 
-    // TODO(cmc): maybe we just store that from the beginning once glow is gone?
-    pub fn point_cloud_points(&self) -> Vec<PointCloudPoint> {
-        crate::profile_function!();
-        self.render_primitives
-            .points_3d
-            .iter()
-            .map(|point| PointCloudPoint {
-                position: point.pos,
-                radius: point.radius,
-                color: point.color,
-            })
-            .collect()
-    }
-
     pub fn picking(
         &self,
         pointer_in_ui: glam::Vec2,
@@ -1289,21 +1263,31 @@ impl SceneSpatial {
 
         {
             crate::profile_scope!("points 3d");
-            for point in &render_primitives.points_3d {
-                if point.instance_id_hash.is_some() {
-                    // TODO(emilk): take point radius into account
-                    let pos_in_ui = ui_from_world.project_point3(point.pos);
-                    if pos_in_ui.z < 0.0 {
-                        continue; // TODO(emilk): don't we expect negative Z!? RHS etc
-                    }
-                    let dist_sq = pos_in_ui.truncate().distance_squared(pointer_in_ui);
-                    if dist_sq < max_side_dist_sq {
-                        let t = pos_in_ui.z.abs();
-                        if t < closest_z || dist_sq < closest_side_dist_sq {
-                            closest_z = t;
-                            closest_side_dist_sq = dist_sq;
-                            closest_instance_id = Some(point.instance_id_hash);
-                        }
+            debug_assert_eq!(
+                render_primitives.point_ids.len(),
+                render_primitives.points.len()
+            );
+            for (point, instance_id_hash) in render_primitives
+                .points
+                .iter()
+                .zip(render_primitives.point_ids.iter())
+            {
+                if !instance_id_hash.is_some() {
+                    continue;
+                }
+
+                // TODO(emilk): take point radius into account
+                let pos_in_ui = ui_from_world.project_point3(point.position);
+                if pos_in_ui.z < 0.0 {
+                    continue; // TODO(emilk): don't we expect negative Z!? RHS etc
+                }
+                let dist_sq = pos_in_ui.truncate().distance_squared(pointer_in_ui);
+                if dist_sq < max_side_dist_sq {
+                    let t = pos_in_ui.z.abs();
+                    if t < closest_z || dist_sq < closest_side_dist_sq {
+                        closest_z = t;
+                        closest_side_dist_sq = dist_sq;
+                        closest_instance_id = Some(*instance_id_hash);
                     }
                 }
             }

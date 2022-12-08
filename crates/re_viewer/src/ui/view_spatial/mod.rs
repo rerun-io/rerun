@@ -9,8 +9,7 @@ pub use self::space_camera_3d::SpaceCamera3D;
 
 mod scene;
 pub use self::scene::{
-    HoverableImage, Label2D, Label2DTarget, Label3D, MeshSource, MeshSourceData, Point3D,
-    SceneSpatial,
+    Image, Label2D, Label2DTarget, Label3D, MeshSource, MeshSourceData, SceneSpatial,
 };
 
 use re_renderer::Color32;

@@ -13,7 +13,7 @@ use re_renderer::{
 
 use crate::{
     misc::HoveredSpace,
-    ui::view_spatial::{HoverableImage, Label2DTarget, SceneSpatial},
+    ui::view_spatial::{Image, Label2DTarget, SceneSpatial},
     Selection, ViewerContext,
 };
 
@@ -357,7 +357,7 @@ fn view_2d_scrollable(
         }
 
         for img in &scene.ui_elements.images {
-            let HoverableImage {
+            let Image {
                 instance_hash,
                 tensor,
                 meter,
@@ -452,8 +452,7 @@ fn view_2d_scrollable(
                     .to_draw_data(ctx.render_ctx),
             )
             .queue_draw(
-                &PointCloudDrawData::new(ctx.render_ctx, &scene.render_primitives.points_2d)
-                    .unwrap(),
+                &PointCloudDrawData::new(ctx.render_ctx, &scene.render_primitives.points).unwrap(),
             )
             .queue_draw(
                 &RectangleDrawData::new(
