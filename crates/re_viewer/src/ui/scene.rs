@@ -2,8 +2,8 @@ use ahash::HashMap;
 use nohash_hasher::IntSet;
 
 use re_data_store::{
-    FieldName, FieldStore, LogDb, ObjPath, ObjStore, ObjectsProperties, TimeInt, TimeQuery,
-    Timeline,
+    FieldName, FieldStore, InstanceIdHash, LogDb, ObjPath, ObjStore, ObjectsProperties, TimeInt,
+    TimeQuery, Timeline,
 };
 use re_log_types::ObjectType;
 
@@ -71,7 +71,7 @@ impl<'s> SceneQuery<'s> {
             plot,
         } = &mut scene;
         two_d.load_objects(ctx, self);
-        three_d.load_objects(ctx, self);
+        three_d.load_objects(ctx, self, InstanceIdHash::NONE);
         text.load_objects(ctx, self, &view_text::ViewTextFilters::default());
         tensor.load_objects(ctx, self);
         plot.load_objects(ctx, self);

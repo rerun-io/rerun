@@ -13,8 +13,12 @@ use pyo3::{
 };
 
 use re_log_types::{
+    context,
     context::{ClassId, KeypointId},
-    LoggedData, *,
+    coordinates, AnnotationContext, ApplicationId, BBox2D, BatchIndex, Data, DataVec,
+    EncodedMesh3D, Index, LoggedData, Mesh3D, MeshFormat, MeshId, ObjPath, ObjectType, PathOp,
+    RecordingId, TensorDataStore, TensorDataType, TensorDataTypeTrait, TensorDimension, TensorId,
+    Time, TimeInt, TimePoint, TimeType, Timeline, ViewCoordinates,
 };
 
 use rerun_sdk::global_session;
@@ -514,7 +518,7 @@ fn log_view_coordinates_xyz(
     right_handed: Option<bool>,
     timeless: bool,
 ) -> PyResult<()> {
-    use re_log_types::coordinates::*;
+    use re_log_types::coordinates::{Handedness, ViewCoordinates};
 
     let coordinates: ViewCoordinates = xyz.parse().map_err(PyTypeError::new_err)?;
 
@@ -541,7 +545,7 @@ fn log_view_coordinates_up_handedness(
     right_handed: bool,
     timeless: bool,
 ) -> PyResult<()> {
-    use re_log_types::coordinates::*;
+    use re_log_types::coordinates::{Handedness, SignedAxis3, ViewCoordinates};
 
     let up = up.parse::<SignedAxis3>().map_err(PyTypeError::new_err)?;
     let handedness = Handedness::from_right_handed(right_handed);

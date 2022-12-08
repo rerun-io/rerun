@@ -1,0 +1,5 @@
+venv/
+**/*.so
+examples/
+target
+target*

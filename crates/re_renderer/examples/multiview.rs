@@ -14,7 +14,7 @@ use re_renderer::{
     },
     resource_managers::ResourceLifeTime,
     view_builder::{OrthographicCameraMode, Projection, TargetConfiguration, ViewBuilder},
-    Color32, LineStripSeriesBuilder, RenderContext, Rgba,
+    Color32, LineStripSeriesBuilder, RenderContext, Rgba, Size,
 };
 use winit::event::{ElementState, VirtualKeyCode};
 
@@ -103,7 +103,7 @@ fn build_lines(re_ctx: &mut RenderContext, seconds_since_startup: f32) -> LineDr
     builder
         .add_strip(lorenz_points.into_iter())
         .color(Color32::from_rgb(255, 191, 0))
-        .radius(0.05);
+        .radius(Size::new_points(1.0));
 
     // Green Zig-Zag arrow
     builder
@@ -117,7 +117,7 @@ fn build_lines(re_ctx: &mut RenderContext, seconds_since_startup: f32) -> LineDr
             .into_iter(),
         )
         .color(Color32::GREEN)
-        .radius(0.05)
+        .radius(Size::new_scene(0.05))
         .flags(LineStripFlags::CAP_END_TRIANGLE | LineStripFlags::CAP_START_ROUND);
 
     // Blue spiral
@@ -130,7 +130,7 @@ fn build_lines(re_ctx: &mut RenderContext, seconds_since_startup: f32) -> LineDr
             )
         }))
         .color(Color32::BLUE)
-        .radius(0.1)
+        .radius(Size::new_scene(0.1))
         .flags(LineStripFlags::CAP_END_TRIANGLE);
 
     builder.to_draw_data(re_ctx)
@@ -184,7 +184,7 @@ impl Example for Multiview {
                     rnd.gen_range(random_point_range.clone()),
                     rnd.gen_range(random_point_range.clone()),
                 ),
-                radius: rnd.gen_range(0.005..0.05),
+                radius: Size::new_scene(rnd.gen_range(0.005..0.05)),
                 color: random_color(&mut rnd),
             })
             .collect_vec();
@@ -230,6 +230,7 @@ impl Example for Multiview {
         re_ctx: &mut RenderContext,
         resolution: [u32; 2],
         time: &framework::Time,
+        pixels_from_point: f32,
     ) -> Vec<framework::ViewDrawResult> {
         if matches!(self.camera_control, CameraControl::RotateAroundCenter) {
             let seconds_since_startup = time.seconds_since_startup();
@@ -281,6 +282,7 @@ impl Example for Multiview {
                         resolution_in_pixel: splits[$n].resolution_in_pixel,
                         view_from_world,
                         projection_from_view: projection_from_view.clone(),
+                        pixels_from_point,
                     },
                     &skybox,
                     &$name

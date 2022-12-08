@@ -8,7 +8,7 @@ use re_data_store::{InstanceId, InstanceIdHash, ObjPath};
 use re_renderer::{
     renderer::{PointCloudDrawData, PointCloudPoint, RectangleDrawData},
     view_builder::{TargetConfiguration, ViewBuilder},
-    RenderContext,
+    RenderContext, Size,
 };
 
 use crate::{misc::HoveredSpace, Selection, ViewerContext};
@@ -453,7 +453,7 @@ fn view_2d_scrollable(
             line_builder
                 .add_axis_aligned_rectangle_outline_2d(glam::Vec2::ZERO, glam::vec2(w, h))
                 .color(paint_props.fg_stroke.color)
-                .radius(space_from_points * paint_props.fg_stroke.width * 0.5);
+                .radius(Size::new_points(paint_props.fg_stroke.width * 0.5));
         }
 
         if let Some(pointer_pos) = pointer_pos {
@@ -532,11 +532,11 @@ fn view_2d_scrollable(
         line_builder
             .add_axis_aligned_rectangle_outline_2d(bbox.min.into(), bbox.max.into())
             .color(paint_props.bg_stroke.color)
-            .radius(space_from_points * paint_props.bg_stroke.width * 0.5);
+            .radius(Size::new_points(paint_props.bg_stroke.width * 0.5));
         line_builder
             .add_axis_aligned_rectangle_outline_2d(bbox.min.into(), bbox.max.into())
             .color(paint_props.fg_stroke.color)
-            .radius(space_from_points * paint_props.fg_stroke.width * 0.5);
+            .radius(Size::new_points(paint_props.fg_stroke.width * 0.5));
 
         if let Some(pointer_pos) = pointer_pos {
             check_hovering(*instance_hash, rect_in_ui.distance_to_pos(pointer_pos));
@@ -577,7 +577,7 @@ fn view_2d_scrollable(
                     .map(|(a, b)| (glam::vec2(a.x, a.y), glam::vec2(b.x, b.y))),
             )
             .color(paint_props.bg_stroke.color)
-            .radius(paint_props.bg_stroke.width * 0.5 * space_from_points);
+            .radius(Size::new_points(paint_props.bg_stroke.width * 0.5));
         line_builder
             .add_segments_2d(
                 points
@@ -586,7 +586,7 @@ fn view_2d_scrollable(
                     .map(|(a, b)| (glam::vec2(a.x, a.y), glam::vec2(b.x, b.y))),
             )
             .color(paint_props.fg_stroke.color)
-            .radius(paint_props.fg_stroke.width * 0.5 * space_from_points);
+            .radius(Size::new_points(paint_props.fg_stroke.width * 0.5));
 
         for &[a, b] in bytemuck::cast_slice::<_, [egui::Pos2; 2]>(points) {
             let a = ui_from_space.transform_pos(a);
@@ -618,12 +618,12 @@ fn view_2d_scrollable(
         let depth = line_builder.next_2d_z; // put the points in front of all the lines we have so far.
         render_points.push(PointCloudPoint {
             position: glam::vec3(pos.x, pos.y, depth),
-            radius: space_from_points * (radius + 1.0),
+            radius: Size::new_points(radius + 1.0),
             color: paint_props.bg_stroke.color,
         });
         render_points.push(PointCloudPoint {
             position: glam::vec3(pos.x, pos.y, depth - 0.1),
-            radius: space_from_points * radius,
+            radius: Size::new_points(radius),
             color: paint_props.fg_stroke.color,
         });
 
@@ -760,10 +760,10 @@ fn setup_view_builder(
     space_from_pixel: f32,
     space_name: &str,
 ) -> anyhow::Result<ViewBuilder> {
+    let pixels_from_points = painter.ctx().pixels_per_point();
     let resolution_in_pixel = {
         let rect = painter.clip_rect();
-        let ppp = painter.ctx().pixels_per_point();
-        let resolution = (rect.size() * ppp).round();
+        let resolution = (rect.size() * pixels_from_points).round();
 
         [resolution.x as u32, resolution.y as u32]
     };
@@ -777,6 +777,7 @@ fn setup_view_builder(
             space_name.into(),
             resolution_in_pixel,
             space_from_pixel,
+            pixels_from_points,
             glam::vec2(camera_position_space.x, camera_position_space.y),
         ),
     )?;

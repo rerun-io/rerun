@@ -102,9 +102,13 @@ impl<'de> serde::Deserialize<'de> for ArrowMsg {
 #[cfg(test)]
 #[cfg(feature = "serde")]
 mod tests {
-    use super::*;
-    use crate::{datagen::*, ObjPath, TimePoint};
     use serde_test::{assert_tokens, Token};
+
+    use super::{ArrowMsg, Chunk, MsgId, Schema};
+    use crate::{
+        datagen::{build_frame_nr, build_message, build_positions, build_rects},
+        ObjPath, TimePoint,
+    };
 
     #[test]
     fn test_serialized_tokens() {

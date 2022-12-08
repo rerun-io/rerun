@@ -8,8 +8,11 @@ use polars::prelude::{DataFrame, Series};
 
 use re_arrow_store::{DataStore, DataStoreConfig, TimeInt, TimeQuery};
 use re_log_types::{
-    datagen::*, ComponentNameRef, Duration, ObjPath as EntityPath, Time, TimePoint, TimeType,
-    Timeline,
+    datagen::{
+        build_frame_nr, build_instances, build_log_time, build_message, build_positions,
+        build_rects,
+    },
+    ComponentNameRef, Duration, ObjPath as EntityPath, Time, TimePoint, TimeType, Timeline,
 };
 
 // ---

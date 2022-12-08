@@ -2,7 +2,7 @@ use std::{collections::HashMap, hash::Hash, sync::atomic::Ordering};
 
 use slotmap::{Key, SlotMap};
 
-use super::resource::*;
+use super::resource::{PoolError, ResourceStatistics};
 
 struct StoredResource<Res> {
     resource: Res,

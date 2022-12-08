@@ -28,18 +28,24 @@ use crate::{
         GpuBindGroupLayoutHandle, GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc,
         ShaderModuleDesc, TextureDesc,
     },
+    Size,
 };
 
-use super::*;
+use super::{
+    DrawData, FileResolver, FileSystem, RenderContext, Renderer, SharedRendererData,
+    WgpuResourcePools,
+};
 
 mod gpu_data {
     // Don't use `wgsl_buffer_types` since none of this data goes into a buffer, so its alignment rules don't apply.
+
+    use crate::Size;
 
     #[repr(C, packed)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct PositionData {
         pub pos: glam::Vec3,
-        pub radius: f32, // Might use a f16 here to free memory for more data!
+        pub radius: Size, // Might use a f16 here to free memory for more data!
     }
     static_assertions::assert_eq_size!(PositionData, glam::Vec4);
 }
@@ -62,8 +68,7 @@ pub struct PointCloudPoint {
     pub position: glam::Vec3,
 
     /// Radius of the point in world space
-    /// TODO(andreas) Should be able to specify if this is in pixels, or has a minimum width in pixels.
-    pub radius: f32,
+    pub radius: Size,
 
     /// The points color in srgb color space. Alpha unused right now
     pub color: Color32,

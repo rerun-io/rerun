@@ -2,11 +2,17 @@
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 use criterion::{criterion_group, criterion_main, Criterion};
-
 use itertools::Itertools;
 use nohash_hasher::IntMap;
-use re_data_store::{query::visit_type_data_3, *};
-use re_log_types::*;
+
+use re_data_store::{
+    query::visit_type_data_3, DataStore, FieldName, Index, ObjPath, ObjPathComp, ObjTypePath,
+    ObjTypePathComp, TimeInt, TimeQuery, Timeline,
+};
+use re_log_types::{
+    obj_path, BatchIndex, Data, DataMsg, DataPath, DataVec, IndexHash, LoggedData, MsgId,
+    ObjectType, TimePoint, TimeType,
+};
 
 #[cfg(not(debug_assertions))]
 const NUM_FRAMES: i64 = 1_000;

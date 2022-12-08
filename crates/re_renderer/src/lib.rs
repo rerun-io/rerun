@@ -9,6 +9,9 @@ pub mod renderer;
 pub mod resource_managers;
 pub mod view_builder;
 
+mod size;
+pub use size::Size;
+
 mod context;
 pub use context::RenderContext;
 

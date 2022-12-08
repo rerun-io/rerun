@@ -1,7 +1,10 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use itertools::Itertools;
-use re_log_types::*;
+use re_log_types::{
+    DataPath, DataType, FieldName, LoggedData, MsgId, ObjPath, ObjPathComp, PathOp, TimeInt,
+    TimePoint, Timeline,
+};
 
 // ----------------------------------------------------------------------------
 
@@ -280,7 +283,7 @@ pub enum MonoOrMulti {
     Multi,
 }
 
-/// Column transform of [`Data`].
+/// Column transform of [`re_log_types::Data`].
 #[derive(Default)]
 pub struct DataColumns {
     /// When do we have data?

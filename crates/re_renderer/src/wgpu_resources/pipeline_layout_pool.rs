@@ -1,6 +1,10 @@
 use crate::debug_label::DebugLabel;
 
-use super::{bind_group_layout_pool::*, resource::*, static_resource_pool::*};
+use super::{
+    bind_group_layout_pool::{GpuBindGroupLayoutHandle, GpuBindGroupLayoutPool},
+    resource::PoolError,
+    static_resource_pool::StaticResourcePool,
+};
 
 slotmap::new_key_type! { pub struct GpuPipelineLayoutHandle; }
 

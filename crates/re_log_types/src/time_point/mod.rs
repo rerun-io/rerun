@@ -5,9 +5,10 @@ mod time_int;
 mod timeline;
 
 use crate::time::Time;
-pub use arrow::*;
-pub use time_int::*;
-pub use timeline::*;
+
+// Re-exports
+pub use time_int::TimeInt;
+pub use timeline::{Timeline, TimelineName};
 
 /// A point in time.
 ///

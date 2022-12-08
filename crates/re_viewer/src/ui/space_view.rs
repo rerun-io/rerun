@@ -1,7 +1,10 @@
 use re_data_store::{ObjPath, ObjectTree, ObjectTreeProperties, TimeInt};
 use re_log_types::Transform;
 
-use crate::misc::{space_info::*, ViewerContext};
+use crate::misc::{
+    space_info::{SpaceInfo, SpacesInfo},
+    ViewerContext,
+};
 
 use super::{view_2d, view_3d, view_plot, view_tensor, view_text};
 
@@ -100,7 +103,11 @@ impl SpaceView {
                 _ = extra_headroom; // ignored - put overlay buttons on top of the view.
 
                 let mut scene = view_3d::Scene3D::default();
-                scene.load_objects(ctx, &query);
+                scene.load_objects(
+                    ctx,
+                    &query,
+                    self.view_state.state_3d.hovered_instance_hash(),
+                );
                 self.view_state
                     .ui_3d(ctx, ui, &self.space_path, spaces_info, space_info, scene);
             }

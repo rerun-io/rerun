@@ -3,7 +3,11 @@ use egui::{color_picker, Vec2};
 use itertools::Itertools;
 use re_data_store::InstanceId;
 use re_log_types::context::AnnotationInfo;
-pub use re_log_types::*;
+use re_log_types::{
+    context, AnnotationContext, Arrow3D, ArrowMsg, BeginRecordingMsg, Data, DataMsg, DataPath,
+    DataVec, LogMsg, LoggedData, MsgId, ObjPath, ObjectType, PathOp, PathOpMsg, Pinhole,
+    RecordingInfo, Rigid3, TimePoint, Transform, TypeMsg, ViewCoordinates,
+};
 
 use crate::misc::ViewerContext;
 use crate::ui::annotations::auto_color;

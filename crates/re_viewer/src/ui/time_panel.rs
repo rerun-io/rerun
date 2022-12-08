@@ -3,10 +3,16 @@ use std::{
     ops::RangeInclusive,
 };
 
-use egui::*;
+use egui::{
+    lerp, pos2, remap, remap_clamp, show_tooltip_at_pointer, Align2, Color32, CursorIcon, Id,
+    NumExt, PointerButton, Pos2, Rect, Rgba, Shape, Stroke, Vec2,
+};
 
 use re_data_store::{InstanceId, ObjectTree};
-use re_log_types::*;
+use re_log_types::{
+    DataPath, Duration, MsgId, ObjPathComp, Time, TimeInt, TimeRange, TimeRangeF, TimeReal,
+    TimeType,
+};
 
 use crate::{
     misc::time_control::Looping, time_axis::TimelineAxis, Selection, TimeControl, TimeView,
@@ -268,8 +274,6 @@ impl TimePanel {
         tree: &ObjectTree,
         ui: &mut egui::Ui,
     ) {
-        use egui::*;
-
         if !tree
             .prefix_times
             .has_timeline(ctx.rec_cfg.time_ctrl.timeline())
