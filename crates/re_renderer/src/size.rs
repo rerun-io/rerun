@@ -17,18 +17,25 @@ impl Size {
     /// Automatically sized based the screen size, but larger by a renderer defined factor.
     pub const AUTO_LARGE: Self = Self(-f32::INFINITY);
 
+    /// Creates a new size in scene units.
+    ///
+    /// Values passed must be finite positive.
     #[inline]
     pub fn new_scene(size: f32) -> Self {
         debug_assert!(size.is_finite() && size >= 0.0, "Bad size: {size}");
         Self(size)
     }
 
+    /// Creates a new size in ui point units.
+    ///
+    /// Values passed must be finite positive.
     #[inline]
     pub fn new_points(size: f32) -> Self {
         debug_assert!(size.is_finite() && size >= 0.0, "Bad size: {size}");
         Self(-size)
     }
 
+    /// Returns true if the size is an automatically determined size.
     #[inline]
     pub fn is_auto(&self) -> bool {
         self.0.is_infinite()
