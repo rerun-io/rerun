@@ -1,7 +1,10 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use itertools::Itertools;
-use re_log_types::*;
+use re_log_types::{
+    DataPath, DataType, FieldName, LoggedData, MsgId, ObjPath, ObjPathComp, PathOp, TimeInt,
+    TimePoint, Timeline,
+};
 
 // ----------------------------------------------------------------------------
 

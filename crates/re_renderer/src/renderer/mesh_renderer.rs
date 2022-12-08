@@ -21,7 +21,10 @@ use crate::{
     Color32,
 };
 
-use super::*;
+use super::{
+    DrawData, FileResolver, FileSystem, RenderContext, Renderer, SharedRendererData,
+    WgpuResourcePools,
+};
 
 /// Element in the gpu residing instance buffer.
 ///

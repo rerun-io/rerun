@@ -9,7 +9,7 @@ use slotmap::{Key, SecondaryMap, SlotMap};
 
 use smallvec::{smallvec, SmallVec};
 
-use super::resource::*;
+use super::resource::PoolError;
 
 pub trait SizedResourceDesc {
     fn resource_size_in_bytes(&self) -> u64;

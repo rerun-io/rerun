@@ -4,7 +4,7 @@ use crate::debug_label::DebugLabel;
 
 use super::{
     dynamic_resource_pool::{DynamicResourcePool, SizedResourceDesc},
-    resource::*,
+    resource::PoolError,
 };
 
 slotmap::new_key_type! { pub struct GpuTextureHandle; }

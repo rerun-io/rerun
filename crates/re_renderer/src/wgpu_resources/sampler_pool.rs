@@ -1,6 +1,6 @@
 use std::{hash::Hash, num::NonZeroU8};
 
-use super::{resource::*, static_resource_pool::*};
+use super::{resource::PoolError, static_resource_pool::StaticResourcePool};
 use crate::debug_label::DebugLabel;
 
 slotmap::new_key_type! { pub struct GpuSamplerHandle; }

@@ -3,7 +3,12 @@ use smallvec::SmallVec;
 
 use crate::debug_label::DebugLabel;
 
-use super::{pipeline_layout_pool::*, resource::*, shader_module_pool::*, static_resource_pool::*};
+use super::{
+    pipeline_layout_pool::{GpuPipelineLayoutHandle, GpuPipelineLayoutPool},
+    resource::PoolError,
+    shader_module_pool::{GpuShaderModuleHandle, GpuShaderModulePool},
+    static_resource_pool::StaticResourcePool,
+};
 
 slotmap::new_key_type! { pub struct GpuRenderPipelineHandle; }
 

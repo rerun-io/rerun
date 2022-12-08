@@ -8,7 +8,7 @@ use crate::{
     },
 };
 
-use super::*;
+use super::{DrawData, FileResolver, FileSystem, RenderContext, Renderer};
 
 use smallvec::smallvec;
 

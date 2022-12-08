@@ -100,7 +100,10 @@ mod tests {
     use serde_test::{assert_tokens, Token};
 
     use super::*;
-    use crate::{datagen::*, ObjPath};
+    use crate::{
+        datagen::{build_frame_nr, build_message, build_positions, build_rects},
+        ObjPath,
+    };
 
     #[test]
     fn test_serialized_tokens() {

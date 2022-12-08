@@ -1,5 +1,5 @@
 use itertools::Itertools as _;
-use re_log_types::{context::ClassId, *};
+use re_log_types::{context::ClassId, TensorDataMeaning, TensorDataStore};
 
 use crate::misc::{tensor_image_cache, ViewerContext};
 
@@ -66,7 +66,7 @@ pub fn show_zoomed_image_region(
     pointer_pos: egui::Pos2,
     meter: Option<f32>,
 ) {
-    use egui::*;
+    use egui::{color_picker, pos2, remap, Color32, Mesh, NumExt, Rect, Vec2};
 
     // Show the surrounding pixels:
     let texel_radius = 12;

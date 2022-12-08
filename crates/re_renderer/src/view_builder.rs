@@ -3,9 +3,12 @@ use parking_lot::RwLock;
 use std::sync::Arc;
 
 use crate::{
-    context::*,
+    context::RenderContext,
     global_bindings::FrameUniformBuffer,
-    renderer::{compositor::*, DrawData, Renderer},
+    renderer::{
+        compositor::{Compositor, CompositorDrawData},
+        DrawData, Renderer,
+    },
     wgpu_resources::{BufferDesc, GpuBindGroupHandleStrong, GpuTextureHandleStrong, TextureDesc},
     DebugLabel, Rgba,
 };

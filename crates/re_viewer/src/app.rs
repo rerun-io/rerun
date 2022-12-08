@@ -9,7 +9,7 @@ use poll_promise::Promise;
 
 use re_data_store::log_db::LogDb;
 use re_format::format_number;
-use re_log_types::*;
+use re_log_types::{ApplicationId, DataMsg, LogMsg, PathOpMsg, RecordingId, TimeInt, Timeline};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::Receiver;
 
@@ -541,7 +541,7 @@ impl App {
 }
 
 fn preview_files_being_dropped(egui_ctx: &egui::Context) {
-    use egui::*;
+    use egui::{Align2, Color32, Id, LayerId, Order, TextStyle};
 
     // Preview hovering files:
     if !egui_ctx.input().raw.hovered_files.is_empty() {

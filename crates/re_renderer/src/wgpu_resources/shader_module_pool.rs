@@ -5,7 +5,10 @@ use anyhow::Context as _;
 
 use crate::{debug_label::DebugLabel, FileResolver, FileSystem};
 
-use super::{resource::*, static_resource_pool::StaticResourcePool};
+use super::{
+    resource::{PoolError, ResourceStatistics},
+    static_resource_pool::StaticResourcePool,
+};
 
 // ---
 
