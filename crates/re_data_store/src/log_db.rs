@@ -269,7 +269,7 @@ impl LogDb {
                 // Add to existing timelines (if any):
                 let mut time_point = TimePoint::default();
                 for &timeline in self.timelines() {
-                    time_point.0.insert(timeline, TimeInt::BEGINNING);
+                    time_point.insert(timeline, TimeInt::BEGINNING);
                 }
                 self.add_data_msg(msg_id, &time_point, data_path, data);
             }
@@ -282,7 +282,7 @@ impl LogDb {
                 let is_new_timeline = self.times_per_timeline().get(timeline).is_none();
                 if is_new_timeline {
                     re_log::debug!("New timeline added: {timeline:?}");
-                    new_timelines.0.insert(*timeline, TimeInt::BEGINNING);
+                    new_timelines.insert(*timeline, TimeInt::BEGINNING);
                 }
             }
 
@@ -291,7 +291,7 @@ impl LogDb {
                 .add_data_msg(msg_id, time_point, data_path, data);
 
             // …finally, if needed, add outstanding timeless data to any newly created timelines.
-            if !new_timelines.0.is_empty() {
+            if !new_timelines.is_empty() {
                 let timeless_data_messages = self
                     .timeless_message_ids
                     .iter()

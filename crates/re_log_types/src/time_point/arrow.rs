@@ -112,11 +112,8 @@ impl<'a> Iterator for TimePointIterator<'a> {
                 .downcast_ref::<Int64Array>()
                 .expect("times");
 
-            let time_points = timelines
-                .iter()
-                .zip(types.iter())
-                .zip(times.iter())
-                .map(|((timeline, ty), time)| {
+            let time_points = timelines.iter().zip(types.iter()).zip(times.iter()).map(
+                |((timeline, ty), time)| {
                     (
                         Timeline::new(
                             timeline.unwrap(),
@@ -125,10 +122,10 @@ impl<'a> Iterator for TimePointIterator<'a> {
                         ),
                         TimeInt::from(*time.unwrap()),
                     )
-                })
-                .collect();
+                },
+            );
 
-            Some(TimePoint(time_points))
+            Some(TimePoint::from_iter(time_points))
         } else {
             None
         }
@@ -177,20 +174,14 @@ fn test_timepoint_roundtrip() {
     use arrow2_convert::{deserialize::TryIntoCollection, serialize::TryIntoArrow};
 
     let time_points_in = vec![
-        TimePoint(
-            [
-                datagen::build_log_time(crate::Time::from_ns_since_epoch(100)),
-                datagen::build_frame_nr(1234),
-            ]
-            .into(),
-        ),
-        TimePoint(
-            [
-                datagen::build_log_time(crate::Time::from_ns_since_epoch(200)),
-                datagen::build_frame_nr(2345),
-            ]
-            .into(),
-        ),
+        TimePoint::from([
+            datagen::build_log_time(crate::Time::from_ns_since_epoch(100)),
+            datagen::build_frame_nr(1234),
+        ]),
+        TimePoint::from([
+            datagen::build_log_time(crate::Time::from_ns_since_epoch(200)),
+            datagen::build_frame_nr(2345),
+        ]),
     ];
 
     let array: Box<dyn Array> = time_points_in.try_into_arrow().unwrap();

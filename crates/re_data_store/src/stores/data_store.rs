@@ -126,7 +126,7 @@ impl DataStore {
             None
         };
 
-        for (timeline, time_int) in &time_point.0 {
+        for (timeline, time_int) in time_point.iter() {
             let store = self.entry(timeline, timeline.typ());
 
             insert_msg_into_timeline_store(

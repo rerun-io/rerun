@@ -57,7 +57,7 @@ fn build_messages(n: usize) -> Vec<(Schema, Chunk<Box<dyn Array>>)> {
     (0..NUM_FRAMES)
         .into_iter()
         .map(|frame_idx| {
-            let time_point = TimePoint([build_frame_nr(frame_idx)].into());
+            let time_point = TimePoint::from([build_frame_nr(frame_idx)]);
             build_message(&ent_path, &time_point, [build_positions(n), build_rects(n)])
         })
         .collect()

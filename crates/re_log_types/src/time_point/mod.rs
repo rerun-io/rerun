@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{btree_map, BTreeMap};
 
 mod arrow;
 mod time_int;
@@ -18,7 +18,7 @@ pub use timeline::*;
 /// and will hit all time queries. In other words, it is always there.
 #[derive(Clone, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct TimePoint(pub BTreeMap<Timeline, TimeInt>);
+pub struct TimePoint(BTreeMap<Timeline, TimeInt>);
 
 impl TimePoint {
     /// Logging to this time means the data will show upp in all timelines,
@@ -28,14 +28,37 @@ impl TimePoint {
         Self::default()
     }
 
+    pub fn get(&self, timeline: &Timeline) -> Option<&TimeInt> {
+        self.0.get(timeline)
+    }
+
+    pub fn insert(&mut self, timeline: Timeline, time: TimeInt) -> Option<TimeInt> {
+        self.0.insert(timeline, time)
+    }
+
     #[inline]
     pub fn is_timeless(&self) -> bool {
         self.0.is_empty()
     }
 
     #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    #[inline]
     pub fn timelines(&self) -> impl ExactSizeIterator<Item = &Timeline> {
         self.0.keys()
+    }
+
+    #[inline]
+    pub fn times(&self) -> impl ExactSizeIterator<Item = &TimeInt> {
+        self.0.values()
+    }
+
+    #[inline]
+    pub fn iter(&self) -> impl ExactSizeIterator<Item = (&Timeline, &TimeInt)> {
+        self.0.iter()
     }
 }
 
@@ -74,16 +97,26 @@ impl TimeType {
 
 // ----------------------------------------------------------------------------
 
-impl<I> From<I> for TimePoint
-where
-    I: IntoIterator<Item = (&'static str, TimeType, TimeInt)>,
-{
+impl IntoIterator for TimePoint {
+    type Item = (Timeline, TimeInt);
+    type IntoIter = btree_map::IntoIter<Timeline, TimeInt>;
+
     #[inline]
-    fn from(into: I) -> Self {
-        Self(
-            into.into_iter()
-                .map(|(name, tt, ti)| (Timeline::new(name, tt), ti))
-                .collect(),
-        )
+    fn into_iter(self) -> btree_map::IntoIter<Timeline, TimeInt> {
+        self.0.into_iter()
+    }
+}
+
+impl FromIterator<(Timeline, TimeInt)> for TimePoint {
+    #[inline]
+    fn from_iter<T: IntoIterator<Item = (Timeline, TimeInt)>>(iter: T) -> Self {
+        Self(iter.into_iter().collect())
+    }
+}
+
+impl<const N: usize> From<[(Timeline, TimeInt); N]> for TimePoint {
+    #[inline]
+    fn from(timelines: [(Timeline, TimeInt); N]) -> Self {
+        Self(timelines.into_iter().collect())
     }
 }

@@ -23,7 +23,7 @@ fn test_timeless_data() {
         time: i64,
     ) {
         let mut time_point = TimePoint::default();
-        time_point.0.insert(timeline, TimeInt::from(time));
+        time_point.insert(timeline, TimeInt::from(time));
 
         log_db.add(
             DataMsg {

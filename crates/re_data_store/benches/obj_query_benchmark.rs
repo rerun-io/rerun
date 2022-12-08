@@ -67,7 +67,7 @@ fn mono_data_messages() -> Vec<DataMsg> {
     for frame_idx in 0..NUM_FRAMES {
         for point_idx in 0..NUM_POINTS {
             let mut time_point = TimePoint::default();
-            time_point.0.insert(timeline(), TimeInt::from(frame_idx));
+            time_point.insert(timeline(), TimeInt::from(frame_idx));
 
             let obj_path = obj_path!("points", Index::Sequence(point_idx as _));
 
@@ -109,7 +109,7 @@ fn batch_data_messages(batch_type: &BatchType) -> Vec<DataMsg> {
 
     for frame_idx in 0..NUM_FRAMES {
         let mut time_point = TimePoint::default();
-        time_point.0.insert(timeline(), TimeInt::from(frame_idx));
+        time_point.insert(timeline(), TimeInt::from(frame_idx));
 
         let obj_path = obj_path!("points");
 

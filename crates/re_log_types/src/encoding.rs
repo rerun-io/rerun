@@ -177,8 +177,7 @@ fn test_encode_decode() {
 
     // Some fake log data
     let time_point = [(
-        "log_time",
-        TimeType::Time,
+        Timeline::new("log_time", TimeType::Time),
         Time::from_ns_since_epoch(1_649_934_625_012_345_678).into(),
     )]
     .into();

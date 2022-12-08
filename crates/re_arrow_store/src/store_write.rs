@@ -87,7 +87,7 @@ fn extract_timelines(
         "Expected a single TimePoint, but found more!"
     );
 
-    Ok(timepoint.0.into_iter().collect())
+    Ok(timepoint.into_iter().collect())
 }
 
 fn extract_components<'data>(

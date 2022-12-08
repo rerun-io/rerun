@@ -150,7 +150,7 @@ mod tests {
     fn test_roundtrip_payload() {
         let (schema, chunk) = build_message(
             &ObjPath::from("rects"),
-            &TimePoint([build_frame_nr(0)].into()),
+            &TimePoint::from([build_frame_nr(0)]),
             [build_positions(1), build_rects(1)],
         );
 

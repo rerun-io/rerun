@@ -76,7 +76,7 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
         tracker.insert_data(
             store,
             &ent_path,
-            &TimePoint([build_log_time(now), build_frame_nr(frame40)].into()),
+            [build_log_time(now), build_frame_nr(frame40)],
             [build_instances(nb_instances)],
         );
     }
@@ -225,31 +225,31 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
         tracker.insert_data(
             store,
             &ent_path,
-            &TimePoint([build_log_time(now_minus_10ms), build_frame_nr(frame43)].into()),
+            [build_log_time(now_minus_10ms), build_frame_nr(frame43)],
             [build_rects(nb_instances)],
         );
         tracker.insert_data(
             store,
             &ent_path,
-            &TimePoint([build_log_time(now), build_frame_nr(frame42)].into()),
+            [build_log_time(now), build_frame_nr(frame42)],
             [build_rects(nb_instances)],
         );
         tracker.insert_data(
             store,
             &ent_path,
-            &TimePoint([build_log_time(now_plus_10ms), build_frame_nr(frame41)].into()),
+            [build_log_time(now_plus_10ms), build_frame_nr(frame41)],
             [build_instances(nb_instances), build_rects(nb_instances)],
         );
         tracker.insert_data(
             store,
             &ent_path,
-            &TimePoint([build_log_time(now), build_frame_nr(frame42)].into()),
+            [build_log_time(now), build_frame_nr(frame42)],
             [build_instances(nb_instances)],
         );
         tracker.insert_data(
             store,
             &ent_path,
-            &TimePoint([build_log_time(now_minus_10ms), build_frame_nr(frame42)].into()),
+            [build_log_time(now_minus_10ms), build_frame_nr(frame42)],
             [build_positions(nb_instances)],
         );
     }
@@ -352,20 +352,22 @@ struct DataTracker {
 }
 
 impl DataTracker {
-    fn insert_data<const M: usize>(
+    fn insert_data<const N: usize, const M: usize>(
         &mut self,
         store: &mut DataStore,
         ent_path: &EntityPath,
-        timepoint: &TimePoint,
+        times: [(Timeline, TimeInt); N],
         components: [(ComponentNameRef<'static>, Schema, Box<dyn Array>); M],
     ) {
-        for time in timepoint.0.values() {
+        let timepoint = TimePoint::from(times);
+
+        for time in timepoint.times() {
             for (name, _, comp) in &components {
                 assert!(self.all_data.insert((name, *time), comp.clone()).is_none());
             }
         }
 
-        let (schema, components) = build_message(ent_path, timepoint, components);
+        let (schema, components) = build_message(ent_path, &timepoint, components);
         // eprintln!("inserting into '{ent_path}':\nschema: {schema:#?}\ncomponents: {components:#?}");
         // eprintln!("---\ninserting into '{ent_path}': [log_time, frame_nr], [rects]");
         store.insert(&schema, &components).unwrap();
