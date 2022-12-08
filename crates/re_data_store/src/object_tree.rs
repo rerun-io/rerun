@@ -87,7 +87,7 @@ impl ObjectTree {
         msg_id: MsgId,
         time_point: &TimePoint,
         data_path: &DataPath,
-        data: &LoggedData,
+        data: Option<&LoggedData>,
     ) -> Vec<(MsgId, TimePoint)> {
         crate::profile_function!();
         let obj_path = data_path.obj_path.to_components();
@@ -104,7 +104,9 @@ impl ObjectTree {
             Default::default()
         });
 
-        fields.add(msg_id, time_point, data);
+        if let Some(data) = data {
+            fields.add(msg_id, time_point, data);
+        }
 
         pending_clears
     }
