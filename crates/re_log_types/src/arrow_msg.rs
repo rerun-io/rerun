@@ -103,7 +103,7 @@ impl<'de> serde::Deserialize<'de> for ArrowMsg {
 #[cfg(feature = "serde")]
 mod tests {
     use super::*;
-    use crate::{datagen::*, ObjPath, TimePoint, TimeType, Timeline};
+    use crate::{datagen::*, ObjPath, TimePoint};
     use serde_test::{assert_tokens, Token};
 
     #[test]

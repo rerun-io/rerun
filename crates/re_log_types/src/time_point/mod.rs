@@ -36,6 +36,10 @@ impl TimePoint {
         self.0.insert(timeline, time)
     }
 
+    pub fn remove(&mut self, timeline: &Timeline) -> Option<TimeInt> {
+        self.0.remove(timeline)
+    }
+
     #[inline]
     pub fn is_timeless(&self) -> bool {
         self.0.is_empty()

@@ -125,7 +125,7 @@ impl<'a> Iterator for TimePointIterator<'a> {
                 },
             );
 
-            Some(TimePoint::from_iter(time_points))
+            Some(time_points.collect())
         } else {
             None
         }
