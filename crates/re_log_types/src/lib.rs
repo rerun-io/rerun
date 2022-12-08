@@ -53,7 +53,7 @@ pub use index::*;
 pub use objects::ObjectType;
 pub use path::*;
 pub use time::{Duration, Time};
-pub use time_point::*;
+pub use time_point::{TimeInt, TimePoint, TimeType, Timeline, TimelineName};
 
 pub type ComponentName = String;
 pub type ComponentNameRef<'a> = &'a str;
