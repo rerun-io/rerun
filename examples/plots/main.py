@@ -20,7 +20,7 @@ import rerun
 def clamp(n, smallest, largest):  # type: ignore[no-untyped-def]
     return max(smallest, min(n, largest))
 
-def log_k_lms_curve() -> None:
+def log_klms_schedule() -> None:
     """Example showing the K-LMS noise schedule for diffusion models.
     Square the linear interpolation between sqrt(beta_start) and sqrt(beta_end)
     """
@@ -108,7 +108,7 @@ def main() -> None:
         rerun.connect(args.addr)
 
     log_parabola()
-    log_klms_schedule()
+    log_k_lms_curve()
     log_trig()
     log_segmentation()
 
