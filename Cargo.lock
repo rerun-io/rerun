@@ -3628,6 +3628,7 @@ dependencies = [
  "itertools",
  "mimalloc",
  "nohash-hasher",
+ "parking_lot",
  "polars",
  "re_format",
  "re_log",
