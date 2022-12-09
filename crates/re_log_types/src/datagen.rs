@@ -7,13 +7,12 @@ use arrow2::{
     chunk::Chunk,
     datatypes::{DataType, Field, Schema},
 };
-use arrow2_convert::serialize::TryIntoArrow;
 
-use crate::field_types;
+use crate::field_types::{self};
 
 /// Create `len` dummy rectangles
-pub fn build_some_rects(len: usize) -> Box<dyn Array> {
-    let v = (0..len)
+pub fn build_some_rects(len: usize) -> Vec<field_types::Rect2D> {
+    (0..len)
         .into_iter()
         .map(|i| field_types::Rect2D {
             x: i as f32,
@@ -21,52 +20,41 @@ pub fn build_some_rects(len: usize) -> Box<dyn Array> {
             w: (i / 2) as f32,
             h: (i / 2) as f32,
         })
-        .collect::<Vec<_>>();
-    v.try_into_arrow().unwrap()
+        .collect()
 }
 
 /// Create `len` dummy colors
-pub fn build_some_colors(len: usize) -> Box<dyn Array> {
-    let v = (0..len)
+pub fn build_some_colors(len: usize) -> Vec<field_types::ColorRGBA> {
+    (0..len)
         .into_iter()
         .map(|i| field_types::ColorRGBA(i as u32))
-        .collect::<Vec<_>>();
-    v.try_into_arrow().unwrap()
+        .collect()
 }
 
 /// Create `len` dummy labels
-pub fn build_some_labels(len: usize) -> Box<dyn Array> {
-    let v = (0..len)
+pub fn build_some_labels(len: usize) -> Vec<String> {
+    (0..len).into_iter().map(|i| format!("label{i}")).collect()
+}
+
+pub fn build_some_point2d(len: usize) -> Vec<field_types::Point2D> {
+    use rand::Rng as _;
+    let mut rng = rand::thread_rng();
+
+    (0..len)
         .into_iter()
-        .map(|i| format!("label{i}"))
-        .collect::<Vec<_>>();
-    v.try_into_arrow().unwrap()
+        .map(|_| field_types::Point2D {
+            x: rng.gen_range(0.0..10.0),
+            y: rng.gen_range(0.0..10.0),
+        })
+        .collect()
 }
 
-/// Build a sample row of Rect data
-pub fn build_test_rect_chunk() -> (Chunk<Box<dyn Array>>, Schema) {
-    let time = arrow2::array::UInt32Array::from_slice([1234]).boxed();
-    let rect = wrap_in_listarray(build_some_rects(5)).boxed();
-    let color = wrap_in_listarray(build_some_colors(5)).boxed();
-    let label = wrap_in_listarray(build_some_labels(1)).boxed();
-
-    let schema = vec![
-        Field::new("log_time", time.data_type().clone(), false),
-        Field::new("rect", rect.data_type().clone(), true),
-        Field::new("color", color.data_type().clone(), true),
-        Field::new("label", label.data_type().clone(), true),
-    ]
-    .into();
-    let chunk = Chunk::new(vec![time, rect, color, label]);
-    (chunk, schema)
-}
-
-/// Build a ([`Timeline`], [`TimeInt`]) tuple from `log_time` suitable for inserting in a [`TimePoint`].
+/// Build a ([`Timeline`], [`TimeInt`]) tuple from `log_time` suitable for inserting in a [`crate::TimePoint`].
 pub fn build_log_time(log_time: Time) -> (Timeline, TimeInt) {
     (Timeline::new("log_time", TimeType::Time), log_time.into())
 }
 
-/// Build a ([`Timeline`], [`TimeInt`]) tuple from `frame_nr` suitable for inserting in a [`TimePoint`].
+/// Build a ([`Timeline`], [`TimeInt`]) tuple from `frame_nr` suitable for inserting in a [`crate::TimePoint`].
 pub fn build_frame_nr(frame_nr: i64) -> (Timeline, TimeInt) {
     (
         Timeline::new("frame_nr", TimeType::Sequence),

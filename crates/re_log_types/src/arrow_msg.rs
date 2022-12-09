@@ -136,9 +136,9 @@ mod tests {
 
     use super::{ArrowMsg, Chunk, MsgId, Schema};
     use crate::{
-        datagen::{build_frame_nr, build_positions, build_rects},
+        datagen::{build_frame_nr, build_some_point2d, build_some_rects},
         msg_bundle::MessageBundle,
-        ObjPath, TimePoint,
+        TimePoint,
     };
 
     #[test]
@@ -183,20 +183,16 @@ mod tests {
 
     #[test]
     fn test_roundtrip_payload() {
-        let (schema, chunk) = MessageBundle {
-            obj_path: ObjPath::from("rects"),
-            time_point: TimePoint::from([build_frame_nr(0)]),
-            components: vec![build_positions(1), build_rects(1)],
-        }
-        .try_into()
-        .unwrap();
+        let mut bundle =
+            MessageBundle::new("world/rects".into(), TimePoint::from([build_frame_nr(0)]));
+        bundle
+            .try_append_component(build_some_point2d(1).iter())
+            .unwrap();
+        bundle
+            .try_append_component(build_some_rects(1).iter())
+            .unwrap();
 
-        let msg_in = ArrowMsg {
-            msg_id: MsgId::random(),
-            schema,
-            chunk,
-        };
-
+        let msg_in: ArrowMsg = bundle.try_into().unwrap();
         let buf = rmp_serde::to_vec(&msg_in).unwrap();
         let msg_out: ArrowMsg = rmp_serde::from_slice(&buf).unwrap();
         assert_eq!(msg_in, msg_out);
