@@ -7,7 +7,7 @@ use re_log_types::{
     RecordingId, RecordingInfo, TimeInt, TimePoint, Timeline, TypeMsg,
 };
 
-use crate::TimesPerTimeline;
+use crate::{Error, TimesPerTimeline};
 
 // ----------------------------------------------------------------------------
 
@@ -106,11 +106,9 @@ impl ObjDb {
         }
     }
 
-    fn add_arrow_data_msg(&mut self, msg: &ArrowMsg) {
-        // TODO: Error Handling
-        let msg_bundle = MessageBundle::try_from((msg.schema.clone(), &msg.chunk))
-            .ok()
-            .unwrap();
+    fn try_add_arrow_data_msg(&mut self, msg: &ArrowMsg) -> Result<(), Error> {
+        let msg_bundle =
+            MessageBundle::try_from((msg.schema.clone(), &msg.chunk)).map_err(Error::Other)?;
 
         for component in &msg_bundle.components {
             //TODO(jleibs): Actually handle pending clears
@@ -128,7 +126,7 @@ impl ObjDb {
                 &msg_bundle.time_point,
                 msg_bundle.components.iter(),
             )
-            .unwrap();
+            .map_err(Error::Other)
     }
 
     fn add_path_op(&mut self, msg_id: MsgId, time_point: &TimePoint, path_op: &PathOp) {
@@ -250,7 +248,8 @@ impl LogDb {
                 self.obj_db.add_path_op(*msg_id, time_point, path_op);
             }
             LogMsg::ArrowMsg(msg) => {
-                self.obj_db.add_arrow_data_msg(msg);
+                //TODO(john) propogate errors
+                self.obj_db.try_add_arrow_data_msg(msg).unwrap();
             }
         }
         self.chronological_message_ids.push(msg.id());

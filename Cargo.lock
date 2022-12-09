@@ -3654,6 +3654,7 @@ name = "re_data_store"
 version = "0.1.0"
 dependencies = [
  "ahash 0.8.2",
+ "anyhow",
  "criterion",
  "document-features",
  "itertools",
