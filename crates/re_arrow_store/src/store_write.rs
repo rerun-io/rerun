@@ -10,6 +10,7 @@ use arrow2::buffer::Buffer;
 use arrow2::chunk::Chunk;
 use arrow2::compute::concatenate::concatenate;
 use arrow2::datatypes::{DataType, Schema};
+use parking_lot::RwLock;
 use polars::prelude::IndexOfSchema;
 
 use re_log::debug;
@@ -19,6 +20,7 @@ use re_log_types::{
     ENTITY_PATH_KEY,
 };
 
+use crate::store::IndexBucketIndices;
 use crate::{
     ComponentBucket, ComponentTable, DataStore, DataStoreConfig, IndexBucket, IndexTable, RowIndex,
 };
@@ -171,7 +173,8 @@ impl IndexTable {
             );
 
             if let Some(second_half) = bucket.split() {
-                self.buckets.insert(second_half.time_range.min, second_half);
+                let time = second_half.indices.read().time_range.min;
+                self.buckets.insert(time, second_half);
                 return self.insert(config, time, indices);
             }
         }
@@ -193,10 +196,7 @@ impl IndexBucket {
     pub fn new(timeline: Timeline) -> Self {
         Self {
             timeline,
-            time_range: TimeRange::new(i64::MIN.into(), i64::MAX.into()),
-            is_sorted: true,
-            times: Int64Vec::default(),
-            indices: Default::default(),
+            indices: RwLock::new(IndexBucketIndices::default()),
         }
     }
 
@@ -206,8 +206,15 @@ impl IndexBucket {
         time: TimeInt,
         row_indices: &HashMap<ComponentNameRef<'_>, RowIndex>,
     ) -> anyhow::Result<()> {
+        let IndexBucketIndices {
+            is_sorted,
+            time_range: _,
+            times,
+            indices,
+        } = &mut *self.indices.write();
+
         // append time to primary index
-        self.times.push(time.as_i64().into());
+        times.push(time.as_i64().into());
 
         // append components to secondary indices (2-way merge)
 
@@ -215,9 +222,9 @@ impl IndexBucket {
         //
         // push new row indices to their associated secondary index
         for (name, row_idx) in row_indices {
-            let index = self.indices.entry((*name).to_owned()).or_insert_with(|| {
+            let index = indices.entry((*name).to_owned()).or_insert_with(|| {
                 let mut index = UInt64Vec::default();
-                index.extend_constant(self.times.len().saturating_sub(1), None);
+                index.extend_constant(times.len().saturating_sub(1), None);
                 index
             });
             index.push(Some(*row_idx));
@@ -226,7 +233,7 @@ impl IndexBucket {
         // 2-way merge, step2: right-to-left
         //
         // fill unimpacted secondary indices with null values
-        for (name, index) in &mut self.indices {
+        for (name, index) in &mut *indices {
             if !row_indices.contains_key(name.as_str()) {
                 index.push_null();
             }
@@ -236,7 +243,7 @@ impl IndexBucket {
         self.sanity_check().unwrap();
 
         // TODO(#433): re_datastore: properly handle already sorted data during insertion
-        self.is_sorted = false;
+        *is_sorted = false;
 
         Ok(())
     }
@@ -247,24 +254,32 @@ impl IndexBucket {
     /// as a new bucket.
     ///
     /// Returns `None` if the bucket cannot be split any further.
-    pub fn split(&mut self) -> Option<Self> {
-        if self.times.len() < 2 {
+    pub fn split(&self) -> Option<Self> {
+        // let IndexBucketIndices {
+        //     is_sorted,
+        //     times,
+        //     indices,
+        // } = &mut *self.indices.write();
+
+        if self.indices.read().times.len() < 2 {
             return None; // early exit: can't split the unsplittable
         }
-
-        self.sort_indices();
 
         // Used down the line to assert that we've left everything in a sane state.
         #[cfg(debug_assertions)]
         let total_rows = self.total_rows();
 
-        let Self {
-            timeline,
-            time_range: time_range1,
+        let Self { timeline, indices } = self;
+
+        let indices = &mut *indices.write();
+        indices.sort();
+
+        let IndexBucketIndices {
             is_sorted: _,
+            time_range: time_range1,
             times: times1,
             indices: indices1,
-        } = self;
+        } = indices;
 
         let timeline = *timeline;
 
@@ -280,10 +295,12 @@ impl IndexBucket {
                 .collect();
             Self {
                 timeline,
-                time_range: time_range2,
-                is_sorted: true,
-                times: times2,
-                indices: indices2,
+                indices: RwLock::new(IndexBucketIndices {
+                    is_sorted: true,
+                    time_range: time_range2,
+                    times: times2,
+                    indices: indices2,
+                }),
             }
         } else {
             // We couldn't find an optimal split index, so we'll just append to the current bucket,

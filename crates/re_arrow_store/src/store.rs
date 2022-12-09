@@ -1,4 +1,5 @@
 use std::collections::{BTreeMap, HashMap, VecDeque};
+use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
 
 use anyhow::ensure;
@@ -6,6 +7,7 @@ use arrow2::array::{Array, Int64Vec, MutableArray, UInt64Vec};
 use arrow2::bitmap::MutableBitmap;
 use arrow2::datatypes::DataType;
 
+use parking_lot::RwLock;
 use re_format::{format_bytes, format_number};
 use re_log_types::{
     ComponentName, ObjPath as EntityPath, ObjPathHash as EntityPathHash, TimeInt, TimeRange,
@@ -120,7 +122,7 @@ pub struct DataStore {
     /// Monotically increasing ID for insertions.
     pub(crate) insert_id: u64,
     /// Monotically increasing ID for queries.
-    pub(crate) query_id: u64,
+    pub(crate) query_id: AtomicU64,
 }
 
 impl DataStore {
@@ -130,7 +132,7 @@ impl DataStore {
             indices: HashMap::default(),
             components: HashMap::default(),
             insert_id: 0,
-            query_id: 0,
+            query_id: AtomicU64::new(0),
         }
     }
 
@@ -177,11 +179,9 @@ impl DataStore {
             let mut row_indices: HashMap<_, Vec<RowIndex>> = HashMap::new();
             for table in self.indices.values() {
                 for bucket in table.buckets.values() {
-                    for (comp, index) in &bucket.indices {
-                        row_indices
-                            .entry(comp)
-                            .and_modify(|row_indices| row_indices.extend(index.values()))
-                            .or_insert_with(|| index.values().clone());
+                    for (comp, index) in &bucket.indices.read().indices {
+                        let row_indices = row_indices.entry(comp.to_owned()).or_default();
+                        row_indices.extend(index.values());
                     }
                 }
             }
@@ -453,7 +453,7 @@ impl IndexTable {
             let time_ranges = self
                 .buckets
                 .values()
-                .map(|bucket| bucket.time_range)
+                .map(|bucket| bucket.indices.read().time_range)
                 .collect::<Vec<_>>();
             for time_ranges in time_ranges.windows(2) {
                 let &[t1, t2] = time_ranges else { unreachable!() };
@@ -489,13 +489,19 @@ pub struct IndexBucket {
     /// The timeline the bucket's parent table operates in, for debugging purposes.
     pub(crate) timeline: Timeline,
 
-    /// The time range covered by this bucket.
-    pub(crate) time_range: TimeRange,
+    pub(crate) indices: RwLock<IndexBucketIndices>,
+}
 
+/// Just the indices, to simplify interior mutability.
+#[derive(Debug)]
+pub struct IndexBucketIndices {
     /// Whether the indices (all of them!) are currently sorted.
     ///
     /// Querying an `IndexBucket` will always trigger a sort if the indices aren't already sorted.
     pub(crate) is_sorted: bool,
+
+    /// The time range covered by the primary time index.
+    pub(crate) time_range: TimeRange,
 
     // The primary time index, which is guaranteed to be dense, and "drives" all other indices.
     //
@@ -511,15 +517,27 @@ pub struct IndexBucket {
     pub(crate) indices: HashMap<ComponentName, UInt64Vec>,
 }
 
+impl Default for IndexBucketIndices {
+    fn default() -> Self {
+        Self {
+            is_sorted: true,
+            time_range: TimeRange::new(i64::MIN.into(), i64::MAX.into()),
+            times: Int64Vec::default(),
+            indices: Default::default(),
+        }
+    }
+}
+
 impl std::fmt::Display for IndexBucket {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self {
-            timeline,
-            time_range,
+        let Self { timeline, indices } = self;
+
+        let IndexBucketIndices {
             is_sorted,
+            time_range,
             times,
             indices,
-        } = self;
+        } = &*indices.read();
 
         f.write_fmt(format_args!(
             "size: {} across {} rows\n",
@@ -579,7 +597,7 @@ impl std::fmt::Display for IndexBucket {
 impl IndexBucket {
     /// Returns the number of rows stored across this bucket.
     pub fn total_rows(&self) -> u64 {
-        self.times.len() as u64
+        self.indices.read().times.len() as u64
     }
 
     /// Returns the size of the data stored across this bucket, in bytes.
@@ -592,10 +610,16 @@ impl IndexBucket {
             std::mem::size_of_val(values.as_slice()) as _
         }
 
-        size_of_validity(self.times.validity())
-            + size_of_values(self.times.values())
-            + self
-                .indices
+        let IndexBucketIndices {
+            is_sorted: _,
+            time_range: _,
+            times,
+            indices,
+        } = &*self.indices.read();
+
+        size_of_validity(times.validity())
+            + size_of_values(times.values())
+            + indices
                 .values()
                 .map(|index| size_of_validity(index.validity()) + size_of_values(index.values()))
                 .sum::<u64>()
@@ -605,10 +629,17 @@ impl IndexBucket {
     ///
     /// Returns an error if anything looks wrong.
     pub fn sanity_check(&self) -> anyhow::Result<()> {
+        let IndexBucketIndices {
+            is_sorted: _,
+            time_range: _,
+            times,
+            indices,
+        } = &*self.indices.read();
+
         // All indices should contain the exact same number of rows as the time index.
         {
-            let primary_len = self.times.len();
-            for (comp, index) in &self.indices {
+            let primary_len = times.len();
+            for (comp, index) in indices {
                 let secondary_len = index.len();
                 if secondary_len != primary_len {
                     ensure!(

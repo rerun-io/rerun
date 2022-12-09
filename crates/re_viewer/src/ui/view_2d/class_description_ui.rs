@@ -45,14 +45,15 @@ pub(crate) fn view_class_description_map(
     use egui_extras::{Column, TableBuilder};
 
     let table = TableBuilder::new(ui)
-        .striped(true)
+        .striped(re_ui::ReUi::striped())
         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
         .column(Column::auto()) // id
         .column(Column::auto().clip(true).at_least(40.0)) // label
         .column(Column::auto()); // color
 
     table
-        .header(20.0, |mut header| {
+        .header(re_ui::ReUi::table_header_height(), |mut header| {
+            re_ui::ReUi::setup_table_header(&mut header);
             header.col(|ui| {
                 ui.heading("Id");
             });
@@ -64,9 +65,11 @@ pub(crate) fn view_class_description_map(
             });
         })
         .body(|mut body| {
-            const ROW_HEIGHT: f32 = 18.0;
+            re_ui::ReUi::setup_table_body(&mut body);
+
+            let row_height = re_ui::ReUi::table_line_height();
             for (id, (label, color)) in map {
-                body.row(ROW_HEIGHT, |mut row| {
+                body.row(row_height, |mut row| {
                     row.col(|ui| {
                         ui.label(id.to_string());
                     });

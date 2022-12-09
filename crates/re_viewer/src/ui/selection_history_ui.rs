@@ -25,16 +25,19 @@ impl SelectionHistory {
     ) -> Option<HistoricalSelection> {
         use egui_extras::{Size, StripBuilder};
 
-        const BIG_BUTTON_SIZE: f32 = 50.0;
+        const BUTTON_SIZE: f32 = 20.0;
         const MIN_COMBOBOX_SIZE: f32 = 100.0;
 
         let font_id = egui::TextStyle::Body.resolve(ui.style());
 
         let mut res = None;
         StripBuilder::new(ui)
-            .size(Size::exact(BIG_BUTTON_SIZE)) // prev
+            .cell_layout(egui::Layout::centered_and_justified(
+                egui::Direction::TopDown, // whatever
+            ))
+            .size(Size::exact(BUTTON_SIZE)) // prev
             .size(Size::remainder().at_least(MIN_COMBOBOX_SIZE)) // browser
-            .size(Size::exact(BIG_BUTTON_SIZE)) // next
+            .size(Size::exact(BUTTON_SIZE)) // next
             .horizontal(|mut strip| {
                 // prev
                 let mut prev = None;
@@ -45,7 +48,7 @@ impl SelectionHistory {
                 // browser
                 let mut picked = None;
                 strip.cell(|ui| {
-                    let clipped_width = ui.available_width() - 20.0; // leave some space for the icon!
+                    let clipped_width = ui.available_width() - 32.0; // leave some space for the drop-down icon!
                     picked = egui::ComboBox::from_id_source("history_browser")
                         .width(ui.available_width())
                         .wrap(false)
@@ -66,13 +69,7 @@ impl SelectionHistory {
                                     show_selection_index(ui, i);
                                     {
                                         // borrow checker workaround
-                                        let sel = selection_to_clipped_string(
-                                            ui,
-                                            blueprint,
-                                            sel,
-                                            &font_id,
-                                            clipped_width,
-                                        );
+                                        let sel = selection_to_string(blueprint, sel);
                                         ui.selectable_value(&mut self.current, i, sel);
                                     }
                                     show_selection_kind(ui, sel);
@@ -106,7 +103,7 @@ impl SelectionHistory {
         ui: &mut egui::Ui,
         blueprint: &Blueprint,
     ) -> Option<HistoricalSelection> {
-        const PREV_BUTTON: &str = "⏴ Prev";
+        const PREV_BUTTON: &str = "⏴";
         if let Some(previous) = self.previous() {
             let shortcut = &crate::ui::kb_shortcuts::SELECTION_PREVIOUS;
             let button_clicked = ui
@@ -141,7 +138,7 @@ impl SelectionHistory {
         ui: &mut egui::Ui,
         blueprint: &Blueprint,
     ) -> Option<HistoricalSelection> {
-        const NEXT_BUTTON: &str = "Next ⏵";
+        const NEXT_BUTTON: &str = "⏵";
         if let Some(next) = self.next() {
             let shortcut = &crate::ui::kb_shortcuts::SELECTION_NEXT;
             let button_clicked = ui

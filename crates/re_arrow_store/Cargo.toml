@@ -23,6 +23,7 @@ chrono = "0.4"
 document-features = "0.2"
 indent = "0.1"
 nohash-hasher = "0.2"
+parking_lot = "0.12"
 thiserror = "1.0"
 
 # native dependencies:
