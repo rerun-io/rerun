@@ -108,7 +108,7 @@ def main() -> None:
         rerun.connect(args.addr)
 
     log_parabola()
-    log_k_lms_curve()
+    log_klms_schedule()
     log_trig()
     log_segmentation()
 
