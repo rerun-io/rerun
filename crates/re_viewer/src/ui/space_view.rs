@@ -1,12 +1,15 @@
 use re_data_store::{ObjPath, ObjectTree, ObjectTreeProperties, TimeInt};
-use re_log_types::Transform;
 
 use crate::misc::{
     space_info::{SpaceInfo, SpacesInfo},
     ViewerContext,
 };
 
-use super::{view_plot, view_spatial, view_tensor, view_text};
+use super::{
+    view_plot,
+    view_spatial::{self, SpatialNavigationMode},
+    view_tensor, view_text,
+};
 
 // ----------------------------------------------------------------------------
 
@@ -23,9 +26,8 @@ use super::{view_plot, view_spatial, view_tensor, view_text};
     serde::Serialize,
 )]
 pub enum ViewCategory {
-    TwoD,
     #[default]
-    ThreeD,
+    Spatial,
     Tensor,
     Text,
     Plot,
@@ -50,8 +52,14 @@ impl SpaceView {
     pub fn new(scene: &super::scene::Scene, category: ViewCategory, space_path: ObjPath) -> Self {
         let mut view_state = ViewState::default();
 
-        if category == ViewCategory::TwoD {
-            // A good start:
+        if category == ViewCategory::Spatial {
+            view_state.state_spatial.nav_mode = if scene.spatial.prefer_2d_mode() {
+                SpatialNavigationMode::TwoD
+            } else {
+                SpatialNavigationMode::ThreeD
+            };
+
+            // TODO: need tounderstand this one
             view_state.state_spatial.state_2d.scene_bbox_accum =
                 scene.spatial.primitives.bounding_rect_2d();
         }
@@ -87,24 +95,21 @@ impl SpaceView {
         };
 
         match self.category {
-            ViewCategory::TwoD => {
+            ViewCategory::Spatial => {
                 let mut scene = view_spatial::SceneSpatial::default();
                 scene.load_objects(
                     ctx,
                     &query,
                     self.view_state.state_spatial.hovered_instance_hash(),
                 );
-                self.view_state.ui_2d(ctx, ui, &self.space_path, scene);
-            }
-            ViewCategory::ThreeD => {
-                let mut scene = view_spatial::SceneSpatial::default();
-                scene.load_objects(
+                self.view_state.ui_spatial(
                     ctx,
-                    &query,
-                    self.view_state.state_spatial.hovered_instance_hash(),
+                    ui,
+                    &self.space_path,
+                    spaces_info,
+                    space_info,
+                    scene,
                 );
-                self.view_state
-                    .ui_3d(ctx, ui, &self.space_path, spaces_info, space_info, scene);
             }
 
             ViewCategory::Tensor => {
@@ -157,25 +162,7 @@ pub(crate) struct ViewState {
 }
 
 impl ViewState {
-    fn ui_2d(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        space: &ObjPath,
-        scene: view_spatial::SceneSpatial,
-    ) -> egui::Response {
-        let response = ui
-            .scope(|ui| {
-                view_spatial::view_2d(ctx, ui, &mut self.state_spatial.state_2d, space, scene);
-            })
-            .response;
-
-        show_help_button_overlay(ui, response.rect, ctx, view_spatial::HELP_TEXT_2D);
-
-        response
-    }
-
-    fn ui_3d(
+    fn ui_spatial(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
@@ -183,21 +170,13 @@ impl ViewState {
         spaces_info: &SpacesInfo,
         space_info: &SpaceInfo,
         scene: view_spatial::SceneSpatial,
-    ) -> egui::Response {
+    ) {
         ui.vertical(|ui| {
-            let state = &mut self.state_spatial.state_3d;
-            let space_cameras = &space_cameras(spaces_info, space_info);
-            let coordinates = space_info.coordinates;
-            state.space_specs = view_spatial::SpaceSpecs::from_view_coordinates(coordinates);
-            let response = ui
-                .scope(|ui| {
-                    view_spatial::view_3d(ctx, ui, state, space, scene, space_cameras);
-                })
-                .response;
-
-            show_help_button_overlay(ui, response.rect, ctx, view_spatial::HELP_TEXT_3D);
-        })
-        .response
+            let response =
+                self.state_spatial
+                    .view_spatial(ctx, ui, space, scene, spaces_info, space_info);
+            show_help_button_overlay(ui, response.rect, ctx, self.state_spatial.help_text());
+        });
     }
 
     fn ui_tensor(&mut self, ui: &mut egui::Ui, scene: &view_tensor::SceneTensor) {
@@ -257,57 +236,4 @@ impl ViewState {
         })
         .response
     }
-}
-
-/// Look for camera transform and pinhole in the transform hierarchy
-/// and return them as cameras.
-fn space_cameras(
-    spaces_info: &SpacesInfo,
-    space_info: &SpaceInfo,
-) -> Vec<view_spatial::SpaceCamera3D> {
-    crate::profile_function!();
-
-    let mut space_cameras = vec![];
-
-    for (child_path, child_transform) in &space_info.child_spaces {
-        if let Transform::Rigid3(world_from_camera) = child_transform {
-            let world_from_camera = world_from_camera.parent_from_child();
-
-            let view_space = spaces_info
-                .spaces
-                .get(child_path)
-                .and_then(|child| child.coordinates);
-
-            let mut found_any_pinhole = false;
-
-            if let Some(child_space_info) = spaces_info.spaces.get(child_path) {
-                for (grand_child_path, grand_child_transform) in &child_space_info.child_spaces {
-                    if let Transform::Pinhole(pinhole) = grand_child_transform {
-                        space_cameras.push(view_spatial::SpaceCamera3D {
-                            camera_obj_path: child_path.clone(),
-                            instance_index_hash: re_log_types::IndexHash::NONE,
-                            camera_view_coordinates: view_space,
-                            world_from_camera,
-                            pinhole: Some(*pinhole),
-                            target_space: Some(grand_child_path.clone()),
-                        });
-                        found_any_pinhole = true;
-                    }
-                }
-            }
-
-            if !found_any_pinhole {
-                space_cameras.push(view_spatial::SpaceCamera3D {
-                    camera_obj_path: child_path.clone(),
-                    instance_index_hash: re_log_types::IndexHash::NONE,
-                    camera_view_coordinates: view_space,
-                    world_from_camera,
-                    pinhole: None,
-                    target_space: None,
-                });
-            }
-        }
-    }
-
-    space_cameras
 }

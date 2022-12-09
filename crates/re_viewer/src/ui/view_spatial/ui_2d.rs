@@ -24,10 +24,6 @@ use crate::{
 #[derive(Clone, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub struct View2DState {
-    /// What the mouse is hovering (from previous frame)
-    #[serde(skip)]
-    pub hovered_instance: Option<InstanceId>,
-
     /// Estimated bounding box of all data. Accumulated.
     ///
     /// TODO(emilk): accumulate this per space once as data arrives instead.
@@ -64,7 +60,6 @@ impl Default for ZoomState2D {
 impl Default for View2DState {
     fn default() -> Self {
         Self {
-            hovered_instance: Default::default(),
             scene_bbox_accum: epaint::Rect::NOTHING,
             zoom: Default::default(),
         }
@@ -224,12 +219,6 @@ impl View2DState {
             }
         }
     }
-
-    pub fn hovered_instance_hash(&self) -> InstanceIdHash {
-        self.hovered_instance
-            .as_ref()
-            .map_or(InstanceIdHash::NONE, |i| i.hash())
-    }
 }
 
 pub const HELP_TEXT_2D: &str = "Ctrl-scroll  to zoom (⌘-scroll or Mac).\n\
@@ -243,6 +232,8 @@ pub fn view_2d(
     state: &mut View2DState,
     space: &ObjPath,
     scene: SceneSpatial,
+    hovered_instance: &mut Option<InstanceId>, // TODO:
+    hovered_instance_hash: InstanceIdHash,     // TODO:
 ) -> egui::Response {
     crate::profile_function!();
 
@@ -261,7 +252,17 @@ pub fn view_2d(
         .auto_shrink([false, false]);
 
     let scroll_out = scroll_area.show(ui, |ui| {
-        view_2d_scrollable(desired_size, available_size, ctx, ui, state, space, scene)
+        view_2d_scrollable(
+            desired_size,
+            available_size,
+            ctx,
+            ui,
+            state,
+            space,
+            scene,
+            hovered_instance,
+            hovered_instance_hash,
+        )
     });
 
     // Update the scroll area based on the computed offset
@@ -279,6 +280,8 @@ fn view_2d_scrollable(
     state: &mut View2DState,
     space: &ObjPath,
     mut scene: SceneSpatial,
+    hovered_instance: &mut Option<InstanceId>, // TODO:
+    hovered_instance_hash: InstanceIdHash,     // TODO:
 ) -> egui::Response {
     state.scene_bbox_accum = state
         .scene_bbox_accum
@@ -306,7 +309,7 @@ fn view_2d_scrollable(
         ui_from_space,
         space_from_ui,
         parent_ui,
-        state.hovered_instance_hash(),
+        hovered_instance_hash,
     );
 
     // ------------------------------------------------------------------------
@@ -474,7 +477,7 @@ fn view_2d_scrollable(
 
     // ------------------------------------------------------------------------
 
-    if let Some(instance_id) = &state.hovered_instance {
+    if let Some(instance_id) = hovered_instance {
         if response.clicked() {
             ctx.set_selection(Selection::Instance(instance_id.clone()));
         }
@@ -500,7 +503,7 @@ fn view_2d_scrollable(
 
     painter.extend(shapes);
 
-    state.hovered_instance = closest_instance_id_hash.resolve(&ctx.log_db.obj_db.store);
+    *hovered_instance = closest_instance_id_hash.resolve(&ctx.log_db.obj_db.store);
 
     response
 }

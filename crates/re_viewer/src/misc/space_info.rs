@@ -11,7 +11,7 @@ use super::TimeControl;
 ///
 /// This is gathered by analyzing the transform hierarchy of the objects.
 #[derive(Default)]
-pub(crate) struct SpaceInfo {
+pub struct SpaceInfo {
     /// The latest known coordinate system for this space.
     pub coordinates: Option<ViewCoordinates>,
 
@@ -30,7 +30,7 @@ pub(crate) struct SpaceInfo {
 ///
 /// This is gathered by analyzing the transform hierarchy of the objects.
 #[derive(Default)]
-pub(crate) struct SpacesInfo {
+pub struct SpacesInfo {
     pub spaces: BTreeMap<ObjPath, SpaceInfo>,
 }
 

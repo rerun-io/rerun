@@ -60,17 +60,18 @@ pub(crate) fn tree_from_space_views(
         })
         .map(|(space_view_id, space_view)| {
             let aspect_ratio = match space_view.category {
-                ViewCategory::TwoD => {
-                    // This is the only thing where the aspect ratio makes complete sense.
-                    let size = space_view
-                        .view_state
-                        .state_spatial
-                        .state_2d
-                        .scene_bbox_accum
-                        .size();
-                    Some(size.x / size.y)
+                ViewCategory::Spatial => {
+                    let state_spatial = &space_view.view_state.state_spatial;
+                    match state_spatial.nav_mode {
+                        // This is the only thing where the aspect ratio makes complete sense.
+                        super::view_spatial::SpatialNavigationMode::TwoD => {
+                            let size = state_spatial.state_2d.scene_bbox_accum.size();
+                            Some(size.x / size.y)
+                        }
+                        // 3D scenes can be pretty flexible
+                        super::view_spatial::SpatialNavigationMode::ThreeD => None,
+                    }
                 }
-                ViewCategory::ThreeD => None, // 3D scenes can be pretty flexible
                 ViewCategory::Tensor | ViewCategory::Plot => Some(1.0), // Not sure if we should do `None` here.
                 ViewCategory::Text => Some(2.0),                        // Make text logs wide
             };

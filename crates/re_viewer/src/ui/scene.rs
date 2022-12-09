@@ -29,15 +29,13 @@ impl Scene {
             plot,
         } = self;
 
-        let has_2d = !spatial.is_empty() && spatial.prefer_2d_mode() && tensor.is_empty();
-        let has_3d = !spatial.is_empty() && !spatial.prefer_2d_mode();
+        let has_spatial = !spatial.is_empty();
         let has_text = !text.is_empty();
         let has_tensor = !tensor.is_empty();
         let has_plot = !plot.is_empty();
 
         [
-            has_2d.then_some(ViewCategory::TwoD),
-            has_3d.then_some(ViewCategory::ThreeD),
+            has_spatial.then_some(ViewCategory::Spatial),
             has_text.then_some(ViewCategory::Text),
             has_tensor.then_some(ViewCategory::Tensor),
             has_plot.then_some(ViewCategory::Plot),

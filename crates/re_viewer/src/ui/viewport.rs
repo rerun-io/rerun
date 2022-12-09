@@ -86,7 +86,10 @@ impl ViewportBlueprint {
         for (path, space_info) in &spaces_info.spaces {
             let scene = query_scene(ctx, space_info);
             for category in scene.categories() {
-                if category == ViewCategory::TwoD && scene.spatial.ui.images.len() > 1 {
+                if category == ViewCategory::Spatial
+                    && scene.spatial.prefer_2d_mode()
+                    && scene.spatial.ui.images.len() > 1
+                {
                     // Multiple images (e.g. depth and rgb, or rgb and segmentation) in the same 2D scene.
                     // Stacking them on top of each other works, but is often confusing.
                     // Let's create one space view for each image, where the other images are disabled:
@@ -233,8 +236,10 @@ impl ViewportBlueprint {
         )
         .show_header(ui, |ui| {
             match space_view.category {
-                ViewCategory::TwoD => ui.label("🖼"),
-                ViewCategory::ThreeD => ui.label("🔭"),
+                ViewCategory::Spatial => match space_view.view_state.state_spatial.nav_mode {
+                    super::view_spatial::SpatialNavigationMode::TwoD => ui.label("🖼"),
+                    super::view_spatial::SpatialNavigationMode::ThreeD => ui.label("🔭"),
+                },
                 ViewCategory::Tensor => ui.label("🇹"),
                 ViewCategory::Text => ui.label("📃"),
                 ViewCategory::Plot => ui.label("📈"),

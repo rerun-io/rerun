@@ -30,10 +30,6 @@ pub struct View3DState {
     #[serde(skip)]
     eye_interpolation: Option<EyeInterpolation>,
 
-    /// What the mouse is hovering (from previous frame)
-    #[serde(skip)]
-    hovered_instance: Option<InstanceId>,
-
     /// Where in world space the mouse is hovering (from previous frame)
     #[serde(skip)]
     hovered_point: Option<glam::Vec3>,
@@ -61,7 +57,6 @@ impl Default for View3DState {
         Self {
             orbit_eye: Default::default(),
             eye_interpolation: Default::default(),
-            hovered_instance: Default::default(),
             hovered_point: Default::default(),
             scene_bbox: macaw::BoundingBox::nothing(),
             spin: false,
@@ -165,12 +160,6 @@ impl View3DState {
         } else {
             self.orbit_eye = Some(target);
         }
-    }
-
-    pub fn hovered_instance_hash(&self) -> InstanceIdHash {
-        self.hovered_instance
-            .as_ref()
-            .map_or(InstanceIdHash::NONE, |i| i.hash())
     }
 
     pub fn show_settings_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
@@ -337,6 +326,8 @@ pub fn view_3d(
     space: &ObjPath,
     mut scene: SceneSpatial,
     space_cameras: &[SpaceCamera3D],
+    hovered_instance: &mut Option<InstanceId>, // TODO:
+    hovered_instance_hash: InstanceIdHash,     // TODO:
 ) -> egui::Response {
     crate::profile_function!();
 
@@ -359,7 +350,7 @@ pub fn view_3d(
         rect.size(),
         &eye,
         space_cameras,
-        state.hovered_instance_hash(),
+        hovered_instance_hash,
     );
 
     if did_interact_wth_eye {
@@ -370,13 +361,12 @@ pub fn view_3d(
         }
     }
 
-    let mut hovered_instance = state.hovered_instance.clone();
     if ui.input().pointer.any_click() {
         if let Some(hovered_instance) = &hovered_instance {
             click_object(ctx, space_cameras, state, hovered_instance);
         }
     } else if ui.input().pointer.any_down() {
-        hovered_instance = None;
+        *hovered_instance = None;
     }
 
     if let Some(instance_id) = &hovered_instance {
@@ -390,11 +380,11 @@ pub fn view_3d(
         scene.picking(glam::vec2(pointer_pos.x, pointer_pos.y), &rect, &eye)
     });
 
-    state.hovered_instance = None;
+    *hovered_instance = None;
     state.hovered_point = None;
     if let Some((instance_id, point)) = hovered {
         if let Some(instance_id) = instance_id.resolve(&ctx.log_db.obj_db.store) {
-            state.hovered_instance = Some(instance_id);
+            *hovered_instance = Some(instance_id);
             state.hovered_point = Some(point);
         }
     }

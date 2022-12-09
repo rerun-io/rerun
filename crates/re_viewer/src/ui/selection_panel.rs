@@ -225,8 +225,8 @@ fn ui_space_view(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, space_view: &mu
 
     use super::space_view::ViewCategory;
     match space_view.category {
-        ViewCategory::ThreeD => {
-            ui.strong("3D view");
+        ViewCategory::Spatial => {
+            ui.strong("Spatial view");
             space_view
                 .view_state
                 .state_spatial
@@ -243,7 +243,7 @@ fn ui_space_view(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, space_view: &mu
             ui.add_space(4.0);
             view_text::text_filters_ui(ui, &mut space_view.view_state.state_text);
         }
-        ViewCategory::TwoD | ViewCategory::Plot => {}
+        ViewCategory::Plot => {}
     }
 }
 
