@@ -4,8 +4,7 @@ use crate::msg_bundle::{wrap_in_listarray, ComponentBundle};
 use crate::{Time, TimeInt, TimeType, Timeline};
 use arrow2::{
     array::{Array, Float32Array, PrimitiveArray, StructArray},
-    chunk::Chunk,
-    datatypes::{DataType, Field, Schema},
+    datatypes::{DataType, Field},
 };
 
 use crate::field_types::{self};
