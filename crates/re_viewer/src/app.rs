@@ -490,14 +490,10 @@ impl App {
         self.state = Default::default();
         self.state.selected_rec_id = selected_rec_id;
 
-        // Keep dark/light mode setting:
-        let is_dark_mode = egui_ctx.style().visuals.dark_mode;
+        // Keep the style:
+        let style = egui_ctx.style();
         *egui_ctx.memory() = Default::default();
-        egui_ctx.set_visuals(if is_dark_mode {
-            egui::Visuals::dark()
-        } else {
-            egui::Visuals::light()
-        });
+        egui_ctx.set_style((*style).clone());
     }
 
     fn log_db(&mut self) -> &mut LogDb {
@@ -659,7 +655,7 @@ impl AppState {
         time_panel.show_panel(&mut ctx, blueprint, egui_ctx);
 
         let central_panel_frame = egui::Frame {
-            fill: egui_ctx.style().visuals.window_fill(),
+            fill: egui_ctx.style().visuals.panel_fill,
             inner_margin: egui::style::Margin::same(0.0),
             ..Default::default()
         };
@@ -1241,7 +1237,6 @@ fn save_database_to_file(
                         | LogMsg::PathOpMsg(PathOpMsg { time_point, .. }) => {
                             time_point.is_timeless() || {
                                 let is_within_range = time_point
-                                    .0
                                     .get(&timeline)
                                     .map_or(false, |t| range.contains(t));
                                 is_within_range

@@ -10,12 +10,16 @@ mod store;
 mod store_read;
 mod store_write;
 
-pub(crate) use self::store::{ComponentBucket, ComponentTable, IndexBucket, IndexTable};
+pub(crate) use self::store::{
+    ComponentBucket, ComponentTable, IndexBucket, IndexBucketIndices, IndexTable,
+};
 pub use self::store::{DataStore, DataStoreConfig, RowIndex};
 pub use self::store_read::TimeQuery;
 
 // Re-exports
+#[doc(no_inline)]
 pub use arrow2::io::ipc::read::{StreamReader, StreamState};
+#[doc(no_inline)]
 pub use re_log_types::{TimeInt, TimeRange, TimeType}; // for politeness sake
 
 /// Build a [`StreamReader`] from a slice of `u8`

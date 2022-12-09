@@ -1,13 +1,9 @@
 use std::{
     collections::HashMap,
     sync::atomic::{AtomicBool, Ordering::SeqCst},
-    time::{Duration, SystemTime},
 };
 
-use arrow2::{
-    array::{Array, Int64Array, ListArray},
-    datatypes::Schema,
-};
+use arrow2::{array::Array, datatypes::Schema};
 use polars::prelude::{DataFrame, Series};
 
 use re_arrow_store::{DataStore, DataStoreConfig, TimeInt, TimeQuery};
@@ -16,7 +12,7 @@ use re_log_types::{
         build_frame_nr, build_instances, build_log_time, build_message, build_positions,
         build_rects,
     },
-    ComponentNameRef, ObjPath as EntityPath, TimeType, Timeline,
+    ComponentNameRef, Duration, ObjPath as EntityPath, Time, TimePoint, TimeType, Timeline,
 };
 
 // ---
@@ -70,10 +66,10 @@ fn empty_query_edge_cases() {
 }
 fn empty_query_edge_cases_impl(store: &mut DataStore) {
     let ent_path = EntityPath::from("this/that");
-    let now = SystemTime::now();
-    let now_nanos = systemtime_to_nanos(now);
+    let now = Time::now();
+    let now_nanos = now.nanos_since_epoch();
     let now_minus_10ms = now - Duration::from_millis(10);
-    let now_minus_10ms_nanos = systemtime_to_nanos(now_minus_10ms);
+    let now_minus_10ms_nanos = now_minus_10ms.nanos_since_epoch();
     let frame39 = 39;
     let frame40 = 40;
     let nb_instances = 3;
@@ -212,11 +208,11 @@ fn end_to_end_roundtrip_standard() {
 fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
     let ent_path = EntityPath::from("this/that");
 
-    let now = SystemTime::now();
+    let now = Time::now();
     let now_minus_10ms = now - Duration::from_millis(10);
-    let now_minus_10ms_nanos = systemtime_to_nanos(now_minus_10ms);
+    let now_minus_10ms_nanos = now_minus_10ms.nanos_since_epoch();
     let now_plus_10ms = now + Duration::from_millis(10);
-    let now_plus_10ms_nanos = systemtime_to_nanos(now_plus_10ms);
+    let now_plus_10ms_nanos = now_plus_10ms.nanos_since_epoch();
     let now_plus_20ms = now + Duration::from_millis(20);
 
     let frame40 = 40;
@@ -341,7 +337,7 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
         tracker.assert_scenario(
             store,
             &timeline_log_time,
-            &TimeQuery::LatestAt(systemtime_to_nanos(log_time)),
+            &TimeQuery::LatestAt(log_time.nanos_since_epoch()),
             &ent_path,
             components_all,
             expected,
@@ -363,19 +359,18 @@ impl DataTracker {
         &mut self,
         store: &mut DataStore,
         ent_path: &EntityPath,
-        times: [(TimeInt, Schema, Int64Array); N],
-        components: [(ComponentNameRef<'static>, Schema, ListArray<i32>); M],
+        times: [(Timeline, TimeInt); N],
+        components: [(ComponentNameRef<'static>, Schema, Box<dyn Array>); M],
     ) {
-        for (time, _, _) in &times {
+        let timepoint = TimePoint::from(times);
+
+        for time in timepoint.times() {
             for (name, _, comp) in &components {
-                assert!(self
-                    .all_data
-                    .insert((name, *time), comp.clone().boxed())
-                    .is_none());
+                assert!(self.all_data.insert((name, *time), comp.clone()).is_none());
             }
         }
 
-        let (schema, components) = build_message(ent_path, times, components);
+        let (schema, components) = build_message(ent_path, &timepoint, components);
         // eprintln!("inserting into '{ent_path}':\nschema: {schema:#?}\ncomponents: {components:#?}");
         // eprintln!("---\ninserting into '{ent_path}': [log_time, frame_nr], [rects]");
         store.insert(&schema, &components).unwrap();
@@ -416,10 +411,4 @@ fn init_logs() {
         re_log::set_default_rust_log_env();
         tracing_subscriber::fmt::init(); // log to stdout
     }
-}
-
-fn systemtime_to_nanos(time: SystemTime) -> i64 {
-    time.duration_since(SystemTime::UNIX_EPOCH)
-        .unwrap()
-        .as_nanos() as i64
 }

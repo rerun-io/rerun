@@ -124,6 +124,15 @@ impl std::ops::AddAssign<Duration> for Time {
     }
 }
 
+impl std::ops::Sub<Duration> for Time {
+    type Output = Time;
+
+    #[inline]
+    fn sub(self, duration: Duration) -> Self::Output {
+        Time(self.0.saturating_sub(duration.0))
+    }
+}
+
 impl TryFrom<std::time::SystemTime> for Time {
     type Error = std::time::SystemTimeError;
 
@@ -142,6 +151,11 @@ pub struct Duration(i64);
 
 impl Duration {
     pub const MAX: Duration = Duration(std::i64::MAX);
+    const NANOS_PER_SEC: i64 = 1_000_000_000;
+    const NANOS_PER_MILLI: i64 = 1_000_000;
+    const SEC_PER_MINUTE: i64 = 60;
+    const SEC_PER_HOUR: i64 = 60 * Self::SEC_PER_MINUTE;
+    const SEC_PER_DAY: i64 = 24 * Self::SEC_PER_HOUR;
 
     #[inline]
     pub fn from_nanos(nanos: i64) -> Self {
@@ -149,8 +163,13 @@ impl Duration {
     }
 
     #[inline]
+    pub fn from_millis(millis: i64) -> Self {
+        Self(millis * Self::NANOS_PER_MILLI)
+    }
+
+    #[inline]
     pub fn from_secs(secs: f32) -> Self {
-        Self::from_nanos((secs * 1e9).round() as _)
+        Self::from_nanos((secs * Self::NANOS_PER_SEC as f32).round() as _)
     }
 
     #[inline]
@@ -169,11 +188,6 @@ impl Duration {
     }
 
     pub fn exact_format(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        const NANOS_PER_SEC: i64 = 1_000_000_000;
-        const SEC_PER_MINUTE: i64 = 60;
-        const SEC_PER_HOUR: i64 = 60 * SEC_PER_MINUTE;
-        const SEC_PER_DAY: i64 = 24 * SEC_PER_HOUR;
-
         let total_nanos = if self.0 < 0 {
             // negative duration
             write!(f, "-")?;
@@ -182,36 +196,36 @@ impl Duration {
             self.0
         };
 
-        let whole_seconds = total_nanos / NANOS_PER_SEC;
-        let nanos = total_nanos - NANOS_PER_SEC * whole_seconds;
+        let whole_seconds = total_nanos / Self::NANOS_PER_SEC;
+        let nanos = total_nanos - Self::NANOS_PER_SEC * whole_seconds;
 
         let mut seconds_remaining = whole_seconds;
         let mut did_write = false;
 
-        let days = seconds_remaining / SEC_PER_DAY;
+        let days = seconds_remaining / Self::SEC_PER_DAY;
         if days > 0 {
             write!(f, "{}d", days)?;
-            seconds_remaining -= days * SEC_PER_DAY;
+            seconds_remaining -= days * Self::SEC_PER_DAY;
             did_write = true;
         }
 
-        let hours = seconds_remaining / SEC_PER_HOUR;
+        let hours = seconds_remaining / Self::SEC_PER_HOUR;
         if hours > 0 {
             if did_write {
                 write!(f, " ")?;
             }
             write!(f, "{}h", hours)?;
-            seconds_remaining -= hours * SEC_PER_HOUR;
+            seconds_remaining -= hours * Self::SEC_PER_HOUR;
             did_write = true;
         }
 
-        let minutes = seconds_remaining / SEC_PER_MINUTE;
+        let minutes = seconds_remaining / Self::SEC_PER_MINUTE;
         if minutes > 0 {
             if did_write {
                 write!(f, " ")?;
             }
             write!(f, "{}m", minutes)?;
-            seconds_remaining -= minutes * SEC_PER_MINUTE;
+            seconds_remaining -= minutes * Self::SEC_PER_MINUTE;
             did_write = true;
         }
 

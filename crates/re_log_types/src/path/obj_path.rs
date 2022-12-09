@@ -178,6 +178,13 @@ impl From<String> for ObjPath {
     }
 }
 
+impl From<ObjPath> for String {
+    #[inline]
+    fn from(path: ObjPath) -> Self {
+        path.to_string()
+    }
+}
+
 // ----------------------------------------------------------------------------
 
 #[cfg(feature = "serde")]

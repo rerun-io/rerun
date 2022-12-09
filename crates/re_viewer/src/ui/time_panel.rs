@@ -1799,17 +1799,17 @@ fn fade_sides(ui: &mut egui::Ui, time_area: Rect) {
 
     let base_rect = time_area.expand(0.5); // expand slightly to cover feathering.
 
-    let window_fill = ui.visuals().window_fill();
+    let panel_fill = ui.visuals().panel_fill;
     let mut left_rect = base_rect;
 
     left_rect.set_right(left_rect.left() + fade_width);
     ui.painter()
-        .add(fade_mesh(left_rect, [window_fill, Color32::TRANSPARENT]));
+        .add(fade_mesh(left_rect, [panel_fill, Color32::TRANSPARENT]));
 
     let mut right_rect = base_rect;
     right_rect.set_left(right_rect.right() - fade_width);
     ui.painter()
-        .add(fade_mesh(right_rect, [Color32::TRANSPARENT, window_fill]));
+        .add(fade_mesh(right_rect, [Color32::TRANSPARENT, panel_fill]));
 }
 
 fn fade_mesh(rect: Rect, [left_color, right_color]: [Color32; 2]) -> egui::Mesh {

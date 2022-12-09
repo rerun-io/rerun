@@ -4,6 +4,7 @@ use std::sync::Arc;
 use arrow2::array::{Array, Int64Vec, UInt64Vec};
 use arrow2::datatypes::DataType;
 
+use parking_lot::RwLock;
 use re_format::{format_bytes, format_number};
 use re_log_types::{
     ComponentName, ObjPath as EntityPath, ObjPathHash as EntityPathHash, TimeInt, TimeRange,
@@ -266,6 +267,12 @@ pub struct IndexBucket {
     /// The time range covered by this bucket.
     pub(crate) time_range: TimeRange,
 
+    pub(crate) indices: RwLock<IndexBucketIndices>,
+}
+
+/// Just the indices, to simplify interior mutability.
+#[derive(Debug)]
+pub struct IndexBucketIndices {
     /// Whether the indices (all of them!) are currently sorted.
     ///
     /// Querying an `IndexBucket` will always trigger a sort if the indices aren't already sorted.
@@ -285,15 +292,29 @@ pub struct IndexBucket {
     pub(crate) indices: HashMap<ComponentName, UInt64Vec>,
 }
 
+impl Default for IndexBucketIndices {
+    fn default() -> Self {
+        Self {
+            is_sorted: true,
+            times: Int64Vec::default(),
+            indices: Default::default(),
+        }
+    }
+}
+
 impl std::fmt::Display for IndexBucket {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
             timeline,
             time_range,
+            indices,
+        } = self;
+
+        let IndexBucketIndices {
             is_sorted,
             times,
             indices,
-        } = self;
+        } = &*indices.read();
 
         f.write_fmt(format_args!(
             "time range: from {} to {} (all inclusive)\n",

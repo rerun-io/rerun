@@ -278,14 +278,13 @@ fn show_table(
         .collect::<Vec<_>>();
 
     use egui_extras::Column;
-    const ROW_HEIGHT: f32 = 18.0;
-    const HEADER_HEIGHT: f32 = 20.0;
+    let row_height = re_ui::ReUi::table_line_height();
 
     let current_timeline = *ctx.rec_cfg.time_ctrl.timeline();
     let current_time = ctx.rec_cfg.time_ctrl.time_int();
 
     let mut table_builder = egui_extras::TableBuilder::new(ui)
-        .striped(true)
+        .striped(re_ui::ReUi::striped())
         .resizable(true)
         .vscroll(true)
         .auto_shrink([false; 2]) // expand to take up the whole Space View
@@ -316,7 +315,8 @@ fn show_table(
         table_builder = table_builder.column(Column::remainder().at_least(100.0));
     }
     table_builder
-        .header(HEADER_HEIGHT, |mut header| {
+        .header(re_ui::ReUi::table_header_height(), |mut header| {
+            re_ui::ReUi::setup_table_header(&mut header);
             for timeline in &timelines {
                 header.col(|ui| {
                     ctx.timeline_button(ui, timeline);
@@ -336,9 +336,11 @@ fn show_table(
                 ui.strong("Body");
             });
         })
-        .body(|body| {
+        .body(|mut body| {
+            re_ui::ReUi::setup_table_body(&mut body);
+
             body_clip_rect = Some(body.max_rect());
-            body.rows(ROW_HEIGHT, text_entries.len(), |index, mut row| {
+            body.rows(row_height, text_entries.len(), |index, mut row| {
                 let text_entry = &text_entries[index];
 
                 // NOTE: `try_from_props` is where we actually fetch data from the underlying
@@ -359,7 +361,7 @@ fn show_table(
                 // timeline(s)
                 for timeline in &timelines {
                     row.col(|ui| {
-                        if let Some(value) = time_point.0.get(timeline).copied() {
+                        if let Some(value) = time_point.get(timeline).copied() {
                             if let Some(current_time) = current_time {
                                 if current_time_y.is_none()
                                     && *timeline == &current_timeline

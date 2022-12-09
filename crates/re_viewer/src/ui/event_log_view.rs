@@ -17,19 +17,25 @@ impl EventLogView {
     pub fn ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         crate::profile_function!();
 
-        ui.label(format!("{} log lines", format_number(ctx.log_db.len())));
-        ui.separator();
-
         let messages = {
             crate::profile_scope!("Collecting messages");
             ctx.log_db.chronological_log_messages().collect_vec()
         };
 
-        egui::ScrollArea::horizontal()
-            .auto_shrink([false; 2])
-            .show(ui, |ui| {
-                message_table(ctx, ui, &messages);
-            });
+        egui::Frame {
+            inner_margin: re_ui::ReUi::view_padding().into(),
+            ..egui::Frame::default()
+        }
+        .show(ui, |ui| {
+            ui.label(format!("{} log lines", format_number(ctx.log_db.len())));
+            ui.separator();
+
+            egui::ScrollArea::horizontal()
+                .auto_shrink([false; 2])
+                .show(ui, |ui| {
+                    message_table(ctx, ui, &messages);
+                });
+        });
     }
 }
 
@@ -39,7 +45,7 @@ pub(crate) fn message_table(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, mess
     use egui_extras::{Column, TableBuilder};
 
     TableBuilder::new(ui)
-        .striped(true)
+        .striped(re_ui::ReUi::striped())
         .max_scroll_height(f32::INFINITY) // Fill up whole height
         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
         .resizable(true)
@@ -52,7 +58,8 @@ pub(crate) fn message_table(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, mess
         )
         .column(Column::auto().clip(true).at_least(50.0)) // path
         .column(Column::remainder()) // payload
-        .header(20.0, |mut header| {
+        .header(re_ui::ReUi::table_header_height(), |mut header| {
+            re_ui::ReUi::setup_table_header(&mut header);
             header.col(|ui| {
                 ui.strong("MsgID");
             });
@@ -71,7 +78,9 @@ pub(crate) fn message_table(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, mess
                 ui.strong("Payload");
             });
         })
-        .body(|body| {
+        .body(|mut body| {
+            re_ui::ReUi::setup_table_body(&mut body);
+
             // for MANY messages, `heterogeneous_rows` is too slow. TODO(emilk): how many?
             if messages.len() < 10_000_000 {
                 body.heterogeneous_rows(
@@ -82,19 +91,20 @@ pub(crate) fn message_table(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, mess
                     },
                 );
             } else {
-                const ROW_HEIGHT: f32 = 18.0;
-                body.rows(ROW_HEIGHT, messages.len(), |index, mut row| {
-                    table_row(ctx, &mut row, messages[index], ROW_HEIGHT);
+                let row_height = re_ui::ReUi::table_line_height();
+                body.rows(row_height, messages.len(), |index, mut row| {
+                    table_row(ctx, &mut row, messages[index], row_height);
                 });
             }
         });
 }
 
 fn row_height(msg: &LogMsg) -> f32 {
-    match msg {
-        LogMsg::DataMsg(msg) if msg.data.data_type() == DataType::Tensor => 48.0,
-        _ => 18.0,
-    }
+    re_ui::ReUi::table_line_height()
+        * match msg {
+            LogMsg::DataMsg(msg) if msg.data.data_type() == DataType::Tensor => 3.0,
+            _ => 1.0,
+        }
 }
 
 fn table_row(
@@ -173,7 +183,7 @@ fn table_row(
             });
             for timeline in ctx.log_db.timelines() {
                 row.col(|ui| {
-                    if let Some(value) = time_point.0.get(timeline) {
+                    if let Some(value) = time_point.get(timeline) {
                         ctx.time_button(ui, timeline, *value);
                     }
                 });
@@ -200,7 +210,7 @@ fn table_row(
             });
             for timeline in ctx.log_db.timelines() {
                 row.col(|ui| {
-                    if let Some(value) = time_point.0.get(timeline) {
+                    if let Some(value) = time_point.get(timeline) {
                         ctx.time_button(ui, timeline, *value);
                     }
                 });

@@ -1,22 +1,23 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use anyhow::{anyhow, bail, ensure};
-use arrow2::array::{
-    new_empty_array, Array, Int64Array, Int64Vec, ListArray, MutableArray, StructArray, UInt64Vec,
-};
+use anyhow::{anyhow, ensure};
+use arrow2::array::{new_empty_array, Array, ListArray, MutableArray, StructArray, UInt64Vec};
 use arrow2::buffer::Buffer;
 use arrow2::chunk::Chunk;
 use arrow2::compute::concatenate::concatenate;
 use arrow2::datatypes::{DataType, Schema};
+use parking_lot::RwLock;
 use polars::prelude::IndexOfSchema;
 
 use re_log::debug;
-use re_log_types::arrow::{ENTITY_PATH_KEY, TIMELINE_KEY, TIMELINE_SEQUENCE, TIMELINE_TIME};
+use re_log_types::external::arrow2_convert::deserialize::arrow_array_deserialize_iterator;
 use re_log_types::{
-    ComponentNameRef, ObjPath as EntityPath, TimeInt, TimeRange, TimeType, Timeline,
+    ComponentNameRef, ObjPath as EntityPath, TimeInt, TimePoint, TimeRange, Timeline,
+    ENTITY_PATH_KEY,
 };
 
+use crate::store::IndexBucketIndices;
 use crate::{
     ComponentBucket, ComponentTable, DataStore, DataStoreConfig, IndexBucket, IndexTable, RowIndex,
 };
@@ -75,56 +76,18 @@ fn extract_timelines(
         .and_then(|idx| msg.columns().get(idx))
         .ok_or_else(|| anyhow!("expect top-level `timelines` field`"))?;
 
-    let timelines = timelines
-        .as_any()
-        .downcast_ref::<StructArray>()
-        .ok_or_else(|| anyhow!("expect top-level `timelines` to be a `StructArray`"))?;
+    let mut timepoints_iter = arrow_array_deserialize_iterator::<TimePoint>(timelines.as_ref())?;
 
-    // implicit Vec<Result> to Result<Vec> collection
-    let timelines: Result<Vec<_>, _> = timelines
-        .fields()
-        .iter()
-        .zip(timelines.values())
-        .map(
-            |(timeline, time)| match timeline.metadata.get(TIMELINE_KEY).map(|s| s.as_str()) {
-                Some(TIMELINE_TIME) => {
-                    let timeline = Timeline::new(timeline.name.clone(), TimeType::Time);
+    let timepoint = timepoints_iter
+        .next()
+        .ok_or_else(|| anyhow!("No rows in timelines."))?;
 
-                    let time = time
-                        .as_any()
-                        .downcast_ref::<Int64Array>()
-                        .ok_or_else(|| anyhow!("expect time-like timeline to be a `Int64Array"))?;
-                    ensure!(
-                        time.len() == 1,
-                        "expect only one timestamp per message per timeline"
-                    );
+    ensure!(
+        timepoints_iter.next().is_none(),
+        "Expected a single TimePoint, but found more!"
+    );
 
-                    Ok((timeline, time.values()[0].into()))
-                }
-                Some(TIMELINE_SEQUENCE) => {
-                    let timeline = Timeline::new(timeline.name.clone(), TimeType::Sequence);
-
-                    let time = time.as_any().downcast_ref::<Int64Array>().ok_or_else(|| {
-                        anyhow!("expect sequence-like timeline to be a `Int64Array")
-                    })?;
-                    ensure!(
-                        time.len() == 1,
-                        "expect only one timestamp per message per timeline"
-                    );
-
-                    Ok((timeline, time.values()[0].into()))
-                }
-                Some(unknown) => {
-                    bail!("unknown timeline kind: {unknown:?}")
-                }
-                None => {
-                    bail!("missing timeline kind")
-                }
-            },
-        )
-        .collect();
-
-    timelines
+    Ok(timepoint.into_iter().collect())
 }
 
 fn extract_components<'data>(
@@ -175,9 +138,7 @@ impl IndexBucket {
         Self {
             timeline,
             time_range: TimeRange::new(i64::MIN.into(), i64::MAX.into()),
-            is_sorted: true,
-            times: Int64Vec::default(),
-            indices: Default::default(),
+            indices: RwLock::new(IndexBucketIndices::default()),
         }
     }
 
@@ -187,8 +148,14 @@ impl IndexBucket {
         time: TimeInt,
         row_indices: &HashMap<ComponentNameRef<'_>, RowIndex>,
     ) -> anyhow::Result<()> {
+        let IndexBucketIndices {
+            is_sorted,
+            times,
+            indices,
+        } = &mut *self.indices.write();
+
         // append time to primary index
-        self.times.push(time.as_i64().into());
+        times.push(time.as_i64().into());
 
         // append components to secondary indices (2-way merge)
 
@@ -196,9 +163,9 @@ impl IndexBucket {
         //
         // push new row indices to their associated secondary index
         for (name, row_idx) in row_indices {
-            let index = self.indices.entry((*name).to_owned()).or_insert_with(|| {
+            let index = indices.entry((*name).to_owned()).or_insert_with(|| {
                 let mut index = UInt64Vec::default();
-                index.extend_constant(self.times.len().saturating_sub(1), None);
+                index.extend_constant(times.len().saturating_sub(1), None);
                 index
             });
             index.push(Some(*row_idx));
@@ -207,7 +174,7 @@ impl IndexBucket {
         // 2-way merge, step2: right-to-left
         //
         // fill unimpacted secondary indices with null values
-        for (name, index) in &mut self.indices {
+        for (name, index) in &mut *indices {
             if !row_indices.contains_key(name.as_str()) {
                 index.push_null();
             }
@@ -215,16 +182,15 @@ impl IndexBucket {
 
         // All indices (+ time!) should always have the exact same length.
         {
-            let expected_len = self.times.len();
-            debug_assert!(self
-                .indices
+            let expected_len = times.len();
+            debug_assert!(indices
                 .values()
                 .map(|index| index.len())
                 .all(|len| len == expected_len));
         }
 
         // TODO(#433): re_datastore: properly handle already sorted data during insertion
-        self.is_sorted = false;
+        *is_sorted = false;
 
         Ok(())
     }

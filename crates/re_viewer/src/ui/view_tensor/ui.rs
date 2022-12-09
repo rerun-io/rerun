@@ -44,7 +44,7 @@ impl ViewTensorState {
     pub fn create(tensor: &Tensor) -> ViewTensorState {
         Self {
             selector_values: Default::default(),
-            dimension_mapping: DimensionMapping::create(tensor),
+            dimension_mapping: DimensionMapping::create(tensor.num_dim()),
             color_mapping: ColorMapping::default(),
             texture_settings: TextureSettings::default(),
             tensor: tensor.clone(),
@@ -148,7 +148,7 @@ struct ColorMapping {
 impl Default for ColorMapping {
     fn default() -> Self {
         Self {
-            turbo: false,
+            turbo: true,
             gamma: 1.0,
         }
     }
@@ -169,8 +169,14 @@ impl ColorMapping {
 }
 
 fn color_mapping_ui(ui: &mut egui::Ui, color_mapping: &mut ColorMapping) {
-    ui.horizontal(|ui| {
-        ui.label("Color map:");
+    ui.group(|ui| {
+        ui.strong("Color map");
+
+        ui.horizontal(|ui| {
+            ui.radio_value(&mut color_mapping.turbo, false, "Grayscale");
+            ui.radio_value(&mut color_mapping.turbo, true, "Turbo");
+        });
+
         let mut brightness = 1.0 / color_mapping.gamma;
         ui.add(
             egui::Slider::new(&mut brightness, 0.1..=10.0)
@@ -178,7 +184,6 @@ fn color_mapping_ui(ui: &mut egui::Ui, color_mapping: &mut ColorMapping) {
                 .text("Brightness"),
         );
         color_mapping.gamma = 1.0 / brightness;
-        ui.checkbox(&mut color_mapping.turbo, "Turbo colormap");
     });
 }
 
