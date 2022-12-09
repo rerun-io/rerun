@@ -229,8 +229,7 @@ pub fn view_2d(
     // Save off the available_size since this is used for some of the layout updates later
     let available_size = ui.available_size();
 
-    let (desired_size, offset) =
-        state.desired_size_and_offset(available_size, scene.primitives.bounding_rect_2d());
+    let (desired_size, offset) = state.desired_size_and_offset(available_size, scene_rect_accum);
 
     // Bound the offset based on sizes
     // TODO(jleibs): can we derive this from the ScrollArea shape?
