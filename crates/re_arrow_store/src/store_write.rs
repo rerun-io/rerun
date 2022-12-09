@@ -176,6 +176,12 @@ impl IndexTable {
                 self.buckets.insert(min, second_half);
                 return self.insert(config, time, indices);
             }
+
+            // Couldn't split the bucket!
+            //
+            // The good news is that, provided that this new timepoint we're adding is different
+            // from what's already there in the bucket, we are guaranteed a successful split
+            // the next time an insertion is scheduled for that bucket.
         }
 
         debug!(
@@ -251,15 +257,97 @@ impl IndexBucket {
         Ok(())
     }
 
-    /// Splits the bucket into two, potentially uneven, optimal parts.
+    /// Splits the bucket into two, potentially uneven parts.
     ///
     /// The first part is done in place (i.e. modifies `self`), while the second part is returned
     /// as a new bucket.
     ///
-    /// Returns `None` if the bucket cannot be split any further.
+    /// Returns `None` if the bucket cannot be split any further, which can happen either because
+    /// the bucket is too small to begin with, or because it only contains a single timepoint.
+    ///
+    /// # Unsplittable buckets
+    ///
+    /// The datastore and query path operate under the general assumption that _all of the
+    /// index data_ for a given timepoint will reside in _one and only one_ bucket.
+    /// This function makes sure to uphold that restriction, which sometimes means splitting the
+    /// bucket into two uneven parts, or even not splitting it at all.
+    ///
+    /// Here's an example of an index table configured to have a maximum of 2 rows per bucket: one
+    /// can see that the 1st and 2nd buckets exceed this maximum in order to uphold the restriction
+    /// described above:
+    /// ```text
+    /// IndexTable {
+    ///     timeline: frame_nr
+    ///     entity: this/that
+    ///     size: 3 buckets for a total of 265 B across 8 total rows
+    ///     buckets: [
+    ///         IndexBucket {
+    ///             size: 99 B across 3 rows
+    ///             time range: from -∞ to #41 (all inclusive)
+    ///             data (sorted=true): shape: (3, 4)
+    ///             ┌──────┬───────────┬───────────┬───────┐
+    ///             │ time ┆ instances ┆ positions ┆ rects │
+    ///             │ ---  ┆ ---       ┆ ---       ┆ ---   │
+    ///             │ str  ┆ u64       ┆ u64       ┆ u64   │
+    ///             ╞══════╪═══════════╪═══════════╪═══════╡
+    ///             │ #41  ┆ 1         ┆ null      ┆ null  │
+    ///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┤
+    ///             │ #41  ┆ null      ┆ 1         ┆ null  │
+    ///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┤
+    ///             │ #41  ┆ null      ┆ null      ┆ 3     │
+    ///             └──────┴───────────┴───────────┴───────┘
+    ///         }
+    ///         IndexBucket {
+    ///             size: 99 B across 3 rows
+    ///             time range: from #42 to #42 (all inclusive)
+    ///             data (sorted=true): shape: (3, 4)
+    ///             ┌──────┬───────────┬───────┬───────────┐
+    ///             │ time ┆ instances ┆ rects ┆ positions │
+    ///             │ ---  ┆ ---       ┆ ---   ┆ ---       │
+    ///             │ str  ┆ u64       ┆ u64   ┆ u64       │
+    ///             ╞══════╪═══════════╪═══════╪═══════════╡
+    ///             │ #42  ┆ null      ┆ 1     ┆ null      │
+    ///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
+    ///             │ #42  ┆ 3         ┆ null  ┆ null      │
+    ///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
+    ///             │ #42  ┆ null      ┆ null  ┆ 2         │
+    ///             └──────┴───────────┴───────┴───────────┘
+    ///         }
+    ///         IndexBucket {
+    ///             size: 67 B across 2 rows
+    ///             time range: from #43 to +∞ (all inclusive)
+    ///             data (sorted=true): shape: (2, 4)
+    ///             ┌──────┬───────────┬───────────┬───────┐
+    ///             │ time ┆ positions ┆ instances ┆ rects │
+    ///             │ ---  ┆ ---       ┆ ---       ┆ ---   │
+    ///             │ str  ┆ u64       ┆ u64       ┆ u64   │
+    ///             ╞══════╪═══════════╪═══════════╪═══════╡
+    ///             │ #43  ┆ null      ┆ null      ┆ 4     │
+    ///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┤
+    ///             │ #44  ┆ 3         ┆ null      ┆ null  │
+    ///             └──────┴───────────┴───────────┴───────┘
+    ///         }
+    ///     ]
+    /// }
+    /// ```
     pub fn split(&self) -> Option<(TimeInt, Self)> {
-        if self.indices.read().times.len() < 2 {
-            return None; // early exit: can't split the unsplittable
+        {
+            let indices = self.indices.read();
+            let times = indices.times.values();
+
+            if times.len() < 2 {
+                return None; // early exit: can't split the unsplittable
+            }
+
+            // Note: doing this here in addition to doing it in [`find_split_index`] so that
+            // we don't have to grab a write lock on the bucket.
+            if times.first() == times.last() {
+                // The entire bucket contains only one timepoint, thus it's impossible to find
+                // a split index to begin with.
+                // We'll just have to append the new timepoint to the current bucket, even though
+                // it is sub-optimal.
+                return None;
+            }
         }
 
         let Self { timeline, indices } = self;
@@ -279,12 +367,20 @@ impl IndexBucket {
         #[cfg(debug_assertions)]
         let total_rows = times1.len();
 
-        let (min2, bucket2) = if let Some(split_idx) = find_split_index(times1) {
+        let (min2, bucket2) = {
+            let split_idx = find_split_index(times1).expect("must be splittable at this point");
+
+            // this updates `time_range1` in-place!
             let time_range2 = split_time_range_off(split_idx, times1, time_range1);
+
+            // this updates `times2` in-place!
             let times2 = split_primary_index_off(split_idx, times1);
+
+            // this updates `indices1` in-place!
             let indices2: HashMap<_, _> = indices1
                 .iter_mut()
                 .map(|(name, index1)| {
+                    // this updates `index1` in-place!
                     let index2 = split_secondary_index_off(split_idx, index1);
                     ((*name).clone(), index2)
                 })
@@ -301,12 +397,6 @@ impl IndexBucket {
                     }),
                 },
             )
-        } else {
-            // We couldn't find an optimal split index, so we'll just append to the current bucket,
-            // even though this is sub-optimal.
-            // The good news is that we are now guaranteed to split the next time an insertion is
-            // scheduled for that bucket.
-            return None;
         };
 
         // sanity checks
@@ -332,84 +422,36 @@ impl IndexBucket {
     }
 }
 
-/// Finds a split index that is both optimal _and_ still upholds the guarantee that a specific
-/// timepoint won't end up being splitted across multiple buckets.
+/// Finds an optimal split point for the given time index, or `None` if all entries in the index
+/// are identical, making it unsplittable.
 ///
 /// The returned index is _exclusive_: `[0, split_idx)` + `[split_idx; len)`.
 ///
-/// # What's the deal with timepoints splitted across multiple buckets?
+/// # Panics
 ///
-/// The datastore and query path operate under the general assumption that _all of the
-/// index data_ for a given timepoint will reside in _one and only one_ bucket.
-/// This function makes sure to uphold that restriction.
-///
-/// Here's an example of an index table configured to have a maximum of 2 rows per bucket: we
-/// can see that the 1st and 2nd buckets exceed this maximum in order to uphold the restriction
-/// described above:
-/// ```text
-/// IndexTable {
-///     timeline: frame_nr
-///     entity: this/that
-///     size: 3 buckets for a total of 265 B across 8 total rows
-///     buckets: [
-///         IndexBucket {
-///             size: 99 B across 3 rows
-///             time range: from -∞ to #41 (all inclusive)
-///             data (sorted=true): shape: (3, 4)
-///             ┌──────┬───────────┬───────────┬───────┐
-///             │ time ┆ instances ┆ positions ┆ rects │
-///             │ ---  ┆ ---       ┆ ---       ┆ ---   │
-///             │ str  ┆ u64       ┆ u64       ┆ u64   │
-///             ╞══════╪═══════════╪═══════════╪═══════╡
-///             │ #41  ┆ 1         ┆ null      ┆ null  │
-///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┤
-///             │ #41  ┆ null      ┆ 1         ┆ null  │
-///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┤
-///             │ #41  ┆ null      ┆ null      ┆ 3     │
-///             └──────┴───────────┴───────────┴───────┘
-///         }
-///         IndexBucket {
-///             size: 99 B across 3 rows
-///             time range: from #42 to #42 (all inclusive)
-///             data (sorted=true): shape: (3, 4)
-///             ┌──────┬───────────┬───────┬───────────┐
-///             │ time ┆ instances ┆ rects ┆ positions │
-///             │ ---  ┆ ---       ┆ ---   ┆ ---       │
-///             │ str  ┆ u64       ┆ u64   ┆ u64       │
-///             ╞══════╪═══════════╪═══════╪═══════════╡
-///             │ #42  ┆ null      ┆ 1     ┆ null      │
-///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
-///             │ #42  ┆ 3         ┆ null  ┆ null      │
-///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
-///             │ #42  ┆ null      ┆ null  ┆ 2         │
-///             └──────┴───────────┴───────┴───────────┘
-///         }
-///         IndexBucket {
-///             size: 67 B across 2 rows
-///             time range: from #43 to +∞ (all inclusive)
-///             data (sorted=true): shape: (2, 4)
-///             ┌──────┬───────────┬───────────┬───────┐
-///             │ time ┆ positions ┆ instances ┆ rects │
-///             │ ---  ┆ ---       ┆ ---       ┆ ---   │
-///             │ str  ┆ u64       ┆ u64       ┆ u64   │
-///             ╞══════╪═══════════╪═══════════╪═══════╡
-///             │ #43  ┆ null      ┆ null      ┆ 4     │
-///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┤
-///             │ #44  ┆ 3         ┆ null      ┆ null  │
-///             └──────┴───────────┴───────────┴───────┘
-///         }
-///     ]
-/// }
-/// ```
+/// This function expects `times` to be sorted!
+/// In debug builds, it will panic if that's not the case.
 //
 // TODO(cmc): replace forwards/backwards walk with forwards/backwards binsearches.
 fn find_split_index(times: &Int64Vec) -> Option<usize> {
-    debug_assert!(
-        times.validity().is_none(),
-        "The time index must always be dense, thus it shouldn't even have a validity\
+    #[cfg(debug_assertions)]
+    {
+        assert!(
+            times.validity().is_none(),
+            "The time index must always be dense, thus it shouldn't even have a validity\
             bitmap attached to it to begin with."
-    );
+        );
+        assert!(
+            times.values().windows(2).all(|t| t[0] <= t[1]),
+            "time index must be sorted before splitting!"
+        );
+    }
+
     let times = times.values();
+
+    if times.first() == times.last() {
+        return None; // early exit: unsplittable
+    }
 
     // This can never be lesser than 1 as we never split buckets smaller than 2 entries.
     let split_idx = times.len() / 2;
@@ -566,6 +608,9 @@ fn split_primary_index_off(split_idx: usize, times1: &mut Int64Vec) -> Int64Vec 
 fn split_secondary_index_off(split_idx: usize, index1: &mut UInt64Vec) -> UInt64Vec {
     let (datatype, mut data1, validity1) = std::mem::take(index1).into_data();
     let data2 = data1.split_off(split_idx);
+    // We can only end up with either no validity bitmap (because the original index didn't have
+    // one), or with two original bitmaps (because we've split the original in two), nothing in
+    // between.
     if let Some((validity1, validity2)) = validity1.map(|validity1| {
         let mut validity1 = validity1.into_iter().collect::<Vec<_>>();
         let validity2 = validity1.split_off(split_idx);
