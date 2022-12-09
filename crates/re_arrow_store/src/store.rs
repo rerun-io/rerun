@@ -180,7 +180,7 @@ impl DataStore {
             for table in self.indices.values() {
                 for bucket in table.buckets.values() {
                     for (comp, index) in &bucket.indices.read().indices {
-                        let row_indices = row_indices.entry(comp.to_owned()).or_default();
+                        let row_indices = row_indices.entry(comp.clone()).or_default();
                         row_indices.extend(index.values());
                     }
                 }

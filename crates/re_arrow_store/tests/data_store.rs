@@ -20,7 +20,7 @@ use re_log_types::{
 const COMPONENT_CONFIGS: &[DataStoreConfig] = &[
     DataStoreConfig::DEFAULT,
     DataStoreConfig {
-        component_bucket_nb_rows: 2,
+        component_bucket_nb_rows: 0,
         ..DataStoreConfig::DEFAULT
     },
     DataStoreConfig {

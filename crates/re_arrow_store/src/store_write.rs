@@ -262,10 +262,6 @@ impl IndexBucket {
             return None; // early exit: can't split the unsplittable
         }
 
-        // Used down the line to assert that we've left everything in a sane state.
-        #[cfg(debug_assertions)]
-        let total_rows = self.total_rows();
-
         let Self { timeline, indices } = self;
 
         let mut indices = indices.write();
@@ -279,6 +275,9 @@ impl IndexBucket {
         } = &mut *indices;
 
         let timeline = *timeline;
+        // Used down the line to assert that we've left everything in a sane state.
+        #[cfg(debug_assertions)]
+        let total_rows = times1.len();
 
         let (min2, bucket2) = if let Some(split_idx) = find_split_index(times1) {
             let time_range2 = split_time_range_off(split_idx, times1, time_range1);
