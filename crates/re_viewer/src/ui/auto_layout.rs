@@ -62,7 +62,12 @@ pub(crate) fn tree_from_space_views(
             let aspect_ratio = match space_view.category {
                 ViewCategory::TwoD => {
                     // This is the only thing where the aspect ratio makes complete sense.
-                    let size = space_view.view_state.state_2d.scene_bbox_accum.size();
+                    let size = space_view
+                        .view_state
+                        .state_spatial
+                        .state_2d
+                        .scene_bbox_accum
+                        .size();
                     Some(size.x / size.y)
                 }
                 ViewCategory::ThreeD => None, // 3D scenes can be pretty flexible

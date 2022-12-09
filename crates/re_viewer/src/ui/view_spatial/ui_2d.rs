@@ -9,9 +9,12 @@ use re_renderer::view_builder::TargetConfiguration;
 
 use crate::{
     misc::HoveredSpace,
-    ui::view_spatial::{
-        ui_renderer_bridge::{create_scene_paint_callback, get_viewport, ScreenBackground},
-        Image, Label2DTarget, SceneSpatial,
+    ui::{
+        image_ui,
+        view_spatial::{
+            ui_renderer_bridge::{create_scene_paint_callback, get_viewport, ScreenBackground},
+            Image, Label2DTarget, SceneSpatial,
+        },
     },
     Selection, ViewerContext,
 };
@@ -33,12 +36,12 @@ pub struct View2DState {
 
     /// The zoom and pan state, which is either a zoom/center or `Auto` which will fill the screen
     #[serde(skip)]
-    zoom: ZoomState,
+    zoom: ZoomState2D,
 }
 
 #[derive(Clone, Copy)]
 /// Sub-state specific to the Zoom/Scale/Pan engine
-pub enum ZoomState {
+pub enum ZoomState2D {
     Auto,
     Scaled {
         /// Number of ui points per scene unit
@@ -52,9 +55,9 @@ pub enum ZoomState {
     },
 }
 
-impl Default for ZoomState {
+impl Default for ZoomState2D {
     fn default() -> Self {
-        ZoomState::Auto
+        ZoomState2D::Auto
     }
 }
 
@@ -78,7 +81,7 @@ impl View2DState {
     ///   - `scroll_offset` is the position of the `ScrollArea` offset in ui points
     fn desired_size_and_offset(&self, available_size: Vec2) -> (Vec2, Vec2) {
         match self.zoom {
-            ZoomState::Scaled { scale, center, .. } => {
+            ZoomState2D::Scaled { scale, center, .. } => {
                 let desired_size = self.scene_bbox_accum.size() * scale;
 
                 // Try to keep the center of the scene in the middle of the available size
@@ -88,7 +91,7 @@ impl View2DState {
 
                 (desired_size, scroll_offset)
             }
-            ZoomState::Auto => {
+            ZoomState2D::Auto => {
                 // Otherwise, we autoscale the space to fit available area while maintaining aspect ratio
                 let scene_bbox = if self.scene_bbox_accum.is_positive() {
                     self.scene_bbox_accum
@@ -125,12 +128,12 @@ impl View2DState {
         };
 
         match self.zoom {
-            ZoomState::Auto => {
+            ZoomState2D::Auto => {
                 if let Some(input_zoom) = hovered_zoom {
                     if input_zoom > 1.0 {
                         let scale = response.rect.height() / self.scene_bbox_accum.height();
                         let center = self.scene_bbox_accum.center();
-                        self.zoom = ZoomState::Scaled {
+                        self.zoom = ZoomState2D::Scaled {
                             scale,
                             center,
                             accepting_scroll: false,
@@ -140,7 +143,7 @@ impl View2DState {
                     }
                 }
             }
-            ZoomState::Scaled {
+            ZoomState2D::Scaled {
                 mut scale,
                 mut center,
                 ..
@@ -177,7 +180,7 @@ impl View2DState {
                 }
 
                 // Save the zoom state
-                self.zoom = ZoomState::Scaled {
+                self.zoom = ZoomState2D::Scaled {
                     scale,
                     center,
                     accepting_scroll,
@@ -186,17 +189,17 @@ impl View2DState {
         }
 
         // Process things that might reset ZoomState to Auto
-        if let ZoomState::Scaled { scale, .. } = self.zoom {
+        if let ZoomState2D::Scaled { scale, .. } = self.zoom {
             // If the user double-clicks
             if response.double_clicked() {
-                self.zoom = ZoomState::Auto;
+                self.zoom = ZoomState2D::Auto;
             }
 
             // If our zoomed region is smaller than the available size
             if self.scene_bbox_accum.size().x * scale < available_size.x
                 && self.scene_bbox_accum.size().y * scale < available_size.y
             {
-                self.zoom = ZoomState::Auto;
+                self.zoom = ZoomState2D::Auto;
             }
         }
     }
@@ -204,7 +207,7 @@ impl View2DState {
     /// Take the offset from the `ScrollArea` and apply it back to center so that other
     /// scroll interfaces work as expected.
     fn capture_scroll(&mut self, offset: Vec2, available_size: Vec2) {
-        if let ZoomState::Scaled {
+        if let ZoomState2D::Scaled {
             scale,
             accepting_scroll,
             ..
@@ -213,7 +216,7 @@ impl View2DState {
             if accepting_scroll {
                 let center =
                     self.scene_bbox_accum.left_top() + (available_size / 2.0 + offset) / scale;
-                self.zoom = ZoomState::Scaled {
+                self.zoom = ZoomState2D::Scaled {
                     scale,
                     center,
                     accepting_scroll,
@@ -229,12 +232,12 @@ impl View2DState {
     }
 }
 
-pub const HELP_TEXT: &str = "Ctrl-scroll  to zoom (⌘-scroll or Mac).\n\
+pub const HELP_TEXT_2D: &str = "Ctrl-scroll  to zoom (⌘-scroll or Mac).\n\
     Drag to pan.\n\
     Double-click to reset the view.";
 
 /// Create the outer 2D view, which consists of a scrollable region
-pub(crate) fn view_2d(
+pub fn view_2d(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &mut View2DState,
@@ -413,7 +416,7 @@ fn view_2d_scrollable(
                             );
 
                             ui.horizontal(|ui| {
-                                super::image_ui::show_zoomed_image_region(
+                                image_ui::show_zoomed_image_region(
                                     parent_ui,
                                     ui,
                                     &tensor_view,
