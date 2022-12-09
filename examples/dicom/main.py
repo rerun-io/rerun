@@ -24,6 +24,7 @@ import numpy as np
 import numpy.typing as npt
 import pydicom as dicom
 import requests
+from tqdm import tqdm
 
 import rerun
 
@@ -70,7 +71,20 @@ def ensure_dataset_downloaded() -> Iterable[Path]:
     print(f"downloading dataset…")
     os.makedirs(DATASET_DIR.absolute(), exist_ok=True)
     resp = requests.get(DATASET_URL, stream=True)
-    z = zipfile.ZipFile(io.BytesIO(resp.content))
+    resp_size = int(resp.headers.get('content-length', 0))
+    chunk_size = 1024 # 1 Kibibyte
+    fname = os.path.join("/tmp", "dicom.zip")
+
+    with open(fname, "wb") as f:
+        for chunk in tqdm(
+            resp.iter_content(chunk_size=chunk_size),
+            desc=fname, miniters=1,
+            total=resp_size, unit='KiB', unit_divisor=1024,
+            unit_scale=True):
+
+            f.write(chunk)
+
+    z = zipfile.ZipFile(fname)
     z.extractall(DATASET_DIR.absolute())
 
     return list_dicom_files(DATASET_DIR)

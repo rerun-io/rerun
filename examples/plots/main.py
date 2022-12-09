@@ -12,7 +12,7 @@ Run:
 
 import argparse
 import random
-from math import cos, pi, sin, tau
+from math import cos, pi, sin, tau, sqrt
 
 import rerun
 
@@ -20,6 +20,21 @@ import rerun
 def clamp(n, smallest, largest):  # type: ignore[no-untyped-def]
     return max(smallest, min(n, largest))
 
+def log_k_lms_curve() -> None:
+    """Example showing the K-LMS noise schedule for diffusion models.
+    Square the linear interpolation between sqrt(beta_start) and sqrt(beta_end)
+    """
+    beta_start,beta_end = 0.00085,0.012
+    for t in range(0, 1000, 10):
+        rerun.set_time_sequence("frame_nr", t)
+        f_of_t = ((sqrt(beta_start) + t * (sqrt(beta_end) - sqrt(beta_start))) ** 2 / 1000)
+        color = [255, 255, 0]
+        rerun.log_scalar(
+            "k_lms",
+            f_of_t,
+            label="f(t) = (sqrt(a) + t * (sqrt(b) - sqrt(a))) ** 2",
+            # radius=radius,
+            color=color)
 
 def log_parabola() -> None:
     for t in range(0, 1000, 10):
@@ -93,6 +108,7 @@ def main() -> None:
         rerun.connect(args.addr)
 
     log_parabola()
+    log_klms_schedule()
     log_trig()
     log_segmentation()
 
