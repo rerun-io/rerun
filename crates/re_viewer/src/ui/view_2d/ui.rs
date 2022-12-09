@@ -267,8 +267,6 @@ pub(crate) fn view_2d(
     scroll_out.inner
 }
 
-const BACKGROUND_COLOR: Color32 = Color32::from_black_alpha(196);
-
 /// Create the real 2D view inside the scrollable area
 fn view_2d_scrollable(
     desired_size: Vec2,
@@ -300,7 +298,12 @@ fn view_2d_scrollable(
 
     // Add egui driven labels on top of re_renderer content.
     // Needs to come before hovering checks because it adds more objects for hovering.
-    let mut shapes = create_labels(&mut scene, ui_from_space, parent_ui);
+    let mut shapes = create_labels(
+        &mut scene,
+        ui_from_space,
+        parent_ui,
+        state.hovered_instance_hash(),
+    );
 
     // ------------------------------------------------------------------------
 
@@ -498,6 +501,7 @@ fn create_labels(
     scene: &mut SceneSpatial,
     ui_from_space: RectTransform,
     parent_ui: &mut egui::Ui,
+    hovered_instance: InstanceIdHash,
 ) -> Vec<Shape> {
     let mut label_shapes = Vec::with_capacity(scene.ui.labels_2d.len() * 2);
 
@@ -540,7 +544,13 @@ fn create_labels(
             Align2::CENTER_TOP.anchor_rect(Rect::from_min_size(text_anchor_pos, galley.size()));
         let bg_rect = text_rect.expand2(vec2(4.0, 2.0));
 
-        label_shapes.push(Shape::rect_filled(bg_rect, 3.0, BACKGROUND_COLOR));
+        let fill_color = if label.labled_instance == hovered_instance {
+            parent_ui.style().visuals.widgets.active.bg_fill
+        } else {
+            parent_ui.style().visuals.widgets.inactive.bg_fill
+        };
+
+        label_shapes.push(Shape::rect_filled(bg_rect, 3.0, fill_color));
         label_shapes.push(Shape::galley(text_rect.center_top(), galley));
 
         scene.ui.rects.push((bg_rect, label.labled_instance));
