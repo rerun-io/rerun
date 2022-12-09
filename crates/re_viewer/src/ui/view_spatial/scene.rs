@@ -123,7 +123,7 @@ pub struct SceneSpatialPrimitives {
     /// TODO(andreas): Need to decide of this should be used for hovering as well. If so add another builder with meta-data?
     pub textured_rectangles: Vec<re_renderer::renderer::TexturedRect>,
     pub line_strips: LineStripSeriesBuilder<InstanceIdHash>,
-    /// TODO(andreas): re_renderer should have a point builder https://github.com/rerun-io/rerun/issues/509
+    /// TODO(andreas): re_renderer should have a point builder <https://github.com/rerun-io/rerun/issues/509>
     pub points: Vec<PointCloudPoint>,
 
     /// Assigns an instance id to every point. Needs to have as many elements as points
