@@ -172,9 +172,8 @@ impl IndexTable {
                 "allocating new index bucket, previous one overflowed"
             );
 
-            if let Some(second_half) = bucket.split() {
-                let time = second_half.indices.read().time_range.min;
-                self.buckets.insert(time, second_half);
+            if let Some((min, second_half)) = bucket.split() {
+                self.buckets.insert(min, second_half);
                 return self.insert(config, time, indices);
             }
         }
@@ -258,13 +257,7 @@ impl IndexBucket {
     /// as a new bucket.
     ///
     /// Returns `None` if the bucket cannot be split any further.
-    pub fn split(&self) -> Option<Self> {
-        // let IndexBucketIndices {
-        //     is_sorted,
-        //     times,
-        //     indices,
-        // } = &mut *self.indices.write();
-
+    pub fn split(&self) -> Option<(TimeInt, Self)> {
         if self.indices.read().times.len() < 2 {
             return None; // early exit: can't split the unsplittable
         }
@@ -287,7 +280,7 @@ impl IndexBucket {
 
         let timeline = *timeline;
 
-        let bucket2 = if let Some(split_idx) = find_split_index(times1) {
+        let (min2, bucket2) = if let Some(split_idx) = find_split_index(times1) {
             let time_range2 = split_time_range_off(split_idx, times1, time_range1);
             let times2 = split_primary_index_off(split_idx, times1);
             let indices2: HashMap<_, _> = indices1
@@ -297,15 +290,18 @@ impl IndexBucket {
                     ((*name).clone(), index2)
                 })
                 .collect();
-            Self {
-                timeline,
-                indices: RwLock::new(IndexBucketIndices {
-                    is_sorted: true,
-                    time_range: time_range2,
-                    times: times2,
-                    indices: indices2,
-                }),
-            }
+            (
+                time_range2.min,
+                Self {
+                    timeline,
+                    indices: RwLock::new(IndexBucketIndices {
+                        is_sorted: true,
+                        time_range: time_range2,
+                        times: times2,
+                        indices: indices2,
+                    }),
+                },
+            )
         } else {
             // We couldn't find an optimal split index, so we'll just append to the current bucket,
             // even though this is sub-optimal.
@@ -333,7 +329,7 @@ impl IndexBucket {
             assert_eq!(total_rows as i64, total_rows1 + total_rows2);
         }
 
-        Some(bucket2)
+        Some((min2, bucket2))
     }
 }
 
