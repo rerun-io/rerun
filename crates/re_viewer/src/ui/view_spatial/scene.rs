@@ -911,23 +911,23 @@ impl SceneSpatial {
                     // TODO(andreas): support outlines directly by re_renderer (need only 1 and 2 *point* black outlines)
                     self.primitives
                         .line_strips
-                        .add_segments_2d(
-                            points
-                                .iter()
-                                .tuple_windows()
-                                .map(|(a, b)| (glam::vec2(a[0], a[1]), glam::vec2(b[0], b[1]))),
-                        )
+                        .add_segments_2d(points.chunks_exact(2).map(|chunk| {
+                            (
+                                glam::vec2(chunk[0][0], chunk[0][1]),
+                                glam::vec2(chunk[1][0], chunk[1][1]),
+                            )
+                        }))
                         .color(paint_props.bg_stroke.color)
                         .radius(Size::new_points(paint_props.bg_stroke.width * 0.5))
                         .user_data(instance_hash);
                     self.primitives
                         .line_strips
-                        .add_segments_2d(
-                            points
-                                .iter()
-                                .tuple_windows()
-                                .map(|(a, b)| (glam::vec2(a[0], a[1]), glam::vec2(b[0], b[1]))),
-                        )
+                        .add_segments_2d(points.chunks_exact(2).map(|chunk| {
+                            (
+                                glam::vec2(chunk[0][0], chunk[0][1]),
+                                glam::vec2(chunk[1][0], chunk[1][1]),
+                            )
+                        }))
                         .color(paint_props.fg_stroke.color)
                         .radius(Size::new_points(paint_props.fg_stroke.width * 0.5));
                 },
