@@ -218,7 +218,14 @@ impl ViewportBlueprint {
 
         let space_path = &space_view.space_path;
         let collapsing_header_id = ui.make_persistent_id(space_view_id);
-        let default_open = true;
+        let mut default_open = true;
+
+        if let Some(tree) = obj_tree.subtree(space_path) {
+            if tree.children.is_empty() {
+                default_open = false;
+            }
+        }
+
         egui::collapsing_header::CollapsingState::load_with_default_open(
             ui.ctx(),
             collapsing_header_id,
@@ -389,6 +396,7 @@ impl ViewportBlueprint {
             dock_style.tab_include_scrollarea = false;
             // dock_style.expand_tabs = true; looks good, but decreases readability
             dock_style.tab_text_color_unfocused = dock_style.tab_text_color_focused; // We don't treat focused tabs differently
+            dock_style.tab_background_color = ui.visuals().panel_fill;
 
             let mut tab_viewer = TabViewer {
                 ctx,
@@ -481,6 +489,11 @@ fn show_obj_tree_children(
     space_info: &SpaceInfo,
     tree: &ObjectTree,
 ) {
+    if tree.children.is_empty() {
+        ui.weak("(nothing)");
+        return;
+    }
+
     for (path_comp, child) in &tree.children {
         if space_info.objects.contains(&child.path) {
             show_obj_tree(
@@ -682,7 +695,7 @@ impl Blueprint {
         self.blueprint_panel(ctx, ui, &spaces_info);
 
         let viewport_frame = egui::Frame {
-            fill: ui.style().visuals.window_fill(),
+            fill: ui.style().visuals.panel_fill,
             ..Default::default()
         };
 
@@ -713,7 +726,7 @@ impl Blueprint {
         panel.show_animated_inside(ui, self.blueprint_panel_expanded, |ui: &mut egui::Ui| {
             ui.horizontal(|ui| {
                 ui.vertical_centered(|ui| {
-                    ui.label("Blueprint");
+                    ui.strong("Blueprint");
                 });
             });
 

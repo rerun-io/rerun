@@ -103,7 +103,7 @@ impl MemoryPanel {
     fn gpu_stats(ui: &mut egui::Ui, gpu_resource_stats: &WgpuResourcePoolStatistics) {
         egui::Grid::new("gpu resource grid")
             .num_columns(2)
-            .striped(true)
+            .striped(re_ui::ReUi::striped())
             .show(ui, |ui| {
                 let WgpuResourcePoolStatistics {
                     num_bind_group_layouts,
