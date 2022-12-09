@@ -373,7 +373,7 @@ impl IndexBucket {
             // this updates `time_range1` in-place!
             let time_range2 = split_time_range_off(split_idx, times1, time_range1);
 
-            // this updates `times2` in-place!
+            // this updates `times1` in-place!
             let times2 = split_primary_index_off(split_idx, times1);
 
             // this updates `indices1` in-place!
@@ -583,7 +583,7 @@ fn split_secondary_index_off(split_idx: usize, index1: &mut UInt64Vec) -> UInt64
     let (datatype, mut data1, validity1) = std::mem::take(index1).into_data();
     let data2 = data1.split_off(split_idx);
     // We can only end up with either no validity bitmap (because the original index didn't have
-    // one), or with two original bitmaps (because we've split the original in two), nothing in
+    // one), or with two new bitmaps (because we've split the original in two), nothing in
     // between.
     if let Some((validity1, validity2)) = validity1.map(|validity1| {
         let mut validity1 = validity1.into_iter().collect::<Vec<_>>();
