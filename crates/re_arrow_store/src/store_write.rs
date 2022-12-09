@@ -206,12 +206,13 @@ impl IndexBucket {
         time: TimeInt,
         row_indices: &HashMap<ComponentNameRef<'_>, RowIndex>,
     ) -> anyhow::Result<()> {
+        let mut guard = self.indices.write();
         let IndexBucketIndices {
             is_sorted,
             time_range: _,
             times,
             indices,
-        } = &mut *self.indices.write();
+        } = &mut *guard;
 
         // append time to primary index
         times.push(time.as_i64().into());
@@ -239,11 +240,14 @@ impl IndexBucket {
             }
         }
 
-        #[cfg(debug_assertions)]
-        self.sanity_check().unwrap();
-
         // TODO(#433): re_datastore: properly handle already sorted data during insertion
         *is_sorted = false;
+
+        #[cfg(debug_assertions)]
+        {
+            drop(guard); // sanity checking will grab the lock!
+            self.sanity_check().unwrap();
+        }
 
         Ok(())
     }
@@ -271,7 +275,7 @@ impl IndexBucket {
 
         let Self { timeline, indices } = self;
 
-        let indices = &mut *indices.write();
+        let mut indices = indices.write();
         indices.sort();
 
         let IndexBucketIndices {
@@ -279,7 +283,7 @@ impl IndexBucket {
             time_range: time_range1,
             times: times1,
             indices: indices1,
-        } = indices;
+        } = &mut *indices;
 
         let timeline = *timeline;
 
@@ -313,6 +317,7 @@ impl IndexBucket {
         // sanity checks
         #[cfg(debug_assertions)]
         {
+            drop(indices); // sanity checking will grab the lock!
             self.sanity_check().unwrap();
             bucket2.sanity_check().unwrap();
 
