@@ -5,15 +5,16 @@ use egui::{
 };
 use itertools::Itertools;
 use re_data_store::{InstanceId, InstanceIdHash, ObjPath};
-use re_renderer::{
-    renderer::{PointCloudDrawData, PointCloudPoint, RectangleDrawData},
-    view_builder::{TargetConfiguration, ViewBuilder},
-    RenderContext, Size,
+use re_renderer::view_builder::TargetConfiguration;
+
+use crate::{
+    misc::HoveredSpace,
+    ui::view_spatial::{
+        ui_renderer_bridge::{create_scene_paint_callback, get_viewport, ScreenBackground},
+        Image, Label2DTarget, SceneSpatial,
+    },
+    Selection, ViewerContext,
 };
-
-use crate::{misc::HoveredSpace, Selection, ViewerContext};
-
-use super::{Box2D, Image, LineSegments2D, ObjectPaintProperties, Point2D, Scene2D};
 
 // ---
 
@@ -220,6 +221,12 @@ impl View2DState {
             }
         }
     }
+
+    pub fn hovered_instance_hash(&self) -> InstanceIdHash {
+        self.hovered_instance
+            .as_ref()
+            .map_or(InstanceIdHash::NONE, |i| i.hash())
+    }
 }
 
 pub const HELP_TEXT: &str = "Ctrl-scroll  to zoom (⌘-scroll or Mac).\n\
@@ -232,13 +239,9 @@ pub(crate) fn view_2d(
     ui: &mut egui::Ui,
     state: &mut View2DState,
     space: &ObjPath,
-    mut scene: Scene2D,
+    scene: SceneSpatial,
 ) -> egui::Response {
     crate::profile_function!();
-
-    if let Some(hovered_instance) = &state.hovered_instance {
-        hover_effect(&mut scene, hovered_instance.hash());
-    };
 
     // Save off the available_size since this is used for some of the layout updates later
     let available_size = ui.available_size();
@@ -255,103 +258,13 @@ pub(crate) fn view_2d(
         .auto_shrink([false, false]);
 
     let scroll_out = scroll_area.show(ui, |ui| {
-        view_2d_scrollable(desired_size, available_size, ctx, ui, state, space, &scene)
+        view_2d_scrollable(desired_size, available_size, ctx, ui, state, space, scene)
     });
 
     // Update the scroll area based on the computed offset
     // This handles cases of dragging/zooming the space
     state.capture_scroll(scroll_out.state.offset, available_size);
     scroll_out.inner
-}
-
-fn hover_effect(scene: &mut Scene2D, hovered: InstanceIdHash) {
-    crate::profile_function!();
-
-    let Scene2D {
-        bbox: _,
-        annotation_map: _,
-
-        images,
-        boxes,
-        line_segments,
-        points,
-    } = scene;
-
-    for obj in images {
-        obj.is_hovered = obj.instance_hash == hovered;
-        if obj.is_hovered {
-            apply_hover_effect(&mut obj.paint_props);
-        }
-    }
-    for obj in boxes {
-        if obj.instance_hash == hovered {
-            apply_hover_effect(&mut obj.paint_props);
-        }
-    }
-    for obj in line_segments {
-        if obj.instance_hash == hovered {
-            apply_hover_effect(&mut obj.paint_props);
-        }
-    }
-    for obj in points {
-        if obj.instance_hash == hovered {
-            apply_hover_effect(&mut obj.paint_props);
-            if let Some(radius) = &mut obj.radius {
-                *radius *= 2.0;
-            }
-        }
-    }
-}
-
-fn apply_hover_effect(paint_props: &mut ObjectPaintProperties) {
-    paint_props.bg_stroke.width *= 2.0;
-    paint_props.bg_stroke.color = Color32::BLACK;
-
-    paint_props.fg_stroke.width *= 2.0;
-    paint_props.fg_stroke.color = Color32::WHITE;
-}
-
-/// Adds an object label to the ui.
-/// Returns rect covered by it (to be used for hover detection)
-fn add_label(
-    ui: &mut egui::Ui,
-    label: &String,
-    paint_props: &ObjectPaintProperties,
-    wrap_width: f32,
-    text_anchor_pos: Pos2,
-    shapes: &mut Vec<Shape>,
-) -> egui::Rect {
-    let font_id = TextStyle::Body.resolve(ui.style());
-    let galley = ui.fonts().layout_job({
-        egui::text::LayoutJob {
-            sections: vec![egui::text::LayoutSection {
-                leading_space: 0.0,
-                byte_range: 0..label.len(),
-                format: TextFormat::simple(font_id, paint_props.fg_stroke.color),
-            }],
-            text: (*label).clone(),
-            wrap: TextWrapping {
-                max_width: wrap_width,
-                ..Default::default()
-            },
-            break_on_newline: true,
-            halign: Align::Center,
-            ..Default::default()
-        }
-    });
-
-    let text_rect =
-        Align2::CENTER_TOP.anchor_rect(Rect::from_min_size(text_anchor_pos, galley.size()));
-    let bg_rect = text_rect.expand2(vec2(4.0, 2.0));
-
-    shapes.push(Shape::rect_filled(
-        bg_rect,
-        3.0,
-        paint_props.bg_stroke.color,
-    ));
-    shapes.push(Shape::galley(text_rect.center_top(), galley));
-
-    bg_rect
 }
 
 /// Create the real 2D view inside the scrollable area
@@ -362,9 +275,11 @@ fn view_2d_scrollable(
     parent_ui: &mut egui::Ui,
     state: &mut View2DState,
     space: &ObjPath,
-    scene: &Scene2D,
+    mut scene: SceneSpatial,
 ) -> egui::Response {
-    state.scene_bbox_accum = state.scene_bbox_accum.union(scene.bbox);
+    state.scene_bbox_accum = state
+        .scene_bbox_accum
+        .union(scene.primitives.bounding_rect_2d());
     let scene_bbox = state.scene_bbox_accum;
 
     let (mut response, painter) =
@@ -379,90 +294,98 @@ fn view_2d_scrollable(
 
     state.update(&response, space_from_ui, available_size);
 
-    let mut label_shapes = Vec::new();
+    // ------------------------------------------------------------------------
+
+    // Add egui driven labels on top of re_renderer content.
+    // Needs to come before hovering checks because it adds more objects for hovering.
+    let mut shapes = create_labels(
+        &mut scene,
+        ui_from_space,
+        space_from_ui,
+        parent_ui,
+        state.hovered_instance_hash(),
+    );
 
     // ------------------------------------------------------------------------
 
-    // All primitives passed to re_renderer are passed in space coordinates.
-    let mut line_builder = re_renderer::LineStripSeriesBuilder::<()>::default();
-
-    let hover_radius = 5.0; // TODO(emilk): from egui?
-
-    let mut closest_dist = hover_radius;
-    let mut closest_instance_id_hash = InstanceIdHash::NONE;
-    let pointer_pos = response.hover_pos();
-
-    let mut check_hovering = |instance_hash, dist: f32| {
-        if dist <= closest_dist {
-            closest_dist = dist;
-            closest_instance_id_hash = instance_hash;
-        }
-    };
-
     // What tooltips we've shown so far
     let mut shown_tooltips = ahash::HashSet::default();
-
     let mut depths_at_pointer = vec![];
+    let mut closest_instance_id_hash = InstanceIdHash::NONE;
 
-    let mut renderer_filled_rectangles = Vec::new();
+    // Check if we're hovering any hover primitive.
+    if let Some(pointer_pos_ui) = response.hover_pos() {
+        // All hover primitives have their coordinates in space units.
+        // Transform the pointer pos so we don't have to transform anything else!
+        let pointer_pos_space = space_from_ui.transform_pos(pointer_pos_ui);
+        let pointer_pos_space_glam = glam::vec2(pointer_pos_space.x, pointer_pos_space.y);
 
-    let total_num_images = scene.images.len();
-    for (image_idx, img) in scene.images.iter().enumerate() {
-        let Image {
-            instance_hash,
-            tensor,
-            meter,
-            paint_props,
-            is_hovered,
-            annotations: legend,
-        } = img;
+        let hover_radius = space_from_ui.scale().y * 5.0; // TODO(emilk): from egui?
+        let mut closest_dist = hover_radius;
 
-        let tensor_view = ctx
-            .cache
-            .image
-            .get_view_with_annotations(tensor, legend, ctx.render_ctx);
-
-        let (w, h) = (tensor.shape[1].size as f32, tensor.shape[0].size as f32);
-
-        let rect_in_ui = ui_from_space.transform_rect(Rect::from_min_size(Pos2::ZERO, vec2(w, h)));
-
-        let opacity = if image_idx == 0 {
-            1.0 // bottom image
-        } else {
-            // make top images transparent
-            1.0 / total_num_images.at_most(20) as f32 // avoid precision problems in framebuffer
+        let mut check_hovering = |instance_hash, dist: f32| {
+            if dist <= closest_dist {
+                closest_dist = dist;
+                closest_instance_id_hash = instance_hash;
+            }
         };
-        let tint = paint_props.fg_stroke.color.linear_multiply(opacity);
 
-        renderer_filled_rectangles.push(re_renderer::renderer::Rectangle {
-            top_left_corner_position: glam::vec3(
-                0.0,
-                0.0,
-                // We use RDF (X=Right, Y=Down, Z=Forward) for 2D spaces, so we want lower Z in order to put images on top
-                (total_num_images - image_idx - 1) as f32 * 0.1,
-            ),
-            extent_u: glam::Vec3::X * w,
-            extent_v: glam::Vec3::Y * h,
-            texture: tensor_view.texture_handle.clone(),
-            texture_filter_magnification: re_renderer::renderer::TextureFilterMag::Nearest,
-            texture_filter_minification: re_renderer::renderer::TextureFilterMin::Linear,
-            multiplicative_tint: tint.into(),
-        });
-
-        if *is_hovered {
-            line_builder
-                .add_axis_aligned_rectangle_outline_2d(glam::Vec2::ZERO, glam::vec2(w, h))
-                .color(paint_props.fg_stroke.color)
-                .radius(Size::new_points(paint_props.fg_stroke.width * 0.5));
+        for (bbox, instance_hash) in &scene.ui.rects {
+            check_hovering(*instance_hash, bbox.distance_to_pos(pointer_pos_space));
         }
 
-        if let Some(pointer_pos) = pointer_pos {
-            let dist = rect_in_ui.distance_sq_to_pos(pointer_pos).sqrt();
+        for (point, instance_hash) in scene
+            .primitives
+            .points
+            .iter()
+            .zip(scene.primitives.point_ids.iter())
+        {
+            if instance_hash.is_none() {
+                continue;
+            }
+
+            check_hovering(
+                *instance_hash,
+                point.position.truncate().distance(pointer_pos_space_glam),
+            );
+        }
+
+        for ((_info, instance_hash), vertices) in
+            scene.primitives.line_strips.iter_strips_with_vertices()
+        {
+            if instance_hash.is_none() {
+                continue;
+            }
+
+            let mut min_dist_sq = f32::INFINITY;
+
+            for (a, b) in vertices.tuple_windows() {
+                let line_segment_distance_sq = crate::math::line_segment_distance_sq_to_point_2d(
+                    [a.pos.truncate(), b.pos.truncate()],
+                    pointer_pos_space_glam,
+                );
+                min_dist_sq = min_dist_sq.min(line_segment_distance_sq);
+            }
+
+            check_hovering(*instance_hash, min_dist_sq.sqrt());
+        }
+
+        for img in &scene.ui.images {
+            let Image {
+                instance_hash,
+                tensor,
+                meter,
+                annotations,
+            } = img;
+
+            let (w, h) = (tensor.shape[1].size as f32, tensor.shape[0].size as f32);
+            let rect = Rect::from_min_size(Pos2::ZERO, vec2(w, h));
+            let dist = rect.distance_sq_to_pos(pointer_pos_space).sqrt();
             let dist = dist.at_least(hover_radius); // allow stuff on top of us to "win"
             check_hovering(*instance_hash, dist);
 
             // Show tooltips for all images, not just the "most hovered" one.
-            if rect_in_ui.contains(pointer_pos) {
+            if rect.contains(pointer_pos_space) {
                 response = response
                     .on_hover_cursor(egui::CursorIcon::ZoomIn)
                     .on_hover_ui_at_pointer(|ui| {
@@ -482,9 +405,10 @@ fn view_2d_scrollable(
                                 ui.separator();
                             }
 
+                            let legend = Some(annotations.clone());
                             let tensor_view = ctx.cache.image.get_view_with_annotations(
                                 tensor,
-                                legend,
+                                &legend,
                                 ctx.render_ctx,
                             );
 
@@ -493,8 +417,8 @@ fn view_2d_scrollable(
                                     parent_ui,
                                     ui,
                                     &tensor_view,
-                                    rect_in_ui,
-                                    pointer_pos,
+                                    ui_from_space.transform_rect(rect),
+                                    pointer_pos_ui,
                                     *meter,
                                 );
                             });
@@ -505,146 +429,15 @@ fn view_2d_scrollable(
             }
 
             if let Some(meter) = *meter {
-                let pos_in_image = space_from_ui.transform_pos(pointer_pos);
-                if let Some(raw_value) =
-                    tensor.get(&[pos_in_image.y.round() as _, pos_in_image.x.round() as _])
-                {
+                if let Some(raw_value) = tensor.get(&[
+                    pointer_pos_space.y.round() as _,
+                    pointer_pos_space.x.round() as _,
+                ]) {
                     let raw_value = raw_value.as_f64();
                     let depth_in_meters = raw_value / meter as f64;
                     depths_at_pointer.push(depth_in_meters);
                 }
             }
-        }
-    }
-
-    for bbox in &scene.boxes {
-        let Box2D {
-            instance_hash,
-            bbox,
-            stroke_width: _,
-            label,
-            paint_props,
-        } = bbox;
-
-        let rect_in_ui =
-            ui_from_space.transform_rect(Rect::from_min_max(bbox.min.into(), bbox.max.into()));
-
-        line_builder
-            .add_axis_aligned_rectangle_outline_2d(bbox.min.into(), bbox.max.into())
-            .color(paint_props.bg_stroke.color)
-            .radius(Size::new_points(paint_props.bg_stroke.width * 0.5));
-        line_builder
-            .add_axis_aligned_rectangle_outline_2d(bbox.min.into(), bbox.max.into())
-            .color(paint_props.fg_stroke.color)
-            .radius(Size::new_points(paint_props.fg_stroke.width * 0.5));
-
-        if let Some(pointer_pos) = pointer_pos {
-            check_hovering(*instance_hash, rect_in_ui.distance_to_pos(pointer_pos));
-        }
-
-        if let Some(label) = label {
-            // Place the text centered below the rect
-            let rect = add_label(
-                parent_ui,
-                label,
-                paint_props,
-                (rect_in_ui.width() - 4.0).at_least(60.0),
-                rect_in_ui.center_bottom() + vec2(0.0, 3.0),
-                &mut label_shapes,
-            );
-            if let Some(pointer_pos) = pointer_pos {
-                check_hovering(*instance_hash, rect.distance_to_pos(pointer_pos).abs());
-            }
-        }
-    }
-
-    for segments in &scene.line_segments {
-        let LineSegments2D {
-            instance_hash,
-            points,
-            stroke_width: _,
-            paint_props,
-        } = segments;
-
-        let mut min_dist_sq = f32::INFINITY;
-
-        // TODO(andreas): support outlines directly by re_renderer (need only 1 and 2 *point* black outlines)
-        line_builder
-            .add_segments_2d(
-                points
-                    .iter()
-                    .tuple_windows()
-                    .map(|(a, b)| (glam::vec2(a.x, a.y), glam::vec2(b.x, b.y))),
-            )
-            .color(paint_props.bg_stroke.color)
-            .radius(Size::new_points(paint_props.bg_stroke.width * 0.5));
-        line_builder
-            .add_segments_2d(
-                points
-                    .iter()
-                    .tuple_windows()
-                    .map(|(a, b)| (glam::vec2(a.x, a.y), glam::vec2(b.x, b.y))),
-            )
-            .color(paint_props.fg_stroke.color)
-            .radius(Size::new_points(paint_props.fg_stroke.width * 0.5));
-
-        for &[a, b] in bytemuck::cast_slice::<_, [egui::Pos2; 2]>(points) {
-            let a = ui_from_space.transform_pos(a);
-            let b = ui_from_space.transform_pos(b);
-
-            if let Some(pointer_pos) = pointer_pos {
-                let line_segment_distance_sq =
-                    crate::math::line_segment_distance_sq_to_point_2d([a, b], pointer_pos);
-                min_dist_sq = min_dist_sq.min(line_segment_distance_sq);
-            }
-        }
-
-        check_hovering(*instance_hash, min_dist_sq.sqrt());
-    }
-
-    let mut render_points = Vec::with_capacity(scene.points.capacity() * 2);
-    for point in &scene.points {
-        let Point2D {
-            instance_hash,
-            pos,
-            radius,
-            paint_props,
-            label,
-        } = point;
-
-        let radius = radius.unwrap_or(1.5);
-
-        // TODO(andreas): Make point renderer support an outline of one ui-point. Note that background color is hardcoded to Color32::from_black_alpha(196);
-        let depth = line_builder.next_2d_z; // put the points in front of all the lines we have so far.
-        render_points.push(PointCloudPoint {
-            position: glam::vec3(pos.x, pos.y, depth),
-            radius: Size::new_points(radius + 1.0),
-            color: paint_props.bg_stroke.color,
-        });
-        render_points.push(PointCloudPoint {
-            position: glam::vec3(pos.x, pos.y, depth - 0.1),
-            radius: Size::new_points(radius),
-            color: paint_props.fg_stroke.color,
-        });
-
-        let pos_in_ui = ui_from_space.transform_pos(*pos);
-
-        if let Some(label) = label {
-            let rect = add_label(
-                parent_ui,
-                label,
-                paint_props,
-                f32::INFINITY,
-                pos_in_ui + vec2(0.0, 3.0),
-                &mut label_shapes,
-            );
-            if let Some(pointer_pos) = pointer_pos {
-                check_hovering(*instance_hash, rect.distance_to_pos(pointer_pos).abs());
-            }
-        }
-
-        if let Some(pointer_pos) = pointer_pos {
-            check_hovering(*instance_hash, pos_in_ui.distance(pointer_pos));
         }
     }
 
@@ -655,8 +448,7 @@ fn view_2d_scrollable(
     {
         crate::profile_scope!("build command buffer for 2D view {}", space.to_string());
 
-        let Ok(mut view_builder) = setup_view_builder(
-            ctx.render_ctx,
+        let Ok(target_config) = setup_target_config(
             &painter,
             space_from_ui,
             space_from_pixel,
@@ -665,20 +457,16 @@ fn view_2d_scrollable(
             return response;
         };
 
-        let command_buffer = view_builder
-            .queue_draw(&line_builder.to_draw_data(ctx.render_ctx))
-            .queue_draw(&PointCloudDrawData::new(ctx.render_ctx, &render_points).unwrap())
-            .queue_draw(
-                &RectangleDrawData::new(ctx.render_ctx, &renderer_filled_rectangles).unwrap(),
-            )
-            .draw(ctx.render_ctx, parent_ui.visuals().extreme_bg_color.into())
-            .unwrap();
+        let Ok(callback) = create_scene_paint_callback(
+            ctx.render_ctx,
+            target_config, painter.clip_rect(),
+            &scene.primitives,
+            &ScreenBackground::ClearColor(parent_ui.visuals().extreme_bg_color.into()),
+        ) else {
+            return response;
+        };
 
-        painter.add(renderer_paint_callback(
-            command_buffer,
-            view_builder,
-            painter.clip_rect(),
-        ));
+        painter.add(callback);
     }
 
     // ------------------------------------------------------------------------
@@ -703,86 +491,102 @@ fn view_2d_scrollable(
         f32::INFINITY
     };
     project_onto_other_spaces(ctx, space, &response, &space_from_ui, depth_at_pointer);
-    show_projections_from_3d_space(ctx, parent_ui, space, &ui_from_space, &mut label_shapes);
+    show_projections_from_3d_space(ctx, parent_ui, space, &ui_from_space, &mut shapes);
 
     // ------------------------------------------------------------------------
 
-    painter.extend(label_shapes);
+    painter.extend(shapes);
 
     state.hovered_instance = closest_instance_id_hash.resolve(&ctx.log_db.obj_db.store);
 
     response
 }
 
-fn renderer_paint_callback(
-    command_buffer: wgpu::CommandBuffer,
-    view_builder: ViewBuilder,
-    clip_rect: egui::Rect,
-) -> egui::PaintCallback {
-    // egui paint callback are copyable / not a FnOnce (this in turn is because egui primitives can be callbacks and are copyable)
-    let command_buffer = std::sync::Arc::new(egui::mutex::Mutex::new(Some(command_buffer)));
-    let view_builder = std::sync::Arc::new(egui::mutex::Mutex::new(Some(view_builder)));
+fn create_labels(
+    scene: &mut SceneSpatial,
+    ui_from_space: RectTransform,
+    space_from_ui: RectTransform,
+    parent_ui: &mut egui::Ui,
+    hovered_instance: InstanceIdHash,
+) -> Vec<Shape> {
+    let mut label_shapes = Vec::with_capacity(scene.ui.labels_2d.len() * 2);
 
-    egui::PaintCallback {
-        rect: clip_rect,
-        callback: std::sync::Arc::new(
-            egui_wgpu::CallbackFn::new()
-                .prepare(
-                    move |_device, _queue, _encoder, _paint_callback_resources| {
-                        let mut command_buffer = command_buffer.lock();
-                        vec![std::mem::replace(&mut *command_buffer, None)
-                            .expect("egui_wgpu prepare callback called more than once")]
-                    },
+    for label in &scene.ui.labels_2d {
+        let (wrap_width, text_anchor_pos) = match label.target {
+            Label2DTarget::Rect(rect) => {
+                let rect_in_ui = ui_from_space.transform_rect(rect);
+                (
+                    // Place the text centered below the rect
+                    (rect_in_ui.width() - 4.0).at_least(60.0),
+                    rect_in_ui.center_bottom() + vec2(0.0, 3.0),
                 )
-                .paint(move |info, render_pass, paint_callback_resources| {
-                    crate::profile_scope!("paint");
-                    let clip_rect = info.clip_rect_in_pixels();
+            }
+            Label2DTarget::Point(pos) => {
+                let pos_in_ui = ui_from_space.transform_pos(pos);
+                (f32::INFINITY, pos_in_ui + vec2(0.0, 3.0))
+            }
+        };
 
-                    let ctx = paint_callback_resources.get().unwrap();
-                    let mut view_builder = view_builder.lock();
-                    std::mem::replace(&mut *view_builder, None)
-                        .expect("egui_wgpu paint callback called more than once")
-                        .composite(
-                            ctx,
-                            render_pass,
-                            glam::vec2(clip_rect.left_px, clip_rect.top_px),
-                        )
-                        .unwrap();
-                }),
-        ),
+        let font_id = TextStyle::Body.resolve(parent_ui.style());
+        let galley = parent_ui.fonts().layout_job({
+            egui::text::LayoutJob {
+                sections: vec![egui::text::LayoutSection {
+                    leading_space: 0.0,
+                    byte_range: 0..label.text.len(),
+                    format: TextFormat::simple(font_id, label.color),
+                }],
+                text: label.text.clone(),
+                wrap: TextWrapping {
+                    max_width: wrap_width,
+                    ..Default::default()
+                },
+                break_on_newline: true,
+                halign: Align::Center,
+                ..Default::default()
+            }
+        });
+
+        let text_rect =
+            Align2::CENTER_TOP.anchor_rect(Rect::from_min_size(text_anchor_pos, galley.size()));
+        let bg_rect = text_rect.expand2(vec2(4.0, 2.0));
+
+        let fill_color = if label.labled_instance == hovered_instance {
+            parent_ui.style().visuals.widgets.active.bg_fill
+        } else {
+            parent_ui.style().visuals.widgets.inactive.bg_fill
+        };
+
+        label_shapes.push(Shape::rect_filled(bg_rect, 3.0, fill_color));
+        label_shapes.push(Shape::galley(text_rect.center_top(), galley));
+
+        scene
+            .ui
+            .rects
+            .push((space_from_ui.transform_rect(bg_rect), label.labled_instance));
     }
+
+    label_shapes
 }
 
-fn setup_view_builder(
-    render_ctx: &mut RenderContext,
+fn setup_target_config(
     painter: &egui::Painter,
     space_from_ui: RectTransform,
     space_from_pixel: f32,
     space_name: &str,
-) -> anyhow::Result<ViewBuilder> {
+) -> anyhow::Result<TargetConfiguration> {
     let pixels_from_points = painter.ctx().pixels_per_point();
-    let resolution_in_pixel = {
-        let rect = painter.clip_rect();
-        let resolution = (rect.size() * pixels_from_points).round();
-
-        [resolution.x as u32, resolution.y as u32]
-    };
+    let resolution_in_pixel = get_viewport(painter.clip_rect(), pixels_from_points);
     anyhow::ensure!(resolution_in_pixel[0] > 0 && resolution_in_pixel[1] > 0);
 
     let camera_position_space = space_from_ui.transform_pos(painter.clip_rect().min);
-    let mut view_builder = ViewBuilder::default();
-    view_builder.setup_view(
-        render_ctx,
-        TargetConfiguration::new_2d_target(
-            space_name.into(),
-            resolution_in_pixel,
-            space_from_pixel,
-            pixels_from_points,
-            glam::vec2(camera_position_space.x, camera_position_space.y),
-        ),
-    )?;
 
-    Ok(view_builder)
+    Ok(TargetConfiguration::new_2d_target(
+        space_name.into(),
+        resolution_in_pixel,
+        space_from_pixel,
+        pixels_from_points,
+        glam::vec2(camera_position_space.x, camera_position_space.y),
+    ))
 }
 
 // ------------------------------------------------------------------------

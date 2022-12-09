@@ -6,7 +6,7 @@ use re_log_types::{IndexHash, ViewCoordinates};
 
 /// A logged camera that connects spaces.
 #[derive(Clone)]
-pub struct SpaceCamera {
+pub struct SpaceCamera3D {
     /// Path to the object which has the rigid [Self::world_from_camera`] transforms.
     pub camera_obj_path: ObjPath,
 
@@ -28,7 +28,7 @@ pub struct SpaceCamera {
     pub target_space: Option<ObjPath>,
 }
 
-impl SpaceCamera {
+impl SpaceCamera3D {
     /// Where in scene-space is the camera origin?
     pub fn position(&self) -> Vec3 {
         self.world_from_camera.translation()

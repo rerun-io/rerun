@@ -84,6 +84,11 @@ impl InstanceIdHash {
         self.obj_path_hash.is_some()
     }
 
+    #[inline]
+    pub fn is_none(&self) -> bool {
+        self.obj_path_hash.is_none()
+    }
+
     pub fn resolve(&self, store: &DataStore) -> Option<InstanceId> {
         Some(InstanceId {
             obj_path: store.obj_path_from_hash(&self.obj_path_hash).cloned()?,
