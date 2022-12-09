@@ -91,7 +91,6 @@ impl ViewSpatialState {
 
         match self.nav_mode {
             SpatialNavigationMode::ThreeD => {
-                // TODO(andreas): Why is this here and not in the ui?
                 let space_cameras = &space_cameras(spaces_info, space_info);
                 let coordinates = space_info.coordinates;
                 self.state_3d.space_specs = SpaceSpecs::from_view_coordinates(coordinates);

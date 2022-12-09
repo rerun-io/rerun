@@ -214,6 +214,7 @@ pub const HELP_TEXT: &str = "Ctrl-scroll  to zoom (⌘-scroll or Mac).\n\
     Double-click to reset the view.";
 
 /// Create the outer 2D view, which consists of a scrollable region
+/// TODO(andreas): Split into smaller parts, more re-use with `ui_3d`
 pub fn view_2d(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
@@ -261,6 +262,7 @@ pub fn view_2d(
 }
 
 /// Create the real 2D view inside the scrollable area
+#[allow(clippy::too_many_arguments)]
 fn view_2d_scrollable(
     desired_size: Vec2,
     available_size: Vec2,
