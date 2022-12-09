@@ -8,11 +8,20 @@ use crate::misc::{
 
 use super::{ui_2d::View2DState, ui_3d::View3DState, SceneSpatial, SpaceCamera3D, SpaceSpecs};
 
-#[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub enum SpatialNavigationMode {
     #[default]
     TwoD,
     ThreeD,
+}
+
+impl SpatialNavigationMode {
+    fn to_ui_string(&self) -> &'static str {
+        match self {
+            SpatialNavigationMode::TwoD => "2D Pan & Zoom",
+            SpatialNavigationMode::ThreeD => "3D Camera",
+        }
+    }
 }
 
 #[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
@@ -31,6 +40,23 @@ pub struct ViewSpatialState {
 
 impl ViewSpatialState {
     pub fn show_settings_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
+        egui::ComboBox::from_label("Navigation Mode")
+            .selected_text(self.nav_mode.to_ui_string())
+            .show_ui(ui, |ui| {
+                ui.selectable_value(
+                    &mut self.nav_mode,
+                    SpatialNavigationMode::TwoD,
+                    SpatialNavigationMode::TwoD.to_ui_string(),
+                );
+                ui.selectable_value(
+                    &mut self.nav_mode,
+                    SpatialNavigationMode::ThreeD,
+                    SpatialNavigationMode::ThreeD.to_ui_string(),
+                );
+            });
+
+        ui.separator();
+
         match self.nav_mode {
             SpatialNavigationMode::TwoD => {}
             SpatialNavigationMode::ThreeD => {
