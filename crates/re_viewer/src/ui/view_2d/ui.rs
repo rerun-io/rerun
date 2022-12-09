@@ -301,6 +301,7 @@ fn view_2d_scrollable(
     let mut shapes = create_labels(
         &mut scene,
         ui_from_space,
+        space_from_ui,
         parent_ui,
         state.hovered_instance_hash(),
     );
@@ -339,6 +340,10 @@ fn view_2d_scrollable(
             .iter()
             .zip(scene.primitives.point_ids.iter())
         {
+            if instance_hash.is_none() {
+                continue;
+            }
+
             check_hovering(
                 *instance_hash,
                 point.position.truncate().distance(pointer_pos_space_glam),
@@ -348,7 +353,7 @@ fn view_2d_scrollable(
         for ((_info, instance_hash), vertices) in
             scene.primitives.line_strips.iter_strips_with_vertices()
         {
-            if !instance_hash.is_some() {
+            if instance_hash.is_none() {
                 continue;
             }
 
@@ -500,6 +505,7 @@ fn view_2d_scrollable(
 fn create_labels(
     scene: &mut SceneSpatial,
     ui_from_space: RectTransform,
+    space_from_ui: RectTransform,
     parent_ui: &mut egui::Ui,
     hovered_instance: InstanceIdHash,
 ) -> Vec<Shape> {
@@ -553,7 +559,10 @@ fn create_labels(
         label_shapes.push(Shape::rect_filled(bg_rect, 3.0, fill_color));
         label_shapes.push(Shape::galley(text_rect.center_top(), galley));
 
-        scene.ui.rects.push((bg_rect, label.labled_instance));
+        scene
+            .ui
+            .rects
+            .push((space_from_ui.transform_rect(bg_rect), label.labled_instance));
     }
 
     label_shapes
