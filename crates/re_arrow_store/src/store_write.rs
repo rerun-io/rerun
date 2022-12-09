@@ -384,6 +384,8 @@ impl IndexBucket {
 ///     ]
 /// }
 /// ```
+//
+// TODO(cmc): replace forwards/backwards walk with forwards/backwards binsearches.
 fn find_split_index(times: &Int64Vec) -> Option<usize> {
     debug_assert!(
         times.validity().is_none(),
