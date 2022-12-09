@@ -1,25 +1,15 @@
 //! Generate random data for tests and benchmarks.
 
-use crate::msg_bundle::ComponentBundle;
+use crate::msg_bundle::{wrap_in_listarray, ComponentBundle};
 use crate::{Time, TimeInt, TimeType, Timeline};
 use arrow2::{
-    array::{Array, Float32Array, ListArray, PrimitiveArray, StructArray},
-    buffer::Buffer,
+    array::{Array, Float32Array, PrimitiveArray, StructArray},
     chunk::Chunk,
     datatypes::{DataType, Field, Schema},
 };
 use arrow2_convert::serialize::TryIntoArrow;
 
 use crate::field_types;
-
-/// Wrap `field_array` in a single-element `ListArray`
-pub fn wrap_in_listarray(field_array: Box<dyn Array>) -> ListArray<i32> {
-    let datatype = ListArray::<i32>::default_datatype(field_array.data_type().clone());
-    let offsets = Buffer::from(vec![0, field_array.len() as i32]);
-    let values = field_array;
-    let validity = None;
-    ListArray::<i32>::from_data(datatype, offsets, values, validity)
-}
 
 /// Create `len` dummy rectangles
 pub fn build_some_rects(len: usize) -> Box<dyn Array> {
@@ -82,24 +72,6 @@ pub fn build_frame_nr(frame_nr: i64) -> (Timeline, TimeInt) {
         Timeline::new("frame_nr", TimeType::Sequence),
         frame_nr.into(),
     )
-}
-
-pub fn pack_timelines(
-    timelines: impl Iterator<Item = (Schema, Box<dyn Array>)>,
-) -> (Schema, StructArray) {
-    let (timeline_schemas, timeline_cols): (Vec<_>, Vec<_>) = timelines.unzip();
-    let timeline_fields = timeline_schemas
-        .into_iter()
-        .flat_map(|schema| schema.fields)
-        .collect();
-    let packed = StructArray::new(DataType::Struct(timeline_fields), timeline_cols, None);
-
-    let schema = Schema {
-        fields: [Field::new("timelines", packed.data_type().clone(), false)].to_vec(),
-        ..Default::default()
-    };
-
-    (schema, packed)
 }
 
 pub fn build_instances(nb_instances: usize) -> ComponentBundle<'static> {

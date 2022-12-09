@@ -59,9 +59,6 @@ pub use time_point::{TimeInt, TimePoint, TimeType, Timeline, TimelineName};
 pub type ComponentName = String;
 pub type ComponentNameRef<'a> = &'a str;
 
-//TODO(john) get rid of this eventually
-pub const ENTITY_PATH_KEY: &str = "RERUN:entity_path";
-
 #[macro_export]
 macro_rules! impl_into_enum {
     ($from_ty: ty, $enum_name: ident, $to_enum_variant: ident) => {

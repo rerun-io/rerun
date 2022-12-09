@@ -3,7 +3,7 @@
 //! We have custom implementations of [`serde::Serialize`] and [`serde::Deserialize`] that wraps
 //! the inner Arrow serialization of [`Schema`] and [`Chunk`].
 
-use crate::MsgId;
+use crate::{msg_bundle::MessageBundle, MsgId};
 use arrow2::{array::Array, chunk::Chunk, datatypes::Schema};
 
 /// Message containing an Arrow payload
@@ -99,6 +99,33 @@ impl<'de> serde::Deserialize<'de> for ArrowMsg {
 }
 
 // ----------------------------------------------------------------------------
+
+impl TryFrom<MessageBundle<'static>> for ArrowMsg {
+    type Error = anyhow::Error;
+
+    fn try_from(bundle: MessageBundle<'static>) -> Result<Self, Self::Error> {
+        let (schema, chunk) = bundle.try_into()?;
+
+        println!(
+            "ArrowMsg chunk from MessageBundle:\n{}",
+            arrow2::io::print::write(
+                &[chunk.clone()],
+                schema
+                    .fields
+                    .iter()
+                    .map(|f| &f.name)
+                    .collect::<Vec<_>>()
+                    .as_slice(),
+            )
+        );
+
+        Ok(ArrowMsg {
+            msg_id: MsgId::random(),
+            schema,
+            chunk,
+        })
+    }
+}
 
 // ----------------------------------------------------------------------------
 
