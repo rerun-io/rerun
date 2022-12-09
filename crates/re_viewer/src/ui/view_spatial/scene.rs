@@ -100,38 +100,41 @@ fn to_ecolor([r, g, b, a]: [u8; 4]) -> Color32 {
     Color32::from_rgba_premultiplied(r, g, b, a)
 }
 
+/// Data necessary to setup the ui [`SceneSpatial`] but of no interest to `re_renderer`.
 #[derive(Default)]
 pub struct SceneSpatialUiData {
     pub labels_3d: Vec<Label3D>,
     pub labels_2d: Vec<Label2D>,
 
-    /// Hoverable rects in scene units and their instance id hashes
+    /// Cursor within any of these rects cause the referred instance to be hovered.
     pub rects: Vec<(egui::Rect, InstanceIdHash)>,
 
-    /// Images are a special case of rects where we're storing some extra information to allow minature previews etc.
+    /// Images are a special case of rects where we're storing some extra information to allow miniature previews etc.
     pub images: Vec<Image>,
 }
 
+/// Primitives sent off to `re_renderer`.
+/// (Some meta information still relevant to ui setup as well)
 #[derive(Default)]
 pub struct SceneSpatialPrimitives {
     /// Estimated bounding box of all data in scene coordinates. Accumulated.
     bounding_box: macaw::BoundingBox,
 
     /// TODO(andreas): Need to decide of this should be used for hovering as well. If so add another builder with meta-data?
-    pub textured_rectangles: Vec<re_renderer::renderer::Rectangle>,
+    pub textured_rectangles: Vec<re_renderer::renderer::TexturedRect>,
     pub line_strips: LineStripSeriesBuilder<InstanceIdHash>,
+    /// TODO(andreas): re_renderer should have a point builder https://github.com/rerun-io/rerun/issues/509
     pub points: Vec<PointCloudPoint>,
 
     /// Assigns an instance id to every point. Needs to have as many elements as points
-    /// TODO(andreas): Should introduce a builder to separate data & allow metadata. See LineStripSeriesBuilder
     pub point_ids: Vec<InstanceIdHash>,
 
     pub meshes: Vec<MeshSource>,
 }
 
 impl SceneSpatialPrimitives {
-    /// 2D truncated bounding rectangle.
-    pub fn bounding_rect(&self) -> egui::Rect {
+    /// 2D bounding rectangle ignoring Z.
+    pub fn bounding_rect_2d(&self) -> egui::Rect {
         egui::Rect::from_min_max(
             self.bounding_box.min.truncate().to_array().into(),
             self.bounding_box.max.truncate().to_array().into(),
@@ -144,6 +147,8 @@ impl SceneSpatialPrimitives {
     }
 
     pub fn recalculate_bounding_box(&mut self) {
+        crate::profile_function!();
+
         self.bounding_box = macaw::BoundingBox::nothing();
 
         for rect in &self.textured_rectangles {
@@ -152,6 +157,8 @@ impl SceneSpatialPrimitives {
                 .extend(rect.top_left_corner_position + rect.extent_u);
             self.bounding_box
                 .extend(rect.top_left_corner_position + rect.extent_v);
+            self.bounding_box
+                .extend(rect.top_left_corner_position + rect.extent_v + rect.extent_u);
         }
 
         for point in &self.points {
@@ -653,7 +660,7 @@ impl SceneSpatial {
 
                     self.primitives
                         .textured_rectangles
-                        .push(re_renderer::renderer::Rectangle {
+                        .push(re_renderer::renderer::TexturedRect {
                             top_left_corner_position: glam::Vec3::ZERO,
                             extent_u: glam::Vec3::X * w,
                             extent_v: glam::Vec3::Y * h,
@@ -1190,9 +1197,9 @@ impl SceneSpatial {
             return false;
         }
 
-        // Otherwise relative z extent of bounding box
-        let bbox_size = self.primitives.bounding_box().size();
-        bbox_size.z < 0.25 * bbox_size.x || bbox_size.z < 0.25 * bbox_size.y
+        // Otherwise do an heuristic based on the z extent of bounding box
+        let bbox = self.primitives.bounding_box();
+        bbox.min.z >= self.primitives.line_strips.next_2d_z * 2.0 && bbox.max.z < 1.0
     }
 
     pub fn picking(
@@ -1231,10 +1238,10 @@ impl SceneSpatial {
         let mut closest_instance_id = None;
 
         {
-            crate::profile_scope!("points 3d");
+            crate::profile_scope!("points_3d");
             debug_assert_eq!(point_ids.len(), points.len());
             for (point, instance_id_hash) in points.iter().zip(point_ids.iter()) {
-                if !instance_id_hash.is_some() {
+                if instance_id_hash.is_none() {
                     continue;
                 }
 
@@ -1256,12 +1263,12 @@ impl SceneSpatial {
         }
 
         {
-            crate::profile_scope!("line_segments 3d");
+            crate::profile_scope!("line_segments_3d");
             for ((_line_strip, vertices), instance_id_hash) in line_strips
                 .iter_strips_with_vertices()
                 .zip(line_strips.strip_user_data.iter())
             {
-                if !instance_id_hash.is_some() {
+                if instance_id_hash.is_none() {
                     continue;
                 }
                 // TODO(emilk): take line segment radius into account

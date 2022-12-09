@@ -279,7 +279,7 @@ fn view_2d_scrollable(
 ) -> egui::Response {
     state.scene_bbox_accum = state
         .scene_bbox_accum
-        .union(scene.primitives.bounding_rect());
+        .union(scene.primitives.bounding_rect_2d());
     let scene_bbox = state.scene_bbox_accum;
 
     let (mut response, painter) =

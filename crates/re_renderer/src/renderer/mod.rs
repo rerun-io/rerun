@@ -11,7 +11,7 @@ mod test_triangle;
 pub use test_triangle::TestTriangleDrawData;
 
 mod rectangles;
-pub use rectangles::{Rectangle, RectangleDrawData, TextureFilterMag, TextureFilterMin};
+pub use rectangles::{RectangleDrawData, TextureFilterMag, TextureFilterMin, TexturedRect};
 
 mod mesh_renderer;
 pub(crate) use mesh_renderer::MeshRenderer;

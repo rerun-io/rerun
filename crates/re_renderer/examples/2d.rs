@@ -1,7 +1,7 @@
 use re_renderer::{
     renderer::{
-        LineStripFlags, PointCloudDrawData, PointCloudPoint, Rectangle, RectangleDrawData,
-        TextureFilterMag, TextureFilterMin,
+        LineStripFlags, PointCloudDrawData, PointCloudPoint, RectangleDrawData, TextureFilterMag,
+        TextureFilterMin, TexturedRect,
     },
     resource_managers::{GpuTexture2DHandle, Texture2DCreationDesc},
     view_builder::{self, Projection, ViewBuilder},
@@ -171,7 +171,7 @@ impl framework::Example for Render2D {
         let rectangle_draw_data = RectangleDrawData::new(
             re_ctx,
             &[
-                Rectangle {
+                TexturedRect {
                     top_left_corner_position: glam::vec3(500.0, 120.0, -0.05),
                     extent_u: self.rerun_logo_texture_width as f32 * image_scale * glam::Vec3::X,
                     extent_v: self.rerun_logo_texture_height as f32 * image_scale * glam::Vec3::Y,
@@ -180,7 +180,7 @@ impl framework::Example for Render2D {
                     texture_filter_minification: TextureFilterMin::Linear,
                     multiplicative_tint: Rgba::WHITE,
                 },
-                Rectangle {
+                TexturedRect {
                     top_left_corner_position: glam::vec3(
                         500.0,
                         170.0 + self.rerun_logo_texture_height as f32 * image_scale,
