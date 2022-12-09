@@ -331,25 +331,6 @@ impl IndexBucket {
     /// }
     /// ```
     pub fn split(&self) -> Option<(TimeInt, Self)> {
-        {
-            let indices = self.indices.read();
-            let times = indices.times.values();
-
-            if times.len() < 2 {
-                return None; // early exit: can't split the unsplittable
-            }
-
-            // Note: doing this here in addition to doing it in [`find_split_index`] so that
-            // we don't have to grab a write lock on the bucket.
-            if times.first() == times.last() {
-                // The entire bucket contains only one timepoint, thus it's impossible to find
-                // a split index to begin with.
-                // We'll just have to append the new timepoint to the current bucket, even though
-                // it is sub-optimal.
-                return None;
-            }
-        }
-
         let Self { timeline, indices } = self;
 
         let mut indices = indices.write();
@@ -361,6 +342,18 @@ impl IndexBucket {
             times: times1,
             indices: indices1,
         } = &mut *indices;
+
+        if times1.len() < 2 {
+            return None; // early exit: can't split the unsplittable
+        }
+
+        if times1.values().first() == times1.values().last() {
+            // The entire bucket contains only one timepoint, thus it's impossible to find
+            // a split index to begin with.
+            // We'll just have to append the new timepoint to the current bucket, even though
+            // it is sub-optimal.
+            return None;
+        }
 
         let timeline = *timeline;
         // Used down the line to assert that we've left everything in a sane state.
