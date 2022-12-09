@@ -1,6 +1,6 @@
 use egui::NumExt as _;
 use glam::Affine3A;
-use macaw::{vec3, Quat, Ray3, Vec3};
+use macaw::{vec3, BoundingBox, Quat, Ray3, Vec3};
 
 use re_data_store::{InstanceId, InstanceIdHash};
 use re_log_types::{ObjPath, ViewCoordinates};
@@ -34,10 +34,6 @@ pub struct View3DState {
     #[serde(skip)]
     hovered_point: Option<glam::Vec3>,
 
-    /// Estimate of the the bounding box of all data. Accumulated.
-    #[serde(skip)]
-    scene_bbox: macaw::BoundingBox,
-
     // options:
     spin: bool,
     show_axes: bool,
@@ -58,7 +54,6 @@ impl Default for View3DState {
             orbit_eye: Default::default(),
             eye_interpolation: Default::default(),
             hovered_point: Default::default(),
-            scene_bbox: macaw::BoundingBox::nothing(),
             spin: false,
             show_axes: false,
             last_eye_interact_time: f64::NEG_INFINITY,
@@ -74,13 +69,14 @@ impl View3DState {
         ctx: &mut ViewerContext<'_>,
         tracking_camera: Option<Eye>,
         response: &egui::Response,
+        scene_bbox_accum: &BoundingBox,
     ) -> &mut OrbitEye {
         if response.double_clicked() {
             // Reset eye
             if tracking_camera.is_some() {
                 ctx.clear_selection();
             }
-            self.interpolate_to_orbit_eye(default_eye(&self.scene_bbox, &self.space_specs));
+            self.interpolate_to_orbit_eye(default_eye(scene_bbox_accum, &self.space_specs));
         }
 
         if let Some(tracking_camera) = tracking_camera {
@@ -98,7 +94,7 @@ impl View3DState {
 
         let orbit_camera = self
             .orbit_eye
-            .get_or_insert_with(|| default_eye(&self.scene_bbox, &self.space_specs));
+            .get_or_insert_with(|| default_eye(scene_bbox_accum, &self.space_specs));
 
         if self.spin {
             orbit_camera.rotate(egui::vec2(
@@ -162,7 +158,12 @@ impl View3DState {
         }
     }
 
-    pub fn show_settings_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
+    pub fn show_settings_ui(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        scene_bbox_accum: &BoundingBox,
+    ) {
         {
             let up_response = if let Some(up) = self.space_specs.up {
                 if up == Vec3::X {
@@ -203,7 +204,7 @@ impl View3DState {
             )
             .clicked()
         {
-            self.orbit_eye = Some(default_eye(&self.scene_bbox, &self.space_specs));
+            self.orbit_eye = Some(default_eye(scene_bbox_accum, &self.space_specs));
             self.eye_interpolation = None;
             // TODO(emilk): reset tracking camera too
         }
@@ -326,19 +327,19 @@ pub fn view_3d(
     space: &ObjPath,
     mut scene: SceneSpatial,
     space_cameras: &[SpaceCamera3D],
+    scene_bbox_accum: &BoundingBox,
     hovered_instance: &mut Option<InstanceId>, // TODO:
     hovered_instance_hash: InstanceIdHash,     // TODO:
 ) -> egui::Response {
     crate::profile_function!();
 
-    state.scene_bbox = state.scene_bbox.union(*scene.primitives.bounding_box());
     state.space_camera = space_cameras.to_vec();
 
     let (rect, mut response) =
         ui.allocate_at_least(ui.available_size(), egui::Sense::click_and_drag());
 
     let tracking_camera = tracking_camera(ctx, space_cameras);
-    let orbit_eye = state.update_eye(ctx, tracking_camera, &response);
+    let orbit_eye = state.update_eye(ctx, tracking_camera, &response, scene_bbox_accum);
 
     let did_interact_wth_eye = orbit_eye.interact(&response);
     let orbit_eye = *orbit_eye;
@@ -346,7 +347,7 @@ pub fn view_3d(
 
     scene.add_cameras(
         ctx,
-        &state.scene_bbox,
+        scene_bbox_accum,
         rect.size(),
         &eye,
         space_cameras,
@@ -390,7 +391,7 @@ pub fn view_3d(
     }
 
     project_onto_other_spaces(ctx, space_cameras, state, space, &response, orbit_eye);
-    show_projections_from_2d_space(ctx, space_cameras, state, &mut scene);
+    show_projections_from_2d_space(ctx, space_cameras, &mut scene, scene_bbox_accum);
     if state.show_axes {
         show_origin_axis(&mut scene);
     }
@@ -505,8 +506,8 @@ fn paint_view(
 fn show_projections_from_2d_space(
     ctx: &mut ViewerContext<'_>,
     space_cameras: &[SpaceCamera3D],
-    state: &mut View3DState,
     scene: &mut SceneSpatial,
+    scene_bbox_accum: &BoundingBox,
 ) {
     if let HoveredSpace::TwoD { space_2d, pos } = &ctx.rec_cfg.hovered_space_previous_frame {
         for cam in space_cameras {
@@ -524,7 +525,7 @@ fn show_projections_from_2d_space(
                     let length = if let Some(hit_pos) = hit_pos {
                         hit_pos.distance(cam.position())
                     } else {
-                        4.0 * state.scene_bbox.half_size().length() // should be long enough
+                        4.0 * scene_bbox_accum.half_size().length() // should be long enough
                     };
                     let origin = ray.point_along(0.0);
                     let end = ray.point_along(length);

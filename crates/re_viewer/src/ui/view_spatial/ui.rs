@@ -1,3 +1,4 @@
+use macaw::BoundingBox;
 use re_data_store::{InstanceId, InstanceIdHash, ObjPath};
 use re_log_types::Transform;
 
@@ -8,6 +9,7 @@ use crate::misc::{
 
 use super::{ui_2d::View2DState, ui_3d::View3DState, SceneSpatial, SpaceCamera3D, SpaceSpecs};
 
+/// Describes how the scene is navigated, determining if it is a 2D or 3D experience.
 #[derive(Clone, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub enum SpatialNavigationMode {
     #[default]
@@ -31,11 +33,15 @@ pub struct ViewSpatialState {
     #[serde(skip)]
     pub hovered_instance: Option<InstanceId>,
 
+    /// How the scene is navigated.
     pub nav_mode: SpatialNavigationMode,
 
-    // TODO(andreas): Not pub?
-    pub state_2d: View2DState,
-    pub state_3d: View3DState,
+    /// Estimated bounding box of all data. Accumulated over every time data is displayed.
+    #[serde(skip)]
+    pub scene_bbox_accum: BoundingBox,
+
+    state_2d: View2DState,
+    state_3d: View3DState,
 }
 
 impl ViewSpatialState {
@@ -60,7 +66,8 @@ impl ViewSpatialState {
         match self.nav_mode {
             SpatialNavigationMode::TwoD => {}
             SpatialNavigationMode::ThreeD => {
-                self.state_3d.show_settings_ui(ctx, ui);
+                self.state_3d
+                    .show_settings_ui(ctx, ui, &self.scene_bbox_accum);
             }
         }
     }
@@ -81,6 +88,7 @@ impl ViewSpatialState {
         space_info: &SpaceInfo,
     ) -> egui::Response {
         let hovered_instance_hash = self.hovered_instance_hash();
+        self.scene_bbox_accum = self.scene_bbox_accum.union(scene.primitives.bounding_box());
 
         match self.nav_mode {
             SpatialNavigationMode::ThreeD => {
@@ -96,19 +104,27 @@ impl ViewSpatialState {
                     space,
                     scene,
                     space_cameras,
+                    &self.scene_bbox_accum,
                     &mut self.hovered_instance,
                     hovered_instance_hash,
                 )
             }
-            SpatialNavigationMode::TwoD => super::view_2d(
-                ctx,
-                ui,
-                &mut self.state_2d,
-                space,
-                scene,
-                &mut self.hovered_instance,
-                hovered_instance_hash,
-            ),
+            SpatialNavigationMode::TwoD => {
+                let scene_rect_accum = egui::Rect::from_min_max(
+                    self.scene_bbox_accum.min.truncate().to_array().into(),
+                    self.scene_bbox_accum.max.truncate().to_array().into(),
+                );
+                super::view_2d(
+                    ctx,
+                    ui,
+                    &mut self.state_2d,
+                    space,
+                    scene,
+                    scene_rect_accum,
+                    &mut self.hovered_instance,
+                    hovered_instance_hash,
+                )
+            }
         }
     }
 

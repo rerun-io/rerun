@@ -142,8 +142,8 @@ impl SceneSpatialPrimitives {
     }
 
     /// bounding box covering the rendered scene
-    pub fn bounding_box(&self) -> &macaw::BoundingBox {
-        &self.bounding_box
+    pub fn bounding_box(&self) -> macaw::BoundingBox {
+        self.bounding_box
     }
 
     pub fn recalculate_bounding_box(&mut self) {

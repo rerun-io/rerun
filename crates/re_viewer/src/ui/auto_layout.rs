@@ -65,7 +65,7 @@ pub(crate) fn tree_from_space_views(
                     match state_spatial.nav_mode {
                         // This is the only thing where the aspect ratio makes complete sense.
                         super::view_spatial::SpatialNavigationMode::TwoD => {
-                            let size = state_spatial.state_2d.scene_bbox_accum.size();
+                            let size = state_spatial.scene_bbox_accum.size();
                             Some(size.x / size.y)
                         }
                         // 3D scenes can be pretty flexible

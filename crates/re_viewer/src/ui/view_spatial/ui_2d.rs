@@ -1,7 +1,7 @@
 use eframe::{emath::RectTransform, epaint::text::TextWrapping};
 use egui::{
-    epaint, pos2, vec2, Align, Align2, Color32, NumExt as _, Pos2, Rect, Response, ScrollArea,
-    Shape, TextFormat, TextStyle, Vec2,
+    pos2, vec2, Align, Align2, Color32, NumExt as _, Pos2, Rect, Response, ScrollArea, Shape,
+    TextFormat, TextStyle, Vec2,
 };
 use itertools::Itertools;
 use re_data_store::{InstanceId, InstanceIdHash, ObjPath};
@@ -21,15 +21,9 @@ use crate::{
 
 // ---
 
-#[derive(Clone, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub struct View2DState {
-    /// Estimated bounding box of all data. Accumulated.
-    ///
-    /// TODO(emilk): accumulate this per space once as data arrives instead.
-    #[serde(skip)]
-    pub scene_bbox_accum: epaint::Rect,
-
     /// The zoom and pan state, which is either a zoom/center or `Auto` which will fill the screen
     #[serde(skip)]
     zoom: ZoomState2D,
@@ -56,16 +50,6 @@ impl Default for ZoomState2D {
         ZoomState2D::Auto
     }
 }
-
-impl Default for View2DState {
-    fn default() -> Self {
-        Self {
-            scene_bbox_accum: epaint::Rect::NOTHING,
-            zoom: Default::default(),
-        }
-    }
-}
-
 impl View2DState {
     /// Determine the optimal sub-region and size based on the `ZoomState` and
     /// available size. This will generally be used to construct the painter and
@@ -74,13 +58,17 @@ impl View2DState {
     /// Returns `(desired_size, scroll_offset)` where:
     ///   - `desired_size` is the size of the painter necessary to capture the zoomed view in ui points
     ///   - `scroll_offset` is the position of the `ScrollArea` offset in ui points
-    fn desired_size_and_offset(&self, available_size: Vec2) -> (Vec2, Vec2) {
+    fn desired_size_and_offset(
+        &self,
+        available_size: Vec2,
+        scene_rect_accum: Rect,
+    ) -> (Vec2, Vec2) {
         match self.zoom {
             ZoomState2D::Scaled { scale, center, .. } => {
-                let desired_size = self.scene_bbox_accum.size() * scale;
+                let desired_size = scene_rect_accum.size() * scale;
 
                 // Try to keep the center of the scene in the middle of the available size
-                let scroll_offset = (center.to_vec2() - self.scene_bbox_accum.left_top().to_vec2())
+                let scroll_offset = (center.to_vec2() - scene_rect_accum.left_top().to_vec2())
                     * scale
                     - available_size / 2.0;
 
@@ -88,8 +76,8 @@ impl View2DState {
             }
             ZoomState2D::Auto => {
                 // Otherwise, we autoscale the space to fit available area while maintaining aspect ratio
-                let scene_bbox = if self.scene_bbox_accum.is_positive() {
-                    self.scene_bbox_accum
+                let scene_bbox = if scene_rect_accum.is_positive() {
+                    scene_rect_accum
                 } else {
                     Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0))
                 };
@@ -112,6 +100,7 @@ impl View2DState {
         &mut self,
         response: &egui::Response,
         ui_to_space: egui::emath::RectTransform,
+        scene_rect_accum: Rect,
         available_size: Vec2,
     ) {
         // Determine if we are zooming
@@ -126,15 +115,15 @@ impl View2DState {
             ZoomState2D::Auto => {
                 if let Some(input_zoom) = hovered_zoom {
                     if input_zoom > 1.0 {
-                        let scale = response.rect.height() / self.scene_bbox_accum.height();
-                        let center = self.scene_bbox_accum.center();
+                        let scale = response.rect.height() / ui_to_space.to().height();
+                        let center = scene_rect_accum.center();
                         self.zoom = ZoomState2D::Scaled {
                             scale,
                             center,
                             accepting_scroll: false,
                         };
                         // Recursively update now that we have initialized `ZoomState` to `Scaled`
-                        self.update(response, ui_to_space, available_size);
+                        self.update(response, ui_to_space, scene_rect_accum, available_size);
                     }
                 }
             }
@@ -191,8 +180,8 @@ impl View2DState {
             }
 
             // If our zoomed region is smaller than the available size
-            if self.scene_bbox_accum.size().x * scale < available_size.x
-                && self.scene_bbox_accum.size().y * scale < available_size.y
+            if scene_rect_accum.size().x * scale < available_size.x
+                && scene_rect_accum.size().y * scale < available_size.y
             {
                 self.zoom = ZoomState2D::Auto;
             }
@@ -201,7 +190,7 @@ impl View2DState {
 
     /// Take the offset from the `ScrollArea` and apply it back to center so that other
     /// scroll interfaces work as expected.
-    fn capture_scroll(&mut self, offset: Vec2, available_size: Vec2) {
+    fn capture_scroll(&mut self, offset: Vec2, available_size: Vec2, scene_rect_accum: Rect) {
         if let ZoomState2D::Scaled {
             scale,
             accepting_scroll,
@@ -209,8 +198,7 @@ impl View2DState {
         } = self.zoom
         {
             if accepting_scroll {
-                let center =
-                    self.scene_bbox_accum.left_top() + (available_size / 2.0 + offset) / scale;
+                let center = scene_rect_accum.left_top() + (available_size / 2.0 + offset) / scale;
                 self.zoom = ZoomState2D::Scaled {
                     scale,
                     center,
@@ -232,6 +220,7 @@ pub fn view_2d(
     state: &mut View2DState,
     space: &ObjPath,
     scene: SceneSpatial,
+    scene_rect_accum: Rect,
     hovered_instance: &mut Option<InstanceId>, // TODO:
     hovered_instance_hash: InstanceIdHash,     // TODO:
 ) -> egui::Response {
@@ -240,7 +229,8 @@ pub fn view_2d(
     // Save off the available_size since this is used for some of the layout updates later
     let available_size = ui.available_size();
 
-    let (desired_size, offset) = state.desired_size_and_offset(available_size);
+    let (desired_size, offset) =
+        state.desired_size_and_offset(available_size, scene.primitives.bounding_rect_2d());
 
     // Bound the offset based on sizes
     // TODO(jleibs): can we derive this from the ScrollArea shape?
@@ -260,6 +250,7 @@ pub fn view_2d(
             state,
             space,
             scene,
+            scene_rect_accum,
             hovered_instance,
             hovered_instance_hash,
         )
@@ -267,7 +258,7 @@ pub fn view_2d(
 
     // Update the scroll area based on the computed offset
     // This handles cases of dragging/zooming the space
-    state.capture_scroll(scroll_out.state.offset, available_size);
+    state.capture_scroll(scroll_out.state.offset, available_size, scene_rect_accum);
     scroll_out.inner
 }
 
@@ -280,25 +271,21 @@ fn view_2d_scrollable(
     state: &mut View2DState,
     space: &ObjPath,
     mut scene: SceneSpatial,
+    scene_rect_accum: Rect,
     hovered_instance: &mut Option<InstanceId>, // TODO:
     hovered_instance_hash: InstanceIdHash,     // TODO:
 ) -> egui::Response {
-    state.scene_bbox_accum = state
-        .scene_bbox_accum
-        .union(scene.primitives.bounding_rect_2d());
-    let scene_bbox = state.scene_bbox_accum;
-
     let (mut response, painter) =
         parent_ui.allocate_painter(desired_size, egui::Sense::click_and_drag());
 
     // Create our transforms.
-    let ui_from_space = egui::emath::RectTransform::from_to(scene_bbox, response.rect);
+    let ui_from_space = egui::emath::RectTransform::from_to(scene_rect_accum, response.rect);
     let space_from_ui = ui_from_space.inverse();
     let space_from_points = space_from_ui.scale().y;
     let points_from_pixels = 1.0 / painter.ctx().pixels_per_point();
     let space_from_pixel = space_from_points * points_from_pixels;
 
-    state.update(&response, space_from_ui, available_size);
+    state.update(&response, space_from_ui, scene_rect_accum, available_size);
 
     // ------------------------------------------------------------------------
 

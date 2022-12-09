@@ -58,10 +58,6 @@ impl SpaceView {
             } else {
                 SpatialNavigationMode::ThreeD
             };
-
-            // TODO: need tounderstand this one
-            view_state.state_spatial.state_2d.scene_bbox_accum =
-                scene.spatial.primitives.bounding_rect_2d();
         }
 
         Self {

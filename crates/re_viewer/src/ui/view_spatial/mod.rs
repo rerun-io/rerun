@@ -13,8 +13,8 @@ pub use self::scene::{
 pub use self::space_camera_3d::SpaceCamera3D;
 pub use mesh_cache::CpuMeshCache;
 pub use ui::{SpatialNavigationMode, ViewSpatialState};
-pub use ui_2d::{view_2d, View2DState};
-pub use ui_3d::{view_3d, SpaceSpecs, View3DState};
+pub use ui_2d::view_2d;
+pub use ui_3d::{view_3d, SpaceSpecs};
 
 use re_renderer::Color32;
 
