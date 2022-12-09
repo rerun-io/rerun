@@ -123,6 +123,10 @@ impl IndexTable {
 impl IndexBucket {
     /// Sort all indices by time.
     pub fn sort_indices(&self) {
+        if self.indices.read().is_sorted {
+            return; // early read-only exit
+        }
+
         let IndexBucketIndices {
             is_sorted,
             times,
