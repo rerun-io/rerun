@@ -431,8 +431,6 @@ impl IndexBucket {
 ///
 /// This function expects `times` to be sorted!
 /// In debug builds, it will panic if that's not the case.
-//
-// TODO(cmc): replace forwards/backwards walk with forwards/backwards binsearches.
 fn find_split_index(times: &Int64Vec) -> Option<usize> {
     #[cfg(debug_assertions)]
     {
@@ -448,45 +446,21 @@ fn find_split_index(times: &Int64Vec) -> Option<usize> {
     }
 
     let times = times.values();
-
     if times.first() == times.last() {
         return None; // early exit: unsplittable
     }
 
     // This can never be lesser than 1 as we never split buckets smaller than 2 entries.
     let split_idx = times.len() / 2;
+    let target = times[split_idx];
 
-    // Are we about to split in the middle of a continuous run?
-    // We'll walk backwards to figure it out.
-    let split_idx1 = {
-        let time = times[split_idx];
-        let mut split_idx = split_idx as i64;
-        loop {
-            if split_idx < 0 {
-                break None;
-            }
-            if times[split_idx as usize] != time {
-                break Some(split_idx as usize + 1); // +1 because exclusive
-            }
-            split_idx -= 1;
-        }
-    };
+    // Are we about to split in the middle of a continuous run? Hop backwards to figure it out.
+    let split_idx1 = Some(times[..split_idx].partition_point(|&t| t < target)).filter(|&i| i > 0);
 
-    // Are we about to split in the middle of a continuous run?
-    // We'll now walk forwards to figure it out.
-    let split_idx2 = {
-        let time = times[split_idx];
-        let mut split_idx = split_idx;
-        loop {
-            if split_idx >= times.len() {
-                break None;
-            }
-            if times[split_idx] != time {
-                break Some(split_idx);
-            }
-            split_idx += 1;
-        }
-    };
+    // Are we about to split in the middle of a continuous run? Hop forwards to figure it out.
+    let split_idx2 = Some(times[split_idx..].partition_point(|&t| t <= target))
+        .map(|t| t + split_idx) // we skipped that many entries!
+        .filter(|&t| t < times.len());
 
     // Are we in the middle of a backwards continuous run? a forwards continuous run? both?
     match (split_idx1, split_idx2) {
