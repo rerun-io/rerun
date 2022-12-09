@@ -209,7 +209,7 @@ impl View2DState {
     }
 }
 
-pub const HELP_TEXT_2D: &str = "Ctrl-scroll  to zoom (⌘-scroll or Mac).\n\
+pub const HELP_TEXT: &str = "Ctrl-scroll  to zoom (⌘-scroll or Mac).\n\
     Drag to pan.\n\
     Double-click to reset the view.";
 
@@ -221,8 +221,7 @@ pub fn view_2d(
     space: &ObjPath,
     scene: SceneSpatial,
     scene_rect_accum: Rect,
-    hovered_instance: &mut Option<InstanceId>, // TODO:
-    hovered_instance_hash: InstanceIdHash,     // TODO:
+    hovered_instance: &mut Option<InstanceId>,
 ) -> egui::Response {
     crate::profile_function!();
 
@@ -252,7 +251,6 @@ pub fn view_2d(
             scene,
             scene_rect_accum,
             hovered_instance,
-            hovered_instance_hash,
         )
     });
 
@@ -272,8 +270,7 @@ fn view_2d_scrollable(
     space: &ObjPath,
     mut scene: SceneSpatial,
     scene_rect_accum: Rect,
-    hovered_instance: &mut Option<InstanceId>, // TODO:
-    hovered_instance_hash: InstanceIdHash,     // TODO:
+    hovered_instance: &mut Option<InstanceId>,
 ) -> egui::Response {
     let (mut response, painter) =
         parent_ui.allocate_painter(desired_size, egui::Sense::click_and_drag());
@@ -291,13 +288,18 @@ fn view_2d_scrollable(
 
     // Add egui driven labels on top of re_renderer content.
     // Needs to come before hovering checks because it adds more objects for hovering.
-    let mut shapes = create_labels(
-        &mut scene,
-        ui_from_space,
-        space_from_ui,
-        parent_ui,
-        hovered_instance_hash,
-    );
+    {
+        let hovered_instance_hash = hovered_instance
+            .as_ref()
+            .map_or(InstanceIdHash::NONE, |i| i.hash());
+        painter.extend(create_labels(
+            &mut scene,
+            ui_from_space,
+            space_from_ui,
+            parent_ui,
+            hovered_instance_hash,
+        ));
+    }
 
     // ------------------------------------------------------------------------
 
@@ -484,11 +486,14 @@ fn view_2d_scrollable(
         f32::INFINITY
     };
     project_onto_other_spaces(ctx, space, &response, &space_from_ui, depth_at_pointer);
-    show_projections_from_3d_space(ctx, parent_ui, space, &ui_from_space, &mut shapes);
+    painter.extend(show_projections_from_3d_space(
+        ctx,
+        parent_ui,
+        space,
+        &ui_from_space,
+    ));
 
     // ------------------------------------------------------------------------
-
-    painter.extend(shapes);
 
     *hovered_instance = closest_instance_id_hash.resolve(&ctx.log_db.obj_db.store);
 
@@ -605,8 +610,8 @@ fn show_projections_from_3d_space(
     ui: &egui::Ui,
     space: &ObjPath,
     ui_from_space: &RectTransform,
-    shapes: &mut Vec<Shape>,
-) {
+) -> Vec<Shape> {
+    let mut shapes = Vec::new();
     if let HoveredSpace::ThreeD { target_spaces, .. } = &ctx.rec_cfg.hovered_space_previous_frame {
         for (space_2d, ray_2d, pos_2d) in target_spaces {
             if space_2d == space {
@@ -658,4 +663,5 @@ fn show_projections_from_3d_space(
             }
         }
     }
+    shapes
 }

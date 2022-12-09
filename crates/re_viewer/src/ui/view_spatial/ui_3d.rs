@@ -308,7 +308,7 @@ fn click_object(
 
 // ----------------------------------------------------------------------------
 
-pub const HELP_TEXT_3D: &str = "Drag to rotate.\n\
+pub const HELP_TEXT: &str = "Drag to rotate.\n\
     Drag with secondary mouse button to pan.\n\
     Drag with middle mouse button to roll the view.\n\
     Scroll to zoom.\n\
@@ -328,8 +328,7 @@ pub fn view_3d(
     mut scene: SceneSpatial,
     space_cameras: &[SpaceCamera3D],
     scene_bbox_accum: &BoundingBox,
-    hovered_instance: &mut Option<InstanceId>, // TODO:
-    hovered_instance_hash: InstanceIdHash,     // TODO:
+    hovered_instance: &mut Option<InstanceId>,
 ) -> egui::Response {
     crate::profile_function!();
 
@@ -345,14 +344,19 @@ pub fn view_3d(
     let orbit_eye = *orbit_eye;
     let eye = orbit_eye.to_eye();
 
-    scene.add_cameras(
-        ctx,
-        scene_bbox_accum,
-        rect.size(),
-        &eye,
-        space_cameras,
-        hovered_instance_hash,
-    );
+    {
+        let hovered_instance_hash = hovered_instance
+            .as_ref()
+            .map_or(InstanceIdHash::NONE, |i| i.hash());
+        scene.add_cameras(
+            ctx,
+            scene_bbox_accum,
+            rect.size(),
+            &eye,
+            space_cameras,
+            hovered_instance_hash,
+        );
+    }
 
     if did_interact_wth_eye {
         state.last_eye_interact_time = ui.input().time;

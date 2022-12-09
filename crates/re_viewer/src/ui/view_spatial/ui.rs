@@ -87,7 +87,6 @@ impl ViewSpatialState {
         spaces_info: &SpacesInfo,
         space_info: &SpaceInfo,
     ) -> egui::Response {
-        let hovered_instance_hash = self.hovered_instance_hash();
         self.scene_bbox_accum = self.scene_bbox_accum.union(scene.primitives.bounding_box());
 
         match self.nav_mode {
@@ -106,7 +105,6 @@ impl ViewSpatialState {
                     space_cameras,
                     &self.scene_bbox_accum,
                     &mut self.hovered_instance,
-                    hovered_instance_hash,
                 )
             }
             SpatialNavigationMode::TwoD => {
@@ -122,7 +120,6 @@ impl ViewSpatialState {
                     scene,
                     scene_rect_accum,
                     &mut self.hovered_instance,
-                    hovered_instance_hash,
                 )
             }
         }
@@ -130,8 +127,8 @@ impl ViewSpatialState {
 
     pub fn help_text(&self) -> &str {
         match self.nav_mode {
-            SpatialNavigationMode::TwoD => super::ui_2d::HELP_TEXT_2D,
-            SpatialNavigationMode::ThreeD => super::ui_3d::HELP_TEXT_3D,
+            SpatialNavigationMode::TwoD => super::ui_2d::HELP_TEXT,
+            SpatialNavigationMode::ThreeD => super::ui_3d::HELP_TEXT,
         }
     }
 }
