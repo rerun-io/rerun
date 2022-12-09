@@ -25,15 +25,16 @@ opt-level = 2
 debug = true
 
 [patch.crates-io]
-# 2022-12-06 - Split out ecolor crate
-eframe = { git = "https://github.com/emilk/egui", rev = "5effc68ba4f6dc0f9f9792193bb6e0eeca6dccef" }
-egui = { git = "https://github.com/emilk/egui", rev = "5effc68ba4f6dc0f9f9792193bb6e0eeca6dccef" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "5effc68ba4f6dc0f9f9792193bb6e0eeca6dccef" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "5effc68ba4f6dc0f9f9792193bb6e0eeca6dccef" }
-emath = { git = "https://github.com/emilk/egui", rev = "5effc68ba4f6dc0f9f9792193bb6e0eeca6dccef" }
-epaint = { git = "https://github.com/emilk/egui", rev = "5effc68ba4f6dc0f9f9792193bb6e0eeca6dccef" }
-ecolor = { git = "https://github.com/emilk/egui", rev = "5effc68ba4f6dc0f9f9792193bb6e0eeca6dccef" }
+# 2022-12-08 - egui style tweaks
+ecolor = { git = "https://github.com/emilk/egui", rev = "da0a1787019cb28c26e969bc537a191f2ed302f3" }
+eframe = { git = "https://github.com/emilk/egui", rev = "da0a1787019cb28c26e969bc537a191f2ed302f3" }
+egui = { git = "https://github.com/emilk/egui", rev = "da0a1787019cb28c26e969bc537a191f2ed302f3" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "da0a1787019cb28c26e969bc537a191f2ed302f3" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "da0a1787019cb28c26e969bc537a191f2ed302f3" }
+emath = { git = "https://github.com/emilk/egui", rev = "da0a1787019cb28c26e969bc537a191f2ed302f3" }
+epaint = { git = "https://github.com/emilk/egui", rev = "da0a1787019cb28c26e969bc537a191f2ed302f3" }
 
+# ecolor = { path = "../../egui/crates/ecolor" }
 # eframe = { path = "../../egui/crates/eframe" }
 # egui = { path = "../../egui/crates/egui" }
 # egui_extras = { path = "../../egui/crates/egui_extras" }

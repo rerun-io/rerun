@@ -60,7 +60,7 @@ pub enum TextureFilterMin {
     // TODO(andreas): Offer mipmapping here?
 }
 
-pub struct Rectangle {
+pub struct TexturedRect {
     /// Top left corner position in world space.
     pub top_left_corner_position: glam::Vec3,
     /// Vector that spans up the rectangle from its top left corner along the u axis of the texture.
@@ -90,7 +90,7 @@ impl DrawData for RectangleDrawData {
 impl RectangleDrawData {
     pub fn new(
         ctx: &mut RenderContext,
-        rectangles: &[Rectangle],
+        rectangles: &[TexturedRect],
     ) -> Result<Self, ResourceManagerError> {
         crate::profile_function!();
 

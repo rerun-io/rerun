@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use arrow2::array::{new_empty_array, Array, Int64Vec, ListArray, MutableArray, UInt64Vec};
+use arrow2::array::{new_empty_array, Array, ListArray, MutableArray, UInt64Vec};
 use arrow2::buffer::Buffer;
 use arrow2::compute::concatenate::concatenate;
 use arrow2::datatypes::DataType;
+use parking_lot::RwLock;
 
 use re_log::debug;
 use re_log_types::msg_bundle::ComponentBundle;
@@ -12,6 +13,7 @@ use re_log_types::{
     ComponentNameRef, ObjPath as EntityPath, TimeInt, TimePoint, TimeRange, Timeline,
 };
 
+use crate::store::IndexBucketIndices;
 use crate::{
     ComponentBucket, ComponentTable, DataStore, DataStoreConfig, IndexBucket, IndexTable, RowIndex,
 };
@@ -92,9 +94,7 @@ impl IndexBucket {
         Self {
             timeline,
             time_range: TimeRange::new(i64::MIN.into(), i64::MAX.into()),
-            is_sorted: true,
-            times: Int64Vec::default(),
-            indices: Default::default(),
+            indices: RwLock::new(IndexBucketIndices::default()),
         }
     }
 
@@ -104,8 +104,14 @@ impl IndexBucket {
         time: TimeInt,
         row_indices: &HashMap<ComponentNameRef<'_>, RowIndex>,
     ) -> anyhow::Result<()> {
+        let IndexBucketIndices {
+            is_sorted,
+            times,
+            indices,
+        } = &mut *self.indices.write();
+
         // append time to primary index
-        self.times.push(time.as_i64().into());
+        times.push(time.as_i64().into());
 
         // append components to secondary indices (2-way merge)
 
@@ -113,9 +119,9 @@ impl IndexBucket {
         //
         // push new row indices to their associated secondary index
         for (name, row_idx) in row_indices {
-            let index = self.indices.entry((*name).to_owned()).or_insert_with(|| {
+            let index = indices.entry((*name).to_owned()).or_insert_with(|| {
                 let mut index = UInt64Vec::default();
-                index.extend_constant(self.times.len().saturating_sub(1), None);
+                index.extend_constant(times.len().saturating_sub(1), None);
                 index
             });
             index.push(Some(*row_idx));
@@ -124,7 +130,7 @@ impl IndexBucket {
         // 2-way merge, step2: right-to-left
         //
         // fill unimpacted secondary indices with null values
-        for (name, index) in &mut self.indices {
+        for (name, index) in &mut *indices {
             if !row_indices.contains_key(name.as_str()) {
                 index.push_null();
             }
@@ -132,16 +138,15 @@ impl IndexBucket {
 
         // All indices (+ time!) should always have the exact same length.
         {
-            let expected_len = self.times.len();
-            debug_assert!(self
-                .indices
+            let expected_len = times.len();
+            debug_assert!(indices
                 .values()
                 .map(|index| index.len())
                 .all(|len| len == expected_len));
         }
 
         // TODO(#433): re_datastore: properly handle already sorted data during insertion
-        self.is_sorted = false;
+        *is_sorted = false;
 
         Ok(())
     }

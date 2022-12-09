@@ -56,9 +56,10 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
         }
     }
 
-    egui_style.visuals.widgets.noninteractive.bg_fill =
-        get_aliased_color(&json, "{Alias.Color.Surface.Default.value}");
-    // TODO(emilk): window top bars
+    let panel_bg_color = get_aliased_color(&json, "{Alias.Color.Surface.Default.value}");
+    let floating_color = get_aliased_color(&json, "{Alias.Color.Surface.Floating.value}");
+
+    egui_style.visuals.widgets.noninteractive.bg_fill = panel_bg_color;
 
     egui_style.visuals.widgets.inactive.bg_fill =
         get_aliased_color(&json, "{Alias.Color.Action.Default.value}");
@@ -74,10 +75,28 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
     egui_style.visuals.widgets.inactive.fg_stroke.color = default; // button text
     egui_style.visuals.widgets.active.fg_stroke.color = strong; // strong text and active button text
 
+    egui_style.visuals.popup_shadow = egui::epaint::Shadow::NONE;
+    egui_style.visuals.window_shadow = egui::epaint::Shadow::NONE;
+
+    egui_style.visuals.window_fill = floating_color;
+    egui_style.visuals.window_stroke = egui::Stroke::NONE;
+    egui_style.visuals.panel_fill = panel_bg_color;
+
+    let rounding = crate::ReUi::rounding();
+    egui_style.visuals.window_rounding = rounding.into();
+    egui_style.visuals.widgets.noninteractive.rounding = rounding.into();
+    egui_style.visuals.widgets.inactive.rounding = rounding.into();
+    egui_style.visuals.widgets.hovered.rounding = rounding.into();
+    egui_style.visuals.widgets.active.rounding = rounding.into();
+    egui_style.visuals.widgets.open.rounding = rounding.into();
+
+    egui_style.spacing.item_spacing = egui::vec2(8.0, 4.0);
+    egui_style.spacing.menu_margin = crate::ReUi::view_padding().into();
+
     ctx.set_style(egui_style);
 
     DesignTokens {
-        top_bar_color: get_aliased_color(&json, "{Alias.Color.Surface.Topbar.value}"),
+        top_bar_color: floating_color,
     }
 }
 

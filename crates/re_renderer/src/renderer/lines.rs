@@ -207,7 +207,7 @@ pub struct LineStripInfo {
 impl Default for LineStripInfo {
     fn default() -> Self {
         Self {
-            radius: Size::new_points(1.0),
+            radius: Size::AUTO,
             color: Color32::WHITE,
             flags: LineStripFlags::empty(),
         }

@@ -65,7 +65,7 @@ pub(crate) fn view_instance_generic(
     let mut keypoint_id = None;
 
     egui::Grid::new("object_instance")
-        .striped(true)
+        .striped(re_ui::ReUi::striped())
         .num_columns(2)
         .show(ui, |ui| {
             for (field_name, field_store) in obj_store.iter() {
@@ -122,7 +122,7 @@ pub(crate) fn view_instance_generic(
                 &data_path,
             );
             egui::Grid::new("class_description")
-                .striped(true)
+                .striped(re_ui::ReUi::striped())
                 .num_columns(2)
                 .show(ui, |ui| {
                     if let Some(class_description) = annotations.context.class_map.get(&class_id) {
@@ -230,7 +230,7 @@ pub(crate) fn show_detailed_data_msg(
     let is_image = matches!(msg.data, LoggedData::Single(Data::Tensor(_)));
 
     egui::Grid::new("fields")
-        .striped(true)
+        .striped(re_ui::ReUi::striped())
         .num_columns(2)
         .show(ui, |ui| {
             ui.monospace("data_path:");
@@ -290,7 +290,7 @@ pub(crate) fn show_begin_recording_msg(ui: &mut egui::Ui, msg: &BeginRecordingMs
     } = info;
 
     egui::Grid::new("fields")
-        .striped(true)
+        .striped(re_ui::ReUi::striped())
         .num_columns(2)
         .show(ui, |ui| {
             ui.monospace("application_id:");
@@ -333,7 +333,7 @@ pub(crate) fn show_data_msg(
     } = msg;
 
     egui::Grid::new("fields")
-        .striped(true)
+        .striped(re_ui::ReUi::striped())
         .num_columns(2)
         .show(ui, |ui| {
             ui.monospace("data_path:");
@@ -358,7 +358,7 @@ pub(crate) fn show_path_op_msg(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, m
     } = msg;
 
     egui::Grid::new("fields")
-        .striped(true)
+        .striped(re_ui::ReUi::striped())
         .num_columns(2)
         .show(ui, |ui| {
             ui.monospace("time_point:");
@@ -558,19 +558,20 @@ fn ui_view_coordinates(ui: &mut egui::Ui, system: &ViewCoordinates) -> egui::Res
     ui.label(system.describe())
 }
 
-const ROW_HEIGHT: f32 = 18.0;
 const TABLE_SCROLL_AREA_HEIGHT: f32 = 500.0; // add scroll-bars when we get to this height
 
 fn ui_annotation_info_table<'a>(
     ui: &mut egui::Ui,
     annotation_infos: impl Iterator<Item = &'a AnnotationInfo>,
 ) {
+    let row_height = re_ui::ReUi::table_line_height();
+
     ui.spacing_mut().item_spacing.x = 20.0; // column spacing.
 
     use egui_extras::{Column, TableBuilder};
 
     let table = TableBuilder::new(ui)
-        .striped(true)
+        .striped(re_ui::ReUi::striped())
         .min_scrolled_height(TABLE_SCROLL_AREA_HEIGHT)
         .max_scroll_height(TABLE_SCROLL_AREA_HEIGHT)
         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
@@ -579,7 +580,8 @@ fn ui_annotation_info_table<'a>(
         .column(Column::auto()); // color
 
     table
-        .header(20.0, |mut header| {
+        .header(re_ui::ReUi::table_header_height(), |mut header| {
+            re_ui::ReUi::setup_table_header(&mut header);
             header.col(|ui| {
                 ui.strong("Id");
             });
@@ -591,8 +593,10 @@ fn ui_annotation_info_table<'a>(
             });
         })
         .body(|mut body| {
+            re_ui::ReUi::setup_table_body(&mut body);
+
             for info in annotation_infos {
-                body.row(ROW_HEIGHT, |mut row| {
+                body.row(row_height, |mut row| {
                     row.col(|ui| {
                         ui.label(info.id.to_string());
                     });
@@ -609,7 +613,7 @@ fn ui_annotation_info_table<'a>(
                             ui.spacing_mut().item_spacing.x = 8.0;
                             let color = info.color.unwrap_or_else(|| auto_color(info.id));
                             let color = egui::Color32::from_rgb(color[0], color[1], color[2]);
-                            color_picker::show_color(ui, color, Vec2::new(64.0, ROW_HEIGHT));
+                            color_picker::show_color(ui, color, Vec2::new(64.0, row_height));
                             if info.color.is_none() {
                                 ui.weak("(auto)").on_hover_text(
                                     "Color chosen automatically, since it was not logged.",
@@ -623,6 +627,7 @@ fn ui_annotation_info_table<'a>(
 }
 
 fn ui_annotation_context(ui: &mut egui::Ui, context: &AnnotationContext) -> egui::Response {
+    let row_height = re_ui::ReUi::table_line_height();
     ui.vertical(|ui| {
         ui_annotation_info_table(
             ui,
@@ -662,14 +667,15 @@ fn ui_annotation_context(ui: &mut egui::Ui, context: &AnnotationContext) -> egui
                     use egui_extras::{Column, TableBuilder};
 
                     let table = TableBuilder::new(ui)
-                        .striped(true)
+                        .striped(re_ui::ReUi::striped())
                         .min_scrolled_height(TABLE_SCROLL_AREA_HEIGHT)
                         .max_scroll_height(TABLE_SCROLL_AREA_HEIGHT)
                         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
                         .column(Column::auto().clip(true).at_least(40.0))
                         .column(Column::auto().clip(true).at_least(40.0));
                     table
-                        .header(20.0, |mut header| {
+                        .header(re_ui::ReUi::table_header_height(), |mut header| {
+                            re_ui::ReUi::setup_table_header(&mut header);
                             header.col(|ui| {
                                 ui.strong("From");
                             });
@@ -678,8 +684,10 @@ fn ui_annotation_context(ui: &mut egui::Ui, context: &AnnotationContext) -> egui
                             });
                         })
                         .body(|mut body| {
+                            re_ui::ReUi::setup_table_body(&mut body);
+
                             for (from, to) in &class.keypoint_connections {
-                                body.row(ROW_HEIGHT, |mut row| {
+                                body.row(row_height, |mut row| {
                                     for id in [from, to] {
                                         row.col(|ui| {
                                             ui.label(
@@ -713,7 +721,7 @@ fn ui_rigid3(ui: &mut egui::Ui, rigid3: &Rigid3) -> egui::Response {
         ui.label("Rigid3");
         ui.indent("rigid3", |ui| {
             egui::Grid::new("rigid3")
-                .striped(true)
+                .striped(re_ui::ReUi::striped())
                 .num_columns(2)
                 .show(ui, |ui| {
                     ui.label("rotation");
@@ -739,7 +747,7 @@ fn ui_pinhole(ui: &mut egui::Ui, pinhole: &Pinhole) -> egui::Response {
         ui.label("Pinhole");
         ui.indent("pinole", |ui| {
             egui::Grid::new("pinole")
-                .striped(true)
+                .striped(re_ui::ReUi::striped())
                 .num_columns(2)
                 .show(ui, |ui| {
                     ui.label("image from view");
