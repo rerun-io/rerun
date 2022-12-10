@@ -7,74 +7,33 @@ license.workspace = true
 publish = false
 
 
+[lib]
+crate-type = ["dylib", "rlib"]
+
+
 [features]
 default = ["arrow_datagen"]
 
 ## Enable loading data from a file.
-load = ["anyhow", "rmp-serde", "serde", "zstd", "ruzstd"]
+load = ["re_log_types_impl/load"]
 
 ## Add support for some math operations using [`glam`](https://crates.io/crates/glam/).
-glam = ["dep:glam", "dep:macaw"]
+glam = ["re_log_types_impl/glam"]
 
 ## Add support for the [`puffin`](https://github.com/EmbarkStudios/puffin) profiler.
-puffin = ["dep:puffin"]
+puffin = ["re_log_types_impl/puffin"]
 
 ## Enable saving data to a file.
-save = ["anyhow", "rmp-serde", "serde", "zstd"]
+save = ["re_log_types_impl/save"]
 
 ## Enable (de)serialization using serde.
-serde = [
-  "dep:serde",
-  "dep:serde_bytes",
-  "re_string_interner/serde",
-  "re_tuid/serde",
-]
+serde = ["re_log_types_impl/serde"]
 
 ## Enables the `datagen` module, which exposes a number of tools for generating random data for
 ## tests and benchmarks.
-arrow_datagen = ["dep:rand"]
+arrow_datagen = ["re_log_types_impl/arrow_datagen"]
 
 
 [dependencies]
-
-# Rerun
-re_log = { path = "../re_log" }
-re_string_interner = { path = "../re_string_interner" }
-re_tuid = { path = "../re_tuid" }
-
-# External
-ahash = "0.8"
-arrow2 = { version = "0.14", features = ["io_ipc"] }
-arrow2_convert = { version = "0.3" }
-bytemuck = "1.11"
-chrono = { version = "0.4", features = ["js-sys", "wasmbind"] }
-derive_more = "0.99"
-document-features = "0.2"
-fixed = { version = "1.17", features = ["serde"] }
-nohash-hasher = "0.2"
-num-derive = "0.3"
-num-traits = "0.2"
-thiserror = "1.0"
-typenum = "1.15"
-uuid = { version = "1.1", features = ["serde", "v4", "js"] }
-
-# Optional dependencies:
-anyhow = { version = "1", optional = true }
-glam = { version = "0.20", optional = true }                            # can't update glam until a new version of `macaw` is released
-macaw = { version = "0.17", optional = true }
-puffin = { version = "0.14", optional = true }
-rand = { version = "0.8", optional = true }
-rmp-serde = { version = "1", optional = true }
-serde = { version = "1", features = ["derive", "rc"], optional = true }
-serde_bytes = { version = "0.11", optional = true }
-
-# Native dependencies:
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-zstd = { version = "0.11.0", optional = true } # native only
-
-# Web dependencies:
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-ruzstd = { version = "0.3.0", optional = true } # works on wasm
-
-[dev-dependencies]
-serde_test = { version = "1" }
+re_log_types_dyn = { path = "./dyn" }
+re_log_types_impl = { path = "./impl" }

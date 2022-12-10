@@ -3679,6 +3679,21 @@ dependencies = [
 name = "re_log_types"
 version = "0.1.0"
 dependencies = [
+ "re_log_types_dyn",
+ "re_log_types_impl",
+]
+
+[[package]]
+name = "re_log_types_dyn"
+version = "0.1.0"
+dependencies = [
+ "re_log_types_impl",
+]
+
+[[package]]
+name = "re_log_types_impl"
+version = "0.1.0"
+dependencies = [
  "ahash 0.8.2",
  "anyhow",
  "arrow2",
