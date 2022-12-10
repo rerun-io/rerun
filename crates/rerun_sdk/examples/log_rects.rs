@@ -1,6 +1,10 @@
 use clap::Parser;
 
-use re_log_types::{field_types, msg_bundle::try_build_msg_bundle2, LogMsg, MsgId};
+use re_log_types::{
+    field_types,
+    msg_bundle::{try_build_msg_bundle1, try_build_msg_bundle2},
+    LogMsg, MsgId,
+};
 use rerun_sdk as rerun;
 
 // Setup the rerun allocator
@@ -14,20 +18,23 @@ static GLOBAL: AccountingAllocator<mimalloc::MiMalloc> =
 fn build_some_rects(len: usize) -> Vec<field_types::Rect2D> {
     (0..len)
         .into_iter()
-        .map(|i| field_types::Rect2D {
-            x: i as f32,
-            y: i as f32,
-            w: (i / 2) as f32,
-            h: (i / 2) as f32,
+        .map(|i| {
+            let i = (i + 1) * 10;
+            field_types::Rect2D {
+                x: i as f32,
+                y: i as f32,
+                w: (i / 2) as f32,
+                h: (i / 2) as f32,
+            }
         })
         .collect()
 }
 
 /// Create `len` dummy colors
-fn build_some_colors(len: usize) -> Vec<field_types::ColorRGBA> {
+fn build_some_colors(len: usize, color: u32) -> Vec<field_types::ColorRGBA> {
     (0..len)
         .into_iter()
-        .map(|i| field_types::ColorRGBA(i as u32))
+        .map(|_| field_types::ColorRGBA(color))
         .collect()
 }
 
@@ -76,11 +83,8 @@ fn main() -> std::process::ExitCode {
     let time_point = rerun::log_time();
     // Build up some rect data into an arrow array
     let rects = build_some_rects(1);
-    let colors = build_some_colors(1);
 
-    let bundle = try_build_msg_bundle2(MsgId::random(), "world/rects", time_point, (rects, colors))
-        .ok()
-        .unwrap();
+    let bundle = try_build_msg_bundle1(MsgId::random(), "world/rects", time_point, rects).unwrap();
 
     // Create and send one message to the sdk
     let msg = bundle.try_into().unwrap();
@@ -89,11 +93,28 @@ fn main() -> std::process::ExitCode {
     // Create and send a second message to the sdk
     let time_point = rerun::log_time();
     let rects = build_some_rects(5);
-    let colors = build_some_colors(5);
 
-    let bundle = try_build_msg_bundle2(MsgId::random(), "world/rects", time_point, (rects, colors))
-        .ok()
-        .unwrap();
+    let bundle = try_build_msg_bundle1(MsgId::random(), "world/rects", time_point, rects).unwrap();
+
+    let msg = bundle.try_into().unwrap();
+    session.send(LogMsg::ArrowMsg(msg));
+
+    // Create and send the color messages later
+    let time_point = rerun::log_time();
+    let colors = build_some_colors(5, 0xff0000ff);
+
+    let bundle = try_build_msg_bundle1(MsgId::random(), "world/rects", time_point, colors).unwrap();
+
+    let msg = bundle.try_into().unwrap();
+    session.send(LogMsg::ArrowMsg(msg));
+
+    // Create and send a new batch of messages all at once
+    let time_point = rerun::log_time();
+    let rects = build_some_rects(3);
+    let colors = build_some_colors(3, 0x00ff00ff);
+
+    let bundle =
+        try_build_msg_bundle2(MsgId::random(), "world/rects", time_point, (rects, colors)).unwrap();
 
     let msg = bundle.try_into().unwrap();
     session.send(LogMsg::ArrowMsg(msg));

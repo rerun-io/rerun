@@ -188,87 +188,20 @@ pub fn query_entity_with_primary<const N: usize>(
     let joined = components
         .iter()
         .fold(Ok(ldf), |ldf: Result<LazyFrame>, component| {
-            let component =
-                get_component_with_instances(store, timeline_query, ent_path, component)?;
+            if !component.is_empty() {
+                let component =
+                    get_component_with_instances(store, timeline_query, ent_path, component)?;
 
-            let lazy_component = add_instances_if_needed(component);
+                let lazy_component = add_instances_if_needed(component);
 
-            Ok(ldf?.left_join(lazy_component, col(Instance::NAME), col(Instance::NAME)))
+                Ok(ldf?.left_join(lazy_component, col(Instance::NAME), col(Instance::NAME)))
+            } else {
+                ldf
+            }
         })?
         .collect();
 
     Ok(joined?)
-}
-
-/// Visit all of the components in a dataframe
-pub fn visit_components<C1: Component>(df: &DataFrame, mut visit: impl FnMut(Option<&C1>))
-where
-    C1: ArrowDeserialize + ArrowField<Type = C1> + 'static,
-    for<'b> &'b <C1 as ArrowDeserialize>::ArrayType: IntoIterator,
-{
-    if let Ok(col) = df.column(C1::name()) {
-        for chunk_idx in 0..col.n_chunks() {
-            // TODO(jleibs): This is an ugly work-around but gets our serializers working again
-            // Explanation:
-            // Polars Series appear make all fields nullable. Polars doesn't even have a way to
-            // express non-nullable types.
-            // However, our `field_types` `Component` definitions have non-nullable fields.
-            // This causes a "Data type mismatch" on the deserialization and keeps us from
-            // getting at our data.
-            let col_arrow = col
-                .array_ref(chunk_idx)
-                .as_any()
-                .downcast_ref::<StructArray>()
-                .unwrap();
-            let component_typed_col =
-                StructArray::new(C1::data_type(), col_arrow.clone().into_data().1, None);
-
-            if let Ok(iterable) = arrow_array_deserialize_iterator::<C1>(&component_typed_col) {
-                iterable.for_each(|data| visit(Some(&data)));
-            };
-        }
-    }
-}
-
-#[cfg(test)]
-use re_log_types::external::arrow2_convert::{field::ArrowField, serialize::ArrowSerialize};
-
-#[cfg(test)]
-fn df_builder3<C0, C1, C2>(
-    c0: &Vec<Option<C0>>,
-    c1: &Vec<Option<C1>>,
-    c2: &Vec<Option<C2>>,
-) -> DataFrame
-where
-    C0: Component + 'static,
-    Option<C0>: ArrowSerialize + ArrowField<Type = Option<C0>>,
-    C1: Component + 'static,
-    Option<C1>: ArrowSerialize + ArrowField<Type = Option<C1>>,
-    C2: Component + 'static,
-    Option<C2>: ArrowSerialize + ArrowField<Type = Option<C2>>,
-{
-    use arrow2::array::MutableArray;
-    use re_log_types::external::arrow2_convert::serialize::arrow_serialize_to_mutable_array;
-
-    let array0 = arrow_serialize_to_mutable_array::<Option<C0>, Option<C0>, &Vec<Option<C0>>>(c0);
-    let array1 = arrow_serialize_to_mutable_array::<Option<C1>, Option<C1>, &Vec<Option<C1>>>(c1);
-    let array2 = arrow_serialize_to_mutable_array::<Option<C2>, Option<C2>, &Vec<Option<C2>>>(c2);
-
-    let series0 = Series::try_from((C0::NAME, array0.unwrap().as_box())).unwrap();
-    let series1 = Series::try_from((C1::NAME, array1.unwrap().as_box())).unwrap();
-    let series2 = Series::try_from((C2::NAME, array2.unwrap().as_box())).unwrap();
-
-    DataFrame::new(vec![series0, series1, series2]).unwrap()
-}
-
-#[cfg(test)]
-fn compare_df(df1: &DataFrame, df2: &DataFrame) {
-    let mut cols1 = df1.get_column_names();
-    cols1.sort();
-    let mut cols2 = df2.get_column_names();
-    cols2.sort();
-
-    assert_eq!(df1.select(cols1).unwrap(), df2.select(cols2).unwrap());
 }
 
 #[test]
@@ -292,6 +225,7 @@ fn component_with_instances() {
 
 #[test]
 fn simple_query() {
+    use crate::test_util::{compare_df, df_builder3};
     use re_arrow_store::TimeQuery;
     use re_log_types::{
         datagen::build_frame_nr,
@@ -358,13 +292,15 @@ fn simple_query() {
     let colors = vec![None, Some(ColorRGBA(0xff000000))];
     let expected = df_builder3(&instances, &points, &colors);
 
-    // eprintln!("{:?}", expected);
+    //eprintln!("{:?}", df);
+    //eprintln!("{:?}", expected);
 
     compare_df(&df, &expected);
 }
 
 #[test]
 fn no_instance_join_query() {
+    use crate::test_util::{compare_df, df_builder3};
     use re_arrow_store::TimeQuery;
     use re_log_types::{
         datagen::build_frame_nr,
