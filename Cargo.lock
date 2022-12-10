@@ -3901,6 +3901,21 @@ dependencies = [
 name = "re_viewer"
 version = "0.1.0"
 dependencies = [
+ "re_viewer_dyn",
+ "re_viewer_impl",
+]
+
+[[package]]
+name = "re_viewer_dyn"
+version = "0.1.0"
+dependencies = [
+ "re_viewer_impl",
+]
+
+[[package]]
+name = "re_viewer_impl"
+version = "0.1.0"
+dependencies = [
  "ahash 0.8.2",
  "anyhow",
  "arboard",

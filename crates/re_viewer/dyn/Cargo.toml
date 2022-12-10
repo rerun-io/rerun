@@ -1,0 +1,25 @@
+[package]
+name = "re_viewer_dyn"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+# TODO: explain
+[lib]
+## See https://github.com/bevyengine/bevy/issues/791#issuecomment-722202417.
+##
+## If any crate is only available as dylib -Cprefer-dynamic is implicitly set.
+## You could make an empty crate only available as dylib and ask users to do
+## something like #[cfg(debug_assertions)] use bevy_link_as_dylib;.
+## That will only link to that dylib when debug assertions are enabled I think.
+## You could also keep bevy only an rlib if bevy_link_as_dylib has bevy as dependency
+## and contains use bevy;.
+crate-type = ["dylib"]
+
+[features]
+default = []
+
+[dependencies]
+re_viewer_impl = { path = "../impl" }
