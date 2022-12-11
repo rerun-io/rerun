@@ -7,6 +7,10 @@ license.workspace = true
 publish = false
 
 
+[lib]
+crate-type = ["rlib"]
+
+
 [features]
 ## Enable the client (SDK-side).
 client = []

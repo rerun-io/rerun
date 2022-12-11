@@ -7,6 +7,10 @@ license.workspace = true
 publish = false
 
 
+[lib]
+crate-type = ["rlib"]
+
+
 [dependencies]
 re_format = { path = "../re_format" }
 re_log = { path = "../re_log" }

@@ -1,0 +1,23 @@
+[package]
+name = "egui_dyn"
+version = "0.19.0"
+publish = false
+
+[lib]
+crate-type = ["dylib"]
+
+[features]
+default = ["default_fonts"]
+bytemuck = ["egui/bytemuck"]
+cint = ["egui/cint"]
+color-hex = ["egui/color-hex"]
+deadlock_detection = ["egui/deadlock_detection"]
+default_fonts = ["egui/default_fonts"]
+extra_debug_asserts = ["egui/extra_debug_asserts"]
+extra_asserts = ["egui/extra_asserts"]
+mint = ["egui/mint"]
+persistence = ["egui/persistence"]
+serde = ["egui/serde"]
+
+[dependencies]
+egui = "0.19"

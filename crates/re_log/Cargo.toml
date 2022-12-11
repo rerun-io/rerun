@@ -7,6 +7,10 @@ license.workspace = true
 publish = false
 
 
+[lib]
+crate-type = ["rlib"]
+
+
 [dependencies]
 log-once = "0.4"
 tracing = "0.1"

@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
-members = ["crates/*", "rerun_py", "run_wasm"]
+members = ["crates/*", "rerun_py", "run_wasm", "crates/external/*"]
+exclude = ["crates/external"]
 
 [workspace.package]
 version = "0.1.0"

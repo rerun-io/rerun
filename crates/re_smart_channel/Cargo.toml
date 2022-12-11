@@ -6,6 +6,10 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
+
+[lib]
+crate-type = ["rlib"]
+
 [dependencies]
 crossbeam = "0.8"
 instant = { version = "0.1", features = ["wasm-bindgen"] }

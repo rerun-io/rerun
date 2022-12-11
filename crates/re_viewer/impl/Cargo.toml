@@ -62,6 +62,7 @@ eframe = { version = "0.19", default-features = false, features = [
   "wgpu",
 ] }
 egui = { version = "0.19", features = ["extra_debug_asserts", "tracing"] }
+# egui = { path = "../../external/egui_dyn", package = "egui_dyn", features = ["extra_debug_asserts"] }
 egui-notify = "0.4"
 egui-wgpu = "0.19"
 egui_dock = { git = "https://github.com/rerun-io/egui_dock", rev = "5f5a877a34d17ad31640b5a1a2eb771aff26a3a1", features = [

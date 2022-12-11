@@ -3641,6 +3641,21 @@ dependencies = [
 name = "re_data_store"
 version = "0.1.0"
 dependencies = [
+ "re_data_store_dyn",
+ "re_data_store_impl",
+]
+
+[[package]]
+name = "re_data_store_dyn"
+version = "0.1.0"
+dependencies = [
+ "re_data_store_impl",
+]
+
+[[package]]
+name = "re_data_store_impl"
+version = "0.1.0"
+dependencies = [
  "ahash 0.8.2",
  "criterion",
  "document-features",

@@ -6,6 +6,11 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
+
+[lib]
+crate-type = ["rlib"]
+
+
 [dependencies]
 # Rerun
 re_format = { path = "../re_format" }

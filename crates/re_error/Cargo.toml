@@ -7,5 +7,9 @@ license.workspace = true
 publish = false
 
 
+[lib]
+crate-type = ["rlib"]
+
+
 [dev-dependencies]
 anyhow = "1"

@@ -6,6 +6,10 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
+
+[lib]
+crate-type = ["rlib"]
+
 [features]
 default = ["import-obj", "import-gltf"]
 

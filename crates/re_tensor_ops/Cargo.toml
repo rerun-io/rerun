@@ -7,6 +7,10 @@ license.workspace = true
 publish = false
 
 
+[lib]
+crate-type = ["rlib"]
+
+
 [dependencies]
 ahash = "0.8"
 bytemuck = { version = "1.12", features = ["extern_crate_alloc"] }

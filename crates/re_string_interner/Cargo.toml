@@ -7,6 +7,10 @@ license.workspace = true
 publish = false
 
 
+[lib]
+crate-type = ["rlib"]
+
+
 [dependencies]
 ahash = "0.8"
 nohash-hasher = "0.2"

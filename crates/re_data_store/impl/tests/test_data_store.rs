@@ -2,7 +2,7 @@ use itertools::Itertools as _;
 
 use re_log_types::{obj_path, FieldName, MsgId};
 
-use re_data_store::{
+use re_data_store_impl::{
     query::visit_type_data_1, BatchOrSplat, Index, ObjPath, ObjPathComp, TimeQuery, TimelineStore,
 };
 
@@ -52,7 +52,7 @@ fn s(s: &str) -> String {
 }
 
 #[test]
-fn test_singular() -> re_data_store::Result<()> {
+fn test_singular() -> re_data_store_impl::Result<()> {
     fn points_at(store: &TimelineStore<Time>, frame: i64) -> Vec<Point3<'_>> {
         let time_query = TimeQuery::LatestAt(Time(frame));
         let mut points: Vec<_> = points_from_store(store, &time_query);
@@ -147,7 +147,7 @@ fn test_singular() -> re_data_store::Result<()> {
 }
 
 #[test]
-fn test_batches() -> re_data_store::Result<()> {
+fn test_batches() -> re_data_store_impl::Result<()> {
     fn obj_path(cam: &str) -> ObjPath {
         obj_path!("camera", Index::String(cam.into()), "points",)
     }
