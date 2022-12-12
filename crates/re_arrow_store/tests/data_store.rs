@@ -502,12 +502,12 @@ fn init_logs() {
 // TODO(cmc): One should _never_ run assertions on the internal state of the datastore, this
 // is a recipe for disaster.
 //
-// The actual contract that needs to be asserted here, from the point of view of the actual
-// user, is performance: getting the datastore into a pathological topology would show up
-// in integration query benchmarks.
+// The contract that needs to be asserted here, from the point of view of the actual user,
+// is performance: getting the datastore into a pathological topology should show up in
+// integration query benchmarks.
 //
-// With the current state of things, though, it is much easier to it that way for now... so we
-// make an exception.
+// In the current state of things, though, it is much easier to test for it that way... so we
+// make an exception, for now...
 #[test]
 fn pathological_bucket_topology() {
     init_logs();
@@ -534,7 +534,7 @@ fn pathological_bucket_topology() {
         }
     }
 
-    let msgs = (990..=1000)
+    let msgs = (970..=979)
         .map(|frame_nr| {
             let timepoint = TimePoint::from([build_frame_nr(frame_nr)]);
             build_message(&ent_path, &timepoint, [build_instances(nb_instances)])
@@ -547,7 +547,20 @@ fn pathological_bucket_topology() {
         store_backward.insert(schema, components).unwrap();
     }
 
-    let msgs = (1000..=1010)
+    let msgs = (990..=999)
+        .map(|frame_nr| {
+            let timepoint = TimePoint::from([build_frame_nr(frame_nr)]);
+            build_message(&ent_path, &timepoint, [build_instances(nb_instances)])
+        })
+        .collect::<Vec<_>>();
+    for (schema, components) in &msgs {
+        store_forward.insert(schema, components).unwrap();
+    }
+    for (schema, components) in msgs.iter().rev() {
+        store_backward.insert(schema, components).unwrap();
+    }
+
+    let msgs = (980..=989)
         .map(|frame_nr| {
             let timepoint = TimePoint::from([build_frame_nr(frame_nr)]);
             build_message(&ent_path, &timepoint, [build_instances(nb_instances)])
@@ -561,11 +574,44 @@ fn pathological_bucket_topology() {
     }
 
     {
+        let timepoint = TimePoint::from([build_frame_nr(1000)]);
+        for _ in 0..7 {
+            let (schema, components) =
+                build_message(&ent_path, &timepoint, [build_instances(nb_instances)]);
+            store_forward.insert(&schema, &components).unwrap();
+            store_backward.insert(&schema, &components).unwrap();
+        }
+    }
+
+    let msgs = (1000..=1009)
+        .map(|frame_nr| {
+            let timepoint = TimePoint::from([build_frame_nr(frame_nr)]);
+            build_message(&ent_path, &timepoint, [build_instances(nb_instances)])
+        })
+        .collect::<Vec<_>>();
+    for (schema, components) in &msgs {
+        store_forward.insert(schema, components).unwrap();
+    }
+    for (schema, components) in msgs.iter().rev() {
+        store_backward.insert(schema, components).unwrap();
+    }
+
+    {
+        let timepoint = TimePoint::from([build_frame_nr(975)]);
+        for _ in 0..10 {
+            let (schema, components) =
+                build_message(&ent_path, &timepoint, [build_instances(nb_instances)]);
+            store_forward.insert(&schema, &components).unwrap();
+            store_backward.insert(&schema, &components).unwrap();
+        }
+    }
+
+    {
         let nb_buckets = store_forward
             .iter_indices()
             .flat_map(|(_, table)| table.iter_buckets())
             .count();
-        assert_eq!(3usize, nb_buckets, "pathological topology (forward): {}", {
+        assert_eq!(7usize, nb_buckets, "pathological topology (forward): {}", {
             store_forward.sort_indices();
             store_forward
         });
@@ -576,7 +622,7 @@ fn pathological_bucket_topology() {
             .flat_map(|(_, table)| table.iter_buckets())
             .count();
         assert_eq!(
-            3usize,
+            8usize,
             nb_buckets,
             "pathological topology (backward): {}",
             {
