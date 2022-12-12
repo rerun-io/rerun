@@ -9,7 +9,9 @@
     "files.trimTrailingWhitespace": true,
     "files.exclude": {
         "env/**": true,
-        "target/**": true
+        "target/**": true,
+        "target_ra/**": true,
+        "target_wasm/**": true,
     },
     "files.autoGuessEncoding": true,
     "python.formatting.provider": "black",
@@ -52,5 +54,5 @@
         "--workspace",
         "--message-format=json",
         "--all-targets"
-    ]
+    ],
 }
