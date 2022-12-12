@@ -53,7 +53,7 @@ jobs:
           output-file-path: output.txt
           external-data-json-path: ./benchmark-cache/benchmark-data.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          auto-push: true
+          auto-push: false
           # Show alert with commit comment on detecting possible performance regression
           alert-threshold: '200%'
           comment-on-alert: true
