@@ -26,7 +26,7 @@ serde = { version = "1", features = ["derive"], optional = true }
 getrandom = "0.2"
 
 [dev-dependencies]
-criterion = "0.3"
+criterion = "0.4"
 
 [lib]
 bench = false
