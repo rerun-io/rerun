@@ -538,14 +538,14 @@ fn pathological_bucket_topology() {
                 .insert(
                     &ent_path,
                     &timepoint,
-                    [build_instances(nb_instances)].iter(),
+                    std::iter::once(&build_instances(nb_instances)),
                 )
                 .unwrap();
             store_backward
                 .insert(
                     &ent_path,
                     &timepoint,
-                    [build_instances(nb_instances)].iter(),
+                    std::iter::once(&build_instances(nb_instances)),
                 )
                 .unwrap();
         }
@@ -609,14 +609,14 @@ fn pathological_bucket_topology() {
                 .insert(
                     &ent_path,
                     &timepoint,
-                    [build_instances(nb_instances)].iter(),
+                    std::iter::once(&build_instances(nb_instances)),
                 )
                 .unwrap();
             store_backward
                 .insert(
                     &ent_path,
                     &timepoint,
-                    [build_instances(nb_instances)].iter(),
+                    std::iter::once(&build_instances(nb_instances)),
                 )
                 .unwrap();
         }
@@ -646,14 +646,14 @@ fn pathological_bucket_topology() {
                 .insert(
                     &ent_path,
                     &timepoint,
-                    [build_instances(nb_instances)].iter(),
+                    std::iter::once(&build_instances(nb_instances)),
                 )
                 .unwrap();
             store_backward
                 .insert(
                     &ent_path,
                     &timepoint,
-                    [build_instances(nb_instances)].iter(),
+                    std::iter::once(&build_instances(nb_instances)),
                 )
                 .unwrap();
         }
