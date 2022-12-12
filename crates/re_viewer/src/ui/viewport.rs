@@ -180,7 +180,7 @@ impl ViewportBlueprint {
     fn has_space(&self, space_path: &ObjPath) -> bool {
         self.space_views
             .values()
-            .any(|view| &view.space_path == space_path)
+            .any(|view| &view.reference_space_path == space_path)
     }
 
     /// Show the blueprint panel tree view.
@@ -219,20 +219,12 @@ impl ViewportBlueprint {
     ) {
         let space_view = self.space_views.get_mut(space_view_id).unwrap();
 
-        let space_path = &space_view.space_path;
         let collapsing_header_id = ui.make_persistent_id(space_view_id);
-        let mut default_open = true;
-
-        if let Some(tree) = obj_tree.subtree(space_path) {
-            if tree.children.is_empty() {
-                default_open = false;
-            }
-        }
 
         egui::collapsing_header::CollapsingState::load_with_default_open(
             ui.ctx(),
             collapsing_header_id,
-            default_open,
+            false,
         )
         .show_header(ui, |ui| {
             match space_view.category {
@@ -265,20 +257,17 @@ impl ViewportBlueprint {
             }
         })
         .body(|ui| {
-            if let Some(space_info) = spaces_info.spaces.get(space_path) {
-                if let Some(tree) = obj_tree.subtree(space_path) {
-                    let is_space_view_visible = self.visible.contains(space_view_id);
-                    show_obj_tree_children(
-                        ctx,
-                        ui,
-                        is_space_view_visible,
-                        &mut space_view.obj_tree_properties,
-                        *space_view_id,
-                        space_info,
-                        tree,
-                    );
-                }
-            }
+            let is_space_view_visible = self.visible.contains(space_view_id);
+            show_obj_tree_children(
+                ctx,
+                ui,
+                is_space_view_visible,
+                &mut space_view.obj_tree_properties,
+                *space_view_id,
+                spaces_info,
+                &mut space_view.reference_space_path,
+                obj_tree,
+            );
         });
     }
 
@@ -451,13 +440,22 @@ fn show_obj_tree(
     parent_is_visible: bool,
     obj_tree_properties: &mut ObjectTreeProperties,
     space_view_id: SpaceViewId,
-    space_info: &SpaceInfo,
-    name: String,
+    spaces_info: &SpacesInfo,
+    current_reference_frame: &mut ObjPath,
+    name: &str,
     tree: &ObjectTree,
 ) {
     if tree.is_leaf() {
         ui.horizontal(|ui| {
-            ctx.space_view_obj_path_button_to(ui, name, space_view_id, &tree.path);
+            object_path_button(
+                ctx,
+                ui,
+                &tree.path,
+                space_view_id,
+                spaces_info,
+                current_reference_frame,
+                &name,
+            );
             object_visibility_button(ui, parent_is_visible, obj_tree_properties, &tree.path);
         });
     } else {
@@ -469,7 +467,15 @@ fn show_obj_tree(
             default_open,
         )
         .show_header(ui, |ui| {
-            ctx.space_view_obj_path_button_to(ui, name, space_view_id, &tree.path);
+            object_path_button(
+                ctx,
+                ui,
+                &tree.path,
+                space_view_id,
+                spaces_info,
+                current_reference_frame,
+                name,
+            );
             object_visibility_button(ui, parent_is_visible, obj_tree_properties, &tree.path);
         })
         .body(|ui| {
@@ -479,20 +485,23 @@ fn show_obj_tree(
                 parent_is_visible,
                 obj_tree_properties,
                 space_view_id,
-                space_info,
+                spaces_info,
+                current_reference_frame,
                 tree,
             );
         });
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn show_obj_tree_children(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     parent_is_visible: bool,
     obj_tree_properties: &mut ObjectTreeProperties,
     space_view_id: SpaceViewId,
-    space_info: &SpaceInfo,
+    spaces_info: &SpacesInfo,
+    current_reference_frame: &mut ObjPath,
     tree: &ObjectTree,
 ) {
     if tree.children.is_empty() {
@@ -501,18 +510,48 @@ fn show_obj_tree_children(
     }
 
     for (path_comp, child) in &tree.children {
-        if space_info.objects.contains(&child.path) {
-            show_obj_tree(
-                ctx,
-                ui,
-                parent_is_visible,
-                obj_tree_properties,
-                space_view_id,
-                space_info,
-                path_comp.to_string(),
-                child,
-            );
+        show_obj_tree(
+            ctx,
+            ui,
+            parent_is_visible,
+            obj_tree_properties,
+            space_view_id,
+            spaces_info,
+            current_reference_frame,
+            &path_comp.to_string(),
+            child,
+        );
+    }
+}
+
+fn object_path_button(
+    ctx: &mut ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    path: &ObjPath,
+    space_view_id: SpaceViewId,
+    spaces_info: &SpacesInfo,
+    current_reference_frame: &mut ObjPath,
+    name: &str,
+) {
+    let mut is_space_info = false;
+    let label_text = if spaces_info.spaces.contains_key(&path) {
+        is_space_info = true;
+        let label_text = egui::RichText::new(format!("📐 {}", name));
+        if path == current_reference_frame {
+            label_text.strong()
+        } else {
+            label_text
         }
+    } else {
+        egui::RichText::new(name)
+    };
+
+    if ctx
+        .space_view_obj_path_button_to(ui, label_text, space_view_id, path)
+        .double_clicked()
+        && is_space_info
+    {
+        *current_reference_frame = path.clone();
     }
 }
 
@@ -646,12 +685,15 @@ fn space_view_ui(
     spaces_info: &SpacesInfo,
     space_view: &mut SpaceView,
 ) {
-    let Some(space_info) = spaces_info.spaces.get(&space_view.space_path) else {
+    let Some(reference_space_info) = spaces_info.spaces.get(&space_view.reference_space_path) else {
         ui.centered_and_justified(|ui| {
-            ui.label(ctx.re_ui.warning_text(format!("Unknown space {:?}", space_view.space_path)));
+            ui.label(ctx.re_ui.warning_text(format!("Unknown space {:?}", space_view.reference_space_path)));
         });
         return;
     };
+
+    // TODO: Should be able to declare a new reference_space_info here.
+
     let Some(latest_at) = ctx.rec_cfg.time_ctrl.time_int() else {
         ui.centered_and_justified(|ui| {
             ui.label(ctx.re_ui.warning_text("No time selected"));
@@ -659,7 +701,7 @@ fn space_view_ui(
         return
     };
 
-    space_view.scene_ui(ctx, ui, spaces_info, space_info, latest_at);
+    space_view.scene_ui(ctx, ui, spaces_info, reference_space_info, latest_at);
 }
 
 // ----------------------------------------------------------------------------

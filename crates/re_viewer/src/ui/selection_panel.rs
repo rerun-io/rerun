@@ -216,8 +216,8 @@ fn ui_space_view(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, space_view: &mu
             ui.text_edit_singleline(&mut space_view.name);
             ui.end_row();
 
-            ui.label("Path:");
-            ctx.obj_path_button(ui, &space_view.space_path);
+            ui.label("Reference Space Path:");
+            ctx.obj_path_button(ui, &space_view.reference_space_path);
             ui.end_row();
         });
 

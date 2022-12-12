@@ -19,7 +19,7 @@ pub struct SpaceInfo {
     pub objects: IntSet<ObjPath>,
 
     /// Nearest ancestor to whom we are not connected via an identity transform.
-    #[allow(unused)] // TODO(emilk): support projecting parent space(s) into this space
+    #[allow(unused)]
     pub parent: Option<(ObjPath, Transform)>,
 
     /// Nearest descendants to whom we are not connected with an identity transform.

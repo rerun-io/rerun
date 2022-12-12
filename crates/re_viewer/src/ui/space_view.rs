@@ -39,7 +39,10 @@ pub enum ViewCategory {
 #[derive(Clone, serde::Deserialize, serde::Serialize)]
 pub(crate) struct SpaceView {
     pub name: String,
-    pub space_path: ObjPath,
+
+    /// Everything visible in this space view, is looked at in reference to this space info.
+    pub reference_space_path: ObjPath,
+
     pub view_state: ViewState,
 
     /// We only show data that match this category.
@@ -49,7 +52,11 @@ pub(crate) struct SpaceView {
 }
 
 impl SpaceView {
-    pub fn new(scene: &super::scene::Scene, category: ViewCategory, space_path: ObjPath) -> Self {
+    pub fn new(
+        scene: &super::scene::Scene,
+        category: ViewCategory,
+        reference_space_info: ObjPath,
+    ) -> Self {
         let mut view_state = ViewState::default();
 
         if category == ViewCategory::Spatial {
@@ -61,8 +68,8 @@ impl SpaceView {
         }
 
         Self {
-            name: space_path.to_string(),
-            space_path,
+            name: reference_space_info.to_string(),
+            reference_space_path: reference_space_info,
             view_state,
             category,
             obj_tree_properties: Default::default(),
@@ -78,13 +85,13 @@ impl SpaceView {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         spaces_info: &SpacesInfo,
-        space_info: &SpaceInfo,
+        reference_space_info: &SpaceInfo,
         latest_at: TimeInt,
     ) {
         crate::profile_function!();
 
         let query = crate::ui::scene::SceneQuery {
-            obj_paths: &space_info.objects,
+            obj_paths: &reference_space_info.objects, // TODO: gather ALL objects
             timeline: *ctx.rec_cfg.time_ctrl.timeline(),
             latest_at,
             obj_props: &self.obj_tree_properties.projected,
@@ -101,9 +108,9 @@ impl SpaceView {
                 self.view_state.ui_spatial(
                     ctx,
                     ui,
-                    &self.space_path,
+                    &self.reference_space_path,
                     spaces_info,
-                    space_info,
+                    reference_space_info,
                     scene,
                 );
             }
