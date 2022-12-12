@@ -207,6 +207,9 @@ impl IndexBucket {
             indices,
         } = &*self.indices.read();
 
+        // Early-exit if this bucket is unaware of this component.
+        let column = indices.get_key_value(component)?;
+
         debug!(
             kind = "query",
             component,
@@ -239,7 +242,7 @@ impl IndexBucket {
         );
 
         // find the secondary indices' rows, and the associated row indices.
-        indices.get_key_value(component).and_then(|(name, index)| {
+        Some(column).and_then(|(name, index)| {
             let mut secondary_idx = primary_idx;
             while !index.is_valid(secondary_idx as _) {
                 secondary_idx -= 1;
@@ -256,7 +259,7 @@ impl IndexBucket {
                 }
             }
 
-            assert!(index.is_valid(secondary_idx as usize));
+            debug_assert!(index.is_valid(secondary_idx as usize));
             let row_idx = index.values()[secondary_idx as usize];
 
             debug!(
@@ -305,7 +308,7 @@ impl IndexBucketIndices {
         {
             // The time index must always be dense, thus it shouldn't even have a validity
             // bitmap attached to it to begin with.
-            assert!(times.validity().is_none());
+            debug_assert!(times.validity().is_none());
 
             let source = times.values().clone();
             let values = times.values_mut_slice();
