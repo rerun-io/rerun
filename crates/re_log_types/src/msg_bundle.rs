@@ -16,7 +16,7 @@
 //! [`TimePoint`].
 //!
 //! The `components` schema is semi-flexible: it should be a [`StructArray`] with one column per
-//! component. Each component schema is defined in [`re_log_types::field_types`].
+//! component. Each component schema is defined in [`crate::field_types`].
 
 use std::collections::BTreeMap;
 
