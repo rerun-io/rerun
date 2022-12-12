@@ -126,6 +126,9 @@ impl IndexTable {
         //
         // Besides, components are _independently_ nullable, and so this two-level backwards walk
         // needs to be done on a per-component basis.
+        //
+        // TODO(#529): keep track of the components we know of, and fast early-break for the
+        // components we don't.
         for &name in components {
             'for_each_bucket: for (i, bucket) in self.iter_bucket(time).enumerate() {
                 debug!(
