@@ -259,11 +259,14 @@ impl IndexBucket {
 
     /// Splits the bucket into two, potentially uneven parts.
     ///
-    /// The first part is done in place (i.e. modifies `self`), while the second part is returned
-    /// as a new bucket.
+    /// On success..:
+    /// - the first part is split in place (i.e. modifies `self`),
+    /// - the second part is returned as a new bucket,
+    /// - and the minimal bound of that new bucket is returned as a `TimeInt`, for indexing.
     ///
-    /// Returns `None` if the bucket cannot be split any further, which can happen either because
-    /// the bucket is too small to begin with, or because it only contains a single timepoint.
+    /// Returns `None` on failure, i.e. if the bucket cannot be split any further, which can
+    /// happen either because the bucket is too small to begin with, or because it only contains
+    /// a single timepoint.
     ///
     /// # Unsplittable buckets
     ///
@@ -357,7 +360,6 @@ impl IndexBucket {
 
         let timeline = *timeline;
         // Used down the line to assert that we've left everything in a sane state.
-        #[cfg(debug_assertions)]
         let total_rows = times1.len();
 
         let (min2, bucket2) = {
@@ -393,22 +395,21 @@ impl IndexBucket {
         };
 
         // sanity checks
-        #[cfg(debug_assertions)]
-        {
+        if cfg!(debug_assertions) {
             drop(indices); // sanity checking will grab the lock!
             self.sanity_check().unwrap();
             bucket2.sanity_check().unwrap();
 
             let total_rows1 = self.total_rows() as i64;
             let total_rows2 = bucket2.total_rows() as i64;
-            assert!(
+            debug_assert!(
                 total_rows as i64 == total_rows1 + total_rows2,
                 "expected both buckets to sum up to the length of the original bucket: \
                     got bucket={} vs. bucket1+bucket2={}",
                 total_rows,
                 total_rows1 + total_rows2,
             );
-            assert_eq!(total_rows as i64, total_rows1 + total_rows2);
+            debug_assert_eq!(total_rows as i64, total_rows1 + total_rows2);
         }
 
         Some((min2, bucket2))
@@ -425,18 +426,15 @@ impl IndexBucket {
 /// This function expects `times` to be sorted!
 /// In debug builds, it will panic if that's not the case.
 fn find_split_index(times: &Int64Vec) -> Option<usize> {
-    #[cfg(debug_assertions)]
-    {
-        assert!(
-            times.validity().is_none(),
-            "The time index must always be dense, thus it shouldn't even have a validity\
+    debug_assert!(
+        times.validity().is_none(),
+        "The time index must always be dense, thus it shouldn't even have a validity\
             bitmap attached to it to begin with."
-        );
-        assert!(
-            times.values().windows(2).all(|t| t[0] <= t[1]),
-            "time index must be sorted before splitting!"
-        );
-    }
+    );
+    debug_assert!(
+        times.values().windows(2).all(|t| t[0] <= t[1]),
+        "time index must be sorted before splitting!"
+    );
 
     let times = times.values();
     if times.first() == times.last() {
@@ -444,28 +442,35 @@ fn find_split_index(times: &Int64Vec) -> Option<usize> {
     }
 
     // This can never be lesser than 1 as we never split buckets smaller than 2 entries.
-    let split_idx = times.len() / 2;
-    let target = times[split_idx];
+    let halfway_idx = times.len() / 2;
+    let target = times[halfway_idx];
 
     // Are we about to split in the middle of a continuous run? Hop backwards to figure it out.
-    let split_idx1 = Some(times[..split_idx].partition_point(|&t| t < target)).filter(|&i| i > 0);
+    let split_idx1 = Some(times[..halfway_idx].partition_point(|&t| t < target)).filter(|&i| i > 0);
 
     // Are we about to split in the middle of a continuous run? Hop forwards to figure it out.
-    let split_idx2 = Some(times[split_idx..].partition_point(|&t| t <= target))
-        .map(|t| t + split_idx) // we skipped that many entries!
+    let split_idx2 = Some(times[halfway_idx..].partition_point(|&t| t <= target))
+        .map(|t| t + halfway_idx) // we skipped that many entries!
         .filter(|&t| t < times.len());
 
     // Are we in the middle of a backwards continuous run? a forwards continuous run? both?
     match (split_idx1, split_idx2) {
+        // Unsplittable, which cannot happen as we already early-exit earlier.
+        #[cfg(not(debug_assertions))]
         (None, None) => None,
+        #[cfg(debug_assertions)]
+        (None, None) => unreachable!(),
+
         // Backwards run, let's use the first split index.
         (Some(split_idx1), None) => Some(split_idx1),
+
         // Forwards run, let's use the second split index.
         (None, Some(split_idx2)) => Some(split_idx2),
+
         // The run goes both backwards and forwards from the half point: use the split index
         // that's the closest to halfway.
         (Some(split_idx1), Some(split_idx2)) => {
-            if split_idx.abs_diff(split_idx1) < split_idx.abs_diff(split_idx2) {
+            if halfway_idx.abs_diff(split_idx1) < halfway_idx.abs_diff(split_idx2) {
                 split_idx1
             } else {
                 split_idx2
@@ -575,17 +580,20 @@ fn split_primary_index_off(split_idx: usize, times1: &mut Int64Vec) -> Int64Vec 
 fn split_secondary_index_off(split_idx: usize, index1: &mut UInt64Vec) -> UInt64Vec {
     let (datatype, mut data1, validity1) = std::mem::take(index1).into_data();
     let data2 = data1.split_off(split_idx);
-    // We can only end up with either no validity bitmap (because the original index didn't have
-    // one), or with two new bitmaps (because we've split the original in two), nothing in
-    // between.
-    if let Some((validity1, validity2)) = validity1.map(|validity1| {
+
+    let validities = validity1.map(|validity1| {
         let mut validity1 = validity1.into_iter().collect::<Vec<_>>();
         let validity2 = validity1.split_off(split_idx);
         (
             MutableBitmap::from_iter(validity1),
             MutableBitmap::from_iter(validity2),
         )
-    }) {
+    });
+
+    // We can only end up with either no validity bitmap (because the original index didn't have
+    // one), or with two new bitmaps (because we've split the original in two), nothing in
+    // between.
+    if let Some((validity1, validity2)) = validities {
         *index1 = UInt64Vec::from_data(datatype.clone(), data1, Some(validity1));
         UInt64Vec::from_data(datatype, data2, Some(validity2))
     } else {

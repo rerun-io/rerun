@@ -430,8 +430,8 @@ impl IndexTable {
     /// of rows stored across all of its buckets.
     pub fn total_rows(&self) -> u64 {
         self.buckets
-            .iter()
-            .map(|(_, bucket)| bucket.total_rows())
+            .values()
+            .map(|bucket| bucket.total_rows())
             .sum()
     }
 
@@ -439,8 +439,8 @@ impl IndexTable {
     /// the data stored across all of its buckets, in bytes.
     pub fn total_size_bytes(&self) -> u64 {
         self.buckets
-            .iter()
-            .map(|(_, bucket)| bucket.total_size_bytes())
+            .values()
+            .map(|bucket| bucket.total_size_bytes())
             .sum()
     }
 
@@ -641,13 +641,11 @@ impl IndexBucket {
             let primary_len = times.len();
             for (comp, index) in indices {
                 let secondary_len = index.len();
-                if secondary_len != primary_len {
-                    ensure!(
-                        primary_len == secondary_len,
-                        "found rogue secondary index for {comp:?}: \
-                            expected {primary_len} rows, got {secondary_len} instead",
-                    );
-                }
+                ensure!(
+                    primary_len == secondary_len,
+                    "found rogue secondary index for {comp:?}: \
+                        expected {primary_len} rows, got {secondary_len} instead",
+                );
             }
         }
 
