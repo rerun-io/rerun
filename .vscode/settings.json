@@ -9,7 +9,9 @@
     "files.trimTrailingWhitespace": true,
     "files.exclude": {
         "env/**": true,
-        "target/**": true
+        "target/**": true,
+        "target_ra/**": true,
+        "target_wasm/**": true,
     },
     "files.autoGuessEncoding": true,
     "python.formatting.provider": "black",
@@ -22,6 +24,7 @@
     "cSpell.words": [
         "andreas",
         "bbox",
+        "hoverable",
         "Keypoint",
         "memoffset",
         "nyud",
@@ -32,5 +35,24 @@
         "Tonemapper",
         "tonemapping",
         "Wgsl"
-    ]
+    ],
+    // don't share a cargo lock with rust-analyzer.
+    // see https://github.com/rerun-io/rerun/pull/519 for rationale
+    "rust-analyzer.checkOnSave.overrideCommand": [
+        "cargo",
+        "cranky",
+        "--target-dir=target_ra",
+        "--workspace",
+        "--message-format=json",
+        "--all-targets"
+    ],
+    "rust-analyzer.cargo.buildScripts.overrideCommand": [
+        "cargo",
+        "check",
+        "--quiet",
+        "--target-dir=target_ra",
+        "--workspace",
+        "--message-format=json",
+        "--all-targets"
+    ],
 }

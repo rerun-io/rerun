@@ -7,15 +7,14 @@ use re_data_store::{
 };
 use re_log_types::ObjectType;
 
-use super::{space_view::ViewCategory, view_2d, view_3d, view_plot, view_tensor, view_text};
+use super::{space_view::ViewCategory, view_plot, view_spatial, view_tensor, view_text};
 
 // ---
 
 /// A fully self-contained scene, ready to be rendered as-is.
 #[derive(Default)]
 pub struct Scene {
-    pub two_d: view_2d::Scene2D,
-    pub three_d: view_3d::Scene3D,
+    pub spatial: view_spatial::SceneSpatial,
     pub text: view_text::SceneText,
     pub tensor: view_tensor::SceneTensor,
     pub plot: view_plot::ScenePlot,
@@ -24,22 +23,19 @@ pub struct Scene {
 impl Scene {
     pub(crate) fn categories(&self) -> std::collections::BTreeSet<ViewCategory> {
         let Self {
-            two_d,
-            three_d,
+            spatial,
             text,
             tensor,
             plot,
         } = self;
 
-        let has_2d = !two_d.is_empty() && tensor.is_empty();
-        let has_3d = !three_d.is_empty();
+        let has_spatial = !spatial.is_empty();
         let has_text = !text.is_empty();
         let has_tensor = !tensor.is_empty();
         let has_plot = !plot.is_empty();
 
         [
-            has_2d.then_some(ViewCategory::TwoD),
-            has_3d.then_some(ViewCategory::ThreeD),
+            has_spatial.then_some(ViewCategory::Spatial),
             has_text.then_some(ViewCategory::Text),
             has_tensor.then_some(ViewCategory::Tensor),
             has_plot.then_some(ViewCategory::Plot),
@@ -64,14 +60,12 @@ impl<'s> SceneQuery<'s> {
         crate::profile_function!();
         let mut scene = Scene::default();
         let Scene {
-            two_d,
-            three_d,
+            spatial,
             text,
             tensor,
             plot,
         } = &mut scene;
-        two_d.load_objects(ctx, self);
-        three_d.load_objects(ctx, self, InstanceIdHash::NONE);
+        spatial.load_objects(ctx, self, InstanceIdHash::NONE);
         text.load_objects(ctx, self, &view_text::ViewTextFilters::default());
         tensor.load_objects(ctx, self);
         plot.load_objects(ctx, self);

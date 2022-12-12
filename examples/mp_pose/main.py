@@ -61,7 +61,9 @@ def read_landmark_positions_2d(
         return None
     else:
         normalized_landmarks = [results.pose_landmarks.landmark[l] for l in mp.solutions.pose.PoseLandmark]
-        return np.array([(image_width * l.x, image_height * l.y) for l in normalized_landmarks])
+        # Log points as 3d points with some scaling so they "pop out" when looked at in a 3d view
+        # Negative depth in order to move them towards the camera.
+        return np.array([(image_width * l.x, image_height * l.y, -(l.z + 1.0) * 300.0) for l in normalized_landmarks])
 
 
 def read_landmark_positions_3d(

@@ -25,6 +25,11 @@ impl ObjPathHash {
     pub fn is_some(&self) -> bool {
         *self != Self::NONE
     }
+
+    #[inline]
+    pub fn is_none(&self) -> bool {
+        *self == Self::NONE
+    }
 }
 
 impl std::hash::Hash for ObjPathHash {

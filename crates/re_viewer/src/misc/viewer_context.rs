@@ -6,7 +6,7 @@ use re_log_types::{DataPath, MsgId, ObjPath, TimeInt, Timeline};
 use crate::ui::{SelectionHistory, SpaceViewId};
 
 /// Common things needed by many parts of the viewer.
-pub(crate) struct ViewerContext<'a> {
+pub struct ViewerContext<'a> {
     /// Global options for the whole viewer.
     pub options: &'a mut Options,
 
@@ -227,7 +227,7 @@ pub enum HoveredSpace {
 /// UI config for the current recording (found in [`LogDb`]).
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
-pub(crate) struct RecordingConfig {
+pub struct RecordingConfig {
     /// The current time of the time panel, how fast it is moving, etc.
     pub time_ctrl: crate::TimeControl,
 
@@ -284,12 +284,12 @@ impl RecordingConfig {
 // ----------------------------------------------------------------------------
 
 #[derive(Default)]
-pub(crate) struct Caches {
+pub struct Caches {
     /// For displaying images efficiently in immediate mode.
     pub image: crate::misc::ImageCache,
 
     /// For displaying meshes efficiently in immediate mode.
-    pub cpu_mesh: crate::ui::view_3d::CpuMeshCache,
+    pub cpu_mesh: crate::ui::view_spatial::CpuMeshCache,
 }
 
 impl Caches {

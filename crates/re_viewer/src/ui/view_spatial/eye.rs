@@ -2,7 +2,7 @@ use egui::{lerp, NumExt as _, Rect};
 use glam::Affine3A;
 use macaw::{vec3, IsoTransform, Mat4, Quat, Vec3};
 
-use super::SpaceCamera;
+use super::SpaceCamera3D;
 
 /// An eye in a 3D view.
 ///
@@ -18,7 +18,7 @@ pub struct Eye {
 impl Eye {
     pub const DEFAULT_FOV_Y: f32 = 55.0_f32 * std::f32::consts::TAU / 360.0;
 
-    pub fn from_camera(space_cameras: &SpaceCamera) -> Option<Eye> {
+    pub fn from_camera(space_cameras: &SpaceCamera3D) -> Option<Eye> {
         let fov_y = space_cameras
             .pinhole
             .and_then(|i| i.fov_y())

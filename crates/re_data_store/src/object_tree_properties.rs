@@ -3,7 +3,8 @@ use re_log_types::ObjPath;
 use crate::ObjectTree;
 
 /// Stores a visibility toggle for a tree.
-#[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct ObjectTreeProperties {
     /// Individual settings. Mutate this.
     pub individual: ObjectsProperties,
@@ -11,7 +12,7 @@ pub struct ObjectTreeProperties {
     /// Properties, as inherited from parent. Read from this.
     ///
     /// Recalculated at the start of each frame from [`Self::individual`].
-    #[serde(skip)]
+    #[cfg_attr(feature = "serde", serde(skip))]
     pub projected: ObjectsProperties,
 }
 
@@ -43,7 +44,8 @@ impl ObjectTreeProperties {
 // ----------------------------------------------------------------------------
 
 /// Properties for a tree of objects.
-#[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct ObjectsProperties {
     props: nohash_hasher::IntMap<ObjPath, ObjectProps>,
 }
@@ -64,8 +66,9 @@ impl ObjectsProperties {
 
 // ----------------------------------------------------------------------------
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
-#[serde(default)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[cfg_attr(feature = "serde", serde(default))]
 pub struct ObjectProps {
     pub visible: bool,
     pub visible_history: ExtraQueryHistory,
@@ -93,8 +96,9 @@ impl ObjectProps {
 // ----------------------------------------------------------------------------
 
 /// When showing an object in the history view, add this much history to it.
-#[derive(Clone, Copy, Default, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
-#[serde(default)]
+#[derive(Clone, Copy, Default, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[cfg_attr(feature = "serde", serde(default))]
 pub struct ExtraQueryHistory {
     /// Zero = off.
     pub nanos: i64,
