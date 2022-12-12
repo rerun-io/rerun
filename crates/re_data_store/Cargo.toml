@@ -38,6 +38,8 @@ puffin = { version = "0.14", optional = true }
 criterion = "0.3"
 mimalloc = "0.1"
 
+[lib]
+bench = false
 
 [[bench]]
 name = "obj_query_benchmark"

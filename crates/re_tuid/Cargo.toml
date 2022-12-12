@@ -28,6 +28,8 @@ getrandom = "0.2"
 [dev-dependencies]
 criterion = "0.3"
 
+[lib]
+bench = false
 
 [[bench]]
 name = "bench_tuid"
