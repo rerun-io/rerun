@@ -27,7 +27,7 @@ re_memory = { path = "../re_memory" }
 re_sdk_comms = { path = "../re_sdk_comms", features = ["client"] }
 re_smart_channel = { path = "../re_smart_channel" }
 
-arrow2 = { version = "0.14", features = ["io_print"] }
+arrow2 = { version = "0.14", features = [] }
 crossbeam = "0.8"
 document-features = "0.2"
 nohash-hasher = "0.2"
