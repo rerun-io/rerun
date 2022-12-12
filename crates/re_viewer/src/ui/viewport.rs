@@ -392,6 +392,7 @@ impl ViewportBlueprint {
         } else {
             let mut dock_style = egui_dock::Style::from_egui(ui.style().as_ref());
             dock_style.separator_width = 2.0;
+            dock_style.default_inner_margin = 0.0.into();
             dock_style.show_close_buttons = false;
             dock_style.tab_include_scrollarea = false;
             // dock_style.expand_tabs = true; looks good, but decreases readability
@@ -595,10 +596,6 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
             .get_mut(tab)
             .expect("Should have been populated beforehand");
         space_view.name.clone().into()
-    }
-
-    fn inner_margin(&self) -> egui::style::Margin {
-        egui::style::Margin::same(0.0)
     }
 }
 
