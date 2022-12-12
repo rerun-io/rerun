@@ -50,18 +50,16 @@ anyhow = "1.0"
 bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }
 cgmath = { version = "0.18", features = ["mint"] }
 document-features = "0.2"
-eframe = { version = "0.19", default-features = false, features = [
+eframe = { version = "0.20", default-features = false, features = [
   "default_fonts",
   "persistence",
   "wgpu",
 ] }
-egui = { version = "0.19", features = ["extra_debug_asserts", "tracing"] }
-egui-notify = "0.4"
-egui-wgpu = "0.19"
-egui_dock = { git = "https://github.com/rerun-io/egui_dock", rev = "5f5a877a34d17ad31640b5a1a2eb771aff26a3a1", features = [
-  "serde",
-] } # 2022-10-07
-egui_extras = { version = "0.19", features = ["tracing"] }
+egui = { version = "0.20", features = ["extra_debug_asserts", "tracing"] }
+egui-notify = "0.5"
+egui-wgpu = "0.20"
+egui_dock = { version = "0.3", features = ["serde"] }
+egui_extras = { version = "0.20", features = ["tracing"] }
 glam = { version = "0.20", features = [
   "mint",
 ] } # can't update glam until a new version of `macaw` is released
