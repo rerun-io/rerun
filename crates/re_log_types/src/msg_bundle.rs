@@ -45,6 +45,8 @@ pub trait Component: ArrowField {
     fn name() -> ComponentNameRef<'static>;
 }
 
+/// A Component bundle holds an Arrow component column, and it's metadata (`field`).
+/// TODO(john) reduce the duplicate state (name) here.
 pub struct ComponentBundle<'data> {
     pub name: ComponentNameRef<'data>,
     pub field: Field,
@@ -122,30 +124,8 @@ impl<'data> TryFrom<MsgBundle<'data>> for (Schema, Chunk<Box<dyn Array>>, MsgId)
     }
 }
 
-impl<'data> TryFrom<(Schema, &'data Chunk<Box<dyn Array>>, MsgId)> for MsgBundle<'data> {
-    type Error = anyhow::Error;
-
-    fn try_from(
-        (schema, chunk, msg_id): (Schema, &'data Chunk<Box<dyn Array>>, MsgId),
-    ) -> Result<Self, Self::Error> {
-        let obj_path = schema
-            .metadata
-            .get(ENTITY_PATH_KEY)
-            .ok_or_else(|| anyhow!("expect entity path in top-level message's metadata"))
-            .map(|path| ObjPath::from(path.as_str()))?;
-
-        let time_point = extract_timelines(&schema, chunk)?;
-        let components = extract_components(&schema, chunk)?;
-
-        Ok(Self {
-            msg_id,
-            obj_path,
-            time_point,
-            components,
-        })
-    }
-}
-
+/// Pack the passed iterator of `ComponentBundle` into a `(Schema, StructArray)` tuple.
+#[inline]
 fn pack_components<'data>(
     components: impl Iterator<Item = ComponentBundle<'data>>,
 ) -> (Schema, StructArray) {
@@ -175,6 +155,30 @@ fn pack_components<'data>(
     (schema, packed)
 }
 
+impl<'data> TryFrom<(Schema, &'data Chunk<Box<dyn Array>>, MsgId)> for MsgBundle<'data> {
+    type Error = anyhow::Error;
+
+    fn try_from(
+        (schema, chunk, msg_id): (Schema, &'data Chunk<Box<dyn Array>>, MsgId),
+    ) -> Result<Self, Self::Error> {
+        let obj_path = schema
+            .metadata
+            .get(ENTITY_PATH_KEY)
+            .ok_or_else(|| anyhow!("expect entity path in top-level message's metadata"))
+            .map(|path| ObjPath::from(path.as_str()))?;
+
+        let time_point = extract_timelines(&schema, chunk)?;
+        let components = extract_components(&schema, chunk)?;
+
+        Ok(Self {
+            msg_id,
+            obj_path,
+            time_point,
+            components,
+        })
+    }
+}
+
 /// Extract a [`TimePoint`] from the "timelines" column
 fn extract_timelines(schema: &Schema, msg: &Chunk<Box<dyn Array>>) -> anyhow::Result<TimePoint> {
     use arrow2_convert::deserialize::arrow_array_deserialize_iterator;
@@ -182,7 +186,7 @@ fn extract_timelines(schema: &Schema, msg: &Chunk<Box<dyn Array>>) -> anyhow::Re
     let timelines = schema
         .fields
         .iter()
-        .position(|f| f.name == COL_TIMELINES) // TODO(cmc): maybe at least a constant or something
+        .position(|f| f.name == COL_TIMELINES)
         .and_then(|idx| msg.columns().get(idx))
         .ok_or_else(|| anyhow!("expect top-level `timelines` field`"))?;
 
@@ -200,7 +204,7 @@ fn extract_timelines(schema: &Schema, msg: &Chunk<Box<dyn Array>>) -> anyhow::Re
     Ok(timepoint)
 }
 
-/// Extract the components from the message
+/// Extract a vector of `ComponentBundle` from the message
 fn extract_components<'data>(
     schema: &Schema,
     msg: &'data Chunk<Box<dyn Array>>,
@@ -208,7 +212,7 @@ fn extract_components<'data>(
     let components = schema
         .fields
         .iter()
-        .position(|f| f.name == COL_COMPONENTS) // TODO(cmc): maybe at least a constant or something
+        .position(|f| f.name == COL_COMPONENTS)
         .and_then(|idx| msg.columns().get(idx))
         .ok_or_else(|| anyhow!("expect top-level `components` field`"))?;
 
