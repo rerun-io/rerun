@@ -355,11 +355,11 @@ impl ViewportBlueprint {
             )
         });
 
-        let num_space_views = num_tabs(tree);
+        let num_space_views = tree.num_tabs();
         if num_space_views == 0 {
             // nothing to show
         } else if num_space_views == 1 {
-            let space_view_id = first_tab(tree).unwrap();
+            let space_view_id = *tree.tabs().next().unwrap();
             let space_view = self
                 .space_views
                 .get_mut(&space_view_id)
@@ -397,6 +397,7 @@ impl ViewportBlueprint {
         } else {
             let mut dock_style = egui_dock::Style::from_egui(ui.style().as_ref());
             dock_style.separator_width = 2.0;
+            dock_style.default_inner_margin = 0.0.into();
             dock_style.show_close_buttons = false;
             dock_style.tab_include_scrollarea = false;
             // dock_style.expand_tabs = true; looks good, but decreases readability
@@ -601,10 +602,6 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
             .expect("Should have been populated beforehand");
         space_view.name.clone().into()
     }
-
-    fn inner_margin(&self) -> egui::style::Margin {
-        egui::style::Margin::same(0.0)
-    }
 }
 
 fn space_view_options_link(
@@ -766,29 +763,6 @@ impl Blueprint {
 }
 
 // ----------------------------------------------------------------------------
-
-// TODO(emilk): replace with https://github.com/Adanos020/egui_dock/pull/53 when we update egui_dock
-fn num_tabs(tree: &egui_dock::Tree<SpaceViewId>) -> usize {
-    let mut count = 0;
-    for node in tree.iter() {
-        if let egui_dock::Node::Leaf { tabs, .. } = node {
-            count += tabs.len();
-        }
-    }
-    count
-}
-
-// TODO(emilk): replace with https://github.com/Adanos020/egui_dock/pull/53 when we update egui_dock
-fn first_tab(tree: &egui_dock::Tree<SpaceViewId>) -> Option<SpaceViewId> {
-    for node in tree.iter() {
-        if let egui_dock::Node::Leaf { tabs, .. } = node {
-            if let Some(first) = tabs.first() {
-                return Some(*first);
-            }
-        }
-    }
-    None
-}
 
 fn focus_tab(tree: &mut egui_dock::Tree<SpaceViewId>, tab: &SpaceViewId) {
     if let Some((node_index, tab_index)) = tree.find_tab(tab) {
