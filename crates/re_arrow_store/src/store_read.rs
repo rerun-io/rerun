@@ -103,6 +103,15 @@ impl DataStore {
             index.sort_indices();
         }
     }
+
+    /// Returns a read-only iterator over the raw index tables.
+    ///
+    /// Do _not_ use this to try and test the internal state of the datastore.
+    pub fn iter_indices(&self) -> impl Iterator<Item = ((Timeline, EntityPath), &IndexTable)> {
+        self.indices.iter().map(|((timeline, _), table)| {
+            ((*timeline, table.ent_path.clone() /* shallow */), table)
+        })
+    }
 }
 
 // --- Indices ---
@@ -187,6 +196,13 @@ impl IndexTable {
         for bucket in self.buckets.values() {
             bucket.sort_indices();
         }
+    }
+
+    /// Returns a read-only iterator over the raw buckets.
+    ///
+    /// Do _not_ use this to try and test the internal state of the datastore.
+    pub fn iter_buckets(&self) -> impl Iterator<Item = &IndexBucket> {
+        self.buckets.values()
     }
 }
 
