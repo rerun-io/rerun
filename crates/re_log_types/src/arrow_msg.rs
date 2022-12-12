@@ -107,7 +107,7 @@ impl TryFrom<MsgBundle<'static>> for ArrowMsg {
         let (schema, chunk, msg_id) = bundle.try_into()?;
 
         #[cfg(feature = "arrow2/io_print")]
-        println!(
+        re_log::debug!(
             "ArrowMsg chunk from MessageBundle:\n{}",
             arrow2::io::print::write(
                 &[chunk.clone()],
