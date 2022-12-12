@@ -2,6 +2,7 @@
 
 A rough time-line of major user-facing things added, removed and changed. Newest on top.
 
+* 2022-12-12: 2D & 3D scenes are now unified, allowing to switch between 2D/3D views at any time [#513](https://github.com/rerun-io/rerun/pull/513).
 * 2022-12-06: Add GPU memory to memory view [#469](https://github.com/rerun-io/rerun/pull/469).
 * 2022-12-01: In the Viewport, Space Views can now be created, cloned, removed and renamed [#421](https://github.com/rerun-io/rerun/pull/421).
 * 2022-12-01: Text logs view now support all kinds of filters: [#328](https://github.com/rerun-io/rerun/pull/328).

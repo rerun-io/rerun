@@ -1,18 +1,20 @@
 mod eye;
-pub use self::eye::{Eye, OrbitEye};
-
 mod mesh_cache;
-pub use mesh_cache::CpuMeshCache;
-
-mod space_camera_3d;
-pub use self::space_camera_3d::SpaceCamera3D;
-
 mod scene;
+mod space_camera_3d;
+mod ui;
+mod ui_2d;
+mod ui_3d;
+mod ui_renderer_bridge;
+
 pub use self::scene::{
     Image, Label2D, Label2DTarget, Label3D, MeshSource, MeshSourceData, SceneSpatial,
 };
-
-pub mod ui_renderer_bridge;
+pub use self::space_camera_3d::SpaceCamera3D;
+pub use mesh_cache::CpuMeshCache;
+pub use ui::{SpatialNavigationMode, ViewSpatialState};
+pub use ui_2d::view_2d;
+pub use ui_3d::{view_3d, SpaceSpecs};
 
 use re_renderer::Color32;
 

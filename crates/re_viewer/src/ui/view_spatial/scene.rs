@@ -133,17 +133,9 @@ pub struct SceneSpatialPrimitives {
 }
 
 impl SceneSpatialPrimitives {
-    /// 2D bounding rectangle ignoring Z.
-    pub fn bounding_rect_2d(&self) -> egui::Rect {
-        egui::Rect::from_min_max(
-            self.bounding_box.min.truncate().to_array().into(),
-            self.bounding_box.max.truncate().to_array().into(),
-        )
-    }
-
     /// bounding box covering the rendered scene
-    pub fn bounding_box(&self) -> &macaw::BoundingBox {
-        &self.bounding_box
+    pub fn bounding_box(&self) -> macaw::BoundingBox {
+        self.bounding_box
     }
 
     pub fn recalculate_bounding_box(&mut self) {
