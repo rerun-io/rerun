@@ -34,6 +34,8 @@
         "tonemapping",
         "Wgsl"
     ],
+    // don't share a cargo lock with rust-analyzer.
+    // see https://github.com/rerun-io/rerun/pull/519 for rationale
     "rust-analyzer.checkOnSave.overrideCommand": [
         "cargo",
         "cranky",
