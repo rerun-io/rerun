@@ -3,7 +3,7 @@ use egui::{color_picker, Vec2};
 use itertools::Itertools;
 use re_data_store::InstanceId;
 use re_log_types::context::AnnotationInfo;
-use re_log_types::msg_bundle::MessageBundle;
+use re_log_types::msg_bundle::MsgBundle;
 use re_log_types::{
     context, AnnotationContext, Arrow3D, ArrowMsg, BeginRecordingMsg, Data, DataMsg, DataPath,
     DataVec, LogMsg, LoggedData, MsgId, ObjPath, ObjectType, PathOp, PathOpMsg, Pinhole,
@@ -429,11 +429,11 @@ pub(crate) fn ui_logged_data(
 pub(crate) fn ui_logged_arrow_data(
     _ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    _msg_id: &MsgId,
+    msg_id: &MsgId,
     msg: &ArrowMsg,
     _preview: Preview,
 ) -> egui::Response {
-    let msg_bundle = MessageBundle::try_from((msg.schema.clone(), &msg.chunk))
+    let msg_bundle = MsgBundle::try_from((msg.schema.clone(), &msg.chunk, *msg_id))
         .ok()
         .unwrap();
     // TODO(john): more handling

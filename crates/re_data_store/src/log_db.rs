@@ -2,7 +2,7 @@ use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 
 use re_log_types::{
-    msg_bundle::MessageBundle, objects, ArrowMsg, BatchIndex, BeginRecordingMsg, DataMsg, DataPath,
+    msg_bundle::MsgBundle, objects, ArrowMsg, BatchIndex, BeginRecordingMsg, DataMsg, DataPath,
     DataVec, FieldName, LogMsg, LoggedData, MsgId, ObjTypePath, ObjectType, PathOp, PathOpMsg,
     RecordingId, RecordingInfo, TimeInt, TimePoint, Timeline, TypeMsg,
 };
@@ -107,8 +107,8 @@ impl ObjDb {
     }
 
     fn try_add_arrow_data_msg(&mut self, msg: &ArrowMsg) -> Result<(), Error> {
-        let msg_bundle =
-            MessageBundle::try_from((msg.schema.clone(), &msg.chunk)).map_err(Error::Other)?;
+        let msg_bundle = MsgBundle::try_from((msg.schema.clone(), &msg.chunk, msg.msg_id))
+            .map_err(Error::Other)?;
 
         for component in &msg_bundle.components {
             //TODO(jleibs): Actually handle pending clears

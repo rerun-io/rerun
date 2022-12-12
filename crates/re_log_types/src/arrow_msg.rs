@@ -3,7 +3,7 @@
 //! We have custom implementations of [`serde::Serialize`] and [`serde::Deserialize`] that wraps
 //! the inner Arrow serialization of [`Schema`] and [`Chunk`].
 
-use crate::{msg_bundle::MessageBundle, MsgId};
+use crate::{msg_bundle::MsgBundle, MsgId};
 use arrow2::{array::Array, chunk::Chunk, datatypes::Schema};
 
 /// Message containing an Arrow payload
@@ -100,11 +100,11 @@ impl<'de> serde::Deserialize<'de> for ArrowMsg {
 
 // ----------------------------------------------------------------------------
 
-impl TryFrom<MessageBundle<'static>> for ArrowMsg {
+impl TryFrom<MsgBundle<'static>> for ArrowMsg {
     type Error = anyhow::Error;
 
-    fn try_from(bundle: MessageBundle<'static>) -> Result<Self, Self::Error> {
-        let (schema, chunk) = bundle.try_into()?;
+    fn try_from(bundle: MsgBundle<'static>) -> Result<Self, Self::Error> {
+        let (schema, chunk, msg_id) = bundle.try_into()?;
 
         #[cfg(feature = "arrow2/io_print")]
         println!(
@@ -121,7 +121,7 @@ impl TryFrom<MessageBundle<'static>> for ArrowMsg {
         );
 
         Ok(ArrowMsg {
-            msg_id: MsgId::random(),
+            msg_id,
             schema,
             chunk,
         })
@@ -138,7 +138,7 @@ mod tests {
     use super::{ArrowMsg, Chunk, MsgId, Schema};
     use crate::{
         datagen::{build_frame_nr, build_some_point2d, build_some_rects},
-        msg_bundle::MessageBundle,
+        msg_bundle::MsgBundle,
         TimePoint,
     };
 
@@ -184,8 +184,11 @@ mod tests {
 
     #[test]
     fn test_roundtrip_payload() {
-        let mut bundle =
-            MessageBundle::new("world/rects".into(), TimePoint::from([build_frame_nr(0)]));
+        let mut bundle = MsgBundle::new(
+            "world/rects".into(),
+            TimePoint::from([build_frame_nr(0)]),
+            MsgId::ZERO,
+        );
         bundle
             .try_append_component(build_some_point2d(1).iter())
             .unwrap();

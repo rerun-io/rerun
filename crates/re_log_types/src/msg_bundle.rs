@@ -32,7 +32,7 @@ use arrow2_convert::{
     serialize::{ArrowSerialize, TryIntoArrow},
 };
 
-use crate::{ComponentNameRef, ObjPath, TimePoint};
+use crate::{ComponentNameRef, MsgId, ObjPath, TimePoint};
 
 //TODO(john) get rid of this eventually
 const ENTITY_PATH_KEY: &str = "RERUN:entity_path";
@@ -51,15 +51,19 @@ pub struct ComponentBundle<'data> {
     pub component: Box<dyn Array>,
 }
 
-pub struct MessageBundle<'data> {
+/// A `MsgBundle` holds data necessary for composing a single log message.
+pub struct MsgBundle<'data> {
+    /// A unique id per [`crate::LogMsg`].
+    pub msg_id: MsgId,
     pub obj_path: ObjPath,
     pub time_point: TimePoint,
     pub components: Vec<ComponentBundle<'data>>,
 }
 
-impl<'data> MessageBundle<'data> {
-    pub fn new(obj_path: ObjPath, time_point: TimePoint) -> Self {
+impl<'data> MsgBundle<'data> {
+    pub fn new(obj_path: ObjPath, time_point: TimePoint, msg_id: MsgId) -> Self {
         Self {
+            msg_id,
             obj_path,
             time_point,
             components: Vec::new(),
@@ -90,11 +94,11 @@ impl<'data> MessageBundle<'data> {
     }
 }
 
-impl<'data> TryFrom<MessageBundle<'data>> for (Schema, Chunk<Box<dyn Array>>) {
+impl<'data> TryFrom<MsgBundle<'data>> for (Schema, Chunk<Box<dyn Array>>, MsgId) {
     type Error = anyhow::Error;
 
     /// Build a single Arrow log message from this [`MessageBundle`]
-    fn try_from(bundle: MessageBundle<'data>) -> Result<Self, Self::Error> {
+    fn try_from(bundle: MsgBundle<'data>) -> Result<Self, Self::Error> {
         let mut schema = Schema::default();
         let mut cols: Vec<Box<dyn Array>> = Vec::new();
 
@@ -114,15 +118,15 @@ impl<'data> TryFrom<MessageBundle<'data>> for (Schema, Chunk<Box<dyn Array>>) {
         schema.metadata.extend(components_schema.metadata);
         cols.push(components_data.boxed());
 
-        Ok((schema, Chunk::new(cols)))
+        Ok((schema, Chunk::new(cols), bundle.msg_id))
     }
 }
 
-impl<'data> TryFrom<(Schema, &'data Chunk<Box<dyn Array>>)> for MessageBundle<'data> {
+impl<'data> TryFrom<(Schema, &'data Chunk<Box<dyn Array>>, MsgId)> for MsgBundle<'data> {
     type Error = anyhow::Error;
 
     fn try_from(
-        (schema, chunk): (Schema, &'data Chunk<Box<dyn Array>>),
+        (schema, chunk, msg_id): (Schema, &'data Chunk<Box<dyn Array>>, MsgId),
     ) -> Result<Self, Self::Error> {
         let obj_path = schema
             .metadata
@@ -134,6 +138,7 @@ impl<'data> TryFrom<(Schema, &'data Chunk<Box<dyn Array>>)> for MessageBundle<'d
         let components = extract_components(&schema, chunk)?;
 
         Ok(Self {
+            msg_id,
             obj_path,
             time_point,
             components,
