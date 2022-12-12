@@ -97,7 +97,7 @@ impl<'data> MsgBundle<'data> {
 impl<'data> TryFrom<MsgBundle<'data>> for (Schema, Chunk<Box<dyn Array>>, MsgId) {
     type Error = anyhow::Error;
 
-    /// Build a single Arrow log message from this [`MessageBundle`]
+    /// Build a single Arrow log message tuple from this `MsgBundle`.
     fn try_from(bundle: MsgBundle<'data>) -> Result<Self, Self::Error> {
         let mut schema = Schema::default();
         let mut cols: Vec<Box<dyn Array>> = Vec::new();
