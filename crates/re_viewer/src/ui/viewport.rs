@@ -37,7 +37,7 @@ impl SpaceViewId {
 
 fn query_scene(ctx: &mut ViewerContext<'_>, space_info: &SpaceInfo) -> super::scene::Scene {
     let query = SceneQuery {
-        obj_paths: &space_info.objects,
+        obj_paths: &space_info.children_without_transform,
         timeline: *ctx.rec_cfg.time_ctrl.timeline(),
         latest_at: TimeInt::MAX,
         obj_props: &Default::default(), // all visible

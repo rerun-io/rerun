@@ -1,3 +1,4 @@
+use nohash_hasher::IntSet;
 use re_data_store::{ObjPath, ObjectTree, ObjectTreeProperties, TimeInt};
 
 use crate::misc::{
@@ -99,8 +100,8 @@ impl SpaceView {
     ) {
         crate::profile_function!();
 
-        let query = crate::ui::scene::SceneQuery {
-            obj_paths: &reference_space_info.objects, // TODO: gather ALL objects..?
+        let no_transform_query = crate::ui::scene::SceneQuery {
+            obj_paths: &reference_space_info.children_without_transform,
             timeline: *ctx.rec_cfg.time_ctrl.timeline(),
             latest_at,
             obj_props: &self.obj_tree_properties.projected,
@@ -108,6 +109,26 @@ impl SpaceView {
 
         match self.category {
             ViewCategory::Spatial => {
+                // TODO(andreas): This list is gathered potentially in a bunch of places.
+                let mut obj_paths = IntSet::default();
+                fn gather_paths(tree: &ObjectTree, obj_paths: &mut IntSet<ObjPath>) {
+                    obj_paths.insert(tree.path.clone());
+                    for subtree in tree.children.values() {
+                        gather_paths(subtree, obj_paths);
+                    }
+                }
+                let Some(root_tree) = ctx.log_db.obj_db.tree.subtree(&self.root_path) else {
+                    return;
+                };
+                gather_paths(root_tree, &mut obj_paths);
+
+                let query = crate::ui::scene::SceneQuery {
+                    obj_paths: &obj_paths,
+                    timeline: *ctx.rec_cfg.time_ctrl.timeline(),
+                    latest_at,
+                    obj_props: &self.obj_tree_properties.projected,
+                };
+
                 let mut scene = view_spatial::SceneSpatial::default();
                 scene.load_objects(
                     ctx,
@@ -128,17 +149,21 @@ impl SpaceView {
                 ui.add_space(16.0); // Extra headroom required for the hovering controls at the top of the space view.
 
                 let mut scene = view_tensor::SceneTensor::default();
-                scene.load_objects(ctx, &query);
+                scene.load_objects(ctx, &no_transform_query);
                 self.view_state.ui_tensor(ui, &scene);
             }
             ViewCategory::Text => {
                 let mut scene = view_text::SceneText::default();
-                scene.load_objects(ctx, &query, &self.view_state.state_text.filters);
+                scene.load_objects(
+                    ctx,
+                    &no_transform_query,
+                    &self.view_state.state_text.filters,
+                );
                 self.view_state.ui_text(ctx, ui, &scene);
             }
             ViewCategory::Plot => {
                 let mut scene = view_plot::ScenePlot::default();
-                scene.load_objects(ctx, &query);
+                scene.load_objects(ctx, &no_transform_query);
                 self.view_state.ui_plot(ctx, ui, &scene);
             }
         };

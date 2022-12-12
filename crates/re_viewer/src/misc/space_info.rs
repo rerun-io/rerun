@@ -16,7 +16,7 @@ pub struct SpaceInfo {
     pub coordinates: Option<ViewCoordinates>,
 
     /// All paths in this space (including self and children connected by the identity transform).
-    pub objects: IntSet<ObjPath>,
+    pub children_without_transform: IntSet<ObjPath>,
 
     /// Nearest ancestor to whom we are not connected via an identity transform.
     #[allow(unused)]
@@ -58,7 +58,9 @@ impl SpacesInfo {
                     parent: Some((parent_space_path.clone(), transform)),
                     ..Default::default()
                 };
-                child_space_info.objects.insert(tree.path.clone()); // spaces includes self
+                child_space_info
+                    .children_without_transform
+                    .insert(tree.path.clone()); // spaces includes self
 
                 for child_tree in tree.children.values() {
                     add_children(
@@ -75,7 +77,9 @@ impl SpacesInfo {
                     .insert(tree.path.clone(), child_space_info);
             } else {
                 // no transform == identity transform.
-                parent_space_info.objects.insert(tree.path.clone()); // spaces includes self
+                parent_space_info
+                    .children_without_transform
+                    .insert(tree.path.clone()); // spaces includes self
 
                 for child_tree in tree.children.values() {
                     add_children(
@@ -134,7 +138,9 @@ impl SpacesInfo {
 
         for (obj_path, space_info) in &mut spaces_info.spaces {
             space_info.coordinates = query_view_coordinates(obj_db, time_ctrl, obj_path);
-            space_info.objects.extend(spaceless_objects.clone());
+            space_info
+                .children_without_transform
+                .extend(spaceless_objects.clone());
         }
 
         spaces_info
