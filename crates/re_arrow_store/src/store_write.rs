@@ -154,10 +154,10 @@ impl IndexTable {
         let bucket = self.find_bucket_mut(time.as_i64());
 
         let size = bucket.total_size_bytes();
-        let size_overflow = bucket.total_size_bytes() >= config.index_bucket_size_bytes;
+        let size_overflow = bucket.total_size_bytes() > config.index_bucket_size_bytes;
 
         let len = bucket.total_rows();
-        let len_overflow = len >= config.index_bucket_nb_rows;
+        let len_overflow = len > config.index_bucket_nb_rows;
 
         if size_overflow || len_overflow {
             if let Some((min, second_half)) = bucket.split() {
@@ -693,10 +693,10 @@ impl ComponentTable {
         let bucket = self.buckets.back().unwrap();
 
         let size = bucket.total_size_bytes();
-        let size_overflow = bucket.total_size_bytes() >= config.component_bucket_size_bytes;
+        let size_overflow = bucket.total_size_bytes() > config.component_bucket_size_bytes;
 
         let len = bucket.total_rows();
-        let len_overflow = len >= config.component_bucket_nb_rows;
+        let len_overflow = len > config.component_bucket_nb_rows;
 
         if size_overflow || len_overflow {
             debug!(
