@@ -160,6 +160,83 @@ impl IndexTable {
         let len_overflow = len >= config.index_bucket_nb_rows;
 
         if size_overflow || len_overflow {
+            if let Some((min, second_half)) = bucket.split() {
+                debug!(
+                    kind = "insert",
+                    timeline = %timeline.name(),
+                    time = timeline.typ().format(time),
+                    entity = %ent_path,
+                    size_limit = config.component_bucket_size_bytes,
+                    len_limit = config.component_bucket_nb_rows,
+                    size, size_overflow,
+                    len, len_overflow,
+                    new_time_bound = timeline.typ().format(min),
+                    "splitting off index bucket following overflow"
+                );
+
+                self.buckets.insert(min, second_half);
+                return self.insert(config, time, indices);
+            }
+
+            // We couldn't split the bucket, either because it's already too small, or because it
+            // contains a unique timepoint value that's repeated multiple times.
+            //
+            // * If the bucket is that small, then there really is no better thing to do than
+            //   letting it grow some more by appending to it.
+            //
+            // * If the timepoint we're trying to insert is smaller or equal to the current upper
+            //   bound of the bucket, then at this point we have no choice but to insert it here
+            //   (by definition, it is impossible that any previous bucket in the chain covers a
+            //   time range that includes this timepoint: buckets are non-overlapping!).
+            //
+            // * Otherwise, if the timepoint we're trying to insert is greater than the upper bound
+            //   of the current bucket, then it means that there currently exist no bucket that
+            //   covers a time range which includes this timepoint (if such a bucket existed, then
+            //   we would have stumbled upon it before ever finding the current one!).
+            //   This gives us an opportunity to create a new bucket that starts at the upper
+            //   bound of the current one _excluded_ and that ranges all the way up to the timepoint
+            //   that we're inserting.
+            //   Not only is this a great opportunity to naturally split things up, it's actually
+            //   mandatory to avoid a nasty edge case where one keeps inserting into a full,
+            //   unsplittable bucket and indefinitely creates new single-entry buckets, leading
+            //   to the worst-possible case of fragmentation.
+
+            let (bucket_upper_bound, bucket_len) = {
+                let guard = bucket.indices.read();
+                (guard.times.values().last().copied(), guard.times.len())
+            };
+
+            if let Some(upper_bound) = bucket_upper_bound {
+                if bucket_len > 2 && time.as_i64() > upper_bound {
+                    let new_time_bound = upper_bound + 1;
+                    debug!(
+                        kind = "insert",
+                        timeline = %timeline.name(),
+                        time = timeline.typ().format(time),
+                        entity = %ent_path,
+                        size_limit = config.component_bucket_size_bytes,
+                        len_limit = config.component_bucket_nb_rows,
+                        size, size_overflow,
+                        len, len_overflow,
+                        new_time_bound = timeline.typ().format(new_time_bound.into()),
+                        "creating brand new index bucket following overflow"
+                    );
+                    self.buckets.insert(
+                        (new_time_bound).into(),
+                        IndexBucket {
+                            timeline,
+                            indices: RwLock::new(IndexBucketIndices {
+                                is_sorted: true,
+                                time_range: TimeRange::new(time, time),
+                                times: Int64Vec::new(),
+                                indices: HashMap::default(),
+                            }),
+                        },
+                    );
+                    return self.insert(config, time, indices);
+                }
+            }
+
             debug!(
                 kind = "insert",
                 timeline = %timeline.name(),
@@ -169,19 +246,8 @@ impl IndexTable {
                 len_limit = config.component_bucket_nb_rows,
                 size, size_overflow,
                 len, len_overflow,
-                "allocating new index bucket, previous one overflowed"
+                "couldn't split index bucket, proceeding to ignore limits"
             );
-
-            if let Some((min, second_half)) = bucket.split() {
-                self.buckets.insert(min, second_half);
-                return self.insert(config, time, indices);
-            }
-
-            // Couldn't split the bucket!
-            //
-            // The good news is that, provided that this new timepoint we're adding is different
-            // from what's already there in the bucket, we are guaranteed a successful split
-            // the next time an insertion is scheduled for that bucket.
         }
 
         debug!(
@@ -357,8 +423,6 @@ impl IndexBucket {
         if times1.values().first() == times1.values().last() {
             // The entire bucket contains only one timepoint, thus it's impossible to find
             // a split index to begin with.
-            // We'll just have to append the new timepoint to the current bucket, even though
-            // it is sub-optimal.
             return None;
         }
 
