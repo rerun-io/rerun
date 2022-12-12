@@ -26,8 +26,7 @@ impl SpatialNavigationMode {
     }
 }
 
-#[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
-#[serde(default)]
+#[derive(Clone, serde::Deserialize, serde::Serialize)]
 pub struct ViewSpatialState {
     /// What the mouse is hovering (from previous frame)
     #[serde(skip)]
@@ -42,6 +41,18 @@ pub struct ViewSpatialState {
 
     state_2d: View2DState,
     state_3d: View3DState,
+}
+
+impl Default for ViewSpatialState {
+    fn default() -> Self {
+        Self {
+            hovered_instance: Default::default(),
+            nav_mode: Default::default(),
+            scene_bbox_accum: BoundingBox::nothing(),
+            state_2d: Default::default(),
+            state_3d: Default::default(),
+        }
+    }
 }
 
 impl ViewSpatialState {
