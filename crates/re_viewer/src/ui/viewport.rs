@@ -350,11 +350,11 @@ impl ViewportBlueprint {
             )
         });
 
-        let num_space_views = num_tabs(tree);
+        let num_space_views = tree.num_tabs();
         if num_space_views == 0 {
             // nothing to show
         } else if num_space_views == 1 {
-            let space_view_id = first_tab(tree).unwrap();
+            let space_view_id = *tree.tabs().next().unwrap();
             let space_view = self
                 .space_views
                 .get_mut(&space_view_id)
@@ -758,29 +758,6 @@ impl Blueprint {
 }
 
 // ----------------------------------------------------------------------------
-
-// TODO(emilk): replace with https://github.com/Adanos020/egui_dock/pull/53 when we update egui_dock
-fn num_tabs(tree: &egui_dock::Tree<SpaceViewId>) -> usize {
-    let mut count = 0;
-    for node in tree.iter() {
-        if let egui_dock::Node::Leaf { tabs, .. } = node {
-            count += tabs.len();
-        }
-    }
-    count
-}
-
-// TODO(emilk): replace with https://github.com/Adanos020/egui_dock/pull/53 when we update egui_dock
-fn first_tab(tree: &egui_dock::Tree<SpaceViewId>) -> Option<SpaceViewId> {
-    for node in tree.iter() {
-        if let egui_dock::Node::Leaf { tabs, .. } = node {
-            if let Some(first) = tabs.first() {
-                return Some(*first);
-            }
-        }
-    }
-    None
-}
 
 fn focus_tab(tree: &mut egui_dock::Tree<SpaceViewId>, tab: &SpaceViewId) {
     if let Some((node_index, tab_index)) = tree.find_tab(tab) {
