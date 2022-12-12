@@ -1254,8 +1254,7 @@ checksum = "4f94fa09c2aeea5b8839e414b7b841bf429fd25b9c522116ac97ee87856d88b2"
 [[package]]
 name = "ecolor"
 version = "0.20.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b601108bca3af7650440ace4ca55b2daf52c36f2635be3587d77b16efd8d0691"
+source = "git+https://github.com/emilk/egui?rev=e0b5bb17e5851fb5a6904847e353aa74db3441bb#e0b5bb17e5851fb5a6904847e353aa74db3441bb"
 dependencies = [
  "bytemuck",
  "serde",
@@ -1264,8 +1263,7 @@ dependencies = [
 [[package]]
 name = "eframe"
 version = "0.20.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5ea929ec5819fef373728bb0e55003ce921975039cfec3ca8305bb024e5b7b32"
+source = "git+https://github.com/emilk/egui?rev=e0b5bb17e5851fb5a6904847e353aa74db3441bb#e0b5bb17e5851fb5a6904847e353aa74db3441bb"
 dependencies = [
  "bytemuck",
  "directories-next",
@@ -1275,10 +1273,12 @@ dependencies = [
  "egui_glow",
  "js-sys",
  "percent-encoding",
+ "pollster",
  "puffin",
  "raw-window-handle 0.5.0",
  "ron",
  "serde",
+ "thiserror",
  "tracing",
  "wasm-bindgen",
  "wasm-bindgen-futures",
@@ -1290,8 +1290,7 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.20.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "65a5e883a316e53866977450eecfbcac9c48109c2ab3394af29feb83fcde4ea9"
+source = "git+https://github.com/emilk/egui?rev=e0b5bb17e5851fb5a6904847e353aa74db3441bb#e0b5bb17e5851fb5a6904847e353aa74db3441bb"
 dependencies = [
  "accesskit",
  "ahash 0.8.2",
@@ -1314,12 +1313,10 @@ dependencies = [
 [[package]]
 name = "egui-wgpu"
 version = "0.20.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d3a6edfac4c02455f5024dc7cda997629b94748571935773d1a0cfab8213c80a"
+source = "git+https://github.com/emilk/egui?rev=e0b5bb17e5851fb5a6904847e353aa74db3441bb#e0b5bb17e5851fb5a6904847e353aa74db3441bb"
 dependencies = [
  "bytemuck",
  "egui",
- "pollster",
  "puffin",
  "tracing",
  "type-map",
@@ -1330,8 +1327,7 @@ dependencies = [
 [[package]]
 name = "egui-winit"
 version = "0.20.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5696bdbe60898b81157f07ae34fe02dbfd522174bd6e620942c269cd7307901f"
+source = "git+https://github.com/emilk/egui?rev=e0b5bb17e5851fb5a6904847e353aa74db3441bb#e0b5bb17e5851fb5a6904847e353aa74db3441bb"
 dependencies = [
  "arboard",
  "egui",
@@ -1357,8 +1353,7 @@ dependencies = [
 [[package]]
 name = "egui_extras"
 version = "0.20.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1975cd88ff7430f93b29e6b9868b648a8ff6a43b08b9ff8474ee0a648bd8f9a6"
+source = "git+https://github.com/emilk/egui?rev=e0b5bb17e5851fb5a6904847e353aa74db3441bb#e0b5bb17e5851fb5a6904847e353aa74db3441bb"
 dependencies = [
  "egui",
  "serde",
@@ -1368,8 +1363,7 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.20.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d4b5960cb1bae1c403a6c9027a745210a41913433b10c73b6e7d76a1017f8b4"
+source = "git+https://github.com/emilk/egui?rev=e0b5bb17e5851fb5a6904847e353aa74db3441bb#e0b5bb17e5851fb5a6904847e353aa74db3441bb"
 dependencies = [
  "bytemuck",
  "egui",
@@ -1391,8 +1385,7 @@ checksum = "90e5c1c8368803113bf0c9584fc495a58b86dc8a29edbf8fe877d21d9507e797"
 [[package]]
 name = "emath"
 version = "0.20.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5277249c8c3430e7127e4f2c40a77485e7baf11ae132ce9b3253a8ed710df0a0"
+source = "git+https://github.com/emilk/egui?rev=e0b5bb17e5851fb5a6904847e353aa74db3441bb#e0b5bb17e5851fb5a6904847e353aa74db3441bb"
 dependencies = [
  "bytemuck",
  "serde",
@@ -1435,8 +1428,7 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.20.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "de14b65fe5e423e0058f77a8beb2c863b056d0566d6c4ce0d097aa5814cb705a"
+source = "git+https://github.com/emilk/egui?rev=e0b5bb17e5851fb5a6904847e353aa74db3441bb#e0b5bb17e5851fb5a6904847e353aa74db3441bb"
 dependencies = [
  "ab_glyph",
  "ahash 0.8.2",
@@ -4079,6 +4071,7 @@ dependencies = [
  "clap 4.0.26",
  "crossbeam",
  "document-features",
+ "eframe",
  "mimalloc",
  "nohash-hasher",
  "once_cell",

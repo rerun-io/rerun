@@ -3,7 +3,7 @@ use re_log_types::LogMsg;
 type AppCreator =
     Box<dyn FnOnce(&eframe::CreationContext<'_>, re_ui::ReUi) -> Box<dyn eframe::App>>;
 
-pub fn run_native_app(app_creator: AppCreator) {
+pub fn run_native_app(app_creator: AppCreator) -> eframe::Result<()> {
     let native_options = eframe::NativeOptions {
         depth_buffer: 0,
         multisampling: 0, // the 3D views do their own MSAA
@@ -29,13 +29,13 @@ pub fn run_native_app(app_creator: AppCreator) {
             let re_ui = crate::customize_eframe(cc);
             app_creator(cc, re_ui)
         }),
-    );
+    )
 }
 
 pub fn run_native_viewer_with_messages(
     startup_options: crate::StartupOptions,
     log_messages: Vec<LogMsg>,
-) {
+) -> eframe::Result<()> {
     let (tx, rx) = re_smart_channel::smart_channel(re_smart_channel::Source::File);
     for log_msg in log_messages {
         tx.send(log_msg).ok();
@@ -47,5 +47,5 @@ pub fn run_native_viewer_with_messages(
             cc.storage,
             rx,
         ))
-    }));
+    }))
 }

@@ -1,4 +1,4 @@
-fn main() {
+fn main() -> eframe::Result<()> {
     let native_options = eframe::NativeOptions {
         initial_window_size: Some([1200.0, 800.0].into()),
         follow_system_theme: false,
@@ -23,7 +23,7 @@ fn main() {
                 bottom_panel: true,
             })
         }),
-    );
+    )
 }
 
 pub struct ExampleApp {

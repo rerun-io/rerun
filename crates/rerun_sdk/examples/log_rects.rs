@@ -127,7 +127,10 @@ fn main() -> std::process::ExitCode {
         session.flush();
     } else {
         let log_messages = session.drain_log_messages_buffer();
-        rerun_sdk::viewer::show(log_messages);
+        if let Err(err) = rerun_sdk::viewer::show(log_messages) {
+            eprintln!("Failed to start viewer: {err}");
+            return std::process::ExitCode::FAILURE;
+        }
     }
 
     std::process::ExitCode::SUCCESS

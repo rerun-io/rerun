@@ -356,11 +356,11 @@ fn show() -> PyResult<()> {
 
     if log_messages.is_empty() {
         re_log::info!("Nothing logged, so nothing to show");
+        Ok(())
     } else {
-        rerun_sdk::viewer::show(log_messages);
+        rerun_sdk::viewer::show(log_messages)
+            .map_err(|err| PyRuntimeError::new_err(format!("Failed to show Rerun Viewer: {err}")))
     }
-
-    Ok(())
 }
 
 #[pyfunction]
