@@ -227,7 +227,7 @@ impl IndexBucket {
         } = &*self.indices.read();
 
         // Early-exit if this bucket is unaware of this component.
-        let column = indices.get_key_value(component)?;
+        let index = indices.get(component)?;
 
         debug!(
             kind = "query",
@@ -261,37 +261,35 @@ impl IndexBucket {
         );
 
         // find the secondary indices' rows, and the associated row indices.
-        Some(column).and_then(|(name, index)| {
-            let mut secondary_idx = primary_idx;
-            while !index.is_valid(secondary_idx as _) {
-                secondary_idx -= 1;
-                if secondary_idx < 0 {
-                    debug!(
-                        kind = "query",
-                        component = name,
-                        timeline = %self.timeline.name(),
-                        time = self.timeline.typ().format(time.into()),
-                        %primary_idx,
-                        "no secondary index found",
-                    );
-                    return None;
-                }
+        let mut secondary_idx = primary_idx;
+        while !index.is_valid(secondary_idx as _) {
+            secondary_idx -= 1;
+            if secondary_idx < 0 {
+                debug!(
+                    kind = "query",
+                    component,
+                    timeline = %self.timeline.name(),
+                    time = self.timeline.typ().format(time.into()),
+                    %primary_idx,
+                    "no secondary index found",
+                );
+                return None;
             }
+        }
 
-            debug_assert!(index.is_valid(secondary_idx as usize));
-            let row_idx = index.values()[secondary_idx as usize];
+        debug_assert!(index.is_valid(secondary_idx as usize));
+        let row_idx = index.values()[secondary_idx as usize];
 
-            debug!(
-                kind = "query",
-                component = name,
-                timeline = %self.timeline.name(),
-                time = self.timeline.typ().format(time.into()),
-                %primary_idx, %secondary_idx, %row_idx,
-                "found secondary index + row index",
-            );
+        debug!(
+            kind = "query",
+            component,
+            timeline = %self.timeline.name(),
+            time = self.timeline.typ().format(time.into()),
+            %primary_idx, %secondary_idx, %row_idx,
+            "found secondary index + row index",
+        );
 
-            Some(row_idx)
-        })
+        Some(row_idx)
     }
 }
 
