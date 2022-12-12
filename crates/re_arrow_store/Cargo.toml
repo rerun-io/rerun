@@ -13,9 +13,8 @@ re_log = { path = "../re_log" }
 re_log_types = { path = "../re_log_types" }
 
 # External
-anyhow = "1.0"
-arrow2 = { version = "0.14", features = [
-  "io_ipc",
+anyhow.workspace = true
+arrow2 = { workspace = true, features = [
   "compute_concatenate",
   "compute_aggregate",
 ] }
@@ -24,7 +23,7 @@ document-features = "0.2"
 indent = "0.1"
 nohash-hasher = "0.2"
 parking_lot = "0.12"
-thiserror = "1.0"
+thiserror.workspace = true
 
 # native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

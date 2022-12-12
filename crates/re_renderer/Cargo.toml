@@ -16,8 +16,11 @@ import-obj = ["dep:tobj"]
 import-gltf = ["dep:gltf"]
 
 [dependencies]
+re_error = { path = "../re_error" }
+re_log = { path = "../re_log" }
+
 ahash = "0.8"
-anyhow = "1.0"
+anyhow.workspace = true
 bitflags = "1.3"
 bytemuck = { version = "1.12", features = ["derive"] }
 clean-path = "0.2"
@@ -33,12 +36,10 @@ macaw = "0.17.2"
 memoffset = "0.7"
 ordered-float = "3.2"
 parking_lot = "0.12"
-re_error = { path = "../re_error" }
-re_log = { path = "../re_log" }
 slotmap = "1.0.6"
 smallvec = "1.10"
 static_assertions = "1.1"
-thiserror = "1.0"
+thiserror.workspace = true
 type-map = "0.5"
 unindent = "0.1"
 
@@ -99,7 +100,7 @@ web-sys = { version = "0.3.60", features = [
 ## Build
 
 [build-dependencies]
-anyhow = "1.0"
+anyhow.workspace = true
 clean-path = "0.2"
 glob = "0.3"
 pathdiff = "0.2"

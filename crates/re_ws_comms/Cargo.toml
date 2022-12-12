@@ -33,7 +33,7 @@ tls = [
 re_log = { path = "../re_log" }
 re_log_types = { path = "../re_log_types", features = ["serde"] }
 
-anyhow = "1.0.56"
+anyhow.workspace = true
 bincode = "1.3"
 document-features = "0.2"
 
