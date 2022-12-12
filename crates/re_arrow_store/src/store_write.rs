@@ -214,13 +214,14 @@ impl IndexBucket {
         let mut guard = self.indices.write();
         let IndexBucketIndices {
             is_sorted,
-            time_range: _,
+            time_range,
             times,
             indices,
         } = &mut *guard;
 
-        // append time to primary index
+        // append time to primary index and update time range approriately
         times.push(time.as_i64().into());
+        *time_range = TimeRange::new(time_range.min.min(time), time_range.max.max(time));
 
         // append components to secondary indices (2-way merge)
 
@@ -285,22 +286,24 @@ impl IndexBucket {
     ///     size: 3 buckets for a total of 265 B across 8 total rows
     ///     buckets: [
     ///         IndexBucket {
+    ///             index time bound: >= #0
     ///             size: 99 B across 3 rows
-    ///             time range: from -∞ to #41 (all inclusive)
+    ///             time range: from #41 to #41 (all inclusive)
     ///             data (sorted=true): shape: (3, 4)
-    ///             ┌──────┬───────────┬───────────┬───────┐
-    ///             │ time ┆ instances ┆ positions ┆ rects │
-    ///             │ ---  ┆ ---       ┆ ---       ┆ ---   │
-    ///             │ str  ┆ u64       ┆ u64       ┆ u64   │
-    ///             ╞══════╪═══════════╪═══════════╪═══════╡
-    ///             │ #41  ┆ 1         ┆ null      ┆ null  │
-    ///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┤
-    ///             │ #41  ┆ null      ┆ 1         ┆ null  │
-    ///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┤
-    ///             │ #41  ┆ null      ┆ null      ┆ 3     │
-    ///             └──────┴───────────┴───────────┴───────┘
+    ///             ┌──────┬───────┬───────────┬───────────┐
+    ///             │ time ┆ rects ┆ positions ┆ instances │
+    ///             │ ---  ┆ ---   ┆ ---       ┆ ---       │
+    ///             │ str  ┆ u64   ┆ u64       ┆ u64       │
+    ///             ╞══════╪═══════╪═══════════╪═══════════╡
+    ///             │ #41  ┆ null  ┆ null      ┆ 1         │
+    ///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
+    ///             │ #41  ┆ null  ┆ 1         ┆ null      │
+    ///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
+    ///             │ #41  ┆ 3     ┆ null      ┆ null      │
+    ///             └──────┴───────┴───────────┴───────────┘
     ///         }
     ///         IndexBucket {
+    ///             index time bound: >= #42
     ///             size: 99 B across 3 rows
     ///             time range: from #42 to #42 (all inclusive)
     ///             data (sorted=true): shape: (3, 4)
@@ -317,18 +320,19 @@ impl IndexBucket {
     ///             └──────┴───────────┴───────┴───────────┘
     ///         }
     ///         IndexBucket {
+    ///             index time bound: >= #43
     ///             size: 67 B across 2 rows
-    ///             time range: from #43 to +∞ (all inclusive)
+    ///             time range: from #43 to #44 (all inclusive)
     ///             data (sorted=true): shape: (2, 4)
-    ///             ┌──────┬───────────┬───────────┬───────┐
-    ///             │ time ┆ positions ┆ instances ┆ rects │
-    ///             │ ---  ┆ ---       ┆ ---       ┆ ---   │
-    ///             │ str  ┆ u64       ┆ u64       ┆ u64   │
-    ///             ╞══════╪═══════════╪═══════════╪═══════╡
-    ///             │ #43  ┆ null      ┆ null      ┆ 4     │
-    ///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┤
-    ///             │ #44  ┆ 3         ┆ null      ┆ null  │
-    ///             └──────┴───────────┴───────────┴───────┘
+    ///             ┌──────┬───────┬───────────┬───────────┐
+    ///             │ time ┆ rects ┆ instances ┆ positions │
+    ///             │ ---  ┆ ---   ┆ ---       ┆ ---       │
+    ///             │ str  ┆ u64   ┆ u64       ┆ u64       │
+    ///             ╞══════╪═══════╪═══════════╪═══════════╡
+    ///             │ #43  ┆ 4     ┆ null      ┆ null      │
+    ///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
+    ///             │ #44  ┆ null  ┆ null      ┆ 3         │
+    ///             └──────┴───────┴───────────┴───────────┘
     ///         }
     ///     ]
     /// }

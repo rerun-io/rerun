@@ -283,43 +283,46 @@ impl std::fmt::Display for DataStore {
 ///     size: 3 buckets for a total of 160 B across 5 total rows
 ///     buckets: [
 ///         IndexBucket {
+///             index time bound: >= +0.000s
 ///             size: 67 B across 2 rows
-///             time range: from -∞ to 18:24:23.712311Z (all inclusive)
+///             time range: from 15:06:31.305069Z to 15:06:31.305069Z (all inclusive)
 ///             data (sorted=true): shape: (2, 4)
 ///             ┌──────────────────┬───────┬───────────┬───────────┐
 ///             │ time             ┆ rects ┆ instances ┆ positions │
 ///             │ ---              ┆ ---   ┆ ---       ┆ ---       │
 ///             │ str              ┆ u64   ┆ u64       ┆ u64       │
 ///             ╞══════════════════╪═══════╪═══════════╪═══════════╡
-///             │ 18:24:23.712311Z ┆ null  ┆ null      ┆ 2         │
+///             │ 15:06:31.305069Z ┆ null  ┆ null      ┆ 2         │
 ///             ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
-///             │ 18:24:23.712311Z ┆ 4     ┆ null      ┆ null      │
+///             │ 15:06:31.305069Z ┆ 4     ┆ null      ┆ null      │
 ///             └──────────────────┴───────┴───────────┴───────────┘
 ///         }
 ///         IndexBucket {
+///             index time bound: >= 15:06:32.305069Z
 ///             size: 67 B across 2 rows
-///             time range: from 18:24:24.712311Z to 18:24:24.712311Z (all inclusive)
+///             time range: from 15:06:32.305069Z to 15:06:32.305069Z (all inclusive)
 ///             data (sorted=true): shape: (2, 4)
 ///             ┌──────────────────┬───────┬───────────┬───────────┐
 ///             │ time             ┆ rects ┆ instances ┆ positions │
 ///             │ ---              ┆ ---   ┆ ---       ┆ ---       │
 ///             │ str              ┆ u64   ┆ u64       ┆ u64       │
 ///             ╞══════════════════╪═══════╪═══════════╪═══════════╡
-///             │ 18:24:24.712311Z ┆ 1     ┆ null      ┆ null      │
+///             │ 15:06:32.305069Z ┆ 1     ┆ null      ┆ null      │
 ///             ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
-///             │ 18:24:24.712311Z ┆ null  ┆ 3         ┆ null      │
+///             │ 15:06:32.305069Z ┆ null  ┆ 3         ┆ null      │
 ///             └──────────────────┴───────┴───────────┴───────────┘
 ///         }
 ///         IndexBucket {
+///             index time bound: >= 15:06:33.305069Z
 ///             size: 26 B across 1 rows
-///             time range: from 18:24:25.712311Z to +∞ (all inclusive)
+///             time range: from 15:06:33.305069Z to 15:06:33.305069Z (all inclusive)
 ///             data (sorted=true): shape: (1, 3)
 ///             ┌──────────────────┬───────┬───────────┐
 ///             │ time             ┆ rects ┆ instances │
 ///             │ ---              ┆ ---   ┆ ---       │
 ///             │ str              ┆ u64   ┆ u64       │
 ///             ╞══════════════════╪═══════╪═══════════╡
-///             │ 18:24:25.712311Z ┆ 2     ┆ 2         │
+///             │ 15:06:33.305069Z ┆ 2     ┆ 2         │
 ///             └──────────────────┴───────┴───────────┘
 ///         }
 ///     ]
@@ -334,22 +337,24 @@ impl std::fmt::Display for DataStore {
 ///     size: 3 buckets for a total of 265 B across 8 total rows
 ///     buckets: [
 ///         IndexBucket {
+///             index time bound: >= #0
 ///             size: 99 B across 3 rows
-///             time range: from -∞ to #41 (all inclusive)
+///             time range: from #41 to #41 (all inclusive)
 ///             data (sorted=true): shape: (3, 4)
-///             ┌──────┬───────────┬───────────┬───────┐
-///             │ time ┆ instances ┆ positions ┆ rects │
-///             │ ---  ┆ ---       ┆ ---       ┆ ---   │
-///             │ str  ┆ u64       ┆ u64       ┆ u64   │
-///             ╞══════╪═══════════╪═══════════╪═══════╡
-///             │ #41  ┆ 1         ┆ null      ┆ null  │
-///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┤
-///             │ #41  ┆ null      ┆ 1         ┆ null  │
-///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┤
-///             │ #41  ┆ null      ┆ null      ┆ 3     │
-///             └──────┴───────────┴───────────┴───────┘
+///             ┌──────┬───────┬───────────┬───────────┐
+///             │ time ┆ rects ┆ positions ┆ instances │
+///             │ ---  ┆ ---   ┆ ---       ┆ ---       │
+///             │ str  ┆ u64   ┆ u64       ┆ u64       │
+///             ╞══════╪═══════╪═══════════╪═══════════╡
+///             │ #41  ┆ null  ┆ null      ┆ 1         │
+///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
+///             │ #41  ┆ null  ┆ 1         ┆ null      │
+///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
+///             │ #41  ┆ 3     ┆ null      ┆ null      │
+///             └──────┴───────┴───────────┴───────────┘
 ///         }
 ///         IndexBucket {
+///             index time bound: >= #42
 ///             size: 99 B across 3 rows
 ///             time range: from #42 to #42 (all inclusive)
 ///             data (sorted=true): shape: (3, 4)
@@ -366,18 +371,19 @@ impl std::fmt::Display for DataStore {
 ///             └──────┴───────────┴───────┴───────────┘
 ///         }
 ///         IndexBucket {
+///             index time bound: >= #43
 ///             size: 67 B across 2 rows
-///             time range: from #43 to +∞ (all inclusive)
+///             time range: from #43 to #44 (all inclusive)
 ///             data (sorted=true): shape: (2, 4)
-///             ┌──────┬───────────┬───────────┬───────┐
-///             │ time ┆ positions ┆ instances ┆ rects │
-///             │ ---  ┆ ---       ┆ ---       ┆ ---   │
-///             │ str  ┆ u64       ┆ u64       ┆ u64   │
-///             ╞══════╪═══════════╪═══════════╪═══════╡
-///             │ #43  ┆ null      ┆ null      ┆ 4     │
-///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┤
-///             │ #44  ┆ 3         ┆ null      ┆ null  │
-///             └──────┴───────────┴───────────┴───────┘
+///             ┌──────┬───────┬───────────┬───────────┐
+///             │ time ┆ rects ┆ instances ┆ positions │
+///             │ ---  ┆ ---   ┆ ---       ┆ ---       │
+///             │ str  ┆ u64   ┆ u64       ┆ u64       │
+///             ╞══════╪═══════╪═══════════╪═══════════╡
+///             │ #43  ┆ 4     ┆ null      ┆ null      │
+///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
+///             │ #44  ┆ null  ┆ null      ┆ 3         │
+///             └──────┴───────┴───────────┴───────────┘
 ///         }
 ///     ]
 /// }
@@ -392,6 +398,13 @@ pub struct IndexTable {
     pub(crate) ent_path: EntityPath,
 
     /// The actual buckets, where the indices are stored.
+    ///
+    /// The keys of this `BTreeMap` represent the lower bounds of the time-ranges covered by
+    /// their associated buckets, _as seen from an indexing rather than a data standpoint_!
+    ///
+    /// This means that e.g. for the initial bucket, this will always be `-∞`, as from an
+    /// indexing standpoint, all reads and writes with a time `t >= -∞` should go there, even
+    /// though the bucket doesn't actually contains data with a timestamp of `-∞`!
     pub(crate) buckets: BTreeMap<TimeInt, IndexBucket>,
 }
 
@@ -414,8 +427,12 @@ impl std::fmt::Display for IndexTable {
             format_number(self.total_rows() as _),
         ))?;
         f.write_str("buckets: [\n")?;
-        for bucket in buckets.values() {
+        for (time, bucket) in buckets.iter() {
             f.write_str(&indent::indent_all_by(4, "IndexBucket {\n"))?;
+            f.write_str(&indent::indent_all_by(
+                8,
+                format!("index time bound: >= {}\n", timeline.typ().format(*time),),
+            ))?;
             f.write_str(&indent::indent_all_by(8, bucket.to_string() + "\n"))?;
             f.write_str(&indent::indent_all_by(4, "}\n"))?;
         }
@@ -501,6 +518,9 @@ pub struct IndexBucketIndices {
     pub(crate) is_sorted: bool,
 
     /// The time range covered by the primary time index.
+    ///
+    /// This is the actual time range that's covered by the indexed data!
+    /// For an empty bucket, this defaults to [+∞,-∞].
     pub(crate) time_range: TimeRange,
 
     // The primary time index, which is guaranteed to be dense, and "drives" all other indices.
@@ -521,7 +541,7 @@ impl Default for IndexBucketIndices {
     fn default() -> Self {
         Self {
             is_sorted: true,
-            time_range: TimeRange::new(i64::MIN.into(), i64::MAX.into()),
+            time_range: TimeRange::new(i64::MAX.into(), i64::MIN.into()),
             times: Int64Vec::default(),
             indices: Default::default(),
         }
@@ -545,11 +565,15 @@ impl std::fmt::Display for IndexBucket {
             format_number(self.total_rows() as _),
         ))?;
 
-        f.write_fmt(format_args!(
-            "time range: from {} to {} (all inclusive)\n",
-            timeline.typ().format(time_range.min),
-            timeline.typ().format(time_range.max),
-        ))?;
+        if time_range.min.as_i64() != i64::MAX && time_range.max.as_i64() != i64::MIN {
+            f.write_fmt(format_args!(
+                "time range: from {} to {} (all inclusive)\n",
+                timeline.typ().format(time_range.min),
+                timeline.typ().format(time_range.max),
+            ))?;
+        } else {
+            f.write_str("time range: N/A\n")?;
+        }
 
         #[cfg(not(target_arch = "wasm32"))]
         {
