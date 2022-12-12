@@ -69,7 +69,7 @@ impl DataStore {
                     ComponentTable::new((*name).to_owned(), component.data_type().clone())
                 });
 
-            let row_idx = table.insert(&self.config, time_point.iter(), component.as_ref())?;
+            let row_idx = table.insert(&self.config, time_point, component.as_ref())?;
             indices.insert(*name, row_idx);
         }
 
@@ -641,7 +641,7 @@ impl ComponentTable {
     pub fn insert<'a>(
         &mut self,
         config: &DataStoreConfig,
-        timelines: impl IntoIterator<Item = (&'a Timeline, &'a TimeInt)>,
+        timelines: impl IntoIterator<Item = (&'a Timeline, &'a TimeInt)> + Clone,
         data: &dyn Array,
     ) -> anyhow::Result<RowIndex> {
         // All component tables spawn with an initial bucket at row offset 0, thus this cannot
@@ -680,20 +680,21 @@ impl ComponentTable {
         //   same reason as above: all component tables spawn with an initial bucket at row
         //   offset 0, thus this cannot fail.
         // - If the table has just overflowed, then we've just pushed a bucket to the dequeue.
-        let row_idx = self.buckets.back_mut().unwrap().insert(timelines, data)?;
+        let row_idx = self
+            .buckets
+            .back_mut()
+            .unwrap()
+            .insert(timelines.clone(), data)?;
 
-        // TODO: This debug is broken by the IntoIter change
-        /*
         debug!(
             kind = "insert",
-            timelines = ?timelines
+            timelines = ?timelines.into_iter()
                 .map(|(timeline, time)| (timeline.name(), timeline.typ().format(*time)))
                 .collect::<Vec<_>>(),
             component = self.name.as_str(),
             row_idx,
             "inserted into component table"
         );
-        */
 
         Ok(row_idx)
     }
