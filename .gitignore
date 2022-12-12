@@ -2,6 +2,7 @@
 
 # Rust compile target directory:
 **/target
+**/target_ra
 **/target_wasm
 
 # Python virtual environment:
