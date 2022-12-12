@@ -32,14 +32,12 @@ impl DataStore {
         &mut self,
         ent_path: &EntityPath,
         time_point: &TimePoint,
-        components: impl ExactSizeIterator<Item = &'a ComponentBundle<'a>>,
+        components: impl IntoIterator<Item = &'a ComponentBundle<'a>> + Clone + ExactSizeIterator,
     ) -> anyhow::Result<()> {
         // TODO(cmc): sort the "instances" component, and everything else accordingly!
         let ent_path_hash = *ent_path.hash();
         self.insert_id += 1;
 
-        // TODO: Iterator interface broke this debug
-        /*
         debug!(
             kind = "insert",
             id = self.insert_id,
@@ -47,10 +45,9 @@ impl DataStore {
                 .map(|(timeline, time)| (timeline.name(), timeline.typ().format(*time)))
                 .collect::<Vec<_>>(),
             entity = %ent_path,
-            components = ?components.map(|bundle| bundle.name).collect::<Vec<_>>(),
+            components = ?components.clone().into_iter().map(|bundle| bundle.name).collect::<Vec<_>>(),
             "insertion started..."
         );
-        */
 
         // TODO(cmc): sort the "instances" component, and everything else accordingly!
 
