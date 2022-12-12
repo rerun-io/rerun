@@ -152,7 +152,7 @@ async fn run_impl(args: Args) -> anyhow::Result<()> {
             let mut app = re_viewer::App::from_receiver(startup_options, re_ui, cc.storage, rx);
             app.set_profiler(profiler);
             Box::new(app)
-        }));
+        }))?;
     }
     Ok(())
 }
@@ -180,7 +180,7 @@ async fn connect_to_ws_url(
             );
             app.set_profiler(profiler);
             Box::new(app)
-        }));
+        }))?;
     }
     Ok(())
 }
