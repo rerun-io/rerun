@@ -1,7 +1,7 @@
 use eframe::{emath::RectTransform, epaint::text::TextWrapping};
 use egui::{
-    epaint, pos2, vec2, Align, Align2, Color32, NumExt as _, Pos2, Rect, Response, ScrollArea,
-    Shape, TextFormat, TextStyle, Vec2,
+    pos2, vec2, Align, Align2, Color32, NumExt as _, Pos2, Rect, Response, ScrollArea, Shape,
+    TextFormat, TextStyle, Vec2,
 };
 use itertools::Itertools;
 use re_data_store::{InstanceId, InstanceIdHash, ObjPath};
@@ -9,36 +9,29 @@ use re_renderer::view_builder::TargetConfiguration;
 
 use crate::{
     misc::HoveredSpace,
-    ui::view_spatial::{
-        ui_renderer_bridge::{create_scene_paint_callback, get_viewport, ScreenBackground},
-        Image, Label2DTarget, SceneSpatial,
+    ui::{
+        image_ui,
+        view_spatial::{
+            ui_renderer_bridge::{create_scene_paint_callback, get_viewport, ScreenBackground},
+            Image, Label2DTarget, SceneSpatial,
+        },
     },
     Selection, ViewerContext,
 };
 
 // ---
 
-#[derive(Clone, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub struct View2DState {
-    /// What the mouse is hovering (from previous frame)
-    #[serde(skip)]
-    pub hovered_instance: Option<InstanceId>,
-
-    /// Estimated bounding box of all data. Accumulated.
-    ///
-    /// TODO(emilk): accumulate this per space once as data arrives instead.
-    #[serde(skip)]
-    pub scene_bbox_accum: epaint::Rect,
-
     /// The zoom and pan state, which is either a zoom/center or `Auto` which will fill the screen
     #[serde(skip)]
-    zoom: ZoomState,
+    zoom: ZoomState2D,
 }
 
 #[derive(Clone, Copy)]
 /// Sub-state specific to the Zoom/Scale/Pan engine
-pub enum ZoomState {
+pub enum ZoomState2D {
     Auto,
     Scaled {
         /// Number of ui points per scene unit
@@ -52,22 +45,11 @@ pub enum ZoomState {
     },
 }
 
-impl Default for ZoomState {
+impl Default for ZoomState2D {
     fn default() -> Self {
-        ZoomState::Auto
+        ZoomState2D::Auto
     }
 }
-
-impl Default for View2DState {
-    fn default() -> Self {
-        Self {
-            hovered_instance: Default::default(),
-            scene_bbox_accum: epaint::Rect::NOTHING,
-            zoom: Default::default(),
-        }
-    }
-}
-
 impl View2DState {
     /// Determine the optimal sub-region and size based on the `ZoomState` and
     /// available size. This will generally be used to construct the painter and
@@ -76,22 +58,26 @@ impl View2DState {
     /// Returns `(desired_size, scroll_offset)` where:
     ///   - `desired_size` is the size of the painter necessary to capture the zoomed view in ui points
     ///   - `scroll_offset` is the position of the `ScrollArea` offset in ui points
-    fn desired_size_and_offset(&self, available_size: Vec2) -> (Vec2, Vec2) {
+    fn desired_size_and_offset(
+        &self,
+        available_size: Vec2,
+        scene_rect_accum: Rect,
+    ) -> (Vec2, Vec2) {
         match self.zoom {
-            ZoomState::Scaled { scale, center, .. } => {
-                let desired_size = self.scene_bbox_accum.size() * scale;
+            ZoomState2D::Scaled { scale, center, .. } => {
+                let desired_size = scene_rect_accum.size() * scale;
 
                 // Try to keep the center of the scene in the middle of the available size
-                let scroll_offset = (center.to_vec2() - self.scene_bbox_accum.left_top().to_vec2())
+                let scroll_offset = (center.to_vec2() - scene_rect_accum.left_top().to_vec2())
                     * scale
                     - available_size / 2.0;
 
                 (desired_size, scroll_offset)
             }
-            ZoomState::Auto => {
+            ZoomState2D::Auto => {
                 // Otherwise, we autoscale the space to fit available area while maintaining aspect ratio
-                let scene_bbox = if self.scene_bbox_accum.is_positive() {
-                    self.scene_bbox_accum
+                let scene_bbox = if scene_rect_accum.is_positive() {
+                    scene_rect_accum
                 } else {
                     Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0))
                 };
@@ -114,6 +100,7 @@ impl View2DState {
         &mut self,
         response: &egui::Response,
         ui_to_space: egui::emath::RectTransform,
+        scene_rect_accum: Rect,
         available_size: Vec2,
     ) {
         // Determine if we are zooming
@@ -125,22 +112,22 @@ impl View2DState {
         };
 
         match self.zoom {
-            ZoomState::Auto => {
+            ZoomState2D::Auto => {
                 if let Some(input_zoom) = hovered_zoom {
                     if input_zoom > 1.0 {
-                        let scale = response.rect.height() / self.scene_bbox_accum.height();
-                        let center = self.scene_bbox_accum.center();
-                        self.zoom = ZoomState::Scaled {
+                        let scale = response.rect.height() / ui_to_space.to().height();
+                        let center = scene_rect_accum.center();
+                        self.zoom = ZoomState2D::Scaled {
                             scale,
                             center,
                             accepting_scroll: false,
                         };
                         // Recursively update now that we have initialized `ZoomState` to `Scaled`
-                        self.update(response, ui_to_space, available_size);
+                        self.update(response, ui_to_space, scene_rect_accum, available_size);
                     }
                 }
             }
-            ZoomState::Scaled {
+            ZoomState2D::Scaled {
                 mut scale,
                 mut center,
                 ..
@@ -177,7 +164,7 @@ impl View2DState {
                 }
 
                 // Save the zoom state
-                self.zoom = ZoomState::Scaled {
+                self.zoom = ZoomState2D::Scaled {
                     scale,
                     center,
                     accepting_scroll,
@@ -186,46 +173,39 @@ impl View2DState {
         }
 
         // Process things that might reset ZoomState to Auto
-        if let ZoomState::Scaled { scale, .. } = self.zoom {
+        if let ZoomState2D::Scaled { scale, .. } = self.zoom {
             // If the user double-clicks
             if response.double_clicked() {
-                self.zoom = ZoomState::Auto;
+                self.zoom = ZoomState2D::Auto;
             }
 
             // If our zoomed region is smaller than the available size
-            if self.scene_bbox_accum.size().x * scale < available_size.x
-                && self.scene_bbox_accum.size().y * scale < available_size.y
+            if scene_rect_accum.size().x * scale < available_size.x
+                && scene_rect_accum.size().y * scale < available_size.y
             {
-                self.zoom = ZoomState::Auto;
+                self.zoom = ZoomState2D::Auto;
             }
         }
     }
 
     /// Take the offset from the `ScrollArea` and apply it back to center so that other
     /// scroll interfaces work as expected.
-    fn capture_scroll(&mut self, offset: Vec2, available_size: Vec2) {
-        if let ZoomState::Scaled {
+    fn capture_scroll(&mut self, offset: Vec2, available_size: Vec2, scene_rect_accum: Rect) {
+        if let ZoomState2D::Scaled {
             scale,
             accepting_scroll,
             ..
         } = self.zoom
         {
             if accepting_scroll {
-                let center =
-                    self.scene_bbox_accum.left_top() + (available_size / 2.0 + offset) / scale;
-                self.zoom = ZoomState::Scaled {
+                let center = scene_rect_accum.left_top() + (available_size / 2.0 + offset) / scale;
+                self.zoom = ZoomState2D::Scaled {
                     scale,
                     center,
                     accepting_scroll,
                 };
             }
         }
-    }
-
-    pub fn hovered_instance_hash(&self) -> InstanceIdHash {
-        self.hovered_instance
-            .as_ref()
-            .map_or(InstanceIdHash::NONE, |i| i.hash())
     }
 }
 
@@ -234,19 +214,22 @@ pub const HELP_TEXT: &str = "Ctrl-scroll  to zoom (⌘-scroll or Mac).\n\
     Double-click to reset the view.";
 
 /// Create the outer 2D view, which consists of a scrollable region
-pub(crate) fn view_2d(
+/// TODO(andreas): Split into smaller parts, more re-use with `ui_3d`
+pub fn view_2d(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &mut View2DState,
     space: &ObjPath,
     scene: SceneSpatial,
+    scene_rect_accum: Rect,
+    hovered_instance: &mut Option<InstanceId>,
 ) -> egui::Response {
     crate::profile_function!();
 
     // Save off the available_size since this is used for some of the layout updates later
     let available_size = ui.available_size();
 
-    let (desired_size, offset) = state.desired_size_and_offset(available_size);
+    let (desired_size, offset) = state.desired_size_and_offset(available_size, scene_rect_accum);
 
     // Bound the offset based on sizes
     // TODO(jleibs): can we derive this from the ScrollArea shape?
@@ -258,16 +241,27 @@ pub(crate) fn view_2d(
         .auto_shrink([false, false]);
 
     let scroll_out = scroll_area.show(ui, |ui| {
-        view_2d_scrollable(desired_size, available_size, ctx, ui, state, space, scene)
+        view_2d_scrollable(
+            desired_size,
+            available_size,
+            ctx,
+            ui,
+            state,
+            space,
+            scene,
+            scene_rect_accum,
+            hovered_instance,
+        )
     });
 
     // Update the scroll area based on the computed offset
     // This handles cases of dragging/zooming the space
-    state.capture_scroll(scroll_out.state.offset, available_size);
+    state.capture_scroll(scroll_out.state.offset, available_size, scene_rect_accum);
     scroll_out.inner
 }
 
 /// Create the real 2D view inside the scrollable area
+#[allow(clippy::too_many_arguments)]
 fn view_2d_scrollable(
     desired_size: Vec2,
     available_size: Vec2,
@@ -276,35 +270,37 @@ fn view_2d_scrollable(
     state: &mut View2DState,
     space: &ObjPath,
     mut scene: SceneSpatial,
+    scene_rect_accum: Rect,
+    hovered_instance: &mut Option<InstanceId>,
 ) -> egui::Response {
-    state.scene_bbox_accum = state
-        .scene_bbox_accum
-        .union(scene.primitives.bounding_rect_2d());
-    let scene_bbox = state.scene_bbox_accum;
-
     let (mut response, painter) =
         parent_ui.allocate_painter(desired_size, egui::Sense::click_and_drag());
 
     // Create our transforms.
-    let ui_from_space = egui::emath::RectTransform::from_to(scene_bbox, response.rect);
+    let ui_from_space = egui::emath::RectTransform::from_to(scene_rect_accum, response.rect);
     let space_from_ui = ui_from_space.inverse();
     let space_from_points = space_from_ui.scale().y;
     let points_from_pixels = 1.0 / painter.ctx().pixels_per_point();
     let space_from_pixel = space_from_points * points_from_pixels;
 
-    state.update(&response, space_from_ui, available_size);
+    state.update(&response, space_from_ui, scene_rect_accum, available_size);
 
     // ------------------------------------------------------------------------
 
     // Add egui driven labels on top of re_renderer content.
     // Needs to come before hovering checks because it adds more objects for hovering.
-    let mut shapes = create_labels(
-        &mut scene,
-        ui_from_space,
-        space_from_ui,
-        parent_ui,
-        state.hovered_instance_hash(),
-    );
+    {
+        let hovered_instance_hash = hovered_instance
+            .as_ref()
+            .map_or(InstanceIdHash::NONE, |i| i.hash());
+        painter.extend(create_labels(
+            &mut scene,
+            ui_from_space,
+            space_from_ui,
+            parent_ui,
+            hovered_instance_hash,
+        ));
+    }
 
     // ------------------------------------------------------------------------
 
@@ -413,7 +409,7 @@ fn view_2d_scrollable(
                             );
 
                             ui.horizontal(|ui| {
-                                super::image_ui::show_zoomed_image_region(
+                                image_ui::show_zoomed_image_region(
                                     parent_ui,
                                     ui,
                                     &tensor_view,
@@ -471,7 +467,7 @@ fn view_2d_scrollable(
 
     // ------------------------------------------------------------------------
 
-    if let Some(instance_id) = &state.hovered_instance {
+    if let Some(instance_id) = hovered_instance {
         if response.clicked() {
             ctx.set_selection(Selection::Instance(instance_id.clone()));
         }
@@ -491,13 +487,16 @@ fn view_2d_scrollable(
         f32::INFINITY
     };
     project_onto_other_spaces(ctx, space, &response, &space_from_ui, depth_at_pointer);
-    show_projections_from_3d_space(ctx, parent_ui, space, &ui_from_space, &mut shapes);
+    painter.extend(show_projections_from_3d_space(
+        ctx,
+        parent_ui,
+        space,
+        &ui_from_space,
+    ));
 
     // ------------------------------------------------------------------------
 
-    painter.extend(shapes);
-
-    state.hovered_instance = closest_instance_id_hash.resolve(&ctx.log_db.obj_db.store);
+    *hovered_instance = closest_instance_id_hash.resolve(&ctx.log_db.obj_db.store);
 
     response
 }
@@ -612,8 +611,8 @@ fn show_projections_from_3d_space(
     ui: &egui::Ui,
     space: &ObjPath,
     ui_from_space: &RectTransform,
-    shapes: &mut Vec<Shape>,
-) {
+) -> Vec<Shape> {
+    let mut shapes = Vec::new();
     if let HoveredSpace::ThreeD { target_spaces, .. } = &ctx.rec_cfg.hovered_space_previous_frame {
         for (space_2d, ray_2d, pos_2d) in target_spaces {
             if space_2d == space {
@@ -665,4 +664,5 @@ fn show_projections_from_3d_space(
             }
         }
     }
+    shapes
 }

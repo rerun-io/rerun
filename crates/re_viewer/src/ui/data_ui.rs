@@ -12,8 +12,8 @@ use re_log_types::{
 
 use crate::misc::ViewerContext;
 use crate::ui::annotations::auto_color;
-use crate::ui::view_2d::view_class_description_map;
 
+use super::class_description_ui::view_class_description_map;
 use super::{annotations::AnnotationMap, Preview};
 
 pub(crate) fn view_object(
@@ -209,7 +209,7 @@ pub(crate) fn view_data(
 
 pub(crate) fn show_detailed_data(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, data: &Data) {
     if let Data::Tensor(tensor) = data {
-        crate::ui::view_2d::show_tensor(ctx, ui, tensor);
+        super::image_ui::show_tensor(ctx, ui, tensor);
     } else {
         crate::data_ui::ui_data(ctx, ui, data, Preview::Medium);
     }
@@ -252,7 +252,7 @@ pub(crate) fn show_detailed_data_msg(
         });
 
     if let LoggedData::Single(Data::Tensor(tensor)) = &msg.data {
-        crate::ui::view_2d::show_tensor(ctx, ui, tensor);
+        crate::ui::image_ui::show_tensor(ctx, ui, tensor);
     }
 }
 

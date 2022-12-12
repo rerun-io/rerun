@@ -25,14 +25,14 @@ opt-level = 2
 debug = true
 
 [patch.crates-io]
-# 2022-12-08 - egui style tweaks
-ecolor = { git = "https://github.com/emilk/egui", rev = "da0a1787019cb28c26e969bc537a191f2ed302f3" }
-eframe = { git = "https://github.com/emilk/egui", rev = "da0a1787019cb28c26e969bc537a191f2ed302f3" }
-egui = { git = "https://github.com/emilk/egui", rev = "da0a1787019cb28c26e969bc537a191f2ed302f3" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "da0a1787019cb28c26e969bc537a191f2ed302f3" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "da0a1787019cb28c26e969bc537a191f2ed302f3" }
-emath = { git = "https://github.com/emilk/egui", rev = "da0a1787019cb28c26e969bc537a191f2ed302f3" }
-epaint = { git = "https://github.com/emilk/egui", rev = "da0a1787019cb28c26e969bc537a191f2ed302f3" }
+# # 2022-12-12 - eframe::run_return can return an error
+ecolor = { git = "https://github.com/emilk/egui", rev = "e0b5bb17e5851fb5a6904847e353aa74db3441bb" }
+eframe = { git = "https://github.com/emilk/egui", rev = "e0b5bb17e5851fb5a6904847e353aa74db3441bb" }
+egui = { git = "https://github.com/emilk/egui", rev = "e0b5bb17e5851fb5a6904847e353aa74db3441bb" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "e0b5bb17e5851fb5a6904847e353aa74db3441bb" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "e0b5bb17e5851fb5a6904847e353aa74db3441bb" }
+emath = { git = "https://github.com/emilk/egui", rev = "e0b5bb17e5851fb5a6904847e353aa74db3441bb" }
+epaint = { git = "https://github.com/emilk/egui", rev = "e0b5bb17e5851fb5a6904847e353aa74db3441bb" }
 
 # ecolor = { path = "../../egui/crates/ecolor" }
 # eframe = { path = "../../egui/crates/eframe" }

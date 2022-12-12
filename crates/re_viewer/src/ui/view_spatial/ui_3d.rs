@@ -1,6 +1,6 @@
 use egui::NumExt as _;
 use glam::Affine3A;
-use macaw::{vec3, Quat, Ray3, Vec3};
+use macaw::{vec3, BoundingBox, Quat, Ray3, Vec3};
 
 use re_data_store::{InstanceId, InstanceIdHash};
 use re_log_types::{ObjPath, ViewCoordinates};
@@ -13,34 +13,26 @@ use crate::{
     misc::{HoveredSpace, Selection},
     ui::view_spatial::{
         ui_renderer_bridge::{create_scene_paint_callback, get_viewport, ScreenBackground},
-        AXIS_COLOR_X, AXIS_COLOR_Y, AXIS_COLOR_Z,
+        SceneSpatial, SpaceCamera3D, AXIS_COLOR_X, AXIS_COLOR_Y, AXIS_COLOR_Z,
     },
     ViewerContext,
 };
 
-use crate::ui::view_spatial::{Eye, OrbitEye, SceneSpatial, SpaceCamera3D};
+use super::eye::{Eye, OrbitEye};
 
 // ---
 
 #[derive(Clone, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
-pub(crate) struct View3DState {
+pub struct View3DState {
     orbit_eye: Option<OrbitEye>,
 
     #[serde(skip)]
     eye_interpolation: Option<EyeInterpolation>,
 
-    /// What the mouse is hovering (from previous frame)
-    #[serde(skip)]
-    hovered_instance: Option<InstanceId>,
-
     /// Where in world space the mouse is hovering (from previous frame)
     #[serde(skip)]
     hovered_point: Option<glam::Vec3>,
-
-    /// Estimate of the the bounding box of all data. Accumulated.
-    #[serde(skip)]
-    scene_bbox: macaw::BoundingBox,
 
     // options:
     spin: bool,
@@ -61,9 +53,7 @@ impl Default for View3DState {
         Self {
             orbit_eye: Default::default(),
             eye_interpolation: Default::default(),
-            hovered_instance: Default::default(),
             hovered_point: Default::default(),
-            scene_bbox: macaw::BoundingBox::nothing(),
             spin: false,
             show_axes: false,
             last_eye_interact_time: f64::NEG_INFINITY,
@@ -79,13 +69,14 @@ impl View3DState {
         ctx: &mut ViewerContext<'_>,
         tracking_camera: Option<Eye>,
         response: &egui::Response,
+        scene_bbox_accum: &BoundingBox,
     ) -> &mut OrbitEye {
         if response.double_clicked() {
             // Reset eye
             if tracking_camera.is_some() {
                 ctx.clear_selection();
             }
-            self.interpolate_to_orbit_eye(default_eye(&self.scene_bbox, &self.space_specs));
+            self.interpolate_to_orbit_eye(default_eye(scene_bbox_accum, &self.space_specs));
         }
 
         if let Some(tracking_camera) = tracking_camera {
@@ -103,7 +94,7 @@ impl View3DState {
 
         let orbit_camera = self
             .orbit_eye
-            .get_or_insert_with(|| default_eye(&self.scene_bbox, &self.space_specs));
+            .get_or_insert_with(|| default_eye(scene_bbox_accum, &self.space_specs));
 
         if self.spin {
             orbit_camera.rotate(egui::vec2(
@@ -167,10 +158,68 @@ impl View3DState {
         }
     }
 
-    pub fn hovered_instance_hash(&self) -> InstanceIdHash {
-        self.hovered_instance
-            .as_ref()
-            .map_or(InstanceIdHash::NONE, |i| i.hash())
+    pub fn show_settings_ui(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        scene_bbox_accum: &BoundingBox,
+    ) {
+        {
+            let up_response = if let Some(up) = self.space_specs.up {
+                if up == Vec3::X {
+                    ui.label("Up: +X")
+                } else if up == -Vec3::X {
+                    ui.label("Up: -X")
+                } else if up == Vec3::Y {
+                    ui.label("Up: +Y")
+                } else if up == -Vec3::Y {
+                    ui.label("Up: -Y")
+                } else if up == Vec3::Z {
+                    ui.label("Up: +Z")
+                } else if up == -Vec3::Z {
+                    ui.label("Up: -Z")
+                } else if up != Vec3::ZERO {
+                    ui.label(format!("Up: [{:.3} {:.3} {:.3}]", up.x, up.y, up.z))
+                } else {
+                    ui.label("Up: —")
+                }
+            } else {
+                ui.label("Up: —")
+            };
+
+            up_response.on_hover_ui(|ui| {
+                ui.horizontal(|ui| {
+                    ui.spacing_mut().item_spacing.x = 0.0;
+                    ui.label("Set with ");
+                    ui.code("rerun.log_view_coordinates");
+                    ui.label(".");
+                });
+            });
+        }
+
+        if ui
+            .button("Reset virtual camera")
+            .on_hover_text(
+                "Resets camera position & orientation.\nYou can also double-click the 3D view",
+            )
+            .clicked()
+        {
+            self.orbit_eye = Some(default_eye(scene_bbox_accum, &self.space_specs));
+            self.eye_interpolation = None;
+            // TODO(emilk): reset tracking camera too
+        }
+
+        ui.checkbox(&mut self.spin, "Spin virtual camera")
+            .on_hover_text("Spin view");
+        ui.checkbox(&mut self.show_axes, "Show origin axes")
+            .on_hover_text("Show X-Y-Z axes");
+
+        if !self.space_camera.is_empty() {
+            ui.checkbox(
+                &mut ctx.options.show_camera_mesh_in_3d,
+                "Show camera meshes",
+            );
+        }
     }
 }
 
@@ -195,71 +244,8 @@ impl EyeInterpolation {
     }
 }
 
-pub(crate) fn show_settings_ui(
-    ctx: &mut ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    state: &mut View3DState,
-) {
-    {
-        let up_response = if let Some(up) = state.space_specs.up {
-            if up == Vec3::X {
-                ui.label("Up: +X")
-            } else if up == -Vec3::X {
-                ui.label("Up: -X")
-            } else if up == Vec3::Y {
-                ui.label("Up: +Y")
-            } else if up == -Vec3::Y {
-                ui.label("Up: -Y")
-            } else if up == Vec3::Z {
-                ui.label("Up: +Z")
-            } else if up == -Vec3::Z {
-                ui.label("Up: -Z")
-            } else if up != Vec3::ZERO {
-                ui.label(format!("Up: [{:.3} {:.3} {:.3}]", up.x, up.y, up.z))
-            } else {
-                ui.label("Up: —")
-            }
-        } else {
-            ui.label("Up: —")
-        };
-
-        up_response.on_hover_ui(|ui| {
-            ui.horizontal(|ui| {
-                ui.spacing_mut().item_spacing.x = 0.0;
-                ui.label("Set with ");
-                ui.code("rerun.log_view_coordinates");
-                ui.label(".");
-            });
-        });
-    }
-
-    if ui
-        .button("Reset virtual camera")
-        .on_hover_text(
-            "Resets camera position & orientation.\nYou can also double-click the 3D view",
-        )
-        .clicked()
-    {
-        state.orbit_eye = Some(default_eye(&state.scene_bbox, &state.space_specs));
-        state.eye_interpolation = None;
-        // TODO(emilk): reset tracking camera too
-    }
-
-    ui.checkbox(&mut state.spin, "Spin virtual camera")
-        .on_hover_text("Spin view");
-    ui.checkbox(&mut state.show_axes, "Show origin axes")
-        .on_hover_text("Show X-Y-Z axes");
-
-    if !state.space_camera.is_empty() {
-        ui.checkbox(
-            &mut ctx.options.show_camera_mesh_in_3d,
-            "Show camera meshes",
-        );
-    }
-}
-
 #[derive(Clone, Default)]
-pub(crate) struct SpaceSpecs {
+pub struct SpaceSpecs {
     up: Option<glam::Vec3>,
     right: Option<glam::Vec3>,
 }
@@ -322,7 +308,7 @@ fn click_object(
 
 // ----------------------------------------------------------------------------
 
-pub(crate) const HELP_TEXT: &str = "Drag to rotate.\n\
+pub const HELP_TEXT: &str = "Drag to rotate.\n\
     Drag with secondary mouse button to pan.\n\
     Drag with middle mouse button to roll the view.\n\
     Scroll to zoom.\n\
@@ -334,37 +320,45 @@ pub(crate) const HELP_TEXT: &str = "Drag to rotate.\n\
     \n\
     Double-click anywhere to reset the view.";
 
-pub(crate) fn view_3d(
+/// TODO(andreas): Split into smaller parts, more re-use with `ui_2d`
+#[allow(clippy::too_many_arguments)]
+pub fn view_3d(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &mut View3DState,
     space: &ObjPath,
     mut scene: SceneSpatial,
     space_cameras: &[SpaceCamera3D],
+    scene_bbox_accum: &BoundingBox,
+    hovered_instance: &mut Option<InstanceId>,
 ) -> egui::Response {
     crate::profile_function!();
 
-    state.scene_bbox = state.scene_bbox.union(*scene.primitives.bounding_box());
     state.space_camera = space_cameras.to_vec();
 
     let (rect, mut response) =
         ui.allocate_at_least(ui.available_size(), egui::Sense::click_and_drag());
 
     let tracking_camera = tracking_camera(ctx, space_cameras);
-    let orbit_eye = state.update_eye(ctx, tracking_camera, &response);
+    let orbit_eye = state.update_eye(ctx, tracking_camera, &response, scene_bbox_accum);
 
     let did_interact_wth_eye = orbit_eye.interact(&response);
     let orbit_eye = *orbit_eye;
     let eye = orbit_eye.to_eye();
 
-    scene.add_cameras(
-        ctx,
-        &state.scene_bbox,
-        rect.size(),
-        &eye,
-        space_cameras,
-        state.hovered_instance_hash(),
-    );
+    {
+        let hovered_instance_hash = hovered_instance
+            .as_ref()
+            .map_or(InstanceIdHash::NONE, |i| i.hash());
+        scene.add_cameras(
+            ctx,
+            scene_bbox_accum,
+            rect.size(),
+            &eye,
+            space_cameras,
+            hovered_instance_hash,
+        );
+    }
 
     if did_interact_wth_eye {
         state.last_eye_interact_time = ui.input().time;
@@ -374,13 +368,12 @@ pub(crate) fn view_3d(
         }
     }
 
-    let mut hovered_instance = state.hovered_instance.clone();
     if ui.input().pointer.any_click() {
         if let Some(hovered_instance) = &hovered_instance {
             click_object(ctx, space_cameras, state, hovered_instance);
         }
     } else if ui.input().pointer.any_down() {
-        hovered_instance = None;
+        *hovered_instance = None;
     }
 
     if let Some(instance_id) = &hovered_instance {
@@ -394,17 +387,17 @@ pub(crate) fn view_3d(
         scene.picking(glam::vec2(pointer_pos.x, pointer_pos.y), &rect, &eye)
     });
 
-    state.hovered_instance = None;
+    *hovered_instance = None;
     state.hovered_point = None;
     if let Some((instance_id, point)) = hovered {
         if let Some(instance_id) = instance_id.resolve(&ctx.log_db.obj_db.store) {
-            state.hovered_instance = Some(instance_id);
+            *hovered_instance = Some(instance_id);
             state.hovered_point = Some(point);
         }
     }
 
     project_onto_other_spaces(ctx, space_cameras, state, space, &response, orbit_eye);
-    show_projections_from_2d_space(ctx, space_cameras, state, &mut scene);
+    show_projections_from_2d_space(ctx, space_cameras, &mut scene, scene_bbox_accum);
     if state.show_axes {
         show_origin_axis(&mut scene);
     }
@@ -519,8 +512,8 @@ fn paint_view(
 fn show_projections_from_2d_space(
     ctx: &mut ViewerContext<'_>,
     space_cameras: &[SpaceCamera3D],
-    state: &mut View3DState,
     scene: &mut SceneSpatial,
+    scene_bbox_accum: &BoundingBox,
 ) {
     if let HoveredSpace::TwoD { space_2d, pos } = &ctx.rec_cfg.hovered_space_previous_frame {
         for cam in space_cameras {
@@ -538,7 +531,7 @@ fn show_projections_from_2d_space(
                     let length = if let Some(hit_pos) = hit_pos {
                         hit_pos.distance(cam.position())
                     } else {
-                        4.0 * state.scene_bbox.half_size().length() // should be long enough
+                        4.0 * scene_bbox_accum.half_size().length() // should be long enough
                     };
                     let origin = ray.point_along(0.0);
                     let end = ray.point_along(length);

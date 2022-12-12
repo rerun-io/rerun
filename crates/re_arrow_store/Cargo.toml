@@ -6,6 +6,10 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
+[features]
+default = []
+deadlock_detection = ["parking_lot/deadlock_detection"]
+
 [dependencies]
 # Rerun
 re_format = { path = "../re_format" }
