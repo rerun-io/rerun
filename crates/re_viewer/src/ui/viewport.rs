@@ -257,17 +257,19 @@ impl ViewportBlueprint {
             }
         })
         .body(|ui| {
-            let is_space_view_visible = self.visible.contains(space_view_id);
-            show_obj_tree_children(
-                ctx,
-                ui,
-                is_space_view_visible,
-                &mut space_view.obj_tree_properties,
-                *space_view_id,
-                spaces_info,
-                &mut space_view.reference_space_path,
-                obj_tree,
-            );
+            if let Some(subtree) = obj_tree.subtree(&space_view.root_path) {
+                let is_space_view_visible = self.visible.contains(space_view_id);
+                show_obj_tree_children(
+                    ctx,
+                    ui,
+                    is_space_view_visible,
+                    &mut space_view.obj_tree_properties,
+                    *space_view_id,
+                    spaces_info,
+                    &mut space_view.reference_space_path,
+                    subtree,
+                );
+            }
         });
     }
 
@@ -454,17 +456,16 @@ fn show_obj_tree(
                 space_view_id,
                 spaces_info,
                 current_reference_frame,
-                &name,
+                name,
             );
             object_visibility_button(ui, parent_is_visible, obj_tree_properties, &tree.path);
         });
     } else {
         let collapsing_header_id = ui.id().with(&tree.path);
-        let default_open = false;
         egui::collapsing_header::CollapsingState::load_with_default_open(
             ui.ctx(),
             collapsing_header_id,
-            default_open,
+            false,
         )
         .show_header(ui, |ui| {
             object_path_button(
@@ -534,7 +535,7 @@ fn object_path_button(
     name: &str,
 ) {
     let mut is_space_info = false;
-    let label_text = if spaces_info.spaces.contains_key(&path) {
+    let label_text = if spaces_info.spaces.contains_key(path) {
         is_space_info = true;
         let label_text = egui::RichText::new(format!("📐 {}", name));
         if path == current_reference_frame {

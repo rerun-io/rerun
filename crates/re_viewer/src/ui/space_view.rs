@@ -40,6 +40,9 @@ pub enum ViewCategory {
 pub(crate) struct SpaceView {
     pub name: String,
 
+    /// Everything under this root is shown in the space view.
+    pub root_path: ObjPath,
+
     /// Everything visible in this space view, is looked at in reference to this space info.
     pub reference_space_path: ObjPath,
 
@@ -55,7 +58,7 @@ impl SpaceView {
     pub fn new(
         scene: &super::scene::Scene,
         category: ViewCategory,
-        reference_space_info: ObjPath,
+        reference_space_path: ObjPath,
     ) -> Self {
         let mut view_state = ViewState::default();
 
@@ -67,9 +70,15 @@ impl SpaceView {
             };
         }
 
+        let root_path = reference_space_path.to_components().first().map_or_else(
+            || reference_space_path.clone(),
+            |c| ObjPath::from(vec![c.clone()]),
+        );
+
         Self {
-            name: reference_space_info.to_string(),
-            reference_space_path: reference_space_info,
+            name: reference_space_path.to_string(),
+            root_path,
+            reference_space_path,
             view_state,
             category,
             obj_tree_properties: Default::default(),
@@ -91,7 +100,7 @@ impl SpaceView {
         crate::profile_function!();
 
         let query = crate::ui::scene::SceneQuery {
-            obj_paths: &reference_space_info.objects, // TODO: gather ALL objects
+            obj_paths: &reference_space_info.objects, // TODO: gather ALL objects..?
             timeline: *ctx.rec_cfg.time_ctrl.timeline(),
             latest_at,
             obj_props: &self.obj_tree_properties.projected,
