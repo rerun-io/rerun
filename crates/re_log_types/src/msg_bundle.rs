@@ -9,7 +9,7 @@
 //! +---------------------------------------------+-----------------------------------------------------+
 //! ```
 //!
-//! The outer schema has precicely 2 columns: `timelines`, `components`
+//! The outer schema has precisely 2 columns: `timelines`, `components`
 //! (TODO(john) do we want to add `MsgId`?)
 //!
 //! The `timelines` schema is *fixed* and is defined by the [`ArrowField`] implementation on
@@ -55,6 +55,46 @@ pub struct ComponentBundle<'data> {
 }
 
 /// A `MsgBundle` holds data necessary for composing a single log message.
+///
+/// # Examples
+///
+/// Create a `MsgBundle` and add a component consisting of 2 [`crate::field_types::Rect2D`] values:
+/// ```
+/// # use re_log_types::{field_types::Rect2D, msg_bundle::MsgBundle, MsgId, ObjPath, TimePoint};
+/// let component = vec![
+///     Rect2D { x: 0.0, y: 0.0, w: 0.0, h: 0.0, },
+///     Rect2D { x: 1.0, y: 1.0, w: 0.0, h: 0.0, }
+/// ];
+/// let mut bundle = MsgBundle::new(MsgId::ZERO, ObjPath::root(), TimePoint::default());
+/// bundle.try_append_component(&component).unwrap();
+/// println!("{:?}", &bundle.components[0].component);
+/// ```
+///
+/// The resultant Arrow array for the `rect2d` component looks as follows:
+/// ```text
+/// +------------------------------------------------------+
+/// | rect2d                                               |
+/// +------------------------------------------------------+
+/// | [{x: 0, y: 0, w: 0, h: 0}, {x: 1, y: 1, w: 0, h: 0}] |
+/// +------------------------------------------------------+
+/// ```
+///
+/// The `MsgBundle` can then also be converted into an [`crate::arrow_msg::ArrowMsg`]:
+/// ```
+/// # use re_log_types::{field_types::Rect2D, msg_bundle::MsgBundle, MsgId, ObjPath, TimePoint};
+/// # let mut bundle = MsgBundle::new(MsgId::ZERO, ObjPath::root(), TimePoint::default());
+/// # bundle.try_append_component(re_log_types::datagen::build_some_rects(2).iter()).unwrap();
+/// let msg: ArrowMsg = bundle.try_into().unwrap();
+/// ```
+///
+/// And the resulting Arrow array in the `ArrowMsg` looks as follows:
+/// ```text
+/// +------------------------------------------+-----------------------------------------+
+/// | timelines                                | components                              |
+/// +------------------------------------------+-----------------------------------------+
+/// | [{timeline: frame_nr, type: 1, time: 0}] | {point2d: [{x: 9.765961, y: 5.532682}]} |
+/// +------------------------------------------+-----------------------------------------+
+/// ```
 #[derive(Debug)]
 pub struct MsgBundle<'data> {
     /// A unique id per [`crate::LogMsg`].
@@ -89,7 +129,9 @@ impl<'data> MsgBundle<'data> {
         }
     }
 
-    /// Try to append a collection of `Component` onto the `MessageBundle`
+    /// Try to append a collection of `Component` onto the `MessageBundle`.
+    ///
+    /// This first converts the component collection into an Arrow array, and then wraps it in a [`ListArray`].
     pub fn try_append_component<'a, Element, Collection>(
         &mut self,
         component: Collection,
