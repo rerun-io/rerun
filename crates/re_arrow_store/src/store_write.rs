@@ -10,7 +10,9 @@ use parking_lot::RwLock;
 
 use re_log::debug;
 use re_log_types::msg_bundle::{ComponentBundle, MsgBundle};
-use re_log_types::{ComponentNameRef, ObjPath as EntityPath, TimeInt, TimeRange, Timeline};
+use re_log_types::{
+    ComponentNameRef, ObjPath as EntityPath, TimeInt, TimePoint, TimeRange, Timeline,
+};
 
 use crate::store::IndexBucketIndices;
 use crate::{
@@ -627,10 +629,10 @@ impl ComponentTable {
         }
     }
 
-    pub fn insert<'a>(
+    pub fn insert(
         &mut self,
         config: &DataStoreConfig,
-        timelines: impl IntoIterator<Item = (&'a Timeline, &'a TimeInt)> + Clone,
+        time_point: &TimePoint,
         data: &dyn Array,
     ) -> anyhow::Result<RowIndex> {
         // All component tables spawn with an initial bucket at row offset 0, thus this cannot
@@ -669,15 +671,11 @@ impl ComponentTable {
         //   same reason as above: all component tables spawn with an initial bucket at row
         //   offset 0, thus this cannot fail.
         // - If the table has just overflowed, then we've just pushed a bucket to the dequeue.
-        let row_idx = self
-            .buckets
-            .back_mut()
-            .unwrap()
-            .insert(timelines.clone(), data)?;
+        let row_idx = self.buckets.back_mut().unwrap().insert(time_point, data)?;
 
         debug!(
             kind = "insert",
-            timelines = ?timelines.into_iter()
+            timelines = ?time_point.into_iter()
                 .map(|(timeline, time)| (timeline.name(), timeline.typ().format(*time)))
                 .collect::<Vec<_>>(),
             component = self.name.as_str(),
@@ -720,12 +718,9 @@ impl ComponentBucket {
             data,
         }
     }
-    pub fn insert<'a>(
-        &mut self,
-        timelines: impl IntoIterator<Item = (&'a Timeline, &'a TimeInt)>,
-        data: &dyn Array,
-    ) -> anyhow::Result<RowIndex> {
-        for (timeline, time) in timelines {
+
+    pub fn insert(&mut self, time_point: &TimePoint, data: &dyn Array) -> anyhow::Result<RowIndex> {
+        for (timeline, time) in time_point {
             // TODO(#451): prob should own it at this point
             let time = *time;
             self.time_ranges
