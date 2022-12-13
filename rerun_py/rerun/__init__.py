@@ -7,7 +7,17 @@ import traceback
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Callable, Final, Iterable, Optional, Sequence, Tuple, TypeVar, Union
+from typing import (
+    Any,
+    Callable,
+    Final,
+    Iterable,
+    Optional,
+    Sequence,
+    Tuple,
+    TypeVar,
+    Union,
+)
 
 import numpy as np
 import numpy.typing as npt
@@ -29,11 +39,14 @@ RT = TypeVar("RT")  # return type
 # Add this to ALL user-facing functions!
 # TODO(emilk): add "strict" mode where we do pass on the exceptions
 def log_exceptions(func: Callable[..., RT]) -> Callable[..., Optional[RT]]:
-    def wrapper_log_exceptions(*args, **kwargs) -> Optional[RT]:
+    def wrapper_log_exceptions(*args: Any, **kwargs: Any) -> Optional[RT]:
         try:
             return func(*args, **kwargs)
         except Exception as e:
-            logging.error(f"Rerun error: {traceback.format_exc()}")
+            traceback.print_stack()  # Full callstack, but not logged :(
+            # logging.error(traceback.format_stack()) # escapes newlines :(
+            # logging.error(f"Rerun error: {e}") # lacks part of the callstack :(
+            logging.error(f"Rerun error: {str(e)}\n")  # No callstack
             return None
 
     return wrapper_log_exceptions
