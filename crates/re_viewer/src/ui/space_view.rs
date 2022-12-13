@@ -61,6 +61,9 @@ pub(crate) struct SpaceView {
 
     /// We only show data that match this category.
     pub category: ViewCategory,
+
+    /// Set to `true` the first time the user messes around with the list of queried objects.
+    pub has_been_user_edited: bool,
 }
 
 impl SpaceView {
@@ -86,6 +89,21 @@ impl SpaceView {
             .next()
             .map_or_else(|| space_path.clone(), |c| ObjPath::from(vec![c.to_owned()]));
 
+        Self {
+            name: space_path.to_string(),
+            id: SpaceViewId::random(),
+            root_path,
+            space_path,
+            queried_objects: Self::default_queried_objects(ctx, space),
+            obj_properties: Default::default(),
+            view_state,
+            category,
+            has_been_user_edited: false,
+        }
+    }
+
+    /// List of objects a space view queries by default.
+    fn default_queried_objects(ctx: &ViewerContext<'_>, space: &SpaceInfo) -> IntSet<ObjPath> {
         let mut queried_objects = IntSet::default();
         queried_objects.extend(
             space
@@ -94,19 +112,17 @@ impl SpaceView {
                 .filter(|obj_path| has_visualization(ctx, obj_path))
                 .cloned(),
         );
+        queried_objects
+    }
 
-        //  let queried_objects = space.children_without_transform.clone();
-
-        Self {
-            name: space_path.to_string(),
-            id: SpaceViewId::random(),
-            root_path,
-            space_path,
-            queried_objects,
-            obj_properties: Default::default(),
-            view_state,
-            category,
+    pub fn on_frame_start(&mut self, ctx: &mut ViewerContext<'_>, spaces_info: &SpacesInfo) {
+        if self.has_been_user_edited {
+            return;
         }
+        let Some(space) = spaces_info.spaces.get(&self.space_path) else {
+            return;
+        };
+        self.queried_objects = Self::default_queried_objects(ctx, space);
     }
 
     /// All object paths that are under the root but can't be added to the space view and why.
@@ -348,6 +364,7 @@ impl SpaceView {
                         self.queried_objects.insert(path.clone());
                     },
                 );
+                self.has_been_user_edited = true;
             }
             response.on_hover_text("Add to this Space View's query")
         });

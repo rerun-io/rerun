@@ -301,6 +301,10 @@ impl ViewportBlueprint {
     fn on_frame_start(&mut self, ctx: &mut ViewerContext<'_>, spaces_info: &SpacesInfo) {
         crate::profile_function!();
 
+        for (_id, space_view) in &mut self.space_views {
+            space_view.on_frame_start(ctx, spaces_info);
+        }
+
         if !self.has_been_user_edited {
             // Automatically populate the viewport based on the data:
 
@@ -316,8 +320,6 @@ impl ViewportBlueprint {
                         self.add_space_view_for(ctx, path, space_info);
                     }
                 }
-
-                // TODO(andreas): If there is new data that could fit into an existing space view, we need to add it.
             }
         }
     }
