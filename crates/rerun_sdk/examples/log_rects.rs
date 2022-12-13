@@ -82,10 +82,7 @@ fn main() -> std::process::ExitCode {
         MsgId::random(),
         "world/rects".into(),
         time_point,
-        vec![
-            rects.as_slice().try_into().unwrap(),
-            colors.as_slice().try_into().unwrap(),
-        ],
+        vec![rects.into(), colors.into()],
     );
 
     // Create and send one message to the sdk
@@ -101,10 +98,7 @@ fn main() -> std::process::ExitCode {
         MsgId::random(),
         "world/rects".into(),
         time_point,
-        vec![
-            rects.as_slice().try_into().unwrap(),
-            colors.as_slice().try_into().unwrap(),
-        ],
+        vec![rects.into(), colors.into()],
     );
 
     let msg = bundle.try_into().unwrap();

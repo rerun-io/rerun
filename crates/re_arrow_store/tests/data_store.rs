@@ -297,10 +297,7 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
                 MsgId::ZERO,
                 ent_path.clone(),
                 TimePoint::from([build_frame_nr(frame41)]),
-                vec![build_some_point2d(nb_instances)
-                    .as_slice()
-                    .try_into()
-                    .unwrap()],
+                vec![build_some_point2d(nb_instances).into()],
             ),
         );
         tracker.insert_bundle(
@@ -309,10 +306,7 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
                 MsgId::ZERO,
                 ent_path.clone(),
                 TimePoint::from([build_log_time(now), build_frame_nr(frame42)]),
-                vec![build_some_rects(nb_instances)
-                    .as_slice()
-                    .try_into()
-                    .unwrap()],
+                vec![build_some_rects(nb_instances).into()],
             ),
         );
         tracker.insert_bundle(
@@ -323,10 +317,7 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
                 TimePoint::from([build_log_time(now_plus_1s)]),
                 vec![
                     build_instances(nb_instances),
-                    build_some_rects(nb_instances)
-                        .as_slice()
-                        .try_into()
-                        .unwrap(),
+                    build_some_rects(nb_instances).into(),
                 ],
             ),
         );
@@ -336,10 +327,7 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
                 MsgId::ZERO,
                 ent_path.clone(),
                 TimePoint::from([build_frame_nr(frame41)]),
-                vec![build_some_rects(nb_instances)
-                    .as_slice()
-                    .try_into()
-                    .unwrap()],
+                vec![build_some_rects(nb_instances).into()],
             ),
         );
         tracker.insert_bundle(
@@ -357,10 +345,7 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
                 MsgId::ZERO,
                 ent_path.clone(),
                 TimePoint::from([build_log_time(now_minus_1s), build_frame_nr(frame42)]),
-                vec![build_some_point2d(nb_instances)
-                    .as_slice()
-                    .try_into()
-                    .unwrap()],
+                vec![build_some_point2d(nb_instances).into()],
             ),
         );
         tracker.insert_bundle(
@@ -369,10 +354,7 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
                 MsgId::ZERO,
                 ent_path.clone(),
                 TimePoint::from([build_log_time(now_minus_1s), build_frame_nr(frame43)]),
-                vec![build_some_rects(nb_instances)
-                    .as_slice()
-                    .try_into()
-                    .unwrap()],
+                vec![build_some_rects(nb_instances).into()],
             ),
         );
         tracker.insert_bundle(
@@ -381,10 +363,7 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
                 MsgId::ZERO,
                 ent_path.clone(),
                 TimePoint::from([build_frame_nr(frame44)]),
-                vec![build_some_point2d(nb_instances)
-                    .as_slice()
-                    .try_into()
-                    .unwrap()],
+                vec![build_some_point2d(nb_instances).into()],
             ),
         );
     }

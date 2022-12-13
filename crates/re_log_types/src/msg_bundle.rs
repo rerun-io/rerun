@@ -55,7 +55,7 @@ pub trait Component: ArrowField {
 /// ```
 /// # use re_log_types::{field_types::Point2D, msg_bundle::ComponentBundle};
 /// let points = vec![Point2D { x: 0.0, y: 1.0 }];
-/// let bundle = ComponentBundle::try_from(points.as_slice()).unwrap();
+/// let bundle = ComponentBundle::from(points);
 /// ```
 #[derive(Debug, Clone)]
 pub struct ComponentBundle {
@@ -76,6 +76,24 @@ where
             name: C::name().to_owned(),
             component: wrapped,
         })
+    }
+}
+
+impl<C> From<&Vec<C>> for ComponentBundle
+where
+    C: Component + ArrowSerialize + ArrowField<Type = C> + 'static,
+{
+    fn from(c: &Vec<C>) -> ComponentBundle {
+        c.as_slice().try_into().unwrap()
+    }
+}
+
+impl<C> From<Vec<C>> for ComponentBundle
+where
+    C: Component + ArrowSerialize + ArrowField<Type = C> + 'static,
+{
+    fn from(c: Vec<C>) -> ComponentBundle {
+        c.as_slice().try_into().unwrap()
     }
 }
 
