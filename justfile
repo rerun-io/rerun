@@ -46,9 +46,9 @@ py-format:
 py-lint:
     black --check --config rerun_py/pyproject.toml --diff .
     blackdoc --check .
-    isort --check .
-    mypy --no-warn-unused-ignore
     flake8
+    mypy --no-warn-unused-ignore
+    isort --check . # slowest last
 
 # Run fast unittests
 py-test:
