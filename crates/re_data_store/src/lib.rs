@@ -63,7 +63,7 @@ pub enum Error {
     },
 
     #[error(transparent)]
-    MsgBundleError(#[from] msg_bundle::Error),
+    MsgBundleError(#[from] msg_bundle::MsgBundleError),
 
     //TODO(john) probably want to turn these into explicit error types
     #[error(transparent)]

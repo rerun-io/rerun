@@ -33,7 +33,7 @@ use arrow2_convert::{
 
 /// The errors that can occur when trying to convert between Arrow and `MessageBundle` types
 #[derive(thiserror::Error, Debug)]
-pub enum Error {
+pub enum MsgBundleError {
     #[error("Could not find entity path in Arrow Schema")]
     MissingEntityPath,
 
@@ -60,7 +60,7 @@ pub enum Error {
     NoError(#[from] std::convert::Infallible),
 }
 
-pub type Result<T> = std::result::Result<T, Error>;
+pub type Result<T> = std::result::Result<T, MsgBundleError>;
 
 use crate::{ArrowMsg, ComponentName, ComponentNameRef, MsgId, ObjPath, TimePoint};
 
@@ -97,7 +97,7 @@ impl<C> TryFrom<&[C]> for ComponentBundle
 where
     C: Component + ArrowSerialize + ArrowField<Type = C> + 'static,
 {
-    type Error = Error;
+    type Error = MsgBundleError;
 
     fn try_from(c: &[C]) -> Result<Self> {
         let array: Box<dyn Array> = TryIntoArrow::try_into_arrow(c)?;
@@ -113,7 +113,7 @@ impl<C> TryFrom<Vec<C>> for ComponentBundle
 where
     C: Component + ArrowSerialize + ArrowField<Type = C> + 'static,
 {
-    type Error = Error;
+    type Error = MsgBundleError;
 
     fn try_from(c: Vec<C>) -> Result<Self> {
         c.as_slice().try_into()
@@ -124,7 +124,7 @@ impl<C> TryFrom<&Vec<C>> for ComponentBundle
 where
     C: Component + ArrowSerialize + ArrowField<Type = C> + 'static,
 {
-    type Error = Error;
+    type Error = MsgBundleError;
 
     fn try_from(c: &Vec<C>) -> Result<Self> {
         c.as_slice().try_into()
@@ -207,7 +207,7 @@ impl MsgBundle {
         O: Into<ObjPath>,
         T: Into<TimePoint>,
         C0: TryInto<ComponentBundle>,
-        Error: From<<C0 as TryInto<ComponentBundle>>::Error>,
+        MsgBundleError: From<<C0 as TryInto<ComponentBundle>>::Error>,
     {
         Ok(Self {
             msg_id,
@@ -228,8 +228,8 @@ impl MsgBundle {
         T: Into<TimePoint>,
         C0: TryInto<ComponentBundle>,
         C1: TryInto<ComponentBundle>,
-        Error: From<<C0 as TryInto<ComponentBundle>>::Error>,
-        Error: From<<C1 as TryInto<ComponentBundle>>::Error>,
+        MsgBundleError: From<<C0 as TryInto<ComponentBundle>>::Error>,
+        MsgBundleError: From<<C1 as TryInto<ComponentBundle>>::Error>,
     {
         Ok(Self {
             msg_id,
@@ -251,9 +251,9 @@ impl MsgBundle {
         C0: TryInto<ComponentBundle>,
         C1: TryInto<ComponentBundle>,
         C2: TryInto<ComponentBundle>,
-        Error: From<<C0 as TryInto<ComponentBundle>>::Error>,
-        Error: From<<C1 as TryInto<ComponentBundle>>::Error>,
-        Error: From<<C2 as TryInto<ComponentBundle>>::Error>,
+        MsgBundleError: From<<C0 as TryInto<ComponentBundle>>::Error>,
+        MsgBundleError: From<<C1 as TryInto<ComponentBundle>>::Error>,
+        MsgBundleError: From<<C2 as TryInto<ComponentBundle>>::Error>,
     {
         Ok(Self {
             msg_id,
@@ -320,7 +320,7 @@ fn pack_components(components: impl Iterator<Item = ComponentBundle>) -> (Schema
 }
 
 impl TryFrom<&ArrowMsg> for MsgBundle {
-    type Error = Error;
+    type Error = MsgBundleError;
 
     /// Extract a `MsgBundle` from an `ArrowMsg`.
     fn try_from(msg: &ArrowMsg) -> Result<Self> {
@@ -333,7 +333,7 @@ impl TryFrom<&ArrowMsg> for MsgBundle {
         let obj_path = schema
             .metadata
             .get(ENTITY_PATH_KEY)
-            .ok_or(Error::MissingEntityPath)
+            .ok_or(MsgBundleError::MissingEntityPath)
             .map(|path| ObjPath::from(path.as_str()))?;
 
         let time_point = extract_timelines(schema, chunk)?;
@@ -349,7 +349,7 @@ impl TryFrom<&ArrowMsg> for MsgBundle {
 }
 
 impl TryFrom<MsgBundle> for ArrowMsg {
-    type Error = Error;
+    type Error = MsgBundleError;
 
     /// Build a single Arrow log message tuple from this `MsgBundle`. See the documentation on
     /// [`MsgBundle`] for details.
@@ -392,16 +392,18 @@ fn extract_timelines(schema: &Schema, chunk: &Chunk<Box<dyn Array>>) -> Result<T
         .iter()
         .position(|f| f.name == COL_TIMELINES)
         .and_then(|idx| chunk.columns().get(idx))
-        .ok_or(Error::MissingTimelinesField)?;
+        .ok_or(MsgBundleError::MissingTimelinesField)?;
 
     let mut timepoints_iter = arrow_array_deserialize_iterator::<TimePoint>(timelines.as_ref())?;
 
     // We take only the first result of the iterator because at this time we only support *single*
     // row messages. At some point in the future we can support batching with this.
-    let timepoint = timepoints_iter.next().ok_or(Error::NoRowsInTimeline)?;
+    let timepoint = timepoints_iter
+        .next()
+        .ok_or(MsgBundleError::NoRowsInTimeline)?;
 
     if timepoints_iter.next().is_some() {
-        return Err(Error::MultipleTimepoints);
+        return Err(MsgBundleError::MultipleTimepoints);
     }
 
     Ok(timepoint)
@@ -418,12 +420,12 @@ fn extract_components(
         .iter()
         .position(|f| f.name == COL_COMPONENTS)
         .and_then(|idx| msg.columns().get(idx))
-        .ok_or(Error::MissingComponentsField)?;
+        .ok_or(MsgBundleError::MissingComponentsField)?;
 
     let components = components
         .as_any()
         .downcast_ref::<StructArray>()
-        .ok_or(Error::BadComponentValues)?;
+        .ok_or(MsgBundleError::BadComponentValues)?;
 
     Ok(components
         .fields()
