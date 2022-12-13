@@ -1156,7 +1156,7 @@ fn recordings_menu(ui: &mut egui::Ui, app: &mut App) {
             "<UNKNOWN>".to_owned()
         };
         if ui
-            .selectable_label(app.state.selected_rec_id == log_db.recording_id(), info)
+            .radio(app.state.selected_rec_id == log_db.recording_id(), info)
             .clicked()
         {
             app.state.selected_rec_id = log_db.recording_id();
