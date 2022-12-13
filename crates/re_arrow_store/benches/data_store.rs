@@ -1,9 +1,12 @@
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
-use arrow2::{array::Array, chunk::Chunk, datatypes::Schema};
+use arrow2::{
+    array::{Array, ListArray, StructArray},
+    chunk::Chunk,
+    datatypes::Schema,
+};
 use criterion::{criterion_group, criterion_main, Criterion};
-use polars::prelude::DataFrame;
 
 use re_arrow_store::{DataStore, TimeQuery};
 use re_log_types::{
@@ -74,15 +77,31 @@ fn insert_messages(msgs: &[(Schema, Chunk<Box<dyn Array>>)]) -> DataStore {
     store
 }
 
-fn query_messages(store: &mut DataStore) -> DataFrame {
+fn query_messages(store: &mut DataStore) -> Box<dyn Array> {
     let time_query = TimeQuery::LatestAt(NUM_FRAMES / 2);
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
     let ent_path = EntityPath::from("rects");
 
-    let df = store
-        .query(&timeline_frame_nr, &time_query, &ent_path, &["rects"])
-        .unwrap();
-    assert_eq!(NUM_RECTS as usize, df.select_at_idx(0).unwrap().len());
+    let component = "rects";
 
-    df
+    let mut row_indices = [None];
+    store.query(
+        &timeline_frame_nr,
+        &time_query,
+        &ent_path,
+        component,
+        &[component],
+        &mut row_indices,
+    );
+
+    let mut results = [None];
+    store.get(&[component], &row_indices, &mut results);
+
+    let row = std::mem::take(&mut results[0]).unwrap();
+    let list = row.as_any().downcast_ref::<ListArray<i32>>().unwrap();
+    let rects = list.value(0);
+    let rects = rects.as_any().downcast_ref::<StructArray>().unwrap();
+    assert_eq!(NUM_RECTS as usize, rects.len());
+
+    row
 }
