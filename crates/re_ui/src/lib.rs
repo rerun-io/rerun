@@ -66,11 +66,6 @@ impl ReUi {
         }
     }
 
-    /// Add stripes to grids and tables?
-    pub fn striped() -> bool {
-        false
-    }
-
     /// Margin on the side of views
     pub fn view_padding() -> f32 {
         16.0

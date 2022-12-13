@@ -173,17 +173,15 @@ impl SelectionPanel {
             }
             Selection::SpaceViewObjPath(space_view_id, obj_path) => {
                 if let Some(space_view) = blueprint.viewport.space_view_mut(&space_view_id) {
-                    egui::Grid::new("space_view_id_obj_path")
-                        .striped(re_ui::ReUi::striped())
-                        .show(ui, |ui| {
-                            ui.label("Space View:");
-                            ctx.space_view_button_to(ui, &space_view.name, space_view_id);
-                            ui.end_row();
+                    egui::Grid::new("space_view_id_obj_path").show(ui, |ui| {
+                        ui.label("Space View:");
+                        ctx.space_view_button_to(ui, &space_view.name, space_view_id);
+                        ui.end_row();
 
-                            ui.label("Object Path:");
-                            ctx.obj_path_button(ui, &obj_path);
-                            ui.end_row();
-                        });
+                        ui.label("Object Path:");
+                        ctx.obj_path_button(ui, &obj_path);
+                        ui.end_row();
+                    });
 
                     let mut props = space_view.obj_tree_properties.projected.get(&obj_path);
                     obj_props_ui(ctx, ui, &mut props);
@@ -208,18 +206,15 @@ fn obj_type_name(log_db: &LogDb, obj_type_path: &ObjTypePath) -> String {
 }
 
 fn ui_space_view(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, space_view: &mut SpaceView) {
-    egui::Grid::new("space_view")
-        .striped(re_ui::ReUi::striped())
-        .num_columns(2)
-        .show(ui, |ui| {
-            ui.label("Name:");
-            ui.text_edit_singleline(&mut space_view.name);
-            ui.end_row();
+    egui::Grid::new("space_view").num_columns(2).show(ui, |ui| {
+        ui.label("Name:");
+        ui.text_edit_singleline(&mut space_view.name);
+        ui.end_row();
 
-            ui.label("Path:");
-            ctx.obj_path_button(ui, &space_view.space_path);
-            ui.end_row();
-        });
+        ui.label("Path:");
+        ctx.obj_path_button(ui, &space_view.space_path);
+        ui.end_row();
+    });
 
     ui.separator();
 
