@@ -266,6 +266,8 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
     let ent_path = EntityPath::from("this/that");
 
     let now = Time::now();
+    let now_nanos = now.nanos_since_epoch();
+    let now_minus_2s = now - Duration::from_secs(2.0);
     let now_minus_1s = now - Duration::from_secs(1.0);
     let now_minus_1s_nanos = now_minus_1s.nanos_since_epoch();
     let now_plus_1s = now + Duration::from_secs(1.0);
@@ -449,9 +451,39 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
 
     // --- Testing at all times ---
 
-    // TODO(cmc): test log_times -10, +0, +10, +20
-
     let scenarios = [
+        // Scenario: query all components at -2s (i.e. before first update).
+        // Expected: empty dataframe.
+        (now_minus_2s, vec![]),
+        // Scenario: query all components at -1s (i.e. first update).
+        // Expected: data at that point in time.
+        (
+            now_minus_1s,
+            vec![
+                ("rects", now_minus_1s_nanos.into()),
+                ("positions", now_minus_1s_nanos.into()),
+            ],
+        ),
+        // Scenario: query all components at 0s (i.e. second update).
+        // Expected: data at that point in time.
+        (
+            now,
+            vec![
+                ("instances", now_nanos.into()),
+                ("rects", now_nanos.into()),
+                ("positions", now_minus_1s_nanos.into()),
+            ],
+        ),
+        // Scenario: query all components at +1s (i.e. last update).
+        // Expected: latest data for all components.
+        (
+            now_plus_1s,
+            vec![
+                ("instances", now_plus_1s_nanos.into()),
+                ("rects", now_plus_1s_nanos.into()),
+                ("positions", now_minus_1s_nanos.into()),
+            ],
+        ),
         // Scenario: query all components at +2s (i.e. after last update).
         // Expected: latest data for all components.
         (
