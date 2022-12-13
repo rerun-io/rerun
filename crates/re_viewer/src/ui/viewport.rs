@@ -301,7 +301,7 @@ impl ViewportBlueprint {
     fn on_frame_start(&mut self, ctx: &mut ViewerContext<'_>, spaces_info: &SpacesInfo) {
         crate::profile_function!();
 
-        for (_id, space_view) in &mut self.space_views {
+        for space_view in self.space_views.values_mut() {
             space_view.on_frame_start(ctx, spaces_info);
         }
 
