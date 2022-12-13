@@ -6,8 +6,7 @@ use crate::{
     Time, TimeInt, TimeType, Timeline,
 };
 use arrow2::{
-    array::{Float32Array, PrimitiveArray, StructArray},
-    datatypes::{DataType, Field},
+    array::{PrimitiveArray},
 };
 
 /// Create `len` dummy rectangles
