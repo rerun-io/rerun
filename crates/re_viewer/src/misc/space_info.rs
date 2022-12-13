@@ -28,7 +28,9 @@ pub struct SpaceInfo {
 
 /// Information about all spaces.
 ///
-/// This is gathered by analyzing the transform hierarchy of the objects.
+/// This is gathered by analyzing the transform hierarchy of the objects:
+/// For every child of the root there is a space info.
+/// Each of these we walk down recursively, every time a transform is encountered, we create another space info.
 #[derive(Default)]
 pub struct SpacesInfo {
     pub spaces: BTreeMap<ObjPath, SpaceInfo>,

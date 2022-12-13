@@ -228,10 +228,13 @@ impl ViewportBlueprint {
 
         let collapsing_header_id = ui.make_persistent_id(space_view_id);
 
+        // We'd like to see the reference space path by default.
+        let default_open = space_view.root_path != space_view.reference_space_path;
+
         egui::collapsing_header::CollapsingState::load_with_default_open(
             ui.ctx(),
             collapsing_header_id,
-            false,
+            default_open,
         )
         .show_header(ui, |ui| {
             match space_view.category {
@@ -458,7 +461,7 @@ fn show_obj_tree(
     obj_tree_properties: &mut ObjectTreeProperties,
     space_view_id: SpaceViewId,
     spaces_info: &SpacesInfo,
-    current_reference_frame: &mut ObjPath,
+    reference_frame: &mut ObjPath,
     name: &str,
     tree: &ObjectTree,
     forced_invisible: &IntMap<ObjPath, &str>,
@@ -474,7 +477,7 @@ fn show_obj_tree(
                         &tree.path,
                         space_view_id,
                         spaces_info,
-                        current_reference_frame,
+                        reference_frame,
                         name,
                     );
                     object_visibility_button(
@@ -486,10 +489,19 @@ fn show_obj_tree(
                 });
             } else {
                 let collapsing_header_id = ui.id().with(&tree.path);
+
+                // Default open so that the reference path is visible.
+                let default_open = reference_frame.len() > tree.path.len()
+                    && tree
+                        .path
+                        .iter()
+                        .zip(reference_frame.iter())
+                        .all(|(a, b)| a == b);
+
                 egui::collapsing_header::CollapsingState::load_with_default_open(
                     ui.ctx(),
                     collapsing_header_id,
-                    false,
+                    default_open,
                 )
                 .show_header(ui, |ui| {
                     object_path_button(
@@ -498,7 +510,7 @@ fn show_obj_tree(
                         &tree.path,
                         space_view_id,
                         spaces_info,
-                        current_reference_frame,
+                        reference_frame,
                         name,
                     );
                     object_visibility_button(
@@ -516,7 +528,7 @@ fn show_obj_tree(
                         obj_tree_properties,
                         space_view_id,
                         spaces_info,
-                        current_reference_frame,
+                        reference_frame,
                         tree,
                         forced_invisible,
                     );
@@ -538,7 +550,7 @@ fn show_obj_tree_children(
     obj_tree_properties: &mut ObjectTreeProperties,
     space_view_id: SpaceViewId,
     spaces_info: &SpacesInfo,
-    current_reference_frame: &mut ObjPath,
+    reference_frame: &mut ObjPath,
     tree: &ObjectTree,
     forced_invisible: &IntMap<ObjPath, &str>,
 ) {
@@ -555,7 +567,7 @@ fn show_obj_tree_children(
             obj_tree_properties,
             space_view_id,
             spaces_info,
-            current_reference_frame,
+            reference_frame,
             &path_comp.to_string(),
             child,
             forced_invisible,
@@ -569,14 +581,14 @@ fn object_path_button(
     path: &ObjPath,
     space_view_id: SpaceViewId,
     spaces_info: &SpacesInfo,
-    current_reference_frame: &mut ObjPath,
+    reference_frame: &mut ObjPath,
     name: &str,
 ) {
     let mut is_space_info = false;
     let label_text = if spaces_info.spaces.contains_key(path) {
         is_space_info = true;
         let label_text = egui::RichText::new(format!("📐 {}", name));
-        if path == current_reference_frame {
+        if path == reference_frame {
             label_text.strong()
         } else {
             label_text
@@ -590,7 +602,7 @@ fn object_path_button(
         .double_clicked()
         && is_space_info
     {
-        *current_reference_frame = path.clone();
+        *reference_frame = path.clone();
     }
 }
 
