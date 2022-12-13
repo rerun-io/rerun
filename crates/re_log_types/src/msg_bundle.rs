@@ -47,6 +47,7 @@ pub trait Component: ArrowField {
 
 /// A Component bundle holds an Arrow component column, and it's metadata (`field`).
 /// TODO(john) reduce the duplicate state (name) here.
+#[derive(Debug, Clone)]
 pub struct ComponentBundle<'data> {
     pub name: ComponentNameRef<'data>,
     pub field: Field,
@@ -54,6 +55,7 @@ pub struct ComponentBundle<'data> {
 }
 
 /// A `MsgBundle` holds data necessary for composing a single log message.
+#[derive(Debug)]
 pub struct MsgBundle<'data> {
     /// A unique id per [`crate::LogMsg`].
     pub msg_id: MsgId,
@@ -63,12 +65,27 @@ pub struct MsgBundle<'data> {
 }
 
 impl<'data> MsgBundle<'data> {
-    pub fn new(obj_path: ObjPath, time_point: TimePoint, msg_id: MsgId) -> Self {
+    pub fn new(msg_id: MsgId, obj_path: ObjPath, time_point: TimePoint) -> Self {
         Self {
             msg_id,
             obj_path,
             time_point,
             components: Vec::new(),
+        }
+    }
+
+    /// Create a new `MsgBundle` with a pre-build Vec of `ComponentBundle` components.
+    pub fn new_with_components(
+        msg_id: MsgId,
+        obj_path: ObjPath,
+        time_point: TimePoint,
+        components: Vec<ComponentBundle<'data>>,
+    ) -> Self {
+        Self {
+            msg_id,
+            obj_path,
+            time_point,
+            components,
         }
     }
 

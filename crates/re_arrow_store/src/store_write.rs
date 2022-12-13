@@ -9,10 +9,8 @@ use arrow2::datatypes::DataType;
 use parking_lot::RwLock;
 
 use re_log::debug;
-use re_log_types::msg_bundle::ComponentBundle;
-use re_log_types::{
-    ComponentNameRef, ObjPath as EntityPath, TimeInt, TimePoint, TimeRange, Timeline,
-};
+use re_log_types::msg_bundle::{ComponentBundle, MsgBundle};
+use re_log_types::{ComponentNameRef, ObjPath as EntityPath, TimeInt, TimeRange, Timeline};
 
 use crate::store::IndexBucketIndices;
 use crate::{
@@ -22,18 +20,15 @@ use crate::{
 // --- Data store ---
 
 impl DataStore {
-    /// Inserts a payload of Arrow data into the datastore.
-    ///
-    /// The payload is expected to hold:
-    /// - the entity path,
-    /// - the targeted timelines & timepoints,
-    /// - and all the components data.
-    pub fn insert<'a>(
-        &mut self,
-        ent_path: &EntityPath,
-        time_point: &TimePoint,
-        components: impl IntoIterator<Item = &'a ComponentBundle<'a>> + Clone + ExactSizeIterator,
-    ) -> anyhow::Result<()> {
+    /// Inserts a [`MsgBundle`] payload of Arrow data into the datastore.
+    pub fn insert<'a>(&mut self, msg_bundle: &MsgBundle<'a>) -> anyhow::Result<()> {
+        let MsgBundle {
+            msg_id: _,
+            obj_path: ent_path,
+            time_point,
+            components,
+        } = msg_bundle;
+
         // TODO(cmc): sort the "instances" component, and everything else accordingly!
         let ent_path_hash = *ent_path.hash();
         self.insert_id += 1;
@@ -53,15 +48,16 @@ impl DataStore {
 
         let mut indices = HashMap::with_capacity(components.len());
 
-        for ComponentBundle {
-            name,
-            field: _,
-            component,
-        } in components
-        {
+        for bundle in components {
+            let ComponentBundle {
+                name,
+                field: _,
+                component,
+            } = bundle;
+
             let table = self
                 .components
-                .entry((*name).to_owned())
+                .entry((*bundle.name).to_owned())
                 .or_insert_with(|| {
                     ComponentTable::new((*name).to_owned(), component.data_type().clone())
                 });

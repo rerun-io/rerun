@@ -9,8 +9,8 @@ use polars::prelude::{DataFrame, Series};
 use re_arrow_store::{DataStore, DataStoreConfig, TimeInt, TimeQuery};
 use re_log_types::{
     datagen::{build_frame_nr, build_instances, build_log_time, build_positions, build_rects},
-    msg_bundle::ComponentBundle,
-    ComponentNameRef, Duration, ObjPath as EntityPath, Time, TimePoint, TimeType, Timeline,
+    msg_bundle::{ComponentBundle, MsgBundle},
+    ComponentNameRef, Duration, MsgId, ObjPath as EntityPath, Time, TimePoint, TimeType, Timeline,
 };
 
 // ---
@@ -447,15 +447,15 @@ impl DataTracker {
         times: [(Timeline, TimeInt); N],
         components: &[ComponentBundle<'static>; M],
     ) {
-        let timepoint = TimePoint::from(times);
+        let time_point = TimePoint::from(times);
 
-        for time in timepoint.times() {
-            for ComponentBundle {
-                name,
-                field: _,
-                component,
-            } in components
-            {
+        for time in time_point.times() {
+            for bundle in components {
+                let ComponentBundle {
+                    name,
+                    field: _,
+                    component,
+                } = bundle;
                 assert!(self
                     .all_data
                     .insert((name, *time), component.clone())
@@ -463,11 +463,16 @@ impl DataTracker {
             }
         }
 
+        let msg_bundle = MsgBundle::new_with_components(
+            MsgId::ZERO,
+            ent_path.clone(),
+            time_point,
+            components.iter().cloned().collect(),
+        );
+
         // eprintln!("inserting into '{ent_path}':\nschema: {schema:#?}\ncomponents: {components:#?}");
         // eprintln!("---\ninserting into '{ent_path}': [log_time, frame_nr], [rects]");
-        store
-            .insert(ent_path, &timepoint, components.iter())
-            .unwrap();
+        store.insert(&msg_bundle).unwrap();
         // eprintln!("{store}");
     }
 
@@ -519,9 +524,6 @@ fn init_logs() {
 fn pathological_bucket_topology() {
     init_logs();
 
-    let ent_path = EntityPath::from("this/that");
-    let nb_instances = 1;
-
     let mut store_forward = DataStore::new(DataStoreConfig {
         index_bucket_nb_rows: 10,
         ..Default::default()
@@ -531,133 +533,70 @@ fn pathological_bucket_topology() {
         ..Default::default()
     });
 
-    {
-        let timepoint = TimePoint::from([build_frame_nr(1000)]);
-        for _ in 0..10 {
-            store_forward
-                .insert(
-                    &ent_path,
-                    &timepoint,
-                    std::iter::once(&build_instances(nb_instances)),
-                )
-                .unwrap();
-            store_backward
-                .insert(
-                    &ent_path,
-                    &timepoint,
-                    std::iter::once(&build_instances(nb_instances)),
-                )
-                .unwrap();
+    fn store_repeated_frame(
+        frame_nr: i64,
+        num: usize,
+        store_forward: &mut DataStore,
+        store_backward: &mut DataStore,
+    ) {
+        let ent_path = EntityPath::from("this/that");
+        let nb_instances = 1;
+
+        let time_point = TimePoint::from([build_frame_nr(frame_nr)]);
+        for _ in 0..num {
+            let msg = MsgBundle::new_with_components(
+                MsgId::ZERO,
+                ent_path.clone(),
+                time_point.clone(),
+                vec![build_instances(nb_instances)],
+            );
+            store_forward.insert(&msg).unwrap();
+
+            let msg = MsgBundle::new_with_components(
+                MsgId::ZERO,
+                ent_path.clone(),
+                time_point.clone(),
+                vec![build_instances(nb_instances)],
+            );
+            store_backward.insert(&msg).unwrap();
         }
     }
 
-    let msgs = (970..=979)
-        .map(|frame_nr| {
-            let timepoint = TimePoint::from([build_frame_nr(frame_nr)]);
-            (&ent_path, timepoint, [build_instances(nb_instances)])
-        })
-        .collect::<Vec<_>>();
-    for (ent_path, timepoint, components) in &msgs {
-        store_forward
-            .insert(ent_path, timepoint, components.iter())
-            .unwrap();
-    }
-    for (ent_path, timepoint, components) in msgs.iter().rev() {
-        store_backward
-            .insert(ent_path, timepoint, components.iter())
-            .unwrap();
-    }
+    fn store_frame_range(
+        range: core::ops::RangeInclusive<i64>,
+        store_forward: &mut DataStore,
+        store_backward: &mut DataStore,
+    ) {
+        let ent_path = EntityPath::from("this/that");
+        let nb_instances = 1;
 
-    let msgs = (990..=999)
-        .map(|frame_nr| {
-            let timepoint = TimePoint::from([build_frame_nr(frame_nr)]);
-            (&ent_path, timepoint, [build_instances(nb_instances)])
-        })
-        .collect::<Vec<_>>();
-    for (ent_path, timepoint, components) in &msgs {
-        store_forward
-            .insert(ent_path, timepoint, components.iter())
-            .unwrap();
-    }
-    for (ent_path, timepoint, components) in msgs.iter().rev() {
-        store_backward
-            .insert(ent_path, timepoint, components.iter())
-            .unwrap();
-    }
-
-    let msgs = (980..=989)
-        .map(|frame_nr| {
-            let timepoint = TimePoint::from([build_frame_nr(frame_nr)]);
-            (&ent_path, timepoint, [build_instances(nb_instances)])
-        })
-        .collect::<Vec<_>>();
-    for (ent_path, timepoint, components) in &msgs {
-        store_forward
-            .insert(ent_path, timepoint, components.iter())
-            .unwrap();
-    }
-    for (ent_path, timepoint, components) in msgs.iter().rev() {
-        store_backward
-            .insert(ent_path, timepoint, components.iter())
-            .unwrap();
-    }
-
-    {
-        let timepoint = TimePoint::from([build_frame_nr(1000)]);
-        for _ in 0..7 {
-            store_forward
-                .insert(
-                    &ent_path,
-                    &timepoint,
-                    std::iter::once(&build_instances(nb_instances)),
+        let msgs = range
+            .map(|frame_nr| {
+                let time_point = TimePoint::from([build_frame_nr(frame_nr)]);
+                MsgBundle::new_with_components(
+                    MsgId::ZERO,
+                    ent_path.clone(),
+                    time_point,
+                    vec![build_instances(nb_instances)],
                 )
-                .unwrap();
-            store_backward
-                .insert(
-                    &ent_path,
-                    &timepoint,
-                    std::iter::once(&build_instances(nb_instances)),
-                )
-                .unwrap();
-        }
+            })
+            .collect::<Vec<_>>();
+
+        msgs.iter()
+            .for_each(|msg| store_forward.insert(msg).unwrap());
+
+        msgs.iter()
+            .rev()
+            .for_each(|msg| store_backward.insert(msg).unwrap());
     }
 
-    let msgs = (1000..=1009)
-        .map(|frame_nr| {
-            let timepoint = TimePoint::from([build_frame_nr(frame_nr)]);
-            (&ent_path, timepoint, [build_instances(nb_instances)])
-        })
-        .collect::<Vec<_>>();
-    for (ent_path, timepoint, components) in &msgs {
-        store_forward
-            .insert(ent_path, timepoint, components.iter())
-            .unwrap();
-    }
-    for (ent_path, timepoint, components) in msgs.iter().rev() {
-        store_backward
-            .insert(ent_path, timepoint, components.iter())
-            .unwrap();
-    }
-
-    {
-        let timepoint = TimePoint::from([build_frame_nr(975)]);
-        for _ in 0..10 {
-            store_forward
-                .insert(
-                    &ent_path,
-                    &timepoint,
-                    std::iter::once(&build_instances(nb_instances)),
-                )
-                .unwrap();
-            store_backward
-                .insert(
-                    &ent_path,
-                    &timepoint,
-                    std::iter::once(&build_instances(nb_instances)),
-                )
-                .unwrap();
-        }
-    }
+    store_repeated_frame(1000, 10, &mut store_forward, &mut store_backward);
+    store_frame_range(970..=979, &mut store_forward, &mut store_backward);
+    store_frame_range(990..=999, &mut store_forward, &mut store_backward);
+    store_frame_range(980..=989, &mut store_forward, &mut store_backward);
+    store_repeated_frame(1000, 7, &mut store_forward, &mut store_backward);
+    store_frame_range(1000..=1009, &mut store_forward, &mut store_backward);
+    store_repeated_frame(975, 10, &mut store_forward, &mut store_backward);
 
     {
         let nb_buckets = store_forward

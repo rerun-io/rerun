@@ -59,9 +59,9 @@ fn build_messages(n: usize) -> Vec<MsgBundle<'static>> {
         .into_iter()
         .map(move |frame_idx| {
             let mut bundle = MsgBundle::new(
+                MsgId::ZERO,
                 EntityPath::from("rects"),
                 TimePoint::from([build_frame_nr(frame_idx)]),
-                MsgId::random(),
             );
             bundle.try_append_component(&build_some_point2d(n)).unwrap();
             bundle.try_append_component(&build_some_rects(n)).unwrap();
@@ -72,11 +72,7 @@ fn build_messages(n: usize) -> Vec<MsgBundle<'static>> {
 
 fn insert_messages<'a>(msgs: impl Iterator<Item = &'a MsgBundle<'static>>) -> DataStore {
     let mut store = DataStore::default();
-    for msg in msgs {
-        store
-            .insert(&msg.obj_path, &msg.time_point, msg.components.iter())
-            .unwrap();
-    }
+    msgs.for_each(|msg_bundle| store.insert(msg_bundle).unwrap());
     store
 }
 

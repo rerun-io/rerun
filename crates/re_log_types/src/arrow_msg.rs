@@ -185,9 +185,9 @@ mod tests {
     #[test]
     fn test_roundtrip_payload() {
         let mut bundle = MsgBundle::new(
+            MsgId::ZERO,
             "world/rects".into(),
             TimePoint::from([build_frame_nr(0)]),
-            MsgId::ZERO,
         );
         bundle
             .try_append_component(build_some_point2d(1).iter())

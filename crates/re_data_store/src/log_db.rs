@@ -120,13 +120,7 @@ impl ObjDb {
             );
         }
 
-        self.arrow_store
-            .insert(
-                &msg_bundle.obj_path,
-                &msg_bundle.time_point,
-                msg_bundle.components.iter(),
-            )
-            .map_err(Error::Other)
+        self.arrow_store.insert(&msg_bundle).map_err(Error::Other)
     }
 
     fn add_path_op(&mut self, msg_id: MsgId, time_point: &TimePoint, path_op: &PathOp) {

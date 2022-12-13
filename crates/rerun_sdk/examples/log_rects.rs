@@ -78,7 +78,7 @@ fn main() -> std::process::ExitCode {
     let rects = build_some_rects(1);
     let colors = build_some_colors(1);
 
-    let mut bundle = MsgBundle::new("world/rects".into(), time_point, MsgId::random());
+    let mut bundle = MsgBundle::new(MsgId::random(), "world/rects".into(), time_point);
     bundle.try_append_component(rects.iter()).unwrap();
     bundle.try_append_component(colors.iter()).unwrap();
 
@@ -91,7 +91,7 @@ fn main() -> std::process::ExitCode {
     let rects = build_some_rects(5);
     let colors = build_some_colors(5);
 
-    let mut bundle = MsgBundle::new("world/rects".into(), time_point, MsgId::random());
+    let mut bundle = MsgBundle::new(MsgId::random(), "world/rects".into(), time_point);
     bundle.try_append_component(rects.iter()).unwrap();
     bundle.try_append_component(colors.iter()).unwrap();
 
