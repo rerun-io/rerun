@@ -2,13 +2,10 @@ pub mod caches;
 pub(crate) mod color_map;
 pub(crate) mod mesh_loader;
 pub(crate) mod space_info;
-pub(crate) mod tensor_image_cache;
 pub(crate) mod time_axis;
 pub(crate) mod time_control;
 pub(crate) mod time_control_ui;
 mod viewer_context;
-
-use tensor_image_cache::ImageCache;
 
 pub use caches::Caches;
 

@@ -20,7 +20,7 @@ use re_renderer::{
 
 use crate::{
     math::line_segment_distance_sq_to_point_2d,
-    misc::{mesh_loader::CpuMesh, ViewerContext},
+    misc::{mesh_loader::LoadedMesh, ViewerContext},
     ui::{
         annotations::{auto_color, AnnotationMap, DefaultColor},
         view_spatial::axis_color,
@@ -53,7 +53,7 @@ pub struct MeshSource {
     pub instance_id_hash: InstanceIdHash,
     // TODO(andreas): Make this Conformal3 once glow is gone?
     pub world_from_mesh: macaw::Affine3A,
-    pub mesh: Arc<CpuMesh>,
+    pub mesh: Arc<LoadedMesh>,
     pub additive_tint: Option<Color32>,
 }
 
@@ -572,7 +572,7 @@ impl SceneSpatial {
                             None
                         };
 
-                        let Some(mesh) = ctx.cache.cpu_mesh.load(
+                        let Some(mesh) = ctx.cache.mesh.load(
                                 &obj_path.to_string(),
                                 &MeshSourceData::Mesh3D(mesh.clone()),
                                 ctx.render_ctx
@@ -986,7 +986,7 @@ impl SceneSpatial {
                     let mesh_id = MeshId(uuid::uuid!("0de12a29-64ea-40b9-898b-63686b5436af"));
                     let world_from_mesh = world_from_rub_view * glam::Affine3A::from_scale(scale);
 
-                    if let Some(cpu_mesh) = ctx.cache.cpu_mesh.load(
+                    if let Some(cpu_mesh) = ctx.cache.mesh.load(
                         "camera_mesh",
                         &MeshSourceData::StaticGlb(
                             mesh_id,

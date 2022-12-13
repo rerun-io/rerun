@@ -1,10 +1,16 @@
+mod mesh_cache;
+mod tensor_image_cache;
+
+pub use tensor_image_cache::TensorImageView;
+
+/// Does memoization of different things for the immediate mode UI.
 #[derive(Default)]
 pub struct Caches {
     /// For displaying images efficiently in immediate mode.
-    pub image: crate::misc::ImageCache,
+    pub image: tensor_image_cache::ImageCache,
 
     /// For displaying meshes efficiently in immediate mode.
-    pub cpu_mesh: crate::ui::view_spatial::CpuMeshCache,
+    pub mesh: mesh_cache::MeshCache,
 
     pub tensor_stats: nohash_hasher::IntMap<re_log_types::TensorId, TensorStats>,
 }
@@ -20,7 +26,7 @@ impl Caches {
         let Self {
             image,
             tensor_stats,
-            cpu_mesh: _, // TODO(emilk)
+            mesh: _, // TODO(emilk)
         } = self;
         image.purge_memory();
         tensor_stats.clear();
