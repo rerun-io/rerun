@@ -505,9 +505,7 @@ impl DataTracker {
         components: &[ComponentNameRef<'_>],
         expected: Vec<DataEntry>,
     ) {
-        let df = store
-            .query(timeline, time_query, ent_path, components)
-            .unwrap();
+        let df = Self::query_dataframe(store, timeline, time_query, ent_path, components);
 
         let series = expected
             .into_iter()
@@ -519,6 +517,38 @@ impl DataTracker {
 
         store.sort_indices();
         assert_eq!(expected, df, "\n{store}");
+    }
+
+    fn query_dataframe(
+        store: &DataStore,
+        timeline: &Timeline,
+        time_query: &TimeQuery,
+        ent_path: &EntityPath,
+        components: &[ComponentNameRef<'_>],
+    ) -> DataFrame {
+        let series = components
+            .iter()
+            .filter_map(|&component| {
+                let mut row_indices = [None];
+                store.query(
+                    timeline,
+                    time_query,
+                    ent_path,
+                    component,
+                    &[component],
+                    &mut row_indices,
+                );
+
+                let mut results = [None];
+                store.get(&[component], &row_indices, &mut results);
+
+                std::mem::take(&mut results[0])
+                    .map(|row| Series::try_from((component, row)).unwrap())
+            })
+            .collect::<Vec<_>>();
+
+        let df = DataFrame::new(series).unwrap();
+        df.explode(df.get_column_names()).unwrap()
     }
 }
 
