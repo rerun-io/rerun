@@ -96,16 +96,10 @@ impl ObjPath {
         self.path.is_root()
     }
 
-    // Do all path components of this path show up at the beginning of another path.
+    // Is this a strict descendant of the given path.
     #[inline]
-    pub fn is_ancestor_or_child_of(&self, other: &ObjPath) -> bool {
-        self.path.iter().zip(other.iter()).all(|(a, b)| a == b)
-    }
-
-    // Is this a strict child of the given path.
-    #[inline]
-    pub fn is_child_of(&self, other: &ObjPath) -> bool {
-        self.is_ancestor_or_child_of(other) && other.len() < self.len()
+    pub fn is_descendant_of(&self, other: &ObjPath) -> bool {
+        other.len() < self.len() && self.path.iter().zip(other.iter()).all(|(a, b)| a == b)
     }
 
     /// Number of components

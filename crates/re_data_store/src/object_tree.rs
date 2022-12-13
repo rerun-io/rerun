@@ -276,23 +276,7 @@ impl ObjectTree {
         }
     }
 
-    /// Starting from a given node, walks upwards the tree to all siblings and aunts and so forth.
-    pub fn recurse_siblings_and_aunts(&self, current: &ObjPath, mut visitor: impl FnMut(&ObjPath)) {
-        let Some(parent_path) = current.parent() else {
-            return;
-        };
-        let parent_subtree = self.subtree(&parent_path).unwrap();
-        for sibling in parent_subtree.children.values() {
-            if sibling.path == *current {
-                continue;
-            }
-            visitor(&sibling.path);
-        }
-
-        self.recurse_siblings_and_aunts(&parent_path, visitor);
-    }
-
-    // Invokes visitor for all children recursively.
+    // Invokes visitor for `self` all children recursively.
     pub fn visit_children_recursively(&self, visitor: &mut impl FnMut(&ObjPath)) {
         visitor(&self.path);
         for child in self.children.values() {

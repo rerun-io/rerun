@@ -36,7 +36,7 @@ impl SpaceViewId {
 
 fn query_scene(ctx: &mut ViewerContext<'_>, space_info: &SpaceInfo) -> super::scene::Scene {
     let query = SceneQuery {
-        obj_paths: &space_info.children_without_transform,
+        obj_paths: &space_info.descendants_without_transform,
         timeline: *ctx.rec_cfg.time_ctrl.timeline(),
         latest_at: TimeInt::MAX,
         obj_props: &Default::default(), // all visible
@@ -243,7 +243,7 @@ impl ViewportBlueprint {
         .body(|ui| {
             for path in &space_view.queried_objects {
                 ui.horizontal(|ui| {
-                    let name = if path.is_child_of(&space_view.space_path) {
+                    let name = if path.is_descendant_of(&space_view.space_path) {
                         ObjPath::from(
                             path.iter()
                                 .skip(space_view.space_path.len())
@@ -258,9 +258,7 @@ impl ViewportBlueprint {
                     ctx.space_view_obj_path_button_to(ui, name, *space_view_id, path);
 
                     let mut properties = space_view.obj_properties.get(path);
-                    let old_visibility = properties.visible;
-                    visibility_button(ui, true, &mut properties.visible);
-                    if old_visibility != properties.visible {
+                    if visibility_button(ui, true, &mut properties.visible).changed() {
                         space_view.obj_properties.set(path.clone(), properties);
                     }
                 });

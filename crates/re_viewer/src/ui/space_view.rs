@@ -48,7 +48,10 @@ pub(crate) struct SpaceView {
     /// Everything under this root is shown in the space view.
     pub root_path: ObjPath,
 
-    /// Everything visible in this space view, is looked at in reference to the space info at this path.
+    /// The "anchor point" of this space view.
+    /// It refers to a [`SpaceInfo`] which forms our reference point for all scene->world transforms in this space view.
+    /// I.e. the position of this object path in space forms the origin of the coordinate system in this space view.
+    /// Furthermore, this is the primary indicator for heuristics on what objects we show in this space view.
     pub space_path: ObjPath,
 
     /// List of all shown objects.
@@ -107,7 +110,7 @@ impl SpaceView {
         let mut queried_objects = IntSet::default();
         queried_objects.extend(
             space
-                .children_without_transform
+                .descendants_without_transform
                 .iter()
                 .filter(|obj_path| has_visualization(ctx, obj_path))
                 .cloned(),
@@ -129,11 +132,7 @@ impl SpaceView {
     ///
     /// We're not storing this since the circumstances for this may change over time.
     /// (either by choosing a different reference space path or by having new paths added)
-    fn unreachable_elements(
-        &mut self,
-        spaces_info: &SpacesInfo,
-        obj_tree: &ObjectTree,
-    ) -> IntMap<ObjPath, &'static str> {
+    fn unreachable_elements(&mut self, spaces_info: &SpacesInfo) -> IntMap<ObjPath, &'static str> {
         crate::profile_function!();
 
         let mut forced_invisible = IntMap::default();
@@ -164,19 +163,6 @@ impl SpaceView {
                 }
             }
         }
-
-        obj_tree.recurse_siblings_and_aunts(&self.space_path, |sibling| {
-            if sibling.parent().unwrap().is_root() {
-                return;
-            }
-
-            // TODO(andreas): We should support most parent & sibling transforms by applying the inverse transform.
-            //                Breaking out of pinhole relationships is going to be a bit harder as it will need extra parameters.
-            forced_invisible.insert(
-                sibling.clone(),
-                "Can't display elements aren't children of the reference path yet.",
-            );
-        });
 
         forced_invisible
     }
@@ -239,7 +225,7 @@ impl SpaceView {
         .body(|ui| {
             if let Some(subtree) = obj_tree.subtree(&self.root_path) {
                 let spaces_info = SpacesInfo::new(&ctx.log_db.obj_db, &ctx.rec_cfg.time_ctrl);
-                let forced_invisible = self.unreachable_elements(&spaces_info, obj_tree);
+                let forced_invisible = self.unreachable_elements(&spaces_info);
                 self.show_obj_tree_children(ctx, ui, &spaces_info, subtree, &forced_invisible);
             }
         });
@@ -280,7 +266,11 @@ impl SpaceView {
         tree: &ObjectTree,
         forced_invisible: &IntMap<ObjPath, &str>,
     ) {
-        let disabled_reason = forced_invisible.get(&tree.path);
+        let disabled_reason = if self.space_path.is_descendant_of(&tree.path) {
+            Some(&"Can't display entities that aren't children of the reference path yet.")
+        } else {
+            forced_invisible.get(&tree.path)
+        };
         let response = ui
             .add_enabled_ui(disabled_reason.is_none(), |ui| {
                 if tree.is_leaf() {
@@ -294,7 +284,7 @@ impl SpaceView {
                     let collapsing_header_id = ui.id().with(&tree.path);
 
                     // Default open so that the reference path is visible.
-                    let default_open = self.space_path.is_child_of(&tree.path);
+                    let default_open = self.space_path.is_descendant_of(&tree.path);
                     egui::collapsing_header::CollapsingState::load_with_default_open(
                         ui.ctx(),
                         collapsing_header_id,
