@@ -60,6 +60,7 @@ impl SpaceView {
         scene: &super::scene::Scene,
         category: ViewCategory,
         reference_space_path: ObjPath,
+        reference_space: &SpaceInfo,
         obj_tree: &ObjectTree,
     ) -> Self {
         let mut view_state = ViewState::default();
@@ -72,28 +73,47 @@ impl SpaceView {
             };
         }
 
-        let root_path = reference_space_path.to_components().first().map_or_else(
+        let root_path = reference_space_path.iter().next().map_or_else(
             || reference_space_path.clone(),
-            |c| ObjPath::from(vec![c.clone()]),
+            |c| ObjPath::from(vec![c.to_owned()]),
         );
 
-        // By default, make everything above the reference path invisible.
+        // By default, make everything above and next to the reference path invisible.
         let mut obj_tree_properties = ObjectTreeProperties::default();
-        obj_tree.recurse_siblings_and_aunts(&reference_space_path, |sibling| {
-            if sibling.parent().unwrap().is_root() {
-                return;
+        fn hide_non_reference_path_children(
+            subtree: &ObjectTree,
+            tree_properties: &mut ObjectTreeProperties,
+            ref_path: &ObjPath,
+            ref_space: &SpaceInfo,
+        ) {
+            if !subtree.path.is_ancestor_or_child_of(ref_path)
+                || (subtree.path.is_child_of(ref_path)
+                    && !ref_space.children_without_transform.contains(&subtree.path))
+            {
+                tree_properties.individual.set(
+                    subtree.path.clone(),
+                    re_data_store::ObjectProps {
+                        visible: false,
+                        ..Default::default()
+                    },
+                );
+            } else {
+                for child in subtree.children.values() {
+                    hide_non_reference_path_children(child, tree_properties, ref_path, ref_space);
+                }
             }
-            obj_tree_properties.individual.set(
-                sibling.clone(),
-                re_data_store::ObjectProps {
-                    visible: false,
-                    ..Default::default()
-                },
+        }
+        if let Some(subtree) = obj_tree.subtree(&root_path) {
+            hide_non_reference_path_children(
+                subtree,
+                &mut obj_tree_properties,
+                &reference_space_path,
+                reference_space,
             );
-        });
+        }
 
         Self {
-            name: reference_space_path.to_string(),
+            name: root_path.to_string(),
             root_path,
             reference_space_path,
             view_state,

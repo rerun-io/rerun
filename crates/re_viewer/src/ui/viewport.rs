@@ -105,6 +105,7 @@ impl ViewportBlueprint {
                                 &scene,
                                 category,
                                 path.clone(),
+                                space_info,
                                 &ctx.log_db.obj_db.tree,
                             );
                             space_view.name = visible_instance_id.obj_path.to_string();
@@ -138,8 +139,13 @@ impl ViewportBlueprint {
 
                 // Create one SpaceView for the whole space:
                 {
-                    let space_view =
-                        SpaceView::new(&scene, category, path.clone(), &ctx.log_db.obj_db.tree);
+                    let space_view = SpaceView::new(
+                        &scene,
+                        category,
+                        path.clone(),
+                        space_info,
+                        &ctx.log_db.obj_db.tree,
+                    );
                     let space_view_id = SpaceViewId::random();
                     blueprint.space_views.insert(space_view_id, space_view);
                     blueprint.visible.insert(space_view_id);
@@ -307,7 +313,13 @@ impl ViewportBlueprint {
     ) {
         let scene = query_scene(ctx, space_info);
         for category in scene.categories() {
-            self.add_space_view(SpaceView::new(&scene, category, path.clone(), obj_tree));
+            self.add_space_view(SpaceView::new(
+                &scene,
+                category,
+                path.clone(),
+                space_info,
+                obj_tree,
+            ));
         }
     }
 
@@ -442,6 +454,7 @@ impl ViewportBlueprint {
                                 &scene,
                                 category,
                                 path.clone(),
+                                space_info,
                                 &ctx.log_db.obj_db.tree,
                             ));
                             ctx.set_selection(Selection::SpaceView(new_space_view_id));
@@ -602,7 +615,8 @@ fn object_path_button(
         .double_clicked()
         && is_space_info
     {
-        *reference_space = path.clone();
+        // TODO(andreas): Can't yet change the reference space.
+        //*reference_space = path.clone();
     }
 }
 

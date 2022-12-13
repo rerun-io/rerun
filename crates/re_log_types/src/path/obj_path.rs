@@ -96,6 +96,18 @@ impl ObjPath {
         self.path.is_root()
     }
 
+    // Do all path components of this path show up at the beginning of another path.
+    #[inline]
+    pub fn is_ancestor_or_child_of(&self, other: &ObjPath) -> bool {
+        self.path.iter().zip(other.iter()).all(|(a, b)| a == b)
+    }
+
+    // Is this a strict child of the given path.
+    #[inline]
+    pub fn is_child_of(&self, other: &ObjPath) -> bool {
+        self.is_ancestor_or_child_of(other) && other.len() < self.len()
+    }
+
     /// Number of components
     #[inline]
     #[allow(clippy::len_without_is_empty)]
