@@ -29,9 +29,9 @@ RT = TypeVar("RT")  # return type
 # Add this to ALL user-facing functions!
 # TODO(emilk): add "strict" mode where we do pass on the exceptions
 def log_exceptions(func: Callable[..., RT]) -> Callable[..., Optional[RT]]:
-    def wrapper_log_exceptions() -> Optional[RT]:
+    def wrapper_log_exceptions(*args, **kwargs) -> Optional[RT]:
         try:
-            return func()
+            return func(*args, **kwargs)
         except Exception as e:
             logging.error(f"Rerun error: {traceback.format_exc()}")
             return None
