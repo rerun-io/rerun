@@ -34,6 +34,7 @@ if EXP_ARROW:
 
 RT = TypeVar("RT")  # return type
 
+
 # Decorator that catches exceptions, logs them, then swallows them.
 # This is almost always preferable than letting an exception kill the users app.
 # Add this to ALL user-facing functions!
@@ -1227,8 +1228,7 @@ class AnnotationInfo:
 AnnotationInfoLike = Union[Tuple[int, str], Tuple[int, str, Color], AnnotationInfo]
 
 
-@log_exceptions
-def coerce_annotation_info(arg: AnnotationInfoLike) -> AnnotationInfo:
+def _coerce_annotation_info(arg: AnnotationInfoLike) -> AnnotationInfo:
     if type(arg) is AnnotationInfo:
         return arg
     else:
@@ -1253,8 +1253,7 @@ class ClassDescription:
 ClassDescriptionLike = Union[AnnotationInfoLike, ClassDescription]
 
 
-@log_exceptions
-def coerce_class_descriptor_like(arg: ClassDescriptionLike) -> ClassDescription:
+def _coerce_class_descriptor_like(arg: ClassDescriptionLike) -> ClassDescription:
     if type(arg) is ClassDescription:
         return arg
     else:
@@ -1297,20 +1296,18 @@ def log_annotation_context(
         class_descriptions = [class_descriptions]
 
     # Coerce tuples into ClassDescription dataclass for convenience
-    typed_class_descriptions = (coerce_class_descriptor_like(d) for d in class_descriptions)
+    typed_class_descriptions = (_coerce_class_descriptor_like(d) for d in class_descriptions)
 
     # Convert back to fixed tuple for easy pyo3 conversion
     # This is pretty messy but will likely go away / be refactored with pending data-model changes.
-    @log_exceptions
-    def info_to_tuple(info: Optional[AnnotationInfoLike]) -> Tuple[int, Optional[str], Optional[Sequence[int]]]:
+    def _info_to_tuple(info: Optional[AnnotationInfoLike]) -> Tuple[int, Optional[str], Optional[Sequence[int]]]:
         if info is None:
             return (0, None, None)
-        info = coerce_annotation_info(info)
+        info = _coerce_annotation_info(info)
         color = None if info.color is None else _normalize_colors(info.color).tolist()
         return (info.id, info.label, color)
 
-    @log_exceptions
-    def keypoint_connections_to_flat_list(
+    def _keypoint_connections_to_flat_list(
         keypoint_connections: Optional[Iterable[Union[int, Tuple[int, int]]]]
     ) -> Sequence[int]:
         if keypoint_connections is None:
@@ -1323,9 +1320,9 @@ def log_annotation_context(
 
     tuple_class_descriptions = [
         (
-            info_to_tuple(d.info),
-            tuple(info_to_tuple(a) for a in d.keypoint_annotations or []),
-            keypoint_connections_to_flat_list(d.keypoint_connections),
+            _info_to_tuple(d.info),
+            tuple(_info_to_tuple(a) for a in d.keypoint_annotations or []),
+            _keypoint_connections_to_flat_list(d.keypoint_connections),
         )
         for d in typed_class_descriptions
     ]
