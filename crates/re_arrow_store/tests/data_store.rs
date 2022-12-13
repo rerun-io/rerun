@@ -397,7 +397,7 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
 
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
     let timeline_log_time = Timeline::new("log_time", TimeType::Time);
-    let components_all = &["instances", "rects", "positions"];
+    let components_all = &["instances", "rect2d", "point2d"];
 
     // --- Testing at all frames ---
 
