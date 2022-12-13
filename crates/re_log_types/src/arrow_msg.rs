@@ -3,7 +3,7 @@
 //! We have custom implementations of [`serde::Serialize`] and [`serde::Deserialize`] that wraps
 //! the inner Arrow serialization of [`Schema`] and [`Chunk`].
 
-use crate::{msg_bundle::MsgBundle, MsgId};
+use crate::MsgId;
 use arrow2::{array::Array, chunk::Chunk, datatypes::Schema};
 
 /// Message containing an Arrow payload
@@ -100,36 +100,6 @@ impl<'de> serde::Deserialize<'de> for ArrowMsg {
 
 // ----------------------------------------------------------------------------
 
-impl TryFrom<MsgBundle<'static>> for ArrowMsg {
-    type Error = anyhow::Error;
-
-    fn try_from(bundle: MsgBundle<'static>) -> Result<Self, Self::Error> {
-        let (schema, chunk, msg_id) = bundle.try_into()?;
-
-        #[cfg(feature = "arrow2/io_print")]
-        re_log::debug!(
-            "ArrowMsg chunk from MessageBundle:\n{}",
-            arrow2::io::print::write(
-                &[chunk.clone()],
-                schema
-                    .fields
-                    .iter()
-                    .map(|f| &f.name)
-                    .collect::<Vec<_>>()
-                    .as_slice(),
-            )
-        );
-
-        Ok(ArrowMsg {
-            msg_id,
-            schema,
-            chunk,
-        })
-    }
-}
-
-// ----------------------------------------------------------------------------
-
 #[cfg(test)]
 #[cfg(feature = "serde")]
 mod tests {
@@ -138,7 +108,7 @@ mod tests {
     use super::{ArrowMsg, Chunk, MsgId, Schema};
     use crate::{
         datagen::{build_frame_nr, build_some_point2d, build_some_rects},
-        msg_bundle::MsgBundle,
+        msg_bundle::{ComponentBundle, MsgBundle},
         TimePoint,
     };
 
@@ -184,17 +154,15 @@ mod tests {
 
     #[test]
     fn test_roundtrip_payload() {
-        let mut bundle = MsgBundle::new(
+        let bundle = MsgBundle::new(
             MsgId::ZERO,
             "world/rects".into(),
             TimePoint::from([build_frame_nr(0)]),
+            vec![
+                ComponentBundle::try_from(build_some_point2d(1).as_slice()).unwrap(),
+                ComponentBundle::try_from(build_some_rects(1).as_slice()).unwrap(),
+            ],
         );
-        bundle
-            .try_append_component(build_some_point2d(1).iter())
-            .unwrap();
-        bundle
-            .try_append_component(build_some_rects(1).iter())
-            .unwrap();
 
         let msg_in: ArrowMsg = bundle.try_into().unwrap();
         let buf = rmp_serde::to_vec(&msg_in).unwrap();

@@ -8,9 +8,12 @@ use polars::prelude::{DataFrame, Series};
 
 use re_arrow_store::{DataStore, DataStoreConfig, TimeInt, TimeQuery};
 use re_log_types::{
-    datagen::{build_frame_nr, build_instances, build_log_time, build_positions, build_rects},
+    datagen::{
+        build_frame_nr, build_instances, build_log_time, build_some_point2d, build_some_rects,
+    },
     msg_bundle::{ComponentBundle, MsgBundle},
-    ComponentNameRef, Duration, MsgId, ObjPath as EntityPath, Time, TimePoint, TimeType, Timeline,
+    ComponentName, ComponentNameRef, Duration, MsgId, ObjPath as EntityPath, Time, TimePoint,
+    TimeType, Timeline,
 };
 
 // ---
@@ -121,11 +124,14 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
 
     let mut tracker = DataTracker::default();
     {
-        tracker.insert_data(
+        tracker.insert_bundle(
             store,
-            &ent_path,
-            [build_log_time(now), build_frame_nr(frame40)],
-            &[build_instances(nb_instances)],
+            &MsgBundle::new(
+                MsgId::ZERO,
+                ent_path.clone(),
+                TimePoint::from([build_log_time(now), build_frame_nr(frame40)]),
+                vec![build_instances(nb_instances)],
+            ),
         );
     }
 
@@ -276,59 +282,110 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
 
     let mut tracker = DataTracker::default();
     {
-        tracker.insert_data(
+        tracker.insert_bundle(
             store,
-            &ent_path,
-            [build_frame_nr(frame41)],
-            &[build_instances(nb_instances)],
+            &MsgBundle::new(
+                MsgId::ZERO,
+                ent_path.clone(),
+                TimePoint::from([build_frame_nr(frame41)]),
+                vec![build_instances(nb_instances)],
+            ),
         );
-        tracker.insert_data(
+        tracker.insert_bundle(
             store,
-            &ent_path,
-            [build_frame_nr(frame41)],
-            &[build_positions(nb_instances)],
+            &MsgBundle::new(
+                MsgId::ZERO,
+                ent_path.clone(),
+                TimePoint::from([build_frame_nr(frame41)]),
+                vec![build_some_point2d(nb_instances)
+                    .as_slice()
+                    .try_into()
+                    .unwrap()],
+            ),
         );
-        tracker.insert_data(
+        tracker.insert_bundle(
             store,
-            &ent_path,
-            [build_log_time(now), build_frame_nr(frame42)],
-            &[build_rects(nb_instances)],
+            &MsgBundle::new(
+                MsgId::ZERO,
+                ent_path.clone(),
+                TimePoint::from([build_log_time(now), build_frame_nr(frame42)]),
+                vec![build_some_rects(nb_instances)
+                    .as_slice()
+                    .try_into()
+                    .unwrap()],
+            ),
         );
-        tracker.insert_data(
+        tracker.insert_bundle(
             store,
-            &ent_path,
-            [build_log_time(now_plus_1s)],
-            &[build_instances(nb_instances), build_rects(nb_instances)],
+            &MsgBundle::new(
+                MsgId::ZERO,
+                ent_path.clone(),
+                TimePoint::from([build_log_time(now_plus_1s)]),
+                vec![
+                    build_instances(nb_instances),
+                    build_some_rects(nb_instances)
+                        .as_slice()
+                        .try_into()
+                        .unwrap(),
+                ],
+            ),
         );
-        tracker.insert_data(
+        tracker.insert_bundle(
             store,
-            &ent_path,
-            [build_frame_nr(frame41)],
-            &[build_rects(nb_instances)],
+            &MsgBundle::new(
+                MsgId::ZERO,
+                ent_path.clone(),
+                TimePoint::from([build_frame_nr(frame41)]),
+                vec![build_some_rects(nb_instances)
+                    .as_slice()
+                    .try_into()
+                    .unwrap()],
+            ),
         );
-        tracker.insert_data(
+        tracker.insert_bundle(
             store,
-            &ent_path,
-            [build_log_time(now), build_frame_nr(frame42)],
-            &[build_instances(nb_instances)],
+            &MsgBundle::new(
+                MsgId::ZERO,
+                ent_path.clone(),
+                TimePoint::from([build_log_time(now), build_frame_nr(frame42)]),
+                vec![build_instances(nb_instances)],
+            ),
         );
-        tracker.insert_data(
+        tracker.insert_bundle(
             store,
-            &ent_path,
-            [build_log_time(now_minus_1s), build_frame_nr(frame42)],
-            &[build_positions(nb_instances)],
+            &MsgBundle::new(
+                MsgId::ZERO,
+                ent_path.clone(),
+                TimePoint::from([build_log_time(now_minus_1s), build_frame_nr(frame42)]),
+                vec![build_some_point2d(nb_instances)
+                    .as_slice()
+                    .try_into()
+                    .unwrap()],
+            ),
         );
-        tracker.insert_data(
+        tracker.insert_bundle(
             store,
-            &ent_path,
-            [build_log_time(now_minus_1s), build_frame_nr(frame43)],
-            &[build_rects(nb_instances)],
+            &MsgBundle::new(
+                MsgId::ZERO,
+                ent_path.clone(),
+                TimePoint::from([build_log_time(now_minus_1s), build_frame_nr(frame43)]),
+                vec![build_some_rects(nb_instances)
+                    .as_slice()
+                    .try_into()
+                    .unwrap()],
+            ),
         );
-        tracker.insert_data(
+        tracker.insert_bundle(
             store,
-            &ent_path,
-            [build_frame_nr(frame44)],
-            &[build_positions(nb_instances)],
+            &MsgBundle::new(
+                MsgId::ZERO,
+                ent_path.clone(),
+                TimePoint::from([build_frame_nr(frame44)]),
+                vec![build_some_point2d(nb_instances)
+                    .as_slice()
+                    .try_into()
+                    .unwrap()],
+            ),
         );
     }
 
@@ -354,8 +411,8 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
             frame41,
             vec![
                 ("instances", frame41.into()),
-                ("rects", frame41.into()),
-                ("positions", frame41.into()),
+                ("rect2d", frame41.into()),
+                ("point2d", frame41.into()),
             ],
         ),
         // Scenario: query all components at frame #42 (i.e. second frame with data)
@@ -364,8 +421,8 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
             frame42,
             vec![
                 ("instances", frame42.into()),
-                ("rects", frame42.into()),
-                ("positions", frame42.into()),
+                ("rect2d", frame42.into()),
+                ("point2d", frame42.into()),
             ],
         ),
         // Scenario: query all components at frame #43 (i.e. last frame with data)
@@ -374,8 +431,8 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
             frame43,
             vec![
                 ("instances", frame42.into()),
-                ("rects", frame43.into()),
-                ("positions", frame42.into()),
+                ("rect2d", frame43.into()),
+                ("point2d", frame42.into()),
             ],
         ),
         // Scenario: query all components at frame #44 (i.e. after last frame)
@@ -384,13 +441,14 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
             frame44,
             vec![
                 ("instances", frame42.into()),
-                ("rects", frame43.into()),
-                ("positions", frame44.into()),
+                ("rect2d", frame43.into()),
+                ("point2d", frame44.into()),
             ],
         ),
     ];
 
     for (frame_nr, expected) in scenarios {
+        eprintln!("Testing scenario ({frame_nr},{expected:?})");
         tracker.assert_scenario(
             store,
             &timeline_frame_nr,
@@ -412,8 +470,8 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
             now_plus_2s,
             vec![
                 ("instances", now_plus_1s_nanos.into()),
-                ("rects", now_plus_1s_nanos.into()),
-                ("positions", now_minus_1s_nanos.into()),
+                ("rect2d", now_plus_1s_nanos.into()),
+                ("point2d", now_minus_1s_nanos.into()),
             ],
         ),
     ];
@@ -436,34 +494,44 @@ type DataEntry = (ComponentNameRef<'static>, TimeInt);
 
 #[derive(Default)]
 struct DataTracker {
-    all_data: HashMap<(ComponentNameRef<'static>, TimeInt), Box<dyn Array>>,
+    all_data: HashMap<(ComponentName, TimeInt), Box<dyn Array>>,
 }
 
 impl DataTracker {
+    fn insert_bundle(&mut self, store: &mut DataStore, msg_bundle: &MsgBundle) {
+        for time in msg_bundle.time_point.times() {
+            for bundle in &msg_bundle.components {
+                let ComponentBundle { name, component } = bundle;
+                assert!(self
+                    .all_data
+                    .insert((name.clone(), *time), component.clone())
+                    .is_none());
+            }
+        }
+        store.insert(msg_bundle).unwrap();
+    }
+
+    #[cfg(feature = "disabled")]
     fn insert_data<const N: usize, const M: usize>(
         &mut self,
         store: &mut DataStore,
         ent_path: &EntityPath,
         times: [(Timeline, TimeInt); N],
-        components: &[ComponentBundle<'static>; M],
+        components: &[ComponentBundle; M],
     ) {
         let time_point = TimePoint::from(times);
 
         for time in time_point.times() {
-            for bundle in components {
-                let ComponentBundle {
-                    name,
-                    field: _,
-                    component,
-                } = bundle;
+            for bundle in components.iter() {
+                let ComponentBundle { name, component } = bundle;
                 assert!(self
                     .all_data
-                    .insert((name, *time), component.clone())
+                    .insert((name.clone(), *time), component.clone())
                     .is_none());
             }
         }
 
-        let msg_bundle = MsgBundle::new_with_components(
+        let msg_bundle = MsgBundle::new(
             MsgId::ZERO,
             ent_path.clone(),
             time_point,
@@ -491,8 +559,13 @@ impl DataTracker {
 
         let series = expected
             .into_iter()
-            .map(|(name, time)| (name, self.all_data[&(name, time)].clone()))
-            .map(|(name, data)| Series::try_from((name, data)).unwrap())
+            .map(|(name, time)| {
+                let data = self
+                    .all_data
+                    .get(&(name.to_owned(), time))
+                    .unwrap_or_else(|| panic!("Key ({name},{time:?}) not found!"));
+                Series::try_from((name, data.clone())).unwrap()
+            })
             .collect::<Vec<_>>();
         let expected = DataFrame::new(series).unwrap();
         let expected = expected.explode(expected.get_column_names()).unwrap();
@@ -544,7 +617,7 @@ fn pathological_bucket_topology() {
 
         let time_point = TimePoint::from([build_frame_nr(frame_nr)]);
         for _ in 0..num {
-            let msg = MsgBundle::new_with_components(
+            let msg = MsgBundle::new(
                 MsgId::ZERO,
                 ent_path.clone(),
                 time_point.clone(),
@@ -552,7 +625,7 @@ fn pathological_bucket_topology() {
             );
             store_forward.insert(&msg).unwrap();
 
-            let msg = MsgBundle::new_with_components(
+            let msg = MsgBundle::new(
                 MsgId::ZERO,
                 ent_path.clone(),
                 time_point.clone(),
@@ -573,7 +646,7 @@ fn pathological_bucket_topology() {
         let msgs = range
             .map(|frame_nr| {
                 let time_point = TimePoint::from([build_frame_nr(frame_nr)]);
-                MsgBundle::new_with_components(
+                MsgBundle::new(
                     MsgId::ZERO,
                     ent_path.clone(),
                     time_point,

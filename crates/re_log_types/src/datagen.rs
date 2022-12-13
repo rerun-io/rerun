@@ -3,7 +3,7 @@
 use crate::msg_bundle::{wrap_in_listarray, ComponentBundle};
 use crate::{Time, TimeInt, TimeType, Timeline};
 use arrow2::{
-    array::{Array, Float32Array, PrimitiveArray, StructArray},
+    array::{Float32Array, PrimitiveArray, StructArray},
     datatypes::{DataType, Field},
 };
 
@@ -35,6 +35,7 @@ pub fn build_some_labels(len: usize) -> Vec<String> {
     (0..len).into_iter().map(|i| format!("label{i}")).collect()
 }
 
+/// Create `len` dummy `Point2D`
 pub fn build_some_point2d(len: usize) -> Vec<field_types::Point2D> {
     use rand::Rng as _;
     let mut rng = rand::thread_rng();
@@ -61,7 +62,7 @@ pub fn build_frame_nr(frame_nr: i64) -> (Timeline, TimeInt) {
     )
 }
 
-pub fn build_instances(nb_instances: usize) -> ComponentBundle<'static> {
+pub fn build_instances(nb_instances: usize) -> ComponentBundle {
     use rand::Rng as _;
     let mut rng = rand::thread_rng();
 
@@ -73,16 +74,13 @@ pub fn build_instances(nb_instances: usize) -> ComponentBundle<'static> {
     );
     let data = wrap_in_listarray(data.boxed());
 
-    let field = Field::new("instances", data.data_type().clone(), false);
-
     ComponentBundle {
-        name: "instances",
-        field,
+        name: "instances".to_owned(),
         component: data.boxed(),
     }
 }
 
-pub fn build_rects(nb_instances: usize) -> ComponentBundle<'static> {
+pub fn build_rects(nb_instances: usize) -> ComponentBundle {
     use rand::Rng as _;
     let mut rng = rand::thread_rng();
 
@@ -100,18 +98,13 @@ pub fn build_rects(nb_instances: usize) -> ComponentBundle<'static> {
         ];
         StructArray::new(DataType::Struct(fields), vec![x, y, w, h], None)
     };
-    let data = wrap_in_listarray(data.boxed());
-
-    let field = Field::new("rects", data.data_type().clone(), false);
-
     ComponentBundle {
-        name: "rects",
-        field,
-        component: data.boxed(),
+        name: "rects".to_owned(),
+        component: wrap_in_listarray(data.boxed()).boxed(),
     }
 }
 
-pub fn build_positions(nb_instances: usize) -> ComponentBundle<'static> {
+pub fn build_positions(nb_instances: usize) -> ComponentBundle {
     use rand::Rng as _;
     let mut rng = rand::thread_rng();
 
@@ -134,11 +127,8 @@ pub fn build_positions(nb_instances: usize) -> ComponentBundle<'static> {
     };
     let data = wrap_in_listarray(data.boxed());
 
-    let field = Field::new("positions", data.data_type().clone(), false);
-
     ComponentBundle {
-        name: "positions",
-        field,
+        name: "positions".to_owned(),
         component: data.boxed(),
     }
 }

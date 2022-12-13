@@ -78,9 +78,15 @@ fn main() -> std::process::ExitCode {
     let rects = build_some_rects(1);
     let colors = build_some_colors(1);
 
-    let mut bundle = MsgBundle::new(MsgId::random(), "world/rects".into(), time_point);
-    bundle.try_append_component(rects.iter()).unwrap();
-    bundle.try_append_component(colors.iter()).unwrap();
+    let bundle = MsgBundle::new(
+        MsgId::random(),
+        "world/rects".into(),
+        time_point,
+        vec![
+            rects.as_slice().try_into().unwrap(),
+            colors.as_slice().try_into().unwrap(),
+        ],
+    );
 
     // Create and send one message to the sdk
     let msg = bundle.try_into().unwrap();
@@ -91,9 +97,15 @@ fn main() -> std::process::ExitCode {
     let rects = build_some_rects(5);
     let colors = build_some_colors(5);
 
-    let mut bundle = MsgBundle::new(MsgId::random(), "world/rects".into(), time_point);
-    bundle.try_append_component(rects.iter()).unwrap();
-    bundle.try_append_component(colors.iter()).unwrap();
+    let bundle = MsgBundle::new(
+        MsgId::random(),
+        "world/rects".into(),
+        time_point,
+        vec![
+            rects.as_slice().try_into().unwrap(),
+            colors.as_slice().try_into().unwrap(),
+        ],
+    );
 
     let msg = bundle.try_into().unwrap();
     session.send(LogMsg::ArrowMsg(msg));

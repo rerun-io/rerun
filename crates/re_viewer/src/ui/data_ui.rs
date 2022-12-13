@@ -429,21 +429,19 @@ pub(crate) fn ui_logged_data(
 pub(crate) fn ui_logged_arrow_data(
     _ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    msg_id: &MsgId,
+    _msg_id: &MsgId,
     msg: &ArrowMsg,
     _preview: Preview,
 ) -> egui::Response {
-    let msg_bundle = MsgBundle::try_from((msg.schema.clone(), &msg.chunk, *msg_id))
-        .ok()
-        .unwrap();
+    let msg_bundle = MsgBundle::try_from(msg).unwrap();
+
     // TODO(john): more handling
-    //let arr = msg.to_arrow_array();
     ui.label(format!(
         "Arrow Payload of {:?}",
         msg_bundle
             .components
             .iter()
-            .map(|bundle| bundle.name)
+            .map(|bundle| &bundle.name)
             .collect_vec()
     ))
 }

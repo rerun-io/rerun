@@ -32,7 +32,7 @@ use arrow2_convert::{
     serialize::{ArrowSerialize, TryIntoArrow},
 };
 
-use crate::{ComponentNameRef, MsgId, ObjPath, TimePoint};
+use crate::{ArrowMsg, ComponentName, ComponentNameRef, MsgId, ObjPath, TimePoint};
 
 //TODO(john) get rid of this eventually
 const ENTITY_PATH_KEY: &str = "RERUN:entity_path";
@@ -45,18 +45,43 @@ pub trait Component: ArrowField {
     fn name() -> ComponentNameRef<'static>;
 }
 
-/// A Component bundle holds an Arrow component column, and it's metadata (`field`).
-/// TODO(john) reduce the duplicate state (name) here.
+/// A `ComponentBundle` holds an Arrow component column, and it's field name.
+///
+/// A `ComponentBundle` can be created from a collection of any element that implements the
+/// [`Component`] and [`ArrowSerialize`] traits.
+///
+/// # Example
+///
+/// ```
+/// # use re_log_types::{field_types::Point2D, msg_bundle::ComponentBundle};
+/// let points = vec![Point2D { x: 0.0, y: 1.0 }];
+/// let bundle = ComponentBundle::try_from(points.as_slice()).unwrap();
+/// ```
 #[derive(Debug, Clone)]
-pub struct ComponentBundle<'data> {
-    pub name: ComponentNameRef<'data>,
-    pub field: Field,
+pub struct ComponentBundle {
+    pub name: ComponentName,
     pub component: Box<dyn Array>,
+}
+
+impl<C> TryFrom<&[C]> for ComponentBundle
+where
+    C: Component + ArrowSerialize + ArrowField<Type = C> + 'static,
+{
+    type Error = anyhow::Error;
+
+    fn try_from(c: &[C]) -> Result<Self, Self::Error> {
+        let array: Box<dyn Array> = TryIntoArrow::try_into_arrow(c)?;
+        let wrapped = wrap_in_listarray(array).boxed();
+        Ok(ComponentBundle {
+            name: C::name().to_owned(),
+            component: wrapped,
+        })
+    }
 }
 
 /// A `MsgBundle` holds data necessary for composing a single log message.
 ///
-/// # Examples
+/// # Example
 ///
 /// Create a `MsgBundle` and add a component consisting of 2 [`crate::field_types::Rect2D`] values:
 /// ```
@@ -96,36 +121,27 @@ pub struct ComponentBundle<'data> {
 /// +------------------------------------------+-----------------------------------------+
 /// ```
 #[derive(Debug)]
-pub struct MsgBundle<'data> {
+pub struct MsgBundle {
     /// A unique id per [`crate::LogMsg`].
     pub msg_id: MsgId,
     pub obj_path: ObjPath,
     pub time_point: TimePoint,
-    pub components: Vec<ComponentBundle<'data>>,
+    pub components: Vec<ComponentBundle>,
 }
 
-impl<'data> MsgBundle<'data> {
-    pub fn new(msg_id: MsgId, obj_path: ObjPath, time_point: TimePoint) -> Self {
-        Self {
-            msg_id,
-            obj_path,
-            time_point,
-            components: Vec::new(),
-        }
-    }
-
-    /// Create a new `MsgBundle` with a pre-build Vec of `ComponentBundle` components.
-    pub fn new_with_components(
+impl MsgBundle {
+    /// Create a new `MsgBundle` with a pre-build Vec of [`ComponentBundle`] components.
+    pub fn new(
         msg_id: MsgId,
         obj_path: ObjPath,
         time_point: TimePoint,
-        components: Vec<ComponentBundle<'data>>,
+        bundles: Vec<ComponentBundle>,
     ) -> Self {
         Self {
             msg_id,
             obj_path,
             time_point,
-            components,
+            components: bundles,
         }
     }
 
@@ -142,11 +158,9 @@ impl<'data> MsgBundle<'data> {
     {
         let array: Box<dyn Array> = TryIntoArrow::try_into_arrow(component)?;
         let wrapped = wrap_in_listarray(array).boxed();
-        let field = Field::new(Element::name(), wrapped.data_type().clone(), false);
 
         let bundle = ComponentBundle {
-            name: Element::name(),
-            field,
+            name: Element::name().to_owned(),
             component: wrapped,
         };
 
@@ -155,11 +169,69 @@ impl<'data> MsgBundle<'data> {
     }
 }
 
-impl<'data> TryFrom<MsgBundle<'data>> for (Schema, Chunk<Box<dyn Array>>, MsgId) {
+/// Pack the passed iterator of `ComponentBundle` into a `(Schema, StructArray)` tuple.
+#[inline]
+fn pack_components(components: impl Iterator<Item = ComponentBundle>) -> (Schema, StructArray) {
+    let (component_fields, component_cols): (Vec<Field>, Vec<Box<dyn Array>>) = components
+        .map(|ComponentBundle { name, component }| {
+            (
+                Field::new(name, component.data_type().clone(), false),
+                component.to_boxed(),
+            )
+        })
+        .unzip();
+
+    let data_type = DataType::Struct(component_fields);
+    let packed = StructArray::new(data_type, component_cols, None);
+
+    let schema = Schema {
+        fields: [Field::new(
+            COL_COMPONENTS,
+            packed.data_type().clone(),
+            false,
+        )]
+        .to_vec(),
+        ..Default::default()
+    };
+
+    (schema, packed)
+}
+
+impl TryFrom<&ArrowMsg> for MsgBundle {
     type Error = anyhow::Error;
 
-    /// Build a single Arrow log message tuple from this `MsgBundle`.
-    fn try_from(bundle: MsgBundle<'data>) -> Result<Self, Self::Error> {
+    /// Extract a `MsgBundle` from an `ArrowMsg`.
+    fn try_from(msg: &ArrowMsg) -> Result<Self, Self::Error> {
+        let ArrowMsg {
+            msg_id,
+            schema,
+            chunk,
+        } = msg;
+
+        let obj_path = schema
+            .metadata
+            .get(ENTITY_PATH_KEY)
+            .ok_or_else(|| anyhow!("expect entity path in top-level message's metadata"))
+            .map(|path| ObjPath::from(path.as_str()))?;
+
+        let time_point = extract_timelines(schema, chunk)?;
+        let components = extract_components(schema, chunk)?;
+
+        Ok(Self {
+            msg_id: *msg_id,
+            obj_path,
+            time_point,
+            components,
+        })
+    }
+}
+
+impl TryFrom<MsgBundle> for ArrowMsg {
+    type Error = anyhow::Error;
+
+    /// Build a single Arrow log message tuple from this `MsgBundle`. See the documentation on
+    /// [`MsgBundle`] for details.
+    fn try_from(bundle: MsgBundle) -> Result<Self, Self::Error> {
         let mut schema = Schema::default();
         let mut cols: Vec<Box<dyn Array>> = Vec::new();
 
@@ -179,61 +251,24 @@ impl<'data> TryFrom<MsgBundle<'data>> for (Schema, Chunk<Box<dyn Array>>, MsgId)
         schema.metadata.extend(components_schema.metadata);
         cols.push(components_data.boxed());
 
-        Ok((schema, Chunk::new(cols), bundle.msg_id))
-    }
-}
+        #[cfg(feature = "arrow2/io_print")]
+        re_log::debug!(
+            "ArrowMsg chunk from MessageBundle:\n{}",
+            arrow2::io::print::write(
+                &[chunk.clone()],
+                schema
+                    .fields
+                    .iter()
+                    .map(|f| &f.name)
+                    .collect::<Vec<_>>()
+                    .as_slice(),
+            )
+        );
 
-/// Pack the passed iterator of `ComponentBundle` into a `(Schema, StructArray)` tuple.
-#[inline]
-fn pack_components<'data>(
-    components: impl Iterator<Item = ComponentBundle<'data>>,
-) -> (Schema, StructArray) {
-    let (component_fields, component_cols): (Vec<_>, Vec<_>) = components
-        .map(
-            |ComponentBundle {
-                 name: _,
-                 field,
-                 component,
-             }| (field, component.to_boxed()),
-        )
-        .unzip();
-
-    let data_type = DataType::Struct(component_fields);
-    let packed = StructArray::new(data_type, component_cols, None);
-
-    let schema = Schema {
-        fields: [Field::new(
-            COL_COMPONENTS,
-            packed.data_type().clone(),
-            false,
-        )]
-        .to_vec(),
-        ..Default::default()
-    };
-
-    (schema, packed)
-}
-
-impl<'data> TryFrom<(Schema, &'data Chunk<Box<dyn Array>>, MsgId)> for MsgBundle<'data> {
-    type Error = anyhow::Error;
-
-    fn try_from(
-        (schema, chunk, msg_id): (Schema, &'data Chunk<Box<dyn Array>>, MsgId),
-    ) -> Result<Self, Self::Error> {
-        let obj_path = schema
-            .metadata
-            .get(ENTITY_PATH_KEY)
-            .ok_or_else(|| anyhow!("expect entity path in top-level message's metadata"))
-            .map(|path| ObjPath::from(path.as_str()))?;
-
-        let time_point = extract_timelines(&schema, chunk)?;
-        let components = extract_components(&schema, chunk)?;
-
-        Ok(Self {
-            msg_id,
-            obj_path,
-            time_point,
-            components,
+        Ok(ArrowMsg {
+            msg_id: bundle.msg_id,
+            schema,
+            chunk: Chunk::new(cols),
         })
     }
 }
@@ -264,10 +299,10 @@ fn extract_timelines(schema: &Schema, msg: &Chunk<Box<dyn Array>>) -> anyhow::Re
 }
 
 /// Extract a vector of `ComponentBundle` from the message
-fn extract_components<'data>(
+fn extract_components(
     schema: &Schema,
-    msg: &'data Chunk<Box<dyn Array>>,
-) -> anyhow::Result<Vec<ComponentBundle<'data>>> {
+    msg: &Chunk<Box<dyn Array>>,
+) -> anyhow::Result<Vec<ComponentBundle>> {
     let components = schema
         .fields
         .iter()
@@ -284,10 +319,9 @@ fn extract_components<'data>(
         .fields()
         .iter()
         .zip(components.values())
-        .map(|(field, comp)| ComponentBundle {
-            name: field.name.as_str(),
-            field: field.clone(),
-            component: comp.clone(),
+        .map(|(field, component)| ComponentBundle {
+            name: field.name.clone(),
+            component: component.clone(),
         })
         .collect())
 }

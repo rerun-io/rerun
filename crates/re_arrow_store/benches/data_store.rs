@@ -54,23 +54,24 @@ criterion_main!(benches);
 
 // --- Helpers ---
 
-fn build_messages(n: usize) -> Vec<MsgBundle<'static>> {
+fn build_messages(n: usize) -> Vec<MsgBundle> {
     (0..NUM_FRAMES)
         .into_iter()
         .map(move |frame_idx| {
-            let mut bundle = MsgBundle::new(
+            MsgBundle::new(
                 MsgId::ZERO,
                 EntityPath::from("rects"),
                 TimePoint::from([build_frame_nr(frame_idx)]),
-            );
-            bundle.try_append_component(&build_some_point2d(n)).unwrap();
-            bundle.try_append_component(&build_some_rects(n)).unwrap();
-            bundle
+                vec![
+                    build_some_point2d(n).as_slice().try_into().unwrap(),
+                    build_some_rects(n).as_slice().try_into().unwrap(),
+                ],
+            )
         })
         .collect()
 }
 
-fn insert_messages<'a>(msgs: impl Iterator<Item = &'a MsgBundle<'static>>) -> DataStore {
+fn insert_messages<'a>(msgs: impl Iterator<Item = &'a MsgBundle>) -> DataStore {
     let mut store = DataStore::default();
     msgs.for_each(|msg_bundle| store.insert(msg_bundle).unwrap());
     store

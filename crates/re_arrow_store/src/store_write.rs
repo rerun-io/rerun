@@ -21,7 +21,7 @@ use crate::{
 
 impl DataStore {
     /// Inserts a [`MsgBundle`] payload of Arrow data into the datastore.
-    pub fn insert<'a>(&mut self, msg_bundle: &MsgBundle<'a>) -> anyhow::Result<()> {
+    pub fn insert(&mut self, msg_bundle: &MsgBundle) -> anyhow::Result<()> {
         let MsgBundle {
             msg_id: _,
             obj_path: ent_path,
@@ -49,21 +49,17 @@ impl DataStore {
         let mut indices = HashMap::with_capacity(components.len());
 
         for bundle in components {
-            let ComponentBundle {
-                name,
-                field: _,
-                component,
-            } = bundle;
+            let ComponentBundle { name, component } = bundle;
 
             let table = self
                 .components
                 .entry((*bundle.name).to_owned())
                 .or_insert_with(|| {
-                    ComponentTable::new((*name).to_owned(), component.data_type().clone())
+                    ComponentTable::new((*name).clone(), component.data_type().clone())
                 });
 
             let row_idx = table.insert(&self.config, time_point, component.as_ref())?;
-            indices.insert(*name, row_idx);
+            indices.insert(name.as_ref(), row_idx);
         }
 
         for (timeline, time) in time_point.iter() {

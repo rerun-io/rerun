@@ -107,15 +107,17 @@ impl ObjDb {
     }
 
     fn try_add_arrow_data_msg(&mut self, msg: &ArrowMsg) -> Result<(), Error> {
-        let msg_bundle = MsgBundle::try_from((msg.schema.clone(), &msg.chunk, msg.msg_id))
-            .map_err(Error::Other)?;
+        let msg_bundle = MsgBundle::try_from(msg).map_err(Error::Other)?;
 
         for component in &msg_bundle.components {
             //TODO(jleibs): Actually handle pending clears
             let _pending_clears = self.tree.add_data_msg(
                 msg.msg_id,
                 &msg_bundle.time_point,
-                &DataPath::new(msg_bundle.obj_path.clone(), FieldName::from(component.name)),
+                &DataPath::new(
+                    msg_bundle.obj_path.clone(),
+                    FieldName::from(component.name.clone()),
+                ),
                 None,
             );
         }
