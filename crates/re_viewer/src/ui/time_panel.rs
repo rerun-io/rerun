@@ -70,6 +70,7 @@ impl TimePanel {
         let expanded = egui::TopBottomPanel::bottom("time_panel_expanded")
             .resizable(true)
             .frame(panel_frame)
+            .min_height(150.0)
             .default_height(250.0);
 
         egui::TopBottomPanel::show_animated_between(
@@ -85,7 +86,9 @@ impl TimePanel {
                     });
                 } else {
                     // Expanded:
-                    self.expanded_ui(ctx, ui);
+                    ui.vertical(|ui| {
+                        self.expanded_ui(ctx, ui);
+                    });
                 }
             },
         );
