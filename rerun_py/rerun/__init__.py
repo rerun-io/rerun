@@ -287,23 +287,21 @@ class LoggingHandler(logging.Handler):
         logging.DEBUG: LogLevel.DEBUG,
     }
 
+    @log_exceptions
+    def __init__(self, root_obj_path: Optional[str] = None) -> None:
+        logging.Handler.__init__(self)
+        self.root_obj_path = root_obj_path
 
-@log_exceptions
-def __init__(self, root_obj_path: Optional[str] = None):
-    logging.Handler.__init__(self)
-    self.root_obj_path = root_obj_path
-
-
-@log_exceptions
-def emit(self, record: logging.LogRecord) -> None:
-    """Emits a record to the Rerun SDK."""
-    objpath = record.name.replace(".", "/")
-    if self.root_obj_path is not None:
-        objpath = f"{self.root_obj_path}/{objpath}"
-    level = self.LVL2NAME.get(record.levelno)
-    if level is None:  # user-defined level
-        level = record.levelname
-    log_text_entry(objpath, record.getMessage(), level=level)
+    @log_exceptions
+    def emit(self, record: logging.LogRecord) -> None:
+        """Emits a record to the Rerun SDK."""
+        objpath = record.name.replace(".", "/")
+        if self.root_obj_path is not None:
+            objpath = f"{self.root_obj_path}/{objpath}"
+        level = self.LVL2NAME.get(record.levelno)
+        if level is None:  # user-defined level
+            level = record.levelname
+        log_text_entry(objpath, record.getMessage(), level=level)
 
 
 @log_exceptions
