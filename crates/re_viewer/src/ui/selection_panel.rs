@@ -216,7 +216,7 @@ fn ui_space_view(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, space_view: &mu
             ui.text_edit_singleline(&mut space_view.name);
             ui.end_row();
 
-            ui.label("Displayed Root Path:");
+            ui.label("Query Root Path:");
             ctx.obj_path_button(ui, &space_view.root_path);
             ui.end_row();
 
