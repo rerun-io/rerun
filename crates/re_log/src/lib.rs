@@ -22,6 +22,7 @@ pub use log_once::{debug_once, error_once, info_once, trace_once, warn_once};
 pub fn set_default_rust_log_env() {
     let mut rust_log = std::env::var("RUST_LOG").unwrap_or_else(|_| "info".to_owned());
 
+    // TODO(emilk): remove once https://github.com/gfx-rs/wgpu/issues/3206 is fixed
     for loud_crate in ["naga", "wgpu_core", "wgpu_hal"] {
         if !rust_log.contains(&format!("{loud_crate}=")) {
             rust_log += &format!(",{loud_crate}=warn");
