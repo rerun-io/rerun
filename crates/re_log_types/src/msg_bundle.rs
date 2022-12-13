@@ -90,7 +90,7 @@ where
 ///     Rect2D { x: 0.0, y: 0.0, w: 0.0, h: 0.0, },
 ///     Rect2D { x: 1.0, y: 1.0, w: 0.0, h: 0.0, }
 /// ];
-/// let mut bundle = MsgBundle::new(MsgId::ZERO, ObjPath::root(), TimePoint::default());
+/// let mut bundle = MsgBundle::new(MsgId::ZERO, ObjPath::root(), TimePoint::default(), vec![]);
 /// bundle.try_append_component(&component).unwrap();
 /// println!("{:?}", &bundle.components[0].component);
 /// ```
@@ -106,8 +106,8 @@ where
 ///
 /// The `MsgBundle` can then also be converted into an [`crate::arrow_msg::ArrowMsg`]:
 /// ```
-/// # use re_log_types::{field_types::Rect2D, msg_bundle::MsgBundle, MsgId, ObjPath, TimePoint};
-/// # let mut bundle = MsgBundle::new(MsgId::ZERO, ObjPath::root(), TimePoint::default());
+/// # use re_log_types::{ArrowMsg, field_types::Rect2D, msg_bundle::MsgBundle, MsgId, ObjPath, TimePoint};
+/// # let mut bundle = MsgBundle::new(MsgId::ZERO, ObjPath::root(), TimePoint::default(), vec![]);
 /// # bundle.try_append_component(re_log_types::datagen::build_some_rects(2).iter()).unwrap();
 /// let msg: ArrowMsg = bundle.try_into().unwrap();
 /// ```
