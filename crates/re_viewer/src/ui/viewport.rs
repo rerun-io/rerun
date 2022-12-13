@@ -461,7 +461,7 @@ fn show_obj_tree(
     obj_tree_properties: &mut ObjectTreeProperties,
     space_view_id: SpaceViewId,
     spaces_info: &SpacesInfo,
-    reference_frame: &mut ObjPath,
+    reference_space: &mut ObjPath,
     name: &str,
     tree: &ObjectTree,
     forced_invisible: &IntMap<ObjPath, &str>,
@@ -477,7 +477,7 @@ fn show_obj_tree(
                         &tree.path,
                         space_view_id,
                         spaces_info,
-                        reference_frame,
+                        reference_space,
                         name,
                     );
                     object_visibility_button(
@@ -491,11 +491,11 @@ fn show_obj_tree(
                 let collapsing_header_id = ui.id().with(&tree.path);
 
                 // Default open so that the reference path is visible.
-                let default_open = reference_frame.len() > tree.path.len()
+                let default_open = reference_space.len() > tree.path.len()
                     && tree
                         .path
                         .iter()
-                        .zip(reference_frame.iter())
+                        .zip(reference_space.iter())
                         .all(|(a, b)| a == b);
 
                 egui::collapsing_header::CollapsingState::load_with_default_open(
@@ -510,7 +510,7 @@ fn show_obj_tree(
                         &tree.path,
                         space_view_id,
                         spaces_info,
-                        reference_frame,
+                        reference_space,
                         name,
                     );
                     object_visibility_button(
@@ -528,7 +528,7 @@ fn show_obj_tree(
                         obj_tree_properties,
                         space_view_id,
                         spaces_info,
-                        reference_frame,
+                        reference_space,
                         tree,
                         forced_invisible,
                     );
@@ -550,7 +550,7 @@ fn show_obj_tree_children(
     obj_tree_properties: &mut ObjectTreeProperties,
     space_view_id: SpaceViewId,
     spaces_info: &SpacesInfo,
-    reference_frame: &mut ObjPath,
+    reference_space: &mut ObjPath,
     tree: &ObjectTree,
     forced_invisible: &IntMap<ObjPath, &str>,
 ) {
@@ -567,7 +567,7 @@ fn show_obj_tree_children(
             obj_tree_properties,
             space_view_id,
             spaces_info,
-            reference_frame,
+            reference_space,
             &path_comp.to_string(),
             child,
             forced_invisible,
@@ -581,14 +581,14 @@ fn object_path_button(
     path: &ObjPath,
     space_view_id: SpaceViewId,
     spaces_info: &SpacesInfo,
-    reference_frame: &mut ObjPath,
+    reference_space: &mut ObjPath,
     name: &str,
 ) {
     let mut is_space_info = false;
     let label_text = if spaces_info.spaces.contains_key(path) {
         is_space_info = true;
         let label_text = egui::RichText::new(format!("📐 {}", name));
-        if path == reference_frame {
+        if path == reference_space {
             label_text.strong()
         } else {
             label_text
@@ -602,7 +602,7 @@ fn object_path_button(
         .double_clicked()
         && is_space_info
     {
-        *reference_frame = path.clone();
+        *reference_space = path.clone();
     }
 }
 
