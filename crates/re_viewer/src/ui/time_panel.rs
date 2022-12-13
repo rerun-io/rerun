@@ -57,8 +57,11 @@ impl TimePanel {
         egui_ctx: &egui::Context,
     ) {
         let mut panel_frame = ctx.re_ui.panel_frame();
-        // Since we use scroll bars we want to fill the whole vertical space downwards:
-        panel_frame.inner_margin.bottom = 0.0;
+
+        if blueprint.time_panel_expanded {
+            // Since we use scroll bars we want to fill the whole vertical space downwards:
+            panel_frame.inner_margin.bottom = 0.0;
+        }
 
         let collapsed = egui::TopBottomPanel::bottom("time_panel_collapsed")
             .resizable(false)
