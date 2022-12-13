@@ -275,6 +275,22 @@ impl ObjectTree {
             child.purge_everything_but(keep_msg_ids);
         }
     }
+
+    /// Starting from a given node, walks upwards the tree to all siblings and aunts and so forth.
+    pub fn recurse_siblings_and_aunts(&self, current: &ObjPath, mut visitor: impl FnMut(&ObjPath)) {
+        let Some(parent_path) = current.parent() else {
+            return;
+        };
+        let parent_subtree = self.subtree(&parent_path).unwrap();
+        for sibling in parent_subtree.children.values() {
+            if sibling.path == *current {
+                continue;
+            }
+            visitor(&sibling.path);
+        }
+
+        self.recurse_siblings_and_aunts(&parent_path, visitor);
+    }
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]

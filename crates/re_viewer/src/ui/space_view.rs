@@ -60,6 +60,7 @@ impl SpaceView {
         scene: &super::scene::Scene,
         category: ViewCategory,
         reference_space_path: ObjPath,
+        obj_tree: &ObjectTree,
     ) -> Self {
         let mut view_state = ViewState::default();
 
@@ -76,13 +77,28 @@ impl SpaceView {
             |c| ObjPath::from(vec![c.clone()]),
         );
 
+        // By default, make everything above the reference path invisible.
+        let mut obj_tree_properties = ObjectTreeProperties::default();
+        obj_tree.recurse_siblings_and_aunts(&reference_space_path, |sibling| {
+            if sibling.parent().unwrap().is_root() {
+                return;
+            }
+            obj_tree_properties.individual.set(
+                sibling.clone(),
+                re_data_store::ObjectProps {
+                    visible: false,
+                    ..Default::default()
+                },
+            );
+        });
+
         Self {
             name: reference_space_path.to_string(),
             root_path,
             reference_space_path,
             view_state,
             category,
-            obj_tree_properties: Default::default(),
+            obj_tree_properties,
         }
     }
 
@@ -126,39 +142,18 @@ impl SpaceView {
             }
         }
 
-        fn recurse_siblings_and_aunts(
-            current: &ObjPath,
-            root_path: &ObjPath,
-            forced_invisible: &mut IntMap<ObjPath, &str>,
-            obj_tree: &ObjectTree,
-        ) {
-            let Some(parent_path) = current.parent() else {
+        obj_tree.recurse_siblings_and_aunts(&self.reference_space_path, |sibling| {
+            if sibling.parent().unwrap().is_root() {
                 return;
-            };
-            let parent_subtree = obj_tree.subtree(&parent_path).unwrap();
-            for sibling in parent_subtree.children.values() {
-                if sibling.path == *current {
-                    continue;
-                }
-                // TODO(andreas): We should support most parent & sibling transforms by applying the inverse transform.
-                //                Breaking out of pinhole relationships is going to be a bit harder as it will need extra parameters.
-                forced_invisible.insert(
-                    sibling.path.clone(),
-                    "Can't display elements aren't children of the reference path yet.",
-                );
             }
 
-            if parent_path != *root_path {
-                recurse_siblings_and_aunts(&parent_path, root_path, forced_invisible, obj_tree);
-            }
-        }
-
-        recurse_siblings_and_aunts(
-            &self.reference_space_path,
-            &self.root_path,
-            &mut forced_invisible,
-            obj_tree,
-        );
+            // TODO(andreas): We should support most parent & sibling transforms by applying the inverse transform.
+            //                Breaking out of pinhole relationships is going to be a bit harder as it will need extra parameters.
+            forced_invisible.insert(
+                sibling.clone(),
+                "Can't display elements aren't children of the reference path yet.",
+            );
+        });
 
         forced_invisible
     }

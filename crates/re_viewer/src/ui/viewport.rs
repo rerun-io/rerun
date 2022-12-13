@@ -101,7 +101,12 @@ impl ViewportBlueprint {
                         if let Some(visible_instance_id) =
                             visible_image.instance_hash.resolve(store)
                         {
-                            let mut space_view = SpaceView::new(&scene, category, path.clone());
+                            let mut space_view = SpaceView::new(
+                                &scene,
+                                category,
+                                path.clone(),
+                                &ctx.log_db.obj_db.tree,
+                            );
                             space_view.name = visible_instance_id.obj_path.to_string();
 
                             for other_image in &scene.spatial.ui.images {
@@ -133,7 +138,8 @@ impl ViewportBlueprint {
 
                 // Create one SpaceView for the whole space:
                 {
-                    let space_view = SpaceView::new(&scene, category, path.clone());
+                    let space_view =
+                        SpaceView::new(&scene, category, path.clone(), &ctx.log_db.obj_db.tree);
                     let space_view_id = SpaceViewId::random();
                     blueprint.space_views.insert(space_view_id, space_view);
                     blueprint.visible.insert(space_view_id);
@@ -294,10 +300,11 @@ impl ViewportBlueprint {
         ctx: &mut ViewerContext<'_>,
         path: &ObjPath,
         space_info: &SpaceInfo,
+        obj_tree: &ObjectTree,
     ) {
         let scene = query_scene(ctx, space_info);
         for category in scene.categories() {
-            self.add_space_view(SpaceView::new(&scene, category, path.clone()));
+            self.add_space_view(SpaceView::new(&scene, category, path.clone(), obj_tree));
         }
     }
 
@@ -316,7 +323,7 @@ impl ViewportBlueprint {
                 // maybe one that has been added by new data:
                 for (path, space_info) in &spaces_info.spaces {
                     if !self.has_space(path) {
-                        self.add_space_view_for(ctx, path, space_info);
+                        self.add_space_view_for(ctx, path, space_info, &ctx.log_db.obj_db.tree);
                     }
                 }
             }
@@ -428,8 +435,12 @@ impl ViewportBlueprint {
                         ui.close_menu();
 
                         for category in scene.categories() {
-                            let new_space_view_id =
-                                self.add_space_view(SpaceView::new(&scene, category, path.clone()));
+                            let new_space_view_id = self.add_space_view(SpaceView::new(
+                                &scene,
+                                category,
+                                path.clone(),
+                                &ctx.log_db.obj_db.tree,
+                            ));
                             ctx.set_selection(Selection::SpaceView(new_space_view_id));
                         }
                     }
