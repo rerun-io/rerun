@@ -3,14 +3,13 @@
 //! Contains all space views.
 //!
 //! To do:
-//! * [ ] Opening up new Space Views
 //! * [ ] Controlling visibility of objects inside each Space View
 //! * [ ] Transforming objects between spaces
 
 use ahash::HashMap;
 use itertools::Itertools as _;
 
-use re_data_store::{ObjPath, ObjectTree, TimeInt};
+use re_data_store::{ObjPath, TimeInt};
 
 use crate::misc::{
     space_info::{SpaceInfo, SpacesInfo},
@@ -100,13 +99,8 @@ impl ViewportBlueprint {
                         if let Some(visible_instance_id) =
                             visible_image.instance_hash.resolve(store)
                         {
-                            let mut space_view = SpaceView::new(
-                                &scene,
-                                category,
-                                path.clone(),
-                                space_info,
-                                &ctx.log_db.obj_db.tree,
-                            );
+                            let mut space_view =
+                                SpaceView::new(ctx, &scene, category, path.clone(), space_info);
                             space_view.name = visible_instance_id.obj_path.to_string();
 
                             for other_image in &scene.spatial.ui.images {
@@ -116,7 +110,7 @@ impl ViewportBlueprint {
                                     let visible =
                                         visible_instance_id.obj_path == image_instance_id.obj_path;
 
-                                    space_view.obj_tree_properties.individual.set(
+                                    space_view.obj_properties.set(
                                         image_instance_id.obj_path,
                                         re_data_store::ObjectProps {
                                             visible,
@@ -136,21 +130,11 @@ impl ViewportBlueprint {
 
                 // Create one SpaceView for the whole space:
                 {
-                    let space_view = SpaceView::new(
-                        &scene,
-                        category,
-                        path.clone(),
-                        space_info,
-                        &ctx.log_db.obj_db.tree,
-                    );
+                    let space_view =
+                        SpaceView::new(ctx, &scene, category, path.clone(), space_info);
                     blueprint.add_space_view(space_view);
                 }
             }
-        }
-
-        // Make sure the visibility flags in the SpaceView::obj_tree_properties get updated:
-        for space_view in blueprint.space_views.values_mut() {
-            space_view.on_frame_start(&ctx.log_db.obj_db.tree);
         }
 
         blueprint
@@ -188,7 +172,7 @@ impl ViewportBlueprint {
     fn has_space(&self, space_path: &ObjPath) -> bool {
         self.space_views
             .values()
-            .any(|view| &view.reference_space_path == space_path)
+            .any(|view| &view.space_path == space_path)
     }
 
     /// Show the blueprint panel tree view.
@@ -220,7 +204,13 @@ impl ViewportBlueprint {
         let space_view = self.space_views.get_mut(space_view_id).unwrap();
         debug_assert_eq!(space_view.id, *space_view_id);
 
-        ui.horizontal(|ui| {
+        let collapsing_header_id = ui.id().with(space_view.id);
+        egui::collapsing_header::CollapsingState::load_with_default_open(
+            ui.ctx(),
+            collapsing_header_id,
+            true,
+        )
+        .show_header(ui, |ui| {
             match space_view.category {
                 ViewCategory::Spatial => match space_view.view_state.state_spatial.nav_mode {
                     super::view_spatial::SpatialNavigationMode::TwoD => ui.label("🖼"),
@@ -249,6 +239,32 @@ impl ViewportBlueprint {
                     self.visible.remove(space_view_id);
                 }
             }
+        })
+        .body(|ui| {
+            for path in &space_view.queried_objects {
+                ui.horizontal(|ui| {
+                    let name = if path.len() == space_view.space_path.len() {
+                        path.iter().last().unwrap().to_string()
+                    } else {
+                        ObjPath::from(
+                            path.iter()
+                                .skip(space_view.space_path.len())
+                                .map(|r| r.to_owned())
+                                .collect::<Vec<_>>(),
+                        )
+                        .to_string()
+                    };
+
+                    ctx.space_view_obj_path_button_to(ui, name, *space_view_id, path);
+
+                    let mut properties = space_view.obj_properties.get(path);
+                    let old_visibility = properties.visible;
+                    visibility_button(ui, true, &mut properties.visible);
+                    if old_visibility != properties.visible {
+                        space_view.obj_properties.set(path.clone(), properties);
+                    }
+                });
+            }
         });
     }
 
@@ -269,16 +285,15 @@ impl ViewportBlueprint {
         ctx: &mut ViewerContext<'_>,
         path: &ObjPath,
         space_info: &SpaceInfo,
-        obj_tree: &ObjectTree,
     ) {
         let scene = query_scene(ctx, space_info);
         for category in scene.categories() {
             self.add_space_view(SpaceView::new(
+                ctx,
                 &scene,
                 category,
                 path.clone(),
                 space_info,
-                obj_tree,
             ));
         }
     }
@@ -298,14 +313,12 @@ impl ViewportBlueprint {
                 // maybe one that has been added by new data:
                 for (path, space_info) in &spaces_info.spaces {
                     if !self.has_space(path) {
-                        self.add_space_view_for(ctx, path, space_info, &ctx.log_db.obj_db.tree);
+                        self.add_space_view_for(ctx, path, space_info);
                     }
                 }
-            }
-        }
 
-        for space_view in self.space_views.values_mut() {
-            space_view.on_frame_start(&ctx.log_db.obj_db.tree);
+                // TODO(andreas): If there is new data that could fit into an existing space view, we need to add it.
+            }
         }
     }
 
@@ -411,11 +424,11 @@ impl ViewportBlueprint {
 
                         for category in scene.categories() {
                             let new_space_view_id = self.add_space_view(SpaceView::new(
+                                ctx,
                                 &scene,
                                 category,
                                 path.clone(),
                                 space_info,
-                                &ctx.log_db.obj_db.tree,
                             ));
                             ctx.set_selection(Selection::SpaceView(new_space_view_id));
                         }
@@ -426,7 +439,7 @@ impl ViewportBlueprint {
     }
 }
 
-pub fn visibility_button(ui: &mut egui::Ui, enabled: bool, visible: &mut bool) -> egui::Response {
+fn visibility_button(ui: &mut egui::Ui, enabled: bool, visible: &mut bool) -> egui::Response {
     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
         ui.set_enabled(enabled);
         if enabled {
@@ -537,9 +550,9 @@ fn space_view_ui(
     spaces_info: &SpacesInfo,
     space_view: &mut SpaceView,
 ) {
-    let Some(reference_space_info) = spaces_info.spaces.get(&space_view.reference_space_path) else {
+    let Some(reference_space_info) = spaces_info.spaces.get(&space_view.space_path) else {
         ui.centered_and_justified(|ui| {
-            ui.label(ctx.re_ui.warning_text(format!("Unknown space {:?}", space_view.reference_space_path)));
+            ui.label(ctx.re_ui.warning_text(format!("Unknown space {:?}", space_view.space_path)));
         });
         return;
     };

@@ -291,6 +291,14 @@ impl ObjectTree {
 
         self.recurse_siblings_and_aunts(&parent_path, visitor);
     }
+
+    // Invokes visitor for all children recursively.
+    pub fn visit_children_recursively(&self, visitor: &mut impl FnMut(&ObjPath)) {
+        visitor(&self.path);
+        for child in self.children.values() {
+            child.visit_children_recursively(visitor);
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]

@@ -185,12 +185,9 @@ impl SelectionPanel {
                             ui.end_row();
                         });
 
-                    let mut props = space_view.obj_tree_properties.projected.get(&obj_path);
+                    let mut props = space_view.obj_properties.get(&obj_path);
                     obj_props_ui(ctx, ui, &mut props);
-                    space_view
-                        .obj_tree_properties
-                        .individual
-                        .set(obj_path, props);
+                    space_view.obj_properties.set(obj_path, props);
                 } else {
                     ctx.clear_selection();
                 }

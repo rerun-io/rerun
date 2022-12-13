@@ -1,5 +1,5 @@
 use nohash_hasher::{IntMap, IntSet};
-use re_data_store::{ObjPath, ObjectTree, ObjectTreeProperties, TimeInt};
+use re_data_store::{ObjPath, ObjectTree, ObjectsProperties, TimeInt};
 
 use crate::{
     misc::{
@@ -13,7 +13,6 @@ use super::{
     view_plot,
     view_spatial::{self, SpatialNavigationMode},
     view_tensor, view_text,
-    viewport::visibility_button,
 };
 
 // ----------------------------------------------------------------------------
@@ -49,24 +48,28 @@ pub(crate) struct SpaceView {
     /// Everything under this root is shown in the space view.
     pub root_path: ObjPath,
 
-    /// Everything visible in this space view, is looked at in reference to this space info.
-    pub reference_space_path: ObjPath,
+    /// Everything visible in this space view, is looked at in reference to the space info at this path.
+    pub space_path: ObjPath,
+
+    /// List of all shown objects.
+    /// TODO(andreas): This is a HashSet for the time being, but in the future it might be possible to add the same object twice.
+    pub queried_objects: IntSet<ObjPath>,
+
+    pub obj_properties: ObjectsProperties,
 
     pub view_state: ViewState,
 
     /// We only show data that match this category.
     pub category: ViewCategory,
-
-    pub obj_tree_properties: ObjectTreeProperties,
 }
 
 impl SpaceView {
     pub fn new(
+        ctx: &ViewerContext<'_>,
         scene: &super::scene::Scene,
         category: ViewCategory,
-        reference_space_path: ObjPath,
-        reference_space: &SpaceInfo,
-        obj_tree: &ObjectTree,
+        space_path: ObjPath,
+        space: &SpaceInfo,
     ) -> Self {
         let mut view_state = ViewState::default();
 
@@ -78,61 +81,39 @@ impl SpaceView {
             };
         }
 
-        let root_path = reference_space_path.iter().next().map_or_else(
-            || reference_space_path.clone(),
-            |c| ObjPath::from(vec![c.to_owned()]),
+        let root_path = space_path
+            .iter()
+            .next()
+            .map_or_else(|| space_path.clone(), |c| ObjPath::from(vec![c.to_owned()]));
+
+        let mut queried_objects = IntSet::default();
+        queried_objects.extend(
+            space
+                .children_without_transform
+                .iter()
+                .filter(|obj_path| has_visualization(ctx, obj_path))
+                .cloned(),
         );
 
-        // By default, make everything above and next to the reference path invisible.
-        let mut obj_tree_properties = ObjectTreeProperties::default();
-        fn hide_non_reference_path_children(
-            subtree: &ObjectTree,
-            tree_properties: &mut ObjectTreeProperties,
-            ref_path: &ObjPath,
-            ref_space: &SpaceInfo,
-        ) {
-            if !subtree.path.is_ancestor_or_child_of(ref_path)
-                || (subtree.path.is_child_of(ref_path)
-                    && !ref_space.children_without_transform.contains(&subtree.path))
-            {
-                tree_properties.individual.set(
-                    subtree.path.clone(),
-                    re_data_store::ObjectProps {
-                        visible: false,
-                        ..Default::default()
-                    },
-                );
-            } else {
-                for child in subtree.children.values() {
-                    hide_non_reference_path_children(child, tree_properties, ref_path, ref_space);
-                }
-            }
-        }
-        if let Some(subtree) = obj_tree.subtree(&root_path) {
-            hide_non_reference_path_children(
-                subtree,
-                &mut obj_tree_properties,
-                &reference_space_path,
-                reference_space,
-            );
-        }
+        //  let queried_objects = space.children_without_transform.clone();
 
         Self {
-            name: root_path.to_string(),
+            name: space_path.to_string(),
             id: SpaceViewId::random(),
             root_path,
-            reference_space_path,
+            space_path,
+            queried_objects,
+            obj_properties: Default::default(),
             view_state,
             category,
-            obj_tree_properties,
         }
     }
 
-    /// All object paths that are forced to be invisible and why.
+    /// All object paths that are under the root but can't be added to the space view and why.
     ///
     /// We're not storing this since the circumstances for this may change over time.
     /// (either by choosing a different reference space path or by having new paths added)
-    pub fn forcibly_invisible_elements(
+    fn unreachable_elements(
         &mut self,
         spaces_info: &SpacesInfo,
         obj_tree: &ObjectTree,
@@ -141,7 +122,7 @@ impl SpaceView {
 
         let mut forced_invisible = IntMap::default();
 
-        let Some(reference_space) = spaces_info.spaces.get(&self.reference_space_path) else {
+        let Some(reference_space) = spaces_info.spaces.get(&self.space_path) else {
             return forced_invisible; // Should never happen?
         };
 
@@ -168,7 +149,7 @@ impl SpaceView {
             }
         }
 
-        obj_tree.recurse_siblings_and_aunts(&self.reference_space_path, |sibling| {
+        obj_tree.recurse_siblings_and_aunts(&self.space_path, |sibling| {
             if sibling.parent().unwrap().is_root() {
                 return;
             }
@@ -184,10 +165,6 @@ impl SpaceView {
         forced_invisible
     }
 
-    pub fn on_frame_start(&mut self, obj_tree: &ObjectTree) {
-        self.obj_tree_properties.on_frame_start(obj_tree);
-    }
-
     pub fn selection_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         egui::Grid::new("space_view")
             .striped(re_ui::ReUi::striped())
@@ -197,12 +174,8 @@ impl SpaceView {
                 ui.text_edit_singleline(&mut self.name);
                 ui.end_row();
 
-                ui.label("Query Root Path:");
-                ctx.obj_path_button(ui, &self.root_path);
-                ui.end_row();
-
-                ui.label("Reference Space Path:");
-                ctx.obj_path_button(ui, &self.reference_space_path);
+                ui.label("Space Path:");
+                ctx.obj_path_button(ui, &self.space_path);
                 ui.end_row();
             });
 
@@ -237,7 +210,7 @@ impl SpaceView {
         let obj_tree = &ctx.log_db.obj_db.tree;
 
         // We'd like to see the reference space path by default.
-        let default_open = self.root_path != self.reference_space_path;
+        let default_open = self.root_path != self.space_path;
         let collapsing_header_id = ui.make_persistent_id(self.id);
         egui::collapsing_header::CollapsingState::load_with_default_open(
             ui.ctx(),
@@ -252,7 +225,7 @@ impl SpaceView {
                 // TODO(andreas): Recreating this here might be wasteful
                 let spaces_info = SpacesInfo::new(&ctx.log_db.obj_db, &ctx.rec_cfg.time_ctrl);
 
-                let forced_invisible = self.forcibly_invisible_elements(&spaces_info, obj_tree);
+                let forced_invisible = self.unreachable_elements(&spaces_info, obj_tree);
                 self.show_obj_tree_children(ctx, ui, &spaces_info, subtree, &forced_invisible);
             }
         });
@@ -271,7 +244,6 @@ impl SpaceView {
             return;
         }
 
-        let parent_is_visible = self.obj_tree_properties.individual.get(&tree.path).visible;
         for (path_comp, child_tree) in &tree.children {
             self.show_obj_tree(
                 ctx,
@@ -280,7 +252,6 @@ impl SpaceView {
                 &path_comp.to_string(),
                 child_tree,
                 forced_invisible,
-                parent_is_visible,
             );
         }
     }
@@ -294,7 +265,6 @@ impl SpaceView {
         name: &str,
         tree: &ObjectTree,
         forced_invisible: &IntMap<ObjPath, &str>,
-        parent_is_visible: bool,
     ) {
         let disabled_reason = forced_invisible.get(&tree.path);
         let response = ui
@@ -302,13 +272,15 @@ impl SpaceView {
                 if tree.is_leaf() {
                     ui.horizontal(|ui| {
                         self.object_path_button(ctx, ui, &tree.path, spaces_info, name);
-                        self.object_visibility_button(ui, parent_is_visible, &tree.path);
+                        if has_visualization(ctx, &tree.path) {
+                            self.object_add_button(ui, &tree.path, &ctx.log_db.obj_db.tree);
+                        }
                     });
                 } else {
                     let collapsing_header_id = ui.id().with(&tree.path);
 
                     // Default open so that the reference path is visible.
-                    let default_open = self.reference_space_path.is_child_of(&tree.path);
+                    let default_open = self.space_path.is_child_of(&tree.path);
                     egui::collapsing_header::CollapsingState::load_with_default_open(
                         ui.ctx(),
                         collapsing_header_id,
@@ -316,7 +288,9 @@ impl SpaceView {
                     )
                     .show_header(ui, |ui| {
                         self.object_path_button(ctx, ui, &tree.path, spaces_info, name);
-                        self.object_visibility_button(ui, parent_is_visible, &tree.path);
+                        if has_visualization(ctx, &tree.path) {
+                            self.object_add_button(ui, &tree.path, &ctx.log_db.obj_db.tree);
+                        }
                     })
                     .body(|ui| {
                         self.show_obj_tree_children(ctx, ui, spaces_info, tree, forced_invisible);
@@ -330,7 +304,7 @@ impl SpaceView {
         }
     }
 
-    fn object_path_button(
+    pub fn object_path_button(
         &self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
@@ -342,7 +316,7 @@ impl SpaceView {
         let label_text = if spaces_info.spaces.contains_key(path) {
             is_space_info = true;
             let label_text = egui::RichText::new(format!("📐 {}", name));
-            if *path == self.reference_space_path {
+            if *path == self.space_path {
                 label_text.strong()
             } else {
                 label_text
@@ -361,22 +335,22 @@ impl SpaceView {
         }
     }
 
-    fn object_visibility_button(
-        &mut self,
-        ui: &mut egui::Ui,
-        parent_is_visible: bool,
-        path: &ObjPath,
-    ) {
-        let are_all_ancestors_visible = parent_is_visible
-            && match path.parent() {
-                None => true, // root
-                Some(parent) => self.obj_tree_properties.projected.get(&parent).visible,
-            };
+    fn object_add_button(&mut self, ui: &mut egui::Ui, path: &ObjPath, obj_tree: &ObjectTree) {
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            // Can't add things we already added.
+            ui.set_enabled(!self.queried_objects.contains(path));
 
-        let mut props = self.obj_tree_properties.individual.get(path);
-        if visibility_button(ui, are_all_ancestors_visible, &mut props.visible).changed() {
-            self.obj_tree_properties.individual.set(path.clone(), props);
-        }
+            let response = ui.button("➕");
+            if response.clicked() {
+                // Insert the object itself and all its children as far as they haven't been added yet
+                obj_tree.subtree(path).unwrap().visit_children_recursively(
+                    &mut |path: &ObjPath| {
+                        self.queried_objects.insert(path.clone());
+                    },
+                );
+            }
+            response.on_hover_text("Add to this Space View's query")
+        });
     }
 
     pub(crate) fn scene_ui(
@@ -389,31 +363,11 @@ impl SpaceView {
     ) {
         crate::profile_function!();
 
-        // Gather all object paths under the current root that aren't force invisible.
-        fn gather_paths(
-            tree: &ObjectTree,
-            obj_paths: &mut IntSet<ObjPath>,
-            excluded_paths: &IntMap<ObjPath, &str>,
-        ) {
-            if !excluded_paths.contains_key(&tree.path) {
-                obj_paths.insert(tree.path.clone());
-                for subtree in tree.children.values() {
-                    gather_paths(subtree, obj_paths, excluded_paths);
-                }
-            }
-        }
-        let Some(root_tree) = ctx.log_db.obj_db.tree.subtree(&self.root_path) else {
-            return;
-        };
-        let excluded_paths = self.forcibly_invisible_elements(spaces_info, &ctx.log_db.obj_db.tree);
-        let mut obj_paths = IntSet::default();
-        gather_paths(root_tree, &mut obj_paths, &excluded_paths);
-
         let query = crate::ui::scene::SceneQuery {
-            obj_paths: &obj_paths,
+            obj_paths: &self.queried_objects,
             timeline: *ctx.rec_cfg.time_ctrl.timeline(),
             latest_at,
-            obj_props: &self.obj_tree_properties.projected,
+            obj_props: &self.obj_properties,
         };
 
         match self.category {
@@ -427,7 +381,7 @@ impl SpaceView {
                 self.view_state.ui_spatial(
                     ctx,
                     ui,
-                    &self.reference_space_path,
+                    &self.space_path,
                     spaces_info,
                     reference_space_info,
                     scene,
@@ -455,6 +409,13 @@ impl SpaceView {
     }
 }
 
+fn has_visualization(ctx: &ViewerContext<'_>, obj_path: &ObjPath) -> bool {
+    ctx.log_db
+        .obj_db
+        .types
+        .contains_key(obj_path.obj_type_path())
+}
+
 // ----------------------------------------------------------------------------
 
 /// Show help-text on top of space
@@ -464,12 +425,10 @@ fn show_help_button_overlay(
     ctx: &mut ViewerContext<'_>,
     help_text: &str,
 ) {
-    {
-        let mut ui = ui.child_ui(rect, egui::Layout::right_to_left(egui::Align::TOP));
-        ctx.re_ui.hovering_frame().show(&mut ui, |ui| {
-            crate::misc::help_hover_button(ui).on_hover_text(help_text);
-        });
-    }
+    let mut ui = ui.child_ui(rect, egui::Layout::right_to_left(egui::Align::TOP));
+    ctx.re_ui.hovering_frame().show(&mut ui, |ui| {
+        crate::misc::help_hover_button(ui).on_hover_text(help_text);
+    });
 }
 
 // ----------------------------------------------------------------------------
