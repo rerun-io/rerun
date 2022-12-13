@@ -158,10 +158,7 @@ mod tests {
             MsgId::ZERO,
             "world/rects".into(),
             TimePoint::from([build_frame_nr(0)]),
-            vec![
-                ComponentBundle::from(build_some_point2d(1)),
-                ComponentBundle::from(build_some_rects(1)),
-            ],
+            vec![build_some_point2d(1).into(), build_some_rects(1).into()],
         );
 
         let msg_in: ArrowMsg = bundle.try_into().unwrap();
