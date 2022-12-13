@@ -9,7 +9,7 @@ use macaw::Vec3Ext as _;
 use crate::renderer::MeshInstance;
 
 pub fn to_uniform_scale(scale: glam::Vec3) -> f32 {
-    if scale.has_equal_components(0.00001) {
+    if scale.has_equal_components(0.001) {
         scale.x
     } else {
         let uniform_scale = (scale.x * scale.y * scale.z).cbrt();

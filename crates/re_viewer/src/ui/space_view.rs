@@ -1,4 +1,4 @@
-use nohash_hasher::IntSet;
+use nohash_hasher::{IntMap, IntSet};
 use re_data_store::{ObjPath, ObjectTree, ObjectTreeProperties, TimeInt};
 
 use crate::misc::{
@@ -86,6 +86,83 @@ impl SpaceView {
         }
     }
 
+    /// All object paths that are forced to be invisible and why.
+    ///
+    /// We're not storing this since the circumstances for this may change over time.
+    /// (either by choosing a different reference space path or by having new paths added)
+    pub fn forcibly_invisible_elements(
+        &mut self,
+        spaces_info: &SpacesInfo,
+        obj_tree: &ObjectTree,
+    ) -> IntMap<ObjPath, &'static str> {
+        crate::profile_function!();
+
+        let mut forced_invisible = IntMap::default();
+
+        let Some(reference_space) = spaces_info.spaces.get(&self.reference_space_path) else {
+            return forced_invisible; // Should never happen?
+        };
+
+        // Direct children of the current reference space.
+        for (path, transform) in &reference_space.child_spaces {
+            match transform {
+                re_log_types::Transform::Unknown => {}
+
+                // TODO(andreas): This should be made possible!
+                re_log_types::Transform::Rigid3(_) => {
+                    forced_invisible.insert(
+                        path.clone(),
+                        "Can't display elements with a rigid transform relative to the reference path in the same spaceview yet",
+                    );
+                }
+
+                // TODO(andreas): This should be made possible *iff* the reference space itself doesn't define a pinhole camera (or is there a way to deal with that?)
+                re_log_types::Transform::Pinhole(_) => {
+                    forced_invisible.insert(
+                        path.clone(),
+                        "Can't display elements with a pinhole transform relative to the reference path in the same spaceview yet",
+                    );
+                }
+            }
+        }
+
+        fn recurse_siblings_and_aunts(
+            current: &ObjPath,
+            root_path: &ObjPath,
+            forced_invisible: &mut IntMap<ObjPath, &str>,
+            obj_tree: &ObjectTree,
+        ) {
+            let Some(parent_path) = current.parent() else {
+                return;
+            };
+            let parent_subtree = obj_tree.subtree(&parent_path).unwrap();
+            for sibling in parent_subtree.children.values() {
+                if sibling.path == *current {
+                    continue;
+                }
+                // TODO(andreas): We should support most parent & sibling transforms by applying the inverse transform.
+                //                Breaking out of pinhole relationships is going to be a bit harder as it will need extra parameters.
+                forced_invisible.insert(
+                    sibling.path.clone(),
+                    "Can't display elements aren't children of the reference path yet.",
+                );
+            }
+
+            if parent_path != *root_path {
+                recurse_siblings_and_aunts(&parent_path, root_path, forced_invisible, obj_tree);
+            }
+        }
+
+        recurse_siblings_and_aunts(
+            &self.reference_space_path,
+            &self.root_path,
+            &mut forced_invisible,
+            obj_tree,
+        );
+
+        forced_invisible
+    }
+
     pub fn on_frame_start(&mut self, obj_tree: &ObjectTree) {
         self.obj_tree_properties.on_frame_start(obj_tree);
     }
@@ -100,8 +177,28 @@ impl SpaceView {
     ) {
         crate::profile_function!();
 
-        let no_transform_query = crate::ui::scene::SceneQuery {
-            obj_paths: &reference_space_info.children_without_transform,
+        // Gather all object paths under the current root that aren't force invisible.
+        fn gather_paths(
+            tree: &ObjectTree,
+            obj_paths: &mut IntSet<ObjPath>,
+            excluded_paths: &IntMap<ObjPath, &str>,
+        ) {
+            if !excluded_paths.contains_key(&tree.path) {
+                obj_paths.insert(tree.path.clone());
+                for subtree in tree.children.values() {
+                    gather_paths(subtree, obj_paths, excluded_paths);
+                }
+            }
+        }
+        let Some(root_tree) = ctx.log_db.obj_db.tree.subtree(&self.root_path) else {
+            return;
+        };
+        let excluded_paths = self.forcibly_invisible_elements(spaces_info, &ctx.log_db.obj_db.tree);
+        let mut obj_paths = IntSet::default();
+        gather_paths(root_tree, &mut obj_paths, &excluded_paths);
+
+        let query = crate::ui::scene::SceneQuery {
+            obj_paths: &obj_paths,
             timeline: *ctx.rec_cfg.time_ctrl.timeline(),
             latest_at,
             obj_props: &self.obj_tree_properties.projected,
@@ -109,26 +206,6 @@ impl SpaceView {
 
         match self.category {
             ViewCategory::Spatial => {
-                // TODO(andreas): This list is gathered potentially in a bunch of places.
-                let mut obj_paths = IntSet::default();
-                fn gather_paths(tree: &ObjectTree, obj_paths: &mut IntSet<ObjPath>) {
-                    obj_paths.insert(tree.path.clone());
-                    for subtree in tree.children.values() {
-                        gather_paths(subtree, obj_paths);
-                    }
-                }
-                let Some(root_tree) = ctx.log_db.obj_db.tree.subtree(&self.root_path) else {
-                    return;
-                };
-                gather_paths(root_tree, &mut obj_paths);
-
-                let query = crate::ui::scene::SceneQuery {
-                    obj_paths: &obj_paths,
-                    timeline: *ctx.rec_cfg.time_ctrl.timeline(),
-                    latest_at,
-                    obj_props: &self.obj_tree_properties.projected,
-                };
-
                 let mut scene = view_spatial::SceneSpatial::default();
                 scene.load_objects(
                     ctx,
@@ -149,21 +226,17 @@ impl SpaceView {
                 ui.add_space(16.0); // Extra headroom required for the hovering controls at the top of the space view.
 
                 let mut scene = view_tensor::SceneTensor::default();
-                scene.load_objects(ctx, &no_transform_query);
+                scene.load_objects(ctx, &query);
                 self.view_state.ui_tensor(ui, &scene);
             }
             ViewCategory::Text => {
                 let mut scene = view_text::SceneText::default();
-                scene.load_objects(
-                    ctx,
-                    &no_transform_query,
-                    &self.view_state.state_text.filters,
-                );
+                scene.load_objects(ctx, &query, &self.view_state.state_text.filters);
                 self.view_state.ui_text(ctx, ui, &scene);
             }
             ViewCategory::Plot => {
                 let mut scene = view_plot::ScenePlot::default();
-                scene.load_objects(ctx, &no_transform_query);
+                scene.load_objects(ctx, &query);
                 self.view_state.ui_plot(ctx, ui, &scene);
             }
         };

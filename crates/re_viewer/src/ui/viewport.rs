@@ -10,6 +10,7 @@
 use ahash::HashMap;
 use itertools::Itertools as _;
 
+use nohash_hasher::IntMap;
 use re_data_store::{ObjPath, ObjectTree, ObjectTreeProperties, TimeInt};
 
 use crate::misc::{
@@ -258,6 +259,8 @@ impl ViewportBlueprint {
         })
         .body(|ui| {
             if let Some(subtree) = obj_tree.subtree(&space_view.root_path) {
+                let forced_invisible =
+                    space_view.forcibly_invisible_elements(spaces_info, obj_tree);
                 let is_space_view_visible = self.visible.contains(space_view_id);
                 show_obj_tree_children(
                     ctx,
@@ -268,6 +271,7 @@ impl ViewportBlueprint {
                     spaces_info,
                     &mut space_view.reference_space_path,
                     subtree,
+                    &forced_invisible,
                 );
             }
         });
@@ -446,51 +450,72 @@ fn show_obj_tree(
     current_reference_frame: &mut ObjPath,
     name: &str,
     tree: &ObjectTree,
+    forced_invisible: &IntMap<ObjPath, &str>,
 ) {
-    if tree.is_leaf() {
-        ui.horizontal(|ui| {
-            object_path_button(
-                ctx,
-                ui,
-                &tree.path,
-                space_view_id,
-                spaces_info,
-                current_reference_frame,
-                name,
-            );
-            object_visibility_button(ui, parent_is_visible, obj_tree_properties, &tree.path);
-        });
-    } else {
-        let collapsing_header_id = ui.id().with(&tree.path);
-        egui::collapsing_header::CollapsingState::load_with_default_open(
-            ui.ctx(),
-            collapsing_header_id,
-            false,
-        )
-        .show_header(ui, |ui| {
-            object_path_button(
-                ctx,
-                ui,
-                &tree.path,
-                space_view_id,
-                spaces_info,
-                current_reference_frame,
-                name,
-            );
-            object_visibility_button(ui, parent_is_visible, obj_tree_properties, &tree.path);
+    let disabled_reason = forced_invisible.get(&tree.path);
+    let response = ui
+        .add_enabled_ui(disabled_reason.is_none(), |ui| {
+            if tree.is_leaf() {
+                ui.horizontal(|ui| {
+                    object_path_button(
+                        ctx,
+                        ui,
+                        &tree.path,
+                        space_view_id,
+                        spaces_info,
+                        current_reference_frame,
+                        name,
+                    );
+                    object_visibility_button(
+                        ui,
+                        parent_is_visible,
+                        obj_tree_properties,
+                        &tree.path,
+                    );
+                });
+            } else {
+                let collapsing_header_id = ui.id().with(&tree.path);
+                egui::collapsing_header::CollapsingState::load_with_default_open(
+                    ui.ctx(),
+                    collapsing_header_id,
+                    false,
+                )
+                .show_header(ui, |ui| {
+                    object_path_button(
+                        ctx,
+                        ui,
+                        &tree.path,
+                        space_view_id,
+                        spaces_info,
+                        current_reference_frame,
+                        name,
+                    );
+                    object_visibility_button(
+                        ui,
+                        parent_is_visible,
+                        obj_tree_properties,
+                        &tree.path,
+                    );
+                })
+                .body(|ui| {
+                    show_obj_tree_children(
+                        ctx,
+                        ui,
+                        parent_is_visible,
+                        obj_tree_properties,
+                        space_view_id,
+                        spaces_info,
+                        current_reference_frame,
+                        tree,
+                        forced_invisible,
+                    );
+                });
+            }
         })
-        .body(|ui| {
-            show_obj_tree_children(
-                ctx,
-                ui,
-                parent_is_visible,
-                obj_tree_properties,
-                space_view_id,
-                spaces_info,
-                current_reference_frame,
-                tree,
-            );
-        });
+        .response;
+
+    if let Some(disabled_reason) = disabled_reason {
+        response.on_hover_text(*disabled_reason);
     }
 }
 
@@ -504,6 +529,7 @@ fn show_obj_tree_children(
     spaces_info: &SpacesInfo,
     current_reference_frame: &mut ObjPath,
     tree: &ObjectTree,
+    forced_invisible: &IntMap<ObjPath, &str>,
 ) {
     if tree.children.is_empty() {
         ui.weak("(nothing)");
@@ -521,6 +547,7 @@ fn show_obj_tree_children(
             current_reference_frame,
             &path_comp.to_string(),
             child,
+            forced_invisible,
         );
     }
 }
