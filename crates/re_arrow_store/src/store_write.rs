@@ -42,7 +42,7 @@ impl DataStore {
                 .map(|(timeline, time)| (timeline.name(), timeline.typ().format(*time)))
                 .collect::<Vec<_>>(),
             entity = %ent_path,
-            components = ?components.clone().into_iter().map(|bundle| bundle.name).collect::<Vec<_>>(),
+            components = ?components.iter().map(|bundle| &bundle.name).collect::<Vec<_>>(),
             "insertion started..."
         );
 
