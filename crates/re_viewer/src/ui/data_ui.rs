@@ -433,17 +433,21 @@ pub(crate) fn ui_logged_arrow_data(
     msg: &ArrowMsg,
     _preview: Preview,
 ) -> egui::Response {
-    let msg_bundle = MsgBundle::try_from(msg).unwrap();
-
     // TODO(john): more handling
-    ui.label(format!(
-        "Arrow Payload of {:?}",
-        msg_bundle
-            .components
-            .iter()
-            .map(|bundle| &bundle.name)
-            .collect_vec()
-    ))
+    match MsgBundle::try_from(msg) {
+        Ok(msg_bundle) => ui.label(format!(
+            "Arrow Payload of {:?}",
+            msg_bundle
+                .components
+                .iter()
+                .map(|bundle| &bundle.name)
+                .collect_vec()
+        )),
+        Err(err) => {
+            re_log::error_once!("Bad arrow payload: {:?}", err);
+            ui.label("Bad Arrow Payload".to_owned())
+        }
+    }
 }
 
 pub(crate) fn ui_data(
