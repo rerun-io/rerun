@@ -10,8 +10,7 @@
 use ahash::HashMap;
 use itertools::Itertools as _;
 
-use nohash_hasher::IntMap;
-use re_data_store::{ObjPath, ObjectTree, ObjectTreeProperties, TimeInt};
+use re_data_store::{ObjPath, ObjectTree, TimeInt};
 
 use crate::misc::{
     space_info::{SpaceInfo, SpacesInfo},
@@ -127,9 +126,7 @@ impl ViewportBlueprint {
                                 }
                             }
 
-                            let space_view_id = SpaceViewId::random();
-                            blueprint.space_views.insert(space_view_id, space_view);
-                            blueprint.visible.insert(space_view_id);
+                            blueprint.add_space_view(space_view);
                         }
                     }
 
@@ -146,9 +143,7 @@ impl ViewportBlueprint {
                         space_info,
                         &ctx.log_db.obj_db.tree,
                     );
-                    let space_view_id = SpaceViewId::random();
-                    blueprint.space_views.insert(space_view_id, space_view);
-                    blueprint.visible.insert(space_view_id);
+                    blueprint.add_space_view(space_view);
                 }
             }
         }
@@ -197,13 +192,7 @@ impl ViewportBlueprint {
     }
 
     /// Show the blueprint panel tree view.
-    fn tree_ui(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        spaces_info: &SpacesInfo,
-        obj_tree: &ObjectTree,
-    ) {
+    fn tree_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         crate::profile_function!();
 
         egui::ScrollArea::vertical()
@@ -217,32 +206,21 @@ impl ViewportBlueprint {
                     .collect_vec();
 
                 for space_view_id in &space_view_ids {
-                    self.space_view_tree_ui(ctx, ui, spaces_info, obj_tree, space_view_id);
+                    self.space_view_entry_ui(ctx, ui, space_view_id);
                 }
             });
     }
 
-    fn space_view_tree_ui(
+    fn space_view_entry_ui(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        spaces_info: &SpacesInfo,
-        obj_tree: &ObjectTree,
         space_view_id: &SpaceViewId,
     ) {
         let space_view = self.space_views.get_mut(space_view_id).unwrap();
+        debug_assert_eq!(space_view.id, *space_view_id);
 
-        let collapsing_header_id = ui.make_persistent_id(space_view_id);
-
-        // We'd like to see the reference space path by default.
-        let default_open = space_view.root_path != space_view.reference_space_path;
-
-        egui::collapsing_header::CollapsingState::load_with_default_open(
-            ui.ctx(),
-            collapsing_header_id,
-            default_open,
-        )
-        .show_header(ui, |ui| {
+        ui.horizontal(|ui| {
             match space_view.category {
                 ViewCategory::Spatial => match space_view.view_state.state_spatial.nav_mode {
                     super::view_spatial::SpatialNavigationMode::TwoD => ui.label("🖼"),
@@ -271,24 +249,6 @@ impl ViewportBlueprint {
                     self.visible.remove(space_view_id);
                 }
             }
-        })
-        .body(|ui| {
-            if let Some(subtree) = obj_tree.subtree(&space_view.root_path) {
-                let forced_invisible =
-                    space_view.forcibly_invisible_elements(spaces_info, obj_tree);
-                let is_space_view_visible = self.visible.contains(space_view_id);
-                show_obj_tree_children(
-                    ctx,
-                    ui,
-                    is_space_view_visible,
-                    &mut space_view.obj_tree_properties,
-                    *space_view_id,
-                    spaces_info,
-                    &mut space_view.reference_space_path,
-                    subtree,
-                    &forced_invisible,
-                );
-            }
         });
     }
 
@@ -297,11 +257,11 @@ impl ViewportBlueprint {
     }
 
     pub(crate) fn add_space_view(&mut self, space_view: SpaceView) -> SpaceViewId {
-        let space_view_id = SpaceViewId::random();
-        self.space_views.insert(space_view_id, space_view);
-        self.visible.insert(space_view_id);
+        let id = space_view.id;
+        self.space_views.insert(id, space_view);
+        self.visible.insert(id);
         self.trees.clear(); // Reset them
-        space_view_id
+        id
     }
 
     fn add_space_view_for(
@@ -388,7 +348,7 @@ impl ViewportBlueprint {
 
             let frame = ctx.re_ui.hovering_frame();
             hovering_panel(ui, frame, response.rect, |ui| {
-                space_view_options_link(ctx, selection_panel_expanded, space_view_id, ui, "⛭");
+                space_view_options_link(ctx, selection_panel_expanded, space_view.id, ui, "⛭");
             });
         } else if let Some(space_view_id) = self.maximized {
             let space_view = self
@@ -409,7 +369,7 @@ impl ViewportBlueprint {
                 {
                     self.maximized = None;
                 }
-                space_view_options_link(ctx, selection_panel_expanded, space_view_id, ui, "⛭");
+                space_view_options_link(ctx, selection_panel_expanded, space_view.id, ui, "⛭");
             });
         } else {
             let mut dock_style = egui_dock::Style::from_egui(ui.style().as_ref());
@@ -466,180 +426,7 @@ impl ViewportBlueprint {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
-fn show_obj_tree(
-    ctx: &mut ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    parent_is_visible: bool,
-    obj_tree_properties: &mut ObjectTreeProperties,
-    space_view_id: SpaceViewId,
-    spaces_info: &SpacesInfo,
-    reference_space: &mut ObjPath,
-    name: &str,
-    tree: &ObjectTree,
-    forced_invisible: &IntMap<ObjPath, &str>,
-) {
-    let disabled_reason = forced_invisible.get(&tree.path);
-    let response = ui
-        .add_enabled_ui(disabled_reason.is_none(), |ui| {
-            if tree.is_leaf() {
-                ui.horizontal(|ui| {
-                    object_path_button(
-                        ctx,
-                        ui,
-                        &tree.path,
-                        space_view_id,
-                        spaces_info,
-                        reference_space,
-                        name,
-                    );
-                    object_visibility_button(
-                        ui,
-                        parent_is_visible,
-                        obj_tree_properties,
-                        &tree.path,
-                    );
-                });
-            } else {
-                let collapsing_header_id = ui.id().with(&tree.path);
-
-                // Default open so that the reference path is visible.
-                let default_open = reference_space.len() > tree.path.len()
-                    && tree
-                        .path
-                        .iter()
-                        .zip(reference_space.iter())
-                        .all(|(a, b)| a == b);
-
-                egui::collapsing_header::CollapsingState::load_with_default_open(
-                    ui.ctx(),
-                    collapsing_header_id,
-                    default_open,
-                )
-                .show_header(ui, |ui| {
-                    object_path_button(
-                        ctx,
-                        ui,
-                        &tree.path,
-                        space_view_id,
-                        spaces_info,
-                        reference_space,
-                        name,
-                    );
-                    object_visibility_button(
-                        ui,
-                        parent_is_visible,
-                        obj_tree_properties,
-                        &tree.path,
-                    );
-                })
-                .body(|ui| {
-                    show_obj_tree_children(
-                        ctx,
-                        ui,
-                        parent_is_visible,
-                        obj_tree_properties,
-                        space_view_id,
-                        spaces_info,
-                        reference_space,
-                        tree,
-                        forced_invisible,
-                    );
-                });
-            }
-        })
-        .response;
-
-    if let Some(disabled_reason) = disabled_reason {
-        response.on_hover_text(*disabled_reason);
-    }
-}
-
-#[allow(clippy::too_many_arguments)]
-fn show_obj_tree_children(
-    ctx: &mut ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    parent_is_visible: bool,
-    obj_tree_properties: &mut ObjectTreeProperties,
-    space_view_id: SpaceViewId,
-    spaces_info: &SpacesInfo,
-    reference_space: &mut ObjPath,
-    tree: &ObjectTree,
-    forced_invisible: &IntMap<ObjPath, &str>,
-) {
-    if tree.children.is_empty() {
-        ui.weak("(nothing)");
-        return;
-    }
-
-    for (path_comp, child) in &tree.children {
-        show_obj_tree(
-            ctx,
-            ui,
-            parent_is_visible,
-            obj_tree_properties,
-            space_view_id,
-            spaces_info,
-            reference_space,
-            &path_comp.to_string(),
-            child,
-            forced_invisible,
-        );
-    }
-}
-
-fn object_path_button(
-    ctx: &mut ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    path: &ObjPath,
-    space_view_id: SpaceViewId,
-    spaces_info: &SpacesInfo,
-    reference_space: &mut ObjPath,
-    name: &str,
-) {
-    let mut is_space_info = false;
-    let label_text = if spaces_info.spaces.contains_key(path) {
-        is_space_info = true;
-        let label_text = egui::RichText::new(format!("📐 {}", name));
-        if path == reference_space {
-            label_text.strong()
-        } else {
-            label_text
-        }
-    } else {
-        egui::RichText::new(name)
-    };
-
-    if ctx
-        .space_view_obj_path_button_to(ui, label_text, space_view_id, path)
-        .double_clicked()
-        && is_space_info
-    {
-        // TODO(andreas): Can't yet change the reference space.
-        //*reference_space = path.clone();
-    }
-}
-
-fn object_visibility_button(
-    ui: &mut egui::Ui,
-    parent_is_visible: bool,
-    obj_tree_properties: &mut ObjectTreeProperties,
-    path: &ObjPath,
-) {
-    let are_all_ancestors_visible = parent_is_visible
-        && match path.parent() {
-            None => true, // root
-            Some(parent) => obj_tree_properties.projected.get(&parent).visible,
-        };
-
-    let mut props = obj_tree_properties.individual.get(path);
-
-    if visibility_button(ui, are_all_ancestors_visible, &mut props.visible).changed() {
-        obj_tree_properties.individual.set(path.clone(), props);
-    }
-}
-
-fn visibility_button(ui: &mut egui::Ui, enabled: bool, visible: &mut bool) -> egui::Response {
+pub fn visibility_button(ui: &mut egui::Ui, enabled: bool, visible: &mut bool) -> egui::Response {
     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
         ui.set_enabled(enabled);
         if enabled {
@@ -858,8 +645,7 @@ impl Blueprint {
                 .size(egui_extras::Size::exact(20.0))
                 .vertical(|mut strip| {
                     strip.cell(|ui| {
-                        self.viewport
-                            .tree_ui(ctx, ui, spaces_info, &ctx.log_db.obj_db.tree);
+                        self.viewport.tree_ui(ctx, ui);
                     });
                     strip.cell(|ui| {
                         self.viewport.create_new_blueprint_ui(ctx, ui, spaces_info);

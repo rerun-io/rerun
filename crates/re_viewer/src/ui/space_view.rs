@@ -1,15 +1,19 @@
 use nohash_hasher::{IntMap, IntSet};
 use re_data_store::{ObjPath, ObjectTree, ObjectTreeProperties, TimeInt};
 
-use crate::misc::{
-    space_info::{SpaceInfo, SpacesInfo},
-    ViewerContext,
+use crate::{
+    misc::{
+        space_info::{SpaceInfo, SpacesInfo},
+        ViewerContext,
+    },
+    ui::SpaceViewId,
 };
 
 use super::{
     view_plot,
     view_spatial::{self, SpatialNavigationMode},
     view_tensor, view_text,
+    viewport::visibility_button,
 };
 
 // ----------------------------------------------------------------------------
@@ -39,6 +43,7 @@ pub enum ViewCategory {
 /// A view of a space.
 #[derive(Clone, serde::Deserialize, serde::Serialize)]
 pub(crate) struct SpaceView {
+    pub id: SpaceViewId,
     pub name: String,
 
     /// Everything under this root is shown in the space view.
@@ -114,6 +119,7 @@ impl SpaceView {
 
         Self {
             name: root_path.to_string(),
+            id: SpaceViewId::random(),
             root_path,
             reference_space_path,
             view_state,
@@ -180,6 +186,197 @@ impl SpaceView {
 
     pub fn on_frame_start(&mut self, obj_tree: &ObjectTree) {
         self.obj_tree_properties.on_frame_start(obj_tree);
+    }
+
+    pub fn selection_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
+        egui::Grid::new("space_view")
+            .striped(re_ui::ReUi::striped())
+            .num_columns(2)
+            .show(ui, |ui| {
+                ui.label("Name:");
+                ui.text_edit_singleline(&mut self.name);
+                ui.end_row();
+
+                ui.label("Query Root Path:");
+                ctx.obj_path_button(ui, &self.root_path);
+                ui.end_row();
+
+                ui.label("Reference Space Path:");
+                ctx.obj_path_button(ui, &self.reference_space_path);
+                ui.end_row();
+            });
+
+        ui.separator();
+
+        ui.strong("Query Tree");
+        self.query_tree_ui(ctx, ui);
+
+        ui.separator();
+
+        match self.category {
+            ViewCategory::Spatial => {
+                ui.strong("Spatial view");
+                self.view_state.state_spatial.show_settings_ui(ctx, ui);
+            }
+            ViewCategory::Tensor => {
+                if let Some(state_tensor) = &mut self.view_state.state_tensor {
+                    ui.strong("Tensor view");
+                    state_tensor.ui(ui);
+                }
+            }
+            ViewCategory::Text => {
+                ui.strong("Text view");
+                ui.add_space(4.0);
+                view_text::text_filters_ui(ui, &mut self.view_state.state_text);
+            }
+            ViewCategory::Plot => {}
+        }
+    }
+
+    fn query_tree_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
+        let obj_tree = &ctx.log_db.obj_db.tree;
+
+        // We'd like to see the reference space path by default.
+        let default_open = self.root_path != self.reference_space_path;
+        let collapsing_header_id = ui.make_persistent_id(self.id);
+        egui::collapsing_header::CollapsingState::load_with_default_open(
+            ui.ctx(),
+            collapsing_header_id,
+            default_open,
+        )
+        .show_header(ui, |ui| {
+            ui.label(self.root_path.to_string());
+        })
+        .body(|ui| {
+            if let Some(subtree) = obj_tree.subtree(&self.root_path) {
+                // TODO(andreas): Recreating this here might be wasteful
+                let spaces_info = SpacesInfo::new(&ctx.log_db.obj_db, &ctx.rec_cfg.time_ctrl);
+
+                let forced_invisible = self.forcibly_invisible_elements(&spaces_info, obj_tree);
+                self.show_obj_tree_children(ctx, ui, &spaces_info, subtree, &forced_invisible);
+            }
+        });
+    }
+
+    fn show_obj_tree_children(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        spaces_info: &SpacesInfo,
+        tree: &ObjectTree,
+        forced_invisible: &IntMap<ObjPath, &str>,
+    ) {
+        if tree.children.is_empty() {
+            ui.weak("(nothing)");
+            return;
+        }
+
+        let parent_is_visible = self.obj_tree_properties.individual.get(&tree.path).visible;
+        for (path_comp, child_tree) in &tree.children {
+            self.show_obj_tree(
+                ctx,
+                ui,
+                spaces_info,
+                &path_comp.to_string(),
+                child_tree,
+                forced_invisible,
+                parent_is_visible,
+            );
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn show_obj_tree(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        spaces_info: &SpacesInfo,
+        name: &str,
+        tree: &ObjectTree,
+        forced_invisible: &IntMap<ObjPath, &str>,
+        parent_is_visible: bool,
+    ) {
+        let disabled_reason = forced_invisible.get(&tree.path);
+        let response = ui
+            .add_enabled_ui(disabled_reason.is_none(), |ui| {
+                if tree.is_leaf() {
+                    ui.horizontal(|ui| {
+                        self.object_path_button(ctx, ui, &tree.path, spaces_info, name);
+                        self.object_visibility_button(ui, parent_is_visible, &tree.path);
+                    });
+                } else {
+                    let collapsing_header_id = ui.id().with(&tree.path);
+
+                    // Default open so that the reference path is visible.
+                    let default_open = self.reference_space_path.is_child_of(&tree.path);
+                    egui::collapsing_header::CollapsingState::load_with_default_open(
+                        ui.ctx(),
+                        collapsing_header_id,
+                        default_open,
+                    )
+                    .show_header(ui, |ui| {
+                        self.object_path_button(ctx, ui, &tree.path, spaces_info, name);
+                        self.object_visibility_button(ui, parent_is_visible, &tree.path);
+                    })
+                    .body(|ui| {
+                        self.show_obj_tree_children(ctx, ui, spaces_info, tree, forced_invisible);
+                    });
+                }
+            })
+            .response;
+
+        if let Some(disabled_reason) = disabled_reason {
+            response.on_hover_text(*disabled_reason);
+        }
+    }
+
+    fn object_path_button(
+        &self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        path: &ObjPath,
+        spaces_info: &SpacesInfo,
+        name: &str,
+    ) {
+        let mut is_space_info = false;
+        let label_text = if spaces_info.spaces.contains_key(path) {
+            is_space_info = true;
+            let label_text = egui::RichText::new(format!("📐 {}", name));
+            if *path == self.reference_space_path {
+                label_text.strong()
+            } else {
+                label_text
+            }
+        } else {
+            egui::RichText::new(name)
+        };
+
+        if ctx
+            .space_view_obj_path_button_to(ui, label_text, self.id, path)
+            .double_clicked()
+            && is_space_info
+        {
+            // TODO(andreas): Can't yet change the reference space.
+            //*reference_space = path.clone();
+        }
+    }
+
+    fn object_visibility_button(
+        &mut self,
+        ui: &mut egui::Ui,
+        parent_is_visible: bool,
+        path: &ObjPath,
+    ) {
+        let are_all_ancestors_visible = parent_is_visible
+            && match path.parent() {
+                None => true, // root
+                Some(parent) => self.obj_tree_properties.projected.get(&parent).visible,
+            };
+
+        let mut props = self.obj_tree_properties.individual.get(path);
+        if visibility_button(ui, are_all_ancestors_visible, &mut props.visible).changed() {
+            self.obj_tree_properties.individual.set(path.clone(), props);
+        }
     }
 
     pub(crate) fn scene_ui(
