@@ -66,7 +66,12 @@ impl ViewTensorState {
     }
 }
 
-pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut ViewTensorState, tensor: &Tensor) {
+pub(crate) fn view_tensor(
+    ctx: &mut crate::misc::ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    state: &mut ViewTensorState,
+    tensor: &Tensor,
+) {
     crate::profile_function!();
 
     state.tensor = tensor.clone();
@@ -74,6 +79,9 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut ViewTensorState, tensor
     selectors_ui(ui, state, tensor);
 
     let tensor_shape = &tensor.shape;
+
+    let tensor_stats = ctx.cache.tensor_stats(tensor);
+    let range = tensor_stats.range;
 
     match tensor.dtype {
         TensorDataType::U8 => match re_tensor_ops::as_ndarray::<u8>(tensor) {
@@ -94,7 +102,7 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut ViewTensorState, tensor
 
         TensorDataType::U16 => match re_tensor_ops::as_ndarray::<u16>(tensor) {
             Ok(tensor) => {
-                let (tensor_min, tensor_max) = tensor_range_u16(&tensor);
+                let (tensor_min, tensor_max) = range.unwrap_or((0.0, u16::MAX as f64)); // the cache should provide the range
                 ui.monospace(format!("Data range: [{tensor_min} - {tensor_max}]"));
 
                 let color_from_value = |value: u16| {
@@ -115,13 +123,13 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut ViewTensorState, tensor
 
         TensorDataType::F32 => match re_tensor_ops::as_ndarray::<f32>(tensor) {
             Ok(tensor) => {
-                let (tensor_min, tensor_max) = tensor_range_f32(&tensor);
+                let (tensor_min, tensor_max) = range.unwrap_or((0.0, 1.0)); // the cache should provide the range
                 ui.monospace(format!("Data range: [{tensor_min} - {tensor_max}]"));
 
                 let color_from_value = |value: f32| {
                     state.color_mapping.color_from_normalized(egui::remap(
                         value,
-                        tensor_min..=tensor_max,
+                        tensor_min as f32..=tensor_max as f32,
                         0.0..=1.0,
                     ))
                 };
@@ -523,18 +531,4 @@ fn selectors_ui(ui: &mut egui::Ui, state: &mut ViewTensorState, tensor: &Tensor)
             }
         }
     });
-}
-
-fn tensor_range_f32(tensor: &ndarray::ArrayViewD<'_, f32>) -> (f32, f32) {
-    crate::profile_function!();
-    tensor.fold((f32::INFINITY, f32::NEG_INFINITY), |cur, &value| {
-        (cur.0.min(value), cur.1.max(value))
-    })
-}
-
-fn tensor_range_u16(tensor: &ndarray::ArrayViewD<'_, u16>) -> (u16, u16) {
-    crate::profile_function!();
-    tensor.fold((u16::MAX, u16::MIN), |cur, &value| {
-        (cur.0.min(value), cur.1.max(value))
-    })
 }

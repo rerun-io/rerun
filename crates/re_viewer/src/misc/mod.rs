@@ -1,3 +1,4 @@
+pub mod caches;
 pub(crate) mod color_map;
 pub(crate) mod mesh_loader;
 pub(crate) mod space_info;
@@ -8,6 +9,8 @@ pub(crate) mod time_control_ui;
 mod viewer_context;
 
 use tensor_image_cache::ImageCache;
+
+pub use caches::Caches;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) use clipboard::Clipboard;
