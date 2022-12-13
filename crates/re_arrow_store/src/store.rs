@@ -14,6 +14,10 @@ use re_log_types::{
     Timeline,
 };
 
+/// An opaque type that directly refers to a row of data within the datastore.
+///
+/// See [`DataStore::query`] & [`DataStore::get`].
+// TODO: turn this into an opaque type I think
 pub type RowIndex = u64;
 
 // --- Data store ---
