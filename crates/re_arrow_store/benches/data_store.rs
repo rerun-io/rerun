@@ -62,10 +62,7 @@ fn build_messages(n: usize) -> Vec<MsgBundle> {
                 MsgId::ZERO,
                 EntityPath::from("rects"),
                 TimePoint::from([build_frame_nr(frame_idx)]),
-                vec![
-                    build_some_point2d(n).as_slice().try_into().unwrap(),
-                    build_some_rects(n).as_slice().try_into().unwrap(),
-                ],
+                vec![build_some_point2d(n).into(), build_some_rects(n).into()],
             )
         })
         .collect()

@@ -159,8 +159,8 @@ mod tests {
             "world/rects".into(),
             TimePoint::from([build_frame_nr(0)]),
             vec![
-                ComponentBundle::try_from(build_some_point2d(1).as_slice()).unwrap(),
-                ComponentBundle::try_from(build_some_rects(1).as_slice()).unwrap(),
+                ComponentBundle::from(build_some_point2d(1)),
+                ComponentBundle::from(build_some_rects(1)),
             ],
         );
 
