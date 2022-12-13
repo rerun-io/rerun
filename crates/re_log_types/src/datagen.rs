@@ -1,13 +1,14 @@
 //! Generate random data for tests and benchmarks.
 
-use crate::msg_bundle::{wrap_in_listarray, ComponentBundle};
-use crate::{Time, TimeInt, TimeType, Timeline};
+use crate::{
+    field_types,
+    msg_bundle::{wrap_in_listarray, ComponentBundle},
+    Time, TimeInt, TimeType, Timeline,
+};
 use arrow2::{
     array::{Float32Array, PrimitiveArray, StructArray},
     datatypes::{DataType, Field},
 };
-
-use crate::field_types::{self};
 
 /// Create `len` dummy rectangles
 pub fn build_some_rects(len: usize) -> Vec<field_types::Rect2D> {
@@ -62,6 +63,7 @@ pub fn build_frame_nr(frame_nr: i64) -> (Timeline, TimeInt) {
     )
 }
 
+//TODO(john) convert this to a Component struct
 pub fn build_instances(nb_instances: usize) -> ComponentBundle {
     use rand::Rng as _;
     let mut rng = rand::thread_rng();
@@ -76,59 +78,6 @@ pub fn build_instances(nb_instances: usize) -> ComponentBundle {
 
     ComponentBundle {
         name: "instances".to_owned(),
-        component: data.boxed(),
-    }
-}
-
-pub fn build_rects(nb_instances: usize) -> ComponentBundle {
-    use rand::Rng as _;
-    let mut rng = rand::thread_rng();
-
-    let data = {
-        let data: Box<[_]> = (0..nb_instances).into_iter().map(|_| rng.gen()).collect();
-        let x = Float32Array::from_slice(&data).boxed();
-        let y = Float32Array::from_slice(&data).boxed();
-        let w = Float32Array::from_slice(&data).boxed();
-        let h = Float32Array::from_slice(&data).boxed();
-        let fields = vec![
-            Field::new("x", DataType::Float32, false),
-            Field::new("y", DataType::Float32, false),
-            Field::new("w", DataType::Float32, false),
-            Field::new("h", DataType::Float32, false),
-        ];
-        StructArray::new(DataType::Struct(fields), vec![x, y, w, h], None)
-    };
-    ComponentBundle {
-        name: "rects".to_owned(),
-        component: wrap_in_listarray(data.boxed()).boxed(),
-    }
-}
-
-pub fn build_positions(nb_instances: usize) -> ComponentBundle {
-    use rand::Rng as _;
-    let mut rng = rand::thread_rng();
-
-    let data = {
-        let xs: Box<[_]> = (0..nb_instances)
-            .into_iter()
-            .map(|_| rng.gen_range(0.0..10.0))
-            .collect();
-        let ys: Box<[_]> = (0..nb_instances)
-            .into_iter()
-            .map(|_| rng.gen_range(0.0..10.0))
-            .collect();
-        let x = Float32Array::from_slice(&xs).boxed();
-        let y = Float32Array::from_slice(&ys).boxed();
-        let fields = vec![
-            Field::new("x", DataType::Float32, false),
-            Field::new("y", DataType::Float32, false),
-        ];
-        StructArray::new(DataType::Struct(fields), vec![x, y], None)
-    };
-    let data = wrap_in_listarray(data.boxed());
-
-    ComponentBundle {
-        name: "positions".to_owned(),
         component: data.boxed(),
     }
 }

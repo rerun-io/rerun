@@ -251,20 +251,6 @@ impl TryFrom<MsgBundle> for ArrowMsg {
         schema.metadata.extend(components_schema.metadata);
         cols.push(components_data.boxed());
 
-        #[cfg(feature = "arrow2/io_print")]
-        re_log::debug!(
-            "ArrowMsg chunk from MessageBundle:\n{}",
-            arrow2::io::print::write(
-                &[chunk.clone()],
-                schema
-                    .fields
-                    .iter()
-                    .map(|f| &f.name)
-                    .collect::<Vec<_>>()
-                    .as_slice(),
-            )
-        );
-
         Ok(ArrowMsg {
             msg_id: bundle.msg_id,
             schema,
@@ -273,19 +259,23 @@ impl TryFrom<MsgBundle> for ArrowMsg {
     }
 }
 
-/// Extract a [`TimePoint`] from the "timelines" column
-fn extract_timelines(schema: &Schema, msg: &Chunk<Box<dyn Array>>) -> anyhow::Result<TimePoint> {
+/// Extract a [`TimePoint`] from the "timelines" column. This function finds the "timelines" field
+/// in `chunk` and deserializes the values into a `TimePoint` using the
+/// [`arrow2_convert::deserialize::ArrowDeserialize`] trait.
+fn extract_timelines(schema: &Schema, chunk: &Chunk<Box<dyn Array>>) -> anyhow::Result<TimePoint> {
     use arrow2_convert::deserialize::arrow_array_deserialize_iterator;
 
     let timelines = schema
         .fields
         .iter()
         .position(|f| f.name == COL_TIMELINES)
-        .and_then(|idx| msg.columns().get(idx))
+        .and_then(|idx| chunk.columns().get(idx))
         .ok_or_else(|| anyhow!("expect top-level `timelines` field`"))?;
 
     let mut timepoints_iter = arrow_array_deserialize_iterator::<TimePoint>(timelines.as_ref())?;
 
+    // We take only the first result of the iterator because at this time we only support *single*
+    // row messages. At some point in the future we can support batching with this.
     let timepoint = timepoints_iter
         .next()
         .ok_or_else(|| anyhow!("No rows in timelines."))?;
@@ -298,7 +288,8 @@ fn extract_timelines(schema: &Schema, msg: &Chunk<Box<dyn Array>>) -> anyhow::Re
     Ok(timepoint)
 }
 
-/// Extract a vector of `ComponentBundle` from the message
+/// Extract a vector of `ComponentBundle` from the message. This is necessary since the
+/// "components" schema is flexible.
 fn extract_components(
     schema: &Schema,
     msg: &Chunk<Box<dyn Array>>,
