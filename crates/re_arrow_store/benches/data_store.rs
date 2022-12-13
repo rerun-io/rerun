@@ -80,7 +80,7 @@ fn query_messages(store: &mut DataStore) -> DataFrame {
     let ent_path = EntityPath::from("rects");
 
     let df = store
-        .query(&timeline_frame_nr, &time_query, &ent_path, &["rects"])
+        .query(&timeline_frame_nr, &time_query, &ent_path, &["rect2d"])
         .unwrap();
     assert_eq!(NUM_RECTS as usize, df.select_at_idx(0).unwrap().len());
 
