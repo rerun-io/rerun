@@ -3,10 +3,11 @@
 import atexit
 import logging
 import os
+import traceback
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Final, Iterable, Optional, Sequence, Tuple, Union
+from typing import Callable, Final, Iterable, Optional, Sequence, Tuple, TypeVar, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -20,6 +21,22 @@ if EXP_ARROW:
     import pyarrow as pa
 
     from rerun import components
+
+RT = TypeVar("RT")  # return type
+
+# Decorator that catches exceptions, logs them, then swallows them.
+# This is almost always preferable than letting an exception kill the users app.
+# Add this to ALL user-facing functions!
+# TODO(emilk): add "strict" mode where we do pass on the exceptions
+def log_exceptions(func: Callable[..., RT]) -> Callable[..., Optional[RT]]:
+    def wrapper_log_exceptions() -> Optional[RT]:
+        try:
+            return func()
+        except Exception as e:
+            logging.error(f"Rerun error: {traceback.format_exc()}")
+            return None
+
+    return wrapper_log_exceptions
 
 
 def rerun_shutdown() -> None:
@@ -58,6 +75,7 @@ class ImageFormat(Enum):
     JPEG = "jpeg"
 
 
+@log_exceptions
 def get_recording_id() -> str:
     """
     Get the recording ID that this process is logging to, as a UUIDv4.
@@ -74,6 +92,7 @@ def get_recording_id() -> str:
     return str(rerun_bindings.get_recording_id())
 
 
+@log_exceptions
 def set_recording_id(value: str) -> None:
     """
     Set the recording ID that this process is logging to, as a UUIDv4.
@@ -90,6 +109,7 @@ def set_recording_id(value: str) -> None:
     rerun_bindings.set_recording_id(value)
 
 
+@log_exceptions
 def init(application_id: str) -> None:
     """
     Initialize the Rerun SDK with a user-chosen application id (name).
@@ -104,11 +124,13 @@ def init(application_id: str) -> None:
     rerun_bindings.init(application_id)
 
 
+@log_exceptions
 def connect(addr: Optional[str] = None) -> None:
     """Connect to a remote Rerun Viewer on the given ip:port."""
     rerun_bindings.connect(addr)
 
 
+@log_exceptions
 def serve() -> None:
     """
     Serve a Rerun Web Viewer.
@@ -118,11 +140,13 @@ def serve() -> None:
     rerun_bindings.serve()
 
 
+@log_exceptions
 def disconnect() -> None:
     """Disconnect from the remote rerun server (if any)."""
     rerun_bindings.disconnect()
 
 
+@log_exceptions
 def show() -> None:
     """
     Show previously logged data.
@@ -136,6 +160,7 @@ def show() -> None:
     rerun_bindings.show()
 
 
+@log_exceptions
 def save(path: str) -> None:
     """
     Save previously logged data to a file.
@@ -147,6 +172,7 @@ def save(path: str) -> None:
     rerun_bindings.save(path)
 
 
+@log_exceptions
 def set_time_sequence(timeline: str, sequence: Optional[int]) -> None:
     """
     Set the current time for this thread.
@@ -163,6 +189,7 @@ def set_time_sequence(timeline: str, sequence: Optional[int]) -> None:
     rerun_bindings.set_time_sequence(timeline, sequence)
 
 
+@log_exceptions
 def set_time_seconds(timeline: str, seconds: Optional[float]) -> None:
     """
     Set the current time for this thread.
@@ -185,6 +212,7 @@ def set_time_seconds(timeline: str, seconds: Optional[float]) -> None:
     rerun_bindings.set_time_seconds(timeline, seconds)
 
 
+@log_exceptions
 def set_time_nanos(timeline: str, nanos: Optional[int]) -> None:
     """
     Set the current time for this thread.
@@ -259,21 +287,26 @@ class LoggingHandler(logging.Handler):
         logging.DEBUG: LogLevel.DEBUG,
     }
 
-    def __init__(self, root_obj_path: Optional[str] = None):
-        logging.Handler.__init__(self)
-        self.root_obj_path = root_obj_path
 
-    def emit(self, record: logging.LogRecord) -> None:
-        """Emits a record to the Rerun SDK."""
-        objpath = record.name.replace(".", "/")
-        if self.root_obj_path is not None:
-            objpath = f"{self.root_obj_path}/{objpath}"
-        level = self.LVL2NAME.get(record.levelno)
-        if level is None:  # user-defined level
-            level = record.levelname
-        log_text_entry(objpath, record.getMessage(), level=level)
+@log_exceptions
+def __init__(self, root_obj_path: Optional[str] = None):
+    logging.Handler.__init__(self)
+    self.root_obj_path = root_obj_path
 
 
+@log_exceptions
+def emit(self, record: logging.LogRecord) -> None:
+    """Emits a record to the Rerun SDK."""
+    objpath = record.name.replace(".", "/")
+    if self.root_obj_path is not None:
+        objpath = f"{self.root_obj_path}/{objpath}"
+    level = self.LVL2NAME.get(record.levelno)
+    if level is None:  # user-defined level
+        level = record.levelname
+    log_text_entry(objpath, record.getMessage(), level=level)
+
+
+@log_exceptions
 def log_text_entry(
     obj_path: str,
     text: str,
@@ -290,6 +323,7 @@ def log_text_entry(
     rerun_bindings.log_text_entry(obj_path, text, level, color, timeless)
 
 
+@log_exceptions
 def log_scalar(
     obj_path: str,
     scalar: float,
@@ -404,6 +438,7 @@ class RectFormat(Enum):
     XCYCW2H2 = "XCYCW2H2"
 
 
+@log_exceptions
 def log_rect(
     obj_path: str,
     rect: Optional[npt.ArrayLike],
@@ -428,6 +463,7 @@ def log_rect(
     rerun_bindings.log_rect(obj_path, rect_format.value, _to_sequence(rect), color, label, class_id, timeless)
 
 
+@log_exceptions
 def log_rects(
     obj_path: str,
     rects: Optional[npt.ArrayLike],
@@ -514,6 +550,7 @@ def log_rects(
         rerun_bindings.log_arrow_msg(obj_path, arr)
 
 
+@log_exceptions
 def log_point(
     obj_path: str,
     position: Optional[npt.NDArray[np.float32]],
@@ -556,6 +593,7 @@ def log_point(
     rerun_bindings.log_point(obj_path, position, color, label, class_id, keypoint_id, timeless)
 
 
+@log_exceptions
 def log_points(
     obj_path: str,
     positions: Optional[npt.NDArray[np.float32]],
@@ -648,11 +686,13 @@ def _normalize_ids(class_ids: OptionalClassIds = None) -> npt.NDArray[np.uint16]
 # -----------------------------------------------------------------------------
 
 
+@log_exceptions
 def log_unknown_transform(obj_path: str, timeless: bool = False) -> None:
     """Log that this object is NOT in the same space as the parent, but you do not (yet) know how they relate."""
     rerun_bindings.log_unknown_transform(obj_path, timeless=timeless)
 
 
+@log_exceptions
 def log_rigid3(
     obj_path: str,
     *,
@@ -725,6 +765,7 @@ def log_rigid3(
         log_view_coordinates(obj_path, xyz=xyz, timeless=timeless)
 
 
+@log_exceptions
 def log_pinhole(
     obj_path: str, *, child_from_parent: npt.ArrayLike, width: int, height: int, timeless: bool = False
 ) -> None:
@@ -761,6 +802,7 @@ def log_pinhole(
 # -----------------------------------------------------------------------------
 
 
+@log_exceptions
 def log_view_coordinates(
     obj_path: str, *, xyz: str = "", up: str = "", right_handed: Optional[bool] = None, timeless: bool = False
 ) -> None:
@@ -817,6 +859,7 @@ def log_view_coordinates(
 # -----------------------------------------------------------------------------
 
 
+@log_exceptions
 def log_path(
     obj_path: str,
     positions: Optional[npt.NDArray[np.float32]],
@@ -846,6 +889,7 @@ def log_path(
     rerun_bindings.log_path(obj_path, positions, stroke_width, color, timeless)
 
 
+@log_exceptions
 def log_line_segments(
     obj_path: str,
     positions: npt.NDArray[np.float32],
@@ -874,6 +918,7 @@ def log_line_segments(
     rerun_bindings.log_line_segments(obj_path, positions, stroke_width, color, timeless)
 
 
+@log_exceptions
 def log_arrow(
     obj_path: str,
     origin: Optional[npt.ArrayLike],
@@ -922,6 +967,7 @@ def log_arrow(
     )
 
 
+@log_exceptions
 def log_obb(
     obj_path: str,
     half_size: Optional[npt.ArrayLike],
@@ -958,6 +1004,7 @@ def log_obb(
     )
 
 
+@log_exceptions
 def log_image(
     obj_path: str,
     image: Colors,
@@ -991,6 +1038,7 @@ def log_image(
     log_tensor(obj_path, image, timeless=timeless)
 
 
+@log_exceptions
 def log_depth_image(
     obj_path: str,
     image: Colors,
@@ -1015,6 +1063,7 @@ def log_depth_image(
     log_tensor(obj_path, image, meter=meter, timeless=timeless)
 
 
+@log_exceptions
 def log_segmentation_image(
     obj_path: str,
     image: npt.ArrayLike,
@@ -1051,6 +1100,7 @@ def log_segmentation_image(
         raise TypeError(f"Unsupported dtype: {image.dtype}")
 
 
+@log_exceptions
 def log_tensor(
     obj_path: str,
     tensor: npt.NDArray[Union[np.uint8, np.uint16, np.float32, np.float64]],
@@ -1075,6 +1125,7 @@ def log_tensor(
         raise TypeError(f"Unsupported dtype: {tensor.dtype}")
 
 
+@log_exceptions
 def log_mesh_file(
     obj_path: str,
     mesh_format: MeshFormat,
@@ -1107,6 +1158,7 @@ def log_mesh_file(
     rerun_bindings.log_mesh_file(obj_path, mesh_format.value, mesh_file, transform, timeless)
 
 
+@log_exceptions
 def log_image_file(
     obj_path: str,
     img_path: Path,
@@ -1129,6 +1181,7 @@ def _to_sequence(array: Optional[npt.ArrayLike]) -> Optional[Sequence[float]]:
     return array  # type: ignore[return-value]
 
 
+@log_exceptions
 def log_cleared(obj_path: str, *, recursive: bool = False) -> None:
     """
     Indicate that an object at a given path should no longer be displayed.
@@ -1163,6 +1216,7 @@ class AnnotationInfo:
 AnnotationInfoLike = Union[Tuple[int, str], Tuple[int, str, Color], AnnotationInfo]
 
 
+@log_exceptions
 def coerce_annotation_info(arg: AnnotationInfoLike) -> AnnotationInfo:
     if type(arg) is AnnotationInfo:
         return arg
@@ -1188,6 +1242,7 @@ class ClassDescription:
 ClassDescriptionLike = Union[AnnotationInfoLike, ClassDescription]
 
 
+@log_exceptions
 def coerce_class_descriptor_like(arg: ClassDescriptionLike) -> ClassDescription:
     if type(arg) is ClassDescription:
         return arg
@@ -1195,6 +1250,7 @@ def coerce_class_descriptor_like(arg: ClassDescriptionLike) -> ClassDescription:
         return ClassDescription(info=arg)  # type: ignore[arg-type]
 
 
+@log_exceptions
 def log_annotation_context(
     obj_path: str,
     class_descriptions: Union[ClassDescriptionLike, Iterable[ClassDescriptionLike]],
@@ -1234,6 +1290,7 @@ def log_annotation_context(
 
     # Convert back to fixed tuple for easy pyo3 conversion
     # This is pretty messy but will likely go away / be refactored with pending data-model changes.
+    @log_exceptions
     def info_to_tuple(info: Optional[AnnotationInfoLike]) -> Tuple[int, Optional[str], Optional[Sequence[int]]]:
         if info is None:
             return (0, None, None)
@@ -1241,6 +1298,7 @@ def log_annotation_context(
         color = None if info.color is None else _normalize_colors(info.color).tolist()
         return (info.id, info.label, color)
 
+    @log_exceptions
     def keypoint_connections_to_flat_list(
         keypoint_connections: Optional[Iterable[Union[int, Tuple[int, int]]]]
     ) -> Sequence[int]:
@@ -1264,6 +1322,7 @@ def log_annotation_context(
     rerun_bindings.log_annotation_context(obj_path, tuple_class_descriptions, timeless)
 
 
+@log_exceptions
 def set_visible(obj_path: str, visibile: bool) -> None:
     """
     set_visible has been deprecated.
