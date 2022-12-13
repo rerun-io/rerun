@@ -511,39 +511,6 @@ impl DataTracker {
         store.insert(msg_bundle).unwrap();
     }
 
-    #[cfg(feature = "disabled")]
-    fn insert_data<const N: usize, const M: usize>(
-        &mut self,
-        store: &mut DataStore,
-        ent_path: &EntityPath,
-        times: [(Timeline, TimeInt); N],
-        components: &[ComponentBundle; M],
-    ) {
-        let time_point = TimePoint::from(times);
-
-        for time in time_point.times() {
-            for bundle in components.iter() {
-                let ComponentBundle { name, component } = bundle;
-                assert!(self
-                    .all_data
-                    .insert((name.clone(), *time), component.clone())
-                    .is_none());
-            }
-        }
-
-        let msg_bundle = MsgBundle::new(
-            MsgId::ZERO,
-            ent_path.clone(),
-            time_point,
-            components.iter().cloned().collect(),
-        );
-
-        // eprintln!("inserting into '{ent_path}':\nschema: {schema:#?}\ncomponents: {components:#?}");
-        // eprintln!("---\ninserting into '{ent_path}': [log_time, frame_nr], [rects]");
-        store.insert(&msg_bundle).unwrap();
-        // eprintln!("{store}");
-    }
-
     fn assert_scenario(
         &self,
         store: &mut DataStore,
