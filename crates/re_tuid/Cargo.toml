@@ -14,8 +14,8 @@ serde = ["dep:serde"]
 
 
 [dependencies]
-arrow2 = { version = "0.14" }
-arrow2_convert = { version = "0.3" }
+arrow2.workspace = true
+arrow2_convert.workspace = true
 once_cell = "1.16"
 
 # Optional dependencies:
