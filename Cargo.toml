@@ -31,14 +31,14 @@ opt-level = 2
 debug = true
 
 [patch.crates-io]
-# # 2022-12-13 - menu rounding
-ecolor = { git = "https://github.com/emilk/egui", rev = "0ba2d8ca1d0d03f99e437d33f0e7a9a39caeb74b" }
-eframe = { git = "https://github.com/emilk/egui", rev = "0ba2d8ca1d0d03f99e437d33f0e7a9a39caeb74b" }
-egui = { git = "https://github.com/emilk/egui", rev = "0ba2d8ca1d0d03f99e437d33f0e7a9a39caeb74b" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "0ba2d8ca1d0d03f99e437d33f0e7a9a39caeb74b" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "0ba2d8ca1d0d03f99e437d33f0e7a9a39caeb74b" }
-emath = { git = "https://github.com/emilk/egui", rev = "0ba2d8ca1d0d03f99e437d33f0e7a9a39caeb74b" }
-epaint = { git = "https://github.com/emilk/egui", rev = "0ba2d8ca1d0d03f99e437d33f0e7a9a39caeb74b" }
+# # 2022-12-13 - WSLg fix
+ecolor = { git = "https://github.com/emilk/egui", rev = "51081d69fc3ede1d26fd7b722eb9fcaee4660b00" }
+eframe = { git = "https://github.com/emilk/egui", rev = "51081d69fc3ede1d26fd7b722eb9fcaee4660b00" }
+egui = { git = "https://github.com/emilk/egui", rev = "51081d69fc3ede1d26fd7b722eb9fcaee4660b00" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "51081d69fc3ede1d26fd7b722eb9fcaee4660b00" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "51081d69fc3ede1d26fd7b722eb9fcaee4660b00" }
+emath = { git = "https://github.com/emilk/egui", rev = "51081d69fc3ede1d26fd7b722eb9fcaee4660b00" }
+epaint = { git = "https://github.com/emilk/egui", rev = "51081d69fc3ede1d26fd7b722eb9fcaee4660b00" }
 
 # ecolor = { path = "../../egui/crates/ecolor" }
 # eframe = { path = "../../egui/crates/eframe" }
