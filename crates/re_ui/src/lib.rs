@@ -3,10 +3,12 @@
 mod design_tokens;
 pub mod icons;
 mod static_image_cache;
+mod toggle_switch;
 
 pub use design_tokens::DesignTokens;
 pub use icons::Icon;
 pub use static_image_cache::StaticImageCache;
+pub use toggle_switch::toggle_switch;
 
 // ---------------------------------------------------------------------------
 

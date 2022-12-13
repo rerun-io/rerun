@@ -536,13 +536,15 @@ fn object_visibility_button(
 }
 
 fn visibility_button(ui: &mut egui::Ui, enabled: bool, visible: &mut bool) -> egui::Response {
+    ui.add_space(16.0); // Make room for visibility button so the side bar don't become too narrow to fit it
+
     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
         ui.set_enabled(enabled);
         if enabled {
-            ui.toggle_value(visible, "👁")
+            ui.add(re_ui::toggle_switch(visible))
         } else {
             let mut always_false = false;
-            ui.toggle_value(&mut always_false, "👁")
+            ui.add(re_ui::toggle_switch(&mut always_false))
         }
         .on_hover_text("Toggle visibility")
     })
