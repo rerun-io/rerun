@@ -31,7 +31,7 @@ use arrow2_convert::{
     serialize::{ArrowSerialize, TryIntoArrow},
 };
 
-/// The errors that can occur when trying to convert between Arrow and MessageBundle types
+/// The errors that can occur when trying to convert between Arrow and `MessageBundle` types
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error("Could not find entity path in Arrow Schema")]
@@ -234,7 +234,7 @@ impl MsgBundle {
     pub fn try_append_component<'a, Element, Collection>(
         &mut self,
         component: Collection,
-    ) -> anyhow::Result<()>
+    ) -> Result<()>
     where
         Element: Component + ArrowSerialize + ArrowField<Type = Element> + 'static,
         Collection: IntoIterator<Item = &'a Element>,
