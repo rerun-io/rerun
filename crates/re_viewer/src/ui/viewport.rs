@@ -559,8 +559,6 @@ fn space_view_ui(
         return;
     };
 
-    // TODO: Should be able to declare a new reference_space_info here.
-
     let Some(latest_at) = ctx.rec_cfg.time_ctrl.time_int() else {
         ui.centered_and_justified(|ui| {
             ui.label(ctx.re_ui.warning_text("No time selected"));
