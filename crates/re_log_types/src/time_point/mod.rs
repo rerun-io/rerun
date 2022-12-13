@@ -91,6 +91,8 @@ impl TimeType {
     pub fn format(&self, time_int: TimeInt) -> String {
         if time_int <= TimeInt::BEGINNING {
             "-∞".into()
+        } else if time_int >= TimeInt::MAX {
+            "+∞".into()
         } else {
             match self {
                 Self::Time => Time::from(time_int).format(),

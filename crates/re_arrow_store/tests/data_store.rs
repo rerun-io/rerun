@@ -17,7 +17,7 @@ use re_log_types::{
 
 // ---
 
-const TEST_CONFIGS: &[DataStoreConfig] = &[
+const COMPONENT_CONFIGS: &[DataStoreConfig] = &[
     DataStoreConfig::DEFAULT,
     DataStoreConfig {
         component_bucket_nb_rows: 0,
@@ -53,13 +53,60 @@ const TEST_CONFIGS: &[DataStoreConfig] = &[
     },
 ];
 
+const INDEX_CONFIGS: &[DataStoreConfig] = &[
+    DataStoreConfig::DEFAULT,
+    DataStoreConfig {
+        index_bucket_nb_rows: 0,
+        ..DataStoreConfig::DEFAULT
+    },
+    DataStoreConfig {
+        index_bucket_nb_rows: 1,
+        ..DataStoreConfig::DEFAULT
+    },
+    DataStoreConfig {
+        index_bucket_nb_rows: 2,
+        ..DataStoreConfig::DEFAULT
+    },
+    DataStoreConfig {
+        index_bucket_nb_rows: 3,
+        ..DataStoreConfig::DEFAULT
+    },
+    DataStoreConfig {
+        index_bucket_size_bytes: 0,
+        ..DataStoreConfig::DEFAULT
+    },
+    DataStoreConfig {
+        index_bucket_size_bytes: 16,
+        ..DataStoreConfig::DEFAULT
+    },
+    DataStoreConfig {
+        index_bucket_size_bytes: 32,
+        ..DataStoreConfig::DEFAULT
+    },
+    DataStoreConfig {
+        index_bucket_size_bytes: 64,
+        ..DataStoreConfig::DEFAULT
+    },
+];
+
+fn all_configs() -> impl Iterator<Item = DataStoreConfig> {
+    COMPONENT_CONFIGS.iter().flat_map(|comp| {
+        INDEX_CONFIGS.iter().map(|idx| DataStoreConfig {
+            component_bucket_size_bytes: comp.component_bucket_size_bytes,
+            component_bucket_nb_rows: comp.component_bucket_nb_rows,
+            index_bucket_size_bytes: idx.index_bucket_size_bytes,
+            index_bucket_nb_rows: idx.index_bucket_nb_rows,
+        })
+    })
+}
+
 // --- Scenarios ---
 
 #[test]
 fn empty_query_edge_cases() {
     init_logs();
 
-    for config in TEST_CONFIGS {
+    for config in all_configs() {
         let mut store = DataStore::new(config.clone());
         empty_query_edge_cases_impl(&mut store);
     }
@@ -68,8 +115,8 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
     let ent_path = EntityPath::from("this/that");
     let now = Time::now();
     let now_nanos = now.nanos_since_epoch();
-    let now_minus_10ms = now - Duration::from_millis(10);
-    let now_minus_10ms_nanos = now_minus_10ms.nanos_since_epoch();
+    let now_minus_1s = now - Duration::from_secs(1.0);
+    let now_minus_1s_nanos = now_minus_1s.nanos_since_epoch();
     let frame39 = 39;
     let frame40 = 40;
     let nb_instances = 3;
@@ -82,6 +129,12 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
             [build_log_time(now), build_frame_nr(frame40)],
             [build_instances(nb_instances)],
         );
+    }
+
+    if let err @ Err(_) = store.sanity_check() {
+        store.sort_indices();
+        eprintln!("{store}");
+        err.unwrap();
     }
 
     let timeline_wrong_name = Timeline::new("lag_time", TimeType::Time);
@@ -123,12 +176,12 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
         vec![],
     );
 
-    // Scenario: query an empty store at `first_log_time - 10ms`.
+    // Scenario: query an empty store at `first_log_time - 1s`.
     // Expected: empty dataframe.
     tracker.assert_scenario(
         store,
         &timeline_log_time,
-        &TimeQuery::LatestAt(now_minus_10ms_nanos),
+        &TimeQuery::LatestAt(now_minus_1s_nanos),
         &ent_path,
         components_all,
         vec![],
@@ -200,7 +253,7 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
 fn end_to_end_roundtrip_standard() {
     init_logs();
 
-    for config in TEST_CONFIGS {
+    for config in all_configs() {
         let mut store = DataStore::new(config.clone());
         end_to_end_roundtrip_standard_impl(&mut store);
     }
@@ -209,11 +262,11 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
     let ent_path = EntityPath::from("this/that");
 
     let now = Time::now();
-    let now_minus_10ms = now - Duration::from_millis(10);
-    let now_minus_10ms_nanos = now_minus_10ms.nanos_since_epoch();
-    let now_plus_10ms = now + Duration::from_millis(10);
-    let now_plus_10ms_nanos = now_plus_10ms.nanos_since_epoch();
-    let now_plus_20ms = now + Duration::from_millis(20);
+    let now_minus_1s = now - Duration::from_secs(1.0);
+    let now_minus_1s_nanos = now_minus_1s.nanos_since_epoch();
+    let now_plus_1s = now + Duration::from_secs(1.0);
+    let now_plus_1s_nanos = now_plus_1s.nanos_since_epoch();
+    let now_plus_2s = now + Duration::from_secs(2.0);
 
     let frame40 = 40;
     let frame41 = 41;
@@ -228,8 +281,14 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
         tracker.insert_data(
             store,
             &ent_path,
-            [build_log_time(now_minus_10ms), build_frame_nr(frame43)],
-            [build_rects(nb_instances)],
+            [build_frame_nr(frame41)],
+            [build_instances(nb_instances)],
+        );
+        tracker.insert_data(
+            store,
+            &ent_path,
+            [build_frame_nr(frame41)],
+            [build_positions(nb_instances)],
         );
         tracker.insert_data(
             store,
@@ -240,8 +299,14 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
         tracker.insert_data(
             store,
             &ent_path,
-            [build_log_time(now_plus_10ms), build_frame_nr(frame41)],
+            [build_log_time(now_plus_1s)],
             [build_instances(nb_instances), build_rects(nb_instances)],
+        );
+        tracker.insert_data(
+            store,
+            &ent_path,
+            [build_frame_nr(frame41)],
+            [build_rects(nb_instances)],
         );
         tracker.insert_data(
             store,
@@ -252,9 +317,27 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
         tracker.insert_data(
             store,
             &ent_path,
-            [build_log_time(now_minus_10ms), build_frame_nr(frame42)],
+            [build_log_time(now_minus_1s), build_frame_nr(frame42)],
             [build_positions(nb_instances)],
         );
+        tracker.insert_data(
+            store,
+            &ent_path,
+            [build_log_time(now_minus_1s), build_frame_nr(frame43)],
+            [build_rects(nb_instances)],
+        );
+        tracker.insert_data(
+            store,
+            &ent_path,
+            [build_frame_nr(frame44)],
+            [build_positions(nb_instances)],
+        );
+    }
+
+    if let err @ Err(_) = store.sanity_check() {
+        store.sort_indices();
+        eprintln!("{store}");
+        err.unwrap();
     }
 
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
@@ -271,7 +354,11 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
         // Expected: data at that point in time.
         (
             frame41,
-            vec![("instances", frame41.into()), ("rects", frame41.into())],
+            vec![
+                ("instances", frame41.into()),
+                ("rects", frame41.into()),
+                ("positions", frame41.into()),
+            ],
         ),
         // Scenario: query all components at frame #42 (i.e. second frame with data)
         // Expected: data at that point in time.
@@ -300,7 +387,7 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
             vec![
                 ("instances", frame42.into()),
                 ("rects", frame43.into()),
-                ("positions", frame42.into()),
+                ("positions", frame44.into()),
             ],
         ),
     ];
@@ -321,14 +408,14 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
     // TODO(cmc): test log_times -10, +0, +10, +20
 
     let scenarios = [
-        // Scenario: query all components at +20ms (i.e. after last update).
+        // Scenario: query all components at +2s (i.e. after last update).
         // Expected: latest data for all components.
         (
-            now_plus_20ms,
+            now_plus_2s,
             vec![
-                ("instances", now_plus_10ms_nanos.into()),
-                ("rects", now_plus_10ms_nanos.into()),
-                ("positions", now_minus_10ms_nanos.into()),
+                ("instances", now_plus_1s_nanos.into()),
+                ("rects", now_plus_1s_nanos.into()),
+                ("positions", now_minus_1s_nanos.into()),
             ],
         ),
     ];
@@ -399,8 +486,7 @@ impl DataTracker {
         let expected = expected.explode(expected.get_column_names()).unwrap();
 
         store.sort_indices();
-        eprintln!("{store}");
-        assert_eq!(expected, df);
+        assert_eq!(expected, df, "\n{store}");
     }
 }
 
@@ -410,5 +496,139 @@ fn init_logs() {
     if INIT.compare_exchange(false, true, SeqCst, SeqCst).is_ok() {
         re_log::set_default_rust_log_env();
         tracing_subscriber::fmt::init(); // log to stdout
+    }
+}
+
+// TODO(cmc): One should _never_ run assertions on the internal state of the datastore, this
+// is a recipe for disaster.
+//
+// The contract that needs to be asserted here, from the point of view of the actual user,
+// is performance: getting the datastore into a pathological topology should show up in
+// integration query benchmarks.
+//
+// In the current state of things, though, it is much easier to test for it that way... so we
+// make an exception, for now...
+#[test]
+fn pathological_bucket_topology() {
+    init_logs();
+
+    let ent_path = EntityPath::from("this/that");
+    let nb_instances = 1;
+
+    let mut store_forward = DataStore::new(DataStoreConfig {
+        index_bucket_nb_rows: 10,
+        ..Default::default()
+    });
+    let mut store_backward = DataStore::new(DataStoreConfig {
+        index_bucket_nb_rows: 10,
+        ..Default::default()
+    });
+
+    {
+        let timepoint = TimePoint::from([build_frame_nr(1000)]);
+        for _ in 0..10 {
+            let (schema, components) =
+                build_message(&ent_path, &timepoint, [build_instances(nb_instances)]);
+            store_forward.insert(&schema, &components).unwrap();
+            store_backward.insert(&schema, &components).unwrap();
+        }
+    }
+
+    let msgs = (970..=979)
+        .map(|frame_nr| {
+            let timepoint = TimePoint::from([build_frame_nr(frame_nr)]);
+            build_message(&ent_path, &timepoint, [build_instances(nb_instances)])
+        })
+        .collect::<Vec<_>>();
+    for (schema, components) in &msgs {
+        store_forward.insert(schema, components).unwrap();
+    }
+    for (schema, components) in msgs.iter().rev() {
+        store_backward.insert(schema, components).unwrap();
+    }
+
+    let msgs = (990..=999)
+        .map(|frame_nr| {
+            let timepoint = TimePoint::from([build_frame_nr(frame_nr)]);
+            build_message(&ent_path, &timepoint, [build_instances(nb_instances)])
+        })
+        .collect::<Vec<_>>();
+    for (schema, components) in &msgs {
+        store_forward.insert(schema, components).unwrap();
+    }
+    for (schema, components) in msgs.iter().rev() {
+        store_backward.insert(schema, components).unwrap();
+    }
+
+    let msgs = (980..=989)
+        .map(|frame_nr| {
+            let timepoint = TimePoint::from([build_frame_nr(frame_nr)]);
+            build_message(&ent_path, &timepoint, [build_instances(nb_instances)])
+        })
+        .collect::<Vec<_>>();
+    for (schema, components) in &msgs {
+        store_forward.insert(schema, components).unwrap();
+    }
+    for (schema, components) in msgs.iter().rev() {
+        store_backward.insert(schema, components).unwrap();
+    }
+
+    {
+        let timepoint = TimePoint::from([build_frame_nr(1000)]);
+        for _ in 0..7 {
+            let (schema, components) =
+                build_message(&ent_path, &timepoint, [build_instances(nb_instances)]);
+            store_forward.insert(&schema, &components).unwrap();
+            store_backward.insert(&schema, &components).unwrap();
+        }
+    }
+
+    let msgs = (1000..=1009)
+        .map(|frame_nr| {
+            let timepoint = TimePoint::from([build_frame_nr(frame_nr)]);
+            build_message(&ent_path, &timepoint, [build_instances(nb_instances)])
+        })
+        .collect::<Vec<_>>();
+    for (schema, components) in &msgs {
+        store_forward.insert(schema, components).unwrap();
+    }
+    for (schema, components) in msgs.iter().rev() {
+        store_backward.insert(schema, components).unwrap();
+    }
+
+    {
+        let timepoint = TimePoint::from([build_frame_nr(975)]);
+        for _ in 0..10 {
+            let (schema, components) =
+                build_message(&ent_path, &timepoint, [build_instances(nb_instances)]);
+            store_forward.insert(&schema, &components).unwrap();
+            store_backward.insert(&schema, &components).unwrap();
+        }
+    }
+
+    {
+        let nb_buckets = store_forward
+            .iter_indices()
+            .flat_map(|(_, table)| table.iter_buckets())
+            .count();
+        assert_eq!(7usize, nb_buckets, "pathological topology (forward): {}", {
+            store_forward.sort_indices();
+            store_forward
+        });
+    }
+    {
+        let nb_buckets = store_backward
+            .iter_indices()
+            .flat_map(|(_, table)| table.iter_buckets())
+            .count();
+        assert_eq!(
+            8usize,
+            nb_buckets,
+            "pathological topology (backward): {}",
+            {
+                store_backward.sort_indices();
+                store_backward
+            }
+        );
     }
 }

@@ -11,6 +11,12 @@ homepage = "http://rerun.io"
 readme = "README.md"
 repository = "https://github.com/rerun-io/rerun"
 
+[workspace.dependencies]
+anyhow = "1.0"
+arrow2 = { version = "0.14" }
+arrow2_convert = { version = "0.3" }
+thiserror = "1.0"
+
 [profile.dev]
 opt-level = 1 # Make debug builds run faster
 
@@ -25,14 +31,14 @@ opt-level = 2
 debug = true
 
 [patch.crates-io]
-# # 2022-12-12 - eframe::run_return can return an error
-ecolor = { git = "https://github.com/emilk/egui", rev = "e0b5bb17e5851fb5a6904847e353aa74db3441bb" }
-eframe = { git = "https://github.com/emilk/egui", rev = "e0b5bb17e5851fb5a6904847e353aa74db3441bb" }
-egui = { git = "https://github.com/emilk/egui", rev = "e0b5bb17e5851fb5a6904847e353aa74db3441bb" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "e0b5bb17e5851fb5a6904847e353aa74db3441bb" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "e0b5bb17e5851fb5a6904847e353aa74db3441bb" }
-emath = { git = "https://github.com/emilk/egui", rev = "e0b5bb17e5851fb5a6904847e353aa74db3441bb" }
-epaint = { git = "https://github.com/emilk/egui", rev = "e0b5bb17e5851fb5a6904847e353aa74db3441bb" }
+# # 2022-12-13 - clamp restored window size to monitor size to maybe fix https://github.com/rerun-io/rerun/issues/514
+ecolor = { git = "https://github.com/emilk/egui", rev = "4a72abc8ec1d973cd80b5978184c3904b04ea12e" }
+eframe = { git = "https://github.com/emilk/egui", rev = "4a72abc8ec1d973cd80b5978184c3904b04ea12e" }
+egui = { git = "https://github.com/emilk/egui", rev = "4a72abc8ec1d973cd80b5978184c3904b04ea12e" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "4a72abc8ec1d973cd80b5978184c3904b04ea12e" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "4a72abc8ec1d973cd80b5978184c3904b04ea12e" }
+emath = { git = "https://github.com/emilk/egui", rev = "4a72abc8ec1d973cd80b5978184c3904b04ea12e" }
+epaint = { git = "https://github.com/emilk/egui", rev = "4a72abc8ec1d973cd80b5978184c3904b04ea12e" }
 
 # ecolor = { path = "../../egui/crates/ecolor" }
 # eframe = { path = "../../egui/crates/eframe" }

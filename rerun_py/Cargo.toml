@@ -40,7 +40,7 @@ re_tensor_ops = { path = "../crates/re_tensor_ops" }
 rerun = { path = "../crates/rerun" }
 rerun_sdk = { path = "../crates/rerun_sdk" }
 
-arrow2 = { version = "0.14", features = ["io_ipc"] }
+arrow2 = { workspace = true, features = ["io_ipc"] }
 ahash = "0.8"
 bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }
 crossbeam = "0.8"
