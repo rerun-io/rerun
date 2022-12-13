@@ -243,9 +243,7 @@ impl ViewportBlueprint {
         .body(|ui| {
             for path in &space_view.queried_objects {
                 ui.horizontal(|ui| {
-                    let name = if path.len() == space_view.space_path.len() {
-                        path.iter().last().unwrap().to_string()
-                    } else {
+                    let name = if path.is_child_of(&space_view.space_path) {
                         ObjPath::from(
                             path.iter()
                                 .skip(space_view.space_path.len())
@@ -253,6 +251,8 @@ impl ViewportBlueprint {
                                 .collect::<Vec<_>>(),
                         )
                         .to_string()
+                    } else {
+                        path.iter().last().unwrap().to_string()
                     };
 
                     ctx.space_view_obj_path_button_to(ui, name, *space_view_id, path);
