@@ -284,94 +284,94 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
     {
         tracker.insert_bundle(
             store,
-            &MsgBundle::try_new(
+            &MsgBundle::try_new1(
                 MsgId::ZERO,
                 ent_path.clone(),
                 [build_frame_nr(frame41)],
-                [Ok(build_instances(nb_instances))],
+                build_instances(nb_instances),
             )
             .unwrap(),
         );
         tracker.insert_bundle(
             store,
-            &MsgBundle::try_new(
+            &MsgBundle::try_new1(
                 MsgId::ZERO,
                 ent_path.clone(),
                 [build_frame_nr(frame41)],
-                [build_some_point2d(nb_instances).try_into()],
+                build_some_point2d(nb_instances),
             )
             .unwrap(),
         );
         tracker.insert_bundle(
             store,
-            &MsgBundle::try_new(
+            &MsgBundle::try_new1(
                 MsgId::ZERO,
                 ent_path.clone(),
                 [build_log_time(now), build_frame_nr(frame42)],
-                [build_some_rects(nb_instances).try_into()],
+                build_some_rects(nb_instances),
             )
             .unwrap(),
         );
         tracker.insert_bundle(
             store,
-            &MsgBundle::try_new(
+            &MsgBundle::try_new2(
                 MsgId::ZERO,
                 ent_path.clone(),
                 [build_log_time(now_plus_1s)],
-                [
-                    Ok(build_instances(nb_instances)),
-                    build_some_rects(nb_instances).try_into(),
-                ],
+                (
+                    build_instances(nb_instances),
+                    build_some_rects(nb_instances),
+                ),
             )
             .unwrap(),
         );
         tracker.insert_bundle(
             store,
-            &MsgBundle::try_new(
+            &MsgBundle::try_new1(
                 MsgId::ZERO,
                 ent_path.clone(),
                 [build_frame_nr(frame41)],
-                [build_some_rects(nb_instances).try_into()],
+                build_some_rects(nb_instances),
             )
             .unwrap(),
         );
         tracker.insert_bundle(
             store,
-            &MsgBundle::try_new(
+            &MsgBundle::try_new1(
                 MsgId::ZERO,
                 ent_path.clone(),
                 [build_log_time(now), build_frame_nr(frame42)],
-                [Ok(build_instances(nb_instances))],
+                build_instances(nb_instances),
             )
             .unwrap(),
         );
         tracker.insert_bundle(
             store,
-            &MsgBundle::try_new(
+            &MsgBundle::try_new1(
                 MsgId::ZERO,
                 ent_path.clone(),
                 [build_log_time(now_minus_1s), build_frame_nr(frame42)],
-                [build_some_point2d(nb_instances).try_into()],
+                build_some_point2d(nb_instances),
             )
             .unwrap(),
         );
         tracker.insert_bundle(
             store,
-            &MsgBundle::try_new(
+            &MsgBundle::try_new1(
                 MsgId::ZERO,
                 ent_path.clone(),
                 [build_log_time(now_minus_1s), build_frame_nr(frame43)],
-                [build_some_rects(nb_instances).try_into()],
+                build_some_rects(nb_instances),
             )
             .unwrap(),
         );
         tracker.insert_bundle(
             store,
-            &MsgBundle::try_new(
+            &MsgBundle::try_new1(
                 MsgId::ZERO,
                 ent_path.clone(),
                 [build_frame_nr(frame44)],
-                [build_some_point2d(nb_instances).try_into()],
+                build_some_point2d(nb_instances),
             )
             .unwrap(),
         );

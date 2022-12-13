@@ -58,14 +58,11 @@ fn build_messages(n: usize) -> Vec<MsgBundle> {
     (0..NUM_FRAMES)
         .into_iter()
         .map(move |frame_idx| {
-            MsgBundle::try_new(
+            MsgBundle::try_new2(
                 MsgId::ZERO,
                 "rects",
                 [build_frame_nr(frame_idx)],
-                [
-                    build_some_point2d(n).try_into(),
-                    build_some_rects(n).try_into(),
-                ],
+                (build_some_point2d(n), build_some_rects(n)),
             )
             .unwrap()
         })

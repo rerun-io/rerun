@@ -54,13 +54,10 @@ pub enum Error {
 
     #[error("Could not serialize components to Arrow")]
     ArrowSerializationError(#[from] arrow2::error::Error),
-}
 
-// This seems to be necessary to use with TryFrom?
-impl From<std::convert::Infallible> for Error {
-    fn from(_: std::convert::Infallible) -> Self {
-        unreachable!()
-    }
+    // Needed to handle TryFrom<T> -> T
+    #[error("Infallible")]
+    NoError(#[from] std::convert::Infallible),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -134,14 +131,6 @@ where
     }
 }
 
-impl TryFrom<Result<ComponentBundle>> for ComponentBundle {
-    type Error = Error;
-
-    fn try_from(c: Result<ComponentBundle>) -> Result<Self> {
-        c
-    }
-}
-
 /// A `MsgBundle` holds data necessary for composing a single log message.
 ///
 /// # Example
@@ -208,23 +197,73 @@ impl MsgBundle {
         }
     }
 
-    pub fn try_new<O: Into<ObjPath>, T: Into<TimePoint>, C: IntoIterator<Item = X>, X>(
+    pub fn try_new1<O, T, C0>(
         msg_id: MsgId,
         into_obj_path: O,
         into_time_point: T,
-        into_bundles: C,
+        into_bundles: C0,
     ) -> Result<Self>
     where
-        X: TryInto<ComponentBundle, Error = Error>,
+        O: Into<ObjPath>,
+        T: Into<TimePoint>,
+        C0: TryInto<ComponentBundle>,
+        Error: From<<C0 as TryInto<ComponentBundle>>::Error>,
     {
-        let bundles: Result<Vec<ComponentBundle>> =
-            into_bundles.into_iter().map(|c| c.try_into()).collect();
-
         Ok(Self {
             msg_id,
             obj_path: into_obj_path.into(),
             time_point: into_time_point.into(),
-            components: bundles?,
+            components: vec![into_bundles.try_into()?],
+        })
+    }
+
+    pub fn try_new2<O, T, C0, C1>(
+        msg_id: MsgId,
+        into_obj_path: O,
+        into_time_point: T,
+        into_bundles: (C0, C1),
+    ) -> Result<Self>
+    where
+        O: Into<ObjPath>,
+        T: Into<TimePoint>,
+        C0: TryInto<ComponentBundle>,
+        C1: TryInto<ComponentBundle>,
+        Error: From<<C0 as TryInto<ComponentBundle>>::Error>,
+        Error: From<<C1 as TryInto<ComponentBundle>>::Error>,
+    {
+        Ok(Self {
+            msg_id,
+            obj_path: into_obj_path.into(),
+            time_point: into_time_point.into(),
+            components: vec![into_bundles.0.try_into()?, into_bundles.1.try_into()?],
+        })
+    }
+
+    pub fn try_new3<O, T, C0, C1, C2, E>(
+        msg_id: MsgId,
+        into_obj_path: O,
+        into_time_point: T,
+        into_bundles: (C0, C1, C2),
+    ) -> Result<Self>
+    where
+        O: Into<ObjPath>,
+        T: Into<TimePoint>,
+        C0: TryInto<ComponentBundle>,
+        C1: TryInto<ComponentBundle>,
+        C2: TryInto<ComponentBundle>,
+        Error: From<<C0 as TryInto<ComponentBundle>>::Error>,
+        Error: From<<C1 as TryInto<ComponentBundle>>::Error>,
+        Error: From<<C2 as TryInto<ComponentBundle>>::Error>,
+    {
+        Ok(Self {
+            msg_id,
+            obj_path: into_obj_path.into(),
+            time_point: into_time_point.into(),
+            components: vec![
+                into_bundles.0.try_into()?,
+                into_bundles.1.try_into()?,
+                into_bundles.2.try_into()?,
+            ],
         })
     }
 

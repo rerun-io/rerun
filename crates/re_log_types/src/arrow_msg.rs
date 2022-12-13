@@ -153,14 +153,11 @@ mod tests {
 
     #[test]
     fn test_roundtrip_payload() {
-        let bundle = MsgBundle::try_new(
+        let bundle = MsgBundle::try_new2(
             MsgId::ZERO,
             "world/rects",
             [build_frame_nr(0)],
-            [
-                build_some_point2d(1).try_into(),
-                build_some_rects(1).try_into(),
-            ],
+            (build_some_point2d(1), build_some_rects(1)),
         )
         .unwrap();
 
