@@ -9,6 +9,21 @@ use egui::{Key, KeyboardShortcut, Modifiers};
 
 const CTRL_SHIFT: Modifiers = Modifiers::CTRL.plus(Modifiers::SHIFT);
 
+#[cfg(not(target_arch = "wasm32"))]
+pub const SAVE: KeyboardShortcut = KeyboardShortcut::new(Modifiers::COMMAND, Key::S);
+
+#[cfg(not(target_arch = "wasm32"))]
+pub const SAVE_SELECTION: KeyboardShortcut =
+    KeyboardShortcut::new(Modifiers::COMMAND.plus(Modifiers::SHIFT), Key::S);
+
+#[cfg(not(target_arch = "wasm32"))]
+pub const OPEN: KeyboardShortcut = KeyboardShortcut::new(Modifiers::COMMAND, Key::O);
+
+#[cfg(target_os = "macos")]
+pub const QUIT: KeyboardShortcut = KeyboardShortcut::new(Modifiers::COMMAND, Key::Q);
+#[cfg(not(target_os = "macos"))]
+pub const QUIT: KeyboardShortcut = KeyboardShortcut::new(Modifiers::ALT, Key::F4);
+
 pub const RESET_VIEWER: KeyboardShortcut = KeyboardShortcut::new(CTRL_SHIFT, Key::R);
 
 #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
