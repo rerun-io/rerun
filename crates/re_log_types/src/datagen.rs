@@ -5,9 +5,7 @@ use crate::{
     msg_bundle::{wrap_in_listarray, ComponentBundle},
     Time, TimeInt, TimeType, Timeline,
 };
-use arrow2::{
-    array::{PrimitiveArray},
-};
+use arrow2::array::PrimitiveArray;
 
 /// Create `len` dummy rectangles
 pub fn build_some_rects(len: usize) -> Vec<field_types::Rect2D> {
