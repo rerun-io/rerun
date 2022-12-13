@@ -83,6 +83,7 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
     egui_style.visuals.panel_fill = panel_bg_color;
 
     egui_style.visuals.window_rounding = crate::ReUi::window_rounding().into();
+    egui_style.visuals.menu_rounding = crate::ReUi::window_rounding().into();
     let small_rounding = crate::ReUi::small_rounding().into();
     egui_style.visuals.widgets.noninteractive.rounding = small_rounding;
     egui_style.visuals.widgets.inactive.rounding = small_rounding;
