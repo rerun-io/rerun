@@ -238,9 +238,7 @@ impl SpaceView {
         })
         .body(|ui| {
             if let Some(subtree) = obj_tree.subtree(&self.root_path) {
-                // TODO(andreas): Recreating this here might be wasteful
                 let spaces_info = SpacesInfo::new(&ctx.log_db.obj_db, &ctx.rec_cfg.time_ctrl);
-
                 let forced_invisible = self.unreachable_elements(&spaces_info, obj_tree);
                 self.show_obj_tree_children(ctx, ui, &spaces_info, subtree, &forced_invisible);
             }
