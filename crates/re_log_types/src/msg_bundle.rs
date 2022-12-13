@@ -20,7 +20,6 @@
 
 use std::collections::BTreeMap;
 
-use anyhow::{anyhow, ensure};
 use arrow2::{
     array::{Array, ListArray, StructArray},
     buffer::Buffer,
@@ -31,6 +30,43 @@ use arrow2_convert::{
     field::ArrowField,
     serialize::{ArrowSerialize, TryIntoArrow},
 };
+
+/// The errors that can occur when misuing the data store.
+///
+/// Most of these indicate a problem with either the logging SDK,
+/// or how the loggign SDK is being used (PEBKAC).
+#[derive(thiserror::Error, Debug)]
+pub enum Error {
+    #[error("Could not find entity path in Arrow Schema")]
+    MissingEntityPath,
+
+    #[error("Expect top-level `timelines` field`")]
+    MissingTimelinesField,
+
+    #[error("Expect top-level `components` field`")]
+    MissingComponentsField,
+
+    #[error("No rows in timelines")]
+    NoRowsInTimeline,
+
+    #[error("Expected component values to be `StructArray`s")]
+    BadComponentValues,
+
+    #[error("Expect a single TimePoint, but found more than one")]
+    MultipleTimepoints,
+
+    #[error("Could not serialize components to Arrow")]
+    ArrowSerializationError(#[from] arrow2::error::Error),
+}
+
+// This seems to be necessary to use with TryFrom?
+impl From<std::convert::Infallible> for Error {
+    fn from(_: std::convert::Infallible) -> Self {
+        unreachable!()
+    }
+}
+
+pub type Result<T> = std::result::Result<T, Error>;
 
 use crate::{ArrowMsg, ComponentName, ComponentNameRef, MsgId, ObjPath, TimePoint};
 
@@ -45,7 +81,7 @@ pub trait Component: ArrowField {
     fn name() -> ComponentNameRef<'static>;
 }
 
-/// A `ComponentBundle` holds an Arrow component column, and it's field name.
+/// A `ComponentBundle` holds an Arrow component column, and its field name.
 ///
 /// A `ComponentBundle` can be created from a collection of any element that implements the
 /// [`Component`] and [`ArrowSerialize`] traits.
@@ -55,7 +91,7 @@ pub trait Component: ArrowField {
 /// ```
 /// # use re_log_types::{field_types::Point2D, msg_bundle::ComponentBundle};
 /// let points = vec![Point2D { x: 0.0, y: 1.0 }];
-/// let bundle = ComponentBundle::from(points);
+/// let bundle = ComponentBundle::try_from(points).unwrap();
 /// ```
 #[derive(Debug, Clone)]
 pub struct ComponentBundle {
@@ -67,9 +103,9 @@ impl<C> TryFrom<&[C]> for ComponentBundle
 where
     C: Component + ArrowSerialize + ArrowField<Type = C> + 'static,
 {
-    type Error = anyhow::Error;
+    type Error = Error;
 
-    fn try_from(c: &[C]) -> Result<Self, Self::Error> {
+    fn try_from(c: &[C]) -> Result<Self> {
         let array: Box<dyn Array> = TryIntoArrow::try_into_arrow(c)?;
         let wrapped = wrap_in_listarray(array).boxed();
         Ok(ComponentBundle {
@@ -79,21 +115,33 @@ where
     }
 }
 
-impl<C> From<&Vec<C>> for ComponentBundle
+impl<C> TryFrom<Vec<C>> for ComponentBundle
 where
     C: Component + ArrowSerialize + ArrowField<Type = C> + 'static,
 {
-    fn from(c: &Vec<C>) -> ComponentBundle {
-        c.as_slice().try_into().unwrap()
+    type Error = Error;
+
+    fn try_from(c: Vec<C>) -> Result<Self> {
+        c.as_slice().try_into()
     }
 }
 
-impl<C> From<Vec<C>> for ComponentBundle
+impl<C> TryFrom<&Vec<C>> for ComponentBundle
 where
     C: Component + ArrowSerialize + ArrowField<Type = C> + 'static,
 {
-    fn from(c: Vec<C>) -> ComponentBundle {
-        c.as_slice().try_into().unwrap()
+    type Error = Error;
+
+    fn try_from(c: &Vec<C>) -> Result<Self> {
+        c.as_slice().try_into()
+    }
+}
+
+impl TryFrom<Result<ComponentBundle>> for ComponentBundle {
+    type Error = Error;
+
+    fn try_from(c: Result<ComponentBundle>) -> Result<Self> {
+        c
     }
 }
 
@@ -163,6 +211,26 @@ impl MsgBundle {
         }
     }
 
+    pub fn try_new<O: Into<ObjPath>, T: Into<TimePoint>, C: IntoIterator<Item = X>, X>(
+        msg_id: MsgId,
+        into_obj_path: O,
+        into_time_point: T,
+        into_bundles: C,
+    ) -> Result<Self>
+    where
+        X: TryInto<ComponentBundle, Error = Error>,
+    {
+        let bundles: Result<Vec<ComponentBundle>> =
+            into_bundles.into_iter().map(|c| c.try_into()).collect();
+
+        Ok(Self {
+            msg_id,
+            obj_path: into_obj_path.into(),
+            time_point: into_time_point.into(),
+            components: bundles?,
+        })
+    }
+
     /// Try to append a collection of `Component` onto the `MessageBundle`.
     ///
     /// This first converts the component collection into an Arrow array, and then wraps it in a [`ListArray`].
@@ -216,10 +284,10 @@ fn pack_components(components: impl Iterator<Item = ComponentBundle>) -> (Schema
 }
 
 impl TryFrom<&ArrowMsg> for MsgBundle {
-    type Error = anyhow::Error;
+    type Error = Error;
 
     /// Extract a `MsgBundle` from an `ArrowMsg`.
-    fn try_from(msg: &ArrowMsg) -> Result<Self, Self::Error> {
+    fn try_from(msg: &ArrowMsg) -> Result<Self> {
         let ArrowMsg {
             msg_id,
             schema,
@@ -229,7 +297,7 @@ impl TryFrom<&ArrowMsg> for MsgBundle {
         let obj_path = schema
             .metadata
             .get(ENTITY_PATH_KEY)
-            .ok_or_else(|| anyhow!("expect entity path in top-level message's metadata"))
+            .ok_or(Error::MissingEntityPath)
             .map(|path| ObjPath::from(path.as_str()))?;
 
         let time_point = extract_timelines(schema, chunk)?;
@@ -245,11 +313,11 @@ impl TryFrom<&ArrowMsg> for MsgBundle {
 }
 
 impl TryFrom<MsgBundle> for ArrowMsg {
-    type Error = anyhow::Error;
+    type Error = Error;
 
     /// Build a single Arrow log message tuple from this `MsgBundle`. See the documentation on
     /// [`MsgBundle`] for details.
-    fn try_from(bundle: MsgBundle) -> Result<Self, Self::Error> {
+    fn try_from(bundle: MsgBundle) -> Result<Self> {
         let mut schema = Schema::default();
         let mut cols: Vec<Box<dyn Array>> = Vec::new();
 
@@ -280,7 +348,7 @@ impl TryFrom<MsgBundle> for ArrowMsg {
 /// Extract a [`TimePoint`] from the "timelines" column. This function finds the "timelines" field
 /// in `chunk` and deserializes the values into a `TimePoint` using the
 /// [`arrow2_convert::deserialize::ArrowDeserialize`] trait.
-fn extract_timelines(schema: &Schema, chunk: &Chunk<Box<dyn Array>>) -> anyhow::Result<TimePoint> {
+fn extract_timelines(schema: &Schema, chunk: &Chunk<Box<dyn Array>>) -> Result<TimePoint> {
     use arrow2_convert::deserialize::arrow_array_deserialize_iterator;
 
     let timelines = schema
@@ -288,20 +356,17 @@ fn extract_timelines(schema: &Schema, chunk: &Chunk<Box<dyn Array>>) -> anyhow::
         .iter()
         .position(|f| f.name == COL_TIMELINES)
         .and_then(|idx| chunk.columns().get(idx))
-        .ok_or_else(|| anyhow!("expect top-level `timelines` field`"))?;
+        .ok_or(Error::MissingTimelinesField)?;
 
     let mut timepoints_iter = arrow_array_deserialize_iterator::<TimePoint>(timelines.as_ref())?;
 
     // We take only the first result of the iterator because at this time we only support *single*
     // row messages. At some point in the future we can support batching with this.
-    let timepoint = timepoints_iter
-        .next()
-        .ok_or_else(|| anyhow!("No rows in timelines."))?;
+    let timepoint = timepoints_iter.next().ok_or(Error::NoRowsInTimeline)?;
 
-    ensure!(
-        timepoints_iter.next().is_none(),
-        "Expected a single TimePoint, but found more!"
-    );
+    if timepoints_iter.next().is_some() {
+        return Err(Error::MultipleTimepoints);
+    }
 
     Ok(timepoint)
 }
@@ -311,18 +376,18 @@ fn extract_timelines(schema: &Schema, chunk: &Chunk<Box<dyn Array>>) -> anyhow::
 fn extract_components(
     schema: &Schema,
     msg: &Chunk<Box<dyn Array>>,
-) -> anyhow::Result<Vec<ComponentBundle>> {
+) -> Result<Vec<ComponentBundle>> {
     let components = schema
         .fields
         .iter()
         .position(|f| f.name == COL_COMPONENTS)
         .and_then(|idx| msg.columns().get(idx))
-        .ok_or_else(|| anyhow!("expect top-level `components` field`"))?;
+        .ok_or(Error::MissingComponentsField)?;
 
     let components = components
         .as_any()
         .downcast_ref::<StructArray>()
-        .ok_or_else(|| anyhow!("expect component values to be `StructArray`s"))?;
+        .ok_or(Error::BadComponentValues)?;
 
     Ok(components
         .fields()

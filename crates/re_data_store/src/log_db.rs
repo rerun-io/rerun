@@ -107,7 +107,7 @@ impl ObjDb {
     }
 
     fn try_add_arrow_data_msg(&mut self, msg: &ArrowMsg) -> Result<(), Error> {
-        let msg_bundle = MsgBundle::try_from(msg).map_err(Error::Other)?;
+        let msg_bundle = MsgBundle::try_from(msg).map_err(Error::MsgBundleError)?;
 
         for component in &msg_bundle.components {
             //TODO(jleibs): Actually handle pending clears
@@ -221,7 +221,7 @@ impl LogDb {
         self.log_messages.is_empty()
     }
 
-    pub fn add(&mut self, msg: LogMsg) {
+    pub fn add(&mut self, msg: LogMsg) -> Result<(), Error> {
         crate::profile_function!();
         match &msg {
             LogMsg::BeginRecordingMsg(msg) => self.add_begin_recording_msg(msg),
@@ -245,11 +245,12 @@ impl LogDb {
             }
             LogMsg::ArrowMsg(msg) => {
                 //TODO(john) propogate errors
-                self.obj_db.try_add_arrow_data_msg(msg).unwrap();
+                self.obj_db.try_add_arrow_data_msg(msg)?;
             }
         }
         self.chronological_message_ids.push(msg.id());
         self.log_messages.insert(msg.id(), msg);
+        Ok(())
     }
 
     fn add_begin_recording_msg(&mut self, msg: &BeginRecordingMsg) {

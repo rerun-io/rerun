@@ -284,87 +284,96 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
     {
         tracker.insert_bundle(
             store,
-            &MsgBundle::new(
+            &MsgBundle::try_new(
                 MsgId::ZERO,
                 ent_path.clone(),
-                TimePoint::from([build_frame_nr(frame41)]),
-                vec![build_instances(nb_instances)],
-            ),
+                [build_frame_nr(frame41)],
+                [Ok(build_instances(nb_instances))],
+            )
+            .unwrap(),
         );
         tracker.insert_bundle(
             store,
-            &MsgBundle::new(
+            &MsgBundle::try_new(
                 MsgId::ZERO,
                 ent_path.clone(),
-                TimePoint::from([build_frame_nr(frame41)]),
-                vec![build_some_point2d(nb_instances).into()],
-            ),
+                [build_frame_nr(frame41)],
+                [build_some_point2d(nb_instances).try_into()],
+            )
+            .unwrap(),
         );
         tracker.insert_bundle(
             store,
-            &MsgBundle::new(
+            &MsgBundle::try_new(
                 MsgId::ZERO,
                 ent_path.clone(),
-                TimePoint::from([build_log_time(now), build_frame_nr(frame42)]),
-                vec![build_some_rects(nb_instances).into()],
-            ),
+                [build_log_time(now), build_frame_nr(frame42)],
+                [build_some_rects(nb_instances).try_into()],
+            )
+            .unwrap(),
         );
         tracker.insert_bundle(
             store,
-            &MsgBundle::new(
+            &MsgBundle::try_new(
                 MsgId::ZERO,
                 ent_path.clone(),
-                TimePoint::from([build_log_time(now_plus_1s)]),
-                vec![
-                    build_instances(nb_instances),
-                    build_some_rects(nb_instances).into(),
+                [build_log_time(now_plus_1s)],
+                [
+                    Ok(build_instances(nb_instances)),
+                    build_some_rects(nb_instances).try_into(),
                 ],
-            ),
+            )
+            .unwrap(),
         );
         tracker.insert_bundle(
             store,
-            &MsgBundle::new(
+            &MsgBundle::try_new(
                 MsgId::ZERO,
                 ent_path.clone(),
-                TimePoint::from([build_frame_nr(frame41)]),
-                vec![build_some_rects(nb_instances).into()],
-            ),
+                [build_frame_nr(frame41)],
+                [build_some_rects(nb_instances).try_into()],
+            )
+            .unwrap(),
         );
         tracker.insert_bundle(
             store,
-            &MsgBundle::new(
+            &MsgBundle::try_new(
                 MsgId::ZERO,
                 ent_path.clone(),
-                TimePoint::from([build_log_time(now), build_frame_nr(frame42)]),
-                vec![build_instances(nb_instances)],
-            ),
+                [build_log_time(now), build_frame_nr(frame42)],
+                [Ok(build_instances(nb_instances))],
+            )
+            .unwrap(),
         );
         tracker.insert_bundle(
             store,
-            &MsgBundle::new(
+            &MsgBundle::try_new(
                 MsgId::ZERO,
                 ent_path.clone(),
-                TimePoint::from([build_log_time(now_minus_1s), build_frame_nr(frame42)]),
-                vec![build_some_point2d(nb_instances).into()],
-            ),
+                [build_log_time(now_minus_1s), build_frame_nr(frame42)],
+                [build_some_point2d(nb_instances).try_into()],
+            )
+            .unwrap(),
         );
         tracker.insert_bundle(
             store,
-            &MsgBundle::new(
+            &MsgBundle::try_new(
                 MsgId::ZERO,
                 ent_path.clone(),
-                TimePoint::from([build_log_time(now_minus_1s), build_frame_nr(frame43)]),
-                vec![build_some_rects(nb_instances).into()],
-            ),
+                [build_log_time(now_minus_1s), build_frame_nr(frame43)],
+                [build_some_rects(nb_instances).try_into()],
+            )
+            .unwrap(),
         );
         tracker.insert_bundle(
             store,
-            &MsgBundle::new(
+            &MsgBundle::try_new(
                 MsgId::ZERO,
                 ent_path.clone(),
-                TimePoint::from([build_frame_nr(frame44)]),
-                vec![build_some_point2d(nb_instances).into()],
-            ),
+                [build_frame_nr(frame44)],
+                [build_some_point2d(nb_instances).try_into()],
+            )
+            .unwrap(),
         );
     }
 

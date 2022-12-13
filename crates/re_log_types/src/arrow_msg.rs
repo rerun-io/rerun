@@ -108,8 +108,7 @@ mod tests {
     use super::{ArrowMsg, Chunk, MsgId, Schema};
     use crate::{
         datagen::{build_frame_nr, build_some_point2d, build_some_rects},
-        msg_bundle::{ComponentBundle, MsgBundle},
-        TimePoint,
+        msg_bundle::MsgBundle,
     };
 
     #[test]
@@ -154,12 +153,16 @@ mod tests {
 
     #[test]
     fn test_roundtrip_payload() {
-        let bundle = MsgBundle::new(
+        let bundle = MsgBundle::try_new(
             MsgId::ZERO,
-            "world/rects".into(),
-            TimePoint::from([build_frame_nr(0)]),
-            vec![build_some_point2d(1).into(), build_some_rects(1).into()],
-        );
+            "world/rects",
+            [build_frame_nr(0)],
+            [
+                build_some_point2d(1).try_into(),
+                build_some_rects(1).try_into(),
+            ],
+        )
+        .unwrap();
 
         let msg_in: ArrowMsg = bundle.try_into().unwrap();
         let buf = rmp_serde::to_vec(&msg_in).unwrap();

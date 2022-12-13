@@ -8,7 +8,7 @@ use re_arrow_store::{DataStore, TimeQuery};
 use re_log_types::{
     datagen::{build_frame_nr, build_some_point2d, build_some_rects},
     msg_bundle::MsgBundle,
-    MsgId, ObjPath as EntityPath, TimePoint, TimeType, Timeline,
+    MsgId, ObjPath as EntityPath, TimeType, Timeline,
 };
 
 // ---
@@ -58,12 +58,16 @@ fn build_messages(n: usize) -> Vec<MsgBundle> {
     (0..NUM_FRAMES)
         .into_iter()
         .map(move |frame_idx| {
-            MsgBundle::new(
+            MsgBundle::try_new(
                 MsgId::ZERO,
-                EntityPath::from("rects"),
-                TimePoint::from([build_frame_nr(frame_idx)]),
-                vec![build_some_point2d(n).into(), build_some_rects(n).into()],
+                "rects",
+                [build_frame_nr(frame_idx)],
+                [
+                    build_some_point2d(n).try_into(),
+                    build_some_rects(n).try_into(),
+                ],
             )
+            .unwrap()
         })
         .collect()
 }

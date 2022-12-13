@@ -362,7 +362,9 @@ impl App {
 
                 let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
 
-                log_db.add(msg);
+                if let Err(err) = log_db.add(msg) {
+                    re_log::error!("Failed to add incoming msg: {:?}", err);
+                };
                 if start.elapsed() > instant::Duration::from_millis(10) {
                     egui_ctx.request_repaint(); // make sure we keep receiving messages asap
                     break; // don't block the main thread for too long
@@ -1260,7 +1262,7 @@ fn load_rrd_to_log_db(mut read: impl std::io::Read) -> anyhow::Result<LogDb> {
 
     let mut log_db = LogDb::default();
     for msg in decoder {
-        log_db.add(msg?);
+        log_db.add(msg?)?;
     }
     Ok(log_db)
 }

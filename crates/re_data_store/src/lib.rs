@@ -33,7 +33,7 @@ pub use object_tree::*;
 pub use object_tree_properties::*;
 pub use stores::*;
 
-use re_log_types::DataType;
+use re_log_types::{msg_bundle, DataType};
 
 pub use re_log_types::{
     FieldName, Index, IndexPath, ObjPath, ObjPathComp, ObjTypePath, ObjTypePathComp, TimeInt,
@@ -61,6 +61,9 @@ pub enum Error {
         existing: DataType,
         expected: DataType,
     },
+
+    #[error(transparent)]
+    MsgBundleError(#[from] msg_bundle::Error),
 
     //TODO(john) probably want to turn these into explicit error types
     #[error(transparent)]
