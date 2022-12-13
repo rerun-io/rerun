@@ -782,34 +782,19 @@ fn top_bar_ui(
     if let Some(count) = re_memory::accounting_allocator::global_allocs() {
         ui.separator();
         // we use monospace so the width doesn't fluctuate as the numbers change.
+
         let bytes_used_text = re_format::format_bytes(count.size as _);
         ui.label(
-            egui::RichText::new(&format!("RAM: {}", bytes_used_text))
+            egui::RichText::new(&bytes_used_text)
                 .monospace()
                 .color(ui.visuals().weak_text_color()),
         )
         .on_hover_text(format!(
-            "Rerun Viewer is using {} of RAM in {} separate allocations.",
+            "Rerun Viewer is using {} of RAM in {} separate allocations,\n\
+            plus {} of GPU memory in {} textures and {} buffers.",
             bytes_used_text,
             format_number(count.count),
-        ));
-    }
-
-    {
-        ui.separator();
-        let total_bytes = gpu_resource_stats.total_buffer_size_in_bytes
-            + gpu_resource_stats.total_texture_size_in_bytes;
-
-        // we use monospace so the width doesn't fluctuate as the numbers change.
-        let bytes_used_text = re_format::format_bytes(total_bytes as _);
-        ui.label(
-            egui::RichText::new(&format!("VRAM: {}", bytes_used_text))
-                .monospace()
-                .color(ui.visuals().weak_text_color()),
-        )
-        .on_hover_text(format!(
-            "Rerun Viewer is using {} of GPU memory in {} textures and {} buffers.",
-            bytes_used_text,
+            re_format::format_bytes(gpu_resource_stats.total_bytes() as _),
             format_number(gpu_resource_stats.num_textures),
             format_number(gpu_resource_stats.num_buffers),
         ));
