@@ -31,10 +31,7 @@ use arrow2_convert::{
     serialize::{ArrowSerialize, TryIntoArrow},
 };
 
-/// The errors that can occur when misuing the data store.
-///
-/// Most of these indicate a problem with either the logging SDK,
-/// or how the loggign SDK is being used (PEBKAC).
+/// The errors that can occur when trying to convert between Arrow and MessageBundle types
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error("Could not find entity path in Arrow Schema")]
