@@ -14,7 +14,8 @@ use smallvec::smallvec;
 use std::num::NonZeroU64;
 
 use crate::{
-    include_file, next_multiple_of,
+    context::uniform_buffer_allocation_size,
+    include_file,
     resource_managers::{GpuTexture2DHandle, ResourceManagerError},
     view_builder::ViewBuilder,
     wgpu_resources::{
@@ -107,11 +108,8 @@ impl RectangleDrawData {
             });
         }
 
-        let uniform_buffer_size = std::mem::size_of::<gpu_data::UniformBuffer>();
-        let allocation_size_per_uniform_buffer = next_multiple_of(
-            uniform_buffer_size as u32,
-            ctx.device.limits().min_uniform_buffer_offset_alignment,
-        ) as u64;
+        let allocation_size_per_uniform_buffer =
+            uniform_buffer_allocation_size::<gpu_data::UniformBuffer>(&ctx.device);
         let combined_buffers_size = allocation_size_per_uniform_buffer * rectangles.len() as u64;
 
         // Allocate all constant buffers at once.
@@ -149,14 +147,13 @@ impl RectangleDrawData {
                 //
                 // TODO(andreas): with our own staging buffers we could fix this very easily
 
-                staging_buffer[offset..(offset + uniform_buffer_size)].copy_from_slice(
-                    bytemuck::bytes_of(&gpu_data::UniformBuffer {
+                staging_buffer[offset..(offset + std::mem::size_of::<gpu_data::UniformBuffer>())]
+                    .copy_from_slice(bytemuck::bytes_of(&gpu_data::UniformBuffer {
                         top_left_corner_position: rectangle.top_left_corner_position.into(),
                         extent_u: rectangle.extent_u.into(),
                         extent_v: rectangle.extent_v.into(),
                         multiplicative_tint: rectangle.multiplicative_tint,
-                    }),
-                );
+                    }));
             }
         }
 
@@ -194,7 +191,9 @@ impl RectangleDrawData {
                         BindGroupEntry::Buffer {
                             handle: *uniform_buffer,
                             offset: i as u64 * allocation_size_per_uniform_buffer,
-                            size: NonZeroU64::new(uniform_buffer_size as u64),
+                            size: NonZeroU64::new(
+                                std::mem::size_of::<gpu_data::UniformBuffer>() as u64
+                            ),
                         },
                         BindGroupEntry::DefaultTextureView(**texture),
                         BindGroupEntry::Sampler(sampler)

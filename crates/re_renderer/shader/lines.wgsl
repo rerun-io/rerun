@@ -10,6 +10,13 @@ var line_strip_texture: texture_2d<f32>;
 @group(1) @binding(1)
 var position_data_texture: texture_2d<u32>;
 
+struct BatchUniformBuffer {
+    world_from_scene: Mat4,
+};
+@group(2) @binding(0)
+var<uniform> batch: BatchUniformBuffer;
+
+
 // textureLoad needs i32 right now, so we use that with all sizes & indices to avoid casts
 // https://github.com/gfx-rs/naga/issues/1997
 let LINESTRIP_TEXTURE_SIZE: i32 = 512;
@@ -82,7 +89,8 @@ fn read_position_data(idx: i32) -> PositionData {
     var raw_data = textureLoad(line_strip_texture, IVec2(idx % LINESTRIP_TEXTURE_SIZE, idx / LINESTRIP_TEXTURE_SIZE), 0);
 
     var data: PositionData;
-    data.pos = raw_data.xyz;
+    let pos_4d = Vec4(raw_data.xyz, 1.0) * batch.world_from_scene;
+    data.pos = pos_4d.xyz / pos_4d.w;
     data.strip_index = bitcast<i32>(raw_data.w);
     return data;
 }

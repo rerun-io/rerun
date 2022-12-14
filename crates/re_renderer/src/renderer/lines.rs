@@ -95,22 +95,26 @@
 //!    * note that this would let us remove the degenerated quads between lines, making the approach cleaner and removing the "restart bit"
 //!
 
-use std::num::NonZeroU32;
+use std::{
+    num::{NonZeroU32, NonZeroU64},
+    ops::Range,
+};
 
 use bitflags::bitflags;
 use bytemuck::Zeroable;
 use smallvec::smallvec;
 
 use crate::{
+    context::uniform_buffer_allocation_size,
     include_file, next_multiple_of,
     size::Size,
     view_builder::ViewBuilder,
     wgpu_resources::{
-        BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroupHandleStrong,
-        GpuBindGroupLayoutHandle, GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc,
-        ShaderModuleDesc, TextureDesc,
+        BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, BufferDesc, GpuBindGroupHandleStrong,
+        GpuBindGroupLayoutHandle, GpuRenderPipelineHandle, PipelineLayoutDesc, PoolError,
+        RenderPipelineDesc, ShaderModuleDesc, TextureDesc,
     },
-    Color32,
+    Color32, DebugLabel,
 };
 
 use super::{
@@ -121,7 +125,7 @@ use super::{
 pub mod gpu_data {
     // Don't use `wgsl_buffer_types` since none of this data goes into a buffer, so its alignment rules don't apply.
 
-    use crate::{size::SizeHalf, Color32};
+    use crate::{size::SizeHalf, wgpu_buffer_types, Color32};
 
     use super::LineStripFlags;
 
@@ -145,14 +149,28 @@ pub mod gpu_data {
         pub radius: SizeHalf,
     }
     static_assertions::assert_eq_size!(LineStripInfo, [u32; 2]);
+
+    /// Uniform buffer that changes for every batch of line strips.
+    #[repr(C)]
+    #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+    pub struct BatchUniformBuffer {
+        pub world_from_scene: wgpu_buffer_types::Mat4,
+    }
+}
+
+/// Internal, ready to draw representation of [`LineStripBatchInfo`]
+#[derive(Clone)]
+struct LineStripBatch {
+    bind_group: GpuBindGroupHandleStrong,
+    vertex_range: Range<u32>,
 }
 
 /// A line drawing operation. Encompasses several lines, each consisting of a list of positions.
 /// Expected to be recrated every frame.
 #[derive(Clone)]
 pub struct LineDrawData {
-    bind_group: Option<GpuBindGroupHandleStrong>,
-    num_quads: u32,
+    bind_group_all_lines: Option<GpuBindGroupHandleStrong>,
+    batches: Vec<LineStripBatch>,
 }
 
 impl DrawData for LineDrawData {
@@ -188,6 +206,24 @@ impl LineStripFlags {
     }
 }
 
+/// Data that is valid for a batch of line strips.
+pub struct LineStripBatchInfo {
+    pub label: DebugLabel,
+
+    /// Transformation applies to line positions
+    ///
+    /// TODO(andreas): Since we blindly apply this to positions only there is no restriction on this matrix.
+    ///                 However this implies that we don't do any scaling on the radius.
+    ///                 We should do so on world-space radii. How?
+    pub world_from_scene: glam::Mat4,
+
+    /// Number of vertices covered by this batch.
+    ///
+    /// The batch will start with the next vertex after the one the previous batch ended with.
+    /// It is expected that this vertex is the first vertex of a new batch.
+    pub line_vertex_count: u32,
+}
+
 /// Style information for a line strip.
 #[derive(Clone)]
 pub struct LineStripInfo {
@@ -214,16 +250,37 @@ impl Default for LineStripInfo {
     }
 }
 
+#[derive(thiserror::Error, Debug, PartialEq, Eq)]
+pub enum LineDrawDataError {
+    #[error("Too many line strips! The maximum is {max} but passed were {num_strips}.")]
+    TooManyStrips { max: u32, num_strips: u32 },
+
+    #[error("Too many line segments! The maximum number of positions is {max} but specified were {num_segments}")]
+    TooManySegments { max: u32, num_segments: u32 },
+
+    #[error("Line vertex refers to unknown line strip.")]
+    InvalidStripIndex,
+
+    #[error("Number of vertices consumed by batches exceeds total number of vertices.")]
+    BatchesAddressMoreVerticesThanPassed,
+
+    #[error("A resource failed to resolve.")]
+    PoolError(#[from] PoolError),
+}
+
 impl LineDrawData {
     /// Transforms and uploads line strip data to be consumed by gpu.
     ///
     /// Try to bundle all line strips into a single draw data instance whenever possible.
     /// If you pass zero lines instances, subsequent drawing will do nothing.
+    ///
+    /// If no batches are passed, all lines are assumed to be in a single batch with identity transform.
     pub fn new(
         ctx: &mut RenderContext,
         vertices: &[gpu_data::LineVertex],
         strips: &[LineStripInfo],
-    ) -> anyhow::Result<Self> {
+        batches: &[LineStripBatchInfo],
+    ) -> Result<Self, LineDrawDataError> {
         let line_renderer = ctx.renderers.get_or_create::<_, LineRenderer>(
             &ctx.shared_renderer_data,
             &mut ctx.gpu_resources,
@@ -233,10 +290,21 @@ impl LineDrawData {
 
         if strips.is_empty() {
             return Ok(LineDrawData {
-                bind_group: None,
-                num_quads: 0,
+                bind_group_all_lines: None,
+                batches: Vec::new(),
             });
         }
+
+        let fallback_batches = [LineStripBatchInfo {
+            world_from_scene: glam::Mat4::IDENTITY,
+            label: "all lines".into(),
+            line_vertex_count: vertices.len() as _,
+        }];
+        let batches = if batches.is_empty() {
+            &fallback_batches
+        } else {
+            batches
+        };
 
         // Textures are 2D since 1D textures are very limited in size (8k typically).
         // Need to keep these values in sync with lines.wgsl!
@@ -258,26 +326,26 @@ impl LineDrawData {
         let num_strips = strips.len() as u32;
         // Add a placeholder vertex at the beginning to simplify line cap handling
         // (need this only if the first line starts with a cap, but not specialcasing this makes things easier!)
-        let num_quads = vertices.len() as u32 + 1;
+        let num_segments = vertices.len() as u32 + 1;
 
         // TODO(andreas): just create more draw work items each with its own texture to become "unlimited"
-        anyhow::ensure!(
-            num_strips <= LINE_STRIP_TEXTURE_SIZE * LINE_STRIP_TEXTURE_SIZE,
-            "Too many line strips! The maximum is {} but passed were {num_strips}",
-            LINE_STRIP_TEXTURE_SIZE * LINE_STRIP_TEXTURE_SIZE
-        );
-        anyhow::ensure!(
-            vertices.iter().all(|v| v.strip_index < num_strips),
-            "Line vertex refers to unknown line strip."
-        );
+        if num_strips > LINE_STRIP_TEXTURE_SIZE * LINE_STRIP_TEXTURE_SIZE {
+            return Err(LineDrawDataError::TooManyStrips {
+                max: LINE_STRIP_TEXTURE_SIZE * LINE_STRIP_TEXTURE_SIZE,
+                num_strips,
+            });
+        }
         // TODO(andreas): just create more draw work items each with its own texture to become "unlimited".
         //              (note that this one is a bit trickier to fix than extra line-strips, as we need to split a strip!)
-        anyhow::ensure!(
-            num_quads < POSITION_TEXTURE_SIZE * POSITION_TEXTURE_SIZE,
-            "Too many line segments! The maximum number of positions is {} but specified were {}",
-            POSITION_TEXTURE_SIZE * POSITION_TEXTURE_SIZE - 1,
-            vertices.len()
-        );
+        if num_segments >= POSITION_TEXTURE_SIZE * POSITION_TEXTURE_SIZE {
+            return Err(LineDrawDataError::TooManySegments {
+                max: POSITION_TEXTURE_SIZE * POSITION_TEXTURE_SIZE,
+                num_segments,
+            });
+        }
+        if vertices.iter().any(|v| v.strip_index >= num_strips) {
+            return Err(LineDrawDataError::InvalidStripIndex);
+        }
 
         // TODO(andreas): We want a "stack allocation" here that lives for one frame.
         //                  Note also that this doesn't protect against sharing the same texture with several LineDrawData!
@@ -318,7 +386,7 @@ impl LineDrawData {
         //                  These staging buffers would be provided by the belt.
         // To make the data upload simpler (and have it be done in one go), we always update full rows of each of our textures
         let mut position_data_staging =
-            Vec::with_capacity(next_multiple_of(num_quads, POSITION_TEXTURE_SIZE) as usize);
+            Vec::with_capacity(next_multiple_of(num_segments, POSITION_TEXTURE_SIZE) as usize);
         // placeholder at the beginning to facilitate start-caps
         position_data_staging.push(LineVertex {
             pos: glam::vec3(f32::INFINITY, f32::INFINITY, f32::INFINITY),
@@ -326,8 +394,9 @@ impl LineDrawData {
         });
         position_data_staging.extend(vertices.iter());
         position_data_staging.extend(
-            std::iter::repeat(gpu_data::LineVertex::zeroed())
-                .take((next_multiple_of(num_quads, POSITION_TEXTURE_SIZE) - num_quads) as usize),
+            std::iter::repeat(gpu_data::LineVertex::zeroed()).take(
+                (next_multiple_of(num_segments, POSITION_TEXTURE_SIZE) - num_segments) as usize,
+            ),
         );
 
         let mut line_strip_info_staging =
@@ -368,7 +437,7 @@ impl LineDrawData {
             },
             wgpu::Extent3d {
                 width: POSITION_TEXTURE_SIZE,
-                height: (num_quads + POSITION_TEXTURE_SIZE - 1) / POSITION_TEXTURE_SIZE,
+                height: (num_segments + POSITION_TEXTURE_SIZE - 1) / POSITION_TEXTURE_SIZE,
                 depth_or_array_layers: 1,
             },
         );
@@ -398,30 +467,103 @@ impl LineDrawData {
             },
         );
 
-        Ok(LineDrawData {
-            bind_group: Some(ctx.gpu_resources.bind_groups.alloc(
+        let bind_group_all_lines = ctx.gpu_resources.bind_groups.alloc(
+            &ctx.device,
+            &BindGroupDesc {
+                label: "line draw data".into(),
+                entries: smallvec![
+                    BindGroupEntry::DefaultTextureView(*position_data_texture),
+                    BindGroupEntry::DefaultTextureView(*line_strip_texture),
+                ],
+                layout: line_renderer.bind_group_layout_all_lines,
+            },
+            &ctx.gpu_resources.bind_group_layouts,
+            &ctx.gpu_resources.textures,
+            &ctx.gpu_resources.buffers,
+            &ctx.gpu_resources.samplers,
+        );
+
+        // Process batches
+        let mut batches_internal = Vec::with_capacity(batches.len());
+        {
+            let allocation_size_per_uniform_buffer =
+                uniform_buffer_allocation_size::<gpu_data::BatchUniformBuffer>(&ctx.device);
+            let combined_buffers_size = allocation_size_per_uniform_buffer * batches.len() as u64;
+            let uniform_buffers_handle = ctx.gpu_resources.buffers.alloc(
                 &ctx.device,
-                &BindGroupDesc {
-                    label: "line draw data".into(),
-                    entries: smallvec![
-                        BindGroupEntry::DefaultTextureView(*position_data_texture),
-                        BindGroupEntry::DefaultTextureView(*line_strip_texture),
-                    ],
-                    layout: line_renderer.bind_group_layout,
+                &BufferDesc {
+                    label: "lines batch uniform buffers".into(),
+                    size: combined_buffers_size,
+                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
                 },
-                &ctx.gpu_resources.bind_group_layouts,
-                &ctx.gpu_resources.textures,
-                &ctx.gpu_resources.buffers,
-                &ctx.gpu_resources.samplers,
-            )),
-            num_quads,
+            );
+
+            let mut staging_buffer = ctx.queue.write_buffer_with(
+                ctx.gpu_resources
+                    .buffers
+                    .get_resource(&uniform_buffers_handle)
+                    .unwrap(),
+                0,
+                NonZeroU64::new(combined_buffers_size).unwrap(),
+            );
+
+            let mut start_vertex_for_next_batch = 0;
+            for (i, batch_info) in batches.iter().enumerate() {
+                // CAREFUL: Memory from `write_buffer_with` may not be aligned, causing bytemuck to fail at runtime if we use it to cast the memory to a slice!
+                let offset = i * allocation_size_per_uniform_buffer as usize;
+                staging_buffer
+                    [offset..(offset + std::mem::size_of::<gpu_data::BatchUniformBuffer>())]
+                    .copy_from_slice(bytemuck::bytes_of(&gpu_data::BatchUniformBuffer {
+                        world_from_scene: batch_info.world_from_scene.into(),
+                    }));
+
+                let bind_group = ctx.gpu_resources.bind_groups.alloc(
+                    &ctx.device,
+                    &BindGroupDesc {
+                        label: batch_info.label.clone(),
+                        entries: smallvec![BindGroupEntry::Buffer {
+                            handle: *uniform_buffers_handle,
+                            offset: offset as _,
+                            size: NonZeroU64::new(
+                                std::mem::size_of::<gpu_data::BatchUniformBuffer>() as _
+                            ),
+                        }],
+                        layout: line_renderer.bind_group_layout_batch,
+                    },
+                    &ctx.gpu_resources.bind_group_layouts,
+                    &ctx.gpu_resources.textures,
+                    &ctx.gpu_resources.buffers,
+                    &ctx.gpu_resources.samplers,
+                );
+
+                batches_internal.push(LineStripBatch {
+                    bind_group,
+                    // We spawn a quad for every vertex, plus one extra quad at the beginning of each batch (we added a sentinel vertex),
+                    // which is necessary to make line cap handling homogenous (each strip uses its first quad for both end and start cap)
+                    // Note that the vertex indices of batches are intentionally overlapping.
+                    vertex_range: (start_vertex_for_next_batch * 6)
+                        ..((start_vertex_for_next_batch + batch_info.line_vertex_count + 1) * 6),
+                });
+
+                start_vertex_for_next_batch += batch_info.line_vertex_count;
+            }
+
+            if start_vertex_for_next_batch > vertices.len() as u32 {
+                return Err(LineDrawDataError::BatchesAddressMoreVerticesThanPassed);
+            }
+        }
+
+        Ok(LineDrawData {
+            bind_group_all_lines: Some(bind_group_all_lines),
+            batches: batches_internal,
         })
     }
 }
 
 pub struct LineRenderer {
     render_pipeline: GpuRenderPipelineHandle,
-    bind_group_layout: GpuBindGroupLayoutHandle,
+    bind_group_layout_all_lines: GpuBindGroupLayoutHandle,
+    bind_group_layout_batch: GpuBindGroupLayoutHandle,
 }
 
 impl Renderer for LineRenderer {
@@ -433,10 +575,10 @@ impl Renderer for LineRenderer {
         device: &wgpu::Device,
         resolver: &mut FileResolver<Fs>,
     ) -> Self {
-        let bind_group_layout = pools.bind_group_layouts.get_or_create(
+        let bind_group_layout_all_lines = pools.bind_group_layouts.get_or_create(
             device,
             &BindGroupLayoutDesc {
-                label: "line renderer".into(),
+                label: "line renderer - all".into(),
                 entries: vec![
                     wgpu::BindGroupLayoutEntry {
                         binding: 0,
@@ -462,11 +604,34 @@ impl Renderer for LineRenderer {
             },
         );
 
+        let bind_group_layout_batch = pools.bind_group_layouts.get_or_create(
+            device,
+            &BindGroupLayoutDesc {
+                label: "line renderer - batch".into(),
+                entries: vec![wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: NonZeroU64::new(std::mem::size_of::<
+                            gpu_data::BatchUniformBuffer,
+                        >() as _),
+                    },
+                    count: None,
+                }],
+            },
+        );
+
         let pipeline_layout = pools.pipeline_layouts.get_or_create(
             device,
             &PipelineLayoutDesc {
                 label: "line renderer".into(),
-                entries: vec![shared_data.global_bindings.layout, bind_group_layout],
+                entries: vec![
+                    shared_data.global_bindings.layout,
+                    bind_group_layout_all_lines,
+                    bind_group_layout_batch,
+                ],
             },
             &pools.bind_group_layouts,
         );
@@ -508,7 +673,8 @@ impl Renderer for LineRenderer {
 
         LineRenderer {
             render_pipeline,
-            bind_group_layout,
+            bind_group_layout_all_lines,
+            bind_group_layout_batch,
         }
     }
 
@@ -518,15 +684,19 @@ impl Renderer for LineRenderer {
         pass: &mut wgpu::RenderPass<'a>,
         draw_data: &Self::RendererDrawData,
     ) -> anyhow::Result<()> {
-        let Some(bind_group) = &draw_data.bind_group else {
+        let Some(bind_group_all_lines) = &draw_data.bind_group_all_lines else {
             return Ok(()); // No lines submitted.
         };
-        let bind_group = pools.bind_groups.get_resource(bind_group)?;
+        let bind_group_line_data = pools.bind_groups.get_resource(bind_group_all_lines)?;
         let pipeline = pools.render_pipelines.get_resource(self.render_pipeline)?;
 
         pass.set_pipeline(pipeline);
-        pass.set_bind_group(1, bind_group, &[]);
-        pass.draw(0..draw_data.num_quads * 6, 0..1);
+        pass.set_bind_group(1, bind_group_line_data, &[]);
+
+        for batch in &draw_data.batches {
+            pass.set_bind_group(2, pools.bind_groups.get_resource(&batch.bind_group)?, &[]);
+            pass.draw(batch.vertex_range.clone(), 0..1);
+        }
 
         Ok(())
     }

@@ -10,10 +10,10 @@ use crate::{
 /// This will require some ahead of time size limit, but should be feasible.
 /// But before that we first need to sort out cpu->gpu transfers better by providing staging buffers.
 #[derive(Default)]
-pub struct LineStripSeriesBuilder<PerStripUserData> {
+pub struct LineStripSeriesBuilder<PerBatchUserData> {
     // Number of elements in strips and strip_user_data should be equal at all times.
     pub strips: Vec<LineStripInfo>,
-    pub strip_user_data: Vec<PerStripUserData>,
+    pub strip_user_data: Vec<PerBatchUserData>,
 
     pub vertices: Vec<LineVertex>,
 
@@ -204,7 +204,7 @@ where
 
     /// Finalizes the builder and returns a line draw data with all the lines added so far.
     pub fn to_draw_data(&self, ctx: &mut crate::context::RenderContext) -> LineDrawData {
-        LineDrawData::new(ctx, &self.vertices, &self.strips).unwrap()
+        LineDrawData::new(ctx, &self.vertices, &self.strips, &[]).unwrap()
     }
 
     /// Iterates over all line strips together with their respective vertices.
