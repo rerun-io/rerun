@@ -3559,6 +3559,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_query"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "arrow2",
+ "chrono",
+ "document-features",
+ "indent",
+ "itertools",
+ "nohash-hasher",
+ "polars",
+ "re_arrow_store",
+ "re_format",
+ "re_log",
+ "re_log_types",
+ "thiserror",
+]
+
+[[package]]
 name = "re_renderer"
 version = "0.1.0"
 dependencies = [
