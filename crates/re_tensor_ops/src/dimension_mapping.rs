@@ -103,7 +103,7 @@ fn find_width_height_dim_indices(shape: &[TensorDimension]) -> (usize, usize) {
         (width, height)
     } else {
         // Backup: go by length:
-        let (longest, second_longest) = longest_and_second_longest(shape);
+        let (longest, second_longest) = longest_and_second_longest_dim_indices(shape);
 
         if let Some(width) = width {
             let height = if width == longest {
@@ -139,30 +139,29 @@ fn is_name_like_height(lowercase: &str) -> bool {
 }
 
 /// Returns the longest and second longest dimensions
-fn longest_and_second_longest(shape: &[TensorDimension]) -> (usize, usize) {
-    let mut longest = 0;
-    let mut second_longest = 0;
+fn longest_and_second_longest_dim_indices(shape: &[TensorDimension]) -> (usize, usize) {
+    let mut longest_idx = 0;
+    let mut second_longest_idx = 0;
 
     for (i, dim) in shape.iter().enumerate() {
-        if dim.size > shape[longest].size {
-            second_longest = longest;
-            longest = i;
-        } else if dim.size > shape[second_longest].size {
-            second_longest = i;
+        if dim.size > shape[longest_idx].size {
+            second_longest_idx = longest_idx;
+            longest_idx = i;
+        } else if dim.size > shape[second_longest_idx].size {
+            second_longest_idx = i;
         }
     }
 
-    if longest == second_longest {
-        // A shape of all-zeros
-        debug_assert!(longest == 0);
+    if longest_idx == second_longest_idx {
+        // This can happen with a shape of all-zeros
         (0, 1)
     } else {
-        (longest, second_longest)
+        (longest_idx, second_longest_idx)
     }
 }
 
 #[test]
-fn test_auto_dim_mapping() {
+fn test_find_width_height_dim_indices() {
     fn named(size: u64, name: &str) -> TensorDimension {
         TensorDimension::named(size, name.to_owned())
     }
