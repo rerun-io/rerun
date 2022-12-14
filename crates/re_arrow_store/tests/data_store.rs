@@ -590,7 +590,7 @@ fn query_model_specifics_impl(store: &mut DataStore) {
         ),
         (
             "query all components at frame #41, from `positions` PoV",
-            "the _first_ set of `positions` and the _second_ set of `instances` at that time",
+            "the set of `positions` and the _second_ set of `instances` at that time",
             frame41,
             Point2D::NAME,
             vec![
@@ -600,7 +600,7 @@ fn query_model_specifics_impl(store: &mut DataStore) {
         ),
         (
             "query all components at frame #41, from `instances` PoV",
-            "the _second_ set of `instances` and the _first_ set of `positions` at that time",
+            "the _second_ set of `instances` and the set of `positions` at that time",
             frame41,
             "instances",
             vec![
