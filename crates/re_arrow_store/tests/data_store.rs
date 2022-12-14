@@ -663,7 +663,7 @@ impl DataTracker {
 
     /// Asserts a simple scenario, where every component is fetched from its own point-of-view.
     #[allow(clippy::too_many_arguments)]
-    fn assert_scenario(
+    fn assert_scenario<const N: usize>(
         &self,
         scenario: &str,
         expectation: &str,
@@ -671,7 +671,7 @@ impl DataTracker {
         timeline: &Timeline,
         time_query: &TimeQuery,
         ent_path: &EntityPath,
-        components: &[ComponentNameRef<'_>],
+        components: &[ComponentNameRef<'_>; N],
         expected: Vec<(ComponentNameRef<'static>, TimeInt)>,
     ) {
         self.assert_scenario_pov_impl(
@@ -690,10 +690,10 @@ impl DataTracker {
         );
     }
 
-    /// Asserts a complex scenario, where every component is fetched as it is seen from the
+    /// Asserts a pov scenario, where every component is fetched as it is seen from the
     /// point-of-view of another component.
     #[allow(clippy::too_many_arguments)]
-    fn assert_scenario_pov(
+    fn assert_scenario_pov<const N: usize>(
         &self,
         scenario: &str,
         expectation: &str,
@@ -702,7 +702,7 @@ impl DataTracker {
         time_query: &TimeQuery,
         ent_path: &EntityPath,
         primary: ComponentNameRef<'_>,
-        components: &[ComponentNameRef<'_>], // (primary, component)
+        components: &[ComponentNameRef<'_>; N],
         expected: Vec<(ComponentNameRef<'static>, TimeInt, usize)>,
     ) {
         self.assert_scenario_pov_impl(
@@ -721,7 +721,7 @@ impl DataTracker {
     /// Asserts a complex scenario, where every component is fetched as it is seen from the
     /// point-of-view of another component.
     #[allow(clippy::too_many_arguments)]
-    fn assert_scenario_pov_impl(
+    fn assert_scenario_pov_impl<const N: usize>(
         &self,
         scenario: &str,
         expectation: &str,
@@ -730,16 +730,17 @@ impl DataTracker {
         time_query: &TimeQuery,
         ent_path: &EntityPath,
         primary: Option<ComponentNameRef<'_>>,
-        components: &[ComponentNameRef<'_>], // (primary, component)
+        components: &[ComponentNameRef<'_>; N],
         expected: Vec<(ComponentNameRef<'static>, TimeInt, usize)>,
     ) {
-        let df = {
+        let df = if let Some(primary) = primary {
+            Self::query_components_pov(store, timeline, time_query, ent_path, primary, components)
+        } else {
             let series = components
                 .iter()
                 .filter_map(|&component| {
-                    let primary = primary.unwrap_or(component);
                     Self::query_component_pov(
-                        store, timeline, time_query, ent_path, primary, component,
+                        store, timeline, time_query, ent_path, component, component,
                     )
                 })
                 .collect::<Vec<_>>();
@@ -790,6 +791,43 @@ impl DataTracker {
         store.get(&[component], &row_indices, &mut results);
 
         std::mem::take(&mut results[0]).map(|row| Series::try_from((component, row)).unwrap())
+    }
+
+    fn query_components_pov<const N: usize>(
+        store: &DataStore,
+        timeline: &Timeline,
+        time_query: &TimeQuery,
+        ent_path: &EntityPath,
+        primary: ComponentNameRef<'_>,
+        components: &[ComponentNameRef<'_>; N],
+    ) -> DataFrame {
+        let mut row_indices = [None; N];
+        store.query(
+            timeline,
+            time_query,
+            ent_path,
+            primary,
+            components,
+            &mut row_indices,
+        );
+
+        // work around non-Copy const initialization limitations
+        let mut results = [(); N].map(|_| Option::<Box<dyn Array>>::default());
+        store.get(components, &row_indices, &mut results);
+
+        let df = {
+            let series: Vec<_> = components
+                .iter()
+                .zip(results)
+                .filter_map(|(component, col)| col.map(|col| (component, col)))
+                .map(|(&component, col)| Series::try_from((component, col)).unwrap())
+                .collect();
+
+            let df = DataFrame::new(series).unwrap();
+            df.explode(df.get_column_names()).unwrap()
+        };
+
+        df
     }
 }
 
