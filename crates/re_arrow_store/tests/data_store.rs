@@ -625,6 +625,16 @@ fn query_model_specifics_impl(store: &mut DataStore) {
             Rect2D::NAME,
             vec![(Rect2D::NAME, frame42.into(), 0)],
         ),
+        (
+            "query all components at frame #42, from `instances` PoV",
+            "the set of `positions` and the set of `instances` at that time",
+            frame42,
+            "instances",
+            vec![
+                ("instances", frame42.into(), 0),
+                (Point2D::NAME, frame42.into(), 0),
+            ],
+        ),
     ];
 
     for (scenario, expectation, frame_nr, primary, expected) in scenarios {
