@@ -1,5 +1,3 @@
-#![allow(clippy::collapsible_else_if)]
-
 use re_log_types::TensorDimension;
 
 #[derive(Clone, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
@@ -82,6 +80,7 @@ impl DimensionMapping {
     }
 }
 
+#[allow(clippy::collapsible_else_if)]
 fn find_width_height_dim_indices(shape: &[TensorDimension]) -> (usize, usize) {
     assert!(shape.len() >= 2);
 
