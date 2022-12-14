@@ -25,7 +25,7 @@ use super::{
 #[derive(Clone, Debug)]
 pub struct SpaceMakeInfo {
     pub id: SpaceViewId,
-    pub path: ObjPath,
+    pub reference_space_info: ObjPath,
 
     pub category: ViewCategory,
 
@@ -78,7 +78,7 @@ pub(crate) fn tree_from_space_views(
 
             SpaceMakeInfo {
                 id: *space_view_id,
-                path: space_view.space_path.clone(),
+                reference_space_info: space_view.space_path.clone(),
                 category: space_view.category,
                 aspect_ratio,
             }
@@ -265,7 +265,7 @@ fn group_by_path_prefix(space_infos: &[SpaceMakeInfo]) -> Vec<Vec<SpaceMakeInfo>
 
     let paths = space_infos
         .iter()
-        .map(|space_info| space_info.path.to_components())
+        .map(|space_info| space_info.reference_space_info.to_components())
         .collect_vec();
 
     for i in 0.. {
