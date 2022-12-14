@@ -56,6 +56,7 @@ impl ViewTensorState {
                         self.dimension_mapping != default_mapping,
                         egui::Button::new("Auto-map"),
                     )
+                    .on_disabled_hover_text("The default is already set up")
                     .clicked()
                 {
                     self.dimension_mapping = DimensionMapping::create(&tensor.shape);
