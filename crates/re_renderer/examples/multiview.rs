@@ -14,7 +14,7 @@ use re_renderer::{
     },
     resource_managers::ResourceLifeTime,
     view_builder::{OrthographicCameraMode, Projection, TargetConfiguration, ViewBuilder},
-    Color32, LineStripSeriesBuilder, PointCloudBuilder, RenderContext, Rgba, Size,
+    Color32, LineStripSeriesBuilder, RenderContext, Rgba, Size,
 };
 use winit::event::{ElementState, VirtualKeyCode};
 
