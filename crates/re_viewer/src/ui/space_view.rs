@@ -395,7 +395,7 @@ impl SpaceView {
 
                 let mut scene = view_tensor::SceneTensor::default();
                 scene.load_objects(ctx, &query);
-                self.view_state.ui_tensor(ui, &scene);
+                self.view_state.ui_tensor(ctx, ui, &scene);
             }
             ViewCategory::Text => {
                 let mut scene = view_text::SceneText::default();
@@ -462,7 +462,12 @@ impl ViewState {
         });
     }
 
-    fn ui_tensor(&mut self, ui: &mut egui::Ui, scene: &view_tensor::SceneTensor) {
+    fn ui_tensor(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        scene: &view_tensor::SceneTensor,
+    ) {
         if scene.tensors.is_empty() {
             ui.centered_and_justified(|ui| ui.label("(empty)"));
         } else if scene.tensors.len() == 1 {
@@ -477,7 +482,7 @@ impl ViewState {
             }
             .show(ui, |ui| {
                 ui.vertical(|ui| {
-                    view_tensor::view_tensor(ui, state_tensor, tensor);
+                    view_tensor::view_tensor(ctx, ui, state_tensor, tensor);
                 });
             });
         } else {
