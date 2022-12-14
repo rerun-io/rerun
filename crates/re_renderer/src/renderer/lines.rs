@@ -158,7 +158,7 @@ pub mod gpu_data {
     }
 }
 
-/// Internal, ready to draw representation of [`LineStripBatchInfo`]
+/// Internal, ready to draw representation of [`LineBatchInfo`]
 #[derive(Clone)]
 struct LineStripBatch {
     bind_group: GpuBindGroupHandleStrong,
