@@ -197,76 +197,6 @@ impl MsgBundle {
         }
     }
 
-    pub fn try_new1<O, T, C0>(
-        msg_id: MsgId,
-        into_obj_path: O,
-        into_time_point: T,
-        into_bundles: C0,
-    ) -> Result<Self>
-    where
-        O: Into<ObjPath>,
-        T: Into<TimePoint>,
-        C0: TryInto<ComponentBundle>,
-        MsgBundleError: From<<C0 as TryInto<ComponentBundle>>::Error>,
-    {
-        Ok(Self {
-            msg_id,
-            obj_path: into_obj_path.into(),
-            time_point: into_time_point.into(),
-            components: vec![into_bundles.try_into()?],
-        })
-    }
-
-    pub fn try_new2<O, T, C0, C1>(
-        msg_id: MsgId,
-        into_obj_path: O,
-        into_time_point: T,
-        into_bundles: (C0, C1),
-    ) -> Result<Self>
-    where
-        O: Into<ObjPath>,
-        T: Into<TimePoint>,
-        C0: TryInto<ComponentBundle>,
-        C1: TryInto<ComponentBundle>,
-        MsgBundleError: From<<C0 as TryInto<ComponentBundle>>::Error>,
-        MsgBundleError: From<<C1 as TryInto<ComponentBundle>>::Error>,
-    {
-        Ok(Self {
-            msg_id,
-            obj_path: into_obj_path.into(),
-            time_point: into_time_point.into(),
-            components: vec![into_bundles.0.try_into()?, into_bundles.1.try_into()?],
-        })
-    }
-
-    pub fn try_new3<O, T, C0, C1, C2, E>(
-        msg_id: MsgId,
-        into_obj_path: O,
-        into_time_point: T,
-        into_bundles: (C0, C1, C2),
-    ) -> Result<Self>
-    where
-        O: Into<ObjPath>,
-        T: Into<TimePoint>,
-        C0: TryInto<ComponentBundle>,
-        C1: TryInto<ComponentBundle>,
-        C2: TryInto<ComponentBundle>,
-        MsgBundleError: From<<C0 as TryInto<ComponentBundle>>::Error>,
-        MsgBundleError: From<<C1 as TryInto<ComponentBundle>>::Error>,
-        MsgBundleError: From<<C2 as TryInto<ComponentBundle>>::Error>,
-    {
-        Ok(Self {
-            msg_id,
-            obj_path: into_obj_path.into(),
-            time_point: into_time_point.into(),
-            components: vec![
-                into_bundles.0.try_into()?,
-                into_bundles.1.try_into()?,
-                into_bundles.2.try_into()?,
-            ],
-        })
-    }
-
     /// Try to append a collection of `Component` onto the `MessageBundle`.
     ///
     /// This first converts the component collection into an Arrow array, and then wraps it in a [`ListArray`].
@@ -447,4 +377,77 @@ pub fn wrap_in_listarray(field_array: Box<dyn Array>) -> ListArray<i32> {
     let values = field_array;
     let validity = None;
     ListArray::<i32>::from_data(datatype, offsets, values, validity)
+}
+
+/// Helper to build a `MessageBundle` from 1 component
+pub fn try_build_msg_bundle1<O, T, C0>(
+    msg_id: MsgId,
+    into_obj_path: O,
+    into_time_point: T,
+    into_bundles: C0,
+) -> Result<MsgBundle>
+where
+    O: Into<ObjPath>,
+    T: Into<TimePoint>,
+    C0: TryInto<ComponentBundle>,
+    MsgBundleError: From<<C0 as TryInto<ComponentBundle>>::Error>,
+{
+    Ok(MsgBundle::new(
+        msg_id,
+        into_obj_path.into(),
+        into_time_point.into(),
+        vec![into_bundles.try_into()?],
+    ))
+}
+
+/// Helper to build a `MessageBundle` from 2 components
+pub fn try_build_msg_bundle2<O, T, C0, C1>(
+    msg_id: MsgId,
+    into_obj_path: O,
+    into_time_point: T,
+    into_bundles: (C0, C1),
+) -> Result<MsgBundle>
+where
+    O: Into<ObjPath>,
+    T: Into<TimePoint>,
+    C0: TryInto<ComponentBundle>,
+    C1: TryInto<ComponentBundle>,
+    MsgBundleError: From<<C0 as TryInto<ComponentBundle>>::Error>,
+    MsgBundleError: From<<C1 as TryInto<ComponentBundle>>::Error>,
+{
+    Ok(MsgBundle::new(
+        msg_id,
+        into_obj_path.into(),
+        into_time_point.into(),
+        vec![into_bundles.0.try_into()?, into_bundles.1.try_into()?],
+    ))
+}
+
+/// Helper to build a `MessageBundle` from 3 components
+pub fn try_build_msg_bundle3<O, T, C0, C1, C2, E>(
+    msg_id: MsgId,
+    into_obj_path: O,
+    into_time_point: T,
+    into_bundles: (C0, C1, C2),
+) -> Result<MsgBundle>
+where
+    O: Into<ObjPath>,
+    T: Into<TimePoint>,
+    C0: TryInto<ComponentBundle>,
+    C1: TryInto<ComponentBundle>,
+    C2: TryInto<ComponentBundle>,
+    MsgBundleError: From<<C0 as TryInto<ComponentBundle>>::Error>,
+    MsgBundleError: From<<C1 as TryInto<ComponentBundle>>::Error>,
+    MsgBundleError: From<<C2 as TryInto<ComponentBundle>>::Error>,
+{
+    Ok(MsgBundle::new(
+        msg_id,
+        into_obj_path.into(),
+        into_time_point.into(),
+        vec![
+            into_bundles.0.try_into()?,
+            into_bundles.1.try_into()?,
+            into_bundles.2.try_into()?,
+        ],
+    ))
 }

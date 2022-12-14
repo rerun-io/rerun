@@ -7,7 +7,7 @@ use polars::prelude::DataFrame;
 use re_arrow_store::{DataStore, TimeQuery};
 use re_log_types::{
     datagen::{build_frame_nr, build_some_point2d, build_some_rects},
-    msg_bundle::MsgBundle,
+    msg_bundle::{try_build_msg_bundle2, MsgBundle},
     MsgId, ObjPath as EntityPath, TimeType, Timeline,
 };
 
@@ -58,7 +58,7 @@ fn build_messages(n: usize) -> Vec<MsgBundle> {
     (0..NUM_FRAMES)
         .into_iter()
         .map(move |frame_idx| {
-            MsgBundle::try_new2(
+            try_build_msg_bundle2(
                 MsgId::ZERO,
                 "rects",
                 [build_frame_nr(frame_idx)],

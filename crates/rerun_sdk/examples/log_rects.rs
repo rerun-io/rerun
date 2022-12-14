@@ -1,6 +1,6 @@
 use clap::Parser;
 
-use re_log_types::{field_types, msg_bundle::MsgBundle, LogMsg, MsgId};
+use re_log_types::{field_types, msg_bundle::try_build_msg_bundle2, LogMsg, MsgId};
 use rerun_sdk as rerun;
 
 // Setup the rerun allocator
@@ -78,7 +78,7 @@ fn main() -> std::process::ExitCode {
     let rects = build_some_rects(1);
     let colors = build_some_colors(1);
 
-    let bundle = MsgBundle::try_new2(MsgId::random(), "world/rects", time_point, (rects, colors))
+    let bundle = try_build_msg_bundle2(MsgId::random(), "world/rects", time_point, (rects, colors))
         .ok()
         .unwrap();
 
@@ -91,7 +91,7 @@ fn main() -> std::process::ExitCode {
     let rects = build_some_rects(5);
     let colors = build_some_colors(5);
 
-    let bundle = MsgBundle::try_new2(MsgId::random(), "world/rects", time_point, (rects, colors))
+    let bundle = try_build_msg_bundle2(MsgId::random(), "world/rects", time_point, (rects, colors))
         .ok()
         .unwrap();
 

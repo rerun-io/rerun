@@ -11,7 +11,7 @@ use re_log_types::{
     datagen::{
         build_frame_nr, build_instances, build_log_time, build_some_point2d, build_some_rects,
     },
-    msg_bundle::{ComponentBundle, MsgBundle},
+    msg_bundle::{try_build_msg_bundle1, try_build_msg_bundle2, ComponentBundle, MsgBundle},
     ComponentName, ComponentNameRef, Duration, MsgId, ObjPath as EntityPath, Time, TimePoint,
     TimeType, Timeline,
 };
@@ -286,7 +286,7 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
     {
         tracker.insert_bundle(
             store,
-            &MsgBundle::try_new1(
+            &try_build_msg_bundle1(
                 MsgId::ZERO,
                 ent_path.clone(),
                 [build_frame_nr(frame41)],
@@ -296,7 +296,7 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
         );
         tracker.insert_bundle(
             store,
-            &MsgBundle::try_new1(
+            &try_build_msg_bundle1(
                 MsgId::ZERO,
                 ent_path.clone(),
                 [build_frame_nr(frame41)],
@@ -306,7 +306,7 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
         );
         tracker.insert_bundle(
             store,
-            &MsgBundle::try_new1(
+            &try_build_msg_bundle1(
                 MsgId::ZERO,
                 ent_path.clone(),
                 [build_log_time(now), build_frame_nr(frame42)],
@@ -316,7 +316,7 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
         );
         tracker.insert_bundle(
             store,
-            &MsgBundle::try_new2(
+            &try_build_msg_bundle2(
                 MsgId::ZERO,
                 ent_path.clone(),
                 [build_log_time(now_plus_1s)],
@@ -329,7 +329,7 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
         );
         tracker.insert_bundle(
             store,
-            &MsgBundle::try_new1(
+            &try_build_msg_bundle1(
                 MsgId::ZERO,
                 ent_path.clone(),
                 [build_frame_nr(frame41)],
@@ -339,7 +339,7 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
         );
         tracker.insert_bundle(
             store,
-            &MsgBundle::try_new1(
+            &try_build_msg_bundle1(
                 MsgId::ZERO,
                 ent_path.clone(),
                 [build_log_time(now), build_frame_nr(frame42)],
@@ -349,7 +349,7 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
         );
         tracker.insert_bundle(
             store,
-            &MsgBundle::try_new1(
+            &try_build_msg_bundle1(
                 MsgId::ZERO,
                 ent_path.clone(),
                 [build_log_time(now_minus_1s), build_frame_nr(frame42)],
@@ -359,7 +359,7 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
         );
         tracker.insert_bundle(
             store,
-            &MsgBundle::try_new1(
+            &try_build_msg_bundle1(
                 MsgId::ZERO,
                 ent_path.clone(),
                 [build_log_time(now_minus_1s), build_frame_nr(frame43)],
@@ -369,7 +369,7 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
         );
         tracker.insert_bundle(
             store,
-            &MsgBundle::try_new1(
+            &try_build_msg_bundle1(
                 MsgId::ZERO,
                 ent_path.clone(),
                 [build_frame_nr(frame44)],

@@ -108,7 +108,7 @@ mod tests {
     use super::{ArrowMsg, Chunk, MsgId, Schema};
     use crate::{
         datagen::{build_frame_nr, build_some_point2d, build_some_rects},
-        msg_bundle::MsgBundle,
+        msg_bundle::try_build_msg_bundle2,
     };
 
     #[test]
@@ -153,7 +153,7 @@ mod tests {
 
     #[test]
     fn test_roundtrip_payload() {
-        let bundle = MsgBundle::try_new2(
+        let bundle = try_build_msg_bundle2(
             MsgId::ZERO,
             "world/rects",
             [build_frame_nr(0)],
