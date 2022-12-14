@@ -15,7 +15,7 @@ use re_smart_channel::Receiver;
 
 use crate::{
     misc::{Caches, Options, RecordingConfig, ViewerContext},
-    ui::kb_shortcuts,
+    ui::{data_store_view, kb_shortcuts},
 };
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -599,6 +599,8 @@ enum PanelSelection {
     Viewport,
 
     EventLog,
+
+    DataStore,
 }
 
 #[derive(Default, serde::Deserialize, serde::Serialize)]
@@ -622,6 +624,7 @@ struct AppState {
     panel_selection: PanelSelection,
 
     event_log_view: crate::event_log_view::EventLogView,
+    data_store_view: crate::data_store_view::DataStoreView,
 
     selection_panel: crate::selection_panel::SelectionPanel,
     selection_history: crate::SelectionHistory,
@@ -649,6 +652,7 @@ impl AppState {
             recording_configs,
             panel_selection,
             event_log_view,
+            data_store_view,
             blueprints,
             selection_panel,
             selection_history,
@@ -692,6 +696,7 @@ impl AppState {
                     .or_default()
                     .blueprint_panel_and_viewport(&mut ctx, ui),
                 PanelSelection::EventLog => event_log_view.ui(&mut ctx, ui),
+                PanelSelection::DataStore => data_store_view.ui(&mut ctx, ui),
             });
 
         // move time last, so we get to see the first data first!
@@ -783,6 +788,12 @@ fn top_bar_ui(
             &mut app.state.panel_selection,
             PanelSelection::EventLog,
             "Event Log",
+        );
+
+        ui.selectable_value(
+            &mut app.state.panel_selection,
+            PanelSelection::DataStore,
+            "Data Store",
         );
     }
 

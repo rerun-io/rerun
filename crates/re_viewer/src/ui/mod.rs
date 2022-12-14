@@ -16,6 +16,7 @@ mod selection_history;
 mod selection_history_ui;
 pub use self::selection_history::{HistoricalSelection, SelectionHistory};
 
+pub(crate) mod data_store_view;
 pub(crate) mod data_ui;
 pub(crate) mod event_log_view;
 pub(crate) mod kb_shortcuts;

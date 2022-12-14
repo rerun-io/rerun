@@ -16,7 +16,8 @@ mod ui;
 
 pub(crate) use misc::{mesh_loader, time_axis, Selection, TimeControl, TimeView, ViewerContext};
 pub(crate) use ui::{
-    data_ui, event_log_view, memory_panel, selection_panel, time_panel, Preview, SelectionHistory,
+    data_store_view, data_ui, event_log_view, memory_panel, selection_panel, time_panel, Preview,
+    SelectionHistory,
 };
 
 pub use app::{App, StartupOptions};
