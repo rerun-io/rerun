@@ -11,7 +11,6 @@ use crate::{
 /// of writing to a GPU readable memory location.
 /// This will require some ahead of time size limit, but should be feasible.
 /// But before that we first need to sort out cpu->gpu transfers better by providing staging buffers.
-#[derive(Default)]
 pub struct PointCloudBuilder<PerPointUserData> {
     // Size of `point`/color`/`per_point_user_data` must be equal.
     pub vertices: Vec<PointCloudVertex>,
@@ -22,6 +21,19 @@ pub struct PointCloudBuilder<PerPointUserData> {
 
     /// z value given to the next 2d point.
     pub next_2d_z: f32,
+}
+
+impl<PerPointUserData> Default for PointCloudBuilder<PerPointUserData> {
+    fn default() -> Self {
+        const RESERVE_SIZE: usize = 512;
+        Self {
+            vertices: Vec::with_capacity(RESERVE_SIZE),
+            colors: Vec::with_capacity(RESERVE_SIZE),
+            user_data: Vec::with_capacity(RESERVE_SIZE),
+            batches: Vec::with_capacity(16),
+            next_2d_z: 0.0,
+        }
+    }
 }
 
 impl<PerPointUserData> PointCloudBuilder<PerPointUserData>
