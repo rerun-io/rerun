@@ -18,6 +18,11 @@ re_log_types = { path = "../re_log_types" }
 
 # External
 anyhow.workspace = true
+arrow2 = { workspace = true, features = [
+  "compute_concatenate",
+  "compute_aggregate",
+  "io_print",
+] }
 chrono = "0.4"
 document-features = "0.2"
 indent = "0.1"
@@ -29,21 +34,6 @@ polars-core = { workspace = true, features = [
   "dtype-struct",
 ] }
 thiserror.workspace = true
-
-# native dependencies:
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-arrow2 = { workspace = true, features = [
-  "compute_concatenate",
-  "compute_aggregate",
-  "io_print",
-] }
-
-# web dependencies:
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-arrow2 = { workspace = true, features = [
-  "compute_concatenate",
-  "compute_aggregate",
-] }
 
 [dev-dependencies]
 criterion = "0.3"

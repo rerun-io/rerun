@@ -563,25 +563,22 @@ impl std::fmt::Display for IndexBucket {
 
         f.write_fmt(format_args!("{}\n", self.formatted_time_range()))?;
 
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            let (timeline_name, times) = self.times();
-            let (col_names, cols) = self.named_indices();
+        let (timeline_name, times) = self.times();
+        let (col_names, cols) = self.named_indices();
 
-            let names: Vec<String> = std::iter::once(timeline_name)
-                .chain(col_names.into_iter())
-                .collect();
+        let names: Vec<String> = std::iter::once(timeline_name)
+            .chain(col_names.into_iter())
+            .collect();
 
-            let chunk = Chunk::new(
-                std::iter::once(times.boxed())
-                    .chain(cols.into_iter().map(|c| c.boxed()))
-                    .collect(),
-            );
+        let chunk = Chunk::new(
+            std::iter::once(times.boxed())
+                .chain(cols.into_iter().map(|c| c.boxed()))
+                .collect(),
+        );
 
-            let table_str = arrow2::io::print::write(&[chunk], names.as_slice());
-            let is_sorted = self.is_sorted();
-            f.write_fmt(format_args!("data (sorted={is_sorted}):\n{table_str}\n"))?;
-        }
+        let table_str = arrow2::io::print::write(&[chunk], names.as_slice());
+        let is_sorted = self.is_sorted();
+        f.write_fmt(format_args!("data (sorted={is_sorted}):\n{table_str}\n"))?;
 
         Ok(())
     }
@@ -864,11 +861,8 @@ impl std::fmt::Display for ComponentBucket {
             ))?;
         }
 
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            let chunk = Chunk::new(vec![self.data()]);
-            f.write_str(&arrow2::io::print::write(&[chunk], &[self.name.as_str()]))?;
-        }
+        let chunk = Chunk::new(vec![self.data()]);
+        f.write_str(&arrow2::io::print::write(&[chunk], &[self.name.as_str()]))?;
 
         Ok(())
     }
