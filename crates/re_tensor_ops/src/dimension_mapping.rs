@@ -45,7 +45,7 @@ impl DimensionMapping {
             },
 
             _ => {
-                let (width, height) = find_width_height(shape);
+                let (width, height) = find_width_height_dim_indices(shape);
                 let selectors = (0..shape.len())
                     .filter(|&i| i != width && i != height)
                     .collect();
@@ -82,7 +82,7 @@ impl DimensionMapping {
     }
 }
 
-fn find_width_height(shape: &[TensorDimension]) -> (usize, usize) {
+fn find_width_height_dim_indices(shape: &[TensorDimension]) -> (usize, usize) {
     assert!(shape.len() >= 2);
 
     let mut width = None;
@@ -169,7 +169,7 @@ fn test_auto_dim_mapping() {
     fn dim(size: u64) -> TensorDimension {
         TensorDimension::unnamed(size)
     }
-    let wh = find_width_height;
+    let wh = find_width_height_dim_indices;
 
     assert_eq!(wh(&[dim(800), dim(50)]), (1, 0), "numpy ordering");
     assert_eq!(wh(&[dim(50), dim(800)]), (1, 0), "numpy ordering");
