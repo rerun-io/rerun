@@ -222,6 +222,7 @@ impl App {
     }
 
     fn check_keyboard_shortcuts(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
+        #[cfg(not(target_arch = "wasm32"))]
         if egui_ctx.input_mut().consume_shortcut(&kb_shortcuts::QUIT) {
             frame.close();
         }
