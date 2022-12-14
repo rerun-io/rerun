@@ -169,7 +169,7 @@ pub enum ObjPathCompRef<'a> {
 }
 
 impl<'a> ObjPathCompRef<'a> {
-    fn to_owned(&self) -> ObjPathComp {
+    pub fn to_owned(&self) -> ObjPathComp {
         match self {
             Self::Name(name) => ObjPathComp::Name(**name),
             Self::Index(index) => ObjPathComp::Index((*index).clone()),

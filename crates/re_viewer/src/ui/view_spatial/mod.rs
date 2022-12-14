@@ -1,5 +1,4 @@
 mod eye;
-mod mesh_cache;
 mod scene;
 mod space_camera_3d;
 mod ui;
@@ -11,7 +10,6 @@ pub use self::scene::{
     Image, Label2D, Label2DTarget, Label3D, MeshSource, MeshSourceData, SceneSpatial,
 };
 pub use self::space_camera_3d::SpaceCamera3D;
-pub use mesh_cache::CpuMeshCache;
 pub use ui::{SpatialNavigationMode, ViewSpatialState};
 pub use ui_2d::view_2d;
 pub use ui_3d::{view_3d, SpaceSpecs};

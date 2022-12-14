@@ -64,7 +64,6 @@ pub(crate) fn view_instance_generic(
     let mut keypoint_id = None;
 
     egui::Grid::new("object_instance")
-        .striped(re_ui::ReUi::striped())
         .num_columns(2)
         .show(ui, |ui| {
             for (field_name, field_store) in obj_store.iter() {
@@ -121,7 +120,6 @@ pub(crate) fn view_instance_generic(
                 &data_path,
             );
             egui::Grid::new("class_description")
-                .striped(re_ui::ReUi::striped())
                 .num_columns(2)
                 .show(ui, |ui| {
                     if let Some(class_description) = annotations.context.class_map.get(&class_id) {
@@ -228,27 +226,24 @@ pub(crate) fn show_detailed_data_msg(
 
     let is_image = matches!(msg.data, LoggedData::Single(Data::Tensor(_)));
 
-    egui::Grid::new("fields")
-        .striped(re_ui::ReUi::striped())
-        .num_columns(2)
-        .show(ui, |ui| {
-            ui.monospace("data_path:");
-            ctx.data_path_button(ui, data_path);
-            ui.end_row();
-            ui.monospace("object type path:");
-            ctx.type_path_button(ui, data_path.obj_path.obj_type_path());
-            ui.end_row();
+    egui::Grid::new("fields").num_columns(2).show(ui, |ui| {
+        ui.monospace("data_path:");
+        ctx.data_path_button(ui, data_path);
+        ui.end_row();
+        ui.monospace("object type path:");
+        ctx.type_path_button(ui, data_path.obj_path.obj_type_path());
+        ui.end_row();
 
-            ui.monospace("time_point:");
-            crate::data_ui::ui_time_point(ctx, ui, time_point);
-            ui.end_row();
+        ui.monospace("time_point:");
+        crate::data_ui::ui_time_point(ctx, ui, time_point);
+        ui.end_row();
 
-            if !is_image {
-                ui.monospace("data:");
-                crate::data_ui::ui_logged_data(ctx, ui, data, Preview::Medium);
-                ui.end_row();
-            }
-        });
+        if !is_image {
+            ui.monospace("data:");
+            crate::data_ui::ui_logged_data(ctx, ui, data, Preview::Medium);
+            ui.end_row();
+        }
+    });
 
     if let LoggedData::Single(Data::Tensor(tensor)) = &msg.data {
         crate::ui::image_ui::show_tensor(ctx, ui, tensor);
@@ -288,26 +283,23 @@ pub(crate) fn show_begin_recording_msg(ui: &mut egui::Ui, msg: &BeginRecordingMs
         recording_source,
     } = info;
 
-    egui::Grid::new("fields")
-        .striped(re_ui::ReUi::striped())
-        .num_columns(2)
-        .show(ui, |ui| {
-            ui.monospace("application_id:");
-            ui.label(application_id.to_string());
-            ui.end_row();
+    egui::Grid::new("fields").num_columns(2).show(ui, |ui| {
+        ui.monospace("application_id:");
+        ui.label(application_id.to_string());
+        ui.end_row();
 
-            ui.monospace("recording_id:");
-            ui.label(format!("{recording_id:?}"));
-            ui.end_row();
+        ui.monospace("recording_id:");
+        ui.label(format!("{recording_id:?}"));
+        ui.end_row();
 
-            ui.monospace("started:");
-            ui.label(started.format());
-            ui.end_row();
+        ui.monospace("started:");
+        ui.label(started.format());
+        ui.end_row();
 
-            ui.monospace("recording_source:");
-            ui.label(format!("{recording_source}"));
-            ui.end_row();
-        });
+        ui.monospace("recording_source:");
+        ui.label(format!("{recording_source}"));
+        ui.end_row();
+    });
 }
 
 pub(crate) fn show_type_msg(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, msg: &TypeMsg) {
@@ -331,22 +323,19 @@ pub(crate) fn show_data_msg(
         data,
     } = msg;
 
-    egui::Grid::new("fields")
-        .striped(re_ui::ReUi::striped())
-        .num_columns(2)
-        .show(ui, |ui| {
-            ui.monospace("data_path:");
-            ui.label(format!("{data_path}"));
-            ui.end_row();
+    egui::Grid::new("fields").num_columns(2).show(ui, |ui| {
+        ui.monospace("data_path:");
+        ui.label(format!("{data_path}"));
+        ui.end_row();
 
-            ui.monospace("time_point:");
-            ui_time_point(ctx, ui, time_point);
-            ui.end_row();
+        ui.monospace("time_point:");
+        ui_time_point(ctx, ui, time_point);
+        ui.end_row();
 
-            ui.monospace("data:");
-            ui_logged_data(ctx, ui, data, preview);
-            ui.end_row();
-        });
+        ui.monospace("data:");
+        ui_logged_data(ctx, ui, data, preview);
+        ui.end_row();
+    });
 }
 
 pub(crate) fn show_path_op_msg(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, msg: &PathOpMsg) {
@@ -356,18 +345,15 @@ pub(crate) fn show_path_op_msg(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, m
         path_op,
     } = msg;
 
-    egui::Grid::new("fields")
-        .striped(re_ui::ReUi::striped())
-        .num_columns(2)
-        .show(ui, |ui| {
-            ui.monospace("time_point:");
-            ui_time_point(ctx, ui, time_point);
-            ui.end_row();
+    egui::Grid::new("fields").num_columns(2).show(ui, |ui| {
+        ui.monospace("time_point:");
+        ui_time_point(ctx, ui, time_point);
+        ui.end_row();
 
-            ui.monospace("path_op:");
-            ui_path_op(ctx, ui, path_op);
-            ui.end_row();
-        });
+        ui.monospace("path_op:");
+        ui_path_op(ctx, ui, path_op);
+        ui.end_row();
+    });
 }
 
 pub(crate) fn show_arrow_msg(
@@ -560,7 +546,6 @@ fn ui_annotation_info_table<'a>(
     use egui_extras::{Column, TableBuilder};
 
     let table = TableBuilder::new(ui)
-        .striped(re_ui::ReUi::striped())
         .min_scrolled_height(TABLE_SCROLL_AREA_HEIGHT)
         .max_scroll_height(TABLE_SCROLL_AREA_HEIGHT)
         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
@@ -656,7 +641,6 @@ fn ui_annotation_context(ui: &mut egui::Ui, context: &AnnotationContext) -> egui
                     use egui_extras::{Column, TableBuilder};
 
                     let table = TableBuilder::new(ui)
-                        .striped(re_ui::ReUi::striped())
                         .min_scrolled_height(TABLE_SCROLL_AREA_HEIGHT)
                         .max_scroll_height(TABLE_SCROLL_AREA_HEIGHT)
                         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
@@ -709,18 +693,15 @@ fn ui_rigid3(ui: &mut egui::Ui, rigid3: &Rigid3) -> egui::Response {
     ui.vertical(|ui| {
         ui.label("Rigid3");
         ui.indent("rigid3", |ui| {
-            egui::Grid::new("rigid3")
-                .striped(re_ui::ReUi::striped())
-                .num_columns(2)
-                .show(ui, |ui| {
-                    ui.label("rotation");
-                    ui.monospace(format!("{rotation:?}"));
-                    ui.end_row();
+            egui::Grid::new("rigid3").num_columns(2).show(ui, |ui| {
+                ui.label("rotation");
+                ui.monospace(format!("{rotation:?}"));
+                ui.end_row();
 
-                    ui.label("translation");
-                    ui.monospace(format!("{translation:?}"));
-                    ui.end_row();
-                });
+                ui.label("translation");
+                ui.monospace(format!("{translation:?}"));
+                ui.end_row();
+            });
         });
     })
     .response
@@ -735,18 +716,15 @@ fn ui_pinhole(ui: &mut egui::Ui, pinhole: &Pinhole) -> egui::Response {
     ui.vertical(|ui| {
         ui.label("Pinhole");
         ui.indent("pinole", |ui| {
-            egui::Grid::new("pinole")
-                .striped(re_ui::ReUi::striped())
-                .num_columns(2)
-                .show(ui, |ui| {
-                    ui.label("image from view");
-                    ui_mat3(ui, image_from_view);
-                    ui.end_row();
+            egui::Grid::new("pinole").num_columns(2).show(ui, |ui| {
+                ui.label("image from view");
+                ui_mat3(ui, image_from_view);
+                ui.end_row();
 
-                    ui.label("resolution");
-                    ui.monospace(format!("{resolution:?}"));
-                    ui.end_row();
-                });
+                ui.label("resolution");
+                ui.monospace(format!("{resolution:?}"));
+                ui.end_row();
+            });
         });
     })
     .response

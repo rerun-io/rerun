@@ -275,6 +275,14 @@ impl ObjectTree {
             child.purge_everything_but(keep_msg_ids);
         }
     }
+
+    // Invokes visitor for `self` all children recursively.
+    pub fn visit_children_recursively(&self, visitor: &mut impl FnMut(&ObjPath)) {
+        visitor(&self.path);
+        for child in self.children.values() {
+            child.visit_children_recursively(visitor);
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]

@@ -284,7 +284,6 @@ fn show_table(
     let current_time = ctx.rec_cfg.time_ctrl.time_int();
 
     let mut table_builder = egui_extras::TableBuilder::new(ui)
-        .striped(re_ui::ReUi::striped())
         .resizable(true)
         .vscroll(true)
         .auto_shrink([false; 2]) // expand to take up the whole Space View

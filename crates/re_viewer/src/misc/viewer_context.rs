@@ -11,7 +11,7 @@ pub struct ViewerContext<'a> {
     pub options: &'a mut Options,
 
     /// Things that need caching.
-    pub cache: &'a mut Caches,
+    pub cache: &'a mut super::Caches,
 
     /// The current recording
     pub log_db: &'a LogDb,
@@ -278,33 +278,6 @@ impl RecordingConfig {
     /// Returns the current selection.
     pub fn selection(&self) -> Selection {
         self.selection.clone()
-    }
-}
-
-// ----------------------------------------------------------------------------
-
-#[derive(Default)]
-pub struct Caches {
-    /// For displaying images efficiently in immediate mode.
-    pub image: crate::misc::ImageCache,
-
-    /// For displaying meshes efficiently in immediate mode.
-    pub cpu_mesh: crate::ui::view_spatial::CpuMeshCache,
-}
-
-impl Caches {
-    /// Call once per frame to potentially flush the cache(s).
-    pub fn new_frame(&mut self) {
-        let max_image_cache_use = 1_000_000_000;
-        self.image.new_frame(max_image_cache_use);
-    }
-
-    pub fn purge_memory(&mut self) {
-        let Self {
-            image,
-            cpu_mesh: _, // TODO(emilk)
-        } = self;
-        image.purge_memory();
     }
 }
 

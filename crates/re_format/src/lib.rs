@@ -94,24 +94,24 @@ fn test_format_large_number() {
 /// assert_eq!(format_bytes(123.0), "123 B");
 /// assert_eq!(format_bytes(12_345.0), "12.1 kiB");
 /// assert_eq!(format_bytes(1_234_567.0), "1.2 MiB");
-/// assert_eq!(format_bytes(123_456_789.0), "117.7 MiB");
+/// assert_eq!(format_bytes(123_456_789.0), "118 MiB");
 /// ```
 pub fn format_bytes(number_of_bytes: f64) -> String {
     if number_of_bytes < 0.0 {
         return format!("-{}", format_bytes(-number_of_bytes));
     }
 
-    if number_of_bytes < (1 << 10) as f64 {
+    if number_of_bytes < 10.0_f64.exp2() {
         format!("{:.0} B", number_of_bytes)
-    } else if number_of_bytes < (1 << 20) as f64 {
-        let decimals = (number_of_bytes < (1 << 18) as f64) as usize;
-        format!("{:.*} kiB", decimals, number_of_bytes / (1 << 10) as f64)
-    } else if number_of_bytes < (1 << 30) as f64 {
-        let decimals = (number_of_bytes < (1 << 28) as f64) as usize;
-        format!("{:.*} MiB", decimals, number_of_bytes / (1 << 20) as f64)
+    } else if number_of_bytes < 20.0_f64.exp2() {
+        let decimals = (10.0 * number_of_bytes < 20.0_f64.exp2()) as usize;
+        format!("{:.*} kiB", decimals, number_of_bytes / 10.0_f64.exp2())
+    } else if number_of_bytes < 30.0_f64.exp2() {
+        let decimals = (10.0 * number_of_bytes < 30.0_f64.exp2()) as usize;
+        format!("{:.*} MiB", decimals, number_of_bytes / 20.0_f64.exp2())
     } else {
-        let decimals = (number_of_bytes < (1 << 31) as f64) as usize;
-        format!("{:.*} GiB", decimals, number_of_bytes / (1 << 30) as f64)
+        let decimals = (10.0 * number_of_bytes < 40.0_f64.exp2()) as usize;
+        format!("{:.*} GiB", decimals, number_of_bytes / 30.0_f64.exp2())
     }
 }
 
@@ -124,23 +124,29 @@ fn test_format_bytes() {
         (1023.0, "1023 B"),
         (1024.0, "1.0 kiB"),
         (1025.0, "1.0 kiB"),
+        (1024.0 * 1.2345, "1.2 kiB"),
+        (1024.0 * 12.345, "12.3 kiB"),
+        (1024.0 * 123.45, "123 kiB"),
         (1024f64.powi(2) - 1.0, "1024 kiB"),
         (1024f64.powi(2) + 0.0, "1.0 MiB"),
         (1024f64.powi(2) + 1.0, "1.0 MiB"),
         (1024f64.powi(3) - 1.0, "1024 MiB"),
-        (1024f64.powi(3) + 0.0, "1 GiB"),
-        (1024f64.powi(3) + 1.0, "1 GiB"),
+        (1024f64.powi(3) + 0.0, "1.0 GiB"),
+        (1024f64.powi(3) + 1.0, "1.0 GiB"),
+        (1.2345 * 30.0_f64.exp2(), "1.2 GiB"),
+        (12.345 * 30.0_f64.exp2(), "12.3 GiB"),
+        (123.45 * 30.0_f64.exp2(), "123 GiB"),
         (1024f64.powi(4) - 1.0, "1024 GiB"),
         (1024f64.powi(4) + 0.0, "1024 GiB"),
         (1024f64.powi(4) + 1.0, "1024 GiB"),
         (123.0, "123 B"),
         (12_345.0, "12.1 kiB"),
         (1_234_567.0, "1.2 MiB"),
-        (123_456_789.0, "117.7 MiB"),
+        (123_456_789.0, "118 MiB"),
     ];
 
     for (value, expected) in test_cases {
-        assert_eq!(expected, format_bytes(value));
+        assert_eq!(format_bytes(value), expected);
     }
 }
 
