@@ -207,7 +207,7 @@ impl LineStripFlags {
 }
 
 /// Data that is valid for a batch of line strips.
-pub struct LineStripBatchInfo {
+pub struct LineBatchInfo {
     pub label: DebugLabel,
 
     /// Transformation applies to line positions
@@ -279,7 +279,7 @@ impl LineDrawData {
         ctx: &mut RenderContext,
         vertices: &[gpu_data::LineVertex],
         strips: &[LineStripInfo],
-        batches: &[LineStripBatchInfo],
+        batches: &[LineBatchInfo],
     ) -> Result<Self, LineDrawDataError> {
         let line_renderer = ctx.renderers.get_or_create::<_, LineRenderer>(
             &ctx.shared_renderer_data,
@@ -295,7 +295,7 @@ impl LineDrawData {
             });
         }
 
-        let fallback_batches = [LineStripBatchInfo {
+        let fallback_batches = [LineBatchInfo {
             world_from_scene: glam::Mat4::IDENTITY,
             label: "all lines".into(),
             line_vertex_count: vertices.len() as _,
