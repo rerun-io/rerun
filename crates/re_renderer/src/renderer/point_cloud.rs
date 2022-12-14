@@ -13,9 +13,14 @@
 //! that srgb->linear conversion happens on texture load.
 //!
 
-use std::{num::NonZeroU32, ops::Range};
+use std::{
+    num::{NonZeroU32, NonZeroU64},
+    ops::Range,
+};
 
-use crate::{Color32, DebugLabel};
+use crate::{
+    context::uniform_buffer_allocation_size, wgpu_resources::BufferDesc, Color32, DebugLabel,
+};
 use bytemuck::Zeroable;
 use itertools::Itertools;
 use smallvec::smallvec;
@@ -68,8 +73,8 @@ struct PointCloudBatch {
 /// Expected to be recrated every frame.
 #[derive(Clone)]
 pub struct PointCloudDrawData {
-    bind_group: Option<GpuBindGroupHandleStrong>,
-    num_quads: u32,
+    bind_group_all_points: Option<GpuBindGroupHandleStrong>,
+    batches: Vec<PointCloudBatch>,
 }
 
 impl DrawData for PointCloudDrawData {
@@ -119,10 +124,13 @@ impl PointCloudDrawData {
     ///
     /// Try to bundle all points into a single draw data instance whenever possible.
     /// Number of vertices and colors has to be equal.
+    ///
+    /// If no batches are passed, all points are assumed to be in a single batch with identity transform.
     pub fn new(
         ctx: &mut RenderContext,
         vertices: &[PointCloudVertex],
         colors: &[Color32],
+        batches: &[PointCloudBatchInfo],
     ) -> Result<Self, PointCloudDrawDataError> {
         crate::profile_function!();
 
@@ -135,10 +143,21 @@ impl PointCloudDrawData {
 
         if vertices.is_empty() {
             return Ok(PointCloudDrawData {
-                bind_group: None,
-                num_quads: 0,
+                bind_group_all_points: None,
+                batches: Vec::new(),
             });
         }
+
+        let fallback_batches = [PointCloudBatchInfo {
+            world_from_scene: glam::Mat4::IDENTITY,
+            label: "all points".into(),
+            point_count: vertices.len() as _,
+        }];
+        let batches = if batches.is_empty() {
+            &fallback_batches
+        } else {
+            batches
+        };
 
         // Textures are 2D since 1D textures are very limited in size (8k typically).
         // Need to keep this value in sync with point_cloud.wgsl!
@@ -282,30 +301,100 @@ impl PointCloudDrawData {
             );
         }
 
-        Ok(PointCloudDrawData {
-            bind_group: Some(ctx.gpu_resources.bind_groups.alloc(
+        let bind_group_all_points = ctx.gpu_resources.bind_groups.alloc(
+            &ctx.device,
+            &BindGroupDesc {
+                label: "line drawdata".into(),
+                entries: smallvec![
+                    BindGroupEntry::DefaultTextureView(*position_data_texture),
+                    BindGroupEntry::DefaultTextureView(*color_texture),
+                ],
+                layout: point_renderer.bind_group_layout_all_points,
+            },
+            &ctx.gpu_resources.bind_group_layouts,
+            &ctx.gpu_resources.textures,
+            &ctx.gpu_resources.buffers,
+            &ctx.gpu_resources.samplers,
+        );
+
+        // Process batches
+        let mut batches_internal = Vec::with_capacity(batches.len());
+        {
+            let allocation_size_per_uniform_buffer =
+                uniform_buffer_allocation_size::<gpu_data::BatchUniformBuffer>(&ctx.device);
+            let combined_buffers_size = allocation_size_per_uniform_buffer * batches.len() as u64;
+            let uniform_buffers_handle = ctx.gpu_resources.buffers.alloc(
                 &ctx.device,
-                &BindGroupDesc {
-                    label: "line drawdata".into(),
-                    entries: smallvec![
-                        BindGroupEntry::DefaultTextureView(*position_data_texture),
-                        BindGroupEntry::DefaultTextureView(*color_texture),
-                    ],
-                    layout: point_renderer.bind_group_layout,
+                &BufferDesc {
+                    label: "point batch uniform buffers".into(),
+                    size: combined_buffers_size,
+                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
                 },
-                &ctx.gpu_resources.bind_group_layouts,
-                &ctx.gpu_resources.textures,
-                &ctx.gpu_resources.buffers,
-                &ctx.gpu_resources.samplers,
-            )),
-            num_quads: vertices.len() as _,
+            );
+
+            let mut staging_buffer = ctx.queue.write_buffer_with(
+                ctx.gpu_resources
+                    .buffers
+                    .get_resource(&uniform_buffers_handle)
+                    .unwrap(),
+                0,
+                NonZeroU64::new(combined_buffers_size).unwrap(),
+            );
+
+            let mut start_point_for_next_batch = 0;
+            for (i, batch_info) in batches.iter().enumerate() {
+                // CAREFUL: Memory from `write_buffer_with` may not be aligned, causing bytemuck to fail at runtime if we use it to cast the memory to a slice!
+                let offset = i * allocation_size_per_uniform_buffer as usize;
+                staging_buffer
+                    [offset..(offset + std::mem::size_of::<gpu_data::BatchUniformBuffer>())]
+                    .copy_from_slice(bytemuck::bytes_of(&gpu_data::BatchUniformBuffer {
+                        world_from_scene: batch_info.world_from_scene.into(),
+                    }));
+
+                let bind_group = ctx.gpu_resources.bind_groups.alloc(
+                    &ctx.device,
+                    &BindGroupDesc {
+                        label: batch_info.label.clone(),
+                        entries: smallvec![BindGroupEntry::Buffer {
+                            handle: *uniform_buffers_handle,
+                            offset: offset as _,
+                            size: NonZeroU64::new(
+                                std::mem::size_of::<gpu_data::BatchUniformBuffer>() as _
+                            ),
+                        }],
+                        layout: point_renderer.bind_group_layout_batch,
+                    },
+                    &ctx.gpu_resources.bind_group_layouts,
+                    &ctx.gpu_resources.textures,
+                    &ctx.gpu_resources.buffers,
+                    &ctx.gpu_resources.samplers,
+                );
+
+                batches_internal.push(PointCloudBatch {
+                    bind_group,
+                    vertex_range: (start_point_for_next_batch * 6)
+                        ..((start_point_for_next_batch + batch_info.point_count) * 6),
+                });
+
+                start_point_for_next_batch += batch_info.point_count;
+            }
+
+            if start_point_for_next_batch > vertices.len() as u32 {
+                return Err(PointCloudDrawDataError::BatchesAddressMorePointsThanPassed);
+            }
+        }
+
+        Ok(PointCloudDrawData {
+            bind_group_all_points: Some(bind_group_all_points),
+            batches: batches_internal,
         })
     }
 }
 
 pub struct PointCloudRenderer {
     render_pipeline: GpuRenderPipelineHandle,
-    bind_group_layout: GpuBindGroupLayoutHandle,
+    bind_group_layout_all_points: GpuBindGroupLayoutHandle,
+    bind_group_layout_batch: GpuBindGroupLayoutHandle,
 }
 
 impl Renderer for PointCloudRenderer {
@@ -319,10 +408,10 @@ impl Renderer for PointCloudRenderer {
     ) -> Self {
         crate::profile_function!();
 
-        let bind_group_layout = pools.bind_group_layouts.get_or_create(
+        let bind_group_layout_all_points = pools.bind_group_layouts.get_or_create(
             device,
             &BindGroupLayoutDesc {
-                label: "point cloud".into(),
+                label: "point cloud - all".into(),
                 entries: vec![
                     wgpu::BindGroupLayoutEntry {
                         binding: 0,
@@ -348,11 +437,34 @@ impl Renderer for PointCloudRenderer {
             },
         );
 
+        let bind_group_layout_batch = pools.bind_group_layouts.get_or_create(
+            device,
+            &BindGroupLayoutDesc {
+                label: "point cloud - batch".into(),
+                entries: vec![wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: NonZeroU64::new(std::mem::size_of::<
+                            gpu_data::BatchUniformBuffer,
+                        >() as _),
+                    },
+                    count: None,
+                }],
+            },
+        );
+
         let pipeline_layout = pools.pipeline_layouts.get_or_create(
             device,
             &PipelineLayoutDesc {
                 label: "point cloud".into(),
-                entries: vec![shared_data.global_bindings.layout, bind_group_layout],
+                entries: vec![
+                    shared_data.global_bindings.layout,
+                    bind_group_layout_all_points,
+                    bind_group_layout_batch,
+                ],
             },
             &pools.bind_group_layouts,
         );
@@ -394,7 +506,8 @@ impl Renderer for PointCloudRenderer {
 
         PointCloudRenderer {
             render_pipeline,
-            bind_group_layout,
+            bind_group_layout_all_points,
+            bind_group_layout_batch,
         }
     }
 
@@ -404,17 +517,19 @@ impl Renderer for PointCloudRenderer {
         pass: &mut wgpu::RenderPass<'a>,
         draw_data: &Self::RendererDrawData,
     ) -> anyhow::Result<()> {
-        crate::profile_function!();
-        let Some(bind_group) = &draw_data.bind_group else {
-            return Ok(()) // Empty drawdata
+        let Some(bind_group_all_points) = &draw_data.bind_group_all_points else {
+            return Ok(()); // No points submitted.
         };
-
+        let bind_group_line_data = pools.bind_groups.get_resource(bind_group_all_points)?;
         let pipeline = pools.render_pipelines.get_resource(self.render_pipeline)?;
-        let bind_group = pools.bind_groups.get_resource(bind_group)?;
 
         pass.set_pipeline(pipeline);
-        pass.set_bind_group(1, bind_group, &[]);
-        pass.draw(0..draw_data.num_quads * 6, 0..1);
+        pass.set_bind_group(1, bind_group_line_data, &[]);
+
+        for batch in &draw_data.batches {
+            pass.set_bind_group(2, pools.bind_groups.get_resource(&batch.bind_group)?, &[]);
+            pass.draw(batch.vertex_range.clone(), 0..1);
+        }
 
         Ok(())
     }

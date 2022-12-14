@@ -15,7 +15,7 @@ use re_log_types::{
 };
 use re_renderer::PointCloudBuilder;
 use re_renderer::{
-    renderer::{LineStripFlags, MeshInstance, PointCloudVertex},
+    renderer::{LineStripFlags, MeshInstance},
     Color32, LineStripSeriesBuilder, Size,
 };
 

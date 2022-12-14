@@ -60,7 +60,7 @@ where
         &self,
         ctx: &mut crate::context::RenderContext,
     ) -> Result<PointCloudDrawData, PointCloudDrawDataError> {
-        PointCloudDrawData::new(ctx, &self.vertices, &self.colors)
+        PointCloudDrawData::new(ctx, &self.vertices, &self.colors, &self.batches)
     }
 }
 
@@ -100,6 +100,7 @@ where
         }));
 
         let num_points = self.0.vertices.len() - old_size;
+        self.0.batches.last_mut().unwrap().point_count += num_points as u32;
 
         self.0
             .colors
@@ -128,6 +129,7 @@ where
         });
         self.0.colors.push(Color32::WHITE);
         self.0.user_data.push(PerPointUserData::default());
+        self.0.batches.last_mut().unwrap().point_count += 1;
 
         PointBuilder {
             vertex: self.0.vertices.last_mut().unwrap(),

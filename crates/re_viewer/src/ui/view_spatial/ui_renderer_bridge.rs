@@ -1,5 +1,5 @@
 use re_renderer::{
-    renderer::{GenericSkyboxDrawData, MeshDrawData, PointCloudDrawData, RectangleDrawData},
+    renderer::{GenericSkyboxDrawData, MeshDrawData, RectangleDrawData},
     view_builder::{TargetConfiguration, ViewBuilder},
     RenderContext,
 };
