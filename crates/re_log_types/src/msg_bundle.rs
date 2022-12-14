@@ -146,7 +146,7 @@ where
 /// ];
 /// let mut bundle = MsgBundle::new(MsgId::ZERO, ObjPath::root(), TimePoint::default(), vec![]);
 /// bundle.try_append_component(&component).unwrap();
-/// println!("{:?}", &bundle.components[0].component);
+/// println!("{:?}", &bundle.components[0].value);
 /// ```
 ///
 /// The resultant Arrow array for the `rect2d` component looks as follows:
