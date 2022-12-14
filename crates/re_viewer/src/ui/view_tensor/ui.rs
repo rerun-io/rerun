@@ -44,7 +44,7 @@ impl ViewTensorState {
     pub fn create(tensor: &Tensor) -> ViewTensorState {
         Self {
             selector_values: Default::default(),
-            dimension_mapping: DimensionMapping::create(tensor.num_dim()),
+            dimension_mapping: DimensionMapping::create(&tensor.shape),
             color_mapping: ColorMapping::default(),
             texture_settings: TextureSettings::default(),
             tensor: tensor.clone(),
