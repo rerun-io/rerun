@@ -2,7 +2,6 @@
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 use criterion::{criterion_group, criterion_main, Criterion};
-use polars::prelude::DataFrame;
 
 use re_arrow_store::{DataStore, TimeQuery};
 use re_log_types::{
@@ -76,7 +75,7 @@ fn insert_messages<'a>(msgs: impl Iterator<Item = &'a MsgBundle>) -> DataStore {
     store
 }
 
-fn query_messages(store: &mut DataStore) -> DataFrame {
+fn query_messages(store: &mut DataStore) -> polars_core::frame::DataFrame {
     let time_query = TimeQuery::LatestAt(NUM_FRAMES / 2);
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
     let ent_path = EntityPath::from("rects");

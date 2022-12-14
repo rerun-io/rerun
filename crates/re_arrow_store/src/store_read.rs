@@ -1,10 +1,12 @@
 use std::{collections::HashMap, sync::atomic::Ordering};
 
-use arrow2::array::{Array, MutableArray, UInt64Vec};
-use polars::prelude::{DataFrame, Series};
+use arrow2::{
+    array::{Array, Int64Array, MutableArray, UInt64Array, UInt64Vec},
+    datatypes::{DataType, TimeUnit},
+};
 
 use re_log::debug;
-use re_log_types::{ComponentNameRef, ObjPath as EntityPath, TimeInt, Timeline};
+use re_log_types::{ComponentNameRef, ObjPath as EntityPath, TimeInt, TimeRange, Timeline};
 
 use crate::{
     ComponentBucket, ComponentTable, DataStore, IndexBucket, IndexBucketIndices, IndexTable,
@@ -40,7 +42,7 @@ impl DataStore {
         time_query: &TimeQuery,
         ent_path: &EntityPath,
         components: &[ComponentNameRef<'_>],
-    ) -> anyhow::Result<DataFrame> {
+    ) -> anyhow::Result<polars_core::frame::DataFrame> {
         // TODO(cmc): kind & query_id need to somehow propagate through the span system.
         self.query_id.fetch_add(1, Ordering::Relaxed);
 
@@ -81,9 +83,12 @@ impl DataStore {
             .into_iter()
             .filter_map(|(name, row_idx)| {
                 self.components.get(name).and_then(|table| {
-                    table
-                        .get(row_idx)
-                        .map(|data| (name, Series::try_from((name, data)).unwrap()))
+                    table.get(row_idx).map(|data| {
+                        (
+                            name,
+                            polars_core::series::Series::try_from((name, data)).unwrap(),
+                        )
+                    })
                 })
             })
             .collect();
@@ -92,7 +97,7 @@ impl DataStore {
             .iter()
             .filter_map(|name| series.remove(name))
             .collect();
-        let df = DataFrame::new(series_ordered)?;
+        let df = polars_core::frame::DataFrame::new(series_ordered)?;
 
         df.explode(df.get_column_names()).map_err(Into::into)
     }
@@ -291,6 +296,31 @@ impl IndexBucket {
 
         Some(row_idx)
     }
+
+    /// Whether the indices in this `IndexBucket` are sorted
+    pub fn is_sorted(&self) -> bool {
+        self.indices.read().is_sorted
+    }
+
+    /// Returns an (name, [`Int64Array`]) with a logical type matching the timeline.
+    pub fn times(&self) -> (String, Int64Array) {
+        let times = Int64Array::from(self.indices.read().times.clone());
+        let logical_type = match self.timeline.typ() {
+            re_log_types::TimeType::Time => DataType::Timestamp(TimeUnit::Nanosecond, None),
+            re_log_types::TimeType::Sequence => DataType::Int64,
+        };
+        (self.timeline.name().to_string(), times.to(logical_type))
+    }
+
+    /// Returns a Vec each of (name, array) for each index in the bucket
+    pub fn named_indices(&self) -> (Vec<String>, Vec<UInt64Array>) {
+        self.indices
+            .read()
+            .indices
+            .iter()
+            .map(|(name, index)| (name.clone(), UInt64Array::from(index.clone())))
+            .unzip()
+    }
 }
 
 impl IndexBucketIndices {
@@ -412,9 +442,25 @@ impl ComponentTable {
     }
 }
 impl ComponentBucket {
+    /// Get this `ComponentBucket`s debug name
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
     // Panics on out-of-bounds
     pub fn get(&self, row_idx: u64) -> Box<dyn Array> {
         let row_idx = row_idx - self.row_offset;
         self.data.slice(row_idx as usize, 1)
+    }
+
+    /// Returns the entire data Array in this component
+    pub fn data(&self) -> Box<dyn Array> {
+        // shallow copy
+        self.data.clone()
+    }
+
+    /// Return an iterator over the time ranges in this bucket
+    pub fn iter_time_ranges(&self) -> impl Iterator<Item = (&Timeline, &TimeRange)> {
+        self.time_ranges.iter()
     }
 }

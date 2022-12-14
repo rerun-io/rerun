@@ -3,13 +3,12 @@ use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
 
 use anyhow::ensure;
-use arrow2::array::{Array, Int64Vec, MutableArray, PrimitiveArray, UInt64Vec};
+use arrow2::array::{Array, Int64Vec, MutableArray, UInt64Vec};
 use arrow2::bitmap::MutableBitmap;
+use arrow2::chunk::Chunk;
 use arrow2::datatypes::DataType;
 
 use parking_lot::RwLock;
-use polars::prelude::{DataFrame, Int64Type, Utf8Type};
-use polars::series::IntoSeries;
 use re_format::{format_bytes, format_number};
 use re_log_types::{
     ComponentName, ObjPath as EntityPath, ObjPathHash as EntityPathHash, TimeInt, TimeRange,
@@ -169,13 +168,6 @@ impl DataStore {
             .values()
             .map(|table| table.total_size_bytes())
             .sum()
-    }
-
-    /// Iterate over the indices in the `DataStore`
-    pub fn indices_iter(
-        &self,
-    ) -> impl ExactSizeIterator<Item = (&(Timeline, EntityPathHash), &IndexTable)> {
-        self.indices.iter()
     }
 
     /// Runs the sanity check suite for the entire datastore.
@@ -456,10 +448,6 @@ impl IndexTable {
         &self.ent_path
     }
 
-    pub fn buckets_iter(&self) -> impl ExactSizeIterator<Item = (&TimeInt, &IndexBucket)> {
-        self.buckets.iter()
-    }
-
     /// Returns the number of rows stored across this entire table, i.e. the sum of the number
     /// of rows stored across all of its buckets.
     pub fn total_rows(&self) -> u64 {
@@ -526,50 +514,6 @@ pub struct IndexBucket {
     pub(crate) indices: RwLock<IndexBucketIndices>,
 }
 
-impl IndexBucket {
-    /// Create a [`polars::prelude::DataFrame`] from the `IndexBucket`
-    pub fn as_frame(&self) -> Result<DataFrame, polars::error::PolarsError> {
-        use arrow2::array::MutableArray as _;
-        use polars::prelude::{NamedFrom as _, Series};
-
-        let IndexBucketIndices {
-            is_sorted,
-            time_range: _,
-            times,
-            indices,
-        } = &*self.indices.read();
-
-        let typ = self.timeline.typ();
-
-        let times = {
-            let mut chunked: polars::prelude::ChunkedArray<Utf8Type> = times
-                .values()
-                .iter()
-                .map(|time| typ.format(TimeInt::from(*time)))
-                .collect();
-            chunked.rename("time");
-            if *is_sorted {
-                chunked.set_sorted(false);
-            }
-            chunked.into_series()
-        };
-
-        let series = std::iter::once(times)
-            .chain(indices.iter().map(|(name, index)| {
-                let index = index
-                    .values()
-                    .iter()
-                    .enumerate()
-                    .map(|(i, v)| index.is_valid(i).then_some(*v))
-                    .collect::<Vec<_>>();
-                Series::new(name.as_str(), index)
-            }))
-            .collect::<Vec<_>>();
-        // TODO(cmc): sort component columns (not time!)
-        DataFrame::new(series)
-    }
-}
-
 /// Just the indices, to simplify interior mutability.
 #[derive(Debug)]
 pub struct IndexBucketIndices {
@@ -617,19 +561,26 @@ impl std::fmt::Display for IndexBucket {
             format_number(self.total_rows() as _),
         ))?;
 
-        f.write_str(&self.formatted_time_range())?;
+        f.write_fmt(format_args!("{}\n", self.formatted_time_range()))?;
 
         #[cfg(not(target_arch = "wasm32"))]
         {
-            let df = self.as_frame().map_err(|e| {
-                re_log::error!("Error building DataFrame: {}", e);
-                std::fmt::Error::default()
-            })?;
-            let is_sorted = matches!(
-                df.column("time").unwrap().is_sorted(),
-                polars::series::IsSorted::Ascending
+            let (timeline_name, times) = self.times();
+            let (col_names, cols) = self.named_indices();
+
+            let names: Vec<String> = std::iter::once(timeline_name)
+                .chain(col_names.into_iter())
+                .collect();
+
+            let chunk = Chunk::new(
+                std::iter::once(times.boxed())
+                    .chain(cols.into_iter().map(|c| c.boxed()))
+                    .collect(),
             );
-            f.write_fmt(format_args!("data (sorted={is_sorted}): {df:?}\n"))?;
+
+            let table_str = arrow2::io::print::write(&[chunk], names.as_slice());
+            let is_sorted = self.is_sorted();
+            f.write_fmt(format_args!("data (sorted={is_sorted}):\n{table_str}\n"))?;
         }
 
         Ok(())
@@ -669,20 +620,9 @@ impl IndexBucket {
 
     /// Returns a formatted string of the time range in the bucket
     pub fn formatted_time_range(&self) -> String {
-        let timeline_type = self.timeline.typ();
-        let IndexBucketIndices {
-            is_sorted: _,
-            time_range,
-            times: _,
-            indices: _,
-        } = &*self.indices.read();
-
+        let time_range = &self.indices.read().time_range;
         if time_range.min.as_i64() != i64::MAX && time_range.max.as_i64() != i64::MIN {
-            format!(
-                "time range: from {} to {} (all inclusive)\n",
-                timeline_type.format(time_range.min),
-                timeline_type.format(time_range.max),
-            )
+            self.timeline.format_time_range(time_range)
         } else {
             "time range: N/A\n".to_owned()
         }
@@ -844,6 +784,11 @@ impl ComponentTable {
             .sum()
     }
 
+    /// Returns an iterator over the `ComponentBucket` in this table
+    pub fn buckets_iter(&self) -> impl Iterator<Item = &ComponentBucket> {
+        self.buckets.iter()
+    }
+
     /// Runs the sanity check suite for the entire table.
     ///
     /// Returns an error if anything looks wrong.
@@ -873,6 +818,7 @@ impl ComponentTable {
 pub struct ComponentBucket {
     /// The component's name, for debugging purposes.
     pub(crate) name: Arc<String>,
+
     /// The offset of this bucket in the global table.
     pub(crate) row_offset: RowIndex,
 
@@ -888,13 +834,6 @@ pub struct ComponentBucket {
 
 impl std::fmt::Display for ComponentBucket {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self {
-            name,
-            time_ranges,
-            row_offset,
-            data,
-        } = self;
-
         f.write_fmt(format_args!(
             "size: {} across {} rows\n",
             format_bytes(self.total_size_bytes() as _),
@@ -903,40 +842,32 @@ impl std::fmt::Display for ComponentBucket {
 
         f.write_fmt(format_args!(
             "row range: from {} to {} (all inclusive)\n",
-            row_offset,
+            self.row_offset,
             // Component buckets can never be empty at the moment:
             // - the first bucket is always initialized with a single empty row
             // - all buckets that follow are lazily instantiated when data get inserted
             //
             // TODO(#439): is that still true with deletion?
-            row_offset + data.len().checked_sub(1).expect("buckets are never empty") as u64,
+            self.row_offset
+                + self
+                    .data
+                    .len()
+                    .checked_sub(1)
+                    .expect("buckets are never empty") as u64,
         ))?;
 
         f.write_str("time ranges:\n")?;
-        for (timeline, time_range) in time_ranges {
+        for (timeline, time_range) in &self.time_ranges {
             f.write_fmt(format_args!(
-                "    - {}: from {} to {} (all inclusive)\n",
-                timeline.name(),
-                timeline.typ().format(time_range.min),
-                timeline.typ().format(time_range.max),
+                "{}\n",
+                &timeline.format_time_range(time_range)
             ))?;
         }
 
         #[cfg(not(target_arch = "wasm32"))]
         {
-            use polars::prelude::{DataFrame, Series};
-            // TODO(cmc): I'm sure there's no need to clone here
-            let series = Series::try_from((name.as_str(), data.clone())).unwrap();
-            let df = DataFrame::new(vec![series]).unwrap();
-            f.write_fmt(format_args!("data: {df:?}"))?;
-        }
-
-        #[cfg(target_arch = "wasm32")]
-        {
-            _ = name;
-            _ = time_ranges;
-            _ = row_offset;
-            _ = data;
+            let chunk = Chunk::new(vec![self.data()]);
+            f.write_str(&arrow2::io::print::write(&[chunk], &[self.name.as_str()]))?;
         }
 
         Ok(())
