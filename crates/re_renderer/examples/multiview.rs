@@ -98,7 +98,7 @@ fn build_lines(re_ctx: &mut RenderContext, seconds_since_startup: f32) -> LineDr
     let lorenz_points = lorenz_points(seconds_since_startup);
 
     let mut builder = LineStripSeriesBuilder::<()>::default();
-    let mut batch = builder.batch("all lines");
+    let mut batch = builder.batch("lines without transform");
 
     // Complex orange line.
     batch
@@ -121,8 +121,10 @@ fn build_lines(re_ctx: &mut RenderContext, seconds_since_startup: f32) -> LineDr
         .radius(Size::new_scene(0.05))
         .flags(LineStripFlags::CAP_END_TRIANGLE | LineStripFlags::CAP_START_ROUND);
 
-    // Blue spiral
-    batch
+    // Blue spiral, rotating
+    builder
+        .batch("blue sprial")
+        .world_from_scene(glam::Mat4::from_rotation_x(seconds_since_startup * 10.0))
         .add_strip((0..1000).map(|i| {
             glam::vec3(
                 (i as f32 * 0.01).sin() * 2.0,
