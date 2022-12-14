@@ -116,7 +116,10 @@ where
         let strip_index = old_len as _;
 
         self.add_vertices(points, strip_index);
+
+        debug_assert_eq!(self.0.strips.len(), self.0.strip_user_data.len());
         self.0.strips.push(LineStripInfo::default());
+        self.0.strip_user_data.push(PerStripUserData::default());
 
         LineStripBuilder {
             strips: &mut self.0.strips[old_len..],
@@ -151,9 +154,13 @@ where
         let old_len = self.0.strips.len();
         let num_strips_added = num_strips as usize - old_len;
 
+        debug_assert_eq!(self.0.strips.len(), self.0.strip_user_data.len());
         self.0
             .strips
             .extend(std::iter::repeat(LineStripInfo::default()).take(num_strips_added));
+        self.0
+            .strip_user_data
+            .extend(std::iter::repeat(PerStripUserData::default()).take(num_strips_added));
 
         LineStripBuilder {
             strips: &mut self.0.strips[old_len..],
