@@ -728,8 +728,8 @@ impl DataTracker {
         );
     }
 
-    /// Asserts a complex scenario, where every component is fetched as it is seen from the
-    /// point-of-view of another component.
+    /// Asserts a complex scenario, where every component is either fetched as it is seen from the
+    /// point-of-view of another component, or its own point-of-view if primary is None.
     #[allow(clippy::too_many_arguments)]
     fn assert_scenario_pov_impl<const N: usize>(
         &self,
