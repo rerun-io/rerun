@@ -167,22 +167,7 @@ impl DataStore {
     /// `row_indices` takes a list of options to simplify so that one can easily re-use the results
     /// from [`Self::query`].
     ///
-    /// ```ignore
-    /// let comps = [Instances::NAME, Rect2D::NAME];
-    ///
-    /// let mut row_indices = [None, None];
-    /// store.query(
-    ///     timeline,
-    ///     time_query,
-    ///     ent_path,
-    ///     Rect2D::NAME,
-    ///     &comps,
-    ///     &mut row_indices,
-    /// );
-    ///
-    /// let mut results = [None, None];
-    /// store.get(comps, &row_indices, &mut results);
-    /// ```
+    /// See [`Self::query`] for more information.
     pub fn get<const N: usize>(
         &self,
         components: &[ComponentNameRef<'_>; N],
