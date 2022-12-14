@@ -64,7 +64,7 @@ impl DimensionMapping {
 
     /// Protect against old serialized data that is not up-to-date with the new tensor
     pub fn is_valid(&self, num_dim: usize) -> bool {
-        fn is_valid(dim_selector: &Option<usize>, num_dim: usize) -> bool {
+        fn is_in_range(dim_selector: &Option<usize>, num_dim: usize) -> bool {
             if let Some(dim) = dim_selector {
                 *dim < num_dim
             } else {
@@ -72,9 +72,13 @@ impl DimensionMapping {
             }
         }
 
-        is_valid(&self.width, num_dim)
-            && is_valid(&self.height, num_dim)
-            && is_valid(&self.channel, num_dim)
+        // we should have both width and height set…
+        (num_dim < 2 || (self.width.is_some() && self.height.is_some()))
+
+        // …and all dimensions should be in range
+            && is_in_range(&self.width, num_dim)
+            && is_in_range(&self.height, num_dim)
+            && is_in_range(&self.channel, num_dim)
     }
 }
 
