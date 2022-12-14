@@ -173,17 +173,15 @@ impl SelectionPanel {
             }
             Selection::SpaceViewObjPath(space_view_id, obj_path) => {
                 if let Some(space_view) = blueprint.viewport.space_view_mut(&space_view_id) {
-                    egui::Grid::new("space_view_id_obj_path")
-                        .striped(re_ui::ReUi::striped())
-                        .show(ui, |ui| {
-                            ui.label("Space View:");
-                            ctx.space_view_button_to(ui, &space_view.name, space_view_id);
-                            ui.end_row();
+                    egui::Grid::new("space_view_id_obj_path").show(ui, |ui| {
+                        ui.label("Space View:");
+                        ctx.space_view_button_to(ui, &space_view.name, space_view_id);
+                        ui.end_row();
 
-                            ui.label("Object Path:");
-                            ctx.obj_path_button(ui, &obj_path);
-                            ui.end_row();
-                        });
+                        ui.label("Object Path:");
+                        ctx.obj_path_button(ui, &obj_path);
+                        ui.end_row();
+                    });
 
                     let mut props = space_view.obj_properties.get(&obj_path);
                     obj_props_ui(ctx, ui, &mut props);

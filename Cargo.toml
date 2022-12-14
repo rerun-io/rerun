@@ -31,14 +31,14 @@ opt-level = 2
 debug = true
 
 [patch.crates-io]
-# # 2022-12-13 - clamp restored window size to monitor size to maybe fix https://github.com/rerun-io/rerun/issues/514
-ecolor = { git = "https://github.com/emilk/egui", rev = "4a72abc8ec1d973cd80b5978184c3904b04ea12e" }
-eframe = { git = "https://github.com/emilk/egui", rev = "4a72abc8ec1d973cd80b5978184c3904b04ea12e" }
-egui = { git = "https://github.com/emilk/egui", rev = "4a72abc8ec1d973cd80b5978184c3904b04ea12e" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "4a72abc8ec1d973cd80b5978184c3904b04ea12e" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "4a72abc8ec1d973cd80b5978184c3904b04ea12e" }
-emath = { git = "https://github.com/emilk/egui", rev = "4a72abc8ec1d973cd80b5978184c3904b04ea12e" }
-epaint = { git = "https://github.com/emilk/egui", rev = "4a72abc8ec1d973cd80b5978184c3904b04ea12e" }
+# # 2022-12-13 - add global striped flag
+ecolor = { git = "https://github.com/emilk/egui", rev = "126be51ac318a7de7831e9d083c97efa566f7409" }
+eframe = { git = "https://github.com/emilk/egui", rev = "126be51ac318a7de7831e9d083c97efa566f7409" }
+egui = { git = "https://github.com/emilk/egui", rev = "126be51ac318a7de7831e9d083c97efa566f7409" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "126be51ac318a7de7831e9d083c97efa566f7409" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "126be51ac318a7de7831e9d083c97efa566f7409" }
+emath = { git = "https://github.com/emilk/egui", rev = "126be51ac318a7de7831e9d083c97efa566f7409" }
+epaint = { git = "https://github.com/emilk/egui", rev = "126be51ac318a7de7831e9d083c97efa566f7409" }
 
 # ecolor = { path = "../../egui/crates/ecolor" }
 # eframe = { path = "../../egui/crates/eframe" }
