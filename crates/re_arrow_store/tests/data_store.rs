@@ -15,7 +15,7 @@ use re_log_types::{
     ComponentNameRef, Duration, ObjPath as EntityPath, Time, TimePoint, TimeType, Timeline,
 };
 
-// ---
+// --- Configs ---
 
 const COMPONENT_CONFIGS: &[DataStoreConfig] = &[
     DataStoreConfig::DEFAULT,
@@ -466,11 +466,9 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
 
 // --- Helpers ---
 
-type DataEntry = (ComponentNameRef<'static>, TimeInt);
-
 #[derive(Default)]
 struct DataTracker {
-    all_data: HashMap<(ComponentNameRef<'static>, TimeInt), Box<dyn Array>>,
+    all_data: HashMap<(ComponentNameRef<'static>, TimeInt), Vec<Box<dyn Array>>>,
 }
 
 impl DataTracker {
@@ -485,7 +483,8 @@ impl DataTracker {
 
         for time in timepoint.times() {
             for (name, _, comp) in &components {
-                assert!(self.all_data.insert((name, *time), comp.clone()).is_none());
+                let comps = self.all_data.entry((name, *time)).or_default();
+                comps.push(comp.clone());
             }
         }
 
@@ -496,6 +495,7 @@ impl DataTracker {
         // eprintln!("{store}");
     }
 
+    /// Asserts a simple scenario, where every component is fetched from its own point-of-view.
     fn assert_scenario(
         &self,
         store: &mut DataStore,
@@ -503,9 +503,21 @@ impl DataTracker {
         time_query: &TimeQuery,
         ent_path: &EntityPath,
         components: &[ComponentNameRef<'_>],
-        expected: Vec<DataEntry>,
+        expected: Vec<(ComponentNameRef<'static>, TimeInt)>,
     ) {
-        let df = Self::query_dataframe(store, timeline, time_query, ent_path, components);
+        let df = {
+            let series = components
+                .iter()
+                .filter_map(|&component| {
+                    Self::query_component_pov(
+                        store, timeline, time_query, ent_path, component, component,
+                    )
+                })
+                .collect::<Vec<_>>();
+
+            let df = DataFrame::new(series).unwrap();
+            df.explode(df.get_column_names()).unwrap()
+        };
 
         let series = expected
             .into_iter()
@@ -519,36 +531,66 @@ impl DataTracker {
         assert_eq!(expected, df, "\n{store}");
     }
 
-    fn query_dataframe(
+    /// Asserts a complex scenario, where every component is fetched as it is seen from the
+    /// point-of-view of another component.
+    fn assert_scenario_pov(
+        &self,
+        store: &mut DataStore,
+        timeline: &Timeline,
+        time_query: &TimeQuery,
+        ent_path: &EntityPath,
+        primary: ComponentNameRef<'_>,
+        components: &[(ComponentNameRef<'_>, ComponentNameRef<'_>)], // (primary, component)
+        expected: Vec<(ComponentNameRef<'static>, TimeInt, usize)>,
+    ) {
+        let df = {
+            let series = components
+                .iter()
+                .filter_map(|(primary, component)| {
+                    Self::query_component_pov(
+                        store, timeline, time_query, ent_path, primary, component,
+                    )
+                })
+                .collect::<Vec<_>>();
+
+            let df = DataFrame::new(series).unwrap();
+            df.explode(df.get_column_names()).unwrap()
+        };
+
+        let series = expected
+            .into_iter()
+            .map(|(name, time, idx)| (name, self.all_data[&(name, time)][idx].clone()))
+            .map(|(name, data)| Series::try_from((name, data)).unwrap())
+            .collect::<Vec<_>>();
+        let expected = DataFrame::new(series).unwrap();
+        let expected = expected.explode(expected.get_column_names()).unwrap();
+
+        store.sort_indices();
+        assert_eq!(expected, df, "\n{store}");
+    }
+
+    fn query_component_pov(
         store: &DataStore,
         timeline: &Timeline,
         time_query: &TimeQuery,
         ent_path: &EntityPath,
-        components: &[ComponentNameRef<'_>],
-    ) -> DataFrame {
-        let series = components
-            .iter()
-            .filter_map(|&component| {
-                let mut row_indices = [None];
-                store.query(
-                    timeline,
-                    time_query,
-                    ent_path,
-                    component,
-                    &[component],
-                    &mut row_indices,
-                );
+        primary: ComponentNameRef<'_>,
+        component: ComponentNameRef<'_>,
+    ) -> Option<Series> {
+        let mut row_indices = [None];
+        store.query(
+            timeline,
+            time_query,
+            ent_path,
+            primary,
+            &[component],
+            &mut row_indices,
+        );
 
-                let mut results = [None];
-                store.get(&[component], &row_indices, &mut results);
+        let mut results = [None];
+        store.get(&[component], &row_indices, &mut results);
 
-                std::mem::take(&mut results[0])
-                    .map(|row| Series::try_from((component, row)).unwrap())
-            })
-            .collect::<Vec<_>>();
-
-        let df = DataFrame::new(series).unwrap();
-        df.explode(df.get_column_names()).unwrap()
+        std::mem::take(&mut results[0]).map(|row| Series::try_from((component, row)).unwrap())
     }
 }
 
@@ -560,6 +602,8 @@ fn init_logs() {
         tracing_subscriber::fmt::init(); // log to stdout
     }
 }
+
+// --- Internals ---
 
 // TODO(cmc): One should _never_ run assertions on the internal state of the datastore, this
 // is a recipe for disaster.

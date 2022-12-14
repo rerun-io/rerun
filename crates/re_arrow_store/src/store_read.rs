@@ -13,7 +13,7 @@ use crate::{
 // ---
 
 /// A query in time.
-// TODO: include timeline in there, it really is just weird otherwise (new issue?).
+// TODO(#544): include timeline in there.
 #[derive(Clone, Debug)]
 pub enum TimeQuery {
     /// Get the latest version of the data available at this time.
