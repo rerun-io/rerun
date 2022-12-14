@@ -440,9 +440,17 @@ impl ComponentTable {
             None
         }
     }
+
+    /// Returns an iterator over the `ComponentBucket` in this table
+    #[allow(dead_code)]
+    pub fn buckets_iter(&self) -> impl Iterator<Item = &ComponentBucket> {
+        self.buckets.iter()
+    }
 }
+
 impl ComponentBucket {
     /// Get this `ComponentBucket`s debug name
+    #[allow(dead_code)]
     pub fn name(&self) -> &str {
         &self.name
     }
@@ -460,6 +468,7 @@ impl ComponentBucket {
     }
 
     /// Return an iterator over the time ranges in this bucket
+    #[allow(dead_code)]
     pub fn iter_time_ranges(&self) -> impl Iterator<Item = (&Timeline, &TimeRange)> {
         self.time_ranges.iter()
     }

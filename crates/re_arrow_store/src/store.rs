@@ -781,11 +781,6 @@ impl ComponentTable {
             .sum()
     }
 
-    /// Returns an iterator over the `ComponentBucket` in this table
-    pub fn buckets_iter(&self) -> impl Iterator<Item = &ComponentBucket> {
-        self.buckets.iter()
-    }
-
     /// Runs the sanity check suite for the entire table.
     ///
     /// Returns an error if anything looks wrong.
