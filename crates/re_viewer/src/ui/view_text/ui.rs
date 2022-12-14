@@ -278,7 +278,6 @@ fn show_table(
         .collect::<Vec<_>>();
 
     use egui_extras::Column;
-    let row_height = re_ui::ReUi::table_line_height();
 
     let current_timeline = *ctx.rec_cfg.time_ctrl.timeline();
     let current_time = ctx.rec_cfg.time_ctrl.time_int();
@@ -288,7 +287,7 @@ fn show_table(
         .vscroll(true)
         .auto_shrink([false; 2]) // expand to take up the whole Space View
         .min_scrolled_height(0.0) // we can go as small as we need to be in order to fit within the space view!
-        .cell_layout(egui::Layout::left_to_right(egui::Align::Center));
+        .cell_layout(egui::Layout::left_to_right(egui::Align::TOP));
 
     if let Some(scroll_to_row) = scroll_to_row {
         table_builder = table_builder.scroll_to_row(scroll_to_row, Some(egui::Align::Center));
@@ -339,7 +338,9 @@ fn show_table(
             re_ui::ReUi::setup_table_body(&mut body);
 
             body_clip_rect = Some(body.max_rect());
-            body.rows(row_height, text_entries.len(), |index, mut row| {
+
+            let row_heights = text_entries.iter().map(calc_row_height);
+            body.heterogeneous_rows(row_heights, |index, mut row| {
                 let text_entry = &text_entries[index];
 
                 // NOTE: `try_from_props` is where we actually fetch data from the underlying
@@ -414,6 +415,13 @@ fn show_table(
             (1.0, Color32::WHITE),
         );
     }
+}
+
+fn calc_row_height(entry: &TextEntry) -> f32 {
+    // Simple, fast, ugly, and functional
+    let num_newlines = entry.body.bytes().filter(|&c| c == b'\n').count();
+    let num_rows = 1 + num_newlines;
+    num_rows as f32 * re_ui::ReUi::table_line_height()
 }
 
 fn level_to_rich_text(ui: &egui::Ui, lvl: &str) -> RichText {

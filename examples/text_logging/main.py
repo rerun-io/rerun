@@ -43,6 +43,9 @@ def log_stuff(frame_offset: int) -> None:
     # Log anything
     logging.info("here's some data: %s", {"some": 42, "data": True})
 
+    # Log multi-line text
+    logging.info("First line\nSecond line\nAnd third!")
+
     # Test that we can log multiple times to the same sequence timeline and still
     # have the log messages show up in the correct chronological order in the viewer:
     for frame_nr in range(2):
