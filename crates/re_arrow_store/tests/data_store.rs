@@ -734,12 +734,12 @@ impl DataTracker {
         expected: Vec<(ComponentNameRef<'static>, TimeInt, usize)>,
     ) {
         let df = if let Some(primary) = primary {
-            Self::query_components_pov(store, timeline, time_query, ent_path, primary, components)
+            Self::fetch_components_pov(store, timeline, time_query, ent_path, primary, components)
         } else {
             let series = components
                 .iter()
                 .filter_map(|&component| {
-                    Self::query_component_pov(
+                    Self::fetch_component_pov(
                         store, timeline, time_query, ent_path, component, component,
                     )
                 })
@@ -769,7 +769,7 @@ impl DataTracker {
         );
     }
 
-    fn query_component_pov(
+    fn fetch_component_pov(
         store: &DataStore,
         timeline: &Timeline,
         time_query: &TimeQuery,
@@ -793,7 +793,7 @@ impl DataTracker {
         std::mem::take(&mut results[0]).map(|row| Series::try_from((component, row)).unwrap())
     }
 
-    fn query_components_pov<const N: usize>(
+    fn fetch_components_pov<const N: usize>(
         store: &DataStore,
         timeline: &Timeline,
         time_query: &TimeQuery,
@@ -811,8 +811,7 @@ impl DataTracker {
             &mut row_indices,
         );
 
-        // work around non-Copy const initialization limitations
-        let mut results = [(); N].map(|_| Option::<Box<dyn Array>>::default());
+        let mut results = [(); N].map(|_| None); // work around non-Copy const initialization limitations
         store.get(components, &row_indices, &mut results);
 
         let df = {

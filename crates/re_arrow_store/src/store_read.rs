@@ -76,8 +76,7 @@ impl DataStore {
     ///         &mut row_indices,
     ///     );
     ///
-    ///     // work around non-Copy const initialization limitations
-    ///     let mut results = [(); N].map(|_| Option::<Box<dyn Array>>::default());
+    ///     let mut results = [(); N].map(|_| None); // work around non-Copy const initialization limitations
     ///     store.get(components, &row_indices, &mut results);
     ///
     ///     let df = {
