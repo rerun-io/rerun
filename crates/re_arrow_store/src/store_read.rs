@@ -49,6 +49,52 @@ impl DataStore {
     /// * On failure, `row_indices` is filled with `None` values.
     ///
     /// To actually retrieve the data associated with these indices, see [`Self::get`].
+    ///
+    /// Follows a complete example of querying indices, fetching the associated data and finally
+    /// turning it all into a `polars::DataFrame`:
+    /// ```rust
+    /// # use polars::prelude::*;
+    /// # use arrow2::array::Array;
+    /// # use re_log_types::{*, ObjPath as EntityPath};
+    /// # use re_arrow_store::*;
+    ///
+    /// fn fetch_components<const N: usize>(
+    ///     store: &DataStore,
+    ///     timeline: &Timeline,
+    ///     time_query: &TimeQuery,
+    ///     ent_path: &EntityPath,
+    ///     primary: ComponentNameRef<'_>,
+    ///     components: &[ComponentNameRef<'_>; N],
+    /// ) -> DataFrame {
+    ///     let mut row_indices = [None; N];
+    ///     store.query(
+    ///         timeline,
+    ///         time_query,
+    ///         ent_path,
+    ///         primary,
+    ///         components,
+    ///         &mut row_indices,
+    ///     );
+    ///
+    ///     // work around non-Copy const initialization limitations
+    ///     let mut results = [(); N].map(|_| Option::<Box<dyn Array>>::default());
+    ///     store.get(components, &row_indices, &mut results);
+    ///
+    ///     let df = {
+    ///         let series: Vec<_> = components
+    ///             .iter()
+    ///             .zip(results)
+    ///             .filter_map(|(component, col)| col.map(|col| (component, col)))
+    ///             .map(|(&component, col)| Series::try_from((component, col)).unwrap())
+    ///             .collect();
+    ///
+    ///         let df = DataFrame::new(series).unwrap();
+    ///         df.explode(df.get_column_names()).unwrap()
+    ///     };
+    ///
+    ///     df
+    /// }
+    /// ```
     //
     // TODO(cmc): expose query_dyn at some point, to fetch an unknown number of component indices,
     // at the cost of extra dynamic allocations.
@@ -117,10 +163,27 @@ impl DataStore {
     /// Retrieves the data associated with a list of `components` at the specified `indices`.
     ///
     /// If the associated data is found, it will be written to `results` at the appropriate index,
-    /// `None` otherwise.
+    /// or `None` otherwise.
     ///
-    /// `row_indices` takes a list of options to simplify common usage patterns.
-    /// See [`Self::query`].
+    /// `row_indices` takes a list of options to simplify so that one can easily re-use the results
+    /// from [`Self::query`].
+    ///
+    /// ```ignore
+    /// let comps = [Instances::NAME, Rect2D::NAME];
+    ///
+    /// let mut row_indices = [None, None];
+    /// store.query(
+    ///     timeline,
+    ///     time_query,
+    ///     ent_path,
+    ///     Rect2D::NAME,
+    ///     &comps,
+    ///     &mut row_indices,
+    /// );
+    ///
+    /// let mut results = [None, None];
+    /// store.get(comps, &row_indices, &mut results);
+    /// ```
     pub fn get<const N: usize>(
         &self,
         components: &[ComponentNameRef<'_>; N],
