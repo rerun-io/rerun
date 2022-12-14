@@ -46,7 +46,7 @@ where
         LineDrawData::new(ctx, &self.vertices, &self.strips, &self.batches).unwrap()
     }
 
-    /// Iterates over all line strips batches together with their stirps and their respective vertices.
+    /// Iterates over all line strips batches together with their strips and their respective vertices.
     pub fn iter_strips_with_vertices(
         &self,
     ) -> impl Iterator<

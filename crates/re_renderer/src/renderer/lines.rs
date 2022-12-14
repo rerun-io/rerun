@@ -212,9 +212,8 @@ pub struct LineBatchInfo {
 
     /// Transformation applies to line positions
     ///
-    /// TODO(andreas): Since we blindly apply this to positions only there is no restriction on this matrix.
-    ///                 However this implies that we don't do any scaling on the radius.
-    ///                 We should do so on world-space radii. How?
+    /// TODO(andreas): We don't apply scaling to the radius yet. Need to pass a scaling factor like this in
+    /// `let scale = Mat3::from(world_from_scene).determinant().abs().cbrt()`
     pub world_from_scene: glam::Mat4,
 
     /// Number of vertices covered by this batch.
