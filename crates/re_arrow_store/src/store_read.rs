@@ -164,7 +164,7 @@ impl DataStore {
     /// If the associated data is found, it will be written to `results` at the appropriate index,
     /// or `None` otherwise.
     ///
-    /// `row_indices` takes a list of options to simplify so that one can easily re-use the results
+    /// `row_indices` takes a list of options so that one can easily re-use the results obtained
     /// from [`Self::query`].
     ///
     /// See [`Self::query`] for more information.
