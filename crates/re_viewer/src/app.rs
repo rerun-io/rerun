@@ -222,6 +222,10 @@ impl App {
     }
 
     fn check_keyboard_shortcuts(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
+        if egui_ctx.input_mut().consume_shortcut(&kb_shortcuts::QUIT) {
+            frame.close();
+        }
+
         if egui_ctx
             .input_mut()
             .consume_shortcut(&kb_shortcuts::RESET_VIEWER)
