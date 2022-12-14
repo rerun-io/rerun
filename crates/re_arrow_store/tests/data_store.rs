@@ -464,6 +464,130 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
     }
 }
 
+#[test]
+fn query_model_specificities() {
+    init_logs();
+
+    for config in all_configs() {
+        let mut store = DataStore::new(config.clone());
+        query_model_specificities_impl(&mut store);
+    }
+}
+fn query_model_specificities_impl(store: &mut DataStore) {
+    let ent_path = EntityPath::from("this/that");
+
+    let frame40 = 40;
+    let frame41 = 41;
+    let frame42 = 42;
+    let frame43 = 43;
+    let frame44 = 44;
+
+    let nb_rects = 3;
+    let nb_positions = 10;
+
+    // TODO:
+    // - different components at same frame give different results
+    //    - so basically, different PoVs
+    // - sparse
+    // - no diff
+
+    let mut tracker = DataTracker::default();
+    {
+        tracker.insert_data(
+            store,
+            &ent_path,
+            [build_frame_nr(frame41)],
+            [build_instances(nb_rects), build_rects(nb_rects)],
+        );
+        tracker.insert_data(
+            store,
+            &ent_path,
+            [build_frame_nr(frame41)],
+            [build_instances(nb_positions), build_positions(nb_positions)],
+        );
+    }
+
+    // TODO:
+    // - there are 3 PoV here: instances, positions, rects
+
+    if let err @ Err(_) = store.sanity_check() {
+        store.sort_indices();
+        eprintln!("{store}");
+        err.unwrap();
+    }
+
+    let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
+    let components_all = &["instances", "rects", "positions"];
+
+    let scenarios = [
+        (
+            "query all components at frame #40, from `rects` PoV",
+            "empty dataframe",
+            frame40,
+            "rects",
+            vec![],
+        ),
+        (
+            "query all components at frame #40, from `positions` PoV",
+            "empty dataframe",
+            frame40,
+            "positions",
+            vec![],
+        ),
+        (
+            "query all components at frame #40, from `instances` PoV",
+            "empty dataframe",
+            frame40,
+            "instances",
+            vec![],
+        ),
+        (
+            "query all components at frame #41, from `rects` PoV",
+            "the set of `rects` and the _first_ set of `instances`",
+            frame41,
+            "rects",
+            vec![
+                ("instances", frame41.into(), 0),
+                ("rects", frame41.into(), 0),
+            ],
+        ),
+        (
+            "query all components at frame #41, from `positions` PoV",
+            "the set of `positions` and the _second_ set of `instances`",
+            frame41,
+            "positions",
+            vec![
+                ("instances", frame41.into(), 1),
+                ("positions", frame41.into(), 0),
+            ],
+        ),
+        (
+            "query all components at frame #41, from `instances` PoV",
+            "the _second_ set of `instances` and the set of `positions`",
+            frame41,
+            "instances",
+            vec![
+                ("instances", frame41.into(), 1),
+                ("positions", frame41.into(), 0),
+            ],
+        ),
+    ];
+
+    for (scenario, expectation, frame_nr, primary, expected) in scenarios {
+        tracker.assert_scenario_pov(
+            scenario,
+            expectation,
+            store,
+            &timeline_frame_nr,
+            &TimeQuery::LatestAt(frame_nr),
+            &ent_path,
+            primary,
+            components_all,
+            expected,
+        );
+    }
+}
+
 // --- Helpers ---
 
 #[derive(Default)]
@@ -533,20 +657,23 @@ impl DataTracker {
 
     /// Asserts a complex scenario, where every component is fetched as it is seen from the
     /// point-of-view of another component.
+    #[allow(clippy::too_many_arguments)]
     fn assert_scenario_pov(
         &self,
+        scenario: &str,
+        expectation: &str,
         store: &mut DataStore,
         timeline: &Timeline,
         time_query: &TimeQuery,
         ent_path: &EntityPath,
         primary: ComponentNameRef<'_>,
-        components: &[(ComponentNameRef<'_>, ComponentNameRef<'_>)], // (primary, component)
+        components: &[ComponentNameRef<'_>], // (primary, component)
         expected: Vec<(ComponentNameRef<'static>, TimeInt, usize)>,
     ) {
         let df = {
             let series = components
                 .iter()
-                .filter_map(|(primary, component)| {
+                .filter_map(|&component| {
                     Self::query_component_pov(
                         store, timeline, time_query, ent_path, primary, component,
                     )
@@ -566,7 +693,10 @@ impl DataTracker {
         let expected = expected.explode(expected.get_column_names()).unwrap();
 
         store.sort_indices();
-        assert_eq!(expected, df, "\n{store}");
+        assert_eq!(
+            expected, df,
+            "\nScenario: {scenario}\nExpected: {expectation}\n{store}"
+        );
     }
 
     fn query_component_pov(
