@@ -21,6 +21,19 @@ pub struct ViewTextState {
     latest_time: i64,
 
     pub filters: ViewTextFilters,
+
+    monospace: bool,
+}
+
+impl ViewTextState {
+    pub fn selection_ui(&mut self, ui: &mut egui::Ui) {
+        ui.group(|ui| {
+            ui.label("Text style");
+            ui.radio_value(&mut self.monospace, false, "Proportional");
+            ui.radio_value(&mut self.monospace, true, "Monospace");
+        });
+        self.filters.ui(ui);
+    }
 }
 
 pub(crate) fn view_text(
@@ -80,10 +93,6 @@ pub struct ViewTextFilters {
     // Row filters: which rows should be visible?
     pub row_obj_paths: BTreeMap<ObjPath, bool>,
     pub row_log_levels: BTreeMap<String, bool>,
-}
-
-pub(crate) fn text_filters_ui(ui: &mut egui::Ui, state: &mut ViewTextState) -> egui::Response {
-    ui.vertical(|ui| state.filters.ui(ui)).response
 }
 
 impl Default for ViewTextFilters {
@@ -396,12 +405,16 @@ fn show_table(
 
                 // body
                 row.col(|ui| {
-                    if let Some(c) = text_entry.color {
-                        let color = Color32::from_rgba_unmultiplied(c[0], c[1], c[2], c[3]);
-                        ui.colored_label(color, &text_entry.body);
-                    } else {
-                        ui.label(&text_entry.body);
+                    let mut text = egui::RichText::new(&text_entry.body);
+
+                    if state.monospace {
+                        text = text.monospace();
                     }
+                    if let Some([r, g, b, a]) = text_entry.color {
+                        text = text.color(Color32::from_rgba_unmultiplied(r, g, b, a));
+                    }
+
+                    ui.label(text);
                 });
             });
         });
