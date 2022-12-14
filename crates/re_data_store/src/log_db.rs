@@ -244,7 +244,6 @@ impl LogDb {
                 self.obj_db.add_path_op(*msg_id, time_point, path_op);
             }
             LogMsg::ArrowMsg(msg) => {
-                //TODO(john) propogate errors
                 self.obj_db.try_add_arrow_data_msg(msg)?;
             }
         }

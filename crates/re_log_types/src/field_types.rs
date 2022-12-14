@@ -41,9 +41,7 @@ pub struct Rect2D {
 }
 
 impl Component for Rect2D {
-    fn name() -> crate::ComponentNameRef<'static> {
-        "rect2d"
-    }
+    const NAME: crate::ComponentNameRef<'static> = "rect2d";
 }
 
 /// A point in 2D space.
@@ -68,9 +66,7 @@ pub struct Point2D {
 }
 
 impl Component for Point2D {
-    fn name() -> crate::ComponentNameRef<'static> {
-        "point2d"
-    }
+    const NAME: crate::ComponentNameRef<'static> = "point2d";
 }
 
 /// A point in 3D space.
@@ -97,9 +93,7 @@ pub struct Point3D {
 }
 
 impl Component for Point3D {
-    fn name() -> crate::ComponentNameRef<'static> {
-        "point3d"
-    }
+    const NAME: crate::ComponentNameRef<'static> = "point3d";
 }
 
 /// An RGBA color tuple.
@@ -149,9 +143,7 @@ impl ArrowDeserialize for ColorRGBA {
 }
 
 impl Component for ColorRGBA {
-    fn name() -> crate::ComponentNameRef<'static> {
-        "colorrgba"
-    }
+    const NAME: crate::ComponentNameRef<'static> = "colorrgba";
 }
 
 #[test]

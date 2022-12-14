@@ -24,6 +24,9 @@ use crate::{
 impl DataStore {
     /// Inserts a [`MsgBundle`] payload of Arrow data into the datastore.
     pub fn insert(&mut self, msg_bundle: &MsgBundle) -> anyhow::Result<()> {
+        // TODO(cmc): kind & insert_id need to somehow propagate through the span system.
+        self.insert_id += 1;
+
         let MsgBundle {
             msg_id: _,
             obj_path: ent_path,
@@ -33,7 +36,6 @@ impl DataStore {
 
         // TODO(cmc): sort the "instances" component, and everything else accordingly!
         let ent_path_hash = *ent_path.hash();
-        self.insert_id += 1;
 
         debug!(
             kind = "insert",
@@ -51,16 +53,14 @@ impl DataStore {
         let mut indices = HashMap::with_capacity(components.len());
 
         for bundle in components {
-            let ComponentBundle { name, component } = bundle;
+            let ComponentBundle { name, value } = bundle;
 
             let table = self
                 .components
                 .entry((*bundle.name).to_owned())
-                .or_insert_with(|| {
-                    ComponentTable::new((*name).clone(), component.data_type().clone())
-                });
+                .or_insert_with(|| ComponentTable::new((*name).clone(), value.data_type().clone()));
 
-            let row_idx = table.insert(&self.config, time_point, component.as_ref())?;
+            let row_idx = table.insert(&self.config, time_point, value.as_ref())?;
             indices.insert(name.as_ref(), row_idx);
         }
 

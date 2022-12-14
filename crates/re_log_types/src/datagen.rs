@@ -75,6 +75,6 @@ pub fn build_instances(nb_instances: usize) -> ComponentBundle {
 
     ComponentBundle {
         name: "instances".to_owned(),
-        component: data.boxed(),
+        value: data.boxed(),
     }
 }

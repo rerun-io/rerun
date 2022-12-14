@@ -7,7 +7,8 @@ use polars::prelude::DataFrame;
 use re_arrow_store::{DataStore, TimeQuery};
 use re_log_types::{
     datagen::{build_frame_nr, build_some_point2d, build_some_rects},
-    msg_bundle::{try_build_msg_bundle2, MsgBundle},
+    field_types::Rect2D,
+    msg_bundle::{try_build_msg_bundle2, Component, MsgBundle},
     MsgId, ObjPath as EntityPath, TimeType, Timeline,
 };
 
@@ -81,7 +82,7 @@ fn query_messages(store: &mut DataStore) -> DataFrame {
     let ent_path = EntityPath::from("rects");
 
     let df = store
-        .query(&timeline_frame_nr, &time_query, &ent_path, &["rect2d"])
+        .query(&timeline_frame_nr, &time_query, &ent_path, &[Rect2D::NAME])
         .unwrap();
     assert_eq!(NUM_RECTS as usize, df.select_at_idx(0).unwrap().len());
 

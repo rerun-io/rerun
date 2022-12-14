@@ -11,7 +11,10 @@ use re_log_types::{
     datagen::{
         build_frame_nr, build_instances, build_log_time, build_some_point2d, build_some_rects,
     },
-    msg_bundle::{try_build_msg_bundle1, try_build_msg_bundle2, ComponentBundle, MsgBundle},
+    field_types,
+    msg_bundle::{
+        try_build_msg_bundle1, try_build_msg_bundle2, Component, ComponentBundle, MsgBundle,
+    },
     ComponentName, ComponentNameRef, Duration, MsgId, ObjPath as EntityPath, Time, TimePoint,
     TimeType, Timeline,
 };
@@ -387,7 +390,11 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
 
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
     let timeline_log_time = Timeline::new("log_time", TimeType::Time);
-    let components_all = &["instances", "rect2d", "point2d"];
+    let components_all = &[
+        "instances",
+        field_types::Rect2D::NAME,
+        field_types::Point2D::NAME,
+    ];
 
     // --- Testing at all frames ---
 
@@ -521,7 +528,10 @@ impl DataTracker {
     fn insert_bundle(&mut self, store: &mut DataStore, msg_bundle: &MsgBundle) {
         for time in msg_bundle.time_point.times() {
             for bundle in &msg_bundle.components {
-                let ComponentBundle { name, component } = bundle;
+                let ComponentBundle {
+                    name,
+                    value: component,
+                } = bundle;
                 assert!(self
                     .all_data
                     .insert((name.clone(), *time), component.clone())
