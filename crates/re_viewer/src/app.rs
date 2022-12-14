@@ -43,8 +43,6 @@ pub struct App {
     /// Where the logs are stored.
     log_dbs: IntMap<RecordingId, LogDb>,
 
-    arrow_dbs: IntMap<RecordingId, re_arrow_store::DataStore>,
-
     /// What is serialized
     state: AppState,
 
@@ -147,7 +145,6 @@ impl App {
             re_ui,
             rx,
             log_dbs,
-            arrow_dbs: Default::default(),
             state,
             #[cfg(not(target_arch = "wasm32"))]
             ctrl_c,
@@ -399,16 +396,9 @@ impl App {
 
                 let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
 
-                let arrow_db = self
-                    .arrow_dbs
-                    .entry(self.state.selected_rec_id)
-                    .or_default();
-
-                if let LogMsg::ArrowMsg(ref msg) = msg {
-                    arrow_db.insert(&msg.schema, &msg.chunk).unwrap();
-                }
-
-                log_db.add(msg);
+                if let Err(err) = log_db.add(msg) {
+                    re_log::error!("Failed to add incoming msg: {:?}", err);
+                };
                 if start.elapsed() > instant::Duration::from_millis(10) {
                     egui_ctx.request_repaint(); // make sure we keep receiving messages asap
                     break; // don't block the main thread for too long
@@ -1309,7 +1299,7 @@ fn load_rrd_to_log_db(mut read: impl std::io::Read) -> anyhow::Result<LogDb> {
 
     let mut log_db = LogDb::default();
     for msg in decoder {
-        log_db.add(msg?);
+        log_db.add(msg?)?;
     }
     Ok(log_db)
 }

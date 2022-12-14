@@ -109,8 +109,18 @@ impl IntoIterator for TimePoint {
     type IntoIter = btree_map::IntoIter<Timeline, TimeInt>;
 
     #[inline]
-    fn into_iter(self) -> btree_map::IntoIter<Timeline, TimeInt> {
+    fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()
+    }
+}
+
+impl<'a> IntoIterator for &'a TimePoint {
+    type Item = (&'a Timeline, &'a TimeInt);
+    type IntoIter = btree_map::Iter<'a, Timeline, TimeInt>;
+
+    #[inline]
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.iter()
     }
 }
 

@@ -3,6 +3,7 @@ use egui::{color_picker, Vec2};
 use itertools::Itertools;
 use re_data_store::InstanceId;
 use re_log_types::context::AnnotationInfo;
+use re_log_types::msg_bundle::MsgBundle;
 use re_log_types::{
     context, AnnotationContext, Arrow3D, ArrowMsg, BeginRecordingMsg, Data, DataMsg, DataPath,
     DataVec, LogMsg, LoggedData, MsgId, ObjPath, ObjectType, PathOp, PathOpMsg, Pinhole,
@@ -419,8 +420,20 @@ pub(crate) fn ui_logged_arrow_data(
     _preview: Preview,
 ) -> egui::Response {
     // TODO(john): more handling
-    //let arr = msg.to_arrow_array();
-    ui.label(format!("Arrow Payload: ({:?})", msg.schema))
+    match MsgBundle::try_from(msg) {
+        Ok(msg_bundle) => ui.label(format!(
+            "Arrow Payload of {:?}",
+            msg_bundle
+                .components
+                .iter()
+                .map(|bundle| &bundle.name)
+                .collect_vec()
+        )),
+        Err(err) => {
+            re_log::error_once!("Bad arrow payload: {:?}", err);
+            ui.label("Bad Arrow Payload".to_owned())
+        }
+    }
 }
 
 pub(crate) fn ui_data(

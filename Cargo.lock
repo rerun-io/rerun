@@ -3663,6 +3663,7 @@ name = "re_data_store"
 version = "0.1.0"
 dependencies = [
  "ahash 0.8.2",
+ "anyhow",
  "criterion",
  "document-features",
  "itertools",
@@ -3670,6 +3671,7 @@ dependencies = [
  "nohash-hasher",
  "once_cell",
  "puffin",
+ "re_arrow_store",
  "re_log",
  "re_log_types",
  "re_string_interner",

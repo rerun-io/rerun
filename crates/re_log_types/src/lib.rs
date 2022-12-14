@@ -24,7 +24,7 @@ pub mod encoding;
 #[cfg(feature = "arrow_datagen")]
 pub mod datagen;
 
-mod arrow_msg;
+pub mod arrow_msg;
 pub mod field_types;
 pub use arrow_msg::ArrowMsg;
 pub mod context;
@@ -32,6 +32,7 @@ pub mod coordinates;
 mod data;
 pub mod hash;
 mod index;
+pub mod msg_bundle;
 pub mod objects;
 pub mod path;
 mod time;
@@ -57,9 +58,6 @@ pub use time_point::{TimeInt, TimePoint, TimeType, Timeline, TimelineName};
 
 pub type ComponentName = String;
 pub type ComponentNameRef<'a> = &'a str;
-
-//TODO(john) get rid of this eventually
-pub const ENTITY_PATH_KEY: &str = "RERUN:entity_path";
 
 #[macro_export]
 macro_rules! impl_into_enum {

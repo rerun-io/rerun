@@ -9,6 +9,8 @@ use arrow2_convert::{
     serialize::ArrowSerialize, ArrowField,
 };
 
+use crate::msg_bundle::Component;
+
 /// A rectangle in 2D space.
 ///
 /// ```
@@ -38,6 +40,10 @@ pub struct Rect2D {
     pub h: f32,
 }
 
+impl Component for Rect2D {
+    const NAME: crate::ComponentNameRef<'static> = "rect2d";
+}
+
 /// A point in 2D space.
 ///
 /// ```
@@ -57,6 +63,10 @@ pub struct Rect2D {
 pub struct Point2D {
     pub x: f32,
     pub y: f32,
+}
+
+impl Component for Point2D {
+    const NAME: crate::ComponentNameRef<'static> = "point2d";
 }
 
 /// A point in 3D space.
@@ -80,6 +90,10 @@ pub struct Point3D {
     pub x: f32,
     pub y: f32,
     pub z: f32,
+}
+
+impl Component for Point3D {
+    const NAME: crate::ComponentNameRef<'static> = "point3d";
 }
 
 /// An RGBA color tuple.
@@ -126,6 +140,10 @@ impl ArrowDeserialize for ColorRGBA {
     ) -> Option<<Self as ArrowField>::Type> {
         <u32 as ArrowDeserialize>::arrow_deserialize(v).map(ColorRGBA)
     }
+}
+
+impl Component for ColorRGBA {
+    const NAME: crate::ComponentNameRef<'static> = "colorrgba";
 }
 
 #[test]

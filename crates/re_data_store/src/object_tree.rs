@@ -81,13 +81,20 @@ impl ObjectTree {
 
     /// Add a `LoggedData` into the object tree
     ///
+    /// As of the arrow-migration, the data argument is now optional. The data
+    /// stored in fields is redundant information used for visualizing the
+    /// timeline. This concept will be removed from the object-tree all together
+    /// once timeline context is populated directly from the arrow store. Until
+    /// this happens we only get top-level messages in the timeline, not
+    /// individual fields.
+    ///
     /// Returns a collection of pending clear operations
     pub fn add_data_msg(
         &mut self,
         msg_id: MsgId,
         time_point: &TimePoint,
         data_path: &DataPath,
-        data: &LoggedData,
+        data: Option<&LoggedData>,
     ) -> Vec<(MsgId, TimePoint)> {
         crate::profile_function!();
         let obj_path = data_path.obj_path.to_components();
@@ -104,7 +111,9 @@ impl ObjectTree {
             Default::default()
         });
 
-        fields.add(msg_id, time_point, data);
+        if let Some(data) = data {
+            fields.add(msg_id, time_point, data);
+        }
 
         pending_clears
     }

@@ -3,9 +3,8 @@
 //! We have custom implementations of [`serde::Serialize`] and [`serde::Deserialize`] that wraps
 //! the inner Arrow serialization of [`Schema`] and [`Chunk`].
 
-use arrow2::{array::Array, chunk::Chunk, datatypes::Schema};
-
 use crate::MsgId;
+use arrow2::{array::Array, chunk::Chunk, datatypes::Schema};
 
 /// Message containing an Arrow payload
 #[must_use]
@@ -99,6 +98,8 @@ impl<'de> serde::Deserialize<'de> for ArrowMsg {
     }
 }
 
+// ----------------------------------------------------------------------------
+
 #[cfg(test)]
 #[cfg(feature = "serde")]
 mod tests {
@@ -106,8 +107,8 @@ mod tests {
 
     use super::{ArrowMsg, Chunk, MsgId, Schema};
     use crate::{
-        datagen::{build_frame_nr, build_message, build_positions, build_rects},
-        ObjPath, TimePoint,
+        datagen::{build_frame_nr, build_some_point2d, build_some_rects},
+        msg_bundle::try_build_msg_bundle2,
     };
 
     #[test]
@@ -152,18 +153,15 @@ mod tests {
 
     #[test]
     fn test_roundtrip_payload() {
-        let (schema, chunk) = build_message(
-            &ObjPath::from("rects"),
-            &TimePoint::from([build_frame_nr(0)]),
-            [build_positions(1), build_rects(1)],
-        );
+        let bundle = try_build_msg_bundle2(
+            MsgId::ZERO,
+            "world/rects",
+            [build_frame_nr(0)],
+            (build_some_point2d(1), build_some_rects(1)),
+        )
+        .unwrap();
 
-        let msg_in = ArrowMsg {
-            msg_id: MsgId::random(),
-            schema,
-            chunk,
-        };
-
+        let msg_in: ArrowMsg = bundle.try_into().unwrap();
         let buf = rmp_serde::to_vec(&msg_in).unwrap();
         let msg_out: ArrowMsg = rmp_serde::from_slice(&buf).unwrap();
         assert_eq!(msg_in, msg_out);
