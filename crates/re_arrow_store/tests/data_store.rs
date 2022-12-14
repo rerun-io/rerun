@@ -106,6 +106,15 @@ fn all_configs() -> impl Iterator<Item = DataStoreConfig> {
 
 // --- Scenarios ---
 
+macro_rules! test_bundle {
+    ($entity:ident @ $frames:tt => [$c0:expr $(,)*]) => {
+        try_build_msg_bundle1(MsgId::ZERO, $entity.clone(), $frames, $c0).unwrap()
+    };
+    ($entity:ident @ $frames:tt => [$c0:expr, $c1:expr $(,)*]) => {
+        try_build_msg_bundle2(MsgId::ZERO, $entity.clone(), $frames, ($c0, $c1)).unwrap()
+    };
+}
+
 #[test]
 fn empty_query_edge_cases() {
     init_logs();
@@ -129,12 +138,9 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
     {
         tracker.insert_bundle(
             store,
-            &MsgBundle::new(
-                MsgId::ZERO,
-                ent_path.clone(),
-                TimePoint::from([build_log_time(now), build_frame_nr(frame40)]),
-                vec![build_instances(nb_instances)],
-            ),
+            &test_bundle!(ent_path @ [build_log_time(now), build_frame_nr(frame40)] => [
+                build_instances(nb_instances),
+            ]),
         );
     }
 
@@ -289,96 +295,58 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
     {
         tracker.insert_bundle(
             store,
-            &try_build_msg_bundle1(
-                MsgId::ZERO,
-                ent_path.clone(),
-                [build_frame_nr(frame41)],
+            &test_bundle!(ent_path @ [build_frame_nr(frame41)] => [
                 build_instances(nb_instances),
-            )
-            .unwrap(),
+            ]),
         );
         tracker.insert_bundle(
             store,
-            &try_build_msg_bundle1(
-                MsgId::ZERO,
-                ent_path.clone(),
-                [build_frame_nr(frame41)],
+            &test_bundle!(ent_path @ [build_frame_nr(frame41)] => [
                 build_some_point2d(nb_instances),
-            )
-            .unwrap(),
+            ]),
         );
         tracker.insert_bundle(
             store,
-            &try_build_msg_bundle1(
-                MsgId::ZERO,
-                ent_path.clone(),
-                [build_log_time(now), build_frame_nr(frame42)],
+            &test_bundle!(ent_path @ [build_log_time(now), build_frame_nr(frame42)] => [
                 build_some_rects(nb_instances),
-            )
-            .unwrap(),
+            ]),
         );
         tracker.insert_bundle(
             store,
-            &try_build_msg_bundle2(
-                MsgId::ZERO,
-                ent_path.clone(),
-                [build_log_time(now_plus_1s)],
-                (
-                    build_instances(nb_instances),
-                    build_some_rects(nb_instances),
-                ),
-            )
-            .unwrap(),
-        );
-        tracker.insert_bundle(
-            store,
-            &try_build_msg_bundle1(
-                MsgId::ZERO,
-                ent_path.clone(),
-                [build_frame_nr(frame41)],
-                build_some_rects(nb_instances),
-            )
-            .unwrap(),
-        );
-        tracker.insert_bundle(
-            store,
-            &try_build_msg_bundle1(
-                MsgId::ZERO,
-                ent_path.clone(),
-                [build_log_time(now), build_frame_nr(frame42)],
+            &test_bundle!(ent_path @ [build_log_time(now_plus_1s)] => [
                 build_instances(nb_instances),
-            )
-            .unwrap(),
-        );
-        tracker.insert_bundle(
-            store,
-            &try_build_msg_bundle1(
-                MsgId::ZERO,
-                ent_path.clone(),
-                [build_log_time(now_minus_1s), build_frame_nr(frame42)],
-                build_some_point2d(nb_instances),
-            )
-            .unwrap(),
-        );
-        tracker.insert_bundle(
-            store,
-            &try_build_msg_bundle1(
-                MsgId::ZERO,
-                ent_path.clone(),
-                [build_log_time(now_minus_1s), build_frame_nr(frame43)],
                 build_some_rects(nb_instances),
-            )
-            .unwrap(),
+            ]),
         );
         tracker.insert_bundle(
             store,
-            &try_build_msg_bundle1(
-                MsgId::ZERO,
-                ent_path.clone(),
-                [build_frame_nr(frame44)],
+            &test_bundle!(ent_path @ [build_frame_nr(frame41)] => [
+                build_some_rects(nb_instances),
+            ]),
+        );
+        tracker.insert_bundle(
+            store,
+            &test_bundle!(ent_path @ [build_log_time(now), build_frame_nr(frame42)] => [
+                build_instances(nb_instances),
+            ]),
+        );
+        tracker.insert_bundle(
+            store,
+            &test_bundle!(ent_path @ [build_log_time(now_minus_1s), build_frame_nr(frame42)] => [
                 build_some_point2d(nb_instances),
-            )
-            .unwrap(),
+            ]),
+        );
+        tracker.insert_bundle(
+            store,
+            &test_bundle!(ent_path @ [build_log_time(now_minus_1s), build_frame_nr(frame43)] => [
+                build_some_rects(nb_instances),
+            ]),
+        );
+        tracker.insert_bundle(
+            store,
+            &test_bundle!(ent_path @ [build_frame_nr(frame44)] => [
+                build_some_point2d(nb_instances),
+            ]),
         );
     }
 
@@ -545,51 +513,32 @@ fn query_model_specificities_impl(store: &mut DataStore) {
         // PoV queries
         tracker.insert_bundle(
             store,
-            &try_build_msg_bundle2(
-                MsgId::ZERO,
-                ent_path.clone(),
-                [build_frame_nr(frame41)],
-                (build_instances(nb_rects), build_some_rects(nb_rects)),
-            )
-            .unwrap(),
+            &test_bundle!(ent_path @ [build_frame_nr(frame41)] => [
+                build_instances(nb_rects),
+                build_some_rects(nb_rects),
+            ]),
         );
         tracker.insert_bundle(
             store,
-            &try_build_msg_bundle2(
-                MsgId::ZERO,
-                ent_path.clone(),
-                [build_frame_nr(frame41)],
-                (
-                    build_instances(nb_positions_before),
-                    build_some_point2d(nb_positions_before),
-                ),
-            )
-            .unwrap(),
+            &test_bundle!(ent_path @ [build_frame_nr(frame41)] => [
+                build_instances(nb_positions_before),
+                build_some_point2d(nb_positions_before),
+            ]),
         );
 
         // "Sparse but no diffs"
         tracker.insert_bundle(
             store,
-            &try_build_msg_bundle2(
-                MsgId::ZERO,
-                ent_path.clone(),
-                [build_frame_nr(frame42)],
-                (
-                    build_instances(nb_positions_after),
-                    build_some_point2d(nb_positions_after),
-                ),
-            )
-            .unwrap(),
+            &test_bundle!(ent_path @ [build_frame_nr(frame42)] => [
+                build_instances(nb_positions_after),
+                build_some_point2d(nb_positions_after),
+            ]),
         );
         tracker.insert_bundle(
             store,
-            &try_build_msg_bundle1(
-                MsgId::ZERO,
-                ent_path.clone(),
-                [build_frame_nr(frame42)],
+            &test_bundle!(ent_path @ [build_frame_nr(frame42)] => [
                 build_some_rects(nb_rects),
-            )
-            .unwrap(),
+            ]),
         );
     }
 
@@ -689,8 +638,6 @@ fn query_model_specificities_impl(store: &mut DataStore) {
 }
 
 // --- Helpers ---
-
-// TODO: test_bundle!
 
 #[derive(Default)]
 struct DataTracker {
