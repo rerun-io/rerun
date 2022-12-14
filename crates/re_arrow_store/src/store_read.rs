@@ -48,28 +48,19 @@ impl DataStore {
     ///
     /// * On failure, `row_indices` is filled with `None` values.
     ///
-    /// Panics if `components.len() > indices.len()`.
-    ///
     /// To actually retrieve the data associated with these indices, see [`Self::get`].
     //
     // TODO(cmc): expose query_dyn at some point, to fetch an unknown number of component indices,
     // at the cost of extra dynamic allocations.
-    //
-    // TODO: const-generic slice sizes might be better here.
-    pub fn query(
+    pub fn query<const N: usize>(
         &self,
         timeline: &Timeline,
         time_query: &TimeQuery,
         ent_path: &EntityPath,
         primary: ComponentNameRef<'_>,
-        components: &[ComponentNameRef<'_>],
-        row_indices: &mut [Option<RowIndex>],
+        components: &[ComponentNameRef<'_>; N],
+        row_indices: &mut [Option<RowIndex>; N],
     ) -> bool {
-        debug_assert!(
-            components.len() == row_indices.len(),
-            "expect components.len() == row_indices.len()"
-        );
-
         // TODO(cmc): kind & query_id need to somehow propagate through the span system.
         self.query_id.fetch_add(1, Ordering::Relaxed);
 
@@ -130,22 +121,12 @@ impl DataStore {
     ///
     /// `row_indices` takes a list of options to simplify common usage patterns.
     /// See [`Self::query`].
-    ///
-    /// Panics if `row_indices.len() < components.len()`.
-    /// Panics if `results.len() < components.len()`.
-    //
-    // TODO: const-generic slice sizes might be better here.
-    pub fn get(
+    pub fn get<const N: usize>(
         &self,
-        components: &[ComponentNameRef<'_>],
-        row_indices: &[Option<RowIndex>],
-        results: &mut [Option<Box<dyn Array>>],
+        components: &[ComponentNameRef<'_>; N],
+        row_indices: &[Option<RowIndex>; N],
+        results: &mut [Option<Box<dyn Array>>; N],
     ) {
-        debug_assert!(
-            components.len() == row_indices.len() && row_indices.len() == results.len(),
-            "expect components.len() == row_indices.len() == results.len()"
-        );
-
         results.fill(None);
 
         for (i, &component, row_idx) in components
@@ -183,18 +164,13 @@ impl DataStore {
 
 impl IndexTable {
     /// Returns `false` iff no row index could be found for the `primary` component.
-    pub fn latest_at<'a>(
+    pub fn latest_at<'a, const N: usize>(
         &self,
         time: i64,
         primary: ComponentNameRef<'a>,
-        components: &[ComponentNameRef<'a>],
-        row_indices: &mut [Option<RowIndex>],
+        components: &[ComponentNameRef<'a>; N],
+        row_indices: &mut [Option<RowIndex>; N],
     ) -> bool {
-        debug_assert!(
-            components.len() == row_indices.len(),
-            "expect components.len() == row_indices.len()"
-        );
-
         let timeline = self.timeline;
 
         // The time we're looking for gives us an upper bound: all components must be indexed
@@ -281,18 +257,13 @@ impl IndexBucket {
     }
 
     /// Returns `false` iff no row index could be found for the `primary` component.
-    pub fn latest_at<'a>(
+    pub fn latest_at<'a, const N: usize>(
         &self,
         time: i64,
         primary: ComponentNameRef<'a>,
-        components: &[ComponentNameRef<'_>],
-        row_indices: &mut [Option<RowIndex>],
+        components: &[ComponentNameRef<'_>; N],
+        row_indices: &mut [Option<RowIndex>; N],
     ) -> bool {
-        debug_assert!(
-            components.len() == row_indices.len(),
-            "expect components.len() == row_indices.len()"
-        );
-
         self.sort_indices();
 
         let IndexBucketIndices {
