@@ -96,6 +96,12 @@ impl ObjPath {
         self.path.is_root()
     }
 
+    // Is this a strict descendant of the given path.
+    #[inline]
+    pub fn is_descendant_of(&self, other: &ObjPath) -> bool {
+        other.len() < self.len() && self.path.iter().zip(other.iter()).all(|(a, b)| a == b)
+    }
+
     /// Number of components
     #[inline]
     #[allow(clippy::len_without_is_empty)]

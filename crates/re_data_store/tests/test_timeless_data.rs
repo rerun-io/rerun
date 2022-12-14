@@ -4,15 +4,17 @@ use re_log_types::{obj_path, Data, DataMsg, DataPath, DataVec, MsgId, TimePoint,
 #[test]
 fn test_timeless_data() {
     fn insert_timeless(log_db: &mut LogDb, data_path: &DataPath, what: &str) {
-        log_db.add(
-            DataMsg {
-                msg_id: MsgId::random(),
-                time_point: TimePoint::timeless(),
-                data_path: data_path.clone(),
-                data: Data::String(what.into()).into(),
-            }
-            .into(),
-        );
+        log_db
+            .add(
+                DataMsg {
+                    msg_id: MsgId::random(),
+                    time_point: TimePoint::timeless(),
+                    data_path: data_path.clone(),
+                    data: Data::String(what.into()).into(),
+                }
+                .into(),
+            )
+            .ok();
     }
 
     fn insert_at_time(
@@ -25,15 +27,17 @@ fn test_timeless_data() {
         let mut time_point = TimePoint::default();
         time_point.insert(timeline, TimeInt::from(time));
 
-        log_db.add(
-            DataMsg {
-                msg_id: MsgId::random(),
-                time_point,
-                data_path: data_path.clone(),
-                data: Data::String(what.into()).into(),
-            }
-            .into(),
-        );
+        log_db
+            .add(
+                DataMsg {
+                    msg_id: MsgId::random(),
+                    time_point,
+                    data_path: data_path.clone(),
+                    data: Data::String(what.into()).into(),
+                }
+                .into(),
+            )
+            .ok();
     }
 
     fn query_time_and_data(

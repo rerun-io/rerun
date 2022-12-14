@@ -3,10 +3,12 @@
 mod design_tokens;
 pub mod icons;
 mod static_image_cache;
+mod toggle_switch;
 
 pub use design_tokens::DesignTokens;
 pub use icons::Icon;
 pub use static_image_cache::StaticImageCache;
+pub use toggle_switch::toggle_switch;
 
 // ---------------------------------------------------------------------------
 
@@ -64,19 +66,21 @@ impl ReUi {
         }
     }
 
-    /// Add stripes to grids and tables?
-    pub fn striped() -> bool {
-        false
-    }
-
     /// Margin on the side of views
     pub fn view_padding() -> f32 {
         16.0
     }
 
-    /// Default border radius
-    pub fn rounding() -> f32 {
+    pub fn window_rounding() -> f32 {
+        12.0
+    }
+
+    pub fn normal_rounding() -> f32 {
         6.0
+    }
+
+    pub fn small_rounding() -> f32 {
+        4.0
     }
 
     pub fn table_line_height() -> f32 {
@@ -111,7 +115,7 @@ impl ReUi {
         egui::Frame {
             inner_margin: egui::style::Margin::same(2.0),
             outer_margin: egui::style::Margin::same(4.0),
-            rounding: Self::rounding().into(),
+            rounding: Self::small_rounding().into(),
             fill: style.visuals.window_fill(),
             stroke: style.visuals.window_stroke(),
             ..Default::default()

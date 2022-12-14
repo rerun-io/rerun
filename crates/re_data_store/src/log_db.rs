@@ -2,12 +2,12 @@ use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 
 use re_log_types::{
-    objects, BatchIndex, BeginRecordingMsg, DataMsg, DataPath, DataVec, LogMsg, LoggedData, MsgId,
-    ObjTypePath, ObjectType, PathOp, PathOpMsg, RecordingId, RecordingInfo, TimeInt, TimePoint,
-    Timeline, TypeMsg,
+    msg_bundle::MsgBundle, objects, ArrowMsg, BatchIndex, BeginRecordingMsg, DataMsg, DataPath,
+    DataVec, FieldName, LogMsg, LoggedData, MsgId, ObjTypePath, ObjectType, PathOp, PathOpMsg,
+    RecordingId, RecordingInfo, TimeInt, TimePoint, Timeline, TypeMsg,
 };
 
-use crate::TimesPerTimeline;
+use crate::{Error, TimesPerTimeline};
 
 // ----------------------------------------------------------------------------
 
@@ -20,8 +20,11 @@ pub struct ObjDb {
     /// A tree-view (split on path components) of the objects.
     pub tree: crate::ObjectTree,
 
-    /// The actual store of data.
+    /// The old store of data. Being deprecated.
     pub store: crate::DataStore,
+
+    /// The arrow store of data.
+    pub arrow_store: re_arrow_store::DataStore,
 }
 
 impl Default for ObjDb {
@@ -30,6 +33,7 @@ impl Default for ObjDb {
             types: Default::default(),
             tree: crate::ObjectTree::root(),
             store: Default::default(),
+            arrow_store: Default::default(),
         }
     }
 }
@@ -69,7 +73,9 @@ impl ObjDb {
             re_log::warn!("Failed to add data to data_store: {err:?}");
         }
 
-        let pending_clears = self.tree.add_data_msg(msg_id, time_point, data_path, data);
+        let pending_clears = self
+            .tree
+            .add_data_msg(msg_id, time_point, data_path, Some(data));
 
         // Since we now know the type, we can retroactively add any collected nulls at the correct timestamps
         for (msg_id, time_point) in pending_clears {
@@ -98,6 +104,25 @@ impl ObjDb {
                 };
             }
         }
+    }
+
+    fn try_add_arrow_data_msg(&mut self, msg: &ArrowMsg) -> Result<(), Error> {
+        let msg_bundle = MsgBundle::try_from(msg).map_err(Error::MsgBundleError)?;
+
+        for component in &msg_bundle.components {
+            //TODO(jleibs): Actually handle pending clears
+            let _pending_clears = self.tree.add_data_msg(
+                msg.msg_id,
+                &msg_bundle.time_point,
+                &DataPath::new(
+                    msg_bundle.obj_path.clone(),
+                    FieldName::from(component.name.clone()),
+                ),
+                None,
+            );
+        }
+
+        self.arrow_store.insert(&msg_bundle).map_err(Error::Other)
     }
 
     fn add_path_op(&mut self, msg_id: MsgId, time_point: &TimePoint, path_op: &PathOp) {
@@ -137,6 +162,7 @@ impl ObjDb {
             types: _,
             tree,
             store,
+            arrow_store: _,
         } = self;
 
         {
@@ -145,6 +171,8 @@ impl ObjDb {
         }
 
         store.purge_everything_but(keep_msg_ids);
+
+        //TODO(john,clement) wire up purging to the ArrowStore
     }
 }
 
@@ -193,7 +221,7 @@ impl LogDb {
         self.log_messages.is_empty()
     }
 
-    pub fn add(&mut self, msg: LogMsg) {
+    pub fn add(&mut self, msg: LogMsg) -> Result<(), Error> {
         crate::profile_function!();
         match &msg {
             LogMsg::BeginRecordingMsg(msg) => self.add_begin_recording_msg(msg),
@@ -215,12 +243,13 @@ impl LogDb {
                 } = msg;
                 self.obj_db.add_path_op(*msg_id, time_point, path_op);
             }
-            LogMsg::ArrowMsg(_) => {
-                // Ignore ArrowMsgs -- they should go to the other store
+            LogMsg::ArrowMsg(msg) => {
+                self.obj_db.try_add_arrow_data_msg(msg)?;
             }
         }
         self.chronological_message_ids.push(msg.id());
         self.log_messages.insert(msg.id(), msg);
+        Ok(())
     }
 
     fn add_begin_recording_msg(&mut self, msg: &BeginRecordingMsg) {

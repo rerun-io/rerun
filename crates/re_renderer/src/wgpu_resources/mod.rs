@@ -80,6 +80,24 @@ pub struct WgpuResourcePoolStatistics {
     pub total_texture_size_in_bytes: u64,
 }
 
+impl WgpuResourcePoolStatistics {
+    pub fn total_bytes(&self) -> u64 {
+        let Self {
+            num_bind_group_layouts: _,
+            num_pipeline_layouts: _,
+            num_render_pipelines: _,
+            num_samplers: _,
+            num_shader_modules: _,
+            num_bind_groups: _,
+            num_buffers: _,
+            num_textures: _,
+            total_buffer_size_in_bytes,
+            total_texture_size_in_bytes,
+        } = self;
+        total_buffer_size_in_bytes + total_texture_size_in_bytes
+    }
+}
+
 impl WgpuResourcePools {
     pub fn statistics(&self) -> WgpuResourcePoolStatistics {
         WgpuResourcePoolStatistics {

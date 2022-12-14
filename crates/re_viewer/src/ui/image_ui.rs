@@ -2,7 +2,7 @@ use itertools::Itertools as _;
 
 use re_log_types::{context::ClassId, TensorDataMeaning};
 
-use crate::misc::{tensor_image_cache, ViewerContext};
+use crate::misc::{caches::TensorImageView, ViewerContext};
 
 pub(crate) fn show_tensor(
     ctx: &mut ViewerContext<'_>,
@@ -37,7 +37,7 @@ pub(crate) fn show_tensor(
 pub fn show_zoomed_image_region_tooltip(
     parent_ui: &mut egui::Ui,
     response: egui::Response,
-    tensor_view: &tensor_image_cache::TensorImageView<'_, '_>,
+    tensor_view: &TensorImageView<'_, '_>,
     image_rect: egui::Rect,
     pointer_pos: egui::Pos2,
     meter: Option<f32>,
@@ -62,7 +62,7 @@ pub fn show_zoomed_image_region_tooltip(
 pub fn show_zoomed_image_region(
     parent_ui: &mut egui::Ui,
     tooltip_ui: &mut egui::Ui,
-    tensor_view: &tensor_image_cache::TensorImageView<'_, '_>,
+    tensor_view: &TensorImageView<'_, '_>,
     image_rect: egui::Rect,
     pointer_pos: egui::Pos2,
     meter: Option<f32>,
