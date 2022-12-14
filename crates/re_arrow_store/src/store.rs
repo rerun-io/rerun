@@ -14,13 +14,29 @@ use re_log_types::{
     Timeline,
 };
 
-/// An opaque type that directly refers to a row of data within the datastore.
+// --- Data store ---
+
+/// An opaque type that directly refers to a row of data within the datastore, iff it is associated
+/// with a component name.
 ///
 /// See [`DataStore::query`] & [`DataStore::get`].
-// TODO: turn this into an opaque type I think
-pub type RowIndex = u64;
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct RowIndex(pub(crate) u64);
 
-// --- Data store ---
+impl std::fmt::Display for RowIndex {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("{}", self.0))
+    }
+}
+
+impl RowIndex {
+    pub(crate) fn from_u64(row_idx: u64) -> Self {
+        Self(row_idx)
+    }
+    pub(crate) fn as_u64(self) -> u64 {
+        self.0
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct DataStoreConfig {
@@ -185,7 +201,7 @@ impl DataStore {
                 for bucket in table.buckets.values() {
                     for (comp, index) in &bucket.indices.read().indices {
                         let row_indices = row_indices.entry(comp.clone()).or_default();
-                        row_indices.extend(index.values());
+                        row_indices.extend(index.values().iter().copied().map(RowIndex::from_u64));
                     }
                 }
             }
@@ -196,7 +212,7 @@ impl DataStore {
                 for pair in row_indices.windows(2) {
                     let &[i1, i2] = pair else { unreachable!() };
                     ensure!(
-                        i1 + 1 == i2,
+                        i1.as_u64() + 1 == i2.as_u64(),
                         "found hole in index coverage for {comp:?}: \
                             in {row_indices:?}, {i1} -> {i2}"
                     );
@@ -818,7 +834,9 @@ impl ComponentTable {
             let row_ranges = self
                 .buckets
                 .iter()
-                .map(|bucket| bucket.row_offset..bucket.row_offset + bucket.total_rows())
+                .map(|bucket| {
+                    bucket.row_offset.as_u64()..bucket.row_offset.as_u64() + bucket.total_rows()
+                })
                 .collect::<Vec<_>>();
             for row_ranges in row_ranges.windows(2) {
                 let &[r1, r2] = &row_ranges else { unreachable!() };
@@ -874,7 +892,8 @@ impl std::fmt::Display for ComponentBucket {
             // - all buckets that follow are lazily instantiated when data get inserted
             //
             // TODO(#439): is that still true with deletion?
-            row_offset + data.len().checked_sub(1).expect("buckets are never empty") as u64,
+            row_offset.as_u64()
+                + data.len().checked_sub(1).expect("buckets are never empty") as u64,
         ))?;
 
         f.write_str("time ranges:\n")?;

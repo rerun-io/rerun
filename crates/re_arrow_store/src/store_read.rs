@@ -363,7 +363,8 @@ impl IndexBucket {
         for (i, component) in components.iter().enumerate() {
             if let Some(index) = indices.get(*component) {
                 if index.is_valid(secondary_idx as _) {
-                    row_indices[i] = Some(index.values()[secondary_idx as usize]);
+                    row_indices[i] =
+                        Some(RowIndex::from_u64(index.values()[secondary_idx as usize]));
                 }
             }
         }
@@ -472,9 +473,9 @@ impl ComponentTable {
             debug!(
                 kind = "query",
                 component = self.name.as_str(),
-                row_idx,
+                %row_idx,
                 bucket_nr,
-                bucket.row_offset,
+                %bucket.row_offset,
                 "fetching component data"
             );
             Some(bucket.get(row_idx))
@@ -482,7 +483,7 @@ impl ComponentTable {
             debug!(
                 kind = "query",
                 component = self.name.as_str(),
-                row_idx,
+                %row_idx,
                 bucket_nr,
                 "row index is out of bounds"
             );
@@ -492,8 +493,8 @@ impl ComponentTable {
 }
 impl ComponentBucket {
     // Panics on out-of-bounds
-    pub fn get(&self, row_idx: u64) -> Box<dyn Array> {
-        let row_idx = row_idx - self.row_offset;
+    pub fn get(&self, row_idx: RowIndex) -> Box<dyn Array> {
+        let row_idx = row_idx.as_u64() - self.row_offset.as_u64();
         self.data.slice(row_idx as usize, 1)
     }
 }

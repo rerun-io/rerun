@@ -247,7 +247,7 @@ impl IndexBucket {
                 index.extend_constant(times.len().saturating_sub(1), None);
                 index
             });
-            index.push(Some(*row_idx));
+            index.push(Some(row_idx.as_u64()));
         }
 
         // 2-way merge, step2: right-to-left
@@ -625,7 +625,12 @@ impl ComponentTable {
         ComponentTable {
             name: Arc::clone(&name),
             datatype: datatype.clone(),
-            buckets: [ComponentBucket::new(name, datatype, 0)].into(),
+            buckets: [ComponentBucket::new(
+                name,
+                datatype,
+                RowIndex::from_u64(0u64),
+            )]
+            .into(),
         }
     }
 
@@ -658,11 +663,11 @@ impl ComponentTable {
                 "allocating new component bucket, previous one overflowed"
             );
 
-            let row_offset = bucket.row_offset + len;
+            let row_offset = bucket.row_offset.as_u64() + len;
             self.buckets.push_back(ComponentBucket::new(
                 Arc::clone(&self.name),
                 self.datatype.clone(),
-                row_offset,
+                RowIndex::from_u64(row_offset),
             ));
         }
 
@@ -679,7 +684,7 @@ impl ComponentTable {
                 .map(|(timeline, time)| (timeline.name(), timeline.typ().format(*time)))
                 .collect::<Vec<_>>(),
             component = self.name.as_str(),
-            row_idx,
+            %row_idx,
             "pushed into component table"
         );
 
@@ -691,7 +696,7 @@ impl ComponentBucket {
     pub fn new(name: Arc<String>, datatype: DataType, row_offset: RowIndex) -> Self {
         // If this is the first bucket of this table, we need to insert an empty list at
         // row index #0!
-        let data = if row_offset == 0 {
+        let data = if row_offset.as_u64() == 0 {
             let inner_datatype = match &datatype {
                 DataType::List(field) => field.data_type().clone(),
                 #[allow(clippy::todo)]
@@ -734,6 +739,8 @@ impl ComponentBucket {
         // TODO(cmc): replace with an actual mutable array!
         self.data = concatenate(&[&*self.data, data])?;
 
-        Ok(self.row_offset + self.data.len() as u64 - 1)
+        Ok(RowIndex::from_u64(
+            self.row_offset.as_u64() + self.data.len() as u64 - 1,
+        ))
     }
 }
