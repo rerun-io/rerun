@@ -460,8 +460,8 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
         (
             now_minus_1s,
             vec![
-                ("rects", now_minus_1s_nanos.into()),
-                ("positions", now_minus_1s_nanos.into()),
+                ("rect2d", now_minus_1s_nanos.into()),
+                ("point2d", now_minus_1s_nanos.into()),
             ],
         ),
         // Scenario: query all components at 0s (i.e. second update).
@@ -470,8 +470,8 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
             now,
             vec![
                 ("instances", now_nanos.into()),
-                ("rects", now_nanos.into()),
-                ("positions", now_minus_1s_nanos.into()),
+                ("rect2d", now_nanos.into()),
+                ("point2d", now_minus_1s_nanos.into()),
             ],
         ),
         // Scenario: query all components at +1s (i.e. last update).
@@ -480,8 +480,8 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
             now_plus_1s,
             vec![
                 ("instances", now_plus_1s_nanos.into()),
-                ("rects", now_plus_1s_nanos.into()),
-                ("positions", now_minus_1s_nanos.into()),
+                ("rect2d", now_plus_1s_nanos.into()),
+                ("point2d", now_minus_1s_nanos.into()),
             ],
         ),
         // Scenario: query all components at +2s (i.e. after last update).
