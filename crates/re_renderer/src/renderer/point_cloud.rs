@@ -62,7 +62,7 @@ mod gpu_data {
     }
 }
 
-/// Internal, ready to draw representation of [`PointBatchInfo`]
+/// Internal, ready to draw representation of [`PointCloudBatchInfo`]
 #[derive(Clone)]
 struct PointCloudBatch {
     bind_group: GpuBindGroupHandleStrong,
