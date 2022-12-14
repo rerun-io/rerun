@@ -58,6 +58,17 @@ impl ViewTensorState {
             ui.add_space(12.0);
 
             dimension_mapping_ui(ui, &mut self.dimension_mapping, &self.tensor.shape);
+
+            let default_mapping = DimensionMapping::create(&self.tensor.shape);
+            if ui
+                .add_enabled(
+                    self.dimension_mapping != default_mapping,
+                    egui::Button::new("Auto-map"),
+                )
+                .clicked()
+            {
+                self.dimension_mapping = DimensionMapping::create(&self.tensor.shape);
+            }
         });
 
         self.texture_settings.show(ui);
