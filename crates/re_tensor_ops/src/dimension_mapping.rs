@@ -152,7 +152,6 @@ fn longest_and_second_longest_dim_indices(shape: &[TensorDimension]) -> (usize, 
     }
 
     if longest_idx == second_longest_idx {
-        // This can happen with a shape of all-zeros
         (0, 1)
     } else {
         (longest_idx, second_longest_idx)
