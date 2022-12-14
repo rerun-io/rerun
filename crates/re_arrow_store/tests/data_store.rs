@@ -143,9 +143,9 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
     let timeline_log_time = Timeline::new("log_time", TimeType::Time);
     let components_all = &["instances"];
 
-    // Scenario: query at `last_frame`.
-    // Expected: dataframe with our instances in it.
     tracker.assert_scenario(
+        "query at `last_frame`",
+        "dataframe with our instances in it",
         store,
         &timeline_frame_nr,
         &TimeQuery::LatestAt(frame40),
@@ -154,9 +154,9 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
         vec![("instances", frame40.into())],
     );
 
-    // Scenario: query at `last_log_time`.
-    // Expected: dataframe with our instances in it.
     tracker.assert_scenario(
+        "query at `last_log_time`",
+        "dataframe with our instances in it",
         store,
         &timeline_log_time,
         &TimeQuery::LatestAt(now_nanos),
@@ -165,9 +165,9 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
         vec![("instances", now_nanos.into())],
     );
 
-    // Scenario: query an empty store at `first_frame - 1`.
-    // Expected: empty dataframe.
     tracker.assert_scenario(
+        "query an empty store at `first_frame - 1`",
+        "empty dataframe",
         store,
         &timeline_frame_nr,
         &TimeQuery::LatestAt(frame39),
@@ -176,9 +176,9 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
         vec![],
     );
 
-    // Scenario: query an empty store at `first_log_time - 1s`.
-    // Expected: empty dataframe.
     tracker.assert_scenario(
+        "query an empty store at `first_log_time - 1s`",
+        "empty dataframe",
         store,
         &timeline_log_time,
         &TimeQuery::LatestAt(now_minus_1s_nanos),
@@ -187,9 +187,9 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
         vec![],
     );
 
-    // Scenario: query a non-existing entity path.
-    // Expected: empty dataframe.
     tracker.assert_scenario(
+        "query a non-existing entity path",
+        "empty dataframe",
         store,
         &timeline_frame_nr,
         &TimeQuery::LatestAt(frame40),
@@ -198,9 +198,9 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
         vec![],
     );
 
-    // Scenario: query a bunch of non-existing components.
-    // Expected: empty dataframe.
     tracker.assert_scenario(
+        "query a bunch of non-existing components",
+        "empty dataframe",
         store,
         &timeline_frame_nr,
         &TimeQuery::LatestAt(frame40),
@@ -209,9 +209,9 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
         vec![],
     );
 
-    // Scenario: query with an empty list of components.
-    // Expected: empty dataframe.
     tracker.assert_scenario(
+        "query with an empty list of components",
+        "empty dataframe",
         store,
         &timeline_frame_nr,
         &TimeQuery::LatestAt(frame40),
@@ -220,9 +220,9 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
         vec![],
     );
 
-    // Scenario: query with wrong timeline name.
-    // Expected: empty dataframe.
     tracker.assert_scenario(
+        "query with wrong timeline name",
+        "empty dataframe",
         store,
         &timeline_wrong_name,
         &TimeQuery::LatestAt(frame40),
@@ -231,9 +231,9 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
         vec![],
     );
 
-    // Scenario: query with wrong timeline kind.
-    // Expected: empty dataframe.
     tracker.assert_scenario(
+        "query with wrong timeline kind",
+        "empty dataframe",
         store,
         &timeline_wrong_kind,
         &TimeQuery::LatestAt(frame40),
@@ -349,12 +349,15 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
     // --- Testing at all frames ---
 
     let scenarios = [
-        // Scenario: query all components at frame #40 (i.e. before first frame).
-        // Expected: empy dataframe.
-        (frame40, vec![]),
-        // Scenario: query all components at frame #41 (i.e. first frame with data)
-        // Expected: data at that point in time.
         (
+            "query all components at frame #40 (i.e. before first frame)",
+            "empy dataframe",
+            frame40,
+            vec![],
+        ),
+        (
+            "query all components at frame #41 (i.e. first frame with data)",
+            "data at that point in time",
             frame41,
             vec![
                 ("instances", frame41.into()),
@@ -362,9 +365,9 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
                 ("positions", frame41.into()),
             ],
         ),
-        // Scenario: query all components at frame #42 (i.e. second frame with data)
-        // Expected: data at that point in time.
         (
+            "query all components at frame #42 (i.e. second frame with data)",
+            "data at that point in time",
             frame42,
             vec![
                 ("instances", frame42.into()),
@@ -372,9 +375,9 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
                 ("positions", frame42.into()),
             ],
         ),
-        // Scenario: query all components at frame #43 (i.e. last frame with data)
-        // Expected: latest data for all components.
         (
+            "query all components at frame #43 (i.e. last frame with data)",
+            "latest data for all components",
             frame43,
             vec![
                 ("instances", frame42.into()),
@@ -382,9 +385,9 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
                 ("positions", frame42.into()),
             ],
         ),
-        // Scenario: query all components at frame #44 (i.e. after last frame)
-        // Expected: latest data for all components.
         (
+            "query all components at frame #44 (i.e. after last frame)",
+            "latest data for all components",
             frame44,
             vec![
                 ("instances", frame42.into()),
@@ -394,8 +397,10 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
         ),
     ];
 
-    for (frame_nr, expected) in scenarios {
+    for (scenario, expectation, frame_nr, expected) in scenarios {
         tracker.assert_scenario(
+            scenario,
+            expectation,
             store,
             &timeline_frame_nr,
             &TimeQuery::LatestAt(frame_nr),
@@ -408,21 +413,24 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
     // --- Testing at all times ---
 
     let scenarios = [
-        // Scenario: query all components at -2s (i.e. before first update).
-        // Expected: empty dataframe.
-        (now_minus_2s, vec![]),
-        // Scenario: query all components at -1s (i.e. first update).
-        // Expected: data at that point in time.
         (
+            "query all components at -2s (i.e. before first update)",
+            "empty dataframe",
+            now_minus_2s,
+            vec![],
+        ),
+        (
+            "query all components at -1s (i.e. first update)",
+            "data at that point in time",
             now_minus_1s,
             vec![
                 ("rects", now_minus_1s_nanos.into()),
                 ("positions", now_minus_1s_nanos.into()),
             ],
         ),
-        // Scenario: query all components at 0s (i.e. second update).
-        // Expected: data at that point in time.
         (
+            "query all components at 0s (i.e. second update)",
+            "data at that point in time",
             now,
             vec![
                 ("instances", now_nanos.into()),
@@ -430,9 +438,9 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
                 ("positions", now_minus_1s_nanos.into()),
             ],
         ),
-        // Scenario: query all components at +1s (i.e. last update).
-        // Expected: latest data for all components.
         (
+            "query all components at +1s (i.e. last update)",
+            "latest data for all components",
             now_plus_1s,
             vec![
                 ("instances", now_plus_1s_nanos.into()),
@@ -440,9 +448,9 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
                 ("positions", now_minus_1s_nanos.into()),
             ],
         ),
-        // Scenario: query all components at +2s (i.e. after last update).
-        // Expected: latest data for all components.
         (
+            "query all components at +2s (i.e. after last update)",
+            "latest data for all components",
             now_plus_2s,
             vec![
                 ("instances", now_plus_1s_nanos.into()),
@@ -452,8 +460,10 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
         ),
     ];
 
-    for (log_time, expected) in scenarios {
+    for (scenario, expectation, log_time, expected) in scenarios {
         tracker.assert_scenario(
+            scenario,
+            expectation,
             store,
             &timeline_log_time,
             &TimeQuery::LatestAt(log_time.nanos_since_epoch()),
@@ -505,10 +515,13 @@ fn query_model_specificities_impl(store: &mut DataStore) {
             [build_frame_nr(frame41)],
             [build_instances(nb_positions), build_positions(nb_positions)],
         );
+        tracker.insert_data(
+            store,
+            &ent_path,
+            [build_frame_nr(frame42)],
+            [build_instances(nb_positions), build_positions(nb_positions)],
+        );
     }
-
-    // TODO:
-    // - there are 3 PoV here: instances, positions, rects
 
     if let err @ Err(_) = store.sanity_check() {
         store.sort_indices();
@@ -620,8 +633,11 @@ impl DataTracker {
     }
 
     /// Asserts a simple scenario, where every component is fetched from its own point-of-view.
+    #[allow(clippy::too_many_arguments)]
     fn assert_scenario(
         &self,
+        scenario: &str,
+        expectation: &str,
         store: &mut DataStore,
         timeline: &Timeline,
         time_query: &TimeQuery,
@@ -652,7 +668,10 @@ impl DataTracker {
         let expected = expected.explode(expected.get_column_names()).unwrap();
 
         store.sort_indices();
-        assert_eq!(expected, df, "\n{store}");
+        assert_eq!(
+            expected, df,
+            "\nScenario: {scenario}.\nExpected: {expectation}.\n{store}"
+        );
     }
 
     /// Asserts a complex scenario, where every component is fetched as it is seen from the
@@ -695,7 +714,7 @@ impl DataTracker {
         store.sort_indices();
         assert_eq!(
             expected, df,
-            "\nScenario: {scenario}\nExpected: {expectation}\n{store}"
+            "\nScenario: {scenario}.\nExpected: {expectation}.\n{store}"
         );
     }
 
