@@ -674,37 +674,19 @@ impl DataTracker {
         components: &[ComponentNameRef<'_>],
         expected: Vec<(ComponentNameRef<'static>, TimeInt)>,
     ) {
-        let df = {
-            let series = components
-                .iter()
-                .filter_map(|&component| {
-                    Self::query_component_pov(
-                        store, timeline, time_query, ent_path, component, component,
-                    )
-                })
-                .collect::<Vec<_>>();
-
-            let df = DataFrame::new(series).unwrap();
-            df.explode(df.get_column_names()).unwrap()
-        };
-
-        let series = expected
-            .into_iter()
-            .filter_map(|(name, time)| {
-                self.all_data
-                    .get(&(name.to_owned(), time))
-                    .cloned()
-                    .map(|data| (name, data))
-            })
-            .map(|(name, data)| Series::try_from((name, data)).unwrap())
-            .collect::<Vec<_>>();
-        let expected = DataFrame::new(series).unwrap();
-        let expected = expected.explode(expected.get_column_names()).unwrap();
-
-        store.sort_indices();
-        assert_eq!(
-            expected, df,
-            "\nScenario: {scenario}.\nExpected: {expectation}.\n{store}"
+        self.assert_scenario_pov_impl(
+            scenario,
+            expectation,
+            store,
+            timeline,
+            time_query,
+            ent_path,
+            None,
+            components,
+            expected
+                .into_iter()
+                .map(|(name, time)| (name, time, 0))
+                .collect(),
         );
     }
 
@@ -723,10 +705,39 @@ impl DataTracker {
         components: &[ComponentNameRef<'_>], // (primary, component)
         expected: Vec<(ComponentNameRef<'static>, TimeInt, usize)>,
     ) {
+        self.assert_scenario_pov_impl(
+            scenario,
+            expectation,
+            store,
+            timeline,
+            time_query,
+            ent_path,
+            primary.into(),
+            components,
+            expected,
+        );
+    }
+
+    /// Asserts a complex scenario, where every component is fetched as it is seen from the
+    /// point-of-view of another component.
+    #[allow(clippy::too_many_arguments)]
+    fn assert_scenario_pov_impl(
+        &self,
+        scenario: &str,
+        expectation: &str,
+        store: &mut DataStore,
+        timeline: &Timeline,
+        time_query: &TimeQuery,
+        ent_path: &EntityPath,
+        primary: Option<ComponentNameRef<'_>>,
+        components: &[ComponentNameRef<'_>], // (primary, component)
+        expected: Vec<(ComponentNameRef<'static>, TimeInt, usize)>,
+    ) {
         let df = {
             let series = components
                 .iter()
                 .filter_map(|&component| {
+                    let primary = primary.unwrap_or(component);
                     Self::query_component_pov(
                         store, timeline, time_query, ent_path, primary, component,
                     )
