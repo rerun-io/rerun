@@ -19,6 +19,7 @@ impl std::fmt::Debug for DebugLabel {
 
 impl DebugLabel {
     #[allow(clippy::unnecessary_wraps)]
+    #[inline]
     pub fn get(&self) -> Option<&str> {
         #[cfg(debug_assertions)]
         {
@@ -32,6 +33,7 @@ impl DebugLabel {
 }
 
 impl From<&str> for DebugLabel {
+    #[inline]
     fn from(str: &str) -> Self {
         #[cfg(not(debug_assertions))]
         {
@@ -46,6 +48,7 @@ impl From<&str> for DebugLabel {
 }
 
 impl From<String> for DebugLabel {
+    #[inline]
     fn from(str: String) -> Self {
         #[cfg(not(debug_assertions))]
         {
@@ -60,6 +63,7 @@ impl From<String> for DebugLabel {
 }
 
 impl From<Option<&str>> for DebugLabel {
+    #[inline]
     fn from(str: Option<&str>) -> Self {
         #[cfg(not(debug_assertions))]
         {

@@ -414,13 +414,12 @@ pub fn view_3d(
             scene
                 .primitives
                 .points
-                .push(re_renderer::renderer::PointCloudPoint {
-                    position: orbit_eye.orbit_center,
-                    radius: Size::new_scene(orbit_eye.orbit_radius * 0.01),
-                    color: egui::Rgba::from_rgba_unmultiplied(1.0, 0.0, 1.0, orbit_center_alpha)
-                        .into(),
-                });
-            scene.primitives.point_ids.push(InstanceIdHash::NONE);
+                .batch("center orbit point")
+                .add_point(orbit_eye.orbit_center)
+                .radius(Size::new_scene(orbit_eye.orbit_radius * 0.01))
+                .color(
+                    egui::Rgba::from_rgba_unmultiplied(1.0, 0.0, 1.0, orbit_center_alpha).into(),
+                );
             ui.ctx().request_repaint(); // let it fade out
         }
     }
@@ -516,6 +515,11 @@ fn show_projections_from_2d_space(
     scene_bbox_accum: &BoundingBox,
 ) {
     if let HoveredSpace::TwoD { space_2d, pos } = &ctx.rec_cfg.hovered_space_previous_frame {
+        let mut point_batch = scene
+            .primitives
+            .points
+            .batch("projection from 2d hit points");
+
         for cam in space_cameras {
             if cam.target_space.as_ref() == Some(space_2d) {
                 if let Some(ray) = cam.unproject_as_ray(glam::vec2(pos.x, pos.y)) {
@@ -545,15 +549,10 @@ fn show_projections_from_2d_space(
 
                     if let Some(pos) = hit_pos {
                         // Show where the ray hits the depth map:
-                        scene
-                            .primitives
-                            .points
-                            .push(re_renderer::renderer::PointCloudPoint {
-                                position: pos,
-                                radius: radius * 3.0,
-                                color: egui::Color32::WHITE,
-                            });
-                        scene.primitives.point_ids.push(InstanceIdHash::NONE);
+                        point_batch
+                            .add_point(pos)
+                            .radius(radius * 3.0)
+                            .color(egui::Color32::WHITE);
                     }
                 }
             }

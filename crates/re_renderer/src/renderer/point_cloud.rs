@@ -13,9 +13,9 @@
 //! that srgb->linear conversion happens on texture load.
 //!
 
-use std::num::NonZeroU32;
+use std::{num::NonZeroU32, ops::Range};
 
-use crate::Color32;
+use crate::{Color32, DebugLabel};
 use bytemuck::Zeroable;
 use itertools::Itertools;
 use smallvec::smallvec;
@@ -39,7 +39,7 @@ use super::{
 mod gpu_data {
     // Don't use `wgsl_buffer_types` since none of this data goes into a buffer, so its alignment rules don't apply.
 
-    use crate::Size;
+    use crate::{wgpu_buffer_types, Size};
 
     #[repr(C, packed)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
@@ -48,6 +48,20 @@ mod gpu_data {
         pub radius: Size, // Might use a f16 here to free memory for more data!
     }
     static_assertions::assert_eq_size!(PositionData, glam::Vec4);
+
+    /// Uniform buffer that changes for every batch of line strips.
+    #[repr(C)]
+    #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+    pub struct BatchUniformBuffer {
+        pub world_from_scene: wgpu_buffer_types::Mat4,
+    }
+}
+
+/// Internal, ready to draw representation of [`PointBatchInfo`]
+#[derive(Clone)]
+struct PointCloudBatch {
+    bind_group: GpuBindGroupHandleStrong,
+    vertex_range: Range<u32>,
 }
 
 /// A point cloud drawing operation.
@@ -62,25 +76,54 @@ impl DrawData for PointCloudDrawData {
     type Renderer = PointCloudRenderer;
 }
 
+/// Data that is valid for a batch of point cloud points.
+pub struct PointCloudBatchInfo {
+    pub label: DebugLabel,
+
+    /// Transformation applies to point positions
+    ///
+    /// TODO(andreas): Since we blindly apply this to positions only there is no restriction on this matrix.
+    ///                 However this implies that we don't do any scaling on the radius.
+    ///                 We should do so on world-space radii. How?
+    pub world_from_scene: glam::Mat4,
+
+    /// Number of points covered by this batch.
+    ///
+    /// The batch will start with the next point after the one the previous batch ended with.
+    pub point_count: u32,
+}
+
 /// Description of a point cloud.
-pub struct PointCloudPoint {
+pub struct PointCloudVertex {
     /// Connected points. Must be at least 2.
     pub position: glam::Vec3,
 
     /// Radius of the point in world space
     pub radius: Size,
+}
 
-    /// The points color in srgb color space. Alpha unused right now
-    pub color: Color32,
+#[derive(thiserror::Error, Debug, PartialEq, Eq)]
+pub enum PointCloudDrawDataError {
+    #[error("Current maximum number of points supported for a point cloud is {max}, passed were {num_points}")]
+    TooManyPoints { max: u32, num_points: u32 },
+
+    #[error("Size of vertex & color array was not equal")]
+    NumberOfColorsNotEqualNumberOfVertices,
+
+    #[error("Number of points covered by batches exceeds total number of points.")]
+    BatchesAddressMorePointsThanPassed,
 }
 
 impl PointCloudDrawData {
     /// Transforms and uploads point cloud data to be consumed by gpu.
     ///
     /// Try to bundle all points into a single draw data instance whenever possible.
-    ///
-    /// If you pass point instances, None will be returned.
-    pub fn new(ctx: &mut RenderContext, points: &[PointCloudPoint]) -> anyhow::Result<Self> {
+    /// Number of vertices and colors has to be equal.
+    pub fn new(
+        ctx: &mut RenderContext,
+        vertices: &[PointCloudVertex],
+        colors: &[Color32],
+    ) -> Result<Self, PointCloudDrawDataError> {
         crate::profile_function!();
 
         let point_renderer = ctx.renderers.get_or_create::<_, PointCloudRenderer>(
@@ -90,7 +133,7 @@ impl PointCloudDrawData {
             &mut ctx.resolver,
         );
 
-        if points.is_empty() {
+        if vertices.is_empty() {
             return Ok(PointCloudDrawData {
                 bind_group: None,
                 num_quads: 0,
@@ -114,11 +157,15 @@ impl PointCloudDrawData {
         );
 
         // TODO(andreas) split up point cloud into several textures when that happens.
-        anyhow::ensure!(
-            points.len() <= (TEXTURE_SIZE * TEXTURE_SIZE) as usize,
-            "Current maximum number of points supported for a point cloud is {}",
-            TEXTURE_SIZE * TEXTURE_SIZE
-        );
+        if vertices.len() > (TEXTURE_SIZE * TEXTURE_SIZE) as usize {
+            return Err(PointCloudDrawDataError::TooManyPoints {
+                max: TEXTURE_SIZE * TEXTURE_SIZE,
+                num_points: vertices.len() as _,
+            });
+        }
+        if vertices.len() != colors.len() {
+            return Err(PointCloudDrawDataError::NumberOfColorsNotEqualNumberOfVertices);
+        }
 
         // TODO(andreas): We want a "stack allocation" here that lives for one frame.
         //                  Note also that this doesn't protect against sharing the same texture with several PointDrawData!
@@ -153,11 +200,11 @@ impl PointCloudDrawData {
         // TODO(andreas): We want a staging-belt(-like) mechanism to upload data instead of the queue.
         //                  These staging buffers would be provided by the belt.
         // To make the data upload simpler (and have it be done in one go), we always update full rows of each of our textures
-        let num_points_written = next_multiple_of(points.len() as u32, TEXTURE_SIZE) as usize;
-        let num_points_zeroed = num_points_written - points.len();
+        let num_points_written = next_multiple_of(vertices.len() as u32, TEXTURE_SIZE) as usize;
+        let num_points_zeroed = num_points_written - vertices.len();
         let position_and_size_staging = {
             crate::profile_scope!("collect_pos_size");
-            points
+            vertices
                 .iter()
                 .map(|point| gpu_data::PositionData {
                     pos: point.position,
@@ -169,9 +216,9 @@ impl PointCloudDrawData {
 
         let color_staging = {
             crate::profile_scope!("collect_colors");
-            points
+            colors
                 .iter()
-                .map(|point| point.color)
+                .cloned()
                 .chain(std::iter::repeat(Color32::TRANSPARENT).take(num_points_zeroed))
                 .collect_vec()
         };
@@ -190,7 +237,8 @@ impl PointCloudDrawData {
                     texture: &ctx
                         .gpu_resources
                         .textures
-                        .get_resource(&position_data_texture)?
+                        .get_resource(&position_data_texture)
+                        .unwrap()
                         .texture,
                     mip_level: 0,
                     origin: wgpu::Origin3d::ZERO,
@@ -215,7 +263,8 @@ impl PointCloudDrawData {
                     texture: &ctx
                         .gpu_resources
                         .textures
-                        .get_resource(&color_texture)?
+                        .get_resource(&color_texture)
+                        .unwrap()
                         .texture,
                     mip_level: 0,
                     origin: wgpu::Origin3d::ZERO,
@@ -249,7 +298,7 @@ impl PointCloudDrawData {
                 &ctx.gpu_resources.buffers,
                 &ctx.gpu_resources.samplers,
             )),
-            num_quads: points.len() as _,
+            num_quads: vertices.len() as _,
         })
     }
 }

@@ -333,8 +333,9 @@ fn view_2d_scrollable(
         for (point, instance_hash) in scene
             .primitives
             .points
+            .vertices
             .iter()
-            .zip(scene.primitives.point_ids.iter())
+            .zip(scene.primitives.points.user_data.iter())
         {
             if instance_hash.is_none() {
                 continue;

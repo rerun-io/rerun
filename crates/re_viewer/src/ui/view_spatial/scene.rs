@@ -13,8 +13,9 @@ use re_log_types::{
     context::{ClassId, KeypointId},
     DataVec, IndexHash, MeshId, MsgId, ObjectType, Tensor,
 };
+use re_renderer::PointCloudBuilder;
 use re_renderer::{
-    renderer::{LineStripFlags, MeshInstance, PointCloudPoint},
+    renderer::{LineStripFlags, MeshInstance, PointCloudVertex},
     Color32, LineStripSeriesBuilder, Size,
 };
 
@@ -123,11 +124,7 @@ pub struct SceneSpatialPrimitives {
     /// TODO(andreas): Need to decide of this should be used for hovering as well. If so add another builder with meta-data?
     pub textured_rectangles: Vec<re_renderer::renderer::TexturedRect>,
     pub line_strips: LineStripSeriesBuilder<InstanceIdHash>,
-    /// TODO(andreas): re_renderer should have a point builder <https://github.com/rerun-io/rerun/issues/509>
-    pub points: Vec<PointCloudPoint>,
-
-    /// Assigns an instance id to every point. Needs to have as many elements as points
-    pub point_ids: Vec<InstanceIdHash>,
+    pub points: PointCloudBuilder<InstanceIdHash>,
 
     pub meshes: Vec<MeshSource>,
 }
@@ -153,8 +150,8 @@ impl SceneSpatialPrimitives {
                 .extend(rect.top_left_corner_position + rect.extent_v + rect.extent_u);
         }
 
-        for point in &self.points {
-            self.bounding_box.extend(point.position);
+        for vertex in &self.points.vertices {
+            self.bounding_box.extend(vertex.position);
         }
 
         for vertex in &self.line_strips.vertices {
@@ -259,6 +256,8 @@ impl SceneSpatial {
                 let annotations = self.annotation_map.find(obj_path);
                 let default_color = DefaultColor::ObjPath(obj_path);
 
+                let mut point_batch = self.primitives.points.batch("3d points");
+
                 visit_type_data_5(
                     obj_store,
                     &FieldName::from("pos"),
@@ -316,12 +315,11 @@ impl SceneSpatial {
                             }
                         }
 
-                        self.primitives.points.push(PointCloudPoint {
-                            position,
-                            radius,
-                            color,
-                        });
-                        self.primitives.point_ids.push(instance_id_hash);
+                        point_batch
+                            .add_point(position)
+                            .radius(radius)
+                            .color(color)
+                            .user_data(instance_id_hash);
                     },
                 );
 
@@ -793,6 +791,8 @@ impl SceneSpatial {
             let mut keypoints: HashMap<(ClassId, i64), HashMap<KeypointId, glam::Vec3>> =
                 Default::default();
 
+            let mut point_batch = self.primitives.points.batch("2d points");
+
             visit_type_data_5(
                 obj_store,
                 &FieldName::from("pos"),
@@ -836,18 +836,21 @@ impl SceneSpatial {
                         apply_hover_effect(&mut paint_props);
                     }
 
-                    self.primitives.points.push(PointCloudPoint {
-                        position: pos.extend(point_depth),
-                        radius: Size::new_points(paint_props.bg_stroke.width * 0.5),
-                        color: paint_props.bg_stroke.color,
-                    });
-                    self.primitives.points.push(PointCloudPoint {
-                        position: pos.extend(point_depth - 0.1),
-                        radius: Size::new_points(paint_props.fg_stroke.width * 0.5),
-                        color: paint_props.fg_stroke.color,
-                    });
-                    self.primitives.point_ids.push(instance_hash);
-                    self.primitives.point_ids.push(InstanceIdHash::NONE);
+                    point_batch
+                        .add_points(
+                            [pos.extend(point_depth), pos.extend(point_depth - 0.1)].into_iter(),
+                        )
+                        .colors(
+                            [paint_props.bg_stroke.color, paint_props.fg_stroke.color].into_iter(),
+                        )
+                        .radii(
+                            [
+                                Size::new_points(paint_props.bg_stroke.width * 0.5),
+                                Size::new_points(paint_props.fg_stroke.width * 0.5),
+                            ]
+                            .into_iter(),
+                        )
+                        .user_data(instance_hash);
 
                     if let Some(label) = label {
                         if label_batch.len() < max_num_labels {
@@ -1222,7 +1225,6 @@ impl SceneSpatial {
             textured_rectangles: _, // TODO(andreas): Should be able to pick 2d rectangles!
             line_strips,
             points,
-            point_ids,
             meshes,
         } = &self.primitives;
 
@@ -1236,8 +1238,7 @@ impl SceneSpatial {
 
         {
             crate::profile_scope!("points_3d");
-            debug_assert_eq!(point_ids.len(), points.len());
-            for (point, instance_id_hash) in points.iter().zip(point_ids.iter()) {
+            for (point, instance_id_hash) in points.vertices.iter().zip(points.user_data.iter()) {
                 if instance_id_hash.is_none() {
                     continue;
                 }

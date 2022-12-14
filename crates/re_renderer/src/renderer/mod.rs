@@ -5,7 +5,9 @@ mod lines;
 pub use lines::{gpu_data::LineVertex, LineDrawData, LineStripFlags, LineStripInfo};
 
 mod point_cloud;
-pub use point_cloud::{PointCloudDrawData, PointCloudPoint};
+pub use point_cloud::{
+    PointCloudBatchInfo, PointCloudDrawData, PointCloudDrawDataError, PointCloudVertex,
+};
 
 mod test_triangle;
 pub use test_triangle::TestTriangleDrawData;
