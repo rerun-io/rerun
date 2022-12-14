@@ -489,20 +489,14 @@ fn query_model_specificities_impl(store: &mut DataStore) {
     let frame40 = 40;
     let frame41 = 41;
     let frame42 = 42;
-    let frame43 = 43;
-    let frame44 = 44;
 
     let nb_rects = 3;
-    let nb_positions = 10;
-
-    // TODO:
-    // - different components at same frame give different results
-    //    - so basically, different PoVs
-    // - sparse
-    // - no diff
+    let nb_positions_before = 10;
+    let nb_positions_after = 2;
 
     let mut tracker = DataTracker::default();
     {
+        // PoV queries
         tracker.insert_data(
             store,
             &ent_path,
@@ -513,13 +507,26 @@ fn query_model_specificities_impl(store: &mut DataStore) {
             store,
             &ent_path,
             [build_frame_nr(frame41)],
-            [build_instances(nb_positions), build_positions(nb_positions)],
+            [
+                build_instances(nb_positions_before),
+                build_positions(nb_positions_before),
+            ],
+        );
+        // "Sparse but no diffs"
+        tracker.insert_data(
+            store,
+            &ent_path,
+            [build_frame_nr(frame42)],
+            [
+                build_instances(nb_positions_after),
+                build_positions(nb_positions_after),
+            ],
         );
         tracker.insert_data(
             store,
             &ent_path,
             [build_frame_nr(frame42)],
-            [build_instances(nb_positions), build_positions(nb_positions)],
+            [build_rects(nb_rects)],
         );
     }
 
@@ -556,7 +563,7 @@ fn query_model_specificities_impl(store: &mut DataStore) {
         ),
         (
             "query all components at frame #41, from `rects` PoV",
-            "the set of `rects` and the _first_ set of `instances`",
+            "the set of `rects` and the _first_ set of `instances` at that time",
             frame41,
             "rects",
             vec![
@@ -566,7 +573,7 @@ fn query_model_specificities_impl(store: &mut DataStore) {
         ),
         (
             "query all components at frame #41, from `positions` PoV",
-            "the set of `positions` and the _second_ set of `instances`",
+            "the _first_ set of `positions` and the _second_ set of `instances` at that time",
             frame41,
             "positions",
             vec![
@@ -576,13 +583,30 @@ fn query_model_specificities_impl(store: &mut DataStore) {
         ),
         (
             "query all components at frame #41, from `instances` PoV",
-            "the _second_ set of `instances` and the set of `positions`",
+            "the _second_ set of `instances` and the _first_ set of `positions` at that time",
             frame41,
             "instances",
             vec![
                 ("instances", frame41.into(), 1),
                 ("positions", frame41.into(), 0),
             ],
+        ),
+        (
+            "query all components at frame #42, from `positions` PoV",
+            "the set of `positions` and the set of `instances` at that time",
+            frame42,
+            "positions",
+            vec![
+                ("instances", frame42.into(), 0),
+                ("positions", frame42.into(), 0),
+            ],
+        ),
+        (
+            "query all components at frame #42, from `rects` PoV",
+            "the set of `rects` at that time",
+            frame42,
+            "rects",
+            vec![("rects", frame42.into(), 0)],
         ),
     ];
 
