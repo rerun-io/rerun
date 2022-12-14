@@ -648,7 +648,7 @@ fn space_view_ui(
 ) {
     let Some(space_info) = spaces_info.spaces.get(&space_view.space_path) else {
         ui.centered_and_justified(|ui| {
-            ui.label(ctx.re_ui.warning_text(format!("Unknown space {:?}", space_view.space_path)));
+            ui.label(ctx.re_ui.warning_text(format!("Unknown space {}", space_view.space_path)));
         });
         return;
     };
