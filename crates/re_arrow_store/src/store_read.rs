@@ -34,28 +34,28 @@ impl TimeQuery {
 // --- Data store ---
 
 impl DataStore {
-    /// Queries the datastore to retrieve the internal indices of the specified `components`,
-    /// as seen from the point of view of the so-called `primary` component.
+    /// Queries the datastore for the internal row indices of the specified `components`, as seen
+    /// from the point of view of the so-called `primary` component.
     ///
     /// Returns `true` on success, `false` otherwise.
     /// Success is defined by one thing and thing only: whether a row index could be found for the
     /// `primary` component.
+    /// The presence or absence of secondary components has no effect on the success criteria.
     ///
     /// * On success, this fills `row_indices` with the internal row index of each and every
     ///   component in `components`, or `None` if said component isn't available at that point
     ///   in time.
     ///
-    /// * On failure, the contents of `row_indices` is left untouched.
-    ///
-    /// If `components` is left empty, the indices for all components available at this point in
-    /// time and from this point of view will be queried for.
-    /// TODO: that's actually an issue, should we go this route: maybe another method that allocs?
+    /// * On failure, `row_indices` is filled with `None` values.
     ///
     /// Panics if `components.len() > indices.len()`.
+    ///
+    /// To actually retrieve the data associated with these indices, see [`Self::get`].
     //
-    // TODO: do we want another route for query_any? requires dynamic allocations tho
-    // TODO: add missing test confirming latest_at behavior
-    // TODO: add new test confirming refined model
+    // TODO(cmc): expose query_dyn at some point, to fetch an unknown number of component indices,
+    // at the cost of extra dynamic allocations.
+    //
+    // TODO: const-generic slice sizes might be better here.
     pub fn query(
         &self,
         timeline: &Timeline,
@@ -123,8 +123,18 @@ impl DataStore {
         false
     }
 
-    // TODO: doc
-    // TODO: explain why row_indices takes options
+    /// Retrieves the data associated with a list of `components` at the specified `indices`.
+    ///
+    /// If the associated data is found, it will be written to `results` at the appropriate index,
+    /// `None` otherwise.
+    ///
+    /// `row_indices` takes a list of options to simplify common usage patterns.
+    /// See [`Self::query`].
+    ///
+    /// Panics if `row_indices.len() < components.len()`.
+    /// Panics if `results.len() < components.len()`.
+    //
+    // TODO: const-generic slice sizes might be better here.
     pub fn get(
         &self,
         components: &[ComponentNameRef<'_>],
@@ -172,8 +182,7 @@ impl DataStore {
 // --- Indices ---
 
 impl IndexTable {
-    // TODO: doc
-    // TODO: `indices` is left untouched if not found
+    /// Returns `false` iff no row index could be found for the `primary` component.
     pub fn latest_at<'a>(
         &self,
         time: i64,
@@ -214,7 +223,7 @@ impl IndexTable {
             }
         }
 
-        false // even the primary component doesn't exist
+        false // primary component not found
     }
 
     /// Returns the index bucket whose time range covers the given `time`.
@@ -271,9 +280,7 @@ impl IndexBucket {
         self.indices.write().sort();
     }
 
-    // TODO: doc
-    // TODO: return true when found
-    // TODO: return false if nothing could happen because the primary component doesn't exist
+    /// Returns `false` iff no row index could be found for the `primary` component.
     pub fn latest_at<'a>(
         &self,
         time: i64,

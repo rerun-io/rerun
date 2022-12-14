@@ -12,9 +12,7 @@ use re_log_types::{
         build_frame_nr, build_instances, build_log_time, build_some_point2d, build_some_rects,
     },
     field_types::{Point2D, Rect2D},
-    msg_bundle::{
-        try_build_msg_bundle1, try_build_msg_bundle2, Component, ComponentBundle, MsgBundle,
-    },
+    msg_bundle::{Component, ComponentBundle, MsgBundle},
     ComponentName, ComponentNameRef, Duration, MsgId, ObjPath as EntityPath, Time, TimePoint,
     TimeType, Timeline,
 };
@@ -108,10 +106,17 @@ fn all_configs() -> impl Iterator<Item = DataStoreConfig> {
 
 macro_rules! test_bundle {
     ($entity:ident @ $frames:tt => [$c0:expr $(,)*]) => {
-        try_build_msg_bundle1(MsgId::ZERO, $entity.clone(), $frames, $c0).unwrap()
+        re_log_types::msg_bundle::try_build_msg_bundle1(MsgId::ZERO, $entity.clone(), $frames, $c0)
+            .unwrap()
     };
     ($entity:ident @ $frames:tt => [$c0:expr, $c1:expr $(,)*]) => {
-        try_build_msg_bundle2(MsgId::ZERO, $entity.clone(), $frames, ($c0, $c1)).unwrap()
+        re_log_types::msg_bundle::try_build_msg_bundle2(
+            MsgId::ZERO,
+            $entity.clone(),
+            $frames,
+            ($c0, $c1),
+        )
+        .unwrap()
     };
 }
 
@@ -489,15 +494,15 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
 }
 
 #[test]
-fn query_model_specificities() {
+fn query_model_specifics() {
     init_logs();
 
     for config in all_configs() {
         let mut store = DataStore::new(config.clone());
-        query_model_specificities_impl(&mut store);
+        query_model_specifics_impl(&mut store);
     }
 }
-fn query_model_specificities_impl(store: &mut DataStore) {
+fn query_model_specifics_impl(store: &mut DataStore) {
     let ent_path = EntityPath::from("this/that");
 
     let frame40 = 40;
