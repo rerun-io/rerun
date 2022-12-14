@@ -16,6 +16,7 @@ anyhow = "1.0"
 arrow2 = { version = "0.14" }
 arrow2_convert = { version = "0.3" }
 thiserror = "1.0"
+polars = "0.25"
 
 [profile.dev]
 opt-level = 1 # Make debug builds run faster

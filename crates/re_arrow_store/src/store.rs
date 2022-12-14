@@ -3,11 +3,13 @@ use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
 
 use anyhow::ensure;
-use arrow2::array::{Array, Int64Vec, MutableArray, UInt64Vec};
+use arrow2::array::{Array, Int64Vec, MutableArray, PrimitiveArray, UInt64Vec};
 use arrow2::bitmap::MutableBitmap;
 use arrow2::datatypes::DataType;
 
 use parking_lot::RwLock;
+use polars::prelude::{DataFrame, Int64Type, Utf8Type};
+use polars::series::IntoSeries;
 use re_format::{format_bytes, format_number};
 use re_log_types::{
     ComponentName, ObjPath as EntityPath, ObjPathHash as EntityPathHash, TimeInt, TimeRange,
@@ -167,6 +169,13 @@ impl DataStore {
             .values()
             .map(|table| table.total_size_bytes())
             .sum()
+    }
+
+    /// Iterate over the indices in the `DataStore`
+    pub fn indices_iter(
+        &self,
+    ) -> impl ExactSizeIterator<Item = (&(Timeline, EntityPathHash), &IndexTable)> {
+        self.indices.iter()
     }
 
     /// Runs the sanity check suite for the entire datastore.
@@ -443,6 +452,14 @@ impl std::fmt::Display for IndexTable {
 }
 
 impl IndexTable {
+    pub fn entity_path(&self) -> &EntityPath {
+        &self.ent_path
+    }
+
+    pub fn buckets_iter(&self) -> impl ExactSizeIterator<Item = (&TimeInt, &IndexBucket)> {
+        self.buckets.iter()
+    }
+
     /// Returns the number of rows stored across this entire table, i.e. the sum of the number
     /// of rows stored across all of its buckets.
     pub fn total_rows(&self) -> u64 {
@@ -509,6 +526,50 @@ pub struct IndexBucket {
     pub(crate) indices: RwLock<IndexBucketIndices>,
 }
 
+impl IndexBucket {
+    /// Create a [`polars::prelude::DataFrame`] from the `IndexBucket`
+    pub fn as_frame(&self) -> Result<DataFrame, polars::error::PolarsError> {
+        use arrow2::array::MutableArray as _;
+        use polars::prelude::{NamedFrom as _, Series};
+
+        let IndexBucketIndices {
+            is_sorted,
+            time_range: _,
+            times,
+            indices,
+        } = &*self.indices.read();
+
+        let typ = self.timeline.typ();
+
+        let times = {
+            let mut chunked: polars::prelude::ChunkedArray<Utf8Type> = times
+                .values()
+                .iter()
+                .map(|time| typ.format(TimeInt::from(*time)))
+                .collect();
+            chunked.rename("time");
+            if *is_sorted {
+                chunked.set_sorted(false);
+            }
+            chunked.into_series()
+        };
+
+        let series = std::iter::once(times)
+            .chain(indices.iter().map(|(name, index)| {
+                let index = index
+                    .values()
+                    .iter()
+                    .enumerate()
+                    .map(|(i, v)| index.is_valid(i).then_some(*v))
+                    .collect::<Vec<_>>();
+                Series::new(name.as_str(), index)
+            }))
+            .collect::<Vec<_>>();
+        // TODO(cmc): sort component columns (not time!)
+        DataFrame::new(series)
+    }
+}
+
 /// Just the indices, to simplify interior mutability.
 #[derive(Debug)]
 pub struct IndexBucketIndices {
@@ -550,68 +611,25 @@ impl Default for IndexBucketIndices {
 
 impl std::fmt::Display for IndexBucket {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self { timeline, indices } = self;
-
-        let IndexBucketIndices {
-            is_sorted,
-            time_range,
-            times,
-            indices,
-        } = &*indices.read();
-
         f.write_fmt(format_args!(
             "size: {} across {} rows\n",
             format_bytes(self.total_size_bytes() as _),
             format_number(self.total_rows() as _),
         ))?;
 
-        if time_range.min.as_i64() != i64::MAX && time_range.max.as_i64() != i64::MIN {
-            f.write_fmt(format_args!(
-                "time range: from {} to {} (all inclusive)\n",
-                timeline.typ().format(time_range.min),
-                timeline.typ().format(time_range.max),
-            ))?;
-        } else {
-            f.write_str("time range: N/A\n")?;
-        }
+        f.write_str(&self.formatted_time_range())?;
 
         #[cfg(not(target_arch = "wasm32"))]
         {
-            use arrow2::array::MutableArray as _;
-            use polars::prelude::{DataFrame, NamedFrom as _, Series};
-
-            let typ = timeline.typ();
-            let times = Series::new(
-                "time",
-                times
-                    .values()
-                    .iter()
-                    .map(|time| typ.format(TimeInt::from(*time)))
-                    .collect::<Vec<_>>(),
+            let df = self.as_frame().map_err(|e| {
+                re_log::error!("Error building DataFrame: {}", e);
+                std::fmt::Error::default()
+            })?;
+            let is_sorted = matches!(
+                df.column("time").unwrap().is_sorted(),
+                polars::series::IsSorted::Ascending
             );
-
-            let series = std::iter::once(times)
-                .chain(indices.iter().map(|(name, index)| {
-                    let index = index
-                        .values()
-                        .iter()
-                        .enumerate()
-                        .map(|(i, v)| index.is_valid(i).then_some(*v))
-                        .collect::<Vec<_>>();
-                    Series::new(name.as_str(), index)
-                }))
-                .collect::<Vec<_>>();
-            // TODO(cmc): sort component columns (not time!)
-            let df = DataFrame::new(series).unwrap();
-            f.write_fmt(format_args!("data (sorted={is_sorted}): {df:?}"))?;
-        }
-
-        #[cfg(target_arch = "wasm32")]
-        {
-            _ = time_range;
-            _ = is_sorted;
-            _ = times;
-            _ = indices;
+            f.write_fmt(format_args!("data (sorted={is_sorted}): {df:?}\n"))?;
         }
 
         Ok(())
@@ -647,6 +665,27 @@ impl IndexBucket {
                 .values()
                 .map(|index| size_of_validity(index.validity()) + size_of_values(index.values()))
                 .sum::<u64>()
+    }
+
+    /// Returns a formatted string of the time range in the bucket
+    pub fn formatted_time_range(&self) -> String {
+        let timeline_type = self.timeline.typ();
+        let IndexBucketIndices {
+            is_sorted: _,
+            time_range,
+            times: _,
+            indices: _,
+        } = &*self.indices.read();
+
+        if time_range.min.as_i64() != i64::MAX && time_range.max.as_i64() != i64::MIN {
+            format!(
+                "time range: from {} to {} (all inclusive)\n",
+                timeline_type.format(time_range.min),
+                timeline_type.format(time_range.max),
+            )
+        } else {
+            "time range: N/A\n".to_owned()
+        }
     }
 
     /// Runs the sanity check suite for the entire bucket.

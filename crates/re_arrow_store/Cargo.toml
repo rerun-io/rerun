@@ -31,7 +31,7 @@ thiserror.workspace = true
 
 # native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-polars = { version = "0.25", features = [
+polars = { workspace = true, features = [
   "dtype-time",
   "dtype-struct",
   "fmt",
@@ -39,7 +39,7 @@ polars = { version = "0.25", features = [
 
 # web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-polars = { version = "0.25", features = [
+polars = { workspace = true, features = [
   "dtype-time",
   "dtype-struct",
 ], default-features = false }
