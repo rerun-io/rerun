@@ -6,7 +6,7 @@ use crate::{
         show_arrow_msg, show_begin_recording_msg, show_detailed_data_msg, show_path_op_msg,
         show_type_msg, view_data, view_instance, view_object,
     },
-    ui::{view_text, Blueprint, SpaceView},
+    ui::Blueprint,
     Preview, Selection, ViewerContext,
 };
 
@@ -164,7 +164,7 @@ impl SelectionPanel {
                         if let Some(space_view) = blueprint.viewport.space_view_mut(&space_view_id)
                         {
                             ui.add_space(4.0);
-                            ui_space_view(ctx, ui, space_view);
+                            space_view.selection_ui(ctx, ui);
                         }
                     }
                 } else {
@@ -185,12 +185,9 @@ impl SelectionPanel {
                             ui.end_row();
                         });
 
-                    let mut props = space_view.obj_tree_properties.projected.get(&obj_path);
+                    let mut props = space_view.obj_properties.get(&obj_path);
                     obj_props_ui(ctx, ui, &mut props);
-                    space_view
-                        .obj_tree_properties
-                        .individual
-                        .set(obj_path, props);
+                    space_view.obj_properties.set(obj_path, props);
                 } else {
                     ctx.clear_selection();
                 }
@@ -204,46 +201,6 @@ fn obj_type_name(log_db: &LogDb, obj_type_path: &ObjTypePath) -> String {
         format!("{typ:?}")
     } else {
         "<UNKNOWN>".to_owned()
-    }
-}
-
-fn ui_space_view(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, space_view: &mut SpaceView) {
-    egui::Grid::new("space_view")
-        .striped(re_ui::ReUi::striped())
-        .num_columns(2)
-        .show(ui, |ui| {
-            ui.label("Name:");
-            ui.text_edit_singleline(&mut space_view.name);
-            ui.end_row();
-
-            ui.label("Path:");
-            ctx.obj_path_button(ui, &space_view.space_path);
-            ui.end_row();
-        });
-
-    ui.separator();
-
-    use super::space_view::ViewCategory;
-    match space_view.category {
-        ViewCategory::Spatial => {
-            ui.strong("Spatial view");
-            space_view
-                .view_state
-                .state_spatial
-                .show_settings_ui(ctx, ui);
-        }
-        ViewCategory::Tensor => {
-            if let Some(state_tensor) = &mut space_view.view_state.state_tensor {
-                ui.strong("Tensor view");
-                state_tensor.ui(ui);
-            }
-        }
-        ViewCategory::Text => {
-            ui.strong("Text view");
-            ui.add_space(4.0);
-            view_text::text_filters_ui(ui, &mut space_view.view_state.state_text);
-        }
-        ViewCategory::Plot => {}
     }
 }
 

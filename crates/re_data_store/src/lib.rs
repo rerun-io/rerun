@@ -21,16 +21,16 @@
 mod batch;
 mod instance;
 pub mod log_db;
+pub mod object_properties;
 pub mod object_tree;
-pub mod object_tree_properties;
 pub mod query;
 mod stores;
 
 pub use batch::*;
 pub use instance::*;
 pub use log_db::LogDb;
+pub use object_properties::*;
 pub use object_tree::*;
-pub use object_tree_properties::*;
 pub use stores::*;
 
 use re_log_types::DataType;
