@@ -199,7 +199,7 @@ impl SpaceView {
             ViewCategory::Text => {
                 ui.strong("Text view");
                 ui.add_space(4.0);
-                view_text::text_filters_ui(ui, &mut self.view_state.state_text);
+                self.view_state.state_text.selection_ui(ui);
             }
             ViewCategory::Plot => {}
         }

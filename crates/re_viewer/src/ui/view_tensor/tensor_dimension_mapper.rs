@@ -182,7 +182,7 @@ pub fn dimension_mapping_ui(
     shape: &[TensorDimension],
 ) {
     if !dim_mapping.is_valid(shape.len()) {
-        *dim_mapping = DimensionMapping::create(shape.len());
+        *dim_mapping = DimensionMapping::create(shape);
     }
 
     let mut drop_source = DragDropAddress::None;
