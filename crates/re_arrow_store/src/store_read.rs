@@ -388,8 +388,17 @@ impl IndexBucket {
         for (i, component) in components.iter().enumerate() {
             if let Some(index) = indices.get(*component) {
                 if index.is_valid(secondary_idx as _) {
-                    row_indices[i] =
-                        Some(RowIndex::from_u64(index.values()[secondary_idx as usize]));
+                    let row_idx = index.values()[secondary_idx as usize];
+                    debug!(
+                        kind = "query",
+                        primary,
+                        component,
+                        timeline = %self.timeline.name(),
+                        time = self.timeline.typ().format(time.into()),
+                        %primary_idx, %secondary_idx, %row_idx,
+                        "found row index",
+                    );
+                    row_indices[i] = Some(RowIndex::from_u64(row_idx));
                 }
             }
         }
