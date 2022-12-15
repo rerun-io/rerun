@@ -71,7 +71,7 @@ jobs:
           # Push and deploy GitHub pages branch automatically
           auto-push: true
           gh-pages-branch: gh-pages
-          benchmark-data-dir-path: /dev/bench
+          benchmark-data-dir-path: dev/bench
 
   rs-lints:
     name: Rust lints (fmt, check, cranky, tests, doc)
