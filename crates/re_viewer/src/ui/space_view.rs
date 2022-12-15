@@ -193,7 +193,7 @@ impl SpaceView {
             ViewCategory::Tensor => {
                 if let Some(state_tensor) = &mut self.view_state.state_tensor {
                     ui.strong("Tensor view");
-                    state_tensor.ui(ui);
+                    state_tensor.ui(ctx, ui);
                 }
             }
             ViewCategory::Text => {
