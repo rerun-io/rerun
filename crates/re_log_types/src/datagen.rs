@@ -47,17 +47,16 @@ pub fn build_some_point2d(len: usize) -> Vec<field_types::Point2D> {
         .collect()
 }
 
-/// Build a ([`Timeline`], [`TimeInt`]) tuple from `log_time` suitable for inserting in a [`crate::TimePoint`].
+/// Build a ([`Timeline`], [`TimeInt`]) tuple from `log_time` suitable for inserting in
+/// a [`crate::TimePoint`].
 pub fn build_log_time(log_time: Time) -> (Timeline, TimeInt) {
     (Timeline::new("log_time", TimeType::Time), log_time.into())
 }
 
-/// Build a ([`Timeline`], [`TimeInt`]) tuple from `frame_nr` suitable for inserting in a [`crate::TimePoint`].
-pub fn build_frame_nr(frame_nr: i64) -> (Timeline, TimeInt) {
-    (
-        Timeline::new("frame_nr", TimeType::Sequence),
-        frame_nr.into(),
-    )
+/// Build a ([`Timeline`], [`TimeInt`]) tuple from `frame_nr` suitable for inserting in
+/// a [`crate::TimePoint`].
+pub fn build_frame_nr(frame_nr: TimeInt) -> (Timeline, TimeInt) {
+    (Timeline::new("frame_nr", TimeType::Sequence), frame_nr)
 }
 
 //TODO(john) convert this to a Component struct

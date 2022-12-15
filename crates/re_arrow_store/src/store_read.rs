@@ -1,4 +1,4 @@
-use std::sync::atomic::Ordering;
+use std::{ops::RangeInclusive, sync::atomic::Ordering};
 
 use arrow2::{
     array::{Array, Int64Array, MutableArray, UInt64Array, UInt64Vec},
@@ -13,62 +13,59 @@ use crate::{
     RowIndex,
 };
 
-// ---
+// --- Queries ---
 
-/// A query in time, for a given timeline.
+/// A query a given time, for a given timeline.
+///
+/// Get the latest version of the data available at this time.
 #[derive(Clone)]
-pub struct TimelineQuery {
+pub struct LatestAtQuery {
     pub timeline: Timeline,
-    pub query: TimeQuery,
+    pub at: TimeInt,
 }
 
-impl std::fmt::Debug for TimelineQuery {
+impl std::fmt::Debug for LatestAtQuery {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match &self.query {
-            &TimeQuery::LatestAt(at) => f.write_fmt(format_args!(
-                "TimeQuery<latest at {} on {:?}>",
-                self.timeline.typ().format(at.into()),
-                self.timeline.name(),
-            )),
-            TimeQuery::Range(range) => f.write_fmt(format_args!(
-                "TimeQuery<ranging from {} to {} (all inclusive) on {:?}>",
-                self.timeline.typ().format((*range.start()).into()),
-                self.timeline.typ().format((*range.end()).into()),
-                self.timeline.name(),
-            )),
-        }
+        f.write_fmt(format_args!(
+            "<latest at {} on {:?}>",
+            self.timeline.typ().format(self.at),
+            self.timeline.name(),
+        ))
     }
 }
 
-impl TimelineQuery {
-    pub const fn new(timeline: Timeline, query: TimeQuery) -> Self {
-        Self { timeline, query }
+impl LatestAtQuery {
+    pub const fn new(timeline: Timeline, at: TimeInt) -> Self {
+        Self { timeline, at }
     }
 }
 
-/// A query in time.
-// TODO(#544): include timeline in there.
-#[derive(Clone, Debug)]
-pub enum TimeQuery {
-    /// Get the latest version of the data available at this time.
-    LatestAt(i64),
-
-    /// Get all the data within this time interval, plus the latest
-    /// one before the start of the interval.
-    ///
-    /// Motivation: all data is considered alive until the next logging
-    /// to the same data path.
-    Range(std::ops::RangeInclusive<i64>),
+/// A query over a time range, for a given timeline.
+///
+/// Get all the data within this time interval, plus the latest one before the start of the
+/// interval.
+///
+/// Motivation: all data is considered alive until the next logging to the same data path.
+#[derive(Clone)]
+pub struct RangeQuery {
+    pub timeline: Timeline,
+    pub range: RangeInclusive<TimeInt>,
 }
 
-impl TimeQuery {
-    pub const EVERYTHING: Self = Self::Range(i64::MIN..=i64::MAX);
+impl std::fmt::Debug for RangeQuery {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!(
+            "<ranging from {} to {} (all inclusive) on {:?}>",
+            self.timeline.typ().format(*self.range.start()),
+            self.timeline.typ().format(*self.range.end()),
+            self.timeline.name(),
+        ))
+    }
+}
 
-    pub fn kind(&self) -> &'static str {
-        match self {
-            TimeQuery::LatestAt(_) => "latest_at",
-            TimeQuery::Range(_) => "range",
-        }
+impl RangeQuery {
+    pub const fn new(timeline: Timeline, range: RangeInclusive<TimeInt>) -> Self {
+        Self { timeline, range }
     }
 }
 
@@ -99,13 +96,13 @@ impl DataStore {
     ///
     /// fn fetch_components<const N: usize>(
     ///     store: &DataStore,
-    ///     timeline_query: &TimelineQuery,
+    ///     query: &LatestAtQuery,
     ///     ent_path: &EntityPath,
     ///     primary: ComponentNameRef<'_>,
     ///     components: &[ComponentNameRef<'_>; N],
     /// ) -> DataFrame {
     ///     let row_indices = store
-    ///         .query(timeline_query, ent_path, primary, components)
+    ///         .latest_at(query, ent_path, primary, components)
     ///         .unwrap_or([None; N]);
     ///     let results = store.get(components, &row_indices);
     ///
@@ -125,11 +122,14 @@ impl DataStore {
     /// }
     /// ```
     //
+    // TODO: "visualizing latest_at queries"
+    // TODO: "visualizing range queries"
+    //
     // TODO(cmc): expose query_dyn at some point, to fetch an unknown number of component indices,
     // at the cost of extra dynamic allocations.
-    pub fn query<const N: usize>(
+    pub fn latest_at<const N: usize>(
         &self,
-        timeline_query: &TimelineQuery,
+        query: &LatestAtQuery,
         ent_path: &EntityPath,
         primary: ComponentNameRef<'_>,
         components: &[ComponentNameRef<'_>; N],
@@ -138,27 +138,22 @@ impl DataStore {
         self.query_id.fetch_add(1, Ordering::Relaxed);
 
         let ent_path_hash = ent_path.hash();
-        let latest_at = match timeline_query.query {
-            TimeQuery::LatestAt(latest_at) => latest_at,
-            #[allow(clippy::todo)]
-            TimeQuery::Range(_) => todo!("implement range queries!"),
-        };
 
         debug!(
             kind = "query",
             id = self.query_id.load(Ordering::Relaxed),
-            query = ?timeline_query,
+            query = ?query,
             entity = %ent_path,
             primary,
             ?components,
             "query started..."
         );
 
-        if let Some(index) = self.indices.get(&(timeline_query.timeline, *ent_path_hash)) {
-            if let row_indices @ Some(_) = index.latest_at(latest_at, primary, components) {
+        if let Some(index) = self.indices.get(&(query.timeline, *ent_path_hash)) {
+            if let row_indices @ Some(_) = index.latest_at(query.at.as_i64(), primary, components) {
                 debug!(
                     kind = "query",
-                    query = ?timeline_query,
+                    query = ?query,
                     entity = %ent_path,
                     primary,
                     ?components,
@@ -171,7 +166,7 @@ impl DataStore {
 
         debug!(
             kind = "query",
-            query = ?timeline_query,
+            query = ?query,
             entity = %ent_path,
             primary,
             ?components,
@@ -179,6 +174,31 @@ impl DataStore {
         );
 
         None
+    }
+
+    pub fn range<const N: usize>(
+        &self,
+        query: &RangeQuery,
+        ent_path: &EntityPath,
+        primary: ComponentNameRef<'_>,
+        components: &[ComponentNameRef<'_>; N],
+    ) -> impl Iterator<Item = (TimeInt, [Option<RowIndex>; N])> {
+        // TODO(cmc): kind & query_id need to somehow propagate through the span system.
+        self.query_id.fetch_add(1, Ordering::Relaxed);
+
+        let ent_path_hash = ent_path.hash();
+
+        debug!(
+            kind = "query",
+            id = self.query_id.load(Ordering::Relaxed),
+            query = ?query,
+            entity = %ent_path,
+            primary,
+            ?components,
+            "query started..."
+        );
+
+        std::iter::empty()
     }
 
     /// Retrieves the data associated with a list of `components` at the specified `indices`.
