@@ -158,15 +158,16 @@ pub fn query_entity_with_primary<const N: usize>(
     let joined = components
         .iter()
         .fold(Ok(ldf), |ldf: Result<LazyFrame>, component| {
-            if !component.is_empty() {
-                let component =
-                    get_component_with_instances(store, timeline_query, ent_path, component)?;
-
-                let lazy_component = add_instances_if_needed(component);
-
-                Ok(ldf?.left_join(lazy_component, col(Instance::NAME), col(Instance::NAME)))
-            } else {
-                ldf
+            // If we find the component, then we try to left-join with the existing dataframe
+            // If the column we are looking up isn't found, just return the dataframe as is
+            // For any other error, escalate
+            match get_component_with_instances(store, timeline_query, ent_path, component) {
+                Ok(component_df) => {
+                    let lazy_component = add_instances_if_needed(component_df);
+                    Ok(ldf?.left_join(lazy_component, col(Instance::NAME), col(Instance::NAME)))
+                }
+                Err(QueryError::PrimaryNotFound) => ldf,
+                Err(err) => Err(err),
             }
         })?
         .collect();
