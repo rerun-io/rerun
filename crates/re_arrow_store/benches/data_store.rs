@@ -1,6 +1,7 @@
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
+use arrow2::array::{Array, ListArray, StructArray};
 use criterion::{criterion_group, criterion_main, Criterion};
 
 use re_arrow_store::{DataStore, TimeQuery, TimelineQuery};
@@ -75,16 +76,23 @@ fn insert_messages<'a>(msgs: impl Iterator<Item = &'a MsgBundle>) -> DataStore {
     store
 }
 
-fn query_messages(store: &mut DataStore) -> polars_core::frame::DataFrame {
+fn query_messages(store: &mut DataStore) -> Box<dyn Array> {
     let time_query = TimeQuery::LatestAt(NUM_FRAMES / 2);
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
     let timeline_query = TimelineQuery::new(timeline_frame_nr, time_query);
     let ent_path = EntityPath::from("rects");
+    let component = Rect2D::NAME;
 
-    let df = store
-        .query(&timeline_query, &ent_path, &[Rect2D::NAME])
-        .unwrap();
-    assert_eq!(NUM_RECTS as usize, df.select_at_idx(0).unwrap().len());
+    let row_indices = store
+        .query(&timeline_query, &ent_path, component, &[component])
+        .unwrap_or_default();
+    let mut results = store.get(&[component], &row_indices);
 
-    df
+    let row = std::mem::take(&mut results[0]).unwrap();
+    let list = row.as_any().downcast_ref::<ListArray<i32>>().unwrap();
+    let rects = list.value(0);
+    let rects = rects.as_any().downcast_ref::<StructArray>().unwrap();
+    assert_eq!(NUM_RECTS as usize, rects.len());
+
+    row
 }
