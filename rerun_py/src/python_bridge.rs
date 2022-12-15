@@ -23,6 +23,8 @@ use re_log_types::{
 
 use rerun_sdk::global_session;
 
+use crate::arrow::get_registered_fields;
+
 // ----------------------------------------------------------------------------
 
 /// Thread-local info
@@ -84,6 +86,8 @@ fn rerun_bindings(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     global_session().set_recording_id(default_recording_id(py));
 
     m.add_function(wrap_pyfunction!(main, m)?)?;
+
+    m.add_function(wrap_pyfunction!(get_registered_fields, m)?)?;
 
     m.add_function(wrap_pyfunction!(get_recording_id, m)?)?;
     m.add_function(wrap_pyfunction!(set_recording_id, m)?)?;
