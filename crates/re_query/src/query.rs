@@ -1,11 +1,12 @@
 use polars::prelude::*;
-use re_arrow_store::{DataStore, TimeQuery};
-use re_log_types::{
-    field_types::Instance, msg_bundle::Component, ComponentNameRef, ObjPath, Timeline,
-};
+use re_arrow_store::{DataStore, TimelineQuery};
+use re_log_types::{field_types::Instance, msg_bundle::Component, ComponentNameRef, ObjPath};
 
 #[derive(thiserror::Error, Debug)]
 pub enum QueryError {
+    #[error("Could not find primary")]
+    PrimaryNotFound,
+
     #[error("Error executing Polars Query")]
     ArrowSerializationError(#[from] PolarsError),
 }
@@ -15,35 +16,26 @@ pub type Result<T> = std::result::Result<T, QueryError>;
 /// Retrieves a single component and its corresponding instance-ids
 pub fn get_component_with_instance_ids(
     store: &DataStore,
-    timeline: &Timeline,
-    time_query: &TimeQuery,
+    timeline_query: &TimelineQuery,
     ent_path: &ObjPath,
     component: ComponentNameRef<'_>,
 ) -> Result<DataFrame> {
-    let mut row_indices = [None, None];
-
     let components = [Instance::NAME, component];
 
-    store.query(
-        timeline,
-        time_query,
-        ent_path,
-        component,
-        &components,
-        &mut row_indices,
-    );
+    let row_indices = store
+        .query(timeline_query, ent_path, component, &components)
+        .ok_or(QueryError::PrimaryNotFound)?;
 
-    let mut results = [None, None];
-    store.get(&components, &row_indices, &mut results);
+    let results = store.get(&components, &row_indices);
 
-    let series: Vec<_> = components
+    let series: std::result::Result<Vec<Series>, PolarsError> = components
         .iter()
         .zip(results)
         .filter_map(|(component, col)| col.map(|col| (component, col)))
-        .map(|(&component, col)| Series::try_from((component, col)).unwrap())
+        .map(|(&component, col)| Series::try_from((component, col)))
         .collect();
 
-    let df = DataFrame::new(series)?;
+    let df = DataFrame::new(series?)?;
 
     Ok(df.explode(df.get_column_names())?)
 }
@@ -57,13 +49,12 @@ pub fn get_component_with_instance_ids(
 /// is not available, it's treated as an integer sequence of the correct length.
 pub fn query_entity_with_primary<const N: usize>(
     store: &DataStore,
-    timeline: &Timeline,
-    time_query: &TimeQuery,
+    timeline_query: &TimelineQuery,
     ent_path: &ObjPath,
     primary: ComponentNameRef<'_>,
     components: &[ComponentNameRef<'_>; N],
 ) -> Result<DataFrame> {
-    let df = get_component_with_instance_ids(store, timeline, time_query, ent_path, primary)?;
+    let df = get_component_with_instance_ids(store, timeline_query, ent_path, primary)?;
 
     // TODO(jleibs): lots of room for optimization here. Once "instance" is
     // guaranteed to be sorted we should be able to leverage this during the
@@ -81,10 +72,9 @@ pub fn query_entity_with_primary<const N: usize>(
 
     let joined = components
         .iter()
-        .fold(ldf, |ldf, component| {
+        .fold(Ok(ldf), |ldf: Result<LazyFrame>, component| {
             let component =
-                get_component_with_instance_ids(store, timeline, time_query, ent_path, component)
-                    .unwrap();
+                get_component_with_instance_ids(store, timeline_query, ent_path, component)?;
 
             let lazy_component = match component.column(Instance::NAME) {
                 Ok(_) => component.lazy(),
@@ -95,11 +85,11 @@ pub fn query_entity_with_primary<const N: usize>(
                     .drop_columns(["row"]),
             };
 
-            ldf.left_join(lazy_component, col(Instance::NAME), col(Instance::NAME))
-        })
-        .collect()?;
+            Ok(ldf?.left_join(lazy_component, col(Instance::NAME), col(Instance::NAME)))
+        })?
+        .collect();
 
-    Ok(joined)
+    Ok(joined?)
 }
 
 #[cfg(test)]
@@ -145,6 +135,7 @@ fn compare_df(df1: &DataFrame, df2: &DataFrame) {
 
 #[test]
 fn simple_query() {
+    use re_arrow_store::TimeQuery;
     use re_log_types::{
         datagen::build_frame_nr,
         field_types::{ColorRGBA, Instance, Point2D},
@@ -176,13 +167,14 @@ fn simple_query() {
     store.insert(&bundle).unwrap();
 
     // Retrieve the view
-    let timeline = timepoint[0].0;
-    let time_query = re_arrow_store::TimeQuery::LatestAt(timepoint[0].1.as_i64());
+    let timeline_query = re_arrow_store::TimelineQuery::new(
+        timepoint[0].0,
+        TimeQuery::LatestAt(timepoint[0].1.as_i64()),
+    );
 
     let df = query_entity_with_primary(
         &store,
-        &timeline,
-        &time_query,
+        &timeline_query,
         &ent_path.into(),
         Point2D::NAME,
         &[ColorRGBA::NAME],
@@ -216,6 +208,7 @@ fn simple_query() {
 
 #[test]
 fn no_instance_join_query() {
+    use re_arrow_store::TimeQuery;
     use re_log_types::{
         datagen::build_frame_nr,
         field_types::{ColorRGBA, Instance, Point2D},
@@ -239,13 +232,14 @@ fn no_instance_join_query() {
     store.insert(&bundle).unwrap();
 
     // Retrieve the view
-    let timeline = timepoint[0].0;
-    let time_query = re_arrow_store::TimeQuery::LatestAt(timepoint[0].1.as_i64());
+    let timeline_query = re_arrow_store::TimelineQuery::new(
+        timepoint[0].0,
+        TimeQuery::LatestAt(timepoint[0].1.as_i64()),
+    );
 
     let df = query_entity_with_primary(
         &store,
-        &timeline,
-        &time_query,
+        &timeline_query,
         &ent_path.into(),
         Point2D::NAME,
         &[ColorRGBA::NAME],
