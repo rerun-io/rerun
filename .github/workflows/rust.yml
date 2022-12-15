@@ -19,6 +19,12 @@ env:
   # See https://github.com/ericseppanen/cargo-cranky/issues/8
   RUSTDOCFLAGS: -D warnings -D rustdoc::missing_crate_level_docs
 
+permissions:
+  # deployments permission to deploy GitHub pages website
+  deployments: write
+  # contents permission to update benchmark contents in gh-pages branch
+  contents: write
+
 jobs:
   rs-benchmarks:
     name: Rust Criterion benchmarks
@@ -39,7 +45,7 @@ jobs:
           save-if: ${{ github.event_name == 'push'}}
 
       - name: Run benchmark
-        run: cargo bench -p re_arrow_store -p re_data_store -p re_tuid -- --output-format=bencher | tee output.txt
+        run: cargo bench -p re_arrow_store -p re_data_store -p re_tuid -- --output-format=bencher | tee output.txt && git reset --hard
 
       #- name: Download previous benchmark data
       #  uses: actions/cache@v3
