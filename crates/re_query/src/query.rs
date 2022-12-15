@@ -1,4 +1,5 @@
-use polars::prelude::*;
+use polars_core::prelude::*;
+use polars_lazy::prelude::*;
 use re_arrow_store::{DataStore, TimelineQuery};
 use re_log_types::{field_types::Instance, msg_bundle::Component, ComponentNameRef, ObjPath};
 
