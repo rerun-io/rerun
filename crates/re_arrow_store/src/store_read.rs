@@ -1,4 +1,7 @@
-use std::{ops::RangeInclusive, sync::atomic::Ordering};
+use std::{
+    ops::{RangeBounds, RangeInclusive},
+    sync::atomic::Ordering,
+};
 
 use arrow2::{
     array::{Array, Int64Array, MutableArray, UInt64Array, UInt64Vec},
@@ -49,22 +52,22 @@ impl LatestAtQuery {
 #[derive(Clone)]
 pub struct RangeQuery {
     pub timeline: Timeline,
-    pub range: RangeInclusive<TimeInt>,
+    pub range: TimeRange,
 }
 
 impl std::fmt::Debug for RangeQuery {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!(
             "<ranging from {} to {} (all inclusive) on {:?}>",
-            self.timeline.typ().format(*self.range.start()),
-            self.timeline.typ().format(*self.range.end()),
+            self.timeline.typ().format(self.range.min),
+            self.timeline.typ().format(self.range.max),
             self.timeline.name(),
         ))
     }
 }
 
 impl RangeQuery {
-    pub const fn new(timeline: Timeline, range: RangeInclusive<TimeInt>) -> Self {
+    pub const fn new(timeline: Timeline, range: TimeRange) -> Self {
         Self { timeline, range }
     }
 }
@@ -150,7 +153,7 @@ impl DataStore {
         );
 
         if let Some(index) = self.indices.get(&(query.timeline, *ent_path_hash)) {
-            if let row_indices @ Some(_) = index.latest_at(query.at.as_i64(), primary, components) {
+            if let row_indices @ Some(_) = index.latest_at(query.at, primary, components) {
                 debug!(
                     kind = "query",
                     query = ?query,
@@ -182,7 +185,7 @@ impl DataStore {
         ent_path: &EntityPath,
         primary: ComponentNameRef<'_>,
         components: &[ComponentNameRef<'_>; N],
-    ) -> impl Iterator<Item = (TimeInt, [Option<RowIndex>; N])> {
+    ) -> impl Iterator<Item = (TimeInt, [Option<RowIndex>; N])> + '_ {
         // TODO(cmc): kind & query_id need to somehow propagate through the span system.
         self.query_id.fetch_add(1, Ordering::Relaxed);
 
@@ -198,7 +201,24 @@ impl DataStore {
             "query started..."
         );
 
-        std::iter::empty()
+        // First off, get the latest state at the start of the time range.
+        let latest_time = query.range.min.as_i64().saturating_sub(1).into();
+        let latest_row_indices = self
+            .indices
+            .get(&(query.timeline, *ent_path_hash))
+            .and_then(|index| index.latest_at(latest_time, primary, components));
+        debug!(
+            kind = "query",
+            query = ?query,
+            entity = %ent_path,
+            primary,
+            ?components,
+            ?latest_row_indices,
+            "latest row indices fetched"
+        );
+
+        std::iter::once(latest_row_indices)
+            .filter_map(move |latest| latest.map(|latest| (latest_time, latest)))
     }
 
     /// Retrieves the data associated with a list of `components` at the specified `indices`.
@@ -207,9 +227,9 @@ impl DataStore {
     /// index, or `None` otherwise.
     ///
     /// `row_indices` takes a list of options so that one can easily re-use the results obtained
-    /// from [`Self::query`].
+    /// from [`Self::latest_at`] and/or [`Self::range`].
     ///
-    /// See [`Self::query`] for more information.
+    /// See [`Self::latest_at`] and [`Self::range`] for more information.
     pub fn get<const N: usize>(
         &self,
         components: &[ComponentNameRef<'_>; N],
@@ -256,11 +276,11 @@ impl DataStore {
 
 impl IndexTable {
     /// Returns `None` iff no row index could be found for the `primary` component.
-    pub fn latest_at<'a, const N: usize>(
+    pub fn latest_at<const N: usize>(
         &self,
-        time: i64,
-        primary: ComponentNameRef<'a>,
-        components: &[ComponentNameRef<'a>; N],
+        time: TimeInt,
+        primary: ComponentNameRef<'_>,
+        components: &[ComponentNameRef<'_>; N],
     ) -> Option<[Option<RowIndex>; N]> {
         let timeline = self.timeline;
 
@@ -271,11 +291,11 @@ impl IndexTable {
         // walk backwards within an index bucket, but sometimes even walk backwards across
         // multiple index buckets within the same table!
 
-        for (attempt, bucket) in self.iter_bucket(time).enumerate() {
+        for (attempt, bucket) in self.range_buckets_rev(..=time).enumerate() {
             debug!(
                 kind = "query",
                 timeline = %timeline.name(),
-                time = timeline.typ().format(time.into()),
+                time = timeline.typ().format(time),
                 primary,
                 ?components,
                 attempt,
@@ -293,31 +313,86 @@ impl IndexTable {
         None // primary component not found
     }
 
+    // // TODO
+    // pub fn range<const N: usize>(
+    //     &self,
+    //     time: i64,
+    //     primary: ComponentNameRef<'_>,
+    //     components: &[ComponentNameRef<'_>; N],
+    // ) -> impl Iterator<Item = (TimeInt, [Option<RowIndex>; N])> + '_ {
+    //     let timeline = self.timeline;
+
+    //     // The time we're looking for gives us an upper bound: all components must be indexed
+    //     // in either this bucket _or any of those that come before_!
+    //     //
+    //     // That is because secondary indices allow for null values, which forces us to not only
+    //     // walk backwards within an index bucket, but sometimes even walk backwards across
+    //     // multiple index buckets within the same table!
+
+    //     for (attempt, bucket) in self.iter_bucket(time).enumerate() {
+    //         debug!(
+    //             kind = "query",
+    //             timeline = %timeline.name(),
+    //             time = timeline.typ().format(time.into()),
+    //             primary,
+    //             ?components,
+    //             attempt,
+    //             time_range = ?{
+    //                 let time_range = bucket.indices.read().time_range;
+    //                 time_range.min.as_i64()..=time_range.max.as_i64()
+    //             },
+    //             "found candidate bucket"
+    //         );
+    //         if let row_indices @ Some(_) = bucket.latest_at(time, primary, components) {
+    //             return row_indices; // found at least the primary component!
+    //         }
+    //     }
+
+    //     None // primary component not found
+    // }
+
     /// Returns the index bucket whose time range covers the given `time`.
-    pub fn find_bucket_mut(&mut self, time: i64) -> &mut IndexBucket {
+    pub fn find_bucket_mut(&mut self, time: TimeInt) -> &mut IndexBucket {
         // This cannot fail, `iter_bucket_mut` is guaranteed to always yield at least one bucket,
         // since index tables always spawn with a default bucket that covers [-∞;+∞].
-        self.iter_bucket_mut(time).next().unwrap()
+        self.iter_bucket_rev_mut(..=time).next().unwrap()
     }
 
     /// Returns an iterator that is guaranteed to yield at least one bucket, which is the bucket
-    /// whose time range covers the given `time`.
+    /// whose time range covers the start bound of the given `time_range`.
     ///
     /// It then continues yielding buckets until it runs out, in decreasing time range order.
-    pub fn iter_bucket(&self, time: i64) -> impl Iterator<Item = &IndexBucket> {
+    pub fn range_buckets(
+        &self,
+        time_range: impl RangeBounds<TimeInt>,
+    ) -> impl Iterator<Item = &IndexBucket> {
+        self.buckets.range(time_range).map(|(_, bucket)| bucket)
+    }
+
+    /// Returns an iterator that is guaranteed to yield at least one bucket, which is the bucket
+    /// whose time range covers the end bound of the given `time_range`.
+    ///
+    /// It then continues yielding buckets until it runs out, in decreasing time range order.
+    pub fn range_buckets_rev(
+        &self,
+        time_range: impl RangeBounds<TimeInt>,
+    ) -> impl Iterator<Item = &IndexBucket> {
         self.buckets
-            .range(..=TimeInt::from(time))
+            .range(time_range)
             .rev()
             .map(|(_, bucket)| bucket)
     }
 
     /// Returns an iterator that is guaranteed to yield at least one bucket, which is the bucket
-    /// whose time range covers the given `time`.
+    /// whose time range covers the end bound of the given `time_range`.
     ///
     /// It then continues yielding buckets until it runs out, in decreasing time range order.
-    pub fn iter_bucket_mut(&mut self, time: i64) -> impl Iterator<Item = &mut IndexBucket> {
+    pub fn iter_bucket_rev_mut(
+        &mut self,
+        time_range: impl RangeBounds<TimeInt>,
+    ) -> impl Iterator<Item = &mut IndexBucket> {
         self.buckets
-            .range_mut(..=TimeInt::from(time))
+            .range_mut(time_range)
             .rev()
             .map(|(_, bucket)| bucket)
     }
@@ -350,7 +425,7 @@ impl IndexBucket {
     /// Returns `None` iff no row index could be found for the `primary` component.
     pub fn latest_at<'a, const N: usize>(
         &self,
-        time: i64,
+        time: TimeInt,
         primary: ComponentNameRef<'a>,
         components: &[ComponentNameRef<'_>; N],
     ) -> Option<[Option<RowIndex>; N]> {
@@ -371,13 +446,13 @@ impl IndexBucket {
             primary,
             ?components,
             timeline = %self.timeline.name(),
-            time = self.timeline.typ().format(time.into()),
+            time = self.timeline.typ().format(time),
             "searching for primary & secondary row indices..."
         );
 
         // find the primary index's row.
         let times = times.values();
-        let primary_idx = times.partition_point(|t| *t <= time) as i64;
+        let primary_idx = times.partition_point(|t| *t <= time.as_i64()) as i64;
 
         // The partition point is always _beyond_ the index that we're looking for.
         // A partition point of 0 thus means that we're trying to query for data that lives
@@ -394,7 +469,7 @@ impl IndexBucket {
             primary,
             ?components,
             timeline = %self.timeline.name(),
-            time = self.timeline.typ().format(time.into()),
+            time = self.timeline.typ().format(time),
             %primary_idx,
             "found primary index",
         );
@@ -409,7 +484,7 @@ impl IndexBucket {
                     primary,
                     ?components,
                     timeline = %self.timeline.name(),
-                    time = self.timeline.typ().format(time.into()),
+                    time = self.timeline.typ().format(time),
                     %primary_idx,
                     "no secondary index found",
                 );
@@ -422,7 +497,7 @@ impl IndexBucket {
             primary,
             ?components,
             timeline = %self.timeline.name(),
-            time = self.timeline.typ().format(time.into()),
+            time = self.timeline.typ().format(time),
             %primary_idx, %secondary_idx,
             "found secondary index",
         );
@@ -438,7 +513,7 @@ impl IndexBucket {
                         primary,
                         component,
                         timeline = %self.timeline.name(),
-                        time = self.timeline.typ().format(time.into()),
+                        time = self.timeline.typ().format(time),
                         %primary_idx, %secondary_idx, %row_idx,
                         "found row index",
                     );
