@@ -787,19 +787,10 @@ impl DataTracker {
         primary: ComponentNameRef<'_>,
         component: ComponentNameRef<'_>,
     ) -> Option<Series> {
-        let mut row_indices = [None];
-        store.query(
-            timeline,
-            time_query,
-            ent_path,
-            primary,
-            &[component],
-            &mut row_indices,
-        );
-
-        let mut results = [None];
-        store.get(&[component], &row_indices, &mut results);
-
+        let row_indices = store
+            .query(timeline, time_query, ent_path, primary, &[component])
+            .unwrap_or_default();
+        let mut results = store.get(&[component], &row_indices);
         std::mem::take(&mut results[0]).map(|row| Series::try_from((component, row)).unwrap())
     }
 
@@ -811,18 +802,10 @@ impl DataTracker {
         primary: ComponentNameRef<'_>,
         components: &[ComponentNameRef<'_>; N],
     ) -> DataFrame {
-        let mut row_indices = [None; N];
-        store.query(
-            timeline,
-            time_query,
-            ent_path,
-            primary,
-            components,
-            &mut row_indices,
-        );
-
-        let mut results = [(); N].map(|_| None); // work around non-Copy const initialization limitations
-        store.get(components, &row_indices, &mut results);
+        let row_indices = store
+            .query(timeline, time_query, ent_path, primary, components)
+            .unwrap_or([None; N]);
+        let results = store.get(components, &row_indices);
 
         let df = {
             let series: Vec<_> = components

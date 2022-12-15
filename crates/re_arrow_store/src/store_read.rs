@@ -37,16 +37,14 @@ impl DataStore {
     /// Queries the datastore for the internal row indices of the specified `components`, as seen
     /// from the point of view of the so-called `primary` component.
     ///
-    /// Returns `true` on success, `false` otherwise.
+    /// Returns an array of row indices on success, or `None` otherwise.
     /// Success is defined by one thing and thing only: whether a row index could be found for the
     /// `primary` component.
     /// The presence or absence of secondary components has no effect on the success criteria.
     ///
-    /// * On success, this fills `row_indices` with the internal row index of each and every
+    /// * On success, the returned array is filled with the internal row index of each and every
     ///   component in `components`, or `None` if said component isn't available at that point
     ///   in time.
-    ///
-    /// * On failure, `row_indices` is filled with `None` values.
     ///
     /// To actually retrieve the data associated with these indices, see [`Self::get`].
     ///
@@ -66,18 +64,10 @@ impl DataStore {
     ///     primary: ComponentNameRef<'_>,
     ///     components: &[ComponentNameRef<'_>; N],
     /// ) -> DataFrame {
-    ///     let mut row_indices = [None; N];
-    ///     store.query(
-    ///         timeline,
-    ///         time_query,
-    ///         ent_path,
-    ///         primary,
-    ///         components,
-    ///         &mut row_indices,
-    ///     );
-    ///
-    ///     let mut results = [(); N].map(|_| None); // work around non-Copy const initialization limitations
-    ///     store.get(components, &row_indices, &mut results);
+    ///     let row_indices = store
+    ///         .query(timeline, time_query, ent_path, primary, components)
+    ///         .unwrap_or([None; N]);
+    ///     let results = store.get(components, &row_indices);
     ///
     ///     let df = {
     ///         let series: Vec<_> = components
@@ -104,8 +94,7 @@ impl DataStore {
         ent_path: &EntityPath,
         primary: ComponentNameRef<'_>,
         components: &[ComponentNameRef<'_>; N],
-        row_indices: &mut [Option<RowIndex>; N],
-    ) -> bool {
+    ) -> Option<[Option<RowIndex>; N]> {
         // TODO(cmc): kind & query_id need to somehow propagate through the span system.
         self.query_id.fetch_add(1, Ordering::Relaxed);
 
@@ -115,8 +104,6 @@ impl DataStore {
             #[allow(clippy::todo)]
             TimeQuery::Range(_) => todo!("implement range queries!"),
         };
-
-        row_indices.fill(None);
 
         debug!(
             kind = "query",
@@ -130,7 +117,7 @@ impl DataStore {
         );
 
         if let Some(index) = self.indices.get(&(*timeline, *ent_path_hash)) {
-            if index.latest_at(latest_at, primary, components, row_indices) {
+            if let row_indices @ Some(_) = index.latest_at(latest_at, primary, components) {
                 debug!(
                     kind = "query",
                     timeline = %timeline.name(),
@@ -141,7 +128,7 @@ impl DataStore {
                     ?row_indices,
                     "row indices fetched"
                 );
-                return true;
+                return row_indices;
             }
         }
 
@@ -152,17 +139,16 @@ impl DataStore {
             entity = %ent_path,
             primary,
             ?components,
-            ?row_indices,
             "primary component not found"
         );
 
-        false
+        None
     }
 
     /// Retrieves the data associated with a list of `components` at the specified `indices`.
     ///
-    /// If the associated data is found, it will be written to `results` at the appropriate index,
-    /// or `None` otherwise.
+    /// If the associated data is found, it will be written to returned array at the appropriate
+    /// index, or `None` otherwise.
     ///
     /// `row_indices` takes a list of options so that one can easily re-use the results obtained
     /// from [`Self::query`].
@@ -172,9 +158,8 @@ impl DataStore {
         &self,
         components: &[ComponentNameRef<'_>; N],
         row_indices: &[Option<RowIndex>; N],
-        results: &mut [Option<Box<dyn Array>>; N],
-    ) {
-        results.fill(None);
+    ) -> [Option<Box<dyn Array>>; N] {
+        let mut results = [(); N].map(|_| None); // work around non-Copy const initialization limitations
 
         for (i, &component, row_idx) in components
             .iter()
@@ -188,6 +173,8 @@ impl DataStore {
                 .and_then(|table| table.get(row_idx));
             results[i] = row;
         }
+
+        results
     }
 
     /// Force the sorting of all indices.
@@ -210,14 +197,13 @@ impl DataStore {
 // --- Indices ---
 
 impl IndexTable {
-    /// Returns `false` iff no row index could be found for the `primary` component.
+    /// Returns `None` iff no row index could be found for the `primary` component.
     pub fn latest_at<'a, const N: usize>(
         &self,
         time: i64,
         primary: ComponentNameRef<'a>,
         components: &[ComponentNameRef<'a>; N],
-        row_indices: &mut [Option<RowIndex>; N],
-    ) -> bool {
+    ) -> Option<[Option<RowIndex>; N]> {
         let timeline = self.timeline;
 
         // The time we're looking for gives us an upper bound: all components must be indexed
@@ -241,12 +227,12 @@ impl IndexTable {
                 },
                 "found candidate bucket"
             );
-            if bucket.latest_at(time, primary, components, row_indices) {
-                return true; // found at least the primary component!
+            if let row_indices @ Some(_) = bucket.latest_at(time, primary, components) {
+                return row_indices; // found at least the primary component!
             }
         }
 
-        false // primary component not found
+        None // primary component not found
     }
 
     /// Returns the index bucket whose time range covers the given `time`.
@@ -303,14 +289,13 @@ impl IndexBucket {
         self.indices.write().sort();
     }
 
-    /// Returns `false` iff no row index could be found for the `primary` component.
+    /// Returns `None` iff no row index could be found for the `primary` component.
     pub fn latest_at<'a, const N: usize>(
         &self,
         time: i64,
         primary: ComponentNameRef<'a>,
         components: &[ComponentNameRef<'_>; N],
-        row_indices: &mut [Option<RowIndex>; N],
-    ) -> bool {
+    ) -> Option<[Option<RowIndex>; N]> {
         self.sort_indices();
 
         let IndexBucketIndices {
@@ -321,7 +306,7 @@ impl IndexBucket {
         } = &*self.indices.read();
 
         // Early-exit if this bucket is unaware of this component.
-        let Some(index) = indices.get(primary) else { return false; };
+        let index = indices.get(primary)?;
 
         debug!(
             kind = "query",
@@ -340,7 +325,7 @@ impl IndexBucket {
         // A partition point of 0 thus means that we're trying to query for data that lives
         // _before_ the beginning of time... there's nothing to be found there.
         if primary_idx == 0 {
-            return false;
+            return None;
         }
 
         // The partition point is always _beyond_ the index that we're looking for; we need
@@ -370,7 +355,7 @@ impl IndexBucket {
                     %primary_idx,
                     "no secondary index found",
                 );
-                return false;
+                return None;
             }
         }
 
@@ -385,6 +370,7 @@ impl IndexBucket {
         );
         debug_assert!(index.is_valid(secondary_idx as usize));
 
+        let mut row_indices = [None; N];
         for (i, component) in components.iter().enumerate() {
             if let Some(index) = indices.get(*component) {
                 if index.is_valid(secondary_idx as _) {
@@ -403,7 +389,7 @@ impl IndexBucket {
             }
         }
 
-        true
+        Some(row_indices)
     }
 }
 
