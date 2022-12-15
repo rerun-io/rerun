@@ -19,12 +19,12 @@ import numpy as np
 import rerun
 from rerun import AnnotationInfo, LoggingHandler, LogLevel, RectFormat
 
+CAMERA_GLB: Final = Path(os.path.dirname(__file__)).joinpath("../../crates/re_viewer/data/camera.glb")
+mesh_data = CAMERA_GLB.read_bytes()
+
 
 def run_misc() -> None:
-    CAMERA_GLB: Final = Path(os.path.dirname(__file__)).joinpath("../../crates/re_viewer/data/camera.glb")
-    mesh_data = CAMERA_GLB.read_bytes()
-
-    # Optional affine transformation matrix to apply (in this case: scale it up by a factor x2)
+    # Optional affine transformation matrix to apply (in this case: scale it up by a factor)
     transform = np.array(
         [
             [2, 0, 0, 0],
@@ -155,6 +155,36 @@ def run_log_cleared() -> None:
     rerun.log_rect("null_demo/rect/1", [10, 5, 4, 4])
 
 
+def transforms_rigid_3d() -> None:
+    # TODO: Try points and lines as well
+    rerun.log_mesh_file("transforms3d/sun", rerun.MeshFormat.GLB, mesh_data)
+    rerun.log_mesh_file("transforms3d/planet", rerun.MeshFormat.GLB, mesh_data)
+    rerun.log_mesh_file("transforms3d/planet/moon", rerun.MeshFormat.GLB, mesh_data)
+
+    sun_to_planet_distance = 10.0
+    planet_to_moon_distance = 4.0
+
+    for i in range(0, 5 * 120):
+        time = i / 120.0
+        rerun.set_time_seconds("sim_time", time)
+        rotation_q = [0, 0, 0, 1]  # TODO: rotate around some axis
+        rerun.log_rigid3(
+            "transforms3d/planet",
+            child_from_parent=(
+                [math.sin(time) * sun_to_planet_distance, 0.0, math.cos(time) * sun_to_planet_distance],
+                rotation_q,
+            ),
+        )
+        # TODO: tidally lock the moon
+        rerun.log_rigid3(
+            "transforms3d/planet/moon",
+            child_from_parent=(
+                [math.cos(time) * planet_to_moon_distance, 0.0, math.sin(time) * planet_to_moon_distance],
+                rotation_q,
+            ),
+        )
+
+
 def main() -> None:
     demos = {
         "misc": run_misc,
@@ -163,6 +193,7 @@ def main() -> None:
         "text": run_text_logs,
         "log_cleared": run_log_cleared,
         "3d_points": run_points_3d,
+        "transforms_3d": transforms_rigid_3d,
     }
 
     parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")
