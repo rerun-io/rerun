@@ -1,8 +1,10 @@
-use std::ops::Range;
+use std::{num::NonZeroU64, ops::Range};
 
+use ecolor::Rgba;
 use smallvec::{smallvec, SmallVec};
 
 use crate::{
+    context::uniform_buffer_allocation_size,
     debug_label::DebugLabel,
     resource_managers::{GpuTexture2DHandle, ResourceManagerError, TextureManager2D},
     wgpu_resources::{
@@ -98,6 +100,9 @@ pub struct Material {
     /// Base color texture, also known as albedo.
     /// (not optional, needs to be at least a 1pix texture with a color!)
     pub albedo: GpuTexture2DHandle,
+
+    /// Factor applied to the decoded albedo color.
+    pub albedo_multiplier: Rgba,
 }
 
 #[derive(Clone)]
@@ -124,6 +129,17 @@ pub(crate) struct GpuMaterial {
     pub index_range: Range<u32>,
 
     pub bind_group: GpuBindGroupHandleStrong,
+}
+
+pub(crate) mod gpu_data {
+    use crate::wgpu_buffer_types;
+
+    /// Keep in sync with [`MaterialUniformBuffer`] in `instanced_mesh.wgsl`
+    #[repr(C)]
+    #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+    pub struct MaterialUniformBuffer {
+        pub albedo_multiplier: wgpu_buffer_types::Vec4,
+    }
 }
 
 impl GpuMesh {
@@ -154,7 +170,7 @@ impl GpuMesh {
             let vertex_buffer_combined = pools.buffers.alloc(
                 device,
                 &BufferDesc {
-                    label: data.label.clone(),
+                    label: data.label.clone().push_str(" - vertices"),
                     size: vertex_buffer_combined_size,
                     usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
                 },
@@ -180,7 +196,7 @@ impl GpuMesh {
             let index_buffer = pools.buffers.alloc(
                 device,
                 &BufferDesc {
-                    label: data.label.clone(),
+                    label: data.label.clone().push_str(" - indices"),
                     size: index_buffer_size,
                     usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
                 },
@@ -198,27 +214,72 @@ impl GpuMesh {
             index_buffer
         };
 
-        let mut materials = SmallVec::with_capacity(data.materials.len());
-        for material in &data.materials {
-            let texture = texture_manager.get(&material.albedo)?;
-            let bind_group = pools.bind_groups.alloc(
+        let materials = {
+            // Buffer for *all* materials
+            let allocation_size_per_uniform_buffer =
+                uniform_buffer_allocation_size::<gpu_data::MaterialUniformBuffer>(device);
+            let combined_buffers_size =
+                allocation_size_per_uniform_buffer * data.materials.len() as u64;
+            let material_uniform_buffers = pools.buffers.alloc(
                 device,
-                &BindGroupDesc {
-                    label: material.label.clone(),
-                    entries: smallvec![BindGroupEntry::DefaultTextureView(**texture)],
-                    layout: mesh_bound_group_layout,
+                &BufferDesc {
+                    label: data.label.clone().push_str(" - material uniforms"),
+                    size: combined_buffers_size,
+                    usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::UNIFORM,
                 },
-                &pools.bind_group_layouts,
-                &pools.textures,
-                &pools.buffers,
-                &pools.samplers,
             );
 
-            materials.push(GpuMaterial {
-                index_range: material.index_range.clone(),
-                bind_group,
-            });
-        }
+            let mut materials_staging_buffer = queue.write_buffer_with(
+                pools
+                    .buffers
+                    .get_resource(&material_uniform_buffers)
+                    .unwrap(),
+                0,
+                NonZeroU64::new(combined_buffers_size).unwrap(),
+            );
+
+            let mut materials = SmallVec::with_capacity(data.materials.len());
+            for (i, material) in data.materials.iter().enumerate() {
+                // CAREFUL: Memory from `write_buffer_with` may not be aligned, causing bytemuck to fail at runtime if we use it to cast the memory to a slice!
+                let material_buffer_range_start = i * allocation_size_per_uniform_buffer as usize;
+                let material_buffer_range_end = material_buffer_range_start
+                    + std::mem::size_of::<gpu_data::MaterialUniformBuffer>();
+
+                materials_staging_buffer[material_buffer_range_start..material_buffer_range_end]
+                    .copy_from_slice(bytemuck::bytes_of(&gpu_data::MaterialUniformBuffer {
+                        albedo_multiplier: material.albedo_multiplier.into(),
+                    }));
+
+                let texture = texture_manager.get(&material.albedo)?;
+                let bind_group = pools.bind_groups.alloc(
+                    device,
+                    &BindGroupDesc {
+                        label: material.label.clone(),
+                        entries: smallvec![
+                            BindGroupEntry::DefaultTextureView(**texture),
+                            BindGroupEntry::Buffer {
+                                handle: *material_uniform_buffers,
+                                offset: material_buffer_range_start as _,
+                                size: NonZeroU64::new(std::mem::size_of::<
+                                    gpu_data::MaterialUniformBuffer,
+                                >() as u64)
+                            }
+                        ],
+                        layout: mesh_bound_group_layout,
+                    },
+                    &pools.bind_group_layouts,
+                    &pools.textures,
+                    &pools.buffers,
+                    &pools.samplers,
+                );
+
+                materials.push(GpuMaterial {
+                    index_range: material.index_range.clone(),
+                    bind_group,
+                });
+            }
+            materials
+        };
 
         Ok(GpuMesh {
             index_buffer,

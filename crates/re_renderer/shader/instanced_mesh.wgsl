@@ -7,6 +7,13 @@
 @group(1) @binding(0)
 var albedo_texture: texture_2d<f32>;
 
+// Keep in sync with gpu_data::MaterialUniformBuffer in mesh.rs
+struct MaterialUniformBuffer {
+    albedo_factor: Vec4,
+};
+@group(1) @binding(1)
+var<uniform> material: MaterialUniformBuffer;
+
 struct VertexOut {
     @builtin(position) position: Vec4,
     @location(0) texcoord: Vec2,
@@ -30,7 +37,8 @@ fn vs_main(in_vertex: VertexIn, in_instance: InstanceIn) -> VertexOut {
 
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) Vec4 {
-    let albedo = textureSample(albedo_texture, trilinear_sampler, in.texcoord).rgb + in.additive_tint_rgb;
+    let albedo = textureSample(albedo_texture, trilinear_sampler, in.texcoord).rgb
+                 * material.albedo_factor.rgb + in.additive_tint_rgb;
 
     // Hardcoded lambert lighting. TODO(andreas): Some microfacet model.
     let light_dir = normalize(vec3(1.0, 2.0, 0.0)); // TODO(andreas): proper lighting

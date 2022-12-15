@@ -94,6 +94,18 @@ impl From<glam::Vec4> for Vec4 {
     }
 }
 
+impl From<crate::Rgba> for Vec4 {
+    #[inline]
+    fn from(c: crate::Rgba) -> Self {
+        Vec4 {
+            x: c.r(),
+            y: c.g(),
+            z: c.b(),
+            w: c.a(),
+        }
+    }
+}
+
 #[repr(C, align(16))]
 #[derive(Clone, Copy, Zeroable, Pod)]
 pub struct Mat4 {
