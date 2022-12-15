@@ -48,27 +48,24 @@ jobs:
           save-if: ${{ github.event_name == 'push'}}
 
       - name: Run benchmark
-        # NB: Need to do the `git reset` at the end because `Cargo.lock` gets updated by Cargo, but
-        # it's checked into the index and prevents us cleanly switching to the gh-pages branch.
         run: |
           cargo bench \
             -p re_arrow_store \
             -p re_data_store \
             -p re_tuid \
-            -- --output-format=bencher | tee output.txt \
-            && git reset --hard
+            -- --output-format=bencher | tee output.txt
 
       - name: Store benchmark result
         uses: benchmark-action/github-action-benchmark@v1
         with:
           name: Rust Benchmark
-          tool: 'cargo'
+          tool: "cargo"
           output-file-path: output.txt
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
           # Show alert with commit comment on detecting possible performance regression
           comment-on-alert: true
-          alert-threshold: '150%'
+          alert-threshold: "150%"
           fail-on-alert: true
           comment-always: true
 
@@ -95,6 +92,13 @@ jobs:
           # See: https://github.com/rerun-io/rerun/pull/497
           save-if: ${{ github.event_name == 'push'}}
 
+      # First do our check with --locked to make sure `Cargo.lock` is up to date
+      - name: Check all features
+        uses: actions-rs/cargo@v1
+        with:
+          command: check
+          args: --locked --all-features
+
       - name: Rustfmt
         uses: actions-rs/cargo@v1
         with:
@@ -107,17 +111,11 @@ jobs:
           command: cranky
           args: --all-targets --all-features --  -D warnings
 
-      - name: Check all features
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --all-features --locked
-
       - name: Check no default features
         uses: actions-rs/cargo@v1
         with:
           command: check
-          args: --no-default-features --features __ci --lib
+          args: --locked --no-default-features --features __ci --lib
 
       - name: Test doc-tests
         uses: actions-rs/cargo@v1
@@ -174,13 +172,13 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: check
-          args: --all-features --lib --target wasm32-unknown-unknown -p re_viewer
+          args: --locked --all-features --lib --target wasm32-unknown-unknown -p re_viewer
 
       - name: Check re_renderer examples wasm32
         uses: actions-rs/cargo@v1
         with:
           command: check
-          args: --target wasm32-unknown-unknown -p re_renderer --examples
+          args: --locked --target wasm32-unknown-unknown -p re_renderer --examples
 
       - run: ./scripts/wasm_bindgen_check.sh --skip-setup
 
