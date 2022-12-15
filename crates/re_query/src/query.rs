@@ -275,12 +275,12 @@ fn simple_query() {
     let ent_path = "point";
     let timepoint = [build_frame_nr(123)];
 
-    // Create some points with an implicit index
+    // Create some points with implicit instances
     let points = vec![Point2D { x: 1.0, y: 2.0 }, Point2D { x: 3.0, y: 4.0 }];
     let bundle = try_build_msg_bundle1(MsgId::random(), ent_path, timepoint, &points).unwrap();
     store.insert(&bundle).unwrap();
 
-    // Assign one of them a color with an explicit index
+    // Assign one of them a color with an explicit instance
     let color_instances = vec![Instance(1)];
     let colors = vec![ColorRGBA(0xff000000)];
     let bundle = try_build_msg_bundle2(
@@ -347,12 +347,12 @@ fn no_instance_join_query() {
     let ent_path = "point";
     let timepoint = [build_frame_nr(123)];
 
-    // Create some points with an implicit index
+    // Create some points with an implicit instance
     let points = vec![Point2D { x: 1.0, y: 2.0 }, Point2D { x: 3.0, y: 4.0 }];
     let bundle = try_build_msg_bundle1(MsgId::random(), ent_path, timepoint, &points).unwrap();
     store.insert(&bundle).unwrap();
 
-    // Assign one of them a color with an explicit index
+    // Assign them colors with explicit instances
     let colors = vec![ColorRGBA(0xff000000), ColorRGBA(0x00ff0000)];
     let bundle = try_build_msg_bundle1(MsgId::random(), ent_path, timepoint, &colors).unwrap();
     store.insert(&bundle).unwrap();
