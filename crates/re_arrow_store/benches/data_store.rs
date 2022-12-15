@@ -3,7 +3,7 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 use criterion::{criterion_group, criterion_main, Criterion};
 
-use re_arrow_store::{DataStore, TimeQuery};
+use re_arrow_store::{DataStore, TimeQuery, TimelineQuery};
 use re_log_types::{
     datagen::{build_frame_nr, build_some_point2d, build_some_rects},
     field_types::Rect2D,
@@ -78,10 +78,11 @@ fn insert_messages<'a>(msgs: impl Iterator<Item = &'a MsgBundle>) -> DataStore {
 fn query_messages(store: &mut DataStore) -> polars_core::frame::DataFrame {
     let time_query = TimeQuery::LatestAt(NUM_FRAMES / 2);
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
+    let timeline_query = TimelineQuery::new(timeline_frame_nr, time_query);
     let ent_path = EntityPath::from("rects");
 
     let df = store
-        .query(&timeline_frame_nr, &time_query, &ent_path, &[Rect2D::NAME])
+        .query(&timeline_query, &ent_path, &[Rect2D::NAME])
         .unwrap();
     assert_eq!(NUM_RECTS as usize, df.select_at_idx(0).unwrap().len());
 

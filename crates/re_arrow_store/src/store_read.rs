@@ -15,6 +15,37 @@ use crate::{
 
 // ---
 
+/// A query in time, for a given timeline.
+#[derive(Clone, Debug)]
+pub struct TimelineQuery {
+    pub timeline: Timeline,
+    pub query: TimeQuery,
+}
+
+impl std::fmt::Display for TimelineQuery {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self.query {
+            &TimeQuery::LatestAt(at) => f.write_fmt(format_args!(
+                "TimeQuery<latest at {} on {:?}>",
+                self.timeline.typ().format(at.into()),
+                self.timeline.name(),
+            )),
+            TimeQuery::Range(range) => f.write_fmt(format_args!(
+                "TimeQuery<ranging from {} to {} (all inclusive) on {:?}>",
+                self.timeline.typ().format((*range.start()).into()),
+                self.timeline.typ().format((*range.end()).into()),
+                self.timeline.name(),
+            )),
+        }
+    }
+}
+
+impl TimelineQuery {
+    pub const fn new(timeline: Timeline, query: TimeQuery) -> Self {
+        Self { timeline, query }
+    }
+}
+
 /// A query in time.
 #[derive(Clone, Debug)]
 pub enum TimeQuery {
@@ -38,8 +69,7 @@ impl TimeQuery {
 impl DataStore {
     pub fn query(
         &self,
-        timeline: &Timeline,
-        time_query: &TimeQuery,
+        timeline_query: &TimelineQuery,
         ent_path: &EntityPath,
         components: &[ComponentNameRef<'_>],
     ) -> anyhow::Result<polars_core::frame::DataFrame> {
@@ -48,8 +78,8 @@ impl DataStore {
 
         let ent_path_hash = ent_path.hash();
 
-        let latest_at = match time_query {
-            TimeQuery::LatestAt(latest_at) => *latest_at,
+        let latest_at = match timeline_query.query {
+            TimeQuery::LatestAt(latest_at) => latest_at,
             #[allow(clippy::todo)]
             TimeQuery::Range(_) => todo!("implement range queries!"),
         };
@@ -57,8 +87,7 @@ impl DataStore {
         debug!(
             kind = "query",
             id = self.query_id.load(Ordering::Relaxed),
-            timeline = %timeline.name(),
-            time = timeline.typ().format(latest_at.into()),
+            query = %timeline_query,
             entity = %ent_path,
             ?components,
             "query started..."
@@ -66,13 +95,12 @@ impl DataStore {
 
         let row_indices = self
             .indices
-            .get(&(*timeline, *ent_path_hash))
+            .get(&(timeline_query.timeline, *ent_path_hash))
             .map(|index| index.latest_at(latest_at, components))
             .unwrap_or_default();
         debug!(
             kind = "query",
-            timeline = %timeline.name(),
-            time = timeline.typ().format(latest_at.into()),
+            query = %timeline_query,
             entity = %ent_path,
             ?components,
             ?row_indices,

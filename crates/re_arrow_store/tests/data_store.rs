@@ -5,7 +5,7 @@ use std::{
 
 use arrow2::array::Array;
 
-use re_arrow_store::{DataStore, DataStoreConfig, TimeInt, TimeQuery};
+use re_arrow_store::{DataStore, DataStoreConfig, TimeInt, TimeQuery, TimelineQuery};
 use re_log_types::{
     datagen::{
         build_frame_nr, build_instances, build_log_time, build_some_point2d, build_some_rects,
@@ -153,8 +153,7 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
     // Expected: dataframe with our instances in it.
     tracker.assert_scenario(
         store,
-        &timeline_frame_nr,
-        &TimeQuery::LatestAt(frame40),
+        &TimelineQuery::new(timeline_frame_nr, TimeQuery::LatestAt(frame40)),
         &ent_path,
         components_all,
         vec![("instances", frame40.into())],
@@ -164,8 +163,7 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
     // Expected: dataframe with our instances in it.
     tracker.assert_scenario(
         store,
-        &timeline_log_time,
-        &TimeQuery::LatestAt(now_nanos),
+        &TimelineQuery::new(timeline_log_time, TimeQuery::LatestAt(now_nanos)),
         &ent_path,
         components_all,
         vec![("instances", now_nanos.into())],
@@ -175,8 +173,7 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
     // Expected: empty dataframe.
     tracker.assert_scenario(
         store,
-        &timeline_frame_nr,
-        &TimeQuery::LatestAt(frame39),
+        &TimelineQuery::new(timeline_frame_nr, TimeQuery::LatestAt(frame39)),
         &ent_path,
         components_all,
         vec![],
@@ -186,8 +183,7 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
     // Expected: empty dataframe.
     tracker.assert_scenario(
         store,
-        &timeline_log_time,
-        &TimeQuery::LatestAt(now_minus_1s_nanos),
+        &TimelineQuery::new(timeline_log_time, TimeQuery::LatestAt(now_minus_1s_nanos)),
         &ent_path,
         components_all,
         vec![],
@@ -197,8 +193,7 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
     // Expected: empty dataframe.
     tracker.assert_scenario(
         store,
-        &timeline_frame_nr,
-        &TimeQuery::LatestAt(frame40),
+        &TimelineQuery::new(timeline_frame_nr, TimeQuery::LatestAt(frame40)),
         &EntityPath::from("does/not/exist"),
         components_all,
         vec![],
@@ -208,8 +203,7 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
     // Expected: empty dataframe.
     tracker.assert_scenario(
         store,
-        &timeline_frame_nr,
-        &TimeQuery::LatestAt(frame40),
+        &TimelineQuery::new(timeline_frame_nr, TimeQuery::LatestAt(frame40)),
         &ent_path,
         &["they", "dont", "exist"],
         vec![],
@@ -219,8 +213,7 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
     // Expected: empty dataframe.
     tracker.assert_scenario(
         store,
-        &timeline_frame_nr,
-        &TimeQuery::LatestAt(frame40),
+        &TimelineQuery::new(timeline_frame_nr, TimeQuery::LatestAt(frame40)),
         &ent_path,
         &[],
         vec![],
@@ -230,8 +223,7 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
     // Expected: empty dataframe.
     tracker.assert_scenario(
         store,
-        &timeline_wrong_name,
-        &TimeQuery::LatestAt(frame40),
+        &TimelineQuery::new(timeline_wrong_name, TimeQuery::LatestAt(frame40)),
         &ent_path,
         components_all,
         vec![],
@@ -241,8 +233,7 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
     // Expected: empty dataframe.
     tracker.assert_scenario(
         store,
-        &timeline_wrong_kind,
-        &TimeQuery::LatestAt(frame40),
+        &TimelineQuery::new(timeline_wrong_kind, TimeQuery::LatestAt(frame40)),
         &ent_path,
         components_all,
         vec![],
@@ -447,8 +438,7 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
         eprintln!("Testing scenario ({frame_nr},{expected:?})");
         tracker.assert_scenario(
             store,
-            &timeline_frame_nr,
-            &TimeQuery::LatestAt(frame_nr),
+            &TimelineQuery::new(timeline_frame_nr, TimeQuery::LatestAt(frame_nr)),
             &ent_path,
             components_all,
             expected,
@@ -505,8 +495,10 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
     for (log_time, expected) in scenarios {
         tracker.assert_scenario(
             store,
-            &timeline_log_time,
-            &TimeQuery::LatestAt(log_time.nanos_since_epoch()),
+            &TimelineQuery::new(
+                timeline_log_time,
+                TimeQuery::LatestAt(log_time.nanos_since_epoch()),
+            ),
             &ent_path,
             components_all,
             expected,
@@ -543,15 +535,12 @@ impl DataTracker {
     fn assert_scenario(
         &self,
         store: &mut DataStore,
-        timeline: &Timeline,
-        time_query: &TimeQuery,
+        timeline_query: &TimelineQuery,
         ent_path: &EntityPath,
         components: &[ComponentNameRef<'_>],
         expected: Vec<DataEntry>,
     ) {
-        let df = store
-            .query(timeline, time_query, ent_path, components)
-            .unwrap();
+        let df = store.query(timeline_query, ent_path, components).unwrap();
 
         let series = expected
             .into_iter()
