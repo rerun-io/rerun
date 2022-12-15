@@ -86,6 +86,40 @@ where
 
 /// Visit all all of a complex component in a dataframe
 /// The first component is the primary, while the remaining are optional
+///
+/// # Usage
+/// ```
+/// # use re_query::dataframe_util::df_builder2;
+/// # use re_log_types::field_types::{ColorRGBA, Point2D};
+/// use re_query::visit_components2;
+///
+/// let points = vec![
+///     Some(Point2D { x: 1.0, y: 2.0 }),
+///     Some(Point2D { x: 3.0, y: 4.0 }),
+///     Some(Point2D { x: 5.0, y: 6.0 }),
+///     Some(Point2D { x: 7.0, y: 8.0 }),
+/// ];
+///
+/// let colors = vec![
+///     None,
+///     Some(ColorRGBA(0xff000000)),
+///     Some(ColorRGBA(0x00ff0000)),
+///     None,
+/// ];
+///
+/// let df = df_builder2(&points, &colors).unwrap();
+///
+/// let mut points_out = Vec::<Option<Point2D>>::new();
+/// let mut colors_out = Vec::<Option<ColorRGBA>>::new();
+///
+/// visit_components2(&df, |point: &Point2D, color: Option<&ColorRGBA>| {
+///     points_out.push(Some(point.clone()));
+///     colors_out.push(color.cloned());
+/// });
+///
+/// assert_eq!(points, points_out);
+/// assert_eq!(colors, colors_out);
+/// ```
 pub fn visit_components2<C0: Component, C1: Component>(
     df: &DataFrame,
     mut visit: impl FnMut(&C0, Option<&C1>),
