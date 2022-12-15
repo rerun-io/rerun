@@ -4,7 +4,6 @@ use std::{
 };
 
 use arrow2::array::Array;
-use polars::prelude::{DataFrame, Series};
 
 use re_arrow_store::{DataStore, DataStoreConfig, TimeInt, TimeQuery};
 use re_log_types::{
@@ -561,10 +560,10 @@ impl DataTracker {
                     .all_data
                     .get(&(name.to_owned(), time))
                     .unwrap_or_else(|| panic!("Key ({name},{time:?}) not found!"));
-                Series::try_from((name, data.clone())).unwrap()
+                polars_core::series::Series::try_from((name, data.clone())).unwrap()
             })
             .collect::<Vec<_>>();
-        let expected = DataFrame::new(series).unwrap();
+        let expected = polars_core::frame::DataFrame::new(series).unwrap();
         let expected = expected.explode(expected.get_column_names()).unwrap();
 
         store.sort_indices();

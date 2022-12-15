@@ -5,6 +5,7 @@ use std::sync::Arc;
 use anyhow::ensure;
 use arrow2::array::{Array, Int64Vec, MutableArray, UInt64Vec};
 use arrow2::bitmap::MutableBitmap;
+use arrow2::chunk::Chunk;
 use arrow2::datatypes::DataType;
 
 use parking_lot::RwLock;
@@ -443,6 +444,10 @@ impl std::fmt::Display for IndexTable {
 }
 
 impl IndexTable {
+    pub fn entity_path(&self) -> &EntityPath {
+        &self.ent_path
+    }
+
     /// Returns the number of rows stored across this entire table, i.e. the sum of the number
     /// of rows stored across all of its buckets.
     pub fn total_rows(&self) -> u64 {
@@ -550,69 +555,30 @@ impl Default for IndexBucketIndices {
 
 impl std::fmt::Display for IndexBucket {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self { timeline, indices } = self;
-
-        let IndexBucketIndices {
-            is_sorted,
-            time_range,
-            times,
-            indices,
-        } = &*indices.read();
-
         f.write_fmt(format_args!(
             "size: {} across {} rows\n",
             format_bytes(self.total_size_bytes() as _),
             format_number(self.total_rows() as _),
         ))?;
 
-        if time_range.min.as_i64() != i64::MAX && time_range.max.as_i64() != i64::MIN {
-            f.write_fmt(format_args!(
-                "time range: from {} to {} (all inclusive)\n",
-                timeline.typ().format(time_range.min),
-                timeline.typ().format(time_range.max),
-            ))?;
-        } else {
-            f.write_str("time range: N/A\n")?;
-        }
+        f.write_fmt(format_args!("{}\n", self.formatted_time_range()))?;
 
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            use arrow2::array::MutableArray as _;
-            use polars::prelude::{DataFrame, NamedFrom as _, Series};
+        let (timeline_name, times) = self.times();
+        let (col_names, cols) = self.named_indices();
 
-            let typ = timeline.typ();
-            let times = Series::new(
-                "time",
-                times
-                    .values()
-                    .iter()
-                    .map(|time| typ.format(TimeInt::from(*time)))
-                    .collect::<Vec<_>>(),
-            );
+        let names: Vec<String> = std::iter::once(timeline_name)
+            .chain(col_names.into_iter())
+            .collect();
 
-            let series = std::iter::once(times)
-                .chain(indices.iter().map(|(name, index)| {
-                    let index = index
-                        .values()
-                        .iter()
-                        .enumerate()
-                        .map(|(i, v)| index.is_valid(i).then_some(*v))
-                        .collect::<Vec<_>>();
-                    Series::new(name.as_str(), index)
-                }))
-                .collect::<Vec<_>>();
-            // TODO(cmc): sort component columns (not time!)
-            let df = DataFrame::new(series).unwrap();
-            f.write_fmt(format_args!("data (sorted={is_sorted}): {df:?}"))?;
-        }
+        let chunk = Chunk::new(
+            std::iter::once(times.boxed())
+                .chain(cols.into_iter().map(|c| c.boxed()))
+                .collect(),
+        );
 
-        #[cfg(target_arch = "wasm32")]
-        {
-            _ = time_range;
-            _ = is_sorted;
-            _ = times;
-            _ = indices;
-        }
+        let table_str = arrow2::io::print::write(&[chunk], names.as_slice());
+        let is_sorted = self.is_sorted();
+        f.write_fmt(format_args!("data (sorted={is_sorted}):\n{table_str}\n"))?;
 
         Ok(())
     }
@@ -647,6 +613,16 @@ impl IndexBucket {
                 .values()
                 .map(|index| size_of_validity(index.validity()) + size_of_values(index.values()))
                 .sum::<u64>()
+    }
+
+    /// Returns a formatted string of the time range in the bucket
+    pub fn formatted_time_range(&self) -> String {
+        let time_range = &self.indices.read().time_range;
+        if time_range.min.as_i64() != i64::MAX && time_range.max.as_i64() != i64::MIN {
+            self.timeline.format_time_range(time_range)
+        } else {
+            "time range: N/A\n".to_owned()
+        }
     }
 
     /// Runs the sanity check suite for the entire bucket.
@@ -834,6 +810,7 @@ impl ComponentTable {
 pub struct ComponentBucket {
     /// The component's name, for debugging purposes.
     pub(crate) name: Arc<String>,
+
     /// The offset of this bucket in the global table.
     pub(crate) row_offset: RowIndex,
 
@@ -849,13 +826,6 @@ pub struct ComponentBucket {
 
 impl std::fmt::Display for ComponentBucket {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self {
-            name,
-            time_ranges,
-            row_offset,
-            data,
-        } = self;
-
         f.write_fmt(format_args!(
             "size: {} across {} rows\n",
             format_bytes(self.total_size_bytes() as _),
@@ -864,41 +834,30 @@ impl std::fmt::Display for ComponentBucket {
 
         f.write_fmt(format_args!(
             "row range: from {} to {} (all inclusive)\n",
-            row_offset,
+            self.row_offset,
             // Component buckets can never be empty at the moment:
             // - the first bucket is always initialized with a single empty row
             // - all buckets that follow are lazily instantiated when data get inserted
             //
             // TODO(#439): is that still true with deletion?
-            row_offset + data.len().checked_sub(1).expect("buckets are never empty") as u64,
+            self.row_offset
+                + self
+                    .data
+                    .len()
+                    .checked_sub(1)
+                    .expect("buckets are never empty") as u64,
         ))?;
 
         f.write_str("time ranges:\n")?;
-        for (timeline, time_range) in time_ranges {
+        for (timeline, time_range) in &self.time_ranges {
             f.write_fmt(format_args!(
-                "    - {}: from {} to {} (all inclusive)\n",
-                timeline.name(),
-                timeline.typ().format(time_range.min),
-                timeline.typ().format(time_range.max),
+                "{}\n",
+                &timeline.format_time_range(time_range)
             ))?;
         }
 
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            use polars::prelude::{DataFrame, Series};
-            // TODO(cmc): I'm sure there's no need to clone here
-            let series = Series::try_from((name.as_str(), data.clone())).unwrap();
-            let df = DataFrame::new(vec![series]).unwrap();
-            f.write_fmt(format_args!("data: {df:?}"))?;
-        }
-
-        #[cfg(target_arch = "wasm32")]
-        {
-            _ = name;
-            _ = time_ranges;
-            _ = row_offset;
-            _ = data;
-        }
+        let chunk = Chunk::new(vec![self.data()]);
+        f.write_str(&arrow2::io::print::write(&[chunk], &[self.name.as_str()]))?;
 
         Ok(())
     }

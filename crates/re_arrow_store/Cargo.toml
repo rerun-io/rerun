@@ -21,28 +21,19 @@ anyhow.workspace = true
 arrow2 = { workspace = true, features = [
   "compute_concatenate",
   "compute_aggregate",
+  "io_print",
 ] }
 chrono = "0.4"
 document-features = "0.2"
 indent = "0.1"
 nohash-hasher = "0.2"
 parking_lot = "0.12"
+polars-core = { workspace = true, features = [
+  "dtype-date",
+  "dtype-time",
+  "dtype-struct",
+] }
 thiserror.workspace = true
-
-# native dependencies:
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-polars = { version = "0.25", features = [
-  "dtype-time",
-  "dtype-struct",
-  "fmt",
-], default-features = false }
-
-# web dependencies:
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-polars = { version = "0.25", features = [
-  "dtype-time",
-  "dtype-struct",
-], default-features = false }
 
 [dev-dependencies]
 criterion = "0.3"
