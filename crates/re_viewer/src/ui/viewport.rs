@@ -489,6 +489,7 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
                 .clicked()
             {
                 *self.maximized = Some(*space_view_id);
+                self.ctx.set_selection(Selection::SpaceView(*space_view_id));
             }
 
             space_view_options_link(

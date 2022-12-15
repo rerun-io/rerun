@@ -36,10 +36,13 @@ polars-core = { workspace = true, features = [
 thiserror.workspace = true
 
 [dev-dependencies]
-criterion = "0.3"
+criterion = "0.4"
 itertools = "0.10"
 mimalloc = "0.1"
 tracing-subscriber = "0.3"
+
+[lib]
+bench = false
 
 [[bench]]
 name = "data_store"

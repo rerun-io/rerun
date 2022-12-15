@@ -60,7 +60,7 @@ impl DataStore {
                 .entry((*bundle.name).to_owned())
                 .or_insert_with(|| ComponentTable::new((*name).clone(), value.data_type().clone()));
 
-            let row_idx = table.insert(&self.config, time_point, value.as_ref())?;
+            let row_idx = table.push(&self.config, time_point, value.as_ref())?;
             indices.insert(name.as_ref(), row_idx);
         }
 
@@ -247,7 +247,7 @@ impl IndexBucket {
                 index.extend_constant(times.len().saturating_sub(1), None);
                 index
             });
-            index.push(Some(*row_idx));
+            index.push(Some(row_idx.as_u64()));
         }
 
         // 2-way merge, step2: right-to-left
@@ -625,11 +625,16 @@ impl ComponentTable {
         ComponentTable {
             name: Arc::clone(&name),
             datatype: datatype.clone(),
-            buckets: [ComponentBucket::new(name, datatype, 0)].into(),
+            buckets: [ComponentBucket::new(
+                name,
+                datatype,
+                RowIndex::from_u64(0u64),
+            )]
+            .into(),
         }
     }
 
-    pub fn insert(
+    pub fn push(
         &mut self,
         config: &DataStoreConfig,
         time_point: &TimePoint,
@@ -658,11 +663,11 @@ impl ComponentTable {
                 "allocating new component bucket, previous one overflowed"
             );
 
-            let row_offset = bucket.row_offset + len;
+            let row_offset = bucket.row_offset.as_u64() + len;
             self.buckets.push_back(ComponentBucket::new(
                 Arc::clone(&self.name),
                 self.datatype.clone(),
-                row_offset,
+                RowIndex::from_u64(row_offset),
             ));
         }
 
@@ -671,7 +676,7 @@ impl ComponentTable {
         //   same reason as above: all component tables spawn with an initial bucket at row
         //   offset 0, thus this cannot fail.
         // - If the table has just overflowed, then we've just pushed a bucket to the dequeue.
-        let row_idx = self.buckets.back_mut().unwrap().insert(time_point, data)?;
+        let row_idx = self.buckets.back_mut().unwrap().push(time_point, data)?;
 
         debug!(
             kind = "insert",
@@ -679,8 +684,8 @@ impl ComponentTable {
                 .map(|(timeline, time)| (timeline.name(), timeline.typ().format(*time)))
                 .collect::<Vec<_>>(),
             component = self.name.as_str(),
-            row_idx,
-            "inserted into component table"
+            %row_idx,
+            "pushed into component table"
         );
 
         Ok(row_idx)
@@ -691,7 +696,7 @@ impl ComponentBucket {
     pub fn new(name: Arc<String>, datatype: DataType, row_offset: RowIndex) -> Self {
         // If this is the first bucket of this table, we need to insert an empty list at
         // row index #0!
-        let data = if row_offset == 0 {
+        let data = if row_offset.as_u64() == 0 {
             let inner_datatype = match &datatype {
                 DataType::List(field) => field.data_type().clone(),
                 #[allow(clippy::todo)]
@@ -719,7 +724,7 @@ impl ComponentBucket {
         }
     }
 
-    pub fn insert(&mut self, time_point: &TimePoint, data: &dyn Array) -> anyhow::Result<RowIndex> {
+    pub fn push(&mut self, time_point: &TimePoint, data: &dyn Array) -> anyhow::Result<RowIndex> {
         for (timeline, time) in time_point {
             // TODO(#451): prob should own it at this point
             let time = *time;
@@ -734,6 +739,8 @@ impl ComponentBucket {
         // TODO(cmc): replace with an actual mutable array!
         self.data = concatenate(&[&*self.data, data])?;
 
-        Ok(self.row_offset + self.data.len() as u64 - 1)
+        Ok(RowIndex::from_u64(
+            self.row_offset.as_u64() + self.data.len() as u64 - 1,
+        ))
     }
 }

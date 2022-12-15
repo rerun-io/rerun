@@ -1046,6 +1046,17 @@ impl Tensor {
         self.shape.len()
     }
 
+    pub fn is_shaped_like_an_image(&self) -> bool {
+        self.num_dim() == 2
+            || self.num_dim() == 3 && {
+                matches!(
+                    self.shape.last().unwrap().size,
+                    // gray, rgb, rgba
+                    1 | 3 | 4
+                )
+            }
+    }
+
     /// The index must be the same length as the dimension.
     ///
     /// `None` if out of bounds, or if [`Self::data`] is not [`TensorDataStore::Dense`].

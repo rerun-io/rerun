@@ -37,9 +37,11 @@ thiserror = "1.0"
 puffin = { version = "0.14", optional = true }
 
 [dev-dependencies]
-criterion = "0.3"
+criterion = "0.4"
 mimalloc = "0.1"
 
+[lib]
+bench = false
 
 [[bench]]
 name = "obj_query_benchmark"

@@ -118,7 +118,7 @@ impl RectangleDrawData {
             &ctx.device,
             &BufferDesc {
                 label: "rectangle uniform buffers".into(),
-                size: allocation_size_per_uniform_buffer * rectangles.len() as u64,
+                size: combined_buffers_size,
                 usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::UNIFORM,
             },
         );
