@@ -149,11 +149,23 @@ fn import_mesh(
     for primitive in mesh.primitives() {
         let reader = primitive.reader(|buffer| Some(&*buffers[buffer.index()]));
 
+        let index_offset = indices.len() as u32;
+        if let Some(primitive_indices) = reader.read_indices() {
+            // We meld several GTLF primitives into one mesh.
+            // That requires us to keep track of the base vertex index as within each GLTF primitive, the indices restart.
+            // (Note that this does in theory miss out on some re-using of *primitives* that GLTF might do, but we don't expect this to be an issue typically)
+            let base_index = vertex_positions.len() as u32;
+            indices.extend(primitive_indices.into_u32().map(|i| i + base_index));
+        } else {
+            anyhow::bail!("Gltf primitives must have indices");
+        }
+
         if let Some(primitive_positions) = reader.read_positions() {
             vertex_positions.extend(primitive_positions.map(glam::Vec3::from));
         } else {
             anyhow::bail!("Gltf primitives must have positions");
         }
+
         if let Some(primitive_normals) = reader.read_normals() {
             let to_data = |(p, t)| MeshVertexData {
                 normal: glam::Vec3::from(p),
@@ -175,13 +187,6 @@ fn import_mesh(
             }
         } else {
             anyhow::bail!("Gltf primitives must have normals");
-        }
-
-        let index_offset = indices.len() as u32;
-        if let Some(primitive_indices) = reader.read_indices() {
-            indices.extend(primitive_indices.into_u32());
-        } else {
-            anyhow::bail!("Gltf primitives must have indices");
         }
 
         if vertex_positions.len() != vertex_data.len() {
