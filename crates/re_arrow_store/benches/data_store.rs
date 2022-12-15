@@ -82,18 +82,16 @@ fn query_messages(store: &mut DataStore) -> Box<dyn Array> {
     let ent_path = EntityPath::from("rects");
     let component = Rect2D::NAME;
 
-    let mut row_indices = [None];
-    store.query(
-        &timeline_frame_nr,
-        &time_query,
-        &ent_path,
-        component,
-        &[component],
-        &mut row_indices,
-    );
-
-    let mut results = [None];
-    store.get(&[component], &row_indices, &mut results);
+    let row_indices = store
+        .query(
+            &timeline_frame_nr,
+            &time_query,
+            &ent_path,
+            component,
+            &[component],
+        )
+        .unwrap_or_default();
+    let mut results = store.get(&[component], &row_indices);
 
     let row = std::mem::take(&mut results[0]).unwrap();
     let list = row.as_any().downcast_ref::<ListArray<i32>>().unwrap();
