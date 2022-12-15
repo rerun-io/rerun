@@ -62,13 +62,13 @@ jobs:
         uses: benchmark-action/github-action-benchmark@v1
         with:
           name: Rust Benchmark
-          tool: 'cargo'
+          tool: "cargo"
           output-file-path: output.txt
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
           # Show alert with commit comment on detecting possible performance regression
           comment-on-alert: true
-          alert-threshold: '150%'
+          alert-threshold: "150%"
           fail-on-alert: true
           comment-always: true
 
