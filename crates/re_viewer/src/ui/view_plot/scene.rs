@@ -2,7 +2,7 @@ use crate::{
     ui::{annotations::AnnotationMap, DefaultColor, SceneQuery},
     ViewerContext,
 };
-use re_data_store::{query::visit_type_data_5, FieldName, TimeQuery};
+use re_data_store::{query::visit_type_data_4, FieldName, TimeQuery};
 use re_log_types::{IndexHash, MsgId, ObjectType};
 
 // ---
@@ -79,25 +79,19 @@ impl ScenePlot {
             let annotations = self.annotation_map.find(obj_path);
             let default_color = DefaultColor::ObjPath(obj_path);
 
-            visit_type_data_5(
+            visit_type_data_4(
                 obj_store,
                 &FieldName::from("scalar"),
                 &TimeQuery::EVERYTHING,
-                ("_visible", "label", "color", "radius", "scattered"),
+                ("label", "color", "radius", "scattered"),
                 |_instance_index: Option<&IndexHash>,
                  time: i64,
                  _msg_id: &MsgId,
                  value: &f64,
-                 visible: Option<&bool>,
                  label: Option<&String>,
                  color: Option<&[u8; 4]>,
                  radius: Option<&f32>,
                  scattered: Option<&bool>| {
-                    let visible = *visible.unwrap_or(&true);
-                    if !visible {
-                        return;
-                    }
-
                     // TODO(andreas): Support object path
                     let annotation_info = annotations.class_description(None).annotation_info();
                     let color = annotation_info.color(color, default_color);
