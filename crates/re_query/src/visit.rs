@@ -66,7 +66,9 @@ where
     res.into_iter()
 }
 
+
 /// Visit a component in a dataframe
+/// See [`visit_components2`]
 pub fn visit_component<C0: Component>(df: &DataFrame, mut visit: impl FnMut(&C0))
 where
     C0: ArrowDeserialize + ArrowField<Type = C0> + 'static,
@@ -139,6 +141,36 @@ pub fn visit_components2<C0: Component, C1: Component>(
         itertools::izip!(c0_iter, c1_iter).for_each(|(c0_data, c1_data)| {
             if let Some(c0_data) = c0_data {
                 visit(&c0_data, c1_data.as_ref());
+            }
+        });
+    }
+}
+
+/// Visit all all of a complex component in a dataframe
+/// See [`visit_components2`]
+pub fn visit_components3<C0: Component, C1: Component, C2:Component>(
+    df: &DataFrame,
+    mut visit: impl FnMut(&C0, Option<&C1>, Option<&C2>),
+) where
+    C0: ArrowDeserialize + ArrowField<Type = C0> + 'static,
+    C0::ArrayType: ArrowArray,
+    for<'a> &'a C0::ArrayType: IntoIterator,
+    C1: ArrowDeserialize + ArrowField<Type = C1> + 'static,
+    C1::ArrayType: ArrowArray,
+    for<'a> &'a C1::ArrayType: IntoIterator,
+    C2: ArrowDeserialize + ArrowField<Type = C2> + 'static,
+    C2::ArrayType: ArrowArray,
+    for<'a> &'a C2::ArrayType: IntoIterator,
+{
+    // The primary column must exist or else we don't have anything to do
+    if df.column(C0::NAME).is_ok() {
+        let c0_iter = iter_column::<C0>(df);
+        let c1_iter = iter_column::<C1>(df);
+        let c2_iter = iter_column::<C2>(df);
+
+        itertools::izip!(c0_iter, c1_iter, c2_iter).for_each(|(c0_data, c1_data, c2_data)| {
+            if let Some(c0_data) = c0_data {
+                visit(&c0_data, c1_data.as_ref(), c2_data.as_ref());
             }
         });
     }
