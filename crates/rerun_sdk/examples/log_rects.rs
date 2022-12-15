@@ -87,16 +87,19 @@ fn main() -> std::process::ExitCode {
     session.send(LogMsg::ArrowMsg(msg));
 
     // Create and send a second message to the sdk
-    let time_point = rerun::log_time();
-    let rects = build_some_rects(5);
-    let colors = build_some_colors(5);
+    for _ in 0..15 {
+        let time_point = rerun::log_time();
+        let rects = build_some_rects(5);
+        let colors = build_some_colors(5);
 
-    let bundle = try_build_msg_bundle2(MsgId::random(), "world/rects", time_point, (rects, colors))
-        .ok()
-        .unwrap();
+        let bundle =
+            try_build_msg_bundle2(MsgId::random(), "world/rects", time_point, (rects, colors))
+                .ok()
+                .unwrap();
 
-    let msg = bundle.try_into().unwrap();
-    session.send(LogMsg::ArrowMsg(msg));
+        let msg = bundle.try_into().unwrap();
+        session.send(LogMsg::ArrowMsg(msg));
+    }
 
     // If not connected, show the GUI inline
     if args.connect {

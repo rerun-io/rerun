@@ -112,10 +112,19 @@ impl DataStore {
     /// Returns a read-only iterator over the raw index tables.
     ///
     /// Do _not_ use this to try and test the internal state of the datastore.
-    pub fn iter_indices(&self) -> impl Iterator<Item = ((Timeline, EntityPath), &IndexTable)> {
+    pub fn iter_indices(
+        &self,
+    ) -> impl ExactSizeIterator<Item = ((Timeline, EntityPath), &IndexTable)> {
         self.indices.iter().map(|((timeline, _), table)| {
             ((*timeline, table.ent_path.clone() /* shallow */), table)
         })
+    }
+
+    /// Returns a read-only iterator over the raw component tables [`ComponentTable`].
+    ///
+    /// Do _not_ use this to try and test the internal state of the datastore.
+    pub fn iter_components(&self) -> impl ExactSizeIterator<Item = (&String, &ComponentTable)> {
+        self.components.iter()
     }
 }
 
@@ -206,7 +215,7 @@ impl IndexTable {
     /// Returns a read-only iterator over the raw buckets.
     ///
     /// Do _not_ use this to try and test the internal state of the datastore.
-    pub fn iter_buckets(&self) -> impl Iterator<Item = &IndexBucket> {
+    pub fn iter_buckets(&self) -> impl ExactSizeIterator<Item = &IndexBucket> {
         self.buckets.values()
     }
 }
@@ -405,6 +414,10 @@ impl IndexBucketIndices {
 // --- Components ---
 
 impl ComponentTable {
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
     pub fn get(&self, row_idx: RowIndex) -> Option<Box<dyn Array>> {
         let mut bucket_nr = self
             .buckets
@@ -442,8 +455,7 @@ impl ComponentTable {
     }
 
     /// Returns an iterator over the `ComponentBucket` in this table
-    #[allow(dead_code)]
-    pub fn buckets_iter(&self) -> impl Iterator<Item = &ComponentBucket> {
+    pub fn iter_buckets(&self) -> impl ExactSizeIterator<Item = &ComponentBucket> {
         self.buckets.iter()
     }
 }

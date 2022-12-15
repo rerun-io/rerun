@@ -179,6 +179,16 @@ impl<'a> ViewerContext<'a> {
         response
     }
 
+    pub fn data_type_button(
+        &mut self,
+        ui: &mut egui::Ui,
+        data_type: &arrow2::datatypes::DataType,
+    ) -> egui::Response {
+        ui.button("DataType ⛃").on_hover_ui(|ui| {
+            super::data_type_tree(data_type, true, ui);
+        })
+    }
+
     /// Sets the current selection, updating history as needed.
     ///
     /// Returns the previous selection.

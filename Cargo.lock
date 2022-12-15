@@ -3183,7 +3183,6 @@ dependencies = [
 ]
 
 [[package]]
- "polars-time",
 name = "polars-utils"
 version = "0.25.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3719,6 +3718,7 @@ dependencies = [
  "ahash 0.8.2",
  "anyhow",
  "arboard",
+ "arrow2",
  "bytemuck",
  "cgmath",
  "console_error_panic_hook",
@@ -3739,7 +3739,6 @@ dependencies = [
  "mint",
  "ndarray",
  "nohash-hasher",
- "polars",
  "poll-promise",
  "puffin",
  "puffin_http",

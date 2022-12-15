@@ -47,6 +47,7 @@ re_ws_comms = { path = "../re_ws_comms", features = ["client"] }
 
 ahash = "0.8"
 anyhow.workspace = true
+arrow2.workspace = true
 bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }
 cgmath = { version = "0.18", features = ["mint"] }
 document-features = "0.2"
@@ -74,7 +75,6 @@ macaw = { version = "0.17", features = ["with_serde"] }
 mint = "0.5"
 ndarray = "0.15"
 nohash-hasher = "0.2"
-polars.workspace = true
 poll-promise = "0.1"
 rand = { version = "0.8", features = ["small_rng"] }
 rfd = "0.10"
