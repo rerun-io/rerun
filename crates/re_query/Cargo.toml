@@ -1,0 +1,40 @@
+[package]
+name = "re_query"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[features]
+default = []
+
+[dependencies]
+# Rerun
+re_arrow_store = { path = "../re_arrow_store" }
+re_format = { path = "../re_format" }
+re_log = { path = "../re_log" }
+re_log_types = { path = "../re_log_types" }
+
+# External
+anyhow.workspace = true
+arrow2 = { workspace = true, features = [
+  "compute_concatenate",
+  "compute_aggregate",
+] }
+chrono = "0.4"
+document-features = "0.2"
+indent = "0.1"
+itertools = "0.10"
+nohash-hasher = "0.2"
+thiserror.workspace = true
+polars-core = { workspace = true, features = [
+  "dtype-date",
+  "dtype-time",
+  "dtype-struct",
+] }
+polars-lazy = { workspace = true }
+
+
+[dev-dependencies]
+tracing-subscriber = "0.3"
