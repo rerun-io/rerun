@@ -63,6 +63,13 @@ pub enum TimeQuery {
 
 impl TimeQuery {
     pub const EVERYTHING: Self = Self::Range(i64::MIN..=i64::MAX);
+
+    pub fn kind(&self) -> &'static str {
+        match self {
+            TimeQuery::LatestAt(_) => "latest_at",
+            TimeQuery::Range(_) => "range",
+        }
+    }
 }
 
 // --- Data store ---

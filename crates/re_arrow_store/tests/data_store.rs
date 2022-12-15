@@ -13,8 +13,8 @@ use re_log_types::{
     },
     field_types::{Point2D, Rect2D},
     msg_bundle::{Component, ComponentBundle, MsgBundle},
-    ComponentName, ComponentNameRef, Duration, MsgId, ObjPath as EntityPath, Time, TimePoint,
-    TimeType, Timeline,
+    ComponentName, ComponentNameRef, Duration, MsgId, ObjPath as EntityPath, Time, TimeType,
+    Timeline,
 };
 
 // --- Configs ---
@@ -102,7 +102,7 @@ fn all_configs() -> impl Iterator<Item = DataStoreConfig> {
     })
 }
 
-// --- Scenarios ---
+// --- Scenarios / LatestAt ---
 
 macro_rules! test_bundle {
     ($entity:ident @ $frames:tt => [$c0:expr $(,)*]) => {
@@ -120,138 +120,6 @@ macro_rules! test_bundle {
     };
 }
 
-#[test]
-fn empty_query_edge_cases() {
-    init_logs();
-
-    for config in all_configs() {
-        let mut store = DataStore::new(config.clone());
-        empty_query_edge_cases_impl(&mut store);
-    }
-}
-fn empty_query_edge_cases_impl(store: &mut DataStore) {
-    let ent_path = EntityPath::from("this/that");
-    let now = Time::now();
-    let now_nanos = now.nanos_since_epoch();
-    let now_minus_1s = now - Duration::from_secs(1.0);
-    let now_minus_1s_nanos = now_minus_1s.nanos_since_epoch();
-    let frame39 = 39;
-    let frame40 = 40;
-    let nb_instances = 3;
-
-    let mut tracker = DataTracker::default();
-    {
-        tracker.insert_bundle(
-            store,
-            &test_bundle!(ent_path @ [build_log_time(now), build_frame_nr(frame40)] => [
-                build_instances(nb_instances),
-            ]),
-        );
-    }
-
-    if let err @ Err(_) = store.sanity_check() {
-        store.sort_indices();
-        eprintln!("{store}");
-        err.unwrap();
-    }
-
-    let timeline_wrong_name = Timeline::new("lag_time", TimeType::Time);
-    let timeline_wrong_kind = Timeline::new("log_time", TimeType::Sequence);
-    let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
-    let timeline_log_time = Timeline::new("log_time", TimeType::Time);
-    let components_all = &["instances"];
-
-    tracker.assert_scenario(
-        "query at `last_frame`",
-        "dataframe with our instances in it",
-        store,
-        &TimelineQuery::new(timeline_frame_nr, TimeQuery::LatestAt(frame40)),
-        &ent_path,
-        components_all,
-        vec![("instances", frame40.into())],
-    );
-
-    tracker.assert_scenario(
-        "query at `last_log_time`",
-        "dataframe with our instances in it",
-        store,
-        &TimelineQuery::new(timeline_log_time, TimeQuery::LatestAt(now_nanos)),
-        &ent_path,
-        components_all,
-        vec![("instances", now_nanos.into())],
-    );
-
-    tracker.assert_scenario(
-        "query an empty store at `first_frame - 1`",
-        "empty dataframe",
-        store,
-        &TimelineQuery::new(timeline_frame_nr, TimeQuery::LatestAt(frame39)),
-        &ent_path,
-        components_all,
-        vec![],
-    );
-
-    tracker.assert_scenario(
-        "query an empty store at `first_log_time - 1s`",
-        "empty dataframe",
-        store,
-        &TimelineQuery::new(timeline_log_time, TimeQuery::LatestAt(now_minus_1s_nanos)),
-        &ent_path,
-        components_all,
-        vec![],
-    );
-
-    tracker.assert_scenario(
-        "query a non-existing entity path",
-        "empty dataframe",
-        store,
-        &TimelineQuery::new(timeline_frame_nr, TimeQuery::LatestAt(frame40)),
-        &EntityPath::from("does/not/exist"),
-        components_all,
-        vec![],
-    );
-
-    tracker.assert_scenario(
-        "query a bunch of non-existing components",
-        "empty dataframe",
-        store,
-        &TimelineQuery::new(timeline_frame_nr, TimeQuery::LatestAt(frame40)),
-        &ent_path,
-        &["they", "dont", "exist"],
-        vec![],
-    );
-
-    tracker.assert_scenario(
-        "query with an empty list of components",
-        "empty dataframe",
-        store,
-        &TimelineQuery::new(timeline_frame_nr, TimeQuery::LatestAt(frame40)),
-        &ent_path,
-        &[],
-        vec![],
-    );
-
-    tracker.assert_scenario(
-        "query with wrong timeline name",
-        "empty dataframe",
-        store,
-        &TimelineQuery::new(timeline_wrong_name, TimeQuery::LatestAt(frame40)),
-        &ent_path,
-        components_all,
-        vec![],
-    );
-
-    tracker.assert_scenario(
-        "query with wrong timeline kind",
-        "empty dataframe",
-        store,
-        &TimelineQuery::new(timeline_wrong_kind, TimeQuery::LatestAt(frame40)),
-        &ent_path,
-        components_all,
-        vec![],
-    );
-}
-
 /// Covering a very common end-to-end use case:
 /// - single entity path
 /// - static set of instances
@@ -259,15 +127,15 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
 /// - multiple timelines with non-monotically increasing updates
 /// - no weird stuff (duplicated components etc)
 #[test]
-fn end_to_end_roundtrip_standard() {
+fn latest_at_standard() {
     init_logs();
 
     for config in all_configs() {
         let mut store = DataStore::new(config.clone());
-        end_to_end_roundtrip_standard_impl(&mut store);
+        latest_at_standard_impl(&mut store);
     }
 }
-fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
+fn latest_at_standard_impl(store: &mut DataStore) {
     let ent_path = EntityPath::from("this/that");
 
     let now = Time::now();
@@ -486,15 +354,15 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
 }
 
 #[test]
-fn query_model_specifics() {
+fn latest_at_pov() {
     init_logs();
 
     for config in all_configs() {
         let mut store = DataStore::new(config.clone());
-        query_model_specifics_impl(&mut store);
+        latest_at_pov_impl(&mut store);
     }
 }
-fn query_model_specifics_impl(store: &mut DataStore) {
+fn latest_at_pov_impl(store: &mut DataStore) {
     let ent_path = EntityPath::from("this/that");
 
     let frame40 = 40;
@@ -641,6 +509,138 @@ fn query_model_specifics_impl(store: &mut DataStore) {
             expected,
         );
     }
+}
+
+#[test]
+fn latest_at_emptiness_edge_cases() {
+    init_logs();
+
+    for config in all_configs() {
+        let mut store = DataStore::new(config.clone());
+        latest_at_emptiness_edge_cases_impl(&mut store);
+    }
+}
+fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
+    let ent_path = EntityPath::from("this/that");
+    let now = Time::now();
+    let now_nanos = now.nanos_since_epoch();
+    let now_minus_1s = now - Duration::from_secs(1.0);
+    let now_minus_1s_nanos = now_minus_1s.nanos_since_epoch();
+    let frame39 = 39;
+    let frame40 = 40;
+    let nb_instances = 3;
+
+    let mut tracker = DataTracker::default();
+    {
+        tracker.insert_bundle(
+            store,
+            &test_bundle!(ent_path @ [build_log_time(now), build_frame_nr(frame40)] => [
+                build_instances(nb_instances),
+            ]),
+        );
+    }
+
+    if let err @ Err(_) = store.sanity_check() {
+        store.sort_indices();
+        eprintln!("{store}");
+        err.unwrap();
+    }
+
+    let timeline_wrong_name = Timeline::new("lag_time", TimeType::Time);
+    let timeline_wrong_kind = Timeline::new("log_time", TimeType::Sequence);
+    let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
+    let timeline_log_time = Timeline::new("log_time", TimeType::Time);
+    let components_all = &["instances"];
+
+    tracker.assert_scenario(
+        "query at `last_frame`",
+        "dataframe with our instances in it",
+        store,
+        &TimelineQuery::new(timeline_frame_nr, TimeQuery::LatestAt(frame40)),
+        &ent_path,
+        components_all,
+        vec![("instances", frame40.into())],
+    );
+
+    tracker.assert_scenario(
+        "query at `last_log_time`",
+        "dataframe with our instances in it",
+        store,
+        &TimelineQuery::new(timeline_log_time, TimeQuery::LatestAt(now_nanos)),
+        &ent_path,
+        components_all,
+        vec![("instances", now_nanos.into())],
+    );
+
+    tracker.assert_scenario(
+        "query an empty store at `first_frame - 1`",
+        "empty dataframe",
+        store,
+        &TimelineQuery::new(timeline_frame_nr, TimeQuery::LatestAt(frame39)),
+        &ent_path,
+        components_all,
+        vec![],
+    );
+
+    tracker.assert_scenario(
+        "query an empty store at `first_log_time - 1s`",
+        "empty dataframe",
+        store,
+        &TimelineQuery::new(timeline_log_time, TimeQuery::LatestAt(now_minus_1s_nanos)),
+        &ent_path,
+        components_all,
+        vec![],
+    );
+
+    tracker.assert_scenario(
+        "query a non-existing entity path",
+        "empty dataframe",
+        store,
+        &TimelineQuery::new(timeline_frame_nr, TimeQuery::LatestAt(frame40)),
+        &EntityPath::from("does/not/exist"),
+        components_all,
+        vec![],
+    );
+
+    tracker.assert_scenario(
+        "query a bunch of non-existing components",
+        "empty dataframe",
+        store,
+        &TimelineQuery::new(timeline_frame_nr, TimeQuery::LatestAt(frame40)),
+        &ent_path,
+        &["they", "dont", "exist"],
+        vec![],
+    );
+
+    tracker.assert_scenario(
+        "query with an empty list of components",
+        "empty dataframe",
+        store,
+        &TimelineQuery::new(timeline_frame_nr, TimeQuery::LatestAt(frame40)),
+        &ent_path,
+        &[],
+        vec![],
+    );
+
+    tracker.assert_scenario(
+        "query with wrong timeline name",
+        "empty dataframe",
+        store,
+        &TimelineQuery::new(timeline_wrong_name, TimeQuery::LatestAt(frame40)),
+        &ent_path,
+        components_all,
+        vec![],
+    );
+
+    tracker.assert_scenario(
+        "query with wrong timeline kind",
+        "empty dataframe",
+        store,
+        &TimelineQuery::new(timeline_wrong_kind, TimeQuery::LatestAt(frame40)),
+        &ent_path,
+        components_all,
+        vec![],
+    );
 }
 
 // --- Helpers ---
@@ -811,121 +811,5 @@ fn init_logs() {
     if INIT.compare_exchange(false, true, SeqCst, SeqCst).is_ok() {
         re_log::set_default_rust_log_env();
         tracing_subscriber::fmt::init(); // log to stdout
-    }
-}
-
-// --- Internals ---
-
-// TODO(cmc): One should _never_ run assertions on the internal state of the datastore, this
-// is a recipe for disaster.
-//
-// The contract that needs to be asserted here, from the point of view of the actual user,
-// is performance: getting the datastore into a pathological topology should show up in
-// integration query benchmarks.
-//
-// In the current state of things, though, it is much easier to test for it that way... so we
-// make an exception, for now...
-#[test]
-fn pathological_bucket_topology() {
-    init_logs();
-
-    let mut store_forward = DataStore::new(DataStoreConfig {
-        index_bucket_nb_rows: 10,
-        ..Default::default()
-    });
-    let mut store_backward = DataStore::new(DataStoreConfig {
-        index_bucket_nb_rows: 10,
-        ..Default::default()
-    });
-
-    fn store_repeated_frame(
-        frame_nr: i64,
-        num: usize,
-        store_forward: &mut DataStore,
-        store_backward: &mut DataStore,
-    ) {
-        let ent_path = EntityPath::from("this/that");
-        let nb_instances = 1;
-
-        let time_point = TimePoint::from([build_frame_nr(frame_nr)]);
-        for _ in 0..num {
-            let msg = MsgBundle::new(
-                MsgId::ZERO,
-                ent_path.clone(),
-                time_point.clone(),
-                vec![build_instances(nb_instances)],
-            );
-            store_forward.insert(&msg).unwrap();
-
-            let msg = MsgBundle::new(
-                MsgId::ZERO,
-                ent_path.clone(),
-                time_point.clone(),
-                vec![build_instances(nb_instances)],
-            );
-            store_backward.insert(&msg).unwrap();
-        }
-    }
-
-    fn store_frame_range(
-        range: core::ops::RangeInclusive<i64>,
-        store_forward: &mut DataStore,
-        store_backward: &mut DataStore,
-    ) {
-        let ent_path = EntityPath::from("this/that");
-        let nb_instances = 1;
-
-        let msgs = range
-            .map(|frame_nr| {
-                let time_point = TimePoint::from([build_frame_nr(frame_nr)]);
-                MsgBundle::new(
-                    MsgId::ZERO,
-                    ent_path.clone(),
-                    time_point,
-                    vec![build_instances(nb_instances)],
-                )
-            })
-            .collect::<Vec<_>>();
-
-        msgs.iter()
-            .for_each(|msg| store_forward.insert(msg).unwrap());
-
-        msgs.iter()
-            .rev()
-            .for_each(|msg| store_backward.insert(msg).unwrap());
-    }
-
-    store_repeated_frame(1000, 10, &mut store_forward, &mut store_backward);
-    store_frame_range(970..=979, &mut store_forward, &mut store_backward);
-    store_frame_range(990..=999, &mut store_forward, &mut store_backward);
-    store_frame_range(980..=989, &mut store_forward, &mut store_backward);
-    store_repeated_frame(1000, 7, &mut store_forward, &mut store_backward);
-    store_frame_range(1000..=1009, &mut store_forward, &mut store_backward);
-    store_repeated_frame(975, 10, &mut store_forward, &mut store_backward);
-
-    {
-        let nb_buckets = store_forward
-            .iter_indices()
-            .flat_map(|(_, table)| table.iter_buckets())
-            .count();
-        assert_eq!(7usize, nb_buckets, "pathological topology (forward): {}", {
-            store_forward.sort_indices();
-            store_forward
-        });
-    }
-    {
-        let nb_buckets = store_backward
-            .iter_indices()
-            .flat_map(|(_, table)| table.iter_buckets())
-            .count();
-        assert_eq!(
-            8usize,
-            nb_buckets,
-            "pathological topology (backward): {}",
-            {
-                store_backward.sort_indices();
-                store_backward
-            }
-        );
     }
 }
