@@ -126,7 +126,9 @@ impl<'a> ViewerContext<'a> {
         space_view_id: SpaceViewId,
     ) -> egui::Response {
         let is_selected = self.selection() == Selection::SpaceView(space_view_id);
-        let response = ui.selectable_label(is_selected, text);
+        let response = ui
+            .selectable_label(is_selected, text)
+            .on_hover_text("SpaceView");
         if response.clicked() {
             self.set_selection(Selection::SpaceView(space_view_id));
         }
@@ -141,7 +143,9 @@ impl<'a> ViewerContext<'a> {
         obj_path: &ObjPath,
     ) -> egui::Response {
         let selection = Selection::SpaceViewObjPath(space_view_id, obj_path.clone());
-        let response = ui.selectable_label(self.selection() == selection, text);
+        let response = ui
+            .selectable_label(self.selection() == selection, text)
+            .on_hover_text("SpaceView Object");
         if response.clicked() {
             self.set_selection(selection);
         }
