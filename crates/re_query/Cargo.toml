@@ -11,10 +11,10 @@ default = []
 
 [dependencies]
 # Rerun
+re_arrow_store = { path = "../re_arrow_store" }
 re_format = { path = "../re_format" }
 re_log = { path = "../re_log" }
 re_log_types = { path = "../re_log_types" }
-re_arrow_store = { path = "../re_arrow_store" }
 
 # External
 anyhow.workspace = true
@@ -45,3 +45,6 @@ polars = { version = "0.25", features = [
   "dtype-struct",
   "lazy",
 ], default-features = false }
+
+[dev-dependencies]
+tracing-subscriber = "0.3"

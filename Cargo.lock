@@ -1013,6 +1013,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "csv-core"
+version = "0.1.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2b2466559f260f48ad25fe6317b3c8dac77b5bdb5763ac7d9d6103530663bc90"
+dependencies = [
+ "memchr",
+]
+
+[[package]]
 name = "ctrlc"
 version = "3.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3781,6 +3790,7 @@ dependencies = [
  "re_log",
  "re_log_types",
  "thiserror",
+ "tracing-subscriber",
 ]
 
 [[package]]
