@@ -16,9 +16,6 @@ pub struct DimensionMapping {
 
     /// Flip the height
     pub invert_height: bool,
-
-    // Which dim?
-    pub channel: Option<usize>,
 }
 
 impl DimensionMapping {
@@ -30,7 +27,6 @@ impl DimensionMapping {
                 height: None,
                 invert_width: false,
                 invert_height: false,
-                channel: None,
             },
 
             1 => DimensionMapping {
@@ -39,7 +35,6 @@ impl DimensionMapping {
                 height: None,
                 invert_width: false,
                 invert_height: false,
-                channel: None,
             },
 
             _ => {
@@ -54,7 +49,6 @@ impl DimensionMapping {
                     height: Some(height),
                     invert_width: shape[width].name.to_lowercase() == "left",
                     invert_height: shape[height].name.to_lowercase() == "up",
-                    channel: None,
                 }
             }
         }
@@ -76,7 +70,6 @@ impl DimensionMapping {
         // …and all dimensions should be in range
             && is_in_range(&self.width, num_dim)
             && is_in_range(&self.height, num_dim)
-            && is_in_range(&self.channel, num_dim)
     }
 }
 

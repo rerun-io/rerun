@@ -353,7 +353,6 @@ fn selected_tensor_slice<'a, T: Copy>(
         .height
         .into_iter()
         .chain(dim_mapping.width.into_iter())
-        .chain(dim_mapping.channel.into_iter())
         .chain(dim_mapping.selectors.iter().copied())
         .collect::<Vec<_>>();
     let mut slice = tensor.view().permuted_axes(axis);
