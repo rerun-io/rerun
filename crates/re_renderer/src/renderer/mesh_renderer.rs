@@ -1,7 +1,7 @@
 //! Mesh renderer.
 //!
 //! Uses instancing to render instances of the same mesh in a single draw call.
-//! Instance data is kept in an instance-stepped vertex data, see [`GpuInstanceData`].
+//! Instance data is kept in an instance-stepped vertex data.
 
 use std::sync::Arc;
 
