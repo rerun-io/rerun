@@ -1,7 +1,7 @@
 use std::{collections::BTreeMap, fmt::Display};
 
 use eframe::emath::Align2;
-use egui::{epaint::TextShape, Color32, ColorImage, Vec2};
+use egui::{epaint::TextShape, Color32, ColorImage, NumExt as _, Vec2};
 use ndarray::{Axis, Ix2};
 use re_log_types::{Tensor, TensorDataType, TensorDimension};
 use re_tensor_ops::dimension_mapping::DimensionMapping;
@@ -79,6 +79,10 @@ pub(crate) fn view_tensor(
     crate::profile_function!();
 
     state.tensor = Some(tensor.clone());
+
+    if !state.dimension_mapping.is_valid(tensor.num_dim()) {
+        state.dimension_mapping = DimensionMapping::create(&tensor.shape);
+    }
 
     selectors_ui(ui, state, tensor);
 
@@ -344,6 +348,8 @@ fn selected_tensor_slice<'a, T: Copy>(
 ) -> ndarray::ArrayViewD<'a, T> {
     let dim_mapping = &state.dimension_mapping;
 
+    assert!(dim_mapping.is_valid(tensor.ndim()));
+
     // TODO(andreas) - shouldn't just give up here
     if dim_mapping.width.is_none() || dim_mapping.height.is_none() {
         return tensor.view();
@@ -362,10 +368,16 @@ fn selected_tensor_slice<'a, T: Copy>(
             .selector_values
             .get(dim_idx)
             .copied()
-            .unwrap_or_default();
+            .unwrap_or_default() as usize;
+        assert!(
+            selector_value < slice.shape()[2],
+            "Bad tensor slicing. Trying to select slice index {selector_value} of dim=2. tensor shape: {:?}, dim_mapping: {dim_mapping:#?}",
+            tensor.shape()
+        );
+
         // 0 and 1 are width/height, the rest are rearranged by dimension_mapping.selectors
         // This call removes Axis(2), so the next iteration of the loop does the right thing again.
-        slice.index_axis_inplace(Axis(2), selector_value as _);
+        slice.index_axis_inplace(Axis(2), selector_value);
     }
     if dim_mapping.invert_height {
         slice.invert_axis(Axis(0));
@@ -520,15 +532,20 @@ fn selectors_ui(ui: &mut egui::Ui, state: &mut ViewTensorState, tensor: &Tensor)
         }
 
         for &dim_idx in &state.dimension_mapping.selectors {
-            let dim = &tensor.shape[dim_idx];
-            if dim.size > 1 {
-                let selector_value = state
-                    .selector_values
-                    .entry(dim_idx)
-                    .or_insert_with(|| dim.size / 2); // start in the middle
+            let size = tensor.shape[dim_idx].size;
 
+            let selector_value = state
+                .selector_values
+                .entry(dim_idx)
+                .or_insert_with(|| size / 2); // start in the middle
+
+            if size > 0 {
+                selector_value.at_most(size - 1);
+            }
+
+            if size > 1 {
                 ui.add(
-                    egui::Slider::new(selector_value, 0..=dim.size - 1)
+                    egui::Slider::new(selector_value, 0..=size - 1)
                         .text(dimension_name(&tensor.shape, dim_idx)),
                 );
             }
