@@ -4,9 +4,9 @@ use std::{
 };
 
 use arrow2::array::Array;
-use polars::prelude::{DataFrame, Series};
 
-use re_arrow_store::{DataStore, DataStoreConfig, TimeInt, TimeQuery};
+use polars_core::{prelude::DataFrame, series::Series};
+use re_arrow_store::{DataStore, DataStoreConfig, TimeInt, TimeQuery, TimelineQuery};
 use re_log_types::{
     datagen::{
         build_frame_nr, build_instances, build_log_time, build_some_point2d, build_some_rects,
@@ -165,8 +165,7 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
         "query at `last_frame`",
         "dataframe with our instances in it",
         store,
-        &timeline_frame_nr,
-        &TimeQuery::LatestAt(frame40),
+        &TimelineQuery::new(timeline_frame_nr, TimeQuery::LatestAt(frame40)),
         &ent_path,
         components_all,
         vec![("instances", frame40.into())],
@@ -176,8 +175,7 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
         "query at `last_log_time`",
         "dataframe with our instances in it",
         store,
-        &timeline_log_time,
-        &TimeQuery::LatestAt(now_nanos),
+        &TimelineQuery::new(timeline_log_time, TimeQuery::LatestAt(now_nanos)),
         &ent_path,
         components_all,
         vec![("instances", now_nanos.into())],
@@ -187,8 +185,7 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
         "query an empty store at `first_frame - 1`",
         "empty dataframe",
         store,
-        &timeline_frame_nr,
-        &TimeQuery::LatestAt(frame39),
+        &TimelineQuery::new(timeline_frame_nr, TimeQuery::LatestAt(frame39)),
         &ent_path,
         components_all,
         vec![],
@@ -198,8 +195,7 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
         "query an empty store at `first_log_time - 1s`",
         "empty dataframe",
         store,
-        &timeline_log_time,
-        &TimeQuery::LatestAt(now_minus_1s_nanos),
+        &TimelineQuery::new(timeline_log_time, TimeQuery::LatestAt(now_minus_1s_nanos)),
         &ent_path,
         components_all,
         vec![],
@@ -209,8 +205,7 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
         "query a non-existing entity path",
         "empty dataframe",
         store,
-        &timeline_frame_nr,
-        &TimeQuery::LatestAt(frame40),
+        &TimelineQuery::new(timeline_frame_nr, TimeQuery::LatestAt(frame40)),
         &EntityPath::from("does/not/exist"),
         components_all,
         vec![],
@@ -220,8 +215,7 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
         "query a bunch of non-existing components",
         "empty dataframe",
         store,
-        &timeline_frame_nr,
-        &TimeQuery::LatestAt(frame40),
+        &TimelineQuery::new(timeline_frame_nr, TimeQuery::LatestAt(frame40)),
         &ent_path,
         &["they", "dont", "exist"],
         vec![],
@@ -231,8 +225,7 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
         "query with an empty list of components",
         "empty dataframe",
         store,
-        &timeline_frame_nr,
-        &TimeQuery::LatestAt(frame40),
+        &TimelineQuery::new(timeline_frame_nr, TimeQuery::LatestAt(frame40)),
         &ent_path,
         &[],
         vec![],
@@ -242,8 +235,7 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
         "query with wrong timeline name",
         "empty dataframe",
         store,
-        &timeline_wrong_name,
-        &TimeQuery::LatestAt(frame40),
+        &TimelineQuery::new(timeline_wrong_name, TimeQuery::LatestAt(frame40)),
         &ent_path,
         components_all,
         vec![],
@@ -253,8 +245,7 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
         "query with wrong timeline kind",
         "empty dataframe",
         store,
-        &timeline_wrong_kind,
-        &TimeQuery::LatestAt(frame40),
+        &TimelineQuery::new(timeline_wrong_kind, TimeQuery::LatestAt(frame40)),
         &ent_path,
         components_all,
         vec![],
@@ -421,8 +412,7 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
             scenario,
             expectation,
             store,
-            &timeline_frame_nr,
-            &TimeQuery::LatestAt(frame_nr),
+            &TimelineQuery::new(timeline_frame_nr, TimeQuery::LatestAt(frame_nr)),
             &ent_path,
             components_all,
             expected,
@@ -484,8 +474,10 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
             scenario,
             expectation,
             store,
-            &timeline_log_time,
-            &TimeQuery::LatestAt(log_time.nanos_since_epoch()),
+            &TimelineQuery::new(
+                timeline_log_time,
+                TimeQuery::LatestAt(log_time.nanos_since_epoch()),
+            ),
             &ent_path,
             components_all,
             expected,
@@ -642,8 +634,7 @@ fn query_model_specifics_impl(store: &mut DataStore) {
             scenario,
             expectation,
             store,
-            &timeline_frame_nr,
-            &TimeQuery::LatestAt(frame_nr),
+            &TimelineQuery::new(timeline_frame_nr, TimeQuery::LatestAt(frame_nr)),
             &ent_path,
             primary,
             components_all,
@@ -678,8 +669,7 @@ impl DataTracker {
         scenario: &str,
         expectation: &str,
         store: &mut DataStore,
-        timeline: &Timeline,
-        time_query: &TimeQuery,
+        timeline_query: &TimelineQuery,
         ent_path: &EntityPath,
         components: &[ComponentNameRef<'_>; N],
         expected: Vec<(ComponentNameRef<'static>, TimeInt)>,
@@ -688,8 +678,7 @@ impl DataTracker {
             scenario,
             expectation,
             store,
-            timeline,
-            time_query,
+            timeline_query,
             ent_path,
             None,
             components,
@@ -708,8 +697,7 @@ impl DataTracker {
         scenario: &str,
         expectation: &str,
         store: &mut DataStore,
-        timeline: &Timeline,
-        time_query: &TimeQuery,
+        timeline_query: &TimelineQuery,
         ent_path: &EntityPath,
         primary: ComponentNameRef<'_>,
         components: &[ComponentNameRef<'_>; N],
@@ -719,8 +707,7 @@ impl DataTracker {
             scenario,
             expectation,
             store,
-            timeline,
-            time_query,
+            timeline_query,
             ent_path,
             primary.into(),
             components,
@@ -736,22 +723,19 @@ impl DataTracker {
         scenario: &str,
         expectation: &str,
         store: &mut DataStore,
-        timeline: &Timeline,
-        time_query: &TimeQuery,
+        timeline_query: &TimelineQuery,
         ent_path: &EntityPath,
         primary: Option<ComponentNameRef<'_>>,
         components: &[ComponentNameRef<'_>; N],
         expected: Vec<(ComponentNameRef<'static>, TimeInt, usize)>,
     ) {
         let df = if let Some(primary) = primary {
-            Self::fetch_components_pov(store, timeline, time_query, ent_path, primary, components)
+            Self::fetch_components_pov(store, timeline_query, ent_path, primary, components)
         } else {
             let series = components
                 .iter()
                 .filter_map(|&component| {
-                    Self::fetch_component_pov(
-                        store, timeline, time_query, ent_path, component, component,
-                    )
+                    Self::fetch_component_pov(store, timeline_query, ent_path, component, component)
                 })
                 .collect::<Vec<_>>();
 
@@ -781,14 +765,13 @@ impl DataTracker {
 
     fn fetch_component_pov(
         store: &DataStore,
-        timeline: &Timeline,
-        time_query: &TimeQuery,
+        timeline_query: &TimelineQuery,
         ent_path: &EntityPath,
         primary: ComponentNameRef<'_>,
         component: ComponentNameRef<'_>,
     ) -> Option<Series> {
         let row_indices = store
-            .query(timeline, time_query, ent_path, primary, &[component])
+            .query(timeline_query, ent_path, primary, &[component])
             .unwrap_or_default();
         let mut results = store.get(&[component], &row_indices);
         std::mem::take(&mut results[0]).map(|row| Series::try_from((component, row)).unwrap())
@@ -796,14 +779,13 @@ impl DataTracker {
 
     fn fetch_components_pov<const N: usize>(
         store: &DataStore,
-        timeline: &Timeline,
-        time_query: &TimeQuery,
+        timeline_query: &TimelineQuery,
         ent_path: &EntityPath,
         primary: ComponentNameRef<'_>,
         components: &[ComponentNameRef<'_>; N],
     ) -> DataFrame {
         let row_indices = store
-            .query(timeline, time_query, ent_path, primary, components)
+            .query(timeline_query, ent_path, primary, components)
             .unwrap_or([None; N]);
         let results = store.get(components, &row_indices);
 

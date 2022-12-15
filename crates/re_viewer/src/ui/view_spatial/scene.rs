@@ -341,6 +341,9 @@ impl SceneSpatial {
     ) {
         // Generate keypoint connections if any.
         let instance_id_hash = InstanceIdHash::from_path_and_index(obj_path, IndexHash::NONE);
+
+        let mut line_batch = self.primitives.line_strips.batch("keypoint connections");
+
         for ((class_id, _time), keypoints_in_class) in keypoints {
             let Some(class_description) = annotations.context.class_map.get(&class_id) else {
                 continue;
@@ -359,8 +362,7 @@ impl SceneSpatial {
                     );
                     continue;
                 };
-                self.primitives
-                    .line_strips
+                line_batch
                     .add_segment(*a, *b)
                     .radius(Size::AUTO)
                     .color(to_ecolor(color))
@@ -469,12 +471,13 @@ impl SceneSpatial {
                     }
 
                     // Add renderer primitive
+                    let mut line_batch = self.primitives.line_strips.batch("lines 3d");
+
                     match obj_type {
-                        ObjectType::Path3D => self
-                            .primitives
-                            .line_strips
-                            .add_strip(points.iter().map(|v| Vec3::from_slice(v))),
-                        ObjectType::LineSegments3D => self.primitives.line_strips.add_segments(
+                        ObjectType::Path3D => {
+                            line_batch.add_strip(points.iter().map(|v| Vec3::from_slice(v)))
+                        }
+                        ObjectType::LineSegments3D => line_batch.add_segments(
                             points
                                 .chunks_exact(2)
                                 .map(|points| (points[0].into(), points[1].into())),
@@ -641,6 +644,7 @@ impl SceneSpatial {
                     if hovered_instance == instance_hash {
                         self.primitives
                             .line_strips
+                            .batch("image outlines")
                             .add_axis_aligned_rectangle_outline_2d(
                                 glam::Vec2::ZERO,
                                 glam::vec2(w, h),
@@ -743,13 +747,13 @@ impl SceneSpatial {
                     }
 
                     // Lines don't associated with instance (i.e. won't participate in hovering)
-                    self.primitives
-                        .line_strips
+                    let mut line_batch = self.primitives.line_strips.batch("2d box");
+                    line_batch
                         .add_axis_aligned_rectangle_outline_2d(bbox.min.into(), bbox.max.into())
                         .color(paint_props.bg_stroke.color)
-                        .radius(Size::new_points(paint_props.bg_stroke.width * 0.5));
-                    self.primitives
-                        .line_strips
+                        .radius(Size::new_points(paint_props.bg_stroke.width * 0.5))
+                        .user_data(instance_hash);
+                    line_batch
                         .add_axis_aligned_rectangle_outline_2d(bbox.min.into(), bbox.max.into())
                         .color(paint_props.fg_stroke.color)
                         .radius(Size::new_points(paint_props.fg_stroke.width * 0.5));
@@ -913,8 +917,8 @@ impl SceneSpatial {
                     }
 
                     // TODO(andreas): support outlines directly by re_renderer (need only 1 and 2 *point* black outlines)
-                    self.primitives
-                        .line_strips
+                    let mut line_batch = self.primitives.line_strips.batch("lines 2d");
+                    line_batch
                         .add_segments_2d(points.chunks_exact(2).map(|chunk| {
                             (
                                 glam::vec2(chunk[0][0], chunk[0][1]),
@@ -924,8 +928,7 @@ impl SceneSpatial {
                         .color(paint_props.bg_stroke.color)
                         .radius(Size::new_points(paint_props.bg_stroke.width * 0.5))
                         .user_data(instance_hash);
-                    self.primitives
-                        .line_strips
+                    line_batch
                         .add_segments_2d(points.chunks_exact(2).map(|chunk| {
                             (
                                 glam::vec2(chunk[0][0], chunk[0][1]),
@@ -1012,12 +1015,13 @@ impl SceneSpatial {
                 // TODO(emilk): include the names of the axes ("Right", "Down", "Forward", etc)
                 let cam_origin = camera.position();
 
+                let mut batch = self.primitives.line_strips.batch("camera axis");
+
                 for (axis_index, dir) in [Vec3::X, Vec3::Y, Vec3::Z].iter().enumerate() {
                     let axis_end = world_from_cam.transform_point3(scale * *dir);
                     let color = axis_color(axis_index);
 
-                    self.primitives
-                        .line_strips
+                    batch
                         .add_segment(cam_origin, axis_end)
                         .radius(Size::new_points(2.0))
                         .color(color)
@@ -1070,6 +1074,7 @@ impl SceneSpatial {
 
         self.primitives
             .line_strips
+            .batch("camera frustum")
             .add_segments(segments.into_iter())
             .radius(line_radius)
             .color(color)
@@ -1108,6 +1113,7 @@ impl SceneSpatial {
 
         self.primitives
             .line_strips
+            .batch("arrow")
             .add_segment(origin, end)
             .radius(radius)
             .color(color)
@@ -1172,6 +1178,7 @@ impl SceneSpatial {
 
         self.primitives
             .line_strips
+            .batch("box 3d")
             .add_segments(segments.into_iter())
             .radius(line_radius)
             .color(color)

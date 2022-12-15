@@ -1,9 +1,12 @@
 use std::sync::atomic::Ordering;
 
-use arrow2::array::{Array, MutableArray, UInt64Vec};
+use arrow2::{
+    array::{Array, Int64Array, MutableArray, UInt64Array, UInt64Vec},
+    datatypes::{DataType, TimeUnit},
+};
 
 use re_log::debug;
-use re_log_types::{ComponentNameRef, ObjPath as EntityPath, TimeInt, Timeline};
+use re_log_types::{ComponentNameRef, ObjPath as EntityPath, TimeInt, TimeRange, Timeline};
 
 use crate::{
     ComponentBucket, ComponentTable, DataStore, IndexBucket, IndexBucketIndices, IndexTable,
@@ -11,6 +14,37 @@ use crate::{
 };
 
 // ---
+
+/// A query in time, for a given timeline.
+#[derive(Clone)]
+pub struct TimelineQuery {
+    pub timeline: Timeline,
+    pub query: TimeQuery,
+}
+
+impl std::fmt::Debug for TimelineQuery {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self.query {
+            &TimeQuery::LatestAt(at) => f.write_fmt(format_args!(
+                "TimeQuery<latest at {} on {:?}>",
+                self.timeline.typ().format(at.into()),
+                self.timeline.name(),
+            )),
+            TimeQuery::Range(range) => f.write_fmt(format_args!(
+                "TimeQuery<ranging from {} to {} (all inclusive) on {:?}>",
+                self.timeline.typ().format((*range.start()).into()),
+                self.timeline.typ().format((*range.end()).into()),
+                self.timeline.name(),
+            )),
+        }
+    }
+}
+
+impl TimelineQuery {
+    pub const fn new(timeline: Timeline, query: TimeQuery) -> Self {
+        Self { timeline, query }
+    }
+}
 
 /// A query in time.
 // TODO(#544): include timeline in there.
@@ -51,21 +85,20 @@ impl DataStore {
     /// Follows a complete example of querying indices, fetching the associated data and finally
     /// turning it all into a `polars::DataFrame`:
     /// ```rust
-    /// # use polars::prelude::*;
+    /// # use polars_core::prelude::*;
     /// # use arrow2::array::Array;
     /// # use re_log_types::{*, ObjPath as EntityPath};
     /// # use re_arrow_store::*;
     ///
     /// fn fetch_components<const N: usize>(
     ///     store: &DataStore,
-    ///     timeline: &Timeline,
-    ///     time_query: &TimeQuery,
+    ///     timeline_query: &TimelineQuery,
     ///     ent_path: &EntityPath,
     ///     primary: ComponentNameRef<'_>,
     ///     components: &[ComponentNameRef<'_>; N],
     /// ) -> DataFrame {
     ///     let row_indices = store
-    ///         .query(timeline, time_query, ent_path, primary, components)
+    ///         .query(timeline_query, ent_path, primary, components)
     ///         .unwrap_or([None; N]);
     ///     let results = store.get(components, &row_indices);
     ///
@@ -89,8 +122,7 @@ impl DataStore {
     // at the cost of extra dynamic allocations.
     pub fn query<const N: usize>(
         &self,
-        timeline: &Timeline,
-        time_query: &TimeQuery,
+        timeline_query: &TimelineQuery,
         ent_path: &EntityPath,
         primary: ComponentNameRef<'_>,
         components: &[ComponentNameRef<'_>; N],
@@ -99,8 +131,8 @@ impl DataStore {
         self.query_id.fetch_add(1, Ordering::Relaxed);
 
         let ent_path_hash = ent_path.hash();
-        let latest_at = match time_query {
-            TimeQuery::LatestAt(latest_at) => *latest_at,
+        let latest_at = match timeline_query.query {
+            TimeQuery::LatestAt(latest_at) => latest_at,
             #[allow(clippy::todo)]
             TimeQuery::Range(_) => todo!("implement range queries!"),
         };
@@ -108,20 +140,18 @@ impl DataStore {
         debug!(
             kind = "query",
             id = self.query_id.load(Ordering::Relaxed),
-            timeline = %timeline.name(),
-            time = timeline.typ().format(latest_at.into()),
+            query = ?timeline_query,
             entity = %ent_path,
             primary,
             ?components,
             "query started..."
         );
 
-        if let Some(index) = self.indices.get(&(*timeline, *ent_path_hash)) {
+        if let Some(index) = self.indices.get(&(timeline_query.timeline, *ent_path_hash)) {
             if let row_indices @ Some(_) = index.latest_at(latest_at, primary, components) {
                 debug!(
                     kind = "query",
-                    timeline = %timeline.name(),
-                    time = timeline.typ().format(latest_at.into()),
+                    query = ?timeline_query,
                     entity = %ent_path,
                     primary,
                     ?components,
@@ -134,8 +164,7 @@ impl DataStore {
 
         debug!(
             kind = "query",
-            timeline = %timeline.name(),
-            time = timeline.typ().format(latest_at.into()),
+            query = ?timeline_query,
             entity = %ent_path,
             primary,
             ?components,
@@ -187,7 +216,9 @@ impl DataStore {
     /// Returns a read-only iterator over the raw index tables.
     ///
     /// Do _not_ use this to try and test the internal state of the datastore.
-    pub fn iter_indices(&self) -> impl Iterator<Item = ((Timeline, EntityPath), &IndexTable)> {
+    pub fn iter_indices(
+        &self,
+    ) -> impl ExactSizeIterator<Item = ((Timeline, EntityPath), &IndexTable)> {
         self.indices.iter().map(|((timeline, _), table)| {
             ((*timeline, table.ent_path.clone() /* shallow */), table)
         })
@@ -274,7 +305,7 @@ impl IndexTable {
     /// Returns a read-only iterator over the raw buckets.
     ///
     /// Do _not_ use this to try and test the internal state of the datastore.
-    pub fn iter_buckets(&self) -> impl Iterator<Item = &IndexBucket> {
+    pub fn iter_buckets(&self) -> impl ExactSizeIterator<Item = &IndexBucket> {
         self.buckets.values()
     }
 }
@@ -390,6 +421,31 @@ impl IndexBucket {
         }
 
         Some(row_indices)
+    }
+
+    /// Whether the indices in this `IndexBucket` are sorted
+    pub fn is_sorted(&self) -> bool {
+        self.indices.read().is_sorted
+    }
+
+    /// Returns an (name, [`Int64Array`]) with a logical type matching the timeline.
+    pub fn times(&self) -> (String, Int64Array) {
+        let times = Int64Array::from(self.indices.read().times.clone());
+        let logical_type = match self.timeline.typ() {
+            re_log_types::TimeType::Time => DataType::Timestamp(TimeUnit::Nanosecond, None),
+            re_log_types::TimeType::Sequence => DataType::Int64,
+        };
+        (self.timeline.name().to_string(), times.to(logical_type))
+    }
+
+    /// Returns a Vec each of (name, array) for each index in the bucket
+    pub fn named_indices(&self) -> (Vec<String>, Vec<UInt64Array>) {
+        self.indices
+            .read()
+            .indices
+            .iter()
+            .map(|(name, index)| (name.clone(), UInt64Array::from(index.clone())))
+            .unzip()
     }
 }
 
@@ -510,11 +566,36 @@ impl ComponentTable {
             None
         }
     }
+
+    /// Returns an iterator over the `ComponentBucket` in this table
+    #[allow(dead_code)]
+    pub fn iter_buckets(&self) -> impl ExactSizeIterator<Item = &ComponentBucket> {
+        self.buckets.iter()
+    }
 }
+
 impl ComponentBucket {
+    /// Get this `ComponentBucket`s debug name
+    #[allow(dead_code)]
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
     // Panics on out-of-bounds
     pub fn get(&self, row_idx: RowIndex) -> Box<dyn Array> {
         let row_idx = row_idx.as_u64() - self.row_offset.as_u64();
         self.data.slice(row_idx as usize, 1)
+    }
+
+    /// Returns the entire data Array in this component
+    pub fn data(&self) -> Box<dyn Array> {
+        // shallow copy
+        self.data.clone()
+    }
+
+    /// Return an iterator over the time ranges in this bucket
+    #[allow(dead_code)]
+    pub fn iter_time_ranges(&self) -> impl Iterator<Item = (&Timeline, &TimeRange)> {
+        self.time_ranges.iter()
     }
 }

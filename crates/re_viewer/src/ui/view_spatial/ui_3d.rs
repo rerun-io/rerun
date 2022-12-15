@@ -540,6 +540,7 @@ fn show_projections_from_2d_space(
                     scene
                         .primitives
                         .line_strips
+                        .batch("ray")
                         .add_segment(origin, end)
                         .radius(radius);
 
@@ -603,23 +604,18 @@ fn project_onto_other_spaces(
 fn show_origin_axis(scene: &mut SceneSpatial) {
     let radius = Size::new_points(8.0);
 
-    scene
-        .primitives
-        .line_strips
+    let mut line_batch = scene.primitives.line_strips.batch("origin axis");
+    line_batch
         .add_segment(glam::Vec3::ZERO, glam::Vec3::X)
         .radius(radius)
         .color(AXIS_COLOR_X)
         .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE);
-    scene
-        .primitives
-        .line_strips
+    line_batch
         .add_segment(glam::Vec3::ZERO, glam::Vec3::Y)
         .radius(radius)
         .color(AXIS_COLOR_Y)
         .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE);
-    scene
-        .primitives
-        .line_strips
+    line_batch
         .add_segment(glam::Vec3::ZERO, glam::Vec3::Z)
         .radius(radius)
         .color(AXIS_COLOR_Z)
