@@ -47,10 +47,7 @@ impl SceneTensor {
                 if tensors.len() == 1 {
                     let tensor = tensors.pop().unwrap();
 
-                    // Ignore tensors that likely represent images.
-                    if tensor.num_dim() > 3
-                        || tensor.num_dim() == 3 && tensor.shape.last().unwrap().size > 4
-                    {
+                    if !tensor.is_shaped_like_an_image() {
                         return Some(tensor);
                     }
                 }

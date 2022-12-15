@@ -323,6 +323,7 @@ impl TimePanel {
 
         if is_visible {
             response.on_hover_ui(|ui| {
+                ui.strong("Object");
                 ui.label(tree.path.to_string());
             });
         }
@@ -425,6 +426,7 @@ impl TimePanel {
 
                 if is_visible {
                     response.on_hover_ui(|ui| {
+                        ui.strong("Data");
                         ui.label(data_path.to_string());
                         let summary = data.summary();
                         if !summary.is_empty() {
