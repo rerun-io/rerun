@@ -101,10 +101,10 @@ pub(crate) fn view_tensor(
                 };
 
                 let slice = selected_tensor_slice(state, &tensor);
-                slice_ui(ui, state, tensor_shape, slice, color_from_value);
+                slice_ui(ctx, ui, state, tensor_shape, slice, color_from_value);
             }
             Err(err) => {
-                ui.colored_label(ui.visuals().error_fg_color, err.to_string());
+                ui.label(ctx.re_ui.error_text(err.to_string()));
             }
         },
 
@@ -122,10 +122,10 @@ pub(crate) fn view_tensor(
                 };
 
                 let slice = selected_tensor_slice(state, &tensor);
-                slice_ui(ui, state, tensor_shape, slice, color_from_value);
+                slice_ui(ctx, ui, state, tensor_shape, slice, color_from_value);
             }
             Err(err) => {
-                ui.colored_label(ui.visuals().error_fg_color, err.to_string());
+                ui.label(ctx.re_ui.error_text(err.to_string()));
             }
         },
 
@@ -143,10 +143,10 @@ pub(crate) fn view_tensor(
                 };
 
                 let slice = selected_tensor_slice(state, &tensor);
-                slice_ui(ui, state, tensor_shape, slice, color_from_value);
+                slice_ui(ctx, ui, state, tensor_shape, slice, color_from_value);
             }
             Err(err) => {
-                ui.colored_label(ui.visuals().error_fg_color, err.to_string());
+                ui.label(ctx.re_ui.error_text(err.to_string()));
             }
         },
     }
@@ -390,6 +390,7 @@ fn selected_tensor_slice<'a, T: Copy>(
 }
 
 fn slice_ui<T: Copy>(
+    ctx: &mut crate::misc::ViewerContext<'_>,
     ui: &mut egui::Ui,
     view_state: &ViewTensorState,
     tensor_shape: &[TensorDimension],
@@ -417,13 +418,9 @@ fn slice_ui<T: Copy>(
         let image = into_image(&slice, color_from_value);
         image_ui(ui, view_state, image, dimension_labels);
     } else {
-        ui.colored_label(
-            ui.visuals().error_fg_color,
-            format!(
-                "Only 2D slices supported at the moment, but slice ndim {}",
-                ndims
-            ),
-        );
+        ui.label(ctx.re_ui.error_text(format!(
+            "Only 2D slices supported at the moment, but slice ndim {ndims}"
+        )));
     }
 }
 
