@@ -174,11 +174,8 @@ impl SceneSpatialPrimitives {
                 let (scale, rotation, translation) =
                     mesh.world_from_mesh.to_scale_rotation_translation();
                 // TODO(andreas): The renderer should make it easy to apply a transform to a bunch of meshes
-                let base_transform = macaw::Conformal3::from_scale_rotation_translation(
-                    re_renderer::importer::to_uniform_scale(scale),
-                    rotation,
-                    translation,
-                );
+                let base_transform =
+                    glam::Affine3A::from_scale_rotation_translation(scale, rotation, translation);
                 mesh.mesh
                     .mesh_instances
                     .iter()

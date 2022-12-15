@@ -52,8 +52,12 @@ fn build_mesh_instances(
                 move |(model_mesh_instances, (p, c))| MeshInstance {
                     gpu_mesh: model_mesh_instances.gpu_mesh.clone(),
                     mesh: None,
-                    world_from_mesh: macaw::Conformal3::from_scale_rotation_translation(
-                        0.025 + (i % 10) as f32 * 0.01,
+                    world_from_mesh: glam::Affine3A::from_scale_rotation_translation(
+                        glam::vec3(
+                            2.5 + (i % 3) as f32,
+                            2.5 + (i % 7) as f32,
+                            2.5 + (i % 11) as f32,
+                        ) * 0.01,
                         glam::Quat::from_rotation_y(i as f32 + seconds_since_startup * 5.0),
                         *p,
                     ) * model_mesh_instances.world_from_mesh,
