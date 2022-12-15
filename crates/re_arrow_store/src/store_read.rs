@@ -16,13 +16,13 @@ use crate::{
 // ---
 
 /// A query in time, for a given timeline.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct TimelineQuery {
     pub timeline: Timeline,
     pub query: TimeQuery,
 }
 
-impl std::fmt::Display for TimelineQuery {
+impl std::fmt::Debug for TimelineQuery {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self.query {
             &TimeQuery::LatestAt(at) => f.write_fmt(format_args!(
@@ -87,7 +87,7 @@ impl DataStore {
         debug!(
             kind = "query",
             id = self.query_id.load(Ordering::Relaxed),
-            query = %timeline_query,
+            query = ?timeline_query,
             entity = %ent_path,
             ?components,
             "query started..."
@@ -100,7 +100,7 @@ impl DataStore {
             .unwrap_or_default();
         debug!(
             kind = "query",
-            query = %timeline_query,
+            query = ?timeline_query,
             entity = %ent_path,
             ?components,
             ?row_indices,
