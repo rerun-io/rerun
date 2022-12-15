@@ -540,7 +540,7 @@ fn selectors_ui(ui: &mut egui::Ui, state: &mut ViewTensorState, tensor: &Tensor)
                 .or_insert_with(|| size / 2); // start in the middle
 
             if size > 0 {
-                selector_value.at_most(size - 1);
+                *selector_value = selector_value.at_most(size - 1);
             }
 
             if size > 1 {
