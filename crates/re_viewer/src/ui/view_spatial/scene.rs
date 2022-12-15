@@ -662,16 +662,11 @@ impl SceneSpatial {
                  tensor: &re_log_types::Tensor,
                  color: Option<&[u8; 4]>,
                  meter: Option<&f32>| {
-                    let shape = &tensor.shape;
-                    if shape.len() <= 1 || shape.len() > 3 {
-                        return;
-                    }
-                    let depth = if shape.len() == 2 { 1 } else { shape[2].size };
-                    if depth != 1 && depth != 3 && depth != 4 {
+                    if !tensor.is_shaped_like_an_image() {
                         return;
                     }
 
-                    let (w, h) = (shape[1].size as f32, shape[0].size as f32);
+                    let (h, w) = (tensor.shape[0].size as f32, tensor.shape[1].size as f32);
 
                     let instance_hash = instance_hash_if_interactive(
                         obj_path,
