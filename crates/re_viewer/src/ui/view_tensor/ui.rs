@@ -3,7 +3,7 @@ use std::{collections::BTreeMap, fmt::Display};
 use eframe::emath::Align2;
 use egui::{epaint::TextShape, Color32, ColorImage, Vec2};
 use ndarray::{Axis, Ix2};
-use re_log_types::{Tensor, TensorDataMeaning, TensorDataType, TensorDimension};
+use re_log_types::{Tensor, TensorDataType, TensorDimension};
 use re_tensor_ops::dimension_mapping::DimensionMapping;
 
 use super::dimension_mapping_ui;
@@ -24,41 +24,45 @@ pub struct ViewTensorState {
     /// Scaling, filtering, aspect ratio, etc for the rendered texture.
     texture_settings: TextureSettings,
 
-    // last viewed tensor, copied each frame
+    /// Last viewed tensor, copied each frame.
+    /// Used for the selection view.
     #[serde(skip)]
-    #[serde(default = "empty_tensor")]
-    tensor: Tensor,
-}
-
-fn empty_tensor() -> Tensor {
-    Tensor {
-        tensor_id: re_log_types::TensorId(uuid::uuid!("7c8c3d2b-30f1-4206-844d-c43790912492")),
-        shape: vec![TensorDimension::unnamed(0)],
-        dtype: TensorDataType::U8,
-        meaning: TensorDataMeaning::Unknown,
-        data: re_log_types::TensorDataStore::Dense(vec![].into()),
-    }
+    tensor: Option<Tensor>,
 }
 
 impl ViewTensorState {
     pub fn create(tensor: &Tensor) -> ViewTensorState {
         Self {
             selector_values: Default::default(),
-            dimension_mapping: DimensionMapping::create(tensor.num_dim()),
+            dimension_mapping: DimensionMapping::create(&tensor.shape),
             color_mapping: ColorMapping::default(),
             texture_settings: TextureSettings::default(),
-            tensor: tensor.clone(),
+            tensor: Some(tensor.clone()),
         }
     }
 
     pub(crate) fn ui(&mut self, ui: &mut egui::Ui) {
-        ui.collapsing("Dimension Mapping", |ui| {
-            ui.label(format!("shape: {:?}", self.tensor.shape));
-            ui.label(format!("dtype: {:?}", self.tensor.dtype));
-            ui.add_space(12.0);
+        if let Some(tensor) = &self.tensor {
+            ui.collapsing("Dimension Mapping", |ui| {
+                ui.label(format!("shape: {:?}", tensor.shape));
+                ui.label(format!("dtype: {:?}", tensor.dtype));
+                ui.add_space(12.0);
 
-            dimension_mapping_ui(ui, &mut self.dimension_mapping, &self.tensor.shape);
-        });
+                dimension_mapping_ui(ui, &mut self.dimension_mapping, &tensor.shape);
+
+                let default_mapping = DimensionMapping::create(&tensor.shape);
+                if ui
+                    .add_enabled(
+                        self.dimension_mapping != default_mapping,
+                        egui::Button::new("Auto-map"),
+                    )
+                    .on_disabled_hover_text("The default is already set up")
+                    .clicked()
+                {
+                    self.dimension_mapping = DimensionMapping::create(&tensor.shape);
+                }
+            });
+        }
 
         self.texture_settings.show(ui);
 
@@ -74,7 +78,7 @@ pub(crate) fn view_tensor(
 ) {
     crate::profile_function!();
 
-    state.tensor = tensor.clone();
+    state.tensor = Some(tensor.clone());
 
     selectors_ui(ui, state, tensor);
 
