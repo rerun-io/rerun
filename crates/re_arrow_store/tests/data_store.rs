@@ -6,7 +6,7 @@ use std::{
 use arrow2::array::Array;
 
 use polars_core::{prelude::DataFrame, series::Series};
-use re_arrow_store::{DataStore, DataStoreConfig, LatestAtQuery, TimeInt};
+use re_arrow_store::{DataStore, DataStoreConfig, LatestAtQuery, RangeQuery, TimeInt, TimeRange};
 use re_log_types::{
     datagen::{
         build_frame_nr, build_instances, build_log_time, build_some_point2d, build_some_rects,
@@ -21,74 +21,74 @@ use re_log_types::{
 
 const COMPONENT_CONFIGS: &[DataStoreConfig] = &[
     DataStoreConfig::DEFAULT,
-    DataStoreConfig {
-        component_bucket_nb_rows: 0,
-        ..DataStoreConfig::DEFAULT
-    },
-    DataStoreConfig {
-        component_bucket_nb_rows: 1,
-        ..DataStoreConfig::DEFAULT
-    },
-    DataStoreConfig {
-        component_bucket_nb_rows: 2,
-        ..DataStoreConfig::DEFAULT
-    },
-    DataStoreConfig {
-        component_bucket_nb_rows: 3,
-        ..DataStoreConfig::DEFAULT
-    },
-    DataStoreConfig {
-        component_bucket_size_bytes: 0,
-        ..DataStoreConfig::DEFAULT
-    },
-    DataStoreConfig {
-        component_bucket_size_bytes: 16,
-        ..DataStoreConfig::DEFAULT
-    },
-    DataStoreConfig {
-        component_bucket_size_bytes: 32,
-        ..DataStoreConfig::DEFAULT
-    },
-    DataStoreConfig {
-        component_bucket_size_bytes: 64,
-        ..DataStoreConfig::DEFAULT
-    },
+    // DataStoreConfig {
+    //     component_bucket_nb_rows: 0,
+    //     ..DataStoreConfig::DEFAULT
+    // },
+    // DataStoreConfig {
+    //     component_bucket_nb_rows: 1,
+    //     ..DataStoreConfig::DEFAULT
+    // },
+    // DataStoreConfig {
+    //     component_bucket_nb_rows: 2,
+    //     ..DataStoreConfig::DEFAULT
+    // },
+    // DataStoreConfig {
+    //     component_bucket_nb_rows: 3,
+    //     ..DataStoreConfig::DEFAULT
+    // },
+    // DataStoreConfig {
+    //     component_bucket_size_bytes: 0,
+    //     ..DataStoreConfig::DEFAULT
+    // },
+    // DataStoreConfig {
+    //     component_bucket_size_bytes: 16,
+    //     ..DataStoreConfig::DEFAULT
+    // },
+    // DataStoreConfig {
+    //     component_bucket_size_bytes: 32,
+    //     ..DataStoreConfig::DEFAULT
+    // },
+    // DataStoreConfig {
+    //     component_bucket_size_bytes: 64,
+    //     ..DataStoreConfig::DEFAULT
+    // },
 ];
 
 const INDEX_CONFIGS: &[DataStoreConfig] = &[
     DataStoreConfig::DEFAULT,
-    DataStoreConfig {
-        index_bucket_nb_rows: 0,
-        ..DataStoreConfig::DEFAULT
-    },
-    DataStoreConfig {
-        index_bucket_nb_rows: 1,
-        ..DataStoreConfig::DEFAULT
-    },
-    DataStoreConfig {
-        index_bucket_nb_rows: 2,
-        ..DataStoreConfig::DEFAULT
-    },
-    DataStoreConfig {
-        index_bucket_nb_rows: 3,
-        ..DataStoreConfig::DEFAULT
-    },
-    DataStoreConfig {
-        index_bucket_size_bytes: 0,
-        ..DataStoreConfig::DEFAULT
-    },
-    DataStoreConfig {
-        index_bucket_size_bytes: 16,
-        ..DataStoreConfig::DEFAULT
-    },
-    DataStoreConfig {
-        index_bucket_size_bytes: 32,
-        ..DataStoreConfig::DEFAULT
-    },
-    DataStoreConfig {
-        index_bucket_size_bytes: 64,
-        ..DataStoreConfig::DEFAULT
-    },
+    // DataStoreConfig {
+    //     index_bucket_nb_rows: 0,
+    //     ..DataStoreConfig::DEFAULT
+    // },
+    // DataStoreConfig {
+    //     index_bucket_nb_rows: 1,
+    //     ..DataStoreConfig::DEFAULT
+    // },
+    // DataStoreConfig {
+    //     index_bucket_nb_rows: 2,
+    //     ..DataStoreConfig::DEFAULT
+    // },
+    // DataStoreConfig {
+    //     index_bucket_nb_rows: 3,
+    //     ..DataStoreConfig::DEFAULT
+    // },
+    // DataStoreConfig {
+    //     index_bucket_size_bytes: 0,
+    //     ..DataStoreConfig::DEFAULT
+    // },
+    // DataStoreConfig {
+    //     index_bucket_size_bytes: 16,
+    //     ..DataStoreConfig::DEFAULT
+    // },
+    // DataStoreConfig {
+    //     index_bucket_size_bytes: 32,
+    //     ..DataStoreConfig::DEFAULT
+    // },
+    // DataStoreConfig {
+    //     index_bucket_size_bytes: 64,
+    //     ..DataStoreConfig::DEFAULT
+    // },
 ];
 
 fn all_configs() -> impl Iterator<Item = DataStoreConfig> {
@@ -276,7 +276,7 @@ fn latest_at_standard_impl(store: &mut DataStore) {
     ];
 
     for (scenario, expectation, frame_nr, expected) in scenarios {
-        tracker.assert_scenario(
+        tracker.assert_latest_at(
             scenario,
             expectation,
             store,
@@ -338,7 +338,7 @@ fn latest_at_standard_impl(store: &mut DataStore) {
     ];
 
     for (scenario, expectation, log_time, expected) in scenarios {
-        tracker.assert_scenario(
+        tracker.assert_latest_at(
             scenario,
             expectation,
             store,
@@ -480,7 +480,7 @@ fn latest_at_pov_impl(store: &mut DataStore) {
     ];
 
     for (scenario, expectation, frame_nr, primary, expected) in scenarios {
-        tracker.assert_scenario_pov(
+        tracker.assert_latest_at_pov(
             scenario,
             expectation,
             store,
@@ -534,7 +534,7 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
     let timeline_log_time = Timeline::new("log_time", TimeType::Time);
     let components_all = &["instances"];
 
-    tracker.assert_scenario(
+    tracker.assert_latest_at(
         "query at `last_frame`",
         "dataframe with our instances in it",
         store,
@@ -544,7 +544,7 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
         vec![("instances", frame40)],
     );
 
-    tracker.assert_scenario(
+    tracker.assert_latest_at(
         "query at `last_log_time`",
         "dataframe with our instances in it",
         store,
@@ -554,7 +554,7 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
         vec![("instances", now_nanos.into())],
     );
 
-    tracker.assert_scenario(
+    tracker.assert_latest_at(
         "query an empty store at `first_frame - 1`",
         "empty dataframe",
         store,
@@ -564,7 +564,7 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
         vec![],
     );
 
-    tracker.assert_scenario(
+    tracker.assert_latest_at(
         "query an empty store at `first_log_time - 1s`",
         "empty dataframe",
         store,
@@ -574,7 +574,7 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
         vec![],
     );
 
-    tracker.assert_scenario(
+    tracker.assert_latest_at(
         "query a non-existing entity path",
         "empty dataframe",
         store,
@@ -584,7 +584,7 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
         vec![],
     );
 
-    tracker.assert_scenario(
+    tracker.assert_latest_at(
         "query a bunch of non-existing components",
         "empty dataframe",
         store,
@@ -594,7 +594,7 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
         vec![],
     );
 
-    tracker.assert_scenario(
+    tracker.assert_latest_at(
         "query with an empty list of components",
         "empty dataframe",
         store,
@@ -604,7 +604,7 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
         vec![],
     );
 
-    tracker.assert_scenario(
+    tracker.assert_latest_at(
         "query with wrong timeline name",
         "empty dataframe",
         store,
@@ -614,15 +614,105 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
         vec![],
     );
 
-    tracker.assert_scenario(
+    tracker.assert_latest_at(
         "query with wrong timeline kind",
         "empty dataframe",
         store,
-        &TimelineQuery::new(timeline_wrong_kind, TimeQuery::LatestAt(frame40)),
+        &LatestAtQuery::new(timeline_wrong_kind, frame40),
         &ent_path,
         components_all,
         vec![],
     );
+}
+
+// --- Scenarios / Range ---
+
+// TODO:
+// - range needs to return all entries in a single frame yo
+
+#[test]
+fn range_standard() {
+    init_logs();
+
+    for config in all_configs() {
+        let mut store = DataStore::new(config.clone());
+        range_standard_impl(&mut store);
+    }
+}
+fn range_standard_impl(store: &mut DataStore) {
+    let ent_path = EntityPath::from("this/that");
+
+    // TODO: range out of bounds should have the same behavior as latest_at
+
+    let now = Time::now();
+    let now_nanos = now.nanos_since_epoch();
+    let now_minus_2s = now - Duration::from_secs(2.0);
+    let now_minus_1s = now - Duration::from_secs(1.0);
+    let now_minus_1s_nanos = now_minus_1s.nanos_since_epoch();
+    let now_plus_1s = now + Duration::from_secs(1.0);
+    let now_plus_1s_nanos = now_plus_1s.nanos_since_epoch();
+    let now_plus_2s = now + Duration::from_secs(2.0);
+
+    let frame40: TimeInt = 40.into();
+    let frame41: TimeInt = 41.into();
+    let frame42: TimeInt = 42.into();
+    let frame43: TimeInt = 43.into();
+    let frame44: TimeInt = 44.into();
+
+    let nb_instances = 3;
+
+    let mut tracker = DataTracker::default();
+    {
+        tracker.insert_bundle(
+            store,
+            &test_bundle!(ent_path @ [build_frame_nr(frame41)] => [
+                build_instances(nb_instances),
+            ]),
+        );
+        tracker.insert_bundle(
+            store,
+            &test_bundle!(ent_path @ [build_frame_nr(frame41)] => [
+                build_instances(nb_instances),
+            ]),
+        );
+    }
+
+    store.sort_indices();
+    eprintln!("{store}");
+
+    if let err @ Err(_) = store.sanity_check() {
+        store.sort_indices();
+        eprintln!("{store}");
+        err.unwrap();
+    }
+
+    let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
+    let timeline_log_time = Timeline::new("log_time", TimeType::Time);
+    let components_all = &["instances", Rect2D::NAME, Point2D::NAME];
+
+    // --- Testing at all frames ---
+
+    let scenarios = [
+        (
+            "query all components at frame #40 (i.e. before first frame)",
+            "empy dataframe",
+            frame44,
+            vec![],
+        ),
+        //
+    ];
+
+    for (scenario, expectation, frame_nr, expected) in scenarios {
+        tracker.assert_range(
+            scenario,
+            expectation,
+            store,
+            &RangeQuery::new(timeline_frame_nr, TimeRange::new(0.into(), frame_nr)),
+            &ent_path,
+            components_all,
+            expected,
+        );
+    }
 }
 
 // --- Helpers ---
@@ -644,23 +734,24 @@ impl DataTracker {
         store.insert(msg_bundle).unwrap();
     }
 
-    /// Asserts a simple scenario, where every component is fetched from its own point-of-view.
+    /// Asserts a simple `latest_at` scenario, where every component is fetched from its own
+    /// point-of-view.
     #[allow(clippy::too_many_arguments)]
-    fn assert_scenario<const N: usize>(
+    fn assert_latest_at<const N: usize>(
         &self,
         scenario: &str,
         expectation: &str,
         store: &mut DataStore,
-        timeline_query: &LatestAtQuery,
+        query: &LatestAtQuery,
         ent_path: &EntityPath,
         components: &[ComponentNameRef<'_>; N],
         expected: Vec<(ComponentNameRef<'static>, TimeInt)>,
     ) {
-        self.assert_scenario_pov_impl(
+        self.assert_latest_at_pov_impl(
             scenario,
             expectation,
             store,
-            timeline_query,
+            query,
             ent_path,
             None,
             components,
@@ -671,25 +762,25 @@ impl DataTracker {
         );
     }
 
-    /// Asserts a pov scenario, where every component is fetched as it is seen from the
-    /// point-of-view of another component.
+    /// Asserts a pov `latest_at` scenario, where every component is fetched as it is seen from
+    /// the point-of-view of another component.
     #[allow(clippy::too_many_arguments)]
-    fn assert_scenario_pov<const N: usize>(
+    fn assert_latest_at_pov<const N: usize>(
         &self,
         scenario: &str,
         expectation: &str,
         store: &mut DataStore,
-        timeline_query: &LatestAtQuery,
+        query: &LatestAtQuery,
         ent_path: &EntityPath,
         primary: ComponentNameRef<'_>,
         components: &[ComponentNameRef<'_>; N],
         expected: Vec<(ComponentNameRef<'static>, TimeInt, usize)>,
     ) {
-        self.assert_scenario_pov_impl(
+        self.assert_latest_at_pov_impl(
             scenario,
             expectation,
             store,
-            timeline_query,
+            query,
             ent_path,
             primary.into(),
             components,
@@ -697,27 +788,69 @@ impl DataTracker {
         );
     }
 
-    /// Asserts a complex scenario, where every component is either fetched as it is seen from the
-    /// point-of-view of another component, or its own point-of-view if primary is None.
+    /// Asserts a complex `latest_at` scenario, where every component is either fetched as it is
+    /// seen from the point-of-view of another component, or its own point-of-view if primary
+    /// is None.
     #[allow(clippy::too_many_arguments)]
-    fn assert_scenario_pov_impl<const N: usize>(
+    fn assert_latest_at_pov_impl<const N: usize>(
         &self,
         scenario: &str,
         expectation: &str,
         store: &mut DataStore,
-        timeline_query: &LatestAtQuery,
+        query: &LatestAtQuery,
         ent_path: &EntityPath,
         primary: Option<ComponentNameRef<'_>>,
         components: &[ComponentNameRef<'_>; N],
         expected: Vec<(ComponentNameRef<'static>, TimeInt, usize)>,
     ) {
+        fn fetch_component_pov(
+            store: &DataStore,
+            query: &LatestAtQuery,
+            ent_path: &EntityPath,
+            primary: ComponentNameRef<'_>,
+            component: ComponentNameRef<'_>,
+        ) -> Option<Series> {
+            let row_indices = store
+                .latest_at(query, ent_path, primary, &[component])
+                .unwrap_or_default();
+            let mut results = store.get(&[component], &row_indices);
+            std::mem::take(&mut results[0]).map(|row| Series::try_from((component, row)).unwrap())
+        }
+
+        fn fetch_components_pov<const N: usize>(
+            store: &DataStore,
+            query: &LatestAtQuery,
+            ent_path: &EntityPath,
+            primary: ComponentNameRef<'_>,
+            components: &[ComponentNameRef<'_>; N],
+        ) -> DataFrame {
+            let row_indices = store
+                .latest_at(query, ent_path, primary, components)
+                .unwrap_or([None; N]);
+            let results = store.get(components, &row_indices);
+
+            let df = {
+                let series: Vec<_> = components
+                    .iter()
+                    .zip(results)
+                    .filter_map(|(component, col)| col.map(|col| (component, col)))
+                    .map(|(&component, col)| Series::try_from((component, col)).unwrap())
+                    .collect();
+
+                let df = DataFrame::new(series).unwrap();
+                df.explode(df.get_column_names()).unwrap()
+            };
+
+            df
+        }
+
         let df = if let Some(primary) = primary {
-            Self::fetch_components_pov(store, timeline_query, ent_path, primary, components)
+            fetch_components_pov(store, query, ent_path, primary, components)
         } else {
             let series = components
                 .iter()
                 .filter_map(|&component| {
-                    Self::fetch_component_pov(store, timeline_query, ent_path, component, component)
+                    fetch_component_pov(store, query, ent_path, component, component)
                 })
                 .collect::<Vec<_>>();
 
@@ -745,45 +878,138 @@ impl DataTracker {
         );
     }
 
-    fn fetch_component_pov(
-        store: &DataStore,
-        timeline_query: &LatestAtQuery,
+    // TODO
+    #[allow(clippy::too_many_arguments)]
+    fn assert_range<const N: usize>(
+        &self,
+        scenario: &str,
+        expectation: &str,
+        store: &mut DataStore,
+        query: &RangeQuery,
         ent_path: &EntityPath,
-        primary: ComponentNameRef<'_>,
-        component: ComponentNameRef<'_>,
-    ) -> Option<Series> {
-        let row_indices = store
-            .latest_at(timeline_query, ent_path, primary, &[component])
-            .unwrap_or_default();
-        let mut results = store.get(&[component], &row_indices);
-        std::mem::take(&mut results[0]).map(|row| Series::try_from((component, row)).unwrap())
+        components: &[ComponentNameRef<'_>; N],
+        expected: Vec<(ComponentNameRef<'static>, Vec<TimeInt>)>,
+    ) {
+        self.assert_range_pov_impl(
+            scenario,
+            expectation,
+            store,
+            query,
+            ent_path,
+            None,
+            components,
+            expected
+                .into_iter()
+                .map(|(name, times)| (name, times, 0))
+                .collect(),
+        );
     }
 
-    fn fetch_components_pov<const N: usize>(
-        store: &DataStore,
-        timeline_query: &LatestAtQuery,
+    #[allow(clippy::too_many_arguments)]
+    fn assert_range_pov_impl<const N: usize>(
+        &self,
+        scenario: &str,
+        expectation: &str,
+        store: &mut DataStore,
+        query: &RangeQuery,
         ent_path: &EntityPath,
-        primary: ComponentNameRef<'_>,
+        primary: Option<ComponentNameRef<'_>>,
         components: &[ComponentNameRef<'_>; N],
-    ) -> DataFrame {
-        let row_indices = store
-            .latest_at(timeline_query, ent_path, primary, components)
-            .unwrap_or([None; N]);
-        let results = store.get(components, &row_indices);
+        expected: Vec<(ComponentNameRef<'static>, Vec<TimeInt>, usize)>,
+    ) {
+        fn fetch_component_pov(
+            store: &DataStore,
+            query: &RangeQuery,
+            ent_path: &EntityPath,
+            primary: ComponentNameRef<'_>,
+            component: ComponentNameRef<'_>,
+            // ) -> Series {
+        ) {
+            let components = &[component];
+            let row_indices = store.range(query, ent_path, primary, components);
+            let rows = row_indices
+                .map(|(_, row_indices)| store.get(&[component], &row_indices))
+                .flat_map(|mut results| {
+                    std::mem::take(&mut results[0])
+                        .map(|row| Series::try_from((component, row)).unwrap())
+                })
+                .collect::<Vec<_>>();
 
-        let df = {
-            let series: Vec<_> = components
-                .iter()
-                .zip(results)
-                .filter_map(|(component, col)| col.map(|col| (component, col)))
-                .map(|(&component, col)| Series::try_from((component, col)).unwrap())
-                .collect();
+            dbg!(&rows);
+            if !rows.is_empty() {
+                let mut series = Series::new_empty(component, rows[0].dtype());
+                for row in rows {
+                    series.append(&row);
+                }
+                dbg!(series);
+            }
 
-            let df = DataFrame::new(series).unwrap();
-            df.explode(df.get_column_names()).unwrap()
+            // std::mem::take(&mut results[0]).map(|row| Series::try_from((component, row)).unwrap())
+        }
+
+        // fn fetch_components_pov<const N: usize>(
+        //     store: &DataStore,
+        //     query: &RangeQuery,
+        //     ent_path: &EntityPath,
+        //     primary: ComponentNameRef<'_>,
+        //     components: &[ComponentNameRef<'_>; N],
+        // ) -> DataFrame {
+        //     let row_indices = store
+        //         .latest_at(query, ent_path, primary, components)
+        //         .unwrap_or([None; N]);
+        //     let results = store.get(components, &row_indices);
+
+        //     let df = {
+        //         let series: Vec<_> = components
+        //             .iter()
+        //             .zip(results)
+        //             .filter_map(|(component, col)| col.map(|col| (component, col)))
+        //             .map(|(&component, col)| Series::try_from((component, col)).unwrap())
+        //             .collect();
+
+        //         let df = DataFrame::new(series).unwrap();
+        //         df.explode(df.get_column_names()).unwrap()
+        //     };
+
+        //     df
+        // }
+
+        let df = if let Some(primary) = primary {
+            todo!()
+            // fetch_components_pov(store, query, ent_path, primary, components)
+        } else {
+            for component in components {
+                fetch_component_pov(store, query, ent_path, component, component);
+            }
+            // let series = components
+            //     .iter()
+            //     .filter_map(|&component| {
+            //         fetch_component_pov(store, query, ent_path, component, component)
+            //     })
+            //     .collect::<Vec<_>>();
+
+            // let df = DataFrame::new(series).unwrap();
+            // df.explode(df.get_column_names()).unwrap()
         };
 
-        df
+        // let series = expected
+        //     .into_iter()
+        //     .filter_map(|(name, time, idx)| {
+        //         self.all_data
+        //             .get(&(name.to_owned(), time))
+        //             .and_then(|entries| entries.get(idx).cloned())
+        //             .map(|data| (name, data))
+        //     })
+        //     .map(|(name, data)| Series::try_from((name, data)).unwrap())
+        //     .collect::<Vec<_>>();
+        // let expected = DataFrame::new(series).unwrap();
+        // let expected = expected.explode(expected.get_column_names()).unwrap();
+
+        // store.sort_indices();
+        // assert_eq!(
+        //     expected, df,
+        //     "\nScenario: {scenario}.\nExpected: {expectation}.\n{store}"
+        // );
     }
 }
 
