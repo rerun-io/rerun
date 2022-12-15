@@ -64,6 +64,17 @@ impl DimensionMapping {
             }
         }
 
+        let mut used_dimensions: ahash::HashSet<usize> = self.selectors.iter().copied().collect();
+        if let Some(width) = self.width {
+            used_dimensions.insert(width);
+        }
+        if let Some(height) = self.height {
+            used_dimensions.insert(height);
+        }
+        if used_dimensions.len() != num_dim {
+            return false;
+        }
+
         // we should have both width and height set…
         (num_dim < 2 || (self.width.is_some() && self.height.is_some()))
 
