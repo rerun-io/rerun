@@ -171,33 +171,28 @@ impl MeshDrawData {
                 ) {
                     count += 1;
 
-                    gpu_instance.world_from_mesh_row_0 = instance
-                        .world_from_mesh
-                        .matrix3
+                    let world_from_mesh_mat3 = instance.world_from_mesh.matrix3;
+                    gpu_instance.world_from_mesh_row_0 = world_from_mesh_mat3
                         .row(0)
                         .extend(instance.world_from_mesh.translation.x)
                         .to_array();
-                    gpu_instance.world_from_mesh_row_1 = instance
-                        .world_from_mesh
-                        .matrix3
+                    gpu_instance.world_from_mesh_row_1 = world_from_mesh_mat3
                         .row(1)
                         .extend(instance.world_from_mesh.translation.y)
                         .to_array();
-                    gpu_instance.world_from_mesh_row_2 = instance
-                        .world_from_mesh
-                        .matrix3
+                    gpu_instance.world_from_mesh_row_2 = world_from_mesh_mat3
                         .row(2)
                         .extend(instance.world_from_mesh.translation.z)
                         .to_array();
 
-                    let inverse_transpose_world_from_mesh =
+                    let world_from_mesh_normal =
                         instance.world_from_mesh.matrix3.inverse().transpose();
                     gpu_instance.world_from_mesh_normal_row_0 =
-                        inverse_transpose_world_from_mesh.row(0).to_array();
+                        world_from_mesh_normal.row(0).to_array();
                     gpu_instance.world_from_mesh_normal_row_1 =
-                        inverse_transpose_world_from_mesh.row(1).to_array();
+                        world_from_mesh_normal.row(1).to_array();
                     gpu_instance.world_from_mesh_normal_row_2 =
-                        inverse_transpose_world_from_mesh.row(2).to_array();
+                        world_from_mesh_normal.row(2).to_array();
 
                     gpu_instance.additive_tint = instance.additive_tint;
                 }
