@@ -241,9 +241,11 @@ impl GpuMesh {
             let mut materials = SmallVec::with_capacity(data.materials.len());
             for (i, material) in data.materials.iter().enumerate() {
                 // CAREFUL: Memory from `write_buffer_with` may not be aligned, causing bytemuck to fail at runtime if we use it to cast the memory to a slice!
-                let offset = i * allocation_size_per_uniform_buffer as usize;
-                materials_staging_buffer
-                    [offset..(offset + std::mem::size_of::<gpu_data::MaterialUniformBuffer>())]
+                let material_buffer_range_start = i * allocation_size_per_uniform_buffer as usize;
+                let material_buffer_range_end = material_buffer_range_start
+                    + std::mem::size_of::<gpu_data::MaterialUniformBuffer>();
+
+                materials_staging_buffer[material_buffer_range_start..material_buffer_range_end]
                     .copy_from_slice(bytemuck::bytes_of(&gpu_data::MaterialUniformBuffer {
                         albedo_multiplier: material.albedo_multiplier.into(),
                     }));
@@ -257,7 +259,7 @@ impl GpuMesh {
                             BindGroupEntry::DefaultTextureView(**texture),
                             BindGroupEntry::Buffer {
                                 handle: *material_uniform_buffers,
-                                offset: offset as _,
+                                offset: material_buffer_range_start as _,
                                 size: NonZeroU64::new(std::mem::size_of::<
                                     gpu_data::MaterialUniformBuffer,
                                 >() as u64)

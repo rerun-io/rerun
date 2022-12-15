@@ -146,14 +146,16 @@ fn import_mesh(
     let mut vertex_data = Vec::new();
     let mut materials = SmallVec::new();
 
+    // A GLTF mesh consists of several primitives, each with their own material.
+    // Primitives map to vertex/index ranges for us as we store all vertices/indices into the same vertex/index buffer.
+    // (this means we loose the rarely used ability to re-use vertex/indices between meshes, but shouldn't loose any abilities otherwise)
     for primitive in mesh.primitives() {
         let reader = primitive.reader(|buffer| Some(&*buffers[buffer.index()]));
 
         let index_offset = indices.len() as u32;
         if let Some(primitive_indices) = reader.read_indices() {
-            // We meld several GTLF primitives into one mesh.
-            // That requires us to keep track of the base vertex index as within each GLTF primitive, the indices restart.
-            // (Note that this does in theory miss out on some re-using of *primitives* that GLTF might do, but we don't expect this to be an issue typically)
+            // GLTF restarts the index for every primitive, whereas we use the same range across all materials of the same mesh.
+            // (`mesh_renderer` could do this for us by setting a base vertex index)
             let base_index = vertex_positions.len() as u32;
             indices.extend(primitive_indices.into_u32().map(|i| i + base_index));
         } else {
