@@ -443,6 +443,8 @@ pub(crate) struct ViewState {
     pub state_tensor: Option<view_tensor::ViewTensorState>,
     pub state_text: view_text::ViewTextState,
     pub state_plot: view_plot::ViewPlotState,
+
+    selected_tensor_obj_path: Option<ObjPath>,
 }
 
 impl ViewState {
@@ -469,28 +471,53 @@ impl ViewState {
         ui: &mut egui::Ui,
         scene: &view_tensor::SceneTensor,
     ) {
-        if scene.tensors.is_empty() {
-            ui.centered_and_justified(|ui| ui.label("(empty)"));
-        } else if scene.tensors.len() == 1 {
-            let tensor = &scene.tensors[0];
-            let state_tensor = self
-                .state_tensor
-                .get_or_insert_with(|| view_tensor::ViewTensorState::create(tensor));
-
-            egui::Frame {
-                inner_margin: re_ui::ReUi::view_padding().into(),
-                ..egui::Frame::default()
-            }
-            .show(ui, |ui| {
-                ui.vertical(|ui| {
-                    view_tensor::view_tensor(ctx, ui, state_tensor, tensor);
-                });
-            });
-        } else {
-            ui.centered_and_justified(|ui| {
-                ui.label("ERROR: more than one tensor!") // TODO(emilk): in this case we should have one space-view per tensor.
-            });
+        egui::Frame {
+            inner_margin: re_ui::ReUi::view_padding().into(),
+            ..egui::Frame::default()
         }
+        .show(ui, |ui| {
+            if scene.tensors.is_empty() {
+                ui.centered_and_justified(|ui| ui.label("(empty)"));
+            } else if scene.tensors.len() == 1 {
+                let (_obj_path, tensor) = &scene.tensors[0];
+                self.ui_single_tensor(ctx, ui, tensor);
+            } else {
+                // Show radio buttons for the different tensors we have in this view - better than nothing!
+                ui.horizontal(|ui| {
+                    let mut any_selected = false;
+                    for (obj_path, _) in &scene.tensors {
+                        let is_selected = self.selected_tensor_obj_path.as_ref() == Some(obj_path);
+                        if ui.radio(is_selected, obj_path.to_string()).clicked() {
+                            self.selected_tensor_obj_path = Some(obj_path.clone());
+                        }
+                        any_selected |= is_selected;
+                    }
+
+                    if !any_selected {
+                        self.selected_tensor_obj_path = Some(scene.tensors[0].0.clone());
+                    }
+                });
+
+                for (obj_path, tensor) in &scene.tensors {
+                    if Some(obj_path) == self.selected_tensor_obj_path.as_ref() {
+                        self.ui_single_tensor(ctx, ui, tensor);
+                        break;
+                    }
+                }
+            }
+        });
+    }
+
+    fn ui_single_tensor(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        tensor: &re_log_types::Tensor,
+    ) {
+        let state_tensor = self
+            .state_tensor
+            .get_or_insert_with(|| view_tensor::ViewTensorState::create(tensor));
+        view_tensor::view_tensor(ctx, ui, state_tensor, tensor);
     }
 
     fn ui_text(
