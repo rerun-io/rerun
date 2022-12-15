@@ -75,7 +75,13 @@ impl ViewSpatialState {
         ui.separator();
 
         match self.nav_mode {
-            SpatialNavigationMode::TwoD => {}
+            SpatialNavigationMode::TwoD => {
+                let BoundingBox { min, max } = self.scene_bbox_accum;
+                ui.label(format!(
+                    "Bounding box, x: [{} - {}], y: [{} - {}]",
+                    min.x, max.x, min.y, max.y,
+                ));
+            }
             SpatialNavigationMode::ThreeD => {
                 self.state_3d
                     .show_settings_ui(ctx, ui, &self.scene_bbox_accum);
