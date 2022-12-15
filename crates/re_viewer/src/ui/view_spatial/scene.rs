@@ -8,7 +8,7 @@ use itertools::Itertools as _;
 use re_data_store::query::{
     visit_type_data_1, visit_type_data_2, visit_type_data_3, visit_type_data_4, visit_type_data_5,
 };
-use re_data_store::{FieldName, InstanceIdHash};
+use re_data_store::{FieldName, InstanceIdHash, ObjPath, ObjectsProperties};
 use re_log_types::{
     context::{ClassId, KeypointId},
     DataVec, IndexHash, MeshId, MsgId, ObjectType, Tensor,
@@ -50,7 +50,7 @@ impl MeshSourceData {
 
 /// TODO(andreas): Scene should only care about converted rendering primitive.
 pub struct MeshSource {
-    pub instance_id_hash: InstanceIdHash,
+    pub instance_hash: InstanceIdHash,
     // TODO(andreas): Make this Conformal3 once glow is gone?
     pub world_from_mesh: macaw::Affine3A,
     pub mesh: Arc<LoadedMesh>,
@@ -200,28 +200,43 @@ pub struct SceneSpatial {
     pub ui: SceneSpatialUiData,
 }
 
+fn instance_hash_if_interactive(
+    obj_path: &ObjPath,
+    instance_index: Option<&IndexHash>,
+    interactive: bool,
+) -> InstanceIdHash {
+    if interactive {
+        InstanceIdHash::from_path_and_index(
+            obj_path,
+            instance_index.copied().unwrap_or(IndexHash::NONE),
+        )
+    } else {
+        InstanceIdHash::NONE
+    }
+}
+
 impl SceneSpatial {
     /// Loads all 3D objects into the scene according to the given query.
     pub(crate) fn load_objects(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
+        objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
         crate::profile_function!();
 
         self.annotation_map.load(ctx, query);
 
-        self.load_points_3d(ctx, query, hovered_instance);
-        self.load_boxes_3d(ctx, query, hovered_instance);
-        self.load_lines_3d(ctx, query, hovered_instance);
-        self.load_arrows_3d(ctx, query, hovered_instance);
-        self.load_meshes(ctx, query, hovered_instance);
-
-        self.load_images(ctx, query, hovered_instance);
-        self.load_boxes_2d(ctx, query, hovered_instance);
-        self.load_line_segments_2d(ctx, query, hovered_instance);
-        self.load_points_2d(ctx, query, hovered_instance);
+        self.load_points_3d(ctx, query, objects_properties, hovered_instance);
+        self.load_boxes_3d(ctx, query, objects_properties, hovered_instance);
+        self.load_lines_3d(ctx, query, objects_properties, hovered_instance);
+        self.load_arrows_3d(ctx, query, objects_properties, hovered_instance);
+        self.load_meshes(ctx, query, objects_properties, hovered_instance);
+        self.load_images(ctx, query, objects_properties, hovered_instance);
+        self.load_boxes_2d(ctx, query, objects_properties, hovered_instance);
+        self.load_line_segments_2d(ctx, query, objects_properties, hovered_instance);
+        self.load_points_2d(ctx, query, objects_properties, hovered_instance);
 
         self.primitives.recalculate_bounding_box();
     }
@@ -240,6 +255,7 @@ impl SceneSpatial {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
+        objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
         crate::profile_function!();
@@ -258,6 +274,7 @@ impl SceneSpatial {
 
                 let annotations = self.annotation_map.find(obj_path);
                 let default_color = DefaultColor::ObjPath(obj_path);
+                let properties = objects_properties.get(obj_path);
 
                 visit_type_data_5(
                     obj_store,
@@ -277,9 +294,11 @@ impl SceneSpatial {
 
                         let position = Vec3::from_slice(pos);
 
-                        let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
-                        let instance_id_hash =
-                            InstanceIdHash::from_path_and_index(obj_path, instance_index);
+                        let instance_hash = instance_hash_if_interactive(
+                            obj_path,
+                            instance_index,
+                            properties.interactive,
+                        );
 
                         let class_id = class_id.map(|i| ClassId(*i as _));
                         let class_description = annotations.class_description(class_id);
@@ -301,7 +320,7 @@ impl SceneSpatial {
                         let mut color = to_ecolor(annotation_info.color(color, default_color));
                         let mut radius = radius.copied().map_or(Size::AUTO, Size::new_scene);
 
-                        if instance_id_hash == hovered_instance {
+                        if instance_hash.is_some() && instance_hash == hovered_instance {
                             color = Self::HOVER_COLOR;
                             radius = Self::hover_size_boost(radius);
                         }
@@ -321,7 +340,7 @@ impl SceneSpatial {
                             radius,
                             color,
                         });
-                        self.primitives.point_ids.push(instance_id_hash);
+                        self.primitives.point_ids.push(instance_hash);
                     },
                 );
 
@@ -329,7 +348,12 @@ impl SceneSpatial {
                     self.ui.labels_3d.extend(label_batch);
                 }
 
-                self.load_keypoint_connections(obj_path, keypoints, &annotations);
+                self.load_keypoint_connections(
+                    obj_path,
+                    keypoints,
+                    &annotations,
+                    properties.interactive,
+                );
             });
     }
 
@@ -338,9 +362,10 @@ impl SceneSpatial {
         obj_path: &re_data_store::ObjPath,
         keypoints: HashMap<(ClassId, i64), HashMap<KeypointId, glam::Vec3>>,
         annotations: &Arc<Annotations>,
+        interactive: bool,
     ) {
         // Generate keypoint connections if any.
-        let instance_id_hash = InstanceIdHash::from_path_and_index(obj_path, IndexHash::NONE);
+        let instance_hash = instance_hash_if_interactive(obj_path, None, interactive);
 
         let mut line_batch = self.primitives.line_strips.batch("keypoint connections");
 
@@ -366,7 +391,7 @@ impl SceneSpatial {
                     .add_segment(*a, *b)
                     .radius(Size::AUTO)
                     .color(to_ecolor(color))
-                    .user_data(instance_id_hash);
+                    .user_data(instance_hash);
             }
         }
     }
@@ -375,6 +400,7 @@ impl SceneSpatial {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
+        objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
         crate::profile_function!();
@@ -384,6 +410,7 @@ impl SceneSpatial {
         {
             let annotations = self.annotation_map.find(obj_path);
             let default_color = DefaultColor::ObjPath(obj_path);
+            let properties = objects_properties.get(obj_path);
 
             visit_type_data_4(
                 obj_store,
@@ -398,7 +425,6 @@ impl SceneSpatial {
                  stroke_width: Option<&f32>,
                  label: Option<&String>,
                  class_id: Option<&i32>| {
-                    let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
                     let mut line_radius =
                         stroke_width.map_or(Size::AUTO, |w| Size::new_scene(w / 2.0));
 
@@ -408,14 +434,17 @@ impl SceneSpatial {
                     let mut color = to_ecolor(annotation_info.color(color, default_color));
                     let label = annotation_info.label(label);
 
-                    let instance_id_hash =
-                        InstanceIdHash::from_path_and_index(obj_path, instance_index);
-                    if instance_id_hash == hovered_instance {
+                    let instance_hash = instance_hash_if_interactive(
+                        obj_path,
+                        instance_index,
+                        properties.interactive,
+                    );
+                    if instance_hash.is_some() && instance_hash == hovered_instance {
                         color = Self::HOVER_COLOR;
                         line_radius = Self::hover_size_boost(line_radius);
                     }
 
-                    self.add_box_3d(instance_id_hash, color, line_radius, label, obb);
+                    self.add_box_3d(instance_hash, color, line_radius, label, obb);
                 },
             );
         }
@@ -426,6 +455,7 @@ impl SceneSpatial {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
+        objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
         crate::profile_function!();
@@ -436,6 +466,7 @@ impl SceneSpatial {
         ) {
             let annotations = self.annotation_map.find(obj_path);
             let default_color = DefaultColor::ObjPath(obj_path);
+            let properties = objects_properties.get(obj_path);
 
             visit_type_data_2(
                 obj_store,
@@ -454,10 +485,11 @@ impl SceneSpatial {
                         _ => return,
                     };
                     let Some(points) = points.as_vec_of_vec3(what) else { return };
-
-                    let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
-                    let instance_id_hash =
-                        InstanceIdHash::from_path_and_index(obj_path, instance_index);
+                    let instance_hash = instance_hash_if_interactive(
+                        obj_path,
+                        instance_index,
+                        properties.interactive,
+                    );
 
                     let mut radius = stroke_width.map_or(Size::AUTO, |w| Size::new_scene(w / 2.0));
 
@@ -465,7 +497,7 @@ impl SceneSpatial {
                     let annotation_info = annotations.class_description(None).annotation_info();
                     let mut color = to_ecolor(annotation_info.color(color, default_color));
 
-                    if instance_id_hash == hovered_instance {
+                    if instance_hash.is_some() && instance_hash == hovered_instance {
                         color = Self::HOVER_COLOR;
                         radius = Self::hover_size_boost(radius);
                     }
@@ -486,7 +518,7 @@ impl SceneSpatial {
                     }
                     .radius(radius)
                     .color(color)
-                    .user_data(instance_id_hash);
+                    .user_data(instance_hash);
                 },
             );
         }
@@ -496,6 +528,7 @@ impl SceneSpatial {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
+        objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
         crate::profile_function!();
@@ -505,6 +538,7 @@ impl SceneSpatial {
         {
             let annotations = self.annotation_map.find(obj_path);
             let default_color = DefaultColor::ObjPath(obj_path);
+            let properties = objects_properties.get(obj_path);
 
             visit_type_data_3(
                 obj_store,
@@ -518,9 +552,11 @@ impl SceneSpatial {
                  color: Option<&[u8; 4]>,
                  width_scale: Option<&f32>,
                  label: Option<&String>| {
-                    let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
-                    let instance_id_hash =
-                        InstanceIdHash::from_path_and_index(obj_path, instance_index);
+                    let instance_hash = instance_hash_if_interactive(
+                        obj_path,
+                        instance_index,
+                        properties.interactive,
+                    );
 
                     let width = width_scale.copied().unwrap_or(1.0);
 
@@ -530,7 +566,7 @@ impl SceneSpatial {
                     let label = annotation_info.label(label);
 
                     self.add_arrow(
-                        instance_id_hash,
+                        instance_hash,
                         hovered_instance,
                         color,
                         Some(width),
@@ -546,6 +582,7 @@ impl SceneSpatial {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
+        objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
         crate::profile_function!();
@@ -554,6 +591,8 @@ impl SceneSpatial {
             .iter_object_stores(ctx.log_db, &[ObjectType::Mesh3D])
             .flat_map(|(_obj_type, obj_path, time_query, obj_store)| {
                 let mut batch = Vec::new();
+                let properties = objects_properties.get(obj_path);
+
                 visit_type_data_1(
                     obj_store,
                     &FieldName::from("mesh"),
@@ -564,16 +603,18 @@ impl SceneSpatial {
                      _msg_id: &MsgId,
                      mesh: &re_log_types::Mesh3D,
                      _color: Option<&[u8; 4]>| {
-                        let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
+                        let instance_hash = instance_hash_if_interactive(
+                            obj_path,
+                            instance_index,
+                            properties.interactive,
+                        );
 
-                        let instance_id_hash =
-                            InstanceIdHash::from_path_and_index(obj_path, instance_index);
-
-                        let additive_tint = if hovered_instance == instance_id_hash {
-                            Some(Self::HOVER_COLOR)
-                        } else {
-                            None
-                        };
+                        let additive_tint =
+                            if instance_hash.is_some() && hovered_instance == instance_hash {
+                                Some(Self::HOVER_COLOR)
+                            } else {
+                                None
+                            };
 
                         let Some(mesh) = ctx.cache.mesh.load(
                                 &obj_path.to_string(),
@@ -581,7 +622,7 @@ impl SceneSpatial {
                                 ctx.render_ctx
                             )
                             .map(|cpu_mesh| MeshSource {
-                                instance_id_hash,
+                                instance_hash,
                                 world_from_mesh: Default::default(),
                                 mesh: cpu_mesh,
                                 additive_tint,
@@ -600,6 +641,7 @@ impl SceneSpatial {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
+        objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
         crate::profile_function!();
@@ -607,6 +649,8 @@ impl SceneSpatial {
         for (_obj_type, obj_path, time_query, obj_store) in
             query.iter_object_stores(ctx.log_db, &[ObjectType::Image])
         {
+            let properties = objects_properties.get(obj_path);
+
             visit_type_data_2(
                 obj_store,
                 &FieldName::from("tensor"),
@@ -629,9 +673,11 @@ impl SceneSpatial {
 
                     let (w, h) = (shape[1].size as f32, shape[0].size as f32);
 
-                    let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
-                    let instance_hash =
-                        InstanceIdHash::from_path_and_index(obj_path, instance_index);
+                    let instance_hash = instance_hash_if_interactive(
+                        obj_path,
+                        instance_index,
+                        properties.interactive,
+                    );
 
                     let annotations = self.annotation_map.find(obj_path);
                     let color = annotations
@@ -641,7 +687,7 @@ impl SceneSpatial {
 
                     let paint_props = paint_properties(color, None);
 
-                    if hovered_instance == instance_hash {
+                    if instance_hash.is_some() && hovered_instance == instance_hash {
                         self.primitives
                             .line_strips
                             .batch("image outlines")
@@ -706,6 +752,7 @@ impl SceneSpatial {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
+        objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
         crate::profile_function!();
@@ -713,6 +760,9 @@ impl SceneSpatial {
         for (_obj_type, obj_path, time_query, obj_store) in
             query.iter_object_stores(ctx.log_db, &[ObjectType::BBox2D])
         {
+            let properties = objects_properties.get(obj_path);
+            let annotations = self.annotation_map.find(obj_path);
+
             visit_type_data_4(
                 obj_store,
                 &FieldName::from("bbox"),
@@ -726,11 +776,12 @@ impl SceneSpatial {
                  stroke_width: Option<&f32>,
                  label: Option<&String>,
                  class_id: Option<&i32>| {
-                    let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
-                    let instance_hash =
-                        InstanceIdHash::from_path_and_index(obj_path, instance_index);
+                    let instance_hash = instance_hash_if_interactive(
+                        obj_path,
+                        instance_index,
+                        properties.interactive,
+                    );
 
-                    let annotations = self.annotation_map.find(obj_path);
                     let annotation_info = annotations
                         .class_description(class_id.map(|i| ClassId(*i as _)))
                         .annotation_info();
@@ -742,7 +793,7 @@ impl SceneSpatial {
                     self.ui.rects.push((rect, instance_hash));
 
                     let mut paint_props = paint_properties(color, stroke_width);
-                    if hovered_instance == instance_hash {
+                    if instance_hash.is_some() && hovered_instance == instance_hash {
                         apply_hover_effect(&mut paint_props);
                     }
 
@@ -775,6 +826,7 @@ impl SceneSpatial {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
+        objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
         crate::profile_function!();
@@ -791,6 +843,7 @@ impl SceneSpatial {
 
             let annotations = self.annotation_map.find(obj_path);
             let default_color = DefaultColor::ObjPath(obj_path);
+            let properties = objects_properties.get(obj_path);
 
             // If keypoints ids show up we may need to connect them later!
             // We include time in the key, so that the "Visible history" (time range queries) feature works.
@@ -811,9 +864,11 @@ impl SceneSpatial {
                  label: Option<&String>,
                  class_id: Option<&i32>,
                  keypoint_id: Option<&i32>| {
-                    let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
-                    let instance_hash =
-                        InstanceIdHash::from_path_and_index(obj_path, instance_index);
+                    let instance_hash = instance_hash_if_interactive(
+                        obj_path,
+                        instance_index,
+                        properties.interactive,
+                    );
                     let pos = glam::vec2(pos[0], pos[1]);
 
                     let class_id = class_id.map(|i| ClassId(*i as _));
@@ -836,7 +891,7 @@ impl SceneSpatial {
                     let label = annotation_info.label(label);
 
                     let mut paint_props = paint_properties(color, radius);
-                    if hovered_instance == instance_hash {
+                    if instance_hash.is_some() && hovered_instance == instance_hash {
                         apply_hover_effect(&mut paint_props);
                     }
 
@@ -872,7 +927,12 @@ impl SceneSpatial {
             }
 
             // Generate keypoint connections if any.
-            self.load_keypoint_connections(obj_path, keypoints, &annotations);
+            self.load_keypoint_connections(
+                obj_path,
+                keypoints,
+                &annotations,
+                properties.interactive,
+            );
         }
     }
 
@@ -880,6 +940,7 @@ impl SceneSpatial {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
+        objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
         crate::profile_function!();
@@ -888,6 +949,7 @@ impl SceneSpatial {
             query.iter_object_stores(ctx.log_db, &[ObjectType::LineSegments2D])
         {
             let annotations = self.annotation_map.find(obj_path);
+            let properties = objects_properties.get(obj_path);
 
             visit_type_data_2(
                 obj_store,
@@ -903,16 +965,18 @@ impl SceneSpatial {
                     let Some(points) = points.as_vec_of_vec2("LineSegments2D::points")
                                 else { return };
 
-                    let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
-                    let instance_hash =
-                        InstanceIdHash::from_path_and_index(obj_path, instance_index);
+                    let instance_hash = instance_hash_if_interactive(
+                        obj_path,
+                        instance_index,
+                        properties.interactive,
+                    );
 
                     // TODO(andreas): support class ids for line segments
                     let annotation_info = annotations.class_description(None).annotation_info();
                     let color = annotation_info.color(color, DefaultColor::ObjPath(obj_path));
 
                     let mut paint_props = paint_properties(color, stroke_width);
-                    if hovered_instance == instance_hash {
+                    if instance_hash.is_some() && hovered_instance == instance_hash {
                         apply_hover_effect(&mut paint_props);
                     }
 
@@ -1000,7 +1064,7 @@ impl SceneSpatial {
                         let additive_tint = is_hovered.then_some(Self::HOVER_COLOR);
 
                         self.primitives.meshes.push(MeshSource {
-                            instance_id_hash: instance_id,
+                            instance_hash: instance_id,
                             world_from_mesh,
                             mesh: cpu_mesh,
                             additive_tint,
@@ -1085,7 +1149,7 @@ impl SceneSpatial {
 
     fn add_arrow(
         &mut self,
-        instance_id_hash: InstanceIdHash,
+        instance_hash: InstanceIdHash,
         hovered_instance: InstanceIdHash,
         color: [u8; 4],
         width_scale: Option<f32>,
@@ -1106,7 +1170,7 @@ impl SceneSpatial {
         let end = origin + vector * ((vector_len - tip_length) / vector_len);
 
         let mut color = to_ecolor(color);
-        if instance_id_hash == hovered_instance {
+        if instance_hash.is_some() && instance_hash == hovered_instance {
             color = Self::HOVER_COLOR;
             radius = Self::hover_size_boost(radius);
         }
@@ -1118,7 +1182,7 @@ impl SceneSpatial {
             .radius(radius)
             .color(color)
             .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE)
-            .user_data(instance_id_hash);
+            .user_data(instance_hash);
     }
 
     fn add_box_3d(
@@ -1244,8 +1308,8 @@ impl SceneSpatial {
         {
             crate::profile_scope!("points_3d");
             debug_assert_eq!(point_ids.len(), points.len());
-            for (point, instance_id_hash) in points.iter().zip(point_ids.iter()) {
-                if instance_id_hash.is_none() {
+            for (point, instance_hash) in points.iter().zip(point_ids.iter()) {
+                if instance_hash.is_none() {
                     continue;
                 }
 
@@ -1260,7 +1324,7 @@ impl SceneSpatial {
                     if t < closest_z || dist_sq < closest_side_dist_sq {
                         closest_z = t;
                         closest_side_dist_sq = dist_sq;
-                        closest_instance_id = Some(*instance_id_hash);
+                        closest_instance_id = Some(*instance_hash);
                     }
                 }
             }
@@ -1268,11 +1332,11 @@ impl SceneSpatial {
 
         {
             crate::profile_scope!("line_segments_3d");
-            for ((_line_strip, vertices), instance_id_hash) in line_strips
+            for ((_line_strip, vertices), instance_hash) in line_strips
                 .iter_strips_with_vertices()
                 .zip(line_strips.strip_user_data.iter())
             {
-                if instance_id_hash.is_none() {
+                if instance_hash.is_none() {
                     continue;
                 }
                 // TODO(emilk): take line segment radius into account
@@ -1290,7 +1354,7 @@ impl SceneSpatial {
                         if t < closest_z || dist_sq < closest_side_dist_sq {
                             closest_z = t;
                             closest_side_dist_sq = dist_sq;
-                            closest_instance_id = Some(*instance_id_hash);
+                            closest_instance_id = Some(*instance_hash);
                         }
                     }
                 }
@@ -1300,7 +1364,7 @@ impl SceneSpatial {
         {
             crate::profile_scope!("meshes");
             for mesh in meshes {
-                if !mesh.instance_id_hash.is_some() {
+                if !mesh.instance_hash.is_some() {
                     continue;
                 }
                 let ray_in_mesh = (mesh.world_from_mesh.inverse() * ray_in_world).normalize();
@@ -1311,7 +1375,7 @@ impl SceneSpatial {
                     if t < closest_z || dist_sq < closest_side_dist_sq {
                         closest_z = t; // TODO(emilk): I think this is wrong
                         closest_side_dist_sq = dist_sq;
-                        closest_instance_id = Some(mesh.instance_id_hash);
+                        closest_instance_id = Some(mesh.instance_hash);
                     }
                 }
             }

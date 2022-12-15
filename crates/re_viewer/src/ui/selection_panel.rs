@@ -208,9 +208,12 @@ fn obj_props_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, obj_props: &mut 
     let ObjectProps {
         visible,
         visible_history,
+        interactive,
     } = obj_props;
 
     ui.checkbox(visible, "Visible");
+    ui.checkbox(interactive, "Interactive")
+        .on_hover_text("If disabled, the object will not react to any mouse interaction");
 
     ui.horizontal(|ui| {
         ui.label("Visible history:");
