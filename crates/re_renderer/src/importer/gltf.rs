@@ -15,8 +15,6 @@ use crate::{
     Color32, RenderContext,
 };
 
-use super::to_uniform_scale;
-
 /// Loads both gltf and glb into the mesh & texture manager.
 pub fn load_gltf_from_buffer(
     mesh_name: &str,
@@ -102,12 +100,7 @@ pub fn load_gltf_from_buffer(
     let mut instances = Vec::new();
     for scene in doc.scenes() {
         for node in scene.nodes() {
-            gather_instances_recursive(
-                &mut instances,
-                &node,
-                &macaw::Conformal3::IDENTITY,
-                &meshes,
-            );
+            gather_instances_recursive(&mut instances, &node, &glam::Affine3A::IDENTITY, &meshes);
         }
     }
 
@@ -253,7 +246,7 @@ fn import_mesh(
 fn gather_instances_recursive(
     instances: &mut Vec<MeshInstance>,
     node: &gltf::Node<'_>,
-    transform: &macaw::Conformal3,
+    transform: &glam::Affine3A,
     meshes: &HashMap<usize, (GpuMeshHandle, Arc<Mesh>)>,
 ) {
     let (scale, rotation, translation) = match node.transform() {
@@ -273,12 +266,9 @@ fn gather_instances_recursive(
         ),
     };
 
-    let node_transform = macaw::Conformal3::from_scale_rotation_translation(
-        to_uniform_scale(scale),
-        rotation,
-        translation,
-    );
-    let transform = transform * node_transform;
+    let node_transform =
+        glam::Affine3A::from_scale_rotation_translation(scale, rotation, translation);
+    let transform = *transform * node_transform;
 
     for child in node.children() {
         gather_instances_recursive(instances, &child, &transform, meshes);

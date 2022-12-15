@@ -34,8 +34,14 @@ use super::{
 struct GpuInstanceData {
     // Don't use alignend glam types because they enforce alignment.
     // (staging buffer might be 4 byte aligned only!)
-    translation_and_scale: [f32; 4],
-    rotation: [f32; 4],
+    world_from_mesh_row_0: [f32; 4],
+    world_from_mesh_row_1: [f32; 4],
+    world_from_mesh_row_2: [f32; 4],
+
+    world_from_mesh_normal_row_0: [f32; 3],
+    world_from_mesh_normal_row_1: [f32; 3],
+    world_from_mesh_normal_row_2: [f32; 3],
+
     additive_tint: Color32,
 }
 
@@ -46,28 +52,22 @@ impl GpuInstanceData {
         VertexBufferLayout {
             array_stride: std::mem::size_of::<GpuInstanceData>() as _,
             step_mode: wgpu::VertexStepMode::Instance,
-            attributes: smallvec![
-                // Position and Scale.
-                // We could move scale to a separate field, it's _probably_ not gonna have any impact at all
-                // But then again it's easy and less confusing to always keep them fused.
-                wgpu::VertexAttribute {
-                    format: wgpu::VertexFormat::Float32x4,
-                    offset: memoffset::offset_of!(GpuInstanceData, translation_and_scale) as _,
-                    shader_location: shader_start_location,
-                },
-                // Rotation (quaternion)
-                wgpu::VertexAttribute {
-                    format: wgpu::VertexFormat::Float32x4,
-                    offset: memoffset::offset_of!(GpuInstanceData, rotation) as _,
-                    shader_location: shader_start_location + 1,
-                },
-                // Tint color
-                wgpu::VertexAttribute {
-                    format: wgpu::VertexFormat::Unorm8x4,
-                    offset: memoffset::offset_of!(GpuInstanceData, additive_tint) as _,
-                    shader_location: shader_start_location + 2,
-                },
-            ],
+            attributes: VertexBufferLayout::attributes_from_formats(
+                shader_start_location,
+                [
+                    // Affine mesh transform.
+                    wgpu::VertexFormat::Float32x4,
+                    wgpu::VertexFormat::Float32x4,
+                    wgpu::VertexFormat::Float32x4,
+                    // Transposed inverse mesh transform.
+                    wgpu::VertexFormat::Float32x3,
+                    wgpu::VertexFormat::Float32x3,
+                    wgpu::VertexFormat::Float32x3,
+                    // Tint color
+                    wgpu::VertexFormat::Unorm8x4,
+                ]
+                .into_iter(),
+            ),
         }
     }
 }
@@ -99,7 +99,7 @@ pub struct MeshInstance {
     pub mesh: Option<Arc<Mesh>>,
 
     /// Where this instance is placed in world space and how its oriented & scaled.
-    pub world_from_mesh: macaw::Conformal3,
+    pub world_from_mesh: macaw::Affine3A,
 
     /// Per-instance (as opposed to per-material/mesh!) tint color that is added to the albedo texture.
     /// Alpha channel is currently unused.
@@ -164,9 +164,35 @@ impl MeshDrawData {
                         .skip(num_processed_instances),
                 ) {
                     count += 1;
-                    gpu_instance.translation_and_scale =
-                        instance.world_from_mesh.translation_and_scale().into();
-                    gpu_instance.rotation = instance.world_from_mesh.rotation().into();
+
+                    gpu_instance.world_from_mesh_row_0 = instance
+                        .world_from_mesh
+                        .matrix3
+                        .col(0)
+                        .extend(instance.world_from_mesh.translation.x)
+                        .to_array();
+                    gpu_instance.world_from_mesh_row_1 = instance
+                        .world_from_mesh
+                        .matrix3
+                        .col(1)
+                        .extend(instance.world_from_mesh.translation.y)
+                        .to_array();
+                    gpu_instance.world_from_mesh_row_2 = instance
+                        .world_from_mesh
+                        .matrix3
+                        .col(2)
+                        .extend(instance.world_from_mesh.translation.z)
+                        .to_array();
+
+                    let inverse_transpose_world_from_mesh =
+                        instance.world_from_mesh.matrix3.inverse().transpose();
+                    gpu_instance.world_from_mesh_normal_row_0 =
+                        inverse_transpose_world_from_mesh.row(0).to_array();
+                    gpu_instance.world_from_mesh_normal_row_1 =
+                        inverse_transpose_world_from_mesh.row(1).to_array();
+                    gpu_instance.world_from_mesh_normal_row_2 =
+                        inverse_transpose_world_from_mesh.row(2).to_array();
+
                     gpu_instance.additive_tint = instance.additive_tint;
                 }
                 num_processed_instances += count;

@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use anyhow::Context;
-use macaw::Conformal3;
 use smallvec::smallvec;
 
 use crate::{
@@ -76,7 +75,7 @@ pub fn load_obj_from_buffer(
             MeshInstance {
                 gpu_mesh,
                 mesh: Some(Arc::new(mesh)),
-                world_from_mesh: Conformal3::IDENTITY,
+                world_from_mesh: glam::Affine3A::IDENTITY,
                 additive_tint: Color32::TRANSPARENT,
             }
         })

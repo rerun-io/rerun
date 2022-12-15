@@ -48,20 +48,14 @@ pub mod mesh_vertices {
             VertexBufferLayout {
                 array_stride: std::mem::size_of::<MeshVertexData>() as _,
                 step_mode: wgpu::VertexStepMode::Vertex,
-                attributes: smallvec![
-                    // Normal
-                    wgpu::VertexAttribute {
-                        format: wgpu::VertexFormat::Float32x3,
-                        offset: memoffset::offset_of!(MeshVertexData, normal) as _,
-                        shader_location: 1,
-                    },
-                    // Texcoord
-                    wgpu::VertexAttribute {
-                        format: wgpu::VertexFormat::Float32x2,
-                        offset: memoffset::offset_of!(MeshVertexData, texcoord) as _,
-                        shader_location: 2,
-                    },
-                ],
+                attributes: VertexBufferLayout::attributes_from_formats(
+                    1,
+                    [
+                        wgpu::VertexFormat::Float32x3, // Normal
+                        wgpu::VertexFormat::Float32x2, // Texcoord
+                    ]
+                    .into_iter(),
+                ),
             },
         ]
     }
