@@ -42,6 +42,9 @@ pub enum ObjectType {
 
     /// A 3D arrow
     Arrow3D,
+
+    /// Placeholder type for all Arrow objects
+    ArrowObject,
 }
 
 impl ObjectType {
@@ -64,6 +67,8 @@ impl ObjectType {
             Self::LineSegments3D => &["color", "points", "stroke_width"],
             Self::Mesh3D => &["color", "mesh"],
             Self::Arrow3D => &["color", "origin", "arrow3d", "width_scale", "label"],
+
+            Self::ArrowObject => &[],
         }
     }
 }

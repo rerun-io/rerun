@@ -109,6 +109,12 @@ impl ObjDb {
     fn try_add_arrow_data_msg(&mut self, msg: &ArrowMsg) -> Result<(), Error> {
         let msg_bundle = MsgBundle::try_from(msg).map_err(Error::MsgBundleError)?;
 
+        // TODO(jleibs): Hack in a type so the UI treats these objects as visible
+        // This can go away once we determine object categories directly from the arrow table
+        self.types
+            .entry(msg_bundle.obj_path.obj_type_path().clone())
+            .or_insert(ObjectType::ArrowObject);
+
         for component in &msg_bundle.components {
             //TODO(jleibs): Actually handle pending clears
             let _pending_clears = self.tree.add_data_msg(

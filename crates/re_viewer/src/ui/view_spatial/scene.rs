@@ -9,14 +9,14 @@ use re_arrow_store::TimeQuery;
 use re_data_store::query::{
     visit_type_data_1, visit_type_data_2, visit_type_data_3, visit_type_data_4, visit_type_data_5,
 };
-use re_data_store::{FieldName, InstanceIdHash, ObjPath, ObjectsProperties};
-use re_log_types::field_types::{ColorRGBA, Rect2D};
+use re_data_store::{FieldName, InstanceId, InstanceIdHash, ObjPath, ObjectsProperties};
+use re_log_types::field_types::{ColorRGBA, Instance, Rect2D};
 use re_log_types::msg_bundle::Component;
 use re_log_types::{
     context::{ClassId, KeypointId},
     DataVec, IndexHash, MeshId, MsgId, ObjectType, Tensor,
 };
-use re_query::{query_entity_with_primary, visit_components2};
+use re_query::{query_entity_with_primary, visit_components3};
 use re_renderer::{
     renderer::{LineStripFlags, MeshInstance, PointCloudPoint},
     Color32, LineStripSeriesBuilder, Size,
@@ -825,19 +825,24 @@ impl SceneSpatial {
                 TimeQuery::LatestAt(query.latest_at.as_i64()),
             );
 
-            match query_entity_with_primary(
+            if let Ok(df) = query_entity_with_primary(
                 &ctx.log_db.obj_db.arrow_store,
                 &timeline_query,
                 ent_path,
                 Rect2D::NAME,
                 &[ColorRGBA::NAME],
             ) {
-                Ok(df) => {
-                    visit_components2(&df, |rect: &Rect2D, color: Option<&ColorRGBA>| {
-                        // TODO(jleibs): Send in an instance-id
-                        let instance_index = IndexHash::NONE;
-                        let instance_hash =
-                            InstanceIdHash::from_path_and_index(obj_path, instance_index);
+                visit_components3(
+                    &df,
+                    |rect: &Rect2D, instance: Option<&Instance>, color: Option<&ColorRGBA>| {
+                        // TODO(jleibs): This feels convoluted and heavy-weight. Whatever we need here
+                        // should come directly out of the datastore.
+                        let instance = instance.unwrap_or(&Instance(0));
+                        let instance = InstanceId {
+                            obj_path: obj_path.clone(),
+                            instance_index: Some(re_log_types::Index::Sequence(instance.0)),
+                        };
+                        let instance_hash = instance.hash();
 
                         let color = color.map(|c| c.to_array());
 
@@ -894,9 +899,8 @@ impl SceneSpatial {
                                 labled_instance: instance_hash,
                             });
                         }
-                    });
-                }
-                Err(err) => re_log::error!("Query failure: {:?}", err),
+                    },
+                );
             }
         }
     }
