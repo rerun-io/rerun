@@ -44,7 +44,7 @@ pub fn __populate_example_store() -> DataStore {
     store
 }
 
-/// Retrieves a [`polars::DataFrame`] for a [`Component`] with its corresponding
+/// Retrieves a [`DataFrame`] for a [`Component`] with its corresponding
 /// [`Instance`] values.
 /// ```
 /// # use re_arrow_store::{TimelineQuery, TimeQuery};
