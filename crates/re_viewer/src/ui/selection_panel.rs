@@ -183,9 +183,15 @@ impl SelectionPanel {
                         ui.end_row();
                     });
 
+                    ui.separator();
+
                     let mut props = space_view.obj_properties.get(&obj_path);
                     obj_props_ui(ctx, ui, &mut props);
-                    space_view.obj_properties.set(obj_path, props);
+                    space_view.obj_properties.set(obj_path.clone(), props);
+
+                    ui.separator();
+
+                    view_object(ctx, ui, &obj_path, Preview::Medium);
                 } else {
                     ctx.clear_selection();
                 }
