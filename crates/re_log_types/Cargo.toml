@@ -8,7 +8,7 @@ publish = false
 
 
 [features]
-default = ["arrow_datagen"]
+default = ["arrow_datagen", "anyhow"]
 
 ## Enable loading data from a file.
 load = ["anyhow", "rmp-serde", "serde", "zstd", "ruzstd"]
@@ -44,8 +44,8 @@ re_tuid = { path = "../re_tuid" }
 
 # External
 ahash = "0.8"
-arrow2 = { version = "0.14", features = ["io_ipc"] }
-arrow2_convert = { version = "0.3" }
+arrow2 = { workspace = true, features = ["io_ipc"] }
+arrow2_convert.workspace = true
 bytemuck = "1.11"
 chrono = { version = "0.4", features = ["js-sys", "wasmbind"] }
 derive_more = "0.99"
@@ -54,12 +54,12 @@ fixed = { version = "1.17", features = ["serde"] }
 nohash-hasher = "0.2"
 num-derive = "0.3"
 num-traits = "0.2"
-thiserror = "1.0"
+thiserror.workspace = true
 typenum = "1.15"
 uuid = { version = "1.1", features = ["serde", "v4", "js"] }
 
 # Optional dependencies:
-anyhow = { version = "1", optional = true }
+anyhow = { workspace = true, optional = true }
 glam = { version = "0.20", optional = true }                            # can't update glam until a new version of `macaw` is released
 macaw = { version = "0.17", optional = true }
 puffin = { version = "0.14", optional = true }

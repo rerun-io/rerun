@@ -10,7 +10,7 @@ publish = false
 default = ["re_viewer"]
 
 ## Support for the viewer
-re_viewer = ["dep:re_viewer"]
+re_viewer = ["dep:re_viewer", "dep:eframe"]
 
 ## Support serving a web viewer over HTTP.
 ##
@@ -27,7 +27,7 @@ re_memory = { path = "../re_memory" }
 re_sdk_comms = { path = "../re_sdk_comms", features = ["client"] }
 re_smart_channel = { path = "../re_smart_channel" }
 
-arrow2 = "0.14.2"
+arrow2.workspace = true
 crossbeam = "0.8"
 document-features = "0.2"
 nohash-hasher = "0.2"
@@ -41,6 +41,8 @@ re_viewer = { path = "../re_viewer", features = [
   "puffin",
 ], default-features = false, optional = true }
 re_web_server = { path = "../re_web_server", optional = true }
+
+eframe = { verison = "0.20", default-features = false, optional = true }
 webbrowser = { version = "0.8", optional = true }
 
 # Native dependencies:
@@ -48,7 +50,7 @@ webbrowser = { version = "0.8", optional = true }
 tokio = { version = "1.16", features = ["macros", "rt-multi-thread"] }
 
 [dev-dependencies]
-arrow2_convert = { version = "0.3" }
+arrow2_convert.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 clap = { version = "4.0", features = ["derive"] }

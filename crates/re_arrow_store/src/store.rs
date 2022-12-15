@@ -1,7 +1,11 @@
 use std::collections::{BTreeMap, HashMap, VecDeque};
+use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
 
-use arrow2::array::{Array, Int64Vec, UInt64Vec};
+use anyhow::ensure;
+use arrow2::array::{Array, Int64Vec, MutableArray, UInt64Vec};
+use arrow2::bitmap::MutableBitmap;
+use arrow2::chunk::Chunk;
 use arrow2::datatypes::DataType;
 
 use parking_lot::RwLock;
@@ -41,8 +45,41 @@ pub struct DataStoreConfig {
     /// The lower the number, the more fine-grained the garbage collection is, at the cost of more
     /// metadata overhead.
     ///
+    /// Note: since component buckets aren't sorted, the number of rows isn't necessarily a great
+    /// metric to use as a threshold, although we do expose it if only for symmetry.
+    /// Prefer using [`Self::component_bucket_size_bytes`], or both.
+    ///
     /// See [`Self::DEFAULT`] for defaults.
     pub component_bucket_nb_rows: u64,
+
+    /// The maximum size of an index bucket before triggering a split.
+    ///
+    /// ⚠ When configuring this threshold, do keep in mind that index tables are always scoped
+    /// to a specific timeline _and_ a specific entity.
+    ///
+    /// This effectively controls two aspects of the runtime:
+    /// - how fine grained the garbage collection of indices is,
+    /// - and how many rows will have to be sorted in the worst case when an index gets out
+    ///   of order.
+    /// The lower the size, the more fine-grained the garbage collection is and smaller the
+    /// number of rows to sort gets, at the cost of more metadata overhead.
+    ///
+    /// See [`Self::DEFAULT`] for defaults.
+    pub index_bucket_size_bytes: u64,
+    /// The maximum number of rows in an index bucket before triggering a split.
+    ///
+    /// ⚠ When configuring this threshold, do keep in mind that index tables are always scoped
+    /// to a specific timeline _and_ a specific entity.
+    ///
+    /// This effectively controls two aspects of the runtime:
+    /// - how fine grained the garbage collection of indices is,
+    /// - and how many rows will have to be sorted in the worst case when an index gets out
+    ///   of order.
+    /// The lower the size, the more fine-grained the garbage collection is and smaller the
+    /// number of rows to sort gets, at the cost of more metadata overhead.
+    ///
+    /// See [`Self::DEFAULT`] for defaults.
+    pub index_bucket_nb_rows: u64,
 }
 
 impl Default for DataStoreConfig {
@@ -55,6 +92,8 @@ impl DataStoreConfig {
     pub const DEFAULT: Self = Self {
         component_bucket_size_bytes: 32 * 1024 * 1024, // 32MiB
         component_bucket_nb_rows: u64::MAX,
+        index_bucket_size_bytes: 32 * 1024, // 32kiB
+        index_bucket_nb_rows: 1024,
     };
 }
 
@@ -80,6 +119,11 @@ pub struct DataStore {
     ///
     /// A component table holds all the values ever inserted for a given component.
     pub(crate) components: HashMap<ComponentName, ComponentTable>,
+
+    /// Monotically increasing ID for insertions.
+    pub(crate) insert_id: u64,
+    /// Monotically increasing ID for queries.
+    pub(crate) query_id: AtomicU64,
 }
 
 impl DataStore {
@@ -88,7 +132,24 @@ impl DataStore {
             config,
             indices: HashMap::default(),
             components: HashMap::default(),
+            insert_id: 0,
+            query_id: AtomicU64::new(0),
         }
+    }
+
+    /// Returns the number of index rows stored across this entire store, i.e. the sum of
+    /// the number of rows across all of its index tables.
+    pub fn total_index_rows(&self) -> u64 {
+        self.indices.values().map(|table| table.total_rows()).sum()
+    }
+
+    /// Returns the size of the index data stored across this entire store, i.e. the sum of
+    /// the size of the data stored across all of its index tables, in bytes.
+    pub fn total_index_size_bytes(&self) -> u64 {
+        self.indices
+            .values()
+            .map(|table| table.total_size_bytes())
+            .sum()
     }
 
     /// Returns the number of component rows stored across this entire store, i.e. the sum of
@@ -108,6 +169,48 @@ impl DataStore {
             .map(|table| table.total_size_bytes())
             .sum()
     }
+
+    /// Runs the sanity check suite for the entire datastore.
+    ///
+    /// Returns an error if anything looks wrong.
+    pub fn sanity_check(&self) -> anyhow::Result<()> {
+        // Row indices should be continuous across all index tables.
+        // TODO(#449): update this one appropriately when GC lands.
+        {
+            let mut row_indices: HashMap<_, Vec<RowIndex>> = HashMap::new();
+            for table in self.indices.values() {
+                for bucket in table.buckets.values() {
+                    for (comp, index) in &bucket.indices.read().indices {
+                        let row_indices = row_indices.entry(comp.clone()).or_default();
+                        row_indices.extend(index.values());
+                    }
+                }
+            }
+
+            for (comp, mut row_indices) in row_indices {
+                row_indices.sort();
+                row_indices.dedup();
+                for pair in row_indices.windows(2) {
+                    let &[i1, i2] = pair else { unreachable!() };
+                    ensure!(
+                        i1 + 1 == i2,
+                        "found hole in index coverage for {comp:?}: \
+                            in {row_indices:?}, {i1} -> {i2}"
+                    );
+                }
+            }
+        }
+
+        for table in self.indices.values() {
+            table.sanity_check()?;
+        }
+
+        for table in self.components.values() {
+            table.sanity_check()?;
+        }
+
+        Ok(())
+    }
 }
 
 impl std::fmt::Display for DataStore {
@@ -117,6 +220,8 @@ impl std::fmt::Display for DataStore {
             config,
             indices,
             components,
+            insert_id: _,
+            query_id: _,
         } = self;
 
         f.write_str("DataStore {\n")?;
@@ -124,6 +229,15 @@ impl std::fmt::Display for DataStore {
         f.write_str(&indent::indent_all_by(4, format!("config: {config:?}\n")))?;
 
         {
+            f.write_str(&indent::indent_all_by(
+                4,
+                format!(
+                    "{} index tables, for a total of {} across {} total rows\n",
+                    self.indices.len(),
+                    format_bytes(self.total_index_size_bytes() as _),
+                    format_number(self.total_index_rows() as _)
+                ),
+            ))?;
             f.write_str(&indent::indent_all_by(4, "indices: [\n"))?;
             for index in indices.values() {
                 f.write_str(&indent::indent_all_by(8, "IndexTable {\n"))?;
@@ -137,7 +251,7 @@ impl std::fmt::Display for DataStore {
             f.write_str(&indent::indent_all_by(
                 4,
                 format!(
-                    "{} component tables, for a total of {} bytes across {} total rows\n",
+                    "{} component tables, for a total of {} across {} total rows\n",
                     self.components.len(),
                     format_bytes(self.total_component_size_bytes() as _),
                     format_number(self.total_component_rows() as _)
@@ -162,55 +276,115 @@ impl std::fmt::Display for DataStore {
 
 /// An `IndexTable` maps specific points in time to rows in component tables.
 ///
-/// Example of a time-based index table:
+/// Example of a time-based index table (`MAX_ROWS_PER_BUCKET=2`):
 /// ```text
 /// IndexTable {
 ///     timeline: log_time
 ///     entity: this/that
+///     size: 3 buckets for a total of 160 B across 5 total rows
 ///     buckets: [
 ///         IndexBucket {
-///             time range: from -∞ (inclusive) to +9223372036.855s (exlusive)
-///             data (sorted=true): shape: (4, 4)
-///             ┌──────────────────┬───────────┬───────┬───────────┐
-///             │ time             ┆ positions ┆ rects ┆ instances │
-///             │ ---              ┆ ---       ┆ ---   ┆ ---       │
-///             │ str              ┆ u64       ┆ u64   ┆ u64       │
-///             ╞══════════════════╪═══════════╪═══════╪═══════════╡
-///             │ 18:04:35.284851Z ┆ null      ┆ 1     ┆ null      │
-///             ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
-///             │ 18:04:35.284851Z ┆ 1         ┆ null  ┆ null      │
-///             ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
-///             │ 18:04:35.294851Z ┆ null      ┆ 3     ┆ 2         │
-///             ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
-///             │ 18:04:35.304851Z ┆ null      ┆ 2     ┆ 1         │
-///             └──────────────────┴───────────┴───────┴───────────┘
+///             index time bound: >= +0.000s
+///             size: 67 B across 2 rows
+///             time range: from 15:06:31.305069Z to 15:06:31.305069Z (all inclusive)
+///             data (sorted=true): shape: (2, 4)
+///             ┌──────────────────┬───────┬───────────┬───────────┐
+///             │ time             ┆ rects ┆ instances ┆ positions │
+///             │ ---              ┆ ---   ┆ ---       ┆ ---       │
+///             │ str              ┆ u64   ┆ u64       ┆ u64       │
+///             ╞══════════════════╪═══════╪═══════════╪═══════════╡
+///             │ 15:06:31.305069Z ┆ null  ┆ null      ┆ 2         │
+///             ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
+///             │ 15:06:31.305069Z ┆ 4     ┆ null      ┆ null      │
+///             └──────────────────┴───────┴───────────┴───────────┘
+///         }
+///         IndexBucket {
+///             index time bound: >= 15:06:32.305069Z
+///             size: 67 B across 2 rows
+///             time range: from 15:06:32.305069Z to 15:06:32.305069Z (all inclusive)
+///             data (sorted=true): shape: (2, 4)
+///             ┌──────────────────┬───────┬───────────┬───────────┐
+///             │ time             ┆ rects ┆ instances ┆ positions │
+///             │ ---              ┆ ---   ┆ ---       ┆ ---       │
+///             │ str              ┆ u64   ┆ u64       ┆ u64       │
+///             ╞══════════════════╪═══════╪═══════════╪═══════════╡
+///             │ 15:06:32.305069Z ┆ 1     ┆ null      ┆ null      │
+///             ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
+///             │ 15:06:32.305069Z ┆ null  ┆ 3         ┆ null      │
+///             └──────────────────┴───────┴───────────┴───────────┘
+///         }
+///         IndexBucket {
+///             index time bound: >= 15:06:33.305069Z
+///             size: 26 B across 1 rows
+///             time range: from 15:06:33.305069Z to 15:06:33.305069Z (all inclusive)
+///             data (sorted=true): shape: (1, 3)
+///             ┌──────────────────┬───────┬───────────┐
+///             │ time             ┆ rects ┆ instances │
+///             │ ---              ┆ ---   ┆ ---       │
+///             │ str              ┆ u64   ┆ u64       │
+///             ╞══════════════════╪═══════╪═══════════╡
+///             │ 15:06:33.305069Z ┆ 2     ┆ 2         │
+///             └──────────────────┴───────┴───────────┘
 ///         }
 ///     ]
 /// }
 /// ```
 ///
-/// Example of a sequence-based index table:
+/// Example of a sequence-based index table (`MAX_ROWS_PER_BUCKET=2`):
 /// ```text
 /// IndexTable {
 ///     timeline: frame_nr
 ///     entity: this/that
+///     size: 3 buckets for a total of 265 B across 8 total rows
 ///     buckets: [
 ///         IndexBucket {
-///             time range: from -∞ (inclusive) to #9223372036854775807 (exlusive)
-///             data (sorted=true): shape: (4, 4)
-///             ┌──────┬───────────┬───────────┬───────┐
-///             │ time ┆ instances ┆ positions ┆ rects │
-///             │ ---  ┆ ---       ┆ ---       ┆ ---   │
-///             │ str  ┆ u64       ┆ u64       ┆ u64   │
-///             ╞══════╪═══════════╪═══════════╪═══════╡
-///             │ #41  ┆ 1         ┆ null      ┆ 2     │
-///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┤
-///             │ #42  ┆ 2         ┆ null      ┆ 3     │
-///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┤
-///             │ #42  ┆ null      ┆ 1         ┆ null  │
-///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┤
-///             │ #43  ┆ null      ┆ null      ┆ 1     │
-///             └──────┴───────────┴───────────┴───────┘
+///             index time bound: >= #0
+///             size: 99 B across 3 rows
+///             time range: from #41 to #41 (all inclusive)
+///             data (sorted=true): shape: (3, 4)
+///             ┌──────┬───────┬───────────┬───────────┐
+///             │ time ┆ rects ┆ positions ┆ instances │
+///             │ ---  ┆ ---   ┆ ---       ┆ ---       │
+///             │ str  ┆ u64   ┆ u64       ┆ u64       │
+///             ╞══════╪═══════╪═══════════╪═══════════╡
+///             │ #41  ┆ null  ┆ null      ┆ 1         │
+///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
+///             │ #41  ┆ null  ┆ 1         ┆ null      │
+///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
+///             │ #41  ┆ 3     ┆ null      ┆ null      │
+///             └──────┴───────┴───────────┴───────────┘
+///         }
+///         IndexBucket {
+///             index time bound: >= #42
+///             size: 99 B across 3 rows
+///             time range: from #42 to #42 (all inclusive)
+///             data (sorted=true): shape: (3, 4)
+///             ┌──────┬───────────┬───────┬───────────┐
+///             │ time ┆ instances ┆ rects ┆ positions │
+///             │ ---  ┆ ---       ┆ ---   ┆ ---       │
+///             │ str  ┆ u64       ┆ u64   ┆ u64       │
+///             ╞══════╪═══════════╪═══════╪═══════════╡
+///             │ #42  ┆ null      ┆ 1     ┆ null      │
+///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
+///             │ #42  ┆ 3         ┆ null  ┆ null      │
+///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
+///             │ #42  ┆ null      ┆ null  ┆ 2         │
+///             └──────┴───────────┴───────┴───────────┘
+///         }
+///         IndexBucket {
+///             index time bound: >= #43
+///             size: 67 B across 2 rows
+///             time range: from #43 to #44 (all inclusive)
+///             data (sorted=true): shape: (2, 4)
+///             ┌──────┬───────┬───────────┬───────────┐
+///             │ time ┆ rects ┆ instances ┆ positions │
+///             │ ---  ┆ ---   ┆ ---       ┆ ---       │
+///             │ str  ┆ u64   ┆ u64       ┆ u64       │
+///             ╞══════╪═══════╪═══════════╪═══════════╡
+///             │ #43  ┆ 4     ┆ null      ┆ null      │
+///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
+///             │ #44  ┆ null  ┆ null      ┆ 3         │
+///             └──────┴───────┴───────────┴───────────┘
 ///         }
 ///     ]
 /// }
@@ -225,6 +399,13 @@ pub struct IndexTable {
     pub(crate) ent_path: EntityPath,
 
     /// The actual buckets, where the indices are stored.
+    ///
+    /// The keys of this `BTreeMap` represent the lower bounds of the time-ranges covered by
+    /// their associated buckets, _as seen from an indexing rather than a data standpoint_!
+    ///
+    /// This means that e.g. for the initial bucket, this will always be `-∞`, as from an
+    /// indexing standpoint, all reads and writes with a time `t >= -∞` should go there, even
+    /// though the bucket doesn't actually contains data with a timestamp of `-∞`!
     pub(crate) buckets: BTreeMap<TimeInt, IndexBucket>,
 }
 
@@ -240,13 +421,79 @@ impl std::fmt::Display for IndexTable {
         f.write_fmt(format_args!("timeline: {}\n", timeline.name()))?;
         f.write_fmt(format_args!("entity: {}\n", ent_path))?;
 
+        f.write_fmt(format_args!(
+            "size: {} buckets for a total of {} across {} total rows\n",
+            self.buckets.len(),
+            format_bytes(self.total_size_bytes() as _),
+            format_number(self.total_rows() as _),
+        ))?;
         f.write_str("buckets: [\n")?;
-        for bucket in buckets.values() {
+        for (time, bucket) in buckets.iter() {
             f.write_str(&indent::indent_all_by(4, "IndexBucket {\n"))?;
+            f.write_str(&indent::indent_all_by(
+                8,
+                format!("index time bound: >= {}\n", timeline.typ().format(*time),),
+            ))?;
             f.write_str(&indent::indent_all_by(8, bucket.to_string() + "\n"))?;
             f.write_str(&indent::indent_all_by(4, "}\n"))?;
         }
         f.write_str("]")?;
+
+        Ok(())
+    }
+}
+
+impl IndexTable {
+    pub fn entity_path(&self) -> &EntityPath {
+        &self.ent_path
+    }
+
+    /// Returns the number of rows stored across this entire table, i.e. the sum of the number
+    /// of rows stored across all of its buckets.
+    pub fn total_rows(&self) -> u64 {
+        self.buckets
+            .values()
+            .map(|bucket| bucket.total_rows())
+            .sum()
+    }
+
+    /// Returns the size of data stored across this entire table, i.e. the sum of the size of
+    /// the data stored across all of its buckets, in bytes.
+    pub fn total_size_bytes(&self) -> u64 {
+        self.buckets
+            .values()
+            .map(|bucket| bucket.total_size_bytes())
+            .sum()
+    }
+
+    /// Runs the sanity check suite for the entire table.
+    ///
+    /// Returns an error if anything looks wrong.
+    pub fn sanity_check(&self) -> anyhow::Result<()> {
+        // No two buckets should ever overlap time-range-wise.
+        {
+            let time_ranges = self
+                .buckets
+                .values()
+                .map(|bucket| bucket.indices.read().time_range)
+                .collect::<Vec<_>>();
+            for time_ranges in time_ranges.windows(2) {
+                let &[t1, t2] = time_ranges else { unreachable!() };
+                ensure!(
+                    t1.max.as_i64() < t2.min.as_i64(),
+                    "found overlapping index buckets: {} ({}) <-> {} ({})",
+                    self.timeline.typ().format(t1.max),
+                    t1.max.as_i64(),
+                    self.timeline.typ().format(t2.min),
+                    t2.min.as_i64(),
+                );
+            }
+        }
+
+        // Run individual bucket sanity check suites too.
+        for bucket in self.buckets.values() {
+            bucket.sanity_check()?;
+        }
 
         Ok(())
     }
@@ -264,9 +511,6 @@ pub struct IndexBucket {
     /// The timeline the bucket's parent table operates in, for debugging purposes.
     pub(crate) timeline: Timeline,
 
-    /// The time range covered by this bucket.
-    pub(crate) time_range: TimeRange,
-
     pub(crate) indices: RwLock<IndexBucketIndices>,
 }
 
@@ -277,6 +521,12 @@ pub struct IndexBucketIndices {
     ///
     /// Querying an `IndexBucket` will always trigger a sort if the indices aren't already sorted.
     pub(crate) is_sorted: bool,
+
+    /// The time range covered by the primary time index.
+    ///
+    /// This is the actual time range that's covered by the indexed data!
+    /// For an empty bucket, this defaults to [+∞,-∞].
+    pub(crate) time_range: TimeRange,
 
     // The primary time index, which is guaranteed to be dense, and "drives" all other indices.
     //
@@ -296,6 +546,7 @@ impl Default for IndexBucketIndices {
     fn default() -> Self {
         Self {
             is_sorted: true,
+            time_range: TimeRange::new(i64::MAX.into(), i64::MIN.into()),
             times: Int64Vec::default(),
             indices: Default::default(),
         }
@@ -304,60 +555,98 @@ impl Default for IndexBucketIndices {
 
 impl std::fmt::Display for IndexBucket {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self {
-            timeline,
-            time_range,
-            indices,
-        } = self;
-
-        let IndexBucketIndices {
-            is_sorted,
-            times,
-            indices,
-        } = &*indices.read();
-
         f.write_fmt(format_args!(
-            "time range: from {} to {} (all inclusive)\n",
-            timeline.typ().format(time_range.min),
-            timeline.typ().format(time_range.max),
+            "size: {} across {} rows\n",
+            format_bytes(self.total_size_bytes() as _),
+            format_number(self.total_rows() as _),
         ))?;
 
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            use arrow2::array::MutableArray as _;
-            use polars::prelude::{DataFrame, NamedFrom as _, Series};
+        f.write_fmt(format_args!("{}\n", self.formatted_time_range()))?;
 
-            let typ = timeline.typ();
-            let times = Series::new(
-                "time",
-                times
-                    .values()
-                    .iter()
-                    .map(|time| typ.format(TimeInt::from(*time)))
-                    .collect::<Vec<_>>(),
-            );
+        let (timeline_name, times) = self.times();
+        let (col_names, cols) = self.named_indices();
 
-            let series = std::iter::once(times)
-                .chain(indices.iter().map(|(name, index)| {
-                    let index = index
-                        .values()
-                        .iter()
-                        .enumerate()
-                        .map(|(i, v)| index.is_valid(i).then_some(*v))
-                        .collect::<Vec<_>>();
-                    Series::new(name.as_str(), index)
-                }))
-                .collect::<Vec<_>>();
-            let df = DataFrame::new(series).unwrap();
-            f.write_fmt(format_args!("data (sorted={is_sorted}): {df:?}\n"))?;
+        let names: Vec<String> = std::iter::once(timeline_name)
+            .chain(col_names.into_iter())
+            .collect();
+
+        let chunk = Chunk::new(
+            std::iter::once(times.boxed())
+                .chain(cols.into_iter().map(|c| c.boxed()))
+                .collect(),
+        );
+
+        let table_str = arrow2::io::print::write(&[chunk], names.as_slice());
+        let is_sorted = self.is_sorted();
+        f.write_fmt(format_args!("data (sorted={is_sorted}):\n{table_str}\n"))?;
+
+        Ok(())
+    }
+}
+
+impl IndexBucket {
+    /// Returns the number of rows stored across this bucket.
+    pub fn total_rows(&self) -> u64 {
+        self.indices.read().times.len() as u64
+    }
+
+    /// Returns the size of the data stored across this bucket, in bytes.
+    // NOTE: for mutable, non-erased arrays, it's actually easier to compute ourselves.
+    pub fn total_size_bytes(&self) -> u64 {
+        fn size_of_validity(bitmap: Option<&MutableBitmap>) -> u64 {
+            bitmap.map_or(0, |bitmap| std::mem::size_of_val(bitmap.as_slice())) as _
+        }
+        fn size_of_values<T>(values: &Vec<T>) -> u64 {
+            std::mem::size_of_val(values.as_slice()) as _
         }
 
-        #[cfg(target_arch = "wasm32")]
+        let IndexBucketIndices {
+            is_sorted: _,
+            time_range: _,
+            times,
+            indices,
+        } = &*self.indices.read();
+
+        size_of_validity(times.validity())
+            + size_of_values(times.values())
+            + indices
+                .values()
+                .map(|index| size_of_validity(index.validity()) + size_of_values(index.values()))
+                .sum::<u64>()
+    }
+
+    /// Returns a formatted string of the time range in the bucket
+    pub fn formatted_time_range(&self) -> String {
+        let time_range = &self.indices.read().time_range;
+        if time_range.min.as_i64() != i64::MAX && time_range.max.as_i64() != i64::MIN {
+            self.timeline.format_time_range(time_range)
+        } else {
+            "time range: N/A\n".to_owned()
+        }
+    }
+
+    /// Runs the sanity check suite for the entire bucket.
+    ///
+    /// Returns an error if anything looks wrong.
+    pub fn sanity_check(&self) -> anyhow::Result<()> {
+        let IndexBucketIndices {
+            is_sorted: _,
+            time_range: _,
+            times,
+            indices,
+        } = &*self.indices.read();
+
+        // All indices should contain the exact same number of rows as the time index.
         {
-            _ = time_range;
-            _ = is_sorted;
-            _ = times;
-            _ = indices;
+            let primary_len = times.len();
+            for (comp, index) in indices {
+                let secondary_len = index.len();
+                ensure!(
+                    primary_len == secondary_len,
+                    "found rogue secondary index for {comp:?}: \
+                        expected {primary_len} rows, got {secondary_len} instead",
+                );
+            }
         }
 
         Ok(())
@@ -459,7 +748,7 @@ impl std::fmt::Display for ComponentTable {
         }
 
         f.write_fmt(format_args!(
-            "size: {} buckets for a total of {} bytes across {} total rows\n",
+            "size: {} buckets for a total of {} across {} total rows\n",
             self.buckets.len(),
             format_bytes(self.total_size_bytes() as _),
             format_number(self.total_rows() as _),
@@ -491,6 +780,29 @@ impl ComponentTable {
             .map(|bucket| bucket.total_size_bytes())
             .sum()
     }
+
+    /// Runs the sanity check suite for the entire table.
+    ///
+    /// Returns an error if anything looks wrong.
+    pub fn sanity_check(&self) -> anyhow::Result<()> {
+        // No two buckets should ever overlap row-range-wise.
+        {
+            let row_ranges = self
+                .buckets
+                .iter()
+                .map(|bucket| bucket.row_offset..bucket.row_offset + bucket.total_rows())
+                .collect::<Vec<_>>();
+            for row_ranges in row_ranges.windows(2) {
+                let &[r1, r2] = &row_ranges else { unreachable!() };
+                ensure!(
+                    !r1.contains(&r2.start),
+                    "found overlapping component buckets: {r1:?} <-> {r2:?}"
+                );
+            }
+        }
+
+        Ok(())
+    }
 }
 
 /// A `ComponentBucket` holds a size-delimited (data size) chunk of a [`ComponentTable`].
@@ -498,6 +810,7 @@ impl ComponentTable {
 pub struct ComponentBucket {
     /// The component's name, for debugging purposes.
     pub(crate) name: Arc<String>,
+
     /// The offset of this bucket in the global table.
     pub(crate) row_offset: RowIndex,
 
@@ -513,56 +826,38 @@ pub struct ComponentBucket {
 
 impl std::fmt::Display for ComponentBucket {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self {
-            name,
-            time_ranges,
-            row_offset,
-            data,
-        } = self;
-
         f.write_fmt(format_args!(
-            "size: {} bytes across {} rows\n",
+            "size: {} across {} rows\n",
             format_bytes(self.total_size_bytes() as _),
             format_number(self.total_rows() as _),
         ))?;
 
         f.write_fmt(format_args!(
             "row range: from {} to {} (all inclusive)\n",
-            row_offset,
+            self.row_offset,
             // Component buckets can never be empty at the moment:
             // - the first bucket is always initialized with a single empty row
             // - all buckets that follow are lazily instantiated when data get inserted
             //
             // TODO(#439): is that still true with deletion?
-            row_offset + data.len().checked_sub(1).expect("buckets are never empty") as u64,
+            self.row_offset
+                + self
+                    .data
+                    .len()
+                    .checked_sub(1)
+                    .expect("buckets are never empty") as u64,
         ))?;
 
         f.write_str("time ranges:\n")?;
-        for (timeline, time_range) in time_ranges {
+        for (timeline, time_range) in &self.time_ranges {
             f.write_fmt(format_args!(
-                "    - {}: from {} to {} (all inclusive)\n",
-                timeline.name(),
-                timeline.typ().format(time_range.min),
-                timeline.typ().format(time_range.max),
+                "{}\n",
+                &timeline.format_time_range(time_range)
             ))?;
         }
 
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            use polars::prelude::{DataFrame, Series};
-            // TODO(cmc): I'm sure there's no need to clone here
-            let series = Series::try_from((name.as_str(), data.clone())).unwrap();
-            let df = DataFrame::new(vec![series]).unwrap();
-            f.write_fmt(format_args!("data: {df:?}\n"))?;
-        }
-
-        #[cfg(target_arch = "wasm32")]
-        {
-            _ = name;
-            _ = time_ranges;
-            _ = row_offset;
-            _ = data;
-        }
+        let chunk = Chunk::new(vec![self.data()]);
+        f.write_str(&arrow2::io::print::write(&[chunk], &[self.name.as_str()]))?;
 
         Ok(())
     }

@@ -22,10 +22,10 @@ pub(crate) mod kb_shortcuts;
 pub(crate) mod selection_panel;
 pub(crate) mod time_panel;
 
-pub(crate) mod view_2d;
-pub(crate) mod view_3d;
 pub mod view_spatial;
 
+mod class_description_ui;
+mod image_ui;
 mod view_plot;
 mod view_tensor;
 mod view_text;

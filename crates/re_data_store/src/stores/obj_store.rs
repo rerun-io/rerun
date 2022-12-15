@@ -127,17 +127,17 @@ fn test_obj_store() {
         .insert_mono("field2".into(), 0, MsgId::random(), Some(3.15_f32))
         .is_ok());
 
-    assert_eq!(
+    assert!(matches!(
         obj_store.insert_mono("field2".into(), 0, MsgId::random(), Some(42)),
         Err(crate::Error::MixingTypes {
             existing: DataType::F32,
             expected: DataType::I32
         })
-    );
+    ));
 
     let batch = crate::BatchOrSplat::Splat(42.0);
-    assert_eq!(
+    assert!(matches!(
         obj_store.insert_batch("field3".into(), 0, MsgId::random(), batch),
         Err(crate::Error::MixingMonoAndMulti)
-    );
+    ));
 }

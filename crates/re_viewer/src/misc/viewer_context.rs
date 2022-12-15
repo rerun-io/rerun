@@ -6,12 +6,12 @@ use re_log_types::{DataPath, MsgId, ObjPath, TimeInt, Timeline};
 use crate::ui::{SelectionHistory, SpaceViewId};
 
 /// Common things needed by many parts of the viewer.
-pub(crate) struct ViewerContext<'a> {
+pub struct ViewerContext<'a> {
     /// Global options for the whole viewer.
     pub options: &'a mut Options,
 
     /// Things that need caching.
-    pub cache: &'a mut Caches,
+    pub cache: &'a mut super::Caches,
 
     /// The current recording
     pub log_db: &'a LogDb,
@@ -227,7 +227,7 @@ pub enum HoveredSpace {
 /// UI config for the current recording (found in [`LogDb`]).
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
-pub(crate) struct RecordingConfig {
+pub struct RecordingConfig {
     /// The current time of the time panel, how fast it is moving, etc.
     pub time_ctrl: crate::TimeControl,
 
@@ -278,33 +278,6 @@ impl RecordingConfig {
     /// Returns the current selection.
     pub fn selection(&self) -> Selection {
         self.selection.clone()
-    }
-}
-
-// ----------------------------------------------------------------------------
-
-#[derive(Default)]
-pub(crate) struct Caches {
-    /// For displaying images efficiently in immediate mode.
-    pub image: crate::misc::ImageCache,
-
-    /// For displaying meshes efficiently in immediate mode.
-    pub cpu_mesh: crate::ui::view_spatial::CpuMeshCache,
-}
-
-impl Caches {
-    /// Call once per frame to potentially flush the cache(s).
-    pub fn new_frame(&mut self) {
-        let max_image_cache_use = 1_000_000_000;
-        self.image.new_frame(max_image_cache_use);
-    }
-
-    pub fn purge_memory(&mut self) {
-        let Self {
-            image,
-            cpu_mesh: _, // TODO(emilk)
-        } = self;
-        image.purge_memory();
     }
 }
 

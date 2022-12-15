@@ -11,6 +11,13 @@ homepage = "http://rerun.io"
 readme = "README.md"
 repository = "https://github.com/rerun-io/rerun"
 
+[workspace.dependencies]
+anyhow = "1.0"
+arrow2 = { version = "0.14" }
+arrow2_convert = { version = "0.3" }
+polars-core = "0.25"
+thiserror = "1.0"
+
 [profile.dev]
 opt-level = 1 # Make debug builds run faster
 
@@ -25,14 +32,14 @@ opt-level = 2
 debug = true
 
 [patch.crates-io]
-# 2022-12-08 - egui style tweaks
-ecolor = { git = "https://github.com/emilk/egui", rev = "da0a1787019cb28c26e969bc537a191f2ed302f3" }
-eframe = { git = "https://github.com/emilk/egui", rev = "da0a1787019cb28c26e969bc537a191f2ed302f3" }
-egui = { git = "https://github.com/emilk/egui", rev = "da0a1787019cb28c26e969bc537a191f2ed302f3" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "da0a1787019cb28c26e969bc537a191f2ed302f3" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "da0a1787019cb28c26e969bc537a191f2ed302f3" }
-emath = { git = "https://github.com/emilk/egui", rev = "da0a1787019cb28c26e969bc537a191f2ed302f3" }
-epaint = { git = "https://github.com/emilk/egui", rev = "da0a1787019cb28c26e969bc537a191f2ed302f3" }
+# 2022-12-14 - ignore \r character
+ecolor = { git = "https://github.com/emilk/egui", rev = "4e8341d35c20a8447ac948d6c84cae5ab098bac2" }
+eframe = { git = "https://github.com/emilk/egui", rev = "4e8341d35c20a8447ac948d6c84cae5ab098bac2" }
+egui = { git = "https://github.com/emilk/egui", rev = "4e8341d35c20a8447ac948d6c84cae5ab098bac2" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "4e8341d35c20a8447ac948d6c84cae5ab098bac2" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "4e8341d35c20a8447ac948d6c84cae5ab098bac2" }
+emath = { git = "https://github.com/emilk/egui", rev = "4e8341d35c20a8447ac948d6c84cae5ab098bac2" }
+epaint = { git = "https://github.com/emilk/egui", rev = "4e8341d35c20a8447ac948d6c84cae5ab098bac2" }
 
 # ecolor = { path = "../../egui/crates/ecolor" }
 # eframe = { path = "../../egui/crates/eframe" }

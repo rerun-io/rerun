@@ -1,4 +1,4 @@
-fn main() {
+fn main() -> eframe::Result<()> {
     let native_options = eframe::NativeOptions {
         initial_window_size: Some([1200.0, 800.0].into()),
         follow_system_theme: false,
@@ -21,9 +21,11 @@ fn main() {
                 left_panel: true,
                 right_panel: true,
                 bottom_panel: true,
+
+                dummy_bool: true,
             })
         }),
-    );
+    )
 }
 
 pub struct ExampleApp {
@@ -32,14 +34,25 @@ pub struct ExampleApp {
     left_panel: bool,
     right_panel: bool,
     bottom_panel: bool,
+
+    dummy_bool: bool,
 }
 
 impl eframe::App for ExampleApp {
     fn update(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
+        egui::gui_zoom::zoom_with_keyboard_shortcuts(
+            egui_ctx,
+            frame.info().native_pixels_per_point,
+        );
+
         self.top_bar(egui_ctx, frame);
 
         egui::SidePanel::left("left_panel").show_animated(egui_ctx, self.left_panel, |ui| {
             ui.label("Left panel");
+            ui.horizontal(|ui| {
+                ui.label("Toggle switch:");
+                ui.add(re_ui::toggle_switch(&mut self.dummy_bool));
+            });
         });
         egui::SidePanel::right("right_panel").show_animated(egui_ctx, self.right_panel, |ui| {
             ui.label("Right panel");

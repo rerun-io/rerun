@@ -69,7 +69,7 @@ pub enum Looping {
 /// Controls the global view and progress of the time.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
-pub(crate) struct TimeControl {
+pub struct TimeControl {
     /// Name of the timeline (e.g. "log_time").
     timeline: Timeline,
 
@@ -290,12 +290,12 @@ impl TimeControl {
     }
 
     /// The range of time we are currently zoomed in on.
-    pub fn time_view(&self) -> Option<TimeView> {
+    pub(crate) fn time_view(&self) -> Option<TimeView> {
         self.states.get(&self.timeline).and_then(|state| state.view)
     }
 
     /// The range of time we are currently zoomed in on.
-    pub fn set_time_view(&mut self, view: TimeView) {
+    pub(crate) fn set_time_view(&mut self, view: TimeView) {
         self.states
             .entry(self.timeline)
             .or_insert_with(|| TimeState::new(view.min))

@@ -1,25 +1,22 @@
 use std::sync::Arc;
 
 use re_log_types::{MeshFormat, MeshId};
-
-use crate::mesh_loader::CpuMesh;
-
-use super::scene::MeshSourceData;
-
 use re_renderer::RenderContext;
+
+use crate::{mesh_loader::LoadedMesh, ui::view_spatial::MeshSourceData};
 
 // ----------------------------------------------------------------------------
 
 #[derive(Default)]
-pub struct CpuMeshCache(nohash_hasher::IntMap<MeshId, Option<Arc<CpuMesh>>>);
+pub struct MeshCache(nohash_hasher::IntMap<MeshId, Option<Arc<LoadedMesh>>>);
 
-impl CpuMeshCache {
+impl MeshCache {
     pub fn load(
         &mut self,
         name: &str,
         mesh_data: &MeshSourceData,
         render_ctx: &mut RenderContext,
-    ) -> Option<Arc<CpuMesh>> {
+    ) -> Option<Arc<LoadedMesh>> {
         crate::profile_function!();
 
         let mesh_id = mesh_data.mesh_id();
@@ -31,11 +28,14 @@ impl CpuMeshCache {
 
                 let result = match mesh_data {
                     MeshSourceData::Mesh3D(mesh3d) => {
-                        CpuMesh::load(name.to_owned(), mesh3d, render_ctx)
+                        LoadedMesh::load(name.to_owned(), mesh3d, render_ctx)
                     }
-                    MeshSourceData::StaticGlb(_mesh_id, glb_bytes) => {
-                        CpuMesh::load_raw(name.to_owned(), MeshFormat::Glb, glb_bytes, render_ctx)
-                    }
+                    MeshSourceData::StaticGlb(_mesh_id, glb_bytes) => LoadedMesh::load_raw(
+                        name.to_owned(),
+                        MeshFormat::Glb,
+                        glb_bytes,
+                        render_ctx,
+                    ),
                 };
 
                 match result {

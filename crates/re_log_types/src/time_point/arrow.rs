@@ -162,6 +162,8 @@ impl ArrowDeserialize for TimePoint {
     }
 }
 
+// ----------------------------------------------------------------------------
+
 #[test]
 fn test_timepoint_roundtrip() {
     use crate::datagen;

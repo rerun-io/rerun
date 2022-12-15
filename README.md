@@ -24,11 +24,21 @@ rustup set default-host aarch64-apple-darwin && rustup install 1.65
 
 ## Build and install the Rerun Python SDK
 ### Set up virtualenv
+
+Mac/Linux:
 ```sh
 python3 -m venv venv  # Rerun supports Python version >= 3.7
 source venv/bin/activate
 python -m pip install --upgrade pip  # We need pip version >=21.3
 ```
+
+Windows (powershell):
+```ps1
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+```
+
 From here on out, we assume you have this virtualenv activated.
 
 ### Build and install

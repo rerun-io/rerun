@@ -91,6 +91,8 @@ impl TimeType {
     pub fn format(&self, time_int: TimeInt) -> String {
         if time_int <= TimeInt::BEGINNING {
             "-∞".into()
+        } else if time_int >= TimeInt::MAX {
+            "+∞".into()
         } else {
             match self {
                 Self::Time => Time::from(time_int).format(),
@@ -107,8 +109,18 @@ impl IntoIterator for TimePoint {
     type IntoIter = btree_map::IntoIter<Timeline, TimeInt>;
 
     #[inline]
-    fn into_iter(self) -> btree_map::IntoIter<Timeline, TimeInt> {
+    fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()
+    }
+}
+
+impl<'a> IntoIterator for &'a TimePoint {
+    type Item = (&'a Timeline, &'a TimeInt);
+    type IntoIter = btree_map::Iter<'a, Timeline, TimeInt>;
+
+    #[inline]
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.iter()
     }
 }
 

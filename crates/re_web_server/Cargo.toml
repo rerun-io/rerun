@@ -17,9 +17,9 @@ __ci = []
 
 
 [dependencies]
-anyhow = "1.0.56"
 re_log = { path = "../re_log" }
 
+anyhow.workspace = true
 document-features = "0.2"
 futures-util = "0.3"
 hyper = { version = "0.14", features = ["full"] }

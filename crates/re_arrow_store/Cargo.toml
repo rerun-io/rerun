@@ -6,6 +6,10 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
+[features]
+default = []
+deadlock_detection = ["parking_lot/deadlock_detection"]
+
 [dependencies]
 # Rerun
 re_format = { path = "../re_format" }
@@ -13,33 +17,23 @@ re_log = { path = "../re_log" }
 re_log_types = { path = "../re_log_types" }
 
 # External
-anyhow = "1.0"
-arrow2 = { version = "0.14", features = [
-  "io_ipc",
+anyhow.workspace = true
+arrow2 = { workspace = true, features = [
   "compute_concatenate",
   "compute_aggregate",
+  "io_print",
 ] }
 chrono = "0.4"
 document-features = "0.2"
 indent = "0.1"
 nohash-hasher = "0.2"
 parking_lot = "0.12"
-thiserror = "1.0"
-
-# native dependencies:
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-polars = { version = "0.25", features = [
+polars-core = { workspace = true, features = [
+  "dtype-date",
   "dtype-time",
   "dtype-struct",
-  "fmt",
-], default-features = false }
-
-# web dependencies:
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-polars = { version = "0.25", features = [
-  "dtype-time",
-  "dtype-struct",
-], default-features = false }
+] }
+thiserror.workspace = true
 
 [dev-dependencies]
 criterion = "0.4"

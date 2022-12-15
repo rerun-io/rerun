@@ -21,19 +21,19 @@
 mod batch;
 mod instance;
 pub mod log_db;
+pub mod object_properties;
 pub mod object_tree;
-pub mod object_tree_properties;
 pub mod query;
 mod stores;
 
 pub use batch::*;
 pub use instance::*;
 pub use log_db::LogDb;
+pub use object_properties::*;
 pub use object_tree::*;
-pub use object_tree_properties::*;
 pub use stores::*;
 
-use re_log_types::DataType;
+use re_log_types::{msg_bundle, DataType};
 
 pub use re_log_types::{
     FieldName, Index, IndexPath, ObjPath, ObjPathComp, ObjTypePath, ObjTypePathComp, TimeInt,
@@ -46,7 +46,7 @@ pub use re_log_types::{
 ///
 /// Most of these indicate a problem with either the logging SDK,
 /// or how the loggign SDK is being used (PEBKAC).
-#[derive(thiserror::Error, Clone, Debug, PartialEq, Eq)]
+#[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error("Batch had differing number of indices and data.")]
     BadBatch,
@@ -61,6 +61,13 @@ pub enum Error {
         existing: DataType,
         expected: DataType,
     },
+
+    #[error(transparent)]
+    MsgBundleError(#[from] msg_bundle::MsgBundleError),
+
+    //TODO(john) probably want to turn these into explicit error types
+    #[error(transparent)]
+    Other(#[from] anyhow::Error),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;

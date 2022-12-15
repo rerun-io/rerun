@@ -8,4 +8,4 @@ publish = false
 
 
 [dev-dependencies]
-anyhow = "1"
+anyhow.workspace = true

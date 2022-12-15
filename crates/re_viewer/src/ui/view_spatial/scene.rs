@@ -20,7 +20,7 @@ use re_renderer::{
 
 use crate::{
     math::line_segment_distance_sq_to_point_2d,
-    misc::{mesh_loader::CpuMesh, ViewerContext},
+    misc::{mesh_loader::LoadedMesh, ViewerContext},
     ui::{
         annotations::{auto_color, AnnotationMap, DefaultColor},
         view_spatial::axis_color,
@@ -53,7 +53,7 @@ pub struct MeshSource {
     pub instance_id_hash: InstanceIdHash,
     // TODO(andreas): Make this Conformal3 once glow is gone?
     pub world_from_mesh: macaw::Affine3A,
-    pub mesh: Arc<CpuMesh>,
+    pub mesh: Arc<LoadedMesh>,
     pub additive_tint: Option<Color32>,
 }
 
@@ -133,17 +133,9 @@ pub struct SceneSpatialPrimitives {
 }
 
 impl SceneSpatialPrimitives {
-    /// 2D bounding rectangle ignoring Z.
-    pub fn bounding_rect_2d(&self) -> egui::Rect {
-        egui::Rect::from_min_max(
-            self.bounding_box.min.truncate().to_array().into(),
-            self.bounding_box.max.truncate().to_array().into(),
-        )
-    }
-
     /// bounding box covering the rendered scene
-    pub fn bounding_box(&self) -> &macaw::BoundingBox {
-        &self.bounding_box
+    pub fn bounding_box(&self) -> macaw::BoundingBox {
+        self.bounding_box
     }
 
     pub fn recalculate_bounding_box(&mut self) {
@@ -349,6 +341,9 @@ impl SceneSpatial {
     ) {
         // Generate keypoint connections if any.
         let instance_id_hash = InstanceIdHash::from_path_and_index(obj_path, IndexHash::NONE);
+
+        let mut line_batch = self.primitives.line_strips.batch("keypoint connections");
+
         for ((class_id, _time), keypoints_in_class) in keypoints {
             let Some(class_description) = annotations.context.class_map.get(&class_id) else {
                 continue;
@@ -367,8 +362,7 @@ impl SceneSpatial {
                     );
                     continue;
                 };
-                self.primitives
-                    .line_strips
+                line_batch
                     .add_segment(*a, *b)
                     .radius(Size::AUTO)
                     .color(to_ecolor(color))
@@ -477,12 +471,13 @@ impl SceneSpatial {
                     }
 
                     // Add renderer primitive
+                    let mut line_batch = self.primitives.line_strips.batch("lines 3d");
+
                     match obj_type {
-                        ObjectType::Path3D => self
-                            .primitives
-                            .line_strips
-                            .add_strip(points.iter().map(|v| Vec3::from_slice(v))),
-                        ObjectType::LineSegments3D => self.primitives.line_strips.add_segments(
+                        ObjectType::Path3D => {
+                            line_batch.add_strip(points.iter().map(|v| Vec3::from_slice(v)))
+                        }
+                        ObjectType::LineSegments3D => line_batch.add_segments(
                             points
                                 .chunks_exact(2)
                                 .map(|points| (points[0].into(), points[1].into())),
@@ -580,7 +575,7 @@ impl SceneSpatial {
                             None
                         };
 
-                        let Some(mesh) = ctx.cache.cpu_mesh.load(
+                        let Some(mesh) = ctx.cache.mesh.load(
                                 &obj_path.to_string(),
                                 &MeshSourceData::Mesh3D(mesh.clone()),
                                 ctx.render_ctx
@@ -623,11 +618,16 @@ impl SceneSpatial {
                  tensor: &re_log_types::Tensor,
                  color: Option<&[u8; 4]>,
                  meter: Option<&f32>| {
-                    let two_or_three_dims = 2 <= tensor.shape.len() && tensor.shape.len() <= 3;
-                    if !two_or_three_dims {
+                    let shape = &tensor.shape;
+                    if shape.len() <= 1 || shape.len() > 3 {
                         return;
                     }
-                    let (w, h) = (tensor.shape[1].size as f32, tensor.shape[0].size as f32);
+                    let depth = if shape.len() == 2 { 1 } else { shape[2].size };
+                    if depth != 1 && depth != 3 && depth != 4 {
+                        return;
+                    }
+
+                    let (w, h) = (shape[1].size as f32, shape[0].size as f32);
 
                     let instance_index = instance_index.copied().unwrap_or(IndexHash::NONE);
                     let instance_hash =
@@ -644,6 +644,7 @@ impl SceneSpatial {
                     if hovered_instance == instance_hash {
                         self.primitives
                             .line_strips
+                            .batch("image outlines")
                             .add_axis_aligned_rectangle_outline_2d(
                                 glam::Vec2::ZERO,
                                 glam::vec2(w, h),
@@ -746,13 +747,13 @@ impl SceneSpatial {
                     }
 
                     // Lines don't associated with instance (i.e. won't participate in hovering)
-                    self.primitives
-                        .line_strips
+                    let mut line_batch = self.primitives.line_strips.batch("2d box");
+                    line_batch
                         .add_axis_aligned_rectangle_outline_2d(bbox.min.into(), bbox.max.into())
                         .color(paint_props.bg_stroke.color)
-                        .radius(Size::new_points(paint_props.bg_stroke.width * 0.5));
-                    self.primitives
-                        .line_strips
+                        .radius(Size::new_points(paint_props.bg_stroke.width * 0.5))
+                        .user_data(instance_hash);
+                    line_batch
                         .add_axis_aligned_rectangle_outline_2d(bbox.min.into(), bbox.max.into())
                         .color(paint_props.fg_stroke.color)
                         .radius(Size::new_points(paint_props.fg_stroke.width * 0.5));
@@ -916,8 +917,8 @@ impl SceneSpatial {
                     }
 
                     // TODO(andreas): support outlines directly by re_renderer (need only 1 and 2 *point* black outlines)
-                    self.primitives
-                        .line_strips
+                    let mut line_batch = self.primitives.line_strips.batch("lines 2d");
+                    line_batch
                         .add_segments_2d(points.chunks_exact(2).map(|chunk| {
                             (
                                 glam::vec2(chunk[0][0], chunk[0][1]),
@@ -927,8 +928,7 @@ impl SceneSpatial {
                         .color(paint_props.bg_stroke.color)
                         .radius(Size::new_points(paint_props.bg_stroke.width * 0.5))
                         .user_data(instance_hash);
-                    self.primitives
-                        .line_strips
+                    line_batch
                         .add_segments_2d(points.chunks_exact(2).map(|chunk| {
                             (
                                 glam::vec2(chunk[0][0], chunk[0][1]),
@@ -989,7 +989,7 @@ impl SceneSpatial {
                     let mesh_id = MeshId(uuid::uuid!("0de12a29-64ea-40b9-898b-63686b5436af"));
                     let world_from_mesh = world_from_rub_view * glam::Affine3A::from_scale(scale);
 
-                    if let Some(cpu_mesh) = ctx.cache.cpu_mesh.load(
+                    if let Some(cpu_mesh) = ctx.cache.mesh.load(
                         "camera_mesh",
                         &MeshSourceData::StaticGlb(
                             mesh_id,
@@ -1015,12 +1015,13 @@ impl SceneSpatial {
                 // TODO(emilk): include the names of the axes ("Right", "Down", "Forward", etc)
                 let cam_origin = camera.position();
 
+                let mut batch = self.primitives.line_strips.batch("camera axis");
+
                 for (axis_index, dir) in [Vec3::X, Vec3::Y, Vec3::Z].iter().enumerate() {
                     let axis_end = world_from_cam.transform_point3(scale * *dir);
                     let color = axis_color(axis_index);
 
-                    self.primitives
-                        .line_strips
+                    batch
                         .add_segment(cam_origin, axis_end)
                         .radius(Size::new_points(2.0))
                         .color(color)
@@ -1073,6 +1074,7 @@ impl SceneSpatial {
 
         self.primitives
             .line_strips
+            .batch("camera frustum")
             .add_segments(segments.into_iter())
             .radius(line_radius)
             .color(color)
@@ -1111,6 +1113,7 @@ impl SceneSpatial {
 
         self.primitives
             .line_strips
+            .batch("arrow")
             .add_segment(origin, end)
             .radius(radius)
             .color(color)
@@ -1175,6 +1178,7 @@ impl SceneSpatial {
 
         self.primitives
             .line_strips
+            .batch("box 3d")
             .add_segments(segments.into_iter())
             .radius(line_radius)
             .color(color)
