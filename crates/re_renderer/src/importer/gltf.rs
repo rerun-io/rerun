@@ -194,10 +194,9 @@ fn import_mesh(
         }
 
         let primitive_material = primitive.material();
-        let albedo = if let Some(texture) = primitive_material
-            .pbr_metallic_roughness()
-            .base_color_texture()
-        {
+        let pbr_material = primitive_material.pbr_metallic_roughness();
+
+        let albedo = if let Some(texture) = pbr_material.base_color_texture() {
             anyhow::ensure!(
                 texture.tex_coord() == 0,
                 "Only a single set of texture coordinates is supported"
@@ -236,10 +235,18 @@ fn import_mesh(
             texture_manager.white_texture_handle().clone()
         };
 
+        // The color factor *is* in linear space, making things easier for us
+        // https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html#_material_pbrmetallicroughness_basecolorfactor
+        let albedo_factor = {
+            let [r, g, b, a] = pbr_material.base_color_factor();
+            crate::Rgba::from_rgba_unmultiplied(r, g, b, a)
+        };
+
         materials.push(Material {
             label: primitive.material().name().into(),
             index_range: index_offset..indices.len() as u32,
             albedo,
+            albedo_multiplier: albedo_factor,
         });
     }
     if vertex_positions.is_empty() || indices.is_empty() {
