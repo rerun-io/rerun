@@ -48,15 +48,12 @@ jobs:
           save-if: ${{ github.event_name == 'push'}}
 
       - name: Run benchmark
-        # NB: Need to do the `git reset` at the end because `Cargo.lock` gets updated by Cargo, but
-        # it's checked into the index and prevents us cleanly switching to the gh-pages branch.
         run: |
           cargo bench \
             -p re_arrow_store \
             -p re_data_store \
             -p re_tuid \
-            -- --output-format=bencher | tee output.txt \
-            && git reset --hard
+            -- --output-format=bencher | tee output.txt
 
       - name: Store benchmark result
         uses: benchmark-action/github-action-benchmark@v1
