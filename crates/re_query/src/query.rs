@@ -32,13 +32,13 @@ pub fn __populate_example_store() -> DataStore {
     let points = vec![Point2D { x: 1.0, y: 2.0 }, Point2D { x: 3.0, y: 4.0 }];
 
     let bundle =
-        try_build_msg_bundle2(MsgId::random(), ent_path, timepoint, (&instances, &points)).unwrap();
+        try_build_msg_bundle2(MsgId::ZERO, ent_path, timepoint, (&instances, &points)).unwrap();
     store.insert(&bundle).unwrap();
 
     let instances = vec![Instance(96)];
     let colors = vec![ColorRGBA(0xff000000)];
     let bundle =
-        try_build_msg_bundle2(MsgId::random(), ent_path, timepoint, (instances, colors)).unwrap();
+        try_build_msg_bundle2(MsgId::ZERO, ent_path, timepoint, (instances, colors)).unwrap();
     store.insert(&bundle).unwrap();
 
     store
