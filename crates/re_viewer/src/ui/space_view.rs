@@ -158,15 +158,7 @@ impl SpaceView {
         // Direct children of the current reference space.
         for (path, transform) in &reference_space.child_spaces {
             match transform {
-                re_log_types::Transform::Unknown => {}
-
-                // TODO(andreas): This should be made possible!
-                re_log_types::Transform::Rigid3(_) => {
-                    forced_invisible.insert(
-                        path.clone(),
-                        "Can't display elements with a rigid transform relative to the reference path in the same spaceview yet",
-                    );
-                }
+                re_log_types::Transform::Rigid3(_) | re_log_types::Transform::Unknown => {}
 
                 // TODO(andreas): This should be made possible *iff* the reference space itself doesn't define a pinhole camera (or is there a way to deal with that?)
                 re_log_types::Transform::Pinhole(_) => {
