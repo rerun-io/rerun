@@ -1,11 +1,10 @@
 use re_renderer::{
     renderer::{
-        LineStripFlags, PointCloudDrawData, PointCloudPoint, RectangleDrawData, TextureFilterMag,
-        TextureFilterMin, TexturedRect,
+        LineStripFlags, RectangleDrawData, TextureFilterMag, TextureFilterMin, TexturedRect,
     },
     resource_managers::{GpuTexture2DHandle, Texture2DCreationDesc},
     view_builder::{self, Projection, ViewBuilder},
-    Color32, LineStripSeriesBuilder, Rgba, Size,
+    Color32, LineStripSeriesBuilder, PointCloudBuilder, Rgba, Size,
 };
 
 mod framework;
@@ -143,30 +142,30 @@ impl framework::Example for Render2D {
         // Moving the windows to a high dpi screen makes the second one bigger.
         // Also, it looks different under perspective projection.
         // The third point is automatic thickness which is determined by the point renderer implementation.
-        let points = vec![
-            PointCloudPoint {
-                position: glam::vec3(500.0, 120.0, 0.0),
-                radius: Size::new_scene(4.0),
-                color: Color32::from_rgb(55, 180, 1),
-            },
-            PointCloudPoint {
-                position: glam::vec3(520.0, 120.0, 0.0),
-                radius: Size::new_points(4.0),
-                color: Color32::from_rgb(55, 180, 1),
-            },
-            PointCloudPoint {
-                position: glam::vec3(540.0, 120.0, 0.0),
-                radius: Size::AUTO,
-                color: Color32::from_rgb(55, 180, 1),
-            },
-            PointCloudPoint {
-                position: glam::vec3(560.0, 120.0, 0.0),
-                radius: Size::AUTO_LARGE,
-                color: Color32::from_rgb(55, 180, 1),
-            },
-        ];
+        let mut point_cloud_builder = PointCloudBuilder::<()>::default();
+        point_cloud_builder
+            .batch("points")
+            .add_points_2d(
+                [
+                    glam::vec2(500.0, 120.0),
+                    glam::vec2(520.0, 120.0),
+                    glam::vec2(540.0, 120.0),
+                    glam::vec2(560.0, 120.0),
+                ]
+                .into_iter(),
+            )
+            .radii(
+                [
+                    Size::new_scene(4.0),
+                    Size::new_points(4.0),
+                    Size::AUTO,
+                    Size::AUTO_LARGE,
+                ]
+                .into_iter(),
+            )
+            .color(Color32::from_rgb(55, 180, 1));
 
-        let point_draw_data = PointCloudDrawData::new(re_ctx, &points).unwrap();
+        let point_draw_data = point_cloud_builder.to_draw_data(re_ctx).unwrap();
 
         let image_scale = 4.0;
         let rectangle_draw_data = RectangleDrawData::new(

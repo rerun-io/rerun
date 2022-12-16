@@ -10,7 +10,7 @@ use rand::Rng;
 use re_renderer::{
     renderer::{
         GenericSkyboxDrawData, LineDrawData, LineStripFlags, MeshDrawData, MeshInstance,
-        PointCloudDrawData, PointCloudPoint, TestTriangleDrawData,
+        PointCloudBatchInfo, PointCloudDrawData, PointCloudVertex, TestTriangleDrawData,
     },
     resource_managers::ResourceLifeTime,
     view_builder::{OrthographicCameraMode, Projection, TargetConfiguration, ViewBuilder},
@@ -160,7 +160,8 @@ struct Multiview {
     mesh_instance_positions_and_colors: Vec<(glam::Vec3, Color32)>,
 
     // Want to have a large cloud of random points, but doing rng for all of them every frame is too slow
-    random_points: Vec<PointCloudPoint>,
+    random_points: Vec<PointCloudVertex>,
+    random_points_colors: Vec<Color32>,
 }
 
 fn random_color(rnd: &mut impl rand::Rng) -> Color32 {
@@ -185,16 +186,16 @@ impl Example for Multiview {
         let mut rnd = <rand::rngs::StdRng as rand::SeedableRng>::seed_from_u64(42);
         let random_point_range = -5.0_f32..5.0_f32;
         let random_points = (0..500000)
-            .map(|_| PointCloudPoint {
+            .map(|_| PointCloudVertex {
                 position: glam::vec3(
                     rnd.gen_range(random_point_range.clone()),
                     rnd.gen_range(random_point_range.clone()),
                     rnd.gen_range(random_point_range.clone()),
                 ),
                 radius: Size::new_scene(rnd.gen_range(0.005..0.05)),
-                color: random_color(&mut rnd),
             })
             .collect_vec();
+        let random_points_colors = (0..500000).map(|_| random_color(&mut rnd)).collect_vec();
 
         let model_mesh_instances = {
             let reader = std::io::Cursor::new(include_bytes!("rerun.obj.zip"));
@@ -229,6 +230,7 @@ impl Example for Multiview {
             model_mesh_instances,
             mesh_instance_positions_and_colors,
             random_points,
+            random_points_colors,
         }
     }
 
@@ -255,7 +257,17 @@ impl Example for Multiview {
         let triangle = TestTriangleDrawData::new(re_ctx);
         let skybox = GenericSkyboxDrawData::new(re_ctx);
         let lines = build_lines(re_ctx, seconds_since_startup);
-        let point_cloud = PointCloudDrawData::new(re_ctx, &self.random_points).unwrap();
+        let point_cloud = PointCloudDrawData::new(
+            re_ctx,
+            &self.random_points,
+            &self.random_points_colors,
+            &[PointCloudBatchInfo {
+                label: "Random points".into(),
+                world_from_scene: glam::Mat4::from_rotation_x(seconds_since_startup),
+                point_count: self.random_points.len() as _,
+            }],
+        )
+        .unwrap();
         let meshes = build_mesh_instances(
             re_ctx,
             &self.model_mesh_instances,
