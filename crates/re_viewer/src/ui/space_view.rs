@@ -1,12 +1,9 @@
 use nohash_hasher::{IntMap, IntSet};
 use re_data_store::{InstanceId, ObjPath, ObjectTree, ObjectsProperties, TimeInt};
 
-use crate::{
-    misc::{
-        space_info::{SpaceInfo, SpacesInfo},
-        ViewerContext,
-    },
-    ui::SpaceViewId,
+use crate::misc::{
+    space_info::{SpaceInfo, SpacesInfo},
+    ViewerContext,
 };
 
 use super::{
@@ -35,6 +32,20 @@ pub enum ViewCategory {
     Tensor,
     Text,
     Plot,
+}
+
+// ----------------------------------------------------------------------------
+
+/// A unique id for each space view.
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Deserialize, serde::Serialize,
+)]
+pub struct SpaceViewId(uuid::Uuid);
+
+impl SpaceViewId {
+    pub fn random() -> Self {
+        Self(uuid::Uuid::new_v4())
+    }
 }
 
 // ----------------------------------------------------------------------------
