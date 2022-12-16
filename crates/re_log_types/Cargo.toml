@@ -51,6 +51,7 @@ chrono = { version = "0.4", features = ["js-sys", "wasmbind"] }
 derive_more = "0.99"
 document-features = "0.2"
 fixed = { version = "1.17", features = ["serde"] }
+lazy_static.workspace = true
 nohash-hasher = "0.2"
 num-derive = "0.3"
 num-traits = "0.2"

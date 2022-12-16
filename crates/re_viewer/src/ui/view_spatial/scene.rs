@@ -18,8 +18,8 @@ use re_log_types::{
 };
 use re_query::{query_entity_with_primary, visit_components3};
 use re_renderer::{
-    renderer::{LineStripFlags, MeshInstance, PointCloudPoint},
-    Color32, LineStripSeriesBuilder, Size,
+    renderer::{LineStripFlags, MeshInstance},
+    Color32, LineStripSeriesBuilder, PointCloudBuilder, Size,
 };
 
 use crate::{
@@ -32,7 +32,7 @@ use crate::{
     },
 };
 
-use super::{eye::Eye, SpaceCamera3D};
+use super::{eye::Eye, SpaceCamera3D, SpatialNavigationMode};
 
 // ----------------------------------------------------------------------------
 
@@ -127,11 +127,7 @@ pub struct SceneSpatialPrimitives {
     /// TODO(andreas): Need to decide of this should be used for hovering as well. If so add another builder with meta-data?
     pub textured_rectangles: Vec<re_renderer::renderer::TexturedRect>,
     pub line_strips: LineStripSeriesBuilder<InstanceIdHash>,
-    /// TODO(andreas): re_renderer should have a point builder <https://github.com/rerun-io/rerun/issues/509>
-    pub points: Vec<PointCloudPoint>,
-
-    /// Assigns an instance id to every point. Needs to have as many elements as points
-    pub point_ids: Vec<InstanceIdHash>,
+    pub points: PointCloudBuilder<InstanceIdHash>,
 
     pub meshes: Vec<MeshSource>,
 }
@@ -157,8 +153,8 @@ impl SceneSpatialPrimitives {
                 .extend(rect.top_left_corner_position + rect.extent_v + rect.extent_u);
         }
 
-        for point in &self.points {
-            self.bounding_box.extend(point.position);
+        for vertex in &self.points.vertices {
+            self.bounding_box.extend(vertex.position);
         }
 
         for vertex in &self.line_strips.vertices {
@@ -275,6 +271,7 @@ impl SceneSpatial {
 
                 let annotations = self.annotation_map.find(obj_path);
                 let default_color = DefaultColor::ObjPath(obj_path);
+                let mut point_batch = self.primitives.points.batch("3d points");
                 let properties = objects_properties.get(obj_path);
 
                 visit_type_data_5(
@@ -336,12 +333,11 @@ impl SceneSpatial {
                             }
                         }
 
-                        self.primitives.points.push(PointCloudPoint {
-                            position,
-                            radius,
-                            color,
-                        });
-                        self.primitives.point_ids.push(instance_hash);
+                        point_batch
+                            .add_point(position)
+                            .radius(radius)
+                            .color(color)
+                            .user_data(instance_hash);
                     },
                 );
 
@@ -933,6 +929,8 @@ impl SceneSpatial {
             let mut keypoints: HashMap<(ClassId, i64), HashMap<KeypointId, glam::Vec3>> =
                 Default::default();
 
+            let mut point_batch = self.primitives.points.batch("2d points");
+
             visit_type_data_5(
                 obj_store,
                 &FieldName::from("pos"),
@@ -978,18 +976,21 @@ impl SceneSpatial {
                         apply_hover_effect(&mut paint_props);
                     }
 
-                    self.primitives.points.push(PointCloudPoint {
-                        position: pos.extend(point_depth),
-                        radius: Size::new_points(paint_props.bg_stroke.width * 0.5),
-                        color: paint_props.bg_stroke.color,
-                    });
-                    self.primitives.points.push(PointCloudPoint {
-                        position: pos.extend(point_depth - 0.1),
-                        radius: Size::new_points(paint_props.fg_stroke.width * 0.5),
-                        color: paint_props.fg_stroke.color,
-                    });
-                    self.primitives.point_ids.push(instance_hash);
-                    self.primitives.point_ids.push(InstanceIdHash::NONE);
+                    point_batch
+                        .add_points(
+                            [pos.extend(point_depth), pos.extend(point_depth - 0.1)].into_iter(),
+                        )
+                        .colors(
+                            [paint_props.bg_stroke.color, paint_props.fg_stroke.color].into_iter(),
+                        )
+                        .radii(
+                            [
+                                Size::new_points(paint_props.bg_stroke.width * 0.5),
+                                Size::new_points(paint_props.fg_stroke.width * 0.5),
+                            ]
+                            .into_iter(),
+                        )
+                        .user_data(instance_hash);
 
                     if let Some(label) = label {
                         if label_batch.len() < max_num_labels {
@@ -1332,10 +1333,6 @@ impl SceneSpatial {
             .user_data(instance_id);
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.primitives.bounding_box().is_nothing()
-    }
-
     /// Heuristic whether the default way of looking at this scene should be 2d or 3d.
     pub fn prefer_2d_mode(&self) -> bool {
         // If any 2D interactable picture is there we regard it as 2d.
@@ -1351,6 +1348,14 @@ impl SceneSpatial {
         // Otherwise do an heuristic based on the z extent of bounding box
         let bbox = self.primitives.bounding_box();
         bbox.min.z >= self.primitives.line_strips.next_2d_z * 2.0 && bbox.max.z < 1.0
+    }
+
+    pub fn preferred_navigation_mode(&self) -> SpatialNavigationMode {
+        if self.prefer_2d_mode() {
+            SpatialNavigationMode::TwoD
+        } else {
+            SpatialNavigationMode::ThreeD
+        }
     }
 
     pub fn picking(
@@ -1376,7 +1381,6 @@ impl SceneSpatial {
             textured_rectangles: _, // TODO(andreas): Should be able to pick 2d rectangles!
             line_strips,
             points,
-            point_ids,
             meshes,
         } = &self.primitives;
 
@@ -1390,8 +1394,7 @@ impl SceneSpatial {
 
         {
             crate::profile_scope!("points_3d");
-            debug_assert_eq!(point_ids.len(), points.len());
-            for (point, instance_hash) in points.iter().zip(point_ids.iter()) {
+            for (point, instance_hash) in points.vertices.iter().zip(points.user_data.iter()) {
                 if instance_hash.is_none() {
                     continue;
                 }

@@ -89,7 +89,7 @@ fn read_position_data(idx: i32) -> PositionData {
     var raw_data = textureLoad(line_strip_texture, IVec2(idx % LINESTRIP_TEXTURE_SIZE, idx / LINESTRIP_TEXTURE_SIZE), 0);
 
     var data: PositionData;
-    let pos_4d = Vec4(raw_data.xyz, 1.0) * batch.world_from_scene;
+    let pos_4d = batch.world_from_scene * Vec4(raw_data.xyz, 1.0);
     data.pos = pos_4d.xyz / pos_4d.w;
     data.strip_index = bitcast<i32>(raw_data.w);
     return data;

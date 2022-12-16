@@ -41,7 +41,7 @@ impl ViewTensorState {
         }
     }
 
-    pub(crate) fn ui(&mut self, ui: &mut egui::Ui) {
+    pub(crate) fn ui(&mut self, ctx: &mut crate::misc::ViewerContext<'_>, ui: &mut egui::Ui) {
         if let Some(tensor) = &self.tensor {
             ui.collapsing("Dimension Mapping", |ui| {
                 ui.label(format!("shape: {:?}", tensor.shape));
@@ -66,7 +66,7 @@ impl ViewTensorState {
 
         self.texture_settings.show(ui);
 
-        color_mapping_ui(ui, &mut self.color_mapping);
+        color_mapping_ui(ctx, ui, &mut self.color_mapping, self.tensor.as_ref());
     }
 }
 
@@ -101,17 +101,16 @@ pub(crate) fn view_tensor(
                 };
 
                 let slice = selected_tensor_slice(state, &tensor);
-                slice_ui(ui, state, tensor_shape, slice, color_from_value);
+                slice_ui(ctx, ui, state, tensor_shape, slice, color_from_value);
             }
             Err(err) => {
-                ui.colored_label(ui.visuals().error_fg_color, err.to_string());
+                ui.label(ctx.re_ui.error_text(err.to_string()));
             }
         },
 
         TensorDataType::U16 => match re_tensor_ops::as_ndarray::<u16>(tensor) {
             Ok(tensor) => {
                 let (tensor_min, tensor_max) = range.unwrap_or((0.0, u16::MAX as f64)); // the cache should provide the range
-                ui.monospace(format!("Data range: [{tensor_min} - {tensor_max}]"));
 
                 let color_from_value = |value: u16| {
                     state.color_mapping.color_from_normalized(egui::remap(
@@ -122,17 +121,16 @@ pub(crate) fn view_tensor(
                 };
 
                 let slice = selected_tensor_slice(state, &tensor);
-                slice_ui(ui, state, tensor_shape, slice, color_from_value);
+                slice_ui(ctx, ui, state, tensor_shape, slice, color_from_value);
             }
             Err(err) => {
-                ui.colored_label(ui.visuals().error_fg_color, err.to_string());
+                ui.label(ctx.re_ui.error_text(err.to_string()));
             }
         },
 
         TensorDataType::F32 => match re_tensor_ops::as_ndarray::<f32>(tensor) {
             Ok(tensor) => {
                 let (tensor_min, tensor_max) = range.unwrap_or((0.0, 1.0)); // the cache should provide the range
-                ui.monospace(format!("Data range: [{tensor_min} - {tensor_max}]"));
 
                 let color_from_value = |value: f32| {
                     state.color_mapping.color_from_normalized(egui::remap(
@@ -143,10 +141,10 @@ pub(crate) fn view_tensor(
                 };
 
                 let slice = selected_tensor_slice(state, &tensor);
-                slice_ui(ui, state, tensor_shape, slice, color_from_value);
+                slice_ui(ctx, ui, state, tensor_shape, slice, color_from_value);
             }
             Err(err) => {
-                ui.colored_label(ui.visuals().error_fg_color, err.to_string());
+                ui.label(ctx.re_ui.error_text(err.to_string()));
             }
         },
     }
@@ -184,7 +182,12 @@ impl ColorMapping {
     }
 }
 
-fn color_mapping_ui(ui: &mut egui::Ui, color_mapping: &mut ColorMapping) {
+fn color_mapping_ui(
+    ctx: &mut crate::misc::ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    color_mapping: &mut ColorMapping,
+    tensor: Option<&Tensor>,
+) {
     ui.group(|ui| {
         ui.strong("Color map");
 
@@ -200,6 +203,13 @@ fn color_mapping_ui(ui: &mut egui::Ui, color_mapping: &mut ColorMapping) {
                 .text("Brightness"),
         );
         color_mapping.gamma = 1.0 / brightness;
+
+        if let Some(tensor) = &tensor {
+            let tensor_stats = ctx.cache.tensor_stats(tensor);
+            if let Some((min, max)) = tensor_stats.range {
+                ui.monospace(format!("Data range: [{min} - {max}]"));
+            }
+        }
     });
 }
 
@@ -390,6 +400,7 @@ fn selected_tensor_slice<'a, T: Copy>(
 }
 
 fn slice_ui<T: Copy>(
+    ctx: &mut crate::misc::ViewerContext<'_>,
     ui: &mut egui::Ui,
     view_state: &ViewTensorState,
     tensor_shape: &[TensorDimension],
@@ -417,22 +428,18 @@ fn slice_ui<T: Copy>(
         let image = into_image(&slice, color_from_value);
         image_ui(ui, view_state, image, dimension_labels);
     } else {
-        ui.colored_label(
-            ui.visuals().error_fg_color,
-            format!(
-                "Only 2D slices supported at the moment, but slice ndim {}",
-                ndims
-            ),
-        );
+        ui.label(ctx.re_ui.error_text(format!(
+            "Only 2D slices supported at the moment, but slice ndim {ndims}"
+        )));
     }
 }
 
 fn dimension_name(shape: &[TensorDimension], dim_idx: usize) -> String {
     let dim = &shape[dim_idx];
     if dim.name.is_empty() {
-        format!("Dimension {} ({})", dim_idx, dim.size)
+        format!("Dimension {} (size={})", dim_idx, dim.size)
     } else {
-        format!("{} ({})", dim.name, dim.size)
+        format!("{} (size={})", dim.name, dim.size)
     }
 }
 
@@ -520,35 +527,48 @@ fn image_ui(
 }
 
 fn selectors_ui(ui: &mut egui::Ui, state: &mut ViewTensorState, tensor: &Tensor) {
-    if state.dimension_mapping.selectors.is_empty() {
-        return;
-    }
+    for &dim_idx in &state.dimension_mapping.selectors {
+        let dim = &tensor.shape[dim_idx];
+        let size = dim.size;
 
-    ui.group(|ui| {
-        if state.dimension_mapping.selectors.len() == 1 {
-            ui.label("Slice selector:");
-        } else {
-            ui.label("Slice selectors:");
+        let selector_value = state
+            .selector_values
+            .entry(dim_idx)
+            .or_insert_with(|| size / 2); // start in the middle
+
+        if size > 0 {
+            *selector_value = selector_value.at_most(size - 1);
         }
 
-        for &dim_idx in &state.dimension_mapping.selectors {
-            let size = tensor.shape[dim_idx].size;
+        if size > 1 {
+            ui.horizontal(|ui| {
+                let name = if dim.name.is_empty() {
+                    format!("dimension {dim_idx}")
+                } else {
+                    format!("{:?}", dim.name)
+                };
 
-            let selector_value = state
-                .selector_values
-                .entry(dim_idx)
-                .or_insert_with(|| size / 2); // start in the middle
+                ui.weak(format!("Slice selector for {}:", name));
 
-            if size > 0 {
-                *selector_value = selector_value.at_most(size - 1);
-            }
-
-            if size > 1 {
+                // If the range is big (say, 2048) then we would need
+                // a slider that is 2048 pixels wide to get the good precision.
+                // So we add a high-precision drag-value instead:
                 ui.add(
-                    egui::Slider::new(selector_value, 0..=size - 1)
-                        .text(dimension_name(&tensor.shape, dim_idx)),
-                );
-            }
+                    egui::DragValue::new(selector_value)
+                        .clamp_range(0..=size - 1)
+                        .speed(0.5),
+                )
+                .on_hover_text("Drag to precisely control the slice index");
+
+                // Make the slider as big as needed:
+                const MIN_SLIDER_WIDTH: f32 = 64.0;
+                if ui.available_width() >= MIN_SLIDER_WIDTH {
+                    ui.spacing_mut().slider_width = (size as f32 * 2.0)
+                        .at_least(MIN_SLIDER_WIDTH)
+                        .at_most(ui.available_width());
+                    ui.add(egui::Slider::new(selector_value, 0..=size - 1).show_value(false));
+                }
+            });
         }
-    });
+    }
 }

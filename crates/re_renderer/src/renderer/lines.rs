@@ -537,11 +537,11 @@ impl LineDrawData {
 
                 batches_internal.push(LineStripBatch {
                     bind_group,
-                    // We spawn a quad for every vertex, plus one extra quad at the beginning of each batch (we added a sentinel vertex),
+                    // We spawn a quad for every vertex. Naturally, this yields one extra quad at the beginning of each batch,
                     // which is necessary to make line cap handling homogenous (each strip uses its first quad for both end and start cap)
                     // Note that the vertex indices of batches are intentionally overlapping.
                     vertex_range: (start_vertex_for_next_batch * 6)
-                        ..((start_vertex_for_next_batch + batch_info.line_vertex_count + 1) * 6),
+                        ..((start_vertex_for_next_batch + batch_info.line_vertex_count) * 6),
                 });
 
                 start_vertex_for_next_batch += batch_info.line_vertex_count;

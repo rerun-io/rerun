@@ -57,10 +57,11 @@ eframe = { version = "0.20", default-features = false, features = [
   "wgpu",
 ] }
 egui = { version = "0.20", features = ["extra_debug_asserts", "tracing"] }
-egui-notify = "0.5"
-egui-wgpu = "0.20"
 egui_dock = { version = "0.3", features = ["serde"] }
 egui_extras = { version = "0.20", features = ["tracing"] }
+egui-notify = "0.5"
+egui-wgpu = "0.20"
+enumset = "1.0.12"
 glam = { version = "0.20", features = [
   "mint",
 ] } # can't update glam until a new version of `macaw` is released
@@ -70,7 +71,7 @@ image = { version = "0.24", default-features = false, features = [
 ] }
 instant = { version = "0.1", features = ["wasm-bindgen"] }
 itertools = "0.10"
-lazy_static = "1.4.0"
+lazy_static.workspace = true
 macaw = { version = "0.17", features = ["with_serde"] }
 mint = "0.5"
 ndarray = "0.15"

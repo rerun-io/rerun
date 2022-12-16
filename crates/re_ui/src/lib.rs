@@ -122,12 +122,22 @@ impl ReUi {
         }
     }
 
+    #[must_use]
     #[allow(clippy::unused_self)]
     pub fn warning_text(&self, text: impl Into<String>) -> egui::RichText {
         let style = self.egui_ctx.style();
         egui::RichText::new(text)
             .italics()
             .color(style.visuals.warn_fg_color)
+    }
+
+    #[must_use]
+    #[allow(clippy::unused_self)]
+    pub fn error_text(&self, text: impl Into<String>) -> egui::RichText {
+        let style = self.egui_ctx.style();
+        egui::RichText::new(text)
+            .italics()
+            .color(style.visuals.error_fg_color)
     }
 
     pub fn loop_selection_color() -> egui::Color32 {

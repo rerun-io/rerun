@@ -5,29 +5,25 @@
 
 pub mod config;
 pub mod importer;
+pub mod mesh;
 pub mod renderer;
 pub mod resource_managers;
 pub mod view_builder;
 
-mod size;
-pub use size::Size;
-
 mod context;
-pub use context::RenderContext;
-
 mod debug_label;
-pub use debug_label::DebugLabel;
-
 mod global_bindings;
-
 mod line_strip_builder;
-pub use line_strip_builder::{LineStripBuilder, LineStripSeriesBuilder};
-
-pub mod mesh;
-
+mod point_cloud_builder;
+mod size;
 mod wgpu_buffer_types;
-
 mod wgpu_resources;
+
+pub use context::RenderContext;
+pub use debug_label::DebugLabel;
+pub use line_strip_builder::{LineStripBuilder, LineStripSeriesBuilder};
+pub use point_cloud_builder::{PointCloudBatchBuilder, PointCloudBuilder};
+pub use size::Size;
 pub use wgpu_resources::WgpuResourcePoolStatistics;
 
 mod file_system;

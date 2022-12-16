@@ -196,14 +196,3 @@ impl ScenePlot {
         }
     }
 }
-
-impl ScenePlot {
-    pub fn is_empty(&self) -> bool {
-        let Self {
-            lines,
-            annotation_map: _,
-        } = self;
-
-        lines.is_empty()
-    }
-}

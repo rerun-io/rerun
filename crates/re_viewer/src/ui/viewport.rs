@@ -11,37 +11,34 @@ use itertools::Itertools as _;
 
 use re_data_store::{ObjPath, TimeInt};
 
-use crate::misc::{
-    space_info::{SpaceInfo, SpacesInfo},
-    Selection, ViewerContext,
+use crate::{
+    misc::{
+        space_info::{SpaceInfo, SpacesInfo},
+        Selection, ViewerContext,
+    },
+    ui::{view_category::group_by_category, view_spatial::SceneSpatial},
 };
 
-use super::{space_view::ViewCategory, SceneQuery, SpaceView};
+use super::{view_category::ViewCategory, SceneQuery, SpaceView, SpaceViewId};
 
 // ----------------------------------------------------------------------------
 
-/// A unique id for each space view.
-#[derive(
-    Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Deserialize, serde::Serialize,
-)]
-pub struct SpaceViewId(uuid::Uuid);
+fn query_scene_spatial(
+    ctx: &mut ViewerContext<'_>,
+    obj_paths: &nohash_hasher::IntSet<ObjPath>,
+) -> SceneSpatial {
+    crate::profile_function!();
 
-impl SpaceViewId {
-    pub fn random() -> Self {
-        Self(uuid::Uuid::new_v4())
-    }
-}
-
-// ----------------------------------------------------------------------------
-
-fn query_scene(ctx: &mut ViewerContext<'_>, space_info: &SpaceInfo) -> super::scene::Scene {
     let query = SceneQuery {
-        obj_paths: &space_info.descendants_without_transform,
+        obj_paths,
         timeline: *ctx.rec_cfg.time_ctrl.timeline(),
         latest_at: TimeInt::MAX,
         obj_props: &Default::default(), // all visible
     };
-    query.query(ctx)
+    let mut scene = SceneSpatial::default();
+    let hovered = re_data_store::InstanceIdHash::NONE;
+    scene.load_objects(ctx, &query, query.obj_props, hovered);
+    scene
 }
 
 // ----------------------------------------------------------------------------
@@ -52,7 +49,7 @@ type VisibilitySet = std::collections::BTreeSet<SpaceViewId>;
 /// Describes the layout and contents of the Viewport Panel.
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
-pub struct ViewportBlueprint {
+pub struct Viewport {
     /// Where the space views are stored.
     space_views: HashMap<SpaceViewId, SpaceView>,
 
@@ -75,19 +72,24 @@ pub struct ViewportBlueprint {
     has_been_user_edited: bool,
 }
 
-impl ViewportBlueprint {
+impl Viewport {
     /// Create a default suggested blueprint using some heuristics.
-    fn new(ctx: &mut ViewerContext<'_>, spaces_info: &SpacesInfo) -> Self {
+    pub fn new(ctx: &mut ViewerContext<'_>, spaces_info: &SpacesInfo) -> Self {
         crate::profile_function!();
 
         let mut blueprint = Self::default();
 
         for (path, space_info) in &spaces_info.spaces {
-            let scene = query_scene(ctx, space_info);
-            for category in scene.categories() {
+            for (category, obj_paths) in group_by_category(
+                ctx.rec_cfg.time_ctrl.timeline(),
+                ctx.log_db,
+                space_info.descendants_without_transform.iter(),
+            ) {
+                let scene_spatial = query_scene_spatial(ctx, &obj_paths);
+
                 if category == ViewCategory::Spatial
-                    && scene.spatial.prefer_2d_mode()
-                    && scene.spatial.ui.images.len() > 1
+                    && scene_spatial.prefer_2d_mode()
+                    && scene_spatial.ui.images.len() > 1
                 {
                     // Multiple images (e.g. depth and rgb, or rgb and segmentation) in the same 2D scene.
                     // Stacking them on top of each other works, but is often confusing.
@@ -95,15 +97,20 @@ impl ViewportBlueprint {
 
                     let store = &ctx.log_db.obj_db.store;
 
-                    for visible_image in &scene.spatial.ui.images {
+                    for visible_image in &scene_spatial.ui.images {
                         if let Some(visible_instance_id) =
                             visible_image.instance_hash.resolve(store)
                         {
-                            let mut space_view =
-                                SpaceView::new(ctx, &scene, category, path.clone(), space_info);
+                            let mut space_view = SpaceView::new(
+                                ctx,
+                                category,
+                                path.clone(),
+                                space_info,
+                                scene_spatial.preferred_navigation_mode(),
+                            );
                             space_view.name = visible_instance_id.obj_path.to_string();
 
-                            for other_image in &scene.spatial.ui.images {
+                            for other_image in &scene_spatial.ui.images {
                                 if let Some(image_instance_id) =
                                     other_image.instance_hash.resolve(store)
                                 {
@@ -130,8 +137,13 @@ impl ViewportBlueprint {
 
                 // Create one SpaceView for the whole space:
                 {
-                    let space_view =
-                        SpaceView::new(ctx, &scene, category, path.clone(), space_info);
+                    let space_view = SpaceView::new(
+                        ctx,
+                        category,
+                        path.clone(),
+                        space_info,
+                        scene_spatial.preferred_navigation_mode(),
+                    );
                     blueprint.add_space_view(space_view);
                 }
             }
@@ -176,7 +188,7 @@ impl ViewportBlueprint {
     }
 
     /// Show the blueprint panel tree view.
-    fn tree_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
+    pub fn tree_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         crate::profile_function!();
 
         egui::ScrollArea::vertical()
@@ -284,19 +296,23 @@ impl ViewportBlueprint {
         path: &ObjPath,
         space_info: &SpaceInfo,
     ) {
-        let scene = query_scene(ctx, space_info);
-        for category in scene.categories() {
+        for (category, obj_paths) in group_by_category(
+            ctx.rec_cfg.time_ctrl.timeline(),
+            ctx.log_db,
+            space_info.descendants_without_transform.iter(),
+        ) {
+            let scene_spatial = query_scene_spatial(ctx, &obj_paths);
             self.add_space_view(SpaceView::new(
                 ctx,
-                &scene,
                 category,
                 path.clone(),
                 space_info,
+                scene_spatial.preferred_navigation_mode(),
             ));
         }
     }
 
-    fn on_frame_start(&mut self, ctx: &mut ViewerContext<'_>, spaces_info: &SpacesInfo) {
+    pub fn on_frame_start(&mut self, ctx: &mut ViewerContext<'_>, spaces_info: &SpacesInfo) {
         crate::profile_function!();
 
         for space_view in self.space_views.values_mut() {
@@ -322,7 +338,7 @@ impl ViewportBlueprint {
         }
     }
 
-    fn viewport_ui(
+    pub fn viewport_ui(
         &mut self,
         ui: &mut egui::Ui,
         ctx: &mut ViewerContext<'_>,
@@ -408,29 +424,39 @@ impl ViewportBlueprint {
         }
     }
 
-    fn create_new_blueprint_ui(
+    pub fn create_new_blueprint_ui(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         spaces_info: &SpacesInfo,
     ) {
+        #![allow(clippy::collapsible_if)]
+
         ui.vertical_centered(|ui| {
             ui.menu_button("Add new space view…", |ui| {
                 ui.style_mut().wrap = Some(false);
                 for (path, space_info) in &spaces_info.spaces {
-                    let scene = query_scene(ctx, space_info);
-                    if !scene.categories().is_empty() && ui.button(path.to_string()).clicked() {
-                        ui.close_menu();
+                    let categories = group_by_category(
+                        ctx.rec_cfg.time_ctrl.timeline(),
+                        ctx.log_db,
+                        space_info.descendants_without_transform.iter(),
+                    );
 
-                        for category in scene.categories() {
-                            let new_space_view_id = self.add_space_view(SpaceView::new(
-                                ctx,
-                                &scene,
-                                category,
-                                path.clone(),
-                                space_info,
-                            ));
-                            ctx.set_selection(Selection::SpaceView(new_space_view_id));
+                    if !categories.is_empty() {
+                        if ui.button(path.to_string()).clicked() {
+                            ui.close_menu();
+
+                            for (category, obj_paths) in categories {
+                                let scene_spatial = query_scene_spatial(ctx, &obj_paths);
+                                let new_space_view_id = self.add_space_view(SpaceView::new(
+                                    ctx,
+                                    category,
+                                    path.clone(),
+                                    space_info,
+                                    scene_spatial.preferred_navigation_mode(),
+                                ));
+                                ctx.set_selection(Selection::SpaceView(new_space_view_id));
+                            }
                         }
                     }
                 }
@@ -445,10 +471,10 @@ fn visibility_button(ui: &mut egui::Ui, enabled: bool, visible: &mut bool) -> eg
     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
         ui.set_enabled(enabled);
         if enabled {
-            ui.add(re_ui::toggle_switch(visible))
+            ui.toggle_value(visible, "👁")
         } else {
             let mut always_false = false;
-            ui.add(re_ui::toggle_switch(&mut always_false))
+            ui.toggle_value(&mut always_false, "👁")
         }
         .on_hover_text("Toggle visibility")
     })
@@ -568,105 +594,6 @@ fn space_view_ui(
     };
 
     space_view.scene_ui(ctx, ui, spaces_info, reference_space_info, latest_at);
-}
-
-// ----------------------------------------------------------------------------
-
-/// Defines the layout of the whole Viewer (or will, eventually).
-#[derive(serde::Deserialize, serde::Serialize)]
-#[serde(default)]
-pub(crate) struct Blueprint {
-    pub blueprint_panel_expanded: bool,
-    pub selection_panel_expanded: bool,
-    pub time_panel_expanded: bool,
-
-    pub viewport: ViewportBlueprint,
-}
-
-impl Default for Blueprint {
-    fn default() -> Self {
-        Self {
-            blueprint_panel_expanded: true,
-            selection_panel_expanded: true,
-            time_panel_expanded: true,
-            viewport: Default::default(),
-        }
-    }
-}
-
-impl Blueprint {
-    pub fn blueprint_panel_and_viewport(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
-        crate::profile_function!();
-
-        let spaces_info = SpacesInfo::new(&ctx.log_db.obj_db, &ctx.rec_cfg.time_ctrl);
-
-        self.viewport.on_frame_start(ctx, &spaces_info);
-
-        self.blueprint_panel(ctx, ui, &spaces_info);
-
-        let viewport_frame = egui::Frame {
-            fill: ui.style().visuals.panel_fill,
-            ..Default::default()
-        };
-
-        egui::CentralPanel::default()
-            .frame(viewport_frame)
-            .show_inside(ui, |ui| {
-                self.viewport.viewport_ui(
-                    ui,
-                    ctx,
-                    &spaces_info,
-                    &mut self.selection_panel_expanded,
-                );
-            });
-    }
-
-    fn blueprint_panel(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        spaces_info: &SpacesInfo,
-    ) {
-        let panel = egui::SidePanel::left("blueprint_panel")
-            .resizable(true)
-            .frame(ctx.re_ui.panel_frame())
-            .min_width(120.0)
-            .default_width(200.0);
-
-        panel.show_animated_inside(ui, self.blueprint_panel_expanded, |ui: &mut egui::Ui| {
-            ui.horizontal(|ui| {
-                ui.vertical_centered(|ui| {
-                    ui.strong("Blueprint");
-                });
-            });
-
-            ui.separator();
-
-            ui.vertical_centered(|ui| {
-                if ui
-                    .button("Auto-populate Viewport")
-                    .on_hover_text("Re-populate Viewport with automatically chosen Space Views")
-                    .clicked()
-                {
-                    self.viewport = ViewportBlueprint::new(ctx, spaces_info);
-                }
-            });
-
-            ui.separator();
-
-            egui_extras::StripBuilder::new(ui)
-                .size(egui_extras::Size::remainder())
-                .size(egui_extras::Size::exact(20.0))
-                .vertical(|mut strip| {
-                    strip.cell(|ui| {
-                        self.viewport.tree_ui(ctx, ui);
-                    });
-                    strip.cell(|ui| {
-                        self.viewport.create_new_blueprint_ui(ctx, ui, spaces_info);
-                    });
-                });
-        });
-    }
 }
 
 // ----------------------------------------------------------------------------

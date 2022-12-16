@@ -3,13 +3,32 @@
 //! The SDK is responsible for submitting component columns that conforms to these schemas. The
 //! schemas are additionally documented in doctests.
 
-use arrow2::{array::TryPush, datatypes::DataType};
+use arrow2::{
+    array::TryPush,
+    datatypes::{DataType, Field},
+};
 use arrow2_convert::{
     arrow_enable_vec_for_type, deserialize::ArrowDeserialize, field::ArrowField,
     serialize::ArrowSerialize, ArrowField,
 };
+use lazy_static::lazy_static;
 
 use crate::msg_bundle::Component;
+
+lazy_static! {
+    //TODO(john) actully use a run-time type registry
+    static ref FIELDS: [Field; 4] = [
+        <ColorRGBA as Component>::field(),
+        <Point2D as Component>::field(),
+        <Point3D as Component>::field(),
+        <Rect2D as Component>::field(),
+    ];
+}
+
+/// Iterate over the registered field types
+pub fn iter_registered_field_types() -> impl Iterator<Item = &'static Field> {
+    FIELDS.iter()
+}
 
 /// The Instance used to identify an entity within a batch
 ///

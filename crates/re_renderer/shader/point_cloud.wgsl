@@ -8,6 +8,12 @@ var position_data_texture: texture_2d<f32>;
 @group(1) @binding(1)
 var color_texture: texture_2d<f32>;
 
+struct BatchUniformBuffer {
+    world_from_scene: Mat4,
+};
+@group(2) @binding(0)
+var<uniform> batch: BatchUniformBuffer;
+
 
 // textureLoad needs i32 right now, so we use that with all sizes & indices to avoid casts
 // https://github.com/gfx-rs/naga/issues/1997
@@ -34,7 +40,8 @@ fn read_data(idx: i32) -> PointData {
     let color = textureLoad(color_texture, coord, 0);
 
     var data: PointData;
-    data.pos = position_data.xyz;
+    let pos_4d = batch.world_from_scene * Vec4(position_data.xyz, 1.0);
+    data.pos = pos_4d.xyz / pos_4d.w;
     data.unresolved_radius = position_data.w;
     data.color = color;
     return data;

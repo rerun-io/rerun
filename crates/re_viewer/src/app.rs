@@ -1025,6 +1025,7 @@ fn file_menu(ui: &mut egui::Ui, app: &mut App, frame: &mut eframe::Frame) {
                         .on_hover_text("Save all data to a Rerun data file (.rrd)")
                         .clicked()
                     {
+                        ui.close_menu();
                         return (true, None);
                     }
 
@@ -1041,6 +1042,7 @@ fn file_menu(ui: &mut egui::Ui, app: &mut App, frame: &mut eframe::Frame) {
                         )
                         .clicked()
                     {
+                        ui.close_menu();
                         return (true, loop_selection);
                     }
 
@@ -1066,6 +1068,7 @@ fn file_menu(ui: &mut egui::Ui, app: &mut App, frame: &mut eframe::Frame) {
         .clicked()
     {
         open(app);
+        ui.close_menu();
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -1159,6 +1162,7 @@ fn view_menu(ui: &mut egui::Ui, app: &mut App, frame: &mut eframe::Frame) {
         .clicked()
     {
         app.state.profiler.start();
+        ui.close_menu();
     }
 
     if ui
@@ -1169,6 +1173,7 @@ fn view_menu(ui: &mut egui::Ui, app: &mut App, frame: &mut eframe::Frame) {
         .clicked()
     {
         app.memory_panel_open ^= true;
+        ui.close_menu();
     }
 }
 
