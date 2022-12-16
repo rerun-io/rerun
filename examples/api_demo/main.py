@@ -152,6 +152,11 @@ def transforms_rigid_3d() -> None:
     rerun.log_mesh_file("transforms3d/planet", rerun.MeshFormat.GLB, mesh_data)
     rerun.log_mesh_file("transforms3d/planet/moon", rerun.MeshFormat.GLB, mesh_data)
 
+    rerun.log_view_coordinates("transforms3d", up="+Y", timeless=True)
+    rerun.log_view_coordinates("transforms3d/sun", up="+Y", timeless=True)
+    rerun.log_view_coordinates("transforms3d/planet", up="+Y", timeless=True)
+    rerun.log_view_coordinates("transforms3d/planet/moon", up="+Y", timeless=True)
+
     # "dust" around the "planet" (and inside, don't care)
     # distribution is quadratically higher in the middle
     radii = np.random.rand(100) * planet_to_moon_distance * 0.5
@@ -204,11 +209,11 @@ def transforms_rigid_3d() -> None:
 
 def main() -> None:
     demos = {
-        "segmentation": run_segmentation,
-        "rects": run_rects,
-        "text": run_text_logs,
-        "log_cleared": run_log_cleared,
         "3d_points": run_points_3d,
+        "log_cleared": run_log_cleared,
+        "rects": run_rects,
+        "segmentation": run_segmentation,
+        "text": run_text_logs,
         "transforms_3d": transforms_rigid_3d,
     }
 
