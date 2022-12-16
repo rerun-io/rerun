@@ -23,22 +23,6 @@ CAMERA_GLB: Final = Path(os.path.dirname(__file__)).joinpath("../../crates/re_vi
 mesh_data = CAMERA_GLB.read_bytes()
 
 
-def run_misc() -> None:
-    # Optional affine transformation matrix to apply (in this case: scale it up by a factor)
-    transform = np.array(
-        [
-            [2, 0, 0, 0],
-            [0, 2, 0, 0],
-            [0, 0, 2, 0],
-        ]
-    )
-    rerun.set_time_seconds("sim_time", 1)
-
-    rerun.log_mesh_file("world/example_mesh", rerun.MeshFormat.GLB, mesh_data, transform=transform)
-
-    rerun.log_path("world/a_box", np.array([[0, 0, 0], [0, 1, 0], [1, 1, 0], [1, 0, 0], [0, 0, 0]]))
-
-
 def run_segmentation() -> None:
     rerun.set_time_seconds("sim_time", 1)
 
@@ -220,7 +204,6 @@ def transforms_rigid_3d() -> None:
 
 def main() -> None:
     demos = {
-        "misc": run_misc,
         "segmentation": run_segmentation,
         "rects": run_rects,
         "text": run_text_logs,
