@@ -1,4 +1,4 @@
-use re_data_store::{query::visit_type_data, FieldName, ObjPath};
+use re_data_store::{query::visit_type_data, FieldName, InstanceId};
 use re_log_types::{IndexHash, MsgId, ObjectType, Tensor};
 
 use crate::{misc::ViewerContext, ui::SceneQuery};
@@ -8,7 +8,7 @@ use crate::{misc::ViewerContext, ui::SceneQuery};
 /// A tensor scene, with everything needed to render it.
 #[derive(Default)]
 pub struct SceneTensor {
-    pub tensors: Vec<(ObjPath, Tensor)>,
+    pub tensors: std::collections::BTreeMap<InstanceId, Tensor>,
 }
 
 impl SceneTensor {
@@ -29,12 +29,17 @@ impl SceneTensor {
                 obj_store,
                 &FieldName::from("tensor"),
                 &time_query,
-                |_instance_index: Option<&IndexHash>,
+                |instance_index_hash: Option<&IndexHash>,
                  _time: i64,
                  _msg_id: &MsgId,
                  tensor: &re_log_types::Tensor| {
                     if !tensor.is_shaped_like_an_image() {
-                        self.tensors.push((obj_path.clone(), tensor.clone()));
+                        let instance_index = instance_index_hash.and_then(|instance_index_hash| {
+                            ctx.log_db.obj_db.store.index_from_hash(instance_index_hash)
+                        });
+                        let instance_id =
+                            InstanceId::new(obj_path.clone(), instance_index.cloned());
+                        self.tensors.insert(instance_id, tensor.clone());
                     }
                 },
             );

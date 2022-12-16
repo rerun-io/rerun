@@ -1,5 +1,5 @@
 use nohash_hasher::{IntMap, IntSet};
-use re_data_store::{ObjPath, ObjectTree, ObjectsProperties, TimeInt};
+use re_data_store::{InstanceId, ObjPath, ObjectTree, ObjectsProperties, TimeInt};
 
 use crate::{
     misc::{
@@ -191,9 +191,13 @@ impl SpaceView {
                 self.view_state.state_spatial.show_settings_ui(ctx, ui);
             }
             ViewCategory::Tensor => {
-                if let Some(state_tensor) = &mut self.view_state.state_tensor {
-                    ui.strong("Tensor view");
-                    state_tensor.ui(ctx, ui);
+                if let Some(selected_tensor) = &self.view_state.selected_tensor {
+                    if let Some(state_tensor) =
+                        self.view_state.state_tensors.get_mut(selected_tensor)
+                    {
+                        ui.strong("Tensor view");
+                        state_tensor.ui(ctx, ui);
+                    }
                 }
             }
             ViewCategory::Text => {
@@ -439,12 +443,13 @@ fn show_help_button_overlay(
 /// Camera position and similar.
 #[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
 pub(crate) struct ViewState {
-    pub state_spatial: view_spatial::ViewSpatialState,
-    pub state_tensor: Option<view_tensor::ViewTensorState>,
-    pub state_text: view_text::ViewTextState,
-    pub state_plot: view_plot::ViewPlotState,
+    /// Selects in [`Self::state_tensors`].
+    selected_tensor: Option<InstanceId>,
 
-    selected_tensor_obj_path: Option<ObjPath>,
+    pub state_spatial: view_spatial::ViewSpatialState,
+    state_tensors: ahash::HashMap<InstanceId, view_tensor::ViewTensorState>,
+    state_text: view_text::ViewTextState,
+    state_plot: view_plot::ViewPlotState,
 }
 
 impl ViewState {
@@ -478,46 +483,39 @@ impl ViewState {
         .show(ui, |ui| {
             if scene.tensors.is_empty() {
                 ui.centered_and_justified(|ui| ui.label("(empty)"));
-            } else if scene.tensors.len() == 1 {
-                let (_obj_path, tensor) = &scene.tensors[0];
-                self.ui_single_tensor(ctx, ui, tensor);
             } else {
-                // Show radio buttons for the different tensors we have in this view - better than nothing!
-                ui.horizontal(|ui| {
-                    let mut any_selected = false;
-                    for (obj_path, _) in &scene.tensors {
-                        let is_selected = self.selected_tensor_obj_path.as_ref() == Some(obj_path);
-                        if ui.radio(is_selected, obj_path.to_string()).clicked() {
-                            self.selected_tensor_obj_path = Some(obj_path.clone());
+                if let Some(selected_tensor) = &self.selected_tensor {
+                    if !scene.tensors.contains_key(selected_tensor) {
+                        self.selected_tensor = None;
+                    }
+                }
+                if self.selected_tensor.is_none() {
+                    self.selected_tensor = Some(scene.tensors.iter().next().unwrap().0.clone());
+                }
+
+                if scene.tensors.len() > 1 {
+                    // Show radio buttons for the different tensors we have in this view - better than nothing!
+                    ui.horizontal(|ui| {
+                        for instance_id in scene.tensors.keys() {
+                            let is_selected = self.selected_tensor.as_ref() == Some(instance_id);
+                            if ui.radio(is_selected, instance_id.to_string()).clicked() {
+                                self.selected_tensor = Some(instance_id.clone());
+                            }
                         }
-                        any_selected |= is_selected;
-                    }
+                    });
+                }
 
-                    if !any_selected {
-                        self.selected_tensor_obj_path = Some(scene.tensors[0].0.clone());
-                    }
-                });
-
-                for (obj_path, tensor) in &scene.tensors {
-                    if Some(obj_path) == self.selected_tensor_obj_path.as_ref() {
-                        self.ui_single_tensor(ctx, ui, tensor);
-                        break;
+                if let Some(selected_tensor) = &self.selected_tensor {
+                    if let Some(tensor) = scene.tensors.get(selected_tensor) {
+                        let state_tensor = self
+                            .state_tensors
+                            .entry(selected_tensor.clone())
+                            .or_insert_with(|| view_tensor::ViewTensorState::create(tensor));
+                        view_tensor::view_tensor(ctx, ui, state_tensor, tensor);
                     }
                 }
             }
         });
-    }
-
-    fn ui_single_tensor(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        tensor: &re_log_types::Tensor,
-    ) {
-        let state_tensor = self
-            .state_tensor
-            .get_or_insert_with(|| view_tensor::ViewTensorState::create(tensor));
-        view_tensor::view_tensor(ctx, ui, state_tensor, tensor);
     }
 
     fn ui_text(
