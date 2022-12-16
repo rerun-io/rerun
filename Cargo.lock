@@ -3730,9 +3730,11 @@ dependencies = [
  "anyhow",
  "arrow2",
  "chrono",
+ "criterion",
  "document-features",
  "indent",
  "itertools",
+ "mimalloc",
  "nohash-hasher",
  "polars-core",
  "polars-lazy",
@@ -3741,6 +3743,7 @@ dependencies = [
  "re_log",
  "re_log_types",
  "thiserror",
+ "tracing-subscriber",
 ]
 
 [[package]]
