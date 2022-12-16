@@ -91,20 +91,27 @@ where
     /// But if we make it too small we risk ambiguous z values (known as z fighting) under some circumstances
     const NEXT_2D_Z_STEP: f32 = -0.05;
 
+    #[inline]
+    fn batch_mut(&mut self) -> &mut LineBatchInfo {
+        self.0
+            .batches
+            .last_mut()
+            .expect("batch should have been added on PointCloudBatchBuilder creation")
+    }
+
     fn add_vertices(&mut self, points: impl Iterator<Item = glam::Vec3>, strip_index: u32) {
         let old_len = self.0.vertices.len();
 
         self.0
             .vertices
             .extend(points.map(|pos| LineVertex { pos, strip_index }));
-        self.0.batches.last_mut().unwrap().line_vertex_count +=
-            (self.0.vertices.len() - old_len) as u32;
+        self.batch_mut().line_vertex_count += (self.0.vertices.len() - old_len) as u32;
     }
 
     /// Sets the `world_from_scene` matrix for the *entire* batch.
     #[inline]
-    pub fn world_from_scene(self, world_from_scene: glam::Mat4) -> Self {
-        self.0.batches.last_mut().unwrap().world_from_scene = world_from_scene;
+    pub fn world_from_scene(mut self, world_from_scene: glam::Mat4) -> Self {
+        self.batch_mut().world_from_scene = world_from_scene;
         self
     }
 

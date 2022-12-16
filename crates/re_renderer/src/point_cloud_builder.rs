@@ -87,7 +87,7 @@ where
 
     /// Sets the `world_from_scene` matrix for the *entire* batch.
     #[inline]
-    pub fn world_from_scene(&mut self, world_from_scene: glam::Mat4) -> &mut Self {
+    pub fn world_from_scene(mut self, world_from_scene: glam::Mat4) -> Self {
         self.batch_mut().world_from_scene = world_from_scene;
         self
     }
