@@ -549,13 +549,25 @@ fn selectors_ui(ui: &mut egui::Ui, state: &mut ViewTensorState, tensor: &Tensor)
                 };
 
                 ui.weak(format!("Slice selector for {}:", name));
+
+                // If the range is big (say, 2048) then we would need
+                // a slider that is 2048 pixels wide to get the good precision.
+                // So we add a high-precision drag-value instead:
                 ui.add(
-                    egui::Slider::new(selector_value, 0..=size - 1)
-                        // Add more precision when dragging the value, rather than the actual slider.
-                        // If the range is big (say, 2048) then we either need a slider that is 2048 pixels wide,
-                        // or we drag the slider value instead
-                        .drag_value_speed(0.5),
-                );
+                    egui::DragValue::new(selector_value)
+                        .clamp_range(0..=size - 1)
+                        .speed(0.5),
+                )
+                .on_hover_text("Drag to precisely control the slice index");
+
+                // Make the slider as big as needed:
+                const MIN_SLIDER_WIDTH: f32 = 64.0;
+                if ui.available_width() >= MIN_SLIDER_WIDTH {
+                    ui.spacing_mut().slider_width = (size as f32 * 2.0)
+                        .at_least(MIN_SLIDER_WIDTH)
+                        .at_most(ui.available_width());
+                    ui.add(egui::Slider::new(selector_value, 0..=size - 1).show_value(false));
+                }
             });
         }
     }
