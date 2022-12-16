@@ -40,7 +40,6 @@ pub fn categorize_obj_path(
         return ViewCategorySet::default();
     };
 
-    // TODO(emilk): do this based on components, scenes, etc
     match obj_type {
         re_log_types::ObjectType::ClassDescription => ViewCategorySet::default(), // we don't have a view for this
 
@@ -85,7 +84,7 @@ pub fn categorize_obj_path(
         }
 
         re_log_types::ObjectType::Arrow3D => {
-            todo!() // TODO: implement some sort of entity categorization based on components
+            ViewCategory::Spatial.into() // TODO(emilk): implement some sort of entity categorization based on components
         }
     }
 }
