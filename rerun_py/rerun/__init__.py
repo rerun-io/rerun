@@ -11,7 +11,6 @@ from pathlib import Path
 
 import sys
 from typing import (
-    Any,
     Callable,
     Final,
     Iterable,
@@ -46,11 +45,16 @@ if EXP_ARROW:
 PS = ParamSpec("PS")
 RT = TypeVar("RT")  # return type
 
-# Decorator that catches exceptions, logs them, then swallows them.
-# This is almost always preferable than letting an exception kill the users app.
-# Add this to ALL user-facing functions!
-# TODO(emilk): add "strict" mode where we do pass on the exceptions
+
 def log_exceptions(func: Callable[PS, RT]) -> Callable[PS, Optional[RT]]:
+    """
+    Decorator that catches exceptions, logs them, then swallows them.
+
+    This is almost always preferable than letting an exception kill the users app.
+    Add this to ALL user-facing functions!
+    """
+    # TODO(emilk): add "strict" mode where we do pass on the exceptions
+
     @functools.wraps(func)
     def wrapper_log_exceptions(*args: PS.args, **kwargs: PS.kwargs) -> Optional[RT]:
         try:
