@@ -1,9 +1,12 @@
 use nohash_hasher::{IntMap, IntSet};
 use re_data_store::{InstanceId, ObjPath, ObjectTree, ObjectsProperties, TimeInt};
 
-use crate::misc::{
-    space_info::{SpaceInfo, SpacesInfo},
-    ViewerContext,
+use crate::{
+    misc::{
+        space_info::{SpaceInfo, SpacesInfo},
+        ViewerContext,
+    },
+    ui::transform_cache::TransformCache,
 };
 
 use super::{
@@ -389,10 +392,17 @@ impl SpaceView {
 
         match self.category {
             ViewCategory::Spatial => {
+                let reference_space = spaces_info.spaces.get(&self.space_path);
+                let transforms = if let Some(reference_space) = reference_space {
+                    TransformCache::determine_transforms(spaces_info, reference_space)
+                } else {
+                    TransformCache::default()
+                };
                 let mut scene = view_spatial::SceneSpatial::default();
                 scene.load_objects(
                     ctx,
                     &query,
+                    transforms,
                     &self.obj_properties,
                     self.view_state.state_spatial.hovered_instance_hash(),
                 );

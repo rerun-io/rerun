@@ -7,6 +7,8 @@ use re_data_store::{
 };
 use re_log_types::ObjectType;
 
+use crate::ui::transform_cache::TransformCache;
+
 use super::{space_view::ViewCategory, view_plot, view_spatial, view_tensor, view_text};
 
 // ---
@@ -65,7 +67,13 @@ impl<'s> SceneQuery<'s> {
             tensor,
             plot,
         } = &mut scene;
-        spatial.load_objects(ctx, self, self.obj_props, InstanceIdHash::NONE);
+        spatial.load_objects(
+            ctx,
+            self,
+            TransformCache::default(),
+            self.obj_props,
+            InstanceIdHash::NONE,
+        );
         text.load_objects(ctx, self, &view_text::ViewTextFilters::default());
         tensor.load_objects(ctx, self);
         plot.load_objects(ctx, self);

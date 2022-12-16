@@ -19,6 +19,7 @@ use re_renderer::{
     Color32, LineStripSeriesBuilder, Size,
 };
 
+use crate::ui::transform_cache::TransformCache;
 use crate::{
     math::line_segment_distance_sq_to_point_2d,
     misc::{mesh_loader::LoadedMesh, ViewerContext},
@@ -138,6 +139,8 @@ impl SceneSpatialPrimitives {
     pub fn recalculate_bounding_box(&mut self) {
         crate::profile_function!();
 
+        // TODO: transforms
+
         self.bounding_box = macaw::BoundingBox::nothing();
 
         for rect in &self.textured_rectangles {
@@ -215,22 +218,23 @@ impl SceneSpatial {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
+        transforms: TransformCache,
         objects_properties: &ObjectsProperties,
-        hovered_instance: InstanceIdHash,
+        hovered: InstanceIdHash,
     ) {
         crate::profile_function!();
 
         self.annotation_map.load(ctx, query);
 
-        self.load_points_3d(ctx, query, objects_properties, hovered_instance);
-        self.load_boxes_3d(ctx, query, objects_properties, hovered_instance);
-        self.load_lines_3d(ctx, query, objects_properties, hovered_instance);
-        self.load_arrows_3d(ctx, query, objects_properties, hovered_instance);
-        self.load_meshes(ctx, query, objects_properties, hovered_instance);
-        self.load_images(ctx, query, objects_properties, hovered_instance);
-        self.load_boxes_2d(ctx, query, objects_properties, hovered_instance);
-        self.load_line_segments_2d(ctx, query, objects_properties, hovered_instance);
-        self.load_points_2d(ctx, query, objects_properties, hovered_instance);
+        self.load_points_3d(ctx, query, &transforms, objects_properties, hovered);
+        self.load_boxes_3d(ctx, query, &transforms, objects_properties, hovered);
+        self.load_lines_3d(ctx, query, &transforms, objects_properties, hovered);
+        self.load_arrows_3d(ctx, query, &transforms, objects_properties, hovered);
+        self.load_meshes(ctx, query, &transforms, objects_properties, hovered);
+        self.load_images(ctx, query, &transforms, objects_properties, hovered);
+        self.load_boxes_2d(ctx, query, &transforms, objects_properties, hovered);
+        self.load_line_segments_2d(ctx, query, &transforms, objects_properties, hovered);
+        self.load_points_2d(ctx, query, &transforms, objects_properties, hovered);
 
         self.primitives.recalculate_bounding_box();
     }
@@ -249,6 +253,7 @@ impl SceneSpatial {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
+        transforms: &TransformCache,
         objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
@@ -270,6 +275,7 @@ impl SceneSpatial {
                 let default_color = DefaultColor::ObjPath(obj_path);
                 let mut point_batch = self.primitives.points.batch("3d points");
                 let properties = objects_properties.get(obj_path);
+                let transform = transforms.get_world_from_scene(obj_path);
 
                 visit_type_data_5(
                     obj_store,
@@ -394,6 +400,7 @@ impl SceneSpatial {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
+        transforms: &TransformCache,
         objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
@@ -405,6 +412,7 @@ impl SceneSpatial {
             let annotations = self.annotation_map.find(obj_path);
             let default_color = DefaultColor::ObjPath(obj_path);
             let properties = objects_properties.get(obj_path);
+            let transform = transforms.get_world_from_scene(obj_path);
 
             visit_type_data_4(
                 obj_store,
@@ -449,6 +457,7 @@ impl SceneSpatial {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
+        transforms: &TransformCache,
         objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
@@ -461,6 +470,7 @@ impl SceneSpatial {
             let annotations = self.annotation_map.find(obj_path);
             let default_color = DefaultColor::ObjPath(obj_path);
             let properties = objects_properties.get(obj_path);
+            let transform = transforms.get_world_from_scene(obj_path);
 
             visit_type_data_2(
                 obj_store,
@@ -522,6 +532,7 @@ impl SceneSpatial {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
+        transforms: &TransformCache,
         objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
@@ -533,6 +544,7 @@ impl SceneSpatial {
             let annotations = self.annotation_map.find(obj_path);
             let default_color = DefaultColor::ObjPath(obj_path);
             let properties = objects_properties.get(obj_path);
+            let transform = transforms.get_world_from_scene(obj_path);
 
             visit_type_data_3(
                 obj_store,
@@ -576,6 +588,7 @@ impl SceneSpatial {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
+        transforms: &TransformCache,
         objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
@@ -586,6 +599,7 @@ impl SceneSpatial {
             .flat_map(|(_obj_type, obj_path, time_query, obj_store)| {
                 let mut batch = Vec::new();
                 let properties = objects_properties.get(obj_path);
+                let transform = transforms.get_world_from_scene(obj_path);
 
                 visit_type_data_1(
                     obj_store,
@@ -635,6 +649,7 @@ impl SceneSpatial {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
+        transforms: &TransformCache,
         objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
@@ -644,6 +659,7 @@ impl SceneSpatial {
             query.iter_object_stores(ctx.log_db, &[ObjectType::Image])
         {
             let properties = objects_properties.get(obj_path);
+            let transform = transforms.get_world_from_scene(obj_path);
 
             visit_type_data_2(
                 obj_store,
@@ -741,6 +757,7 @@ impl SceneSpatial {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
+        transforms: &TransformCache,
         objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
@@ -750,6 +767,7 @@ impl SceneSpatial {
             query.iter_object_stores(ctx.log_db, &[ObjectType::BBox2D])
         {
             let properties = objects_properties.get(obj_path);
+            let transform = transforms.get_world_from_scene(obj_path);
             let annotations = self.annotation_map.find(obj_path);
 
             visit_type_data_4(
@@ -815,6 +833,7 @@ impl SceneSpatial {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
+        transforms: &TransformCache,
         objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
@@ -833,6 +852,7 @@ impl SceneSpatial {
             let annotations = self.annotation_map.find(obj_path);
             let default_color = DefaultColor::ObjPath(obj_path);
             let properties = objects_properties.get(obj_path);
+            let transform = transforms.get_world_from_scene(obj_path);
 
             // If keypoints ids show up we may need to connect them later!
             // We include time in the key, so that the "Visible history" (time range queries) feature works.
@@ -934,6 +954,7 @@ impl SceneSpatial {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
+        transforms: &TransformCache,
         objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
@@ -944,6 +965,7 @@ impl SceneSpatial {
         {
             let annotations = self.annotation_map.find(obj_path);
             let properties = objects_properties.get(obj_path);
+            let transform = transforms.get_world_from_scene(obj_path);
 
             visit_type_data_2(
                 obj_store,
