@@ -38,7 +38,7 @@ fn obj_mono_points(c: &mut Criterion) {
         let msgs = build_messages(&paths, 1);
 
         {
-            let mut group = c.benchmark_group("obj_mono_points");
+            let mut group = c.benchmark_group("arrow_mono_points");
             group.throughput(criterion::Throughput::Elements(
                 (NUM_POINTS * NUM_FRAMES) as _,
             ));
@@ -48,7 +48,7 @@ fn obj_mono_points(c: &mut Criterion) {
         }
 
         {
-            let mut group = c.benchmark_group("obj_mono_points");
+            let mut group = c.benchmark_group("arrow_mono_points");
             group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
             let mut store = insert_messages(msgs.iter());
             group.bench_function("query", |b| {
@@ -65,7 +65,7 @@ fn obj_batch_points(c: &mut Criterion) {
         let msgs = build_messages(&paths, NUM_POINTS as _);
 
         {
-            let mut group = c.benchmark_group("obj_batch_points");
+            let mut group = c.benchmark_group("arrow_batch_points");
             group.throughput(criterion::Throughput::Elements(
                 (NUM_POINTS * NUM_FRAMES) as _,
             ));
@@ -75,7 +75,7 @@ fn obj_batch_points(c: &mut Criterion) {
         }
 
         {
-            let mut group = c.benchmark_group("obj_batch_points");
+            let mut group = c.benchmark_group("arrow_batch_points");
             group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
             let mut store = insert_messages(msgs.iter());
             group.bench_function("query", |b| {
