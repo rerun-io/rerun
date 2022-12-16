@@ -16,7 +16,6 @@ pub struct SceneBarChart {
 }
 
 impl SceneBarChart {
-    /// Loads all plot objects into the scene according to the given query.
     pub(crate) fn load_objects(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
 

@@ -460,11 +460,11 @@ pub(crate) struct ViewState {
     /// Selects in [`Self::state_tensors`].
     selected_tensor: Option<InstanceId>,
 
-    pub state_spatial: view_spatial::ViewSpatialState,
-    state_tensors: ahash::HashMap<InstanceId, view_tensor::ViewTensorState>,
     state_text: view_text::ViewTextState,
     state_time_series: view_time_series::ViewTimeSeriesState,
     state_bar_chart: view_bar_chart::BarChartState,
+    pub state_spatial: view_spatial::ViewSpatialState,
+    state_tensors: ahash::HashMap<InstanceId, view_tensor::ViewTensorState>,
 }
 
 impl ViewState {
