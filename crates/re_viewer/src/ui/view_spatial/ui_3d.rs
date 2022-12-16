@@ -158,7 +158,7 @@ impl View3DState {
         }
     }
 
-    pub fn show_settings_ui(
+    pub fn settings_ui(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
@@ -379,7 +379,7 @@ pub fn view_3d(
     if let Some(instance_id) = &hovered_instance {
         response = response.on_hover_ui_at_pointer(|ui| {
             ctx.instance_id_button(ui, instance_id);
-            crate::ui::data_ui::view_instance(ctx, ui, instance_id, crate::ui::Preview::Medium);
+            crate::ui::data_ui::instance_ui(ctx, ui, instance_id, crate::ui::Preview::Medium);
         });
     }
 

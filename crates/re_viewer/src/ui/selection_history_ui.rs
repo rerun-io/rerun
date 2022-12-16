@@ -66,13 +66,13 @@ impl SelectionHistory {
                         .show_ui(ui, |ui| {
                             for (i, sel) in self.stack.iter().enumerate() {
                                 ui.horizontal(|ui| {
-                                    show_selection_index(ui, i);
+                                    selection_index_ui(ui, i);
                                     {
                                         // borrow checker workaround
                                         let sel = selection_to_string(blueprint, sel);
                                         ui.selectable_value(&mut self.current, i, sel);
                                     }
-                                    show_selection_kind(ui, sel);
+                                    selection_kind_ui(ui, sel);
                                 });
                             }
                         })
@@ -169,13 +169,13 @@ impl SelectionHistory {
     }
 }
 
-fn show_selection_index(ui: &mut egui::Ui, index: usize) {
+fn selection_index_ui(ui: &mut egui::Ui, index: usize) {
     ui.weak(RichText::new(format!("{index:3}")).monospace());
 }
 
 // Different kinds of selections can share the same path in practice! We need to
 // differentiate those in the UI to avoid confusion.
-fn show_selection_kind(ui: &mut egui::Ui, sel: &Selection) {
+fn selection_kind_ui(ui: &mut egui::Ui, sel: &Selection) {
     ui.weak(RichText::new(match sel {
         Selection::None => "(none)",
         Selection::MsgId(_) => "(msg)",
