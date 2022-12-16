@@ -7,10 +7,17 @@ use re_data_store::{LogDb, ObjPath, Timeline};
     Debug, Default, PartialOrd, Ord, enumset::EnumSetType, serde::Deserialize, serde::Serialize,
 )]
 pub enum ViewCategory {
+    /// 2D or 3D view
     #[default]
     Spatial,
+
+    /// High-dimensional tensor view
     Tensor,
+
+    /// Text log view
     Text,
+
+    /// Time series plot
     Plot,
 }
 
