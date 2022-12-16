@@ -275,7 +275,7 @@ impl SceneSpatial {
                 let default_color = DefaultColor::ObjPath(obj_path);
                 let mut point_batch = self.primitives.points.batch("3d points");
                 let properties = objects_properties.get(obj_path);
-                let transform = transforms.get_world_from_scene(obj_path);
+                let world_from_scene = transforms.get_world_from_scene(obj_path);
 
                 visit_type_data_5(
                     obj_store,
@@ -412,7 +412,12 @@ impl SceneSpatial {
             let annotations = self.annotation_map.find(obj_path);
             let default_color = DefaultColor::ObjPath(obj_path);
             let properties = objects_properties.get(obj_path);
-            let transform = transforms.get_world_from_scene(obj_path);
+            let world_from_scene = transforms.get_world_from_scene(obj_path);
+            let mut line_batch = self
+                .primitives
+                .line_strips
+                .batch("box 3d")
+                .world_from_scene(*world_from_scene);
 
             visit_type_data_4(
                 obj_store,
@@ -435,6 +440,12 @@ impl SceneSpatial {
                         .annotation_info();
                     let mut color = to_ecolor(annotation_info.color(color, default_color));
                     let label = annotation_info.label(label);
+                    if let Some(label) = label {
+                        self.ui.labels_3d.push(Label3D {
+                            text: label,
+                            origin: Vec3::from(obb.translation),
+                        });
+                    }
 
                     let instance_hash = instance_hash_if_interactive(
                         obj_path,
@@ -446,7 +457,47 @@ impl SceneSpatial {
                         line_radius = Self::hover_size_boost(line_radius);
                     }
 
-                    self.add_box_3d(instance_hash, color, line_radius, label, obb);
+                    let transform = glam::Affine3A::from_scale_rotation_translation(
+                        Vec3::from(obb.half_size),
+                        glam::Quat::from_array(obb.rotation),
+                        Vec3::from(obb.translation),
+                    );
+
+                    let corners = [
+                        transform.transform_point3(vec3(-0.5, -0.5, -0.5)),
+                        transform.transform_point3(vec3(-0.5, -0.5, 0.5)),
+                        transform.transform_point3(vec3(-0.5, 0.5, -0.5)),
+                        transform.transform_point3(vec3(-0.5, 0.5, 0.5)),
+                        transform.transform_point3(vec3(0.5, -0.5, -0.5)),
+                        transform.transform_point3(vec3(0.5, -0.5, 0.5)),
+                        transform.transform_point3(vec3(0.5, 0.5, -0.5)),
+                        transform.transform_point3(vec3(0.5, 0.5, 0.5)),
+                    ];
+
+                    line_batch
+                        .add_segments(
+                            [
+                                // bottom:
+                                (corners[0b000], corners[0b001]),
+                                (corners[0b000], corners[0b010]),
+                                (corners[0b011], corners[0b001]),
+                                (corners[0b011], corners[0b010]),
+                                // top:
+                                (corners[0b100], corners[0b101]),
+                                (corners[0b100], corners[0b110]),
+                                (corners[0b111], corners[0b101]),
+                                (corners[0b111], corners[0b110]),
+                                // sides:
+                                (corners[0b000], corners[0b100]),
+                                (corners[0b001], corners[0b101]),
+                                (corners[0b010], corners[0b110]),
+                                (corners[0b011], corners[0b111]),
+                            ]
+                            .into_iter(),
+                        )
+                        .radius(line_radius)
+                        .color(color)
+                        .user_data(instance_hash);
                 },
             );
         }
@@ -470,7 +521,7 @@ impl SceneSpatial {
             let annotations = self.annotation_map.find(obj_path);
             let default_color = DefaultColor::ObjPath(obj_path);
             let properties = objects_properties.get(obj_path);
-            let transform = transforms.get_world_from_scene(obj_path);
+            let world_from_scene = transforms.get_world_from_scene(obj_path);
 
             visit_type_data_2(
                 obj_store,
@@ -544,7 +595,7 @@ impl SceneSpatial {
             let annotations = self.annotation_map.find(obj_path);
             let default_color = DefaultColor::ObjPath(obj_path);
             let properties = objects_properties.get(obj_path);
-            let transform = transforms.get_world_from_scene(obj_path);
+            let world_from_scene = transforms.get_world_from_scene(obj_path);
 
             visit_type_data_3(
                 obj_store,
@@ -599,7 +650,7 @@ impl SceneSpatial {
             .flat_map(|(_obj_type, obj_path, time_query, obj_store)| {
                 let mut batch = Vec::new();
                 let properties = objects_properties.get(obj_path);
-                let transform = transforms.get_world_from_scene(obj_path);
+                let world_from_scene = transforms.get_world_from_scene(obj_path);
 
                 visit_type_data_1(
                     obj_store,
@@ -659,7 +710,7 @@ impl SceneSpatial {
             query.iter_object_stores(ctx.log_db, &[ObjectType::Image])
         {
             let properties = objects_properties.get(obj_path);
-            let transform = transforms.get_world_from_scene(obj_path);
+            let world_from_scene = transforms.get_world_from_scene(obj_path);
 
             visit_type_data_2(
                 obj_store,
@@ -767,7 +818,7 @@ impl SceneSpatial {
             query.iter_object_stores(ctx.log_db, &[ObjectType::BBox2D])
         {
             let properties = objects_properties.get(obj_path);
-            let transform = transforms.get_world_from_scene(obj_path);
+            let world_from_scene = transforms.get_world_from_scene(obj_path);
             let annotations = self.annotation_map.find(obj_path);
 
             visit_type_data_4(
@@ -852,7 +903,7 @@ impl SceneSpatial {
             let annotations = self.annotation_map.find(obj_path);
             let default_color = DefaultColor::ObjPath(obj_path);
             let properties = objects_properties.get(obj_path);
-            let transform = transforms.get_world_from_scene(obj_path);
+            let world_from_scene = transforms.get_world_from_scene(obj_path);
 
             // If keypoints ids show up we may need to connect them later!
             // We include time in the key, so that the "Visible history" (time range queries) feature works.
@@ -965,7 +1016,7 @@ impl SceneSpatial {
         {
             let annotations = self.annotation_map.find(obj_path);
             let properties = objects_properties.get(obj_path);
-            let transform = transforms.get_world_from_scene(obj_path);
+            let world_from_scene = transforms.get_world_from_scene(obj_path);
 
             visit_type_data_2(
                 obj_store,
