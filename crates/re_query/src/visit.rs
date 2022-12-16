@@ -66,7 +66,6 @@ where
     res.into_iter()
 }
 
-
 /// Visit a component in a dataframe
 /// See [`visit_components2`]
 pub fn visit_component<C0: Component>(df: &DataFrame, mut visit: impl FnMut(&C0))
@@ -148,7 +147,7 @@ pub fn visit_components2<C0: Component, C1: Component>(
 
 /// Visit all all of a complex component in a dataframe
 /// See [`visit_components2`]
-pub fn visit_components3<C0: Component, C1: Component, C2:Component>(
+pub fn visit_components3<C0: Component, C1: Component, C2: Component>(
     df: &DataFrame,
     mut visit: impl FnMut(&C0, Option<&C1>, Option<&C2>),
 ) where
