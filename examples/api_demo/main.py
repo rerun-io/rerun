@@ -19,9 +19,6 @@ import numpy as np
 import rerun
 from rerun import AnnotationInfo, LoggingHandler, LogLevel, RectFormat
 
-CAMERA_GLB: Final = Path(os.path.dirname(__file__)).joinpath("../../crates/re_viewer/data/camera.glb")
-mesh_data = CAMERA_GLB.read_bytes()
-
 
 def run_segmentation() -> None:
     rerun.set_time_seconds("sim_time", 1)
@@ -147,15 +144,15 @@ def transforms_rigid_3d() -> None:
     rotation_speed_planet = 2.0
     rotation_speed_moon = 5.0
 
-    # "sun & planets"
-    rerun.log_mesh_file("transforms3d/sun", rerun.MeshFormat.GLB, mesh_data)
-    rerun.log_mesh_file("transforms3d/planet", rerun.MeshFormat.GLB, mesh_data)
-    rerun.log_mesh_file("transforms3d/planet/moon", rerun.MeshFormat.GLB, mesh_data)
-
     rerun.log_view_coordinates("transforms3d", up="+Y", timeless=True)
     rerun.log_view_coordinates("transforms3d/sun", up="+Y", timeless=True)
     rerun.log_view_coordinates("transforms3d/planet", up="+Y", timeless=True)
     rerun.log_view_coordinates("transforms3d/planet/moon", up="+Y", timeless=True)
+
+    # All are in the center of their own space:
+    rerun.log_point("transforms3d/sun", [0.0, 0.0, 0.0], radius=1.0, color=[255,255,128])
+    rerun.log_point("transforms3d/planet", [0.0, 0.0, 0.0], radius=0.4, color=[0,128,0])
+    rerun.log_point("transforms3d/planet/moon", [0.0, 0.0, 0.0], radius=0.15)
 
     # "dust" around the "planet" (and inside, don't care)
     # distribution is quadratically higher in the middle
