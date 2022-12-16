@@ -52,8 +52,12 @@ fn build_mesh_instances(
                 move |(model_mesh_instances, (p, c))| MeshInstance {
                     gpu_mesh: model_mesh_instances.gpu_mesh.clone(),
                     mesh: None,
-                    world_from_mesh: macaw::Conformal3::from_scale_rotation_translation(
-                        0.025 + (i % 10) as f32 * 0.01,
+                    world_from_mesh: glam::Affine3A::from_scale_rotation_translation(
+                        glam::vec3(
+                            2.5 + (i % 3) as f32,
+                            2.5 + (i % 7) as f32,
+                            2.5 + (i % 11) as f32,
+                        ) * 0.01,
                         glam::Quat::from_rotation_y(i as f32 + seconds_since_startup * 5.0),
                         *p,
                     ) * model_mesh_instances.world_from_mesh,
@@ -98,15 +102,16 @@ fn build_lines(re_ctx: &mut RenderContext, seconds_since_startup: f32) -> LineDr
     let lorenz_points = lorenz_points(seconds_since_startup);
 
     let mut builder = LineStripSeriesBuilder::<()>::default();
+    let mut batch = builder.batch("lines without transform");
 
     // Complex orange line.
-    builder
+    batch
         .add_strip(lorenz_points.into_iter())
         .color(Color32::from_rgb(255, 191, 0))
         .radius(Size::new_points(1.0));
 
     // Green Zig-Zag arrow
-    builder
+    batch
         .add_strip(
             [
                 glam::vec3(0.0, -1.0, 0.0),
@@ -120,8 +125,10 @@ fn build_lines(re_ctx: &mut RenderContext, seconds_since_startup: f32) -> LineDr
         .radius(Size::new_scene(0.05))
         .flags(LineStripFlags::CAP_END_TRIANGLE | LineStripFlags::CAP_START_ROUND);
 
-    // Blue spiral
+    // Blue spiral, rotating
     builder
+        .batch("blue sprial")
+        .world_from_scene(glam::Mat4::from_rotation_x(seconds_since_startup * 10.0))
         .add_strip((0..1000).map(|i| {
             glam::vec3(
                 (i as f32 * 0.01).sin() * 2.0,

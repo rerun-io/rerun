@@ -31,6 +31,7 @@ impl ObjectsProperties {
 pub struct ObjectProps {
     pub visible: bool,
     pub visible_history: ExtraQueryHistory,
+    pub interactive: bool,
 }
 
 impl Default for ObjectProps {
@@ -38,6 +39,7 @@ impl Default for ObjectProps {
         Self {
             visible: true,
             visible_history: ExtraQueryHistory::default(),
+            interactive: true,
         }
     }
 }

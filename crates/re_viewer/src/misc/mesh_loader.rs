@@ -72,11 +72,8 @@ impl LoadedMesh {
 
         let (scale, rotation, translation) =
             glam::Affine3A::from_cols_array_2d(transform).to_scale_rotation_translation();
-        let transform = macaw::Conformal3::from_scale_rotation_translation(
-            re_renderer::importer::to_uniform_scale(scale),
-            rotation,
-            translation,
-        );
+        let transform =
+            glam::Affine3A::from_scale_rotation_translation(scale, rotation, translation);
         for instance in &mut slf.mesh_instances {
             instance.world_from_mesh = transform * instance.world_from_mesh;
         }
@@ -121,6 +118,7 @@ impl LoadedMesh {
                         label: name.clone().into(),
                         index_range: 0..raw_mesh.indices.len() as _,
                         albedo: render_ctx.texture_manager_2d.white_texture_handle().clone(),
+                        albedo_multiplier: re_renderer::Rgba::WHITE,
                     }],
                 },
                 ResourceLifeTime::LongLived,

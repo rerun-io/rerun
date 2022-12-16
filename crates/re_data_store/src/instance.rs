@@ -18,6 +18,14 @@ pub struct InstanceId {
 
 impl InstanceId {
     #[inline]
+    pub fn new(obj_path: ObjPath, instance_index: Option<Index>) -> Self {
+        Self {
+            obj_path,
+            instance_index,
+        }
+    }
+
+    #[inline]
     pub fn hash(&self) -> InstanceIdHash {
         InstanceIdHash {
             obj_path_hash: *self.obj_path.hash(),

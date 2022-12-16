@@ -16,9 +16,6 @@ pub struct DimensionMapping {
 
     /// Flip the height
     pub invert_height: bool,
-
-    // Which dim?
-    pub channel: Option<usize>,
 }
 
 impl DimensionMapping {
@@ -30,7 +27,6 @@ impl DimensionMapping {
                 height: None,
                 invert_width: false,
                 invert_height: false,
-                channel: None,
             },
 
             1 => DimensionMapping {
@@ -39,7 +35,6 @@ impl DimensionMapping {
                 height: None,
                 invert_width: false,
                 invert_height: false,
-                channel: None,
             },
 
             _ => {
@@ -54,7 +49,6 @@ impl DimensionMapping {
                     height: Some(height),
                     invert_width: shape[width].name.to_lowercase() == "left",
                     invert_height: shape[height].name.to_lowercase() == "up",
-                    channel: None,
                 }
             }
         }
@@ -70,13 +64,23 @@ impl DimensionMapping {
             }
         }
 
+        let mut used_dimensions: ahash::HashSet<usize> = self.selectors.iter().copied().collect();
+        if let Some(width) = self.width {
+            used_dimensions.insert(width);
+        }
+        if let Some(height) = self.height {
+            used_dimensions.insert(height);
+        }
+        if used_dimensions.len() != num_dim {
+            return false;
+        }
+
         // we should have both width and height set…
         (num_dim < 2 || (self.width.is_some() && self.height.is_some()))
 
         // …and all dimensions should be in range
             && is_in_range(&self.width, num_dim)
             && is_in_range(&self.height, num_dim)
-            && is_in_range(&self.channel, num_dim)
     }
 }
 

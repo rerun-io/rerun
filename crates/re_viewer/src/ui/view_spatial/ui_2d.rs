@@ -375,6 +375,10 @@ fn view_2d_scrollable(
                 annotations,
             } = img;
 
+            if instance_hash.is_none() {
+                continue;
+            }
+
             let (w, h) = (tensor.shape[1].size as f32, tensor.shape[0].size as f32);
             let rect = Rect::from_min_size(Pos2::ZERO, vec2(w, h));
             let dist = rect.distance_sq_to_pos(pointer_pos_space).sqrt();

@@ -239,6 +239,10 @@ fn tensor_to_dynamic_image(
         depth == 1 || depth == 3 || depth == 4,
         "Expected depth of 1,3,4 (gray, RGB, RGBA), found {depth:?}. Tensor shape: {shape:?}"
     );
+    debug_assert!(
+        tensor.is_shaped_like_an_image(),
+        "We should make the same checks above, but with actual error messages"
+    );
 
     type Gray16Image = image::ImageBuffer<image::Luma<u16>, Vec<u16>>;
     type Rgb16Image = image::ImageBuffer<image::Rgb<u16>, Vec<u16>>;

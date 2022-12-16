@@ -1,7 +1,7 @@
 //! Mesh renderer.
 //!
 //! Uses instancing to render instances of the same mesh in a single draw call.
-//! Instance data is kept in an instance-stepped vertex data, see [`GpuInstanceData`].
+//! Instance data is kept in an instance-stepped vertex data.
 
 use std::sync::Arc;
 
@@ -10,13 +10,12 @@ use smallvec::smallvec;
 
 use crate::{
     include_file,
-    mesh::{mesh_vertices, GpuMesh, Mesh},
+    mesh::{gpu_data::MaterialUniformBuffer, mesh_vertices, GpuMesh, Mesh},
     resource_managers::GpuMeshHandle,
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupLayoutDesc, BufferDesc, GpuBindGroupLayoutHandle, GpuBufferHandleStrong,
         GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc, ShaderModuleDesc,
-        VertexBufferLayout,
     },
     Color32,
 };
@@ -26,48 +25,54 @@ use super::{
     WgpuResourcePools,
 };
 
-/// Element in the gpu residing instance buffer.
-///
-/// Keep in sync with `mesh_vertex.wgsl`
-#[repr(C, packed)]
-#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
-struct GpuInstanceData {
-    // Don't use alignend glam types because they enforce alignment.
-    // (staging buffer might be 4 byte aligned only!)
-    translation_and_scale: [f32; 4],
-    rotation: [f32; 4],
-    additive_tint: Color32,
-}
+mod gpu_data {
+    use ecolor::Color32;
 
-impl GpuInstanceData {
-    pub fn vertex_buffer_layout() -> VertexBufferLayout {
-        let shader_start_location = mesh_vertices::next_free_shader_location();
+    use crate::{mesh::mesh_vertices, wgpu_resources::VertexBufferLayout};
 
-        VertexBufferLayout {
-            array_stride: std::mem::size_of::<GpuInstanceData>() as _,
-            step_mode: wgpu::VertexStepMode::Instance,
-            attributes: smallvec![
-                // Position and Scale.
-                // We could move scale to a separate field, it's _probably_ not gonna have any impact at all
-                // But then again it's easy and less confusing to always keep them fused.
-                wgpu::VertexAttribute {
-                    format: wgpu::VertexFormat::Float32x4,
-                    offset: memoffset::offset_of!(GpuInstanceData, translation_and_scale) as _,
-                    shader_location: shader_start_location,
-                },
-                // Rotation (quaternion)
-                wgpu::VertexAttribute {
-                    format: wgpu::VertexFormat::Float32x4,
-                    offset: memoffset::offset_of!(GpuInstanceData, rotation) as _,
-                    shader_location: shader_start_location + 1,
-                },
-                // Tint color
-                wgpu::VertexAttribute {
-                    format: wgpu::VertexFormat::Unorm8x4,
-                    offset: memoffset::offset_of!(GpuInstanceData, additive_tint) as _,
-                    shader_location: shader_start_location + 2,
-                },
-            ],
+    /// Element in the gpu residing instance buffer.
+    ///
+    /// Keep in sync with `mesh_vertex.wgsl`
+    #[repr(C, packed)]
+    #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+    pub struct InstanceData {
+        // Don't use aligned glam types because they enforce alignment.
+        // (staging buffer might be 4 byte aligned only!)
+        pub world_from_mesh_row_0: [f32; 4],
+        pub world_from_mesh_row_1: [f32; 4],
+        pub world_from_mesh_row_2: [f32; 4],
+
+        pub world_from_mesh_normal_row_0: [f32; 3],
+        pub world_from_mesh_normal_row_1: [f32; 3],
+        pub world_from_mesh_normal_row_2: [f32; 3],
+
+        pub additive_tint: Color32,
+    }
+
+    impl InstanceData {
+        pub fn vertex_buffer_layout() -> VertexBufferLayout {
+            let shader_start_location = mesh_vertices::next_free_shader_location();
+
+            VertexBufferLayout {
+                array_stride: std::mem::size_of::<InstanceData>() as _,
+                step_mode: wgpu::VertexStepMode::Instance,
+                attributes: VertexBufferLayout::attributes_from_formats(
+                    shader_start_location,
+                    [
+                        // Affine mesh transform.
+                        wgpu::VertexFormat::Float32x4,
+                        wgpu::VertexFormat::Float32x4,
+                        wgpu::VertexFormat::Float32x4,
+                        // Transposed inverse mesh transform.
+                        wgpu::VertexFormat::Float32x3,
+                        wgpu::VertexFormat::Float32x3,
+                        wgpu::VertexFormat::Float32x3,
+                        // Tint color
+                        wgpu::VertexFormat::Unorm8x4,
+                    ]
+                    .into_iter(),
+                ),
+            }
         }
     }
 }
@@ -99,7 +104,7 @@ pub struct MeshInstance {
     pub mesh: Option<Arc<Mesh>>,
 
     /// Where this instance is placed in world space and how its oriented & scaled.
-    pub world_from_mesh: macaw::Conformal3,
+    pub world_from_mesh: macaw::Affine3A,
 
     /// Per-instance (as opposed to per-material/mesh!) tint color that is added to the albedo texture.
     /// Alpha channel is currently unused.
@@ -132,7 +137,8 @@ impl MeshDrawData {
         // Group by mesh to facilitate instancing.
 
         // TODO(andreas): Use a temp allocator
-        let instance_buffer_size = (std::mem::size_of::<GpuInstanceData>() * instances.len()) as _;
+        let instance_buffer_size =
+            (std::mem::size_of::<gpu_data::InstanceData>() * instances.len()) as _;
         let instance_buffer = ctx.gpu_resources.buffers.alloc(
             &ctx.device,
             &BufferDesc {
@@ -152,7 +158,7 @@ impl MeshDrawData {
                 0,
                 instance_buffer_size.try_into().unwrap(),
             );
-            let instance_buffer_staging: &mut [GpuInstanceData] =
+            let instance_buffer_staging: &mut [gpu_data::InstanceData] =
                 bytemuck::cast_slice_mut(&mut instance_buffer_staging);
 
             let mut num_processed_instances = 0;
@@ -164,9 +170,30 @@ impl MeshDrawData {
                         .skip(num_processed_instances),
                 ) {
                     count += 1;
-                    gpu_instance.translation_and_scale =
-                        instance.world_from_mesh.translation_and_scale().into();
-                    gpu_instance.rotation = instance.world_from_mesh.rotation().into();
+
+                    let world_from_mesh_mat3 = instance.world_from_mesh.matrix3;
+                    gpu_instance.world_from_mesh_row_0 = world_from_mesh_mat3
+                        .row(0)
+                        .extend(instance.world_from_mesh.translation.x)
+                        .to_array();
+                    gpu_instance.world_from_mesh_row_1 = world_from_mesh_mat3
+                        .row(1)
+                        .extend(instance.world_from_mesh.translation.y)
+                        .to_array();
+                    gpu_instance.world_from_mesh_row_2 = world_from_mesh_mat3
+                        .row(2)
+                        .extend(instance.world_from_mesh.translation.z)
+                        .to_array();
+
+                    let world_from_mesh_normal =
+                        instance.world_from_mesh.matrix3.inverse().transpose();
+                    gpu_instance.world_from_mesh_normal_row_0 =
+                        world_from_mesh_normal.row(0).to_array();
+                    gpu_instance.world_from_mesh_normal_row_1 =
+                        world_from_mesh_normal.row(1).to_array();
+                    gpu_instance.world_from_mesh_normal_row_2 =
+                        world_from_mesh_normal.row(2).to_array();
+
                     gpu_instance.additive_tint = instance.additive_tint;
                 }
                 num_processed_instances += count;
@@ -213,16 +240,30 @@ impl Renderer for MeshRenderer {
             device,
             &BindGroupLayoutDesc {
                 label: "mesh renderer".into(),
-                entries: vec![wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Texture {
-                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                        view_dimension: wgpu::TextureViewDimension::D2,
-                        multisampled: false,
+                entries: vec![
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
                     },
-                    count: None,
-                }],
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: (std::mem::size_of::<MaterialUniformBuffer>() as u64)
+                                .try_into()
+                                .ok(),
+                        },
+                        count: None,
+                    },
+                ],
             },
         );
         let pipeline_layout = pools.pipeline_layouts.get_or_create(
@@ -254,7 +295,7 @@ impl Renderer for MeshRenderer {
                 fragment_handle: shader_module,
 
                 // Put instance vertex buffer on slot 0 since it doesn't change for several draws.
-                vertex_buffers: std::iter::once(GpuInstanceData::vertex_buffer_layout())
+                vertex_buffers: std::iter::once(gpu_data::InstanceData::vertex_buffer_layout())
                     .chain(mesh_vertices::vertex_buffer_layouts())
                     .collect(),
 

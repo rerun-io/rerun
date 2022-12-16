@@ -65,7 +65,7 @@ impl<'s> SceneQuery<'s> {
             tensor,
             plot,
         } = &mut scene;
-        spatial.load_objects(ctx, self, InstanceIdHash::NONE);
+        spatial.load_objects(ctx, self, self.obj_props, InstanceIdHash::NONE);
         text.load_objects(ctx, self, &view_text::ViewTextFilters::default());
         tensor.load_objects(ctx, self);
         plot.load_objects(ctx, self);

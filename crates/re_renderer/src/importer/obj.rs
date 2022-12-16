@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use anyhow::Context;
-use macaw::Conformal3;
 use smallvec::smallvec;
 
 use crate::{
@@ -62,6 +61,7 @@ pub fn load_obj_from_buffer(
                     label: "default material".into(),
                     index_range: 0..num_indices as u32,
                     albedo: texture.clone(),
+                    albedo_multiplier: crate::Rgba::WHITE,
                 }],
             };
             let gpu_mesh = ctx
@@ -76,7 +76,7 @@ pub fn load_obj_from_buffer(
             MeshInstance {
                 gpu_mesh,
                 mesh: Some(Arc::new(mesh)),
-                world_from_mesh: Conformal3::IDENTITY,
+                world_from_mesh: glam::Affine3A::IDENTITY,
                 additive_tint: Color32::TRANSPARENT,
             }
         })

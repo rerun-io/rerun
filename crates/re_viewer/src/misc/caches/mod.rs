@@ -47,9 +47,9 @@ impl TensorStats {
     fn new(tensor: &re_log_types::Tensor) -> Self {
         use re_log_types::TensorDataType;
 
-        fn tensor_range_f32(tensor: &ndarray::ArrayViewD<'_, f32>) -> (f32, f32) {
+        fn tensor_range_u8(tensor: &ndarray::ArrayViewD<'_, u8>) -> (u8, u8) {
             crate::profile_function!();
-            tensor.fold((f32::INFINITY, f32::NEG_INFINITY), |cur, &value| {
+            tensor.fold((u8::MAX, u8::MIN), |cur, &value| {
                 (cur.0.min(value), cur.1.max(value))
             })
         }
@@ -61,8 +61,18 @@ impl TensorStats {
             })
         }
 
+        fn tensor_range_f32(tensor: &ndarray::ArrayViewD<'_, f32>) -> (f32, f32) {
+            crate::profile_function!();
+            tensor.fold((f32::INFINITY, f32::NEG_INFINITY), |cur, &value| {
+                (cur.0.min(value), cur.1.max(value))
+            })
+        }
+
         let range = match tensor.dtype {
-            TensorDataType::U8 => Some((0.0, 255.0)),
+            TensorDataType::U8 => re_tensor_ops::as_ndarray::<u8>(tensor).ok().map(|tensor| {
+                let (min, max) = tensor_range_u8(&tensor);
+                (min as f64, max as f64)
+            }),
 
             TensorDataType::U16 => re_tensor_ops::as_ndarray::<u16>(tensor).ok().map(|tensor| {
                 let (min, max) = tensor_range_u16(&tensor);

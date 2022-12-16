@@ -15,6 +15,8 @@ repository = "https://github.com/rerun-io/rerun"
 anyhow = "1.0"
 arrow2 = { version = "0.14" }
 arrow2_convert = { version = "0.3" }
+polars-core = "0.25"
+polars-lazy = "0.25"
 thiserror = "1.0"
 
 [profile.dev]
@@ -31,14 +33,14 @@ opt-level = 2
 debug = true
 
 [patch.crates-io]
-# 2022-12-14 - ignore \r character
-ecolor = { git = "https://github.com/emilk/egui", rev = "4e8341d35c20a8447ac948d6c84cae5ab098bac2" }
-eframe = { git = "https://github.com/emilk/egui", rev = "4e8341d35c20a8447ac948d6c84cae5ab098bac2" }
-egui = { git = "https://github.com/emilk/egui", rev = "4e8341d35c20a8447ac948d6c84cae5ab098bac2" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "4e8341d35c20a8447ac948d6c84cae5ab098bac2" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "4e8341d35c20a8447ac948d6c84cae5ab098bac2" }
-emath = { git = "https://github.com/emilk/egui", rev = "4e8341d35c20a8447ac948d6c84cae5ab098bac2" }
-epaint = { git = "https://github.com/emilk/egui", rev = "4e8341d35c20a8447ac948d6c84cae5ab098bac2" }
+# 2022-12-15 - Add Slider::drag_value_speed
+ecolor = { git = "https://github.com/emilk/egui", rev = "6ae4bc486b2608212f5fc8453f5aa7e5106853f8" }
+eframe = { git = "https://github.com/emilk/egui", rev = "6ae4bc486b2608212f5fc8453f5aa7e5106853f8" }
+egui = { git = "https://github.com/emilk/egui", rev = "6ae4bc486b2608212f5fc8453f5aa7e5106853f8" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "6ae4bc486b2608212f5fc8453f5aa7e5106853f8" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "6ae4bc486b2608212f5fc8453f5aa7e5106853f8" }
+emath = { git = "https://github.com/emilk/egui", rev = "6ae4bc486b2608212f5fc8453f5aa7e5106853f8" }
+epaint = { git = "https://github.com/emilk/egui", rev = "6ae4bc486b2608212f5fc8453f5aa7e5106853f8" }
 
 # ecolor = { path = "../../egui/crates/ecolor" }
 # eframe = { path = "../../egui/crates/eframe" }

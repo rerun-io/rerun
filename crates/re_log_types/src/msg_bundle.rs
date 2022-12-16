@@ -431,7 +431,7 @@ where
 }
 
 /// Helper to build a `MessageBundle` from 3 components
-pub fn try_build_msg_bundle3<O, T, C0, C1, C2, E>(
+pub fn try_build_msg_bundle3<O, T, C0, C1, C2>(
     msg_id: MsgId,
     into_obj_path: O,
     into_time_point: T,

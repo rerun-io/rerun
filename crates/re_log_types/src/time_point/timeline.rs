@@ -1,4 +1,4 @@
-use crate::TimeType;
+use crate::{TimeRange, TimeType};
 
 re_string_interner::declare_new_type!(
     /// The name of a timeline. Often something like `"log_time"` or `"frame_nr"`.
@@ -44,6 +44,22 @@ impl Timeline {
     }
 
     #[inline]
+    pub fn new_temporal(name: impl Into<TimelineName>) -> Self {
+        Self {
+            name: name.into(),
+            typ: TimeType::Time,
+        }
+    }
+
+    #[inline]
+    pub fn new_sequence(name: impl Into<TimelineName>) -> Self {
+        Self {
+            name: name.into(),
+            typ: TimeType::Sequence,
+        }
+    }
+
+    #[inline]
     pub fn name(&self) -> &TimelineName {
         &self.name
     }
@@ -51,6 +67,16 @@ impl Timeline {
     #[inline]
     pub fn typ(&self) -> TimeType {
         self.typ
+    }
+
+    /// Returns a formatted string of `time_range` on this `Timeline`.
+    pub fn format_time_range(&self, time_range: &TimeRange) -> String {
+        format!(
+            "    - {}: from {} to {} (all inclusive)",
+            self.name,
+            self.typ.format(time_range.min),
+            self.typ.format(time_range.max),
+        )
     }
 }
 

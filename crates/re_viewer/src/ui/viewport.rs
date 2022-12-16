@@ -445,10 +445,10 @@ fn visibility_button(ui: &mut egui::Ui, enabled: bool, visible: &mut bool) -> eg
     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
         ui.set_enabled(enabled);
         if enabled {
-            ui.add(re_ui::toggle_switch(visible))
+            ui.toggle_value(visible, "👁")
         } else {
             let mut always_false = false;
-            ui.add(re_ui::toggle_switch(&mut always_false))
+            ui.toggle_value(&mut always_false, "👁")
         }
         .on_hover_text("Toggle visibility")
     })
@@ -489,6 +489,7 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
                 .clicked()
             {
                 *self.maximized = Some(*space_view_id);
+                self.ctx.set_selection(Selection::SpaceView(*space_view_id));
             }
 
             space_view_options_link(
