@@ -158,14 +158,26 @@ def run_log_cleared() -> None:
 def transforms_rigid_3d() -> None:
     rerun.set_time_seconds("sim_time", 0)
 
-    # TODO: Try points and lines as well
+    sun_to_planet_distance = 6.0
+    planet_to_moon_distance = 3.0
+    rotation_speed_planet = 2.0
+    rotation_speed_moon = 5.0
+
+    # "sun & planets"
     rerun.log_mesh_file("transforms3d/sun", rerun.MeshFormat.GLB, mesh_data)
     rerun.log_mesh_file("transforms3d/planet", rerun.MeshFormat.GLB, mesh_data)
     rerun.log_mesh_file("transforms3d/planet/moon", rerun.MeshFormat.GLB, mesh_data)
 
-    sun_to_planet_distance = 6.0
-    planet_to_moon_distance = 3.0
+    # "dust" around the "planet" (and inside, don't care)
+    # distribution is quadratically higher in the middle
+    radii = np.random.rand(100) * planet_to_moon_distance * 0.5
+    angles = np.random.rand(100) * math.tau
+    height = np.sqrt(np.random.rand(100)) * 2.0 - 1.0
+    rerun.log_points(
+        "transforms3d/planet/dust", np.array([np.sin(angles) * radii, height, np.cos(angles) * radii]).transpose()
+    )
 
+    # paths where the planet & moon move
     angles = np.arange(0.0, 1.01, 0.01) * math.tau
     circle = np.array([np.sin(angles), angles * 0.0, np.cos(angles)]).transpose()
     rerun.log_path(
@@ -177,10 +189,8 @@ def transforms_rigid_3d() -> None:
         circle * planet_to_moon_distance,
     )
 
-    rotation_speed_planet = 2.0
-    rotation_speed_moon = 5.0
-
-    for i in range(0, 5 * 120):
+    # movement via transforms
+    for i in range(0, 6 * 120):
         time = i / 120.0
         rerun.set_time_seconds("sim_time", time)
         rotation_q = [0, 0, 0, 1]  # TODO: rotate around some axis
@@ -195,7 +205,6 @@ def transforms_rigid_3d() -> None:
                 rotation_q,
             ),
         )
-        # TODO: tidally lock the moon
         rerun.log_rigid3(
             "transforms3d/planet/moon",
             child_from_parent=(
