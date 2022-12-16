@@ -28,18 +28,15 @@ impl TransformCache {
         fn gather_child_transforms(
             spaces_info: &SpacesInfo,
             space: &SpaceInfo,
-            space_from_parent: glam::Mat4,
+            reference_from_space: glam::Mat4,
             transforms: &mut IntMap<ObjPathHash, glam::Mat4>,
         ) {
-            // We default to identity transform, so no need to store objects on the reference space
-            if space_from_parent != glam::Mat4::IDENTITY {
-                transforms.extend(
-                    space
-                        .descendants_without_transform
-                        .iter()
-                        .map(|obj| (*obj.hash(), space_from_parent)),
-                );
-            }
+            transforms.extend(
+                space
+                    .descendants_without_transform
+                    .iter()
+                    .map(|obj| (*obj.hash(), reference_from_space)),
+            );
 
             for (child_path, transform) in &space.child_spaces {
                 if let Some(child_space) = spaces_info.spaces.get(child_path) {
@@ -50,6 +47,9 @@ impl TransformCache {
                         re_log_types::Transform::Rigid3(rigid) => {
                             rigid.child_from_parent().to_mat4()
                         }
+
+                        // TODO(andreas): We don't support adding objects with pinhole yet.
+                        // Need to think about this a bit more and test it.
                         re_log_types::Transform::Pinhole(pinhole) => glam::Mat4::from_mat3(
                             glam::Mat3::from_cols_array_2d(&pinhole.image_from_cam),
                         ),
@@ -58,21 +58,43 @@ impl TransformCache {
                     gather_child_transforms(
                         spaces_info,
                         child_space,
-                        child_from_parent * space_from_parent,
+                        child_from_parent * reference_from_space,
                         transforms,
                     );
                 }
             }
         }
 
+        // Walk up to the highest reachable parent.
+        let mut space = reference_space;
+        let mut reference_from_space = glam::Mat4::IDENTITY;
+        loop {
+            let Some((parent_path, parent_transform)) = space.parent.as_ref() else {
+                break;
+            };
+            let Some(parent_space) = spaces_info.spaces.get(parent_path) else {
+                break;
+            };
+
+            reference_from_space = match parent_transform {
+                // Assume identity until told otherwise!
+                re_log_types::Transform::Unknown => reference_from_space,
+
+                re_log_types::Transform::Rigid3(rigid) => {
+                    reference_from_space * rigid.parent_from_child().to_mat4()
+                }
+
+                // TODO(andreas): Not supported yet.
+                re_log_types::Transform::Pinhole(_) => {
+                    break;
+                }
+            };
+            space = parent_space;
+        }
+
+        // And then walk all branches down again.
         let mut transforms = Default::default();
-        gather_child_transforms(
-            spaces_info,
-            reference_space,
-            glam::Mat4::IDENTITY,
-            &mut transforms,
-        );
-        // TODO: Walk up the parent
+        gather_child_transforms(spaces_info, space, reference_from_space, &mut transforms);
 
         Self { transforms }
     }

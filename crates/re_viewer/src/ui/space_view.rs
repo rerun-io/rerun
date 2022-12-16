@@ -261,11 +261,7 @@ impl SpaceView {
         tree: &ObjectTree,
         forced_invisible: &IntMap<ObjPath, &str>,
     ) {
-        let disabled_reason = if self.space_path.is_descendant_of(&tree.path) {
-            Some(&"Can't display entities that aren't children of the reference path yet.")
-        } else {
-            forced_invisible.get(&tree.path)
-        };
+        let disabled_reason = forced_invisible.get(&tree.path);
         let response = ui
             .add_enabled_ui(disabled_reason.is_none(), |ui| {
                 if tree.is_leaf() {
