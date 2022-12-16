@@ -18,10 +18,10 @@ use crate::msg_bundle::Component;
 lazy_static! {
     //TODO(john) actully use a run-time type registry
     static ref FIELDS: [Field; 4] = [
-        <Rect2D as Component>::field(),
+        <ColorRGBA as Component>::field(),
         <Point2D as Component>::field(),
         <Point3D as Component>::field(),
-        <ColorRGBA as Component>::field(),
+        <Rect2D as Component>::field(),
     ];
 }
 
