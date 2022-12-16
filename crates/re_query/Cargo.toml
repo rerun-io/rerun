@@ -34,7 +34,3 @@ polars-core = { workspace = true, features = [
   "dtype-struct",
 ] }
 polars-lazy = { workspace = true }
-
-
-[dev-dependencies]
-tracing-subscriber = "0.3"

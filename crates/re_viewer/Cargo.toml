@@ -38,6 +38,7 @@ re_format = { path = "../re_format" }
 re_log = { path = "../re_log" }
 re_log_types = { path = "../re_log_types", features = ["glam", "save", "load"] }
 re_memory = { path = "../re_memory" }
+re_query = { path = "../re_query" }
 re_renderer = { path = "../re_renderer" }
 re_smart_channel = { path = "../re_smart_channel" }
 re_string_interner = { path = "../re_string_interner" }
@@ -56,10 +57,11 @@ eframe = { version = "0.20", default-features = false, features = [
   "wgpu",
 ] }
 egui = { version = "0.20", features = ["extra_debug_asserts", "tracing"] }
-egui-notify = "0.5"
-egui-wgpu = "0.20"
 egui_dock = { version = "0.3", features = ["serde"] }
 egui_extras = { version = "0.20", features = ["tracing"] }
+egui-notify = "0.5"
+egui-wgpu = "0.20"
+enumset = "1.0.12"
 glam = { version = "0.20", features = [
   "mint",
 ] } # can't update glam until a new version of `macaw` is released
