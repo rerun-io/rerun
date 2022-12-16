@@ -87,7 +87,7 @@ where
     PerStripUserData: Default + Copy,
 {
     /// Every time we add a 2d line, we advance the z coordinate given to the next by this.
-    /// We want it to be as small as possible so that if the camera shits around to 3d, things still looks like it's on a plane
+    /// We want it to be as small as possible so that if the camera shifts around to 3d, things still looks like it's on a plane
     /// But if we make it too small we risk ambiguous z values (known as z fighting) under some circumstances
     const NEXT_2D_Z_STEP: f32 = -0.05;
 

@@ -55,7 +55,7 @@ where
         PointCloudBatchBuilder(self)
     }
 
-    /// Finalizes the builder and returns a line draw data with all the lines added so far.
+    /// Finalizes the builder and returns a point cloud draw data with all the points added so far.
     pub fn to_draw_data(
         &self,
         ctx: &mut crate::context::RenderContext,
@@ -73,14 +73,22 @@ where
     PerPointUserData: Default + Copy,
 {
     /// Every time we add a 2d point, we advance the z coordinate given to the next by this.
-    /// We want it to be as small as possible so that if the camera shits around to 3d, things still looks like it's on a plane
+    /// We want it to be as small as possible so that if the camera shifts around to 3d, things still looks like it's on a plane
     /// But if we make it too small we risk ambiguous z values (known as z fighting) under some circumstances
     const NEXT_2D_Z_STEP: f32 = -0.05;
+
+    #[inline]
+    fn batch_mut(&mut self) -> &mut PointCloudBatchInfo {
+        self.0
+            .batches
+            .last_mut()
+            .expect("batch should have been added on PointCloudBatchBuilder creation")
+    }
 
     /// Sets the `world_from_scene` matrix for the *entire* batch.
     #[inline]
     pub fn world_from_scene(&mut self, world_from_scene: glam::Mat4) -> &mut Self {
-        self.0.batches.last_mut().unwrap().world_from_scene = world_from_scene;
+        self.batch_mut().world_from_scene = world_from_scene;
         self
     }
 
@@ -100,7 +108,7 @@ where
         }));
 
         let num_points = self.0.vertices.len() - old_size;
-        self.0.batches.last_mut().unwrap().point_count += num_points as u32;
+        self.batch_mut().point_count += num_points as u32;
 
         self.0
             .colors
@@ -129,7 +137,7 @@ where
         });
         self.0.colors.push(Color32::WHITE);
         self.0.user_data.push(PerPointUserData::default());
-        self.0.batches.last_mut().unwrap().point_count += 1;
+        self.batch_mut().point_count += 1;
 
         PointBuilder {
             vertex: self.0.vertices.last_mut().unwrap(),
