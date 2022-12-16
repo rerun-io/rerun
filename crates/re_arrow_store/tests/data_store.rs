@@ -159,7 +159,7 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
     let timeline_wrong_kind = Timeline::new("log_time", TimeType::Sequence);
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
     let timeline_log_time = Timeline::new("log_time", TimeType::Time);
-    let components_all = &["instances"];
+    let components_all = &[Instance::NAME];
 
     tracker.assert_scenario(
         "query at `last_frame`",
@@ -168,7 +168,7 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
         &TimelineQuery::new(timeline_frame_nr, TimeQuery::LatestAt(frame40)),
         &ent_path,
         components_all,
-        vec![("instances", frame40.into())],
+        vec![(Instance::NAME, frame40.into())],
     );
 
     tracker.assert_scenario(
@@ -178,7 +178,7 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
         &TimelineQuery::new(timeline_log_time, TimeQuery::LatestAt(now_nanos)),
         &ent_path,
         components_all,
-        vec![("instances", now_nanos.into())],
+        vec![(Instance::NAME, now_nanos.into())],
     );
 
     tracker.assert_scenario(
@@ -354,7 +354,7 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
 
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
     let timeline_log_time = Timeline::new("log_time", TimeType::Time);
-    let components_all = &["instances", Rect2D::NAME, Point2D::NAME];
+    let components_all = &[Instance::NAME, Rect2D::NAME, Point2D::NAME];
 
     // --- Testing at all frames ---
 
@@ -370,7 +370,7 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
             "data at that point in time",
             frame41,
             vec![
-                ("instances", frame41.into()),
+                (Instance::NAME, frame41.into()),
                 (Rect2D::NAME, frame41.into()),
                 (Point2D::NAME, frame41.into()),
             ],
@@ -380,7 +380,7 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
             "data at that point in time",
             frame42,
             vec![
-                ("instances", frame42.into()),
+                (Instance::NAME, frame42.into()),
                 (Rect2D::NAME, frame42.into()),
                 (Point2D::NAME, frame42.into()),
             ],
@@ -390,7 +390,7 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
             "latest data for all components",
             frame43,
             vec![
-                ("instances", frame42.into()),
+                (Instance::NAME, frame42.into()),
                 (Rect2D::NAME, frame43.into()),
                 (Point2D::NAME, frame42.into()),
             ],
@@ -400,7 +400,7 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
             "latest data for all components",
             frame44,
             vec![
-                ("instances", frame42.into()),
+                (Instance::NAME, frame42.into()),
                 (Rect2D::NAME, frame43.into()),
                 (Point2D::NAME, frame44.into()),
             ],
@@ -442,7 +442,7 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
             "data at that point in time",
             now,
             vec![
-                ("instances", now_nanos.into()),
+                (Instance::NAME, now_nanos.into()),
                 (Rect2D::NAME, now_nanos.into()),
                 (Point2D::NAME, now_minus_1s_nanos.into()),
             ],
@@ -452,7 +452,7 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
             "latest data for all components",
             now_plus_1s,
             vec![
-                ("instances", now_plus_1s_nanos.into()),
+                (Instance::NAME, now_plus_1s_nanos.into()),
                 (Rect2D::NAME, now_plus_1s_nanos.into()),
                 (Point2D::NAME, now_minus_1s_nanos.into()),
             ],
@@ -462,7 +462,7 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
             "latest data for all components",
             now_plus_2s,
             vec![
-                ("instances", now_plus_1s_nanos.into()),
+                (Instance::NAME, now_plus_1s_nanos.into()),
                 (Rect2D::NAME, now_plus_1s_nanos.into()),
                 (Point2D::NAME, now_minus_1s_nanos.into()),
             ],
@@ -546,7 +546,7 @@ fn query_model_specifics_impl(store: &mut DataStore) {
     }
 
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
-    let components_all = &["instances", Rect2D::NAME, Point2D::NAME];
+    let components_all = &[Instance::NAME, Rect2D::NAME, Point2D::NAME];
 
     let scenarios = [
         (
@@ -567,7 +567,7 @@ fn query_model_specifics_impl(store: &mut DataStore) {
             "query all components at frame #40, from `instances` PoV",
             "empty dataframe",
             frame40,
-            "instances",
+            Instance::NAME,
             vec![],
         ),
         (
@@ -576,7 +576,7 @@ fn query_model_specifics_impl(store: &mut DataStore) {
             frame41,
             Rect2D::NAME,
             vec![
-                ("instances", frame41.into(), 0),
+                (Instance::NAME, frame41.into(), 0),
                 (Rect2D::NAME, frame41.into(), 0),
             ],
         ),
@@ -586,7 +586,7 @@ fn query_model_specifics_impl(store: &mut DataStore) {
             frame41,
             Point2D::NAME,
             vec![
-                ("instances", frame41.into(), 1),
+                (Instance::NAME, frame41.into(), 1),
                 (Point2D::NAME, frame41.into(), 0),
             ],
         ),
@@ -594,9 +594,9 @@ fn query_model_specifics_impl(store: &mut DataStore) {
             "query all components at frame #41, from `instances` PoV",
             "the _second_ set of `instances` and the set of `positions` at that time",
             frame41,
-            "instances",
+            Instance::NAME,
             vec![
-                ("instances", frame41.into(), 1),
+                (Instance::NAME, frame41.into(), 1),
                 (Point2D::NAME, frame41.into(), 0),
             ],
         ),
@@ -606,7 +606,7 @@ fn query_model_specifics_impl(store: &mut DataStore) {
             frame42,
             Point2D::NAME,
             vec![
-                ("instances", frame42.into(), 0),
+                (Instance::NAME, frame42.into(), 0),
                 (Point2D::NAME, frame42.into(), 0),
             ],
         ),
@@ -621,9 +621,9 @@ fn query_model_specifics_impl(store: &mut DataStore) {
             "query all components at frame #42, from `instances` PoV",
             "the set of `positions` and the set of `instances` at that time",
             frame42,
-            "instances",
+            Instance::NAME,
             vec![
-                ("instances", frame42.into(), 0),
+                (Instance::NAME, frame42.into(), 0),
                 (Point2D::NAME, frame42.into(), 0),
             ],
         ),
