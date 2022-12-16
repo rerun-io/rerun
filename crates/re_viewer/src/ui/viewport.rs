@@ -16,21 +16,7 @@ use crate::misc::{
     Selection, ViewerContext,
 };
 
-use super::{space_view::ViewCategory, SceneQuery, SpaceView};
-
-// ----------------------------------------------------------------------------
-
-/// A unique id for each space view.
-#[derive(
-    Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Deserialize, serde::Serialize,
-)]
-pub struct SpaceViewId(uuid::Uuid);
-
-impl SpaceViewId {
-    pub fn random() -> Self {
-        Self(uuid::Uuid::new_v4())
-    }
-}
+use super::{space_view::ViewCategory, SceneQuery, SpaceView, SpaceViewId};
 
 // ----------------------------------------------------------------------------
 
@@ -52,7 +38,7 @@ type VisibilitySet = std::collections::BTreeSet<SpaceViewId>;
 /// Describes the layout and contents of the Viewport Panel.
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
-pub struct ViewportBlueprint {
+pub struct Viewport {
     /// Where the space views are stored.
     space_views: HashMap<SpaceViewId, SpaceView>,
 
@@ -75,9 +61,9 @@ pub struct ViewportBlueprint {
     has_been_user_edited: bool,
 }
 
-impl ViewportBlueprint {
+impl Viewport {
     /// Create a default suggested blueprint using some heuristics.
-    fn new(ctx: &mut ViewerContext<'_>, spaces_info: &SpacesInfo) -> Self {
+    pub fn new(ctx: &mut ViewerContext<'_>, spaces_info: &SpacesInfo) -> Self {
         crate::profile_function!();
 
         let mut blueprint = Self::default();
@@ -176,7 +162,7 @@ impl ViewportBlueprint {
     }
 
     /// Show the blueprint panel tree view.
-    fn tree_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
+    pub fn tree_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         crate::profile_function!();
 
         egui::ScrollArea::vertical()
@@ -296,7 +282,7 @@ impl ViewportBlueprint {
         }
     }
 
-    fn on_frame_start(&mut self, ctx: &mut ViewerContext<'_>, spaces_info: &SpacesInfo) {
+    pub fn on_frame_start(&mut self, ctx: &mut ViewerContext<'_>, spaces_info: &SpacesInfo) {
         crate::profile_function!();
 
         for space_view in self.space_views.values_mut() {
@@ -322,7 +308,7 @@ impl ViewportBlueprint {
         }
     }
 
-    fn viewport_ui(
+    pub fn viewport_ui(
         &mut self,
         ui: &mut egui::Ui,
         ctx: &mut ViewerContext<'_>,
@@ -408,7 +394,7 @@ impl ViewportBlueprint {
         }
     }
 
-    fn create_new_blueprint_ui(
+    pub fn create_new_blueprint_ui(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
@@ -568,105 +554,6 @@ fn space_view_ui(
     };
 
     space_view.scene_ui(ctx, ui, spaces_info, reference_space_info, latest_at);
-}
-
-// ----------------------------------------------------------------------------
-
-/// Defines the layout of the whole Viewer (or will, eventually).
-#[derive(serde::Deserialize, serde::Serialize)]
-#[serde(default)]
-pub(crate) struct Blueprint {
-    pub blueprint_panel_expanded: bool,
-    pub selection_panel_expanded: bool,
-    pub time_panel_expanded: bool,
-
-    pub viewport: ViewportBlueprint,
-}
-
-impl Default for Blueprint {
-    fn default() -> Self {
-        Self {
-            blueprint_panel_expanded: true,
-            selection_panel_expanded: true,
-            time_panel_expanded: true,
-            viewport: Default::default(),
-        }
-    }
-}
-
-impl Blueprint {
-    pub fn blueprint_panel_and_viewport(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
-        crate::profile_function!();
-
-        let spaces_info = SpacesInfo::new(&ctx.log_db.obj_db, &ctx.rec_cfg.time_ctrl);
-
-        self.viewport.on_frame_start(ctx, &spaces_info);
-
-        self.blueprint_panel(ctx, ui, &spaces_info);
-
-        let viewport_frame = egui::Frame {
-            fill: ui.style().visuals.panel_fill,
-            ..Default::default()
-        };
-
-        egui::CentralPanel::default()
-            .frame(viewport_frame)
-            .show_inside(ui, |ui| {
-                self.viewport.viewport_ui(
-                    ui,
-                    ctx,
-                    &spaces_info,
-                    &mut self.selection_panel_expanded,
-                );
-            });
-    }
-
-    fn blueprint_panel(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        spaces_info: &SpacesInfo,
-    ) {
-        let panel = egui::SidePanel::left("blueprint_panel")
-            .resizable(true)
-            .frame(ctx.re_ui.panel_frame())
-            .min_width(120.0)
-            .default_width(200.0);
-
-        panel.show_animated_inside(ui, self.blueprint_panel_expanded, |ui: &mut egui::Ui| {
-            ui.horizontal(|ui| {
-                ui.vertical_centered(|ui| {
-                    ui.strong("Blueprint");
-                });
-            });
-
-            ui.separator();
-
-            ui.vertical_centered(|ui| {
-                if ui
-                    .button("Auto-populate Viewport")
-                    .on_hover_text("Re-populate Viewport with automatically chosen Space Views")
-                    .clicked()
-                {
-                    self.viewport = ViewportBlueprint::new(ctx, spaces_info);
-                }
-            });
-
-            ui.separator();
-
-            egui_extras::StripBuilder::new(ui)
-                .size(egui_extras::Size::remainder())
-                .size(egui_extras::Size::exact(20.0))
-                .vertical(|mut strip| {
-                    strip.cell(|ui| {
-                        self.viewport.tree_ui(ctx, ui);
-                    });
-                    strip.cell(|ui| {
-                        self.viewport.create_new_blueprint_ui(ctx, ui, spaces_info);
-                    });
-                });
-        });
-    }
 }
 
 // ----------------------------------------------------------------------------
