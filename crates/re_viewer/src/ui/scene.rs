@@ -7,7 +7,7 @@ use re_data_store::{
 };
 use re_log_types::ObjectType;
 
-use super::{space_view::ViewCategory, view_plot, view_spatial, view_tensor, view_text};
+use super::{view_category::ViewCategory, view_plot, view_spatial, view_tensor, view_text};
 
 // ---
 

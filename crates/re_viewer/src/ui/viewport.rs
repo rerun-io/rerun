@@ -16,7 +16,7 @@ use crate::misc::{
     Selection, ViewerContext,
 };
 
-use super::{space_view::ViewCategory, SceneQuery, SpaceView, SpaceViewId};
+use super::{view_category::ViewCategory, SceneQuery, SpaceView, SpaceViewId};
 
 // ----------------------------------------------------------------------------
 
