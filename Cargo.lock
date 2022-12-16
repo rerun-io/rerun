@@ -3685,6 +3685,7 @@ dependencies = [
  "document-features",
  "fixed",
  "glam",
+ "lazy_static",
  "macaw",
  "nohash-hasher",
  "num-derive",

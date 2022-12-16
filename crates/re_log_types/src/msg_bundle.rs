@@ -73,6 +73,11 @@ const COL_TIMELINES: &str = "timelines";
 pub trait Component: ArrowField {
     /// The name of the component
     const NAME: ComponentNameRef<'static>;
+
+    /// Create a [`Field`] for this `Component`
+    fn field() -> Field {
+        Field::new(Self::NAME, Self::data_type(), false)
+    }
 }
 
 /// A `ComponentBundle` holds an Arrow component column, and its field name.

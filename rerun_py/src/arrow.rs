@@ -5,8 +5,14 @@ use arrow2::{
     datatypes::Field,
     ffi,
 };
-use pyo3::{exceptions::PyTypeError, ffi::Py_uintptr_t, PyAny, PyResult};
-use re_log_types::{LogMsg, ObjPath, TimePoint};
+use pyo3::{
+    exceptions::{PyAttributeError, PyTypeError},
+    ffi::Py_uintptr_t,
+    types::IntoPyDict,
+    types::PyDict,
+    PyAny, PyResult,
+};
+use re_log_types::{field_types, LogMsg, ObjPath, TimePoint};
 
 /// Perform conversion between a pyarrow array to arrow2 types.
 fn array_to_rust(arrow_array: &PyAny) -> PyResult<(Box<dyn Array>, Field)> {
@@ -33,6 +39,27 @@ fn array_to_rust(arrow_array: &PyAny) -> PyResult<(Box<dyn Array>, Field)> {
         let array = ffi::import_array_from_c(*array, field.data_type.clone()).unwrap();
         Ok((array, field))
     }
+}
+
+#[pyo3::pyfunction]
+pub fn get_registered_fields(py: pyo3::Python<'_>) -> PyResult<&PyDict> {
+    let pyarrow = py.import("pyarrow")?;
+    let pyarrow_field_cls = pyarrow
+        .dict()
+        .get_item("Field")
+        .ok_or_else(|| PyAttributeError::new_err("Module 'pyarrow' has no attribute 'Field'"))?;
+
+    let fields = field_types::iter_registered_field_types()
+        .map(|field| {
+            let schema = Box::new(ffi::export_field_to_c(field));
+            let schema_ptr = &*schema as *const ffi::ArrowSchema;
+            pyarrow_field_cls
+                .call_method1("_import_from_c", (schema_ptr as Py_uintptr_t,))
+                .map(|f| (field.name.clone(), f))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+
+    Ok(fields.into_py_dict(py))
 }
 
 pub fn build_arrow_log_msg_from_py(
