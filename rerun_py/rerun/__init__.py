@@ -516,8 +516,9 @@ def log_rects(
 
 def log_point(
     obj_path: str,
-    position: Optional[npt.NDArray[np.float32]],
+    position: Optional[Sequence[float]],
     *,
+    radius: Optional[float] = None,
     color: Optional[Sequence[int]] = None,
     label: Optional[str] = None,
     class_id: Optional[int] = None,
@@ -530,6 +531,7 @@ def log_point(
     Logging again to the same `obj_path` will replace the previous point.
 
     * `position`: 2x1 or 3x1 array
+    * `radius`: Optional radius (make it a sphere)
     * `color`: Optional color of the point
     * `label`: Optional text to show with the point
     * `class_id`: Optional class id for the point.
@@ -553,7 +555,15 @@ def log_point(
     if position is not None:
         position = np.require(position, dtype="float32")
 
-    rerun_bindings.log_point(obj_path, position, color, label, class_id, keypoint_id, timeless)
+    rerun_bindings.log_point(
+        obj_path=obj_path,
+        position=position,
+        radius=radius,
+        color=color,
+        label=label,
+        class_id=class_id,
+        keypoint_id=keypoint_id,
+        timeless=timeless)
 
 
 def log_points(

@@ -984,10 +984,12 @@ fn log_rects(
 /// Log a 2D or 3D point.
 ///
 /// `position` is either 2x1 or 3x1.
+#[allow(clippy::too_many_arguments)]
 #[pyfunction]
 fn log_point(
     obj_path: &str,
     position: Option<numpy::PyReadonlyArray1<'_, f32>>,
+    radius: Option<f32>,
     color: Option<Vec<u8>>,
     label: Option<String>,
     class_id: Option<u16>,
@@ -1017,6 +1019,14 @@ fn log_point(
     };
 
     session.register_type(obj_path.obj_type_path(), obj_type);
+
+    if let Some(radius) = radius {
+        session.send_data(
+            &time_point,
+            (&obj_path, "radius"),
+            LoggedData::Single(Data::F32(radius)),
+        );
+    }
 
     if let Some(color) = color {
         let color = convert_color(color)?;
