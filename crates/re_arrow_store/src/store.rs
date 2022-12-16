@@ -843,7 +843,7 @@ pub struct ComponentBucket {
     pub(crate) time_ranges: HashMap<Timeline, TimeRange>,
 
     /// All the data for this bucket. This is a single column!
-    pub(crate) data: Box<dyn Array>,
+    pub(crate) chunks: Vec<Box<dyn Array>>,
 }
 
 impl std::fmt::Display for ComponentBucket {
@@ -864,7 +864,7 @@ impl std::fmt::Display for ComponentBucket {
             // TODO(#439): is that still true with deletion?
             self.row_offset.as_u64()
                 + self
-                    .data
+                    .chunks
                     .len()
                     .checked_sub(1)
                     .expect("buckets are never empty") as u64,
@@ -878,7 +878,7 @@ impl std::fmt::Display for ComponentBucket {
             ))?;
         }
 
-        let chunk = Chunk::new(vec![self.data()]);
+        let chunk = Chunk::new(self.data());
         f.write_str(&arrow2::io::print::write(&[chunk], &[self.name.as_str()]))?;
 
         Ok(())
@@ -888,12 +888,15 @@ impl std::fmt::Display for ComponentBucket {
 impl ComponentBucket {
     /// Returns the number of rows stored across this bucket.
     pub fn total_rows(&self) -> u64 {
-        self.data.len() as u64
+        self.chunks.len() as u64
     }
 
     /// Returns the size of the data stored across this bucket, in bytes.
     pub fn total_size_bytes(&self) -> u64 {
-        arrow2::compute::aggregate::estimated_bytes_size(&*self.data) as u64
+        self.chunks
+            .iter()
+            .map(|data| arrow2::compute::aggregate::estimated_bytes_size(&**data) as u64)
+            .sum()
     }
 }
 

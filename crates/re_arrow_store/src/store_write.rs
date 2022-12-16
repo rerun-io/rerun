@@ -60,7 +60,7 @@ impl DataStore {
                 .entry((*bundle.name).to_owned())
                 .or_insert_with(|| ComponentTable::new((*name).clone(), value.data_type().clone()));
 
-            let row_idx = table.push(&self.config, time_point, value.as_ref())?;
+            let row_idx = table.push(&self.config, time_point, value.as_ref());
             indices.insert(name.as_ref(), row_idx);
         }
 
@@ -639,25 +639,25 @@ impl ComponentTable {
         config: &DataStoreConfig,
         time_point: &TimePoint,
         data: &dyn Array,
-    ) -> anyhow::Result<RowIndex> {
+    ) -> RowIndex {
         // All component tables spawn with an initial bucket at row offset 0, thus this cannot
         // fail.
         let bucket = self.buckets.back().unwrap();
 
-        let size = bucket.total_size_bytes();
-        let size_overflow = bucket.total_size_bytes() > config.component_bucket_size_bytes;
+        // let size = bucket.total_size_bytes();
+        // let size_overflow = bucket.total_size_bytes() > config.component_bucket_size_bytes;
 
         let len = bucket.total_rows();
         let len_overflow = len > config.component_bucket_nb_rows;
 
-        if size_overflow || len_overflow {
+        if len_overflow {
             debug!(
                 kind = "insert",
                 component = self.name.as_str(),
                 size_limit = config.component_bucket_size_bytes,
                 len_limit = config.component_bucket_nb_rows,
-                size,
-                size_overflow,
+                // size,
+                // size_overflow,
                 len,
                 len_overflow,
                 "allocating new component bucket, previous one overflowed"
@@ -676,7 +676,7 @@ impl ComponentTable {
         //   same reason as above: all component tables spawn with an initial bucket at row
         //   offset 0, thus this cannot fail.
         // - If the table has just overflowed, then we've just pushed a bucket to the dequeue.
-        let row_idx = self.buckets.back_mut().unwrap().push(time_point, data)?;
+        let row_idx = self.buckets.back_mut().unwrap().push(time_point, data);
 
         debug!(
             kind = "insert",
@@ -688,7 +688,7 @@ impl ComponentTable {
             "pushed into component table"
         );
 
-        Ok(row_idx)
+        row_idx
     }
 }
 
@@ -696,7 +696,7 @@ impl ComponentBucket {
     pub fn new(name: Arc<String>, datatype: DataType, row_offset: RowIndex) -> Self {
         // If this is the first bucket of this table, we need to insert an empty list at
         // row index #0!
-        let data = if row_offset.as_u64() == 0 {
+        let chunks = if row_offset.as_u64() == 0 {
             let inner_datatype = match &datatype {
                 DataType::List(field) => field.data_type().clone(),
                 #[allow(clippy::todo)]
@@ -710,21 +710,20 @@ impl ComponentBucket {
                 None,
             );
 
-            // TODO(#451): throw error (or just implement mutable array)
-            concatenate(&[&*new_empty_array(datatype), &*empty.boxed()]).unwrap()
+            vec![empty.boxed()]
         } else {
-            new_empty_array(datatype)
+            vec![]
         };
 
         Self {
             name,
             row_offset,
             time_ranges: Default::default(),
-            data,
+            chunks,
         }
     }
 
-    pub fn push(&mut self, time_point: &TimePoint, data: &dyn Array) -> anyhow::Result<RowIndex> {
+    pub fn push(&mut self, time_point: &TimePoint, data: &dyn Array) -> RowIndex {
         for (timeline, time) in time_point {
             // TODO(#451): prob should own it at this point
             let time = *time;
@@ -736,11 +735,9 @@ impl ComponentBucket {
                 .or_insert_with(|| TimeRange::new(time, time));
         }
 
-        // TODO(cmc): replace with an actual mutable array!
-        self.data = concatenate(&[&*self.data, data])?;
+        // TODO: in real-life you might actually have more than one row per chunk
+        self.chunks.push(data.to_boxed()); // shallow
 
-        Ok(RowIndex::from_u64(
-            self.row_offset.as_u64() + self.data.len() as u64 - 1,
-        ))
+        RowIndex::from_u64(self.row_offset.as_u64() + self.chunks.len() as u64 - 1)
     }
 }
