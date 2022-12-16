@@ -101,11 +101,3 @@ impl SceneText {
             .sort_by_key(|entry| (entry.time, entry.msg_id));
     }
 }
-
-impl SceneText {
-    pub fn is_empty(&self) -> bool {
-        let Self { text_entries } = self;
-
-        text_entries.is_empty()
-    }
-}

@@ -1,38 +1,21 @@
-use nohash_hasher::{IntMap, IntSet};
 use re_data_store::{InstanceId, ObjPath, ObjectTree, ObjectsProperties, TimeInt};
 
-use crate::misc::{
-    space_info::{SpaceInfo, SpacesInfo},
-    ViewerContext,
+use nohash_hasher::{IntMap, IntSet};
+
+use crate::{
+    misc::{
+        space_info::{SpaceInfo, SpacesInfo},
+        ViewerContext,
+    },
+    ui::view_category::categorize_obj_path,
 };
 
 use super::{
+    view_category::ViewCategory,
     view_plot,
     view_spatial::{self, SpatialNavigationMode},
     view_tensor, view_text,
 };
-
-// ----------------------------------------------------------------------------
-
-#[derive(
-    Copy,
-    Clone,
-    Debug,
-    Default,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    serde::Deserialize,
-    serde::Serialize,
-)]
-pub enum ViewCategory {
-    #[default]
-    Spatial,
-    Tensor,
-    Text,
-    Plot,
-}
 
 // ----------------------------------------------------------------------------
 
@@ -83,19 +66,15 @@ pub(crate) struct SpaceView {
 impl SpaceView {
     pub fn new(
         ctx: &ViewerContext<'_>,
-        scene: &super::scene::Scene,
         category: ViewCategory,
         space_path: ObjPath,
-        space: &SpaceInfo,
+        space_info: &SpaceInfo,
+        default_spatial_naviation_mode: SpatialNavigationMode,
     ) -> Self {
         let mut view_state = ViewState::default();
 
         if category == ViewCategory::Spatial {
-            view_state.state_spatial.nav_mode = if scene.spatial.prefer_2d_mode() {
-                SpatialNavigationMode::TwoD
-            } else {
-                SpatialNavigationMode::ThreeD
-            };
+            view_state.state_spatial.nav_mode = default_spatial_naviation_mode;
         }
 
         let root_path = space_path
@@ -108,7 +87,7 @@ impl SpaceView {
             id: SpaceViewId::random(),
             root_path,
             space_path,
-            queried_objects: Self::default_queried_objects(ctx, space),
+            queried_objects: Self::default_queried_objects(ctx, category, space_info),
             obj_properties: Default::default(),
             view_state,
             category,
@@ -117,16 +96,21 @@ impl SpaceView {
     }
 
     /// List of objects a space view queries by default.
-    fn default_queried_objects(ctx: &ViewerContext<'_>, space: &SpaceInfo) -> IntSet<ObjPath> {
-        let mut queried_objects = IntSet::default();
-        queried_objects.extend(
-            space
-                .descendants_without_transform
-                .iter()
-                .filter(|obj_path| has_visualization(ctx, obj_path))
-                .cloned(),
-        );
-        queried_objects
+    fn default_queried_objects(
+        ctx: &ViewerContext<'_>,
+        category: ViewCategory,
+        space_info: &SpaceInfo,
+    ) -> IntSet<ObjPath> {
+        crate::profile_function!();
+
+        let timeline = ctx.rec_cfg.time_ctrl.timeline();
+        let log_db = &ctx.log_db;
+        space_info
+            .descendants_without_transform
+            .iter()
+            .filter(|obj_path| categorize_obj_path(timeline, log_db, obj_path).contains(category))
+            .cloned()
+            .collect()
     }
 
     pub fn on_frame_start(&mut self, ctx: &mut ViewerContext<'_>, spaces_info: &SpacesInfo) {
@@ -136,7 +120,7 @@ impl SpaceView {
         let Some(space) = spaces_info.spaces.get(&self.space_path) else {
             return;
         };
-        self.queried_objects = Self::default_queried_objects(ctx, space);
+        self.queried_objects = Self::default_queried_objects(ctx, self.category, space);
     }
 
     /// All object paths that are under the root but can't be added to the space view and why.
@@ -288,7 +272,7 @@ impl SpaceView {
                 if tree.is_leaf() {
                     ui.horizontal(|ui| {
                         self.object_path_button(ctx, ui, &tree.path, spaces_info, name);
-                        if has_visualization(ctx, &tree.path) {
+                        if has_visualization_for_category(ctx, self.category, &tree.path) {
                             self.object_add_button(ui, &tree.path, &ctx.log_db.obj_db.tree);
                         }
                     });
@@ -304,7 +288,7 @@ impl SpaceView {
                     )
                     .show_header(ui, |ui| {
                         self.object_path_button(ctx, ui, &tree.path, spaces_info, name);
-                        if has_visualization(ctx, &tree.path) {
+                        if has_visualization_for_category(ctx, self.category, &tree.path) {
                             self.object_add_button(ui, &tree.path, &ctx.log_db.obj_db.tree);
                         }
                     })
@@ -427,11 +411,14 @@ impl SpaceView {
     }
 }
 
-fn has_visualization(ctx: &ViewerContext<'_>, obj_path: &ObjPath) -> bool {
-    ctx.log_db
-        .obj_db
-        .types
-        .contains_key(obj_path.obj_type_path())
+fn has_visualization_for_category(
+    ctx: &ViewerContext<'_>,
+    category: ViewCategory,
+    obj_path: &ObjPath,
+) -> bool {
+    let timeline = ctx.rec_cfg.time_ctrl.timeline();
+    let log_db = &ctx.log_db;
+    categorize_obj_path(timeline, log_db, obj_path).contains(category)
 }
 
 // ----------------------------------------------------------------------------

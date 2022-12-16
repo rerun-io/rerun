@@ -11,23 +11,34 @@ use itertools::Itertools as _;
 
 use re_data_store::{ObjPath, TimeInt};
 
-use crate::misc::{
-    space_info::{SpaceInfo, SpacesInfo},
-    Selection, ViewerContext,
+use crate::{
+    misc::{
+        space_info::{SpaceInfo, SpacesInfo},
+        Selection, ViewerContext,
+    },
+    ui::{view_category::group_by_category, view_spatial::SceneSpatial},
 };
 
-use super::{space_view::ViewCategory, SceneQuery, SpaceView, SpaceViewId};
+use super::{view_category::ViewCategory, SceneQuery, SpaceView, SpaceViewId};
 
 // ----------------------------------------------------------------------------
 
-fn query_scene(ctx: &mut ViewerContext<'_>, space_info: &SpaceInfo) -> super::scene::Scene {
+fn query_scene_spatial(
+    ctx: &mut ViewerContext<'_>,
+    obj_paths: &nohash_hasher::IntSet<ObjPath>,
+) -> SceneSpatial {
+    crate::profile_function!();
+
     let query = SceneQuery {
-        obj_paths: &space_info.descendants_without_transform,
+        obj_paths,
         timeline: *ctx.rec_cfg.time_ctrl.timeline(),
         latest_at: TimeInt::MAX,
         obj_props: &Default::default(), // all visible
     };
-    query.query(ctx)
+    let mut scene = SceneSpatial::default();
+    let hovered = re_data_store::InstanceIdHash::NONE;
+    scene.load_objects(ctx, &query, query.obj_props, hovered);
+    scene
 }
 
 // ----------------------------------------------------------------------------
@@ -69,11 +80,16 @@ impl Viewport {
         let mut blueprint = Self::default();
 
         for (path, space_info) in &spaces_info.spaces {
-            let scene = query_scene(ctx, space_info);
-            for category in scene.categories() {
+            for (category, obj_paths) in group_by_category(
+                ctx.rec_cfg.time_ctrl.timeline(),
+                ctx.log_db,
+                space_info.descendants_without_transform.iter(),
+            ) {
+                let scene_spatial = query_scene_spatial(ctx, &obj_paths);
+
                 if category == ViewCategory::Spatial
-                    && scene.spatial.prefer_2d_mode()
-                    && scene.spatial.ui.images.len() > 1
+                    && scene_spatial.prefer_2d_mode()
+                    && scene_spatial.ui.images.len() > 1
                 {
                     // Multiple images (e.g. depth and rgb, or rgb and segmentation) in the same 2D scene.
                     // Stacking them on top of each other works, but is often confusing.
@@ -81,15 +97,20 @@ impl Viewport {
 
                     let store = &ctx.log_db.obj_db.store;
 
-                    for visible_image in &scene.spatial.ui.images {
+                    for visible_image in &scene_spatial.ui.images {
                         if let Some(visible_instance_id) =
                             visible_image.instance_hash.resolve(store)
                         {
-                            let mut space_view =
-                                SpaceView::new(ctx, &scene, category, path.clone(), space_info);
+                            let mut space_view = SpaceView::new(
+                                ctx,
+                                category,
+                                path.clone(),
+                                space_info,
+                                scene_spatial.preferred_navigation_mode(),
+                            );
                             space_view.name = visible_instance_id.obj_path.to_string();
 
-                            for other_image in &scene.spatial.ui.images {
+                            for other_image in &scene_spatial.ui.images {
                                 if let Some(image_instance_id) =
                                     other_image.instance_hash.resolve(store)
                                 {
@@ -116,8 +137,13 @@ impl Viewport {
 
                 // Create one SpaceView for the whole space:
                 {
-                    let space_view =
-                        SpaceView::new(ctx, &scene, category, path.clone(), space_info);
+                    let space_view = SpaceView::new(
+                        ctx,
+                        category,
+                        path.clone(),
+                        space_info,
+                        scene_spatial.preferred_navigation_mode(),
+                    );
                     blueprint.add_space_view(space_view);
                 }
             }
@@ -270,14 +296,18 @@ impl Viewport {
         path: &ObjPath,
         space_info: &SpaceInfo,
     ) {
-        let scene = query_scene(ctx, space_info);
-        for category in scene.categories() {
+        for (category, obj_paths) in group_by_category(
+            ctx.rec_cfg.time_ctrl.timeline(),
+            ctx.log_db,
+            space_info.descendants_without_transform.iter(),
+        ) {
+            let scene_spatial = query_scene_spatial(ctx, &obj_paths);
             self.add_space_view(SpaceView::new(
                 ctx,
-                &scene,
                 category,
                 path.clone(),
                 space_info,
+                scene_spatial.preferred_navigation_mode(),
             ));
         }
     }
@@ -400,23 +430,33 @@ impl Viewport {
         ui: &mut egui::Ui,
         spaces_info: &SpacesInfo,
     ) {
+        #![allow(clippy::collapsible_if)]
+
         ui.vertical_centered(|ui| {
             ui.menu_button("Add new space view…", |ui| {
                 ui.style_mut().wrap = Some(false);
                 for (path, space_info) in &spaces_info.spaces {
-                    let scene = query_scene(ctx, space_info);
-                    if !scene.categories().is_empty() && ui.button(path.to_string()).clicked() {
-                        ui.close_menu();
+                    let categories = group_by_category(
+                        ctx.rec_cfg.time_ctrl.timeline(),
+                        ctx.log_db,
+                        space_info.descendants_without_transform.iter(),
+                    );
 
-                        for category in scene.categories() {
-                            let new_space_view_id = self.add_space_view(SpaceView::new(
-                                ctx,
-                                &scene,
-                                category,
-                                path.clone(),
-                                space_info,
-                            ));
-                            ctx.set_selection(Selection::SpaceView(new_space_view_id));
+                    if !categories.is_empty() {
+                        if ui.button(path.to_string()).clicked() {
+                            ui.close_menu();
+
+                            for (category, obj_paths) in categories {
+                                let scene_spatial = query_scene_spatial(ctx, &obj_paths);
+                                let new_space_view_id = self.add_space_view(SpaceView::new(
+                                    ctx,
+                                    category,
+                                    path.clone(),
+                                    space_info,
+                                    scene_spatial.preferred_navigation_mode(),
+                                ));
+                                ctx.set_selection(Selection::SpaceView(new_space_view_id));
+                            }
                         }
                     }
                 }

@@ -29,7 +29,7 @@ use crate::{
     },
 };
 
-use super::{eye::Eye, SpaceCamera3D};
+use super::{eye::Eye, SpaceCamera3D, SpatialNavigationMode};
 
 // ----------------------------------------------------------------------------
 
@@ -1243,10 +1243,6 @@ impl SceneSpatial {
             .user_data(instance_id);
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.primitives.bounding_box().is_nothing()
-    }
-
     /// Heuristic whether the default way of looking at this scene should be 2d or 3d.
     pub fn prefer_2d_mode(&self) -> bool {
         // If any 2D interactable picture is there we regard it as 2d.
@@ -1262,6 +1258,14 @@ impl SceneSpatial {
         // Otherwise do an heuristic based on the z extent of bounding box
         let bbox = self.primitives.bounding_box();
         bbox.min.z >= self.primitives.line_strips.next_2d_z * 2.0 && bbox.max.z < 1.0
+    }
+
+    pub fn preferred_navigation_mode(&self) -> SpatialNavigationMode {
+        if self.prefer_2d_mode() {
+            SpatialNavigationMode::TwoD
+        } else {
+            SpatialNavigationMode::ThreeD
+        }
     }
 
     pub fn picking(

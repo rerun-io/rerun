@@ -17,10 +17,7 @@ use itertools::Itertools as _;
 
 use re_data_store::{ObjPath, ObjPathComp};
 
-use super::{
-    space_view::{SpaceView, ViewCategory},
-    SpaceViewId,
-};
+use super::{space_view::SpaceView, view_category::ViewCategory, SpaceViewId};
 
 #[derive(Clone, Debug)]
 pub struct SpaceMakeInfo {
