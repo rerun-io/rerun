@@ -47,7 +47,8 @@ pub fn categorize_obj_path(
         | re_log_types::ObjectType::Box3D
         | re_log_types::ObjectType::Path3D
         | re_log_types::ObjectType::LineSegments3D
-        | re_log_types::ObjectType::Mesh3D => ViewCategory::Spatial.into(),
+        | re_log_types::ObjectType::Mesh3D
+        | re_log_types::ObjectType::Arrow3D => ViewCategory::Spatial.into(),
 
         re_log_types::ObjectType::Image => {
             // Is it an image or a tensor? Check dimensionality:
@@ -77,7 +78,7 @@ pub fn categorize_obj_path(
             ViewCategory::Spatial.into()
         }
 
-        re_log_types::ObjectType::Arrow3D => {
+        re_log_types::ObjectType::ArrowObject => {
             ViewCategory::Spatial.into() // TODO(emilk): implement some sort of entity categorization based on components
         }
     }
