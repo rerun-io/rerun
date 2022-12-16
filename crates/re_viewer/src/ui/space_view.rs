@@ -483,6 +483,7 @@ impl ViewState {
         .show(ui, |ui| {
             if scene.tensors.is_empty() {
                 ui.centered_and_justified(|ui| ui.label("(empty)"));
+                self.selected_tensor = None;
             } else {
                 if let Some(selected_tensor) = &self.selected_tensor {
                     if !scene.tensors.contains_key(selected_tensor) {
