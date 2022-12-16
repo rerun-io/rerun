@@ -82,16 +82,20 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
     egui_style.visuals.window_stroke = egui::Stroke::NONE;
     egui_style.visuals.panel_fill = panel_bg_color;
 
-    let rounding = crate::ReUi::rounding();
-    egui_style.visuals.window_rounding = rounding.into();
-    egui_style.visuals.widgets.noninteractive.rounding = rounding.into();
-    egui_style.visuals.widgets.inactive.rounding = rounding.into();
-    egui_style.visuals.widgets.hovered.rounding = rounding.into();
-    egui_style.visuals.widgets.active.rounding = rounding.into();
-    egui_style.visuals.widgets.open.rounding = rounding.into();
+    egui_style.visuals.window_rounding = crate::ReUi::window_rounding().into();
+    egui_style.visuals.menu_rounding = crate::ReUi::window_rounding().into();
+    let small_rounding = crate::ReUi::small_rounding().into();
+    egui_style.visuals.widgets.noninteractive.rounding = small_rounding;
+    egui_style.visuals.widgets.inactive.rounding = small_rounding;
+    egui_style.visuals.widgets.hovered.rounding = small_rounding;
+    egui_style.visuals.widgets.active.rounding = small_rounding;
+    egui_style.visuals.widgets.open.rounding = small_rounding;
 
     egui_style.spacing.item_spacing = egui::vec2(8.0, 4.0);
     egui_style.spacing.menu_margin = crate::ReUi::view_padding().into();
+
+    // Add stripes to grids and tables?
+    egui_style.visuals.striped = false;
 
     ctx.set_style(egui_style);
 

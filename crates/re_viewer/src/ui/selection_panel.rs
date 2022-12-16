@@ -6,7 +6,7 @@ use crate::{
         show_arrow_msg, show_begin_recording_msg, show_detailed_data_msg, show_path_op_msg,
         show_type_msg, view_data, view_instance, view_object,
     },
-    ui::{view_text, Blueprint, SpaceView},
+    ui::Blueprint,
     Preview, Selection, ViewerContext,
 };
 
@@ -164,7 +164,7 @@ impl SelectionPanel {
                         if let Some(space_view) = blueprint.viewport.space_view_mut(&space_view_id)
                         {
                             ui.add_space(4.0);
-                            ui_space_view(ctx, ui, space_view);
+                            space_view.selection_ui(ctx, ui);
                         }
                     }
                 } else {
@@ -173,24 +173,25 @@ impl SelectionPanel {
             }
             Selection::SpaceViewObjPath(space_view_id, obj_path) => {
                 if let Some(space_view) = blueprint.viewport.space_view_mut(&space_view_id) {
-                    egui::Grid::new("space_view_id_obj_path")
-                        .striped(re_ui::ReUi::striped())
-                        .show(ui, |ui| {
-                            ui.label("Space View:");
-                            ctx.space_view_button_to(ui, &space_view.name, space_view_id);
-                            ui.end_row();
+                    egui::Grid::new("space_view_id_obj_path").show(ui, |ui| {
+                        ui.label("Space View:");
+                        ctx.space_view_button_to(ui, &space_view.name, space_view_id);
+                        ui.end_row();
 
-                            ui.label("Object Path:");
-                            ctx.obj_path_button(ui, &obj_path);
-                            ui.end_row();
-                        });
+                        ui.label("Object Path:");
+                        ctx.obj_path_button(ui, &obj_path);
+                        ui.end_row();
+                    });
 
-                    let mut props = space_view.obj_tree_properties.projected.get(&obj_path);
+                    ui.separator();
+
+                    let mut props = space_view.obj_properties.get(&obj_path);
                     obj_props_ui(ctx, ui, &mut props);
-                    space_view
-                        .obj_tree_properties
-                        .individual
-                        .set(obj_path, props);
+                    space_view.obj_properties.set(obj_path.clone(), props);
+
+                    ui.separator();
+
+                    view_object(ctx, ui, &obj_path, Preview::Medium);
                 } else {
                     ctx.clear_selection();
                 }
@@ -207,55 +208,18 @@ fn obj_type_name(log_db: &LogDb, obj_type_path: &ObjTypePath) -> String {
     }
 }
 
-fn ui_space_view(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, space_view: &mut SpaceView) {
-    egui::Grid::new("space_view")
-        .striped(re_ui::ReUi::striped())
-        .num_columns(2)
-        .show(ui, |ui| {
-            ui.label("Name:");
-            ui.text_edit_singleline(&mut space_view.name);
-            ui.end_row();
-
-            ui.label("Path:");
-            ctx.obj_path_button(ui, &space_view.space_path);
-            ui.end_row();
-        });
-
-    ui.separator();
-
-    use super::space_view::ViewCategory;
-    match space_view.category {
-        ViewCategory::Spatial => {
-            ui.strong("Spatial view");
-            space_view
-                .view_state
-                .state_spatial
-                .show_settings_ui(ctx, ui);
-        }
-        ViewCategory::Tensor => {
-            if let Some(state_tensor) = &mut space_view.view_state.state_tensor {
-                ui.strong("Tensor view");
-                state_tensor.ui(ui);
-            }
-        }
-        ViewCategory::Text => {
-            ui.strong("Text view");
-            ui.add_space(4.0);
-            view_text::text_filters_ui(ui, &mut space_view.view_state.state_text);
-        }
-        ViewCategory::Plot => {}
-    }
-}
-
 fn obj_props_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, obj_props: &mut ObjectProps) {
     use egui::NumExt;
 
     let ObjectProps {
         visible,
         visible_history,
+        interactive,
     } = obj_props;
 
     ui.checkbox(visible, "Visible");
+    ui.checkbox(interactive, "Interactive")
+        .on_hover_text("If disabled, the object will not react to any mouse interaction");
 
     ui.horizontal(|ui| {
         ui.label("Visible history:");

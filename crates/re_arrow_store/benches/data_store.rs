@@ -1,14 +1,15 @@
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
-use arrow2::{array::Array, chunk::Chunk, datatypes::Schema};
+use arrow2::array::{Array, ListArray, StructArray};
 use criterion::{criterion_group, criterion_main, Criterion};
-use polars::prelude::DataFrame;
 
-use re_arrow_store::{DataStore, TimeQuery};
+use re_arrow_store::{DataStore, TimeQuery, TimelineQuery};
 use re_log_types::{
-    datagen::{build_frame_nr, build_message, build_positions, build_rects},
-    ObjPath as EntityPath, TimePoint, TimeType, Timeline,
+    datagen::{build_frame_nr, build_some_point2d, build_some_rects},
+    field_types::Rect2D,
+    msg_bundle::{try_build_msg_bundle2, Component, MsgBundle},
+    MsgId, ObjPath as EntityPath, TimeType, Timeline,
 };
 
 // ---
@@ -28,21 +29,21 @@ const NUM_RECTS: i64 = 1;
 
 fn batch_rects(c: &mut Criterion) {
     let msgs = build_messages(NUM_RECTS as usize);
-
     {
         let mut group = c.benchmark_group("datastore/batch/rects");
         group.throughput(criterion::Throughput::Elements(
             (NUM_RECTS * NUM_FRAMES) as _,
         ));
         group.bench_function("insert", |b| {
-            b.iter(|| insert_messages(&msgs));
+            b.iter(|| insert_messages(msgs.iter()));
         });
     }
 
     {
+        let msgs = build_messages(NUM_RECTS as usize);
         let mut group = c.benchmark_group("datastore/batch/rects");
         group.throughput(criterion::Throughput::Elements(NUM_RECTS as _));
-        let mut store = insert_messages(&msgs);
+        let mut store = insert_messages(msgs.iter());
         group.bench_function("query", |b| {
             b.iter(|| query_messages(&mut store));
         });
@@ -54,35 +55,44 @@ criterion_main!(benches);
 
 // --- Helpers ---
 
-fn build_messages(n: usize) -> Vec<(Schema, Chunk<Box<dyn Array>>)> {
-    let ent_path = EntityPath::from("rects");
-
+fn build_messages(n: usize) -> Vec<MsgBundle> {
     (0..NUM_FRAMES)
         .into_iter()
-        .map(|frame_idx| {
-            let time_point = TimePoint::from([build_frame_nr(frame_idx)]);
-            build_message(&ent_path, &time_point, [build_positions(n), build_rects(n)])
+        .map(move |frame_idx| {
+            try_build_msg_bundle2(
+                MsgId::ZERO,
+                "rects",
+                [build_frame_nr(frame_idx)],
+                (build_some_point2d(n), build_some_rects(n)),
+            )
+            .unwrap()
         })
         .collect()
 }
 
-fn insert_messages(msgs: &[(Schema, Chunk<Box<dyn Array>>)]) -> DataStore {
+fn insert_messages<'a>(msgs: impl Iterator<Item = &'a MsgBundle>) -> DataStore {
     let mut store = DataStore::default();
-    for (schema, data) in msgs {
-        store.insert(schema, data).unwrap();
-    }
+    msgs.for_each(|msg_bundle| store.insert(msg_bundle).unwrap());
     store
 }
 
-fn query_messages(store: &mut DataStore) -> DataFrame {
+fn query_messages(store: &mut DataStore) -> Box<dyn Array> {
     let time_query = TimeQuery::LatestAt(NUM_FRAMES / 2);
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
+    let timeline_query = TimelineQuery::new(timeline_frame_nr, time_query);
     let ent_path = EntityPath::from("rects");
+    let component = Rect2D::NAME;
 
-    let df = store
-        .query(&timeline_frame_nr, &time_query, &ent_path, &["rects"])
-        .unwrap();
-    assert_eq!(NUM_RECTS as usize, df.select_at_idx(0).unwrap().len());
+    let row_indices = store
+        .query(&timeline_query, &ent_path, component, &[component])
+        .unwrap_or_default();
+    let mut results = store.get(&[component], &row_indices);
 
-    df
+    let row = std::mem::take(&mut results[0]).unwrap();
+    let list = row.as_any().downcast_ref::<ListArray<i32>>().unwrap();
+    let rects = list.value(0);
+    let rects = rects.as_any().downcast_ref::<StructArray>().unwrap();
+    assert_eq!(NUM_RECTS as usize, rects.len());
+
+    row
 }

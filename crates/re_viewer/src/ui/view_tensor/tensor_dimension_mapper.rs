@@ -6,7 +6,6 @@ enum DragDropAddress {
     None,
     Width,
     Height,
-    Channel,
     Selector(usize),
     NewSelector,
 }
@@ -21,7 +20,6 @@ impl DragDropAddress {
             DragDropAddress::None => unreachable!(),
             DragDropAddress::Width => dimension_mapping.width,
             DragDropAddress::Height => dimension_mapping.height,
-            DragDropAddress::Channel => dimension_mapping.channel,
             DragDropAddress::Selector(selector_idx) => {
                 Some(dimension_mapping.selectors[*selector_idx])
             }
@@ -34,7 +32,6 @@ impl DragDropAddress {
             DragDropAddress::None => unreachable!(),
             DragDropAddress::Width => dimension_mapping.width = dim_idx,
             DragDropAddress::Height => dimension_mapping.height = dim_idx,
-            DragDropAddress::Channel => dimension_mapping.channel = dim_idx,
             DragDropAddress::Selector(selector_idx) => {
                 if let Some(dim_idx) = dim_idx {
                     dimension_mapping.selectors[*selector_idx] = dim_idx;
@@ -182,7 +179,7 @@ pub fn dimension_mapping_ui(
     shape: &[TensorDimension],
 ) {
     if !dim_mapping.is_valid(shape.len()) {
-        *dim_mapping = DimensionMapping::create(shape.len());
+        *dim_mapping = DimensionMapping::create(shape);
     }
 
     let mut drop_source = DragDropAddress::None;
@@ -224,19 +221,6 @@ pub fn dimension_mapping_ui(
                     can_accept_dragged,
                     dim_mapping.height,
                     DragDropAddress::Height,
-                    shape,
-                    &mut drop_source,
-                    &mut drop_target,
-                );
-                ui.end_row();
-
-                ui.label("Channel:");
-                tensor_dimension_ui(
-                    ui,
-                    drag_context_id,
-                    can_accept_dragged,
-                    dim_mapping.channel,
-                    DragDropAddress::Channel,
                     shape,
                     &mut drop_source,
                     &mut drop_target,

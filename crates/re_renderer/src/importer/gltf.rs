@@ -15,8 +15,6 @@ use crate::{
     Color32, RenderContext,
 };
 
-use super::to_uniform_scale;
-
 /// Loads both gltf and glb into the mesh & texture manager.
 pub fn load_gltf_from_buffer(
     mesh_name: &str,
@@ -102,12 +100,7 @@ pub fn load_gltf_from_buffer(
     let mut instances = Vec::new();
     for scene in doc.scenes() {
         for node in scene.nodes() {
-            gather_instances_recursive(
-                &mut instances,
-                &node,
-                &macaw::Conformal3::IDENTITY,
-                &meshes,
-            );
+            gather_instances_recursive(&mut instances, &node, &glam::Affine3A::IDENTITY, &meshes);
         }
     }
 
@@ -146,14 +139,28 @@ fn import_mesh(
     let mut vertex_data = Vec::new();
     let mut materials = SmallVec::new();
 
+    // A GLTF mesh consists of several primitives, each with their own material.
+    // Primitives map to vertex/index ranges for us as we store all vertices/indices into the same vertex/index buffer.
+    // (this means we loose the rarely used ability to re-use vertex/indices between meshes, but shouldn't loose any abilities otherwise)
     for primitive in mesh.primitives() {
         let reader = primitive.reader(|buffer| Some(&*buffers[buffer.index()]));
+
+        let index_offset = indices.len() as u32;
+        if let Some(primitive_indices) = reader.read_indices() {
+            // GLTF restarts the index for every primitive, whereas we use the same range across all materials of the same mesh.
+            // (`mesh_renderer` could do this for us by setting a base vertex index)
+            let base_index = vertex_positions.len() as u32;
+            indices.extend(primitive_indices.into_u32().map(|i| i + base_index));
+        } else {
+            anyhow::bail!("Gltf primitives must have indices");
+        }
 
         if let Some(primitive_positions) = reader.read_positions() {
             vertex_positions.extend(primitive_positions.map(glam::Vec3::from));
         } else {
             anyhow::bail!("Gltf primitives must have positions");
         }
+
         if let Some(primitive_normals) = reader.read_normals() {
             let to_data = |(p, t)| MeshVertexData {
                 normal: glam::Vec3::from(p),
@@ -177,22 +184,14 @@ fn import_mesh(
             anyhow::bail!("Gltf primitives must have normals");
         }
 
-        let index_offset = indices.len() as u32;
-        if let Some(primitive_indices) = reader.read_indices() {
-            indices.extend(primitive_indices.into_u32());
-        } else {
-            anyhow::bail!("Gltf primitives must have indices");
-        }
-
         if vertex_positions.len() != vertex_data.len() {
             anyhow::bail!("Number of positions was not equal number of other vertex data.");
         }
 
         let primitive_material = primitive.material();
-        let albedo = if let Some(texture) = primitive_material
-            .pbr_metallic_roughness()
-            .base_color_texture()
-        {
+        let pbr_material = primitive_material.pbr_metallic_roughness();
+
+        let albedo = if let Some(texture) = pbr_material.base_color_texture() {
             anyhow::ensure!(
                 texture.tex_coord() == 0,
                 "Only a single set of texture coordinates is supported"
@@ -231,10 +230,18 @@ fn import_mesh(
             texture_manager.white_texture_handle().clone()
         };
 
+        // The color factor *is* in linear space, making things easier for us
+        // https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html#_material_pbrmetallicroughness_basecolorfactor
+        let albedo_factor = {
+            let [r, g, b, a] = pbr_material.base_color_factor();
+            crate::Rgba::from_rgba_unmultiplied(r, g, b, a)
+        };
+
         materials.push(Material {
             label: primitive.material().name().into(),
             index_range: index_offset..indices.len() as u32,
             albedo,
+            albedo_multiplier: albedo_factor,
         });
     }
     if vertex_positions.is_empty() || indices.is_empty() {
@@ -253,7 +260,7 @@ fn import_mesh(
 fn gather_instances_recursive(
     instances: &mut Vec<MeshInstance>,
     node: &gltf::Node<'_>,
-    transform: &macaw::Conformal3,
+    transform: &glam::Affine3A,
     meshes: &HashMap<usize, (GpuMeshHandle, Arc<Mesh>)>,
 ) {
     let (scale, rotation, translation) = match node.transform() {
@@ -273,12 +280,9 @@ fn gather_instances_recursive(
         ),
     };
 
-    let node_transform = macaw::Conformal3::from_scale_rotation_translation(
-        to_uniform_scale(scale),
-        rotation,
-        translation,
-    );
-    let transform = transform * node_transform;
+    let node_transform =
+        glam::Affine3A::from_scale_rotation_translation(scale, rotation, translation);
+    let transform = *transform * node_transform;
 
     for child in node.children() {
         gather_instances_recursive(instances, &child, &transform, meshes);

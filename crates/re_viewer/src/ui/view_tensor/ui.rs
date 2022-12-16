@@ -1,9 +1,9 @@
 use std::{collections::BTreeMap, fmt::Display};
 
 use eframe::emath::Align2;
-use egui::{epaint::TextShape, Color32, ColorImage, Vec2};
+use egui::{epaint::TextShape, Color32, ColorImage, NumExt as _, Vec2};
 use ndarray::{Axis, Ix2};
-use re_log_types::{Tensor, TensorDataMeaning, TensorDataType, TensorDimension};
+use re_log_types::{Tensor, TensorDataType, TensorDimension};
 use re_tensor_ops::dimension_mapping::DimensionMapping;
 
 use super::dimension_mapping_ui;
@@ -24,41 +24,45 @@ pub struct ViewTensorState {
     /// Scaling, filtering, aspect ratio, etc for the rendered texture.
     texture_settings: TextureSettings,
 
-    // last viewed tensor, copied each frame
+    /// Last viewed tensor, copied each frame.
+    /// Used for the selection view.
     #[serde(skip)]
-    #[serde(default = "empty_tensor")]
-    tensor: Tensor,
-}
-
-fn empty_tensor() -> Tensor {
-    Tensor {
-        tensor_id: re_log_types::TensorId(uuid::uuid!("7c8c3d2b-30f1-4206-844d-c43790912492")),
-        shape: vec![TensorDimension::unnamed(0)],
-        dtype: TensorDataType::U8,
-        meaning: TensorDataMeaning::Unknown,
-        data: re_log_types::TensorDataStore::Dense(vec![].into()),
-    }
+    tensor: Option<Tensor>,
 }
 
 impl ViewTensorState {
     pub fn create(tensor: &Tensor) -> ViewTensorState {
         Self {
             selector_values: Default::default(),
-            dimension_mapping: DimensionMapping::create(tensor.num_dim()),
+            dimension_mapping: DimensionMapping::create(&tensor.shape),
             color_mapping: ColorMapping::default(),
             texture_settings: TextureSettings::default(),
-            tensor: tensor.clone(),
+            tensor: Some(tensor.clone()),
         }
     }
 
     pub(crate) fn ui(&mut self, ui: &mut egui::Ui) {
-        ui.collapsing("Dimension Mapping", |ui| {
-            ui.label(format!("shape: {:?}", self.tensor.shape));
-            ui.label(format!("dtype: {:?}", self.tensor.dtype));
-            ui.add_space(12.0);
+        if let Some(tensor) = &self.tensor {
+            ui.collapsing("Dimension Mapping", |ui| {
+                ui.label(format!("shape: {:?}", tensor.shape));
+                ui.label(format!("dtype: {:?}", tensor.dtype));
+                ui.add_space(12.0);
 
-            dimension_mapping_ui(ui, &mut self.dimension_mapping, &self.tensor.shape);
-        });
+                dimension_mapping_ui(ui, &mut self.dimension_mapping, &tensor.shape);
+
+                let default_mapping = DimensionMapping::create(&tensor.shape);
+                if ui
+                    .add_enabled(
+                        self.dimension_mapping != default_mapping,
+                        egui::Button::new("Auto-map"),
+                    )
+                    .on_disabled_hover_text("The default is already set up")
+                    .clicked()
+                {
+                    self.dimension_mapping = DimensionMapping::create(&tensor.shape);
+                }
+            });
+        }
 
         self.texture_settings.show(ui);
 
@@ -66,14 +70,26 @@ impl ViewTensorState {
     }
 }
 
-pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut ViewTensorState, tensor: &Tensor) {
+pub(crate) fn view_tensor(
+    ctx: &mut crate::misc::ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    state: &mut ViewTensorState,
+    tensor: &Tensor,
+) {
     crate::profile_function!();
 
-    state.tensor = tensor.clone();
+    state.tensor = Some(tensor.clone());
+
+    if !state.dimension_mapping.is_valid(tensor.num_dim()) {
+        state.dimension_mapping = DimensionMapping::create(&tensor.shape);
+    }
 
     selectors_ui(ui, state, tensor);
 
     let tensor_shape = &tensor.shape;
+
+    let tensor_stats = ctx.cache.tensor_stats(tensor);
+    let range = tensor_stats.range;
 
     match tensor.dtype {
         TensorDataType::U8 => match re_tensor_ops::as_ndarray::<u8>(tensor) {
@@ -94,7 +110,7 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut ViewTensorState, tensor
 
         TensorDataType::U16 => match re_tensor_ops::as_ndarray::<u16>(tensor) {
             Ok(tensor) => {
-                let (tensor_min, tensor_max) = tensor_range_u16(&tensor);
+                let (tensor_min, tensor_max) = range.unwrap_or((0.0, u16::MAX as f64)); // the cache should provide the range
                 ui.monospace(format!("Data range: [{tensor_min} - {tensor_max}]"));
 
                 let color_from_value = |value: u16| {
@@ -115,13 +131,13 @@ pub(crate) fn view_tensor(ui: &mut egui::Ui, state: &mut ViewTensorState, tensor
 
         TensorDataType::F32 => match re_tensor_ops::as_ndarray::<f32>(tensor) {
             Ok(tensor) => {
-                let (tensor_min, tensor_max) = tensor_range_f32(&tensor);
+                let (tensor_min, tensor_max) = range.unwrap_or((0.0, 1.0)); // the cache should provide the range
                 ui.monospace(format!("Data range: [{tensor_min} - {tensor_max}]"));
 
                 let color_from_value = |value: f32| {
                     state.color_mapping.color_from_normalized(egui::remap(
                         value,
-                        tensor_min..=tensor_max,
+                        tensor_min as f32..=tensor_max as f32,
                         0.0..=1.0,
                     ))
                 };
@@ -332,6 +348,8 @@ fn selected_tensor_slice<'a, T: Copy>(
 ) -> ndarray::ArrayViewD<'a, T> {
     let dim_mapping = &state.dimension_mapping;
 
+    assert!(dim_mapping.is_valid(tensor.ndim()));
+
     // TODO(andreas) - shouldn't just give up here
     if dim_mapping.width.is_none() || dim_mapping.height.is_none() {
         return tensor.view();
@@ -341,7 +359,6 @@ fn selected_tensor_slice<'a, T: Copy>(
         .height
         .into_iter()
         .chain(dim_mapping.width.into_iter())
-        .chain(dim_mapping.channel.into_iter())
         .chain(dim_mapping.selectors.iter().copied())
         .collect::<Vec<_>>();
     let mut slice = tensor.view().permuted_axes(axis);
@@ -351,10 +368,16 @@ fn selected_tensor_slice<'a, T: Copy>(
             .selector_values
             .get(dim_idx)
             .copied()
-            .unwrap_or_default();
+            .unwrap_or_default() as usize;
+        assert!(
+            selector_value < slice.shape()[2],
+            "Bad tensor slicing. Trying to select slice index {selector_value} of dim=2. tensor shape: {:?}, dim_mapping: {dim_mapping:#?}",
+            tensor.shape()
+        );
+
         // 0 and 1 are width/height, the rest are rearranged by dimension_mapping.selectors
         // This call removes Axis(2), so the next iteration of the loop does the right thing again.
-        slice.index_axis_inplace(Axis(2), selector_value as _);
+        slice.index_axis_inplace(Axis(2), selector_value);
     }
     if dim_mapping.invert_height {
         slice.invert_axis(Axis(0));
@@ -509,32 +532,23 @@ fn selectors_ui(ui: &mut egui::Ui, state: &mut ViewTensorState, tensor: &Tensor)
         }
 
         for &dim_idx in &state.dimension_mapping.selectors {
-            let dim = &tensor.shape[dim_idx];
-            if dim.size > 1 {
-                let selector_value = state
-                    .selector_values
-                    .entry(dim_idx)
-                    .or_insert_with(|| dim.size / 2); // start in the middle
+            let size = tensor.shape[dim_idx].size;
 
+            let selector_value = state
+                .selector_values
+                .entry(dim_idx)
+                .or_insert_with(|| size / 2); // start in the middle
+
+            if size > 0 {
+                *selector_value = selector_value.at_most(size - 1);
+            }
+
+            if size > 1 {
                 ui.add(
-                    egui::Slider::new(selector_value, 0..=dim.size - 1)
+                    egui::Slider::new(selector_value, 0..=size - 1)
                         .text(dimension_name(&tensor.shape, dim_idx)),
                 );
             }
         }
     });
-}
-
-fn tensor_range_f32(tensor: &ndarray::ArrayViewD<'_, f32>) -> (f32, f32) {
-    crate::profile_function!();
-    tensor.fold((f32::INFINITY, f32::NEG_INFINITY), |cur, &value| {
-        (cur.0.min(value), cur.1.max(value))
-    })
-}
-
-fn tensor_range_u16(tensor: &ndarray::ArrayViewD<'_, u16>) -> (u16, u16) {
-    crate::profile_function!();
-    tensor.fold((u16::MAX, u16::MIN), |cur, &value| {
-        (cur.0.min(value), cur.1.max(value))
-    })
 }

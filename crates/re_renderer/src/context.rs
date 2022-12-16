@@ -5,6 +5,7 @@ use type_map::concurrent::{self, TypeMap};
 use crate::{
     config::RenderContextConfig,
     global_bindings::GlobalBindings,
+    next_multiple_of,
     renderer::Renderer,
     resource_managers::{MeshManager, TextureManager2D},
     wgpu_resources::WgpuResourcePools,
@@ -223,4 +224,15 @@ impl RenderContext {
             samplers.frame_maintenance(self.frame_index);
         }
     }
+}
+
+/// Gets allocation size for a uniform buffer padded in a way that multiple can be put in a single wgpu buffer.
+///
+/// TODO(andreas): Once we have higher level buffer allocators this should be handled there.
+pub(crate) fn uniform_buffer_allocation_size<Data>(device: &wgpu::Device) -> u64 {
+    let uniform_buffer_size = std::mem::size_of::<Data>();
+    next_multiple_of(
+        uniform_buffer_size as u32,
+        device.limits().min_uniform_buffer_offset_alignment,
+    ) as u64
 }

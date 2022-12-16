@@ -2,7 +2,11 @@
 
 A rough time-line of major user-facing things added, removed and changed. Newest on top.
 
-* 2022-12-13: The Python logging SDK will no longer throw any exceptions. User errors will instead be logged [#549](https://github.com/rerun-io/rerun/pull/549).
+* 2022-12-16: The Python logging SDK will no longer throw any exceptions. User errors will instead be logged [#549](https://github.com/rerun-io/rerun/pull/549).
+* 2022-12-15: Support non-uniform scaling for meshes/models. [#570](https://github.com/rerun-io/rerun/pull/570).
+* 2022-12-15: Support albedo color factors for meshes imported from GLB/GLTF. [#562](https://github.com/rerun-io/rerun/pull/562).
+* 2022-12-15: Fix import issues for GLB/GTLF if there are more than one primitive in a mesh. [#562](https://github.com/rerun-io/rerun/pull/562).
+* 2022-12-12: There is now a toggle in the object properties to make them non-interactive [#563](https://github.com/rerun-io/rerun/pull/563).
 * 2022-12-12: 2D & 3D scenes are now unified, allowing to switch between 2D/3D views at any time [#513](https://github.com/rerun-io/rerun/pull/513).
 * 2022-12-06: Add GPU memory to memory view [#469](https://github.com/rerun-io/rerun/pull/469).
 * 2022-12-01: In the Viewport, Space Views can now be created, cloned, removed and renamed [#421](https://github.com/rerun-io/rerun/pull/421).

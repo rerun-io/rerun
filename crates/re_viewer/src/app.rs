@@ -43,8 +43,6 @@ pub struct App {
     /// Where the logs are stored.
     log_dbs: IntMap<RecordingId, LogDb>,
 
-    arrow_dbs: IntMap<RecordingId, re_arrow_store::DataStore>,
-
     /// What is serialized
     state: AppState,
 
@@ -147,7 +145,6 @@ impl App {
             re_ui,
             rx,
             log_dbs,
-            arrow_dbs: Default::default(),
             state,
             #[cfg(not(target_arch = "wasm32"))]
             ctrl_c,
@@ -222,6 +219,11 @@ impl App {
     }
 
     fn check_keyboard_shortcuts(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
+        #[cfg(not(target_arch = "wasm32"))]
+        if egui_ctx.input_mut().consume_shortcut(&kb_shortcuts::QUIT) {
+            frame.close();
+        }
+
         if egui_ctx
             .input_mut()
             .consume_shortcut(&kb_shortcuts::RESET_VIEWER)
@@ -253,6 +255,21 @@ impl App {
 
         #[cfg(not(target_arch = "wasm32"))]
         {
+            if egui_ctx.input_mut().consume_shortcut(&kb_shortcuts::SAVE) {
+                save(self, None);
+            }
+
+            if egui_ctx
+                .input_mut()
+                .consume_shortcut(&kb_shortcuts::SAVE_SELECTION)
+            {
+                save(self, self.loop_selection());
+            }
+
+            if egui_ctx.input_mut().consume_shortcut(&kb_shortcuts::OPEN) {
+                open(self);
+            }
+
             if egui_ctx
                 .input_mut()
                 .consume_shortcut(&kb_shortcuts::TOGGLE_FULLSCREEN)
@@ -260,6 +277,20 @@ impl App {
                 frame.set_fullscreen(!frame.info().window_info.fullscreen);
             }
         }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn loop_selection(&self) -> Option<(re_data_store::Timeline, TimeRangeF)> {
+        self.state
+            .recording_configs
+            .get(&self.state.selected_rec_id)
+            // is there an active loop selection?
+            .and_then(|rec_cfg| {
+                rec_cfg
+                    .time_ctrl
+                    .loop_selection()
+                    .map(|q| (*rec_cfg.time_ctrl.timeline(), q))
+            })
     }
 }
 
@@ -365,16 +396,9 @@ impl App {
 
                 let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
 
-                let arrow_db = self
-                    .arrow_dbs
-                    .entry(self.state.selected_rec_id)
-                    .or_default();
-
-                if let LogMsg::ArrowMsg(ref msg) = msg {
-                    arrow_db.insert(&msg.schema, &msg.chunk).unwrap();
-                }
-
-                log_db.add(msg);
+                if let Err(err) = log_db.add(msg) {
+                    re_log::error!("Failed to add incoming msg: {:?}", err);
+                };
                 if start.elapsed() > instant::Duration::from_millis(10) {
                     egui_ctx.request_repaint(); // make sure we keep receiving messages asap
                     break; // don't block the main thread for too long
@@ -782,34 +806,19 @@ fn top_bar_ui(
     if let Some(count) = re_memory::accounting_allocator::global_allocs() {
         ui.separator();
         // we use monospace so the width doesn't fluctuate as the numbers change.
+
         let bytes_used_text = re_format::format_bytes(count.size as _);
         ui.label(
-            egui::RichText::new(&format!("RAM: {}", bytes_used_text))
+            egui::RichText::new(&bytes_used_text)
                 .monospace()
                 .color(ui.visuals().weak_text_color()),
         )
         .on_hover_text(format!(
-            "Rerun Viewer is using {} of RAM in {} separate allocations.",
+            "Rerun Viewer is using {} of RAM in {} separate allocations,\n\
+            plus {} of GPU memory in {} textures and {} buffers.",
             bytes_used_text,
             format_number(count.count),
-        ));
-    }
-
-    {
-        ui.separator();
-        let total_bytes = gpu_resource_stats.total_buffer_size_in_bytes
-            + gpu_resource_stats.total_texture_size_in_bytes;
-
-        // we use monospace so the width doesn't fluctuate as the numbers change.
-        let bytes_used_text = re_format::format_bytes(total_bytes as _);
-        ui.label(
-            egui::RichText::new(&format!("VRAM: {}", bytes_used_text))
-                .monospace()
-                .color(ui.visuals().weak_text_color()),
-        )
-        .on_hover_text(format!(
-            "Rerun Viewer is using {} of GPU memory in {} textures and {} buffers.",
-            bytes_used_text,
+            re_format::format_bytes(gpu_resource_stats.total_bytes() as _),
             format_number(gpu_resource_stats.num_textures),
             format_number(gpu_resource_stats.num_buffers),
         ));
@@ -991,14 +1000,20 @@ fn file_menu(ui: &mut egui::Ui, app: &mut App, frame: &mut eframe::Frame) {
     #[cfg(not(target_arch = "wasm32"))]
     {
         let file_save_in_progress = app.promise_exists(FILE_SAVER_PROMISE);
+
+        let save_button =
+            egui::Button::new("Save…").shortcut_text(ui.ctx().format_shortcut(&kb_shortcuts::SAVE));
+        let save_selection_button = egui::Button::new("Save loop selection…")
+            .shortcut_text(ui.ctx().format_shortcut(&kb_shortcuts::SAVE_SELECTION));
+
         if file_save_in_progress {
             ui.add_enabled_ui(false, |ui| {
                 ui.horizontal(|ui| {
-                    let _ = ui.button("Save…");
+                    ui.add(save_button);
                     ui.spinner();
                 });
                 ui.horizontal(|ui| {
-                    let _ = ui.button("Save Loop Selection…");
+                    ui.add(save_selection_button);
                     ui.spinner();
                 });
             });
@@ -1006,7 +1021,7 @@ fn file_menu(ui: &mut egui::Ui, app: &mut App, frame: &mut eframe::Frame) {
             let (clicked, loop_selection) = ui
                 .add_enabled_ui(!app.log_db().is_empty(), |ui| {
                     if ui
-                        .button("Save…")
+                        .add(save_button)
                         .on_hover_text("Save all data to a Rerun data file (.rrd)")
                         .clicked()
                     {
@@ -1017,23 +1032,10 @@ fn file_menu(ui: &mut egui::Ui, app: &mut App, frame: &mut eframe::Frame) {
                     // button, as this will determine wether its grayed out or not!
                     // TODO(cmc): In practice the loop (green) selection is always there
                     // at the moment so...
-                    let loop_selection = app
-                        .state
-                        .recording_configs
-                        .get(&app.state.selected_rec_id)
-                        // is there an active loop selection?
-                        .and_then(|rec_cfg| {
-                            rec_cfg
-                                .time_ctrl
-                                .loop_selection()
-                                .map(|q| (*rec_cfg.time_ctrl.timeline(), q))
-                        });
+                    let loop_selection = app.loop_selection();
 
                     if ui
-                        .add_enabled(
-                            loop_selection.is_some(),
-                            egui::Button::new("Save loop selection…"),
-                        )
+                        .add_enabled(loop_selection.is_some(), save_selection_button)
                         .on_hover_text(
                             "Save data for the current loop selection to a Rerun data file (.rrd)",
                         )
@@ -1050,39 +1052,64 @@ fn file_menu(ui: &mut egui::Ui, app: &mut App, frame: &mut eframe::Frame) {
                 // User clicked the Save button, there is no other file save running, and
                 // the DB isn't empty: let's spawn a new one.
 
-                if let Some(path) = rfd::FileDialog::new().set_file_name("data.rrd").save_file() {
-                    let f = save_database_to_file(app, path, loop_selection);
-                    if let Err(err) = app.spawn_threaded_promise(FILE_SAVER_PROMISE, f) {
-                        // NOTE: Shouldn't even be possible as the "Save" button is already
-                        // grayed out at this point... better safe than sorry though.
-                        app.toasts
-                            .error(err.to_string())
-                            .set_duration(FILE_SAVER_NOTIF_DURATION);
-                    }
-                }
+                save(app, loop_selection);
             }
         }
     }
 
     #[cfg(not(target_arch = "wasm32"))]
     if ui
-        .button("Load…")
-        .on_hover_text("Load a Rerun Data File (.rrd)")
+        .add(
+            egui::Button::new("Open…").shortcut_text(ui.ctx().format_shortcut(&kb_shortcuts::OPEN)),
+        )
+        .on_hover_text("Open a Rerun Data File (.rrd)")
         .clicked()
     {
-        if let Some(path) = rfd::FileDialog::new()
-            .add_filter("rerun data file", &["rrd"])
-            .pick_file()
-        {
-            if let Some(log_db) = load_file_path(&path) {
-                app.show_log_db(log_db);
-            }
-        }
+        open(app);
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    if ui.button("Quit").clicked() {
+    if ui
+        .add(egui::Button::new("Quit").shortcut_text(ui.ctx().format_shortcut(&kb_shortcuts::QUIT)))
+        .clicked()
+    {
         frame.close();
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn open(app: &mut App) {
+    if let Some(path) = rfd::FileDialog::new()
+        .add_filter("rerun data file", &["rrd"])
+        .pick_file()
+    {
+        if let Some(log_db) = load_file_path(&path) {
+            app.show_log_db(log_db);
+        }
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn save(app: &mut App, loop_selection: Option<(re_data_store::Timeline, TimeRangeF)>) {
+    let title = if loop_selection.is_some() {
+        "Save loop selection"
+    } else {
+        "Save"
+    };
+
+    if let Some(path) = rfd::FileDialog::new()
+        .set_file_name("data.rrd")
+        .set_title(title)
+        .save_file()
+    {
+        let f = save_database_to_file(app, path, loop_selection);
+        if let Err(err) = app.spawn_threaded_promise(FILE_SAVER_PROMISE, f) {
+            // NOTE: Shouldn't even be possible as the "Save" button is already
+            // grayed out at this point... better safe than sorry though.
+            app.toasts
+                .error(err.to_string())
+                .set_duration(FILE_SAVER_NOTIF_DURATION);
+        }
     }
 }
 
@@ -1171,7 +1198,7 @@ fn recordings_menu(ui: &mut egui::Ui, app: &mut App) {
             "<UNKNOWN>".to_owned()
         };
         if ui
-            .selectable_label(app.state.selected_rec_id == log_db.recording_id(), info)
+            .radio(app.state.selected_rec_id == log_db.recording_id(), info)
             .clicked()
         {
             app.state.selected_rec_id = log_db.recording_id();
@@ -1272,7 +1299,7 @@ fn load_rrd_to_log_db(mut read: impl std::io::Read) -> anyhow::Result<LogDb> {
 
     let mut log_db = LogDb::default();
     for msg in decoder {
-        log_db.add(msg?);
+        log_db.add(msg?)?;
     }
     Ok(log_db)
 }

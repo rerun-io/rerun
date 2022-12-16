@@ -1,5 +1,5 @@
 [package]
-name = "re_arrow_store"
+name = "re_query"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -8,10 +8,10 @@ publish = false
 
 [features]
 default = []
-deadlock_detection = ["parking_lot/deadlock_detection"]
 
 [dependencies]
 # Rerun
+re_arrow_store = { path = "../re_arrow_store" }
 re_format = { path = "../re_format" }
 re_log = { path = "../re_log" }
 re_log_types = { path = "../re_log_types" }
@@ -21,29 +21,20 @@ anyhow.workspace = true
 arrow2 = { workspace = true, features = [
   "compute_concatenate",
   "compute_aggregate",
-  "io_print",
 ] }
 chrono = "0.4"
 document-features = "0.2"
 indent = "0.1"
+itertools = "0.10"
 nohash-hasher = "0.2"
-parking_lot = "0.12"
+thiserror.workspace = true
 polars-core = { workspace = true, features = [
   "dtype-date",
   "dtype-time",
   "dtype-struct",
 ] }
-thiserror.workspace = true
+polars-lazy = { workspace = true }
+
 
 [dev-dependencies]
-criterion = "0.4"
-itertools = "0.10"
-mimalloc = "0.1"
 tracing-subscriber = "0.3"
-
-[lib]
-bench = false
-
-[[bench]]
-name = "data_store"
-harness = false

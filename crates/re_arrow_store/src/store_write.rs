@@ -1,23 +1,17 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use anyhow::{anyhow, ensure};
-use arrow2::array::{
-    new_empty_array, Array, Int64Vec, ListArray, MutableArray, StructArray, UInt64Vec,
-};
+use arrow2::array::{new_empty_array, Array, Int64Vec, ListArray, MutableArray, UInt64Vec};
 use arrow2::bitmap::MutableBitmap;
 use arrow2::buffer::Buffer;
-use arrow2::chunk::Chunk;
 use arrow2::compute::concatenate::concatenate;
-use arrow2::datatypes::{DataType, Schema};
+use arrow2::datatypes::DataType;
 use parking_lot::RwLock;
-use polars::prelude::IndexOfSchema;
 
 use re_log::debug;
-use re_log_types::external::arrow2_convert::deserialize::arrow_array_deserialize_iterator;
+use re_log_types::msg_bundle::{ComponentBundle, MsgBundle};
 use re_log_types::{
     ComponentNameRef, ObjPath as EntityPath, TimeInt, TimePoint, TimeRange, Timeline,
-    ENTITY_PATH_KEY,
 };
 
 use crate::store::IndexBucketIndices;
@@ -28,51 +22,49 @@ use crate::{
 // --- Data store ---
 
 impl DataStore {
-    /// Inserts a payload of Arrow data into the datastore.
-    ///
-    /// The payload is expected to hold:
-    /// - the entity path,
-    /// - the targeted timelines & timepoints,
-    /// - and all the components data.
-    pub fn insert(&mut self, schema: &Schema, msg: &Chunk<Box<dyn Array>>) -> anyhow::Result<()> {
+    /// Inserts a [`MsgBundle`] payload of Arrow data into the datastore.
+    pub fn insert(&mut self, msg_bundle: &MsgBundle) -> anyhow::Result<()> {
         // TODO(cmc): kind & insert_id need to somehow propagate through the span system.
         self.insert_id += 1;
 
-        let ent_path = schema
-            .metadata
-            .get(ENTITY_PATH_KEY)
-            .ok_or_else(|| anyhow!("expect entity path in top-level message's metadata"))
-            .map(|path| EntityPath::from(path.as_str()))?;
-        let ent_path_hash = *ent_path.hash();
+        let MsgBundle {
+            msg_id: _,
+            obj_path: ent_path,
+            time_point,
+            components,
+        } = msg_bundle;
 
-        let timelines = extract_timelines(schema, msg)?;
-        let components = extract_components(schema, msg)?;
+        // TODO(cmc): sort the "instances" component, and everything else accordingly!
+        let ent_path_hash = *ent_path.hash();
 
         debug!(
             kind = "insert",
             id = self.insert_id,
-            timelines = ?timelines
-                .iter()
+            timelines = ?time_point.iter()
                 .map(|(timeline, time)| (timeline.name(), timeline.typ().format(*time)))
                 .collect::<Vec<_>>(),
             entity = %ent_path,
-            components = ?components.iter().map(|(name, _)| name).collect::<Vec<_>>(),
+            components = ?components.iter().map(|bundle| &bundle.name).collect::<Vec<_>>(),
             "insertion started..."
         );
 
         // TODO(cmc): sort the "instances" component, and everything else accordingly!
 
         let mut indices = HashMap::with_capacity(components.len());
-        for (name, component) in components {
-            let table = self.components.entry(name.to_owned()).or_insert_with(|| {
-                ComponentTable::new(name.to_owned(), component.data_type().clone())
-            });
 
-            let row_idx = table.insert(&self.config, &timelines, component)?;
-            indices.insert(name, row_idx);
+        for bundle in components {
+            let ComponentBundle { name, value } = bundle;
+
+            let table = self
+                .components
+                .entry((*bundle.name).to_owned())
+                .or_insert_with(|| ComponentTable::new((*name).clone(), value.data_type().clone()));
+
+            let row_idx = table.push(&self.config, time_point, value.as_ref())?;
+            indices.insert(name.as_ref(), row_idx);
         }
 
-        for (timeline, time) in &timelines {
+        for (timeline, time) in time_point.iter() {
             let ent_path = ent_path.clone(); // shallow
             let index = self
                 .indices
@@ -83,51 +75,6 @@ impl DataStore {
 
         Ok(())
     }
-}
-
-fn extract_timelines(
-    schema: &Schema,
-    msg: &Chunk<Box<dyn Array>>,
-) -> anyhow::Result<Vec<(Timeline, TimeInt)>> {
-    let timelines = schema
-        .index_of("timelines") // TODO(cmc): maybe at least a constant or something
-        .and_then(|idx| msg.columns().get(idx))
-        .ok_or_else(|| anyhow!("expect top-level `timelines` field`"))?;
-
-    let mut timepoints_iter = arrow_array_deserialize_iterator::<TimePoint>(timelines.as_ref())?;
-
-    let timepoint = timepoints_iter
-        .next()
-        .ok_or_else(|| anyhow!("No rows in timelines."))?;
-
-    ensure!(
-        timepoints_iter.next().is_none(),
-        "Expected a single TimePoint, but found more!"
-    );
-
-    Ok(timepoint.into_iter().collect())
-}
-
-fn extract_components<'data>(
-    schema: &Schema,
-    msg: &'data Chunk<Box<dyn Array>>,
-) -> anyhow::Result<Vec<(ComponentNameRef<'data>, &'data dyn Array)>> {
-    let components = schema
-        .index_of("components") // TODO(cmc): maybe at least a constant or something
-        .and_then(|idx| msg.columns().get(idx))
-        .ok_or_else(|| anyhow!("expect top-level `components` field`"))?;
-
-    let components = components
-        .as_any()
-        .downcast_ref::<StructArray>()
-        .ok_or_else(|| anyhow!("expect component values to be `StructArray`s"))?;
-
-    Ok(components
-        .fields()
-        .iter()
-        .zip(components.values())
-        .map(|(field, comp)| (field.name.as_str(), comp.as_ref()))
-        .collect())
 }
 
 // --- Indices ---
@@ -300,7 +247,7 @@ impl IndexBucket {
                 index.extend_constant(times.len().saturating_sub(1), None);
                 index
             });
-            index.push(Some(*row_idx));
+            index.push(Some(row_idx.as_u64()));
         }
 
         // 2-way merge, step2: right-to-left
@@ -678,14 +625,19 @@ impl ComponentTable {
         ComponentTable {
             name: Arc::clone(&name),
             datatype: datatype.clone(),
-            buckets: [ComponentBucket::new(name, datatype, 0)].into(),
+            buckets: [ComponentBucket::new(
+                name,
+                datatype,
+                RowIndex::from_u64(0u64),
+            )]
+            .into(),
         }
     }
 
-    pub fn insert(
+    pub fn push(
         &mut self,
         config: &DataStoreConfig,
-        timelines: &[(Timeline, TimeInt)],
+        time_point: &TimePoint,
         data: &dyn Array,
     ) -> anyhow::Result<RowIndex> {
         // All component tables spawn with an initial bucket at row offset 0, thus this cannot
@@ -711,11 +663,11 @@ impl ComponentTable {
                 "allocating new component bucket, previous one overflowed"
             );
 
-            let row_offset = bucket.row_offset + len;
+            let row_offset = bucket.row_offset.as_u64() + len;
             self.buckets.push_back(ComponentBucket::new(
                 Arc::clone(&self.name),
                 self.datatype.clone(),
-                row_offset,
+                RowIndex::from_u64(row_offset),
             ));
         }
 
@@ -724,17 +676,16 @@ impl ComponentTable {
         //   same reason as above: all component tables spawn with an initial bucket at row
         //   offset 0, thus this cannot fail.
         // - If the table has just overflowed, then we've just pushed a bucket to the dequeue.
-        let row_idx = self.buckets.back_mut().unwrap().insert(timelines, data)?;
+        let row_idx = self.buckets.back_mut().unwrap().push(time_point, data)?;
 
         debug!(
             kind = "insert",
-            timelines = ?timelines
-                .iter()
+            timelines = ?time_point.into_iter()
                 .map(|(timeline, time)| (timeline.name(), timeline.typ().format(*time)))
                 .collect::<Vec<_>>(),
             component = self.name.as_str(),
-            row_idx,
-            "inserted into component table"
+            %row_idx,
+            "pushed into component table"
         );
 
         Ok(row_idx)
@@ -745,7 +696,7 @@ impl ComponentBucket {
     pub fn new(name: Arc<String>, datatype: DataType, row_offset: RowIndex) -> Self {
         // If this is the first bucket of this table, we need to insert an empty list at
         // row index #0!
-        let data = if row_offset == 0 {
+        let data = if row_offset.as_u64() == 0 {
             let inner_datatype = match &datatype {
                 DataType::List(field) => field.data_type().clone(),
                 #[allow(clippy::todo)]
@@ -773,12 +724,8 @@ impl ComponentBucket {
         }
     }
 
-    pub fn insert(
-        &mut self,
-        timelines: &[(Timeline, TimeInt)],
-        data: &dyn Array,
-    ) -> anyhow::Result<RowIndex> {
-        for (timeline, time) in timelines {
+    pub fn push(&mut self, time_point: &TimePoint, data: &dyn Array) -> anyhow::Result<RowIndex> {
+        for (timeline, time) in time_point {
             // TODO(#451): prob should own it at this point
             let time = *time;
             self.time_ranges
@@ -792,6 +739,8 @@ impl ComponentBucket {
         // TODO(cmc): replace with an actual mutable array!
         self.data = concatenate(&[&*self.data, data])?;
 
-        Ok(self.row_offset + self.data.len() as u64 - 1)
+        Ok(RowIndex::from_u64(
+            self.row_offset.as_u64() + self.data.len() as u64 - 1,
+        ))
     }
 }

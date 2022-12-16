@@ -38,7 +38,7 @@ fn array_to_rust(arrow_array: &PyAny) -> PyResult<(Box<dyn Array>, Field)> {
 pub fn build_arrow_log_msg_from_py(
     obj_path: &ObjPath,
     array: &PyAny,
-    time_point: &TimePoint,
+    _time_point: &TimePoint,
 ) -> PyResult<LogMsg> {
     let (array, _field) = array_to_rust(array)?;
 
@@ -57,6 +57,11 @@ pub fn build_arrow_log_msg_from_py(
             .collect::<Vec<_>>()
     );
 
-    rerun_sdk::arrow::build_arrow_log_msg(obj_path, array, time_point)
+    /*
+    rerun_sdk::arrow::build_arrow_log_msg(obj_path, time_point, array)
         .map_err(|err| PyTypeError::new_err(err.to_string()))
+        */
+    PyResult::Err(PyTypeError::new_err(
+        "TODO(jleibs): Python Arrow Logging is currently broken!",
+    ))
 }
