@@ -132,7 +132,7 @@ pub mod gpu_data {
     #[repr(C, packed)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct LineVertex {
-        pub pos: glam::Vec3,
+        pub position: glam::Vec3,
         // TODO(andreas): If we limit ourselves to 65536 line strip (we do as of writing!), we get 16bit extra storage here.
         // We probably want to store accumulated line length in there so that we can do stippling in the fragment shader
         pub strip_index: u32,
@@ -388,7 +388,7 @@ impl LineDrawData {
             Vec::with_capacity(next_multiple_of(num_segments, POSITION_TEXTURE_SIZE) as usize);
         // placeholder at the beginning to facilitate start-caps
         position_data_staging.push(LineVertex {
-            pos: glam::vec3(f32::INFINITY, f32::INFINITY, f32::INFINITY),
+            position: glam::vec3(f32::INFINITY, f32::INFINITY, f32::INFINITY),
             strip_index: u32::MAX,
         });
         position_data_staging.extend(vertices.iter());

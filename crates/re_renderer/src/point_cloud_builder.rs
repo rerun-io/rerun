@@ -55,7 +55,31 @@ where
         PointCloudBatchBuilder(self)
     }
 
+    // Iterate over all batches, yielding the batch info and a point vertex iterator.
     pub fn iter_vertices_by_batch(
+        &self,
+    ) -> impl Iterator<
+        Item = (
+            &PointCloudBatchInfo,
+            impl Iterator<Item = &PointCloudVertex>,
+        ),
+    > {
+        let mut vertex_offset = 0;
+        self.batches.iter().map(move |batch| {
+            let out = (
+                batch,
+                self.vertices
+                    .iter()
+                    .skip(vertex_offset)
+                    .take(batch.point_count as usize),
+            );
+            vertex_offset += batch.point_count as usize;
+            out
+        })
+    }
+
+    // Iterate over all batches, yielding the batch info and a point vertex iterator zipped with its user data.
+    pub fn iter_vertices_and_userdata_by_batch(
         &self,
     ) -> impl Iterator<
         Item = (

@@ -139,8 +139,6 @@ impl SceneSpatialPrimitives {
     pub fn recalculate_bounding_box(&mut self) {
         crate::profile_function!();
 
-        // TODO: transforms
-
         self.bounding_box = macaw::BoundingBox::nothing();
 
         for rect in &self.textured_rectangles {
@@ -153,16 +151,26 @@ impl SceneSpatialPrimitives {
                 .extend(rect.top_left_corner_position + rect.extent_v + rect.extent_u);
         }
 
-        for vertex in &self.points.vertices {
-            self.bounding_box.extend(vertex.position);
+        // We don't need a very accurate bounding box, so in order to save some time,
+        // we calculate a per batch bounding box for lines and points.
+        // TODO(andreas): We should keep these around to speed up picking!
+        for (batch, vertex_iter) in self.points.iter_vertices_by_batch() {
+            let batch_bb = macaw::BoundingBox::from_points(vertex_iter.map(|v| v.position));
+            self.bounding_box = self.bounding_box.union(
+                batch_bb.transform_affine3(&glam::Affine3A::from_mat4(batch.world_from_scene)),
+            );
         }
-
-        for vertex in &self.line_strips.vertices {
-            self.bounding_box.extend(vertex.pos);
+        for (batch, vertex_iter) in self.line_strips.iter_vertices_by_batch() {
+            let batch_bb = macaw::BoundingBox::from_points(vertex_iter.map(|v| v.position));
+            self.bounding_box = self.bounding_box.union(
+                batch_bb.transform_affine3(&glam::Affine3A::from_mat4(batch.world_from_scene)),
+            );
         }
 
         for mesh in &self.meshes {
-            self.bounding_box = self.bounding_box.union(*mesh.mesh.bbox());
+            self.bounding_box = self
+                .bounding_box
+                .union(mesh.mesh.bbox().transform_affine3(&mesh.world_from_mesh));
         }
     }
 
@@ -1322,7 +1330,7 @@ impl SceneSpatial {
         {
             crate::profile_scope!("points_3d");
 
-            for (batch, vertex_iter) in points.iter_vertices_by_batch() {
+            for (batch, vertex_iter) in points.iter_vertices_and_userdata_by_batch() {
                 // For getting the closest point we could transform the mouse ray into the "batch space".
                 // However, we want to determine the closest point in *screen space*, meaning that we need to project all points.
                 let ui_from_batch = ui_from_world * batch.world_from_scene;
@@ -1353,34 +1361,25 @@ impl SceneSpatial {
         {
             crate::profile_scope!("line_segments_3d");
 
-            let mut line_vertex_offset = 0;
-
-            for batch in &line_strips.batches {
-                let strip_idx = line_strips.vertices[line_vertex_offset].strip_index as usize;
-                let mut instance_hash = line_strips.strip_user_data[strip_idx];
-
+            for (batch, vertices) in line_strips.iter_vertices_by_batch() {
                 // For getting the closest point we could transform the mouse ray into the "batch space".
                 // However, we want to determine the closest point in *screen space*, meaning that we need to project all points.
                 let ui_from_batch = ui_from_world * batch.world_from_scene;
 
-                for (start, end) in line_strips
-                    .vertices
-                    .iter()
-                    .skip(line_vertex_offset)
-                    .take(batch.line_vertex_count as usize)
-                    .tuple_windows()
-                {
+                for (start, end) in vertices.tuple_windows() {
+                    // Skip unconnected tuples.
                     if start.strip_index != end.strip_index {
-                        instance_hash = line_strips.strip_user_data[end.strip_index as usize];
                         continue;
                     }
+
+                    let instance_hash = line_strips.strip_user_data[start.strip_index as usize];
                     if instance_hash.is_none() {
                         continue;
                     }
 
                     // TODO(emilk): take line segment radius into account
-                    let a = ui_from_batch.project_point3(start.pos);
-                    let b = ui_from_batch.project_point3(end.pos);
+                    let a = ui_from_batch.project_point3(start.position);
+                    let b = ui_from_batch.project_point3(end.position);
                     let dist_sq = line_segment_distance_sq_to_point_2d(
                         [a.truncate(), b.truncate()],
                         pointer_in_ui,
@@ -1395,8 +1394,6 @@ impl SceneSpatial {
                         }
                     }
                 }
-
-                line_vertex_offset += batch.line_vertex_count as usize;
             }
         }
 

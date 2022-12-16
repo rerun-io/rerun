@@ -41,6 +41,24 @@ where
         LineBatchBuilder(self)
     }
 
+    // Iterate over all batches, yielding the batch info and all line vertices (note that these will span several line strips!)
+    pub fn iter_vertices_by_batch(
+        &self,
+    ) -> impl Iterator<Item = (&LineBatchInfo, impl Iterator<Item = &LineVertex>)> {
+        let mut vertex_offset = 0;
+        self.batches.iter().map(move |batch| {
+            let out = (
+                batch,
+                self.vertices
+                    .iter()
+                    .skip(vertex_offset)
+                    .take(batch.line_vertex_count as usize),
+            );
+            vertex_offset += batch.line_vertex_count as usize;
+            out
+        })
+    }
+
     /// Finalizes the builder and returns a line draw data with all the lines added so far.
     pub fn to_draw_data(&self, ctx: &mut crate::context::RenderContext) -> LineDrawData {
         LineDrawData::new(ctx, &self.vertices, &self.strips, &self.batches).unwrap()
@@ -102,9 +120,10 @@ where
     fn add_vertices(&mut self, points: impl Iterator<Item = glam::Vec3>, strip_index: u32) {
         let old_len = self.0.vertices.len();
 
-        self.0
-            .vertices
-            .extend(points.map(|pos| LineVertex { pos, strip_index }));
+        self.0.vertices.extend(points.map(|pos| LineVertex {
+            position: pos,
+            strip_index,
+        }));
         self.batch_mut().line_vertex_count += (self.0.vertices.len() - old_len) as u32;
     }
 
