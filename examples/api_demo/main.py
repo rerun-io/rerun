@@ -150,8 +150,8 @@ def transforms_rigid_3d() -> None:
     rerun.log_view_coordinates("transforms3d/planet/moon", up="+Y", timeless=True)
 
     # All are in the center of their own space:
-    rerun.log_point("transforms3d/sun", [0.0, 0.0, 0.0], radius=1.0, color=[255,255,128])
-    rerun.log_point("transforms3d/planet", [0.0, 0.0, 0.0], radius=0.4, color=[0,128,0])
+    rerun.log_point("transforms3d/sun", [0.0, 0.0, 0.0], radius=1.0, color=[255, 255, 128])
+    rerun.log_point("transforms3d/planet", [0.0, 0.0, 0.0], radius=0.4, color=[0, 128, 0])
     rerun.log_point("transforms3d/planet/moon", [0.0, 0.0, 0.0], radius=0.15)
 
     # "dust" around the "planet" (and inside, don't care)

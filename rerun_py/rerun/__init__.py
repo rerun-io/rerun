@@ -563,7 +563,8 @@ def log_point(
         label=label,
         class_id=class_id,
         keypoint_id=keypoint_id,
-        timeless=timeless)
+        timeless=timeless,
+    )
 
 
 def log_points(
