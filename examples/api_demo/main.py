@@ -156,13 +156,29 @@ def run_log_cleared() -> None:
 
 
 def transforms_rigid_3d() -> None:
+    rerun.set_time_seconds("sim_time", 0)
+
     # TODO: Try points and lines as well
     rerun.log_mesh_file("transforms3d/sun", rerun.MeshFormat.GLB, mesh_data)
     rerun.log_mesh_file("transforms3d/planet", rerun.MeshFormat.GLB, mesh_data)
     rerun.log_mesh_file("transforms3d/planet/moon", rerun.MeshFormat.GLB, mesh_data)
 
-    sun_to_planet_distance = 10.0
-    planet_to_moon_distance = 4.0
+    sun_to_planet_distance = 6.0
+    planet_to_moon_distance = 3.0
+
+    angles = np.arange(0.0, 1.01, 0.01) * math.tau
+    circle = np.array([np.sin(angles), angles * 0.0, np.cos(angles)]).transpose()
+    rerun.log_path(
+        "transforms3d/sun/planet_path",
+        circle * sun_to_planet_distance,
+    )
+    rerun.log_path(
+        "transforms3d/planet/moon_path",
+        circle * planet_to_moon_distance,
+    )
+
+    rotation_speed_planet = 2.0
+    rotation_speed_moon = 5.0
 
     for i in range(0, 5 * 120):
         time = i / 120.0
@@ -171,7 +187,11 @@ def transforms_rigid_3d() -> None:
         rerun.log_rigid3(
             "transforms3d/planet",
             child_from_parent=(
-                [math.sin(time) * sun_to_planet_distance, 0.0, math.cos(time) * sun_to_planet_distance],
+                [
+                    math.sin(time * rotation_speed_planet) * sun_to_planet_distance,
+                    0.0,
+                    math.cos(time * rotation_speed_planet) * sun_to_planet_distance,
+                ],
                 rotation_q,
             ),
         )
@@ -179,7 +199,11 @@ def transforms_rigid_3d() -> None:
         rerun.log_rigid3(
             "transforms3d/planet/moon",
             child_from_parent=(
-                [math.cos(time) * planet_to_moon_distance, 0.0, math.sin(time) * planet_to_moon_distance],
+                [
+                    math.cos(time * rotation_speed_moon) * planet_to_moon_distance,
+                    0.0,
+                    math.sin(time * rotation_speed_moon) * planet_to_moon_distance,
+                ],
                 rotation_q,
             ),
         )
