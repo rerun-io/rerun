@@ -35,7 +35,7 @@ fn obj_mono_points(c: &mut Criterion) {
             .into_iter()
             .map(move |point_idx| obj_path!("points", Index::Sequence(point_idx as _)))
             .collect_vec();
-        let msgs = mono_data_messages(&paths);
+        let msgs = build_messages(&paths, 1);
 
         {
             let mut group = c.benchmark_group("obj_mono_points");
@@ -58,12 +58,39 @@ fn obj_mono_points(c: &mut Criterion) {
     }
 }
 
-criterion_group!(benches, obj_mono_points,);
+fn obj_batch_points(c: &mut Criterion) {
+    {
+        // Each mono point gets logged at a different path
+        let paths = [ObjPath::from("points")];
+        let msgs = build_messages(&paths, NUM_POINTS as _);
+
+        {
+            let mut group = c.benchmark_group("obj_batch_points");
+            group.throughput(criterion::Throughput::Elements(
+                (NUM_POINTS * NUM_FRAMES) as _,
+            ));
+            group.bench_function("insert", |b| {
+                b.iter(|| insert_messages(msgs.iter()));
+            });
+        }
+
+        {
+            let mut group = c.benchmark_group("obj_batch_points");
+            group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
+            let mut store = insert_messages(msgs.iter());
+            group.bench_function("query", |b| {
+                b.iter(|| query_and_visit(&mut store, &paths));
+            });
+        }
+    }
+}
+
+criterion_group!(benches, obj_mono_points, obj_batch_points);
 criterion_main!(benches);
 
 // --- Helpers ---
 
-fn mono_data_messages(paths: &[ObjPath]) -> Vec<MsgBundle> {
+fn build_messages(paths: &[ObjPath], pts: usize) -> Vec<MsgBundle> {
     (0..NUM_FRAMES)
         .into_iter()
         .flat_map(move |frame_idx| {
@@ -72,7 +99,7 @@ fn mono_data_messages(paths: &[ObjPath]) -> Vec<MsgBundle> {
                     MsgId::ZERO,
                     path.clone(),
                     [build_frame_nr(frame_idx as _)],
-                    (build_some_point2d(1), build_some_colors(1)),
+                    (build_some_point2d(pts), build_some_colors(pts)),
                 )
                 .unwrap()
             })
@@ -100,7 +127,7 @@ fn query_and_visit(store: &mut DataStore, paths: &[ObjPath]) {
 
     for path in paths.iter() {
         if let Ok(df) = query_entity_with_primary(
-            &store,
+            store,
             &timeline_query,
             path,
             Point2D::NAME,
