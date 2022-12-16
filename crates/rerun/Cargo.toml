@@ -27,27 +27,25 @@ re_log = { path = "../re_log" }
 re_log_types = { path = "../re_log_types" }
 re_memory = { path = "../re_memory" }
 re_smart_channel = { path = "../re_smart_channel" }
-re_viewer = { path = "../re_viewer", features = [
-  "puffin",
-], default-features = false }
+re_viewer = { path = "../re_viewer", default-features = false }
 re_ws_comms = { path = "../re_ws_comms", features = ["client"] }
 
 anyhow.workspace = true
 crossbeam = "0.8"
 document-features = "0.2"
 egui = { version = "0.20.1", default-features = false }
-puffin = "0.14"
+puffin.workspace = true
 
 # Optional dependencies:
 re_sdk_comms = { path = "../re_sdk_comms", optional = true }
 re_web_server = { path = "../re_web_server", optional = true }
 
-puffin_http = { version = "0.11", optional = true }
 webbrowser = { version = "0.8", optional = true }
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 clap = { version = "4.0", features = ["derive"] }
 mimalloc = "0.1.29"
+puffin_http = "0.11"
 tokio = { version = "1.16", features = ["macros", "rt-multi-thread"] }
 tracing-subscriber = "0.3"

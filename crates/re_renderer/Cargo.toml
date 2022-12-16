@@ -9,9 +9,6 @@ publish = false
 [features]
 default = ["import-obj", "import-gltf"]
 
-## Add support for the [`puffin`](https://github.com/EmbarkStudios/puffin) profiler.
-puffin = ["dep:puffin"]
-
 import-obj = ["dep:tobj"]
 import-gltf = ["dep:gltf"]
 
@@ -34,6 +31,7 @@ macaw = "0.17.2"
 memoffset = "0.7"
 ordered-float = "3.2"
 parking_lot = "0.12"
+puffin.workspace = true
 slotmap = "1.0.6"
 smallvec = "1.10"
 static_assertions = "1.1"
@@ -49,7 +47,6 @@ tobj = { version = "3.2", optional = true }
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 crossbeam = "0.8"
 notify = "5.0"
-puffin = { version = "0.14", optional = true }
 wgpu = { version = "0.14", default-features = false, features = ["wgsl"] }
 wgpu-core = "0.14"
 

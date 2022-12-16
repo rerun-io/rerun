@@ -418,7 +418,6 @@ impl PathOp {
 #[macro_export]
 macro_rules! profile_function {
     ($($arg: tt)*) => {
-        #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
         puffin::profile_function!($($arg)*);
     };
 }
@@ -428,7 +427,6 @@ macro_rules! profile_function {
 #[macro_export]
 macro_rules! profile_scope {
     ($($arg: tt)*) => {
-        #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
         puffin::profile_scope!($($arg)*);
     };
 }
