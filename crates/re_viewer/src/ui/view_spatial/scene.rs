@@ -1243,10 +1243,6 @@ impl SceneSpatial {
             .user_data(instance_id);
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.primitives.bounding_box().is_nothing()
-    }
-
     /// Heuristic whether the default way of looking at this scene should be 2d or 3d.
     pub fn prefer_2d_mode(&self) -> bool {
         // If any 2D interactable picture is there we regard it as 2d.

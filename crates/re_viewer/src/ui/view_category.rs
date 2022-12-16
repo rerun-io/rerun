@@ -1,3 +1,8 @@
+use std::collections::BTreeMap;
+
+use nohash_hasher::IntSet;
+use re_data_store::{LogDb, ObjPath, Timeline};
+
 #[derive(
     Debug, Default, PartialOrd, Ord, enumset::EnumSetType, serde::Deserialize, serde::Serialize,
 )]
@@ -12,9 +17,9 @@ pub enum ViewCategory {
 pub type ViewCategorySet = enumset::EnumSet<ViewCategory>;
 
 pub fn categorize_obj_path(
-    timeline: &re_data_store::Timeline,
-    log_db: &re_data_store::LogDb,
-    obj_path: &re_data_store::ObjPath,
+    timeline: &Timeline,
+    log_db: &LogDb,
+    obj_path: &ObjPath,
 ) -> ViewCategorySet {
     crate::profile_function!();
 
@@ -69,4 +74,18 @@ pub fn categorize_obj_path(
             ViewCategory::Spatial.into() // TODO(emilk): implement some sort of entity categorization based on components
         }
     }
+}
+
+pub fn group_by_category<'a>(
+    timeline: &Timeline,
+    log_db: &LogDb,
+    objects: impl Iterator<Item = &'a ObjPath>,
+) -> BTreeMap<ViewCategory, IntSet<ObjPath>> {
+    let mut groups: BTreeMap<ViewCategory, IntSet<ObjPath>> = Default::default();
+    for obj_path in objects {
+        for category in categorize_obj_path(timeline, log_db, obj_path) {
+            groups.entry(category).or_default().insert(obj_path.clone());
+        }
+    }
+    groups
 }

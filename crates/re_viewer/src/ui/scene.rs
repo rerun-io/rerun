@@ -2,49 +2,12 @@ use ahash::HashMap;
 use nohash_hasher::IntSet;
 
 use re_data_store::{
-    FieldName, FieldStore, InstanceIdHash, LogDb, ObjPath, ObjStore, ObjectsProperties, TimeInt,
-    TimeQuery, Timeline,
+    FieldName, FieldStore, LogDb, ObjPath, ObjStore, ObjectsProperties, TimeInt, TimeQuery,
+    Timeline,
 };
 use re_log_types::ObjectType;
 
-use super::{view_category::ViewCategory, view_plot, view_spatial, view_tensor, view_text};
-
 // ---
-
-/// A fully self-contained scene, ready to be rendered as-is.
-#[derive(Default)]
-pub struct Scene {
-    pub spatial: view_spatial::SceneSpatial,
-    pub text: view_text::SceneText,
-    pub tensor: view_tensor::SceneTensor,
-    pub plot: view_plot::ScenePlot,
-}
-
-impl Scene {
-    pub(crate) fn categories(&self) -> std::collections::BTreeSet<ViewCategory> {
-        let Self {
-            spatial,
-            text,
-            tensor,
-            plot,
-        } = self;
-
-        let has_spatial = !spatial.is_empty();
-        let has_text = !text.is_empty();
-        let has_tensor = !tensor.is_empty();
-        let has_plot = !plot.is_empty();
-
-        [
-            has_spatial.then_some(ViewCategory::Spatial),
-            has_text.then_some(ViewCategory::Text),
-            has_tensor.then_some(ViewCategory::Tensor),
-            has_plot.then_some(ViewCategory::Plot),
-        ]
-        .iter()
-        .filter_map(|cat| *cat)
-        .collect()
-    }
-}
 
 pub struct SceneQuery<'s> {
     pub obj_paths: &'s IntSet<ObjPath>,
@@ -56,22 +19,6 @@ pub struct SceneQuery<'s> {
 }
 
 impl<'s> SceneQuery<'s> {
-    pub(crate) fn query(&self, ctx: &mut crate::misc::ViewerContext<'_>) -> Scene {
-        crate::profile_function!();
-        let mut scene = Scene::default();
-        let Scene {
-            spatial,
-            text,
-            tensor,
-            plot,
-        } = &mut scene;
-        spatial.load_objects(ctx, self, self.obj_props, InstanceIdHash::NONE);
-        text.load_objects(ctx, self, &view_text::ViewTextFilters::default());
-        tensor.load_objects(ctx, self);
-        plot.load_objects(ctx, self);
-        scene
-    }
-
     /// Given a list of `ObjectType`s, this will return all relevant `ObjStore`s that should be
     /// queried for datapoints.
     ///

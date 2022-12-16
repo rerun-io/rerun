@@ -46,11 +46,3 @@ impl SceneTensor {
         }
     }
 }
-
-impl SceneTensor {
-    pub fn is_empty(&self) -> bool {
-        let Self { tensors } = self;
-
-        tensors.is_empty()
-    }
-}
