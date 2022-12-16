@@ -107,10 +107,10 @@ impl Viewport {
                         {
                             let mut space_view = SpaceView::new(
                                 ctx,
-                                &scene_spatial,
                                 category,
                                 path.clone(),
                                 space_info,
+                                scene_spatial.preferred_navigation_mode(),
                             );
                             space_view.name = visible_instance_id.obj_path.to_string();
 
@@ -141,8 +141,13 @@ impl Viewport {
 
                 // Create one SpaceView for the whole space:
                 {
-                    let space_view =
-                        SpaceView::new(ctx, &scene_spatial, category, path.clone(), space_info);
+                    let space_view = SpaceView::new(
+                        ctx,
+                        category,
+                        path.clone(),
+                        space_info,
+                        scene_spatial.preferred_navigation_mode(),
+                    );
                     blueprint.add_space_view(space_view);
                 }
             }
@@ -303,10 +308,10 @@ impl Viewport {
             let scene_spatial = query_scene_spatial(ctx, &obj_paths);
             self.add_space_view(SpaceView::new(
                 ctx,
-                &scene_spatial,
                 category,
                 path.clone(),
                 space_info,
+                scene_spatial.preferred_navigation_mode(),
             ));
         }
     }
@@ -449,10 +454,10 @@ impl Viewport {
                                 let scene_spatial = query_scene_spatial(ctx, &obj_paths);
                                 let new_space_view_id = self.add_space_view(SpaceView::new(
                                     ctx,
-                                    &scene_spatial,
                                     category,
                                     path.clone(),
                                     space_info,
+                                    scene_spatial.preferred_navigation_mode(),
                                 ));
                                 ctx.set_selection(Selection::SpaceView(new_space_view_id));
                             }

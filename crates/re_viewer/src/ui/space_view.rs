@@ -13,7 +13,7 @@ use crate::{
 use super::{
     view_category::ViewCategory,
     view_plot,
-    view_spatial::{self, SceneSpatial, SpatialNavigationMode},
+    view_spatial::{self, SpatialNavigationMode},
     view_tensor, view_text,
 };
 
@@ -66,19 +66,15 @@ pub(crate) struct SpaceView {
 impl SpaceView {
     pub fn new(
         ctx: &ViewerContext<'_>,
-        scene_spatial: &SceneSpatial,
         category: ViewCategory,
         space_path: ObjPath,
         space_info: &SpaceInfo,
+        default_spatial_naviation_mode: SpatialNavigationMode,
     ) -> Self {
         let mut view_state = ViewState::default();
 
         if category == ViewCategory::Spatial {
-            view_state.state_spatial.nav_mode = if scene_spatial.prefer_2d_mode() {
-                SpatialNavigationMode::TwoD
-            } else {
-                SpatialNavigationMode::ThreeD
-            };
+            view_state.state_spatial.nav_mode = default_spatial_naviation_mode;
         }
 
         let root_path = space_path
