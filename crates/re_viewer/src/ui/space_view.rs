@@ -72,6 +72,7 @@ impl SpaceView {
         category: ViewCategory,
         space_path: ObjPath,
         space_info: &SpaceInfo,
+        spaces_info: &SpacesInfo,
         default_spatial_naviation_mode: SpatialNavigationMode,
     ) -> Self {
         let mut view_state = ViewState::default();
@@ -90,7 +91,7 @@ impl SpaceView {
             id: SpaceViewId::random(),
             root_path,
             space_path,
-            queried_objects: Self::default_queried_objects(ctx, category, space_info),
+            queried_objects: Self::default_queried_objects(ctx, category, space_info, spaces_info),
             obj_properties: Default::default(),
             view_state,
             category,
@@ -102,17 +103,19 @@ impl SpaceView {
     fn default_queried_objects(
         ctx: &ViewerContext<'_>,
         category: ViewCategory,
-        space_info: &SpaceInfo,
+        root_space: &SpaceInfo,
+        spaces_info: &SpacesInfo,
     ) -> IntSet<ObjPath> {
         crate::profile_function!();
 
         let timeline = ctx.rec_cfg.time_ctrl.timeline();
         let log_db = &ctx.log_db;
-        space_info
-            .descendants_without_transform
+
+        root_space
+            .descendants_with_rigid_or_no_transform(spaces_info)
             .iter()
-            .filter(|obj_path| categorize_obj_path(timeline, log_db, obj_path).contains(category))
             .cloned()
+            .filter(|obj_path| categorize_obj_path(timeline, log_db, obj_path).contains(category))
             .collect()
     }
 
@@ -123,7 +126,8 @@ impl SpaceView {
         let Some(space) = spaces_info.spaces.get(&self.space_path) else {
             return;
         };
-        self.queried_objects = Self::default_queried_objects(ctx, self.category, space);
+        self.queried_objects =
+            Self::default_queried_objects(ctx, self.category, space, spaces_info);
     }
 
     /// All object paths that are under the root but can't be added to the space view and why.

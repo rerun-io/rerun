@@ -84,10 +84,17 @@ impl Viewport {
         let mut blueprint = Self::default();
 
         for (path, space_info) in &spaces_info.spaces {
+            // If we're connected with a rigid transform to our parent, skip as it is trivially displayed in a single space view.
+            if let Some((_, re_log_types::Transform::Rigid3(_))) = space_info.parent {
+                continue;
+            }
+
             for (category, obj_paths) in group_by_category(
                 ctx.rec_cfg.time_ctrl.timeline(),
                 ctx.log_db,
-                space_info.descendants_without_transform.iter(),
+                space_info
+                    .descendants_with_rigid_or_no_transform(spaces_info)
+                    .iter(),
             ) {
                 // TODO(andreas): Should not need to do full query just to determine navigation mode. Default transform cache is problematic.
                 let scene_spatial =
@@ -112,6 +119,7 @@ impl Viewport {
                                 category,
                                 path.clone(),
                                 space_info,
+                                spaces_info,
                                 scene_spatial.preferred_navigation_mode(),
                             );
                             space_view.name = visible_instance_id.obj_path.to_string();
@@ -148,6 +156,7 @@ impl Viewport {
                         category,
                         path.clone(),
                         space_info,
+                        spaces_info,
                         scene_spatial.preferred_navigation_mode(),
                     );
                     blueprint.add_space_view(space_view);
@@ -301,6 +310,7 @@ impl Viewport {
         ctx: &mut ViewerContext<'_>,
         path: &ObjPath,
         space_info: &SpaceInfo,
+        spaces_info: &SpacesInfo,
     ) {
         for (category, obj_paths) in group_by_category(
             ctx.rec_cfg.time_ctrl.timeline(),
@@ -314,6 +324,7 @@ impl Viewport {
                 category,
                 path.clone(),
                 space_info,
+                spaces_info,
                 scene_spatial.preferred_navigation_mode(),
             ));
         }
@@ -337,8 +348,14 @@ impl Viewport {
                 // Check if the blueprint is missing a space,
                 // maybe one that has been added by new data:
                 for (path, space_info) in &spaces_info.spaces {
+                    // Ignore spaces that have a parent connected via a rigid transform to their parent,
+                    // since they should be picked up automatically by existing parent spaces.
+                    if let Some((_, re_log_types::Transform::Rigid3(_))) = space_info.parent {
+                        continue;
+                    }
+
                     if !self.has_space(path) {
-                        self.add_space_view_for(ctx, path, space_info);
+                        self.add_space_view_for(ctx, path, space_info, spaces_info);
                     }
                 }
             }
@@ -465,6 +482,7 @@ impl Viewport {
                                     category,
                                     path.clone(),
                                     space_info,
+                                    spaces_info,
                                     scene_spatial.preferred_navigation_mode(),
                                 ));
                                 ctx.set_selection(Selection::SpaceView(new_space_view_id));
