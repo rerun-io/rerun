@@ -516,7 +516,7 @@ def log_rects(
 
 def log_point(
     obj_path: str,
-    position: Optional[Sequence[float]],
+    position: Union[Sequence[float], npt.NDArray[np.float32], None],
     *,
     radius: Optional[float] = None,
     color: Optional[Sequence[int]] = None,
