@@ -53,33 +53,28 @@ pub fn categorize_obj_path(
         | re_log_types::ObjectType::Mesh3D => ViewCategory::Spatial.into(),
 
         re_log_types::ObjectType::Image => {
-            // Is it an image or a tensor? Check dimensionality:
-            if let Some(timeline_store) = log_db.obj_db.store.get(timeline) {
-                if let Some(obj_store) = timeline_store.get(obj_path) {
-                    if let Some(field_store) =
-                        obj_store.get(&re_data_store::FieldName::new("tensor"))
-                    {
-                        let time_query = re_data_store::TimeQuery::LatestAt(i64::MAX);
-                        if let Ok((_, re_log_types::DataVec::Tensor(tensors))) =
-                            field_store.query_field_to_datavec(&time_query, None)
-                        {
-                            return if tensors.iter().all(|tensor| tensor.is_vector()) {
-                                ViewCategory::BarChart.into()
-                            } else if tensors
-                                .iter()
-                                .all(|tensor| tensor.is_shaped_like_an_image())
-                            {
-                                ViewCategory::Spatial.into()
-                            } else {
-                                ViewCategory::Tensor.into()
-                            };
-                        }
-                    }
+            // Some sort of tensor - could be an image, a vector, or a general tensor - let's check!
+            if let Some(Ok((_, re_log_types::DataVec::Tensor(tensors)))) =
+                log_db.obj_db.store.query_data_path(
+                    timeline,
+                    &re_data_store::TimeQuery::LatestAt(i64::MAX),
+                    &DataPath::new(obj_path.clone(), "tensor".into()),
+                )
+            {
+                if tensors.iter().all(|tensor| tensor.is_vector()) {
+                    ViewCategory::BarChart.into()
+                } else if tensors
+                    .iter()
+                    .all(|tensor| tensor.is_shaped_like_an_image())
+                {
+                    ViewCategory::Spatial.into()
+                } else {
+                    ViewCategory::Tensor.into()
                 }
+            } else {
+                // something in the query failed - use a sane fallback:
+                ViewCategory::Spatial.into()
             }
-
-            // something in the query failed - use a sane fallback:
-            ViewCategory::Spatial.into()
         }
 
         re_log_types::ObjectType::Arrow3D => {
