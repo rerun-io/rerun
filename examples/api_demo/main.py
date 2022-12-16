@@ -120,16 +120,18 @@ def run_rects() -> None:
     rerun.log_image("rects_demo/img", img)
 
     # 20 random rectangles
-    rerun.set_time_seconds("sim_time", 2)
-    rects_xy = np.random.rand(20, 2) * 1024
-    rects_wh = np.random.rand(20, 2) * (1024 - rects_xy + 1)
-    rects = np.hstack((rects_xy, rects_wh))
-    colors = np.array([[random.randrange(255) for _ in range(3)] for _ in range(20)])
-    rerun.log_rects("rects_demo/rects", rects, colors=colors, rect_format=RectFormat.XYWH)
+    NUM_RECTS = 20
+    for i in range(20):
+        rerun.set_time_seconds("sim_time", i)
+        rects_xy = np.random.rand(NUM_RECTS, 2) * 1024
+        rects_wh = np.random.rand(NUM_RECTS, 2) * (1024 - rects_xy + 1)
+        rects = np.hstack((rects_xy, rects_wh))
+        colors = np.array([[random.randrange(255) for _ in range(3)] for _ in range(NUM_RECTS)])
+        rerun.log_rects("rects_demo/rects", rects, colors=colors, rect_format=RectFormat.XYWH)
 
     # Clear the rectangles by logging an empty set
-    rerun.set_time_seconds("sim_time", 3)
-    rerun.log_rects("rects_demo/rects", [])
+    # rerun.set_time_seconds("sim_time", 3)
+    # rerun.log_rects("rects_demo/rects", [])
 
 
 def run_text_logs() -> None:

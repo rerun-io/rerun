@@ -39,9 +39,9 @@ fn array_to_rust(
     // Following pattern from: https://github.com/pola-rs/polars/blob/master/examples/python_rust_compiled_function/src/ffi.rs
     unsafe {
         let mut field = ffi::import_field_from_c(schema.as_ref())
-            .map_err(|e| PyValueError::new_err(e.to_string()))?;
+            .map_err(|e| PyValueError::new_err(format!("Error importing Field: {e}")))?;
         let array = ffi::import_array_from_c(*array, field.data_type.clone())
-            .map_err(|e| PyValueError::new_err(e.to_string()))?;
+            .map_err(|e| PyValueError::new_err(format!("Error importing Array: {e}")))?;
 
         if let Some(field_name) = field_name {
             field.name = field_name.to_owned();
