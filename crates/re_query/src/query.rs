@@ -87,13 +87,15 @@ pub fn get_component_with_instances(
 
 /// If a `DataFrame` has no `Instance` column create one from the row numbers
 fn add_instances_and_sort_if_needed(df: &DataFrame) -> Result<DataFrame> {
-    // Note: we add a row-column temporarily which has u32 type, and then convert it
-    // to the correctly named "instance" row with the correct type and drop the original
-    // row.
-    if let Ok(_) = df.column(Instance::NAME) {
+    if df.column(Instance::NAME).is_ok() {
+        // If we have an InstanceKey column already, make sure that it's sorted.
         // TODO(jleibs): can remove this once we have a sort guarantee from the store
         Ok(df.sort([Instance::NAME], false)?)
     } else {
+        // If we don't have an InstanceKey column, it is implicit, and we generate it
+        // based on the row-number so we can use this in join-operations.
+        // The default Polars row type is u32 and so we need to convert it to the
+        // expected type of our InstanceKeys.
         let mut with_rows = df.with_row_count(Instance::NAME, None)?;
         let rows = with_rows.select_at_idx(0).ok_or(QueryError::BadAccess)?;
         let u64_rows = rows.cast(&DataType::UInt64)?;
