@@ -1,12 +1,15 @@
 """The Rerun Python SDK, which is a wrapper around the rerun_sdk crate."""
 
 import atexit
+import functools
 import logging
 import os
 import traceback
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
+
+import sys
 from typing import (
     Any,
     Callable,
@@ -18,6 +21,14 @@ from typing import (
     TypeVar,
     Union,
 )
+
+# ParamSpec wasn't added to python typing until 3.10
+# Use the typing_extensions module (https://pypi.org/project/typing-extensions/)
+# For older versions
+if sys.version_info < (3, 10):
+    from typing_extensions import ParamSpec
+else:
+    from typing import ParamSpec
 
 import numpy as np
 import numpy.typing as npt
@@ -32,15 +43,16 @@ if EXP_ARROW:
 
     from rerun import components
 
+PS = ParamSpec("PS")
 RT = TypeVar("RT")  # return type
-
 
 # Decorator that catches exceptions, logs them, then swallows them.
 # This is almost always preferable than letting an exception kill the users app.
 # Add this to ALL user-facing functions!
 # TODO(emilk): add "strict" mode where we do pass on the exceptions
-def log_exceptions(func: Callable[..., RT]) -> Callable[..., Optional[RT]]:
-    def wrapper_log_exceptions(*args: Any, **kwargs: Any) -> Optional[RT]:
+def log_exceptions(func: Callable[PS, RT]) -> Callable[PS, Optional[RT]]:
+    @functools.wraps(func)
+    def wrapper_log_exceptions(*args: PS.args, **kwargs: PS.kwargs) -> Optional[RT]:
         try:
             return func(*args, **kwargs)
         except Exception as e:
