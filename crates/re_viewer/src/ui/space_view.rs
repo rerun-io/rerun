@@ -168,14 +168,14 @@ impl SpaceView {
             ui.text_edit_singleline(&mut self.name);
             ui.end_row();
 
-            ui.label("Space Path:");
+            ui.label("Space path:");
             ctx.obj_path_button(ui, &self.space_path);
             ui.end_row();
         });
 
         ui.separator();
 
-        ui.strong("Query Tree");
+        ui.strong("Query tree");
         self.query_tree_ui(ctx, ui);
 
         ui.separator();
@@ -187,7 +187,13 @@ impl SpaceView {
                 self.view_state.state_text.selection_ui(ui);
             }
 
-            ViewCategory::TimeSeries | ViewCategory::BarChart => {}
+            ViewCategory::TimeSeries => {
+                ui.strong("Time series view");
+            }
+
+            ViewCategory::BarChart => {
+                ui.strong("Bar chart view");
+            }
 
             ViewCategory::Spatial => {
                 ui.strong("Spatial view");
