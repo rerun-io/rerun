@@ -3918,6 +3918,7 @@ dependencies = [
  "egui-wgpu",
  "egui_dock",
  "egui_extras",
+ "enumset",
  "glam",
  "image",
  "instant",

@@ -56,10 +56,11 @@ eframe = { version = "0.20", default-features = false, features = [
   "wgpu",
 ] }
 egui = { version = "0.20", features = ["extra_debug_asserts", "tracing"] }
-egui-notify = "0.5"
-egui-wgpu = "0.20"
 egui_dock = { version = "0.3", features = ["serde"] }
 egui_extras = { version = "0.20", features = ["tracing"] }
+egui-notify = "0.5"
+egui-wgpu = "0.20"
+enumset = "1.0.12"
 glam = { version = "0.20", features = [
   "mint",
 ] } # can't update glam until a new version of `macaw` is released
