@@ -143,7 +143,7 @@ impl DataStore {
         let ent_path_hash = ent_path.hash();
 
         debug!(
-            kind = "query",
+            kind = "latest_at",
             id = self.query_id.load(Ordering::Relaxed),
             query = ?query,
             entity = %ent_path,
@@ -155,7 +155,7 @@ impl DataStore {
         if let Some(index) = self.indices.get(&(query.timeline, *ent_path_hash)) {
             if let row_indices @ Some(_) = index.latest_at(query.at, primary, components) {
                 debug!(
-                    kind = "query",
+                    kind = "latest_at",
                     query = ?query,
                     entity = %ent_path,
                     primary,
@@ -168,7 +168,7 @@ impl DataStore {
         }
 
         debug!(
-            kind = "query",
+            kind = "latest_at",
             query = ?query,
             entity = %ent_path,
             primary,
@@ -193,7 +193,7 @@ impl DataStore {
         let ent_path_hash = ent_path.hash();
 
         debug!(
-            kind = "query",
+            kind = "range",
             id = self.query_id.load(Ordering::Relaxed),
             query = ?query,
             entity = %ent_path,
@@ -209,7 +209,8 @@ impl DataStore {
         let latest_row_indices =
             index.and_then(|index| index.latest_at(latest_time, primary, components));
         debug!(
-            kind = "query",
+            kind = "range",
+            id = self.query_id.load(Ordering::Relaxed),
             query = ?query,
             entity = %ent_path,
             primary,
@@ -242,6 +243,16 @@ impl DataStore {
         components: &[ComponentNameRef<'_>; N],
         row_indices: &[Option<RowIndex>; N],
     ) -> [Option<Box<dyn Array>>; N] {
+        // TODO(cmc): kind & query_id need to somehow propagate through the span system.
+        self.query_id.fetch_add(1, Ordering::Relaxed);
+        debug!(
+            kind = "get",
+            id = self.query_id.load(Ordering::Relaxed),
+            ?components,
+            ?row_indices,
+            "query started..."
+        );
+
         let mut results = [(); N].map(|_| None); // work around non-Copy const initialization limitations
 
         for (i, &component, row_idx) in components
@@ -300,16 +311,13 @@ impl IndexTable {
 
         for (attempt, bucket) in self.range_buckets_rev(..=time).enumerate() {
             debug!(
-                kind = "query",
+                kind = "latest_at",
                 timeline = %timeline.name(),
                 time = timeline.typ().format(time),
                 primary,
                 ?components,
                 attempt,
-                time_range = ?{
-                    let time_range = bucket.indices.read().time_range;
-                    time_range.min.as_i64()..=time_range.max.as_i64()
-                },
+                bucket_time_range = timeline.typ().format_range(bucket.indices.read().time_range),
                 "found candidate bucket"
             );
             if let row_indices @ Some(_) = bucket.latest_at(time, primary, components) {
@@ -334,15 +342,13 @@ impl IndexTable {
             .flat_map(move |(bucket_nr, bucket)| {
                 debug!(
                     kind = "range",
+                    bucket_nr,
+                    bucket_time_range =
+                        timeline.typ().format_range(bucket.indices.read().time_range),
                     timeline = %timeline.name(),
                     ?time_range,
                     primary,
                     ?components,
-                    bucket_nr,
-                    bucket_time_range = ?{
-                        let time_range = bucket.indices.read().time_range;
-                        time_range.min.as_i64()..=time_range.max.as_i64()
-                    },
                     "found bucket in range"
                 );
 
@@ -441,7 +447,7 @@ impl IndexBucket {
         let index = indices.get(primary)?;
 
         debug!(
-            kind = "query",
+            kind = "latest_at",
             primary,
             ?components,
             timeline = %self.timeline.name(),
@@ -464,7 +470,7 @@ impl IndexBucket {
         // to step back to find what we came for.
         let primary_idx = primary_idx - 1;
         debug!(
-            kind = "query",
+            kind = "latest_at",
             primary,
             ?components,
             timeline = %self.timeline.name(),
@@ -479,7 +485,7 @@ impl IndexBucket {
             secondary_idx -= 1;
             if secondary_idx < 0 {
                 debug!(
-                    kind = "query",
+                    kind = "latest_at",
                     primary,
                     ?components,
                     timeline = %self.timeline.name(),
@@ -492,7 +498,7 @@ impl IndexBucket {
         }
 
         debug!(
-            kind = "query",
+            kind = "latest_at",
             primary,
             ?components,
             timeline = %self.timeline.name(),
@@ -508,7 +514,7 @@ impl IndexBucket {
                 if index.is_valid(secondary_idx as _) {
                     let row_idx = index.values()[secondary_idx as usize];
                     debug!(
-                        kind = "query",
+                        kind = "latest_at",
                         primary,
                         component,
                         timeline = %self.timeline.name(),
@@ -535,10 +541,12 @@ impl IndexBucket {
 
         let IndexBucketIndices {
             is_sorted: _,
-            time_range: _,
+            time_range: bucket_time_range,
             times,
             indices,
         } = &*self.indices.read();
+
+        let bucket_time_range = *bucket_time_range;
 
         let secondary_idx = 'search: {
             // Early-exit if this bucket is unaware of this component.
@@ -546,6 +554,7 @@ impl IndexBucket {
 
             debug!(
                 kind = "range",
+                bucket_time_range = self.timeline.typ().format_range(bucket_time_range),
                 primary,
                 ?components,
                 timeline = %self.timeline.name(),
@@ -558,7 +567,8 @@ impl IndexBucket {
             let primary_idx = times.partition_point(|t| *t < time_range.min.as_i64()) as i64;
 
             debug!(
-                kind = "query",
+                kind = "range",
+                bucket_time_range = self.timeline.typ().format_range(bucket_time_range),
                 primary,
                 ?components,
                 timeline = %self.timeline.name(),
@@ -573,7 +583,8 @@ impl IndexBucket {
                 secondary_idx -= 1;
                 if secondary_idx < 0 {
                     debug!(
-                        kind = "query",
+                        kind = "range",
+                        bucket_time_range = self.timeline.typ().format_range(bucket_time_range),
                         primary,
                         ?components,
                         timeline = %self.timeline.name(),
@@ -586,7 +597,8 @@ impl IndexBucket {
             }
 
             debug!(
-                kind = "query",
+                kind = "range",
+                bucket_time_range = self.timeline.typ().format_range(bucket_time_range),
                 primary,
                 ?components,
                 timeline = %self.timeline.name(),
@@ -619,6 +631,8 @@ impl IndexBucket {
                                 let row_idx = index.values()[idx];
                                 debug!(
                                     kind = "range",
+                                    bucket_time_range =
+                                        self.timeline.typ().format_range(bucket_time_range),
                                     primary,
                                     component,
                                     timeline = %self.timeline.name(),
@@ -759,7 +773,7 @@ impl ComponentTable {
 
         if let Some(bucket) = self.buckets.get(bucket_nr) {
             debug!(
-                kind = "query",
+                kind = "get",
                 component = self.name.as_str(),
                 %row_idx,
                 bucket_nr,
@@ -769,7 +783,7 @@ impl ComponentTable {
             Some(bucket.get(row_idx))
         } else {
             debug!(
-                kind = "query",
+                kind = "get",
                 component = self.name.as_str(),
                 %row_idx,
                 bucket_nr,
