@@ -71,6 +71,7 @@ pub(crate) fn tree_from_space_views(
                 }
                 ViewCategory::Tensor | ViewCategory::Plot => Some(1.0), // Not sure if we should do `None` here.
                 ViewCategory::Text => Some(2.0),                        // Make text logs wide
+                ViewCategory::BarChart => None,
             };
 
             SpaceMakeInfo {

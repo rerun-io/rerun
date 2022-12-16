@@ -11,6 +11,7 @@ use crate::{
 };
 
 use super::{
+    view_bar_chart,
     view_category::ViewCategory,
     view_plot,
     view_spatial::{self, SpatialNavigationMode},
@@ -200,7 +201,7 @@ impl SpaceView {
                 ui.add_space(4.0);
                 self.view_state.state_text.selection_ui(ui);
             }
-            ViewCategory::Plot => {}
+            ViewCategory::Plot | ViewCategory::BarChart => {}
         }
     }
 
@@ -372,6 +373,12 @@ impl SpaceView {
         };
 
         match self.category {
+            ViewCategory::BarChart => {
+                let mut scene = view_bar_chart::SceneBarChart::default();
+                scene.load_objects(ctx, &query);
+                self.view_state.ui_bar_chart(ctx, ui, &scene);
+            }
+
             ViewCategory::Spatial => {
                 let mut scene = view_spatial::SceneSpatial::default();
                 scene.load_objects(
@@ -397,11 +404,13 @@ impl SpaceView {
                 scene.load_objects(ctx, &query);
                 self.view_state.ui_tensor(ctx, ui, &scene);
             }
+
             ViewCategory::Text => {
                 let mut scene = view_text::SceneText::default();
                 scene.load_objects(ctx, &query, &self.view_state.state_text.filters);
                 self.view_state.ui_text(ctx, ui, &scene);
             }
+
             ViewCategory::Plot => {
                 let mut scene = view_plot::ScenePlot::default();
                 scene.load_objects(ctx, &query);
@@ -448,6 +457,7 @@ pub(crate) struct ViewState {
     state_tensors: ahash::HashMap<InstanceId, view_tensor::ViewTensorState>,
     state_text: view_text::ViewTextState,
     state_plot: view_plot::ViewPlotState,
+    state_bar_chart: view_bar_chart::BarChartState,
 }
 
 impl ViewState {
@@ -529,6 +539,23 @@ impl ViewState {
         }
         .show(ui, |ui| {
             view_text::view_text(ctx, ui, &mut self.state_text, scene);
+        });
+    }
+
+    fn ui_bar_chart(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        scene: &view_bar_chart::SceneBarChart,
+    ) {
+        ui.vertical(|ui| {
+            let response = ui
+                .scope(|ui| {
+                    view_bar_chart::view_bar_chart(ctx, ui, &mut self.state_bar_chart, scene);
+                })
+                .response;
+
+            show_help_button_overlay(ui, response.rect, ctx, view_bar_chart::HELP_TEXT);
         });
     }
 

@@ -7,18 +7,21 @@ use re_data_store::{LogDb, ObjPath, Timeline};
     Debug, Default, PartialOrd, Ord, enumset::EnumSetType, serde::Deserialize, serde::Serialize,
 )]
 pub enum ViewCategory {
+    /// Text log view
+    Text,
+
+    /// Time series plot (scalar over time)
+    Plot,
+
+    /// Bar-chart made from 1D tensor data
+    BarChart,
+
     /// 2D or 3D view
     #[default]
     Spatial,
 
     /// High-dimensional tensor view
     Tensor,
-
-    /// Text log view
-    Text,
-
-    /// Time series plot
-    Plot,
 }
 
 pub type ViewCategorySet = enumset::EnumSet<ViewCategory>;
@@ -60,7 +63,9 @@ pub fn categorize_obj_path(
                         if let Ok((_, re_log_types::DataVec::Tensor(tensors))) =
                             field_store.query_field_to_datavec(&time_query, None)
                         {
-                            return if tensors
+                            return if tensors.iter().all(|tensor| tensor.is_vector()) {
+                                ViewCategory::BarChart.into()
+                            } else if tensors
                                 .iter()
                                 .all(|tensor| tensor.is_shaped_like_an_image())
                             {

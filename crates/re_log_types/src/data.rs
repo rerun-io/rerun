@@ -1046,6 +1046,12 @@ impl Tensor {
         self.shape.len()
     }
 
+    /// Shape is one of `[N]`, `[1, N]` or `[N, 1]`
+    pub fn is_vector(&self) -> bool {
+        let shape = &self.shape;
+        shape.len() == 1 || { shape.len() == 2 && (shape[0].size == 1 || shape[1].size == 1) }
+    }
+
     pub fn is_shaped_like_an_image(&self) -> bool {
         self.num_dim() == 2
             || self.num_dim() == 3 && {
