@@ -224,7 +224,7 @@ fn latest_at_standard_impl(store: &mut DataStore) {
     let timeline_log_time = Timeline::new("log_time", TimeType::Time);
     let components_all = &["instances", Rect2D::NAME, Point2D::NAME];
 
-    // --- Testing at all frames ---
+    // --- LatestAt + unit-length RangeAt at all frames ---
 
     let scenarios = [
         (
@@ -276,6 +276,7 @@ fn latest_at_standard_impl(store: &mut DataStore) {
     ];
 
     for (scenario, expectation, frame_nr, expected) in scenarios {
+        // latest_at
         tracker.assert_latest_at(
             scenario,
             expectation,
@@ -283,11 +284,27 @@ fn latest_at_standard_impl(store: &mut DataStore) {
             &LatestAtQuery::new(timeline_frame_nr, frame_nr),
             &ent_path,
             components_all,
+            expected.clone(),
+        );
+
+        // range
+        let frame_nr = (frame_nr.as_i64() + 1).into();
+        let expected = expected
+            .into_iter()
+            .map(|(component, time)| (component, vec![time]))
+            .collect();
+        tracker.assert_range(
+            scenario,
+            expectation,
+            store,
+            &RangeQuery::new(timeline_frame_nr, TimeRange::new(frame_nr, frame_nr)),
+            &ent_path,
+            components_all,
             expected,
         );
     }
 
-    // --- Testing at all times ---
+    // --- LatestAt + unit-length RangeAt at all times ---
 
     let scenarios = [
         (
@@ -338,11 +355,28 @@ fn latest_at_standard_impl(store: &mut DataStore) {
     ];
 
     for (scenario, expectation, log_time, expected) in scenarios {
+        // latest_at
         tracker.assert_latest_at(
             scenario,
             expectation,
             store,
             &LatestAtQuery::new(timeline_log_time, log_time.nanos_since_epoch().into()),
+            &ent_path,
+            components_all,
+            expected.clone(),
+        );
+
+        // range
+        let log_time = (log_time.nanos_since_epoch() + 1).into();
+        let expected = expected
+            .into_iter()
+            .map(|(component, time)| (component, vec![time]))
+            .collect();
+        tracker.assert_range(
+            scenario,
+            expectation,
+            store,
+            &RangeQuery::new(timeline_log_time, TimeRange::new(log_time, log_time)),
             &ent_path,
             components_all,
             expected,
@@ -642,7 +676,7 @@ fn range_standard() {
 fn range_standard_impl(store: &mut DataStore) {
     let ent_path = EntityPath::from("this/that");
 
-    // TODO: range out of bounds should have the same behavior as latest_at
+    // TODO: range emptiness edge cases
 
     let now = Time::now();
     let now_nanos = now.nanos_since_epoch();
@@ -923,28 +957,27 @@ impl DataTracker {
             ent_path: &EntityPath,
             primary: ComponentNameRef<'_>,
             component: ComponentNameRef<'_>,
-            // ) -> Series {
-        ) {
+        ) -> Option<Series> {
             let components = &[component];
             let row_indices = store.range(query, ent_path, primary, components);
             let rows = row_indices
                 .map(|(_, row_indices)| store.get(&[component], &row_indices))
-                .flat_map(|mut results| {
+                .filter_map(|mut results| {
                     std::mem::take(&mut results[0])
                         .map(|row| Series::try_from((component, row)).unwrap())
                 })
                 .collect::<Vec<_>>();
-
             dbg!(&rows);
-            if !rows.is_empty() {
+
+            // TODO: maybe we ask the store what type we're expecting here...?
+
+            (!rows.is_empty()).then(|| {
                 let mut series = Series::new_empty(component, rows[0].dtype());
                 for row in rows {
-                    series.append(&row);
+                    series.append(&row).unwrap(); // TODO
                 }
-                dbg!(series);
-            }
-
-            // std::mem::take(&mut results[0]).map(|row| Series::try_from((component, row)).unwrap())
+                dbg!(series)
+            })
         }
 
         // fn fetch_components_pov<const N: usize>(
@@ -981,35 +1014,37 @@ impl DataTracker {
             for component in components {
                 fetch_component_pov(store, query, ent_path, component, component);
             }
-            // let series = components
-            //     .iter()
-            //     .filter_map(|&component| {
-            //         fetch_component_pov(store, query, ent_path, component, component)
-            //     })
-            //     .collect::<Vec<_>>();
+            let series = components
+                .iter()
+                .filter_map(|&component| {
+                    fetch_component_pov(store, query, ent_path, component, component)
+                })
+                .collect::<Vec<_>>();
 
-            // let df = DataFrame::new(series).unwrap();
-            // df.explode(df.get_column_names()).unwrap()
+            let df = DataFrame::new(series).unwrap();
+            df.explode(df.get_column_names()).unwrap()
         };
 
-        // let series = expected
-        //     .into_iter()
-        //     .filter_map(|(name, time, idx)| {
-        //         self.all_data
-        //             .get(&(name.to_owned(), time))
-        //             .and_then(|entries| entries.get(idx).cloned())
-        //             .map(|data| (name, data))
-        //     })
-        //     .map(|(name, data)| Series::try_from((name, data)).unwrap())
-        //     .collect::<Vec<_>>();
-        // let expected = DataFrame::new(series).unwrap();
-        // let expected = expected.explode(expected.get_column_names()).unwrap();
+        let series = expected
+            .into_iter()
+            .flat_map(|(name, times, idx)| {
+                times.into_iter().filter_map(move |time| {
+                    self.all_data
+                        .get(&(name.to_owned(), time))
+                        .and_then(|entries| entries.get(idx).cloned())
+                        .map(|data| (name, data))
+                })
+            })
+            .map(|(name, data)| Series::try_from((name, data)).unwrap())
+            .collect::<Vec<_>>();
+        let expected = DataFrame::new(series).unwrap();
+        let expected = expected.explode(expected.get_column_names()).unwrap();
 
-        // store.sort_indices();
-        // assert_eq!(
-        //     expected, df,
-        //     "\nScenario: {scenario}.\nExpected: {expectation}.\n{store}"
-        // );
+        store.sort_indices();
+        assert_eq!(
+            expected, df,
+            "\nScenario: {scenario}.\nExpected: {expectation}.\n{store}"
+        );
     }
 }
 
