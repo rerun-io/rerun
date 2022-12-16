@@ -17,7 +17,7 @@ pub struct PointCloudBuilder<PerPointUserData> {
     pub colors: Vec<Color32>,
     pub user_data: Vec<PerPointUserData>,
 
-    pub batches: Vec<PointCloudBatchInfo>,
+    batches: Vec<PointCloudBatchInfo>,
 
     /// z value given to the next 2d point.
     pub next_2d_z: f32,
@@ -53,6 +53,28 @@ where
         });
 
         PointCloudBatchBuilder(self)
+    }
+
+    pub fn iter_vertices_by_batch(
+        &self,
+    ) -> impl Iterator<
+        Item = (
+            &PointCloudBatchInfo,
+            impl Iterator<Item = (&PointCloudVertex, &PerPointUserData)>,
+        ),
+    > {
+        let mut vertex_offset = 0;
+        self.batches.iter().map(move |batch| {
+            let out = (
+                batch,
+                self.vertices
+                    .iter()
+                    .zip(self.user_data.iter())
+                    .skip(vertex_offset),
+            );
+            vertex_offset += batch.point_count as usize;
+            out
+        })
     }
 
     /// Finalizes the builder and returns a point cloud draw data with all the points added so far.

@@ -1321,23 +1321,30 @@ impl SceneSpatial {
 
         {
             crate::profile_scope!("points_3d");
-            for (point, instance_hash) in points.vertices.iter().zip(points.user_data.iter()) {
-                if instance_hash.is_none() {
-                    continue;
-                }
 
-                // TODO(emilk): take point radius into account
-                let pos_in_ui = ui_from_world.project_point3(point.position);
-                if pos_in_ui.z < 0.0 {
-                    continue; // TODO(emilk): don't we expect negative Z!? RHS etc
-                }
-                let dist_sq = pos_in_ui.truncate().distance_squared(pointer_in_ui);
-                if dist_sq < max_side_dist_sq {
-                    let t = pos_in_ui.z.abs();
-                    if t < closest_z || dist_sq < closest_side_dist_sq {
-                        closest_z = t;
-                        closest_side_dist_sq = dist_sq;
-                        closest_instance_id = Some(*instance_hash);
+            for (batch, vertex_iter) in points.iter_vertices_by_batch() {
+                // For getting the closest point we could transform the mouse ray into the "batch space".
+                // However, we want to determine the closest point in *screen space*, meaning that we need to project all points.
+                let ui_from_batch = ui_from_world * batch.world_from_scene;
+
+                for (point, instance_hash) in vertex_iter {
+                    if instance_hash.is_none() {
+                        continue;
+                    }
+
+                    // TODO(emilk): take point radius into account
+                    let pos_in_ui = ui_from_batch.project_point3(point.position);
+                    if pos_in_ui.z < 0.0 {
+                        continue; // TODO(emilk): don't we expect negative Z!? RHS etc
+                    }
+                    let dist_sq = pos_in_ui.truncate().distance_squared(pointer_in_ui);
+                    if dist_sq < max_side_dist_sq {
+                        let t = pos_in_ui.z.abs();
+                        if t < closest_z || dist_sq < closest_side_dist_sq {
+                            closest_z = t;
+                            closest_side_dist_sq = dist_sq;
+                            closest_instance_id = Some(*instance_hash);
+                        }
                     }
                 }
             }
@@ -1345,18 +1352,35 @@ impl SceneSpatial {
 
         {
             crate::profile_scope!("line_segments_3d");
-            for ((_line_strip, vertices), instance_hash) in line_strips
-                .iter_strips_with_vertices()
-                .zip(line_strips.strip_user_data.iter())
-            {
-                if instance_hash.is_none() {
-                    continue;
-                }
-                // TODO(emilk): take line segment radius into account
 
-                for (start, end) in vertices.tuple_windows() {
-                    let a = ui_from_world.project_point3(start.pos);
-                    let b = ui_from_world.project_point3(end.pos);
+            let mut line_vertex_offset = 0;
+
+            for batch in &line_strips.batches {
+                let strip_idx = line_strips.vertices[line_vertex_offset].strip_index as usize;
+                let mut instance_hash = line_strips.strip_user_data[strip_idx];
+
+                // For getting the closest point we could transform the mouse ray into the "batch space".
+                // However, we want to determine the closest point in *screen space*, meaning that we need to project all points.
+                let ui_from_batch = ui_from_world * batch.world_from_scene;
+
+                for (start, end) in line_strips
+                    .vertices
+                    .iter()
+                    .skip(line_vertex_offset)
+                    .take(batch.line_vertex_count as usize)
+                    .tuple_windows()
+                {
+                    if start.strip_index != end.strip_index {
+                        instance_hash = line_strips.strip_user_data[end.strip_index as usize];
+                        continue;
+                    }
+                    if instance_hash.is_none() {
+                        continue;
+                    }
+
+                    // TODO(emilk): take line segment radius into account
+                    let a = ui_from_batch.project_point3(start.pos);
+                    let b = ui_from_batch.project_point3(end.pos);
                     let dist_sq = line_segment_distance_sq_to_point_2d(
                         [a.truncate(), b.truncate()],
                         pointer_in_ui,
@@ -1367,10 +1391,12 @@ impl SceneSpatial {
                         if t < closest_z || dist_sq < closest_side_dist_sq {
                             closest_z = t;
                             closest_side_dist_sq = dist_sq;
-                            closest_instance_id = Some(*instance_hash);
+                            closest_instance_id = Some(instance_hash);
                         }
                     }
                 }
+
+                line_vertex_offset += batch.line_vertex_count as usize;
             }
         }
 
