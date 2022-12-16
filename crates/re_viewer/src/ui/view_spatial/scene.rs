@@ -218,7 +218,7 @@ impl SceneSpatial {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        transforms: TransformCache,
+        transforms: &TransformCache,
         objects_properties: &ObjectsProperties,
         hovered: InstanceIdHash,
     ) {
@@ -226,15 +226,15 @@ impl SceneSpatial {
 
         self.annotation_map.load(ctx, query);
 
-        self.load_points_3d(ctx, query, &transforms, objects_properties, hovered);
-        self.load_boxes_3d(ctx, query, &transforms, objects_properties, hovered);
-        self.load_lines_3d(ctx, query, &transforms, objects_properties, hovered);
-        self.load_arrows_3d(ctx, query, &transforms, objects_properties, hovered);
-        self.load_meshes(ctx, query, &transforms, objects_properties, hovered);
-        self.load_images(ctx, query, &transforms, objects_properties, hovered);
-        self.load_boxes_2d(ctx, query, &transforms, objects_properties, hovered);
-        self.load_line_segments_2d(ctx, query, &transforms, objects_properties, hovered);
-        self.load_points_2d(ctx, query, &transforms, objects_properties, hovered);
+        self.load_points_3d(ctx, query, transforms, objects_properties, hovered);
+        self.load_boxes_3d(ctx, query, transforms, objects_properties, hovered);
+        self.load_lines_3d(ctx, query, transforms, objects_properties, hovered);
+        self.load_arrows_3d(ctx, query, transforms, objects_properties, hovered);
+        self.load_meshes(ctx, query, transforms, objects_properties, hovered);
+        self.load_images(ctx, query, transforms, objects_properties, hovered);
+        self.load_boxes_2d(ctx, query, transforms, objects_properties, hovered);
+        self.load_line_segments_2d(ctx, query, transforms, objects_properties, hovered);
+        self.load_points_2d(ctx, query, transforms, objects_properties, hovered);
 
         self.primitives.recalculate_bounding_box();
     }
@@ -273,9 +273,14 @@ impl SceneSpatial {
 
                 let annotations = self.annotation_map.find(obj_path);
                 let default_color = DefaultColor::ObjPath(obj_path);
-                let mut point_batch = self.primitives.points.batch("3d points");
                 let properties = objects_properties.get(obj_path);
                 let world_from_scene = transforms.get_world_from_scene(obj_path);
+
+                let mut point_batch = self
+                    .primitives
+                    .points
+                    .batch("3d points")
+                    .world_from_scene(*world_from_scene);
 
                 visit_type_data_5(
                     obj_store,
@@ -523,6 +528,12 @@ impl SceneSpatial {
             let properties = objects_properties.get(obj_path);
             let world_from_scene = transforms.get_world_from_scene(obj_path);
 
+            let mut line_batch = self
+                .primitives
+                .line_strips
+                .batch("lines 3d")
+                .world_from_scene(*world_from_scene);
+
             visit_type_data_2(
                 obj_store,
                 &FieldName::from("points"),
@@ -558,8 +569,6 @@ impl SceneSpatial {
                     }
 
                     // Add renderer primitive
-                    let mut line_batch = self.primitives.line_strips.batch("lines 3d");
-
                     match obj_type {
                         ObjectType::Path3D => {
                             line_batch.add_strip(points.iter().map(|v| Vec3::from_slice(v)))
@@ -597,6 +606,12 @@ impl SceneSpatial {
             let properties = objects_properties.get(obj_path);
             let world_from_scene = transforms.get_world_from_scene(obj_path);
 
+            let mut line_batch = self
+                .primitives
+                .line_strips
+                .batch("arrows")
+                .world_from_scene(*world_from_scene);
+
             visit_type_data_3(
                 obj_store,
                 &FieldName::from("arrow3d"),
@@ -608,7 +623,8 @@ impl SceneSpatial {
                  arrow: &re_log_types::Arrow3D,
                  color: Option<&[u8; 4]>,
                  width_scale: Option<&f32>,
-                 label: Option<&String>| {
+                 _label: Option<&String>| {
+                    // TODO(andreas): support labels
                     let instance_hash = instance_hash_if_interactive(
                         obj_path,
                         instance_index,
@@ -620,16 +636,33 @@ impl SceneSpatial {
                     // TODO(andreas): support class ids for arrows
                     let annotation_info = annotations.class_description(None).annotation_info();
                     let color = annotation_info.color(color, default_color);
-                    let label = annotation_info.label(label);
+                    //let label = annotation_info.label(label);
 
-                    self.add_arrow(
-                        instance_hash,
-                        hovered_instance,
-                        color,
-                        Some(width),
-                        label,
-                        arrow,
-                    );
+                    let width_scale = Some(width);
+
+                    let re_log_types::Arrow3D { origin, vector } = arrow;
+
+                    let width_scale = width_scale.unwrap_or(1.0);
+                    let vector = Vec3::from_slice(vector);
+                    let origin = Vec3::from_slice(origin);
+
+                    let mut radius = Size::new_scene(width_scale * 0.5);
+                    let tip_length = LineStripFlags::get_triangle_cap_tip_length(radius.0);
+                    let vector_len = vector.length();
+                    let end = origin + vector * ((vector_len - tip_length) / vector_len);
+
+                    let mut color = to_ecolor(color);
+                    if instance_hash.is_some() && instance_hash == hovered_instance {
+                        color = Self::HOVER_COLOR;
+                        radius = Self::hover_size_boost(radius);
+                    }
+
+                    line_batch
+                        .add_segment(origin, end)
+                        .radius(radius)
+                        .color(color)
+                        .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE)
+                        .user_data(instance_hash);
                 },
             );
         }
@@ -645,55 +678,57 @@ impl SceneSpatial {
     ) {
         crate::profile_function!();
 
-        let meshes = query
-            .iter_object_stores(ctx.log_db, &[ObjectType::Mesh3D])
-            .flat_map(|(_obj_type, obj_path, time_query, obj_store)| {
-                let mut batch = Vec::new();
-                let properties = objects_properties.get(obj_path);
-                let world_from_scene = transforms.get_world_from_scene(obj_path);
+        for (_obj_type, obj_path, time_query, obj_store) in
+            query.iter_object_stores(ctx.log_db, &[ObjectType::Mesh3D])
+        {
+            let properties = objects_properties.get(obj_path);
+            let world_from_scene = transforms.get_world_from_scene(obj_path);
+            // TODO(andreas): This throws away perspective transformation!
+            let world_from_scene_affine = glam::Affine3A::from_mat4(*world_from_scene);
 
-                visit_type_data_1(
-                    obj_store,
-                    &FieldName::from("mesh"),
-                    &time_query,
-                    ("color",),
-                    |instance_index: Option<&IndexHash>,
-                     _time: i64,
-                     _msg_id: &MsgId,
-                     mesh: &re_log_types::Mesh3D,
-                     _color: Option<&[u8; 4]>| {
-                        let instance_hash = instance_hash_if_interactive(
-                            obj_path,
-                            instance_index,
-                            properties.interactive,
-                        );
+            visit_type_data_1(
+                obj_store,
+                &FieldName::from("mesh"),
+                &time_query,
+                ("color",),
+                |instance_index: Option<&IndexHash>,
+                 _time: i64,
+                 _msg_id: &MsgId,
+                 mesh: &re_log_types::Mesh3D,
+                 _color: Option<&[u8; 4]>| {
+                    let instance_hash = instance_hash_if_interactive(
+                        obj_path,
+                        instance_index,
+                        properties.interactive,
+                    );
 
-                        let additive_tint =
-                            if instance_hash.is_some() && hovered_instance == instance_hash {
-                                Some(Self::HOVER_COLOR)
-                            } else {
-                                None
-                            };
+                    let additive_tint =
+                        if instance_hash.is_some() && hovered_instance == instance_hash {
+                            Some(Self::HOVER_COLOR)
+                        } else {
+                            None
+                        };
 
-                        let Some(mesh) = ctx.cache.mesh.load(
-                                &obj_path.to_string(),
-                                &MeshSourceData::Mesh3D(mesh.clone()),
-                                ctx.render_ctx
-                            )
-                            .map(|cpu_mesh| MeshSource {
-                                instance_hash,
-                                world_from_mesh: Default::default(),
-                                mesh: cpu_mesh,
-                                additive_tint,
-                            }) else { return };
-
-                        batch.push(mesh);
-                    },
-                );
-                batch
-            });
-
-        self.primitives.meshes.extend(meshes);
+                    if let Some(mesh) = ctx
+                        .cache
+                        .mesh
+                        .load(
+                            &obj_path.to_string(),
+                            &MeshSourceData::Mesh3D(mesh.clone()),
+                            ctx.render_ctx,
+                        )
+                        .map(|cpu_mesh| MeshSource {
+                            instance_hash,
+                            world_from_mesh: world_from_scene_affine,
+                            mesh: cpu_mesh,
+                            additive_tint,
+                        })
+                    {
+                        self.primitives.meshes.push(mesh);
+                    };
+                },
+            );
+        }
     }
 
     fn load_images(
@@ -764,9 +799,10 @@ impl SceneSpatial {
                     self.primitives
                         .textured_rectangles
                         .push(re_renderer::renderer::TexturedRect {
-                            top_left_corner_position: glam::Vec3::ZERO,
-                            extent_u: glam::Vec3::X * w,
-                            extent_v: glam::Vec3::Y * h,
+                            top_left_corner_position: world_from_scene
+                                .transform_point3(glam::Vec3::ZERO),
+                            extent_u: world_from_scene.transform_vector3(glam::Vec3::X * w),
+                            extent_v: world_from_scene.transform_vector3(glam::Vec3::Y * h),
                             texture: tensor_view.texture_handle,
                             texture_filter_magnification:
                                 re_renderer::renderer::TextureFilterMag::Nearest,
@@ -818,8 +854,14 @@ impl SceneSpatial {
             query.iter_object_stores(ctx.log_db, &[ObjectType::BBox2D])
         {
             let properties = objects_properties.get(obj_path);
-            let world_from_scene = transforms.get_world_from_scene(obj_path);
             let annotations = self.annotation_map.find(obj_path);
+            let world_from_scene = transforms.get_world_from_scene(obj_path);
+
+            let mut line_batch = self
+                .primitives
+                .line_strips
+                .batch("2d box")
+                .world_from_scene(*world_from_scene);
 
             visit_type_data_4(
                 obj_store,
@@ -856,7 +898,6 @@ impl SceneSpatial {
                     }
 
                     // Lines don't associated with instance (i.e. won't participate in hovering)
-                    let mut line_batch = self.primitives.line_strips.batch("2d box");
                     line_batch
                         .add_axis_aligned_rectangle_outline_2d(bbox.min.into(), bbox.max.into())
                         .color(paint_props.bg_stroke.color)
@@ -910,7 +951,11 @@ impl SceneSpatial {
             let mut keypoints: HashMap<(ClassId, i64), HashMap<KeypointId, glam::Vec3>> =
                 Default::default();
 
-            let mut point_batch = self.primitives.points.batch("2d points");
+            let mut point_batch = self
+                .primitives
+                .points
+                .batch("2d points")
+                .world_from_scene(*world_from_scene);
 
             visit_type_data_5(
                 obj_store,
@@ -1018,6 +1063,12 @@ impl SceneSpatial {
             let properties = objects_properties.get(obj_path);
             let world_from_scene = transforms.get_world_from_scene(obj_path);
 
+            let mut line_batch = self
+                .primitives
+                .line_strips
+                .batch("lines 2d")
+                .world_from_scene(*world_from_scene);
+
             visit_type_data_2(
                 obj_store,
                 &FieldName::from("points"),
@@ -1048,7 +1099,6 @@ impl SceneSpatial {
                     }
 
                     // TODO(andreas): support outlines directly by re_renderer (need only 1 and 2 *point* black outlines)
-                    let mut line_batch = self.primitives.line_strips.batch("lines 2d");
                     line_batch
                         .add_segments_2d(points.chunks_exact(2).map(|chunk| {
                             (
@@ -1212,108 +1262,6 @@ impl SceneSpatial {
             .user_data(instance_id);
 
         Some(())
-    }
-
-    fn add_arrow(
-        &mut self,
-        instance_hash: InstanceIdHash,
-        hovered_instance: InstanceIdHash,
-        color: [u8; 4],
-        width_scale: Option<f32>,
-        label: Option<String>,
-        arrow: &re_log_types::Arrow3D,
-    ) {
-        drop(label); // TODO(andreas): support labels
-
-        let re_log_types::Arrow3D { origin, vector } = arrow;
-
-        let width_scale = width_scale.unwrap_or(1.0);
-        let vector = Vec3::from_slice(vector);
-        let origin = Vec3::from_slice(origin);
-
-        let mut radius = Size::new_scene(width_scale * 0.5);
-        let tip_length = LineStripFlags::get_triangle_cap_tip_length(radius.0);
-        let vector_len = vector.length();
-        let end = origin + vector * ((vector_len - tip_length) / vector_len);
-
-        let mut color = to_ecolor(color);
-        if instance_hash.is_some() && instance_hash == hovered_instance {
-            color = Self::HOVER_COLOR;
-            radius = Self::hover_size_boost(radius);
-        }
-
-        self.primitives
-            .line_strips
-            .batch("arrow")
-            .add_segment(origin, end)
-            .radius(radius)
-            .color(color)
-            .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE)
-            .user_data(instance_hash);
-    }
-
-    fn add_box_3d(
-        &mut self,
-        instance_id: InstanceIdHash,
-        color: Color32,
-        line_radius: Size,
-        label: Option<String>,
-        box3: &re_log_types::Box3,
-    ) {
-        let re_log_types::Box3 {
-            rotation,
-            translation,
-            half_size,
-        } = box3;
-        let rotation = glam::Quat::from_array(*rotation);
-        let translation = Vec3::from(*translation);
-        let half_size = Vec3::from(*half_size);
-        let transform =
-            glam::Affine3A::from_scale_rotation_translation(half_size, rotation, translation);
-
-        let corners = [
-            transform.transform_point3(vec3(-0.5, -0.5, -0.5)),
-            transform.transform_point3(vec3(-0.5, -0.5, 0.5)),
-            transform.transform_point3(vec3(-0.5, 0.5, -0.5)),
-            transform.transform_point3(vec3(-0.5, 0.5, 0.5)),
-            transform.transform_point3(vec3(0.5, -0.5, -0.5)),
-            transform.transform_point3(vec3(0.5, -0.5, 0.5)),
-            transform.transform_point3(vec3(0.5, 0.5, -0.5)),
-            transform.transform_point3(vec3(0.5, 0.5, 0.5)),
-        ];
-
-        if let Some(label) = label {
-            self.ui.labels_3d.push(Label3D {
-                text: label,
-                origin: translation,
-            });
-        }
-
-        let segments = [
-            // bottom:
-            (corners[0b000], corners[0b001]),
-            (corners[0b000], corners[0b010]),
-            (corners[0b011], corners[0b001]),
-            (corners[0b011], corners[0b010]),
-            // top:
-            (corners[0b100], corners[0b101]),
-            (corners[0b100], corners[0b110]),
-            (corners[0b111], corners[0b101]),
-            (corners[0b111], corners[0b110]),
-            // sides:
-            (corners[0b000], corners[0b100]),
-            (corners[0b001], corners[0b101]),
-            (corners[0b010], corners[0b110]),
-            (corners[0b011], corners[0b111]),
-        ];
-
-        self.primitives
-            .line_strips
-            .batch("box 3d")
-            .add_segments(segments.into_iter())
-            .radius(line_radius)
-            .color(color)
-            .user_data(instance_id);
     }
 
     pub fn is_empty(&self) -> bool {

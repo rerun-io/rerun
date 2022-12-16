@@ -70,7 +70,7 @@ impl<'s> SceneQuery<'s> {
         spatial.load_objects(
             ctx,
             self,
-            TransformCache::default(),
+            &TransformCache::default(),
             self.obj_props,
             InstanceIdHash::NONE,
         );

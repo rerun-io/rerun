@@ -402,7 +402,7 @@ impl SpaceView {
                 scene.load_objects(
                     ctx,
                     &query,
-                    transforms,
+                    &transforms,
                     &self.obj_properties,
                     self.view_state.state_spatial.hovered_instance_hash(),
                 );
