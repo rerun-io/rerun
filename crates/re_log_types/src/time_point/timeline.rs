@@ -44,6 +44,22 @@ impl Timeline {
     }
 
     #[inline]
+    pub fn new_temporal(name: impl Into<TimelineName>) -> Self {
+        Self {
+            name: name.into(),
+            typ: TimeType::Time,
+        }
+    }
+
+    #[inline]
+    pub fn new_sequence(name: impl Into<TimelineName>) -> Self {
+        Self {
+            name: name.into(),
+            typ: TimeType::Sequence,
+        }
+    }
+
+    #[inline]
     pub fn name(&self) -> &TimelineName {
         &self.name
     }

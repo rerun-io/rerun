@@ -6,7 +6,7 @@ use itertools::Itertools;
 use nohash_hasher::IntMap;
 
 use re_data_store::{
-    query::visit_type_data_3, DataStore, FieldName, Index, ObjPath, ObjPathComp, ObjTypePath,
+    query::visit_type_data_2, DataStore, FieldName, Index, ObjPath, ObjPathComp, ObjTypePath,
     ObjTypePathComp, TimeInt, TimeQuery, Timeline,
 };
 use re_log_types::{
@@ -44,16 +44,15 @@ fn do_query(obj_types: &IntMap<ObjTypePath, ObjectType>, data_store: &DataStore)
 
     for (obj_path, obj_store) in timeline_store.iter() {
         let _ = obj_types.get(obj_path.obj_type_path()).unwrap();
-        visit_type_data_3(
+        visit_type_data_2(
             obj_store,
             &FieldName::from("pos"),
             &time_query,
-            ("_visible", "color", "radius"),
+            ("color", "radius"),
             |_instance_index: Option<&IndexHash>,
              _time: i64,
              _msg_id: &MsgId,
              pos: &[f32; 3],
-             _visible: Option<&bool>,
              color: Option<&[u8; 4]>,
              _radius: Option<&f32>| {
                 points.push(Point {

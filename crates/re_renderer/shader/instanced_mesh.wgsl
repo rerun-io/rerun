@@ -1,7 +1,6 @@
 #import <./types.wgsl>
 #import <./global_bindings.wgsl>
 #import <./mesh_vertex.wgsl>
-#import <./utils/quaternion.wgsl>
 #import <./utils/srgb.wgsl>
 
 @group(1) @binding(0)
@@ -23,13 +22,21 @@ struct VertexOut {
 
 @vertex
 fn vs_main(in_vertex: VertexIn, in_instance: InstanceIn) -> VertexOut {
-    let world_position = quat_rotate_vec3(in_instance.rotation, in_vertex.position * in_instance.position_and_scale.w) +
-                         in_instance.position_and_scale.xyz;
+    let world_position = Vec3(
+        dot(in_instance.world_from_mesh_row_0.xyz, in_vertex.position) + in_instance.world_from_mesh_row_0.w,
+        dot(in_instance.world_from_mesh_row_1.xyz, in_vertex.position) + in_instance.world_from_mesh_row_1.w,
+        dot(in_instance.world_from_mesh_row_2.xyz, in_vertex.position) + in_instance.world_from_mesh_row_2.w,
+    );
+    let world_normal = Vec3(
+        dot(in_instance.world_from_mesh_normal_row_0.xyz, in_vertex.normal),
+        dot(in_instance.world_from_mesh_normal_row_1.xyz, in_vertex.normal),
+        dot(in_instance.world_from_mesh_normal_row_2.xyz, in_vertex.normal),
+    );
 
     var out: VertexOut;
     out.position = frame.projection_from_world * Vec4(world_position, 1.0);
     out.texcoord = in_vertex.texcoord;
-    out.normal_world_space = quat_rotate_vec3(in_instance.rotation, in_vertex.normal);
+    out.normal_world_space = world_normal;
     out.additive_tint_rgb = linear_from_srgb(in_instance.additive_tint_srgb.rgb);
 
     return out;
