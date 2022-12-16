@@ -68,17 +68,18 @@ pub fn get_component_with_instances(
 
     let results = store.get(&components, &row_indices);
 
-    let series: std::result::Result<Vec<Series>, PolarsError> = components
+    let series: Result<Vec<Series>> = components
         .iter()
         .zip(results)
         .filter_map(|(component, col)| col.map(|col| (component, col)))
         .map(|(&component, col)| {
+            // TODO(jleibs): Is it possible to have multiple rows here?
             let col_array = col
                 .as_any()
                 .downcast_ref::<ListArray<i32>>()
-                .unwrap()
+                .ok_or(QueryError::BadAccess)?
                 .value(0);
-            Series::try_from((component, col_array))
+            Ok(Series::try_from((component, col_array))?)
         })
         .collect();
 
