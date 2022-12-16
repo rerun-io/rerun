@@ -13,9 +13,8 @@ use crate::{
 use super::{
     view_bar_chart,
     view_category::ViewCategory,
-    view_plot,
     view_spatial::{self, SpatialNavigationMode},
-    view_tensor, view_text,
+    view_tensor, view_text, view_time_series,
 };
 
 // ----------------------------------------------------------------------------
@@ -182,6 +181,14 @@ impl SpaceView {
         ui.separator();
 
         match self.category {
+            ViewCategory::Text => {
+                ui.strong("Text view");
+                ui.add_space(4.0);
+                self.view_state.state_text.selection_ui(ui);
+            }
+
+            ViewCategory::TimeSeries | ViewCategory::BarChart => {}
+
             ViewCategory::Spatial => {
                 ui.strong("Spatial view");
                 self.view_state.state_spatial.show_settings_ui(ctx, ui);
@@ -196,12 +203,6 @@ impl SpaceView {
                     }
                 }
             }
-            ViewCategory::Text => {
-                ui.strong("Text view");
-                ui.add_space(4.0);
-                self.view_state.state_text.selection_ui(ui);
-            }
-            ViewCategory::Plot | ViewCategory::BarChart => {}
         }
     }
 
@@ -373,6 +374,18 @@ impl SpaceView {
         };
 
         match self.category {
+            ViewCategory::Text => {
+                let mut scene = view_text::SceneText::default();
+                scene.load_objects(ctx, &query, &self.view_state.state_text.filters);
+                self.view_state.ui_text(ctx, ui, &scene);
+            }
+
+            ViewCategory::TimeSeries => {
+                let mut scene = view_time_series::SceneTimeSeries::default();
+                scene.load_objects(ctx, &query);
+                self.view_state.ui_time_series(ctx, ui, &scene);
+            }
+
             ViewCategory::BarChart => {
                 let mut scene = view_bar_chart::SceneBarChart::default();
                 scene.load_objects(ctx, &query);
@@ -403,18 +416,6 @@ impl SpaceView {
                 let mut scene = view_tensor::SceneTensor::default();
                 scene.load_objects(ctx, &query);
                 self.view_state.ui_tensor(ctx, ui, &scene);
-            }
-
-            ViewCategory::Text => {
-                let mut scene = view_text::SceneText::default();
-                scene.load_objects(ctx, &query, &self.view_state.state_text.filters);
-                self.view_state.ui_text(ctx, ui, &scene);
-            }
-
-            ViewCategory::Plot => {
-                let mut scene = view_plot::ScenePlot::default();
-                scene.load_objects(ctx, &query);
-                self.view_state.ui_plot(ctx, ui, &scene);
             }
         };
     }
@@ -456,7 +457,7 @@ pub(crate) struct ViewState {
     pub state_spatial: view_spatial::ViewSpatialState,
     state_tensors: ahash::HashMap<InstanceId, view_tensor::ViewTensorState>,
     state_text: view_text::ViewTextState,
-    state_plot: view_plot::ViewPlotState,
+    state_time_series: view_time_series::ViewTimeSeriesState,
     state_bar_chart: view_bar_chart::BarChartState,
 }
 
@@ -559,20 +560,20 @@ impl ViewState {
         });
     }
 
-    fn ui_plot(
+    fn ui_time_series(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        scene: &view_plot::ScenePlot,
+        scene: &view_time_series::SceneTimeSeries,
     ) -> egui::Response {
         ui.vertical(|ui| {
             let response = ui
                 .scope(|ui| {
-                    view_plot::view_plot(ctx, ui, &mut self.state_plot, scene);
+                    view_time_series::view_time_series(ctx, ui, &mut self.state_time_series, scene);
                 })
                 .response;
 
-            show_help_button_overlay(ui, response.rect, ctx, view_plot::HELP_TEXT);
+            show_help_button_overlay(ui, response.rect, ctx, view_time_series::HELP_TEXT);
         })
         .response
     }

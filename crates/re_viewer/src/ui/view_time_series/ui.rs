@@ -1,9 +1,11 @@
-use crate::ui::view_plot::scene::PlotSeriesKind;
-use crate::ViewerContext;
-use egui::plot::{Legend, Line, Plot, Points};
-use egui::Color32;
+use egui::{
+    plot::{Legend, Line, Plot, Points},
+    Color32,
+};
 
-use super::ScenePlot;
+use crate::{ui::view_time_series::scene::PlotSeriesKind, ViewerContext};
+
+use super::SceneTimeSeries;
 
 // ---
 
@@ -14,13 +16,13 @@ pub(crate) const HELP_TEXT: &str = "Pan by dragging, or scroll (+ shift = horizo
     Right click to move the time cursor to the current position.";
 
 #[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
-pub struct ViewPlotState;
+pub struct ViewTimeSeriesState;
 
-pub(crate) fn view_plot(
+pub(crate) fn view_time_series(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    _state: &mut ViewPlotState,
-    scene: &ScenePlot,
+    _state: &mut ViewTimeSeriesState,
+    scene: &SceneTimeSeries,
 ) -> egui::Response {
     crate::profile_function!();
 

@@ -2,18 +2,21 @@ use std::collections::BTreeMap;
 
 use nohash_hasher::IntSet;
 use re_data_store::{LogDb, ObjPath, Timeline};
+use re_log_types::DataPath;
 
 #[derive(
     Debug, Default, PartialOrd, Ord, enumset::EnumSetType, serde::Deserialize, serde::Serialize,
 )]
 pub enum ViewCategory {
-    /// Text log view
+    // Ordered by dimensionality
+    //
+    /// Text log view (text over time)
     Text,
 
     /// Time series plot (scalar over time)
-    Plot,
+    TimeSeries,
 
-    /// Bar-chart made from 1D tensor data
+    /// Bar-chart plots made from 1D tensor data
     BarChart,
 
     /// 2D or 3D view
@@ -41,7 +44,8 @@ pub fn categorize_obj_path(
         re_log_types::ObjectType::ClassDescription => ViewCategorySet::default(), // we don't have a view for this
 
         re_log_types::ObjectType::TextEntry => ViewCategory::Text.into(),
-        re_log_types::ObjectType::Scalar => ViewCategory::Plot.into(),
+
+        re_log_types::ObjectType::Scalar => ViewCategory::TimeSeries.into(),
 
         re_log_types::ObjectType::Point2D
         | re_log_types::ObjectType::BBox2D
