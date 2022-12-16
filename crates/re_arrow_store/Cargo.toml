@@ -40,6 +40,8 @@ criterion = "0.4"
 itertools = "0.10"
 mimalloc = "0.1"
 polars-core = { workspace = true, features = [
+  "diagonal_concat",
+  "horizontal_concat",
   "dtype-date",
   "dtype-time",
   "dtype-struct",

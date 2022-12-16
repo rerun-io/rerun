@@ -20,11 +20,11 @@ use re_log_types::{
 // --- Configs ---
 
 const COMPONENT_CONFIGS: &[DataStoreConfig] = &[
-    DataStoreConfig::DEFAULT,
-    // DataStoreConfig {
-    //     component_bucket_nb_rows: 0,
-    //     ..DataStoreConfig::DEFAULT
-    // },
+    // DataStoreConfig::DEFAULT,
+    DataStoreConfig {
+        component_bucket_nb_rows: 0,
+        ..DataStoreConfig::DEFAULT
+    },
     // DataStoreConfig {
     //     component_bucket_nb_rows: 1,
     //     ..DataStoreConfig::DEFAULT
@@ -56,11 +56,11 @@ const COMPONENT_CONFIGS: &[DataStoreConfig] = &[
 ];
 
 const INDEX_CONFIGS: &[DataStoreConfig] = &[
-    DataStoreConfig::DEFAULT,
-    // DataStoreConfig {
-    //     index_bucket_nb_rows: 0,
-    //     ..DataStoreConfig::DEFAULT
-    // },
+    // DataStoreConfig::DEFAULT,
+    DataStoreConfig {
+        index_bucket_nb_rows: 0,
+        ..DataStoreConfig::DEFAULT
+    },
     // DataStoreConfig {
     //     index_bucket_nb_rows: 1,
     //     ..DataStoreConfig::DEFAULT
@@ -216,6 +216,8 @@ fn latest_at_standard_impl(store: &mut DataStore) {
         );
     }
 
+    store.sort_indices();
+    eprintln!("{store}");
     if let err @ Err(_) = store.sanity_check() {
         store.sort_indices();
         eprintln!("{store}");
@@ -334,21 +336,21 @@ fn latest_at_standard_impl(store: &mut DataStore) {
             expected.clone(),
         );
 
-        // range
-        let time = (time.as_i64() + 1).into();
-        let expected = expected
-            .into_iter()
-            .map(|(component, time)| (component, vec![time]))
-            .collect();
-        tracker.assert_range(
-            scenario,
-            expectation,
-            store,
-            &RangeQuery::new(timeline, TimeRange::new(time, time)),
-            &ent_path,
-            components_all,
-            expected,
-        );
+        // // range
+        // let time = (time.as_i64() + 1).into();
+        // let expected = expected
+        //     .into_iter()
+        //     .map(|(component, time)| (component, vec![time]))
+        //     .collect();
+        // tracker.assert_range(
+        //     scenario,
+        //     expectation,
+        //     store,
+        //     &RangeQuery::new(timeline, TimeRange::new(time, time)),
+        //     &ent_path,
+        //     components_all,
+        //     expected,
+        // );
     }
 }
 
@@ -481,17 +483,35 @@ fn latest_at_pov_impl(store: &mut DataStore) {
         ),
     ];
 
-    for (scenario, expectation, frame_nr, primary, expected) in scenarios {
+    for (scenario, expectation, time, primary, expected) in scenarios {
+        // latest_at
         tracker.assert_latest_at_pov(
             scenario,
             expectation,
             store,
-            &LatestAtQuery::new(timeline_frame_nr, frame_nr),
+            &LatestAtQuery::new(timeline_frame_nr, time),
             &ent_path,
             primary,
             components_all,
-            expected,
+            expected.clone(),
         );
+
+        // // range
+        // let time = (time.as_i64() + 1).into();
+        // let expected = expected
+        //     .into_iter()
+        //     .map(|(component, time, idx)| (component, vec![time], idx))
+        //     .collect();
+        // tracker.assert_range_pov(
+        //     scenario,
+        //     expectation,
+        //     store,
+        //     &RangeQuery::new(timeline_frame_nr, TimeRange::new(time, time)),
+        //     &ent_path,
+        //     primary,
+        //     components_all,
+        //     expected,
+        // );
     }
 }
 
@@ -851,13 +871,20 @@ impl DataTracker {
         } else {
             let series = components
                 .iter()
-                .filter_map(|&component| {
-                    fetch_component_pov(store, query, ent_path, component, component)
+                .map(|&component| {
+                    fetch_components_pov(store, query, ent_path, component, components)
                 })
                 .collect::<Vec<_>>();
 
-            let df = DataFrame::new(series).unwrap();
-            df.explode(df.get_column_names()).unwrap()
+            let df = polars_core::functions::hor_concat_df(dbg!(&series)).unwrap();
+            // let mut df = DataFrame::empty();
+            // for xxx in series {
+            //     dbg!(&xxx);
+            //     df.vstack_mut(&xxx).unwrap();
+            // }
+            df
+            // let df = DataFrame::new(series).unwrap();
+            // df.explode(df.get_column_names()).unwrap()
         };
 
         let series = expected
@@ -907,6 +934,34 @@ impl DataTracker {
         );
     }
 
+    // TODO
+    #[allow(clippy::too_many_arguments)]
+    fn assert_range_pov<const N: usize>(
+        &self,
+        scenario: &str,
+        expectation: &str,
+        store: &mut DataStore,
+        query: &RangeQuery,
+        ent_path: &EntityPath,
+        primary: ComponentNameRef<'_>,
+        components: &[ComponentNameRef<'_>; N],
+        expected: Vec<(ComponentNameRef<'static>, Vec<TimeInt>)>,
+    ) {
+        self.assert_range_pov_impl(
+            scenario,
+            expectation,
+            store,
+            query,
+            ent_path,
+            primary.into(),
+            components,
+            expected
+                .into_iter()
+                .map(|(name, times)| (name, times, 0))
+                .collect(),
+        );
+    }
+
     #[allow(clippy::too_many_arguments)]
     fn assert_range_pov_impl<const N: usize>(
         &self,
@@ -948,6 +1003,35 @@ impl DataTracker {
             })
         }
 
+        // fn fetch_components_pov(
+        //     store: &DataStore,
+        //     query: &RangeQuery,
+        //     ent_path: &EntityPath,
+        //     primary: ComponentNameRef<'_>,
+        //     component: ComponentNameRef<'_>,
+        // ) -> DataFrame {
+        //     let components = &[component];
+        //     let row_indices = store.range(query, ent_path, primary, components);
+        //     let rows = row_indices
+        //         .map(|(_, row_indices)| store.get(&[component], &row_indices))
+        //         .filter_map(|mut results| {
+        //             std::mem::take(&mut results[0])
+        //                 .map(|row| Series::try_from((component, row)).unwrap())
+        //         })
+        //         .collect::<Vec<_>>();
+        //     // dbg!(&rows);
+
+        //     // TODO: maybe we ask the store what type we're expecting here...?
+
+        //     (!rows.is_empty()).then(|| {
+        //         let mut series = Series::new_empty(component, rows[0].dtype());
+        //         for row in rows {
+        //             series.append(&row).unwrap(); // TODO
+        //         }
+        //         dbg!(series)
+        //     })
+        // }
+
         // fn fetch_components_pov<const N: usize>(
         //     store: &DataStore,
         //     query: &RangeQuery,
@@ -955,10 +1039,14 @@ impl DataTracker {
         //     primary: ComponentNameRef<'_>,
         //     components: &[ComponentNameRef<'_>; N],
         // ) -> DataFrame {
-        //     let row_indices = store
-        //         .latest_at(query, ent_path, primary, components)
-        //         .unwrap_or([None; N]);
-        //     let results = store.get(components, &row_indices);
+        //     let row_indices = store.range(query, ent_path, primary, components);
+        //     let rows = row_indices
+        //         .map(|(_, row_indices)| store.get(components, &row_indices))
+        //         .filter_map(|mut results| {
+        //             std::mem::take(&mut results[0])
+        //                 .map(|row| Series::try_from((component, row)).unwrap())
+        //         })
+        //         .collect::<Vec<_>>();
 
         //     let df = {
         //         let series: Vec<_> = components
