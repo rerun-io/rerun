@@ -11,7 +11,7 @@ use re_log_types::{
     datagen::{
         build_frame_nr, build_instances, build_log_time, build_some_point2d, build_some_rects,
     },
-    field_types::{Point2D, Rect2D},
+    field_types::{Instance, Point2D, Rect2D},
     msg_bundle::{Component, ComponentBundle, MsgBundle},
     ComponentName, ComponentNameRef, Duration, MsgId, ObjPath as EntityPath, Time, TimePoint,
     TimeType, Timeline,
@@ -125,7 +125,7 @@ fn empty_query_edge_cases() {
     init_logs();
 
     for config in all_configs() {
-        let mut store = DataStore::new(config.clone());
+        let mut store = DataStore::new(Instance::NAME.to_owned(), config.clone());
         empty_query_edge_cases_impl(&mut store);
     }
 }
@@ -263,7 +263,7 @@ fn end_to_end_roundtrip_standard() {
     init_logs();
 
     for config in all_configs() {
-        let mut store = DataStore::new(config.clone());
+        let mut store = DataStore::new(Instance::NAME.to_owned(), config.clone());
         end_to_end_roundtrip_standard_impl(&mut store);
     }
 }
@@ -490,7 +490,7 @@ fn query_model_specifics() {
     init_logs();
 
     for config in all_configs() {
-        let mut store = DataStore::new(config.clone());
+        let mut store = DataStore::new(Instance::NAME.to_owned(), config.clone());
         query_model_specifics_impl(&mut store);
     }
 }
@@ -827,14 +827,20 @@ fn init_logs() {
 fn pathological_bucket_topology() {
     init_logs();
 
-    let mut store_forward = DataStore::new(DataStoreConfig {
-        index_bucket_nb_rows: 10,
-        ..Default::default()
-    });
-    let mut store_backward = DataStore::new(DataStoreConfig {
-        index_bucket_nb_rows: 10,
-        ..Default::default()
-    });
+    let mut store_forward = DataStore::new(
+        Instance::NAME.to_owned(),
+        DataStoreConfig {
+            index_bucket_nb_rows: 10,
+            ..Default::default()
+        },
+    );
+    let mut store_backward = DataStore::new(
+        Instance::NAME.to_owned(),
+        DataStoreConfig {
+            index_bucket_nb_rows: 10,
+            ..Default::default()
+        },
+    );
 
     fn store_repeated_frame(
         frame_nr: i64,

@@ -11,8 +11,8 @@ use arrow2::datatypes::DataType;
 use parking_lot::RwLock;
 use re_format::{format_bytes, format_number};
 use re_log_types::{
-    ComponentName, ObjPath as EntityPath, ObjPathHash as EntityPathHash, TimeInt, TimeRange,
-    Timeline,
+    ComponentName, ComponentNameRef, ObjPath as EntityPath, ObjPathHash as EntityPathHash, TimeInt,
+    TimeRange, Timeline,
 };
 
 // --- Data store ---
@@ -127,6 +127,12 @@ impl DataStoreConfig {
 /// environment, which will result in additional schema information being printed out.
 #[derive(Default)]
 pub struct DataStore {
+    // TODO:
+    // - doc
+    // - check for clustering key on insertion
+    // - deal with implicit IDs on insertion
+    // - sort on insertion
+    pub(crate) clustering_key: ComponentName,
     /// The configuration of the data store (e.g. bucket sizes).
     pub(crate) config: DataStoreConfig,
 
@@ -147,8 +153,9 @@ pub struct DataStore {
 }
 
 impl DataStore {
-    pub fn new(config: DataStoreConfig) -> Self {
+    pub fn new(clustering_key: ComponentName, config: DataStoreConfig) -> Self {
         Self {
+            clustering_key,
             config,
             indices: HashMap::default(),
             components: HashMap::default(),
@@ -237,6 +244,7 @@ impl std::fmt::Display for DataStore {
     #[allow(clippy::string_add)]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
+            clustering_key,
             config,
             indices,
             components,
@@ -246,6 +254,10 @@ impl std::fmt::Display for DataStore {
 
         f.write_str("DataStore {\n")?;
 
+        f.write_str(&indent::indent_all_by(
+            4,
+            format!("clustering_key: {clustering_key:?}\n"),
+        ))?;
         f.write_str(&indent::indent_all_by(4, format!("config: {config:?}\n")))?;
 
         {

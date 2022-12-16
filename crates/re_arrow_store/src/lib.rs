@@ -1,6 +1,3 @@
-//! This is how we store and index logging data.
-//! TODO(john) better crate documentation.
-
 //! The Rerun Arrow-based datastore.
 //!
 //! See `src/store.rs` for an overview of the core datastructures.

@@ -6,6 +6,7 @@ use arrow2::array::{new_empty_array, Array, Int64Vec, ListArray, MutableArray, U
 use arrow2::bitmap::MutableBitmap;
 use arrow2::buffer::Buffer;
 use arrow2::datatypes::DataType;
+use itertools::Itertools as _;
 use parking_lot::RwLock;
 
 use re_log::debug;
@@ -62,6 +63,7 @@ impl DataStore {
         debug!(
             kind = "insert",
             id = self.insert_id,
+            clustering_key = self.clustering_key,
             timelines = ?time_point.iter()
                 .map(|(timeline, time)| (timeline.name(), timeline.typ().format(*time)))
                 .collect::<Vec<_>>(),

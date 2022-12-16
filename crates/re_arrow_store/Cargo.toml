@@ -26,6 +26,7 @@ arrow2 = { workspace = true, features = [
 chrono = "0.4"
 document-features = "0.2"
 indent = "0.1"
+itertools = "0.10"
 nohash-hasher = "0.2"
 parking_lot = "0.12"
 polars-core = { workspace = true, features = [
@@ -37,7 +38,6 @@ thiserror.workspace = true
 
 [dev-dependencies]
 criterion = "0.4"
-itertools = "0.10"
 mimalloc = "0.1"
 polars-core = { workspace = true, features = [
   "dtype-date",
