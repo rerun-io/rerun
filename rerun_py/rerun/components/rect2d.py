@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from typing import ClassVar, Type, cast
-import pyarrow as pa
+import numpy.typing as npt
 import numpy as np
+import pyarrow as pa
 
 from rerun import rerun_bindings  # type: ignore[attr-defined]
 from rerun import RectFormat
@@ -10,7 +11,7 @@ from rerun.components import ComponentTypeFactory, REGISTERED_FIELDS
 
 
 class Rect2DArray(pa.ExtensionArray):  # type: ignore[misc]
-    def from_numpy_and_format(array, rect_format: RectFormat) -> Rect2DArray:
+    def from_numpy_and_format(array: npt.NDArray[np.float_], rect_format: RectFormat) -> Rect2DArray:
         """Build a `Rect2DArray` from an Nx4 numpy array."""
 
         rects = np.asarray(array, dtype="float32")
@@ -25,6 +26,6 @@ class Rect2DArray(pa.ExtensionArray):  # type: ignore[misc]
             raise NotImplementedError("RectFormat not yet implemented")
 
 
-Rect2DType = ComponentTypeFactory("Rect2DType", Rect2DArray, REGISTERED_FIELDS["rect2d"])
+Rect2DType = ComponentTypeFactory("Rect2DType", Rect2DArray, REGISTERED_FIELDS["rerun.rect2d"])
 
 pa.register_extension_type(Rect2DType())

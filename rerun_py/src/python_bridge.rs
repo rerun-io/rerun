@@ -9,7 +9,7 @@ use itertools::Itertools as _;
 use pyo3::{
     exceptions::{PyRuntimeError, PyTypeError},
     prelude::*,
-    types::PyList,
+    types::{PyDict, PyList, PyTuple},
 };
 
 use re_log_types::{
@@ -1824,8 +1824,8 @@ fn log_cleared(obj_path: &str, recursive: bool) -> PyResult<()> {
     Ok(())
 }
 
-#[pyfunction]
-fn log_arrow_msg(obj_path: &str, msg: &PyAny) -> PyResult<()> {
+#[pyfunction(components = "**")]
+fn log_arrow_msg(obj_path: &str, components: Option<&PyDict>) -> PyResult<()> {
     let mut session = global_session();
 
     // We normally disallow logging to root, but we make an exception for class_descriptions
@@ -1835,8 +1835,9 @@ fn log_arrow_msg(obj_path: &str, msg: &PyAny) -> PyResult<()> {
         parse_obj_path(obj_path)?
     };
 
-    let msg = crate::arrow::build_arrow_log_msg_from_py(&obj_path, msg, &time(false))?;
-
+    let msg =
+        crate::arrow::build_chunk_from_components(&obj_path, components.unwrap(), &time(false))?;
     session.send(msg);
+
     Ok(())
 }

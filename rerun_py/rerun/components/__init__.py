@@ -1,8 +1,12 @@
+"""The components package defines Python wrapper types for common registered Rerun components."""
+
 from __future__ import annotations
 
 from typing import Any, Final, Type, cast
 from rerun import rerun_bindings  # type: ignore[attr-defined]
 import pyarrow as pa
+
+all = ["color", "rect2d"]
 
 REGISTERED_FIELDS: Final = rerun_bindings.get_registered_fields()
 
@@ -11,7 +15,7 @@ def ComponentTypeFactory(name: str, array_cls: Type[pa.ExtensionArray], field: p
     """Build a component type wrapper."""
 
     def __init__(self: Type[pa.ExtensionType]) -> None:
-        pa.ExtensionType.__init__(self, self.storage_type, f"rerunio.{field.name}")
+        pa.ExtensionType.__init__(self, self.storage_type, field.name)
 
     def __arrow_ext_serialize__(self: Type[pa.ExtensionType]) -> bytes:
         return b""

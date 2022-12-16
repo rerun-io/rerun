@@ -14,12 +14,12 @@ from rerun.color_conversion import linear_to_gamma_u8_pixel, u8_array_to_rgba
 
 from rerun import rerun_bindings  # type: ignore[attr-defined]
 
+from rerun import components
+
 EXP_ARROW = os.environ.get("RERUN_EXP_ARROW", "0").lower() in ("1", "true")
 
 if EXP_ARROW:
     import pyarrow as pa
-
-    from rerun import components
 
 
 def rerun_shutdown() -> None:
@@ -488,30 +488,11 @@ def log_rects(
     )
 
     if EXP_ARROW:
-        arrays = []
-        fields = []
+        from rerun.components import rect2d, color
 
-        if rect_format == RectFormat.XYWH:
-            rects_array = pa.StructArray.from_arrays(
-                arrays=[pa.array(c, type=pa.float32()) for c in rects.T],
-                fields=[
-                    pa.field("x", pa.float32(), nullable=False),
-                    pa.field("y", pa.float32(), nullable=False),
-                    pa.field("w", pa.float32(), nullable=False),
-                    pa.field("h", pa.float32(), nullable=False),
-                ],
-            )
-            fields.append(pa.field("rect", type=rects_array.type, nullable=False))
-            arrays.append(rects_array)
-        else:
-            raise NotImplementedError("RectFormat not yet implemented")
-
-        if colors.any():
-            fields.append(pa.field("color_srgba_unmultiplied", pa.uint32(), nullable=True))
-            arrays.append(pa.array([u8_array_to_rgba(c) for c in colors], type=pa.uint32()))
-
-        arr = pa.StructArray.from_arrays(arrays, fields=fields)
-        rerun_bindings.log_arrow_msg(obj_path, arr)
+        rects = rect2d.Rect2DArray.from_numpy_and_format(rects, rect_format)
+        colors = color.ColorRGBAArray.from_numpy(colors)
+        rerun_bindings.log_arrow_msg(obj_path, rects=rects, colors=colors)
 
 
 def log_point(
