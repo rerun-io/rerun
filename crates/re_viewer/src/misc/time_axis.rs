@@ -15,7 +15,7 @@ pub(crate) struct TimelineAxis {
 
 impl TimelineAxis {
     pub fn new<T>(time_type: TimeType, times: &BTreeMap<TimeInt, T>) -> Self {
-        crate::profile_function!();
+        puffin::profile_function!();
 
         // in seconds or sequences
         let time_abs_diff = |a: TimeInt, b: TimeInt| -> f64 {
@@ -36,7 +36,7 @@ impl TimelineAxis {
         const MIN_GAP_SIZE: f64 = 1.0;
 
         let mut gap_sizes = {
-            crate::profile_scope!("collect_gaps");
+            puffin::profile_scope!("collect_gaps");
             times
                 .keys()
                 .tuple_windows()
@@ -59,7 +59,7 @@ impl TimelineAxis {
 
         // ----
 
-        crate::profile_scope!("create_ranges");
+        puffin::profile_scope!("create_ranges");
         let mut values_it = times.keys();
         let mut ranges = vec1::vec1![TimeRange::point(*values_it.next().unwrap())];
 

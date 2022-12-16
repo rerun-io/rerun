@@ -49,7 +49,7 @@ impl Renderer for GenericSkybox {
         device: &wgpu::Device,
         resolver: &mut FileResolver<Fs>,
     ) -> Self {
-        crate::profile_function!();
+        puffin::profile_function!();
 
         let render_pipeline = pools.render_pipelines.get_or_create(
             device,
@@ -108,7 +108,7 @@ impl Renderer for GenericSkybox {
         pass: &mut wgpu::RenderPass<'a>,
         _draw_data: &GenericSkyboxDrawData,
     ) -> anyhow::Result<()> {
-        crate::profile_function!();
+        puffin::profile_function!();
 
         let pipeline = pools.render_pipelines.get_resource(self.render_pipeline)?;
 

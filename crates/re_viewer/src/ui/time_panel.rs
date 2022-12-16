@@ -148,7 +148,7 @@ impl TimePanel {
     }
 
     fn expanded_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
-        crate::profile_function!();
+        puffin::profile_function!();
 
         // play control and current time
         top_row_ui(ctx, ui);
@@ -238,7 +238,7 @@ impl TimePanel {
         egui::ScrollArea::vertical()
             .auto_shrink([false; 2])
             .show(ui, |ui| {
-                crate::profile_scope!("tree_ui");
+                puffin::profile_scope!("tree_ui");
                 if time_area_response.dragged_by(PointerButton::Primary) {
                     ui.scroll_with_delta(Vec2::Y * time_area_response.drag_delta().y);
                 }
@@ -506,7 +506,7 @@ fn show_data_over_time(
     time_ranges_ui: &TimeRangesUi,
     select_on_click: Option<Selection>,
 ) {
-    crate::profile_function!();
+    puffin::profile_function!();
 
     let cur_selection = ctx.selection();
     let is_selected = cur_selection.is_some() && select_on_click.as_ref() == Some(&cur_selection);
@@ -673,7 +673,7 @@ fn initialize_time_ranges_ui(
     time_view: Option<TimeView>,
     side_margin: f32,
 ) -> TimeRangesUi {
-    crate::profile_function!();
+    puffin::profile_function!();
     if let Some(times) = ctx
         .log_db
         .times_per_timeline()
@@ -1280,7 +1280,7 @@ impl Default for TimeRangesUi {
 
 impl TimeRangesUi {
     fn new(x_range: RangeInclusive<f32>, time_view: TimeView, segments: &[TimeRange]) -> Self {
-        crate::profile_function!();
+        puffin::profile_function!();
 
         //        <------- time_view ------>
         //        <-------- x_range ------->
@@ -1609,7 +1609,7 @@ fn paint_ticks(
     next_time_step: fn(i64) -> i64,
     format_tick: fn(i64) -> String,
 ) -> Vec<egui::Shape> {
-    crate::profile_function!();
+    puffin::profile_function!();
 
     let color_from_alpha = |alpha: f32| -> Color32 {
         if dark_mode {

@@ -58,23 +58,3 @@ pub(crate) const fn next_multiple_of(cur: u32, rhs: u32) -> u32 {
         r => cur + (rhs - r),
     }
 }
-
-// ---------------------------------------------------------------------------
-
-/// Profiling macro for feature "puffin"
-#[doc(hidden)]
-#[macro_export]
-macro_rules! profile_function {
-    ($($arg: tt)*) => {
-        puffin::profile_function!($($arg)*);
-    };
-}
-
-/// Profiling macro for feature "puffin"
-#[doc(hidden)]
-#[macro_export]
-macro_rules! profile_scope {
-    ($($arg: tt)*) => {
-        puffin::profile_scope!($($arg)*);
-    };
-}

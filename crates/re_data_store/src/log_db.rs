@@ -162,7 +162,7 @@ impl ObjDb {
     }
 
     pub fn purge_everything_but(&mut self, keep_msg_ids: &ahash::HashSet<MsgId>) {
-        crate::profile_function!();
+        puffin::profile_function!();
 
         let Self {
             types: _,
@@ -172,7 +172,7 @@ impl ObjDb {
         } = self;
 
         {
-            crate::profile_scope!("tree");
+            puffin::profile_scope!("tree");
             tree.purge_everything_but(keep_msg_ids);
         }
 
@@ -228,7 +228,7 @@ impl LogDb {
     }
 
     pub fn add(&mut self, msg: LogMsg) -> Result<(), Error> {
-        crate::profile_function!();
+        puffin::profile_function!();
         match &msg {
             LogMsg::BeginRecordingMsg(msg) => self.add_begin_recording_msg(msg),
             LogMsg::TypeMsg(msg) => self.add_type_msg(msg),
@@ -293,7 +293,7 @@ impl LogDb {
         data_path: &DataPath,
         data: &LoggedData,
     ) {
-        crate::profile_function!();
+        puffin::profile_function!();
 
         if time_point.is_timeless() {
             // Timeless data should be added to all existing timelines,
@@ -371,13 +371,13 @@ impl LogDb {
             }
         }
 
-        crate::profile_function!();
+        puffin::profile_function!();
 
         assert!((0.0..=1.0).contains(&fraction_to_purge));
 
         // Start by figuring out what `MsgId`:s to keep:
         let keep_msg_ids = {
-            crate::profile_scope!("calc_what_to_keep");
+            puffin::profile_scope!("calc_what_to_keep");
             let mut keep_msg_ids = ahash::HashSet::default();
             for (_, time_points) in self.obj_db.tree.prefix_times.iter() {
                 let num_to_purge = (time_points.len() as f32 * fraction_to_purge).round() as usize;
@@ -405,11 +405,11 @@ impl LogDb {
         chronological_message_ids.retain(|msg_id| keep_msg_ids.contains(msg_id));
 
         {
-            crate::profile_scope!("log_messages");
+            puffin::profile_scope!("log_messages");
             log_messages.retain(|msg_id, _| keep_msg_ids.contains(msg_id));
         }
         {
-            crate::profile_scope!("timeless_message_ids");
+            puffin::profile_scope!("timeless_message_ids");
             timeless_message_ids.retain(|msg_id| keep_msg_ids.contains(msg_id));
         }
 

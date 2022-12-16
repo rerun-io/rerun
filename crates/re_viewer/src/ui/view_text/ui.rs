@@ -42,7 +42,7 @@ pub(crate) fn view_text(
     state: &mut ViewTextState,
     scene: &SceneText,
 ) -> egui::Response {
-    crate::profile_function!();
+    puffin::profile_function!();
 
     // Update filters if necessary.
     state.filters.update(ctx, &scene.text_entries);
@@ -58,7 +58,7 @@ pub(crate) fn view_text(
     // - Otherwise, let the user scroll around freely!
     let time_cursor_moved = state.latest_time != time;
     let scroll_to_row = time_cursor_moved.then(|| {
-        crate::profile_scope!("TextEntryState - search scroll time");
+        puffin::profile_scope!("TextEntryState - search scroll time");
         scene
             .text_entries
             .partition_point(|entry| entry.time < time)
@@ -71,7 +71,7 @@ pub(crate) fn view_text(
         ui.separator();
 
         egui::ScrollArea::horizontal().show(ui, |ui| {
-            crate::profile_scope!("render table");
+            puffin::profile_scope!("render table");
             show_table(ctx, ui, state, &scene.text_entries, scroll_to_row);
         })
     })
@@ -119,7 +119,7 @@ impl ViewTextFilters {
     // Checks whether new values are available for any of the filters, and updates everything
     // accordingly.
     fn update(&mut self, ctx: &mut ViewerContext<'_>, text_entries: &[TextEntry]) {
-        crate::profile_function!();
+        puffin::profile_function!();
 
         let Self {
             col_timelines,
@@ -144,7 +144,7 @@ impl ViewTextFilters {
 
     // Display the filter configuration UI (lotta checkboxes!).
     pub(crate) fn ui(&mut self, ui: &mut egui::Ui) {
-        crate::profile_function!();
+        puffin::profile_function!();
 
         let Self {
             col_timelines,

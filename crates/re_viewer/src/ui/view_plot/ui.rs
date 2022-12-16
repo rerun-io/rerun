@@ -22,7 +22,7 @@ pub(crate) fn view_plot(
     _state: &mut ViewPlotState,
     scene: &ScenePlot,
 ) -> egui::Response {
-    crate::profile_function!();
+    puffin::profile_function!();
 
     let time_ctrl = &ctx.rec_cfg.time_ctrl;
     let current_time = time_ctrl.time_i64();

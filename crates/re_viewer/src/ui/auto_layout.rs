@@ -258,7 +258,7 @@ fn group_by_path_prefix(space_infos: &[SpaceMakeInfo]) -> Vec<Vec<SpaceMakeInfo>
     if space_infos.len() < 2 {
         return vec![space_infos.to_vec()];
     }
-    crate::profile_function!();
+    puffin::profile_function!();
 
     let paths = space_infos
         .iter()

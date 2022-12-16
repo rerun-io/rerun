@@ -93,7 +93,7 @@ impl RectangleDrawData {
         ctx: &mut RenderContext,
         rectangles: &[TexturedRect],
     ) -> Result<Self, ResourceManagerError> {
-        crate::profile_function!();
+        puffin::profile_function!();
 
         let rectangle_renderer = ctx.renderers.get_or_create::<_, RectangleRenderer>(
             &ctx.shared_renderer_data,
@@ -225,7 +225,7 @@ impl Renderer for RectangleRenderer {
         device: &wgpu::Device,
         resolver: &mut FileResolver<Fs>,
     ) -> Self {
-        crate::profile_function!();
+        puffin::profile_function!();
 
         let bind_group_layout = pools.bind_group_layouts.get_or_create(
             device,
@@ -325,7 +325,7 @@ impl Renderer for RectangleRenderer {
         pass: &mut wgpu::RenderPass<'a>,
         draw_data: &Self::RendererDrawData,
     ) -> anyhow::Result<()> {
-        crate::profile_function!();
+        puffin::profile_function!();
         if draw_data.bind_groups.is_empty() {
             return Ok(());
         }

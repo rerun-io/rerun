@@ -253,7 +253,7 @@ pub struct RecordingConfig {
 impl RecordingConfig {
     /// Called at the start of each frame
     pub fn on_frame_start(&mut self) {
-        crate::profile_function!();
+        puffin::profile_function!();
 
         self.hovered_space_previous_frame =
             std::mem::replace(&mut self.hovered_space_this_frame, HoveredSpace::None);

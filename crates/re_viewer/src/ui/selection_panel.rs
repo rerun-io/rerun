@@ -49,7 +49,7 @@ impl SelectionPanel {
         ctx: &mut ViewerContext<'_>,
         blueprint: &mut Blueprint,
     ) {
-        crate::profile_function!();
+        puffin::profile_function!();
 
         ui.separator();
 

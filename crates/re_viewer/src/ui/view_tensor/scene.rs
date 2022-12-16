@@ -14,13 +14,13 @@ pub struct SceneTensor {
 impl SceneTensor {
     /// Loads all tensor objects into the scene according to the given query.
     pub(crate) fn load_objects(&mut self, ctx: &ViewerContext<'_>, query: &SceneQuery<'_>) {
-        crate::profile_function!();
+        puffin::profile_function!();
 
         self.load_tensors(ctx, query);
     }
 
     fn load_tensors(&mut self, ctx: &ViewerContext<'_>, query: &SceneQuery<'_>) {
-        crate::profile_function!();
+        puffin::profile_function!();
 
         for (_obj_type, obj_path, time_query, obj_store) in
             query.iter_object_stores(ctx.log_db, &[ObjectType::Image])

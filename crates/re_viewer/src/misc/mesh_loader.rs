@@ -34,7 +34,7 @@ impl LoadedMesh {
         bytes: &[u8],
         render_ctx: &mut RenderContext,
     ) -> anyhow::Result<Self> {
-        crate::profile_function!();
+        puffin::profile_function!();
 
         let mesh_instances = match format {
             MeshFormat::Glb | MeshFormat::Gltf | MeshFormat::Obj => {
@@ -60,7 +60,7 @@ impl LoadedMesh {
         encoded_mesh: &EncodedMesh3D,
         render_ctx: &mut RenderContext,
     ) -> anyhow::Result<Self> {
-        crate::profile_function!();
+        puffin::profile_function!();
         let EncodedMesh3D {
             mesh_id: _,
             format,
@@ -87,7 +87,7 @@ impl LoadedMesh {
         raw_mesh: &RawMesh3D,
         render_ctx: &mut RenderContext,
     ) -> anyhow::Result<Self> {
-        crate::profile_function!();
+        puffin::profile_function!();
 
         let bbox = macaw::BoundingBox::from_points(
             raw_mesh.positions.iter().map(|p| glam::Vec3::from(*p)),

@@ -7,8 +7,8 @@ use re_log_types::{
 };
 
 use crate::{
-    profile_scope, ArcBatch, BadBatchError, Batch, BatchOrSplat, FieldQueryOutput, Result,
-    TimeQuery, TimelineStore,
+    ArcBatch, BadBatchError, Batch, BatchOrSplat, FieldQueryOutput, Result, TimeQuery,
+    TimelineStore,
 };
 
 /// Stores all timelines of all objects.
@@ -69,7 +69,7 @@ impl DataStore {
     }
 
     pub fn insert_data_msg(&mut self, data_msg: &DataMsg) -> Result<()> {
-        crate::profile_function!();
+        puffin::profile_function!();
 
         let DataMsg {
             msg_id,
@@ -153,7 +153,7 @@ impl DataStore {
 
     #[inline(never)]
     fn register_hashed_indices(&mut self, hashed_indices: &[IndexHash], indices: &[Index]) {
-        crate::profile_function!();
+        puffin::profile_function!();
         for (hash, index) in std::iter::zip(hashed_indices, indices) {
             self.index_from_hash
                 .entry(*hash)
@@ -162,14 +162,14 @@ impl DataStore {
     }
 
     pub fn purge_everything_but(&mut self, keep_msg_ids: &ahash::HashSet<MsgId>) {
-        crate::profile_function!();
+        puffin::profile_function!();
         let Self {
             store_from_timeline,
             obj_path_from_hash: _,
             index_from_hash: _,
         } = self;
         for (timeline, (_, timeline_store)) in store_from_timeline {
-            profile_scope!("purge_timeline", timeline.name().as_str());
+            puffin::profile_scope!("purge_timeline", timeline.name().as_str());
             _ = timeline; // silence unused-variable warning on wasm
             timeline_store.purge_everything_but(keep_msg_ids);
         }

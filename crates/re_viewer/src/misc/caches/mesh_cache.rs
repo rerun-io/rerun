@@ -17,7 +17,7 @@ impl MeshCache {
         mesh_data: &MeshSourceData,
         render_ctx: &mut RenderContext,
     ) -> Option<Arc<LoadedMesh>> {
-        crate::profile_function!();
+        puffin::profile_function!();
 
         let mesh_id = mesh_data.mesh_id();
 

@@ -157,7 +157,7 @@ impl ViewSpatialState {
 /// Look for camera transform and pinhole in the transform hierarchy
 /// and return them as cameras.
 fn space_cameras(spaces_info: &SpacesInfo, space_info: &SpaceInfo) -> Vec<SpaceCamera3D> {
-    crate::profile_function!();
+    puffin::profile_function!();
 
     let mut space_cameras = vec![];
 

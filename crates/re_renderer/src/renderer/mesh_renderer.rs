@@ -118,7 +118,7 @@ impl MeshDrawData {
     /// If you pass zero mesh instances, subsequent drawing will do nothing.
     /// Mesh data itself is gpu uploaded if not already present.
     pub fn new(ctx: &mut RenderContext, instances: &[MeshInstance]) -> anyhow::Result<Self> {
-        crate::profile_function!();
+        puffin::profile_function!();
 
         let _mesh_renderer = ctx.renderers.get_or_create::<_, MeshRenderer>(
             &ctx.shared_renderer_data,
@@ -234,7 +234,7 @@ impl Renderer for MeshRenderer {
         device: &wgpu::Device,
         resolver: &mut FileResolver<Fs>,
     ) -> Self {
-        crate::profile_function!();
+        puffin::profile_function!();
 
         let bind_group_layout = pools.bind_group_layouts.get_or_create(
             device,
@@ -324,7 +324,7 @@ impl Renderer for MeshRenderer {
         pass: &mut wgpu::RenderPass<'a>,
         draw_data: &Self::RendererDrawData,
     ) -> anyhow::Result<()> {
-        crate::profile_function!();
+        puffin::profile_function!();
 
         let Some(instance_buffer) = &draw_data.instance_buffer else {
             return Ok(()); // Instance buffer was empty.

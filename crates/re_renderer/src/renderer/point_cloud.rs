@@ -132,7 +132,7 @@ impl PointCloudDrawData {
         colors: &[Color32],
         batches: &[PointCloudBatchInfo],
     ) -> Result<Self, PointCloudDrawDataError> {
-        crate::profile_function!();
+        puffin::profile_function!();
 
         let point_renderer = ctx.renderers.get_or_create::<_, PointCloudRenderer>(
             &ctx.shared_renderer_data,
@@ -222,7 +222,7 @@ impl PointCloudDrawData {
         let num_points_written = next_multiple_of(vertices.len() as u32, TEXTURE_SIZE) as usize;
         let num_points_zeroed = num_points_written - vertices.len();
         let position_and_size_staging = {
-            crate::profile_scope!("collect_pos_size");
+            puffin::profile_scope!("collect_pos_size");
             vertices
                 .iter()
                 .map(|point| gpu_data::PositionData {
@@ -234,7 +234,7 @@ impl PointCloudDrawData {
         };
 
         let color_staging = {
-            crate::profile_scope!("collect_colors");
+            puffin::profile_scope!("collect_colors");
             colors
                 .iter()
                 .cloned()
@@ -250,7 +250,7 @@ impl PointCloudDrawData {
         };
 
         {
-            crate::profile_scope!("write_pos_size_texture");
+            puffin::profile_scope!("write_pos_size_texture");
             ctx.queue.write_texture(
                 wgpu::ImageCopyTexture {
                     texture: &ctx
@@ -276,7 +276,7 @@ impl PointCloudDrawData {
         }
 
         {
-            crate::profile_scope!("write_color_texture");
+            puffin::profile_scope!("write_color_texture");
             ctx.queue.write_texture(
                 wgpu::ImageCopyTexture {
                     texture: &ctx
@@ -406,7 +406,7 @@ impl Renderer for PointCloudRenderer {
         device: &wgpu::Device,
         resolver: &mut FileResolver<Fs>,
     ) -> Self {
-        crate::profile_function!();
+        puffin::profile_function!();
 
         let bind_group_layout_all_points = pools.bind_group_layouts.get_or_create(
             device,

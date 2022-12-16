@@ -27,7 +27,7 @@ fn query_scene_spatial(
     ctx: &mut ViewerContext<'_>,
     obj_paths: &nohash_hasher::IntSet<ObjPath>,
 ) -> SceneSpatial {
-    crate::profile_function!();
+    puffin::profile_function!();
 
     let query = SceneQuery {
         obj_paths,
@@ -75,7 +75,7 @@ pub struct Viewport {
 impl Viewport {
     /// Create a default suggested blueprint using some heuristics.
     pub fn new(ctx: &mut ViewerContext<'_>, spaces_info: &SpacesInfo) -> Self {
-        crate::profile_function!();
+        puffin::profile_function!();
 
         let mut blueprint = Self::default();
 
@@ -189,7 +189,7 @@ impl Viewport {
 
     /// Show the blueprint panel tree view.
     pub fn tree_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
-        crate::profile_function!();
+        puffin::profile_function!();
 
         egui::ScrollArea::vertical()
             .auto_shrink([false; 2])
@@ -313,7 +313,7 @@ impl Viewport {
     }
 
     pub fn on_frame_start(&mut self, ctx: &mut ViewerContext<'_>, spaces_info: &SpacesInfo) {
-        crate::profile_function!();
+        puffin::profile_function!();
 
         for space_view in self.space_views.values_mut() {
             space_view.on_frame_start(ctx, spaces_info);
@@ -325,7 +325,7 @@ impl Viewport {
             if self.space_views.is_empty() {
                 *self = Self::new(ctx, spaces_info);
             } else {
-                crate::profile_scope!("look for missing space views");
+                puffin::profile_scope!("look for missing space views");
 
                 // Check if the blueprint is missing a space,
                 // maybe one that has been added by new data:
@@ -495,7 +495,7 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
     type Tab = SpaceViewId;
 
     fn ui(&mut self, ui: &mut egui::Ui, space_view_id: &mut Self::Tab) {
-        crate::profile_function!();
+        puffin::profile_function!();
 
         let space_view = self
             .space_views

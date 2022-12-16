@@ -91,23 +91,3 @@ pub enum TimeQuery<Time> {
 impl TimeQuery<i64> {
     pub const EVERYTHING: Self = Self::Range(i64::MIN..=i64::MAX);
 }
-
-// ---------------------------------------------------------------------------
-
-/// Profiling macro for feature "puffin"
-#[doc(hidden)]
-#[macro_export]
-macro_rules! profile_function {
-    ($($arg: tt)*) => {
-        puffin::profile_function!($($arg)*);
-    };
-}
-
-/// Profiling macro for feature "puffin"
-#[doc(hidden)]
-#[macro_export]
-macro_rules! profile_scope {
-    ($($arg: tt)*) => {
-        puffin::profile_scope!($($arg)*);
-    };
-}

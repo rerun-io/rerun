@@ -139,7 +139,7 @@ impl SceneSpatialPrimitives {
     }
 
     pub fn recalculate_bounding_box(&mut self) {
-        crate::profile_function!();
+        puffin::profile_function!();
 
         self.bounding_box = macaw::BoundingBox::nothing();
 
@@ -167,7 +167,7 @@ impl SceneSpatialPrimitives {
     }
 
     pub fn mesh_instances(&self) -> Vec<MeshInstance> {
-        crate::profile_function!();
+        puffin::profile_function!();
         self.meshes
             .iter()
             .flat_map(|mesh| {
@@ -221,7 +221,7 @@ impl SceneSpatial {
         objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
-        crate::profile_function!();
+        puffin::profile_function!();
 
         self.annotation_map.load(ctx, query);
 
@@ -255,7 +255,7 @@ impl SceneSpatial {
         objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
-        crate::profile_function!();
+        puffin::profile_function!();
 
         query
             .iter_object_stores(ctx.log_db, &[ObjectType::Point3D])
@@ -400,7 +400,7 @@ impl SceneSpatial {
         objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
-        crate::profile_function!();
+        puffin::profile_function!();
 
         for (_obj_type, obj_path, time_query, obj_store) in
             query.iter_object_stores(ctx.log_db, &[ObjectType::Box3D])
@@ -455,7 +455,7 @@ impl SceneSpatial {
         objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
-        crate::profile_function!();
+        puffin::profile_function!();
 
         for (obj_type, obj_path, time_query, obj_store) in query.iter_object_stores(
             ctx.log_db,
@@ -528,7 +528,7 @@ impl SceneSpatial {
         objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
-        crate::profile_function!();
+        puffin::profile_function!();
 
         for (_obj_type, obj_path, time_query, obj_store) in
             query.iter_object_stores(ctx.log_db, &[ObjectType::Arrow3D])
@@ -582,7 +582,7 @@ impl SceneSpatial {
         objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
-        crate::profile_function!();
+        puffin::profile_function!();
 
         let meshes = query
             .iter_object_stores(ctx.log_db, &[ObjectType::Mesh3D])
@@ -641,7 +641,7 @@ impl SceneSpatial {
         objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
-        crate::profile_function!();
+        puffin::profile_function!();
 
         for (_obj_type, obj_path, time_query, obj_store) in
             query.iter_object_stores(ctx.log_db, &[ObjectType::Image])
@@ -747,7 +747,7 @@ impl SceneSpatial {
         objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
-        crate::profile_function!();
+        puffin::profile_function!();
 
         for (_obj_type, obj_path, time_query, obj_store) in
             query.iter_object_stores(ctx.log_db, &[ObjectType::BBox2D])
@@ -908,7 +908,7 @@ impl SceneSpatial {
         objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
-        crate::profile_function!();
+        puffin::profile_function!();
 
         // Ensure keypoint connection lines are behind points.
         let connection_depth = self.primitives.line_strips.next_2d_z;
@@ -1027,7 +1027,7 @@ impl SceneSpatial {
         objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
-        crate::profile_function!();
+        puffin::profile_function!();
 
         for (_obj_type, obj_path, time_query, obj_store) in
             query.iter_object_stores(ctx.log_db, &[ObjectType::LineSegments2D])
@@ -1101,7 +1101,7 @@ impl SceneSpatial {
         cameras: &[SpaceCamera3D],
         hovered_instance: InstanceIdHash,
     ) {
-        crate::profile_function!();
+        puffin::profile_function!();
 
         // Size of a pixel (in meters), when projected out one meter:
         let point_size_at_one_meter = eye.fov_y / viewport_size.y;
@@ -1364,7 +1364,7 @@ impl SceneSpatial {
         rect: &egui::Rect,
         eye: &Eye,
     ) -> Option<(InstanceIdHash, Vec3)> {
-        crate::profile_function!();
+        puffin::profile_function!();
 
         let ui_from_world = eye.ui_from_world(rect);
         let world_from_ui = eye.world_from_ui(rect);
@@ -1393,7 +1393,7 @@ impl SceneSpatial {
         let mut closest_instance_id = None;
 
         {
-            crate::profile_scope!("points_3d");
+            puffin::profile_scope!("points_3d");
             for (point, instance_hash) in points.vertices.iter().zip(points.user_data.iter()) {
                 if instance_hash.is_none() {
                     continue;
@@ -1417,7 +1417,7 @@ impl SceneSpatial {
         }
 
         {
-            crate::profile_scope!("line_segments_3d");
+            puffin::profile_scope!("line_segments_3d");
             for ((_line_strip, vertices), instance_hash) in line_strips
                 .iter_strips_with_vertices()
                 .zip(line_strips.strip_user_data.iter())
@@ -1448,7 +1448,7 @@ impl SceneSpatial {
         }
 
         {
-            crate::profile_scope!("meshes");
+            puffin::profile_scope!("meshes");
             for mesh in meshes {
                 if !mesh.instance_hash.is_some() {
                     continue;
