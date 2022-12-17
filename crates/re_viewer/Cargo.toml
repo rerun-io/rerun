@@ -68,7 +68,6 @@ mint = "0.5"
 ndarray = "0.15"
 nohash-hasher = "0.2"
 poll-promise = "0.1"
-puffin.workspace = true
 rand = { version = "0.8", features = ["small_rng"] }
 rfd = "0.10"
 serde = { version = "1", features = ["derive"] }
@@ -84,6 +83,7 @@ arboard = { version = "3.2", default-features = false, features = [
 ] }
 ctrlc = { version = "3.0", features = ["termination"] }
 puffin_http = "0.11"
+puffin.workspace = true
 
 # web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]

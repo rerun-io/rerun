@@ -66,6 +66,7 @@ pub(crate) const fn next_multiple_of(cur: u32, rhs: u32) -> u32 {
 #[macro_export]
 macro_rules! profile_function {
     ($($arg: tt)*) => {
+        #[cfg(not(target_arch = "wasm32"))]
         puffin::profile_function!($($arg)*);
     };
 }
@@ -75,6 +76,7 @@ macro_rules! profile_function {
 #[macro_export]
 macro_rules! profile_scope {
     ($($arg: tt)*) => {
+        #[cfg(not(target_arch = "wasm32"))]
         puffin::profile_scope!($($arg)*);
     };
 }
