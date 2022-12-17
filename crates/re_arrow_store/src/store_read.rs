@@ -574,13 +574,13 @@ impl ComponentTable {
 }
 
 impl ComponentBucket {
-    /// Get this `ComponentBucket`s debug name
+    /// Returns the name of component stored in this bucket.
     #[allow(dead_code)]
     pub fn name(&self) -> &str {
         &self.name
     }
 
-    /// Returns a shallow clone of the row data for the given `row_idx`.
+    /// Returns a shallow clone of the data present at the given `row_idx`.
     pub fn get(&self, row_idx: RowIndex) -> Box<dyn Array> {
         let row_idx = row_idx.as_u64() - self.row_offset.as_u64();
         if self.retired {
@@ -590,7 +590,7 @@ impl ComponentBucket {
         }
     }
 
-    /// Returns an iterator over the data chunks in this component.
+    /// Returns a shallow clone of the data chunks in this component.
     pub fn data(&self) -> Vec<Box<dyn Array>> {
         self.chunks.clone() // shallow
     }
