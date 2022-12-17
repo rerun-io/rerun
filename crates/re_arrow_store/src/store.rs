@@ -842,12 +842,17 @@ pub struct ComponentBucket {
     /// These are only used for garbage collection.
     pub(crate) time_ranges: HashMap<Timeline, TimeRange>,
 
-    /// All the data for this bucket. This is a single column!
+    /// All the data for this bucket: many rows of a single column.
+    ///
+    /// During the active lifespan of the bucket, this can contain an arbitrary number of chunks,
+    /// depending on how the data was inserted (e.g. single insertions vs. batches).
+    /// All of these chunks get compacted into one contiguous array when the bucket is retired,
+    /// i.e. when the bucket is full and a new one is created.
     pub(crate) chunks: Vec<Box<dyn Array>>,
 
-    /// The total number of rows present in this bucket.
+    /// The total number of rows present in this bucket, across all chunks.
     pub(crate) total_rows: u64,
-    /// The size of this bucket in bytes.
+    /// The size of this bucket in bytes, across all chunks.
     ///
     /// Accurately computing the size of arrow arrays is surpsingly costly, which is why we cache
     /// this.

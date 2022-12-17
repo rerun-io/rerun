@@ -22,6 +22,11 @@ use crate::{
 
 impl DataStore {
     /// Inserts a [`MsgBundle`] payload of Arrow data into the datastore.
+    ///
+    /// This does _not_ support batching yet: the components in the bundle _must_ only contain
+    /// a single row's worth of data!
+    //
+    // TODO: support for batch component insertion
     pub fn insert(&mut self, msg_bundle: &MsgBundle) -> anyhow::Result<()> {
         // TODO(cmc): kind & insert_id need to somehow propagate through the span system.
         self.insert_id += 1;
@@ -54,10 +59,15 @@ impl DataStore {
         for bundle in components {
             let ComponentBundle { name, value } = bundle;
 
+            debug_assert!(
+                value.len() == 1,
+                "batch component insertions are not yet supported!"
+            );
+
             let table = self
                 .components
                 .entry((*bundle.name).to_owned())
-                .or_insert_with(|| ComponentTable::new((*name).clone(), value.data_type().clone()));
+                .or_insert_with(|| ComponentTable::new((*name).clone(), value.data_type()));
 
             let row_idx = table.push(&self.config, time_point, value.as_ref());
             indices.insert(name.as_ref(), row_idx);
@@ -619,7 +629,7 @@ fn split_secondary_index_off(split_idx: usize, index1: &mut UInt64Vec) -> UInt64
 // --- Components ---
 
 impl ComponentTable {
-    fn new(name: String, datatype: DataType) -> Self {
+    fn new(name: String, datatype: &DataType) -> Self {
         let name = Arc::new(name);
         ComponentTable {
             name: Arc::clone(&name),
@@ -633,12 +643,34 @@ impl ComponentTable {
         }
     }
 
+    /// Finds the appropriate bucket and pushes `values` at the end of it, returning the _global_
+    /// `RowIndex` for this new row.
+    ///
+    /// `values` must be a list of list of components, e.g. `ListArray<ListArray<StructArray>>`,
+    /// where the first list correspond to rows, the second list corresponds to the different
+    /// instances and the struct is of course the component itself:
+    /// ```ignore
+    /// [
+    ///   [{x: 8.687487, y: 1.9590926}, {x: 2.0559108, y: 0.1494348}, {x: 7.09219, y: 0.9616637}],
+    ///   [{x: 1.2489164, y: 9.081063}, {x: 6.2707233, y: 4.396137}],
+    /// ]
+    /// ```
+    ///
+    /// Only unit-length `values` are currently supported: it _must_ never contain more than single
+    /// row's worth of data.
+    //
+    // TODO: support for batch component insertion
     pub fn push(
         &mut self,
         config: &DataStoreConfig,
         time_point: &TimePoint,
-        data: &dyn Array,
+        values: &dyn Array,
     ) -> RowIndex {
+        debug_assert!(
+            values.len() == 1,
+            "component tables do not support batch insertions at the moment"
+        );
+
         // All component tables spawn with an initial bucket at row offset 0, thus this cannot
         // fail.
         let bucket = self.buckets.back().unwrap();
@@ -665,7 +697,7 @@ impl ComponentTable {
             let row_offset = bucket.row_offset.as_u64() + len;
             self.buckets.push_back(ComponentBucket::new(
                 Arc::clone(&self.name),
-                self.datatype.clone(),
+                &self.datatype,
                 RowIndex::from_u64(row_offset),
             ));
         }
@@ -675,7 +707,9 @@ impl ComponentTable {
         //   same reason as above: all component tables spawn with an initial bucket at row
         //   offset 0, thus this cannot fail.
         // - If the table has just overflowed, then we've just pushed a bucket to the dequeue.
-        let row_idx = self.buckets.back_mut().unwrap().push(time_point, data);
+        let bucket = self.buckets.back_mut().unwrap();
+        let row_idx =
+            RowIndex::from_u64(bucket.push(time_point, values) + bucket.row_offset.as_u64());
 
         debug!(
             kind = "insert",
@@ -692,7 +726,7 @@ impl ComponentTable {
 }
 
 impl ComponentBucket {
-    pub fn new(name: Arc<String>, datatype: DataType, row_offset: RowIndex) -> Self {
+    pub fn new(name: Arc<String>, datatype: &DataType, row_offset: RowIndex) -> Self {
         // If this is the first bucket of this table, we need to insert an empty list at
         // row index #0!
         let chunks = if row_offset.as_u64() == 0 {
@@ -730,10 +764,31 @@ impl ComponentBucket {
         }
     }
 
-    pub fn push(&mut self, time_point: &TimePoint, values: &dyn Array) -> RowIndex {
-        for (timeline, time) in time_point {
-            // TODO(#451): prob should own it at this point
-            let time = *time;
+    /// Pushes `values` at the end of the bucket, returning the _local_ `RowIndex` of the freshly
+    /// added row.
+    ///
+    /// `values` must be a list of list of components, e.g. `ListArray<ListArray<StructArray>>`,
+    /// where the first list correspond to rows, the second list corresponds to the different
+    /// instances and the struct is of course the component itself:
+    /// ```ignore
+    /// [
+    ///   [{x: 8.687487, y: 1.9590926}, {x: 2.0559108, y: 0.1494348}, {x: 7.09219, y: 0.9616637}],
+    ///   [{x: 1.2489164, y: 9.081063}, {x: 6.2707233, y: 4.396137}],
+    /// ]
+    /// ```
+    ///
+    /// At the moment, only chunks of unit length are supported, which means that `values`
+    /// _must_ never contain more than one row.
+    //
+    // TODO: support for N-length chunks
+    pub fn push(&mut self, time_point: &TimePoint, values: &dyn Array) -> u64 {
+        debug_assert!(
+            values.len() == 1,
+            "component buckets only support unit-length chunks at the moment"
+        );
+
+        // Keep track of all affected time ranges, for garbage collection purposes.
+        for (timeline, &time) in time_point {
             self.time_ranges
                 .entry(*timeline)
                 .and_modify(|range| {
@@ -745,9 +800,8 @@ impl ComponentBucket {
         self.total_rows += values.len() as u64;
         self.total_size_bytes += arrow2::compute::aggregate::estimated_bytes_size(values) as u64;
 
-        // TODO: in real-life you might actually have more than one row per chunk
         self.chunks.push(values.to_boxed()); // shallow
 
-        RowIndex::from_u64(self.row_offset.as_u64() + self.chunks.len() as u64 - 1)
+        self.chunks.len() as u64 - 1
     }
 }
