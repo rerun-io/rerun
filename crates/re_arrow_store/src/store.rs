@@ -836,6 +836,11 @@ pub struct ComponentBucket {
     /// The offset of this bucket in the global table.
     pub(crate) row_offset: RowIndex,
 
+    /// Has this bucket been retired yet?
+    ///
+    /// At any given moment, all buckets except the currently active one have to be retired.
+    pub(crate) retired: bool,
+
     /// The time ranges (plural!) covered by this bucket.
     /// Buckets are never sorted over time, so these time ranges can grow arbitrarily large.
     ///
@@ -848,6 +853,10 @@ pub struct ComponentBucket {
     /// depending on how the data was inserted (e.g. single insertions vs. batches).
     /// All of these chunks get compacted into one contiguous array when the bucket is retired,
     /// i.e. when the bucket is full and a new one is created.
+    ///
+    /// Note that, as of today, we do not support batch insertion nor do we support chunks of
+    /// arbitrary length, meaning that each chunk currently always contains one and only row
+    /// worth of data until the bucket is retired.
     pub(crate) chunks: Vec<Box<dyn Array>>,
 
     /// The total number of rows present in this bucket, across all chunks.

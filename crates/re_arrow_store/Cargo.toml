@@ -19,6 +19,7 @@ re_log_types = { path = "../re_log_types" }
 # External
 anyhow.workspace = true
 arrow2 = { workspace = true, features = [
+  "compute_concatenate",
   "compute_aggregate",
   "io_print",
 ] }

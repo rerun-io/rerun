@@ -643,8 +643,8 @@ impl ComponentTable {
         }
     }
 
-    /// Finds the appropriate bucket and pushes `values` at the end of it, returning the _global_
-    /// `RowIndex` for this new row.
+    /// Finds the appropriate bucket in this component table and pushes `values` at the end of it,
+    /// returning the _global_ `RowIndex` for this new row.
     ///
     /// `values` must be a list of list of components, e.g. `ListArray<ListArray<StructArray>>`,
     /// where the first list correspond to rows, the second list corresponds to the different
@@ -668,17 +668,21 @@ impl ComponentTable {
     ) -> RowIndex {
         debug_assert!(
             values.len() == 1,
-            "component tables do not support batch insertions at the moment"
+            "component tables do not support batch insertions at the moment",
+        );
+        debug_assert!(
+            values.data_type() == &self.datatype,
+            "try to insert data of the wrong datatype in a component table",
         );
 
         // All component tables spawn with an initial bucket at row offset 0, thus this cannot
         // fail.
-        let bucket = self.buckets.back().unwrap();
+        let active_bucket = self.buckets.back_mut().unwrap();
 
-        let size = bucket.total_size_bytes();
-        let size_overflow = bucket.total_size_bytes() > config.component_bucket_size_bytes;
+        let size = active_bucket.total_size_bytes();
+        let size_overflow = active_bucket.total_size_bytes() > config.component_bucket_size_bytes;
 
-        let len = bucket.total_rows();
+        let len = active_bucket.total_rows();
         let len_overflow = len > config.component_bucket_nb_rows;
 
         if len_overflow {
@@ -694,7 +698,10 @@ impl ComponentTable {
                 "allocating new component bucket, previous one overflowed"
             );
 
-            let row_offset = bucket.row_offset.as_u64() + len;
+            // Retire currently active bucket.
+            active_bucket.retire();
+
+            let row_offset = active_bucket.row_offset.as_u64() + len;
             self.buckets.push_back(ComponentBucket::new(
                 Arc::clone(&self.name),
                 &self.datatype,
@@ -707,9 +714,10 @@ impl ComponentTable {
         //   same reason as above: all component tables spawn with an initial bucket at row
         //   offset 0, thus this cannot fail.
         // - If the table has just overflowed, then we've just pushed a bucket to the dequeue.
-        let bucket = self.buckets.back_mut().unwrap();
-        let row_idx =
-            RowIndex::from_u64(bucket.push(time_point, values) + bucket.row_offset.as_u64());
+        let active_bucket = self.buckets.back_mut().unwrap();
+        let row_idx = RowIndex::from_u64(
+            active_bucket.push(time_point, values) + active_bucket.row_offset.as_u64(),
+        );
 
         debug!(
             kind = "insert",
@@ -757,6 +765,7 @@ impl ComponentBucket {
         Self {
             name,
             row_offset,
+            retired: false,
             time_ranges: Default::default(),
             chunks,
             total_rows,
@@ -803,5 +812,37 @@ impl ComponentBucket {
         self.chunks.push(values.to_boxed()); // shallow
 
         self.chunks.len() as u64 - 1
+    }
+
+    /// Retires the bucket as a new one is about to take its place.
+    ///
+    /// This is a good opportunity to run compaction and other maintenance-like tasks.
+    /// Compact the bucket by concatenating all chunks of data into a single one.
+    pub fn retire(&mut self) {
+        debug_assert!(
+            !self.retired,
+            "retiring an already retired bucket, something is wrong"
+        );
+
+        // Chunk compaction
+        {
+            use arrow2::compute::concatenate::concatenate;
+
+            let chunks = self.chunks.iter().map(|chunk| &**chunk).collect::<Vec<_>>();
+            // Only two reasons this can ever fail:
+            //
+            // * `chunks` is empty:
+            // This can never happen, buckets always spawn with an initial chunk.
+            //
+            // * the various chunk contain data with different datatypes:
+            // This can never happen as that would first panic during insertion.
+            let values = concatenate(&chunks).unwrap();
+            self.total_size_bytes +=
+                arrow2::compute::aggregate::estimated_bytes_size(&*values) as u64;
+
+            self.chunks = vec![values];
+        }
+
+        self.retired = true;
     }
 }

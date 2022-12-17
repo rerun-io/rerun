@@ -583,7 +583,11 @@ impl ComponentBucket {
     /// Returns a shallow clone of the row data for the given `row_idx`.
     pub fn get(&self, row_idx: RowIndex) -> Box<dyn Array> {
         let row_idx = row_idx.as_u64() - self.row_offset.as_u64();
-        self.chunks[row_idx as usize].slice(0, 1)
+        if self.retired {
+            self.chunks[0].slice(row_idx as _, 1)
+        } else {
+            self.chunks[row_idx as usize].slice(0, 1)
+        }
     }
 
     /// Returns an iterator over the data chunks in this component.
