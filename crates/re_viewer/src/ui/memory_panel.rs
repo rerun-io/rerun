@@ -15,7 +15,7 @@ pub struct MemoryPanel {
 impl MemoryPanel {
     /// Call once per frame
     pub fn update(&mut self, gpu_resource_stats: &WgpuResourcePoolStatistics) {
-        puffin::profile_function!();
+        crate::profile_function!();
         self.history.capture(Some(
             (gpu_resource_stats.total_buffer_size_in_bytes
                 + gpu_resource_stats.total_texture_size_in_bytes) as _,
@@ -33,7 +33,7 @@ impl MemoryPanel {
         limit: &MemoryLimit,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
     ) {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         // We show realtime stats, so keep showing the latest!
         ui.ctx().request_repaint();
@@ -217,7 +217,7 @@ impl MemoryPanel {
     }
 
     fn plot(&self, ui: &mut egui::Ui, limit: &MemoryLimit) {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         use itertools::Itertools as _;
 

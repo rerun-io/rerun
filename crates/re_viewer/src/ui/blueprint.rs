@@ -26,7 +26,7 @@ impl Default for Blueprint {
 
 impl Blueprint {
     pub fn blueprint_panel_and_viewport(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         let spaces_info = SpacesInfo::new(&ctx.log_db.obj_db, &ctx.rec_cfg.time_ctrl);
 

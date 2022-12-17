@@ -260,12 +260,12 @@ fn get_pixel(image: &image::DynamicImage, [x, y]: [isize; 2]) -> Option<image::R
 }
 
 fn histogram_ui(ui: &mut egui::Ui, rgb_image: &image::RgbImage) -> egui::Response {
-    puffin::profile_function!();
+    crate::profile_function!();
 
     let mut histograms = [[0_u64; 256]; 3];
     {
         // TODO(emilk): this is slow, so cache the results!
-        puffin::profile_scope!("build");
+        crate::profile_scope!("build");
         for pixel in rgb_image.pixels() {
             for c in 0..3 {
                 histograms[c][pixel[c] as usize] += 1;
@@ -303,7 +303,7 @@ fn histogram_ui(ui: &mut egui::Ui, rgb_image: &image::RgbImage) -> egui::Respons
         })
         .collect_vec();
 
-    puffin::profile_scope!("show");
+    crate::profile_scope!("show");
     Plot::new("rgb_histogram")
         .legend(Legend::default())
         .height(200.0)

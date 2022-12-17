@@ -53,7 +53,7 @@ impl<T: Clone> Batch<T> {
         hashed_indices: &[re_log_types::IndexHash],
         data: &[T],
     ) -> Result<Self, BadBatchError> {
-        puffin::profile_function!(std::any::type_name::<T>());
+        crate::profile_function!(std::any::type_name::<T>());
 
         if hashed_indices.len() != data.len() {
             return Err(BadBatchError);
@@ -68,7 +68,7 @@ impl<T: Clone> Batch<T> {
 
     #[inline(never)]
     pub fn new_sequential(data: &[T]) -> Result<Self, BadBatchError> {
-        puffin::profile_function!(std::any::type_name::<T>());
+        crate::profile_function!(std::any::type_name::<T>());
 
         let indices = SharedSequentialIndex::hashes_up_to(data.len());
 

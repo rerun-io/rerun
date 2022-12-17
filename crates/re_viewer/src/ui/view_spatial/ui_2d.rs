@@ -224,7 +224,7 @@ pub fn view_2d(
     scene_rect_accum: Rect,
     hovered_instance: &mut Option<InstanceId>,
 ) -> egui::Response {
-    puffin::profile_function!();
+    crate::profile_function!();
 
     // Save off the available_size since this is used for some of the layout updates later
     let available_size = ui.available_size();
@@ -447,7 +447,7 @@ fn view_2d_scrollable(
     // Draw a re_renderer driven view.
     // Camera & projection are configured to ingest space coordinates directly.
     {
-        puffin::profile_scope!("build command buffer for 2D view {}", space.to_string());
+        crate::profile_scope!("build command buffer for 2D view {}", space.to_string());
 
         let Ok(target_config) = setup_target_config(
             &painter,

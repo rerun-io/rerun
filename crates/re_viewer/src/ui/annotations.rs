@@ -98,7 +98,7 @@ pub struct AnnotationMap(pub BTreeMap<ObjPath, Arc<Annotations>>);
 
 impl AnnotationMap {
     pub(crate) fn load(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         for (obj_path, field_store) in
             query.iter_ancestor_meta_field(ctx.log_db, &FieldName::from("_annotation_context"))

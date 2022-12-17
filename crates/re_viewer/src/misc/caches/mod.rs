@@ -48,21 +48,21 @@ impl TensorStats {
         use re_log_types::TensorDataType;
 
         fn tensor_range_u8(tensor: &ndarray::ArrayViewD<'_, u8>) -> (u8, u8) {
-            puffin::profile_function!();
+            crate::profile_function!();
             tensor.fold((u8::MAX, u8::MIN), |cur, &value| {
                 (cur.0.min(value), cur.1.max(value))
             })
         }
 
         fn tensor_range_u16(tensor: &ndarray::ArrayViewD<'_, u16>) -> (u16, u16) {
-            puffin::profile_function!();
+            crate::profile_function!();
             tensor.fold((u16::MAX, u16::MIN), |cur, &value| {
                 (cur.0.min(value), cur.1.max(value))
             })
         }
 
         fn tensor_range_f32(tensor: &ndarray::ArrayViewD<'_, f32>) -> (f32, f32) {
-            puffin::profile_function!();
+            crate::profile_function!();
             tensor.fold((f32::INFINITY, f32::NEG_INFINITY), |cur, &value| {
                 (cur.0.min(value), cur.1.max(value))
             })

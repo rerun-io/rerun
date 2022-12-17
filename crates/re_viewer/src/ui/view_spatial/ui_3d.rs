@@ -332,7 +332,7 @@ pub fn view_3d(
     scene_bbox_accum: &BoundingBox,
     hovered_instance: &mut Option<InstanceId>,
 ) -> egui::Response {
-    puffin::profile_function!();
+    crate::profile_function!();
 
     state.space_camera = space_cameras.to_vec();
 
@@ -437,13 +437,13 @@ fn paint_view(
     render_ctx: &mut RenderContext,
     name: &str,
 ) {
-    puffin::profile_function!();
+    crate::profile_function!();
 
     // Draw labels:
     ui.with_layer_id(
         egui::LayerId::new(egui::Order::Foreground, egui::Id::new("LabelsLayer")),
         |ui| {
-            puffin::profile_function!("labels");
+            crate::profile_function!("labels");
             let ui_from_world = eye.ui_from_world(&rect);
             for label in &scene.ui.labels_3d {
                 let pos_in_ui = ui_from_world * label.origin.extend(1.0);

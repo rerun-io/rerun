@@ -15,10 +15,10 @@ pub(crate) struct EventLogView {}
 impl EventLogView {
     #[allow(clippy::unused_self)]
     pub fn ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         let messages = {
-            puffin::profile_scope!("Collecting messages");
+            crate::profile_scope!("Collecting messages");
             ctx.log_db.chronological_log_messages().collect_vec()
         };
 
@@ -40,7 +40,7 @@ impl EventLogView {
 }
 
 pub(crate) fn message_table(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, messages: &[&LogMsg]) {
-    puffin::profile_function!();
+    crate::profile_function!();
 
     use egui_extras::{Column, TableBuilder};
 

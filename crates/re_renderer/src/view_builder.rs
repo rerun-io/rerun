@@ -199,7 +199,7 @@ impl ViewBuilder {
         ctx: &mut RenderContext,
         config: TargetConfiguration,
     ) -> anyhow::Result<&mut Self> {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         // Can't handle 0 size resolution since this would imply creating zero sized textures.
         assert_ne!(config.resolution_in_pixel[0], 0);
@@ -409,7 +409,7 @@ impl ViewBuilder {
         &mut self,
         draw_data: &D,
     ) -> &mut Self {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         let draw_data = draw_data.clone();
 
@@ -433,7 +433,7 @@ impl ViewBuilder {
         ctx: &RenderContext,
         clear_color: Rgba,
     ) -> anyhow::Result<wgpu::CommandBuffer> {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         let setup = self
             .setup
@@ -463,7 +463,7 @@ impl ViewBuilder {
             });
 
         {
-            puffin::profile_scope!("view builder main target pass");
+            crate::profile_scope!("view builder main target pass");
 
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: DebugLabel::from(format!("{:?} - main pass", setup.name)).get(),
@@ -523,7 +523,7 @@ impl ViewBuilder {
         pass: &mut wgpu::RenderPass<'a>,
         screen_position: glam::Vec2,
     ) -> anyhow::Result<()> {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         let setup = self
             .setup

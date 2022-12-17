@@ -76,7 +76,7 @@ pub(crate) fn view_tensor(
     state: &mut ViewTensorState,
     tensor: &Tensor,
 ) {
-    puffin::profile_function!();
+    crate::profile_function!();
 
     state.tensor = Some(tensor.clone());
 
@@ -407,7 +407,7 @@ fn slice_ui<T: Copy>(
     slice: ndarray::ArrayViewD<'_, T>,
     color_from_value: impl Fn(T) -> Color32,
 ) {
-    puffin::profile_function!();
+    crate::profile_function!();
 
     let ndims = slice.ndim();
     if let Ok(slice) = slice.into_dimensionality::<Ix2>() {
@@ -447,7 +447,7 @@ fn into_image<T: Copy>(
     slice: &ndarray::ArrayView2<'_, T>,
     color_from_value: impl Fn(T) -> Color32,
 ) -> ColorImage {
-    puffin::profile_function!();
+    crate::profile_function!();
 
     use ndarray::Dimension as _;
     let (height, width) = slice.raw_dim().into_pattern();
@@ -457,7 +457,7 @@ fn into_image<T: Copy>(
         ndarray::ArrayViewMut2::from_shape(slice.raw_dim(), image.pixels.as_mut_slice())
             .expect("Mismatched length.");
 
-    puffin::profile_scope!("color_mapper");
+    crate::profile_scope!("color_mapper");
     ndarray::Zip::from(image_view)
         .and(slice)
         .for_each(|pixel, value| {
@@ -473,7 +473,7 @@ fn image_ui(
     image: ColorImage,
     dimension_labels: [(String, bool); 2],
 ) {
-    puffin::profile_function!();
+    crate::profile_function!();
 
     egui::ScrollArea::both().show(ui, |ui| {
         let font_id = egui::TextStyle::Body.resolve(ui.style());

@@ -96,7 +96,7 @@ impl ObjectTree {
         data_path: &DataPath,
         data: Option<&LoggedData>,
     ) -> Vec<(MsgId, TimePoint)> {
-        puffin::profile_function!();
+        crate::profile_function!();
         let obj_path = data_path.obj_path.to_components();
 
         let leaf = self.create_subtrees_recursively(obj_path.as_slice(), 0, msg_id, time_point);
@@ -129,7 +129,7 @@ impl ObjectTree {
         time_point: &TimePoint,
         path_op: &PathOp,
     ) -> Vec<(DataPath, DataType, MonoOrMulti)> {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         let obj_path = path_op.obj_path().to_components();
 
@@ -258,23 +258,23 @@ impl ObjectTree {
         } = self;
 
         for map in prefix_times.0.values_mut() {
-            puffin::profile_scope!("prefix_times");
+            crate::profile_scope!("prefix_times");
             map.retain(|_, msg_ids| {
                 msg_ids.retain(|msg_id| keep_msg_ids.contains(msg_id));
                 !msg_ids.is_empty()
             });
         }
         {
-            puffin::profile_scope!("nonrecursive_clears");
+            crate::profile_scope!("nonrecursive_clears");
             nonrecursive_clears.retain(|msg_id, _| keep_msg_ids.contains(msg_id));
         }
         {
-            puffin::profile_scope!("recursive_clears");
+            crate::profile_scope!("recursive_clears");
             recursive_clears.retain(|msg_id, _| keep_msg_ids.contains(msg_id));
         }
 
         {
-            puffin::profile_scope!("fields");
+            crate::profile_scope!("fields");
             for columns in fields.values_mut() {
                 columns.purge_everything_but(keep_msg_ids);
             }

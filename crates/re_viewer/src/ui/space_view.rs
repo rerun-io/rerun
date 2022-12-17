@@ -101,7 +101,7 @@ impl SpaceView {
         category: ViewCategory,
         space_info: &SpaceInfo,
     ) -> IntSet<ObjPath> {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         let timeline = ctx.rec_cfg.time_ctrl.timeline();
         let log_db = &ctx.log_db;
@@ -128,7 +128,7 @@ impl SpaceView {
     /// We're not storing this since the circumstances for this may change over time.
     /// (either by choosing a different reference space path or by having new paths added)
     fn unreachable_elements(&mut self, spaces_info: &SpacesInfo) -> IntMap<ObjPath, &'static str> {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         let mut forced_invisible = IntMap::default();
 
@@ -362,7 +362,7 @@ impl SpaceView {
         reference_space_info: &SpaceInfo,
         latest_at: TimeInt,
     ) {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         let query = crate::ui::scene::SceneQuery {
             obj_paths: &self.queried_objects,

@@ -34,7 +34,7 @@ impl SceneText {
         query: &SceneQuery<'_>,
         filters: &ViewTextFilters,
     ) {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         self.load_text_entries(ctx, query, filters);
     }
@@ -45,7 +45,7 @@ impl SceneText {
         query: &SceneQuery<'_>,
         filters: &ViewTextFilters,
     ) {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         query
             .iter_object_stores(ctx.log_db, &[ObjectType::TextEntry])
@@ -96,7 +96,7 @@ impl SceneText {
         // We want to show the log messages in order.
         // The most important order is the the `time` for whatever timeline we are on.
         // For a tie-breaker, we use MsgId as that is ordered by a high-resolution wall-time.
-        puffin::profile_scope!("sort");
+        crate::profile_scope!("sort");
         self.text_entries
             .sort_by_key(|entry| (entry.time, entry.msg_id));
     }

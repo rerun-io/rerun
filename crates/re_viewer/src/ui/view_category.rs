@@ -28,7 +28,7 @@ pub fn categorize_obj_path(
     log_db: &LogDb,
     obj_path: &ObjPath,
 ) -> ViewCategorySet {
-    puffin::profile_function!();
+    crate::profile_function!();
 
     let Some(obj_type) = log_db.obj_db.types.get(obj_path.obj_type_path())  else {
         return ViewCategorySet::default();

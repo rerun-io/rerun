@@ -124,7 +124,7 @@ impl ImageCache {
 
     /// Attempt to free up memory.
     pub fn purge_memory(&mut self) {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         // Very aggressively flush everything not used in this frame
 
@@ -171,7 +171,7 @@ impl CachedImage {
         annotations: &Option<Arc<Annotations>>,
         render_ctx: &mut RenderContext,
     ) -> Self {
-        puffin::profile_function!();
+        crate::profile_function!();
         let dynamic_img = match tensor_to_dynamic_image(tensor, annotations) {
             Ok(dynamic_image) => dynamic_image,
             Err(err) => {
@@ -219,7 +219,7 @@ fn tensor_to_dynamic_image(
     tensor: &Tensor,
     annotations: &Option<Arc<Annotations>>,
 ) -> anyhow::Result<DynamicImage> {
-    puffin::profile_function!();
+    crate::profile_function!();
     use anyhow::Context as _;
 
     let shape = &tensor.shape;
@@ -432,7 +432,7 @@ fn tensor_to_dynamic_image(
         }
 
         TensorDataStore::Jpeg(bytes) => {
-            puffin::profile_scope!("Decode JPEG");
+            crate::profile_scope!("Decode JPEG");
             use image::io::Reader as ImageReader;
             let mut reader = ImageReader::new(std::io::Cursor::new(bytes));
             reader.set_format(image::ImageFormat::Jpeg);
@@ -453,7 +453,7 @@ fn tensor_to_dynamic_image(
 }
 
 fn dynamic_image_to_egui_color_image(dynamic_image: &DynamicImage) -> ColorImage {
-    puffin::profile_function!();
+    crate::profile_function!();
     match dynamic_image {
         DynamicImage::ImageLuma8(gray) => ColorImage {
             size: [gray.width() as _, gray.height() as _],

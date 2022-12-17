@@ -58,7 +58,7 @@ impl Renderers {
         resolver: &mut FileResolver<Fs>,
     ) -> &R {
         self.renderers.entry().or_insert_with(|| {
-            puffin::profile_scope!("create_renderer", std::any::type_name::<R>());
+            crate::profile_scope!("create_renderer", std::any::type_name::<R>());
             R::create_renderer(shared_data, resource_pools, device, resolver)
         })
     }

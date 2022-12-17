@@ -385,7 +385,7 @@ impl eframe::App for App {
 impl App {
     fn receive_messages(&mut self, egui_ctx: &egui::Context) {
         if let Some(rx) = &mut self.rx {
-            puffin::profile_function!();
+            crate::profile_function!();
             let start = instant::Instant::now();
 
             while let Ok(msg) = rx.try_recv() {
@@ -408,7 +408,7 @@ impl App {
     }
 
     fn cleanup(&mut self) {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         self.log_dbs.retain(|_, log_db| !log_db.is_empty());
 
@@ -440,7 +440,7 @@ impl App {
     }
 
     fn purge_memory_if_needed(&mut self) {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         fn format_limit(limit: Option<i64>) -> String {
             if let Some(bytes) = limit {
@@ -473,7 +473,7 @@ impl App {
             }
 
             {
-                puffin::profile_scope!("pruning");
+                crate::profile_scope!("pruning");
                 if let Some(counted) = mem_use_before.counted {
                     re_log::info!(
                         "Attempting to purge {:.1}% of used RAM ({})…",
@@ -640,7 +640,7 @@ impl AppState {
         log_db: &LogDb,
         re_ui: &re_ui::ReUi,
     ) {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         let Self {
             options,
@@ -711,7 +711,7 @@ fn top_panel(
     app: &mut App,
     gpu_resource_stats: &WgpuResourcePoolStatistics,
 ) {
-    puffin::profile_function!();
+    crate::profile_function!();
 
     let panel_frame = {
         egui::Frame {
@@ -1286,7 +1286,7 @@ fn save_database_to_file(
     };
 
     move || {
-        puffin::profile_scope!("save_to_file");
+        crate::profile_scope!("save_to_file");
 
         use anyhow::Context as _;
         let file = std::fs::File::create(path.as_path())
@@ -1298,7 +1298,7 @@ fn save_database_to_file(
 
 #[allow(unused_mut)]
 fn load_rrd_to_log_db(mut read: impl std::io::Read) -> anyhow::Result<LogDb> {
-    puffin::profile_function!();
+    crate::profile_function!();
 
     let decoder = re_log_types::encoding::Decoder::new(read)?;
 
@@ -1313,7 +1313,7 @@ fn load_rrd_to_log_db(mut read: impl std::io::Read) -> anyhow::Result<LogDb> {
 #[must_use]
 fn load_file_path(path: &std::path::Path) -> Option<LogDb> {
     fn load_file_path_impl(path: &std::path::Path) -> anyhow::Result<LogDb> {
-        puffin::profile_function!();
+        crate::profile_function!();
         use anyhow::Context as _;
         let file = std::fs::File::open(path).context("Failed to open file")?;
         load_rrd_to_log_db(file)

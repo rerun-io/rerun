@@ -183,7 +183,7 @@ pub fn visit_type_data<'s, Time: 'static + Copy + Ord, T: DataTrait>(
     time_query: &TimeQuery<Time>,
     mut visit: impl FnMut(Option<&'s IndexHash>, Time, &'s MsgId, &'s T),
 ) -> Option<()> {
-    puffin::profile_function!();
+    crate::profile_function!();
 
     if obj_store.mono() {
         let primary = obj_store.get_mono::<T>(field_name)?;
@@ -221,7 +221,7 @@ pub fn visit_type_data_1<'s, Time: 'static + Copy + Ord, T: DataTrait, S1: DataT
     (child1,): (&str,),
     mut visit: impl FnMut(Option<&'s IndexHash>, Time, &'s MsgId, &'s T, Option<&'s S1>),
 ) -> Option<()> {
-    puffin::profile_function!();
+    crate::profile_function!();
     let child1 = FieldName::from(child1);
 
     if obj_store.mono() {
@@ -275,7 +275,7 @@ pub fn visit_type_data_2<
     (child1, child2): (&str, &str),
     mut visit: impl FnMut(Option<&'s IndexHash>, Time, &'s MsgId, &'s T, Option<&'s S1>, Option<&'s S2>),
 ) -> Option<()> {
-    puffin::profile_function!();
+    crate::profile_function!();
     let child1 = FieldName::from(child1);
     let child2 = FieldName::from(child2);
 
@@ -350,7 +350,7 @@ pub fn visit_type_data_3<
         Option<&'s S3>,
     ),
 ) -> Option<()> {
-    puffin::profile_function!();
+    crate::profile_function!();
     let child1 = FieldName::from(child1);
     let child2 = FieldName::from(child2);
     let child3 = FieldName::from(child3);
@@ -433,7 +433,7 @@ pub fn visit_type_data_4<
         Option<&'s S4>,
     ),
 ) -> Option<()> {
-    puffin::profile_function!();
+    crate::profile_function!();
     let child1 = FieldName::from(child1);
     let child2 = FieldName::from(child2);
     let child3 = FieldName::from(child3);
@@ -524,7 +524,7 @@ pub fn visit_type_data_5<
         Option<&'s S5>,
     ),
 ) -> Option<()> {
-    puffin::profile_function!();
+    crate::profile_function!();
     let child1 = FieldName::from(child1);
     let child2 = FieldName::from(child2);
     let child3 = FieldName::from(child3);
@@ -623,7 +623,7 @@ pub fn visit_type_data_6<
         Option<&'s S6>,
     ),
 ) -> Option<()> {
-    puffin::profile_function!();
+    crate::profile_function!();
     let child1 = FieldName::from(child1);
     let child2 = FieldName::from(child2);
     let child3 = FieldName::from(child3);

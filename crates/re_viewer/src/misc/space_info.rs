@@ -40,7 +40,7 @@ impl SpacesInfo {
     /// Do a graph analysis of the transform hierarchy, and create cuts
     /// wherever we find a non-identity transform.
     pub fn new(obj_db: &ObjDb, time_ctrl: &TimeControl) -> Self {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         fn add_children(
             timeline_store: Option<&TimelineStore<i64>>,

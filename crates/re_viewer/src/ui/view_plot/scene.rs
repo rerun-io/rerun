@@ -62,7 +62,7 @@ pub struct ScenePlot {
 impl ScenePlot {
     /// Loads all plot objects into the scene according to the given query.
     pub(crate) fn load_objects(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         self.annotation_map.load(ctx, query);
 
@@ -70,7 +70,7 @@ impl ScenePlot {
     }
 
     fn load_scalars(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
-        puffin::profile_function!();
+        crate::profile_function!();
 
         for (_obj_type, obj_path, _time_query, obj_store) in
             query.iter_object_stores(ctx.log_db, &[ObjectType::Scalar])
