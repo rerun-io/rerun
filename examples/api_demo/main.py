@@ -179,7 +179,7 @@ def transforms_rigid_3d() -> None:
     for i in range(0, 6 * 120):
         time = i / 120.0
         rerun.set_time_seconds("sim_time", time)
-        rotation_q = [0, 0, 0, 1]  # TODO: rotate around some axis
+        rotation_q = [0, 0, 0, 1]
         rerun.log_rigid3(
             "transforms3d/planet",
             child_from_parent=(
