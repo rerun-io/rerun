@@ -15,6 +15,7 @@ from rerun.color_conversion import linear_to_gamma_u8_pixel, u8_array_to_rgba
 from rerun import rerun_bindings  # type: ignore[attr-defined]
 
 from rerun import components
+from rerun.components import point
 
 EXP_ARROW = os.environ.get("RERUN_EXP_ARROW", "0").lower() in ("1", "true")
 
@@ -606,6 +607,28 @@ def log_points(
         keypoint_ids=keypoint_ids,
         timeless=timeless,
     )
+
+    if EXP_ARROW:
+        from rerun.components import color, label, point
+
+        if positions.shape[1] == 2:
+            points = point.Point2DArray.from_numpy(positions)
+
+        elif positions.shape[1] == 3:
+            points = point.Point3DArray.from_numpy(positions)
+
+        else:
+            raise TypeError("Positions should be either Nx2 or Nx3")
+
+        colors = color.ColorRGBAArray.from_numpy(colors)
+        labels = label.LabelArray.new(labels)
+
+        rerun_bindings.log_arrow_msg(
+            obj_path,
+            points=points,
+            # colors=colors,
+            labels=labels,
+        )
 
 
 def _normalize_colors(colors: Optional[npt.ArrayLike] = None) -> npt.NDArray[np.uint8]:

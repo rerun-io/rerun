@@ -13,7 +13,7 @@ mod instance;
 mod label;
 mod point;
 mod quaternion;
-mod rect2d;
+mod rect;
 mod size;
 
 pub use color::ColorRGBA;
@@ -21,7 +21,7 @@ pub use instance::Instance;
 pub use label::Label;
 pub use point::{Point2D, Point3D};
 pub use quaternion::Quaternion;
-pub use rect2d::Rect2D;
+pub use rect::Rect2D;
 pub use size::Size3D;
 
 lazy_static! {

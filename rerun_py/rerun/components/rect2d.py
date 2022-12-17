@@ -5,7 +5,6 @@ import numpy.typing as npt
 import numpy as np
 import pyarrow as pa
 
-from rerun import rerun_bindings  # type: ignore[attr-defined]
 from rerun import RectFormat
 from rerun.components import ComponentTypeFactory, REGISTERED_FIELDS
 

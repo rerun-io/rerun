@@ -166,7 +166,7 @@ fn default_recording_id(py: Python<'_>) -> RecordingId {
 }
 
 fn authkey(py: Python<'_>) -> Vec<u8> {
-    use pyo3::types::{PyBytes, PyDict};
+    use pyo3::types::PyBytes;
     let locals = PyDict::new(py);
     py.run(
         r#"

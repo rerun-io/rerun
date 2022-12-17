@@ -9,6 +9,7 @@ import pyarrow as pa
 all = [
     "color",
     "label",
+    "point",
     "rect2d",
 ]
 
