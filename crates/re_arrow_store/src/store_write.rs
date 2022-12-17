@@ -26,7 +26,7 @@ impl DataStore {
     /// This does _not_ support batching yet: the components in the bundle _must_ only contain
     /// a single row's worth of data!
     //
-    // TODO: support for batch component insertion
+    // TODO(#589): support for batch component insertion
     pub fn insert(&mut self, msg_bundle: &MsgBundle) -> anyhow::Result<()> {
         // TODO(cmc): kind & insert_id need to somehow propagate through the span system.
         self.insert_id += 1;
@@ -659,7 +659,7 @@ impl ComponentTable {
     /// Only unit-length `values` are currently supported: it _must_ never contain more than single
     /// row's worth of data.
     //
-    // TODO: support for batch component insertion
+    // TODO(#589): support for batch component insertion
     pub fn push(
         &mut self,
         config: &DataStoreConfig,
@@ -789,7 +789,7 @@ impl ComponentBucket {
     /// At the moment, only chunks of unit length are supported, which means that `values`
     /// _must_ never contain more than one row.
     //
-    // TODO: support for N-length chunks
+    // TODO(#589): support for N-length chunks
     pub fn push(&mut self, time_point: &TimePoint, values: &dyn Array) -> u64 {
         debug_assert!(
             values.len() == 1,
@@ -807,6 +807,7 @@ impl ComponentBucket {
         }
 
         self.total_rows += values.len() as u64;
+        // Warning: this is _very_ costly!
         self.total_size_bytes += arrow2::compute::aggregate::estimated_bytes_size(values) as u64;
 
         self.chunks.push(values.to_boxed()); // shallow
