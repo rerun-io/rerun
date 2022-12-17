@@ -844,6 +844,14 @@ pub struct ComponentBucket {
 
     /// All the data for this bucket. This is a single column!
     pub(crate) chunks: Vec<Box<dyn Array>>,
+
+    /// The total number of rows present in this bucket.
+    pub(crate) total_rows: u64,
+    /// The size of this bucket in bytes.
+    ///
+    /// Accurately computing the size of arrow arrays is surpsingly costly, which is why we cache
+    /// this.
+    pub(crate) total_size_bytes: u64,
 }
 
 impl std::fmt::Display for ComponentBucket {
@@ -888,15 +896,12 @@ impl std::fmt::Display for ComponentBucket {
 impl ComponentBucket {
     /// Returns the number of rows stored across this bucket.
     pub fn total_rows(&self) -> u64 {
-        self.chunks.len() as u64
+        self.total_rows
     }
 
     /// Returns the size of the data stored across this bucket, in bytes.
     pub fn total_size_bytes(&self) -> u64 {
-        self.chunks
-            .iter()
-            .map(|data| arrow2::compute::aggregate::estimated_bytes_size(&**data) as u64)
-            .sum()
+        self.total_size_bytes
     }
 }
 

@@ -4,7 +4,6 @@ use std::sync::Arc;
 use arrow2::array::{new_empty_array, Array, Int64Vec, ListArray, MutableArray, UInt64Vec};
 use arrow2::bitmap::MutableBitmap;
 use arrow2::buffer::Buffer;
-use arrow2::compute::concatenate::concatenate;
 use arrow2::datatypes::DataType;
 use parking_lot::RwLock;
 
@@ -644,8 +643,8 @@ impl ComponentTable {
         // fail.
         let bucket = self.buckets.back().unwrap();
 
-        // let size = bucket.total_size_bytes();
-        // let size_overflow = bucket.total_size_bytes() > config.component_bucket_size_bytes;
+        let size = bucket.total_size_bytes();
+        let size_overflow = bucket.total_size_bytes() > config.component_bucket_size_bytes;
 
         let len = bucket.total_rows();
         let len_overflow = len > config.component_bucket_nb_rows;
@@ -656,8 +655,8 @@ impl ComponentTable {
                 component = self.name.as_str(),
                 size_limit = config.component_bucket_size_bytes,
                 len_limit = config.component_bucket_nb_rows,
-                // size,
-                // size_overflow,
+                size,
+                size_overflow,
                 len,
                 len_overflow,
                 "allocating new component bucket, previous one overflowed"
@@ -715,15 +714,23 @@ impl ComponentBucket {
             vec![]
         };
 
+        let total_rows = chunks.iter().map(|values| values.len() as u64).sum();
+        let total_size_bytes = chunks
+            .iter()
+            .map(|values| arrow2::compute::aggregate::estimated_bytes_size(&**values) as u64)
+            .sum();
+
         Self {
             name,
             row_offset,
             time_ranges: Default::default(),
             chunks,
+            total_rows,
+            total_size_bytes,
         }
     }
 
-    pub fn push(&mut self, time_point: &TimePoint, data: &dyn Array) -> RowIndex {
+    pub fn push(&mut self, time_point: &TimePoint, values: &dyn Array) -> RowIndex {
         for (timeline, time) in time_point {
             // TODO(#451): prob should own it at this point
             let time = *time;
@@ -735,8 +742,11 @@ impl ComponentBucket {
                 .or_insert_with(|| TimeRange::new(time, time));
         }
 
+        self.total_rows += values.len() as u64;
+        self.total_size_bytes += arrow2::compute::aggregate::estimated_bytes_size(values) as u64;
+
         // TODO: in real-life you might actually have more than one row per chunk
-        self.chunks.push(data.to_boxed()); // shallow
+        self.chunks.push(values.to_boxed()); // shallow
 
         RowIndex::from_u64(self.row_offset.as_u64() + self.chunks.len() as u64 - 1)
     }
