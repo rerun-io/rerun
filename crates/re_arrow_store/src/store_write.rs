@@ -26,7 +26,7 @@ impl DataStore {
     /// This does _not_ support batching yet: the components in the bundle _must_ only contain
     /// a single row's worth of data!
     //
-    // TODO(#589): support for batch component insertion
+    // TODO(#589): support for batched row component insertions
     pub fn insert(&mut self, msg_bundle: &MsgBundle) -> anyhow::Result<()> {
         // TODO(cmc): kind & insert_id need to somehow propagate through the span system.
         self.insert_id += 1;
@@ -57,19 +57,19 @@ impl DataStore {
         let mut indices = HashMap::with_capacity(components.len());
 
         for bundle in components {
-            let ComponentBundle { name, value } = bundle;
+            let ComponentBundle { name, value: rows } = bundle;
 
             debug_assert!(
-                value.len() == 1,
-                "batch component insertions are not yet supported!"
+                rows.len() == 1,
+                "batched component row insertions are not yet supported!"
             );
 
             let table = self
                 .components
                 .entry((*bundle.name).to_owned())
-                .or_insert_with(|| ComponentTable::new((*name).clone(), value.data_type()));
+                .or_insert_with(|| ComponentTable::new((*name).clone(), rows.data_type()));
 
-            let row_idx = table.push(&self.config, time_point, value.as_ref());
+            let row_idx = table.push(&self.config, time_point, rows.as_ref());
             indices.insert(name.as_ref(), row_idx);
         }
 
@@ -643,10 +643,10 @@ impl ComponentTable {
         }
     }
 
-    /// Finds the appropriate bucket in this component table and pushes `values` at the end of it,
+    /// Finds the appropriate bucket in this component table and appends `rows` at the end of it,
     /// returning the _global_ `RowIndex` for this new row.
     ///
-    /// `values` must be a list of list of components, e.g. `ListArray<ListArray<StructArray>>`,
+    /// `rows` must be a list of list of components, e.g. `ListArray<ListArray<StructArray>>`,
     /// where the first list correspond to rows, the second list corresponds to the different
     /// instances and the struct is of course the component itself:
     /// ```ignore
@@ -656,23 +656,23 @@ impl ComponentTable {
     /// ]
     /// ```
     ///
-    /// Only unit-length `values` are currently supported: it _must_ never contain more than single
-    /// row's worth of data.
+    /// Only unit-length `rows` are currently supported: `rows` _must_ never contain more than
+    /// single row's worth of data.
     //
-    // TODO(#589): support for batch component insertion
+    // TODO(#589): support for batched row component insertions
     pub fn push(
         &mut self,
         config: &DataStoreConfig,
         time_point: &TimePoint,
-        values: &dyn Array,
+        rows: &dyn Array,
     ) -> RowIndex {
         debug_assert!(
-            values.len() == 1,
-            "component tables do not support batch insertions at the moment",
+            rows.len() == 1,
+            "component tables do not support batched row insertions at the moment",
         );
         debug_assert!(
-            values.data_type() == &self.datatype,
-            "try to insert data of the wrong datatype in a component table",
+            rows.data_type() == &self.datatype,
+            "trying to insert data of the wrong datatype in a component table",
         );
 
         // All component tables spawn with an initial bucket at row offset 0, thus this cannot
@@ -716,7 +716,7 @@ impl ComponentTable {
         // - If the table has just overflowed, then we've just pushed a bucket to the dequeue.
         let active_bucket = self.buckets.back_mut().unwrap();
         let row_idx = RowIndex::from_u64(
-            active_bucket.push(time_point, values) + active_bucket.row_offset.as_u64(),
+            active_bucket.push(time_point, rows) + active_bucket.row_offset.as_u64(),
         );
 
         debug!(
@@ -773,12 +773,12 @@ impl ComponentBucket {
         }
     }
 
-    /// Pushes `values` at the end of the bucket, returning the _local_ `RowIndex` of the freshly
+    /// Appends `rows` to the end of the bucket, returning the _local_ index of the freshly
     /// added row.
     ///
-    /// `values` must be a list of list of components, e.g. `ListArray<ListArray<StructArray>>`,
+    /// `rows` must be a list of list of components, e.g. `ListArray<ListArray<StructArray>>`,
     /// where the first list correspond to rows, the second list corresponds to the different
-    /// instances and the struct is of course the component itself:
+    /// instances within the row, and the struct is of course the component itself:
     /// ```ignore
     /// [
     ///   [{x: 8.687487, y: 1.9590926}, {x: 2.0559108, y: 0.1494348}, {x: 7.09219, y: 0.9616637}],
@@ -786,13 +786,13 @@ impl ComponentBucket {
     /// ]
     /// ```
     ///
-    /// At the moment, only chunks of unit length are supported, which means that `values`
+    /// At the moment, only unit-length chunks are supported, which means that `rows` acually
     /// _must_ never contain more than one row.
     //
     // TODO(#589): support for N-length chunks
-    pub fn push(&mut self, time_point: &TimePoint, values: &dyn Array) -> u64 {
+    pub fn push(&mut self, time_point: &TimePoint, rows: &dyn Array) -> u64 {
         debug_assert!(
-            values.len() == 1,
+            rows.len() == 1,
             "component buckets only support unit-length chunks at the moment"
         );
 
@@ -806,11 +806,11 @@ impl ComponentBucket {
                 .or_insert_with(|| TimeRange::new(time, time));
         }
 
-        self.total_rows += values.len() as u64;
+        self.total_rows += rows.len() as u64;
         // Warning: this is _very_ costly!
-        self.total_size_bytes += arrow2::compute::aggregate::estimated_bytes_size(values) as u64;
+        self.total_size_bytes += arrow2::compute::aggregate::estimated_bytes_size(rows) as u64;
 
-        self.chunks.push(values.to_boxed()); // shallow
+        self.chunks.push(rows.to_boxed()); // shallow
 
         self.chunks.len() as u64 - 1
     }
@@ -835,10 +835,10 @@ impl ComponentBucket {
             // * `chunks` is empty:
             // This can never happen, buckets always spawn with an initial chunk.
             //
-            // * the various chunk contain data with different datatypes:
+            // * the various chunks contain data with different datatypes:
             // This can never happen as that would first panic during insertion.
             let values = concatenate(&chunks).unwrap();
-            self.total_size_bytes +=
+            self.total_size_bytes =
                 arrow2::compute::aggregate::estimated_bytes_size(&*values) as u64;
 
             self.chunks = vec![values];

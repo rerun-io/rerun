@@ -175,8 +175,8 @@ impl DataStore {
 
     /// Retrieves the data associated with a list of `components` at the specified `indices`.
     ///
-    /// If the associated data is found, it will be written into returned array at the appropriate
-    /// index, or `None` otherwise.
+    /// If the associated data is found, it will be written into the returned array at the
+    /// appropriate index, or `None` otherwise.
     ///
     /// `row_indices` takes a list of options so that one can easily re-use the results obtained
     /// from [`Self::query`].

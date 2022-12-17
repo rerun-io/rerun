@@ -854,9 +854,9 @@ pub struct ComponentBucket {
     /// All of these chunks get compacted into one contiguous array when the bucket is retired,
     /// i.e. when the bucket is full and a new one is created.
     ///
-    /// Note that, as of today, we do not support batch insertion nor do we support chunks of
-    /// arbitrary length, meaning that each chunk currently always contains one and only row
-    /// worth of data until the bucket is retired.
+    /// Note that, as of today (#589), we do not support batch insertion nor do we support chunks
+    /// of non-unit length: chunks always contain one and only one row's worth of data until the
+    /// bucket is retired.
     pub(crate) chunks: Vec<Box<dyn Array>>,
 
     /// The total number of rows present in this bucket, across all chunks.
@@ -892,6 +892,7 @@ impl std::fmt::Display for ComponentBucket {
                     .expect("buckets are never empty") as u64,
         ))?;
 
+        f.write_fmt(format_args!("retired: {}\n", self.retired))?;
         f.write_str("time ranges:\n")?;
         for (timeline, time_range) in &self.time_ranges {
             f.write_fmt(format_args!(
@@ -900,7 +901,14 @@ impl std::fmt::Display for ComponentBucket {
             ))?;
         }
 
-        let chunk = Chunk::new(self.data());
+        let rows = if self.retired {
+            self.data()
+        } else {
+            use arrow2::compute::concatenate::concatenate;
+            let chunks = self.chunks.iter().map(|chunk| &**chunk).collect::<Vec<_>>();
+            vec![concatenate(&chunks).unwrap()]
+        };
+        let chunk = Chunk::new(rows);
         f.write_str(&arrow2::io::print::write(&[chunk], &[self.name.as_str()]))?;
 
         Ok(())

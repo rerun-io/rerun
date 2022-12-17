@@ -346,6 +346,8 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
         );
     }
 
+    store.sort_indices();
+    eprintln!("{store}");
     if let err @ Err(_) = store.sanity_check() {
         store.sort_indices();
         eprintln!("{store}");
