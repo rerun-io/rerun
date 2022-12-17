@@ -125,9 +125,11 @@ def run_rects() -> None:
         rerun.set_time_seconds("sim_time", i)
         rects_xy = np.random.rand(NUM_RECTS, 2) * 1024
         rects_wh = np.random.rand(NUM_RECTS, 2) * (1024 - rects_xy + 1)
+
         rects = np.hstack((rects_xy, rects_wh))
         colors = np.array([[random.randrange(255) for _ in range(3)] for _ in range(NUM_RECTS)])
-        rerun.log_rects("rects_demo/rects", rects, colors=colors, rect_format=RectFormat.XYWH)
+        labels = [f"label{x}" for x in range(NUM_RECTS)]
+        rerun.log_rects("rects_demo/rects", rects, colors=colors, labels=labels, rect_format=RectFormat.XYWH)
 
     # Clear the rectangles by logging an empty set
     # rerun.set_time_seconds("sim_time", 3)

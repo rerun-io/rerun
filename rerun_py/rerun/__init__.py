@@ -488,11 +488,17 @@ def log_rects(
     )
 
     if EXP_ARROW:
-        from rerun.components import rect2d, color
+        from rerun.components import rect2d, color, label
 
         rects = rect2d.Rect2DArray.from_numpy_and_format(rects, rect_format)
         colors = color.ColorRGBAArray.from_numpy(colors)
-        rerun_bindings.log_arrow_msg(obj_path, rects=rects, colors=colors)
+        labels = label.LabelArray.new(labels)
+        rerun_bindings.log_arrow_msg(
+            obj_path,
+            rects=rects,
+            colors=colors,
+            labels=labels,
+        )
 
 
 def log_point(

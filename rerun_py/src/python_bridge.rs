@@ -9,7 +9,7 @@ use itertools::Itertools as _;
 use pyo3::{
     exceptions::{PyRuntimeError, PyTypeError},
     prelude::*,
-    types::{PyDict, PyList, PyTuple},
+    types::{PyDict, PyList},
 };
 
 use re_log_types::{

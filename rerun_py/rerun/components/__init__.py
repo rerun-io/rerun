@@ -6,7 +6,11 @@ from typing import Any, Final, Type, cast
 from rerun import rerun_bindings  # type: ignore[attr-defined]
 import pyarrow as pa
 
-all = ["color", "rect2d"]
+all = [
+    "color",
+    "label",
+    "rect2d",
+]
 
 REGISTERED_FIELDS: Final = rerun_bindings.get_registered_fields()
 
