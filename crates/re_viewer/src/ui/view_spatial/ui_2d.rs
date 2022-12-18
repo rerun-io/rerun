@@ -397,7 +397,7 @@ fn view_2d_scrollable(
                                 instance_hash.resolve(&ctx.log_db.obj_db.store)
                             {
                                 ui.label(instance_id.to_string());
-                                crate::ui::data_ui::view_instance(
+                                crate::ui::data_ui::instance_ui(
                                     ctx,
                                     ui,
                                     &instance_id,
@@ -479,7 +479,7 @@ fn view_2d_scrollable(
         if !shown_tooltips.contains(&instance_id.hash()) {
             response = response.on_hover_ui_at_pointer(|ui| {
                 ctx.instance_id_button(ui, instance_id);
-                crate::ui::data_ui::view_instance(ctx, ui, instance_id, crate::ui::Preview::Small);
+                crate::ui::data_ui::instance_ui(ctx, ui, instance_id, crate::ui::Preview::Small);
             });
         }
     }

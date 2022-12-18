@@ -72,7 +72,7 @@ pub(crate) fn view_text(
 
         egui::ScrollArea::horizontal().show(ui, |ui| {
             crate::profile_scope!("render table");
-            show_table(ctx, ui, state, &scene.text_entries, scroll_to_row);
+            table_ui(ctx, ui, state, &scene.text_entries, scroll_to_row);
         })
     })
     .response
@@ -272,7 +272,7 @@ fn get_time_point(ctx: &ViewerContext<'_>, entry: &TextEntry) -> Option<TimePoin
 /// `scroll_to_row` indicates how far down we want to scroll in terms of logical rows,
 /// as opposed to `scroll_to_offset` (computed below) which is how far down we want to
 /// scroll in terms of actual points.
-fn show_table(
+fn table_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &mut ViewTextState,

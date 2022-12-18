@@ -10,9 +10,6 @@ publish = false
 [features]
 default = []
 
-## Add support for the [`puffin`](https://github.com/EmbarkStudios/puffin) profiler.
-puffin = ["dep:puffin", "re_log_types/puffin"]
-
 ## Enable (de)serialization using serde.
 serde = ["dep:serde", "re_log_types/serde"]
 
@@ -34,7 +31,8 @@ thiserror = "1.0"
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-puffin = { version = "0.14", optional = true }
+puffin.workspace = true
+
 
 [dev-dependencies]
 criterion = "0.4"

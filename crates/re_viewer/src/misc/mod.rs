@@ -15,7 +15,7 @@ pub(crate) use clipboard::Clipboard;
 pub(crate) use time_control::{TimeControl, TimeView};
 pub(crate) use viewer_context::*;
 
-#[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
+#[cfg(not(target_arch = "wasm32"))]
 pub(crate) mod profiler;
 
 #[cfg(not(target_arch = "wasm32"))]

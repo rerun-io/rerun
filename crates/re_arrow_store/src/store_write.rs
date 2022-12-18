@@ -858,7 +858,7 @@ impl ComponentBucket {
         Self {
             name,
             row_offset,
-            retired: false,
+            archived: false,
             time_ranges: Default::default(),
             chunks,
             total_rows,
@@ -905,8 +905,8 @@ impl ComponentBucket {
     /// This is a good opportunity to run compaction and other maintenance related tasks.
     pub fn retire(&mut self) {
         debug_assert!(
-            !self.retired,
-            "retiring an already retired bucket, something is likely wrong"
+            !self.archived,
+            "retiring an already archived bucket, something is likely wrong"
         );
 
         // Chunk compaction
@@ -931,6 +931,6 @@ impl ComponentBucket {
             self.chunks = vec![values];
         }
 
-        self.retired = true;
+        self.archived = true;
     }
 }
