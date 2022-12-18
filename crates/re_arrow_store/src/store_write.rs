@@ -41,6 +41,33 @@ impl DataStore {
         if components.is_empty() {
             return Ok(());
         }
+        #[cfg(debug_assertions)]
+        {
+            for bundle in components {
+                debug_assert!(
+                    bundle.value.len() == 1,
+                    "batched component row insertions are not supported yet!"
+                );
+            }
+        }
+
+        let clustering_comp = get_or_create_clustering_key(components, &self.clustering_key);
+
+        // All components must share the same length as the clustering key.
+        // TODO(#527): typed error
+        ensure!(
+            components.iter().all(|bundle| {
+                // TODO(#589): support for batched row component insertions
+                let first_row = bundle
+                    .value
+                    .as_any()
+                    .downcast_ref::<ListArray<i32>>()
+                    .unwrap()
+                    .value(0);
+                first_row.len() == clustering_comp.len()
+            }),
+            "all components in the row must have the same length as the clustering component",
+        );
 
         let ent_path_hash = *ent_path.hash();
         let nb_rows = components[0].value.len();
@@ -119,6 +146,39 @@ impl DataStore {
         }
 
         Ok(())
+    }
+}
+
+// TODO: doc
+fn get_or_create_clustering_key(
+    components: &[ComponentBundle],
+    clustering_key: ComponentNameRef<'_>,
+) -> Box<dyn Array> {
+    let clustering_comp = components
+        .iter()
+        .find(|bundle| bundle.name == clustering_key);
+
+    // TODO: debug logs?
+    if let Some(clustering_comp) = clustering_comp {
+        let first_row = clustering_comp
+            .value
+            .as_any()
+            .downcast_ref::<ListArray<i32>>()
+            .unwrap()
+            .value(0);
+        first_row
+    } else {
+        let len = components.first().map_or(0, |comp| {
+            // TODO(#589): support for batched row component insertions
+            let first_row = comp
+                .value
+                .as_any()
+                .downcast_ref::<ListArray<i32>>()
+                .unwrap()
+                .value(0);
+            first_row.len()
+        });
+        UInt64Array::from_vec((0..len as u64).collect_vec()).boxed()
     }
 }
 

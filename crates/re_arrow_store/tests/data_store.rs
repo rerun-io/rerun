@@ -764,6 +764,8 @@ impl DataTracker {
         );
     }
 
+    // TODO: we can normalize all of this now
+
     fn fetch_component_pov(
         store: &DataStore,
         timeline_query: &TimelineQuery,
