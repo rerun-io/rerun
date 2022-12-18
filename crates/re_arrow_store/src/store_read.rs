@@ -110,8 +110,7 @@ impl DataStore {
     ///             .map(|(&component, col)| Series::try_from((component, col)).unwrap())
     ///             .collect();
     ///
-    ///         let df = DataFrame::new(series).unwrap();
-    ///         df.explode(df.get_column_names()).unwrap()
+    ///         DataFrame::new(series).unwrap()
     ///     };
     ///
     ///     df
