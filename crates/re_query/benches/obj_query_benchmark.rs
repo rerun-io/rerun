@@ -60,7 +60,7 @@ fn obj_mono_points(c: &mut Criterion) {
 
 fn obj_batch_points(c: &mut Criterion) {
     {
-        // Each mono point gets logged at a different path
+        // Batch points are logged together at a single path
         let paths = [ObjPath::from("points")];
         let msgs = build_messages(&paths, NUM_POINTS as _);
 
@@ -118,7 +118,7 @@ struct Point {
     _color: Option<ColorRGBA>,
 }
 
-fn query_and_visit(store: &mut DataStore, paths: &[ObjPath]) {
+fn query_and_visit(store: &mut DataStore, paths: &[ObjPath]) -> Vec<Point> {
     let time_query = TimeQuery::LatestAt((NUM_FRAMES as i64) / 2);
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
     let timeline_query = TimelineQuery::new(timeline_frame_nr, time_query);
@@ -145,4 +145,5 @@ fn query_and_visit(store: &mut DataStore, paths: &[ObjPath]) {
         };
     }
     assert_eq!(NUM_POINTS as usize, points.len());
+    points
 }
