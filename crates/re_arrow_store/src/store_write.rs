@@ -724,7 +724,7 @@ impl ComponentTable {
         let len = active_bucket.total_rows();
         let len_overflow = len > config.component_bucket_nb_rows;
 
-        if size_overflow || len_overflow {
+        if len_overflow {
             debug!(
                 kind = "insert",
                 component = self.name.as_str(),
