@@ -6,7 +6,7 @@ use re_log_types::{IndexHash, MsgId};
 
 use crate::{misc::ViewerContext, ui::annotations::auto_color};
 
-pub(crate) fn view_class_description_map(
+pub(crate) fn class_description_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     instance_id: &InstanceId,

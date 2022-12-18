@@ -160,7 +160,7 @@ impl App {
         }
     }
 
-    #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn set_profiler(&mut self, profiler: crate::Profiler) {
         self.state.profiler = profiler;
     }
@@ -231,7 +231,7 @@ impl App {
             self.reset(egui_ctx);
         }
 
-        #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
+        #[cfg(not(target_arch = "wasm32"))]
         if egui_ctx
             .input_mut()
             .consume_shortcut(&kb_shortcuts::SHOW_PROFILER)
@@ -627,7 +627,7 @@ struct AppState {
     selection_history: crate::SelectionHistory,
     time_panel: crate::time_panel::TimePanel,
 
-    #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
+    #[cfg(not(target_arch = "wasm32"))]
     #[serde(skip)]
     profiler: crate::Profiler,
 }
@@ -653,7 +653,7 @@ impl AppState {
             selection_panel,
             selection_history,
             time_panel,
-            #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
+            #[cfg(not(target_arch = "wasm32"))]
                 profiler: _,
         } = self;
 
@@ -1152,7 +1152,7 @@ fn view_menu(ui: &mut egui::Ui, app: &mut App, frame: &mut eframe::Frame) {
         ui.close_menu();
     }
 
-    #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
+    #[cfg(not(target_arch = "wasm32"))]
     if ui
         .add(
             egui::Button::new("Profile Viewer")

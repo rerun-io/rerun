@@ -2,10 +2,6 @@
 //!
 //! This crate contains all the GUI code for the Rerun Viewer,
 //! including all 2D and 3D visualization code.
-//!
-//! ## Feature flags
-#![doc = document_features::document_features!()]
-//!
 
 mod app;
 pub mod env_vars;
@@ -30,7 +26,7 @@ mod native;
 #[cfg(not(target_arch = "wasm32"))]
 pub use native::{run_native_app, run_native_viewer_with_messages};
 
-#[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
+#[cfg(not(target_arch = "wasm32"))]
 pub use misc::profiler::Profiler;
 
 // ----------------------------------------------------------------------------
@@ -48,7 +44,7 @@ pub use web::start;
 #[macro_export]
 macro_rules! profile_function {
     ($($arg: tt)*) => {
-        #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
+        #[cfg(not(target_arch = "wasm32"))]
         puffin::profile_function!($($arg)*);
     };
 }
@@ -58,7 +54,7 @@ macro_rules! profile_function {
 #[macro_export]
 macro_rules! profile_scope {
     ($($arg: tt)*) => {
-        #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
+        #[cfg(not(target_arch = "wasm32"))]
         puffin::profile_scope!($($arg)*);
     };
 }

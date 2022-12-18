@@ -4,7 +4,7 @@ use re_log_types::{context::ClassId, TensorDataMeaning};
 
 use crate::misc::{caches::TensorImageView, ViewerContext};
 
-pub(crate) fn show_tensor(
+pub(crate) fn tensor_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     tensor: &re_log_types::Tensor,

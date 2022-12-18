@@ -13,10 +13,12 @@ repository = "https://github.com/rerun-io/rerun"
 
 [workspace.dependencies]
 anyhow = "1.0"
-arrow2 = { version = "0.14" }
-arrow2_convert = { version = "0.3" }
+arrow2 = "0.14"
+arrow2_convert = "0.3"
 lazy_static = "1.4"
 polars-core = "0.25"
+polars-lazy = "0.25"
+puffin = "0.14"
 thiserror = "1.0"
 
 [profile.dev]
