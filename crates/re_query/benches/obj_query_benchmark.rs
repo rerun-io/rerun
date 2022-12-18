@@ -125,6 +125,7 @@ fn query_and_visit(store: &mut DataStore, paths: &[ObjPath]) -> Vec<Point> {
 
     let mut points = Vec::with_capacity(NUM_POINTS as _);
 
+    // TODO(jleibs): Add Radius once we have support for it in field_types
     for path in paths.iter() {
         if let Ok(df) = query_entity_with_primary(
             store,
