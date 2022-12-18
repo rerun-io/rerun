@@ -19,7 +19,8 @@ use re_log_types::{
 
 use crate::store::IndexBucketIndices;
 use crate::{
-    ComponentBucket, ComponentTable, DataStore, DataStoreConfig, IndexBucket, IndexTable, RowIndex,
+    is_sorted_array, ComponentBucket, ComponentTable, DataStore, DataStoreConfig, IndexBucket,
+    IndexTable, RowIndex,
 };
 
 // --- Data store ---
@@ -79,8 +80,16 @@ impl DataStore {
 
         // TODO(#589): support for batched row component insertions
         for row_nr in 0..nb_rows {
-            let clustering_comp = get_or_create_clustering_key(components, &self.clustering_key);
+            let clustering_comp =
+                get_or_create_clustering_key(row_nr, components, &self.clustering_key);
             let expected_nb_instances = clustering_comp.len();
+
+            // TODO: do the sorting ourselves if needed
+            // TODO(#527): typed error
+            ensure!(
+                is_sorted_array(&*clustering_comp),
+                "the instances of the clustering component must be properly sorted",
+            );
 
             for bundle in components {
                 let ComponentBundle { name, value: rows } = bundle;
@@ -140,6 +149,7 @@ impl DataStore {
 
 // TODO: doc
 fn get_or_create_clustering_key(
+    row_nr: usize,
     components: &[ComponentBundle],
     clustering_key: ComponentNameRef<'_>,
 ) -> Box<dyn Array> {
@@ -149,23 +159,23 @@ fn get_or_create_clustering_key(
 
     // TODO: debug logs?
     if let Some(clustering_comp) = clustering_comp {
-        let first_row = clustering_comp
+        let row = clustering_comp
             .value
             .as_any()
             .downcast_ref::<ListArray<i32>>()
             .unwrap()
-            .value(0);
-        first_row
+            .value(row_nr);
+        row
     } else {
+        // TODO: explain why it doesn't matter which component we pick as model
         let len = components.first().map_or(0, |comp| {
-            // TODO(#589): support for batched row component insertions
-            let first_row = comp
+            let row = comp
                 .value
                 .as_any()
                 .downcast_ref::<ListArray<i32>>()
                 .unwrap()
-                .value(0);
-            first_row.len()
+                .value(row_nr);
+            row.len()
         });
         UInt64Array::from_vec((0..len as u64).collect_vec()).boxed()
     }
