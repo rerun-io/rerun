@@ -849,14 +849,21 @@ pub struct ComponentBucket {
 
     /// All the data for this bucket: many rows of a single column.
     ///
-    /// During the active lifespan of the bucket, this can contain an arbitrary number of chunks,
+    /// Each chunk is a list of list of components, i.e. `ListArray<ListArray<StructArray>>`:
+    /// - the first list layer corresponds to the different rows,
+    /// - the second list layer corresponds to the different instances within a single row,
+    /// - and finally the struct layer is the component itself.
+    ///
+    /// During the active lifespan of the bucket, this can contain any number of chunks,
     /// depending on how the data was inserted (e.g. single insertions vs. batches).
     /// All of these chunks get compacted into one contiguous array when the bucket is retired,
     /// i.e. when the bucket is full and a new one is created.
     ///
-    /// Note that, as of today (#589), we do not support batch insertion nor do we support chunks
-    /// of non-unit length: chunks always contain one and only one row's worth of data until the
+    /// Note that, as of today, we do not actually support batched insertion nor do we support
+    /// chunks of non-unit length (chunks are inserted on a per-row basis internally).
+    /// Chunks always contain one and only one row's worth of data as a result, at least until the
     /// bucket is retired.
+    /// See also #589.
     pub(crate) chunks: Vec<Box<dyn Array>>,
 
     /// The total number of rows present in this bucket, across all chunks.

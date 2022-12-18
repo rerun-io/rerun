@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use anyhow::ensure;
 use arrow2::array::{new_empty_array, Array, Int64Vec, ListArray, MutableArray, UInt64Vec};
 use arrow2::bitmap::MutableBitmap;
 use arrow2::buffer::Buffer;
@@ -21,13 +22,11 @@ use crate::{
 // --- Data store ---
 
 impl DataStore {
-    /// Inserts a [`MsgBundle`] payload of Arrow data into the datastore.
+    /// Inserts a [`MsgBundle`]'s worth of components into the datastore.
     ///
-    /// This does _not_ support batching yet: the components in the bundle _must_ only contain
-    /// a single row's worth of data!
-    //
-    // TODO(#589): support for batched row component insertions
-    pub fn insert(&mut self, msg_bundle: &MsgBundle) -> anyhow::Result<()> {
+    /// * All components across the bundle must share the same number of rows.
+    /// * All components within a single row must share the same number of instances.
+    pub fn insert(&mut self, bundle: &MsgBundle) -> anyhow::Result<()> {
         // TODO(cmc): kind & insert_id need to somehow propagate through the span system.
         self.insert_id += 1;
 
@@ -36,10 +35,28 @@ impl DataStore {
             obj_path: ent_path,
             time_point,
             components,
-        } = msg_bundle;
+        } = bundle;
 
-        // TODO(cmc): sort the "instances" component, and everything else accordingly!
+        if components.is_empty() {
+            return Ok(());
+        }
+
         let ent_path_hash = *ent_path.hash();
+        let nb_rows = components[0].value.len();
+
+        ensure!(
+            nb_rows == 1,
+            "we currently don't support more than one row per batch, as a `MsgBundle` can only \
+                carry a single timepoint for now!"
+        );
+
+        // TODO(#527): typed error
+        ensure!(
+            components
+                .iter()
+                .all(|bundle| bundle.value.len() == nb_rows),
+            "all components across the bundle must share the same number of rows",
+        );
 
         debug!(
             kind = "insert",
@@ -49,28 +66,33 @@ impl DataStore {
                 .collect::<Vec<_>>(),
             entity = %ent_path,
             components = ?components.iter().map(|bundle| &bundle.name).collect::<Vec<_>>(),
+            nb_rows,
             "insertion started..."
         );
 
-        // TODO(cmc): sort the "instances" component, and everything else accordingly!
+        let mut row_indices = HashMap::with_capacity(components.len());
 
-        let mut indices = HashMap::with_capacity(components.len());
+        // TODO(#589): support for batched row component insertions
+        for row_nr in 0..nb_rows {
+            // TODO(cmc): find and/or generate the clustering key for the row.
 
-        for bundle in components {
-            let ComponentBundle { name, value: rows } = bundle;
+            for bundle in components {
+                let ComponentBundle { name, value: rows } = bundle;
 
-            debug_assert!(
-                rows.len() == 1,
-                "batched component row insertions are not yet supported!"
-            );
+                let row = rows
+                    .as_any()
+                    .downcast_ref::<ListArray<i32>>()
+                    .unwrap()
+                    .value(row_nr);
 
-            let table = self
-                .components
-                .entry((*bundle.name).to_owned())
-                .or_insert_with(|| ComponentTable::new((*name).clone(), rows.data_type()));
+                let table = self
+                    .components
+                    .entry((*bundle.name).to_owned())
+                    .or_insert_with(|| ComponentTable::new((*name).clone(), row.data_type()));
 
-            let row_idx = table.push(&self.config, time_point, rows.as_ref());
-            indices.insert(name.as_ref(), row_idx);
+                let row_idx = table.push(&self.config, time_point, row.as_ref());
+                row_indices.insert(name.as_ref(), row_idx);
+            }
         }
 
         for (timeline, time) in time_point.iter() {
@@ -79,7 +101,7 @@ impl DataStore {
                 .indices
                 .entry((*timeline, ent_path_hash))
                 .or_insert_with(|| IndexTable::new(*timeline, ent_path));
-            index.insert(&self.config, *time, &indices)?;
+            index.insert(&self.config, *time, &row_indices)?;
         }
 
         Ok(())
@@ -643,35 +665,24 @@ impl ComponentTable {
         }
     }
 
-    /// Finds the appropriate bucket in this component table and appends `rows` at the end of it,
+    /// Finds the appropriate bucket in this component table and appends `row` at the end of it,
     /// returning the _global_ `RowIndex` for this new row.
     ///
-    /// `rows` must be a list of list of components, e.g. `ListArray<ListArray<StructArray>>`,
-    /// where the first list correspond to rows, the second list corresponds to the different
-    /// instances and the struct is of course the component itself:
+    /// `row` must be list of components, e.g. `ListArray<StructArray>`, where the list corresponds
+    /// to the different instances within the row, and the struct is of course the component itself:
     /// ```ignore
-    /// [
-    ///   [{x: 8.687487, y: 1.9590926}, {x: 2.0559108, y: 0.1494348}, {x: 7.09219, y: 0.9616637}],
-    ///   [{x: 1.2489164, y: 9.081063}, {x: 6.2707233, y: 4.396137}],
-    /// ]
+    /// [{x: 8.687487, y: 1.9590926}, {x: 2.0559108, y: 0.1494348}, {x: 7.09219, y: 0.9616637}]
     /// ```
-    ///
-    /// Only unit-length `rows` are currently supported: `rows` _must_ never contain more than
-    /// single row's worth of data.
     //
     // TODO(#589): support for batched row component insertions
     pub fn push(
         &mut self,
         config: &DataStoreConfig,
         time_point: &TimePoint,
-        rows: &dyn Array,
+        row: &dyn Array,
     ) -> RowIndex {
         debug_assert!(
-            rows.len() == 1,
-            "component tables do not support batched row insertions at the moment",
-        );
-        debug_assert!(
-            rows.data_type() == &self.datatype,
+            row.data_type() == &self.datatype,
             "trying to insert data of the wrong datatype in a component table",
         );
 
@@ -716,7 +727,7 @@ impl ComponentTable {
         // - If the table has just overflowed, then we've just pushed a bucket to the dequeue.
         let active_bucket = self.buckets.back_mut().unwrap();
         let row_idx = RowIndex::from_u64(
-            active_bucket.push(time_point, rows) + active_bucket.row_offset.as_u64(),
+            active_bucket.push(time_point, row) + active_bucket.row_offset.as_u64(),
         );
 
         debug!(
@@ -738,19 +749,12 @@ impl ComponentBucket {
         // If this is the first bucket of this table, we need to insert an empty list at
         // row index #0!
         let chunks = if row_offset.as_u64() == 0 {
-            let inner_datatype = match &datatype {
-                DataType::List(field) => field.data_type().clone(),
-                #[allow(clippy::todo)]
-                _ => todo!("throw an error here, this should always be a list"),
-            };
-
             let empty = ListArray::<i32>::from_data(
-                ListArray::<i32>::default_datatype(inner_datatype.clone()),
+                ListArray::<i32>::default_datatype(datatype.clone()),
                 Buffer::from(vec![0, 0i32]),
-                new_empty_array(inner_datatype),
+                new_empty_array(datatype.clone()),
                 None,
             );
-
             vec![empty.boxed()]
         } else {
             vec![]
@@ -773,29 +777,15 @@ impl ComponentBucket {
         }
     }
 
-    /// Appends `rows` to the end of the bucket, returning the _local_ index of the freshly
+    /// Appends `row` to the end of the bucket, returning the _local_ index of the freshly
     /// added row.
     ///
-    /// `rows` must be a list of list of components, e.g. `ListArray<ListArray<StructArray>>`,
-    /// where the first list correspond to rows, the second list corresponds to the different
-    /// instances within the row, and the struct is of course the component itself:
+    /// `row` must be list of components, e.g. `ListArray<StructArray>`, where the list corresponds
+    /// to the different instances within the row, and the struct is of course the component itself:
     /// ```ignore
-    /// [
-    ///   [{x: 8.687487, y: 1.9590926}, {x: 2.0559108, y: 0.1494348}, {x: 7.09219, y: 0.9616637}],
-    ///   [{x: 1.2489164, y: 9.081063}, {x: 6.2707233, y: 4.396137}],
-    /// ]
+    /// [{x: 8.687487, y: 1.9590926}, {x: 2.0559108, y: 0.1494348}, {x: 7.09219, y: 0.9616637}]
     /// ```
-    ///
-    /// At the moment, only unit-length chunks are supported, which means that `rows` acually
-    /// _must_ never contain more than one row.
-    //
-    // TODO(#589): support for N-length chunks
-    pub fn push(&mut self, time_point: &TimePoint, rows: &dyn Array) -> u64 {
-        debug_assert!(
-            rows.len() == 1,
-            "component buckets only support unit-length chunks at the moment"
-        );
-
+    pub fn push(&mut self, time_point: &TimePoint, row: &dyn Array) -> u64 {
         // Keep track of all affected time ranges, for garbage collection purposes.
         for (timeline, &time) in time_point {
             self.time_ranges
@@ -806,11 +796,22 @@ impl ComponentBucket {
                 .or_insert_with(|| TimeRange::new(time, time));
         }
 
-        self.total_rows += rows.len() as u64;
+        self.total_rows += 1;
         // Warning: this is _very_ costly!
-        self.total_size_bytes += arrow2::compute::aggregate::estimated_bytes_size(rows) as u64;
+        self.total_size_bytes += arrow2::compute::aggregate::estimated_bytes_size(row) as u64;
 
-        self.chunks.push(rows.to_boxed()); // shallow
+        // Wrap the row within a list, e.g. `ListArray<ListArray<StructArray>>`, to prepare for
+        // batching support.
+        //
+        // TODO(#589): support for non-unit-length chunks
+        let wrapped_row = ListArray::<i32>::from_data(
+            ListArray::<i32>::default_datatype(row.data_type().clone()),
+            Buffer::from(vec![0, row.len() as _]),
+            row.to_boxed(), // shallow
+            None,
+        );
+
+        self.chunks.push(wrapped_row.to_boxed()); // shallow
 
         self.chunks.len() as u64 - 1
     }
