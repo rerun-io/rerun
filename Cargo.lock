@@ -3748,7 +3748,6 @@ dependencies = [
  "cgmath",
  "console_error_panic_hook",
  "ctrlc",
- "document-features",
  "eframe",
  "egui",
  "egui-notify",

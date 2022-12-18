@@ -37,9 +37,7 @@ once_cell = "1.12"
 re_ws_comms = { path = "../re_ws_comms", optional = true, features = [
   "server",
 ] }
-re_viewer = { path = "../re_viewer", features = [
-  "puffin",
-], default-features = false, optional = true }
+re_viewer = { path = "../re_viewer", default-features = false, optional = true }
 re_web_server = { path = "../re_web_server", optional = true }
 
 eframe = { verison = "0.20", default-features = false, optional = true }
