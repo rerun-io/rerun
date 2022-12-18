@@ -44,6 +44,7 @@ impl DataStore {
         let ent_path_hash = *ent_path.hash();
         let nb_rows = components[0].value.len();
 
+        // TODO(#527): typed error
         ensure!(
             nb_rows == 1,
             "we currently don't support more than one row per batch, as a `MsgBundle` can only \
@@ -668,8 +669,10 @@ impl ComponentTable {
     /// Finds the appropriate bucket in this component table and appends `row` at the end of it,
     /// returning the _global_ `RowIndex` for this new row.
     ///
-    /// `row` must be list of components, e.g. `ListArray<StructArray>`, where the list corresponds
-    /// to the different instances within the row, and the struct is of course the component itself:
+    /// `row` must be a list of components, i.e. `ListArray<StructArray>`:
+    /// - the list layer corresponds to the different instances within the row,
+    /// - the struct layer is the component itself.
+    /// E.g.:
     /// ```ignore
     /// [{x: 8.687487, y: 1.9590926}, {x: 2.0559108, y: 0.1494348}, {x: 7.09219, y: 0.9616637}]
     /// ```
@@ -696,7 +699,7 @@ impl ComponentTable {
         let len = active_bucket.total_rows();
         let len_overflow = len > config.component_bucket_nb_rows;
 
-        if len_overflow {
+        if size_overflow || len_overflow {
             debug!(
                 kind = "insert",
                 component = self.name.as_str(),
@@ -745,6 +748,10 @@ impl ComponentTable {
 }
 
 impl ComponentBucket {
+    /// Creates a new component bucket for the specified component `datatype`.
+    ///
+    /// `datatype` must be the type of the component itself, devoid of any wrapping layers
+    /// (i.e. _not_ a `ListArray<...>`!).
     pub fn new(name: Arc<String>, datatype: &DataType, row_offset: RowIndex) -> Self {
         // If this is the first bucket of this table, we need to insert an empty list at
         // row index #0!
@@ -777,11 +784,13 @@ impl ComponentBucket {
         }
     }
 
-    /// Appends `row` to the end of the bucket, returning the _local_ index of the freshly
+    /// Pushes `row` to the end of the bucket, returning the _local_ index of the freshly
     /// added row.
     ///
-    /// `row` must be list of components, e.g. `ListArray<StructArray>`, where the list corresponds
-    /// to the different instances within the row, and the struct is of course the component itself:
+    /// `row` must be a list of components, i.e. `ListArray<StructArray>`:
+    /// - the list layer corresponds to the different instances within the row,
+    /// - the struct layer is the component itself.
+    /// E.g.:
     /// ```ignore
     /// [{x: 8.687487, y: 1.9590926}, {x: 2.0559108, y: 0.1494348}, {x: 7.09219, y: 0.9616637}]
     /// ```
@@ -808,7 +817,7 @@ impl ComponentBucket {
         );
 
         self.total_rows += 1;
-        // Warning: this is _very_ costly!
+        // Warning: this is surprisingly costly!
         self.total_size_bytes +=
             arrow2::compute::aggregate::estimated_bytes_size(&wrapped_row) as u64;
 
@@ -819,15 +828,15 @@ impl ComponentBucket {
 
     /// Retires the bucket as a new one is about to take its place.
     ///
-    /// This is a good opportunity to run compaction and other maintenance-like tasks.
-    /// Compact the bucket by concatenating all chunks of data into a single one.
+    /// This is a good opportunity to run compaction and other maintenance related tasks.
     pub fn retire(&mut self) {
         debug_assert!(
             !self.retired,
-            "retiring an already retired bucket, something is wrong"
+            "retiring an already retired bucket, something is likely wrong"
         );
 
         // Chunk compaction
+        // Compacts the bucket by concatenating all chunks of data into a single one.
         {
             use arrow2::compute::concatenate::concatenate;
 
@@ -840,6 +849,8 @@ impl ComponentBucket {
             // * the various chunks contain data with different datatypes:
             // This can never happen as that would first panic during insertion.
             let values = concatenate(&chunks).unwrap();
+
+            // Recompute the size as we've just discarded a bunch of list headers.
             self.total_size_bytes =
                 arrow2::compute::aggregate::estimated_bytes_size(&*values) as u64;
 
