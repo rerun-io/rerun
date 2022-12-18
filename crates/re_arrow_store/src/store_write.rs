@@ -735,8 +735,8 @@ impl ComponentTable {
                 "allocating new component bucket, previous one overflowed"
             );
 
-            // Retire currently active bucket.
-            active_bucket.retire();
+            // Archive currently active bucket.
+            active_bucket.archive();
 
             let row_offset = active_bucket.row_offset.as_u64() + len;
             self.buckets.push_back(ComponentBucket::new(
@@ -841,13 +841,13 @@ impl ComponentBucket {
         self.chunks.len() as u64 - 1
     }
 
-    /// Retires the bucket as a new one is about to take its place.
+    /// Archives the bucket as a new one is about to take its place.
     ///
     /// This is a good opportunity to run compaction and other maintenance related tasks.
-    pub fn retire(&mut self) {
+    pub fn archive(&mut self) {
         debug_assert!(
             !self.archived,
-            "retiring an already archived bucket, something is likely wrong"
+            "achiving an already archived bucket, something is likely wrong"
         );
 
         // Chunk compaction
