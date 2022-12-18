@@ -488,8 +488,7 @@ impl IndexBucket {
 fn find_split_index(times: &Int64Vec) -> Option<usize> {
     debug_assert!(
         times.validity().is_none(),
-        "The time index must always be dense, thus it shouldn't even have a validity\
-            bitmap attached to it to begin with."
+        "The time index must always be dense."
     );
     debug_assert!(
         times.values().windows(2).all(|t| t[0] <= t[1]),
@@ -609,8 +608,7 @@ fn split_time_range_off(
 fn split_primary_index_off(split_idx: usize, times1: &mut Int64Vec) -> Int64Vec {
     debug_assert!(
         times1.validity().is_none(),
-        "The time index must always be dense, thus it shouldn't even have a validity\
-            bitmap attached to it to begin with."
+        "The time index must always be dense.",
     );
 
     let total_rows = times1.len();

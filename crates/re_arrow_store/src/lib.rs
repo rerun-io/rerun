@@ -3,10 +3,12 @@
 //! See `src/store.rs` for an overview of the core datastructures.
 //!
 
+mod arrow_util;
 mod store;
 mod store_read;
 mod store_write;
 
+pub use self::arrow_util::is_dense;
 pub(crate) use self::store::{ComponentBucket, ComponentTable, IndexBucketIndices};
 pub use self::store::{DataStore, DataStoreConfig, IndexBucket, IndexTable, RowIndex};
 pub use self::store_read::{TimeQuery, TimelineQuery};

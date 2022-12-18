@@ -478,9 +478,10 @@ impl IndexBucketIndices {
 
         // shuffle time index back into a sorted state
         {
-            // The time index must always be dense, thus it shouldn't even have a validity
-            // bitmap attached to it to begin with.
-            debug_assert!(times.validity().is_none());
+            debug_assert!(
+                times.validity().is_none(),
+                "The time index must always be dense."
+            );
 
             let source = times.values().clone();
             let values = times.values_mut_slice();
