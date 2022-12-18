@@ -13,7 +13,7 @@ impl DebugLabel {
     }
 
     #[cfg(not(debug_assertions))]
-    pub fn push_str(&mut self, append_this: &str) -> DebugLabel {
+    pub fn push_str(&mut self, _append_this: &str) -> DebugLabel {
         DebugLabel {}
     }
 }

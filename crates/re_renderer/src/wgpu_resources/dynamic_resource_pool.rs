@@ -13,9 +13,6 @@ use super::resource::PoolError;
 
 pub trait SizedResourceDesc {
     fn resource_size_in_bytes(&self) -> u64;
-
-    /// Returns true if the resource can be re-used in subsequent alloc calls after it was discarded.
-    fn reusable(&self) -> bool;
 }
 
 /// Generic resource pool for all resources that have varying contents beyond their description.
@@ -60,8 +57,8 @@ where
     Desc: Clone + Eq + Hash + Debug + SizedResourceDesc,
 {
     pub fn alloc<F: FnOnce(&Desc) -> Res>(&mut self, desc: &Desc, creation_func: F) -> Arc<Handle> {
-        let handle = if desc.reusable() {
-            // First check if we can reclaim a resource we have around from a previous frame.
+        // First check if we can reclaim a resource we have around from a previous frame.
+        let handle =
             if let Entry::Occupied(mut entry) = self.last_frame_deallocated.entry(desc.clone()) {
                 re_log::trace!(?desc, "Reclaimed previously discarded resource",);
 
@@ -72,24 +69,13 @@ where
                 handle
             // Otherwise create a new resource
             } else {
-                self.create_resource(creation_func, desc)
-            }
-        } else {
-            self.create_resource(creation_func, desc)
-        };
+                let resource = creation_func(desc);
+                self.total_resource_size_in_bytes += desc.resource_size_in_bytes();
+                Arc::new(self.resources.insert((desc.clone(), resource)))
+            };
 
         self.alive_handles.insert(*handle, Arc::clone(&handle));
         handle
-    }
-
-    fn create_resource<F: FnOnce(&Desc) -> Res>(
-        &mut self,
-        creation_func: F,
-        desc: &Desc,
-    ) -> Arc<Handle> {
-        let resource = creation_func(desc);
-        self.total_resource_size_in_bytes += desc.resource_size_in_bytes();
-        Arc::new(self.resources.insert((desc.clone(), resource)))
     }
 
     pub fn get_resource(&self, handle: Handle) -> Result<&Res, PoolError> {
@@ -130,19 +116,14 @@ where
         // get temporarily get back down to 1 without dropping the last user available copy of the Arc<Handle>.
         self.alive_handles.retain(|handle, strong_handle| {
             if Arc::strong_count(strong_handle) == 1 {
-                let (desc, res) = &self.resources[handle];
-
-                if desc.reusable() {
-                    match self.last_frame_deallocated.entry(desc.clone()) {
-                        Entry::Occupied(mut e) => {
-                            e.get_mut().push(Arc::clone(strong_handle));
-                        }
-                        Entry::Vacant(e) => {
-                            e.insert(smallvec![Arc::clone(strong_handle)]);
-                        }
+                let (desc, _res) = &self.resources[handle];
+                match self.last_frame_deallocated.entry(desc.clone()) {
+                    Entry::Occupied(mut e) => {
+                        e.get_mut().push(Arc::clone(strong_handle));
                     }
-                } else {
-                    on_destroy_resource(res);
+                    Entry::Vacant(e) => {
+                        e.insert(smallvec![Arc::clone(strong_handle)]);
+                    }
                 }
                 false
             } else {
@@ -189,10 +170,6 @@ mod tests {
     impl SizedResourceDesc for ConcreteResourceDesc {
         fn resource_size_in_bytes(&self) -> u64 {
             1
-        }
-
-        fn reusable(&self) -> bool {
-            true
         }
     }
 

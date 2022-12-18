@@ -14,7 +14,7 @@ use re_renderer::{
     },
     resource_managers::ResourceLifeTime,
     view_builder::{OrthographicCameraMode, Projection, TargetConfiguration, ViewBuilder},
-    Color32, LineStripSeriesBuilder, RenderContext, Rgba, Size,
+    Color32, LineStripSeriesBuilder, PointCloudBuilder, RenderContext, Rgba, Size,
 };
 use winit::event::{ElementState, VirtualKeyCode};
 
@@ -254,20 +254,18 @@ impl Example for Multiview {
         let view_from_world =
             IsoTransform::look_at_rh(self.camera_position, Vec3::ZERO, Vec3::Y).unwrap();
 
+        let mut point_cloud_builder =
+            PointCloudBuilder::<()>::new(re_ctx, self.random_points.len(), 1);
+        point_cloud_builder
+            .batch("Random points")
+            .world_from_scene(glam::Mat4::from_rotation_x(seconds_since_startup))
+            .add_vertices(self.random_points.iter().cloned())
+            .colors(&self.random_points_colors);
+
         let triangle = TestTriangleDrawData::new(re_ctx);
         let skybox = GenericSkyboxDrawData::new(re_ctx);
         let lines = build_lines(re_ctx, seconds_since_startup);
-        let point_cloud = PointCloudDrawData::new(
-            re_ctx,
-            &self.random_points,
-            &self.random_points_colors,
-            &[PointCloudBatchInfo {
-                label: "Random points".into(),
-                world_from_scene: glam::Mat4::from_rotation_x(seconds_since_startup),
-                point_count: self.random_points.len() as _,
-            }],
-        )
-        .unwrap();
+        let point_cloud = point_cloud_builder.to_draw_data(re_ctx).unwrap();
         let meshes = build_mesh_instances(
             re_ctx,
             &self.model_mesh_instances,

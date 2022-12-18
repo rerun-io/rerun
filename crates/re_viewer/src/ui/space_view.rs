@@ -373,7 +373,7 @@ impl SpaceView {
 
         match self.category {
             ViewCategory::Spatial => {
-                let mut scene = view_spatial::SceneSpatial::default();
+                let mut scene = view_spatial::SceneSpatial::new(ctx.render_ctx);
                 scene.load_objects(
                     ctx,
                     &query,

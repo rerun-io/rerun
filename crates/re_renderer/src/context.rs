@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use parking_lot::Mutex;
 use type_map::concurrent::{self, TypeMap};
 
 use crate::{
@@ -7,6 +8,7 @@ use crate::{
     global_bindings::GlobalBindings,
     renderer::Renderer,
     resource_managers::{MeshManager, TextureManager2D},
+    staging_write_belt::StagingWriteBelt,
     wgpu_resources::WgpuResourcePools,
     FileResolver, FileServer, FileSystem, RecommendedFileResolver,
 };
@@ -24,12 +26,18 @@ pub struct RenderContext {
     pub(crate) resolver: RecommendedFileResolver,
     #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
     pub(crate) err_tracker: std::sync::Arc<crate::error_tracker::ErrorTracker>,
+    pub(crate) staging_belt: Mutex<StagingWriteBelt>,
+
+    /// Command encoder for all commands that should go in before view builder are submitted.
+    ///
+    /// This should be used for any gpu copy operation outside of a renderer or view builder.
+    /// (i.e. typically in [`crate::DrawData`] creation!)
+    pub(crate) frame_global_commands: wgpu::CommandEncoder,
 
     pub gpu_resources: WgpuResourcePools,
     pub mesh_manager: MeshManager,
     pub texture_manager_2d: TextureManager2D,
 
-    // TODO(andreas): Add frame/lifetime statistics, shared resources (e.g. "global" uniform buffer), ??
     frame_index: u64,
 }
 
@@ -137,25 +145,34 @@ impl RenderContext {
         let texture_manager_2d =
             TextureManager2D::new(device.clone(), queue.clone(), &mut gpu_resources.textures);
 
+        let before_view_builder_commands = Self::create_frame_global_command_encoder(&device);
+
         RenderContext {
             device,
             queue,
 
             shared_renderer_data,
-
             renderers,
-            gpu_resources,
+            resolver,
+            #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
+            err_tracker,
+            staging_belt: Mutex::new(StagingWriteBelt::new(1024 * 1024 * 32)), // 32mb chunk size (as big as a 2048x1024 float4 texture)
 
+            frame_global_commands: before_view_builder_commands,
+
+            gpu_resources,
             mesh_manager,
             texture_manager_2d,
 
-            resolver,
-
-            #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
-            err_tracker,
 
             frame_index: 0,
         }
+    }
+
+    fn create_frame_global_command_encoder(device: &wgpu::Device) -> wgpu::CommandEncoder {
+        device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: crate::DebugLabel::from("before view builder commands").get(),
+        })
     }
 
     /// Call this at the beginning of a new frame.
@@ -222,6 +239,23 @@ impl RenderContext {
             bind_group_layouts.begin_frame(self.frame_index);
             samplers.begin_frame(self.frame_index);
         }
+
+        // Retrieve unused staging buffer.
+        self.staging_belt.lock().after_queue_submit();
+    }
+
+    /// Call this at the end of a frame but before submitting command buffers from [`crate::ViewBuilder`]
+    pub fn before_submit(&mut self) {
+        // Unmap all staging buffers.
+        self.staging_belt.lock().before_queue_submit();
+
+        let mut command_encoder = Self::create_frame_global_command_encoder(&self.device);
+        std::mem::swap(&mut self.frame_global_commands, &mut command_encoder);
+        let command_buffer = command_encoder.finish();
+
+        // TODO(andreas): For better performance, we should try to bundle this with the single submit call that is currently happening in eframe.
+        //                  How do we hook in there and make sure this buffer is submitted first?
+        self.queue.submit([command_buffer]);
     }
 }
 

@@ -37,6 +37,7 @@ static_assertions = "1.1"
 thiserror.workspace = true
 type-map = "0.5"
 unindent = "0.1"
+ouroboros = "0.15"
 
 # optional
 gltf = { version = "1.0", optional = true }

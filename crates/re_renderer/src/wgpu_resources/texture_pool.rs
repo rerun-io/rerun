@@ -67,10 +67,6 @@ impl SizedResourceDesc for TextureDesc {
 
         size_in_bytes
     }
-
-    fn reusable(&self) -> bool {
-        true
-    }
 }
 
 impl TextureDesc {

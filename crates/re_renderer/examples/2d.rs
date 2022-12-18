@@ -142,7 +142,7 @@ impl framework::Example for Render2D {
         // Moving the windows to a high dpi screen makes the second one bigger.
         // Also, it looks different under perspective projection.
         // The third point is automatic thickness which is determined by the point renderer implementation.
-        let mut point_cloud_builder = PointCloudBuilder::<()>::default();
+        let mut point_cloud_builder = PointCloudBuilder::<()>::new(re_ctx, 32, 1);
         point_cloud_builder
             .batch("points")
             .add_points_2d(
@@ -154,15 +154,12 @@ impl framework::Example for Render2D {
                 ]
                 .into_iter(),
             )
-            .radii(
-                [
-                    Size::new_scene(4.0),
-                    Size::new_points(4.0),
-                    Size::AUTO,
-                    Size::AUTO_LARGE,
-                ]
-                .into_iter(),
-            )
+            .radii(&[
+                Size::new_scene(4.0),
+                Size::new_points(4.0),
+                Size::AUTO,
+                Size::AUTO_LARGE,
+            ])
             .color(Color32::from_rgb(55, 180, 1));
 
         let point_draw_data = point_cloud_builder.to_draw_data(re_ctx).unwrap();

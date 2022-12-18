@@ -16,6 +16,7 @@ mod global_bindings;
 mod line_strip_builder;
 mod point_cloud_builder;
 mod size;
+mod staging_write_belt;
 mod wgpu_buffer_types;
 mod wgpu_resources;
 

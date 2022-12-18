@@ -19,10 +19,9 @@ use std::{
 };
 
 use crate::{
-    context::uniform_buffer_allocation_size, wgpu_resources::BufferDesc, Color32, DebugLabel,
+    context::uniform_buffer_allocation_size, wgpu_resources::BufferDesc, DebugLabel,
+    PointCloudBuilder,
 };
-use bytemuck::Zeroable;
-use itertools::Itertools;
 use smallvec::smallvec;
 
 use crate::{
@@ -33,7 +32,6 @@ use crate::{
         GpuBindGroupLayoutHandle, GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc,
         ShaderModuleDesc, TextureDesc,
     },
-    Size,
 };
 
 use super::{
@@ -41,18 +39,18 @@ use super::{
     WgpuResourcePools,
 };
 
-mod gpu_data {
+pub mod gpu_data {
     // Don't use `wgsl_buffer_types` since none of this data goes into a buffer, so its alignment rules don't apply.
 
     use crate::{wgpu_buffer_types, Size};
 
     #[repr(C, packed)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
-    pub struct PositionData {
-        pub pos: glam::Vec3,
+    pub struct PointCloudVertex {
+        pub position: glam::Vec3,
         pub radius: Size, // Might use a f16 here to free memory for more data!
     }
-    static_assertions::assert_eq_size!(PositionData, glam::Vec4);
+    static_assertions::assert_eq_size!(PointCloudVertex, glam::Vec4);
 
     /// Uniform buffer that changes for every batch of line strips.
     #[repr(C)]
@@ -98,26 +96,30 @@ pub struct PointCloudBatchInfo {
     pub point_count: u32,
 }
 
-/// Description of a point cloud.
-pub struct PointCloudVertex {
-    /// Connected points. Must be at least 2.
-    pub position: glam::Vec3,
-
-    /// Radius of the point in world space
-    pub radius: Size,
-}
-
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum PointCloudDrawDataError {
     #[error("Current maximum number of points supported for a point cloud is {max}, passed were {num_points}")]
     TooManyPoints { max: u32, num_points: u32 },
 
-    #[error("Size of vertex & color array was not equal")]
-    NumberOfColorsNotEqualNumberOfVertices,
-
     #[error("Number of points covered by batches exceeds total number of points.")]
     BatchesAddressMorePointsThanPassed,
 }
+
+// Textures are 2D since 1D textures are very limited in size (8k typically).
+// Need to keep this value in sync with point_cloud.wgsl!
+pub(crate) const POINT_CLOUD_DATA_TEXTURE_SIZE: u32 = 1024; // 1024 x 1024 x (vec4<f32> + [u8;4]) == 20mb, ~1mio points
+
+// Make sure the size of a row is a multiple of the row byte alignment to make buffer copies easier.
+static_assertions::const_assert_eq!(
+    POINT_CLOUD_DATA_TEXTURE_SIZE * std::mem::size_of::<gpu_data::PointCloudVertex>() as u32
+        % wgpu::COPY_BYTES_PER_ROW_ALIGNMENT,
+    0
+);
+static_assertions::const_assert_eq!(
+    POINT_CLOUD_DATA_TEXTURE_SIZE * std::mem::size_of::<[u8; 4]>() as u32
+        % wgpu::COPY_BYTES_PER_ROW_ALIGNMENT,
+    0
+);
 
 impl PointCloudDrawData {
     /// Transforms and uploads point cloud data to be consumed by gpu.
@@ -126,13 +128,20 @@ impl PointCloudDrawData {
     /// Number of vertices and colors has to be equal.
     ///
     /// If no batches are passed, all points are assumed to be in a single batch with identity transform.
-    pub fn new(
+    pub fn new<T>(
         ctx: &mut RenderContext,
-        vertices: &[PointCloudVertex],
-        colors: &[Color32],
-        batches: &[PointCloudBatchInfo],
+        builder: PointCloudBuilder<T>,
     ) -> Result<Self, PointCloudDrawDataError> {
         crate::profile_function!();
+
+        let PointCloudBuilder {
+            vertices,
+            user_data: _,
+            batches,
+            vertices_gpu,
+            colors_gpu,
+            next_2d_z: _,
+        } = builder;
 
         let point_renderer = ctx.renderers.get_or_create::<_, PointCloudRenderer>(
             &ctx.shared_renderer_data,
@@ -153,46 +162,27 @@ impl PointCloudDrawData {
             label: "all points".into(),
             point_count: vertices.len() as _,
         }];
-        let batches = if batches.is_empty() {
+        let batches: &[PointCloudBatchInfo] = if batches.is_empty() {
             &fallback_batches
         } else {
-            batches
+            &batches
         };
 
-        // Textures are 2D since 1D textures are very limited in size (8k typically).
-        // Need to keep this value in sync with point_cloud.wgsl!
-        const TEXTURE_SIZE: u32 = 1024; // 1024 x 1024 x (vec4<f32> + [u8;4]) == 20mb, ~1mio points
-
-        // Make sure the size of a row is a multiple of the row byte alignment to make buffer copies easier.
-        static_assertions::const_assert_eq!(
-            TEXTURE_SIZE * std::mem::size_of::<gpu_data::PositionData>() as u32
-                % wgpu::COPY_BYTES_PER_ROW_ALIGNMENT,
-            0
-        );
-        static_assertions::const_assert_eq!(
-            TEXTURE_SIZE * std::mem::size_of::<[u8; 4]>() as u32
-                % wgpu::COPY_BYTES_PER_ROW_ALIGNMENT,
-            0
-        );
-
-        // TODO(andreas) split up point cloud into several textures when that happens.
-        if vertices.len() > (TEXTURE_SIZE * TEXTURE_SIZE) as usize {
-            return Err(PointCloudDrawDataError::TooManyPoints {
-                max: TEXTURE_SIZE * TEXTURE_SIZE,
-                num_points: vertices.len() as _,
-            });
-        }
-        if vertices.len() != colors.len() {
-            return Err(PointCloudDrawDataError::NumberOfColorsNotEqualNumberOfVertices);
-        }
+        // TODO: needs to go to builder
+        // if vertices.len() > (TEXTURE_SIZE * TEXTURE_SIZE) as usize {
+        //     return Err(PointCloudDrawDataError::TooManyPoints {
+        //         max: TEXTURE_SIZE * TEXTURE_SIZE,
+        //         num_points: vertices.len() as _,
+        //     });
+        // }
 
         // TODO(andreas): We want a "stack allocation" here that lives for one frame.
         //                  Note also that this doesn't protect against sharing the same texture with several PointDrawData!
         let position_data_texture_desc = TextureDesc {
             label: "point cloud position data".into(),
             size: wgpu::Extent3d {
-                width: TEXTURE_SIZE,
-                height: TEXTURE_SIZE,
+                width: POINT_CLOUD_DATA_TEXTURE_SIZE,
+                height: POINT_CLOUD_DATA_TEXTURE_SIZE,
                 depth_or_array_layers: 1,
             },
             mip_level_count: 1,
@@ -219,87 +209,53 @@ impl PointCloudDrawData {
         // TODO(andreas): We want a staging-belt(-like) mechanism to upload data instead of the queue.
         //                  These staging buffers would be provided by the belt.
         // To make the data upload simpler (and have it be done in one go), we always update full rows of each of our textures
-        let num_points_written = wgpu::util::align_to(vertices.len() as u32, TEXTURE_SIZE) as usize;
-        let num_points_zeroed = num_points_written - vertices.len();
-        let position_and_size_staging = {
-            crate::profile_scope!("collect_pos_size");
-            vertices
-                .iter()
-                .map(|point| gpu_data::PositionData {
-                    pos: point.position,
-                    radius: point.radius,
-                })
-                .chain(std::iter::repeat(gpu_data::PositionData::zeroed()).take(num_points_zeroed))
-                .collect_vec()
-        };
 
-        let color_staging = {
-            crate::profile_scope!("collect_colors");
-            colors
-                .iter()
-                .cloned()
-                .chain(std::iter::repeat(Color32::TRANSPARENT).take(num_points_zeroed))
-                .collect_vec()
-        };
-
-        // Upload data from staging buffers to gpu.
+        // Upload data from already prepared staging buffers to gpu.
         let size = wgpu::Extent3d {
-            width: TEXTURE_SIZE,
-            height: num_points_written as u32 / TEXTURE_SIZE,
+            width: POINT_CLOUD_DATA_TEXTURE_SIZE,
+            height: (vertices.len() as u32 + POINT_CLOUD_DATA_TEXTURE_SIZE - 1)
+                / POINT_CLOUD_DATA_TEXTURE_SIZE,
             depth_or_array_layers: 1,
         };
 
-        {
-            crate::profile_scope!("write_pos_size_texture");
-            ctx.queue.write_texture(
-                wgpu::ImageCopyTexture {
-                    texture: &ctx
-                        .gpu_resources
-                        .textures
-                        .get_resource(&position_data_texture)
-                        .unwrap()
-                        .texture,
-                    mip_level: 0,
-                    origin: wgpu::Origin3d::ZERO,
-                    aspect: wgpu::TextureAspect::All,
-                },
-                bytemuck::cast_slice(&position_and_size_staging),
-                wgpu::ImageDataLayout {
-                    offset: 0,
-                    bytes_per_row: NonZeroU32::new(
-                        TEXTURE_SIZE * std::mem::size_of::<gpu_data::PositionData>() as u32,
-                    ),
-                    rows_per_image: None,
-                },
-                size,
-            );
-        }
+        vertices_gpu.copy_to_texture(
+            &mut ctx.frame_global_commands,
+            wgpu::ImageCopyTexture {
+                texture: &ctx
+                    .gpu_resources
+                    .textures
+                    .get_resource(&position_data_texture)
+                    .unwrap()
+                    .texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            NonZeroU32::new(
+                POINT_CLOUD_DATA_TEXTURE_SIZE
+                    * std::mem::size_of::<gpu_data::PointCloudVertex>() as u32,
+            ),
+            None,
+            size,
+        );
 
-        {
-            crate::profile_scope!("write_color_texture");
-            ctx.queue.write_texture(
-                wgpu::ImageCopyTexture {
-                    texture: &ctx
-                        .gpu_resources
-                        .textures
-                        .get_resource(&color_texture)
-                        .unwrap()
-                        .texture,
-                    mip_level: 0,
-                    origin: wgpu::Origin3d::ZERO,
-                    aspect: wgpu::TextureAspect::All,
-                },
-                bytemuck::cast_slice(&color_staging),
-                wgpu::ImageDataLayout {
-                    offset: 0,
-                    bytes_per_row: NonZeroU32::new(
-                        TEXTURE_SIZE * std::mem::size_of::<[u8; 4]>() as u32,
-                    ),
-                    rows_per_image: None,
-                },
-                size,
-            );
-        }
+        colors_gpu.copy_to_texture(
+            &mut ctx.frame_global_commands,
+            wgpu::ImageCopyTexture {
+                texture: &ctx
+                    .gpu_resources
+                    .textures
+                    .get_resource(&color_texture)
+                    .unwrap()
+                    .texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            NonZeroU32::new(POINT_CLOUD_DATA_TEXTURE_SIZE * std::mem::size_of::<[u8; 4]>() as u32),
+            None,
+            size,
+        );
 
         let bind_group_all_points = ctx.gpu_resources.bind_groups.alloc(
             &ctx.device,
@@ -329,7 +285,6 @@ impl PointCloudDrawData {
                     label: "point batch uniform buffers".into(),
                     size: combined_buffers_size,
                     usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                    bypass_reuse_and_map_on_creation: false,
                 },
             );
 

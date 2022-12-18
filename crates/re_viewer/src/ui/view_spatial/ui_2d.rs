@@ -461,7 +461,7 @@ fn view_2d_scrollable(
         let Ok(callback) = create_scene_paint_callback(
             ctx.render_ctx,
             target_config, painter.clip_rect(),
-            &scene.primitives,
+            scene.primitives,
             &ScreenBackground::ClearColor(parent_ui.visuals().extreme_bg_color.into()),
         ) else {
             return response;

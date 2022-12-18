@@ -424,7 +424,7 @@ pub fn view_3d(
         }
     }
 
-    paint_view(ui, eye, rect, &scene, ctx.render_ctx, &space.to_string());
+    paint_view(ui, eye, rect, scene, ctx.render_ctx, &space.to_string());
 
     response
 }
@@ -433,7 +433,7 @@ fn paint_view(
     ui: &mut egui::Ui,
     eye: Eye,
     rect: egui::Rect,
-    scene: &SceneSpatial,
+    scene: SceneSpatial,
     render_ctx: &mut RenderContext,
     name: &str,
 ) {
@@ -501,7 +501,7 @@ fn paint_view(
         render_ctx,
         target_config,
         rect,
-        &scene.primitives, &ScreenBackground::GenericSkybox)
+        scene.primitives, &ScreenBackground::GenericSkybox)
     else {
         return;
     };

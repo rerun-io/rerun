@@ -17,6 +17,7 @@ use re_log_types::{
     DataVec, IndexHash, MeshId, MsgId, ObjectType, Tensor,
 };
 use re_query::{query_entity_with_primary, visit_components3};
+use re_renderer::RenderContext;
 use re_renderer::{
     renderer::{LineStripFlags, MeshInstance},
     Color32, LineStripSeriesBuilder, PointCloudBuilder, Size,
@@ -119,7 +120,6 @@ pub struct SceneSpatialUiData {
 
 /// Primitives sent off to `re_renderer`.
 /// (Some meta information still relevant to ui setup as well)
-#[derive(Default)]
 pub struct SceneSpatialPrimitives {
     /// Estimated bounding box of all data in scene coordinates. Accumulated.
     bounding_box: macaw::BoundingBox,
@@ -133,6 +133,17 @@ pub struct SceneSpatialPrimitives {
 }
 
 impl SceneSpatialPrimitives {
+    pub fn new(re_ctx: &mut RenderContext) -> Self {
+        Self {
+            bounding_box: Default::default(),
+            textured_rectangles: Default::default(),
+            line_strips: Default::default(),
+            // TODO: numbers can't be fixed
+            points: PointCloudBuilder::new(re_ctx, 1024 * 512, 512),
+            meshes: Default::default(),
+        }
+    }
+
     /// bounding box covering the rendered scene
     pub fn bounding_box(&self) -> macaw::BoundingBox {
         self.bounding_box
@@ -190,7 +201,6 @@ impl SceneSpatialPrimitives {
     }
 }
 
-#[derive(Default)]
 pub struct SceneSpatial {
     pub annotation_map: AnnotationMap,
     pub primitives: SceneSpatialPrimitives,
@@ -213,6 +223,14 @@ fn instance_hash_if_interactive(
 }
 
 impl SceneSpatial {
+    pub fn new(re_ctx: &mut RenderContext) -> Self {
+        Self {
+            annotation_map: Default::default(),
+            primitives: SceneSpatialPrimitives::new(re_ctx),
+            ui: Default::default(),
+        }
+    }
+
     /// Loads all 3D objects into the scene according to the given query.
     pub(crate) fn load_objects(
         &mut self,
@@ -980,16 +998,11 @@ impl SceneSpatial {
                         .add_points(
                             [pos.extend(point_depth), pos.extend(point_depth - 0.1)].into_iter(),
                         )
-                        .colors(
-                            [paint_props.bg_stroke.color, paint_props.fg_stroke.color].into_iter(),
-                        )
-                        .radii(
-                            [
-                                Size::new_points(paint_props.bg_stroke.width * 0.5),
-                                Size::new_points(paint_props.fg_stroke.width * 0.5),
-                            ]
-                            .into_iter(),
-                        )
+                        .colors(&[paint_props.bg_stroke.color, paint_props.fg_stroke.color])
+                        .radii(&[
+                            Size::new_points(paint_props.bg_stroke.width * 0.5),
+                            Size::new_points(paint_props.fg_stroke.width * 0.5),
+                        ])
                         .user_data(instance_hash);
 
                     if let Some(label) = label {

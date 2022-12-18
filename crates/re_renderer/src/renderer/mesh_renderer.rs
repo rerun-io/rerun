@@ -145,7 +145,6 @@ impl MeshDrawData {
                 label: "MeshDrawData instance buffer".into(),
                 size: instance_buffer_size,
                 usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-                bypass_reuse_and_map_on_creation: false,
             },
         );
 

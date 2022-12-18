@@ -379,6 +379,8 @@ impl eframe::App for App {
 
         self.frame_time_history
             .add(egui_ctx.input().time, frame_start.elapsed().as_secs_f32());
+
+        render_ctx.before_submit();
     }
 }
 

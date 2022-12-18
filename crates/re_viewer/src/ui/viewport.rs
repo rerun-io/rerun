@@ -35,7 +35,7 @@ fn query_scene_spatial(
         latest_at: TimeInt::MAX,
         obj_props: &Default::default(), // all visible
     };
-    let mut scene = SceneSpatial::default();
+    let mut scene = SceneSpatial::new(ctx.render_ctx);
     let hovered = re_data_store::InstanceIdHash::NONE;
     scene.load_objects(ctx, &query, query.obj_props, hovered);
     scene

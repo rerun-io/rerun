@@ -72,10 +72,6 @@ impl SizedResourceDesc for BindGroupDesc {
         // We could guess something like a pointer per descriptor, but let's not pretend we know!
         0
     }
-
-    fn reusable(&self) -> bool {
-        true
-    }
 }
 
 /// Resource pool for bind groups.

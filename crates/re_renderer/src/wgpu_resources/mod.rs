@@ -17,7 +17,9 @@ pub use bind_group_pool::{
 };
 
 mod buffer_pool;
-pub use buffer_pool::{BufferDesc, GpuBufferHandle, GpuBufferHandleStrong, GpuBufferPool};
+pub use buffer_pool::{
+    BufferDesc, GpuBufferHandle, GpuBufferHandleStrong, GpuBufferPool, StagingWriteBuffer,
+};
 
 mod pipeline_layout_pool;
 pub use pipeline_layout_pool::{
