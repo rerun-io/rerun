@@ -585,7 +585,7 @@ impl ComponentBucket {
     pub fn get(&self, row_idx: RowIndex) -> Box<dyn Array> {
         let row_idx = row_idx.as_u64() - self.row_offset.as_u64();
         let rows = self.data.slice(row_idx as usize, 1);
-        // This has to safe to unwrap, otherwise it would never have made it past insertion.
+        // This has to be safe to unwrap, otherwise it would never have made it past insertion.
         rows.as_any()
             .downcast_ref::<ListArray<i32>>()
             .unwrap()
