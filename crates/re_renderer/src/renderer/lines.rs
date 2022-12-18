@@ -106,7 +106,7 @@ use smallvec::smallvec;
 
 use crate::{
     context::uniform_buffer_allocation_size,
-    include_file, next_multiple_of,
+    include_file,
     size::Size,
     view_builder::ViewBuilder,
     wgpu_resources::{
@@ -385,21 +385,19 @@ impl LineDrawData {
         //                  These staging buffers would be provided by the belt.
         // To make the data upload simpler (and have it be done in one go), we always update full rows of each of our textures
         let mut position_data_staging =
-            Vec::with_capacity(next_multiple_of(num_segments, POSITION_TEXTURE_SIZE) as usize);
+            Vec::with_capacity(wgpu::util::align_to(num_segments, POSITION_TEXTURE_SIZE) as usize);
         // placeholder at the beginning to facilitate start-caps
         position_data_staging.push(LineVertex {
             pos: glam::vec3(f32::INFINITY, f32::INFINITY, f32::INFINITY),
             strip_index: u32::MAX,
         });
         position_data_staging.extend(vertices.iter());
-        position_data_staging.extend(
-            std::iter::repeat(gpu_data::LineVertex::zeroed()).take(
-                (next_multiple_of(num_segments, POSITION_TEXTURE_SIZE) - num_segments) as usize,
-            ),
-        );
+        position_data_staging.extend(std::iter::repeat(gpu_data::LineVertex::zeroed()).take(
+            (wgpu::util::align_to(num_segments, POSITION_TEXTURE_SIZE) - num_segments) as usize,
+        ));
 
         let mut line_strip_info_staging =
-            Vec::with_capacity(next_multiple_of(num_strips, LINE_STRIP_TEXTURE_SIZE) as usize);
+            Vec::with_capacity(wgpu::util::align_to(num_strips, LINE_STRIP_TEXTURE_SIZE) as usize);
         line_strip_info_staging.extend(strips.iter().map(|line_strip| {
             gpu_data::LineStripInfo {
                 color: line_strip.color,
@@ -408,11 +406,9 @@ impl LineDrawData {
                 flags: line_strip.flags,
             }
         }));
-        line_strip_info_staging.extend(
-            std::iter::repeat(gpu_data::LineStripInfo::zeroed()).take(
-                (next_multiple_of(num_strips, LINE_STRIP_TEXTURE_SIZE) - num_strips) as usize,
-            ),
-        );
+        line_strip_info_staging.extend(std::iter::repeat(gpu_data::LineStripInfo::zeroed()).take(
+            (wgpu::util::align_to(num_strips, LINE_STRIP_TEXTURE_SIZE) - num_strips) as usize,
+        ));
 
         // Upload data from staging buffers to gpu.
         ctx.queue.write_texture(
