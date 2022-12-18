@@ -83,7 +83,7 @@ pub fn get_component_with_instances(
         })
         .collect();
 
-    Ok(DataFrame::new(series?)?)
+    DataFrame::new(series?).map_err(Into::into)
 }
 
 /// If a `DataFrame` has no `Instance` column create one from the row numbers
