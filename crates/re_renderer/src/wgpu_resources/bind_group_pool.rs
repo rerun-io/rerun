@@ -72,6 +72,10 @@ impl SizedResourceDesc for BindGroupDesc {
         // We could guess something like a pointer per descriptor, but let's not pretend we know!
         0
     }
+
+    fn reusable(&self) -> bool {
+        true
+    }
 }
 
 /// Resource pool for bind groups.
@@ -185,7 +189,7 @@ impl GpuBindGroupPool {
         _buffers: &mut GpuBufferPool,
         _samplers: &mut GpuSamplerPool,
     ) {
-        self.pool.frame_maintenance(frame_index);
+        self.pool.frame_maintenance(frame_index, |_res| {});
         // TODO(andreas): Update usage counter on dependent resources.
     }
 

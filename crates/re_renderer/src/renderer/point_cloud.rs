@@ -329,6 +329,7 @@ impl PointCloudDrawData {
                     label: "point batch uniform buffers".into(),
                     size: combined_buffers_size,
                     usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                    bypass_reuse_and_map_on_creation: false,
                 },
             );
 

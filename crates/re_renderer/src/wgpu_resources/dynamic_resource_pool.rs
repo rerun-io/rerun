@@ -13,6 +13,9 @@ use super::resource::PoolError;
 
 pub trait SizedResourceDesc {
     fn resource_size_in_bytes(&self) -> u64;
+
+    /// Returns true if the resource can be re-used in subsequent alloc calls after it was discarded.
+    fn reusable(&self) -> bool;
 }
 
 /// Generic resource pool for all resources that have varying contents beyond their description.
@@ -57,8 +60,8 @@ where
     Desc: Clone + Eq + Hash + Debug + SizedResourceDesc,
 {
     pub fn alloc<F: FnOnce(&Desc) -> Res>(&mut self, desc: &Desc, creation_func: F) -> Arc<Handle> {
-        // First check if we can reclaim a resource we have around from a previous frame.
-        let handle =
+        let handle = if desc.reusable() {
+            // First check if we can reclaim a resource we have around from a previous frame.
             if let Entry::Occupied(mut entry) = self.last_frame_deallocated.entry(desc.clone()) {
                 re_log::trace!(?desc, "Reclaimed previously discarded resource",);
 
@@ -69,13 +72,24 @@ where
                 handle
             // Otherwise create a new resource
             } else {
-                let resource = creation_func(desc);
-                self.total_resource_size_in_bytes += desc.resource_size_in_bytes();
-                Arc::new(self.resources.insert((desc.clone(), resource)))
-            };
+                self.create_resource(creation_func, desc)
+            }
+        } else {
+            self.create_resource(creation_func, desc)
+        };
 
         self.alive_handles.insert(*handle, Arc::clone(&handle));
         handle
+    }
+
+    fn create_resource<F: FnOnce(&Desc) -> Res>(
+        &mut self,
+        creation_func: F,
+        desc: &Desc,
+    ) -> Arc<Handle> {
+        let resource = creation_func(desc);
+        self.total_resource_size_in_bytes += desc.resource_size_in_bytes();
+        Arc::new(self.resources.insert((desc.clone(), resource)))
     }
 
     pub fn get_resource(&self, handle: Handle) -> Result<&Res, PoolError> {
@@ -91,7 +105,7 @@ where
             })
     }
 
-    pub fn frame_maintenance(&mut self, frame_index: u64) {
+    pub fn frame_maintenance(&mut self, frame_index: u64, on_destroy_resource: impl Fn(&Res)) {
         self.current_frame_index = frame_index;
 
         // Throw out any resources that we haven't reclaimed last frame.
@@ -102,7 +116,9 @@ where
                 "Drained dangling resources from last frame",
             );
             for handle in handles {
-                self.resources.remove(*handle);
+                if let Some((_, res)) = self.resources.remove(*handle) {
+                    on_destroy_resource(&res);
+                }
                 self.total_resource_size_in_bytes -= desc.resource_size_in_bytes();
             }
         }
@@ -114,14 +130,19 @@ where
         // get temporarily get back down to 1 without dropping the last user available copy of the Arc<Handle>.
         self.alive_handles.retain(|handle, strong_handle| {
             if Arc::strong_count(strong_handle) == 1 {
-                let desc = &self.resources[handle].0;
-                match self.last_frame_deallocated.entry(desc.clone()) {
-                    Entry::Occupied(mut e) => {
-                        e.get_mut().push(Arc::clone(strong_handle));
+                let (desc, res) = &self.resources[handle];
+
+                if desc.reusable() {
+                    match self.last_frame_deallocated.entry(desc.clone()) {
+                        Entry::Occupied(mut e) => {
+                            e.get_mut().push(Arc::clone(strong_handle));
+                        }
+                        Entry::Vacant(e) => {
+                            e.insert(smallvec![Arc::clone(strong_handle)]);
+                        }
                     }
-                    Entry::Vacant(e) => {
-                        e.insert(smallvec![Arc::clone(strong_handle)]);
-                    }
+                } else {
+                    on_destroy_resource(res);
                 }
                 false
             } else {
@@ -169,6 +190,10 @@ mod tests {
         fn resource_size_in_bytes(&self) -> u64 {
             1
         }
+
+        fn reusable(&self) -> bool {
+            true
+        }
     }
 
     #[derive(Debug)]
@@ -199,7 +224,7 @@ mod tests {
         // Still, no resources were dropped.
         {
             let drop_counter_before = drop_counter.load(Ordering::Acquire);
-            pool.frame_maintenance(1);
+            pool.frame_maintenance(1, |_| {});
 
             assert_eq!(drop_counter_before, drop_counter.load(Ordering::Acquire),);
         }
@@ -212,8 +237,8 @@ mod tests {
         // Doing frame maintenance twice will drop all resources
         {
             let drop_counter_before = drop_counter.load(Ordering::Acquire);
-            pool.frame_maintenance(2);
-            pool.frame_maintenance(3);
+            pool.frame_maintenance(2, |_| {});
+            pool.frame_maintenance(3, |_| {});
             let drop_counter_now = drop_counter.load(Ordering::Acquire);
             assert_eq!(
                 drop_counter_before + initial_resource_descs.len() * 2,
@@ -236,9 +261,9 @@ mod tests {
             assert_ne!(handle0, handle1);
             drop(handle1);
 
-            pool.frame_maintenance(4);
+            pool.frame_maintenance(4, |_| {});
             assert_eq!(drop_counter_before, drop_counter.load(Ordering::Acquire),);
-            pool.frame_maintenance(5);
+            pool.frame_maintenance(5, |_| {});
             assert_eq!(
                 drop_counter_before + 1,
                 drop_counter.load(Ordering::Acquire),
@@ -314,8 +339,8 @@ mod tests {
         // Query with invalid handle
         let inner_handle = *handle;
         drop(handle);
-        pool.frame_maintenance(0);
-        pool.frame_maintenance(1);
+        pool.frame_maintenance(0, |_| {});
+        pool.frame_maintenance(1, |_| {});
         assert!(matches!(
             pool.get_resource(inner_handle),
             Err(PoolError::ResourceNotAvailable)

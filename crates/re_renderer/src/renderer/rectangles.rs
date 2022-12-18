@@ -120,6 +120,7 @@ impl RectangleDrawData {
                 label: "rectangle uniform buffers".into(),
                 size: combined_buffers_size,
                 usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::UNIFORM,
+                bypass_reuse_and_map_on_creation: false,
             },
         );
 
