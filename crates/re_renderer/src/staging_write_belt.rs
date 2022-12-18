@@ -14,19 +14,11 @@ struct Chunk {
 ///
 /// We do *not* allow reading from this buffer as it is typically write-combined memory.
 /// Reading would work, but it can be *insanely* slow.
-#[ouroboros::self_referencing]
 pub struct StagingWriteBeltBuffer {
     /// Chunk this buffer originated from, need to keep it around so buffer_view is not invalidated.
     chunk_buffer: StagingWriteBuffer,
 
-    /// Memory view into the buffer.
-    ///
-    /// Covariant:
-    /// See https://docs.rs/ouroboros/latest/ouroboros/attr.self_referencing.html#covariance
-    /// This means that having a smaller lifetime than 'this is ok.
-    #[covariant]
-    #[borrows(chunk_buffer)]
-    write_view: wgpu::BufferViewMut<'this>,
+    write_view: wgpu::BufferViewMut<'static>,
 
     offset_in_chunk: wgpu::BufferAddress,
 }
@@ -38,9 +30,7 @@ impl StagingWriteBeltBuffer {
     /// Reading would work, but it can be *insanely* slow.
     #[inline]
     pub fn write_bytes(&mut self, bytes: &[u8], offset: usize) {
-        self.with_write_view_mut(|write_view| {
-            write_view[offset..(offset + bytes.len())].clone_from_slice(bytes);
-        });
+        self.write_view[offset..(offset + bytes.len())].clone_from_slice(bytes);
     }
 
     /// Writes several objects to the buffer at a given location.
@@ -51,11 +41,9 @@ impl StagingWriteBeltBuffer {
     /// Reading would work, but it can be *insanely* slow.
     #[inline]
     pub fn write<T: bytemuck::Pod>(&mut self, elements: &[T], offset_in_element_sizes: usize) {
-        self.with_write_view_mut(|write_view| {
-            bytemuck::cast_slice_mut(write_view)
-                [offset_in_element_sizes..(offset_in_element_sizes + elements.len())]
-                .clone_from_slice(elements);
-        });
+        bytemuck::cast_slice_mut(&mut self.write_view)
+            [offset_in_element_sizes..(offset_in_element_sizes + elements.len())]
+            .clone_from_slice(elements);
     }
 
     /// Writes a single objects to the buffer at a given location.
@@ -63,16 +51,12 @@ impl StagingWriteBeltBuffer {
     /// (panics otherwise)
     #[inline]
     pub fn write_single<T: bytemuck::Pod>(&mut self, element: &T, offset_in_element_sizes: usize) {
-        self.with_write_view_mut(|write_view| {
-            bytemuck::cast_slice_mut(write_view)[offset_in_element_sizes] = *element;
-        });
+        bytemuck::cast_slice_mut(&mut self.write_view)[offset_in_element_sizes] = *element;
     }
 
     /// Sets all bytes in the buffer to a given value
     pub fn memset(&mut self, value: u8) {
-        self.with_write_view_mut(|write_view| {
-            write_view.fill(value);
-        });
+        self.write_view.fill(value);
     }
 
     pub fn copy_to_texture(
@@ -83,20 +67,18 @@ impl StagingWriteBeltBuffer {
         rows_per_image: Option<NonZeroU32>,
         copy_size: wgpu::Extent3d,
     ) {
-        self.with(|this| {
-            encoder.copy_buffer_to_texture(
-                wgpu::ImageCopyBuffer {
-                    buffer: this.chunk_buffer,
-                    layout: wgpu::ImageDataLayout {
-                        offset: *this.offset_in_chunk,
-                        bytes_per_row,
-                        rows_per_image,
-                    },
+        encoder.copy_buffer_to_texture(
+            wgpu::ImageCopyBuffer {
+                buffer: &self.chunk_buffer,
+                layout: wgpu::ImageDataLayout {
+                    offset: self.offset_in_chunk,
+                    bytes_per_row,
+                    rows_per_image,
                 },
-                destination,
-                copy_size,
-            );
-        });
+            },
+            destination,
+            copy_size,
+        );
     }
 
     // TODO(andreas):
@@ -108,7 +90,7 @@ impl StagingWriteBeltBuffer {
 ///
 /// Internally it uses a ring-buffer of staging buffers that are sub-allocated.
 ///
-/// Based on to [`wgpu::util::StagingBelt`] (https://github.com/gfx-rs/wgpu/blob/a420e453c3d9c93dfb1a8526bf11c000d895c916/wgpu/src/util/belt.rs)
+/// Based on to [`wgpu::util::StagingBelt`](https://github.com/gfx-rs/wgpu/blob/a420e453c3d9c93dfb1a8526bf11c000d895c916/wgpu/src/util/belt.rs)
 /// However, there are some important differences:
 /// * can create buffers without yet knowing the target copy location
 /// * lifetime of returned buffers is independent of the StagingBelt (allows working with several in parallel!)
@@ -160,7 +142,8 @@ impl StagingWriteBelt {
         }
     }
 
-    /// Alignment is automatically at least wgpu::MAP_ALIGNMENT
+    /// Alignment is automatically at least [`wgpu::MAP_ALIGNMENT`]
+    #[allow(unsafe_code)]
     pub fn allocate(
         &mut self,
         device: &wgpu::Device,
@@ -206,22 +189,25 @@ impl StagingWriteBelt {
         chunk.unused_offset = end_offset;
 
         self.active_chunks.push(chunk);
-        let chunk = self.active_chunks.last().unwrap();
+        let chunk = self.active_chunks.last_mut().unwrap();
+
+        let buffer_ptr = &mut chunk.buffer as *mut StagingWriteBuffer;
 
         // The received chunk is known to be mapped already (either reclaimed or upon creation)
-        // Note that get_mapped_range_mut will internally double check if we give out overlapping ranges.
-        // (we don't :))
+        // Note that get_mapped_range_mut will internally check if we give out overlapping ranges.
+        // TODO: explain why this is ok
+        let static_buffer = Box::leak(unsafe { Box::from_raw(buffer_ptr) });
+
+        let write_view = static_buffer
+            .slice(start_offset..end_offset)
+            .get_mapped_range_mut();
+
         let chunk_buffer = chunk.buffer.clone();
-        StagingWriteBeltBufferBuilder {
+        StagingWriteBeltBuffer {
             chunk_buffer,
             offset_in_chunk: start_offset,
-            write_view_builder: |buffer| {
-                buffer
-                    .slice(start_offset..end_offset)
-                    .get_mapped_range_mut()
-            },
+            write_view,
         }
-        .build()
     }
 
     /// Prepare currently mapped buffers for use in a submission.

@@ -10,7 +10,7 @@ use rand::Rng;
 use re_renderer::{
     renderer::{
         GenericSkyboxDrawData, LineDrawData, LineStripFlags, MeshDrawData, MeshInstance,
-        PointCloudBatchInfo, PointCloudDrawData, PointCloudVertex, TestTriangleDrawData,
+        PointCloudVertex, TestTriangleDrawData,
     },
     resource_managers::ResourceLifeTime,
     view_builder::{OrthographicCameraMode, Projection, TargetConfiguration, ViewBuilder},

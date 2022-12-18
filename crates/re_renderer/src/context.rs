@@ -31,7 +31,7 @@ pub struct RenderContext {
     /// Command encoder for all commands that should go in before view builder are submitted.
     ///
     /// This should be used for any gpu copy operation outside of a renderer or view builder.
-    /// (i.e. typically in [`crate::DrawData`] creation!)
+    /// (i.e. typically in [`crate::renderer::DrawData`] creation!)
     pub(crate) frame_global_commands: wgpu::CommandEncoder,
 
     pub gpu_resources: WgpuResourcePools,
@@ -244,7 +244,7 @@ impl RenderContext {
         self.staging_belt.lock().after_queue_submit();
     }
 
-    /// Call this at the end of a frame but before submitting command buffers from [`crate::ViewBuilder`]
+    /// Call this at the end of a frame but before submitting command buffers from [`crate::view_builder::ViewBuilder`]
     pub fn before_submit(&mut self) {
         // Unmap all staging buffers.
         self.staging_belt.lock().before_queue_submit();
