@@ -583,12 +583,12 @@ impl ComponentBucket {
     /// Returns a shallow clone of the row data for the given `row_idx`.
     pub fn get(&self, row_idx: RowIndex) -> Box<dyn Array> {
         let row_idx = row_idx.as_u64() - self.row_offset.as_u64();
-        let rows = self.data.slice(row_idx as usize, 1);
         // This has to be safe to unwrap, otherwise it would never have made it past insertion.
-        rows.as_any()
+        self.data
+            .as_any()
             .downcast_ref::<ListArray<i32>>()
             .unwrap()
-            .value(0)
+            .value(row_idx as _)
     }
 
     /// Returns the entire data Array in this component
