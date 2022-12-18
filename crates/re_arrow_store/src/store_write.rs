@@ -80,9 +80,15 @@ impl DataStore {
             for bundle in components {
                 let ComponentBundle { name, value: rows } = bundle;
 
-                // Unwrapping a ListArray is very costly, especially considering we're just gonna
-                // rewrap it again in a minute... so just slice it to a list of one instead.
-                let rows_single = rows.slice(row_nr, 1);
+                // Unwrapping a ListArray is somewhat costly, especially considering we're just
+                // gonna rewrap it again in a minute... so we'd rather just slice it to a list of
+                // one instead.
+                //
+                // let rows_single = rows.slice(row_nr, 1);
+                //
+                // Except it turns out that slicing is _extremely_ costly!
+                // So use the fact that `rows` is always of unit-length for now.
+                let rows_single = rows;
 
                 let table = self
                     .components
