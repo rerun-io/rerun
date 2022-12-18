@@ -583,10 +583,19 @@ impl ComponentBucket {
     /// Returns a shallow clone of the row data present at the given `row_idx`.
     pub fn get(&self, row_idx: RowIndex) -> Box<dyn Array> {
         let row_idx = row_idx.as_u64() - self.row_offset.as_u64();
+        // This has to be safe to unwrap, otherwise it would never have made it past insertion.
         if self.retired {
-            self.chunks[0].slice(row_idx as _, 1)
+            self.chunks[0]
+                .as_any()
+                .downcast_ref::<ListArray<i32>>()
+                .unwrap()
+                .value(row_idx as _)
         } else {
-            self.chunks[row_idx as usize].slice(0, 1)
+            self.chunks[row_idx as usize]
+                .as_any()
+                .downcast_ref::<ListArray<i32>>()
+                .unwrap()
+                .value(0)
         }
     }
 

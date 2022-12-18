@@ -1,3 +1,4 @@
+use arrow2::array::ListArray;
 use polars_core::prelude::*;
 use re_arrow_store::{DataStore, TimelineQuery};
 use re_log_types::{field_types::Instance, msg_bundle::Component, ComponentNameRef, ObjPath};
@@ -71,7 +72,15 @@ pub fn get_component_with_instances(
         .iter()
         .zip(results)
         .filter_map(|(component, col)| col.map(|col| (component, col)))
-        .map(|(&component, col)| Ok(Series::try_from((component, col))?))
+        .map(|(&component, col)| {
+            // TODO(jleibs): Is it possible to have multiple rows here?
+            let col_array = col
+                .as_any()
+                .downcast_ref::<ListArray<i32>>()
+                .ok_or(QueryError::BadAccess)?
+                .value(0);
+            Ok(Series::try_from((component, col_array))?)
+        })
         .collect();
 
     DataFrame::new(series?).map_err(Into::into)
