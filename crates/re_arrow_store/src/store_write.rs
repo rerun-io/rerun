@@ -2,7 +2,9 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use anyhow::ensure;
-use arrow2::array::{new_empty_array, Array, Int64Vec, ListArray, MutableArray, UInt64Vec};
+use arrow2::array::{
+    new_empty_array, Array, Int64Vec, ListArray, MutableArray, UInt64Array, UInt64Vec,
+};
 use arrow2::bitmap::MutableBitmap;
 use arrow2::buffer::Buffer;
 use arrow2::datatypes::DataType;
@@ -41,33 +43,6 @@ impl DataStore {
         if components.is_empty() {
             return Ok(());
         }
-        #[cfg(debug_assertions)]
-        {
-            for bundle in components {
-                debug_assert!(
-                    bundle.value.len() == 1,
-                    "batched component row insertions are not supported yet!"
-                );
-            }
-        }
-
-        let clustering_comp = get_or_create_clustering_key(components, &self.clustering_key);
-
-        // All components must share the same length as the clustering key.
-        // TODO(#527): typed error
-        ensure!(
-            components.iter().all(|bundle| {
-                // TODO(#589): support for batched row component insertions
-                let first_row = bundle
-                    .value
-                    .as_any()
-                    .downcast_ref::<ListArray<i32>>()
-                    .unwrap()
-                    .value(0);
-                first_row.len() == clustering_comp.len()
-            }),
-            "all components in the row must have the same length as the clustering component",
-        );
 
         let ent_path_hash = *ent_path.hash();
         let nb_rows = components[0].value.len();
@@ -104,7 +79,23 @@ impl DataStore {
 
         // TODO(#589): support for batched row component insertions
         for row_nr in 0..nb_rows {
-            // TODO(cmc): find and/or generate the clustering key for the row.
+            let clustering_comp = get_or_create_clustering_key(components, &self.clustering_key);
+
+            // All components must share the same length as the clustering key.
+            // TODO(#527): typed error
+            ensure!(
+                components.iter().all(|bundle| {
+                    // TODO(#589): support for batched row component insertions
+                    let first_row = bundle
+                        .value
+                        .as_any()
+                        .downcast_ref::<ListArray<i32>>()
+                        .unwrap()
+                        .value(0);
+                    first_row.len() == clustering_comp.len()
+                }),
+                "all components in the row must have the same length as the clustering component",
+            );
 
             for bundle in components {
                 let ComponentBundle { name, value: rows } = bundle;
