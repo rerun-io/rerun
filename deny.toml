@@ -32,6 +32,7 @@ skip = [
 ]
 skip-tree = [
   { name = "cargo-run-wasm" }, # Dev-tool
+  { name = "comfy-table" },    # arrow vs. polars use different major versions (polars' one is dev-dep only)
   { name = "criterion" },      # dev-dependency
   { name = "winit" },          # winit pulls in a lot of old, duplicated crates. At least it is not wasm
 ]
