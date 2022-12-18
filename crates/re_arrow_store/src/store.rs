@@ -836,10 +836,20 @@ pub struct ComponentBucket {
     /// The offset of this bucket in the global table.
     pub(crate) row_offset: RowIndex,
 
-    /// Has this bucket been retired yet?
+    /// Has this bucket been archived yet?
     ///
-    /// At any given moment, all buckets except the currently active one have to be retired.
-    pub(crate) retired: bool,
+    /// For every `ComponentTable`, there can only be one active bucket at a time (i.e. the bucket
+    /// that is currently accepting write requests), all the others are archived.
+    /// When the currently active bucket is full, it is archived in turn, and a new bucket is
+    /// created to take its place.
+    ///
+    /// Archiving a bucket is a good opportunity to run some maintenance tasks on it, e.g.
+    /// compaction (concatenating all chunks down to a single one).
+    /// Currently, an archived bucket is guaranteed to have these properties:
+    /// - the bucket is full (it has reached the maximum allowed length and/or size),
+    /// - the bucket has been compacted,
+    /// - the bucket is only used for reads.
+    pub(crate) archived: bool,
 
     /// The time ranges (plural!) covered by this bucket.
     /// Buckets are never sorted over time, so these time ranges can grow arbitrarily large.
@@ -863,13 +873,13 @@ pub struct ComponentBucket {
     ///
     /// During the active lifespan of the bucket, this can contain any number of chunks,
     /// depending on how the data was inserted (e.g. single insertions vs. batches).
-    /// All of these chunks get compacted into one contiguous array when the bucket is retired,
+    /// All of these chunks get compacted into one contiguous array when the bucket is archived,
     /// i.e. when the bucket is full and a new one is created.
     ///
     /// Note that, as of today, we do not actually support batched insertion nor do we support
     /// chunks of non-unit length (batches are inserted on a per-row basis internally).
     /// As a result, chunks always contain one and only one row's worth of data, at least until
-    /// the bucket is retired and compacted.
+    /// the bucket is archived and compacted.
     /// See also #589.
     pub(crate) chunks: Vec<Box<dyn Array>>,
 
@@ -907,7 +917,7 @@ impl std::fmt::Display for ComponentBucket {
                     .expect("buckets are never empty") as u64,
         ))?;
 
-        f.write_fmt(format_args!("retired: {}\n", self.retired))?;
+        f.write_fmt(format_args!("archived: {}\n", self.archived))?;
         f.write_str("time ranges:\n")?;
         for (timeline, time_range) in &self.time_ranges {
             f.write_fmt(format_args!(
