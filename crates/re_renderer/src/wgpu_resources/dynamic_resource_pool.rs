@@ -27,7 +27,7 @@ pub(super) struct DynamicResourcePool<Handle: Key, Desc, Res> {
 
     /// Handles to all alive resources.
     /// We story any ref counted handle we give out in [`DynamicResourcePool::alloc`] here in order to keep it alive.
-    /// Every [`DynamicResourcePool::frame_maintenance`] we check if the pool is now the only owner of the handle
+    /// Every [`DynamicResourcePool::begin_frame`] we check if the pool is now the only owner of the handle
     /// and if so mark it as deallocated.
     /// Being a [`SecondaryMap`] allows us to upgrade "weak" handles to strong handles,
     /// something required by [`super::GpuBindGroupPool`]
@@ -105,7 +105,7 @@ where
             })
     }
 
-    pub fn frame_maintenance(&mut self, frame_index: u64, on_destroy_resource: impl Fn(&Res)) {
+    pub fn begin_frame(&mut self, frame_index: u64, on_destroy_resource: impl Fn(&Res)) {
         self.current_frame_index = frame_index;
 
         // Throw out any resources that we haven't reclaimed last frame.
@@ -224,7 +224,7 @@ mod tests {
         // Still, no resources were dropped.
         {
             let drop_counter_before = drop_counter.load(Ordering::Acquire);
-            pool.frame_maintenance(1, |_| {});
+            pool.begin_frame(1, |_| {});
 
             assert_eq!(drop_counter_before, drop_counter.load(Ordering::Acquire),);
         }
@@ -237,8 +237,8 @@ mod tests {
         // Doing frame maintenance twice will drop all resources
         {
             let drop_counter_before = drop_counter.load(Ordering::Acquire);
-            pool.frame_maintenance(2, |_| {});
-            pool.frame_maintenance(3, |_| {});
+            pool.begin_frame(2, |_| {});
+            pool.begin_frame(3, |_| {});
             let drop_counter_now = drop_counter.load(Ordering::Acquire);
             assert_eq!(
                 drop_counter_before + initial_resource_descs.len() * 2,
@@ -261,9 +261,9 @@ mod tests {
             assert_ne!(handle0, handle1);
             drop(handle1);
 
-            pool.frame_maintenance(4, |_| {});
+            pool.begin_frame(4, |_| {});
             assert_eq!(drop_counter_before, drop_counter.load(Ordering::Acquire),);
-            pool.frame_maintenance(5, |_| {});
+            pool.begin_frame(5, |_| {});
             assert_eq!(
                 drop_counter_before + 1,
                 drop_counter.load(Ordering::Acquire),
@@ -339,8 +339,8 @@ mod tests {
         // Query with invalid handle
         let inner_handle = *handle;
         drop(handle);
-        pool.frame_maintenance(0, |_| {});
-        pool.frame_maintenance(1, |_| {});
+        pool.begin_frame(0, |_| {});
+        pool.begin_frame(1, |_| {});
         assert!(matches!(
             pool.get_resource(inner_handle),
             Err(PoolError::ResourceNotAvailable)

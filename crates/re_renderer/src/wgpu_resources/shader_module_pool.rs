@@ -78,7 +78,7 @@ impl GpuShaderModulePool {
             .get_or_create(desc, |desc| desc.create_shader_module(device, resolver))
     }
 
-    pub fn frame_maintenance<Fs: FileSystem>(
+    pub fn begin_frame<Fs: FileSystem>(
         &mut self,
         device: &wgpu::Device,
         resolver: &mut FileResolver<Fs>,

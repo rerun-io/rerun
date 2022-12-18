@@ -64,7 +64,7 @@ impl MeshManager {
         self.manager.get(handle)
     }
 
-    pub(crate) fn frame_maintenance(&mut self, frame_index: u64) {
-        self.manager.frame_maintenance(frame_index);
+    pub(crate) fn begin_frame(&mut self, frame_index: u64) {
+        self.manager.begin_frame(frame_index);
     }
 }

@@ -37,7 +37,7 @@ impl GpuBindGroupLayoutPool {
         self.pool.get_resource(handle)
     }
 
-    pub fn frame_maintenance(&mut self, frame_index: u64) {
+    pub fn begin_frame(&mut self, frame_index: u64) {
         self.pool.current_frame_index = frame_index;
     }
 
