@@ -11,8 +11,8 @@ use arrow2::datatypes::DataType;
 use parking_lot::RwLock;
 use re_format::{format_bytes, format_number};
 use re_log_types::{
-    ComponentName, ComponentNameRef, ObjPath as EntityPath, ObjPathHash as EntityPathHash, TimeInt,
-    TimeRange, Timeline,
+    ComponentName, ObjPath as EntityPath, ObjPathHash as EntityPathHash, TimeInt, TimeRange,
+    Timeline,
 };
 
 // --- Data store ---

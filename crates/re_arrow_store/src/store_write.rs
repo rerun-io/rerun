@@ -80,22 +80,7 @@ impl DataStore {
         // TODO(#589): support for batched row component insertions
         for row_nr in 0..nb_rows {
             let clustering_comp = get_or_create_clustering_key(components, &self.clustering_key);
-
-            // All components must share the same length as the clustering key.
-            // TODO(#527): typed error
-            ensure!(
-                components.iter().all(|bundle| {
-                    // TODO(#589): support for batched row component insertions
-                    let first_row = bundle
-                        .value
-                        .as_any()
-                        .downcast_ref::<ListArray<i32>>()
-                        .unwrap()
-                        .value(0);
-                    first_row.len() == clustering_comp.len()
-                }),
-                "all components in the row must have the same length as the clustering component",
-            );
+            let expected_nb_instances = clustering_comp.len();
 
             for bundle in components {
                 let ComponentBundle { name, value: rows } = bundle;
@@ -109,6 +94,19 @@ impl DataStore {
                 // Except it turns out that slicing is _extremely_ costly!
                 // So use the fact that `rows` is always of unit-length for now.
                 let rows_single = rows;
+
+                let nb_instances = rows_single
+                    .as_any()
+                    .downcast_ref::<ListArray<i32>>()
+                    .unwrap()
+                    .value(0)
+                    .len();
+                // TODO(#527): typed error
+                ensure!(
+                    expected_nb_instances == nb_instances,
+                    "all components in the row must have the same number of instances as the \
+                        clustering component",
+                );
 
                 let table = self
                     .components
