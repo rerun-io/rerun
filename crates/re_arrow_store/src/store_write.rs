@@ -80,18 +80,23 @@ impl DataStore {
             for bundle in components {
                 let ComponentBundle { name, value: rows } = bundle;
 
-                let row = rows
-                    .as_any()
-                    .downcast_ref::<ListArray<i32>>()
-                    .unwrap()
-                    .value(row_nr);
+                // Unwrapping a ListArray is very costly, especially considering we're just gonna
+                // rewrap it again in a minute... so just slice it to a list of one instead.
+                let rows_single = rows.slice(row_nr, 1);
 
                 let table = self
                     .components
                     .entry((*bundle.name).to_owned())
-                    .or_insert_with(|| ComponentTable::new((*name).clone(), row.data_type()));
+                    .or_insert_with(|| {
+                        let row = rows_single
+                            .as_any()
+                            .downcast_ref::<ListArray<i32>>()
+                            .unwrap()
+                            .value(row_nr);
+                        ComponentTable::new((*name).clone(), row.data_type())
+                    });
 
-                let row_idx = table.push(&self.config, time_point, row.as_ref());
+                let row_idx = table.push(&self.config, time_point, rows_single.as_ref());
                 row_indices.insert(name.as_ref(), row_idx);
             }
         }
@@ -652,6 +657,10 @@ fn split_secondary_index_off(split_idx: usize, index1: &mut UInt64Vec) -> UInt64
 // --- Components ---
 
 impl ComponentTable {
+    /// Creates a new component table for the specified component `datatype`.
+    ///
+    /// `datatype` must be the type of the component itself, devoid of any wrapping layers
+    /// (i.e. _not_ a `ListArray<...>`!).
     fn new(name: String, datatype: &DataType) -> Self {
         let name = Arc::new(name);
         ComponentTable {
@@ -666,15 +675,17 @@ impl ComponentTable {
         }
     }
 
-    /// Finds the appropriate bucket in this component table and appends `row` at the end of it,
-    /// returning the _global_ `RowIndex` for this new row.
+    /// Finds the appropriate bucket in this component table and pushes `rows_single` at the
+    /// end of it, returning the _global_ `RowIndex` for this new row.
     ///
-    /// `row` must be a list of components, i.e. `ListArray<StructArray>`:
-    /// - the list layer corresponds to the different instances within the row,
+    /// `rows_single` must be a list of list of components,
+    /// i.e. `ListArray<ListArray<StructArray>>`:
+    /// - the first list layer corresponds to the rows and _must be unit-lengthed_,
+    /// - the second list layer corresponds to the different instances within the row,
     /// - the struct layer is the component itself.
     /// E.g.:
     /// ```ignore
-    /// [{x: 8.687487, y: 1.9590926}, {x: 2.0559108, y: 0.1494348}, {x: 7.09219, y: 0.9616637}]
+    /// [[{x: 8.687487, y: 1.9590926}, {x: 2.0559108, y: 0.1494348}, {x: 7.09219, y: 0.9616637}]]
     /// ```
     //
     // TODO(#589): support for batched row component insertions
@@ -682,10 +693,16 @@ impl ComponentTable {
         &mut self,
         config: &DataStoreConfig,
         time_point: &TimePoint,
-        row: &dyn Array,
+        rows_single: &dyn Array,
     ) -> RowIndex {
         debug_assert!(
-            row.data_type() == &self.datatype,
+            rows_single
+                .as_any()
+                .downcast_ref::<ListArray<i32>>()
+                .unwrap()
+                .value(0)
+                .data_type()
+                == &self.datatype,
             "trying to insert data of the wrong datatype in a component table",
         );
 
@@ -730,7 +747,7 @@ impl ComponentTable {
         // - If the table has just overflowed, then we've just pushed a bucket to the dequeue.
         let active_bucket = self.buckets.back_mut().unwrap();
         let row_idx = RowIndex::from_u64(
-            active_bucket.push(time_point, row) + active_bucket.row_offset.as_u64(),
+            active_bucket.push(time_point, rows_single) + active_bucket.row_offset.as_u64(),
         );
 
         debug!(
@@ -784,17 +801,19 @@ impl ComponentBucket {
         }
     }
 
-    /// Pushes `row` to the end of the bucket, returning the _local_ index of the freshly
-    /// added row.
+    /// Pushes `rows_single` to the end of the bucket, returning the _local_ index of the
+    /// freshly added row.
     ///
-    /// `row` must be a list of components, i.e. `ListArray<StructArray>`:
-    /// - the list layer corresponds to the different instances within the row,
+    /// `rows_single` must be a list of list of components,
+    /// i.e. `ListArray<ListArray<StructArray>>`:
+    /// - the first list layer corresponds to the rows and _must be unit-lengthed_,
+    /// - the second list layer corresponds to the different instances within the row,
     /// - the struct layer is the component itself.
     /// E.g.:
     /// ```ignore
-    /// [{x: 8.687487, y: 1.9590926}, {x: 2.0559108, y: 0.1494348}, {x: 7.09219, y: 0.9616637}]
+    /// [[{x: 8.687487, y: 1.9590926}, {x: 2.0559108, y: 0.1494348}, {x: 7.09219, y: 0.9616637}]]
     /// ```
-    pub fn push(&mut self, time_point: &TimePoint, row: &dyn Array) -> u64 {
+    pub fn push(&mut self, time_point: &TimePoint, rows_single: &dyn Array) -> u64 {
         // Keep track of all affected time ranges, for garbage collection purposes.
         for (timeline, &time) in time_point {
             self.time_ranges
@@ -805,23 +824,13 @@ impl ComponentBucket {
                 .or_insert_with(|| TimeRange::new(time, time));
         }
 
-        // Wrap the row within a list, e.g. `ListArray<ListArray<StructArray>>`, to prepare for
-        // batching support.
-        //
-        // TODO(#589): support for non-unit-length chunks
-        let wrapped_row = ListArray::<i32>::from_data(
-            ListArray::<i32>::default_datatype(row.data_type().clone()),
-            Buffer::from(vec![0, row.len() as _]),
-            row.to_boxed(), // shallow
-            None,
-        );
-
         self.total_rows += 1;
         // Warning: this is surprisingly costly!
         self.total_size_bytes +=
-            arrow2::compute::aggregate::estimated_bytes_size(&wrapped_row) as u64;
+            arrow2::compute::aggregate::estimated_bytes_size(rows_single) as u64;
 
-        self.chunks.push(wrapped_row.to_boxed()); // shallow
+        // TODO(#589): support for non-unit-length chunks
+        self.chunks.push(rows_single.to_boxed()); // shallow
 
         self.chunks.len() as u64 - 1
     }
