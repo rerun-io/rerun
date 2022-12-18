@@ -65,12 +65,14 @@ pub fn build_instances(nb_instances: usize) -> ComponentBundle {
     use rand::Rng as _;
     let mut rng = rand::thread_rng();
 
-    let data = PrimitiveArray::from(
-        (0..nb_instances)
+    let data = PrimitiveArray::from({
+        let mut values = (0..nb_instances)
             .into_iter()
             .map(|_| Some(rng.gen()))
-            .collect::<Vec<Option<u32>>>(),
-    );
+            .collect::<Vec<Option<u32>>>();
+        values.sort();
+        values
+    });
     let data = wrap_in_listarray(data.boxed());
 
     ComponentBundle {
