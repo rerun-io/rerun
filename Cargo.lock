@@ -976,15 +976,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "csv-core"
-version = "0.1.10"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2b2466559f260f48ad25fe6317b3c8dac77b5bdb5763ac7d9d6103530663bc90"
-dependencies = [
- "memchr",
-]
-
-[[package]]
 name = "ctrlc"
 version = "3.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1161,26 +1152,6 @@ checksum = "339ee130d97a610ea5a5872d2bbb130fdf68884ff09d3028b81bec8a1ac23bbc"
 dependencies = [
  "cfg-if",
  "dirs-sys-next",
-]
-
-[[package]]
-name = "dirs"
-version = "4.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca3aa72a6f96ea37bbc5aa912f6788242832f75369bdfdadcb0e38423f100059"
-dependencies = [
- "dirs-sys",
-]
-
-[[package]]
-name = "dirs-sys"
-version = "0.3.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b1d1d91c932ef41c0f2663aa8b0ca0342d444d842c06914aa0a7e352d0bada6"
-dependencies = [
- "libc",
- "redox_users",
- "winapi",
 ]
 
 [[package]]
@@ -1382,18 +1353,6 @@ source = "git+https://github.com/emilk/egui?rev=6ae4bc486b2608212f5fc8453f5aa7e5
 dependencies = [
  "bytemuck",
  "serde",
-]
-
-[[package]]
-name = "enum_dispatch"
-version = "0.3.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0eb359f1476bf611266ac1f5355bc14aeca37b299d0ebccc038ee7058891c9cb"
-dependencies = [
- "once_cell",
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]
@@ -2368,15 +2327,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "884e2677b40cc8c339eaefcb701c32ef1fd2493d71118dc0ca4b6a736c93bd67"
 
 [[package]]
-name = "lexical"
-version = "6.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c7aefb36fd43fef7003334742cbf77b243fcd36418a1d1bdd480d613a67968f6"
-dependencies = [
- "lexical-core",
-]
-
-[[package]]
 name = "lexical-core"
 version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3229,114 +3179,10 @@ dependencies = [
  "once_cell",
  "polars-arrow",
  "polars-utils",
- "rand",
- "rand_distr",
  "rayon",
  "regex",
  "smartstring",
  "thiserror",
-]
-
-[[package]]
-name = "polars-io"
-version = "0.25.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "125fd8302050f3b6be46f7a9a92a4ac62dcab738c4e32cd2af7b9be5f4cdf709"
-dependencies = [
- "ahash 0.8.2",
- "anyhow",
- "arrow2",
- "csv-core",
- "dirs",
- "lexical",
- "lexical-core",
- "memchr",
- "memmap2",
- "num",
- "once_cell",
- "polars-arrow",
- "polars-core",
- "polars-time",
- "polars-utils",
- "rayon",
- "regex",
- "simdutf8",
-]
-
-[[package]]
-name = "polars-lazy"
-version = "0.25.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "55376a76c7bd050bb42fd124c290e1908e7ebf8f4c6cce6c4c41e56402f10a33"
-dependencies = [
- "ahash 0.8.2",
- "bitflags",
- "glob",
- "polars-arrow",
- "polars-core",
- "polars-io",
- "polars-ops",
- "polars-pipe",
- "polars-plan",
- "polars-utils",
- "rayon",
-]
-
-[[package]]
-name = "polars-ops"
-version = "0.25.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bfd3f6552b3e9539634c35047f372db331b6227f75c36fcbe4670ab58bbcbeb3"
-dependencies = [
- "arrow2",
- "polars-arrow",
- "polars-core",
- "polars-utils",
-]
-
-[[package]]
-name = "polars-pipe"
-version = "0.25.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fa865a4fc6dcfb9967505c4714c29277898e21dd29ea7633a3f9d1abbe879a7d"
-dependencies = [
- "enum_dispatch",
- "hashbrown",
- "num",
- "polars-core",
- "polars-io",
- "polars-plan",
- "polars-utils",
- "rayon",
-]
-
-[[package]]
-name = "polars-plan"
-version = "0.25.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "673480b0ee55b0abb5be247862bfe1f3b623897f504006a10adbc25c878bf531"
-dependencies = [
- "ahash 0.8.2",
- "polars-arrow",
- "polars-core",
- "polars-io",
- "polars-ops",
- "polars-time",
- "polars-utils",
- "rayon",
-]
-
-[[package]]
-name = "polars-time"
-version = "0.25.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "783e53abda73c226807e850d91de67ab376d91866f378306d3e7f6b9844c17de"
-dependencies = [
- "chrono",
- "lexical",
- "polars-arrow",
- "polars-core",
- "polars-utils",
 ]
 
 [[package]]
@@ -3547,16 +3393,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rand_distr"
-version = "0.4.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "32cb0b9bc82b0a0876c2dd994a7e7a2683d3e7390ca40e6886785ef0c7e3ee31"
-dependencies = [
- "num-traits",
- "rand",
-]
-
-[[package]]
 name = "range-alloc"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3730,17 +3566,19 @@ dependencies = [
  "anyhow",
  "arrow2",
  "chrono",
+ "criterion",
  "document-features",
  "indent",
  "itertools",
+ "mimalloc",
  "nohash-hasher",
  "polars-core",
- "polars-lazy",
  "re_arrow_store",
  "re_format",
  "re_log",
  "re_log_types",
  "thiserror",
+ "tracing-subscriber",
 ]
 
 [[package]]
