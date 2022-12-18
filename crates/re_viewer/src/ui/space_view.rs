@@ -183,7 +183,7 @@ impl SpaceView {
         match self.category {
             ViewCategory::Spatial => {
                 ui.strong("Spatial view");
-                self.view_state.state_spatial.show_settings_ui(ctx, ui);
+                self.view_state.state_spatial.settings_ui(ctx, ui);
             }
             ViewCategory::Tensor => {
                 if let Some(selected_tensor) = &self.view_state.selected_tensor {
@@ -222,12 +222,12 @@ impl SpaceView {
             if let Some(subtree) = obj_tree.subtree(&self.root_path) {
                 let spaces_info = SpacesInfo::new(&ctx.log_db.obj_db, &ctx.rec_cfg.time_ctrl);
                 let forced_invisible = self.unreachable_elements(&spaces_info);
-                self.show_obj_tree_children(ctx, ui, &spaces_info, subtree, &forced_invisible);
+                self.obj_tree_children_ui(ctx, ui, &spaces_info, subtree, &forced_invisible);
             }
         });
     }
 
-    fn show_obj_tree_children(
+    fn obj_tree_children_ui(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
@@ -241,7 +241,7 @@ impl SpaceView {
         }
 
         for (path_comp, child_tree) in &tree.children {
-            self.show_obj_tree(
+            self.obj_tree_ui(
                 ctx,
                 ui,
                 spaces_info,
@@ -253,7 +253,7 @@ impl SpaceView {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn show_obj_tree(
+    fn obj_tree_ui(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
@@ -293,7 +293,7 @@ impl SpaceView {
                         }
                     })
                     .body(|ui| {
-                        self.show_obj_tree_children(ctx, ui, spaces_info, tree, forced_invisible);
+                        self.obj_tree_children_ui(ctx, ui, spaces_info, tree, forced_invisible);
                     });
                 }
             })
@@ -424,7 +424,7 @@ fn has_visualization_for_category(
 // ----------------------------------------------------------------------------
 
 /// Show help-text on top of space
-fn show_help_button_overlay(
+fn help_button_overlay_ui(
     ui: &mut egui::Ui,
     rect: egui::Rect,
     ctx: &mut ViewerContext<'_>,
@@ -464,7 +464,7 @@ impl ViewState {
             let response =
                 self.state_spatial
                     .view_spatial(ctx, ui, space, scene, spaces_info, space_info);
-            show_help_button_overlay(ui, response.rect, ctx, self.state_spatial.help_text());
+            help_button_overlay_ui(ui, response.rect, ctx, self.state_spatial.help_text());
         });
     }
 
@@ -545,7 +545,7 @@ impl ViewState {
                 })
                 .response;
 
-            show_help_button_overlay(ui, response.rect, ctx, view_plot::HELP_TEXT);
+            help_button_overlay_ui(ui, response.rect, ctx, view_plot::HELP_TEXT);
         })
         .response
     }
