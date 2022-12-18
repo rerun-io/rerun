@@ -91,7 +91,8 @@ fn add_instances_and_sort_if_needed(df: &DataFrame) -> Result<DataFrame> {
     if df.column(Instance::NAME).is_ok() {
         // If we have an InstanceKey column already, make sure that it's sorted.
         // TODO(jleibs): can remove this once we have a sort guarantee from the store
-        Ok(df.sort([Instance::NAME], false)?)
+        let reverse = false;
+        Ok(df.sort([Instance::NAME], reverse)?)
     } else {
         // If we don't have an InstanceKey column, it is implicit, and we generate it
         // based on the row-number so we can use this in join-operations.
