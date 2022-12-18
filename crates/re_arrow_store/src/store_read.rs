@@ -1,7 +1,7 @@
 use std::sync::atomic::Ordering;
 
 use arrow2::{
-    array::{Array, Int64Array, MutableArray, UInt64Array, UInt64Vec},
+    array::{Array, Int64Array, ListArray, MutableArray, UInt64Array, UInt64Vec},
     datatypes::{DataType, TimeUnit},
 };
 
@@ -581,10 +581,14 @@ impl ComponentBucket {
         &self.name
     }
 
-    // Panics on out-of-bounds
+    /// Returns a shallow clone of the row data for the given `row_idx`.
     pub fn get(&self, row_idx: RowIndex) -> Box<dyn Array> {
         let row_idx = row_idx.as_u64() - self.row_offset.as_u64();
-        self.data.slice(row_idx as usize, 1)
+        let rows = self.data.slice(row_idx as usize, 1);
+        rows.as_any()
+            .downcast_ref::<ListArray<i32>>()
+            .unwrap()
+            .value(0)
     }
 
     /// Returns the entire data Array in this component
