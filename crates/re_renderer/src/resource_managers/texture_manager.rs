@@ -1,7 +1,6 @@
 use std::{num::NonZeroU32, sync::Arc};
 
 use crate::{
-    next_multiple_of,
     wgpu_resources::{GpuTextureHandleStrong, GpuTexturePool, TextureDesc},
     DebugLabel,
 };
@@ -144,7 +143,7 @@ impl TextureManager2D {
         let width_blocks = creation_desc.width / format_info.block_dimensions.0 as u32;
         let bytes_per_row_unaligned = width_blocks * format_info.block_size as u32;
         let bytes_per_row_aligned =
-            next_multiple_of(bytes_per_row_unaligned, wgpu::COPY_BYTES_PER_ROW_ALIGNMENT);
+            wgpu::util::align_to(bytes_per_row_unaligned, wgpu::COPY_BYTES_PER_ROW_ALIGNMENT);
 
         // TODO(andreas): Once we have our own temp buffer for uploading, we can do the padding inplace
         // I.e. the only difference will be if we do one memcopy or one memcopy per row, making row padding a nuissance!
