@@ -796,10 +796,6 @@ impl ComponentBucket {
                 .or_insert_with(|| TimeRange::new(time, time));
         }
 
-        self.total_rows += 1;
-        // Warning: this is _very_ costly!
-        self.total_size_bytes += arrow2::compute::aggregate::estimated_bytes_size(row) as u64;
-
         // Wrap the row within a list, e.g. `ListArray<ListArray<StructArray>>`, to prepare for
         // batching support.
         //
@@ -810,6 +806,11 @@ impl ComponentBucket {
             row.to_boxed(), // shallow
             None,
         );
+
+        self.total_rows += 1;
+        // Warning: this is _very_ costly!
+        self.total_size_bytes +=
+            arrow2::compute::aggregate::estimated_bytes_size(&wrapped_row) as u64;
 
         self.chunks.push(wrapped_row.to_boxed()); // shallow
 
