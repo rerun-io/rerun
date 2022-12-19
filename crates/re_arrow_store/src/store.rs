@@ -859,10 +859,10 @@ pub struct ComponentBucket {
 
     /// All the data for this bucket: many rows of a single column.
     ///
-    /// Each chunk is a list of list of components, i.e. `ListArray<ListArray<StructArray>>`:
-    /// - the first list layer corresponds to the different rows,
-    /// - the second list layer corresponds to the different instances within a single row,
-    /// - and finally the struct layer is the component itself.
+    /// Each chunk is a list of arrays of structs, i.e. `ListArray<StructArray>`:
+    /// - the list layer corresponds to the different rows,
+    /// - the array layer corresponds to the different instances within a single row,
+    /// - and finally the struct layer holds the components themselves.
     /// E.g.:
     /// ```ignore
     /// [
