@@ -3,8 +3,8 @@ use re_log_types::{LogMsg, ObjTypePath, TimeType};
 
 use crate::{
     data_ui::{
-        show_arrow_msg, show_begin_recording_msg, show_detailed_data_msg, show_path_op_msg,
-        show_type_msg, view_data, view_instance, view_object,
+        arrow_msg_ui, begin_recording_msg_ui, data_path_ui, detailed_data_msg_ui, instance_ui,
+        object_ui, path_op_msg_ui, type_msg_ui,
     },
     ui::Blueprint,
     Preview, Selection, ViewerContext,
@@ -85,20 +85,20 @@ impl SelectionPanel {
 
                 match msg {
                     LogMsg::BeginRecordingMsg(msg) => {
-                        show_begin_recording_msg(ui, msg);
+                        begin_recording_msg_ui(ui, msg);
                     }
                     LogMsg::TypeMsg(msg) => {
-                        show_type_msg(ctx, ui, msg);
+                        type_msg_ui(ctx, ui, msg);
                     }
                     LogMsg::DataMsg(msg) => {
-                        show_detailed_data_msg(ctx, ui, msg);
+                        detailed_data_msg_ui(ctx, ui, msg);
                         ui.separator();
-                        view_object(ctx, ui, &msg.data_path.obj_path, Preview::Medium);
+                        object_ui(ctx, ui, &msg.data_path.obj_path, Preview::Medium);
                     }
                     LogMsg::PathOpMsg(msg) => {
-                        show_path_op_msg(ctx, ui, msg);
+                        path_op_msg_ui(ctx, ui, msg);
                     }
-                    LogMsg::ArrowMsg(msg) => show_arrow_msg(ctx, ui, msg, Preview::Medium),
+                    LogMsg::ArrowMsg(msg) => arrow_msg_ui(ctx, ui, msg, Preview::Medium),
                 }
             }
             Selection::ObjTypePath(obj_type_path) => {
@@ -118,7 +118,7 @@ impl SelectionPanel {
                     ));
                 });
                 ui.separator();
-                view_instance(ctx, ui, &instance_id, Preview::Medium);
+                instance_ui(ctx, ui, &instance_id, Preview::Medium);
             }
             Selection::DataPath(data_path) => {
                 ui.label(format!("Selected data path: {}", data_path));
@@ -140,7 +140,7 @@ impl SelectionPanel {
 
                 ui.separator();
 
-                view_data(ctx, ui, &data_path);
+                data_path_ui(ctx, ui, &data_path);
             }
             Selection::Space(space) => {
                 ui.label(format!("Selected space: {}", space));
@@ -191,7 +191,7 @@ impl SelectionPanel {
 
                     ui.separator();
 
-                    view_object(ctx, ui, &obj_path, Preview::Medium);
+                    object_ui(ctx, ui, &obj_path, Preview::Medium);
                 } else {
                     ctx.clear_selection();
                 }

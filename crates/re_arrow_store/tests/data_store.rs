@@ -739,8 +739,7 @@ impl DataTracker {
                 })
                 .collect::<Vec<_>>();
 
-            let df = DataFrame::new(series).unwrap();
-            df.explode(df.get_column_names()).unwrap()
+            DataFrame::new(series).unwrap()
         };
 
         let series = expected
@@ -797,8 +796,7 @@ impl DataTracker {
                 .map(|(&component, col)| Series::try_from((component, col)).unwrap())
                 .collect();
 
-            let df = DataFrame::new(series).unwrap();
-            df.explode(df.get_column_names()).unwrap()
+            DataFrame::new(series).unwrap()
         };
 
         df

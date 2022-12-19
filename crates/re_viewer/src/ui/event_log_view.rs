@@ -191,7 +191,7 @@ fn table_row(
                 ctx.data_path_button(ui, data_path);
             });
             row.col(|ui| {
-                crate::data_ui::ui_logged_data(ctx, ui, data, Preview::Specific(row_height));
+                crate::data_ui::logged_data_ui(ctx, ui, data, Preview::Specific(row_height));
             });
         }
         LogMsg::PathOpMsg(msg) => {
@@ -218,7 +218,7 @@ fn table_row(
                 ctx.obj_path_button(ui, path_op.obj_path());
             });
             row.col(|ui| {
-                crate::data_ui::ui_path_op(ctx, ui, path_op);
+                crate::data_ui::path_op_ui(ctx, ui, path_op);
             });
         }
         LogMsg::ArrowMsg(msg) => {
@@ -246,7 +246,7 @@ fn table_row(
             });
 
             row.col(|ui| {
-                crate::data_ui::ui_logged_arrow_data(
+                crate::data_ui::logged_arrow_data_ui(
                     ctx,
                     ui,
                     msg_id,
