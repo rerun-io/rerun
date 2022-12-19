@@ -39,6 +39,8 @@ impl RowIndex {
     }
 }
 
+// TODO: update schematics
+
 #[derive(Debug, Clone)]
 pub struct DataStoreConfig {
     /// The maximum size of a component bucket before triggering a split.

@@ -3,16 +3,16 @@ use std::{
     sync::atomic::{AtomicBool, Ordering::SeqCst},
 };
 
-use arrow2::array::Array;
+use arrow2::array::{Array, UInt64Array};
 
 use polars_core::{prelude::DataFrame, series::Series};
-use re_arrow_store::{DataStore, DataStoreConfig, TimeInt, TimeQuery, TimelineQuery};
+use re_arrow_store::{DataStore, DataStoreConfig, TimeInt, TimeQuery, TimelineQuery, WriteError};
 use re_log_types::{
     datagen::{
         build_frame_nr, build_instances, build_log_time, build_some_point2d, build_some_rects,
     },
     field_types::{Instance, Point2D, Rect2D},
-    msg_bundle::{Component as _, ComponentBundle, MsgBundle},
+    msg_bundle::{wrap_in_listarray, Component as _, ComponentBundle, MsgBundle},
     ComponentName, Duration, MsgId, ObjPath as EntityPath, Time, TimePoint, TimeType, Timeline,
 };
 
@@ -357,6 +357,8 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
 
     // --- Testing at all frames ---
 
+    // TODO: I am not quite sure why this works...?
+
     let scenarios = [
         (
             "query all components at frame #40 (i.e. before first frame)",
@@ -639,6 +641,138 @@ fn query_model_specifics_impl(store: &mut DataStore) {
             components_all,
             expected,
         );
+    }
+}
+
+#[test]
+fn write_errors() {
+    {
+        use arrow2::compute::concatenate::concatenate;
+
+        let mut store = DataStore::new(Instance::name(), Default::default());
+        let mut bundle = re_log_types::msg_bundle::try_build_msg_bundle2(
+            MsgId::ZERO,
+            EntityPath::from("this/that"),
+            [build_frame_nr(32), build_log_time(Time::now())],
+            (build_instances(10), build_some_point2d(10)),
+        )
+        .unwrap();
+
+        // make instances 2 rows long
+        bundle.components[0].value =
+            concatenate(&[&*bundle.components[0].value, &*bundle.components[0].value]).unwrap();
+
+        assert!(matches!(
+            store.insert(&bundle),
+            Err(WriteError::BadBatchLength(_)),
+        ));
+    }
+
+    {
+        use arrow2::compute::concatenate::concatenate;
+
+        let mut store = DataStore::new(Instance::name(), Default::default());
+        let mut bundle = re_log_types::msg_bundle::try_build_msg_bundle2(
+            MsgId::ZERO,
+            EntityPath::from("this/that"),
+            [build_frame_nr(32), build_log_time(Time::now())],
+            (build_instances(10), build_some_point2d(10)),
+        )
+        .unwrap();
+
+        // make instances 2 rows long
+        bundle.components[1].value =
+            concatenate(&[&*bundle.components[1].value, &*bundle.components[1].value]).unwrap();
+
+        assert!(matches!(
+            store.insert(&bundle),
+            Err(WriteError::MismatchedRows(_)),
+        ));
+    }
+
+    {
+        pub fn build_sparse_instances() -> ComponentBundle {
+            let ids = wrap_in_listarray(UInt64Array::from(vec![Some(1), None, Some(3)]).boxed());
+            ComponentBundle {
+                name: Instance::name(),
+                value: ids.boxed(),
+            }
+        }
+
+        let mut store = DataStore::new(Instance::name(), Default::default());
+        let bundle = re_log_types::msg_bundle::try_build_msg_bundle2(
+            MsgId::ZERO,
+            EntityPath::from("this/that"),
+            [build_frame_nr(32), build_log_time(Time::now())],
+            (build_sparse_instances(), build_some_point2d(3)),
+        )
+        .unwrap();
+
+        assert!(matches!(
+            store.insert(&bundle),
+            Err(WriteError::SparseClusteringComponent(_)),
+        ));
+    }
+
+    {
+        pub fn build_unsorted_instances() -> ComponentBundle {
+            let ids = wrap_in_listarray(UInt64Array::from_vec(vec![1, 3, 2]).boxed());
+            ComponentBundle {
+                name: Instance::name(),
+                value: ids.boxed(),
+            }
+        }
+        pub fn build_duped_instances() -> ComponentBundle {
+            let ids = wrap_in_listarray(UInt64Array::from_vec(vec![1, 2, 2]).boxed());
+            ComponentBundle {
+                name: Instance::name(),
+                value: ids.boxed(),
+            }
+        }
+
+        let mut store = DataStore::new(Instance::name(), Default::default());
+        {
+            let bundle = re_log_types::msg_bundle::try_build_msg_bundle2(
+                MsgId::ZERO,
+                EntityPath::from("this/that"),
+                [build_frame_nr(32), build_log_time(Time::now())],
+                (build_unsorted_instances(), build_some_point2d(3)),
+            )
+            .unwrap();
+            assert!(matches!(
+                store.insert(&bundle),
+                Err(WriteError::InvalidClusteringComponent(_)),
+            ));
+        }
+        {
+            let bundle = re_log_types::msg_bundle::try_build_msg_bundle2(
+                MsgId::ZERO,
+                EntityPath::from("this/that"),
+                [build_frame_nr(32), build_log_time(Time::now())],
+                (build_duped_instances(), build_some_point2d(3)),
+            )
+            .unwrap();
+            assert!(matches!(
+                store.insert(&bundle),
+                Err(WriteError::InvalidClusteringComponent(_)),
+            ));
+        }
+    }
+
+    {
+        let mut store = DataStore::new(Instance::name(), Default::default());
+        let bundle = re_log_types::msg_bundle::try_build_msg_bundle2(
+            MsgId::ZERO,
+            EntityPath::from("this/that"),
+            [build_frame_nr(32), build_log_time(Time::now())],
+            (build_instances(4), build_some_point2d(3)),
+        )
+        .unwrap();
+
+        assert!(matches!(
+            store.insert(&bundle),
+            Err(WriteError::MismatchedInstances { .. }),
+        ));
     }
 }
 

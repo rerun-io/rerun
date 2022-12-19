@@ -26,15 +26,16 @@ pub enum WriteError {
     #[error("Cannot insert more than 1 row at a time, got {0}")]
     BadBatchLength(usize),
     #[error("All components must have the same number of rows, got {0:?}")]
-    DifferentBatchLengths(Vec<(ComponentName, usize)>),
+    MismatchedRows(Vec<(ComponentName, usize)>),
 
     // Clustering key
     #[error("The clustering component must be dense, got {0:?}")]
     SparseClusteringComponent(Box<dyn Array>),
-    #[error("The clustering component must be increasingly sorted, got {0:?}")]
-    UnsortedClusteringComponent(Box<dyn Array>),
-    #[error("The clustering component must not contain duplicates, got {0:?}")]
-    DupedClusteringComponent(Box<dyn Array>),
+    #[error(
+        "The clustering component must be increasingly sorted and not contain \
+                any duplicates, got {0:?}"
+    )]
+    InvalidClusteringComponent(Box<dyn Array>),
 
     // Instances
     #[error(
@@ -42,7 +43,7 @@ pub enum WriteError {
             clustering component, got {clustering_comp}={clustering_comp_nb_instances} vs. \
                 {key}={nb_instances}"
     )]
-    DifferentInstancesLength {
+    MismatchedInstances {
         clustering_comp: ComponentName,
         clustering_comp_nb_instances: usize,
         key: ComponentName,
@@ -79,18 +80,28 @@ impl DataStore {
         let ent_path_hash = *ent_path.hash();
         let nb_rows = components[0].value.len();
 
+        // Effectively the same thing as having a non-unit length batch, except it's really not
+        // worth more than an assertion since:
+        // - A) `MsgBundle` should already guarantee this
+        // - B) this limitation should be gone soon enough
+        debug_assert!(
+            bundle
+                .components
+                .iter()
+                .map(|bundle| bundle.name)
+                .all_unique(),
+            "cannot insert same component multiple times, this is equivalent to multiple rows",
+        );
         // Batches cannot contain more than 1 row at the moment.
-        // TODO: test
         if nb_rows != 1 {
             return Err(WriteError::BadBatchLength(nb_rows));
         }
         // Components must share the same number of rows.
-        // TODO: test
         if !components
             .iter()
             .all(|bundle| bundle.value.len() == nb_rows)
         {
-            return Err(WriteError::DifferentBatchLengths(
+            return Err(WriteError::MismatchedRows(
                 components
                     .iter()
                     .map(|bundle| (bundle.name, bundle.value.len()))
@@ -115,66 +126,7 @@ impl DataStore {
 
         // TODO(#589): support for batched row component insertions
         for row_nr in 0..nb_rows {
-            let clustering_comp =
-                get_or_create_clustering_key(row_nr, components, self.clustering_key);
-            let expected_nb_instances = clustering_comp.len();
-
-            // Clustering component must be dense.
-            // TODO: test
-            if !clustering_comp.is_dense() {
-                return Err(WriteError::SparseClusteringComponent(clustering_comp));
-            }
-            // Clustering component must be sorted.
-            // TODO: do the sorting ourselves if needed
-            // TODO: test
-            if !clustering_comp.is_sorted()? {
-                return Err(WriteError::UnsortedClusteringComponent(clustering_comp));
-            }
-            // Clustering component must _not_ contain duplicates.
-            // TODO: test
-            if clustering_comp.contains_duplicates()? {
-                return Err(WriteError::DupedClusteringComponent(clustering_comp));
-            }
-
-            for bundle in components {
-                let ComponentBundle { name, value: rows } = bundle;
-
-                // Unwrapping a ListArray is somewhat costly, especially considering we're just
-                // gonna rewrap it again in a minute... so we'd rather just slice it to a list of
-                // one instead.
-                //
-                // let rows_single = rows.slice(row_nr, 1);
-                //
-                // Except it turns out that slicing is _extremely_ costly!
-                // So use the fact that `rows` is always of unit-length for now.
-                let rows_single = rows;
-
-                let nb_instances = rows_single
-                    .as_any()
-                    .downcast_ref::<ListArray<i32>>()
-                    .unwrap()
-                    .value(0)
-                    .len();
-                // TODO: test
-                if nb_instances != expected_nb_instances {
-                    return Err(WriteError::DifferentInstancesLength {
-                        clustering_comp: self.clustering_key,
-                        clustering_comp_nb_instances: expected_nb_instances,
-                        key: *name,
-                        nb_instances,
-                    });
-                }
-
-                let table = self.components.entry(bundle.name).or_insert_with(|| {
-                    ComponentTable::new(
-                        *name,
-                        ListArray::<i32>::get_child_type(rows_single.data_type()),
-                    )
-                });
-
-                let row_idx = table.push(&self.config, time_point, rows_single.as_ref());
-                row_indices.insert(*name, row_idx);
-            }
+            self.insert_row(time_point, row_nr, components, &mut row_indices)?;
         }
 
         for (timeline, time) in time_point.iter() {
@@ -184,6 +136,69 @@ impl DataStore {
                 .entry((*timeline, ent_path_hash))
                 .or_insert_with(|| IndexTable::new(*timeline, ent_path));
             index.insert(&self.config, *time, &row_indices)?;
+        }
+
+        Ok(())
+    }
+
+    fn insert_row(
+        &mut self,
+        time_point: &TimePoint,
+        row_nr: usize,
+        components: &[ComponentBundle],
+        row_indices: &mut IntMap<ComponentName, RowIndex>,
+    ) -> WriteResult<()> {
+        let clustering_comp = get_or_create_clustering_key(row_nr, components, self.clustering_key);
+        let expected_nb_instances = clustering_comp.len();
+
+        // Clustering component must be dense.
+        if !clustering_comp.is_dense() {
+            return Err(WriteError::SparseClusteringComponent(clustering_comp));
+        }
+        // Clustering component must be sorted and not contain any duplicates.
+        // TODO: should we do the sorting ourselves if required?
+        if !clustering_comp.is_sorted_and_unique()? {
+            return Err(WriteError::InvalidClusteringComponent(clustering_comp));
+        }
+
+        for bundle in components {
+            let ComponentBundle { name, value: rows } = bundle;
+
+            // Unwrapping a ListArray is somewhat costly, especially considering we're just
+            // gonna rewrap it again in a minute... so we'd rather just slice it to a list of
+            // one instead.
+            //
+            // let rows_single = rows.slice(row_nr, 1);
+            //
+            // Except it turns out that slicing is _extremely_ costly!
+            // So use the fact that `rows` is always of unit-length for now.
+            let rows_single = rows;
+
+            let nb_instances = rows_single
+                .as_any()
+                .downcast_ref::<ListArray<i32>>()
+                .unwrap()
+                .value(0)
+                .len();
+            // TODO: test
+            if nb_instances != expected_nb_instances {
+                return Err(WriteError::MismatchedInstances {
+                    clustering_comp: self.clustering_key,
+                    clustering_comp_nb_instances: expected_nb_instances,
+                    key: *name,
+                    nb_instances,
+                });
+            }
+
+            let table = self.components.entry(bundle.name).or_insert_with(|| {
+                ComponentTable::new(
+                    *name,
+                    ListArray::<i32>::get_child_type(rows_single.data_type()),
+                )
+            });
+
+            let row_idx = table.push(&self.config, time_point, rows_single.as_ref());
+            row_indices.insert(*name, row_idx);
         }
 
         Ok(())
