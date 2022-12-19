@@ -415,7 +415,7 @@ impl IndexBucket {
             let time_range2 = split_time_range_off(split_idx, times1, time_range1);
 
             // this updates `times1` in-place!
-            let times2 = split_primary_index_off(split_idx, times1);
+            let times2 = times1.split_off(split_idx);
 
             // this updates `indices1` in-place!
             let indices2: IntMap<_, _> = indices1
@@ -576,27 +576,6 @@ fn split_time_range_off(
     );
 
     time_range2
-}
-
-/// Given a primary time index and a desired split index, splits off the time index in place,
-/// and returns a new time index corresponding to the second part.
-///
-/// The split index is exclusive: everything up to `split_idx` (excluded) will end up in the
-/// first split.
-fn split_primary_index_off(split_idx: usize, times1: &mut TimeIndex) -> TimeIndex {
-    let total_rows = times1.len();
-
-    let times2 = times1.split_off(split_idx);
-
-    debug_assert!(
-        total_rows == times1.len() + times2.len(),
-        "expected both halves to sum up to the length of the original time index: \
-            got times={} vs. times1+times2={}",
-        total_rows,
-        times1.len() + times2.len(),
-    );
-
-    times2
 }
 
 // --- Components ---
