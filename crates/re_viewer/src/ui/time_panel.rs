@@ -322,13 +322,6 @@ impl TimePanel {
         let is_visible = ui.is_rect_visible(full_width_rect);
 
         if is_visible {
-            response.on_hover_ui(|ui| {
-                ui.strong("Object");
-                ui.label(tree.path.to_string());
-            });
-        }
-
-        if is_visible {
             // paint hline guide:
             let mut stroke = ui.visuals().widgets.noninteractive.bg_stroke;
             stroke.color = stroke.color.linear_multiply(0.5);
