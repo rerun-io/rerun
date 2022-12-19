@@ -53,5 +53,7 @@ impl ArrowDeserialize for Instance {
 }
 
 impl Component for Instance {
-    const NAME: crate::ComponentNameRef<'static> = "rerun.instance";
+    fn name() -> crate::ComponentName {
+        "rerun.instance".into()
+    }
 }

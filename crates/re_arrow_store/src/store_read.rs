@@ -6,7 +6,7 @@ use arrow2::{
 };
 
 use re_log::debug;
-use re_log_types::{ComponentNameRef, ObjPath as EntityPath, TimeInt, TimeRange, Timeline};
+use re_log_types::{ComponentName, ObjPath as EntityPath, TimeInt, TimeRange, Timeline};
 
 use crate::{
     ComponentBucket, ComponentTable, DataStore, IndexBucket, IndexBucketIndices, IndexTable,
@@ -94,8 +94,8 @@ impl DataStore {
     ///     store: &DataStore,
     ///     timeline_query: &TimelineQuery,
     ///     ent_path: &EntityPath,
-    ///     primary: ComponentNameRef<'_>,
-    ///     components: &[ComponentNameRef<'_>; N],
+    ///     primary: ComponentName,
+    ///     components: &[ComponentName; N],
     /// ) -> DataFrame {
     ///     let row_indices = store
     ///         .query(timeline_query, ent_path, primary, components)
@@ -107,7 +107,7 @@ impl DataStore {
     ///             .iter()
     ///             .zip(results)
     ///             .filter_map(|(component, col)| col.map(|col| (component, col)))
-    ///             .map(|(&component, col)| Series::try_from((component, col)).unwrap())
+    ///             .map(|(&component, col)| Series::try_from((component.as_str(), col)).unwrap())
     ///             .collect();
     ///
     ///         DataFrame::new(series).unwrap()
@@ -123,8 +123,8 @@ impl DataStore {
         &self,
         timeline_query: &TimelineQuery,
         ent_path: &EntityPath,
-        primary: ComponentNameRef<'_>,
-        components: &[ComponentNameRef<'_>; N],
+        primary: ComponentName,
+        components: &[ComponentName; N],
     ) -> Option<[Option<RowIndex>; N]> {
         // TODO(cmc): kind & query_id need to somehow propagate through the span system.
         self.query_id.fetch_add(1, Ordering::Relaxed);
@@ -141,7 +141,7 @@ impl DataStore {
             id = self.query_id.load(Ordering::Relaxed),
             query = ?timeline_query,
             entity = %ent_path,
-            primary,
+            %primary,
             ?components,
             "query started..."
         );
@@ -152,7 +152,7 @@ impl DataStore {
                     kind = "query",
                     query = ?timeline_query,
                     entity = %ent_path,
-                    primary,
+                    %primary,
                     ?components,
                     ?row_indices,
                     "row indices fetched"
@@ -165,7 +165,7 @@ impl DataStore {
             kind = "query",
             query = ?timeline_query,
             entity = %ent_path,
-            primary,
+            %primary,
             ?components,
             "primary component not found"
         );
@@ -175,8 +175,8 @@ impl DataStore {
 
     /// Retrieves the data associated with a list of `components` at the specified `indices`.
     ///
-    /// If the associated data is found, it will be written to returned array at the appropriate
-    /// index, or `None` otherwise.
+    /// If the associated data is found, it will be written into the returned array at the
+    /// appropriate index, or `None` otherwise.
     ///
     /// `row_indices` takes a list of options so that one can easily re-use the results obtained
     /// from [`Self::query`].
@@ -184,7 +184,7 @@ impl DataStore {
     /// See [`Self::query`] for more information.
     pub fn get<const N: usize>(
         &self,
-        components: &[ComponentNameRef<'_>; N],
+        components: &[ComponentName; N],
         row_indices: &[Option<RowIndex>; N],
     ) -> [Option<Box<dyn Array>>; N] {
         let mut results = [(); N].map(|_| None); // work around non-Copy const initialization limitations
@@ -197,7 +197,7 @@ impl DataStore {
         {
             let row = self
                 .components
-                .get(component)
+                .get(&component)
                 .and_then(|table| table.get(row_idx));
             results[i] = row;
         }
@@ -228,11 +228,11 @@ impl DataStore {
 
 impl IndexTable {
     /// Returns `None` iff no row index could be found for the `primary` component.
-    pub fn latest_at<'a, const N: usize>(
+    pub fn latest_at<const N: usize>(
         &self,
         time: i64,
-        primary: ComponentNameRef<'a>,
-        components: &[ComponentNameRef<'a>; N],
+        primary: ComponentName,
+        components: &[ComponentName; N],
     ) -> Option<[Option<RowIndex>; N]> {
         let timeline = self.timeline;
 
@@ -248,7 +248,7 @@ impl IndexTable {
                 kind = "query",
                 timeline = %timeline.name(),
                 time = timeline.typ().format(time.into()),
-                primary,
+                %primary,
                 ?components,
                 attempt,
                 time_range = ?{
@@ -320,11 +320,11 @@ impl IndexBucket {
     }
 
     /// Returns `None` iff no row index could be found for the `primary` component.
-    pub fn latest_at<'a, const N: usize>(
+    pub fn latest_at<const N: usize>(
         &self,
         time: i64,
-        primary: ComponentNameRef<'a>,
-        components: &[ComponentNameRef<'_>; N],
+        primary: ComponentName,
+        components: &[ComponentName; N],
     ) -> Option<[Option<RowIndex>; N]> {
         self.sort_indices();
 
@@ -336,11 +336,11 @@ impl IndexBucket {
         } = &*self.indices.read();
 
         // Early-exit if this bucket is unaware of this component.
-        let index = indices.get(primary)?;
+        let index = indices.get(&primary)?;
 
         debug!(
             kind = "query",
-            primary,
+            %primary,
             ?components,
             timeline = %self.timeline.name(),
             time = self.timeline.typ().format(time.into()),
@@ -363,7 +363,7 @@ impl IndexBucket {
         let primary_idx = primary_idx - 1;
         debug!(
             kind = "query",
-            primary,
+            %primary,
             ?components,
             timeline = %self.timeline.name(),
             time = self.timeline.typ().format(time.into()),
@@ -378,7 +378,7 @@ impl IndexBucket {
             if secondary_idx < 0 {
                 debug!(
                     kind = "query",
-                    primary,
+                    %primary,
                     ?components,
                     timeline = %self.timeline.name(),
                     time = self.timeline.typ().format(time.into()),
@@ -391,7 +391,7 @@ impl IndexBucket {
 
         debug!(
             kind = "query",
-            primary,
+            %primary,
             ?components,
             timeline = %self.timeline.name(),
             time = self.timeline.typ().format(time.into()),
@@ -402,13 +402,13 @@ impl IndexBucket {
 
         let mut row_indices = [None; N];
         for (i, component) in components.iter().enumerate() {
-            if let Some(index) = indices.get(*component) {
+            if let Some(index) = indices.get(component) {
                 if index.is_valid(secondary_idx as _) {
                     let row_idx = index.values()[secondary_idx as usize];
                     debug!(
                         kind = "query",
-                        primary,
-                        component,
+                        %primary,
+                        %component,
                         timeline = %self.timeline.name(),
                         time = self.timeline.typ().format(time.into()),
                         %primary_idx, %secondary_idx, %row_idx,
@@ -438,12 +438,12 @@ impl IndexBucket {
     }
 
     /// Returns a Vec each of (name, array) for each index in the bucket
-    pub fn named_indices(&self) -> (Vec<String>, Vec<UInt64Array>) {
+    pub fn named_indices(&self) -> (Vec<ComponentName>, Vec<UInt64Array>) {
         self.indices
             .read()
             .indices
             .iter()
-            .map(|(name, index)| (name.clone(), UInt64Array::from(index.clone())))
+            .map(|(name, index)| (name, UInt64Array::from(index.clone())))
             .unzip()
     }
 }
@@ -574,30 +574,39 @@ impl ComponentTable {
 }
 
 impl ComponentBucket {
-    /// Get this `ComponentBucket`s debug name
+    /// Returns the name of the component stored in this bucket.
     #[allow(dead_code)]
     pub fn name(&self) -> &str {
         &self.name
     }
 
-    /// Returns a shallow clone of the row data for the given `row_idx`.
+    /// Returns a shallow clone of the row data present at the given `row_idx`.
     pub fn get(&self, row_idx: RowIndex) -> Box<dyn Array> {
         let row_idx = row_idx.as_u64() - self.row_offset.as_u64();
         // This has to be safe to unwrap, otherwise it would never have made it past insertion.
-        self.data
-            .as_any()
-            .downcast_ref::<ListArray<i32>>()
-            .unwrap()
-            .value(row_idx as _)
+        if self.archived {
+            debug_assert_eq!(self.chunks.len(), 1);
+            self.chunks[0]
+                .as_any()
+                .downcast_ref::<ListArray<i32>>()
+                .unwrap()
+                .value(row_idx as _)
+        } else {
+            self.chunks[row_idx as usize]
+                .as_any()
+                .downcast_ref::<ListArray<i32>>()
+                .unwrap()
+                .value(0)
+        }
     }
 
-    /// Returns the entire data Array in this component
-    pub fn data(&self) -> Box<dyn Array> {
-        // shallow copy
-        self.data.clone()
+    /// Returns a shallow clone of all the chunks in this bucket.
+    #[allow(dead_code)]
+    pub fn data(&self) -> Vec<Box<dyn Array>> {
+        self.chunks.clone() // shallow
     }
 
-    /// Return an iterator over the time ranges in this bucket
+    /// Return an iterator over the time ranges in this bucket.
     #[allow(dead_code)]
     pub fn iter_time_ranges(&self) -> impl Iterator<Item = (&Timeline, &TimeRange)> {
         self.time_ranges.iter()

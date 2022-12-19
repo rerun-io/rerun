@@ -53,5 +53,7 @@ impl ArrowDeserialize for Label {
 }
 
 impl Component for Label {
-    const NAME: crate::ComponentNameRef<'static> = "rerun.label";
+    fn name() -> crate::ComponentName {
+        "rerun.label".into()
+    }
 }

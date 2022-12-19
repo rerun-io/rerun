@@ -1,6 +1,6 @@
 use polars_core::prelude::*;
 use re_arrow_store::{DataStore, TimelineQuery};
-use re_log_types::{field_types::Instance, msg_bundle::Component, ComponentNameRef, ObjPath};
+use re_log_types::{field_types::Instance, msg_bundle::Component, ComponentName, ObjPath};
 
 #[derive(thiserror::Error, Debug)]
 pub enum QueryError {
@@ -33,7 +33,7 @@ pub type Result<T> = std::result::Result<T, QueryError>;
 ///   &store,
 ///   &timeline_query,
 ///   &ent_path.into(),
-///   Point2D::NAME,
+///   Point2D::name(),
 /// )
 /// .unwrap();
 ///
@@ -57,9 +57,9 @@ pub fn get_component_with_instances(
     store: &DataStore,
     timeline_query: &TimelineQuery,
     ent_path: &ObjPath,
-    component: ComponentNameRef<'_>,
+    component: ComponentName,
 ) -> Result<DataFrame> {
-    let components = [Instance::NAME, component];
+    let components = [Instance::name(), component];
 
     let row_indices = store
         .query(timeline_query, ent_path, component, &components)
@@ -71,7 +71,7 @@ pub fn get_component_with_instances(
         .iter()
         .zip(results)
         .filter_map(|(component, col)| col.map(|col| (component, col)))
-        .map(|(&component, col)| Ok(Series::try_from((component, col))?))
+        .map(|(&component, col)| Ok(Series::try_from((component.as_str(), col))?))
         .collect();
 
     DataFrame::new(series?).map_err(Into::into)
@@ -79,17 +79,18 @@ pub fn get_component_with_instances(
 
 /// If a `DataFrame` has no `Instance` column create one from the row numbers
 fn add_instances_and_sort_if_needed(df: &DataFrame) -> Result<DataFrame> {
-    if df.column(Instance::NAME).is_ok() {
+    let instance_name = Instance::name().as_str();
+    if df.column(instance_name).is_ok() {
         // If we have an InstanceKey column already, make sure that it's sorted.
         // TODO(jleibs): can remove this once we have a sort guarantee from the store
         let reverse = false;
-        Ok(df.sort([Instance::NAME], reverse)?)
+        Ok(df.sort([instance_name], reverse)?)
     } else {
         // If we don't have an InstanceKey column, it is implicit, and we generate it
         // based on the row-number so we can use this in join-operations.
         // The default Polars row type is u32 and so we need to convert it to the
         // expected type of our InstanceKeys.
-        let mut with_rows = df.with_row_count(Instance::NAME, None)?;
+        let mut with_rows = df.with_row_count(instance_name, None)?;
         let rows = with_rows.select_at_idx(0).ok_or(QueryError::BadAccess)?;
         let u64_rows = rows.cast(&DataType::UInt64)?;
         with_rows.replace_at_idx(0, u64_rows).unwrap();
@@ -122,8 +123,8 @@ fn add_instances_and_sort_if_needed(df: &DataFrame) -> Result<DataFrame> {
 ///   &store,
 ///   &timeline_query,
 ///   &ent_path.into(),
-///   Point2D::NAME,
-///   &[ColorRGBA::NAME],
+///   Point2D::name(),
+///   &[ColorRGBA::name()],
 /// )
 /// .unwrap();
 ///
@@ -147,8 +148,8 @@ pub fn query_entity_with_primary<const N: usize>(
     store: &DataStore,
     timeline_query: &TimelineQuery,
     ent_path: &ObjPath,
-    primary: ComponentNameRef<'_>,
-    components: &[ComponentNameRef<'_>; N],
+    primary: ComponentName,
+    components: &[ComponentName; N],
 ) -> Result<DataFrame> {
     let df = get_component_with_instances(store, timeline_query, ent_path, primary)?;
 
@@ -159,9 +160,10 @@ pub fn query_entity_with_primary<const N: usize>(
 
     let df = add_instances_and_sort_if_needed(&df);
 
+    let instance_name = Instance::name().as_str();
     let joined = components
         .iter()
-        .fold(df, |df: Result<DataFrame>, component| {
+        .fold(df, |df: Result<DataFrame>, &component| {
             // If we find the component, then we try to left-join with the existing dataframe
             // If the column we are looking up isn't found, just return the dataframe as is
             // For any other error, escalate
@@ -173,8 +175,8 @@ pub fn query_entity_with_primary<const N: usize>(
                     // matter here since we have a Tolerance of None.
                     let joined = df?.join_asof(
                         &component_df,
-                        Instance::NAME,
-                        Instance::NAME,
+                        instance_name,
+                        instance_name,
                         AsofStrategy::Backward,
                         None,
                         None,
@@ -223,7 +225,7 @@ pub fn __populate_example_store() -> DataStore {
 fn component_with_instances() {
     use crate::dataframe_util::df_builder2;
     use re_arrow_store::{TimeQuery, TimelineQuery};
-    use re_log_types::{field_types::Point2D, msg_bundle::Component, Timeline};
+    use re_log_types::{field_types::Point2D, msg_bundle::Component as _, Timeline};
 
     let store = __populate_example_store();
 
@@ -233,8 +235,9 @@ fn component_with_instances() {
         TimeQuery::LatestAt(123.into()),
     );
 
-    let df = get_component_with_instances(&store, &timeline_query, &ent_path.into(), Point2D::NAME)
-        .unwrap();
+    let df =
+        get_component_with_instances(&store, &timeline_query, &ent_path.into(), Point2D::name())
+            .unwrap();
     //eprintln!("{:?}", df);
 
     let instances = vec![Some(Instance(42)), Some(Instance(96))];

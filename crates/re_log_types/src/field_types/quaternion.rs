@@ -28,5 +28,7 @@ pub struct Quaternion {
 }
 
 impl Component for Quaternion {
-    const NAME: crate::ComponentNameRef<'static> = "rerun.quaternion";
+    fn name() -> crate::ComponentName {
+        "rerun.quaternion".into()
+    }
 }

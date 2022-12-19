@@ -24,7 +24,9 @@ pub struct Point2D {
 }
 
 impl Component for Point2D {
-    const NAME: crate::ComponentNameRef<'static> = "rerun.point2d";
+    fn name() -> crate::ComponentName {
+        "rerun.point2d".into()
+    }
 }
 
 /// A point in 3D space.
@@ -51,5 +53,7 @@ pub struct Point3D {
 }
 
 impl Component for Point3D {
-    const NAME: crate::ComponentNameRef<'static> = "rerun.point3d";
+    fn name() -> crate::ComponentName {
+        "rerun.point3d".into()
+    }
 }

@@ -64,7 +64,9 @@ impl ArrowDeserialize for ColorRGBA {
 }
 
 impl Component for ColorRGBA {
-    const NAME: crate::ComponentNameRef<'static> = "rerun.colorrgba";
+    fn name() -> crate::ComponentName {
+        "rerun.colorrgba".into()
+    }
 }
 
 #[test]

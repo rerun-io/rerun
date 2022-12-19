@@ -39,5 +39,7 @@ impl Rect2D {
 }
 
 impl Component for Rect2D {
-    const NAME: crate::ComponentNameRef<'static> = "rerun.rect2d";
+    fn name() -> crate::ComponentName {
+        "rerun.rect2d".into()
+    }
 }

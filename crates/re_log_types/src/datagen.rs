@@ -1,8 +1,8 @@
 //! Generate random data for tests and benchmarks.
 
 use crate::{
-    field_types,
-    msg_bundle::{wrap_in_listarray, ComponentBundle},
+    field_types::{self, Instance},
+    msg_bundle::{wrap_in_listarray, Component as _, ComponentBundle},
     Time, TimeInt, TimeType, Timeline,
 };
 use arrow2::array::PrimitiveArray;
@@ -74,7 +74,7 @@ pub fn build_instances(nb_instances: usize) -> ComponentBundle {
     let data = wrap_in_listarray(data.boxed());
 
     ComponentBundle {
-        name: "instances".to_owned(),
+        name: Instance::name(),
         value: data.boxed(),
     }
 }

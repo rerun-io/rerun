@@ -10,5 +10,7 @@ pub struct Size3D {
 }
 
 impl Component for Size3D {
-    const NAME: crate::ComponentNameRef<'static> = "rerun.size3d";
+    fn name() -> crate::ComponentName {
+        "rerun.size3d".into()
+    }
 }
