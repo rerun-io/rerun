@@ -1,3 +1,7 @@
+//! Tests running assertions on the internal state of the datastore.
+//!
+//! They're awful, but sometimes you just have to...
+
 use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
 
 use re_arrow_store::{DataStore, DataStoreConfig};
