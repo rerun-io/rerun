@@ -8,7 +8,7 @@ use re_arrow_store::{DataStore, TimeQuery, TimelineQuery};
 use re_log_types::{
     datagen::{build_frame_nr, build_some_point2d, build_some_rects},
     field_types::Rect2D,
-    msg_bundle::{try_build_msg_bundle2, Component, MsgBundle},
+    msg_bundle::{try_build_msg_bundle2, Component as _, MsgBundle},
     MsgId, ObjPath as EntityPath, TimeType, Timeline,
 };
 
@@ -81,7 +81,7 @@ fn query_messages(store: &mut DataStore) -> Box<dyn Array> {
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
     let timeline_query = TimelineQuery::new(timeline_frame_nr, time_query);
     let ent_path = EntityPath::from("rects");
-    let component = Rect2D::NAME;
+    let component = Rect2D::name();
 
     let row_indices = store
         .query(&timeline_query, &ent_path, component, &[component])
