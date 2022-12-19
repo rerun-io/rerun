@@ -29,6 +29,7 @@ impl StagingWriteBeltBuffer {
     /// We do *not* allow reading from this buffer as it is typically write-combined memory.
     /// Reading would work, but it can be *insanely* slow.
     #[inline]
+    #[allow(dead_code)]
     pub fn write_bytes(&mut self, bytes: &[u8], offset: usize) {
         self.write_view[offset..(offset + bytes.len())].clone_from_slice(bytes);
     }
@@ -93,8 +94,8 @@ impl StagingWriteBeltBuffer {
 /// Based on to [`wgpu::util::StagingBelt`](https://github.com/gfx-rs/wgpu/blob/a420e453c3d9c93dfb1a8526bf11c000d895c916/wgpu/src/util/belt.rs)
 /// However, there are some important differences:
 /// * can create buffers without yet knowing the target copy location
-/// * lifetime of returned buffers is independent of the StagingBelt (allows working with several in parallel!)
-/// * use of re_renderer's resource pool
+/// * lifetime of returned buffers is independent of the [`StagingWriteBelt`] (allows working with several in parallel!)
+/// * use of `re_renderer`'s resource pool
 pub struct StagingWriteBelt {
     chunk_size: wgpu::BufferAddress,
     /// Chunks into which we are accumulating data to be transferred.
@@ -168,11 +169,8 @@ impl StagingWriteBelt {
                 self.free_chunks.swap_remove(index)
             } else {
                 let size = self.chunk_size.max(size); // Allocation might be bigger than a chunk
-                let buffer = buffer_pool.alloc_staging_write_buffer(
-                    device,
-                    "StagingBelt buffer".into(),
-                    size,
-                );
+                let buffer =
+                    buffer_pool.alloc_staging_write_buffer(device, "StagingBelt buffer", size);
 
                 Chunk {
                     buffer,
@@ -195,7 +193,14 @@ impl StagingWriteBelt {
 
         // The received chunk is known to be mapped already (either reclaimed or upon creation)
         // Note that get_mapped_range_mut will internally check if we give out overlapping ranges.
-        // TODO: explain why this is ok
+
+        // SAFETY:
+        // We need to convince the compiler that [`StagingWriteBeltBuffer`] keeps the buffer alive
+        // as long as the struct lives in order to store the [`wgpu::BufferViewMut`] alongside with it.
+        // It does not seem to be possible to do this in a safe manner since [`wgpu::BufferViewMut`]
+        // takes an explicit lifetime parameter referring back to its buffer.
+        // Another way to solve this is to use a crate for self-referential structs like Ouroboros.
+        // Note that in the JavaScript api of WebGPU all of this is trivially possible.
         let static_buffer = Box::leak(unsafe { Box::from_raw(buffer_ptr) });
 
         let write_view = static_buffer

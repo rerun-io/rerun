@@ -69,10 +69,10 @@ impl GpuBufferPool {
     /// has no direct lifetime dependency on this pool.
     ///
     /// The later is important to be able to pass around memory slices that are derived from this buffer,
-    /// without the explicit knowledge of it being data from re_renderer.
-    /// We could handle this by injecting the wgpu::Buffer into the strong buffer handle itself,
-    /// but treating this as a special kind of resources is advantageous since any resource with MAP_WRITE
-    /// can only be used with COPY_SRC!
+    /// without the explicit knowledge of it being data from `re_renderer`.
+    /// We could handle this by injecting the [`wgpu::Buffer`] into the strong buffer handle itself,
+    /// but treating this as a special kind of resources is advantageous since any resource with [`wgpu::BufferUsages::MAP_WRITE`]
+    /// can only be used with [`wgpu::BufferUsages::COPY_SRC`]!
     ///
     /// TODO(andreas): Consider a separate resource pool for read & write staging buffers.
     ///
@@ -83,11 +83,11 @@ impl GpuBufferPool {
     pub fn alloc_staging_write_buffer(
         &mut self,
         device: &wgpu::Device,
-        label: DebugLabel,
+        label: impl Into<DebugLabel>,
         size: wgpu::BufferAddress,
     ) -> StagingWriteBuffer {
         let wgpu_buffer = device.create_buffer(&wgpu::BufferDescriptor {
-            label: label.get(),
+            label: label.into().get(),
             size,
             usage: wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::MAP_WRITE,
             mapped_at_creation: true,
