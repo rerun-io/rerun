@@ -349,7 +349,7 @@ impl SceneSpatial {
                         if let Some(label) = annotation_info.label(label) {
                             label_batch.push(Label3D {
                                 text: label,
-                                origin: position,
+                                origin: world_from_scene.transform_point3(position),
                             });
                         }
                     }
@@ -463,7 +463,7 @@ impl SceneSpatial {
                     if let Some(label) = label {
                         self.ui.labels_3d.push(Label3D {
                             text: label,
-                            origin: Vec3::from(obb.translation),
+                            origin: world_from_scene.transform_point3(Vec3::from(obb.translation)),
                         });
                     }
 
