@@ -26,7 +26,7 @@ use itertools::Itertools;
 use smallvec::smallvec;
 
 use crate::{
-    include_file, next_multiple_of,
+    include_file,
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroupHandleStrong,
@@ -219,7 +219,7 @@ impl PointCloudDrawData {
         // TODO(andreas): We want a staging-belt(-like) mechanism to upload data instead of the queue.
         //                  These staging buffers would be provided by the belt.
         // To make the data upload simpler (and have it be done in one go), we always update full rows of each of our textures
-        let num_points_written = next_multiple_of(vertices.len() as u32, TEXTURE_SIZE) as usize;
+        let num_points_written = wgpu::util::align_to(vertices.len() as u32, TEXTURE_SIZE) as usize;
         let num_points_zeroed = num_points_written - vertices.len();
         let position_and_size_staging = {
             crate::profile_scope!("collect_pos_size");
