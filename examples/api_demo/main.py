@@ -150,17 +150,20 @@ def transforms_rigid_3d() -> None:
     rerun.log_view_coordinates("transforms3d/planet/moon", up="+Y", timeless=True)
 
     # All are in the center of their own space:
-    rerun.log_point("transforms3d/sun", [0.0, 0.0, 0.0], radius=1.0, color=[255, 255, 128])
-    rerun.log_point("transforms3d/planet", [0.0, 0.0, 0.0], radius=0.4, color=[0, 128, 0])
-    rerun.log_point("transforms3d/planet/moon", [0.0, 0.0, 0.0], radius=0.15)
+    rerun.log_point("transforms3d/sun", [0.0, 0.0, 0.0], radius=1.0, color=[255, 200, 10])
+    rerun.log_point("transforms3d/planet", [0.0, 0.0, 0.0], radius=0.4, color=[40, 80, 200])
+    rerun.log_point("transforms3d/planet/moon", [0.0, 0.0, 0.0], radius=0.15, color=[180, 180, 180])
 
     # "dust" around the "planet" (and inside, don't care)
     # distribution is quadratically higher in the middle
-    radii = np.random.rand(100) * planet_to_moon_distance * 0.5
-    angles = np.random.rand(100) * math.tau
-    height = np.sqrt(np.random.rand(100)) * 2.0 - 1.0
+    radii = np.random.rand(200) * planet_to_moon_distance * 0.5
+    angles = np.random.rand(200) * math.tau
+    height = np.power(np.random.rand(200), 0.2) * 0.5 - 0.5
     rerun.log_points(
-        "transforms3d/planet/dust", np.array([np.sin(angles) * radii, height, np.cos(angles) * radii]).transpose()
+        "transforms3d/planet/dust",
+        np.array([np.sin(angles) * radii, height, np.cos(angles) * radii]).transpose(),
+        colors=[80, 80, 80],
+        radii=0.025,
     )
 
     # paths where the planet & moon move

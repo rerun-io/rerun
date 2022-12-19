@@ -573,6 +573,7 @@ def log_points(
     *,
     identifiers: Optional[Sequence[Union[str, int]]] = None,
     colors: Optional[Union[Color, Colors]] = None,
+    radii: Optional[npt.ArrayLike] = None,
     labels: Optional[Sequence[str]] = None,
     class_ids: OptionalClassIds = None,
     keypoint_ids: OptionalKeyPointIds = None,
@@ -617,6 +618,7 @@ def log_points(
     colors = _normalize_colors(colors)
     class_ids = _normalize_ids(class_ids)
     keypoint_ids = _normalize_ids(keypoint_ids)
+    radii = _normalize_radii(radii)
     if labels is None:
         labels = []
 
@@ -625,6 +627,7 @@ def log_points(
         positions=positions,
         identifiers=identifiers,
         colors=colors,
+        radii=radii,
         labels=labels,
         class_ids=class_ids,
         keypoint_ids=keypoint_ids,
@@ -654,6 +657,14 @@ def _normalize_ids(class_ids: OptionalClassIds = None) -> npt.NDArray[np.uint16]
     else:
         # TODO(andreas): Does this need optimizing for the case where class_ids is already an np array?
         return np.array(class_ids, dtype=np.uint16, copy=False)
+
+
+def _normalize_radii(radii: Optional[npt.ArrayLike] = None) -> npt.NDArray[np.float32]:
+    """Normalize flexible radii arrays."""
+    if radii is None:
+        return np.array((), dtype=np.float32)
+    else:
+        return np.array(radii, dtype=np.float32, copy=False)
 
 
 # -----------------------------------------------------------------------------
