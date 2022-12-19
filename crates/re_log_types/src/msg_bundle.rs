@@ -62,7 +62,7 @@ pub enum MsgBundleError {
 
 pub type Result<T> = std::result::Result<T, MsgBundleError>;
 
-use crate::{ArrowMsg, ComponentName, ComponentNameRef, MsgId, ObjPath, TimePoint};
+use crate::{ArrowMsg, ComponentName, MsgId, ObjPath, TimePoint};
 
 //TODO(john) get rid of this eventually
 const ENTITY_PATH_KEY: &str = "RERUN:entity_path";
@@ -72,11 +72,11 @@ const COL_TIMELINES: &str = "timelines";
 
 pub trait Component: ArrowField {
     /// The name of the component
-    const NAME: ComponentNameRef<'static>;
+    fn name() -> ComponentName;
 
     /// Create a [`Field`] for this `Component`
     fn field() -> Field {
-        Field::new(Self::NAME, Self::data_type(), false)
+        Field::new(Self::name().as_str(), Self::data_type(), false)
     }
 }
 
@@ -110,7 +110,7 @@ where
         let array: Box<dyn Array> = TryIntoArrow::try_into_arrow(c)?;
         let wrapped = wrap_in_listarray(array).boxed();
         Ok(ComponentBundle {
-            name: C::NAME.to_owned(),
+            name: C::name(),
             value: wrapped,
         })
     }
@@ -219,7 +219,7 @@ impl MsgBundle {
         let wrapped = wrap_in_listarray(array).boxed();
 
         let bundle = ComponentBundle {
-            name: Element::NAME.to_owned(),
+            name: Element::name(),
             value: wrapped,
         };
 
@@ -232,17 +232,16 @@ impl MsgBundle {
 #[inline]
 fn pack_components(components: impl Iterator<Item = ComponentBundle>) -> (Schema, StructArray) {
     let (component_fields, component_cols): (Vec<Field>, Vec<Box<dyn Array>>) = components
-        .map(
-            |ComponentBundle {
-                 name,
-                 value: component,
-             }| {
-                (
-                    Field::new(name, component.data_type().clone(), false),
-                    component.to_boxed(),
-                )
-            },
-        )
+        .map(|bundle| {
+            let ComponentBundle {
+                name,
+                value: component,
+            } = bundle;
+            (
+                Field::new(name.as_str(), component.data_type().clone(), false),
+                component.to_boxed(),
+            )
+        })
         .unzip();
 
     let data_type = DataType::Struct(component_fields);
@@ -374,7 +373,7 @@ fn extract_components(
         .iter()
         .zip(components.values())
         .map(|(field, component)| ComponentBundle {
-            name: field.name.clone(),
+            name: ComponentName::from(field.name.as_str()),
             value: component.clone(),
         })
         .collect())

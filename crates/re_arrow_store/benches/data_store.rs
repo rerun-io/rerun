@@ -6,10 +6,10 @@ use criterion::{criterion_group, criterion_main, Criterion};
 
 use re_arrow_store::{DataStore, TimeQuery, TimelineQuery};
 use re_log_types::{
-    datagen::{build_frame_nr, build_some_point2d, build_some_rects},
-    field_types::Rect2D,
-    msg_bundle::{try_build_msg_bundle2, Component, MsgBundle},
-    MsgId, ObjPath as EntityPath, TimeType, Timeline,
+    datagen::{build_frame_nr, build_instances, build_some_point2d, build_some_rects},
+    field_types::{Instance, Rect2D},
+    msg_bundle::{try_build_msg_bundle3, Component as _, MsgBundle},
+    ComponentName, MsgId, ObjPath as EntityPath, TimeType, Timeline,
 };
 
 // ---
@@ -35,7 +35,7 @@ fn batch_rects(c: &mut Criterion) {
             (NUM_RECTS * NUM_FRAMES) as _,
         ));
         group.bench_function("insert", |b| {
-            b.iter(|| insert_messages(msgs.iter()));
+            b.iter(|| insert_messages(Instance::name(), msgs.iter()));
         });
     }
 
@@ -43,7 +43,7 @@ fn batch_rects(c: &mut Criterion) {
         let msgs = build_messages(NUM_RECTS as usize);
         let mut group = c.benchmark_group("datastore/batch/rects");
         group.throughput(criterion::Throughput::Elements(NUM_RECTS as _));
-        let mut store = insert_messages(msgs.iter());
+        let mut store = insert_messages(Instance::name(), msgs.iter());
         group.bench_function("query", |b| {
             b.iter(|| query_messages(&mut store));
         });
@@ -59,19 +59,26 @@ fn build_messages(n: usize) -> Vec<MsgBundle> {
     (0..NUM_FRAMES)
         .into_iter()
         .map(move |frame_idx| {
-            try_build_msg_bundle2(
+            try_build_msg_bundle3(
                 MsgId::ZERO,
                 "rects",
                 [build_frame_nr(frame_idx)],
-                (build_some_point2d(n), build_some_rects(n)),
+                (
+                    build_instances(n),
+                    build_some_point2d(n),
+                    build_some_rects(n),
+                ),
             )
             .unwrap()
         })
         .collect()
 }
 
-fn insert_messages<'a>(msgs: impl Iterator<Item = &'a MsgBundle>) -> DataStore {
-    let mut store = DataStore::default();
+fn insert_messages<'a>(
+    clustering_key: ComponentName,
+    msgs: impl Iterator<Item = &'a MsgBundle>,
+) -> DataStore {
+    let mut store = DataStore::new(clustering_key, Default::default());
     msgs.for_each(|msg_bundle| store.insert(msg_bundle).unwrap());
     store
 }
@@ -81,7 +88,7 @@ fn query_messages(store: &mut DataStore) -> Box<dyn Array> {
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
     let timeline_query = TimelineQuery::new(timeline_frame_nr, time_query);
     let ent_path = EntityPath::from("rects");
-    let component = Rect2D::NAME;
+    let component = Rect2D::name();
 
     let row_indices = store
         .query(&timeline_query, &ent_path, component, &[component])

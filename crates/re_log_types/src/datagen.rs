@@ -76,7 +76,7 @@ pub fn build_instances(nb_instances: usize) -> ComponentBundle {
     let data = wrap_in_listarray(data.boxed());
 
     ComponentBundle {
-        name: Instance::NAME.to_owned(),
+        name: Instance::name(),
         value: data.boxed(),
     }
 }
