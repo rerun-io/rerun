@@ -121,12 +121,10 @@ impl DataStore {
                     .components
                     .entry((*bundle.name).to_owned())
                     .or_insert_with(|| {
-                        let row = rows_single
-                            .as_any()
-                            .downcast_ref::<ListArray<i32>>()
-                            .unwrap()
-                            .value(row_nr);
-                        ComponentTable::new((*name).clone(), row.data_type())
+                        ComponentTable::new(
+                            (*name).clone(),
+                            ListArray::<i32>::get_child_type(rows_single.data_type()),
+                        )
                     });
 
                 let row_idx = table.push(&self.config, time_point, rows_single.as_ref());
@@ -743,11 +741,11 @@ impl ComponentTable {
     /// Finds the appropriate bucket in this component table and pushes `rows_single` at the
     /// end of it, returning the _global_ `RowIndex` for this new row.
     ///
-    /// `rows_single` must be a list of list of components,
-    /// i.e. `ListArray<ListArray<StructArray>>`:
-    /// - the first list layer corresponds to the rows and _must be unit-lengthed_,
-    /// - the second list layer corresponds to the different instances within the row,
-    /// - the struct layer is the component itself.
+    /// `rows_single` must be a unit-length list of arrays of structs,
+    /// i.e. `ListArray<StructArray>`:
+    /// - the list layer corresponds to the different rows (always unit-length for now),
+    /// - the array layer corresponds to the different instances within that single row,
+    /// - and finally the struct layer holds the components themselves.
     /// E.g.:
     /// ```ignore
     /// [[{x: 8.687487, y: 1.9590926}, {x: 2.0559108, y: 0.1494348}, {x: 7.09219, y: 0.9616637}]]
@@ -761,14 +759,12 @@ impl ComponentTable {
         rows_single: &dyn Array,
     ) -> RowIndex {
         debug_assert!(
-            rows_single
-                .as_any()
-                .downcast_ref::<ListArray<i32>>()
-                .unwrap()
-                .value(0)
-                .data_type()
-                == &self.datatype,
+            ListArray::<i32>::get_child_type(rows_single.data_type()) == &self.datatype,
             "trying to insert data of the wrong datatype in a component table",
+        );
+        debug_assert!(
+            rows_single.len() == 1,
+            "batched row component insertions are not supported yet"
         );
 
         // All component tables spawn with an initial bucket at row offset 0, thus this cannot
@@ -794,8 +790,8 @@ impl ComponentTable {
                 "allocating new component bucket, previous one overflowed"
             );
 
-            // Retire currently active bucket.
-            active_bucket.retire();
+            // Archive currently active bucket.
+            active_bucket.archive();
 
             let row_offset = active_bucket.row_offset.as_u64() + len;
             self.buckets.push_back(ComponentBucket::new(
@@ -869,16 +865,21 @@ impl ComponentBucket {
     /// Pushes `rows_single` to the end of the bucket, returning the _local_ index of the
     /// freshly added row.
     ///
-    /// `rows_single` must be a list of list of components,
-    /// i.e. `ListArray<ListArray<StructArray>>`:
-    /// - the first list layer corresponds to the rows and _must be unit-lengthed_,
-    /// - the second list layer corresponds to the different instances within the row,
-    /// - the struct layer is the component itself.
+    /// `rows_single` must be a unit-length list of arrays of structs,
+    /// i.e. `ListArray<StructArray>`:
+    /// - the list layer corresponds to the different rows (always unit-length for now),
+    /// - the array layer corresponds to the different instances within that single row,
+    /// - and finally the struct layer holds the components themselves.
     /// E.g.:
     /// ```ignore
     /// [[{x: 8.687487, y: 1.9590926}, {x: 2.0559108, y: 0.1494348}, {x: 7.09219, y: 0.9616637}]]
     /// ```
     pub fn push(&mut self, time_point: &TimePoint, rows_single: &dyn Array) -> u64 {
+        debug_assert!(
+            rows_single.len() == 1,
+            "batched row component insertions are not supported yet"
+        );
+
         // Keep track of all affected time ranges, for garbage collection purposes.
         for (timeline, &time) in time_point {
             self.time_ranges
@@ -900,13 +901,13 @@ impl ComponentBucket {
         self.chunks.len() as u64 - 1
     }
 
-    /// Retires the bucket as a new one is about to take its place.
+    /// Archives the bucket as a new one is about to take its place.
     ///
     /// This is a good opportunity to run compaction and other maintenance related tasks.
-    pub fn retire(&mut self) {
+    pub fn archive(&mut self) {
         debug_assert!(
             !self.archived,
-            "retiring an already archived bucket, something is likely wrong"
+            "achiving an already archived bucket, something is likely wrong"
         );
 
         // Chunk compaction
