@@ -9,7 +9,8 @@
 use ahash::HashMap;
 use itertools::Itertools as _;
 
-use re_data_store::{ObjPath, TimeInt};
+use nohash_hasher::IntMap;
+use re_data_store::{ObjPath, ObjPathComp, TimeInt};
 
 use crate::{
     misc::{
@@ -466,27 +467,49 @@ impl Viewport {
         ui.vertical_centered(|ui| {
             ui.menu_button("Add new space view…", |ui| {
                 ui.style_mut().wrap = Some(false);
-                for (path, space_info) in &spaces_info.spaces {
-                    let categories = group_by_category(
-                        ctx.rec_cfg.time_ctrl.timeline(),
-                        ctx.log_db,
-                        space_info.descendants_without_transform.iter(),
-                    );
 
-                    if !categories.is_empty() {
+                // Gather categories per root path.
+                let roots = &ctx.log_db.obj_db.tree.children;
+                let objects_per_root = roots.iter().map(|root| {
+                    let mut objects = Vec::new();
+                    root.1.visit_children_recursively(&mut |child_path| {
+                        objects.push(child_path.clone());
+                    });
+                    let root_path: &[ObjPathComp] = &[root.0.clone()];
+                    (ObjPath::from(root_path), objects)
+                });
+                let objects_per_root_grouped_by_category = objects_per_root
+                    .map(|(root, objects)| {
+                        (
+                            root,
+                            group_by_category(
+                                ctx.rec_cfg.time_ctrl.timeline(),
+                                ctx.log_db,
+                                objects.iter(),
+                            ),
+                        )
+                    })
+                    .collect::<IntMap<_, _>>();
+
+                for (path, space_info) in &spaces_info.spaces {
+                    let categories = objects_per_root_grouped_by_category
+                        .get(&ObjPath::from(&path.to_components()[..1]));
+
+                    if let Some(categories) = categories {
+                        if categories.is_empty() {
+                            continue;
+                        }
+
                         if ui.button(path.to_string()).clicked() {
                             ui.close_menu();
 
                             for (category, obj_paths) in categories {
                                 // TODO(andreas): Should not need to do full query just to determine navigation mode. Default transform cache is problematic.
-                                let scene_spatial = query_scene_spatial(
-                                    ctx,
-                                    &obj_paths,
-                                    &TransformCache::default(),
-                                );
+                                let scene_spatial =
+                                    query_scene_spatial(ctx, obj_paths, &TransformCache::default());
                                 let new_space_view_id = self.add_space_view(SpaceView::new(
                                     ctx,
-                                    category,
+                                    *category,
                                     path.clone(),
                                     space_info,
                                     spaces_info,
