@@ -753,15 +753,17 @@ impl ComponentBucket {
             "batched row component insertions are not supported yet"
         );
 
-        // Keep track of all affected time ranges, for garbage collection purposes.
-        for (timeline, &time) in time_point {
-            self.time_ranges
-                .entry(*timeline)
-                .and_modify(|range| {
-                    *range = TimeRange::new(range.min.min(time), range.max.max(time));
-                })
-                .or_insert_with(|| TimeRange::new(time, time));
-        }
+        // Disabled this for now as we don't support garbage collection anyway.
+        _ = time_point;
+        // // Keep track of all affected time ranges, for garbage collection purposes.
+        // for (timeline, &time) in time_point {
+        //     self.time_ranges
+        //         .entry(*timeline)
+        //         .and_modify(|range| {
+        //             *range = TimeRange::new(range.min.min(time), range.max.max(time));
+        //         })
+        //         .or_insert_with(|| TimeRange::new(time, time));
+        // }
 
         self.total_rows += 1;
         // Warning: this is surprisingly costly!
