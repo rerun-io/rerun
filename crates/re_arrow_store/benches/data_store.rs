@@ -46,16 +46,14 @@ fn batch_rects(c: &mut Criterion) {
         group.throughput(criterion::Throughput::Elements(NUM_RECTS as _));
         group.bench_function("query", |b| {
             b.iter(|| {
-                query_messages(&mut store, Rect2D::name(), &[Rect2D::name()], |results| {
-                    let rects = results[0]
-                        .as_ref()
-                        .unwrap()
-                        .as_any()
-                        .downcast_ref::<StructArray>()
-                        .unwrap();
-                    assert_eq!(NUM_RECTS as usize, rects.len());
-                    results
-                })
+                let results = query_messages(&mut store, Rect2D::name(), &[Rect2D::name()]);
+                let rects = results[0]
+                    .as_ref()
+                    .unwrap()
+                    .as_any()
+                    .downcast_ref::<StructArray>()
+                    .unwrap();
+                assert_eq!(NUM_RECTS as usize, rects.len());
             });
         });
     }
@@ -69,15 +67,12 @@ fn missing_components(c: &mut Criterion) {
         group.throughput(criterion::Throughput::Elements(NUM_RECTS as _));
         group.bench_function("primary", |b| {
             b.iter(|| {
-                query_messages(
+                let results = query_messages(
                     &mut store,
-                    "rect2d_with_a_typo".into(),
+                    "non_existing_component".into(),
                     &[Rect2D::name()],
-                    |results| {
-                        assert!(results[0].is_none());
-                        results
-                    },
-                )
+                );
+                assert!(results[0].is_none());
             });
         });
     }
@@ -89,21 +84,18 @@ fn missing_components(c: &mut Criterion) {
         group.throughput(criterion::Throughput::Elements(NUM_RECTS as _));
         group.bench_function("secondaries", |b| {
             b.iter(|| {
-                query_messages(
+                let results = query_messages(
                     &mut store,
                     Rect2D::name(),
                     &[
-                        "a_typo".into(),
-                        "another_typo".into(),
-                        "YET_another_typo".into(),
+                        "non_existing_component1".into(),
+                        "non_existing_component2".into(),
+                        "non_existing_component3".into(),
                     ],
-                    |results| {
-                        assert!(results[0].is_none());
-                        assert!(results[1].is_none());
-                        assert!(results[2].is_none());
-                        results
-                    },
-                )
+                );
+                assert!(results[0].is_none());
+                assert!(results[1].is_none());
+                assert!(results[2].is_none());
             });
         });
     }
@@ -139,7 +131,6 @@ fn query_messages<const N: usize>(
     store: &mut DataStore,
     primary: ComponentName,
     secondaries: &[ComponentName; N],
-    assert_fn: impl FnOnce([Option<Box<dyn Array>>; N]) -> [Option<Box<dyn Array>>; N],
 ) -> [Option<Box<dyn Array>>; N] {
     let time_query = TimeQuery::LatestAt(NUM_FRAMES / 2);
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
@@ -149,7 +140,5 @@ fn query_messages<const N: usize>(
     let row_indices = store
         .query(&timeline_query, &ent_path, primary, secondaries)
         .unwrap_or_else(|| [(); N].map(|_| None));
-    let results = store.get(secondaries, &row_indices);
-
-    assert_fn(results)
+    store.get(secondaries, &row_indices)
 }
