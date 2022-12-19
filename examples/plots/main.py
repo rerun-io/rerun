@@ -12,7 +12,9 @@ Run:
 
 import argparse
 import random
-from math import cos, pi, sin, tau
+from math import cos, pi, sin, sqrt, tau
+
+import numpy as np
 
 import rerun
 
@@ -21,7 +23,18 @@ def clamp(n, smallest, largest):  # type: ignore[no-untyped-def]
     return max(smallest, min(n, largest))
 
 
+def log_bar_chart() -> None:
+    # Log a gauss bell as a bar chart
+    mean = 0
+    std = 1
+    variance = np.square(std)
+    x = np.arange(-5, 5, 0.01)
+    y = np.exp(-np.square(x - mean) / 2 * variance) / (np.sqrt(2 * np.pi * variance))
+    rerun.log_tensor("bar_chart", y)
+
+
 def log_parabola() -> None:
+    # Log a parabola as a time series
     for t in range(0, 1000, 10):
         rerun.set_time_sequence("frame_nr", t)
 
@@ -37,6 +50,7 @@ def log_parabola() -> None:
 
 
 def log_trig() -> None:
+    # Log a time series
     for t in range(0, int(tau * 2 * 100.0)):
         rerun.set_time_sequence("frame_nr", t)
 
@@ -48,6 +62,7 @@ def log_trig() -> None:
 
 
 def log_segmentation() -> None:
+    # Log a time series
     for t in range(0, 1000, 2):
         rerun.set_time_sequence("frame_nr", t)
 
@@ -92,6 +107,7 @@ def main() -> None:
         # which is `127.0.0.1:9876`.
         rerun.connect(args.addr)
 
+    log_bar_chart()
     log_parabola()
     log_trig()
     log_segmentation()
