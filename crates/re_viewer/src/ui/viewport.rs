@@ -85,8 +85,11 @@ impl Viewport {
 
         for (path, space_info) in &spaces_info.spaces {
             // If we're connected with a rigid transform to our parent, skip as it is trivially displayed in a single space view.
-            if let Some((_, re_log_types::Transform::Rigid3(_))) = space_info.parent {
-                continue;
+            if let Some((_, transform)) = &space_info.parent {
+                match transform {
+                    re_log_types::Transform::Rigid3(_) => continue,
+                    re_log_types::Transform::Pinhole(_) | re_log_types::Transform::Unknown => {}
+                }
             }
 
             for (category, obj_paths) in group_by_category(
@@ -96,7 +99,7 @@ impl Viewport {
                     .descendants_with_rigid_or_no_transform(spaces_info)
                     .iter(),
             ) {
-                // TODO(andreas): Should not need to do full query just to determine navigation mode. Default transform cache is problematic.
+                // TODO(andreas): Can we figure out the information we need without a full query? Ignoring transforms here right now which is a bit inconsistent.
                 let scene_spatial =
                     query_scene_spatial(ctx, &obj_paths, &TransformCache::default());
 
@@ -350,8 +353,12 @@ impl Viewport {
                 for (path, space_info) in &spaces_info.spaces {
                     // Ignore spaces that have a parent connected via a rigid transform to their parent,
                     // since they should be picked up automatically by existing parent spaces.
-                    if let Some((_, re_log_types::Transform::Rigid3(_))) = space_info.parent {
-                        continue;
+                    if let Some((_, transform)) = &space_info.parent {
+                        match transform {
+                            re_log_types::Transform::Rigid3(_) => continue,
+                            re_log_types::Transform::Pinhole(_)
+                            | re_log_types::Transform::Unknown => {}
+                        }
                     }
 
                     if !self.has_space(path) {
