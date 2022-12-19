@@ -4,14 +4,15 @@ use re_log_types::ObjPathHash;
 
 use crate::misc::space_info::{SpaceInfo, SpacesInfo};
 
-/// Provides transforms from scene to world space for all elements in the scene.
+/// Provides transforms from local to a reference space for all elements in the scene.
 #[derive(Default)]
 pub struct TransformCache {
-    transforms: IntMap<ObjPathHash, glam::Mat4>,
+    reference_from_local_per_object: IntMap<ObjPathHash, glam::Mat4>,
 }
 
 impl TransformCache {
     /// Determines transforms for all objects relative to a `reference_space`.
+    /// I.e. the resulting transforms are "reference from scene"
     ///
     /// This means that the objects in `reference_space` get the identity transform and all other
     /// objects are transformed relative to it.
@@ -28,14 +29,14 @@ impl TransformCache {
         fn gather_child_transforms(
             spaces_info: &SpacesInfo,
             space: &SpaceInfo,
-            reference_from_space: glam::Mat4,
-            transforms: &mut IntMap<ObjPathHash, glam::Mat4>,
+            reference_from_local: glam::Mat4,
+            reference_from_local_per_object: &mut IntMap<ObjPathHash, glam::Mat4>,
         ) {
-            transforms.extend(
+            reference_from_local_per_object.extend(
                 space
                     .descendants_without_transform
                     .iter()
-                    .map(|obj| (*obj.hash(), reference_from_space)),
+                    .map(|obj| (*obj.hash(), reference_from_local)),
             );
 
             for (child_path, transform) in &space.child_spaces {
@@ -58,30 +59,27 @@ impl TransformCache {
                     gather_child_transforms(
                         spaces_info,
                         child_space,
-                        child_from_parent * reference_from_space,
-                        transforms,
+                        child_from_parent * reference_from_local,
+                        reference_from_local_per_object,
                     );
                 }
             }
         }
 
         // Walk up to the highest reachable parent.
-        let mut space = reference_space;
-        let mut reference_from_space = glam::Mat4::IDENTITY;
-        loop {
-            let Some((parent_path, parent_transform)) = space.parent.as_ref() else {
-                break;
-            };
+        let mut top_most_reachable_space = reference_space;
+        let mut reference_from_local = glam::Mat4::IDENTITY;
+        while let Some((parent_path, parent_transform)) = top_most_reachable_space.parent.as_ref() {
             let Some(parent_space) = spaces_info.spaces.get(parent_path) else {
                 break;
             };
 
-            reference_from_space = match parent_transform {
+            reference_from_local = match parent_transform {
                 // Assume identity until told otherwise!
-                re_log_types::Transform::Unknown => reference_from_space,
+                re_log_types::Transform::Unknown => reference_from_local,
 
                 re_log_types::Transform::Rigid3(rigid) => {
-                    reference_from_space * rigid.parent_from_child().to_mat4()
+                    reference_from_local * rigid.parent_from_child().to_mat4()
                 }
 
                 // TODO(andreas): Not supported yet.
@@ -89,18 +87,28 @@ impl TransformCache {
                     break;
                 }
             };
-            space = parent_space;
+            top_most_reachable_space = parent_space;
         }
 
         // And then walk all branches down again.
-        let mut transforms = Default::default();
-        gather_child_transforms(spaces_info, space, reference_from_space, &mut transforms);
+        let mut reference_from_local_per_object = Default::default();
+        gather_child_transforms(
+            spaces_info,
+            top_most_reachable_space,
+            reference_from_local,
+            &mut reference_from_local_per_object,
+        );
 
-        Self { transforms }
+        Self {
+            reference_from_local_per_object,
+        }
     }
 
-    pub fn get_world_from_scene(&self, obj_path: &ObjPath) -> &glam::Mat4 {
-        self.transforms
+    /// Retrieves the transform of on object from its local system to the space of the reference.
+    ///
+    /// This is typically used as the "world space" for the renderer in a given frame.
+    pub fn reference_from_local(&self, obj_path: &ObjPath) -> &glam::Mat4 {
+        self.reference_from_local_per_object
             .get(obj_path.hash())
             .unwrap_or(&glam::Mat4::IDENTITY)
     }

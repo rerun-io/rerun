@@ -285,7 +285,7 @@ impl SceneSpatial {
                 let annotations = self.annotation_map.find(obj_path);
                 let default_color = DefaultColor::ObjPath(obj_path);
                 let properties = objects_properties.get(obj_path);
-                let world_from_scene = transforms.get_world_from_scene(obj_path);
+                let world_from_scene = transforms.reference_from_local(obj_path);
 
                 let mut point_batch = self
                     .primitives
@@ -428,7 +428,7 @@ impl SceneSpatial {
             let annotations = self.annotation_map.find(obj_path);
             let default_color = DefaultColor::ObjPath(obj_path);
             let properties = objects_properties.get(obj_path);
-            let world_from_scene = transforms.get_world_from_scene(obj_path);
+            let world_from_scene = transforms.reference_from_local(obj_path);
             let mut line_batch = self
                 .primitives
                 .line_strips
@@ -537,7 +537,7 @@ impl SceneSpatial {
             let annotations = self.annotation_map.find(obj_path);
             let default_color = DefaultColor::ObjPath(obj_path);
             let properties = objects_properties.get(obj_path);
-            let world_from_scene = transforms.get_world_from_scene(obj_path);
+            let world_from_scene = transforms.reference_from_local(obj_path);
 
             let mut line_batch = self
                 .primitives
@@ -615,7 +615,7 @@ impl SceneSpatial {
             let annotations = self.annotation_map.find(obj_path);
             let default_color = DefaultColor::ObjPath(obj_path);
             let properties = objects_properties.get(obj_path);
-            let world_from_scene = transforms.get_world_from_scene(obj_path);
+            let world_from_scene = transforms.reference_from_local(obj_path);
 
             let mut line_batch = self
                 .primitives
@@ -693,7 +693,7 @@ impl SceneSpatial {
             query.iter_object_stores(ctx.log_db, &[ObjectType::Mesh3D])
         {
             let properties = objects_properties.get(obj_path);
-            let world_from_scene = transforms.get_world_from_scene(obj_path);
+            let world_from_scene = transforms.reference_from_local(obj_path);
             // TODO(andreas): This throws away perspective transformation!
             let world_from_scene_affine = glam::Affine3A::from_mat4(*world_from_scene);
 
@@ -756,7 +756,7 @@ impl SceneSpatial {
             query.iter_object_stores(ctx.log_db, &[ObjectType::Image])
         {
             let properties = objects_properties.get(obj_path);
-            let world_from_scene = transforms.get_world_from_scene(obj_path);
+            let world_from_scene = transforms.reference_from_local(obj_path);
 
             visit_type_data_2(
                 obj_store,
@@ -866,7 +866,7 @@ impl SceneSpatial {
         {
             let properties = objects_properties.get(obj_path);
             let annotations = self.annotation_map.find(obj_path);
-            let world_from_scene = transforms.get_world_from_scene(obj_path);
+            let world_from_scene = transforms.reference_from_local(obj_path);
 
             let mut line_batch = self
                 .primitives
@@ -1042,7 +1042,7 @@ impl SceneSpatial {
             let annotations = self.annotation_map.find(obj_path);
             let default_color = DefaultColor::ObjPath(obj_path);
             let properties = objects_properties.get(obj_path);
-            let world_from_scene = transforms.get_world_from_scene(obj_path);
+            let world_from_scene = transforms.reference_from_local(obj_path);
 
             // If keypoints ids show up we may need to connect them later!
             // We include time in the key, so that the "Visible history" (time range queries) feature works.
@@ -1159,7 +1159,7 @@ impl SceneSpatial {
         {
             let annotations = self.annotation_map.find(obj_path);
             let properties = objects_properties.get(obj_path);
-            let world_from_scene = transforms.get_world_from_scene(obj_path);
+            let world_from_scene = transforms.reference_from_local(obj_path);
 
             let mut line_batch = self
                 .primitives
