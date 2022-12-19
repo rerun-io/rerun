@@ -7,7 +7,18 @@ use crate::misc::space_info::{SpaceInfo, SpacesInfo};
 /// Provides transforms from local to a reference space for all elements in the scene.
 #[derive(Default)]
 pub struct TransformCache {
-    reference_from_local_per_object: IntMap<ObjPathHash, glam::Mat4>,
+    reference_from_local_per_object: IntMap<ObjPathHash, ReferenceFromLocalTransform>,
+}
+
+#[derive(Clone)]
+pub enum ReferenceFromLocalTransform {
+    /// On the path from the given object to the reference is an unknown transformation or a pinhole transformation
+    ///
+    /// TODO(andreas): Will need to be split up and we should be able to handle some of these cases!
+    ConnectedViaUnknownOrPinhole,
+
+    /// There is a rigid connection to the reference.
+    Rigid(glam::Mat4),
 }
 
 impl TransformCache {
@@ -19,6 +30,7 @@ impl TransformCache {
     ///
     /// Implementation note: We could do this also without `SpacesInfo`, but we assume that
     /// we already did the work to build up that datastructure, making the process here easier.
+    #[allow(clippy::match_same_arms)]
     pub fn determine_transforms(
         spaces_info: &SpacesInfo,
         reference_space: &SpaceInfo,
@@ -30,36 +42,37 @@ impl TransformCache {
             spaces_info: &SpacesInfo,
             space: &SpaceInfo,
             reference_from_local: glam::Mat4,
-            reference_from_local_per_object: &mut IntMap<ObjPathHash, glam::Mat4>,
+            reference_from_local_per_object: &mut IntMap<ObjPathHash, ReferenceFromLocalTransform>,
         ) {
-            reference_from_local_per_object.extend(
-                space
-                    .descendants_without_transform
-                    .iter()
-                    .map(|obj| (*obj.hash(), reference_from_local)),
-            );
+            reference_from_local_per_object.extend(space.descendants_without_transform.iter().map(
+                |obj| {
+                    (
+                        *obj.hash(),
+                        ReferenceFromLocalTransform::Rigid(reference_from_local),
+                    )
+                },
+            ));
 
             for (child_path, transform) in &space.child_spaces {
                 if let Some(child_space) = spaces_info.spaces.get(child_path) {
-                    let child_from_parent = match transform {
-                        // Assume identity until told otherwise!
-                        re_log_types::Transform::Unknown => glam::Mat4::IDENTITY,
-
+                    let child_from_local = match transform {
                         re_log_types::Transform::Rigid3(rigid) => {
-                            rigid.child_from_parent().to_mat4()
+                            rigid.child_from_parent().to_mat4() * reference_from_local
                         }
-
-                        // TODO(andreas): We don't support adding objects with pinhole yet.
-                        // Need to think about this a bit more and test it.
-                        re_log_types::Transform::Pinhole(pinhole) => glam::Mat4::from_mat3(
-                            glam::Mat3::from_cols_array_2d(&pinhole.image_from_cam),
-                        ),
+                        // If we're connected via 'unknown' it's not reachable
+                        re_log_types::Transform::Unknown => {
+                            continue;
+                        }
+                        // We don't yet support reaching through pinhole.
+                        re_log_types::Transform::Pinhole(_) => {
+                            continue;
+                        }
                     };
 
                     gather_child_transforms(
                         spaces_info,
                         child_space,
-                        child_from_parent * reference_from_local,
+                        child_from_local,
                         reference_from_local_per_object,
                     );
                 }
@@ -75,14 +88,14 @@ impl TransformCache {
             };
 
             reference_from_local = match parent_transform {
-                // Assume identity until told otherwise!
-                re_log_types::Transform::Unknown => reference_from_local,
-
                 re_log_types::Transform::Rigid3(rigid) => {
                     reference_from_local * rigid.parent_from_child().to_mat4()
                 }
-
-                // TODO(andreas): Not supported yet.
+                // If we're connected via 'unknown' it's not reachable
+                re_log_types::Transform::Unknown => {
+                    break;
+                }
+                // We don't yet support reaching through pinhole.
                 re_log_types::Transform::Pinhole(_) => {
                     break;
                 }
@@ -107,9 +120,10 @@ impl TransformCache {
     /// Retrieves the transform of on object from its local system to the space of the reference.
     ///
     /// This is typically used as the "world space" for the renderer in a given frame.
-    pub fn reference_from_local(&self, obj_path: &ObjPath) -> &glam::Mat4 {
+    pub fn reference_from_local(&self, obj_path: &ObjPath) -> ReferenceFromLocalTransform {
         self.reference_from_local_per_object
             .get(obj_path.hash())
-            .unwrap_or(&glam::Mat4::IDENTITY)
+            .cloned()
+            .unwrap_or(ReferenceFromLocalTransform::ConnectedViaUnknownOrPinhole)
     }
 }

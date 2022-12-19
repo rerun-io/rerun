@@ -22,12 +22,12 @@ use re_renderer::{
     Color32, LineStripSeriesBuilder, PointCloudBuilder, Size,
 };
 
-use crate::ui::transform_cache::TransformCache;
 use crate::{
     math::line_segment_distance_sq_to_point_2d,
     misc::{mesh_loader::LoadedMesh, ViewerContext},
     ui::{
         annotations::{auto_color, AnnotationMap, DefaultColor},
+        transform_cache::{ReferenceFromLocalTransform, TransformCache},
         view_spatial::axis_color,
         Annotations, SceneQuery,
     },
@@ -270,107 +270,109 @@ impl SceneSpatial {
     ) {
         crate::profile_function!();
 
-        query
-            .iter_object_stores(ctx.log_db, &[ObjectType::Point3D])
-            .for_each(|(_obj_type, obj_path, time_query, obj_store)| {
-                let mut batch_size = 0;
-                let mut show_labels = true;
-                let mut label_batch = Vec::new();
+        for (_obj_type, obj_path, time_query, obj_store) in
+            query.iter_object_stores(ctx.log_db, &[ObjectType::Point3D])
+        {
+            let mut batch_size = 0;
+            let mut show_labels = true;
+            let mut label_batch = Vec::new();
 
-                // If keypoints ids show up we may need to connect them later!
-                // We include time in the key, so that the "Visible history" (time range queries) feature works.
-                let mut keypoints: HashMap<(ClassId, i64), HashMap<KeypointId, glam::Vec3>> =
-                    Default::default();
+            // If keypoints ids show up we may need to connect them later!
+            // We include time in the key, so that the "Visible history" (time range queries) feature works.
+            let mut keypoints: HashMap<(ClassId, i64), HashMap<KeypointId, glam::Vec3>> =
+                Default::default();
 
-                let annotations = self.annotation_map.find(obj_path);
-                let default_color = DefaultColor::ObjPath(obj_path);
-                let properties = objects_properties.get(obj_path);
-                let world_from_scene = transforms.reference_from_local(obj_path);
+            let annotations = self.annotation_map.find(obj_path);
+            let default_color = DefaultColor::ObjPath(obj_path);
+            let properties = objects_properties.get(obj_path);
+            let ReferenceFromLocalTransform::Rigid(world_from_scene) = transforms.reference_from_local(obj_path) else {
+                continue;
+            };
 
-                let mut point_batch = self
-                    .primitives
-                    .points
-                    .batch("3d points")
-                    .world_from_scene(*world_from_scene);
+            let mut point_batch = self
+                .primitives
+                .points
+                .batch("3d points")
+                .world_from_scene(world_from_scene);
 
-                visit_type_data_5(
-                    obj_store,
-                    &FieldName::from("pos"),
-                    &time_query,
-                    ("color", "radius", "label", "class_id", "keypoint_id"),
-                    |instance_index: Option<&IndexHash>,
-                     time: i64,
-                     _msg_id: &MsgId,
-                     pos: &[f32; 3],
-                     color: Option<&[u8; 4]>,
-                     radius: Option<&f32>,
-                     label: Option<&String>,
-                     class_id: Option<&i32>,
-                     keypoint_id: Option<&i32>| {
-                        batch_size += 1;
+            visit_type_data_5(
+                obj_store,
+                &FieldName::from("pos"),
+                &time_query,
+                ("color", "radius", "label", "class_id", "keypoint_id"),
+                |instance_index: Option<&IndexHash>,
+                 time: i64,
+                 _msg_id: &MsgId,
+                 pos: &[f32; 3],
+                 color: Option<&[u8; 4]>,
+                 radius: Option<&f32>,
+                 label: Option<&String>,
+                 class_id: Option<&i32>,
+                 keypoint_id: Option<&i32>| {
+                    batch_size += 1;
 
-                        let position = Vec3::from_slice(pos);
+                    let position = Vec3::from_slice(pos);
 
-                        let instance_hash = instance_hash_if_interactive(
-                            obj_path,
-                            instance_index,
-                            properties.interactive,
-                        );
+                    let instance_hash = instance_hash_if_interactive(
+                        obj_path,
+                        instance_index,
+                        properties.interactive,
+                    );
 
-                        let class_id = class_id.map(|i| ClassId(*i as _));
-                        let class_description = annotations.class_description(class_id);
+                    let class_id = class_id.map(|i| ClassId(*i as _));
+                    let class_description = annotations.class_description(class_id);
 
-                        let annotation_info = if let Some(keypoint_id) = keypoint_id {
-                            let keypoint_id = KeypointId(*keypoint_id as _);
-                            if let Some(class_id) = class_id {
-                                keypoints
-                                    .entry((class_id, time))
-                                    .or_insert_with(Default::default)
-                                    .insert(keypoint_id, position);
-                            }
-
-                            class_description.annotation_info_with_keypoint(keypoint_id)
-                        } else {
-                            class_description.annotation_info()
-                        };
-
-                        let mut color = to_ecolor(annotation_info.color(color, default_color));
-                        let mut radius = radius.copied().map_or(Size::AUTO, Size::new_scene);
-
-                        if instance_hash.is_some() && instance_hash == hovered_instance {
-                            color = Self::HOVER_COLOR;
-                            radius = Self::hover_size_boost(radius);
+                    let annotation_info = if let Some(keypoint_id) = keypoint_id {
+                        let keypoint_id = KeypointId(*keypoint_id as _);
+                        if let Some(class_id) = class_id {
+                            keypoints
+                                .entry((class_id, time))
+                                .or_insert_with(Default::default)
+                                .insert(keypoint_id, position);
                         }
 
-                        show_labels = batch_size < 10;
-                        if show_labels {
-                            if let Some(label) = annotation_info.label(label) {
-                                label_batch.push(Label3D {
-                                    text: label,
-                                    origin: position,
-                                });
-                            }
+                        class_description.annotation_info_with_keypoint(keypoint_id)
+                    } else {
+                        class_description.annotation_info()
+                    };
+
+                    let mut color = to_ecolor(annotation_info.color(color, default_color));
+                    let mut radius = radius.copied().map_or(Size::AUTO, Size::new_scene);
+
+                    if instance_hash.is_some() && instance_hash == hovered_instance {
+                        color = Self::HOVER_COLOR;
+                        radius = Self::hover_size_boost(radius);
+                    }
+
+                    show_labels = batch_size < 10;
+                    if show_labels {
+                        if let Some(label) = annotation_info.label(label) {
+                            label_batch.push(Label3D {
+                                text: label,
+                                origin: position,
+                            });
                         }
+                    }
 
-                        point_batch
-                            .add_point(position)
-                            .radius(radius)
-                            .color(color)
-                            .user_data(instance_hash);
-                    },
-                );
+                    point_batch
+                        .add_point(position)
+                        .radius(radius)
+                        .color(color)
+                        .user_data(instance_hash);
+                },
+            );
 
-                if show_labels {
-                    self.ui.labels_3d.extend(label_batch);
-                }
+            if show_labels {
+                self.ui.labels_3d.extend(label_batch);
+            }
 
-                self.load_keypoint_connections(
-                    obj_path,
-                    keypoints,
-                    &annotations,
-                    properties.interactive,
-                );
-            });
+            self.load_keypoint_connections(
+                obj_path,
+                keypoints,
+                &annotations,
+                properties.interactive,
+            );
+        }
     }
 
     fn load_keypoint_connections(
@@ -428,12 +430,14 @@ impl SceneSpatial {
             let annotations = self.annotation_map.find(obj_path);
             let default_color = DefaultColor::ObjPath(obj_path);
             let properties = objects_properties.get(obj_path);
-            let world_from_scene = transforms.reference_from_local(obj_path);
+            let ReferenceFromLocalTransform::Rigid(world_from_scene) = transforms.reference_from_local(obj_path) else {
+                continue;
+            };
             let mut line_batch = self
                 .primitives
                 .line_strips
                 .batch("box 3d")
-                .world_from_scene(*world_from_scene);
+                .world_from_scene(world_from_scene);
 
             visit_type_data_4(
                 obj_store,
@@ -537,13 +541,15 @@ impl SceneSpatial {
             let annotations = self.annotation_map.find(obj_path);
             let default_color = DefaultColor::ObjPath(obj_path);
             let properties = objects_properties.get(obj_path);
-            let world_from_scene = transforms.reference_from_local(obj_path);
+            let ReferenceFromLocalTransform::Rigid(world_from_scene) = transforms.reference_from_local(obj_path) else {
+                continue;
+            };
 
             let mut line_batch = self
                 .primitives
                 .line_strips
                 .batch("lines 3d")
-                .world_from_scene(*world_from_scene);
+                .world_from_scene(world_from_scene);
 
             visit_type_data_2(
                 obj_store,
@@ -615,13 +621,15 @@ impl SceneSpatial {
             let annotations = self.annotation_map.find(obj_path);
             let default_color = DefaultColor::ObjPath(obj_path);
             let properties = objects_properties.get(obj_path);
-            let world_from_scene = transforms.reference_from_local(obj_path);
+            let ReferenceFromLocalTransform::Rigid(world_from_scene) = transforms.reference_from_local(obj_path) else {
+                continue;
+            };
 
             let mut line_batch = self
                 .primitives
                 .line_strips
                 .batch("arrows")
-                .world_from_scene(*world_from_scene);
+                .world_from_scene(world_from_scene);
 
             visit_type_data_3(
                 obj_store,
@@ -693,9 +701,11 @@ impl SceneSpatial {
             query.iter_object_stores(ctx.log_db, &[ObjectType::Mesh3D])
         {
             let properties = objects_properties.get(obj_path);
-            let world_from_scene = transforms.reference_from_local(obj_path);
+            let ReferenceFromLocalTransform::Rigid(world_from_scene) = transforms.reference_from_local(obj_path) else {
+                continue;
+            };
             // TODO(andreas): This throws away perspective transformation!
-            let world_from_scene_affine = glam::Affine3A::from_mat4(*world_from_scene);
+            let world_from_scene_affine = glam::Affine3A::from_mat4(world_from_scene);
 
             visit_type_data_1(
                 obj_store,
@@ -756,7 +766,9 @@ impl SceneSpatial {
             query.iter_object_stores(ctx.log_db, &[ObjectType::Image])
         {
             let properties = objects_properties.get(obj_path);
-            let world_from_scene = transforms.reference_from_local(obj_path);
+            let ReferenceFromLocalTransform::Rigid(world_from_scene) = transforms.reference_from_local(obj_path) else {
+                continue;
+            };
 
             visit_type_data_2(
                 obj_store,
@@ -866,13 +878,15 @@ impl SceneSpatial {
         {
             let properties = objects_properties.get(obj_path);
             let annotations = self.annotation_map.find(obj_path);
-            let world_from_scene = transforms.reference_from_local(obj_path);
+            let ReferenceFromLocalTransform::Rigid(world_from_scene) = transforms.reference_from_local(obj_path) else {
+                continue;
+            };
 
             let mut line_batch = self
                 .primitives
                 .line_strips
                 .batch("2d box")
-                .world_from_scene(*world_from_scene);
+                .world_from_scene(world_from_scene);
 
             visit_type_data_4(
                 obj_store,
@@ -1042,7 +1056,9 @@ impl SceneSpatial {
             let annotations = self.annotation_map.find(obj_path);
             let default_color = DefaultColor::ObjPath(obj_path);
             let properties = objects_properties.get(obj_path);
-            let world_from_scene = transforms.reference_from_local(obj_path);
+            let ReferenceFromLocalTransform::Rigid(world_from_scene) = transforms.reference_from_local(obj_path) else {
+                continue;
+            };
 
             // If keypoints ids show up we may need to connect them later!
             // We include time in the key, so that the "Visible history" (time range queries) feature works.
@@ -1053,7 +1069,7 @@ impl SceneSpatial {
                 .primitives
                 .points
                 .batch("2d points")
-                .world_from_scene(*world_from_scene);
+                .world_from_scene(world_from_scene);
 
             visit_type_data_5(
                 obj_store,
@@ -1159,13 +1175,15 @@ impl SceneSpatial {
         {
             let annotations = self.annotation_map.find(obj_path);
             let properties = objects_properties.get(obj_path);
-            let world_from_scene = transforms.reference_from_local(obj_path);
+            let ReferenceFromLocalTransform::Rigid(world_from_scene) = transforms.reference_from_local(obj_path) else {
+                continue;
+            };
 
             let mut line_batch = self
                 .primitives
                 .line_strips
                 .batch("lines 2d")
-                .world_from_scene(*world_from_scene);
+                .world_from_scene(world_from_scene);
 
             visit_type_data_2(
                 obj_store,
