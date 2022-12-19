@@ -77,7 +77,9 @@ impl ArrowDeserialize for Instance {
 }
 
 impl Component for Instance {
-    const NAME: crate::ComponentNameRef<'static> = "instance";
+    fn name() -> crate::ComponentName {
+        "instance".into()
+    }
 }
 
 /// A rectangle in 2D space.
@@ -117,7 +119,9 @@ impl Rect2D {
 }
 
 impl Component for Rect2D {
-    const NAME: crate::ComponentNameRef<'static> = "rect2d";
+    fn name() -> crate::ComponentName {
+        "rect2d".into()
+    }
 }
 
 /// A point in 2D space.
@@ -142,7 +146,9 @@ pub struct Point2D {
 }
 
 impl Component for Point2D {
-    const NAME: crate::ComponentNameRef<'static> = "point2d";
+    fn name() -> crate::ComponentName {
+        "point2d".into()
+    }
 }
 
 /// A point in 3D space.
@@ -169,7 +175,9 @@ pub struct Point3D {
 }
 
 impl Component for Point3D {
-    const NAME: crate::ComponentNameRef<'static> = "point3d";
+    fn name() -> crate::ComponentName {
+        "point3d".into()
+    }
 }
 
 /// An RGBA color tuple.
@@ -230,7 +238,9 @@ impl ArrowDeserialize for ColorRGBA {
 }
 
 impl Component for ColorRGBA {
-    const NAME: crate::ComponentNameRef<'static> = "colorrgba";
+    fn name() -> crate::ComponentName {
+        "colorrgba".into()
+    }
 }
 
 #[test]

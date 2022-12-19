@@ -56,8 +56,7 @@ pub use path::*;
 pub use time::{Duration, Time};
 pub use time_point::{TimeInt, TimePoint, TimeType, Timeline, TimelineName};
 
-pub type ComponentName = String;
-pub type ComponentNameRef<'a> = &'a str;
+pub type ComponentName = FieldName;
 
 #[macro_export]
 macro_rules! impl_into_enum {
