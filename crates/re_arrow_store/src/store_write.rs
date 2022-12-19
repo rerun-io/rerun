@@ -19,7 +19,7 @@ use re_log_types::{
 
 use crate::store::IndexBucketIndices;
 use crate::{
-    is_sorted_array, ComponentBucket, ComponentTable, DataStore, DataStoreConfig, IndexBucket,
+    ArrayExt as _, ComponentBucket, ComponentTable, DataStore, DataStoreConfig, IndexBucket,
     IndexTable, RowIndex,
 };
 
@@ -84,10 +84,21 @@ impl DataStore {
                 get_or_create_clustering_key(row_nr, components, &self.clustering_key);
             let expected_nb_instances = clustering_comp.len();
 
+            // TODO:
+            // - [x] always present
+            // - [x] always sorted
+            // - [x] always dense
+            // - [ ] no duplicates
+
+            ensure!(
+                clustering_comp.is_dense(),
+                "the clustering component must be dense",
+            );
+
             // TODO: do the sorting ourselves if needed
             // TODO(#527): typed error
             ensure!(
-                is_sorted_array(&*clustering_comp),
+                clustering_comp.is_dense(),
                 "the instances of the clustering component must be properly sorted",
             );
 

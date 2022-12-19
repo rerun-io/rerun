@@ -8,7 +8,7 @@ mod store;
 mod store_read;
 mod store_write;
 
-pub use self::arrow_util::{is_dense_array, is_sorted_array};
+pub use self::arrow_util::ArrayExt;
 pub(crate) use self::store::{ComponentBucket, ComponentTable, IndexBucketIndices};
 pub use self::store::{DataStore, DataStoreConfig, IndexBucket, IndexTable, RowIndex};
 pub use self::store_read::{TimeQuery, TimelineQuery};
