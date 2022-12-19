@@ -48,7 +48,7 @@ where
     ) -> PointCloudBatchBuilder<'_, PerPointUserData> {
         self.batches.push(PointCloudBatchInfo {
             label: label.into(),
-            world_from_scene: glam::Mat4::IDENTITY,
+            world_from_obj: glam::Mat4::IDENTITY,
             point_count: 0,
         });
 
@@ -131,10 +131,10 @@ where
             .expect("batch should have been added on PointCloudBatchBuilder creation")
     }
 
-    /// Sets the `world_from_scene` matrix for the *entire* batch.
+    /// Sets the `world_from_obj` matrix for the *entire* batch.
     #[inline]
-    pub fn world_from_scene(mut self, world_from_scene: glam::Mat4) -> Self {
-        self.batch_mut().world_from_scene = world_from_scene;
+    pub fn world_from_obj(mut self, world_from_obj: glam::Mat4) -> Self {
+        self.batch_mut().world_from_obj = world_from_obj;
         self
     }
 

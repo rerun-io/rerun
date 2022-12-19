@@ -27,7 +27,7 @@ use crate::{
     misc::{mesh_loader::LoadedMesh, ViewerContext},
     ui::{
         annotations::{auto_color, AnnotationMap, DefaultColor},
-        transform_cache::{ReferenceFromLocalTransform, TransformCache},
+        transform_cache::{ReferenceFromObjTransform, TransformCache},
         view_spatial::axis_color,
         Annotations, SceneQuery,
     },
@@ -160,13 +160,13 @@ impl SceneSpatialPrimitives {
         for (batch, vertex_iter) in self.points.iter_vertices_by_batch() {
             let batch_bb = macaw::BoundingBox::from_points(vertex_iter.map(|v| v.position));
             self.bounding_box = self.bounding_box.union(
-                batch_bb.transform_affine3(&glam::Affine3A::from_mat4(batch.world_from_scene)),
+                batch_bb.transform_affine3(&glam::Affine3A::from_mat4(batch.world_from_obj)),
             );
         }
         for (batch, vertex_iter) in self.line_strips.iter_vertices_by_batch() {
             let batch_bb = macaw::BoundingBox::from_points(vertex_iter.map(|v| v.position));
             self.bounding_box = self.bounding_box.union(
-                batch_bb.transform_affine3(&glam::Affine3A::from_mat4(batch.world_from_scene)),
+                batch_bb.transform_affine3(&glam::Affine3A::from_mat4(batch.world_from_obj)),
             );
         }
 
@@ -285,7 +285,7 @@ impl SceneSpatial {
             let annotations = self.annotation_map.find(obj_path);
             let default_color = DefaultColor::ObjPath(obj_path);
             let properties = objects_properties.get(obj_path);
-            let ReferenceFromLocalTransform::Rigid(world_from_scene) = transforms.reference_from_local(obj_path) else {
+            let ReferenceFromObjTransform::Rigid(world_from_obj) = transforms.reference_from_obj(obj_path) else {
                 continue;
             };
 
@@ -293,7 +293,7 @@ impl SceneSpatial {
                 .primitives
                 .points
                 .batch("3d points")
-                .world_from_scene(world_from_scene);
+                .world_from_obj(world_from_obj);
 
             visit_type_data_5(
                 obj_store,
@@ -349,7 +349,7 @@ impl SceneSpatial {
                         if let Some(label) = annotation_info.label(label) {
                             label_batch.push(Label3D {
                                 text: label,
-                                origin: world_from_scene.transform_point3(position),
+                                origin: world_from_obj.transform_point3(position),
                             });
                         }
                     }
@@ -430,14 +430,14 @@ impl SceneSpatial {
             let annotations = self.annotation_map.find(obj_path);
             let default_color = DefaultColor::ObjPath(obj_path);
             let properties = objects_properties.get(obj_path);
-            let ReferenceFromLocalTransform::Rigid(world_from_scene) = transforms.reference_from_local(obj_path) else {
+            let ReferenceFromObjTransform::Rigid(world_from_obj) = transforms.reference_from_obj(obj_path) else {
                 continue;
             };
             let mut line_batch = self
                 .primitives
                 .line_strips
                 .batch("box 3d")
-                .world_from_scene(world_from_scene);
+                .world_from_obj(world_from_obj);
 
             visit_type_data_4(
                 obj_store,
@@ -463,7 +463,7 @@ impl SceneSpatial {
                     if let Some(label) = label {
                         self.ui.labels_3d.push(Label3D {
                             text: label,
-                            origin: world_from_scene.transform_point3(Vec3::from(obb.translation)),
+                            origin: world_from_obj.transform_point3(Vec3::from(obb.translation)),
                         });
                     }
 
@@ -541,7 +541,7 @@ impl SceneSpatial {
             let annotations = self.annotation_map.find(obj_path);
             let default_color = DefaultColor::ObjPath(obj_path);
             let properties = objects_properties.get(obj_path);
-            let ReferenceFromLocalTransform::Rigid(world_from_scene) = transforms.reference_from_local(obj_path) else {
+            let ReferenceFromObjTransform::Rigid(world_from_obj) = transforms.reference_from_obj(obj_path) else {
                 continue;
             };
 
@@ -549,7 +549,7 @@ impl SceneSpatial {
                 .primitives
                 .line_strips
                 .batch("lines 3d")
-                .world_from_scene(world_from_scene);
+                .world_from_obj(world_from_obj);
 
             visit_type_data_2(
                 obj_store,
@@ -621,7 +621,7 @@ impl SceneSpatial {
             let annotations = self.annotation_map.find(obj_path);
             let default_color = DefaultColor::ObjPath(obj_path);
             let properties = objects_properties.get(obj_path);
-            let ReferenceFromLocalTransform::Rigid(world_from_scene) = transforms.reference_from_local(obj_path) else {
+            let ReferenceFromObjTransform::Rigid(world_from_obj) = transforms.reference_from_obj(obj_path) else {
                 continue;
             };
 
@@ -629,7 +629,7 @@ impl SceneSpatial {
                 .primitives
                 .line_strips
                 .batch("arrows")
-                .world_from_scene(world_from_scene);
+                .world_from_obj(world_from_obj);
 
             visit_type_data_3(
                 obj_store,
@@ -701,11 +701,11 @@ impl SceneSpatial {
             query.iter_object_stores(ctx.log_db, &[ObjectType::Mesh3D])
         {
             let properties = objects_properties.get(obj_path);
-            let ReferenceFromLocalTransform::Rigid(world_from_scene) = transforms.reference_from_local(obj_path) else {
+            let ReferenceFromObjTransform::Rigid(world_from_obj) = transforms.reference_from_obj(obj_path) else {
                 continue;
             };
             // TODO(andreas): This throws away perspective transformation!
-            let world_from_scene_affine = glam::Affine3A::from_mat4(world_from_scene);
+            let world_from_obj_affine = glam::Affine3A::from_mat4(world_from_obj);
 
             visit_type_data_1(
                 obj_store,
@@ -740,7 +740,7 @@ impl SceneSpatial {
                         )
                         .map(|cpu_mesh| MeshSource {
                             instance_hash,
-                            world_from_mesh: world_from_scene_affine,
+                            world_from_mesh: world_from_obj_affine,
                             mesh: cpu_mesh,
                             additive_tint,
                         })
@@ -766,7 +766,7 @@ impl SceneSpatial {
             query.iter_object_stores(ctx.log_db, &[ObjectType::Image])
         {
             let properties = objects_properties.get(obj_path);
-            let ReferenceFromLocalTransform::Rigid(world_from_scene) = transforms.reference_from_local(obj_path) else {
+            let ReferenceFromObjTransform::Rigid(world_from_obj) = transforms.reference_from_obj(obj_path) else {
                 continue;
             };
 
@@ -822,10 +822,10 @@ impl SceneSpatial {
                     if let Some(texture_handle) = tensor_view.texture_handle {
                         self.primitives.textured_rectangles.push(
                             re_renderer::renderer::TexturedRect {
-                                top_left_corner_position: world_from_scene
+                                top_left_corner_position: world_from_obj
                                     .transform_point3(glam::Vec3::ZERO),
-                                extent_u: world_from_scene.transform_vector3(glam::Vec3::X * w),
-                                extent_v: world_from_scene.transform_vector3(glam::Vec3::Y * h),
+                                extent_u: world_from_obj.transform_vector3(glam::Vec3::X * w),
+                                extent_v: world_from_obj.transform_vector3(glam::Vec3::Y * h),
                                 texture: texture_handle,
                                 texture_filter_magnification:
                                     re_renderer::renderer::TextureFilterMag::Nearest,
@@ -880,7 +880,7 @@ impl SceneSpatial {
         {
             let properties = objects_properties.get(obj_path);
             let annotations = self.annotation_map.find(obj_path);
-            let ReferenceFromLocalTransform::Rigid(world_from_scene) = transforms.reference_from_local(obj_path) else {
+            let ReferenceFromObjTransform::Rigid(world_from_obj) = transforms.reference_from_obj(obj_path) else {
                 continue;
             };
 
@@ -888,7 +888,7 @@ impl SceneSpatial {
                 .primitives
                 .line_strips
                 .batch("2d box")
-                .world_from_scene(world_from_scene);
+                .world_from_obj(world_from_obj);
 
             visit_type_data_4(
                 obj_store,
@@ -1058,7 +1058,7 @@ impl SceneSpatial {
             let annotations = self.annotation_map.find(obj_path);
             let default_color = DefaultColor::ObjPath(obj_path);
             let properties = objects_properties.get(obj_path);
-            let ReferenceFromLocalTransform::Rigid(world_from_scene) = transforms.reference_from_local(obj_path) else {
+            let ReferenceFromObjTransform::Rigid(world_from_obj) = transforms.reference_from_obj(obj_path) else {
                 continue;
             };
 
@@ -1071,7 +1071,7 @@ impl SceneSpatial {
                 .primitives
                 .points
                 .batch("2d points")
-                .world_from_scene(world_from_scene);
+                .world_from_obj(world_from_obj);
 
             visit_type_data_5(
                 obj_store,
@@ -1177,7 +1177,7 @@ impl SceneSpatial {
         {
             let annotations = self.annotation_map.find(obj_path);
             let properties = objects_properties.get(obj_path);
-            let ReferenceFromLocalTransform::Rigid(world_from_scene) = transforms.reference_from_local(obj_path) else {
+            let ReferenceFromObjTransform::Rigid(world_from_obj) = transforms.reference_from_obj(obj_path) else {
                 continue;
             };
 
@@ -1185,7 +1185,7 @@ impl SceneSpatial {
                 .primitives
                 .line_strips
                 .batch("lines 2d")
-                .world_from_scene(world_from_scene);
+                .world_from_obj(world_from_obj);
 
             visit_type_data_2(
                 obj_store,
@@ -1447,7 +1447,7 @@ impl SceneSpatial {
             for (batch, vertex_iter) in points.iter_vertices_and_userdata_by_batch() {
                 // For getting the closest point we could transform the mouse ray into the "batch space".
                 // However, we want to determine the closest point in *screen space*, meaning that we need to project all points.
-                let ui_from_batch = ui_from_world * batch.world_from_scene;
+                let ui_from_batch = ui_from_world * batch.world_from_obj;
 
                 for (point, instance_hash) in vertex_iter {
                     if instance_hash.is_none() {
@@ -1478,7 +1478,7 @@ impl SceneSpatial {
             for (batch, vertices) in line_strips.iter_vertices_by_batch() {
                 // For getting the closest point we could transform the mouse ray into the "batch space".
                 // However, we want to determine the closest point in *screen space*, meaning that we need to project all points.
-                let ui_from_batch = ui_from_world * batch.world_from_scene;
+                let ui_from_batch = ui_from_world * batch.world_from_obj;
 
                 for (start, end) in vertices.tuple_windows() {
                     // Skip unconnected tuples.

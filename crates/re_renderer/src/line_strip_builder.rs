@@ -34,7 +34,7 @@ where
     ) -> LineBatchBuilder<'_, PerStripUserData> {
         self.batches.push(LineBatchInfo {
             label: label.into(),
-            world_from_scene: glam::Mat4::IDENTITY,
+            world_from_obj: glam::Mat4::IDENTITY,
             line_vertex_count: 0,
         });
 
@@ -127,10 +127,10 @@ where
         self.batch_mut().line_vertex_count += (self.0.vertices.len() - old_len) as u32;
     }
 
-    /// Sets the `world_from_scene` matrix for the *entire* batch.
+    /// Sets the `world_from_obj` matrix for the *entire* batch.
     #[inline]
-    pub fn world_from_scene(mut self, world_from_scene: glam::Mat4) -> Self {
-        self.batch_mut().world_from_scene = world_from_scene;
+    pub fn world_from_obj(mut self, world_from_obj: glam::Mat4) -> Self {
+        self.batch_mut().world_from_obj = world_from_obj;
         self
     }
 

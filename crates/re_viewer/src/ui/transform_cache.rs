@@ -4,13 +4,16 @@ use re_log_types::ObjPathHash;
 
 use crate::misc::space_info::{SpaceInfo, SpacesInfo};
 
-/// Provides transforms from local to a reference space for all elements in the scene.
+/// Provides transforms from an object to a chosen reference space for all elements in the scene.
+///
+/// The renderer then uses this reference space as its world space,
+/// making world and reference space equivalent for a given space view.
 pub struct TransformCache {
-    reference_from_local_per_object: IntMap<ObjPathHash, ReferenceFromLocalTransform>,
+    reference_from_obj_per_object: IntMap<ObjPathHash, ReferenceFromObjTransform>,
 }
 
 #[derive(Clone)]
-pub enum ReferenceFromLocalTransform {
+pub enum ReferenceFromObjTransform {
     /// On the path from the given object to the reference is an unknown transformation or a pinhole transformation
     ///
     /// TODO(andreas): Will need to be split up and we should be able to handle some of these cases!
@@ -40,23 +43,23 @@ impl TransformCache {
         fn gather_child_transforms(
             spaces_info: &SpacesInfo,
             space: &SpaceInfo,
-            reference_from_local: glam::Mat4,
-            reference_from_local_per_object: &mut IntMap<ObjPathHash, ReferenceFromLocalTransform>,
+            reference_from_obj: glam::Mat4,
+            reference_from_obj_per_path: &mut IntMap<ObjPathHash, ReferenceFromObjTransform>,
         ) {
-            reference_from_local_per_object.extend(space.descendants_without_transform.iter().map(
+            reference_from_obj_per_path.extend(space.descendants_without_transform.iter().map(
                 |obj| {
                     (
                         *obj.hash(),
-                        ReferenceFromLocalTransform::Rigid(reference_from_local),
+                        ReferenceFromObjTransform::Rigid(reference_from_obj),
                     )
                 },
             ));
 
             for (child_path, transform) in &space.child_spaces {
                 if let Some(child_space) = spaces_info.spaces.get(child_path) {
-                    let child_from_local = match transform {
+                    let refererence_from_obj_in_child = match transform {
                         re_log_types::Transform::Rigid3(rigid) => {
-                            reference_from_local * rigid.parent_from_child().to_mat4()
+                            reference_from_obj * rigid.parent_from_child().to_mat4()
                         }
                         // If we're connected via 'unknown' it's not reachable
                         re_log_types::Transform::Unknown => {
@@ -71,24 +74,24 @@ impl TransformCache {
                     gather_child_transforms(
                         spaces_info,
                         child_space,
-                        child_from_local,
-                        reference_from_local_per_object,
+                        refererence_from_obj_in_child,
+                        reference_from_obj_per_path,
                     );
                 }
             }
         }
 
-        // Walk up to the highest reachable parent.
-        let mut top_most_reachable_space = reference_space;
-        let mut reference_from_local = glam::Mat4::IDENTITY;
-        while let Some((parent_path, parent_transform)) = top_most_reachable_space.parent.as_ref() {
+        // Walk up from the reference space to the highest reachable parent.
+        let mut topmost_reachable_space = reference_space;
+        let mut reference_from_topmost = glam::Mat4::IDENTITY;
+        while let Some((parent_path, parent_transform)) = topmost_reachable_space.parent.as_ref() {
             let Some(parent_space) = spaces_info.spaces.get(parent_path) else {
                 break;
             };
 
-            reference_from_local = match parent_transform {
+            reference_from_topmost = match parent_transform {
                 re_log_types::Transform::Rigid3(rigid) => {
-                    reference_from_local * rigid.child_from_parent().to_mat4()
+                    reference_from_topmost * rigid.child_from_parent().to_mat4()
                 }
                 // If we're connected via 'unknown' it's not reachable
                 re_log_types::Transform::Unknown => {
@@ -99,30 +102,30 @@ impl TransformCache {
                     break;
                 }
             };
-            top_most_reachable_space = parent_space;
+            topmost_reachable_space = parent_space;
         }
 
         // And then walk all branches down again.
-        let mut reference_from_local_per_object = Default::default();
+        let mut reference_from_obj_per_object = Default::default();
         gather_child_transforms(
             spaces_info,
-            top_most_reachable_space,
-            reference_from_local,
-            &mut reference_from_local_per_object,
+            topmost_reachable_space,
+            reference_from_topmost,
+            &mut reference_from_obj_per_object,
         );
 
         Self {
-            reference_from_local_per_object,
+            reference_from_obj_per_object,
         }
     }
 
     /// Retrieves the transform of on object from its local system to the space of the reference.
     ///
     /// This is typically used as the "world space" for the renderer in a given frame.
-    pub fn reference_from_local(&self, obj_path: &ObjPath) -> ReferenceFromLocalTransform {
-        self.reference_from_local_per_object
+    pub fn reference_from_obj(&self, obj_path: &ObjPath) -> ReferenceFromObjTransform {
+        self.reference_from_obj_per_object
             .get(obj_path.hash())
             .cloned()
-            .unwrap_or(ReferenceFromLocalTransform::ConnectedViaUnknownOrPinhole)
+            .unwrap_or(ReferenceFromObjTransform::ConnectedViaUnknownOrPinhole)
     }
 }

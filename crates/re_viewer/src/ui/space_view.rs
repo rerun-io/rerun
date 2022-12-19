@@ -3,18 +3,16 @@ use re_data_store::{InstanceId, ObjPath, ObjectTree, ObjectsProperties, TimeInt}
 use nohash_hasher::IntSet;
 
 use crate::{
-    ui::view_category::categorize_obj_path,
-    {
-        misc::{
-            space_info::{SpaceInfo, SpacesInfo},
-            ViewerContext,
-        },
-        ui::transform_cache::TransformCache,
+    misc::{
+        space_info::{SpaceInfo, SpacesInfo},
+        ViewerContext,
     },
+    ui::transform_cache::TransformCache,
+    ui::view_category::categorize_obj_path,
 };
 
 use super::{
-    transform_cache::ReferenceFromLocalTransform,
+    transform_cache::ReferenceFromObjTransform,
     view_bar_chart,
     view_category::ViewCategory,
     view_spatial::{self, SpatialNavigationMode},
@@ -242,9 +240,9 @@ impl SpaceView {
         tree: &ObjectTree,
         transforms: &TransformCache,
     ) {
-        let is_reachable = match transforms.reference_from_local(&tree.path) {
-            ReferenceFromLocalTransform::ConnectedViaUnknownOrPinhole => false,
-            ReferenceFromLocalTransform::Rigid(_) => true,
+        let is_reachable = match transforms.reference_from_obj(&tree.path) {
+            ReferenceFromObjTransform::ConnectedViaUnknownOrPinhole => false,
+            ReferenceFromObjTransform::Rigid(_) => true,
         };
         let response = ui
             .add_enabled_ui(is_reachable, |ui| {
