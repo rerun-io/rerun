@@ -82,12 +82,22 @@ impl SpaceView {
             .next()
             .map_or_else(|| space_path.clone(), |c| ObjPath::from(vec![c.to_owned()]));
 
+        let queried_objects = Self::default_queried_objects(ctx, category, space_info);
+
+        let name = if queried_objects.len() == 1 {
+            // a single object in this space-view - name the space after it
+            let obj_path = queried_objects.iter().next().unwrap();
+            obj_path.to_string()
+        } else {
+            space_path.to_string()
+        };
+
         Self {
-            name: space_path.to_string(),
+            name,
             id: SpaceViewId::random(),
             root_path,
             space_path,
-            queried_objects: Self::default_queried_objects(ctx, category, space_info),
+            queried_objects,
             obj_properties: Default::default(),
             view_state,
             category,
