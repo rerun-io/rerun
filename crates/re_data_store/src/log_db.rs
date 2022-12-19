@@ -2,9 +2,11 @@ use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 
 use re_log_types::{
-    msg_bundle::MsgBundle, objects, ArrowMsg, BatchIndex, BeginRecordingMsg, DataMsg, DataPath,
-    DataVec, LogMsg, LoggedData, MsgId, ObjTypePath, ObjectType, PathOp, PathOpMsg, RecordingId,
-    RecordingInfo, TimeInt, TimePoint, Timeline, TypeMsg,
+    field_types::Instance,
+    msg_bundle::{Component as _, MsgBundle},
+    objects, ArrowMsg, BatchIndex, BeginRecordingMsg, DataMsg, DataPath, DataVec, LogMsg,
+    LoggedData, MsgId, ObjTypePath, ObjectType, PathOp, PathOpMsg, RecordingId, RecordingInfo,
+    TimeInt, TimePoint, Timeline, TypeMsg,
 };
 
 use crate::{Error, TimesPerTimeline};
@@ -33,7 +35,7 @@ impl Default for ObjDb {
             types: Default::default(),
             tree: crate::ObjectTree::root(),
             store: Default::default(),
-            arrow_store: Default::default(),
+            arrow_store: re_arrow_store::DataStore::new(Instance::name(), Default::default()),
         }
     }
 }
@@ -125,7 +127,7 @@ impl ObjDb {
             );
         }
 
-        self.arrow_store.insert(&msg_bundle).map_err(Error::Other)
+        self.arrow_store.insert(&msg_bundle).map_err(Into::into)
     }
 
     fn add_path_op(&mut self, msg_id: MsgId, time_point: &TimePoint, path_op: &PathOp) {

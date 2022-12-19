@@ -200,7 +200,7 @@ pub fn __populate_example_store() -> DataStore {
         MsgId,
     };
 
-    let mut store = DataStore::default();
+    let mut store = DataStore::new(Instance::name(), Default::default());
 
     let ent_path = "point";
     let timepoint = [build_frame_nr(123)];

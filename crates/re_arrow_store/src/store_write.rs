@@ -1,4 +1,3 @@
-use anyhow::ensure;
 use arrow2::array::{
     new_empty_array, Array, Int64Vec, ListArray, MutableArray, UInt64Array, UInt64Vec,
 };
