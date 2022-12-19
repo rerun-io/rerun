@@ -14,7 +14,7 @@ where
 
     let array0 = arrow_serialize_to_mutable_array::<Option<C0>, Option<C0>, &Vec<Option<C0>>>(c0);
 
-    let series0 = Series::try_from((C0::NAME, array0.unwrap().as_box()))?;
+    let series0 = Series::try_from((C0::name().as_str(), array0.unwrap().as_box()))?;
 
     DataFrame::new(vec![series0])
 }
@@ -35,8 +35,8 @@ where
     let array0 = arrow_serialize_to_mutable_array::<Option<C0>, Option<C0>, &Vec<Option<C0>>>(c0);
     let array1 = arrow_serialize_to_mutable_array::<Option<C1>, Option<C1>, &Vec<Option<C1>>>(c1);
 
-    let series0 = Series::try_from((C0::NAME, array0.unwrap().as_box()))?;
-    let series1 = Series::try_from((C1::NAME, array1.unwrap().as_box()))?;
+    let series0 = Series::try_from((C0::name().as_str(), array0.unwrap().as_box()))?;
+    let series1 = Series::try_from((C1::name().as_str(), array1.unwrap().as_box()))?;
 
     DataFrame::new(vec![series0, series1])
 }
@@ -61,9 +61,9 @@ where
     let array1 = arrow_serialize_to_mutable_array::<Option<C1>, Option<C1>, &Vec<Option<C1>>>(c1);
     let array2 = arrow_serialize_to_mutable_array::<Option<C2>, Option<C2>, &Vec<Option<C2>>>(c2);
 
-    let series0 = Series::try_from((C0::NAME, array0.unwrap().as_box()))?;
-    let series1 = Series::try_from((C1::NAME, array1.unwrap().as_box()))?;
-    let series2 = Series::try_from((C2::NAME, array2.unwrap().as_box()))?;
+    let series0 = Series::try_from((C0::name().as_str(), array0.unwrap().as_box()))?;
+    let series1 = Series::try_from((C1::name().as_str(), array1.unwrap().as_box()))?;
+    let series2 = Series::try_from((C2::name().as_str(), array2.unwrap().as_box()))?;
 
     DataFrame::new(vec![series0, series1, series2])
 }

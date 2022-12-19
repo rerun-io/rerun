@@ -33,7 +33,7 @@ pub type Result<T> = std::result::Result<T, QueryError>;
 ///   &store,
 ///   &timeline_query,
 ///   &ent_path.into(),
-///   Point2D::NAME,
+///   Point2D::name(),
 /// )
 /// .unwrap();
 ///
@@ -123,8 +123,8 @@ fn add_instances_and_sort_if_needed(df: &DataFrame) -> Result<DataFrame> {
 ///   &store,
 ///   &timeline_query,
 ///   &ent_path.into(),
-///   Point2D::NAME,
-///   &[ColorRGBA::NAME],
+///   Point2D::name(),
+///   &[ColorRGBA::name()],
 /// )
 /// .unwrap();
 ///
