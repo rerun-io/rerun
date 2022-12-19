@@ -33,6 +33,7 @@ polars-core = { workspace = true, features = [
   "dtype-time",
   "dtype-struct",
 ] }
+static_assertions = "1.1"
 thiserror.workspace = true
 
 [dev-dependencies]

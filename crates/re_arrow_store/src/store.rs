@@ -1,9 +1,9 @@
 use std::collections::{BTreeMap, HashMap, VecDeque};
+use std::num::NonZeroU64;
 use std::sync::atomic::AtomicU64;
 
 use anyhow::ensure;
-use arrow2::array::{Array, Int64Vec, MutableArray, UInt64Vec};
-use arrow2::bitmap::MutableBitmap;
+use arrow2::array::Array;
 use arrow2::chunk::Chunk;
 use arrow2::datatypes::DataType;
 
@@ -17,25 +17,35 @@ use re_log_types::{
 
 // --- Data store ---
 
+/// A vector of times. Our primary column, always densely filled.
+pub type TimeIndex = Vec<i64>;
+
+/// A vector of references into the component tables. None = null.
+// TODO(cmc): keeping a separate validity might be a better option, maybe.
+pub type SecondaryIndex = Vec<Option<RowIndex>>;
+static_assertions::assert_eq_size!(u64, Option<RowIndex>);
+
 /// An opaque type that directly refers to a row of data within the datastore, iff it is associated
 /// with a component name.
 ///
 /// See [`DataStore::query`] & [`DataStore::get`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct RowIndex(pub(crate) u64);
+pub struct RowIndex(pub(crate) NonZeroU64);
+
+impl RowIndex {
+    /// Panics if `v` is 0.
+    pub(crate) fn from_u64(v: u64) -> Self {
+        Self(v.try_into().unwrap())
+    }
+
+    pub(crate) fn as_u64(self) -> u64 {
+        self.0.into()
+    }
+}
 
 impl std::fmt::Display for RowIndex {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!("{}", self.0))
-    }
-}
-
-impl RowIndex {
-    pub(crate) fn from_u64(row_idx: u64) -> Self {
-        Self(row_idx)
-    }
-    pub(crate) fn as_u64(self) -> u64 {
-        self.0
     }
 }
 
@@ -202,7 +212,7 @@ impl DataStore {
                 for bucket in table.buckets.values() {
                     for (comp, index) in &bucket.indices.read().indices {
                         let row_indices = row_indices.entry(*comp).or_default();
-                        row_indices.extend(index.values().iter().copied().map(RowIndex::from_u64));
+                        row_indices.extend(index.iter().copied().flatten());
                     }
                 }
             }
@@ -551,15 +561,15 @@ pub struct IndexBucketIndices {
     // The primary time index, which is guaranteed to be dense, and "drives" all other indices.
     //
     // All secondary indices are guaranteed to follow the same sort order and be the same length.
-    pub(crate) times: Int64Vec,
+    pub(crate) times: TimeIndex,
 
     /// All secondary indices for this bucket (i.e. everything but time).
     ///
     /// One index per component: new components (and as such, new indices) can be added at any
     /// time!
     /// When that happens, they will be retro-filled with nulls so that they share the same
-    /// length as the primary index.
-    pub(crate) indices: IntMap<ComponentName, UInt64Vec>,
+    /// length as the primary index ([`Self::times`]).
+    pub(crate) indices: IntMap<ComponentName, SecondaryIndex>,
 }
 
 impl Default for IndexBucketIndices {
@@ -567,7 +577,7 @@ impl Default for IndexBucketIndices {
         Self {
             is_sorted: true,
             time_range: TimeRange::new(i64::MAX.into(), i64::MIN.into()),
-            times: Int64Vec::default(),
+            times: Default::default(),
             indices: Default::default(),
         }
     }
@@ -613,13 +623,6 @@ impl IndexBucket {
     /// Returns the size of the data stored across this bucket, in bytes.
     // NOTE: for mutable, non-erased arrays, it's actually easier to compute ourselves.
     pub fn total_size_bytes(&self) -> u64 {
-        fn size_of_validity(bitmap: Option<&MutableBitmap>) -> u64 {
-            bitmap.map_or(0, |bitmap| std::mem::size_of_val(bitmap.as_slice())) as _
-        }
-        fn size_of_values<T>(values: &Vec<T>) -> u64 {
-            std::mem::size_of_val(values.as_slice()) as _
-        }
-
         let IndexBucketIndices {
             is_sorted: _,
             time_range: _,
@@ -627,11 +630,10 @@ impl IndexBucket {
             indices,
         } = &*self.indices.read();
 
-        size_of_validity(times.validity())
-            + size_of_values(times.values())
+        std::mem::size_of_val(times.as_slice()) as u64
             + indices
                 .values()
-                .map(|index| size_of_validity(index.validity()) + size_of_values(index.values()))
+                .map(|index| std::mem::size_of_val(index.as_slice()) as u64)
                 .sum::<u64>()
     }
 
@@ -810,9 +812,7 @@ impl ComponentTable {
             let row_ranges = self
                 .buckets
                 .iter()
-                .map(|bucket| {
-                    bucket.row_offset.as_u64()..bucket.row_offset.as_u64() + bucket.total_rows()
-                })
+                .map(|bucket| bucket.row_offset..bucket.row_offset + bucket.total_rows())
                 .collect::<Vec<_>>();
             for row_ranges in row_ranges.windows(2) {
                 let &[r1, r2] = &row_ranges else { unreachable!() };
@@ -834,7 +834,7 @@ pub struct ComponentBucket {
     pub(crate) name: ComponentName,
 
     /// The offset of this bucket in the global table.
-    pub(crate) row_offset: RowIndex,
+    pub(crate) row_offset: u64,
 
     /// Has this bucket been archived yet?
     ///
@@ -909,7 +909,7 @@ impl std::fmt::Display for ComponentBucket {
             //
             // TODO(#439): is that still true with deletion?
             // TODO(#589): support for non-unit-length chunks
-            self.row_offset.as_u64()
+            self.row_offset
                 + self
                     .chunks
                     .len()
