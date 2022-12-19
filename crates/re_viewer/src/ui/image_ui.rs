@@ -11,26 +11,41 @@ pub(crate) fn tensor_ui(
 ) {
     let tensor_view = ctx.cache.image.get_view(tensor, ctx.render_ctx);
 
-    let max_size = ui
-        .available_size()
-        .min(tensor_view.retained_img.size_vec2());
-    let response = tensor_view.retained_img.show_max_size(ui, max_size);
+    ui.vertical(|ui| {
+        ui.set_min_width(100.0);
+        ui.label(format!("dtype: {:?}", tensor.dtype));
+        ui.label(format!("shape: {:?}", tensor.shape));
+    });
 
-    let image_rect = response.rect;
+    if let Some(retained_img) = tensor_view.retained_img {
+        let max_size = ui.available_size().min(retained_img.size_vec2());
+        let response = retained_img.show_max_size(ui, max_size);
 
-    if let Some(pointer_pos) = ui.ctx().pointer_latest_pos() {
-        show_zoomed_image_region_tooltip(ui, response, &tensor_view, image_rect, pointer_pos, None);
+        let image_rect = response.rect;
+
+        if let Some(pointer_pos) = ui.ctx().pointer_latest_pos() {
+            show_zoomed_image_region_tooltip(
+                ui,
+                response,
+                &tensor_view,
+                image_rect,
+                pointer_pos,
+                None,
+            );
+        }
     }
 
-    // TODO(emilk): support copying and saving images on web
-    #[cfg(not(target_arch = "wasm32"))]
-    ui.horizontal(|ui| image_options(ui, tensor, tensor_view.dynamic_img));
+    if let Some(dynamic_img) = tensor_view.dynamic_img {
+        // TODO(emilk): support copying and saving images on web
+        #[cfg(not(target_arch = "wasm32"))]
+        ui.horizontal(|ui| image_options(ui, tensor, dynamic_img));
 
-    // TODO(emilk): support histograms of non-RGB images too
-    if let image::DynamicImage::ImageRgb8(rgb_image) = tensor_view.dynamic_img {
-        ui.collapsing("Histogram", |ui| {
-            histogram_ui(ui, rgb_image);
-        });
+        // TODO(emilk): support histograms of non-RGB images too
+        if let image::DynamicImage::ImageRgb8(rgb_image) = dynamic_img {
+            ui.collapsing("Histogram", |ui| {
+                histogram_ui(ui, rgb_image);
+            });
+        }
     }
 }
 
@@ -67,6 +82,8 @@ pub fn show_zoomed_image_region(
     pointer_pos: egui::Pos2,
     meter: Option<f32>,
 ) {
+    let Some(dynamic_img) = tensor_view.dynamic_img else { return };
+
     use egui::{color_picker, pos2, remap, Color32, Mesh, NumExt, Rect, Vec2};
 
     // Show the surrounding pixels:
@@ -74,8 +91,8 @@ pub fn show_zoomed_image_region(
     let size = Vec2::splat(128.0);
 
     let (_id, zoom_rect) = tooltip_ui.allocate_space(size);
-    let w = tensor_view.dynamic_img.width() as _;
-    let h = tensor_view.dynamic_img.height() as _;
+    let w = dynamic_img.width() as _;
+    let h = dynamic_img.height() as _;
     let center_x =
         (remap(pointer_pos.x, image_rect.x_range(), 0.0..=(w as f32)).floor() as isize).at_most(w);
     let center_y =
@@ -110,7 +127,7 @@ pub fn show_zoomed_image_region(
         for dy in -texel_radius..=texel_radius {
             let x = center_x + dx;
             let y = center_y + dy;
-            let color = get_pixel(tensor_view.dynamic_img, [x, y]);
+            let color = get_pixel(dynamic_img, [x, y]);
             if let Some(color) = color {
                 let image::Rgba([r, g, b, a]) = color;
                 let color = egui::Color32::from_rgba_unmultiplied(r, g, b, a);
@@ -142,7 +159,7 @@ pub fn show_zoomed_image_region(
         painter.rect_stroke(center_texel_rect, 0.0, (1.0, Color32::WHITE));
     }
 
-    if let Some(color) = get_pixel(tensor_view.dynamic_img, [center_x, center_y]) {
+    if let Some(color) = get_pixel(dynamic_img, [center_x, center_y]) {
         tooltip_ui.separator();
         let (x, y) = (center_x as _, center_y as _);
 
@@ -201,7 +218,7 @@ pub fn show_zoomed_image_region(
             } else {
                 use image::DynamicImage;
 
-                let text = match tensor_view.dynamic_img {
+                let text = match dynamic_img {
                     DynamicImage::ImageLuma8(_) => {
                         format!("L: {}", r)
                     }
@@ -233,10 +250,7 @@ pub fn show_zoomed_image_region(
                     }
 
                     _ => {
-                        re_log::warn_once!(
-                            "Unknown image color type: {:?}",
-                            tensor_view.dynamic_img.color()
-                        );
+                        re_log::warn_once!("Unknown image color type: {:?}", dynamic_img.color());
                         format!(
                             "R: {}, G: {}, B: {}, A: {}\n#{:02X}{:02X}{:02X}{:02X}",
                             r, g, b, a, r, g, b, a
