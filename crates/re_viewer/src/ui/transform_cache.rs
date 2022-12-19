@@ -56,7 +56,7 @@ impl TransformCache {
                 if let Some(child_space) = spaces_info.spaces.get(child_path) {
                     let child_from_local = match transform {
                         re_log_types::Transform::Rigid3(rigid) => {
-                            rigid.child_from_parent().to_mat4() * reference_from_local
+                            reference_from_local * rigid.parent_from_child().to_mat4()
                         }
                         // If we're connected via 'unknown' it's not reachable
                         re_log_types::Transform::Unknown => {
@@ -88,7 +88,7 @@ impl TransformCache {
 
             reference_from_local = match parent_transform {
                 re_log_types::Transform::Rigid3(rigid) => {
-                    reference_from_local * rigid.parent_from_child().to_mat4()
+                    reference_from_local * rigid.child_from_parent().to_mat4()
                 }
                 // If we're connected via 'unknown' it's not reachable
                 re_log_types::Transform::Unknown => {

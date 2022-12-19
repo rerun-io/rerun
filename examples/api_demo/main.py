@@ -19,6 +19,8 @@ import numpy as np
 import rerun
 from rerun import AnnotationInfo, LoggingHandler, LogLevel, RectFormat
 
+from scipy.spatial.transform import Rotation
+
 
 def run_segmentation() -> None:
     rerun.set_time_seconds("sim_time", 1)
@@ -151,8 +153,8 @@ def transforms_rigid_3d() -> None:
 
     # All are in the center of their own space:
     rerun.log_point("transforms3d/sun", [0.0, 0.0, 0.0], radius=1.0, color=[255, 200, 10])
-    rerun.log_point("transforms3d/planet", [0.0, 0.0, 0.0], radius=0.4, color=[40, 80, 200])
-    rerun.log_point("transforms3d/planet/moon", [0.0, 0.0, 0.0], radius=0.15, color=[180, 180, 180])
+    rerun.log_point("transforms3d/sun/planet", [0.0, 0.0, 0.0], radius=0.4, color=[40, 80, 200])
+    rerun.log_point("transforms3d/sun/planet/moon", [0.0, 0.0, 0.0], radius=0.15, color=[180, 180, 180])
 
     # "dust" around the "planet" (and inside, don't care)
     # distribution is quadratically higher in the middle
@@ -160,7 +162,7 @@ def transforms_rigid_3d() -> None:
     angles = np.random.rand(200) * math.tau
     height = np.power(np.random.rand(200), 0.2) * 0.5 - 0.5
     rerun.log_points(
-        "transforms3d/planet/dust",
+        "transforms3d/sun/planet/dust",
         np.array([np.sin(angles) * radii, height, np.cos(angles) * radii]).transpose(),
         colors=[80, 80, 80],
         radii=0.025,
@@ -174,7 +176,7 @@ def transforms_rigid_3d() -> None:
         circle * sun_to_planet_distance,
     )
     rerun.log_path(
-        "transforms3d/planet/moon_path",
+        "transforms3d/sun/planet/moon_path",
         circle * planet_to_moon_distance,
     )
 
@@ -183,19 +185,20 @@ def transforms_rigid_3d() -> None:
         time = i / 120.0
         rerun.set_time_seconds("sim_time", time)
         rotation_q = [0, 0, 0, 1]
+
         rerun.log_rigid3(
-            "transforms3d/planet",
-            child_from_parent=(
+            "transforms3d/sun/planet",
+            parent_from_child=(
                 [
                     math.sin(time * rotation_speed_planet) * sun_to_planet_distance,
                     0.0,
                     math.cos(time * rotation_speed_planet) * sun_to_planet_distance,
                 ],
-                rotation_q,
+                Rotation.from_euler("x", 20, degrees=True).as_quat(),
             ),
         )
         rerun.log_rigid3(
-            "transforms3d/planet/moon",
+            "transforms3d/sun/planet/moon",
             child_from_parent=(
                 [
                     math.cos(time * rotation_speed_moon) * planet_to_moon_distance,
