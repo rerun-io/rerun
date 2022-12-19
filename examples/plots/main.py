@@ -107,10 +107,10 @@ def main() -> None:
         # which is `127.0.0.1:9876`.
         rerun.connect(args.addr)
 
-    log_bar_chart()
     log_parabola()
     log_trig()
     log_segmentation()
+    log_bar_chart()
 
     if args.serve:
         print("Sleeping while serving the web viewer. Abort with Ctrl-C")
