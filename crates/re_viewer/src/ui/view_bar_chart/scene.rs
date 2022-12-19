@@ -9,7 +9,7 @@ pub struct BarChartValues {
     pub values: Vec<f32>,
 }
 
-/// A plot scene, with everything needed to render it.
+/// A bar chart scene, with everything needed to render it.
 #[derive(Default)]
 pub struct SceneBarChart {
     pub charts: BTreeMap<InstanceId, BarChartValues>,

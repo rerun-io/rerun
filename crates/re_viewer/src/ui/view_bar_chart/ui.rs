@@ -26,7 +26,7 @@ pub(crate) fn view_bar_chart(
 
     let stroke = egui::Stroke::new(1.0, ui.visuals().extreme_bg_color); // Same as plot background fill
 
-    Plot::new("Normal Distribution Demo")
+    Plot::new("bar_chart_plot")
         .legend(Legend::default())
         .show(ui, |plot_ui| {
             for (instance_id, bar_chart_values) in &scene.charts {
