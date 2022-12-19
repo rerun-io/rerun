@@ -8,10 +8,11 @@ mod selection_history;
 mod selection_history_ui;
 mod space_view;
 mod transform_cache;
+mod view_bar_chart;
 mod view_category;
-mod view_plot;
 mod view_tensor;
 mod view_text;
+mod view_time_series;
 mod viewport;
 
 pub(crate) mod data_ui;

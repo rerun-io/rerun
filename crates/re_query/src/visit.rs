@@ -53,7 +53,7 @@ where
     C::ArrayType: ArrowArray,
     for<'b> &'b C::ArrayType: IntoIterator,
 {
-    let res = match df.column(C::NAME) {
+    let res = match df.column(C::name().as_str()) {
         Ok(col) => itertools::Either::Left(col.chunks().iter().flat_map(|array| {
             let fixed_array = fix_polars_nulls::<C>(array.as_ref());
             // TODO(jleibs): the need to collect here isn't ideal
@@ -74,7 +74,7 @@ where
     C0::ArrayType: ArrowArray,
     for<'a> &'a C0::ArrayType: IntoIterator,
 {
-    if df.column(C0::NAME).is_ok() {
+    if df.column(C0::name().as_str()).is_ok() {
         let c0_iter = iter_column::<C0>(df);
 
         c0_iter.for_each(|c0_data| {
@@ -133,7 +133,7 @@ pub fn visit_components2<C0: Component, C1: Component>(
     for<'a> &'a C1::ArrayType: IntoIterator,
 {
     // The primary column must exist or else we don't have anything to do
-    if df.column(C0::NAME).is_ok() {
+    if df.column(C0::name().as_str()).is_ok() {
         let c0_iter = iter_column::<C0>(df);
         let c1_iter = iter_column::<C1>(df);
 
@@ -162,7 +162,7 @@ pub fn visit_components3<C0: Component, C1: Component, C2: Component>(
     for<'a> &'a C2::ArrayType: IntoIterator,
 {
     // The primary column must exist or else we don't have anything to do
-    if df.column(C0::NAME).is_ok() {
+    if df.column(C0::name().as_str()).is_ok() {
         let c0_iter = iter_column::<C0>(df);
         let c1_iter = iter_column::<C1>(df);
         let c2_iter = iter_column::<C2>(df);

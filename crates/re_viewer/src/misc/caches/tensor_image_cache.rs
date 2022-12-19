@@ -33,13 +33,13 @@ pub struct TensorImageView<'store, 'cache> {
     pub annotations: &'store Option<Arc<Annotations>>,
 
     /// DynamicImage helper for things like zoom
-    pub dynamic_img: &'cache DynamicImage,
+    pub dynamic_img: Option<&'cache DynamicImage>,
 
     /// For egui
-    pub retained_img: &'cache RetainedImage,
+    pub retained_img: Option<&'cache RetainedImage>,
 
     /// For rendering with re_renderer
-    pub texture_handle: GpuTexture2DHandle,
+    pub texture_handle: Option<GpuTexture2DHandle>,
 }
 
 // Use this for the cache index so that we don't cache across
@@ -90,7 +90,7 @@ impl ImageCache {
             })
             .or_insert_with(|| {
                 let debug_name = format!("tensor {:?}", tensor.shape);
-                let ci = CachedImage::from_tensor(debug_name, tensor, annotations, render_ctx);
+                let ci = CachedImage::from_tensor(render_ctx, debug_name, tensor, annotations);
                 self.memory_used += ci.memory_used;
                 ci
             });
@@ -99,8 +99,8 @@ impl ImageCache {
         TensorImageView::<'store, '_> {
             tensor,
             annotations,
-            dynamic_img: &ci.dynamic_img,
-            retained_img: &ci.retained_img,
+            dynamic_img: ci.dynamic_img.as_ref(),
+            retained_img: ci.retained_img.as_ref(),
             texture_handle: ci.texture_handle.clone(),
         }
     }
@@ -147,15 +147,17 @@ impl ImageCache {
 }
 
 struct CachedImage {
-    /// For egui
+    /// For egui. `None` if the tensor was not a valid image.
     /// TODO(andreas): This is partially redundant to the renderer texture
-    retained_img: RetainedImage,
+    retained_img: Option<RetainedImage>,
 
     /// For rendering with re_renderer.
-    texture_handle: GpuTexture2DHandle,
+    /// `None` if the tensor was not a valid image.
+    texture_handle: Option<GpuTexture2DHandle>,
 
     /// For easily zooming into it in the UI
-    dynamic_img: DynamicImage,
+    /// `None` if the tensor was not a valid image.
+    dynamic_img: Option<DynamicImage>,
 
     /// Total memory used by this image.
     memory_used: u64,
@@ -166,20 +168,38 @@ struct CachedImage {
 
 impl CachedImage {
     fn from_tensor(
+        render_ctx: &mut RenderContext,
         debug_name: String,
         tensor: &Tensor,
         annotations: &Option<Arc<Annotations>>,
-        render_ctx: &mut RenderContext,
     ) -> Self {
         crate::profile_function!();
-        let dynamic_img = match tensor_to_dynamic_image(tensor, annotations) {
-            Ok(dynamic_image) => dynamic_image,
-            Err(err) => {
-                re_log::warn!("Bad image {debug_name:?}: {}", re_error::format(&err));
-                let error_img = image::RgbImage::from_pixel(1, 1, image::Rgb([255, 0, 255]));
-                DynamicImage::ImageRgb8(error_img)
+
+        if tensor.is_shaped_like_an_image() {
+            match tensor_to_dynamic_image(tensor, annotations) {
+                Ok(dynamic_img) => {
+                    return Self::from_dynamic_image(render_ctx, debug_name, dynamic_img)
+                }
+                Err(err) => {
+                    re_log::warn!("Bad image {debug_name:?}: {}", re_error::format(&err));
+                }
             }
         };
+
+        Self {
+            retained_img: None,
+            texture_handle: None,
+            dynamic_img: None,
+            memory_used: 0,
+            last_use_generation: 0,
+        }
+    }
+
+    fn from_dynamic_image(
+        render_ctx: &mut RenderContext,
+        debug_name: String,
+        dynamic_img: DynamicImage,
+    ) -> Self {
         let egui_color_image = dynamic_image_to_egui_color_image(&dynamic_img);
 
         let memory_used = egui_color_image.pixels.len() * std::mem::size_of::<egui::Color32>()
@@ -206,10 +226,10 @@ impl CachedImage {
             RetainedImage::from_color_image(debug_name, egui_color_image).with_options(options);
 
         Self {
-            dynamic_img,
-            retained_img,
+            dynamic_img: Some(dynamic_img),
+            retained_img: Some(retained_img),
+            texture_handle: Some(renderer_texture_handle),
             memory_used: memory_used as u64,
-            texture_handle: renderer_texture_handle,
             last_use_generation: 0,
         }
     }

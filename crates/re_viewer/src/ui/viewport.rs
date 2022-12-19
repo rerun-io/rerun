@@ -243,13 +243,14 @@ impl Viewport {
         )
         .show_header(ui, |ui| {
             match space_view.category {
+                ViewCategory::Text => ui.label("📃"),
+                ViewCategory::TimeSeries => ui.label("📈"),
+                ViewCategory::BarChart => ui.label("📊"),
                 ViewCategory::Spatial => match space_view.view_state.state_spatial.nav_mode {
                     super::view_spatial::SpatialNavigationMode::TwoD => ui.label("🖼"),
                     super::view_spatial::SpatialNavigationMode::ThreeD => ui.label("🔭"),
                 },
                 ViewCategory::Tensor => ui.label("🇹"),
-                ViewCategory::Text => ui.label("📃"),
-                ViewCategory::Plot => ui.label("📈"),
             };
 
             if ctx

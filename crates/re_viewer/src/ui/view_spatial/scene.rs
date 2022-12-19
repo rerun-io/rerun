@@ -819,20 +819,22 @@ impl SceneSpatial {
                             .image
                             .get_view_with_annotations(tensor, &legend, ctx.render_ctx);
 
-                    self.primitives
-                        .textured_rectangles
-                        .push(re_renderer::renderer::TexturedRect {
-                            top_left_corner_position: world_from_scene
-                                .transform_point3(glam::Vec3::ZERO),
-                            extent_u: world_from_scene.transform_vector3(glam::Vec3::X * w),
-                            extent_v: world_from_scene.transform_vector3(glam::Vec3::Y * h),
-                            texture: tensor_view.texture_handle,
-                            texture_filter_magnification:
-                                re_renderer::renderer::TextureFilterMag::Nearest,
-                            texture_filter_minification:
-                                re_renderer::renderer::TextureFilterMin::Linear,
-                            multiplicative_tint: paint_props.fg_stroke.color.into(),
-                        });
+                    if let Some(texture_handle) = tensor_view.texture_handle {
+                        self.primitives.textured_rectangles.push(
+                            re_renderer::renderer::TexturedRect {
+                                top_left_corner_position: world_from_scene
+                                    .transform_point3(glam::Vec3::ZERO),
+                                extent_u: world_from_scene.transform_vector3(glam::Vec3::X * w),
+                                extent_v: world_from_scene.transform_vector3(glam::Vec3::Y * h),
+                                texture: texture_handle,
+                                texture_filter_magnification:
+                                    re_renderer::renderer::TextureFilterMag::Nearest,
+                                texture_filter_minification:
+                                    re_renderer::renderer::TextureFilterMin::Linear,
+                                multiplicative_tint: paint_props.fg_stroke.color.into(),
+                            },
+                        );
+                    }
 
                     self.ui.images.push(Image {
                         instance_hash,
@@ -957,8 +959,8 @@ impl SceneSpatial {
                 &ctx.log_db.obj_db.arrow_store,
                 &timeline_query,
                 ent_path,
-                Rect2D::NAME,
-                &[ColorRGBA::NAME],
+                Rect2D::name(),
+                &[ColorRGBA::name()],
             ) {
                 visit_components3(
                     &df,

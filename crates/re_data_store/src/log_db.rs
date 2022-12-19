@@ -3,8 +3,8 @@ use nohash_hasher::IntMap;
 
 use re_log_types::{
     msg_bundle::MsgBundle, objects, ArrowMsg, BatchIndex, BeginRecordingMsg, DataMsg, DataPath,
-    DataVec, FieldName, LogMsg, LoggedData, MsgId, ObjTypePath, ObjectType, PathOp, PathOpMsg,
-    RecordingId, RecordingInfo, TimeInt, TimePoint, Timeline, TypeMsg,
+    DataVec, LogMsg, LoggedData, MsgId, ObjTypePath, ObjectType, PathOp, PathOpMsg, RecordingId,
+    RecordingInfo, TimeInt, TimePoint, Timeline, TypeMsg,
 };
 
 use crate::{Error, TimesPerTimeline};
@@ -120,10 +120,7 @@ impl ObjDb {
             let _pending_clears = self.tree.add_data_msg(
                 msg.msg_id,
                 &msg_bundle.time_point,
-                &DataPath::new(
-                    msg_bundle.obj_path.clone(),
-                    FieldName::from(component.name.clone()),
-                ),
+                &DataPath::new(msg_bundle.obj_path.clone(), component.name),
                 None,
             );
         }
