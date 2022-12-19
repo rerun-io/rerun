@@ -26,7 +26,7 @@ pub const QUIT: KeyboardShortcut = KeyboardShortcut::new(Modifiers::COMMAND, Key
 
 pub const RESET_VIEWER: KeyboardShortcut = KeyboardShortcut::new(CTRL_SHIFT, Key::R);
 
-#[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
+#[cfg(not(target_arch = "wasm32"))]
 pub const SHOW_PROFILER: KeyboardShortcut = KeyboardShortcut::new(CTRL_SHIFT, Key::P);
 
 pub const TOGGLE_MEMORY_PANEL: KeyboardShortcut = KeyboardShortcut::new(CTRL_SHIFT, Key::M);

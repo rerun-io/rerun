@@ -836,14 +836,60 @@ pub struct ComponentBucket {
     /// The offset of this bucket in the global table.
     pub(crate) row_offset: RowIndex,
 
+    /// Has this bucket been archived yet?
+    ///
+    /// For every `ComponentTable`, there can only be one active bucket at a time (i.e. the bucket
+    /// that is currently accepting write requests), all the others are archived.
+    /// When the currently active bucket is full, it is archived in turn, and a new bucket is
+    /// created to take its place.
+    ///
+    /// Archiving a bucket is a good opportunity to run some maintenance tasks on it, e.g.
+    /// compaction (concatenating all chunks down to a single one).
+    /// Currently, an archived bucket is guaranteed to have these properties:
+    /// - the bucket is full (it has reached the maximum allowed length and/or size),
+    /// - the bucket has been compacted,
+    /// - the bucket is only used for reads.
+    pub(crate) archived: bool,
+
     /// The time ranges (plural!) covered by this bucket.
     /// Buckets are never sorted over time, so these time ranges can grow arbitrarily large.
     ///
     /// These are only used for garbage collection.
     pub(crate) time_ranges: HashMap<Timeline, TimeRange>,
 
-    /// All the data for this bucket. This is a single column!
-    pub(crate) data: Box<dyn Array>,
+    /// All the data for this bucket: many rows of a single column.
+    ///
+    /// Each chunk is a list of arrays of structs, i.e. `ListArray<StructArray>`:
+    /// - the list layer corresponds to the different rows,
+    /// - the array layer corresponds to the different instances within a single row,
+    /// - and finally the struct layer holds the components themselves.
+    /// E.g.:
+    /// ```ignore
+    /// [
+    ///   [{x: 8.687487, y: 1.9590926}, {x: 2.0559108, y: 0.1494348}, {x: 7.09219, y: 0.9616637}],
+    ///   [{x: 7.158843, y: 0.68897724}, {x: 8.934421, y: 2.8420508}],
+    /// ]
+    /// ```
+    ///
+    /// During the active lifespan of the bucket, this can contain any number of chunks,
+    /// depending on how the data was inserted (e.g. single insertions vs. batches).
+    /// All of these chunks get compacted into one contiguous array when the bucket is archived,
+    /// i.e. when the bucket is full and a new one is created.
+    ///
+    /// Note that, as of today, we do not actually support batched insertion nor do we support
+    /// chunks of non-unit length (batches are inserted on a per-row basis internally).
+    /// As a result, chunks always contain one and only one row's worth of data, at least until
+    /// the bucket is archived and compacted.
+    /// See also #589.
+    pub(crate) chunks: Vec<Box<dyn Array>>,
+
+    /// The total number of rows present in this bucket, across all chunks.
+    pub(crate) total_rows: u64,
+    /// The size of this bucket in bytes, across all chunks.
+    ///
+    /// Accurately computing the size of arrow arrays is surprisingly costly, which is why we
+    /// cache this.
+    pub(crate) total_size_bytes: u64,
 }
 
 impl std::fmt::Display for ComponentBucket {
@@ -862,14 +908,16 @@ impl std::fmt::Display for ComponentBucket {
             // - all buckets that follow are lazily instantiated when data get inserted
             //
             // TODO(#439): is that still true with deletion?
+            // TODO(#589): support for non-unit-length chunks
             self.row_offset.as_u64()
                 + self
-                    .data
+                    .chunks
                     .len()
                     .checked_sub(1)
                     .expect("buckets are never empty") as u64,
         ))?;
 
+        f.write_fmt(format_args!("archived: {}\n", self.archived))?;
         f.write_str("time ranges:\n")?;
         for (timeline, time_range) in &self.time_ranges {
             f.write_fmt(format_args!(
@@ -878,7 +926,12 @@ impl std::fmt::Display for ComponentBucket {
             ))?;
         }
 
-        let chunk = Chunk::new(vec![self.data()]);
+        let rows = {
+            use arrow2::compute::concatenate::concatenate;
+            let chunks = self.chunks.iter().map(|chunk| &**chunk).collect::<Vec<_>>();
+            vec![concatenate(&chunks).unwrap()]
+        };
+        let chunk = Chunk::new(rows);
         f.write_str(&arrow2::io::print::write(&[chunk], &[self.name.as_str()]))?;
 
         Ok(())
@@ -888,12 +941,12 @@ impl std::fmt::Display for ComponentBucket {
 impl ComponentBucket {
     /// Returns the number of rows stored across this bucket.
     pub fn total_rows(&self) -> u64 {
-        self.data.len() as u64
+        self.total_rows
     }
 
     /// Returns the size of the data stored across this bucket, in bytes.
     pub fn total_size_bytes(&self) -> u64 {
-        arrow2::compute::aggregate::estimated_bytes_size(&*self.data) as u64
+        self.total_size_bytes
     }
 }
 

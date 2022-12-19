@@ -51,22 +51,12 @@ pub use ecolor::{Color32, Rgba};
 
 // ---------------------------------------------------------------------------
 
-// part of std, but unstable https://github.com/rust-lang/rust/issues/88581
-pub(crate) const fn next_multiple_of(cur: u32, rhs: u32) -> u32 {
-    match cur % rhs {
-        0 => cur,
-        r => cur + (rhs - r),
-    }
-}
-
-// ---------------------------------------------------------------------------
-
 /// Profiling macro for feature "puffin"
 #[doc(hidden)]
 #[macro_export]
 macro_rules! profile_function {
     ($($arg: tt)*) => {
-        #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
+        #[cfg(not(target_arch = "wasm32"))]
         puffin::profile_function!($($arg)*);
     };
 }
@@ -76,7 +66,7 @@ macro_rules! profile_function {
 #[macro_export]
 macro_rules! profile_scope {
     ($($arg: tt)*) => {
-        #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
+        #[cfg(not(target_arch = "wasm32"))]
         puffin::profile_scope!($($arg)*);
     };
 }

@@ -1,7 +1,7 @@
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
-use arrow2::array::{Array, ListArray, StructArray};
+use arrow2::array::{Array, StructArray};
 use criterion::{criterion_group, criterion_main, Criterion};
 
 use re_arrow_store::{DataStore, TimeQuery, TimelineQuery};
@@ -89,9 +89,7 @@ fn query_messages(store: &mut DataStore) -> Box<dyn Array> {
     let mut results = store.get(&[component], &row_indices);
 
     let row = std::mem::take(&mut results[0]).unwrap();
-    let list = row.as_any().downcast_ref::<ListArray<i32>>().unwrap();
-    let rects = list.value(0);
-    let rects = rects.as_any().downcast_ref::<StructArray>().unwrap();
+    let rects = row.as_any().downcast_ref::<StructArray>().unwrap();
     assert_eq!(NUM_RECTS as usize, rects.len());
 
     row

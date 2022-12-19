@@ -5,7 +5,6 @@ use type_map::concurrent::{self, TypeMap};
 use crate::{
     config::RenderContextConfig,
     global_bindings::GlobalBindings,
-    next_multiple_of,
     renderer::Renderer,
     resource_managers::{MeshManager, TextureManager2D},
     wgpu_resources::WgpuResourcePools,
@@ -231,7 +230,7 @@ impl RenderContext {
 /// TODO(andreas): Once we have higher level buffer allocators this should be handled there.
 pub(crate) fn uniform_buffer_allocation_size<Data>(device: &wgpu::Device) -> u64 {
     let uniform_buffer_size = std::mem::size_of::<Data>();
-    next_multiple_of(
+    wgpu::util::align_to(
         uniform_buffer_size as u32,
         device.limits().min_uniform_buffer_offset_alignment,
     ) as u64

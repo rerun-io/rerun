@@ -56,7 +56,7 @@ impl Default for ViewSpatialState {
 }
 
 impl ViewSpatialState {
-    pub fn show_settings_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
+    pub fn settings_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         egui::ComboBox::from_label("Navigation Mode")
             .selected_text(self.nav_mode.to_ui_string())
             .show_ui(ui, |ui| {
@@ -88,8 +88,7 @@ impl ViewSpatialState {
                     "Bounding box, x: [{} - {}], y: [{} - {}], z: [{} - {}]",
                     min.x, max.x, min.y, max.y, min.z, max.z
                 ));
-                self.state_3d
-                    .show_settings_ui(ctx, ui, &self.scene_bbox_accum);
+                self.state_3d.settings_ui(ctx, ui, &self.scene_bbox_accum);
             }
         }
     }
