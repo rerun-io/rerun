@@ -9,7 +9,7 @@ use re_log_types::{
     datagen::{build_frame_nr, build_some_point2d, build_some_rects},
     field_types::Rect2D,
     msg_bundle::{try_build_msg_bundle2, Component, MsgBundle},
-    MsgId, ObjPath as EntityPath, TimeType, Timeline,
+    ComponentNameRef, MsgId, ObjPath as EntityPath, TimeType, Timeline,
 };
 
 // ---
@@ -28,8 +28,8 @@ const NUM_RECTS: i64 = 1;
 // --- Benchmarks ---
 
 fn batch_rects(c: &mut Criterion) {
-    let msgs = build_messages(NUM_RECTS as usize);
     {
+        let msgs = build_messages(NUM_RECTS as usize);
         let mut group = c.benchmark_group("datastore/batch/rects");
         group.throughput(criterion::Throughput::Elements(
             (NUM_RECTS * NUM_FRAMES) as _,
@@ -41,16 +41,40 @@ fn batch_rects(c: &mut Criterion) {
 
     {
         let msgs = build_messages(NUM_RECTS as usize);
+        let mut store = insert_messages(msgs.iter());
         let mut group = c.benchmark_group("datastore/batch/rects");
         group.throughput(criterion::Throughput::Elements(NUM_RECTS as _));
-        let mut store = insert_messages(msgs.iter());
         group.bench_function("query", |b| {
-            b.iter(|| query_messages(&mut store));
+            b.iter(|| {
+                query_messages(&mut store, Rect2D::NAME, |mut results| {
+                    let row = std::mem::take(&mut results[0]).unwrap();
+                    let rects = row.as_any().downcast_ref::<StructArray>().unwrap();
+                    assert_eq!(NUM_RECTS as usize, rects.len());
+                    Some(row)
+                })
+            });
         });
     }
 }
 
-criterion_group!(benches, batch_rects);
+fn missing_components(c: &mut Criterion) {
+    {
+        let msgs = build_messages(NUM_RECTS as usize);
+        let mut store = insert_messages(msgs.iter());
+        let mut group = c.benchmark_group("datastore/missing_components");
+        group.throughput(criterion::Throughput::Elements(NUM_RECTS as _));
+        group.bench_function("primary", |b| {
+            b.iter(|| {
+                query_messages(&mut store, "rect2d_with_a_typo", |results| {
+                    assert!(results[0].is_none());
+                    None
+                })
+            });
+        });
+    }
+}
+
+criterion_group!(benches, batch_rects, missing_components);
 criterion_main!(benches);
 
 // --- Helpers ---
@@ -76,21 +100,20 @@ fn insert_messages<'a>(msgs: impl Iterator<Item = &'a MsgBundle>) -> DataStore {
     store
 }
 
-fn query_messages(store: &mut DataStore) -> Box<dyn Array> {
+fn query_messages(
+    store: &mut DataStore,
+    component: ComponentNameRef<'_>,
+    assert_fn: impl FnOnce([Option<Box<dyn Array>>; 1]) -> Option<Box<dyn Array>>,
+) -> Option<Box<dyn Array>> {
     let time_query = TimeQuery::LatestAt(NUM_FRAMES / 2);
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
     let timeline_query = TimelineQuery::new(timeline_frame_nr, time_query);
     let ent_path = EntityPath::from("rects");
-    let component = Rect2D::NAME;
 
     let row_indices = store
         .query(&timeline_query, &ent_path, component, &[component])
         .unwrap_or_default();
-    let mut results = store.get(&[component], &row_indices);
+    let results = store.get(&[component], &row_indices);
 
-    let row = std::mem::take(&mut results[0]).unwrap();
-    let rects = row.as_any().downcast_ref::<StructArray>().unwrap();
-    assert_eq!(NUM_RECTS as usize, rects.len());
-
-    row
+    assert_fn(results)
 }
