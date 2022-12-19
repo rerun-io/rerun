@@ -16,9 +16,9 @@ use re_query::{query_entity_with_primary, visit_components3};
 // ---
 
 #[cfg(not(debug_assertions))]
-const NUM_FRAMES: u32 = 100;
+const NUM_FRAMES: u32 = 1_000;
 #[cfg(not(debug_assertions))]
-const NUM_POINTS: u32 = 100;
+const NUM_POINTS: u32 = 1_000;
 
 // `cargo test` also runs the benchmark setup code, so make sure they run quickly:
 #[cfg(debug_assertions)]
@@ -39,6 +39,8 @@ fn obj_mono_points(c: &mut Criterion) {
 
         {
             let mut group = c.benchmark_group("arrow_mono_points");
+            // Mono-insert is slow -- decrease the sample size
+            group.sample_size(10);
             group.throughput(criterion::Throughput::Elements(
                 (NUM_POINTS * NUM_FRAMES) as _,
             ));
