@@ -17,7 +17,10 @@ use re_log_types::{
 
 // --- Data store ---
 
+/// A vector of times. Our primary column, always densely filled.
 pub type TimeIndex = Vec<i64>;
+
+/// A vector of references into the component tables. None = null.
 // TODO(cmc): keeping a separate validity might be a better option, maybe.
 pub type SecondaryIndex = Vec<Option<RowIndex>>;
 static_assertions::assert_eq_size!(u64, Option<RowIndex>);
@@ -565,7 +568,7 @@ pub struct IndexBucketIndices {
     /// One index per component: new components (and as such, new indices) can be added at any
     /// time!
     /// When that happens, they will be retro-filled with nulls so that they share the same
-    /// length as the primary index.
+    /// length as the primary index ([`Self::times`]).
     pub(crate) indices: IntMap<ComponentName, SecondaryIndex>,
 }
 
