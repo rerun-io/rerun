@@ -31,6 +31,12 @@ pub struct ComponentWithInstances {
     pub values: Box<dyn Array>,
 }
 
+impl ComponentWithInstances {
+    pub fn len(&self) -> usize {
+        self.values.len()
+    }
+}
+
 impl TryFrom<ComponentWithInstances> for DataFrame {
     type Error = QueryError;
 

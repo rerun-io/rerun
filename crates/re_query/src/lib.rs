@@ -11,4 +11,6 @@ pub use self::query::{
 };
 // Used for doc-tests
 pub use self::query::__populate_example_store;
-pub use self::visit::{iter_column, visit_component, visit_components2, visit_components3};
+pub use self::visit::{
+    iter_column, joined_iter, visit_component, visit_components2, visit_components3,
+};

@@ -2,7 +2,7 @@
 
 use crate::{
     field_types::{self, Instance},
-    msg_bundle::{wrap_in_listarray, Component as _, ComponentBundle},
+    msg_bundle::{wrap_in_listarray, ComponentBundle},
     Time, TimeInt, TimeType, Timeline,
 };
 use arrow2::array::PrimitiveArray;
@@ -61,20 +61,9 @@ pub fn build_frame_nr(frame_nr: i64) -> (Timeline, TimeInt) {
 }
 
 //TODO(john) convert this to a Component struct
-pub fn build_instances(nb_instances: usize) -> ComponentBundle {
-    use rand::Rng as _;
-    let mut rng = rand::thread_rng();
-
-    let data = PrimitiveArray::from(
-        (0..nb_instances)
-            .into_iter()
-            .map(|_| Some(rng.gen()))
-            .collect::<Vec<Option<u32>>>(),
-    );
-    let data = wrap_in_listarray(data.boxed());
-
-    ComponentBundle {
-        name: Instance::name(),
-        value: data.boxed(),
-    }
+pub fn build_instances(nb_instances: usize) -> Vec<Instance> {
+    (0..nb_instances)
+        .into_iter()
+        .map(|id| Instance(id as u64))
+        .collect()
 }

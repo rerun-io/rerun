@@ -9,10 +9,11 @@ use re_log_types::{
         deserialize::{arrow_array_deserialize_iterator, ArrowArray, ArrowDeserialize},
         field::ArrowField,
     },
+    field_types::Instance,
     msg_bundle::Component,
 };
 
-use crate::query::EntityView;
+use crate::{query::EntityView, ComponentWithInstances};
 
 /// Make it so that our arrays can be deserialized again by arrow2-convert
 fn fix_polars_nulls<C: Component>(array: &dyn Array) -> Box<dyn Array> {
@@ -68,6 +69,97 @@ where
     res.into_iter()
 }
 
+#[derive(Debug)]
+struct ComponentJoinedIterator<IIter, VIter> {
+    prim_instance_iter: IIter,
+    component_instance_iter: IIter,
+    component_value_iter: VIter,
+    next_component: Option<Instance>,
+}
+
+impl<IIter, VIter, C> Iterator for ComponentJoinedIterator<IIter, VIter>
+where
+    IIter: Iterator<Item = Instance>,
+    VIter: Iterator<Item = Option<C>>,
+{
+    type Item = Option<C>;
+
+    fn next(&mut self) -> Option<Option<C>> {
+        match self.prim_instance_iter.next() {
+            Some(key) => loop {
+                match &self.next_component {
+                    Some(next) => {
+                        match key.0.cmp(&next.0) {
+                            std::cmp::Ordering::Less => break Some(None),
+                            std::cmp::Ordering::Equal => {
+                                self.next_component = self.component_instance_iter.next();
+                                break self.component_value_iter.next();
+                            }
+                            std::cmp::Ordering::Greater => {
+                                // Skip components until we've caught up
+                                _ = self.component_value_iter.next();
+                                self.next_component = self.component_instance_iter.next();
+                            }
+                        }
+                    }
+                    None => break Some(None), // We ran out of component elements
+                };
+            },
+            None => None, // We're done iterating
+        }
+    }
+}
+
+fn auto_instance<IIter>(iter: Option<IIter>, len: usize) -> impl Iterator<Item = Instance>
+where
+    IIter: Iterator<Item = Instance>,
+{
+    if let Some(iter) = iter {
+        itertools::Either::Left(iter)
+    } else {
+        let auto_num = (0..len).map(|i| Instance(i as u64));
+        itertools::Either::Right(auto_num)
+    }
+}
+
+pub fn joined_iter<'a, C: Component>(
+    primary: &'a ComponentWithInstances,
+    component: &'a ComponentWithInstances,
+) -> impl Iterator<Item = Option<C>> + 'a
+where
+    C: ArrowDeserialize + ArrowField<Type = C> + 'static,
+    C::ArrayType: ArrowArray,
+    for<'b> &'b C::ArrayType: IntoIterator,
+{
+    let prim_instance_iter = auto_instance(
+        primary
+            .instance_keys
+            .as_ref()
+            .map(|keys| arrow_array_deserialize_iterator::<Instance>(keys.as_ref()).unwrap()),
+        primary.len(),
+    );
+
+    let mut component_instance_iter = auto_instance(
+        component
+            .instance_keys
+            .as_ref()
+            .map(|keys| arrow_array_deserialize_iterator::<Instance>(keys.as_ref()).unwrap()),
+        primary.len(),
+    );
+
+    let component_value_iter =
+        arrow_array_deserialize_iterator::<Option<C>>(component.values.as_ref()).unwrap();
+
+    let next_component = component_instance_iter.next();
+
+    ComponentJoinedIterator {
+        prim_instance_iter,
+        component_instance_iter,
+        component_value_iter,
+        next_component,
+    }
+}
+
 /// Visit a component in a dataframe
 /// See [`visit_components2`]
 pub fn visit_component<C0: Component>(entity_view: &EntityView, mut visit: impl FnMut(&C0))
@@ -92,7 +184,7 @@ where
 /// The first component is the primary, while the remaining are optional
 ///
 /// # Usage
-/// ```text
+/// ``` text
 /// # use re_query::dataframe_util::df_builder2;
 /// # use re_log_types::field_types::{ColorRGBA, Point2D};
 /// use re_query::visit_components2;
@@ -135,18 +227,17 @@ pub fn visit_components2<C0: Component, C1: Component>(
     C1::ArrayType: ArrowArray,
     for<'a> &'a C1::ArrayType: IntoIterator,
 {
-    let df: DataFrame = entity_view.clone().try_into().unwrap();
-    // The primary column must exist or else we don't have anything to do
-    if df.column(C0::name().as_str()).is_ok() {
-        let c0_iter = iter_column::<C0>(&df);
-        let c1_iter = iter_column::<C1>(&df);
+    let c0_iter =
+        arrow_array_deserialize_iterator::<Option<C0>>(entity_view.primary.values.as_ref())
+            .unwrap();
+    //let c0_iter = joined_iter::<C0>(&entity_view.primary, &entity_view.primary);
+    let c1_iter = joined_iter::<C1>(&entity_view.primary, &entity_view.components[0]);
 
-        itertools::izip!(c0_iter, c1_iter).for_each(|(c0_data, c1_data)| {
-            if let Some(c0_data) = c0_data {
-                visit(&c0_data, c1_data.as_ref());
-            }
-        });
-    }
+    itertools::izip!(c0_iter, c1_iter).for_each(|(c0_data, c1_data)| {
+        if let Some(c0_data) = c0_data {
+            visit(&c0_data, c1_data.as_ref());
+        }
+    });
 }
 
 /// Visit all all of a complex component in a dataframe
@@ -165,17 +256,13 @@ pub fn visit_components3<C0: Component, C1: Component, C2: Component>(
     C2::ArrayType: ArrowArray,
     for<'a> &'a C2::ArrayType: IntoIterator,
 {
-    let df: DataFrame = entity_view.clone().try_into().unwrap();
-    // The primary column must exist or else we don't have anything to do
-    if df.column(C0::name().as_str()).is_ok() {
-        let c0_iter = iter_column::<C0>(&df);
-        let c1_iter = iter_column::<C1>(&df);
-        let c2_iter = iter_column::<C2>(&df);
+    let c0_iter = joined_iter::<C0>(&entity_view.primary, &entity_view.primary);
+    let c1_iter = joined_iter::<C1>(&entity_view.primary, &entity_view.components[0]);
+    let c2_iter = joined_iter::<C2>(&entity_view.primary, &entity_view.components[1]);
 
-        itertools::izip!(c0_iter, c1_iter, c2_iter).for_each(|(c0_data, c1_data, c2_data)| {
-            if let Some(c0_data) = c0_data {
-                visit(&c0_data, c1_data.as_ref(), c2_data.as_ref());
-            }
-        });
-    }
+    itertools::izip!(c0_iter, c1_iter, c2_iter).for_each(|(c0_data, c1_data, c2_data)| {
+        if let Some(c0_data) = c0_data {
+            visit(&c0_data, c1_data.as_ref(), c2_data.as_ref());
+        }
+    });
 }

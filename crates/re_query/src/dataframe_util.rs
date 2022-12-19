@@ -1,6 +1,7 @@
 use polars_core::prelude::*;
 use re_log_types::{
     external::arrow2_convert::{field::ArrowField, serialize::ArrowSerialize},
+    field_types::Instance,
     msg_bundle::Component,
 };
 
@@ -21,7 +22,9 @@ where
     DataFrame::new(vec![series0])
 }
 
-pub fn view_builder1<C0>(c0: &Vec<Option<C0>>) -> crate::Result<EntityView>
+pub fn view_builder1<C0>(
+    c0: (Option<&Vec<Instance>>, &Vec<Option<C0>>),
+) -> crate::Result<EntityView>
 where
     C0: Component + 'static,
     Option<C0>: ArrowSerialize + ArrowField<Type = Option<C0>>,
@@ -29,12 +32,19 @@ where
     use arrow2::array::MutableArray;
     use re_log_types::external::arrow2_convert::serialize::arrow_serialize_to_mutable_array;
 
-    let array0 = arrow_serialize_to_mutable_array::<Option<C0>, Option<C0>, &Vec<Option<C0>>>(c0);
+    let keys0 = c0.0.map(|keys| {
+        arrow_serialize_to_mutable_array::<Instance, Instance, &Vec<Instance>>(keys)
+            .unwrap()
+            .as_box()
+    });
+    let array0 = arrow_serialize_to_mutable_array::<Option<C0>, Option<C0>, &Vec<Option<C0>>>(c0.1)
+        .unwrap()
+        .as_box();
 
     let component_c0 = ComponentWithInstances {
         name: C0::name(),
-        instance_keys: None,
-        values: array0.unwrap().as_box(),
+        instance_keys: keys0,
+        values: array0,
     };
 
     Ok(EntityView {
@@ -66,8 +76,8 @@ where
 }
 
 pub fn view_builder2<C0, C1>(
-    c0: &Vec<Option<C0>>,
-    c1: &Vec<Option<C1>>,
+    c0: (Option<&Vec<Instance>>, &Vec<Option<C0>>),
+    c1: (Option<&Vec<Instance>>, &Vec<Option<C1>>),
 ) -> crate::Result<EntityView>
 where
     C0: Component + 'static,
@@ -78,19 +88,35 @@ where
     use arrow2::array::MutableArray;
     use re_log_types::external::arrow2_convert::serialize::arrow_serialize_to_mutable_array;
 
-    let array0 = arrow_serialize_to_mutable_array::<Option<C0>, Option<C0>, &Vec<Option<C0>>>(c0);
-    let array1 = arrow_serialize_to_mutable_array::<Option<C1>, Option<C1>, &Vec<Option<C1>>>(c1);
+    let keys0 = c0.0.map(|keys| {
+        arrow_serialize_to_mutable_array::<Instance, Instance, &Vec<Instance>>(keys)
+            .unwrap()
+            .as_box()
+    });
+
+    let array0 = arrow_serialize_to_mutable_array::<Option<C0>, Option<C0>, &Vec<Option<C0>>>(c0.1)
+        .unwrap()
+        .as_box();
 
     let component_c0 = ComponentWithInstances {
         name: C0::name(),
-        instance_keys: None,
-        values: array0.unwrap().as_box(),
+        instance_keys: keys0,
+        values: array0,
     };
+
+    let keys1 = c1.0.map(|keys| {
+        arrow_serialize_to_mutable_array::<Instance, Instance, &Vec<Instance>>(keys)
+            .unwrap()
+            .as_box()
+    });
+    let array1 = arrow_serialize_to_mutable_array::<Option<C1>, Option<C1>, &Vec<Option<C1>>>(c1.1)
+        .unwrap()
+        .as_box();
 
     let component_c1 = ComponentWithInstances {
         name: C1::name(),
-        instance_keys: None,
-        values: array1.unwrap().as_box(),
+        instance_keys: keys1,
+        values: array1,
     };
 
     Ok(EntityView {
