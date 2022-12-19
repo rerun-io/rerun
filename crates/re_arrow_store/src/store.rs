@@ -18,7 +18,7 @@ use re_log_types::{
 // --- Data store ---
 
 pub type TimeIndex = Vec<i64>;
-// TODO: keeping a separate validity might be a better option, maybe.
+// TODO(cmc): keeping a separate validity might be a better option, maybe.
 pub type SecondaryIndex = Vec<Option<RowIndex>>;
 static_assertions::assert_eq_size!(u64, Option<RowIndex>);
 
