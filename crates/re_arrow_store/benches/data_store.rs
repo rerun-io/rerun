@@ -8,8 +8,8 @@ use re_arrow_store::{DataStore, TimeQuery, TimelineQuery};
 use re_log_types::{
     datagen::{build_frame_nr, build_some_point2d, build_some_rects},
     field_types::Rect2D,
-    msg_bundle::{try_build_msg_bundle2, Component, MsgBundle},
-    ComponentNameRef, MsgId, ObjPath as EntityPath, TimeType, Timeline,
+    msg_bundle::{try_build_msg_bundle2, Component as _, MsgBundle},
+    ComponentName, MsgId, ObjPath as EntityPath, TimeType, Timeline,
 };
 
 // ---
@@ -46,7 +46,7 @@ fn batch_rects(c: &mut Criterion) {
         group.throughput(criterion::Throughput::Elements(NUM_RECTS as _));
         group.bench_function("query", |b| {
             b.iter(|| {
-                query_messages(&mut store, Rect2D::NAME, &[Rect2D::NAME], |results| {
+                query_messages(&mut store, Rect2D::name(), &[Rect2D::name()], |results| {
                     let rects = results[0]
                         .as_ref()
                         .unwrap()
@@ -71,8 +71,8 @@ fn missing_components(c: &mut Criterion) {
             b.iter(|| {
                 query_messages(
                     &mut store,
-                    "rect2d_with_a_typo",
-                    &[Rect2D::NAME],
+                    "rect2d_with_a_typo".into(),
+                    &[Rect2D::name()],
                     |results| {
                         assert!(results[0].is_none());
                         results
@@ -91,8 +91,12 @@ fn missing_components(c: &mut Criterion) {
             b.iter(|| {
                 query_messages(
                     &mut store,
-                    Rect2D::NAME,
-                    &["a_typo", "another_typo", "YET_another_typo"],
+                    Rect2D::name(),
+                    &[
+                        "a_typo".into(),
+                        "another_typo".into(),
+                        "YET_another_typo".into(),
+                    ],
                     |results| {
                         assert!(results[0].is_none());
                         assert!(results[1].is_none());
@@ -133,8 +137,8 @@ fn insert_messages<'a>(msgs: impl Iterator<Item = &'a MsgBundle>) -> DataStore {
 
 fn query_messages<const N: usize>(
     store: &mut DataStore,
-    primary: ComponentNameRef<'_>,
-    secondaries: &[ComponentNameRef<'_>; N],
+    primary: ComponentName,
+    secondaries: &[ComponentName; N],
     assert_fn: impl FnOnce([Option<Box<dyn Array>>; N]) -> [Option<Box<dyn Array>>; N],
 ) -> [Option<Box<dyn Array>>; N] {
     let time_query = TimeQuery::LatestAt(NUM_FRAMES / 2);

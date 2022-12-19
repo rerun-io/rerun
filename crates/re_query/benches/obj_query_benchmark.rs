@@ -131,8 +131,8 @@ fn query_and_visit(store: &mut DataStore, paths: &[ObjPath]) -> Vec<Point> {
             store,
             &timeline_query,
             path,
-            Point2D::NAME,
-            &[ColorRGBA::NAME],
+            Point2D::name(),
+            &[ColorRGBA::name()],
         ) {
             visit_components3(
                 &df,

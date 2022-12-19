@@ -11,10 +11,9 @@ use re_log_types::{
     datagen::{
         build_frame_nr, build_instances, build_log_time, build_some_point2d, build_some_rects,
     },
-    field_types::{Point2D, Rect2D},
-    msg_bundle::{Component, ComponentBundle, MsgBundle},
-    ComponentName, ComponentNameRef, Duration, MsgId, ObjPath as EntityPath, Time, TimePoint,
-    TimeType, Timeline,
+    field_types::{Instance, Point2D, Rect2D},
+    msg_bundle::{Component as _, ComponentBundle, MsgBundle},
+    ComponentName, Duration, MsgId, ObjPath as EntityPath, Time, TimePoint, TimeType, Timeline,
 };
 
 // --- Configs ---
@@ -159,7 +158,7 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
     let timeline_wrong_kind = Timeline::new("log_time", TimeType::Sequence);
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
     let timeline_log_time = Timeline::new("log_time", TimeType::Time);
-    let components_all = &["instances"];
+    let components_all = &[Instance::name()];
 
     tracker.assert_scenario(
         "query at `last_frame`",
@@ -168,7 +167,7 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
         &TimelineQuery::new(timeline_frame_nr, TimeQuery::LatestAt(frame40)),
         &ent_path,
         components_all,
-        vec![("instances", frame40.into())],
+        vec![(Instance::name(), frame40.into())],
     );
 
     tracker.assert_scenario(
@@ -178,7 +177,7 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
         &TimelineQuery::new(timeline_log_time, TimeQuery::LatestAt(now_nanos)),
         &ent_path,
         components_all,
-        vec![("instances", now_nanos.into())],
+        vec![(Instance::name(), now_nanos.into())],
     );
 
     tracker.assert_scenario(
@@ -217,7 +216,7 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
         store,
         &TimelineQuery::new(timeline_frame_nr, TimeQuery::LatestAt(frame40)),
         &ent_path,
-        &["they", "dont", "exist"],
+        &["they".into(), "dont".into(), "exist".into()],
         vec![],
     );
 
@@ -354,7 +353,7 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
 
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
     let timeline_log_time = Timeline::new("log_time", TimeType::Time);
-    let components_all = &["instances", Rect2D::NAME, Point2D::NAME];
+    let components_all = &[Instance::name(), Rect2D::name(), Point2D::name()];
 
     // --- Testing at all frames ---
 
@@ -370,9 +369,9 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
             "data at that point in time",
             frame41,
             vec![
-                ("instances", frame41.into()),
-                (Rect2D::NAME, frame41.into()),
-                (Point2D::NAME, frame41.into()),
+                (Instance::name(), frame41.into()),
+                (Rect2D::name(), frame41.into()),
+                (Point2D::name(), frame41.into()),
             ],
         ),
         (
@@ -380,9 +379,9 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
             "data at that point in time",
             frame42,
             vec![
-                ("instances", frame42.into()),
-                (Rect2D::NAME, frame42.into()),
-                (Point2D::NAME, frame42.into()),
+                (Instance::name(), frame42.into()),
+                (Rect2D::name(), frame42.into()),
+                (Point2D::name(), frame42.into()),
             ],
         ),
         (
@@ -390,9 +389,9 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
             "latest data for all components",
             frame43,
             vec![
-                ("instances", frame42.into()),
-                (Rect2D::NAME, frame43.into()),
-                (Point2D::NAME, frame42.into()),
+                (Instance::name(), frame42.into()),
+                (Rect2D::name(), frame43.into()),
+                (Point2D::name(), frame42.into()),
             ],
         ),
         (
@@ -400,9 +399,9 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
             "latest data for all components",
             frame44,
             vec![
-                ("instances", frame42.into()),
-                (Rect2D::NAME, frame43.into()),
-                (Point2D::NAME, frame44.into()),
+                (Instance::name(), frame42.into()),
+                (Rect2D::name(), frame43.into()),
+                (Point2D::name(), frame44.into()),
             ],
         ),
     ];
@@ -433,8 +432,8 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
             "data at that point in time",
             now_minus_1s,
             vec![
-                (Rect2D::NAME, now_minus_1s_nanos.into()),
-                (Point2D::NAME, now_minus_1s_nanos.into()),
+                (Rect2D::name(), now_minus_1s_nanos.into()),
+                (Point2D::name(), now_minus_1s_nanos.into()),
             ],
         ),
         (
@@ -442,9 +441,9 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
             "data at that point in time",
             now,
             vec![
-                ("instances", now_nanos.into()),
-                (Rect2D::NAME, now_nanos.into()),
-                (Point2D::NAME, now_minus_1s_nanos.into()),
+                (Instance::name(), now_nanos.into()),
+                (Rect2D::name(), now_nanos.into()),
+                (Point2D::name(), now_minus_1s_nanos.into()),
             ],
         ),
         (
@@ -452,9 +451,9 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
             "latest data for all components",
             now_plus_1s,
             vec![
-                ("instances", now_plus_1s_nanos.into()),
-                (Rect2D::NAME, now_plus_1s_nanos.into()),
-                (Point2D::NAME, now_minus_1s_nanos.into()),
+                (Instance::name(), now_plus_1s_nanos.into()),
+                (Rect2D::name(), now_plus_1s_nanos.into()),
+                (Point2D::name(), now_minus_1s_nanos.into()),
             ],
         ),
         (
@@ -462,9 +461,9 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
             "latest data for all components",
             now_plus_2s,
             vec![
-                ("instances", now_plus_1s_nanos.into()),
-                (Rect2D::NAME, now_plus_1s_nanos.into()),
-                (Point2D::NAME, now_minus_1s_nanos.into()),
+                (Instance::name(), now_plus_1s_nanos.into()),
+                (Rect2D::name(), now_plus_1s_nanos.into()),
+                (Point2D::name(), now_minus_1s_nanos.into()),
             ],
         ),
     ];
@@ -546,85 +545,85 @@ fn query_model_specifics_impl(store: &mut DataStore) {
     }
 
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
-    let components_all = &["instances", Rect2D::NAME, Point2D::NAME];
+    let components_all = &[Instance::name(), Rect2D::name(), Point2D::name()];
 
     let scenarios = [
         (
             "query all components at frame #40, from `rects` PoV",
             "empty dataframe",
             frame40,
-            Rect2D::NAME,
+            Rect2D::name(),
             vec![],
         ),
         (
             "query all components at frame #40, from `positions` PoV",
             "empty dataframe",
             frame40,
-            Point2D::NAME,
+            Point2D::name(),
             vec![],
         ),
         (
             "query all components at frame #40, from `instances` PoV",
             "empty dataframe",
             frame40,
-            "instances",
+            Instance::name(),
             vec![],
         ),
         (
             "query all components at frame #41, from `rects` PoV",
             "the set of `rects` and the _first_ set of `instances` at that time",
             frame41,
-            Rect2D::NAME,
+            Rect2D::name(),
             vec![
-                ("instances", frame41.into(), 0),
-                (Rect2D::NAME, frame41.into(), 0),
+                (Instance::name(), frame41.into(), 0),
+                (Rect2D::name(), frame41.into(), 0),
             ],
         ),
         (
             "query all components at frame #41, from `positions` PoV",
             "the set of `positions` and the _second_ set of `instances` at that time",
             frame41,
-            Point2D::NAME,
+            Point2D::name(),
             vec![
-                ("instances", frame41.into(), 1),
-                (Point2D::NAME, frame41.into(), 0),
+                (Instance::name(), frame41.into(), 1),
+                (Point2D::name(), frame41.into(), 0),
             ],
         ),
         (
             "query all components at frame #41, from `instances` PoV",
             "the _second_ set of `instances` and the set of `positions` at that time",
             frame41,
-            "instances",
+            Instance::name(),
             vec![
-                ("instances", frame41.into(), 1),
-                (Point2D::NAME, frame41.into(), 0),
+                (Instance::name(), frame41.into(), 1),
+                (Point2D::name(), frame41.into(), 0),
             ],
         ),
         (
             "query all components at frame #42, from `positions` PoV",
             "the set of `positions` and the set of `instances` at that time",
             frame42,
-            Point2D::NAME,
+            Point2D::name(),
             vec![
-                ("instances", frame42.into(), 0),
-                (Point2D::NAME, frame42.into(), 0),
+                (Instance::name(), frame42.into(), 0),
+                (Point2D::name(), frame42.into(), 0),
             ],
         ),
         (
             "query all components at frame #42, from `rects` PoV",
             "the set of `rects` at that time",
             frame42,
-            Rect2D::NAME,
-            vec![(Rect2D::NAME, frame42.into(), 0)],
+            Rect2D::name(),
+            vec![(Rect2D::name(), frame42.into(), 0)],
         ),
         (
             "query all components at frame #42, from `instances` PoV",
             "the set of `positions` and the set of `instances` at that time",
             frame42,
-            "instances",
+            Instance::name(),
             vec![
-                ("instances", frame42.into(), 0),
-                (Point2D::NAME, frame42.into(), 0),
+                (Instance::name(), frame42.into(), 0),
+                (Point2D::name(), frame42.into(), 0),
             ],
         ),
     ];
@@ -655,7 +654,7 @@ impl DataTracker {
         for time in msg_bundle.time_point.times() {
             for bundle in &msg_bundle.components {
                 let ComponentBundle { name, value } = bundle;
-                let comps = self.all_data.entry((name.clone(), *time)).or_default();
+                let comps = self.all_data.entry((*name, *time)).or_default();
                 comps.push(value.clone());
             }
         }
@@ -671,8 +670,8 @@ impl DataTracker {
         store: &mut DataStore,
         timeline_query: &TimelineQuery,
         ent_path: &EntityPath,
-        components: &[ComponentNameRef<'_>; N],
-        expected: Vec<(ComponentNameRef<'static>, TimeInt)>,
+        components: &[ComponentName; N],
+        expected: Vec<(ComponentName, TimeInt)>,
     ) {
         self.assert_scenario_pov_impl(
             scenario,
@@ -699,9 +698,9 @@ impl DataTracker {
         store: &mut DataStore,
         timeline_query: &TimelineQuery,
         ent_path: &EntityPath,
-        primary: ComponentNameRef<'_>,
-        components: &[ComponentNameRef<'_>; N],
-        expected: Vec<(ComponentNameRef<'static>, TimeInt, usize)>,
+        primary: ComponentName,
+        components: &[ComponentName; N],
+        expected: Vec<(ComponentName, TimeInt, usize)>,
     ) {
         self.assert_scenario_pov_impl(
             scenario,
@@ -725,9 +724,9 @@ impl DataTracker {
         store: &mut DataStore,
         timeline_query: &TimelineQuery,
         ent_path: &EntityPath,
-        primary: Option<ComponentNameRef<'_>>,
-        components: &[ComponentNameRef<'_>; N],
-        expected: Vec<(ComponentNameRef<'static>, TimeInt, usize)>,
+        primary: Option<ComponentName>,
+        components: &[ComponentName; N],
+        expected: Vec<(ComponentName, TimeInt, usize)>,
     ) {
         let df = if let Some(primary) = primary {
             Self::fetch_components_pov(store, timeline_query, ent_path, primary, components)
@@ -746,11 +745,11 @@ impl DataTracker {
             .into_iter()
             .filter_map(|(name, time, idx)| {
                 self.all_data
-                    .get(&(name.to_owned(), time))
+                    .get(&(name, time))
                     .and_then(|entries| entries.get(idx).cloned())
                     .map(|data| (name, data))
             })
-            .map(|(name, data)| Series::try_from((name, data)).unwrap())
+            .map(|(name, data)| Series::try_from((name.as_str(), data)).unwrap())
             .collect::<Vec<_>>();
         let expected = DataFrame::new(series).unwrap();
         let expected = expected.explode(expected.get_column_names()).unwrap();
@@ -766,22 +765,23 @@ impl DataTracker {
         store: &DataStore,
         timeline_query: &TimelineQuery,
         ent_path: &EntityPath,
-        primary: ComponentNameRef<'_>,
-        component: ComponentNameRef<'_>,
+        primary: ComponentName,
+        component: ComponentName,
     ) -> Option<Series> {
         let row_indices = store
             .query(timeline_query, ent_path, primary, &[component])
             .unwrap_or_default();
         let mut results = store.get(&[component], &row_indices);
-        std::mem::take(&mut results[0]).map(|row| Series::try_from((component, row)).unwrap())
+        std::mem::take(&mut results[0])
+            .map(|row| Series::try_from((component.as_str(), row)).unwrap())
     }
 
     fn fetch_components_pov<const N: usize>(
         store: &DataStore,
         timeline_query: &TimelineQuery,
         ent_path: &EntityPath,
-        primary: ComponentNameRef<'_>,
-        components: &[ComponentNameRef<'_>; N],
+        primary: ComponentName,
+        components: &[ComponentName; N],
     ) -> DataFrame {
         let row_indices = store
             .query(timeline_query, ent_path, primary, components)
@@ -793,7 +793,7 @@ impl DataTracker {
                 .iter()
                 .zip(results)
                 .filter_map(|(component, col)| col.map(|col| (component, col)))
-                .map(|(&component, col)| Series::try_from((component, col)).unwrap())
+                .map(|(&component, col)| Series::try_from((component.as_str(), col)).unwrap())
                 .collect();
 
             DataFrame::new(series).unwrap()

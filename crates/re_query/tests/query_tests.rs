@@ -49,8 +49,8 @@ fn simple_query() {
         &store,
         &timeline_query,
         &ent_path.into(),
-        Point2D::NAME,
-        &[ColorRGBA::NAME],
+        Point2D::name(),
+        &[ColorRGBA::name()],
     )
     .unwrap();
 
@@ -107,8 +107,8 @@ fn no_instance_join_query() {
         &store,
         &timeline_query,
         &ent_path.into(),
-        Point2D::NAME,
-        &[ColorRGBA::NAME],
+        Point2D::name(),
+        &[ColorRGBA::name()],
     )
     .unwrap();
 
@@ -160,8 +160,8 @@ fn missing_column_join_query() {
         &store,
         &timeline_query,
         &ent_path.into(),
-        Point2D::NAME,
-        &[ColorRGBA::NAME],
+        Point2D::name(),
+        &[ColorRGBA::name()],
     )
     .unwrap();
 

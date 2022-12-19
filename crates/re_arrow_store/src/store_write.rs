@@ -1,18 +1,14 @@
-use std::collections::HashMap;
-use std::sync::Arc;
-
+use anyhow::ensure;
 use arrow2::array::{new_empty_array, Array, Int64Vec, ListArray, MutableArray, UInt64Vec};
 use arrow2::bitmap::MutableBitmap;
 use arrow2::buffer::Buffer;
-use arrow2::compute::concatenate::concatenate;
 use arrow2::datatypes::DataType;
+use nohash_hasher::IntMap;
 use parking_lot::RwLock;
 
 use re_log::debug;
 use re_log_types::msg_bundle::{ComponentBundle, MsgBundle};
-use re_log_types::{
-    ComponentNameRef, ObjPath as EntityPath, TimeInt, TimePoint, TimeRange, Timeline,
-};
+use re_log_types::{ComponentName, ObjPath as EntityPath, TimeInt, TimePoint, TimeRange, Timeline};
 
 use crate::store::IndexBucketIndices;
 use crate::{
@@ -22,8 +18,11 @@ use crate::{
 // --- Data store ---
 
 impl DataStore {
-    /// Inserts a [`MsgBundle`] payload of Arrow data into the datastore.
-    pub fn insert(&mut self, msg_bundle: &MsgBundle) -> anyhow::Result<()> {
+    /// Inserts a [`MsgBundle`]'s worth of components into the datastore.
+    ///
+    /// * All components across the bundle must share the same number of rows.
+    /// * All components within a single row must share the same number of instances.
+    pub fn insert(&mut self, bundle: &MsgBundle) -> anyhow::Result<()> {
         // TODO(cmc): kind & insert_id need to somehow propagate through the span system.
         self.insert_id += 1;
 
@@ -32,10 +31,29 @@ impl DataStore {
             obj_path: ent_path,
             time_point,
             components,
-        } = msg_bundle;
+        } = bundle;
 
-        // TODO(cmc): sort the "instances" component, and everything else accordingly!
+        if components.is_empty() {
+            return Ok(());
+        }
+
         let ent_path_hash = *ent_path.hash();
+        let nb_rows = components[0].value.len();
+
+        // TODO(#527): typed error
+        ensure!(
+            nb_rows == 1,
+            "we currently don't support more than one row per batch, as a `MsgBundle` can only \
+                carry a single timepoint for now!"
+        );
+
+        // TODO(#527): typed error
+        ensure!(
+            components
+                .iter()
+                .all(|bundle| bundle.value.len() == nb_rows),
+            "all components across the bundle must share the same number of rows",
+        );
 
         debug!(
             kind = "insert",
@@ -45,23 +63,39 @@ impl DataStore {
                 .collect::<Vec<_>>(),
             entity = %ent_path,
             components = ?components.iter().map(|bundle| &bundle.name).collect::<Vec<_>>(),
+            nb_rows,
             "insertion started..."
         );
 
-        // TODO(cmc): sort the "instances" component, and everything else accordingly!
+        let mut row_indices = IntMap::default();
 
-        let mut indices = HashMap::with_capacity(components.len());
+        // TODO(#589): support for batched row component insertions
+        for _row_nr in 0..nb_rows {
+            // TODO(cmc): find and/or generate the clustering key for the row.
 
-        for bundle in components {
-            let ComponentBundle { name, value } = bundle;
+            for bundle in components {
+                let ComponentBundle { name, value: rows } = bundle;
 
-            let table = self
-                .components
-                .entry((*bundle.name).to_owned())
-                .or_insert_with(|| ComponentTable::new((*name).clone(), value.data_type().clone()));
+                // Unwrapping a ListArray is somewhat costly, especially considering we're just
+                // gonna rewrap it again in a minute... so we'd rather just slice it to a list of
+                // one instead.
+                //
+                // let rows_single = rows.slice(row_nr, 1);
+                //
+                // Except it turns out that slicing is _extremely_ costly!
+                // So use the fact that `rows` is always of unit-length for now.
+                let rows_single = rows;
 
-            let row_idx = table.push(&self.config, time_point, value.as_ref())?;
-            indices.insert(name.as_ref(), row_idx);
+                let table = self.components.entry(bundle.name).or_insert_with(|| {
+                    ComponentTable::new(
+                        *name,
+                        ListArray::<i32>::get_child_type(rows_single.data_type()),
+                    )
+                });
+
+                let row_idx = table.push(&self.config, time_point, rows_single.as_ref());
+                row_indices.insert(*name, row_idx);
+            }
         }
 
         for (timeline, time) in time_point.iter() {
@@ -70,7 +104,7 @@ impl DataStore {
                 .indices
                 .entry((*timeline, ent_path_hash))
                 .or_insert_with(|| IndexTable::new(*timeline, ent_path));
-            index.insert(&self.config, *time, &indices)?;
+            index.insert(&self.config, *time, &row_indices)?;
         }
 
         Ok(())
@@ -92,7 +126,7 @@ impl IndexTable {
         &mut self,
         config: &DataStoreConfig,
         time: TimeInt,
-        indices: &HashMap<ComponentNameRef<'_>, RowIndex>,
+        indices: &IntMap<ComponentName, RowIndex>,
     ) -> anyhow::Result<()> {
         // borrowck workaround
         let timeline = self.timeline;
@@ -176,7 +210,7 @@ impl IndexTable {
                                 is_sorted: true,
                                 time_range: TimeRange::new(time, time),
                                 times: Int64Vec::new(),
-                                indices: HashMap::default(),
+                                indices: IntMap::default(),
                             }),
                         },
                     );
@@ -222,7 +256,7 @@ impl IndexBucket {
     pub fn insert(
         &mut self,
         time: TimeInt,
-        row_indices: &HashMap<ComponentNameRef<'_>, RowIndex>,
+        row_indices: &IntMap<ComponentName, RowIndex>,
     ) -> anyhow::Result<()> {
         let mut guard = self.indices.write();
         let IndexBucketIndices {
@@ -242,7 +276,7 @@ impl IndexBucket {
         //
         // push new row indices to their associated secondary index
         for (name, row_idx) in row_indices {
-            let index = indices.entry((*name).to_owned()).or_insert_with(|| {
+            let index = indices.entry(*name).or_insert_with(|| {
                 let mut index = UInt64Vec::default();
                 index.extend_constant(times.len().saturating_sub(1), None);
                 index
@@ -254,7 +288,7 @@ impl IndexBucket {
         //
         // fill unimpacted secondary indices with null values
         for (name, index) in &mut *indices {
-            if !row_indices.contains_key(name.as_str()) {
+            if !row_indices.contains_key(name) {
                 index.push_null();
             }
         }
@@ -387,12 +421,12 @@ impl IndexBucket {
             let times2 = split_primary_index_off(split_idx, times1);
 
             // this updates `indices1` in-place!
-            let indices2: HashMap<_, _> = indices1
+            let indices2: IntMap<_, _> = indices1
                 .iter_mut()
                 .map(|(name, index1)| {
                     // this updates `index1` in-place!
                     let index2 = split_secondary_index_off(split_idx, index1);
-                    ((*name).clone(), index2)
+                    (*name, index2)
                 })
                 .collect();
             (
@@ -620,10 +654,13 @@ fn split_secondary_index_off(split_idx: usize, index1: &mut UInt64Vec) -> UInt64
 // --- Components ---
 
 impl ComponentTable {
-    fn new(name: String, datatype: DataType) -> Self {
-        let name = Arc::new(name);
+    /// Creates a new component table for the specified component `datatype`.
+    ///
+    /// `datatype` must be the type of the component itself, devoid of any wrapping layers
+    /// (i.e. _not_ a `ListArray<...>`!).
+    fn new(name: ComponentName, datatype: &DataType) -> Self {
         ComponentTable {
-            name: Arc::clone(&name),
+            name,
             datatype: datatype.clone(),
             buckets: [ComponentBucket::new(
                 name,
@@ -634,20 +671,43 @@ impl ComponentTable {
         }
     }
 
+    /// Finds the appropriate bucket in this component table and pushes `rows_single` at the
+    /// end of it, returning the _global_ `RowIndex` for this new row.
+    ///
+    /// `rows_single` must be a unit-length list of arrays of structs,
+    /// i.e. `ListArray<StructArray>`:
+    /// - the list layer corresponds to the different rows (always unit-length for now),
+    /// - the array layer corresponds to the different instances within that single row,
+    /// - and finally the struct layer holds the components themselves.
+    /// E.g.:
+    /// ```ignore
+    /// [[{x: 8.687487, y: 1.9590926}, {x: 2.0559108, y: 0.1494348}, {x: 7.09219, y: 0.9616637}]]
+    /// ```
+    //
+    // TODO(#589): support for batched row component insertions
     pub fn push(
         &mut self,
         config: &DataStoreConfig,
         time_point: &TimePoint,
-        data: &dyn Array,
-    ) -> anyhow::Result<RowIndex> {
+        rows_single: &dyn Array,
+    ) -> RowIndex {
+        debug_assert!(
+            ListArray::<i32>::get_child_type(rows_single.data_type()) == &self.datatype,
+            "trying to insert data of the wrong datatype in a component table",
+        );
+        debug_assert!(
+            rows_single.len() == 1,
+            "batched row component insertions are not supported yet"
+        );
+
         // All component tables spawn with an initial bucket at row offset 0, thus this cannot
         // fail.
-        let bucket = self.buckets.back().unwrap();
+        let active_bucket = self.buckets.back_mut().unwrap();
 
-        let size = bucket.total_size_bytes();
-        let size_overflow = bucket.total_size_bytes() > config.component_bucket_size_bytes;
+        let size = active_bucket.total_size_bytes();
+        let size_overflow = active_bucket.total_size_bytes() > config.component_bucket_size_bytes;
 
-        let len = bucket.total_rows();
+        let len = active_bucket.total_rows();
         let len_overflow = len > config.component_bucket_nb_rows;
 
         if size_overflow || len_overflow {
@@ -663,10 +723,13 @@ impl ComponentTable {
                 "allocating new component bucket, previous one overflowed"
             );
 
-            let row_offset = bucket.row_offset.as_u64() + len;
+            // Archive currently active bucket.
+            active_bucket.archive();
+
+            let row_offset = active_bucket.row_offset.as_u64() + len;
             self.buckets.push_back(ComponentBucket::new(
-                Arc::clone(&self.name),
-                self.datatype.clone(),
+                self.name,
+                &self.datatype,
                 RowIndex::from_u64(row_offset),
             ));
         }
@@ -676,7 +739,10 @@ impl ComponentTable {
         //   same reason as above: all component tables spawn with an initial bucket at row
         //   offset 0, thus this cannot fail.
         // - If the table has just overflowed, then we've just pushed a bucket to the dequeue.
-        let row_idx = self.buckets.back_mut().unwrap().push(time_point, data)?;
+        let active_bucket = self.buckets.back_mut().unwrap();
+        let row_idx = RowIndex::from_u64(
+            active_bucket.push(time_point, rows_single) + active_bucket.row_offset.as_u64(),
+        );
 
         debug!(
             kind = "insert",
@@ -688,46 +754,67 @@ impl ComponentTable {
             "pushed into component table"
         );
 
-        Ok(row_idx)
+        row_idx
     }
 }
 
 impl ComponentBucket {
-    pub fn new(name: Arc<String>, datatype: DataType, row_offset: RowIndex) -> Self {
+    /// Creates a new component bucket for the specified component `datatype`.
+    ///
+    /// `datatype` must be the type of the component itself, devoid of any wrapping layers
+    /// (i.e. _not_ a `ListArray<...>`!).
+    pub fn new(name: ComponentName, datatype: &DataType, row_offset: RowIndex) -> Self {
         // If this is the first bucket of this table, we need to insert an empty list at
         // row index #0!
-        let data = if row_offset.as_u64() == 0 {
-            let inner_datatype = match &datatype {
-                DataType::List(field) => field.data_type().clone(),
-                #[allow(clippy::todo)]
-                _ => todo!("throw an error here, this should always be a list"),
-            };
-
+        let chunks = if row_offset.as_u64() == 0 {
             let empty = ListArray::<i32>::from_data(
-                ListArray::<i32>::default_datatype(inner_datatype.clone()),
+                ListArray::<i32>::default_datatype(datatype.clone()),
                 Buffer::from(vec![0, 0i32]),
-                new_empty_array(inner_datatype),
+                new_empty_array(datatype.clone()),
                 None,
             );
-
-            // TODO(#451): throw error (or just implement mutable array)
-            concatenate(&[&*new_empty_array(datatype), &*empty.boxed()]).unwrap()
+            vec![empty.boxed()]
         } else {
-            new_empty_array(datatype)
+            vec![]
         };
+
+        let total_rows = chunks.iter().map(|values| values.len() as u64).sum();
+        let total_size_bytes = chunks
+            .iter()
+            .map(|values| arrow2::compute::aggregate::estimated_bytes_size(&**values) as u64)
+            .sum();
 
         Self {
             name,
             row_offset,
+            archived: false,
             time_ranges: Default::default(),
-            data,
+            chunks,
+            total_rows,
+            total_size_bytes,
         }
     }
 
-    pub fn push(&mut self, time_point: &TimePoint, data: &dyn Array) -> anyhow::Result<RowIndex> {
-        for (timeline, time) in time_point {
-            // TODO(#451): prob should own it at this point
-            let time = *time;
+    /// Pushes `rows_single` to the end of the bucket, returning the _local_ index of the
+    /// freshly added row.
+    ///
+    /// `rows_single` must be a unit-length list of arrays of structs,
+    /// i.e. `ListArray<StructArray>`:
+    /// - the list layer corresponds to the different rows (always unit-length for now),
+    /// - the array layer corresponds to the different instances within that single row,
+    /// - and finally the struct layer holds the components themselves.
+    /// E.g.:
+    /// ```ignore
+    /// [[{x: 8.687487, y: 1.9590926}, {x: 2.0559108, y: 0.1494348}, {x: 7.09219, y: 0.9616637}]]
+    /// ```
+    pub fn push(&mut self, time_point: &TimePoint, rows_single: &dyn Array) -> u64 {
+        debug_assert!(
+            rows_single.len() == 1,
+            "batched row component insertions are not supported yet"
+        );
+
+        // Keep track of all affected time ranges, for garbage collection purposes.
+        for (timeline, &time) in time_point {
             self.time_ranges
                 .entry(*timeline)
                 .and_modify(|range| {
@@ -736,11 +823,48 @@ impl ComponentBucket {
                 .or_insert_with(|| TimeRange::new(time, time));
         }
 
-        // TODO(cmc): replace with an actual mutable array!
-        self.data = concatenate(&[&*self.data, data])?;
+        self.total_rows += 1;
+        // Warning: this is surprisingly costly!
+        self.total_size_bytes +=
+            arrow2::compute::aggregate::estimated_bytes_size(rows_single) as u64;
 
-        Ok(RowIndex::from_u64(
-            self.row_offset.as_u64() + self.data.len() as u64 - 1,
-        ))
+        // TODO(#589): support for non-unit-length chunks
+        self.chunks.push(rows_single.to_boxed()); // shallow
+
+        self.chunks.len() as u64 - 1
+    }
+
+    /// Archives the bucket as a new one is about to take its place.
+    ///
+    /// This is a good opportunity to run compaction and other maintenance related tasks.
+    pub fn archive(&mut self) {
+        debug_assert!(
+            !self.archived,
+            "achiving an already archived bucket, something is likely wrong"
+        );
+
+        // Chunk compaction
+        // Compacts the bucket by concatenating all chunks of data into a single one.
+        {
+            use arrow2::compute::concatenate::concatenate;
+
+            let chunks = self.chunks.iter().map(|chunk| &**chunk).collect::<Vec<_>>();
+            // Only two reasons this can ever fail:
+            //
+            // * `chunks` is empty:
+            // This can never happen, buckets always spawn with an initial chunk.
+            //
+            // * the various chunks contain data with different datatypes:
+            // This can never happen as that would first panic during insertion.
+            let values = concatenate(&chunks).unwrap();
+
+            // Recompute the size as we've just discarded a bunch of list headers.
+            self.total_size_bytes =
+                arrow2::compute::aggregate::estimated_bytes_size(&*values) as u64;
+
+            self.chunks = vec![values];
+        }
+
+        self.archived = true;
     }
 }

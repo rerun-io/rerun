@@ -825,8 +825,8 @@ impl SceneSpatial {
                 &ctx.log_db.obj_db.arrow_store,
                 &timeline_query,
                 ent_path,
-                Rect2D::NAME,
-                &[ColorRGBA::NAME],
+                Rect2D::name(),
+                &[ColorRGBA::name()],
             ) {
                 visit_components3(
                     &df,
