@@ -127,12 +127,12 @@ impl DataStore {
             // Clustering component must be sorted.
             // TODO: do the sorting ourselves if needed
             // TODO: test
-            if !clustering_comp.is_sorted() {
+            if !clustering_comp.is_sorted()? {
                 return Err(WriteError::UnsortedClusteringComponent(clustering_comp));
             }
             // Clustering component must _not_ contain duplicates.
             // TODO: test
-            if clustering_comp.contains_duplicates() {
+            if clustering_comp.contains_duplicates()? {
                 return Err(WriteError::DupedClusteringComponent(clustering_comp));
             }
 
