@@ -23,7 +23,52 @@ pub struct StagingWriteBeltBuffer {
     offset_in_chunk: wgpu::BufferAddress,
 }
 
+pub struct StagingWriteBeltBufferTyped<T: bytemuck::Pod + 'static> {
+    pub buffer: StagingWriteBeltBuffer,
+    memory: &'static mut [T],
+}
+
+impl<T> StagingWriteBeltBufferTyped<T>
+where
+    T: bytemuck::Pod + 'static,
+{
+    /// Writes several objects to the buffer at a given location.
+    /// User is responsible for ensuring the element offset is valid with the element types's alignment requirement.
+    /// (panics otherwise)
+    ///
+    /// We do *not* allow reading from this buffer as it is typically write-combined memory.
+    /// Reading would work, but it can be *insanely* slow.
+    #[inline]
+    pub fn write(&mut self, elements: &[T], offset_in_element_sizes: usize) {
+        self.memory[offset_in_element_sizes..(offset_in_element_sizes + elements.len())]
+            .copy_from_slice(elements);
+    }
+
+    /// Writes a single objects to the buffer at a given location.
+    /// User is responsible for ensuring the element offset is valid with the element types's alignment requirement.
+    /// (panics otherwise)
+    #[inline]
+    pub fn write_single(&mut self, element: &T, offset_in_element_sizes: usize) {
+        self.memory[offset_in_element_sizes] = *element;
+    }
+}
+
 impl StagingWriteBeltBuffer {
+    #[allow(unsafe_code)]
+    pub fn typed_view<T: bytemuck::Pod + 'static>(mut self) -> StagingWriteBeltBufferTyped<T> {
+        let view_ptr = &mut self.write_view as *mut wgpu::BufferViewMut<'static>;
+
+        // SAFETY:
+        // The memory pointer lifes as long as the view since we store the view into StagingWriteBeltBufferTyped as well.
+        let static_view = Box::leak(unsafe { Box::from_raw(view_ptr) });
+
+        let memory = bytemuck::cast_slice_mut(static_view);
+        StagingWriteBeltBufferTyped {
+            buffer: self,
+            memory,
+        }
+    }
+
     /// Writes bytes to the buffer at a given location.
     ///
     /// We do *not* allow reading from this buffer as it is typically write-combined memory.
@@ -32,27 +77,6 @@ impl StagingWriteBeltBuffer {
     #[allow(dead_code)]
     pub fn write_bytes(&mut self, bytes: &[u8], offset: usize) {
         self.write_view[offset..(offset + bytes.len())].clone_from_slice(bytes);
-    }
-
-    /// Writes several objects to the buffer at a given location.
-    /// User is responsible for ensuring the element offset is valid with the element types's alignment requirement.
-    /// (panics otherwise)
-    ///
-    /// We do *not* allow reading from this buffer as it is typically write-combined memory.
-    /// Reading would work, but it can be *insanely* slow.
-    #[inline]
-    pub fn write<T: bytemuck::Pod>(&mut self, elements: &[T], offset_in_element_sizes: usize) {
-        bytemuck::cast_slice_mut(&mut self.write_view)
-            [offset_in_element_sizes..(offset_in_element_sizes + elements.len())]
-            .clone_from_slice(elements);
-    }
-
-    /// Writes a single objects to the buffer at a given location.
-    /// User is responsible for ensuring the element offset is valid with the element types's alignment requirement.
-    /// (panics otherwise)
-    #[inline]
-    pub fn write_single<T: bytemuck::Pod>(&mut self, element: &T, offset_in_element_sizes: usize) {
-        bytemuck::cast_slice_mut(&mut self.write_view)[offset_in_element_sizes] = *element;
     }
 
     /// Sets all bytes in the buffer to a given value

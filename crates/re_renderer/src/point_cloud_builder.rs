@@ -4,7 +4,7 @@ use crate::{
     renderer::{
         PointCloudBatchInfo, PointCloudDrawData, PointCloudDrawDataError, PointCloudVertex,
     },
-    staging_write_belt::StagingWriteBeltBuffer,
+    staging_write_belt::StagingWriteBeltBufferTyped,
     Color32, DebugLabel, RenderContext, Size,
 };
 
@@ -22,8 +22,8 @@ pub struct PointCloudBuilder<PerPointUserData> {
 
     pub batches: Vec<PointCloudBatchInfo>,
 
-    pub(crate) vertices_gpu: StagingWriteBeltBuffer,
-    pub(crate) colors_gpu: StagingWriteBeltBuffer,
+    pub(crate) vertices_gpu: StagingWriteBeltBufferTyped<PointCloudVertex>,
+    pub(crate) colors_gpu: StagingWriteBeltBufferTyped<Color32>,
 
     /// z value given to the next 2d point.
     pub next_2d_z: f32,
@@ -37,21 +37,25 @@ where
         // TODO: check max_num_points bound
 
         let mut staging_belt = ctx.staging_belt.lock();
-        let vertices_gpu = staging_belt.allocate(
-            &ctx.device,
-            &mut ctx.gpu_resources.buffers,
-            (std::mem::size_of::<PointCloudVertex>() * max_num_points) as wgpu::BufferAddress,
-            wgpu::COPY_BYTES_PER_ROW_ALIGNMENT as u64,
-        );
-        let mut colors_gpu = staging_belt.allocate(
-            &ctx.device,
-            &mut ctx.gpu_resources.buffers,
-            (std::mem::size_of::<PointCloudVertex>() * max_num_points) as wgpu::BufferAddress,
-            wgpu::COPY_BYTES_PER_ROW_ALIGNMENT as u64,
-        );
+        let vertices_gpu = staging_belt
+            .allocate(
+                &ctx.device,
+                &mut ctx.gpu_resources.buffers,
+                (std::mem::size_of::<PointCloudVertex>() * max_num_points) as wgpu::BufferAddress,
+                wgpu::COPY_BYTES_PER_ROW_ALIGNMENT as u64,
+            )
+            .typed_view();
+        let mut colors_gpu = staging_belt
+            .allocate(
+                &ctx.device,
+                &mut ctx.gpu_resources.buffers,
+                (std::mem::size_of::<PointCloudVertex>() * max_num_points) as wgpu::BufferAddress,
+                wgpu::COPY_BYTES_PER_ROW_ALIGNMENT as u64,
+            )
+            .typed_view::<Color32>();
         // Default unassigned colors to white.
         // TODO(andreas): Do we actually need this? Can we do this lazily if no color was specified?
-        colors_gpu.memset(255);
+        colors_gpu.buffer.memset(255);
 
         Self {
             vertices: Vec::with_capacity(max_num_points),
