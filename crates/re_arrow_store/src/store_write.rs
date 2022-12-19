@@ -88,18 +88,27 @@ impl DataStore {
             // - [x] always present
             // - [x] always sorted
             // - [x] always dense
-            // - [ ] no duplicates
+            // - [x] no duplicates
 
+            // TODO(#527): typed error
             ensure!(
                 clustering_comp.is_dense(),
-                "the clustering component must be dense",
+                "the clustering component must be dense (got {clustering_comp:?})",
             );
 
             // TODO: do the sorting ourselves if needed
             // TODO(#527): typed error
             ensure!(
                 clustering_comp.is_dense(),
-                "the instances of the clustering component must be properly sorted",
+                "the clustering component must be sorted in increasing order \
+                    (got {clustering_comp:?})",
+            );
+
+            // TODO(#527): typed error
+            ensure!(
+                !clustering_comp.contains_duplicates(),
+                "the clustering component must _not_ contain duplicated values \
+                    (got {clustering_comp:?})",
             );
 
             for bundle in components {
