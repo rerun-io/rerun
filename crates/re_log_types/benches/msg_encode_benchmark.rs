@@ -131,7 +131,6 @@ fn mono_points_arrow(c: &mut Criterion) {
                     MsgId::ZERO,
                     obj_path!("points", Index::Sequence(i as _)),
                     [build_frame_nr(0)],
-                    // TODO(emilk): point3d and radius once https://github.com/rerun-io/rerun/pull/586 is merged
                     (build_some_point2d(1), build_some_colors(1)),
                 )
                 .unwrap()
@@ -238,12 +237,10 @@ fn batch_points_classic(c: &mut Criterion) {
 
 fn batch_points_arrow(c: &mut Criterion) {
     fn generate_message_bundles() -> Vec<MsgBundle> {
-        // TODO(emilk): one obj-path and time-point per point
         vec![try_build_msg_bundle2(
             MsgId::ZERO,
             obj_path!("points"),
             [build_frame_nr(0)],
-            // TODO(emilk): point3d and radius once https://github.com/rerun-io/rerun/pull/586 is merged
             (
                 build_some_point2d(NUM_POINTS),
                 build_some_colors(NUM_POINTS),
