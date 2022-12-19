@@ -104,7 +104,7 @@ fn test_df_builder() {
     // └───────────┴────────────┘
 
     // Unnesting the struct makes it easier to validate the results.
-    let df = df.unnest(["point2d"]).unwrap();
+    let df = df.unnest([Point2D::name()]).unwrap();
     // eprintln!("{:?}", df);
     //
     // ┌─────┬─────┬────────────┐
@@ -124,7 +124,7 @@ fn test_df_builder() {
     let expected = df![
         "x" => &[1.0_f32, 3.0_f32, 5.0_f32, 7.0_f32],
         "y" => &[2.0_f32, 4.0_f32, 6.0_f32, 8.0_f32],
-        "colorrgba" => &[None, Some(0xff000000_u32), Some(0x00ff0000_u32), None ],
+        ColorRGBA::name().as_str() => &[None, Some(0xff000000_u32), Some(0x00ff0000_u32), None ],
     ]
     .unwrap();
 
