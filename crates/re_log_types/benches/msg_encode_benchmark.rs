@@ -2,7 +2,7 @@
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 use re_log_types::{
-    datagen::{build_frame_nr, build_some_point2d, build_some_rects},
+    datagen::{build_frame_nr, build_some_colors, build_some_point2d},
     msg_bundle::try_build_msg_bundle2,
     msg_bundle::MsgBundle,
     obj_path, ArrowMsg, BatchIndex, Data, DataMsg, DataPath, DataVec, FieldName, Index, LogMsg,
@@ -26,6 +26,9 @@ criterion_group!(
     batch_points_arrow,
 );
 criterion_main!(benches);
+
+const COLOR: [u8; 4] = [255, 255, 255, 255];
+const POS: [f32; 2] = [2.0, 3.0];
 
 fn encode_log_msgs(messages: &[LogMsg]) -> Vec<u8> {
     let mut bytes = vec![];
@@ -81,13 +84,13 @@ fn mono_points_classic(c: &mut Criterion) {
                         msg_id: MsgId::ZERO,
                         time_point: time_point.clone(),
                         data_path: DataPath::new(obj_path.clone(), pos_field_name),
-                        data: Data::Vec3([0.0, 1.0, 2.0]).into(),
+                        data: Data::Vec2(POS).into(),
                     }),
                     LogMsg::DataMsg(DataMsg {
                         msg_id: MsgId::ZERO,
                         time_point,
                         data_path: DataPath::new(obj_path, radius_field_name),
-                        data: Data::F32(0.1).into(),
+                        data: Data::Color(COLOR).into(),
                     }),
                 ]
             })
@@ -137,7 +140,7 @@ fn batch_points_classic(c: &mut Criterion) {
                 data_path: DataPath::new(obj_path.clone(), pos_field_name),
                 data: LoggedData::Batch {
                     indices: BatchIndex::SequentialIndex(NUM_POINTS),
-                    data: DataVec::Vec3(vec![[0.0, 1.0, 2.0]; NUM_POINTS]),
+                    data: DataVec::Vec2(vec![POS; NUM_POINTS]),
                 },
             }),
             LogMsg::DataMsg(DataMsg {
@@ -146,7 +149,7 @@ fn batch_points_classic(c: &mut Criterion) {
                 data_path: DataPath::new(obj_path, radius_field_name),
                 data: LoggedData::Batch {
                     indices: BatchIndex::SequentialIndex(NUM_POINTS),
-                    data: DataVec::F32(vec![0.1; NUM_POINTS]),
+                    data: DataVec::Color(vec![COLOR; NUM_POINTS]),
                 },
             }),
         ]
@@ -187,7 +190,7 @@ fn mono_points_arrow(c: &mut Criterion) {
                     obj_path!("points", Index::Sequence(i as _)),
                     [build_frame_nr(0)],
                     // TODO(emilk): point3d and radius once https://github.com/rerun-io/rerun/pull/586 is merged
-                    (build_some_point2d(1), build_some_rects(1)),
+                    (build_some_point2d(1), build_some_colors(1)),
                 )
                 .unwrap()
             })
@@ -241,7 +244,10 @@ fn batch_points_arrow(c: &mut Criterion) {
             obj_path!("points"),
             [build_frame_nr(0)],
             // TODO(emilk): point3d and radius once https://github.com/rerun-io/rerun/pull/586 is merged
-            (build_some_point2d(NUM_POINTS), build_some_rects(NUM_POINTS)),
+            (
+                build_some_point2d(NUM_POINTS),
+                build_some_colors(NUM_POINTS),
+            ),
         )
         .unwrap()]
     }
