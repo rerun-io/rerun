@@ -23,12 +23,11 @@ pub struct StagingWriteBeltBuffer {
     offset_in_chunk: wgpu::BufferAddress,
 }
 
-pub struct StagingWriteBeltBufferTyped<T: bytemuck::Pod + 'static> {
-    pub buffer: StagingWriteBeltBuffer,
-    memory: &'static mut [T],
+pub struct StagingWriteBeltBufferTypedView<'a, T: bytemuck::Pod> {
+    write_only_memory: &'a mut [T],
 }
 
-impl<T> StagingWriteBeltBufferTyped<T>
+impl<'a, T> StagingWriteBeltBufferTypedView<'a, T>
 where
     T: bytemuck::Pod + 'static,
 {
@@ -40,7 +39,7 @@ where
     /// Reading would work, but it can be *insanely* slow.
     #[inline]
     pub fn write(&mut self, elements: &[T], offset_in_element_sizes: usize) {
-        self.memory[offset_in_element_sizes..(offset_in_element_sizes + elements.len())]
+        self.write_only_memory[offset_in_element_sizes..(offset_in_element_sizes + elements.len())]
             .copy_from_slice(elements);
     }
 
@@ -49,23 +48,27 @@ where
     /// (panics otherwise)
     #[inline]
     pub fn write_single(&mut self, element: &T, offset_in_element_sizes: usize) {
-        self.memory[offset_in_element_sizes] = *element;
+        self.write_only_memory[offset_in_element_sizes] = *element;
+    }
+
+    /// Overwrites all elements in the buffer with a copy of the given value.
+    pub fn fill(&mut self, element: &T) {
+        for buffer_element in self.write_only_memory.iter_mut() {
+            *buffer_element = *element;
+        }
     }
 }
 
 impl StagingWriteBeltBuffer {
     #[allow(unsafe_code)]
-    pub fn typed_view<T: bytemuck::Pod + 'static>(mut self) -> StagingWriteBeltBufferTyped<T> {
-        let view_ptr = &mut self.write_view as *mut wgpu::BufferViewMut<'static>;
-
-        // SAFETY:
-        // The memory pointer lifes as long as the view since we store the view into StagingWriteBeltBufferTyped as well.
-        let static_view = Box::leak(unsafe { Box::from_raw(view_ptr) });
-
-        let memory = bytemuck::cast_slice_mut(static_view);
-        StagingWriteBeltBufferTyped {
-            buffer: self,
-            memory,
+    #[inline]
+    pub fn typed_view<T: bytemuck::Pod + 'static>(
+        &mut self,
+        offset_in_elements: usize,
+    ) -> StagingWriteBeltBufferTypedView<'_, T> {
+        StagingWriteBeltBufferTypedView {
+            write_only_memory: &mut bytemuck::cast_slice_mut(&mut self.write_view)
+                [offset_in_elements..],
         }
     }
 

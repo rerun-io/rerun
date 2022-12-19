@@ -1,10 +1,8 @@
-use std::ops::Range;
-
 use crate::{
     renderer::{
         PointCloudBatchInfo, PointCloudDrawData, PointCloudDrawDataError, PointCloudVertex,
     },
-    staging_write_belt::StagingWriteBeltBufferTyped,
+    staging_write_belt::{StagingWriteBeltBuffer, StagingWriteBeltBufferTypedView},
     Color32, DebugLabel, RenderContext, Size,
 };
 
@@ -22,8 +20,8 @@ pub struct PointCloudBuilder<PerPointUserData> {
 
     pub batches: Vec<PointCloudBatchInfo>,
 
-    pub(crate) vertices_gpu: StagingWriteBeltBufferTyped<PointCloudVertex>,
-    pub(crate) colors_gpu: StagingWriteBeltBufferTyped<Color32>,
+    pub(crate) vertices_gpu: StagingWriteBeltBuffer,
+    pub(crate) colors_gpu: StagingWriteBeltBuffer,
 
     /// z value given to the next 2d point.
     pub next_2d_z: f32,
@@ -37,25 +35,21 @@ where
         // TODO: check max_num_points bound
 
         let mut staging_belt = ctx.staging_belt.lock();
-        let vertices_gpu = staging_belt
-            .allocate(
-                &ctx.device,
-                &mut ctx.gpu_resources.buffers,
-                (std::mem::size_of::<PointCloudVertex>() * max_num_points) as wgpu::BufferAddress,
-                wgpu::COPY_BYTES_PER_ROW_ALIGNMENT as u64,
-            )
-            .typed_view();
-        let mut colors_gpu = staging_belt
-            .allocate(
-                &ctx.device,
-                &mut ctx.gpu_resources.buffers,
-                (std::mem::size_of::<PointCloudVertex>() * max_num_points) as wgpu::BufferAddress,
-                wgpu::COPY_BYTES_PER_ROW_ALIGNMENT as u64,
-            )
-            .typed_view::<Color32>();
+        let vertices_gpu = staging_belt.allocate(
+            &ctx.device,
+            &mut ctx.gpu_resources.buffers,
+            (std::mem::size_of::<PointCloudVertex>() * max_num_points) as wgpu::BufferAddress,
+            wgpu::COPY_BYTES_PER_ROW_ALIGNMENT as u64,
+        );
+        let mut colors_gpu = staging_belt.allocate(
+            &ctx.device,
+            &mut ctx.gpu_resources.buffers,
+            (std::mem::size_of::<PointCloudVertex>() * max_num_points) as wgpu::BufferAddress,
+            wgpu::COPY_BYTES_PER_ROW_ALIGNMENT as u64,
+        );
         // Default unassigned colors to white.
         // TODO(andreas): Do we actually need this? Can we do this lazily if no color was specified?
-        colors_gpu.buffer.memset(255);
+        colors_gpu.memset(255);
 
         Self {
             vertices: Vec::with_capacity(max_num_points),
@@ -138,11 +132,14 @@ where
         self.0
             .user_data
             .extend(std::iter::repeat(PerPointUserData::default()).take(num_points));
-        let num_vertices = self.0.vertices.len();
+
+        let new_range = old_size..self.0.vertices.len();
 
         PointsBuilder {
-            builder: self.0,
-            range: old_size..num_vertices,
+            vertices: &mut self.0.vertices[new_range.clone()],
+            vertices_gpu: self.0.vertices_gpu.typed_view(old_size),
+            colors_gpu: self.0.colors_gpu.typed_view(old_size),
+            user_data: &mut self.0.user_data[new_range],
         }
     }
 
@@ -161,7 +158,7 @@ where
     pub fn add_point(&mut self, position: glam::Vec3) -> PointBuilder<'_, PerPointUserData> {
         debug_assert_eq!(self.0.vertices.len(), self.0.user_data.len());
 
-        let num_points_before = self.0.vertices.len();
+        let old_size = self.0.vertices.len();
         let vertex = PointCloudVertex {
             position,
             radius: Size::AUTO,
@@ -172,8 +169,10 @@ where
         self.batch_mut().point_count += 1;
 
         PointBuilder {
-            builder: self.0,
-            offset: num_points_before,
+            vertex: self.0.vertices.last_mut().unwrap(),
+            vertices_gpu: self.0.vertices_gpu.typed_view(old_size),
+            colors_gpu: self.0.colors_gpu.typed_view(old_size),
+            user_data: self.0.user_data.last_mut().unwrap(),
         }
     }
 
@@ -198,8 +197,10 @@ where
 }
 
 pub struct PointBuilder<'a, PerPointUserData> {
-    builder: &'a mut PointCloudBuilder<PerPointUserData>,
-    offset: usize,
+    vertex: &'a mut PointCloudVertex,
+    colors_gpu: StagingWriteBeltBufferTypedView<'a, Color32>,
+    vertices_gpu: StagingWriteBeltBufferTypedView<'a, PointCloudVertex>,
+    user_data: &'a mut PerPointUserData,
 }
 
 impl<'a, PerPointUserData> PointBuilder<'a, PerPointUserData>
@@ -208,33 +209,34 @@ where
 {
     #[inline]
     pub fn radius(self, radius: Size) -> Self {
-        self.builder.vertices[self.offset].radius = radius;
+        self.vertex.radius = radius;
         self
     }
 
     #[inline]
-    pub fn color(self, color: Color32) -> Self {
-        self.builder.colors_gpu.write_single(&color, self.offset);
+    pub fn color(mut self, color: Color32) -> Self {
+        self.colors_gpu.write_single(&color, 0);
         self
     }
 
     pub fn user_data(self, data: PerPointUserData) -> Self {
-        self.builder.user_data[self.offset] = data;
+        *self.user_data = data;
         self
     }
 }
 
 impl<'a, PerPointUserData> Drop for PointBuilder<'a, PerPointUserData> {
+    #[inline]
     fn drop(&mut self) {
-        self.builder
-            .vertices_gpu
-            .write_single(&self.builder.vertices[self.offset], self.offset);
+        self.vertices_gpu.write_single(self.vertex, 0);
     }
 }
 
 pub struct PointsBuilder<'a, PerPointUserData> {
-    builder: &'a mut PointCloudBuilder<PerPointUserData>,
-    range: Range<usize>,
+    vertices: &'a mut [PointCloudVertex],
+    colors_gpu: StagingWriteBeltBufferTypedView<'a, Color32>,
+    vertices_gpu: StagingWriteBeltBufferTypedView<'a, PointCloudVertex>,
+    user_data: &'a mut [PerPointUserData],
 }
 
 impl<'a, PerPointUserData> PointsBuilder<'a, PerPointUserData>
@@ -244,7 +246,7 @@ where
     /// Splats a radius to all points in this builder.
     #[inline]
     pub fn radius(self, radius: Size) -> Self {
-        for point in &mut self.builder.vertices[self.range.clone()] {
+        for point in self.vertices.iter_mut() {
             point.radius = radius;
         }
         self
@@ -252,14 +254,11 @@ where
 
     /// Assigns radii to all points.
     ///
-    /// The slice is required to cover all points.
+    /// If the iterator doesn't cover all points, some will not be assigned.
+    /// If the iterator provides more values than there are points, the extra values will be ignored.
     #[inline]
     pub fn radii(self, radii: &[Size]) -> Self {
-        debug_assert_eq!(radii.len(), self.range.len());
-        for (point, radius) in self.builder.vertices[self.range.clone()]
-            .iter_mut()
-            .zip(radii)
-        {
+        for (point, radius) in self.vertices.iter_mut().zip(radii.iter()) {
             point.radius = *radius;
         }
         self
@@ -267,10 +266,8 @@ where
 
     /// Splats a color to all points in this builder.
     #[inline]
-    pub fn color(self, color: Color32) -> Self {
-        for offset in self.range.clone() {
-            self.builder.colors_gpu.write_single(&color, offset);
-        }
+    pub fn color(mut self, color: Color32) -> Self {
+        self.colors_gpu.fill(&color);
         self
     }
 
@@ -278,9 +275,8 @@ where
     ///
     /// The slice is required to cover all points.
     #[inline]
-    pub fn colors(self, colors: &[Color32]) -> Self {
-        debug_assert_eq!(colors.len(), self.range.len());
-        self.builder.colors_gpu.write(colors, self.range.start);
+    pub fn colors(mut self, colors: &[Color32]) -> Self {
+        self.colors_gpu.write(colors, 0);
         self
     }
 
@@ -289,7 +285,7 @@ where
     /// User data is currently not available on the GPU.
     #[inline]
     pub fn user_data(self, data: PerPointUserData) -> Self {
-        for user_data in &mut self.builder.user_data[self.range.clone()] {
+        for user_data in self.user_data.iter_mut() {
             *user_data = data.clone();
         }
         self
@@ -297,9 +293,8 @@ where
 }
 
 impl<'a, PerPointUserData> Drop for PointsBuilder<'a, PerPointUserData> {
+    #[inline]
     fn drop(&mut self) {
-        self.builder
-            .vertices_gpu
-            .write(&self.builder.vertices[self.range.clone()], self.range.start);
+        self.vertices_gpu.write(self.vertices, 0);
     }
 }

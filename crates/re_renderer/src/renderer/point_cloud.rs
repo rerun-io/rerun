@@ -218,7 +218,7 @@ impl PointCloudDrawData {
             depth_or_array_layers: 1,
         };
 
-        vertices_gpu.buffer.copy_to_texture(
+        vertices_gpu.copy_to_texture(
             &mut ctx.frame_global_commands,
             wgpu::ImageCopyTexture {
                 texture: &ctx
@@ -239,7 +239,7 @@ impl PointCloudDrawData {
             size,
         );
 
-        colors_gpu.buffer.copy_to_texture(
+        colors_gpu.copy_to_texture(
             &mut ctx.frame_global_commands,
             wgpu::ImageCopyTexture {
                 texture: &ctx
