@@ -345,12 +345,10 @@ impl SpaceView {
 
         match self.category {
             ViewCategory::Spatial => {
-                let reference_space = spaces_info.spaces.get(&self.space_path);
-                let transforms = if let Some(reference_space) = reference_space {
-                    TransformCache::determine_transforms(spaces_info, reference_space)
-                } else {
-                    TransformCache::default()
+                let Some(reference_space) = spaces_info.spaces.get(&self.space_path) else {
+                    return;
                 };
+                let transforms = TransformCache::determine_transforms(spaces_info, reference_space);
                 let mut scene = view_spatial::SceneSpatial::default();
                 scene.load_objects(
                     ctx,

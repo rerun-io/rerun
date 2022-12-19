@@ -5,7 +5,6 @@ use re_log_types::ObjPathHash;
 use crate::misc::space_info::{SpaceInfo, SpacesInfo};
 
 /// Provides transforms from local to a reference space for all elements in the scene.
-#[derive(Default)]
 pub struct TransformCache {
     reference_from_local_per_object: IntMap<ObjPathHash, ReferenceFromLocalTransform>,
 }

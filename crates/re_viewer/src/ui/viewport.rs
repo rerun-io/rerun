@@ -93,6 +93,8 @@ impl Viewport {
                 }
             }
 
+            let transforms = TransformCache::determine_transforms(spaces_info, space_info);
+
             for (category, obj_paths) in group_by_category(
                 ctx.rec_cfg.time_ctrl.timeline(),
                 ctx.log_db,
@@ -100,9 +102,7 @@ impl Viewport {
                     .descendants_with_rigid_or_no_transform(spaces_info)
                     .iter(),
             ) {
-                // TODO(andreas): Can we figure out the information we need without a full query? Ignoring transforms here right now which is a bit inconsistent.
-                let scene_spatial =
-                    query_scene_spatial(ctx, &obj_paths, &TransformCache::default());
+                let scene_spatial = query_scene_spatial(ctx, &obj_paths, &transforms);
 
                 if category == ViewCategory::Spatial
                     && scene_spatial.prefer_2d_mode()
@@ -321,8 +321,11 @@ impl Viewport {
             ctx.log_db,
             space_info.descendants_without_transform.iter(),
         ) {
-            // TODO(andreas): Should not need to do full query just to determine navigation mode. Default transform cache is problematic.
-            let scene_spatial = query_scene_spatial(ctx, &obj_paths, &TransformCache::default());
+            let scene_spatial = query_scene_spatial(
+                ctx,
+                &obj_paths,
+                &TransformCache::determine_transforms(spaces_info, space_info),
+            );
             self.add_space_view(SpaceView::new(
                 ctx,
                 category,
@@ -495,6 +498,8 @@ impl Viewport {
                     let categories = objects_per_root_grouped_by_category
                         .get(&ObjPath::from(&path.to_components()[..1]));
 
+                    let transforms = TransformCache::determine_transforms(spaces_info, space_info);
+
                     if let Some(categories) = categories {
                         if categories.is_empty() {
                             continue;
@@ -506,7 +511,7 @@ impl Viewport {
                             for (category, obj_paths) in categories {
                                 // TODO(andreas): Should not need to do full query just to determine navigation mode. Default transform cache is problematic.
                                 let scene_spatial =
-                                    query_scene_spatial(ctx, obj_paths, &TransformCache::default());
+                                    query_scene_spatial(ctx, obj_paths, &transforms);
                                 let new_space_view_id = self.add_space_view(SpaceView::new(
                                     ctx,
                                     *category,
