@@ -2,27 +2,66 @@
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 use re_log_types::{
-    obj_path, BatchIndex, Data, DataMsg, DataPath, DataVec, FieldName, Index, LogMsg, LoggedData,
-    MsgId, TimeInt, TimePoint, Timeline,
+    datagen::{build_frame_nr, build_some_point2d, build_some_rects},
+    msg_bundle::try_build_msg_bundle2,
+    msg_bundle::MsgBundle,
+    obj_path, ArrowMsg, BatchIndex, Data, DataMsg, DataPath, DataVec, FieldName, Index, LogMsg,
+    LoggedData, MsgId, TimeInt, TimePoint, Timeline,
 };
 
 use criterion::{criterion_group, criterion_main, Criterion};
 
 #[cfg(not(debug_assertions))]
-const NUM_POINTS: i64 = 10_000;
+const NUM_POINTS: usize = 10_000;
 
 // `cargo test` also runs the benchmark setup code, so make sure they run quickly:
 #[cfg(debug_assertions)]
-const NUM_POINTS: i64 = 1;
+const NUM_POINTS: usize = 1;
 
 criterion_group!(
     benches,
     mono_points_classic,
     batch_points_classic,
-    // mono_points_arrow,
-    // batch_points_arrow,
+    mono_points_arrow,
+    batch_points_arrow,
 );
 criterion_main!(benches);
+
+fn encode_log_msgs(messages: &[LogMsg]) -> Vec<u8> {
+    let mut bytes = vec![];
+    re_log_types::encoding::encode(messages.iter(), &mut bytes).unwrap();
+    assert!(bytes.len() > messages.len());
+    bytes
+}
+
+fn decode_log_msgs(mut bytes: &[u8]) -> Vec<LogMsg> {
+    let messages = re_log_types::encoding::Decoder::new(&mut bytes)
+        .unwrap()
+        .collect::<anyhow::Result<Vec<LogMsg>>>()
+        .unwrap();
+    assert!(bytes.is_empty());
+    messages
+}
+
+fn generate_messages(bundles: &[MsgBundle]) -> Vec<LogMsg> {
+    bundles
+        .iter()
+        .map(|bundle| LogMsg::ArrowMsg(ArrowMsg::try_from(bundle.clone()).unwrap()))
+        .collect()
+}
+
+fn decode_message_bundles(messages: &[LogMsg]) -> Vec<MsgBundle> {
+    messages
+        .iter()
+        .map(|log_msg| {
+            if let LogMsg::ArrowMsg(arrow_msg) = log_msg {
+                MsgBundle::try_from(arrow_msg).unwrap()
+            } else {
+                unreachable!()
+            }
+        })
+        .collect()
+}
 
 fn mono_points_classic(c: &mut Criterion) {
     fn generate_messages() -> Vec<LogMsg> {
@@ -55,22 +94,6 @@ fn mono_points_classic(c: &mut Criterion) {
             .collect()
     }
 
-    fn encode(messages: &[LogMsg]) -> Vec<u8> {
-        let mut bytes = vec![];
-        re_log_types::encoding::encode(messages.iter(), &mut bytes).unwrap();
-        assert!(bytes.len() > messages.len());
-        bytes
-    }
-
-    fn decode(mut bytes: &[u8]) -> Vec<LogMsg> {
-        let messages = re_log_types::encoding::Decoder::new(&mut bytes)
-            .unwrap()
-            .collect::<anyhow::Result<Vec<LogMsg>>>()
-            .unwrap();
-        assert!(bytes.is_empty());
-        messages
-    }
-
     {
         let mut group = c.benchmark_group("mono_points_classic");
         group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
@@ -78,13 +101,18 @@ fn mono_points_classic(c: &mut Criterion) {
             b.iter(generate_messages);
         });
         let messages = generate_messages();
-        group.bench_function("encode", |b| {
-            b.iter(|| encode(&messages));
+        group.bench_function("encode_log_msg", |b| {
+            b.iter(|| encode_log_msgs(&messages));
         });
-        let encoded = encode(&messages);
-        group.bench_function("decode", |b| {
+
+        group.bench_function("encode_total", |b| {
+            b.iter(|| encode_log_msgs(&generate_messages()));
+        });
+
+        let encoded = encode_log_msgs(&messages);
+        group.bench_function("decode_total", |b| {
             b.iter(|| {
-                let decoded = decode(&encoded);
+                let decoded = decode_log_msgs(&encoded);
                 assert_eq!(decoded.len(), messages.len());
                 decoded
             });
@@ -108,8 +136,8 @@ fn batch_points_classic(c: &mut Criterion) {
                 time_point: time_point.clone(),
                 data_path: DataPath::new(obj_path.clone(), pos_field_name),
                 data: LoggedData::Batch {
-                    indices: BatchIndex::SequentialIndex(NUM_POINTS as _),
-                    data: DataVec::Vec3(vec![[0.0, 1.0, 2.0]; NUM_POINTS as usize]),
+                    indices: BatchIndex::SequentialIndex(NUM_POINTS),
+                    data: DataVec::Vec3(vec![[0.0, 1.0, 2.0]; NUM_POINTS]),
                 },
             }),
             LogMsg::DataMsg(DataMsg {
@@ -117,27 +145,11 @@ fn batch_points_classic(c: &mut Criterion) {
                 time_point,
                 data_path: DataPath::new(obj_path, radius_field_name),
                 data: LoggedData::Batch {
-                    indices: BatchIndex::SequentialIndex(NUM_POINTS as _),
-                    data: DataVec::F32(vec![0.1; NUM_POINTS as usize]),
+                    indices: BatchIndex::SequentialIndex(NUM_POINTS),
+                    data: DataVec::F32(vec![0.1; NUM_POINTS]),
                 },
             }),
         ]
-    }
-
-    fn encode(messages: &[LogMsg]) -> Vec<u8> {
-        let mut bytes = vec![];
-        re_log_types::encoding::encode(messages.iter(), &mut bytes).unwrap();
-        assert!(bytes.len() > messages.len());
-        bytes
-    }
-
-    fn decode(mut bytes: &[u8]) -> Vec<LogMsg> {
-        let messages = re_log_types::encoding::Decoder::new(&mut bytes)
-            .unwrap()
-            .collect::<anyhow::Result<Vec<LogMsg>>>()
-            .unwrap();
-        assert!(bytes.is_empty());
-        messages
     }
 
     {
@@ -147,16 +159,128 @@ fn batch_points_classic(c: &mut Criterion) {
             b.iter(generate_messages);
         });
         let messages = generate_messages();
-        group.bench_function("encode", |b| {
-            b.iter(|| encode(&messages));
+        group.bench_function("encode_log_msg", |b| {
+            b.iter(|| encode_log_msgs(&messages));
         });
-        let encoded = encode(&messages);
-        group.bench_function("decode", |b| {
+
+        group.bench_function("encode_total", |b| {
+            b.iter(|| encode_log_msgs(&generate_messages()));
+        });
+
+        let encoded = encode_log_msgs(&messages);
+        group.bench_function("decode_total", |b| {
             b.iter(|| {
-                let decoded = decode(&encoded);
+                let decoded = decode_log_msgs(&encoded);
                 assert_eq!(decoded.len(), messages.len());
                 decoded
             });
+        });
+    }
+}
+
+fn mono_points_arrow(c: &mut Criterion) {
+    fn generate_message_bundles() -> Vec<MsgBundle> {
+        (0..NUM_POINTS)
+            .map(|i| {
+                try_build_msg_bundle2(
+                    MsgId::ZERO,
+                    obj_path!("points", Index::Sequence(i as _)),
+                    [build_frame_nr(0)],
+                    // TODO(emilk): point3d and radius once https://github.com/rerun-io/rerun/pull/586 is merged
+                    (build_some_point2d(1), build_some_rects(1)),
+                )
+                .unwrap()
+            })
+            .collect()
+    }
+
+    {
+        let mut group = c.benchmark_group("mono_points_arrow");
+        group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
+        group.bench_function("generate_message_bundles", |b| {
+            b.iter(generate_message_bundles);
+        });
+        let bundles = generate_message_bundles();
+        group.bench_function("generate_messages", |b| {
+            b.iter(|| generate_messages(&bundles));
+        });
+        let messages = generate_messages(&bundles);
+        group.bench_function("encode_log_msg", |b| {
+            b.iter(|| encode_log_msgs(&messages));
+        });
+        group.bench_function("encode_total", |b| {
+            b.iter(|| encode_log_msgs(&generate_messages(&generate_message_bundles())));
+        });
+
+        let encoded = encode_log_msgs(&messages);
+        group.bench_function("decode_log_msg", |b| {
+            b.iter(|| {
+                let decoded = decode_log_msgs(&encoded);
+                assert_eq!(decoded.len(), messages.len());
+                decoded
+            });
+        });
+        group.bench_function("decode_message_bundles", |b| {
+            b.iter(|| {
+                let bundles = decode_message_bundles(&messages);
+                assert_eq!(bundles.len(), messages.len());
+                bundles
+            });
+        });
+        group.bench_function("decode_total", |b| {
+            b.iter(|| decode_message_bundles(&decode_log_msgs(&encoded)));
+        });
+    }
+}
+
+fn batch_points_arrow(c: &mut Criterion) {
+    fn generate_message_bundles() -> Vec<MsgBundle> {
+        // TODO(emilk): one obj-path and time-point per point
+        vec![try_build_msg_bundle2(
+            MsgId::ZERO,
+            obj_path!("points"),
+            [build_frame_nr(0)],
+            // TODO(emilk): point3d and radius once https://github.com/rerun-io/rerun/pull/586 is merged
+            (build_some_point2d(NUM_POINTS), build_some_rects(NUM_POINTS)),
+        )
+        .unwrap()]
+    }
+
+    {
+        let mut group = c.benchmark_group("batch_points_arrow");
+        group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
+        group.bench_function("generate_message_bundles", |b| {
+            b.iter(generate_message_bundles);
+        });
+        let bundles = generate_message_bundles();
+        group.bench_function("generate_messages", |b| {
+            b.iter(|| generate_messages(&bundles));
+        });
+        let messages = generate_messages(&bundles);
+        group.bench_function("encode_log_msg", |b| {
+            b.iter(|| encode_log_msgs(&messages));
+        });
+        group.bench_function("encode_total", |b| {
+            b.iter(|| encode_log_msgs(&generate_messages(&generate_message_bundles())));
+        });
+
+        let encoded = encode_log_msgs(&messages);
+        group.bench_function("decode_log_msg", |b| {
+            b.iter(|| {
+                let decoded = decode_log_msgs(&encoded);
+                assert_eq!(decoded.len(), messages.len());
+                decoded
+            });
+        });
+        group.bench_function("decode_message_bundles", |b| {
+            b.iter(|| {
+                let bundles = decode_message_bundles(&messages);
+                assert_eq!(bundles.len(), messages.len());
+                bundles
+            });
+        });
+        group.bench_function("decode_total", |b| {
+            b.iter(|| decode_message_bundles(&decode_log_msgs(&encoded)));
         });
     }
 }
