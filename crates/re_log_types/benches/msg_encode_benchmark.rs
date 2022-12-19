@@ -21,8 +21,8 @@ const NUM_POINTS: usize = 1;
 criterion_group!(
     benches,
     mono_points_classic,
-    batch_points_classic,
     mono_points_arrow,
+    batch_points_classic,
     batch_points_arrow,
 );
 criterion_main!(benches);
@@ -123,6 +123,61 @@ fn mono_points_classic(c: &mut Criterion) {
     }
 }
 
+fn mono_points_arrow(c: &mut Criterion) {
+    fn generate_message_bundles() -> Vec<MsgBundle> {
+        (0..NUM_POINTS)
+            .map(|i| {
+                try_build_msg_bundle2(
+                    MsgId::ZERO,
+                    obj_path!("points", Index::Sequence(i as _)),
+                    [build_frame_nr(0)],
+                    // TODO(emilk): point3d and radius once https://github.com/rerun-io/rerun/pull/586 is merged
+                    (build_some_point2d(1), build_some_colors(1)),
+                )
+                .unwrap()
+            })
+            .collect()
+    }
+
+    {
+        let mut group = c.benchmark_group("mono_points_arrow");
+        group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
+        group.bench_function("generate_message_bundles", |b| {
+            b.iter(generate_message_bundles);
+        });
+        let bundles = generate_message_bundles();
+        group.bench_function("generate_messages", |b| {
+            b.iter(|| generate_messages(&bundles));
+        });
+        let messages = generate_messages(&bundles);
+        group.bench_function("encode_log_msg", |b| {
+            b.iter(|| encode_log_msgs(&messages));
+        });
+        group.bench_function("encode_total", |b| {
+            b.iter(|| encode_log_msgs(&generate_messages(&generate_message_bundles())));
+        });
+
+        let encoded = encode_log_msgs(&messages);
+        group.bench_function("decode_log_msg", |b| {
+            b.iter(|| {
+                let decoded = decode_log_msgs(&encoded);
+                assert_eq!(decoded.len(), messages.len());
+                decoded
+            });
+        });
+        group.bench_function("decode_message_bundles", |b| {
+            b.iter(|| {
+                let bundles = decode_message_bundles(&messages);
+                assert_eq!(bundles.len(), messages.len());
+                bundles
+            });
+        });
+        group.bench_function("decode_total", |b| {
+            b.iter(|| decode_message_bundles(&decode_log_msgs(&encoded)));
+        });
+    }
+}
+
 fn batch_points_classic(c: &mut Criterion) {
     fn generate_messages() -> Vec<LogMsg> {
         let obj_path = obj_path!("points");
@@ -177,61 +232,6 @@ fn batch_points_classic(c: &mut Criterion) {
                 assert_eq!(decoded.len(), messages.len());
                 decoded
             });
-        });
-    }
-}
-
-fn mono_points_arrow(c: &mut Criterion) {
-    fn generate_message_bundles() -> Vec<MsgBundle> {
-        (0..NUM_POINTS)
-            .map(|i| {
-                try_build_msg_bundle2(
-                    MsgId::ZERO,
-                    obj_path!("points", Index::Sequence(i as _)),
-                    [build_frame_nr(0)],
-                    // TODO(emilk): point3d and radius once https://github.com/rerun-io/rerun/pull/586 is merged
-                    (build_some_point2d(1), build_some_colors(1)),
-                )
-                .unwrap()
-            })
-            .collect()
-    }
-
-    {
-        let mut group = c.benchmark_group("mono_points_arrow");
-        group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
-        group.bench_function("generate_message_bundles", |b| {
-            b.iter(generate_message_bundles);
-        });
-        let bundles = generate_message_bundles();
-        group.bench_function("generate_messages", |b| {
-            b.iter(|| generate_messages(&bundles));
-        });
-        let messages = generate_messages(&bundles);
-        group.bench_function("encode_log_msg", |b| {
-            b.iter(|| encode_log_msgs(&messages));
-        });
-        group.bench_function("encode_total", |b| {
-            b.iter(|| encode_log_msgs(&generate_messages(&generate_message_bundles())));
-        });
-
-        let encoded = encode_log_msgs(&messages);
-        group.bench_function("decode_log_msg", |b| {
-            b.iter(|| {
-                let decoded = decode_log_msgs(&encoded);
-                assert_eq!(decoded.len(), messages.len());
-                decoded
-            });
-        });
-        group.bench_function("decode_message_bundles", |b| {
-            b.iter(|| {
-                let bundles = decode_message_bundles(&messages);
-                assert_eq!(bundles.len(), messages.len());
-                bundles
-            });
-        });
-        group.bench_function("decode_total", |b| {
-            b.iter(|| decode_message_bundles(&decode_log_msgs(&encoded)));
         });
     }
 }
