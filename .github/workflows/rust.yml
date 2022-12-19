@@ -28,8 +28,8 @@ permissions:
 jobs:
   rs-benchmarks:
     name: Rust Criterion benchmarks
-    # TODO(john) When we go public, we should probably only run benchmarks on non-pull-request jobs
-    # if: ${{ github.event_name != 'pull_request' }}
+    # Only run the rs-benchmarks job when a commit gets pushed to main
+    if: ${{ github.event_name == 'push' }}
 
     runs-on: ubuntu-latest-16-cores
     container:
@@ -44,8 +44,6 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           env-vars: CARGO CC CFLAGS CXX CMAKE RUST CACHE_KEY
-          # See: https://github.com/rerun-io/rerun/pull/497
-          save-if: ${{ github.event_name == 'push'}}
 
       - name: Run benchmark
         run: |
@@ -74,6 +72,8 @@ jobs:
           auto-push: true
           gh-pages-branch: gh-pages
           benchmark-data-dir-path: dev/bench
+
+  # ---------------------------------------------------------------------------
 
   rs-lints:
     name: Rust lints (fmt, check, cranky, tests, doc)

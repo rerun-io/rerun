@@ -480,14 +480,13 @@ pub(crate) fn data_ui(
                     Preview::Specific(height) => height,
                 };
 
-                tensor_view
-                    .retained_img
-                    .show_max_size(ui, Vec2::new(4.0 * max_width, max_width))
-                    .on_hover_ui(|ui| {
-                        tensor_view
-                            .retained_img
-                            .show_max_size(ui, Vec2::splat(400.0));
-                    });
+                if let Some(retained_img) = tensor_view.retained_img {
+                    retained_img
+                        .show_max_size(ui, Vec2::new(4.0 * max_width, max_width))
+                        .on_hover_ui(|ui| {
+                            retained_img.show_max_size(ui, Vec2::splat(400.0));
+                        });
+                }
 
                 ui.vertical(|ui| {
                     ui.set_min_width(100.0);

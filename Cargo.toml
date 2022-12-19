@@ -35,14 +35,14 @@ opt-level = 2
 debug = true
 
 [patch.crates-io]
-# 2022-12-15 - Add Slider::drag_value_speed
-ecolor = { git = "https://github.com/emilk/egui", rev = "6ae4bc486b2608212f5fc8453f5aa7e5106853f8" }
-eframe = { git = "https://github.com/emilk/egui", rev = "6ae4bc486b2608212f5fc8453f5aa7e5106853f8" }
-egui = { git = "https://github.com/emilk/egui", rev = "6ae4bc486b2608212f5fc8453f5aa7e5106853f8" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "6ae4bc486b2608212f5fc8453f5aa7e5106853f8" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "6ae4bc486b2608212f5fc8453f5aa7e5106853f8" }
-emath = { git = "https://github.com/emilk/egui", rev = "6ae4bc486b2608212f5fc8453f5aa7e5106853f8" }
-epaint = { git = "https://github.com/emilk/egui", rev = "6ae4bc486b2608212f5fc8453f5aa7e5106853f8" }
+# 2022-12-19 - Plot improvements
+ecolor = { git = "https://github.com/emilk/egui", rev = "99af63fad27b2983dd3636a18fe3725e1f845464" }
+eframe = { git = "https://github.com/emilk/egui", rev = "99af63fad27b2983dd3636a18fe3725e1f845464" }
+egui = { git = "https://github.com/emilk/egui", rev = "99af63fad27b2983dd3636a18fe3725e1f845464" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "99af63fad27b2983dd3636a18fe3725e1f845464" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "99af63fad27b2983dd3636a18fe3725e1f845464" }
+emath = { git = "https://github.com/emilk/egui", rev = "99af63fad27b2983dd3636a18fe3725e1f845464" }
+epaint = { git = "https://github.com/emilk/egui", rev = "99af63fad27b2983dd3636a18fe3725e1f845464" }
 
 # ecolor = { path = "../../egui/crates/ecolor" }
 # eframe = { path = "../../egui/crates/eframe" }

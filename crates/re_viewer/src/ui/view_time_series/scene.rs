@@ -52,14 +52,14 @@ pub struct PlotSeries {
     pub points: Vec<(i64, f64)>,
 }
 
-/// A plot scene, with everything needed to render it.
+/// A scene for a time series plot, with everything needed to render it.
 #[derive(Default, Debug)]
-pub struct ScenePlot {
+pub struct SceneTimeSeries {
     pub annotation_map: AnnotationMap,
     pub lines: Vec<PlotSeries>,
 }
 
-impl ScenePlot {
+impl SceneTimeSeries {
     /// Loads all plot objects into the scene according to the given query.
     pub(crate) fn load_objects(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();

@@ -28,8 +28,8 @@ const NUM_RECTS: i64 = 1;
 // --- Benchmarks ---
 
 fn batch_rects(c: &mut Criterion) {
-    let msgs = build_messages(NUM_RECTS as usize);
     {
+        let msgs = build_messages(NUM_RECTS as usize);
         let mut group = c.benchmark_group("datastore/batch/rects");
         group.throughput(criterion::Throughput::Elements(
             (NUM_RECTS * NUM_FRAMES) as _,
@@ -41,16 +41,67 @@ fn batch_rects(c: &mut Criterion) {
 
     {
         let msgs = build_messages(NUM_RECTS as usize);
+        let mut store = insert_messages(Instance::name(), msgs.iter());
         let mut group = c.benchmark_group("datastore/batch/rects");
         group.throughput(criterion::Throughput::Elements(NUM_RECTS as _));
-        let mut store = insert_messages(Instance::name(), msgs.iter());
         group.bench_function("query", |b| {
-            b.iter(|| query_messages(&mut store));
+            b.iter(|| {
+                let results = query_messages(&mut store, Rect2D::name(), &[Rect2D::name()]);
+                let rects = results[0]
+                    .as_ref()
+                    .unwrap()
+                    .as_any()
+                    .downcast_ref::<StructArray>()
+                    .unwrap();
+                assert_eq!(NUM_RECTS as usize, rects.len());
+            });
         });
     }
 }
 
-criterion_group!(benches, batch_rects);
+fn missing_components(c: &mut Criterion) {
+    {
+        let msgs = build_messages(NUM_RECTS as usize);
+        let mut store = insert_messages(Instance::name(), msgs.iter());
+        let mut group = c.benchmark_group("datastore/missing_components");
+        group.throughput(criterion::Throughput::Elements(NUM_RECTS as _));
+        group.bench_function("primary", |b| {
+            b.iter(|| {
+                let results = query_messages(
+                    &mut store,
+                    "non_existing_component".into(),
+                    &[Rect2D::name()],
+                );
+                assert!(results[0].is_none());
+            });
+        });
+    }
+
+    {
+        let msgs = build_messages(NUM_RECTS as usize);
+        let mut store = insert_messages(Instance::name(), msgs.iter());
+        let mut group = c.benchmark_group("datastore/missing_components");
+        group.throughput(criterion::Throughput::Elements(NUM_RECTS as _));
+        group.bench_function("secondaries", |b| {
+            b.iter(|| {
+                let results = query_messages(
+                    &mut store,
+                    Rect2D::name(),
+                    &[
+                        "non_existing_component1".into(),
+                        "non_existing_component2".into(),
+                        "non_existing_component3".into(),
+                    ],
+                );
+                assert!(results[0].is_none());
+                assert!(results[1].is_none());
+                assert!(results[2].is_none());
+            });
+        });
+    }
+}
+
+criterion_group!(benches, batch_rects, missing_components);
 criterion_main!(benches);
 
 // --- Helpers ---
@@ -83,21 +134,18 @@ fn insert_messages<'a>(
     store
 }
 
-fn query_messages(store: &mut DataStore) -> Box<dyn Array> {
+fn query_messages<const N: usize>(
+    store: &mut DataStore,
+    primary: ComponentName,
+    secondaries: &[ComponentName; N],
+) -> [Option<Box<dyn Array>>; N] {
     let time_query = TimeQuery::LatestAt(NUM_FRAMES / 2);
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
     let timeline_query = TimelineQuery::new(timeline_frame_nr, time_query);
     let ent_path = EntityPath::from("rects");
-    let component = Rect2D::name();
 
     let row_indices = store
-        .query(&timeline_query, &ent_path, component, &[component])
-        .unwrap_or_default();
-    let mut results = store.get(&[component], &row_indices);
-
-    let row = std::mem::take(&mut results[0]).unwrap();
-    let rects = row.as_any().downcast_ref::<StructArray>().unwrap();
-    assert_eq!(NUM_RECTS as usize, rects.len());
-
-    row
+        .query(&timeline_query, &ent_path, primary, secondaries)
+        .unwrap_or_else(|| [(); N].map(|_| None));
+    store.get(secondaries, &row_indices)
 }
