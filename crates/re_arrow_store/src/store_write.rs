@@ -21,12 +21,48 @@ use crate::{
 
 // --- Data store ---
 
+#[derive(thiserror::Error, Debug)]
+pub enum WriteError {
+    // Batches
+    #[error("Cannot insert more than 1 row at a time, got {0}")]
+    BadBatchLength(usize),
+    #[error("All components must have the same number of rows, got {0:?}")]
+    DifferentBatchLengths(Vec<(ComponentName, usize)>),
+
+    // Clustering key
+    #[error("The clustering component must be dense, got {0:?}")]
+    SparseClusteringComponent(Box<dyn Array>),
+    #[error("The clustering component must be increasingly sorted, got {0:?}")]
+    UnsortedClusteringComponent(Box<dyn Array>),
+    #[error("The clustering component must not contain duplicates, got {0:?}")]
+    DupedClusteringComponent(Box<dyn Array>),
+
+    // Instances
+    #[error(
+        "All components within a row must have the same number of instances as the \
+            clustering component, got {clustering_comp}={clustering_comp_nb_instances} vs. \
+                {key}={nb_instances}"
+    )]
+    DifferentInstancesLength {
+        clustering_comp: ComponentName,
+        clustering_comp_nb_instances: usize,
+        key: ComponentName,
+        nb_instances: usize,
+    },
+
+    // Misc
+    #[error("Other error")]
+    Other(#[from] anyhow::Error),
+}
+
+pub type WriteResult<T> = ::std::result::Result<T, WriteError>;
+
 impl DataStore {
     /// Inserts a [`MsgBundle`]'s worth of components into the datastore.
     ///
     /// * All components across the bundle must share the same number of rows.
     /// * All components within a single row must share the same number of instances.
-    pub fn insert(&mut self, bundle: &MsgBundle) -> anyhow::Result<()> {
+    pub fn insert(&mut self, bundle: &MsgBundle) -> WriteResult<()> {
         // TODO(cmc): kind & insert_id need to somehow propagate through the span system.
         self.insert_id += 1;
 
@@ -44,20 +80,24 @@ impl DataStore {
         let ent_path_hash = *ent_path.hash();
         let nb_rows = components[0].value.len();
 
-        // TODO(#527): typed error
-        ensure!(
-            nb_rows == 1,
-            "we currently don't support more than one row per batch, as a `MsgBundle` can only \
-                carry a single timepoint for now!"
-        );
-
-        // TODO(#527): typed error
-        ensure!(
-            components
-                .iter()
-                .all(|bundle| bundle.value.len() == nb_rows),
-            "all components across the bundle must share the same number of rows",
-        );
+        // Batches cannot contain more than 1 row at the moment.
+        // TODO: test
+        if nb_rows != 1 {
+            return Err(WriteError::BadBatchLength(nb_rows));
+        }
+        // Components must share the same number of rows.
+        // TODO: test
+        if !components
+            .iter()
+            .all(|bundle| bundle.value.len() == nb_rows)
+        {
+            return Err(WriteError::DifferentBatchLengths(
+                components
+                    .iter()
+                    .map(|bundle| (bundle.name, bundle.value.len()))
+                    .collect(),
+            ));
+        }
 
         debug!(
             kind = "insert",
@@ -80,32 +120,22 @@ impl DataStore {
                 get_or_create_clustering_key(row_nr, components, self.clustering_key);
             let expected_nb_instances = clustering_comp.len();
 
-            // TODO:
-            // - [x] always present
-            // - [x] always sorted
-            // - [x] always dense
-            // - [x] no duplicates
-
-            // TODO(#527): typed error
-            ensure!(
-                clustering_comp.is_dense(),
-                "the clustering component must be dense (got {clustering_comp:?})",
-            );
-
+            // Clustering component must be dense.
+            // TODO: test
+            if !clustering_comp.is_dense() {
+                return Err(WriteError::SparseClusteringComponent(clustering_comp));
+            }
+            // Clustering component must be sorted.
             // TODO: do the sorting ourselves if needed
-            // TODO(#527): typed error
-            ensure!(
-                clustering_comp.is_dense(),
-                "the clustering component must be sorted in increasing order \
-                    (got {clustering_comp:?})",
-            );
-
-            // TODO(#527): typed error
-            ensure!(
-                !clustering_comp.contains_duplicates(),
-                "the clustering component must _not_ contain duplicated values \
-                    (got {clustering_comp:?})",
-            );
+            // TODO: test
+            if !clustering_comp.is_sorted() {
+                return Err(WriteError::UnsortedClusteringComponent(clustering_comp));
+            }
+            // Clustering component must _not_ contain duplicates.
+            // TODO: test
+            if clustering_comp.contains_duplicates() {
+                return Err(WriteError::DupedClusteringComponent(clustering_comp));
+            }
 
             for bundle in components {
                 let ComponentBundle { name, value: rows } = bundle;
@@ -126,12 +156,15 @@ impl DataStore {
                     .unwrap()
                     .value(0)
                     .len();
-                // TODO(#527): typed error
-                ensure!(
-                    expected_nb_instances == nb_instances,
-                    "all components in the row must have the same number of instances as the \
-                        clustering component",
-                );
+                // TODO: test
+                if nb_instances != expected_nb_instances {
+                    return Err(WriteError::DifferentInstancesLength {
+                        clustering_comp: self.clustering_key,
+                        clustering_comp_nb_instances: expected_nb_instances,
+                        key: *name,
+                        nb_instances,
+                    });
+                }
 
                 let table = self.components.entry(bundle.name).or_insert_with(|| {
                     ComponentTable::new(
