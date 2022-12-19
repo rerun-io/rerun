@@ -107,7 +107,7 @@ impl DataStore {
     ///             .iter()
     ///             .zip(results)
     ///             .filter_map(|(component, col)| col.map(|col| (component, col)))
-    ///             .map(|(&component, col)| Series::try_from((component, col)).unwrap())
+    ///             .map(|(&component, col)| Series::try_from((component.as_str(), col)).unwrap())
     ///             .collect();
     ///
     ///         DataFrame::new(series).unwrap()

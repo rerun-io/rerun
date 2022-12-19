@@ -250,7 +250,7 @@ impl IndexBucket {
         //
         // fill unimpacted secondary indices with null values
         for (name, index) in &mut *indices {
-            if !row_indices.contains_key(name.as_str()) {
+            if !row_indices.contains_key(name) {
                 index.push_null();
             }
         }
