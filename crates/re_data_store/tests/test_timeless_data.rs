@@ -1,4 +1,4 @@
-use re_data_store::{FieldName, LogDb, ObjPath, ObjPathComp, TimeInt, TimeQuery, Timeline};
+use re_data_store::{FieldName, LogDb, TimeInt, TimeQuery, Timeline};
 use re_log_types::{obj_path, Data, DataMsg, DataPath, DataVec, MsgId, TimePoint, TimeType};
 
 #[test]

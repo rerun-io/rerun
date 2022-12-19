@@ -3,7 +3,7 @@ use itertools::Itertools as _;
 use re_log_types::{obj_path, FieldName, MsgId};
 
 use re_data_store::{
-    query::visit_type_data_1, BatchOrSplat, Index, ObjPath, ObjPathComp, TimeQuery, TimelineStore,
+    query::visit_type_data_1, BatchOrSplat, Index, ObjPath, TimeQuery, TimelineStore,
 };
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
