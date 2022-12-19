@@ -41,7 +41,7 @@ re_tuid = { path = "../re_tuid" }
 
 # External
 ahash = "0.8"
-arrow2 = { workspace = true, features = ["io_ipc"] }
+arrow2 = { workspace = true, features = ["io_ipc", "io_print"] }
 arrow2_convert.workspace = true
 bytemuck = "1.11"
 chrono = { version = "0.4", features = ["js-sys", "wasmbind"] }

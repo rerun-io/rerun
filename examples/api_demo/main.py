@@ -120,7 +120,7 @@ def run_rects() -> None:
     rerun.log_image("rects_demo/img", img)
 
     # 20 random rectangles
-    NUM_RECTS = 20
+    NUM_RECTS = 2
     for i in range(20):
         rerun.set_time_seconds("sim_time", i)
         rects_xy = np.random.rand(NUM_RECTS, 2) * 1024

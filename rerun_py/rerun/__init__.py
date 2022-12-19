@@ -495,10 +495,12 @@ def log_rects(
         colors = color.ColorRGBAArray.from_numpy(colors)
         labels = label.LabelArray.new(labels)
         rerun_bindings.log_arrow_msg(
-            obj_path,
-            rects=rects,
-            colors=colors,
-            labels=labels,
+            f"arrow/{obj_path}",
+            **{
+                "rerun.rect2d": rects,
+                "rerun.colorrgba": colors,
+                "rerun.label": labels,
+            },
         )
 
 
@@ -624,7 +626,7 @@ def log_points(
         labels = label.LabelArray.new(labels)
 
         rerun_bindings.log_arrow_msg(
-            obj_path,
+            f"arrow/{obj_path}",
             points=points,
             # colors=colors,
             labels=labels,

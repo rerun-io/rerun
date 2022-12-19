@@ -228,6 +228,24 @@ impl MsgBundle {
     }
 }
 
+impl std::fmt::Display for MsgBundle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let (names, values): (Vec<_>, Vec<_>) = self
+            .components
+            .iter()
+            .map(|ComponentBundle { name, value }| (name.as_str(), value))
+            .unzip();
+
+        let chunk = Chunk::new(values);
+        let table_string = arrow2::io::print::write(&[chunk], names.as_slice());
+
+        f.write_fmt(format_args!(
+            "MsgBundle '{}' @ {:?}:\n{}",
+            self.obj_path, self.time_point, table_string
+        ))
+    }
+}
+
 /// Pack the passed iterator of `ComponentBundle` into a `(Schema, StructArray)` tuple.
 #[inline]
 fn pack_components(components: impl Iterator<Item = ComponentBundle>) -> (Schema, StructArray) {

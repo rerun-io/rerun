@@ -89,19 +89,14 @@ pub fn build_chunk_from_components(
 
     // Turn the arrays into a `Chunk`
     let chunk = Chunk::try_new(arrays).map_err(|e| PyValueError::new_err(e.to_string()))?;
-    let names = fields.iter().map(|f| f.name.clone()).collect::<Vec<_>>();
-    re_log::info!(
-        "Logged an arrow msg to path '{}':\n{}",
-        obj_path,
-        arrow2::io::print::write(&[chunk.clone()], names.as_slice())
-    );
+    let names = fields.iter().map(|f| f.name.as_str()).collect::<Vec<_>>();
 
     let cmp_bundles = chunk
         .into_arrays()
         .into_iter()
         .zip(names.into_iter())
         .map(|(value, name)| ComponentBundle {
-            name,
+            name: name.into(),
             value: msg_bundle::wrap_in_listarray(value).boxed(),
         })
         .collect();
@@ -112,6 +107,8 @@ pub fn build_chunk_from_components(
         time_point.clone(),
         cmp_bundles,
     );
+
+    println!("Logged {msg_bundle}");
 
     let msg = msg_bundle
         .try_into()
