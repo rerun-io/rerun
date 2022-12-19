@@ -1,4 +1,5 @@
-use polars_core::prelude::*;
+use arrow2::array::Array;
+use polars_core::{prelude::*, series::IsSorted};
 use re_arrow_store::{DataStore, TimelineQuery};
 use re_log_types::{field_types::Instance, msg_bundle::Component, ComponentName, ObjPath};
 
@@ -16,9 +17,43 @@ pub enum QueryError {
 
 pub type Result<T> = std::result::Result<T, QueryError>;
 
-/// Retrieves a [`DataFrame`] for a [`Component`] with its corresponding
-/// [`Instance`] values.
+/// A type-erased array of [`Component`] values and the corresponding [`Instance`] keys.
+///
+/// `instance_keys` must always be sorted if present. If not present we assume implicit
+/// instance keys that are equal to the row-number.
+///
+/// This type can be easily converted into a polars [`DataFrame`]
+/// See: [`get_component_with_instances`]
+#[derive(Clone, Debug)]
+pub struct ComponentWithInstances {
+    pub name: ComponentName,
+    pub instance_keys: Option<Box<dyn Array>>,
+    pub values: Box<dyn Array>,
+}
+
+impl TryFrom<ComponentWithInstances> for DataFrame {
+    type Error = QueryError;
+
+    fn try_from(val: ComponentWithInstances) -> Result<DataFrame> {
+        let mut instance_series = if let Some(instance_keys) = val.instance_keys {
+            Series::try_from((Instance::name().as_str(), instance_keys.clone()))?
+        } else {
+            Series::new(Instance::name().as_str(), 0..val.values.len() as u64)
+        };
+
+        // Annotate the instance_series as being sorted.
+        // TODO(jleibs): Figure out if dataframe actually makes use of this?
+        instance_series.set_sorted(IsSorted::Ascending);
+
+        let value_series = Series::try_from((val.name.as_str(), val.values))?;
+
+        DataFrame::new(vec![instance_series, value_series]).map_err(Into::into)
+    }
+}
+
+/// Retrieves a [`ComponentWithInstances`] from the [`DataStore`].
 /// ```
+/// # use polars_core::prelude::DataFrame;
 /// # use re_arrow_store::{TimelineQuery, TimeQuery};
 /// # use re_log_types::{Timeline, field_types::Point2D, msg_bundle::Component};
 /// # let store = re_query::__populate_example_store();
@@ -29,13 +64,13 @@ pub type Result<T> = std::result::Result<T, QueryError>;
 ///   TimeQuery::LatestAt(123.into()),
 /// );
 ///
-/// let df = re_query::get_component_with_instances(
+/// let df : DataFrame = re_query::get_component_with_instances(
 ///   &store,
 ///   &timeline_query,
 ///   &ent_path.into(),
 ///   Point2D::name(),
 /// )
-/// .unwrap();
+/// .unwrap().try_into().unwrap();
 ///
 /// println!("{:?}", df);
 /// ```
@@ -58,47 +93,60 @@ pub fn get_component_with_instances(
     timeline_query: &TimelineQuery,
     ent_path: &ObjPath,
     component: ComponentName,
-) -> Result<DataFrame> {
+) -> Result<ComponentWithInstances> {
     let components = [Instance::name(), component];
 
     let row_indices = store
         .query(timeline_query, ent_path, component, &components)
         .ok_or(QueryError::PrimaryNotFound)?;
 
-    let results = store.get(&components, &row_indices);
+    let mut results = store.get(&components, &row_indices);
 
-    let series: Result<Vec<Series>> = components
-        .iter()
-        .zip(results)
-        .filter_map(|(component, col)| col.map(|col| (component, col)))
-        .map(|(&component, col)| Ok(Series::try_from((component.as_str(), col))?))
-        .collect();
-
-    DataFrame::new(series?).map_err(Into::into)
+    Ok(ComponentWithInstances {
+        name: component,
+        instance_keys: results[0].take(),
+        values: results[1].take().ok_or(QueryError::PrimaryNotFound)?,
+    })
 }
 
-/// If a `DataFrame` has no `Instance` column create one from the row numbers
-fn add_instances_and_sort_if_needed(df: &DataFrame) -> Result<DataFrame> {
-    let instance_name = Instance::name().as_str();
-    if df.column(instance_name).is_ok() {
-        // If we have an InstanceKey column already, make sure that it's sorted.
-        // TODO(jleibs): can remove this once we have a sort guarantee from the store
-        let reverse = false;
-        Ok(df.sort([instance_name], reverse)?)
-    } else {
-        // If we don't have an InstanceKey column, it is implicit, and we generate it
-        // based on the row-number so we can use this in join-operations.
-        // The default Polars row type is u32 and so we need to convert it to the
-        // expected type of our InstanceKeys.
-        let mut with_rows = df.with_row_count(instance_name, None)?;
-        let rows = with_rows.select_at_idx(0).ok_or(QueryError::BadAccess)?;
-        let u64_rows = rows.cast(&DataType::UInt64)?;
-        with_rows.replace_at_idx(0, u64_rows).unwrap();
-        Ok(with_rows)
+#[derive(Clone, Debug)]
+pub struct EntityView {
+    pub primary: ComponentWithInstances,
+    pub components: Vec<ComponentWithInstances>,
+}
+
+impl TryFrom<EntityView> for DataFrame {
+    type Error = QueryError;
+
+    fn try_from(val: EntityView) -> Result<DataFrame> {
+        let df: DataFrame = val.primary.try_into()?;
+
+        // TODO(jleibs): lots of room for optimization here. Once "instance" is
+        // guaranteed to be sorted we should be able to leverage this during the
+        // join. Series have a SetSorted option to specify this. join_asof might be
+        // the right place to start digging.
+
+        val.components
+            .into_iter()
+            .fold(Ok(df), |df: Result<DataFrame>, component| {
+                let component_df: DataFrame = component.try_into()?;
+                // We use an asof join which takes advantage of the fact
+                // that our join-columns are sorted. The strategy shouldn't
+                // matter here since we have a Tolerance of None.
+                let joined = df?.join_asof(
+                    &component_df,
+                    Instance::name().as_str(),
+                    Instance::name().as_str(),
+                    AsofStrategy::Backward,
+                    None,
+                    None,
+                );
+                Ok(joined?)
+            })
     }
 }
 
-/// Retrieve an entity as a polars Dataframe
+/// Retrieve an `EntityView` from the `DataStore`
 ///
 /// An entity has a primary [`Component`] which is expected to always be
 /// present. The length of the batch will be equal to the length of the primary
@@ -109,6 +157,7 @@ fn add_instances_and_sort_if_needed(df: &DataFrame) -> Result<DataFrame> {
 /// length.
 ///
 /// ```
+/// # use polars_core::prelude::DataFrame;
 /// # use re_arrow_store::{TimelineQuery, TimeQuery};
 /// # use re_log_types::{Timeline, field_types::{Point2D, ColorRGBA}, msg_bundle::Component};
 /// # let store = re_query::__populate_example_store();
@@ -119,14 +168,14 @@ fn add_instances_and_sort_if_needed(df: &DataFrame) -> Result<DataFrame> {
 ///   TimeQuery::LatestAt(123.into()),
 /// );
 ///
-/// let df = re_query::query_entity_with_primary(
+/// let df : DataFrame = re_query::query_entity_with_primary(
 ///   &store,
 ///   &timeline_query,
 ///   &ent_path.into(),
 ///   Point2D::name(),
 ///   &[ColorRGBA::name()],
 /// )
-/// .unwrap();
+/// .unwrap().try_into().unwrap();
 ///
 /// println!("{:?}", df);
 /// ```
@@ -150,45 +199,29 @@ pub fn query_entity_with_primary<const N: usize>(
     ent_path: &ObjPath,
     primary: ComponentName,
     components: &[ComponentName; N],
-) -> Result<DataFrame> {
-    let df = get_component_with_instances(store, timeline_query, ent_path, primary)?;
+) -> Result<EntityView> {
+    let primary = get_component_with_instances(store, timeline_query, ent_path, primary)?;
 
     // TODO(jleibs): lots of room for optimization here. Once "instance" is
     // guaranteed to be sorted we should be able to leverage this during the
     // join. Series have a SetSorted option to specify this. join_asof might be
     // the right place to start digging.
 
-    let df = add_instances_and_sort_if_needed(&df);
-
-    let instance_name = Instance::name().as_str();
-    let joined = components
+    let components: Result<Vec<ComponentWithInstances>> = components
         .iter()
-        .fold(df, |df: Result<DataFrame>, &component| {
-            // If we find the component, then we try to left-join with the existing dataframe
-            // If the column we are looking up isn't found, just return the dataframe as is
-            // For any other error, escalate
-            match get_component_with_instances(store, timeline_query, ent_path, component) {
-                Ok(component_df) => {
-                    let component_df = add_instances_and_sort_if_needed(&component_df)?;
-                    // We use an asof join which takes advantage of the fact
-                    // that our join-columns are sorted. The strategy shouldn't
-                    // matter here since we have a Tolerance of None.
-                    let joined = df?.join_asof(
-                        &component_df,
-                        instance_name,
-                        instance_name,
-                        AsofStrategy::Backward,
-                        None,
-                        None,
-                    );
-                    Ok(joined?)
-                }
-                Err(QueryError::PrimaryNotFound) => df,
-                Err(err) => Err(err),
+        .filter_map(|component| {
+            match get_component_with_instances(store, timeline_query, ent_path, *component) {
+                Ok(component_result) => Some(Ok(component_result)),
+                Err(QueryError::PrimaryNotFound) => None,
+                Err(err) => Some(Err(err)),
             }
-        });
+        })
+        .collect();
 
-    joined
+    Ok(EntityView {
+        primary,
+        components: components?,
+    })
 }
 
 /// Helper used to create an example store we can use for querying in doctests
@@ -238,7 +271,7 @@ fn component_with_instances() {
     let df =
         get_component_with_instances(&store, &timeline_query, &ent_path.into(), Point2D::name())
             .unwrap();
-    //eprintln!("{:?}", df);
+    eprintln!("{:?}", df);
 
     let instances = vec![Some(Instance(42)), Some(Instance(96))];
     let points = vec![
@@ -248,5 +281,5 @@ fn component_with_instances() {
 
     let expected = df_builder2(&instances, &points).unwrap();
 
-    assert_eq!(df, expected);
+    assert_eq!(expected, df.try_into().unwrap());
 }

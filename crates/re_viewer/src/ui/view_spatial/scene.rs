@@ -823,7 +823,7 @@ impl SceneSpatial {
                 TimeQuery::LatestAt(query.latest_at.as_i64()),
             );
 
-            if let Ok(df) = query_entity_with_primary(
+            if let Ok(entity_view) = query_entity_with_primary(
                 &ctx.log_db.obj_db.arrow_store,
                 &timeline_query,
                 ent_path,
@@ -831,7 +831,7 @@ impl SceneSpatial {
                 &[ColorRGBA::name()],
             ) {
                 visit_components3(
-                    &df,
+                    &entity_view,
                     |rect: &Rect2D, instance: Option<&Instance>, color: Option<&ColorRGBA>| {
                         // TODO(jleibs): This feels convoluted and heavy-weight. Whatever we need here
                         // should come directly out of the datastore.

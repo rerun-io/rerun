@@ -127,7 +127,7 @@ fn query_and_visit(store: &mut DataStore, paths: &[ObjPath]) -> Vec<Point> {
 
     // TODO(jleibs): Add Radius once we have support for it in field_types
     for path in paths.iter() {
-        if let Ok(df) = query_entity_with_primary(
+        if let Ok(entity_view) = query_entity_with_primary(
             store,
             &timeline_query,
             path,
@@ -135,7 +135,7 @@ fn query_and_visit(store: &mut DataStore, paths: &[ObjPath]) -> Vec<Point> {
             &[ColorRGBA::name()],
         ) {
             visit_components3(
-                &df,
+                &entity_view,
                 |pos: &Point2D, _instance: Option<&Instance>, color: Option<&ColorRGBA>| {
                     points.push(Point {
                         _pos: pos.clone(),

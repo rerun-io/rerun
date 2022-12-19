@@ -1,6 +1,6 @@
 use itertools::Itertools;
 use re_log_types::field_types::{ColorRGBA, Point2D};
-use re_query::dataframe_util::{df_builder1, df_builder2};
+use re_query::dataframe_util::{df_builder1, view_builder1, view_builder2};
 use re_query::{iter_column, visit_component, visit_components2};
 
 #[test]
@@ -59,11 +59,11 @@ fn single_visit() {
         Some(Point2D { x: 7.0, y: 8.0 }),
     ];
 
-    let df = df_builder1(&points).unwrap();
+    let entity_view = view_builder1(&points).unwrap();
 
     let mut points_out = Vec::<Option<Point2D>>::new();
 
-    visit_component(&df, |point: &Point2D| {
+    visit_component(&entity_view, |point: &Point2D| {
         points_out.push(Some(point.clone()));
     });
 
@@ -86,15 +86,18 @@ fn joint_visit() {
         None,
     ];
 
-    let df = df_builder2(&points, &colors).unwrap();
+    let entity_view = view_builder2(&points, &colors).unwrap();
 
     let mut points_out = Vec::<Option<Point2D>>::new();
     let mut colors_out = Vec::<Option<ColorRGBA>>::new();
 
-    visit_components2(&df, |point: &Point2D, color: Option<&ColorRGBA>| {
-        points_out.push(Some(point.clone()));
-        colors_out.push(color.cloned());
-    });
+    visit_components2(
+        &entity_view,
+        |point: &Point2D, color: Option<&ColorRGBA>| {
+            points_out.push(Some(point.clone()));
+            colors_out.push(color.cloned());
+        },
+    );
 
     assert_eq!(points, points_out);
     assert_eq!(colors, colors_out);

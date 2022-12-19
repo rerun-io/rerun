@@ -12,6 +12,8 @@ use re_log_types::{
     msg_bundle::Component,
 };
 
+use crate::query::EntityView;
+
 /// Make it so that our arrays can be deserialized again by arrow2-convert
 fn fix_polars_nulls<C: Component>(array: &dyn Array) -> Box<dyn Array> {
     // TODO(jleibs): This is an ugly work-around but gets our serializers
@@ -68,14 +70,15 @@ where
 
 /// Visit a component in a dataframe
 /// See [`visit_components2`]
-pub fn visit_component<C0: Component>(df: &DataFrame, mut visit: impl FnMut(&C0))
+pub fn visit_component<C0: Component>(entity_view: &EntityView, mut visit: impl FnMut(&C0))
 where
     C0: ArrowDeserialize + ArrowField<Type = C0> + 'static,
     C0::ArrayType: ArrowArray,
     for<'a> &'a C0::ArrayType: IntoIterator,
 {
+    let df: DataFrame = entity_view.clone().try_into().unwrap();
     if df.column(C0::name().as_str()).is_ok() {
-        let c0_iter = iter_column::<C0>(df);
+        let c0_iter = iter_column::<C0>(&df);
 
         c0_iter.for_each(|c0_data| {
             if let Some(c0_data) = c0_data {
@@ -89,7 +92,7 @@ where
 /// The first component is the primary, while the remaining are optional
 ///
 /// # Usage
-/// ```
+/// ```text
 /// # use re_query::dataframe_util::df_builder2;
 /// # use re_log_types::field_types::{ColorRGBA, Point2D};
 /// use re_query::visit_components2;
@@ -122,7 +125,7 @@ where
 /// assert_eq!(colors, colors_out);
 /// ```
 pub fn visit_components2<C0: Component, C1: Component>(
-    df: &DataFrame,
+    entity_view: &EntityView,
     mut visit: impl FnMut(&C0, Option<&C1>),
 ) where
     C0: ArrowDeserialize + ArrowField<Type = C0> + 'static,
@@ -132,10 +135,11 @@ pub fn visit_components2<C0: Component, C1: Component>(
     C1::ArrayType: ArrowArray,
     for<'a> &'a C1::ArrayType: IntoIterator,
 {
+    let df: DataFrame = entity_view.clone().try_into().unwrap();
     // The primary column must exist or else we don't have anything to do
     if df.column(C0::name().as_str()).is_ok() {
-        let c0_iter = iter_column::<C0>(df);
-        let c1_iter = iter_column::<C1>(df);
+        let c0_iter = iter_column::<C0>(&df);
+        let c1_iter = iter_column::<C1>(&df);
 
         itertools::izip!(c0_iter, c1_iter).for_each(|(c0_data, c1_data)| {
             if let Some(c0_data) = c0_data {
@@ -148,7 +152,7 @@ pub fn visit_components2<C0: Component, C1: Component>(
 /// Visit all all of a complex component in a dataframe
 /// See [`visit_components2`]
 pub fn visit_components3<C0: Component, C1: Component, C2: Component>(
-    df: &DataFrame,
+    entity_view: &EntityView,
     mut visit: impl FnMut(&C0, Option<&C1>, Option<&C2>),
 ) where
     C0: ArrowDeserialize + ArrowField<Type = C0> + 'static,
@@ -161,11 +165,12 @@ pub fn visit_components3<C0: Component, C1: Component, C2: Component>(
     C2::ArrayType: ArrowArray,
     for<'a> &'a C2::ArrayType: IntoIterator,
 {
+    let df: DataFrame = entity_view.clone().try_into().unwrap();
     // The primary column must exist or else we don't have anything to do
     if df.column(C0::name().as_str()).is_ok() {
-        let c0_iter = iter_column::<C0>(df);
-        let c1_iter = iter_column::<C1>(df);
-        let c2_iter = iter_column::<C2>(df);
+        let c0_iter = iter_column::<C0>(&df);
+        let c1_iter = iter_column::<C1>(&df);
+        let c2_iter = iter_column::<C2>(&df);
 
         itertools::izip!(c0_iter, c1_iter, c2_iter).for_each(|(c0_data, c1_data, c2_data)| {
             if let Some(c0_data) = c0_data {

@@ -77,7 +77,7 @@ fn simple_query() {
     //eprintln!("{:?}", df);
     //eprintln!("{:?}", expected);
 
-    compare_df(&df, &expected);
+    compare_df(&expected, &df.try_into().unwrap());
 }
 
 #[test]
@@ -135,7 +135,7 @@ fn no_instance_join_query() {
     //eprintln!("{:?}", df);
     //eprintln!("{:?}", expected);
 
-    compare_df(&df, &expected);
+    compare_df(&expected, &df.try_into().unwrap());
 }
 
 #[test]
@@ -185,8 +185,8 @@ fn missing_column_join_query() {
     ];
     let expected = df_builder2(&instances, &points).unwrap();
 
-    eprintln!("{:?}", df);
-    eprintln!("{:?}", expected);
+    //eprintln!("{:?}", df);
+    //eprintln!("{:?}", expected);
 
-    compare_df(&df, &expected);
+    compare_df(&expected, &df.try_into().unwrap());
 }

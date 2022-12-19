@@ -4,6 +4,8 @@ use re_log_types::{
     msg_bundle::Component,
 };
 
+use crate::{query::ComponentWithInstances, EntityView};
+
 pub fn df_builder1<C0>(c0: &Vec<Option<C0>>) -> Result<DataFrame, PolarsError>
 where
     C0: Component + 'static,
@@ -17,6 +19,28 @@ where
     let series0 = Series::try_from((C0::name().as_str(), array0.unwrap().as_box()))?;
 
     DataFrame::new(vec![series0])
+}
+
+pub fn view_builder1<C0>(c0: &Vec<Option<C0>>) -> crate::Result<EntityView>
+where
+    C0: Component + 'static,
+    Option<C0>: ArrowSerialize + ArrowField<Type = Option<C0>>,
+{
+    use arrow2::array::MutableArray;
+    use re_log_types::external::arrow2_convert::serialize::arrow_serialize_to_mutable_array;
+
+    let array0 = arrow_serialize_to_mutable_array::<Option<C0>, Option<C0>, &Vec<Option<C0>>>(c0);
+
+    let component_c0 = ComponentWithInstances {
+        name: C0::name(),
+        instance_keys: None,
+        values: array0.unwrap().as_box(),
+    };
+
+    Ok(EntityView {
+        primary: component_c0,
+        components: vec![],
+    })
 }
 
 pub fn df_builder2<C0, C1>(
@@ -39,6 +63,40 @@ where
     let series1 = Series::try_from((C1::name().as_str(), array1.unwrap().as_box()))?;
 
     DataFrame::new(vec![series0, series1])
+}
+
+pub fn view_builder2<C0, C1>(
+    c0: &Vec<Option<C0>>,
+    c1: &Vec<Option<C1>>,
+) -> crate::Result<EntityView>
+where
+    C0: Component + 'static,
+    Option<C0>: ArrowSerialize + ArrowField<Type = Option<C0>>,
+    C1: Component + 'static,
+    Option<C1>: ArrowSerialize + ArrowField<Type = Option<C1>>,
+{
+    use arrow2::array::MutableArray;
+    use re_log_types::external::arrow2_convert::serialize::arrow_serialize_to_mutable_array;
+
+    let array0 = arrow_serialize_to_mutable_array::<Option<C0>, Option<C0>, &Vec<Option<C0>>>(c0);
+    let array1 = arrow_serialize_to_mutable_array::<Option<C1>, Option<C1>, &Vec<Option<C1>>>(c1);
+
+    let component_c0 = ComponentWithInstances {
+        name: C0::name(),
+        instance_keys: None,
+        values: array0.unwrap().as_box(),
+    };
+
+    let component_c1 = ComponentWithInstances {
+        name: C1::name(),
+        instance_keys: None,
+        values: array1.unwrap().as_box(),
+    };
+
+    Ok(EntityView {
+        primary: component_c0,
+        components: vec![component_c1],
+    })
 }
 
 pub fn df_builder3<C0, C1, C2>(
