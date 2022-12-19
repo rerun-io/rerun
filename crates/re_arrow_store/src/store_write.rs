@@ -266,7 +266,7 @@ impl IndexBucket {
         } = &mut *guard;
 
         // append time to primary index and update time range approriately
-        times.push(time.as_i64().into());
+        times.push(time.as_i64());
         *time_range = TimeRange::new(time_range.min.min(time), time_range.max.max(time));
 
         // append components to secondary indices (2-way merge)
@@ -278,7 +278,7 @@ impl IndexBucket {
             let index = indices
                 .entry(*name)
                 .or_insert_with(|| vec![None; times.len().saturating_sub(1)]);
-            index.push(Some(row_idx.as_u64()));
+            index.push(Some(*row_idx));
         }
 
         // 2-way merge, step2: right-to-left
@@ -610,12 +610,7 @@ impl ComponentTable {
         ComponentTable {
             name,
             datatype: datatype.clone(),
-            buckets: [ComponentBucket::new(
-                name,
-                datatype,
-                RowIndex::from_u64(0u64),
-            )]
-            .into(),
+            buckets: [ComponentBucket::new(name, datatype, 0u64)].into(),
         }
     }
 
@@ -674,12 +669,9 @@ impl ComponentTable {
             // Archive currently active bucket.
             active_bucket.archive();
 
-            let row_offset = active_bucket.row_offset.as_u64() + len;
-            self.buckets.push_back(ComponentBucket::new(
-                self.name,
-                &self.datatype,
-                RowIndex::from_u64(row_offset),
-            ));
+            let row_offset = active_bucket.row_offset + len;
+            self.buckets
+                .push_back(ComponentBucket::new(self.name, &self.datatype, row_offset));
         }
 
         // Two possible cases:
@@ -689,7 +681,7 @@ impl ComponentTable {
         // - If the table has just overflowed, then we've just pushed a bucket to the dequeue.
         let active_bucket = self.buckets.back_mut().unwrap();
         let row_idx = RowIndex::from_u64(
-            active_bucket.push(time_point, rows_single) + active_bucket.row_offset.as_u64(),
+            active_bucket.push(time_point, rows_single) + active_bucket.row_offset,
         );
 
         debug!(
@@ -711,10 +703,10 @@ impl ComponentBucket {
     ///
     /// `datatype` must be the type of the component itself, devoid of any wrapping layers
     /// (i.e. _not_ a `ListArray<...>`!).
-    pub fn new(name: ComponentName, datatype: &DataType, row_offset: RowIndex) -> Self {
+    pub fn new(name: ComponentName, datatype: &DataType, row_offset: u64) -> Self {
         // If this is the first bucket of this table, we need to insert an empty list at
         // row index #0!
-        let chunks = if row_offset.as_u64() == 0 {
+        let chunks = if row_offset == 0 {
             let empty = ListArray::<i32>::from_data(
                 ListArray::<i32>::default_datatype(datatype.clone()),
                 Buffer::from(vec![0, 0i32]),

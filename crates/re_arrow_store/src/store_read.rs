@@ -10,7 +10,7 @@ use re_log_types::{ComponentName, ObjPath as EntityPath, TimeInt, TimeRange, Tim
 
 use crate::{
     ComponentBucket, ComponentTable, DataStore, IndexBucket, IndexBucketIndices, IndexTable,
-    RowIndex,
+    RowIndex, SecondaryIndex,
 };
 
 // ---
@@ -412,7 +412,7 @@ impl IndexBucket {
                         %primary_idx, %secondary_idx, %row_idx,
                         "found row index",
                     );
-                    row_indices[i] = Some(RowIndex::from_u64(row_idx));
+                    row_indices[i] = Some(row_idx);
                 }
             }
         }
@@ -441,7 +441,17 @@ impl IndexBucket {
             .read()
             .indices
             .iter()
-            .map(|(name, index)| (name, UInt64Array::from(index.clone())))
+            .map(|(name, index)| {
+                (
+                    name,
+                    UInt64Array::from(
+                        index
+                            .iter()
+                            .map(|row_idx| row_idx.map(|row_idx| row_idx.as_u64()))
+                            .collect::<Vec<_>>(),
+                    ),
+                )
+            })
             .unzip()
     }
 }
@@ -481,10 +491,10 @@ impl IndexBucketIndices {
             }
         }
 
-        fn reshuffle_index(index: &mut [Option<u64>], swaps: &[(usize, usize)]) {
+        fn reshuffle_index(index: &mut SecondaryIndex, swaps: &[(usize, usize)]) {
             // shuffle data
             {
-                let source = index.to_vec();
+                let source = index.clone();
                 for (from, to) in swaps.iter().copied() {
                     index[to] = source[from];
                 }
@@ -506,7 +516,7 @@ impl ComponentTable {
     pub fn get(&self, row_idx: RowIndex) -> Option<Box<dyn Array>> {
         let mut bucket_nr = self
             .buckets
-            .partition_point(|bucket| row_idx >= bucket.row_offset);
+            .partition_point(|bucket| row_idx.as_u64() >= bucket.row_offset);
 
         // The partition point will give us the index of the first bucket that has a row offset
         // strictly greater than the row index we're looking for, therefore we need to take a
@@ -555,7 +565,7 @@ impl ComponentBucket {
 
     /// Returns a shallow clone of the row data present at the given `row_idx`.
     pub fn get(&self, row_idx: RowIndex) -> Box<dyn Array> {
-        let row_idx = row_idx.as_u64() - self.row_offset.as_u64();
+        let row_idx = row_idx.as_u64() - self.row_offset;
         // This has to be safe to unwrap, otherwise it would never have made it past insertion.
         if self.archived {
             debug_assert_eq!(self.chunks.len(), 1);

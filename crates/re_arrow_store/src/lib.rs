@@ -10,7 +10,9 @@ mod store;
 mod store_read;
 mod store_write;
 
-pub(crate) use self::store::{ComponentBucket, ComponentTable, IndexBucketIndices, TimeIndex};
+pub(crate) use self::store::{
+    ComponentBucket, ComponentTable, IndexBucketIndices, SecondaryIndex, TimeIndex,
+};
 pub use self::store::{DataStore, DataStoreConfig, IndexBucket, IndexTable, RowIndex};
 pub use self::store_read::{TimeQuery, TimelineQuery};
 

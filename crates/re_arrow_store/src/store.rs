@@ -1,4 +1,5 @@
 use std::collections::{BTreeMap, HashMap, VecDeque};
+use std::num::NonZeroU64;
 use std::sync::atomic::AtomicU64;
 
 use anyhow::ensure;
@@ -17,27 +18,31 @@ use re_log_types::{
 // --- Data store ---
 
 pub type TimeIndex = Vec<i64>;
-pub type SecondaryIndex = Vec<Option<u64>>; // TODO: NonZero possible here?
+// TODO: keeping a separate validity might be a better option, maybe.
+pub type SecondaryIndex = Vec<Option<RowIndex>>;
+static_assertions::assert_eq_size!(u64, Option<RowIndex>);
 
 /// An opaque type that directly refers to a row of data within the datastore, iff it is associated
 /// with a component name.
 ///
 /// See [`DataStore::query`] & [`DataStore::get`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct RowIndex(pub(crate) u64);
+pub struct RowIndex(pub(crate) NonZeroU64);
+
+impl RowIndex {
+    /// Panics if `v` is 0.
+    pub(crate) fn from_u64(v: u64) -> Self {
+        Self(v.try_into().unwrap())
+    }
+
+    pub(crate) fn as_u64(self) -> u64 {
+        self.0.into()
+    }
+}
 
 impl std::fmt::Display for RowIndex {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!("{}", self.0))
-    }
-}
-
-impl RowIndex {
-    pub(crate) fn from_u64(row_idx: u64) -> Self {
-        Self(row_idx)
-    }
-    pub(crate) fn as_u64(self) -> u64 {
-        self.0
     }
 }
 
@@ -204,12 +209,7 @@ impl DataStore {
                 for bucket in table.buckets.values() {
                     for (comp, index) in &bucket.indices.read().indices {
                         let row_indices = row_indices.entry(*comp).or_default();
-                        row_indices.extend(
-                            index
-                                .iter()
-                                .copied()
-                                .map(|row_idx| RowIndex::from_u64(row_idx.unwrap_or(0))),
-                        );
+                        row_indices.extend(index.iter().copied().flatten());
                     }
                 }
             }
@@ -809,9 +809,7 @@ impl ComponentTable {
             let row_ranges = self
                 .buckets
                 .iter()
-                .map(|bucket| {
-                    bucket.row_offset.as_u64()..bucket.row_offset.as_u64() + bucket.total_rows()
-                })
+                .map(|bucket| bucket.row_offset..bucket.row_offset + bucket.total_rows())
                 .collect::<Vec<_>>();
             for row_ranges in row_ranges.windows(2) {
                 let &[r1, r2] = &row_ranges else { unreachable!() };
@@ -833,7 +831,7 @@ pub struct ComponentBucket {
     pub(crate) name: ComponentName,
 
     /// The offset of this bucket in the global table.
-    pub(crate) row_offset: RowIndex,
+    pub(crate) row_offset: u64,
 
     /// Has this bucket been archived yet?
     ///
@@ -908,7 +906,7 @@ impl std::fmt::Display for ComponentBucket {
             //
             // TODO(#439): is that still true with deletion?
             // TODO(#589): support for non-unit-length chunks
-            self.row_offset.as_u64()
+            self.row_offset
                 + self
                     .chunks
                     .len()
