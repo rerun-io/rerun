@@ -1,6 +1,5 @@
 use anyhow::ensure;
-use arrow2::array::{new_empty_array, Array, Int64Vec, ListArray, MutableArray, UInt64Vec};
-use arrow2::bitmap::MutableBitmap;
+use arrow2::array::{new_empty_array, Array, ListArray};
 use arrow2::buffer::Buffer;
 use arrow2::datatypes::DataType;
 use nohash_hasher::IntMap;
@@ -10,9 +9,9 @@ use re_log::debug;
 use re_log_types::msg_bundle::{ComponentBundle, MsgBundle};
 use re_log_types::{ComponentName, ObjPath as EntityPath, TimeInt, TimePoint, TimeRange, Timeline};
 
-use crate::store::IndexBucketIndices;
 use crate::{
-    ComponentBucket, ComponentTable, DataStore, DataStoreConfig, IndexBucket, IndexTable, RowIndex,
+    ComponentBucket, ComponentTable, DataStore, DataStoreConfig, IndexBucket, IndexBucketIndices,
+    IndexTable, RowIndex, TimeIndex,
 };
 
 // --- Data store ---
@@ -184,7 +183,7 @@ impl IndexTable {
 
             let (bucket_upper_bound, bucket_len) = {
                 let guard = bucket.indices.read();
-                (guard.times.values().last().copied(), guard.times.len())
+                (guard.times.last().copied(), guard.times.len())
             };
 
             if let Some(upper_bound) = bucket_upper_bound {
@@ -209,8 +208,8 @@ impl IndexTable {
                             indices: RwLock::new(IndexBucketIndices {
                                 is_sorted: true,
                                 time_range: TimeRange::new(time, time),
-                                times: Int64Vec::new(),
-                                indices: IntMap::default(),
+                                times: Default::default(),
+                                indices: Default::default(),
                             }),
                         },
                     );
@@ -276,11 +275,9 @@ impl IndexBucket {
         //
         // push new row indices to their associated secondary index
         for (name, row_idx) in row_indices {
-            let index = indices.entry(*name).or_insert_with(|| {
-                let mut index = UInt64Vec::default();
-                index.extend_constant(times.len().saturating_sub(1), None);
-                index
-            });
+            let index = indices
+                .entry(*name)
+                .or_insert_with(|| vec![None; times.len().saturating_sub(1)]);
             index.push(Some(row_idx.as_u64()));
         }
 
@@ -289,7 +286,7 @@ impl IndexBucket {
         // fill unimpacted secondary indices with null values
         for (name, index) in &mut *indices {
             if !row_indices.contains_key(name) {
-                index.push_null();
+                index.push(None);
             }
         }
 
@@ -401,7 +398,7 @@ impl IndexBucket {
             return None; // early exit: can't split the unsplittable
         }
 
-        if times1.values().first() == times1.values().last() {
+        if times1.first() == times1.last() {
             // The entire bucket contains only one timepoint, thus it's impossible to find
             // a split index to begin with.
             return None;
@@ -425,7 +422,7 @@ impl IndexBucket {
                 .iter_mut()
                 .map(|(name, index1)| {
                     // this updates `index1` in-place!
-                    let index2 = split_secondary_index_off(split_idx, index1);
+                    let index2 = index1.split_off(split_idx);
                     (*name, index2)
                 })
                 .collect();
@@ -474,18 +471,12 @@ impl IndexBucket {
 ///
 /// This function expects `times` to be sorted!
 /// In debug builds, it will panic if that's not the case.
-fn find_split_index(times: &Int64Vec) -> Option<usize> {
+fn find_split_index(times: &TimeIndex) -> Option<usize> {
     debug_assert!(
-        times.validity().is_none(),
-        "The time index must always be dense, thus it shouldn't even have a validity\
-            bitmap attached to it to begin with."
-    );
-    debug_assert!(
-        times.values().windows(2).all(|t| t[0] <= t[1]),
+        times.windows(2).all(|t| t[0] <= t[1]),
         "time index must be sorted before splitting!"
     );
 
-    let times = times.values();
     if times.first() == times.last() {
         return None; // early exit: unsplittable
     }
@@ -553,7 +544,6 @@ fn test_find_split_index() {
     ];
 
     for (times, expected) in test_cases {
-        let times = Int64Vec::from_vec(times);
         let got = find_split_index(&times);
         assert_eq!(expected, got);
     }
@@ -568,11 +558,9 @@ fn test_find_split_index() {
 /// The two resulting time range halves are guaranteed to never overlap.
 fn split_time_range_off(
     split_idx: usize,
-    times1: &Int64Vec,
+    times1: &TimeIndex,
     time_range1: &mut TimeRange,
 ) -> TimeRange {
-    let times1 = times1.values();
-
     let time_range2 = TimeRange::new(times1[split_idx].into(), time_range1.max);
 
     // This can never fail (underflow or OOB) because we never split buckets smaller than 2
@@ -595,20 +583,10 @@ fn split_time_range_off(
 ///
 /// The split index is exclusive: everything up to `split_idx` (excluded) will end up in the
 /// first split.
-fn split_primary_index_off(split_idx: usize, times1: &mut Int64Vec) -> Int64Vec {
-    debug_assert!(
-        times1.validity().is_none(),
-        "The time index must always be dense, thus it shouldn't even have a validity\
-            bitmap attached to it to begin with."
-    );
-
+fn split_primary_index_off(split_idx: usize, times1: &mut TimeIndex) -> TimeIndex {
     let total_rows = times1.len();
 
-    let (datatype, mut data1, _) = std::mem::take(times1).into_data();
-    let data2 = data1.split_off(split_idx);
-    let times2 = Int64Vec::from_data(datatype.clone(), data2, None);
-
-    *times1 = Int64Vec::from_data(datatype, data1, None);
+    let times2 = times1.split_off(split_idx);
 
     debug_assert!(
         total_rows == times1.len() + times2.len(),
@@ -619,36 +597,6 @@ fn split_primary_index_off(split_idx: usize, times1: &mut Int64Vec) -> Int64Vec 
     );
 
     times2
-}
-
-/// Given a secondary index of any kind and a desired split index, splits off the index
-/// in place, and returns a new index of the same kind that corresponds to the second part.
-///
-/// The split index is exclusive: everything up to `split_idx` (excluded) will end up in the
-/// first split.
-fn split_secondary_index_off(split_idx: usize, index1: &mut UInt64Vec) -> UInt64Vec {
-    let (datatype, mut data1, validity1) = std::mem::take(index1).into_data();
-    let data2 = data1.split_off(split_idx);
-
-    let validities = validity1.map(|validity1| {
-        let mut validity1 = validity1.into_iter().collect::<Vec<_>>();
-        let validity2 = validity1.split_off(split_idx);
-        (
-            MutableBitmap::from_iter(validity1),
-            MutableBitmap::from_iter(validity2),
-        )
-    });
-
-    // We can only end up with either no validity bitmap (because the original index didn't have
-    // one), or with two new bitmaps (because we've split the original in two), nothing in
-    // between.
-    if let Some((validity1, validity2)) = validities {
-        *index1 = UInt64Vec::from_data(datatype.clone(), data1, Some(validity1));
-        UInt64Vec::from_data(datatype, data2, Some(validity2))
-    } else {
-        *index1 = UInt64Vec::from_data(datatype.clone(), data1, None);
-        UInt64Vec::from_data(datatype, data2, None)
-    }
 }
 
 // --- Components ---

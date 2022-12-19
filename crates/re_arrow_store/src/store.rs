@@ -2,8 +2,7 @@ use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::sync::atomic::AtomicU64;
 
 use anyhow::ensure;
-use arrow2::array::{Array, Int64Vec, MutableArray, UInt64Vec};
-use arrow2::bitmap::MutableBitmap;
+use arrow2::array::Array;
 use arrow2::chunk::Chunk;
 use arrow2::datatypes::DataType;
 
@@ -16,6 +15,9 @@ use re_log_types::{
 };
 
 // --- Data store ---
+
+pub type TimeIndex = Vec<i64>;
+pub type SecondaryIndex = Vec<Option<u64>>; // TODO: NonZero possible here?
 
 /// An opaque type that directly refers to a row of data within the datastore, iff it is associated
 /// with a component name.
@@ -202,7 +204,12 @@ impl DataStore {
                 for bucket in table.buckets.values() {
                     for (comp, index) in &bucket.indices.read().indices {
                         let row_indices = row_indices.entry(*comp).or_default();
-                        row_indices.extend(index.values().iter().copied().map(RowIndex::from_u64));
+                        row_indices.extend(
+                            index
+                                .iter()
+                                .copied()
+                                .map(|row_idx| RowIndex::from_u64(row_idx.unwrap_or(0))),
+                        );
                     }
                 }
             }
@@ -551,7 +558,7 @@ pub struct IndexBucketIndices {
     // The primary time index, which is guaranteed to be dense, and "drives" all other indices.
     //
     // All secondary indices are guaranteed to follow the same sort order and be the same length.
-    pub(crate) times: Int64Vec,
+    pub(crate) times: TimeIndex,
 
     /// All secondary indices for this bucket (i.e. everything but time).
     ///
@@ -559,7 +566,7 @@ pub struct IndexBucketIndices {
     /// time!
     /// When that happens, they will be retro-filled with nulls so that they share the same
     /// length as the primary index.
-    pub(crate) indices: IntMap<ComponentName, UInt64Vec>,
+    pub(crate) indices: IntMap<ComponentName, SecondaryIndex>,
 }
 
 impl Default for IndexBucketIndices {
@@ -567,7 +574,7 @@ impl Default for IndexBucketIndices {
         Self {
             is_sorted: true,
             time_range: TimeRange::new(i64::MAX.into(), i64::MIN.into()),
-            times: Int64Vec::default(),
+            times: Default::default(),
             indices: Default::default(),
         }
     }
@@ -613,13 +620,6 @@ impl IndexBucket {
     /// Returns the size of the data stored across this bucket, in bytes.
     // NOTE: for mutable, non-erased arrays, it's actually easier to compute ourselves.
     pub fn total_size_bytes(&self) -> u64 {
-        fn size_of_validity(bitmap: Option<&MutableBitmap>) -> u64 {
-            bitmap.map_or(0, |bitmap| std::mem::size_of_val(bitmap.as_slice())) as _
-        }
-        fn size_of_values<T>(values: &Vec<T>) -> u64 {
-            std::mem::size_of_val(values.as_slice()) as _
-        }
-
         let IndexBucketIndices {
             is_sorted: _,
             time_range: _,
@@ -627,11 +627,10 @@ impl IndexBucket {
             indices,
         } = &*self.indices.read();
 
-        size_of_validity(times.validity())
-            + size_of_values(times.values())
+        std::mem::size_of_val(times.as_slice()) as u64
             + indices
                 .values()
-                .map(|index| size_of_validity(index.validity()) + size_of_values(index.values()))
+                .map(|index| std::mem::size_of_val(index.as_slice()) as u64)
                 .sum::<u64>()
     }
 

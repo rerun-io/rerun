@@ -1,7 +1,7 @@
 use std::sync::atomic::Ordering;
 
 use arrow2::{
-    array::{Array, Int64Array, ListArray, MutableArray, UInt64Array, UInt64Vec},
+    array::{Array, Int64Array, ListArray, UInt64Array},
     datatypes::{DataType, TimeUnit},
 };
 
@@ -348,7 +348,6 @@ impl IndexBucket {
         );
 
         // find the primary index's row.
-        let times = times.values();
         let primary_idx = times.partition_point(|t| *t <= time) as i64;
 
         // The partition point is always _beyond_ the index that we're looking for.
@@ -373,7 +372,7 @@ impl IndexBucket {
 
         // find the secondary indices' rows, and the associated row indices.
         let mut secondary_idx = primary_idx;
-        while !index.is_valid(secondary_idx as _) {
+        while index[secondary_idx as usize].is_none() {
             secondary_idx -= 1;
             if secondary_idx < 0 {
                 debug!(
@@ -398,13 +397,12 @@ impl IndexBucket {
             %primary_idx, %secondary_idx,
             "found secondary index",
         );
-        debug_assert!(index.is_valid(secondary_idx as usize));
+        debug_assert!(index[secondary_idx as usize].is_some());
 
         let mut row_indices = [None; N];
         for (i, component) in components.iter().enumerate() {
             if let Some(index) = indices.get(component) {
-                if index.is_valid(secondary_idx as _) {
-                    let row_idx = index.values()[secondary_idx as usize];
+                if let Some(row_idx) = index[secondary_idx as usize] {
                     debug!(
                         kind = "query",
                         %primary,
@@ -429,7 +427,7 @@ impl IndexBucket {
 
     /// Returns an (name, [`Int64Array`]) with a logical type matching the timeline.
     pub fn times(&self) -> (String, Int64Array) {
-        let times = Int64Array::from(self.indices.read().times.clone());
+        let times = Int64Array::from_vec(self.indices.read().times.clone());
         let logical_type = match self.timeline.typ() {
             re_log_types::TimeType::Time => DataType::Timestamp(TimeUnit::Nanosecond, None),
             re_log_types::TimeType::Sequence => DataType::Int64,
@@ -462,7 +460,6 @@ impl IndexBucketIndices {
         }
 
         let swaps = {
-            let times = times.values();
             let mut swaps = (0..times.len()).collect::<Vec<_>>();
             swaps.sort_by_key(|&i| &times[i]);
             swaps
@@ -478,43 +475,19 @@ impl IndexBucketIndices {
 
         // shuffle time index back into a sorted state
         {
-            // The time index must always be dense, thus it shouldn't even have a validity
-            // bitmap attached to it to begin with.
-            debug_assert!(times.validity().is_none());
-
-            let source = times.values().clone();
-            let values = times.values_mut_slice();
-
+            let source = times.clone();
             for (from, to) in swaps.iter().copied() {
-                values[to] = source[from];
+                times[to] = source[from];
             }
         }
 
-        fn reshuffle_index(index: &mut UInt64Vec, swaps: &[(usize, usize)]) {
+        fn reshuffle_index(index: &mut [Option<u64>], swaps: &[(usize, usize)]) {
             // shuffle data
             {
-                let source = index.values().clone();
-                let values = index.values_mut_slice();
-
+                let source = index.to_vec();
                 for (from, to) in swaps.iter().copied() {
-                    values[to] = source[from];
+                    index[to] = source[from];
                 }
-            }
-
-            // shuffle validity bitmaps
-            let validity_before = index.validity().cloned();
-            let validity_after = validity_before.clone();
-            if let (Some(validity_before), Some(mut validity_after)) =
-                (validity_before, validity_after)
-            {
-                for (from, to) in swaps.iter().copied() {
-                    validity_after.set(to, validity_before.get(from));
-                }
-
-                // we expect as many nulls before and after.
-                assert_eq!(validity_before.unset_bits(), validity_after.unset_bits());
-
-                index.set_validity(Some(validity_after));
             }
         }
 
