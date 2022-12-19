@@ -1,7 +1,4 @@
-use arrow2::array::{
-    new_empty_array, Array, Int64Vec, ListArray, MutableArray, UInt64Array, UInt64Vec,
-};
-use arrow2::bitmap::MutableBitmap;
+use arrow2::array::{new_empty_array, Array, ListArray, UInt64Array};
 use arrow2::buffer::Buffer;
 use arrow2::datatypes::DataType;
 use itertools::Itertools as _;
@@ -12,10 +9,9 @@ use re_log::debug;
 use re_log_types::msg_bundle::{ComponentBundle, MsgBundle};
 use re_log_types::{ComponentName, ObjPath as EntityPath, TimeInt, TimePoint, TimeRange, Timeline};
 
-use crate::store::IndexBucketIndices;
 use crate::{
     ArrayExt as _, ComponentBucket, ComponentTable, DataStore, DataStoreConfig, IndexBucket,
-    IndexTable, RowIndex,
+    IndexBucketIndices, IndexTable, RowIndex, TimeIndex,
 };
 
 // --- Data store ---
@@ -312,7 +308,7 @@ impl IndexTable {
 
             let (bucket_upper_bound, bucket_len) = {
                 let guard = bucket.indices.read();
-                (guard.times.values().last().copied(), guard.times.len())
+                (guard.times.last().copied(), guard.times.len())
             };
 
             if let Some(upper_bound) = bucket_upper_bound {
@@ -337,8 +333,8 @@ impl IndexTable {
                             indices: RwLock::new(IndexBucketIndices {
                                 is_sorted: true,
                                 time_range: TimeRange::new(time, time),
-                                times: Int64Vec::new(),
-                                indices: IntMap::default(),
+                                times: Default::default(),
+                                indices: Default::default(),
                             }),
                         },
                     );
@@ -395,7 +391,7 @@ impl IndexBucket {
         } = &mut *guard;
 
         // append time to primary index and update time range approriately
-        times.push(time.as_i64().into());
+        times.push(time.as_i64());
         *time_range = TimeRange::new(time_range.min.min(time), time_range.max.max(time));
 
         // append components to secondary indices (2-way merge)
@@ -404,12 +400,10 @@ impl IndexBucket {
         //
         // push new row indices to their associated secondary index
         for (name, row_idx) in row_indices {
-            let index = indices.entry(*name).or_insert_with(|| {
-                let mut index = UInt64Vec::default();
-                index.extend_constant(times.len().saturating_sub(1), None);
-                index
-            });
-            index.push(Some(row_idx.as_u64()));
+            let index = indices
+                .entry(*name)
+                .or_insert_with(|| vec![None; times.len().saturating_sub(1)]);
+            index.push(Some(*row_idx));
         }
 
         // 2-way merge, step2: right-to-left
@@ -417,7 +411,7 @@ impl IndexBucket {
         // fill unimpacted secondary indices with null values
         for (name, index) in &mut *indices {
             if !row_indices.contains_key(name) {
-                index.push_null();
+                index.push(None);
             }
         }
 
@@ -529,7 +523,7 @@ impl IndexBucket {
             return None; // early exit: can't split the unsplittable
         }
 
-        if times1.values().first() == times1.values().last() {
+        if times1.first() == times1.last() {
             // The entire bucket contains only one timepoint, thus it's impossible to find
             // a split index to begin with.
             return None;
@@ -546,14 +540,14 @@ impl IndexBucket {
             let time_range2 = split_time_range_off(split_idx, times1, time_range1);
 
             // this updates `times1` in-place!
-            let times2 = split_primary_index_off(split_idx, times1);
+            let times2 = times1.split_off(split_idx);
 
             // this updates `indices1` in-place!
             let indices2: IntMap<_, _> = indices1
                 .iter_mut()
                 .map(|(name, index1)| {
                     // this updates `index1` in-place!
-                    let index2 = split_secondary_index_off(split_idx, index1);
+                    let index2 = index1.split_off(split_idx);
                     (*name, index2)
                 })
                 .collect();
@@ -602,17 +596,12 @@ impl IndexBucket {
 ///
 /// This function expects `times` to be sorted!
 /// In debug builds, it will panic if that's not the case.
-fn find_split_index(times: &Int64Vec) -> Option<usize> {
+fn find_split_index(times: &TimeIndex) -> Option<usize> {
     debug_assert!(
-        times.validity().is_none(),
-        "The time index must always be dense."
-    );
-    debug_assert!(
-        times.values().windows(2).all(|t| t[0] <= t[1]),
+        times.windows(2).all(|t| t[0] <= t[1]),
         "time index must be sorted before splitting!"
     );
 
-    let times = times.values();
     if times.first() == times.last() {
         return None; // early exit: unsplittable
     }
@@ -680,7 +669,6 @@ fn test_find_split_index() {
     ];
 
     for (times, expected) in test_cases {
-        let times = Int64Vec::from_vec(times);
         let got = find_split_index(&times);
         assert_eq!(expected, got);
     }
@@ -695,11 +683,9 @@ fn test_find_split_index() {
 /// The two resulting time range halves are guaranteed to never overlap.
 fn split_time_range_off(
     split_idx: usize,
-    times1: &Int64Vec,
+    times1: &TimeIndex,
     time_range1: &mut TimeRange,
 ) -> TimeRange {
-    let times1 = times1.values();
-
     let time_range2 = TimeRange::new(times1[split_idx].into(), time_range1.max);
 
     // This can never fail (underflow or OOB) because we never split buckets smaller than 2
@@ -717,66 +703,6 @@ fn split_time_range_off(
     time_range2
 }
 
-/// Given a primary time index and a desired split index, splits off the time index in place,
-/// and returns a new time index corresponding to the second part.
-///
-/// The split index is exclusive: everything up to `split_idx` (excluded) will end up in the
-/// first split.
-fn split_primary_index_off(split_idx: usize, times1: &mut Int64Vec) -> Int64Vec {
-    debug_assert!(
-        times1.validity().is_none(),
-        "The time index must always be dense.",
-    );
-
-    let total_rows = times1.len();
-
-    let (datatype, mut data1, _) = std::mem::take(times1).into_data();
-    let data2 = data1.split_off(split_idx);
-    let times2 = Int64Vec::from_data(datatype.clone(), data2, None);
-
-    *times1 = Int64Vec::from_data(datatype, data1, None);
-
-    debug_assert!(
-        total_rows == times1.len() + times2.len(),
-        "expected both halves to sum up to the length of the original time index: \
-            got times={} vs. times1+times2={}",
-        total_rows,
-        times1.len() + times2.len(),
-    );
-
-    times2
-}
-
-/// Given a secondary index of any kind and a desired split index, splits off the index
-/// in place, and returns a new index of the same kind that corresponds to the second part.
-///
-/// The split index is exclusive: everything up to `split_idx` (excluded) will end up in the
-/// first split.
-fn split_secondary_index_off(split_idx: usize, index1: &mut UInt64Vec) -> UInt64Vec {
-    let (datatype, mut data1, validity1) = std::mem::take(index1).into_data();
-    let data2 = data1.split_off(split_idx);
-
-    let validities = validity1.map(|validity1| {
-        let mut validity1 = validity1.into_iter().collect::<Vec<_>>();
-        let validity2 = validity1.split_off(split_idx);
-        (
-            MutableBitmap::from_iter(validity1),
-            MutableBitmap::from_iter(validity2),
-        )
-    });
-
-    // We can only end up with either no validity bitmap (because the original index didn't have
-    // one), or with two new bitmaps (because we've split the original in two), nothing in
-    // between.
-    if let Some((validity1, validity2)) = validities {
-        *index1 = UInt64Vec::from_data(datatype.clone(), data1, Some(validity1));
-        UInt64Vec::from_data(datatype, data2, Some(validity2))
-    } else {
-        *index1 = UInt64Vec::from_data(datatype.clone(), data1, None);
-        UInt64Vec::from_data(datatype, data2, None)
-    }
-}
-
 // --- Components ---
 
 impl ComponentTable {
@@ -788,12 +714,7 @@ impl ComponentTable {
         ComponentTable {
             name,
             datatype: datatype.clone(),
-            buckets: [ComponentBucket::new(
-                name,
-                datatype,
-                RowIndex::from_u64(0u64),
-            )]
-            .into(),
+            buckets: [ComponentBucket::new(name, datatype, 0u64)].into(),
         }
     }
 
@@ -852,12 +773,9 @@ impl ComponentTable {
             // Archive currently active bucket.
             active_bucket.archive();
 
-            let row_offset = active_bucket.row_offset.as_u64() + len;
-            self.buckets.push_back(ComponentBucket::new(
-                self.name,
-                &self.datatype,
-                RowIndex::from_u64(row_offset),
-            ));
+            let row_offset = active_bucket.row_offset + len;
+            self.buckets
+                .push_back(ComponentBucket::new(self.name, &self.datatype, row_offset));
         }
 
         // Two possible cases:
@@ -867,7 +785,7 @@ impl ComponentTable {
         // - If the table has just overflowed, then we've just pushed a bucket to the dequeue.
         let active_bucket = self.buckets.back_mut().unwrap();
         let row_idx = RowIndex::from_u64(
-            active_bucket.push(time_point, rows_single) + active_bucket.row_offset.as_u64(),
+            active_bucket.push(time_point, rows_single) + active_bucket.row_offset,
         );
 
         debug!(
@@ -889,10 +807,10 @@ impl ComponentBucket {
     ///
     /// `datatype` must be the type of the component itself, devoid of any wrapping layers
     /// (i.e. _not_ a `ListArray<...>`!).
-    pub fn new(name: ComponentName, datatype: &DataType, row_offset: RowIndex) -> Self {
+    pub fn new(name: ComponentName, datatype: &DataType, row_offset: u64) -> Self {
         // If this is the first bucket of this table, we need to insert an empty list at
         // row index #0!
-        let chunks = if row_offset.as_u64() == 0 {
+        let chunks = if row_offset == 0 {
             let empty = ListArray::<i32>::from_data(
                 ListArray::<i32>::default_datatype(datatype.clone()),
                 Buffer::from(vec![0, 0i32]),

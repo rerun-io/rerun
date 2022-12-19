@@ -9,10 +9,13 @@ mod store_read;
 mod store_write;
 
 pub use self::arrow_util::ArrayExt;
-pub(crate) use self::store::{ComponentBucket, ComponentTable, IndexBucketIndices};
 pub use self::store::{DataStore, DataStoreConfig, IndexBucket, IndexTable, RowIndex};
 pub use self::store_read::{TimeQuery, TimelineQuery};
 pub use self::store_write::{WriteError, WriteResult};
+
+pub(crate) use self::store::{
+    ComponentBucket, ComponentTable, IndexBucketIndices, SecondaryIndex, TimeIndex,
+};
 
 // Re-exports
 #[doc(no_inline)]
