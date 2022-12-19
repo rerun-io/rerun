@@ -216,7 +216,7 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
         store,
         &TimelineQuery::new(timeline_frame_nr, TimeQuery::LatestAt(frame40)),
         &ent_path,
-        &["they", "dont", "exist"],
+        &["they".into(), "dont".into(), "exist".into()],
         vec![],
     );
 
@@ -654,7 +654,7 @@ impl DataTracker {
         for time in msg_bundle.time_point.times() {
             for bundle in &msg_bundle.components {
                 let ComponentBundle { name, value } = bundle;
-                let comps = self.all_data.entry((name.clone(), *time)).or_default();
+                let comps = self.all_data.entry((*name, *time)).or_default();
                 comps.push(value.clone());
             }
         }
@@ -745,11 +745,11 @@ impl DataTracker {
             .into_iter()
             .filter_map(|(name, time, idx)| {
                 self.all_data
-                    .get(&(name.to_owned(), time))
+                    .get(&(name, time))
                     .and_then(|entries| entries.get(idx).cloned())
                     .map(|data| (name, data))
             })
-            .map(|(name, data)| Series::try_from((name, data)).unwrap())
+            .map(|(name, data)| Series::try_from((name.as_str(), data)).unwrap())
             .collect::<Vec<_>>();
         let expected = DataFrame::new(series).unwrap();
         let expected = expected.explode(expected.get_column_names()).unwrap();
@@ -772,7 +772,8 @@ impl DataTracker {
             .query(timeline_query, ent_path, primary, &[component])
             .unwrap_or_default();
         let mut results = store.get(&[component], &row_indices);
-        std::mem::take(&mut results[0]).map(|row| Series::try_from((component, row)).unwrap())
+        std::mem::take(&mut results[0])
+            .map(|row| Series::try_from((component.as_str(), row)).unwrap())
     }
 
     fn fetch_components_pov<const N: usize>(
@@ -792,7 +793,7 @@ impl DataTracker {
                 .iter()
                 .zip(results)
                 .filter_map(|(component, col)| col.map(|col| (component, col)))
-                .map(|(&component, col)| Series::try_from((component, col)).unwrap())
+                .map(|(&component, col)| Series::try_from((component.as_str(), col)).unwrap())
                 .collect();
 
             DataFrame::new(series).unwrap()

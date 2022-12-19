@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use arrow2::array::{new_empty_array, Array, Int64Vec, ListArray, MutableArray, UInt64Vec};
 use arrow2::bitmap::MutableBitmap;
 use arrow2::buffer::Buffer;
@@ -240,7 +238,7 @@ impl IndexBucket {
         //
         // push new row indices to their associated secondary index
         for (name, row_idx) in row_indices {
-            let index = indices.entry((*name).to_owned()).or_insert_with(|| {
+            let index = indices.entry(*name).or_insert_with(|| {
                 let mut index = UInt64Vec::default();
                 index.extend_constant(times.len().saturating_sub(1), None);
                 index

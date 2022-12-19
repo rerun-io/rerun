@@ -1,6 +1,5 @@
 use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::sync::atomic::AtomicU64;
-use std::sync::Arc;
 
 use anyhow::ensure;
 use arrow2::array::{Array, Int64Vec, MutableArray, UInt64Vec};
@@ -152,7 +151,7 @@ impl DataStore {
         Self {
             config,
             indices: HashMap::default(),
-            components: HashMap::default(),
+            components: IntMap::default(),
             insert_id: 0,
             query_id: AtomicU64::new(0),
         }
@@ -198,11 +197,11 @@ impl DataStore {
         // Row indices should be continuous across all index tables.
         // TODO(#449): update this one appropriately when GC lands.
         {
-            let mut row_indices: HashMap<_, Vec<RowIndex>> = HashMap::new();
+            let mut row_indices: IntMap<_, Vec<RowIndex>> = IntMap::default();
             for table in self.indices.values() {
                 for bucket in table.buckets.values() {
                     for (comp, index) in &bucket.indices.read().indices {
-                        let row_indices = row_indices.entry(comp.clone()).or_default();
+                        let row_indices = row_indices.entry(*comp).or_default();
                         row_indices.extend(index.values().iter().copied().map(RowIndex::from_u64));
                     }
                 }
