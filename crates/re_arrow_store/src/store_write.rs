@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use arrow2::array::{new_empty_array, Array, Int64Vec, ListArray, MutableArray, UInt64Vec};
@@ -6,13 +5,12 @@ use arrow2::bitmap::MutableBitmap;
 use arrow2::buffer::Buffer;
 use arrow2::compute::concatenate::concatenate;
 use arrow2::datatypes::DataType;
+use nohash_hasher::IntMap;
 use parking_lot::RwLock;
 
 use re_log::debug;
 use re_log_types::msg_bundle::{ComponentBundle, MsgBundle};
-use re_log_types::{
-    ComponentNameRef, ObjPath as EntityPath, TimeInt, TimePoint, TimeRange, Timeline,
-};
+use re_log_types::{ComponentName, ObjPath as EntityPath, TimeInt, TimePoint, TimeRange, Timeline};
 
 use crate::store::IndexBucketIndices;
 use crate::{
@@ -50,18 +48,18 @@ impl DataStore {
 
         // TODO(cmc): sort the "instances" component, and everything else accordingly!
 
-        let mut indices = HashMap::with_capacity(components.len());
+        let mut indices = IntMap::default();
 
         for bundle in components {
             let ComponentBundle { name, value } = bundle;
 
             let table = self
                 .components
-                .entry((*bundle.name).to_owned())
-                .or_insert_with(|| ComponentTable::new((*name).clone(), value.data_type().clone()));
+                .entry(*name)
+                .or_insert_with(|| ComponentTable::new(*name, value.data_type().clone()));
 
             let row_idx = table.push(&self.config, time_point, value.as_ref())?;
-            indices.insert(name.as_ref(), row_idx);
+            indices.insert(*name, row_idx);
         }
 
         for (timeline, time) in time_point.iter() {
@@ -92,7 +90,7 @@ impl IndexTable {
         &mut self,
         config: &DataStoreConfig,
         time: TimeInt,
-        indices: &HashMap<ComponentNameRef<'_>, RowIndex>,
+        indices: &IntMap<ComponentName, RowIndex>,
     ) -> anyhow::Result<()> {
         // borrowck workaround
         let timeline = self.timeline;
@@ -176,7 +174,7 @@ impl IndexTable {
                                 is_sorted: true,
                                 time_range: TimeRange::new(time, time),
                                 times: Int64Vec::new(),
-                                indices: HashMap::default(),
+                                indices: IntMap::default(),
                             }),
                         },
                     );
@@ -222,7 +220,7 @@ impl IndexBucket {
     pub fn insert(
         &mut self,
         time: TimeInt,
-        row_indices: &HashMap<ComponentNameRef<'_>, RowIndex>,
+        row_indices: &IntMap<ComponentName, RowIndex>,
     ) -> anyhow::Result<()> {
         let mut guard = self.indices.write();
         let IndexBucketIndices {
@@ -387,12 +385,12 @@ impl IndexBucket {
             let times2 = split_primary_index_off(split_idx, times1);
 
             // this updates `indices1` in-place!
-            let indices2: HashMap<_, _> = indices1
+            let indices2: IntMap<_, _> = indices1
                 .iter_mut()
                 .map(|(name, index1)| {
                     // this updates `index1` in-place!
                     let index2 = split_secondary_index_off(split_idx, index1);
-                    ((*name).clone(), index2)
+                    (*name, index2)
                 })
                 .collect();
             (
@@ -620,10 +618,9 @@ fn split_secondary_index_off(split_idx: usize, index1: &mut UInt64Vec) -> UInt64
 // --- Components ---
 
 impl ComponentTable {
-    fn new(name: String, datatype: DataType) -> Self {
-        let name = Arc::new(name);
+    fn new(name: ComponentName, datatype: DataType) -> Self {
         ComponentTable {
-            name: Arc::clone(&name),
+            name,
             datatype: datatype.clone(),
             buckets: [ComponentBucket::new(
                 name,
@@ -665,7 +662,7 @@ impl ComponentTable {
 
             let row_offset = bucket.row_offset.as_u64() + len;
             self.buckets.push_back(ComponentBucket::new(
-                Arc::clone(&self.name),
+                self.name,
                 self.datatype.clone(),
                 RowIndex::from_u64(row_offset),
             ));
@@ -693,7 +690,7 @@ impl ComponentTable {
 }
 
 impl ComponentBucket {
-    pub fn new(name: Arc<String>, datatype: DataType, row_offset: RowIndex) -> Self {
+    pub fn new(name: ComponentName, datatype: DataType, row_offset: RowIndex) -> Self {
         // If this is the first bucket of this table, we need to insert an empty list at
         // row index #0!
         let data = if row_offset.as_u64() == 0 {

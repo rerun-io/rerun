@@ -671,7 +671,7 @@ impl DataTracker {
         store: &mut DataStore,
         timeline_query: &TimelineQuery,
         ent_path: &EntityPath,
-        components: &[ComponentNameRef<'_>; N],
+        components: &[ComponentName; N],
         expected: Vec<(ComponentNameRef<'static>, TimeInt)>,
     ) {
         self.assert_scenario_pov_impl(
@@ -699,8 +699,8 @@ impl DataTracker {
         store: &mut DataStore,
         timeline_query: &TimelineQuery,
         ent_path: &EntityPath,
-        primary: ComponentNameRef<'_>,
-        components: &[ComponentNameRef<'_>; N],
+        primary: ComponentName,
+        components: &[ComponentName; N],
         expected: Vec<(ComponentNameRef<'static>, TimeInt, usize)>,
     ) {
         self.assert_scenario_pov_impl(
@@ -725,8 +725,8 @@ impl DataTracker {
         store: &mut DataStore,
         timeline_query: &TimelineQuery,
         ent_path: &EntityPath,
-        primary: Option<ComponentNameRef<'_>>,
-        components: &[ComponentNameRef<'_>; N],
+        primary: Option<ComponentName>,
+        components: &[ComponentName; N],
         expected: Vec<(ComponentNameRef<'static>, TimeInt, usize)>,
     ) {
         let df = if let Some(primary) = primary {
@@ -766,8 +766,8 @@ impl DataTracker {
         store: &DataStore,
         timeline_query: &TimelineQuery,
         ent_path: &EntityPath,
-        primary: ComponentNameRef<'_>,
-        component: ComponentNameRef<'_>,
+        primary: ComponentName,
+        component: ComponentName,
     ) -> Option<Series> {
         let row_indices = store
             .query(timeline_query, ent_path, primary, &[component])
@@ -780,8 +780,8 @@ impl DataTracker {
         store: &DataStore,
         timeline_query: &TimelineQuery,
         ent_path: &EntityPath,
-        primary: ComponentNameRef<'_>,
-        components: &[ComponentNameRef<'_>; N],
+        primary: ComponentName,
+        components: &[ComponentName; N],
     ) -> DataFrame {
         let row_indices = store
             .query(timeline_query, ent_path, primary, components)

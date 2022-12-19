@@ -8,6 +8,7 @@ use arrow2::bitmap::MutableBitmap;
 use arrow2::chunk::Chunk;
 use arrow2::datatypes::DataType;
 
+use nohash_hasher::IntMap;
 use parking_lot::RwLock;
 use re_format::{format_bytes, format_number};
 use re_log_types::{
@@ -138,7 +139,7 @@ pub struct DataStore {
     /// Maps a component name to its associated table, for all timelines and all entities.
     ///
     /// A component table holds all the values ever inserted for a given component.
-    pub(crate) components: HashMap<ComponentName, ComponentTable>,
+    pub(crate) components: IntMap<ComponentName, ComponentTable>,
 
     /// Monotically increasing ID for insertions.
     pub(crate) insert_id: u64,
@@ -559,7 +560,7 @@ pub struct IndexBucketIndices {
     /// time!
     /// When that happens, they will be retro-filled with nulls so that they share the same
     /// length as the primary index.
-    pub(crate) indices: HashMap<ComponentName, UInt64Vec>,
+    pub(crate) indices: IntMap<ComponentName, UInt64Vec>,
 }
 
 impl Default for IndexBucketIndices {
@@ -587,7 +588,7 @@ impl std::fmt::Display for IndexBucket {
         let (col_names, cols) = self.named_indices();
 
         let names: Vec<String> = std::iter::once(timeline_name)
-            .chain(col_names.into_iter())
+            .chain(col_names.into_iter().map(|name| name.to_string()))
             .collect();
 
         let chunk = Chunk::new(
@@ -735,7 +736,7 @@ impl IndexBucket {
 #[derive(Debug)]
 pub struct ComponentTable {
     /// Name of the underlying component.
-    pub(crate) name: Arc<ComponentName>,
+    pub(crate) name: ComponentName,
     /// Type of the underlying component.
     pub(crate) datatype: DataType,
 
@@ -831,7 +832,7 @@ impl ComponentTable {
 #[derive(Debug)]
 pub struct ComponentBucket {
     /// The component's name, for debugging purposes.
-    pub(crate) name: Arc<String>,
+    pub(crate) name: ComponentName,
 
     /// The offset of this bucket in the global table.
     pub(crate) row_offset: RowIndex,
