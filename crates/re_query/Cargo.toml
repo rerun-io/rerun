@@ -29,12 +29,21 @@ itertools = "0.10"
 nohash-hasher = "0.2"
 thiserror.workspace = true
 polars-core = { workspace = true, features = [
+  "asof_join",
   "dtype-date",
   "dtype-time",
   "dtype-struct",
 ] }
-polars-lazy = { workspace = true }
-
 
 [dev-dependencies]
+criterion = "0.4"
+itertools = "0.10"
+mimalloc = "0.1"
 tracing-subscriber = "0.3"
+
+[lib]
+bench = false
+
+[[bench]]
+name = "obj_query_benchmark"
+harness = false

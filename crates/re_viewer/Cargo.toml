@@ -18,26 +18,18 @@ crate-type = ["cdylib", "rlib"]
 
 
 [features]
-default = ["puffin"]
-
-## Add support for the [`puffin`](https://github.com/EmbarkStudios/puffin) profiler.
-puffin = [
-  "dep:puffin",
-  "dep:puffin_http",
-  "eframe/puffin",
-  "re_log_types/puffin",
-  "re_renderer/puffin",
-]
+default = []
 
 
 [dependencies]
 re_arrow_store = { path = "../re_arrow_store" }
-re_data_store = { path = "../re_data_store", features = ["puffin", "serde"] }
+re_data_store = { path = "../re_data_store", features = ["serde"] }
 re_error = { path = "../re_error" }
 re_format = { path = "../re_format" }
 re_log = { path = "../re_log" }
 re_log_types = { path = "../re_log_types", features = ["glam", "save", "load"] }
 re_memory = { path = "../re_memory" }
+re_query = { path = "../re_query" }
 re_renderer = { path = "../re_renderer" }
 re_smart_channel = { path = "../re_smart_channel" }
 re_string_interner = { path = "../re_string_interner" }
@@ -49,10 +41,10 @@ ahash = "0.8"
 anyhow.workspace = true
 bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }
 cgmath = { version = "0.18", features = ["mint"] }
-document-features = "0.2"
 eframe = { version = "0.20", default-features = false, features = [
   "default_fonts",
   "persistence",
+  "puffin",
   "wgpu",
 ] }
 egui = { version = "0.20", features = ["extra_debug_asserts", "tracing"] }
@@ -90,8 +82,8 @@ arboard = { version = "3.2", default-features = false, features = [
   "image-data",
 ] }
 ctrlc = { version = "3.0", features = ["termination"] }
-puffin = { version = "0.14", optional = true }
-puffin_http = { version = "0.11", optional = true }
+puffin_http = "0.11"
+puffin.workspace = true
 
 # web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]

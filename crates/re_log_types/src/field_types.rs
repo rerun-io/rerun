@@ -97,7 +97,7 @@ impl Component for Instance {
 ///     ])
 /// );
 /// ```
-#[derive(Debug, ArrowField)]
+#[derive(Clone, Debug, ArrowField, PartialEq)]
 pub struct Rect2D {
     /// Rect X-coordinate
     pub x: f32,
@@ -107,6 +107,13 @@ pub struct Rect2D {
     pub w: f32,
     /// Box Height
     pub h: f32,
+}
+
+impl Rect2D {
+    #[inline]
+    pub fn from_xywh(x: f32, y: f32, w: f32, h: f32) -> Self {
+        Self { x, y, w, h }
+    }
 }
 
 impl Component for Rect2D {
@@ -128,7 +135,7 @@ impl Component for Rect2D {
 ///     ])
 /// );
 /// ```
-#[derive(Debug, ArrowField)]
+#[derive(Clone, Debug, ArrowField, PartialEq)]
 pub struct Point2D {
     pub x: f32,
     pub y: f32,
@@ -154,7 +161,7 @@ impl Component for Point2D {
 ///     ])
 /// );
 /// ```
-#[derive(Debug, ArrowField)]
+#[derive(Clone, Debug, ArrowField, PartialEq)]
 pub struct Point3D {
     pub x: f32,
     pub y: f32,
@@ -174,8 +181,19 @@ impl Component for Point3D {
 ///
 /// assert_eq!(ColorRGBA::data_type(), DataType::UInt32);
 /// ```
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ColorRGBA(pub u32);
+
+impl ColorRGBA {
+    pub fn to_array(&self) -> [u8; 4] {
+        [
+            (self.0 >> 24) as u8,
+            (self.0 >> 16) as u8,
+            (self.0 >> 8) as u8,
+            self.0 as u8,
+        ]
+    }
+}
 
 arrow_enable_vec_for_type!(ColorRGBA);
 

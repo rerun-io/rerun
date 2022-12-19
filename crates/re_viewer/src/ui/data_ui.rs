@@ -13,16 +13,16 @@ use re_log_types::{
 use crate::misc::ViewerContext;
 use crate::ui::annotations::auto_color;
 
-use super::class_description_ui::view_class_description_map;
+use super::class_description_ui::class_description_ui;
 use super::{annotations::AnnotationMap, Preview};
 
-pub(crate) fn view_object(
+pub(crate) fn object_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     obj_path: &ObjPath,
     preview: Preview,
 ) -> Option<()> {
-    view_instance(
+    instance_ui(
         ctx,
         ui,
         &InstanceId {
@@ -33,7 +33,7 @@ pub(crate) fn view_object(
     )
 }
 
-pub(crate) fn view_instance(
+pub(crate) fn instance_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     instance_id: &InstanceId,
@@ -45,12 +45,12 @@ pub(crate) fn view_instance(
         .types
         .get(instance_id.obj_path.obj_type_path())
     {
-        Some(ObjectType::ClassDescription) => view_class_description_map(ctx, ui, instance_id),
-        _ => view_instance_generic(ctx, ui, instance_id, preview),
+        Some(ObjectType::ClassDescription) => class_description_ui(ctx, ui, instance_id),
+        _ => generic_instance_ui(ctx, ui, instance_id, preview),
     }
 }
 
-pub(crate) fn view_instance_generic(
+fn generic_instance_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     instance_id: &InstanceId,
@@ -90,9 +90,9 @@ pub(crate) fn view_instance_generic(
                                     keypoint_id = Some(context::KeypointId(id as _));
                                 }
                             }
-                            crate::data_ui::ui_data(ctx, ui, &data, preview);
+                            crate::data_ui::data_ui(ctx, ui, &data, preview);
                         } else {
-                            ui_data_vec(ui, &data_vec);
+                            data_vec_ui(ui, &data_vec);
                         }
                     }
                     Err(err) => {
@@ -147,7 +147,7 @@ pub(crate) fn view_instance_generic(
                             .or(class_annotation.color.as_ref())
                         {
                             ui.label("color");
-                            ui_color_field(ui, color);
+                            color_field_ui(ui, color);
                             ui.end_row();
                         }
                     } else {
@@ -168,7 +168,7 @@ pub(crate) fn view_instance_generic(
     Some(())
 }
 
-pub(crate) fn view_data(
+pub(crate) fn data_path_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     data_path: &DataPath,
@@ -185,9 +185,9 @@ pub(crate) fn view_data(
         Ok((_, data_vec)) => {
             if data_vec.len() == 1 {
                 let data = data_vec.last().unwrap();
-                show_detailed_data(ctx, ui, &data);
+                detailed_data_ui(ctx, ui, &data);
             } else {
-                ui_data_vec(ui, &data_vec);
+                data_vec_ui(ui, &data_vec);
             }
         }
         Err(err) => {
@@ -199,19 +199,15 @@ pub(crate) fn view_data(
     Some(())
 }
 
-pub(crate) fn show_detailed_data(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, data: &Data) {
+pub(crate) fn detailed_data_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, data: &Data) {
     if let Data::Tensor(tensor) = data {
-        super::image_ui::show_tensor(ctx, ui, tensor);
+        super::image_ui::tensor_ui(ctx, ui, tensor);
     } else {
-        crate::data_ui::ui_data(ctx, ui, data, Preview::Medium);
+        crate::data_ui::data_ui(ctx, ui, data, Preview::Medium);
     }
 }
 
-pub(crate) fn show_detailed_data_msg(
-    ctx: &mut ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    msg: &DataMsg,
-) {
+pub(crate) fn detailed_data_msg_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, msg: &DataMsg) {
     let DataMsg {
         msg_id: _,
         time_point,
@@ -230,45 +226,45 @@ pub(crate) fn show_detailed_data_msg(
         ui.end_row();
 
         ui.monospace("time_point:");
-        crate::data_ui::ui_time_point(ctx, ui, time_point);
+        crate::data_ui::time_point_ui(ctx, ui, time_point);
         ui.end_row();
 
         if !is_image {
             ui.monospace("data:");
-            crate::data_ui::ui_logged_data(ctx, ui, data, Preview::Medium);
+            crate::data_ui::logged_data_ui(ctx, ui, data, Preview::Medium);
             ui.end_row();
         }
     });
 
     if let LoggedData::Single(Data::Tensor(tensor)) = &msg.data {
-        crate::ui::image_ui::show_tensor(ctx, ui, tensor);
+        crate::ui::image_ui::tensor_ui(ctx, ui, tensor);
     }
 }
 
 // ----------------------------------------------------------------------------
 
-pub(crate) fn show_log_msg(
+pub(crate) fn log_msg_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     msg: &LogMsg,
     preview: Preview,
 ) {
     match msg {
-        LogMsg::BeginRecordingMsg(msg) => show_begin_recording_msg(ui, msg),
-        LogMsg::TypeMsg(msg) => show_type_msg(ctx, ui, msg),
+        LogMsg::BeginRecordingMsg(msg) => begin_recording_msg_ui(ui, msg),
+        LogMsg::TypeMsg(msg) => type_msg_ui(ctx, ui, msg),
         LogMsg::DataMsg(msg) => {
-            show_data_msg(ctx, ui, msg, preview);
+            data_msg_ui(ctx, ui, msg, preview);
         }
         LogMsg::PathOpMsg(msg) => {
-            show_path_op_msg(ctx, ui, msg);
+            path_op_msg_ui(ctx, ui, msg);
         }
         LogMsg::ArrowMsg(msg) => {
-            show_arrow_msg(ctx, ui, msg, preview);
+            arrow_msg_ui(ctx, ui, msg, preview);
         }
     }
 }
 
-pub(crate) fn show_begin_recording_msg(ui: &mut egui::Ui, msg: &BeginRecordingMsg) {
+pub(crate) fn begin_recording_msg_ui(ui: &mut egui::Ui, msg: &BeginRecordingMsg) {
     ui.code("BeginRecordingMsg");
     let BeginRecordingMsg { msg_id: _, info } = msg;
     let RecordingInfo {
@@ -297,7 +293,7 @@ pub(crate) fn show_begin_recording_msg(ui: &mut egui::Ui, msg: &BeginRecordingMs
     });
 }
 
-pub(crate) fn show_type_msg(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, msg: &TypeMsg) {
+pub(crate) fn type_msg_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, msg: &TypeMsg) {
     ui.horizontal(|ui| {
         ctx.type_path_button(ui, &msg.type_path);
         ui.label(" = ");
@@ -305,7 +301,7 @@ pub(crate) fn show_type_msg(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, msg:
     });
 }
 
-pub(crate) fn show_data_msg(
+pub(crate) fn data_msg_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     msg: &DataMsg,
@@ -324,16 +320,16 @@ pub(crate) fn show_data_msg(
         ui.end_row();
 
         ui.monospace("time_point:");
-        ui_time_point(ctx, ui, time_point);
+        time_point_ui(ctx, ui, time_point);
         ui.end_row();
 
         ui.monospace("data:");
-        ui_logged_data(ctx, ui, data, preview);
+        logged_data_ui(ctx, ui, data, preview);
         ui.end_row();
     });
 }
 
-pub(crate) fn show_path_op_msg(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, msg: &PathOpMsg) {
+pub(crate) fn path_op_msg_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, msg: &PathOpMsg) {
     let PathOpMsg {
         msg_id: _,
         time_point,
@@ -342,16 +338,16 @@ pub(crate) fn show_path_op_msg(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, m
 
     egui::Grid::new("fields").num_columns(2).show(ui, |ui| {
         ui.monospace("time_point:");
-        ui_time_point(ctx, ui, time_point);
+        time_point_ui(ctx, ui, time_point);
         ui.end_row();
 
         ui.monospace("path_op:");
-        ui_path_op(ctx, ui, path_op);
+        path_op_ui(ctx, ui, path_op);
         ui.end_row();
     });
 }
 
-pub(crate) fn show_arrow_msg(
+pub(crate) fn arrow_msg_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     msg: &ArrowMsg,
@@ -364,10 +360,10 @@ pub(crate) fn show_arrow_msg(
     } = msg;
 
     // TODO(jleibs): Better ArrowMsg view
-    ui_logged_arrow_data(ctx, ui, msg_id, msg, preview);
+    logged_arrow_data_ui(ctx, ui, msg_id, msg, preview);
 }
 
-pub(crate) fn ui_time_point(
+pub(crate) fn time_point_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     time_point: &TimePoint,
@@ -385,7 +381,7 @@ pub(crate) fn ui_time_point(
     });
 }
 
-pub(crate) fn ui_logged_data(
+pub(crate) fn logged_data_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     data: &LoggedData,
@@ -394,11 +390,11 @@ pub(crate) fn ui_logged_data(
     match data {
         LoggedData::Null(data_type) => ui.label(format!("null: {:?}", data_type)),
         LoggedData::Batch { data, .. } => ui.label(format!("batch: {:?}", data)),
-        LoggedData::Single(data) => ui_data(ctx, ui, data, preview),
+        LoggedData::Single(data) => data_ui(ctx, ui, data, preview),
         LoggedData::BatchSplat(data) => {
             ui.horizontal(|ui| {
                 ui.label("Batch Splat:");
-                ui_data(ctx, ui, data, preview)
+                data_ui(ctx, ui, data, preview)
             })
             .response
         }
@@ -406,7 +402,7 @@ pub(crate) fn ui_logged_data(
 }
 
 // TODO(jleibs): Better ArrowMsg view
-pub(crate) fn ui_logged_arrow_data(
+pub(crate) fn logged_arrow_data_ui(
     _ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     _msg_id: &MsgId,
@@ -430,7 +426,7 @@ pub(crate) fn ui_logged_arrow_data(
     }
 }
 
-pub(crate) fn ui_data(
+pub(crate) fn data_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     data: &Data,
@@ -441,7 +437,7 @@ pub(crate) fn ui_data(
         Data::I32(value) => ui.label(value.to_string()),
         Data::F32(value) => ui.label(value.to_string()),
         Data::F64(value) => ui.label(value.to_string()),
-        Data::Color(value) => ui_color_field(ui, value),
+        Data::Color(value) => color_field_ui(ui, value),
         Data::String(string) => ui.label(format!("{string:?}")),
 
         Data::Vec2([x, y]) => ui.label(format!("[{x:.1}, {y:.1}]")),
@@ -462,17 +458,17 @@ pub(crate) fn ui_data(
         }
         Data::Transform(transform) => match preview {
             Preview::Small | Preview::Specific(_) => ui.monospace("Transform"),
-            Preview::Medium => ui_transform(ui, transform),
+            Preview::Medium => transform_ui(ui, transform),
         },
         Data::ViewCoordinates(coordinates) => match preview {
             Preview::Small | Preview::Specific(_) => {
                 ui.label(format!("ViewCoordinates: {}", coordinates.describe()))
             }
-            Preview::Medium => ui_view_coordinates(ui, coordinates),
+            Preview::Medium => view_coordinates_ui(ui, coordinates),
         },
         Data::AnnotationContext(context) => match preview {
             Preview::Small | Preview::Specific(_) => ui.monospace("AnnotationContext"),
-            Preview::Medium => ui_annotation_context(ui, context),
+            Preview::Medium => annotation_context_ui(ui, context),
         },
         Data::Tensor(tensor) => {
             let tensor_view = ctx.cache.image.get_view(tensor, ctx.render_ctx);
@@ -504,11 +500,11 @@ pub(crate) fn ui_data(
 
         Data::ObjPath(obj_path) => ctx.obj_path_button(ui, obj_path),
 
-        Data::DataVec(data_vec) => ui_data_vec(ui, data_vec),
+        Data::DataVec(data_vec) => data_vec_ui(ui, data_vec),
     }
 }
 
-fn ui_color_field(ui: &mut egui::Ui, value: &[u8; 4]) -> egui::Response {
+fn color_field_ui(ui: &mut egui::Ui, value: &[u8; 4]) -> egui::Response {
     let [r, g, b, a] = value;
     let color = egui::Color32::from_rgba_unmultiplied(*r, *g, *b, *a);
     let response = egui::color_picker::show_color(ui, color, Vec2::new(32.0, 16.0));
@@ -520,7 +516,7 @@ fn ui_color_field(ui: &mut egui::Ui, value: &[u8; 4]) -> egui::Response {
     response.on_hover_text(format!("Color #{:02x}{:02x}{:02x}{:02x}", r, g, b, a))
 }
 
-pub(crate) fn ui_data_vec(ui: &mut egui::Ui, data_vec: &DataVec) -> egui::Response {
+pub(crate) fn data_vec_ui(ui: &mut egui::Ui, data_vec: &DataVec) -> egui::Response {
     ui.label(format!(
         "{} x {:?}",
         data_vec.len(),
@@ -528,21 +524,21 @@ pub(crate) fn ui_data_vec(ui: &mut egui::Ui, data_vec: &DataVec) -> egui::Respon
     ))
 }
 
-fn ui_transform(ui: &mut egui::Ui, transform: &Transform) -> egui::Response {
+fn transform_ui(ui: &mut egui::Ui, transform: &Transform) -> egui::Response {
     match transform {
         Transform::Unknown => ui.label("Unknown"),
-        Transform::Rigid3(rigid3) => ui_rigid3(ui, rigid3),
-        Transform::Pinhole(pinhole) => ui_pinhole(ui, pinhole),
+        Transform::Rigid3(rigid3) => rigid3_ui(ui, rigid3),
+        Transform::Pinhole(pinhole) => pinhole_ui(ui, pinhole),
     }
 }
 
-fn ui_view_coordinates(ui: &mut egui::Ui, system: &ViewCoordinates) -> egui::Response {
+fn view_coordinates_ui(ui: &mut egui::Ui, system: &ViewCoordinates) -> egui::Response {
     ui.label(system.describe())
 }
 
 const TABLE_SCROLL_AREA_HEIGHT: f32 = 500.0; // add scroll-bars when we get to this height
 
-fn ui_annotation_info_table<'a>(
+fn annotation_info_table_ui<'a>(
     ui: &mut egui::Ui,
     annotation_infos: impl Iterator<Item = &'a AnnotationInfo>,
 ) {
@@ -607,10 +603,10 @@ fn ui_annotation_info_table<'a>(
         });
 }
 
-fn ui_annotation_context(ui: &mut egui::Ui, context: &AnnotationContext) -> egui::Response {
+fn annotation_context_ui(ui: &mut egui::Ui, context: &AnnotationContext) -> egui::Response {
     let row_height = re_ui::ReUi::table_line_height();
     ui.vertical(|ui| {
-        ui_annotation_info_table(
+        annotation_info_table_ui(
             ui,
             context
                 .class_map
@@ -631,7 +627,7 @@ fn ui_annotation_context(ui: &mut egui::Ui, context: &AnnotationContext) -> egui
                 ui.add_space(8.0);
                 ui.heading("Keypoints Annotations");
                 ui.push_id(format!("keypoint_annotations_{}", id.0), |ui| {
-                    ui_annotation_info_table(
+                    annotation_info_table_ui(
                         ui,
                         class
                             .keypoint_map
@@ -692,7 +688,7 @@ fn ui_annotation_context(ui: &mut egui::Ui, context: &AnnotationContext) -> egui
     .response
 }
 
-fn ui_rigid3(ui: &mut egui::Ui, rigid3: &Rigid3) -> egui::Response {
+fn rigid3_ui(ui: &mut egui::Ui, rigid3: &Rigid3) -> egui::Response {
     let pose = rigid3.parent_from_child(); // TODO(emilk): which one to show?
     let rotation = pose.rotation();
     let translation = pose.translation();
@@ -714,7 +710,7 @@ fn ui_rigid3(ui: &mut egui::Ui, rigid3: &Rigid3) -> egui::Response {
     .response
 }
 
-fn ui_pinhole(ui: &mut egui::Ui, pinhole: &Pinhole) -> egui::Response {
+fn pinhole_ui(ui: &mut egui::Ui, pinhole: &Pinhole) -> egui::Response {
     let Pinhole {
         image_from_cam: image_from_view,
         resolution,
@@ -725,7 +721,7 @@ fn ui_pinhole(ui: &mut egui::Ui, pinhole: &Pinhole) -> egui::Response {
         ui.indent("pinole", |ui| {
             egui::Grid::new("pinole").num_columns(2).show(ui, |ui| {
                 ui.label("image from view");
-                ui_mat3(ui, image_from_view);
+                mat3_ui(ui, image_from_view);
                 ui.end_row();
 
                 ui.label("resolution");
@@ -737,7 +733,7 @@ fn ui_pinhole(ui: &mut egui::Ui, pinhole: &Pinhole) -> egui::Response {
     .response
 }
 
-fn ui_mat3(ui: &mut egui::Ui, mat: &[[f32; 3]; 3]) {
+fn mat3_ui(ui: &mut egui::Ui, mat: &[[f32; 3]; 3]) {
     egui::Grid::new("mat3").num_columns(3).show(ui, |ui| {
         ui.monospace(mat[0][0].to_string());
         ui.monospace(mat[1][0].to_string());
@@ -756,7 +752,7 @@ fn ui_mat3(ui: &mut egui::Ui, mat: &[[f32; 3]; 3]) {
     });
 }
 
-pub(crate) fn ui_path_op(
+pub(crate) fn path_op_ui(
     _ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     path_op: &PathOp,

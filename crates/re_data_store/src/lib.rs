@@ -83,7 +83,7 @@ pub enum TimeQuery<Time> {
     /// Get all the data within this time interval, plus the latest
     /// one before the start of the interval.
     ///
-    /// Motivation: all data is considered alive untl the next logging
+    /// Motivation: all data is considered alive until the next logging
     /// to the same data path.
     Range(std::ops::RangeInclusive<Time>),
 }
@@ -99,7 +99,7 @@ impl TimeQuery<i64> {
 #[macro_export]
 macro_rules! profile_function {
     ($($arg: tt)*) => {
-        #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
+        #[cfg(not(target_arch = "wasm32"))]
         puffin::profile_function!($($arg)*);
     };
 }
@@ -109,7 +109,7 @@ macro_rules! profile_function {
 #[macro_export]
 macro_rules! profile_scope {
     ($($arg: tt)*) => {
-        #[cfg(all(feature = "puffin", not(target_arch = "wasm32")))]
+        #[cfg(not(target_arch = "wasm32"))]
         puffin::profile_scope!($($arg)*);
     };
 }

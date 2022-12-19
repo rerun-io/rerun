@@ -5,18 +5,21 @@ use egui::NumExt as _;
 use glam::{vec3, Vec3};
 use itertools::Itertools as _;
 
+use re_arrow_store::TimeQuery;
 use re_data_store::query::{
     visit_type_data_1, visit_type_data_2, visit_type_data_3, visit_type_data_4, visit_type_data_5,
 };
-use re_data_store::{FieldName, InstanceIdHash, ObjPath, ObjectsProperties};
+use re_data_store::{FieldName, InstanceId, InstanceIdHash, ObjPath, ObjectsProperties};
+use re_log_types::field_types::{ColorRGBA, Instance, Rect2D};
+use re_log_types::msg_bundle::Component;
 use re_log_types::{
     context::{ClassId, KeypointId},
     DataVec, IndexHash, MeshId, MsgId, ObjectType, Tensor,
 };
-use re_renderer::PointCloudBuilder;
+use re_query::{query_entity_with_primary, visit_components3};
 use re_renderer::{
     renderer::{LineStripFlags, MeshInstance},
-    Color32, LineStripSeriesBuilder, Size,
+    Color32, LineStripSeriesBuilder, PointCloudBuilder, Size,
 };
 
 use crate::{
@@ -808,6 +811,93 @@ impl SceneSpatial {
                     }
                 },
             );
+        }
+
+        // Second pass for arrow-stored rectangles
+        for obj_path in query.obj_paths {
+            let ent_path = obj_path;
+            let timeline_query = re_arrow_store::TimelineQuery::new(
+                query.timeline,
+                TimeQuery::LatestAt(query.latest_at.as_i64()),
+            );
+
+            if let Ok(df) = query_entity_with_primary(
+                &ctx.log_db.obj_db.arrow_store,
+                &timeline_query,
+                ent_path,
+                Rect2D::NAME,
+                &[ColorRGBA::NAME],
+            ) {
+                visit_components3(
+                    &df,
+                    |rect: &Rect2D, instance: Option<&Instance>, color: Option<&ColorRGBA>| {
+                        // TODO(jleibs): This feels convoluted and heavy-weight. Whatever we need here
+                        // should come directly out of the datastore.
+                        let instance = instance.unwrap_or(&Instance(0));
+                        let instance = InstanceId {
+                            obj_path: obj_path.clone(),
+                            instance_index: Some(re_log_types::Index::Sequence(instance.0)),
+                        };
+                        let instance_hash = instance.hash();
+
+                        let color = color.map(|c| c.to_array());
+
+                        // TODO(jleibs): Lots of missing components
+                        let class_id = Some(&1);
+                        let label: Option<&String> = None;
+                        let stroke_width: Option<&f32> = None;
+
+                        let annotations = self.annotation_map.find(obj_path);
+                        let annotation_info = annotations
+                            .class_description(class_id.map(|i| ClassId(*i as _)))
+                            .annotation_info();
+                        let color =
+                            annotation_info.color(color.as_ref(), DefaultColor::ObjPath(obj_path));
+                        let label = annotation_info.label(label);
+
+                        // Hovering with a rect.
+                        let hover_rect = egui::Rect::from_min_size(
+                            egui::pos2(rect.x, rect.y),
+                            egui::vec2(rect.w, rect.h),
+                        );
+                        self.ui.rects.push((hover_rect, instance_hash));
+
+                        let mut paint_props = paint_properties(color, stroke_width);
+                        if hovered_instance == instance_hash {
+                            apply_hover_effect(&mut paint_props);
+                        }
+
+                        // Lines don't associated with instance (i.e. won't participate in hovering)
+                        let mut line_batch = self.primitives.line_strips.batch("2d box");
+                        line_batch
+                            .add_rectangle_outline_2d(
+                                glam::vec2(rect.x, rect.y),
+                                glam::vec2(rect.w, 0.0),
+                                glam::vec2(0.0, rect.h),
+                            )
+                            .color(paint_props.bg_stroke.color)
+                            .radius(Size::new_points(paint_props.bg_stroke.width * 0.5));
+
+                        line_batch
+                            .add_rectangle_outline_2d(
+                                glam::vec2(rect.x, rect.y),
+                                glam::vec2(rect.w, 0.0),
+                                glam::vec2(0.0, rect.h),
+                            )
+                            .color(paint_props.fg_stroke.color)
+                            .radius(Size::new_points(paint_props.fg_stroke.width * 0.5));
+
+                        if let Some(label) = label {
+                            self.ui.labels_2d.push(Label2D {
+                                text: label,
+                                color: paint_props.fg_stroke.color,
+                                target: Label2DTarget::Rect(hover_rect),
+                                labled_instance: instance_hash,
+                            });
+                        }
+                    },
+                );
+            }
         }
     }
 
