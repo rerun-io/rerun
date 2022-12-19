@@ -1,3 +1,6 @@
+#[cfg(not(all(feature = "save", feature = "load")))]
+compile_error!("msg_encode_benchmark requires 'save' and 'load' features.");
+
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
