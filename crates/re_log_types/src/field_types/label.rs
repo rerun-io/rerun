@@ -13,7 +13,7 @@ use crate::msg_bundle::Component;
 /// use arrow2_convert::field::ArrowField;
 /// use arrow2::datatypes::{DataType, Field};
 ///
-/// assert_eq!(Instance::data_type(), DataType::Utf8);
+/// assert_eq!(Label::data_type(), DataType::Utf8);
 /// ```
 #[derive(Debug)]
 pub struct Label(pub String);

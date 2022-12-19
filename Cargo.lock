@@ -3500,6 +3500,7 @@ dependencies = [
  "re_format",
  "re_log",
  "re_log_types",
+ "static_assertions",
  "thiserror",
  "tracing-subscriber",
 ]
