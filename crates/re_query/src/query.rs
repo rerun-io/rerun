@@ -1,65 +1,12 @@
-use arrow2::array::Array;
-use polars_core::{prelude::*, series::IsSorted};
+use std::collections::BTreeMap;
+
 use re_arrow_store::{DataStore, TimelineQuery};
 use re_log_types::{field_types::Instance, msg_bundle::Component, ComponentName, ObjPath};
 
-#[derive(thiserror::Error, Debug)]
-pub enum QueryError {
-    #[error("Tried to access a column that doesn't exist")]
-    BadAccess,
-
-    #[error("Could not find primary")]
-    PrimaryNotFound,
-
-    #[error("Error executing Polars Query")]
-    PolarsError(#[from] PolarsError),
-}
-
-pub type Result<T> = std::result::Result<T, QueryError>;
-
-/// A type-erased array of [`Component`] values and the corresponding [`Instance`] keys.
-///
-/// `instance_keys` must always be sorted if present. If not present we assume implicit
-/// instance keys that are equal to the row-number.
-///
-/// This type can be easily converted into a polars [`DataFrame`]
-/// See: [`get_component_with_instances`]
-#[derive(Clone, Debug)]
-pub struct ComponentWithInstances {
-    pub name: ComponentName,
-    pub instance_keys: Option<Box<dyn Array>>,
-    pub values: Box<dyn Array>,
-}
-
-impl ComponentWithInstances {
-    pub fn len(&self) -> usize {
-        self.values.len()
-    }
-}
-
-impl TryFrom<ComponentWithInstances> for DataFrame {
-    type Error = QueryError;
-
-    fn try_from(val: ComponentWithInstances) -> Result<DataFrame> {
-        let mut instance_series = if let Some(instance_keys) = val.instance_keys {
-            Series::try_from((Instance::name().as_str(), instance_keys.clone()))?
-        } else {
-            Series::new(Instance::name().as_str(), 0..val.values.len() as u64)
-        };
-
-        // Annotate the instance_series as being sorted.
-        // TODO(jleibs): Figure out if dataframe actually makes use of this?
-        instance_series.set_sorted(IsSorted::Ascending);
-
-        let value_series = Series::try_from((val.name.as_str(), val.values))?;
-
-        DataFrame::new(vec![instance_series, value_series]).map_err(Into::into)
-    }
-}
+use crate::{ComponentWithInstances, EntityView, QueryError};
 
 /// Retrieves a [`ComponentWithInstances`] from the [`DataStore`].
 /// ```
-/// # use polars_core::prelude::DataFrame;
 /// # use re_arrow_store::{TimelineQuery, TimeQuery};
 /// # use re_log_types::{Timeline, field_types::Point2D, msg_bundle::Component};
 /// # let store = re_query::__populate_example_store();
@@ -70,15 +17,18 @@ impl TryFrom<ComponentWithInstances> for DataFrame {
 ///   TimeQuery::LatestAt(123.into()),
 /// );
 ///
-/// let df : DataFrame = re_query::get_component_with_instances(
+/// let component = re_query::get_component_with_instances(
 ///   &store,
 ///   &timeline_query,
 ///   &ent_path.into(),
 ///   Point2D::name(),
 /// )
-/// .unwrap().try_into().unwrap();
+/// .unwrap();
 ///
-/// println!("{:?}", df);
+/// # #[cfg(feature = "polars")]
+/// let df = component.as_df::<Point2D>().unwrap();
+///
+/// //println!("{:?}", df);
 /// ```
 ///
 /// Outputs:
@@ -99,7 +49,7 @@ pub fn get_component_with_instances(
     timeline_query: &TimelineQuery,
     ent_path: &ObjPath,
     component: ComponentName,
-) -> Result<ComponentWithInstances> {
+) -> crate::Result<ComponentWithInstances> {
     let components = [Instance::name(), component];
 
     let row_indices = store
@@ -115,43 +65,6 @@ pub fn get_component_with_instances(
     })
 }
 
-#[derive(Clone, Debug)]
-pub struct EntityView {
-    pub primary: ComponentWithInstances,
-    pub components: Vec<ComponentWithInstances>,
-}
-
-impl TryFrom<EntityView> for DataFrame {
-    type Error = QueryError;
-
-    fn try_from(val: EntityView) -> Result<DataFrame> {
-        let df: DataFrame = val.primary.try_into()?;
-
-        // TODO(jleibs): lots of room for optimization here. Once "instance" is
-        // guaranteed to be sorted we should be able to leverage this during the
-        // join. Series have a SetSorted option to specify this. join_asof might be
-        // the right place to start digging.
-
-        val.components
-            .into_iter()
-            .fold(Ok(df), |df: Result<DataFrame>, component| {
-                let component_df: DataFrame = component.try_into()?;
-                // We use an asof join which takes advantage of the fact
-                // that our join-columns are sorted. The strategy shouldn't
-                // matter here since we have a Tolerance of None.
-                let joined = df?.join_asof(
-                    &component_df,
-                    Instance::name().as_str(),
-                    Instance::name().as_str(),
-                    AsofStrategy::Backward,
-                    None,
-                    None,
-                );
-                Ok(joined?)
-            })
-    }
-}
-
 /// Retrieve an `EntityView` from the `DataStore`
 ///
 /// An entity has a primary [`Component`] which is expected to always be
@@ -163,7 +76,6 @@ impl TryFrom<EntityView> for DataFrame {
 /// length.
 ///
 /// ```
-/// # use polars_core::prelude::DataFrame;
 /// # use re_arrow_store::{TimelineQuery, TimeQuery};
 /// # use re_log_types::{Timeline, field_types::{Point2D, ColorRGBA}, msg_bundle::Component};
 /// # let store = re_query::__populate_example_store();
@@ -174,16 +86,19 @@ impl TryFrom<EntityView> for DataFrame {
 ///   TimeQuery::LatestAt(123.into()),
 /// );
 ///
-/// let df : DataFrame = re_query::query_entity_with_primary(
+/// let entity_view = re_query::query_entity_with_primary(
 ///   &store,
 ///   &timeline_query,
 ///   &ent_path.into(),
 ///   Point2D::name(),
 ///   &[ColorRGBA::name()],
 /// )
-/// .unwrap().try_into().unwrap();
+/// .unwrap();
 ///
-/// println!("{:?}", df);
+/// # #[cfg(feature = "polars")]
+/// let df = entity_view.as_df1::<Point2D>().unwrap();
+///
+/// //println!("{:?}", df);
 /// ```
 ///
 /// Outputs:
@@ -205,7 +120,7 @@ pub fn query_entity_with_primary<const N: usize>(
     ent_path: &ObjPath,
     primary: ComponentName,
     components: &[ComponentName; N],
-) -> Result<EntityView> {
+) -> crate::Result<EntityView> {
     let primary = get_component_with_instances(store, timeline_query, ent_path, primary)?;
 
     // TODO(jleibs): lots of room for optimization here. Once "instance" is
@@ -213,11 +128,11 @@ pub fn query_entity_with_primary<const N: usize>(
     // join. Series have a SetSorted option to specify this. join_asof might be
     // the right place to start digging.
 
-    let components: Result<Vec<ComponentWithInstances>> = components
+    let components: crate::Result<BTreeMap<ComponentName, ComponentWithInstances>> = components
         .iter()
         .filter_map(|component| {
             match get_component_with_instances(store, timeline_query, ent_path, *component) {
-                Ok(component_result) => Some(Ok(component_result)),
+                Ok(component_result) => Some(Ok((*component, component_result))),
                 Err(QueryError::PrimaryNotFound) => None,
                 Err(err) => Some(Err(err)),
             }
@@ -260,9 +175,9 @@ pub fn __populate_example_store() -> DataStore {
     store
 }
 
+// Minimal test matching the doctest for `get_component_with_instances`
 #[test]
-fn component_with_instances() {
-    use crate::dataframe_util::df_builder2;
+fn simple_get_component() {
     use re_arrow_store::{TimeQuery, TimelineQuery};
     use re_log_types::{field_types::Point2D, msg_bundle::Component as _, Timeline};
 
@@ -274,18 +189,75 @@ fn component_with_instances() {
         TimeQuery::LatestAt(123.into()),
     );
 
-    let df =
+    let component =
         get_component_with_instances(&store, &timeline_query, &ent_path.into(), Point2D::name())
             .unwrap();
-    eprintln!("{:?}", df);
 
-    let instances = vec![Some(Instance(42)), Some(Instance(96))];
-    let points = vec![
-        Some(Point2D { x: 1.0, y: 2.0 }),
-        Some(Point2D { x: 3.0, y: 4.0 }),
-    ];
+    #[cfg(feature = "polars")]
+    {
+        let df = component.as_df::<Point2D>().unwrap();
+        eprintln!("{:?}", df);
 
-    let expected = df_builder2(&instances, &points).unwrap();
+        let instances = vec![Some(Instance(42)), Some(Instance(96))];
+        let points = vec![
+            Some(Point2D { x: 1.0, y: 2.0 }),
+            Some(Point2D { x: 3.0, y: 4.0 }),
+        ];
 
-    assert_eq!(expected, df.try_into().unwrap());
+        let expected = crate::dataframe_util::df_builder2(&instances, &points).unwrap();
+
+        assert_eq!(expected, df);
+    }
+    #[cfg(not(feature = "polars"))]
+    {
+        let _used = component;
+    }
+}
+
+// Minimal test matching the doctest for `query_entity_with_primary`
+#[test]
+fn simple_query_entity() {
+    use re_arrow_store::{TimeQuery, TimelineQuery};
+    use re_log_types::{
+        field_types::{ColorRGBA, Point2D},
+        msg_bundle::Component as _,
+        Timeline,
+    };
+
+    let store = __populate_example_store();
+
+    let ent_path = "point";
+    let timeline_query = TimelineQuery::new(
+        Timeline::new_sequence("frame_nr"),
+        TimeQuery::LatestAt(123.into()),
+    );
+
+    let entity_view = query_entity_with_primary(
+        &store,
+        &timeline_query,
+        &ent_path.into(),
+        Point2D::name(),
+        &[ColorRGBA::name()],
+    )
+    .unwrap();
+
+    #[cfg(feature = "polars")]
+    {
+        let df = entity_view.as_df2::<Point2D, ColorRGBA>().unwrap();
+        eprintln!("{:?}", df);
+
+        let instances = vec![Some(Instance(42)), Some(Instance(96))];
+        let points = vec![
+            Some(Point2D { x: 1.0, y: 2.0 }),
+            Some(Point2D { x: 3.0, y: 4.0 }),
+        ];
+        let colors = vec![None, Some(ColorRGBA(0xff000000))];
+
+        let expected = crate::dataframe_util::df_builder3(&instances, &points, &colors).unwrap();
+        assert_eq!(expected, df);
+    }
+    #[cfg(not(feature = "polars"))]
+    {
+        let _used = entity_view;
+    }
 }

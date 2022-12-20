@@ -1,16 +1,38 @@
 //! Provide query-centric access to the `re_arrow_store`
 //! TODO(jleibs) better crate documentation.
 
-pub mod dataframe_util;
+mod entity_view;
 mod query;
 mod visit;
 
-pub use self::query::{
-    get_component_with_instances, query_entity_with_primary, ComponentWithInstances, EntityView,
-    Result,
-};
+#[cfg(feature = "polars")]
+pub mod dataframe_util;
+
+pub use self::entity_view::{ComponentWithInstances, EntityView};
+pub use self::query::{get_component_with_instances, query_entity_with_primary};
 // Used for doc-tests
 pub use self::query::__populate_example_store;
-pub use self::visit::{
-    iter_column, joined_iter, visit_component, visit_components2, visit_components3,
-};
+
+#[derive(thiserror::Error, Debug)]
+pub enum QueryError {
+    #[error("Tried to access a column that doesn't exist")]
+    BadAccess,
+
+    #[error("Could not find primary")]
+    PrimaryNotFound,
+
+    #[error("Tried to access component of type '{actual:?}' using deserializer for type '{requested:?}'")]
+    TypeMismatch {
+        actual: re_log_types::ComponentName,
+        requested: re_log_types::ComponentName,
+    },
+
+    #[error("Error converting arrow data")]
+    ArrowError(#[from] arrow2::error::Error),
+
+    #[cfg(feature = "polars")]
+    #[error("Error from within Polars")]
+    PolarsError(#[from] polars_core::prelude::PolarsError),
+}
+
+pub type Result<T> = std::result::Result<T, QueryError>;

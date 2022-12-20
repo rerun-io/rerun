@@ -16,7 +16,7 @@ use re_log_types::{
     context::{ClassId, KeypointId},
     DataVec, IndexHash, MeshId, MsgId, ObjectType, Tensor,
 };
-use re_query::{query_entity_with_primary, visit_components3};
+use re_query::query_entity_with_primary;
 use re_renderer::{
     renderer::{LineStripFlags, MeshInstance},
     Color32, LineStripSeriesBuilder, PointCloudBuilder, Size,
@@ -830,12 +830,10 @@ impl SceneSpatial {
                 Rect2D::name(),
                 &[ColorRGBA::name()],
             ) {
-                visit_components3(
-                    &entity_view,
-                    |rect: &Rect2D, instance: Option<&Instance>, color: Option<&ColorRGBA>| {
+                entity_view.visit2(
+                    |instance: Instance, rect: Rect2D, color: Option<ColorRGBA>| {
                         // TODO(jleibs): This feels convoluted and heavy-weight. Whatever we need here
                         // should come directly out of the datastore.
-                        let instance = instance.unwrap_or(&Instance(0));
                         let instance = InstanceId {
                             obj_path: obj_path.clone(),
                             instance_index: Some(re_log_types::Index::Sequence(instance.0)),

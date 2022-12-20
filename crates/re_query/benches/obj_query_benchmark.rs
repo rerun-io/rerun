@@ -8,17 +8,17 @@ use re_arrow_store::{DataStore, TimeQuery, TimelineQuery};
 use re_log_types::{
     datagen::{build_frame_nr, build_instances, build_some_colors, build_some_point2d},
     field_types::{ColorRGBA, Instance, Point2D},
-    msg_bundle::{try_build_msg_bundle2, try_build_msg_bundle3, Component, MsgBundle},
+    msg_bundle::{try_build_msg_bundle3, Component, MsgBundle},
     obj_path, Index, MsgId, ObjPath, ObjPathComp, TimeType, Timeline,
 };
-use re_query::{query_entity_with_primary, visit_components2, visit_components3};
+use re_query::query_entity_with_primary;
 
 // ---
 
 #[cfg(not(debug_assertions))]
-const NUM_FRAMES: u32 = 1000;
+const NUM_FRAMES: u32 = 100;
 #[cfg(not(debug_assertions))]
-const NUM_POINTS: u32 = 1000;
+const NUM_POINTS: u32 = 100;
 
 // `cargo test` also runs the benchmark setup code, so make sure they run quickly:
 #[cfg(debug_assertions)]
@@ -138,10 +138,10 @@ fn query_and_visit(store: &mut DataStore, paths: &[ObjPath]) -> Vec<Point> {
             Point2D::name(),
             &[ColorRGBA::name()],
         ) {
-            visit_components2(&entity_view, |pos: &Point2D, color: Option<&ColorRGBA>| {
+            entity_view.visit2(|_: Instance, pos: Point2D, color: Option<ColorRGBA>| {
                 points.push(Point {
-                    _pos: pos.clone(),
-                    _color: color.cloned(),
+                    _pos: pos,
+                    _color: color,
                 });
             });
         };

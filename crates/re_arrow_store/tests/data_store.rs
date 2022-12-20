@@ -851,7 +851,7 @@ fn pathological_bucket_topology() {
                 MsgId::ZERO,
                 ent_path.clone(),
                 time_point.clone(),
-                vec![build_instances(nb_instances)],
+                vec![build_instances(nb_instances).try_into().unwrap()],
             );
             store_forward.insert(&msg).unwrap();
 
@@ -859,7 +859,7 @@ fn pathological_bucket_topology() {
                 MsgId::ZERO,
                 ent_path.clone(),
                 time_point.clone(),
-                vec![build_instances(nb_instances)],
+                vec![build_instances(nb_instances).try_into().unwrap()],
             );
             store_backward.insert(&msg).unwrap();
         }
@@ -880,7 +880,7 @@ fn pathological_bucket_topology() {
                     MsgId::ZERO,
                     ent_path.clone(),
                     time_point,
-                    vec![build_instances(nb_instances)],
+                    vec![build_instances(nb_instances).try_into().unwrap()],
                 )
             })
             .collect::<Vec<_>>();
