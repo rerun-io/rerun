@@ -5,6 +5,7 @@
 
 use crate::MsgId;
 use arrow2::{array::Array, chunk::Chunk, datatypes::Schema};
+use cli_table::Table;
 
 /// Message containing an Arrow payload
 #[must_use]
@@ -16,6 +17,35 @@ pub struct ArrowMsg {
     pub schema: Schema,
     /// Arrow chunk
     pub chunk: Chunk<Box<dyn Array>>,
+}
+
+/// `DisplayAdapter` wraps a borrowed `dyn Array` and a row index, and implements
+/// [`std::format::Display`] for them.
+pub struct DisplayAdapter<'a>(pub &'a dyn Array, pub usize);
+
+impl<'a> std::fmt::Display for DisplayAdapter<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        arrow2::array::get_display(self.0, "-")(f, self.1)
+    }
+}
+
+impl cli_table::WithTitle for &ArrowMsg {
+    fn with_title(self) -> cli_table::TableStruct {
+        let table = (0..self.chunk.len())
+            .into_iter()
+            .map(|idx| {
+                self.chunk
+                    .iter()
+                    .map(move |array| DisplayAdapter(array.as_ref(), idx))
+            })
+            .table();
+        let title = self
+            .schema
+            .fields
+            .iter()
+            .map(|field| cli_table::Cell::cell(field.name.as_str()));
+        table.title(title)
+    }
 }
 
 #[cfg(feature = "serde")]

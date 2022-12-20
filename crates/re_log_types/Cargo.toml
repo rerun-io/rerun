@@ -48,6 +48,7 @@ chrono = { version = "0.4", features = [
   "js-sys",
   "wasmbind",
 ] } # TODO(emilk): replace `chrono` with `time` crate
+cli-table.workspace = true
 derive_more = "0.99"
 document-features = "0.2"
 fixed = { version = "1.17", features = ["serde"] }

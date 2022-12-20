@@ -7,9 +7,11 @@ use arrow2::array::Array;
 use arrow2::chunk::Chunk;
 use arrow2::datatypes::DataType;
 
+use cli_table::Table;
 use nohash_hasher::IntMap;
 use parking_lot::RwLock;
 use re_format::{format_bytes, format_number};
+use re_log_types::arrow_msg::DisplayAdapter;
 use re_log_types::{
     ComponentName, ObjPath as EntityPath, ObjPathHash as EntityPathHash, TimeInt, TimeRange,
     Timeline,
@@ -464,8 +466,8 @@ impl std::fmt::Display for IndexTable {
                 8,
                 format!("index time bound: >= {}\n", timeline.typ().format(*time),),
             ))?;
-            f.write_str(&indent::indent_all_by(8, bucket.to_string() + "\n"))?;
-            f.write_str(&indent::indent_all_by(4, "}\n"))?;
+            f.write_str(&indent::indent_all_by(8, bucket.to_string()))?;
+            f.write_str(&indent::indent_all_by(0, "}\n"))?;
         }
         f.write_str("]")?;
 
@@ -596,19 +598,27 @@ impl std::fmt::Display for IndexBucket {
         let (timeline_name, times) = self.times();
         let (col_names, cols) = self.named_indices();
 
-        let names: Vec<String> = std::iter::once(timeline_name)
-            .chain(col_names.into_iter().map(|name| name.to_string()))
-            .collect();
+        let names = std::iter::once(timeline_name)
+            .chain(col_names.into_iter().map(|name| name.to_string()));
 
-        let chunk = Chunk::new(
-            std::iter::once(times.boxed())
-                .chain(cols.into_iter().map(|c| c.boxed()))
-                .collect(),
-        );
+        let values = std::iter::once(times.boxed())
+            .chain(cols.into_iter().map(|c| c.boxed()))
+            .collect::<Box<_>>();
 
-        let table_str = arrow2::io::print::write(&[chunk], names.as_slice());
+        let table = (0..values[0].len())
+            .into_iter()
+            .map(|idx| {
+                values
+                    .iter()
+                    .map(move |array| DisplayAdapter(array.as_ref(), idx))
+            })
+            .table()
+            .title(names);
+
+        let table_str = table.display().expect("a table");
+
         let is_sorted = self.is_sorted();
-        f.write_fmt(format_args!("data (sorted={is_sorted}):\n{table_str}\n"))?;
+        f.write_fmt(format_args!("data (sorted={is_sorted}):\n{table_str}"))?;
 
         Ok(())
     }
@@ -778,7 +788,7 @@ impl std::fmt::Display for ComponentTable {
         f.write_str("buckets: [\n")?;
         for bucket in buckets {
             f.write_str(&indent::indent_all_by(4, "ComponentBucket {\n"))?;
-            f.write_str(&indent::indent_all_by(8, bucket.to_string() + "\n"))?;
+            f.write_str(&indent::indent_all_by(8, bucket.to_string()))?;
             f.write_str(&indent::indent_all_by(4, "}\n"))?;
         }
         f.write_str("]")?;
@@ -931,8 +941,17 @@ impl std::fmt::Display for ComponentBucket {
             let chunks = self.chunks.iter().map(|chunk| &**chunk).collect::<Vec<_>>();
             vec![concatenate(&chunks).unwrap()]
         };
-        let chunk = Chunk::new(rows);
-        f.write_str(&arrow2::io::print::write(&[chunk], &[self.name.as_str()]))?;
+
+        let table = (0..rows[0].len())
+            .into_iter()
+            .map(|idx| {
+                rows.iter()
+                    .map(move |array| DisplayAdapter(array.as_ref(), idx))
+            })
+            .table()
+            .title([self.name.as_str()]);
+        let table_str = table.display().expect("a table");
+        f.write_fmt(format_args!("{table_str}"))?;
 
         Ok(())
     }
