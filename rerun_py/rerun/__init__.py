@@ -38,9 +38,9 @@ OptionalClassIds = Optional[Union[int, npt.ArrayLike]]
 OptionalKeyPointIds = Optional[Union[int, npt.ArrayLike]]
 
 TensorDType = Union[
-    np.uint8, np.uint16, np.uint32, np.uint64,
-    np.int8, np.int16, np.int32, np.int64,
-    np.float16, np.float32, np.float64]
+    np.uint8, np.uint16, np.uint32, np.uint64, np.int8, np.int16, np.int32, np.int64, np.float16, np.float32, np.float64
+]
+
 
 class MeshFormat(Enum):
     # Needs some way of logging materials too, or adding some default material to the
@@ -1075,6 +1075,7 @@ def log_tensor(
     timeless: bool = False,
 ) -> None:
     _log_tensor(obj_path, tensor=tensor, names=names, meter=meter, timeless=timeless)
+
 
 def _log_tensor(
     obj_path: str,
