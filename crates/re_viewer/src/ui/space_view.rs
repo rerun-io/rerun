@@ -252,8 +252,8 @@ impl SpaceView {
         transforms: &TransformCache,
     ) {
         let is_reachable = match transforms.reference_from_obj(&tree.path) {
-            ReferenceFromObjTransform::ConnectedViaUnknownOrPinhole => false,
-            ReferenceFromObjTransform::Rigid(_) => true,
+            ReferenceFromObjTransform::Unreachable => false,
+            ReferenceFromObjTransform::Reachable(_) => true,
         };
         let response = ui
             .add_enabled_ui(is_reachable, |ui| {

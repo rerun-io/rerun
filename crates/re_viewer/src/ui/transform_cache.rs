@@ -14,13 +14,12 @@ pub struct TransformCache {
 
 #[derive(Clone)]
 pub enum ReferenceFromObjTransform {
-    /// On the path from the given object to the reference is an unknown transformation or a pinhole transformation
-    ///
-    /// TODO(andreas): Will need to be split up and we should be able to handle some of these cases!
-    ConnectedViaUnknownOrPinhole,
+    /// On the path from the given object to the reference is an obstacle.
+    /// TODO(andreas): Can we be more specific to give more information?
+    Unreachable,
 
-    /// There is a rigid connection to the reference.
-    Rigid(glam::Mat4),
+    /// We're able to transform this object into the reference space.
+    Reachable(glam::Mat4),
 }
 
 impl TransformCache {
@@ -50,7 +49,7 @@ impl TransformCache {
                 |obj| {
                     (
                         *obj.hash(),
-                        ReferenceFromObjTransform::Rigid(reference_from_obj),
+                        ReferenceFromObjTransform::Reachable(reference_from_obj),
                     )
                 },
             ));
@@ -65,9 +64,23 @@ impl TransformCache {
                         re_log_types::Transform::Unknown => {
                             continue;
                         }
-                        // We don't yet support reaching through pinhole.
-                        re_log_types::Transform::Pinhole(_) => {
-                            continue;
+
+                        re_log_types::Transform::Pinhole(pinhole) => {
+                            // TODO: Should bail if this is a pinhole in a pinhole camera
+
+                            // A pinhole camera means that we're looking at an image.
+                            // Images are spanned in their local x/y space with their r
+                            // Center it and move it along z, scaling the further we move.
+                            let distance = 2.0; // TODO:
+                            let scale = distance / pinhole.alpha_y();
+                            let translation = (-pinhole.principal_point() * scale).extend(distance);
+                            let parent_from_child = glam::Mat4::from_scale_rotation_translation(
+                                glam::vec3(scale, scale, 1.0), // TODO: z scale..?
+                                glam::Quat::IDENTITY,
+                                translation,
+                            );
+
+                            reference_from_obj * parent_from_child
                         }
                     };
 
@@ -126,6 +139,6 @@ impl TransformCache {
         self.reference_from_obj_per_object
             .get(obj_path.hash())
             .cloned()
-            .unwrap_or(ReferenceFromObjTransform::ConnectedViaUnknownOrPinhole)
+            .unwrap_or(ReferenceFromObjTransform::Unreachable)
     }
 }

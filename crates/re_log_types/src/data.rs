@@ -688,6 +688,31 @@ impl Pinhole {
         self.resolution
             .map(|resolution| 2.0 * (0.5 * resolution[1] / self.image_from_cam[1][1]).atan())
     }
+
+    /// X focal length in pixels.
+    ///
+    /// [see definition of intrinsic matrix](https://en.wikipedia.org/wiki/Camera_resectioning#Intrinsic_parameters)
+    #[inline]
+    pub fn alpha_x(&self) -> f32 {
+        self.image_from_cam[0][0]
+    }
+
+    /// Y focal length in pixels.
+    ///
+    /// [see definition of intrinsic matrix](https://en.wikipedia.org/wiki/Camera_resectioning#Intrinsic_parameters)
+    #[inline]
+    pub fn alpha_y(&self) -> f32 {
+        self.image_from_cam[1][1]
+    }
+
+    /// Principal point of the pinhole camera,
+    /// i.e. the intersection of the optical axis and the image plane.
+    ///
+    /// [see definition of intrinsic matrix](https://en.wikipedia.org/wiki/Camera_resectioning#Intrinsic_parameters)
+    #[inline]
+    pub fn principal_point(&self) -> glam::Vec2 {
+        glam::vec2(self.image_from_cam[2][0], self.image_from_cam[2][1])
+    }
 }
 
 // ----------------------------------------------------------------------------
