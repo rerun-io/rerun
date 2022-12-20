@@ -130,6 +130,7 @@ impl SpaceView {
         let Some(space) = spaces_info.spaces.get(&self.space_path) else {
             return;
         };
+        // Add objects that have been logged since we were created
         self.queried_objects = Self::default_queried_objects(ctx, self.category, space);
     }
 

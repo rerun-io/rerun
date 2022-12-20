@@ -122,19 +122,17 @@ impl Viewport {
                             space_view.name = visible_instance_id.obj_path.to_string();
 
                             for other_image in &scene_spatial.ui.images {
-                                if let Some(image_instance_id) =
+                                if let Some(other_image_instance_id) =
                                     other_image.instance_hash.resolve(store)
                                 {
-                                    let visible =
-                                        visible_instance_id.obj_path == image_instance_id.obj_path;
-
-                                    space_view.obj_properties.set(
-                                        image_instance_id.obj_path,
-                                        re_data_store::ObjectProps {
-                                            visible,
-                                            ..Default::default()
-                                        },
-                                    );
+                                    if visible_instance_id.obj_path
+                                        != other_image_instance_id.obj_path
+                                    {
+                                        space_view
+                                            .queried_objects
+                                            .remove(&other_image_instance_id.obj_path);
+                                        space_view.has_been_user_edited = true; // Prevent later auto-adding of these "missing" images
+                                    }
                                 }
                             }
 
