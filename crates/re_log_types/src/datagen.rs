@@ -63,7 +63,7 @@ pub fn build_some_instances(nb_instances: usize) -> Vec<Instance> {
     use rand::seq::SliceRandom;
     let mut rng = rand::thread_rng();
 
-    // Allocate pool of 10x the potential instance ideas, draw a random sampling, and then sort it
+    // Allocate pool of 10x the potential instance keys, draw a random sampling, and then sort it
     let mut instance_pool = (0..(nb_instances * 10)).collect::<Vec<_>>();
     let (rand_instances, _) = instance_pool.partial_shuffle(&mut rng, nb_instances);
     let mut sorted_instances = rand_instances.to_vec();
