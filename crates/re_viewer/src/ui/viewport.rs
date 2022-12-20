@@ -430,6 +430,7 @@ impl Viewport {
             let frame = ctx.re_ui.hovering_frame();
             hovering_panel(ui, frame, response.rect, |ui| {
                 space_view_options_link(ctx, selection_panel_expanded, space_view.id, ui, "⛭");
+                help_text_ui(ui, space_view);
             });
         } else if let Some(space_view_id) = self.maximized {
             let space_view = self
@@ -452,6 +453,7 @@ impl Viewport {
                     self.maximized = None;
                 }
                 space_view_options_link(ctx, selection_panel_expanded, space_view.id, ui, "⛭");
+                help_text_ui(ui, space_view);
             });
         } else {
             let mut dock_style = egui_dock::Style::from_egui(ui.style().as_ref());
@@ -619,6 +621,8 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
                 ui,
                 "⛭",
             );
+
+            help_text_ui(ui, space_view);
         });
     }
 
@@ -628,6 +632,19 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
             .get_mut(tab)
             .expect("Should have been populated beforehand");
         space_view.name.clone().into()
+    }
+}
+
+fn help_text_ui(ui: &mut egui::Ui, space_view: &SpaceView) {
+    let help_text = match space_view.category {
+        ViewCategory::TimeSeries => Some(crate::ui::view_time_series::HELP_TEXT),
+        ViewCategory::BarChart => Some(crate::ui::view_bar_chart::HELP_TEXT),
+        ViewCategory::Spatial => Some(space_view.view_state.state_spatial.help_text()),
+        ViewCategory::Text | ViewCategory::Tensor => None,
+    };
+
+    if let Some(help_text) = help_text {
+        crate::misc::help_hover_button(ui).on_hover_text(help_text);
     }
 }
 
