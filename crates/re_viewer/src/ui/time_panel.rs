@@ -736,15 +736,13 @@ fn paint_time_ranges_gaps(
 
     use itertools::Itertools as _;
 
+    let top = *y_range.start();
+    let bottom = *y_range.end();
+
     let fill_color = Color32::BLACK;
     let stroke = ui.visuals().widgets.noninteractive.bg_stroke;
 
-    for (a, b) in time_ranges_ui.segments.iter().tuple_windows() {
-        let gap_left = *a.x.end();
-        let gap_right = *b.x.start();
-        let top = *y_range.start();
-        let bottom = *y_range.end();
-
+    let paint_time_gap = |gap_left: f32, gap_right: f32| {
         let zig_width = 4.0;
         let zig_height = zig_width;
 
@@ -790,6 +788,43 @@ fn paint_time_ranges_gaps(
         painter.add(Shape::Mesh(mesh));
         painter.add(Shape::line(left_line_strip, stroke));
         painter.add(Shape::line(right_line_strip, stroke));
+    };
+
+    let zig_zag_first_and_last_edges = true;
+
+    if let Some(segment) = time_ranges_ui.segments.first() {
+        let gap_edge = *segment.x.start();
+
+        if zig_zag_first_and_last_edges {
+            // Left side of first segment - paint as a very wide gap that we only see the right side of
+            paint_time_gap(gap_edge - 100_000.0, gap_edge);
+        } else {
+            painter.rect_filled(
+                Rect::from_min_max(pos2(gap_edge - 100_000.0, top), pos2(gap_edge, bottom)),
+                0.0,
+                fill_color,
+            );
+            painter.vline(gap_edge, y_range.clone(), stroke);
+        }
+    }
+
+    for (a, b) in time_ranges_ui.segments.iter().tuple_windows() {
+        paint_time_gap(*a.x.end(), *b.x.start());
+    }
+
+    if let Some(segment) = time_ranges_ui.segments.last() {
+        let gap_edge = *segment.x.end();
+        if zig_zag_first_and_last_edges {
+            // Right side of last segment - paint as a very wide gap that we only see the left side of
+            paint_time_gap(gap_edge, gap_edge + 100_000.0);
+        } else {
+            painter.rect_filled(
+                Rect::from_min_max(pos2(gap_edge, top), pos2(gap_edge + 100_000.0, bottom)),
+                0.0,
+                fill_color,
+            );
+            painter.vline(gap_edge, y_range, stroke);
+        }
     }
 }
 
