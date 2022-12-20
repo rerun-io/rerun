@@ -174,14 +174,14 @@ impl DataStore {
             // So use the fact that `rows` is always of unit-length for now.
             let rows_single = rows;
 
-            let nb_instances = rows_single
+            let row = rows_single
                 .as_any()
                 .downcast_ref::<ListArray<i32>>()
                 .unwrap()
-                .value(0)
-                .len();
+                .value(row_nr);
+            let nb_instances = row.len();
 
-            // TODO: what about splats?
+            // TODO(#440): support for splats
             if nb_instances != cluster_len {
                 return Err(WriteError::MismatchedInstances {
                     cluster_comp: self.cluster_key,
@@ -205,7 +205,12 @@ impl DataStore {
         Ok(())
     }
 
-    // TODO: doc
+    /// Tries to find the cluster component for the current row, or creates it if the caller hasn't
+    /// specified any.
+    ///
+    /// When creating an auto-generated cluster component of a specific length for the first time,
+    /// this will keep track of its assigned row index and re-use it later on as a mean of
+    /// deduplication.
     fn get_or_create_cluster_component(
         &mut self,
         row_nr: usize,
@@ -221,6 +226,9 @@ impl DataStore {
         }
 
         let (found, comp, len) = if let Some(cluster_comp) = cluster_comp {
+            // We found a component with a name matching the cluster key's, let's make sure it's
+            // valid (dense, sorted, no duplicates) and use that if so.
+
             let row = cluster_comp
                 .value
                 .as_any()
@@ -234,14 +242,18 @@ impl DataStore {
                 return Err(WriteError::SparseClusteringComponent(row));
             }
             // Clustering component must be sorted and not contain any duplicates.
-            // TODO: should we do the sorting ourselves if required?
             if !row.is_sorted_and_unique()? {
                 return Err(WriteError::InvalidClusteringComponent(row));
             }
 
             (true, RowIndexOrData::Data(row), len)
         } else {
-            // TODO: explain why it doesn't matter which component we pick as model
+            // The caller has not specified any cluster component, and so we'll have to generate
+            // one... unless we've already generated one of this exact length in the past, in which
+            // case we can simply re-use that row index.
+
+            // Use the length of any other component in the batch, they are guaranteed to all share
+            // the same length at this point anyway.
             let len = components.first().map_or(0, |comp| {
                 let row = comp
                     .value
@@ -252,10 +264,11 @@ impl DataStore {
                 row.len()
             });
 
-            // TODO: explain
             if let Some(row_idx) = self.cluster_comp_cache.get(&len) {
+                // Cache hit! Re-use that row index.
                 (false, RowIndexOrData::RowIndex(*row_idx), len)
             } else {
+                // Cache miss! Craft a new u64 array from the ground up.
                 let row = UInt64Array::from_vec((0..len as u64).collect_vec()).boxed();
                 (false, RowIndexOrData::Data(row), len)
             }
@@ -264,6 +277,9 @@ impl DataStore {
         match comp {
             RowIndexOrData::RowIndex(row_idx) => Ok((row_idx, len)),
             RowIndexOrData::Data(comp) => {
+                // If we didn't hit the cache, then we have to insert this cluster component in the
+                // right tables, just like any other component.
+
                 let table = self
                     .components
                     .entry(self.cluster_key)
@@ -275,7 +291,9 @@ impl DataStore {
                     &*wrap_in_listarray(comp).to_boxed(),
                 );
 
-                // TODO: explain
+                // If we auto-generated the cluster component, then keep its row index around for
+                // the next time we have to insert a component of the same length with a missing
+                // cluster key.
                 if !found {
                     self.cluster_comp_cache.insert(len, row_idx);
                 }
