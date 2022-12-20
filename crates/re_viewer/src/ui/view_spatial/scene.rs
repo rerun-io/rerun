@@ -1,4 +1,3 @@
-use std::convert::Infallible;
 use std::sync::Arc;
 
 use ahash::HashMap;
@@ -1034,7 +1033,7 @@ impl SceneSpatial {
             }) {
                 Ok(_) | Err(QueryError::PrimaryNotFound) => {}
                 Err(err) => {
-                    re_log::error!("Unexpected error querying '{:?}': {:?}", obj_path, err);
+                    re_log::error_once!("Unexpected error querying '{:?}': {:?}", obj_path, err);
                 }
             }
         }
