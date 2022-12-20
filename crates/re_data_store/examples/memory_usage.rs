@@ -1,7 +1,7 @@
 use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
 
 pub struct TrackingAllocator {
-    allocator: mimalloc::MiMalloc,
+    allocator: std::alloc::System,
 
     cumul_alloc_count: AtomicUsize,
     cumul_alloc_size: AtomicUsize,
@@ -13,7 +13,7 @@ pub struct TrackingAllocator {
 
 #[global_allocator]
 pub static GLOBAL_ALLOCATOR: TrackingAllocator = TrackingAllocator {
-    allocator: mimalloc::MiMalloc,
+    allocator: std::alloc::System,
 
     cumul_alloc_count: AtomicUsize::new(0),
     cumul_alloc_size: AtomicUsize::new(0),
@@ -51,14 +51,25 @@ unsafe impl std::alloc::GlobalAlloc for TrackingAllocator {
     }
 }
 
-use itertools::Itertools as _;
-use re_data_store::{BatchOrSplat, Index, ObjPath, TimelineStore};
-use re_log_types::{obj_path, MsgId};
-
 impl TrackingAllocator {
     fn used_bytes(&self) -> usize {
         self.cumul_alloc_size.load(SeqCst) - self.cumul_free_size.load(SeqCst)
     }
+}
+
+// ----------------------------------------------------------------------------
+
+use re_data_store::{BatchOrSplat, Index, ObjPath, TimelineStore};
+use re_log_types::{obj_path, MsgId};
+
+use itertools::Itertools as _;
+
+fn main() {
+    tracking_points();
+    big_clouds();
+    big_clouds_batched();
+    big_clouds_sequential_batched();
+    log_messages();
 }
 
 fn obj_path_mono(camera: u64, index: u64) -> ObjPath {
@@ -237,9 +248,67 @@ fn big_clouds_sequential_batched() {
     println!("big clouds sequential batched overhead_factor: {overhead_factor} (should ideally be just above 1)");
 }
 
-fn main() {
-    tracking_points();
-    big_clouds();
-    big_clouds_batched();
-    big_clouds_sequential_batched();
+fn log_messages() {
+    use re_log_types::{
+        datagen::{build_frame_nr, build_some_point2d},
+        msg_bundle::try_build_msg_bundle1,
+        ArrowMsg, Data, DataMsg, DataPath, FieldName, LogMsg, TimeInt, TimePoint, Timeline,
+    };
+
+    fn encode_log_msg(log_msg: &LogMsg) -> Vec<u8> {
+        let mut bytes = vec![];
+        re_log_types::encoding::encode(std::iter::once(log_msg), &mut bytes).unwrap();
+        bytes
+    }
+
+    const POS: [f32; 2] = [2.0, 3.0];
+
+    let timeline = Timeline::new_sequence("frame_nr");
+    let pos_field_name = FieldName::from("pos");
+
+    {
+        let used_bytes_start = GLOBAL_ALLOCATOR.used_bytes();
+        let obj_path = obj_path!("points");
+        let used_bytes = GLOBAL_ALLOCATOR.used_bytes() - used_bytes_start;
+        println!("Short ObjPath uses {used_bytes} bytes in RAM");
+        drop(obj_path);
+    }
+
+    {
+        let used_bytes_start = GLOBAL_ALLOCATOR.used_bytes();
+        let mut time_point = TimePoint::default();
+        time_point.insert(timeline, TimeInt::from(0));
+        let log_msg = Box::new(LogMsg::DataMsg(DataMsg {
+            msg_id: MsgId::ZERO,
+            time_point: time_point.clone(),
+            data_path: DataPath::new(obj_path!("points"), pos_field_name),
+            data: Data::Vec2(POS).into(),
+        }));
+        let log_msg_bytes = GLOBAL_ALLOCATOR.used_bytes() - used_bytes_start;
+        println!(
+            "Classic LogMsg containing a Pos2 uses {log_msg_bytes} bytes in RAM, and {} bytes encoded",
+            encode_log_msg(&log_msg).len()
+        );
+    }
+
+    {
+        let used_bytes_start = GLOBAL_ALLOCATOR.used_bytes();
+        let msg_bundle = Box::new(
+            try_build_msg_bundle1(
+                MsgId::ZERO,
+                obj_path!("points"),
+                [build_frame_nr(0)],
+                build_some_point2d(1),
+            )
+            .unwrap(),
+        );
+        let msg_bundle_bytes = GLOBAL_ALLOCATOR.used_bytes() - used_bytes_start;
+        let log_msg = Box::new(LogMsg::ArrowMsg(ArrowMsg::try_from(*msg_bundle).unwrap()));
+        let log_msg_bytes = GLOBAL_ALLOCATOR.used_bytes() - used_bytes_start;
+        println!("Arrow MsgBundle containing a Pos2 uses {msg_bundle_bytes} bytes in RAM");
+        println!(
+            "Arrow LogMsg containing a Pos2 uses {log_msg_bytes} bytes in RAM, and {} bytes encoded",
+            encode_log_msg(&log_msg).len()
+        );
+    }
 }
