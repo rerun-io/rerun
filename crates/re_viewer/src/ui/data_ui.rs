@@ -3,7 +3,7 @@ use egui::{color_picker, Vec2};
 use itertools::Itertools;
 use re_data_store::InstanceId;
 use re_log_types::context::AnnotationInfo;
-use re_log_types::msg_bundle::MsgBundle;
+use re_log_types::msg_bundle::{ComponentBundle, MsgBundle};
 use re_log_types::{
     context, AnnotationContext, Arrow3D, ArrowMsg, BeginRecordingMsg, Data, DataMsg, DataPath,
     DataVec, LogMsg, LoggedData, MsgId, ObjPath, ObjectType, PathOp, PathOpMsg, Pinhole,
@@ -348,19 +348,19 @@ pub(crate) fn path_op_msg_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, msg
 }
 
 pub(crate) fn arrow_msg_ui(
-    ctx: &mut ViewerContext<'_>,
+    _ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     msg: &ArrowMsg,
-    preview: Preview,
+    _preview: Preview,
 ) {
     let ArrowMsg {
-        msg_id,
+        msg_id: _,
         schema: _,
         chunk: _,
     } = msg;
 
-    // TODO(jleibs): Better ArrowMsg view
-    logged_arrow_data_ui(ctx, ui, msg_id, msg, preview);
+    //logged_arrow_data_ui(ctx, ui, msg_id, msg, preview);
+    ui.label("TODO(john,jleibs) fixme");
 }
 
 pub(crate) fn time_point_ui(
@@ -406,24 +406,14 @@ pub(crate) fn logged_arrow_data_ui(
     _ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     _msg_id: &MsgId,
-    msg: &ArrowMsg,
+    components: &[ComponentBundle],
     _preview: Preview,
 ) -> egui::Response {
     // TODO(john): more handling
-    match MsgBundle::try_from(msg) {
-        Ok(msg_bundle) => ui.label(format!(
-            "Arrow Payload of {:?}",
-            msg_bundle
-                .components
-                .iter()
-                .map(|bundle| &bundle.name)
-                .collect_vec()
-        )),
-        Err(err) => {
-            re_log::error_once!("Bad arrow payload: {:?}", err);
-            ui.label("Bad Arrow Payload".to_owned())
-        }
-    }
+    ui.label(format!(
+        "Arrow Payload of {:?}",
+        components.iter().map(|bundle| &bundle.name).collect_vec()
+    ))
 }
 
 pub(crate) fn data_ui(
