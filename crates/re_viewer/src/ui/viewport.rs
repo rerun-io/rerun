@@ -6,7 +6,7 @@
 //! * [ ] Controlling visibility of objects inside each Space View
 //! * [ ] Transforming objects between spaces
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use ahash::HashMap;
 use itertools::Itertools as _;
@@ -118,7 +118,16 @@ impl Viewport {
 
                     let store = &ctx.log_db.obj_db.store;
 
+                    let mut image_sizes = BTreeSet::default();
+
                     for visible_image in &scene_spatial.ui.images {
+                        debug_assert!(matches!(visible_image.tensor.shape.len(), 2 | 3));
+                        let image_size = (
+                            visible_image.tensor.shape[0].size,
+                            visible_image.tensor.shape[1].size,
+                        );
+                        image_sizes.insert(image_size);
+
                         if let Some(visible_instance_id) =
                             visible_image.instance_hash.resolve(store)
                         {
@@ -133,19 +142,17 @@ impl Viewport {
                             space_view.name = visible_instance_id.obj_path.to_string();
 
                             for other_image in &scene_spatial.ui.images {
-                                if let Some(image_instance_id) =
+                                if let Some(other_image_instance_id) =
                                     other_image.instance_hash.resolve(store)
                                 {
-                                    let visible =
-                                        visible_instance_id.obj_path == image_instance_id.obj_path;
-
-                                    space_view.obj_properties.set(
-                                        image_instance_id.obj_path,
-                                        re_data_store::ObjectProps {
-                                            visible,
-                                            ..Default::default()
-                                        },
-                                    );
+                                    if visible_instance_id.obj_path
+                                        != other_image_instance_id.obj_path
+                                    {
+                                        space_view
+                                            .queried_objects
+                                            .remove(&other_image_instance_id.obj_path);
+                                        space_view.allow_auto_adding_more_object = false;
+                                    }
                                 }
                             }
 
@@ -153,8 +160,13 @@ impl Viewport {
                         }
                     }
 
-                    // We _also_ want to create the stacked version, e.g. rgb + segmentation
-                    // so we keep going here.
+                    if image_sizes.len() == 1 {
+                        // All images have the same size, so we _also_ want to
+                        // create the stacked version (e.g. rgb + segmentation)
+                        // so we keep going here.
+                    } else {
+                        continue; // Different sizes, skip creating the stacked version
+                    }
                 }
 
                 // Create one SpaceView for the whole space:

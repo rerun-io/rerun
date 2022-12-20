@@ -65,7 +65,7 @@ impl std::fmt::Debug for ObjPathHash {
 /// Cheap to clone.
 ///
 /// Implements [`nohash_hasher::IsEnabled`].
-#[derive(Clone, Debug, Eq)]
+#[derive(Clone, Eq)]
 pub struct ObjPath {
     /// precomputed hash
     hash: ObjPathHash,
@@ -247,6 +247,12 @@ pub use super::obj_path_impl::Iter;
 pub use super::obj_path_impl::ObjPathCompRef;
 
 // ----------------------------------------------------------------------------
+
+impl std::fmt::Debug for ObjPath {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.path.fmt(f)
+    }
+}
 
 impl std::fmt::Display for ObjPath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
