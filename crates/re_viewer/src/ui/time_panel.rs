@@ -237,6 +237,10 @@ impl TimePanel {
         // all the object rows:
         egui::ScrollArea::vertical()
             .auto_shrink([false; 2])
+            // We turn off `drag_to_scroll` so that the `ScrollArea` don't steal input from
+            // the earlier `interact_with_time_area`.
+            // We implement drag-to-scroll manually instead!
+            .drag_to_scroll(false)
             .show(ui, |ui| {
                 crate::profile_scope!("tree_ui");
                 if time_area_response.dragged_by(PointerButton::Primary) {
@@ -320,13 +324,6 @@ impl TimePanel {
         );
 
         let is_visible = ui.is_rect_visible(full_width_rect);
-
-        if is_visible {
-            response.on_hover_ui(|ui| {
-                ui.strong("Object");
-                ui.label(tree.path.to_string());
-            });
-        }
 
         if is_visible {
             // paint hline guide:

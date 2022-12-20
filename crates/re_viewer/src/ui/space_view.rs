@@ -61,8 +61,8 @@ pub(crate) struct SpaceView {
     /// We only show data that match this category.
     pub category: ViewCategory,
 
-    /// Set to `true` the first time the user messes around with the list of queried objects.
-    pub has_been_user_edited: bool,
+    /// Set to `false` the first time the user messes around with the list of queried objects.
+    pub allow_auto_adding_more_object: bool,
 }
 
 impl SpaceView {
@@ -85,16 +85,26 @@ impl SpaceView {
             .next()
             .map_or_else(|| space_path.clone(), |c| ObjPath::from(vec![c.to_owned()]));
 
+        let queried_objects = Self::default_queried_objects(ctx, category, space_info, spaces_info);
+
+        let name = if queried_objects.len() == 1 {
+            // a single object in this space-view - name the space after it
+            let obj_path = queried_objects.iter().next().unwrap();
+            obj_path.to_string()
+        } else {
+            space_path.to_string()
+        };
+
         Self {
-            name: space_path.to_string(),
+            name,
             id: SpaceViewId::random(),
             root_path,
             space_path,
-            queried_objects: Self::default_queried_objects(ctx, category, space_info, spaces_info),
+            queried_objects,
             obj_properties: Default::default(),
             view_state,
             category,
-            has_been_user_edited: false,
+            allow_auto_adding_more_object: true,
         }
     }
 
@@ -119,12 +129,13 @@ impl SpaceView {
     }
 
     pub fn on_frame_start(&mut self, ctx: &mut ViewerContext<'_>, spaces_info: &SpacesInfo) {
-        if self.has_been_user_edited {
+        if !self.allow_auto_adding_more_object {
             return;
         }
         let Some(space) = spaces_info.spaces.get(&self.space_path) else {
             return;
         };
+        // Add objects that have been logged since we were created
         self.queried_objects =
             Self::default_queried_objects(ctx, self.category, space, spaces_info);
     }
@@ -326,7 +337,7 @@ impl SpaceView {
                         self.queried_objects.insert(path.clone());
                     },
                 );
-                self.has_been_user_edited = true;
+                self.allow_auto_adding_more_object = false;
             }
             response.on_hover_text("Add to this Space View's query")
         });

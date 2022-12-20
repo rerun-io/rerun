@@ -1,11 +1,18 @@
 //! The Rerun Arrow-based datastore.
 //!
 //! See `src/store.rs` for an overview of the core datastructures.
+//!
+//! ## Feature flags
+#![doc = document_features::document_features!()]
+//!
 
 mod arrow_util;
 mod store;
 mod store_read;
 mod store_write;
+
+#[cfg(feature = "polars")]
+pub mod polars_helpers;
 
 #[doc(hidden)]
 pub mod test_util;
@@ -23,4 +30,4 @@ pub(crate) use self::store::{
 #[doc(no_inline)]
 pub use arrow2::io::ipc::read::{StreamReader, StreamState};
 #[doc(no_inline)]
-pub use re_log_types::{TimeInt, TimeRange, TimeType}; // for politeness sake
+pub use re_log_types::{TimeInt, TimeRange, TimeType, Timeline}; // for politeness sake

@@ -6,7 +6,7 @@ use crate::{
 /// `camera / "left" / points / #42`
 ///
 /// Wrapped by [`crate::ObjPath`] together with a hash.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct ObjPathImpl {
     /// `camera / * / points / *`
@@ -203,6 +203,12 @@ impl<'a> Iterator for Iter<'a> {
 }
 
 // ----------------------------------------------------------------------------
+
+impl std::fmt::Debug for ObjPathImpl {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "ObjPath({self})")
+    }
+}
 
 impl std::fmt::Display for ObjPathImpl {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

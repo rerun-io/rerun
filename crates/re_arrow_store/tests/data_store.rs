@@ -9,12 +9,14 @@ use std::{
 
 use arrow2::array::{Array, ListArray, UInt64Array};
 use polars_core::{prelude::*, series::Series};
-use re_arrow_store::{test_bundle, DataStore, LatestAtQuery, RangeQuery, TimeInt, TimeRange};
+use re_arrow_store::{
+    polars_helpers, test_bundle, DataStore, LatestAtQuery, RangeQuery, TimeInt, TimeRange,
+};
 use re_log_types::{
     datagen::{build_frame_nr, build_instances, build_some_point2d, build_some_rects},
     field_types::{Instance, Point2D, Rect2D},
     msg_bundle::{wrap_in_listarray, Component as _, MsgBundle},
-    ComponentName, MsgId, ObjPath as EntityPath, TimeType, Timeline,
+    ComponentName, ObjPath as EntityPath, TimeType, Timeline,
 };
 
 // --- LatestAt ---
@@ -61,50 +63,41 @@ fn latest_at_impl(store: &mut DataStore) {
         err.unwrap();
     }
 
-    assert_joint_query_at(store, &ent_path, frame0, &[]);
-    assert_joint_query_at(store, &ent_path, frame1, &[(Rect2D::name(), &bundle1)]);
-    assert_joint_query_at(
-        store,
-        &ent_path,
+    let mut assert_latest_components =
+        |frame_nr: TimeInt, bundles: &[(ComponentName, &MsgBundle)]| {
+            let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
+            let components_all = &[Rect2D::name(), Point2D::name()];
+
+            let df = polars_helpers::latest_components(
+                store,
+                &TimelineQuery::new(timeline_frame_nr, TimeQuery::LatestAt(frame_nr)),
+                &ent_path,
+                components_all,
+            )
+            .unwrap();
+
+            let df_expected = joint_df(store.cluster_key(), bundles);
+
+            store.sort_indices();
+            assert_eq!(df_expected, df, "{store}");
+        };
+
+    // TODO(cmc): bring back some log_time scenarios
+
+    assert_latest_components(frame0, &[]);
+    assert_latest_components(frame1, &[(Rect2D::name(), &bundle1)]);
+    assert_latest_components(
         frame2,
         &[(Rect2D::name(), &bundle1), (Point2D::name(), &bundle2)],
     );
-    assert_joint_query_at(
-        store,
-        &ent_path,
+    assert_latest_components(
         frame3,
         &[(Rect2D::name(), &bundle1), (Point2D::name(), &bundle3)],
     );
-    assert_joint_query_at(
-        store,
-        &ent_path,
+    assert_latest_components(
         frame4,
         &[(Rect2D::name(), &bundle4), (Point2D::name(), &bundle3)],
     );
-}
-
-/// Runs a joint query over all components at the given `frame_nr`, and asserts that the result
-/// matches a joint `DataFrame` built ouf of the specified raw `bundles`.
-fn assert_joint_query_at(
-    store: &mut DataStore,
-    ent_path: &EntityPath,
-    frame_nr: TimeInt,
-    bundles: &[(ComponentName, &MsgBundle)],
-) {
-    let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
-    let components_all = &[Rect2D::name(), Point2D::name()];
-
-    let df = joint_latest_at_query(
-        store,
-        &LatestAtQuery::new(timeline_frame_nr, frame_nr),
-        ent_path,
-        components_all,
-    );
-
-    let df_expected = joint_df(bundles);
-
-    store.sort_indices();
-    assert_eq!(df_expected, df, "{store}");
 }
 
 // --- Range ---
@@ -226,66 +219,6 @@ fn assert_joint_range(
     }
 }
 
-// --- LatestAt helpers ---
-
-// TODO: maybe there's no such thing as a non-joint one
-
-// Queries a bunch of components and their clustering keys, joins everything together, and returns
-// the resulting `DataFrame`.
-// TODO: doc
-fn joint_latest_at_query(
-    store: &DataStore,
-    query: &LatestAtQuery,
-    ent_path: &EntityPath,
-    primaries: &[ComponentName],
-) -> DataFrame {
-    let dfs = primaries
-        .iter()
-        .map(|primary| latest_at_query(store, query, ent_path, *primary))
-        .filter(|df| !df.is_empty());
-
-    let df = dfs
-        .reduce(|acc, df| {
-            acc.outer_join(
-                &df,
-                [Instance::name().as_str()],
-                [Instance::name().as_str()],
-            )
-            .unwrap()
-        })
-        .unwrap_or_default();
-
-    df.sort([Instance::name().as_str()], false).unwrap_or(df)
-}
-
-/// Query a single component and its clustering key, returns a `DataFrame`.
-// TODO: doc
-fn latest_at_query(
-    store: &DataStore,
-    query: &LatestAtQuery,
-    ent_path: &EntityPath,
-    primary: ComponentName,
-) -> DataFrame {
-    let components = &[Instance::name(), primary];
-    let row_indices = store
-        .latest_at(query, ent_path, primary, components)
-        .unwrap_or([None; 2]);
-    let results = store.get(components, &row_indices);
-
-    let df = {
-        let series: Vec<_> = components
-            .iter()
-            .zip(results)
-            .filter_map(|(component, col)| col.map(|col| (component, col)))
-            .map(|(&component, col)| Series::try_from((component.as_str(), col)).unwrap())
-            .collect();
-
-        DataFrame::new(series).unwrap()
-    };
-
-    df
-}
-
 // --- Range helpers ---
 
 // TODO: doc
@@ -357,10 +290,8 @@ fn join_dataframes(dfs: impl Iterator<Item = DataFrame>) -> DataFrame {
 
 // --- Common helpers ---
 
-/// Builds a joint `DataFrame` directly out of raw bundles, mimicking the behaviour of a joint
-/// query on the datastore.
-// TODO: doc
-fn joint_df(bundles: &[(ComponentName, &MsgBundle)]) -> DataFrame {
+/// Given a list of bundles, crafts a `latest_components`-looking dataframe.
+fn joint_df(cluster_key: ComponentName, bundles: &[(ComponentName, &MsgBundle)]) -> DataFrame {
     let df = bundles
         .iter()
         .map(|(component, bundle)| {
@@ -373,17 +304,14 @@ fn joint_df(bundles: &[(ComponentName, &MsgBundle)]) -> DataFrame {
                     .value(0)
                     .len();
                 Series::try_from((
-                    Instance::name().as_str(),
+                    cluster_key.as_str(),
                     wrap_in_listarray(UInt64Array::from_vec((0..len as u64).collect()).to_boxed())
                         .to_boxed(),
                 ))
                 .unwrap()
             } else {
-                Series::try_from((
-                    Instance::name().as_str(),
-                    bundle.components[0].value.to_boxed(),
-                ))
-                .unwrap()
+                Series::try_from((cluster_key.as_str(), bundle.components[0].value.to_boxed()))
+                    .unwrap()
             };
 
             let df = DataFrame::new(vec![
@@ -399,12 +327,8 @@ fn joint_df(bundles: &[(ComponentName, &MsgBundle)]) -> DataFrame {
             df.explode(df.get_column_names()).unwrap()
         })
         .reduce(|acc, df| {
-            acc.outer_join(
-                &df,
-                [Instance::name().as_str()],
-                [Instance::name().as_str()],
-            )
-            .unwrap()
+            acc.outer_join(&df, [cluster_key.as_str()], [cluster_key.as_str()])
+                .unwrap()
         })
         .unwrap_or_default();
 

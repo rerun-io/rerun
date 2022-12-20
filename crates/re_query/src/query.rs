@@ -168,7 +168,6 @@ pub fn query_entity_with_primary<const N: usize>(
 }
 
 /// Helper used to create an example store we can use for querying in doctests
-#[doc(hidden)]
 pub fn __populate_example_store() -> DataStore {
     use re_log_types::{
         datagen::build_frame_nr,

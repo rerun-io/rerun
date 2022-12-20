@@ -29,10 +29,10 @@ pub enum WriteError {
     MismatchedRows(Vec<(ComponentName, usize)>),
 
     // Clustering key
-    #[error("The clustering component must be dense, got {0:?}")]
+    #[error("The cluster component must be dense, got {0:?}")]
     SparseClusteringComponent(Box<dyn Array>),
     #[error(
-        "The clustering component must be increasingly sorted and not contain \
+        "The cluster component must be increasingly sorted and not contain \
                 any duplicates, got {0:?}"
     )]
     InvalidClusteringComponent(Box<dyn Array>),
@@ -40,12 +40,12 @@ pub enum WriteError {
     // Instances
     #[error(
         "All components within a row must have the same number of instances as the \
-            clustering component, got {clustering_comp}={clustering_comp_nb_instances} vs. \
+            cluster component, got {cluster_comp}={cluster_comp_nb_instances} vs. \
                 {key}={nb_instances}"
     )]
     MismatchedInstances {
-        clustering_comp: ComponentName,
-        clustering_comp_nb_instances: usize,
+        cluster_comp: ComponentName,
+        cluster_comp_nb_instances: usize,
         key: ComponentName,
         nb_instances: usize,
     },
@@ -62,6 +62,10 @@ impl DataStore {
     ///
     /// * All components across the bundle must share the same number of rows.
     /// * All components within a single row must share the same number of instances.
+    ///
+    /// If the bundle doesn't carry a payload for the cluster key, one will be auto-generated
+    /// based on the length of the components in the payload, in the form of an array of
+    /// monotonically increasing u64s going from `0` to `N-1`.
     pub fn insert(&mut self, bundle: &MsgBundle) -> WriteResult<()> {
         // TODO(cmc): kind & insert_id need to somehow propagate through the span system.
         self.insert_id += 1;
@@ -112,7 +116,7 @@ impl DataStore {
         trace!(
             kind = "insert",
             id = self.insert_id,
-            clustering_key = %self.clustering_key,
+            cluster_key = %self.cluster_key,
             timelines = ?time_point.iter()
                 .map(|(timeline, time)| (timeline.name(), timeline.typ().format(*time)))
                 .collect::<Vec<_>>(),
@@ -148,19 +152,15 @@ impl DataStore {
         components: &[ComponentBundle],
         row_indices: &mut IntMap<ComponentName, RowIndex>,
     ) -> WriteResult<()> {
-        let (cluster_row_idx, cluster_len) = self.get_or_create_clustering_component(
-            row_nr,
-            components,
-            self.clustering_key,
-            time_point,
-        )?;
+        let (cluster_row_idx, cluster_len) =
+            self.get_or_create_cluster_component(row_nr, components, self.cluster_key, time_point)?;
 
-        // Insert the auto-generated clustering component if needed.
-        row_indices.insert(self.clustering_key, cluster_row_idx);
+        // Insert the auto-generated cluster component if needed.
+        row_indices.insert(self.cluster_key, cluster_row_idx);
 
         for bundle in components
             .iter()
-            .filter(|bundle| bundle.name != self.clustering_key)
+            .filter(|bundle| bundle.name != self.cluster_key)
         {
             let ComponentBundle { name, value: rows } = bundle;
 
@@ -174,18 +174,18 @@ impl DataStore {
             // So use the fact that `rows` is always of unit-length for now.
             let rows_single = rows;
 
-            let nb_instances = rows_single
+            let row = rows_single
                 .as_any()
                 .downcast_ref::<ListArray<i32>>()
                 .unwrap()
-                .value(0)
-                .len();
+                .value(row_nr);
+            let nb_instances = row.len();
 
-            // TODO: what about splats?
+            // TODO(#440): support for splats
             if nb_instances != cluster_len {
                 return Err(WriteError::MismatchedInstances {
-                    clustering_comp: self.clustering_key,
-                    clustering_comp_nb_instances: cluster_len,
+                    cluster_comp: self.cluster_key,
+                    cluster_comp_nb_instances: cluster_len,
                     key: *name,
                     nb_instances,
                 });
@@ -205,25 +205,31 @@ impl DataStore {
         Ok(())
     }
 
-    // TODO: doc
-    fn get_or_create_clustering_component(
+    /// Tries to find the cluster component for the current row, or creates it if the caller hasn't
+    /// specified any.
+    ///
+    /// When creating an auto-generated cluster component of a specific length for the first time,
+    /// this will keep track of its assigned row index and re-use it later on as a mean of
+    /// deduplication.
+    fn get_or_create_cluster_component(
         &mut self,
         row_nr: usize,
         components: &[ComponentBundle],
-        clustering_key: ComponentName,
+        cluster_key: ComponentName,
         time_point: &TimePoint,
     ) -> WriteResult<(RowIndex, usize)> {
-        let clustering_comp = components
-            .iter()
-            .find(|bundle| bundle.name == clustering_key);
+        let cluster_comp = components.iter().find(|bundle| bundle.name == cluster_key);
 
         enum RowIndexOrData {
             RowIndex(RowIndex),
             Data(Box<dyn Array>),
         }
 
-        let (found, comp, len) = if let Some(clustering_comp) = clustering_comp {
-            let row = clustering_comp
+        let (found, comp, len) = if let Some(cluster_comp) = cluster_comp {
+            // We found a component with a name matching the cluster key's, let's make sure it's
+            // valid (dense, sorted, no duplicates) and use that if so.
+
+            let row = cluster_comp
                 .value
                 .as_any()
                 .downcast_ref::<ListArray<i32>>()
@@ -236,14 +242,18 @@ impl DataStore {
                 return Err(WriteError::SparseClusteringComponent(row));
             }
             // Clustering component must be sorted and not contain any duplicates.
-            // TODO: should we do the sorting ourselves if required?
             if !row.is_sorted_and_unique()? {
                 return Err(WriteError::InvalidClusteringComponent(row));
             }
 
             (true, RowIndexOrData::Data(row), len)
         } else {
-            // TODO: explain why it doesn't matter which component we pick as model
+            // The caller has not specified any cluster component, and so we'll have to generate
+            // one... unless we've already generated one of this exact length in the past, in which
+            // case we can simply re-use that row index.
+
+            // Use the length of any other component in the batch, they are guaranteed to all share
+            // the same length at this point anyway.
             let len = components.first().map_or(0, |comp| {
                 let row = comp
                     .value
@@ -254,10 +264,11 @@ impl DataStore {
                 row.len()
             });
 
-            // TODO: explain
-            if let Some(row_idx) = self.clustering_comp_cache.get(&len) {
+            if let Some(row_idx) = self.cluster_comp_cache.get(&len) {
+                // Cache hit! Re-use that row index.
                 (false, RowIndexOrData::RowIndex(*row_idx), len)
             } else {
+                // Cache miss! Craft a new u64 array from the ground up.
                 let row = UInt64Array::from_vec((0..len as u64).collect_vec()).boxed();
                 (false, RowIndexOrData::Data(row), len)
             }
@@ -266,10 +277,13 @@ impl DataStore {
         match comp {
             RowIndexOrData::RowIndex(row_idx) => Ok((row_idx, len)),
             RowIndexOrData::Data(comp) => {
+                // If we didn't hit the cache, then we have to insert this cluster component in the
+                // right tables, just like any other component.
+
                 let table = self
                     .components
-                    .entry(self.clustering_key)
-                    .or_insert_with(|| ComponentTable::new(self.clustering_key, comp.data_type()));
+                    .entry(self.cluster_key)
+                    .or_insert_with(|| ComponentTable::new(self.cluster_key, comp.data_type()));
 
                 let row_idx = table.push(
                     &self.config,
@@ -277,9 +291,11 @@ impl DataStore {
                     &*wrap_in_listarray(comp).to_boxed(),
                 );
 
-                // TODO: explain
+                // If we auto-generated the cluster component, then keep its row index around for
+                // the next time we have to insert a component of the same length with a missing
+                // cluster key.
                 if !found {
-                    self.clustering_comp_cache.insert(len, row_idx);
+                    self.cluster_comp_cache.insert(len, row_idx);
                 }
 
                 Ok((row_idx, len))
@@ -480,7 +496,6 @@ impl IndexBucket {
         Ok(())
     }
 
-    // TODO: outdated
     /// Splits the bucket into two, potentially uneven parts.
     ///
     /// On success..:
@@ -506,56 +521,48 @@ impl IndexBucket {
     /// IndexTable {
     ///     timeline: frame_nr
     ///     entity: this/that
-    ///     size: 3 buckets for a total of 265 B across 8 total rows
+    ///     size: 3 buckets for a total of 256 B across 8 total rows
     ///     buckets: [
     ///         IndexBucket {
     ///             index time bound: >= #0
-    ///             size: 99 B across 3 rows
-    ///             time range: from #41 to #41 (all inclusive)
-    ///             data (sorted=true): shape: (3, 4)
-    ///             ┌──────┬───────┬───────────┬───────────┐
-    ///             │ time ┆ rects ┆ positions ┆ instances │
-    ///             │ ---  ┆ ---   ┆ ---       ┆ ---       │
-    ///             │ str  ┆ u64   ┆ u64       ┆ u64       │
-    ///             ╞══════╪═══════╪═══════════╪═══════════╡
-    ///             │ #41  ┆ null  ┆ null      ┆ 1         │
-    ///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
-    ///             │ #41  ┆ null  ┆ 1         ┆ null      │
-    ///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
-    ///             │ #41  ┆ 3     ┆ null      ┆ null      │
-    ///             └──────┴───────┴───────────┴───────────┘
+    ///             size: 96 B across 3 rows
+    ///                 - frame_nr: from #41 to #41 (all inclusive)
+    ///             data (sorted=true):
+    ///             +----------+---------------+--------------+----------------+
+    ///             | frame_nr | rerun.point2d | rerun.rect2d | rerun.instance |
+    ///             +----------+---------------+--------------+----------------+
+    ///             | 41       |               |              | 1              |
+    ///             | 41       | 1             |              | 2              |
+    ///             | 41       |               | 3            | 2              |
+    ///             +----------+---------------+--------------+----------------+
+    ///
     ///         }
     ///         IndexBucket {
     ///             index time bound: >= #42
-    ///             size: 99 B across 3 rows
-    ///             time range: from #42 to #42 (all inclusive)
-    ///             data (sorted=true): shape: (3, 4)
-    ///             ┌──────┬───────────┬───────┬───────────┐
-    ///             │ time ┆ instances ┆ rects ┆ positions │
-    ///             │ ---  ┆ ---       ┆ ---   ┆ ---       │
-    ///             │ str  ┆ u64       ┆ u64   ┆ u64       │
-    ///             ╞══════╪═══════════╪═══════╪═══════════╡
-    ///             │ #42  ┆ null      ┆ 1     ┆ null      │
-    ///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
-    ///             │ #42  ┆ 3         ┆ null  ┆ null      │
-    ///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
-    ///             │ #42  ┆ null      ┆ null  ┆ 2         │
-    ///             └──────┴───────────┴───────┴───────────┘
+    ///             size: 96 B across 3 rows
+    ///                 - frame_nr: from #42 to #42 (all inclusive)
+    ///             data (sorted=true):
+    ///             +----------+--------------+----------------+---------------+
+    ///             | frame_nr | rerun.rect2d | rerun.instance | rerun.point2d |
+    ///             +----------+--------------+----------------+---------------+
+    ///             | 42       | 1            | 2              |               |
+    ///             | 42       |              | 4              |               |
+    ///             | 42       |              | 2              | 2             |
+    ///             +----------+--------------+----------------+---------------+
+    ///
     ///         }
     ///         IndexBucket {
     ///             index time bound: >= #43
-    ///             size: 67 B across 2 rows
-    ///             time range: from #43 to #44 (all inclusive)
-    ///             data (sorted=true): shape: (2, 4)
-    ///             ┌──────┬───────┬───────────┬───────────┐
-    ///             │ time ┆ rects ┆ instances ┆ positions │
-    ///             │ ---  ┆ ---   ┆ ---       ┆ ---       │
-    ///             │ str  ┆ u64   ┆ u64       ┆ u64       │
-    ///             ╞══════╪═══════╪═══════════╪═══════════╡
-    ///             │ #43  ┆ 4     ┆ null      ┆ null      │
-    ///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
-    ///             │ #44  ┆ null  ┆ null      ┆ 3         │
-    ///             └──────┴───────┴───────────┴───────────┘
+    ///             size: 64 B across 2 rows
+    ///                 - frame_nr: from #43 to #44 (all inclusive)
+    ///             data (sorted=true):
+    ///             +----------+--------------+---------------+----------------+
+    ///             | frame_nr | rerun.rect2d | rerun.point2d | rerun.instance |
+    ///             +----------+--------------+---------------+----------------+
+    ///             | 43       | 4            |               | 2              |
+    ///             | 44       |              | 3             | 2              |
+    ///             +----------+--------------+---------------+----------------+
+    ///
     ///         }
     ///     ]
     /// }
@@ -811,7 +818,7 @@ impl ComponentTable {
         let len = active_bucket.total_rows();
         let len_overflow = len > config.component_bucket_nb_rows;
 
-        if len_overflow {
+        if size_overflow || len_overflow {
             debug!(
                 kind = "insert",
                 component = self.name.as_str(),
