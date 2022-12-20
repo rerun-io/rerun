@@ -642,7 +642,7 @@ def log_points(
         rerun_bindings.log_arrow_msg(
             f"arrow/{obj_path}",
             points=points,
-            # colors=colors,
+            colors=colors,
             labels=labels,
         )
 

@@ -19,7 +19,9 @@ class Rect2DArray(pa.ExtensionArray):  # type: ignore[misc]
             storage = pa.StructArray.from_arrays(
                 arrays=[pa.array(c, type=pa.float32()) for c in rects.T], fields=list(Rect2DType.storage_type)
             )
-            return cast(Rect2DArray, pa.ExtensionArray.from_storage(Rect2DType(), storage))
+            # TODO(john) enable extension type wrapper
+            # return cast(Rect2DArray, pa.ExtensionArray.from_storage(Rect2DType(), storage))
+            return storage  # type: ignore[no-any-return]
 
         else:
             raise NotImplementedError("RectFormat not yet implemented")

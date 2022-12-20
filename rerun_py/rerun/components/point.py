@@ -19,7 +19,9 @@ class Point2DArray(pa.ExtensionArray):  # type: ignore[misc]
             arrays=[pa.array(c, type=pa.float32()) for c in points.T],
             fields=list(Point2DType.storage_type),
         )
-        return cast(Point2DArray, pa.ExtensionArray.from_storage(Point2DType(), storage))
+        # TODO(john) enable extension type wrapper
+        # return cast(Point2DArray, pa.ExtensionArray.from_storage(Point2DType(), storage))
+        return storage  # type: ignore[no-any-return]
 
 
 Point2DType = ComponentTypeFactory("Point2DType", Point2DArray, REGISTERED_FIELDS["rerun.point2d"])
@@ -38,7 +40,9 @@ class Point3DArray(pa.ExtensionArray):  # type: ignore[misc]
             arrays=[pa.array(c, type=pa.float32()) for c in points.T],
             fields=list(Point3DType.storage_type),
         )
-        return cast(Point3DArray, pa.ExtensionArray.from_storage(Point3DType(), storage))
+        # TODO(john) enable extension type wrapper
+        # return cast(Point3DArray, pa.ExtensionArray.from_storage(Point3DType(), storage))
+        return storage  # type: ignore[no-any-return]
 
 
 Point3DType = ComponentTypeFactory("Point3DType", Point3DArray, REGISTERED_FIELDS["rerun.point3d"])

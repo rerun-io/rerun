@@ -1,6 +1,6 @@
 //! Methods for handling Arrow datamodel log ingest
 
-use arrow2::{array::Array, chunk::Chunk, datatypes::Field, ffi};
+use arrow2::{array::Array, datatypes::Field, ffi};
 use pyo3::{
     exceptions::{PyAttributeError, PyValueError},
     ffi::Py_uintptr_t,
@@ -72,7 +72,7 @@ pub fn get_registered_fields(py: pyo3::Python<'_>) -> PyResult<&PyDict> {
     Ok(fields.into_py_dict(py))
 }
 
-/// Build an Arrow [`Chunk`] and vector of [`Field`] given a '**kwargs'-style dictionary of
+/// Build a [`LogMsg`] and vector of [`Field`] given a '**kwargs'-style dictionary of
 /// component arrays.
 pub fn build_chunk_from_components(
     obj_path: &ObjPath,
@@ -87,16 +87,11 @@ pub fn build_chunk_from_components(
         |iter| iter.unzip(),
     )?;
 
-    // Turn the arrays into a `Chunk`
-    let chunk = Chunk::try_new(arrays).map_err(|e| PyValueError::new_err(e.to_string()))?;
-    let names = fields.iter().map(|f| f.name.as_str()).collect::<Vec<_>>();
-
-    let cmp_bundles = chunk
-        .into_arrays()
+    let cmp_bundles = arrays
         .into_iter()
-        .zip(names.into_iter())
-        .map(|(value, name)| ComponentBundle {
-            name: name.into(),
+        .zip(fields.into_iter())
+        .map(|(value, field)| ComponentBundle {
+            name: field.name.into(),
             value: msg_bundle::wrap_in_listarray(value).boxed(),
         })
         .collect();
@@ -107,8 +102,6 @@ pub fn build_chunk_from_components(
         time_point.clone(),
         cmp_bundles,
     );
-
-    println!("Logged {msg_bundle}");
 
     let msg = msg_bundle
         .try_into()

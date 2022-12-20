@@ -11,7 +11,9 @@ class LabelArray(pa.ExtensionArray):  # type: ignore[misc]
         """Build a `LabelArray` from a sequence of str."""
 
         storage = pa.array(labels, type=LabelType.storage_type)
-        return cast(LabelArray, pa.ExtensionArray.from_storage(LabelType(), storage))
+        # TODO(john) enable extension type wrapper
+        # return cast(LabelArray, pa.ExtensionArray.from_storage(LabelType(), storage))
+        return storage  # type: ignore[no-any-return]
 
 
 LabelType = ComponentTypeFactory("LabelType", LabelArray, REGISTERED_FIELDS["rerun.label"])
