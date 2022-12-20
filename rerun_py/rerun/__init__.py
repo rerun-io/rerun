@@ -516,8 +516,9 @@ def log_rects(
 
 def log_point(
     obj_path: str,
-    position: Optional[npt.NDArray[np.float32]],
+    position: Union[Sequence[float], npt.NDArray[np.float32], None],
     *,
+    radius: Optional[float] = None,
     color: Optional[Sequence[int]] = None,
     label: Optional[str] = None,
     class_id: Optional[int] = None,
@@ -530,6 +531,7 @@ def log_point(
     Logging again to the same `obj_path` will replace the previous point.
 
     * `position`: 2x1 or 3x1 array
+    * `radius`: Optional radius (make it a sphere)
     * `color`: Optional color of the point
     * `label`: Optional text to show with the point
     * `class_id`: Optional class id for the point.
@@ -553,7 +555,16 @@ def log_point(
     if position is not None:
         position = np.require(position, dtype="float32")
 
-    rerun_bindings.log_point(obj_path, position, color, label, class_id, keypoint_id, timeless)
+    rerun_bindings.log_point(
+        obj_path=obj_path,
+        position=position,
+        radius=radius,
+        color=color,
+        label=label,
+        class_id=class_id,
+        keypoint_id=keypoint_id,
+        timeless=timeless,
+    )
 
 
 def log_points(
@@ -562,6 +573,7 @@ def log_points(
     *,
     identifiers: Optional[Sequence[Union[str, int]]] = None,
     colors: Optional[Union[Color, Colors]] = None,
+    radii: Optional[npt.ArrayLike] = None,
     labels: Optional[Sequence[str]] = None,
     class_ids: OptionalClassIds = None,
     keypoint_ids: OptionalKeyPointIds = None,
@@ -606,6 +618,7 @@ def log_points(
     colors = _normalize_colors(colors)
     class_ids = _normalize_ids(class_ids)
     keypoint_ids = _normalize_ids(keypoint_ids)
+    radii = _normalize_radii(radii)
     if labels is None:
         labels = []
 
@@ -614,6 +627,7 @@ def log_points(
         positions=positions,
         identifiers=identifiers,
         colors=colors,
+        radii=radii,
         labels=labels,
         class_ids=class_ids,
         keypoint_ids=keypoint_ids,
@@ -643,6 +657,14 @@ def _normalize_ids(class_ids: OptionalClassIds = None) -> npt.NDArray[np.uint16]
     else:
         # TODO(andreas): Does this need optimizing for the case where class_ids is already an np array?
         return np.array(class_ids, dtype=np.uint16, copy=False)
+
+
+def _normalize_radii(radii: Optional[npt.ArrayLike] = None) -> npt.NDArray[np.float32]:
+    """Normalize flexible radii arrays."""
+    if radii is None:
+        return np.array((), dtype=np.float32)
+    else:
+        return np.array(radii, dtype=np.float32, copy=False)
 
 
 # -----------------------------------------------------------------------------

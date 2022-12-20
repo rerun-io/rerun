@@ -984,10 +984,12 @@ fn log_rects(
 /// Log a 2D or 3D point.
 ///
 /// `position` is either 2x1 or 3x1.
+#[allow(clippy::too_many_arguments)]
 #[pyfunction]
 fn log_point(
     obj_path: &str,
     position: Option<numpy::PyReadonlyArray1<'_, f32>>,
+    radius: Option<f32>,
     color: Option<Vec<u8>>,
     label: Option<String>,
     class_id: Option<u16>,
@@ -1017,6 +1019,14 @@ fn log_point(
     };
 
     session.register_type(obj_path.obj_type_path(), obj_type);
+
+    if let Some(radius) = radius {
+        session.send_data(
+            &time_point,
+            (&obj_path, "radius"),
+            LoggedData::Single(Data::F32(radius)),
+        );
+    }
 
     if let Some(color) = color {
         let color = convert_color(color)?;
@@ -1078,6 +1088,7 @@ fn log_points(
     positions: numpy::PyReadonlyArrayDyn<'_, f32>,
     identifiers: Vec<String>,
     colors: numpy::PyReadonlyArrayDyn<'_, u8>,
+    radii: numpy::PyReadonlyArrayDyn<'_, f32>,
     labels: Vec<String>,
     class_ids: numpy::PyReadonlyArrayDyn<'_, u16>,
     keypoint_ids: numpy::PyReadonlyArrayDyn<'_, u16>,
@@ -1127,6 +1138,32 @@ fn log_points(
     if !colors.is_empty() {
         let color_data = color_batch(&indices, colors)?;
         session.send_data(&time_point, (&obj_path, "color"), color_data);
+    }
+
+    match radii.len() {
+        0 => {}
+        1 => {
+            session.send_data(
+                &time_point,
+                (&obj_path, "radius"),
+                LoggedData::BatchSplat(Data::F32(radii.to_vec().unwrap()[0])),
+            );
+        }
+        num_ids if num_ids == n => {
+            session.send_data(
+                &time_point,
+                (&obj_path, "radius"),
+                LoggedData::Batch {
+                    indices: indices.clone(),
+                    data: DataVec::F32(radii.cast(false).unwrap().to_vec().unwrap()),
+                },
+            );
+        }
+        num_ids => {
+            return Err(PyTypeError::new_err(format!(
+                "Got {num_ids} radii for {n} objects"
+            )));
+        }
     }
 
     log_labels(&mut session, &obj_path, labels, &indices, &time_point, n)?;

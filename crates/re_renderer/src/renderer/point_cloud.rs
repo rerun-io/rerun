@@ -58,7 +58,7 @@ mod gpu_data {
     #[repr(C)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct BatchUniformBuffer {
-        pub world_from_scene: wgpu_buffer_types::Mat4,
+        pub world_from_obj: wgpu_buffer_types::Mat4,
     }
 }
 
@@ -89,8 +89,8 @@ pub struct PointCloudBatchInfo {
     ///
     /// TODO(andreas): Since we blindly apply this to positions only there is no restriction on this matrix.
     /// TODO(andreas): We don't apply scaling to the radius yet. Need to pass a scaling factor like this in
-    /// `let scale = Mat3::from(world_from_scene).determinant().abs().cbrt()`
-    pub world_from_scene: glam::Mat4,
+    /// `let scale = Mat3::from(world_from_obj).determinant().abs().cbrt()`
+    pub world_from_obj: glam::Mat4,
 
     /// Number of points covered by this batch.
     ///
@@ -149,7 +149,7 @@ impl PointCloudDrawData {
         }
 
         let fallback_batches = [PointCloudBatchInfo {
-            world_from_scene: glam::Mat4::IDENTITY,
+            world_from_obj: glam::Mat4::IDENTITY,
             label: "all points".into(),
             point_count: vertices.len() as _,
         }];
@@ -348,7 +348,7 @@ impl PointCloudDrawData {
                 staging_buffer
                     [offset..(offset + std::mem::size_of::<gpu_data::BatchUniformBuffer>())]
                     .copy_from_slice(bytemuck::bytes_of(&gpu_data::BatchUniformBuffer {
-                        world_from_scene: batch_info.world_from_scene.into(),
+                        world_from_obj: batch_info.world_from_obj.into(),
                     }));
 
                 let bind_group = ctx.gpu_resources.bind_groups.alloc(
