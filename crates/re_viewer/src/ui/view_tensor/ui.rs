@@ -47,7 +47,7 @@ impl ViewTensorState {
         if let Some(tensor) = &self.tensor {
             ui.collapsing("Dimension Mapping", |ui| {
                 ui.label(format!("shape: {:?}", tensor.shape));
-                ui.label(format!("dtype: {:?}", tensor.dtype));
+                ui.label(format!("dtype: {}", tensor.dtype));
                 ui.add_space(12.0);
 
                 dimension_mapping_ui(ui, &mut self.dimension_mapping, &tensor.shape);

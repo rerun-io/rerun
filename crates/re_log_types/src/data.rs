@@ -850,6 +850,28 @@ impl TensorDataType {
     }
 }
 
+impl std::fmt::Display for TensorDataType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::U8 => "uint8".fmt(f),
+            Self::U16 => "uint16".fmt(f),
+            Self::U32 => "uint32".fmt(f),
+            Self::U64 => "uint64".fmt(f),
+
+            Self::I8 => "int8".fmt(f),
+            Self::I16 => "int16".fmt(f),
+            Self::I32 => "int32".fmt(f),
+            Self::I64 => "int64".fmt(f),
+
+            Self::F16 => "float16".fmt(f),
+            Self::F32 => "float32".fmt(f),
+            Self::F64 => "float64".fmt(f),
+        }
+    }
+}
+
+// ----------------------------------------------------------------------------
+
 // TODO(jleibs) This should be extended to include things like rgb vs bgr
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]

@@ -490,7 +490,7 @@ pub(crate) fn data_ui(
 
                 ui.vertical(|ui| {
                     ui.set_min_width(100.0);
-                    ui.label(format!("dtype: {:?}", tensor.dtype));
+                    ui.label(format!("dtype: {}", tensor.dtype));
                     ui.label(format!("shape: {:?}", tensor.shape));
                 });
             })
