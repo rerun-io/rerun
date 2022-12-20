@@ -11,7 +11,7 @@ mod store;
 mod store_read;
 mod store_write;
 
-#[cfg(feature = "polars")] // TODO: feat doc
+#[cfg(feature = "polars")]
 pub mod polars_helpers;
 
 #[doc(hidden)]
