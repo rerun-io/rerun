@@ -66,7 +66,7 @@ pub fn build_instances(nb_instances: usize) -> ComponentBundle {
         let mut values = (0..nb_instances)
             .into_iter()
             .map(|_| Some(rng.gen()))
-            .collect::<Vec<Option<u32>>>();
+            .collect::<Vec<Option<u64>>>();
         values.sort();
         values
     });
