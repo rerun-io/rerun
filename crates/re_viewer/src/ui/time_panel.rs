@@ -64,6 +64,9 @@ impl TimePanel {
         if blueprint.time_panel_expanded {
             // Since we use scroll bars we want to fill the whole vertical space downwards:
             panel_frame.inner_margin.bottom = 0.0;
+
+            // Similarly, let the data get close to the right edge:
+            panel_frame.inner_margin.right = 0.0;
         }
 
         let collapsed = egui::TopBottomPanel::bottom("time_panel_collapsed")
@@ -90,6 +93,12 @@ impl TimePanel {
                 } else {
                     // Expanded:
                     ui.vertical(|ui| {
+                        // play control and current time
+                        top_row_ui(ctx, ui);
+
+                        ui.add_space(2.0);
+
+                        ui.spacing_mut().scroll_bar_outer_margin = 4.0; // needed, because we have no frame margin
                         self.expanded_ui(ctx, ui);
                     });
                 }
@@ -121,7 +130,7 @@ impl TimePanel {
 
             if time_range_rect.width() > 50.0 {
                 let time_ranges_ui =
-                    initialize_time_ranges_ui(ctx, time_range_rect.x_range(), None, 0.0);
+                    initialize_time_ranges_ui(ctx, time_range_rect.x_range(), None);
                 time_ranges_ui.snap_time_control(ctx);
 
                 let painter = ui.painter_at(time_range_rect.expand(4.0));
@@ -153,48 +162,45 @@ impl TimePanel {
     fn expanded_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         crate::profile_function!();
 
-        // play control and current time
-        top_row_ui(ctx, ui);
-
-        ui.add_space(2.0);
-
         self.next_col_right = ui.min_rect().left(); // next_col_right will expand during the call
 
         let time_x_left = ui.min_rect().left() + self.prev_col_width + ui.spacing().item_spacing.x;
 
         // Where the time will be shown.
-        let time_x_range = {
-            let right =
-                ui.max_rect().right() - ui.spacing().scroll_bar_width - ui.spacing().item_spacing.x;
+        let time_bg_x_range = time_x_left..=ui.max_rect().right();
+        let time_fg_x_range = {
+            // Painting to the right of the scroll bar (if any) looks bad:
+            let right = ui.max_rect().right() - ui.spacing_mut().scroll_bar_outer_margin;
             time_x_left..=right
         };
 
+        let side_margin = 26.0; // chosen so that the scroll bar looks approximately centered in the default gap
         self.time_ranges_ui = initialize_time_ranges_ui(
             ctx,
-            time_x_range.clone(),
+            (*time_fg_x_range.start() + side_margin)..=(*time_fg_x_range.end() - side_margin),
             ctx.rec_cfg.time_ctrl.time_view(),
-            SIDE_MARGIN,
         );
+        let full_y_range = ui.min_rect().bottom()..=ui.max_rect().bottom();
 
         // includes the loop selection and time ticks rows.
-        let time_area_rect = Rect::from_x_y_ranges(
-            time_x_range.clone(),
-            ui.min_rect().bottom()..=ui.max_rect().bottom(),
-        );
+        let time_bg_area_rect = Rect::from_x_y_ranges(time_bg_x_range, full_y_range.clone());
+        let time_fg_area_rect =
+            Rect::from_x_y_ranges(time_fg_x_range.clone(), full_y_range.clone());
 
         let loop_selection_rect = {
             let response = ui.label(" "); // Add some vertical space large enough to fit text for the loop selection row.
             let y_range = response.rect.y_range();
-            Rect::from_x_y_ranges(time_x_range.clone(), y_range)
+            Rect::from_x_y_ranges(time_fg_x_range.clone(), y_range)
         };
 
         let timeline_rect = {
             let response = ui.weak("Streams");
             let y_range = response.rect.y_range();
-            Rect::from_x_y_ranges(time_x_range.clone(), y_range)
+            Rect::from_x_y_ranges(time_fg_x_range.clone(), y_range)
         };
 
-        let time_area_painter = ui.painter().with_clip_rect(time_area_rect);
+        let time_bg_area_painter = ui.painter().with_clip_rect(time_bg_area_rect);
+        let time_area_painter = ui.painter().with_clip_rect(time_fg_area_rect);
 
         ui.separator();
 
@@ -208,14 +214,14 @@ impl TimePanel {
         paint_time_ranges_gaps(
             &self.time_ranges_ui,
             ui,
-            &time_area_painter,
-            loop_selection_rect.top()..=time_area_rect.bottom(),
+            &time_bg_area_painter,
+            full_y_range.clone(),
         );
         loop_selection_ui(
             &self.time_ranges_ui,
             &mut ctx.rec_cfg.time_ctrl,
             ui,
-            &time_area_painter,
+            &time_bg_area_painter,
             &loop_selection_rect,
         );
         time_marker_ui(
@@ -224,22 +230,22 @@ impl TimePanel {
             ui,
             &time_area_painter,
             &timeline_rect,
-            time_area_rect.bottom(),
+            time_fg_area_rect.bottom(),
         );
         let time_area_response = interact_with_time_area(
             &self.time_ranges_ui,
             &mut ctx.rec_cfg.time_ctrl,
             ui,
-            &time_area_rect,
+            &time_fg_area_rect,
         );
 
         // Don't draw on top of the time ticks
         let lower_time_area_painter = ui.painter().with_clip_rect(Rect::from_x_y_ranges(
-            time_x_range,
+            time_fg_x_range,
             ui.min_rect().bottom()..=ui.max_rect().bottom(),
         ));
 
-        // all the object rows:
+        // All the object rows:
         egui::ScrollArea::vertical()
             .auto_shrink([false; 2])
             // We turn off `drag_to_scroll` so that the `ScrollArea` don't steal input from
@@ -254,9 +260,14 @@ impl TimePanel {
                 self.tree_ui(ctx, &time_area_response, &lower_time_area_painter, ui);
             });
 
-        // TODO(emilk): fix problem of the fade covering the hlines. Need Shape Z values! https://github.com/emilk/egui/issues/1516
         if true {
-            fade_sides(ctx, ui, time_area_rect);
+            // Paint a line between the stream names on the left
+            // and the data on the right:
+            ui.painter().vline(
+                time_x_left,
+                full_y_range,
+                ui.visuals().widgets.noninteractive.bg_stroke,
+            );
         }
 
         self.time_ranges_ui.snap_time_control(ctx);
@@ -673,7 +684,6 @@ fn initialize_time_ranges_ui(
     ctx: &mut ViewerContext<'_>,
     time_x_range: RangeInclusive<f32>,
     time_view: Option<TimeView>,
-    side_margin: f32,
 ) -> TimeRangesUi {
     crate::profile_function!();
     if let Some(times) = ctx
@@ -682,8 +692,7 @@ fn initialize_time_ranges_ui(
         .get(ctx.rec_cfg.time_ctrl.timeline())
     {
         let timeline_axis = TimelineAxis::new(ctx.rec_cfg.time_ctrl.time_type(), times);
-        let time_view = time_view
-            .unwrap_or_else(|| view_everything(&time_x_range, &timeline_axis, side_margin));
+        let time_view = time_view.unwrap_or_else(|| view_everything(&time_x_range, &timeline_axis));
 
         TimeRangesUi::new(time_x_range, time_view, &timeline_axis.ranges)
     } else {
@@ -747,7 +756,7 @@ fn paint_time_ranges_gaps(
         let zig_height = zig_width;
 
         let mut y = top;
-        let mut row = 0;
+        let mut row = 0; // 0 = start wide, 1 = start narrow
 
         let mut mesh = egui::Mesh::default();
         let mut left_line_strip = vec![];
@@ -1354,9 +1363,6 @@ const MAX_GAP: f32 = 40.0;
 /// How much of the gap use up to expand segments visually to either side?
 const GAP_EXPANSION_FRACTION: f32 = 1.0 / 4.0;
 
-/// How much space on side of the data in the default view.
-const SIDE_MARGIN: f32 = MAX_GAP;
-
 /// Sze of the gap between time segments.
 fn gap_width(x_range: &RangeInclusive<f32>, segments: &[TimeRange]) -> f32 {
     let num_gaps = segments.len().saturating_sub(1);
@@ -1371,11 +1377,7 @@ fn gap_width(x_range: &RangeInclusive<f32>, segments: &[TimeRange]) -> f32 {
 }
 
 /// Find a nice view of everything.
-fn view_everything(
-    x_range: &RangeInclusive<f32>,
-    timeline_axis: &TimelineAxis,
-    side_margin: f32,
-) -> TimeView {
+fn view_everything(x_range: &RangeInclusive<f32>, timeline_axis: &TimelineAxis) -> TimeView {
     let gap_width = gap_width(x_range, &timeline_axis.ranges);
     let num_gaps = timeline_axis.ranges.len().saturating_sub(1);
     let width = *x_range.end() - *x_range.start();
@@ -1390,12 +1392,10 @@ fn view_everything(
     let min = timeline_axis.min();
     let time_spanned = timeline_axis.sum_time_lengths().as_f64() * factor as f64;
 
-    // Leave some room on the margins:
-    let time_margin = time_spanned * (side_margin / width.at_least(64.0)) as f64;
-    let min = min - TimeReal::from(time_margin);
-    let time_spanned = time_spanned + 2.0 * time_margin;
-
-    TimeView { min, time_spanned }
+    TimeView {
+        min: min.into(),
+        time_spanned,
+    }
 }
 
 struct Segment {
@@ -1962,58 +1962,6 @@ impl BallScatterer {
         }
         d2
     }
-}
-
-// ----------------------------------------------------------------------------
-
-/// fade left/right sides of time-area, because it looks nice:
-fn fade_sides(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, time_area: Rect) {
-    let fade_width = SIDE_MARGIN - 1.0;
-
-    let base_rect = time_area.expand(0.5); // expand slightly to cover feathering.
-
-    let panel_fill = ctx.re_ui.design_tokens.bottom_bar_color;
-    let mut left_rect = base_rect;
-
-    left_rect.set_right(left_rect.left() + fade_width);
-    ui.painter()
-        .add(fade_mesh(left_rect, [panel_fill, Color32::TRANSPARENT]));
-
-    let mut right_rect = base_rect;
-    right_rect.set_left(right_rect.right() - fade_width);
-    ui.painter()
-        .add(fade_mesh(right_rect, [Color32::TRANSPARENT, panel_fill]));
-}
-
-fn fade_mesh(rect: Rect, [left_color, right_color]: [Color32; 2]) -> egui::Mesh {
-    use egui::epaint::Vertex;
-    let mut mesh = egui::Mesh::default();
-
-    mesh.add_triangle(0, 1, 2);
-    mesh.add_triangle(2, 1, 3);
-
-    mesh.vertices.push(Vertex {
-        pos: rect.left_top(),
-        uv: egui::epaint::WHITE_UV,
-        color: left_color,
-    });
-    mesh.vertices.push(Vertex {
-        pos: rect.right_top(),
-        uv: egui::epaint::WHITE_UV,
-        color: right_color,
-    });
-    mesh.vertices.push(Vertex {
-        pos: rect.left_bottom(),
-        uv: egui::epaint::WHITE_UV,
-        color: left_color,
-    });
-    mesh.vertices.push(Vertex {
-        pos: rect.right_bottom(),
-        uv: egui::epaint::WHITE_UV,
-        color: right_color,
-    });
-
-    mesh
 }
 
 // ----------------------------------------------------------------------------
