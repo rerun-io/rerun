@@ -2,22 +2,24 @@
 //!
 //! Testing & demonstrating expected usage of the datastore APIs, no funny stuff.
 
-use arrow2::array::{Array, ListArray, UInt32Array, UInt64Array};
+use std::sync::atomic::{AtomicBool, Ordering};
+
+use arrow2::array::{Array, ListArray, UInt32Array};
 use polars_core::{prelude::*, series::Series};
-use re_arrow_store::{DataStore, TimeQuery, TimelineQuery, WriteError};
+use re_arrow_store::{test_bundle, DataStore, TimeQuery, TimelineQuery};
 use re_log_types::{
-    datagen::{
-        build_frame_nr, build_instances, build_log_time, build_some_point2d, build_some_rects,
-    },
+    datagen::{build_frame_nr, build_instances, build_some_point2d, build_some_rects},
     field_types::{Instance, Point2D, Rect2D},
-    msg_bundle::{wrap_in_listarray, Component as _, ComponentBundle, MsgBundle},
-    ComponentName, MsgId, ObjPath as EntityPath, Time, TimeType, Timeline,
+    msg_bundle::{wrap_in_listarray, Component as _, MsgBundle},
+    ComponentName, MsgId, ObjPath as EntityPath, TimeType, Timeline,
 };
 
 // --- LatestAt ---
 
 #[test]
 fn latest_at() {
+    init_logs();
+
     let mut store = DataStore::new(Instance::name(), Default::default());
 
     let ent_path = EntityPath::from("this/that");
@@ -88,140 +90,6 @@ fn assert_joint_query_at(
 
     store.sort_indices();
     assert_eq!(df_expected, df, "{store}");
-}
-
-// --- Insert ---
-
-#[test]
-fn insert_errors() {
-    {
-        use arrow2::compute::concatenate::concatenate;
-
-        let mut store = DataStore::new(Instance::name(), Default::default());
-        let mut bundle = re_log_types::msg_bundle::try_build_msg_bundle2(
-            MsgId::ZERO,
-            EntityPath::from("this/that"),
-            [build_frame_nr(32), build_log_time(Time::now())],
-            (build_instances(10), build_some_point2d(10)),
-        )
-        .unwrap();
-
-        // make instances 2 rows long
-        bundle.components[0].value =
-            concatenate(&[&*bundle.components[0].value, &*bundle.components[0].value]).unwrap();
-
-        assert!(matches!(
-            store.insert(&bundle),
-            Err(WriteError::BadBatchLength(_)),
-        ));
-    }
-
-    {
-        use arrow2::compute::concatenate::concatenate;
-
-        let mut store = DataStore::new(Instance::name(), Default::default());
-        let mut bundle = re_log_types::msg_bundle::try_build_msg_bundle2(
-            MsgId::ZERO,
-            EntityPath::from("this/that"),
-            [build_frame_nr(32), build_log_time(Time::now())],
-            (build_instances(10), build_some_point2d(10)),
-        )
-        .unwrap();
-
-        // make instances 2 rows long
-        bundle.components[1].value =
-            concatenate(&[&*bundle.components[1].value, &*bundle.components[1].value]).unwrap();
-
-        assert!(matches!(
-            store.insert(&bundle),
-            Err(WriteError::MismatchedRows(_)),
-        ));
-    }
-
-    {
-        pub fn build_sparse_instances() -> ComponentBundle {
-            let ids = wrap_in_listarray(UInt64Array::from(vec![Some(1), None, Some(3)]).boxed());
-            ComponentBundle {
-                name: Instance::name(),
-                value: ids.boxed(),
-            }
-        }
-
-        let mut store = DataStore::new(Instance::name(), Default::default());
-        let bundle = re_log_types::msg_bundle::try_build_msg_bundle2(
-            MsgId::ZERO,
-            EntityPath::from("this/that"),
-            [build_frame_nr(32), build_log_time(Time::now())],
-            (build_sparse_instances(), build_some_point2d(3)),
-        )
-        .unwrap();
-
-        assert!(matches!(
-            store.insert(&bundle),
-            Err(WriteError::SparseClusteringComponent(_)),
-        ));
-    }
-
-    {
-        pub fn build_unsorted_instances() -> ComponentBundle {
-            let ids = wrap_in_listarray(UInt64Array::from_vec(vec![1, 3, 2]).boxed());
-            ComponentBundle {
-                name: Instance::name(),
-                value: ids.boxed(),
-            }
-        }
-        pub fn build_duped_instances() -> ComponentBundle {
-            let ids = wrap_in_listarray(UInt64Array::from_vec(vec![1, 2, 2]).boxed());
-            ComponentBundle {
-                name: Instance::name(),
-                value: ids.boxed(),
-            }
-        }
-
-        let mut store = DataStore::new(Instance::name(), Default::default());
-        {
-            let bundle = re_log_types::msg_bundle::try_build_msg_bundle2(
-                MsgId::ZERO,
-                EntityPath::from("this/that"),
-                [build_frame_nr(32), build_log_time(Time::now())],
-                (build_unsorted_instances(), build_some_point2d(3)),
-            )
-            .unwrap();
-            assert!(matches!(
-                store.insert(&bundle),
-                Err(WriteError::InvalidClusteringComponent(_)),
-            ));
-        }
-        {
-            let bundle = re_log_types::msg_bundle::try_build_msg_bundle2(
-                MsgId::ZERO,
-                EntityPath::from("this/that"),
-                [build_frame_nr(32), build_log_time(Time::now())],
-                (build_duped_instances(), build_some_point2d(3)),
-            )
-            .unwrap();
-            assert!(matches!(
-                store.insert(&bundle),
-                Err(WriteError::InvalidClusteringComponent(_)),
-            ));
-        }
-    }
-
-    {
-        let mut store = DataStore::new(Instance::name(), Default::default());
-        let bundle = re_log_types::msg_bundle::try_build_msg_bundle2(
-            MsgId::ZERO,
-            EntityPath::from("this/that"),
-            [build_frame_nr(32), build_log_time(Time::now())],
-            (build_instances(4), build_some_point2d(3)),
-        )
-        .unwrap();
-
-        assert!(matches!(
-            store.insert(&bundle),
-            Err(WriteError::MismatchedInstances { .. }),
-        ));
-    }
 }
 
 // --- Helpers ---
@@ -336,19 +204,16 @@ fn joint_df(bundles: &[(ComponentName, &MsgBundle)]) -> DataFrame {
     df.sort([Instance::name().as_str()], false).unwrap_or(df)
 }
 
-#[macro_export]
-macro_rules! test_bundle {
-    ($entity:ident @ $frames:tt => [$c0:expr $(,)*]) => {
-        re_log_types::msg_bundle::try_build_msg_bundle1(MsgId::ZERO, $entity.clone(), $frames, $c0)
-            .unwrap()
-    };
-    ($entity:ident @ $frames:tt => [$c0:expr, $c1:expr $(,)*]) => {
-        re_log_types::msg_bundle::try_build_msg_bundle2(
-            MsgId::ZERO,
-            $entity.clone(),
-            $frames,
-            ($c0, $c1),
-        )
-        .unwrap()
-    };
+// ---
+
+pub fn init_logs() {
+    static INIT: AtomicBool = AtomicBool::new(false);
+
+    if INIT
+        .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+        .is_ok()
+    {
+        re_log::set_default_rust_log_env();
+        tracing_subscriber::fmt::init(); // log to stdout
+    }
 }
