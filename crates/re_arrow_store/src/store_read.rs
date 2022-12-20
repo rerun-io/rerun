@@ -40,6 +40,35 @@ impl LatestAtQuery {
     }
 }
 
+/// A query over a time range, for a given timeline.
+///
+/// Get all the data within this time interval, plus the latest one before the start of the
+/// interval.
+///
+/// Motivation: all data is considered alive until the next logging to the same data path.
+#[derive(Clone)]
+pub struct RangeQuery {
+    pub timeline: Timeline,
+    pub range: TimeRange,
+}
+
+impl std::fmt::Debug for RangeQuery {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!(
+            "<ranging from {} to {} (all inclusive) on {:?}>",
+            self.timeline.typ().format(self.range.min),
+            self.timeline.typ().format(self.range.max),
+            self.timeline.name(),
+        ))
+    }
+}
+
+impl RangeQuery {
+    pub const fn new(timeline: Timeline, range: TimeRange) -> Self {
+        Self { timeline, range }
+    }
+}
+
 // --- Data store ---
 
 impl DataStore {
@@ -92,7 +121,7 @@ impl DataStore {
     /// }
     /// ```
     //
-    // TODO: visual doc of latest_at behavior
+    // TODO: visual doc of latest_at behavior/semantics
     //
     // TODO(cmc): expose query_dyn at some point, to fetch an unknown number of component indices,
     // at the cost of extra dynamic allocations.
@@ -143,6 +172,57 @@ impl DataStore {
         );
 
         None
+    }
+
+    // TODO
+    // TODO: visual doc of range behavior/semantics
+    pub fn range<'a, const N: usize>(
+        &'a self,
+        query: &RangeQuery,
+        ent_path: &EntityPath,
+        primary: ComponentName,
+        components: &[ComponentName; N],
+    ) -> impl Iterator<Item = (TimeInt, [Option<RowIndex>; N])> + 'a {
+        // TODO(cmc): kind & query_id need to somehow propagate through the span system.
+        self.query_id.fetch_add(1, Ordering::Relaxed);
+
+        let ent_path_hash = ent_path.hash();
+
+        trace!(
+            kind = "range",
+            id = self.query_id.load(Ordering::Relaxed),
+            query = ?query,
+            entity = %ent_path,
+            %primary,
+            ?components,
+            "query started..."
+        );
+
+        let index = self.indices.get(&(query.timeline, *ent_path_hash));
+
+        // First off, get the latest state just before the start of the time range.
+        let latest_time = query.range.min.as_i64().saturating_sub(1).into();
+        let latest_row_indices =
+            index.and_then(|index| index.latest_at(latest_time, primary, components));
+        trace!(
+            kind = "range",
+            id = self.query_id.load(Ordering::Relaxed),
+            query = ?query,
+            entity = %ent_path,
+            %primary,
+            ?components,
+            ?latest_row_indices,
+            "latest row indices fetched"
+        );
+
+        std::iter::once(latest_row_indices)
+            .filter_map(move |latest| latest.map(|latest| (latest_time, latest)))
+        // .chain(
+        //     index
+        //         .map(|index| index.range(query.range, primary, components))
+        //         .into_iter()
+        //         .flatten(),
+        // )
     }
 
     /// Retrieves the data associated with a list of `components` at the specified `indices`.
