@@ -205,6 +205,7 @@ impl DataStore {
     }
 }
 
+// TODO: add TODO regarding how easy this is to optimize/dedupe
 // TODO: doc
 fn get_or_create_clustering_key(
     row_nr: usize,
@@ -431,6 +432,7 @@ impl IndexBucket {
         Ok(())
     }
 
+    // TODO: outdated
     /// Splits the bucket into two, potentially uneven parts.
     ///
     /// On success..:

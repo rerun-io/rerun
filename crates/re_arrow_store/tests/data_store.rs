@@ -4,31 +4,17 @@
 
 use arrow2::array::{Array, UInt64Array};
 use polars_core::{prelude::*, series::Series};
-use re_arrow_store::{DataStore, TimeQuery, TimelineQuery};
+use re_arrow_store::{DataStore, TimeQuery, TimelineQuery, WriteError};
 use re_log_types::{
-    datagen::{build_frame_nr, build_instances, build_some_point2d, build_some_rects},
+    datagen::{
+        build_frame_nr, build_instances, build_log_time, build_some_point2d, build_some_rects,
+    },
     field_types::{Instance, Point2D, Rect2D},
-    msg_bundle::{Component as _, MsgBundle},
-    ComponentName, MsgId, ObjPath as EntityPath, TimeType, Timeline,
+    msg_bundle::{wrap_in_listarray, Component as _, ComponentBundle, MsgBundle},
+    ComponentName, MsgId, ObjPath as EntityPath, Time, TimeType, Timeline,
 };
 
-// ---
-
-macro_rules! test_bundle {
-    ($entity:ident @ $frames:tt => [$c0:expr $(,)*]) => {
-        re_log_types::msg_bundle::try_build_msg_bundle1(MsgId::ZERO, $entity.clone(), $frames, $c0)
-            .unwrap()
-    };
-    ($entity:ident @ $frames:tt => [$c0:expr, $c1:expr $(,)*]) => {
-        re_log_types::msg_bundle::try_build_msg_bundle2(
-            MsgId::ZERO,
-            $entity.clone(),
-            $frames,
-            ($c0, $c1),
-        )
-        .unwrap()
-    };
-}
+// --- LatestAt ---
 
 #[test]
 fn latest_at() {
@@ -54,25 +40,27 @@ fn latest_at() {
         err.unwrap();
     }
 
-    assert_scenario(&store, &ent_path, 0, &[]);
-    assert_scenario(&store, &ent_path, 1, &[(Rect2D::name(), &bundle1)]);
-    assert_scenario(
-        &store,
+    assert_joint_query_at(&mut store, &ent_path, 0, &[]);
+    assert_joint_query_at(&mut store, &ent_path, 1, &[(Rect2D::name(), &bundle1)]);
+    assert_joint_query_at(
+        &mut store,
         &ent_path,
         2,
         &[(Rect2D::name(), &bundle1), (Point2D::name(), &bundle2)],
     );
     // TODO: that is where implicit instances should be shown to work!
     // assert_scenario(
-    //     &store,
+    //     &mut store,
     //     &ent_path,
     //     3,
     //     &[(Rect2D::name(), &bundle1), (Point2D::name(), &bundle3)],
     // );
 }
 
-fn assert_scenario(
-    store: &DataStore,
+/// Runs a joint query over all components at the given `frame_nr`, and asserts that result
+/// matches a joint `DataFrame` built ouf of the specified raw `bundles`.
+fn assert_joint_query_at(
+    store: &mut DataStore,
     ent_path: &EntityPath,
     frame_nr: i64,
     bundles: &[(ComponentName, &MsgBundle)],
@@ -80,24 +68,162 @@ fn assert_scenario(
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
     let components_all = &[Rect2D::name(), Point2D::name()];
 
-    let df = joined_query(
+    let df = joint_query(
         store,
         &TimelineQuery::new(timeline_frame_nr, TimeQuery::LatestAt(frame_nr)),
         ent_path,
         components_all,
     );
 
-    let df_expected = new_expected_df(bundles);
-    assert_eq!(df_expected, df);
+    let df_expected = joint_df(bundles);
+
+    dbg!(&df);
+    dbg!(&df_expected);
+
+    store.sort_indices();
+    assert_eq!(df_expected, df, "{store}");
 }
 
-// TODO(cmc): range API tests!
+// --- Insert ---
+
+#[test]
+fn insert_errors() {
+    {
+        use arrow2::compute::concatenate::concatenate;
+
+        let mut store = DataStore::new(Instance::name(), Default::default());
+        let mut bundle = re_log_types::msg_bundle::try_build_msg_bundle2(
+            MsgId::ZERO,
+            EntityPath::from("this/that"),
+            [build_frame_nr(32), build_log_time(Time::now())],
+            (build_instances(10), build_some_point2d(10)),
+        )
+        .unwrap();
+
+        // make instances 2 rows long
+        bundle.components[0].value =
+            concatenate(&[&*bundle.components[0].value, &*bundle.components[0].value]).unwrap();
+
+        assert!(matches!(
+            store.insert(&bundle),
+            Err(WriteError::BadBatchLength(_)),
+        ));
+    }
+
+    {
+        use arrow2::compute::concatenate::concatenate;
+
+        let mut store = DataStore::new(Instance::name(), Default::default());
+        let mut bundle = re_log_types::msg_bundle::try_build_msg_bundle2(
+            MsgId::ZERO,
+            EntityPath::from("this/that"),
+            [build_frame_nr(32), build_log_time(Time::now())],
+            (build_instances(10), build_some_point2d(10)),
+        )
+        .unwrap();
+
+        // make instances 2 rows long
+        bundle.components[1].value =
+            concatenate(&[&*bundle.components[1].value, &*bundle.components[1].value]).unwrap();
+
+        assert!(matches!(
+            store.insert(&bundle),
+            Err(WriteError::MismatchedRows(_)),
+        ));
+    }
+
+    {
+        pub fn build_sparse_instances() -> ComponentBundle {
+            let ids = wrap_in_listarray(UInt64Array::from(vec![Some(1), None, Some(3)]).boxed());
+            ComponentBundle {
+                name: Instance::name(),
+                value: ids.boxed(),
+            }
+        }
+
+        let mut store = DataStore::new(Instance::name(), Default::default());
+        let bundle = re_log_types::msg_bundle::try_build_msg_bundle2(
+            MsgId::ZERO,
+            EntityPath::from("this/that"),
+            [build_frame_nr(32), build_log_time(Time::now())],
+            (build_sparse_instances(), build_some_point2d(3)),
+        )
+        .unwrap();
+
+        assert!(matches!(
+            store.insert(&bundle),
+            Err(WriteError::SparseClusteringComponent(_)),
+        ));
+    }
+
+    {
+        pub fn build_unsorted_instances() -> ComponentBundle {
+            let ids = wrap_in_listarray(UInt64Array::from_vec(vec![1, 3, 2]).boxed());
+            ComponentBundle {
+                name: Instance::name(),
+                value: ids.boxed(),
+            }
+        }
+        pub fn build_duped_instances() -> ComponentBundle {
+            let ids = wrap_in_listarray(UInt64Array::from_vec(vec![1, 2, 2]).boxed());
+            ComponentBundle {
+                name: Instance::name(),
+                value: ids.boxed(),
+            }
+        }
+
+        let mut store = DataStore::new(Instance::name(), Default::default());
+        {
+            let bundle = re_log_types::msg_bundle::try_build_msg_bundle2(
+                MsgId::ZERO,
+                EntityPath::from("this/that"),
+                [build_frame_nr(32), build_log_time(Time::now())],
+                (build_unsorted_instances(), build_some_point2d(3)),
+            )
+            .unwrap();
+            assert!(matches!(
+                store.insert(&bundle),
+                Err(WriteError::InvalidClusteringComponent(_)),
+            ));
+        }
+        {
+            let bundle = re_log_types::msg_bundle::try_build_msg_bundle2(
+                MsgId::ZERO,
+                EntityPath::from("this/that"),
+                [build_frame_nr(32), build_log_time(Time::now())],
+                (build_duped_instances(), build_some_point2d(3)),
+            )
+            .unwrap();
+            assert!(matches!(
+                store.insert(&bundle),
+                Err(WriteError::InvalidClusteringComponent(_)),
+            ));
+        }
+    }
+
+    {
+        let mut store = DataStore::new(Instance::name(), Default::default());
+        let bundle = re_log_types::msg_bundle::try_build_msg_bundle2(
+            MsgId::ZERO,
+            EntityPath::from("this/that"),
+            [build_frame_nr(32), build_log_time(Time::now())],
+            (build_instances(4), build_some_point2d(3)),
+        )
+        .unwrap();
+
+        assert!(matches!(
+            store.insert(&bundle),
+            Err(WriteError::MismatchedInstances { .. }),
+        ));
+    }
+}
 
 // --- Helpers ---
 
-// Queries a bunch of components and their clustering keys, joins everything, and returns the
-// resulting `DataFrame`.
-fn joined_query(
+// Queries a bunch of components and their clustering keys, joins everything together, and returns
+// the resulting `DataFrame`.
+// TODO: doc
+fn joint_query(
     store: &DataStore,
     timeline_query: &TimelineQuery,
     ent_path: &EntityPath,
@@ -110,7 +236,7 @@ fn joined_query(
 
     dfs.reduce(|acc, df| {
         acc.left_join(
-            dbg!(&df),
+            &df,
             [Instance::name().as_str()],
             [Instance::name().as_str()],
         )
@@ -120,6 +246,7 @@ fn joined_query(
 }
 
 /// Query a single component and its clustering key, returns a `DataFrame`.
+// TODO: doc
 fn query(
     store: &DataStore,
     timeline_query: &TimelineQuery,
@@ -146,37 +273,35 @@ fn query(
     df
 }
 
+/// Builds a joint `DataFrame` directly out of raw bundles, mimicking the behaviour of a joint
+/// query on the datastore.
 // TODO: doc
-fn new_expected_df(bundles: &[(ComponentName, &MsgBundle)]) -> DataFrame {
+fn joint_df(bundles: &[(ComponentName, &MsgBundle)]) -> DataFrame {
     bundles
         .iter()
         .map(|(component, bundle)| {
-            let df = if bundle.components.len() == 1 {
-                DataFrame::new(vec![
-                    Series::try_from((
-                        Instance::name().as_str(),
-                        UInt64Array::from_vec(
-                            (0..bundle.components[0].value.len() as u64).collect(),
-                        )
+            let instances = if bundle.components.len() == 1 {
+                Series::try_from((
+                    Instance::name().as_str(),
+                    UInt64Array::from_vec((0..bundle.components[0].value.len() as u64).collect())
                         .to_boxed(),
-                    ))
-                    .unwrap(),
-                    Series::try_from((component.as_str(), bundle.components[0].value.to_boxed()))
-                        .unwrap(),
-                ])
+                ))
                 .unwrap()
             } else {
-                DataFrame::new(vec![
-                    Series::try_from((
-                        Instance::name().as_str(),
-                        bundle.components[0].value.to_boxed(),
-                    ))
-                    .unwrap(),
-                    Series::try_from((component.as_str(), bundle.components[1].value.to_boxed()))
-                        .unwrap(),
-                ])
+                Series::try_from((
+                    Instance::name().as_str(),
+                    bundle.components[0].value.to_boxed(),
+                ))
                 .unwrap()
             };
+
+            let df = DataFrame::new(vec![
+                instances,
+                Series::try_from((component.as_str(), bundle.components[1].value.to_boxed()))
+                    .unwrap(),
+            ])
+            .unwrap();
+
             df.explode(df.get_column_names()).unwrap()
         })
         .reduce(|acc, df| {
@@ -188,4 +313,21 @@ fn new_expected_df(bundles: &[(ComponentName, &MsgBundle)]) -> DataFrame {
             .unwrap()
         })
         .unwrap_or_default()
+}
+
+#[macro_export]
+macro_rules! test_bundle {
+    ($entity:ident @ $frames:tt => [$c0:expr $(,)*]) => {
+        re_log_types::msg_bundle::try_build_msg_bundle1(MsgId::ZERO, $entity.clone(), $frames, $c0)
+            .unwrap()
+    };
+    ($entity:ident @ $frames:tt => [$c0:expr, $c1:expr $(,)*]) => {
+        re_log_types::msg_bundle::try_build_msg_bundle2(
+            MsgId::ZERO,
+            $entity.clone(),
+            $frames,
+            ($c0, $c1),
+        )
+        .unwrap()
+    };
 }

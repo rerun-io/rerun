@@ -117,6 +117,8 @@ impl DataStore {
     /// }
     /// ```
     //
+    // TODO: visual doc of latest_at behavior
+    //
     // TODO(cmc): expose query_dyn at some point, to fetch an unknown number of component indices,
     // at the cost of extra dynamic allocations.
     pub fn query<const N: usize>(

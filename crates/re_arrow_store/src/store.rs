@@ -315,6 +315,7 @@ impl std::fmt::Display for DataStore {
 
 // --- Indices ---
 
+// TODO: outdated
 /// An `IndexTable` maps specific points in time to rows in component tables.
 ///
 /// Example of a time-based index table (`MAX_ROWS_PER_BUCKET=2`):
@@ -688,6 +689,7 @@ impl IndexBucket {
 
 // --- Components ---
 
+// TODO: outdated
 /// A `ComponentTable` holds all the values ever inserted for a given component (provided they
 /// are still alive, i.e. not GC'd).
 ///
