@@ -155,7 +155,7 @@ impl DataStore {
         let (cluster_row_idx, cluster_len) =
             self.get_or_create_cluster_component(row_nr, components, self.cluster_key, time_point)?;
 
-        // Insert the auto-generated cluster component if needed.
+        // Always insert the cluster component.
         row_indices.insert(self.cluster_key, cluster_row_idx);
 
         for bundle in components
