@@ -132,7 +132,7 @@ pub mod gpu_data {
     #[repr(C, packed)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct LineVertex {
-        pub pos: glam::Vec3,
+        pub position: glam::Vec3,
         // TODO(andreas): If we limit ourselves to 65536 line strip (we do as of writing!), we get 16bit extra storage here.
         // We probably want to store accumulated line length in there so that we can do stippling in the fragment shader
         pub strip_index: u32,
@@ -154,7 +154,7 @@ pub mod gpu_data {
     #[repr(C)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct BatchUniformBuffer {
-        pub world_from_scene: wgpu_buffer_types::Mat4,
+        pub world_from_obj: wgpu_buffer_types::Mat4,
     }
 }
 
@@ -213,8 +213,8 @@ pub struct LineBatchInfo {
     /// Transformation applies to line positions
     ///
     /// TODO(andreas): We don't apply scaling to the radius yet. Need to pass a scaling factor like this in
-    /// `let scale = Mat3::from(world_from_scene).determinant().abs().cbrt()`
-    pub world_from_scene: glam::Mat4,
+    /// `let scale = Mat3::from(world_from_obj).determinant().abs().cbrt()`
+    pub world_from_obj: glam::Mat4,
 
     /// Number of vertices covered by this batch.
     ///
@@ -295,7 +295,7 @@ impl LineDrawData {
         }
 
         let fallback_batches = [LineBatchInfo {
-            world_from_scene: glam::Mat4::IDENTITY,
+            world_from_obj: glam::Mat4::IDENTITY,
             label: "all lines".into(),
             line_vertex_count: vertices.len() as _,
         }];
@@ -388,7 +388,7 @@ impl LineDrawData {
             Vec::with_capacity(wgpu::util::align_to(num_segments, POSITION_TEXTURE_SIZE) as usize);
         // placeholder at the beginning to facilitate start-caps
         position_data_staging.push(LineVertex {
-            pos: glam::vec3(f32::INFINITY, f32::INFINITY, f32::INFINITY),
+            position: glam::vec3(f32::INFINITY, f32::INFINITY, f32::INFINITY),
             strip_index: u32::MAX,
         });
         position_data_staging.extend(vertices.iter());
@@ -509,7 +509,7 @@ impl LineDrawData {
                 staging_buffer
                     [offset..(offset + std::mem::size_of::<gpu_data::BatchUniformBuffer>())]
                     .copy_from_slice(bytemuck::bytes_of(&gpu_data::BatchUniformBuffer {
-                        world_from_scene: batch_info.world_from_scene.into(),
+                        world_from_obj: batch_info.world_from_obj.into(),
                     }));
 
                 let bind_group = ctx.gpu_resources.bind_groups.alloc(
