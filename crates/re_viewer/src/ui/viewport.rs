@@ -6,12 +6,13 @@
 //! * [ ] Controlling visibility of objects inside each Space View
 //! * [ ] Transforming objects between spaces
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use ahash::HashMap;
 use itertools::Itertools as _;
 
-use re_data_store::{ObjPath, TimeInt};
+use nohash_hasher::{IntMap, IntSet};
+use re_data_store::{ObjPath, ObjPathComp, TimeInt};
 
 use crate::{
     misc::{
@@ -21,13 +22,17 @@ use crate::{
     ui::{view_category::group_by_category, view_spatial::SceneSpatial},
 };
 
-use super::{view_category::ViewCategory, SceneQuery, SpaceView, SpaceViewId};
+use super::{
+    transform_cache::TransformCache, view_category::ViewCategory, SceneQuery, SpaceView,
+    SpaceViewId,
+};
 
 // ----------------------------------------------------------------------------
 
 fn query_scene_spatial(
     ctx: &mut ViewerContext<'_>,
     obj_paths: &nohash_hasher::IntSet<ObjPath>,
+    transforms: &TransformCache,
 ) -> SceneSpatial {
     crate::profile_function!();
 
@@ -39,7 +44,7 @@ fn query_scene_spatial(
     };
     let mut scene = SceneSpatial::default();
     let hovered = re_data_store::InstanceIdHash::NONE;
-    scene.load_objects(ctx, &query, query.obj_props, hovered);
+    scene.load_objects(ctx, &query, transforms, query.obj_props, hovered);
     scene
 }
 
@@ -82,12 +87,26 @@ impl Viewport {
         let mut blueprint = Self::default();
 
         for (path, space_info) in &spaces_info.spaces {
+            // If we're connected with a rigid transform to our parent, don't create a new space view automatically,
+            // since we're showing those objects in the parent by default.
+            // (it is still possible to create this space view manually)
+            if let Some((_, transform)) = &space_info.parent {
+                match transform {
+                    re_log_types::Transform::Rigid3(_) => continue,
+                    re_log_types::Transform::Pinhole(_) | re_log_types::Transform::Unknown => {}
+                }
+            }
+
+            let transforms = TransformCache::determine_transforms(spaces_info, space_info);
+
             for (category, obj_paths) in group_by_category(
                 ctx.rec_cfg.time_ctrl.timeline(),
                 ctx.log_db,
-                space_info.descendants_without_transform.iter(),
+                space_info
+                    .descendants_with_rigid_or_no_transform(spaces_info)
+                    .iter(),
             ) {
-                let scene_spatial = query_scene_spatial(ctx, &obj_paths);
+                let scene_spatial = query_scene_spatial(ctx, &obj_paths, &transforms);
 
                 if category == ViewCategory::Spatial
                     && scene_spatial.prefer_2d_mode()
@@ -117,6 +136,7 @@ impl Viewport {
                                 category,
                                 path.clone(),
                                 space_info,
+                                spaces_info,
                                 scene_spatial.preferred_navigation_mode(),
                             );
                             space_view.name = visible_instance_id.obj_path.to_string();
@@ -156,6 +176,7 @@ impl Viewport {
                         category,
                         path.clone(),
                         space_info,
+                        spaces_info,
                         scene_spatial.preferred_navigation_mode(),
                     );
                     blueprint.add_space_view(space_view);
@@ -310,18 +331,24 @@ impl Viewport {
         ctx: &mut ViewerContext<'_>,
         path: &ObjPath,
         space_info: &SpaceInfo,
+        spaces_info: &SpacesInfo,
     ) {
         for (category, obj_paths) in group_by_category(
             ctx.rec_cfg.time_ctrl.timeline(),
             ctx.log_db,
             space_info.descendants_without_transform.iter(),
         ) {
-            let scene_spatial = query_scene_spatial(ctx, &obj_paths);
+            let scene_spatial = query_scene_spatial(
+                ctx,
+                &obj_paths,
+                &TransformCache::determine_transforms(spaces_info, space_info),
+            );
             self.add_space_view(SpaceView::new(
                 ctx,
                 category,
                 path.clone(),
                 space_info,
+                spaces_info,
                 scene_spatial.preferred_navigation_mode(),
             ));
         }
@@ -345,8 +372,18 @@ impl Viewport {
                 // Check if the blueprint is missing a space,
                 // maybe one that has been added by new data:
                 for (path, space_info) in &spaces_info.spaces {
+                    // Ignore spaces that have a parent connected via a rigid transform to their parent,
+                    // since they should be picked up automatically by existing parent spaces.
+                    if let Some((_, transform)) = &space_info.parent {
+                        match transform {
+                            re_log_types::Transform::Rigid3(_) => continue,
+                            re_log_types::Transform::Pinhole(_)
+                            | re_log_types::Transform::Unknown => {}
+                        }
+                    }
+
                     if !self.has_space(path) {
-                        self.add_space_view_for(ctx, path, space_info);
+                        self.add_space_view_for(ctx, path, space_info, spaces_info);
                     }
                 }
             }
@@ -450,24 +487,34 @@ impl Viewport {
         ui.vertical_centered(|ui| {
             ui.menu_button("Add new space view…", |ui| {
                 ui.style_mut().wrap = Some(false);
-                for (path, space_info) in &spaces_info.spaces {
-                    let categories = group_by_category(
-                        ctx.rec_cfg.time_ctrl.timeline(),
-                        ctx.log_db,
-                        space_info.descendants_without_transform.iter(),
-                    );
 
-                    if !categories.is_empty() {
+                let objects_per_root_grouped_by_category =
+                    objects_per_root_grouped_by_category(ctx);
+
+                for (path, space_info) in &spaces_info.spaces {
+                    let categories = objects_per_root_grouped_by_category
+                        .get(&ObjPath::from(&path.to_components()[..1]));
+
+                    if let Some(categories) = categories {
+                        if categories.is_empty() {
+                            continue;
+                        }
+
+                        let transforms =
+                            TransformCache::determine_transforms(spaces_info, space_info);
+
                         if ui.button(path.to_string()).clicked() {
                             ui.close_menu();
 
                             for (category, obj_paths) in categories {
-                                let scene_spatial = query_scene_spatial(ctx, &obj_paths);
+                                let scene_spatial =
+                                    query_scene_spatial(ctx, obj_paths, &transforms);
                                 let new_space_view_id = self.add_space_view(SpaceView::new(
                                     ctx,
-                                    category,
+                                    *category,
                                     path.clone(),
                                     space_info,
+                                    spaces_info,
                                     scene_spatial.preferred_navigation_mode(),
                                 ));
                                 ctx.set_selection(Selection::SpaceView(new_space_view_id));
@@ -478,6 +525,35 @@ impl Viewport {
             });
         });
     }
+}
+
+/// Returns iterator over all root paths, each with a list of object paths under it.
+fn objects_per_root<'a>(
+    ctx: &mut ViewerContext<'a>,
+) -> impl Iterator<Item = (ObjPath, Vec<ObjPath>)> + 'a {
+    let roots = &ctx.log_db.obj_db.tree.children;
+    roots.iter().map(|(root_path, root_tree)| {
+        let mut objects = Vec::new();
+        root_tree.visit_children_recursively(&mut |child_path| {
+            objects.push(child_path.clone());
+        });
+        let root_path: &[ObjPathComp] = &[root_path.clone()];
+        (ObjPath::from(root_path), objects)
+    })
+}
+
+/// Returns all map from all root paths to objects grouped by category.
+fn objects_per_root_grouped_by_category(
+    ctx: &mut ViewerContext<'_>,
+) -> IntMap<ObjPath, BTreeMap<ViewCategory, IntSet<ObjPath>>> {
+    objects_per_root(ctx)
+        .map(|(root, objects)| {
+            (
+                root,
+                group_by_category(ctx.rec_cfg.time_ctrl.timeline(), ctx.log_db, objects.iter()),
+            )
+        })
+        .collect()
 }
 
 fn visibility_button(ui: &mut egui::Ui, enabled: bool, visible: &mut bool) -> egui::Response {

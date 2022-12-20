@@ -96,7 +96,7 @@ where
 
         // Throw out any resources that we haven't reclaimed last frame.
         for (desc, handles) in self.last_frame_deallocated.drain() {
-            re_log::debug!(
+            re_log::trace!(
                 count = handles.len(),
                 ?desc,
                 "Drained dangling resources from last frame",

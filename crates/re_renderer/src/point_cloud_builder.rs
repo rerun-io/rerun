@@ -17,7 +17,7 @@ pub struct PointCloudBuilder<PerPointUserData> {
     pub colors: Vec<Color32>,
     pub user_data: Vec<PerPointUserData>,
 
-    pub batches: Vec<PointCloudBatchInfo>,
+    batches: Vec<PointCloudBatchInfo>,
 
     /// z value given to the next 2d point.
     pub next_2d_z: f32,
@@ -48,11 +48,57 @@ where
     ) -> PointCloudBatchBuilder<'_, PerPointUserData> {
         self.batches.push(PointCloudBatchInfo {
             label: label.into(),
-            world_from_scene: glam::Mat4::IDENTITY,
+            world_from_obj: glam::Mat4::IDENTITY,
             point_count: 0,
         });
 
         PointCloudBatchBuilder(self)
+    }
+
+    // Iterate over all batches, yielding the batch info and a point vertex iterator.
+    pub fn iter_vertices_by_batch(
+        &self,
+    ) -> impl Iterator<
+        Item = (
+            &PointCloudBatchInfo,
+            impl Iterator<Item = &PointCloudVertex>,
+        ),
+    > {
+        let mut vertex_offset = 0;
+        self.batches.iter().map(move |batch| {
+            let out = (
+                batch,
+                self.vertices
+                    .iter()
+                    .skip(vertex_offset)
+                    .take(batch.point_count as usize),
+            );
+            vertex_offset += batch.point_count as usize;
+            out
+        })
+    }
+
+    // Iterate over all batches, yielding the batch info and a point vertex iterator zipped with its user data.
+    pub fn iter_vertices_and_userdata_by_batch(
+        &self,
+    ) -> impl Iterator<
+        Item = (
+            &PointCloudBatchInfo,
+            impl Iterator<Item = (&PointCloudVertex, &PerPointUserData)>,
+        ),
+    > {
+        let mut vertex_offset = 0;
+        self.batches.iter().map(move |batch| {
+            let out = (
+                batch,
+                self.vertices
+                    .iter()
+                    .zip(self.user_data.iter())
+                    .skip(vertex_offset),
+            );
+            vertex_offset += batch.point_count as usize;
+            out
+        })
     }
 
     /// Finalizes the builder and returns a point cloud draw data with all the points added so far.
@@ -85,10 +131,10 @@ where
             .expect("batch should have been added on PointCloudBatchBuilder creation")
     }
 
-    /// Sets the `world_from_scene` matrix for the *entire* batch.
+    /// Sets the `world_from_obj` matrix for the *entire* batch.
     #[inline]
-    pub fn world_from_scene(&mut self, world_from_scene: glam::Mat4) -> &mut Self {
-        self.batch_mut().world_from_scene = world_from_scene;
+    pub fn world_from_obj(mut self, world_from_obj: glam::Mat4) -> Self {
+        self.batch_mut().world_from_obj = world_from_obj;
         self
     }
 
