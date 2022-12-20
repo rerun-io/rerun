@@ -1,13 +1,17 @@
-use arrow2::array::{new_empty_array, Array, ListArray, UInt64Array};
-use arrow2::buffer::Buffer;
-use arrow2::datatypes::DataType;
+use arrow2::{
+    array::{new_empty_array, Array, ListArray, UInt64Array},
+    buffer::Buffer,
+    datatypes::DataType,
+};
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 use parking_lot::RwLock;
 
-use re_log::debug;
-use re_log_types::msg_bundle::{ComponentBundle, MsgBundle};
-use re_log_types::{ComponentName, ObjPath as EntityPath, TimeInt, TimePoint, TimeRange, Timeline};
+use re_log::{debug, trace};
+use re_log_types::{
+    msg_bundle::{ComponentBundle, MsgBundle},
+    ComponentName, ObjPath as EntityPath, TimeInt, TimePoint, TimeRange, Timeline,
+};
 
 use crate::{
     ArrayExt as _, ComponentBucket, ComponentTable, DataStore, DataStoreConfig, IndexBucket,
@@ -105,7 +109,7 @@ impl DataStore {
             ));
         }
 
-        debug!(
+        trace!(
             kind = "insert",
             id = self.insert_id,
             clustering_key = %self.clustering_key,
@@ -355,7 +359,7 @@ impl IndexTable {
             );
         }
 
-        debug!(
+        trace!(
             kind = "insert",
             timeline = %timeline.name(),
             time = timeline.typ().format(time),
@@ -788,7 +792,7 @@ impl ComponentTable {
             active_bucket.push(time_point, rows_single) + active_bucket.row_offset,
         );
 
-        debug!(
+        trace!(
             kind = "insert",
             timelines = ?time_point.into_iter()
                 .map(|(timeline, time)| (timeline.name(), timeline.typ().format(*time)))

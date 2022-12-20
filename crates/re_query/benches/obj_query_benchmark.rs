@@ -9,7 +9,7 @@ use re_log_types::{
     datagen::{build_frame_nr, build_some_colors, build_some_point2d},
     field_types::{ColorRGBA, Instance, Point2D},
     msg_bundle::{try_build_msg_bundle2, Component, MsgBundle},
-    obj_path, Index, MsgId, ObjPath, ObjPathComp, TimeType, Timeline,
+    obj_path, Index, MsgId, ObjPath, TimeType, Timeline,
 };
 use re_query::{query_entity_with_primary, visit_components3};
 
