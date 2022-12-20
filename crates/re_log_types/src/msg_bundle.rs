@@ -179,7 +179,7 @@ where
 /// | [{timeline: frame_nr, type: 1, time: 0}] | {point2d: [{x: 9.765961, y: 5.532682}]} |
 /// +------------------------------------------+-----------------------------------------+
 /// ```
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct MsgBundle {
     /// A unique id per [`crate::LogMsg`].
     pub msg_id: MsgId,

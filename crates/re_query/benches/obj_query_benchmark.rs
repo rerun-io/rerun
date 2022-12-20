@@ -9,9 +9,9 @@ use re_log_types::{
     datagen::{build_frame_nr, build_some_colors, build_some_point2d},
     field_types::{ColorRGBA, Instance, Point2D},
     msg_bundle::{try_build_msg_bundle2, Component, MsgBundle},
-    obj_path, Index, MsgId, ObjPath, ObjPathComp, TimeType, Timeline,
+    obj_path, Index, MsgId, ObjPath, TimeType, Timeline,
 };
-use re_query::{query_entity_with_primary, visit_components3};
+use re_query::query_entity_with_primary;
 
 // ---
 
@@ -129,23 +129,23 @@ fn query_and_visit(store: &mut DataStore, paths: &[ObjPath]) -> Vec<Point> {
 
     // TODO(jleibs): Add Radius once we have support for it in field_types
     for path in paths.iter() {
-        if let Ok(df) = query_entity_with_primary(
+        query_entity_with_primary(
             store,
             &timeline_query,
             path,
             Point2D::name(),
             &[ColorRGBA::name()],
-        ) {
-            visit_components3(
-                &df,
-                |pos: &Point2D, _instance: Option<&Instance>, color: Option<&ColorRGBA>| {
-                    points.push(Point {
-                        _pos: pos.clone(),
-                        _color: color.cloned(),
-                    });
-                },
-            );
-        };
+        )
+        .and_then(|entity_view| {
+            entity_view.visit2(|_: Instance, pos: Point2D, color: Option<ColorRGBA>| {
+                points.push(Point {
+                    _pos: pos,
+                    _color: color,
+                });
+            })
+        })
+        .ok()
+        .unwrap();
     }
     assert_eq!(NUM_POINTS as usize, points.len());
     points

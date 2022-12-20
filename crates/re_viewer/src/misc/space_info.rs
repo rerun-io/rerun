@@ -26,6 +26,34 @@ pub struct SpaceInfo {
     pub child_spaces: BTreeMap<ObjPath, Transform>,
 }
 
+impl SpaceInfo {
+    /// Recursively gather all descendants that have no or only a rigid transform.
+    pub fn descendants_with_rigid_or_no_transform(
+        &self,
+        spaces_info: &SpacesInfo,
+    ) -> IntSet<ObjPath> {
+        fn gather_rigidly_transformed_children(
+            space: &SpaceInfo,
+            spaces_info: &SpacesInfo,
+            objects: &mut IntSet<ObjPath>,
+        ) {
+            objects.extend(space.descendants_without_transform.iter().cloned());
+
+            for (child_path, transform) in &space.child_spaces {
+                if let re_log_types::Transform::Rigid3(_) = transform {
+                    if let Some(child_space) = spaces_info.spaces.get(child_path) {
+                        gather_rigidly_transformed_children(child_space, spaces_info, objects);
+                    }
+                }
+            }
+        }
+
+        let mut objects = IntSet::default();
+        gather_rigidly_transformed_children(self, spaces_info, &mut objects);
+        objects
+    }
+}
+
 /// Information about all spaces.
 ///
 /// This is gathered by analyzing the transform hierarchy of the objects:

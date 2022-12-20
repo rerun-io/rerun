@@ -169,8 +169,6 @@ fn space_cameras(spaces_info: &SpacesInfo, space_info: &SpaceInfo) -> Vec<SpaceC
                 .get(child_path)
                 .and_then(|child| child.coordinates);
 
-            let mut found_any_pinhole = false;
-
             if let Some(child_space_info) = spaces_info.spaces.get(child_path) {
                 for (grand_child_path, grand_child_transform) in &child_space_info.child_spaces {
                     if let Transform::Pinhole(pinhole) = grand_child_transform {
@@ -182,20 +180,8 @@ fn space_cameras(spaces_info: &SpacesInfo, space_info: &SpaceInfo) -> Vec<SpaceC
                             pinhole: Some(*pinhole),
                             target_space: Some(grand_child_path.clone()),
                         });
-                        found_any_pinhole = true;
                     }
                 }
-            }
-
-            if !found_any_pinhole {
-                space_cameras.push(SpaceCamera3D {
-                    camera_obj_path: child_path.clone(),
-                    instance_index_hash: re_log_types::IndexHash::NONE,
-                    camera_view_coordinates: view_space,
-                    world_from_camera,
-                    pinhole: None,
-                    target_space: None,
-                });
             }
         }
     }

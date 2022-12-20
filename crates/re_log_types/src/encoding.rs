@@ -160,8 +160,8 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
 #[test]
 fn test_encode_decode() {
     use crate::{
-        obj_path, Data, DataMsg, DataPath, FieldName, LogMsg, LoggedData, MsgId, ObjPath,
-        ObjPathComp, Time, TimePoint, TimeType, Timeline,
+        obj_path, Data, DataMsg, DataPath, FieldName, LogMsg, LoggedData, MsgId, ObjPath, Time,
+        TimePoint, TimeType, Timeline,
     };
 
     fn data_msg(
