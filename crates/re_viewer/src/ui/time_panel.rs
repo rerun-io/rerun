@@ -203,8 +203,13 @@ impl TimePanel {
             ui,
             &time_area_painter,
             loop_selection_rect.top()..=timeline_rect.bottom(),
-            timeline_rect.top()..=time_area_rect.bottom(),
             ctx.rec_cfg.time_ctrl.time_type(),
+        );
+        paint_time_ranges_gaps(
+            &self.time_ranges_ui,
+            ui,
+            &time_area_painter,
+            loop_selection_rect.top()..=time_area_rect.bottom(),
         );
         loop_selection_ui(
             &self.time_ranges_ui,
@@ -691,28 +696,100 @@ fn paint_time_ranges_and_ticks(
     ui: &mut egui::Ui,
     time_area_painter: &egui::Painter,
     line_y_range: RangeInclusive<f32>,
-    segment_y_range: RangeInclusive<f32>,
     time_type: TimeType,
 ) {
     for segment in &time_ranges_ui.segments {
-        let bg_stroke = ui.visuals().widgets.noninteractive.bg_stroke;
-        let rect = Rect::from_x_y_ranges(segment.x.clone(), segment_y_range.clone());
-        time_area_painter.rect_filled(rect, 1.0, bg_stroke.color.linear_multiply(0.5));
-
         let rect = Rect::from_x_y_ranges(segment.x.clone(), line_y_range.clone());
         paint_time_range_ticks(ui, time_area_painter, &rect, time_type, &segment.time);
     }
+}
 
-    if false {
-        // visually separate the different ranges:
-        use itertools::Itertools as _;
-        for (a, b) in time_ranges_ui.segments.iter().tuple_windows() {
-            let stroke = ui.visuals().widgets.noninteractive.bg_stroke;
-            let x = lerp(*a.x.end()..=*b.x.start(), 0.5);
-            let y_top = *segment_y_range.start();
-            let y_bottom = *segment_y_range.end();
-            time_area_painter.vline(x, y_top..=y_bottom, stroke);
+/// Visually separate the different time segments
+fn paint_time_ranges_gaps(
+    time_ranges_ui: &TimeRangesUi,
+    ui: &mut egui::Ui,
+    painter: &egui::Painter,
+    y_range: RangeInclusive<f32>,
+) {
+    // For each gap we are painting this:
+    //
+    //             zig width
+    //             |
+    //            <->
+    //    \         /  ^
+    //     \       /   | zig height
+    //      \     /    v
+    //      /     \
+    //     /       \
+    //    /         \
+    //    \         /
+    //     \       /
+    //      \     /
+    //      /     \
+    //     /       \
+    //    /         \
+    //
+    //    <--------->
+    //     gap width
+    //
+    // Filled with black, plus a stroke.
+
+    use itertools::Itertools as _;
+
+    let fill_color = Color32::BLACK;
+    let stroke = ui.visuals().widgets.noninteractive.bg_stroke;
+
+    for (a, b) in time_ranges_ui.segments.iter().tuple_windows() {
+        let gap_left = *a.x.end();
+        let gap_right = *b.x.start();
+        let top = *y_range.start();
+        let bottom = *y_range.end();
+
+        let zig_width = 4.0;
+        let zig_height = zig_width;
+
+        let mut y = top;
+        let mut row = 0;
+
+        let mut mesh = egui::Mesh::default();
+        let mut left_line_strip = vec![];
+        let mut right_line_strip = vec![];
+
+        while y - zig_height <= bottom {
+            let (left, right) = if row % 2 == 0 {
+                // full width
+                (gap_left, gap_right)
+            } else {
+                // contracted
+                (gap_left + zig_width, gap_right - zig_width)
+            };
+
+            let left_pos = pos2(left, y);
+            let right_pos = pos2(right, y);
+
+            if !mesh.is_empty() {
+                let next_left_vidx = mesh.vertices.len() as u32;
+                let next_right_vidx = next_left_vidx + 1;
+                let prev_left_vidx = next_left_vidx - 2;
+                let prev_right_vidx = next_right_vidx - 2;
+
+                mesh.add_triangle(prev_left_vidx, next_left_vidx, prev_right_vidx);
+                mesh.add_triangle(next_left_vidx, prev_right_vidx, next_right_vidx);
+            }
+
+            mesh.colored_vertex(left_pos, fill_color);
+            mesh.colored_vertex(right_pos, fill_color);
+
+            left_line_strip.push(left_pos);
+            right_line_strip.push(right_pos);
+
+            y += zig_height;
+            row += 1;
         }
+
+        painter.add(Shape::Mesh(mesh));
+        painter.add(Shape::line(left_line_strip, stroke));
+        painter.add(Shape::line(right_line_strip, stroke));
     }
 }
 
@@ -1234,7 +1311,13 @@ pub fn paint_time_cursor(
 
 // ----------------------------------------------------------------------------
 
-const MAX_GAP: f32 = 32.0;
+/// The ideal gap between time segments.
+///
+/// This is later shrunk via [`GAP_EXPANSION_FRACTION`].
+const MAX_GAP: f32 = 40.0;
+
+/// How much of the gap use up to expand segments visually to either side?
+const GAP_EXPANSION_FRACTION: f32 = 1.0 / 4.0;
 
 /// How much space on side of the data in the default view.
 const SIDE_MARGIN: f32 = MAX_GAP;
@@ -1355,7 +1438,7 @@ impl TimeRangesUi {
 
                 // expand each span outwards a bit to make selection of outer data points easier.
                 // Also gives zero-width segments some width!
-                let expansion = gap_width / 3.0;
+                let expansion = GAP_EXPANSION_FRACTION * gap_width;
                 let x_range = (*x_range.start() - expansion)..=(*x_range.end() + expansion);
 
                 let range = if range.min == range.max {
