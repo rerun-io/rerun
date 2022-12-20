@@ -56,8 +56,13 @@ impl TimePanel {
         blueprint: &mut Blueprint,
         egui_ctx: &egui::Context,
     ) {
+        let x_margin = 16.0;
+        let y_margin = 8.0;
+        let top_bar_height = 28.0;
+
         let mut panel_frame = egui::Frame {
             fill: ctx.re_ui.design_tokens.bottom_bar_color,
+            inner_margin: egui::style::Margin::symmetric(x_margin, y_margin),
             ..ctx.re_ui.panel_frame()
         };
 
@@ -88,17 +93,35 @@ impl TimePanel {
                 if expansion < 1.0 {
                     // Collapsed or animating
                     ui.horizontal(|ui| {
+                        ui.spacing_mut().interact_size.y = top_bar_height;
                         self.collapsed_ui(ctx, ui);
                     });
                 } else {
                     // Expanded:
                     ui.vertical(|ui| {
-                        // play control and current time
-                        top_row_ui(ctx, ui);
+                        // Add back the margin we removed from the panel:
+                        let mut top_rop_frame = egui::Frame::default();
+                        top_rop_frame.inner_margin.right = x_margin;
+                        top_rop_frame.inner_margin.bottom = y_margin;
+                        let rop_row_rect = top_rop_frame
+                            .show(ui, |ui| {
+                                ui.spacing_mut().interact_size.y = top_bar_height;
 
-                        ui.add_space(2.0);
+                                ui.horizontal(|ui| {
+                                    top_row_ui(ctx, ui);
+                                });
+                            })
+                            .response
+                            .rect;
 
-                        ui.spacing_mut().scroll_bar_outer_margin = 4.0; // needed, because we have no frame margin
+                        // Draw separator between top bar and the rest:
+                        ui.painter().hline(
+                            rop_row_rect.x_range(),
+                            rop_row_rect.bottom(),
+                            ui.visuals().widgets.noninteractive.bg_stroke,
+                        );
+
+                        ui.spacing_mut().scroll_bar_outer_margin = 4.0; // needed, because we have no panel margin on the right side.
                         self.expanded_ui(ctx, ui);
                     });
                 }
@@ -110,13 +133,13 @@ impl TimePanel {
     fn collapsed_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         ctx.rec_cfg
             .time_ctrl
-            .timeline_selector_ui(ctx.log_db.times_per_timeline(), ui);
+            .play_pause_ui(ctx.log_db.times_per_timeline(), ui);
 
         ui.separator();
 
         ctx.rec_cfg
             .time_ctrl
-            .play_pause_ui(ctx.log_db.times_per_timeline(), ui);
+            .timeline_selector_ui(ctx.log_db.times_per_timeline(), ui);
 
         ui.separator();
 
@@ -153,10 +176,6 @@ impl TimePanel {
         }
 
         current_time_ui(ctx, ui);
-
-        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            help_button(ui);
-        });
     }
 
     fn expanded_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
@@ -472,22 +491,20 @@ impl TimePanel {
 }
 
 fn top_row_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
-    ui.horizontal(|ui| {
-        ctx.rec_cfg
-            .time_ctrl
-            .timeline_selector_ui(ctx.log_db.times_per_timeline(), ui);
+    ctx.rec_cfg
+        .time_ctrl
+        .play_pause_ui(ctx.log_db.times_per_timeline(), ui);
 
-        ui.separator();
+    ui.separator();
 
-        ctx.rec_cfg
-            .time_ctrl
-            .play_pause_ui(ctx.log_db.times_per_timeline(), ui);
+    ctx.rec_cfg
+        .time_ctrl
+        .timeline_selector_ui(ctx.log_db.times_per_timeline(), ui);
 
-        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            help_button(ui);
-            ui.vertical_centered(|ui| {
-                current_time_ui(ctx, ui);
-            });
+    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+        help_button(ui);
+        ui.centered_and_justified(|ui| {
+            current_time_ui(ctx, ui);
         });
     });
 }
