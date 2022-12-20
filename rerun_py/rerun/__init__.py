@@ -1111,7 +1111,7 @@ def _log_tensor(
     elif tensor.dtype == "float32":
         rerun_bindings.log_tensor_f32(obj_path, tensor, names, meter, meaning, timeless)
     elif tensor.dtype == "float64":
-        rerun_bindings.log_tensor_f32(obj_path, tensor, names, meter, meaning, timeless)
+        rerun_bindings.log_tensor_f64(obj_path, tensor, names, meter, meaning, timeless)
 
     else:
         raise TypeError(f"Unsupported dtype: {tensor.dtype}")
