@@ -126,10 +126,10 @@ fn build_messages(n: usize) -> Vec<MsgBundle> {
 }
 
 fn insert_messages<'a>(
-    clustering_key: ComponentName,
+    cluster_key: ComponentName,
     msgs: impl Iterator<Item = &'a MsgBundle>,
 ) -> DataStore {
-    let mut store = DataStore::new(clustering_key, Default::default());
+    let mut store = DataStore::new(cluster_key, Default::default());
     msgs.for_each(|msg_bundle| store.insert(msg_bundle).unwrap());
     store
 }

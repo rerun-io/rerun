@@ -6,12 +6,12 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use arrow2::array::{Array, ListArray, UInt64Array};
 use polars_core::{prelude::*, series::Series};
-use re_arrow_store::{test_bundle, DataStore, TimeQuery, TimelineQuery};
+use re_arrow_store::{polars_helpers, test_bundle, DataStore, TimeQuery, TimelineQuery};
 use re_log_types::{
     datagen::{build_frame_nr, build_instances, build_some_point2d, build_some_rects},
     field_types::{Instance, Point2D, Rect2D},
     msg_bundle::{wrap_in_listarray, Component as _, MsgBundle},
-    ComponentName, MsgId, ObjPath as EntityPath, TimeType, Timeline,
+    ComponentName, ObjPath as EntityPath, TimeType, Timeline,
 };
 
 // --- LatestAt ---
@@ -58,21 +58,21 @@ fn latest_at_impl(store: &mut DataStore) {
         err.unwrap();
     }
 
-    assert_joint_query_at(store, &ent_path, frame0, &[]);
-    assert_joint_query_at(store, &ent_path, frame1, &[(Rect2D::name(), &bundle1)]);
-    assert_joint_query_at(
+    assert_latest_components(store, &ent_path, frame0, &[]);
+    assert_latest_components(store, &ent_path, frame1, &[(Rect2D::name(), &bundle1)]);
+    assert_latest_components(
         store,
         &ent_path,
         frame2,
         &[(Rect2D::name(), &bundle1), (Point2D::name(), &bundle2)],
     );
-    assert_joint_query_at(
+    assert_latest_components(
         store,
         &ent_path,
         frame3,
         &[(Rect2D::name(), &bundle1), (Point2D::name(), &bundle3)],
     );
-    assert_joint_query_at(
+    assert_latest_components(
         store,
         &ent_path,
         frame4,
@@ -82,7 +82,7 @@ fn latest_at_impl(store: &mut DataStore) {
 
 /// Runs a joint query over all components at the given `frame_nr`, and asserts that the result
 /// matches a joint `DataFrame` built ouf of the specified raw `bundles`.
-fn assert_joint_query_at(
+fn assert_latest_components(
     store: &mut DataStore,
     ent_path: &EntityPath,
     frame_nr: i64,
@@ -91,12 +91,13 @@ fn assert_joint_query_at(
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
     let components_all = &[Rect2D::name(), Point2D::name()];
 
-    let df = joint_query(
+    let df = polars_helpers::latest_components(
         store,
         &TimelineQuery::new(timeline_frame_nr, TimeQuery::LatestAt(frame_nr)),
         ent_path,
         components_all,
-    );
+    )
+    .unwrap();
 
     let df_expected = joint_df(bundles);
 
@@ -105,62 +106,6 @@ fn assert_joint_query_at(
 }
 
 // --- Helpers ---
-
-// Queries a bunch of components and their clustering keys, joins everything together, and returns
-// the resulting `DataFrame`.
-// TODO: doc
-fn joint_query(
-    store: &DataStore,
-    timeline_query: &TimelineQuery,
-    ent_path: &EntityPath,
-    primaries: &[ComponentName],
-) -> DataFrame {
-    let dfs = primaries
-        .iter()
-        .map(|primary| query(store, timeline_query, ent_path, *primary))
-        .filter(|df| !df.is_empty());
-
-    let df = dfs
-        .reduce(|acc, df| {
-            acc.outer_join(
-                &df,
-                [Instance::name().as_str()],
-                [Instance::name().as_str()],
-            )
-            .unwrap()
-        })
-        .unwrap_or_default();
-
-    df.sort([Instance::name().as_str()], false).unwrap_or(df)
-}
-
-/// Query a single component and its clustering key, returns a `DataFrame`.
-// TODO: doc
-fn query(
-    store: &DataStore,
-    timeline_query: &TimelineQuery,
-    ent_path: &EntityPath,
-    primary: ComponentName,
-) -> DataFrame {
-    let components = &[Instance::name(), primary];
-    let row_indices = store
-        .query(timeline_query, ent_path, primary, components)
-        .unwrap_or([None; 2]);
-    let results = store.get(components, &row_indices);
-
-    let df = {
-        let series: Vec<_> = components
-            .iter()
-            .zip(results)
-            .filter_map(|(component, col)| col.map(|col| (component, col)))
-            .map(|(&component, col)| Series::try_from((component.as_str(), col)).unwrap())
-            .collect();
-
-        DataFrame::new(series).unwrap()
-    };
-
-    df
-}
 
 /// Builds a joint `DataFrame` directly out of raw bundles, mimicking the behaviour of a joint
 /// query on the datastore.

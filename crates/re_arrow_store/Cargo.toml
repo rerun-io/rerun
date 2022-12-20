@@ -6,9 +6,11 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
+# TODO: feature docs
 [features]
-default = []
+default = ["polars"] # TODO: remove
 deadlock_detection = ["parking_lot/deadlock_detection"]
+polars = ["dep:polars-core"]
 
 [dependencies]
 # Rerun
@@ -31,6 +33,13 @@ nohash-hasher = "0.2"
 parking_lot = "0.12"
 static_assertions = "1.1"
 thiserror.workspace = true
+
+# Optional
+polars-core = { workspace = true, optional = true, features = [
+  "dtype-date",
+  "dtype-time",
+  "dtype-struct",
+] }
 
 [dev-dependencies]
 criterion = "0.4"

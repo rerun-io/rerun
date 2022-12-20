@@ -29,10 +29,10 @@ pub enum WriteError {
     MismatchedRows(Vec<(ComponentName, usize)>),
 
     // Clustering key
-    #[error("The clustering component must be dense, got {0:?}")]
+    #[error("The cluster component must be dense, got {0:?}")]
     SparseClusteringComponent(Box<dyn Array>),
     #[error(
-        "The clustering component must be increasingly sorted and not contain \
+        "The cluster component must be increasingly sorted and not contain \
                 any duplicates, got {0:?}"
     )]
     InvalidClusteringComponent(Box<dyn Array>),
@@ -40,12 +40,12 @@ pub enum WriteError {
     // Instances
     #[error(
         "All components within a row must have the same number of instances as the \
-            clustering component, got {clustering_comp}={clustering_comp_nb_instances} vs. \
+            cluster component, got {cluster_comp}={cluster_comp_nb_instances} vs. \
                 {key}={nb_instances}"
     )]
     MismatchedInstances {
-        clustering_comp: ComponentName,
-        clustering_comp_nb_instances: usize,
+        cluster_comp: ComponentName,
+        cluster_comp_nb_instances: usize,
         key: ComponentName,
         nb_instances: usize,
     },
@@ -112,7 +112,7 @@ impl DataStore {
         trace!(
             kind = "insert",
             id = self.insert_id,
-            clustering_key = %self.clustering_key,
+            cluster_key = %self.cluster_key,
             timelines = ?time_point.iter()
                 .map(|(timeline, time)| (timeline.name(), timeline.typ().format(*time)))
                 .collect::<Vec<_>>(),
@@ -148,19 +148,19 @@ impl DataStore {
         components: &[ComponentBundle],
         row_indices: &mut IntMap<ComponentName, RowIndex>,
     ) -> WriteResult<()> {
-        let (cluster_row_idx, cluster_len) = self.get_or_create_clustering_component(
+        let (cluster_row_idx, cluster_len) = self.get_or_create_cluster_component(
             row_nr,
             components,
-            self.clustering_key,
+            self.cluster_key,
             time_point,
         )?;
 
-        // Insert the auto-generated clustering component if needed.
-        row_indices.insert(self.clustering_key, cluster_row_idx);
+        // Insert the auto-generated cluster component if needed.
+        row_indices.insert(self.cluster_key, cluster_row_idx);
 
         for bundle in components
             .iter()
-            .filter(|bundle| bundle.name != self.clustering_key)
+            .filter(|bundle| bundle.name != self.cluster_key)
         {
             let ComponentBundle { name, value: rows } = bundle;
 
@@ -184,8 +184,8 @@ impl DataStore {
             // TODO: what about splats?
             if nb_instances != cluster_len {
                 return Err(WriteError::MismatchedInstances {
-                    clustering_comp: self.clustering_key,
-                    clustering_comp_nb_instances: cluster_len,
+                    cluster_comp: self.cluster_key,
+                    cluster_comp_nb_instances: cluster_len,
                     key: *name,
                     nb_instances,
                 });
@@ -206,24 +206,24 @@ impl DataStore {
     }
 
     // TODO: doc
-    fn get_or_create_clustering_component(
+    fn get_or_create_cluster_component(
         &mut self,
         row_nr: usize,
         components: &[ComponentBundle],
-        clustering_key: ComponentName,
+        cluster_key: ComponentName,
         time_point: &TimePoint,
     ) -> WriteResult<(RowIndex, usize)> {
-        let clustering_comp = components
+        let cluster_comp = components
             .iter()
-            .find(|bundle| bundle.name == clustering_key);
+            .find(|bundle| bundle.name == cluster_key);
 
         enum RowIndexOrData {
             RowIndex(RowIndex),
             Data(Box<dyn Array>),
         }
 
-        let (found, comp, len) = if let Some(clustering_comp) = clustering_comp {
-            let row = clustering_comp
+        let (found, comp, len) = if let Some(cluster_comp) = cluster_comp {
+            let row = cluster_comp
                 .value
                 .as_any()
                 .downcast_ref::<ListArray<i32>>()
@@ -255,7 +255,7 @@ impl DataStore {
             });
 
             // TODO: explain
-            if let Some(row_idx) = self.clustering_comp_cache.get(&len) {
+            if let Some(row_idx) = self.cluster_comp_cache.get(&len) {
                 (false, RowIndexOrData::RowIndex(*row_idx), len)
             } else {
                 let row = UInt64Array::from_vec((0..len as u64).collect_vec()).boxed();
@@ -268,8 +268,8 @@ impl DataStore {
             RowIndexOrData::Data(comp) => {
                 let table = self
                     .components
-                    .entry(self.clustering_key)
-                    .or_insert_with(|| ComponentTable::new(self.clustering_key, comp.data_type()));
+                    .entry(self.cluster_key)
+                    .or_insert_with(|| ComponentTable::new(self.cluster_key, comp.data_type()));
 
                 let row_idx = table.push(
                     &self.config,
@@ -279,7 +279,7 @@ impl DataStore {
 
                 // TODO: explain
                 if !found {
-                    self.clustering_comp_cache.insert(len, row_idx);
+                    self.cluster_comp_cache.insert(len, row_idx);
                 }
 
                 Ok((row_idx, len))

@@ -137,12 +137,12 @@ impl DataStoreConfig {
 /// environment, which will result in additional schema information being printed out.
 pub struct DataStore {
     // TODO: doc
-    pub(crate) clustering_key: ComponentName,
+    pub(crate) cluster_key: ComponentName,
     /// The configuration of the data store (e.g. bucket sizes).
     pub(crate) config: DataStoreConfig,
 
     // TODO: doc
-    pub(crate) clustering_comp_cache: IntMap<usize, RowIndex>,
+    pub(crate) cluster_comp_cache: IntMap<usize, RowIndex>,
 
     /// Maps an entity to its index, for a specific timeline.
     ///
@@ -161,16 +161,20 @@ pub struct DataStore {
 }
 
 impl DataStore {
-    pub fn new(clustering_key: ComponentName, config: DataStoreConfig) -> Self {
+    pub fn new(cluster_key: ComponentName, config: DataStoreConfig) -> Self {
         Self {
-            clustering_key,
+            cluster_key,
             config,
-            clustering_comp_cache: Default::default(),
+            cluster_comp_cache: Default::default(),
             indices: Default::default(),
             components: Default::default(),
             insert_id: 0,
             query_id: AtomicU64::new(0),
         }
+    }
+
+    pub fn cluster_key(&self) -> ComponentName {
+        self.cluster_key
     }
 
     /// Returns the number of index rows stored across this entire store, i.e. the sum of
@@ -253,9 +257,9 @@ impl std::fmt::Display for DataStore {
     #[allow(clippy::string_add)]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
-            clustering_key,
+            cluster_key,
             config,
-            clustering_comp_cache: _,
+            cluster_comp_cache: _,
             indices,
             components,
             insert_id: _,
@@ -266,7 +270,7 @@ impl std::fmt::Display for DataStore {
 
         f.write_str(&indent::indent_all_by(
             4,
-            format!("clustering_key: {clustering_key:?}\n"),
+            format!("cluster_key: {cluster_key:?}\n"),
         ))?;
         f.write_str(&indent::indent_all_by(4, format!("config: {config:?}\n")))?;
 

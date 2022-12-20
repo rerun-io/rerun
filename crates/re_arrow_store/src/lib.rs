@@ -7,6 +7,9 @@ mod store;
 mod store_read;
 mod store_write;
 
+#[cfg(feature = "polars")] // TODO: feat doc
+pub mod polars_helpers;
+
 #[doc(hidden)]
 pub mod test_util;
 
@@ -23,4 +26,4 @@ pub(crate) use self::store::{
 #[doc(no_inline)]
 pub use arrow2::io::ipc::read::{StreamReader, StreamState};
 #[doc(no_inline)]
-pub use re_log_types::{TimeInt, TimeRange, TimeType}; // for politeness sake
+pub use re_log_types::{TimeInt, TimeRange, TimeType, Timeline}; // for politeness sake
