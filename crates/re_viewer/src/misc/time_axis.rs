@@ -48,12 +48,19 @@ impl TimelineAxis {
 
         gap_sizes.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
 
-        let mut gap_threshold = MIN_GAP_SIZE;
-        for gap in gap_sizes {
-            if gap >= gap_threshold * 2.0 {
-                break; // much bigger gap than anything before, let's use this
-            } else if gap > gap_threshold {
-                gap_threshold *= 2.0;
+        let mut gap_threshold = gap_sizes
+            .first()
+            .copied()
+            .filter(|&gap_size| gap_size < 10_000.0 * MIN_GAP_SIZE) // exclude huge jumps, e.g. from -∞ (TimeInt::Beginning)
+            .unwrap_or(MIN_GAP_SIZE);
+        {
+            crate::profile_scope!("expand_gap_threshold");
+            for gap in gap_sizes {
+                if gap >= gap_threshold * 2.0 {
+                    break; // much bigger gap than anything before, let's use this
+                } else if gap > gap_threshold {
+                    gap_threshold *= 2.0;
+                }
             }
         }
 

@@ -1720,7 +1720,7 @@ fn paint_time_range_ticks(
                 } else if spacing_ns < 24 * 60 * 60 * 1_000_000_000 {
                     spacing_ns * 24 // to a day
                 } else {
-                    spacing_ns * 10 // multiple of ten days
+                    spacing_ns.checked_mul(10).unwrap_or(spacing_ns) // multiple of ten days
                 }
             }
 
