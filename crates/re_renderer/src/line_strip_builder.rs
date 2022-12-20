@@ -107,7 +107,8 @@ where
     /// Every time we add a 2d line, we advance the z coordinate given to the next by this.
     /// We want it to be as small as possible so that if the camera shifts around to 3d, things still looks like it's on a plane
     /// But if we make it too small we risk ambiguous z values (known as z fighting) under some circumstances
-    const NEXT_2D_Z_STEP: f32 = -0.05;
+    /// TODO(andreas): This is not a very stable solution. Need to find a better way to express this, at least in something that is relative to the relevant scales.
+    const NEXT_2D_Z_STEP: f32 = -0.01;
 
     #[inline]
     fn batch_mut(&mut self) -> &mut LineBatchInfo {
