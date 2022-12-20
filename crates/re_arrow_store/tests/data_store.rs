@@ -58,59 +58,44 @@ fn latest_at_impl(store: &mut DataStore) {
         err.unwrap();
     }
 
-    assert_latest_components(store, &ent_path, frame0, &[]);
-    assert_latest_components(store, &ent_path, frame1, &[(Rect2D::name(), &bundle1)]);
+    let mut assert_latest_components = |frame_nr: i64, bundles: &[(ComponentName, &MsgBundle)]| {
+        let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
+        let components_all = &[Rect2D::name(), Point2D::name()];
+
+        let df = polars_helpers::latest_components(
+            store,
+            &TimelineQuery::new(timeline_frame_nr, TimeQuery::LatestAt(frame_nr)),
+            &ent_path,
+            components_all,
+        )
+        .unwrap();
+
+        let df_expected = joint_df(store.cluster_key(), bundles);
+
+        store.sort_indices();
+        assert_eq!(df_expected, df, "{store}");
+    };
+
+    assert_latest_components(frame0, &[]);
+    assert_latest_components(frame1, &[(Rect2D::name(), &bundle1)]);
     assert_latest_components(
-        store,
-        &ent_path,
         frame2,
         &[(Rect2D::name(), &bundle1), (Point2D::name(), &bundle2)],
     );
     assert_latest_components(
-        store,
-        &ent_path,
         frame3,
         &[(Rect2D::name(), &bundle1), (Point2D::name(), &bundle3)],
     );
     assert_latest_components(
-        store,
-        &ent_path,
         frame4,
         &[(Rect2D::name(), &bundle4), (Point2D::name(), &bundle3)],
     );
 }
 
-/// Runs a joint query over all components at the given `frame_nr`, and asserts that the result
-/// matches a joint `DataFrame` built ouf of the specified raw `bundles`.
-fn assert_latest_components(
-    store: &mut DataStore,
-    ent_path: &EntityPath,
-    frame_nr: i64,
-    bundles: &[(ComponentName, &MsgBundle)],
-) {
-    let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
-    let components_all = &[Rect2D::name(), Point2D::name()];
-
-    let df = polars_helpers::latest_components(
-        store,
-        &TimelineQuery::new(timeline_frame_nr, TimeQuery::LatestAt(frame_nr)),
-        ent_path,
-        components_all,
-    )
-    .unwrap();
-
-    let df_expected = joint_df(bundles);
-
-    store.sort_indices();
-    assert_eq!(df_expected, df, "{store}");
-}
-
 // --- Helpers ---
 
-/// Builds a joint `DataFrame` directly out of raw bundles, mimicking the behaviour of a joint
-/// query on the datastore.
-// TODO: doc
-fn joint_df(bundles: &[(ComponentName, &MsgBundle)]) -> DataFrame {
+/// Given a list of bundles, crafts a `latest_components`-looking dataframe.
+fn joint_df(cluster_key: ComponentName, bundles: &[(ComponentName, &MsgBundle)]) -> DataFrame {
     let df = bundles
         .iter()
         .map(|(component, bundle)| {
@@ -123,17 +108,14 @@ fn joint_df(bundles: &[(ComponentName, &MsgBundle)]) -> DataFrame {
                     .value(0)
                     .len();
                 Series::try_from((
-                    Instance::name().as_str(),
+                    cluster_key.as_str(),
                     wrap_in_listarray(UInt64Array::from_vec((0..len as u64).collect()).to_boxed())
                         .to_boxed(),
                 ))
                 .unwrap()
             } else {
-                Series::try_from((
-                    Instance::name().as_str(),
-                    bundle.components[0].value.to_boxed(),
-                ))
-                .unwrap()
+                Series::try_from((cluster_key.as_str(), bundle.components[0].value.to_boxed()))
+                    .unwrap()
             };
 
             let df = DataFrame::new(vec![
@@ -149,12 +131,8 @@ fn joint_df(bundles: &[(ComponentName, &MsgBundle)]) -> DataFrame {
             df.explode(df.get_column_names()).unwrap()
         })
         .reduce(|acc, df| {
-            acc.outer_join(
-                &df,
-                [Instance::name().as_str()],
-                [Instance::name().as_str()],
-            )
-            .unwrap()
+            acc.outer_join(&df, [cluster_key.as_str()], [cluster_key.as_str()])
+                .unwrap()
         })
         .unwrap_or_default();
 
