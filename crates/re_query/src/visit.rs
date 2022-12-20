@@ -10,8 +10,8 @@ use re_log_types::{
 use crate::EntityView;
 
 impl EntityView {
-    /// Visit the primary component of an `EntityView`
-    /// See [`visit_entity2`]
+    /// Visit the primary component of an [`EntityView`]
+    /// See [`Self::visit2`]
     pub fn visit<C0: Component>(&self, mut visit: impl FnMut(Instance, C0)) -> crate::Result<()>
     where
         C0: ArrowDeserialize + ArrowField<Type = C0> + 'static,
@@ -32,9 +32,11 @@ impl EntityView {
         Ok(())
     }
 
-    /// Visit the primary and joined components of an `EntityView`
+    /// Visit the primary and joined components of an [`EntityView`]
     ///
-    /// The first component is the primary, while the remaining are optional
+    /// The function signature for the visitor must always use [`Instance`] for
+    /// the first argument, the primary [`Component`] for the second argument,
+    /// and then any additional components as `Option`s.
     ///
     /// # Usage
     /// ```
@@ -103,8 +105,8 @@ impl EntityView {
         Ok(())
     }
 
-    /// Visit all all of a complex component in a dataframe
-    /// See [`visit_components2`]
+    /// Visit the primary and joined components of an [`EntityView`]
+    /// See [`Self::visit2`]
     pub fn visit3<C0: Component, C1: Component, C2: Component>(
         &self,
         mut visit: impl FnMut(Instance, C0, Option<C1>, Option<C2>),

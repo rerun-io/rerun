@@ -17,8 +17,7 @@ use re_log_types::{
 /// `instance_keys` must always be sorted if present. If not present we assume implicit
 /// instance keys that are equal to the row-number.
 ///
-/// This type can be easily converted into a polars [`DataFrame`]
-/// See: [`get_component_with_instances`]
+/// See: [`crate::get_component_with_instances`]
 #[derive(Clone, Debug)]
 pub struct ComponentWithInstances {
     pub(crate) name: ComponentName,
@@ -173,11 +172,11 @@ where
     }
 }
 
-/// A view of an entity at a particular point in time returned by [`query_entity_with_primary`]
+/// A view of an entity at a particular point in time returned by [`crate::get_component_with_instances`]
 ///
 /// `EntityView` has a special `primary` component which determines the length of an entity
 /// batch. When iterating over individual components, they will be implicitly joined onto
-/// the primary component as described by [`ComponentJoinedIterator`]
+/// the primary component using instance keys.
 #[derive(Clone, Debug)]
 pub struct EntityView {
     pub(crate) primary: ComponentWithInstances,
