@@ -818,7 +818,7 @@ pub enum TensorDataType {
     /// 16-bit floating point number.
     ///
     /// Uses the standard IEEE 754-2008 binary16 format.
-    /// https://en.wikipedia.org/wiki/Half-precision_floating-point_format
+    /// Set <https://en.wikipedia.org/wiki/Half-precision_floating-point_format>.
     F16,
 
     /// 32-bit floating point number.
@@ -934,7 +934,7 @@ pub enum TensorElement {
     /// 16-bit floating point number.
     ///
     /// Uses the standard IEEE 754-2008 binary16 format.
-    /// https://en.wikipedia.org/wiki/Half-precision_floating-point_format
+    /// Set <https://en.wikipedia.org/wiki/Half-precision_floating-point_format>.
     F16(f16),
 
     /// 32-bit floating point number.
