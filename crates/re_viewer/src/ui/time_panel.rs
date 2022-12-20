@@ -889,19 +889,7 @@ fn loop_selection_ui(
             time_area_painter.rect_filled(rect, 1.0, main_color);
 
             if is_active && !selected_range.is_empty() {
-                let range_text =
-                    format_duration(time_ctrl.time_type(), selected_range.length().abs());
-                if !range_text.is_empty() {
-                    let font_id = egui::TextStyle::Body.resolve(ui.style());
-                    let text_color = ui.visuals().strong_text_color();
-                    time_area_painter.text(
-                        rect.left_center(),
-                        Align2::LEFT_CENTER,
-                        range_text,
-                        font_id,
-                        text_color,
-                    );
-                }
+                paint_range_text(time_ctrl, selected_range, ui, time_area_painter, rect);
             }
 
             // Check for interaction:
@@ -1058,6 +1046,66 @@ fn loop_selection_ui(
 
     if did_interact {
         time_ctrl.looping = Looping::Selection;
+    }
+}
+
+fn paint_range_text(
+    time_ctrl: &mut TimeControl,
+    selected_range: TimeRangeF,
+    ui: &mut egui::Ui,
+    painter: &egui::Painter,
+    selection_rect: Rect,
+) {
+    let text_color = ui.visuals().strong_text_color();
+
+    let arrow_color = text_color.gamma_multiply(0.75);
+    let arrow_stroke = Stroke::new(1.0, arrow_color);
+
+    fn paint_arrow_from_to(painter: &egui::Painter, origin: Pos2, to: Pos2, stroke: Stroke) {
+        use egui::emath::Rot2;
+        let vec = to - origin;
+        let rot = Rot2::from_angle(std::f32::consts::TAU / 10.0);
+        let tip_length = 6.0;
+        let tip = origin + vec;
+        let dir = vec.normalized();
+        painter.line_segment([origin, tip], stroke);
+        painter.line_segment([tip, tip - tip_length * (rot * dir)], stroke);
+        painter.line_segment([tip, tip - tip_length * (rot.inverse() * dir)], stroke);
+    }
+
+    let range_text = format_duration(time_ctrl.time_type(), selected_range.length().abs());
+    if range_text.is_empty() {
+        return;
+    }
+
+    let font_id = egui::TextStyle::Small.resolve(ui.style());
+    let text_rect = painter.text(
+        selection_rect.center(),
+        Align2::CENTER_CENTER,
+        range_text,
+        font_id,
+        text_color,
+    );
+
+    // Draw arrows on either side, if we have the space for it:
+    let text_rect = text_rect.expand(2.0); // Add some margin around text
+    let selection_rect = selection_rect.shrink(1.0); // Add some margin inside of the selection rect
+    let min_arrow_length = 12.0;
+    if selection_rect.left() + min_arrow_length <= text_rect.left() {
+        paint_arrow_from_to(
+            painter,
+            text_rect.left_center(),
+            selection_rect.left_center(),
+            arrow_stroke,
+        );
+    }
+    if text_rect.right() + min_arrow_length <= selection_rect.right() {
+        paint_arrow_from_to(
+            painter,
+            text_rect.right_center(),
+            selection_rect.right_center(),
+            arrow_stroke,
+        );
     }
 }
 
@@ -1517,7 +1565,7 @@ fn paint_time_range_ticks(
     time_type: TimeType,
     time_range: &TimeRangeF,
 ) {
-    let font_id = egui::TextStyle::Body.resolve(ui.style());
+    let font_id = egui::TextStyle::Small.resolve(ui.style());
 
     let shapes = match time_type {
         TimeType::Time => {
@@ -1706,8 +1754,8 @@ fn paint_ticks(
                 // Text at top:
                 shapes.push(egui::Shape::text(
                     fonts,
-                    pos2(text_x, canvas.min.y),
-                    Align2::LEFT_TOP,
+                    pos2(text_x, lerp(canvas.y_range(), 0.25)),
+                    Align2::LEFT_CENTER,
                     &text,
                     font_id.clone(),
                     text_color,
