@@ -1,6 +1,6 @@
 use re_log_types::{
     external::arrow2_convert::{
-        deserialize::{arrow_array_deserialize_iterator, ArrowArray, ArrowDeserialize},
+        deserialize::{ArrowArray, ArrowDeserialize},
         field::ArrowField,
     },
     field_types::Instance,
@@ -19,9 +19,7 @@ impl EntityView {
         for<'a> &'a C0::ArrayType: IntoIterator,
     {
         let instance_iter = self.primary.iter_instance_keys()?;
-
-        let prim_iter =
-            arrow_array_deserialize_iterator::<Option<C0>>(self.primary.values.as_ref())?;
+        let prim_iter = self.primary.iter_values::<C0>()?;
 
         itertools::izip!(instance_iter, prim_iter).for_each(|(instance, primary)| {
             if let Some(primary) = primary {
@@ -88,10 +86,7 @@ impl EntityView {
         for<'a> &'a C1::ArrayType: IntoIterator,
     {
         let instance_iter = self.primary.iter_instance_keys()?;
-
-        let prim_iter =
-            arrow_array_deserialize_iterator::<Option<C0>>(self.primary.values.as_ref())?;
-
+        let prim_iter = self.primary.iter_values::<C0>()?;
         let c1_iter = self.iter_component::<C1>()?;
 
         itertools::izip!(instance_iter, prim_iter, c1_iter).for_each(
@@ -123,12 +118,8 @@ impl EntityView {
         for<'a> &'a C2::ArrayType: IntoIterator,
     {
         let instance_iter = self.primary.iter_instance_keys()?;
-
-        let prim_iter =
-            arrow_array_deserialize_iterator::<Option<C0>>(self.primary.values.as_ref())?;
-
+        let prim_iter = self.primary.iter_values::<C0>()?;
         let c1_iter = self.iter_component::<C1>()?;
-
         let c2_iter = self.iter_component::<C2>()?;
 
         itertools::izip!(instance_iter, prim_iter, c1_iter, c2_iter).for_each(

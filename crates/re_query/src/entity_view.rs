@@ -12,6 +12,8 @@ use re_log_types::{
     ComponentName,
 };
 
+use crate::QueryError;
+
 /// A type-erased array of [`Component`] values and the corresponding [`Instance`] keys.
 ///
 /// `instance_keys` must always be sorted if present. If not present we assume implicit
@@ -55,6 +57,13 @@ impl ComponentWithInstances {
         C::ArrayType: ArrowArray,
         for<'a> &'a C::ArrayType: IntoIterator,
     {
+        if C::name() != self.name {
+            return Err(QueryError::TypeMismatch {
+                actual: self.name,
+                requested: C::name(),
+            });
+        }
+
         Ok(arrow_array_deserialize_iterator::<Option<C>>(
             self.values.as_ref(),
         )?)
