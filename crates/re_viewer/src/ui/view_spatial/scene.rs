@@ -5,7 +5,6 @@ use egui::NumExt as _;
 use glam::{vec3, Vec3};
 use itertools::Itertools as _;
 
-use re_arrow_store::TimeQuery;
 use re_data_store::query::{
     visit_type_data_1, visit_type_data_2, visit_type_data_3, visit_type_data_4, visit_type_data_5,
 };
@@ -950,14 +949,11 @@ impl SceneSpatial {
         // Second pass for arrow-stored rectangles
         for obj_path in query.obj_paths {
             let ent_path = obj_path;
-            let timeline_query = re_arrow_store::TimelineQuery::new(
-                query.timeline,
-                TimeQuery::LatestAt(query.latest_at.as_i64()),
-            );
+            let query = re_arrow_store::LatestAtQuery::new(query.timeline, query.latest_at);
 
             if let Ok(df) = query_entity_with_primary(
                 &ctx.log_db.obj_db.arrow_store,
-                &timeline_query,
+                &query,
                 ent_path,
                 Rect2D::name(),
                 &[ColorRGBA::name()],

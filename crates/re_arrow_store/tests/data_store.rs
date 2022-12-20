@@ -6,7 +6,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use arrow2::array::{Array, ListArray, UInt32Array};
 use polars_core::{prelude::*, series::Series};
-use re_arrow_store::{test_bundle, DataStore, TimeQuery, TimelineQuery};
+use re_arrow_store::{test_bundle, DataStore, LatestAtQuery, TimeInt};
 use re_log_types::{
     datagen::{build_frame_nr, build_instances, build_some_point2d, build_some_rects},
     field_types::{Instance, Point2D, Rect2D},
@@ -30,26 +30,26 @@ fn latest_at_impl(store: &mut DataStore) {
 
     let ent_path = EntityPath::from("this/that");
 
-    let frame0 = 0;
-    let frame1 = 1;
-    let frame2 = 2;
-    let frame3 = 3;
-    let frame4 = 4;
+    let frame0 = 0.into();
+    let frame1 = 1.into();
+    let frame2 = 2.into();
+    let frame3 = 3.into();
+    let frame4 = 4.into();
 
     let (instances1, rects1) = (build_instances(3), build_some_rects(3));
-    let bundle1 = test_bundle!(ent_path @ [build_frame_nr(1)] => [instances1.clone(), rects1]);
+    let bundle1 = test_bundle!(ent_path @ [build_frame_nr(frame1)] => [instances1.clone(), rects1]);
     store.insert(&bundle1).unwrap();
 
     let points2 = build_some_point2d(3);
-    let bundle2 = test_bundle!(ent_path @ [build_frame_nr(2)] => [instances1, points2]);
+    let bundle2 = test_bundle!(ent_path @ [build_frame_nr(frame2)] => [instances1, points2]);
     store.insert(&bundle2).unwrap();
 
     let points3 = build_some_point2d(10);
-    let bundle3 = test_bundle!(ent_path @ [build_frame_nr(3)] => [points3]);
+    let bundle3 = test_bundle!(ent_path @ [build_frame_nr(frame3)] => [points3]);
     store.insert(&bundle3).unwrap();
 
     let rects4 = build_some_rects(5);
-    let bundle4 = test_bundle!(ent_path @ [build_frame_nr(4)] => [rects4]);
+    let bundle4 = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [rects4]);
     store.insert(&bundle4).unwrap();
 
     if let err @ Err(_) = store.sanity_check() {
@@ -85,15 +85,15 @@ fn latest_at_impl(store: &mut DataStore) {
 fn assert_joint_query_at(
     store: &mut DataStore,
     ent_path: &EntityPath,
-    frame_nr: i64,
+    frame_nr: TimeInt,
     bundles: &[(ComponentName, &MsgBundle)],
 ) {
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
     let components_all = &[Rect2D::name(), Point2D::name()];
 
-    let df = joint_query(
+    let df = joint_latest_at(
         store,
-        &TimelineQuery::new(timeline_frame_nr, TimeQuery::LatestAt(frame_nr)),
+        &LatestAtQuery::new(timeline_frame_nr, frame_nr),
         ent_path,
         components_all,
     );
@@ -109,15 +109,15 @@ fn assert_joint_query_at(
 // Queries a bunch of components and their clustering keys, joins everything together, and returns
 // the resulting `DataFrame`.
 // TODO: doc
-fn joint_query(
+fn joint_latest_at(
     store: &DataStore,
-    timeline_query: &TimelineQuery,
+    query: &LatestAtQuery,
     ent_path: &EntityPath,
     primaries: &[ComponentName],
 ) -> DataFrame {
     let dfs = primaries
         .iter()
-        .map(|primary| query(store, timeline_query, ent_path, *primary))
+        .map(|primary| latest_at(store, query, ent_path, *primary))
         .filter(|df| !df.is_empty());
 
     let df = dfs
@@ -136,15 +136,15 @@ fn joint_query(
 
 /// Query a single component and its clustering key, returns a `DataFrame`.
 // TODO: doc
-fn query(
+fn latest_at(
     store: &DataStore,
-    timeline_query: &TimelineQuery,
+    query: &LatestAtQuery,
     ent_path: &EntityPath,
     primary: ComponentName,
 ) -> DataFrame {
     let components = &[Instance::name(), primary];
     let row_indices = store
-        .query(timeline_query, ent_path, primary, components)
+        .latest_at(query, ent_path, primary, components)
         .unwrap_or([None; 2]);
     let results = store.get(components, &row_indices);
 

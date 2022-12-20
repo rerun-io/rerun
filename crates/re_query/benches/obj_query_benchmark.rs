@@ -4,7 +4,7 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 use criterion::{criterion_group, criterion_main, Criterion};
 
 use itertools::Itertools;
-use re_arrow_store::{DataStore, TimeQuery, TimelineQuery};
+use re_arrow_store::{DataStore, LatestAtQuery};
 use re_log_types::{
     datagen::{build_frame_nr, build_some_colors, build_some_point2d},
     field_types::{ColorRGBA, Instance, Point2D},
@@ -100,7 +100,7 @@ fn build_messages(paths: &[ObjPath], pts: usize) -> Vec<MsgBundle> {
                 try_build_msg_bundle2(
                     MsgId::ZERO,
                     path.clone(),
-                    [build_frame_nr(frame_idx as _)],
+                    [build_frame_nr((frame_idx as i64).into())],
                     (build_some_point2d(pts), build_some_colors(pts)),
                 )
                 .unwrap()
@@ -121,21 +121,16 @@ struct Point {
 }
 
 fn query_and_visit(store: &mut DataStore, paths: &[ObjPath]) -> Vec<Point> {
-    let time_query = TimeQuery::LatestAt((NUM_FRAMES as i64) / 2);
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
-    let timeline_query = TimelineQuery::new(timeline_frame_nr, time_query);
+    let query = LatestAtQuery::new(timeline_frame_nr, (NUM_FRAMES as i64 / 2).into());
 
     let mut points = Vec::with_capacity(NUM_POINTS as _);
 
     // TODO(jleibs): Add Radius once we have support for it in field_types
     for path in paths.iter() {
-        if let Ok(df) = query_entity_with_primary(
-            store,
-            &timeline_query,
-            path,
-            Point2D::name(),
-            &[ColorRGBA::name()],
-        ) {
+        if let Ok(df) =
+            query_entity_with_primary(store, &query, path, Point2D::name(), &[ColorRGBA::name()])
+        {
             visit_components3(
                 &df,
                 |pos: &Point2D, _instance: Option<&Instance>, color: Option<&ColorRGBA>| {

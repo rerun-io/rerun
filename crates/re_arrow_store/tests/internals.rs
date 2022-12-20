@@ -51,7 +51,7 @@ fn pathological_bucket_topology() {
         let ent_path = EntityPath::from("this/that");
         let nb_instances = 1;
 
-        let time_point = TimePoint::from([build_frame_nr(frame_nr)]);
+        let time_point = TimePoint::from([build_frame_nr(frame_nr.into())]);
         for _ in 0..num {
             let msg = MsgBundle::new(
                 MsgId::ZERO,
@@ -81,7 +81,7 @@ fn pathological_bucket_topology() {
 
         let msgs = range
             .map(|frame_nr| {
-                let time_point = TimePoint::from([build_frame_nr(frame_nr)]);
+                let time_point = TimePoint::from([build_frame_nr(frame_nr.into())]);
                 MsgBundle::new(
                     MsgId::ZERO,
                     ent_path.clone(),

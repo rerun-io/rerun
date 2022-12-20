@@ -1,5 +1,5 @@
 use polars_core::prelude::*;
-use re_arrow_store::{DataStore, TimelineQuery};
+use re_arrow_store::{DataStore, LatestAtQuery};
 use re_log_types::{field_types::Instance, msg_bundle::Component, ComponentName, ObjPath};
 
 #[derive(thiserror::Error, Debug)]
@@ -55,14 +55,14 @@ pub type Result<T> = std::result::Result<T, QueryError>;
 ///
 pub fn get_component_with_instances(
     store: &DataStore,
-    timeline_query: &TimelineQuery,
+    query: &LatestAtQuery,
     ent_path: &ObjPath,
     component: ComponentName,
 ) -> Result<DataFrame> {
     let components = [Instance::name(), component];
 
     let row_indices = store
-        .query(timeline_query, ent_path, component, &components)
+        .latest_at(query, ent_path, component, &components)
         .ok_or(QueryError::PrimaryNotFound)?;
 
     let results = store.get(&components, &row_indices);
@@ -146,12 +146,12 @@ fn add_instances_and_sort_if_needed(df: &DataFrame) -> Result<DataFrame> {
 ///
 pub fn query_entity_with_primary<const N: usize>(
     store: &DataStore,
-    timeline_query: &TimelineQuery,
+    query: &LatestAtQuery,
     ent_path: &ObjPath,
     primary: ComponentName,
     components: &[ComponentName; N],
 ) -> Result<DataFrame> {
-    let df = get_component_with_instances(store, timeline_query, ent_path, primary)?;
+    let df = get_component_with_instances(store, query, ent_path, primary)?;
 
     // TODO(jleibs): lots of room for optimization here. Once "instance" is
     // guaranteed to be sorted we should be able to leverage this during the
@@ -167,7 +167,7 @@ pub fn query_entity_with_primary<const N: usize>(
             // If we find the component, then we try to left-join with the existing dataframe
             // If the column we are looking up isn't found, just return the dataframe as is
             // For any other error, escalate
-            match get_component_with_instances(store, timeline_query, ent_path, component) {
+            match get_component_with_instances(store, query, ent_path, component) {
                 Ok(component_df) => {
                     let component_df = add_instances_and_sort_if_needed(&component_df)?;
                     // We use an asof join which takes advantage of the fact
@@ -204,7 +204,7 @@ pub fn __populate_example_store() -> DataStore {
     let mut store = DataStore::new(Instance::name(), Default::default());
 
     let ent_path = "point";
-    let timepoint = [build_frame_nr(123)];
+    let timepoint = [build_frame_nr(123.into())];
 
     let instances = vec![Instance(42), Instance(96)];
     let points = vec![Point2D { x: 1.0, y: 2.0 }, Point2D { x: 3.0, y: 4.0 }];
@@ -225,20 +225,16 @@ pub fn __populate_example_store() -> DataStore {
 #[test]
 fn component_with_instances() {
     use crate::dataframe_util::df_builder2;
-    use re_arrow_store::{TimeQuery, TimelineQuery};
+    use re_arrow_store::LatestAtQuery;
     use re_log_types::{field_types::Point2D, msg_bundle::Component as _, Timeline};
 
     let store = __populate_example_store();
 
     let ent_path = "point";
-    let timeline_query = TimelineQuery::new(
-        Timeline::new_sequence("frame_nr"),
-        TimeQuery::LatestAt(123.into()),
-    );
+    let query = LatestAtQuery::new(Timeline::new_sequence("frame_nr"), 123.into());
 
     let df =
-        get_component_with_instances(&store, &timeline_query, &ent_path.into(), Point2D::name())
-            .unwrap();
+        get_component_with_instances(&store, &query, &ent_path.into(), Point2D::name()).unwrap();
     //eprintln!("{:?}", df);
 
     let instances = vec![Some(Instance(42)), Some(Instance(96))];

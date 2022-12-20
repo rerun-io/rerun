@@ -4,7 +4,7 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 use arrow2::array::{Array, StructArray};
 use criterion::{criterion_group, criterion_main, Criterion};
 
-use re_arrow_store::{DataStore, TimeQuery, TimelineQuery};
+use re_arrow_store::{DataStore, LatestAtQuery};
 use re_log_types::{
     datagen::{build_frame_nr, build_instances, build_some_point2d, build_some_rects},
     field_types::{Instance, Rect2D},
@@ -27,10 +27,10 @@ const NUM_RECTS: i64 = 1;
 
 // --- Benchmarks ---
 
-fn batch_rects(c: &mut Criterion) {
+fn latest_at_batch(c: &mut Criterion) {
     {
         let msgs = build_messages(NUM_RECTS as usize);
-        let mut group = c.benchmark_group("datastore/batch/rects");
+        let mut group = c.benchmark_group("datastore/latest_at/batch/rects");
         group.throughput(criterion::Throughput::Elements(
             (NUM_RECTS * NUM_FRAMES) as _,
         ));
@@ -42,7 +42,7 @@ fn batch_rects(c: &mut Criterion) {
     {
         let msgs = build_messages(NUM_RECTS as usize);
         let mut store = insert_messages(Instance::name(), msgs.iter());
-        let mut group = c.benchmark_group("datastore/batch/rects");
+        let mut group = c.benchmark_group("datastore/latest_at/batch/rects");
         group.throughput(criterion::Throughput::Elements(NUM_RECTS as _));
         group.bench_function("query", |b| {
             b.iter(|| {
@@ -59,11 +59,11 @@ fn batch_rects(c: &mut Criterion) {
     }
 }
 
-fn missing_components(c: &mut Criterion) {
+fn latest_at_missing_components(c: &mut Criterion) {
     {
         let msgs = build_messages(NUM_RECTS as usize);
         let mut store = insert_messages(Instance::name(), msgs.iter());
-        let mut group = c.benchmark_group("datastore/missing_components");
+        let mut group = c.benchmark_group("datastore/latest_at/missing_components");
         group.throughput(criterion::Throughput::Elements(NUM_RECTS as _));
         group.bench_function("primary", |b| {
             b.iter(|| {
@@ -80,7 +80,7 @@ fn missing_components(c: &mut Criterion) {
     {
         let msgs = build_messages(NUM_RECTS as usize);
         let mut store = insert_messages(Instance::name(), msgs.iter());
-        let mut group = c.benchmark_group("datastore/missing_components");
+        let mut group = c.benchmark_group("datastore/latest_at/missing_components");
         group.throughput(criterion::Throughput::Elements(NUM_RECTS as _));
         group.bench_function("secondaries", |b| {
             b.iter(|| {
@@ -101,7 +101,7 @@ fn missing_components(c: &mut Criterion) {
     }
 }
 
-criterion_group!(benches, batch_rects, missing_components);
+criterion_group!(benches, latest_at_batch, latest_at_missing_components);
 criterion_main!(benches);
 
 // --- Helpers ---
@@ -113,7 +113,7 @@ fn build_messages(n: usize) -> Vec<MsgBundle> {
             try_build_msg_bundle3(
                 MsgId::ZERO,
                 "rects",
-                [build_frame_nr(frame_idx)],
+                [build_frame_nr(frame_idx.into())],
                 (
                     build_instances(n),
                     build_some_point2d(n),
@@ -139,13 +139,12 @@ fn query_messages<const N: usize>(
     primary: ComponentName,
     secondaries: &[ComponentName; N],
 ) -> [Option<Box<dyn Array>>; N] {
-    let time_query = TimeQuery::LatestAt(NUM_FRAMES / 2);
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
-    let timeline_query = TimelineQuery::new(timeline_frame_nr, time_query);
+    let timeline_query = LatestAtQuery::new(timeline_frame_nr, (NUM_FRAMES / 2).into());
     let ent_path = EntityPath::from("rects");
 
     let row_indices = store
-        .query(&timeline_query, &ent_path, primary, secondaries)
+        .latest_at(&timeline_query, &ent_path, primary, secondaries)
         .unwrap_or_else(|| [(); N].map(|_| None));
     store.get(secondaries, &row_indices)
 }
