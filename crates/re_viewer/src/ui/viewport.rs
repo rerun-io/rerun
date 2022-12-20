@@ -443,8 +443,9 @@ impl Viewport {
 
             let frame = ctx.re_ui.hovering_frame();
             hovering_panel(ui, frame, response.rect, |ui| {
-                if ui
-                    .button("⬅")
+                if ctx
+                    .re_ui
+                    .small_icon(ui, &re_ui::icons::MINIMIZE)
                     .on_hover_text("Restore - show all spaces")
                     .clicked()
                 {
@@ -600,8 +601,10 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
         // Show buttons for maximize and space view options:
         let frame = self.ctx.re_ui.hovering_frame();
         hovering_panel(ui, frame, response.rect, |ui| {
-            if ui
-                .button("🗖")
+            if self
+                .ctx
+                .re_ui
+                .small_icon(ui, &re_ui::icons::MAXIMIZE)
                 .on_hover_text("Maximize Space View")
                 .clicked()
             {
