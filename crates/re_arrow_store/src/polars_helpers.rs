@@ -43,7 +43,7 @@ use crate::{DataStore, TimelineQuery};
 /// ```
 ///
 /// Outputs:
-/// ```ignore
+/// ```text
 /// ┌────────────────┬─────────────────────┐
 /// │ rerun.instance ┆ rerun.point2d       │
 /// │ ---            ┆ ---                 │
@@ -121,7 +121,7 @@ pub fn latest_component(
 /// ```
 ///
 /// Outputs:
-/// ```ignore
+/// ```text
 /// ┌────────────────┬─────────────────────┬───────────────────┐
 /// │ rerun.instance ┆ rerun.point2d       ┆ rerun.rect2d      │
 /// │ ---            ┆ ---                 ┆ ---               │

@@ -788,7 +788,7 @@ impl ComponentTable {
     /// - the array layer corresponds to the different instances within that single row,
     /// - and finally the struct layer holds the components themselves.
     /// E.g.:
-    /// ```ignore
+    /// ```text
     /// [[{x: 8.687487, y: 1.9590926}, {x: 2.0559108, y: 0.1494348}, {x: 7.09219, y: 0.9616637}]]
     /// ```
     //
@@ -909,7 +909,7 @@ impl ComponentBucket {
     /// - the array layer corresponds to the different instances within that single row,
     /// - and finally the struct layer holds the components themselves.
     /// E.g.:
-    /// ```ignore
+    /// ```text
     /// [[{x: 8.687487, y: 1.9590926}, {x: 2.0559108, y: 0.1494348}, {x: 7.09219, y: 0.9616637}]]
     /// ```
     pub fn push(&mut self, time_point: &TimePoint, rows_single: &dyn Array) -> u64 {
