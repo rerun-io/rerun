@@ -76,6 +76,8 @@ fn latest_at_impl(store: &mut DataStore) {
         assert_eq!(df_expected, df, "{store}");
     };
 
+    // TODO(cmc): bring back some log_time scenarios
+
     assert_latest_components(frame0, &[]);
     assert_latest_components(frame1, &[(Rect2D::name(), &bundle1)]);
     assert_latest_components(

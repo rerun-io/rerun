@@ -136,12 +136,24 @@ impl DataStoreConfig {
 /// For even more information, you can set `RERUN_DATA_STORE_DISPLAY_SCHEMAS=1` in your
 /// environment, which will result in additional schema information being printed out.
 pub struct DataStore {
-    // TODO: doc
+    /// The cluster key specifies a column/component that is guaranteed to always be present for
+    /// every single row of data within the store.
+    ///
+    /// In addition to always being present, the payload of the cluster key..:
+    /// - is always increasingly sorted,
+    /// - is always dense (no validity bitmap),
+    /// - and never contains duplicate entries.
+    ///
+    /// This makes the cluster key a perfect candidate for joining query results together, and
+    /// doing so as efficiently as possible.
+    ///
+    /// See [`Self::insert`] for more information.
     pub(crate) cluster_key: ComponentName,
     /// The configuration of the data store (e.g. bucket sizes).
     pub(crate) config: DataStoreConfig,
 
-    // TODO: doc
+    /// Used to cache auto-generated cluster components, i.e. `[0]`, `[0, 1]`, `[0, 1, 2]`, etc
+    /// so that they properly deduplicated.
     pub(crate) cluster_comp_cache: IntMap<usize, RowIndex>,
 
     /// Maps an entity to its index, for a specific timeline.
@@ -161,6 +173,7 @@ pub struct DataStore {
 }
 
 impl DataStore {
+    /// See [`Self::cluster_key`] for more information about the cluster key.
     pub fn new(cluster_key: ComponentName, config: DataStoreConfig) -> Self {
         Self {
             cluster_key,

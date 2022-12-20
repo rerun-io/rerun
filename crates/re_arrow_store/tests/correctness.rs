@@ -11,7 +11,7 @@ use re_log_types::{
     datagen::{build_frame_nr, build_instances, build_log_time, build_some_point2d},
     field_types::Instance,
     msg_bundle::{wrap_in_listarray, Component as _, ComponentBundle},
-    Duration, MsgId, ObjPath as EntityPath, Time, TimeType, Timeline,
+    Duration, ObjPath as EntityPath, Time, TimeType, Timeline,
 };
 
 // ---

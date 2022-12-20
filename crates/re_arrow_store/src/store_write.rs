@@ -62,6 +62,10 @@ impl DataStore {
     ///
     /// * All components across the bundle must share the same number of rows.
     /// * All components within a single row must share the same number of instances.
+    ///
+    /// If the bundle doesn't carry a payload for the cluster key, one will be auto-generated
+    /// based on the length of the components in the payload, in the form of an array of
+    /// monotonically increasing u64s going from 0 to N.
     pub fn insert(&mut self, bundle: &MsgBundle) -> WriteResult<()> {
         // TODO(cmc): kind & insert_id need to somehow propagate through the span system.
         self.insert_id += 1;
@@ -148,12 +152,8 @@ impl DataStore {
         components: &[ComponentBundle],
         row_indices: &mut IntMap<ComponentName, RowIndex>,
     ) -> WriteResult<()> {
-        let (cluster_row_idx, cluster_len) = self.get_or_create_cluster_component(
-            row_nr,
-            components,
-            self.cluster_key,
-            time_point,
-        )?;
+        let (cluster_row_idx, cluster_len) =
+            self.get_or_create_cluster_component(row_nr, components, self.cluster_key, time_point)?;
 
         // Insert the auto-generated cluster component if needed.
         row_indices.insert(self.cluster_key, cluster_row_idx);
@@ -213,9 +213,7 @@ impl DataStore {
         cluster_key: ComponentName,
         time_point: &TimePoint,
     ) -> WriteResult<(RowIndex, usize)> {
-        let cluster_comp = components
-            .iter()
-            .find(|bundle| bundle.name == cluster_key);
+        let cluster_comp = components.iter().find(|bundle| bundle.name == cluster_key);
 
         enum RowIndexOrData {
             RowIndex(RowIndex),

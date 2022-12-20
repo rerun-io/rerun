@@ -1,6 +1,10 @@
 //! The Rerun Arrow-based datastore.
 //!
 //! See `src/store.rs` for an overview of the core datastructures.
+//!
+//! ## Feature flags
+#![doc = document_features::document_features!()]
+//!
 
 mod arrow_util;
 mod store;

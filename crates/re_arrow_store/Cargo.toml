@@ -6,10 +6,11 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
-# TODO: feature docs
 [features]
 default = ["polars"] # TODO: remove
+## Enables `parking_lot`'s deadlock detection background thread.
 deadlock_detection = ["parking_lot/deadlock_detection"]
+## Integration with `polars`, to efficiently use the datastore with dataframes.
 polars = ["dep:polars-core"]
 
 [dependencies]
