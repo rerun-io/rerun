@@ -1,16 +1,18 @@
 use re_data_store::{InstanceId, ObjPath, ObjectTree, ObjectsProperties, TimeInt};
 
-use nohash_hasher::{IntMap, IntSet};
+use nohash_hasher::IntSet;
 
 use crate::{
     misc::{
         space_info::{SpaceInfo, SpacesInfo},
         ViewerContext,
     },
+    ui::transform_cache::TransformCache,
     ui::view_category::categorize_obj_path,
 };
 
 use super::{
+    transform_cache::ReferenceFromObjTransform,
     view_bar_chart,
     view_category::ViewCategory,
     view_spatial::{self, SpatialNavigationMode},
@@ -69,6 +71,7 @@ impl SpaceView {
         category: ViewCategory,
         space_path: ObjPath,
         space_info: &SpaceInfo,
+        spaces_info: &SpacesInfo,
         default_spatial_naviation_mode: SpatialNavigationMode,
     ) -> Self {
         let mut view_state = ViewState::default();
@@ -87,7 +90,7 @@ impl SpaceView {
             id: SpaceViewId::random(),
             root_path,
             space_path,
-            queried_objects: Self::default_queried_objects(ctx, category, space_info),
+            queried_objects: Self::default_queried_objects(ctx, category, space_info, spaces_info),
             obj_properties: Default::default(),
             view_state,
             category,
@@ -99,17 +102,19 @@ impl SpaceView {
     fn default_queried_objects(
         ctx: &ViewerContext<'_>,
         category: ViewCategory,
-        space_info: &SpaceInfo,
+        root_space: &SpaceInfo,
+        spaces_info: &SpacesInfo,
     ) -> IntSet<ObjPath> {
         crate::profile_function!();
 
         let timeline = ctx.rec_cfg.time_ctrl.timeline();
         let log_db = &ctx.log_db;
-        space_info
-            .descendants_without_transform
+
+        root_space
+            .descendants_with_rigid_or_no_transform(spaces_info)
             .iter()
-            .filter(|obj_path| categorize_obj_path(timeline, log_db, obj_path).contains(category))
             .cloned()
+            .filter(|obj_path| categorize_obj_path(timeline, log_db, obj_path).contains(category))
             .collect()
     }
 
@@ -120,46 +125,8 @@ impl SpaceView {
         let Some(space) = spaces_info.spaces.get(&self.space_path) else {
             return;
         };
-        self.queried_objects = Self::default_queried_objects(ctx, self.category, space);
-    }
-
-    /// All object paths that are under the root but can't be added to the space view and why.
-    ///
-    /// We're not storing this since the circumstances for this may change over time.
-    /// (either by choosing a different reference space path or by having new paths added)
-    fn unreachable_elements(&mut self, spaces_info: &SpacesInfo) -> IntMap<ObjPath, &'static str> {
-        crate::profile_function!();
-
-        let mut forced_invisible = IntMap::default();
-
-        let Some(reference_space) = spaces_info.spaces.get(&self.space_path) else {
-            return forced_invisible; // Should never happen?
-        };
-
-        // Direct children of the current reference space.
-        for (path, transform) in &reference_space.child_spaces {
-            match transform {
-                re_log_types::Transform::Unknown => {}
-
-                // TODO(andreas): This should be made possible!
-                re_log_types::Transform::Rigid3(_) => {
-                    forced_invisible.insert(
-                        path.clone(),
-                        "Can't display elements with a rigid transform relative to the reference path in the same spaceview yet",
-                    );
-                }
-
-                // TODO(andreas): This should be made possible *iff* the reference space itself doesn't define a pinhole camera (or is there a way to deal with that?)
-                re_log_types::Transform::Pinhole(_) => {
-                    forced_invisible.insert(
-                        path.clone(),
-                        "Can't display elements with a pinhole transform relative to the reference path in the same spaceview yet",
-                    );
-                }
-            }
-        }
-
-        forced_invisible
+        self.queried_objects =
+            Self::default_queried_objects(ctx, self.category, space, spaces_info);
     }
 
     pub fn selection_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
@@ -229,8 +196,11 @@ impl SpaceView {
         .body(|ui| {
             if let Some(subtree) = obj_tree.subtree(&self.root_path) {
                 let spaces_info = SpacesInfo::new(&ctx.log_db.obj_db, &ctx.rec_cfg.time_ctrl);
-                let forced_invisible = self.unreachable_elements(&spaces_info);
-                self.obj_tree_children_ui(ctx, ui, &spaces_info, subtree, &forced_invisible);
+                if let Some(reference_space) = spaces_info.spaces.get(&self.space_path) {
+                    let transforms =
+                        TransformCache::determine_transforms(&spaces_info, reference_space);
+                    self.obj_tree_children_ui(ctx, ui, &spaces_info, subtree, &transforms);
+                }
             }
         });
     }
@@ -241,7 +211,7 @@ impl SpaceView {
         ui: &mut egui::Ui,
         spaces_info: &SpacesInfo,
         tree: &ObjectTree,
-        forced_invisible: &IntMap<ObjPath, &str>,
+        transforms: &TransformCache,
     ) {
         if tree.children.is_empty() {
             ui.weak("(nothing)");
@@ -255,7 +225,7 @@ impl SpaceView {
                 spaces_info,
                 &path_comp.to_string(),
                 child_tree,
-                forced_invisible,
+                transforms,
             );
         }
     }
@@ -268,15 +238,14 @@ impl SpaceView {
         spaces_info: &SpacesInfo,
         name: &str,
         tree: &ObjectTree,
-        forced_invisible: &IntMap<ObjPath, &str>,
+        transforms: &TransformCache,
     ) {
-        let disabled_reason = if self.space_path.is_descendant_of(&tree.path) {
-            Some(&"Can't display entities that aren't children of the reference path yet.")
-        } else {
-            forced_invisible.get(&tree.path)
+        let is_reachable = match transforms.reference_from_obj(&tree.path) {
+            ReferenceFromObjTransform::ConnectedViaUnknownOrPinhole => false,
+            ReferenceFromObjTransform::Rigid(_) => true,
         };
         let response = ui
-            .add_enabled_ui(disabled_reason.is_none(), |ui| {
+            .add_enabled_ui(is_reachable, |ui| {
                 if tree.is_leaf() {
                     ui.horizontal(|ui| {
                         self.object_path_button(ctx, ui, &tree.path, spaces_info, name);
@@ -301,14 +270,15 @@ impl SpaceView {
                         }
                     })
                     .body(|ui| {
-                        self.obj_tree_children_ui(ctx, ui, spaces_info, tree, forced_invisible);
+                        self.obj_tree_children_ui(ctx, ui, spaces_info, tree, transforms);
                     });
                 }
             })
             .response;
 
-        if let Some(disabled_reason) = disabled_reason {
-            response.on_hover_text(*disabled_reason);
+        if !is_reachable {
+            response
+                .on_hover_text("Path can't be reached by a supported transform from this space.");
         }
     }
 
@@ -399,10 +369,15 @@ impl SpaceView {
             }
 
             ViewCategory::Spatial => {
+                let Some(reference_space) = spaces_info.spaces.get(&self.space_path) else {
+                    return;
+                };
+                let transforms = TransformCache::determine_transforms(spaces_info, reference_space);
                 let mut scene = view_spatial::SceneSpatial::default();
                 scene.load_objects(
                     ctx,
                     &query,
+                    &transforms,
                     &self.obj_properties,
                     self.view_state.state_spatial.hovered_instance_hash(),
                 );

@@ -358,7 +358,7 @@ fn view_2d_scrollable(
 
             for (a, b) in vertices.tuple_windows() {
                 let line_segment_distance_sq = crate::math::line_segment_distance_sq_to_point_2d(
-                    [a.pos.truncate(), b.pos.truncate()],
+                    [a.position.truncate(), b.position.truncate()],
                     pointer_pos_space_glam,
                 );
                 min_dist_sq = min_dist_sq.min(line_segment_distance_sq);

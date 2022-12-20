@@ -9,7 +9,7 @@ var position_data_texture: texture_2d<f32>;
 var color_texture: texture_2d<f32>;
 
 struct BatchUniformBuffer {
-    world_from_scene: Mat4,
+    world_from_obj: Mat4,
 };
 @group(2) @binding(0)
 var<uniform> batch: BatchUniformBuffer;
@@ -40,7 +40,7 @@ fn read_data(idx: i32) -> PointData {
     let color = textureLoad(color_texture, coord, 0);
 
     var data: PointData;
-    let pos_4d = batch.world_from_scene * Vec4(position_data.xyz, 1.0);
+    let pos_4d = batch.world_from_obj * Vec4(position_data.xyz, 1.0);
     data.pos = pos_4d.xyz / pos_4d.w;
     data.unresolved_radius = position_data.w;
     data.color = color;

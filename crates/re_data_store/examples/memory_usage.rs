@@ -52,7 +52,7 @@ unsafe impl std::alloc::GlobalAlloc for TrackingAllocator {
 }
 
 use itertools::Itertools as _;
-use re_data_store::{BatchOrSplat, Index, ObjPath, ObjPathComp, TimelineStore};
+use re_data_store::{BatchOrSplat, Index, ObjPath, TimelineStore};
 use re_log_types::{obj_path, MsgId};
 
 impl TrackingAllocator {

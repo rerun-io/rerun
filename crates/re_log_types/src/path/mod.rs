@@ -126,7 +126,7 @@ macro_rules! obj_path_vec {
             vec![]
         };
         ($($comp: expr),* $(,)?) => {
-            vec![ $(ObjPathComp::from($comp),)+ ]
+            vec![ $($crate::ObjPathComp::from($comp),)+ ]
         };
     }
 
@@ -141,6 +141,6 @@ macro_rules! obj_path {
             vec![]
         };
         ($($comp: expr),* $(,)?) => {
-            ObjPath::from(vec![ $(ObjPathComp::from($comp),)+ ])
+            $crate::ObjPath::from(vec![ $($crate::ObjPathComp::from($comp),)+ ])
         };
     }
