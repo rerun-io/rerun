@@ -56,7 +56,10 @@ impl TimePanel {
         blueprint: &mut Blueprint,
         egui_ctx: &egui::Context,
     ) {
-        let mut panel_frame = ctx.re_ui.panel_frame();
+        let mut panel_frame = egui::Frame {
+            fill: ctx.re_ui.design_tokens.bottom_bar_color,
+            ..ctx.re_ui.panel_frame()
+        };
 
         if blueprint.time_panel_expanded {
             // Since we use scroll bars we want to fill the whole vertical space downwards:
@@ -193,9 +196,6 @@ impl TimePanel {
 
         let time_area_painter = ui.painter().with_clip_rect(time_area_rect);
 
-        ui.painter()
-            .rect_filled(time_area_rect, 1.0, ui.visuals().extreme_bg_color);
-
         ui.separator();
 
         paint_time_ranges_and_ticks(
@@ -256,7 +256,7 @@ impl TimePanel {
 
         // TODO(emilk): fix problem of the fade covering the hlines. Need Shape Z values! https://github.com/emilk/egui/issues/1516
         if true {
-            fade_sides(ui, time_area_rect);
+            fade_sides(ctx, ui, time_area_rect);
         }
 
         self.time_ranges_ui.snap_time_control(ctx);
@@ -1932,12 +1932,12 @@ impl BallScatterer {
 // ----------------------------------------------------------------------------
 
 /// fade left/right sides of time-area, because it looks nice:
-fn fade_sides(ui: &mut egui::Ui, time_area: Rect) {
+fn fade_sides(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, time_area: Rect) {
     let fade_width = SIDE_MARGIN - 1.0;
 
     let base_rect = time_area.expand(0.5); // expand slightly to cover feathering.
 
-    let panel_fill = ui.visuals().panel_fill;
+    let panel_fill = ctx.re_ui.design_tokens.bottom_bar_color;
     let mut left_rect = base_rect;
 
     left_rect.set_right(left_rect.left() + fade_width);

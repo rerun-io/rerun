@@ -1,3 +1,5 @@
+use egui::Color32;
+
 /// The look and feel of the UI.
 ///
 /// Not everything is covered by this.
@@ -5,6 +7,7 @@
 #[derive(Clone, Copy, Debug)]
 pub struct DesignTokens {
     pub top_bar_color: egui::Color32,
+    pub bottom_bar_color: egui::Color32,
 }
 
 impl DesignTokens {
@@ -102,7 +105,8 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
     ctx.set_style(egui_style);
 
     DesignTokens {
-        top_bar_color: floating_color,
+        top_bar_color: Color32::from_gray(20),    // copied from figma
+        bottom_bar_color: Color32::from_gray(25), // copied from figma
     }
 }
 
