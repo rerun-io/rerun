@@ -675,8 +675,8 @@ impl AppState {
         };
 
         let blueprint = blueprints.entry(selected_app_id.clone()).or_default();
-        selection_panel.show_panel(&mut ctx, egui_ctx, blueprint);
         time_panel.show_panel(&mut ctx, blueprint, egui_ctx);
+        selection_panel.show_panel(&mut ctx, egui_ctx, blueprint);
 
         let central_panel_frame = egui::Frame {
             fill: egui_ctx.style().visuals.panel_fill,
