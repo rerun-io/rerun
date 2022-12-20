@@ -215,6 +215,7 @@ fn obj_props_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, obj_props: &mut 
         visible,
         visible_history,
         interactive,
+        ..
     } = obj_props;
 
     ui.checkbox(visible, "Visible");
@@ -245,6 +246,21 @@ fn obj_props_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, obj_props: &mut 
                 )
                 .on_hover_text("Include this much history of the object in the Space View");
             }
+        }
+    });
+
+    // TODO: show only if it is applicable at the moment
+    // TODO: slider in range of the bounding box?
+    // TODO: Logarithmic controls?
+    ui.horizontal(|ui| {
+        ui.label("Image plane distance:");
+        let mut distance = 1.0; // TODO:
+        if ui
+            .add(egui::DragValue::new(&mut distance).clamp_range(0.0..=10.0)) // TODO: how far?
+            .on_hover_text("Controls how far away the image plane is.")
+            .changed()
+        {
+            obj_props.set_pinhole_image_plane_distance(distance);
         }
     });
 }

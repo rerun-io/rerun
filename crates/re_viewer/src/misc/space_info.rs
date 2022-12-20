@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use nohash_hasher::IntSet;
 
-use re_data_store::{log_db::ObjDb, FieldName, ObjPath, ObjectTree, TimelineStore};
+use re_data_store::{log_db::ObjDb, query_transform, ObjPath, ObjectTree, TimelineStore};
 use re_log_types::{ObjectType, Transform, ViewCoordinates};
 
 use super::TimeControl;
@@ -178,27 +178,6 @@ impl SpacesInfo {
 }
 
 // ----------------------------------------------------------------------------
-
-/// Get the latest value of the `_transform` meta-field of the given object.
-fn query_transform(
-    store: Option<&TimelineStore<i64>>,
-    obj_path: &ObjPath,
-    query_time: Option<i64>,
-) -> Option<re_log_types::Transform> {
-    let field_store = store?.get(obj_path)?.get(&FieldName::from("_transform"))?;
-    // `_transform` is only allowed to be stored in a mono-field.
-    let mono_field_store = field_store.get_mono::<re_log_types::Transform>().ok()?;
-
-    // There is a transform, at least at _some_ time.
-    // Is there a transform _now_?
-    let latest = query_time
-        .and_then(|query_time| mono_field_store.latest_at(&query_time))
-        .map(|(_, _, transform)| transform.clone());
-
-    // If not, return an unknown transform to indicate that there is
-    // still a space-split.
-    Some(latest.unwrap_or(Transform::Unknown))
-}
 
 /// Get the latest value of the `_view_coordinates` meta-field of the given object.
 fn query_view_coordinates(

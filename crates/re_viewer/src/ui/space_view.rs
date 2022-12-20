@@ -208,8 +208,11 @@ impl SpaceView {
             if let Some(subtree) = obj_tree.subtree(&self.root_path) {
                 let spaces_info = SpacesInfo::new(&ctx.log_db.obj_db, &ctx.rec_cfg.time_ctrl);
                 if let Some(reference_space) = spaces_info.spaces.get(&self.space_path) {
-                    let transforms =
-                        TransformCache::determine_transforms(&spaces_info, reference_space);
+                    let transforms = TransformCache::determine_transforms(
+                        &spaces_info,
+                        reference_space,
+                        &self.obj_properties,
+                    );
                     self.obj_tree_children_ui(ctx, ui, &spaces_info, subtree, &transforms);
                 }
             }
@@ -383,7 +386,11 @@ impl SpaceView {
                 let Some(reference_space) = spaces_info.spaces.get(&self.space_path) else {
                     return;
                 };
-                let transforms = TransformCache::determine_transforms(spaces_info, reference_space);
+                let transforms = TransformCache::determine_transforms(
+                    spaces_info,
+                    reference_space,
+                    &self.obj_properties,
+                );
                 let mut scene = view_spatial::SceneSpatial::default();
                 scene.load_objects(
                     ctx,

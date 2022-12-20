@@ -1,5 +1,5 @@
 use nohash_hasher::IntMap;
-use re_data_store::ObjPath;
+use re_data_store::{ObjPath, ObjectsProperties};
 use re_log_types::ObjPathHash;
 
 use crate::misc::space_info::{SpaceInfo, SpacesInfo};
@@ -35,6 +35,7 @@ impl TransformCache {
     pub fn determine_transforms(
         spaces_info: &SpacesInfo,
         reference_space: &SpaceInfo,
+        obj_properties: &ObjectsProperties,
     ) -> TransformCache {
         // TODO(andreas): Should we be more selective about the objects we're actually interested in a given space view?
         //                  Ideally we'd be lazy, but we already have all these space infos around anyways...
@@ -42,6 +43,7 @@ impl TransformCache {
         fn gather_child_transforms(
             spaces_info: &SpacesInfo,
             space: &SpaceInfo,
+            obj_properties: &ObjectsProperties,
             reference_from_obj: glam::Mat4,
             reference_from_obj_per_path: &mut IntMap<ObjPathHash, ReferenceFromObjTransform>,
         ) {
@@ -71,11 +73,15 @@ impl TransformCache {
                             // A pinhole camera means that we're looking at an image.
                             // Images are spanned in their local x/y space with their r
                             // Center it and move it along z, scaling the further we move.
-                            let distance = 2.0; // TODO:
+
+                            let distance = obj_properties
+                                .get(child_path)
+                                .pinhole_image_plane_distance(pinhole);
+
                             let scale = distance / pinhole.alpha_y();
                             let translation = (-pinhole.principal_point() * scale).extend(distance);
                             let parent_from_child = glam::Mat4::from_scale_rotation_translation(
-                                glam::vec3(scale, scale, 1.0), // TODO: z scale..?
+                                glam::vec3(scale, scale, 1.0),
                                 glam::Quat::IDENTITY,
                                 translation,
                             );
@@ -87,6 +93,7 @@ impl TransformCache {
                     gather_child_transforms(
                         spaces_info,
                         child_space,
+                        obj_properties,
                         refererence_from_obj_in_child,
                         reference_from_obj_per_path,
                     );
@@ -123,6 +130,7 @@ impl TransformCache {
         gather_child_transforms(
             spaces_info,
             topmost_reachable_space,
+            obj_properties,
             reference_from_topmost,
             &mut reference_from_obj_per_object,
         );

@@ -12,7 +12,7 @@ use ahash::HashMap;
 use itertools::Itertools as _;
 
 use nohash_hasher::{IntMap, IntSet};
-use re_data_store::{ObjPath, ObjPathComp, TimeInt};
+use re_data_store::{ObjPath, ObjPathComp, ObjectsProperties, TimeInt};
 
 use crate::{
     misc::{
@@ -97,7 +97,11 @@ impl Viewport {
                 }
             }
 
-            let transforms = TransformCache::determine_transforms(spaces_info, space_info);
+            let transforms = TransformCache::determine_transforms(
+                spaces_info,
+                space_info,
+                &ObjectsProperties::default(),
+            );
 
             for (category, obj_paths) in group_by_category(
                 ctx.rec_cfg.time_ctrl.timeline(),
@@ -341,7 +345,11 @@ impl Viewport {
             let scene_spatial = query_scene_spatial(
                 ctx,
                 &obj_paths,
-                &TransformCache::determine_transforms(spaces_info, space_info),
+                &TransformCache::determine_transforms(
+                    spaces_info,
+                    space_info,
+                    &ObjectsProperties::default(),
+                ),
             );
             self.add_space_view(SpaceView::new(
                 ctx,
@@ -500,8 +508,11 @@ impl Viewport {
                             continue;
                         }
 
-                        let transforms =
-                            TransformCache::determine_transforms(spaces_info, space_info);
+                        let transforms = TransformCache::determine_transforms(
+                            spaces_info,
+                            space_info,
+                            &ObjectsProperties::default(),
+                        );
 
                         if ui.button(path.to_string()).clicked() {
                             ui.close_menu();

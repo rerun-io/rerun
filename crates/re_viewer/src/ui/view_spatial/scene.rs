@@ -846,23 +846,24 @@ impl SceneSpatial {
             );
         }
 
-        let total_num_images = self.primitives.textured_rectangles.len();
-        for (image_idx, img) in self.primitives.textured_rectangles.iter_mut().enumerate() {
-            img.top_left_corner_position = glam::vec3(
-                0.0,
-                0.0,
-                // We use RDF (X=Right, Y=Down, Z=Forward) for 2D spaces, so we want lower Z in order to put images on top
-                (total_num_images - image_idx - 1) as f32 * 0.1,
-            );
+        // TODO: layered image handling
+        // let total_num_images = self.primitives.textured_rectangles.len();
+        // for (image_idx, img) in self.primitives.textured_rectangles.iter_mut().enumerate() {
+        //     img.top_left_corner_position.z += glam::vec3(
+        //         0.0,
+        //         0.0,
+        //         // We use RDF (X=Right, Y=Down, Z=Forward) for 2D spaces, so we want lower Z in order to put images on top
+        //         (total_num_images - image_idx - 1) as f32 * 0.1,
+        //     );
 
-            let opacity = if image_idx == 0 {
-                1.0 // bottom image
-            } else {
-                // make top images transparent
-                1.0 / total_num_images.at_most(20) as f32 // avoid precision problems in framebuffer
-            };
-            img.multiplicative_tint = img.multiplicative_tint.multiply(opacity);
-        }
+        //     let opacity = if image_idx == 0 {
+        //         1.0 // bottom image
+        //     } else {
+        //         // make top images transparent
+        //         1.0 / total_num_images.at_most(20) as f32 // avoid precision problems in framebuffer
+        //     };
+        //     img.multiplicative_tint = img.multiplicative_tint.multiply(opacity);
+        // }
     }
 
     fn load_boxes_2d(
