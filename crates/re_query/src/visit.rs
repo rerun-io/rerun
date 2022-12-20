@@ -10,27 +10,30 @@ use re_log_types::{
 use crate::EntityView;
 
 impl EntityView {
-    /// Visit the primary component of an entity
+    /// Visit the primary component of an `EntityView`
     /// See [`visit_entity2`]
-    pub fn visit<C0: Component>(&self, mut visit: impl FnMut(Instance, C0))
+    pub fn visit<C0: Component>(&self, mut visit: impl FnMut(Instance, C0)) -> crate::Result<()>
     where
         C0: ArrowDeserialize + ArrowField<Type = C0> + 'static,
         C0::ArrayType: ArrowArray,
         for<'a> &'a C0::ArrayType: IntoIterator,
     {
-        let instance_iter = self.primary.iter_instance_keys().unwrap();
+        let instance_iter = self.primary.iter_instance_keys()?;
 
         let prim_iter =
-            arrow_array_deserialize_iterator::<Option<C0>>(self.primary.values.as_ref()).unwrap();
+            arrow_array_deserialize_iterator::<Option<C0>>(self.primary.values.as_ref())?;
 
         itertools::izip!(instance_iter, prim_iter).for_each(|(instance, primary)| {
             if let Some(primary) = primary {
                 visit(instance, primary);
             }
         });
+
+        Ok(())
     }
 
-    /// Visit the primary and joined components of an entity
+    /// Visit the primary and joined components of an `EntityView`
+    ///
     /// The first component is the primary, while the remaining are optional
     ///
     /// # Usage
@@ -69,7 +72,8 @@ impl EntityView {
     pub fn visit2<C0: Component, C1: Component>(
         &self,
         mut visit: impl FnMut(Instance, C0, Option<C1>),
-    ) where
+    ) -> crate::Result<()>
+    where
         C0: ArrowDeserialize + ArrowField<Type = C0> + 'static,
         C0::ArrayType: ArrowArray,
         for<'a> &'a C0::ArrayType: IntoIterator,
@@ -77,12 +81,12 @@ impl EntityView {
         C1::ArrayType: ArrowArray,
         for<'a> &'a C1::ArrayType: IntoIterator,
     {
-        let instance_iter = self.primary.iter_instance_keys().unwrap();
+        let instance_iter = self.primary.iter_instance_keys()?;
 
         let prim_iter =
-            arrow_array_deserialize_iterator::<Option<C0>>(self.primary.values.as_ref()).unwrap();
+            arrow_array_deserialize_iterator::<Option<C0>>(self.primary.values.as_ref())?;
 
-        let c1_iter = self.iter_component::<C1>().unwrap();
+        let c1_iter = self.iter_component::<C1>()?;
 
         itertools::izip!(instance_iter, prim_iter, c1_iter).for_each(
             |(instance, primary, c1_data)| {
@@ -91,6 +95,8 @@ impl EntityView {
                 }
             },
         );
+
+        Ok(())
     }
 
     /// Visit all all of a complex component in a dataframe
@@ -98,7 +104,8 @@ impl EntityView {
     pub fn visit3<C0: Component, C1: Component, C2: Component>(
         &self,
         mut visit: impl FnMut(Instance, C0, Option<C1>, Option<C2>),
-    ) where
+    ) -> crate::Result<()>
+    where
         C0: ArrowDeserialize + ArrowField<Type = C0> + 'static,
         C0::ArrayType: ArrowArray,
         for<'a> &'a C0::ArrayType: IntoIterator,
@@ -109,14 +116,14 @@ impl EntityView {
         C2::ArrayType: ArrowArray,
         for<'a> &'a C2::ArrayType: IntoIterator,
     {
-        let instance_iter = self.primary.iter_instance_keys().unwrap();
+        let instance_iter = self.primary.iter_instance_keys()?;
 
         let prim_iter =
-            arrow_array_deserialize_iterator::<Option<C0>>(self.primary.values.as_ref()).unwrap();
+            arrow_array_deserialize_iterator::<Option<C0>>(self.primary.values.as_ref())?;
 
-        let c1_iter = self.iter_component::<C1>().unwrap();
+        let c1_iter = self.iter_component::<C1>()?;
 
-        let c2_iter = self.iter_component::<C2>().unwrap();
+        let c2_iter = self.iter_component::<C2>()?;
 
         itertools::izip!(instance_iter, prim_iter, c1_iter, c2_iter).for_each(
             |(instance, primary, c1_data, c2_data)| {
@@ -125,5 +132,7 @@ impl EntityView {
                 }
             },
         );
+
+        Ok(())
     }
 }

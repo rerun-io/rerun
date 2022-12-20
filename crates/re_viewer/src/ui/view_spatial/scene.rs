@@ -1,3 +1,4 @@
+use std::convert::Infallible;
 use std::sync::Arc;
 
 use ahash::HashMap;
@@ -16,7 +17,7 @@ use re_log_types::{
     context::{ClassId, KeypointId},
     DataVec, IndexHash, MeshId, MsgId, ObjectType, Tensor,
 };
-use re_query::query_entity_with_primary;
+use re_query::{query_entity_with_primary, QueryError};
 use re_renderer::{
     renderer::{LineStripFlags, MeshInstance},
     Color32, LineStripSeriesBuilder, PointCloudBuilder, Size,
@@ -955,13 +956,14 @@ impl SceneSpatial {
                 TimeQuery::LatestAt(query.latest_at.as_i64()),
             );
 
-            if let Ok(entity_view) = query_entity_with_primary(
+            match query_entity_with_primary(
                 &ctx.log_db.obj_db.arrow_store,
                 &timeline_query,
                 ent_path,
                 Rect2D::name(),
                 &[ColorRGBA::name()],
-            ) {
+            )
+            .and_then(|entity_view| {
                 entity_view.visit2(
                     |instance: Instance, rect: Rect2D, color: Option<ColorRGBA>| {
                         // TODO(jleibs): This feels convoluted and heavy-weight. Whatever we need here
@@ -1028,7 +1030,12 @@ impl SceneSpatial {
                             });
                         }
                     },
-                );
+                )
+            }) {
+                Ok(_) | Err(QueryError::PrimaryNotFound) => {}
+                Err(err) => {
+                    re_log::error!("Unexpected error querying '{:?}': {:?}", obj_path, err);
+                }
             }
         }
     }

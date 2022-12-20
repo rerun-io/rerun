@@ -22,6 +22,7 @@ use re_log_types::{
 #[derive(Clone, Debug)]
 pub struct ComponentWithInstances {
     pub(crate) name: ComponentName,
+    // TODO(jleibs): Remove optional once the store guarantees this will always exist
     pub(crate) instance_keys: Option<Box<dyn Array>>,
     pub(crate) values: Box<dyn Array>,
 }
@@ -172,12 +173,20 @@ where
     }
 }
 
+/// A view of an entity at a particular point in time returned by [`query_entity_with_primary`]
+///
+/// `EntityView` has a special `primary` component which determines the length of an entity
+/// batch. When iterating over individual components, they will be implicitly joined onto
+/// the primary component as described by [`ComponentJoinedIterator`]
 #[derive(Clone, Debug)]
 pub struct EntityView {
     pub(crate) primary: ComponentWithInstances,
     pub(crate) components: BTreeMap<ComponentName, ComponentWithInstances>,
 }
 impl EntityView {
+    /// Iterate over the values of a `Component`.
+    ///
+    /// Always produces an iterator of length `self.primary.len()`
     pub fn iter_component<C: Component>(
         &self,
     ) -> crate::Result<impl Iterator<Item = Option<C>> + '_>
@@ -210,6 +219,7 @@ impl EntityView {
         }
     }
 
+    /// Helper function to produce an `EntityView` from rust-native `field_types`
     pub fn from_native<C0>(c0: (Option<&Vec<Instance>>, &Vec<C0>)) -> crate::Result<EntityView>
     where
         C0: Component + 'static,
@@ -223,6 +233,7 @@ impl EntityView {
         })
     }
 
+    /// Helper function to produce an `EntityView` from rust-native `field_types`
     pub fn from_native2<C0, C1>(
         c0: (Option<&Vec<Instance>>, &Vec<C0>),
         c1: (Option<&Vec<Instance>>, &Vec<C1>),

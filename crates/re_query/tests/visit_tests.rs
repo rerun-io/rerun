@@ -218,10 +218,13 @@ fn single_visit() {
         Instance(3),
     ];
 
-    entity_view.visit(|instance: Instance, point: Point2D| {
-        instance_out.push(instance);
-        points_out.push(point);
-    });
+    entity_view
+        .visit(|instance: Instance, point: Point2D| {
+            instance_out.push(instance);
+            points_out.push(point);
+        })
+        .ok()
+        .unwrap();
 
     assert_eq!(instance_out, expected_instance);
     assert_eq!(points, points_out);
@@ -256,10 +259,13 @@ fn joint_visit() {
     let mut points_out = Vec::<Point2D>::new();
     let mut colors_out = Vec::<Option<ColorRGBA>>::new();
 
-    entity_view.visit2(|_: Instance, point: Point2D, color: Option<ColorRGBA>| {
-        points_out.push(point);
-        colors_out.push(color);
-    });
+    entity_view
+        .visit2(|_: Instance, point: Point2D, color: Option<ColorRGBA>| {
+            points_out.push(point);
+            colors_out.push(color);
+        })
+        .ok()
+        .unwrap();
 
     let expected_colors = vec![
         None,
