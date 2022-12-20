@@ -151,7 +151,7 @@ impl Viewport {
                                         space_view
                                             .queried_objects
                                             .remove(&other_image_instance_id.obj_path);
-                                        space_view.has_been_user_edited = true; // Prevent later auto-adding of these "missing" images
+                                        space_view.allow_auto_adding_more_object = false;
                                     }
                                 }
                             }

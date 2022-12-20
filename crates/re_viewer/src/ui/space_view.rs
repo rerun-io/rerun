@@ -61,8 +61,8 @@ pub(crate) struct SpaceView {
     /// We only show data that match this category.
     pub category: ViewCategory,
 
-    /// Set to `true` the first time the user messes around with the list of queried objects.
-    pub has_been_user_edited: bool,
+    /// Set to `false` the first time the user messes around with the list of queried objects.
+    pub allow_auto_adding_more_object: bool,
 }
 
 impl SpaceView {
@@ -104,7 +104,7 @@ impl SpaceView {
             obj_properties: Default::default(),
             view_state,
             category,
-            has_been_user_edited: false,
+            allow_auto_adding_more_object: true,
         }
     }
 
@@ -129,7 +129,7 @@ impl SpaceView {
     }
 
     pub fn on_frame_start(&mut self, ctx: &mut ViewerContext<'_>, spaces_info: &SpacesInfo) {
-        if self.has_been_user_edited {
+        if !self.allow_auto_adding_more_object {
             return;
         }
         let Some(space) = spaces_info.spaces.get(&self.space_path) else {
@@ -337,7 +337,7 @@ impl SpaceView {
                         self.queried_objects.insert(path.clone());
                     },
                 );
-                self.has_been_user_edited = true;
+                self.allow_auto_adding_more_object = false;
             }
             response.on_hover_text("Add to this Space View's query")
         });
