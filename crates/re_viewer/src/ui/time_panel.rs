@@ -93,7 +93,8 @@ impl TimePanel {
                 if expansion < 1.0 {
                     // Collapsed or animating
                     ui.horizontal(|ui| {
-                        ui.spacing_mut().interact_size.y = top_bar_height;
+                        ui.spacing_mut().interact_size = Vec2::splat(top_bar_height);
+                        ui.visuals_mut().button_frame = true;
                         self.collapsed_ui(ctx, ui);
                     });
                 } else {
@@ -105,9 +106,9 @@ impl TimePanel {
                         top_rop_frame.inner_margin.bottom = y_margin;
                         let rop_row_rect = top_rop_frame
                             .show(ui, |ui| {
-                                ui.spacing_mut().interact_size.y = top_bar_height;
-
                                 ui.horizontal(|ui| {
+                                    ui.spacing_mut().interact_size = Vec2::splat(top_bar_height);
+                                    ui.visuals_mut().button_frame = true;
                                     top_row_ui(ctx, ui);
                                 });
                             })
@@ -737,6 +738,8 @@ fn paint_time_ranges_gaps(
     painter: &egui::Painter,
     y_range: RangeInclusive<f32>,
 ) {
+    crate::profile_function!();
+
     // For each gap we are painting this:
     //
     //             zig width
@@ -769,7 +772,8 @@ fn paint_time_ranges_gaps(
     let stroke = ui.visuals().widgets.noninteractive.bg_stroke;
 
     let paint_time_gap = |gap_left: f32, gap_right: f32| {
-        let zig_width = 4.0;
+        let gap_width = gap_right - gap_left;
+        let zig_width = 4.0_f32.at_most(gap_width / 3.0).at_least(1.0);
         let zig_height = zig_width;
 
         let mut y = top;
@@ -1389,7 +1393,7 @@ fn gap_width(x_range: &RangeInclusive<f32>, segments: &[TimeRange]) -> f32 {
     } else {
         // shrink gaps if there are a lot of them
         let width = *x_range.end() - *x_range.start();
-        (width / (4.0 * num_gaps as f32)).at_most(MAX_GAP)
+        (width / (num_gaps as f32)).at_most(MAX_GAP)
     }
 }
 
