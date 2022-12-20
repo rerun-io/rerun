@@ -145,10 +145,11 @@ def transforms_rigid_3d() -> None:
     rotation_speed_planet = 2.0
     rotation_speed_moon = 5.0
 
-    rerun.log_view_coordinates("transforms3d", up="+Y", timeless=True)
-    rerun.log_view_coordinates("transforms3d/sun", up="+Y", timeless=True)
-    rerun.log_view_coordinates("transforms3d/planet", up="+Y", timeless=True)
-    rerun.log_view_coordinates("transforms3d/planet/moon", up="+Y", timeless=True)
+    # Planetary motion is typically in the XY plane.
+    rerun.log_view_coordinates("transforms3d", up="+Z", timeless=True)
+    rerun.log_view_coordinates("transforms3d/sun", up="+Z", timeless=True)
+    rerun.log_view_coordinates("transforms3d/planet", up="+Z", timeless=True)
+    rerun.log_view_coordinates("transforms3d/planet/moon", up="+Z", timeless=True)
 
     # All are in the center of their own space:
     rerun.log_point("transforms3d/sun", [0.0, 0.0, 0.0], radius=1.0, color=[255, 200, 10])
@@ -162,14 +163,14 @@ def transforms_rigid_3d() -> None:
     height = np.power(np.random.rand(200), 0.2) * 0.5 - 0.5
     rerun.log_points(
         "transforms3d/sun/planet/dust",
-        np.array([np.sin(angles) * radii, height, np.cos(angles) * radii]).transpose(),
+        np.array([np.sin(angles) * radii, np.cos(angles) * radii, height]).transpose(),
         colors=[80, 80, 80],
         radii=0.025,
     )
 
     # paths where the planet & moon move
     angles = np.arange(0.0, 1.01, 0.01) * math.tau
-    circle = np.array([np.sin(angles), angles * 0.0, np.cos(angles)]).transpose()
+    circle = np.array([np.sin(angles), np.cos(angles), angles * 0.0]).transpose()
     rerun.log_path(
         "transforms3d/sun/planet_path",
         circle * sun_to_planet_distance,
@@ -190,8 +191,8 @@ def transforms_rigid_3d() -> None:
             parent_from_child=(
                 [
                     math.sin(time * rotation_speed_planet) * sun_to_planet_distance,
-                    0.0,
                     math.cos(time * rotation_speed_planet) * sun_to_planet_distance,
+                    0.0,
                 ],
                 Rotation.from_euler("x", 20, degrees=True).as_quat(),
             ),
@@ -201,8 +202,8 @@ def transforms_rigid_3d() -> None:
             child_from_parent=(
                 [
                     math.cos(time * rotation_speed_moon) * planet_to_moon_distance,
-                    0.0,
                     math.sin(time * rotation_speed_moon) * planet_to_moon_distance,
+                    0.0,
                 ],
                 rotation_q,
             ),

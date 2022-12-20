@@ -6,10 +6,12 @@
 //! * [ ] Controlling visibility of objects inside each Space View
 //! * [ ] Transforming objects between spaces
 
+use std::collections::BTreeMap;
+
 use ahash::HashMap;
 use itertools::Itertools as _;
 
-use nohash_hasher::IntMap;
+use nohash_hasher::{IntMap, IntSet};
 use re_data_store::{ObjPath, ObjPathComp, TimeInt};
 
 use crate::{
@@ -85,7 +87,9 @@ impl Viewport {
         let mut blueprint = Self::default();
 
         for (path, space_info) in &spaces_info.spaces {
-            // If we're connected with a rigid transform to our parent, skip as it is trivially displayed in a single space view.
+            // If we're connected with a rigid transform to our parent, don't create a new space view automatically,
+            // since we're showing those objects in the parent by default.
+            // (it is still possible to create this space view manually)
             if let Some((_, transform)) = &space_info.parent {
                 match transform {
                     re_log_types::Transform::Rigid3(_) => continue,
@@ -472,45 +476,25 @@ impl Viewport {
             ui.menu_button("Add new space view…", |ui| {
                 ui.style_mut().wrap = Some(false);
 
-                // Gather categories per root path.
-                let roots = &ctx.log_db.obj_db.tree.children;
-                let objects_per_root = roots.iter().map(|root| {
-                    let mut objects = Vec::new();
-                    root.1.visit_children_recursively(&mut |child_path| {
-                        objects.push(child_path.clone());
-                    });
-                    let root_path: &[ObjPathComp] = &[root.0.clone()];
-                    (ObjPath::from(root_path), objects)
-                });
-                let objects_per_root_grouped_by_category = objects_per_root
-                    .map(|(root, objects)| {
-                        (
-                            root,
-                            group_by_category(
-                                ctx.rec_cfg.time_ctrl.timeline(),
-                                ctx.log_db,
-                                objects.iter(),
-                            ),
-                        )
-                    })
-                    .collect::<IntMap<_, _>>();
+                let objects_per_root_grouped_by_category =
+                    objects_per_root_grouped_by_category(ctx);
 
                 for (path, space_info) in &spaces_info.spaces {
                     let categories = objects_per_root_grouped_by_category
                         .get(&ObjPath::from(&path.to_components()[..1]));
-
-                    let transforms = TransformCache::determine_transforms(spaces_info, space_info);
 
                     if let Some(categories) = categories {
                         if categories.is_empty() {
                             continue;
                         }
 
+                        let transforms =
+                            TransformCache::determine_transforms(spaces_info, space_info);
+
                         if ui.button(path.to_string()).clicked() {
                             ui.close_menu();
 
                             for (category, obj_paths) in categories {
-                                // TODO(andreas): Should not need to do full query just to determine navigation mode. Default transform cache is problematic.
                                 let scene_spatial =
                                     query_scene_spatial(ctx, obj_paths, &transforms);
                                 let new_space_view_id = self.add_space_view(SpaceView::new(
@@ -529,6 +513,35 @@ impl Viewport {
             });
         });
     }
+}
+
+/// Returns iterator over all root paths, each with a list of object paths under it.
+fn objects_per_root<'a>(
+    ctx: &mut ViewerContext<'a>,
+) -> impl Iterator<Item = (ObjPath, Vec<ObjPath>)> + 'a {
+    let roots = &ctx.log_db.obj_db.tree.children;
+    roots.iter().map(|(root_path, root_tree)| {
+        let mut objects = Vec::new();
+        root_tree.visit_children_recursively(&mut |child_path| {
+            objects.push(child_path.clone());
+        });
+        let root_path: &[ObjPathComp] = &[root_path.clone()];
+        (ObjPath::from(root_path), objects)
+    })
+}
+
+/// Returns all map from all root paths to objects grouped by category.
+fn objects_per_root_grouped_by_category(
+    ctx: &mut ViewerContext<'_>,
+) -> IntMap<ObjPath, BTreeMap<ViewCategory, IntSet<ObjPath>>> {
+    objects_per_root(ctx)
+        .map(|(root, objects)| {
+            (
+                root,
+                group_by_category(ctx.rec_cfg.time_ctrl.timeline(), ctx.log_db, objects.iter()),
+            )
+        })
+        .collect()
 }
 
 fn visibility_button(ui: &mut egui::Ui, enabled: bool, visible: &mut bool) -> egui::Response {
