@@ -20,7 +20,11 @@ pub trait ArrayExt: Array {
 
 impl ArrayExt for dyn Array {
     fn is_dense(&self) -> bool {
-        self.validity().is_none()
+        if let Some(validity) = self.validity() {
+            validity.iter().all(|b| b)
+        } else {
+            true
+        }
     }
 
     fn is_sorted_and_unique(&self) -> anyhow::Result<bool> {
