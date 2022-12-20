@@ -17,12 +17,24 @@ use re_log_types::{
 // --- LatestAt ---
 
 #[test]
-fn latest_at() {
+fn latest_at_() {
     init_logs();
 
-    let mut store = DataStore::new(Instance::name(), Default::default());
+    for config in re_arrow_store::test_util::all_configs() {
+        let mut store = DataStore::new(Instance::name(), config.clone());
+        latest_at_impl(&mut store);
+    }
+}
+fn latest_at_impl(store: &mut DataStore) {
+    init_logs();
 
     let ent_path = EntityPath::from("this/that");
+
+    let frame0 = 0;
+    let frame1 = 1;
+    let frame2 = 2;
+    let frame3 = 3;
+    let frame4 = 4;
 
     let (instances1, rects1) = (build_instances(3), build_some_rects(3));
     let bundle1 = test_bundle!(ent_path @ [build_frame_nr(1)] => [instances1.clone(), rects1]);
@@ -46,24 +58,24 @@ fn latest_at() {
         err.unwrap();
     }
 
-    assert_joint_query_at(&mut store, &ent_path, 0, &[]);
-    assert_joint_query_at(&mut store, &ent_path, 1, &[(Rect2D::name(), &bundle1)]);
+    assert_joint_query_at(store, &ent_path, frame0, &[]);
+    assert_joint_query_at(store, &ent_path, frame1, &[(Rect2D::name(), &bundle1)]);
     assert_joint_query_at(
-        &mut store,
+        store,
         &ent_path,
-        2,
+        frame2,
         &[(Rect2D::name(), &bundle1), (Point2D::name(), &bundle2)],
     );
     assert_joint_query_at(
-        &mut store,
+        store,
         &ent_path,
-        3,
+        frame3,
         &[(Rect2D::name(), &bundle1), (Point2D::name(), &bundle3)],
     );
     assert_joint_query_at(
-        &mut store,
+        store,
         &ent_path,
-        4,
+        frame4,
         &[(Rect2D::name(), &bundle4), (Point2D::name(), &bundle3)],
     );
 }
