@@ -504,56 +504,48 @@ impl IndexBucket {
     /// IndexTable {
     ///     timeline: frame_nr
     ///     entity: this/that
-    ///     size: 3 buckets for a total of 265 B across 8 total rows
+    ///     size: 3 buckets for a total of 256 B across 8 total rows
     ///     buckets: [
     ///         IndexBucket {
     ///             index time bound: >= #0
-    ///             size: 99 B across 3 rows
-    ///             time range: from #41 to #41 (all inclusive)
-    ///             data (sorted=true): shape: (3, 4)
-    ///             ┌──────┬───────┬───────────┬───────────┐
-    ///             │ time ┆ rects ┆ positions ┆ instances │
-    ///             │ ---  ┆ ---   ┆ ---       ┆ ---       │
-    ///             │ str  ┆ u64   ┆ u64       ┆ u64       │
-    ///             ╞══════╪═══════╪═══════════╪═══════════╡
-    ///             │ #41  ┆ null  ┆ null      ┆ 1         │
-    ///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
-    ///             │ #41  ┆ null  ┆ 1         ┆ null      │
-    ///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
-    ///             │ #41  ┆ 3     ┆ null      ┆ null      │
-    ///             └──────┴───────┴───────────┴───────────┘
+    ///             size: 96 B across 3 rows
+    ///                 - frame_nr: from #41 to #41 (all inclusive)
+    ///             data (sorted=true):
+    ///             +----------+---------------+--------------+----------------+
+    ///             | frame_nr | rerun.point2d | rerun.rect2d | rerun.instance |
+    ///             +----------+---------------+--------------+----------------+
+    ///             | 41       |               |              | 1              |
+    ///             | 41       | 1             |              | 2              |
+    ///             | 41       |               | 3            | 2              |
+    ///             +----------+---------------+--------------+----------------+
+    ///
     ///         }
     ///         IndexBucket {
     ///             index time bound: >= #42
-    ///             size: 99 B across 3 rows
-    ///             time range: from #42 to #42 (all inclusive)
-    ///             data (sorted=true): shape: (3, 4)
-    ///             ┌──────┬───────────┬───────┬───────────┐
-    ///             │ time ┆ instances ┆ rects ┆ positions │
-    ///             │ ---  ┆ ---       ┆ ---   ┆ ---       │
-    ///             │ str  ┆ u64       ┆ u64   ┆ u64       │
-    ///             ╞══════╪═══════════╪═══════╪═══════════╡
-    ///             │ #42  ┆ null      ┆ 1     ┆ null      │
-    ///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
-    ///             │ #42  ┆ 3         ┆ null  ┆ null      │
-    ///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
-    ///             │ #42  ┆ null      ┆ null  ┆ 2         │
-    ///             └──────┴───────────┴───────┴───────────┘
+    ///             size: 96 B across 3 rows
+    ///                 - frame_nr: from #42 to #42 (all inclusive)
+    ///             data (sorted=true):
+    ///             +----------+--------------+----------------+---------------+
+    ///             | frame_nr | rerun.rect2d | rerun.instance | rerun.point2d |
+    ///             +----------+--------------+----------------+---------------+
+    ///             | 42       | 1            | 2              |               |
+    ///             | 42       |              | 4              |               |
+    ///             | 42       |              | 2              | 2             |
+    ///             +----------+--------------+----------------+---------------+
+    ///
     ///         }
     ///         IndexBucket {
     ///             index time bound: >= #43
-    ///             size: 67 B across 2 rows
-    ///             time range: from #43 to #44 (all inclusive)
-    ///             data (sorted=true): shape: (2, 4)
-    ///             ┌──────┬───────┬───────────┬───────────┐
-    ///             │ time ┆ rects ┆ instances ┆ positions │
-    ///             │ ---  ┆ ---   ┆ ---       ┆ ---       │
-    ///             │ str  ┆ u64   ┆ u64       ┆ u64       │
-    ///             ╞══════╪═══════╪═══════════╪═══════════╡
-    ///             │ #43  ┆ 4     ┆ null      ┆ null      │
-    ///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
-    ///             │ #44  ┆ null  ┆ null      ┆ 3         │
-    ///             └──────┴───────┴───────────┴───────────┘
+    ///             size: 64 B across 2 rows
+    ///                 - frame_nr: from #43 to #44 (all inclusive)
+    ///             data (sorted=true):
+    ///             +----------+--------------+---------------+----------------+
+    ///             | frame_nr | rerun.rect2d | rerun.point2d | rerun.instance |
+    ///             +----------+--------------+---------------+----------------+
+    ///             | 43       | 4            |               | 2              |
+    ///             | 44       |              | 3             | 2              |
+    ///             +----------+--------------+---------------+----------------+
+    ///
     ///         }
     ///     ]
     /// }
