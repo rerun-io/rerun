@@ -71,6 +71,8 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
     let default = get_aliased_color(&json, "{Alias.Color.Text.Default.value}");
     let strong = get_aliased_color(&json, "{Alias.Color.Text.Strong.value}");
 
+    egui_style.visuals.button_frame = false;
+
     egui_style.visuals.widgets.noninteractive.fg_stroke.color = subudued; // non-interactive text
     egui_style.visuals.widgets.inactive.fg_stroke.color = default; // button text
     egui_style.visuals.widgets.active.fg_stroke.color = strong; // strong text and active button text
