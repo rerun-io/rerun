@@ -126,11 +126,22 @@ impl DataStore {
             "insertion started..."
         );
 
+        let cluster_comp_pos = components
+            .iter()
+            .find_position(|bundle| bundle.name == self.cluster_key)
+            .map(|(pos, _)| pos);
+
         let mut row_indices = IntMap::default();
 
         // TODO(#589): support for batched row component insertions
         for row_nr in 0..nb_rows {
-            self.insert_row(time_point, row_nr, components, &mut row_indices)?;
+            self.insert_row(
+                time_point,
+                row_nr,
+                cluster_comp_pos,
+                components,
+                &mut row_indices,
+            )?;
         }
 
         for (timeline, time) in time_point.iter() {
@@ -149,11 +160,12 @@ impl DataStore {
         &mut self,
         time_point: &TimePoint,
         row_nr: usize,
+        cluster_comp_pos: Option<usize>,
         components: &[ComponentBundle],
         row_indices: &mut IntMap<ComponentName, RowIndex>,
     ) -> WriteResult<()> {
         let (cluster_row_idx, cluster_len) =
-            self.get_or_create_cluster_component(row_nr, components, self.cluster_key, time_point)?;
+            self.get_or_create_cluster_component(row_nr, cluster_comp_pos, components, time_point)?;
 
         // Always insert the cluster component.
         row_indices.insert(self.cluster_key, cluster_row_idx);
@@ -214,21 +226,20 @@ impl DataStore {
     fn get_or_create_cluster_component(
         &mut self,
         row_nr: usize,
+        cluster_comp_pos: Option<usize>,
         components: &[ComponentBundle],
-        cluster_key: ComponentName,
         time_point: &TimePoint,
     ) -> WriteResult<(RowIndex, usize)> {
-        let cluster_comp = components.iter().find(|bundle| bundle.name == cluster_key);
-
         enum RowIndexOrData {
             RowIndex(RowIndex),
             Data(Box<dyn Array>),
         }
 
-        let (found, comp, len) = if let Some(cluster_comp) = cluster_comp {
+        let (found, comp, len) = if let Some(cluster_comp_pos) = cluster_comp_pos {
             // We found a component with a name matching the cluster key's, let's make sure it's
             // valid (dense, sorted, no duplicates) and use that if so.
 
+            let cluster_comp = &components[cluster_comp_pos];
             let row = cluster_comp
                 .value
                 .as_any()
