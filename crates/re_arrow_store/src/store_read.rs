@@ -5,7 +5,7 @@ use arrow2::{
     datatypes::{DataType, TimeUnit},
 };
 
-use re_log::debug;
+use re_log::trace;
 use re_log_types::{ComponentName, ObjPath as EntityPath, TimeInt, TimeRange, Timeline};
 
 use crate::{
@@ -136,7 +136,7 @@ impl DataStore {
             TimeQuery::Range(_) => todo!("implement range queries!"),
         };
 
-        debug!(
+        trace!(
             kind = "query",
             id = self.query_id.load(Ordering::Relaxed),
             query = ?timeline_query,
@@ -148,7 +148,7 @@ impl DataStore {
 
         if let Some(index) = self.indices.get(&(timeline_query.timeline, *ent_path_hash)) {
             if let row_indices @ Some(_) = index.latest_at(latest_at, primary, components) {
-                debug!(
+                trace!(
                     kind = "query",
                     query = ?timeline_query,
                     entity = %ent_path,
@@ -161,7 +161,7 @@ impl DataStore {
             }
         }
 
-        debug!(
+        trace!(
             kind = "query",
             query = ?timeline_query,
             entity = %ent_path,
@@ -244,7 +244,7 @@ impl IndexTable {
         // multiple index buckets within the same table!
 
         for (attempt, bucket) in self.iter_bucket(time).enumerate() {
-            debug!(
+            trace!(
                 kind = "query",
                 timeline = %timeline.name(),
                 time = timeline.typ().format(time.into()),
@@ -338,7 +338,7 @@ impl IndexBucket {
         // Early-exit if this bucket is unaware of this component.
         let index = indices.get(&primary)?;
 
-        debug!(
+        trace!(
             kind = "query",
             %primary,
             ?components,
@@ -360,7 +360,7 @@ impl IndexBucket {
         // The partition point is always _beyond_ the index that we're looking for; we need
         // to step back to find what we came for.
         let primary_idx = primary_idx - 1;
-        debug!(
+        trace!(
             kind = "query",
             %primary,
             ?components,
@@ -375,7 +375,7 @@ impl IndexBucket {
         while index[secondary_idx as usize].is_none() {
             secondary_idx -= 1;
             if secondary_idx < 0 {
-                debug!(
+                trace!(
                     kind = "query",
                     %primary,
                     ?components,
@@ -388,7 +388,7 @@ impl IndexBucket {
             }
         }
 
-        debug!(
+        trace!(
             kind = "query",
             %primary,
             ?components,
@@ -403,7 +403,7 @@ impl IndexBucket {
         for (i, component) in components.iter().enumerate() {
             if let Some(index) = indices.get(component) {
                 if let Some(row_idx) = index[secondary_idx as usize] {
-                    debug!(
+                    trace!(
                         kind = "query",
                         %primary,
                         %component,
@@ -528,7 +528,7 @@ impl ComponentTable {
         bucket_nr -= 1;
 
         if let Some(bucket) = self.buckets.get(bucket_nr) {
-            debug!(
+            trace!(
                 kind = "query",
                 component = self.name.as_str(),
                 %row_idx,
@@ -538,7 +538,7 @@ impl ComponentTable {
             );
             Some(bucket.get(row_idx))
         } else {
-            debug!(
+            trace!(
                 kind = "query",
                 component = self.name.as_str(),
                 %row_idx,
