@@ -148,38 +148,20 @@ impl DataStore {
         components: &[ComponentBundle],
         row_indices: &mut IntMap<ComponentName, RowIndex>,
     ) -> WriteResult<()> {
-        let (explicit, clustering_comp) =
-            get_or_create_clustering_key(row_nr, components, self.clustering_key);
-        let expected_nb_instances = clustering_comp.len();
-
-        // Clustering component must be dense.
-        if !clustering_comp.is_dense() {
-            return Err(WriteError::SparseClusteringComponent(clustering_comp));
-        }
-        // Clustering component must be sorted and not contain any duplicates.
-        // TODO: should we do the sorting ourselves if required?
-        if !clustering_comp.is_sorted_and_unique()? {
-            return Err(WriteError::InvalidClusteringComponent(clustering_comp));
-        }
+        let (cluster_row_idx, cluster_len) = self.get_or_create_clustering_component(
+            row_nr,
+            components,
+            self.clustering_key,
+            time_point,
+        )?;
 
         // Insert the auto-generated clustering component if needed.
-        if !explicit {
-            let table = self
-                .components
-                .entry(self.clustering_key)
-                .or_insert_with(|| {
-                    ComponentTable::new(self.clustering_key, clustering_comp.data_type())
-                });
+        row_indices.insert(self.clustering_key, cluster_row_idx);
 
-            let row_idx = table.push(
-                &self.config,
-                time_point,
-                &*wrap_in_listarray(clustering_comp).to_boxed(),
-            );
-            row_indices.insert(self.clustering_key, row_idx);
-        }
-
-        for bundle in components {
+        for bundle in components
+            .iter()
+            .filter(|bundle| bundle.name != self.clustering_key)
+        {
             let ComponentBundle { name, value: rows } = bundle;
 
             // Unwrapping a ListArray is somewhat costly, especially considering we're just
@@ -200,10 +182,10 @@ impl DataStore {
                 .len();
 
             // TODO: what about splats?
-            if nb_instances != expected_nb_instances {
+            if nb_instances != cluster_len {
                 return Err(WriteError::MismatchedInstances {
                     clustering_comp: self.clustering_key,
-                    clustering_comp_nb_instances: expected_nb_instances,
+                    clustering_comp_nb_instances: cluster_len,
                     key: *name,
                     nb_instances,
                 });
@@ -222,44 +204,87 @@ impl DataStore {
 
         Ok(())
     }
-}
 
-// TODO: add TODO regarding how easy this is to optimize/dedupe
-// TODO: doc
-fn get_or_create_clustering_key(
-    row_nr: usize,
-    components: &[ComponentBundle],
-    clustering_key: ComponentName,
-) -> (bool, Box<dyn Array>) {
-    let clustering_comp = components
-        .iter()
-        .find(|bundle| bundle.name == clustering_key);
+    // TODO: doc
+    fn get_or_create_clustering_component(
+        &mut self,
+        row_nr: usize,
+        components: &[ComponentBundle],
+        clustering_key: ComponentName,
+        time_point: &TimePoint,
+    ) -> WriteResult<(RowIndex, usize)> {
+        let clustering_comp = components
+            .iter()
+            .find(|bundle| bundle.name == clustering_key);
 
-    // TODO: debug logs?
-    if let Some(clustering_comp) = clustering_comp {
-        let row = clustering_comp
-            .value
-            .as_any()
-            .downcast_ref::<ListArray<i32>>()
-            .unwrap()
-            .value(row_nr);
-        (true, row)
-    } else {
-        // TODO: explain why it doesn't matter which component we pick as model
-        let len = components.first().map_or(0, |comp| {
-            let row = comp
+        enum RowIndexOrData {
+            RowIndex(RowIndex),
+            Data(Box<dyn Array>),
+        }
+
+        let (found, comp, len) = if let Some(clustering_comp) = clustering_comp {
+            let row = clustering_comp
                 .value
                 .as_any()
                 .downcast_ref::<ListArray<i32>>()
                 .unwrap()
                 .value(row_nr);
-            row.len()
-        });
-        (
-            false,
-            // TODO: there's no good reason not to cache this already
-            UInt32Array::from_vec((0..len as u32).collect_vec()).boxed(),
-        )
+            let len = row.len();
+
+            // Clustering component must be dense.
+            if !row.is_dense() {
+                return Err(WriteError::SparseClusteringComponent(row));
+            }
+            // Clustering component must be sorted and not contain any duplicates.
+            // TODO: should we do the sorting ourselves if required?
+            if !row.is_sorted_and_unique()? {
+                return Err(WriteError::InvalidClusteringComponent(row));
+            }
+
+            (true, RowIndexOrData::Data(row), len)
+        } else {
+            // TODO: explain why it doesn't matter which component we pick as model
+            let len = components.first().map_or(0, |comp| {
+                let row = comp
+                    .value
+                    .as_any()
+                    .downcast_ref::<ListArray<i32>>()
+                    .unwrap()
+                    .value(row_nr);
+                row.len()
+            });
+
+            // TODO: explain
+            if let Some(row_idx) = self.clustering_comp_cache.get(&(len as u32)) {
+                (false, RowIndexOrData::RowIndex(*row_idx), len)
+            } else {
+                let row = UInt32Array::from_vec((0..len as u32).collect_vec()).boxed();
+                (false, RowIndexOrData::Data(row), len)
+            }
+        };
+
+        match comp {
+            RowIndexOrData::RowIndex(row_idx) => Ok((row_idx, len)),
+            RowIndexOrData::Data(comp) => {
+                let table = self
+                    .components
+                    .entry(self.clustering_key)
+                    .or_insert_with(|| ComponentTable::new(self.clustering_key, comp.data_type()));
+
+                let row_idx = table.push(
+                    &self.config,
+                    time_point,
+                    &*wrap_in_listarray(comp).to_boxed(),
+                );
+
+                // TODO: explain
+                if !found {
+                    self.clustering_comp_cache.insert(len as u32, row_idx);
+                }
+
+                Ok((row_idx, len))
+            }
+        }
     }
 }
 

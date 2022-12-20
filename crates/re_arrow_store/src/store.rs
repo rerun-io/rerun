@@ -136,14 +136,13 @@ impl DataStoreConfig {
 /// For even more information, you can set `RERUN_DATA_STORE_DISPLAY_SCHEMAS=1` in your
 /// environment, which will result in additional schema information being printed out.
 pub struct DataStore {
-    // TODO:
-    // - doc
-    // - check for clustering key on insertion
-    // - deal with implicit IDs on insertion
-    // - sort on insertion
+    // TODO: doc
     pub(crate) clustering_key: ComponentName,
     /// The configuration of the data store (e.g. bucket sizes).
     pub(crate) config: DataStoreConfig,
+
+    // TODO: doc
+    pub(crate) clustering_comp_cache: IntMap<u32, RowIndex>,
 
     /// Maps an entity to its index, for a specific timeline.
     ///
@@ -166,8 +165,9 @@ impl DataStore {
         Self {
             clustering_key,
             config,
-            indices: HashMap::default(),
-            components: IntMap::default(),
+            clustering_comp_cache: Default::default(),
+            indices: Default::default(),
+            components: Default::default(),
             insert_id: 0,
             query_id: AtomicU64::new(0),
         }
@@ -255,6 +255,7 @@ impl std::fmt::Display for DataStore {
         let Self {
             clustering_key,
             config,
+            clustering_comp_cache: _,
             indices,
             components,
             insert_id: _,
