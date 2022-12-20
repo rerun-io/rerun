@@ -3519,6 +3519,7 @@ dependencies = [
  "nohash-hasher",
  "once_cell",
  "puffin",
+ "rand",
  "re_arrow_store",
  "re_log",
  "re_log_types",

@@ -315,6 +315,9 @@ fn log_messages() {
     }
 
     {
+        use rand::Rng as _;
+        let mut rng = rand::thread_rng();
+
         let used_bytes_start = GLOBAL_ALLOCATOR.used_bytes();
         let log_msg = Box::new(LogMsg::DataMsg(DataMsg {
             msg_id: MsgId::random(),
@@ -324,7 +327,7 @@ fn log_messages() {
                 indices: BatchIndex::SequentialIndex(NUM_POINTS),
                 data: DataVec::Vec2(
                     (0..NUM_POINTS)
-                        .map(|i| [i as f32 / 7.0, i as f32 / 11.0]) // not easily encoded, but zstd does it anyway!
+                        .map(|_| [rng.gen_range(0.0..10.0), rng.gen_range(0.0..10.0)])
                         .collect(),
                 ),
             },
