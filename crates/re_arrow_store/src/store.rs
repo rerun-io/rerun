@@ -142,7 +142,7 @@ pub struct DataStore {
     pub(crate) config: DataStoreConfig,
 
     // TODO: doc
-    pub(crate) clustering_comp_cache: IntMap<u32, RowIndex>,
+    pub(crate) clustering_comp_cache: IntMap<usize, RowIndex>,
 
     /// Maps an entity to its index, for a specific timeline.
     ///

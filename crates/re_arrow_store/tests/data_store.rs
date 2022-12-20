@@ -4,7 +4,7 @@
 
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use arrow2::array::{Array, ListArray, UInt32Array};
+use arrow2::array::{Array, ListArray, UInt64Array};
 use polars_core::{prelude::*, series::Series};
 use re_arrow_store::{test_bundle, DataStore, TimeQuery, TimelineQuery};
 use re_log_types::{
@@ -17,7 +17,7 @@ use re_log_types::{
 // --- LatestAt ---
 
 #[test]
-fn latest_at_() {
+fn latest_at() {
     init_logs();
 
     for config in re_arrow_store::test_util::all_configs() {
@@ -179,7 +179,7 @@ fn joint_df(bundles: &[(ComponentName, &MsgBundle)]) -> DataFrame {
                     .len();
                 Series::try_from((
                     Instance::name().as_str(),
-                    wrap_in_listarray(UInt32Array::from_vec((0..len as u32).collect()).to_boxed())
+                    wrap_in_listarray(UInt64Array::from_vec((0..len as u64).collect()).to_boxed())
                         .to_boxed(),
                 ))
                 .unwrap()

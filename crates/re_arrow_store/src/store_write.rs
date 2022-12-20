@@ -1,5 +1,5 @@
 use arrow2::{
-    array::{new_empty_array, Array, ListArray, UInt32Array},
+    array::{new_empty_array, Array, ListArray, UInt64Array},
     buffer::Buffer,
     datatypes::DataType,
 };
@@ -255,10 +255,10 @@ impl DataStore {
             });
 
             // TODO: explain
-            if let Some(row_idx) = self.clustering_comp_cache.get(&(len as u32)) {
+            if let Some(row_idx) = self.clustering_comp_cache.get(&len) {
                 (false, RowIndexOrData::RowIndex(*row_idx), len)
             } else {
-                let row = UInt32Array::from_vec((0..len as u32).collect_vec()).boxed();
+                let row = UInt64Array::from_vec((0..len as u64).collect_vec()).boxed();
                 (false, RowIndexOrData::Data(row), len)
             }
         };
@@ -279,7 +279,7 @@ impl DataStore {
 
                 // TODO: explain
                 if !found {
-                    self.clustering_comp_cache.insert(len as u32, row_idx);
+                    self.clustering_comp_cache.insert(len, row_idx);
                 }
 
                 Ok((row_idx, len))
