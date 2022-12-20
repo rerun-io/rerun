@@ -34,7 +34,7 @@ fn latest_at() {
     let bundle3 = test_bundle!(ent_path @ [build_frame_nr(3)] => [points3]);
     store.insert(&bundle3).unwrap();
 
-    let rects4 = build_some_point2d(5);
+    let rects4 = build_some_rects(5);
     let bundle4 = test_bundle!(ent_path @ [build_frame_nr(4)] => [rects4]);
     store.insert(&bundle4).unwrap();
 
@@ -58,12 +58,12 @@ fn latest_at() {
         3,
         &[(Rect2D::name(), &bundle1), (Point2D::name(), &bundle3)],
     );
-    // assert_joint_query_at(
-    //     &mut store,
-    //     &ent_path,
-    //     4,
-    //     &[(Rect2D::name(), &bundle4), (Point2D::name(), &bundle3)],
-    // );
+    assert_joint_query_at(
+        &mut store,
+        &ent_path,
+        4,
+        &[(Rect2D::name(), &bundle4), (Point2D::name(), &bundle3)],
+    );
 }
 
 /// Runs a joint query over all components at the given `frame_nr`, and asserts that the result
@@ -85,10 +85,6 @@ fn assert_joint_query_at(
     );
 
     let df_expected = joint_df(bundles);
-
-    // TODO: whether you want inner/outer/something-else, it's up to the caller!
-    dbg!(&df);
-    dbg!(&df_expected);
 
     store.sort_indices();
     assert_eq!(df_expected, df, "{store}");
