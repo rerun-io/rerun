@@ -1822,7 +1822,7 @@ fn paint_ticks(
         let alpha = remap_clamp(
             spacing_time as f32 * points_per_time,
             minimum_small_line_spacing..=(next_tick_magnitude as f32 * minimum_small_line_spacing),
-            0.0..=0.6,
+            0.0..=0.4,
         );
         color_from_alpha(alpha)
     };
@@ -1831,7 +1831,7 @@ fn paint_ticks(
         let alpha = remap_clamp(
             spacing_time as f32 * points_per_time,
             expected_text_width..=(3.0 * expected_text_width),
-            0.0..=1.0,
+            0.0..=0.5,
         );
         color_from_alpha(alpha)
     };
