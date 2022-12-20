@@ -9,8 +9,8 @@ use crate::{DataStore, TimelineQuery};
 /// returns a `DataFrame`.
 ///
 /// As the cluster key is guaranteed to always be present, the returned dataframe can be joined
-/// with any number of other dataframes returned by this function.
-/// A helper is provided to do just that: [`latest_components`].
+/// with any number of other dataframes returned by this function [`latest_component`] and
+/// [`latest_components`].
 ///
 /// Usage:
 /// ```
@@ -80,12 +80,12 @@ pub fn latest_component(
     DataFrame::new(series?).map_err(Into::into)
 }
 
-/// Queries a single component from its own point-of-view as well as its cluster key, and
-/// returns a `DataFrame`.
+/// Queries any number of components and their cluster keys from their respective point-of-views,
+/// then outer-joins all of them in one final `DataFrame`.
 ///
 /// As the cluster key is guaranteed to always be present, the returned dataframe can be joined
-/// with any number of other dataframes returned by this function.
-/// A helper is provided to do just that: [`latest_components`].
+/// with any number of other dataframes returned by this function [`latest_component`] and
+/// [`latest_components`].
 ///
 /// Usage:
 /// ```

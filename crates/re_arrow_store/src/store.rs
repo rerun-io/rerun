@@ -186,6 +186,7 @@ impl DataStore {
         }
     }
 
+    /// See [`Self::cluster_key`] for more information about the cluster key.
     pub fn cluster_key(&self) -> ComponentName {
         self.cluster_key
     }

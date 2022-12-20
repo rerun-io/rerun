@@ -65,7 +65,7 @@ impl DataStore {
     ///
     /// If the bundle doesn't carry a payload for the cluster key, one will be auto-generated
     /// based on the length of the components in the payload, in the form of an array of
-    /// monotonically increasing u64s going from 0 to N.
+    /// monotonically increasing u64s going from `0` to `N-1`.
     pub fn insert(&mut self, bundle: &MsgBundle) -> WriteResult<()> {
         // TODO(cmc): kind & insert_id need to somehow propagate through the span system.
         self.insert_id += 1;
@@ -496,7 +496,6 @@ impl IndexBucket {
         Ok(())
     }
 
-    // TODO: outdated
     /// Splits the bucket into two, potentially uneven parts.
     ///
     /// On success..:
@@ -819,7 +818,7 @@ impl ComponentTable {
         let len = active_bucket.total_rows();
         let len_overflow = len > config.component_bucket_nb_rows;
 
-        if len_overflow {
+        if size_overflow || len_overflow {
             debug!(
                 kind = "insert",
                 component = self.name.as_str(),
