@@ -34,6 +34,8 @@ fn latest_at() {
     let bundle3 = test_bundle!(ent_path @ [build_frame_nr(3)] => [points3]);
     store.insert(&bundle3).unwrap();
 
+    store.sort_indices();
+    eprintln!("{store}");
     if let err @ Err(_) = store.sanity_check() {
         store.sort_indices();
         eprintln!("{store}");
@@ -49,15 +51,15 @@ fn latest_at() {
         &[(Rect2D::name(), &bundle1), (Point2D::name(), &bundle2)],
     );
     // TODO: that is where implicit instances should be shown to work!
-    // assert_scenario(
-    //     &mut store,
-    //     &ent_path,
-    //     3,
-    //     &[(Rect2D::name(), &bundle1), (Point2D::name(), &bundle3)],
-    // );
+    assert_joint_query_at(
+        &mut store,
+        &ent_path,
+        3,
+        &[(Rect2D::name(), &bundle1), (Point2D::name(), &bundle3)],
+    );
 }
 
-/// Runs a joint query over all components at the given `frame_nr`, and asserts that result
+/// Runs a joint query over all components at the given `frame_nr`, and asserts that the result
 /// matches a joint `DataFrame` built ouf of the specified raw `bundles`.
 fn assert_joint_query_at(
     store: &mut DataStore,
