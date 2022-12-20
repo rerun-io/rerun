@@ -2,7 +2,7 @@
 //!
 //! Testing & demonstrating expected usage of the datastore APIs, no funny stuff.
 
-use arrow2::array::{Array, UInt64Array};
+use arrow2::array::{Array, ListArray, UInt32Array, UInt64Array};
 use polars_core::{prelude::*, series::Series};
 use re_arrow_store::{DataStore, TimeQuery, TimelineQuery, WriteError};
 use re_log_types::{
@@ -34,8 +34,10 @@ fn latest_at() {
     let bundle3 = test_bundle!(ent_path @ [build_frame_nr(3)] => [points3]);
     store.insert(&bundle3).unwrap();
 
-    store.sort_indices();
-    eprintln!("{store}");
+    let rects4 = build_some_point2d(5);
+    let bundle4 = test_bundle!(ent_path @ [build_frame_nr(4)] => [rects4]);
+    store.insert(&bundle4).unwrap();
+
     if let err @ Err(_) = store.sanity_check() {
         store.sort_indices();
         eprintln!("{store}");
@@ -50,12 +52,17 @@ fn latest_at() {
         2,
         &[(Rect2D::name(), &bundle1), (Point2D::name(), &bundle2)],
     );
-    // TODO: that is where implicit instances should be shown to work!
     assert_joint_query_at(
         &mut store,
         &ent_path,
         3,
         &[(Rect2D::name(), &bundle1), (Point2D::name(), &bundle3)],
+    );
+    assert_joint_query_at(
+        &mut store,
+        &ent_path,
+        4,
+        &[(Rect2D::name(), &bundle4), (Point2D::name(), &bundle3)],
     );
 }
 
@@ -79,6 +86,7 @@ fn assert_joint_query_at(
 
     let df_expected = joint_df(bundles);
 
+    // TODO: whether you want inner/outer/something-else, it's up to the caller!
     dbg!(&df);
     dbg!(&df_expected);
 
@@ -237,7 +245,7 @@ fn joint_query(
         .filter(|df| !df.is_empty());
 
     dfs.reduce(|acc, df| {
-        acc.left_join(
+        acc.outer_join(
             &df,
             [Instance::name().as_str()],
             [Instance::name().as_str()],
@@ -283,9 +291,16 @@ fn joint_df(bundles: &[(ComponentName, &MsgBundle)]) -> DataFrame {
         .iter()
         .map(|(component, bundle)| {
             let instances = if bundle.components.len() == 1 {
+                let len = bundle.components[0]
+                    .value
+                    .as_any()
+                    .downcast_ref::<ListArray<i32>>()
+                    .unwrap()
+                    .value(0)
+                    .len();
                 Series::try_from((
                     Instance::name().as_str(),
-                    UInt64Array::from_vec((0..bundle.components[0].value.len() as u64).collect())
+                    wrap_in_listarray(UInt32Array::from_vec((0..len as u32).collect()).to_boxed())
                         .to_boxed(),
                 ))
                 .unwrap()
@@ -299,15 +314,18 @@ fn joint_df(bundles: &[(ComponentName, &MsgBundle)]) -> DataFrame {
 
             let df = DataFrame::new(vec![
                 instances,
-                Series::try_from((component.as_str(), bundle.components[1].value.to_boxed()))
-                    .unwrap(),
+                Series::try_from((
+                    component.as_str(),
+                    bundle.components.last().unwrap().value.to_boxed(),
+                ))
+                .unwrap(),
             ])
             .unwrap();
 
             df.explode(df.get_column_names()).unwrap()
         })
         .reduce(|acc, df| {
-            acc.left_join(
+            acc.outer_join(
                 &df,
                 [Instance::name().as_str()],
                 [Instance::name().as_str()],

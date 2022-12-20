@@ -1,5 +1,5 @@
 use arrow2::{
-    array::{new_empty_array, Array, ListArray, UInt64Array},
+    array::{new_empty_array, Array, ListArray, UInt32Array, UInt64Array},
     buffer::Buffer,
     datatypes::DataType,
 };
@@ -9,7 +9,7 @@ use parking_lot::RwLock;
 
 use re_log::{debug, trace};
 use re_log_types::{
-    msg_bundle::{ComponentBundle, MsgBundle},
+    msg_bundle::{wrap_in_listarray, ComponentBundle, MsgBundle},
     ComponentName, ObjPath as EntityPath, TimeInt, TimePoint, TimeRange, Timeline,
 };
 
@@ -148,7 +148,8 @@ impl DataStore {
         components: &[ComponentBundle],
         row_indices: &mut IntMap<ComponentName, RowIndex>,
     ) -> WriteResult<()> {
-        let clustering_comp = get_or_create_clustering_key(row_nr, components, self.clustering_key);
+        let (explicit, clustering_comp) =
+            get_or_create_clustering_key(row_nr, components, self.clustering_key);
         let expected_nb_instances = clustering_comp.len();
 
         // Clustering component must be dense.
@@ -159,6 +160,23 @@ impl DataStore {
         // TODO: should we do the sorting ourselves if required?
         if !clustering_comp.is_sorted_and_unique()? {
             return Err(WriteError::InvalidClusteringComponent(clustering_comp));
+        }
+
+        // Insert the auto-generated clustering component if needed.
+        if !explicit {
+            let table = self
+                .components
+                .entry(self.clustering_key)
+                .or_insert_with(|| {
+                    ComponentTable::new(self.clustering_key, clustering_comp.data_type())
+                });
+
+            let row_idx = table.push(
+                &self.config,
+                time_point,
+                &*wrap_in_listarray(clustering_comp).to_boxed(),
+            );
+            row_indices.insert(self.clustering_key, row_idx);
         }
 
         for bundle in components {
@@ -180,7 +198,8 @@ impl DataStore {
                 .unwrap()
                 .value(0)
                 .len();
-            // TODO: test
+
+            // TODO: what about splats?
             if nb_instances != expected_nb_instances {
                 return Err(WriteError::MismatchedInstances {
                     clustering_comp: self.clustering_key,
@@ -211,7 +230,7 @@ fn get_or_create_clustering_key(
     row_nr: usize,
     components: &[ComponentBundle],
     clustering_key: ComponentName,
-) -> Box<dyn Array> {
+) -> (bool, Box<dyn Array>) {
     let clustering_comp = components
         .iter()
         .find(|bundle| bundle.name == clustering_key);
@@ -224,7 +243,7 @@ fn get_or_create_clustering_key(
             .downcast_ref::<ListArray<i32>>()
             .unwrap()
             .value(row_nr);
-        row
+        (true, row)
     } else {
         // TODO: explain why it doesn't matter which component we pick as model
         let len = components.first().map_or(0, |comp| {
@@ -236,7 +255,11 @@ fn get_or_create_clustering_key(
                 .value(row_nr);
             row.len()
         });
-        UInt64Array::from_vec((0..len as u64).collect_vec()).boxed()
+        (
+            false,
+            // TODO: there's no good reason not to cache this already
+            UInt32Array::from_vec((0..len as u32).collect_vec()).boxed(),
+        )
     }
 }
 
