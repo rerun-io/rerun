@@ -77,27 +77,6 @@ pub fn get_component_with_instances(
     DataFrame::new(series?).map_err(Into::into)
 }
 
-/// If a `DataFrame` has no `Instance` column create one from the row numbers
-fn add_instances_and_sort_if_needed(df: &DataFrame) -> Result<DataFrame> {
-    let instance_name = Instance::name().as_str();
-    if df.column(instance_name).is_ok() {
-        // If we have an InstanceKey column already, make sure that it's sorted.
-        // TODO(jleibs): can remove this once we have a sort guarantee from the store
-        let reverse = false;
-        Ok(df.sort([instance_name], reverse)?)
-    } else {
-        // If we don't have an InstanceKey column, it is implicit, and we generate it
-        // based on the row-number so we can use this in join-operations.
-        // The default Polars row type is u32 and so we need to convert it to the
-        // expected type of our InstanceKeys.
-        let mut with_rows = df.with_row_count(instance_name, None)?;
-        let rows = with_rows.select_at_idx(0).ok_or(QueryError::BadAccess)?;
-        let u64_rows = rows.cast(&DataType::UInt64)?;
-        with_rows.replace_at_idx(0, u64_rows).unwrap();
-        Ok(with_rows)
-    }
-}
-
 /// Retrieve an entity as a polars Dataframe
 ///
 /// An entity has a primary [`Component`] which is expected to always be
@@ -158,18 +137,15 @@ pub fn query_entity_with_primary<const N: usize>(
     // join. Series have a SetSorted option to specify this. join_asof might be
     // the right place to start digging.
 
-    let df = add_instances_and_sort_if_needed(&df);
-
     let instance_name = Instance::name().as_str();
     let joined = components
         .iter()
-        .fold(df, |df: Result<DataFrame>, &component| {
+        .fold(Ok(df), |df: Result<DataFrame>, &component| {
             // If we find the component, then we try to left-join with the existing dataframe
             // If the column we are looking up isn't found, just return the dataframe as is
             // For any other error, escalate
             match get_component_with_instances(store, timeline_query, ent_path, component) {
                 Ok(component_df) => {
-                    let component_df = add_instances_and_sort_if_needed(&component_df)?;
                     // We use an asof join which takes advantage of the fact
                     // that our join-columns are sorted. The strategy shouldn't
                     // matter here since we have a Tolerance of None.
