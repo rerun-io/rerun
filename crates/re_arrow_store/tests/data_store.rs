@@ -9,7 +9,7 @@ use polars_core::{prelude::DataFrame, series::Series};
 use re_arrow_store::{DataStore, DataStoreConfig, TimeInt, TimeQuery, TimelineQuery};
 use re_log_types::{
     datagen::{
-        build_frame_nr, build_instances, build_log_time, build_some_point2d, build_some_rects,
+        build_frame_nr, build_log_time, build_some_instances, build_some_point2d, build_some_rects,
     },
     field_types::{Instance, Point2D, Rect2D},
     msg_bundle::{Component as _, ComponentBundle, MsgBundle},
@@ -143,7 +143,7 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
         tracker.insert_bundle(
             store,
             &test_bundle!(ent_path @ [build_log_time(now), build_frame_nr(frame40)] => [
-                build_instances(nb_instances),
+                build_some_instances(nb_instances),
             ]),
         );
     }
@@ -291,7 +291,7 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
         tracker.insert_bundle(
             store,
             &test_bundle!(ent_path @ [build_frame_nr(frame41)] => [
-                build_instances(nb_instances),
+                build_some_instances(nb_instances),
             ]),
         );
         tracker.insert_bundle(
@@ -309,7 +309,7 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
         tracker.insert_bundle(
             store,
             &test_bundle!(ent_path @ [build_log_time(now_plus_1s)] => [
-                build_instances(nb_instances),
+                build_some_instances(nb_instances),
                 build_some_rects(nb_instances),
             ]),
         );
@@ -322,7 +322,7 @@ fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
         tracker.insert_bundle(
             store,
             &test_bundle!(ent_path @ [build_log_time(now), build_frame_nr(frame42)] => [
-                build_instances(nb_instances),
+                build_some_instances(nb_instances),
             ]),
         );
         tracker.insert_bundle(
@@ -510,14 +510,14 @@ fn query_model_specifics_impl(store: &mut DataStore) {
         tracker.insert_bundle(
             store,
             &test_bundle!(ent_path @ [build_frame_nr(frame41)] => [
-                build_instances(nb_rects),
+                build_some_instances(nb_rects),
                 build_some_rects(nb_rects),
             ]),
         );
         tracker.insert_bundle(
             store,
             &test_bundle!(ent_path @ [build_frame_nr(frame41)] => [
-                build_instances(nb_positions_before),
+                build_some_instances(nb_positions_before),
                 build_some_point2d(nb_positions_before),
             ]),
         );
@@ -526,7 +526,7 @@ fn query_model_specifics_impl(store: &mut DataStore) {
         tracker.insert_bundle(
             store,
             &test_bundle!(ent_path @ [build_frame_nr(frame42)] => [
-                build_instances(nb_positions_after),
+                build_some_instances(nb_positions_after),
                 build_some_point2d(nb_positions_after),
             ]),
         );
@@ -851,7 +851,7 @@ fn pathological_bucket_topology() {
                 MsgId::ZERO,
                 ent_path.clone(),
                 time_point.clone(),
-                vec![build_instances(nb_instances).try_into().unwrap()],
+                vec![build_some_instances(nb_instances).try_into().unwrap()],
             );
             store_forward.insert(&msg).unwrap();
 
@@ -859,7 +859,7 @@ fn pathological_bucket_topology() {
                 MsgId::ZERO,
                 ent_path.clone(),
                 time_point.clone(),
-                vec![build_instances(nb_instances).try_into().unwrap()],
+                vec![build_some_instances(nb_instances).try_into().unwrap()],
             );
             store_backward.insert(&msg).unwrap();
         }
@@ -880,7 +880,7 @@ fn pathological_bucket_topology() {
                     MsgId::ZERO,
                     ent_path.clone(),
                     time_point,
-                    vec![build_instances(nb_instances).try_into().unwrap()],
+                    vec![build_some_instances(nb_instances).try_into().unwrap()],
                 )
             })
             .collect::<Vec<_>>();

@@ -58,9 +58,18 @@ pub fn build_frame_nr(frame_nr: i64) -> (Timeline, TimeInt) {
     )
 }
 
-//TODO(john) convert this to a Component struct
-pub fn build_instances(nb_instances: usize) -> Vec<Instance> {
-    (0..nb_instances)
+/// Create `len` dummy `Instance` keys. These keys will be sorted.
+pub fn build_some_instances(nb_instances: usize) -> Vec<Instance> {
+    use rand::seq::SliceRandom;
+    let mut rng = rand::thread_rng();
+
+    // Allocate pool of 10x the potential instance ideas, draw a random sampling, and then sort it
+    let mut instance_pool = (0..(nb_instances * 10)).collect::<Vec<_>>();
+    let (rand_instances, _) = instance_pool.partial_shuffle(&mut rng, nb_instances);
+    let mut sorted_instances = rand_instances.to_vec();
+    sorted_instances.sort();
+
+    sorted_instances
         .into_iter()
         .map(|id| Instance(id as u64))
         .collect()
