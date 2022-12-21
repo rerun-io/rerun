@@ -323,7 +323,8 @@ impl IndexTable {
     ) -> impl Iterator<Item = (TimeInt, [Option<RowIndex>; N])> + 'a {
         let timeline = self.timeline;
 
-        self.range_buckets(time_range.min..=time_range.max)
+        // TODO: explain lack of min clause
+        self.range_buckets(..=time_range.max)
             .enumerate()
             .flat_map(move |(bucket_nr, bucket)| {
                 trace!(
@@ -433,7 +434,7 @@ impl IndexBucket {
         let index = indices.get(&primary)?;
 
         trace!(
-            kind = "query",
+            kind = "latest_at",
             %primary,
             ?components,
             timeline = %self.timeline.name(),
@@ -455,7 +456,7 @@ impl IndexBucket {
         // to step back to find what we came for.
         let primary_idx = primary_idx - 1;
         trace!(
-            kind = "query",
+            kind = "latest_at",
             %primary,
             ?components,
             timeline = %self.timeline.name(),
@@ -470,7 +471,7 @@ impl IndexBucket {
             secondary_idx -= 1;
             if secondary_idx < 0 {
                 trace!(
-                    kind = "query",
+                    kind = "latest_at",
                     %primary,
                     ?components,
                     timeline = %self.timeline.name(),
@@ -483,7 +484,7 @@ impl IndexBucket {
         }
 
         trace!(
-            kind = "query",
+            kind = "latest_at",
             %primary,
             ?components,
             timeline = %self.timeline.name(),
@@ -498,7 +499,7 @@ impl IndexBucket {
             if let Some(index) = indices.get(component) {
                 if let Some(row_idx) = index[secondary_idx as usize] {
                     trace!(
-                        kind = "query",
+                        kind = "latest_at",
                         %primary,
                         %component,
                         timeline = %self.timeline.name(),
@@ -549,6 +550,11 @@ impl IndexBucket {
             // find the primary index's row.
             let primary_idx = times.partition_point(|t| *t < time_range.min.as_i64()) as i64;
 
+            // TODO: explain
+            if primary_idx >= times.len() as i64 {
+                return itertools::Either::Right(std::iter::empty());
+            }
+
             trace!(
                 kind = "range",
                 bucket_time_range = self.timeline.typ().format_range(bucket_time_range),
@@ -591,44 +597,57 @@ impl IndexBucket {
             );
             debug_assert!(index[secondary_idx as usize].is_some());
 
-            Some(secondary_idx)
+            let secondary_time = times[secondary_idx as usize];
+            time_range
+                .contains(secondary_time.into())
+                .then_some(secondary_idx)
         };
 
-        let times = times.clone(); // TODO
+        let times = times.clone(); // TODO: gotta arc it
         let indices = indices.clone(); // TODO: what's the shallowness like in there
 
-        secondary_idx.into_iter().flat_map(move |secondary_idx| {
-            let times = times.clone(); // TODO
-            let indices = indices.clone(); // TODO: what's the shallowness like in there
+        let Some(secondary_idx) = secondary_idx else {
+            return itertools::Either::Right(std::iter::empty());
+        };
 
-            // TODO: validity check somewhere?
-            times
-                .into_iter()
-                .enumerate()
-                .skip(secondary_idx as usize)
-                .map(move |(idx, time)| {
-                    let mut row_indices = [None; N];
-                    for (i, component) in components.iter().enumerate() {
-                        if let Some(index) = indices.get(component) {
-                            if let Some(row_idx) = index[secondary_idx as usize] {
-                                trace!(
-                                    kind = "range",
-                                    bucket_time_range =
-                                        self.timeline.typ().format_range(bucket_time_range),
-                                    %primary,
-                                    %component,
-                                    timeline = %self.timeline.name(),
-                                    time_range = self.timeline.typ().format_range(time_range),
-                                    %idx, %row_idx,
-                                    "found row index",
-                                );
-                                row_indices[i] = Some(row_idx);
-                            }
+        // TODO: explaaaaaaaaaaaaaaaaain
+        let row_indices = times
+            .into_iter()
+            .skip(secondary_idx as usize)
+            .filter(move |time| time_range.contains((*time).into()))
+            .enumerate()
+            .filter_map(move |(offset, time)| {
+                let secondary_idx = secondary_idx as usize + offset;
+
+                // TODO: explain
+                indices
+                    .get(&primary)
+                    .and_then(|index| index.get(secondary_idx).copied())??;
+
+                let mut row_indices = [None; N];
+                for (i, component) in components.iter().enumerate() {
+                    if let Some(index) = indices.get(component) {
+                        if let Some(row_idx) = index[secondary_idx] {
+                            trace!(
+                                kind = "range",
+                                bucket_time_range =
+                                    self.timeline.typ().format_range(bucket_time_range),
+                                %primary,
+                                %component,
+                                timeline = %self.timeline.name(),
+                                time_range = self.timeline.typ().format_range(time_range),
+                                %secondary_idx, %row_idx,
+                                "found row index",
+                            );
+                            row_indices[i] = Some(row_idx);
                         }
                     }
-                    (time.into(), row_indices)
-                })
-        })
+                }
+
+                Some((time.into(), row_indices))
+            });
+
+        itertools::Either::Left(row_indices)
     }
 
     /// Whether the indices in this `IndexBucket` are sorted
@@ -740,7 +759,7 @@ impl ComponentTable {
 
         if let Some(bucket) = self.buckets.get(bucket_nr) {
             trace!(
-                kind = "query",
+                kind = "get",
                 component = self.name.as_str(),
                 %row_idx,
                 bucket_nr,
@@ -750,7 +769,7 @@ impl ComponentTable {
             Some(bucket.get(row_idx))
         } else {
             trace!(
-                kind = "query",
+                kind = "get",
                 component = self.name.as_str(),
                 %row_idx,
                 bucket_nr,

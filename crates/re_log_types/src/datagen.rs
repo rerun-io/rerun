@@ -77,3 +77,17 @@ pub fn build_instances(nb_instances: usize) -> ComponentBundle {
         value: data.boxed(),
     }
 }
+
+pub fn build_instances_from(instances: impl IntoIterator<Item = u64>) -> ComponentBundle {
+    let data = PrimitiveArray::from({
+        let mut instances = instances.into_iter().map(Some).collect::<Vec<_>>();
+        instances.sort();
+        instances
+    });
+    let data = wrap_in_listarray(data.boxed());
+
+    ComponentBundle {
+        name: Instance::name(),
+        value: data.boxed(),
+    }
+}
