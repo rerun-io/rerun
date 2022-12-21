@@ -12,7 +12,7 @@ mod store_read;
 mod store_write;
 
 #[cfg(feature = "polars")]
-pub mod polars_helpers;
+pub mod polars_util;
 
 #[doc(hidden)]
 pub mod test_util;

@@ -15,7 +15,7 @@ use crate::{DataStore, TimelineQuery};
 /// Usage:
 /// ```
 /// # use re_arrow_store::{test_bundle, DataStore, TimeQuery, TimeType, Timeline, TimelineQuery};
-/// # use re_arrow_store::polars_helpers::latest_component;
+/// # use re_arrow_store::polars_util::latest_component;
 /// # use re_log_types::{
 /// #     datagen::{build_frame_nr, build_some_point2d},
 /// #     field_types::{Instance, Point2D},
@@ -90,7 +90,7 @@ pub fn latest_component(
 /// Usage:
 /// ```
 /// # use re_arrow_store::{test_bundle, DataStore, TimeQuery, TimeType, Timeline, TimelineQuery};
-/// # use re_arrow_store::polars_helpers::latest_components;
+/// # use re_arrow_store::polars_util::latest_components;
 /// # use re_log_types::{
 /// #     datagen::{build_frame_nr, build_some_point2d, build_some_rects},
 /// #     field_types::{Instance, Point2D, Rect2D},

@@ -6,7 +6,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use arrow2::array::{Array, ListArray, UInt64Array};
 use polars_core::{prelude::*, series::Series};
-use re_arrow_store::{polars_helpers, test_bundle, DataStore, TimeQuery, TimelineQuery};
+use re_arrow_store::{polars_util, test_bundle, DataStore, TimeQuery, TimelineQuery};
 use re_log_types::{
     datagen::{build_frame_nr, build_instances, build_some_point2d, build_some_rects},
     field_types::{Instance, Point2D, Rect2D},
@@ -62,7 +62,7 @@ fn latest_at_impl(store: &mut DataStore) {
         let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
         let components_all = &[Rect2D::name(), Point2D::name()];
 
-        let df = polars_helpers::latest_components(
+        let df = polars_util::latest_components(
             store,
             &TimelineQuery::new(timeline_frame_nr, TimeQuery::LatestAt(frame_nr)),
             &ent_path,
