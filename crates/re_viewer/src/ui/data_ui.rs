@@ -2,8 +2,9 @@ use egui::{color_picker, Vec2};
 
 use itertools::Itertools;
 use re_arrow_store::TimeQuery;
-use re_data_store::InstanceId;
+use re_data_store::{Index, InstanceId};
 use re_log_types::context::AnnotationInfo;
+use re_log_types::external::arrow2::array::get_display;
 use re_log_types::msg_bundle::{ComponentBundle, MsgBundle};
 use re_log_types::{
     context, AnnotationContext, Arrow3D, ArrowMsg, BeginRecordingMsg, Data, DataMsg, DataPath,
@@ -57,7 +58,7 @@ fn generic_arrow_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     instance_id: &InstanceId,
-    preview: Preview,
+    _preview: Preview,
 ) -> Option<()> {
     let timeline = ctx.rec_cfg.time_ctrl.timeline();
     let store = &ctx.log_db.obj_db.arrow_store;
@@ -66,7 +67,7 @@ fn generic_arrow_ui(
         TimeQuery::LatestAt(ctx.rec_cfg.time_ctrl.time_i64()?),
     );
 
-    let components = store.components_for_path(&timeline_query, &instance_id.obj_path);
+    let components = store.query_components_for_path(&timeline_query, &instance_id.obj_path);
 
     if let Some(components) = components {
         //let components = store.
@@ -84,7 +85,25 @@ fn generic_arrow_ui(
                     ui.label(component.as_str());
 
                     if let Ok(data) = data {
-                        ui.label(format!("{} values", data.len()));
+                        if let Some(index) = &instance_id.instance_index {
+                            if let Index::ArrowInstance(instance) = &index {
+                                let value = data.lookup(instance);
+                                if let Some(value) = value {
+                                    // TODO(jleibs): Dispatch to prettier printers for
+                                    // component types we know about.
+                                    let mut repr = String::new();
+                                    let display = get_display(value.as_ref(), "null");
+                                    display(&mut repr, 0).unwrap();
+                                    ui.label(repr);
+                                } else {
+                                    ui.label("<unset>");
+                                }
+                            } else {
+                                ui.label("<bad index>");
+                            }
+                        } else {
+                            ui.label(format!("{} values", data.len()));
+                        }
                     } else {
                         ui.label("<unset>");
                     }

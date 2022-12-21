@@ -5,7 +5,6 @@ use arrow2::{
     datatypes::{DataType, TimeUnit},
 };
 
-use nohash_hasher::IntSet;
 use re_log::trace;
 use re_log_types::{ComponentName, ObjPath as EntityPath, TimeInt, TimeRange, Timeline};
 
@@ -69,7 +68,8 @@ impl TimeQuery {
 // --- Data store ---
 
 impl DataStore {
-    pub fn components_for_path(
+    /// Retrieve al the component names for a given path
+    pub fn query_components_for_path(
         &self,
         timeline_query: &TimelineQuery,
         ent_path: &EntityPath,

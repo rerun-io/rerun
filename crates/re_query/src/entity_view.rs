@@ -69,6 +69,19 @@ impl ComponentWithInstances {
         )?)
     }
 
+    /// Look up a value for an instance-id
+    pub fn lookup(&self, instance: &Instance) -> Option<Box<dyn Array>> {
+        // TODO(jleibs): Binary search
+        let instances = self.iter_instance_keys().unwrap();
+
+        for (index, key) in itertools::enumerate(instances) {
+            if &key == instance {
+                return Some(self.values.slice(index, 1));
+            }
+        }
+        None
+    }
+
     /// Produce a `ComponentWithInstances` from native component types
     pub fn from_native<C>(
         instance_keys: Option<&Vec<Instance>>,
