@@ -42,7 +42,12 @@ impl TimeControl {
         }
     }
 
-    pub fn play_pause_ui(&mut self, times_per_timeline: &TimesPerTimeline, ui: &mut egui::Ui) {
+    pub fn play_pause_ui(
+        &mut self,
+        re_ui: &re_ui::ReUi,
+        times_per_timeline: &TimesPerTimeline,
+        ui: &mut egui::Ui,
+    ) {
         // Toggle with space
         let anything_has_focus = ui.ctx().memory().focus().is_some();
         if !anything_has_focus
@@ -57,114 +62,139 @@ impl TimeControl {
             }
         }
 
-        if ui
-            .selectable_label(self.is_playing(), "▶")
+        self.play_button_ui(re_ui, ui, times_per_timeline);
+        self.pause_button_ui(re_ui, ui);
+        self.step_time_button_ui(re_ui, ui, times_per_timeline);
+        self.loop_button_ui(re_ui, ui);
+        self.playback_speed_ui(ui);
+    }
+
+    fn play_button_ui(
+        &mut self,
+        re_ui: &re_ui::ReUi,
+        ui: &mut egui::Ui,
+        times_per_timeline: &TimesPerTimeline,
+    ) {
+        if re_ui
+            .large_button_selected(ui, &re_ui::icons::PLAY, self.is_playing())
             .on_hover_text("Play. Toggle with SPACE")
             .clicked()
         {
             self.play(times_per_timeline);
         }
-        if ui
-            .selectable_label(!self.is_playing(), "⏸")
+    }
+
+    fn pause_button_ui(&mut self, re_ui: &re_ui::ReUi, ui: &mut egui::Ui) {
+        if re_ui
+            .large_button_selected(ui, &re_ui::icons::PAUSE, !self.is_playing())
             .on_hover_text("Pause. Toggle with SPACE")
             .clicked()
         {
             self.pause();
         }
+    }
 
-        {
-            ui.scope(|ui| {
-                // Loop-button cycles between states:
-                match self.looping {
-                    Looping::Off => {
-                        if ui
-                            .selectable_label(false, "🔁")
-                            .on_hover_text("Looping is off")
-                            .clicked()
-                        {
-                            self.looping = Looping::All;
-                        }
-                    }
-                    Looping::All => {
-                        if ui
-                            .selectable_label(true, "🔁")
-                            .on_hover_text("Currently looping entire recording")
-                            .clicked()
-                        {
-                            self.looping = Looping::Selection;
-                        }
-                    }
-                    Looping::Selection => {
-                        ui.visuals_mut().selection.bg_fill = re_ui::ReUi::loop_selection_color();
-                        #[allow(clippy::collapsible_else_if)]
-                        if ui
-                            .selectable_label(true, "🔂")
-                            .on_hover_text("Currently looping selection")
-                            .clicked()
-                        {
-                            self.looping = Looping::Off;
-                        }
-                    }
-                }
-            });
-        }
+    fn step_time_button_ui(
+        &mut self,
+        re_ui: &re_ui::ReUi,
+        ui: &mut egui::Ui,
+        times_per_timeline: &TimesPerTimeline,
+    ) {
+        let Some(time_values) = times_per_timeline.get(self.timeline()) else { return; };
 
-        {
-            let mut speed = self.speed();
-            let drag_speed = (speed * 0.02).at_least(0.01);
-            ui.add(
-                egui::DragValue::new(&mut speed)
-                    .speed(drag_speed)
-                    .suffix("x"),
-            )
-            .on_hover_text("Playback speed.");
-            self.set_speed(speed);
-        }
+        let anything_has_kb_focus = ui.ctx().memory().focus().is_some();
+        let step_back = re_ui
+            .large_button(ui, &re_ui::icons::ARROW_LEFT)
+            .on_hover_text("Step back to previous time with any new data (left arrow)")
+            .clicked();
+        let step_back = step_back
+            || !anything_has_kb_focus
+                && ui
+                    .input_mut()
+                    .consume_key(egui::Modifiers::NONE, egui::Key::ArrowLeft);
 
-        if let Some(time_values) = times_per_timeline.get(self.timeline()) {
-            let anything_has_kb_focus = ui.ctx().memory().focus().is_some();
-            let step_back = ui
-                .button("⏴")
-                .on_hover_text("Step back to previous time with any new data (left arrow)")
-                .clicked();
-            let step_back = step_back
-                || !anything_has_kb_focus
-                    && ui
-                        .input_mut()
-                        .consume_key(egui::Modifiers::NONE, egui::Key::ArrowLeft);
+        let step_fwd = re_ui
+            .large_button(ui, &re_ui::icons::ARROW_RIGHT)
+            .on_hover_text("Step forwards to next time with any new data (right arrow)")
+            .clicked();
+        let step_fwd = step_fwd
+            || !anything_has_kb_focus
+                && ui
+                    .input_mut()
+                    .consume_key(egui::Modifiers::NONE, egui::Key::ArrowRight);
 
-            let step_fwd = ui
-                .button("⏵")
-                .on_hover_text("Step forwards to next time with any new data (right arrow)")
-                .clicked();
-            let step_fwd = step_fwd
-                || !anything_has_kb_focus
-                    && ui
-                        .input_mut()
-                        .consume_key(egui::Modifiers::NONE, egui::Key::ArrowRight);
+        if step_back || step_fwd {
+            self.pause();
 
-            if step_back || step_fwd {
-                self.pause();
-
-                if let Some(time) = self.time() {
-                    #[allow(clippy::collapsible_else_if)]
-                    let new_time = if let Some(loop_range) = self.active_loop_selection() {
-                        if step_back {
-                            step_back_time_looped(time, time_values, &loop_range)
-                        } else {
-                            step_fwd_time_looped(time, time_values, &loop_range)
-                        }
+            if let Some(time) = self.time() {
+                #[allow(clippy::collapsible_else_if)]
+                let new_time = if let Some(loop_range) = self.active_loop_selection() {
+                    if step_back {
+                        step_back_time_looped(time, time_values, &loop_range)
                     } else {
-                        if step_back {
-                            step_back_time(time, time_values).into()
-                        } else {
-                            step_fwd_time(time, time_values).into()
-                        }
-                    };
-                    self.set_time(new_time);
-                }
+                        step_fwd_time_looped(time, time_values, &loop_range)
+                    }
+                } else {
+                    if step_back {
+                        step_back_time(time, time_values).into()
+                    } else {
+                        step_fwd_time(time, time_values).into()
+                    }
+                };
+                self.set_time(new_time);
             }
         }
+    }
+
+    fn loop_button_ui(&mut self, re_ui: &re_ui::ReUi, ui: &mut egui::Ui) {
+        let icon = &re_ui::icons::LOOP;
+
+        ui.scope(|ui| {
+            // Loop-button cycles between states:
+            match self.looping {
+                Looping::Off => {
+                    if re_ui
+                        .large_button_selected(ui, icon, false)
+                        .on_hover_text("Looping is off")
+                        .clicked()
+                    {
+                        self.looping = Looping::All;
+                    }
+                }
+                Looping::All => {
+                    if re_ui
+                        .large_button_selected(ui, icon, true)
+                        .on_hover_text("Looping entire recording")
+                        .clicked()
+                    {
+                        self.looping = Looping::Selection;
+                    }
+                }
+                Looping::Selection => {
+                    ui.visuals_mut().selection.bg_fill = re_ui::ReUi::loop_selection_color();
+                    #[allow(clippy::collapsible_else_if)]
+                    if re_ui
+                        .large_button_selected(ui, icon, true)
+                        .on_hover_text("Looping selection")
+                        .clicked()
+                    {
+                        self.looping = Looping::Off;
+                    }
+                }
+            }
+        });
+    }
+
+    fn playback_speed_ui(&mut self, ui: &mut egui::Ui) {
+        let mut speed = self.speed();
+        let drag_speed = (speed * 0.02).at_least(0.01);
+        ui.add(
+            egui::DragValue::new(&mut speed)
+                .speed(drag_speed)
+                .suffix("x"),
+        )
+        .on_hover_text("Playback speed.");
+        self.set_speed(speed);
     }
 }
 

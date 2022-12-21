@@ -16,7 +16,7 @@ use re_log_types::{
     context::{ClassId, KeypointId},
     DataVec, IndexHash, MeshId, MsgId, ObjectType, Tensor,
 };
-use re_query::{query_entity_with_primary, visit_components3};
+use re_query::{query_entity_with_primary, QueryError};
 use re_renderer::{
     renderer::{LineStripFlags, MeshInstance},
     Color32, LineStripSeriesBuilder, PointCloudBuilder, Size,
@@ -955,19 +955,18 @@ impl SceneSpatial {
                 TimeQuery::LatestAt(query.latest_at.as_i64()),
             );
 
-            if let Ok(df) = query_entity_with_primary(
+            match query_entity_with_primary(
                 &ctx.log_db.obj_db.arrow_store,
                 &timeline_query,
                 ent_path,
                 Rect2D::name(),
                 &[ColorRGBA::name()],
-            ) {
-                visit_components3(
-                    &df,
-                    |rect: &Rect2D, instance: Option<&Instance>, color: Option<&ColorRGBA>| {
+            )
+            .and_then(|entity_view| {
+                entity_view.visit2(
+                    |instance: Instance, rect: Rect2D, color: Option<ColorRGBA>| {
                         // TODO(jleibs): This feels convoluted and heavy-weight. Whatever we need here
                         // should come directly out of the datastore.
-                        let instance = instance.unwrap_or(&Instance(0));
                         let instance = InstanceId {
                             obj_path: obj_path.clone(),
                             instance_index: Some(re_log_types::Index::Sequence(instance.0)),
@@ -1030,7 +1029,12 @@ impl SceneSpatial {
                             });
                         }
                     },
-                );
+                )
+            }) {
+                Ok(_) | Err(QueryError::PrimaryNotFound) => {}
+                Err(err) => {
+                    re_log::error_once!("Unexpected error querying '{:?}': {:?}", obj_path, err);
+                }
             }
         }
     }

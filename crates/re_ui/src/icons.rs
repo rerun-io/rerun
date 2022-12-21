@@ -12,6 +12,16 @@ impl Icon {
     }
 }
 
+pub const PLAY: Icon = Icon::new("play", include_bytes!("../data/icons/play.png"));
+pub const PAUSE: Icon = Icon::new("pause", include_bytes!("../data/icons/pause.png"));
+pub const ARROW_LEFT: Icon =
+    Icon::new("arrow_left", include_bytes!("../data/icons/arrow_left.png"));
+pub const ARROW_RIGHT: Icon = Icon::new(
+    "arrow_right",
+    include_bytes!("../data/icons/arrow_right.png"),
+);
+pub const LOOP: Icon = Icon::new("loop", include_bytes!("../data/icons/loop.png"));
+
 pub const RIGHT_PANEL_TOGGLE: Icon = Icon::new(
     "right_panel_toggle",
     include_bytes!("../data/icons/right_panel_toggle.png"),
@@ -24,3 +34,6 @@ pub const LEFT_PANEL_TOGGLE: Icon = Icon::new(
     "left_panel_toggle",
     include_bytes!("../data/icons/left_panel_toggle.png"),
 );
+
+pub const MINIMIZE: Icon = Icon::new("minimize", include_bytes!("../data/icons/minimize.png"));
+pub const MAXIMIZE: Icon = Icon::new("maximize", include_bytes!("../data/icons/maximize.png"));

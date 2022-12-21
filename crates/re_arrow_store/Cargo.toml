@@ -27,11 +27,6 @@ document-features = "0.2"
 indent = "0.1"
 nohash-hasher = "0.2"
 parking_lot = "0.12"
-polars-core = { workspace = true, features = [
-  "dtype-date",
-  "dtype-time",
-  "dtype-struct",
-] }
 static_assertions = "1.1"
 thiserror.workspace = true
 

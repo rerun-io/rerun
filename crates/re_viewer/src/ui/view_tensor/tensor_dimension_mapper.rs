@@ -193,7 +193,7 @@ pub fn dimension_mapping_ui(
 
     ui.horizontal(|ui| {
         ui.vertical(|ui| {
-            ui.heading("Image:");
+            ui.strong("Image:");
             egui::Grid::new("imagegrid").num_columns(2).show(ui, |ui| {
                 ui.horizontal(|ui| {
                     ui.label("Width:");
@@ -232,7 +232,7 @@ pub fn dimension_mapping_ui(
         ui.add_space(24.0);
 
         ui.vertical(|ui| {
-            ui.heading("Selectors:");
+            ui.strong("Selectors:");
             // Use Grid instead of Vertical layout to match styling of the parallel Grid for
             egui::Grid::new("selectiongrid")
                 .num_columns(1)
