@@ -37,6 +37,14 @@ class ArrowState(Enum):
     # Log *only* Arrow
     PURE = "pure"
 
+    def classic_log_gate(self) -> bool:
+        """Should classic logging be performed."""
+        return self in [ArrowState.NONE, ArrowState.MIXED]
+
+    def arrow_log_gate(self) -> bool:
+        """Should Arrow logging be performed."""
+        return self in [ArrowState.MIXED, ArrowState.PURE]
+
 
 try:
     env_var = os.environ.get("RERUN_EXP_ARROW")
@@ -101,10 +109,10 @@ def log_cleared(obj_path: str, *, recursive: bool = False) -> None:
 
     If `recursive` is True this will also clear all sub-paths
     """
-    if EXP_ARROW in [ArrowState.NONE, ArrowState.MIXED]:
+    if EXP_ARROW.classic_log_gate():
         bindings.log_cleared(obj_path, recursive)
 
-    if EXP_ARROW in [ArrowState.MIXED, ArrowState.PURE]:
+    if EXP_ARROW.arrow_log_gate():
         # TODO(jleibs): type registry?
         # TODO(jleibs): proper handling of rect_format
         # TODO(john): fix this

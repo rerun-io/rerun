@@ -1,7 +1,8 @@
+import logging
 from typing import Optional, Sequence
 
 import numpy.typing as npt
-from rerun.log import _to_sequence
+from rerun.log import EXP_ARROW, _to_sequence
 
 from rerun import bindings
 
@@ -33,14 +34,18 @@ def log_obb(
     `class_id`: Optional class id for the OBB.
                  The class id provides colors and labels if not specified explicitly.
     """
-    bindings.log_obb(
-        obj_path,
-        half_size=_to_sequence(half_size),
-        position=_to_sequence(position),
-        rotation_q=_to_sequence(rotation_q),
-        color=color,
-        stroke_width=stroke_width,
-        label=label,
-        timeless=timeless,
-        class_id=class_id,
-    )
+    if EXP_ARROW.classic_log_gate():
+        bindings.log_obb(
+            obj_path,
+            half_size=_to_sequence(half_size),
+            position=_to_sequence(position),
+            rotation_q=_to_sequence(rotation_q),
+            color=color,
+            stroke_width=stroke_width,
+            label=label,
+            timeless=timeless,
+            class_id=class_id,
+        )
+
+    if EXP_ARROW.arrow_log_gate():
+        logging.warning("log_obb() not yet implemented for Arrow.")

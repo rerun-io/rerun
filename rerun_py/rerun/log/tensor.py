@@ -1,7 +1,9 @@
+import logging
 from typing import Any, Iterable, Optional, Union
 
 import numpy as np
 import numpy.typing as npt
+from rerun.log import EXP_ARROW
 
 from rerun import bindings
 
@@ -54,4 +56,8 @@ def _log_tensor(
     if tensor.dtype not in SUPPORTED_DTYPES:
         raise TypeError(f"Unsupported dtype: {tensor.dtype}. Expected a numeric type.")
 
-    bindings.log_tensor(obj_path, tensor, names, meter, meaning, timeless)
+    if EXP_ARROW.classic_log_gate():
+        bindings.log_tensor(obj_path, tensor, names, meter, meaning, timeless)
+
+    if EXP_ARROW.arrow_log_gate():
+        logging.warning("log_tensor() not yet implemented for Arrow.")

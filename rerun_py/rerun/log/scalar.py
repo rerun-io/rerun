@@ -1,4 +1,7 @@
+import logging
 from typing import Optional, Sequence
+
+from rerun.log import EXP_ARROW
 
 from rerun import bindings
 
@@ -97,4 +100,8 @@ def log_scalar(
     Points within a single line do not have to all share the same scatteredness: the line will
     switch between a scattered and a continous representation as required.
     """
-    bindings.log_scalar(obj_path, scalar, label, color, radius, scattered)
+    if EXP_ARROW.classic_log_gate():
+        bindings.log_scalar(obj_path, scalar, label, color, radius, scattered)
+
+    if EXP_ARROW.arrow_log_gate():
+        logging.warning("log_scalar() not yet implemented for Arrow.")

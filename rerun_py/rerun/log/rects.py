@@ -1,3 +1,4 @@
+import logging
 from enum import Enum
 from typing import Optional, Sequence, Union
 
@@ -5,7 +6,6 @@ import numpy as np
 import numpy.typing as npt
 from rerun.log import (
     EXP_ARROW,
-    ArrowState,
     Color,
     Colors,
     OptionalClassIds,
@@ -65,7 +65,11 @@ def log_rect(
     * `class_id`: Optional class id for the rectangle.
        The class id provides color and label if not specified explicitly.
     """
-    bindings.log_rect(obj_path, rect_format.value, _to_sequence(rect), color, label, class_id, timeless)
+    if EXP_ARROW.classic_log_gate():
+        bindings.log_rect(obj_path, rect_format.value, _to_sequence(rect), color, label, class_id, timeless)
+
+    if EXP_ARROW.arrow_log_gate():
+        logging.warning("log_rect() not yet implemented for Arrow.")
 
 
 def log_rects(
@@ -116,7 +120,7 @@ def log_rects(
     if labels is None:
         labels = []
 
-    if EXP_ARROW in [ArrowState.NONE, ArrowState.MIXED]:
+    if EXP_ARROW.classic_log_gate():
         bindings.log_rects(
             obj_path=obj_path,
             rect_format=rect_format.value,
@@ -128,12 +132,14 @@ def log_rects(
             timeless=timeless,
         )
 
-    if EXP_ARROW in [ArrowState.MIXED, ArrowState.PURE]:
-        from rerun.components import color, label, rect2d
+    if EXP_ARROW.arrow_log_gate():
+        from rerun.components.color import ColorRGBAArray
+        from rerun.components.label import LabelArray
+        from rerun.components.rect2d import Rect2DArray
 
-        rects = rect2d.Rect2DArray.from_numpy_and_format(rects, rect_format)
-        colors = color.ColorRGBAArray.from_numpy(colors)
-        labels = label.LabelArray.new(labels)
+        rects = Rect2DArray.from_numpy_and_format(rects, rect_format)
+        colors = ColorRGBAArray.from_numpy(colors)
+        labels = LabelArray.new(labels)
         bindings.log_arrow_msg(
             f"arrow/{obj_path}",
             **{

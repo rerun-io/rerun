@@ -4,7 +4,6 @@ import numpy as np
 import numpy.typing as npt
 from rerun.log import (  # type: ignore[attr-defined]
     EXP_ARROW,
-    ArrowState,
     Color,
     Colors,
     OptionalClassIds,
@@ -63,7 +62,7 @@ def log_point(
     if position is not None:
         position = np.require(position, dtype="float32")
 
-    if EXP_ARROW in [ArrowState.NONE, ArrowState.MIXED]:
+    if EXP_ARROW.classic_log_gate():
         bindings.log_point(
             obj_path=obj_path,
             position=position,
@@ -75,7 +74,7 @@ def log_point(
             timeless=timeless,
         )
 
-    if EXP_ARROW in [ArrowState.MIXED, ArrowState.PURE]:
+    if EXP_ARROW.arrow_log_gate():
         from rerun.components.color import ColorRGBAArray
         from rerun.components.label import LabelArray
         from rerun.components.point import Point2DArray, Point3DArray
@@ -155,7 +154,7 @@ def log_points(
     if labels is None:
         labels = []
 
-    if EXP_ARROW in [ArrowState.NONE, ArrowState.MIXED]:
+    if EXP_ARROW.classic_log_gate():
         bindings.log_points(
             obj_path=obj_path,
             positions=positions,
@@ -168,7 +167,7 @@ def log_points(
             timeless=timeless,
         )
 
-    if EXP_ARROW in [ArrowState.MIXED, ArrowState.PURE]:
+    if EXP_ARROW.arrow_log_gate():
         from rerun.components.color import ColorRGBAArray
         from rerun.components.label import LabelArray
         from rerun.components.point import Point2DArray, Point3DArray
