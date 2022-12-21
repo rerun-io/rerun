@@ -48,7 +48,7 @@ impl ObjectProps {
                 // Use the focal length as default distance for now.
                 // If there is no resolution, assume alpha_y *is* the focal length.
                 let resolution = pinhole.resolution.unwrap_or([1.0, 1.0]);
-                let focal_length_y = pinhole.alpha_y() / resolution[1];
+                let focal_length_y = pinhole.focal_length_in_pixels().y / resolution[1];
                 ordered_float::NotNan::new(focal_length_y).unwrap_or_default()
             })
             .into()
