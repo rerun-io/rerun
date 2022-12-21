@@ -54,7 +54,7 @@ impl ObjectProps {
             .into()
     }
 
-    /// see [`pinhole_image_plane_distance()`]
+    /// see `pinhole_image_plane_distance()`
     pub fn set_pinhole_image_plane_distance(&mut self, distance: f32) {
         self.pinhole_image_plane_distance = ordered_float::NotNan::new(distance).ok();
     }
