@@ -1,12 +1,12 @@
+from enum import Enum
 import os
-from typing import Optional, Sequence, Union
+from typing import Final, Optional, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
 from rerun.color_conversion import linear_to_gamma_u8_pixel
 
 from rerun import rerun_bindings  # type: ignore[attr-defined]
-from rerun import components
 
 __all__ = [
     "ArrowState",
@@ -104,10 +104,12 @@ def log_cleared(obj_path: str, *, recursive: bool = False) -> None:
 
     If `recursive` is True this will also clear all sub-paths
     """
-    rerun_bindings.log_cleared(obj_path, recursive)
+    if EXP_ARROW in [ArrowState.NONE, ArrowState.MIXED]:
+        rerun_bindings.log_cleared(obj_path, recursive)
 
-    if EXP_ARROW:
+    if EXP_ARROW in [ArrowState.MIXED, ArrowState.PURE]:
         import pyarrow as pa
+        from rerun import components
 
         # TODO(jleibs): type registry?
         # TODO(jleibs): proper handling of rect_format

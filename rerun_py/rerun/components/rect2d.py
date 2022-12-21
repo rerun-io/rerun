@@ -5,7 +5,6 @@ from typing import ClassVar, Type, cast
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
-
 from rerun.components import REGISTERED_FIELDS, ComponentTypeFactory
 from rerun.log.rects import RectFormat
 
