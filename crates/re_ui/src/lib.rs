@@ -206,6 +206,16 @@ impl ReUi {
         TopBarStyle { height, indent }
     }
 
+    pub fn small_icon(&self, ui: &mut egui::Ui, icon: &Icon) -> egui::Response {
+        let size_points = egui::Vec2::splat(12.0); // TODO(emilk): get from design tokens
+
+        let image = self.static_image_cache.lock().get(icon.id, icon.png_bytes);
+        let texture_id = image.texture_id(ui.ctx());
+        // TODO(emilk): change color and size on hover
+        let tint = ui.visuals().widgets.inactive.fg_stroke.color;
+        ui.add(egui::ImageButton::new(texture_id, size_points).tint(tint))
+    }
+
     pub fn medium_icon_toggle_button(
         &self,
         ui: &mut egui::Ui,

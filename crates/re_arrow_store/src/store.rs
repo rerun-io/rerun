@@ -901,7 +901,7 @@ pub struct ComponentBucket {
     /// - the array layer corresponds to the different instances within a single row,
     /// - and finally the struct layer holds the components themselves.
     /// E.g.:
-    /// ```ignore
+    /// ```text
     /// [
     ///   [{x: 8.687487, y: 1.9590926}, {x: 2.0559108, y: 0.1494348}, {x: 7.09219, y: 0.9616637}],
     ///   [{x: 7.158843, y: 0.68897724}, {x: 8.934421, y: 2.8420508}],

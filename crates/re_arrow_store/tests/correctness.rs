@@ -35,9 +35,12 @@ fn write_errors() {
         bundle.components[0].value =
             concatenate(&[&*bundle.components[0].value, &*bundle.components[0].value]).unwrap();
 
+        // The first component of the bundle determines the number of rows for all other
+        // components in there (since it has to match for all of them), so in this case we get a
+        // `MoreThanOneRow` error as the first component is > 1 row.
         assert!(matches!(
             store.insert(&bundle),
-            Err(WriteError::BadBatchLength(_)),
+            Err(WriteError::MoreThanOneRow(_)),
         ));
     }
 
@@ -54,6 +57,9 @@ fn write_errors() {
         bundle.components[1].value =
             concatenate(&[&*bundle.components[1].value, &*bundle.components[1].value]).unwrap();
 
+        // The first component of the bundle determines the number of rows for all other
+        // components in there (since it has to match for all of them), so in this case we get a
+        // `MismatchedRows` error as the first component is 1 row but the 2nd isn't.
         assert!(matches!(
             store.insert(&bundle),
             Err(WriteError::MismatchedRows(_)),

@@ -6,8 +6,7 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 use re_log_types::{
     datagen::{build_frame_nr, build_some_colors, build_some_point2d},
-    msg_bundle::try_build_msg_bundle2,
-    msg_bundle::MsgBundle,
+    msg_bundle::{try_build_msg_bundle2, MsgBundle},
     obj_path, ArrowMsg, BatchIndex, Data, DataMsg, DataPath, DataVec, FieldName, Index, LogMsg,
     LoggedData, MsgId, TimeInt, TimePoint, Timeline,
 };

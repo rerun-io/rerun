@@ -111,9 +111,7 @@ impl ObjectTree {
             Default::default()
         });
 
-        if let Some(data) = data {
-            fields.add(msg_id, time_point, data);
-        }
+        fields.add(msg_id, time_point, data);
 
         pending_clears
     }
@@ -309,7 +307,7 @@ pub struct DataColumns {
 }
 
 impl DataColumns {
-    pub fn add(&mut self, msg_id: MsgId, time_point: &TimePoint, data: &LoggedData) {
+    pub fn add(&mut self, msg_id: MsgId, time_point: &TimePoint, data: Option<&LoggedData>) {
         for (timeline, time_value) in time_point.iter() {
             self.times
                 .entry(*timeline)
@@ -319,15 +317,17 @@ impl DataColumns {
                 .insert(msg_id);
         }
 
-        let mono_or_multi = match data {
-            LoggedData::Null(_) | LoggedData::Single(_) => MonoOrMulti::Mono,
-            LoggedData::Batch { .. } | LoggedData::BatchSplat(_) => MonoOrMulti::Multi,
-        };
+        if let Some(data) = data {
+            let mono_or_multi = match data {
+                LoggedData::Null(_) | LoggedData::Single(_) => MonoOrMulti::Mono,
+                LoggedData::Batch { .. } | LoggedData::BatchSplat(_) => MonoOrMulti::Multi,
+            };
 
-        self.per_type
-            .entry((data.data_type(), mono_or_multi))
-            .or_default()
-            .insert(msg_id);
+            self.per_type
+                .entry((data.data_type(), mono_or_multi))
+                .or_default()
+                .insert(msg_id);
+        }
     }
 
     pub fn summary(&self) -> String {
