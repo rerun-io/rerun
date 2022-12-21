@@ -1,5 +1,5 @@
 use macaw::BoundingBox;
-use re_data_store::{InstanceId, InstanceIdHash, ObjPath};
+use re_data_store::{InstanceId, InstanceIdHash, ObjPath, ObjectsProperties};
 use re_log_types::Transform;
 
 use crate::misc::{
@@ -107,6 +107,7 @@ impl ViewSpatialState {
         scene: SceneSpatial,
         spaces_info: &SpacesInfo,
         space_info: &SpaceInfo,
+        objects_properties: &ObjectsProperties,
     ) -> egui::Response {
         self.scene_bbox_accum = self.scene_bbox_accum.union(scene.primitives.bounding_box());
 
@@ -125,6 +126,7 @@ impl ViewSpatialState {
                     space_cameras,
                     &self.scene_bbox_accum,
                     &mut self.hovered_instance,
+                    objects_properties,
                 )
             }
             SpatialNavigationMode::TwoD => {

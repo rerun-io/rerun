@@ -406,6 +406,7 @@ impl SpaceView {
                     spaces_info,
                     reference_space_info,
                     scene,
+                    &self.obj_properties,
                 );
             }
 
@@ -469,11 +470,18 @@ impl ViewState {
         spaces_info: &SpacesInfo,
         space_info: &SpaceInfo,
         scene: view_spatial::SceneSpatial,
+        obj_properties: &ObjectsProperties,
     ) {
         ui.vertical(|ui| {
-            let response =
-                self.state_spatial
-                    .view_spatial(ctx, ui, space, scene, spaces_info, space_info);
+            let response = self.state_spatial.view_spatial(
+                ctx,
+                ui,
+                space,
+                scene,
+                spaces_info,
+                space_info,
+                obj_properties,
+            );
             help_button_overlay_ui(ui, response.rect, ctx, self.state_spatial.help_text());
         });
     }

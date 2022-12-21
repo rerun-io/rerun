@@ -1252,6 +1252,7 @@ impl SceneSpatial {
         eye: &Eye,
         cameras: &[SpaceCamera3D],
         hovered_instance: InstanceIdHash,
+        obj_properties: &ObjectsProperties,
     ) {
         crate::profile_function!();
 
@@ -1329,7 +1330,16 @@ impl SceneSpatial {
                 }
             }
 
-            self.add_camera_frustum(camera, scene_bbox, instance_id, line_radius, line_color);
+            let mut frustum_length = scene_bbox.size().length() * 0.3;
+            if let Some(pinhole) = camera.pinhole.as_ref() {
+                if let Some(child_space) = camera.target_space.as_ref() {
+                    frustum_length = obj_properties
+                        .get(child_space)
+                        .pinhole_image_plane_distance(pinhole);
+                }
+            }
+
+            self.add_camera_frustum(camera, instance_id, line_radius, frustum_length, line_color);
         }
     }
 
@@ -1337,26 +1347,23 @@ impl SceneSpatial {
     fn add_camera_frustum(
         &mut self,
         camera: &SpaceCamera3D,
-        scene_bbox: &macaw::BoundingBox,
         instance_id: InstanceIdHash,
         line_radius: Size,
+        frustum_length: f32,
         color: Color32,
     ) -> Option<()> {
         let world_from_image = camera.world_from_image()?;
         let [w, h] = camera.pinhole?.resolution?;
-
-        // At what distance do we end the frustum?
-        let d = scene_bbox.size().length() * 0.3;
 
         // TODO(emilk): there is probably a off-by-one or off-by-half error here.
         // The image coordinates are in [0, w-1] range, so either we should use those limits
         // or [-0.5, w-0.5] for the "pixels are tiny squares" interpretation of the frustum.
 
         let corners = [
-            world_from_image.transform_point3(d * vec3(0.0, 0.0, 1.0)),
-            world_from_image.transform_point3(d * vec3(0.0, h, 1.0)),
-            world_from_image.transform_point3(d * vec3(w, h, 1.0)),
-            world_from_image.transform_point3(d * vec3(w, 0.0, 1.0)),
+            world_from_image.transform_point3(frustum_length * vec3(0.0, 0.0, 1.0)),
+            world_from_image.transform_point3(frustum_length * vec3(0.0, h, 1.0)),
+            world_from_image.transform_point3(frustum_length * vec3(w, h, 1.0)),
+            world_from_image.transform_point3(frustum_length * vec3(w, 0.0, 1.0)),
         ];
 
         let center = camera.position();
