@@ -40,7 +40,7 @@ pub(crate) fn view_bar_chart(
                             .iter()
                             .enumerate()
                             .map(|(i, value)| {
-                                Bar::new(i as f64 + 0.5, *value as f64)
+                                Bar::new(i as f64 + 0.5, *value)
                                     .width(0.95)
                                     .name(format!("{instance_id} #{i}"))
                                     .fill(fill)

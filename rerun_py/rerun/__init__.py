@@ -37,6 +37,10 @@ Color = Union[npt.NDArray[ColorDtype], Sequence[Union[int, float]]]
 OptionalClassIds = Optional[Union[int, npt.ArrayLike]]
 OptionalKeyPointIds = Optional[Union[int, npt.ArrayLike]]
 
+TensorDType = Union[
+    np.uint8, np.uint16, np.uint32, np.uint64, np.int8, np.int16, np.int32, np.int64, np.float16, np.float32, np.float64
+]
+
 
 class MeshFormat(Enum):
     # Needs some way of logging materials too, or adding some default material to the
@@ -1044,14 +1048,9 @@ def log_segmentation_image(
     timeless: bool = False,
 ) -> None:
     """
-    Log an image made up of uint8 or uint16 class-ids.
+    Log an image made up of integer class-ids.
 
-    The image should have 1 channels.
-
-    Supported `dtype`s:
-    * uint8: components should be 0-255 class ids
-    * uint16: components should be 0-65535 class ids
-
+    The image should have 1 channel, i.e. be either `H x W` or `H x W x 1`.
     """
     if not isinstance(image, np.ndarray):
         image = np.array(image, dtype=np.uint16)
@@ -1065,34 +1064,56 @@ def log_segmentation_image(
         if depth != 1:
             raise TypeError(f"Expected image depth of 1. Instead got array of shape {image.shape}")
 
-    if image.dtype == "uint8":
-        rerun_bindings.log_tensor_u8(obj_path, image, None, None, rerun_bindings.TensorDataMeaning.ClassId, timeless)
-    elif image.dtype == "uint16":
-        rerun_bindings.log_tensor_u16(obj_path, image, None, None, rerun_bindings.TensorDataMeaning.ClassId, timeless)
-    else:
-        raise TypeError(f"Unsupported dtype: {image.dtype}")
+    _log_tensor(obj_path, tensor=image, meaning=rerun_bindings.TensorDataMeaning.ClassId, timeless=timeless)
 
 
 def log_tensor(
     obj_path: str,
-    tensor: npt.NDArray[Union[np.uint8, np.uint16, np.float32, np.float64]],
+    tensor: npt.NDArray[TensorDType],
     names: Optional[Iterable[str]] = None,
     meter: Optional[float] = None,
+    timeless: bool = False,
+) -> None:
+    _log_tensor(obj_path, tensor=tensor, names=names, meter=meter, timeless=timeless)
+
+
+def _log_tensor(
+    obj_path: str,
+    tensor: npt.NDArray[TensorDType],
+    names: Optional[Iterable[str]] = None,
+    meter: Optional[float] = None,
+    meaning: rerun_bindings.TensorDataMeaning = None,
     timeless: bool = False,
 ) -> None:
     """Log a general tensor, perhaps with named dimensions."""
     if names is not None:
         names = list(names)
         assert len(tensor.shape) == len(names)
-
     if tensor.dtype == "uint8":
-        rerun_bindings.log_tensor_u8(obj_path, tensor, names, meter, None, timeless)
+        rerun_bindings.log_tensor_u8(obj_path, tensor, names, meter, meaning, timeless)
     elif tensor.dtype == "uint16":
-        rerun_bindings.log_tensor_u16(obj_path, tensor, names, meter, None, timeless)
+        rerun_bindings.log_tensor_u16(obj_path, tensor, names, meter, meaning, timeless)
+    elif tensor.dtype == "uint32":
+        rerun_bindings.log_tensor_u32(obj_path, tensor, names, meter, meaning, timeless)
+    elif tensor.dtype == "uint64":
+        rerun_bindings.log_tensor_u64(obj_path, tensor, names, meter, meaning, timeless)
+
+    elif tensor.dtype == "int8":
+        rerun_bindings.log_tensor_i8(obj_path, tensor, names, meter, meaning, timeless)
+    elif tensor.dtype == "int16":
+        rerun_bindings.log_tensor_i16(obj_path, tensor, names, meter, meaning, timeless)
+    elif tensor.dtype == "int32":
+        rerun_bindings.log_tensor_i32(obj_path, tensor, names, meter, meaning, timeless)
+    elif tensor.dtype == "int64":
+        rerun_bindings.log_tensor_i64(obj_path, tensor, names, meter, meaning, timeless)
+
+    elif tensor.dtype == "float16":
+        rerun_bindings.log_tensor_f16(obj_path, tensor, names, meter, meaning, timeless)
     elif tensor.dtype == "float32":
-        rerun_bindings.log_tensor_f32(obj_path, tensor, names, meter, None, timeless)
+        rerun_bindings.log_tensor_f32(obj_path, tensor, names, meter, meaning, timeless)
     elif tensor.dtype == "float64":
-        rerun_bindings.log_tensor_f32(obj_path, tensor.astype("float32"), names, meter, None, timeless)
+        rerun_bindings.log_tensor_f64(obj_path, tensor, names, meter, meaning, timeless)
+
     else:
         raise TypeError(f"Unsupported dtype: {tensor.dtype}")
 
