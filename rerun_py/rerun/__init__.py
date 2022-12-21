@@ -6,7 +6,7 @@ import os
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Final, Iterable, Optional, Sequence, Tuple, Union
+from typing import Any, Final, Iterable, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -1089,6 +1089,23 @@ def _log_tensor(
     if names is not None:
         names = list(names)
         assert len(tensor.shape) == len(names)
+
+    SUPPORTED_DTYPES: Any = [
+        np.uint8,
+        np.uint16,
+        np.uint32,
+        np.uint64,
+        np.int8,
+        np.int16,
+        np.int32,
+        np.int64,
+        np.float16,
+        np.float32,
+        np.float64,
+    ]
+
+    if tensor.dtype not in SUPPORTED_DTYPES:
+        raise TypeError(f"Unsupported dtype: {tensor.dtype}. Expected a numeric type.")
 
     rerun_bindings.log_tensor(obj_path, tensor, names, meter, meaning, timeless)
 
