@@ -47,8 +47,7 @@ impl ObjectProps {
             .unwrap_or_else(|| {
                 let distance = pinhole
                     .focal_length()
-                    .unwrap_or_else(|| pinhole.focal_length_in_pixels())
-                    .y;
+                    .unwrap_or_else(|| pinhole.focal_length_in_pixels().y);
                 ordered_float::NotNan::new(distance).unwrap_or_default()
             })
             .into()

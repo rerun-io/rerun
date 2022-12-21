@@ -698,10 +698,9 @@ impl Pinhole {
         glam::vec2(self.image_from_cam[0][0], self.image_from_cam[1][1])
     }
 
-    /// X & Y focal length.
-    pub fn focal_length(&self) -> Option<glam::Vec2> {
-        self.resolution
-            .map(|r| self.focal_length_in_pixels() / glam::vec2(r[0], r[1]))
+    /// Focal length.
+    pub fn focal_length(&self) -> Option<f32> {
+        self.resolution.map(|r| self.image_from_cam[0][0] / r[0])
     }
 
     /// Principal point of the pinhole camera,
