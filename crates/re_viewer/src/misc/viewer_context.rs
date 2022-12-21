@@ -65,7 +65,13 @@ impl<'a> ViewerContext<'a> {
         obj_path: &ObjPath,
     ) -> egui::Response {
         // TODO(emilk): common hover-effect of all buttons for the same obj_path!
-        let response = ui.selectable_label(self.selection().is_obj_path(obj_path), text);
+        let response = ui
+            .selectable_label(self.selection().is_obj_path(obj_path), text)
+            .on_hover_ui(|ui| {
+                ui.strong("Object");
+                ui.label(format!("Path: {obj_path}"));
+                crate::ui::data_ui::object_ui(self, ui, obj_path, crate::ui::Preview::Medium);
+            });
         if response.clicked() {
             self.set_selection(Selection::Instance(InstanceId {
                 obj_path: obj_path.clone(),
@@ -92,7 +98,13 @@ impl<'a> ViewerContext<'a> {
         instance_id: &InstanceId,
     ) -> egui::Response {
         // TODO(emilk): common hover-effect of all buttons for the same instance_id!
-        let response = ui.selectable_label(self.selection().is_instance_id(instance_id), text);
+        let response = ui
+            .selectable_label(self.selection().is_instance_id(instance_id), text)
+            .on_hover_ui(|ui| {
+                ui.strong("Object Instance");
+                ui.label(format!("Path: {instance_id}"));
+                crate::ui::data_ui::instance_ui(self, ui, instance_id, crate::ui::Preview::Medium);
+            });
         if response.clicked() {
             self.set_selection(Selection::Instance(instance_id.clone()));
         }
@@ -128,7 +140,7 @@ impl<'a> ViewerContext<'a> {
         let is_selected = self.selection() == Selection::SpaceView(space_view_id);
         let response = ui
             .selectable_label(is_selected, text)
-            .on_hover_text("SpaceView");
+            .on_hover_text("Space View");
         if response.clicked() {
             self.set_selection(Selection::SpaceView(space_view_id));
         }
@@ -145,7 +157,11 @@ impl<'a> ViewerContext<'a> {
         let selection = Selection::SpaceViewObjPath(space_view_id, obj_path.clone());
         let response = ui
             .selectable_label(self.selection() == selection, text)
-            .on_hover_text("SpaceView Object");
+            .on_hover_ui(|ui| {
+                ui.strong("Space View Object");
+                ui.label(format!("Path: {obj_path}"));
+                crate::ui::data_ui::object_ui(self, ui, obj_path, crate::ui::Preview::Medium);
+            });
         if response.clicked() {
             self.set_selection(selection);
         }
