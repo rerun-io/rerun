@@ -2,7 +2,7 @@ use egui::NumExt as _;
 use glam::Affine3A;
 use macaw::{vec3, BoundingBox, Quat, Ray3, Vec3};
 
-use re_data_store::{InstanceId, InstanceIdHash};
+use re_data_store::{InstanceId, InstanceIdHash, ObjectsProperties};
 use re_log_types::{ObjPath, ViewCoordinates};
 use re_renderer::{
     view_builder::{Projection, TargetConfiguration},
@@ -331,6 +331,7 @@ pub fn view_3d(
     space_cameras: &[SpaceCamera3D],
     scene_bbox_accum: &BoundingBox,
     hovered_instance: &mut Option<InstanceId>,
+    objects_properties: &ObjectsProperties,
 ) -> egui::Response {
     crate::profile_function!();
 
@@ -357,6 +358,7 @@ pub fn view_3d(
             &eye,
             space_cameras,
             hovered_instance_hash,
+            objects_properties,
         );
     }
 
