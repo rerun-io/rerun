@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import ClassVar, Type, cast
-
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
@@ -17,7 +15,6 @@ __all__ = [
 class Rect2DArray(pa.ExtensionArray):  # type: ignore[misc]
     def from_numpy_and_format(array: npt.NDArray[np.float_], rect_format: RectFormat) -> Rect2DArray:
         """Build a `Rect2DArray` from an Nx4 numpy array."""
-
         rects = np.asarray(array, dtype="float32")
 
         if rect_format == RectFormat.XYWH:

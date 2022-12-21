@@ -28,10 +28,7 @@ __all__ = [
 
 
 class ArrowState(Enum):
-    """
-    ArrowState is a enum used to configure the logging behaviour of the SDK during the
-    transition to Arrow.
-    """
+    """ArrowState is a enum used to configure the logging behaviour of the SDK during the transition to Arrow."""
 
     # No Arrow loggin
     NONE = "none"
@@ -108,16 +105,13 @@ def log_cleared(obj_path: str, *, recursive: bool = False) -> None:
         bindings.log_cleared(obj_path, recursive)
 
     if EXP_ARROW in [ArrowState.MIXED, ArrowState.PURE]:
-        import pyarrow as pa
-
-        from rerun import components
-
         # TODO(jleibs): type registry?
         # TODO(jleibs): proper handling of rect_format
         # TODO(john): fix this
         # cleared_arr = pa.array([True], type=components.ClearedField.type)
         # arr = pa.StructArray.from_arrays([cleared_arr], fields=[components.ClearedField])
         # bindings.log_arrow_msg(obj_path, "rect", arr)
+        pass
 
 
 def set_visible(obj_path: str, visibile: bool) -> None:

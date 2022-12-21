@@ -3,7 +3,6 @@ from typing import Optional, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
-from rerun.color_conversion import u8_array_to_rgba
 from rerun.log import (
     EXP_ARROW,
     ArrowState,

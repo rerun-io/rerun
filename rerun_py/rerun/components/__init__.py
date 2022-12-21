@@ -40,13 +40,13 @@ def ComponentTypeFactory(name: str, array_cls: type[pa.ExtensionArray], field: p
     component_type = type(
         name,
         (pa.ExtensionType,),
-        dict(
-            storage_type=field.type,
-            __init__=__init__,
-            __arrow_ext_serialize__=__arrow_ext_serialize__,
-            __arrow_ext_deserialize__=__arrow_ext_deserialize__,
-            __arrow_ext_class__=__arrow_ext_class__,
-        ),
+        {
+            "storage_type": field.type,
+            "__init__": __init__,
+            "__arrow_ext_serialize__": __arrow_ext_serialize__,
+            "__arrow_ext_deserialize__": __arrow_ext_deserialize__,
+            "__arrow_ext_class__": __arrow_ext_class__,
+        },
     )
 
     return cast(Type[pa.ExtensionType], component_type)

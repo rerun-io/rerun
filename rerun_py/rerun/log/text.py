@@ -93,7 +93,6 @@ def log_text_entry(
     * If no `level` is given, it will default to `LogLevel.INFO`.
     * `color` is optional RGB or RGBA triplet in 0-255 sRGB.
     """
-
     if EXP_ARROW in [ArrowState.NONE, ArrowState.MIXED]:
         bindings.log_text_entry(obj_path, text, level, color, timeless)
 

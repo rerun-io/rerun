@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import cast
-
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
@@ -18,9 +16,7 @@ __all__ = [
 class Point2DArray(pa.ExtensionArray):  # type: ignore[misc]
     def from_numpy(array: npt.NDArray[np.float32]) -> Point2DArray:
         """Build a `Point2DArray` from an Nx2 numpy array."""
-
         # TODO(john) assert shape
-
         points = np.asarray(array, dtype="float32")
         storage = pa.StructArray.from_arrays(
             arrays=[pa.array(c, type=pa.float32()) for c in points.T],
@@ -39,9 +35,7 @@ pa.register_extension_type(Point2DType())
 class Point3DArray(pa.ExtensionArray):  # type: ignore[misc]
     def from_numpy(array: npt.NDArray[np.float32]) -> Point3DArray:
         """Build a `Point3DArray` from an Nx3 numpy array."""
-
         # TODO(john) assert shape
-
         points = np.asarray(array, dtype="float32")
         storage = pa.StructArray.from_arrays(
             arrays=[pa.array(c, type=pa.float32()) for c in points.T],
