@@ -155,7 +155,7 @@ impl TimeControl {
                 Looping::Off => {
                     if re_ui
                         .large_button_selected(ui, icon, false)
-                        .on_hover_text("Looping is off.")
+                        .on_hover_text("Looping is off")
                         .clicked()
                     {
                         self.looping = Looping::All;
@@ -164,7 +164,7 @@ impl TimeControl {
                 Looping::All => {
                     if re_ui
                         .large_button_selected(ui, icon, true)
-                        .on_hover_text("Looping entire recording.")
+                        .on_hover_text("Looping entire recording")
                         .clicked()
                     {
                         self.looping = Looping::Selection;
@@ -175,7 +175,7 @@ impl TimeControl {
                     #[allow(clippy::collapsible_else_if)]
                     if re_ui
                         .large_button_selected(ui, icon, true)
-                        .on_hover_text("Looping selection.")
+                        .on_hover_text("Looping selection")
                         .clicked()
                     {
                         self.looping = Looping::Off;
