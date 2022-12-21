@@ -134,7 +134,7 @@ impl TimePanel {
     fn collapsed_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         ctx.rec_cfg
             .time_ctrl
-            .play_pause_ui(ctx.log_db.times_per_timeline(), ui);
+            .play_pause_ui(ctx.re_ui, ctx.log_db.times_per_timeline(), ui);
 
         ui.separator();
 
@@ -494,7 +494,7 @@ impl TimePanel {
 fn top_row_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
     ctx.rec_cfg
         .time_ctrl
-        .play_pause_ui(ctx.log_db.times_per_timeline(), ui);
+        .play_pause_ui(ctx.re_ui, ctx.log_db.times_per_timeline(), ui);
 
     ui.separator();
 
