@@ -1,6 +1,6 @@
 use anyhow::bail;
 use arrow2::{
-    array::{Array, PrimitiveArray},
+    array::{Array, ListArray, PrimitiveArray},
     datatypes::DataType,
     types::NativeType,
 };
@@ -16,12 +16,18 @@ pub trait ArrayExt: Array {
     ///
     /// The array must be dense, otherwise the result of this method is undefined.
     fn is_sorted_and_unique(&self) -> anyhow::Result<bool>;
+
+    /// Returns the length of the child array at the given index.
+    ///
+    /// * Panics if `self` is not a `ListArray<i32>`.
+    /// * Panics if `child_nr` is out of bounds.
+    fn get_child_length(&self, child_nr: usize) -> usize;
 }
 
 impl ArrayExt for dyn Array {
     fn is_dense(&self) -> bool {
         if let Some(validity) = self.validity() {
-            validity.iter().all(|b| b)
+            validity.unset_bits() == 0
         } else {
             true
         }
@@ -49,5 +55,15 @@ impl ArrayExt for dyn Array {
             DataType::Float64 => Ok(is_sorted_and_unique_primitive::<f64>(self)),
             _ => bail!("unsupported datatype: {:?}", self.data_type()),
         }
+    }
+
+    fn get_child_length(&self, child_nr: usize) -> usize {
+        let offsets = self
+            .as_any()
+            .downcast_ref::<ListArray<i32>>()
+            .unwrap()
+            .offsets();
+
+        (offsets[child_nr + 1] - offsets[child_nr]) as usize
     }
 }
