@@ -1255,7 +1255,7 @@ checksum = "4f94fa09c2aeea5b8839e414b7b841bf429fd25b9c522116ac97ee87856d88b2"
 [[package]]
 name = "ecolor"
 version = "0.20.0"
-source = "git+https://github.com/emilk/egui?rev=99af63fad27b2983dd3636a18fe3725e1f845464#99af63fad27b2983dd3636a18fe3725e1f845464"
+source = "git+https://github.com/emilk/egui?rev=a68c8910923d6957a0962d8a1e591681a459f270#a68c8910923d6957a0962d8a1e591681a459f270"
 dependencies = [
  "bytemuck",
  "serde",
@@ -1264,7 +1264,7 @@ dependencies = [
 [[package]]
 name = "eframe"
 version = "0.20.1"
-source = "git+https://github.com/emilk/egui?rev=99af63fad27b2983dd3636a18fe3725e1f845464#99af63fad27b2983dd3636a18fe3725e1f845464"
+source = "git+https://github.com/emilk/egui?rev=a68c8910923d6957a0962d8a1e591681a459f270#a68c8910923d6957a0962d8a1e591681a459f270"
 dependencies = [
  "bytemuck",
  "directories-next",
@@ -1291,7 +1291,7 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.20.1"
-source = "git+https://github.com/emilk/egui?rev=99af63fad27b2983dd3636a18fe3725e1f845464#99af63fad27b2983dd3636a18fe3725e1f845464"
+source = "git+https://github.com/emilk/egui?rev=a68c8910923d6957a0962d8a1e591681a459f270#a68c8910923d6957a0962d8a1e591681a459f270"
 dependencies = [
  "accesskit",
  "ahash 0.8.2",
@@ -1314,7 +1314,7 @@ dependencies = [
 [[package]]
 name = "egui-wgpu"
 version = "0.20.0"
-source = "git+https://github.com/emilk/egui?rev=99af63fad27b2983dd3636a18fe3725e1f845464#99af63fad27b2983dd3636a18fe3725e1f845464"
+source = "git+https://github.com/emilk/egui?rev=a68c8910923d6957a0962d8a1e591681a459f270#a68c8910923d6957a0962d8a1e591681a459f270"
 dependencies = [
  "bytemuck",
  "epaint",
@@ -1328,7 +1328,7 @@ dependencies = [
 [[package]]
 name = "egui-winit"
 version = "0.20.1"
-source = "git+https://github.com/emilk/egui?rev=99af63fad27b2983dd3636a18fe3725e1f845464#99af63fad27b2983dd3636a18fe3725e1f845464"
+source = "git+https://github.com/emilk/egui?rev=a68c8910923d6957a0962d8a1e591681a459f270#a68c8910923d6957a0962d8a1e591681a459f270"
 dependencies = [
  "arboard",
  "egui",
@@ -1354,7 +1354,7 @@ dependencies = [
 [[package]]
 name = "egui_extras"
 version = "0.20.0"
-source = "git+https://github.com/emilk/egui?rev=99af63fad27b2983dd3636a18fe3725e1f845464#99af63fad27b2983dd3636a18fe3725e1f845464"
+source = "git+https://github.com/emilk/egui?rev=a68c8910923d6957a0962d8a1e591681a459f270#a68c8910923d6957a0962d8a1e591681a459f270"
 dependencies = [
  "egui",
  "serde",
@@ -1364,7 +1364,7 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.20.1"
-source = "git+https://github.com/emilk/egui?rev=99af63fad27b2983dd3636a18fe3725e1f845464#99af63fad27b2983dd3636a18fe3725e1f845464"
+source = "git+https://github.com/emilk/egui?rev=a68c8910923d6957a0962d8a1e591681a459f270#a68c8910923d6957a0962d8a1e591681a459f270"
 dependencies = [
  "bytemuck",
  "egui",
@@ -1386,7 +1386,7 @@ checksum = "90e5c1c8368803113bf0c9584fc495a58b86dc8a29edbf8fe877d21d9507e797"
 [[package]]
 name = "emath"
 version = "0.20.0"
-source = "git+https://github.com/emilk/egui?rev=99af63fad27b2983dd3636a18fe3725e1f845464#99af63fad27b2983dd3636a18fe3725e1f845464"
+source = "git+https://github.com/emilk/egui?rev=a68c8910923d6957a0962d8a1e591681a459f270#a68c8910923d6957a0962d8a1e591681a459f270"
 dependencies = [
  "bytemuck",
  "serde",
@@ -1417,7 +1417,7 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.20.0"
-source = "git+https://github.com/emilk/egui?rev=99af63fad27b2983dd3636a18fe3725e1f845464#99af63fad27b2983dd3636a18fe3725e1f845464"
+source = "git+https://github.com/emilk/egui?rev=a68c8910923d6957a0962d8a1e591681a459f270#a68c8910923d6957a0962d8a1e591681a459f270"
 dependencies = [
  "ab_glyph",
  "ahash 0.8.2",
@@ -2011,6 +2011,10 @@ name = "half"
 version = "1.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eabb4a44450da02c90444cf74558da904edde8fb4e9035a9a6a4e15445af0bd7"
+dependencies = [
+ "bytemuck",
+ "serde",
+]
 
 [[package]]
 name = "half"
@@ -2944,6 +2948,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a462c1af5ba1fddec1488c4646993a23ae7931f9e170ccba23e9c7c834277797"
 dependencies = [
  "ahash 0.7.6",
+ "half 1.8.2",
  "libc",
  "ndarray",
  "num-complex",
@@ -3519,6 +3524,7 @@ dependencies = [
  "nohash-hasher",
  "once_cell",
  "puffin",
+ "rand",
  "re_arrow_store",
  "re_log",
  "re_log_types",
@@ -3561,6 +3567,7 @@ dependencies = [
  "document-features",
  "fixed",
  "glam",
+ "half 1.8.2",
  "lazy_static",
  "macaw",
  "mimalloc",
@@ -3701,6 +3708,7 @@ dependencies = [
  "crossbeam",
  "document-features",
  "glam",
+ "half 1.8.2",
  "image",
  "itertools",
  "macaw",
@@ -3797,6 +3805,7 @@ dependencies = [
  "egui_extras",
  "enumset",
  "glam",
+ "half 1.8.2",
  "image",
  "instant",
  "itertools",

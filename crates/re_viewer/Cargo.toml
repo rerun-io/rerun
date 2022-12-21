@@ -56,6 +56,7 @@ enumset = "1.0.12"
 glam = { version = "0.20", features = [
   "mint",
 ] } # can't update glam until a new version of `macaw` is released
+half = "1.8"
 image = { version = "0.24", default-features = false, features = [
   "jpeg",
   "png",

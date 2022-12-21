@@ -61,8 +61,8 @@ pub(crate) struct SpaceView {
     /// We only show data that match this category.
     pub category: ViewCategory,
 
-    /// Set to `true` the first time the user messes around with the list of queried objects.
-    pub has_been_user_edited: bool,
+    /// Set to `false` the first time the user messes around with the list of queried objects.
+    pub allow_auto_adding_more_object: bool,
 }
 
 impl SpaceView {
@@ -85,16 +85,26 @@ impl SpaceView {
             .next()
             .map_or_else(|| space_path.clone(), |c| ObjPath::from(vec![c.to_owned()]));
 
+        let queried_objects = Self::default_queried_objects(ctx, category, space_info, spaces_info);
+
+        let name = if queried_objects.len() == 1 {
+            // a single object in this space-view - name the space after it
+            let obj_path = queried_objects.iter().next().unwrap();
+            obj_path.to_string()
+        } else {
+            space_path.to_string()
+        };
+
         Self {
-            name: space_path.to_string(),
+            name,
             id: SpaceViewId::random(),
             root_path,
             space_path,
-            queried_objects: Self::default_queried_objects(ctx, category, space_info, spaces_info),
+            queried_objects,
             obj_properties: Default::default(),
             view_state,
             category,
-            has_been_user_edited: false,
+            allow_auto_adding_more_object: true,
         }
     }
 
@@ -119,12 +129,13 @@ impl SpaceView {
     }
 
     pub fn on_frame_start(&mut self, ctx: &mut ViewerContext<'_>, spaces_info: &SpacesInfo) {
-        if self.has_been_user_edited {
+        if !self.allow_auto_adding_more_object {
             return;
         }
         let Some(space) = spaces_info.spaces.get(&self.space_path) else {
             return;
         };
+        // Add objects that have been logged since we were created
         self.queried_objects =
             Self::default_queried_objects(ctx, self.category, space, spaces_info);
     }
@@ -326,7 +337,7 @@ impl SpaceView {
                         self.queried_objects.insert(path.clone());
                     },
                 );
-                self.has_been_user_edited = true;
+                self.allow_auto_adding_more_object = false;
             }
             response.on_hover_text("Add to this Space View's query")
         });
@@ -414,21 +425,6 @@ fn has_visualization_for_category(
 
 // ----------------------------------------------------------------------------
 
-/// Show help-text on top of space
-fn help_button_overlay_ui(
-    ui: &mut egui::Ui,
-    rect: egui::Rect,
-    ctx: &mut ViewerContext<'_>,
-    help_text: &str,
-) {
-    let mut ui = ui.child_ui(rect, egui::Layout::right_to_left(egui::Align::TOP));
-    ctx.re_ui.hovering_frame().show(&mut ui, |ui| {
-        crate::misc::help_hover_button(ui).on_hover_text(help_text);
-    });
-}
-
-// ----------------------------------------------------------------------------
-
 /// Camera position and similar.
 #[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
 pub(crate) struct ViewState {
@@ -453,10 +449,8 @@ impl ViewState {
         scene: view_spatial::SceneSpatial,
     ) {
         ui.vertical(|ui| {
-            let response =
-                self.state_spatial
-                    .view_spatial(ctx, ui, space, scene, spaces_info, space_info);
-            help_button_overlay_ui(ui, response.rect, ctx, self.state_spatial.help_text());
+            self.state_spatial
+                .view_spatial(ctx, ui, space, scene, spaces_info, space_info);
         });
     }
 
@@ -531,13 +525,9 @@ impl ViewState {
         scene: &view_bar_chart::SceneBarChart,
     ) {
         ui.vertical(|ui| {
-            let response = ui
-                .scope(|ui| {
-                    view_bar_chart::view_bar_chart(ctx, ui, &mut self.state_bar_chart, scene);
-                })
-                .response;
-
-            help_button_overlay_ui(ui, response.rect, ctx, view_bar_chart::HELP_TEXT);
+            ui.scope(|ui| {
+                view_bar_chart::view_bar_chart(ctx, ui, &mut self.state_bar_chart, scene);
+            });
         });
     }
 
@@ -546,16 +536,11 @@ impl ViewState {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         scene: &view_time_series::SceneTimeSeries,
-    ) -> egui::Response {
+    ) {
         ui.vertical(|ui| {
-            let response = ui
-                .scope(|ui| {
-                    view_time_series::view_time_series(ctx, ui, &mut self.state_time_series, scene);
-                })
-                .response;
-
-            help_button_overlay_ui(ui, response.rect, ctx, view_time_series::HELP_TEXT);
-        })
-        .response
+            ui.scope(|ui| {
+                view_time_series::view_time_series(ctx, ui, &mut self.state_time_series, scene);
+            });
+        });
     }
 }
