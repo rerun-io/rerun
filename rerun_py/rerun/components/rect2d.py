@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from typing import ClassVar, Type, cast
-import numpy.typing as npt
+
 import numpy as np
+import numpy.typing as npt
 import pyarrow as pa
+from rerun.components import REGISTERED_FIELDS, ComponentTypeFactory
 
 from rerun import RectFormat
-from rerun.components import ComponentTypeFactory, REGISTERED_FIELDS
 
 
 class Rect2DArray(pa.ExtensionArray):  # type: ignore[misc]

@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 from typing import cast
-import numpy.typing as npt
-import numpy as np
-import pyarrow as pa
 
-from rerun.components import ComponentTypeFactory, REGISTERED_FIELDS
+import numpy as np
+import numpy.typing as npt
+import pyarrow as pa
+from rerun.components import REGISTERED_FIELDS, ComponentTypeFactory
 
 
 class Point2DArray(pa.ExtensionArray):  # type: ignore[misc]

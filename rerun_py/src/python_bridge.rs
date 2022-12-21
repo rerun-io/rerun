@@ -131,12 +131,23 @@ fn rerun_bindings(py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     m.add_function(wrap_pyfunction!(log_tensor_u8, m)?)?;
     m.add_function(wrap_pyfunction!(log_tensor_u16, m)?)?;
+    m.add_function(wrap_pyfunction!(log_tensor_u32, m)?)?;
+    m.add_function(wrap_pyfunction!(log_tensor_u64, m)?)?;
+
+    m.add_function(wrap_pyfunction!(log_tensor_i8, m)?)?;
+    m.add_function(wrap_pyfunction!(log_tensor_i16, m)?)?;
+    m.add_function(wrap_pyfunction!(log_tensor_i32, m)?)?;
+    m.add_function(wrap_pyfunction!(log_tensor_i64, m)?)?;
+
+    m.add_function(wrap_pyfunction!(log_tensor_f16, m)?)?;
     m.add_function(wrap_pyfunction!(log_tensor_f32, m)?)?;
+    m.add_function(wrap_pyfunction!(log_tensor_f64, m)?)?;
 
     m.add_function(wrap_pyfunction!(log_mesh_file, m)?)?;
     m.add_function(wrap_pyfunction!(log_image_file, m)?)?;
     m.add_function(wrap_pyfunction!(log_cleared, m)?)?;
     m.add_function(wrap_pyfunction!(log_arrow_msg, m)?)?;
+
     m.add_class::<TensorDataMeaning>()?;
 
     Ok(())
@@ -1558,44 +1569,34 @@ enum TensorDataMeaning {
     ClassId,
 }
 
-#[allow(clippy::needless_pass_by_value)]
-#[pyfunction]
-fn log_tensor_u8(
-    obj_path: &str,
-    img: numpy::PyReadonlyArrayDyn<'_, u8>,
-    names: Option<&PyList>,
-    meter: Option<f32>,
-    meaning: Option<TensorDataMeaning>,
-    timeless: bool,
-) -> PyResult<()> {
-    log_tensor(obj_path, img, names, meter, meaning, timeless)
+macro_rules! declare_log_tensor {
+    ($name: ident, $typ: ty) => {
+        #[allow(clippy::needless_pass_by_value)]
+        #[pyfunction]
+        fn $name(
+            obj_path: &str,
+            img: numpy::PyReadonlyArrayDyn<'_, $typ>,
+            names: Option<&PyList>,
+            meter: Option<f32>,
+            meaning: Option<TensorDataMeaning>,
+            timeless: bool,
+        ) -> PyResult<()> {
+            log_tensor(obj_path, img, names, meter, meaning, timeless)
+        }
+    };
 }
 
-#[allow(clippy::needless_pass_by_value)]
-#[pyfunction]
-fn log_tensor_u16(
-    obj_path: &str,
-    img: numpy::PyReadonlyArrayDyn<'_, u16>,
-    names: Option<&PyList>,
-    meter: Option<f32>,
-    meaning: Option<TensorDataMeaning>,
-    timeless: bool,
-) -> PyResult<()> {
-    log_tensor(obj_path, img, names, meter, meaning, timeless)
-}
-
-#[allow(clippy::needless_pass_by_value)]
-#[pyfunction]
-fn log_tensor_f32(
-    obj_path: &str,
-    img: numpy::PyReadonlyArrayDyn<'_, f32>,
-    names: Option<&PyList>,
-    meter: Option<f32>,
-    meaning: Option<TensorDataMeaning>,
-    timeless: bool,
-) -> PyResult<()> {
-    log_tensor(obj_path, img, names, meter, meaning, timeless)
-}
+declare_log_tensor!(log_tensor_u8, u8);
+declare_log_tensor!(log_tensor_u16, u16);
+declare_log_tensor!(log_tensor_u32, u32);
+declare_log_tensor!(log_tensor_u64, u64);
+declare_log_tensor!(log_tensor_i8, i8);
+declare_log_tensor!(log_tensor_i16, i16);
+declare_log_tensor!(log_tensor_i32, i32);
+declare_log_tensor!(log_tensor_i64, i64);
+declare_log_tensor!(log_tensor_f16, half::f16);
+declare_log_tensor!(log_tensor_f32, f32);
+declare_log_tensor!(log_tensor_f64, f64);
 
 fn log_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
     obj_path: &str,

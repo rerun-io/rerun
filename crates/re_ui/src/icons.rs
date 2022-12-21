@@ -24,3 +24,6 @@ pub const LEFT_PANEL_TOGGLE: Icon = Icon::new(
     "left_panel_toggle",
     include_bytes!("../data/icons/left_panel_toggle.png"),
 );
+
+pub const MINIMIZE: Icon = Icon::new("minimize", include_bytes!("../data/icons/minimize.png"));
+pub const MAXIMIZE: Icon = Icon::new("maximize", include_bytes!("../data/icons/maximize.png"));

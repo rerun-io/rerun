@@ -23,6 +23,7 @@ save = ["anyhow", "rmp-serde", "serde", "zstd"]
 serde = [
   "dep:serde",
   "dep:serde_bytes",
+  "half/serde",
   "re_string_interner/serde",
   "re_tuid/serde",
 ]
@@ -50,7 +51,8 @@ chrono = { version = "0.4", features = [
 ] } # TODO(emilk): replace `chrono` with `time` crate
 derive_more = "0.99"
 document-features = "0.2"
-fixed = { version = "1.17", features = ["serde"] }
+fixed = { version = "1.17", default-features = false, features = ["serde"] }
+half = { version = "1.8", features = ["bytemuck"] }
 lazy_static.workspace = true
 nohash-hasher = "0.2"
 num-derive = "0.3"

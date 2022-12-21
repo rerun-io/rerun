@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from typing import Sequence, cast
-from rerun.components import ComponentTypeFactory, REGISTERED_FIELDS
 
 import pyarrow as pa
+from rerun.components import REGISTERED_FIELDS, ComponentTypeFactory
 
 
 class LabelArray(pa.ExtensionArray):  # type: ignore[misc]

@@ -22,7 +22,9 @@ use super::{space_view::SpaceView, view_category::ViewCategory, SpaceViewId};
 #[derive(Clone, Debug)]
 pub struct SpaceMakeInfo {
     pub id: SpaceViewId,
-    pub reference_space_info: ObjPath,
+
+    /// Some path we use to group the views by
+    pub path: ObjPath,
 
     pub category: ViewCategory,
 
@@ -76,7 +78,7 @@ pub(crate) fn tree_from_space_views(
 
             SpaceMakeInfo {
                 id: *space_view_id,
-                reference_space_info: space_view.space_path.clone(),
+                path: space_view.space_path.clone(),
                 category: space_view.category,
                 aspect_ratio,
             }
@@ -84,7 +86,8 @@ pub(crate) fn tree_from_space_views(
         .collect_vec();
 
     if !space_make_infos.is_empty() {
-        let layout = layout_by_category(viewport_size, &mut space_make_infos);
+        // Users often organize by path prefix, so we start by splitting along that
+        let layout = layout_by_path_prefix(viewport_size, &mut space_make_infos);
         tree_from_split(&mut tree, egui_dock::NodeIndex(0), &layout);
     }
 
@@ -128,8 +131,7 @@ fn layout_by_category(viewport_size: egui::Vec2, spaces: &mut [SpaceMakeInfo]) -
             layout_by_path_prefix(viewport_size, spaces)
         } else {
             // Mixed categories.
-            let (mut spaces, split_index) = find_group_split_point(groups);
-            split_spaces_at(viewport_size, &mut spaces, split_index)
+            split_groups(viewport_size, groups)
         }
     }
 }
@@ -137,10 +139,18 @@ fn layout_by_category(viewport_size: egui::Vec2, spaces: &mut [SpaceMakeInfo]) -
 /// Put spaces with common path prefix close together.
 fn layout_by_path_prefix(viewport_size: egui::Vec2, spaces: &mut [SpaceMakeInfo]) -> LayoutSplit {
     assert!(!spaces.is_empty());
+
     if spaces.len() == 1 {
         LayoutSplit::Leaf(spaces[0].clone())
     } else {
-        split_groups(viewport_size, group_by_path_prefix(spaces))
+        let groups = group_by_path_prefix(spaces);
+
+        if groups.len() == 1 {
+            // failed to separate by group - try category instead:
+            layout_by_category(viewport_size, spaces)
+        } else {
+            split_groups(viewport_size, groups)
+        }
     }
 }
 
@@ -207,13 +217,13 @@ fn split_spaces_at(
 
     match suggest_split_direction(viewport_size, spaces, split_index) {
         SplitDirection::LeftRight { left, t, right } => {
-            let left = layout_by_category(left, &mut spaces[..split_index]);
-            let right = layout_by_category(right, &mut spaces[split_index..]);
+            let left = layout_by_path_prefix(left, &mut spaces[..split_index]);
+            let right = layout_by_path_prefix(right, &mut spaces[split_index..]);
             LayoutSplit::LeftRight(left.into(), t, right.into())
         }
         SplitDirection::TopBottom { top, t, bottom } => {
-            let top = layout_by_category(top, &mut spaces[..split_index]);
-            let bottom = layout_by_category(bottom, &mut spaces[split_index..]);
+            let top = layout_by_path_prefix(top, &mut spaces[..split_index]);
+            let bottom = layout_by_path_prefix(bottom, &mut spaces[split_index..]);
             LayoutSplit::TopBottom(top.into(), t, bottom.into())
         }
     }
@@ -263,7 +273,7 @@ fn group_by_path_prefix(space_infos: &[SpaceMakeInfo]) -> Vec<Vec<SpaceMakeInfo>
 
     let paths = space_infos
         .iter()
-        .map(|space_info| space_info.reference_space_info.to_components())
+        .map(|space_info| space_info.path.to_components())
         .collect_vec();
 
     for i in 0.. {

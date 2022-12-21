@@ -33,10 +33,10 @@ from dataset.proto.objectron.proto import (
     ObjectType,
     Sequence,
 )
+from rerun.log.file import ImageFormat
 from scipy.spatial.transform import Rotation as R
 
 import rerun
-from rerun import ImageFormat
 
 
 @dataclass

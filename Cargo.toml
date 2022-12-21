@@ -35,14 +35,14 @@ opt-level = 2
 debug = true
 
 [patch.crates-io]
-# 2022-12-19 - Plot improvements
-ecolor = { git = "https://github.com/emilk/egui", rev = "99af63fad27b2983dd3636a18fe3725e1f845464" }
-eframe = { git = "https://github.com/emilk/egui", rev = "99af63fad27b2983dd3636a18fe3725e1f845464" }
-egui = { git = "https://github.com/emilk/egui", rev = "99af63fad27b2983dd3636a18fe3725e1f845464" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "99af63fad27b2983dd3636a18fe3725e1f845464" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "99af63fad27b2983dd3636a18fe3725e1f845464" }
-emath = { git = "https://github.com/emilk/egui", rev = "99af63fad27b2983dd3636a18fe3725e1f845464" }
-epaint = { git = "https://github.com/emilk/egui", rev = "99af63fad27b2983dd3636a18fe3725e1f845464" }
+# 2022-12-20 - Improve bar chart hovering decimal choice
+ecolor = { git = "https://github.com/emilk/egui", rev = "a68c8910923d6957a0962d8a1e591681a459f270" }
+eframe = { git = "https://github.com/emilk/egui", rev = "a68c8910923d6957a0962d8a1e591681a459f270" }
+egui = { git = "https://github.com/emilk/egui", rev = "a68c8910923d6957a0962d8a1e591681a459f270" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "a68c8910923d6957a0962d8a1e591681a459f270" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "a68c8910923d6957a0962d8a1e591681a459f270" }
+emath = { git = "https://github.com/emilk/egui", rev = "a68c8910923d6957a0962d8a1e591681a459f270" }
+epaint = { git = "https://github.com/emilk/egui", rev = "a68c8910923d6957a0962d8a1e591681a459f270" }
 
 # ecolor = { path = "../../egui/crates/ecolor" }
 # eframe = { path = "../../egui/crates/eframe" }
