@@ -256,10 +256,33 @@ fn log_messages() {
         TimeInt, TimePoint, Timeline,
     };
 
+    // Note: we use Box in this function so that we also count the "static"
+    // part of all the data, i.e. its `std::mem::size_of`.
+
     fn encode_log_msg(log_msg: &LogMsg) -> Vec<u8> {
         let mut bytes = vec![];
         re_log_types::encoding::encode(std::iter::once(log_msg), &mut bytes).unwrap();
         bytes
+    }
+
+    fn decode_log_msg(mut bytes: &[u8]) -> LogMsg {
+        let mut messages = re_log_types::encoding::Decoder::new(&mut bytes)
+            .unwrap()
+            .collect::<anyhow::Result<Vec<LogMsg>>>()
+            .unwrap();
+        assert!(bytes.is_empty());
+        assert_eq!(messages.len(), 1);
+        messages.remove(0)
+    }
+
+    // The decoded size is often smaller, presumably because all buffers
+    // (e.g. Vec) have just the right capacity.
+    fn size_decoded(bytes: &[u8]) -> usize {
+        let used_bytes_start = GLOBAL_ALLOCATOR.used_bytes();
+        let log_msg = Box::new(decode_log_msg(bytes));
+        let bytes_used = GLOBAL_ALLOCATOR.used_bytes() - used_bytes_start;
+        drop(log_msg);
+        bytes_used
     }
 
     const POS: [f32; 2] = [2.0, 3.0];
@@ -287,9 +310,10 @@ fn log_messages() {
             data: Data::Vec2(POS).into(),
         }));
         let log_msg_bytes = GLOBAL_ALLOCATOR.used_bytes() - used_bytes_start;
+        let encoded = encode_log_msg(&log_msg);
         println!(
-            "Classic LogMsg containing a Pos2 uses {log_msg_bytes} bytes in RAM, and {} bytes encoded",
-            encode_log_msg(&log_msg).len()
+            "Classic LogMsg containing a Pos2 uses {}-{log_msg_bytes} bytes in RAM, and {} bytes encoded",
+            size_decoded(&encoded), encoded.len()
         );
     }
 
@@ -308,9 +332,10 @@ fn log_messages() {
         let log_msg = Box::new(LogMsg::ArrowMsg(ArrowMsg::try_from(*msg_bundle).unwrap()));
         let log_msg_bytes = GLOBAL_ALLOCATOR.used_bytes() - used_bytes_start;
         println!("Arrow MsgBundle containing a Pos2 uses {msg_bundle_bytes} bytes in RAM");
+        let encoded = encode_log_msg(&log_msg);
         println!(
-            "Arrow LogMsg containing a Pos2 uses {log_msg_bytes} bytes in RAM, and {} bytes encoded",
-            encode_log_msg(&log_msg).len()
+            "Arrow LogMsg containing a Pos2 uses {}-{log_msg_bytes} bytes in RAM, and {} bytes encoded",
+            size_decoded(&encoded), encoded.len()
         );
     }
 
@@ -333,9 +358,10 @@ fn log_messages() {
             },
         }));
         let log_msg_bytes = GLOBAL_ALLOCATOR.used_bytes() - used_bytes_start;
+        let encoded = encode_log_msg(&log_msg);
         println!(
-            "Classic LogMsg containing {NUM_POINTS}x Pos2 uses {log_msg_bytes} bytes in RAM, and {} bytes encoded",
-            encode_log_msg(&log_msg).len()
+            "Classic LogMsg containing {NUM_POINTS}x Pos2 uses {}-{log_msg_bytes} bytes in RAM, and {} bytes encoded",
+            size_decoded(&encoded), encoded.len()
         );
     }
 
@@ -354,9 +380,10 @@ fn log_messages() {
         let log_msg = Box::new(LogMsg::ArrowMsg(ArrowMsg::try_from(*msg_bundle).unwrap()));
         let log_msg_bytes = GLOBAL_ALLOCATOR.used_bytes() - used_bytes_start;
         println!("Arrow MsgBundle containing a Pos2 uses {msg_bundle_bytes} bytes in RAM");
+        let encoded = encode_log_msg(&log_msg);
         println!(
-            "Arrow LogMsg containing {NUM_POINTS}x Pos2 uses {log_msg_bytes} bytes in RAM, and {} bytes encoded",
-            encode_log_msg(&log_msg).len()
+            "Arrow LogMsg containing {NUM_POINTS}x Pos2 uses {}-{log_msg_bytes} bytes in RAM, and {} bytes encoded",
+            size_decoded(&encoded), encoded.len()
         );
     }
 }
