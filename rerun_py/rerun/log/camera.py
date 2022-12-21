@@ -1,9 +1,10 @@
 import logging
+
 import numpy as np
 import numpy.typing as npt
+from rerun.log import EXP_ARROW
 
 from rerun import bindings
-from rerun.log import EXP_ARROW
 
 __all__ = [
     "log_pinhole",
