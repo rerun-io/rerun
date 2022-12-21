@@ -15,7 +15,7 @@ repository = "https://github.com/rerun-io/rerun"
 anyhow = "1.0"
 arrow2 = "0.14"
 arrow2_convert = "0.3"
-cli-table = "0.4"
+comfy-table = { version = "6.1", default-features = false }
 lazy_static = "1.4"
 polars-core = "0.25"
 polars-lazy = "0.25"

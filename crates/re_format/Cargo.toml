@@ -5,3 +5,7 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 publish = false
+
+[dependencies]
+arrow2.workspace = true
+comfy-table.workspace = true

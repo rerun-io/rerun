@@ -4,14 +4,11 @@ use std::sync::atomic::AtomicU64;
 
 use anyhow::ensure;
 use arrow2::array::Array;
-use arrow2::chunk::Chunk;
 use arrow2::datatypes::DataType;
 
-use cli_table::Table;
 use nohash_hasher::IntMap;
 use parking_lot::RwLock;
-use re_format::{format_bytes, format_number};
-use re_log_types::arrow_msg::DisplayAdapter;
+use re_format::{arrow, format_bytes, format_number};
 use re_log_types::{
     ComponentName, ObjPath as EntityPath, ObjPathHash as EntityPathHash, TimeInt, TimeRange,
     Timeline,
@@ -600,25 +597,11 @@ impl std::fmt::Display for IndexBucket {
 
         let names = std::iter::once(timeline_name)
             .chain(col_names.into_iter().map(|name| name.to_string()));
-
-        let values = std::iter::once(times.boxed())
-            .chain(cols.into_iter().map(|c| c.boxed()))
-            .collect::<Box<_>>();
-
-        let table = (0..values[0].len())
-            .into_iter()
-            .map(|idx| {
-                values
-                    .iter()
-                    .map(move |array| DisplayAdapter(array.as_ref(), idx))
-            })
-            .table()
-            .title(names);
-
-        let table_str = table.display().expect("a table");
+        let values = std::iter::once(times.boxed()).chain(cols.into_iter().map(|c| c.boxed()));
+        let table = arrow::format_table(values, names);
 
         let is_sorted = self.is_sorted();
-        f.write_fmt(format_args!("data (sorted={is_sorted}):\n{table_str}"))?;
+        f.write_fmt(format_args!("data (sorted={is_sorted}):\n{table}"))?;
 
         Ok(())
     }
@@ -936,22 +919,14 @@ impl std::fmt::Display for ComponentBucket {
             ))?;
         }
 
-        let rows = {
+        let data = {
             use arrow2::compute::concatenate::concatenate;
             let chunks = self.chunks.iter().map(|chunk| &**chunk).collect::<Vec<_>>();
-            vec![concatenate(&chunks).unwrap()]
+            concatenate(&chunks).unwrap()
         };
 
-        let table = (0..rows[0].len())
-            .into_iter()
-            .map(|idx| {
-                rows.iter()
-                    .map(move |array| DisplayAdapter(array.as_ref(), idx))
-            })
-            .table()
-            .title([self.name.as_str()]);
-        let table_str = table.display().expect("a table");
-        f.write_fmt(format_args!("{table_str}"))?;
+        let table = arrow::format_table([data], [self.name.as_str()]);
+        f.write_fmt(format_args!("{table}"))?;
 
         Ok(())
     }
