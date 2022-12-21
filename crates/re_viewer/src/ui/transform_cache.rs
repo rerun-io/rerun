@@ -73,7 +73,7 @@ impl TransformCache {
                 }
                 // If we're connected via 'unknown' it's not reachable
                 re_log_types::Transform::Unknown => {
-                    transforms.mark_self_and_parents_unreachable(
+                    transforms.mark_non_descendants(
                         spaces_info,
                         parent_space,
                         UnreachableTransformReason::UnknownTransform,
@@ -82,7 +82,7 @@ impl TransformCache {
                 }
                 // We don't yet support reaching through pinhole.
                 re_log_types::Transform::Pinhole(_) => {
-                    transforms.mark_self_and_parents_unreachable(
+                    transforms.mark_non_descendants(
                         spaces_info,
                         parent_space,
                         UnreachableTransformReason::ReferenceIsUnderPinhole,
@@ -94,7 +94,7 @@ impl TransformCache {
         }
 
         // And then walk all branches down again.
-        transforms.gather_child_transforms(
+        transforms.gather_descendents_transforms(
             spaces_info,
             topmost_reachable_space,
             obj_properties,
@@ -113,7 +113,7 @@ impl TransformCache {
         );
     }
 
-    fn mark_self_and_parents_unreachable(
+    fn mark_non_descendants(
         &mut self,
         spaces_info: &SpacesInfo,
         space: &SpaceInfo,
@@ -128,15 +128,19 @@ impl TransformCache {
                         continue;
                     }
                     if let Some(child_space) = spaces_info.get(sibling_path) {
-                        self.mark_self_and_children_unreachable(spaces_info, child_space, reason);
+                        self.mark_self_and_descendants_unreachable(
+                            spaces_info,
+                            child_space,
+                            reason,
+                        );
                     }
                 }
-                self.mark_self_and_parents_unreachable(spaces_info, parent_space, reason);
+                self.mark_non_descendants(spaces_info, parent_space, reason);
             }
         }
     }
 
-    fn mark_self_and_children_unreachable(
+    fn mark_self_and_descendants_unreachable(
         &mut self,
         spaces_info: &SpacesInfo,
         space: &SpaceInfo,
@@ -146,12 +150,12 @@ impl TransformCache {
 
         for child_path in space.child_spaces.keys() {
             if let Some(child_space) = spaces_info.get(child_path) {
-                self.mark_self_and_children_unreachable(spaces_info, child_space, reason);
+                self.mark_self_and_descendants_unreachable(spaces_info, child_space, reason);
             }
         }
     }
 
-    fn gather_child_transforms(
+    fn gather_descendents_transforms(
         &mut self,
         spaces_info: &SpacesInfo,
         space: &SpaceInfo,
@@ -173,7 +177,7 @@ impl TransformCache {
                     }
                     // If we're connected via 'unknown' it's not reachable
                     re_log_types::Transform::Unknown => {
-                        self.mark_self_and_children_unreachable(
+                        self.mark_self_and_descendants_unreachable(
                             spaces_info,
                             child_space,
                             UnreachableTransformReason::UnknownTransform,
@@ -183,7 +187,7 @@ impl TransformCache {
 
                     re_log_types::Transform::Pinhole(pinhole) => {
                         if encountered_pinhole {
-                            self.mark_self_and_children_unreachable(
+                            self.mark_self_and_descendants_unreachable(
                                 spaces_info,
                                 child_space,
                                 UnreachableTransformReason::NestedPinholeCameras,
@@ -212,7 +216,7 @@ impl TransformCache {
                     }
                 };
 
-                self.gather_child_transforms(
+                self.gather_descendents_transforms(
                     spaces_info,
                     child_space,
                     obj_properties,

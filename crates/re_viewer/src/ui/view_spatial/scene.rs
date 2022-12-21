@@ -868,8 +868,8 @@ impl SceneSpatial {
                             && prev_plane.normal.dot(cur_plane.normal) < 0.99
                             && (prev_plane.d - cur_plane.d) < 0.01
                         {
-                            let mut previous_group = vec![rect];
-                            std::mem::swap(&mut previous_group, &mut rectangle_group);
+                            let previous_group =
+                                std::mem::replace(&mut rectangle_group, vec![rect]);
                             return Some((cur_plane, previous_group));
                         }
                         rectangle_group.push(rect);
@@ -1365,12 +1365,10 @@ impl SceneSpatial {
             }
 
             let mut frustum_length = scene_bbox.size().length() * 0.3;
-            if let Some(pinhole) = camera.pinhole.as_ref() {
-                if let Some(child_space) = camera.target_space.as_ref() {
-                    frustum_length = obj_properties
-                        .get(child_space)
-                        .pinhole_image_plane_distance(pinhole);
-                }
+            if let (Some(pinhole), Some(child_space)) = (&camera.pinhole, &camera.target_space) {
+                frustum_length = obj_properties
+                    .get(child_space)
+                    .pinhole_image_plane_distance(pinhole);
             }
 
             self.add_camera_frustum(camera, instance_id, line_radius, frustum_length, line_color);
