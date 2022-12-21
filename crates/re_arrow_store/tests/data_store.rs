@@ -126,8 +126,6 @@ fn empty_query_edge_cases() {
     for config in all_configs() {
         let mut store = DataStore::new(config.clone());
         empty_query_edge_cases_impl(&mut store);
-
-        println!("{store}");
     }
 }
 fn empty_query_edge_cases_impl(store: &mut DataStore) {

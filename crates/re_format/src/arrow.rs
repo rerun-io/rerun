@@ -86,7 +86,7 @@ impl std::fmt::Display for DisplayDataType {
                 return f.write_str(&s);
             }
             DataType::Binary => "bin",
-            DataType::FixedSizeBinary(_) => "fixed-bin",
+            DataType::FixedSizeBinary(size) => return write!(f, "fixed-bin[{size}]"),
             DataType::LargeBinary => "large-bin",
             DataType::Utf8 => "str",
             DataType::LargeUtf8 => "large-string",
