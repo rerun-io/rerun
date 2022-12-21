@@ -38,6 +38,7 @@ puffin.workspace = true
 [dev-dependencies]
 criterion = "0.4"
 mimalloc = "0.1"
+rand = "0.8"
 
 [lib]
 bench = false

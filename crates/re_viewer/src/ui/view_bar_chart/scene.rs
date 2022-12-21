@@ -6,7 +6,7 @@ use re_log_types::{Tensor, TensorDataType};
 use crate::{misc::ViewerContext, ui::scene::SceneQuery};
 
 pub struct BarChartValues {
-    pub values: Vec<f32>,
+    pub values: Vec<f64>,
 }
 
 /// A bar chart scene, with everything needed to render it.
@@ -54,18 +54,58 @@ impl SceneBarChart {
     }
 }
 
-fn tensor_to_values(tensor: &Tensor) -> Option<Vec<f32>> {
+fn tensor_to_values(tensor: &Tensor) -> Option<Vec<f64>> {
     match tensor.dtype {
         TensorDataType::U8 => tensor
             .data
             .as_slice::<u8>()
-            .map(|slice| slice.iter().map(|&value| value as f32).collect()),
+            .map(|slice| slice.iter().map(|&value| value as f64).collect()),
 
         TensorDataType::U16 => tensor
             .data
             .as_slice::<u16>()
-            .map(|slice| slice.iter().map(|&value| value as f32).collect()),
+            .map(|slice| slice.iter().map(|&value| value as f64).collect()),
 
-        TensorDataType::F32 => tensor.data.as_slice::<f32>().map(|slice| slice.to_vec()),
+        TensorDataType::U32 => tensor
+            .data
+            .as_slice::<u32>()
+            .map(|slice| slice.iter().map(|&value| value as f64).collect()),
+
+        TensorDataType::U64 => tensor
+            .data
+            .as_slice::<u64>()
+            .map(|slice| slice.iter().map(|&value| value as f64).collect()),
+
+        TensorDataType::I8 => tensor
+            .data
+            .as_slice::<i8>()
+            .map(|slice| slice.iter().map(|&value| value as f64).collect()),
+
+        TensorDataType::I16 => tensor
+            .data
+            .as_slice::<i16>()
+            .map(|slice| slice.iter().map(|&value| value as f64).collect()),
+
+        TensorDataType::I32 => tensor
+            .data
+            .as_slice::<i32>()
+            .map(|slice| slice.iter().map(|&value| value as f64).collect()),
+
+        TensorDataType::I64 => tensor
+            .data
+            .as_slice::<i64>()
+            .map(|slice| slice.iter().map(|&value| value as f64).collect()),
+
+        TensorDataType::F16 => tensor
+            .data
+            .as_slice::<half::f16>()
+            .map(|slice| slice.iter().map(|&value| value.to_f64()).collect()),
+
+        TensorDataType::F32 => tensor
+            .data
+            .as_slice::<f32>()
+            .map(|slice| slice.iter().map(|&value| value as f64).collect()),
+
+        TensorDataType::F64 => tensor.data.as_slice::<f64>().map(|slice| slice.to_vec()),
     }
 }

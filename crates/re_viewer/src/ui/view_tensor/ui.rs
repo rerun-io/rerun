@@ -2,7 +2,9 @@ use std::{collections::BTreeMap, fmt::Display};
 
 use eframe::emath::Align2;
 use egui::{epaint::TextShape, Color32, ColorImage, NumExt as _, Vec2};
+use half::f16;
 use ndarray::{Axis, Ix2};
+
 use re_log_types::{Tensor, TensorDataType, TensorDimension};
 use re_tensor_ops::dimension_mapping::DimensionMapping;
 
@@ -45,7 +47,7 @@ impl ViewTensorState {
         if let Some(tensor) = &self.tensor {
             ui.collapsing("Dimension Mapping", |ui| {
                 ui.label(format!("shape: {:?}", tensor.shape));
-                ui.label(format!("dtype: {:?}", tensor.dtype));
+                ui.label(format!("dtype: {}", tensor.dtype));
                 ui.add_space(12.0);
 
                 dimension_mapping_ui(ui, &mut self.dimension_mapping, &tensor.shape);
@@ -90,14 +92,14 @@ pub(crate) fn view_tensor(
 
     let tensor_stats = ctx.cache.tensor_stats(tensor);
     let range = tensor_stats.range;
+    let color_mapping = &state.color_mapping;
 
     match tensor.dtype {
         TensorDataType::U8 => match re_tensor_ops::as_ndarray::<u8>(tensor) {
             Ok(tensor) => {
                 let color_from_value = |value: u8| {
-                    state
-                        .color_mapping
-                        .color_from_normalized(value as f32 / 255.0)
+                    // We always use the full range for u8
+                    color_mapping.color_from_normalized(value as f32 / 255.0)
                 };
 
                 let slice = selected_tensor_slice(state, &tensor);
@@ -113,8 +115,148 @@ pub(crate) fn view_tensor(
                 let (tensor_min, tensor_max) = range.unwrap_or((0.0, u16::MAX as f64)); // the cache should provide the range
 
                 let color_from_value = |value: u16| {
-                    state.color_mapping.color_from_normalized(egui::remap(
+                    color_mapping.color_from_normalized(egui::remap(
                         value as f32,
+                        tensor_min as f32..=tensor_max as f32,
+                        0.0..=1.0,
+                    ))
+                };
+
+                let slice = selected_tensor_slice(state, &tensor);
+                slice_ui(ctx, ui, state, tensor_shape, slice, color_from_value);
+            }
+            Err(err) => {
+                ui.label(ctx.re_ui.error_text(err.to_string()));
+            }
+        },
+
+        TensorDataType::U32 => match re_tensor_ops::as_ndarray::<u32>(tensor) {
+            Ok(tensor) => {
+                let (tensor_min, tensor_max) = range.unwrap_or((0.0, u32::MAX as f64)); // the cache should provide the range
+
+                let color_from_value = |value: u32| {
+                    color_mapping.color_from_normalized(egui::remap(
+                        value as f64,
+                        tensor_min..=tensor_max,
+                        0.0..=1.0,
+                    ) as f32)
+                };
+
+                let slice = selected_tensor_slice(state, &tensor);
+                slice_ui(ctx, ui, state, tensor_shape, slice, color_from_value);
+            }
+            Err(err) => {
+                ui.label(ctx.re_ui.error_text(err.to_string()));
+            }
+        },
+
+        TensorDataType::U64 => match re_tensor_ops::as_ndarray::<u64>(tensor) {
+            Ok(tensor) => {
+                let (tensor_min, tensor_max) = range.unwrap_or((0.0, u64::MAX as f64)); // the cache should provide the range
+
+                let color_from_value = |value: u64| {
+                    color_mapping.color_from_normalized(egui::remap(
+                        value as f64,
+                        tensor_min..=tensor_max,
+                        0.0..=1.0,
+                    ) as f32)
+                };
+
+                let slice = selected_tensor_slice(state, &tensor);
+                slice_ui(ctx, ui, state, tensor_shape, slice, color_from_value);
+            }
+            Err(err) => {
+                ui.label(ctx.re_ui.error_text(err.to_string()));
+            }
+        },
+
+        TensorDataType::I8 => match re_tensor_ops::as_ndarray::<i8>(tensor) {
+            Ok(tensor) => {
+                let color_from_value = |value: i8| {
+                    // We always use the full range for i8:
+                    let (tensor_min, tensor_max) = (i8::MIN as f32, i8::MAX as f32);
+                    color_mapping.color_from_normalized(egui::remap(
+                        value as f32,
+                        tensor_min..=tensor_max,
+                        0.0..=1.0,
+                    ))
+                };
+
+                let slice = selected_tensor_slice(state, &tensor);
+                slice_ui(ctx, ui, state, tensor_shape, slice, color_from_value);
+            }
+            Err(err) => {
+                ui.label(ctx.re_ui.error_text(err.to_string()));
+            }
+        },
+
+        TensorDataType::I16 => match re_tensor_ops::as_ndarray::<i16>(tensor) {
+            Ok(tensor) => {
+                let (tensor_min, tensor_max) = range.unwrap_or((i16::MIN as f64, i16::MAX as f64)); // the cache should provide the range
+
+                let color_from_value = |value: i16| {
+                    color_mapping.color_from_normalized(egui::remap(
+                        value as f32,
+                        tensor_min as f32..=tensor_max as f32,
+                        0.0..=1.0,
+                    ))
+                };
+
+                let slice = selected_tensor_slice(state, &tensor);
+                slice_ui(ctx, ui, state, tensor_shape, slice, color_from_value);
+            }
+            Err(err) => {
+                ui.label(ctx.re_ui.error_text(err.to_string()));
+            }
+        },
+
+        TensorDataType::I32 => match re_tensor_ops::as_ndarray::<i32>(tensor) {
+            Ok(tensor) => {
+                let (tensor_min, tensor_max) = range.unwrap_or((i32::MIN as f64, i32::MAX as f64)); // the cache should provide the range
+
+                let color_from_value = |value: i32| {
+                    color_mapping.color_from_normalized(egui::remap(
+                        value as f64,
+                        tensor_min..=tensor_max,
+                        0.0..=1.0,
+                    ) as f32)
+                };
+
+                let slice = selected_tensor_slice(state, &tensor);
+                slice_ui(ctx, ui, state, tensor_shape, slice, color_from_value);
+            }
+            Err(err) => {
+                ui.label(ctx.re_ui.error_text(err.to_string()));
+            }
+        },
+
+        TensorDataType::I64 => match re_tensor_ops::as_ndarray::<i64>(tensor) {
+            Ok(tensor) => {
+                let (tensor_min, tensor_max) = range.unwrap_or((i64::MIN as f64, i64::MAX as f64)); // the cache should provide the range
+
+                let color_from_value = |value: i64| {
+                    color_mapping.color_from_normalized(egui::remap(
+                        value as f64,
+                        tensor_min..=tensor_max,
+                        0.0..=1.0,
+                    ) as f32)
+                };
+
+                let slice = selected_tensor_slice(state, &tensor);
+                slice_ui(ctx, ui, state, tensor_shape, slice, color_from_value);
+            }
+            Err(err) => {
+                ui.label(ctx.re_ui.error_text(err.to_string()));
+            }
+        },
+
+        TensorDataType::F16 => match re_tensor_ops::as_ndarray::<f16>(tensor) {
+            Ok(tensor) => {
+                let (tensor_min, tensor_max) = range.unwrap_or((0.0, 1.0)); // the cache should provide the range
+
+                let color_from_value = |value: f16| {
+                    color_mapping.color_from_normalized(egui::remap(
+                        value.to_f32(),
                         tensor_min as f32..=tensor_max as f32,
                         0.0..=1.0,
                     ))
@@ -133,11 +275,31 @@ pub(crate) fn view_tensor(
                 let (tensor_min, tensor_max) = range.unwrap_or((0.0, 1.0)); // the cache should provide the range
 
                 let color_from_value = |value: f32| {
-                    state.color_mapping.color_from_normalized(egui::remap(
+                    color_mapping.color_from_normalized(egui::remap(
                         value,
                         tensor_min as f32..=tensor_max as f32,
                         0.0..=1.0,
                     ))
+                };
+
+                let slice = selected_tensor_slice(state, &tensor);
+                slice_ui(ctx, ui, state, tensor_shape, slice, color_from_value);
+            }
+            Err(err) => {
+                ui.label(ctx.re_ui.error_text(err.to_string()));
+            }
+        },
+
+        TensorDataType::F64 => match re_tensor_ops::as_ndarray::<f64>(tensor) {
+            Ok(tensor) => {
+                let (tensor_min, tensor_max) = range.unwrap_or((0.0, 1.0)); // the cache should provide the range
+
+                let color_from_value = |value: f64| {
+                    color_mapping.color_from_normalized(egui::remap(
+                        value,
+                        tensor_min..=tensor_max,
+                        0.0..=1.0,
+                    ) as f32)
                 };
 
                 let slice = selected_tensor_slice(state, &tensor);

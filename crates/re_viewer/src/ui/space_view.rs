@@ -433,21 +433,6 @@ fn has_visualization_for_category(
 
 // ----------------------------------------------------------------------------
 
-/// Show help-text on top of space
-fn help_button_overlay_ui(
-    ui: &mut egui::Ui,
-    rect: egui::Rect,
-    ctx: &mut ViewerContext<'_>,
-    help_text: &str,
-) {
-    let mut ui = ui.child_ui(rect, egui::Layout::right_to_left(egui::Align::TOP));
-    ctx.re_ui.hovering_frame().show(&mut ui, |ui| {
-        crate::misc::help_hover_button(ui).on_hover_text(help_text);
-    });
-}
-
-// ----------------------------------------------------------------------------
-
 /// Camera position and similar.
 #[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
 pub(crate) struct ViewState {
@@ -473,7 +458,7 @@ impl ViewState {
         obj_properties: &ObjectsProperties,
     ) {
         ui.vertical(|ui| {
-            let response = self.state_spatial.view_spatial(
+            self.state_spatial.view_spatial(
                 ctx,
                 ui,
                 space,
@@ -482,7 +467,6 @@ impl ViewState {
                 space_info,
                 obj_properties,
             );
-            help_button_overlay_ui(ui, response.rect, ctx, self.state_spatial.help_text());
         });
     }
 
@@ -557,13 +541,9 @@ impl ViewState {
         scene: &view_bar_chart::SceneBarChart,
     ) {
         ui.vertical(|ui| {
-            let response = ui
-                .scope(|ui| {
-                    view_bar_chart::view_bar_chart(ctx, ui, &mut self.state_bar_chart, scene);
-                })
-                .response;
-
-            help_button_overlay_ui(ui, response.rect, ctx, view_bar_chart::HELP_TEXT);
+            ui.scope(|ui| {
+                view_bar_chart::view_bar_chart(ctx, ui, &mut self.state_bar_chart, scene);
+            });
         });
     }
 
@@ -572,16 +552,11 @@ impl ViewState {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         scene: &view_time_series::SceneTimeSeries,
-    ) -> egui::Response {
+    ) {
         ui.vertical(|ui| {
-            let response = ui
-                .scope(|ui| {
-                    view_time_series::view_time_series(ctx, ui, &mut self.state_time_series, scene);
-                })
-                .response;
-
-            help_button_overlay_ui(ui, response.rect, ctx, view_time_series::HELP_TEXT);
-        })
-        .response
+            ui.scope(|ui| {
+                view_time_series::view_time_series(ctx, ui, &mut self.state_time_series, scene);
+            });
+        });
     }
 }
