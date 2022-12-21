@@ -15,7 +15,7 @@ use crate::msg_bundle::Component;
 ///
 /// assert_eq!(Instance::data_type(), DataType::UInt64);
 /// ```
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct Instance(pub u64);
 
 arrow_enable_vec_for_type!(Instance);
