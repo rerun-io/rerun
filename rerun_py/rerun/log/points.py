@@ -87,7 +87,7 @@ def log_point(
             elif position.shape[0] == 3:
                 comps["rerun.point3d"] = Point3DArray.from_numpy(position.reshape(1, 3))
             else:
-                raise TypeError("Positions should be either Nx2 or Nx3")
+                raise TypeError("Positions should be either 1x2 or 1x3")
 
         if color:
             colors = _normalize_colors([color])
