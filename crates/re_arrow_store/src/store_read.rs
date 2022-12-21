@@ -181,7 +181,7 @@ impl DataStore {
         query: &RangeQuery,
         ent_path: &EntityPath,
         primary: ComponentName,
-        components: &[ComponentName; N],
+        components: [ComponentName; N],
     ) -> impl Iterator<Item = (TimeInt, [Option<RowIndex>; N])> + 'a {
         // TODO(cmc): kind & query_id need to somehow propagate through the span system.
         self.query_id.fetch_add(1, Ordering::Relaxed);
@@ -203,7 +203,7 @@ impl DataStore {
         // First off, get the latest state just before the start of the time range.
         let latest_time = query.range.min.as_i64().saturating_sub(1).into();
         let latest_row_indices =
-            index.and_then(|index| index.latest_at(latest_time, primary, components));
+            index.and_then(|index| index.latest_at(latest_time, primary, &components));
         trace!(
             kind = "range",
             id = self.query_id.load(Ordering::Relaxed),
@@ -217,12 +217,12 @@ impl DataStore {
 
         std::iter::once(latest_row_indices)
             .filter_map(move |latest| latest.map(|latest| (latest_time, latest)))
-        // .chain(
-        //     index
-        //         .map(|index| index.range(query.range, primary, components))
-        //         .into_iter()
-        //         .flatten(),
-        // )
+            .chain(
+                index
+                    .map(|index| index.range(query.range, primary, components))
+                    .into_iter()
+                    .flatten(),
+            )
     }
 
     /// Retrieves the data associated with a list of `components` at the specified `indices`.
@@ -312,6 +312,34 @@ impl IndexTable {
         }
 
         None // primary component not found
+    }
+
+    // TODO
+    pub fn range<'a, const N: usize>(
+        &'a self,
+        time_range: TimeRange,
+        primary: ComponentName,
+        components: [ComponentName; N],
+    ) -> impl Iterator<Item = (TimeInt, [Option<RowIndex>; N])> + 'a {
+        let timeline = self.timeline;
+
+        self.range_buckets(time_range.min..=time_range.max)
+            .enumerate()
+            .flat_map(move |(bucket_nr, bucket)| {
+                trace!(
+                    kind = "range",
+                    bucket_nr,
+                    bucket_time_range =
+                        timeline.typ().format_range(bucket.indices.read().time_range),
+                    timeline = %timeline.name(),
+                    ?time_range,
+                    %primary,
+                    ?components,
+                    "found bucket in range"
+                );
+
+                bucket.range(time_range, primary, components)
+            })
     }
 
     /// Returns the index bucket whose time range covers the given `time`.
@@ -484,6 +512,123 @@ impl IndexBucket {
         }
 
         Some(row_indices)
+    }
+
+    // TODO
+    pub fn range<'a, const N: usize>(
+        &'a self,
+        time_range: TimeRange,
+        primary: ComponentName,
+        components: [ComponentName; N],
+    ) -> impl Iterator<Item = (TimeInt, [Option<RowIndex>; N])> + 'a {
+        self.sort_indices();
+
+        let IndexBucketIndices {
+            is_sorted: _,
+            time_range: bucket_time_range,
+            times,
+            indices,
+        } = &*self.indices.read();
+
+        let bucket_time_range = *bucket_time_range;
+
+        let secondary_idx = 'search: {
+            // Early-exit if this bucket is unaware of this component.
+            let Some(index) = indices.get(&primary) else { break 'search None };
+
+            trace!(
+                kind = "range",
+                bucket_time_range = self.timeline.typ().format_range(bucket_time_range),
+                %primary,
+                ?components,
+                timeline = %self.timeline.name(),
+                time_range = self.timeline.typ().format_range(time_range),
+                "searching for primary & secondary row indices..."
+            );
+
+            // find the primary index's row.
+            let primary_idx = times.partition_point(|t| *t < time_range.min.as_i64()) as i64;
+
+            trace!(
+                kind = "range",
+                bucket_time_range = self.timeline.typ().format_range(bucket_time_range),
+                %primary,
+                ?components,
+                timeline = %self.timeline.name(),
+                time_range = self.timeline.typ().format_range(time_range),
+                %primary_idx,
+                "found primary index",
+            );
+
+            // find the secondary indices' rows, and the associated row indices.
+            let mut secondary_idx = primary_idx;
+            while index[secondary_idx as usize].is_none() {
+                secondary_idx -= 1;
+                if secondary_idx < 0 {
+                    trace!(
+                        kind = "range",
+                        bucket_time_range = self.timeline.typ().format_range(bucket_time_range),
+                        %primary,
+                        ?components,
+                        timeline = %self.timeline.name(),
+                        time_range = self.timeline.typ().format_range(time_range),
+                        %primary_idx,
+                        "no secondary index found",
+                    );
+                    break 'search None;
+                }
+            }
+
+            trace!(
+                kind = "range",
+                bucket_time_range = self.timeline.typ().format_range(bucket_time_range),
+                %primary,
+                ?components,
+                timeline = %self.timeline.name(),
+                time_range = self.timeline.typ().format_range(time_range),
+                %primary_idx, %secondary_idx,
+                "found secondary index",
+            );
+            debug_assert!(index[secondary_idx as usize].is_some());
+
+            Some(secondary_idx)
+        };
+
+        let times = times.clone(); // TODO
+        let indices = indices.clone(); // TODO: what's the shallowness like in there
+
+        secondary_idx.into_iter().flat_map(move |secondary_idx| {
+            let times = times.clone(); // TODO
+            let indices = indices.clone(); // TODO: what's the shallowness like in there
+
+            // TODO: validity check somewhere?
+            times
+                .into_iter()
+                .enumerate()
+                .skip(secondary_idx as usize)
+                .map(move |(idx, time)| {
+                    let mut row_indices = [None; N];
+                    for (i, component) in components.iter().enumerate() {
+                        if let Some(index) = indices.get(component) {
+                            if let Some(row_idx) = index[secondary_idx as usize] {
+                                trace!(
+                                    kind = "range",
+                                    bucket_time_range =
+                                        self.timeline.typ().format_range(bucket_time_range),
+                                    %primary,
+                                    %component,
+                                    timeline = %self.timeline.name(),
+                                    time_range = self.timeline.typ().format_range(time_range),
+                                    %idx, %row_idx,
+                                    "found row index",
+                                );
+                                row_indices[i] = Some(row_idx);
+                            }
+                        }
+                    }
+                    (time.into(), row_indices)
+                })
+        })
     }
 
     /// Whether the indices in this `IndexBucket` are sorted

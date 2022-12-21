@@ -174,7 +174,7 @@ pub fn range_component<'a>(
 
     let components = [cluster_key, primary];
     store
-        .range(query, ent_path, primary, &components)
+        .range(query, ent_path, primary, components)
         .map(move |(time, row_indices)| {
             let results = store.get(&components, &row_indices);
             let series: Result<Vec<_>, _> = components
@@ -194,7 +194,7 @@ pub fn range_components<'a, const N: usize>(
     query: &'a RangeQuery,
     ent_path: &'a EntityPath,
     primary: ComponentName,
-    components: &'a [ComponentName; N],
+    components: [ComponentName; N],
 ) -> impl Iterator<Item = anyhow::Result<(TimeInt, DataFrame)>> + 'a {
     let cluster_key = store.cluster_key();
 
@@ -208,7 +208,7 @@ pub fn range_components<'a, const N: usize>(
         .range(query, ent_path, primary, components)
         .map(move |(time, row_indices)| {
             let df = {
-                let results = store.get(components, &row_indices);
+                let results = store.get(&components, &row_indices);
                 let series: Result<Vec<_>, _> = components
                     .iter()
                     .zip(results)

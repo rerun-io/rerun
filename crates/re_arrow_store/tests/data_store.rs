@@ -150,7 +150,7 @@ fn range_impl(store: &mut DataStore) {
                 bundles_at_times.iter().copied().collect();
 
             let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
-            let components_all = &[store.cluster_key(), Rect2D::name(), Point2D::name()];
+            let components_all = [store.cluster_key(), Rect2D::name(), Point2D::name()];
 
             let query = RangeQuery::new(timeline_frame_nr, time_range);
             let dfs =
@@ -172,6 +172,8 @@ fn range_impl(store: &mut DataStore) {
         };
 
     // TODO(cmc): bring back some log_time scenarios
+    // TODO(cmc): multiple PoVs
+    // TODO(cmc): multiple at same time
 
     // Unit-length time-ranges, should behave like a latest_at query at `start - 1`.
 
