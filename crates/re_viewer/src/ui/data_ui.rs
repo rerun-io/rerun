@@ -1,6 +1,7 @@
 use egui::{color_picker, Vec2};
 
 use itertools::Itertools;
+use re_arrow_store::TimeQuery;
 use re_data_store::InstanceId;
 use re_log_types::context::AnnotationInfo;
 use re_log_types::msg_bundle::{ComponentBundle, MsgBundle};
@@ -9,6 +10,7 @@ use re_log_types::{
     DataVec, LogMsg, LoggedData, MsgId, ObjPath, ObjectType, PathOp, PathOpMsg, Pinhole,
     RecordingInfo, Rigid3, TimePoint, Transform, TypeMsg, ViewCoordinates,
 };
+use re_query::get_component_with_instances;
 
 use crate::misc::ViewerContext;
 use crate::ui::annotations::auto_color;
@@ -46,8 +48,55 @@ pub(crate) fn instance_ui(
         .get(instance_id.obj_path.obj_type_path())
     {
         Some(ObjectType::ClassDescription) => class_description_ui(ctx, ui, instance_id),
+        Some(ObjectType::ArrowObject) => generic_arrow_ui(ctx, ui, instance_id, preview),
         _ => generic_instance_ui(ctx, ui, instance_id, preview),
     }
+}
+
+fn generic_arrow_ui(
+    ctx: &mut ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    instance_id: &InstanceId,
+    preview: Preview,
+) -> Option<()> {
+    let timeline = ctx.rec_cfg.time_ctrl.timeline();
+    let store = &ctx.log_db.obj_db.arrow_store;
+    let timeline_query = re_arrow_store::TimelineQuery::new(
+        *timeline,
+        TimeQuery::LatestAt(ctx.rec_cfg.time_ctrl.time_i64()?),
+    );
+
+    let components = store.components_for_path(&timeline_query, &instance_id.obj_path);
+
+    if let Some(components) = components {
+        //let components = store.
+        egui::Grid::new("entity_instance")
+            .num_columns(2)
+            .show(ui, |ui| {
+                for component in components {
+                    let data = get_component_with_instances(
+                        store,
+                        &timeline_query,
+                        &instance_id.obj_path,
+                        component,
+                    );
+
+                    ui.label(component.as_str());
+
+                    if let Ok(data) = data {
+                        ui.label(format!("{} values", data.len()));
+                    } else {
+                        ui.label("<unset>");
+                    }
+
+                    ui.end_row();
+                }
+            });
+    } else {
+        ui.label("No Components");
+    }
+
+    Some(())
 }
 
 fn generic_instance_ui(
