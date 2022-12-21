@@ -3,8 +3,8 @@ use nohash_hasher::IntMap;
 
 use re_log_types::{
     msg_bundle::MsgBundle, objects, ArrowMsg, BatchIndex, BeginRecordingMsg, DataMsg, DataPath,
-    DataVec, LogMsg, LoggedData, MsgId, ObjTypePath, ObjectType, PathOp, PathOpMsg, RecordingId,
-    RecordingInfo, TimeInt, TimePoint, Timeline, TypeMsg,
+    DataVec, LogMsg, LoggedData, MsgId, ObjPath, ObjPathHash, ObjTypePath, ObjectType, PathOp,
+    PathOpMsg, RecordingId, RecordingInfo, TimeInt, TimePoint, Timeline, TypeMsg,
 };
 
 use crate::{Error, TimesPerTimeline};
@@ -16,6 +16,9 @@ pub struct ObjDb {
     /// The types of all the objects.
     /// Must be registered before adding them.
     pub types: IntMap<ObjTypePath, ObjectType>,
+
+    /// In many places we just store the hashes, so we need a way to translate back.
+    pub obj_path_from_hash: IntMap<ObjPathHash, ObjPath>,
 
     /// A tree-view (split on path components) of the objects.
     pub tree: crate::ObjectTree,
@@ -31,6 +34,7 @@ impl Default for ObjDb {
     fn default() -> Self {
         Self {
             types: Default::default(),
+            obj_path_from_hash: Default::default(),
             tree: crate::ObjectTree::root(),
             store: Default::default(),
             arrow_store: Default::default(),
@@ -39,6 +43,17 @@ impl Default for ObjDb {
 }
 
 impl ObjDb {
+    #[inline]
+    pub fn obj_path_from_hash(&self, obj_path_hash: &ObjPathHash) -> Option<&ObjPath> {
+        self.obj_path_from_hash.get(obj_path_hash)
+    }
+
+    fn register_obj_path(&mut self, obj_path: &ObjPath) {
+        self.obj_path_from_hash
+            .entry(*obj_path.hash())
+            .or_insert_with(|| obj_path.clone());
+    }
+
     fn add_data_msg(
         &mut self,
         msg_id: MsgId,
@@ -68,6 +83,8 @@ impl ObjDb {
                 }
             }
         }
+
+        self.register_obj_path(&data_path.obj_path);
 
         if let Err(err) = self.store.insert_data(msg_id, time_point, data_path, data) {
             re_log::warn!("Failed to add data to data_store: {err:?}");
@@ -114,6 +131,8 @@ impl ObjDb {
         self.types
             .entry(msg_bundle.obj_path.obj_type_path().clone())
             .or_insert(ObjectType::ArrowObject);
+
+        self.register_obj_path(&msg_bundle.obj_path);
 
         for component in &msg_bundle.components {
             //TODO(jleibs): Actually handle pending clears
@@ -163,6 +182,7 @@ impl ObjDb {
 
         let Self {
             types: _,
+            obj_path_from_hash: _,
             tree,
             store,
             arrow_store: _,

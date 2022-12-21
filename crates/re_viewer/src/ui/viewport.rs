@@ -116,7 +116,7 @@ impl Viewport {
                     // Stacking them on top of each other works, but is often confusing.
                     // Let's create one space view for each image, where the other images are disabled:
 
-                    let store = &ctx.log_db.obj_db.store;
+                    let obj_db = &ctx.log_db.obj_db;
 
                     let mut image_sizes = BTreeSet::default();
 
@@ -129,7 +129,7 @@ impl Viewport {
                         image_sizes.insert(image_size);
 
                         if let Some(visible_instance_id) =
-                            visible_image.instance_hash.resolve(store)
+                            visible_image.instance_hash.resolve(obj_db)
                         {
                             let mut space_view = SpaceView::new(
                                 ctx,
@@ -143,7 +143,7 @@ impl Viewport {
 
                             for other_image in &scene_spatial.ui.images {
                                 if let Some(other_image_instance_id) =
-                                    other_image.instance_hash.resolve(store)
+                                    other_image.instance_hash.resolve(obj_db)
                                 {
                                     if visible_instance_id.obj_path
                                         != other_image_instance_id.obj_path
