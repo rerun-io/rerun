@@ -20,7 +20,6 @@ from rerun.log.text import log_text_entry
 from rerun.log.transform import log_rigid3, log_unknown_transform, log_view_coordinates
 
 from rerun import rerun_bindings  # type: ignore[attr-defined]
-from rerun import components
 
 __all__ = [
     "log_annotation_context",

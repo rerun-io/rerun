@@ -628,11 +628,11 @@ fn annotation_context_ui(ui: &mut egui::Ui, context: &AnnotationContext) -> egui
             }
 
             ui.separator();
-            ui.heading(format!("Keypoints for Class {}", id.0));
+            ui.strong(format!("Keypoints for Class {}", id.0));
 
             if !class.keypoint_connections.is_empty() {
                 ui.add_space(8.0);
-                ui.heading("Keypoints Annotations");
+                ui.strong("Keypoints Annotations");
                 ui.push_id(format!("keypoint_annotations_{}", id.0), |ui| {
                     annotation_info_table_ui(
                         ui,
@@ -646,7 +646,7 @@ fn annotation_context_ui(ui: &mut egui::Ui, context: &AnnotationContext) -> egui
 
             if !class.keypoint_connections.is_empty() {
                 ui.add_space(8.0);
-                ui.heading("Keypoint Connections");
+                ui.strong("Keypoint Connections");
                 ui.push_id(format!("keypoints_connections_{}", id.0), |ui| {
                     use egui_extras::{Column, TableBuilder};
 

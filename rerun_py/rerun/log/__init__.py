@@ -1,6 +1,5 @@
 import os
-from enum import Enum
-from typing import Final, Optional, Sequence, Union
+from typing import Optional, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
