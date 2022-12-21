@@ -45,11 +45,11 @@ impl ObjectProps {
     pub fn pinhole_image_plane_distance(&self, pinhole: &re_log_types::Pinhole) -> f32 {
         self.pinhole_image_plane_distance
             .unwrap_or_else(|| {
-                // Use the focal length as default distance for now.
-                // If there is no resolution, assume alpha_y *is* the focal length.
-                let resolution = pinhole.resolution.unwrap_or([1.0, 1.0]);
-                let focal_length_y = pinhole.focal_length_in_pixels().y / resolution[1];
-                ordered_float::NotNan::new(focal_length_y).unwrap_or_default()
+                let distance = pinhole
+                    .focal_length()
+                    .unwrap_or_else(|| pinhole.focal_length_in_pixels())
+                    .y;
+                ordered_float::NotNan::new(distance).unwrap_or_default()
             })
             .into()
     }

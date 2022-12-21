@@ -698,6 +698,12 @@ impl Pinhole {
         glam::vec2(self.image_from_cam[0][0], self.image_from_cam[1][1])
     }
 
+    /// X & Y focal length.
+    pub fn focal_length(&self) -> Option<glam::Vec2> {
+        self.resolution
+            .map(|r| self.focal_length_in_pixels() / glam::vec2(r[0], r[1]))
+    }
+
     /// Principal point of the pinhole camera,
     /// i.e. the intersection of the optical axis and the image plane.
     ///
