@@ -10,8 +10,9 @@ use super::TimeControl;
 /// Information about one "space".
 ///
 /// This is gathered by analyzing the transform hierarchy of the objects.
-#[derive(Default)]
 pub struct SpaceInfo {
+    pub path: ObjPath,
+
     /// The latest known coordinate system for this space.
     pub coordinates: Option<ViewCoordinates>,
 
@@ -27,6 +28,16 @@ pub struct SpaceInfo {
 }
 
 impl SpaceInfo {
+    pub fn new(path: ObjPath) -> Self {
+        Self {
+            path,
+            coordinates: Default::default(),
+            descendants_without_transform: Default::default(),
+            parent: Default::default(),
+            child_spaces: Default::default(),
+        }
+    }
+
     /// Recursively gather all descendants that have no or only a rigid transform.
     pub fn descendants_with_rigid_or_no_transform(
         &self,
@@ -41,7 +52,7 @@ impl SpaceInfo {
 
             for (child_path, transform) in &space.child_spaces {
                 if let re_log_types::Transform::Rigid3(_) = transform {
-                    if let Some(child_space) = spaces_info.spaces.get(child_path) {
+                    if let Some(child_space) = spaces_info.get(child_path) {
                         gather_rigidly_transformed_children(child_space, spaces_info, objects);
                     }
                 }
@@ -61,7 +72,7 @@ impl SpaceInfo {
 /// Each of these we walk down recursively, every time a transform is encountered, we create another space info.
 #[derive(Default)]
 pub struct SpacesInfo {
-    pub spaces: BTreeMap<ObjPath, SpaceInfo>,
+    spaces: BTreeMap<ObjPath, SpaceInfo>,
 }
 
 impl SpacesInfo {
@@ -74,20 +85,17 @@ impl SpacesInfo {
             timeline_store: Option<&TimelineStore<i64>>,
             query_time: Option<i64>,
             spaces_info: &mut SpacesInfo,
-            parent_space_path: &ObjPath,
-            parent_space_info: &mut SpaceInfo,
+            parent_space: &mut SpaceInfo,
             tree: &ObjectTree,
         ) {
             if let Some(transform) = query_transform(timeline_store, &tree.path, query_time) {
                 // A set transform (likely non-identity) - create a new space.
-                parent_space_info
+                parent_space
                     .child_spaces
                     .insert(tree.path.clone(), transform.clone());
 
-                let mut child_space_info = SpaceInfo {
-                    parent: Some((parent_space_path.clone(), transform)),
-                    ..Default::default()
-                };
+                let mut child_space_info = SpaceInfo::new(tree.path.clone());
+                child_space_info.parent = Some((parent_space.path.clone(), transform));
                 child_space_info
                     .descendants_without_transform
                     .insert(tree.path.clone()); // spaces includes self
@@ -97,7 +105,6 @@ impl SpacesInfo {
                         timeline_store,
                         query_time,
                         spaces_info,
-                        &tree.path,
                         &mut child_space_info,
                         child_tree,
                     );
@@ -107,7 +114,7 @@ impl SpacesInfo {
                     .insert(tree.path.clone(), child_space_info);
             } else {
                 // no transform == identity transform.
-                parent_space_info
+                parent_space
                     .descendants_without_transform
                     .insert(tree.path.clone()); // spaces includes self
 
@@ -116,8 +123,7 @@ impl SpacesInfo {
                         timeline_store,
                         query_time,
                         spaces_info,
-                        parent_space_path,
-                        parent_space_info,
+                        parent_space,
                         child_tree,
                     );
                 }
@@ -140,12 +146,11 @@ impl SpacesInfo {
                 );
             }
 
-            let mut space_info = SpaceInfo::default();
+            let mut space_info = SpaceInfo::new(tree.path.clone());
             add_children(
                 timeline_store,
                 query_time,
                 &mut spaces_info,
-                &tree.path,
                 &mut space_info,
                 tree,
             );
@@ -174,6 +179,14 @@ impl SpacesInfo {
         }
 
         spaces_info
+    }
+
+    pub fn get(&self, path: &ObjPath) -> Option<&SpaceInfo> {
+        self.spaces.get(path)
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &SpaceInfo> {
+        self.spaces.values()
     }
 }
 

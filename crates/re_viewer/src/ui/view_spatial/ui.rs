@@ -169,11 +169,10 @@ fn space_cameras(spaces_info: &SpacesInfo, space_info: &SpaceInfo) -> Vec<SpaceC
             let world_from_camera = world_from_camera.parent_from_child();
 
             let view_space = spaces_info
-                .spaces
                 .get(child_path)
                 .and_then(|child| child.coordinates);
 
-            if let Some(child_space_info) = spaces_info.spaces.get(child_path) {
+            if let Some(child_space_info) = spaces_info.get(child_path) {
                 for (grand_child_path, grand_child_transform) in &child_space_info.child_spaces {
                     if let Transform::Pinhole(pinhole) = grand_child_transform {
                         space_cameras.push(SpaceCamera3D {

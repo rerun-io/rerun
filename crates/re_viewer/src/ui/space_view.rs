@@ -12,7 +12,7 @@ use crate::{
 };
 
 use super::{
-    transform_cache::ReferenceFromObjTransform,
+    transform_cache::{ReferenceFromObjTransform, UnreachableTransformReason},
     view_bar_chart,
     view_category::ViewCategory,
     view_spatial::{self, SpatialNavigationMode},
@@ -69,7 +69,6 @@ impl SpaceView {
     pub fn new(
         ctx: &ViewerContext<'_>,
         category: ViewCategory,
-        space_path: ObjPath,
         space_info: &SpaceInfo,
         spaces_info: &SpacesInfo,
         default_spatial_naviation_mode: SpatialNavigationMode,
@@ -80,10 +79,10 @@ impl SpaceView {
             view_state.state_spatial.nav_mode = default_spatial_naviation_mode;
         }
 
-        let root_path = space_path
-            .iter()
-            .next()
-            .map_or_else(|| space_path.clone(), |c| ObjPath::from(vec![c.to_owned()]));
+        let root_path = space_info.path.iter().next().map_or_else(
+            || space_info.path.clone(),
+            |c| ObjPath::from(vec![c.to_owned()]),
+        );
 
         let queried_objects = Self::default_queried_objects(ctx, category, space_info, spaces_info);
 
@@ -92,14 +91,14 @@ impl SpaceView {
             let obj_path = queried_objects.iter().next().unwrap();
             obj_path.to_string()
         } else {
-            space_path.to_string()
+            space_info.path.to_string()
         };
 
         Self {
             name,
             id: SpaceViewId::random(),
             root_path,
-            space_path,
+            space_path: space_info.path.clone(),
             queried_objects,
             obj_properties: Default::default(),
             view_state,
@@ -132,7 +131,7 @@ impl SpaceView {
         if !self.allow_auto_adding_more_object {
             return;
         }
-        let Some(space) = spaces_info.spaces.get(&self.space_path) else {
+        let Some(space) = spaces_info.get(&self.space_path) else {
             return;
         };
         // Add objects that have been logged since we were created
@@ -207,7 +206,7 @@ impl SpaceView {
         .body(|ui| {
             if let Some(subtree) = obj_tree.subtree(&self.root_path) {
                 let spaces_info = SpacesInfo::new(&ctx.log_db.obj_db, &ctx.rec_cfg.time_ctrl);
-                if let Some(reference_space) = spaces_info.spaces.get(&self.space_path) {
+                if let Some(reference_space) = spaces_info.get(&self.space_path) {
                     let transforms = TransformCache::determine_transforms(
                         &spaces_info,
                         reference_space,
@@ -254,45 +253,57 @@ impl SpaceView {
         tree: &ObjectTree,
         transforms: &TransformCache,
     ) {
-        let is_reachable = match transforms.reference_from_obj(&tree.path) {
-            ReferenceFromObjTransform::Unreachable => false,
-            ReferenceFromObjTransform::Reachable(_) => true,
+        let unreachable_reason = match transforms.reference_from_obj(&tree.path) {
+            ReferenceFromObjTransform::Unreachable(reason) => Some(match reason {
+                // Should never happen
+                UnreachableTransformReason::Unconnected =>
+                     "No object path connection from this space view."
+                ,
+                UnreachableTransformReason::NestedPinholeCameras =>
+                    "Can't display objects nested under several pinhole cameras."
+                ,
+                UnreachableTransformReason::UnknownTransform => "Can't display objects that are connected via an unknown transform to this space.",
+                UnreachableTransformReason::ReferenceIsUnderPinhole =>
+                    "Can't display objects that require an inverse pinhole transformation."
+                }),
+            ReferenceFromObjTransform::Reachable(_) => None,
         };
-        let response = ui
-            .add_enabled_ui(is_reachable, |ui| {
-                if tree.is_leaf() {
-                    ui.horizontal(|ui| {
-                        self.object_path_button(ctx, ui, &tree.path, spaces_info, name);
-                        if has_visualization_for_category(ctx, self.category, &tree.path) {
-                            self.object_add_button(ui, &tree.path, &ctx.log_db.obj_db.tree);
-                        }
-                    });
-                } else {
-                    let collapsing_header_id = ui.id().with(&tree.path);
-
-                    // Default open so that the reference path is visible.
-                    let default_open = self.space_path.is_descendant_of(&tree.path);
-                    egui::collapsing_header::CollapsingState::load_with_default_open(
-                        ui.ctx(),
-                        collapsing_header_id,
-                        default_open,
-                    )
-                    .show_header(ui, |ui| {
-                        self.object_path_button(ctx, ui, &tree.path, spaces_info, name);
-                        if has_visualization_for_category(ctx, self.category, &tree.path) {
-                            self.object_add_button(ui, &tree.path, &ctx.log_db.obj_db.tree);
-                        }
-                    })
-                    .body(|ui| {
-                        self.obj_tree_children_ui(ctx, ui, spaces_info, tree, transforms);
-                    });
-                }
+        let response = if tree.is_leaf() {
+            ui.horizontal(|ui| {
+                ui.add_enabled_ui(unreachable_reason.is_none(), |ui| {
+                    self.object_path_button(ctx, ui, &tree.path, spaces_info, name);
+                    if has_visualization_for_category(ctx, self.category, &tree.path) {
+                        self.object_add_button(ui, &tree.path, &ctx.log_db.obj_db.tree);
+                    }
+                });
             })
-            .response;
+            .response
+        } else {
+            let collapsing_header_id = ui.id().with(&tree.path);
 
-        if !is_reachable {
-            response
-                .on_hover_text("Path can't be reached by a supported transform from this space.");
+            // Default open so that the reference path is visible.
+            let default_open = self.space_path.is_descendant_of(&tree.path);
+            egui::collapsing_header::CollapsingState::load_with_default_open(
+                ui.ctx(),
+                collapsing_header_id,
+                default_open,
+            )
+            .show_header(ui, |ui| {
+                ui.add_enabled_ui(unreachable_reason.is_none(), |ui| {
+                    self.object_path_button(ctx, ui, &tree.path, spaces_info, name);
+                    if has_visualization_for_category(ctx, self.category, &tree.path) {
+                        self.object_add_button(ui, &tree.path, &ctx.log_db.obj_db.tree);
+                    }
+                });
+            })
+            .body(|ui| {
+                self.obj_tree_children_ui(ctx, ui, spaces_info, tree, transforms);
+            })
+            .0
+        };
+
+        if let Some(unreachable_reason) = unreachable_reason {
+            response.on_hover_text(unreachable_reason);
         }
     }
 
@@ -305,7 +316,7 @@ impl SpaceView {
         name: &str,
     ) {
         let mut is_space_info = false;
-        let label_text = if spaces_info.spaces.contains_key(path) {
+        let label_text = if spaces_info.get(path).is_some() {
             is_space_info = true;
             let label_text = egui::RichText::new(format!("📐 {}", name));
             if *path == self.space_path {
@@ -383,7 +394,7 @@ impl SpaceView {
             }
 
             ViewCategory::Spatial => {
-                let Some(reference_space) = spaces_info.spaces.get(&self.space_path) else {
+                let Some(reference_space) = spaces_info.get(&self.space_path) else {
                     return;
                 };
                 let transforms = TransformCache::determine_transforms(

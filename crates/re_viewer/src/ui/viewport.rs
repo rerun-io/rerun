@@ -86,7 +86,7 @@ impl Viewport {
 
         let mut blueprint = Self::default();
 
-        for (path, space_info) in &spaces_info.spaces {
+        for space_info in spaces_info.iter() {
             // If we're connected with a rigid transform to our parent, don't create a new space view automatically,
             // since we're showing those objects in the parent by default.
             // (it is still possible to create this space view manually)
@@ -138,7 +138,6 @@ impl Viewport {
                             let mut space_view = SpaceView::new(
                                 ctx,
                                 category,
-                                path.clone(),
                                 space_info,
                                 spaces_info,
                                 scene_spatial.preferred_navigation_mode(),
@@ -178,7 +177,6 @@ impl Viewport {
                     let space_view = SpaceView::new(
                         ctx,
                         category,
-                        path.clone(),
                         space_info,
                         spaces_info,
                         scene_spatial.preferred_navigation_mode(),
@@ -333,7 +331,6 @@ impl Viewport {
     fn add_space_view_for(
         &mut self,
         ctx: &mut ViewerContext<'_>,
-        path: &ObjPath,
         space_info: &SpaceInfo,
         spaces_info: &SpacesInfo,
     ) {
@@ -354,7 +351,6 @@ impl Viewport {
             self.add_space_view(SpaceView::new(
                 ctx,
                 category,
-                path.clone(),
                 space_info,
                 spaces_info,
                 scene_spatial.preferred_navigation_mode(),
@@ -379,7 +375,7 @@ impl Viewport {
 
                 // Check if the blueprint is missing a space,
                 // maybe one that has been added by new data:
-                for (path, space_info) in &spaces_info.spaces {
+                for space_info in spaces_info.iter() {
                     // Ignore spaces that have a parent connected via a rigid transform to their parent,
                     // since they should be picked up automatically by existing parent spaces.
                     if let Some((_, transform)) = &space_info.parent {
@@ -390,8 +386,8 @@ impl Viewport {
                         }
                     }
 
-                    if !self.has_space(path) {
-                        self.add_space_view_for(ctx, path, space_info, spaces_info);
+                    if !self.has_space(&space_info.path) {
+                        self.add_space_view_for(ctx, space_info, spaces_info);
                     }
                 }
             }
@@ -502,9 +498,9 @@ impl Viewport {
                 let objects_per_root_grouped_by_category =
                     objects_per_root_grouped_by_category(ctx);
 
-                for (path, space_info) in &spaces_info.spaces {
+                for space_info in spaces_info.iter() {
                     let categories = objects_per_root_grouped_by_category
-                        .get(&ObjPath::from(&path.to_components()[..1]));
+                        .get(&ObjPath::from(&space_info.path.to_components()[..1]));
 
                     if let Some(categories) = categories {
                         if categories.is_empty() {
@@ -517,7 +513,7 @@ impl Viewport {
                             &ObjectsProperties::default(),
                         );
 
-                        if ui.button(path.to_string()).clicked() {
+                        if ui.button(space_info.path.to_string()).clicked() {
                             ui.close_menu();
 
                             for (category, obj_paths) in categories {
@@ -526,7 +522,6 @@ impl Viewport {
                                 let new_space_view_id = self.add_space_view(SpaceView::new(
                                     ctx,
                                     *category,
-                                    path.clone(),
                                     space_info,
                                     spaces_info,
                                     scene_spatial.preferred_navigation_mode(),
@@ -701,7 +696,7 @@ fn space_view_ui(
     spaces_info: &SpacesInfo,
     space_view: &mut SpaceView,
 ) {
-    let Some(reference_space_info) = spaces_info.spaces.get(&space_view.space_path) else {
+    let Some(reference_space_info) = spaces_info.get(&space_view.space_path) else {
         ui.centered_and_justified(|ui| {
             ui.label(ctx.re_ui.warning_text(format!("Unknown space {}", space_view.space_path)));
         });
