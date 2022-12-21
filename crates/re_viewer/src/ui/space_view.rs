@@ -263,8 +263,6 @@ impl SpaceView {
                     "Can't display objects nested under several pinhole cameras."
                 ,
                 UnreachableTransformReason::UnknownTransform => "Can't display objects that are connected via an unknown transform to this space.",
-                UnreachableTransformReason::ReferenceIsUnderPinhole =>
-                    "Can't display objects that require an inverse pinhole transformation."
                 }),
             ReferenceFromObjTransform::Reachable(_) => None,
         };

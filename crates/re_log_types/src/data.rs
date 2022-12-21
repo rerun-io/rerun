@@ -711,6 +711,14 @@ impl Pinhole {
     pub fn principal_point(&self) -> glam::Vec2 {
         glam::vec2(self.image_from_cam[2][0], self.image_from_cam[2][1])
     }
+
+    pub fn resolution(&self) -> Option<glam::Vec2> {
+        self.resolution.map(|r| glam::vec2(r[0], r[1]))
+    }
+
+    pub fn aspect_ratio(&self) -> f32 {
+        self.image_from_cam[0][0] / self.image_from_cam[1][1]
+    }
 }
 
 // ----------------------------------------------------------------------------
