@@ -5,6 +5,7 @@ import numpy as np
 import numpy.typing as npt
 from rerun.color_conversion import u8_array_to_rgba
 from rerun.log import (
+    EXP_ARROW,
     Color,
     Colors,
     OptionalClassIds,
@@ -14,7 +15,6 @@ from rerun.log import (
 )
 
 from rerun import rerun_bindings  # type: ignore[attr-defined]
-from rerun.log import EXP_ARROW
 
 __all__ = [
     "RectFormat",
