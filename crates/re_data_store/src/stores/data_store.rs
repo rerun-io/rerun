@@ -2,8 +2,8 @@ use itertools::Itertools;
 use nohash_hasher::IntMap;
 
 use re_log_types::{
-    BatchIndex, DataMsg, DataPath, Index, IndexHash, LoggedData, MsgId, ObjPath, ObjPathHash,
-    TimePoint, TimeType, Timeline,
+    BatchIndex, DataMsg, DataPath, Index, IndexHash, LoggedData, MsgId, TimePoint, TimeType,
+    Timeline,
 };
 
 use crate::{
@@ -18,20 +18,12 @@ pub struct DataStore {
     store_from_timeline: IntMap<Timeline, (TimeType, TimelineStore<i64>)>,
 
     /// In many places we just store the hashes, so we need a way to translate back.
-    obj_path_from_hash: IntMap<ObjPathHash, ObjPath>,
-
-    /// In many places we just store the hashes, so we need a way to translate back.
     index_from_hash: IntMap<IndexHash, Index>,
 }
 
 impl DataStore {
     pub fn get(&self, timeline: &Timeline) -> Option<&TimelineStore<i64>> {
         Some(&self.store_from_timeline.get(timeline)?.1)
-    }
-
-    #[inline]
-    pub fn obj_path_from_hash(&self, obj_path_hash: &ObjPathHash) -> Option<&ObjPath> {
-        self.obj_path_from_hash.get(obj_path_hash)
     }
 
     #[inline]
@@ -88,8 +80,6 @@ impl DataStore {
         data_path: &DataPath,
         data: &LoggedData,
     ) -> Result<()> {
-        self.register_obj_path(&data_path.obj_path);
-
         // We de-duplicate batches so we don't create one per timeline:
         let batch = if let LoggedData::Batch { indices, data } = data {
             Some(re_log_types::data_vec_map!(data, |vec| {
@@ -145,12 +135,6 @@ impl DataStore {
         Ok(())
     }
 
-    fn register_obj_path(&mut self, obj_path: &ObjPath) {
-        self.obj_path_from_hash
-            .entry(*obj_path.hash())
-            .or_insert_with(|| obj_path.clone());
-    }
-
     #[inline(never)]
     fn register_hashed_indices(&mut self, hashed_indices: &[IndexHash], indices: &[Index]) {
         crate::profile_function!();
@@ -165,7 +149,6 @@ impl DataStore {
         crate::profile_function!();
         let Self {
             store_from_timeline,
-            obj_path_from_hash: _,
             index_from_hash: _,
         } = self;
         for (timeline, (_, timeline_store)) in store_from_timeline {

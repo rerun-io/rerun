@@ -1,5 +1,7 @@
 //! Miscellaneous formatting tools.
 
+pub mod arrow;
+
 // --- Numbers ---
 
 /// Pretty format a number by using thousands separators for readability.

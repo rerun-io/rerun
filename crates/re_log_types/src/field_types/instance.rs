@@ -15,10 +15,18 @@ use crate::msg_bundle::Component;
 ///
 /// assert_eq!(Instance::data_type(), DataType::UInt64);
 /// ```
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Instance(pub u64);
 
 arrow_enable_vec_for_type!(Instance);
+
+impl std::fmt::Display for Instance {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let key = self.0;
+        format!("arrow_key:{key}").fmt(f)
+    }
+}
 
 impl ArrowField for Instance {
     type Type = Self;

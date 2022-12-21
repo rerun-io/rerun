@@ -1,8 +1,8 @@
 use std::hash::Hash;
 
-use re_log_types::{Index, IndexHash, ObjPath, ObjPathHash};
+use re_log_types::{field_types::Instance, Index, IndexHash, ObjPath, ObjPathHash};
 
-use crate::DataStore;
+use crate::log_db::ObjDb;
 
 // ----------------------------------------------------------------------------
 
@@ -30,6 +30,13 @@ impl InstanceId {
         InstanceIdHash {
             obj_path_hash: *self.obj_path.hash(),
             instance_index_hash: self.instance_index_hash(),
+            arrow_instance: {
+                if let Some(Index::ArrowInstance(key)) = &self.instance_index {
+                    Some(*key)
+                } else {
+                    None
+                }
+            },
         }
     }
 
@@ -64,19 +71,40 @@ impl std::fmt::Display for InstanceId {
 // ----------------------------------------------------------------------------
 
 /// Hashes of the components of an [`InstanceId`].
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, Eq)]
 pub struct InstanceIdHash {
     pub obj_path_hash: ObjPathHash,
 
     /// If this is a multi-object, what instance index are we?
     /// [`IndexHash::NONE`] if we aren't a multi-object.
     pub instance_index_hash: IndexHash,
+
+    /// If this is an arrow instance, hang onto the Instance
+    /// TODO(jleibs): this can go way once we have an arrow-store resolver
+    pub arrow_instance: Option<re_log_types::field_types::Instance>,
+}
+
+impl std::hash::Hash for InstanceIdHash {
+    #[inline]
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        state.write_u64(self.obj_path_hash.hash64());
+        state.write_u64(self.instance_index_hash.hash64());
+    }
+}
+
+impl std::cmp::PartialEq for InstanceIdHash {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.obj_path_hash == other.obj_path_hash
+            && self.instance_index_hash == other.instance_index_hash
+    }
 }
 
 impl InstanceIdHash {
     pub const NONE: Self = Self {
         obj_path_hash: ObjPathHash::NONE,
         instance_index_hash: IndexHash::NONE,
+        arrow_instance: None,
     };
 
     #[inline]
@@ -84,6 +112,16 @@ impl InstanceIdHash {
         Self {
             obj_path_hash: *obj_path.hash(),
             instance_index_hash: instance_index,
+            arrow_instance: None,
+        }
+    }
+
+    #[inline]
+    pub fn from_path_and_arrow_instance(obj_path: &ObjPath, arrow_instance: &Instance) -> Self {
+        Self {
+            obj_path_hash: *obj_path.hash(),
+            instance_index_hash: Index::ArrowInstance(*arrow_instance).hash(),
+            arrow_instance: Some(*arrow_instance),
         }
     }
 
@@ -97,11 +135,20 @@ impl InstanceIdHash {
         self.obj_path_hash.is_none()
     }
 
-    pub fn resolve(&self, store: &DataStore) -> Option<InstanceId> {
-        Some(InstanceId {
-            obj_path: store.obj_path_from_hash(&self.obj_path_hash).cloned()?,
-            instance_index: store.index_from_hash(&self.instance_index_hash).cloned(),
-        })
+    pub fn resolve(&self, obj_db: &ObjDb) -> Option<InstanceId> {
+        match self.arrow_instance {
+            None => Some(InstanceId {
+                obj_path: obj_db.obj_path_from_hash(&self.obj_path_hash).cloned()?,
+                instance_index: obj_db
+                    .store
+                    .index_from_hash(&self.instance_index_hash)
+                    .cloned(),
+            }),
+            Some(arrow_instance) => Some(InstanceId {
+                obj_path: obj_db.obj_path_from_hash(&self.obj_path_hash).cloned()?,
+                instance_index: Some(Index::ArrowInstance(arrow_instance)),
+            }),
+        }
     }
 
     /// Does this object match this instance id?

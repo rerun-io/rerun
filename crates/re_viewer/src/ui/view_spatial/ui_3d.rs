@@ -390,7 +390,7 @@ pub fn view_3d(
     *hovered_instance = None;
     state.hovered_point = None;
     if let Some((instance_id, point)) = hovered {
-        if let Some(instance_id) = instance_id.resolve(&ctx.log_db.obj_db.store) {
+        if let Some(instance_id) = instance_id.resolve(&ctx.log_db.obj_db) {
             *hovered_instance = Some(instance_id);
             state.hovered_point = Some(point);
         }

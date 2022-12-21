@@ -9,7 +9,7 @@ use re_arrow_store::TimeQuery;
 use re_data_store::query::{
     visit_type_data_1, visit_type_data_2, visit_type_data_3, visit_type_data_4, visit_type_data_5,
 };
-use re_data_store::{FieldName, InstanceId, InstanceIdHash, ObjPath, ObjectsProperties};
+use re_data_store::{FieldName, InstanceIdHash, ObjPath, ObjectsProperties};
 use re_log_types::field_types::{ColorRGBA, Instance, Rect2D};
 use re_log_types::msg_bundle::Component;
 use re_log_types::{
@@ -965,13 +965,8 @@ impl SceneSpatial {
             .and_then(|entity_view| {
                 entity_view.visit2(
                     |instance: Instance, rect: Rect2D, color: Option<ColorRGBA>| {
-                        // TODO(jleibs): This feels convoluted and heavy-weight. Whatever we need here
-                        // should come directly out of the datastore.
-                        let instance = InstanceId {
-                            obj_path: obj_path.clone(),
-                            instance_index: Some(re_log_types::Index::Sequence(instance.0)),
-                        };
-                        let instance_hash = instance.hash();
+                        let instance_hash =
+                            InstanceIdHash::from_path_and_arrow_instance(obj_path, &instance);
 
                         let color = color.map(|c| c.to_array());
 
@@ -1265,10 +1260,10 @@ impl SceneSpatial {
             macaw::Plane3::from_normal_point(eye.forward_in_world(), eye.pos_in_world());
 
         for camera in cameras {
-            let instance_id = InstanceIdHash {
-                obj_path_hash: *camera.camera_obj_path.hash(),
-                instance_index_hash: camera.instance_index_hash,
-            };
+            let instance_id = InstanceIdHash::from_path_and_index(
+                &camera.camera_obj_path,
+                camera.instance_index_hash,
+            );
             let is_hovered = instance_id == hovered_instance;
 
             let (line_radius, line_color) = if is_hovered {
