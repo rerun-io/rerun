@@ -3,6 +3,8 @@ from typing import Optional, Sequence, Union
 import numpy as np
 import numpy.typing as npt
 from rerun.log import (  # type: ignore[attr-defined]
+    EXP_ARROW,
+    ArrowState,
     Color,
     Colors,
     OptionalClassIds,
@@ -60,16 +62,39 @@ def log_point(
     if position is not None:
         position = np.require(position, dtype="float32")
 
-    rerun_bindings.log_point(
-        obj_path=obj_path,
-        position=position,
-        radius=radius,
-        color=color,
-        label=label,
-        class_id=class_id,
-        keypoint_id=keypoint_id,
-        timeless=timeless,
-    )
+    if EXP_ARROW in [ArrowState.NONE, ArrowState.MIXED]:
+        rerun_bindings.log_point(
+            obj_path=obj_path,
+            position=position,
+            radius=radius,
+            color=color,
+            label=label,
+            class_id=class_id,
+            keypoint_id=keypoint_id,
+            timeless=timeless,
+        )
+
+    if EXP_ARROW in [ArrowState.MIXED, ArrowState.PURE]:
+        from rerun import components
+
+        if position.shape[0] == 2:
+            points = components.point.Point2DArray.from_numpy(position.reshape(1, 2))
+
+        elif position.shape[0] == 3:
+            points = components.point.Point3DArray.from_numpy(position.reshape(1, 3))
+
+        else:
+            raise TypeError("Positions should be either Nx2 or Nx3")
+
+        # colors = components.color.ColorRGBAArray.from_numpy(colors)
+        # labels = components.label.LabelArray.new(labels)
+
+        rerun_bindings.log_arrow_msg(
+            f"arrow/{obj_path}",
+            points=points,
+            # colors=colors,
+            # labels=labels,
+        )
 
 
 def log_points(

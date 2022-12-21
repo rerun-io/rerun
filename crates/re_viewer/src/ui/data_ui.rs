@@ -348,19 +348,37 @@ pub(crate) fn path_op_msg_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, msg
 }
 
 pub(crate) fn arrow_msg_ui(
-    _ctx: &mut ViewerContext<'_>,
+    ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     msg: &ArrowMsg,
     _preview: Preview,
 ) {
-    let ArrowMsg {
-        msg_id: _,
-        schema: _,
-        chunk: _,
-    } = msg;
+    match MsgBundle::try_from(msg) {
+        Ok(MsgBundle {
+            msg_id: _,
+            obj_path,
+            ref time_point,
+            components: _,
+        }) => {
+            egui::Grid::new("fields").num_columns(2).show(ui, |ui| {
+                ui.monospace("obj_path:");
+                ui.label(format!("{obj_path}"));
+                ui.end_row();
 
-    //logged_arrow_data_ui(ctx, ui, msg_id, msg, preview);
-    ui.label("TODO(john,jleibs) fixme");
+                ui.monospace("time_point:");
+                time_point_ui(ctx, ui, time_point);
+                ui.end_row();
+
+                ui.monospace("data:");
+                //logged_data_ui(ctx, ui, data, preview);
+                ui.label("TODO(john)");
+                ui.end_row();
+            });
+        }
+        Err(e) => {
+            ui.label(format!("Error parsing ArrowMsg: {e}"));
+        }
+    }
 }
 
 pub(crate) fn time_point_ui(
