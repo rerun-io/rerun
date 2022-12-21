@@ -22,7 +22,6 @@ pub enum UnreachableTransformReason {
     UnknownTransform,
 
     /// Reference space is under pinhole going from this space.
-    /// TODO(andreas): Support this one soon!
     ReferenceIsUnderPinhole,
 }
 
