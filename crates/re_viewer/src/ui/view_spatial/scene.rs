@@ -1244,6 +1244,7 @@ impl SceneSpatial {
 
     // ---
 
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn add_cameras(
         &mut self,
         ctx: &mut ViewerContext<'_>,

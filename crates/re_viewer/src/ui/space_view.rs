@@ -447,6 +447,8 @@ pub(crate) struct ViewState {
 }
 
 impl ViewState {
+    // TODO(andreas): split into smaller parts, some of it shouldn't be part of the ui path and instead scene loading.
+    #[allow(clippy::too_many_arguments)]
     fn ui_spatial(
         &mut self,
         ctx: &mut ViewerContext<'_>,
