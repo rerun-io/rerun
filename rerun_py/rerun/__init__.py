@@ -17,9 +17,31 @@ from rerun import rerun_bindings  # type: ignore[attr-defined]
 from rerun import components
 from rerun.components import point
 
-EXP_ARROW = os.environ.get("RERUN_EXP_ARROW", "0").lower() in ("1", "true")
 
-if EXP_ARROW:
+class ArrowState(Enum):
+    """
+    ArrowState is a enum used to configure the logging behaviour of the SDK during the
+    transition to Arrow.
+    """
+
+    # No Arrow loggin
+    NONE = "none"
+    # Log both classic and Arrow
+    MIXED = "mixed"
+    # Log *only* Arrow
+    PURE = "pure"
+
+
+try:
+    env_var = os.environ.get("RERUN_EXP_ARROW")
+    EXP_ARROW: Final = ArrowState[env_var.upper()] if env_var else ArrowState.NONE
+
+except KeyError:
+    raise RuntimeWarning(
+        f"RERUN_EXP_ARROW should be set to one of {list(ArrowState.__members__.keys())}, but got {env_var}"
+    )
+
+if EXP_ARROW is not ArrowState.NONE:
     import pyarrow as pa
 
 
@@ -477,18 +499,19 @@ def log_rects(
     if labels is None:
         labels = []
 
-    rerun_bindings.log_rects(
-        obj_path=obj_path,
-        rect_format=rect_format.value,
-        identifiers=identifiers,
-        rects=rects,
-        colors=colors,
-        labels=labels,
-        class_ids=class_ids,
-        timeless=timeless,
-    )
+    if EXP_ARROW in [ArrowState.NONE, ArrowState.MIXED]:
+        rerun_bindings.log_rects(
+            obj_path=obj_path,
+            rect_format=rect_format.value,
+            identifiers=identifiers,
+            rects=rects,
+            colors=colors,
+            labels=labels,
+            class_ids=class_ids,
+            timeless=timeless,
+        )
 
-    if EXP_ARROW:
+    if EXP_ARROW in [ArrowState.MIXED, ArrowState.PURE]:
         from rerun.components import rect2d, color, label
 
         rects = rect2d.Rect2DArray.from_numpy_and_format(rects, rect_format)
@@ -612,19 +635,20 @@ def log_points(
     if labels is None:
         labels = []
 
-    rerun_bindings.log_points(
-        obj_path=obj_path,
-        positions=positions,
-        identifiers=identifiers,
-        colors=colors,
-        radii=radii,
-        labels=labels,
-        class_ids=class_ids,
-        keypoint_ids=keypoint_ids,
-        timeless=timeless,
-    )
+    if EXP_ARROW in [ArrowState.MIXED, ArrowState.NONE]:
+        rerun_bindings.log_points(
+            obj_path=obj_path,
+            positions=positions,
+            identifiers=identifiers,
+            colors=colors,
+            radii=radii,
+            labels=labels,
+            class_ids=class_ids,
+            keypoint_ids=keypoint_ids,
+            timeless=timeless,
+        )
 
-    if EXP_ARROW:
+    if EXP_ARROW in [ArrowState.MIXED, ArrowState.PURE]:
         from rerun.components import color, label, point
 
         if positions.shape[1] == 2:
