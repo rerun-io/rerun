@@ -54,13 +54,13 @@ pub(crate) fn class_description_ui(
         .header(re_ui::ReUi::table_header_height(), |mut header| {
             re_ui::ReUi::setup_table_header(&mut header);
             header.col(|ui| {
-                ui.heading("Id");
+                ui.strong("Id");
             });
             header.col(|ui| {
-                ui.heading("Label");
+                ui.strong("Label");
             });
             header.col(|ui| {
-                ui.heading("Color");
+                ui.strong("Color");
             });
         })
         .body(|mut body| {
