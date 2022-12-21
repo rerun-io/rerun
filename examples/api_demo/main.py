@@ -15,10 +15,14 @@ from time import sleep
 from typing import Any, Final
 
 import numpy as np
+from rerun.log.annotation import AnnotationInfo
+from rerun.log.rects import RectFormat
+from rerun.log.text import LoggingHandler, LogLevel
 from scipy.spatial.transform import Rotation
 
 import rerun
-from rerun import AnnotationInfo, LoggingHandler, LogLevel, RectFormat
+
+# from rerun import AnnotationInfo, LoggingHandler, LogLevel, RectFormat
 
 
 def run_segmentation() -> None:
