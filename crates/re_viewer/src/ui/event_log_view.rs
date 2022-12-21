@@ -2,7 +2,7 @@ use itertools::Itertools as _;
 
 use re_format::format_number;
 use re_log_types::{
-    msg_bundle::MsgBundle, ArrowMsg, BeginRecordingMsg, DataMsg, DataType, LogMsg, PathOpMsg,
+    msg_bundle::MsgBundle, BeginRecordingMsg, DataMsg, DataType, LogMsg, PathOpMsg,
     RecordingInfo, TypeMsg,
 };
 

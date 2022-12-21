@@ -2,8 +2,9 @@ import logging
 from dataclasses import dataclass
 from typing import Final, Optional, Sequence
 
-from rerun import rerun_bindings
 from rerun.log import EXP_ARROW, ArrowState  # type: ignore[attr-defined]
+
+from rerun import rerun_bindings
 
 __all__ = [
     "LogLevel",

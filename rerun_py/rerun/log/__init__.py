@@ -1,5 +1,5 @@
-from enum import Enum
 import os
+from enum import Enum
 from typing import Final, Optional, Sequence, Union
 
 import numpy as np
@@ -109,6 +109,7 @@ def log_cleared(obj_path: str, *, recursive: bool = False) -> None:
 
     if EXP_ARROW in [ArrowState.MIXED, ArrowState.PURE]:
         import pyarrow as pa
+
         from rerun import components
 
         # TODO(jleibs): type registry?
