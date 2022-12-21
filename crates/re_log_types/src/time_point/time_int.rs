@@ -20,6 +20,7 @@ impl TimeInt {
     // a bit of leeway.
     pub const BEGINNING: TimeInt = TimeInt(i64::MIN / 2);
 
+    pub const MIN: TimeInt = TimeInt(i64::MIN);
     pub const MAX: TimeInt = TimeInt(i64::MAX);
 
     #[inline]
@@ -65,12 +66,14 @@ impl From<Time> for TimeInt {
 }
 
 impl From<TimeInt> for Time {
+    #[inline]
     fn from(int: TimeInt) -> Self {
         Self::from_ns_since_epoch(int.as_i64())
     }
 }
 
 impl From<TimeInt> for Duration {
+    #[inline]
     fn from(int: TimeInt) -> Self {
         Self::from_nanos(int.as_i64())
     }
@@ -79,6 +82,7 @@ impl From<TimeInt> for Duration {
 impl std::ops::Neg for TimeInt {
     type Output = Self;
 
+    #[inline]
     fn neg(self) -> Self::Output {
         Self(self.0.saturating_neg())
     }
@@ -87,6 +91,7 @@ impl std::ops::Neg for TimeInt {
 impl std::ops::Add for TimeInt {
     type Output = Self;
 
+    #[inline]
     fn add(self, rhs: Self) -> Self::Output {
         Self(self.0.saturating_add(rhs.0))
     }
@@ -95,18 +100,21 @@ impl std::ops::Add for TimeInt {
 impl std::ops::Sub for TimeInt {
     type Output = Self;
 
+    #[inline]
     fn sub(self, rhs: Self) -> Self::Output {
         Self(self.0.saturating_sub(rhs.0))
     }
 }
 
 impl std::ops::AddAssign for TimeInt {
+    #[inline]
     fn add_assign(&mut self, rhs: Self) {
         *self = *self + rhs;
     }
 }
 
 impl std::ops::SubAssign for TimeInt {
+    #[inline]
     fn sub_assign(&mut self, rhs: Self) {
         *self = *self - rhs;
     }

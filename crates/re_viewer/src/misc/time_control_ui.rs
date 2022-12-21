@@ -57,6 +57,14 @@ impl TimeControl {
             }
         }
 
+        self.play_button_ui(ui, times_per_timeline);
+        self.pause_button_ui(ui);
+        self.step_time_button_ui(times_per_timeline, ui);
+        self.loop_button_ui(ui);
+        self.playback_speed_ui(ui);
+    }
+
+    fn play_button_ui(&mut self, ui: &mut egui::Ui, times_per_timeline: &TimesPerTimeline) {
         if ui
             .selectable_label(self.is_playing(), "▶")
             .on_hover_text("Play. Toggle with SPACE")
@@ -64,6 +72,9 @@ impl TimeControl {
         {
             self.play(times_per_timeline);
         }
+    }
+
+    fn pause_button_ui(&mut self, ui: &mut egui::Ui) {
         if ui
             .selectable_label(!self.is_playing(), "⏸")
             .on_hover_text("Pause. Toggle with SPACE")
@@ -71,56 +82,9 @@ impl TimeControl {
         {
             self.pause();
         }
+    }
 
-        {
-            ui.scope(|ui| {
-                // Loop-button cycles between states:
-                match self.looping {
-                    Looping::Off => {
-                        if ui
-                            .selectable_label(false, "🔁")
-                            .on_hover_text("Looping is off")
-                            .clicked()
-                        {
-                            self.looping = Looping::All;
-                        }
-                    }
-                    Looping::All => {
-                        if ui
-                            .selectable_label(true, "🔁")
-                            .on_hover_text("Currently looping entire recording")
-                            .clicked()
-                        {
-                            self.looping = Looping::Selection;
-                        }
-                    }
-                    Looping::Selection => {
-                        ui.visuals_mut().selection.bg_fill = re_ui::ReUi::loop_selection_color();
-                        #[allow(clippy::collapsible_else_if)]
-                        if ui
-                            .selectable_label(true, "🔂")
-                            .on_hover_text("Currently looping selection")
-                            .clicked()
-                        {
-                            self.looping = Looping::Off;
-                        }
-                    }
-                }
-            });
-        }
-
-        {
-            let mut speed = self.speed();
-            let drag_speed = (speed * 0.02).at_least(0.01);
-            ui.add(
-                egui::DragValue::new(&mut speed)
-                    .speed(drag_speed)
-                    .suffix("x"),
-            )
-            .on_hover_text("Playback speed.");
-            self.set_speed(speed);
-        }
-
+    fn step_time_button_ui(&mut self, times_per_timeline: &TimesPerTimeline, ui: &mut egui::Ui) {
         if let Some(time_values) = times_per_timeline.get(self.timeline()) {
             let anything_has_kb_focus = ui.ctx().memory().focus().is_some();
             let step_back = ui
@@ -165,6 +129,55 @@ impl TimeControl {
                 }
             }
         }
+    }
+
+    fn loop_button_ui(&mut self, ui: &mut egui::Ui) {
+        ui.scope(|ui| {
+            // Loop-button cycles between states:
+            match self.looping {
+                Looping::Off => {
+                    if ui
+                        .selectable_label(false, "🔁")
+                        .on_hover_text("Looping is off")
+                        .clicked()
+                    {
+                        self.looping = Looping::All;
+                    }
+                }
+                Looping::All => {
+                    if ui
+                        .selectable_label(true, "🔁")
+                        .on_hover_text("Currently looping entire recording")
+                        .clicked()
+                    {
+                        self.looping = Looping::Selection;
+                    }
+                }
+                Looping::Selection => {
+                    ui.visuals_mut().selection.bg_fill = re_ui::ReUi::loop_selection_color();
+                    #[allow(clippy::collapsible_else_if)]
+                    if ui
+                        .selectable_label(true, "🔂")
+                        .on_hover_text("Currently looping selection")
+                        .clicked()
+                    {
+                        self.looping = Looping::Off;
+                    }
+                }
+            }
+        });
+    }
+
+    fn playback_speed_ui(&mut self, ui: &mut egui::Ui) {
+        let mut speed = self.speed();
+        let drag_speed = (speed * 0.02).at_least(0.01);
+        ui.add(
+            egui::DragValue::new(&mut speed)
+                .speed(drag_speed)
+                .suffix("x"),
+        )
+        .on_hover_text("Playback speed.");
+        self.set_speed(speed);
     }
 }
 
