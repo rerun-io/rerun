@@ -1,4 +1,4 @@
-from typing import Iterable, Optional, Sequence, Union
+from typing import Iterable, Optional, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -6,7 +6,7 @@ import numpy.typing as npt
 from rerun import rerun_bindings  # type: ignore[attr-defined]
 
 __all__ = [
-    "log_tesnor",
+    "log_tensor",
 ]
 
 TensorDType = Union[

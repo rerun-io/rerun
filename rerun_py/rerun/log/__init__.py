@@ -1,3 +1,4 @@
+import os
 from typing import Optional, Sequence, Union
 
 import numpy as np
@@ -5,7 +6,9 @@ import numpy.typing as npt
 from rerun.color_conversion import linear_to_gamma_u8_pixel
 
 from rerun import rerun_bindings  # type: ignore[attr-defined]
-from rerun import EXP_ARROW, components
+from rerun import components
+
+EXP_ARROW = os.environ.get("RERUN_EXP_ARROW", "0").lower() in ("1", "true")
 
 __all__ = [
     "annotation",

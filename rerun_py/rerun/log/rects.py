@@ -4,23 +4,24 @@ from typing import Optional, Sequence, Union
 import numpy as np
 import numpy.typing as npt
 from rerun.color_conversion import u8_array_to_rgba
-from rerun.log import (  # type: ignore[attr-defined]
+from rerun.log import (
     Color,
     Colors,
     OptionalClassIds,
     _normalize_colors,
     _normalize_ids,
     _to_sequence,
-    rerun_bindings,
 )
 
-from rerun import EXP_ARROW, rerun_bindings  # type: ignore[attr-defined]
+from rerun import rerun_bindings  # type: ignore[attr-defined]
+from rerun.log import EXP_ARROW
 
 __all__ = [
     "RectFormat",
     "log_rect",
     "log_rects",
 ]
+
 
 # """ How to specify rectangles (axis-aligned bounding boxes). """
 class RectFormat(Enum):

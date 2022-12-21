@@ -1,6 +1,5 @@
 from typing import Optional, Tuple
 
-import numpy as np
 import numpy.typing as npt
 from rerun.log import _to_sequence
 
@@ -8,7 +7,7 @@ from rerun import rerun_bindings  # type: ignore[attr-defined]
 
 __all__ = [
     "log_view_coordinates",
-    "log_unknown_transfers",
+    "log_unknown_transform",
     "log_rigid3",
 ]
 

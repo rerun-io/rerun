@@ -1,20 +1,8 @@
 """The Rerun Python SDK, which is a wrapper around the rerun_sdk crate."""
 
 import atexit
-import os
 from typing import Optional
 
-from rerun import rerun_bindings  # type: ignore[attr-defined]
-
-EXP_ARROW = os.environ.get("RERUN_EXP_ARROW", "0").lower() in ("1", "true")
-
-if EXP_ARROW:
-    import pyarrow as pa
-
-    from rerun import components
-
-
-# These need to come after EXP_ARROW
 from rerun.log import log_cleared
 from rerun.log.annotation import log_annotation_context
 from rerun.log.arrow import log_arrow
@@ -29,6 +17,8 @@ from rerun.log.scalar import log_scalar
 from rerun.log.tensor import log_tensor
 from rerun.log.text import log_text_entry
 from rerun.log.transform import log_rigid3, log_unknown_transform, log_view_coordinates
+
+from rerun import rerun_bindings  # type: ignore[attr-defined]
 
 __all__ = [
     "log_annotation_context",

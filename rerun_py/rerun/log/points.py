@@ -1,4 +1,4 @@
-from typing import Iterable, Optional, Sequence, Union
+from typing import Optional, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt

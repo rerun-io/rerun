@@ -1,6 +1,5 @@
 from typing import Optional, Sequence
 
-import numpy as np
 import numpy.typing as npt
 from rerun.log import _to_sequence
 
