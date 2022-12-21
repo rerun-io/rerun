@@ -2,7 +2,9 @@ import logging
 from dataclasses import dataclass
 from typing import Final, Optional, Sequence
 
-from rerun import rerun_bindings  # type: ignore[attr-defined]
+from rerun.log import EXP_ARROW
+
+from rerun import bindings
 
 __all__ = [
     "LogLevel",
@@ -91,7 +93,8 @@ def log_text_entry(
     * If no `level` is given, it will default to `LogLevel.INFO`.
     * `color` is optional RGB or RGBA triplet in 0-255 sRGB.
     """
-    rerun_bindings.log_text_entry(obj_path, text, level, color, timeless)
+    if EXP_ARROW.classic_log_gate():
+        bindings.log_text_entry(obj_path, text, level, color, timeless)
 
-
-# -----------------------------------------------------------------------------
+    if EXP_ARROW.arrow_log_gate():
+        logging.warning("log_annotation_context() not yet implemented for Arrow.")

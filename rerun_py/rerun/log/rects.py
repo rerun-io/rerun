@@ -1,9 +1,9 @@
+import logging
 from enum import Enum
 from typing import Optional, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
-from rerun.color_conversion import u8_array_to_rgba
 from rerun.log import (
     EXP_ARROW,
     Color,
@@ -14,7 +14,7 @@ from rerun.log import (
     _to_sequence,
 )
 
-from rerun import rerun_bindings  # type: ignore[attr-defined]
+from rerun import bindings
 
 __all__ = [
     "RectFormat",
@@ -65,7 +65,11 @@ def log_rect(
     * `class_id`: Optional class id for the rectangle.
        The class id provides color and label if not specified explicitly.
     """
-    rerun_bindings.log_rect(obj_path, rect_format.value, _to_sequence(rect), color, label, class_id, timeless)
+    if EXP_ARROW.classic_log_gate():
+        bindings.log_rect(obj_path, rect_format.value, _to_sequence(rect), color, label, class_id, timeless)
+
+    if EXP_ARROW.arrow_log_gate():
+        logging.warning("log_rect() not yet implemented for Arrow.")
 
 
 def log_rects(
@@ -116,41 +120,31 @@ def log_rects(
     if labels is None:
         labels = []
 
-    rerun_bindings.log_rects(
-        obj_path=obj_path,
-        rect_format=rect_format.value,
-        identifiers=identifiers,
-        rects=rects,
-        colors=colors,
-        labels=labels,
-        class_ids=class_ids,
-        timeless=timeless,
-    )
+    if EXP_ARROW.classic_log_gate():
+        bindings.log_rects(
+            obj_path=obj_path,
+            rect_format=rect_format.value,
+            identifiers=identifiers,
+            rects=rects,
+            colors=colors,
+            labels=labels,
+            class_ids=class_ids,
+            timeless=timeless,
+        )
 
-    if EXP_ARROW:
-        import pyarrow as pa
+    if EXP_ARROW.arrow_log_gate():
+        from rerun.components.color import ColorRGBAArray
+        from rerun.components.label import LabelArray
+        from rerun.components.rect2d import Rect2DArray
 
-        arrays = []
-        fields = []
-
-        if rect_format == RectFormat.XYWH:
-            rects_array = pa.StructArray.from_arrays(
-                arrays=[pa.array(c, type=pa.float32()) for c in rects.T],
-                fields=[
-                    pa.field("x", pa.float32(), nullable=False),
-                    pa.field("y", pa.float32(), nullable=False),
-                    pa.field("w", pa.float32(), nullable=False),
-                    pa.field("h", pa.float32(), nullable=False),
-                ],
-            )
-            fields.append(pa.field("rect", type=rects_array.type, nullable=False))
-            arrays.append(rects_array)
-        else:
-            raise NotImplementedError("RectFormat not yet implemented")
-
-        if colors.any():
-            fields.append(pa.field("color_srgba_unmultiplied", pa.uint32(), nullable=True))
-            arrays.append(pa.array([u8_array_to_rgba(c) for c in colors], type=pa.uint32()))
-
-        arr = pa.StructArray.from_arrays(arrays, fields=fields)
-        rerun_bindings.log_arrow_msg(obj_path, arr)
+        rects = Rect2DArray.from_numpy_and_format(rects, rect_format)
+        colors = ColorRGBAArray.from_numpy(colors)
+        labels = LabelArray.new(labels)
+        bindings.log_arrow_msg(
+            f"arrow/{obj_path}",
+            **{
+                "rerun.rect2d": rects,
+                "rerun.colorrgba": colors,
+                "rerun.label": labels,
+            },
+        )

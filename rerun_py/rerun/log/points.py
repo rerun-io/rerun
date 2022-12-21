@@ -3,6 +3,7 @@ from typing import Optional, Sequence, Union
 import numpy as np
 import numpy.typing as npt
 from rerun.log import (  # type: ignore[attr-defined]
+    EXP_ARROW,
     Color,
     Colors,
     OptionalClassIds,
@@ -10,8 +11,9 @@ from rerun.log import (  # type: ignore[attr-defined]
     _normalize_colors,
     _normalize_ids,
     _normalize_radii,
-    rerun_bindings,
 )
+
+from rerun import bindings
 
 __all__ = [
     "log_point",
@@ -60,16 +62,41 @@ def log_point(
     if position is not None:
         position = np.require(position, dtype="float32")
 
-    rerun_bindings.log_point(
-        obj_path=obj_path,
-        position=position,
-        radius=radius,
-        color=color,
-        label=label,
-        class_id=class_id,
-        keypoint_id=keypoint_id,
-        timeless=timeless,
-    )
+    if EXP_ARROW.classic_log_gate():
+        bindings.log_point(
+            obj_path=obj_path,
+            position=position,
+            radius=radius,
+            color=color,
+            label=label,
+            class_id=class_id,
+            keypoint_id=keypoint_id,
+            timeless=timeless,
+        )
+
+    if EXP_ARROW.arrow_log_gate():
+        from rerun.components.color import ColorRGBAArray
+        from rerun.components.label import LabelArray
+        from rerun.components.point import Point2DArray, Point3DArray
+
+        comps = {}
+
+        if position is not None:
+            if position.shape[0] == 2:
+                comps["rerun.point2d"] = Point2DArray.from_numpy(position.reshape(1, 2))
+            elif position.shape[0] == 3:
+                comps["rerun.point3d"] = Point3DArray.from_numpy(position.reshape(1, 3))
+            else:
+                raise TypeError("Positions should be either 1x2 or 1x3")
+
+        if color:
+            colors = _normalize_colors([color])
+            comps["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
+
+        if label:
+            comps["rerun.label"] = LabelArray.new([label])
+
+        bindings.log_arrow_msg(f"arrow/{obj_path}", **comps)
 
 
 def log_points(
@@ -127,14 +154,38 @@ def log_points(
     if labels is None:
         labels = []
 
-    rerun_bindings.log_points(
-        obj_path=obj_path,
-        positions=positions,
-        identifiers=identifiers,
-        colors=colors,
-        radii=radii,
-        labels=labels,
-        class_ids=class_ids,
-        keypoint_ids=keypoint_ids,
-        timeless=timeless,
-    )
+    if EXP_ARROW.classic_log_gate():
+        bindings.log_points(
+            obj_path=obj_path,
+            positions=positions,
+            identifiers=identifiers,
+            colors=colors,
+            radii=radii,
+            labels=labels,
+            class_ids=class_ids,
+            keypoint_ids=keypoint_ids,
+            timeless=timeless,
+        )
+
+    if EXP_ARROW.arrow_log_gate():
+        from rerun.components.color import ColorRGBAArray
+        from rerun.components.label import LabelArray
+        from rerun.components.point import Point2DArray, Point3DArray
+
+        comps = {}
+
+        if positions.any():
+            if positions.shape[1] == 2:
+                comps["rerun.point2d"] = Point2DArray.from_numpy(positions)
+            elif positions.shape[1] == 3:
+                comps["rerun.point3d"] = Point3DArray.from_numpy(positions)
+            else:
+                raise TypeError("Positions should be either Nx2 or Nx3")
+
+        if colors:
+            comps["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
+
+        if labels:
+            comps["rerun.label"] = LabelArray.new(labels)
+
+        bindings.log_arrow_msg(f"arrow/{obj_path}", **comps)

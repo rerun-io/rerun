@@ -1,21 +1,24 @@
 //! Methods for handling Arrow datamodel log ingest
 
-use arrow2::{
-    array::{Array, StructArray},
-    datatypes::Field,
-    ffi,
-};
+use arrow2::{array::Array, datatypes::Field, ffi};
 use pyo3::{
-    exceptions::{PyAttributeError, PyTypeError},
+    exceptions::{PyAttributeError, PyValueError},
     ffi::Py_uintptr_t,
-    types::IntoPyDict,
     types::PyDict,
+    types::{IntoPyDict, PyString},
     PyAny, PyResult,
 };
-use re_log_types::{field_types, LogMsg, ObjPath, TimePoint};
+use re_log_types::{
+    field_types,
+    msg_bundle::{self, ComponentBundle, MsgBundle, MsgBundleError},
+    LogMsg, MsgId, ObjPath, TimePoint,
+};
 
 /// Perform conversion between a pyarrow array to arrow2 types.
-fn array_to_rust(arrow_array: &PyAny) -> PyResult<(Box<dyn Array>, Field)> {
+fn array_to_rust(
+    arrow_array: &PyAny,
+    field_name: Option<&str>,
+) -> PyResult<(Box<dyn Array>, Field)> {
     // prepare pointers to receive the Array struct
     let array = Box::new(ffi::ArrowArray::empty());
     let schema = Box::new(ffi::ArrowSchema::empty());
@@ -35,8 +38,15 @@ fn array_to_rust(arrow_array: &PyAny) -> PyResult<(Box<dyn Array>, Field)> {
     // TODO(jleibs): Convince ourselves that this is safe
     // Following pattern from: https://github.com/pola-rs/polars/blob/master/examples/python_rust_compiled_function/src/ffi.rs
     unsafe {
-        let field = ffi::import_field_from_c(schema.as_ref()).unwrap();
-        let array = ffi::import_array_from_c(*array, field.data_type.clone()).unwrap();
+        let mut field = ffi::import_field_from_c(schema.as_ref())
+            .map_err(|e| PyValueError::new_err(format!("Error importing Field: {e}")))?;
+        let array = ffi::import_array_from_c(*array, field.data_type.clone())
+            .map_err(|e| PyValueError::new_err(format!("Error importing Array: {e}")))?;
+
+        if let Some(field_name) = field_name {
+            field.name = field_name.to_owned();
+        }
+
         Ok((array, field))
     }
 }
@@ -62,33 +72,40 @@ pub fn get_registered_fields(py: pyo3::Python<'_>) -> PyResult<&PyDict> {
     Ok(fields.into_py_dict(py))
 }
 
-pub fn build_arrow_log_msg_from_py(
+/// Build a [`LogMsg`] and vector of [`Field`] given a '**kwargs'-style dictionary of
+/// component arrays.
+pub fn build_chunk_from_components(
     obj_path: &ObjPath,
-    array: &PyAny,
-    _time_point: &TimePoint,
+    components: &PyDict,
+    time_point: &TimePoint,
 ) -> PyResult<LogMsg> {
-    let (array, _field) = array_to_rust(array)?;
+    let (arrays, fields): (Vec<Box<dyn Array>>, Vec<Field>) = itertools::process_results(
+        components.iter().map(|(name, array)| {
+            let name = name.downcast::<PyString>()?.to_str()?;
+            array_to_rust(array, Some(name))
+        }),
+        |iter| iter.unzip(),
+    )?;
 
-    let array = array
-        .as_any()
-        .downcast_ref::<StructArray>()
-        .ok_or_else(|| PyTypeError::new_err("Array should be a StructArray."))?;
+    let cmp_bundles = arrays
+        .into_iter()
+        .zip(fields.into_iter())
+        .map(|(value, field)| ComponentBundle {
+            name: field.name.into(),
+            value: msg_bundle::wrap_in_listarray(value).boxed(),
+        })
+        .collect();
 
-    re_log::info!(
-        "Logged an arrow msg to path '{}'  with components {:?}",
-        obj_path,
-        array
-            .fields()
-            .iter()
-            .map(|field| field.name.as_str())
-            .collect::<Vec<_>>()
+    let msg_bundle = MsgBundle::new(
+        MsgId::random(),
+        obj_path.clone(),
+        time_point.clone(),
+        cmp_bundles,
     );
 
-    /*
-    rerun_sdk::arrow::build_arrow_log_msg(obj_path, time_point, array)
-        .map_err(|err| PyTypeError::new_err(err.to_string()))
-        */
-    PyResult::Err(PyTypeError::new_err(
-        "TODO(jleibs): Python Arrow Logging is currently broken!",
-    ))
+    let msg = msg_bundle
+        .try_into()
+        .map_err(|e: MsgBundleError| PyValueError::new_err(e.to_string()))?;
+
+    Ok(LogMsg::ArrowMsg(msg))
 }

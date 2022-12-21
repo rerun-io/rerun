@@ -1,9 +1,10 @@
+import logging
 from typing import Optional, Sequence
 
 import numpy.typing as npt
-from rerun.log import _to_sequence
+from rerun.log import EXP_ARROW, _to_sequence
 
-from rerun import rerun_bindings  # type: ignore[attr-defined]
+from rerun import bindings
 
 __all__ = [
     "log_arrow",
@@ -47,12 +48,16 @@ def log_arrow(
         Object is not time-dependent, and will be visible at any time point.
 
     """
-    rerun_bindings.log_arrow(
-        obj_path,
-        origin=_to_sequence(origin),
-        vector=_to_sequence(vector),
-        color=color,
-        label=label,
-        width_scale=width_scale,
-        timeless=timeless,
-    )
+    if EXP_ARROW.classic_log_gate():
+        bindings.log_arrow(
+            obj_path,
+            origin=_to_sequence(origin),
+            vector=_to_sequence(vector),
+            color=color,
+            label=label,
+            width_scale=width_scale,
+            timeless=timeless,
+        )
+
+    if EXP_ARROW.arrow_log_gate():
+        logging.warning("log_arrow() not yet implemented for Arrow.")

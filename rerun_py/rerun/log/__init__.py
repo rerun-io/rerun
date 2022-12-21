@@ -1,16 +1,16 @@
 import os
-from typing import Optional, Sequence, Union
+from enum import Enum
+from typing import Final, Optional, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
 from rerun.color_conversion import linear_to_gamma_u8_pixel
 
-from rerun import rerun_bindings  # type: ignore[attr-defined]
-from rerun import components
-
-EXP_ARROW = os.environ.get("RERUN_EXP_ARROW", "0").lower() in ("1", "true")
+from rerun import bindings
 
 __all__ = [
+    "ArrowState",
+    "EXP_ARROW",
     "annotation",
     "arrow",
     "bounding_box",
@@ -25,6 +25,36 @@ __all__ = [
     "text",
     "transform",
 ]
+
+
+class ArrowState(Enum):
+    """ArrowState is a enum used to configure the logging behaviour of the SDK during the transition to Arrow."""
+
+    # No Arrow loggin
+    NONE = "none"
+    # Log both classic and Arrow
+    MIXED = "mixed"
+    # Log *only* Arrow
+    PURE = "pure"
+
+    def classic_log_gate(self) -> bool:
+        """Should classic logging be performed."""
+        return self in [ArrowState.NONE, ArrowState.MIXED]
+
+    def arrow_log_gate(self) -> bool:
+        """Should Arrow logging be performed."""
+        return self in [ArrowState.MIXED, ArrowState.PURE]
+
+
+try:
+    env_var = os.environ.get("RERUN_EXP_ARROW")
+    EXP_ARROW: Final = ArrowState[env_var.upper()] if env_var else ArrowState.NONE
+
+except KeyError:
+    raise RuntimeWarning(
+        f"RERUN_EXP_ARROW should be set to one of {list(ArrowState.__members__.keys())}, but got {env_var}"
+    )
+
 
 ColorDtype = Union[np.uint8, np.float32, np.float64]
 Colors = npt.NDArray[ColorDtype]
@@ -79,17 +109,17 @@ def log_cleared(obj_path: str, *, recursive: bool = False) -> None:
 
     If `recursive` is True this will also clear all sub-paths
     """
-    rerun_bindings.log_cleared(obj_path, recursive)
+    if EXP_ARROW.classic_log_gate():
+        bindings.log_cleared(obj_path, recursive)
 
-    if EXP_ARROW:
-        import pyarrow as pa
-
+    if EXP_ARROW.arrow_log_gate():
         # TODO(jleibs): type registry?
         # TODO(jleibs): proper handling of rect_format
-
-        cleared_arr = pa.array([True], type=components.ClearedField.type)
-        arr = pa.StructArray.from_arrays([cleared_arr], fields=[components.ClearedField])
-        rerun_bindings.log_arrow_msg(obj_path, "rect", arr)
+        # TODO(john): fix this
+        # cleared_arr = pa.array([True], type=components.ClearedField.type)
+        # arr = pa.StructArray.from_arrays([cleared_arr], fields=[components.ClearedField])
+        # bindings.log_arrow_msg(obj_path, "rect", arr)
+        pass
 
 
 def set_visible(obj_path: str, visibile: bool) -> None:

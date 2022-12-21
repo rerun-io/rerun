@@ -133,6 +133,8 @@ fn log_rects(
         bundle.components.push(component);
     }
 
+    println!("Logged {bundle}");
+
     // Create and send one message to the sdk
     let msg = bundle.try_into().unwrap();
     session.send(LogMsg::ArrowMsg(msg));

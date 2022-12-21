@@ -1,9 +1,11 @@
+import logging
 from typing import Any, Iterable, Optional, Union
 
 import numpy as np
 import numpy.typing as npt
+from rerun.log import EXP_ARROW
 
-from rerun import rerun_bindings  # type: ignore[attr-defined]
+from rerun import bindings
 
 __all__ = [
     "log_tensor",
@@ -29,7 +31,7 @@ def _log_tensor(
     tensor: npt.NDArray[TensorDType],
     names: Optional[Iterable[str]] = None,
     meter: Optional[float] = None,
-    meaning: rerun_bindings.TensorDataMeaning = None,
+    meaning: bindings.TensorDataMeaning = None,
     timeless: bool = False,
 ) -> None:
     """Log a general tensor, perhaps with named dimensions."""
@@ -54,4 +56,8 @@ def _log_tensor(
     if tensor.dtype not in SUPPORTED_DTYPES:
         raise TypeError(f"Unsupported dtype: {tensor.dtype}. Expected a numeric type.")
 
-    rerun_bindings.log_tensor(obj_path, tensor, names, meter, meaning, timeless)
+    if EXP_ARROW.classic_log_gate():
+        bindings.log_tensor(obj_path, tensor, names, meter, meaning, timeless)
+
+    if EXP_ARROW.arrow_log_gate():
+        logging.warning("log_tensor() not yet implemented for Arrow.")
