@@ -14,6 +14,7 @@ from rerun.log import (
     _normalize_ids,
     _to_sequence,
 )
+
 from rerun import bindings
 
 __all__ = [

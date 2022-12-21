@@ -13,6 +13,7 @@ from rerun.log import (  # type: ignore[attr-defined]
     _normalize_ids,
     _normalize_radii,
 )
+
 from rerun import bindings
 
 __all__ = [
@@ -81,7 +82,7 @@ def log_point(
 
         comps = {}
 
-        if position:
+        if position is not None:
             if position.shape[0] == 2:
                 comps["rerun.point2d"] = Point2DArray.from_numpy(position.reshape(1, 2))
             elif position.shape[0] == 3:
@@ -168,9 +169,9 @@ def log_points(
         )
 
     if EXP_ARROW in [ArrowState.MIXED, ArrowState.PURE]:
-        from rerun.components.point import Point2DArray, Point3DArray
         from rerun.components.color import ColorRGBAArray
         from rerun.components.label import LabelArray
+        from rerun.components.point import Point2DArray, Point3DArray
 
         comps = {}
 

@@ -114,7 +114,6 @@ def log_cleared(obj_path: str, *, recursive: bool = False) -> None:
 
         # TODO(jleibs): type registry?
         # TODO(jleibs): proper handling of rect_format
-
         # TODO(john): fix this
         # cleared_arr = pa.array([True], type=components.ClearedField.type)
         # arr = pa.StructArray.from_arrays([cleared_arr], fields=[components.ClearedField])
