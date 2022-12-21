@@ -5,10 +5,10 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use arrow2::array::{Array, ListArray, UInt64Array};
+use nohash_hasher::IntMap;
 use polars_core::{prelude::*, series::Series};
 use re_arrow_store::{
-    polars_util::{self, latest_components},
-    test_bundle, DataStore, LatestAtQuery, RangeQuery, TimeInt, TimeRange,
+    polars_util, test_bundle, DataStore, LatestAtQuery, RangeQuery, TimeInt, TimeRange,
 };
 use re_log_types::{
     datagen::{build_frame_nr, build_instances, build_some_point2d, build_some_rects},
@@ -142,25 +142,46 @@ fn range_impl(store: &mut DataStore) {
         err.unwrap();
     }
 
+    let mut assert_range_components =
+        |time_range: TimeRange,
+         primary: ComponentName,
+         bundles_at_times: &[(TimeInt, &[(ComponentName, &MsgBundle)])]| {
+            let bundles_at_times: IntMap<TimeInt, &[(ComponentName, &MsgBundle)]> =
+                bundles_at_times.iter().copied().collect();
+
+            let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
+            let components_all = &[store.cluster_key(), Rect2D::name(), Point2D::name()];
+
+            let query = RangeQuery::new(timeline_frame_nr, time_range);
+            let dfs =
+                polars_util::range_components(store, &query, &ent_path, primary, components_all);
+
+            for (time, df) in dfs.map(Result::unwrap) {
+                let df_expected = joint_df(store.cluster_key(), bundles_at_times[&time]);
+
+                eprintln!(
+                    "Found data at time {} from {}'s PoV (outer-joining):\n{:?}",
+                    TimeType::Sequence.format(time), // TODO
+                    primary,
+                    df,
+                );
+
+                // store.sort_indices();
+                // assert_eq!(df_expected, df, "{store}");
+            }
+        };
+
+    // TODO(cmc): bring back some log_time scenarios
+
     // Unit-length time-ranges, should behave like a latest_at query at `start - 1`.
 
-    assert_joint_range(
-        store,
-        &ent_path,
-        TimeRange::new(frame1, frame1),
-        Rect2D::name(),
-        &[],
-    );
-    assert_joint_range(
-        store,
-        &ent_path,
+    assert_range_components(TimeRange::new(frame1, frame1), Rect2D::name(), &[]);
+    assert_range_components(
         TimeRange::new(frame2, frame2),
         Rect2D::name(),
         &[(frame1, &[(Rect2D::name(), &bundle1)])],
     );
-    assert_joint_range(
-        store,
-        &ent_path,
+    assert_range_components(
         TimeRange::new(frame3, frame3),
         Rect2D::name(),
         &[(
@@ -168,9 +189,7 @@ fn range_impl(store: &mut DataStore) {
             &[(Rect2D::name(), &bundle1), (Point2D::name(), &bundle2)],
         )],
     );
-    assert_joint_range(
-        store,
-        &ent_path,
+    assert_range_components(
         TimeRange::new(frame4, frame4),
         Rect2D::name(),
         &[(
@@ -178,9 +197,7 @@ fn range_impl(store: &mut DataStore) {
             &[(Rect2D::name(), &bundle1), (Point2D::name(), &bundle3)],
         )],
     );
-    assert_joint_range(
-        store,
-        &ent_path,
+    assert_range_components(
         TimeRange::new(frame5, frame5),
         Rect2D::name(),
         &[(
@@ -188,103 +205,6 @@ fn range_impl(store: &mut DataStore) {
             &[(Rect2D::name(), &bundle4), (Point2D::name(), &bundle3)],
         )],
     );
-}
-
-/// Runs a joint query over all components at the given `frame_nr`, and asserts that the result
-/// matches a joint `DataFrame` built ouf of the specified raw `bundles`.
-fn assert_joint_range(
-    store: &mut DataStore,
-    ent_path: &EntityPath,
-    time_range: TimeRange,
-    primary: ComponentName,
-    bundles_at_times: &[(TimeInt, &[(ComponentName, &MsgBundle)])],
-) {
-    let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
-    let components_all = &[Instance::name(), Rect2D::name(), Point2D::name()];
-
-    // let bundles_at_times: HashMap<TimeInt, &[(ComponentName, &MsgBundle)]> =
-    //     bundles_at_times.iter().copied().collect();
-
-    let query = RangeQuery::new(timeline_frame_nr, time_range);
-    let dfs = range_query(store, &query, ent_path, primary, components_all);
-    for (time, df) in dfs {
-        eprintln!(
-            "Found data at time {} from {}'s PoV (outer-joining):\n{:?}",
-            query.timeline.typ().format(time),
-            primary,
-            df,
-        );
-    }
-}
-
-// --- Range helpers ---
-
-// TODO: doc
-fn range_query<'a, const N: usize>(
-    store: &'a DataStore,
-    query: &'a RangeQuery,
-    ent_path: &'a EntityPath,
-    primary: ComponentName,
-    components: &'a [ComponentName; N],
-) -> impl Iterator<Item = (TimeInt, DataFrame)> + 'a {
-    store
-        .range(query, ent_path, primary, components)
-        .map(move |(time, row_indices)| {
-            let df = {
-                let results = store.get(components, &row_indices);
-
-                let series: Vec<_> = components
-                    .iter()
-                    .zip(results)
-                    .filter_map(|(component, col)| col.map(|col| (component, col)))
-                    .map(|(&component, col)| Series::try_from((component.as_str(), col)).unwrap())
-                    .collect();
-
-                DataFrame::new(series).unwrap()
-            };
-
-            let df = std::iter::once(df)
-                .reduce(|acc, df| {
-                    acc.outer_join(
-                        &df,
-                        [Instance::name().as_str()],
-                        [Instance::name().as_str()],
-                    )
-                    .unwrap()
-                })
-                .unwrap_or_default();
-
-            let missing = components
-                .iter()
-                .enumerate()
-                .filter_map(|(i, component)| row_indices[i].is_none().then_some(*component))
-                .collect::<Vec<_>>();
-            let df_missing = latest_components(
-                store,
-                &LatestAtQuery::new(query.timeline, time),
-                ent_path,
-                &missing,
-            )
-            .unwrap();
-
-            (time, join_dataframes([df, df_missing].into_iter()))
-        })
-}
-
-fn join_dataframes(dfs: impl Iterator<Item = DataFrame>) -> DataFrame {
-    let df = dfs
-        .filter(|df| !df.is_empty())
-        .reduce(|acc, df| {
-            acc.outer_join(
-                &df,
-                [Instance::name().as_str()],
-                [Instance::name().as_str()],
-            )
-            .unwrap()
-        })
-        .unwrap_or_default();
-
-    df.sort([Instance::name().as_str()], false).unwrap_or(df)
 }
 
 // --- Common helpers ---
@@ -331,7 +251,7 @@ fn joint_df(cluster_key: ComponentName, bundles: &[(ComponentName, &MsgBundle)])
         })
         .unwrap_or_default();
 
-    df.sort([Instance::name().as_str()], false).unwrap_or(df)
+    df.sort([cluster_key.as_str()], false).unwrap_or(df)
 }
 
 // ---

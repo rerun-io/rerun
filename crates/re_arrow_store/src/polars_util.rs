@@ -1,9 +1,9 @@
 use polars_core::{prelude::*, series::Series};
-use re_log_types::{ComponentName, ObjPath as EntityPath};
+use re_log_types::{ComponentName, ObjPath as EntityPath, TimeInt};
 
-use crate::{DataStore, LatestAtQuery};
+use crate::{DataStore, LatestAtQuery, RangeQuery};
 
-// ---
+// --- LatestAt ---
 
 /// Queries a single component from its own point-of-view as well as its cluster key, and
 /// returns a `DataFrame`.
@@ -152,6 +152,101 @@ pub fn latest_components(
         .filter(|df| df.as_ref().map(|df| !df.is_empty()).unwrap_or(true));
 
     let df = dfs
+        .reduce(|acc, df| {
+            acc?.outer_join(&df?, [cluster_key.as_str()], [cluster_key.as_str()])
+                .map_err(Into::into)
+        })
+        .unwrap_or_else(|| Ok(DataFrame::default()))?;
+
+    Ok(df.sort([cluster_key.as_str()], false).unwrap_or(df))
+}
+
+// --- Range ---
+
+// TODO: doc
+pub fn range_component<'a>(
+    store: &'a DataStore,
+    query: &'a RangeQuery,
+    ent_path: &'a EntityPath,
+    primary: ComponentName,
+) -> impl Iterator<Item = anyhow::Result<(TimeInt, DataFrame)>> + 'a {
+    let cluster_key = store.cluster_key();
+
+    let components = [cluster_key, primary];
+    store
+        .range(query, ent_path, primary, &components)
+        .map(move |(time, row_indices)| {
+            let results = store.get(&components, &row_indices);
+            let series: Result<Vec<_>, _> = components
+                .iter()
+                .zip(results)
+                .filter_map(|(component, col)| col.map(|col| (component, col)))
+                .map(|(&component, col)| Series::try_from((component.as_str(), col)))
+                .collect();
+
+            Ok::<_, anyhow::Error>((time, DataFrame::new(series?)?))
+        })
+}
+
+// TODO: doc
+pub fn range_components<'a, const N: usize>(
+    store: &'a DataStore,
+    query: &'a RangeQuery,
+    ent_path: &'a EntityPath,
+    primary: ComponentName,
+    components: &'a [ComponentName; N],
+) -> impl Iterator<Item = anyhow::Result<(TimeInt, DataFrame)>> + 'a {
+    let cluster_key = store.cluster_key();
+
+    assert!(
+        components.contains(&cluster_key),
+        "`components` must contain the cluster key, got {components:?}, \
+            which is missing {cluster_key:?}",
+    );
+
+    store
+        .range(query, ent_path, primary, components)
+        .map(move |(time, row_indices)| {
+            let df = {
+                let results = store.get(components, &row_indices);
+                let series: Result<Vec<_>, _> = components
+                    .iter()
+                    .zip(results)
+                    .filter_map(|(component, col)| col.map(|col| (component, col)))
+                    .map(|(&component, col)| Series::try_from((component.as_str(), col)))
+                    .collect();
+                DataFrame::new(series?)?
+            };
+
+            let missing = components
+                .iter()
+                .enumerate()
+                .filter_map(|(i, component)| row_indices[i].is_none().then_some(*component))
+                .collect::<Vec<_>>();
+            let df_missing = latest_components(
+                store,
+                &LatestAtQuery::new(query.timeline, time),
+                ent_path,
+                &missing,
+            )
+            .unwrap();
+
+            Ok((
+                time,
+                outer_join_dataframes(cluster_key, [df, df_missing].into_iter())?,
+            ))
+        })
+}
+
+// --- Helpers ---
+
+fn outer_join_dataframes(
+    cluster_key: ComponentName,
+    dfs: impl Iterator<Item = DataFrame>,
+) -> anyhow::Result<DataFrame> {
+    let df = dfs
+        .filter(|df| !df.is_empty())
+        .map(Ok::<_, anyhow::Error>)
         .reduce(|acc, df| {
             acc?.outer_join(&df?, [cluster_key.as_str()], [cluster_key.as_str()])
                 .map_err(Into::into)
