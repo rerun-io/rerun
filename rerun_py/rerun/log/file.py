@@ -6,7 +6,7 @@ from typing import Optional
 import numpy as np
 import numpy.typing as npt
 
-from rerun import rerun_bindings  # type: ignore[attr-defined]
+from rerun import bindings
 
 __all__ = [
     "MeshFormat",
@@ -65,7 +65,7 @@ def log_mesh_file(
     else:
         transform = np.require(transform, dtype="float32")
 
-    rerun_bindings.log_mesh_file(obj_path, mesh_format.value, mesh_file, transform, timeless)
+    bindings.log_mesh_file(obj_path, mesh_format.value, mesh_file, transform, timeless)
 
 
 def log_image_file(
@@ -80,4 +80,4 @@ def log_image_file(
     If no `img_format` is specified, we will try and guess it.
     """
     img_format = getattr(img_format, "value", None)
-    rerun_bindings.log_image_file(obj_path, img_path, img_format, timeless)
+    bindings.log_image_file(obj_path, img_path, img_format, timeless)

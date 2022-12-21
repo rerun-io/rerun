@@ -1,7 +1,7 @@
 import numpy as np
 import numpy.typing as npt
 
-from rerun import rerun_bindings  # type: ignore[attr-defined]
+from rerun import bindings
 
 __all__ = [
     "log_pinhole",
@@ -33,7 +33,7 @@ def log_pinhole(
     `resolution`: Array with [width, height] image resolution in pixels.
 
     """
-    rerun_bindings.log_pinhole(
+    bindings.log_pinhole(
         obj_path,
         resolution=[width, height],
         child_from_parent=np.asarray(child_from_parent).T.tolist(),

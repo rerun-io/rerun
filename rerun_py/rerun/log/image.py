@@ -5,7 +5,7 @@ import numpy.typing as npt
 from rerun.log import Colors
 from rerun.log.tensor import _log_tensor, log_tensor
 
-from rerun import rerun_bindings  # type: ignore[attr-defined]
+from rerun import bindings
 
 __all__ = [
     "log_image",
@@ -94,4 +94,9 @@ def log_segmentation_image(
         if depth != 1:
             raise TypeError(f"Expected image depth of 1. Instead got array of shape {image.shape}")
 
-    _log_tensor(obj_path, tensor=image, meaning=rerun_bindings.TensorDataMeaning.ClassId, timeless=timeless)
+    _log_tensor(
+        obj_path,
+        tensor=image,
+        meaning=bindings.TensorDataMeaning.ClassId,
+        timeless=timeless,
+    )

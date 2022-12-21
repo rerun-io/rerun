@@ -6,7 +6,7 @@ from typing import Any, Final, Type, cast
 
 import pyarrow as pa
 
-from rerun import rerun_bindings  # type: ignore[attr-defined]
+from rerun import bindings
 
 all = [
     "color",
@@ -15,7 +15,7 @@ all = [
     "rect2d",
 ]
 
-REGISTERED_FIELDS: Final = rerun_bindings.get_registered_fields()
+REGISTERED_FIELDS: Final = bindings.get_registered_fields()
 
 
 def ComponentTypeFactory(name: str, array_cls: type[pa.ExtensionArray], field: pa.Field) -> type[pa.ExtensionType]:

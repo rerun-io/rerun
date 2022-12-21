@@ -3,7 +3,7 @@ from typing import Optional, Sequence
 import numpy as np
 import numpy.typing as npt
 
-from rerun import rerun_bindings  # type: ignore[attr-defined]
+from rerun import bindings
 
 __all__ = [
     "log_path",
@@ -37,7 +37,7 @@ def log_path(
     """
     if positions is not None:
         positions = np.require(positions, dtype="float32")
-    rerun_bindings.log_path(obj_path, positions, stroke_width, color, timeless)
+    bindings.log_path(obj_path, positions, stroke_width, color, timeless)
 
 
 def log_line_segments(
@@ -65,4 +65,4 @@ def log_line_segments(
     if positions is None:
         positions = []
     positions = np.require(positions, dtype="float32")
-    rerun_bindings.log_line_segments(obj_path, positions, stroke_width, color, timeless)
+    bindings.log_line_segments(obj_path, positions, stroke_width, color, timeless)

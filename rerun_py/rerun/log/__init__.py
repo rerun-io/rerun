@@ -6,7 +6,7 @@ import numpy as np
 import numpy.typing as npt
 from rerun.color_conversion import linear_to_gamma_u8_pixel
 
-from rerun import rerun_bindings  # type: ignore[attr-defined]
+from rerun import bindings
 
 __all__ = [
     "ArrowState",
@@ -105,7 +105,7 @@ def log_cleared(obj_path: str, *, recursive: bool = False) -> None:
     If `recursive` is True this will also clear all sub-paths
     """
     if EXP_ARROW in [ArrowState.NONE, ArrowState.MIXED]:
-        rerun_bindings.log_cleared(obj_path, recursive)
+        bindings.log_cleared(obj_path, recursive)
 
     if EXP_ARROW in [ArrowState.MIXED, ArrowState.PURE]:
         import pyarrow as pa
@@ -115,9 +115,10 @@ def log_cleared(obj_path: str, *, recursive: bool = False) -> None:
         # TODO(jleibs): type registry?
         # TODO(jleibs): proper handling of rect_format
 
-        cleared_arr = pa.array([True], type=components.ClearedField.type)
-        arr = pa.StructArray.from_arrays([cleared_arr], fields=[components.ClearedField])
-        rerun_bindings.log_arrow_msg(obj_path, "rect", arr)
+        # TODO(john): fix this
+        # cleared_arr = pa.array([True], type=components.ClearedField.type)
+        # arr = pa.StructArray.from_arrays([cleared_arr], fields=[components.ClearedField])
+        # bindings.log_arrow_msg(obj_path, "rect", arr)
 
 
 def set_visible(obj_path: str, visibile: bool) -> None:

@@ -14,8 +14,7 @@ from rerun.log import (
     _normalize_ids,
     _to_sequence,
 )
-
-from rerun import rerun_bindings  # type: ignore[attr-defined]
+from rerun import bindings
 
 __all__ = [
     "RectFormat",
@@ -66,7 +65,7 @@ def log_rect(
     * `class_id`: Optional class id for the rectangle.
        The class id provides color and label if not specified explicitly.
     """
-    rerun_bindings.log_rect(obj_path, rect_format.value, _to_sequence(rect), color, label, class_id, timeless)
+    bindings.log_rect(obj_path, rect_format.value, _to_sequence(rect), color, label, class_id, timeless)
 
 
 def log_rects(
@@ -118,7 +117,7 @@ def log_rects(
         labels = []
 
     if EXP_ARROW in [ArrowState.NONE, ArrowState.MIXED]:
-        rerun_bindings.log_rects(
+        bindings.log_rects(
             obj_path=obj_path,
             rect_format=rect_format.value,
             identifiers=identifiers,
@@ -135,7 +134,7 @@ def log_rects(
         rects = rect2d.Rect2DArray.from_numpy_and_format(rects, rect_format)
         colors = color.ColorRGBAArray.from_numpy(colors)
         labels = label.LabelArray.new(labels)
-        rerun_bindings.log_arrow_msg(
+        bindings.log_arrow_msg(
             f"arrow/{obj_path}",
             **{
                 "rerun.rect2d": rects,

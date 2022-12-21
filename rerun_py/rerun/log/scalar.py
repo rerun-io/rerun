@@ -1,6 +1,6 @@
 from typing import Optional, Sequence
 
-from rerun import rerun_bindings  # type: ignore[attr-defined]
+from rerun import bindings
 
 __all__ = [
     "log_scalar",
@@ -97,4 +97,4 @@ def log_scalar(
     Points within a single line do not have to all share the same scatteredness: the line will
     switch between a scattered and a continous representation as required.
     """
-    rerun_bindings.log_scalar(obj_path, scalar, label, color, radius, scattered)
+    bindings.log_scalar(obj_path, scalar, label, color, radius, scattered)

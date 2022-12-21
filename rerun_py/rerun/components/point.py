@@ -7,9 +7,16 @@ import numpy.typing as npt
 import pyarrow as pa
 from rerun.components import REGISTERED_FIELDS, ComponentTypeFactory
 
+__all__ = [
+    "Point2DArray",
+    "Point3DArray",
+    "Point2DType",
+    "Point3DType",
+]
+
 
 class Point2DArray(pa.ExtensionArray):  # type: ignore[misc]
-    def from_numpy(array: npt.NDArray[np.float_]) -> Point2DArray:
+    def from_numpy(array: npt.NDArray[np.float32]) -> Point2DArray:
         """Build a `Point2DArray` from an Nx2 numpy array."""
 
         # TODO(john) assert shape
@@ -30,7 +37,7 @@ pa.register_extension_type(Point2DType())
 
 
 class Point3DArray(pa.ExtensionArray):  # type: ignore[misc]
-    def from_numpy(array: npt.NDArray[np.float_]) -> Point3DArray:
+    def from_numpy(array: npt.NDArray[np.float32]) -> Point3DArray:
         """Build a `Point3DArray` from an Nx3 numpy array."""
 
         # TODO(john) assert shape

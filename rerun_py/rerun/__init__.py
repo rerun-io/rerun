@@ -3,6 +3,8 @@
 import atexit
 from typing import Optional
 
+import rerun.rerun_bindings as bindings  # type: ignore[attr-defined]
+
 from rerun.components import point
 from rerun.log import log_cleared
 from rerun.log.annotation import log_annotation_context
@@ -19,9 +21,9 @@ from rerun.log.tensor import log_tensor
 from rerun.log.text import log_text_entry
 from rerun.log.transform import log_rigid3, log_unknown_transform, log_view_coordinates
 
-from rerun import rerun_bindings  # type: ignore[attr-defined]
-
 __all__ = [
+    "bindings",
+    "components",
     "log_annotation_context",
     "log_arrow",
     "log_cleared",
@@ -49,7 +51,7 @@ __all__ = [
 
 
 def rerun_shutdown() -> None:
-    rerun_bindings.flush()
+    bindings.flush()
 
 
 atexit.register(rerun_shutdown)
@@ -70,7 +72,7 @@ def get_recording_id() -> str:
     you will need to manually assign them all the same recording_id.
     Any random UUIDv4 will work, or copy the recording id for the parent process.
     """
-    return str(rerun_bindings.get_recording_id())
+    return str(bindings.get_recording_id())
 
 
 def set_recording_id(value: str) -> None:
@@ -86,7 +88,7 @@ def set_recording_id(value: str) -> None:
     you will need to manually assign them all the same recording_id.
     Any random UUIDv4 will work, or copy the recording id for the parent process.
     """
-    rerun_bindings.set_recording_id(value)
+    bindings.set_recording_id(value)
 
 
 def init(application_id: str) -> None:
@@ -100,12 +102,12 @@ def init(application_id: str) -> None:
     and another doing camera calibration, you could have
     `rerun.init("object_detector")` and `rerun.init("calibrator")`.
     """
-    rerun_bindings.init(application_id)
+    bindings.init(application_id)
 
 
 def connect(addr: Optional[str] = None) -> None:
     """Connect to a remote Rerun Viewer on the given ip:port."""
-    rerun_bindings.connect(addr)
+    bindings.connect(addr)
 
 
 def serve() -> None:
@@ -114,12 +116,12 @@ def serve() -> None:
 
     WARNING: This is an experimental feature.
     """
-    rerun_bindings.serve()
+    bindings.serve()
 
 
 def disconnect() -> None:
     """Disconnect from the remote rerun server (if any)."""
-    rerun_bindings.disconnect()
+    bindings.disconnect()
 
 
 def show() -> None:
@@ -132,7 +134,7 @@ def show() -> None:
 
     NOTE: There is a bug which causes this function to only work once on some platforms.
     """
-    rerun_bindings.show()
+    bindings.show()
 
 
 def save(path: str) -> None:
@@ -143,7 +145,7 @@ def save(path: str) -> None:
 
     This will clear the logged data after saving.
     """
-    rerun_bindings.save(path)
+    bindings.save(path)
 
 
 def set_time_sequence(timeline: str, sequence: Optional[int]) -> None:
@@ -159,7 +161,7 @@ def set_time_sequence(timeline: str, sequence: Optional[int]) -> None:
 
     There is no requirement of monoticity. You can move the time backwards if you like.
     """
-    rerun_bindings.set_time_sequence(timeline, sequence)
+    bindings.set_time_sequence(timeline, sequence)
 
 
 def set_time_seconds(timeline: str, seconds: Optional[float]) -> None:
@@ -176,12 +178,12 @@ def set_time_seconds(timeline: str, seconds: Optional[float]) -> None:
     The argument should be in seconds, and should be measured either from the
     unix epoch (1970-01-01), or from some recent time (e.g. your program startup).
 
-    The rerun_bindings has a built-in time which is `log_time`, and is logged as seconds
+    The bindings has a built-in time which is `log_time`, and is logged as seconds
     since unix epoch.
 
     There is no requirement of monoticity. You can move the time backwards if you like.
     """
-    rerun_bindings.set_time_seconds(timeline, seconds)
+    bindings.set_time_seconds(timeline, seconds)
 
 
 def set_time_nanos(timeline: str, nanos: Optional[int]) -> None:
@@ -198,9 +200,9 @@ def set_time_nanos(timeline: str, nanos: Optional[int]) -> None:
     The argument should be in nanoseconds, and should be measured either from the
     unix epoch (1970-01-01), or from some recent time (e.g. your program startup).
 
-    The rerun_bindings has a built-in time which is `log_time`, and is logged as nanos since
+    The bindings has a built-in time which is `log_time`, and is logged as nanos since
     unix epoch.
 
     There is no requirement of monoticity. You can move the time backwards if you like.
     """
-    rerun_bindings.set_time_nanos(timeline, nanos)
+    bindings.set_time_nanos(timeline, nanos)

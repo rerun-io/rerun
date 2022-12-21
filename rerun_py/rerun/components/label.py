@@ -5,6 +5,11 @@ from typing import Sequence, cast
 import pyarrow as pa
 from rerun.components import REGISTERED_FIELDS, ComponentTypeFactory
 
+__all__ = [
+    "LabelArray",
+    "LabelType",
+]
+
 
 class LabelArray(pa.ExtensionArray):  # type: ignore[misc]
     def new(labels: Sequence[str]) -> LabelArray:

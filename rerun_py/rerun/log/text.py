@@ -4,7 +4,7 @@ from typing import Final, Optional, Sequence
 
 from rerun.log import EXP_ARROW, ArrowState  # type: ignore[attr-defined]
 
-from rerun import rerun_bindings
+from rerun import bindings
 
 __all__ = [
     "LogLevel",
@@ -95,7 +95,7 @@ def log_text_entry(
     """
 
     if EXP_ARROW in [ArrowState.NONE, ArrowState.MIXED]:
-        rerun_bindings.log_text_entry(obj_path, text, level, color, timeless)
+        bindings.log_text_entry(obj_path, text, level, color, timeless)
 
     if EXP_ARROW in [ArrowState.MIXED, ArrowState.PURE]:
         pass

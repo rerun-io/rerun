@@ -3,7 +3,7 @@ from typing import Optional, Sequence
 import numpy.typing as npt
 from rerun.log import _to_sequence
 
-from rerun import rerun_bindings  # type: ignore[attr-defined]
+from rerun import bindings
 
 __all__ = [
     "log_obb",
@@ -33,7 +33,7 @@ def log_obb(
     `class_id`: Optional class id for the OBB.
                  The class id provides colors and labels if not specified explicitly.
     """
-    rerun_bindings.log_obb(
+    bindings.log_obb(
         obj_path,
         half_size=_to_sequence(half_size),
         position=_to_sequence(position),

@@ -8,6 +8,11 @@ import pyarrow as pa
 from rerun.color_conversion import u8_array_to_rgba
 from rerun.components import REGISTERED_FIELDS, ComponentTypeFactory
 
+__all__ = [
+    "ColorRGBAArray",
+    "ColorRGBAType",
+]
+
 
 class ColorRGBAArray(pa.ExtensionArray):  # type: ignore[misc]
     def from_numpy(array: npt.NDArray[np.uint8]) -> ColorRGBAArray:

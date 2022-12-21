@@ -8,6 +8,11 @@ import pyarrow as pa
 from rerun.components import REGISTERED_FIELDS, ComponentTypeFactory
 from rerun.log.rects import RectFormat
 
+__all__ = [
+    "Rect2DArray",
+    "Rect2DType",
+]
+
 
 class Rect2DArray(pa.ExtensionArray):  # type: ignore[misc]
     def from_numpy_and_format(array: npt.NDArray[np.float_], rect_format: RectFormat) -> Rect2DArray:

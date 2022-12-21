@@ -3,7 +3,7 @@ from typing import Optional, Tuple
 import numpy.typing as npt
 from rerun.log import _to_sequence
 
-from rerun import rerun_bindings  # type: ignore[attr-defined]
+from rerun import bindings
 
 __all__ = [
     "log_view_coordinates",
@@ -63,16 +63,16 @@ def log_view_coordinates(
     if xyz != "" and up != "":
         raise TypeError("You must set either 'xyz' or 'up', but not both")
     if xyz != "":
-        rerun_bindings.log_view_coordinates_xyz(obj_path, xyz, right_handed, timeless)
+        bindings.log_view_coordinates_xyz(obj_path, xyz, right_handed, timeless)
     else:
         if right_handed is None:
             right_handed = True
-        rerun_bindings.log_view_coordinates_up_handedness(obj_path, up, right_handed, timeless)
+        bindings.log_view_coordinates_up_handedness(obj_path, up, right_handed, timeless)
 
 
 def log_unknown_transform(obj_path: str, timeless: bool = False) -> None:
     """Log that this object is NOT in the same space as the parent, but you do not (yet) know how they relate."""
-    rerun_bindings.log_unknown_transform(obj_path, timeless=timeless)
+    bindings.log_unknown_transform(obj_path, timeless=timeless)
 
 
 def log_rigid3(
@@ -124,7 +124,7 @@ def log_rigid3(
         raise TypeError("Set either parent_from_child or child_from_parent, but not both")
     elif parent_from_child:
         (t, q) = parent_from_child
-        rerun_bindings.log_rigid3(
+        bindings.log_rigid3(
             obj_path,
             parent_from_child=True,
             rotation_q=_to_sequence(q),
@@ -133,7 +133,7 @@ def log_rigid3(
         )
     elif child_from_parent:
         (t, q) = child_from_parent
-        rerun_bindings.log_rigid3(
+        bindings.log_rigid3(
             obj_path,
             parent_from_child=False,
             rotation_q=_to_sequence(q),

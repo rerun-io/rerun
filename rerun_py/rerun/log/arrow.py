@@ -3,7 +3,7 @@ from typing import Optional, Sequence
 import numpy.typing as npt
 from rerun.log import _to_sequence
 
-from rerun import rerun_bindings  # type: ignore[attr-defined]
+from rerun import bindings
 
 __all__ = [
     "log_arrow",
@@ -47,7 +47,7 @@ def log_arrow(
         Object is not time-dependent, and will be visible at any time point.
 
     """
-    rerun_bindings.log_arrow(
+    bindings.log_arrow(
         obj_path,
         origin=_to_sequence(origin),
         vector=_to_sequence(vector),

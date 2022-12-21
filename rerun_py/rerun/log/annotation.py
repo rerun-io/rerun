@@ -3,7 +3,7 @@ from typing import Iterable, Optional, Sequence, Tuple, Union
 
 from rerun.log import Color, _normalize_colors
 
-from rerun import rerun_bindings  # type: ignore[attr-defined]
+from rerun import bindings
 
 __all__ = [
     "AnnotationInfo",
@@ -127,4 +127,4 @@ def log_annotation_context(
         for d in typed_class_descriptions
     ]
 
-    rerun_bindings.log_annotation_context(obj_path, tuple_class_descriptions, timeless)
+    bindings.log_annotation_context(obj_path, tuple_class_descriptions, timeless)
