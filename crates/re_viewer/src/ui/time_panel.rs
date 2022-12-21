@@ -169,7 +169,6 @@ impl TimePanel {
                     ui,
                     &painter,
                     &time_range_rect,
-                    time_range_rect.bottom(),
                 );
 
                 ui.allocate_rect(time_range_rect, egui::Sense::hover());
@@ -181,6 +180,12 @@ impl TimePanel {
 
     fn expanded_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         crate::profile_function!();
+
+        //               |timeline            |
+        // ------------------------------------
+        // tree          |streams             |
+        //               |  . .   .    ...    |
+        //               |             ...  . |
 
         self.next_col_right = ui.min_rect().left(); // next_col_right will expand during the call
 
@@ -202,11 +207,6 @@ impl TimePanel {
         );
         let full_y_range = ui.min_rect().bottom()..=ui.max_rect().bottom();
 
-        // includes the loop selection and time ticks rows.
-        let time_bg_area_rect = Rect::from_x_y_ranges(time_bg_x_range, full_y_range.clone());
-        let time_fg_area_rect =
-            Rect::from_x_y_ranges(time_fg_x_range.clone(), full_y_range.clone());
-
         let timeline_rect = {
             let top = ui.min_rect().bottom();
             ui.add_space(32.0);
@@ -214,6 +214,15 @@ impl TimePanel {
             Rect::from_x_y_ranges(time_fg_x_range.clone(), top..=bottom)
         };
 
+        let streams_rect = Rect::from_x_y_ranges(
+            time_fg_x_range.clone(),
+            timeline_rect.bottom()..=ui.max_rect().bottom(),
+        );
+
+        // includes the loop selection and time ticks rows.
+        let time_bg_area_rect = Rect::from_x_y_ranges(time_bg_x_range, full_y_range.clone());
+        let time_fg_area_rect =
+            Rect::from_x_y_ranges(time_fg_x_range.clone(), full_y_range.clone());
         let time_bg_area_painter = ui.painter().with_clip_rect(time_bg_area_rect);
         let time_area_painter = ui.painter().with_clip_rect(time_fg_area_rect);
 
@@ -245,13 +254,12 @@ impl TimePanel {
             ui,
             &time_area_painter,
             &timeline_rect,
-            time_fg_area_rect.bottom(),
         );
         let time_area_response = interact_with_time_area(
             &self.time_ranges_ui,
             &mut ctx.rec_cfg.time_ctrl,
             ui,
-            &time_fg_area_rect,
+            &streams_rect,
         );
 
         // Don't draw on top of the time ticks
@@ -972,7 +980,7 @@ fn loop_selection_ui(
     time_ctrl: &mut TimeControl,
     ui: &mut egui::Ui,
     time_area_painter: &egui::Painter,
-    rect: &Rect,
+    timeline_rect: &Rect,
 ) {
     if time_ctrl.loop_selection().is_none() {
         // Helpfully select a time slice so that there always is a selection.
@@ -991,30 +999,27 @@ fn loop_selection_ui(
 
     let selection_color = re_ui::ReUi::loop_selection_color();
 
-    let mut did_interact = false;
-
     let is_active = time_ctrl.looping == Looping::Selection;
 
     let pointer_pos = ui.input().pointer.hover_pos();
-    let is_pointer_in_rect = pointer_pos.map_or(false, |pointer_pos| rect.contains(pointer_pos));
+    let is_pointer_in_timeline =
+        pointer_pos.map_or(false, |pointer_pos| timeline_rect.contains(pointer_pos));
 
     let left_edge_id = ui.id().with("selection_left_edge");
     let right_edge_id = ui.id().with("selection_right_edge");
-    let move_id = ui.id().with("selection_move");
+    let middle_id = ui.id().with("selection_move");
 
     let interact_radius = ui.style().interaction.resize_grab_radius_side;
-
-    let mut is_hovering_existing = false;
 
     let transparent = if ui.visuals().dark_mode { 0.06 } else { 0.3 };
 
     // Paint existing selection and detect drag starting and hovering:
-    if let Some(selected_range) = time_ctrl.loop_selection() {
+    if let Some(mut selected_range) = time_ctrl.loop_selection() {
         let min_x = time_ranges_ui.x_from_time(selected_range.min);
         let max_x = time_ranges_ui.x_from_time(selected_range.max);
 
         if let (Some(min_x), Some(max_x)) = (min_x, max_x) {
-            let mut rect = Rect::from_x_y_ranges(min_x..=max_x, rect.y_range());
+            let mut rect = Rect::from_x_y_ranges(min_x..=max_x, timeline_rect.y_range());
 
             // Make sure it is visible:
             if rect.width() < 2.0 {
@@ -1048,41 +1053,105 @@ fn loop_selection_ui(
 
             // Check for interaction:
             if let Some(pointer_pos) = pointer_pos {
-                if rect.expand(interact_radius).contains(pointer_pos) {
-                    let center_dist = (pointer_pos.x - rect.center().x).abs(); // make sure we can always move even small rects
-                    let left_dist = (pointer_pos.x - min_x).abs();
-                    let right_dist = (pointer_pos.x - max_x).abs();
+                let left_edge_rect =
+                    Rect::from_x_y_ranges(rect.left()..=rect.left(), rect.y_range())
+                        .expand(interact_radius);
 
-                    let hovering_left =
-                        left_dist < center_dist.min(right_dist).min(interact_radius);
-                    let hovering_right =
-                        !hovering_left && right_dist <= interact_radius.min(center_dist);
-                    let hovering_move = !hovering_left
-                        && !hovering_right
-                        && (min_x <= pointer_pos.x && pointer_pos.x <= max_x);
+                let right_edge_rect =
+                    Rect::from_x_y_ranges(rect.right()..=rect.right(), rect.y_range())
+                        .expand(interact_radius);
 
-                    let drag_started = ui.input().pointer.any_pressed()
-                        && ui.input().pointer.primary_down()
-                        && ui.input().modifiers.is_none();
+                // Check middle first, so that the edges "wins" (are on top)
+                let middle_response = ui
+                    .interact(rect, middle_id, egui::Sense::click_and_drag())
+                    .on_hover_and_drag_cursor(CursorIcon::Move);
 
-                    if hovering_left {
-                        ui.output().cursor_icon = CursorIcon::ResizeWest;
-                        if drag_started {
-                            ui.memory().set_dragged_id(left_edge_id);
-                        }
-                    } else if hovering_right {
-                        ui.output().cursor_icon = CursorIcon::ResizeEast;
-                        if drag_started {
+                let left_response = ui
+                    .interact(left_edge_rect, left_edge_id, egui::Sense::drag())
+                    .on_hover_and_drag_cursor(CursorIcon::ResizeWest);
+
+                let right_response = ui
+                    .interact(right_edge_rect, right_edge_id, egui::Sense::drag())
+                    .on_hover_and_drag_cursor(CursorIcon::ResizeEast);
+
+                // Use "smart_aim" to find a natural length of the time interval
+                let aim_radius = ui.input().aim_radius();
+                use egui::emath::smart_aim::best_in_range_f64;
+
+                if left_response.dragged() {
+                    if let (Some(time_low), Some(time_high)) = (
+                        time_ranges_ui.time_from_x(pointer_pos.x - aim_radius),
+                        time_ranges_ui.time_from_x(pointer_pos.x + aim_radius),
+                    ) {
+                        let low_length = selected_range.max - time_low;
+                        let high_length = selected_range.max - time_high;
+                        let best_length = TimeReal::from(best_in_range_f64(
+                            low_length.as_f64(),
+                            high_length.as_f64(),
+                        ));
+
+                        selected_range.min = selected_range.max - best_length;
+
+                        if selected_range.min > selected_range.max {
+                            std::mem::swap(&mut selected_range.min, &mut selected_range.max);
                             ui.memory().set_dragged_id(right_edge_id);
                         }
-                    } else if hovering_move {
-                        ui.output().cursor_icon = CursorIcon::Move;
-                        if drag_started {
-                            ui.memory().set_dragged_id(move_id);
-                        }
-                    }
 
-                    is_hovering_existing = hovering_left | hovering_right | hovering_move;
+                        time_ctrl.set_loop_selection(selected_range);
+                        time_ctrl.looping = Looping::Selection;
+                    }
+                }
+
+                if right_response.dragged() {
+                    if let (Some(time_low), Some(time_high)) = (
+                        time_ranges_ui.time_from_x(pointer_pos.x - aim_radius),
+                        time_ranges_ui.time_from_x(pointer_pos.x + aim_radius),
+                    ) {
+                        let low_length = time_low - selected_range.min;
+                        let high_length = time_high - selected_range.min;
+                        let best_length = TimeReal::from(best_in_range_f64(
+                            low_length.as_f64(),
+                            high_length.as_f64(),
+                        ));
+
+                        selected_range.max = selected_range.min + best_length;
+
+                        if selected_range.min > selected_range.max {
+                            std::mem::swap(&mut selected_range.min, &mut selected_range.max);
+                            ui.memory().set_dragged_id(left_edge_id);
+                        }
+
+                        time_ctrl.set_loop_selection(selected_range);
+                        time_ctrl.looping = Looping::Selection;
+                    }
+                }
+
+                if middle_response.dragged() {
+                    (|| {
+                        let min_x = time_ranges_ui.x_from_time(selected_range.min)?;
+                        let max_x = time_ranges_ui.x_from_time(selected_range.max)?;
+
+                        let min_x = min_x + ui.input().pointer.delta().x;
+                        let max_x = max_x + ui.input().pointer.delta().x;
+
+                        let min_time = time_ranges_ui.time_from_x(min_x)?;
+                        let max_time = time_ranges_ui.time_from_x(max_x)?;
+
+                        let mut new_range = TimeRangeF::new(min_time, max_time);
+
+                        if egui::emath::almost_equal(
+                            selected_range.length().as_f32(),
+                            new_range.length().as_f32(),
+                            1e-5,
+                        ) {
+                            // Avoid numerical inaccuracies: maintain length if very close
+                            new_range.max = new_range.min + selected_range.length();
+                        }
+
+                        time_ctrl.set_loop_selection(new_range);
+                        time_ctrl.looping = Looping::Selection;
+                        Some(())
+                    })();
                 }
             }
         }
@@ -1091,117 +1160,17 @@ fn loop_selection_ui(
     // Start new selection?
     if let Some(pointer_pos) = pointer_pos {
         let is_anything_being_dragged = ui.memory().is_anything_being_dragged();
-        if !is_hovering_existing
-            && is_pointer_in_rect
+        if is_pointer_in_timeline
             && !is_anything_being_dragged
             && ui.input().pointer.primary_down()
             && ui.input().modifiers.shift_only()
         {
             if let Some(time) = time_ranges_ui.time_from_x(pointer_pos.x) {
                 time_ctrl.set_loop_selection(TimeRangeF::point(time));
-                did_interact = true;
+                time_ctrl.looping = Looping::Selection;
                 ui.memory().set_dragged_id(right_edge_id);
             }
         }
-    }
-
-    // Resize/move (interact)
-    if let Some(pointer_pos) = pointer_pos {
-        if let Some(mut selected_range) = time_ctrl.loop_selection() {
-            // Use "smart_aim" to find a natural length of the time interval
-            let aim_radius = ui.input().aim_radius();
-            use egui::emath::smart_aim::best_in_range_f64;
-
-            if ui.memory().is_being_dragged(left_edge_id) {
-                if let (Some(time_low), Some(time_high)) = (
-                    time_ranges_ui.time_from_x(pointer_pos.x - aim_radius),
-                    time_ranges_ui.time_from_x(pointer_pos.x + aim_radius),
-                ) {
-                    let low_length = selected_range.max - time_low;
-                    let high_length = selected_range.max - time_high;
-                    let best_length = TimeReal::from(best_in_range_f64(
-                        low_length.as_f64(),
-                        high_length.as_f64(),
-                    ));
-
-                    selected_range.min = selected_range.max - best_length;
-
-                    if selected_range.min > selected_range.max {
-                        std::mem::swap(&mut selected_range.min, &mut selected_range.max);
-                        ui.memory().set_dragged_id(right_edge_id);
-                    }
-
-                    time_ctrl.set_loop_selection(selected_range);
-                    did_interact = true;
-                }
-            }
-
-            if ui.memory().is_being_dragged(right_edge_id) {
-                if let (Some(time_low), Some(time_high)) = (
-                    time_ranges_ui.time_from_x(pointer_pos.x - aim_radius),
-                    time_ranges_ui.time_from_x(pointer_pos.x + aim_radius),
-                ) {
-                    let low_length = time_low - selected_range.min;
-                    let high_length = time_high - selected_range.min;
-                    let best_length = TimeReal::from(best_in_range_f64(
-                        low_length.as_f64(),
-                        high_length.as_f64(),
-                    ));
-
-                    selected_range.max = selected_range.min + best_length;
-
-                    if selected_range.min > selected_range.max {
-                        std::mem::swap(&mut selected_range.min, &mut selected_range.max);
-                        ui.memory().set_dragged_id(left_edge_id);
-                    }
-
-                    time_ctrl.set_loop_selection(selected_range);
-                    did_interact = true;
-                }
-            }
-
-            if ui.memory().is_being_dragged(move_id) {
-                (|| {
-                    let min_x = time_ranges_ui.x_from_time(selected_range.min)?;
-                    let max_x = time_ranges_ui.x_from_time(selected_range.max)?;
-
-                    let min_x = min_x + ui.input().pointer.delta().x;
-                    let max_x = max_x + ui.input().pointer.delta().x;
-
-                    let min_time = time_ranges_ui.time_from_x(min_x)?;
-                    let max_time = time_ranges_ui.time_from_x(max_x)?;
-
-                    let mut new_range = TimeRangeF::new(min_time, max_time);
-
-                    if egui::emath::almost_equal(
-                        selected_range.length().as_f32(),
-                        new_range.length().as_f32(),
-                        1e-5,
-                    ) {
-                        // Avoid numerical inaccuracies: maintain length if very close
-                        new_range.max = new_range.min + selected_range.length();
-                    }
-
-                    time_ctrl.set_loop_selection(new_range);
-                    did_interact = true;
-                    Some(())
-                })();
-            }
-        }
-    }
-
-    if ui.memory().is_being_dragged(left_edge_id) {
-        ui.output().cursor_icon = CursorIcon::ResizeWest;
-    }
-    if ui.memory().is_being_dragged(right_edge_id) {
-        ui.output().cursor_icon = CursorIcon::ResizeEast;
-    }
-    if ui.memory().is_being_dragged(move_id) {
-        ui.output().cursor_icon = CursorIcon::Move;
-    }
-
-    if did_interact {
-        time_ctrl.looping = Looping::Selection;
     }
 }
 
@@ -1280,71 +1249,70 @@ fn time_marker_ui(
     ui: &mut egui::Ui,
     time_area_painter: &egui::Painter,
     timeline_rect: &Rect,
-    bottom_y: f32,
 ) {
-    // full_rect: full area.
     // timeline_rect: top part with the second ticks and time marker
 
     let pointer_pos = ui.input().pointer.hover_pos();
-    let is_pointer_in_timeline_rect =
-        pointer_pos.map_or(false, |pointer_pos| timeline_rect.contains(pointer_pos));
 
     // ------------------------------------------------
 
     let time_drag_id = ui.id().with("time_drag_id");
 
     let mut is_hovering = false;
-    let mut is_dragging = ui.memory().is_being_dragged(time_drag_id);
 
     let timeline_cursor_icon = CursorIcon::ResizeHorizontal;
 
     let is_hovering_the_loop_selection = ui.output().cursor_icon != CursorIcon::Default; // A kind of hacky proxy
 
-    if is_pointer_in_timeline_rect && !is_hovering_the_loop_selection {
-        ui.output().cursor_icon = timeline_cursor_icon;
-    }
+    let is_anything_being_dragged = ui.memory().is_anything_being_dragged();
 
-    let mut is_anything_being_dragged = ui.memory().is_anything_being_dragged();
+    let interact_radius = ui.style().interaction.resize_grab_radius_side;
 
     // show current time as a line:
     if let Some(time) = time_ctrl.time() {
         if let Some(x) = time_ranges_ui.x_from_time(time) {
-            if let Some(pointer_pos) = pointer_pos {
-                let line_rect = Rect::from_x_y_ranges(x..=x, timeline_rect.top()..=bottom_y);
+            let line_rect =
+                Rect::from_x_y_ranges(x..=x, timeline_rect.top()..=ui.max_rect().bottom())
+                    .expand(interact_radius);
 
-                is_hovering = !is_anything_being_dragged
-                    && !is_hovering_the_loop_selection
-                    && line_rect.distance_to_pos(pointer_pos)
-                        <= ui.style().interaction.resize_grab_radius_side;
+            let response = ui
+                .interact(line_rect, time_drag_id, egui::Sense::drag())
+                .on_hover_and_drag_cursor(timeline_cursor_icon);
 
-                if ui.input().pointer.any_pressed()
-                    && ui.input().pointer.primary_down()
-                    && ui.input().modifiers.is_none()
-                    && is_hovering
-                {
-                    ui.memory().set_dragged_id(time_drag_id);
-                    is_dragging = true; // avoid frame delay
-                    is_anything_being_dragged = true;
+            is_hovering = !is_anything_being_dragged && response.hovered();
+
+            if response.dragged() {
+                if let Some(pointer_pos) = pointer_pos {
+                    if let Some(time) = time_ranges_ui.time_from_x(pointer_pos.x) {
+                        let time = time_ranges_ui.clamp_time(time);
+                        time_ctrl.set_time(time);
+                        time_ctrl.pause();
+                        ui.memory().set_dragged_id(time_drag_id);
+                    }
                 }
             }
 
-            if is_dragging || is_hovering {
-                ui.output().cursor_icon = timeline_cursor_icon;
-            }
-
-            let stroke = if is_dragging {
+            let stroke = if response.dragged() {
                 ui.style().visuals.widgets.active.bg_stroke
             } else if is_hovering {
                 ui.style().visuals.widgets.hovered.bg_stroke
             } else {
                 ui.visuals().widgets.inactive.fg_stroke
             };
-            paint_time_cursor(time_area_painter, x, timeline_rect.top()..=bottom_y, stroke);
+            paint_time_cursor(
+                time_area_painter,
+                x,
+                timeline_rect.top()..=ui.max_rect().bottom(),
+                stroke,
+            );
         }
     }
 
-    // Show preview: "click here to view time here"
+    // "click here to view time here"
     if let Some(pointer_pos) = pointer_pos {
+        let is_pointer_in_timeline_rect = timeline_rect.contains(pointer_pos);
+
+        // Show preview?
         if !is_hovering
             && is_pointer_in_timeline_rect
             && !is_anything_being_dragged
@@ -1355,13 +1323,14 @@ fn time_marker_ui(
                 timeline_rect.top()..=ui.max_rect().bottom(),
                 ui.visuals().widgets.noninteractive.bg_stroke,
             );
+            ui.output().cursor_icon = timeline_cursor_icon; // preview!
         }
 
-        if is_dragging
-            || (ui.input().pointer.primary_down()
-                && is_pointer_in_timeline_rect
-                && !is_anything_being_dragged
-                && !is_hovering_the_loop_selection)
+        // Click to move time here:
+        if ui.input().pointer.primary_down()
+            && is_pointer_in_timeline_rect
+            && !is_anything_being_dragged
+            && !is_hovering_the_loop_selection
         {
             if let Some(time) = time_ranges_ui.time_from_x(pointer_pos.x) {
                 let time = time_ranges_ui.clamp_time(time);

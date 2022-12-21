@@ -36,14 +36,14 @@ opt-level = 2
 debug = true
 
 [patch.crates-io]
-# 2022-12-20 - Improve bar chart hovering decimal choice
-ecolor = { git = "https://github.com/emilk/egui", rev = "a68c8910923d6957a0962d8a1e591681a459f270" }
-eframe = { git = "https://github.com/emilk/egui", rev = "a68c8910923d6957a0962d8a1e591681a459f270" }
-egui = { git = "https://github.com/emilk/egui", rev = "a68c8910923d6957a0962d8a1e591681a459f270" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "a68c8910923d6957a0962d8a1e591681a459f270" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "a68c8910923d6957a0962d8a1e591681a459f270" }
-emath = { git = "https://github.com/emilk/egui", rev = "a68c8910923d6957a0962d8a1e591681a459f270" }
-epaint = { git = "https://github.com/emilk/egui", rev = "a68c8910923d6957a0962d8a1e591681a459f270" }
+# 2022-12-21 - Add Response::on_hover_and_drag_cursor
+ecolor = { git = "https://github.com/emilk/egui", rev = "fa0d7f7f7f3e6736b7191e6e0573cc58c51663d2" }
+eframe = { git = "https://github.com/emilk/egui", rev = "fa0d7f7f7f3e6736b7191e6e0573cc58c51663d2" }
+egui = { git = "https://github.com/emilk/egui", rev = "fa0d7f7f7f3e6736b7191e6e0573cc58c51663d2" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "fa0d7f7f7f3e6736b7191e6e0573cc58c51663d2" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "fa0d7f7f7f3e6736b7191e6e0573cc58c51663d2" }
+emath = { git = "https://github.com/emilk/egui", rev = "fa0d7f7f7f3e6736b7191e6e0573cc58c51663d2" }
+epaint = { git = "https://github.com/emilk/egui", rev = "fa0d7f7f7f3e6736b7191e6e0573cc58c51663d2" }
 
 # ecolor = { path = "../../egui/crates/ecolor" }
 # eframe = { path = "../../egui/crates/eframe" }
