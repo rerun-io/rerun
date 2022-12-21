@@ -20,6 +20,7 @@ impl TimeInt {
     // a bit of leeway.
     pub const BEGINNING: TimeInt = TimeInt(i64::MIN / 2);
 
+    pub const MIN: TimeInt = TimeInt(i64::MIN);
     pub const MAX: TimeInt = TimeInt(i64::MAX);
 
     #[inline]

@@ -616,9 +616,22 @@ fn show_data_over_time(
 
     let mut stretch: Option<Stretch<'_>> = None;
 
+    let margin = 5.0;
+    let visible_time_range = TimeRange {
+        min: time_ranges_ui
+            .time_from_x(time_area_painter.clip_rect().left() - margin)
+            .map_or(TimeInt::MIN, |tf| tf.floor()),
+
+        max: time_ranges_ui
+            .time_from_x(time_area_painter.clip_rect().right() + margin)
+            .map_or(TimeInt::MAX, |tf| tf.ceil()),
+    };
+
     let selected_time_range = ctx.rec_cfg.time_ctrl.active_loop_selection();
 
-    for (&time, msg_ids) in messages_over_time {
+    for (&time, msg_ids) in
+        messages_over_time.range(visible_time_range.min..=visible_time_range.max)
+    {
         let time_real = TimeReal::from(time);
 
         let selected = selected_time_range.map_or(true, |range| range.contains(time_real));
