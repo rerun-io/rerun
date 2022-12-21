@@ -27,8 +27,8 @@ pub enum TensorCastError {
     #[error("wrong number of names")]
     BadNamesLength,
 
-    #[error("unknown data store error")]
-    Unknown,
+    #[error("unsupported datatype - only numeric datatypes are supported")]
+    UnsupportedDataType,
 }
 
 pub fn as_ndarray<A: bytemuck::Pod + TensorDataTypeTrait>(

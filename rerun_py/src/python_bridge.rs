@@ -1585,7 +1585,7 @@ fn tensor_extract_helper(
     } else if let Ok(tensor) = any.extract::<numpy::PyReadonlyArrayDyn<'_, f64>>() {
         re_tensor_ops::to_rerun_tensor(&tensor.as_array(), names, meaning)
     } else {
-        Err(re_tensor_ops::TensorCastError::Unknown)
+        Err(re_tensor_ops::TensorCastError::UnsupportedDataType)
     }
 }
 
