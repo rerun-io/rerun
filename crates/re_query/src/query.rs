@@ -19,19 +19,16 @@ pub type Result<T> = std::result::Result<T, QueryError>;
 /// Retrieves a [`DataFrame`] for a [`Component`] with its corresponding
 /// [`Instance`] values.
 /// ```
-/// # use re_arrow_store::{TimelineQuery, TimeQuery};
+/// # use re_arrow_store::LatestAtQuery;
 /// # use re_log_types::{Timeline, field_types::Point2D, msg_bundle::Component};
 /// # let store = re_query::__populate_example_store();
 ///
 /// let ent_path = "point";
-/// let timeline_query = TimelineQuery::new(
-///   Timeline::new_sequence("frame_nr"),
-///   TimeQuery::LatestAt(123.into()),
-/// );
+/// let query = LatestAtQuery::new(Timeline::new_sequence("frame_nr"), 123.into());
 ///
 /// let df = re_query::get_component_with_instances(
 ///   &store,
-///   &timeline_query,
+///   &query,
 ///   &ent_path.into(),
 ///   Point2D::name(),
 /// )
@@ -88,19 +85,16 @@ pub fn get_component_with_instances(
 /// length.
 ///
 /// ```
-/// # use re_arrow_store::{TimelineQuery, TimeQuery};
+/// # use re_arrow_store::LatestAtQuery;
 /// # use re_log_types::{Timeline, field_types::{Point2D, ColorRGBA}, msg_bundle::Component};
 /// # let store = re_query::__populate_example_store();
 ///
 /// let ent_path = "point";
-/// let timeline_query = TimelineQuery::new(
-///   Timeline::new_sequence("frame_nr"),
-///   TimeQuery::LatestAt(123.into()),
-/// );
+/// let query = LatestAtQuery::new(Timeline::new_sequence("frame_nr"), 123.into());
 ///
 /// let df = re_query::query_entity_with_primary(
 ///   &store,
-///   &timeline_query,
+///   &query,
 ///   &ent_path.into(),
 ///   Point2D::name(),
 ///   &[ColorRGBA::name()],

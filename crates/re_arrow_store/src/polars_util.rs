@@ -14,7 +14,7 @@ use crate::{DataStore, LatestAtQuery};
 ///
 /// Usage:
 /// ```
-/// # use re_arrow_store::{test_bundle, DataStore, TimeQuery, TimeType, Timeline, TimelineQuery};
+/// # use re_arrow_store::{test_bundle, DataStore, LatestAtQuery, TimeType, Timeline};
 /// # use re_arrow_store::polars_util::latest_component;
 /// # use re_log_types::{
 /// #     datagen::{build_frame_nr, build_some_point2d},
@@ -27,13 +27,13 @@ use crate::{DataStore, LatestAtQuery};
 ///
 /// let ent_path = EntityPath::from("my/entity");
 ///
-/// let bundle3 = test_bundle!(ent_path @ [build_frame_nr(3)] => [build_some_point2d(2)]);
+/// let bundle3 = test_bundle!(ent_path @ [build_frame_nr(3.into())] => [build_some_point2d(2)]);
 /// store.insert(&bundle3).unwrap();
 ///
 /// let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
 /// let df = latest_component(
 ///     &store,
-///     &TimelineQuery::new(timeline_frame_nr, TimeQuery::LatestAt(10)),
+///     &LatestAtQuery::new(timeline_frame_nr, 10.into()),
 ///     &ent_path,
 ///     Point2D::name(),
 /// )
@@ -58,7 +58,7 @@ use crate::{DataStore, LatestAtQuery};
 // TODO(cmc): can this really fail though?
 pub fn latest_component(
     store: &DataStore,
-    timeline_query: &TimelineQuery,
+    query: &LatestAtQuery,
     ent_path: &EntityPath,
     primary: ComponentName,
 ) -> anyhow::Result<DataFrame> {
@@ -66,7 +66,7 @@ pub fn latest_component(
 
     let components = &[cluster_key, primary];
     let row_indices = store
-        .query(timeline_query, ent_path, primary, components)
+        .latest_at(query, ent_path, primary, components)
         .unwrap_or([None; 2]);
     let results = store.get(components, &row_indices);
 
@@ -89,7 +89,7 @@ pub fn latest_component(
 ///
 /// Usage:
 /// ```
-/// # use re_arrow_store::{test_bundle, DataStore, TimeQuery, TimeType, Timeline, TimelineQuery};
+/// # use re_arrow_store::{test_bundle, DataStore, LatestAtQuery, TimeType, Timeline};
 /// # use re_arrow_store::polars_util::latest_components;
 /// # use re_log_types::{
 /// #     datagen::{build_frame_nr, build_some_point2d, build_some_rects},
@@ -102,16 +102,16 @@ pub fn latest_component(
 ///
 /// let ent_path = EntityPath::from("my/entity");
 ///
-/// let bundle = test_bundle!(ent_path @ [build_frame_nr(3)] => [build_some_point2d(2)]);
+/// let bundle = test_bundle!(ent_path @ [build_frame_nr(3.into())] => [build_some_point2d(2)]);
 /// store.insert(&bundle).unwrap();
 ///
-/// let bundle = test_bundle!(ent_path @ [build_frame_nr(5)] => [build_some_rects(4)]);
+/// let bundle = test_bundle!(ent_path @ [build_frame_nr(5.into())] => [build_some_rects(4)]);
 /// store.insert(&bundle).unwrap();
 ///
 /// let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
 /// let df = latest_components(
 ///     &store,
-///     &TimelineQuery::new(timeline_frame_nr, TimeQuery::LatestAt(10)),
+///     &LatestAtQuery::new(timeline_frame_nr, 10.into()),
 ///     &ent_path,
 ///     &[Point2D::name(), Rect2D::name()],
 /// )
@@ -140,7 +140,7 @@ pub fn latest_component(
 // TODO(cmc): can this really fail though?
 pub fn latest_components(
     store: &DataStore,
-    timeline_query: &TimelineQuery,
+    query: &LatestAtQuery,
     ent_path: &EntityPath,
     primaries: &[ComponentName],
 ) -> anyhow::Result<DataFrame> {
@@ -148,7 +148,7 @@ pub fn latest_components(
 
     let dfs = primaries
         .iter()
-        .map(|primary| latest_component(store, timeline_query, ent_path, *primary))
+        .map(|primary| latest_component(store, query, ent_path, *primary))
         .filter(|df| df.as_ref().map(|df| !df.is_empty()).unwrap_or(true));
 
     let df = dfs

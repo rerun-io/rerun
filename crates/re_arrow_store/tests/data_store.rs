@@ -2,15 +2,13 @@
 //!
 //! Testing & demonstrating expected usage of the datastore APIs, no funny stuff.
 
-use std::{
-    collections::HashMap,
-    sync::atomic::{AtomicBool, Ordering},
-};
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use arrow2::array::{Array, ListArray, UInt64Array};
 use polars_core::{prelude::*, series::Series};
 use re_arrow_store::{
-    polars_util, test_bundle, DataStore, LatestAtQuery, RangeQuery, TimeInt, TimeRange,
+    polars_util::{self, latest_components},
+    test_bundle, DataStore, LatestAtQuery, RangeQuery, TimeInt, TimeRange,
 };
 use re_log_types::{
     datagen::{build_frame_nr, build_instances, build_some_point2d, build_some_rects},
@@ -70,7 +68,7 @@ fn latest_at_impl(store: &mut DataStore) {
 
             let df = polars_util::latest_components(
                 store,
-                &TimelineQuery::new(timeline_frame_nr, TimeQuery::LatestAt(frame_nr)),
+                &LatestAtQuery::new(timeline_frame_nr, frame_nr),
                 &ent_path,
                 components_all,
             )
@@ -261,12 +259,13 @@ fn range_query<'a, const N: usize>(
                 .enumerate()
                 .filter_map(|(i, component)| row_indices[i].is_none().then_some(*component))
                 .collect::<Vec<_>>();
-            let df_missing = joint_latest_at_query(
+            let df_missing = latest_components(
                 store,
                 &LatestAtQuery::new(query.timeline, time),
                 ent_path,
                 &missing,
-            );
+            )
+            .unwrap();
 
             (time, join_dataframes([df, df_missing].into_iter()))
         })
