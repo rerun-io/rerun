@@ -42,11 +42,10 @@ fn simple_query() {
         TimeQuery::LatestAt(timepoint[0].1.as_i64()),
     );
 
-    let entity_view = query_entity_with_primary(
+    let entity_view = query_entity_with_primary::<Point2D>(
         &store,
         &timeline_query,
         &ent_path.into(),
-        Point2D::name(),
         &[ColorRGBA::name()],
     )
     .unwrap();
@@ -113,11 +112,10 @@ fn no_instance_join_query() {
         TimeQuery::LatestAt(timepoint[0].1.as_i64()),
     );
 
-    let entity_view = query_entity_with_primary(
+    let entity_view = query_entity_with_primary::<Point2D>(
         &store,
         &timeline_query,
         &ent_path.into(),
-        Point2D::name(),
         &[ColorRGBA::name()],
     )
     .unwrap();
@@ -179,11 +177,10 @@ fn missing_column_join_query() {
         TimeQuery::LatestAt(timepoint[0].1.as_i64()),
     );
 
-    let entity_view = query_entity_with_primary(
+    let entity_view = query_entity_with_primary::<Point2D>(
         &store,
         &timeline_query,
         &ent_path.into(),
-        Point2D::name(),
         &[ColorRGBA::name()],
     )
     .unwrap();

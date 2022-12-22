@@ -86,11 +86,10 @@ pub fn get_component_with_instances(
 ///   TimeQuery::LatestAt(123.into()),
 /// );
 ///
-/// let entity_view = re_query::query_entity_with_primary(
+/// let entity_view = re_query::query_entity_with_primary::<Point2D>(
 ///   &store,
 ///   &timeline_query,
 ///   &ent_path.into(),
-///   Point2D::name(),
 ///   &[ColorRGBA::name()],
 /// )
 /// .unwrap();
@@ -114,14 +113,13 @@ pub fn get_component_with_instances(
 /// └──────────┴───────────┴────────────┘
 /// ```
 ///
-pub fn query_entity_with_primary<const N: usize>(
+pub fn query_entity_with_primary<Primary: Component>(
     store: &DataStore,
     timeline_query: &TimelineQuery,
     ent_path: &ObjPath,
-    primary: ComponentName,
-    components: &[ComponentName; N],
-) -> crate::Result<EntityView> {
-    let primary = get_component_with_instances(store, timeline_query, ent_path, primary)?;
+    components: &[ComponentName],
+) -> crate::Result<EntityView<Primary>> {
+    let primary = get_component_with_instances(store, timeline_query, ent_path, Primary::name())?;
 
     // TODO(jleibs): lots of room for optimization here. Once "instance" is
     // guaranteed to be sorted we should be able to leverage this during the
@@ -142,6 +140,7 @@ pub fn query_entity_with_primary<const N: usize>(
     Ok(EntityView {
         primary,
         components: components?,
+        phantom: std::marker::PhantomData,
     })
 }
 
@@ -232,11 +231,10 @@ fn simple_query_entity() {
         TimeQuery::LatestAt(123.into()),
     );
 
-    let entity_view = query_entity_with_primary(
+    let entity_view = query_entity_with_primary::<Point2D>(
         &store,
         &timeline_query,
         &ent_path.into(),
-        Point2D::name(),
         &[ColorRGBA::name()],
     )
     .unwrap();
