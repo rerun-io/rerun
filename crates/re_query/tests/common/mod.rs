@@ -1,5 +1,7 @@
+#[cfg(feature = "polars")]
 use polars_core::prelude::*;
 
+#[cfg(feature = "polars")]
 pub fn compare_df(df1: &DataFrame, df2: &DataFrame) {
     let mut cols1 = df1.get_column_names();
     cols1.sort();

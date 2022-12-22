@@ -24,7 +24,6 @@ anyhow.workspace = true
 arrow2 = { workspace = true, features = [
   "compute_concatenate",
   "compute_aggregate",
-  "io_print",
 ] }
 chrono = "0.4"
 document-features = "0.2"

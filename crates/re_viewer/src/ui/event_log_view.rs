@@ -2,7 +2,8 @@ use itertools::Itertools as _;
 
 use re_format::format_number;
 use re_log_types::{
-    ArrowMsg, BeginRecordingMsg, DataMsg, DataType, LogMsg, PathOpMsg, RecordingInfo, TypeMsg,
+    msg_bundle::MsgBundle, BeginRecordingMsg, DataMsg, DataType, LogMsg, PathOpMsg, RecordingInfo,
+    TypeMsg,
 };
 
 use crate::{Preview, ViewerContext};
@@ -221,39 +222,46 @@ fn table_row(
                 crate::data_ui::path_op_ui(ctx, ui, path_op);
             });
         }
-        LogMsg::ArrowMsg(msg) => {
-            let ArrowMsg {
+        LogMsg::ArrowMsg(msg) => match MsgBundle::try_from(msg) {
+            Ok(MsgBundle {
                 msg_id,
-                schema: _,
-                chunk: _,
-            } = msg;
-
-            row.col(|ui| {
-                ui.label(msg_id.to_string());
-            });
-            row.col(|ui| {
-                ui.monospace("ArrowMsg");
-            });
-            //TODO(john) extract timelines
-            for _timeline in ctx.log_db.timelines() {
+                obj_path,
+                time_point,
+                components,
+            }) => {
                 row.col(|ui| {
-                    ui.label("-");
+                    ui.label(msg_id.to_string());
+                });
+                row.col(|ui| {
+                    ui.monospace("ArrowMsg");
+                });
+                for timeline in ctx.log_db.timelines() {
+                    row.col(|ui| {
+                        if let Some(value) = time_point.get(timeline) {
+                            ctx.time_button(ui, timeline, *value);
+                        }
+                    });
+                }
+                row.col(|ui| {
+                    ctx.obj_path_button(ui, &obj_path);
+                });
+
+                row.col(|ui| {
+                    crate::data_ui::logged_arrow_data_ui(
+                        ctx,
+                        ui,
+                        &msg_id,
+                        &components,
+                        Preview::Specific(row_height),
+                    );
                 });
             }
-            //TODO(john) extract object path
-            row.col(|ui| {
-                ui.label("-");
-            });
-
-            row.col(|ui| {
-                crate::data_ui::logged_arrow_data_ui(
-                    ctx,
-                    ui,
-                    msg_id,
-                    msg,
-                    Preview::Specific(row_height),
-                );
-            });
-        }
+            Err(err) => {
+                re_log::error_once!("Bad arrow payload: {:?}", err);
+                row.col(|ui| {
+                    ui.label("Bad Arrow Payload".to_owned());
+                });
+            }
+        },
     }
 }

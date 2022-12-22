@@ -15,6 +15,7 @@ repository = "https://github.com/rerun-io/rerun"
 anyhow = "1.0"
 arrow2 = "0.14"
 arrow2_convert = "0.3"
+comfy-table = { version = "6.1", default-features = false }
 lazy_static = "1.4"
 polars-core = "0.25"
 polars-lazy = "0.25"
@@ -59,3 +60,7 @@ gltf = { git = "https://github.com/rerun-io/gltf", rev = "3c14ded73755d1ce9e4701
 wgpu = { git = "https://github.com/gfx-rs/wgpu.git", ref = "a377ae2b7fe6c1c9412751166f0917e617164e49" }
 wgpu-core = { git = "https://github.com/gfx-rs/wgpu.git", ref = "a377ae2b7fe6c1c9412751166f0917e617164e49" }
 #wgpu = { path = "../wgpu/wgpu" }
+
+# Upstream PR https://github.com/jorgecarleitao/arrow2/pull/1334
+arrow2 = { git = "https://github.com/rerun-io/arrow2", rev = "ed459eb9e3b49877e3e827753621d75426a8496d" }
+#arrow2 = { path = "../arrow2" }

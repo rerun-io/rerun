@@ -9,7 +9,7 @@ use itertools::Itertools as _;
 use pyo3::{
     exceptions::{PyRuntimeError, PyTypeError},
     prelude::*,
-    types::PyList,
+    types::{PyDict, PyList},
 };
 
 use re_log_types::{
@@ -17,8 +17,8 @@ use re_log_types::{
     context::{ClassId, KeypointId},
     coordinates, AnnotationContext, ApplicationId, BBox2D, BatchIndex, Data, DataVec,
     EncodedMesh3D, Index, LoggedData, Mesh3D, MeshFormat, MeshId, ObjPath, ObjectType, PathOp,
-    RecordingId, TensorDataStore, TensorDataType, TensorDataTypeTrait, TensorDimension, TensorId,
-    Time, TimeInt, TimePoint, TimeType, Timeline, ViewCoordinates,
+    RecordingId, TensorDataStore, TensorDataType, TensorDimension, TensorId, Time, TimeInt,
+    TimePoint, TimeType, Timeline, ViewCoordinates,
 };
 
 use rerun_sdk::global_session;
@@ -129,19 +129,7 @@ fn rerun_bindings(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(log_obb, m)?)?;
     m.add_function(wrap_pyfunction!(log_annotation_context, m)?)?;
 
-    m.add_function(wrap_pyfunction!(log_tensor_u8, m)?)?;
-    m.add_function(wrap_pyfunction!(log_tensor_u16, m)?)?;
-    m.add_function(wrap_pyfunction!(log_tensor_u32, m)?)?;
-    m.add_function(wrap_pyfunction!(log_tensor_u64, m)?)?;
-
-    m.add_function(wrap_pyfunction!(log_tensor_i8, m)?)?;
-    m.add_function(wrap_pyfunction!(log_tensor_i16, m)?)?;
-    m.add_function(wrap_pyfunction!(log_tensor_i32, m)?)?;
-    m.add_function(wrap_pyfunction!(log_tensor_i64, m)?)?;
-
-    m.add_function(wrap_pyfunction!(log_tensor_f16, m)?)?;
-    m.add_function(wrap_pyfunction!(log_tensor_f32, m)?)?;
-    m.add_function(wrap_pyfunction!(log_tensor_f64, m)?)?;
+    m.add_function(wrap_pyfunction!(log_tensor, m)?)?;
 
     m.add_function(wrap_pyfunction!(log_mesh_file, m)?)?;
     m.add_function(wrap_pyfunction!(log_image_file, m)?)?;
@@ -177,7 +165,7 @@ fn default_recording_id(py: Python<'_>) -> RecordingId {
 }
 
 fn authkey(py: Python<'_>) -> Vec<u8> {
-    use pyo3::types::{PyBytes, PyDict};
+    use pyo3::types::PyBytes;
     let locals = PyDict::new(py);
     py.run(
         r#"
@@ -1569,38 +1557,42 @@ enum TensorDataMeaning {
     ClassId,
 }
 
-macro_rules! declare_log_tensor {
-    ($name: ident, $typ: ty) => {
-        #[allow(clippy::needless_pass_by_value)]
-        #[pyfunction]
-        fn $name(
-            obj_path: &str,
-            img: numpy::PyReadonlyArrayDyn<'_, $typ>,
-            names: Option<&PyList>,
-            meter: Option<f32>,
-            meaning: Option<TensorDataMeaning>,
-            timeless: bool,
-        ) -> PyResult<()> {
-            log_tensor(obj_path, img, names, meter, meaning, timeless)
-        }
-    };
+fn tensor_extract_helper(
+    any: &PyAny,
+    names: Option<Vec<String>>,
+    meaning: re_log_types::TensorDataMeaning,
+) -> Result<re_log_types::Tensor, re_tensor_ops::TensorCastError> {
+    if let Ok(tensor) = any.extract::<numpy::PyReadonlyArrayDyn<'_, u8>>() {
+        re_tensor_ops::to_rerun_tensor(&tensor.as_array(), names, meaning)
+    } else if let Ok(tensor) = any.extract::<numpy::PyReadonlyArrayDyn<'_, u16>>() {
+        re_tensor_ops::to_rerun_tensor(&tensor.as_array(), names, meaning)
+    } else if let Ok(tensor) = any.extract::<numpy::PyReadonlyArrayDyn<'_, u32>>() {
+        re_tensor_ops::to_rerun_tensor(&tensor.as_array(), names, meaning)
+    } else if let Ok(tensor) = any.extract::<numpy::PyReadonlyArrayDyn<'_, u64>>() {
+        re_tensor_ops::to_rerun_tensor(&tensor.as_array(), names, meaning)
+    } else if let Ok(tensor) = any.extract::<numpy::PyReadonlyArrayDyn<'_, i8>>() {
+        re_tensor_ops::to_rerun_tensor(&tensor.as_array(), names, meaning)
+    } else if let Ok(tensor) = any.extract::<numpy::PyReadonlyArrayDyn<'_, i16>>() {
+        re_tensor_ops::to_rerun_tensor(&tensor.as_array(), names, meaning)
+    } else if let Ok(tensor) = any.extract::<numpy::PyReadonlyArrayDyn<'_, i32>>() {
+        re_tensor_ops::to_rerun_tensor(&tensor.as_array(), names, meaning)
+    } else if let Ok(tensor) = any.extract::<numpy::PyReadonlyArrayDyn<'_, i64>>() {
+        re_tensor_ops::to_rerun_tensor(&tensor.as_array(), names, meaning)
+    } else if let Ok(tensor) = any.extract::<numpy::PyReadonlyArrayDyn<'_, half::f16>>() {
+        re_tensor_ops::to_rerun_tensor(&tensor.as_array(), names, meaning)
+    } else if let Ok(tensor) = any.extract::<numpy::PyReadonlyArrayDyn<'_, f32>>() {
+        re_tensor_ops::to_rerun_tensor(&tensor.as_array(), names, meaning)
+    } else if let Ok(tensor) = any.extract::<numpy::PyReadonlyArrayDyn<'_, f64>>() {
+        re_tensor_ops::to_rerun_tensor(&tensor.as_array(), names, meaning)
+    } else {
+        Err(re_tensor_ops::TensorCastError::UnsupportedDataType)
+    }
 }
 
-declare_log_tensor!(log_tensor_u8, u8);
-declare_log_tensor!(log_tensor_u16, u16);
-declare_log_tensor!(log_tensor_u32, u32);
-declare_log_tensor!(log_tensor_u64, u64);
-declare_log_tensor!(log_tensor_i8, i8);
-declare_log_tensor!(log_tensor_i16, i16);
-declare_log_tensor!(log_tensor_i32, i32);
-declare_log_tensor!(log_tensor_i64, i64);
-declare_log_tensor!(log_tensor_f16, half::f16);
-declare_log_tensor!(log_tensor_f32, f32);
-declare_log_tensor!(log_tensor_f64, f64);
-
-fn log_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
+#[pyfunction]
+fn log_tensor(
     obj_path: &str,
-    img: numpy::PyReadonlyArrayDyn<'_, T>,
+    img: &PyAny,
     names: Option<&PyList>,
     meter: Option<f32>,
     meaning: Option<TensorDataMeaning>,
@@ -1622,13 +1614,13 @@ fn log_tensor<T: TensorDataTypeTrait + numpy::Element + bytemuck::Pod>(
         _ => re_log_types::TensorDataMeaning::Unknown,
     };
 
+    let tensor = tensor_extract_helper(img, names, meaning)
+        .map_err(|err| PyTypeError::new_err(err.to_string()))?;
+
     session.send_data(
         &time_point,
         (&obj_path, "tensor"),
-        LoggedData::Single(Data::Tensor(
-            re_tensor_ops::to_rerun_tensor(&img.as_array(), names, meaning)
-                .map_err(|err| PyTypeError::new_err(err.to_string()))?,
-        )),
+        LoggedData::Single(Data::Tensor(tensor)),
     );
 
     if let Some(meter) = meter {
@@ -1862,8 +1854,8 @@ fn log_cleared(obj_path: &str, recursive: bool) -> PyResult<()> {
     Ok(())
 }
 
-#[pyfunction]
-fn log_arrow_msg(obj_path: &str, msg: &PyAny) -> PyResult<()> {
+#[pyfunction(components = "**")]
+fn log_arrow_msg(obj_path: &str, components: Option<&PyDict>) -> PyResult<()> {
     let mut session = global_session();
 
     // We normally disallow logging to root, but we make an exception for class_descriptions
@@ -1873,8 +1865,9 @@ fn log_arrow_msg(obj_path: &str, msg: &PyAny) -> PyResult<()> {
         parse_obj_path(obj_path)?
     };
 
-    let msg = crate::arrow::build_arrow_log_msg_from_py(&obj_path, msg, &time(false))?;
-
+    let msg =
+        crate::arrow::build_chunk_from_components(&obj_path, components.unwrap(), &time(false))?;
     session.send(msg);
+
     Ok(())
 }

@@ -5,14 +5,14 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use arrow2::array::{Array, ListArray, UInt64Array};
-use nohash_hasher::IntMap;
 use polars_core::{prelude::*, series::Series};
 use re_arrow_store::{
-    polars_util, test_bundle, DataStore, LatestAtQuery, RangeQuery, TimeInt, TimeRange,
+    polars_util, test_bundle, DataStore, LatestAtQuery, TimeInt, TimeQuery, TimelineQuery,
 };
 use re_log_types::{
     datagen::{
-        build_frame_nr, build_instances, build_instances_from, build_some_point2d, build_some_rects,
+        build_frame_nr, build_some_instances, build_some_instances_from, build_some_point2d,
+        build_some_rects,
     },
     field_types::{Instance, Point2D, Rect2D},
     msg_bundle::{wrap_in_listarray, Component as _, MsgBundle},
@@ -41,7 +41,7 @@ fn latest_at_impl(store: &mut DataStore) {
     let frame3 = 3.into();
     let frame4 = 4.into();
 
-    let (instances1, rects1) = (build_instances(3), build_some_rects(3));
+    let (instances1, rects1) = (build_some_instances(3), build_some_rects(3));
     let bundle1 = test_bundle!(ent_path @ [build_frame_nr(frame1)] => [instances1.clone(), rects1]);
     store.insert(&bundle1).unwrap();
 
@@ -123,7 +123,7 @@ fn range_impl(store: &mut DataStore) {
     let frame4 = 4.into();
     let frame5 = 5.into();
 
-    let insts1 = build_instances(3);
+    let insts1 = build_some_instances(3);
     let rects1 = build_some_rects(3);
     let bundle1 = test_bundle!(ent_path @ [build_frame_nr(frame1)] => [insts1.clone(), rects1]);
     store.insert(&bundle1).unwrap();
@@ -136,17 +136,17 @@ fn range_impl(store: &mut DataStore) {
     let bundle3 = test_bundle!(ent_path @ [build_frame_nr(frame3)] => [points3]);
     store.insert(&bundle3).unwrap();
 
-    let insts4_1 = build_instances_from(20..25);
+    let insts4_1 = build_some_instances_from(20..25);
     let rects4_1 = build_some_rects(5);
     let bundle4_1 = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [insts4_1, rects4_1]);
     store.insert(&bundle4_1).unwrap();
 
-    let insts4_2 = build_instances_from(25..30);
+    let insts4_2 = build_some_instances_from(25..30);
     let rects4_2 = build_some_rects(5);
     let bundle4_2 = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [insts4_2, rects4_2]);
     store.insert(&bundle4_2).unwrap();
 
-    let insts4_3 = build_instances_from(30..35);
+    let insts4_3 = build_some_instances_from(30..35);
     let rects4_3 = build_some_rects(5);
     let bundle4_3 = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [insts4_3, rects4_3]);
     store.insert(&bundle4_3).unwrap();
