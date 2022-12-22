@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
-use arrow2::array::{Array, MutableArray};
+use arrow2::array::{Array, MutableArray, PrimitiveArray};
+use re_arrow_store::ArrayExt;
 use re_log_types::{
     external::arrow2_convert::{
         deserialize::{arrow_array_deserialize_iterator, ArrowArray, ArrowDeserialize},
@@ -67,6 +68,31 @@ impl ComponentWithInstances {
         Ok(arrow_array_deserialize_iterator::<Option<C>>(
             self.values.as_ref(),
         )?)
+    }
+
+    /// Look up the value that corresponds to a given `Instance`
+    pub fn lookup(&self, instance: &Instance) -> Option<Box<dyn Array>> {
+        let offset = if let Some(keys) = &self.instance_keys {
+            // If `instance_keys` is set, extract the `PrimitiveArray`, and find
+            // the index of the value by `binary_search`
+
+            // The store should guarantee this for us but assert to be sure
+            debug_assert!(keys.is_sorted_and_unique().unwrap_or(false));
+
+            let keys = keys
+                .as_any()
+                .downcast_ref::<PrimitiveArray<u64>>()?
+                .values();
+
+            keys.binary_search(&instance.0).ok()?
+        } else {
+            // If `instance_keys` is not set, then offset is the instance because the implicit
+            // index is a sequential list
+            let offset = instance.0 as usize;
+            (offset < self.values.len()).then_some(offset)?
+        };
+
+        Some(self.values.slice(offset, 1))
     }
 
     /// Produce a `ComponentWithInstances` from native component types
@@ -262,4 +288,55 @@ impl EntityView {
             components,
         })
     }
+}
+
+#[test]
+fn lookup_value() {
+    use re_log_types::external::arrow2_convert::serialize::arrow_serialize_to_mutable_array;
+    use re_log_types::field_types::{Instance, Point2D};
+    let points = vec![
+        Point2D { x: 1.0, y: 2.0 }, //
+        Point2D { x: 3.0, y: 4.0 },
+        Point2D { x: 5.0, y: 6.0 },
+        Point2D { x: 7.0, y: 8.0 },
+        Point2D { x: 9.0, y: 10.0 },
+    ];
+
+    let component = ComponentWithInstances::from_native(None, &points).unwrap();
+
+    let missing_value = component.lookup(&Instance(5));
+    assert_eq!(missing_value, None);
+
+    let value = component.lookup(&Instance(2)).unwrap();
+
+    let expected_point = vec![points[2].clone()];
+    let expected_arrow =
+        arrow_serialize_to_mutable_array::<Point2D, Point2D, &Vec<Point2D>>(&expected_point)
+            .unwrap()
+            .as_box();
+
+    assert_eq!(expected_arrow, value);
+
+    let instance_keys = vec![
+        Instance(17),
+        Instance(47),
+        Instance(48),
+        Instance(99),
+        Instance(472),
+    ];
+
+    let component = ComponentWithInstances::from_native(Some(&instance_keys), &points).unwrap();
+
+    let missing_value = component.lookup(&Instance(46));
+    assert_eq!(missing_value, None);
+
+    let value = component.lookup(&Instance(99)).unwrap();
+
+    let expected_point = vec![points[3].clone()];
+    let expected_arrow =
+        arrow_serialize_to_mutable_array::<Point2D, Point2D, &Vec<Point2D>>(&expected_point)
+            .unwrap()
+            .as_box();
+
+    assert_eq!(expected_arrow, value);
 }
