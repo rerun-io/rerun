@@ -6,7 +6,7 @@ use criterion::{criterion_group, criterion_main, Criterion};
 
 use re_arrow_store::{DataStore, TimeQuery, TimelineQuery};
 use re_log_types::{
-    datagen::{build_frame_nr, build_instances, build_some_rects},
+    datagen::{build_frame_nr, build_some_instances, build_some_rects},
     field_types::{Instance, Rect2D},
     msg_bundle::{try_build_msg_bundle2, Component as _, MsgBundle},
     ComponentName, MsgId, ObjPath as EntityPath, TimeType, Timeline,
@@ -114,7 +114,7 @@ fn build_messages(n: usize) -> Vec<MsgBundle> {
                 MsgId::ZERO,
                 "rects",
                 [build_frame_nr(frame_idx)],
-                (build_instances(n), build_some_rects(n)),
+                (build_some_instances(n), build_some_rects(n)),
             )
             .unwrap()
         })
