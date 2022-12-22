@@ -72,6 +72,41 @@ impl RangeQuery {
 // --- Data store ---
 
 impl DataStore {
+    /// Retrieve all the `ComponentName`s that have been written to for a given `EntityPath`
+    pub fn latest_components_at(
+        &self,
+        query: &LatestAtQuery,
+        ent_path: &EntityPath,
+    ) -> Option<Vec<ComponentName>> {
+        // TODO(cmc): kind & query_id need to somehow propagate through the span system.
+        self.query_id.fetch_add(1, Ordering::Relaxed);
+
+        let ent_path_hash = ent_path.hash();
+
+        trace!(
+            kind = "latest_components_at",
+            id = self.query_id.load(Ordering::Relaxed),
+            query = ?query,
+            entity = %ent_path,
+            "query started..."
+        );
+
+        let index = self.indices.get(&(query.timeline, *ent_path_hash))?;
+        let bucket = index.find_bucket(query.at);
+        let components = bucket.named_indices().0;
+
+        trace!(
+            kind = "latest_components_at",
+            id = self.query_id.load(Ordering::Relaxed),
+            query = ?query,
+            entity = %ent_path,
+            ?components,
+            "found components"
+        );
+
+        Some(components)
+    }
+
     /// Queries the datastore for the internal row indices of the specified `components`, as seen
     /// from the point of view of the so-called `primary` component.
     ///
@@ -430,6 +465,13 @@ impl IndexTable {
 
                 bucket.range(time_range, primary, components)
             })
+    }
+
+    /// Returns the index bucket whose time range covers the given `time`.
+    pub fn find_bucket(&self, time: TimeInt) -> &IndexBucket {
+        // This cannot fail, `iter_bucket` is guaranteed to always yield at least one bucket,
+        // since index tables always spawn with a default bucket that covers [-∞;+∞].
+        self.range_buckets(..=time).next().unwrap()
     }
 
     /// Returns the index bucket whose time range covers the given `time`.
