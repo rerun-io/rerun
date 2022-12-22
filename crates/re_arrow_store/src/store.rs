@@ -134,10 +134,26 @@ impl DataStoreConfig {
 /// know what's going on internally.
 /// For even more information, you can set `RERUN_DATA_STORE_DISPLAY_SCHEMAS=1` in your
 /// environment, which will result in additional schema information being printed out.
-#[derive(Default)]
 pub struct DataStore {
+    /// The cluster key specifies a column/component that is guaranteed to always be present for
+    /// every single row of data within the store.
+    ///
+    /// In addition to always being present, the payload of the cluster key..:
+    /// - is always increasingly sorted,
+    /// - is always dense (no validity bitmap),
+    /// - and never contains duplicate entries.
+    ///
+    /// This makes the cluster key a perfect candidate for joining query results together, and
+    /// doing so as efficiently as possible.
+    ///
+    /// See [`Self::insert`] for more information.
+    pub(crate) cluster_key: ComponentName,
     /// The configuration of the data store (e.g. bucket sizes).
     pub(crate) config: DataStoreConfig,
+
+    /// Used to cache auto-generated cluster components, i.e. `[0]`, `[0, 1]`, `[0, 1, 2]`, etc
+    /// so that they properly deduplicated.
+    pub(crate) cluster_comp_cache: IntMap<usize, RowIndex>,
 
     /// Maps an entity to its index, for a specific timeline.
     ///
@@ -156,14 +172,22 @@ pub struct DataStore {
 }
 
 impl DataStore {
-    pub fn new(config: DataStoreConfig) -> Self {
+    /// See [`Self::cluster_key`] for more information about the cluster key.
+    pub fn new(cluster_key: ComponentName, config: DataStoreConfig) -> Self {
         Self {
+            cluster_key,
             config,
-            indices: HashMap::default(),
-            components: IntMap::default(),
+            cluster_comp_cache: Default::default(),
+            indices: Default::default(),
+            components: Default::default(),
             insert_id: 0,
             query_id: AtomicU64::new(0),
         }
+    }
+
+    /// See [`Self::cluster_key`] for more information about the cluster key.
+    pub fn cluster_key(&self) -> ComponentName {
+        self.cluster_key
     }
 
     /// Returns the number of index rows stored across this entire store, i.e. the sum of
@@ -246,7 +270,9 @@ impl std::fmt::Display for DataStore {
     #[allow(clippy::string_add)]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
+            cluster_key,
             config,
+            cluster_comp_cache: _,
             indices,
             components,
             insert_id: _,
@@ -255,6 +281,10 @@ impl std::fmt::Display for DataStore {
 
         f.write_str("DataStore {\n")?;
 
+        f.write_str(&indent::indent_all_by(
+            4,
+            format!("cluster_key: {cluster_key:?}\n"),
+        ))?;
         f.write_str(&indent::indent_all_by(4, format!("config: {config:?}\n")))?;
 
         {
@@ -310,50 +340,45 @@ impl std::fmt::Display for DataStore {
 /// IndexTable {
 ///     timeline: log_time
 ///     entity: this/that
-///     size: 3 buckets for a total of 160 B across 5 total rows
+///     size: 3 buckets for a total of 152 B across 5 total rows
 ///     buckets: [
 ///         IndexBucket {
 ///             index time bound: >= +0.000s
-///             size: 67 B across 2 rows
-///             time range: from 15:06:31.305069Z to 15:06:31.305069Z (all inclusive)
-///             data (sorted=true): shape: (2, 4)
-///             ┌──────────────────┬───────┬───────────┬───────────┐
-///             │ time             ┆ rects ┆ instances ┆ positions │
-///             │ ---              ┆ ---   ┆ ---       ┆ ---       │
-///             │ str              ┆ u64   ┆ u64       ┆ u64       │
-///             ╞══════════════════╪═══════╪═══════════╪═══════════╡
-///             │ 15:06:31.305069Z ┆ null  ┆ null      ┆ 2         │
-///             ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
-///             │ 15:06:31.305069Z ┆ 4     ┆ null      ┆ null      │
-///             └──────────────────┴───────┴───────────┴───────────┘
+///             size: 64 B across 2 rows
+///                 - log_time: from 19:37:35.713798Z to 19:37:35.713798Z (all inclusive)
+///             data (sorted=true):
+///             +-------------------------------+--------------+---------------+----------------+
+///             | log_time                      | rerun.rect2d | rerun.point2d | rerun.instance |
+///             +-------------------------------+--------------+---------------+----------------+
+///             | 2022-12-20 19:37:35.713798552 |              | 2             | 2              |
+///             | 2022-12-20 19:37:35.713798552 | 4            |               | 2              |
+///             +-------------------------------+--------------+---------------+----------------+
+///
 ///         }
 ///         IndexBucket {
-///             index time bound: >= 15:06:32.305069Z
-///             size: 67 B across 2 rows
-///             time range: from 15:06:32.305069Z to 15:06:32.305069Z (all inclusive)
-///             data (sorted=true): shape: (2, 4)
-///             ┌──────────────────┬───────┬───────────┬───────────┐
-///             │ time             ┆ rects ┆ instances ┆ positions │
-///             │ ---              ┆ ---   ┆ ---       ┆ ---       │
-///             │ str              ┆ u64   ┆ u64       ┆ u64       │
-///             ╞══════════════════╪═══════╪═══════════╪═══════════╡
-///             │ 15:06:32.305069Z ┆ 1     ┆ null      ┆ null      │
-///             ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
-///             │ 15:06:32.305069Z ┆ null  ┆ 3         ┆ null      │
-///             └──────────────────┴───────┴───────────┴───────────┘
+///             index time bound: >= 19:37:36.713798Z
+///             size: 64 B across 2 rows
+///                 - log_time: from 19:37:36.713798Z to 19:37:36.713798Z (all inclusive)
+///             data (sorted=true):
+///             +-------------------------------+--------------+----------------+---------------+
+///             | log_time                      | rerun.rect2d | rerun.instance | rerun.point2d |
+///             +-------------------------------+--------------+----------------+---------------+
+///             | 2022-12-20 19:37:36.713798552 | 1            | 2              |               |
+///             | 2022-12-20 19:37:36.713798552 |              | 4              |               |
+///             +-------------------------------+--------------+----------------+---------------+
+///
 ///         }
 ///         IndexBucket {
-///             index time bound: >= 15:06:33.305069Z
-///             size: 26 B across 1 rows
-///             time range: from 15:06:33.305069Z to 15:06:33.305069Z (all inclusive)
-///             data (sorted=true): shape: (1, 3)
-///             ┌──────────────────┬───────┬───────────┐
-///             │ time             ┆ rects ┆ instances │
-///             │ ---              ┆ ---   ┆ ---       │
-///             │ str              ┆ u64   ┆ u64       │
-///             ╞══════════════════╪═══════╪═══════════╡
-///             │ 15:06:33.305069Z ┆ 2     ┆ 2         │
-///             └──────────────────┴───────┴───────────┘
+///             index time bound: >= 19:37:37.713798Z
+///             size: 24 B across 1 rows
+///                 - log_time: from 19:37:37.713798Z to 19:37:37.713798Z (all inclusive)
+///             data (sorted=true):
+///             +-------------------------------+--------------+----------------+
+///             | log_time                      | rerun.rect2d | rerun.instance |
+///             +-------------------------------+--------------+----------------+
+///             | 2022-12-20 19:37:37.713798552 | 2            | 3              |
+///             +-------------------------------+--------------+----------------+
+///
 ///         }
 ///     ]
 /// }
@@ -364,56 +389,48 @@ impl std::fmt::Display for DataStore {
 /// IndexTable {
 ///     timeline: frame_nr
 ///     entity: this/that
-///     size: 3 buckets for a total of 265 B across 8 total rows
+///     size: 3 buckets for a total of 256 B across 8 total rows
 ///     buckets: [
 ///         IndexBucket {
 ///             index time bound: >= #0
-///             size: 99 B across 3 rows
-///             time range: from #41 to #41 (all inclusive)
-///             data (sorted=true): shape: (3, 4)
-///             ┌──────┬───────┬───────────┬───────────┐
-///             │ time ┆ rects ┆ positions ┆ instances │
-///             │ ---  ┆ ---   ┆ ---       ┆ ---       │
-///             │ str  ┆ u64   ┆ u64       ┆ u64       │
-///             ╞══════╪═══════╪═══════════╪═══════════╡
-///             │ #41  ┆ null  ┆ null      ┆ 1         │
-///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
-///             │ #41  ┆ null  ┆ 1         ┆ null      │
-///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
-///             │ #41  ┆ 3     ┆ null      ┆ null      │
-///             └──────┴───────┴───────────┴───────────┘
+///             size: 96 B across 3 rows
+///                 - frame_nr: from #41 to #41 (all inclusive)
+///             data (sorted=true):
+///             +----------+---------------+--------------+----------------+
+///             | frame_nr | rerun.point2d | rerun.rect2d | rerun.instance |
+///             +----------+---------------+--------------+----------------+
+///             | 41       |               |              | 1              |
+///             | 41       | 1             |              | 2              |
+///             | 41       |               | 3            | 2              |
+///             +----------+---------------+--------------+----------------+
+///
 ///         }
 ///         IndexBucket {
 ///             index time bound: >= #42
-///             size: 99 B across 3 rows
-///             time range: from #42 to #42 (all inclusive)
-///             data (sorted=true): shape: (3, 4)
-///             ┌──────┬───────────┬───────┬───────────┐
-///             │ time ┆ instances ┆ rects ┆ positions │
-///             │ ---  ┆ ---       ┆ ---   ┆ ---       │
-///             │ str  ┆ u64       ┆ u64   ┆ u64       │
-///             ╞══════╪═══════════╪═══════╪═══════════╡
-///             │ #42  ┆ null      ┆ 1     ┆ null      │
-///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
-///             │ #42  ┆ 3         ┆ null  ┆ null      │
-///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
-///             │ #42  ┆ null      ┆ null  ┆ 2         │
-///             └──────┴───────────┴───────┴───────────┘
+///             size: 96 B across 3 rows
+///                 - frame_nr: from #42 to #42 (all inclusive)
+///             data (sorted=true):
+///             +----------+--------------+----------------+---------------+
+///             | frame_nr | rerun.rect2d | rerun.instance | rerun.point2d |
+///             +----------+--------------+----------------+---------------+
+///             | 42       | 1            | 2              |               |
+///             | 42       |              | 4              |               |
+///             | 42       |              | 2              | 2             |
+///             +----------+--------------+----------------+---------------+
+///
 ///         }
 ///         IndexBucket {
 ///             index time bound: >= #43
-///             size: 67 B across 2 rows
-///             time range: from #43 to #44 (all inclusive)
-///             data (sorted=true): shape: (2, 4)
-///             ┌──────┬───────┬───────────┬───────────┐
-///             │ time ┆ rects ┆ instances ┆ positions │
-///             │ ---  ┆ ---   ┆ ---       ┆ ---       │
-///             │ str  ┆ u64   ┆ u64       ┆ u64       │
-///             ╞══════╪═══════╪═══════════╪═══════════╡
-///             │ #43  ┆ 4     ┆ null      ┆ null      │
-///             ├╌╌╌╌╌╌┼╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
-///             │ #44  ┆ null  ┆ null      ┆ 3         │
-///             └──────┴───────┴───────────┴───────────┘
+///             size: 64 B across 2 rows
+///                 - frame_nr: from #43 to #44 (all inclusive)
+///             data (sorted=true):
+///             +----------+--------------+---------------+----------------+
+///             | frame_nr | rerun.rect2d | rerun.point2d | rerun.instance |
+///             +----------+--------------+---------------+----------------+
+///             | 43       | 4            |               | 2              |
+///             | 44       |              | 3             | 2              |
+///             +----------+--------------+---------------+----------------+
+///
 ///         }
 ///     ]
 /// }
@@ -673,56 +690,76 @@ impl IndexBucket {
 /// A `ComponentTable` holds all the values ever inserted for a given component (provided they
 /// are still alive, i.e. not GC'd).
 ///
-/// Example of a component table holding instance IDs:
+/// Example of a component table holding instances:
 /// ```text
 /// ComponentTable {
-///     name: instances
+///     name: rerun.instance
+///     size: 2 buckets for a total of 128 B across 5 total rows
 ///     buckets: [
 ///         ComponentBucket {
-///             row offset: 0
+///             size: 64 B across 3 rows
+///             row range: from 0 to 0 (all inclusive)
+///             archived: true
 ///             time ranges:
-///                 - frame_nr: from #41 (inclusive) to #43 (exlusive)
-///                 - log_time: from 10:24:21.735485Z (inclusive) to 10:24:21.755485Z (exlusive)
-///             data: shape: (3, 1)
-///             ┌─────────────────────────────────────┐
-///             │ instances                           │
-///             │ ---                                 │
-///             │ list[u32]                           │
-///             ╞═════════════════════════════════════╡
-///             │ []                                  │
-///             ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-///             │ [478150623, 125728625, 4153899129]  │
-///             ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-///             │ [1827991721, 3089121314, 427290248] │
-///             └─────────────────────────────────────┘
-///
+///                 - frame_nr: from #41 to #41 (all inclusive)
+///             +------------------------------------------------------------------+
+///             | rerun.instance                                                   |
+///             +------------------------------------------------------------------+
+///             | []                                                               |
+///             | [2382325256275464629, 9801782006807296871, 13644487945655724411] |
+///             | [0, 1, 2]                                                        |
+///             +------------------------------------------------------------------+
+///         }
+///         ComponentBucket {
+///             size: 64 B across 2 rows
+///             row range: from 3 to 4 (all inclusive)
+///             archived: false
+///             time ranges:
+///                 - frame_nr: from #42 to #42 (all inclusive)
+///                 - log_time: from 19:37:36.713798Z to 19:37:37.713798Z (all inclusive)
+///             +-------------------------------------------------------------------+
+///             | rerun.instance                                                    |
+///             +-------------------------------------------------------------------+
+///             | [8907162807054976021, 14953141369327162382, 15742885776230395882] |
+///             | [165204472818569687, 3210188998985913268, 13675065411448304501]   |
+///             +-------------------------------------------------------------------+
 ///         }
 ///     ]
 /// }
 /// ```
 ///
 /// Example of a component-table holding 2D positions:
-///
 /// ```text
 /// ComponentTable {
-///     name: positions
+///     name: rerun.point2d
+///     size: 2 buckets for a total of 96 B across 4 total rows
 ///     buckets: [
 ///         ComponentBucket {
-///             row offset: 0
+///             size: 64 B across 3 rows
+///             row range: from 0 to 0 (all inclusive)
+///             archived: true
 ///             time ranges:
-///                 - log_time: from 10:24:21.725485Z (inclusive) to 10:24:21.725485Z (exlusive)
-///                 - frame_nr: from #42 (inclusive) to #43 (exlusive)
-///             data: shape: (2, 1)
-///             ┌────────────────────────────────────────────────────────────────┐
-///             │ positions                                                      │
-///             │ ---                                                            │
-///             │ list[struct[2]]                                                │
-///             ╞════════════════════════════════════════════════════════════════╡
-///             │ []                                                             │
-///             ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-///             │ [{6.172664,8.383976}, {2.059066,8.037471}, {0.42883,1.250902}] │
-///             └────────────────────────────────────────────────────────────────┘
-///
+///                 - log_time: from 19:37:35.713798Z to 19:37:35.713798Z (all inclusive)
+///                 - frame_nr: from #41 to #42 (all inclusive)
+///             +-------------------------------------------------------------------+
+///             | rerun.point2d                                                     |
+///             +-------------------------------------------------------------------+
+///             | []                                                                |
+///             | [{x: 2.4033058, y: 8.535466}, {x: 4.051945, y: 7.6194324}         |
+///             | [{x: 1.4975989, y: 6.17476}, {x: 2.4128711, y: 1.853013}          |
+///             +-------------------------------------------------------------------+
+///         }
+///         ComponentBucket {
+///             size: 32 B across 1 rows
+///             row range: from 3 to 3 (all inclusive)
+///             archived: false
+///             time ranges:
+///                 - frame_nr: from #44 to #44 (all inclusive)
+///             +-------------------------------------------------------------------+
+///             | rerun.point2d                                                     |
+///             +-------------------------------------------------------------------+
+///             | [{x: 0.6296742, y: 6.7517242}, {x: 2.3393118, y: 8.770799}        |
+///             +-------------------------------------------------------------------+
 ///         }
 ///     ]
 /// }
@@ -857,7 +894,7 @@ pub struct ComponentBucket {
     /// - the array layer corresponds to the different instances within a single row,
     /// - and finally the struct layer holds the components themselves.
     /// E.g.:
-    /// ```ignore
+    /// ```text
     /// [
     ///   [{x: 8.687487, y: 1.9590926}, {x: 2.0559108, y: 0.1494348}, {x: 7.09219, y: 0.9616637}],
     ///   [{x: 7.158843, y: 0.68897724}, {x: 8.934421, y: 2.8420508}],

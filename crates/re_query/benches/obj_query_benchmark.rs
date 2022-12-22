@@ -110,7 +110,7 @@ fn build_messages(paths: &[ObjPath], pts: usize) -> Vec<MsgBundle> {
 }
 
 fn insert_messages<'a>(msgs: impl Iterator<Item = &'a MsgBundle>) -> DataStore {
-    let mut store = DataStore::default();
+    let mut store = DataStore::new(Instance::name(), Default::default());
     msgs.for_each(|msg_bundle| store.insert(msg_bundle).unwrap());
     store
 }
