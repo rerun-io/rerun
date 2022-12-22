@@ -189,14 +189,14 @@ fn range_impl(store: &mut DataStore) {
 
             let mut dfs_processed = 0usize;
             let mut time_counters: IntMap<i64, usize> = Default::default();
-            // eprintln!("----------------");
+            eprintln!("----------------");
             for (time, df) in dfs.map(Result::unwrap) {
-                // eprintln!(
-                //     "Found data at time {} from {}'s PoV (outer-joining):\n{:?}",
-                //     TimeType::Sequence.format(time), // TODO
-                //     primary,
-                //     df,
-                // );
+                eprintln!(
+                    "Found data at time {} from {}'s PoV (outer-joining):\n{:?}",
+                    TimeType::Sequence.format(time), // TODO
+                    primary,
+                    df,
+                );
 
                 let time_count = time_counters.entry(time.as_i64()).or_default();
                 let df_expected = &expected_at_times[&time][*time_count];
@@ -337,7 +337,47 @@ fn range_impl(store: &mut DataStore) {
 
     // Full range (Rect2D's PoV)
 
+    assert_range_components(
+        TimeRange::new(frame1, frame5),
+        Rect2D::name(),
+        &[
+            (frame0, &[]), //
+            (frame1, &[(Rect2D::name(), &bundle1)]),
+            // nothing in frame 3 from Rect2D's PoV
+            // got multiple entries for frame 4 alone
+            (
+                frame4,
+                &[(Rect2D::name(), &bundle4_1), (Point2D::name(), &bundle3)],
+            ),
+            (
+                frame4,
+                &[(Rect2D::name(), &bundle4_2), (Point2D::name(), &bundle3)],
+            ),
+            (
+                frame4,
+                &[(Rect2D::name(), &bundle4_3), (Point2D::name(), &bundle3)],
+            ),
+            // nothing in frame 5 from Rect2D's PoV
+        ],
+    );
+
     // Full range (Point2D's PoV)
+
+    assert_range_components(
+        TimeRange::new(frame1, frame5),
+        Point2D::name(),
+        &[
+            (frame0, &[]), //
+            (
+                frame2,
+                &[(Point2D::name(), &bundle2), (Rect2D::name(), &bundle1)],
+            ),
+            (
+                frame3,
+                &[(Point2D::name(), &bundle3), (Rect2D::name(), &bundle1)],
+            ),
+        ],
+    );
 }
 
 // --- Common helpers ---
