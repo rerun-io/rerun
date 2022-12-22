@@ -1218,6 +1218,10 @@ fn paint_range_text(
     painter: &egui::Painter,
     selection_rect: Rect,
 ) {
+    if selected_range.min <= TimeInt::BEGINNING {
+        return; // huge time selection, don't show a confusing times
+    }
+
     let text_color = ui.visuals().strong_text_color();
 
     let arrow_color = text_color.gamma_multiply(0.75);
