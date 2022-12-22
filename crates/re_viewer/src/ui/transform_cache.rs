@@ -18,6 +18,8 @@ pub enum UnreachableTransformReason {
     Unconnected,
     /// More than one pinhole camera between this and the reference space.
     NestedPinholeCameras,
+    /// Exiting out of a space with a pinhole camera that doesn't have a resolution is not supported.
+    InversePinholeCameraWithoutResolution,
     /// Unknown transform between this and the reference space.
     UnknownTransform,
 }
@@ -97,21 +99,34 @@ impl TransformCache {
                     }
                     encountered_pinhole = true;
 
-                    // Scaled with 0.5 since perspective_infinite_lh uses NDC, i.e. [-1; 1] range.
-                    // Only y since fov is given in y
-                    let scale = pinhole.resolution().unwrap().y * 0.5; // TODO: unwraps
-                    let translation = pinhole.principal_point().extend(-100.0); // Large Y offset so this is in front of all 2d that came so far. TODO(andreas): Find better solution
-                    reference_from_ancestor
-                        * glam::Mat4::from_scale_rotation_translation(
-                            glam::vec3(scale, scale, 1.0),
-                            glam::Quat::IDENTITY,
-                            translation,
-                        )
-                        * glam::Mat4::perspective_infinite_lh(
-                            pinhole.fov_y().unwrap(),
-                            pinhole.aspect_ratio(),
-                            0.0,
-                        )
+                    // TODO(andreas): If we don't have a resolution we don't know the FOV ergo we don't know how to project. Unclear what to do.
+                    if let Some(resolution) = pinhole.resolution() {
+                        // Scaled with 0.5 since perspective_infinite_lh uses NDC, i.e. [-1; 1] range.
+                        // On Y since fov is given in y direction.
+                        let scale = resolution.y * 0.5;
+                        let translation = pinhole.principal_point().extend(-100.0); // Large Y offset so this is in front of all 2d that came so far. TODO(andreas): Find better solution
+                        reference_from_ancestor
+                            * glam::Mat4::from_scale_rotation_translation(
+                                glam::vec3(scale, scale, 1.0),
+                                glam::Quat::IDENTITY,
+                                translation,
+                            )
+                            * glam::Mat4::perspective_infinite_lh(
+                                pinhole.fov_y().unwrap(),
+                                pinhole.aspect_ratio(),
+                                0.0,
+                            )
+                    } else {
+                        parent_space.visit_non_descendants(spaces_info, &mut |space| {
+                            transforms.register_transform_for(
+                                space,
+                                &ReferenceFromObjTransform::Unreachable(
+                                    UnreachableTransformReason::InversePinholeCameraWithoutResolution,
+                                ),
+                            );
+                        });
+                        break;
+                    }
                 }
             };
 
