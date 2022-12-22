@@ -11,7 +11,7 @@ use re_log_types::{
     DataVec, LogMsg, LoggedData, MsgId, ObjPath, ObjectType, PathOp, PathOpMsg, Pinhole,
     RecordingInfo, Rigid3, TimePoint, Transform, TypeMsg, ViewCoordinates,
 };
-use re_query::get_component_with_instances;
+use re_query::{get_component_with_instances, QueryError};
 
 use crate::misc::ViewerContext;
 use crate::ui::annotations::auto_color;
@@ -67,54 +67,54 @@ fn generic_arrow_ui(
         TimeQuery::LatestAt(ctx.rec_cfg.time_ctrl.time_i64()?),
     );
 
-    let components = store.query_components(&timeline_query, &instance_id.obj_path);
-
-    if let Some(components) = components {
-        egui::Grid::new("entity_instance")
-            .num_columns(2)
-            .show(ui, |ui| {
-                for component in components {
-                    let data = get_component_with_instances(
-                        store,
-                        &timeline_query,
-                        &instance_id.obj_path,
-                        component,
-                    );
-
-                    ui.label(component.as_str());
-
-                    if let Ok(data) = data {
-                        if let Some(index) = &instance_id.instance_index {
-                            // If an `Instance` is selected use it to look up a specific value
-                            if let Index::ArrowInstance(instance) = &index {
-                                let value = data.lookup(instance);
-                                if let Some(value) = value {
-                                    // TODO(jleibs): Dispatch to prettier printers for
-                                    // component types we know about.
-                                    let mut repr = String::new();
-                                    let display = get_display(value.as_ref(), "null");
-                                    display(&mut repr, 0).unwrap();
-                                    ui.label(repr);
-                                } else {
-                                    ui.label("<unset>");
-                                }
-                            } else {
-                                ui.label("<bad index>");
-                            }
-                        } else {
-                            // Otherwise just summarize how many values there are
-                            ui.label(format!("{} values", data.len()));
-                        }
-                    } else {
-                        ui.label("<unset>");
-                    }
-
-                    ui.end_row();
-                }
-            });
-    } else {
+    let Some(components) = store.query_components(&timeline_query, &instance_id.obj_path)
+    else {
         ui.label("No Components");
-    }
+        return Some(());
+    };
+
+    egui::Grid::new("entity_instance")
+        .num_columns(2)
+        .show(ui, |ui| {
+            for component in components {
+                let data = get_component_with_instances(
+                    store,
+                    &timeline_query,
+                    &instance_id.obj_path,
+                    component,
+                );
+
+                ui.label(component.as_str());
+
+                match (data, &instance_id.instance_index) {
+                    // If we didn't find the component then it's not set at this point in time
+                    (Err(QueryError::PrimaryNotFound), _) => ui.label("<unset>"),
+                    // Any other failure to get a component is unexpected
+                    (Err(err), _) => ui.label(format!("Error: {}", err)),
+                    // If an `instance_index` wasn't provided, just report the number of values
+                    (Ok(data), None) => ui.label(format!("{} values", data.len())),
+                    // If the `instance_index` is an `ArrowInstance` show the value
+                    (Ok(data), Some(Index::ArrowInstance(instance))) => {
+                        if let Some(value) = data.lookup(instance) {
+                            // TODO(jleibs): Dispatch to prettier printers for
+                            // component types we know about.
+                            let mut repr = String::new();
+                            let display = get_display(value.as_ref(), "null");
+                            display(&mut repr, 0).unwrap();
+                            ui.label(repr)
+                        } else {
+                            ui.label("<unset>")
+                        }
+                    }
+                    // If the `instance_index` isn't an `ArrowInstance` something has gone wrong
+                    // TODO(jleibs) this goes away once all indexes are just `Instances`
+                    (Ok(_), Some(_)) => ui.label("<bad index>"),
+                };
+
+                ui.end_row();
+            }
+            Some(())
+        });
 
     Some(())
 }
