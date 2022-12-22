@@ -350,26 +350,24 @@ fn view_2d_scrollable(
             check_hovering(*instance_hash, bbox.distance_to_pos(pointer_pos_space));
         }
 
-        for img in &scene.ui.images {
-            let Image {
-                instance_hash,
-                tensor,
-                meter,
-                annotations,
-            } = img;
+        if closest_instance_id_hash.is_some() {
+            for img in &scene.ui.images {
+                let Image {
+                    instance_hash,
+                    tensor,
+                    meter,
+                    annotations,
+                } = img;
 
-            if instance_hash.is_none() {
-                continue;
-            }
+                if *instance_hash != closest_instance_id_hash {
+                    continue;
+                }
 
-            let (w, h) = (tensor.shape[1].size as f32, tensor.shape[0].size as f32);
-            let rect = Rect::from_min_size(Pos2::ZERO, vec2(w, h));
-            let dist = rect.distance_sq_to_pos(pointer_pos_space).sqrt();
-            let dist = dist.at_least(hover_radius); // allow stuff on top of us to "win"
-            check_hovering(*instance_hash, dist);
+                let (w, h) = (tensor.shape[1].size as f32, tensor.shape[0].size as f32);
+                let rect = Rect::from_min_size(Pos2::ZERO, vec2(w, h));
 
-            // Show tooltips for all images, not just the "most hovered" one.
-            if rect.contains(pointer_pos_space) {
+                // Show tooltips for all images, not just the "most hovered" one.
+
                 response = response
                     .on_hover_cursor(egui::CursorIcon::ZoomIn)
                     .on_hover_ui_at_pointer(|ui| {
@@ -406,18 +404,17 @@ fn view_2d_scrollable(
                             });
                         });
                     });
-
                 shown_tooltips.insert(*instance_hash);
-            }
 
-            if let Some(meter) = *meter {
-                if let Some(raw_value) = tensor.get(&[
-                    pointer_pos_space.y.round() as _,
-                    pointer_pos_space.x.round() as _,
-                ]) {
-                    let raw_value = raw_value.as_f64();
-                    let depth_in_meters = raw_value / meter as f64;
-                    depths_at_pointer.push(depth_in_meters);
+                if let Some(meter) = *meter {
+                    if let Some(raw_value) = tensor.get(&[
+                        pointer_pos_space.y.round() as _,
+                        pointer_pos_space.x.round() as _,
+                    ]) {
+                        let raw_value = raw_value.as_f64();
+                        let depth_in_meters = raw_value / meter as f64;
+                        depths_at_pointer.push(depth_in_meters);
+                    }
                 }
             }
         }

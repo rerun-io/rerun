@@ -95,6 +95,8 @@ impl ScenePart for ImagesPart {
                             multiplicative_tint: paint_props.fg_stroke.color.into(),
                         },
                     );
+                    // TODO:
+                    scene.primitives.textured_rectangles_ids.push(instance_hash);
                 }
 
                 scene.ui.images.push(Image {
@@ -115,6 +117,7 @@ impl ScenePart for ImagesPart {
 
         // Handle layered rectangles that are on (roughly) the same plane and were logged in sequence.
         // First, group by similar plane.
+        // TODO(andreas): Need planes later for picking as well!
         let rects_grouped_by_plane = {
             let mut cur_plane = macaw::Plane3::from_normal_dist(Vec3::NAN, std::f32::NAN);
             let mut rectangle_group = Vec::new();

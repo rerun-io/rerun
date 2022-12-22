@@ -18,8 +18,10 @@ pub struct SceneSpatialPrimitives {
     /// Estimated bounding box of all data in scene coordinates. Accumulated.
     bounding_box: macaw::BoundingBox,
 
-    /// TODO(andreas): Need to decide of this should be used for hovering as well. If so add another builder with meta-data?
+    // TODO: should we store metadata on renderer? probably not future proof for upcoming changes.
     pub textured_rectangles: Vec<re_renderer::renderer::TexturedRect>,
+    pub textured_rectangles_ids: Vec<InstanceIdHash>,
+
     pub line_strips: LineStripSeriesBuilder<InstanceIdHash>,
     pub points: PointCloudBuilder<InstanceIdHash>,
 
@@ -107,7 +109,8 @@ impl SceneSpatialPrimitives {
 
         let Self {
             bounding_box: _,
-            textured_rectangles: _, // TODO(andreas): Should be able to pick 2d rectangles!
+            textured_rectangles,
+            textured_rectangles_ids,
             line_strips,
             points,
             meshes,
@@ -206,6 +209,55 @@ impl SceneSpatialPrimitives {
                         closest_z = t; // TODO(emilk): I think this is wrong
                         closest_side_dist_sq = dist_sq;
                         closest_instance_id = Some(mesh.instance_hash);
+                    }
+                }
+            }
+        }
+
+        {
+            crate::profile_scope!("rectangles");
+            for (rect, id) in textured_rectangles
+                .iter()
+                .zip(textured_rectangles_ids.iter())
+            {
+                if !id.is_some() {
+                    continue;
+                }
+
+                let rect_plane = macaw::Plane3::from_normal_point(
+                    rect.extent_v.cross(rect.extent_u),
+                    rect.top_left_corner_position,
+                );
+
+                let (intersect, t) =
+                    rect_plane.intersect_ray(ray_in_world.origin, ray_in_world.dir);
+                if !intersect {
+                    continue;
+                }
+
+                let intersection_world = ray_in_world.origin + ray_in_world.dir * t;
+                let dir_from_rect_top_left = intersection_world - rect.top_left_corner_position;
+                let u = dir_from_rect_top_left.dot(rect.extent_u);
+                let v = dir_from_rect_top_left.dot(rect.extent_v);
+
+                // TODO: multi intersect!
+                if (0.0..=rect.extent_u.length_squared()).contains(&u)
+                    && (0.0..=rect.extent_v.length_squared()).contains(&v)
+                {
+                    // TODO: copy pasted
+
+                    let pos_in_ui = ui_from_world.project_point3(intersection_world);
+                    if pos_in_ui.z < 0.0 {
+                        continue; // TODO(emilk): don't we expect negative Z!? RHS etc
+                    }
+                    let dist_sq = pos_in_ui.truncate().distance_squared(pointer_in_ui);
+                    if dist_sq < max_side_dist_sq {
+                        let t = pos_in_ui.z.abs();
+                        if t < closest_z || dist_sq < closest_side_dist_sq {
+                            closest_z = t;
+                            closest_side_dist_sq = dist_sq;
+                            closest_instance_id = Some(*id);
+                        }
                     }
                 }
             }
