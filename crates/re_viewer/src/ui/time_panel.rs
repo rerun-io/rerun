@@ -747,7 +747,7 @@ fn paint_time_ranges_and_ticks(
 ) {
     for segment in &time_ranges_ui.segments {
         let rect = Rect::from_x_y_ranges(segment.x.clone(), line_y_range.clone());
-        paint_time_range_ticks(ui, time_area_painter, &rect, time_type, &segment.time);
+        time_area_painter.extend(paint_time_range_ticks(ui, &rect, time_type, &segment.time));
     }
 }
 
@@ -1695,14 +1695,13 @@ impl TimeRangesUi {
 
 fn paint_time_range_ticks(
     ui: &mut egui::Ui,
-    time_area_painter: &egui::Painter,
     rect: &Rect,
     time_type: TimeType,
     time_range: &TimeRangeF,
-) {
+) -> Vec<Shape> {
     let font_id = egui::TextStyle::Small.resolve(ui.style());
 
-    let shapes = match time_type {
+    match time_type {
         TimeType::Time => {
             fn next_grid_tick_magnitude_ns(spacing_ns: i64) -> i64 {
                 if spacing_ns <= 1_000_000_000 {
@@ -1772,9 +1771,7 @@ fn paint_time_range_ticks(
                 |seq| format!("#{seq}"),
             )
         }
-    };
-
-    time_area_painter.extend(shapes);
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1858,6 +1855,7 @@ fn paint_ticks(
 
     let mut current_time =
         time_range.min.floor().as_i64() / small_spacing_time * small_spacing_time; // TODO(emilk): start at visible_rect.left()
+
     while current_time <= time_range.max.ceil().as_i64() {
         let line_x = x_from_time(current_time);
 
