@@ -1,7 +1,6 @@
 use egui::{color_picker, Vec2};
 
 use itertools::Itertools;
-use re_arrow_store::TimeQuery;
 use re_data_store::{Index, InstanceId};
 use re_log_types::context::AnnotationInfo;
 use re_log_types::external::arrow2::array::get_display;
@@ -62,12 +61,9 @@ fn generic_arrow_ui(
 ) -> Option<()> {
     let timeline = ctx.rec_cfg.time_ctrl.timeline();
     let store = &ctx.log_db.obj_db.arrow_store;
-    let timeline_query = re_arrow_store::TimelineQuery::new(
-        *timeline,
-        TimeQuery::LatestAt(ctx.rec_cfg.time_ctrl.time_i64()?),
-    );
+    let query = re_arrow_store::LatestAtQuery::new(*timeline, ctx.rec_cfg.time_ctrl.time_int()?);
 
-    let Some(components) = store.query_components(&timeline_query, &instance_id.obj_path)
+    let Some(components) = store.latest_components_at(&query, &instance_id.obj_path)
     else {
         ui.label("No Components");
         return Some(());
@@ -77,12 +73,8 @@ fn generic_arrow_ui(
         .num_columns(2)
         .show(ui, |ui| {
             for component in components {
-                let data = get_component_with_instances(
-                    store,
-                    &timeline_query,
-                    &instance_id.obj_path,
-                    component,
-                );
+                let data =
+                    get_component_with_instances(store, &query, &instance_id.obj_path, component);
 
                 ui.label(component.as_str());
 

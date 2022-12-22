@@ -1,15 +1,7 @@
-<<<<<<< HEAD
-use re_data_store::{query::visit_type_data_4, FieldName, InstanceIdHash, ObjectsProperties};
-||||||| d9212306
-use re_arrow_store::TimeQuery;
-use re_data_store::{query::visit_type_data_4, FieldName, InstanceIdHash, ObjectsProperties};
-=======
 use glam::Mat4;
-use re_arrow_store::TimeQuery;
 use re_data_store::{
     query::visit_type_data_4, FieldName, InstanceIdHash, ObjPath, ObjectsProperties,
 };
->>>>>>> origin/main
 use re_log_types::{
     context::ClassId,
     field_types::{ColorRGBA, Rect2D},
