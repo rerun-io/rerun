@@ -219,7 +219,7 @@ impl TimePanel {
             timeline_rect.bottom()..=ui.max_rect().bottom(),
         );
 
-        // includes the loop selection and time ticks rows.
+        // includes the timeline and streams areas.
         let time_bg_area_rect = Rect::from_x_y_ranges(time_bg_x_range, full_y_range.clone());
         let time_fg_area_rect =
             Rect::from_x_y_ranges(time_fg_x_range.clone(), full_y_range.clone());
@@ -248,10 +248,11 @@ impl TimePanel {
             &time_bg_area_painter,
             &timeline_rect,
         );
-        let time_area_response = interact_with_time_area(
+        let time_area_response = interact_with_streams_rect(
             &self.time_ranges_ui,
             &mut ctx.rec_cfg.time_ctrl,
             ui,
+            &time_bg_area_rect,
             &streams_rect,
         );
 
@@ -286,6 +287,7 @@ impl TimePanel {
             );
         }
 
+        // Put time-marker on top and last, so that you can always drag it
         time_marker_ui(
             &self.time_ranges_ui,
             &mut ctx.rec_cfg.time_ctrl,
@@ -906,34 +908,41 @@ fn paint_time_ranges_gaps(
 
 /// Returns a scroll delta
 #[must_use]
-fn interact_with_time_area(
+fn interact_with_streams_rect(
     time_ranges_ui: &TimeRangesUi,
     time_ctrl: &mut TimeControl,
     ui: &mut egui::Ui,
     full_rect: &Rect,
+    streams_rect: &Rect,
 ) -> egui::Response {
     let pointer_pos = ui.input().pointer.hover_pos();
-
-    let time_area_response = ui.interact(
-        *full_rect,
-        ui.id().with("time_area_interact"),
-        egui::Sense::click_and_drag(),
-    );
 
     let mut delta_x = 0.0;
     let mut zoom_factor = 1.0;
 
-    if time_area_response.hovered() {
+    // Check for zoom/pan inputs (via e.g. horizontal scrolling) on the entire
+    // time area rectangle, including the timeline rect.
+    let full_rect_hovered =
+        pointer_pos.map_or(false, |pointer_pos| full_rect.contains(pointer_pos));
+    if full_rect_hovered {
         delta_x += ui.input().scroll_delta.x;
         zoom_factor *= ui.input().zoom_delta_2d().x;
     }
 
-    if time_area_response.dragged_by(PointerButton::Primary) {
-        delta_x += time_area_response.drag_delta().x;
+    // We only check for drags in the streams rect,
+    // because drags in the timeline rect should move the time
+    // (or create loop sections).
+    let response = ui.interact(
+        *streams_rect,
+        ui.id().with("time_area_interact"),
+        egui::Sense::click_and_drag(),
+    );
+    if response.dragged_by(PointerButton::Primary) {
+        delta_x += response.drag_delta().x;
         ui.output().cursor_icon = CursorIcon::AllScroll;
     }
-    if time_area_response.dragged_by(PointerButton::Secondary) {
-        zoom_factor *= (time_area_response.drag_delta().y * 0.01).exp();
+    if response.dragged_by(PointerButton::Secondary) {
+        zoom_factor *= (response.drag_delta().y * 0.01).exp();
     }
 
     if delta_x != 0.0 {
@@ -950,11 +959,11 @@ fn interact_with_time_area(
         }
     }
 
-    if time_area_response.double_clicked() {
+    if response.double_clicked() {
         time_ctrl.reset_time_view();
     }
 
-    time_area_response
+    response
 }
 
 fn initial_time_selection(
