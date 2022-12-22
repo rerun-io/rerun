@@ -2,7 +2,7 @@ from typing import Optional, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
-from rerun.log import (  # type: ignore[attr-defined]
+from rerun.log import (
     EXP_ARROW,
     Color,
     Colors,
@@ -96,7 +96,7 @@ def log_point(
         if label:
             comps["rerun.label"] = LabelArray.new([label])
 
-        bindings.log_arrow_msg(f"arrow/{obj_path}", **comps)
+        bindings.log_arrow_msg(f"arrow/{obj_path}", components=comps)
 
 
 def log_points(
@@ -188,4 +188,4 @@ def log_points(
         if labels:
             comps["rerun.label"] = LabelArray.new(labels)
 
-        bindings.log_arrow_msg(f"arrow/{obj_path}", **comps)
+        bindings.log_arrow_msg(f"arrow/{obj_path}", components=comps)
