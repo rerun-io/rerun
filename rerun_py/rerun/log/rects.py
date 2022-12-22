@@ -137,9 +137,7 @@ def log_rects(
         from rerun.components.label import LabelArray
         from rerun.components.rect2d import Rect2DArray
 
-        comps = {}
-
-        comps["rerun.rect2d"] = Rect2DArray.from_numpy_and_format(rects, rect_format)
+        comps = {"rerun.rect2d": Rect2DArray.from_numpy_and_format(rects, rect_format)}
 
         if len(colors):
             comps["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
