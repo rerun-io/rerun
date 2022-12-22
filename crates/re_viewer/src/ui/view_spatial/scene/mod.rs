@@ -231,7 +231,7 @@ impl SceneSpatial {
         crate::profile_function!();
 
         // Size of a pixel (in meters), when projected out one meter:
-        let point_size_at_one_meter = eye.fov_y / viewport_size.y;
+        let point_size_at_one_meter = eye.fov_y.unwrap() / viewport_size.y;
 
         let eye_camera_plane =
             macaw::Plane3::from_normal_point(eye.forward_in_world(), eye.pos_in_world());

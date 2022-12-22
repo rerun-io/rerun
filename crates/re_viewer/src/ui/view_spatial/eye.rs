@@ -12,7 +12,9 @@ use super::SpaceCamera3D;
 #[derive(Clone, Copy, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
 pub struct Eye {
     pub world_from_view: IsoTransform,
-    pub fov_y: f32,
+
+    /// If no angle is present, this is an orthographic camera.
+    pub fov_y: Option<f32>,
 }
 
 impl Eye {
@@ -26,7 +28,7 @@ impl Eye {
 
         Some(Self {
             world_from_view: space_cameras.world_from_rub_view()?,
-            fov_y,
+            fov_y: Some(fov_y),
         })
     }
 
@@ -37,9 +39,23 @@ impl Eye {
 
     pub fn ui_from_world(&self, rect: &Rect) -> Mat4 {
         let aspect_ratio = rect.width() / rect.height();
+
+        let projection = if let Some(fov_y) = self.fov_y {
+            Mat4::perspective_infinite_rh(fov_y, aspect_ratio, self.near())
+        } else {
+            Mat4::orthographic_rh(
+                rect.left(),
+                rect.right(),
+                rect.bottom(),
+                rect.top(),
+                -1000.0, // TODO:
+                1000.0,
+            )
+        };
+
         Mat4::from_translation(vec3(rect.center().x, rect.center().y, 0.0))
             * Mat4::from_scale(0.5 * vec3(rect.width(), -rect.height(), 1.0))
-            * Mat4::perspective_infinite_rh(self.fov_y, aspect_ratio, self.near())
+            * projection
             * self.world_from_view.inverse()
     }
 
@@ -64,7 +80,21 @@ impl Eye {
             .world_from_view
             .rotation()
             .slerp(other.world_from_view.rotation(), t);
-        let fov_y = egui::lerp(self.fov_y..=other.fov_y, t);
+
+        let fov_y = if t < 0.02 {
+            self.fov_y
+        } else if t > 0.98 {
+            other.fov_y
+        } else if self.fov_y.is_none() && other.fov_y.is_none() {
+            None
+        } else {
+            // TODO: interpolating between perspetive and ortho is more involved than that
+            Some(egui::lerp(
+                self.fov_y.unwrap_or(0.01)..=other.fov_y.unwrap_or(0.01),
+                t,
+            ))
+        };
+
         Eye {
             world_from_view: IsoTransform::from_rotation_translation(rotation, translation),
             fov_y,
@@ -102,7 +132,7 @@ impl OrbitEye {
                 self.world_from_view_rot,
                 self.position(),
             ),
-            fov_y: self.fov_y,
+            fov_y: Some(self.fov_y),
         }
     }
 
@@ -115,7 +145,7 @@ impl OrbitEye {
         self.orbit_radius = distance.at_least(self.orbit_radius / 5.0);
         self.orbit_center = eye.pos_in_world() + self.orbit_radius * eye.forward_in_world();
         self.world_from_view_rot = eye.world_from_view.rotation();
-        self.fov_y = eye.fov_y;
+        self.fov_y = eye.fov_y.unwrap_or(Eye::DEFAULT_FOV_Y);
         self.velocity = Vec3::ZERO;
     }
 

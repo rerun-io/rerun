@@ -494,7 +494,7 @@ fn paint_view(
 
         view_from_world: eye.world_from_view.inverse(),
         projection_from_view: Projection::Perspective {
-            vertical_fov: eye.fov_y,
+            vertical_fov: eye.fov_y.unwrap(),
             near_plane_distance: eye.near(),
         },
 
