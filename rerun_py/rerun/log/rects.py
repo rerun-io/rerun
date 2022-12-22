@@ -137,14 +137,14 @@ def log_rects(
         from rerun.components.label import LabelArray
         from rerun.components.rect2d import Rect2DArray
 
-        rects = Rect2DArray.from_numpy_and_format(rects, rect_format)
-        colors = ColorRGBAArray.from_numpy(colors)
-        labels = LabelArray.new(labels)
-        bindings.log_arrow_msg(
-            f"arrow/{obj_path}",
-            **{
-                "rerun.rect2d": rects,
-                "rerun.colorrgba": colors,
-                "rerun.label": labels,
-            },
-        )
+        comps = {}
+
+        comps["rerun.rect2d"] = Rect2DArray.from_numpy_and_format(rects, rect_format)
+
+        if len(colors):
+            comps["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
+
+        if labels:
+            comps["rerun.label"] = LabelArray.new(labels)
+
+        bindings.log_arrow_msg(f"arrow/{obj_path}", components=comps)
