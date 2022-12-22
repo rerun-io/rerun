@@ -73,7 +73,9 @@ pub fn show_zoomed_image_region_tooltip(
         })
 }
 
-/// meter: iff this is a depth map, how long is one meter?
+// Show the surrounding pixels:
+const ZOOMED_IMAGE_TEXEL_RADIUS: isize = 12;
+
 pub fn show_zoomed_image_region(
     parent_ui: &mut egui::Ui,
     tooltip_ui: &mut egui::Ui,
@@ -84,13 +86,8 @@ pub fn show_zoomed_image_region(
 ) {
     let Some(dynamic_img) = tensor_view.dynamic_img else { return };
 
-    use egui::{color_picker, pos2, remap, Color32, Mesh, NumExt, Rect, Vec2};
+    use egui::{pos2, remap, Color32, NumExt, Rect};
 
-    // Show the surrounding pixels:
-    let texel_radius = 12;
-    let size = Vec2::splat(128.0);
-
-    let (_id, zoom_rect) = tooltip_ui.allocate_space(size);
     let w = dynamic_img.width() as _;
     let h = dynamic_img.height() as _;
     let center_x =
@@ -100,10 +97,10 @@ pub fn show_zoomed_image_region(
 
     {
         // Show where on the original image the zoomed-in region is at:
-        let left = (center_x - texel_radius) as f32;
-        let right = (center_x + texel_radius) as f32;
-        let top = (center_y - texel_radius) as f32;
-        let bottom = (center_y + texel_radius) as f32;
+        let left = (center_x - ZOOMED_IMAGE_TEXEL_RADIUS) as f32;
+        let right = (center_x + ZOOMED_IMAGE_TEXEL_RADIUS) as f32;
+        let top = (center_y - ZOOMED_IMAGE_TEXEL_RADIUS) as f32;
+        let bottom = (center_y + ZOOMED_IMAGE_TEXEL_RADIUS) as f32;
 
         let left = remap(left, 0.0..=w as f32, image_rect.x_range());
         let right = remap(right, 0.0..=w as f32, image_rect.x_range());
@@ -117,23 +114,39 @@ pub fn show_zoomed_image_region(
         painter.rect_stroke(rect, 0.0, (1.0, Color32::WHITE));
     }
 
+    show_zoomed_image_region_at_position(tooltip_ui, tensor_view, [center_x, center_y], meter);
+}
+
+pub fn show_zoomed_image_region_at_position(
+    tooltip_ui: &mut egui::Ui,
+    tensor_view: &TensorImageView<'_, '_>,
+    image_position: [isize; 2],
+    meter: Option<f32>,
+) {
+    let Some(dynamic_img) = tensor_view.dynamic_img else { return };
+
+    use egui::{color_picker, pos2, remap, Color32, Mesh, Rect, Vec2};
+
+    let size = Vec2::splat(128.0);
+
+    let (_id, zoom_rect) = tooltip_ui.allocate_space(size);
     let painter = tooltip_ui.painter();
 
     painter.rect_filled(zoom_rect, 0.0, tooltip_ui.visuals().extreme_bg_color);
 
     let mut mesh = Mesh::default();
     let mut center_texel_rect = None;
-    for dx in -texel_radius..=texel_radius {
-        for dy in -texel_radius..=texel_radius {
-            let x = center_x + dx;
-            let y = center_y + dy;
+    for dx in -ZOOMED_IMAGE_TEXEL_RADIUS..=ZOOMED_IMAGE_TEXEL_RADIUS {
+        for dy in -ZOOMED_IMAGE_TEXEL_RADIUS..=ZOOMED_IMAGE_TEXEL_RADIUS {
+            let x = image_position[0] + dx;
+            let y = image_position[1] + dy;
             let color = get_pixel(dynamic_img, [x, y]);
             if let Some(color) = color {
                 let image::Rgba([r, g, b, a]) = color;
                 let color = egui::Color32::from_rgba_unmultiplied(r, g, b, a);
 
                 if color != Color32::TRANSPARENT {
-                    let tr = texel_radius as f32;
+                    let tr = ZOOMED_IMAGE_TEXEL_RADIUS as f32;
                     let left = remap(dx as f32, -tr..=(tr + 1.0), zoom_rect.x_range());
                     let right = remap((dx + 1) as f32, -tr..=(tr + 1.0), zoom_rect.x_range());
                     let top = remap(dy as f32, -tr..=(tr + 1.0), zoom_rect.y_range());
@@ -159,9 +172,9 @@ pub fn show_zoomed_image_region(
         painter.rect_stroke(center_texel_rect, 0.0, (1.0, Color32::WHITE));
     }
 
-    if let Some(color) = get_pixel(dynamic_img, [center_x, center_y]) {
+    if let Some(color) = get_pixel(dynamic_img, image_position) {
         tooltip_ui.separator();
-        let (x, y) = (center_x as _, center_y as _);
+        let (x, y) = (image_position[0] as _, image_position[1] as _);
 
         tooltip_ui.vertical(|ui| {
             if tensor_view.tensor.num_dim() == 2 {
