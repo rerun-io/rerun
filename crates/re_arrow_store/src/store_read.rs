@@ -69,7 +69,7 @@ impl TimeQuery {
 
 impl DataStore {
     /// Retrieve all the `ComponentName`s that have been written to for a given `EntityPath`
-    pub fn query_components_for_path(
+    pub fn query_components(
         &self,
         timeline_query: &TimelineQuery,
         ent_path: &EntityPath,
@@ -84,13 +84,12 @@ impl DataStore {
             TimeQuery::Range(_) => todo!("implement range queries!"),
         };
 
-        if let Some(index) = self.indices.get(&(timeline_query.timeline, *ent_path_hash)) {
-            let bucket = index.find_bucket(latest_at);
-            let indices = bucket.named_indices();
-            Some(indices.0)
-        } else {
-            None
-        }
+        let index = self
+            .indices
+            .get(&(timeline_query.timeline, *ent_path_hash))?;
+        let bucket = index.find_bucket(latest_at);
+        let indices = bucket.named_indices();
+        Some(indices.0)
     }
 
     /// Queries the datastore for the internal row indices of the specified `components`, as seen

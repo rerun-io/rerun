@@ -67,7 +67,7 @@ fn generic_arrow_ui(
         TimeQuery::LatestAt(ctx.rec_cfg.time_ctrl.time_i64()?),
     );
 
-    let components = store.query_components_for_path(&timeline_query, &instance_id.obj_path);
+    let components = store.query_components(&timeline_query, &instance_id.obj_path);
 
     if let Some(components) = components {
         egui::Grid::new("entity_instance")

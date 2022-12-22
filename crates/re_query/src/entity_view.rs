@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use arrow2::array::{Array, MutableArray, PrimitiveArray};
+use re_arrow_store::ArrayExt;
 use re_log_types::{
     external::arrow2_convert::{
         deserialize::{arrow_array_deserialize_iterator, ArrowArray, ArrowDeserialize},
@@ -74,24 +75,24 @@ impl ComponentWithInstances {
         let offset = if let Some(keys) = &self.instance_keys {
             // If `instance_keys` is set, extract the `PrimitiveArray`, and find
             // the index of the value by `binary_search`
-            keys.as_any()
-                .downcast_ref::<PrimitiveArray<u64>>()
-                .and_then(|primitives| primitives.values().binary_search(&instance.0).ok())
+
+            // The store should guarantee this for us but assert to be sure
+            debug_assert!(keys.is_sorted_and_unique().unwrap_or(false));
+
+            let keys = keys
+                .as_any()
+                .downcast_ref::<PrimitiveArray<u64>>()?
+                .values();
+
+            keys.binary_search(&instance.0).ok()?
         } else {
             // If `instance_keys` is not set, then offset is the instance because the implicit
             // index is a sequential list
-            Some(instance.0 as usize)
+            let offset = instance.0 as usize;
+            (offset < self.values.len()).then_some(offset)?
         };
 
-        if let Some(offset) = offset {
-            if offset < self.values.len() {
-                Some(self.values.slice(offset, 1))
-            } else {
-                None
-            }
-        } else {
-            None
-        }
+        Some(self.values.slice(offset, 1))
     }
 
     /// Produce a `ComponentWithInstances` from native component types
