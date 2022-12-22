@@ -8,7 +8,10 @@ publish = false
 
 [features]
 default = []
+## Enables `parking_lot`'s deadlock detection background thread.
 deadlock_detection = ["parking_lot/deadlock_detection"]
+## Integration with `polars`, to efficiently use the datastore with dataframes.
+polars = ["dep:polars-core"]
 
 [dependencies]
 # Rerun
@@ -25,19 +28,27 @@ arrow2 = { workspace = true, features = [
 chrono = "0.4"
 document-features = "0.2"
 indent = "0.1"
+itertools = "0.10"
 nohash-hasher = "0.2"
 parking_lot = "0.12"
 static_assertions = "1.1"
 thiserror.workspace = true
 
+# Optional
+polars-core = { workspace = true, optional = true, features = [
+  "dtype-date",
+  "dtype-time",
+  "dtype-struct",
+] }
+
 [dev-dependencies]
 criterion = "0.4"
-itertools = "0.10"
 mimalloc = "0.1"
 polars-core = { workspace = true, features = [
   "dtype-date",
   "dtype-time",
   "dtype-struct",
+  "fmt",
 ] }
 tracing-subscriber = "0.3"
 

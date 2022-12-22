@@ -10,7 +10,9 @@ pub mod dataframe_util;
 
 pub use self::entity_view::{ComponentWithInstances, EntityView};
 pub use self::query::{get_component_with_instances, query_entity_with_primary};
+
 // Used for doc-tests
+#[doc(hidden)]
 pub use self::query::__populate_example_store;
 
 #[derive(thiserror::Error, Debug)]
