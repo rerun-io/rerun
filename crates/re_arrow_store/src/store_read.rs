@@ -694,10 +694,14 @@ impl IndexBucket {
             return itertools::Either::Right(std::iter::empty());
         };
 
-        let times = times.clone(); // TODO: gotta arc it
-        let indices = indices.clone(); // TODO: what's the shallowness like in there
+        // TODO(cmc): Cloning these is obviously not great and needs to be needs to be addressed
+        // at some point.
+        // But really it's not _that_ bad either, these are integers and e.g. with the default
+        // configuration they are only 1024 of them (times the number of components).
+        let times = times.clone();
+        let indices = indices.clone();
 
-        // We have found the index of first row that contains data for the primary component.
+        // We have found the index of the first row that contains data for the primary component.
         //
         // Now we need to iterate through every remaining rows in the bucket and yield any that
         // contains data for the primary component and is still within the time range.
@@ -719,21 +723,23 @@ impl IndexBucket {
                 for (i, component) in components.iter().enumerate() {
                     if let Some(index) = indices.get(component) {
                         if let Some(row_idx) = index[secondary_idx] {
-                            trace!(
-                                kind = "range",
-                                bucket_time_range =
-                                    self.timeline.typ().format_range(bucket_time_range),
-                                %primary,
-                                %component,
-                                timeline = %self.timeline.name(),
-                                time_range = self.timeline.typ().format_range(time_range),
-                                %secondary_idx, %row_idx,
-                                "found row index",
-                            );
                             row_indices[i] = Some(row_idx);
                         }
                     }
                 }
+
+                trace!(
+                    kind = "range",
+                    bucket_time_range =
+                        self.timeline.typ().format_range(bucket_time_range),
+                    %primary,
+                    ?components,
+                    timeline = %self.timeline.name(),
+                    time_range = self.timeline.typ().format_range(time_range),
+                    %secondary_idx,
+                    ?row_indices,
+                    "yielding row indices",
+                );
 
                 Some((time.into(), row_indices))
             });
