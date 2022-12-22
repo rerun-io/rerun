@@ -447,6 +447,51 @@ pub fn range_components<'a, const N: usize>(
         })
 }
 
+pub fn real_join_components<'a, const N: usize>(
+    store: &'a DataStore,
+    query: &'a RangeQuery,
+    ent_path: &'a EntityPath,
+    primary: ComponentName,
+    components: [ComponentName; N],
+    join_type: &'a JoinType,
+) -> impl Iterator<Item = anyhow::Result<(TimeInt, DataFrame)>> + 'a {
+    let cluster_key = store.cluster_key();
+
+    assert!(
+        components.contains(&cluster_key),
+        "`components` must contain the cluster key, got {components:?}, \
+            which is missing {cluster_key:?}",
+    );
+
+    store
+        .range(query, ent_path, primary, components)
+        .map(move |(time, row_indices)| {
+            let df = {
+                let results = store.get(&components, &row_indices);
+                dataframe_from_results(&components, results)
+            };
+
+            // Do an actual latest-at query for the missing secondary components!
+            let missing = components
+                .iter()
+                .enumerate()
+                .filter_map(|(i, component)| row_indices[i].is_none().then_some(*component))
+                .collect::<Vec<_>>();
+            let df_missing = latest_components(
+                store,
+                &LatestAtQuery::new(query.timeline, time),
+                ent_path,
+                &missing,
+                join_type,
+            );
+
+            Ok((
+                time,
+                join_dataframes(cluster_key, join_type, [df, df_missing].into_iter())?,
+            ))
+        })
+}
+
 // --- Joins ---
 
 pub fn dataframe_from_results<const N: usize>(

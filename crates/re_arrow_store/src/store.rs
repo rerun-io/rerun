@@ -27,7 +27,7 @@ static_assertions::assert_eq_size!(u64, Option<RowIndex>);
 /// An opaque type that directly refers to a row of data within the datastore, iff it is associated
 /// with a component name.
 ///
-/// See [`DataStore::query`] & [`DataStore::get`].
+/// See [`DataStore::latest_at`], [`DataStore::range`] & [`DataStore::get`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct RowIndex(pub(crate) NonZeroU64);
 

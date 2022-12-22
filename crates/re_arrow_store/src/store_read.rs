@@ -350,9 +350,7 @@ impl DataStore {
     /// appropriate index, or `None` otherwise.
     ///
     /// `row_indices` takes a list of options so that one can easily re-use the results obtained
-    /// from [`Self::query`].
-    ///
-    /// See [`Self::query`] for more information.
+    /// from [`Self::latest_at`] & [`Self::range`].
     pub fn get<const N: usize>(
         &self,
         components: &[ComponentName; N],
