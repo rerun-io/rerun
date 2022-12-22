@@ -238,11 +238,11 @@ impl DataStore {
     ///
     /// ⚠ The semantics of iteration are a bit tricky!
     ///
-    /// * Contrary to latest-at queries, range queries can and will yield multiple rows for a
-    ///   single timestamp if that timestamp happens to hold multiple entries for the `primary`
-    ///   component.
-    ///   At the opposite end, they won't yield any row that don't contain an actual value for the
-    ///   `primary` component, _even if they do contain a value for one the secondaries_!
+    /// Contrary to latest-at queries, range queries can and will yield multiple rows for a
+    /// single timestamp if that timestamp happens to hold multiple entries for the `primary`
+    /// component.
+    /// Inversely, they won't yield any rows that don't contain an actual value for the `primary`
+    /// component, _even if said rows do contain a value for one the secondaries_!
     ///
     /// ## Example
     ///
@@ -287,7 +287,7 @@ impl DataStore {
     ///
     /// For more information about working with dataframes, see the `polars` feature.
     //
-    // TODO(cmc): add a short "store-contains-this/latest-at-returns-that" once we have support for
+    // TODO(cmc): add a short "store-contains-this/range-returns-that" once we have support for
     // DataStore::dump_as_df().
     //
     // TODO(cmc): at one point we're gonna need a high-level documentation/user-guide of the
@@ -484,7 +484,7 @@ impl IndexTable {
     /// Returns an iterator that is guaranteed to yield at least one bucket, which is the bucket
     /// whose time range covers the start bound of the given `time_range`.
     ///
-    /// It then continues yielding buckets until it runs out, in decreasing time range order.
+    /// It then continues yielding buckets until it runs out, in increasing time range order.
     pub fn range_buckets(
         &self,
         time_range: impl RangeBounds<TimeInt>,
@@ -664,6 +664,7 @@ impl IndexBucket {
 
         let bucket_time_range = *bucket_time_range;
 
+        // We need to walk forwards until we find a non-null row for the primary component.
         let secondary_idx = 'search: {
             // Early-exit if this bucket is unaware of this component.
             let Some(index) = indices.get(&primary) else { break 'search None };
@@ -678,7 +679,7 @@ impl IndexBucket {
                 "searching for primary & secondary row indices..."
             );
 
-            // find the primary index's row.
+            // find the primary index's row for the primary component
             let primary_idx = times.partition_point(|t| *t < time_range.min.as_i64()) as i64;
 
             trace!(
@@ -692,7 +693,7 @@ impl IndexBucket {
                 "found primary index",
             );
 
-            // find the secondary indices' rows, and the associated row indices.
+            // find the secondary index's row for the primary component
             let mut secondary_idx = primary_idx;
             while index[secondary_idx as usize].is_none() {
                 secondary_idx += 1;
@@ -723,7 +724,7 @@ impl IndexBucket {
             );
             debug_assert!(index[secondary_idx as usize].is_some());
 
-            // did we go so far back that we're not within the time range anymore?
+            // did we go so far forwards that we're not within the time range anymore?
             let secondary_time = times[secondary_idx as usize];
             time_range
                 .contains(secondary_time.into())
@@ -731,15 +732,14 @@ impl IndexBucket {
         };
 
         // The bucket does contain data for the primary component, and does contain data for the
-        // time range we're interested, but not both at the same time!
+        // time range we're interested in, but not both at the same time!
         let Some(secondary_idx) = secondary_idx else {
             return itertools::Either::Right(std::iter::empty());
         };
 
-        // TODO(cmc): Cloning these is obviously not great and needs to be needs to be addressed
-        // at some point.
-        // But really it's not _that_ bad either, these are integers and e.g. with the default
-        // configuration they are only 1024 of them (times the number of components).
+        // TODO(cmc): Cloning these is obviously not great will need to be addressed at some point.
+        // But really it's not _that_ bad either: these are integers and e.g. with the default
+        // configuration there are are only 1024 of them (times the number of components).
         let times = times.clone();
         let indices = indices.clone();
 

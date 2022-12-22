@@ -218,16 +218,14 @@ fn range_impl(store: &mut DataStore) {
         TimeRange::new(frame1, frame1),
         Rect2D::name(),
         &[
-            // nothing at frame 0
-            (frame1, &[(Rect2D::name(), &bundle1)]),
+            (frame1, &[(Rect2D::name(), &bundle1)]), //
         ],
     );
     assert_range_components(
         TimeRange::new(frame2, frame2),
         Rect2D::name(),
         &[
-            (frame1, &[(Rect2D::name(), &bundle1)]),
-            // nothing in frame 3 from Rect2D's PoV
+            (frame1, &[(Rect2D::name(), &bundle1)]), //
         ],
     );
     assert_range_components(
@@ -237,8 +235,7 @@ fn range_impl(store: &mut DataStore) {
             (
                 frame2,
                 &[(Rect2D::name(), &bundle1), (Point2D::name(), &bundle2)],
-            ),
-            // nothing in frame 3 from Rect2D's PoV
+            ), //
         ],
     );
     assert_range_components(
@@ -274,8 +271,7 @@ fn range_impl(store: &mut DataStore) {
             (
                 frame4,
                 &[(Rect2D::name(), &bundle4_3), (Point2D::name(), &bundle4_4)],
-            ),
-            // nothing in frame 5 from Rect2D's PoV
+            ), //
         ],
     );
 
@@ -285,10 +281,12 @@ fn range_impl(store: &mut DataStore) {
     assert_range_components(
         TimeRange::new(frame2, frame2),
         Point2D::name(),
-        &[(
-            frame2,
-            &[(Point2D::name(), &bundle2), (Rect2D::name(), &bundle1)],
-        )],
+        &[
+            (
+                frame2,
+                &[(Point2D::name(), &bundle2), (Rect2D::name(), &bundle1)],
+            ), //
+        ],
     );
     assert_range_components(
         TimeRange::new(frame3, frame3),
