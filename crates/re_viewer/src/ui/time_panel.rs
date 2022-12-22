@@ -1784,7 +1784,9 @@ fn paint_time_range_ticks(
                         re_log_types::Duration::from_nanos(ns).to_string()
                     }
                 } else {
-                    // show relative to the last whole second:
+                    // We are in the sub-second resolution.
+                    // Showing the full time (HH:MM:SS.XXX or 3h 2m 6s …) becomes too long,
+                    // so instead we switch to showing the time as milliseconds since the last whole second:
                     let ms = relative_ns as f64 * 1e-6;
                     if relative_ns % 1_000_000 == 0 {
                         format!("{:+.0} ms", ms)
