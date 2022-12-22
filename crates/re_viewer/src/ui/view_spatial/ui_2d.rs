@@ -321,16 +321,22 @@ fn view_2d_scrollable(
         let hover_radius = space_from_ui.scale().y * 5.0; // TODO(emilk): from egui?
         let mut closest_dist = hover_radius;
 
-        if let Some((instance, position)) = scene.primitives.picking(
-            pointer_pos_space_glam,
-            &scene_rect_accum,
-            &Eye {
-                world_from_view: IsoTransform::IDENTITY,
-                fov_y: None,
-            },
-        ) {
-            closest_instance_id_hash = instance;
-            closest_dist = pointer_pos_space_glam.extend(position.z).distance(position);
+        if let Some((instance, position)) = scene
+            .primitives
+            .picking(
+                pointer_pos_space_glam,
+                &scene_rect_accum,
+                &Eye {
+                    world_from_view: IsoTransform::IDENTITY,
+                    fov_y: None,
+                },
+            )
+            .first()
+        {
+            closest_instance_id_hash = *instance;
+            closest_dist = pointer_pos_space_glam
+                .extend(position.z)
+                .distance(*position);
         }
 
         let mut check_hovering = |instance_hash, dist: f32| {

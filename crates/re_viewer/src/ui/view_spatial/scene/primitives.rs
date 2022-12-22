@@ -98,7 +98,7 @@ impl SceneSpatialPrimitives {
         pointer_in_ui: glam::Vec2,
         rect: &egui::Rect,
         eye: &Eye,
-    ) -> Option<(InstanceIdHash, glam::Vec3)> {
+    ) -> Vec<(InstanceIdHash, glam::Vec3)> {
         crate::profile_function!();
 
         let ui_from_world = eye.ui_from_world(rect);
@@ -219,9 +219,9 @@ impl SceneSpatialPrimitives {
                 pointer_in_ui.y,
                 closest_z,
             ));
-            Some((closest_instance_id, closest_point))
+            vec![(closest_instance_id, closest_point)]
         } else {
-            None
+            Vec::new()
         }
     }
 }

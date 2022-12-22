@@ -389,6 +389,8 @@ pub fn view_3d(
         scene
             .primitives
             .picking(glam::vec2(pointer_pos.x, pointer_pos.y), &rect, &eye)
+            .first()
+            .cloned()
     });
 
     *hovered_instance = None;
