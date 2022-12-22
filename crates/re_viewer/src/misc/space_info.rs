@@ -20,6 +20,7 @@ pub struct SpaceInfo {
     pub descendants_without_transform: IntSet<ObjPath>,
 
     /// Nearest ancestor to whom we are not connected via an identity transform.
+    /// The transform is from parent to child, i.e. the *same* as in its child_spaces array.
     parent: Option<(ObjPath, Transform)>,
 
     /// Nearest descendants to whom we are not connected with an identity transform.
@@ -34,6 +35,43 @@ impl SpaceInfo {
             descendants_without_transform: Default::default(),
             parent: Default::default(),
             child_spaces: Default::default(),
+        }
+    }
+
+    /// Invokes visitor for `self` and all descendents recursively.
+    pub fn visit_descendants(
+        &self,
+        spaces_info: &SpacesInfo,
+        visitor: &mut impl FnMut(&SpaceInfo),
+    ) {
+        visitor(self);
+        for child_path in self.child_spaces.keys() {
+            if let Some(child_space) = spaces_info.get(child_path) {
+                child_space.visit_descendants(spaces_info, visitor);
+            }
+        }
+    }
+
+    /// Invokes visitor for `self` and all connected nodes that are not descendants.
+    /// (i.e. all parents and their children in turn, except the children of `self`)
+    pub fn visit_non_descendants(
+        &self,
+        spaces_info: &SpacesInfo,
+        visitor: &mut impl FnMut(&SpaceInfo),
+    ) {
+        visitor(self);
+
+        if let Some((parent_space, _)) = &self.parent(spaces_info) {
+            for sibling_path in parent_space.child_spaces.keys() {
+                if *sibling_path == self.path {
+                    continue;
+                }
+                if let Some(child_space) = spaces_info.get(sibling_path) {
+                    child_space.visit_descendants(spaces_info, visitor);
+                }
+
+                parent_space.visit_non_descendants(spaces_info, visitor);
+            }
         }
     }
 

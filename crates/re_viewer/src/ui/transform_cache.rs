@@ -40,7 +40,6 @@ impl TransformCache {
     ///
     /// Implementation note: We could do this also without `SpacesInfo`, but we assume that
     /// we already did the work to build up that datastructure, making the process here easier.
-    #[allow(clippy::match_same_arms)]
     pub fn determine_transforms(
         spaces_info: &SpacesInfo,
         reference_space: &SpaceInfo,
@@ -73,21 +72,27 @@ impl TransformCache {
                 }
                 // If we're connected via 'unknown' it's not reachable
                 re_log_types::Transform::Unknown => {
-                    transforms.mark_non_descendants(
-                        spaces_info,
-                        parent_space,
-                        UnreachableTransformReason::UnknownTransform,
-                    );
+                    parent_space.visit_non_descendants(spaces_info, &mut |space| {
+                        transforms.register_transform_for(
+                            space,
+                            &ReferenceFromObjTransform::Unreachable(
+                                UnreachableTransformReason::UnknownTransform,
+                            ),
+                        );
+                    });
                     break;
                 }
 
                 re_log_types::Transform::Pinhole(pinhole) => {
                     if encountered_pinhole {
-                        transforms.mark_non_descendants(
-                            spaces_info,
-                            parent_space,
-                            UnreachableTransformReason::NestedPinholeCameras,
-                        );
+                        parent_space.visit_non_descendants(spaces_info, &mut |space| {
+                            transforms.register_transform_for(
+                                space,
+                                &ReferenceFromObjTransform::Unreachable(
+                                    UnreachableTransformReason::NestedPinholeCameras,
+                                ),
+                            );
+                        });
                         break;
                     }
                     encountered_pinhole = true;
@@ -133,43 +138,6 @@ impl TransformCache {
         );
     }
 
-    fn mark_non_descendants(
-        &mut self,
-        spaces_info: &SpacesInfo,
-        space: &SpaceInfo,
-        reason: UnreachableTransformReason,
-    ) {
-        self.register_transform_for(space, &ReferenceFromObjTransform::Unreachable(reason));
-
-        if let Some((parent_space, _)) = &space.parent(spaces_info) {
-            for sibling_path in parent_space.child_spaces.keys() {
-                if *sibling_path == space.path {
-                    continue;
-                }
-                if let Some(child_space) = spaces_info.get(sibling_path) {
-                    self.mark_self_and_descendants_unreachable(spaces_info, child_space, reason);
-                }
-
-                self.mark_non_descendants(spaces_info, parent_space, reason);
-            }
-        }
-    }
-
-    fn mark_self_and_descendants_unreachable(
-        &mut self,
-        spaces_info: &SpacesInfo,
-        space: &SpaceInfo,
-        reason: UnreachableTransformReason,
-    ) {
-        self.register_transform_for(space, &ReferenceFromObjTransform::Unreachable(reason));
-
-        for child_path in space.child_spaces.keys() {
-            if let Some(child_space) = spaces_info.get(child_path) {
-                self.mark_self_and_descendants_unreachable(spaces_info, child_space, reason);
-            }
-        }
-    }
-
     fn gather_descendents_transforms(
         &mut self,
         spaces_info: &SpacesInfo,
@@ -199,21 +167,27 @@ impl TransformCache {
                     }
                     // If we're connected via 'unknown' it's not reachable
                     re_log_types::Transform::Unknown => {
-                        self.mark_self_and_descendants_unreachable(
-                            spaces_info,
-                            child_space,
-                            UnreachableTransformReason::UnknownTransform,
-                        );
+                        child_space.visit_descendants(spaces_info, &mut |space| {
+                            self.register_transform_for(
+                                space,
+                                &ReferenceFromObjTransform::Unreachable(
+                                    UnreachableTransformReason::UnknownTransform,
+                                ),
+                            );
+                        });
                         continue;
                     }
 
                     re_log_types::Transform::Pinhole(pinhole) => {
                         if encountered_pinhole {
-                            self.mark_self_and_descendants_unreachable(
-                                spaces_info,
-                                child_space,
-                                UnreachableTransformReason::NestedPinholeCameras,
-                            );
+                            child_space.visit_descendants(spaces_info, &mut |space| {
+                                self.register_transform_for(
+                                    space,
+                                    &ReferenceFromObjTransform::Unreachable(
+                                        UnreachableTransformReason::NestedPinholeCameras,
+                                    ),
+                                );
+                            });
                             continue;
                         }
                         encountered_pinhole = true;
