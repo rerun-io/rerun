@@ -1765,8 +1765,10 @@ fn paint_time_range_ticks(
                     spacing_ns * 10 // to ten minutes
                 } else if spacing_ns == 600_000_000_000 {
                     spacing_ns * 6 // to an hour
-                } else if spacing_ns < 24 * 60 * 60 * 1_000_000_000 {
-                    spacing_ns * 24 // to a day
+                } else if spacing_ns == 60 * 60 * 1_000_000_000 {
+                    spacing_ns * 12 // to 12 h
+                } else if spacing_ns == 12 * 60 * 60 * 1_000_000_000 {
+                    spacing_ns * 2 // to a day
                 } else {
                     spacing_ns.checked_mul(10).unwrap_or(spacing_ns) // multiple of ten days
                 }
@@ -1871,7 +1873,7 @@ fn paint_ticks(
     let expected_text_width = 60.0;
 
     let line_strength_from_spacing = |spacing_time: i64| -> f32 {
-        let next_tick_magnitude = next_time_step(spacing_time) / spacing_time; // usually 10, but could be 6 or 24 for time
+        let next_tick_magnitude = next_time_step(spacing_time) / spacing_time;
         remap_clamp(
             spacing_time as f32 * points_per_time,
             minimum_small_line_spacing..=(next_tick_magnitude as f32 * minimum_small_line_spacing),
@@ -1939,7 +1941,6 @@ fn paint_ticks(
                 let text = format_tick(current_time);
                 let text_x = line_x + 4.0;
 
-                // Text at top:
                 shapes.push(egui::Shape::text(
                     fonts,
                     pos2(text_x, lerp(canvas.y_range(), 0.5)),
