@@ -35,7 +35,7 @@ impl ScenePart for LineSegments2DPart {
         {
             let annotations = scene.annotation_map.find(obj_path);
             let properties = objects_properties.get(obj_path);
-            let ReferenceFromObjTransform::Rigid(world_from_obj) = transforms.reference_from_obj(obj_path) else {
+            let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(obj_path) else {
                 continue;
             };
 

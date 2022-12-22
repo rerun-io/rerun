@@ -40,7 +40,7 @@ impl ScenePart for Lines3DPart {
             let annotations = scene.annotation_map.find(obj_path);
             let default_color = DefaultColor::ObjPath(obj_path);
             let properties = objects_properties.get(obj_path);
-            let ReferenceFromObjTransform::Rigid(world_from_obj) = transforms.reference_from_obj(obj_path) else {
+            let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(obj_path) else {
                 continue;
             };
 

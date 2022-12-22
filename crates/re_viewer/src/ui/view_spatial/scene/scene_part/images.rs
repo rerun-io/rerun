@@ -1,4 +1,6 @@
 use egui::NumExt;
+use glam::Vec3;
+use itertools::Itertools;
 use re_data_store::{query::visit_type_data_2, FieldName, InstanceIdHash, ObjectsProperties};
 use re_log_types::{IndexHash, MsgId, ObjectType};
 use re_renderer::Size;
@@ -35,7 +37,7 @@ impl ScenePart for ImagesPart {
             query.iter_object_stores(ctx.log_db, &[ObjectType::Image])
         {
             let properties = objects_properties.get(obj_path);
-            let ReferenceFromObjTransform::Rigid(world_from_obj) = transforms.reference_from_obj(obj_path) else {
+            let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(obj_path) else {
                 continue;
             };
 
@@ -102,7 +104,6 @@ impl ScenePart for ImagesPart {
                     annotations,
                 });
             };
-
             visit_type_data_2(
                 obj_store,
                 &FieldName::from("tensor"),
@@ -112,22 +113,57 @@ impl ScenePart for ImagesPart {
             );
         }
 
-        let total_num_images = scene.primitives.textured_rectangles.len();
-        for (image_idx, img) in scene.primitives.textured_rectangles.iter_mut().enumerate() {
-            img.top_left_corner_position = glam::vec3(
-                0.0,
-                0.0,
-                // We use RDF (X=Right, Y=Down, Z=Forward) for 2D spaces, so we want lower Z in order to put images on top
-                (total_num_images - image_idx - 1) as f32 * 0.1,
-            );
+        // Handle layered rectangles that are on (roughly) the same plane and were logged in sequence.
+        // First, group by similar plane.
+        let rects_grouped_by_plane = {
+            let mut cur_plane = macaw::Plane3::from_normal_dist(Vec3::NAN, std::f32::NAN);
+            let mut rectangle_group = Vec::new();
+            scene
+                .primitives
+                .textured_rectangles
+                .iter_mut()
+                .batching(move |it| {
+                    for rect in it.by_ref() {
+                        let prev_plane = cur_plane;
+                        cur_plane = macaw::Plane3::from_normal_point(
+                            rect.extent_u.cross(rect.extent_v),
+                            rect.top_left_corner_position,
+                        )
+                        .normalized();
 
-            let opacity = if image_idx == 0 {
-                1.0 // bottom image
-            } else {
+                        // Are the image planes too unsimilar? Then this is a new group.
+                        if !rectangle_group.is_empty()
+                            && prev_plane.normal.dot(cur_plane.normal) < 0.99
+                            && (prev_plane.d - cur_plane.d) < 0.01
+                        {
+                            let previous_group =
+                                std::mem::replace(&mut rectangle_group, vec![rect]);
+                            return Some((cur_plane, previous_group));
+                        }
+                        rectangle_group.push(rect);
+                    }
+                    if !rectangle_group.is_empty() {
+                        Some((cur_plane, rectangle_group.drain(..).collect()))
+                    } else {
+                        None
+                    }
+                })
+        };
+        // Then, change opacity & transformation for planes within group except the base plane.
+        for (plane, mut grouped_rects) in rects_grouped_by_plane {
+            let total_num_images = grouped_rects.len();
+            for (idx, rect) in grouped_rects.iter_mut().enumerate() {
+                // Move a bit to avoid z fighting.
+                rect.top_left_corner_position +=
+                    plane.normal * (total_num_images - idx - 1) as f32 * 0.1;
                 // make top images transparent
-                1.0 / total_num_images.at_most(20) as f32 // avoid precision problems in framebuffer
-            };
-            img.multiplicative_tint = img.multiplicative_tint.multiply(opacity);
+                let opacity = if idx == 0 {
+                    1.0
+                } else {
+                    1.0 / total_num_images.at_most(20) as f32
+                }; // avoid precision problems in framebuffer
+                rect.multiplicative_tint = rect.multiplicative_tint.multiply(opacity);
+            }
         }
     }
 }
