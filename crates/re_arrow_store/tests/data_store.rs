@@ -74,6 +74,7 @@ fn latest_at_impl(store: &mut DataStore) {
                 &LatestAtQuery::new(timeline_frame_nr, frame_nr),
                 &ent_path,
                 components_all,
+                &JoinType::Outer,
             )
             .unwrap();
 
@@ -177,8 +178,14 @@ fn range_impl(store: &mut DataStore) {
             store.sort_indices(); // for assertions below
 
             let query = RangeQuery::new(timeline_frame_nr, time_range);
-            let dfs =
-                polars_util::range_components(store, &query, &ent_path, primary, components_all);
+            let dfs = polars_util::range_components(
+                store,
+                &query,
+                &ent_path,
+                primary,
+                components_all,
+                &JoinType::Outer,
+            );
 
             let mut dfs_processed = 0usize;
             let mut time_counters: IntMap<i64, usize> = Default::default();

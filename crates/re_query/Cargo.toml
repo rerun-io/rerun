@@ -7,7 +7,7 @@ license.workspace = true
 publish = false
 
 [features]
-default = []
+default = ["polars"] # TODO: remove
 polars = ["polars-core"]
 
 [dependencies]

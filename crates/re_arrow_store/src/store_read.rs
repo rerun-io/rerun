@@ -315,12 +315,12 @@ impl IndexTable {
     }
 
     // TODO
-    pub fn range<'a, const N: usize>(
-        &'a self,
+    pub fn range<const N: usize>(
+        &self,
         time_range: TimeRange,
         primary: ComponentName,
         components: [ComponentName; N],
-    ) -> impl Iterator<Item = (TimeInt, [Option<RowIndex>; N])> + 'a {
+    ) -> impl Iterator<Item = (TimeInt, [Option<RowIndex>; N])> + '_ {
         let timeline = self.timeline;
 
         // TODO: explain lack of min clause

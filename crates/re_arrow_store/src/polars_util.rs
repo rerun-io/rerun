@@ -81,7 +81,7 @@ pub fn latest_component(
 }
 
 /// Queries any number of components and their cluster keys from their respective point-of-views,
-/// then outer-joins all of them in one final `DataFrame`.
+/// then joins all of them in one final `DataFrame` using the specified `join_type`.
 ///
 /// As the cluster key is guaranteed to always be present, the returned dataframe can be joined
 /// with any number of other dataframes returned by this function [`latest_component`] and
@@ -89,6 +89,7 @@ pub fn latest_component(
 ///
 /// Usage:
 /// ```
+/// # use polars_core::prelude::*;
 /// # use re_arrow_store::{test_bundle, DataStore, LatestAtQuery, TimeType, Timeline};
 /// # use re_arrow_store::polars_util::latest_components;
 /// # use re_log_types::{
@@ -114,6 +115,7 @@ pub fn latest_component(
 ///     &LatestAtQuery::new(timeline_frame_nr, 10.into()),
 ///     &ent_path,
 ///     &[Point2D::name(), Rect2D::name()],
+///     &JoinType::Outer,
 /// )
 /// .unwrap();
 ///
@@ -143,6 +145,7 @@ pub fn latest_components(
     query: &LatestAtQuery,
     ent_path: &EntityPath,
     primaries: &[ComponentName],
+    join_type: &JoinType,
 ) -> anyhow::Result<DataFrame> {
     let cluster_key = store.cluster_key();
 
@@ -153,8 +156,14 @@ pub fn latest_components(
 
     let df = dfs
         .reduce(|acc, df| {
-            acc?.outer_join(&df?, [cluster_key.as_str()], [cluster_key.as_str()])
-                .map_err(Into::into)
+            acc?.join(
+                &df?,
+                [cluster_key.as_str()],
+                [cluster_key.as_str()],
+                join_type.clone(),
+                None,
+            )
+            .map_err(Into::into)
         })
         .unwrap_or_else(|| Ok(DataFrame::default()))?;
 
@@ -195,6 +204,7 @@ pub fn range_components<'a, const N: usize>(
     ent_path: &'a EntityPath,
     primary: ComponentName,
     components: [ComponentName; N],
+    join_type: &'a JoinType,
 ) -> impl Iterator<Item = anyhow::Result<(TimeInt, DataFrame)>> + 'a {
     let cluster_key = store.cluster_key();
 
@@ -228,28 +238,36 @@ pub fn range_components<'a, const N: usize>(
                 &LatestAtQuery::new(query.timeline, time),
                 ent_path,
                 &missing,
+                join_type,
             )
             .unwrap();
 
             Ok((
                 time,
-                outer_join_dataframes(cluster_key, [df, df_missing].into_iter())?,
+                join_dataframes(cluster_key, join_type, [df, df_missing].into_iter())?,
             ))
         })
 }
 
-// --- Helpers ---
+// --- Joins ---
 
-fn outer_join_dataframes(
+pub fn join_dataframes(
     cluster_key: ComponentName,
+    join_type: &JoinType,
     dfs: impl Iterator<Item = DataFrame>,
 ) -> anyhow::Result<DataFrame> {
     let df = dfs
         .filter(|df| !df.is_empty())
         .map(Ok::<_, anyhow::Error>)
         .reduce(|acc, df| {
-            acc?.outer_join(&df?, [cluster_key.as_str()], [cluster_key.as_str()])
-                .map_err(Into::into)
+            acc?.join(
+                &df?,
+                [cluster_key.as_str()],
+                [cluster_key.as_str()],
+                join_type.clone(),
+                None,
+            )
+            .map_err(Into::into)
         })
         .unwrap_or_else(|| Ok(DataFrame::default()))?;
 
