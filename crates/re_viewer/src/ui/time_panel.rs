@@ -1782,7 +1782,7 @@ fn paint_time_range_ticks(
                         re_log_types::Duration::from_nanos(ns).to_string()
                     }
                 } else {
-                    // show relative to whole second:
+                    // show relative to the last whole second:
                     let ms = relative_ns as f64 * 1e-6;
                     if relative_ns % 1_000_000 == 0 {
                         format!("{:+.0} ms", ms)
@@ -1790,8 +1790,14 @@ fn paint_time_range_ticks(
                         format!("{:+.1} ms", ms)
                     } else if relative_ns % 10_000 == 0 {
                         format!("{:+.2} ms", ms)
-                    } else {
+                    } else if relative_ns % 1_000 == 0 {
                         format!("{:+.3} ms", ms)
+                    } else if relative_ns % 100 == 0 {
+                        format!("{:+.4} ms", ms)
+                    } else if relative_ns % 10 == 0 {
+                        format!("{:+.5} ms", ms)
+                    } else {
+                        format!("{:+.6} ms", ms)
                     }
                 }
             }
@@ -1803,7 +1809,6 @@ fn paint_time_range_ticks(
                 rect,
                 &ui.clip_rect(),
                 time_range, // ns
-                1_000,
                 next_grid_tick_magnitude_ns,
                 grid_text_from_ns,
             )
@@ -1819,7 +1824,6 @@ fn paint_time_range_ticks(
                 rect,
                 &ui.clip_rect(),
                 time_range,
-                1,
                 next_power_of_10,
                 |seq| format!("#{seq}"),
             )
@@ -1835,7 +1839,6 @@ fn paint_ticks(
     canvas: &Rect,
     clip_rect: &Rect,
     time_range: &TimeRangeF,
-    min_grid_spacing_time: i64,
     next_time_step: fn(i64) -> i64,
     format_tick: fn(i64) -> String,
 ) -> Vec<egui::Shape> {
@@ -1886,7 +1889,7 @@ fn paint_ticks(
     };
 
     let max_small_lines = canvas.width() / minimum_small_line_spacing;
-    let mut small_spacing_time = min_grid_spacing_time;
+    let mut small_spacing_time = 1;
     while width_time / (small_spacing_time as f32) > max_small_lines {
         small_spacing_time = next_time_step(small_spacing_time);
     }
