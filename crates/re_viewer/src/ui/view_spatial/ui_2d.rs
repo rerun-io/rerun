@@ -393,9 +393,7 @@ fn view_2d_scrollable(
                         ui.set_max_width(400.0);
 
                         ui.vertical(|ui| {
-                            if let Some(instance_id) =
-                                instance_hash.resolve(&ctx.log_db.obj_db.store)
-                            {
+                            if let Some(instance_id) = instance_hash.resolve(&ctx.log_db.obj_db) {
                                 ui.label(instance_id.to_string());
                                 crate::ui::data_ui::instance_ui(
                                     ctx,
@@ -501,7 +499,7 @@ fn view_2d_scrollable(
 
     // ------------------------------------------------------------------------
 
-    *hovered_instance = closest_instance_id_hash.resolve(&ctx.log_db.obj_db.store);
+    *hovered_instance = closest_instance_id_hash.resolve(&ctx.log_db.obj_db);
 
     response
 }

@@ -1,5 +1,5 @@
 mod common;
-use common::compare_df;
+
 use re_arrow_store::{DataStore, TimeQuery};
 use re_log_types::{
     datagen::build_frame_nr,
@@ -10,10 +10,7 @@ use re_log_types::{
     msg_bundle::Component,
     MsgId,
 };
-use re_query::{
-    dataframe_util::{df_builder2, df_builder3},
-    query_entity_with_primary,
-};
+use re_query::query_entity_with_primary;
 
 #[test]
 fn simple_query() {
@@ -45,7 +42,7 @@ fn simple_query() {
         TimeQuery::LatestAt(timepoint[0].1.as_i64()),
     );
 
-    let df = query_entity_with_primary(
+    let entity_view = query_entity_with_primary(
         &store,
         &timeline_query,
         &ent_path.into(),
@@ -65,19 +62,32 @@ fn simple_query() {
     // │ 1        ┆ {3.0,4.0} ┆ 4278190080 │
     // └──────────┴───────────┴────────────┘
 
-    // Build expected df manually
-    let instances = vec![Some(Instance(0)), Some(Instance(1))];
-    let points = vec![
-        Some(Point2D { x: 1.0, y: 2.0 }),
-        Some(Point2D { x: 3.0, y: 4.0 }),
-    ];
-    let colors = vec![None, Some(ColorRGBA(0xff000000))];
-    let expected = df_builder3(&instances, &points, &colors).unwrap();
+    #[cfg(feature = "polars")]
+    {
+        use re_query::dataframe_util::df_builder3;
 
-    //eprintln!("{:?}", df);
-    //eprintln!("{:?}", expected);
+        // Build expected df manually
+        let instances = vec![Some(Instance(0)), Some(Instance(1))];
+        let points = vec![
+            Some(Point2D { x: 1.0, y: 2.0 }),
+            Some(Point2D { x: 3.0, y: 4.0 }),
+        ];
+        let colors = vec![None, Some(ColorRGBA(0xff000000))];
+        let expected = df_builder3(&instances, &points, &colors).unwrap();
 
-    compare_df(&df, &expected);
+        //eprintln!("{:?}", df);
+        //eprintln!("{:?}", expected);
+
+        common::compare_df(
+            &expected,
+            &entity_view.as_df2::<Point2D, ColorRGBA>().unwrap(),
+        );
+    }
+    #[cfg(not(feature = "polars"))]
+    {
+        //TODO(jleibs): non-polars test validation
+        let _used = entity_view;
+    }
 }
 
 #[test]
@@ -103,7 +113,7 @@ fn no_instance_join_query() {
         TimeQuery::LatestAt(timepoint[0].1.as_i64()),
     );
 
-    let df = query_entity_with_primary(
+    let entity_view = query_entity_with_primary(
         &store,
         &timeline_query,
         &ent_path.into(),
@@ -123,19 +133,32 @@ fn no_instance_join_query() {
     // │ 1        ┆ {3.0,4.0} ┆ 16711680   │
     // └──────────┴───────────┴────────────┘
 
-    // Build expected df manually
-    let instances = vec![Some(Instance(0)), Some(Instance(1))];
-    let points = vec![
-        Some(Point2D { x: 1.0, y: 2.0 }),
-        Some(Point2D { x: 3.0, y: 4.0 }),
-    ];
-    let colors = vec![Some(ColorRGBA(0xff000000)), Some(ColorRGBA(0x00ff0000))];
-    let expected = df_builder3(&instances, &points, &colors).unwrap();
+    #[cfg(feature = "polars")]
+    {
+        use re_query::dataframe_util::df_builder3;
 
-    //eprintln!("{:?}", df);
-    //eprintln!("{:?}", expected);
+        // Build expected df manually
+        let instances = vec![Some(Instance(0)), Some(Instance(1))];
+        let points = vec![
+            Some(Point2D { x: 1.0, y: 2.0 }),
+            Some(Point2D { x: 3.0, y: 4.0 }),
+        ];
+        let colors = vec![Some(ColorRGBA(0xff000000)), Some(ColorRGBA(0x00ff0000))];
+        let expected = df_builder3(&instances, &points, &colors).unwrap();
 
-    compare_df(&df, &expected);
+        //eprintln!("{:?}", df);
+        //eprintln!("{:?}", expected);
+
+        common::compare_df(
+            &expected,
+            &entity_view.as_df2::<Point2D, ColorRGBA>().unwrap(),
+        );
+    }
+    #[cfg(not(feature = "polars"))]
+    {
+        //TODO(jleibs): non-polars test validation
+        let _used = entity_view;
+    }
 }
 
 #[test]
@@ -156,7 +179,7 @@ fn missing_column_join_query() {
         TimeQuery::LatestAt(timepoint[0].1.as_i64()),
     );
 
-    let df = query_entity_with_primary(
+    let entity_view = query_entity_with_primary(
         &store,
         &timeline_query,
         &ent_path.into(),
@@ -176,17 +199,26 @@ fn missing_column_join_query() {
     // ├╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
     // │ 1        ┆ {3.0,4.0} │
     // └──────────┴───────────┘
+    #[cfg(feature = "polars")]
+    {
+        use re_query::dataframe_util::df_builder2;
 
-    // Build expected df manually
-    let instances = vec![Some(Instance(0)), Some(Instance(1))];
-    let points = vec![
-        Some(Point2D { x: 1.0, y: 2.0 }),
-        Some(Point2D { x: 3.0, y: 4.0 }),
-    ];
-    let expected = df_builder2(&instances, &points).unwrap();
+        // Build expected df manually
+        let instances = vec![Some(Instance(0)), Some(Instance(1))];
+        let points = vec![
+            Some(Point2D { x: 1.0, y: 2.0 }),
+            Some(Point2D { x: 3.0, y: 4.0 }),
+        ];
+        let expected = df_builder2(&instances, &points).unwrap();
 
-    eprintln!("{:?}", df);
-    eprintln!("{:?}", expected);
+        //eprintln!("{:?}", df);
+        //eprintln!("{:?}", expected);
 
-    compare_df(&df, &expected);
+        common::compare_df(&expected, &entity_view.as_df1::<Point2D>().unwrap());
+    }
+    #[cfg(not(feature = "polars"))]
+    {
+        //TODO(jleibs): non-polars test validation
+        let _used = entity_view;
+    }
 }

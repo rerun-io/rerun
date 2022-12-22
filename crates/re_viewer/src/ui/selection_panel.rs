@@ -1,4 +1,4 @@
-use re_data_store::{log_db::LogDb, ObjectProps};
+use re_data_store::{log_db::LogDb, query_transform, ObjPath, ObjectProps};
 use re_log_types::{LogMsg, ObjTypePath, TimeType};
 
 use crate::{
@@ -186,7 +186,7 @@ impl SelectionPanel {
                     ui.separator();
 
                     let mut props = space_view.obj_properties.get(&obj_path);
-                    obj_props_ui(ctx, ui, &mut props);
+                    obj_props_ui(ctx, ui, &obj_path, &mut props);
                     space_view.obj_properties.set(obj_path.clone(), props);
 
                     ui.separator();
@@ -208,13 +208,19 @@ fn obj_type_name(log_db: &LogDb, obj_type_path: &ObjTypePath) -> String {
     }
 }
 
-fn obj_props_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, obj_props: &mut ObjectProps) {
+fn obj_props_ui(
+    ctx: &mut ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    obj_path: &ObjPath,
+    obj_props: &mut ObjectProps,
+) {
     use egui::NumExt;
 
     let ObjectProps {
         visible,
         visible_history,
         interactive,
+        ..
     } = obj_props;
 
     ui.checkbox(visible, "Visible");
@@ -247,4 +253,28 @@ fn obj_props_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, obj_props: &mut 
             }
         }
     });
+
+    let timeline = ctx.rec_cfg.time_ctrl.timeline();
+    let query_time = ctx.rec_cfg.time_ctrl.time_i64();
+    let timeline_store = ctx.log_db.obj_db.store.get(timeline);
+    if let Some(re_log_types::Transform::Pinhole(pinhole)) =
+        query_transform(timeline_store, obj_path, query_time)
+    {
+        ui.horizontal(|ui| {
+            ui.label("Image plane distance:");
+            let mut distance = obj_props.pinhole_image_plane_distance(&pinhole);
+            let speed = (distance * 0.05).at_least(0.01);
+            if ui
+                .add(
+                    egui::DragValue::new(&mut distance)
+                        .clamp_range(0.0..=f32::INFINITY)
+                        .speed(speed),
+                )
+                .on_hover_text("Controls how far away the image plane is.")
+                .changed()
+            {
+                obj_props.set_pinhole_image_plane_distance(distance);
+            }
+        });
+    }
 }

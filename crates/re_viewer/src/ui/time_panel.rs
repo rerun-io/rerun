@@ -134,7 +134,7 @@ impl TimePanel {
     fn collapsed_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         ctx.rec_cfg
             .time_ctrl
-            .play_pause_ui(ctx.log_db.times_per_timeline(), ui);
+            .play_pause_ui(ctx.re_ui, ctx.log_db.times_per_timeline(), ui);
 
         ui.separator();
 
@@ -207,16 +207,11 @@ impl TimePanel {
         let time_fg_area_rect =
             Rect::from_x_y_ranges(time_fg_x_range.clone(), full_y_range.clone());
 
-        let loop_selection_rect = {
-            let response = ui.label(" "); // Add some vertical space large enough to fit text for the loop selection row.
-            let y_range = response.rect.y_range();
-            Rect::from_x_y_ranges(time_fg_x_range.clone(), y_range)
-        };
-
         let timeline_rect = {
-            let response = ui.weak("Streams");
-            let y_range = response.rect.y_range();
-            Rect::from_x_y_ranges(time_fg_x_range.clone(), y_range)
+            let top = ui.min_rect().bottom();
+            ui.add_space(32.0);
+            let bottom = ui.min_rect().bottom();
+            Rect::from_x_y_ranges(time_fg_x_range.clone(), top..=bottom)
         };
 
         let time_bg_area_painter = ui.painter().with_clip_rect(time_bg_area_rect);
@@ -228,7 +223,7 @@ impl TimePanel {
             &self.time_ranges_ui,
             ui,
             &time_area_painter,
-            loop_selection_rect.top()..=timeline_rect.bottom(),
+            timeline_rect.top()..=timeline_rect.bottom(),
             ctx.rec_cfg.time_ctrl.time_type(),
         );
         paint_time_ranges_gaps(
@@ -242,7 +237,7 @@ impl TimePanel {
             &mut ctx.rec_cfg.time_ctrl,
             ui,
             &time_bg_area_painter,
-            &loop_selection_rect,
+            &timeline_rect,
         );
         time_marker_ui(
             &self.time_ranges_ui,
@@ -494,7 +489,7 @@ impl TimePanel {
 fn top_row_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
     ctx.rec_cfg
         .time_ctrl
-        .play_pause_ui(ctx.log_db.times_per_timeline(), ui);
+        .play_pause_ui(ctx.re_ui, ctx.log_db.times_per_timeline(), ui);
 
     ui.separator();
 
@@ -512,10 +507,14 @@ fn top_row_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
 
 fn help_button(ui: &mut egui::Ui) {
     crate::misc::help_hover_button(ui).on_hover_text(
-        "Drag main area to pan.\n\
-         Zoom: Ctrl/cmd + scroll, or drag up/down with secondary mouse button.\n\
-         Double-click to reset view.\n\
-         Press spacebar to pause/resume.",
+        "\
+        In the top row you can drag to move the time, or shift-drag to select a loop region.\n\
+        \n\
+        Drag main area to pan.\n\
+        Zoom: Ctrl/cmd + scroll, or drag up/down with secondary mouse button.\n\
+        Double-click to reset view.\n\
+        \n\
+        Press spacebar to play/pause.",
     );
 }
 
@@ -1062,8 +1061,9 @@ fn loop_selection_ui(
                         && !hovering_right
                         && (min_x <= pointer_pos.x && pointer_pos.x <= max_x);
 
-                    let drag_started =
-                        ui.input().pointer.any_pressed() && ui.input().pointer.primary_down();
+                    let drag_started = ui.input().pointer.any_pressed()
+                        && ui.input().pointer.primary_down()
+                        && ui.input().modifiers.is_none();
 
                     if hovering_left {
                         ui.output().cursor_icon = CursorIcon::ResizeWest;
@@ -1095,6 +1095,7 @@ fn loop_selection_ui(
             && is_pointer_in_rect
             && !is_anything_being_dragged
             && ui.input().pointer.primary_down()
+            && ui.input().modifiers.shift_only()
         {
             if let Some(time) = time_ranges_ui.time_from_x(pointer_pos.x) {
                 time_ctrl.set_loop_selection(TimeRangeF::point(time));
@@ -1272,6 +1273,7 @@ pub fn format_duration(time_typ: TimeType, duration: TimeReal) -> String {
     }
 }
 
+/// A vertical line that shows the current time.
 fn time_marker_ui(
     time_ranges_ui: &TimeRangesUi,
     time_ctrl: &mut TimeControl,
@@ -1294,8 +1296,12 @@ fn time_marker_ui(
     let mut is_hovering = false;
     let mut is_dragging = ui.memory().is_being_dragged(time_drag_id);
 
-    if is_pointer_in_timeline_rect {
-        ui.output().cursor_icon = CursorIcon::ResizeHorizontal;
+    let timeline_cursor_icon = CursorIcon::ResizeHorizontal;
+
+    let is_hovering_the_loop_selection = ui.output().cursor_icon != CursorIcon::Default; // A kind of hacky proxy
+
+    if is_pointer_in_timeline_rect && !is_hovering_the_loop_selection {
+        ui.output().cursor_icon = timeline_cursor_icon;
     }
 
     let mut is_anything_being_dragged = ui.memory().is_anything_being_dragged();
@@ -1306,11 +1312,14 @@ fn time_marker_ui(
             if let Some(pointer_pos) = pointer_pos {
                 let line_rect = Rect::from_x_y_ranges(x..=x, timeline_rect.top()..=bottom_y);
 
-                is_hovering = line_rect.distance_to_pos(pointer_pos)
-                    <= ui.style().interaction.resize_grab_radius_side;
+                is_hovering = !is_anything_being_dragged
+                    && !is_hovering_the_loop_selection
+                    && line_rect.distance_to_pos(pointer_pos)
+                        <= ui.style().interaction.resize_grab_radius_side;
 
                 if ui.input().pointer.any_pressed()
                     && ui.input().pointer.primary_down()
+                    && ui.input().modifiers.is_none()
                     && is_hovering
                 {
                     ui.memory().set_dragged_id(time_drag_id);
@@ -1319,8 +1328,8 @@ fn time_marker_ui(
                 }
             }
 
-            if is_dragging || (is_hovering && !is_anything_being_dragged) {
-                ui.output().cursor_icon = CursorIcon::ResizeHorizontal;
+            if is_dragging || is_hovering {
+                ui.output().cursor_icon = timeline_cursor_icon;
             }
 
             let stroke = if is_dragging {
@@ -1336,7 +1345,11 @@ fn time_marker_ui(
 
     // Show preview: "click here to view time here"
     if let Some(pointer_pos) = pointer_pos {
-        if !is_hovering && !is_anything_being_dragged && is_pointer_in_timeline_rect {
+        if !is_hovering
+            && is_pointer_in_timeline_rect
+            && !is_anything_being_dragged
+            && !is_hovering_the_loop_selection
+        {
             time_area_painter.vline(
                 pointer_pos.x,
                 timeline_rect.top()..=ui.max_rect().bottom(),
@@ -1347,7 +1360,8 @@ fn time_marker_ui(
         if is_dragging
             || (ui.input().pointer.primary_down()
                 && is_pointer_in_timeline_rect
-                && !is_anything_being_dragged)
+                && !is_anything_being_dragged
+                && !is_hovering_the_loop_selection)
         {
             if let Some(time) = time_ranges_ui.time_from_x(pointer_pos.x) {
                 let time = time_ranges_ui.clamp_time(time);
@@ -1888,8 +1902,9 @@ fn paint_ticks(
             };
 
             let top = if current_time % 1_000_000_000 == 0 {
+                // Full second
                 // TODO(emilk): for sequences (non-nanoseconds)
-                canvas.top() // full second
+                lerp(canvas.y_range(), 0.5)
             } else {
                 lerp(canvas.y_range(), 0.75)
             };
@@ -1906,7 +1921,7 @@ fn paint_ticks(
                 // Text at top:
                 shapes.push(egui::Shape::text(
                     fonts,
-                    pos2(text_x, lerp(canvas.y_range(), 0.25)),
+                    pos2(text_x, lerp(canvas.y_range(), 0.5)),
                     Align2::LEFT_CENTER,
                     &text,
                     font_id.clone(),

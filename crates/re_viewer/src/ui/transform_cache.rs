@@ -1,5 +1,5 @@
 use nohash_hasher::IntMap;
-use re_data_store::ObjPath;
+use re_data_store::{ObjPath, ObjectsProperties};
 use re_log_types::ObjPathHash;
 
 use crate::misc::space_info::{SpaceInfo, SpacesInfo};
@@ -12,15 +12,27 @@ pub struct TransformCache {
     reference_from_obj_per_object: IntMap<ObjPathHash, ReferenceFromObjTransform>,
 }
 
+#[derive(Clone, Copy)]
+pub enum UnreachableTransformReason {
+    /// Not part of the hierarchy at all.
+    Unconnected,
+    /// More than one pinhole camera between this and the reference space.
+    NestedPinholeCameras,
+    /// Unknown transform between this and the reference space.
+    UnknownTransform,
+
+    /// Reference space is under pinhole going from this space.
+    ReferenceIsUnderPinhole,
+}
+
 #[derive(Clone)]
 pub enum ReferenceFromObjTransform {
-    /// On the path from the given object to the reference is an unknown transformation or a pinhole transformation
-    ///
-    /// TODO(andreas): Will need to be split up and we should be able to handle some of these cases!
-    ConnectedViaUnknownOrPinhole,
+    /// On the path from the given object to the reference is an obstacle.
+    /// TODO(andreas): Can we be more specific to give more information?
+    Unreachable(UnreachableTransformReason),
 
-    /// There is a rigid connection to the reference.
-    Rigid(glam::Mat4),
+    /// We're able to transform this object into the reference space.
+    Reachable(glam::Mat4),
 }
 
 impl TransformCache {
@@ -36,56 +48,22 @@ impl TransformCache {
     pub fn determine_transforms(
         spaces_info: &SpacesInfo,
         reference_space: &SpaceInfo,
-    ) -> TransformCache {
+        obj_properties: &ObjectsProperties,
+    ) -> Self {
+        crate::profile_function!();
+
+        let mut transforms = Self {
+            reference_from_obj_per_object: Default::default(),
+        };
+
         // TODO(andreas): Should we be more selective about the objects we're actually interested in a given space view?
         //                  Ideally we'd be lazy, but we already have all these space infos around anyways...
-
-        fn gather_child_transforms(
-            spaces_info: &SpacesInfo,
-            space: &SpaceInfo,
-            reference_from_obj: glam::Mat4,
-            reference_from_obj_per_path: &mut IntMap<ObjPathHash, ReferenceFromObjTransform>,
-        ) {
-            reference_from_obj_per_path.extend(space.descendants_without_transform.iter().map(
-                |obj| {
-                    (
-                        *obj.hash(),
-                        ReferenceFromObjTransform::Rigid(reference_from_obj),
-                    )
-                },
-            ));
-
-            for (child_path, transform) in &space.child_spaces {
-                if let Some(child_space) = spaces_info.spaces.get(child_path) {
-                    let refererence_from_obj_in_child = match transform {
-                        re_log_types::Transform::Rigid3(rigid) => {
-                            reference_from_obj * rigid.parent_from_child().to_mat4()
-                        }
-                        // If we're connected via 'unknown' it's not reachable
-                        re_log_types::Transform::Unknown => {
-                            continue;
-                        }
-                        // We don't yet support reaching through pinhole.
-                        re_log_types::Transform::Pinhole(_) => {
-                            continue;
-                        }
-                    };
-
-                    gather_child_transforms(
-                        spaces_info,
-                        child_space,
-                        refererence_from_obj_in_child,
-                        reference_from_obj_per_path,
-                    );
-                }
-            }
-        }
 
         // Walk up from the reference space to the highest reachable parent.
         let mut topmost_reachable_space = reference_space;
         let mut reference_from_topmost = glam::Mat4::IDENTITY;
         while let Some((parent_path, parent_transform)) = topmost_reachable_space.parent.as_ref() {
-            let Some(parent_space) = spaces_info.spaces.get(parent_path) else {
+            let Some(parent_space) = spaces_info.get(parent_path) else {
                 break;
             };
 
@@ -95,10 +73,20 @@ impl TransformCache {
                 }
                 // If we're connected via 'unknown' it's not reachable
                 re_log_types::Transform::Unknown => {
+                    transforms.mark_non_descendants(
+                        spaces_info,
+                        parent_space,
+                        UnreachableTransformReason::UnknownTransform,
+                    );
                     break;
                 }
                 // We don't yet support reaching through pinhole.
                 re_log_types::Transform::Pinhole(_) => {
+                    transforms.mark_non_descendants(
+                        spaces_info,
+                        parent_space,
+                        UnreachableTransformReason::ReferenceIsUnderPinhole,
+                    );
                     break;
                 }
             };
@@ -106,16 +94,136 @@ impl TransformCache {
         }
 
         // And then walk all branches down again.
-        let mut reference_from_obj_per_object = Default::default();
-        gather_child_transforms(
+        transforms.gather_descendents_transforms(
             spaces_info,
             topmost_reachable_space,
+            obj_properties,
             reference_from_topmost,
-            &mut reference_from_obj_per_object,
+            false,
+        );
+        transforms
+    }
+
+    fn register_transform_for(&mut self, space: &SpaceInfo, transform: &ReferenceFromObjTransform) {
+        self.reference_from_obj_per_object.extend(
+            space
+                .descendants_without_transform
+                .iter()
+                .map(|obj| (*obj.hash(), transform.clone())),
+        );
+    }
+
+    fn mark_non_descendants(
+        &mut self,
+        spaces_info: &SpacesInfo,
+        space: &SpaceInfo,
+        reason: UnreachableTransformReason,
+    ) {
+        self.register_transform_for(space, &ReferenceFromObjTransform::Unreachable(reason));
+
+        if let Some((parent_path, _)) = &space.parent {
+            if let Some(parent_space) = spaces_info.get(parent_path) {
+                for sibling_path in parent_space.child_spaces.keys() {
+                    if *sibling_path == space.path {
+                        continue;
+                    }
+                    if let Some(child_space) = spaces_info.get(sibling_path) {
+                        self.mark_self_and_descendants_unreachable(
+                            spaces_info,
+                            child_space,
+                            reason,
+                        );
+                    }
+                }
+                self.mark_non_descendants(spaces_info, parent_space, reason);
+            }
+        }
+    }
+
+    fn mark_self_and_descendants_unreachable(
+        &mut self,
+        spaces_info: &SpacesInfo,
+        space: &SpaceInfo,
+        reason: UnreachableTransformReason,
+    ) {
+        self.register_transform_for(space, &ReferenceFromObjTransform::Unreachable(reason));
+
+        for child_path in space.child_spaces.keys() {
+            if let Some(child_space) = spaces_info.get(child_path) {
+                self.mark_self_and_descendants_unreachable(spaces_info, child_space, reason);
+            }
+        }
+    }
+
+    fn gather_descendents_transforms(
+        &mut self,
+        spaces_info: &SpacesInfo,
+        space: &SpaceInfo,
+        obj_properties: &ObjectsProperties,
+        reference_from_obj: glam::Mat4,
+        encountered_pinhole: bool,
+    ) {
+        self.register_transform_for(
+            space,
+            &ReferenceFromObjTransform::Reachable(reference_from_obj),
         );
 
-        Self {
-            reference_from_obj_per_object,
+        for (child_path, transform) in &space.child_spaces {
+            if let Some(child_space) = spaces_info.get(child_path) {
+                let mut encountered_pinhole = encountered_pinhole;
+                let refererence_from_obj_in_child = match transform {
+                    re_log_types::Transform::Rigid3(rigid) => {
+                        reference_from_obj * rigid.parent_from_child().to_mat4()
+                    }
+                    // If we're connected via 'unknown' it's not reachable
+                    re_log_types::Transform::Unknown => {
+                        self.mark_self_and_descendants_unreachable(
+                            spaces_info,
+                            child_space,
+                            UnreachableTransformReason::UnknownTransform,
+                        );
+                        continue;
+                    }
+
+                    re_log_types::Transform::Pinhole(pinhole) => {
+                        if encountered_pinhole {
+                            self.mark_self_and_descendants_unreachable(
+                                spaces_info,
+                                child_space,
+                                UnreachableTransformReason::NestedPinholeCameras,
+                            );
+                            continue;
+                        }
+                        encountered_pinhole = true;
+
+                        // A pinhole camera means that we're looking at an image.
+                        // Images are spanned in their local x/y space with their r
+                        // Center it and move it along z, scaling the further we move.
+
+                        let distance = obj_properties
+                            .get(child_path)
+                            .pinhole_image_plane_distance(pinhole);
+
+                        let scale = distance / pinhole.focal_length_in_pixels().y;
+                        let translation = (-pinhole.principal_point() * scale).extend(distance);
+                        let parent_from_child = glam::Mat4::from_scale_rotation_translation(
+                            glam::vec3(scale, scale, 1.0),
+                            glam::Quat::IDENTITY,
+                            translation,
+                        );
+
+                        reference_from_obj * parent_from_child
+                    }
+                };
+
+                self.gather_descendents_transforms(
+                    spaces_info,
+                    child_space,
+                    obj_properties,
+                    refererence_from_obj_in_child,
+                    encountered_pinhole,
+                );
+            }
         }
     }
 
@@ -126,6 +234,8 @@ impl TransformCache {
         self.reference_from_obj_per_object
             .get(obj_path.hash())
             .cloned()
-            .unwrap_or(ReferenceFromObjTransform::ConnectedViaUnknownOrPinhole)
+            .unwrap_or(ReferenceFromObjTransform::Unreachable(
+                UnreachableTransformReason::Unconnected,
+            ))
     }
 }

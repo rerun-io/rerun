@@ -164,8 +164,7 @@ dependencies = [
 [[package]]
 name = "arrow2"
 version = "0.14.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee6f62e41078c967a4c063fcbdfd3801a2a9632276402c045311c4d73d0845f3"
+source = "git+https://github.com/rerun-io/arrow2?rev=ed459eb9e3b49877e3e827753621d75426a8496d#ed459eb9e3b49877e3e827753621d75426a8496d"
 dependencies = [
  "ahash 0.7.6",
  "arrow-format",
@@ -3024,6 +3023,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d84eb1409416d254e4a9c8fa56cc24701755025b458f0fcd8e59e1f5f40c23bf"
 dependencies = [
  "num-traits",
+ "serde",
 ]
 
 [[package]]
@@ -3523,6 +3523,7 @@ dependencies = [
  "mimalloc",
  "nohash-hasher",
  "once_cell",
+ "ordered-float",
  "puffin",
  "rand",
  "re_arrow_store",
@@ -3543,6 +3544,10 @@ dependencies = [
 [[package]]
 name = "re_format"
 version = "0.1.0"
+dependencies = [
+ "arrow2",
+ "comfy-table 6.1.3",
+]
 
 [[package]]
 name = "re_log"
@@ -3814,6 +3819,7 @@ dependencies = [
  "mint",
  "ndarray",
  "nohash-hasher",
+ "ordered-float",
  "poll-promise",
  "puffin",
  "puffin_http",

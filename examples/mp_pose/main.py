@@ -13,6 +13,7 @@ import mediapipe as mp
 import numpy as np
 import numpy.typing as npt
 import requests
+from rerun.log.annotation import AnnotationInfo, ClassDescription
 
 import rerun as rr
 
@@ -26,9 +27,9 @@ def track_pose(video_path: str) -> None:
 
     rr.log_annotation_context(
         "/",
-        rr.ClassDescription(
-            info=rr.AnnotationInfo(label="Person"),
-            keypoint_annotations=[rr.AnnotationInfo(id=l.value, label=l.name) for l in mp_pose.PoseLandmark],
+        ClassDescription(
+            info=AnnotationInfo(label="Person"),
+            keypoint_annotations=[AnnotationInfo(id=l.value, label=l.name) for l in mp_pose.PoseLandmark],
             keypoint_connections=mp_pose.POSE_CONNECTIONS,
         ),
     )

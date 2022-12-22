@@ -9,14 +9,14 @@ use re_arrow_store::TimeQuery;
 use re_data_store::query::{
     visit_type_data_1, visit_type_data_2, visit_type_data_3, visit_type_data_4, visit_type_data_5,
 };
-use re_data_store::{FieldName, InstanceId, InstanceIdHash, ObjPath, ObjectsProperties};
+use re_data_store::{FieldName, InstanceIdHash, ObjPath, ObjectsProperties};
 use re_log_types::field_types::{ColorRGBA, Instance, Rect2D};
 use re_log_types::msg_bundle::Component;
 use re_log_types::{
     context::{ClassId, KeypointId},
     DataVec, IndexHash, MeshId, MsgId, ObjectType, Tensor,
 };
-use re_query::{query_entity_with_primary, visit_components3};
+use re_query::{query_entity_with_primary, QueryError};
 use re_renderer::{
     renderer::{LineStripFlags, MeshInstance},
     Color32, LineStripSeriesBuilder, PointCloudBuilder, Size,
@@ -285,7 +285,7 @@ impl SceneSpatial {
             let annotations = self.annotation_map.find(obj_path);
             let default_color = DefaultColor::ObjPath(obj_path);
             let properties = objects_properties.get(obj_path);
-            let ReferenceFromObjTransform::Rigid(world_from_obj) = transforms.reference_from_obj(obj_path) else {
+            let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(obj_path) else {
                 continue;
             };
 
@@ -430,7 +430,7 @@ impl SceneSpatial {
             let annotations = self.annotation_map.find(obj_path);
             let default_color = DefaultColor::ObjPath(obj_path);
             let properties = objects_properties.get(obj_path);
-            let ReferenceFromObjTransform::Rigid(world_from_obj) = transforms.reference_from_obj(obj_path) else {
+            let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(obj_path) else {
                 continue;
             };
             let mut line_batch = self
@@ -541,7 +541,7 @@ impl SceneSpatial {
             let annotations = self.annotation_map.find(obj_path);
             let default_color = DefaultColor::ObjPath(obj_path);
             let properties = objects_properties.get(obj_path);
-            let ReferenceFromObjTransform::Rigid(world_from_obj) = transforms.reference_from_obj(obj_path) else {
+            let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(obj_path) else {
                 continue;
             };
 
@@ -621,7 +621,7 @@ impl SceneSpatial {
             let annotations = self.annotation_map.find(obj_path);
             let default_color = DefaultColor::ObjPath(obj_path);
             let properties = objects_properties.get(obj_path);
-            let ReferenceFromObjTransform::Rigid(world_from_obj) = transforms.reference_from_obj(obj_path) else {
+            let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(obj_path) else {
                 continue;
             };
 
@@ -701,7 +701,7 @@ impl SceneSpatial {
             query.iter_object_stores(ctx.log_db, &[ObjectType::Mesh3D])
         {
             let properties = objects_properties.get(obj_path);
-            let ReferenceFromObjTransform::Rigid(world_from_obj) = transforms.reference_from_obj(obj_path) else {
+            let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(obj_path) else {
                 continue;
             };
             // TODO(andreas): This throws away perspective transformation!
@@ -766,7 +766,7 @@ impl SceneSpatial {
             query.iter_object_stores(ctx.log_db, &[ObjectType::Image])
         {
             let properties = objects_properties.get(obj_path);
-            let ReferenceFromObjTransform::Rigid(world_from_obj) = transforms.reference_from_obj(obj_path) else {
+            let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(obj_path) else {
                 continue;
             };
 
@@ -846,22 +846,56 @@ impl SceneSpatial {
             );
         }
 
-        let total_num_images = self.primitives.textured_rectangles.len();
-        for (image_idx, img) in self.primitives.textured_rectangles.iter_mut().enumerate() {
-            img.top_left_corner_position = glam::vec3(
-                0.0,
-                0.0,
-                // We use RDF (X=Right, Y=Down, Z=Forward) for 2D spaces, so we want lower Z in order to put images on top
-                (total_num_images - image_idx - 1) as f32 * 0.1,
-            );
+        // Handle layered rectangles that are on (roughly) the same plane and were logged in sequence.
+        // First, group by similar plane.
+        let rects_grouped_by_plane = {
+            let mut cur_plane = macaw::Plane3::from_normal_dist(Vec3::NAN, std::f32::NAN);
+            let mut rectangle_group = Vec::new();
+            self.primitives
+                .textured_rectangles
+                .iter_mut()
+                .batching(move |it| {
+                    for rect in it.by_ref() {
+                        let prev_plane = cur_plane;
+                        cur_plane = macaw::Plane3::from_normal_point(
+                            rect.extent_u.cross(rect.extent_v),
+                            rect.top_left_corner_position,
+                        )
+                        .normalized();
 
-            let opacity = if image_idx == 0 {
-                1.0 // bottom image
-            } else {
+                        // Are the image planes too unsimilar? Then this is a new group.
+                        if !rectangle_group.is_empty()
+                            && prev_plane.normal.dot(cur_plane.normal) < 0.99
+                            && (prev_plane.d - cur_plane.d) < 0.01
+                        {
+                            let previous_group =
+                                std::mem::replace(&mut rectangle_group, vec![rect]);
+                            return Some((cur_plane, previous_group));
+                        }
+                        rectangle_group.push(rect);
+                    }
+                    if !rectangle_group.is_empty() {
+                        Some((cur_plane, rectangle_group.drain(..).collect()))
+                    } else {
+                        None
+                    }
+                })
+        };
+        // Then, change opacity & transformation for planes within group except the base plane.
+        for (plane, mut grouped_rects) in rects_grouped_by_plane {
+            let total_num_images = grouped_rects.len();
+            for (idx, rect) in grouped_rects.iter_mut().enumerate() {
+                // Move a bit to avoid z fighting.
+                rect.top_left_corner_position +=
+                    plane.normal * (total_num_images - idx - 1) as f32 * 0.1;
                 // make top images transparent
-                1.0 / total_num_images.at_most(20) as f32 // avoid precision problems in framebuffer
-            };
-            img.multiplicative_tint = img.multiplicative_tint.multiply(opacity);
+                let opacity = if idx == 0 {
+                    1.0
+                } else {
+                    1.0 / total_num_images.at_most(20) as f32
+                }; // avoid precision problems in framebuffer
+                rect.multiplicative_tint = rect.multiplicative_tint.multiply(opacity);
+            }
         }
     }
 
@@ -880,7 +914,7 @@ impl SceneSpatial {
         {
             let properties = objects_properties.get(obj_path);
             let annotations = self.annotation_map.find(obj_path);
-            let ReferenceFromObjTransform::Rigid(world_from_obj) = transforms.reference_from_obj(obj_path) else {
+            let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(obj_path) else {
                 continue;
             };
 
@@ -955,24 +989,18 @@ impl SceneSpatial {
                 TimeQuery::LatestAt(query.latest_at.as_i64()),
             );
 
-            if let Ok(df) = query_entity_with_primary(
+            match query_entity_with_primary(
                 &ctx.log_db.obj_db.arrow_store,
                 &timeline_query,
                 ent_path,
                 Rect2D::name(),
                 &[ColorRGBA::name()],
-            ) {
-                visit_components3(
-                    &df,
-                    |rect: &Rect2D, instance: Option<&Instance>, color: Option<&ColorRGBA>| {
-                        // TODO(jleibs): This feels convoluted and heavy-weight. Whatever we need here
-                        // should come directly out of the datastore.
-                        let instance = instance.unwrap_or(&Instance(0));
-                        let instance = InstanceId {
-                            obj_path: obj_path.clone(),
-                            instance_index: Some(re_log_types::Index::Sequence(instance.0)),
-                        };
-                        let instance_hash = instance.hash();
+            )
+            .and_then(|entity_view| {
+                entity_view.visit2(
+                    |instance: Instance, rect: Rect2D, color: Option<ColorRGBA>| {
+                        let instance_hash =
+                            InstanceIdHash::from_path_and_arrow_instance(obj_path, &instance);
 
                         let color = color.map(|c| c.to_array());
 
@@ -1030,7 +1058,12 @@ impl SceneSpatial {
                             });
                         }
                     },
-                );
+                )
+            }) {
+                Ok(_) | Err(QueryError::PrimaryNotFound) => {}
+                Err(err) => {
+                    re_log::error_once!("Unexpected error querying '{:?}': {:?}", obj_path, err);
+                }
             }
         }
     }
@@ -1058,7 +1091,7 @@ impl SceneSpatial {
             let annotations = self.annotation_map.find(obj_path);
             let default_color = DefaultColor::ObjPath(obj_path);
             let properties = objects_properties.get(obj_path);
-            let ReferenceFromObjTransform::Rigid(world_from_obj) = transforms.reference_from_obj(obj_path) else {
+            let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(obj_path) else {
                 continue;
             };
 
@@ -1177,7 +1210,7 @@ impl SceneSpatial {
         {
             let annotations = self.annotation_map.find(obj_path);
             let properties = objects_properties.get(obj_path);
-            let ReferenceFromObjTransform::Rigid(world_from_obj) = transforms.reference_from_obj(obj_path) else {
+            let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(obj_path) else {
                 continue;
             };
 
@@ -1243,6 +1276,7 @@ impl SceneSpatial {
 
     // ---
 
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn add_cameras(
         &mut self,
         ctx: &mut ViewerContext<'_>,
@@ -1251,6 +1285,7 @@ impl SceneSpatial {
         eye: &Eye,
         cameras: &[SpaceCamera3D],
         hovered_instance: InstanceIdHash,
+        obj_properties: &ObjectsProperties,
     ) {
         crate::profile_function!();
 
@@ -1261,10 +1296,10 @@ impl SceneSpatial {
             macaw::Plane3::from_normal_point(eye.forward_in_world(), eye.pos_in_world());
 
         for camera in cameras {
-            let instance_id = InstanceIdHash {
-                obj_path_hash: *camera.camera_obj_path.hash(),
-                instance_index_hash: camera.instance_index_hash,
-            };
+            let instance_id = InstanceIdHash::from_path_and_index(
+                &camera.camera_obj_path,
+                camera.instance_index_hash,
+            );
             let is_hovered = instance_id == hovered_instance;
 
             let (line_radius, line_color) = if is_hovered {
@@ -1328,7 +1363,14 @@ impl SceneSpatial {
                 }
             }
 
-            self.add_camera_frustum(camera, scene_bbox, instance_id, line_radius, line_color);
+            let mut frustum_length = scene_bbox.size().length() * 0.3;
+            if let (Some(pinhole), Some(child_space)) = (&camera.pinhole, &camera.target_space) {
+                frustum_length = obj_properties
+                    .get(child_space)
+                    .pinhole_image_plane_distance(pinhole);
+            }
+
+            self.add_camera_frustum(camera, instance_id, line_radius, frustum_length, line_color);
         }
     }
 
@@ -1336,26 +1378,23 @@ impl SceneSpatial {
     fn add_camera_frustum(
         &mut self,
         camera: &SpaceCamera3D,
-        scene_bbox: &macaw::BoundingBox,
         instance_id: InstanceIdHash,
         line_radius: Size,
+        frustum_length: f32,
         color: Color32,
     ) -> Option<()> {
         let world_from_image = camera.world_from_image()?;
         let [w, h] = camera.pinhole?.resolution?;
-
-        // At what distance do we end the frustum?
-        let d = scene_bbox.size().length() * 0.3;
 
         // TODO(emilk): there is probably a off-by-one or off-by-half error here.
         // The image coordinates are in [0, w-1] range, so either we should use those limits
         // or [-0.5, w-0.5] for the "pixels are tiny squares" interpretation of the frustum.
 
         let corners = [
-            world_from_image.transform_point3(d * vec3(0.0, 0.0, 1.0)),
-            world_from_image.transform_point3(d * vec3(0.0, h, 1.0)),
-            world_from_image.transform_point3(d * vec3(w, h, 1.0)),
-            world_from_image.transform_point3(d * vec3(w, 0.0, 1.0)),
+            world_from_image.transform_point3(frustum_length * vec3(0.0, 0.0, 1.0)),
+            world_from_image.transform_point3(frustum_length * vec3(0.0, h, 1.0)),
+            world_from_image.transform_point3(frustum_length * vec3(w, h, 1.0)),
+            world_from_image.transform_point3(frustum_length * vec3(w, 0.0, 1.0)),
         ];
 
         let center = camera.position();
