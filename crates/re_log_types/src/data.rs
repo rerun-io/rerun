@@ -694,6 +694,7 @@ impl Pinhole {
     /// X & Y focal length in pixels.
     ///
     /// [see definition of intrinsic matrix](https://en.wikipedia.org/wiki/Camera_resectioning#Intrinsic_parameters)
+    #[cfg(feature = "glam")]
     pub fn focal_length_in_pixels(&self) -> glam::Vec2 {
         glam::vec2(self.image_from_cam[0][0], self.image_from_cam[1][1])
     }
@@ -707,6 +708,7 @@ impl Pinhole {
     /// i.e. the intersection of the optical axis and the image plane.
     ///
     /// [see definition of intrinsic matrix](https://en.wikipedia.org/wiki/Camera_resectioning#Intrinsic_parameters)
+    #[cfg(feature = "glam")]
     #[inline]
     pub fn principal_point(&self) -> glam::Vec2 {
         glam::vec2(self.image_from_cam[2][0], self.image_from_cam[2][1])
