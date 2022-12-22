@@ -1,7 +1,8 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, marker::PhantomData};
 
 use arrow2::array::{Array, MutableArray, PrimitiveArray};
 use re_arrow_store::ArrayExt;
+use re_format::arrow;
 use re_log_types::{
     external::arrow2_convert::{
         deserialize::{arrow_array_deserialize_iterator, ArrowArray, ArrowDeserialize},
@@ -213,11 +214,42 @@ where
 /// batch. When iterating over individual components, they will be implicitly joined onto
 /// the primary component using instance keys.
 #[derive(Clone, Debug)]
-pub struct EntityView {
+pub struct EntityView<Primary: Component> {
     pub(crate) primary: ComponentWithInstances,
     pub(crate) components: BTreeMap<ComponentName, ComponentWithInstances>,
+    pub(crate) phantom: PhantomData<Primary>,
 }
-impl EntityView {
+
+impl<Primary: Component> std::fmt::Display for EntityView<Primary> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let primary_table = arrow::format_table(
+            [
+                self.primary.instance_keys.as_ref().unwrap().as_ref(),
+                self.primary.values.as_ref(),
+            ],
+            ["InstanceId", self.primary.name.as_str()],
+        );
+
+        f.write_fmt(format_args!("EntityView:\n{primary_table}"))
+    }
+}
+
+impl<Primary> EntityView<Primary>
+where
+    Primary: Component + ArrowSerialize + ArrowDeserialize + ArrowField<Type = Primary> + 'static,
+    Primary::ArrayType: ArrowArray,
+    for<'a> &'a Primary::ArrayType: IntoIterator,
+{
+    /// Iterate over the instance keys
+    pub fn iter_instances(&self) -> crate::Result<impl Iterator<Item = Instance> + '_> {
+        self.primary.iter_instance_keys()
+    }
+
+    /// Iterate over the primary component values.
+    pub fn iter_primary(&self) -> crate::Result<impl Iterator<Item = Option<Primary>> + '_> {
+        self.primary.iter_values()
+    }
+
     /// Iterate over the values of a `Component`.
     ///
     /// Always produces an iterator of length `self.primary.len()`
@@ -254,27 +286,24 @@ impl EntityView {
     }
 
     /// Helper function to produce an `EntityView` from rust-native `field_types`
-    pub fn from_native<C0>(c0: (Option<&Vec<Instance>>, &Vec<C0>)) -> crate::Result<EntityView>
-    where
-        C0: Component + 'static,
-        C0: ArrowSerialize + ArrowField<Type = C0>,
-    {
+    pub fn from_native(c0: (Option<&Vec<Instance>>, &Vec<Primary>)) -> crate::Result<Self> {
         let primary = ComponentWithInstances::from_native(c0.0, c0.1)?;
 
-        Ok(EntityView {
+        Ok(Self {
             primary,
             components: Default::default(),
+            phantom: PhantomData,
         })
     }
 
     /// Helper function to produce an `EntityView` from rust-native `field_types`
-    pub fn from_native2<C0, C1>(
-        c0: (Option<&Vec<Instance>>, &Vec<C0>),
+    pub fn from_native2<C1>(
+        c0: (Option<&Vec<Instance>>, &Vec<Primary>),
         c1: (Option<&Vec<Instance>>, &Vec<C1>),
-    ) -> crate::Result<EntityView>
+    ) -> crate::Result<Self>
     where
-        C0: Component + 'static,
-        C0: ArrowSerialize + ArrowField<Type = C0>,
+        //C0: Component + 'static,
+        //C0: ArrowSerialize + ArrowField<Type = C0>,
         C1: Component + 'static,
         C1: ArrowSerialize + ArrowField<Type = C1>,
     {
@@ -283,9 +312,10 @@ impl EntityView {
 
         let components = [(component_c1.name, component_c1)].into();
 
-        Ok(EntityView {
+        Ok(Self {
             primary,
             components,
+            phantom: PhantomData,
         })
     }
 }

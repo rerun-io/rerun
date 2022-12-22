@@ -9,7 +9,7 @@ use re_log_types::{
     msg_bundle::Component,
     IndexHash, MsgId, ObjectType,
 };
-use re_query::{query_entity_with_primary, QueryError};
+use re_query::{query_entity_with_primary, EntityView, QueryError};
 use re_renderer::Size;
 
 use crate::{
@@ -196,10 +196,8 @@ impl ScenePart for Boxes2DPart {
         objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
-        for obj_path in query.obj_paths {
-            let ent_path = obj_path;
-
-            let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(obj_path) else {
+        for ent_path in query.obj_paths {
+            let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(ent_path) else {
                 continue;
             };
 
@@ -208,19 +206,18 @@ impl ScenePart for Boxes2DPart {
                 TimeQuery::LatestAt(query.latest_at.as_i64()),
             );
 
-            match query_entity_with_primary(
+            match query_entity_with_primary::<Rect2D, 1>(
                 &ctx.log_db.obj_db.arrow_store,
                 &timeline_query,
                 ent_path,
-                Rect2D::name(),
                 &[ColorRGBA::name()],
             )
             .and_then(|entity_view| {
                 entity_view.visit2(|instance, rect, color| {
                     let instance_hash = {
-                        let properties = objects_properties.get(obj_path);
+                        let properties = objects_properties.get(ent_path);
                         if properties.interactive {
-                            InstanceIdHash::from_path_and_arrow_instance(obj_path, &instance)
+                            InstanceIdHash::from_path_and_arrow_instance(ent_path, &instance)
                         } else {
                             InstanceIdHash::NONE
                         }
@@ -239,7 +236,7 @@ impl ScenePart for Boxes2DPart {
             }) {
                 Ok(_) | Err(QueryError::PrimaryNotFound) => {}
                 Err(err) => {
-                    re_log::error_once!("Unexpected error querying '{:?}': {:?}", obj_path, err);
+                    re_log::error_once!("Unexpected error querying '{:?}': {:?}", ent_path, err);
                 }
             }
         }
