@@ -1817,14 +1817,13 @@ fn paint_ticks(
     let minimum_small_line_spacing = 4.0;
     let expected_text_width = 60.0;
 
-    let line_color_from_spacing = |spacing_time: i64| -> Color32 {
+    let line_strength_from_spacing = |spacing_time: i64| -> f32 {
         let next_tick_magnitude = next_time_step(spacing_time) / spacing_time; // usually 10, but could be 6 or 24 for time
-        let alpha = remap_clamp(
+        remap_clamp(
             spacing_time as f32 * points_per_time,
             minimum_small_line_spacing..=(next_tick_magnitude as f32 * minimum_small_line_spacing),
-            0.0..=0.4,
-        );
-        color_from_alpha(alpha)
+            0.0..=1.0,
+        )
     };
 
     let text_color_from_spacing = |spacing_time: i64| -> Color32 {
@@ -1845,9 +1844,13 @@ fn paint_ticks(
     let big_spacing_time = next_time_step(medium_spacing_time);
 
     // We fade in lines as we zoom in:
-    let big_line_color = line_color_from_spacing(big_spacing_time);
-    let medium_line_color = line_color_from_spacing(medium_spacing_time);
-    let small_line_color = line_color_from_spacing(small_spacing_time);
+    let big_line_strength = line_strength_from_spacing(big_spacing_time);
+    let medium_line_strength = line_strength_from_spacing(medium_spacing_time);
+    let small_line_strength = line_strength_from_spacing(small_spacing_time);
+
+    let big_line_color = color_from_alpha(0.4 * big_line_strength);
+    let medium_line_color = color_from_alpha(0.4 * medium_line_strength);
+    let small_line_color = color_from_alpha(0.4 * small_line_strength);
 
     let big_text_color = text_color_from_spacing(big_spacing_time);
     let medium_text_color = text_color_from_spacing(medium_spacing_time);
@@ -1862,24 +1865,19 @@ fn paint_ticks(
             let medium_line = current_time % medium_spacing_time == 0;
             let big_line = current_time % big_spacing_time == 0;
 
-            let (line_color, text_color) = if big_line {
-                (big_line_color, big_text_color)
+            let (height_factor, line_color, text_color) = if big_line {
+                (medium_line_strength, big_line_color, big_text_color)
             } else if medium_line {
-                (medium_line_color, medium_text_color)
+                (small_line_strength, medium_line_color, medium_text_color)
             } else {
-                (small_line_color, small_text_color)
+                (0.0, small_line_color, small_text_color)
             };
 
-            let top = if current_time % 1_000_000_000 == 0 {
-                // Full second
-                // TODO(emilk): for sequences (non-nanoseconds)
-                lerp(canvas.y_range(), 0.5)
-            } else {
-                lerp(canvas.y_range(), 0.75)
-            };
+            // Make line higher if it is stronger:
+            let line_top = lerp(canvas.y_range(), lerp(0.75..=0.5, height_factor));
 
             shapes.push(egui::Shape::line_segment(
-                [pos2(line_x, top), pos2(line_x, canvas.max.y)],
+                [pos2(line_x, line_top), pos2(line_x, canvas.max.y)],
                 Stroke::new(1.0, line_color),
             ));
 
