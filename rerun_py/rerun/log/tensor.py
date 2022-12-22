@@ -26,6 +26,21 @@ def log_tensor(
     _log_tensor(obj_path, tensor=tensor, names=names, meter=meter, timeless=timeless)
 
 
+def _get_pytorch_names(torch_tensor: Any) -> Optional[Iterable[Optional[str]]]:
+    """Attempt to read dimensions names from a tensor as if it's a pytorch tensor.
+    May raise an AttributeError.
+    """
+    names = []  # type: Iterable[Optional[str]]
+    names = torch_tensor.names
+
+    # TODO(#631): Remove this check when we can handle lists of optional names.
+    names = list(names)
+    if names.count(None) == len(names):
+        return None
+
+    return names
+
+
 def _log_tensor(
     obj_path: str,
     tensor: npt.NDArray[TensorDType],
@@ -38,14 +53,8 @@ def _log_tensor(
 
     # Duck-typing way to handle pytorch tensors
     try:
-        # Get dimension names if available
         if names is None:
-            names = tensor.names  # type: ignore[attr-defined]
-
-            # TODO(#631): Remove this check when we can handle lists of optional names.
-            names = list(names)
-            if names.count(None) == len(names):
-                names = None
+            names = _get_pytorch_names(tensor)
 
         # Make available to the cpu
         tensor = tensor.detach().cpu()  # type: ignore[attr-defined]
