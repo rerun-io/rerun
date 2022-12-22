@@ -68,7 +68,7 @@ impl TimeQuery {
 // --- Data store ---
 
 impl DataStore {
-    /// Retrieve al the component names for a given path
+    /// Retrieve all the `ComponentName`s that have been written to for a given `EntityPath`
     pub fn query_components_for_path(
         &self,
         timeline_query: &TimelineQuery,
@@ -291,17 +291,17 @@ impl IndexTable {
     }
 
     /// Returns the index bucket whose time range covers the given `time`.
+    pub fn find_bucket(&self, time: i64) -> &IndexBucket {
+        // This cannot fail, `iter_bucket` is guaranteed to always yield at least one bucket,
+        // since index tables always spawn with a default bucket that covers [-∞;+∞].
+        self.iter_bucket(time).next().unwrap()
+    }
+
+    /// Returns the index bucket whose time range covers the given `time`.
     pub fn find_bucket_mut(&mut self, time: i64) -> &mut IndexBucket {
         // This cannot fail, `iter_bucket_mut` is guaranteed to always yield at least one bucket,
         // since index tables always spawn with a default bucket that covers [-∞;+∞].
         self.iter_bucket_mut(time).next().unwrap()
-    }
-
-    /// Returns the index bucket whose time range covers the given `time`.
-    pub fn find_bucket(&self, time: i64) -> &IndexBucket {
-        // This cannot fail, `iter_bucket_mut` is guaranteed to always yield at least one bucket,
-        // since index tables always spawn with a default bucket that covers [-∞;+∞].
-        self.iter_bucket(time).next().unwrap()
     }
 
     /// Returns an iterator that is guaranteed to yield at least one bucket, which is the bucket

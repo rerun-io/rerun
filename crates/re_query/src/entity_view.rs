@@ -69,7 +69,7 @@ impl ComponentWithInstances {
         )?)
     }
 
-    /// Look up a value for an instance-id
+    /// Look up the value that corresponds to a given `Instance`
     pub fn lookup(&self, instance: &Instance) -> Option<Box<dyn Array>> {
         let offset = if let Some(keys) = &self.instance_keys {
             keys.as_any()
