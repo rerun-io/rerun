@@ -1,33 +1,45 @@
 use ahash::HashMap;
-use glam::Vec3;
-use re_data_store::{query::visit_type_data_5, FieldName};
+use cgmath::Point3;
+use glam::{Mat4, Vec3};
+use re_arrow_store::TimeQuery;
+use re_data_store::{
+    query::visit_type_data_5, FieldName, InstanceIdHash, ObjPath, ObjectsProperties,
+};
 use re_log_types::{
     context::{ClassId, KeypointId},
+    field_types::{ColorRGBA, Point3D},
+    msg_bundle::Component,
     IndexHash, MsgId, ObjectType,
 };
+use re_query::{query_entity_with_primary, EntityView, QueryError};
 use re_renderer::Size;
 
-use crate::ui::{
-    transform_cache::ReferenceFromObjTransform,
-    view_spatial::{
-        scene::{instance_hash_if_interactive, to_ecolor},
-        Label3D, SceneSpatial,
+use crate::{
+    misc::ViewerContext,
+    ui::{
+        class_description_ui,
+        scene::SceneQuery,
+        transform_cache::{ReferenceFromObjTransform, TransformCache},
+        view_spatial::{
+            scene::{instance_hash_if_interactive, to_ecolor},
+            Label3D, SceneSpatial,
+        },
+        DefaultColor,
     },
-    DefaultColor,
 };
 
 use super::ScenePart;
 
-pub struct Points3DPart;
+pub struct Points3DPartClassic;
 
-impl ScenePart for Points3DPart {
+impl ScenePart for Points3DPartClassic {
     fn load(
-        scene: &mut crate::ui::view_spatial::SceneSpatial,
-        ctx: &mut crate::misc::ViewerContext<'_>,
-        query: &crate::ui::scene::SceneQuery<'_>,
-        transforms: &crate::ui::transform_cache::TransformCache,
-        objects_properties: &re_data_store::ObjectsProperties,
-        hovered_instance: re_data_store::InstanceIdHash,
+        scene: &mut SceneSpatial,
+        ctx: &mut ViewerContext<'_>,
+        query: &SceneQuery<'_>,
+        transforms: &TransformCache,
+        objects_properties: &ObjectsProperties,
+        hovered_instance: InstanceIdHash,
     ) {
         crate::profile_function!();
 
@@ -132,6 +144,82 @@ impl ScenePart for Points3DPart {
                 &annotations,
                 properties.interactive,
             );
+        }
+    }
+}
+
+pub struct Points3DPart;
+
+impl Points3DPart {}
+
+impl ScenePart for Points3DPart {
+    fn load(
+        scene: &mut SceneSpatial,
+        ctx: &mut ViewerContext<'_>,
+        query: &SceneQuery<'_>,
+        transforms: &TransformCache,
+        objects_properties: &ObjectsProperties,
+        hovered_instance: InstanceIdHash,
+    ) {
+        for ent_path in query.obj_paths {
+            let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(ent_path) else {
+                continue;
+            };
+
+            let timeline_query = re_arrow_store::TimelineQuery::new(
+                query.timeline,
+                TimeQuery::LatestAt(query.latest_at.as_i64()),
+            );
+
+            match query_entity_with_primary::<Point3D, 1>(
+                &ctx.log_db.obj_db.arrow_store,
+                &timeline_query,
+                ent_path,
+                &[ColorRGBA::name()],
+            )
+            .and_then(|entity_view| {
+                let annotations = scene.annotation_map.find(ent_path);
+                let default_color = DefaultColor::ObjPath(ent_path);
+                let properties = objects_properties.get(ent_path);
+
+                let class_description = annotations.class_description(None);
+
+                let annotation_info = class_description.annotation_info();
+
+                let mut point_batch = scene
+                    .primitives
+                    .points
+                    .batch("3d points")
+                    .world_from_obj(world_from_obj);
+
+                let point_positions = entity_view
+                    .iter_primary()?
+                    .filter_map(|pt| pt.map(glam::Vec3::from));
+
+                let instance_hashes = entity_view.iter_instances()?.map(|instance| {
+                    if properties.interactive {
+                        InstanceIdHash::from_path_and_arrow_instance(ent_path, &instance)
+                    } else {
+                        InstanceIdHash::NONE
+                    }
+                });
+
+                let colors = entity_view.iter_component::<ColorRGBA>()?.map(|color| {
+                    to_ecolor(
+                        annotation_info
+                            .color(color.map(move |c| c.to_array()).as_ref(), default_color),
+                    )
+                });
+
+                point_batch.add_points(point_positions).colors(colors);
+
+                Ok(())
+            }) {
+                Ok(_) | Err(QueryError::PrimaryNotFound) => {}
+                Err(err) => {
+                    re_log::error_once!("Unexpected error querying '{:?}': {:?}", ent_path, err);
+                }
+            }
         }
     }
 }

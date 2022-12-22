@@ -147,14 +147,19 @@ impl SceneSpatial {
         self.annotation_map.load(ctx, query);
 
         let parts = [
+            scene_part::Points3DPartClassic::load,
             scene_part::Points3DPart::load,
+            // --
+            scene_part::Points2DPart::load,
             scene_part::Boxes3DPart::load,
             scene_part::Lines3DPart::load,
             scene_part::Arrows3DPart::load,
             scene_part::MeshPart::load,
             scene_part::ImagesPart::load,
+            // --
             scene_part::Boxes2DPartClassic::load,
             scene_part::Boxes2DPart::load,
+            // --
             scene_part::LineSegments2DPart::load,
             scene_part::Points2DPart::load,
         ];
