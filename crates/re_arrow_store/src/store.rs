@@ -481,7 +481,7 @@ impl std::fmt::Display for IndexTable {
                 format!("index time bound: >= {}\n", timeline.typ().format(*time),),
             ))?;
             f.write_str(&indent::indent_all_by(8, bucket.to_string()))?;
-            f.write_str(&indent::indent_all_by(0, "}\n"))?;
+            f.write_str(&indent::indent_all_by(4, "}\n"))?;
         }
         f.write_str("]")?;
 

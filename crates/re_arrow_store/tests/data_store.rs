@@ -189,6 +189,7 @@ fn range_impl(store: &mut DataStore) {
 
             let mut dfs_processed = 0usize;
             let mut time_counters: IntMap<i64, usize> = Default::default();
+            // eprintln!("----------------");
             for (time, df) in dfs.map(Result::unwrap) {
                 // eprintln!(
                 //     "Found data at time {} from {}'s PoV (outer-joining):\n{:?}",
@@ -214,7 +215,6 @@ fn range_impl(store: &mut DataStore) {
         };
 
     // TODO(cmc): bring back some log_time scenarios
-    // TODO: please tell me we protect against backwards ranges
 
     // Unit ranges (Rect2D's PoV)
 
@@ -281,6 +281,59 @@ fn range_impl(store: &mut DataStore) {
     );
 
     // Unit ranges (Point2D's PoV)
+
+    assert_range_components(
+        TimeRange::new(frame1, frame1),
+        Point2D::name(),
+        &[
+            (frame0, &[]), //
+        ],
+    );
+    assert_range_components(
+        TimeRange::new(frame2, frame2),
+        Point2D::name(),
+        &[
+            (frame1, &[]), //
+            (
+                frame2,
+                &[(Point2D::name(), &bundle2), (Rect2D::name(), &bundle1)],
+            ),
+        ],
+    );
+    assert_range_components(
+        TimeRange::new(frame3, frame3),
+        Point2D::name(),
+        &[
+            (
+                frame2,
+                &[(Point2D::name(), &bundle2), (Rect2D::name(), &bundle1)],
+            ),
+            (
+                frame3,
+                &[(Point2D::name(), &bundle3), (Rect2D::name(), &bundle1)],
+            ),
+        ],
+    );
+    assert_range_components(
+        TimeRange::new(frame4, frame4),
+        Point2D::name(),
+        &[
+            (
+                frame3,
+                &[(Point2D::name(), &bundle3), (Rect2D::name(), &bundle1)],
+            ), //
+        ],
+    );
+    assert_range_components(
+        TimeRange::new(frame5, frame5),
+        Point2D::name(),
+        &[
+            (
+                frame4,
+                &[(Point2D::name(), &bundle3), (Rect2D::name(), &bundle4_3)],
+            ), //
+        ],
+    );
 
     // Full range (Rect2D's PoV)
 
