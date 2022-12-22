@@ -22,11 +22,11 @@ WIDTH_M: Final = 0.5
 WIDTH_H: Final = 0.7
 
 
-def log_clock() -> None:
+def log_clock(steps: int) -> None:
     def rotate(angle: float, len: float) -> Tuple[float, float, float]:
         return (
-            -math.cos(angle) + len * math.sin(angle),
-            math.sin(angle) + len * math.cos(angle),
+            len * math.sin(angle),
+            len * math.cos(angle),
             0.0,
         )
 
@@ -40,12 +40,13 @@ def log_clock() -> None:
         timeless=True,
     )
 
-    for t_secs in range(12 * 60 * 60):
-        # Speed things up a little, set 1sec = 1min
-        rerun.set_time_seconds("sim_time", t_secs / 60)
+    for step in range(steps):
+        t_secs = step
+
+        rerun.set_time_seconds("sim_time", t_secs)
 
         scaled_s = (t_secs % 60) / 60.0
-        point_s = np.array(rotate(2 * math.pi * scaled_s, LENGTH_S))
+        point_s = np.array(rotate(math.tau * scaled_s, LENGTH_S))
         color_s = (int(255 - (scaled_s * 255)), int(scaled_s * 255), 0, 128)
         rerun.log_point("world/seconds_pt", position=point_s, color=color_s)
         rerun.log_arrow(
@@ -53,7 +54,7 @@ def log_clock() -> None:
         )
 
         scaled_m = (t_secs % 3600) / 3600.0
-        point_m = np.array(rotate(2 * math.pi * scaled_m, LENGTH_M))
+        point_m = np.array(rotate(math.tau * scaled_m, LENGTH_M))
         color_m = (int(255 - (scaled_m * 255)), int(scaled_m * 255), 128, 128)
         rerun.log_point("world/minutes_pt", position=point_m, color=color_m)
         rerun.log_arrow(
@@ -61,7 +62,7 @@ def log_clock() -> None:
         )
 
         scaled_h = (t_secs % 43200) / 43200.0
-        point_h = np.array(rotate(2 * math.pi * scaled_h, LENGTH_H))
+        point_h = np.array(rotate(math.tau * scaled_h, LENGTH_H))
         color_h = (int(255 - (scaled_h * 255)), int(scaled_h * 255), 255, 255)
         rerun.log_point("world/hours_pt", position=point_h, color=color_h)
         rerun.log_arrow("world/hours_hand", origin=[0.0, 0.0, 0.0], vector=point_h, color=color_h, width_scale=WIDTH_M)
@@ -75,6 +76,7 @@ if __name__ == "__main__":
     parser.add_argument("--addr", type=str, default=None, help="Connect to this ip:port")
     parser.add_argument("--save", type=str, default=None, help="Save data to a .rrd file at this path")
     parser.add_argument("--headless", action="store_true", help="Don't show GUI")
+    parser.add_argument("--steps", type=int, default=10_000, help="The number of time steps to log")
     args = parser.parse_args()
 
     rerun.init("clock")
@@ -85,7 +87,7 @@ if __name__ == "__main__":
         # which is `127.0.0.1:9876`.
         rerun.connect(args.addr)
 
-    log_clock()
+    log_clock(args.steps)
 
     if args.save is not None:
         rerun.save(args.save)
