@@ -618,7 +618,7 @@ impl std::fmt::Display for IndexBucket {
         let table = arrow::format_table(values, names);
 
         let is_sorted = self.is_sorted();
-        f.write_fmt(format_args!("data (sorted={is_sorted}):\n{table}"))?;
+        f.write_fmt(format_args!("data (sorted={is_sorted}):\n{table}\n"))?;
 
         Ok(())
     }
@@ -963,7 +963,7 @@ impl std::fmt::Display for ComponentBucket {
         };
 
         let table = arrow::format_table([data], [self.name.as_str()]);
-        f.write_fmt(format_args!("{table}"))?;
+        f.write_fmt(format_args!("{table}\n"))?;
 
         Ok(())
     }
