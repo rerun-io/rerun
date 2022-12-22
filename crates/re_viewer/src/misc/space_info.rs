@@ -20,8 +20,7 @@ pub struct SpaceInfo {
     pub descendants_without_transform: IntSet<ObjPath>,
 
     /// Nearest ancestor to whom we are not connected via an identity transform.
-    #[allow(unused)]
-    pub parent: Option<(ObjPath, Transform)>,
+    parent: Option<(ObjPath, Transform)>,
 
     /// Nearest descendants to whom we are not connected with an identity transform.
     pub child_spaces: BTreeMap<ObjPath, Transform>,
@@ -62,6 +61,16 @@ impl SpaceInfo {
         let mut objects = IntSet::default();
         gather_rigidly_transformed_children(self, spaces_info, &mut objects);
         objects
+    }
+
+    pub fn parent<'a>(&self, spaces_info: &'a SpacesInfo) -> Option<(&'a SpaceInfo, &Transform)> {
+        self.parent.as_ref().and_then(|(parent_path, transform)| {
+            spaces_info.get(parent_path).map(|space| (space, transform))
+        })
+    }
+
+    pub fn parent_transform(&self) -> Option<&Transform> {
+        self.parent.as_ref().map(|(_, transform)| transform)
     }
 }
 

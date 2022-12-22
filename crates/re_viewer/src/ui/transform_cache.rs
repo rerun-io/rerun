@@ -66,11 +66,7 @@ impl TransformCache {
         let mut encountered_pinhole = false;
         let mut reference_from_ancestor = glam::Mat4::IDENTITY;
         let mut previous_space = reference_space;
-        while let Some((parent_path, parent_transform)) = previous_space.parent.as_ref() {
-            let Some(parent_space) = spaces_info.get(parent_path) else {
-                break;
-            };
-
+        while let Some((parent_space, parent_transform)) = previous_space.parent(spaces_info) {
             reference_from_ancestor = match parent_transform {
                 re_log_types::Transform::Rigid3(rigid) => {
                     reference_from_ancestor * rigid.child_from_parent().to_mat4()
@@ -145,20 +141,15 @@ impl TransformCache {
     ) {
         self.register_transform_for(space, &ReferenceFromObjTransform::Unreachable(reason));
 
-        if let Some((parent_path, _)) = &space.parent {
-            if let Some(parent_space) = spaces_info.get(parent_path) {
-                for sibling_path in parent_space.child_spaces.keys() {
-                    if *sibling_path == space.path {
-                        continue;
-                    }
-                    if let Some(child_space) = spaces_info.get(sibling_path) {
-                        self.mark_self_and_descendants_unreachable(
-                            spaces_info,
-                            child_space,
-                            reason,
-                        );
-                    }
+        if let Some((parent_space, _)) = &space.parent(spaces_info) {
+            for sibling_path in parent_space.child_spaces.keys() {
+                if *sibling_path == space.path {
+                    continue;
                 }
+                if let Some(child_space) = spaces_info.get(sibling_path) {
+                    self.mark_self_and_descendants_unreachable(spaces_info, child_space, reason);
+                }
+
                 self.mark_non_descendants(spaces_info, parent_space, reason);
             }
         }
