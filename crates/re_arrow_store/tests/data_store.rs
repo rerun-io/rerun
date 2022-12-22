@@ -118,7 +118,6 @@ fn range_impl(store: &mut DataStore) {
 
     let ent_path = EntityPath::from("this/that");
 
-    let frame0 = 0.into();
     let frame1 = 1.into();
     let frame2 = 2.into();
     let frame3 = 3.into();
@@ -202,10 +201,7 @@ fn range_impl(store: &mut DataStore) {
                 dfs_processed += 1;
             }
 
-            let dfs_processed_expected = bundles_at_times
-                .iter()
-                .filter(|(_, bundles)| !bundles.is_empty())
-                .count();
+            let dfs_processed_expected = bundles_at_times.len();
             assert_eq!(dfs_processed_expected, dfs_processed);
         };
 
@@ -217,7 +213,7 @@ fn range_impl(store: &mut DataStore) {
         TimeRange::new(frame1, frame1),
         Rect2D::name(),
         &[
-            (frame0, &[]), // TODO: actually not entirely sure why this is yielded
+            // nothing at frame 0
             (frame1, &[(Rect2D::name(), &bundle1)]),
         ],
     );
@@ -281,14 +277,15 @@ fn range_impl(store: &mut DataStore) {
         TimeRange::new(frame1, frame1),
         Point2D::name(),
         &[
-            (frame0, &[]), //
+            // nothing at frame 0
+            // nothing at frame 1 from Point2D's PoV
         ],
     );
     assert_range_components(
         TimeRange::new(frame2, frame2),
         Point2D::name(),
         &[
-            (frame1, &[]), //
+            // nothing at frame 1 from Point2D's PoV
             (
                 frame2,
                 &[(Point2D::name(), &bundle2), (Rect2D::name(), &bundle1)],
@@ -336,7 +333,7 @@ fn range_impl(store: &mut DataStore) {
         TimeRange::new(frame1, frame5),
         Rect2D::name(),
         &[
-            (frame0, &[]), //
+            // nothing at frame 0
             (frame1, &[(Rect2D::name(), &bundle1)]),
             // nothing in frame 3 from Rect2D's PoV
             // got multiple entries for frame 4 alone
@@ -362,7 +359,7 @@ fn range_impl(store: &mut DataStore) {
         TimeRange::new(frame1, frame5),
         Point2D::name(),
         &[
-            (frame0, &[]), //
+            // nothing at frame 0
             (
                 frame2,
                 &[(Point2D::name(), &bundle2), (Rect2D::name(), &bundle1)],
