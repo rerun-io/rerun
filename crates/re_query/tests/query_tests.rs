@@ -1,6 +1,6 @@
 mod common;
 
-use re_arrow_store::{DataStore, LatestAtQuery};
+use re_arrow_store::DataStore;
 use re_log_types::{
     datagen::build_frame_nr,
     field_types::Instance,

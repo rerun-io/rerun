@@ -1,4 +1,3 @@
-use re_arrow_store::TimeQuery;
 use re_data_store::{query::visit_type_data_4, FieldName, InstanceIdHash, ObjectsProperties};
 use re_log_types::{
     context::ClassId,
@@ -111,14 +110,11 @@ impl ScenePart for Boxes2DPart {
         // Second pass for arrow-stored rectangles
         for obj_path in query.obj_paths {
             let ent_path = obj_path;
-            let timeline_query = re_arrow_store::TimelineQuery::new(
-                query.timeline,
-                TimeQuery::LatestAt(query.latest_at.as_i64()),
-            );
+            let query = re_arrow_store::LatestAtQuery::new(query.timeline, query.latest_at);
 
             match query_entity_with_primary(
                 &ctx.log_db.obj_db.arrow_store,
-                &timeline_query,
+                &query,
                 ent_path,
                 Rect2D::name(),
                 &[ColorRGBA::name()],

@@ -6,7 +6,7 @@ use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
 
 use re_arrow_store::{DataStore, DataStoreConfig};
 use re_log_types::{
-    datagen::{build_frame_nr, build_instances},
+    datagen::{build_frame_nr, build_some_instances},
     field_types::Instance,
     msg_bundle::{Component as _, MsgBundle},
     MsgId, ObjPath as EntityPath, TimePoint,
@@ -57,7 +57,7 @@ fn pathological_bucket_topology() {
                 MsgId::ZERO,
                 ent_path.clone(),
                 time_point.clone(),
-                vec![build_instances(nb_instances)],
+                vec![build_some_instances(nb_instances).try_into().unwrap()],
             );
             store_forward.insert(&msg).unwrap();
 
@@ -65,7 +65,7 @@ fn pathological_bucket_topology() {
                 MsgId::ZERO,
                 ent_path.clone(),
                 time_point.clone(),
-                vec![build_instances(nb_instances)],
+                vec![build_some_instances(nb_instances).try_into().unwrap()],
             );
             store_backward.insert(&msg).unwrap();
         }
@@ -86,7 +86,7 @@ fn pathological_bucket_topology() {
                     MsgId::ZERO,
                     ent_path.clone(),
                     time_point,
-                    vec![build_instances(nb_instances)],
+                    vec![build_some_instances(nb_instances).try_into().unwrap()],
                 )
             })
             .collect::<Vec<_>>();

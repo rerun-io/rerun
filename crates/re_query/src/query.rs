@@ -1,7 +1,5 @@
 use std::collections::BTreeMap;
 
-use polars_core::prelude::*;
-
 use re_arrow_store::{DataStore, LatestAtQuery};
 use re_log_types::{field_types::Instance, msg_bundle::Component, ComponentName, ObjPath};
 
@@ -127,7 +125,7 @@ pub fn query_entity_with_primary<const N: usize>(
     let components: crate::Result<BTreeMap<ComponentName, ComponentWithInstances>> = components
         .iter()
         .filter_map(|component| {
-            match get_component_with_instances(store, timeline_query, ent_path, *component) {
+            match get_component_with_instances(store, query, ent_path, *component) {
                 Ok(component_result) => Some(Ok((*component, component_result))),
                 Err(QueryError::PrimaryNotFound) => None,
                 Err(err) => Some(Err(err)),
@@ -219,11 +217,11 @@ fn simple_query_entity() {
     let store = __populate_example_store();
 
     let ent_path = "point";
-    let timeline_query = LatestAtQuery::new(Timeline::new_sequence("frame_nr"), 123.into());
+    let query = LatestAtQuery::new(Timeline::new_sequence("frame_nr"), 123.into());
 
     let entity_view = query_entity_with_primary(
         &store,
-        &timeline_query,
+        &query,
         &ent_path.into(),
         Point2D::name(),
         &[ColorRGBA::name()],

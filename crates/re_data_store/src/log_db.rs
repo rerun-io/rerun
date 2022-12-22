@@ -5,8 +5,8 @@ use re_log_types::{
     field_types::Instance,
     msg_bundle::{Component as _, MsgBundle},
     objects, ArrowMsg, BatchIndex, BeginRecordingMsg, DataMsg, DataPath, DataVec, LogMsg,
-    LoggedData, MsgId, ObjTypePath, ObjectType, PathOp, PathOpMsg, RecordingId, RecordingInfo,
-    TimeInt, TimePoint, Timeline, TypeMsg,
+    LoggedData, MsgId, ObjPath, ObjPathHash, ObjTypePath, ObjectType, PathOp, PathOpMsg,
+    RecordingId, RecordingInfo, TimeInt, TimePoint, Timeline, TypeMsg,
 };
 
 use crate::{Error, TimesPerTimeline};

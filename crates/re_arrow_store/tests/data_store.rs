@@ -5,9 +5,10 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use arrow2::array::{Array, ListArray, UInt64Array};
+use nohash_hasher::IntMap;
 use polars_core::{prelude::*, series::Series};
 use re_arrow_store::{
-    polars_util, test_bundle, DataStore, LatestAtQuery, TimeInt, TimeQuery, TimelineQuery,
+    polars_util, test_bundle, DataStore, LatestAtQuery, RangeQuery, TimeInt, TimeRange,
 };
 use re_log_types::{
     datagen::{
