@@ -1,3 +1,4 @@
+import logging
 from typing import Optional
 
 import numpy as np
@@ -33,18 +34,26 @@ def log_image(
     * float32/float64: all color components should be in 0-1 linear space.
 
     """
+    non_empty_dims = [d for d in image.shape if d != 1]
+    num_non_empty_dims = len(non_empty_dims)
+
+    interpretable_as_image = True
     # Catch some errors early:
-    if len(image.shape) < 2 or 3 < len(image.shape):
-        raise TypeError(f"Expected image, got array of shape {image.shape}")
+    if num_non_empty_dims < 2 or 3 < num_non_empty_dims:
+        logging.warning(f"Expected image, got array of shape {image.shape}")
+        interpretable_as_image = False
 
     if len(image.shape) == 3:
         depth = image.shape[2]
         if depth not in (1, 3, 4):
-            raise TypeError(
+            logging.warning(
                 f"Expected image depth of 1 (gray), 3 (RGB) or 4 (RGBA). Instead got array of shape {image.shape}"
             )
+            interpretable_as_image = False
 
-    log_tensor(obj_path, image, timeless=timeless)
+    needs_dim_squeeze = interpretable_as_image and num_non_empty_dims != len(image.shape)
+
+    _log_tensor(obj_path, image, timeless=timeless, squeeze_dims=needs_dim_squeeze)
 
 
 def log_depth_image(
@@ -64,11 +73,16 @@ def log_depth_image(
            you have millimeter precision and a range of up to ~65 meters (2^16 / 1000).
 
     """
-    # Catch some errors early:
-    if len(image.shape) != 2:
-        raise TypeError(f"Expected 2D depth image, got array of shape {image.shape}")
+    non_empty_dims = [d for d in image.shape if d != 1]
+    num_non_empty_dims = len(non_empty_dims)
 
-    log_tensor(obj_path, image, meter=meter, timeless=timeless)
+    # Catch some errors early:
+    if num_non_empty_dims != 2:
+        logging.warning(f"Expected 2D depth image, got array of shape {image.shape}")
+        _log_tensor(obj_path, image, timeless=timeless)
+    else:
+        needs_dim_squeeze = num_non_empty_dims != len(image.shape)
+        _log_tensor(obj_path, image, meter=meter, timeless=timeless, squeeze_dims=needs_dim_squeeze)
 
 
 def log_segmentation_image(
@@ -84,19 +98,25 @@ def log_segmentation_image(
     """
     if not isinstance(image, np.ndarray):
         image = np.array(image, dtype=np.uint16)
+    non_empty_dims = [d for d in image.shape if d != 1]
+    num_non_empty_dims = len(non_empty_dims)
 
     # Catch some errors early:
-    if len(image.shape) < 2 or 3 < len(image.shape):
-        raise TypeError(f"Expected image, got array of shape {image.shape}")
-
-    if len(image.shape) == 3:
-        depth = image.shape[2]
-        if depth != 1:
-            raise TypeError(f"Expected image depth of 1. Instead got array of shape {image.shape}")
-
-    _log_tensor(
-        obj_path,
-        tensor=image,
-        meaning=bindings.TensorDataMeaning.ClassId,
-        timeless=timeless,
-    )
+    if num_non_empty_dims != 2:
+        logging.warning(
+            f"Expected single channel image, got array of shape {image.shape}. Can't interpret as segmentation image."
+        )
+        _log_tensor(
+            obj_path,
+            tensor=image,
+            timeless=timeless,
+        )
+    else:
+        needs_dim_squeeze = num_non_empty_dims != len(image.shape)
+        _log_tensor(
+            obj_path,
+            tensor=image,
+            meaning=bindings.TensorDataMeaning.ClassId,
+            timeless=timeless,
+            squeeze_dims=needs_dim_squeeze,
+        )

@@ -26,7 +26,7 @@ def log_tensor(
     _log_tensor(obj_path, tensor=tensor, names=names, meter=meter, timeless=timeless)
 
 
-def _get_pytorch_names(torch_tensor: Any) -> Optional[Iterable[Optional[str]]]:
+def _get_pytorch_dim_names(torch_tensor: Any) -> Optional[Iterable[Optional[str]]]:
     """Attempt to read dimensions names from a tensor as if it's a pytorch tensor.
     May raise an AttributeError.
     """
@@ -48,13 +48,14 @@ def _log_tensor(
     meter: Optional[float] = None,
     meaning: bindings.TensorDataMeaning = None,
     timeless: bool = False,
+    squeeze_dims: bool = False,
 ) -> None:
     """Log a general tensor, perhaps with named dimensions."""
 
     # Duck-typing way to handle pytorch tensors
     try:
         if names is None:
-            names = _get_pytorch_names(tensor)
+            names = _get_pytorch_dim_names(tensor)
 
         # Make available to the cpu
         tensor = tensor.detach().cpu()  # type: ignore[attr-defined]
@@ -63,6 +64,9 @@ def _log_tensor(
 
     # Handle non-numpy arrays (like Pillow images or torch tensors)
     tensor = np.array(tensor, copy=False)
+
+    if squeeze_dims:
+        tensor = np.squeeze(tensor)
 
     if names is not None:
         names = list(names)
