@@ -248,13 +248,6 @@ impl TimePanel {
             &time_bg_area_painter,
             &timeline_rect,
         );
-        time_marker_ui(
-            &self.time_ranges_ui,
-            &mut ctx.rec_cfg.time_ctrl,
-            ui,
-            &time_area_painter,
-            &timeline_rect,
-        );
         let time_area_response = interact_with_time_area(
             &self.time_ranges_ui,
             &mut ctx.rec_cfg.time_ctrl,
@@ -283,7 +276,7 @@ impl TimePanel {
                 self.tree_ui(ctx, &time_area_response, &lower_time_area_painter, ui);
             });
 
-        if true {
+        {
             // Paint a line between the stream names on the left
             // and the data on the right:
             ui.painter().vline(
@@ -292,6 +285,14 @@ impl TimePanel {
                 ui.visuals().widgets.noninteractive.bg_stroke,
             );
         }
+
+        time_marker_ui(
+            &self.time_ranges_ui,
+            &mut ctx.rec_cfg.time_ctrl,
+            ui,
+            &time_area_painter,
+            &timeline_rect,
+        );
 
         self.time_ranges_ui.snap_time_control(ctx);
 
