@@ -36,14 +36,14 @@ opt-level = 2
 debug = true
 
 [patch.crates-io]
-# 2022-12-21 - Add Response::on_hover_and_drag_cursor
-ecolor = { git = "https://github.com/emilk/egui", rev = "fa0d7f7f7f3e6736b7191e6e0573cc58c51663d2" }
-eframe = { git = "https://github.com/emilk/egui", rev = "fa0d7f7f7f3e6736b7191e6e0573cc58c51663d2" }
-egui = { git = "https://github.com/emilk/egui", rev = "fa0d7f7f7f3e6736b7191e6e0573cc58c51663d2" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "fa0d7f7f7f3e6736b7191e6e0573cc58c51663d2" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "fa0d7f7f7f3e6736b7191e6e0573cc58c51663d2" }
-emath = { git = "https://github.com/emilk/egui", rev = "fa0d7f7f7f3e6736b7191e6e0573cc58c51663d2" }
-epaint = { git = "https://github.com/emilk/egui", rev = "fa0d7f7f7f3e6736b7191e6e0573cc58c51663d2" }
+# 2022-12-22 - Add emath::inverse_lerp
+ecolor = { git = "https://github.com/emilk/egui", rev = "34f587d1e1cc69146f7a02f20903e4f573030ffd" }
+eframe = { git = "https://github.com/emilk/egui", rev = "34f587d1e1cc69146f7a02f20903e4f573030ffd" }
+egui = { git = "https://github.com/emilk/egui", rev = "34f587d1e1cc69146f7a02f20903e4f573030ffd" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "34f587d1e1cc69146f7a02f20903e4f573030ffd" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "34f587d1e1cc69146f7a02f20903e4f573030ffd" }
+emath = { git = "https://github.com/emilk/egui", rev = "34f587d1e1cc69146f7a02f20903e4f573030ffd" }
+epaint = { git = "https://github.com/emilk/egui", rev = "34f587d1e1cc69146f7a02f20903e4f573030ffd" }
 
 # ecolor = { path = "../../egui/crates/ecolor" }
 # eframe = { path = "../../egui/crates/eframe" }

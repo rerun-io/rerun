@@ -745,9 +745,34 @@ fn paint_time_ranges_and_ticks(
     line_y_range: RangeInclusive<f32>,
     time_type: TimeType,
 ) {
+    let clip_rect = ui.clip_rect();
+
     for segment in &time_ranges_ui.segments {
-        let rect = Rect::from_x_y_ranges(segment.x.clone(), line_y_range.clone());
-        time_area_painter.extend(paint_time_range_ticks(ui, &rect, time_type, &segment.time));
+        let mut x_range = segment.x.clone();
+        let mut time_range = segment.time;
+
+        // Cull:
+        if *x_range.end() < clip_rect.left() {
+            continue;
+        }
+        if clip_rect.right() < *x_range.start() {
+            continue;
+        }
+
+        // Clamp segment to the visible portion to save CPU when zoomed in:
+        let left_t = egui::emath::inverse_lerp(x_range.clone(), clip_rect.left()).unwrap_or(0.5);
+        if 0.0 < left_t && left_t < 1.0 {
+            x_range = clip_rect.left()..=*x_range.end();
+            time_range = TimeRangeF::new(time_range.lerp(left_t), time_range.max);
+        }
+        let right_t = egui::emath::inverse_lerp(x_range.clone(), clip_rect.right()).unwrap_or(0.5);
+        if 0.0 < right_t && right_t < 1.0 {
+            x_range = *x_range.start()..=clip_rect.right();
+            time_range = TimeRangeF::new(time_range.min, time_range.lerp(right_t));
+        }
+
+        let rect = Rect::from_x_y_ranges(x_range, line_y_range.clone());
+        time_area_painter.extend(paint_time_range_ticks(ui, &rect, time_type, &time_range));
     }
 }
 
@@ -1854,7 +1879,7 @@ fn paint_ticks(
     let small_text_color = text_color_from_spacing(small_spacing_time);
 
     let mut current_time =
-        time_range.min.floor().as_i64() / small_spacing_time * small_spacing_time; // TODO(emilk): start at visible_rect.left()
+        time_range.min.floor().as_i64() / small_spacing_time * small_spacing_time;
 
     while current_time <= time_range.max.ceil().as_i64() {
         let line_x = x_from_time(current_time);
