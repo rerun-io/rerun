@@ -1120,6 +1120,7 @@ fn loop_selection_ui(
                         time_ranges_ui.time_from_x(pointer_pos.x - aim_radius),
                         time_ranges_ui.time_from_x(pointer_pos.x + aim_radius),
                     ) {
+                        // TODO(emilk): snap to absolute time too
                         let low_length = selected_range.max - time_low;
                         let high_length = selected_range.max - time_high;
                         let best_length = TimeReal::from(best_in_range_f64(
@@ -1144,6 +1145,7 @@ fn loop_selection_ui(
                         time_ranges_ui.time_from_x(pointer_pos.x - aim_radius),
                         time_ranges_ui.time_from_x(pointer_pos.x + aim_radius),
                     ) {
+                        // TODO(emilk): snap to absolute time too
                         let low_length = time_low - selected_range.min;
                         let high_length = time_high - selected_range.min;
                         let best_length = TimeReal::from(best_in_range_f64(
@@ -1159,6 +1161,15 @@ fn loop_selection_ui(
                         }
 
                         time_ctrl.set_loop_selection(selected_range);
+                        time_ctrl.looping = Looping::Selection;
+                    }
+                }
+
+                if middle_response.clicked() {
+                    // Click to toggle looping
+                    if time_ctrl.looping == Looping::Selection {
+                        time_ctrl.looping = Looping::Off;
+                    } else {
                         time_ctrl.looping = Looping::Selection;
                     }
                 }
@@ -1186,7 +1197,9 @@ fn loop_selection_ui(
                         }
 
                         time_ctrl.set_loop_selection(new_range);
-                        time_ctrl.looping = Looping::Selection;
+                        if ui.input().pointer.is_moving() {
+                            time_ctrl.looping = Looping::Selection;
+                        }
                         Some(())
                     })();
                 }
@@ -1328,7 +1341,6 @@ fn time_marker_ui(
                         let time = time_ranges_ui.clamp_time(time);
                         time_ctrl.set_time(time);
                         time_ctrl.pause();
-                        ui.memory().set_dragged_id(time_drag_id);
                     }
                 }
             }
