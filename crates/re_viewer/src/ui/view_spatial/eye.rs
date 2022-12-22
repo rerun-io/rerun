@@ -32,9 +32,20 @@ impl Eye {
         })
     }
 
-    #[allow(clippy::unused_self)]
     pub fn near(&self) -> f32 {
-        0.01 // TODO(emilk)
+        if self.is_perspective() {
+            0.01 // TODO(emilk)
+        } else {
+            -1000.0 // TODO(andreas)
+        }
+    }
+
+    pub fn far(&self) -> f32 {
+        if self.is_perspective() {
+            f32::INFINITY
+        } else {
+            1000.0
+        }
     }
 
     pub fn ui_from_world(&self, rect: &Rect) -> Mat4 {
@@ -48,8 +59,8 @@ impl Eye {
                 rect.right(),
                 rect.bottom(),
                 rect.top(),
-                -1000.0, // TODO:
-                1000.0,
+                self.near(),
+                self.far(),
             )
         };
 
@@ -57,6 +68,36 @@ impl Eye {
             * Mat4::from_scale(0.5 * vec3(rect.width(), -rect.height(), 1.0))
             * projection
             * self.world_from_view.inverse()
+    }
+
+    pub fn is_perspective(&self) -> bool {
+        self.fov_y.is_some()
+    }
+
+    // pub fn is_orthographic(&self) -> bool {
+    //     self.fov_y.is_none()
+    // }
+
+    /// Picking ray for a given pointer in the parent space
+    /// (i.e. prior to camera transform, "world" space)
+    pub fn picking_ray(&self, screen_rect: &Rect, pointer: glam::Vec2) -> macaw::Ray3 {
+        if self.is_perspective() {
+            let ray_dir = self
+                .world_from_ui(screen_rect)
+                .project_point3(glam::Vec3::new(pointer.x, pointer.y, -1.0))
+                - self.pos_in_world();
+            macaw::Ray3::from_origin_dir(self.pos_in_world(), ray_dir.normalize())
+        } else {
+            // The ray originates on the camera plane, not from the camera position
+            let origin = self.world_from_view.translation()
+                + self.world_from_view.rotation().mul_vec3(glam::Vec3::X)
+                    * (pointer.x - screen_rect.top())
+                + self.world_from_view.rotation().mul_vec3(glam::Vec3::Y)
+                    * (pointer.y - screen_rect.left());
+
+            let ray_dir = self.world_from_view.rotation().mul_vec3(glam::Vec3::Z);
+            macaw::Ray3::from_origin_dir(origin, ray_dir)
+        }
     }
 
     pub fn world_from_ui(&self, rect: &Rect) -> Mat4 {

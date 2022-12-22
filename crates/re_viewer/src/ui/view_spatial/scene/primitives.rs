@@ -9,6 +9,10 @@ use super::MeshSource;
 
 /// Primitives sent off to `re_renderer`.
 /// (Some meta information still relevant to ui setup as well)
+///
+/// TODO(andreas): Right now we're using `re_renderer` data structures for reading (bounding box & picking).
+///                 In the future, this will be more limited as we're going to gpu staging data as soon as possible
+///                 which is very slow to read. See [#594](https://github.com/rerun-io/rerun/pull/594)
 #[derive(Default)]
 pub struct SceneSpatialPrimitives {
     /// Estimated bounding box of all data in scene coordinates. Accumulated.
@@ -99,15 +103,7 @@ impl SceneSpatialPrimitives {
 
         let ui_from_world = eye.ui_from_world(rect);
         let world_from_ui = eye.world_from_ui(rect);
-
-        let ray_in_world = {
-            let ray_dir = world_from_ui.project_point3(glam::Vec3::new(
-                pointer_in_ui.x,
-                pointer_in_ui.y,
-                -1.0,
-            )) - eye.pos_in_world();
-            macaw::Ray3::from_origin_dir(eye.pos_in_world(), ray_dir.normalize())
-        };
+        let ray_in_world = eye.picking_ray(rect, pointer_in_ui);
 
         let Self {
             bounding_box: _,
@@ -214,6 +210,8 @@ impl SceneSpatialPrimitives {
                 }
             }
         }
+
+        // TODO: Rectangles
 
         if let Some(closest_instance_id) = closest_instance_id {
             let closest_point = world_from_ui.project_point3(glam::Vec3::new(
