@@ -653,8 +653,8 @@ impl IndexBucket {
             // find the secondary indices' rows, and the associated row indices.
             let mut secondary_idx = primary_idx;
             while index[secondary_idx as usize].is_none() {
-                secondary_idx -= 1;
-                if secondary_idx < 0 {
+                secondary_idx += 1;
+                if secondary_idx as usize >= index.len() {
                     trace!(
                         kind = "range",
                         bucket_time_range = self.timeline.typ().format_range(bucket_time_range),
