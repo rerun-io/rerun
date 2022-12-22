@@ -228,6 +228,7 @@ pub fn range_components<'a, const N: usize>(
                 DataFrame::new(series?)?
             };
 
+            // Let's do a real latest-at query for the missing secondary components!
             let missing = components
                 .iter()
                 .enumerate()

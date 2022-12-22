@@ -81,47 +81,57 @@ impl DataStore {
     /// The presence or absence of secondary components has no effect on the success criteria.
     ///
     /// * On success, the returned array is filled with the internal row index of each and every
-    ///   component in `components`, or `None` if said component isn't available at that point
-    ///   in time.
+    ///   component in `components`, or `None` if said component is not available in that row.
     ///
     /// To actually retrieve the data associated with these indices, see [`Self::get`].
     ///
-    /// Follows a complete example of querying indices, fetching the associated data and finally
-    /// turning it all into a `polars::DataFrame`:
-    /// ```rust
-    /// # use polars_core::prelude::*;
-    /// # use arrow2::array::Array;
-    /// # use re_log_types::{*, ObjPath as EntityPath};
-    /// # use re_arrow_store::*;
+    /// ## Example
     ///
-    /// fn fetch_latest_components<const N: usize>(
+    /// The following example demonstrate how to fetch the latest row indices for a given
+    /// component and the associated cluster key, then get the corresponding data using these row
+    /// indices, and finally turn everything into a nice-to-work-with polars's dataframe.
+    ///
+    /// ```rust
+    /// # use polars_core::{prelude::*, series::Series};
+    /// # use re_log_types::{ComponentName, ObjPath as EntityPath, TimeInt};
+    /// # use re_arrow_store::{DataStore, LatestAtQuery, RangeQuery};
+    ///
+    /// pub fn latest_component(
     ///     store: &DataStore,
     ///     query: &LatestAtQuery,
     ///     ent_path: &EntityPath,
     ///     primary: ComponentName,
-    ///     components: &[ComponentName; N],
-    /// ) -> DataFrame {
+    /// ) -> anyhow::Result<DataFrame> {
+    ///     let cluster_key = store.cluster_key();
+    ///
+    ///     let components = &[cluster_key, primary];
     ///     let row_indices = store
     ///         .latest_at(query, ent_path, primary, components)
-    ///         .unwrap_or([None; N]);
+    ///         .unwrap_or([None; 2]);
     ///     let results = store.get(components, &row_indices);
     ///
-    ///     let df = {
-    ///         let series: Vec<_> = components
-    ///             .iter()
-    ///             .zip(results)
-    ///             .filter_map(|(component, col)| col.map(|col| (component, col)))
-    ///             .map(|(&component, col)| Series::try_from((component.as_str(), col)).unwrap())
-    ///             .collect();
+    ///     let series: Result<Vec<_>, _> = components
+    ///         .iter()
+    ///         .zip(results)
+    ///         .filter_map(|(component, col)| col.map(|col| (component, col)))
+    ///         .map(|(&component, col)| Series::try_from((component.as_str(), col)))
+    ///         .collect();
     ///
-    ///         DataFrame::new(series).unwrap()
-    ///     };
-    ///
-    ///     df
+    ///     DataFrame::new(series?).map_err(Into::into)
     /// }
     /// ```
+    ///
+    /// Thanks to the cluster key, one is free to repeat this process as many times as they wish,
+    /// then reduce the resulting dataframes down to one by joining them as they see fit.
+    /// This is what our `latest_components` polars helper does.
+    ///
+    /// For more information about working with dataframes, see the `polars` feature.
     //
-    // TODO: visual doc of latest_at behavior/semantics
+    // TODO(cmc): add a short "store-contains-this/latest-at-returns-that" once we have support for
+    // DataStore::dump_as_df().
+    //
+    // TODO(cmc): at one point we're gonna need a high-level documentation/user-guide of the
+    // semantics of latest-at PoV queries, giving readers a walkthrough of a real-world query.
     //
     // TODO(cmc): expose query_dyn at some point, to fetch an unknown number of component indices,
     // at the cost of extra dynamic allocations.
@@ -174,8 +184,82 @@ impl DataStore {
         None
     }
 
-    // TODO
-    // TODO: visual doc of range behavior/semantics
+    /// Iterates the datastore in order to return the internal row indices of the the specified
+    /// `components`, as seen from the point of view of the so-called `primary` component, for the
+    /// given time range.
+    ///
+    /// For each and every relevant row that is found, the returned iterator will yield an array
+    /// that is filled with the internal row index of each and every component in `components`,
+    /// or `None` if said component is not available in that row.
+    ///
+    /// This method operates in two phases: first, it will yield a row that corresponds to a
+    /// latest-at query at the beginning of the specified time range _minus one_ (!), and then
+    /// it'll start iterating from there.
+    /// This cannot fail! If there's no data to return (whether that's due to a missing primary
+    /// index, missing secondary components, an empty point-of-view...), then an empty iterator is
+    /// returned.
+    ///
+    /// To actually retrieve the data associated with these indices, see [`Self::get`].
+    ///
+    /// ⚠ The semantics of iteration are a bit tricky!
+    ///
+    /// * Contrary to latest-at queries, range queries can and will yield multiple rows for a
+    ///   single timestamp if that timestamp happens to hold multiple entries for the `primary`
+    ///   component.
+    ///   At the opposite end, they won't yield any row that don't contain an actual value for the
+    ///   `primary` component, _even if they do contain a value for one the secondaries_!
+    ///
+    /// ## Example
+    ///
+    /// The following example demonstrate how to range over the row indices of a given
+    /// component and its associated cluster key, then get the corresponding data using these
+    /// row indices, and finally turn everything into a nice-to-work-with iterator of
+    /// polars's dataframe.
+    ///
+    /// ```rust
+    /// # use polars_core::{prelude::*, series::Series};
+    /// # use re_log_types::{ComponentName, ObjPath as EntityPath, TimeInt};
+    /// # use re_arrow_store::{DataStore, LatestAtQuery, RangeQuery};
+    ///
+    /// pub fn range_component<'a>(
+    ///     store: &'a DataStore,
+    ///     query: &'a RangeQuery,
+    ///     ent_path: &'a EntityPath,
+    ///     primary: ComponentName,
+    /// ) -> impl Iterator<Item = anyhow::Result<(TimeInt, DataFrame)>> + 'a {
+    ///     let cluster_key = store.cluster_key();
+    ///
+    ///     let components = [cluster_key, primary];
+    ///     store
+    ///         .range(query, ent_path, primary, components)
+    ///         .map(move |(time, row_indices)| {
+    ///             let results = store.get(&components, &row_indices);
+    ///             let series: Result<Vec<_>, _> = components
+    ///                 .iter()
+    ///                 .zip(results)
+    ///                 .filter_map(|(component, col)| col.map(|col| (component, col)))
+    ///                 .map(|(&component, col)| Series::try_from((component.as_str(), col)))
+    ///                 .collect();
+    ///
+    ///             Ok::<_, anyhow::Error>((time, DataFrame::new(series?)?))
+    ///         })
+    /// }
+    /// ```
+    ///
+    /// Thanks to the cluster key, one is free to run a latest-at query for every set of row
+    /// indices yielded by this iterator, thereby building a streaming latest-at range query.
+    /// This is what our `range_components` polars helper does.
+    ///
+    /// For more information about working with dataframes, see the `polars` feature.
+    //
+    // TODO(cmc): add a short "store-contains-this/latest-at-returns-that" once we have support for
+    // DataStore::dump_as_df().
+    //
+    // TODO(cmc): at one point we're gonna need a high-level documentation/user-guide of the
+    // semantics of latest-at PoV queries, giving readers a walkthrough of a real-world query.
+    //
+    // TODO(cmc): expose query_dyn at some point, to fetch an unknown number of component indices,
+    // at the cost of extra dynamic allocations.
     pub fn range<'a, const N: usize>(
         &'a self,
         query: &RangeQuery,
@@ -314,7 +398,7 @@ impl IndexTable {
         None // primary component not found
     }
 
-    // TODO
+    /// Returns an empty iterator if no data could be found for any reason.
     pub fn range<const N: usize>(
         &self,
         time_range: TimeRange,
@@ -323,8 +407,13 @@ impl IndexTable {
     ) -> impl Iterator<Item = (TimeInt, [Option<RowIndex>; N])> + '_ {
         let timeline = self.timeline;
 
-        // TODO: explain lack of min clause
+        // Note the lack of a minimum value in that range!
+        //
+        // That's because any bucket with a lower bound <= `time_range.min` could potentially
+        // hold data within the `time_range` we're looking for, as long as it also has an upper
+        // bound that is >= `time_range.min` (see filter below).
         self.range_buckets(..=time_range.max)
+            .filter(move |bucket| bucket.indices.read().time_range.max >= time_range.min)
             .enumerate()
             .flat_map(move |(bucket_nr, bucket)| {
                 trace!(
@@ -515,7 +604,7 @@ impl IndexBucket {
         Some(row_indices)
     }
 
-    // TODO
+    /// Returns an empty iterator if no data could be found for any reason.
     pub fn range<'a, const N: usize>(
         &'a self,
         time_range: TimeRange,
@@ -549,11 +638,6 @@ impl IndexBucket {
 
             // find the primary index's row.
             let primary_idx = times.partition_point(|t| *t < time_range.min.as_i64()) as i64;
-
-            // TODO: explain
-            if primary_idx >= times.len() as i64 {
-                return itertools::Either::Right(std::iter::empty());
-            }
 
             trace!(
                 kind = "range",
@@ -597,29 +681,36 @@ impl IndexBucket {
             );
             debug_assert!(index[secondary_idx as usize].is_some());
 
+            // did we go so far back that we're not within the time range anymore?
             let secondary_time = times[secondary_idx as usize];
             time_range
                 .contains(secondary_time.into())
                 .then_some(secondary_idx)
         };
 
-        let times = times.clone(); // TODO: gotta arc it
-        let indices = indices.clone(); // TODO: what's the shallowness like in there
-
+        // The bucket does contain data for the primary component, and does contain data for the
+        // time range we're interested, but not both at the same time!
         let Some(secondary_idx) = secondary_idx else {
             return itertools::Either::Right(std::iter::empty());
         };
 
-        // TODO: explaaaaaaaaaaaaaaaaain
+        let times = times.clone(); // TODO: gotta arc it
+        let indices = indices.clone(); // TODO: what's the shallowness like in there
+
+        // We have found the index of first row that contains data for the primary component.
+        //
+        // Now we need to iterate through every remaining rows in the bucket and yield any that
+        // contains data for the primary component and is still within the time range.
         let row_indices = times
             .into_iter()
             .skip(secondary_idx as usize)
+            // don't go beyond the time range we're interested in!
             .filter(move |time| time_range.contains((*time).into()))
             .enumerate()
             .filter_map(move |(offset, time)| {
                 let secondary_idx = secondary_idx as usize + offset;
 
-                // TODO: explain
+                // We must only yield rows that contain data for the primary component!!
                 indices
                     .get(&primary)
                     .and_then(|index| index.get(secondary_idx).copied())??;

@@ -159,7 +159,10 @@ fn range_impl(store: &mut DataStore) {
         err.unwrap();
     }
 
-    // TODO: probably want some comments in there
+    // Each entry in `bundles_at_times` corresponds to a dataframe that's expected to be returned
+    // by the range query.
+    // A single timepoint might have several of those! That's one of the behavior specific to range
+    // queries.
     let mut assert_range_components =
         |time_range: TimeRange,
          primary: ComponentName,
@@ -189,15 +192,7 @@ fn range_impl(store: &mut DataStore) {
 
             let mut dfs_processed = 0usize;
             let mut time_counters: IntMap<i64, usize> = Default::default();
-            eprintln!("----------------");
             for (time, df) in dfs.map(Result::unwrap) {
-                eprintln!(
-                    "Found data at time {} from {}'s PoV (outer-joining):\n{:?}",
-                    TimeType::Sequence.format(time), // TODO
-                    primary,
-                    df,
-                );
-
                 let time_count = time_counters.entry(time.as_i64()).or_default();
                 let df_expected = &expected_at_times[&time][*time_count];
                 *time_count += 1;
@@ -222,7 +217,7 @@ fn range_impl(store: &mut DataStore) {
         TimeRange::new(frame1, frame1),
         Rect2D::name(),
         &[
-            (frame0, &[]), //
+            (frame0, &[]), // TODO: actually not entirely sure why this is yielded
             (frame1, &[(Rect2D::name(), &bundle1)]),
         ],
     );

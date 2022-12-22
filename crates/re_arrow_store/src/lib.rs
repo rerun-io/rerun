@@ -1,6 +1,9 @@
 //! The Rerun Arrow-based datastore.
 //!
-//! See `src/store.rs` for an overview of the core datastructures.
+//! * See [`Datastore`] for an overview of the core datastructures.
+//! * See [`Datastore::latest_at`] and [`Datastore::range`] for the documentation of the public
+//!   read APIs.
+//! * See [`Datastore::insert`] for the documentation of the public write APIs.
 //!
 //! ## Feature flags
 #![doc = document_features::document_features!()]
