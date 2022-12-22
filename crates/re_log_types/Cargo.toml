@@ -19,6 +19,9 @@ glam = ["dep:glam", "dep:macaw"]
 ## Enable saving data to a file.
 save = ["anyhow", "rmp-serde", "serde", "zstd"]
 
+## Enable conversions
+ecolor = ["dep:ecolor"]
+
 ## Enable (de)serialization using serde.
 serde = [
   "dep:serde",
@@ -63,6 +66,7 @@ uuid = { version = "1.1", features = ["serde", "v4", "js"] }
 
 # Optional dependencies:
 anyhow = { workspace = true, optional = true }
+ecolor = { workspace = true, optional = true }
 glam = { version = "0.20", optional = true }                            # can't update glam until a new version of `macaw` is released
 macaw = { version = "0.17", optional = true }
 rand = { version = "0.8", optional = true }
