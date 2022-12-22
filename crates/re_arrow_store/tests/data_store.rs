@@ -149,8 +149,13 @@ fn range_impl(store: &mut DataStore) {
 
     let insts4_3 = build_some_instances_from(30..35);
     let rects4_3 = build_some_rects(5);
-    let bundle4_3 = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [insts4_3, rects4_3]);
+    let bundle4_3 =
+        test_bundle!(ent_path @ [build_frame_nr(frame4)] => [insts4_3.clone(), rects4_3]);
     store.insert(&bundle4_3).unwrap();
+
+    let points4_4 = build_some_point2d(5);
+    let bundle4_4 = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [insts4_3, points4_4]);
+    store.insert(&bundle4_4).unwrap();
 
     if let err @ Err(_) = store.sanity_check() {
         store.sort_indices();
@@ -244,18 +249,21 @@ fn range_impl(store: &mut DataStore) {
                 frame3,
                 &[(Rect2D::name(), &bundle1), (Point2D::name(), &bundle3)],
             ),
-            // got multiple entries for frame 4 alone
+            // Do take note of the value of Point2D in all 3 cases below, which is effectively
+            // "newer" than the primary component itself!
+            // That's because `polars_util::range_components` takes some shortcuts rather than
+            // implementing a true ordered streaming-join operator.
             (
                 frame4,
-                &[(Rect2D::name(), &bundle4_1), (Point2D::name(), &bundle3)],
+                &[(Rect2D::name(), &bundle4_1), (Point2D::name(), &bundle4_4)], // !!!
             ),
             (
                 frame4,
-                &[(Rect2D::name(), &bundle4_2), (Point2D::name(), &bundle3)],
+                &[(Rect2D::name(), &bundle4_2), (Point2D::name(), &bundle4_4)], // !!!
             ),
             (
                 frame4,
-                &[(Rect2D::name(), &bundle4_3), (Point2D::name(), &bundle3)],
+                &[(Rect2D::name(), &bundle4_3), (Point2D::name(), &bundle4_4)], // !!!
             ),
         ],
     );
@@ -265,7 +273,7 @@ fn range_impl(store: &mut DataStore) {
         &[
             (
                 frame4,
-                &[(Rect2D::name(), &bundle4_3), (Point2D::name(), &bundle3)],
+                &[(Rect2D::name(), &bundle4_3), (Point2D::name(), &bundle4_4)],
             ),
             // nothing in frame 5 from Rect2D's PoV
         ],
@@ -273,24 +281,14 @@ fn range_impl(store: &mut DataStore) {
 
     // Unit ranges (Point2D's PoV)
 
-    assert_range_components(
-        TimeRange::new(frame1, frame1),
-        Point2D::name(),
-        &[
-            // nothing at frame 0
-            // nothing at frame 1 from Point2D's PoV
-        ],
-    );
+    assert_range_components(TimeRange::new(frame1, frame1), Point2D::name(), &[]);
     assert_range_components(
         TimeRange::new(frame2, frame2),
         Point2D::name(),
-        &[
-            // nothing at frame 1 from Point2D's PoV
-            (
-                frame2,
-                &[(Point2D::name(), &bundle2), (Rect2D::name(), &bundle1)],
-            ),
-        ],
+        &[(
+            frame2,
+            &[(Point2D::name(), &bundle2), (Rect2D::name(), &bundle1)],
+        )],
     );
     assert_range_components(
         TimeRange::new(frame3, frame3),
@@ -313,7 +311,11 @@ fn range_impl(store: &mut DataStore) {
             (
                 frame3,
                 &[(Point2D::name(), &bundle3), (Rect2D::name(), &bundle1)],
-            ), //
+            ),
+            (
+                frame4,
+                &[(Point2D::name(), &bundle4_4), (Rect2D::name(), &bundle4_3)],
+            ),
         ],
     );
     assert_range_components(
@@ -322,7 +324,7 @@ fn range_impl(store: &mut DataStore) {
         &[
             (
                 frame4,
-                &[(Point2D::name(), &bundle3), (Rect2D::name(), &bundle4_3)],
+                &[(Point2D::name(), &bundle4_4), (Rect2D::name(), &bundle4_3)],
             ), //
         ],
     );
@@ -333,23 +335,23 @@ fn range_impl(store: &mut DataStore) {
         TimeRange::new(frame1, frame5),
         Rect2D::name(),
         &[
-            // nothing at frame 0
             (frame1, &[(Rect2D::name(), &bundle1)]),
-            // nothing in frame 3 from Rect2D's PoV
-            // got multiple entries for frame 4 alone
+            // Do take note of the value of Point2D in all 3 cases below, which is effectively
+            // "newer" than the primary component itself!
+            // That's because `polars_util::range_components` takes some shortcuts rather than
+            // implementing a true ordered streaming-join operator.
             (
                 frame4,
-                &[(Rect2D::name(), &bundle4_1), (Point2D::name(), &bundle3)],
+                &[(Rect2D::name(), &bundle4_1), (Point2D::name(), &bundle4_4)],
             ),
             (
                 frame4,
-                &[(Rect2D::name(), &bundle4_2), (Point2D::name(), &bundle3)],
+                &[(Rect2D::name(), &bundle4_2), (Point2D::name(), &bundle4_4)],
             ),
             (
                 frame4,
-                &[(Rect2D::name(), &bundle4_3), (Point2D::name(), &bundle3)],
+                &[(Rect2D::name(), &bundle4_3), (Point2D::name(), &bundle4_4)],
             ),
-            // nothing in frame 5 from Rect2D's PoV
         ],
     );
 
@@ -359,7 +361,6 @@ fn range_impl(store: &mut DataStore) {
         TimeRange::new(frame1, frame5),
         Point2D::name(),
         &[
-            // nothing at frame 0
             (
                 frame2,
                 &[(Point2D::name(), &bundle2), (Rect2D::name(), &bundle1)],
@@ -367,6 +368,10 @@ fn range_impl(store: &mut DataStore) {
             (
                 frame3,
                 &[(Point2D::name(), &bundle3), (Rect2D::name(), &bundle1)],
+            ),
+            (
+                frame4,
+                &[(Point2D::name(), &bundle4_4), (Rect2D::name(), &bundle4_3)],
             ),
         ],
     );

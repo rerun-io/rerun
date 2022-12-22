@@ -204,7 +204,7 @@ pub fn latest_components(
 /// let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
 /// let query = RangeQuery {
 ///     timeline: timeline_frame_nr,
-///     range: TimeRange::new(4.into(), 4.into()),
+///     range: TimeRange::new(1.into(), 4.into()),
 /// };
 ///
 /// let dfs = polars_util::range_component(&store, &query, &ent_path, Rect2D::name());
@@ -269,7 +269,7 @@ pub fn range_component<'a>(
         .range(query, ent_path, primary, components)
         .map(move |(time, row_indices)| {
             let results = store.get(&components, &row_indices);
-            dataframe_from_results(&components, results)
+            dataframe_from_results(&components, results).map(|df| (time, df))
         })
 }
 
@@ -277,7 +277,9 @@ pub fn range_component<'a>(
 /// the single point-of-view of the `primary` component, returning an iterator of `DataFrame`s.
 ///
 /// For each dataframe yielded by this iterator, a latest-at query will be ran for all missing
-/// secondary `components`, and the results join together using the specified `join_type`.
+/// secondary `components`, and the results joined together using the specified `join_type`.
+/// Not that this can results in different behaviors compared to a "true" ordered streaming-join
+/// operator!
 ///
 /// Usage:
 /// ```
@@ -424,7 +426,7 @@ pub fn range_components<'a, const N: usize>(
                 dataframe_from_results(&components, results)
             };
 
-            // Let's do a real latest-at query for the missing secondary components!
+            // Do an actual latest-at query for the missing secondary components!
             let missing = components
                 .iter()
                 .enumerate()
