@@ -72,10 +72,14 @@ impl ComponentWithInstances {
     /// Look up the value that corresponds to a given `Instance`
     pub fn lookup(&self, instance: &Instance) -> Option<Box<dyn Array>> {
         let offset = if let Some(keys) = &self.instance_keys {
+            // If `instance_keys` is set, extract the `PrimitiveArray`, and find
+            // the index of the value by `binary_search`
             keys.as_any()
                 .downcast_ref::<PrimitiveArray<u64>>()
                 .and_then(|primitives| primitives.values().binary_search(&instance.0).ok())
         } else {
+            // If `instance_keys` is not set, then offset is the instance because the implicit
+            // index is a sequential list
             Some(instance.0 as usize)
         };
 
