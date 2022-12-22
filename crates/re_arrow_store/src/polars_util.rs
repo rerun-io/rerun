@@ -172,7 +172,110 @@ pub fn latest_components(
 
 // --- Range ---
 
-// TODO: doc
+/// Iterates over the rows of a single component and its cluster key from the point-of-view of this
+/// very same component, and returns an iterator of `DataFrame`s.
+///
+/// Usage:
+/// ```
+/// # use re_arrow_store::{polars_util, test_bundle, DataStore, RangeQuery, TimeRange};
+/// # use re_log_types::{
+/// #     datagen::{
+/// #         build_frame_nr, build_some_instances, build_some_instances_from, build_some_point2d,
+/// #         build_some_rects,
+/// #     },
+/// #     field_types::{Instance, Rect2D},
+/// #     msg_bundle::Component as _,
+/// #     ObjPath as EntityPath, TimeType, Timeline,
+/// # };
+///
+/// let mut store = DataStore::new(Instance::name(), Default::default());
+///
+/// let ent_path = EntityPath::from("this/that");
+///
+/// let frame1 = 1.into();
+/// let frame2 = 2.into();
+/// let frame3 = 3.into();
+/// let frame4 = 4.into();
+///
+/// let insts1 = build_some_instances(2);
+/// let rects1 = build_some_rects(2);
+/// let bundle1 = test_bundle!(ent_path @ [build_frame_nr(frame1)] => [insts1.clone(), rects1]);
+/// store.insert(&bundle1).unwrap();
+///
+/// let points2 = build_some_point2d(2);
+/// let bundle2 = test_bundle!(ent_path @ [build_frame_nr(frame2)] => [insts1, points2]);
+/// store.insert(&bundle2).unwrap();
+///
+/// let insts3 = build_some_instances_from(25..29);
+/// let points3 = build_some_point2d(4);
+/// let bundle3 = test_bundle!(ent_path @ [build_frame_nr(frame3)] => [insts3, points3]);
+/// store.insert(&bundle3).unwrap();
+///
+/// let insts4_1 = build_some_instances_from(20..23);
+/// let rects4_1 = build_some_rects(3);
+/// let bundle4_1 = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [insts4_1, rects4_1]);
+/// store.insert(&bundle4_1).unwrap();
+///
+/// let insts4_2 = build_some_instances_from(25..28);
+/// let rects4_2 = build_some_rects(3);
+/// let bundle4_2 = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [insts4_2, rects4_2]);
+/// store.insert(&bundle4_2).unwrap();
+///
+/// let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
+/// let query = RangeQuery {
+///     timeline: timeline_frame_nr,
+///     range: TimeRange::new(4.into(), 4.into()),
+/// };
+///
+/// let dfs = polars_util::range_component(&store, &query, &ent_path, Rect2D::name());
+///
+/// for (time, df) in dfs.map(Result::unwrap) {
+///     eprintln!(
+///         "Found data at time {} from {}'s PoV (outer-joining):\n{:?}",
+///         TimeType::Sequence.format(time),
+///         Rect2D::name(),
+///         df,
+///     );
+/// }
+/// ```
+///
+/// Outputs:
+/// ```text
+/// Found data at time #1 from rerun.rect2d's PoV (outer-joining):
+/// ┌────────────────┬───────────────────┐
+/// │ rerun.instance ┆ rerun.rect2d      │
+/// │ ---            ┆ ---               │
+/// │ u64            ┆ struct[4]         │
+/// ╞════════════════╪═══════════════════╡
+/// │ 16             ┆ {0.0,0.0,0.0,0.0} │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ 17             ┆ {1.0,1.0,0.0,0.0} │
+/// └────────────────┴───────────────────┘
+/// Found data at time #4 from rerun.rect2d's PoV (outer-joining):
+/// ┌────────────────┬───────────────────┐
+/// │ rerun.instance ┆ rerun.rect2d      │
+/// │ ---            ┆ ---               │
+/// │ u64            ┆ struct[4]         │
+/// ╞════════════════╪═══════════════════╡
+/// │ 20             ┆ {0.0,0.0,0.0,0.0} │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ 21             ┆ {1.0,1.0,0.0,0.0} │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ 22             ┆ {2.0,2.0,1.0,1.0} │
+/// └────────────────┴───────────────────┘
+/// Found data at time #4 from rerun.rect2d's PoV (outer-joining):
+/// ┌────────────────┬───────────────────┐
+/// │ rerun.instance ┆ rerun.rect2d      │
+/// │ ---            ┆ ---               │
+/// │ u64            ┆ struct[4]         │
+/// ╞════════════════╪═══════════════════╡
+/// │ 25             ┆ {0.0,0.0,0.0,0.0} │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ 26             ┆ {1.0,1.0,0.0,0.0} │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ 27             ┆ {2.0,2.0,1.0,1.0} │
+/// └────────────────┴───────────────────┘
+/// ```
 pub fn range_component<'a>(
     store: &'a DataStore,
     query: &'a RangeQuery,
@@ -197,7 +300,133 @@ pub fn range_component<'a>(
         })
 }
 
-// TODO: doc
+/// Iterates over the rows of any number of components and their respective cluster keys, all from
+/// the single point-of-view of the `primary` component, returning an iterator of `DataFrame`s.
+///
+/// For each dataframe yielded by this iterator, a latest-at query will be ran for all missing
+/// secondary `components`, and the results join together using the specified `join_type`.
+///
+/// Usage:
+/// ```
+/// # use polars_core::prelude::JoinType;
+/// # use re_arrow_store::{polars_util, test_bundle, DataStore, RangeQuery, TimeRange};
+/// # use re_log_types::{
+/// #     datagen::{
+/// #         build_frame_nr, build_some_instances, build_some_instances_from, build_some_point2d,
+/// #         build_some_rects,
+/// #     },
+/// #     field_types::{Instance, Rect2D, Point2D},
+/// #     msg_bundle::Component as _,
+/// #     ObjPath as EntityPath, TimeType, Timeline,
+/// # };
+///
+/// let mut store = DataStore::new(Instance::name(), Default::default());
+///
+/// let ent_path = EntityPath::from("this/that");
+///
+/// let frame1 = 1.into();
+/// let frame2 = 2.into();
+/// let frame3 = 3.into();
+/// let frame4 = 4.into();
+///
+/// let insts1 = build_some_instances(2);
+/// let rects1 = build_some_rects(2);
+/// let bundle1 = test_bundle!(ent_path @ [build_frame_nr(frame1)] => [insts1.clone(), rects1]);
+/// store.insert(&bundle1).unwrap();
+///
+/// let points2 = build_some_point2d(2);
+/// let bundle2 = test_bundle!(ent_path @ [build_frame_nr(frame2)] => [insts1, points2]);
+/// store.insert(&bundle2).unwrap();
+///
+/// let insts3 = build_some_instances_from(25..29);
+/// let points3 = build_some_point2d(4);
+/// let bundle3 = test_bundle!(ent_path @ [build_frame_nr(frame3)] => [insts3, points3]);
+/// store.insert(&bundle3).unwrap();
+///
+/// let insts4_1 = build_some_instances_from(20..23);
+/// let rects4_1 = build_some_rects(3);
+/// let bundle4_1 = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [insts4_1, rects4_1]);
+/// store.insert(&bundle4_1).unwrap();
+///
+/// let insts4_2 = build_some_instances_from(25..28);
+/// let rects4_2 = build_some_rects(3);
+/// let bundle4_2 = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [insts4_2, rects4_2]);
+/// store.insert(&bundle4_2).unwrap();
+///
+/// let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
+/// let query = RangeQuery {
+///     timeline: timeline_frame_nr,
+///     range: TimeRange::new(1.into(), 4.into()),
+/// };
+///
+/// let dfs = polars_util::range_components(
+///     &store,
+///     &query,
+///     &ent_path,
+///     Rect2D::name(),
+///     [Instance::name(), Rect2D::name(), Point2D::name()],
+///     &JoinType::Outer,
+/// );
+///
+/// for (time, df) in dfs.map(Result::unwrap) {
+///     eprintln!(
+///         "Found data at time {} from {}'s PoV (outer-joining):\n{:?}",
+///         TimeType::Sequence.format(time),
+///         Rect2D::name(),
+///         df,
+///     );
+/// }
+/// ```
+///
+/// Outputs:
+/// ```text
+/// Found data at time #1 from rerun.rect2d's PoV (outer-joining):
+/// ┌────────────────┬───────────────────┐
+/// │ rerun.instance ┆ rerun.rect2d      │
+/// │ ---            ┆ ---               │
+/// │ u64            ┆ struct[4]         │
+/// ╞════════════════╪═══════════════════╡
+/// │ 0              ┆ {0.0,0.0,0.0,0.0} │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ 5              ┆ {1.0,1.0,0.0,0.0} │
+/// └────────────────┴───────────────────┘
+///
+/// Found data at time #4 from rerun.rect2d's PoV (outer-joining):
+/// ┌────────────────┬───────────────────────┬─────────────────────┐
+/// │ rerun.instance ┆ rerun.rect2d          ┆ rerun.point2d       │
+/// │ ---            ┆ ---                   ┆ ---                 │
+/// │ u64            ┆ struct[4]             ┆ struct[2]           │
+/// ╞════════════════╪═══════════════════════╪═════════════════════╡
+/// │ 20             ┆ {0.0,0.0,0.0,0.0}     ┆ {null,null}         │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ 21             ┆ {1.0,1.0,0.0,0.0}     ┆ {null,null}         │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ 22             ┆ {2.0,2.0,1.0,1.0}     ┆ {null,null}         │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ 25             ┆ {null,null,null,null} ┆ {6.365356,6.691178} │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ 26             ┆ {null,null,null,null} ┆ {6.310458,1.014078} │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ 27             ┆ {null,null,null,null} ┆ {5.565524,5.133609} │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ 28             ┆ {null,null,null,null} ┆ {4.919256,4.289873} │
+/// └────────────────┴───────────────────────┴─────────────────────┘
+///
+/// Found data at time #4 from rerun.rect2d's PoV (outer-joining):
+/// ┌────────────────┬───────────────────────┬─────────────────────┐
+/// │ rerun.instance ┆ rerun.rect2d          ┆ rerun.point2d       │
+/// │ ---            ┆ ---                   ┆ ---                 │
+/// │ u64            ┆ struct[4]             ┆ struct[2]           │
+/// ╞════════════════╪═══════════════════════╪═════════════════════╡
+/// │ 25             ┆ {0.0,0.0,0.0,0.0}     ┆ {6.365356,6.691178} │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ 26             ┆ {1.0,1.0,0.0,0.0}     ┆ {6.310458,1.014078} │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ 27             ┆ {2.0,2.0,1.0,1.0}     ┆ {5.565524,5.133609} │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ 28             ┆ {null,null,null,null} ┆ {4.919256,4.289873} │
+/// └────────────────┴───────────────────────┴─────────────────────┘
+/// ```
 pub fn range_components<'a, const N: usize>(
     store: &'a DataStore,
     query: &'a RangeQuery,
