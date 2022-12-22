@@ -1,3 +1,4 @@
+use arrow2::array::Array;
 use polars_core::{prelude::*, series::Series};
 use re_log_types::{ComponentName, ObjPath as EntityPath, TimeInt};
 
@@ -70,14 +71,7 @@ pub fn latest_component(
         .unwrap_or([None; 2]);
     let results = store.get(components, &row_indices);
 
-    let series: Result<Vec<_>, _> = components
-        .iter()
-        .zip(results)
-        .filter_map(|(component, col)| col.map(|col| (component, col)))
-        .map(|(&component, col)| Series::try_from((component.as_str(), col)))
-        .collect();
-
-    DataFrame::new(series?).map_err(Into::into)
+    dataframe_from_results(components, results)
 }
 
 /// Queries any number of components and their cluster keys from their respective point-of-views,
@@ -151,23 +145,9 @@ pub fn latest_components(
 
     let dfs = primaries
         .iter()
-        .map(|primary| latest_component(store, query, ent_path, *primary))
-        .filter(|df| df.as_ref().map(|df| !df.is_empty()).unwrap_or(true));
+        .map(|primary| latest_component(store, query, ent_path, *primary));
 
-    let df = dfs
-        .reduce(|acc, df| {
-            acc?.join(
-                &df?,
-                [cluster_key.as_str()],
-                [cluster_key.as_str()],
-                join_type.clone(),
-                None,
-            )
-            .map_err(Into::into)
-        })
-        .unwrap_or_else(|| Ok(DataFrame::default()))?;
-
-    Ok(df.sort([cluster_key.as_str()], false).unwrap_or(df))
+    join_dataframes(cluster_key, join_type, dfs)
 }
 
 // --- Range ---
@@ -289,14 +269,7 @@ pub fn range_component<'a>(
         .range(query, ent_path, primary, components)
         .map(move |(time, row_indices)| {
             let results = store.get(&components, &row_indices);
-            let series: Result<Vec<_>, _> = components
-                .iter()
-                .zip(results)
-                .filter_map(|(component, col)| col.map(|col| (component, col)))
-                .map(|(&component, col)| Series::try_from((component.as_str(), col)))
-                .collect();
-
-            Ok::<_, anyhow::Error>((time, DataFrame::new(series?)?))
+            dataframe_from_results(&components, results)
         })
 }
 
@@ -448,13 +421,7 @@ pub fn range_components<'a, const N: usize>(
         .map(move |(time, row_indices)| {
             let df = {
                 let results = store.get(&components, &row_indices);
-                let series: Result<Vec<_>, _> = components
-                    .iter()
-                    .zip(results)
-                    .filter_map(|(component, col)| col.map(|col| (component, col)))
-                    .map(|(&component, col)| Series::try_from((component.as_str(), col)))
-                    .collect();
-                DataFrame::new(series?)?
+                dataframe_from_results(&components, results)
             };
 
             // Let's do a real latest-at query for the missing secondary components!
@@ -469,8 +436,7 @@ pub fn range_components<'a, const N: usize>(
                 ent_path,
                 &missing,
                 join_type,
-            )
-            .unwrap();
+            );
 
             Ok((
                 time,
@@ -481,14 +447,27 @@ pub fn range_components<'a, const N: usize>(
 
 // --- Joins ---
 
+pub fn dataframe_from_results<const N: usize>(
+    components: &[ComponentName; N],
+    results: [Option<Box<dyn Array>>; N],
+) -> anyhow::Result<DataFrame> {
+    let series: Result<Vec<_>, _> = components
+        .iter()
+        .zip(results)
+        .filter_map(|(component, col)| col.map(|col| (component, col)))
+        .map(|(&component, col)| Series::try_from((component.as_str(), col)))
+        .collect();
+
+    DataFrame::new(series?).map_err(Into::into)
+}
+
 pub fn join_dataframes(
     cluster_key: ComponentName,
     join_type: &JoinType,
-    dfs: impl Iterator<Item = DataFrame>,
+    dfs: impl Iterator<Item = anyhow::Result<DataFrame>>,
 ) -> anyhow::Result<DataFrame> {
     let df = dfs
-        .filter(|df| !df.is_empty())
-        .map(Ok::<_, anyhow::Error>)
+        .filter(|df| df.as_ref().map_or(true, |df| !df.is_empty()))
         .reduce(|acc, df| {
             acc?.join(
                 &df?,
