@@ -775,7 +775,9 @@ fn paint_time_ranges_and_ticks(
         }
 
         let rect = Rect::from_x_y_ranges(x_range, line_y_range.clone());
-        time_area_painter.extend(paint_time_range_ticks(ui, &rect, time_type, &time_range));
+        time_area_painter
+            .with_clip_rect(rect)
+            .extend(paint_time_range_ticks(ui, &rect, time_type, &time_range));
     }
 }
 
