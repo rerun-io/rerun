@@ -3,7 +3,7 @@ use egui::{
     pos2, vec2, Align, Align2, Color32, NumExt as _, Pos2, Rect, Response, ScrollArea, Shape,
     TextFormat, TextStyle, Vec2,
 };
-use itertools::Itertools;
+use macaw::IsoTransform;
 use re_data_store::{InstanceId, InstanceIdHash, ObjPath};
 use re_renderer::view_builder::TargetConfiguration;
 
@@ -18,6 +18,8 @@ use crate::{
     },
     Selection, ViewerContext,
 };
+
+use super::eye::Eye;
 
 // ---
 
@@ -319,6 +321,18 @@ fn view_2d_scrollable(
         let hover_radius = space_from_ui.scale().y * 5.0; // TODO(emilk): from egui?
         let mut closest_dist = hover_radius;
 
+        if let Some((instance, position)) = scene.primitives.picking(
+            pointer_pos_space_glam,
+            &scene_rect_accum,
+            &Eye {
+                world_from_view: IsoTransform::IDENTITY,
+                fov_y: None,
+            },
+        ) {
+            closest_instance_id_hash = instance;
+            closest_dist = pointer_pos_space_glam.extend(position.z).distance(position);
+        }
+
         let mut check_hovering = |instance_hash, dist: f32| {
             if dist <= closest_dist {
                 closest_dist = dist;
@@ -328,43 +342,6 @@ fn view_2d_scrollable(
 
         for (bbox, instance_hash) in &scene.ui.rects {
             check_hovering(*instance_hash, bbox.distance_to_pos(pointer_pos_space));
-        }
-
-        for (point, instance_hash) in scene
-            .primitives
-            .points
-            .vertices
-            .iter()
-            .zip(scene.primitives.points.user_data.iter())
-        {
-            if instance_hash.is_none() {
-                continue;
-            }
-
-            check_hovering(
-                *instance_hash,
-                point.position.truncate().distance(pointer_pos_space_glam),
-            );
-        }
-
-        for ((_info, instance_hash), vertices) in
-            scene.primitives.line_strips.iter_strips_with_vertices()
-        {
-            if instance_hash.is_none() {
-                continue;
-            }
-
-            let mut min_dist_sq = f32::INFINITY;
-
-            for (a, b) in vertices.tuple_windows() {
-                let line_segment_distance_sq = crate::math::line_segment_distance_sq_to_point_2d(
-                    [a.position.truncate(), b.position.truncate()],
-                    pointer_pos_space_glam,
-                );
-                min_dist_sq = min_dist_sq.min(line_segment_distance_sq);
-            }
-
-            check_hovering(*instance_hash, min_dist_sq.sqrt());
         }
 
         for img in &scene.ui.images {

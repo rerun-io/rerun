@@ -122,7 +122,7 @@ impl SceneSpatialPrimitives {
         let mut closest_instance_id = None;
 
         {
-            crate::profile_scope!("points_3d");
+            crate::profile_scope!("points");
 
             for (batch, vertex_iter) in points.iter_vertices_and_userdata_by_batch() {
                 // For getting the closest point we could transform the mouse ray into the "batch space".
@@ -153,7 +153,7 @@ impl SceneSpatialPrimitives {
         }
 
         {
-            crate::profile_scope!("line_segments_3d");
+            crate::profile_scope!("line_segments");
 
             for (batch, vertices) in line_strips.iter_vertices_by_batch() {
                 // For getting the closest point we could transform the mouse ray into the "batch space".
