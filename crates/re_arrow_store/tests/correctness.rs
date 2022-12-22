@@ -8,7 +8,7 @@ use arrow2::array::UInt64Array;
 
 use re_arrow_store::{test_bundle, DataStore, TimeQuery, TimelineQuery, WriteError};
 use re_log_types::{
-    datagen::{build_frame_nr, build_instances, build_log_time, build_some_point2d},
+    datagen::{build_frame_nr, build_log_time, build_some_instances, build_some_point2d},
     field_types::Instance,
     msg_bundle::{wrap_in_listarray, Component as _, ComponentBundle},
     Duration, ObjPath as EntityPath, Time, TimeType, Timeline,
@@ -28,7 +28,7 @@ fn write_errors() {
         let mut store = DataStore::new(Instance::name(), Default::default());
         let mut bundle = test_bundle!(ent_path @
             [build_frame_nr(32), build_log_time(Time::now())] => [
-                build_instances(10), build_some_point2d(10)
+                build_some_instances(10), build_some_point2d(10)
         ]);
 
         // make instances 2 rows long
@@ -50,7 +50,7 @@ fn write_errors() {
         let mut store = DataStore::new(Instance::name(), Default::default());
         let mut bundle = test_bundle!(ent_path @
             [build_frame_nr(32), build_log_time(Time::now())] => [
-                build_instances(10), build_some_point2d(10)
+                build_some_instances(10), build_some_point2d(10)
         ]);
 
         // make component 2 rows long
@@ -129,7 +129,7 @@ fn write_errors() {
         let mut store = DataStore::new(Instance::name(), Default::default());
         let bundle = test_bundle!(ent_path @
             [build_frame_nr(32), build_log_time(Time::now())] => [
-                build_instances(4), build_some_point2d(3)
+                build_some_instances(4), build_some_point2d(3)
         ]);
         assert!(matches!(
             store.insert(&bundle),
@@ -161,7 +161,7 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
     store
         .insert(
             &test_bundle!(ent_path @ [build_log_time(now), build_frame_nr(frame40)] => [
-                build_instances(nb_instances),
+                build_some_instances(nb_instances),
             ]),
         )
         .unwrap();

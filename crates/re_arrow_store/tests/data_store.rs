@@ -7,9 +7,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use arrow2::array::{Array, ListArray, UInt64Array};
 use polars_core::{prelude::*, series::Series};
 use re_arrow_store::{polars_util, test_bundle, DataStore, TimeQuery, TimelineQuery};
-    datagen::{
-        build_frame_nr, build_log_time, build_some_instances, build_some_point2d, build_some_rects,
-    },
+use re_log_types::{
+    datagen::{build_frame_nr, build_some_instances, build_some_point2d, build_some_rects},
     field_types::{Instance, Point2D, Rect2D},
     msg_bundle::{wrap_in_listarray, Component as _, MsgBundle},
     ComponentName, ObjPath as EntityPath, TimeType, Timeline,
@@ -37,7 +36,7 @@ fn latest_at_impl(store: &mut DataStore) {
     let frame3 = 3;
     let frame4 = 4;
 
-    let (instances1, rects1) = (build_instances(3), build_some_rects(3));
+    let (instances1, rects1) = (build_some_instances(3), build_some_rects(3));
     let bundle1 = test_bundle!(ent_path @ [build_frame_nr(1)] => [instances1.clone(), rects1]);
     store.insert(&bundle1).unwrap();
 
