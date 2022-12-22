@@ -70,7 +70,6 @@ fn generic_arrow_ui(
     let components = store.query_components_for_path(&timeline_query, &instance_id.obj_path);
 
     if let Some(components) = components {
-        //let components = store.
         egui::Grid::new("entity_instance")
             .num_columns(2)
             .show(ui, |ui| {
@@ -86,6 +85,7 @@ fn generic_arrow_ui(
 
                     if let Ok(data) = data {
                         if let Some(index) = &instance_id.instance_index {
+                            // If an `Instance` is selected use it to look up a specific value
                             if let Index::ArrowInstance(instance) = &index {
                                 let value = data.lookup(instance);
                                 if let Some(value) = value {
@@ -102,6 +102,7 @@ fn generic_arrow_ui(
                                 ui.label("<bad index>");
                             }
                         } else {
+                            // Otherwise just summarize how many values there are
                             ui.label(format!("{} values", data.len()));
                         }
                     } else {
