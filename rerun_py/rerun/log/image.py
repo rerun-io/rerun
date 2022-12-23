@@ -1,5 +1,5 @@
 import logging
-from typing import Optional
+from typing import Any, Optional, Tuple
 
 import numpy as np
 import numpy.typing as npt
@@ -15,6 +15,16 @@ __all__ = [
     "log_depth_image",
     "log_segmentation_image",
 ]
+
+
+def _get_image_shape(image: Any) -> Tuple[int, ...]:
+    try:
+        return image.shape  # type: ignore[no-any-return]
+    except AttributeError:
+        size = image.size  # If it's a Pillow image, this will be a (width, height) tuple
+        if isinstance(size, tuple):
+            return size
+        return (len(image),)
 
 
 def log_image(
@@ -36,24 +46,25 @@ def log_image(
     * float32/float64: all color components should be in 0-1 linear space.
 
     """
-    non_empty_dims = [d for d in image.shape if d != 1]
+    shape = _get_image_shape(image)
+    non_empty_dims = [d for d in shape if d != 1]
     num_non_empty_dims = len(non_empty_dims)
 
     interpretable_as_image = True
     # Catch some errors early:
     if num_non_empty_dims < 2 or 3 < num_non_empty_dims:
-        _send_warning(f"Expected image, got array of shape {image.shape}", 1)
+        _send_warning(f"Expected image, got array of shape {shape}", 1)
         interpretable_as_image = False
 
-    if len(image.shape) == 3:
-        depth = image.shape[2]
+    if len(shape) == 3:
+        depth = shape[2]
         if depth not in (1, 3, 4):
             _send_warning(
-                f"Expected image depth of 1 (gray), 3 (RGB) or 4 (RGBA). Instead got array of shape {image.shape}", 1
+                f"Expected image depth of 1 (gray), 3 (RGB) or 4 (RGBA). Instead got array of shape {shape}", 1
             )
             interpretable_as_image = False
 
-    needs_dim_squeeze = interpretable_as_image and num_non_empty_dims != len(image.shape)
+    needs_dim_squeeze = interpretable_as_image and num_non_empty_dims != len(shape)
 
     _log_tensor(obj_path, image, timeless=timeless, squeeze_dims=needs_dim_squeeze)
 
@@ -75,15 +86,16 @@ def log_depth_image(
            you have millimeter precision and a range of up to ~65 meters (2^16 / 1000).
 
     """
-    non_empty_dims = [d for d in image.shape if d != 1]
+    shape = _get_image_shape(image)
+    non_empty_dims = [d for d in shape if d != 1]
     num_non_empty_dims = len(non_empty_dims)
 
     # Catch some errors early:
     if num_non_empty_dims != 2:
-        _send_warning(f"Expected 2D depth image, got array of shape {image.shape}", 1)
+        _send_warning(f"Expected 2D depth image, got array of shape {shape}", 1)
         _log_tensor(obj_path, image, timeless=timeless)
     else:
-        needs_dim_squeeze = num_non_empty_dims != len(image.shape)
+        needs_dim_squeeze = num_non_empty_dims != len(shape)
         _log_tensor(obj_path, image, meter=meter, timeless=timeless, squeeze_dims=needs_dim_squeeze)
 
 
