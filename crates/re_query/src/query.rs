@@ -95,7 +95,7 @@ pub fn get_component_with_instances(
 /// .unwrap();
 ///
 /// # #[cfg(feature = "polars")]
-/// let df = entity_view.as_df1::<Point2D>().unwrap();
+/// let df = entity_view.as_df1().unwrap();
 ///
 /// //println!("{:?}", df);
 /// ```
