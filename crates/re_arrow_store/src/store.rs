@@ -24,8 +24,25 @@ pub type TimeIndex = Vec<i64>;
 pub type SecondaryIndex = Vec<Option<RowIndex>>;
 static_assertions::assert_eq_size!(u64, Option<RowIndex>);
 
-// TODO: DataIndex vs. RowNumber
-// TODO: IndexRowNr vs. DataRowNr
+// TODO(cmc): We desperately need to work on the terminology here:
+//
+// - `TimeIndex` is a vector of `TimeInt`s.
+//   It's the primary column and it's always dense.
+//   It's used to search the datastore by time.
+//
+// - `ComponentIndex` (currently `SecondaryIndex`) is a vector of `ComponentRowNr`s.
+//   It's the secondary column and is sparse.
+//   It's used to search the datastore by component once the search by time is complete.
+//
+// - `ComponentRowNr` (currently `RowIndex`) is a row offset into a component table.
+//   It only makes sense when associated with a component name.
+//   It is absolute.
+//   It's used to fetch actual data from the datastore.
+//
+// - `IndexRowNr` is a row offset into an index bucket.
+//   It only makes sense when associated with an entity path and a specific time.
+//   It is relative per bucket.
+//   It's used to tiebreak results with an identical time, should you need too.
 
 /// An opaque type that directly refers to a row of data within the datastore, iff it is associated
 /// with a component name.
