@@ -418,20 +418,32 @@ pub fn range_component<'a>(
 /// └────────────────┴───────────────────────┴─────────────────────┘
 /// ```
 // TODO
-pub fn range_components<'a, const N: usize>(
+pub fn range_components<'a>(
     store: &'a DataStore,
     query: &'a RangeQuery,
     ent_path: &'a EntityPath,
-    components: [ComponentName; N], // 1st is primary
+    primary: ComponentName,
+    components: &[ComponentName],
     join_type: &'a JoinType,
 ) -> impl Iterator<Item = anyhow::Result<(TimeInt, DataFrame)>> + 'a {
     let cluster_key = store.cluster_key();
 
-    let mut state = [(); N].map(|_| None);
+    let mut state: Vec<_> = std::iter::repeat_with(|| None)
+        .take(components.len() + 1) // +1 for primary
+        .collect();
+    let mut iters: Vec<_> = std::iter::repeat_with(|| None)
+        .take(components.len() + 1) // +1 for primary
+        .collect();
 
-    // TODO: explain why this is
     let latest_time = query.range.min.as_i64().saturating_sub(1).into();
-    for (i, primary) in components.iter().enumerate() {
+
+    // Fetch the latest data for every single component from their respective point-of-views, this
+    // will allow us to build up the initial state and send an initial latest-at dataframe if
+    // needed.
+    for (i, primary) in std::iter::once(&primary)
+        .chain(components.iter())
+        .enumerate()
+    {
         let components = &[cluster_key, *primary];
 
         let query = LatestAtQuery::new(query.timeline, latest_time);
@@ -447,7 +459,8 @@ pub fn range_components<'a, const N: usize>(
         }
     }
 
-    // TODO: explain why this is
+    // Iff the primary component has a non-empty latest-at dataframe, then we want to be sending an
+    // initial dataframe.
     let df_latest = if state[0].is_some() {
         join_dataframes(
             cluster_key,
@@ -462,17 +475,19 @@ pub fn range_components<'a, const N: usize>(
     };
 
     // TODO: explain why this is
-    let mut iters = [(); N].map(|_| None);
-    for (i, component) in components.iter().enumerate() {
+    for (i, component) in std::iter::once(&primary)
+        .chain(components.iter())
+        .enumerate()
+    {
         let components = [cluster_key, *component];
 
         let it = store.range(query, ent_path, *component, components).map(
-            move |(time, index_nr, row_indices)| {
+            move |(time, idx_row_nr, row_indices)| {
                 let results = store.get(&components, &row_indices);
                 (
                     i,
                     time,
-                    index_nr,
+                    idx_row_nr,
                     dataframe_from_results(&components, results),
                 )
             },
@@ -487,8 +502,8 @@ pub fn range_components<'a, const N: usize>(
             iters
                 .into_iter()
                 .map(Option::unwrap) // TODO: explain
-                .kmerge_by(|(_, time1, index_nr1, _), (_, time2, index_nr2, _)| {
-                    (time1, index_nr1) < (time2, index_nr2) // TODO: explain
+                .kmerge_by(|(_, time1, idx_row_nr1, _), (_, time2, idx_row_nr2, _)| {
+                    (time1, idx_row_nr1) < (time2, idx_row_nr2) // TODO: explain
                 })
                 .filter_map(move |(i, time, _, df)| {
                     state[i] = Some(df);
