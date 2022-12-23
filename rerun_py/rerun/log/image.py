@@ -4,9 +4,11 @@ from typing import Optional
 import numpy as np
 import numpy.typing as npt
 from rerun.log import Colors
-from rerun.log.tensor import _log_tensor, log_tensor
+from rerun.log.tensor import _log_tensor
 
 from rerun import bindings
+from rerun.log.error_utils import _send_warning
+
 
 __all__ = [
     "log_image",
@@ -40,14 +42,14 @@ def log_image(
     interpretable_as_image = True
     # Catch some errors early:
     if num_non_empty_dims < 2 or 3 < num_non_empty_dims:
-        logging.warning(f"Expected image, got array of shape {image.shape}")
+        _send_warning(f"Expected image, got array of shape {image.shape}", 1)
         interpretable_as_image = False
 
     if len(image.shape) == 3:
         depth = image.shape[2]
         if depth not in (1, 3, 4):
-            logging.warning(
-                f"Expected image depth of 1 (gray), 3 (RGB) or 4 (RGBA). Instead got array of shape {image.shape}"
+            _send_warning(
+                f"Expected image depth of 1 (gray), 3 (RGB) or 4 (RGBA). Instead got array of shape {image.shape}", 1
             )
             interpretable_as_image = False
 
@@ -78,7 +80,7 @@ def log_depth_image(
 
     # Catch some errors early:
     if num_non_empty_dims != 2:
-        logging.warning(f"Expected 2D depth image, got array of shape {image.shape}")
+        _send_warning(f"Expected 2D depth image, got array of shape {image.shape}", 1)
         _log_tensor(obj_path, image, timeless=timeless)
     else:
         needs_dim_squeeze = num_non_empty_dims != len(image.shape)
@@ -103,8 +105,9 @@ def log_segmentation_image(
 
     # Catch some errors early:
     if num_non_empty_dims != 2:
-        logging.warning(
-            f"Expected single channel image, got array of shape {image.shape}. Can't interpret as segmentation image."
+        _send_warning(
+            f"Expected single channel image, got array of shape {image.shape}. Can't interpret as segmentation image.",
+            1,
         )
         _log_tensor(
             obj_path,

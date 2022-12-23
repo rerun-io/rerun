@@ -4,6 +4,7 @@ import numpy.typing as npt
 from rerun.log import _to_sequence
 
 from rerun import bindings
+from rerun.log.error_utils import _send_warning
 
 __all__ = [
     "log_view_coordinates",
@@ -59,9 +60,11 @@ def log_view_coordinates(
 
     """
     if xyz == "" and up == "":
-        raise TypeError("You must set either 'xyz' or 'up'")
+        _send_warning("You must set either 'xyz' or 'up'. Ignoring log.", 1)
+        return
     if xyz != "" and up != "":
-        raise TypeError("You must set either 'xyz' or 'up', but not both")
+        _send_warning("You must set either 'xyz' or 'up', but not both. Ignoring log.", 1)
+        return
     if xyz != "":
         bindings.log_view_coordinates_xyz(obj_path, xyz, right_handed, timeless)
     else:
@@ -121,7 +124,8 @@ def log_rigid3(
 
     """
     if parent_from_child and child_from_parent:
-        raise TypeError("Set either parent_from_child or child_from_parent, but not both")
+        _send_warning("Set either parent_from_child or child_from_parent, but not both. Ignoring log.", 1)
+        return
     elif parent_from_child:
         (t, q) = parent_from_child
         bindings.log_rigid3(
@@ -141,7 +145,8 @@ def log_rigid3(
             timeless=timeless,
         )
     else:
-        raise TypeError("Set either parent_from_child or child_from_parent")
+        _send_warning("Set either parent_from_child or child_from_parent. Ignoring log.", 1)
+        return
 
     if xyz != "":
         log_view_coordinates(obj_path, xyz=xyz, timeless=timeless)

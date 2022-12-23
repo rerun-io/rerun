@@ -6,6 +6,8 @@ import numpy.typing as npt
 from rerun.log import EXP_ARROW
 
 from rerun import bindings
+from rerun.log.error_utils import _send_warning
+
 
 __all__ = [
     "log_tensor",
@@ -72,8 +74,9 @@ def _log_tensor(
         names = list(names)
 
         if len(tensor.shape) != len(names):
-            logging.warning(
-                f"len(tensor.shape) = len({tensor.shape}) = {len(tensor.shape)} != len(names) = len({names}) = {len(names)}. Dropping tensor dimension names."
+            _send_warning(
+                f"len(tensor.shape) = len({tensor.shape}) = {len(tensor.shape)} != len(names) = len({names}) = {len(names)}. Dropping tensor dimension names.",
+                2,
             )
             names = None
 
@@ -92,7 +95,7 @@ def _log_tensor(
     ]
 
     if tensor.dtype not in SUPPORTED_DTYPES:
-        logging.warning(f"Unsupported dtype: {tensor.dtype}. Expected a numeric type. Skipping this tensor.")
+        _send_warning(f"Unsupported dtype: {tensor.dtype}. Expected a numeric type. Skipping this tensor.", 2)
         return
 
     if EXP_ARROW.classic_log_gate():
