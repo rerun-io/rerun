@@ -9,7 +9,7 @@ use re_log_types::{
     msg_bundle::Component,
     IndexHash, MsgId, ObjectType,
 };
-use re_query::{query_entity_with_primary, EntityView, QueryError};
+use re_query::{query_entity_with_primary, QueryError};
 use re_renderer::Size;
 
 use crate::{

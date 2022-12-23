@@ -1,23 +1,19 @@
 use ahash::HashMap;
-use cgmath::Point3;
-use glam::{Mat4, Vec3};
+use glam::Vec3;
 use re_arrow_store::TimeQuery;
-use re_data_store::{
-    query::visit_type_data_5, FieldName, InstanceIdHash, ObjPath, ObjectsProperties,
-};
+use re_data_store::{query::visit_type_data_5, FieldName, InstanceIdHash, ObjectsProperties};
 use re_log_types::{
     context::{ClassId, KeypointId},
-    field_types::{ColorRGBA, Point3D},
+    field_types::{ColorRGBA, Label, Point3D},
     msg_bundle::Component,
     IndexHash, MsgId, ObjectType,
 };
-use re_query::{query_entity_with_primary, EntityView, QueryError};
+use re_query::{query_entity_with_primary, QueryError};
 use re_renderer::Size;
 
 use crate::{
     misc::ViewerContext,
     ui::{
-        class_description_ui,
         scene::SceneQuery,
         transform_cache::{ReferenceFromObjTransform, TransformCache},
         view_spatial::{
@@ -41,7 +37,7 @@ impl ScenePart for Points3DPartClassic {
         objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
-        crate::profile_function!();
+        crate::profile_scope!("Points3DPartClassic");
 
         for (_obj_type, obj_path, time_query, obj_store) in
             query.iter_object_stores(ctx.log_db, &[ObjectType::Point3D])
@@ -161,6 +157,8 @@ impl ScenePart for Points3DPart {
         objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
+        crate::profile_scope!("Points3DPart");
+
         for ent_path in query.obj_paths {
             let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(ent_path) else {
                 continue;
@@ -171,18 +169,21 @@ impl ScenePart for Points3DPart {
                 TimeQuery::LatestAt(query.latest_at.as_i64()),
             );
 
-            match query_entity_with_primary::<Point3D, 1>(
+            match query_entity_with_primary::<Point3D, 2>(
                 &ctx.log_db.obj_db.arrow_store,
                 &timeline_query,
                 ent_path,
-                &[ColorRGBA::name()],
+                &[ColorRGBA::name(), Label::name()],
             )
             .and_then(|entity_view| {
                 let annotations = scene.annotation_map.find(ent_path);
                 let default_color = DefaultColor::ObjPath(ent_path);
                 let properties = objects_properties.get(ent_path);
 
-                let class_description = annotations.class_description(None);
+                let show_labels = true;
+
+                let class_id = None;
+                let class_description = annotations.class_description(class_id);
 
                 let annotation_info = class_description.annotation_info();
 
@@ -196,22 +197,51 @@ impl ScenePart for Points3DPart {
                     .iter_primary()?
                     .filter_map(|pt| pt.map(glam::Vec3::from));
 
-                let instance_hashes = entity_view.iter_instances()?.map(|instance| {
-                    if properties.interactive {
-                        InstanceIdHash::from_path_and_arrow_instance(ent_path, &instance)
-                    } else {
-                        InstanceIdHash::NONE
-                    }
-                });
+                let instance_hashes = entity_view
+                    .iter_instances()?
+                    .map(|instance| {
+                        if properties.interactive {
+                            InstanceIdHash::from_path_and_arrow_instance(ent_path, &instance)
+                        } else {
+                            InstanceIdHash::NONE
+                        }
+                    })
+                    .collect::<Vec<_>>();
 
-                let colors = entity_view.iter_component::<ColorRGBA>()?.map(|color| {
-                    to_ecolor(
-                        annotation_info
-                            .color(color.map(move |c| c.to_array()).as_ref(), default_color),
-                    )
-                });
+                let colors =
+                    entity_view
+                        .iter_component::<ColorRGBA>()?
+                        .zip(instance_hashes.iter())
+                        .map(|(color, instance_hash)| {
+                            if instance_hash.is_some() && instance_hash.eq(&hovered_instance) {
+                                SceneSpatial::HOVER_COLOR
+                            } else {
+                                to_ecolor(annotation_info.color(
+                                    color.map(move |c| c.to_array()).as_ref(),
+                                    default_color,
+                                ))
+                            }
+                        });
 
-                point_batch.add_points(point_positions).colors(colors);
+                let labels = entity_view
+                    .iter_primary()?
+                    .zip(entity_view.iter_component::<Label>()?)
+                    .filter_map(|(point, label)| match (point, label) {
+                        (Some(point), Some(label)) => Some(Label3D {
+                            text: label.0,
+                            origin: world_from_obj.transform_point3(point.into()),
+                        }),
+                        _ => None,
+                    });
+
+                if show_labels && instance_hashes.len() < 10 {
+                    scene.ui.labels_3d.extend(labels);
+                }
+
+                point_batch
+                    .add_points(point_positions)
+                    .colors(colors)
+                    .user_data(instance_hashes.into_iter());
 
                 Ok(())
             }) {

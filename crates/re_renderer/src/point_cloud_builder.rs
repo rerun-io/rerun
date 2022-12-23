@@ -292,13 +292,24 @@ where
         self
     }
 
-    /// Splats user data to all points in this builder.
+    /// Splats a single user data to all points in this builder.
     ///
     /// User data is currently not available on the GPU.
     #[inline]
-    pub fn user_data(self, data: PerPointUserData) -> Self {
+    pub fn user_data_splat(self, data: PerPointUserData) -> Self {
         for user_data in self.user_data.iter_mut() {
             *user_data = data.clone();
+        }
+        self
+    }
+
+    /// Assigns user data for all points in this builder.
+    ///
+    /// User data is currently not available on the GPU.
+    #[inline]
+    pub fn user_data(self, data: impl Iterator<Item = PerPointUserData>) -> Self {
+        for (d, data) in self.user_data.iter_mut().zip(data) {
+            *d = data;
         }
         self
     }

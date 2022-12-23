@@ -107,7 +107,7 @@ impl ScenePart for Points2DPart {
                         ]
                         .into_iter(),
                     )
-                    .user_data(instance_hash);
+                    .user_data_splat(instance_hash);
 
                 if let Some(label) = label {
                     if label_batch.len() < max_num_labels {
