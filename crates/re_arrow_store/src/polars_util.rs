@@ -3,7 +3,7 @@ use itertools::Itertools;
 use polars_core::{prelude::*, series::Series};
 use re_log_types::{ComponentName, ObjPath as EntityPath, TimeInt};
 
-use crate::{DataStore, LatestAtQuery, RangeQuery, RowIndex};
+use crate::{DataStore, LatestAtQuery, RangeQuery};
 
 // --- LatestAt ---
 
@@ -266,12 +266,25 @@ pub fn range_component<'a>(
     let cluster_key = store.cluster_key();
 
     let components = [cluster_key, primary];
-    store
-        .range(query, ent_path, primary, components)
-        .map(move |(time, _, row_indices)| {
-            let results = store.get(&components, &row_indices);
-            dataframe_from_results(&components, results).map(|df| (time, df))
-        })
+
+    let latest_time = query.range.min.as_i64().saturating_sub(1).into();
+    let df_latest = {
+        let query = LatestAtQuery::new(query.timeline, latest_time);
+        let row_indices = store
+            .latest_at(&query, ent_path, primary, &components)
+            .unwrap_or([None; 2]);
+        let results = store.get(&components, &row_indices);
+        dataframe_from_results(&components, results)
+    };
+
+    std::iter::once(df_latest.map(|df| (latest_time, df)))
+        .filter(|df| df.as_ref().map_or(true, |(_, df)| !df.is_empty()))
+        .chain(store.range(query, ent_path, primary, components).map(
+            move |(time, _, row_indices)| {
+                let results = store.get(&components, &row_indices);
+                dataframe_from_results(&components, results).map(|df| (time, df))
+            },
+        ))
 }
 
 /// Iterates over the rows of any number of components and their respective cluster keys, all from
@@ -403,53 +416,8 @@ pub fn range_component<'a>(
 /// │ 28             ┆ {null,null,null,null} ┆ {4.919256,4.289873} │
 /// └────────────────┴───────────────────────┴─────────────────────┘
 /// ```
-pub fn range_components<'a, const N: usize>(
-    store: &'a DataStore,
-    query: &'a RangeQuery,
-    ent_path: &'a EntityPath,
-    primary: ComponentName,
-    components: [ComponentName; N],
-    join_type: &'a JoinType,
-) -> impl Iterator<Item = anyhow::Result<(TimeInt, DataFrame)>> + 'a {
-    let cluster_key = store.cluster_key();
-
-    assert!(
-        components.contains(&cluster_key),
-        "`components` must contain the cluster key, got {components:?}, \
-            which is missing {cluster_key:?}",
-    );
-
-    store
-        .range(query, ent_path, primary, components)
-        .map(move |(time, _, row_indices)| {
-            let df = {
-                let results = store.get(&components, &row_indices);
-                dataframe_from_results(&components, results)
-            };
-
-            // Do an actual latest-at query for the missing secondary components!
-            let missing = components
-                .iter()
-                .enumerate()
-                .filter_map(|(i, component)| row_indices[i].is_none().then_some(*component))
-                .collect::<Vec<_>>();
-            let df_missing = latest_components(
-                store,
-                &LatestAtQuery::new(query.timeline, time),
-                ent_path,
-                &missing,
-                join_type,
-            );
-
-            Ok((
-                time,
-                join_dataframes(cluster_key, join_type, [df, df_missing].into_iter())?,
-            ))
-        })
-}
-
 // TODO
-pub fn range_components_4_real<'a, const N: usize>(
+pub fn range_components<'a, const N: usize>(
     store: &'a DataStore,
     query: &'a RangeQuery,
     ent_path: &'a EntityPath,
@@ -491,7 +459,6 @@ pub fn range_components_4_real<'a, const N: usize>(
     } else {
         Ok(DataFrame::default())
     };
-    // dbg!(&df_latest, &state);
 
     // TODO: explain why this is
     let mut iters = [(); N].map(|_| None);
@@ -522,13 +489,10 @@ pub fn range_components_4_real<'a, const N: usize>(
                 .kmerge_by(|(_, time1, index_nr1, _), (_, time2, index_nr2, _)| {
                     (time1, index_nr1) < (time2, index_nr2) // TODO: explain
                 })
-                .filter_map(move |(i, time, index_nr, df)| {
-                    // dbg!(i, index_nr, &df);
-
+                .filter_map(move |(i, time, _, df)| {
                     state[i] = Some(df);
 
                     if i == 0 {
-                        // dbg!(&state);
                         let df = join_dataframes(
                             cluster_key,
                             join_type,
@@ -537,9 +501,6 @@ pub fn range_components_4_real<'a, const N: usize>(
                                 .filter_map(|df| df.as_ref())
                                 .map(|df| Ok(df.as_ref().unwrap().clone())), // TODO
                         );
-                        // dbg!((time, &df));
-
-                        // dbg!(Some(df.map(|df| (time, df))))
                         Some(df.map(|df| (time, df)))
                     } else {
                         None

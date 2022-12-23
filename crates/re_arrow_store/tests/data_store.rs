@@ -172,47 +172,42 @@ fn range_impl(store: &mut DataStore) {
     // by the range query.
     // A single timepoint might have several of those! That's one of the behavior specific to range
     // queries.
-    let mut assert_range_components =
-        |time_range: TimeRange,
-         components: [ComponentName; 2],
-         bundles_at_times: &[(TimeInt, &[(ComponentName, &MsgBundle)])]| {
-            let mut expected_at_times: IntMap<TimeInt, Vec<DataFrame>> = Default::default();
+    let mut assert_range_components = |time_range: TimeRange,
+                                       components: [ComponentName; 2],
+                                       bundles_at_times: &[(
+        TimeInt,
+        &[(ComponentName, &MsgBundle)],
+    )]| {
+        let mut expected_at_times: IntMap<TimeInt, Vec<DataFrame>> = Default::default();
 
-            for (time, bundles) in bundles_at_times {
-                let dfs = expected_at_times.entry(*time).or_default();
-                dfs.push(joint_df(store.cluster_key(), bundles));
-            }
+        for (time, bundles) in bundles_at_times {
+            let dfs = expected_at_times.entry(*time).or_default();
+            dfs.push(joint_df(store.cluster_key(), bundles));
+        }
 
-            let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
+        let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
 
-            store.sort_indices(); // for assertions below
+        store.sort_indices(); // for assertions below
 
-            let query = RangeQuery::new(timeline_frame_nr, time_range);
-            let dfs = polars_util::range_components_4_real(
-                store,
-                &query,
-                &ent_path,
-                components,
-                &JoinType::Outer,
-            );
+        let query = RangeQuery::new(timeline_frame_nr, time_range);
+        let dfs =
+            polars_util::range_components(store, &query, &ent_path, components, &JoinType::Outer);
 
-            let mut dfs_processed = 0usize;
-            let mut time_counters: IntMap<i64, usize> = Default::default();
-            for (time, df) in dfs.map(Result::unwrap) {
-                dbg!(time, &df);
-                let time_count = time_counters.entry(time.as_i64()).or_default();
-                let df_expected = &expected_at_times[&time][*time_count];
-                *time_count += 1;
+        let mut dfs_processed = 0usize;
+        let mut time_counters: IntMap<i64, usize> = Default::default();
+        for (time, df) in dfs.map(Result::unwrap) {
+            let time_count = time_counters.entry(time.as_i64()).or_default();
+            let df_expected = &expected_at_times[&time][*time_count];
+            *time_count += 1;
 
-                // assert_eq!(*df_expected, df, "{store}");
-                assert_eq!(*df_expected, df);
+            assert_eq!(*df_expected, df, "{store}");
 
-                dfs_processed += 1;
-            }
+            dfs_processed += 1;
+        }
 
-            let dfs_processed_expected = bundles_at_times.len();
-            assert_eq!(dfs_processed_expected, dfs_processed);
-        };
+        let dfs_processed_expected = bundles_at_times.len();
+        assert_eq!(dfs_processed_expected, dfs_processed);
+    };
 
     // TODO(cmc): bring back some log_time scenarios
 
