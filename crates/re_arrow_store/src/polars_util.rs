@@ -257,6 +257,7 @@ pub fn latest_components(
 /// │ 27             ┆ {2.0,2.0,1.0,1.0} │
 /// └────────────────┴───────────────────┘
 /// ```
+// TODO
 pub fn range_component<'a>(
     store: &'a DataStore,
     query: &'a RangeQuery,

@@ -14,7 +14,7 @@ use re_log_types::{
     Timeline,
 };
 
-// --- Data store ---
+// --- Indices & offsets ---
 
 /// A vector of times. Our primary column, always densely filled.
 pub type TimeIndex = Vec<i64>;
@@ -50,23 +50,32 @@ static_assertions::assert_eq_size!(u64, Option<RowIndex>);
 /// See [`DataStore::latest_at`], [`DataStore::range`] & [`DataStore::get`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct RowIndex(pub(crate) NonZeroU64);
-
 impl RowIndex {
     /// Panics if `v` is 0.
     pub(crate) fn from_u64(v: u64) -> Self {
         Self(v.try_into().unwrap())
     }
 
+    // TODO(cmc): useless, remove.
     pub(crate) fn as_u64(self) -> u64 {
         self.0.into()
     }
 }
-
 impl std::fmt::Display for RowIndex {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!("{}", self.0))
     }
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct IndexRowNr(pub(crate) u64);
+impl std::fmt::Display for IndexRowNr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("{}", self.0))
+    }
+}
+
+// --- Data store ---
 
 #[derive(Debug, Clone)]
 pub struct DataStoreConfig {
