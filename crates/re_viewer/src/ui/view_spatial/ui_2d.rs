@@ -321,7 +321,7 @@ fn view_2d_scrollable(
         let hover_radius = space_from_ui.scale().y * 5.0; // TODO(emilk): from egui?
         let mut closest_dist = hover_radius;
 
-        if let Some((instance, position)) = scene
+        if let Some(picking_result) = scene
             .primitives
             .picking(
                 pointer_pos_space_glam,
@@ -333,10 +333,9 @@ fn view_2d_scrollable(
             )
             .first()
         {
-            closest_instance_id_hash = *instance;
-            closest_dist = pointer_pos_space_glam
-                .extend(position.z)
-                .distance(*position);
+            closest_instance_id_hash = picking_result.instance_hash;
+            closest_dist =
+                pointer_pos_space_glam.distance(picking_result.space_position.truncate());
         }
 
         let mut check_hovering = |instance_hash, dist: f32| {

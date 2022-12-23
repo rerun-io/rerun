@@ -11,9 +11,13 @@ use re_renderer::{
 
 use crate::{
     misc::{HoveredSpace, Selection},
-    ui::view_spatial::{
-        ui_renderer_bridge::{create_scene_paint_callback, get_viewport, ScreenBackground},
-        SceneSpatial, SpaceCamera3D, AXIS_COLOR_X, AXIS_COLOR_Y, AXIS_COLOR_Z,
+    ui::{
+        image_ui,
+        view_spatial::{
+            scene::AdditionalPickingInfo,
+            ui_renderer_bridge::{create_scene_paint_callback, get_viewport, ScreenBackground},
+            SceneSpatial, SpaceCamera3D, AXIS_COLOR_X, AXIS_COLOR_Y, AXIS_COLOR_Z,
+        },
     },
     ViewerContext,
 };
@@ -370,35 +374,87 @@ pub fn view_3d(
         }
     }
 
-    if ui.input().pointer.any_click() {
-        if let Some(hovered_instance) = &hovered_instance {
-            click_object(ctx, space_cameras, state, hovered_instance);
-        }
-    } else if ui.input().pointer.any_down() {
-        *hovered_instance = None;
-    }
-
-    if let Some(instance_id) = &hovered_instance {
-        response = response.on_hover_ui_at_pointer(|ui| {
-            ctx.instance_id_button(ui, instance_id);
-            crate::ui::data_ui::instance_ui(ctx, ui, instance_id, crate::ui::Preview::Medium);
-        });
-    }
-
-    let hovered = response.hover_pos().and_then(|pointer_pos| {
-        scene
-            .primitives
-            .picking(glam::vec2(pointer_pos.x, pointer_pos.y), &rect, &eye)
-            .first()
-            .cloned()
-    });
-
+    // TODO: We're soooo close making the hover reaction of ui2d and ui3d the same.
     *hovered_instance = None;
-    state.hovered_point = None;
-    if let Some((instance_id, point)) = hovered {
-        if let Some(instance_id) = instance_id.resolve(&ctx.log_db.obj_db) {
+    if let Some(pointer_pos) = response.hover_pos() {
+        for picking_result in
+            &scene
+                .primitives
+                .picking(glam::vec2(pointer_pos.x, pointer_pos.y), &rect, &eye)
+        {
+            let Some(instance_id) = picking_result.instance_hash.resolve(&ctx.log_db.obj_db) else { continue; };
+
+            // Special hover ui for images.
+            let picked_image_with_uv = match picking_result.info {
+                AdditionalPickingInfo::None => None,
+                AdditionalPickingInfo::TexturedRect(uv) => scene
+                    .ui
+                    .images
+                    .iter()
+                    .find(|image| image.instance_hash == picking_result.instance_hash)
+                    .map(|image| (image, uv)),
+            };
+            response = if let Some((image, uv)) = picked_image_with_uv {
+                response
+                    .on_hover_cursor(egui::CursorIcon::ZoomIn)
+                    .on_hover_ui_at_pointer(|ui| {
+                        ui.set_max_width(400.0);
+
+                        ui.vertical(|ui| {
+                            ui.label(instance_id.to_string());
+                            crate::ui::data_ui::instance_ui(
+                                ctx,
+                                ui,
+                                &instance_id,
+                                crate::ui::Preview::Small,
+                            );
+
+                            let legend = Some(image.annotations.clone());
+                            let tensor_view = ctx.cache.image.get_view_with_annotations(
+                                &image.tensor,
+                                &legend,
+                                ctx.render_ctx,
+                            );
+
+                            if let [h, w, ..] = image.tensor.shape.as_slice() {
+                                ui.separator();
+                                ui.horizontal(|ui| {
+                                    image_ui::show_zoomed_image_region_at_position(
+                                        ui,
+                                        &tensor_view,
+                                        [
+                                            (uv.x * w.size as f32) as isize,
+                                            (uv.y * h.size as f32) as isize,
+                                        ],
+                                        image.meter,
+                                    );
+                                });
+                            }
+                        });
+                    })
+            } else {
+                // Hover ui for everything else
+                response.on_hover_ui_at_pointer(|ui| {
+                    ctx.instance_id_button(ui, &instance_id);
+                    crate::ui::data_ui::instance_ui(
+                        ctx,
+                        ui,
+                        &instance_id,
+                        crate::ui::Preview::Medium,
+                    );
+                })
+            };
+
+            // Save last known hovered object. TODO: this implies we expect sorted from near to far.
+            state.hovered_point = Some(picking_result.space_position);
             *hovered_instance = Some(instance_id);
-            state.hovered_point = Some(point);
+        }
+
+        // Clicking the last hovered object.
+        if let Some(instance_id) = hovered_instance {
+            if ui.input().pointer.any_click() {
+                click_object(ctx, space_cameras, state, instance_id);
+            }
         }
     }
 

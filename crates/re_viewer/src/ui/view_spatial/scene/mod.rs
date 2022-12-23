@@ -24,7 +24,7 @@ use crate::{
 mod primitives;
 mod scene_part;
 
-pub use self::primitives::SceneSpatialPrimitives;
+pub use self::primitives::{AdditionalPickingInfo, PickingResult, SceneSpatialPrimitives};
 use scene_part::ScenePart;
 
 // ----------------------------------------------------------------------------
