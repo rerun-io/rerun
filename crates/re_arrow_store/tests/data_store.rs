@@ -169,7 +169,7 @@ fn range_impl(store: &mut DataStore) {
     // queries.
     let mut assert_range_components =
         |time_range: TimeRange,
-         primary: ComponentName,
+         components: [ComponentName; 2],
          bundles_at_times: &[(TimeInt, &[(ComponentName, &MsgBundle)])]| {
             let mut expected_at_times: IntMap<TimeInt, Vec<DataFrame>> = Default::default();
 
@@ -177,20 +177,17 @@ fn range_impl(store: &mut DataStore) {
                 let dfs = expected_at_times.entry(*time).or_default();
                 dfs.push(joint_df(store.cluster_key(), bundles));
             }
-            // dbg!(&expected_at_times);
 
             let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
-            let components_all = [store.cluster_key(), Rect2D::name(), Point2D::name()];
 
             store.sort_indices(); // for assertions below
 
             let query = RangeQuery::new(timeline_frame_nr, time_range);
-            let dfs = polars_util::range_components(
+            let dfs = polars_util::range_components_4_real(
                 store,
                 &query,
                 &ent_path,
-                primary,
-                components_all,
+                components,
                 &JoinType::Outer,
             );
 
@@ -216,21 +213,21 @@ fn range_impl(store: &mut DataStore) {
 
     assert_range_components(
         TimeRange::new(frame1, frame1),
-        Rect2D::name(),
+        [Rect2D::name(), Point2D::name()],
         &[
             (frame1, &[(Rect2D::name(), &bundle1)]), //
         ],
     );
     assert_range_components(
         TimeRange::new(frame2, frame2),
-        Rect2D::name(),
+        [Rect2D::name(), Point2D::name()],
         &[
             (frame1, &[(Rect2D::name(), &bundle1)]), //
         ],
     );
     assert_range_components(
         TimeRange::new(frame3, frame3),
-        Rect2D::name(),
+        [Rect2D::name(), Point2D::name()],
         &[
             (
                 frame2,
@@ -240,7 +237,7 @@ fn range_impl(store: &mut DataStore) {
     );
     assert_range_components(
         TimeRange::new(frame4, frame4),
-        Rect2D::name(),
+        [Rect2D::name(), Point2D::name()],
         &[
             (
                 frame3,
@@ -266,7 +263,7 @@ fn range_impl(store: &mut DataStore) {
     );
     assert_range_components(
         TimeRange::new(frame5, frame5),
-        Rect2D::name(),
+        [Rect2D::name(), Point2D::name()],
         &[
             (
                 frame4,
@@ -277,10 +274,14 @@ fn range_impl(store: &mut DataStore) {
 
     // Unit ranges (Point2D's PoV)
 
-    assert_range_components(TimeRange::new(frame1, frame1), Point2D::name(), &[]);
+    assert_range_components(
+        TimeRange::new(frame1, frame1),
+        [Point2D::name(), Rect2D::name()],
+        &[],
+    );
     assert_range_components(
         TimeRange::new(frame2, frame2),
-        Point2D::name(),
+        [Point2D::name(), Rect2D::name()],
         &[
             (
                 frame2,
@@ -290,7 +291,7 @@ fn range_impl(store: &mut DataStore) {
     );
     assert_range_components(
         TimeRange::new(frame3, frame3),
-        Point2D::name(),
+        [Point2D::name(), Rect2D::name()],
         &[
             (
                 frame2,
@@ -304,7 +305,7 @@ fn range_impl(store: &mut DataStore) {
     );
     assert_range_components(
         TimeRange::new(frame4, frame4),
-        Point2D::name(),
+        [Point2D::name(), Rect2D::name()],
         &[
             (
                 frame3,
@@ -318,7 +319,7 @@ fn range_impl(store: &mut DataStore) {
     );
     assert_range_components(
         TimeRange::new(frame5, frame5),
-        Point2D::name(),
+        [Point2D::name(), Rect2D::name()],
         &[
             (
                 frame4,
@@ -331,7 +332,7 @@ fn range_impl(store: &mut DataStore) {
 
     assert_range_components(
         TimeRange::new(frame1, frame5),
-        Rect2D::name(),
+        [Rect2D::name(), Point2D::name()],
         &[
             (frame1, &[(Rect2D::name(), &bundle1)]),
             // Do take note of the value of Point2D in all 3 cases below, which is effectively
@@ -357,7 +358,7 @@ fn range_impl(store: &mut DataStore) {
 
     assert_range_components(
         TimeRange::new(frame1, frame5),
-        Point2D::name(),
+        [Rect2D::name(), Point2D::name()],
         &[
             (
                 frame2,

@@ -334,14 +334,19 @@ impl DataStore {
             "latest row indices fetched"
         );
 
-        std::iter::once(latest_row_indices)
-            .filter_map(move |latest| latest.map(|latest| (latest_time, latest)))
-            .chain(
-                index
-                    .map(|index| index.range(query.range, primary, components))
-                    .into_iter()
-                    .flatten(),
-            )
+        index
+            .map(|index| index.range(query.range, primary, components))
+            .into_iter()
+            .flatten()
+
+        // std::iter::once(latest_row_indices)
+        //     .filter_map(move |latest| latest.map(|latest| (latest_time, latest)))
+        //     .chain(
+        //         index
+        //             .map(|index| index.range(query.range, primary, components))
+        //             .into_iter()
+        //             .flatten(),
+        //     )
     }
 
     /// Retrieves the data associated with a list of `components` at the specified `indices`.
