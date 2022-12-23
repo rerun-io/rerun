@@ -4,8 +4,7 @@ use re_data_store::{
     query::visit_type_data_4, FieldName, InstanceIdHash, ObjPath, ObjectsProperties,
 };
 use re_log_types::{
-    context::ClassId,
-    field_types::{ColorRGBA, Rect2D},
+    field_types::{ClassId, ColorRGBA, Rect2D},
     msg_bundle::Component,
     IndexHash, MsgId, ObjectType,
 };

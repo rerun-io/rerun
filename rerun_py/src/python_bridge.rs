@@ -13,12 +13,10 @@ use pyo3::{
 };
 
 use re_log_types::{
-    context,
-    context::{ClassId, KeypointId},
-    coordinates, AnnotationContext, ApplicationId, BBox2D, BatchIndex, Data, DataVec,
-    EncodedMesh3D, Index, LoggedData, Mesh3D, MeshFormat, MeshId, ObjPath, ObjectType, PathOp,
-    RecordingId, TensorDataStore, TensorDataType, TensorDimension, TensorId, Time, TimeInt,
-    TimePoint, TimeType, Timeline, ViewCoordinates,
+    context, context::KeypointId, coordinates, field_types::ClassId, AnnotationContext,
+    ApplicationId, BBox2D, BatchIndex, Data, DataVec, EncodedMesh3D, Index, LoggedData, Mesh3D,
+    MeshFormat, MeshId, ObjPath, ObjectType, PathOp, RecordingId, TensorDataStore, TensorDataType,
+    TensorDimension, TensorId, Time, TimeInt, TimePoint, TimeType, Timeline, ViewCoordinates,
 };
 
 use rerun_sdk::global_session;

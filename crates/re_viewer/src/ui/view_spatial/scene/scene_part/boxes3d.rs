@@ -1,7 +1,7 @@
 use glam::{vec3, Vec3};
 
 use re_data_store::{query::visit_type_data_4, FieldName, InstanceIdHash, ObjectsProperties};
-use re_log_types::{context::ClassId, IndexHash, MsgId, ObjectType};
+use re_log_types::{field_types::ClassId, IndexHash, MsgId, ObjectType};
 use re_renderer::Size;
 
 use crate::{

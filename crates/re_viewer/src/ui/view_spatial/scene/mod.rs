@@ -4,10 +4,7 @@ use ahash::HashMap;
 use egui::NumExt as _;
 use glam::{vec3, Vec3};
 use re_data_store::{InstanceIdHash, ObjPath, ObjectsProperties};
-use re_log_types::{
-    context::{ClassId, KeypointId},
-    IndexHash, MeshId, Tensor,
-};
+use re_log_types::{context::KeypointId, field_types::ClassId, IndexHash, MeshId, Tensor};
 use re_renderer::{Color32, Size};
 
 use super::{eye::Eye, SpaceCamera3D, SpatialNavigationMode};

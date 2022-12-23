@@ -7,8 +7,8 @@ use re_log_types::context::AnnotationInfo;
 use re_log_types::external::arrow2::array::get_display;
 use re_log_types::msg_bundle::{ComponentBundle, MsgBundle};
 use re_log_types::{
-    context, AnnotationContext, Arrow3D, ArrowMsg, BeginRecordingMsg, Data, DataMsg, DataPath,
-    DataVec, LogMsg, LoggedData, MsgId, ObjPath, ObjectType, PathOp, PathOpMsg, Pinhole,
+    context, field_types, AnnotationContext, Arrow3D, ArrowMsg, BeginRecordingMsg, Data, DataMsg,
+    DataPath, DataVec, LogMsg, LoggedData, MsgId, ObjPath, ObjectType, PathOp, PathOpMsg, Pinhole,
     RecordingInfo, Rigid3, TimePoint, Transform, TypeMsg, ViewCoordinates,
 };
 use re_query::{get_component_with_instances, QueryError};
@@ -151,7 +151,7 @@ fn generic_instance_ui(
                             let data = data_vec.last().unwrap();
                             if field_name.as_str() == "class_id" {
                                 if let Data::I32(id) = data {
-                                    class_id = Some(context::ClassId(id as _));
+                                    class_id = Some(field_types::ClassId(id as _));
                                 }
                             }
                             if field_name.as_str() == "keypoint_id" {

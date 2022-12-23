@@ -1,9 +1,6 @@
 use ahash::HashMap;
 use re_data_store::{query::visit_type_data_5, FieldName};
-use re_log_types::{
-    context::{ClassId, KeypointId},
-    IndexHash, MsgId, ObjectType,
-};
+use re_log_types::{context::KeypointId, field_types::ClassId, IndexHash, MsgId, ObjectType};
 use re_renderer::Size;
 
 use crate::ui::{

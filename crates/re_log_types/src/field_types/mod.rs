@@ -8,6 +8,7 @@ use lazy_static::lazy_static;
 
 use crate::msg_bundle::Component;
 
+mod class_id;
 mod color;
 mod instance;
 mod label;
@@ -16,6 +17,7 @@ mod quaternion;
 mod rect;
 mod size;
 
+pub use class_id::ClassId;
 pub use color::ColorRGBA;
 pub use instance::Instance;
 pub use label::Label;

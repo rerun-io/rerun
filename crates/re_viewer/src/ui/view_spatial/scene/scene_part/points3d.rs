@@ -3,8 +3,8 @@ use glam::Vec3;
 use re_arrow_store::TimeQuery;
 use re_data_store::{query::visit_type_data_5, FieldName, InstanceIdHash, ObjectsProperties};
 use re_log_types::{
-    context::{ClassId, KeypointId},
-    field_types::{ColorRGBA, Label, Point3D},
+    context::KeypointId,
+    field_types::{ClassId, ColorRGBA, Label, Point3D},
     msg_bundle::Component,
     IndexHash, MsgId, ObjectType,
 };
