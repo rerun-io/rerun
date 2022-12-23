@@ -241,7 +241,7 @@ fn simple_query_entity() {
 
     #[cfg(feature = "polars")]
     {
-        let df = entity_view.as_df2::<Point2D, ColorRGBA>().unwrap();
+        let df = entity_view.as_df2::<ColorRGBA>().unwrap();
         eprintln!("{:?}", df);
 
         let instances = vec![Some(Instance(42)), Some(Instance(96))];
