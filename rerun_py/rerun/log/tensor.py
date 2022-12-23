@@ -4,10 +4,9 @@ from typing import Any, Iterable, Optional, Union
 import numpy as np
 import numpy.typing as npt
 from rerun.log import EXP_ARROW
-
-from rerun import bindings
 from rerun.log.error_utils import _send_warning
 
+from rerun import bindings
 
 __all__ = [
     "log_tensor",

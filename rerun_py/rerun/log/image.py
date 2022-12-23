@@ -4,11 +4,10 @@ from typing import Any, Optional, Tuple
 import numpy as np
 import numpy.typing as npt
 from rerun.log import Colors
+from rerun.log.error_utils import _send_warning
 from rerun.log.tensor import _log_tensor
 
 from rerun import bindings
-from rerun.log.error_utils import _send_warning
-
 
 __all__ = [
     "log_image",
