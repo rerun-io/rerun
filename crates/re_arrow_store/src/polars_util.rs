@@ -5,6 +5,12 @@ use re_log_types::{ComponentName, ObjPath as EntityPath, TimeInt};
 
 use crate::{DataStore, LatestAtQuery, RangeQuery};
 
+// ---
+
+pub type SharedPolarsError = Arc<PolarsError>;
+
+pub type SharedResult<T> = ::std::result::Result<T, SharedPolarsError>;
+
 // --- LatestAt ---
 
 /// Queries a single component from its own point-of-view as well as its cluster key, and
@@ -63,7 +69,7 @@ pub fn latest_component(
     query: &LatestAtQuery,
     ent_path: &EntityPath,
     primary: ComponentName,
-) -> anyhow::Result<DataFrame> {
+) -> SharedResult<DataFrame> {
     let cluster_key = store.cluster_key();
 
     let components = &[cluster_key, primary];
@@ -141,7 +147,7 @@ pub fn latest_components(
     ent_path: &EntityPath,
     primaries: &[ComponentName],
     join_type: &JoinType,
-) -> anyhow::Result<DataFrame> {
+) -> SharedResult<DataFrame> {
     let cluster_key = store.cluster_key();
 
     let dfs = primaries
@@ -220,7 +226,7 @@ pub fn latest_components(
 /// let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
 /// let query = RangeQuery {
 ///     timeline: timeline_frame_nr,
-///     range: TimeRange::new(1.into(), 4.into()),
+///     range: TimeRange::new(2.into(), 4.into()),
 /// };
 ///
 /// let dfs = polars_util::range_component(&store, &query, &ent_path, Rect2D::name());
@@ -243,9 +249,9 @@ pub fn latest_components(
 /// │ ---            ┆ ---               │
 /// │ u64            ┆ struct[4]         │
 /// ╞════════════════╪═══════════════════╡
-/// │ 5              ┆ {0.0,0.0,0.0,0.0} │
+/// │ 1              ┆ {0.0,0.0,0.0,0.0} │
 /// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-/// │ 13             ┆ {1.0,1.0,0.0,0.0} │
+/// │ 10             ┆ {1.0,1.0,0.0,0.0} │
 /// └────────────────┴───────────────────┘
 ///
 /// Found data at time #4 from rerun.rect2d's PoV (outer-joining):
@@ -279,24 +285,25 @@ pub fn range_component<'a>(
     query: &'a RangeQuery,
     ent_path: &'a EntityPath,
     primary: ComponentName,
-) -> impl Iterator<Item = anyhow::Result<(TimeInt, DataFrame)>> + 'a {
+) -> impl Iterator<Item = SharedResult<(TimeInt, DataFrame)>> + 'a {
     let cluster_key = store.cluster_key();
 
     let components = [cluster_key, primary];
 
     // Fetch the latest-at data just before the start of the time range.
-    let latest_time = query.range.min.as_i64().saturating_sub(1).into();
-    let df_latest = {
+    let latest_time = query.range.min.as_i64().checked_sub(1).map(Into::into);
+    let df_latest = latest_time.map(|latest_time| {
         let query = LatestAtQuery::new(query.timeline, latest_time);
         let row_indices = store
             .latest_at(&query, ent_path, primary, &components)
             .unwrap_or([None; 2]);
         let results = store.get(&components, &row_indices);
-        dataframe_from_results(&components, results)
-    };
+        dataframe_from_results(&components, results).map(|df| (latest_time, df))
+    });
 
     // Send the latest-at state before anything else..
-    std::iter::once(df_latest.map(|df| (latest_time, df)))
+    df_latest
+        .into_iter()
         // ..but only if it's not an empty dataframe.
         .filter(|df| df.as_ref().map_or(true, |(_, df)| !df.is_empty()))
         .chain(store.range(query, ent_path, primary, components).map(
@@ -381,10 +388,17 @@ pub fn range_component<'a>(
 /// let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
 /// let query = RangeQuery {
 ///     timeline: timeline_frame_nr,
-///     range: TimeRange::new(1.into(), 4.into()),
+///     range: TimeRange::new(2.into(), 4.into()),
 /// };
 ///
-/// let dfs = polars_util::range_component(&store, &query, &ent_path, Rect2D::name());
+/// let dfs = polars_util::range_components(
+///     &store,
+///     &query,
+///     &ent_path,
+///     Rect2D::name(),
+///     &[Point2D::name()],
+///     &JoinType::Outer,
+/// );
 ///
 /// for (time, df) in dfs.map(Result::unwrap) {
 ///     eprintln!(
@@ -404,9 +418,9 @@ pub fn range_component<'a>(
 /// │ ---            ┆ ---               │
 /// │ u64            ┆ struct[4]         │
 /// ╞════════════════╪═══════════════════╡
-/// │ 0              ┆ {0.0,0.0,0.0,0.0} │
+/// │ 7              ┆ {0.0,0.0,0.0,0.0} │
 /// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-/// │ 5              ┆ {1.0,1.0,0.0,0.0} │
+/// │ 19             ┆ {1.0,1.0,0.0,0.0} │
 /// └────────────────┴───────────────────┘
 ///
 /// Found data at time #4 from rerun.rect2d's PoV (outer-joining):
@@ -421,13 +435,13 @@ pub fn range_component<'a>(
 /// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 /// │ 22             ┆ {2.0,2.0,1.0,1.0}     ┆ {null,null}         │
 /// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-/// │ 25             ┆ {null,null,null,null} ┆ {6.365356,6.691178} │
+/// │ 25             ┆ {null,null,null,null} ┆ {4.674534,1.10232}  │
 /// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-/// │ 26             ┆ {null,null,null,null} ┆ {6.310458,1.014078} │
+/// │ 26             ┆ {null,null,null,null} ┆ {5.485249,3.561962} │
 /// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-/// │ 27             ┆ {null,null,null,null} ┆ {5.565524,5.133609} │
+/// │ 27             ┆ {null,null,null,null} ┆ {1.286991,7.455362} │
 /// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-/// │ 28             ┆ {null,null,null,null} ┆ {4.919256,4.289873} │
+/// │ 28             ┆ {null,null,null,null} ┆ {5.445724,9.622441} │
 /// └────────────────┴───────────────────────┴─────────────────────┘
 ///
 /// Found data at time #4 from rerun.rect2d's PoV (outer-joining):
@@ -436,13 +450,17 @@ pub fn range_component<'a>(
 /// │ ---            ┆ ---                   ┆ ---                 │
 /// │ u64            ┆ struct[4]             ┆ struct[2]           │
 /// ╞════════════════╪═══════════════════════╪═════════════════════╡
-/// │ 25             ┆ {0.0,0.0,0.0,0.0}     ┆ {6.365356,6.691178} │
+/// │ 20             ┆ {null,null,null,null} ┆ {2.220385,9.471127} │
 /// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-/// │ 26             ┆ {1.0,1.0,0.0,0.0}     ┆ {6.310458,1.014078} │
+/// │ 21             ┆ {null,null,null,null} ┆ {2.006991,0.522795} │
 /// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-/// │ 27             ┆ {2.0,2.0,1.0,1.0}     ┆ {5.565524,5.133609} │
+/// │ 22             ┆ {null,null,null,null} ┆ {4.77748,0.148467}  │
 /// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-/// │ 28             ┆ {null,null,null,null} ┆ {4.919256,4.289873} │
+/// │ 25             ┆ {0.0,0.0,0.0,0.0}     ┆ {null,null}         │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ 26             ┆ {1.0,1.0,0.0,0.0}     ┆ {null,null}         │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ 27             ┆ {2.0,2.0,1.0,1.0}     ┆ {null,null}         │
 /// └────────────────┴───────────────────────┴─────────────────────┘
 /// ```
 pub fn range_components<'a>(
@@ -452,7 +470,7 @@ pub fn range_components<'a>(
     primary: ComponentName,
     components: &[ComponentName],
     join_type: &'a JoinType,
-) -> impl Iterator<Item = anyhow::Result<(TimeInt, DataFrame)>> + 'a {
+) -> impl Iterator<Item = SharedResult<(TimeInt, DataFrame)>> + 'a {
     let cluster_key = store.cluster_key();
 
     let mut state: Vec<_> = std::iter::repeat_with(|| None)
@@ -462,46 +480,44 @@ pub fn range_components<'a>(
         .take(components.len() + 1) // +1 for primary
         .collect();
 
-    let latest_time = query.range.min.as_i64().saturating_sub(1).into();
+    let latest_time = query.range.min.as_i64().checked_sub(1).map(Into::into);
 
-    // Fetch the latest data for every single component from their respective point-of-views, this
-    // will allow us to build up the initial state and send an initial latest-at dataframe if
-    // needed.
-    for (i, primary) in std::iter::once(&primary)
-        .chain(components.iter())
-        .enumerate()
-    {
-        let components = &[cluster_key, *primary];
+    if let Some(latest_time) = latest_time {
+        // Fetch the latest data for every single component from their respective point-of-views,
+        // this will allow us to build up the initial state and send an initial latest-at
+        // dataframe if needed.
+        for (i, primary) in std::iter::once(&primary)
+            .chain(components.iter())
+            .enumerate()
+        {
+            let df = latest_component(
+                store,
+                &LatestAtQuery::new(query.timeline, latest_time),
+                ent_path,
+                *primary,
+            );
 
-        let query = LatestAtQuery::new(query.timeline, latest_time);
-        let row_indices = store
-            .latest_at(&query, ent_path, *primary, components)
-            .unwrap_or([None; 2]);
-        let results = store.get(components, &row_indices);
-
-        let df = dataframe_from_results(components, results);
-
-        if df.as_ref().map_or(false, |df| !df.is_empty()) {
-            state[i] = Some(df);
+            if df.as_ref().map_or(false, |df| !df.is_empty()) {
+                state[i] = Some(df);
+            }
         }
     }
 
     // Iff the primary component has a non-empty latest-at dataframe, then we want to be sending an
     // initial dataframe.
-    let df_latest = if state[0].is_some() {
-        join_dataframes(
+    let df_latest = if let (Some(latest_time), Some(_)) = (latest_time, &state[0]) {
+        let df = join_dataframes(
             cluster_key,
             join_type,
-            state
-                .iter()
-                .filter_map(|df| df.as_ref())
-                .map(|df| Ok(df.as_ref().unwrap().clone())), // TODO
+            state.iter().filter_map(|df| df.as_ref()).cloned(), // shallow
         )
+        .map(|df| (latest_time, df));
+        Some(df)
     } else {
-        Ok(DataFrame::default())
+        None
     };
 
-    // TODO: explain why this is
+    // Now let's create the actual range iterators, one for each component / point-of-view.
     for (i, component) in std::iter::once(&primary)
         .chain(components.iter())
         .enumerate()
@@ -523,31 +539,32 @@ pub fn range_components<'a>(
         iters[i] = Some(it);
     }
 
-    std::iter::once(df_latest.map(|df| (latest_time, df)))
+    // Send the latest-at state before anything else..
+    df_latest
+        .into_iter()
+        // ..but only if it's not an empty dataframe.
         .filter(|df| df.as_ref().map_or(true, |(_, df)| !df.is_empty()))
         .chain(
             iters
                 .into_iter()
-                .map(Option::unwrap) // TODO: explain
+                .map(Option::unwrap)
                 .kmerge_by(|(_, time1, idx_row_nr1, _), (_, time2, idx_row_nr2, _)| {
-                    (time1, idx_row_nr1) < (time2, idx_row_nr2) // TODO: explain
+                    // Merge earlier rows first, and tiebreak on the actual bucket index row
+                    // number if necessary!
+                    (time1, idx_row_nr1) < (time2, idx_row_nr2)
                 })
                 .filter_map(move |(i, time, _, df)| {
                     state[i] = Some(df);
 
-                    if i == 0 {
+                    // We only yield if the primary component changes!
+                    (i == 0).then(|| {
                         let df = join_dataframes(
                             cluster_key,
                             join_type,
-                            state
-                                .iter()
-                                .filter_map(|df| df.as_ref())
-                                .map(|df| Ok(df.as_ref().unwrap().clone())), // TODO
+                            state.iter().filter_map(|df| df.as_ref()).cloned(), // shallow
                         );
-                        Some(df.map(|df| (time, df)))
-                    } else {
-                        None
-                    }
+                        df.map(|df| (time, df))
+                    })
                 }),
         )
 }
@@ -557,7 +574,7 @@ pub fn range_components<'a>(
 pub fn dataframe_from_results<const N: usize>(
     components: &[ComponentName; N],
     results: [Option<Box<dyn Array>>; N],
-) -> anyhow::Result<DataFrame> {
+) -> SharedResult<DataFrame> {
     let series: Result<Vec<_>, _> = components
         .iter()
         .zip(results)
@@ -571,8 +588,8 @@ pub fn dataframe_from_results<const N: usize>(
 pub fn join_dataframes(
     cluster_key: ComponentName,
     join_type: &JoinType,
-    dfs: impl Iterator<Item = anyhow::Result<DataFrame>>,
-) -> anyhow::Result<DataFrame> {
+    dfs: impl Iterator<Item = SharedResult<DataFrame>>,
+) -> SharedResult<DataFrame> {
     let df = dfs
         .filter(|df| df.as_ref().map_or(true, |df| !df.is_empty()))
         .reduce(|acc, df| {

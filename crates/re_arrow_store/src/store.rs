@@ -24,7 +24,7 @@ pub type TimeIndex = Vec<i64>;
 pub type SecondaryIndex = Vec<Option<RowIndex>>;
 static_assertions::assert_eq_size!(u64, Option<RowIndex>);
 
-// TODO(cmc): We desperately need to work on the terminology here:
+// TODO(#639): We desperately need to work on the terminology here:
 //
 // - `TimeIndex` is a vector of `TimeInt`s.
 //   It's the primary column and it's always dense.

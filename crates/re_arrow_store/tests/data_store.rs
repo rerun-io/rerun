@@ -170,8 +170,8 @@ fn range_impl(store: &mut DataStore) {
 
     // Each entry in `bundles_at_times` corresponds to a dataframe that's expected to be returned
     // by the range query.
-    // A single timepoint might have several of those! That's one of the behavior specific to range
-    // queries.
+    // A single timepoint might have several of those! That's one of the behaviors specific to
+    // range queries.
     let mut assert_range_components =
         |time_range: TimeRange,
          components: &[ComponentName],

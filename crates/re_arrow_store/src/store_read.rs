@@ -162,8 +162,8 @@ impl DataStore {
     ///
     /// For more information about working with dataframes, see the `polars` feature.
     //
-    // TODO(cmc): add a short "store-contains-this/latest-at-returns-that" once we have support for
-    // DataStore::dump_as_df().
+    // TODO(#640): add a short "store-contains-this/latest-at-returns-that" once we have support
+    // for DataStore::dump_as_df().
     //
     // TODO(cmc): at one point we're gonna need a high-level documentation/user-guide of the
     // semantics of latest-at PoV queries, giving readers a walkthrough of a real-world query.
@@ -216,7 +216,6 @@ impl DataStore {
         None
     }
 
-    // TODO
     /// Iterates the datastore in order to return the internal row indices of the the specified
     /// `components`, as seen from the point of view of the so-called `primary` component, for the
     /// given time range.
@@ -224,23 +223,19 @@ impl DataStore {
     /// For each and every relevant row that is found, the returned iterator will yield an array
     /// that is filled with the internal row index of each and every component in `components`,
     /// or `None` if said component is not available in that row.
+    /// A row is considered iff it contains data for the `primary` component.
     ///
-    /// This method operates in two phases: first, it will yield a row that corresponds to a
-    /// latest-at query at the beginning of the specified time range _minus one_ (!), and then
-    /// it'll start iterating from there.
-    /// This cannot fail! If there's no data to return (whether that's due to a missing primary
-    /// index, missing secondary components, an empty point-of-view...), then an empty iterator is
-    /// returned.
+    /// This method cannot fail! If there's no data to return (whether that's due to a missing
+    /// primary index, missing secondary components, an empty point-of-view...), then an empty
+    /// iterator is returned.
     ///
     /// To actually retrieve the data associated with these indices, see [`Self::get`].
     ///
-    /// ⚠ The semantics of iteration are a bit tricky!
-    ///
-    /// Contrary to latest-at queries, range queries can and will yield multiple rows for a
+    /// ⚠ Contrary to latest-at queries, range queries can and will yield multiple rows for a
     /// single timestamp if that timestamp happens to hold multiple entries for the `primary`
     /// component.
-    /// Inversely, they won't yield any rows that don't contain an actual value for the `primary`
-    /// component, _even if said rows do contain a value for one the secondaries_!
+    /// On the contrary, they won't yield any rows that don't contain an actual value for the
+    /// `primary` component, _even if said rows do contain a value for one the secondaries_!
     ///
     /// ## Example
     ///
@@ -248,6 +243,8 @@ impl DataStore {
     /// component and its associated cluster key, then get the corresponding data using these
     /// row indices, and finally turn everything into a nice-to-work-with iterator of
     /// polars's dataframe.
+    /// Additionally, it yields the latest-at state of the component a the start of the time range,
+    /// if available.
     ///
     /// ```rust
     /// # use arrow2::array::Array;
@@ -309,7 +306,7 @@ impl DataStore {
     ///
     /// For more information about working with dataframes, see the `polars` feature.
     //
-    // TODO(cmc): add a short "store-contains-this/range-returns-that" once we have support for
+    // TODO(#640): add a short "store-contains-this/range-returns-that" once we have support for
     // DataStore::dump_as_df().
     //
     // TODO(cmc): at one point we're gonna need a high-level documentation/user-guide of the
@@ -751,9 +748,10 @@ impl IndexBucket {
             return itertools::Either::Right(std::iter::empty());
         };
 
-        // TODO(cmc): Cloning these is obviously not great will need to be addressed at some point.
-        // But really it's not _that_ bad either: these are integers and e.g. with the default
-        // configuration there are are only 1024 of them (times the number of components).
+        // TODO(cmc): Cloning these is obviously not great and will need to be addressed at
+        // some point.
+        // But, really, it's not _that_ bad either: these are integers and e.g. with the default
+        // configuration there are only 1024 of them (times the number of components).
         let time_idx = times.clone();
         let comp_indices = indices.clone();
 
