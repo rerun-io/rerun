@@ -28,7 +28,9 @@ def log_tensor(
 
 
 def _get_pytorch_dim_names(torch_tensor: Any) -> Optional[Iterable[Optional[str]]]:
-    """Attempt to read dimensions names from a tensor as if it's a pytorch tensor.
+    """
+    Attempt to read dimensions names from a tensor as if it's a pytorch tensor.
+
     May raise an AttributeError.
     """
     names = []  # type: Iterable[Optional[str]]
@@ -52,7 +54,6 @@ def _log_tensor(
     squeeze_dims: bool = False,
 ) -> None:
     """Log a general tensor, perhaps with named dimensions."""
-
     # Duck-typing way to handle pytorch tensors
     try:
         if names is None:
@@ -74,7 +75,10 @@ def _log_tensor(
 
         if len(tensor.shape) != len(names):
             _send_warning(
-                f"len(tensor.shape) = len({tensor.shape}) = {len(tensor.shape)} != len(names) = len({names}) = {len(names)}. Dropping tensor dimension names.",
+                (
+                    f"len(tensor.shape) = len({tensor.shape}) = {len(tensor.shape)} != "
+                    + f"len(names) = len({names}) = {len(names)}. Dropping tensor dimension names."
+                ),
                 2,
             )
             names = None
