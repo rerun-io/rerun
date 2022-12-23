@@ -206,7 +206,7 @@ impl ScenePart for Boxes2DPart {
                 TimeQuery::LatestAt(query.latest_at.as_i64()),
             );
 
-            match query_entity_with_primary::<Rect2D, 1>(
+            match query_entity_with_primary::<Rect2D>(
                 &ctx.log_db.obj_db.arrow_store,
                 &timeline_query,
                 ent_path,

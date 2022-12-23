@@ -210,7 +210,7 @@ where
 
 /// A view of an entity at a particular point in time returned by [`crate::get_component_with_instances`]
 ///
-/// `EntityView` has a special `primary` component which determines the length of an entity
+/// `EntityView` has a special `primary` [`Component`] which determines the length of an entity
 /// batch. When iterating over individual components, they will be implicitly joined onto
 /// the primary component using instance keys.
 #[derive(Clone, Debug)]
@@ -297,18 +297,16 @@ where
     }
 
     /// Helper function to produce an `EntityView` from rust-native `field_types`
-    pub fn from_native2<C1>(
-        c0: (Option<&Vec<Instance>>, &Vec<Primary>),
-        c1: (Option<&Vec<Instance>>, &Vec<C1>),
+    pub fn from_native2<C>(
+        primary: (Option<&Vec<Instance>>, &Vec<Primary>),
+        component: (Option<&Vec<Instance>>, &Vec<C>),
     ) -> crate::Result<Self>
     where
-        //C0: Component + 'static,
-        //C0: ArrowSerialize + ArrowField<Type = C0>,
-        C1: Component + 'static,
-        C1: ArrowSerialize + ArrowField<Type = C1>,
+        C: Component + 'static,
+        C: ArrowSerialize + ArrowField<Type = C>,
     {
-        let primary = ComponentWithInstances::from_native(c0.0, c0.1)?;
-        let component_c1 = ComponentWithInstances::from_native(c1.0, c1.1)?;
+        let primary = ComponentWithInstances::from_native(primary.0, primary.1)?;
+        let component_c1 = ComponentWithInstances::from_native(component.0, component.1)?;
 
         let components = [(component_c1.name, component_c1)].into();
 

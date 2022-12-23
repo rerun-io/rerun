@@ -42,11 +42,10 @@ fn simple_query() {
         TimeQuery::LatestAt(timepoint[0].1.as_i64()),
     );
 
-    let entity_view = query_entity_with_primary(
+    let entity_view = query_entity_with_primary::<Point2D>(
         &store,
         &timeline_query,
         &ent_path.into(),
-        Point2D::name(),
         &[ColorRGBA::name()],
     )
     .unwrap();
@@ -78,10 +77,7 @@ fn simple_query() {
         //eprintln!("{:?}", df);
         //eprintln!("{:?}", expected);
 
-        common::compare_df(
-            &expected,
-            &entity_view.as_df2::<Point2D, ColorRGBA>().unwrap(),
-        );
+        common::compare_df(&expected, &entity_view.as_df2::<ColorRGBA>().unwrap());
     }
     #[cfg(not(feature = "polars"))]
     {
@@ -113,11 +109,10 @@ fn no_instance_join_query() {
         TimeQuery::LatestAt(timepoint[0].1.as_i64()),
     );
 
-    let entity_view = query_entity_with_primary(
+    let entity_view = query_entity_with_primary::<Point2D>(
         &store,
         &timeline_query,
         &ent_path.into(),
-        Point2D::name(),
         &[ColorRGBA::name()],
     )
     .unwrap();
@@ -149,10 +144,7 @@ fn no_instance_join_query() {
         //eprintln!("{:?}", df);
         //eprintln!("{:?}", expected);
 
-        common::compare_df(
-            &expected,
-            &entity_view.as_df2::<Point2D, ColorRGBA>().unwrap(),
-        );
+        common::compare_df(&expected, &entity_view.as_df2::<ColorRGBA>().unwrap());
     }
     #[cfg(not(feature = "polars"))]
     {
@@ -179,11 +171,10 @@ fn missing_column_join_query() {
         TimeQuery::LatestAt(timepoint[0].1.as_i64()),
     );
 
-    let entity_view = query_entity_with_primary(
+    let entity_view = query_entity_with_primary::<Point2D>(
         &store,
         &timeline_query,
         &ent_path.into(),
-        Point2D::name(),
         &[ColorRGBA::name()],
     )
     .unwrap();
@@ -214,7 +205,7 @@ fn missing_column_join_query() {
         //eprintln!("{:?}", df);
         //eprintln!("{:?}", expected);
 
-        common::compare_df(&expected, &entity_view.as_df1::<Point2D>().unwrap());
+        common::compare_df(&expected, &entity_view.as_df1().unwrap());
     }
     #[cfg(not(feature = "polars"))]
     {

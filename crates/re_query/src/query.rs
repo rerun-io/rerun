@@ -1,9 +1,7 @@
 use std::collections::BTreeMap;
 
 use re_arrow_store::{DataStore, TimelineQuery};
-use re_log_types::{
-    data_types::Color, field_types::Instance, msg_bundle::Component, ComponentName, ObjPath,
-};
+use re_log_types::{field_types::Instance, msg_bundle::Component, ComponentName, ObjPath};
 
 use crate::{ComponentWithInstances, EntityView, QueryError};
 
@@ -88,17 +86,16 @@ pub fn get_component_with_instances(
 ///   TimeQuery::LatestAt(123.into()),
 /// );
 ///
-/// let entity_view = re_query::query_entity_with_primary(
+/// let entity_view = re_query::query_entity_with_primary::<Point2D>(
 ///   &store,
 ///   &timeline_query,
 ///   &ent_path.into(),
-///   Point2D::name(),
 ///   &[ColorRGBA::name()],
 /// )
 /// .unwrap();
 ///
 /// # #[cfg(feature = "polars")]
-/// let df = entity_view.as_df1::<Point2D>().unwrap();
+/// let df = entity_view.as_df1().unwrap();
 ///
 /// //println!("{:?}", df);
 /// ```
@@ -116,12 +113,11 @@ pub fn get_component_with_instances(
 /// └──────────┴───────────┴────────────┘
 /// ```
 ///
-pub fn query_entity_with_primary<Primary: Component, const N: usize>(
+pub fn query_entity_with_primary<Primary: Component>(
     store: &DataStore,
     timeline_query: &TimelineQuery,
     ent_path: &ObjPath,
-    //primary: ComponentName,
-    components: &[ComponentName; N],
+    components: &[ComponentName],
 ) -> crate::Result<EntityView<Primary>> {
     let primary = get_component_with_instances(store, timeline_query, ent_path, Primary::name())?;
 
@@ -235,7 +231,7 @@ fn simple_query_entity() {
         TimeQuery::LatestAt(123.into()),
     );
 
-    let entity_view = query_entity_with_primary::<Point2D, 1>(
+    let entity_view = query_entity_with_primary::<Point2D>(
         &store,
         &timeline_query,
         &ent_path.into(),
@@ -245,7 +241,7 @@ fn simple_query_entity() {
 
     #[cfg(feature = "polars")]
     {
-        let df = entity_view.as_df2::<Point2D, ColorRGBA>().unwrap();
+        let df = entity_view.as_df2::<ColorRGBA>().unwrap();
         eprintln!("{:?}", df);
 
         let instances = vec![Some(Instance(42)), Some(Instance(96))];
