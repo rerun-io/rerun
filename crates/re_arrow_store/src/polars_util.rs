@@ -470,38 +470,45 @@ pub fn range_components_4_real<'a, const N: usize>(
             ent_path,
             *component,
         );
-        // dbg!(&latest);
+        dbg!(&latest);
 
-        let it = std::iter::once((i, latest_time, Some(RowIndex::from_u64(1)), latest))
-            .filter(|(_, _, _, df)| df.as_ref().map_or(true, |df| !df.is_empty()))
-            .chain(store.range(query, ent_path, *component, components).map(
-                move |(time, row_indices)| {
-                    let results = store.get(&components, &row_indices);
-                    let row_idx = row_indices[1];
-                    (
-                        i,
-                        time,
-                        row_idx,
-                        dataframe_from_results(&components, results),
-                    )
-                },
-            ));
+        let it = std::iter::once((
+            i,
+            latest_time,
+            Some(RowIndex::from_u64(N as u64 - i as u64)),
+            latest,
+        ))
+        .filter(|(_, _, _, df)| df.as_ref().map_or(true, |df| !df.is_empty()))
+        .chain(store.range(query, ent_path, *component, components).map(
+            move |(time, row_indices)| {
+                let results = store.get(&components, &row_indices);
+                let row_idx = row_indices[1];
+                (
+                    i,
+                    time,
+                    row_idx,
+                    dataframe_from_results(&components, results),
+                )
+            },
+        ));
 
         iters[i] = Some(it);
     }
 
-    let mut state = [(); N].map(|_| None); // TODO: first frame too
+    let mut state = [(); N].map(|_| None);
 
     iters
         .into_iter()
         .map(Option::unwrap)
-        .kmerge_by(|(_, _, row_idx1, _), (_, _, row_idx2, _)| row_idx1 <= row_idx2)
+        .kmerge_by(|(_, time1, row_idx1, _), (_, time2, row_idx2, _)| {
+            (time1, row_idx1) < (time2, row_idx2)
+        })
         .filter_map(move |(i, time, _, dfs)| {
-            // dbg!(i, &dfs);
+            dbg!(i, &dfs);
 
             state[i] = Some(dfs);
 
-            dbg!(&state);
+            // dbg!(&state);
 
             if i == 0 {
                 let df = join_dataframes(
@@ -513,10 +520,8 @@ pub fn range_components_4_real<'a, const N: usize>(
                         .map(|df| Ok(df.as_ref().unwrap().clone())),
                 );
 
-                // dbg!(Some(df.map(|df| (time, df))))
+                dbg!(Some(df.map(|df| (time, df))))
                 // Some(df.map(|df| (time, df)))
-
-                Some(df.map(|df| (time, df)))
             } else {
                 None
             }
