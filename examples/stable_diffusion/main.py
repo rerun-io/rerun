@@ -99,7 +99,7 @@ def main() -> None:
         "--prompt",
         type=str,
         help="Positive prompt describing the image you want to generate.",
-        default="Smoky disco face with futuristic glasses.",
+        default="Old man in a smoky disco wearing futuristic glasses.",
     )
     parser.add_argument(
         "--n_prompt",
@@ -110,7 +110,7 @@ def main() -> None:
     parser.add_argument(
         "--strength",
         type=float,
-        default=0.75,
+        default=0.65,
         help="""
 Conceptually, indicates how much to transform the reference `image`. Must be between 0 and 1. `image`
 will be used as a starting point, adding more noise to it the larger the `strength`. The number of
@@ -122,7 +122,7 @@ be maximum and the denoising process will run for the full number of iterations 
     parser.add_argument(
         "--guidance_scale",
         type=float,
-        default=7.5,
+        default=8.5,
         help="""
 Guidance scale as defined in [Classifier-Free Diffusion Guidance](https://arxiv.org/abs/2207.12598).
 `guidance_scale` is defined as `w` of equation 2. of [Imagen
