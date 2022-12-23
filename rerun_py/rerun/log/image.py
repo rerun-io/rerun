@@ -88,6 +88,10 @@ def log_depth_image(
     non_empty_dims = [d for d in shape if d != 1]
     num_non_empty_dims = len(non_empty_dims)
 
+    # TODO(#635): Remove when issue with displaying f64 depth images is fixed.
+    if isinstance(image, np.ndarray) and image.dtype == np.float64:  # type: ignore[redundant-expr]
+        image = image.astype(np.float32)
+
     # Catch some errors early:
     if num_non_empty_dims != 2:
         _send_warning(f"Expected 2D depth image, got array of shape {shape}", 1)

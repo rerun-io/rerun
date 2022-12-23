@@ -1,14 +1,17 @@
 use egui::{color_picker, Vec2};
 
 use itertools::Itertools;
-use re_data_store::InstanceId;
+use re_arrow_store::TimeQuery;
+use re_data_store::{Index, InstanceId};
 use re_log_types::context::AnnotationInfo;
+use re_log_types::external::arrow2::array::get_display;
 use re_log_types::msg_bundle::{ComponentBundle, MsgBundle};
 use re_log_types::{
     context, AnnotationContext, Arrow3D, ArrowMsg, BeginRecordingMsg, Data, DataMsg, DataPath,
     DataVec, LogMsg, LoggedData, MsgId, ObjPath, ObjectType, PathOp, PathOpMsg, Pinhole,
     RecordingInfo, Rigid3, TimePoint, Transform, TypeMsg, ViewCoordinates,
 };
+use re_query::{get_component_with_instances, QueryError};
 
 use crate::misc::ViewerContext;
 use crate::ui::annotations::auto_color;
@@ -46,8 +49,74 @@ pub(crate) fn instance_ui(
         .get(instance_id.obj_path.obj_type_path())
     {
         Some(ObjectType::ClassDescription) => class_description_ui(ctx, ui, instance_id),
+        Some(ObjectType::ArrowObject) => generic_arrow_ui(ctx, ui, instance_id, preview),
         _ => generic_instance_ui(ctx, ui, instance_id, preview),
     }
+}
+
+fn generic_arrow_ui(
+    ctx: &mut ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    instance_id: &InstanceId,
+    _preview: Preview,
+) -> Option<()> {
+    let timeline = ctx.rec_cfg.time_ctrl.timeline();
+    let store = &ctx.log_db.obj_db.arrow_store;
+    let timeline_query = re_arrow_store::TimelineQuery::new(
+        *timeline,
+        TimeQuery::LatestAt(ctx.rec_cfg.time_ctrl.time_i64()?),
+    );
+
+    let Some(components) = store.query_components(&timeline_query, &instance_id.obj_path)
+    else {
+        ui.label("No Components");
+        return Some(());
+    };
+
+    egui::Grid::new("entity_instance")
+        .num_columns(2)
+        .show(ui, |ui| {
+            for component in components {
+                let data = get_component_with_instances(
+                    store,
+                    &timeline_query,
+                    &instance_id.obj_path,
+                    component,
+                );
+
+                ui.label(component.as_str());
+
+                match (data, &instance_id.instance_index) {
+                    // If we didn't find the component then it's not set at this point in time
+                    (Err(QueryError::PrimaryNotFound), _) => ui.label("<unset>"),
+                    // Any other failure to get a component is unexpected
+                    (Err(err), _) => ui.label(format!("Error: {}", err)),
+                    // If an `instance_index` wasn't provided, just report the number of values
+                    (Ok(data), None) => ui.label(format!("{} values", data.len())),
+                    // If the `instance_index` is an `ArrowInstance` show the value
+                    (Ok(data), Some(Index::ArrowInstance(instance))) => {
+                        if let Some(value) = data.lookup(instance) {
+                            // TODO(jleibs): Dispatch to prettier printers for
+                            // component types we know about.
+                            let mut repr = String::new();
+                            let display = get_display(value.as_ref(), "null");
+                            display(&mut repr, 0).unwrap();
+                            ui.label(repr)
+                        } else {
+                            ui.label("<unset>")
+                        }
+                    }
+                    // If the `instance_index` isn't an `ArrowInstance` something has gone wrong
+                    // TODO(jleibs) this goes away once all indexes are just `Instances`
+                    (Ok(_), Some(_)) => ui.label("<bad index>"),
+                };
+
+                ui.end_row();
+            }
+            Some(())
+        });
+
+    Some(())
 }
 
 fn generic_instance_ui(

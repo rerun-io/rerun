@@ -36,14 +36,14 @@ opt-level = 2
 debug = true
 
 [patch.crates-io]
-# 2022-12-20 - Improve bar chart hovering decimal choice
-ecolor = { git = "https://github.com/emilk/egui", rev = "a68c8910923d6957a0962d8a1e591681a459f270" }
-eframe = { git = "https://github.com/emilk/egui", rev = "a68c8910923d6957a0962d8a1e591681a459f270" }
-egui = { git = "https://github.com/emilk/egui", rev = "a68c8910923d6957a0962d8a1e591681a459f270" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "a68c8910923d6957a0962d8a1e591681a459f270" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "a68c8910923d6957a0962d8a1e591681a459f270" }
-emath = { git = "https://github.com/emilk/egui", rev = "a68c8910923d6957a0962d8a1e591681a459f270" }
-epaint = { git = "https://github.com/emilk/egui", rev = "a68c8910923d6957a0962d8a1e591681a459f270" }
+# 2022-12-22 - Add emath::inverse_lerp
+ecolor = { git = "https://github.com/emilk/egui", rev = "34f587d1e1cc69146f7a02f20903e4f573030ffd" }
+eframe = { git = "https://github.com/emilk/egui", rev = "34f587d1e1cc69146f7a02f20903e4f573030ffd" }
+egui = { git = "https://github.com/emilk/egui", rev = "34f587d1e1cc69146f7a02f20903e4f573030ffd" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "34f587d1e1cc69146f7a02f20903e4f573030ffd" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "34f587d1e1cc69146f7a02f20903e4f573030ffd" }
+emath = { git = "https://github.com/emilk/egui", rev = "34f587d1e1cc69146f7a02f20903e4f573030ffd" }
+epaint = { git = "https://github.com/emilk/egui", rev = "34f587d1e1cc69146f7a02f20903e4f573030ffd" }
 
 # ecolor = { path = "../../egui/crates/ecolor" }
 # eframe = { path = "../../egui/crates/eframe" }

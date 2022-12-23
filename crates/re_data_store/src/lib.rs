@@ -65,9 +65,8 @@ pub enum Error {
     #[error(transparent)]
     MsgBundleError(#[from] msg_bundle::MsgBundleError),
 
-    //TODO(john) probably want to turn these into explicit error types
     #[error(transparent)]
-    Other(#[from] anyhow::Error),
+    WriteError(#[from] re_arrow_store::WriteError),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
