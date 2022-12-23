@@ -156,6 +156,11 @@ pub fn latest_components(
 /// Iterates over the rows of a single component and its cluster key from the point-of-view of this
 /// very same component, and returns an iterator of `DataFrame`s.
 ///
+/// An initial dataframe is yielded with the latest-at state at the start of the time range, if
+/// there is any.
+///
+/// ⚠ The semantics are subtle! Study carefully the example below.
+///
 /// Usage:
 /// ```
 /// # use re_arrow_store::{polars_util, test_bundle, DataStore, RangeQuery, TimeRange};
@@ -194,13 +199,23 @@ pub fn latest_components(
 ///
 /// let insts4_1 = build_some_instances_from(20..23);
 /// let rects4_1 = build_some_rects(3);
-/// let bundle4_1 = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [insts4_1, rects4_1]);
+/// let bundle4_1 =
+///     test_bundle!(ent_path @ [build_frame_nr(frame4)] => [insts4_1.clone(), rects4_1]);
 /// store.insert(&bundle4_1).unwrap();
+///
+/// let points4_15 = build_some_point2d(3);
+/// let bundle4_15 =
+///     test_bundle!(ent_path @ [build_frame_nr(frame4)] => [insts4_1.clone(), points4_15]);
+/// store.insert(&bundle4_15).unwrap();
 ///
 /// let insts4_2 = build_some_instances_from(25..28);
 /// let rects4_2 = build_some_rects(3);
 /// let bundle4_2 = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [insts4_2, rects4_2]);
 /// store.insert(&bundle4_2).unwrap();
+///
+/// let points4_25 = build_some_point2d(3);
+/// let bundle4_25 = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [insts4_1, points4_25]);
+/// store.insert(&bundle4_25).unwrap();
 ///
 /// let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
 /// let query = RangeQuery {
@@ -228,10 +243,11 @@ pub fn latest_components(
 /// │ ---            ┆ ---               │
 /// │ u64            ┆ struct[4]         │
 /// ╞════════════════╪═══════════════════╡
-/// │ 16             ┆ {0.0,0.0,0.0,0.0} │
+/// │ 5              ┆ {0.0,0.0,0.0,0.0} │
 /// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-/// │ 17             ┆ {1.0,1.0,0.0,0.0} │
+/// │ 13             ┆ {1.0,1.0,0.0,0.0} │
 /// └────────────────┴───────────────────┘
+///
 /// Found data at time #4 from rerun.rect2d's PoV (outer-joining):
 /// ┌────────────────┬───────────────────┐
 /// │ rerun.instance ┆ rerun.rect2d      │
@@ -244,6 +260,7 @@ pub fn latest_components(
 /// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 /// │ 22             ┆ {2.0,2.0,1.0,1.0} │
 /// └────────────────┴───────────────────┘
+///
 /// Found data at time #4 from rerun.rect2d's PoV (outer-joining):
 /// ┌────────────────┬───────────────────┐
 /// │ rerun.instance ┆ rerun.rect2d      │
@@ -257,7 +274,6 @@ pub fn latest_components(
 /// │ 27             ┆ {2.0,2.0,1.0,1.0} │
 /// └────────────────┴───────────────────┘
 /// ```
-// TODO
 pub fn range_component<'a>(
     store: &'a DataStore,
     query: &'a RangeQuery,
@@ -268,6 +284,7 @@ pub fn range_component<'a>(
 
     let components = [cluster_key, primary];
 
+    // Fetch the latest-at data just before the start of the time range.
     let latest_time = query.range.min.as_i64().saturating_sub(1).into();
     let df_latest = {
         let query = LatestAtQuery::new(query.timeline, latest_time);
@@ -278,7 +295,9 @@ pub fn range_component<'a>(
         dataframe_from_results(&components, results)
     };
 
+    // Send the latest-at state before anything else..
     std::iter::once(df_latest.map(|df| (latest_time, df)))
+        // ..but only if it's not an empty dataframe.
         .filter(|df| df.as_ref().map_or(true, |(_, df)| !df.is_empty()))
         .chain(store.range(query, ent_path, primary, components).map(
             move |(time, _, row_indices)| {
@@ -291,10 +310,16 @@ pub fn range_component<'a>(
 /// Iterates over the rows of any number of components and their respective cluster keys, all from
 /// the single point-of-view of the `primary` component, returning an iterator of `DataFrame`s.
 ///
-/// For each dataframe yielded by this iterator, a latest-at query will be ran for all missing
-/// secondary `components`, and the results joined together using the specified `join_type`.
-/// Not that this can results in different behaviors compared to a "true" ordered streaming-join
-/// operator!
+/// An initial dataframe is yielded with the latest-at state at the start of the time range, if
+/// there is any.
+///
+/// The iterator only ever yields dataframes iff the `primary` component has changed.
+/// A change affecting only secondary components will not yield a dataframe.
+///
+/// This is a streaming-join: every yielded dataframe will be the result of joining the latest
+/// known state of all components, from their respective point-of-views.
+///
+/// ⚠ The semantics are subtle! Study carefully the example below.
 ///
 /// Usage:
 /// ```
@@ -335,13 +360,23 @@ pub fn range_component<'a>(
 ///
 /// let insts4_1 = build_some_instances_from(20..23);
 /// let rects4_1 = build_some_rects(3);
-/// let bundle4_1 = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [insts4_1, rects4_1]);
+/// let bundle4_1 =
+///     test_bundle!(ent_path @ [build_frame_nr(frame4)] => [insts4_1.clone(), rects4_1]);
 /// store.insert(&bundle4_1).unwrap();
+///
+/// let points4_15 = build_some_point2d(3);
+/// let bundle4_15 =
+///     test_bundle!(ent_path @ [build_frame_nr(frame4)] => [insts4_1.clone(), points4_15]);
+/// store.insert(&bundle4_15).unwrap();
 ///
 /// let insts4_2 = build_some_instances_from(25..28);
 /// let rects4_2 = build_some_rects(3);
 /// let bundle4_2 = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [insts4_2, rects4_2]);
 /// store.insert(&bundle4_2).unwrap();
+///
+/// let points4_25 = build_some_point2d(3);
+/// let bundle4_25 = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [insts4_1, points4_25]);
+/// store.insert(&bundle4_25).unwrap();
 ///
 /// let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
 /// let query = RangeQuery {
@@ -349,14 +384,7 @@ pub fn range_component<'a>(
 ///     range: TimeRange::new(1.into(), 4.into()),
 /// };
 ///
-/// let dfs = polars_util::range_components(
-///     &store,
-///     &query,
-///     &ent_path,
-///     Rect2D::name(),
-///     [Instance::name(), Rect2D::name(), Point2D::name()],
-///     &JoinType::Outer,
-/// );
+/// let dfs = polars_util::range_component(&store, &query, &ent_path, Rect2D::name());
 ///
 /// for (time, df) in dfs.map(Result::unwrap) {
 ///     eprintln!(
@@ -417,7 +445,6 @@ pub fn range_component<'a>(
 /// │ 28             ┆ {null,null,null,null} ┆ {4.919256,4.289873} │
 /// └────────────────┴───────────────────────┴─────────────────────┘
 /// ```
-// TODO
 pub fn range_components<'a>(
     store: &'a DataStore,
     query: &'a RangeQuery,

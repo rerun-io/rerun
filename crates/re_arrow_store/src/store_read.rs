@@ -250,9 +250,24 @@ impl DataStore {
     /// polars's dataframe.
     ///
     /// ```rust
+    /// # use arrow2::array::Array;
     /// # use polars_core::{prelude::*, series::Series};
     /// # use re_log_types::{ComponentName, ObjPath as EntityPath, TimeInt};
     /// # use re_arrow_store::{DataStore, LatestAtQuery, RangeQuery};
+    ///
+    /// # pub fn dataframe_from_results<const N: usize>(
+    /// #     components: &[ComponentName; N],
+    /// #     results: [Option<Box<dyn Array>>; N],
+    /// # ) -> anyhow::Result<DataFrame> {
+    /// #     let series: Result<Vec<_>, _> = components
+    /// #         .iter()
+    /// #         .zip(results)
+    /// #         .filter_map(|(component, col)| col.map(|col| (component, col)))
+    /// #         .map(|(&component, col)| Series::try_from((component.as_str(), col)))
+    /// #         .collect();
+    /// #
+    /// #     DataFrame::new(series?).map_err(Into::into)
+    /// # }
     ///
     /// pub fn range_component<'a>(
     ///     store: &'a DataStore,
@@ -263,19 +278,28 @@ impl DataStore {
     ///     let cluster_key = store.cluster_key();
     ///
     ///     let components = [cluster_key, primary];
-    ///     store
-    ///         .range(query, ent_path, primary, components)
-    ///         .map(move |(time, row_indices)| {
-    ///             let results = store.get(&components, &row_indices);
-    ///             let series: Result<Vec<_>, _> = components
-    ///                 .iter()
-    ///                 .zip(results)
-    ///                 .filter_map(|(component, col)| col.map(|col| (component, col)))
-    ///                 .map(|(&component, col)| Series::try_from((component.as_str(), col)))
-    ///                 .collect();
     ///
-    ///             Ok::<_, anyhow::Error>((time, DataFrame::new(series?)?))
-    ///         })
+    ///     // Fetch the latest-at data just before the start of the time range.
+    ///     let latest_time = query.range.min.as_i64().saturating_sub(1).into();
+    ///     let df_latest = {
+    ///         let query = LatestAtQuery::new(query.timeline, latest_time);
+    ///         let row_indices = store
+    ///             .latest_at(&query, ent_path, primary, &components)
+    ///             .unwrap_or([None; 2]);
+    ///         let results = store.get(&components, &row_indices);
+    ///         dataframe_from_results(&components, results)
+    ///     };
+    ///
+    ///     // Send the latest-at state before anything else..
+    ///     std::iter::once(df_latest.map(|df| (latest_time, df)))
+    ///         // ..but only if it's not an empty dataframe.
+    ///         .filter(|df| df.as_ref().map_or(true, |(_, df)| !df.is_empty()))
+    ///         .chain(store.range(query, ent_path, primary, components).map(
+    ///             move |(time, _, row_indices)| {
+    ///                 let results = store.get(&components, &row_indices);
+    ///                 dataframe_from_results(&components, results).map(|df| (time, df))
+    ///             },
+    ///         ))
     /// }
     /// ```
     ///
