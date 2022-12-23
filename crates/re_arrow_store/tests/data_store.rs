@@ -144,7 +144,12 @@ fn range_impl(store: &mut DataStore) {
 
     let insts4_2 = build_some_instances_from(25..30);
     let rects4_2 = build_some_rects(5);
-    let bundle4_2 = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [insts4_2, rects4_2]);
+    let bundle4_2 =
+        test_bundle!(ent_path @ [build_frame_nr(frame4)] => [insts4_2.clone(), rects4_2]);
+    store.insert(&bundle4_2).unwrap();
+
+    let points4_2 = build_some_point2d(5);
+    let bundle4_2 = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [insts4_2, points4_2]);
     store.insert(&bundle4_2).unwrap();
 
     let insts4_3 = build_some_instances_from(30..35);
@@ -222,9 +227,13 @@ fn range_impl(store: &mut DataStore) {
         TimeRange::new(frame2, frame2),
         [Rect2D::name(), Point2D::name()],
         &[
-            (frame1, &[(Rect2D::name(), &bundle1)]), //
+            (
+                frame1,
+                &[(Rect2D::name(), &bundle1), (Point2D::name(), &bundle2)],
+            ), //
         ],
     );
+    return;
     assert_range_components(
         TimeRange::new(frame3, frame3),
         [Rect2D::name(), Point2D::name()],
@@ -243,21 +252,17 @@ fn range_impl(store: &mut DataStore) {
                 frame3,
                 &[(Rect2D::name(), &bundle1), (Point2D::name(), &bundle3)],
             ),
-            // Do take note of the value of Point2D in all 3 cases below, which is effectively
-            // "newer" than the primary component itself!
-            // That's because `polars_util::range_components` takes some shortcuts rather than
-            // implementing a true ordered streaming-join operator.
             (
                 frame4,
-                &[(Rect2D::name(), &bundle4_1), (Point2D::name(), &bundle4_4)], // !!!
+                &[(Rect2D::name(), &bundle4_1), (Point2D::name(), &bundle3)],
             ),
             (
                 frame4,
-                &[(Rect2D::name(), &bundle4_2), (Point2D::name(), &bundle4_4)], // !!!
+                &[(Rect2D::name(), &bundle4_2), (Point2D::name(), &bundle3)],
             ),
             (
                 frame4,
-                &[(Rect2D::name(), &bundle4_3), (Point2D::name(), &bundle4_4)], // !!!
+                &[(Rect2D::name(), &bundle4_3), (Point2D::name(), &bundle4_2)], // !!!
             ),
         ],
     );

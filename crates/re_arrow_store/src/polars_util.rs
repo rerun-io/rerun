@@ -3,7 +3,7 @@ use itertools::Itertools;
 use polars_core::{prelude::*, series::Series};
 use re_log_types::{ComponentName, ObjPath as EntityPath, TimeInt};
 
-use crate::{DataStore, LatestAtQuery, RangeQuery};
+use crate::{DataStore, LatestAtQuery, RangeQuery, RowIndex};
 
 // --- LatestAt ---
 
@@ -458,13 +458,24 @@ pub fn range_components_4_real<'a, const N: usize>(
 ) -> impl Iterator<Item = anyhow::Result<(TimeInt, DataFrame)>> + 'a {
     let cluster_key = store.cluster_key();
 
+    let latest_time = query.range.min.as_i64().saturating_sub(1).into();
+
     let mut iters = [(); N].map(|_| None);
     for (i, component) in components.iter().enumerate() {
         let components = [cluster_key, *component];
-        let it =
-            store
-                .range(query, ent_path, *component, components)
-                .map(move |(time, row_indices)| {
+
+        let latest = latest_component(
+            store,
+            &LatestAtQuery::new(query.timeline, latest_time),
+            ent_path,
+            *component,
+        );
+        // dbg!(&latest);
+
+        let it = std::iter::once((i, latest_time, Some(RowIndex::from_u64(1)), latest))
+            .filter(|(_, _, _, df)| df.as_ref().map_or(true, |df| !df.is_empty()))
+            .chain(store.range(query, ent_path, *component, components).map(
+                move |(time, row_indices)| {
                     let results = store.get(&components, &row_indices);
                     let row_idx = row_indices[1];
                     (
@@ -473,48 +484,43 @@ pub fn range_components_4_real<'a, const N: usize>(
                         row_idx,
                         dataframe_from_results(&components, results),
                     )
-                });
+                },
+            ));
+
         iters[i] = Some(it);
     }
 
-    let latest_time = query.range.min.as_i64().saturating_sub(1).into();
-    let latest = latest_components(
-        store,
-        &LatestAtQuery::new(query.timeline, latest_time),
-        ent_path,
-        &components,
-        join_type,
-    );
+    let mut state = [(); N].map(|_| None); // TODO: first frame too
 
-    std::iter::once(latest.map(|df| (latest_time, df)))
-        .filter(|df| df.as_ref().map_or(true, |(_, df)| !df.is_empty()))
-        .chain(
-            iters
-                .into_iter()
-                .map(Option::unwrap)
-                .kmerge_by(|(_, _, row_idx1, _), (_, _, row_idx2, _)| row_idx1 < row_idx2)
-                .filter_map({
-                    let mut state = [(); N].map(|_| None);
-                    move |(i, time, _, results)| {
-                        state[i] = Some(results);
+    iters
+        .into_iter()
+        .map(Option::unwrap)
+        .kmerge_by(|(_, _, row_idx1, _), (_, _, row_idx2, _)| row_idx1 <= row_idx2)
+        .filter_map(move |(i, time, _, dfs)| {
+            // dbg!(i, &dfs);
 
-                        if i == 0 {
-                            let df = join_dataframes(
-                                cluster_key,
-                                join_type,
-                                state
-                                    .iter()
-                                    .filter_map(|df| df.as_ref())
-                                    .map(|df| Ok(df.as_ref().unwrap().clone())),
-                            );
+            state[i] = Some(dfs);
 
-                            dbg!(Some(df.map(|df| (time, df))))
-                        } else {
-                            None
-                        }
-                    }
-                }),
-        )
+            dbg!(&state);
+
+            if i == 0 {
+                let df = join_dataframes(
+                    cluster_key,
+                    join_type,
+                    state
+                        .iter()
+                        .filter_map(|df| df.as_ref())
+                        .map(|df| Ok(df.as_ref().unwrap().clone())),
+                );
+
+                // dbg!(Some(df.map(|df| (time, df))))
+                // Some(df.map(|df| (time, df)))
+
+                Some(df.map(|df| (time, df)))
+            } else {
+                None
+            }
+        })
 }
 
 // --- Joins ---
