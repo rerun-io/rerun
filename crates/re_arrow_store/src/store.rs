@@ -24,6 +24,9 @@ pub type TimeIndex = Vec<i64>;
 pub type SecondaryIndex = Vec<Option<RowIndex>>;
 static_assertions::assert_eq_size!(u64, Option<RowIndex>);
 
+// TODO: DataIndex vs. RowNumber
+// TODO: IndexRowNr vs. DataRowNr
+
 /// An opaque type that directly refers to a row of data within the datastore, iff it is associated
 /// with a component name.
 ///

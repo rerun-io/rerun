@@ -268,7 +268,7 @@ pub fn range_component<'a>(
     let components = [cluster_key, primary];
     store
         .range(query, ent_path, primary, components)
-        .map(move |(time, row_indices)| {
+        .map(move |(time, _, row_indices)| {
             let results = store.get(&components, &row_indices);
             dataframe_from_results(&components, results).map(|df| (time, df))
         })
@@ -421,7 +421,7 @@ pub fn range_components<'a, const N: usize>(
 
     store
         .range(query, ent_path, primary, components)
-        .map(move |(time, row_indices)| {
+        .map(move |(time, _, row_indices)| {
             let df = {
                 let results = store.get(&components, &row_indices);
                 dataframe_from_results(&components, results)
@@ -458,74 +458,94 @@ pub fn range_components_4_real<'a, const N: usize>(
 ) -> impl Iterator<Item = anyhow::Result<(TimeInt, DataFrame)>> + 'a {
     let cluster_key = store.cluster_key();
 
-    let latest_time = query.range.min.as_i64().saturating_sub(1).into();
+    let mut state = [(); N].map(|_| None);
 
+    // TODO: explain why this is
+    let latest_time = query.range.min.as_i64().saturating_sub(1).into();
+    for (i, primary) in components.iter().enumerate() {
+        let components = &[cluster_key, *primary];
+
+        let query = LatestAtQuery::new(query.timeline, latest_time);
+        let row_indices = store
+            .latest_at(&query, ent_path, *primary, components)
+            .unwrap_or([None; 2]);
+        let results = store.get(components, &row_indices);
+
+        let df = dataframe_from_results(components, results);
+
+        if df.as_ref().map_or(false, |df| !df.is_empty()) {
+            state[i] = Some(df);
+        }
+    }
+
+    // TODO: explain why this is
+    let df_latest = if state[0].is_some() {
+        join_dataframes(
+            cluster_key,
+            join_type,
+            state
+                .iter()
+                .filter_map(|df| df.as_ref())
+                .map(|df| Ok(df.as_ref().unwrap().clone())), // TODO
+        )
+    } else {
+        Ok(DataFrame::default())
+    };
+    // dbg!(&df_latest, &state);
+
+    // TODO: explain why this is
     let mut iters = [(); N].map(|_| None);
     for (i, component) in components.iter().enumerate() {
         let components = [cluster_key, *component];
 
-        let latest = latest_component(
-            store,
-            &LatestAtQuery::new(query.timeline, latest_time),
-            ent_path,
-            *component,
-        );
-        dbg!(&latest);
-
-        let it = std::iter::once((
-            i,
-            latest_time,
-            Some(RowIndex::from_u64(N as u64 - i as u64)),
-            latest,
-        ))
-        .filter(|(_, _, _, df)| df.as_ref().map_or(true, |df| !df.is_empty()))
-        .chain(store.range(query, ent_path, *component, components).map(
-            move |(time, row_indices)| {
+        let it = store.range(query, ent_path, *component, components).map(
+            move |(time, index_nr, row_indices)| {
                 let results = store.get(&components, &row_indices);
-                let row_idx = row_indices[1];
                 (
                     i,
                     time,
-                    row_idx,
+                    index_nr,
                     dataframe_from_results(&components, results),
                 )
             },
-        ));
+        );
 
         iters[i] = Some(it);
     }
 
-    let mut state = [(); N].map(|_| None);
+    std::iter::once(df_latest.map(|df| (latest_time, df)))
+        .filter(|df| df.as_ref().map_or(true, |(_, df)| !df.is_empty()))
+        .chain(
+            iters
+                .into_iter()
+                .map(Option::unwrap) // TODO: explain
+                .kmerge_by(|(_, time1, index_nr1, _), (_, time2, index_nr2, _)| {
+                    (time1, index_nr1) < (time2, index_nr2) // TODO: explain
+                })
+                .filter_map(move |(i, time, index_nr, df)| {
+                    // dbg!(i, index_nr, &df);
 
-    iters
-        .into_iter()
-        .map(Option::unwrap)
-        .kmerge_by(|(_, time1, row_idx1, _), (_, time2, row_idx2, _)| {
-            (time1, row_idx1) < (time2, row_idx2)
-        })
-        .filter_map(move |(i, time, _, dfs)| {
-            dbg!(i, &dfs);
+                    state[i] = Some(df);
 
-            state[i] = Some(dfs);
+                    if i == 0 {
+                        // dbg!(&state);
+                        let df = join_dataframes(
+                            cluster_key,
+                            join_type,
+                            state
+                                .iter()
+                                .filter_map(|df| df.as_ref())
+                                .map(|df| Ok(df.as_ref().unwrap().clone())), // TODO
+                        );
+                        // dbg!((time, &df));
 
-            // dbg!(&state);
-
-            if i == 0 {
-                let df = join_dataframes(
-                    cluster_key,
-                    join_type,
-                    state
-                        .iter()
-                        .filter_map(|df| df.as_ref())
-                        .map(|df| Ok(df.as_ref().unwrap().clone())),
-                );
-
-                dbg!(Some(df.map(|df| (time, df))))
-                // Some(df.map(|df| (time, df)))
-            } else {
-                None
-            }
-        })
+                        // dbg!(Some(df.map(|df| (time, df))))
+                        Some(df.map(|df| (time, df)))
+                    } else {
+                        None
+                    }
+                }),
+        )
 }
 
 // --- Joins ---

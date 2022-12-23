@@ -167,9 +167,6 @@ impl DataStore {
     //
     // TODO(cmc): at one point we're gonna need a high-level documentation/user-guide of the
     // semantics of latest-at PoV queries, giving readers a walkthrough of a real-world query.
-    //
-    // TODO(cmc): expose query_dyn at some point, to fetch an unknown number of component indices,
-    // at the cost of extra dynamic allocations.
     pub fn latest_at<const N: usize>(
         &self,
         query: &LatestAtQuery,
@@ -292,16 +289,13 @@ impl DataStore {
     //
     // TODO(cmc): at one point we're gonna need a high-level documentation/user-guide of the
     // semantics of latest-at PoV queries, giving readers a walkthrough of a real-world query.
-    //
-    // TODO(cmc): expose query_dyn at some point, to fetch an unknown number of component indices,
-    // at the cost of extra dynamic allocations.
     pub fn range<'a, const N: usize>(
         &'a self,
         query: &RangeQuery,
         ent_path: &EntityPath,
         primary: ComponentName,
         components: [ComponentName; N],
-    ) -> impl Iterator<Item = (TimeInt, [Option<RowIndex>; N])> + 'a {
+    ) -> impl Iterator<Item = (TimeInt, u64, [Option<RowIndex>; N])> + 'a {
         // TODO(cmc): kind & query_id need to somehow propagate through the span system.
         self.query_id.fetch_add(1, Ordering::Relaxed);
 
@@ -339,6 +333,7 @@ impl DataStore {
             .into_iter()
             .flatten()
 
+        // TODO
         // std::iter::once(latest_row_indices)
         //     .filter_map(move |latest| latest.map(|latest| (latest_time, latest)))
         //     .chain(
@@ -442,7 +437,7 @@ impl IndexTable {
         time_range: TimeRange,
         primary: ComponentName,
         components: [ComponentName; N],
-    ) -> impl Iterator<Item = (TimeInt, [Option<RowIndex>; N])> + '_ {
+    ) -> impl Iterator<Item = (TimeInt, u64, [Option<RowIndex>; N])> + '_ {
         let timeline = self.timeline;
 
         // Note the lack of a minimum value in that range!
@@ -655,7 +650,7 @@ impl IndexBucket {
         time_range: TimeRange,
         primary: ComponentName,
         components: [ComponentName; N],
-    ) -> impl Iterator<Item = (TimeInt, [Option<RowIndex>; N])> + 'a {
+    ) -> impl Iterator<Item = (TimeInt, u64, [Option<RowIndex>; N])> + 'a {
         self.sort_indices();
 
         let IndexBucketIndices {
@@ -757,17 +752,17 @@ impl IndexBucket {
             .filter(move |time| time_range.contains((*time).into()))
             .enumerate()
             .filter_map(move |(offset, time)| {
-                let secondary_idx = secondary_idx as usize + offset;
+                let secondary_idx = secondary_idx as u64 + offset as u64;
 
                 // We must only yield rows that contain data for the primary component!!
                 indices
                     .get(&primary)
-                    .and_then(|index| index.get(secondary_idx).copied())??;
+                    .and_then(|index| index.get(secondary_idx as usize).copied())??;
 
                 let mut row_indices = [None; N];
                 for (i, component) in components.iter().enumerate() {
                     if let Some(index) = indices.get(component) {
-                        if let Some(row_idx) = index[secondary_idx] {
+                        if let Some(row_idx) = index[secondary_idx as usize] {
                             row_indices[i] = Some(row_idx);
                         }
                     }
@@ -786,7 +781,7 @@ impl IndexBucket {
                     "yielding row indices",
                 );
 
-                Some((time.into(), row_indices))
+                Some((time.into(), secondary_idx, row_indices))
             });
 
         itertools::Either::Left(row_indices)
