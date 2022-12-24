@@ -7,7 +7,7 @@ license.workspace = true
 publish = false
 
 [features]
-default = []
+default = ["polars"] # TODO: remove
 ## Enables `parking_lot`'s deadlock detection background thread.
 deadlock_detection = ["parking_lot/deadlock_detection"]
 ## Integration with `polars`, to efficiently use the datastore with dataframes.
@@ -36,9 +36,12 @@ thiserror.workspace = true
 
 # Optional
 polars-core = { workspace = true, optional = true, features = [
+  "diagonal_concat",
   "dtype-date",
+  "dtype-datetime",
   "dtype-time",
   "dtype-struct",
+  "sort_multiple",
 ] }
 
 [dev-dependencies]

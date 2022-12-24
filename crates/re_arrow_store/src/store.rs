@@ -181,7 +181,7 @@ pub struct DataStore {
     pub(crate) config: DataStoreConfig,
 
     /// Used to cache auto-generated cluster components, i.e. `[0]`, `[0, 1]`, `[0, 1, 2]`, etc
-    /// so that they properly deduplicated.
+    /// so that they can be properly deduplicated.
     pub(crate) cluster_comp_cache: IntMap<usize, RowIndex>,
 
     /// Maps an entity to its index, for a specific timeline.
@@ -292,6 +292,96 @@ impl DataStore {
         }
 
         Ok(())
+    }
+}
+
+// TODO: just move the whole thing to store_polars.rs really
+#[cfg(feature = "polars")]
+mod polars {
+    use std::collections::BTreeSet;
+
+    use arrow2::array::{Array, UInt64Array, Utf8Array};
+    use polars_core::{functions::diag_concat_df, prelude::*};
+    use re_log_types::{external::arrow2_convert::serialize::TryIntoArrow, TimePoint, TimeType};
+
+    use crate::polars_util::join_dataframes;
+
+    use super::{DataStore, IndexBucketIndices};
+
+    impl DataStore {
+        // TODO: expected columns
+        //
+        // data:
+        // - timepoint
+        // - time
+        // - or just a timepoint?
+        // - entity path
+        // - comp1 | comp2 | ... | compN
+        //
+        // - comp size in bytes?
+        //
+        // metadata:
+        // - bucket nr
+        // - bucket index row nr
+        // - component row nr
+        pub fn to_dataframe(&self) -> PolarsResult<DataFrame> {
+            let dfs: PolarsResult<Vec<DataFrame>> = self
+                .indices
+                .values()
+                .map(|index| {
+                    let dfs: PolarsResult<Vec<_>> = index
+                        .buckets
+                        .values()
+                        .map(|bucket| (index.timeline, index.ent_path.clone(), bucket))
+                        .map(|(timeline, ent_path, bucket)| {
+                            let (_, times) = bucket.times();
+
+                            // let IndexBucketIndices {
+                            //     is_sorted: _,
+                            //     time_range: _,
+                            //     times,
+                            //     indices,
+                            // } = &*bucket.indices.read();
+
+                            let entities = {
+                                let mut entities = vec![None; times.len()];
+                                entities[0] = Some(ent_path.to_string());
+                                Series::try_from((
+                                    "entity",
+                                    Utf8Array::<i32>::from(entities).boxed(),
+                                ))
+                                .and_then(|series| {
+                                    series.fill_null(FillNullStrategy::Forward(None))
+                                })
+                            };
+
+                            DataFrame::new(vec![
+                                Series::try_from((timeline.name().as_str(), times.boxed()))?,
+                                entities?,
+                            ])
+                        })
+                        .collect();
+
+                    dfs.and_then(|dfs| diag_concat_df(&dfs))
+                })
+                .collect();
+
+            let df = diag_concat_df(&dfs?)?;
+
+            // TODO: find all time columns automagically
+            let timelines = ["frame_nr", "log_time"];
+            let rest = {
+                let mut rest: BTreeSet<_> = df.get_column_names().into_iter().collect();
+                for timeline in &timelines {
+                    rest.remove(timeline);
+                }
+
+                timelines.iter().copied().chain(rest.into_iter())
+            };
+
+            df.sort(timelines.to_vec(), vec![false, false])
+                .and_then(|df| df.select(rest))
+        }
     }
 }
 
