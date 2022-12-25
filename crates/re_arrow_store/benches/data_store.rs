@@ -6,8 +6,8 @@ use criterion::{criterion_group, criterion_main, Criterion};
 
 use re_arrow_store::{DataStore, TimeQuery, TimelineQuery};
 use re_log_types::{
-    datagen::{build_frame_nr, build_some_point2d, build_some_rects},
-    field_types::Rect2D,
+    datagen::{build_frame_nr, build_some_instances, build_some_rects},
+    field_types::{Instance, Rect2D},
     msg_bundle::{try_build_msg_bundle2, Component as _, MsgBundle},
     ComponentName, MsgId, ObjPath as EntityPath, TimeType, Timeline,
 };
@@ -35,13 +35,13 @@ fn batch_rects(c: &mut Criterion) {
             (NUM_RECTS * NUM_FRAMES) as _,
         ));
         group.bench_function("insert", |b| {
-            b.iter(|| insert_messages(msgs.iter()));
+            b.iter(|| insert_messages(Instance::name(), msgs.iter()));
         });
     }
 
     {
         let msgs = build_messages(NUM_RECTS as usize);
-        let mut store = insert_messages(msgs.iter());
+        let mut store = insert_messages(Instance::name(), msgs.iter());
         let mut group = c.benchmark_group("datastore/batch/rects");
         group.throughput(criterion::Throughput::Elements(NUM_RECTS as _));
         group.bench_function("query", |b| {
@@ -62,7 +62,7 @@ fn batch_rects(c: &mut Criterion) {
 fn missing_components(c: &mut Criterion) {
     {
         let msgs = build_messages(NUM_RECTS as usize);
-        let mut store = insert_messages(msgs.iter());
+        let mut store = insert_messages(Instance::name(), msgs.iter());
         let mut group = c.benchmark_group("datastore/missing_components");
         group.throughput(criterion::Throughput::Elements(NUM_RECTS as _));
         group.bench_function("primary", |b| {
@@ -79,7 +79,7 @@ fn missing_components(c: &mut Criterion) {
 
     {
         let msgs = build_messages(NUM_RECTS as usize);
-        let mut store = insert_messages(msgs.iter());
+        let mut store = insert_messages(Instance::name(), msgs.iter());
         let mut group = c.benchmark_group("datastore/missing_components");
         group.throughput(criterion::Throughput::Elements(NUM_RECTS as _));
         group.bench_function("secondaries", |b| {
@@ -114,15 +114,18 @@ fn build_messages(n: usize) -> Vec<MsgBundle> {
                 MsgId::ZERO,
                 "rects",
                 [build_frame_nr(frame_idx)],
-                (build_some_point2d(n), build_some_rects(n)),
+                (build_some_instances(n), build_some_rects(n)),
             )
             .unwrap()
         })
         .collect()
 }
 
-fn insert_messages<'a>(msgs: impl Iterator<Item = &'a MsgBundle>) -> DataStore {
-    let mut store = DataStore::default();
+fn insert_messages<'a>(
+    cluster_key: ComponentName,
+    msgs: impl Iterator<Item = &'a MsgBundle>,
+) -> DataStore {
+    let mut store = DataStore::new(cluster_key, Default::default());
     msgs.for_each(|msg_bundle| store.insert(msg_bundle).unwrap());
     store
 }

@@ -386,7 +386,9 @@ pub fn view_3d(
     }
 
     let hovered = response.hover_pos().and_then(|pointer_pos| {
-        scene.picking(glam::vec2(pointer_pos.x, pointer_pos.y), &rect, &eye)
+        scene
+            .primitives
+            .picking(glam::vec2(pointer_pos.x, pointer_pos.y), &rect, &eye)
     });
 
     *hovered_instance = None;

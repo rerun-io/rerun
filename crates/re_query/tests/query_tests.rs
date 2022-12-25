@@ -14,7 +14,7 @@ use re_query::query_entity_with_primary;
 
 #[test]
 fn simple_query() {
-    let mut store = DataStore::default();
+    let mut store = DataStore::new(Instance::name(), Default::default());
 
     let ent_path = "point";
     let timepoint = [build_frame_nr(123)];
@@ -92,7 +92,7 @@ fn simple_query() {
 
 #[test]
 fn no_instance_join_query() {
-    let mut store = DataStore::default();
+    let mut store = DataStore::new(Instance::name(), Default::default());
 
     let ent_path = "point";
     let timepoint = [build_frame_nr(123)];
@@ -163,7 +163,7 @@ fn no_instance_join_query() {
 
 #[test]
 fn missing_column_join_query() {
-    let mut store = DataStore::default();
+    let mut store = DataStore::new(Instance::name(), Default::default());
 
     let ent_path = "point";
     let timepoint = [build_frame_nr(123)];

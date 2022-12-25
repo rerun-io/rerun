@@ -711,6 +711,7 @@ impl Pinhole {
     /// i.e. the intersection of the optical axis and the image plane.
     ///
     /// [see definition of intrinsic matrix](https://en.wikipedia.org/wiki/Camera_resectioning#Intrinsic_parameters)
+    #[cfg(feature = "glam")]
     #[inline]
     #[cfg(feature = "glam")]
     pub fn principal_point(&self) -> glam::Vec2 {

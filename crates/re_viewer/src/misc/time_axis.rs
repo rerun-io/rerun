@@ -34,23 +34,25 @@ impl TimelineAxis {
             TimeType::Time => 1_000_000_000, // nanos!
         };
 
+        // Collect all gaps larger than our minimum gap size.
         let mut gap_sizes = {
             crate::profile_scope!("collect_gaps");
             times
                 .keys()
                 .tuple_windows()
                 .map(|(a, b)| time_abs_diff(*a, *b))
-                .filter(|&gap_size| gap_size >= min_gap_size)
+                .filter(|&gap_size| gap_size > min_gap_size)
                 .collect_vec()
         };
 
         gap_sizes.sort_unstable();
 
-        let mut gap_threshold = gap_sizes
-            .first()
-            .copied()
-            .filter(|&gap_size| gap_size < 10_000 * min_gap_size) // exclude huge jumps, e.g. from -∞ (TimeInt::Beginning)
-            .unwrap_or(min_gap_size);
+        // We can probably improve these heuristics a bit.
+        // Currently the gap-detector is only based on the sizes of gaps, not the sizes of runs.
+        // If we have a hour-long run, it would make sense that the next gap must be quite big
+        // for it to be contracted, yet we don't do anything like that yet.
+
+        let mut gap_threshold = min_gap_size;
 
         // Progressively expand the gap threshold
         for gap in gap_sizes {
@@ -62,6 +64,7 @@ impl TimelineAxis {
         }
 
         // ----
+        // We calculated the threshold for creating gaps, so let's collect all the ranges:
 
         crate::profile_scope!("create_ranges");
         let mut values_it = times.keys();

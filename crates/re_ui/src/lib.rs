@@ -144,7 +144,7 @@ impl ReUi {
     }
 
     pub fn loop_selection_color() -> egui::Color32 {
-        egui::Color32::from_rgb(40, 200, 130)
+        egui::Color32::from_rgb(30, 140, 90)
     }
 
     /// Paint a watermark

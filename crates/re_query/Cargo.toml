@@ -40,6 +40,13 @@ thiserror.workspace = true
 criterion = "0.4"
 itertools = "0.10"
 mimalloc = "0.1"
+polars-core = { workspace = true, features = [
+  "asof_join",
+  "dtype-date",
+  "dtype-time",
+  "dtype-struct",
+  "fmt",
+] }
 tracing-subscriber = "0.3"
 
 [lib]

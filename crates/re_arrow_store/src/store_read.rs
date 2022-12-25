@@ -68,6 +68,30 @@ impl TimeQuery {
 // --- Data store ---
 
 impl DataStore {
+    /// Retrieve all the `ComponentName`s that have been written to for a given `EntityPath`
+    pub fn query_components(
+        &self,
+        timeline_query: &TimelineQuery,
+        ent_path: &EntityPath,
+    ) -> Option<Vec<ComponentName>> {
+        // TODO(cmc): kind & query_id need to somehow propagate through the span system.
+        self.query_id.fetch_add(1, Ordering::Relaxed);
+
+        let ent_path_hash = ent_path.hash();
+        let latest_at = match timeline_query.query {
+            TimeQuery::LatestAt(latest_at) => latest_at,
+            #[allow(clippy::todo)]
+            TimeQuery::Range(_) => todo!("implement range queries!"),
+        };
+
+        let index = self
+            .indices
+            .get(&(timeline_query.timeline, *ent_path_hash))?;
+        let bucket = index.find_bucket(latest_at);
+        let indices = bucket.named_indices();
+        Some(indices.0)
+    }
+
     /// Queries the datastore for the internal row indices of the specified `components`, as seen
     /// from the point of view of the so-called `primary` component.
     ///
@@ -263,6 +287,13 @@ impl IndexTable {
         }
 
         None // primary component not found
+    }
+
+    /// Returns the index bucket whose time range covers the given `time`.
+    pub fn find_bucket(&self, time: i64) -> &IndexBucket {
+        // This cannot fail, `iter_bucket` is guaranteed to always yield at least one bucket,
+        // since index tables always spawn with a default bucket that covers [-∞;+∞].
+        self.iter_bucket(time).next().unwrap()
     }
 
     /// Returns the index bucket whose time range covers the given `time`.
