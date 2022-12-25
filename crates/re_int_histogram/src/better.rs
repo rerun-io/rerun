@@ -57,7 +57,7 @@ impl IntHistogram {
     /// Insert in multi-set.
     ///
     /// Increments the count of the given bucket.
-    pub fn increment(&mut self, key: i64, inc: u64) {
+    pub fn increment(&mut self, key: i64, inc: u32) {
         self.tree
             .increment(ROOT_LEVEL, u64_key_from_i64_key(key), inc);
     }
@@ -139,16 +139,15 @@ static_assertions::assert_eq_size!(Node, [u8; 136]);
 #[derive(Clone, Debug, Default)]
 struct Sparse {
     /// Sorted (addr, count) pairs
-    addr_counts: smallvec::SmallVec<[(u64, u64); 7]>,
+    addrs: smallvec::SmallVec<[u64; 9]>,
+    counts: smallvec::SmallVec<[u32; 9]>,
 }
-static_assertions::assert_eq_size!(Sparse, [u8; 128]);
 
 #[derive(Clone, Copy, Debug, Default)]
 struct Dense {
     /// The last 4 bits of the address, mapped to their counts
-    counts: [u64; 16],
+    counts: [u32; 16],
 }
-static_assertions::assert_eq_size!(Dense, [u8; 128]);
 
 // ----------------------------------------------------------------------------
 // Insert
@@ -162,7 +161,7 @@ impl Tree {
         }
     }
 
-    fn increment(&mut self, level: Level, rel_addr: u64, inc: u64) {
+    fn increment(&mut self, level: Level, rel_addr: u64, inc: u32) {
         match self {
             Tree::Node(node) => {
                 node.increment(level, rel_addr, inc);
@@ -194,14 +193,14 @@ impl Tree {
 }
 
 impl Node {
-    fn increment(&mut self, level: Level, rel_addr: u64, inc: u64) {
+    fn increment(&mut self, level: Level, rel_addr: u64, inc: u32) {
         debug_assert!(level != LEAF_LEVEL);
         let child_level = level - LEVEL_STEP;
         let (top_addr, bottom_addr) = split_address(level, rel_addr);
         self.children[top_addr as usize]
             .get_or_insert_with(|| Box::new(Tree::for_level(child_level)))
             .increment(child_level, bottom_addr, inc);
-        self.total_count += inc;
+        self.total_count += inc as u64;
     }
 
     fn total_count(&self) -> u64 {
@@ -254,19 +253,17 @@ impl Sparse {
         debug_assert!(level != LEAF_LEVEL);
 
         let mut node = Node::default();
-        for (key, count) in self.addr_counts {
-            node.increment(level, key, count);
+        for (key, count) in self.addrs.iter().zip(&self.counts) {
+            node.increment(level, *key, *count);
         }
         node
     }
 
     #[must_use]
-    fn increment(mut self, level: Level, rel_addr: u64, inc: u64) -> Tree {
-        let index = self
-            .addr_counts
-            .partition_point(|&(addr, _count)| addr < rel_addr);
+    fn increment(mut self, level: Level, rel_addr: u64, inc: u32) -> Tree {
+        let index = self.addrs.partition_point(|&addr| addr < rel_addr);
 
-        if let Some((addr, count)) = self.addr_counts.get_mut(index) {
+        if let (Some(addr), Some(count)) = (self.addrs.get_mut(index), self.counts.get_mut(index)) {
             if *addr == rel_addr {
                 *count += inc;
                 return Tree::Sparse(self);
@@ -274,8 +271,9 @@ impl Sparse {
         }
 
         const OVERFLOW_CUTOFF: usize = 32;
-        if self.addr_counts.len() < OVERFLOW_CUTOFF {
-            self.addr_counts.insert(index, (rel_addr, inc));
+        if self.addrs.len() < OVERFLOW_CUTOFF {
+            self.addrs.insert(index, rel_addr);
+            self.counts.insert(index, inc);
             Tree::Sparse(self)
         } else {
             let mut node = self.overflow(level);
@@ -285,18 +283,14 @@ impl Sparse {
     }
 
     fn total_count(&self) -> u64 {
-        let mut total = 0;
-        for (_key, count) in &self.addr_counts {
-            total += *count;
-        }
-        total
+        self.counts.iter().map(|&c| c as u64).sum()
     }
 
     fn range_count(&self, range: Range) -> u64 {
         let mut total = 0;
-        for (key, count) in &self.addr_counts {
+        for (key, count) in self.addrs.iter().zip(&self.counts) {
             if range.contains(*key) {
-                total += *count;
+                total += *count as u64;
             }
         }
         total
@@ -304,19 +298,19 @@ impl Sparse {
 }
 
 impl Dense {
-    fn increment(&mut self, rel_addr: u64, inc: u64) {
+    fn increment(&mut self, rel_addr: u64, inc: u32) {
         self.counts[rel_addr as usize] += inc;
     }
 
     fn total_count(&self) -> u64 {
-        self.counts.iter().sum()
+        self.counts.iter().map(|&c| c as u64).sum()
     }
 
     fn range_count(&self, range: Range) -> u64 {
         debug_assert!(range.min <= range.max);
         let mut total_count = 0;
         for &count in &self.counts[range.min as usize..=(range.max as usize).min(15)] {
-            total_count += count;
+            total_count += count as u64;
         }
         total_count
     }

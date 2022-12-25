@@ -51,6 +51,9 @@ fn memory_use<R>(run: impl FnOnce() -> R) -> usize {
 
 use insta::assert_debug_snapshot;
 
+/// Number of elements
+const N: i64 = 1_000_000;
+
 #[test]
 fn test_memory_use_btree() {
     use re_int_histogram::BTreeeIntHistogram;
@@ -63,14 +66,41 @@ fn test_memory_use_btree() {
         histogram
     }
 
-    fn bytes_per_element(num_elements: i64, sparseness: i64) -> f64 {
+    fn bytes_per_entry(num_elements: i64, sparseness: i64) -> f64 {
         let num_bytes = memory_use(|| create(num_elements, sparseness));
         num_bytes as f64 / num_elements as f64
     }
 
-    assert_debug_snapshot!("btree_dense", bytes_per_element(1_000_000, 1));
-
-    assert_debug_snapshot!("btree_sparse", bytes_per_element(1_000_000, 1_000_000));
+    assert_debug_snapshot!(
+        "btree_sparse",
+        [
+            format!("{:.1} B/entry, dense", bytes_per_entry(N, 1)),
+            format!(
+                "{:.1} B/entry, sparseness: 1M",
+                bytes_per_entry(N, 1_000_000)
+            ),
+            format!(
+                "{:.1} B/entry, sparseness: 2M",
+                bytes_per_entry(N, 2_000_000)
+            ),
+            format!(
+                "{:.1} B/entry, sparseness: 3M",
+                bytes_per_entry(N, 3_000_000)
+            ),
+            format!(
+                "{:.1} B/entry, sparseness: 5M",
+                bytes_per_entry(N, 5_000_000)
+            ),
+            format!(
+                "{:.1} B/entry, sparseness: 8M",
+                bytes_per_entry(N, 8_000_000)
+            ),
+            format!(
+                "{:.1} B/entry, sparseness: 13M",
+                bytes_per_entry(N, 13_000_000)
+            ),
+        ]
+    );
 }
 
 #[test]
@@ -85,14 +115,41 @@ fn test_memory_use_bad() {
         histogram
     }
 
-    fn bytes_per_element(num_elements: i64, sparseness: i64) -> f64 {
+    fn bytes_per_entry(num_elements: i64, sparseness: i64) -> f64 {
         let num_bytes = memory_use(|| create(num_elements, sparseness));
         num_bytes as f64 / num_elements as f64
     }
 
-    assert_debug_snapshot!("bad_dense", bytes_per_element(1_000_000, 1));
-
-    assert_debug_snapshot!("bad_sparse", bytes_per_element(1_000_000, 1_000_000));
+    assert_debug_snapshot!(
+        "bad_sparse",
+        [
+            format!("{:.1} B/entry, dense", bytes_per_entry(N, 1)),
+            format!(
+                "{:.1} B/entry, sparseness: 1M",
+                bytes_per_entry(N, 1_000_000)
+            ),
+            format!(
+                "{:.1} B/entry, sparseness: 2M",
+                bytes_per_entry(N, 2_000_000)
+            ),
+            format!(
+                "{:.1} B/entry, sparseness: 3M",
+                bytes_per_entry(N, 3_000_000)
+            ),
+            format!(
+                "{:.1} B/entry, sparseness: 5M",
+                bytes_per_entry(N, 5_000_000)
+            ),
+            format!(
+                "{:.1} B/entry, sparseness: 8M",
+                bytes_per_entry(N, 8_000_000)
+            ),
+            format!(
+                "{:.1} B/entry, sparseness: 13M",
+                bytes_per_entry(N, 13_000_000)
+            ),
+        ]
+    );
 }
 
 #[test]
@@ -107,14 +164,41 @@ fn test_memory_use_better() {
         histogram
     }
 
-    fn bytes_per_element(num_elements: i64, sparseness: i64) -> f64 {
+    fn bytes_per_entry(num_elements: i64, sparseness: i64) -> f64 {
         let num_bytes = memory_use(|| create(num_elements, sparseness));
         num_bytes as f64 / num_elements as f64
     }
 
-    assert_debug_snapshot!("better_dense", bytes_per_element(1_000_000, 1));
-
-    assert_debug_snapshot!("better_sparse", bytes_per_element(1_000_000, 1_000_000));
+    assert_debug_snapshot!(
+        "better_sparse",
+        [
+            format!("{:.1} B/entry, dense", bytes_per_entry(N, 1)),
+            format!(
+                "{:.1} B/entry, sparseness: 1M",
+                bytes_per_entry(N, 1_000_000)
+            ),
+            format!(
+                "{:.1} B/entry, sparseness: 2M",
+                bytes_per_entry(N, 2_000_000)
+            ),
+            format!(
+                "{:.1} B/entry, sparseness: 3M",
+                bytes_per_entry(N, 3_000_000)
+            ),
+            format!(
+                "{:.1} B/entry, sparseness: 5M",
+                bytes_per_entry(N, 5_000_000)
+            ),
+            format!(
+                "{:.1} B/entry, sparseness: 8M",
+                bytes_per_entry(N, 8_000_000)
+            ),
+            format!(
+                "{:.1} B/entry, sparseness: 13M",
+                bytes_per_entry(N, 13_000_000)
+            ),
+        ]
+    );
 }
 
 #[test]
@@ -129,12 +213,38 @@ fn test_memory_use_binary() {
         histogram
     }
 
-    fn bytes_per_element(num_elements: i64, sparseness: i64) -> f64 {
+    fn bytes_per_entry(num_elements: i64, sparseness: i64) -> f64 {
         let num_bytes = memory_use(|| create(num_elements, sparseness));
         num_bytes as f64 / num_elements as f64
     }
-
-    assert_debug_snapshot!("binary_dense", bytes_per_element(1_000_000, 1));
-
-    assert_debug_snapshot!("binary_sparse", bytes_per_element(1_000_000, 1_000_000));
+    assert_debug_snapshot!(
+        "binary_sparse",
+        [
+            format!("{:.1} B/entry, dense", bytes_per_entry(N, 1)),
+            format!(
+                "{:.1} B/entry, sparseness: 1M",
+                bytes_per_entry(N, 1_000_000)
+            ),
+            format!(
+                "{:.1} B/entry, sparseness: 2M",
+                bytes_per_entry(N, 2_000_000)
+            ),
+            format!(
+                "{:.1} B/entry, sparseness: 3M",
+                bytes_per_entry(N, 3_000_000)
+            ),
+            format!(
+                "{:.1} B/entry, sparseness: 5M",
+                bytes_per_entry(N, 5_000_000)
+            ),
+            format!(
+                "{:.1} B/entry, sparseness: 8M",
+                bytes_per_entry(N, 8_000_000)
+            ),
+            format!(
+                "{:.1} B/entry, sparseness: 13M",
+                bytes_per_entry(N, 13_000_000)
+            ),
+        ]
+    );
 }
