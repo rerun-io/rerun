@@ -169,6 +169,10 @@ impl DataStore {
         // Always insert the cluster component.
         row_indices.insert(self.cluster_key, cluster_row_idx);
 
+        // TODO: doc
+        // TODO: less messy
+        row_indices.insert("rerun.insert_id".into(), RowIndex::from_u64(self.insert_id));
+
         for bundle in components
             .iter()
             .filter(|bundle| bundle.name != self.cluster_key)

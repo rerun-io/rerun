@@ -307,7 +307,9 @@ mod polars {
         compute::concatenate::concatenate,
     };
     use polars_core::{functions::diag_concat_df, prelude::*};
-    use re_log_types::{external::arrow2_convert::serialize::TryIntoArrow, TimePoint, TimeType};
+    use re_log_types::{
+        external::arrow2_convert::serialize::TryIntoArrow, FieldName, TimePoint, TimeType,
+    };
 
     use crate::polars_util::join_dataframes;
 
@@ -348,6 +350,11 @@ mod polars {
                                 indices,
                             } = &*bucket.indices.read();
 
+                            let ids = indices.get(&FieldName::from("rerun.insert_id")).unwrap();
+                            let ids: Vec<_> =
+                                ids.iter().map(|id| id.map(|id| id.0.get())).collect();
+                            let ids = UInt64Array::from(ids);
+
                             let entities = {
                                 let mut entities = vec![None; times.len()];
                                 entities[0] = Some(ent_path.to_string());
@@ -361,6 +368,7 @@ mod polars {
                             };
 
                             let comp_series = [
+                                Series::try_from(("rerun.insert_id", ids.boxed()))?,
                                 Series::try_from((timeline.name().as_str(), times.boxed()))?,
                                 entities?,
                             ]
@@ -422,11 +430,10 @@ mod polars {
                 })
                 .collect();
 
-            // TODO: concat won't be enough
             let df = diag_concat_df(&dfs?)?;
 
             // TODO: find all time columns automagically
-            let timelines = ["frame_nr", "log_time"];
+            let timelines = ["rerun.insert_id", "frame_nr", "log_time"];
             let rest = {
                 let mut rest: BTreeSet<_> = df.get_column_names().into_iter().collect();
                 for timeline in &timelines {
@@ -436,8 +443,10 @@ mod polars {
                 timelines.iter().copied().chain(rest.into_iter())
             };
 
-            df.sort(timelines.to_vec(), vec![false, false])
+            df.sort(vec!["rerun.insert_id"], vec![false])
                 .and_then(|df| df.select(rest))
+            // df.sort(timelines.to_vec(), vec![false, false])
+            //     .and_then(|df| df.select(rest))
         }
     }
 }
