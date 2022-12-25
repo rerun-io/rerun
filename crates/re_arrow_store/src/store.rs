@@ -300,7 +300,12 @@ impl DataStore {
 mod polars {
     use std::collections::BTreeSet;
 
-    use arrow2::array::{Array, UInt64Array, Utf8Array};
+    use arrow2::{
+        array::{new_empty_array, Array, ListArray, UInt64Array, Utf8Array},
+        bitmap::Bitmap,
+        buffer::Buffer,
+        compute::concatenate::concatenate,
+    };
     use polars_core::{functions::diag_concat_df, prelude::*};
     use re_log_types::{external::arrow2_convert::serialize::TryIntoArrow, TimePoint, TimeType};
 
@@ -336,12 +341,12 @@ mod polars {
                         .map(|(timeline, ent_path, bucket)| {
                             let (_, times) = bucket.times();
 
-                            // let IndexBucketIndices {
-                            //     is_sorted: _,
-                            //     time_range: _,
-                            //     times,
-                            //     indices,
-                            // } = &*bucket.indices.read();
+                            let IndexBucketIndices {
+                                is_sorted: _,
+                                time_range: _,
+                                times: _,
+                                indices,
+                            } = &*bucket.indices.read();
 
                             let entities = {
                                 let mut entities = vec![None; times.len()];
@@ -355,10 +360,61 @@ mod polars {
                                 })
                             };
 
-                            DataFrame::new(vec![
+                            let comp_series = [
                                 Series::try_from((timeline.name().as_str(), times.boxed()))?,
                                 entities?,
-                            ])
+                            ]
+                            .into_iter()
+                            .chain(indices.iter().filter_map(|(component, comp_row_nrs)| {
+                                let comp_table = self.components.get(component)?;
+
+                                let comp_rows: Vec<_> = comp_row_nrs
+                                    .iter()
+                                    .map(|comp_row_nr| {
+                                        comp_row_nr
+                                            .and_then(|comp_row_nr| comp_table.get(comp_row_nr))
+                                    })
+                                    .collect();
+
+                                let comp_validity: Vec<_> =
+                                    comp_rows.iter().map(|row| row.is_some()).collect();
+
+                                let comp_values: Vec<_> = comp_rows
+                                    .into_iter()
+                                    .map(|row| {
+                                        row.unwrap_or_else(|| {
+                                            new_empty_array(comp_table.datatype.clone())
+                                        })
+                                    })
+                                    .collect();
+                                let comp_values: Vec<_> =
+                                    comp_values.iter().map(|arr| &**arr).collect();
+
+                                let mut offset = 0i32;
+                                let comp_offsets: Vec<_> = comp_values
+                                    .iter()
+                                    .map(|row| {
+                                        let ret = offset;
+                                        offset += row.len() as i32;
+                                        ret
+                                    })
+                                    .chain(std::iter::once(
+                                        comp_values.iter().map(|row| row.len() as i32).sum(),
+                                    ))
+                                    .collect();
+
+                                let comp_values = ListArray::<i32>::from_data(
+                                    ListArray::<i32>::default_datatype(comp_table.datatype.clone()),
+                                    Buffer::from(comp_offsets),
+                                    concatenate(comp_values.as_slice()).unwrap().to_boxed(),
+                                    Some(Bitmap::from(comp_validity)),
+                                )
+                                .boxed();
+
+                                Some(Series::try_from((component.as_str(), comp_values)).unwrap())
+                            }));
+
+                            DataFrame::new(comp_series.collect::<Vec<_>>())
                         })
                         .collect();
 
@@ -366,6 +422,7 @@ mod polars {
                 })
                 .collect();
 
+            // TODO: concat won't be enough
             let df = diag_concat_df(&dfs?)?;
 
             // TODO: find all time columns automagically
