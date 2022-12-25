@@ -298,7 +298,7 @@ impl DataStore {
 // TODO: just move the whole thing to store_polars.rs really
 #[cfg(feature = "polars")]
 mod polars {
-    use std::collections::BTreeSet;
+    use std::collections::{BTreeSet, HashSet};
 
     use arrow2::{
         array::{new_empty_array, Array, ListArray, UInt64Array, Utf8Array},
@@ -314,6 +314,8 @@ mod polars {
     use super::{DataStore, IndexBucketIndices};
 
     impl DataStore {
+        // TODO: nothing should ever fail, print <ERR> instead!!
+        //
         // TODO: expected columns
         //
         // data:
@@ -338,6 +340,7 @@ mod polars {
                         .buckets
                         .values()
                         .map(|bucket| (index.timeline, index.ent_path.clone(), bucket))
+                        // TODO: move this to bucket
                         .map(|(timeline, ent_path, bucket)| {
                             let (_, times) = bucket.times();
 
@@ -365,8 +368,8 @@ mod polars {
                                 entities?,
                             ]
                             .into_iter()
-                            .chain(indices.iter().filter_map(|(component, comp_row_nrs)| {
-                                let comp_table = self.components.get(component)?;
+                            .chain(indices.iter().flat_map(|(component, comp_row_nrs)| {
+                                let comp_table = self.components.get(component).unwrap(); // TODO
 
                                 let comp_rows: Vec<_> = comp_row_nrs
                                     .iter()
@@ -411,7 +414,22 @@ mod polars {
                                 )
                                 .boxed();
 
-                                Some(Series::try_from((component.as_str(), comp_values)).unwrap())
+                                let comp_row_nrs: Vec<_> = comp_row_nrs
+                                    .iter()
+                                    .map(|comp_row_nr| {
+                                        comp_row_nr.map(|comp_row_nr| comp_row_nr.0.get())
+                                    })
+                                    .collect();
+                                let comp_row_nrs = UInt64Array::from(comp_row_nrs);
+
+                                [
+                                    Series::try_from((component.as_str(), comp_values)).unwrap(),
+                                    dbg!(Series::try_from((
+                                        format!("{component}:row_nr").as_str(),
+                                        comp_row_nrs.boxed(),
+                                    ))
+                                    .unwrap()),
+                                ]
                             }));
 
                             DataFrame::new(comp_series.collect::<Vec<_>>())
@@ -422,8 +440,33 @@ mod polars {
                 })
                 .collect();
 
+            let dfs = dfs?; // TODO: never fail
+
+            // TODO: find all time columns automagically
+            let timelines = ["frame_nr", "log_time"];
+
             // TODO: concat won't be enough
-            let df = diag_concat_df(&dfs?)?;
+            let mut df = diag_concat_df(&dfs)?;
+
+            // {
+            //     let columns: Vec<HashSet<_>> = dfs
+            //         .iter()
+            //         .map(|df| HashSet::from_iter(df.get_column_names()))
+            //         .collect();
+
+            //     let mut columns: HashSet<_> = columns
+            //         .into_iter()
+            //         .reduce(|acc, columns| acc.intersection(&columns).copied().collect())
+            //         .unwrap(); // TODO
+
+            //     let columns = columns
+            //         .into_iter()
+            //         .filter(|column| column.ends_with(":row_nr"))
+            //         .collect::<Vec<_>>();
+            //     dbg!(&columns);
+
+            //     df = df.join(&df, &columns, &columns, JoinType::Outer, None)?;
+            // }
 
             // TODO: find all time columns automagically
             let timelines = ["frame_nr", "log_time"];
