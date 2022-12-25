@@ -57,3 +57,10 @@ impl Component for Point3D {
         "rerun.point3d".into()
     }
 }
+
+#[cfg(feature = "glam")]
+impl From<Point3D> for glam::Vec3 {
+    fn from(pt: Point3D) -> Self {
+        Self::new(pt.x, pt.y, pt.z)
+    }
+}
