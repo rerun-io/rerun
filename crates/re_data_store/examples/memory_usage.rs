@@ -2,25 +2,13 @@ use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
 
 pub struct TrackingAllocator {
     allocator: std::alloc::System,
-
-    cumul_alloc_count: AtomicUsize,
-    cumul_alloc_size: AtomicUsize,
-    cumul_free_count: AtomicUsize,
-    cumul_free_size: AtomicUsize,
-
-    high_water_mark_bytes: AtomicUsize,
+    bytes_used: AtomicUsize, // TODO: thread-local
 }
 
 #[global_allocator]
 pub static GLOBAL_ALLOCATOR: TrackingAllocator = TrackingAllocator {
     allocator: std::alloc::System,
-
-    cumul_alloc_count: AtomicUsize::new(0),
-    cumul_alloc_size: AtomicUsize::new(0),
-    cumul_free_count: AtomicUsize::new(0),
-    cumul_free_size: AtomicUsize::new(0),
-
-    high_water_mark_bytes: AtomicUsize::new(0),
+    bytes_used: AtomicUsize::new(0),
 };
 
 #[allow(unsafe_code)]
@@ -29,12 +17,7 @@ pub static GLOBAL_ALLOCATOR: TrackingAllocator = TrackingAllocator {
 unsafe impl std::alloc::GlobalAlloc for TrackingAllocator {
     #[allow(clippy::let_and_return)]
     unsafe fn alloc(&self, layout: std::alloc::Layout) -> *mut u8 {
-        self.cumul_alloc_count.fetch_add(1, SeqCst);
-        self.cumul_alloc_size.fetch_add(layout.size(), SeqCst);
-
-        let used = self.used_bytes();
-        self.high_water_mark_bytes
-            .store(self.high_water_mark_bytes.load(SeqCst).max(used), SeqCst);
+        self.bytes_used.fetch_add(layout.size(), SeqCst);
 
         // SAFETY:
         // Just deferring
@@ -42,8 +25,7 @@ unsafe impl std::alloc::GlobalAlloc for TrackingAllocator {
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: std::alloc::Layout) {
-        self.cumul_free_count.fetch_add(1, SeqCst);
-        self.cumul_free_size.fetch_add(layout.size(), SeqCst);
+        self.bytes_used.fetch_sub(layout.size(), SeqCst);
 
         // SAFETY:
         // Just deferring
@@ -53,7 +35,7 @@ unsafe impl std::alloc::GlobalAlloc for TrackingAllocator {
 
 impl TrackingAllocator {
     fn used_bytes(&self) -> usize {
-        self.cumul_alloc_size.load(SeqCst) - self.cumul_free_size.load(SeqCst)
+        self.bytes_used.load(SeqCst)
     }
 }
 

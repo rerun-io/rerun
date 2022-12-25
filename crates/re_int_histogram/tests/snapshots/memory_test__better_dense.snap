@@ -1,0 +1,6 @@
+---
+source: crates/re_int_histogram/tests/memory_test.rs
+assertion_line: 124
+expression: "bytes_per_element(1_000_000, 1)"
+---
+9.602224

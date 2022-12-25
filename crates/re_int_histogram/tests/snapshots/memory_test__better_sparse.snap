@@ -1,0 +1,6 @@
+---
+source: crates/re_int_histogram/tests/memory_test.rs
+assertion_line: 128
+expression: "sparse_bytes_per_element(1_000_000, 1_000_000)"
+---
+36.274576

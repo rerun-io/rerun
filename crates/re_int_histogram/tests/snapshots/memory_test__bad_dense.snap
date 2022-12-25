@@ -1,0 +1,6 @@
+---
+source: crates/re_int_histogram/tests/memory_test.rs
+assertion_line: 91
+expression: dense_bytes_per_element(1_000_000)
+---
+9.601776
