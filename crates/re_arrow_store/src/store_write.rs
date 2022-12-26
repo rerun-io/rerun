@@ -13,8 +13,8 @@ use re_log_types::{
 };
 
 use crate::{
-    ArrayExt as _, ComponentBucket, ComponentTable, DataStore, DataStoreConfig, IndexBucket,
-    IndexBucketIndices, IndexTable, RowIndex, TimeIndex,
+    ArrayExt as _, ComponentBucket, ComponentRowNr, ComponentTable, DataStore, DataStoreConfig,
+    IndexBucket, IndexBucketIndices, IndexTable, TimeIndex,
 };
 
 // --- Data store ---
@@ -161,7 +161,7 @@ impl DataStore {
         row_nr: usize,
         cluster_comp_pos: Option<usize>,
         components: &[ComponentBundle],
-        row_indices: &mut IntMap<ComponentName, RowIndex>,
+        row_indices: &mut IntMap<ComponentName, ComponentRowNr>,
     ) -> WriteResult<()> {
         let (cluster_row_idx, cluster_len) =
             self.get_or_create_cluster_component(row_nr, cluster_comp_pos, components, time_point)?;
@@ -222,9 +222,9 @@ impl DataStore {
         cluster_comp_pos: Option<usize>,
         components: &[ComponentBundle],
         time_point: &TimePoint,
-    ) -> WriteResult<(RowIndex, usize)> {
+    ) -> WriteResult<(ComponentRowNr, usize)> {
         enum RowIndexOrData {
-            RowIndex(RowIndex),
+            RowIndex(ComponentRowNr),
             Data(Box<dyn Array>),
         }
 
@@ -320,7 +320,7 @@ impl IndexTable {
         &mut self,
         config: &DataStoreConfig,
         time: TimeInt,
-        indices: &IntMap<ComponentName, RowIndex>,
+        indices: &IntMap<ComponentName, ComponentRowNr>,
     ) -> anyhow::Result<()> {
         // borrowck workaround
         let timeline = self.timeline;
@@ -378,7 +378,7 @@ impl IndexTable {
 
             let (bucket_upper_bound, bucket_len) = {
                 let guard = bucket.indices.read();
-                (guard.times.last().copied(), guard.times.len())
+                (guard.time_idx.last().copied(), guard.time_idx.len())
             };
 
             if let Some(upper_bound) = bucket_upper_bound {
@@ -393,18 +393,18 @@ impl IndexTable {
                         len_limit = config.component_bucket_nb_rows,
                         size, size_overflow,
                         len, len_overflow,
-                        new_time_bound = timeline.typ().format(new_time_bound.into()),
+                        new_time_bound = timeline.typ().format(new_time_bound),
                         "creating brand new index bucket following overflow"
                     );
                     self.buckets.insert(
-                        (new_time_bound).into(),
+                        new_time_bound,
                         IndexBucket {
                             timeline,
                             indices: RwLock::new(IndexBucketIndices {
                                 is_sorted: true,
                                 time_range: TimeRange::new(time, time),
-                                times: Default::default(),
-                                indices: Default::default(),
+                                time_idx: Default::default(),
+                                comp_indices: Default::default(),
                             }),
                         },
                     );
@@ -450,14 +450,14 @@ impl IndexBucket {
     pub fn insert(
         &mut self,
         time: TimeInt,
-        row_indices: &IntMap<ComponentName, RowIndex>,
+        row_indices: &IntMap<ComponentName, ComponentRowNr>,
     ) -> anyhow::Result<()> {
         let mut guard = self.indices.write();
         let IndexBucketIndices {
             is_sorted,
             time_range,
-            times,
-            indices,
+            time_idx: times,
+            comp_indices: indices,
         } = &mut *guard;
 
         // append time to primary index and update time range approriately
@@ -577,8 +577,8 @@ impl IndexBucket {
         let IndexBucketIndices {
             is_sorted: _,
             time_range: time_range1,
-            times: times1,
-            indices: indices1,
+            time_idx: times1,
+            comp_indices: indices1,
         } = &mut *indices;
 
         if times1.len() < 2 {
@@ -620,8 +620,8 @@ impl IndexBucket {
                     indices: RwLock::new(IndexBucketIndices {
                         is_sorted: true,
                         time_range: time_range2,
-                        times: times2,
-                        indices: indices2,
+                        time_idx: times2,
+                        comp_indices: indices2,
                     }),
                 },
             )
@@ -730,6 +730,16 @@ fn test_find_split_index() {
         (vec![0, 0, 0, 2, 2], Some(3)), // first one is closer
     ];
 
+    let test_cases = test_cases
+        .into_iter()
+        .map(|(times, idx)| {
+            (
+                times.into_iter().map(TimeInt::from).collect::<Vec<_>>(),
+                idx,
+            )
+        })
+        .collect::<Vec<_>>();
+
     for (times, expected) in test_cases {
         let got = find_split_index(&times);
         assert_eq!(expected, got);
@@ -748,11 +758,11 @@ fn split_time_range_off(
     times1: &TimeIndex,
     time_range1: &mut TimeRange,
 ) -> TimeRange {
-    let time_range2 = TimeRange::new(times1[split_idx].into(), time_range1.max);
+    let time_range2 = TimeRange::new(times1[split_idx], time_range1.max);
 
     // This can never fail (underflow or OOB) because we never split buckets smaller than 2
     // entries.
-    time_range1.max = times1[split_idx - 1].into();
+    time_range1.max = times1[split_idx - 1];
 
     debug_assert!(
         time_range1.max.as_i64() < time_range2.min.as_i64(),
@@ -799,7 +809,7 @@ impl ComponentTable {
         config: &DataStoreConfig,
         time_point: &TimePoint,
         rows_single: &dyn Array,
-    ) -> RowIndex {
+    ) -> ComponentRowNr {
         debug_assert!(
             ListArray::<i32>::get_child_type(rows_single.data_type()) == &self.datatype,
             "trying to insert data of the wrong datatype in a component table, \
@@ -849,7 +859,7 @@ impl ComponentTable {
         //   offset 0, thus this cannot fail.
         // - If the table has just overflowed, then we've just pushed a bucket to the dequeue.
         let active_bucket = self.buckets.back_mut().unwrap();
-        let row_idx = RowIndex::from_u64(
+        let row_idx = ComponentRowNr::from_u64(
             active_bucket.push(time_point, rows_single) + active_bucket.row_offset,
         );
 

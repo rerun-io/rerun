@@ -25,56 +25,46 @@ use re_log_types::{
 pub type TimeIndex = Vec<TimeInt>;
 
 /// A vector of references into the component tables. None = null.
-// TODO(cmc): keeping a separate validity might be a better option, maybe.
-pub type SecondaryIndex = Vec<Option<RowIndex>>;
-static_assertions::assert_eq_size!(u64, Option<RowIndex>);
-
-// TODO(#639): We desperately need to work on the terminology here:
-//
-// - `TimeIndex` is a vector of `TimeInt`s.
-//   It's the primary column and it's always dense.
-//   It's used to search the datastore by time.
-//
-// - `ComponentIndex` (currently `SecondaryIndex`) is a vector of `ComponentRowNr`s.
-//   It's the secondary column and is sparse.
-//   It's used to search the datastore by component once the search by time is complete.
-//
-// - `ComponentRowNr` (currently `RowIndex`) is a row offset into a component table.
-//   It only makes sense when associated with a component name.
-//   It is absolute.
-//   It's used to fetch actual data from the datastore.
-//
-// - `IndexRowNr` is a row offset into an index bucket.
-//   It only makes sense when associated with an entity path and a specific time.
-//   It is relative per bucket.
-//   It's used to tiebreak results with an identical time, should you need too.
-
-/// An opaque type that directly refers to a row of data within the datastore, iff it is associated
-/// with a component name.
 ///
-/// See [`DataStore::latest_at`], [`DataStore::range`] & [`DataStore::get`].
+/// Queries hit these secondary indices to refine the time-based search further ([`TimeIndex`]),
+/// on a per-component basis.
+//
+// TODO(cmc): keeping a separate validity might be a better option, maybe.
+pub type ComponentIndex = Vec<Option<ComponentRowNr>>;
+static_assertions::assert_eq_size!(u64, Option<ComponentRowNr>);
+
+/// An opaque type that directly refers to a row of component data within the datastore.
+///
+/// Only makes sense when associated with the right component in that context.
+///
+/// Used to fetch actual data from the datastore, see [`DataStore::latest_at`],
+/// [`DataStore::range`] & [`DataStore::get`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct RowIndex(pub(crate) NonZeroU64);
-impl RowIndex {
+pub struct ComponentRowNr(pub(crate) NonZeroU64);
+impl ComponentRowNr {
     /// Panics if `v` is 0.
     pub(crate) fn from_u64(v: u64) -> Self {
         Self(v.try_into().unwrap())
     }
-
-    // TODO(cmc): useless, remove.
     pub(crate) fn as_u64(self) -> u64 {
         self.0.into()
     }
 }
-impl std::fmt::Display for RowIndex {
+impl std::fmt::Display for ComponentRowNr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!("{}", self.0))
     }
 }
 
+/// An opaque type that directly refers to a row within an index bucket.
+///
+/// Only makes sense when used in the context of a specific `IndexBucket`.
+///
+/// Useful to tiebreak multiple results sharing the same timestamps where ranging over data, see
+/// [`DataStore::range`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct IndexRowNr(pub(crate) u64);
-impl std::fmt::Display for IndexRowNr {
+pub struct IndexBucketRowNr(pub(crate) u64);
+impl std::fmt::Display for IndexBucketRowNr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!("{}", self.0))
     }
@@ -187,9 +177,9 @@ pub struct DataStore {
 
     /// Used to cache auto-generated cluster components, i.e. `[0]`, `[0, 1]`, `[0, 1, 2]`, etc
     /// so that they properly deduplicated.
-    pub(crate) cluster_comp_cache: IntMap<usize, RowIndex>,
+    pub(crate) cluster_comp_cache: IntMap<usize, ComponentRowNr>,
 
-    /// Maps an entity to its index, for a specific timeline.
+    /// Maps an entity to its index tables, for a specific timeline.
     ///
     /// An index maps specific points in time to rows in component tables.
     pub(crate) indices: HashMap<(Timeline, EntityPathHash), IndexTable>,
@@ -264,25 +254,25 @@ impl DataStore {
         // Row indices should be continuous across all index tables.
         // TODO(#449): update this one appropriately when GC lands.
         {
-            let mut row_indices: IntMap<_, Vec<RowIndex>> = IntMap::default();
+            let mut comp_row_nrs: IntMap<_, Vec<ComponentRowNr>> = IntMap::default();
             for table in self.indices.values() {
                 for bucket in table.buckets.values() {
-                    for (comp, index) in &bucket.indices.read().indices {
-                        let row_indices = row_indices.entry(*comp).or_default();
-                        row_indices.extend(index.iter().copied().flatten());
+                    for (component, index) in &bucket.indices.read().comp_indices {
+                        let comp_row_nrs = comp_row_nrs.entry(*component).or_default();
+                        comp_row_nrs.extend(index.iter().copied().flatten());
                     }
                 }
             }
 
-            for (comp, mut row_indices) in row_indices {
-                row_indices.sort();
-                row_indices.dedup();
-                for pair in row_indices.windows(2) {
+            for (component, mut comp_row_nrs) in comp_row_nrs {
+                comp_row_nrs.sort();
+                comp_row_nrs.dedup();
+                for pair in comp_row_nrs.windows(2) {
                     let &[i1, i2] = pair else { unreachable!() };
                     ensure!(
                         i1.as_u64() + 1 == i2.as_u64(),
-                        "found hole in index coverage for {comp:?}: \
-                            in {row_indices:?}, {i1} -> {i2}"
+                        "found hole in index coverage for {component:?}: \
+                            in {comp_row_nrs:?}, {i1} -> {i2}"
                     );
                 }
             }
@@ -483,8 +473,8 @@ pub struct IndexTable {
     /// The keys of this `BTreeMap` represent the lower bounds of the time-ranges covered by
     /// their associated buckets, _as seen from an indexing rather than a data standpoint_!
     ///
-    /// This means that e.g. for the initial bucket, this will always be `-∞`, as from an
-    /// indexing standpoint, all reads and writes with a time `t >= -∞` should go there, even
+    /// This means that, e.g. for the initial bucket, this will always be `-∞` since from an
+    /// indexing standpoint all reads and writes with a time `t >= -∞` should go there, even
     /// though the bucket doesn't actually contains data with a timestamp of `-∞`!
     pub(crate) buckets: BTreeMap<TimeInt, IndexBucket>,
 }
@@ -602,7 +592,7 @@ pub struct IndexBucketIndices {
     /// Querying an `IndexBucket` will always trigger a sort if the indices aren't already sorted.
     pub(crate) is_sorted: bool,
 
-    /// The time range covered by the primary time index.
+    /// The time range covered by the primary time index ([`Self::time_idx`]).
     ///
     /// This is the actual time range that's covered by the indexed data!
     /// For an empty bucket, this defaults to [+∞,-∞].
@@ -610,16 +600,17 @@ pub struct IndexBucketIndices {
 
     // The primary time index, which is guaranteed to be dense, and "drives" all other indices.
     //
-    // All secondary indices are guaranteed to follow the same sort order and be the same length.
-    pub(crate) times: TimeIndex,
+    // All secondary component indices are guaranteed to follow the same sort order and be of the
+    // same length.
+    pub(crate) time_idx: TimeIndex,
 
-    /// All secondary indices for this bucket (i.e. everything but time).
+    /// All secondary component indices for this bucket (i.e. everything but time).
     ///
     /// One index per component: new components (and as such, new indices) can be added at any
     /// time!
     /// When that happens, they will be retro-filled with nulls so that they share the same
-    /// length as the primary index ([`Self::times`]).
-    pub(crate) indices: IntMap<ComponentName, SecondaryIndex>,
+    /// length as the primary time index ([`Self::time_idx`]).
+    pub(crate) comp_indices: IntMap<ComponentName, ComponentIndex>,
 }
 
 impl Default for IndexBucketIndices {
@@ -627,8 +618,8 @@ impl Default for IndexBucketIndices {
         Self {
             is_sorted: true,
             time_range: TimeRange::new(i64::MAX.into(), i64::MIN.into()),
-            times: Default::default(),
-            indices: Default::default(),
+            time_idx: Default::default(),
+            comp_indices: Default::default(),
         }
     }
 }
@@ -661,7 +652,7 @@ impl std::fmt::Display for IndexBucket {
 impl IndexBucket {
     /// Returns the number of rows stored across this bucket.
     pub fn total_rows(&self) -> u64 {
-        self.indices.read().times.len() as u64
+        self.indices.read().time_idx.len() as u64
     }
 
     /// Returns the size of the data stored across this bucket, in bytes.
@@ -670,14 +661,14 @@ impl IndexBucket {
         let IndexBucketIndices {
             is_sorted: _,
             time_range: _,
-            times,
-            indices,
+            time_idx,
+            comp_indices,
         } = &*self.indices.read();
 
-        std::mem::size_of_val(times.as_slice()) as u64
-            + indices
+        std::mem::size_of_val(time_idx.as_slice()) as u64
+            + comp_indices
                 .values()
-                .map(|index| std::mem::size_of_val(index.as_slice()) as u64)
+                .map(|comp_idx| std::mem::size_of_val(comp_idx.as_slice()) as u64)
                 .sum::<u64>()
     }
 
@@ -698,19 +689,19 @@ impl IndexBucket {
         let IndexBucketIndices {
             is_sorted: _,
             time_range: _,
-            times,
-            indices,
+            time_idx,
+            comp_indices,
         } = &*self.indices.read();
 
-        // All indices should contain the exact same number of rows as the time index.
+        // All component indices should contain the exact same number of rows as the time index.
         {
-            let primary_len = times.len();
-            for (comp, index) in indices {
-                let secondary_len = index.len();
+            let time_idx_len = time_idx.len();
+            for (component, comp_idx) in comp_indices {
+                let comp_idx_len = comp_idx.len();
                 ensure!(
-                    primary_len == secondary_len,
-                    "found rogue secondary index for {comp:?}: \
-                        expected {primary_len} rows, got {secondary_len} instead",
+                    time_idx_len == comp_idx_len,
+                    "found rogue secondary index for {component:?}: \
+                        expected {time_idx_len} rows, got {comp_idx_len} instead",
                 );
             }
         }
