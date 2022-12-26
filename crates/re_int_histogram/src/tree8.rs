@@ -4,6 +4,9 @@
 //! This uses about half the memory of [`crate::tree16`], but is also half as fast.
 //! I believe we could trim [`crate::tree16`] to use much less memory,
 //! by using dynamically sized nodes, but that's left as an exercise for later.
+//!
+//! In this implementation, the internal structures uses relative addresses.
+//! I'm not sure this was the correct choice.
 
 use crate::{i64_key_from_u64_key, u64_key_from_i64_key, RangeI64, RangeU64};
 
@@ -16,6 +19,16 @@ const LEVEL_STEP: u64 = 3;
 const ADDR_MASK: u64 = 0b111;
 const NUM_CHILDREN_IN_NODE: u64 = 8;
 const NUM_CHILDREN_IN_DENSE: u64 = 16;
+
+fn child_level_and_size(level: Level) -> (Level, u64) {
+    let child_level = level - LEVEL_STEP;
+    let child_size = if child_level == 0 {
+        NUM_CHILDREN_IN_DENSE
+    } else {
+        1 << level
+    };
+    (child_level, child_size)
+}
 
 // level 1, 4, 7, …, 58, 61
 // (1 << level) is the size of the range the next child
@@ -110,6 +123,14 @@ impl Int64Histogram {
             },
         }
     }
+
+    /// Remove all data in the given range.
+    ///
+    /// Returns how much count was removed
+    pub fn remove(&mut self, range: impl std::ops::RangeBounds<i64>) -> u64 {
+        let range = range_u64_from_range_bounds(range);
+        self.tree.remove(ROOT_LEVEL, range)
+    }
 }
 
 pub struct Iter<'a> {
@@ -195,6 +216,14 @@ impl Tree {
         }
     }
 
+    fn is_empty(&self) -> bool {
+        match self {
+            Tree::Node(node) => node.is_empty(),
+            Tree::Sparse(sparse) => sparse.is_empty(),
+            Tree::Dense(dense) => dense.is_empty(),
+        }
+    }
+
     fn total_count(&self) -> u64 {
         match self {
             Tree::Node(node) => node.total_count(),
@@ -210,6 +239,21 @@ impl Tree {
             Tree::Dense(dense) => dense.range_count(range),
         }
     }
+
+    /// Returns how much the total count decreased by.
+    fn remove(&mut self, level: Level, range: RangeU64) -> u64 {
+        match self {
+            Tree::Node(node) => {
+                let count_loss = node.remove(level, range);
+                if node.is_empty() {
+                    *self = Tree::Sparse(Sparse::default());
+                }
+                count_loss
+            }
+            Tree::Sparse(sparse) => sparse.remove(range),
+            Tree::Dense(dense) => dense.remove(range),
+        }
+    }
 }
 
 impl Node {
@@ -221,6 +265,10 @@ impl Node {
             .get_or_insert_with(|| Box::new(Tree::for_level(child_level)))
             .increment(child_level, bottom_addr, inc);
         self.total_count += inc as u64;
+    }
+
+    fn is_empty(&self) -> bool {
+        self.total_count == 0
     }
 
     fn total_count(&self) -> u64 {
@@ -243,13 +291,7 @@ impl Node {
             return self.total_count;
         }
 
-        let child_level = level - LEVEL_STEP;
-
-        let child_size = if child_level == 0 {
-            NUM_CHILDREN_IN_DENSE
-        } else {
-            1 << level
-        };
+        let (child_level, child_size) = child_level_and_size(level);
 
         let mut total_count = 0;
 
@@ -269,6 +311,52 @@ impl Node {
         }
 
         total_count
+    }
+
+    /// Returns how much the total count decreased by.
+    #[must_use]
+    fn remove(&mut self, level: Level, mut range: RangeU64) -> u64 {
+        debug_assert!(range.min <= range.max);
+        debug_assert!(level != LEAF_LEVEL);
+
+        let min_child = (range.min >> level) & ADDR_MASK;
+        let max_child = ((range.max >> level) & ADDR_MASK).min(NUM_CHILDREN_IN_NODE - 1);
+        debug_assert!(
+            min_child <= max_child,
+            "Why where we called if we are not in range?"
+        );
+
+        let range_includes_all_of_us = (min_child, max_child) == (0, NUM_CHILDREN_IN_NODE - 1);
+        if range_includes_all_of_us {
+            let count_loss = self.total_count;
+            *self = Default::default();
+            return count_loss;
+        }
+
+        let mut count_loss = 0;
+        let (child_level, child_size) = child_level_and_size(level);
+
+        for ci in 0..NUM_CHILDREN_IN_NODE {
+            if min_child <= ci {
+                if let Some(child) = &mut self.children[ci as usize] {
+                    count_loss += child.remove(child_level, range);
+                    if child.is_empty() {
+                        self.children[ci as usize] = None;
+                    }
+                }
+            }
+
+            // slide range:
+            if range.max < child_size {
+                break; // the next child won't be in range
+            }
+            range.min = range.min.saturating_sub(child_size);
+            range.max = range.max.saturating_sub(child_size);
+        }
+
+        self.total_count -= count_loss;
+
+        count_loss
     }
 }
 
@@ -307,6 +395,10 @@ impl Sparse {
         }
     }
 
+    fn is_empty(&self) -> bool {
+        self.addrs.is_empty()
+    }
+
     fn total_count(&self) -> u64 {
         self.counts.iter().map(|&c| c as u64).sum()
     }
@@ -320,11 +412,34 @@ impl Sparse {
         }
         total
     }
+
+    /// Returns how much the total count decreased by.
+    #[must_use]
+    fn remove(&mut self, range: RangeU64) -> u64 {
+        debug_assert_eq!(self.addrs.len(), self.counts.len());
+
+        let mut count_loss = 0;
+        for (key, count) in self.addrs.iter().zip(&mut self.counts) {
+            if range.contains(*key) {
+                count_loss += *count as u64;
+                *count = 0;
+            }
+        }
+
+        self.addrs.retain(|addr| !range.contains(*addr));
+        self.counts.retain(|count| *count > 0);
+        debug_assert_eq!(self.addrs.len(), self.counts.len());
+        count_loss
+    }
 }
 
 impl Dense {
     fn increment(&mut self, rel_addr: u64, inc: u32) {
         self.counts[rel_addr as usize] += inc;
+    }
+
+    fn is_empty(&self) -> bool {
+        self.total_count() == 0
     }
 
     fn total_count(&self) -> u64 {
@@ -340,6 +455,20 @@ impl Dense {
             total_count += count as u64;
         }
         total_count
+    }
+
+    /// Returns how much the total count decreased by.
+    #[must_use]
+    fn remove(&mut self, range: RangeU64) -> u64 {
+        debug_assert!(range.min <= range.max);
+        let mut count_loss = 0;
+        for count in &mut self.counts
+            [range.min as usize..=(range.max.min(NUM_CHILDREN_IN_DENSE - 1) as usize)]
+        {
+            count_loss += *count as u64;
+            *count = 0;
+        }
+        count_loss
     }
 }
 
@@ -370,30 +499,7 @@ impl<'a> Iterator for TreeIterator<'a> {
         'outer: while let Some(it) = self.stack.last_mut() {
             match it.tree {
                 Tree::Node(node) => {
-                    if it.level != ROOT_LEVEL {
-                        let node_size = 1 << (it.level + LEVEL_STEP);
-                        if node_size <= self.cutoff_size {
-                            let node_range = RangeU64 {
-                                min: it.abs_addr,
-                                max: it.abs_addr + node_size - 1,
-                            };
-                            if self.range.contains(node_range.min)
-                                && self.range.contains(node_range.max)
-                            {
-                                let count = node.total_count;
-                                self.stack.pop();
-                                return Some((node_range, count));
-                            }
-                        }
-                    }
-
-                    let child_level = it.level - LEVEL_STEP;
-
-                    let child_size = if child_level == 0 {
-                        NUM_CHILDREN_IN_DENSE
-                    } else {
-                        1 << it.level
-                    };
+                    let (child_level, child_size) = child_level_and_size(it.level);
 
                     while it.index < NUM_CHILDREN_IN_NODE as _ {
                         let abs_addr = it.abs_addr + child_size * it.index as u64;
@@ -404,6 +510,15 @@ impl<'a> Iterator for TreeIterator<'a> {
                         if self.range.intersects(child_range) {
                             if let Some(Some(child)) = node.children.get(it.index) {
                                 it.index += 1;
+
+                                if child_size <= self.cutoff_size
+                                    && self.range.contains(child_range.min)
+                                    && self.range.contains(child_range.max)
+                                {
+                                    let count = child.total_count();
+                                    return Some((child_range, count));
+                                }
+
                                 self.stack.push(NodeIterator {
                                     level: child_level,
                                     abs_addr,
@@ -492,6 +607,10 @@ fn test_two_dense_ranges() {
     }
 
     assert_eq!(set.range_iter(..15_000, 1000).count(), 2);
+
+    assert_eq!(set.total_count(), 300);
+    assert_eq!(set.remove(..10_020), 120);
+    assert_eq!(set.total_count(), 180);
 }
 
 #[test]
@@ -526,4 +645,8 @@ fn test_two_sparse_ranges() {
     for value in should_not_contain {
         assert!(!ranges_contains(value));
     }
+
+    assert_eq!(set.total_count(), 300);
+    assert_eq!(set.remove(..0), 150);
+    assert_eq!(set.total_count(), 150);
 }

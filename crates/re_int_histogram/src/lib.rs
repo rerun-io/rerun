@@ -5,11 +5,8 @@ pub mod tree8;
 
 // -----------------------------------------------------------------------------------
 
-/// We use `u64` keys in the internal structures, because it is so much easier
-/// to deal with
-/// ``` ignore # TODO: run private function in doctest
-/// use crate::u64_key_from_i64_key;
-/// ```
+/// We use `u64` keys in the internal structures,
+/// because it is so much easier to work with
 pub(crate) fn u64_key_from_i64_key(key: i64) -> u64 {
     (key as i128 + i64::MAX as i128 + 1) as _
 }
@@ -48,6 +45,13 @@ pub(crate) struct RangeU64 {
 }
 
 impl RangeU64 {
+    pub fn single(value: u64) -> Self {
+        Self {
+            min: value,
+            max: value,
+        }
+    }
+
     #[inline]
     pub fn contains(&self, value: u64) -> bool {
         self.min <= value && value <= self.max
@@ -64,6 +68,8 @@ impl std::fmt::Debug for RangeU64 {
         write!(f, "RangeU64[{}, {}]", self.min, self.max)
     }
 }
+
+// -----------------------------------------------------------------------------------
 
 /// An inclusive range
 #[derive(Clone, Copy, PartialEq, Eq)]
