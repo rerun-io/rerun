@@ -778,34 +778,22 @@ mod tests_file_resolver {
             let expected = unindent(
                 r#"
                 my first shader!
-                my first shader!
 
-                my first shader!
-                my first shader!
+
+
+
                 my third shader!
-                my first shader!
-                my first shader!
-                my first shader!
-                my first shader!
-                my third shader!
-                my first shader!
-                my first shader!
+
+
+
 
                 my second shader!
 
-                my first shader!
-                my first shader!
 
-                my first shader!
-                my first shader!
-                my third shader!
-                my first shader!
-                my first shader!
-                my first shader!
-                my first shader!
-                my third shader!
-                my first shader!
-                my first shader!"#,
+
+
+
+                "#,
             );
             assert_eq!(expected, contents);
 
@@ -826,10 +814,10 @@ mod tests_file_resolver {
             let expected = unindent(
                 r#"
                 my first shader!
-                my first shader!
+
                 my third shader!
-                my first shader!
-                my first shader!"#,
+
+                "#,
             );
             assert_eq!(expected, contents);
         }
