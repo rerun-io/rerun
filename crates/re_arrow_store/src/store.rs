@@ -16,7 +16,12 @@ use re_log_types::{
 
 // --- Indices & offsets ---
 
-/// A vector of times. Our primary column, always densely filled.
+/// The primary index column: a vector of times.
+///
+/// This is global to all components, i.e. it is not from any specific point-of-view.
+///
+/// Queries first hit this index in order to cut the search space down to a subset of rows that all
+/// share the same timestamp, before refining the results further using a [`ComponentIndex`].
 pub type TimeIndex = Vec<TimeInt>;
 
 /// A vector of references into the component tables. None = null.
