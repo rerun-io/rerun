@@ -138,6 +138,16 @@ pub struct DataStoreConfig {
     ///
     /// See [`Self::DEFAULT`] for defaults.
     pub index_bucket_nb_rows: u64,
+
+    /// If enabled, will store the ID of the write request alongside the inserted data.
+    ///
+    /// This can make inspecting the data within the store much easier, at the cost of an extra
+    /// `u64` value stored per row.
+    ///
+    /// Enabled by default in debug builds.
+    ///
+    /// See [`DataStore::insert_id_key`].
+    pub store_insert_ids: bool,
 }
 
 impl Default for DataStoreConfig {
@@ -152,6 +162,7 @@ impl DataStoreConfig {
         component_bucket_nb_rows: u64::MAX,
         index_bucket_size_bytes: 32 * 1024, // 32kiB
         index_bucket_nb_rows: 1024,
+        store_insert_ids: cfg!(debug_assertions),
     };
 }
 
@@ -164,6 +175,11 @@ impl DataStoreConfig {
 /// For even more information, you can set `RERUN_DATA_STORE_DISPLAY_SCHEMAS=1` in your
 /// environment, which will result in additional schema information being printed out.
 pub struct DataStore {
+    /// The component name used for the insertion ID.
+    ///
+    /// See [`DataStoreConfig::store_insert_ids`].
+    pub(crate) insert_id_key: ComponentName,
+
     /// The cluster key specifies a column/component that is guaranteed to always be present for
     /// every single row of data within the store.
     ///
@@ -204,6 +220,7 @@ impl DataStore {
     /// See [`Self::cluster_key`] for more information about the cluster key.
     pub fn new(cluster_key: ComponentName, config: DataStoreConfig) -> Self {
         Self {
+            insert_id_key: "rerun.insert_id".into(),
             cluster_key,
             config,
             cluster_comp_cache: Default::default(),
@@ -212,6 +229,11 @@ impl DataStore {
             insert_id: 0,
             query_id: AtomicU64::new(0),
         }
+    }
+
+    /// See [`Self::insert_id_key`] for more information about the insert ID key.
+    pub fn insert_id_key(&self) -> ComponentName {
+        self.insert_id_key
     }
 
     /// See [`Self::cluster_key`] for more information about the cluster key.
@@ -455,6 +477,7 @@ impl std::fmt::Display for DataStore {
     #[allow(clippy::string_add)]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
+            insert_id_key: _,
             cluster_key,
             config,
             cluster_comp_cache: _,
