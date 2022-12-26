@@ -48,13 +48,6 @@ pub(crate) struct RangeU64 {
 }
 
 impl RangeU64 {
-    pub fn single(value: u64) -> Self {
-        Self {
-            min: value,
-            max: value,
-        }
-    }
-
     #[inline]
     pub fn contains(&self, value: u64) -> bool {
         self.min <= value && value <= self.max
@@ -83,6 +76,10 @@ pub struct RangeI64 {
 }
 
 impl RangeI64 {
+    pub fn new(min: i64, max: i64) -> Self {
+        Self { min, max }
+    }
+
     pub fn single(value: i64) -> Self {
         Self {
             min: value,

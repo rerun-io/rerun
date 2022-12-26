@@ -88,11 +88,19 @@ impl Int64Histogram {
         }
     }
 
-    pub fn iter(&self, range: impl std::ops::RangeBounds<i64>) -> Iter<'_> {
+    /// Iterate over a certain range, returning ranges that are at most `cutoff_size` long.
+    /// To get all individual entries, use `cutoff_size=1`.
+    /// When `cutoff_size > 1` you will get approximate ranges, which may cover elements that has no count.
+    ///
+    /// For instance, inserting tow elements at `10` and `20` and setting a `cutoff_size=10`
+    /// you may get a single range `[8, 24]` which is big enough to contain bout `10` and `20`,
+    /// but is not a tight bound.
+    pub fn range_iter(&self, range: impl std::ops::RangeBounds<i64>, cutoff_size: u64) -> Iter<'_> {
         let range = range_u64_from_range_bounds(range);
         Iter {
             iter: TreeIterator {
                 range,
+                cutoff_size,
                 stack: vec![NodeIterator {
                     level: ROOT_LEVEL,
                     abs_addr: 0,
@@ -143,7 +151,7 @@ struct Node {
     /// Very important optimization
     total_count: u64,
 
-    /// The index is the next 4 bits of the key
+    /// The index is the next few bits of the key
     children: [Option<Box<Tree>>; NUM_CHILDREN_IN_NODE as usize],
 }
 static_assertions::assert_eq_size!(Node, [u8; 72]);
@@ -340,6 +348,10 @@ impl Dense {
 struct TreeIterator<'a> {
     /// Only returns things in this range
     range: RangeU64,
+
+    /// You can stop recursing when you've reached this size
+    cutoff_size: u64,
+
     stack: Vec<NodeIterator<'a>>,
 }
 
@@ -358,6 +370,23 @@ impl<'a> Iterator for TreeIterator<'a> {
         'outer: while let Some(it) = self.stack.last_mut() {
             match it.tree {
                 Tree::Node(node) => {
+                    if it.level != ROOT_LEVEL {
+                        let node_size = 1 << (it.level + LEVEL_STEP);
+                        if node_size <= self.cutoff_size {
+                            let node_range = RangeU64 {
+                                min: it.abs_addr,
+                                max: it.abs_addr + node_size - 1,
+                            };
+                            if self.range.contains(node_range.min)
+                                && self.range.contains(node_range.max)
+                            {
+                                let count = node.total_count;
+                                self.stack.pop();
+                                return Some((node_range, count));
+                            }
+                        }
+                    }
+
                     let child_level = it.level - LEVEL_STEP;
 
                     let child_size = if child_level == 0 {
@@ -431,8 +460,8 @@ fn test_dense() {
         expected_ranges.push((RangeI64::single(key), 1));
     }
 
-    assert_eq!(set.iter(..).collect::<Vec<_>>(), expected_ranges);
-    assert_eq!(set.iter(..10).count(), 10);
+    assert_eq!(set.range_iter(.., 1).collect::<Vec<_>>(), expected_ranges);
+    assert_eq!(set.range_iter(..10, 1).count(), 10);
 }
 
 #[test]
@@ -449,6 +478,52 @@ fn test_sparse() {
         expected_ranges.push((RangeI64::single(key), inc));
     }
 
-    assert_eq!(set.iter(..).collect::<Vec<_>>(), expected_ranges);
-    assert_eq!(set.iter(..10 * spacing).count(), 10);
+    assert_eq!(set.range_iter(.., 1).collect::<Vec<_>>(), expected_ranges);
+    assert_eq!(set.range_iter(..10 * spacing, 1).count(), 10);
+}
+
+#[test]
+fn test_two_dense_ranges() {
+    let mut set = Int64Histogram::default();
+    for i in 0..100 {
+        set.increment(i, 1);
+        set.increment(10_000 + i, 1);
+        set.increment(20_000 + i, 1);
+    }
+
+    assert_eq!(set.range_iter(..15_000, 1000).count(), 2);
+}
+
+#[test]
+fn test_two_sparse_ranges() {
+    let mut set = Int64Histogram::default();
+    let mut should_contain = vec![];
+    let mut should_not_contain = vec![];
+    for i in 0..100 {
+        let a = -1_000_000_000 + i * 1_000;
+        let b = (i - 50) * 1_000;
+        let c = 1_000_000_000 + i * 1_000;
+        set.increment(a, 1);
+        set.increment(b, 1);
+        set.increment(c, 1);
+
+        should_contain.push(a);
+        should_contain.push(b);
+        should_not_contain.push(c);
+    }
+
+    let ranges = set
+        .range_iter(..1_000_000_000, 1_000_000)
+        .collect::<Vec<_>>();
+
+    assert!(ranges.len() < 10, "We shouldn't get too many ranges");
+
+    let ranges_contains = |value| ranges.iter().any(|(range, _count)| range.contains(value));
+
+    for value in should_contain {
+        assert!(ranges_contains(value));
+    }
+    for value in should_not_contain {
+        assert!(!ranges_contains(value));
+    }
 }
