@@ -67,5 +67,5 @@ fn main() {
     }
 
     let df = store.to_dataframe();
-    eprintln!("{df}");
+    println!("{df}");
 }
