@@ -44,6 +44,7 @@ polars-core = { workspace = true, optional = true, features = [
   "sort_multiple",
 ] }
 
+
 [dev-dependencies]
 criterion = "0.4"
 mimalloc = "0.1"
@@ -55,8 +56,16 @@ polars-core = { workspace = true, features = [
 ] }
 tracing-subscriber = "0.3"
 
+
 [lib]
 bench = false
+
+
+[[example]]
+name = "dump_dataframe"
+path = "examples/dump_dataframe.rs"
+required-features = ["polars"]
+
 
 [[bench]]
 name = "data_store"
