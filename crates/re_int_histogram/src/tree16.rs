@@ -1,5 +1,12 @@
-// key: i64
-// count: u64,
+//! Uses 16 level of nodes with 16-way (4 bit) branching factor.
+//!
+//! This uses a lot of of memory (2x of [`crate::tree8`].
+//! I think there is an opportunity to optimize the memory use of [`crate::tree16`]
+//! with sparse nodes, and dynamically sized [`Tree`].
+//! The first byte could be the enum discriminant, followed by the capacity and size of
+//! either the sparse node or sparse leaf, followed by enough memory to contain it.
+
+use crate::u64_key_from_i64_key;
 
 // ----------------------------------------------------------------------------
 
@@ -17,22 +24,6 @@ fn split_address(level: Level, addr: u64) -> (u64, u64) {
     let top = (addr >> level) & 0b1111;
     let bottom = addr & ((1 << level) - 1);
     (top, bottom)
-}
-
-/// We use 64-bit keys in the internal structures, because it is so much easier
-/// to deal with
-/// ``` ignore # TODO: run private function in doctest
-/// use crate::u64_key_from_i64_key;
-/// debug_assert_eq!(u64_key_from_i64_key(i64::MIN), u64::MIN);
-/// debug_assert_eq!(u64_key_from_i64_key(i64::MIN + 1), u64::MIN + 1);
-/// debug_assert_eq!(u64_key_from_i64_key(i64::MIN + 2), u64::MIN + 2);
-/// debug_assert_eq!(u64_key_from_i64_key(i64::MAX - 2), u64::MAX - 2);
-/// debug_assert_eq!(u64_key_from_i64_key(i64::MAX - 1), u64::MAX - 1);
-/// debug_assert_eq!(u64_key_from_i64_key(i64::MAX), u64::MAX);
-/// ```
-fn u64_key_from_i64_key(key: i64) -> u64 {
-    (key as i128 + i64::MAX as i128 + 1) as _
-    // key as _ // sometimes easier to bug
 }
 
 // ----------------------------------------------------------------------------

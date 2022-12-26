@@ -1,0 +1,14 @@
+---
+source: crates/re_int_histogram/tests/memory_test.rs
+assertion_line: 171
+expression: "[format!(\"{:.1} B/entry, dense\", bytes_per_entry(N, 1)),\n        format!(\"{:.1} B/entry, sparseness: 1M\",\n            bytes_per_entry(N, 1_000_000)),\n        format!(\"{:.1} B/entry, sparseness: 2M\",\n            bytes_per_entry(N, 2_000_000)),\n        format!(\"{:.1} B/entry, sparseness: 3M\",\n            bytes_per_entry(N, 3_000_000)),\n        format!(\"{:.1} B/entry, sparseness: 5M\",\n            bytes_per_entry(N, 5_000_000)),\n        format!(\"{:.1} B/entry, sparseness: 8M\",\n            bytes_per_entry(N, 8_000_000)),\n        format!(\"{:.1} B/entry, sparseness: 13M\",\n            bytes_per_entry(N, 13_000_000))]"
+---
+[
+    "9.6 B/entry, dense",
+    "29.5 B/entry, sparseness: 1M",
+    "18.3 B/entry, sparseness: 2M",
+    "27.5 B/entry, sparseness: 3M",
+    "45.8 B/entry, sparseness: 5M",
+    "73.2 B/entry, sparseness: 8M",
+    "26.0 B/entry, sparseness: 13M",
+]

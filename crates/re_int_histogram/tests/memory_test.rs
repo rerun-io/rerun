@@ -56,10 +56,10 @@ const N: i64 = 1_000_000;
 
 #[test]
 fn test_memory_use_btree() {
-    use re_int_histogram::BTreeeIntHistogram;
+    use re_int_histogram::BTreeeInt64Histogram;
 
-    fn create(num_elements: i64, sparseness: i64) -> BTreeeIntHistogram {
-        let mut histogram = BTreeeIntHistogram::default();
+    fn create(num_elements: i64, sparseness: i64) -> BTreeeInt64Histogram {
+        let mut histogram = BTreeeInt64Histogram::default();
         for i in 0..num_elements {
             histogram.increment(i * sparseness, 1);
         }
@@ -72,7 +72,7 @@ fn test_memory_use_btree() {
     }
 
     assert_debug_snapshot!(
-        "btree_sparse",
+        "btree",
         [
             format!("{:.1} B/entry, dense", bytes_per_entry(N, 1)),
             format!(
@@ -104,8 +104,8 @@ fn test_memory_use_btree() {
 }
 
 #[test]
-fn test_memory_use_bad() {
-    use re_int_histogram::bad::IntHistogram;
+fn test_memory_use_tree2() {
+    use re_int_histogram::tree2::IntHistogram;
 
     fn create(num_elements: i64, sparseness: i64) -> IntHistogram {
         let mut histogram = IntHistogram::default();
@@ -119,9 +119,8 @@ fn test_memory_use_bad() {
         let num_bytes = memory_use(|| create(num_elements, sparseness));
         num_bytes as f64 / num_elements as f64
     }
-
     assert_debug_snapshot!(
-        "bad_sparse",
+        "tree2",
         [
             format!("{:.1} B/entry, dense", bytes_per_entry(N, 1)),
             format!(
@@ -153,11 +152,11 @@ fn test_memory_use_bad() {
 }
 
 #[test]
-fn test_memory_use_better() {
-    use re_int_histogram::better::IntHistogram;
+fn test_memory_use_tree8() {
+    use re_int_histogram::tree8::Int64Histogram;
 
-    fn create(num_elements: i64, sparseness: i64) -> IntHistogram {
-        let mut histogram = IntHistogram::default();
+    fn create(num_elements: i64, sparseness: i64) -> Int64Histogram {
+        let mut histogram = Int64Histogram::default();
         for i in 0..num_elements {
             histogram.increment(i * sparseness, 1);
         }
@@ -170,7 +169,7 @@ fn test_memory_use_better() {
     }
 
     assert_debug_snapshot!(
-        "better_sparse",
+        "tree8",
         [
             format!("{:.1} B/entry, dense", bytes_per_entry(N, 1)),
             format!(
@@ -202,8 +201,8 @@ fn test_memory_use_better() {
 }
 
 #[test]
-fn test_memory_use_binary() {
-    use re_int_histogram::binary::IntHistogram;
+fn test_memory_use_tree16() {
+    use re_int_histogram::tree16::IntHistogram;
 
     fn create(num_elements: i64, sparseness: i64) -> IntHistogram {
         let mut histogram = IntHistogram::default();
@@ -217,8 +216,9 @@ fn test_memory_use_binary() {
         let num_bytes = memory_use(|| create(num_elements, sparseness));
         num_bytes as f64 / num_elements as f64
     }
+
     assert_debug_snapshot!(
-        "binary_sparse",
+        "tree16",
         [
             format!("{:.1} B/entry, dense", bytes_per_entry(N, 1)),
             format!(

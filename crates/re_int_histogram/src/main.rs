@@ -1,4 +1,4 @@
-use re_int_histogram::better::IntHistogram;
+use re_int_histogram::tree16::IntHistogram;
 
 fn main() {
     let mut set = IntHistogram::default();
