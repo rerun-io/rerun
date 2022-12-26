@@ -1,14 +1,16 @@
 use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
 
+thread_local! {
+    static LIVE_BYTES_IN_THREAD: AtomicUsize = AtomicUsize::new(0);
+}
+
 pub struct TrackingAllocator {
     allocator: std::alloc::System,
-    bytes_used: AtomicUsize, // TODO: thread-local
 }
 
 #[global_allocator]
 pub static GLOBAL_ALLOCATOR: TrackingAllocator = TrackingAllocator {
     allocator: std::alloc::System,
-    bytes_used: AtomicUsize::new(0),
 };
 
 #[allow(unsafe_code)]
@@ -17,7 +19,7 @@ pub static GLOBAL_ALLOCATOR: TrackingAllocator = TrackingAllocator {
 unsafe impl std::alloc::GlobalAlloc for TrackingAllocator {
     #[allow(clippy::let_and_return)]
     unsafe fn alloc(&self, layout: std::alloc::Layout) -> *mut u8 {
-        self.bytes_used.fetch_add(layout.size(), SeqCst);
+        LIVE_BYTES_IN_THREAD.with(|bytes| bytes.fetch_add(layout.size(), SeqCst));
 
         // SAFETY:
         // Just deferring
@@ -25,7 +27,7 @@ unsafe impl std::alloc::GlobalAlloc for TrackingAllocator {
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: std::alloc::Layout) {
-        self.bytes_used.fetch_sub(layout.size(), SeqCst);
+        LIVE_BYTES_IN_THREAD.with(|bytes| bytes.fetch_sub(layout.size(), SeqCst));
 
         // SAFETY:
         // Just deferring
@@ -33,18 +35,16 @@ unsafe impl std::alloc::GlobalAlloc for TrackingAllocator {
     }
 }
 
-impl TrackingAllocator {
-    fn used_bytes(&self) -> usize {
-        self.bytes_used.load(SeqCst)
-    }
+fn live_bytes() -> usize {
+    LIVE_BYTES_IN_THREAD.with(|bytes| bytes.load(SeqCst))
 }
 
 // ----------------------------------------------------------------------------
 
 fn memory_use<R>(run: impl FnOnce() -> R) -> usize {
-    let used_bytes_start = GLOBAL_ALLOCATOR.used_bytes();
+    let used_bytes_start = live_bytes();
     let ret = run();
-    let bytes_used = GLOBAL_ALLOCATOR.used_bytes() - used_bytes_start;
+    let bytes_used = live_bytes() - used_bytes_start;
     drop(ret);
     bytes_used
 }
