@@ -76,10 +76,7 @@
 //! xyz
 //! ```
 //!
-//! Both have their use cases and drawbacks, there's no "right solution".
-//!
-//! At the moment, our import system only provides support for `#pragma many` semantics.
-//! We will most likely add support for `#pragma once` at some point.
+//! At the moment, our import system only provides support for `#pragma once` semantics.
 //!
 //! ## Hot-reloading: platform specifics
 //!
