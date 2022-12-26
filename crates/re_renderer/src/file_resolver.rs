@@ -869,12 +869,10 @@ mod tests_file_resolver {
 
         let mut resolver = FileResolver::new(fs);
 
-        let contents = resolver
+        resolver
             .resolve_contents("/shaders2/shader1.wgsl")
             .map_err(re_error::format)
             .unwrap();
-        let expected = unindent(r#"my first shader!"#);
-        assert_eq!(expected, contents);
     }
 
     #[test]
