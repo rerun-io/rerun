@@ -300,8 +300,9 @@ impl DataStore {
     /// }
     /// ```
     ///
-    /// Thanks to the cluster key, one is free to run a latest-at query for every set of row
-    /// indices yielded by this iterator, thereby building a streaming latest-at range query.
+    /// Thanks to the cluster key, one is free to repeat this process as many times as they wish,
+    /// then join the resulting streams to yield a full-fledged dataframe for every update of the
+    /// primary component.
     /// This is what our `range_components` polars helper does.
     ///
     /// For more information about working with dataframes, see the `polars` feature.
@@ -334,21 +335,6 @@ impl DataStore {
         );
 
         let index = self.indices.get(&(query.timeline, *ent_path_hash));
-
-        // First off, get the latest state just before the start of the time range.
-        let latest_time = query.range.min.as_i64().saturating_sub(1).into();
-        let latest_row_indices =
-            index.and_then(|index| index.latest_at(latest_time, primary, &components));
-        trace!(
-            kind = "range",
-            id = self.query_id.load(Ordering::Relaxed),
-            query = ?query,
-            entity = %ent_path,
-            %primary,
-            ?components,
-            ?latest_row_indices,
-            "latest row indices fetched"
-        );
 
         index
             .map(|index| index.range(query.range, primary, components))
@@ -386,10 +372,10 @@ impl DataStore {
         results
     }
 
-    /// Force the sorting of all indices.
-    pub fn sort_indices(&mut self) {
+    /// Sort all unsorted indices in the store.
+    pub fn sort_indices_if_needed(&mut self) {
         for index in self.indices.values_mut() {
-            index.sort_indices();
+            index.sort_indices_if_needed();
         }
     }
 
@@ -530,10 +516,10 @@ impl IndexTable {
             .map(|(_, bucket)| bucket)
     }
 
-    /// Force the sorting of all buckets.
-    pub fn sort_indices(&self) {
+    /// Sort all unsorted index buckets in this table.
+    pub fn sort_indices_if_needed(&self) {
         for bucket in self.buckets.values() {
-            bucket.sort_indices();
+            bucket.sort_indices_if_needed();
         }
     }
 
@@ -546,8 +532,8 @@ impl IndexTable {
 }
 
 impl IndexBucket {
-    /// Sort all indices by time.
-    pub fn sort_indices(&self) {
+    /// Sort all component indices by time, provided that's not already the case.
+    pub fn sort_indices_if_needed(&self) {
         if self.indices.read().is_sorted {
             return; // early read-only exit
         }
@@ -562,7 +548,7 @@ impl IndexBucket {
         primary: ComponentName,
         components: &[ComponentName; N],
     ) -> Option<[Option<RowIndex>; N]> {
-        self.sort_indices();
+        self.sort_indices_if_needed();
 
         let IndexBucketIndices {
             is_sorted: _,
@@ -663,7 +649,7 @@ impl IndexBucket {
         primary: ComponentName,
         components: [ComponentName; N],
     ) -> impl Iterator<Item = (TimeInt, IndexRowNr, [Option<RowIndex>; N])> + 'a {
-        self.sort_indices();
+        self.sort_indices_if_needed();
 
         let IndexBucketIndices {
             is_sorted: _,
