@@ -567,20 +567,31 @@ impl<Fs: FileSystem> FileResolver<Fs> {
     fn populate(&mut self, path: impl AsRef<Path>) -> anyhow::Result<()> {
         crate::profile_function!();
 
+        self.clear();
+
         fn populate_rec<Fs: FileSystem>(
             this: &mut FileResolver<Fs>,
             path: impl AsRef<Path>,
+            interpolated: &mut HashSet<PathBuf>,
             path_stack: &mut Vec<PathBuf>,
-            visited: &mut HashSet<PathBuf>,
+            visited_stack: &mut HashSet<PathBuf>,
         ) -> anyhow::Result<String> {
             let path = path.as_ref().clean();
 
             // Cycle detection
             path_stack.push(path.clone());
             ensure!(
-                visited.insert(path.clone()),
+                visited_stack.insert(path.clone()),
                 "import cycle detected: {path_stack:?}"
             );
+
+            // #pragma once
+            if !interpolated.insert(path.clone()) {
+                // Cycle detection
+                path_stack.pop().unwrap();
+                visited_stack.remove(&path);
+                return Ok(String::new());
+            }
 
             let contents = if let Some(contents) = &this.files.get(&path).map(|f| &f.contents) {
                 (*contents).to_string()
@@ -604,7 +615,7 @@ impl<Fs: FileSystem> FileResolver<Fs> {
                                     )
                                 })?;
                             imports.insert(clause_path.clone());
-                            populate_rec(this, clause_path, path_stack, visited)
+                            populate_rec(this, clause_path, interpolated, path_stack, visited_stack)
                         } else {
                             Ok(line.to_owned())
                         }
@@ -626,14 +637,22 @@ impl<Fs: FileSystem> FileResolver<Fs> {
 
             // Cycle detection
             path_stack.pop().unwrap();
-            visited.remove(&path);
+            visited_stack.remove(&path);
 
             Ok(contents)
         }
 
         let mut path_stack = Vec::new();
-        let mut visited = HashSet::new();
-        populate_rec(self, path, &mut path_stack, &mut visited).map(|_| ())
+        let mut visited_stack = HashSet::new();
+        let mut interpolated = HashSet::new();
+        populate_rec(
+            self,
+            path,
+            &mut interpolated,
+            &mut path_stack,
+            &mut visited_stack,
+        )
+        .map(|_| ())
     }
 
     fn resolve_clause_path(
