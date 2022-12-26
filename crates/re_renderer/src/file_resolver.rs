@@ -706,7 +706,13 @@ mod tests_file_resolver {
 
             fs.create_file(
                 "/shaders1/common/shader1.wgsl",
-                unindent(r#"my first shader!"#).into(),
+                unindent(
+                    r#"
+                    my first shader!
+                    #import </shaders1/common/shader4.wgsl>
+                    "#,
+                )
+                .into(),
             )
             .unwrap();
 
@@ -747,6 +753,12 @@ mod tests_file_resolver {
                 .into(),
             )
             .unwrap();
+
+            fs.create_file(
+                "/shaders1/common/shader4.wgsl",
+                unindent(r#"my fourth shader!"#).into(),
+            )
+            .unwrap();
         }
 
         let mut resolver = FileResolver::with_search_path(fs, {
@@ -766,7 +778,7 @@ mod tests_file_resolver {
                 .unwrap()
                 .collect::<Vec<_>>();
             imports.sort();
-            let expected: Vec<PathBuf> = vec![];
+            let expected: Vec<PathBuf> = vec!["/shaders1/common/shader4.wgsl".into()];
             assert_eq!(expected, imports);
 
             // Shader 1: interpolate
@@ -786,6 +798,7 @@ mod tests_file_resolver {
             let expected: Vec<PathBuf> = vec![
                 "/shaders1/a/b/c/d/shader3.wgsl".into(),
                 "/shaders1/common/shader1.wgsl".into(),
+                "/shaders1/common/shader4.wgsl".into(),
             ];
             assert_eq!(expected, imports);
 
@@ -822,7 +835,10 @@ mod tests_file_resolver {
                 .unwrap()
                 .collect::<Vec<_>>();
             imports.sort();
-            let expected: Vec<PathBuf> = vec!["/shaders1/common/shader1.wgsl".into()];
+            let expected: Vec<PathBuf> = vec![
+                "/shaders1/common/shader1.wgsl".into(),
+                "/shaders1/common/shader4.wgsl".into(),
+            ];
             assert_eq!(expected, imports);
 
             // Shader 3: interpolate
