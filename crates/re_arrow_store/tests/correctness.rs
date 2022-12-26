@@ -167,7 +167,7 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
         .unwrap();
 
     if let err @ Err(_) = store.sanity_check() {
-        store.sort_indices();
+        store.sort_indices_if_needed();
         eprintln!("{store}");
         err.unwrap();
     }
