@@ -584,7 +584,7 @@ impl IndexBucket {
         );
 
         // find the primary index's row.
-        let primary_idx = times.partition_point(|t| *t <= time.as_i64()) as i64;
+        let primary_idx = times.partition_point(|t| *t <= time) as i64;
 
         // The partition point is always _beyond_ the index that we're looking for.
         // A partition point of 0 thus means that we're trying to query for data that lives
@@ -691,7 +691,7 @@ impl IndexBucket {
 
             // find the time index's row number for the primary component
             let time_idx_row_nr: IndexRowNr =
-                IndexRowNr(times.partition_point(|t| *t < time_range.min.as_i64()) as u64);
+                IndexRowNr(times.partition_point(|t| *t < time_range.min) as u64);
 
             trace!(
                 kind = "range",
@@ -808,7 +808,14 @@ impl IndexBucket {
 
     /// Returns an (name, [`Int64Array`]) with a logical type matching the timeline.
     pub fn times(&self) -> (String, Int64Array) {
-        let times = Int64Array::from_vec(self.indices.read().times.clone());
+        let times = self
+            .indices
+            .read()
+            .times
+            .iter()
+            .map(|time| time.as_i64())
+            .collect();
+        let times = Int64Array::from_vec(times);
         let logical_type = match self.timeline.typ() {
             re_log_types::TimeType::Time => DataType::Timestamp(TimeUnit::Nanosecond, None),
             re_log_types::TimeType::Sequence => DataType::Int64,

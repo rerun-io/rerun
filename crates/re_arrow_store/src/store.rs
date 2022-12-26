@@ -17,7 +17,7 @@ use re_log_types::{
 // --- Indices & offsets ---
 
 /// A vector of times. Our primary column, always densely filled.
-pub type TimeIndex = Vec<i64>;
+pub type TimeIndex = Vec<TimeInt>;
 
 /// A vector of references into the component tables. None = null.
 // TODO(cmc): keeping a separate validity might be a better option, maybe.

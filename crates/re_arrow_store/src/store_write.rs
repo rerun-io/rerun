@@ -382,8 +382,8 @@ impl IndexTable {
             };
 
             if let Some(upper_bound) = bucket_upper_bound {
-                if bucket_len > 2 && time.as_i64() > upper_bound {
-                    let new_time_bound = upper_bound + 1;
+                if bucket_len > 2 && time > upper_bound {
+                    let new_time_bound: TimeInt = (upper_bound.as_i64() + 1).into();
                     debug!(
                         kind = "insert",
                         timeline = %timeline.name(),
@@ -461,7 +461,7 @@ impl IndexBucket {
         } = &mut *guard;
 
         // append time to primary index and update time range approriately
-        times.push(time.as_i64());
+        times.push(time);
         *time_range = TimeRange::new(time_range.min.min(time), time_range.max.max(time));
 
         // append components to secondary indices (2-way merge)
