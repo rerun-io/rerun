@@ -596,7 +596,7 @@ fn show_projections_from_3d_space(
 ) -> Vec<Shape> {
     let mut shapes = Vec::new();
     if let HoveredSpace::ThreeD { target_spaces, .. } = &ctx.rec_cfg.hovered_space_previous_frame {
-        for (space_2d, ray_2d, pos_2d) in target_spaces {
+        for (space_2d, pos_2d) in target_spaces {
             if space_2d == space {
                 if let Some(pos_2d) = pos_2d {
                     // User is hovering a 2D point inside a 3D view.
@@ -622,26 +622,6 @@ fn show_projections_from_3d_space(
                         Color32::from_black_alpha(196),
                     ));
                     shapes.push(Shape::galley(rect.min, galley));
-                }
-
-                let show_ray = false; // This visualization is mostly confusing
-                if show_ray {
-                    if let Some(ray_2d) = ray_2d {
-                        // User is hovering a 3D view with a camera in it.
-                        // TODO(emilk): figure out a nice visualization here, or delete the code.
-                        let origin = ray_2d.origin;
-                        let end = ray_2d.point_along(10_000.0);
-
-                        let origin = pos2(origin.x / origin.z, origin.y / origin.z);
-                        let end = pos2(end.x / end.z, end.y / end.z);
-
-                        let origin = ui_from_space.transform_pos(origin);
-                        let end = ui_from_space.transform_pos(end);
-
-                        shapes.push(Shape::circle_filled(origin, 5.0, Color32::WHITE));
-                        shapes.push(Shape::line_segment([origin, end], (3.0, Color32::BLACK)));
-                        shapes.push(Shape::line_segment([origin, end], (2.0, Color32::WHITE)));
-                    }
                 }
             }
         }
