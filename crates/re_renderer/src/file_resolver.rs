@@ -470,7 +470,7 @@ pub fn new_recommended() -> RecommendedFileResolver {
     FileResolver::with_search_path(crate::get_filesystem(), SearchPath::from_env())
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, Default)]
 struct InterpolatedFile {
     contents: String,
     imports: HashSet<PathBuf>,
@@ -567,6 +567,8 @@ impl<Fs: FileSystem> FileResolver<Fs> {
     fn populate(&mut self, path: impl AsRef<Path>) -> anyhow::Result<()> {
         crate::profile_function!();
 
+        // TODO: update docs regarding #pragma once
+        // TODO: remove this and impl #pragma once the smart way
         self.clear();
 
         fn populate_rec<Fs: FileSystem>(
@@ -575,7 +577,7 @@ impl<Fs: FileSystem> FileResolver<Fs> {
             interpolated: &mut HashSet<PathBuf>,
             path_stack: &mut Vec<PathBuf>,
             visited_stack: &mut HashSet<PathBuf>,
-        ) -> anyhow::Result<String> {
+        ) -> anyhow::Result<InterpolatedFile> {
             let path = path.as_ref().clean();
 
             // Cycle detection
@@ -590,17 +592,17 @@ impl<Fs: FileSystem> FileResolver<Fs> {
                 // Cycle detection
                 path_stack.pop().unwrap();
                 visited_stack.remove(&path);
-                return Ok(String::new());
+                return Ok(Default::default());
             }
 
-            let contents = if let Some(contents) = &this.files.get(&path).map(|f| &f.contents) {
-                (*contents).to_string()
+            let interpolated = if let Some(interpolated) = this.files.get(&path) {
+                interpolated.clone()
             } else {
                 let contents = this.fs.read_to_string(&path)?;
 
                 // Using implicit Vec<Result> -> Result<Vec> collection.
                 let mut imports = HashSet::new();
-                let lines: Result<Vec<_>, _> = contents
+                let children: Result<Vec<_>, _> = contents
                     .lines()
                     .map(|line| {
                         if line.trim().starts_with(ImportClause::PREFIX) {
@@ -617,29 +619,40 @@ impl<Fs: FileSystem> FileResolver<Fs> {
                             imports.insert(clause_path.clone());
                             populate_rec(this, clause_path, interpolated, path_stack, visited_stack)
                         } else {
-                            Ok(line.to_owned())
+                            // Fake child, just the line itself.
+                            Ok(InterpolatedFile {
+                                contents: line.to_owned(),
+                                ..Default::default()
+                            })
                         }
                     })
                     .collect();
-                let lines = lines?;
+                let children = children?;
 
-                let contents = lines.join("\n");
-                this.files.insert(
-                    path.clone(),
+                let interpolated = children.into_iter().fold(
                     InterpolatedFile {
-                        contents: contents.clone(),
                         imports,
+                        ..Default::default()
+                    },
+                    |acc, child| InterpolatedFile {
+                        contents: match (acc.contents.is_empty(), child.contents.is_empty()) {
+                            (true, _) => child.contents,
+                            (_, true) => acc.contents,
+                            _ => [acc.contents, child.contents].join("\n"),
+                        },
+                        imports: acc.imports.union(&child.imports).cloned().collect(),
                     },
                 );
+                this.files.insert(path.clone(), interpolated.clone());
 
-                contents
+                interpolated
             };
 
             // Cycle detection
             path_stack.pop().unwrap();
             visited_stack.remove(&path);
 
-            Ok(contents)
+            Ok(interpolated)
         }
 
         let mut path_stack = Vec::new();
@@ -786,7 +799,11 @@ mod tests_file_resolver {
                 .resolve_contents("/shaders1/common/shader1.wgsl")
                 .map_err(re_error::format)
                 .unwrap();
-            let expected = unindent(r#"my first shader!"#);
+            let expected = unindent(
+                r#"
+                my first shader!
+                my fourth shader!"#,
+            );
             assert_eq!(expected, contents);
 
             // Shader 2: resolve
@@ -810,22 +827,9 @@ mod tests_file_resolver {
             let expected = unindent(
                 r#"
                 my first shader!
-
-
-
-
+                my fourth shader!
                 my third shader!
-
-
-
-
-                my second shader!
-
-
-
-
-
-                "#,
+                my second shader!"#,
             );
             assert_eq!(expected, contents);
 
@@ -849,10 +853,8 @@ mod tests_file_resolver {
             let expected = unindent(
                 r#"
                 my first shader!
-
-                my third shader!
-
-                "#,
+                my fourth shader!
+                my third shader!"#,
             );
             assert_eq!(expected, contents);
         }
