@@ -1,7 +1,7 @@
 //! Demonstrates usage of [`DataStore::to_dataframe`].
 //!
 //! ```text
-//! cargo r -p re_arrow_store --example dump_dataframe
+//! POLARS_FMT_MAX_ROWS=100 cargo r -p re_arrow_store --example dump_dataframe
 //! ```
 
 use re_arrow_store::{test_bundle, DataStore};

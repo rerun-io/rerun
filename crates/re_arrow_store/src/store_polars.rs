@@ -8,9 +8,9 @@ use nohash_hasher::IntMap;
 use polars_core::{functions::diag_concat_df, prelude::*};
 use re_log_types::ComponentName;
 
-use crate::{store::ComponentTable, DataStoreConfig, IndexBucket};
+use crate::{ComponentTable, DataStore, DataStoreConfig, IndexBucket, IndexBucketIndices};
 
-use super::{DataStore, IndexBucketIndices};
+// ---
 
 impl DataStore {
     /// Dumps the entire datastore as a flat, denormalized dataframe.
@@ -61,60 +61,14 @@ impl DataStore {
             // TODO(cmc): is there any way this can fail in this case?
             .unwrap();
 
-        // Here's the order we're going for:
-        // - insert ID comes first if it's available,
-        // - followed by lexically sorted timelines,
-        // - followed by the entity path,
-        // - and finally all components in lexical order.
-        let columns: Vec<_> = {
-            let mut all = df.get_column_names();
-            all.sort();
-
-            all.remove(all.binary_search(&"entity").expect("has to exist"));
-
-            if self.config.store_insert_ids {
-                all.remove(
-                    all.binary_search(&Self::insert_id_key().as_str())
-                        .expect("has to exist"),
-                );
-            }
-
-            let timelines = all
-                .iter()
-                .copied()
-                .filter(|name| !name.starts_with("rerun."))
-                .map(Some)
-                .collect::<Vec<_>>();
-
-            let components = all
-                .iter()
-                .copied()
-                .filter(|name| name.starts_with("rerun."))
-                .map(Some)
-                .collect::<Vec<_>>();
-
-            [
-                vec![self
-                    .config
-                    .store_insert_ids
-                    .then(|| Self::insert_id_key().as_str())],
-                timelines,
-                vec![Some("entity")],
-                components,
-            ]
-            .into_iter()
-            .flatten() // flatten vectors
-            .flatten() // filter options
-            .collect()
-        };
+        let df = sort_df_columns(&df, self.config.store_insert_ids);
 
         if self.config.store_insert_ids {
-            // If insert IDs are available, sort by them.
-            df.sort(vec![Self::insert_id_key().as_str()], vec![false])
-                .and_then(|df| df.select(columns))
+            // If insert IDs are available, sort rows based on those.
+            df.sort(vec![DataStore::insert_id_key().as_str()], vec![false])
                 .unwrap()
         } else {
-            df.select(columns).unwrap()
+            df
         }
     }
 }
@@ -208,7 +162,7 @@ impl IndexBucket {
                 ))
                 .collect();
 
-            // Bring everything together into of big list.
+            // Bring everything together into one big list.
             let comp_values = ListArray::<i32>::from_data(
                 ListArray::<i32>::default_datatype(comp_table.datatype.clone()),
                 Buffer::from(comp_offsets),
@@ -231,13 +185,59 @@ impl IndexBucket {
     }
 }
 
+// ---
+
 fn new_infallible_series(name: &str, data: Box<dyn Array>, len: usize) -> Series {
     Series::try_from((name, data)).unwrap_or_else(|_| {
-        let errs = Utf8Array::<i32>::from(
-            std::iter::repeat(Some("<ERR>"))
-                .take(len)
-                .collect::<Vec<_>>(),
-        );
+        let errs = Utf8Array::<i32>::from(vec![Some("<ERR>"); len]);
         Series::try_from((name, errs.boxed())).unwrap() // cannot fail
     })
+}
+
+/// Sorts the columns of the given dataframe according to the following rules:
+// - insert ID comes first if it's available,
+// - followed by lexically sorted timelines,
+// - followed by the entity path,
+// - and finally all components in lexical order.
+fn sort_df_columns(df: &DataFrame, store_insert_ids: bool) -> DataFrame {
+    let columns: Vec<_> = {
+        let mut all = df.get_column_names();
+        all.sort();
+
+        all.remove(all.binary_search(&"entity").expect("has to exist"));
+
+        if store_insert_ids {
+            all.remove(
+                all.binary_search(&DataStore::insert_id_key().as_str())
+                    .expect("has to exist"),
+            );
+        }
+
+        let timelines = all
+            .iter()
+            .copied()
+            .filter(|name| !name.starts_with("rerun."))
+            .map(Some)
+            .collect::<Vec<_>>();
+
+        let components = all
+            .iter()
+            .copied()
+            .filter(|name| name.starts_with("rerun."))
+            .map(Some)
+            .collect::<Vec<_>>();
+
+        [
+            vec![store_insert_ids.then(|| DataStore::insert_id_key().as_str())],
+            timelines,
+            vec![Some("entity")],
+            components,
+        ]
+        .into_iter()
+        .flatten() // flatten vectors
+        .flatten() // filter options
+        .collect()
+    };
+
+    df.select(columns).unwrap()
 }
