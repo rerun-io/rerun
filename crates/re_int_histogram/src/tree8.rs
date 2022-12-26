@@ -27,6 +27,23 @@ fn split_address(level: Level, addr: u64) -> (u64, u64) {
     (top, bottom)
 }
 
+fn range_u64_from_range_bounds(range: impl std::ops::RangeBounds<i64>) -> RangeU64 {
+    let min = match range.start_bound() {
+        std::ops::Bound::Included(min) => *min,
+        std::ops::Bound::Excluded(min) => min.saturating_add(1),
+        std::ops::Bound::Unbounded => i64::MIN,
+    };
+    let max = match range.end_bound() {
+        std::ops::Bound::Included(min) => *min,
+        std::ops::Bound::Excluded(min) => min.saturating_sub(1),
+        std::ops::Bound::Unbounded => i64::MAX,
+    };
+    RangeU64 {
+        min: u64_key_from_i64_key(min),
+        max: u64_key_from_i64_key(max),
+    }
+}
+
 // ----------------------------------------------------------------------------
 // High-level API
 
@@ -63,34 +80,22 @@ impl Int64Histogram {
 
     /// How many keys in the given range.
     pub fn range_count(&self, range: impl std::ops::RangeBounds<i64>) -> u64 {
-        let min = match range.start_bound() {
-            std::ops::Bound::Included(min) => *min,
-            std::ops::Bound::Excluded(min) => min.saturating_add(1),
-            std::ops::Bound::Unbounded => i64::MIN,
-        };
-        let max = match range.end_bound() {
-            std::ops::Bound::Included(min) => *min,
-            std::ops::Bound::Excluded(min) => min.saturating_sub(1),
-            std::ops::Bound::Unbounded => i64::MAX,
-        };
-        if max < min {
-            return 0;
+        let range = range_u64_from_range_bounds(range);
+        if range.min <= range.max {
+            self.tree.range_count(ROOT_LEVEL, range)
+        } else {
+            0
         }
-        self.tree.range_count(
-            ROOT_LEVEL,
-            RangeU64 {
-                min: u64_key_from_i64_key(min),
-                max: u64_key_from_i64_key(max),
-            },
-        )
     }
 
-    pub fn iter(&self) -> Iter<'_> {
+    pub fn iter(&self, range: impl std::ops::RangeBounds<i64>) -> Iter<'_> {
+        let range = range_u64_from_range_bounds(range);
         Iter {
             iter: TreeIterator {
+                range,
                 stack: vec![NodeIterator {
                     level: ROOT_LEVEL,
-                    addr: 0,
+                    abs_addr: 0,
                     tree: &self.tree,
                     index: 0,
                 }],
@@ -333,12 +338,14 @@ impl Dense {
 // ----------------------------------------------------------------------------
 
 struct TreeIterator<'a> {
+    /// Only returns things in this range
+    range: RangeU64,
     stack: Vec<NodeIterator<'a>>,
 }
 
 struct NodeIterator<'a> {
     level: Level,
-    addr: u64,
+    abs_addr: u64,
     tree: &'a Tree,
     index: usize,
 }
@@ -360,39 +367,45 @@ impl<'a> Iterator for TreeIterator<'a> {
                     };
 
                     while it.index < NUM_CHILDREN_IN_NODE as _ {
-                        if let Some(Some(child)) = node.children.get(it.index) {
-                            let childr_addr = it.addr + child_size * it.index as u64;
-                            it.index += 1;
-                            self.stack.push(NodeIterator {
-                                level: child_level,
-                                addr: childr_addr,
-                                tree: child,
-                                index: 0,
-                            });
-                            continue 'outer;
+                        let abs_addr = it.abs_addr + child_size * it.index as u64;
+                        let child_range = RangeU64 {
+                            min: abs_addr,
+                            max: abs_addr + (child_size - 1),
+                        };
+                        if self.range.intersects(child_range) {
+                            if let Some(Some(child)) = node.children.get(it.index) {
+                                it.index += 1;
+                                self.stack.push(NodeIterator {
+                                    level: child_level,
+                                    abs_addr,
+                                    tree: child,
+                                    index: 0,
+                                });
+                                continue 'outer;
+                            }
                         }
                         it.index += 1;
                     }
                     self.stack.pop();
                 }
                 Tree::Sparse(sparse) => {
-                    if let (Some(addr), Some(count)) =
+                    while let (Some(rel_addr), Some(count)) =
                         (sparse.addrs.get(it.index), sparse.counts.get(it.index))
                     {
                         it.index += 1;
-                        return Some((RangeU64::single(it.addr + *addr), *count as u64));
+                        let abs_addr = it.abs_addr + *rel_addr;
+                        if self.range.contains(abs_addr) {
+                            return Some((RangeU64::single(abs_addr), *count as u64));
+                        }
                     }
                     self.stack.pop();
                 }
                 Tree::Dense(dense) => {
-                    if let Some(count) = dense.counts.get(it.index) {
-                        if *count == 0 {
-                            it.index += 1;
-                        } else {
-                            let ret =
-                                Some((RangeU64::single(it.addr + it.index as u64), *count as u64));
-                            it.index += 1;
-                            return ret;
+                    while let Some(count) = dense.counts.get(it.index) {
+                        let abs_addr = it.abs_addr + it.index as u64;
+                        it.index += 1;
+                        if 0 < *count && self.range.contains(abs_addr) {
+                            return Some((RangeU64::single(abs_addr), *count as u64));
                         }
                     }
                     self.stack.pop();
@@ -418,6 +431,6 @@ fn test_multiset() {
         expected_ranges.push((RangeI64::single(key), 1));
     }
 
-    let ranges: Vec<_> = set.iter().collect();
-    assert_eq!(ranges, expected_ranges);
+    assert_eq!(set.iter(..).collect::<Vec<_>>(), expected_ranges);
+    assert_eq!(set.iter(..10).count(), 10);
 }

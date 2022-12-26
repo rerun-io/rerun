@@ -59,6 +59,11 @@ impl RangeU64 {
     pub fn contains(&self, value: u64) -> bool {
         self.min <= value && value <= self.max
     }
+
+    #[inline]
+    pub fn intersects(&self, other: RangeU64) -> bool {
+        self.min <= other.max && other.min <= self.max
+    }
 }
 
 impl std::fmt::Debug for RangeU64 {
