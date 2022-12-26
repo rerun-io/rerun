@@ -176,7 +176,7 @@ impl DataStore {
             // with insert IDs!
             // We're just abusing the fact that any value we push here as a `RowIndex` will end up
             // as-is in the index.
-            row_indices.insert(self.insert_id_key, RowIndex::from_u64(self.insert_id));
+            row_indices.insert(Self::insert_id_key(), RowIndex::from_u64(self.insert_id));
         }
 
         for bundle in components

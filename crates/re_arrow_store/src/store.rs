@@ -175,11 +175,6 @@ impl DataStoreConfig {
 /// For even more information, you can set `RERUN_DATA_STORE_DISPLAY_SCHEMAS=1` in your
 /// environment, which will result in additional schema information being printed out.
 pub struct DataStore {
-    /// The component name used for the insertion ID.
-    ///
-    /// See [`DataStoreConfig::store_insert_ids`].
-    pub(crate) insert_id_key: ComponentName,
-
     /// The cluster key specifies a column/component that is guaranteed to always be present for
     /// every single row of data within the store.
     ///
@@ -220,7 +215,6 @@ impl DataStore {
     /// See [`Self::cluster_key`] for more information about the cluster key.
     pub fn new(cluster_key: ComponentName, config: DataStoreConfig) -> Self {
         Self {
-            insert_id_key: "rerun.insert_id".into(),
             cluster_key,
             config,
             cluster_comp_cache: Default::default(),
@@ -231,9 +225,14 @@ impl DataStore {
         }
     }
 
-    /// See [`Self::insert_id_key`] for more information about the insert ID key.
-    pub fn insert_id_key(&self) -> ComponentName {
-        self.insert_id_key
+    /// The column name used for storing insert requests' IDs alongside the data.
+    ///
+    /// The insert IDs are stored as-is directly into the index tables, this is _not_ an
+    /// indirection into an associated component table!
+    ///
+    /// See [`DataStoreConfig::store_insert_ids`].
+    pub fn insert_id_key() -> ComponentName {
+        "rerun.insert_id".into()
     }
 
     /// See [`Self::cluster_key`] for more information about the cluster key.
@@ -317,167 +316,10 @@ impl DataStore {
     }
 }
 
-// TODO: just move the whole thing to store_polars.rs really
-#[cfg(feature = "polars")]
-mod polars {
-    use std::collections::BTreeSet;
-
-    use arrow2::{
-        array::{new_empty_array, Array, ListArray, UInt64Array, Utf8Array},
-        bitmap::Bitmap,
-        buffer::Buffer,
-        compute::concatenate::concatenate,
-    };
-    use polars_core::{functions::diag_concat_df, prelude::*};
-    use re_log_types::{
-        external::arrow2_convert::serialize::TryIntoArrow, FieldName, TimePoint, TimeType,
-    };
-
-    use crate::polars_util::join_dataframes;
-
-    use super::{DataStore, IndexBucketIndices};
-
-    impl DataStore {
-        // TODO: expected columns
-        //
-        // data:
-        // - timepoint
-        // - time
-        // - or just a timepoint?
-        // - entity path
-        // - comp1 | comp2 | ... | compN
-        //
-        // - comp size in bytes?
-        //
-        // metadata:
-        // - bucket nr
-        // - bucket index row nr
-        // - component row nr
-        pub fn to_dataframe(&self) -> PolarsResult<DataFrame> {
-            let dfs: PolarsResult<Vec<DataFrame>> = self
-                .indices
-                .values()
-                .map(|index| {
-                    let dfs: PolarsResult<Vec<_>> = index
-                        .buckets
-                        .values()
-                        .map(|bucket| (index.timeline, index.ent_path.clone(), bucket))
-                        .map(|(timeline, ent_path, bucket)| {
-                            let (_, times) = bucket.times();
-
-                            let IndexBucketIndices {
-                                is_sorted: _,
-                                time_range: _,
-                                times: _,
-                                indices,
-                            } = &*bucket.indices.read();
-
-                            let ids = indices.get(&FieldName::from("rerun.insert_id")).unwrap();
-                            let ids: Vec<_> =
-                                ids.iter().map(|id| id.map(|id| id.0.get())).collect();
-                            let ids = UInt64Array::from(ids);
-
-                            let entities = {
-                                let mut entities = vec![None; times.len()];
-                                entities[0] = Some(ent_path.to_string());
-                                Series::try_from((
-                                    "entity",
-                                    Utf8Array::<i32>::from(entities).boxed(),
-                                ))
-                                .and_then(|series| {
-                                    series.fill_null(FillNullStrategy::Forward(None))
-                                })
-                            };
-
-                            let comp_series = [
-                                Series::try_from(("rerun.insert_id", ids.boxed()))?,
-                                Series::try_from((timeline.name().as_str(), times.boxed()))?,
-                                entities?,
-                            ]
-                            .into_iter()
-                            .chain(indices.iter().filter_map(|(component, comp_row_nrs)| {
-                                let comp_table = self.components.get(component)?;
-
-                                let comp_rows: Vec<_> = comp_row_nrs
-                                    .iter()
-                                    .map(|comp_row_nr| {
-                                        comp_row_nr
-                                            .and_then(|comp_row_nr| comp_table.get(comp_row_nr))
-                                    })
-                                    .collect();
-
-                                let comp_validity: Vec<_> =
-                                    comp_rows.iter().map(|row| row.is_some()).collect();
-
-                                let comp_values: Vec<_> = comp_rows
-                                    .into_iter()
-                                    .map(|row| {
-                                        row.unwrap_or_else(|| {
-                                            new_empty_array(comp_table.datatype.clone())
-                                        })
-                                    })
-                                    .collect();
-                                let comp_values: Vec<_> =
-                                    comp_values.iter().map(|arr| &**arr).collect();
-
-                                let mut offset = 0i32;
-                                let comp_offsets: Vec<_> = comp_values
-                                    .iter()
-                                    .map(|row| {
-                                        let ret = offset;
-                                        offset += row.len() as i32;
-                                        ret
-                                    })
-                                    .chain(std::iter::once(
-                                        comp_values.iter().map(|row| row.len() as i32).sum(),
-                                    ))
-                                    .collect();
-
-                                let comp_values = ListArray::<i32>::from_data(
-                                    ListArray::<i32>::default_datatype(comp_table.datatype.clone()),
-                                    Buffer::from(comp_offsets),
-                                    concatenate(comp_values.as_slice()).unwrap().to_boxed(),
-                                    Some(Bitmap::from(comp_validity)),
-                                )
-                                .boxed();
-
-                                Some(Series::try_from((component.as_str(), comp_values)).unwrap())
-                            }));
-
-                            DataFrame::new(comp_series.collect::<Vec<_>>())
-                        })
-                        .collect();
-
-                    dfs.and_then(|dfs| diag_concat_df(&dfs))
-                })
-                .collect();
-
-            let df = diag_concat_df(&dfs?)?;
-
-            // TODO: find all time columns automagically
-            let timelines = ["rerun.insert_id", "frame_nr", "log_time"];
-            let rest = {
-                let mut rest: BTreeSet<_> = df.get_column_names().into_iter().collect();
-                for timeline in &timelines {
-                    rest.remove(timeline);
-                }
-
-                timelines.iter().copied().chain(rest.into_iter())
-            };
-
-            df.sort(vec!["rerun.insert_id"], vec![false])
-                .and_then(|df| df.select(rest))
-            // df.sort(timelines.to_vec(), vec![false, false])
-            //     .and_then(|df| df.select(rest))
-        }
-    }
-}
-
 impl std::fmt::Display for DataStore {
     #[allow(clippy::string_add)]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
-            insert_id_key: _,
             cluster_key,
             config,
             cluster_comp_cache: _,
