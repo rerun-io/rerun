@@ -419,10 +419,10 @@ impl<'a> Iterator for TreeIterator<'a> {
 // ----------------------------------------------------------------------------
 
 #[test]
-fn test_multiset() {
+fn test_dense() {
     let mut set = Int64Histogram::default();
     let mut expected_ranges = vec![];
-    for i in 0..=100 {
+    for i in 0..100 {
         debug_assert_eq!(set.total_count(), i);
         debug_assert_eq!(set.range_count(-10000..10000), i);
         let key = i as i64;
@@ -433,4 +433,22 @@ fn test_multiset() {
 
     assert_eq!(set.iter(..).collect::<Vec<_>>(), expected_ranges);
     assert_eq!(set.iter(..10).count(), 10);
+}
+
+#[test]
+fn test_sparse() {
+    let inc = 2;
+    let spacing = 1_000_000;
+    let mut set = Int64Histogram::default();
+    let mut expected_ranges = vec![];
+    for i in 0..100 {
+        debug_assert_eq!(set.total_count(), inc * i);
+        debug_assert_eq!(set.range_count(-10000..10000 * spacing), inc * i);
+        let key = i as i64 * spacing;
+        set.increment(key, inc as u32);
+        expected_ranges.push((RangeI64::single(key), inc));
+    }
+
+    assert_eq!(set.iter(..).collect::<Vec<_>>(), expected_ranges);
+    assert_eq!(set.iter(..10 * spacing).count(), 10);
 }

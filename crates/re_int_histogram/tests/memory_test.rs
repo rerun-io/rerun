@@ -58,16 +58,16 @@ const N: i64 = 1_000_000;
 fn test_memory_use_btree() {
     use re_int_histogram::BTreeeInt64Histogram;
 
-    fn create(num_elements: i64, sparseness: i64) -> BTreeeInt64Histogram {
+    fn create(num_elements: i64, spacing: i64) -> BTreeeInt64Histogram {
         let mut histogram = BTreeeInt64Histogram::default();
         for i in 0..num_elements {
-            histogram.increment(i * sparseness, 1);
+            histogram.increment(i * spacing, 1);
         }
         histogram
     }
 
-    fn bytes_per_entry(num_elements: i64, sparseness: i64) -> f64 {
-        let num_bytes = memory_use(|| create(num_elements, sparseness));
+    fn bytes_per_entry(num_elements: i64, spacing: i64) -> f64 {
+        let num_bytes = memory_use(|| create(num_elements, spacing));
         num_bytes as f64 / num_elements as f64
     }
 
@@ -75,28 +75,13 @@ fn test_memory_use_btree() {
         "btree",
         [
             format!("{:.1} B/entry, dense", bytes_per_entry(N, 1)),
+            format!("{:.1} B/entry, spacing: 1M", bytes_per_entry(N, 1_000_000)),
+            format!("{:.1} B/entry, spacing: 2M", bytes_per_entry(N, 2_000_000)),
+            format!("{:.1} B/entry, spacing: 3M", bytes_per_entry(N, 3_000_000)),
+            format!("{:.1} B/entry, spacing: 5M", bytes_per_entry(N, 5_000_000)),
+            format!("{:.1} B/entry, spacing: 8M", bytes_per_entry(N, 8_000_000)),
             format!(
-                "{:.1} B/entry, sparseness: 1M",
-                bytes_per_entry(N, 1_000_000)
-            ),
-            format!(
-                "{:.1} B/entry, sparseness: 2M",
-                bytes_per_entry(N, 2_000_000)
-            ),
-            format!(
-                "{:.1} B/entry, sparseness: 3M",
-                bytes_per_entry(N, 3_000_000)
-            ),
-            format!(
-                "{:.1} B/entry, sparseness: 5M",
-                bytes_per_entry(N, 5_000_000)
-            ),
-            format!(
-                "{:.1} B/entry, sparseness: 8M",
-                bytes_per_entry(N, 8_000_000)
-            ),
-            format!(
-                "{:.1} B/entry, sparseness: 13M",
+                "{:.1} B/entry, spacing: 13M",
                 bytes_per_entry(N, 13_000_000)
             ),
         ]
@@ -107,44 +92,29 @@ fn test_memory_use_btree() {
 fn test_memory_use_tree2() {
     use re_int_histogram::tree2::IntHistogram;
 
-    fn create(num_elements: i64, sparseness: i64) -> IntHistogram {
+    fn create(num_elements: i64, spacing: i64) -> IntHistogram {
         let mut histogram = IntHistogram::default();
         for i in 0..num_elements {
-            histogram.increment(i * sparseness, 1);
+            histogram.increment(i * spacing, 1);
         }
         histogram
     }
 
-    fn bytes_per_entry(num_elements: i64, sparseness: i64) -> f64 {
-        let num_bytes = memory_use(|| create(num_elements, sparseness));
+    fn bytes_per_entry(num_elements: i64, spacing: i64) -> f64 {
+        let num_bytes = memory_use(|| create(num_elements, spacing));
         num_bytes as f64 / num_elements as f64
     }
     assert_debug_snapshot!(
         "tree2",
         [
             format!("{:.1} B/entry, dense", bytes_per_entry(N, 1)),
+            format!("{:.1} B/entry, spacing: 1M", bytes_per_entry(N, 1_000_000)),
+            format!("{:.1} B/entry, spacing: 2M", bytes_per_entry(N, 2_000_000)),
+            format!("{:.1} B/entry, spacing: 3M", bytes_per_entry(N, 3_000_000)),
+            format!("{:.1} B/entry, spacing: 5M", bytes_per_entry(N, 5_000_000)),
+            format!("{:.1} B/entry, spacing: 8M", bytes_per_entry(N, 8_000_000)),
             format!(
-                "{:.1} B/entry, sparseness: 1M",
-                bytes_per_entry(N, 1_000_000)
-            ),
-            format!(
-                "{:.1} B/entry, sparseness: 2M",
-                bytes_per_entry(N, 2_000_000)
-            ),
-            format!(
-                "{:.1} B/entry, sparseness: 3M",
-                bytes_per_entry(N, 3_000_000)
-            ),
-            format!(
-                "{:.1} B/entry, sparseness: 5M",
-                bytes_per_entry(N, 5_000_000)
-            ),
-            format!(
-                "{:.1} B/entry, sparseness: 8M",
-                bytes_per_entry(N, 8_000_000)
-            ),
-            format!(
-                "{:.1} B/entry, sparseness: 13M",
+                "{:.1} B/entry, spacing: 13M",
                 bytes_per_entry(N, 13_000_000)
             ),
         ]
@@ -155,16 +125,16 @@ fn test_memory_use_tree2() {
 fn test_memory_use_tree8() {
     use re_int_histogram::tree8::Int64Histogram;
 
-    fn create(num_elements: i64, sparseness: i64) -> Int64Histogram {
+    fn create(num_elements: i64, spacing: i64) -> Int64Histogram {
         let mut histogram = Int64Histogram::default();
         for i in 0..num_elements {
-            histogram.increment(i * sparseness, 1);
+            histogram.increment(i * spacing, 1);
         }
         histogram
     }
 
-    fn bytes_per_entry(num_elements: i64, sparseness: i64) -> f64 {
-        let num_bytes = memory_use(|| create(num_elements, sparseness));
+    fn bytes_per_entry(num_elements: i64, spacing: i64) -> f64 {
+        let num_bytes = memory_use(|| create(num_elements, spacing));
         num_bytes as f64 / num_elements as f64
     }
 
@@ -172,28 +142,13 @@ fn test_memory_use_tree8() {
         "tree8",
         [
             format!("{:.1} B/entry, dense", bytes_per_entry(N, 1)),
+            format!("{:.1} B/entry, spacing: 1M", bytes_per_entry(N, 1_000_000)),
+            format!("{:.1} B/entry, spacing: 2M", bytes_per_entry(N, 2_000_000)),
+            format!("{:.1} B/entry, spacing: 3M", bytes_per_entry(N, 3_000_000)),
+            format!("{:.1} B/entry, spacing: 5M", bytes_per_entry(N, 5_000_000)),
+            format!("{:.1} B/entry, spacing: 8M", bytes_per_entry(N, 8_000_000)),
             format!(
-                "{:.1} B/entry, sparseness: 1M",
-                bytes_per_entry(N, 1_000_000)
-            ),
-            format!(
-                "{:.1} B/entry, sparseness: 2M",
-                bytes_per_entry(N, 2_000_000)
-            ),
-            format!(
-                "{:.1} B/entry, sparseness: 3M",
-                bytes_per_entry(N, 3_000_000)
-            ),
-            format!(
-                "{:.1} B/entry, sparseness: 5M",
-                bytes_per_entry(N, 5_000_000)
-            ),
-            format!(
-                "{:.1} B/entry, sparseness: 8M",
-                bytes_per_entry(N, 8_000_000)
-            ),
-            format!(
-                "{:.1} B/entry, sparseness: 13M",
+                "{:.1} B/entry, spacing: 13M",
                 bytes_per_entry(N, 13_000_000)
             ),
         ]
@@ -204,16 +159,16 @@ fn test_memory_use_tree8() {
 fn test_memory_use_tree16() {
     use re_int_histogram::tree16::IntHistogram;
 
-    fn create(num_elements: i64, sparseness: i64) -> IntHistogram {
+    fn create(num_elements: i64, spacing: i64) -> IntHistogram {
         let mut histogram = IntHistogram::default();
         for i in 0..num_elements {
-            histogram.increment(i * sparseness, 1);
+            histogram.increment(i * spacing, 1);
         }
         histogram
     }
 
-    fn bytes_per_entry(num_elements: i64, sparseness: i64) -> f64 {
-        let num_bytes = memory_use(|| create(num_elements, sparseness));
+    fn bytes_per_entry(num_elements: i64, spacing: i64) -> f64 {
+        let num_bytes = memory_use(|| create(num_elements, spacing));
         num_bytes as f64 / num_elements as f64
     }
 
@@ -221,28 +176,13 @@ fn test_memory_use_tree16() {
         "tree16",
         [
             format!("{:.1} B/entry, dense", bytes_per_entry(N, 1)),
+            format!("{:.1} B/entry, spacing: 1M", bytes_per_entry(N, 1_000_000)),
+            format!("{:.1} B/entry, spacing: 2M", bytes_per_entry(N, 2_000_000)),
+            format!("{:.1} B/entry, spacing: 3M", bytes_per_entry(N, 3_000_000)),
+            format!("{:.1} B/entry, spacing: 5M", bytes_per_entry(N, 5_000_000)),
+            format!("{:.1} B/entry, spacing: 8M", bytes_per_entry(N, 8_000_000)),
             format!(
-                "{:.1} B/entry, sparseness: 1M",
-                bytes_per_entry(N, 1_000_000)
-            ),
-            format!(
-                "{:.1} B/entry, sparseness: 2M",
-                bytes_per_entry(N, 2_000_000)
-            ),
-            format!(
-                "{:.1} B/entry, sparseness: 3M",
-                bytes_per_entry(N, 3_000_000)
-            ),
-            format!(
-                "{:.1} B/entry, sparseness: 5M",
-                bytes_per_entry(N, 5_000_000)
-            ),
-            format!(
-                "{:.1} B/entry, sparseness: 8M",
-                bytes_per_entry(N, 8_000_000)
-            ),
-            format!(
-                "{:.1} B/entry, sparseness: 13M",
+                "{:.1} B/entry, spacing: 13M",
                 bytes_per_entry(N, 13_000_000)
             ),
         ]
