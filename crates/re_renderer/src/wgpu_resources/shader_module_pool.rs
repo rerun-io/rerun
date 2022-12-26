@@ -43,7 +43,6 @@ impl ShaderModuleDesc {
     ) -> wgpu::ShaderModule {
         let code = resolver
             .resolve_contents(&self.source)
-            .map(|s| s.to_owned())
             .context("couldn't resolve shader module's contents")
             .map_err(|err| re_log::error!(err=%re_error::format(err)))
             .unwrap_or_default();
@@ -96,12 +95,12 @@ impl GpuShaderModulePool {
             // Not only do we care about filesystem events that touch upon the source
             // path of the current shader, we also care about events that affect any of
             // our direct and indirect dependencies (#import)!
-            let mut paths = vec![desc.source.as_path()];
+            let mut paths = vec![desc.source.clone()];
             if let Ok(imports) = resolver.resolve_imports(&desc.source) {
-                paths.extend(imports);
+                paths.extend(imports.into_iter());
             }
 
-            paths.iter().any(|p| updated_paths.contains(*p)).then(|| {
+            paths.iter().any(|p| updated_paths.contains(p)).then(|| {
                 let shader_module = desc.create_shader_module(device, resolver);
                 re_log::debug!(?desc.source, label = desc.label.get(), "recompiled shader module");
                 shader_module
