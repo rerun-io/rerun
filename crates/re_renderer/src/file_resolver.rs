@@ -476,7 +476,7 @@ struct InterpolatedFile {
     imports: HashSet<PathBuf>,
 }
 
-/// Thn `FileResolver` handles both resolving import clauses and doing the actual string
+/// The `FileResolver` handles both resolving import clauses and doing the actual string
 /// interpolation.
 #[derive(Default)]
 pub struct FileResolver<Fs> {
