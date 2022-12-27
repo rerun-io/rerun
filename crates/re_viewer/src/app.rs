@@ -27,6 +27,15 @@ const WATERMARK: bool = false; // Nice for recording media material
 
 // ----------------------------------------------------------------------------
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+enum TimeControlCommand {
+    TogglePlayPause,
+    StepBack,
+    StepForward,
+}
+
+// ----------------------------------------------------------------------------
+
 /// Settings set once at startup (e.g. via command-line options) and not serialized.
 #[derive(Clone, Copy, Default)]
 pub struct StartupOptions {
@@ -318,33 +327,34 @@ impl App {
             }
 
             Command::PlaybackTogglePlayPause => {
-                let rec_id = self.state.selected_rec_id;
-                if let Some(rec_cfg) = self.state.recording_configs.get_mut(&rec_id) {
-                    if let Some(log_db) = self.log_dbs.get(&rec_id) {
-                        rec_cfg
-                            .time_ctrl
-                            .toggle_play_pause(log_db.times_per_timeline());
-                    }
-                }
+                self.run_time_control_command(TimeControlCommand::TogglePlayPause);
             }
             Command::PlaybackStepBack => {
-                // TODO(emilk): figure out a nice way to avoid this code duplication
-                let rec_id = self.state.selected_rec_id;
-                if let Some(rec_cfg) = self.state.recording_configs.get_mut(&rec_id) {
-                    if let Some(log_db) = self.log_dbs.get(&rec_id) {
-                        rec_cfg
-                            .time_ctrl
-                            .step_time_back(log_db.times_per_timeline());
-                    }
-                }
+                self.run_time_control_command(TimeControlCommand::StepBack);
             }
             Command::PlaybackStepForward => {
-                let rec_id = self.state.selected_rec_id;
-                if let Some(rec_cfg) = self.state.recording_configs.get_mut(&rec_id) {
-                    if let Some(log_db) = self.log_dbs.get(&rec_id) {
-                        rec_cfg.time_ctrl.step_time_fwd(log_db.times_per_timeline());
-                    }
-                }
+                self.run_time_control_command(TimeControlCommand::StepForward);
+            }
+        }
+    }
+
+    fn run_time_control_command(&mut self, command: TimeControlCommand) {
+        let rec_id = self.state.selected_rec_id;
+        let Some(rec_cfg) = self.state.recording_configs.get_mut(&rec_id) else {return;};
+        let time_ctrl = &mut rec_cfg.time_ctrl;
+
+        let Some(log_db) = self.log_dbs.get(&rec_id) else { return };
+        let times_per_timeline = log_db.times_per_timeline();
+
+        match command {
+            TimeControlCommand::TogglePlayPause => {
+                time_ctrl.toggle_play_pause(times_per_timeline);
+            }
+            TimeControlCommand::StepBack => {
+                time_ctrl.step_time_back(times_per_timeline);
+            }
+            TimeControlCommand::StepForward => {
+                time_ctrl.step_time_fwd(times_per_timeline);
             }
         }
     }
