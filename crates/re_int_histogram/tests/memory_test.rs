@@ -39,6 +39,14 @@ fn live_bytes() -> usize {
     LIVE_BYTES_IN_THREAD.with(|bytes| bytes.load(SeqCst))
 }
 
+fn memory_use<R>(run: impl Fn() -> R) -> usize {
+    let used_bytes_start = live_bytes();
+    let ret = run();
+    let bytes_used = live_bytes() - used_bytes_start;
+    drop(ret);
+    bytes_used
+}
+
 // ----------------------------------------------------------------------------
 
 /// Baseline for performance and memory benchmarks
@@ -53,14 +61,6 @@ impl BTreeeInt64Histogram {
 }
 
 // ----------------------------------------------------------------------------
-
-fn memory_use<R>(run: impl FnOnce() -> R) -> usize {
-    let used_bytes_start = live_bytes();
-    let ret = run();
-    let bytes_used = live_bytes() - used_bytes_start;
-    drop(ret);
-    bytes_used
-}
 
 use insta::assert_debug_snapshot;
 
