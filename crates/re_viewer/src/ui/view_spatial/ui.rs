@@ -1,5 +1,6 @@
 use macaw::BoundingBox;
 use re_data_store::{InstanceId, InstanceIdHash, ObjPath, ObjectsProperties};
+use re_format::format_f32;
 use re_log_types::Transform;
 
 use crate::misc::{
@@ -79,14 +80,22 @@ impl ViewSpatialState {
         match self.nav_mode {
             SpatialNavigationMode::TwoD => {
                 ui.label(format!(
-                    "Bounding box, x: [{} - {}], y: [{} - {}]",
-                    min.x, max.x, min.y, max.y,
+                    "Bounding box:\n  x: [{} - {}]\n  y: [{} - {}]",
+                    format_f32(min.x),
+                    format_f32(max.x),
+                    format_f32(min.y),
+                    format_f32(max.y),
                 ));
             }
             SpatialNavigationMode::ThreeD => {
                 ui.label(format!(
-                    "Bounding box, x: [{} - {}], y: [{} - {}], z: [{} - {}]",
-                    min.x, max.x, min.y, max.y, min.z, max.z
+                    "Bounding box:\n  x: [{} - {}]\n  y: [{} - {}]\n  z: [{} - {}]",
+                    format_f32(min.x),
+                    format_f32(max.x),
+                    format_f32(min.y),
+                    format_f32(max.y),
+                    format_f32(min.z),
+                    format_f32(max.z)
                 ));
                 self.state_3d.settings_ui(ctx, ui, &self.scene_bbox_accum);
             }
