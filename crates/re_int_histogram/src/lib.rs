@@ -1,6 +1,15 @@
+//! A histogram with `i64` keys and `u32` counts, supporting both sparse and dense uses.
+//!
+//! It supports high-level summaries of the histogram, so that you can quickly
+//! get a birds-eye view of the data without having to visit every point in the histogram.
+//!
+//! You can also think of the histogram as a multi-set,
+//! where you can insert the same key multiple times and then query
+//! how many times you've inserted it.
+
 mod tree;
 
-pub use tree::Int64Histogram;
+pub use tree::{Int64Histogram, Iter};
 
 // -----------------------------------------------------------------------------------
 
@@ -33,7 +42,7 @@ fn test_u64_i64_key_conversions() {
 
 // -----------------------------------------------------------------------------------
 
-/// An inclusive range
+/// An inclusive range.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) struct RangeU64 {
     /// inclusive
@@ -79,7 +88,7 @@ impl std::fmt::Debug for RangeU64 {
 
 // -----------------------------------------------------------------------------------
 
-/// An inclusive range
+/// An inclusive range.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct RangeI64 {
     /// inclusive

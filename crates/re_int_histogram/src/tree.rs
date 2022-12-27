@@ -77,22 +77,22 @@ impl Default for Int64Histogram {
 }
 
 impl Int64Histogram {
-    /// Insert in multi-set.
+    /// Increment the count for the given key.
     ///
-    /// Increments the count of the given bucket.
+    /// Incrementing with one is similar to inserting the key in a multi-set.
     pub fn increment(&mut self, key: i64, inc: u32) {
         self.tree
             .increment(ROOT_LEVEL, u64_key_from_i64_key(key), inc);
     }
 
-    /// Total count in all the buckets.
+    /// Total count of all the buckets.
     ///
-    /// NOTE: this is not the number of unique keys, but cardinality of the multiset.
+    /// NOTE: this is NOT the number of unique keys.
     pub fn total_count(&self) -> u64 {
         self.tree.total_count()
     }
 
-    /// How many keys in the given range.
+    /// What is the count of all the buckets in the given range?
     pub fn range_count(&self, range: impl std::ops::RangeBounds<i64>) -> u64 {
         let range = range_u64_from_range_bounds(range);
         if range.min <= range.max {
@@ -106,10 +106,9 @@ impl Int64Histogram {
     /// To get all individual entries, use `cutoff_size=1`.
     /// When `cutoff_size > 1` you will get approximate ranges, which may cover elements that has no count.
     ///
-    /// For instance, inserting tow elements at `10` and `20` and setting a `cutoff_size=10`
-    /// you may get a single range `[8, 24]` which is big enough to contain bout `10` and `20`,
-    /// but is not a tight bound.
-    pub fn range_iter(&self, range: impl std::ops::RangeBounds<i64>, cutoff_size: u64) -> Iter<'_> {
+    /// For instance, inserting tow elements at `10` and `15` and setting a `cutoff_size=10`
+    /// you may get a single range `[8, 16]` with the total count.
+    pub fn range(&self, range: impl std::ops::RangeBounds<i64>, cutoff_size: u64) -> Iter<'_> {
         let range = range_u64_from_range_bounds(range);
         Iter {
             iter: TreeIterator {
@@ -134,6 +133,9 @@ impl Int64Histogram {
     }
 }
 
+/// An iterator over an [`Int64Histogram`].
+///
+/// Created with [`Int64Histogram::range`].
 pub struct Iter<'a> {
     iter: TreeIterator<'a>,
 }
@@ -141,6 +143,7 @@ pub struct Iter<'a> {
 impl<'a> Iterator for Iter<'a> {
     type Item = (RangeI64, u64);
 
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         self.iter.next().map(|(range, count)| {
             (
@@ -546,8 +549,8 @@ fn test_dense() {
         expected_ranges.push((RangeI64::single(key), 1));
     }
 
-    assert_eq!(set.range_iter(.., 1).collect::<Vec<_>>(), expected_ranges);
-    assert_eq!(set.range_iter(..10, 1).count(), 10);
+    assert_eq!(set.range(.., 1).collect::<Vec<_>>(), expected_ranges);
+    assert_eq!(set.range(..10, 1).count(), 10);
 }
 
 #[test]
@@ -564,8 +567,8 @@ fn test_sparse() {
         expected_ranges.push((RangeI64::single(key), inc));
     }
 
-    assert_eq!(set.range_iter(.., 1).collect::<Vec<_>>(), expected_ranges);
-    assert_eq!(set.range_iter(..10 * spacing, 1).count(), 10);
+    assert_eq!(set.range(.., 1).collect::<Vec<_>>(), expected_ranges);
+    assert_eq!(set.range(..10 * spacing, 1).count(), 10);
 }
 
 #[test]
@@ -577,7 +580,7 @@ fn test_two_dense_ranges() {
         set.increment(20_000 + i, 1);
     }
 
-    assert_eq!(set.range_iter(..15_000, 1000).count(), 2);
+    assert_eq!(set.range(..15_000, 1000).count(), 2);
 
     assert_eq!(set.total_count(), 300);
     assert_eq!(set.remove(..10_020), 120);
@@ -602,9 +605,7 @@ fn test_two_sparse_ranges() {
         should_not_contain.push(c);
     }
 
-    let ranges = set
-        .range_iter(..1_000_000_000, 1_000_000)
-        .collect::<Vec<_>>();
+    let ranges = set.range(..1_000_000_000, 1_000_000).collect::<Vec<_>>();
 
     assert!(ranges.len() < 10, "We shouldn't get too many ranges");
 
@@ -634,7 +635,7 @@ fn test_removal() {
 
     debug_assert_eq!(set.range_count((i64::MAX - 1)..=i64::MAX), 3);
     debug_assert_eq!(
-        set.range_iter(0.., 1).collect::<Vec<_>>(),
+        set.range(0.., 1).collect::<Vec<_>>(),
         vec![
             (RangeI64::single(i64::MAX - 2), 3),
             (RangeI64::single(i64::MAX - 1), 2),
@@ -645,7 +646,7 @@ fn test_removal() {
     set.remove(i64::MAX..=i64::MAX);
 
     debug_assert_eq!(
-        set.range_iter(.., 1).collect::<Vec<_>>(),
+        set.range(.., 1).collect::<Vec<_>>(),
         vec![
             (RangeI64::single(i64::MIN), 1),
             (RangeI64::single(i64::MIN + 1), 2),
@@ -658,7 +659,7 @@ fn test_removal() {
     set.remove(i64::MIN..=(i64::MAX - 2));
 
     debug_assert_eq!(
-        set.range_iter(.., 1).collect::<Vec<_>>(),
+        set.range(.., 1).collect::<Vec<_>>(),
         vec![(RangeI64::single(i64::MAX - 1), 2),]
     );
 }
