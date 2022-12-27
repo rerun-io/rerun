@@ -73,10 +73,10 @@ pub fn latest_component(
     let cluster_key = store.cluster_key();
 
     let components = &[cluster_key, primary];
-    let row_indices = store
+    let comp_row_nrs = store
         .latest_at(query, ent_path, primary, components)
         .unwrap_or([None; 2]);
-    let results = store.get(components, &row_indices);
+    let results = store.get(components, &comp_row_nrs);
 
     dataframe_from_results(components, results)
 }
@@ -294,10 +294,10 @@ pub fn range_component<'a>(
     let latest_time = query.range.min.as_i64().checked_sub(1).map(Into::into);
     let df_latest = latest_time.map(|latest_time| {
         let query = LatestAtQuery::new(query.timeline, latest_time);
-        let row_indices = store
+        let comp_row_nrs = store
             .latest_at(&query, ent_path, primary, &components)
             .unwrap_or([None; 2]);
-        let results = store.get(&components, &row_indices);
+        let results = store.get(&components, &comp_row_nrs);
         dataframe_from_results(&components, results).map(|df| (latest_time, df))
     });
 
@@ -307,8 +307,8 @@ pub fn range_component<'a>(
         // ..but only if it's not an empty dataframe.
         .filter(|df| df.as_ref().map_or(true, |(_, df)| !df.is_empty()))
         .chain(store.range(query, ent_path, primary, components).map(
-            move |(time, _, row_indices)| {
-                let results = store.get(&components, &row_indices);
+            move |(time, _, comp_row_nrs)| {
+                let results = store.get(&components, &comp_row_nrs);
                 dataframe_from_results(&components, results).map(|df| (time, df))
             },
         ))
@@ -525,8 +525,8 @@ pub fn range_components<'a>(
         let components = [cluster_key, *component];
 
         let it = store.range(query, ent_path, *component, components).map(
-            move |(time, idx_row_nr, row_indices)| {
-                let results = store.get(&components, &row_indices);
+            move |(time, idx_row_nr, comp_row_nrs)| {
+                let results = store.get(&components, &comp_row_nrs);
                 (
                     i,
                     time,

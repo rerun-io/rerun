@@ -392,7 +392,7 @@ impl DataStore {
 // --- Indices ---
 
 impl IndexTable {
-    /// Returns `None` iff no row index could be found for the `primary` component.
+    /// Returns `None` iff no component row numbers could be found for the `primary` component.
     pub fn latest_at<const N: usize>(
         &self,
         time: TimeInt,
@@ -539,7 +539,7 @@ impl IndexBucket {
         self.indices.write().sort();
     }
 
-    /// Returns `None` iff no row index could be found for the `primary` component.
+    /// Returns `None` iff no component row numbers could be found for the `primary` component.
     pub fn latest_at<const N: usize>(
         &self,
         time: TimeInt,
@@ -564,7 +564,7 @@ impl IndexBucket {
             ?components,
             timeline = %self.timeline.name(),
             time = self.timeline.typ().format(time),
-            "searching for time & component row index numbers..."
+            "searching for time & component component row numbers..."
         );
 
         // find the time index's row number for the primary component
@@ -670,7 +670,7 @@ impl IndexBucket {
                 ?components,
                 timeline = %self.timeline.name(),
                 time_range = self.timeline.typ().format_range(time_range),
-                "searching for time & component row index numbers..."
+                "searching for time & component component row numbers..."
             );
 
             // find the time index's row number for the primary component

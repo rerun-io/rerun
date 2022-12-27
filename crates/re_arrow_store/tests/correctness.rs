@@ -179,41 +179,41 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
 
     // empty frame_nr
     {
-        let row_indices = store.latest_at(
+        let comp_row_nrs = store.latest_at(
             &LatestAtQuery::new(timeline_frame_nr, frame39),
             &ent_path,
             Instance::name(),
             &[Instance::name()],
         );
-        assert!(row_indices.is_none());
+        assert!(comp_row_nrs.is_none());
     }
 
     // empty log_time
     {
-        let row_indices = store.latest_at(
+        let comp_row_nrs = store.latest_at(
             &LatestAtQuery::new(timeline_log_time, now_minus_1s_nanos),
             &ent_path,
             Instance::name(),
             &[Instance::name()],
         );
-        assert!(row_indices.is_none());
+        assert!(comp_row_nrs.is_none());
     }
 
     // wrong entity path
     {
-        let row_indices = store.latest_at(
+        let comp_row_nrs = store.latest_at(
             &LatestAtQuery::new(timeline_frame_nr, frame40),
             &EntityPath::from("does/not/exist"),
             Instance::name(),
             &[Instance::name()],
         );
-        assert!(row_indices.is_none());
+        assert!(comp_row_nrs.is_none());
     }
 
     // bunch of non-existing components
     {
         let components = &["they".into(), "dont".into(), "exist".into()];
-        let row_indices = store
+        let comp_row_nrs = store
             .latest_at(
                 &LatestAtQuery::new(timeline_frame_nr, frame40),
                 &ent_path,
@@ -221,13 +221,13 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
                 components,
             )
             .unwrap();
-        let rows = store.get(components, &row_indices);
+        let rows = store.get(components, &comp_row_nrs);
         rows.iter().all(|row| row.is_none());
     }
 
     // empty component list
     {
-        let row_indices = store
+        let comp_row_nrs = store
             .latest_at(
                 &LatestAtQuery::new(timeline_frame_nr, frame40),
                 &ent_path,
@@ -235,29 +235,29 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
                 &[],
             )
             .unwrap();
-        assert!(row_indices.is_empty());
+        assert!(comp_row_nrs.is_empty());
     }
 
     // wrong timeline name
     {
-        let row_indices = store.latest_at(
+        let comp_row_nrs = store.latest_at(
             &LatestAtQuery::new(timeline_wrong_name, frame40),
             &EntityPath::from("does/not/exist"),
             Instance::name(),
             &[Instance::name()],
         );
-        assert!(row_indices.is_none());
+        assert!(comp_row_nrs.is_none());
     }
 
     // wrong timeline kind
     {
-        let row_indices = store.latest_at(
+        let comp_row_nrs = store.latest_at(
             &LatestAtQuery::new(timeline_wrong_kind, frame40),
             &EntityPath::from("does/not/exist"),
             Instance::name(),
             &[Instance::name()],
         );
-        assert!(row_indices.is_none());
+        assert!(comp_row_nrs.is_none());
     }
 }
 

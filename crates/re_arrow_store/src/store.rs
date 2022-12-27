@@ -60,7 +60,7 @@ impl std::fmt::Display for ComponentRowNr {
 ///
 /// Only makes sense when used in the context of a specific `IndexBucket`.
 ///
-/// Useful to tiebreak multiple results sharing the same timestamps where ranging over data, see
+/// Useful to tiebreak multiple results sharing the same timestamps when ranging over data, see
 /// [`DataStore::range`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct IndexBucketRowNr(pub(crate) u64);
@@ -175,8 +175,8 @@ pub struct DataStore {
     /// The configuration of the data store (e.g. bucket sizes).
     pub(crate) config: DataStoreConfig,
 
-    /// Used to cache auto-generated cluster components, i.e. `[0]`, `[0, 1]`, `[0, 1, 2]`, etc
-    /// so that they properly deduplicated.
+    /// Used to cache the component row numbers of auto-generated cluster components (`[0]`,
+    /// `[0, 1]`, `[0, 1, 2]`, etc..) so that they are properly deduplicated.
     pub(crate) cluster_comp_cache: IntMap<usize, ComponentRowNr>,
 
     /// Maps an entity to its index tables, for a specific timeline.
@@ -251,7 +251,7 @@ impl DataStore {
     ///
     /// Returns an error if anything looks wrong.
     pub fn sanity_check(&self) -> anyhow::Result<()> {
-        // Row indices should be continuous across all index tables.
+        // Component row numbers should be continuous across all index tables.
         // TODO(#449): update this one appropriately when GC lands.
         {
             let mut comp_row_nrs: IntMap<_, Vec<ComponentRowNr>> = IntMap::default();
