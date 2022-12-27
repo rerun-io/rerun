@@ -6,7 +6,19 @@ use crate::{get_component_with_instances, ComponentWithInstances, EntityView};
 
 // ---
 
-// TODO
+/// Iterates over the rows of any number of components and their respective cluster keys, all from
+/// the single point-of-view of the `primary` component, returning an iterator of `EntityView`s.
+///
+/// An initial entity-view is yielded with the latest-at state at the start of the time range, if
+/// there is any.
+///
+/// The iterator only ever yields entity-views iff the `primary` component has changed.
+/// A change affecting only secondary components will not yield an entity-view.
+///
+/// This is a streaming-join: every yielded entity-view will be the result of joining the latest
+/// known state of all components, from their respective point-of-views.
+///
+/// ⚠ The semantics are subtle! See `examples/range.rs` for an example of use.
 pub fn range_entity_with_primary<'a>(
     store: &'a DataStore,
     query: &'a RangeQuery,
@@ -43,8 +55,7 @@ pub fn range_entity_with_primary<'a>(
         }
     }
 
-    // TODO
-    // Iff the primary component has some initial state, then we want to be sending an initial
+    // Iff the primary component has some initial state, then we want to be sending out an initial
     // entity-view.
     let ent_view_latest = if let (Some(latest_time), Some(cwi_prim)) = (latest_time, &state[0]) {
         let ent_view = EntityView {
@@ -78,7 +89,8 @@ pub fn range_entity_with_primary<'a>(
                     ComponentWithInstances {
                         name: component,
                         instance_keys: results[0].take(),
-                        values: results[1].take().unwrap(), // TODO
+                        // safe to unwrap, it wouldn't have yielded anything otherwise
+                        values: results[1].take().unwrap(),
                     },
                 )
             },
@@ -102,7 +114,8 @@ pub fn range_entity_with_primary<'a>(
                 // We only yield if the primary component changes!
                 (i == 0).then(|| {
                     let ent_view = EntityView {
-                        primary: state[0].clone().unwrap(), // TODO
+                        // safe to unwrap, set just above
+                        primary: state[0].clone().unwrap(), // shallow
                         components: components
                             .iter()
                             .zip(state.iter().skip(1).cloned())

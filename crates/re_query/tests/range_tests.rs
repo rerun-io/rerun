@@ -150,7 +150,7 @@ fn simple_range() {
         _ = results;
     }
 
-    // --- First test: `(timepoint1, timepoint3]` ---
+    // --- Second test: `[timepoint1, timepoint3]` ---
 
     // The inclusion of `timepoint1` means latest-at semantics will _not_ kick in!
 
@@ -164,11 +164,9 @@ fn simple_range() {
         range_entity_with_primary(&store, &query, &ent_path, Point2D::name(), components);
 
     let results = ent_views.collect::<Vec<_>>();
-    // for (time, ent_view) in ent_views {
-    //     // dbg!(&ent_view);
-    //     dbg!((time, ent_view.as_df2::<Point2D, ColorRGBA>().unwrap()));
-    // }
 
+    // We expect this to generate the following `DataFrame`s:
+    //
     // Frame #123:
     // ┌────────────────┬───────────────┬─────────────────┐
     // │ rerun.instance ┆ rerun.point2d ┆ rerun.colorrgba │
