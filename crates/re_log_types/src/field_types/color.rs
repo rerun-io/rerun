@@ -69,6 +69,14 @@ impl Component for ColorRGBA {
     }
 }
 
+#[cfg(feature = "ecolor")]
+impl From<ColorRGBA> for ecolor::Color32 {
+    fn from(color: ColorRGBA) -> Self {
+        let [r, g, b, a] = color.to_array();
+        Self::from_rgba_premultiplied(r, g, b, a)
+    }
+}
+
 #[test]
 fn test_colorrgba_roundtrip() {
     use arrow2::array::Array;
