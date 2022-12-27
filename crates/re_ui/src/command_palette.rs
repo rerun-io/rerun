@@ -76,7 +76,7 @@ impl CommandPalette {
         let mut selected_command = None;
 
         for (i, command) in Command::iter()
-            .filter(|alt| alt.text_and_tooltip().0.to_lowercase().contains(&filter))
+            .filter(|alt| alt.text().to_lowercase().contains(&filter))
             .enumerate()
         {
             let (text, tooltip) = command.text_and_tooltip();

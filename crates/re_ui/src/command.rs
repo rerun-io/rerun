@@ -28,7 +28,15 @@ pub enum Command {
 }
 
 impl Command {
-    pub fn text_and_tooltip(&self) -> (&'static str, &'static str) {
+    pub fn text(self) -> &'static str {
+        self.text_and_tooltip().0
+    }
+
+    pub fn tooltip(self) -> &'static str {
+        self.text_and_tooltip().1
+    }
+
+    pub fn text_and_tooltip(self) -> (&'static str, &'static str) {
         match self {
             Command::Save => ("Save…", "Save all data to a Rerun data file (.rrd)"),
             Command::SaveSelection => (
@@ -67,7 +75,7 @@ impl Command {
         }
     }
 
-    pub fn kb_shortcut(&self) -> Option<KeyboardShortcut> {
+    pub fn kb_shortcut(self) -> Option<KeyboardShortcut> {
         fn cmd(key: Key) -> KeyboardShortcut {
             KeyboardShortcut::new(Modifiers::COMMAND, key)
         }
@@ -117,5 +125,27 @@ impl Command {
             }
         }
         None
+    }
+
+    /// Show this command as a menu-button.
+    ///
+    /// If clicked, enqueue the command.
+    pub fn menu_button(
+        self,
+        ui: &mut egui::Ui,
+        pending_commands: &mut Vec<Command>,
+    ) -> egui::Response {
+        let (text, tooltip) = self.text_and_tooltip();
+        let shortcut = self.kb_shortcut();
+        let mut button = egui::Button::new(text);
+        if let Some(shortcut) = shortcut {
+            button = button.shortcut_text(ui.ctx().format_shortcut(&shortcut));
+        }
+        let response = ui.add(button).on_hover_text(tooltip);
+        if response.clicked() {
+            pending_commands.push(self);
+            ui.close_menu();
+        }
+        response
     }
 }

@@ -1,4 +1,4 @@
-use re_ui::CommandPalette;
+use re_ui::{Command, CommandPalette};
 
 fn main() -> eframe::Result<()> {
     let native_options = eframe::NativeOptions {
@@ -27,7 +27,7 @@ fn main() -> eframe::Result<()> {
                 dummy_bool: true,
 
                 cmd_palette: CommandPalette::default(),
-
+                pending_commands: Default::default(),
                 latest_cmd: Default::default(),
             })
         }),
@@ -45,6 +45,8 @@ pub struct ExampleApp {
 
     cmd_palette: CommandPalette,
 
+    /// Commands to run at the end of the frame.
+    pending_commands: Vec<Command>,
     latest_cmd: String,
 }
 
@@ -85,10 +87,14 @@ impl eframe::App for ExampleApp {
         });
 
         if let Some(cmd) = self.cmd_palette.show(egui_ctx) {
-            self.latest_cmd = cmd.text_and_tooltip().0.to_owned();
+            self.pending_commands.push(cmd);
         }
         if let Some(cmd) = re_ui::Command::listen_for_kb_shortcut(egui_ctx) {
-            self.latest_cmd = cmd.text_and_tooltip().0.to_owned();
+            self.pending_commands.push(cmd);
+        }
+
+        for cmd in self.pending_commands.drain(..) {
+            self.latest_cmd = cmd.text().to_owned();
         }
     }
 }
@@ -126,6 +132,8 @@ impl ExampleApp {
                     ui.set_height(top_bar_style.height);
                     ui.add_space(top_bar_style.indent);
 
+                    ui.menu_button("File", |ui| file_menu(ui, &mut self.pending_commands));
+
                     self.re_ui.medium_icon_toggle_button(
                         ui,
                         &re_ui::icons::LEFT_PANEL_TOGGLE,
@@ -148,6 +156,13 @@ impl ExampleApp {
                 });
             });
     }
+}
+
+fn file_menu(ui: &mut egui::Ui, pending_commands: &mut Vec<Command>) {
+    Command::Save.menu_button(ui, pending_commands);
+    Command::SaveSelection.menu_button(ui, pending_commands);
+    Command::Open.menu_button(ui, pending_commands);
+    Command::Quit.menu_button(ui, pending_commands);
 }
 
 fn selection_buttons(ui: &mut egui::Ui) {
