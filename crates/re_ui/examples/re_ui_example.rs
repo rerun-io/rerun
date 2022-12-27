@@ -95,6 +95,12 @@ impl eframe::App for ExampleApp {
 
         for cmd in self.pending_commands.drain(..) {
             self.latest_cmd = cmd.text().to_owned();
+
+            #[allow(clippy::single_match)]
+            match cmd {
+                Command::ToggleCommandPalette => self.cmd_palette.toggle(),
+                _ => {}
+            }
         }
     }
 }
@@ -159,10 +165,10 @@ impl ExampleApp {
 }
 
 fn file_menu(ui: &mut egui::Ui, pending_commands: &mut Vec<Command>) {
-    Command::Save.menu_button(ui, pending_commands);
-    Command::SaveSelection.menu_button(ui, pending_commands);
-    Command::Open.menu_button(ui, pending_commands);
-    Command::Quit.menu_button(ui, pending_commands);
+    Command::Save.menu_button_ui(ui, pending_commands);
+    Command::SaveSelection.menu_button_ui(ui, pending_commands);
+    Command::Open.menu_button_ui(ui, pending_commands);
+    Command::Quit.menu_button_ui(ui, pending_commands);
 }
 
 fn selection_buttons(ui: &mut egui::Ui) {

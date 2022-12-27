@@ -10,14 +10,13 @@ pub struct CommandPalette {
 }
 
 impl CommandPalette {
+    pub fn toggle(&mut self) {
+        self.visible ^= true;
+    }
+
     /// Show the command palette, if it is visible.
-    /// Also listens for the keyboard shortcut to toggle it.
     #[must_use = "Returns the command that was selected"]
     pub fn show(&mut self, egui_ctx: &egui::Context) -> Option<Command> {
-        let kb_shortcut = Command::ToggleCommandPalette
-            .kb_shortcut()
-            .expect("We need a keybloard shortcut for the command palette");
-        self.visible ^= egui_ctx.input_mut().consume_shortcut(&kb_shortcut);
         self.visible &= !egui_ctx
             .input_mut()
             .consume_key(Default::default(), Key::Escape);

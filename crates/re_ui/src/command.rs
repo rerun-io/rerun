@@ -7,18 +7,27 @@ use egui::{Key, KeyboardShortcut, Modifiers};
 /// and all are visible in the [`crate::CommandPalette`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, strum_macros::EnumIter)]
 pub enum Command {
-    /// In the order they show up in the command palette by default!
+    // Listed in the order they show up in the command palette by default!
+    #[cfg(not(target_arch = "wasm32"))]
     Save,
+    #[cfg(not(target_arch = "wasm32"))]
     SaveSelection,
+    #[cfg(not(target_arch = "wasm32"))]
     Open,
+    #[cfg(not(target_arch = "wasm32"))]
     Quit,
+
     ResetViewer,
+
+    #[cfg(not(target_arch = "wasm32"))]
     OpenProfiler,
 
     ToggleMemoryPanel,
     ToggleBlueprintPanel,
     ToggleSelectionPanel,
     ToggleTimePanel,
+
+    #[cfg(not(target_arch = "wasm32"))]
     ToggleFullscreen,
 
     SelectionPrevious,
@@ -105,9 +114,9 @@ impl Command {
             Command::ToggleBlueprintPanel => Some(ctrl_shift(Key::B)),
             Command::ToggleSelectionPanel => Some(ctrl_shift(Key::S)),
             Command::ToggleTimePanel => Some(ctrl_shift(Key::T)),
-            Command::ToggleFullscreen => Some(ctrl_shift(Key::ArrowLeft)),
-            Command::SelectionPrevious => Some(ctrl_shift(Key::ArrowRight)),
-            Command::SelectionNext => Some(KeyboardShortcut::new(Modifiers::NONE, Key::F11)),
+            Command::ToggleFullscreen => Some(KeyboardShortcut::new(Modifiers::NONE, Key::F11)),
+            Command::SelectionPrevious => Some(ctrl_shift(Key::ArrowLeft)),
+            Command::SelectionNext => Some(ctrl_shift(Key::ArrowRight)),
             Command::ToggleCommandPalette => Some(cmd(Key::P)),
         }
     }
@@ -130,22 +139,25 @@ impl Command {
     /// Show this command as a menu-button.
     ///
     /// If clicked, enqueue the command.
-    pub fn menu_button(
+    pub fn menu_button_ui(
         self,
         ui: &mut egui::Ui,
         pending_commands: &mut Vec<Command>,
     ) -> egui::Response {
-        let (text, tooltip) = self.text_and_tooltip();
-        let shortcut = self.kb_shortcut();
-        let mut button = egui::Button::new(text);
-        if let Some(shortcut) = shortcut {
-            button = button.shortcut_text(ui.ctx().format_shortcut(&shortcut));
-        }
-        let response = ui.add(button).on_hover_text(tooltip);
+        let button = self.menu_button(ui.ctx());
+        let response = ui.add(button).on_hover_text(self.tooltip());
         if response.clicked() {
             pending_commands.push(self);
             ui.close_menu();
         }
         response
+    }
+
+    pub fn menu_button(self, egui_ctx: &egui::Context) -> egui::Button {
+        let mut button = egui::Button::new(self.text());
+        if let Some(shortcut) = self.kb_shortcut() {
+            button = button.shortcut_text(egui_ctx.format_shortcut(&shortcut));
+        }
+        button
     }
 }

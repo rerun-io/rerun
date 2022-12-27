@@ -13,10 +13,11 @@ use re_format::format_number;
 use re_log_types::{ApplicationId, LogMsg, RecordingId};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::Receiver;
+use re_ui::Command;
 
 use crate::{
     misc::{Caches, Options, RecordingConfig, ViewerContext},
-    ui::kb_shortcuts,
+    ui::Blueprint,
 };
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -65,6 +66,10 @@ pub struct App {
 
     /// Measures how long a frame takes to paint
     frame_time_history: egui::util::History<f32>,
+
+    /// Commands to run at the end of the frame.
+    pending_commands: Vec<Command>,
+    cmd_palette: re_ui::CommandPalette,
 }
 
 impl App {
@@ -158,6 +163,9 @@ impl App {
             latest_queue_interest: instant::Instant::now(), // TODO(emilk): `Instant::MIN` when we have our own `Instant` that supports it.
 
             frame_time_history: egui::util::History::new(1..100, 0.5),
+
+            pending_commands: Default::default(),
+            cmd_palette: Default::default(),
         }
     }
 
@@ -220,31 +228,8 @@ impl App {
     }
 
     fn check_keyboard_shortcuts(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
-        #[cfg(not(target_arch = "wasm32"))]
-        if egui_ctx.input_mut().consume_shortcut(&kb_shortcuts::QUIT) {
-            frame.close();
-        }
-
-        if egui_ctx
-            .input_mut()
-            .consume_shortcut(&kb_shortcuts::RESET_VIEWER)
-        {
-            self.reset(egui_ctx);
-        }
-
-        #[cfg(not(target_arch = "wasm32"))]
-        if egui_ctx
-            .input_mut()
-            .consume_shortcut(&kb_shortcuts::SHOW_PROFILER)
-        {
-            self.state.profiler.start();
-        }
-
-        if egui_ctx
-            .input_mut()
-            .consume_shortcut(&kb_shortcuts::TOGGLE_MEMORY_PANEL)
-        {
-            self.memory_panel_open ^= true;
+        if let Some(cmd) = Command::listen_for_kb_shortcut(egui_ctx) {
+            self.pending_commands.push(cmd);
         }
 
         if !frame.is_web() {
@@ -252,31 +237,6 @@ impl App {
                 egui_ctx,
                 frame.info().native_pixels_per_point,
             );
-        }
-
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            if egui_ctx.input_mut().consume_shortcut(&kb_shortcuts::SAVE) {
-                save(self, None);
-            }
-
-            if egui_ctx
-                .input_mut()
-                .consume_shortcut(&kb_shortcuts::SAVE_SELECTION)
-            {
-                save(self, self.loop_selection());
-            }
-
-            if egui_ctx.input_mut().consume_shortcut(&kb_shortcuts::OPEN) {
-                open(self);
-            }
-
-            if egui_ctx
-                .input_mut()
-                .consume_shortcut(&kb_shortcuts::TOGGLE_FULLSCREEN)
-            {
-                frame.set_fullscreen(!frame.info().window_info.fullscreen);
-            }
         }
     }
 
@@ -292,6 +252,77 @@ impl App {
                     .loop_selection()
                     .map(|q| (*rec_cfg.time_ctrl.timeline(), q))
             })
+    }
+
+    fn run_pending_commands(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
+        let commands = self.pending_commands.drain(..).collect_vec();
+        for cmd in commands {
+            match cmd {
+                #[cfg(not(target_arch = "wasm32"))]
+                Command::Save => {
+                    save(self, None);
+                }
+                #[cfg(not(target_arch = "wasm32"))]
+                Command::SaveSelection => {
+                    save(self, self.loop_selection());
+                }
+                #[cfg(not(target_arch = "wasm32"))]
+                Command::Open => {
+                    open(self);
+                }
+                #[cfg(not(target_arch = "wasm32"))]
+                Command::Quit => {
+                    frame.close();
+                }
+
+                Command::ResetViewer => {
+                    self.reset(egui_ctx);
+                }
+
+                #[cfg(not(target_arch = "wasm32"))]
+                Command::OpenProfiler => {
+                    self.state.profiler.start();
+                }
+
+                Command::ToggleMemoryPanel => {
+                    self.memory_panel_open ^= true;
+                }
+                Command::ToggleBlueprintPanel => {
+                    self.blueprint_mut().blueprint_panel_expanded ^= true;
+                }
+                Command::ToggleSelectionPanel => {
+                    self.blueprint_mut().selection_panel_expanded ^= true;
+                }
+                Command::ToggleTimePanel => {
+                    self.blueprint_mut().time_panel_expanded ^= true;
+                }
+
+                #[cfg(not(target_arch = "wasm32"))]
+                Command::ToggleFullscreen => {
+                    frame.set_fullscreen(!frame.info().window_info.fullscreen);
+                }
+
+                Command::SelectionPrevious => {
+                    self.state.selection_history.select_previous();
+                }
+                Command::SelectionNext => {
+                    self.state.selection_history.select_next();
+                }
+                Command::ToggleCommandPalette => {
+                    self.cmd_palette.toggle();
+                }
+            }
+        }
+    }
+
+    fn blueprint_mut(&mut self) -> &mut Blueprint {
+        let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
+        let selected_app_id = log_db
+            .recording_info()
+            .map_or_else(ApplicationId::unknown, |rec_info| {
+                rec_info.application_id.clone()
+            });
+        self.state.blueprints.entry(selected_app_id).or_default()
     }
 }
 
@@ -360,29 +391,37 @@ impl eframe::App for App {
             .or_default()
             .on_frame_start();
 
-        // TODO(andreas): store the re_renderer somewhere else.
-        let egui_renderer = {
-            let render_state = frame.wgpu_render_state().unwrap();
-            &mut render_state.renderer.write()
-        };
-        let render_ctx = egui_renderer
-            .paint_callback_resources
-            .get_mut::<re_renderer::RenderContext>()
-            .unwrap();
-        render_ctx.frame_maintenance();
+        {
+            // TODO(andreas): store the re_renderer somewhere else.
+            let egui_renderer = {
+                let render_state = frame.wgpu_render_state().unwrap();
+                &mut render_state.renderer.write()
+            };
+            let render_ctx = egui_renderer
+                .paint_callback_resources
+                .get_mut::<re_renderer::RenderContext>()
+                .unwrap();
+            render_ctx.frame_maintenance();
 
-        if log_db.is_empty() && self.rx.is_some() {
-            egui::CentralPanel::default().show(egui_ctx, |ui| {
-                ui.centered_and_justified(|ui| {
-                    ui.strong("Waiting for data…"); // TODO(emilk): show what ip/port we are listening to
+            if log_db.is_empty() && self.rx.is_some() {
+                egui::CentralPanel::default().show(egui_ctx, |ui| {
+                    ui.centered_and_justified(|ui| {
+                        ui.strong("Waiting for data…"); // TODO(emilk): show what ip/port we are listening to
+                    });
                 });
-            });
-        } else {
-            self.state.show(egui_ctx, render_ctx, log_db, &self.re_ui);
+            } else {
+                self.state.show(egui_ctx, render_ctx, log_db, &self.re_ui);
+            }
         }
 
         self.handle_dropping_files(egui_ctx);
         self.toasts.show(egui_ctx);
+
+        if let Some(cmd) = self.cmd_palette.show(egui_ctx) {
+            self.pending_commands.push(cmd);
+        }
+
+        self.run_pending_commands(egui_ctx, frame);
 
         self.frame_time_history
             .add(egui_ctx.input().time, frame_start.elapsed().as_secs_f32());
@@ -762,7 +801,7 @@ fn top_bar_ui(
 ) {
     #[cfg(not(target_arch = "wasm32"))]
     ui.menu_button("File", |ui| {
-        file_menu(ui, app, frame);
+        file_menu(ui, app);
     });
 
     ui.menu_button("View", |ui| {
@@ -896,17 +935,12 @@ fn top_bar_ui(
 
             let blueprint = app.state.blueprints.entry(selected_app_id).or_default();
 
-            use crate::ui::kb_shortcuts::{
-                TOGGLE_BLUEPRINT_PANEL, TOGGLE_SELECTION_PANEL, TOGGLE_TIME_PANEL,
-            };
-
-            {
-                let mut input = ui.ctx().input_mut();
-                blueprint.selection_panel_expanded ^=
-                    input.consume_shortcut(&TOGGLE_SELECTION_PANEL);
-                blueprint.time_panel_expanded ^= input.consume_shortcut(&TOGGLE_TIME_PANEL);
-                blueprint.blueprint_panel_expanded ^=
-                    input.consume_shortcut(&TOGGLE_BLUEPRINT_PANEL);
+            fn format_shortcut(egui_ctx: &egui::Context, command: Command) -> String {
+                if let Some(kb_shortcut) = command.kb_shortcut() {
+                    format!(" ({})", egui_ctx.format_shortcut(&kb_shortcut))
+                } else {
+                    Default::default()
+                }
             }
 
             // From right-to-left:
@@ -917,8 +951,8 @@ fn top_bar_ui(
                     &mut blueprint.selection_panel_expanded,
                 )
                 .on_hover_text(format!(
-                    "Toggle Selection View ({})",
-                    ui.ctx().format_shortcut(&TOGGLE_SELECTION_PANEL)
+                    "Toggle Selection View{}",
+                    format_shortcut(ui.ctx(), Command::ToggleSelectionPanel)
                 ));
 
             app.re_ui
@@ -928,8 +962,8 @@ fn top_bar_ui(
                     &mut blueprint.time_panel_expanded,
                 )
                 .on_hover_text(format!(
-                    "Toggle Timeline View ({})",
-                    ui.ctx().format_shortcut(&TOGGLE_TIME_PANEL)
+                    "Toggle Timeline View{}",
+                    format_shortcut(ui.ctx(), Command::ToggleTimePanel)
                 ));
 
             app.re_ui
@@ -939,8 +973,8 @@ fn top_bar_ui(
                     &mut blueprint.blueprint_panel_expanded,
                 )
                 .on_hover_text(format!(
-                    "Toggle Blueprint View ({})",
-                    ui.ctx().format_shortcut(&TOGGLE_BLUEPRINT_PANEL)
+                    "Toggle Blueprint View{}",
+                    format_shortcut(ui.ctx(), Command::ToggleBlueprintPanel)
                 ));
 
             ui.vertical_centered(|ui| {
@@ -1002,16 +1036,14 @@ fn file_saver_progress_ui(egui_ctx: &egui::Context, app: &mut App) {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn file_menu(ui: &mut egui::Ui, app: &mut App, frame: &mut eframe::Frame) {
+fn file_menu(ui: &mut egui::Ui, app: &mut App) {
     // TODO(emilk): support saving data on web
     #[cfg(not(target_arch = "wasm32"))]
     {
         let file_save_in_progress = app.promise_exists(FILE_SAVER_PROMISE);
 
-        let save_button =
-            egui::Button::new("Save…").shortcut_text(ui.ctx().format_shortcut(&kb_shortcuts::SAVE));
-        let save_selection_button = egui::Button::new("Save loop selection…")
-            .shortcut_text(ui.ctx().format_shortcut(&kb_shortcuts::SAVE_SELECTION));
+        let save_button = Command::Save.menu_button(ui.ctx());
+        let save_selection_button = Command::SaveSelection.menu_button(ui.ctx());
 
         if file_save_in_progress {
             ui.add_enabled_ui(false, |ui| {
@@ -1025,66 +1057,41 @@ fn file_menu(ui: &mut egui::Ui, app: &mut App, frame: &mut eframe::Frame) {
                 });
             });
         } else {
-            let (clicked, loop_selection) = ui
-                .add_enabled_ui(!app.log_db().is_empty(), |ui| {
-                    if ui
-                        .add(save_button)
-                        .on_hover_text("Save all data to a Rerun data file (.rrd)")
-                        .clicked()
-                    {
-                        ui.close_menu();
-                        return (true, None);
-                    }
+            ui.add_enabled_ui(!app.log_db().is_empty(), |ui| {
+                if ui
+                    .add(save_button)
+                    .on_hover_text("Save all data to a Rerun data file (.rrd)")
+                    .clicked()
+                {
+                    ui.close_menu();
+                    app.pending_commands.push(Command::Save);
+                }
 
-                    // We need to know the loop selection _before_ we can even display the
-                    // button, as this will determine wether its grayed out or not!
-                    // TODO(cmc): In practice the loop (green) selection is always there
-                    // at the moment so...
-                    let loop_selection = app.loop_selection();
+                // We need to know the loop selection _before_ we can even display the
+                // button, as this will determine wether its grayed out or not!
+                // TODO(cmc): In practice the loop (green) selection is always there
+                // at the moment so...
+                let loop_selection = app.loop_selection();
 
-                    if ui
-                        .add_enabled(loop_selection.is_some(), save_selection_button)
-                        .on_hover_text(
-                            "Save data for the current loop selection to a Rerun data file (.rrd)",
-                        )
-                        .clicked()
-                    {
-                        ui.close_menu();
-                        return (true, loop_selection);
-                    }
-
-                    (false, None)
-                })
-                .inner;
-
-            if clicked {
-                // User clicked the Save button, there is no other file save running, and
-                // the DB isn't empty: let's spawn a new one.
-
-                save(app, loop_selection);
-            }
+                if ui
+                    .add_enabled(loop_selection.is_some(), save_selection_button)
+                    .on_hover_text(
+                        "Save data for the current loop selection to a Rerun data file (.rrd)",
+                    )
+                    .clicked()
+                {
+                    ui.close_menu();
+                    app.pending_commands.push(Command::SaveSelection);
+                }
+            });
         }
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    if ui
-        .add(
-            egui::Button::new("Open…").shortcut_text(ui.ctx().format_shortcut(&kb_shortcuts::OPEN)),
-        )
-        .on_hover_text("Open a Rerun Data File (.rrd)")
-        .clicked()
-    {
-        open(app);
-        ui.close_menu();
-    }
+    Command::Open.menu_button_ui(ui, &mut app.pending_commands);
 
     #[cfg(not(target_arch = "wasm32"))]
-    if ui
-        .add(egui::Button::new("Quit").shortcut_text(ui.ctx().format_shortcut(&kb_shortcuts::QUIT)))
-        .clicked()
-    {
-        frame.close();
-    }
+    Command::Quit.menu_button_ui(ui, &mut app.pending_commands);
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -1134,54 +1141,16 @@ fn view_menu(ui: &mut egui::Ui, app: &mut App, frame: &mut eframe::Frame) {
 
     #[cfg(not(target_arch = "wasm32"))]
     {
-        if ui
-            .add(
-                egui::Button::new("Toggle fullscreen")
-                    .shortcut_text(ui.ctx().format_shortcut(&kb_shortcuts::TOGGLE_FULLSCREEN)),
-            )
-            .clicked()
-        {
-            frame.set_fullscreen(!frame.info().window_info.fullscreen);
-            ui.close_menu();
-        }
+        Command::ToggleFullscreen.menu_button_ui(ui, &mut app.pending_commands);
         ui.separator();
     }
 
-    if ui
-        .add(
-            egui::Button::new("Reset Viewer")
-                .shortcut_text(ui.ctx().format_shortcut(&kb_shortcuts::RESET_VIEWER)),
-        )
-        .on_hover_text("Reset the viewer to how it looked the first time you ran it")
-        .clicked()
-    {
-        app.reset(ui.ctx());
-        ui.close_menu();
-    }
+    Command::ResetViewer.menu_button_ui(ui, &mut app.pending_commands);
 
     #[cfg(not(target_arch = "wasm32"))]
-    if ui
-        .add(
-            egui::Button::new("Profile Viewer")
-                .shortcut_text(ui.ctx().format_shortcut(&kb_shortcuts::SHOW_PROFILER)),
-        )
-        .on_hover_text("Starts a profiler, showing what makes the viewer run slow")
-        .clicked()
-    {
-        app.state.profiler.start();
-        ui.close_menu();
-    }
+    Command::OpenProfiler.menu_button_ui(ui, &mut app.pending_commands);
 
-    if ui
-        .add(
-            egui::Button::new("Toggle Memory Panel")
-                .shortcut_text(ui.ctx().format_shortcut(&kb_shortcuts::TOGGLE_MEMORY_PANEL)),
-        )
-        .clicked()
-    {
-        app.memory_panel_open ^= true;
-        ui.close_menu();
-    }
+    Command::ToggleMemoryPanel.menu_button_ui(ui, &mut app.pending_commands);
 }
 
 // ---
