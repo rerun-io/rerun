@@ -621,3 +621,44 @@ fn test_two_sparse_ranges() {
     assert_eq!(set.remove(..0), 150);
     assert_eq!(set.total_count(), 150);
 }
+
+#[test]
+fn test_removal() {
+    let mut set = Int64Histogram::default();
+    set.increment(i64::MAX, 1);
+    set.increment(i64::MAX - 1, 2);
+    set.increment(i64::MAX - 2, 3);
+    set.increment(i64::MIN + 2, 3);
+    set.increment(i64::MIN + 1, 2);
+    set.increment(i64::MIN, 1);
+
+    debug_assert_eq!(set.range_count((i64::MAX - 1)..=i64::MAX), 3);
+    debug_assert_eq!(
+        set.range_iter(0.., 1).collect::<Vec<_>>(),
+        vec![
+            (RangeI64::single(i64::MAX - 2), 3),
+            (RangeI64::single(i64::MAX - 1), 2),
+            (RangeI64::single(i64::MAX), 1),
+        ]
+    );
+
+    set.remove(i64::MAX..=i64::MAX);
+
+    debug_assert_eq!(
+        set.range_iter(.., 1).collect::<Vec<_>>(),
+        vec![
+            (RangeI64::single(i64::MIN), 1),
+            (RangeI64::single(i64::MIN + 1), 2),
+            (RangeI64::single(i64::MIN + 2), 3),
+            (RangeI64::single(i64::MAX - 2), 3),
+            (RangeI64::single(i64::MAX - 1), 2),
+        ]
+    );
+
+    set.remove(i64::MIN..=(i64::MAX - 2));
+
+    debug_assert_eq!(
+        set.range_iter(.., 1).collect::<Vec<_>>(),
+        vec![(RangeI64::single(i64::MAX - 1), 2),]
+    );
+}
