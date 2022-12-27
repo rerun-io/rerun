@@ -45,6 +45,10 @@ pub(crate) struct RangeU64 {
 }
 
 impl RangeU64 {
+    pub fn new(min: u64, max: u64) -> Self {
+        Self { min, max }
+    }
+
     pub fn single(value: u64) -> Self {
         Self {
             min: value,
@@ -55,6 +59,11 @@ impl RangeU64 {
     #[inline]
     pub fn contains(&self, value: u64) -> bool {
         self.min <= value && value <= self.max
+    }
+
+    #[inline]
+    pub fn contains_all_of(&self, other: RangeU64) -> bool {
+        self.contains(other.min) && self.contains(other.max)
     }
 
     #[inline]

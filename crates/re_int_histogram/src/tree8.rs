@@ -4,15 +4,13 @@
 //! This uses about half the memory of [`crate::tree16`], but is also half as fast.
 //! I believe we could trim [`crate::tree16`] to use much less memory,
 //! by using dynamically sized nodes, but that's left as an exercise for later.
-//!
-//! In this implementation, the internal structures uses relative addresses.
-//! I'm not sure this was the correct choice.
 
 use crate::{i64_key_from_u64_key, u64_key_from_i64_key, RangeI64, RangeU64};
 
 // ----------------------------------------------------------------------------
 
 type Level = u64;
+
 const ROOT_LEVEL: Level = 61;
 const LEAF_LEVEL: Level = 1;
 const LEVEL_STEP: u64 = 3;
@@ -95,7 +93,7 @@ impl Int64Histogram {
     pub fn range_count(&self, range: impl std::ops::RangeBounds<i64>) -> u64 {
         let range = range_u64_from_range_bounds(range);
         if range.min <= range.max {
-            self.tree.range_count(ROOT_LEVEL, range)
+            self.tree.range_count(0, ROOT_LEVEL, range)
         } else {
             0
         }
@@ -129,7 +127,7 @@ impl Int64Histogram {
     /// Returns how much count was removed
     pub fn remove(&mut self, range: impl std::ops::RangeBounds<i64>) -> u64 {
         let range = range_u64_from_range_bounds(range);
-        self.tree.remove(ROOT_LEVEL, range)
+        self.tree.remove(0, ROOT_LEVEL, range)
     }
 }
 
@@ -155,7 +153,6 @@ impl<'a> Iterator for Iter<'a> {
 
 // ----------------------------------------------------------------------------
 // Low-level data structure.
-// All internal addressed are relative.
 
 /// 136 bytes large
 /// Has sixteen levels. The root is level 15, the leaves level 0.
@@ -202,16 +199,16 @@ impl Tree {
         }
     }
 
-    fn increment(&mut self, level: Level, rel_addr: u64, inc: u32) {
+    fn increment(&mut self, level: Level, addr: u64, inc: u32) {
         match self {
             Tree::Node(node) => {
-                node.increment(level, rel_addr, inc);
+                node.increment(level, addr, inc);
             }
             Tree::Sparse(sparse) => {
-                *self = std::mem::take(sparse).increment(level, rel_addr, inc);
+                *self = std::mem::take(sparse).increment(level, addr, inc);
             }
             Tree::Dense(dense) => {
-                dense.increment(rel_addr, inc);
+                dense.increment(addr, inc);
             }
         }
     }
@@ -232,38 +229,38 @@ impl Tree {
         }
     }
 
-    fn range_count(&self, level: Level, range: RangeU64) -> u64 {
+    fn range_count(&self, my_addr: u64, my_level: Level, range: RangeU64) -> u64 {
         match self {
-            Tree::Node(node) => node.range_count(level, range),
+            Tree::Node(node) => node.range_count(my_addr, my_level, range),
             Tree::Sparse(sparse) => sparse.range_count(range),
-            Tree::Dense(dense) => dense.range_count(range),
+            Tree::Dense(dense) => dense.range_count(my_addr, range),
         }
     }
 
     /// Returns how much the total count decreased by.
-    fn remove(&mut self, level: Level, range: RangeU64) -> u64 {
+    fn remove(&mut self, my_addr: u64, my_level: Level, range: RangeU64) -> u64 {
         match self {
             Tree::Node(node) => {
-                let count_loss = node.remove(level, range);
+                let count_loss = node.remove(my_addr, my_level, range);
                 if node.is_empty() {
                     *self = Tree::Sparse(Sparse::default());
                 }
                 count_loss
             }
             Tree::Sparse(sparse) => sparse.remove(range),
-            Tree::Dense(dense) => dense.remove(range),
+            Tree::Dense(dense) => dense.remove(my_addr, range),
         }
     }
 }
 
 impl Node {
-    fn increment(&mut self, level: Level, rel_addr: u64, inc: u32) {
+    fn increment(&mut self, level: Level, addr: u64, inc: u32) {
         debug_assert!(level != LEAF_LEVEL);
         let child_level = level - LEVEL_STEP;
-        let (top_addr, bottom_addr) = split_address(level, rel_addr);
+        let (top_addr, _) = split_address(level, addr);
         self.children[top_addr as usize]
             .get_or_insert_with(|| Box::new(Tree::for_level(child_level)))
-            .increment(child_level, bottom_addr, inc);
+            .increment(child_level, addr, inc);
         self.total_count += inc as u64;
     }
 
@@ -275,39 +272,26 @@ impl Node {
         self.total_count
     }
 
-    fn range_count(&self, level: Level, mut range: RangeU64) -> u64 {
+    fn range_count(&self, my_addr: u64, my_level: Level, range: RangeU64) -> u64 {
         debug_assert!(range.min <= range.max);
-        debug_assert!(level != LEAF_LEVEL);
+        debug_assert!(my_level != LEAF_LEVEL);
 
-        let min_child = (range.min >> level) & ADDR_MASK;
-        let max_child = ((range.max >> level) & ADDR_MASK).min(NUM_CHILDREN_IN_NODE - 1);
-        debug_assert!(
-            min_child <= max_child,
-            "Why where we called if we are not in range?"
-        );
-
-        let range_includes_all_of_us = (min_child, max_child) == (0, NUM_CHILDREN_IN_NODE - 1);
-        if range_includes_all_of_us {
-            return self.total_count;
-        }
-
-        let (child_level, child_size) = child_level_and_size(level);
+        let (child_level, child_size) = child_level_and_size(my_level);
 
         let mut total_count = 0;
 
         for ci in 0..NUM_CHILDREN_IN_NODE {
-            if min_child <= ci {
+            let child_addr = my_addr + ci * child_size;
+            let child_range = RangeU64::new(child_addr, child_addr + (child_size - 1));
+            if range.intersects(child_range) {
                 if let Some(child) = &self.children[ci as usize] {
-                    total_count += child.range_count(child_level, range);
+                    if range.contains_all_of(child_range) {
+                        total_count += child.total_count();
+                    } else {
+                        total_count += child.range_count(child_addr, child_level, range);
+                    }
                 }
             }
-
-            // slide range:
-            if range.max < child_size {
-                break; // the next child won't be in range
-            }
-            range.min = range.min.saturating_sub(child_size);
-            range.max = range.max.saturating_sub(child_size);
         }
 
         total_count
@@ -315,43 +299,29 @@ impl Node {
 
     /// Returns how much the total count decreased by.
     #[must_use]
-    fn remove(&mut self, level: Level, mut range: RangeU64) -> u64 {
+    fn remove(&mut self, my_addr: u64, my_level: Level, range: RangeU64) -> u64 {
         debug_assert!(range.min <= range.max);
-        debug_assert!(level != LEAF_LEVEL);
-
-        let min_child = (range.min >> level) & ADDR_MASK;
-        let max_child = ((range.max >> level) & ADDR_MASK).min(NUM_CHILDREN_IN_NODE - 1);
-        debug_assert!(
-            min_child <= max_child,
-            "Why where we called if we are not in range?"
-        );
-
-        let range_includes_all_of_us = (min_child, max_child) == (0, NUM_CHILDREN_IN_NODE - 1);
-        if range_includes_all_of_us {
-            let count_loss = self.total_count;
-            *self = Default::default();
-            return count_loss;
-        }
+        debug_assert!(my_level != LEAF_LEVEL);
 
         let mut count_loss = 0;
-        let (child_level, child_size) = child_level_and_size(level);
+        let (child_level, child_size) = child_level_and_size(my_level);
 
         for ci in 0..NUM_CHILDREN_IN_NODE {
-            if min_child <= ci {
+            let child_addr = my_addr + ci * child_size;
+            let child_range = RangeU64::new(child_addr, child_addr + (child_size - 1));
+            if range.intersects(child_range) {
                 if let Some(child) = &mut self.children[ci as usize] {
-                    count_loss += child.remove(child_level, range);
-                    if child.is_empty() {
+                    if range.contains_all_of(child_range) {
+                        count_loss += child.total_count();
                         self.children[ci as usize] = None;
+                    } else {
+                        count_loss += child.remove(child_addr, child_level, range);
+                        if child.is_empty() {
+                            self.children[ci as usize] = None;
+                        }
                     }
                 }
             }
-
-            // slide range:
-            if range.max < child_size {
-                break; // the next child won't be in range
-            }
-            range.min = range.min.saturating_sub(child_size);
-            range.max = range.max.saturating_sub(child_size);
         }
 
         self.total_count -= count_loss;
@@ -373,11 +343,11 @@ impl Sparse {
     }
 
     #[must_use]
-    fn increment(mut self, level: Level, rel_addr: u64, inc: u32) -> Tree {
-        let index = self.addrs.partition_point(|&addr| addr < rel_addr);
+    fn increment(mut self, level: Level, abs_addr: u64, inc: u32) -> Tree {
+        let index = self.addrs.partition_point(|&addr| addr < abs_addr);
 
         if let (Some(addr), Some(count)) = (self.addrs.get_mut(index), self.counts.get_mut(index)) {
-            if *addr == rel_addr {
+            if *addr == abs_addr {
                 *count += inc;
                 return Tree::Sparse(self);
             }
@@ -385,12 +355,12 @@ impl Sparse {
 
         const OVERFLOW_CUTOFF: usize = 32;
         if self.addrs.len() < OVERFLOW_CUTOFF {
-            self.addrs.insert(index, rel_addr);
+            self.addrs.insert(index, abs_addr);
             self.counts.insert(index, inc);
             Tree::Sparse(self)
         } else {
             let mut node = self.overflow(level);
-            node.increment(level, rel_addr, inc);
+            node.increment(level, abs_addr, inc);
             Tree::Node(node)
         }
     }
@@ -434,8 +404,8 @@ impl Sparse {
 }
 
 impl Dense {
-    fn increment(&mut self, rel_addr: u64, inc: u32) {
-        self.counts[rel_addr as usize] += inc;
+    fn increment(&mut self, abs_addr: u64, inc: u32) {
+        self.counts[(abs_addr & (NUM_CHILDREN_IN_DENSE - 1)) as usize] += inc;
     }
 
     fn is_empty(&self) -> bool {
@@ -446,27 +416,27 @@ impl Dense {
         self.counts.iter().map(|&c| c as u64).sum()
     }
 
-    fn range_count(&self, range: RangeU64) -> u64 {
+    fn range_count(&self, my_addr: u64, range: RangeU64) -> u64 {
         debug_assert!(range.min <= range.max);
         let mut total_count = 0;
-        for &count in
-            &self.counts[range.min as usize..=(range.max.min(NUM_CHILDREN_IN_DENSE - 1) as usize)]
-        {
-            total_count += count as u64;
+        for (i, count) in self.counts.iter().enumerate() {
+            if range.contains(my_addr + i as u64) {
+                total_count += *count as u64;
+            }
         }
         total_count
     }
 
     /// Returns how much the total count decreased by.
     #[must_use]
-    fn remove(&mut self, range: RangeU64) -> u64 {
+    fn remove(&mut self, my_addr: u64, range: RangeU64) -> u64 {
         debug_assert!(range.min <= range.max);
         let mut count_loss = 0;
-        for count in &mut self.counts
-            [range.min as usize..=(range.max.min(NUM_CHILDREN_IN_DENSE - 1) as usize)]
-        {
-            count_loss += *count as u64;
-            *count = 0;
+        for (i, count) in self.counts.iter_mut().enumerate() {
+            if range.contains(my_addr + i as u64) {
+                count_loss += *count as u64;
+                *count = 0;
+            }
         }
         count_loss
     }
@@ -502,18 +472,17 @@ impl<'a> Iterator for TreeIterator<'a> {
                     let (child_level, child_size) = child_level_and_size(it.level);
 
                     while it.index < NUM_CHILDREN_IN_NODE as _ {
-                        let abs_addr = it.abs_addr + child_size * it.index as u64;
+                        let child_addr = it.abs_addr + child_size * it.index as u64;
                         let child_range = RangeU64 {
-                            min: abs_addr,
-                            max: abs_addr + (child_size - 1),
+                            min: child_addr,
+                            max: child_addr + (child_size - 1),
                         };
                         if self.range.intersects(child_range) {
                             if let Some(Some(child)) = node.children.get(it.index) {
                                 it.index += 1;
 
                                 if child_size <= self.cutoff_size
-                                    && self.range.contains(child_range.min)
-                                    && self.range.contains(child_range.max)
+                                    && self.range.contains_all_of(child_range)
                                 {
                                     let count = child.total_count();
                                     return Some((child_range, count));
@@ -521,7 +490,7 @@ impl<'a> Iterator for TreeIterator<'a> {
 
                                 self.stack.push(NodeIterator {
                                     level: child_level,
-                                    abs_addr,
+                                    abs_addr: child_addr,
                                     tree: child,
                                     index: 0,
                                 });
@@ -533,13 +502,12 @@ impl<'a> Iterator for TreeIterator<'a> {
                     self.stack.pop();
                 }
                 Tree::Sparse(sparse) => {
-                    while let (Some(rel_addr), Some(count)) =
+                    while let (Some(abs_addr), Some(count)) =
                         (sparse.addrs.get(it.index), sparse.counts.get(it.index))
                     {
                         it.index += 1;
-                        let abs_addr = it.abs_addr + *rel_addr;
-                        if self.range.contains(abs_addr) {
-                            return Some((RangeU64::single(abs_addr), *count as u64));
+                        if self.range.contains(*abs_addr) {
+                            return Some((RangeU64::single(*abs_addr), *count as u64));
                         }
                     }
                     self.stack.pop();
