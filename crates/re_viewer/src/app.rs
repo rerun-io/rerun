@@ -257,71 +257,91 @@ impl App {
     fn run_pending_commands(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
         let commands = self.pending_commands.drain(..).collect_vec();
         for cmd in commands {
-            match cmd {
-                #[cfg(not(target_arch = "wasm32"))]
-                Command::Save => {
-                    save(self, None);
-                }
-                #[cfg(not(target_arch = "wasm32"))]
-                Command::SaveSelection => {
-                    save(self, self.loop_selection());
-                }
-                #[cfg(not(target_arch = "wasm32"))]
-                Command::Open => {
-                    open(self);
-                }
-                #[cfg(not(target_arch = "wasm32"))]
-                Command::Quit => {
-                    frame.close();
-                }
+            self.run_command(cmd, frame, egui_ctx);
+        }
+    }
 
-                Command::ResetViewer => {
-                    self.reset(egui_ctx);
-                }
+    fn run_command(&mut self, cmd: Command, frame: &mut eframe::Frame, egui_ctx: &egui::Context) {
+        match cmd {
+            #[cfg(not(target_arch = "wasm32"))]
+            Command::Save => {
+                save(self, None);
+            }
+            #[cfg(not(target_arch = "wasm32"))]
+            Command::SaveSelection => {
+                save(self, self.loop_selection());
+            }
+            #[cfg(not(target_arch = "wasm32"))]
+            Command::Open => {
+                open(self);
+            }
+            #[cfg(not(target_arch = "wasm32"))]
+            Command::Quit => {
+                frame.close();
+            }
 
-                #[cfg(not(target_arch = "wasm32"))]
-                Command::OpenProfiler => {
-                    self.state.profiler.start();
-                }
+            Command::ResetViewer => {
+                self.reset(egui_ctx);
+            }
 
-                Command::ToggleMemoryPanel => {
-                    self.memory_panel_open ^= true;
-                }
-                Command::ToggleBlueprintPanel => {
-                    self.blueprint_mut().blueprint_panel_expanded ^= true;
-                }
-                Command::ToggleSelectionPanel => {
-                    self.blueprint_mut().selection_panel_expanded ^= true;
-                }
-                Command::ToggleTimePanel => {
-                    self.blueprint_mut().time_panel_expanded ^= true;
-                }
+            #[cfg(not(target_arch = "wasm32"))]
+            Command::OpenProfiler => {
+                self.state.profiler.start();
+            }
 
-                #[cfg(not(target_arch = "wasm32"))]
-                Command::ToggleFullscreen => {
-                    frame.set_fullscreen(!frame.info().window_info.fullscreen);
-                }
+            Command::ToggleMemoryPanel => {
+                self.memory_panel_open ^= true;
+            }
+            Command::ToggleBlueprintPanel => {
+                self.blueprint_mut().blueprint_panel_expanded ^= true;
+            }
+            Command::ToggleSelectionPanel => {
+                self.blueprint_mut().selection_panel_expanded ^= true;
+            }
+            Command::ToggleTimePanel => {
+                self.blueprint_mut().time_panel_expanded ^= true;
+            }
 
-                Command::SelectionPrevious => {
-                    self.state.selection_history.select_previous();
-                }
-                Command::SelectionNext => {
-                    self.state.selection_history.select_next();
-                }
-                Command::ToggleCommandPalette => {
-                    self.cmd_palette.toggle();
+            #[cfg(not(target_arch = "wasm32"))]
+            Command::ToggleFullscreen => {
+                frame.set_fullscreen(!frame.info().window_info.fullscreen);
+            }
+
+            Command::SelectionPrevious => {
+                self.state.selection_history.select_previous();
+            }
+            Command::SelectionNext => {
+                self.state.selection_history.select_next();
+            }
+            Command::ToggleCommandPalette => {
+                self.cmd_palette.toggle();
+            }
+
+            Command::PlaybackTogglePlayPause => {
+                let rec_id = self.state.selected_rec_id;
+                if let Some(rec_cfg) = self.state.recording_configs.get_mut(&rec_id) {
+                    if let Some(log_db) = self.log_dbs.get(&rec_id) {
+                        rec_cfg
+                            .time_ctrl
+                            .toggle_play_pause(log_db.times_per_timeline());
+                    }
                 }
             }
         }
     }
 
-    fn blueprint_mut(&mut self) -> &mut Blueprint {
+    fn selected_app_id(&mut self) -> ApplicationId {
         let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
         let selected_app_id = log_db
             .recording_info()
             .map_or_else(ApplicationId::unknown, |rec_info| {
                 rec_info.application_id.clone()
             });
+        selected_app_id
+    }
+
+    fn blueprint_mut(&mut self) -> &mut Blueprint {
+        let selected_app_id = self.selected_app_id();
         self.state.blueprints.entry(selected_app_id).or_default()
     }
 }

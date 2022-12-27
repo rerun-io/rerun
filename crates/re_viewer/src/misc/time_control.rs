@@ -168,6 +168,14 @@ impl TimeControl {
         self.playing = false;
     }
 
+    pub fn toggle_play_pause(&mut self, times_per_timeline: &TimesPerTimeline) {
+        if self.is_playing() {
+            self.pause();
+        } else {
+            self.play(times_per_timeline);
+        }
+    }
+
     /// playback speed
     pub fn speed(&self) -> f32 {
         self.speed

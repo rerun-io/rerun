@@ -48,20 +48,6 @@ impl TimeControl {
         times_per_timeline: &TimesPerTimeline,
         ui: &mut egui::Ui,
     ) {
-        // Toggle with space
-        let anything_has_focus = ui.ctx().memory().focus().is_some();
-        if !anything_has_focus
-            && ui
-                .input_mut()
-                .consume_key(Default::default(), egui::Key::Space)
-        {
-            if self.is_playing() {
-                self.pause();
-            } else {
-                self.play(times_per_timeline);
-            }
-        }
-
         self.play_button_ui(re_ui, ui, times_per_timeline);
         self.pause_button_ui(re_ui, ui);
         self.step_time_button_ui(re_ui, ui, times_per_timeline);
@@ -77,7 +63,7 @@ impl TimeControl {
     ) {
         if re_ui
             .large_button_selected(ui, &re_ui::icons::PLAY, self.is_playing())
-            .on_hover_text("Play. Toggle with SPACE")
+            .on_hover_text(format!("Play.{}", toggle_playback_text(ui.ctx())))
             .clicked()
         {
             self.play(times_per_timeline);
@@ -87,7 +73,7 @@ impl TimeControl {
     fn pause_button_ui(&mut self, re_ui: &re_ui::ReUi, ui: &mut egui::Ui) {
         if re_ui
             .large_button_selected(ui, &re_ui::icons::PAUSE, !self.is_playing())
-            .on_hover_text("Pause. Toggle with SPACE")
+            .on_hover_text(format!("Pause.{}", toggle_playback_text(ui.ctx())))
             .clicked()
         {
             self.pause();
@@ -263,5 +249,13 @@ fn step_back_time_looped<T>(
         TimeReal::from(*previous.0)
     } else {
         step_back_time(time, values).into()
+    }
+}
+
+fn toggle_playback_text(egui_ctx: &egui::Context) -> String {
+    if let Some(shortcut) = re_ui::Command::PlaybackTogglePlayPause.kb_shortcut() {
+        format!(" Toggle with {}", egui_ctx.format_shortcut(&shortcut))
+    } else {
+        Default::default()
     }
 }
