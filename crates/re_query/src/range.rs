@@ -1,13 +1,8 @@
-use std::collections::BTreeMap;
-
 use itertools::Itertools as _;
-use re_arrow_store::{DataStore, LatestAtQuery, RangeQuery, RowIndex, TimeInt};
-use re_log_types::{field_types::Instance, msg_bundle::Component, ComponentName, ObjPath};
+use re_arrow_store::{DataStore, LatestAtQuery, RangeQuery, TimeInt};
+use re_log_types::{ComponentName, ObjPath};
 
-use crate::{
-    get_component_with_instances, query_entity_with_primary, ComponentWithInstances, EntityView,
-    QueryError,
-};
+use crate::{get_component_with_instances, ComponentWithInstances, EntityView};
 
 // ---
 

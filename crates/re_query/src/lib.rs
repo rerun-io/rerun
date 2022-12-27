@@ -11,6 +11,7 @@ pub mod dataframe_util;
 
 pub use self::entity_view::{ComponentWithInstances, EntityView};
 pub use self::query::{get_component_with_instances, query_entity_with_primary};
+pub use self::range::range_entity_with_primary;
 
 // Used for doc-tests
 #[doc(hidden)]
