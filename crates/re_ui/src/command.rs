@@ -83,4 +83,19 @@ impl Command {
             Command::ToggleCommandPalette => Some(cmd(Key::P)),
         }
     }
+
+    #[must_use = "Returns the Command that was triggered by some keyboard shortcut"]
+    pub fn listen_for_kb_shortcut(egui_ctx: &egui::Context) -> Option<Command> {
+        use strum::IntoEnumIterator as _;
+
+        let mut input = egui_ctx.input_mut();
+        for command in Command::iter() {
+            if let Some(kb_shortcut) = command.kb_shortcut() {
+                if input.consume_shortcut(&kb_shortcut) {
+                    return Some(command);
+                }
+            }
+        }
+        None
+    }
 }

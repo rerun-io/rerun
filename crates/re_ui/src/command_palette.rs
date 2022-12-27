@@ -63,6 +63,7 @@ impl CommandPalette {
     #[must_use = "Returns the command that was selected"]
     fn alternatives(&mut self, ui: &mut egui::Ui, enter_pressed: bool) -> Option<Command> {
         use strum::IntoEnumIterator as _;
+
         let mut num_alternatives: usize = 0;
 
         // TODO(emilk): nicer filtering
