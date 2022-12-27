@@ -1,4 +1,4 @@
-use egui::{Align2, Key};
+use egui::{Align2, Key, NumExt as _};
 
 use crate::Command;
 
@@ -25,14 +25,15 @@ impl CommandPalette {
             return None;
         }
 
+        let screen_rect = egui_ctx.input().screen_rect();
         let width = 300.0;
-        let max_height = 320.0;
-        let y = egui_ctx.input().screen_rect().center().y - 0.5 * max_height;
+        let max_height = 320.0.at_most(screen_rect.height());
 
         egui::Window::new("Command Palette")
             .title_bar(false)
-            .anchor(Align2::CENTER_TOP, [0.0, y])
             .fixed_size([width, max_height])
+            .pivot(egui::Align2::CENTER_TOP)
+            .fixed_pos(screen_rect.center() - 0.5 * max_height * egui::Vec2::Y)
             .show(egui_ctx, |ui| self.window_content(ui))?
             .inner?
     }
@@ -65,7 +66,7 @@ impl CommandPalette {
     fn alternatives(&mut self, ui: &mut egui::Ui, enter_pressed: bool) -> Option<Command> {
         use strum::IntoEnumIterator as _;
 
-        // TODO(emilk): nicer filtering
+        // TODO(emilk): fuzzy filtering
         let filter = self.text.to_lowercase();
 
         let item_height = 16.0;
