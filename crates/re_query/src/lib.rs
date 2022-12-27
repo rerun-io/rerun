@@ -3,6 +3,7 @@
 
 mod entity_view;
 mod query;
+mod range;
 mod visit;
 
 #[cfg(feature = "polars")]
