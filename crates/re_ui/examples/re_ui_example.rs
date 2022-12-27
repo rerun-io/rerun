@@ -27,6 +27,8 @@ fn main() -> eframe::Result<()> {
                 dummy_bool: true,
 
                 cmd_palette: CommandPalette::default(),
+
+                latest_cmd: Default::default(),
             })
         }),
     )
@@ -42,6 +44,8 @@ pub struct ExampleApp {
     dummy_bool: bool,
 
     cmd_palette: CommandPalette,
+
+    latest_cmd: String,
 }
 
 impl eframe::App for ExampleApp {
@@ -76,9 +80,16 @@ impl eframe::App for ExampleApp {
             egui::warn_if_debug_build(ui);
             ui.label("Hover me for a tooltip")
                 .on_hover_text("This is a tooltip");
+
+            ui.label(format!("Latest command: {}", self.latest_cmd));
         });
 
-        self.cmd_palette.show(egui_ctx);
+        if let Some(cmd) = self.cmd_palette.show(egui_ctx) {
+            self.latest_cmd = cmd.text().to_owned();
+        }
+        if let Some(cmd) = re_ui::Command::listen_for_kb_shortcut(egui_ctx) {
+            self.latest_cmd = cmd.text().to_owned();
+        }
     }
 }
 
