@@ -68,6 +68,10 @@ def log_depth_image(
     if len(image.shape) != 2:
         raise TypeError(f"Expected 2D depth image, got array of shape {image.shape}")
 
+    # TODO(#635): Remove when issue with displaying f64 depth images is fixed.
+    if isinstance(image, np.ndarray) and image.dtype == np.float64:  # type: ignore[redundant-expr]
+        image = image.astype(np.float32)
+
     log_tensor(obj_path, image, meter=meter, timeless=timeless)
 
 

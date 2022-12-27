@@ -3619,6 +3619,7 @@ dependencies = [
  "criterion",
  "derive_more",
  "document-features",
+ "ecolor",
  "fixed",
  "glam",
  "half 1.8.2",
