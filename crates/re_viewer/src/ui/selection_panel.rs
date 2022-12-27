@@ -1,14 +1,9 @@
 use re_data_store::{log_db::LogDb, query_transform, ObjPath, ObjectProps};
 use re_log_types::{LogMsg, ObjTypePath, TimeType};
 
-use crate::{
-    data_ui::{
-        arrow_msg_ui, begin_recording_msg_ui, data_path_ui, detailed_data_msg_ui, instance_ui,
-        object_ui, path_op_msg_ui, type_msg_ui,
-    },
-    ui::Blueprint,
-    Preview, Selection, ViewerContext,
-};
+use crate::{ui::Blueprint, Preview, Selection, ViewerContext};
+
+use super::data_ui::DataUi;
 
 // ---
 
@@ -84,22 +79,16 @@ impl SelectionPanel {
                 };
 
                 match msg {
-                    LogMsg::BeginRecordingMsg(msg) => {
-                        begin_recording_msg_ui(ui, msg);
-                    }
-                    LogMsg::TypeMsg(msg) => {
-                        type_msg_ui(ctx, ui, msg);
-                    }
+                    LogMsg::BeginRecordingMsg(msg) => msg.data_ui(ctx, ui, Preview::Medium),
+                    LogMsg::TypeMsg(msg) => msg.data_ui(ctx, ui, Preview::Medium),
                     LogMsg::DataMsg(msg) => {
-                        detailed_data_msg_ui(ctx, ui, msg);
+                        msg.detailed_data_ui(ctx, ui, Preview::Medium);
                         ui.separator();
-                        object_ui(ctx, ui, &msg.data_path.obj_path, Preview::Medium);
+                        msg.data_path.obj_path.data_ui(ctx, ui, Preview::Medium)
                     }
-                    LogMsg::PathOpMsg(msg) => {
-                        path_op_msg_ui(ctx, ui, msg);
-                    }
-                    LogMsg::ArrowMsg(msg) => arrow_msg_ui(ctx, ui, msg, Preview::Medium),
-                }
+                    LogMsg::PathOpMsg(msg) => msg.data_ui(ctx, ui, Preview::Medium),
+                    LogMsg::ArrowMsg(msg) => msg.data_ui(ctx, ui, Preview::Medium),
+                };
             }
             Selection::ObjTypePath(obj_type_path) => {
                 ui.label(format!("Selected object type path: {}", obj_type_path));
@@ -118,7 +107,7 @@ impl SelectionPanel {
                     ));
                 });
                 ui.separator();
-                instance_ui(ctx, ui, &instance_id, Preview::Medium);
+                instance_id.data_ui(ctx, ui, Preview::Medium);
             }
             Selection::DataPath(data_path) => {
                 ui.label(format!("Selected data path: {}", data_path));
@@ -140,7 +129,7 @@ impl SelectionPanel {
 
                 ui.separator();
 
-                data_path_ui(ctx, ui, &data_path);
+                data_path.data_ui(ctx, ui, Preview::Medium);
             }
             Selection::Space(space) => {
                 ui.label(format!("Selected space: {}", space));
@@ -191,7 +180,7 @@ impl SelectionPanel {
 
                     ui.separator();
 
-                    object_ui(ctx, ui, &obj_path, Preview::Medium);
+                    obj_path.data_ui(ctx, ui, Preview::Medium);
                 } else {
                     ctx.clear_selection();
                 }

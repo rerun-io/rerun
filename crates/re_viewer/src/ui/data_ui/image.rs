@@ -1,55 +1,65 @@
 use itertools::Itertools as _;
 
-use re_log_types::{context::ClassId, TensorDataMeaning};
+use re_log_types::{context::ClassId, Tensor, TensorDataMeaning};
 
 use crate::misc::{caches::TensorImageView, ViewerContext};
 
-pub(crate) fn tensor_ui(
-    ctx: &mut ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    tensor: &re_log_types::Tensor,
-) {
-    let tensor_view = ctx.cache.image.get_view(tensor, ctx.render_ctx);
+use super::DataUi;
 
-    ui.vertical(|ui| {
-        ui.set_min_width(100.0);
-        ui.label(format!("dtype: {}", tensor.dtype));
-        ui.label(format!("shape: {:?}", tensor.shape));
-    });
+/// Previously `tensor_ui()`
+impl DataUi for Tensor {
+    fn data_ui(
+        &self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        _preview: crate::ui::Preview,
+    ) -> egui::Response {
+        let tensor_view = ctx.cache.image.get_view(self, ctx.render_ctx);
 
-    if let Some(retained_img) = tensor_view.retained_img {
-        let max_size = ui.available_size().min(retained_img.size_vec2());
-        let response = retained_img.show_max_size(ui, max_size);
+        let ui_resp = ui
+            .vertical(|ui| {
+                ui.set_min_width(100.0);
+                ui.label(format!("dtype: {}", self.dtype));
+                ui.label(format!("shape: {:?}", self.shape));
+            })
+            .response;
 
-        let image_rect = response.rect;
+        if let Some(retained_img) = tensor_view.retained_img {
+            let max_size = ui.available_size().min(retained_img.size_vec2());
+            let response = retained_img.show_max_size(ui, max_size);
 
-        if let Some(pointer_pos) = ui.ctx().pointer_latest_pos() {
-            show_zoomed_image_region_tooltip(
-                ui,
-                response,
-                &tensor_view,
-                image_rect,
-                pointer_pos,
-                None,
-            );
+            let image_rect = response.rect;
+
+            if let Some(pointer_pos) = ui.ctx().pointer_latest_pos() {
+                show_zoomed_image_region_tooltip(
+                    ui,
+                    response,
+                    &tensor_view,
+                    image_rect,
+                    pointer_pos,
+                    None,
+                );
+            }
         }
-    }
 
-    if let Some(dynamic_img) = tensor_view.dynamic_img {
-        // TODO(emilk): support copying and saving images on web
-        #[cfg(not(target_arch = "wasm32"))]
-        ui.horizontal(|ui| image_options(ui, tensor, dynamic_img));
+        if let Some(dynamic_img) = tensor_view.dynamic_img {
+            // TODO(emilk): support copying and saving images on web
+            #[cfg(not(target_arch = "wasm32"))]
+            ui.horizontal(|ui| image_options(ui, self, dynamic_img));
 
-        // TODO(emilk): support histograms of non-RGB images too
-        if let image::DynamicImage::ImageRgb8(rgb_image) = dynamic_img {
-            ui.collapsing("Histogram", |ui| {
-                histogram_ui(ui, rgb_image);
-            });
+            // TODO(emilk): support histograms of non-RGB images too
+            if let image::DynamicImage::ImageRgb8(rgb_image) = dynamic_img {
+                ui.collapsing("Histogram", |ui| {
+                    histogram_ui(ui, rgb_image);
+                });
+            }
         }
+
+        ui_resp
     }
 }
 
-pub fn show_zoomed_image_region_tooltip(
+fn show_zoomed_image_region_tooltip(
     parent_ui: &mut egui::Ui,
     response: egui::Response,
     tensor_view: &TensorImageView<'_, '_>,
@@ -74,7 +84,7 @@ pub fn show_zoomed_image_region_tooltip(
 }
 
 /// meter: iff this is a depth map, how long is one meter?
-pub fn show_zoomed_image_region(
+pub(crate) fn show_zoomed_image_region(
     parent_ui: &mut egui::Ui,
     tooltip_ui: &mut egui::Ui,
     tensor_view: &TensorImageView<'_, '_>,
