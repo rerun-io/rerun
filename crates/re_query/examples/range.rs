@@ -1,7 +1,7 @@
 //! Demonstrates usage of [`re_query::range_entity_with_primary`].
 //!
 //! ```text
-//! POLARS_FMT_MAX_ROWS=100 cargo r -p re_query --example range
+//! POLARS_FMT_MAX_ROWS=100 cargo r -p re_query --all-features --example range
 //! ```
 
 use re_arrow_store::{DataStore, RangeQuery, TimeRange};
