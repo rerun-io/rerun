@@ -22,16 +22,18 @@ impl CommandPalette {
             .input_mut()
             .consume_key(Default::default(), Key::Escape);
         if !self.visible {
+            self.text.clear();
             return None;
         }
 
+        let width = 300.0;
         let max_height = 320.0;
         let y = egui_ctx.input().screen_rect().center().y - 0.5 * max_height;
 
         egui::Window::new("Command Palette")
             .title_bar(false)
             .anchor(Align2::CENTER_TOP, [0.0, y])
-            .fixed_size([350.0, max_height])
+            .fixed_size([width, max_height])
             .show(egui_ctx, |ui| self.window_content(ui))?
             .inner?
     }
@@ -64,21 +66,20 @@ impl CommandPalette {
     fn alternatives(&mut self, ui: &mut egui::Ui, enter_pressed: bool) -> Option<Command> {
         use strum::IntoEnumIterator as _;
 
-        let mut num_alternatives: usize = 0;
-
         // TODO(emilk): nicer filtering
         let filter = self.text.to_lowercase();
 
         let item_height = 16.0;
         let font_id = egui::TextStyle::Button.resolve(ui.style());
 
+        let mut num_alternatives: usize = 0;
         let mut selected_command = None;
 
         for (i, command) in Command::iter()
-            .filter(|alt| alt.text().to_lowercase().contains(&filter))
+            .filter(|alt| alt.text_and_tooltip().0.to_lowercase().contains(&filter))
             .enumerate()
         {
-            let text = command.text();
+            let (text, tooltip) = command.text_and_tooltip();
             let kb_shortcut = command
                 .kb_shortcut()
                 .map(|shortcut| ui.ctx().format_shortcut(&shortcut))
@@ -89,8 +90,11 @@ impl CommandPalette {
                 egui::Sense::click(),
             );
 
+            let response = response.on_hover_text(tooltip);
+
             if response.clicked() {
                 selected_command = Some(command);
+                self.text.clear();
             }
 
             let selected = i == self.selected_alternative;
@@ -102,6 +106,7 @@ impl CommandPalette {
 
                 if enter_pressed {
                     selected_command = Some(command);
+                    self.text.clear();
                 }
 
                 ui.scroll_to_rect(rect, None);
@@ -128,6 +133,10 @@ impl CommandPalette {
             );
 
             num_alternatives += 1;
+        }
+
+        if num_alternatives == 0 {
+            ui.weak("No matching results");
         }
 
         // Move up/down in the list:

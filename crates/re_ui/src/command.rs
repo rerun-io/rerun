@@ -13,7 +13,7 @@ pub enum Command {
     Open,
     Quit,
     ResetViewer,
-    ShowProfiler,
+    OpenProfiler,
 
     ToggleMemoryPanel,
     ToggleBlueprintPanel,
@@ -28,22 +28,42 @@ pub enum Command {
 }
 
 impl Command {
-    pub fn text(&self) -> &'static str {
+    pub fn text_and_tooltip(&self) -> (&'static str, &'static str) {
         match self {
-            Command::Save => "Save",
-            Command::SaveSelection => "Save selection",
-            Command::Open => "Open",
-            Command::Quit => "Quit",
-            Command::ResetViewer => "Reset viewer",
-            Command::ShowProfiler => "Show profiler",
-            Command::ToggleMemoryPanel => "Toggle memory panel",
-            Command::ToggleBlueprintPanel => "Toggle blueprint panel",
-            Command::ToggleSelectionPanel => "Toggle selection panel",
-            Command::ToggleTimePanel => "Toggle time panel",
-            Command::ToggleFullscreen => "Toggle fullscreen",
-            Command::SelectionPrevious => "Selection previous",
-            Command::SelectionNext => "Selection next",
-            Command::ToggleCommandPalette => "Toggle command palette",
+            Command::Save => ("Save…", "Save all data to a Rerun data file (.rrd)"),
+            Command::SaveSelection => (
+                "Save loop selection…",
+                "Save data for the current loop selection to a Rerun data file (.rrd)",
+            ),
+            Command::Open => ("Open", "Open a Rerun Data File (.rrd)"),
+            Command::Quit => ("Quit", "Close the Rerun Viewer"),
+            Command::ResetViewer => (
+                "Reset viewer",
+                "Reset the viewer to how it looked the first time you ran it",
+            ),
+            Command::OpenProfiler => (
+                "Open profiler",
+                "Starts a profiler, showing what makes the viewer run slow",
+            ),
+
+            Command::ToggleMemoryPanel => (
+                "Toggle memory panel",
+                "Investigate what is using up RAM in Rerun Viewer",
+            ),
+            Command::ToggleBlueprintPanel => ("Toggle blueprint panel", "Toggle the left panel"),
+            Command::ToggleSelectionPanel => ("Toggle selection panel", "Toggle the right panel"),
+            Command::ToggleTimePanel => ("Toggle time panel", "Toggle the bottom time panel"),
+            Command::ToggleFullscreen => (
+                "Toggle fullscreen",
+                "Toggle between windowed and fullscreen viewer",
+            ),
+
+            Command::SelectionPrevious => ("Previous selection", "Go to previous selection"),
+            Command::SelectionNext => ("Next selection", "Go to next selection"),
+            Command::ToggleCommandPalette => (
+                "Toggle command palette",
+                "Toggle the command palette window",
+            ),
         }
     }
 
@@ -72,7 +92,7 @@ impl Command {
             Command::Quit => Some(KeyboardShortcut::new(Modifiers::COMMAND, Key::Q)),
 
             Command::ResetViewer => Some(ctrl_shift(Key::R)),
-            Command::ShowProfiler => Some(ctrl_shift(Key::P)),
+            Command::OpenProfiler => Some(ctrl_shift(Key::P)),
             Command::ToggleMemoryPanel => Some(ctrl_shift(Key::M)),
             Command::ToggleBlueprintPanel => Some(ctrl_shift(Key::B)),
             Command::ToggleSelectionPanel => Some(ctrl_shift(Key::S)),

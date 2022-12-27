@@ -85,10 +85,10 @@ impl eframe::App for ExampleApp {
         });
 
         if let Some(cmd) = self.cmd_palette.show(egui_ctx) {
-            self.latest_cmd = cmd.text().to_owned();
+            self.latest_cmd = cmd.text_and_tooltip().0.to_owned();
         }
         if let Some(cmd) = re_ui::Command::listen_for_kb_shortcut(egui_ctx) {
-            self.latest_cmd = cmd.text().to_owned();
+            self.latest_cmd = cmd.text_and_tooltip().0.to_owned();
         }
     }
 }
