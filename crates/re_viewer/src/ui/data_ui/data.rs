@@ -5,6 +5,7 @@ use crate::ui::Preview;
 
 use super::DataUi;
 
+/// Previously `data_ui::data_ui()`
 impl DataUi for Data {
     fn data_ui(
         &self,
@@ -97,7 +98,7 @@ impl DataUi for Data {
     }
 }
 
-// ColorArray
+/// Previously `color_field_ui()`
 impl DataUi for [u8; 4] {
     fn data_ui(
         &self,
@@ -117,6 +118,7 @@ impl DataUi for [u8; 4] {
     }
 }
 
+/// Previously `data_vec_ui()`
 impl DataUi for DataVec {
     fn data_ui(
         &self,
@@ -128,6 +130,7 @@ impl DataUi for DataVec {
     }
 }
 
+/// Previously `transform_ui()`
 impl DataUi for Transform {
     fn data_ui(
         &self,
@@ -143,6 +146,7 @@ impl DataUi for Transform {
     }
 }
 
+/// Previously `view_coordinates_ui()`
 impl DataUi for ViewCoordinates {
     fn data_ui(
         &self,
@@ -154,6 +158,7 @@ impl DataUi for ViewCoordinates {
     }
 }
 
+/// Previously `rigid3_ui()`
 impl DataUi for Rigid3 {
     fn data_ui(
         &self,
@@ -183,6 +188,7 @@ impl DataUi for Rigid3 {
     }
 }
 
+/// Previously `pinhole_ui()`
 impl DataUi for Pinhole {
     fn data_ui(
         &self,
@@ -213,6 +219,7 @@ impl DataUi for Pinhole {
     }
 }
 
+/// Previously `mat3_ui()`
 impl DataUi for [[f32; 3]; 3] {
     fn data_ui(
         &self,

@@ -18,6 +18,7 @@ mod log_msg;
 mod object;
 mod path;
 
+/// Types implementing `DataUi` can draw themselves with a `ViewerContext` and `egui::Ui`.
 pub(crate) trait DataUi {
     fn data_ui(
         &self,
