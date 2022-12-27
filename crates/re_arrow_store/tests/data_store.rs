@@ -59,7 +59,7 @@ fn latest_at_impl(store: &mut DataStore) {
     store.insert(&bundle4).unwrap();
 
     if let err @ Err(_) = store.sanity_check() {
-        store.sort_indices();
+        store.sort_indices_if_needed();
         eprintln!("{store}");
         err.unwrap();
     }
@@ -80,7 +80,7 @@ fn latest_at_impl(store: &mut DataStore) {
 
             let df_expected = joint_df(store.cluster_key(), bundles);
 
-            store.sort_indices();
+            store.sort_indices_if_needed();
             assert_eq!(df_expected, df, "{store}");
         };
 
@@ -163,7 +163,7 @@ fn range_impl(store: &mut DataStore) {
     store.insert(&bundle4_4).unwrap();
 
     if let err @ Err(_) = store.sanity_check() {
-        store.sort_indices();
+        store.sort_indices_if_needed();
         eprintln!("{store}");
         err.unwrap();
     }
@@ -185,7 +185,7 @@ fn range_impl(store: &mut DataStore) {
 
             let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
 
-            store.sort_indices(); // for assertions below
+            store.sort_indices_if_needed(); // for assertions below
 
             let query = RangeQuery::new(timeline_frame_nr, time_range);
             let dfs = polars_util::range_components(

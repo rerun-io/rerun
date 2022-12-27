@@ -113,7 +113,7 @@ fn pathological_bucket_topology() {
             .flat_map(|(_, table)| table.iter_buckets())
             .count();
         assert_eq!(7usize, nb_buckets, "pathological topology (forward): {}", {
-            store_forward.sort_indices();
+            store_forward.sort_indices_if_needed();
             store_forward
         });
     }
@@ -127,7 +127,7 @@ fn pathological_bucket_topology() {
             nb_buckets,
             "pathological topology (backward): {}",
             {
-                store_backward.sort_indices();
+                store_backward.sort_indices_if_needed();
                 store_backward
             }
         );
