@@ -37,6 +37,8 @@ pub enum Command {
 
     // Playback:
     PlaybackTogglePlayPause,
+    PlaybackStepBack,
+    PlaybackStepForward,
 }
 
 impl Command {
@@ -88,6 +90,14 @@ impl Command {
             Command::PlaybackTogglePlayPause => {
                 ("Toggle play/pause", "Either play or pause the time")
             }
+            Command::PlaybackStepBack => (
+                "Step time back",
+                "Move the time marker back to the previous point in time with any data",
+            ),
+            Command::PlaybackStepForward => (
+                "Step time forward",
+                "Move the time marker to the next point in time with any data",
+            ),
         }
     }
 
@@ -131,6 +141,8 @@ impl Command {
             Command::ToggleCommandPalette => Some(cmd(Key::P)),
 
             Command::PlaybackTogglePlayPause => Some(key(Key::Space)),
+            Command::PlaybackStepBack => Some(key(Key::ArrowLeft)),
+            Command::PlaybackStepForward => Some(key(Key::ArrowRight)),
         }
     }
 
@@ -177,5 +189,14 @@ impl Command {
             button = button.shortcut_text(egui_ctx.format_shortcut(&shortcut));
         }
         button
+    }
+
+    /// Add e.g. " (Ctrl+F11)" as a suffix
+    pub fn format_shortcut_tooltip_suffix(self, egui_ctx: &egui::Context) -> String {
+        if let Some(kb_shortcut) = self.kb_shortcut() {
+            format!(" ({})", egui_ctx.format_shortcut(&kb_shortcut))
+        } else {
+            Default::default()
+        }
     }
 }

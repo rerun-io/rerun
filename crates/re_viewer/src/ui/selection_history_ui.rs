@@ -6,14 +6,6 @@ use crate::{ui::Blueprint, Selection};
 
 // ---
 
-fn format_shortcut(egui_ctx: &egui::Context, command: Command) -> String {
-    if let Some(kb_shortcut) = command.kb_shortcut() {
-        format!(" ({})", egui_ctx.format_shortcut(&kb_shortcut))
-    } else {
-        Default::default()
-    }
-}
-
 impl SelectionHistory {
     pub(crate) fn selection_ui(
         &mut self,
@@ -137,8 +129,8 @@ impl SelectionHistory {
             let button_clicked = ui
                 .small_button(PREV_BUTTON)
                 .on_hover_text(format!(
-                    "Go to previous selection ({}):\n[{}] {}",
-                    format_shortcut(ui.ctx(), Command::SelectionPrevious),
+                    "Go to previous selection{}:\n[{}] {}",
+                    Command::SelectionPrevious.format_shortcut_tooltip_suffix(ui.ctx()),
                     previous.index,
                     selection_to_string(blueprint, &previous.selection),
                 ))
@@ -169,8 +161,8 @@ impl SelectionHistory {
             let button_clicked = ui
                 .small_button(NEXT_BUTTON)
                 .on_hover_text(format!(
-                    "Go to next selection ({}):\n[{}] {}",
-                    format_shortcut(ui.ctx(), Command::SelectionNext),
+                    "Go to next selection{}:\n[{}] {}",
+                    Command::SelectionNext.format_shortcut_tooltip_suffix(ui.ctx()),
                     next.index,
                     selection_to_string(blueprint, &next.selection),
                 ))

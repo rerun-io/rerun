@@ -327,6 +327,25 @@ impl App {
                     }
                 }
             }
+            Command::PlaybackStepBack => {
+                // TODO(emilk): figure out a nice way to avoid this code duplication
+                let rec_id = self.state.selected_rec_id;
+                if let Some(rec_cfg) = self.state.recording_configs.get_mut(&rec_id) {
+                    if let Some(log_db) = self.log_dbs.get(&rec_id) {
+                        rec_cfg
+                            .time_ctrl
+                            .step_time_back(log_db.times_per_timeline());
+                    }
+                }
+            }
+            Command::PlaybackStepForward => {
+                let rec_id = self.state.selected_rec_id;
+                if let Some(rec_cfg) = self.state.recording_configs.get_mut(&rec_id) {
+                    if let Some(log_db) = self.log_dbs.get(&rec_id) {
+                        rec_cfg.time_ctrl.step_time_fwd(log_db.times_per_timeline());
+                    }
+                }
+            }
         }
     }
 
@@ -955,14 +974,6 @@ fn top_bar_ui(
 
             let blueprint = app.state.blueprints.entry(selected_app_id).or_default();
 
-            fn format_shortcut(egui_ctx: &egui::Context, command: Command) -> String {
-                if let Some(kb_shortcut) = command.kb_shortcut() {
-                    format!(" ({})", egui_ctx.format_shortcut(&kb_shortcut))
-                } else {
-                    Default::default()
-                }
-            }
-
             // From right-to-left:
             app.re_ui
                 .medium_icon_toggle_button(
@@ -972,7 +983,7 @@ fn top_bar_ui(
                 )
                 .on_hover_text(format!(
                     "Toggle Selection View{}",
-                    format_shortcut(ui.ctx(), Command::ToggleSelectionPanel)
+                    Command::ToggleSelectionPanel.format_shortcut_tooltip_suffix(ui.ctx())
                 ));
 
             app.re_ui
@@ -983,7 +994,7 @@ fn top_bar_ui(
                 )
                 .on_hover_text(format!(
                     "Toggle Timeline View{}",
-                    format_shortcut(ui.ctx(), Command::ToggleTimePanel)
+                    Command::ToggleTimePanel.format_shortcut_tooltip_suffix(ui.ctx())
                 ));
 
             app.re_ui
@@ -994,7 +1005,7 @@ fn top_bar_ui(
                 )
                 .on_hover_text(format!(
                     "Toggle Blueprint View{}",
-                    format_shortcut(ui.ctx(), Command::ToggleBlueprintPanel)
+                    Command::ToggleBlueprintPanel.format_shortcut_tooltip_suffix(ui.ctx())
                 ));
 
             ui.vertical_centered(|ui| {
