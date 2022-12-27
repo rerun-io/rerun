@@ -16,21 +16,24 @@ const SPARSENESS: i64 = 1_000_000;
 
 // ----------------
 
-criterion_group!(
-    benches,
-    insert_btree,
-    insert_tree2,
-    insert_tree8,
-    insert_tree16
-);
+criterion_group!(benches, insert_btree, insert_tree,);
 criterion_main!(benches);
 
-// ----------------
+// ----------------------------------------------------------------------------
+
+/// Baseline for performance and memory benchmarks
+#[derive(Default)]
+pub struct BTreeeInt64Histogram {
+    map: std::collections::BTreeMap<i64, u32>,
+}
+impl BTreeeInt64Histogram {
+    pub fn increment(&mut self, key: i64, inc: u32) {
+        *self.map.entry(key).or_default() += inc;
+    }
+}
 
 /// Baselines
 fn insert_btree(c: &mut Criterion) {
-    use re_int_histogram::BTreeeInt64Histogram;
-
     fn create(num_elements: i64, sparseness: i64) -> BTreeeInt64Histogram {
         let mut histogram = BTreeeInt64Histogram::default();
         for i in 0..num_elements {
@@ -51,31 +54,8 @@ fn insert_btree(c: &mut Criterion) {
     }
 }
 
-fn insert_tree2(c: &mut Criterion) {
-    use re_int_histogram::tree2::IntHistogram;
-
-    fn create(num_elements: i64, sparseness: i64) -> IntHistogram {
-        let mut histogram = IntHistogram::default();
-        for i in 0..num_elements {
-            histogram.increment(i * sparseness, 1);
-        }
-        histogram
-    }
-
-    {
-        let mut group = c.benchmark_group("tree2");
-        group.throughput(criterion::Throughput::Elements(COUNT));
-        group.bench_function("dense_insert", |b| {
-            b.iter(|| create(COUNT as _, 1));
-        });
-        group.bench_function("sparse_insert", |b| {
-            b.iter(|| create(COUNT as _, SPARSENESS));
-        });
-    }
-}
-
-fn insert_tree8(c: &mut Criterion) {
-    use re_int_histogram::tree8::Int64Histogram;
+fn insert_tree(c: &mut Criterion) {
+    use re_int_histogram::Int64Histogram;
 
     fn create(num_elements: i64, sparseness: i64) -> Int64Histogram {
         let mut histogram = Int64Histogram::default();
@@ -86,30 +66,7 @@ fn insert_tree8(c: &mut Criterion) {
     }
 
     {
-        let mut group = c.benchmark_group("tree8");
-        group.throughput(criterion::Throughput::Elements(COUNT));
-        group.bench_function("dense_insert", |b| {
-            b.iter(|| create(COUNT as _, 1));
-        });
-        group.bench_function("sparse_insert", |b| {
-            b.iter(|| create(COUNT as _, SPARSENESS));
-        });
-    }
-}
-
-fn insert_tree16(c: &mut Criterion) {
-    use re_int_histogram::tree16::IntHistogram;
-
-    fn create(num_elements: i64, sparseness: i64) -> IntHistogram {
-        let mut histogram = IntHistogram::default();
-        for i in 0..num_elements {
-            histogram.increment(i * sparseness, 1);
-        }
-        histogram
-    }
-
-    {
-        let mut group = c.benchmark_group("tree16");
+        let mut group = c.benchmark_group("int_histogram");
         group.throughput(criterion::Throughput::Elements(COUNT));
         group.bench_function("dense_insert", |b| {
             b.iter(|| create(COUNT as _, 1));

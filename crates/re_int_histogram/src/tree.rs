@@ -1,22 +1,35 @@
-//! Uses 20x nodes with 8-way (3 bit) branching factor down to a final 16-way (4 bit) dense leaf.
-//! 20x 3-bit + 4-bit = 64 bit.
-//!
-//! This uses about half the memory of [`crate::tree16`], but is also half as fast.
-//! I believe we could trim [`crate::tree16`] to use much less memory,
-//! by using dynamically sized nodes, but that's left as an exercise for later.
-
 use crate::{i64_key_from_u64_key, u64_key_from_i64_key, RangeI64, RangeU64};
 
 // ----------------------------------------------------------------------------
 
 type Level = u64;
 
+// Uses 20x nodes with 8-way (3 bit) branching factor down to a final 16-way (4 bit) dense leaf.
+// 20x 3-bit + 4-bit = 64 bit.
+// level 1, 4, 7, …, 58, 61
+// This uses about half the memory of 16-way branching, but is also half as fast.
+// 5.7 B/dense entry
+// 25-35 B/sparse entry
 const ROOT_LEVEL: Level = 61;
 const LEAF_LEVEL: Level = 1;
 const LEVEL_STEP: u64 = 3;
-const ADDR_MASK: u64 = 0b111;
-const NUM_CHILDREN_IN_NODE: u64 = 8;
 const NUM_CHILDREN_IN_DENSE: u64 = 16;
+
+// High memory use, faster
+// I believe we could trim this path to use much less memory
+// by using dynamically sized nodes (no enum, no Vec/SmallVec),
+// but that's left as an exercise for later.
+// 9.6 B/dense entry
+// 26-73 B/sparse entry
+// const ROOT_LEVEL: Level = 60;
+// const LEAF_LEVEL: Level = 0;
+// const LEVEL_STEP: u64 = 4;
+// const NUM_CHILDREN_IN_DENSE: u64 = 16;
+
+// (1 << level) is the size of the range the next child
+
+const ADDR_MASK: u64 = (1 << LEVEL_STEP) - 1;
+const NUM_CHILDREN_IN_NODE: u64 = 1 << LEVEL_STEP;
 
 fn child_level_and_size(level: Level) -> (Level, u64) {
     let child_level = level - LEVEL_STEP;
@@ -26,16 +39,6 @@ fn child_level_and_size(level: Level) -> (Level, u64) {
         1 << level
     };
     (child_level, child_size)
-}
-
-// level 1, 4, 7, …, 58, 61
-// (1 << level) is the size of the range the next child
-
-#[inline(always)]
-fn split_address(level: Level, addr: u64) -> (u64, u64) {
-    let top = (addr >> level) & ADDR_MASK;
-    let bottom = addr & ((1 << level) - 1);
-    (top, bottom)
 }
 
 fn range_u64_from_range_bounds(range: impl std::ops::RangeBounds<i64>) -> RangeU64 {
@@ -162,7 +165,7 @@ enum Tree {
     Sparse(Sparse),
     Dense(Dense),
 }
-static_assertions::assert_eq_size!(Tree, (u64, Node), [u8; 80]);
+// static_assertions::assert_eq_size!(Tree, (u64, Node), [u8; 80]);
 
 #[derive(Clone, Debug, Default)]
 struct Node {
@@ -172,7 +175,7 @@ struct Node {
     /// The index is the next few bits of the key
     children: [Option<Box<Tree>>; NUM_CHILDREN_IN_NODE as usize],
 }
-static_assertions::assert_eq_size!(Node, [u8; 72]);
+// static_assertions::assert_eq_size!(Node, [u8; 72]);
 
 #[derive(Clone, Debug, Default)]
 struct Sparse {
@@ -257,7 +260,7 @@ impl Node {
     fn increment(&mut self, level: Level, addr: u64, inc: u32) {
         debug_assert!(level != LEAF_LEVEL);
         let child_level = level - LEVEL_STEP;
-        let (top_addr, _) = split_address(level, addr);
+        let top_addr = (addr >> level) & ADDR_MASK;
         self.children[top_addr as usize]
             .get_or_insert_with(|| Box::new(Tree::for_level(child_level)))
             .increment(child_level, addr, inc);

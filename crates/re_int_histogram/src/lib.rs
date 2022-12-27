@@ -1,7 +1,6 @@
-pub mod bad;
-pub mod tree16;
-pub mod tree2;
-pub mod tree8;
+mod tree;
+
+pub use tree::Int64Histogram;
 
 // -----------------------------------------------------------------------------------
 
@@ -111,18 +110,5 @@ impl RangeI64 {
 impl std::fmt::Debug for RangeI64 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "RangeI64[{}, {}]", self.min, self.max)
-    }
-}
-
-// -----------------------------------------------------------------------------------
-
-/// Baseline for performance and memory benchmarks
-#[derive(Default)]
-pub struct BTreeeInt64Histogram {
-    map: std::collections::BTreeMap<i64, u32>,
-}
-impl BTreeeInt64Histogram {
-    pub fn increment(&mut self, key: i64, inc: u32) {
-        *self.map.entry(key).or_default() += inc;
     }
 }
