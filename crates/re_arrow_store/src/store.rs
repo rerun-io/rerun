@@ -170,10 +170,15 @@ impl DataStoreConfig {
 
 /// A complete data store: covers all timelines, all entities, everything.
 ///
+/// ## Debugging
+///
 /// `DataStore` provides a very thorough `Display` implementation that makes it manageable to
 /// know what's going on internally.
 /// For even more information, you can set `RERUN_DATA_STORE_DISPLAY_SCHEMAS=1` in your
 /// environment, which will result in additional schema information being printed out.
+///
+/// Additionally, if the `polars` feature is enabled, you can dump the entire datastore as a
+/// flat denormalized dataframe using [`Self::to_dataframe`].
 pub struct DataStore {
     /// The cluster key specifies a column/component that is guaranteed to always be present for
     /// every single row of data within the store.
