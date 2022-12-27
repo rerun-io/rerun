@@ -6,9 +6,11 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
+
 [features]
 default = []
 polars = ["polars-core"]
+
 
 [dependencies]
 # Rerun
@@ -49,8 +51,16 @@ polars-core = { workspace = true, features = [
 ] }
 tracing-subscriber = "0.3"
 
+
 [lib]
 bench = false
+
+
+[[example]]
+name = "range"
+path = "examples/range.rs"
+required-features = ["polars"]
+
 
 [[bench]]
 name = "obj_query_benchmark"
