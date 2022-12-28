@@ -13,6 +13,7 @@ all = [
     "label",
     "point",
     "rect2d",
+    "text_entry",
 ]
 
 REGISTERED_FIELDS: Final = bindings.get_registered_fields()
