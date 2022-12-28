@@ -55,28 +55,26 @@ fn main() {
     println!("\n-----\n");
 
     let components = &[Point2D::name()];
-    let ent_views =
-        range_entity_with_primary(&store, &query, &ent_path, Rect2D::name(), components);
+    let ent_views = range_entity_with_primary::<Rect2D>(&store, &query, &ent_path, components);
     for (time, ent_view) in ent_views {
         eprintln!(
             "Found data at time {} from {}'s PoV:\n{}",
             TimeType::Sequence.format(time),
             Rect2D::name(),
-            &ent_view.as_df2::<Rect2D, Point2D>().unwrap()
+            &ent_view.as_df2::<Point2D>().unwrap()
         );
     }
 
     println!("\n-----\n");
 
     let components = &[Rect2D::name()];
-    let ent_views =
-        range_entity_with_primary(&store, &query, &ent_path, Point2D::name(), components);
+    let ent_views = range_entity_with_primary::<Point2D>(&store, &query, &ent_path, components);
     for (time, ent_view) in ent_views {
         eprintln!(
             "Found data at time {} from {}'s PoV:\n{}",
             TimeType::Sequence.format(time),
             Point2D::name(),
-            &ent_view.as_df2::<Point2D, Rect2D>().unwrap()
+            &ent_view.as_df2::<Rect2D>().unwrap()
         );
     }
 }

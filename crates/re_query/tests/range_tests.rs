@@ -73,8 +73,7 @@ fn simple_range() {
     );
 
     let components = &[ColorRGBA::name()];
-    let ent_views =
-        range_entity_with_primary(&store, &query, &ent_path, Point2D::name(), components);
+    let ent_views = range_entity_with_primary::<Point2D>(&store, &query, &ent_path, components);
 
     let results = ent_views.collect::<Vec<_>>();
 
@@ -123,7 +122,7 @@ fn simple_range() {
         //eprintln!("{:?}", expected);
 
         assert_eq!(TimeInt::from(123), *time);
-        common::compare_df(&expected, &ent_view.as_df2::<Point2D, ColorRGBA>().unwrap());
+        common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
 
         // Frame #323
 
@@ -142,7 +141,7 @@ fn simple_range() {
         //eprintln!("{:?}", expected);
 
         assert_eq!(TimeInt::from(323), *time);
-        common::compare_df(&expected, &ent_view.as_df2::<Point2D, ColorRGBA>().unwrap());
+        common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
     }
     #[cfg(not(feature = "polars"))]
     {
@@ -160,8 +159,7 @@ fn simple_range() {
     );
 
     let components = &[ColorRGBA::name()];
-    let ent_views =
-        range_entity_with_primary(&store, &query, &ent_path, Point2D::name(), components);
+    let ent_views = range_entity_with_primary::<Point2D>(&store, &query, &ent_path, components);
 
     let results = ent_views.collect::<Vec<_>>();
 
@@ -210,7 +208,7 @@ fn simple_range() {
         //eprintln!("{:?}", expected);
 
         assert_eq!(TimeInt::from(123), *time);
-        common::compare_df(&expected, &ent_view.as_df2::<Point2D, ColorRGBA>().unwrap());
+        common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
 
         // Frame #323
 
@@ -229,7 +227,7 @@ fn simple_range() {
         //eprintln!("{:?}", expected);
 
         assert_eq!(TimeInt::from(323), *time);
-        common::compare_df(&expected, &ent_view.as_df2::<Point2D, ColorRGBA>().unwrap());
+        common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
     }
     #[cfg(not(feature = "polars"))]
     {

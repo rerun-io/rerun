@@ -1,6 +1,6 @@
 use itertools::Itertools as _;
 use re_arrow_store::{DataStore, LatestAtQuery, RangeQuery, TimeInt};
-use re_log_types::{ComponentName, ObjPath};
+use re_log_types::{msg_bundle::Component, ComponentName, ObjPath};
 
 use crate::{get_component_with_instances, ComponentWithInstances, EntityView};
 
@@ -19,13 +19,13 @@ use crate::{get_component_with_instances, ComponentWithInstances, EntityView};
 /// known state of all components, from their respective point-of-views.
 ///
 /// ⚠ The semantics are subtle! See `examples/range.rs` for an example of use.
-pub fn range_entity_with_primary<'a>(
+pub fn range_entity_with_primary<'a, Primary: Component + 'a>(
     store: &'a DataStore,
     query: &'a RangeQuery,
     ent_path: &'a ObjPath,
-    primary: ComponentName,
     components: &'a [ComponentName],
-) -> impl Iterator<Item = (TimeInt, EntityView)> + 'a {
+) -> impl Iterator<Item = (TimeInt, EntityView<Primary>)> + 'a {
+    let primary = Primary::name();
     let cluster_key = store.cluster_key();
 
     let mut state: Vec<_> = std::iter::repeat_with(|| None)
@@ -66,6 +66,7 @@ pub fn range_entity_with_primary<'a>(
                 .zip(state.iter().skip(1).cloned())
                 .filter_map(|(component, cwi)| cwi.map(|cwi| (component, cwi)))
                 .collect(),
+            phantom: std::marker::PhantomData,
         };
         Some((latest_time, ent_view))
     } else {
@@ -121,6 +122,7 @@ pub fn range_entity_with_primary<'a>(
                             .zip(state.iter().skip(1).cloned())
                             .filter_map(|(component, cwi)| cwi.map(|cwi| (*component, cwi)))
                             .collect(),
+                        phantom: std::marker::PhantomData,
                     };
                     (time, ent_view)
                 })
