@@ -11,9 +11,12 @@ use re_renderer::{
 
 use crate::{
     misc::{HoveredSpace, Selection},
-    ui::view_spatial::{
-        ui_renderer_bridge::{create_scene_paint_callback, get_viewport, ScreenBackground},
-        SceneSpatial, SpaceCamera3D, AXIS_COLOR_X, AXIS_COLOR_Y, AXIS_COLOR_Z,
+    ui::{
+        data_ui::DataUi,
+        view_spatial::{
+            ui_renderer_bridge::{create_scene_paint_callback, get_viewport, ScreenBackground},
+            SceneSpatial, SpaceCamera3D, AXIS_COLOR_X, AXIS_COLOR_Y, AXIS_COLOR_Z,
+        },
     },
     ViewerContext,
 };
@@ -381,7 +384,7 @@ pub fn view_3d(
     if let Some(instance_id) = &hovered_instance {
         response = response.on_hover_ui_at_pointer(|ui| {
             ctx.instance_id_button(ui, instance_id);
-            crate::ui::data_ui::instance_ui(ctx, ui, instance_id, crate::ui::Preview::Medium);
+            instance_id.data_ui(ctx, ui, crate::ui::Preview::Medium);
         });
     }
 
