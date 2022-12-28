@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional, Sequence, Tuple
+from typing import Sequence
 
 import pyarrow as pa
 from rerun.components import REGISTERED_FIELDS, ComponentTypeFactory
