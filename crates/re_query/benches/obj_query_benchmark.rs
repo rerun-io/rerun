@@ -128,7 +128,7 @@ fn query_and_visit(store: &mut DataStore, paths: &[ObjPath]) -> Vec<Point> {
 
     // TODO(jleibs): Add Radius once we have support for it in field_types
     for path in paths.iter() {
-        query_entity_with_primary(store, &query, path, Point2D::name(), &[ColorRGBA::name()])
+        query_entity_with_primary::<Point2D>(store, &query, path, &[ColorRGBA::name()])
             .and_then(|entity_view| {
                 entity_view.visit2(|_: Instance, pos: Point2D, color: Option<ColorRGBA>| {
                     points.push(Point {
