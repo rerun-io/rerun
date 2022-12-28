@@ -15,6 +15,7 @@ mod point;
 mod quaternion;
 mod rect;
 mod size;
+mod text_entry;
 
 pub use color::ColorRGBA;
 pub use instance::Instance;
@@ -23,10 +24,11 @@ pub use point::{Point2D, Point3D};
 pub use quaternion::Quaternion;
 pub use rect::Rect2D;
 pub use size::Size3D;
+pub use text_entry::TextEntry;
 
 lazy_static! {
     //TODO(john) actully use a run-time type registry
-    static ref FIELDS: [Field; 8] = [
+    static ref FIELDS: [Field; 9] = [
         <ColorRGBA as Component>::field(),
         <Instance as Component>::field(),
         <Label as Component>::field(),
@@ -35,6 +37,7 @@ lazy_static! {
         <Quaternion as Component>::field(),
         <Rect2D as Component>::field(),
         <Size3D as Component>::field(),
+        <TextEntry as Component>::field(),
     ];
 }
 
