@@ -251,6 +251,8 @@ impl ViewTextFilters {
 // ---
 
 fn get_time_point(ctx: &ViewerContext<'_>, entry: &TextEntry) -> Option<TimePoint> {
+    // This can only be the case for Arrow-based text-entries, which store their timepoint with the
+    // rest of their components.
     if let time_point @ Some(_) = entry.time_point.as_ref() {
         return time_point.cloned();
     }

@@ -1,6 +1,5 @@
-use ahash::HashSet;
 use itertools::Itertools as _;
-use nohash_hasher::IntMap;
+use nohash_hasher::{IntMap, IntSet};
 
 use re_log_types::{
     field_types::{Instance, TextEntry},
@@ -129,23 +128,29 @@ impl ObjDb {
     fn try_add_arrow_data_msg(&mut self, msg: &ArrowMsg) -> Result<(), Error> {
         let msg_bundle = MsgBundle::try_from(msg).map_err(Error::MsgBundleError)?;
 
-        // TODO(cmc): hackish way of dispatching arrow objects to specific scenes, for now.
-        let components = msg_bundle
-            .components
-            .iter()
-            .map(|bundle| bundle.name)
-            .collect::<HashSet<_>>();
+        // Determine the kind of object we're looking at based on the components that have been
+        // uploaded _first_.
+        //
+        // TODO(cmc): That's an extension of the hack below, and will disappear at the same time
+        // and for the same reasons.
+        {
+            let components = msg_bundle
+                .components
+                .iter()
+                .map(|bundle| bundle.name)
+                .collect::<IntSet<_>>();
 
-        if components.contains(&TextEntry::name()) {
+            let obj_type = if components.contains(&TextEntry::name()) {
+                ObjectType::TextEntry
+            } else {
+                // TODO(jleibs): Hack in a type so the UI treats these objects as visible
+                // This can go away once we determine object categories directly from the arrow
+                // table
+                ObjectType::ArrowObject
+            };
             self.types
                 .entry(msg_bundle.obj_path.obj_type_path().clone())
-                .or_insert(ObjectType::TextEntry);
-        } else {
-            // TODO(jleibs): Hack in a type so the UI treats these objects as visible
-            // This can go away once we determine object categories directly from the arrow table
-            self.types
-                .entry(msg_bundle.obj_path.obj_type_path().clone())
-                .or_insert(ObjectType::ArrowObject);
+                .or_insert(obj_type);
         }
 
         self.register_obj_path(&msg_bundle.obj_path);
