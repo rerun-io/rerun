@@ -1,8 +1,9 @@
+use ahash::HashSet;
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 
 use re_log_types::{
-    field_types::Instance,
+    field_types::{Instance, TextEntry},
     msg_bundle::{Component as _, MsgBundle},
     objects, ArrowMsg, BatchIndex, BeginRecordingMsg, DataMsg, DataPath, DataVec, LogMsg,
     LoggedData, MsgId, ObjPath, ObjPathHash, ObjTypePath, ObjectType, PathOp, PathOpMsg,
@@ -128,11 +129,24 @@ impl ObjDb {
     fn try_add_arrow_data_msg(&mut self, msg: &ArrowMsg) -> Result<(), Error> {
         let msg_bundle = MsgBundle::try_from(msg).map_err(Error::MsgBundleError)?;
 
-        // TODO(jleibs): Hack in a type so the UI treats these objects as visible
-        // This can go away once we determine object categories directly from the arrow table
-        self.types
-            .entry(msg_bundle.obj_path.obj_type_path().clone())
-            .or_insert(ObjectType::ArrowObject);
+        // TODO(cmc): hackish way of dispatching arrow objects to specific scenes, for now.
+        let components = msg_bundle
+            .components
+            .iter()
+            .map(|bundle| bundle.name)
+            .collect::<HashSet<_>>();
+
+        if components.contains(&TextEntry::name()) {
+            self.types
+                .entry(msg_bundle.obj_path.obj_type_path().clone())
+                .or_insert(ObjectType::TextEntry);
+        } else {
+            // TODO(jleibs): Hack in a type so the UI treats these objects as visible
+            // This can go away once we determine object categories directly from the arrow table
+            self.types
+                .entry(msg_bundle.obj_path.obj_type_path().clone())
+                .or_insert(ObjectType::ArrowObject);
+        }
 
         self.register_obj_path(&msg_bundle.obj_path);
 
