@@ -207,10 +207,22 @@ pub fn range_components<'a>(
             iters
                 .into_iter()
                 .map(Option::unwrap)
-                .kmerge_by(|(_, time1, idx_row_nr1, _), (_, time2, idx_row_nr2, _)| {
-                    // Merge earlier rows first, and tiebreak on the actual bucket index row
-                    // number if necessary!
-                    (time1, idx_row_nr1) < (time2, idx_row_nr2)
+                .kmerge_by(|(i1, time1, idx_row_nr1, _), (i2, time2, idx_row_nr2, _)| {
+                    // # Understanding the merge order
+                    //
+                    // We first compare the timestamps, of course: the lower of the two gets merged
+                    // first.
+                    // If the timestamps are equal, then we use the opaque `IndexBucketRowNr` that
+                    // the datastore gives us in order to tiebreak the two.
+                    //
+                    // We're not over, though: it can happen that the index row numbers are
+                    // themselves equal! This means that for this specific entry, the two iterators
+                    // actually share the exact same row in the datastore.
+                    // In that case, we always want the primary/point-of-view iterator to come
+                    // last, so that it can gather as much state as possible before yielding!
+                    //
+                    // Read closely: `i2` is on the left of the < operator!
+                    (time1, idx_row_nr1, i2) < (time2, idx_row_nr2, i1)
                 })
                 .filter_map(move |(i, time, _, df)| {
                     state[i] = Some(df);
