@@ -4,12 +4,21 @@
 
 use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
 
-use arrow2::array::UInt64Array;
+use arrow2::array::{Array, UInt64Array};
 
-use re_arrow_store::{test_bundle, DataStore, LatestAtQuery, WriteError};
+use polars_core::{
+    prelude::{DataFrame, JoinType},
+    series::Series,
+};
+use re_arrow_store::{
+    polars_util, test_bundle, DataStore, LatestAtQuery, RangeQuery, TimeRange, WriteError,
+};
 use re_log_types::{
-    datagen::{build_frame_nr, build_log_time, build_some_instances, build_some_point2d},
-    field_types::Instance,
+    datagen::{
+        build_frame_nr, build_log_time, build_some_instances, build_some_point2d, build_some_rects,
+    },
+    external::arrow2_convert::serialize::TryIntoArrow,
+    field_types::{Instance, Point2D, Rect2D},
     msg_bundle::{wrap_in_listarray, Component as _, ComponentBundle},
     Duration, ObjPath as EntityPath, Time, TimeType, Timeline,
 };
@@ -259,6 +268,71 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
         );
         assert!(comp_row_nrs.is_none());
     }
+}
+
+// ---
+
+// This one demonstrates a nasty edge case when stream-joining multiple iterators that happen to
+// share the same exact row of data at some point (because, for that specific entry, it turns out
+// that those component where inserted together).
+//
+// When that happens, one must be very careful to not only compare time and index row numbers, but
+// also make sure that, if all else if equal, the primary iterator comes last so that it gathers as
+// much state as possible!
+
+#[test]
+fn range_join_across_single_row() {
+    init_logs();
+
+    for config in re_arrow_store::test_util::all_configs() {
+        let mut store = DataStore::new(Instance::name(), config.clone());
+        range_join_across_single_row_impl(&mut store);
+    }
+}
+fn range_join_across_single_row_impl(store: &mut DataStore) {
+    let ent_path = EntityPath::from("this/that");
+
+    let points = build_some_point2d(3);
+    let rects = build_some_rects(3);
+    let bundle =
+        test_bundle!(ent_path @ [build_frame_nr(42.into())] => [points.clone(), rects.clone()]);
+    store.insert(&bundle).unwrap();
+
+    let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
+    let query = RangeQuery::new(
+        timeline_frame_nr,
+        TimeRange::new(i64::MIN.into(), i64::MAX.into()),
+    );
+    let components = [Point2D::name(), Rect2D::name()];
+    let dfs = polars_util::range_components(
+        store,
+        &query,
+        &ent_path,
+        components[0],
+        &components[1..],
+        &JoinType::Outer,
+    )
+    .collect::<Vec<_>>();
+
+    let df_expected = {
+        let instances: Box<dyn Array> = vec![Instance(0), Instance(1), Instance(2)]
+            .try_into_arrow()
+            .unwrap();
+        let points: Box<dyn Array> = points.try_into_arrow().unwrap();
+        let rects: Box<dyn Array> = rects.try_into_arrow().unwrap();
+
+        DataFrame::new(vec![
+            Series::try_from((Instance::name().as_str(), instances)).unwrap(),
+            Series::try_from((Point2D::name().as_str(), points)).unwrap(),
+            Series::try_from((Rect2D::name().as_str(), rects)).unwrap(),
+        ])
+        .unwrap()
+    };
+
+    assert_eq!(1, dfs.len());
+    let (_, df) = dfs[0].clone().unwrap();
+
+    assert_eq!(df_expected, df);
 }
 
 // ---

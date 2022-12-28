@@ -10,11 +10,12 @@ use re_renderer::view_builder::TargetConfiguration;
 use crate::{
     misc::HoveredSpace,
     ui::{
-        image_ui,
+        data_ui::{self, DataUi},
         view_spatial::{
             ui_renderer_bridge::{create_scene_paint_callback, get_viewport, ScreenBackground},
             Image, Label2DTarget, SceneSpatial,
         },
+        Preview,
     },
     Selection, ViewerContext,
 };
@@ -386,6 +387,7 @@ fn view_2d_scrollable(
             check_hovering(*instance_hash, dist);
 
             // Show tooltips for all images, not just the "most hovered" one.
+            //TODO(john) this should probably be factored out into `data_ui`
             if rect.contains(pointer_pos_space) {
                 response = response
                     .on_hover_cursor(egui::CursorIcon::ZoomIn)
@@ -395,12 +397,7 @@ fn view_2d_scrollable(
                         ui.vertical(|ui| {
                             if let Some(instance_id) = instance_hash.resolve(&ctx.log_db.obj_db) {
                                 ui.label(instance_id.to_string());
-                                crate::ui::data_ui::instance_ui(
-                                    ctx,
-                                    ui,
-                                    &instance_id,
-                                    crate::ui::Preview::Small,
-                                );
+                                instance_id.data_ui(ctx, ui, Preview::Small);
                                 ui.separator();
                             }
 
@@ -412,7 +409,7 @@ fn view_2d_scrollable(
                             );
 
                             ui.horizontal(|ui| {
-                                image_ui::show_zoomed_image_region(
+                                data_ui::image::show_zoomed_image_region(
                                     parent_ui,
                                     ui,
                                     &tensor_view,
@@ -477,7 +474,7 @@ fn view_2d_scrollable(
         if !shown_tooltips.contains(&instance_id.hash()) {
             response = response.on_hover_ui_at_pointer(|ui| {
                 ctx.instance_id_button(ui, instance_id);
-                crate::ui::data_ui::instance_ui(ctx, ui, instance_id, crate::ui::Preview::Small);
+                instance_id.data_ui(ctx, ui, Preview::Small);
             });
         }
     }

@@ -8,6 +8,8 @@ use re_log_types::{
 
 use crate::{Preview, ViewerContext};
 
+use super::data_ui::DataUi;
+
 /// An event log, a table of all log messages.
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
@@ -192,7 +194,7 @@ fn table_row(
                 ctx.data_path_button(ui, data_path);
             });
             row.col(|ui| {
-                crate::data_ui::logged_data_ui(ctx, ui, data, Preview::Specific(row_height));
+                data.data_ui(ctx, ui, Preview::Specific(row_height));
             });
         }
         LogMsg::PathOpMsg(msg) => {
@@ -219,7 +221,7 @@ fn table_row(
                 ctx.obj_path_button(ui, path_op.obj_path());
             });
             row.col(|ui| {
-                crate::data_ui::path_op_ui(ctx, ui, path_op);
+                path_op.data_ui(ctx, ui, Preview::Medium);
             });
         }
         LogMsg::ArrowMsg(msg) => match MsgBundle::try_from(msg) {
@@ -247,13 +249,7 @@ fn table_row(
                 });
 
                 row.col(|ui| {
-                    crate::data_ui::logged_arrow_data_ui(
-                        ctx,
-                        ui,
-                        &msg_id,
-                        &components,
-                        Preview::Specific(row_height),
-                    );
+                    components.data_ui(ctx, ui, Preview::Specific(row_height));
                 });
             }
             Err(err) => {

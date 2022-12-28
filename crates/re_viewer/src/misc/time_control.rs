@@ -225,12 +225,12 @@ impl TimeControl {
 
     /// The current time.
     pub fn time_int(&self) -> Option<TimeInt> {
-        Some(self.time()?.floor())
+        self.time().map(|t| t.floor())
     }
 
     /// The current time.
     pub fn time_i64(&self) -> Option<i64> {
-        Some(self.time()?.floor().as_i64())
+        self.time().map(|t| t.floor().as_i64())
     }
 
     /// The current loop range, iff selection looping is turned on.
