@@ -19,7 +19,7 @@ use crate::{
     ViewerContext,
 };
 
-use super::Blueprint;
+use super::{data_ui::DataUi, Blueprint};
 
 /// A panel that shows objects to the left, time on the top.
 ///
@@ -706,7 +706,7 @@ fn show_msg_ids_tooltip(ctx: &mut ViewerContext<'_>, egui_ctx: &egui::Context, m
             if let Some(msg) = ctx.log_db.get_log_msg(&msg_id) {
                 ui.push_id(msg_id, |ui| {
                     ui.group(|ui| {
-                        crate::data_ui::log_msg_ui(ctx, ui, msg, crate::Preview::Small);
+                        msg.data_ui(ctx, ui, crate::Preview::Small);
                     });
                 });
             }
