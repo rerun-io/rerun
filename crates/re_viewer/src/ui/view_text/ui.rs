@@ -59,9 +59,7 @@ pub(crate) fn view_text(
     let time_cursor_moved = state.latest_time != time;
     let scroll_to_row = time_cursor_moved.then(|| {
         crate::profile_scope!("TextEntryState - search scroll time");
-        scene
-            .text_entries
-            .partition_point(|entry| entry.time < time)
+        scene.text_entries.partition_point(|te| te.time < time)
     });
 
     state.latest_time = time;
@@ -253,6 +251,10 @@ impl ViewTextFilters {
 // ---
 
 fn get_time_point(ctx: &ViewerContext<'_>, entry: &TextEntry) -> Option<TimePoint> {
+    if let time_point @ Some(_) = entry.time_point.as_ref() {
+        return time_point.cloned();
+    }
+
     let Some(msg) = ctx.log_db.get_log_msg(&entry.msg_id) else {
         re_log::warn_once!("Missing LogMsg for {:?}", entry.obj_path.obj_type_path());
         return None;
