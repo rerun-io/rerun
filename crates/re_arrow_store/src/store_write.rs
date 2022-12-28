@@ -8,7 +8,7 @@ use parking_lot::RwLock;
 
 use re_log::{debug, trace};
 use re_log_types::{
-    msg_bundle::{wrap_in_listarray, ComponentBundle, MsgBundle},
+    msg_bundle::{wrap_in_listarray, Component, ComponentBundle, MsgBundle},
     ComponentName, ObjPath as EntityPath, TimeInt, TimePoint, TimeRange, Timeline,
 };
 
@@ -168,6 +168,32 @@ impl DataStore {
 
         // Always insert the cluster component.
         row_indices.insert(self.cluster_key, cluster_row_idx);
+
+        // Insert the time point as a component in and of itself!
+        //
+        // This allows us to query for all the different timelines that the data was written to,
+        // without having to keep an extra dedicated index.
+        {
+            use re_log_types::external::arrow2_convert::serialize::TryIntoArrow as _;
+            // TODO(cmc): this was deserialized just to be serialized again, that's kinda sad.
+            // TODO(#440): support for splats
+            let rows_single: Box<dyn Array> = vec![time_point; cluster_len]
+                .try_into_arrow()
+                // cannot fail, this literally was just deserialized from arrow to begin with
+                .unwrap();
+            let rows_single = wrap_in_listarray(rows_single).boxed();
+
+            let name = TimePoint::name();
+            let table = self.components.entry(name).or_insert_with(|| {
+                ComponentTable::new(
+                    name,
+                    ListArray::<i32>::get_child_type(rows_single.data_type()),
+                )
+            });
+
+            let row_idx = table.push(&self.config, time_point, rows_single.as_ref());
+            row_indices.insert(name, row_idx);
+        }
 
         for bundle in components
             .iter()
