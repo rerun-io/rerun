@@ -13,7 +13,7 @@ pub(crate) fn class_description_ui(
 ) -> egui::Response {
     let timeline = ctx.rec_cfg.time_ctrl.timeline();
     let Some(store) = ctx.log_db.obj_db.store.get(timeline) else {
-        return ui.label(ctx.re_ui.error_text("No store with timeline {timeline}."))
+        return ui.label(ctx.re_ui.error_text("No store with timeline {timeline}"))
     };
     let Some(time_i64) = ctx.rec_cfg.time_ctrl.time_i64() else {
         return ui.label(ctx.re_ui.error_text("No current time."))
