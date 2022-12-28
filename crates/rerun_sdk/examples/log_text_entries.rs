@@ -1,0 +1,181 @@
+use clap::Parser;
+
+use re_log_types::{
+    field_types::{ColorRGBA, TextEntry},
+    msg_bundle::{ComponentBundle, MsgBundle},
+    LogMsg, MsgId, ObjPath, Time, TimePoint, TimeType, Timeline,
+};
+use rerun::Session;
+use rerun_sdk as rerun;
+
+// Setup the rerun allocator
+use re_memory::AccountingAllocator;
+
+#[global_allocator]
+static GLOBAL: AccountingAllocator<mimalloc::MiMalloc> =
+    AccountingAllocator::new(mimalloc::MiMalloc);
+
+#[derive(Debug, clap::Parser)]
+#[clap(author, version, about)]
+struct Args {
+    /// Connect to an external viewer
+    #[clap(long)]
+    connect: bool,
+
+    /// External Address
+    #[clap(long)]
+    addr: Option<String>,
+}
+
+fn main() -> std::process::ExitCode {
+    // Make sure rerun logging goes to stdout
+    re_log::set_default_rust_log_env();
+    tracing_subscriber::fmt::init();
+
+    let mut session = rerun_sdk::Session::new();
+
+    // Arg-parsing boiler-plate
+    let args = Args::parse();
+
+    // Connect if requested
+    if args.connect {
+        let addr = if let Some(addr) = &args.addr {
+            addr.parse()
+        } else {
+            Ok(re_sdk_comms::default_server_addr())
+        };
+
+        match addr {
+            Ok(addr) => {
+                session.connect(addr);
+            }
+            Err(err) => {
+                eprintln!("Bad address: {:?}. {:?}", args.addr, err);
+                return std::process::ExitCode::FAILURE;
+            }
+        }
+    }
+
+    let path = ObjPath::from("my/text/logs");
+
+    // Send a single text entry
+    let text_entries = Some(vec![
+        TextEntry::new("catastrophic failure", Some(LogLevel::CRITICAL)), //
+    ]);
+    log_text_entries(&mut session, &path, text_entries, None);
+
+    let text_entries = Some(vec![
+        TextEntry::new("catastrophic failure", Some(LogLevel::CRITICAL)), //
+    ]);
+    log_text_entries(&mut session, &path, text_entries, None);
+
+    // Send a larger collection of rects
+    let text_entries = Some(vec![
+        TextEntry::new("catastrophic failure", Some(LogLevel::CRITICAL)), //
+        TextEntry::new("not going too well", Some(LogLevel::ERROR)),
+        TextEntry::new("somewhat relevant", Some(LogLevel::INFO)),
+        TextEntry::new("potentially interesting", Some(LogLevel::DEBUG)),
+    ]);
+    log_text_entries(&mut session, &path, text_entries, None);
+
+    // Send a collection of colors
+    let colors = Some(vec![
+        ColorRGBA(0xffffffff),
+        ColorRGBA(0xff0000ff),
+        ColorRGBA(0x00ff00ff),
+        ColorRGBA(0x0000ffff),
+    ]);
+    log_text_entries(&mut session, &path, None, colors);
+
+    // Send both rects and colors
+    let text_entries = Some(vec![
+        TextEntry::new("very", Some(LogLevel::TRACE)), //
+        TextEntry::new("detailed", Some(LogLevel::TRACE)),
+        TextEntry::new("information", Some(LogLevel::TRACE)),
+    ]);
+    let colors = Some(vec![
+        ColorRGBA(0xaaaa00ff),
+        ColorRGBA(0xaa00aaff),
+        ColorRGBA(0x00aaaaff),
+    ]);
+    log_text_entries(&mut session, &path, text_entries, colors);
+
+    // If not connected, show the GUI inline
+    if args.connect {
+        session.flush();
+    } else {
+        let log_messages = session.drain_log_messages_buffer();
+        if let Err(err) = rerun_sdk::viewer::show(log_messages) {
+            eprintln!("Failed to start viewer: {err}");
+            return std::process::ExitCode::FAILURE;
+        }
+    }
+
+    std::process::ExitCode::SUCCESS
+}
+
+// ---
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[allow(clippy::upper_case_acronyms)]
+pub enum LogLevel {
+    CRITICAL,
+    ERROR,
+    WARN,
+    INFO,
+    DEBUG,
+    TRACE,
+}
+
+impl From<LogLevel> for String {
+    fn from(val: LogLevel) -> Self {
+        match val {
+            LogLevel::CRITICAL => "CRITICAL",
+            LogLevel::ERROR => "ERROR",
+            LogLevel::WARN => "WARN",
+            LogLevel::INFO => "INFO",
+            LogLevel::DEBUG => "DEBUG",
+            LogLevel::TRACE => "TRACE",
+        }
+        .to_owned()
+    }
+}
+
+/// Log a collection of rects and/or colors
+/// TODO(cmc): Make this fancier and move into the SDK
+fn log_text_entries(
+    session: &mut Session,
+    obj_path: &ObjPath,
+    text_entries: Option<Vec<TextEntry>>,
+    colors: Option<Vec<ColorRGBA>>,
+) {
+    // Capture the log_time and object_path
+    let time_point = TimePoint::from([
+        (
+            Timeline::new("log_time", TimeType::Time),
+            Time::now().into(),
+        ), //
+        (Timeline::new("frame_nr", TimeType::Sequence), 42.into()),
+    ]);
+
+    // Create the initial message bundle
+    let mut bundle = MsgBundle::new(MsgId::random(), obj_path.clone(), time_point, vec![]);
+
+    // Add in the text entries if provided
+    if let Some(text_entries) = text_entries {
+        let component: ComponentBundle = text_entries.try_into().unwrap();
+        bundle.components.push(component);
+    }
+
+    // Add in the colors if provided
+    if let Some(colors) = colors {
+        let component: ComponentBundle = colors.try_into().unwrap();
+        bundle.components.push(component);
+    }
+
+    println!("Logged {bundle}");
+
+    // Create and send one message to the sdk
+    let msg = bundle.try_into().unwrap();
+    session.send(LogMsg::ArrowMsg(msg));
+}
