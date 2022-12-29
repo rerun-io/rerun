@@ -174,7 +174,7 @@ impl DataStore {
         {
             use re_log_types::external::arrow2_convert::serialize::TryIntoArrow as _;
 
-            let msg_ids: Box<dyn Array> = vec![msg_id.0; cluster_len].try_into_arrow().unwrap();
+            let msg_ids: Box<dyn Array> = [msg_id.0].try_into_arrow().unwrap();
             let datatype = msg_ids.data_type().clone();
 
             let rows_single = wrap_in_listarray(msg_ids).boxed();
