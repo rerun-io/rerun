@@ -197,8 +197,28 @@ impl MsgBundle {
         msg_id: MsgId,
         obj_path: ObjPath,
         time_point: TimePoint,
-        bundles: Vec<ComponentBundle>,
+        mut bundles: Vec<ComponentBundle>,
     ) -> Self {
+        // TODO(#440): just a crappy hack while we set up splats.
+        if let Some(bundle) = bundles.first() {
+            let offsets = bundle
+                .value
+                .as_any()
+                .downcast_ref::<ListArray<i32>>()
+                .unwrap()
+                .offsets();
+            let len = (offsets[1] - offsets[0]) as usize;
+            let msg_ids: ComponentBundle = vec![msg_id; len].try_into().unwrap();
+            bundles.push(msg_ids);
+        }
+
+        // What the above would look like if we had support for splats.
+        //
+        // {
+        //     let msg_ids: ComponentBundle = vec![msg_id].try_into().unwrap();
+        //     bundles.push(msg_ids);
+        // }
+
         Self {
             msg_id,
             obj_path,

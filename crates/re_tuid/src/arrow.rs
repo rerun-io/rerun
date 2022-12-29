@@ -2,7 +2,10 @@ use arrow2::{
     array::{MutableArray, MutableStructArray, TryPush},
     datatypes::DataType,
 };
-use arrow2_convert::{arrow_enable_vec_for_type, field::ArrowField, serialize::ArrowSerialize};
+use arrow2_convert::{
+    arrow_enable_vec_for_type, deserialize::ArrowDeserialize, field::ArrowField,
+    serialize::ArrowSerialize,
+};
 
 use crate::Tuid;
 

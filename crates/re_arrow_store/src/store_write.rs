@@ -9,7 +9,7 @@ use parking_lot::RwLock;
 use re_log::{debug, trace};
 use re_log_types::{
     msg_bundle::{wrap_in_listarray, ComponentBundle, MsgBundle},
-    ComponentName, MsgId, ObjPath as EntityPath, TimeInt, TimePoint, TimeRange, Timeline,
+    ComponentName, ObjPath as EntityPath, TimeInt, TimePoint, TimeRange, Timeline,
 };
 
 use crate::{
@@ -70,7 +70,7 @@ impl DataStore {
         self.insert_id += 1;
 
         let MsgBundle {
-            msg_id,
+            msg_id: _,
             obj_path: ent_path,
             time_point,
             components,
@@ -135,7 +135,6 @@ impl DataStore {
         // TODO(#589): support for batched row component insertions
         for row_nr in 0..nb_rows {
             self.insert_row(
-                *msg_id,
                 time_point,
                 row_nr,
                 cluster_comp_pos,
@@ -158,7 +157,6 @@ impl DataStore {
 
     fn insert_row(
         &mut self,
-        msg_id: MsgId,
         time_point: &TimePoint,
         row_nr: usize,
         cluster_comp_pos: Option<usize>,
@@ -170,24 +168,6 @@ impl DataStore {
 
         // Always insert the cluster component.
         row_indices.insert(self.cluster_key, cluster_row_idx);
-
-        {
-            use re_log_types::external::arrow2_convert::serialize::TryIntoArrow as _;
-
-            let msg_ids: Box<dyn Array> = [msg_id.0].try_into_arrow().unwrap();
-            let datatype = msg_ids.data_type().clone();
-
-            let rows_single = wrap_in_listarray(msg_ids).boxed();
-            // dbg!(&rows_single);
-
-            let name = ComponentName::from("rerun.msg_id");
-            let table = self
-                .components
-                .entry(name)
-                .or_insert_with(|| ComponentTable::new(name, &datatype));
-            let row_idx = table.push(&self.config, time_point, rows_single.as_ref());
-            row_indices.insert(name, row_idx);
-        }
 
         for bundle in components
             .iter()

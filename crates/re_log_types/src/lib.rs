@@ -27,6 +27,7 @@ pub mod datagen;
 pub mod arrow_msg;
 pub mod field_types;
 pub use arrow_msg::ArrowMsg;
+use msg_bundle::Component;
 pub mod context;
 pub mod coordinates;
 mod data;
@@ -72,6 +73,11 @@ macro_rules! impl_into_enum {
 
 // ----------------------------------------------------------------------------
 
+use arrow2_convert::{
+    arrow_enable_vec_for_type, deserialize::ArrowDeserialize, field::ArrowField,
+    serialize::ArrowSerialize,
+};
+
 /// A unique id per [`LogMsg`].
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
@@ -99,6 +105,46 @@ impl MsgId {
     #[inline]
     pub fn as_u128(&self) -> u128 {
         self.0.as_u128()
+    }
+}
+
+arrow_enable_vec_for_type!(MsgId);
+
+impl ArrowField for MsgId {
+    type Type = Self;
+    fn data_type() -> arrow2::datatypes::DataType {
+        <re_tuid::Tuid as ArrowField>::data_type()
+    }
+}
+
+impl ArrowSerialize for MsgId {
+    type MutableArrayType = <re_tuid::Tuid as ArrowSerialize>::MutableArrayType;
+
+    #[inline]
+    fn new_array() -> Self::MutableArrayType {
+        <re_tuid::Tuid as ArrowSerialize>::new_array()
+    }
+
+    #[inline]
+    fn arrow_serialize(v: &Self, array: &mut Self::MutableArrayType) -> arrow2::error::Result<()> {
+        <re_tuid::Tuid as ArrowSerialize>::arrow_serialize(&v.0, array)
+    }
+}
+
+impl ArrowDeserialize for MsgId {
+    type ArrayType = <re_tuid::Tuid as ArrowDeserialize>::ArrayType;
+
+    #[inline]
+    fn arrow_deserialize(
+        v: <&Self::ArrayType as IntoIterator>::Item,
+    ) -> Option<<Self as ArrowField>::Type> {
+        <re_tuid::Tuid as ArrowDeserialize>::arrow_deserialize(v).map(MsgId)
+    }
+}
+
+impl Component for MsgId {
+    fn name() -> crate::ComponentName {
+        "rerun.msg_id".into()
     }
 }
 
