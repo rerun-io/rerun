@@ -12,12 +12,13 @@ use re_renderer::{
 use crate::{
     misc::{HoveredSpace, Selection},
     ui::{
-        image_ui,
+        data_ui::{self, DataUi},
         view_spatial::{
             scene::AdditionalPickingInfo,
             ui_renderer_bridge::{create_scene_paint_callback, get_viewport, ScreenBackground},
             SceneSpatial, SpaceCamera3D, AXIS_COLOR_X, AXIS_COLOR_Y, AXIS_COLOR_Z,
         },
+        Preview,
     },
     ViewerContext,
 };
@@ -404,12 +405,7 @@ pub fn view_3d(
 
                     ui.vertical(|ui| {
                         ui.label(instance_id.to_string());
-                        crate::ui::data_ui::instance_ui(
-                            ctx,
-                            ui,
-                            &instance_id,
-                            crate::ui::Preview::Small,
-                        );
+                        instance_id.data_ui(ctx, ui, Preview::Small);
 
                         let legend = Some(image.annotations.clone());
                         let tensor_view = ctx.cache.image.get_view_with_annotations(
@@ -421,7 +417,7 @@ pub fn view_3d(
                         if let [h, w, ..] = image.tensor.shape.as_slice() {
                             ui.separator();
                             ui.horizontal(|ui| {
-                                image_ui::show_zoomed_image_region_at_position(
+                                data_ui::image::show_zoomed_image_region_at_position(
                                     ui,
                                     &tensor_view,
                                     [
@@ -438,7 +434,7 @@ pub fn view_3d(
             // Hover ui for everything else
             response.on_hover_ui_at_pointer(|ui| {
                 ctx.instance_id_button(ui, &instance_id);
-                crate::ui::data_ui::instance_ui(ctx, ui, &instance_id, crate::ui::Preview::Medium);
+                instance_id.data_ui(ctx, ui, crate::ui::Preview::Medium);
             })
         };
     }
