@@ -7,7 +7,7 @@ use arrow2::{
 };
 use arrow2_convert::{deserialize::ArrowDeserialize, field::ArrowField, serialize::ArrowSerialize};
 
-use crate::{msg_bundle::Component, TimeInt, TimePoint, Timeline};
+use crate::{TimeInt, TimePoint, Timeline};
 
 arrow2_convert::arrow_enable_vec_for_type!(TimePoint);
 
@@ -76,12 +76,6 @@ impl ArrowSerialize for TimePoint {
             struct_array.push(true);
         }
         array.try_push_valid()
-    }
-}
-
-impl Component for TimePoint {
-    fn name() -> crate::ComponentName {
-        "rerun.time_point".into()
     }
 }
 
