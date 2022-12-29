@@ -37,7 +37,7 @@ def run_stable_diffusion(
 ) -> None:
 
     pipe = StableDiffusionDepth2ImgPipeline.from_pretrained(
-        "stabilityai/stable-diffusion-2-depth", local_files_only=True
+        "stabilityai/stable-diffusion-2-depth", local_files_only=False
     )
 
     if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
