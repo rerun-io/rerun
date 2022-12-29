@@ -75,7 +75,7 @@ macro_rules! impl_into_enum {
 /// A unique id per [`LogMsg`].
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct MsgId(re_tuid::Tuid);
+pub struct MsgId(pub re_tuid::Tuid);
 
 impl std::fmt::Display for MsgId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
