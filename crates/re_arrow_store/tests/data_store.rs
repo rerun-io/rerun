@@ -389,7 +389,7 @@ fn joint_df(cluster_key: ComponentName, bundles: &[(ComponentName, &MsgBundle)])
     let df = bundles
         .iter()
         .map(|(component, bundle)| {
-            let instances = if bundle.components.len() == 1 {
+            let instances = if bundle.components.len() < 3 {
                 let len = bundle.components[0]
                     .value
                     .as_any()
@@ -408,11 +408,12 @@ fn joint_df(cluster_key: ComponentName, bundles: &[(ComponentName, &MsgBundle)])
                     .unwrap()
             };
 
+            let comp_idx = if bundle.components.len() < 3 { 0 } else { 1 };
             let df = DataFrame::new(vec![
                 instances,
                 Series::try_from((
                     component.as_str(),
-                    bundle.components.last().unwrap().value.to_boxed(),
+                    bundle.components[comp_idx].value.to_boxed(),
                 ))
                 .unwrap(),
             ])
