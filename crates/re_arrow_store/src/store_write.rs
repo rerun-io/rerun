@@ -1,6 +1,5 @@
 use arrow2::{
     array::{new_empty_array, Array, ListArray, UInt64Array},
-    buffer::Buffer,
     datatypes::DataType,
 };
 use itertools::Itertools as _;
@@ -74,7 +73,6 @@ impl DataStore {
             msg_id: _,
             obj_path: ent_path,
             time_point,
-            time_point_raw,
             components,
         } = bundle;
 
@@ -138,7 +136,6 @@ impl DataStore {
         for row_nr in 0..nb_rows {
             self.insert_row(
                 time_point,
-                time_point_raw.as_deref(),
                 row_nr,
                 cluster_comp_pos,
                 components,
@@ -161,7 +158,6 @@ impl DataStore {
     fn insert_row(
         &mut self,
         time_point: &TimePoint,
-        time_point_raw: Option<&dyn Array>,
         row_nr: usize,
         cluster_comp_pos: Option<usize>,
         components: &[ComponentBundle],
@@ -178,9 +174,14 @@ impl DataStore {
         // This allows us to query for all the different timelines that the data was written to,
         // without having to keep an extra dedicated index.
         {
-            let rows_single = serialize_time_point(time_point, time_point_raw, cluster_len);
-            dbg!(&rows_single);
-            dbg!(time_point_raw);
+            use re_log_types::external::arrow2_convert::serialize::TryIntoArrow as _;
+            // TODO(cmc): this was deserialized just to be serialized again, that's kinda sad.
+            // TODO(#440): support for splats
+            let rows_single: Box<dyn Array> = vec![time_point; cluster_len]
+                .try_into_arrow()
+                // cannot fail, this literally was just deserialized from arrow to begin with
+                .unwrap();
+            let rows_single = wrap_in_listarray(rows_single).boxed();
 
             let name = TimePoint::name();
             let table = self.components.entry(name).or_insert_with(|| {
@@ -327,39 +328,6 @@ impl DataStore {
                 Ok((row_idx, len))
             }
         }
-    }
-}
-
-// TODO: explain
-// TODO(#440): support for splats
-fn serialize_time_point(
-    time_point: &TimePoint,
-    time_point_raw: Option<&dyn Array>,
-    splat_len: usize,
-) -> Box<dyn Array> {
-    if let Some(time_point_raw) = time_point_raw {
-        let list = time_point_raw
-            .as_any()
-            .downcast_ref::<ListArray<i32>>()
-            .unwrap()
-            .values();
-        dbg!(list);
-
-        ListArray::<i32>::from_data(
-            ListArray::<i32>::default_datatype(time_point_raw.data_type().clone()),
-            Buffer::from_iter(0i32..=splat_len as i32 + 1),
-            time_point_raw.to_boxed(),
-            None,
-        )
-        .boxed()
-    } else {
-        use re_log_types::external::arrow2_convert::serialize::TryIntoArrow as _;
-        // TODO: the wrapping list will need custom offsets then
-        let serialized: Box<dyn Array> = vec![time_point; splat_len]
-            .try_into_arrow()
-            // cannot fail, this literally was just deserialized from arrow to begin with
-            .unwrap();
-        wrap_in_listarray(serialized).boxed()
     }
 }
 

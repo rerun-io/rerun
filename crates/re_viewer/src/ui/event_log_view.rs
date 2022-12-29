@@ -229,7 +229,6 @@ fn table_row(
                 msg_id,
                 obj_path,
                 time_point,
-                time_point_raw: _,
                 components,
             }) => {
                 row.col(|ui| {

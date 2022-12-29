@@ -189,9 +189,6 @@ pub struct MsgBundle {
     pub obj_path: ObjPath,
     pub time_point: TimePoint,
     pub components: Vec<ComponentBundle>,
-
-    // TODO: that's worth a comment for sure
-    pub time_point_raw: Option<Box<dyn Array>>,
 }
 
 impl MsgBundle {
@@ -206,7 +203,6 @@ impl MsgBundle {
             msg_id,
             obj_path,
             time_point,
-            time_point_raw: None,
             components: bundles,
         }
     }
@@ -304,7 +300,7 @@ impl TryFrom<&ArrowMsg> for MsgBundle {
                 parse_obj_path(path.as_str()).map_err(MsgBundleError::PathParseError)
             })?;
 
-        let (time_point, time_point_raw) = extract_timelines(schema, chunk)?;
+        let time_point = extract_timelines(schema, chunk)?;
         let components = extract_components(schema, chunk)?;
 
         re_log::debug!("Got components: {components:?}");
@@ -313,7 +309,6 @@ impl TryFrom<&ArrowMsg> for MsgBundle {
             msg_id: *msg_id,
             obj_path: obj_path_cmp.into(),
             time_point,
-            time_point_raw: Some(time_point_raw),
             components,
         })
     }
@@ -355,10 +350,7 @@ impl TryFrom<MsgBundle> for ArrowMsg {
 /// Extract a [`TimePoint`] from the "timelines" column. This function finds the "timelines" field
 /// in `chunk` and deserializes the values into a `TimePoint` using the
 /// [`arrow2_convert::deserialize::ArrowDeserialize`] trait.
-fn extract_timelines(
-    schema: &Schema,
-    chunk: &Chunk<Box<dyn Array>>,
-) -> Result<(TimePoint, Box<dyn Array>)> {
+fn extract_timelines(schema: &Schema, chunk: &Chunk<Box<dyn Array>>) -> Result<TimePoint> {
     use arrow2_convert::deserialize::arrow_array_deserialize_iterator;
 
     let timelines = schema
@@ -380,7 +372,7 @@ fn extract_timelines(
         return Err(MsgBundleError::MultipleTimepoints);
     }
 
-    Ok((timepoint, timelines.clone() /* shallow */))
+    Ok(timepoint)
 }
 
 /// Extract a vector of `ComponentBundle` from the message. This is necessary since the

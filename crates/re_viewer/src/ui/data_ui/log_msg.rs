@@ -221,7 +221,6 @@ impl DataUi for ArrowMsg {
                 msg_id: _,
                 obj_path,
                 time_point,
-                time_point_raw: _,
                 components,
             }) => {
                 egui::Grid::new("fields")
