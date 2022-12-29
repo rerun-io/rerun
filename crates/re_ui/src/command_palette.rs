@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use egui::{Align2, Key, NumExt as _};
 
 use crate::Command;
@@ -5,7 +7,7 @@ use crate::Command;
 #[derive(Default)]
 pub struct CommandPalette {
     visible: bool,
-    text: String,
+    query: String,
     selected_alternative: usize,
 }
 
@@ -21,7 +23,7 @@ impl CommandPalette {
             .input_mut()
             .consume_key(Default::default(), Key::Escape);
         if !self.visible {
-            self.text.clear();
+            self.query.clear();
             return None;
         }
 
@@ -47,7 +49,7 @@ impl CommandPalette {
         }
 
         let text_response = ui.add(
-            egui::TextEdit::singleline(&mut self.text)
+            egui::TextEdit::singleline(&mut self.query)
                 .desired_width(f32::INFINITY)
                 .lock_focus(true),
         );
@@ -64,10 +66,7 @@ impl CommandPalette {
 
     #[must_use = "Returns the command that was selected"]
     fn alternatives(&mut self, ui: &mut egui::Ui, enter_pressed: bool) -> Option<Command> {
-        use strum::IntoEnumIterator as _;
-
-        // TODO(emilk): fuzzy filtering
-        let filter = self.text.to_lowercase();
+        let query = self.query.to_lowercase();
 
         let item_height = 16.0;
         let font_id = egui::TextStyle::Button.resolve(ui.style());
@@ -75,11 +74,8 @@ impl CommandPalette {
         let mut num_alternatives: usize = 0;
         let mut selected_command = None;
 
-        for (i, command) in Command::iter()
-            .filter(|alt| alt.text().to_lowercase().contains(&filter))
-            .enumerate()
-        {
-            let (text, tooltip) = command.text_and_tooltip();
+        for (i, fuzzy_match) in commands_that_match(&query).iter().enumerate() {
+            let command = fuzzy_match.command;
             let kb_shortcut = command
                 .kb_shortcut()
                 .map(|shortcut| ui.ctx().format_shortcut(&shortcut))
@@ -90,11 +86,11 @@ impl CommandPalette {
                 egui::Sense::click(),
             );
 
-            let response = response.on_hover_text(tooltip);
+            let response = response.on_hover_text(command.tooltip());
 
             if response.clicked() {
                 selected_command = Some(command);
-                self.text.clear();
+                self.query.clear();
             }
 
             let selected = i == self.selected_alternative;
@@ -106,20 +102,27 @@ impl CommandPalette {
 
                 if enter_pressed {
                     selected_command = Some(command);
-                    self.text.clear();
+                    self.query.clear();
                 }
 
                 ui.scroll_to_rect(rect, None);
             }
 
+            let text = format_match(fuzzy_match, ui, &font_id, style.text_color());
+
             // TODO(emilk): shorten long text using '…'
-            ui.painter().text(
-                rect.left_center(),
-                Align2::LEFT_CENTER,
-                text,
-                font_id.clone(),
-                style.text_color(),
-            );
+            let galley = text
+                .into_galley(
+                    ui,
+                    Some(false),
+                    f32::INFINITY,
+                    egui::FontSelection::default(),
+                )
+                .galley;
+            let text_rect = Align2::LEFT_CENTER
+                .anchor_rect(egui::Rect::from_min_size(rect.left_center(), galley.size()));
+            ui.painter().galley(text_rect.min, galley);
+
             ui.painter().text(
                 rect.right_center(),
                 Align2::RIGHT_CENTER,
@@ -156,5 +159,71 @@ impl CommandPalette {
             .clamp(0, num_alternatives.saturating_sub(1));
 
         selected_command
+    }
+}
+
+struct FuzzyMatch {
+    command: Command,
+    score: isize,
+    fuzzy_match: Option<sublime_fuzzy::Match>,
+}
+
+fn commands_that_match(query: &str) -> Vec<FuzzyMatch> {
+    use strum::IntoEnumIterator as _;
+
+    if query.is_empty() {
+        Command::iter()
+            .map(|command| FuzzyMatch {
+                command,
+                score: 0,
+                fuzzy_match: None,
+            })
+            .collect()
+    } else {
+        let mut matches: Vec<_> = Command::iter()
+            .filter_map(|command| {
+                let target_text = command.text();
+                sublime_fuzzy::best_match(query, target_text).map(|fuzzy_match| FuzzyMatch {
+                    command,
+                    score: fuzzy_match.score(),
+                    fuzzy_match: Some(fuzzy_match),
+                })
+            })
+            .collect();
+        matches.sort_by_key(|m| -m.score);
+        matches
+    }
+}
+
+fn format_match(
+    m: &FuzzyMatch,
+    ui: &egui::Ui,
+    font_id: &egui::FontId,
+    default_text_color: egui::Color32,
+) -> egui::WidgetText {
+    let target_text = m.command.text();
+
+    if let Some(fm) = &m.fuzzy_match {
+        let matched_indices: BTreeSet<_> = fm.matched_indices().collect();
+
+        let mut job = egui::text::LayoutJob::default();
+        for (i, c) in target_text.chars().enumerate() {
+            let color = if matched_indices.contains(&i) {
+                ui.visuals().strong_text_color()
+            } else {
+                default_text_color
+            };
+            job.append(
+                &c.to_string(),
+                0.0,
+                egui::text::TextFormat::simple(font_id.clone(), color),
+            );
+        }
+
+        job.into()
+    } else {
+        egui::RichText::new(target_text)
+            .color(default_text_color)
+            .into()
     }
 }
