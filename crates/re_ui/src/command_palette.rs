@@ -44,9 +44,6 @@ impl CommandPalette {
     fn window_content(&mut self, ui: &mut egui::Ui) -> Option<Command> {
         // Check _before_ we add the `TextEdit`, so it doesn't steal it.
         let enter_pressed = ui.input_mut().consume_key(Default::default(), Key::Enter);
-        if enter_pressed {
-            self.visible = false;
-        }
 
         let text_response = ui.add(
             egui::TextEdit::singleline(&mut self.query)
@@ -54,18 +51,36 @@ impl CommandPalette {
                 .lock_focus(true),
         );
         text_response.request_focus();
+        let mut scroll_to_selected_alternative = false;
         if text_response.changed() {
             self.selected_alternative = 0;
+            scroll_to_selected_alternative = true;
         }
 
-        egui::ScrollArea::vertical()
+        let selected_command = egui::ScrollArea::vertical()
             .auto_shrink([false, true])
-            .show(ui, |ui| self.alternatives(ui, enter_pressed))
-            .inner
+            .show(ui, |ui| {
+                self.alternatives(ui, enter_pressed, scroll_to_selected_alternative)
+            })
+            .inner;
+
+        if selected_command.is_some() {
+            *self = Default::default();
+        }
+
+        selected_command
     }
 
     #[must_use = "Returns the command that was selected"]
-    fn alternatives(&mut self, ui: &mut egui::Ui, enter_pressed: bool) -> Option<Command> {
+    fn alternatives(
+        &mut self,
+        ui: &mut egui::Ui,
+        enter_pressed: bool,
+        mut scroll_to_selected_alternative: bool,
+    ) -> Option<Command> {
+        scroll_to_selected_alternative |= ui.input().key_pressed(Key::ArrowUp);
+        scroll_to_selected_alternative |= ui.input().key_pressed(Key::ArrowDown);
+
         let query = self.query.to_lowercase();
 
         let item_height = 16.0;
@@ -90,7 +105,6 @@ impl CommandPalette {
 
             if response.clicked() {
                 selected_command = Some(command);
-                self.query.clear();
             }
 
             let selected = i == self.selected_alternative;
@@ -102,10 +116,11 @@ impl CommandPalette {
 
                 if enter_pressed {
                     selected_command = Some(command);
-                    self.query.clear();
                 }
 
-                ui.scroll_to_rect(rect, None);
+                if scroll_to_selected_alternative {
+                    ui.scroll_to_rect(rect, None);
+                }
             }
 
             let text = format_match(fuzzy_match, ui, &font_id, style.text_color());
@@ -143,12 +158,10 @@ impl CommandPalette {
         }
 
         // Move up/down in the list:
-
         self.selected_alternative = self.selected_alternative.saturating_sub(
             ui.input_mut()
                 .count_and_consume_key(Default::default(), Key::ArrowUp),
         );
-
         self.selected_alternative = self.selected_alternative.saturating_add(
             ui.input_mut()
                 .count_and_consume_key(Default::default(), Key::ArrowDown),
