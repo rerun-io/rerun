@@ -349,6 +349,8 @@ fn view_2d_scrollable(
             check_hovering(*instance_hash, bbox.distance_to_pos(pointer_pos_space));
         }
 
+        // TODO: 3d ray is gone
+        // TODO: depth display gets stuck sometimes / not cleared out
         if closest_instance_id_hash.is_some() {
             for img in &scene.ui.images {
                 let Image {
@@ -364,9 +366,6 @@ fn view_2d_scrollable(
 
                 let (w, h) = (tensor.shape[1].size as f32, tensor.shape[0].size as f32);
                 let rect = Rect::from_min_size(Pos2::ZERO, vec2(w, h));
-
-                // Show tooltips for all images, not just the "most hovered" one.
-
                 response = response
                     .on_hover_cursor(egui::CursorIcon::ZoomIn)
                     .on_hover_ui_at_pointer(|ui| {

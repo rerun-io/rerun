@@ -95,7 +95,7 @@ impl ScenePart for ImagesPart {
                             multiplicative_tint: paint_props.fg_stroke.color.into(),
                         },
                     );
-                    // TODO:
+                    // TODO: put into ui data instead?
                     scene.primitives.textured_rectangles_ids.push(instance_hash);
                 }
 
@@ -129,10 +129,9 @@ impl ScenePart for ImagesPart {
                     for rect in it.by_ref() {
                         let prev_plane = cur_plane;
                         cur_plane = macaw::Plane3::from_normal_point(
-                            rect.extent_u.cross(rect.extent_v),
+                            rect.extent_u.cross(rect.extent_v).normalize(),
                             rect.top_left_corner_position,
-                        )
-                        .normalized();
+                        );
 
                         // Are the image planes too unsimilar? Then this is a new group.
                         if !rectangle_group.is_empty()

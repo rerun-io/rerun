@@ -3,7 +3,10 @@ use itertools::Itertools as _;
 use re_data_store::InstanceIdHash;
 use re_renderer::{renderer::MeshInstance, LineStripSeriesBuilder, PointCloudBuilder};
 
-use crate::{math::line_segment_distance_sq_to_point_2d, ui::view_spatial::eye::Eye};
+use crate::{
+    math::{line_segment_distance_sq_to_point_2d, ray_closet_t_line_segment},
+    ui::view_spatial::eye::Eye,
+};
 
 use super::MeshSource;
 
@@ -136,10 +139,24 @@ impl SceneSpatialPrimitives {
 
         // in ui points
         let max_side_ui_dist_sq = 5.0 * 5.0; // TODO(emilk): interaction radius from egui
-        let mut closest_opaque_ray_z = f32::INFINITY;
+        let mut closest_opaque_ray_t = f32::INFINITY;
         let mut closest_opaque_side_ui_dist_sq = max_side_ui_dist_sq;
         let mut closest_opaque_instance_hash = None;
         let mut closest_opaque_picking_info = AdditionalPickingInfo::None;
+
+        let mut update_closest = |t, side_ui_dist_sq, instance_hash: &InstanceIdHash| {
+            if side_ui_dist_sq <= max_side_ui_dist_sq
+                && t <= closest_opaque_ray_t
+                && side_ui_dist_sq <= closest_opaque_side_ui_dist_sq
+            {
+                closest_opaque_ray_t = t;
+                closest_opaque_side_ui_dist_sq = side_ui_dist_sq;
+                closest_opaque_instance_hash = Some(*instance_hash);
+                true
+            } else {
+                false
+            }
+        };
 
         {
             crate::profile_scope!("points");
@@ -156,17 +173,12 @@ impl SceneSpatialPrimitives {
 
                     // TODO(emilk): take point radius into account
                     let pos_in_ui = ui_from_batch.project_point3(point.position);
-                    if pos_in_ui.z < 0.0 {
-                        continue; // TODO(emilk): don't we expect negative Z!? RHS etc
-                    }
                     let dist_sq = pos_in_ui.truncate().distance_squared(pointer_in_ui);
                     if dist_sq < max_side_ui_dist_sq {
-                        let t = pos_in_ui.z.abs();
-                        if t < closest_opaque_ray_z || dist_sq < closest_opaque_side_ui_dist_sq {
-                            closest_opaque_ray_z = t;
-                            closest_opaque_side_ui_dist_sq = dist_sq;
-                            closest_opaque_instance_hash = Some(*instance_hash);
-                        }
+                        let t = ray_in_world.closest_t_to_point(
+                            batch.world_from_obj.transform_point3(point.position),
+                        );
+                        update_closest(t, dist_sq, instance_hash);
                     }
                 }
             }
@@ -194,18 +206,17 @@ impl SceneSpatialPrimitives {
                     // TODO(emilk): take line segment radius into account
                     let a = ui_from_batch.project_point3(start.position);
                     let b = ui_from_batch.project_point3(end.position);
-                    let dist_sq = line_segment_distance_sq_to_point_2d(
+                    let side_ui_dist_sq = line_segment_distance_sq_to_point_2d(
                         [a.truncate(), b.truncate()],
                         pointer_in_ui,
                     );
 
-                    if dist_sq < max_side_ui_dist_sq {
-                        let t = a.z.abs(); // not very accurate
-                        if t < closest_opaque_ray_z || dist_sq < closest_opaque_side_ui_dist_sq {
-                            closest_opaque_ray_z = t;
-                            closest_opaque_side_ui_dist_sq = dist_sq;
-                            closest_opaque_instance_hash = Some(instance_hash);
-                        }
+                    if side_ui_dist_sq < max_side_ui_dist_sq {
+                        let start_world = batch.world_from_obj.transform_point3(start.position);
+                        let end_world = batch.world_from_obj.transform_point3(end.position);
+                        let t = ray_closet_t_line_segment(&ray_in_world, [start_world, end_world]);
+
+                        update_closest(t, side_ui_dist_sq, &instance_hash);
                     }
                 }
             }
@@ -220,13 +231,9 @@ impl SceneSpatialPrimitives {
                 let ray_in_mesh = (mesh.world_from_mesh.inverse() * ray_in_world).normalize();
                 let t = crate::math::ray_bbox_intersect(&ray_in_mesh, mesh.mesh.bbox());
 
-                if t < f32::INFINITY {
-                    let dist_sq = 0.0;
-                    if t < closest_opaque_ray_z || dist_sq < closest_opaque_side_ui_dist_sq {
-                        closest_opaque_ray_z = t; // TODO(emilk): I think this is wrong
-                        closest_opaque_side_ui_dist_sq = dist_sq;
-                        closest_opaque_instance_hash = Some(mesh.instance_hash);
-                    }
+                if t < 0.0 {
+                    let side_ui_dist_sq = 0.0;
+                    update_closest(t, side_ui_dist_sq, &mesh.instance_hash);
                 }
             }
         }
@@ -242,10 +249,11 @@ impl SceneSpatialPrimitives {
                 }
 
                 let rect_plane = macaw::Plane3::from_normal_point(
-                    rect.extent_v.cross(rect.extent_u),
+                    rect.extent_u.cross(rect.extent_v).normalize(),
                     rect.top_left_corner_position,
                 );
 
+                // TODO(andreas): Interaction radius is currently ignored for rects.
                 let (intersect, t) =
                     rect_plane.intersect_ray(ray_in_world.origin, ray_in_world.dir);
                 if !intersect {
@@ -258,30 +266,18 @@ impl SceneSpatialPrimitives {
                 let v = dir_from_rect_top_left.dot(rect.extent_v) / rect.extent_v.length_squared();
 
                 // TODO: multi intersect / transparent rects
-                if (0.0..=1.0).contains(&u) && (0.0..=1.0).contains(&v) {
-                    // TODO: copy pasted
-
-                    let pos_in_ui = ui_from_world.project_point3(intersection_world);
-                    if pos_in_ui.z < 0.0 {
-                        continue; // TODO(emilk): don't we expect negative Z!? RHS etc
-                    }
-                    let dist_sq = pos_in_ui.truncate().distance_squared(pointer_in_ui);
-                    if dist_sq < max_side_ui_dist_sq {
-                        let t = pos_in_ui.z.abs();
-                        if t < closest_opaque_ray_z || dist_sq < closest_opaque_side_ui_dist_sq {
-                            closest_opaque_ray_z = t;
-                            closest_opaque_side_ui_dist_sq = dist_sq;
-                            closest_opaque_instance_hash = Some(*id);
-                            closest_opaque_picking_info =
-                                AdditionalPickingInfo::TexturedRect(glam::vec2(u, v));
-                        }
-                    }
+                if (0.0..=1.0).contains(&u)
+                    && (0.0..=1.0).contains(&v)
+                    && update_closest(t, 0.0, id)
+                {
+                    closest_opaque_picking_info =
+                        AdditionalPickingInfo::TexturedRect(glam::vec2(u, v));
                 }
             }
         }
 
         if let Some(closest_opaque_instance_hash) = closest_opaque_instance_hash {
-            let space_position = ray_in_world.origin + ray_in_world.dir * closest_opaque_ray_z;
+            let space_position = ray_in_world.origin + ray_in_world.dir * closest_opaque_ray_t;
             vec![PickingResult {
                 instance_hash: closest_opaque_instance_hash,
                 space_position,

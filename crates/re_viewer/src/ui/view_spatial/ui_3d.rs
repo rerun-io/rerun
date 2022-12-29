@@ -374,7 +374,7 @@ pub fn view_3d(
         }
     }
 
-    // TODO: We're soooo close making the hover reaction of ui2d and ui3d the same.
+    // TODO(andreas): We're very close making the hover reaction of ui2d and ui3d the same. Finish the job!
     *hovered_instance = None;
     let picking_results = response.hover_pos().map_or(Vec::new(), |pointer_pos| {
         scene
@@ -441,9 +441,6 @@ pub fn view_3d(
                 crate::ui::data_ui::instance_ui(ctx, ui, &instance_id, crate::ui::Preview::Medium);
             })
         };
-
-        // TODO: looks like I broke the depth display on 2d
-        // TODO: looks like 2d can't pick a lot of stuff anymore
     }
 
     *hovered_instance = None;
