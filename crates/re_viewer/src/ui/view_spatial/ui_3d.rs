@@ -454,7 +454,9 @@ pub fn view_3d(
         }
     }
 
-    project_onto_other_spaces(ctx, space_cameras, state, space);
+    if response.hovered() {
+        project_onto_other_spaces(ctx, space_cameras, state, space);
+    }
     show_projections_from_2d_space(ctx, space_cameras, &mut scene, scene_bbox_accum);
     if state.show_axes {
         show_origin_axis(&mut scene);

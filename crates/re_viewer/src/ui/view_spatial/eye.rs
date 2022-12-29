@@ -130,7 +130,7 @@ impl Eye {
         } else if self.fov_y.is_none() && other.fov_y.is_none() {
             None
         } else {
-            // TODO: interpolating between perspetive and ortho is more involved than that
+            // TODO(andreas): Interpolating between perspective and ortho is untested and likely more involved than this.
             Some(egui::lerp(
                 self.fov_y.unwrap_or(0.01)..=other.fov_y.unwrap_or(0.01),
                 t,

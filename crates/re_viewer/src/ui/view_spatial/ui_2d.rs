@@ -350,8 +350,6 @@ fn view_2d_scrollable(
             check_hovering(*instance_hash, bbox.distance_to_pos(pointer_pos_space));
         }
 
-        // TODO: 3d ray is gone
-        // TODO: depth display gets stuck sometimes / not cleared out
         if closest_instance_id_hash.is_some() {
             for img in &scene.ui.images {
                 let Image {
