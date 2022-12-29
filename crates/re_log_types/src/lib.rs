@@ -27,7 +27,6 @@ pub mod datagen;
 pub mod arrow_msg;
 pub mod field_types;
 pub use arrow_msg::ArrowMsg;
-use msg_bundle::Component;
 pub mod context;
 pub mod coordinates;
 mod data;
@@ -81,7 +80,7 @@ use arrow2_convert::{
 /// A unique id per [`LogMsg`].
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct MsgId(pub re_tuid::Tuid);
+pub struct MsgId(re_tuid::Tuid);
 
 impl std::fmt::Display for MsgId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -142,7 +141,7 @@ impl ArrowDeserialize for MsgId {
     }
 }
 
-impl Component for MsgId {
+impl msg_bundle::Component for MsgId {
     fn name() -> crate::ComponentName {
         "rerun.msg_id".into()
     }
