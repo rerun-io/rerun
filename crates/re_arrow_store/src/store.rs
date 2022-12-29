@@ -10,8 +10,8 @@ use nohash_hasher::IntMap;
 use parking_lot::RwLock;
 use re_format::{arrow, format_bytes, format_number};
 use re_log_types::{
-    ComponentName, ObjPath as EntityPath, ObjPathHash as EntityPathHash, TimeInt, TimeRange,
-    Timeline,
+    ComponentName, MsgId, ObjPath as EntityPath, ObjPathHash as EntityPathHash, TimeInt, TimePoint,
+    TimeRange, Timeline,
 };
 
 // --- Indices & offsets ---
@@ -184,6 +184,11 @@ pub struct DataStore {
     /// so that they properly deduplicated.
     pub(crate) cluster_comp_cache: IntMap<usize, RowIndex>,
 
+    /// Maps `MsgId`s to some metadata (just timepoints at the moment).
+    ///
+    /// `BTreeMap` because of garbage collection.
+    pub(crate) messages: BTreeMap<MsgId, TimePoint>,
+
     /// Maps an entity to its index, for a specific timeline.
     ///
     /// An index maps specific points in time to rows in component tables.
@@ -207,6 +212,7 @@ impl DataStore {
             cluster_key,
             config,
             cluster_comp_cache: Default::default(),
+            messages: Default::default(),
             indices: Default::default(),
             components: Default::default(),
             insert_id: 0,
@@ -302,6 +308,7 @@ impl std::fmt::Display for DataStore {
             cluster_key,
             config,
             cluster_comp_cache: _,
+            messages: _,
             indices,
             components,
             insert_id: _,

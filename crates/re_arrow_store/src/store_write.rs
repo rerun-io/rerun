@@ -9,7 +9,7 @@ use parking_lot::RwLock;
 use re_log::{debug, trace};
 use re_log_types::{
     msg_bundle::{wrap_in_listarray, Component, ComponentBundle, MsgBundle},
-    ComponentName, ObjPath as EntityPath, TimeInt, TimePoint, TimeRange, Timeline,
+    ComponentName, MsgId, ObjPath as EntityPath, TimeInt, TimePoint, TimeRange, Timeline,
 };
 
 use crate::{
@@ -70,7 +70,7 @@ impl DataStore {
         self.insert_id += 1;
 
         let MsgBundle {
-            msg_id: _,
+            msg_id,
             obj_path: ent_path,
             time_point,
             components,
@@ -151,6 +151,8 @@ impl DataStore {
                 .or_insert_with(|| IndexTable::new(*timeline, ent_path));
             index.insert(&self.config, *time, &row_indices)?;
         }
+
+        self.messages.insert(*msg_id, time_point.clone());
 
         Ok(())
     }
@@ -328,6 +330,11 @@ impl DataStore {
                 Ok((row_idx, len))
             }
         }
+    }
+
+    // TODO
+    pub fn get_msg_metadata(&self, msg_id: &MsgId) -> Option<&TimePoint> {
+        self.messages.get(msg_id)
     }
 }
 
