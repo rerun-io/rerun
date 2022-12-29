@@ -15,12 +15,14 @@ pub struct TextEntry {
     pub msg_id: MsgId,
     pub obj_path: ObjPath,
     pub time: i64,
-    pub time_point: Option<TimePoint>,
     pub color: Option<[u8; 4]>,
 
     // text entry
     pub level: Option<String>,
     pub body: String,
+
+    // temp
+    pub is_arrow: bool,
 }
 
 /// A text scene, with everything needed to render it.
@@ -89,10 +91,10 @@ impl SceneText {
                                 msg_id: *msg_id,
                                 obj_path: obj_path.clone(),
                                 time,
-                                time_point: None,
                                 color: color.copied(),
                                 level: level.map(ToOwned::to_owned),
                                 body: body.clone(),
+                                is_arrow: false,
                             });
                         }
                     },
@@ -114,6 +116,8 @@ impl SceneText {
     ) {
         crate::profile_function!();
 
+        let store = &ctx.log_db.obj_db.arrow_store;
+
         for obj_path in query.obj_paths {
             let ent_path = obj_path;
 
@@ -128,9 +132,9 @@ impl SceneText {
                 TimeRange::new(i64::MIN.into(), i64::MAX.into()),
             );
 
-            let components = [TimePoint::name(), field_types::ColorRGBA::name()];
+            let components = [MsgId::name(), field_types::ColorRGBA::name()];
             let ent_views = range_entity_with_primary::<field_types::TextEntry>(
-                &ctx.log_db.obj_db.arrow_store,
+                store,
                 &query,
                 ent_path,
                 &components,
@@ -140,7 +144,7 @@ impl SceneText {
                 match ent_view.visit3(
                     |_instance,
                      text_entry: field_types::TextEntry,
-                     time_point: Option<TimePoint>,
+                     msg_id: Option<MsgId>,
                      color: Option<field_types::ColorRGBA>| {
                         let field_types::TextEntry { body, level } = text_entry;
 
@@ -151,13 +155,13 @@ impl SceneText {
 
                         if is_visible {
                             self.text_entries.push(TextEntry {
-                                msg_id: MsgId::ZERO,
+                                msg_id: msg_id.unwrap(), // always present
                                 obj_path: obj_path.clone(),
                                 time: time.as_i64(),
-                                time_point,
                                 color: color.map(|c| c.to_array()),
                                 level,
                                 body,
+                                is_arrow: true,
                             });
                         }
                     },

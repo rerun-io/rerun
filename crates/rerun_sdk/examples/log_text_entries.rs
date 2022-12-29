@@ -158,20 +158,18 @@ fn log_text_entries(
         (Timeline::new("frame_nr", TimeType::Sequence), 42.into()),
     ]);
 
-    // Create the initial message bundle
-    let mut bundle = MsgBundle::new(MsgId::random(), obj_path.clone(), time_point, vec![]);
-
-    // Add in the text entries if provided
-    if let Some(text_entries) = text_entries {
-        let component: ComponentBundle = text_entries.try_into().unwrap();
-        bundle.components.push(component);
-    }
-
-    // Add in the colors if provided
-    if let Some(colors) = colors {
-        let component: ComponentBundle = colors.try_into().unwrap();
-        bundle.components.push(component);
-    }
+    let bundle = MsgBundle::new(
+        MsgId::random(),
+        obj_path.clone(),
+        time_point,
+        [
+            text_entries.map(|te| te.try_into().unwrap()),
+            colors.map(|colors| colors.try_into().unwrap()),
+        ]
+        .into_iter()
+        .flatten()
+        .collect(),
+    );
 
     println!("Logged {bundle}");
 

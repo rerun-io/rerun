@@ -251,10 +251,12 @@ impl ViewTextFilters {
 // ---
 
 fn get_time_point(ctx: &ViewerContext<'_>, entry: &TextEntry) -> Option<TimePoint> {
-    // This can only be the case for Arrow-based text-entries, which store their timepoint with the
-    // rest of their components.
-    if let time_point @ Some(_) = entry.time_point.as_ref() {
-        return time_point.cloned();
+    if entry.is_arrow {
+        let Some(time_point) = ctx.log_db.obj_db.arrow_store.get_msg_metadata(&entry.msg_id) else {
+            re_log::warn_once!("Missing LogMsg for {:?}", entry.obj_path.obj_type_path());
+            return None;
+        };
+        return Some(time_point.clone());
     }
 
     let Some(msg) = ctx.log_db.get_log_msg(&entry.msg_id) else {

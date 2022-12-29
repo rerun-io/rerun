@@ -306,7 +306,6 @@ impl DataStore {
         }
     }
 
-    // TODO
     pub fn get_msg_metadata(&self, msg_id: &MsgId) -> Option<&TimePoint> {
         self.messages.get(msg_id)
     }
