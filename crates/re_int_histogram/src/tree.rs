@@ -1,3 +1,7 @@
+//! The histogram is implemented as a tree.
+//!
+//! The branches are based on the next few bits of the key (also known as the "address").
+
 use crate::{i64_key_from_u64_key, u64_key_from_i64_key, RangeI64, RangeU64};
 
 // ----------------------------------------------------------------------------
@@ -71,7 +75,7 @@ pub struct Int64Histogram {
 impl Default for Int64Histogram {
     fn default() -> Self {
         Self {
-            tree: Tree::Sparse(Sparse::default()),
+            tree: Tree::SparseLeaf(SparseLeaf::default()),
         }
     }
 }
@@ -162,14 +166,27 @@ impl<'a> Iterator for Iter<'a> {
 
 #[derive(Clone, Debug)]
 enum Tree {
-    Node(Node),
-    Sparse(Sparse),
-    Dense(Dense),
+    /// An inner node, addressed by the next few bits of the key/address.
+    ///
+    /// Never at the [`LEAF_LEVEL`] level.
+    BranchNode(BranchNode),
+
+    /// A list of `(key, count)` pairs.
+    ///
+    /// When this becomes too long, it will be converted into a [`BranchNode`].
+    ///
+    /// Never at the [`LEAF_LEVEL`] level.
+    SparseLeaf(SparseLeaf),
+
+    /// Optimization for dense histograms (entries at `N, N+1, N+2, …`).
+    ///
+    /// Always at the [`LEAF_LEVEL`] level.
+    DenseLeaf(DenseLeaf),
 }
-static_assertions::assert_eq_size!(Tree, (u64, Node), [u8; 80]); // 8-way tree
+static_assertions::assert_eq_size!(Tree, (u64, BranchNode), [u8; 80]); // 8-way tree
 
 #[derive(Clone, Debug, Default)]
-struct Node {
+struct BranchNode {
     /// Very important optimization
     total_count: u64,
 
@@ -178,14 +195,14 @@ struct Node {
 }
 
 #[derive(Clone, Debug, Default)]
-struct Sparse {
+struct SparseLeaf {
     /// Sorted (addr, count) pairs
     addrs: smallvec::SmallVec<[u64; 3]>,
     counts: smallvec::SmallVec<[u32; 3]>,
 }
 
 #[derive(Clone, Copy, Debug, Default)]
-struct Dense {
+struct DenseLeaf {
     /// The last bits of the address, mapped to their counts
     counts: [u32; NUM_CHILDREN_IN_DENSE as usize],
 }
@@ -194,23 +211,24 @@ struct Dense {
 // Insert
 
 impl Tree {
+    /// The default node for a certain level.
     fn for_level(level: Level) -> Self {
         if level == LEAF_LEVEL {
-            Self::Dense(Dense::default())
+            Self::DenseLeaf(DenseLeaf::default())
         } else {
-            Self::Sparse(Sparse::default())
+            Self::SparseLeaf(SparseLeaf::default())
         }
     }
 
     fn increment(&mut self, level: Level, addr: u64, inc: u32) {
         match self {
-            Tree::Node(node) => {
+            Tree::BranchNode(node) => {
                 node.increment(level, addr, inc);
             }
-            Tree::Sparse(sparse) => {
+            Tree::SparseLeaf(sparse) => {
                 *self = std::mem::take(sparse).increment(level, addr, inc);
             }
-            Tree::Dense(dense) => {
+            Tree::DenseLeaf(dense) => {
                 dense.increment(addr, inc);
             }
         }
@@ -218,45 +236,45 @@ impl Tree {
 
     fn is_empty(&self) -> bool {
         match self {
-            Tree::Node(node) => node.is_empty(),
-            Tree::Sparse(sparse) => sparse.is_empty(),
-            Tree::Dense(dense) => dense.is_empty(),
+            Tree::BranchNode(node) => node.is_empty(),
+            Tree::SparseLeaf(sparse) => sparse.is_empty(),
+            Tree::DenseLeaf(dense) => dense.is_empty(),
         }
     }
 
     fn total_count(&self) -> u64 {
         match self {
-            Tree::Node(node) => node.total_count(),
-            Tree::Sparse(sparse) => sparse.total_count(),
-            Tree::Dense(dense) => dense.total_count(),
+            Tree::BranchNode(node) => node.total_count(),
+            Tree::SparseLeaf(sparse) => sparse.total_count(),
+            Tree::DenseLeaf(dense) => dense.total_count(),
         }
     }
 
     fn range_count(&self, my_addr: u64, my_level: Level, range: RangeU64) -> u64 {
         match self {
-            Tree::Node(node) => node.range_count(my_addr, my_level, range),
-            Tree::Sparse(sparse) => sparse.range_count(range),
-            Tree::Dense(dense) => dense.range_count(my_addr, range),
+            Tree::BranchNode(node) => node.range_count(my_addr, my_level, range),
+            Tree::SparseLeaf(sparse) => sparse.range_count(range),
+            Tree::DenseLeaf(dense) => dense.range_count(my_addr, range),
         }
     }
 
     /// Returns how much the total count decreased by.
     fn remove(&mut self, my_addr: u64, my_level: Level, range: RangeU64) -> u64 {
         match self {
-            Tree::Node(node) => {
+            Tree::BranchNode(node) => {
                 let count_loss = node.remove(my_addr, my_level, range);
                 if node.is_empty() {
-                    *self = Tree::Sparse(Sparse::default());
+                    *self = Tree::SparseLeaf(SparseLeaf::default());
                 }
                 count_loss
             }
-            Tree::Sparse(sparse) => sparse.remove(range),
-            Tree::Dense(dense) => dense.remove(my_addr, range),
+            Tree::SparseLeaf(sparse) => sparse.remove(range),
+            Tree::DenseLeaf(dense) => dense.remove(my_addr, range),
         }
     }
 }
 
-impl Node {
+impl BranchNode {
     fn increment(&mut self, level: Level, addr: u64, inc: u32) {
         debug_assert!(level != LEAF_LEVEL);
         let child_level = level - LEVEL_STEP;
@@ -333,12 +351,12 @@ impl Node {
     }
 }
 
-impl Sparse {
+impl SparseLeaf {
     #[must_use]
-    fn overflow(self, level: Level) -> Node {
+    fn overflow(self, level: Level) -> BranchNode {
         debug_assert!(level != LEAF_LEVEL);
 
-        let mut node = Node::default();
+        let mut node = BranchNode::default();
         for (key, count) in self.addrs.iter().zip(&self.counts) {
             node.increment(level, *key, *count);
         }
@@ -352,7 +370,7 @@ impl Sparse {
         if let (Some(addr), Some(count)) = (self.addrs.get_mut(index), self.counts.get_mut(index)) {
             if *addr == abs_addr {
                 *count += inc;
-                return Tree::Sparse(self);
+                return Tree::SparseLeaf(self);
             }
         }
 
@@ -360,11 +378,11 @@ impl Sparse {
         if self.addrs.len() < OVERFLOW_CUTOFF {
             self.addrs.insert(index, abs_addr);
             self.counts.insert(index, inc);
-            Tree::Sparse(self)
+            Tree::SparseLeaf(self)
         } else {
             let mut node = self.overflow(level);
             node.increment(level, abs_addr, inc);
-            Tree::Node(node)
+            Tree::BranchNode(node)
         }
     }
 
@@ -406,7 +424,7 @@ impl Sparse {
     }
 }
 
-impl Dense {
+impl DenseLeaf {
     fn increment(&mut self, abs_addr: u64, inc: u32) {
         self.counts[(abs_addr & (NUM_CHILDREN_IN_DENSE - 1)) as usize] += inc;
     }
@@ -471,7 +489,7 @@ impl<'a> Iterator for TreeIterator<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         'outer: while let Some(it) = self.stack.last_mut() {
             match it.tree {
-                Tree::Node(node) => {
+                Tree::BranchNode(node) => {
                     let (child_level, child_size) = child_level_and_size(it.level);
 
                     while it.index < NUM_CHILDREN_IN_NODE as _ {
@@ -504,7 +522,7 @@ impl<'a> Iterator for TreeIterator<'a> {
                     }
                     self.stack.pop();
                 }
-                Tree::Sparse(sparse) => {
+                Tree::SparseLeaf(sparse) => {
                     while let (Some(abs_addr), Some(count)) =
                         (sparse.addrs.get(it.index), sparse.counts.get(it.index))
                     {
@@ -515,7 +533,7 @@ impl<'a> Iterator for TreeIterator<'a> {
                     }
                     self.stack.pop();
                 }
-                Tree::Dense(dense) => {
+                Tree::DenseLeaf(dense) => {
                     while let Some(count) = dense.counts.get(it.index) {
                         let abs_addr = it.abs_addr + it.index as u64;
                         it.index += 1;
