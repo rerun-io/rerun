@@ -1078,6 +1078,8 @@ fn file_saver_progress_ui(egui_ctx: &egui::Context, app: &mut App) {
 
 #[cfg(not(target_arch = "wasm32"))]
 fn file_menu(ui: &mut egui::Ui, app: &mut App) {
+    ui.set_min_width(220.0);
+
     // TODO(emilk): support saving data on web
     #[cfg(not(target_arch = "wasm32"))]
     {
@@ -1172,7 +1174,7 @@ fn save(app: &mut App, loop_selection: Option<(re_data_store::Timeline, TimeRang
 }
 
 fn view_menu(ui: &mut egui::Ui, app: &mut App, frame: &mut eframe::Frame) {
-    ui.set_min_width(180.0);
+    ui.set_min_width(220.0);
 
     // On the web the browser controls the zoom
     if !frame.is_web() {
@@ -1191,6 +1193,9 @@ fn view_menu(ui: &mut egui::Ui, app: &mut App, frame: &mut eframe::Frame) {
     #[cfg(not(target_arch = "wasm32"))]
     Command::OpenProfiler.menu_button_ui(ui, &mut app.pending_commands);
 
+    ui.separator();
+
+    Command::ToggleCommandPalette.menu_button_ui(ui, &mut app.pending_commands);
     Command::ToggleMemoryPanel.menu_button_ui(ui, &mut app.pending_commands);
 }
 
