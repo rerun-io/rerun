@@ -160,15 +160,13 @@ impl<'a> Iterator for Iter<'a> {
 // ----------------------------------------------------------------------------
 // Low-level data structure.
 
-/// 136 bytes large
-/// Has sixteen levels. The root is level 15, the leaves level 0.
 #[derive(Clone, Debug)]
 enum Tree {
     Node(Node),
     Sparse(Sparse),
     Dense(Dense),
 }
-// static_assertions::assert_eq_size!(Tree, (u64, Node), [u8; 80]);
+static_assertions::assert_eq_size!(Tree, (u64, Node), [u8; 80]); // 8-way tree
 
 #[derive(Clone, Debug, Default)]
 struct Node {
@@ -178,7 +176,6 @@ struct Node {
     /// The index is the next few bits of the key
     children: [Option<Box<Tree>>; NUM_CHILDREN_IN_NODE as usize],
 }
-// static_assertions::assert_eq_size!(Node, [u8; 72]);
 
 #[derive(Clone, Debug, Default)]
 struct Sparse {
