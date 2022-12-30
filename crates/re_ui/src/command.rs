@@ -52,17 +52,27 @@ impl Command {
 
     pub fn text_and_tooltip(self) -> (&'static str, &'static str) {
         match self {
+            #[cfg(not(target_arch = "wasm32"))]
             Command::Save => ("Save…", "Save all data to a Rerun data file (.rrd)"),
+
+            #[cfg(not(target_arch = "wasm32"))]
             Command::SaveSelection => (
                 "Save loop selection…",
                 "Save data for the current loop selection to a Rerun data file (.rrd)",
             ),
+
+            #[cfg(not(target_arch = "wasm32"))]
             Command::Open => ("Open", "Open a Rerun Data File (.rrd)"),
+
+            #[cfg(not(target_arch = "wasm32"))]
             Command::Quit => ("Quit", "Close the Rerun Viewer"),
+
             Command::ResetViewer => (
                 "Reset viewer",
                 "Reset the viewer to how it looked the first time you ran it",
             ),
+
+            #[cfg(not(target_arch = "wasm32"))]
             Command::OpenProfiler => (
                 "Open profiler",
                 "Starts a profiler, showing what makes the viewer run slow",
@@ -75,6 +85,8 @@ impl Command {
             Command::ToggleBlueprintPanel => ("Toggle blueprint panel", "Toggle the left panel"),
             Command::ToggleSelectionPanel => ("Toggle selection panel", "Toggle the right panel"),
             Command::ToggleTimePanel => ("Toggle time panel", "Toggle the bottom time panel"),
+
+            #[cfg(not(target_arch = "wasm32"))]
             Command::ToggleFullscreen => (
                 "Toggle fullscreen",
                 "Toggle between windowed and fullscreen viewer",
@@ -110,6 +122,7 @@ impl Command {
             KeyboardShortcut::new(Modifiers::COMMAND, key)
         }
 
+        #[cfg(not(target_arch = "wasm32"))]
         fn cmd_shift(key: Key) -> KeyboardShortcut {
             KeyboardShortcut::new(Modifiers::COMMAND.plus(Modifiers::SHIFT), key)
         }
@@ -119,8 +132,11 @@ impl Command {
         }
 
         match self {
+            #[cfg(not(target_arch = "wasm32"))]
             Command::Save => Some(cmd(Key::S)),
+            #[cfg(not(target_arch = "wasm32"))]
             Command::SaveSelection => Some(cmd_shift(Key::S)),
+            #[cfg(not(target_arch = "wasm32"))]
             Command::Open => Some(cmd(Key::O)),
 
             #[cfg(all(not(target_arch = "wasm32"), target_os = "windows"))]
@@ -130,11 +146,13 @@ impl Command {
             Command::Quit => Some(cmd(Key::Q)),
 
             Command::ResetViewer => Some(ctrl_shift(Key::R)),
+            #[cfg(not(target_arch = "wasm32"))]
             Command::OpenProfiler => Some(ctrl_shift(Key::P)),
             Command::ToggleMemoryPanel => Some(ctrl_shift(Key::M)),
             Command::ToggleBlueprintPanel => Some(ctrl_shift(Key::B)),
             Command::ToggleSelectionPanel => Some(ctrl_shift(Key::S)),
             Command::ToggleTimePanel => Some(ctrl_shift(Key::T)),
+            #[cfg(not(target_arch = "wasm32"))]
             Command::ToggleFullscreen => Some(key(Key::F11)),
             Command::SelectionPrevious => Some(ctrl_shift(Key::ArrowLeft)),
             Command::SelectionNext => Some(ctrl_shift(Key::ArrowRight)),

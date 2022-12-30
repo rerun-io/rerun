@@ -270,7 +270,7 @@ impl App {
         }
     }
 
-    fn run_command(&mut self, cmd: Command, frame: &mut eframe::Frame, egui_ctx: &egui::Context) {
+    fn run_command(&mut self, cmd: Command, _frame: &mut eframe::Frame, egui_ctx: &egui::Context) {
         match cmd {
             #[cfg(not(target_arch = "wasm32"))]
             Command::Save => {
@@ -286,7 +286,7 @@ impl App {
             }
             #[cfg(not(target_arch = "wasm32"))]
             Command::Quit => {
-                frame.close();
+                _frame.close();
             }
 
             Command::ResetViewer => {
@@ -313,7 +313,7 @@ impl App {
 
             #[cfg(not(target_arch = "wasm32"))]
             Command::ToggleFullscreen => {
-                frame.set_fullscreen(!frame.info().window_info.fullscreen);
+                _frame.set_fullscreen(!_frame.info().window_info.fullscreen);
             }
 
             Command::SelectionPrevious => {
