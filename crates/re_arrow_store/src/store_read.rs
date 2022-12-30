@@ -6,7 +6,10 @@ use arrow2::{
 };
 
 use re_log::trace;
-use re_log_types::{ComponentName, ObjPath as EntityPath, TimeInt, TimeRange, Timeline};
+use re_log_types::{
+    field_types::Instance, msg_bundle::Component, ComponentName, ObjPath as EntityPath, TimeInt,
+    TimeRange, Timeline,
+};
 
 use crate::{
     ComponentBucket, ComponentTable, DataStore, IndexBucket, IndexBucketIndices, IndexRowNr,
@@ -291,7 +294,7 @@ impl DataStore {
     ///     std::iter::once(df_latest.map(|df| (latest_time, df)))
     ///         // ..but only if it's not an empty dataframe.
     ///         .filter(|df| df.as_ref().map_or(true, |(_, df)| !df.is_empty()))
-    ///         .chain(store.range(query, ent_path, primary, components).map(
+    ///         .chain(store.range(query, ent_path, components).map(
     ///             move |(time, _, row_indices)| {
     ///                 let results = store.get(&components, &row_indices);
     ///                 dataframe_from_results(&components, results).map(|df| (time, df))
@@ -311,12 +314,11 @@ impl DataStore {
     // DataStore::dump_as_df().
     //
     // TODO(cmc): at one point we're gonna need a high-level documentation/user-guide of the
-    // semantics of latest-at PoV queries, giving readers a walkthrough of a real-world query.
+    // semantics of range queries, giving readers a walkthrough of a real-world query.
     pub fn range<'a, const N: usize>(
         &'a self,
         query: &RangeQuery,
         ent_path: &EntityPath,
-        primary: ComponentName,
         components: [ComponentName; N],
     ) -> impl Iterator<Item = (TimeInt, IndexRowNr, [Option<RowIndex>; N])> + 'a {
         // TODO(cmc): kind & query_id need to somehow propagate through the span system.
@@ -329,7 +331,6 @@ impl DataStore {
             id = self.query_id.load(Ordering::Relaxed),
             query = ?query,
             entity = %ent_path,
-            %primary,
             ?components,
             "query started..."
         );
@@ -337,7 +338,7 @@ impl DataStore {
         let index = self.indices.get(&(query.timeline, *ent_path_hash));
 
         index
-            .map(|index| index.range(query.range, primary, components))
+            .map(|index| index.range(query.range, components))
             .into_iter()
             .flatten()
     }
@@ -433,7 +434,6 @@ impl IndexTable {
     pub fn range<const N: usize>(
         &self,
         time_range: TimeRange,
-        primary: ComponentName,
         components: [ComponentName; N],
     ) -> impl Iterator<Item = (TimeInt, IndexRowNr, [Option<RowIndex>; N])> + '_ {
         let timeline = self.timeline;
@@ -454,12 +454,11 @@ impl IndexTable {
                         timeline.typ().format_range(bucket.indices.read().time_range),
                     timeline = %timeline.name(),
                     ?time_range,
-                    %primary,
                     ?components,
                     "found bucket in range"
                 );
 
-                bucket.range(time_range, primary, components)
+                bucket.range(time_range, components)
             })
     }
 
@@ -646,7 +645,6 @@ impl IndexBucket {
     pub fn range<'a, const N: usize>(
         &'a self,
         time_range: TimeRange,
-        primary: ComponentName,
         components: [ComponentName; N],
     ) -> impl Iterator<Item = (TimeInt, IndexRowNr, [Option<RowIndex>; N])> + 'a {
         self.sort_indices_if_needed();
@@ -660,29 +658,41 @@ impl IndexBucket {
 
         let bucket_time_range = *bucket_time_range;
 
-        // We need to walk forwards until we find a non-null row for the primary component.
+        // We need to walk forwards until we find a row that contains data for any one of our
+        // components of interest.
+        //
+        // NOTE: if the list of components includes the cluster key, then this is guaranteed to
+        // yield the same value as `time_idx_row_nr`!
         let comp_idx_row_nr = 'search: {
-            // Early-exit if this bucket is unaware of this component.
-            let Some(comp_idx) = indices.get(&primary) else { break 'search None };
+            let mut comp_indices = [(); N].map(|_| None);
+            for (i, component) in components.iter().enumerate() {
+                if *component == Instance::name() {
+                    continue;
+                }
+                comp_indices[i] = indices.get(component);
+            }
+
+            // Early-exit if this bucket is unaware of any of our components of interest.
+            if comp_indices.iter().all(Option::is_none) {
+                break 'search None;
+            }
 
             trace!(
                 kind = "range",
                 bucket_time_range = self.timeline.typ().format_range(bucket_time_range),
-                %primary,
                 ?components,
                 timeline = %self.timeline.name(),
                 time_range = self.timeline.typ().format_range(time_range),
                 "searching for time & component row index numbers..."
             );
 
-            // find the time index's row number for the primary component
+            // find the time index's row number
             let time_idx_row_nr: IndexRowNr =
                 IndexRowNr(times.partition_point(|t| *t < time_range.min.as_i64()) as u64);
 
             trace!(
                 kind = "range",
                 bucket_time_range = self.timeline.typ().format_range(bucket_time_range),
-                %primary,
                 ?components,
                 timeline = %self.timeline.name(),
                 time_range = self.timeline.typ().format_range(time_range),
@@ -690,15 +700,18 @@ impl IndexBucket {
                 "found time index row number",
             );
 
-            // find the component index's row number for the primary component
+            // find the component index's row number for the first non-null component of interest
             let mut comp_idx_row_nr = time_idx_row_nr;
-            while comp_idx[comp_idx_row_nr.0 as usize].is_none() {
+            while comp_indices
+                .iter()
+                .flatten()
+                .all(|comp_idx| comp_idx[comp_idx_row_nr.0 as usize].is_none())
+            {
                 comp_idx_row_nr.0 += 1;
-                if comp_idx_row_nr.0 as usize >= comp_idx.len() {
+                if comp_idx_row_nr.0 as usize >= times.len() {
                     trace!(
                         kind = "range",
                         bucket_time_range = self.timeline.typ().format_range(bucket_time_range),
-                        %primary,
                         ?components,
                         timeline = %self.timeline.name(),
                         time_range = self.timeline.typ().format_range(time_range),
@@ -712,14 +725,12 @@ impl IndexBucket {
             trace!(
                 kind = "range",
                 bucket_time_range = self.timeline.typ().format_range(bucket_time_range),
-                %primary,
                 ?components,
                 timeline = %self.timeline.name(),
                 time_range = self.timeline.typ().format_range(time_range),
                 %time_idx_row_nr, %comp_idx_row_nr,
                 "found component index row number",
             );
-            debug_assert!(comp_idx[comp_idx_row_nr.0 as usize].is_some());
 
             // did we go so far forwards that we're not within the time range anymore?
             let comp_time = times[comp_idx_row_nr.0 as usize];
@@ -728,8 +739,8 @@ impl IndexBucket {
                 .then_some(comp_idx_row_nr)
         };
 
-        // The bucket does contain data for the primary component, and does contain data for the
-        // time range we're interested in, but not both at the same time!
+        // The bucket does contain data for at least one of our components of interest, and does
+        // contain data for the time range we're interested in, but not both at the same time!
         let Some(comp_idx_row_nr) = comp_idx_row_nr else {
             return itertools::Either::Right(std::iter::empty());
         };
@@ -754,25 +765,25 @@ impl IndexBucket {
             .filter_map(move |(comp_idx_offset, time)| {
                 let comp_idx_row_nr = IndexRowNr(comp_idx_row_nr.0 + comp_idx_offset as u64);
 
-                // We must only yield rows that contain data for the primary component!!
-                comp_indices
-                    .get(&primary)
-                    .and_then(|index| index.get(comp_idx_row_nr.0 as usize).copied())??;
-
                 let mut row_indices = [None; N];
                 for (i, component) in components.iter().enumerate() {
                     if let Some(index) = comp_indices.get(component) {
-                        if let Some(row_idx) = index[comp_idx_row_nr.0 as usize] {
-                            row_indices[i] = Some(row_idx);
+                        if let row_idx @ Some(_) = index[comp_idx_row_nr.0 as usize] {
+                            row_indices[i] = row_idx;
                         }
                     }
+                }
+
+                // We only yield rows that contain data for at least one of the components of
+                // interest.
+                if row_indices.iter().all(Option::is_none) {
+                    return None;
                 }
 
                 trace!(
                     kind = "range",
                     bucket_time_range =
                         self.timeline.typ().format_range(bucket_time_range),
-                    %primary,
                     ?components,
                     timeline = %self.timeline.name(),
                     time_range = self.timeline.typ().format_range(time_range),

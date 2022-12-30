@@ -110,7 +110,7 @@ fn range_batch(c: &mut Criterion) {
         ));
         group.bench_function("query", |b| {
             b.iter(|| {
-                let msgs = range_messages(&store, Rect2D::name(), [Rect2D::name()]);
+                let msgs = range_messages(&store, [Rect2D::name()]);
                 for (cur_time, (time, results)) in msgs.enumerate() {
                     assert_eq!(cur_time as i64, time.as_i64());
 
@@ -179,17 +179,16 @@ fn latest_messages_at<const N: usize>(
 
 fn range_messages<const N: usize>(
     store: &DataStore,
-    primary: ComponentName,
-    secondaries: [ComponentName; N],
+    components: [ComponentName; N],
 ) -> impl Iterator<Item = (TimeInt, [Option<Box<dyn Array>>; N])> + '_ {
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
-    let timeline_query = RangeQuery::new(
+    let query = RangeQuery::new(
         timeline_frame_nr,
         TimeRange::new(0.into(), NUM_FRAMES.into()),
     );
     let ent_path = EntityPath::from("rects");
 
     store
-        .range(&timeline_query, &ent_path, primary, secondaries)
-        .map(move |(time, _, row_indices)| (time, store.get(&secondaries, &row_indices)))
+        .range(&query, &ent_path, components)
+        .map(move |(time, _, row_indices)| (time, store.get(&components, &row_indices)))
 }
