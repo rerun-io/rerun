@@ -69,6 +69,7 @@ impl ScenePart for ImagesPart {
                         .primitives
                         .line_strips
                         .batch("image outlines")
+                        .world_from_obj(world_from_obj)
                         .add_axis_aligned_rectangle_outline_2d(glam::Vec2::ZERO, glam::vec2(w, h))
                         .color(paint_props.fg_stroke.color)
                         .radius(Size::new_points(paint_props.fg_stroke.width * 0.5));
