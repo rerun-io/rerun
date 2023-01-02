@@ -169,7 +169,7 @@ impl SceneSpatial {
             part.load(self, ctx, query, transforms, objects_properties, hovered);
         }
 
-        //self.primitives.recalculate_bounding_box();
+        self.primitives.recalculate_bounding_box();
     }
 
     const HOVER_COLOR: Color32 = Color32::from_rgb(255, 200, 200);
