@@ -41,8 +41,6 @@ pub fn categorize_obj_path(
     };
 
     match obj_type {
-        re_log_types::ObjectType::ClassDescription => ViewCategorySet::default(), // we don't have a view for this
-
         re_log_types::ObjectType::TextEntry => ViewCategory::Text.into(),
 
         re_log_types::ObjectType::Scalar => ViewCategory::TimeSeries.into(),
