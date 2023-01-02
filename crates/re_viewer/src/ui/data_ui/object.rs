@@ -12,7 +12,7 @@ use crate::{
     ui::{annotations::AnnotationMap, Preview},
 };
 
-use super::{class_description::class_description_ui, DataUi};
+use super::DataUi;
 
 /// Previously `object_ui()`
 impl DataUi for ObjPath {
@@ -39,7 +39,6 @@ impl DataUi for InstanceId {
         preview: Preview,
     ) -> egui::Response {
         match ctx.log_db.obj_db.types.get(self.obj_path.obj_type_path()) {
-            Some(ObjectType::ClassDescription) => class_description_ui(ctx, ui, self),
             Some(ObjectType::ArrowObject) => generic_arrow_ui(ctx, ui, self, preview),
             _ => generic_instance_ui(ctx, ui, self, preview),
         }
