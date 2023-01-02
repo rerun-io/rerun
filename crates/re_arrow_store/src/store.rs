@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::num::NonZeroU64;
 use std::sync::atomic::AtomicU64;
 
-use anyhow::ensure;
+use anyhow::{anyhow, ensure};
 use arrow2::array::Array;
 use arrow2::datatypes::DataType;
 
@@ -508,6 +508,10 @@ pub struct IndexTable {
     /// indexing standpoint, all reads and writes with a time `t >= -∞` should go there, even
     /// though the bucket doesn't actually contains data with a timestamp of `-∞`!
     pub(crate) buckets: BTreeMap<TimeInt, IndexBucket>,
+
+    /// Carrying the cluster key around to help with assertions and sanity checks all over the
+    /// place.
+    pub(crate) cluster_key: ComponentName,
 }
 
 impl std::fmt::Display for IndexTable {
@@ -517,6 +521,7 @@ impl std::fmt::Display for IndexTable {
             timeline,
             ent_path,
             buckets,
+            cluster_key: _,
         } = self;
 
         f.write_fmt(format_args!("timeline: {}\n", timeline.name()))?;
@@ -613,6 +618,10 @@ pub struct IndexBucket {
     pub(crate) timeline: Timeline,
 
     pub(crate) indices: RwLock<IndexBucketIndices>,
+
+    /// Carrying the cluster key around to help with assertions and sanity checks all over the
+    /// place.
+    pub(crate) cluster_key: ComponentName,
 }
 
 /// Just the indices, to simplify interior mutability.
@@ -734,6 +743,19 @@ impl IndexBucket {
                         expected {primary_len} rows, got {secondary_len} instead",
                 );
             }
+        }
+
+        // The cluster index must be fully dense.
+        {
+            let cluster_key = self.cluster_key;
+            let cluster_idx = indices
+                .get(&cluster_key)
+                .ok_or_else(|| anyhow!("no index found for cluster key: {cluster_key:?}"))?;
+            ensure!(
+                cluster_idx.iter().all(|row| row.is_some()),
+                "the cluster index ({cluster_key:?}) must be fully dense: \
+                    got {cluster_idx:?}",
+            );
         }
 
         Ok(())

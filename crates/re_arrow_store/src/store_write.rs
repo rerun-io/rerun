@@ -148,7 +148,7 @@ impl DataStore {
             let index = self
                 .indices
                 .entry((*timeline, ent_path_hash))
-                .or_insert_with(|| IndexTable::new(*timeline, ent_path));
+                .or_insert_with(|| IndexTable::new(self.cluster_key, *timeline, ent_path));
             index.insert(&self.config, *time, &row_indices)?;
         }
 
@@ -318,11 +318,12 @@ impl DataStore {
 // --- Indices ---
 
 impl IndexTable {
-    pub fn new(timeline: Timeline, ent_path: EntityPath) -> Self {
+    pub fn new(cluster_key: ComponentName, timeline: Timeline, ent_path: EntityPath) -> Self {
         Self {
             timeline,
             ent_path,
-            buckets: [(i64::MIN.into(), IndexBucket::new(timeline))].into(),
+            buckets: [(i64::MIN.into(), IndexBucket::new(cluster_key, timeline))].into(),
+            cluster_key,
         }
     }
 
@@ -416,6 +417,7 @@ impl IndexTable {
                                 times: Default::default(),
                                 indices: Default::default(),
                             }),
+                            cluster_key: self.cluster_key,
                         },
                     );
                     return self.insert(config, time, indices);
@@ -449,10 +451,11 @@ impl IndexTable {
 }
 
 impl IndexBucket {
-    pub fn new(timeline: Timeline) -> Self {
+    pub fn new(cluster_key: ComponentName, timeline: Timeline) -> Self {
         Self {
             timeline,
             indices: RwLock::new(IndexBucketIndices::default()),
+            cluster_key,
         }
     }
 
@@ -579,7 +582,9 @@ impl IndexBucket {
     /// }
     /// ```
     pub fn split(&self) -> Option<(TimeInt, Self)> {
-        let Self { timeline, indices } = self;
+        let Self {
+            timeline, indices, ..
+        } = self;
 
         let mut indices = indices.write();
         indices.sort();
@@ -603,7 +608,7 @@ impl IndexBucket {
 
         let timeline = *timeline;
         // Used down the line to assert that we've left everything in a sane state.
-        let total_rows = times1.len();
+        let _total_rows = times1.len();
 
         let (min2, bucket2) = {
             let split_idx = find_split_index(times1).expect("must be splittable at this point");
@@ -633,12 +638,14 @@ impl IndexBucket {
                         times: times2,
                         indices: indices2,
                     }),
+                    cluster_key: self.cluster_key,
                 },
             )
         };
 
         // sanity checks
-        if cfg!(debug_assertions) {
+        #[cfg(debug_assertions)]
+        {
             drop(indices); // sanity checking will grab the lock!
             self.sanity_check().unwrap();
             bucket2.sanity_check().unwrap();
@@ -646,13 +653,13 @@ impl IndexBucket {
             let total_rows1 = self.total_rows() as i64;
             let total_rows2 = bucket2.total_rows() as i64;
             debug_assert!(
-                total_rows as i64 == total_rows1 + total_rows2,
+                _total_rows as i64 == total_rows1 + total_rows2,
                 "expected both buckets to sum up to the length of the original bucket: \
                     got bucket={} vs. bucket1+bucket2={}",
-                total_rows,
+                _total_rows,
                 total_rows1 + total_rows2,
             );
-            debug_assert_eq!(total_rows as i64, total_rows1 + total_rows2);
+            debug_assert_eq!(_total_rows as i64, total_rows1 + total_rows2);
         }
 
         Some((min2, bucket2))
