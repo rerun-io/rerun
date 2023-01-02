@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use nohash_hasher::IntSet;
 
 use re_data_store::{log_db::ObjDb, query_transform, ObjPath, ObjectTree, TimelineStore};
-use re_log_types::{ObjectType, Transform, ViewCoordinates};
+use re_log_types::{Transform, ViewCoordinates};
 
 use super::TimeControl;
 
@@ -20,8 +20,8 @@ pub struct SpaceInfo {
     pub descendants_without_transform: IntSet<ObjPath>,
 
     /// Nearest ancestor to whom we are not connected via an identity transform.
-    #[allow(unused)]
-    pub parent: Option<(ObjPath, Transform)>,
+    /// The transform is from parent to child, i.e. the *same* as in its [`Self::child_spaces`] array.
+    parent: Option<(ObjPath, Transform)>,
 
     /// Nearest descendants to whom we are not connected with an identity transform.
     pub child_spaces: BTreeMap<ObjPath, Transform>,
@@ -35,6 +35,45 @@ impl SpaceInfo {
             descendants_without_transform: Default::default(),
             parent: Default::default(),
             child_spaces: Default::default(),
+        }
+    }
+
+    /// Invokes visitor for `self` and all descendents recursively.
+    pub fn visit_descendants(
+        &self,
+        spaces_info: &SpacesInfo,
+        visitor: &mut impl FnMut(&SpaceInfo),
+    ) {
+        visitor(self);
+        for child_path in self.child_spaces.keys() {
+            if let Some(child_space) = spaces_info.get(child_path) {
+                child_space.visit_descendants(spaces_info, visitor);
+            }
+        }
+    }
+
+    /// Invokes visitor for `self` and all connected nodes that are not descendants.
+    ///
+    /// I.e. all parents and their children in turn, except the children of `self`.
+    /// In other words, everything that [`Self::visit_descendants`] doesn't visit plus `self`.
+    pub fn visit_non_descendants(
+        &self,
+        spaces_info: &SpacesInfo,
+        visitor: &mut impl FnMut(&SpaceInfo),
+    ) {
+        visitor(self);
+
+        if let Some((parent_space, _)) = &self.parent(spaces_info) {
+            for sibling_path in parent_space.child_spaces.keys() {
+                if *sibling_path == self.path {
+                    continue;
+                }
+                if let Some(child_space) = spaces_info.get(sibling_path) {
+                    child_space.visit_descendants(spaces_info, visitor);
+                }
+
+                parent_space.visit_non_descendants(spaces_info, visitor);
+            }
         }
     }
 
@@ -62,6 +101,16 @@ impl SpaceInfo {
         let mut objects = IntSet::default();
         gather_rigidly_transformed_children(self, spaces_info, &mut objects);
         objects
+    }
+
+    pub fn parent<'a>(&self, spaces_info: &'a SpacesInfo) -> Option<(&'a SpaceInfo, &Transform)> {
+        self.parent.as_ref().and_then(|(parent_path, transform)| {
+            spaces_info.get(parent_path).map(|space| (space, transform))
+        })
+    }
+
+    pub fn parent_transform(&self) -> Option<&Transform> {
+        self.parent.as_ref().map(|(_, transform)| transform)
     }
 }
 
@@ -157,25 +206,8 @@ impl SpacesInfo {
             spaces_info.spaces.insert(tree.path.clone(), space_info);
         }
 
-        // The ClassDescription objects apply to all spaces, collect every
-        // object path with this type.
-        let spaceless_objects = if let Some(timeline_store) = timeline_store {
-            timeline_store
-                .iter()
-                .filter(|(path, _)| {
-                    obj_db.types.get(path.obj_type_path()) == Some(&ObjectType::ClassDescription)
-                })
-                .map(|(path, _)| path.clone())
-                .collect::<IntSet<ObjPath>>()
-        } else {
-            IntSet::<ObjPath>::default()
-        };
-
         for (obj_path, space_info) in &mut spaces_info.spaces {
             space_info.coordinates = query_view_coordinates(obj_db, time_ctrl, obj_path);
-            space_info
-                .descendants_without_transform
-                .extend(spaceless_objects.clone());
         }
 
         spaces_info
