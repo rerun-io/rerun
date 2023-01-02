@@ -77,7 +77,6 @@ pub fn range_entity_with_primary<'a, Primary: Component + 'a, const N: usize>(
         if let (Some(latest_time), Some(cwi_prim)) = (latest_time, &state[primary_col]) {
             let ent_view = EntityView {
                 primary: cwi_prim.clone(),
-                // TODO: we basically have the primary component twice
                 components: components
                     .iter()
                     .copied()
