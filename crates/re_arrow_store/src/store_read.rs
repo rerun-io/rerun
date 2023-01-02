@@ -161,12 +161,6 @@ impl DataStore {
     /// This is what our `latest_components` polars helper does.
     ///
     /// For more information about working with dataframes, see the `polars` feature.
-    //
-    // TODO(#640): add a short "store-contains-this/latest-at-returns-that" once we have support
-    // for DataStore::dump_as_df().
-    //
-    // TODO(cmc): at one point we're gonna need a high-level documentation/user-guide of the
-    // semantics of latest-at PoV queries, giving readers a walkthrough of a real-world query.
     pub fn latest_at<const N: usize>(
         &self,
         query: &LatestAtQuery,
@@ -306,12 +300,6 @@ impl DataStore {
     /// This is what our `range_components` polars helper does.
     ///
     /// For more information about working with dataframes, see the `polars` feature.
-    //
-    // TODO(#640): add a short "store-contains-this/range-returns-that" once we have support for
-    // DataStore::dump_as_df().
-    //
-    // TODO(cmc): at one point we're gonna need a high-level documentation/user-guide of the
-    // semantics of range queries, giving readers a walkthrough of a real-world query.
     pub fn range<'a, const N: usize>(
         &'a self,
         query: &RangeQuery,
