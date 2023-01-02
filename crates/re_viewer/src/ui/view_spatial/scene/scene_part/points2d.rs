@@ -12,7 +12,9 @@ use crate::{
         scene::SceneQuery,
         transform_cache::{ReferenceFromObjTransform, TransformCache},
         view_spatial::{
-            scene::{apply_hover_effect, instance_hash_if_interactive, paint_properties},
+            scene::{
+                apply_hover_effect, instance_hash_if_interactive, paint_properties, Keypoints,
+            },
             Label2D, Label2DTarget, SceneSpatial,
         },
         DefaultColor,
@@ -54,8 +56,7 @@ impl ScenePart for Points2DPart {
 
             // If keypoints ids show up we may need to connect them later!
             // We include time in the key, so that the "Visible history" (time range queries) feature works.
-            let mut keypoints: HashMap<(ClassId, i64), HashMap<KeypointId, glam::Vec3>> =
-                Default::default();
+            let mut keypoints: Keypoints = Default::default();
 
             let mut point_batch = scene
                 .primitives

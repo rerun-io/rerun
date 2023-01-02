@@ -50,8 +50,7 @@ impl ScenePart for Points3DPartClassic {
 
             // If keypoints ids show up we may need to connect them later!
             // We include time in the key, so that the "Visible history" (time range queries) feature works.
-            let mut keypoints: HashMap<(ClassId, i64), HashMap<KeypointId, glam::Vec3>> =
-                Default::default();
+            let mut keypoints: Keypoints = Default::default();
 
             let annotations = scene.annotation_map.find(obj_path);
             let default_color = DefaultColor::ObjPath(obj_path);
