@@ -166,8 +166,10 @@ pub fn latest_components(
 /// An initial dataframe is yielded with the latest-at state at the start of the time range, if
 /// there is any.
 ///
-/// The iterator only ever yields dataframes iff the `primary` component has changed.
-/// A change affecting only secondary components will not yield a dataframe.
+/// The iterator only ever yields dataframes iff the `primary` component has changed: a change
+/// affecting only secondary components will not yield a dataframe.
+/// However, the changes in those secondary components will be accumulated into the next yielded
+/// dataframe.
 ///
 /// This is a streaming-join: every yielded dataframe will be the result of joining the latest
 /// known state of all components, from their respective point-of-views.
