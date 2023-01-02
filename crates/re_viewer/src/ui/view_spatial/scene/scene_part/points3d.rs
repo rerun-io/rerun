@@ -4,8 +4,7 @@ use ahash::{HashMap, HashMapExt};
 use glam::{Mat4, Vec3};
 use re_arrow_store::TimeQuery;
 use re_data_store::{
-    query::visit_type_data_5, FieldName, InstanceIdHash, ObjPath,
-    ObjectsProperties,
+    query::visit_type_data_5, FieldName, InstanceIdHash, ObjPath, ObjectsProperties,
 };
 use re_log_types::{
     field_types::{ClassId, ColorRGBA, KeypointId, Label, Point3D, Radius},
