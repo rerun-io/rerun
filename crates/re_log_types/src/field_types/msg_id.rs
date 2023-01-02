@@ -3,7 +3,7 @@ use arrow2_convert::{
     serialize::ArrowSerialize,
 };
 
-/// A unique id per [`LogMsg`].
+/// A unique id per [`crate::LogMsg`].
 ///
 /// ```
 /// use re_log_types::field_types::MsgId;
