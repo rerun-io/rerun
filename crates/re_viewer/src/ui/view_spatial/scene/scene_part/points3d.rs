@@ -19,7 +19,7 @@ use crate::ui::{
     scene::SceneQuery,
     transform_cache::ReferenceFromObjTransform,
     view_spatial::{
-        scene::{instance_hash_if_interactive, to_ecolor},
+        scene::{instance_hash_if_interactive, to_ecolor, Keypoints},
         Label3D, SceneSpatial,
     },
     Annotations, DefaultColor,
@@ -157,15 +157,8 @@ impl Points3DPart {
         entity_view: &EntityView<Point3D>,
         annotations: &Arc<Annotations>,
         point_positions: &[Vec3],
-    ) -> Result<
-        (
-            Vec<ResolvedAnnotationInfo>,
-            HashMap<(ClassId, i64), HashMap<KeypointId, glam::Vec3>>,
-        ),
-        QueryError,
-    > {
-        let mut keypoints: HashMap<(ClassId, i64), HashMap<KeypointId, glam::Vec3>> =
-            HashMap::new();
+    ) -> Result<(Vec<ResolvedAnnotationInfo>, Keypoints), QueryError> {
+        let mut keypoints: Keypoints = HashMap::new();
 
         let annotation_info = itertools::izip!(
             point_positions.iter(),
@@ -249,8 +242,7 @@ impl Points3DPart {
             entity_view.iter_component::<Label>()?
         )
         .filter_map(move |(annotation_info, point, label)| {
-            let label = label.map(|l| l.0.clone());
-            let label = annotation_info.label(label.as_ref());
+            let label = annotation_info.label(label.map(|l| l.0).as_ref());
             match (point, label) {
                 (Some(point), Some(label)) => Some(Label3D {
                     text: label,
@@ -262,13 +254,14 @@ impl Points3DPart {
         Ok(labels)
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn process_entity_view(
         &self,
         scene: &mut SceneSpatial,
         query: &SceneQuery<'_>,
         objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
-        entity_view: EntityView<Point3D>,
+        entity_view: &EntityView<Point3D>,
         ent_path: &ObjPath,
         world_from_obj: Mat4,
     ) -> Result<(), QueryError> {
@@ -289,7 +282,7 @@ impl Points3DPart {
 
         let (annotation_infos, keypoints) = Self::process_annotations(
             query,
-            &entity_view,
+            entity_view,
             &annotations,
             point_positions.as_slice(),
         )?;
@@ -306,15 +299,15 @@ impl Points3DPart {
             .collect::<Vec<_>>();
 
         let colors = Self::process_colors(
-            &entity_view,
+            entity_view,
             ent_path,
             hovered_instance,
             &instance_hashes,
             &annotation_infos,
         )?;
 
-        let radii = Self::process_radii(&entity_view, hovered_instance, &instance_hashes)?;
-        let labels = Self::process_labels(&entity_view, &annotation_infos, world_from_obj)?;
+        let radii = Self::process_radii(entity_view, hovered_instance, &instance_hashes)?;
+        let labels = Self::process_labels(entity_view, &annotation_infos, world_from_obj)?;
 
         if show_labels && instance_hashes.len() <= self.max_labels {
             scene.ui.labels_3d.extend(labels);
@@ -372,7 +365,7 @@ impl ScenePart for Points3DPart {
                     query,
                     objects_properties,
                     hovered_instance,
-                    entity_view,
+                    &entity_view,
                     ent_path,
                     world_from_obj,
                 )

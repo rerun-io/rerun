@@ -12,7 +12,7 @@ use crate::msg_bundle::Component;
 /// use arrow2_convert::field::ArrowField;
 /// use arrow2::datatypes::{DataType, Field};
 ///
-/// assert_eq!(Radius::data_type(), DataType::F32);
+/// assert_eq!(Radius::data_type(), DataType::Float32);
 /// ```
 #[derive(Debug)]
 pub struct Radius(pub f32);

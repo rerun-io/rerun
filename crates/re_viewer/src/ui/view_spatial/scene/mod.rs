@@ -132,6 +132,8 @@ fn instance_hash_if_interactive(
     }
 }
 
+pub type Keypoints = HashMap<(ClassId, i64), HashMap<KeypointId, glam::Vec3>>;
+
 impl SceneSpatial {
     /// Loads all 3D objects into the scene according to the given query.
     pub(crate) fn load_objects(
@@ -185,7 +187,7 @@ impl SceneSpatial {
     fn load_keypoint_connections(
         &mut self,
         obj_path: &re_data_store::ObjPath,
-        keypoints: HashMap<(ClassId, i64), HashMap<KeypointId, glam::Vec3>>,
+        keypoints: Keypoints,
         annotations: &Arc<Annotations>,
         interactive: bool,
     ) {
