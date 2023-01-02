@@ -169,6 +169,16 @@ impl DataStore {
         // Always insert the cluster component.
         row_indices.insert(self.cluster_key, cluster_row_idx);
 
+        if self.config.store_insert_ids {
+            // Store the ID of the write request alongside the data.
+            //
+            // This is _not_ an actual `RowIndex`, there isn't even a component table associated
+            // with insert IDs!
+            // We're just abusing the fact that any value we push here as a `RowIndex` will end up
+            // as-is in the index.
+            row_indices.insert(Self::insert_id_key(), RowIndex::from_u64(self.insert_id));
+        }
+
         for bundle in components
             .iter()
             .filter(|bundle| bundle.name != self.cluster_key)
