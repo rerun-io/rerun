@@ -303,13 +303,13 @@ fn range_join_across_single_row_impl(store: &mut DataStore) {
         timeline_frame_nr,
         TimeRange::new(i64::MIN.into(), i64::MAX.into()),
     );
-    let components = [Point2D::name(), Rect2D::name()];
+    let components = [Instance::name(), Point2D::name(), Rect2D::name()];
     let dfs = polars_util::range_components(
         store,
         &query,
         &ent_path,
-        components[0],
-        &components[1..],
+        Point2D::name(),
+        components,
         &JoinType::Outer,
     )
     .collect::<Vec<_>>();

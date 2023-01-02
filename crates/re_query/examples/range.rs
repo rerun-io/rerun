@@ -49,13 +49,12 @@ fn main() {
 
     let query = RangeQuery::new(frame2[0].0, TimeRange::new(frame2[0].1, frame4[0].1));
 
-    // TODO(cmc): requires a PR in another multiverse
-    // println!("Store contents:\n{}", store.to_dataframe());
+    println!("Store contents:\n{}", store.to_dataframe());
 
     println!("\n-----\n");
 
-    let components = &[Point2D::name()];
-    let ent_views = range_entity_with_primary::<Rect2D>(&store, &query, &ent_path, components);
+    let components = [Instance::name(), Rect2D::name(), Point2D::name()];
+    let ent_views = range_entity_with_primary::<Rect2D, 3>(&store, &query, &ent_path, components);
     for (time, ent_view) in ent_views {
         eprintln!(
             "Found data at time {} from {}'s PoV:\n{}",
@@ -67,8 +66,8 @@ fn main() {
 
     println!("\n-----\n");
 
-    let components = &[Rect2D::name()];
-    let ent_views = range_entity_with_primary::<Point2D>(&store, &query, &ent_path, components);
+    let components = [Instance::name(), Rect2D::name(), Point2D::name()];
+    let ent_views = range_entity_with_primary::<Point2D, 3>(&store, &query, &ent_path, components);
     for (time, ent_view) in ent_views {
         eprintln!(
             "Found data at time {} from {}'s PoV:\n{}",
