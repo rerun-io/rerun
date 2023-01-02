@@ -21,6 +21,7 @@ pub struct LineSegments2DPart;
 
 impl ScenePart for LineSegments2DPart {
     fn load(
+        &self,
         scene: &mut SceneSpatial,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
@@ -28,7 +29,7 @@ impl ScenePart for LineSegments2DPart {
         objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
-        crate::profile_function!();
+        crate::profile_scope!("LineSegments2DPart");
 
         for (_obj_type, obj_path, time_query, obj_store) in
             query.iter_object_stores(ctx.log_db, &[ObjectType::LineSegments2D])

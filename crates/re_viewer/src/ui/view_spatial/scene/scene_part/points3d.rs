@@ -1,27 +1,29 @@
-use ahash::HashMap;
-use glam::Vec3;
+use std::sync::Arc;
+
+use ahash::{HashMap, HashMapExt};
+use glam::{Mat4, Vec3};
 use re_arrow_store::TimeQuery;
-use re_data_store::{query::visit_type_data_5, FieldName, InstanceIdHash, ObjectsProperties};
+use re_data_store::{
+    query::visit_type_data_5, FieldName, InstanceIdHash, ObjPath,
+    ObjectsProperties,
+};
 use re_log_types::{
-    context::KeypointId,
-    field_types::{ClassId, ColorRGBA, Label, Point3D},
+    field_types::{ClassId, ColorRGBA, KeypointId, Label, Point3D, Radius},
     msg_bundle::Component,
     IndexHash, MsgId, ObjectType,
 };
-use re_query::{query_entity_with_primary, QueryError};
+use re_query::{query_entity_with_primary, EntityView, QueryError};
 use re_renderer::Size;
 
-use crate::{
-    misc::ViewerContext,
-    ui::{
-        scene::SceneQuery,
-        transform_cache::{ReferenceFromObjTransform, TransformCache},
-        view_spatial::{
-            scene::{instance_hash_if_interactive, to_ecolor},
-            Label3D, SceneSpatial,
-        },
-        DefaultColor,
+use crate::ui::{
+    annotations::ResolvedAnnotationInfo,
+    scene::SceneQuery,
+    transform_cache::ReferenceFromObjTransform,
+    view_spatial::{
+        scene::{instance_hash_if_interactive, to_ecolor},
+        Label3D, SceneSpatial,
     },
+    Annotations, DefaultColor,
 };
 
 use super::ScenePart;
@@ -30,10 +32,11 @@ pub struct Points3DPartClassic;
 
 impl ScenePart for Points3DPartClassic {
     fn load(
+        &self,
         scene: &mut SceneSpatial,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &mut crate::misc::ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        transforms: &TransformCache,
+        transforms: &crate::ui::transform_cache::TransformCache,
         objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
@@ -144,16 +147,199 @@ impl ScenePart for Points3DPartClassic {
     }
 }
 
-pub struct Points3DPart;
+pub struct Points3DPart {
+    /// If the number of points in the batch is > max_labels, don't render point labels.
+    pub(crate) max_labels: usize,
+}
 
-impl Points3DPart {}
+impl Points3DPart {
+    fn process_annotations(
+        query: &SceneQuery<'_>,
+        entity_view: &EntityView<Point3D>,
+        annotations: &Arc<Annotations>,
+        point_positions: &[Vec3],
+    ) -> Result<
+        (
+            Vec<ResolvedAnnotationInfo>,
+            HashMap<(ClassId, i64), HashMap<KeypointId, glam::Vec3>>,
+        ),
+        QueryError,
+    > {
+        let mut keypoints: HashMap<(ClassId, i64), HashMap<KeypointId, glam::Vec3>> =
+            HashMap::new();
+
+        let annotation_info = itertools::izip!(
+            point_positions.iter(),
+            entity_view.iter_component::<KeypointId>()?,
+            entity_view.iter_component::<ClassId>()?,
+        )
+        .map(|(position, keypoint_id, class_id)| {
+            let class_description = annotations.class_description(class_id);
+
+            if let Some(keypoint_id) = keypoint_id {
+                if let Some(class_id) = class_id {
+                    keypoints
+                        .entry((class_id, query.latest_at.as_i64()))
+                        .or_insert_with(Default::default)
+                        .insert(keypoint_id, *position);
+                }
+                class_description.annotation_info_with_keypoint(keypoint_id)
+            } else {
+                class_description.annotation_info()
+            }
+        })
+        .collect();
+
+        Ok((annotation_info, keypoints))
+    }
+
+    fn process_colors<'a>(
+        entity_view: &'a EntityView<Point3D>,
+        ent_path: &'a ObjPath,
+        hovered_instance: InstanceIdHash,
+        instance_hashes: &'a [InstanceIdHash],
+        annotation_infos: &'a [ResolvedAnnotationInfo],
+    ) -> Result<impl Iterator<Item = egui::Color32> + 'a, QueryError> {
+        let default_color = DefaultColor::ObjPath(ent_path);
+
+        let colors = itertools::izip!(
+            instance_hashes.iter(),
+            annotation_infos.iter(),
+            entity_view.iter_component::<ColorRGBA>()?,
+        )
+        .map(move |(instance_hash, annotation_info, color)| {
+            if instance_hash.is_some() && instance_hash.eq(&hovered_instance) {
+                SceneSpatial::HOVER_COLOR
+            } else {
+                to_ecolor(
+                    annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color),
+                )
+            }
+        });
+        Ok(colors)
+    }
+
+    fn process_radii<'a>(
+        entity_view: &'a EntityView<Point3D>,
+        hovered_instance: InstanceIdHash,
+        instance_hashes: &'a [InstanceIdHash],
+    ) -> Result<impl Iterator<Item = Size> + 'a, QueryError> {
+        let radii = itertools::izip!(
+            instance_hashes.iter(),
+            entity_view.iter_component::<Radius>()?,
+        )
+        .map(move |(instance_hash, radius)| {
+            let radius = radius.map_or(Size::AUTO, |radius| Size::new_scene(radius.0));
+            if instance_hash.is_some() && instance_hash.eq(&hovered_instance) {
+                SceneSpatial::hover_size_boost(radius)
+            } else {
+                radius
+            }
+        });
+        Ok(radii)
+    }
+
+    fn process_labels<'a>(
+        entity_view: &'a EntityView<Point3D>,
+        annotation_infos: &'a [ResolvedAnnotationInfo],
+        world_from_obj: Mat4,
+    ) -> Result<impl Iterator<Item = Label3D> + 'a, QueryError> {
+        let labels = itertools::izip!(
+            annotation_infos.iter(),
+            entity_view.iter_primary()?,
+            entity_view.iter_component::<Label>()?
+        )
+        .filter_map(move |(annotation_info, point, label)| {
+            let label = label.map(|l| l.0.clone());
+            let label = annotation_info.label(label.as_ref());
+            match (point, label) {
+                (Some(point), Some(label)) => Some(Label3D {
+                    text: label,
+                    origin: world_from_obj.transform_point3(point.into()),
+                }),
+                _ => None,
+            }
+        });
+        Ok(labels)
+    }
+
+    fn process_entity_view(
+        &self,
+        scene: &mut SceneSpatial,
+        query: &SceneQuery<'_>,
+        objects_properties: &ObjectsProperties,
+        hovered_instance: InstanceIdHash,
+        entity_view: EntityView<Point3D>,
+        ent_path: &ObjPath,
+        world_from_obj: Mat4,
+    ) -> Result<(), QueryError> {
+        let annotations = scene.annotation_map.find(ent_path);
+        let properties = objects_properties.get(ent_path);
+        let show_labels = true;
+
+        let mut point_batch = scene
+            .primitives
+            .points
+            .batch("3d points")
+            .world_from_obj(world_from_obj);
+
+        let point_positions = entity_view
+            .iter_primary()?
+            .filter_map(|pt| pt.map(glam::Vec3::from))
+            .collect::<Vec<_>>();
+
+        let (annotation_infos, keypoints) = Self::process_annotations(
+            query,
+            &entity_view,
+            &annotations,
+            point_positions.as_slice(),
+        )?;
+
+        let instance_hashes = entity_view
+            .iter_instances()?
+            .map(|instance| {
+                if properties.interactive {
+                    InstanceIdHash::from_path_and_arrow_instance(ent_path, &instance)
+                } else {
+                    InstanceIdHash::NONE
+                }
+            })
+            .collect::<Vec<_>>();
+
+        let colors = Self::process_colors(
+            &entity_view,
+            ent_path,
+            hovered_instance,
+            &instance_hashes,
+            &annotation_infos,
+        )?;
+
+        let radii = Self::process_radii(&entity_view, hovered_instance, &instance_hashes)?;
+        let labels = Self::process_labels(&entity_view, &annotation_infos, world_from_obj)?;
+
+        if show_labels && instance_hashes.len() <= self.max_labels {
+            scene.ui.labels_3d.extend(labels);
+        }
+
+        point_batch
+            .add_points(point_positions.into_iter())
+            .colors(colors)
+            .radii(radii)
+            .user_data(instance_hashes.into_iter());
+
+        scene.load_keypoint_connections(ent_path, keypoints, &annotations, properties.interactive);
+
+        Ok(())
+    }
+}
 
 impl ScenePart for Points3DPart {
     fn load(
+        &self,
         scene: &mut SceneSpatial,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &mut crate::misc::ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        transforms: &TransformCache,
+        transforms: &crate::ui::transform_cache::TransformCache,
         objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
@@ -173,77 +359,24 @@ impl ScenePart for Points3DPart {
                 &ctx.log_db.obj_db.arrow_store,
                 &timeline_query,
                 ent_path,
-                &[ColorRGBA::name(), Label::name(), ClassId::name()],
+                &[
+                    ColorRGBA::name(),
+                    Radius::name(),
+                    Label::name(),
+                    ClassId::name(),
+                    KeypointId::name(),
+                ],
             )
             .and_then(|entity_view| {
-                let annotations = scene.annotation_map.find(ent_path);
-                let default_color = DefaultColor::ObjPath(ent_path);
-                let properties = objects_properties.get(ent_path);
-
-                let show_labels = true;
-
-                let mut point_batch = scene
-                    .primitives
-                    .points
-                    .batch("3d points")
-                    .world_from_obj(world_from_obj);
-
-                let point_positions = entity_view
-                    .iter_primary()?
-                    .filter_map(|pt| pt.map(glam::Vec3::from));
-
-                let instance_hashes = entity_view
-                    .iter_instances()?
-                    .map(|instance| {
-                        if properties.interactive {
-                            InstanceIdHash::from_path_and_arrow_instance(ent_path, &instance)
-                        } else {
-                            InstanceIdHash::NONE
-                        }
-                    })
-                    .collect::<Vec<_>>();
-
-                let colors = itertools::izip!(
-                    instance_hashes.iter(),
-                    entity_view.iter_component::<ColorRGBA>()?,
-                    entity_view.iter_component::<ClassId>()?,
+                self.process_entity_view(
+                    scene,
+                    query,
+                    objects_properties,
+                    hovered_instance,
+                    entity_view,
+                    ent_path,
+                    world_from_obj,
                 )
-                .map(|(instance_hash, color, class_id)| {
-                    if instance_hash.is_some() && instance_hash.eq(&hovered_instance) {
-                        SceneSpatial::HOVER_COLOR
-                    } else {
-                        let class_description = annotations.class_description(class_id);
-                        let annotation_info = class_description.annotation_info();
-
-                        to_ecolor(
-                            annotation_info
-                                .color(color.map(move |c| c.to_array()).as_ref(), default_color),
-                        )
-                    }
-                });
-
-                let labels = itertools::izip!(
-                    entity_view.iter_primary()?,
-                    entity_view.iter_component::<Label>()?
-                )
-                .filter_map(|(point, label)| match (point, label) {
-                    (Some(point), Some(label)) => Some(Label3D {
-                        text: label.0,
-                        origin: world_from_obj.transform_point3(point.into()),
-                    }),
-                    _ => None,
-                });
-
-                if show_labels && instance_hashes.len() < 10 {
-                    scene.ui.labels_3d.extend(labels);
-                }
-
-                point_batch
-                    .add_points(point_positions)
-                    .colors(colors)
-                    .user_data(instance_hashes.into_iter());
-
-                Ok(())
             }) {
                 Ok(_) | Err(QueryError::PrimaryNotFound) => {}
                 Err(err) => {

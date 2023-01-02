@@ -1,8 +1,8 @@
 use re_arrow_store::TimeQuery;
 use re_data_store::{Index, InstanceId, ObjPath};
 use re_log_types::{
-    context::{ClassId, KeypointId},
     external::arrow2::array,
+    field_types::{ClassId, KeypointId},
     Data, DataPath, ObjectType,
 };
 use re_query::{get_component_with_instances, QueryError};

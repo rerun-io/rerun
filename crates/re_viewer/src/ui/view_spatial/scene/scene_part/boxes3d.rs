@@ -23,6 +23,7 @@ pub struct Boxes3DPart;
 
 impl ScenePart for Boxes3DPart {
     fn load(
+        &self,
         scene: &mut SceneSpatial,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
@@ -30,7 +31,7 @@ impl ScenePart for Boxes3DPart {
         objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
-        crate::profile_function!();
+        crate::profile_scope!("Boxes3DPart");
 
         for (_obj_type, obj_path, time_query, obj_store) in
             query.iter_object_stores(ctx.log_db, &[ObjectType::Box3D])

@@ -1,15 +1,22 @@
 use ahash::HashMap;
 use re_data_store::{query::visit_type_data_5, FieldName};
-use re_log_types::{context::KeypointId, field_types::ClassId, IndexHash, MsgId, ObjectType};
+use re_log_types::{
+    field_types::{ClassId, KeypointId},
+    IndexHash, MsgId, ObjectType,
+};
 use re_renderer::Size;
 
-use crate::ui::{
-    transform_cache::ReferenceFromObjTransform,
-    view_spatial::{
-        scene::{apply_hover_effect, instance_hash_if_interactive, paint_properties},
-        Label2D, Label2DTarget,
+use crate::{
+    misc::ViewerContext,
+    ui::{
+        scene::SceneQuery,
+        transform_cache::{ReferenceFromObjTransform, TransformCache},
+        view_spatial::{
+            scene::{apply_hover_effect, instance_hash_if_interactive, paint_properties},
+            Label2D, Label2DTarget, SceneSpatial,
+        },
+        DefaultColor,
     },
-    DefaultColor,
 };
 
 use super::ScenePart;
@@ -18,10 +25,11 @@ pub struct Points2DPart;
 
 impl ScenePart for Points2DPart {
     fn load(
-        scene: &mut crate::ui::view_spatial::SceneSpatial,
-        ctx: &mut crate::misc::ViewerContext<'_>,
-        query: &crate::ui::scene::SceneQuery<'_>,
-        transforms: &crate::ui::transform_cache::TransformCache,
+        &self,
+        scene: &mut SceneSpatial,
+        ctx: &mut ViewerContext<'_>,
+        query: &SceneQuery<'_>,
+        transforms: &TransformCache,
         objects_properties: &re_data_store::ObjectsProperties,
         hovered_instance: re_data_store::InstanceIdHash,
     ) {

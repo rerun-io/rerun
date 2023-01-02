@@ -2,16 +2,7 @@ use std::sync::Arc;
 
 use ahash::HashMap;
 
-use crate::field_types::ClassId;
-
-/// A 16-bit ID representing a type of semantic keypoint within a class.
-///
-/// `KeypointId`s are only meaningful within the context of a [`ClassDescription`].
-///
-/// Used to look up an [`AnnotationInfo`] for a Keypoint within the [`AnnotationContext`].
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct KeypointId(pub u16);
+use crate::field_types::{ClassId, KeypointId};
 
 /// Information about an Annotation.
 ///

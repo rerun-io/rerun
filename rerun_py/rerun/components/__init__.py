@@ -12,6 +12,7 @@ all = [
     "color",
     "label",
     "point",
+    "radius",
     "rect2d",
 ]
 

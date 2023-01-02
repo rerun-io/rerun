@@ -31,6 +31,7 @@ pub use segments2d::LineSegments2DPart;
 
 pub trait ScenePart {
     fn load(
+        &self,
         scene: &mut SceneSpatial,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
