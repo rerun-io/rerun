@@ -318,13 +318,12 @@ impl DataStore {
 // --- Indices ---
 
 impl IndexTable {
-    pub fn new(_cluster_key: ComponentName, timeline: Timeline, ent_path: EntityPath) -> Self {
+    pub fn new(cluster_key: ComponentName, timeline: Timeline, ent_path: EntityPath) -> Self {
         Self {
             timeline,
             ent_path,
-            buckets: [(i64::MIN.into(), IndexBucket::new(_cluster_key, timeline))].into(),
-            #[cfg(debug_assertions)]
-            cluster_key: _cluster_key,
+            buckets: [(i64::MIN.into(), IndexBucket::new(cluster_key, timeline))].into(),
+            cluster_key,
         }
     }
 
@@ -418,7 +417,6 @@ impl IndexTable {
                                 times: Default::default(),
                                 indices: Default::default(),
                             }),
-                            #[cfg(debug_assertions)]
                             cluster_key: self.cluster_key,
                         },
                     );
@@ -453,12 +451,11 @@ impl IndexTable {
 }
 
 impl IndexBucket {
-    pub fn new(_cluster_key: ComponentName, timeline: Timeline) -> Self {
+    pub fn new(cluster_key: ComponentName, timeline: Timeline) -> Self {
         Self {
             timeline,
             indices: RwLock::new(IndexBucketIndices::default()),
-            #[cfg(debug_assertions)]
-            cluster_key: _cluster_key,
+            cluster_key,
         }
     }
 
@@ -507,7 +504,7 @@ impl IndexBucket {
         #[cfg(debug_assertions)]
         {
             drop(guard); // sanity checking will grab the lock!
-            self.sanity_check(self.cluster_key).unwrap();
+            self.sanity_check().unwrap();
         }
 
         Ok(())
@@ -641,7 +638,6 @@ impl IndexBucket {
                         times: times2,
                         indices: indices2,
                     }),
-                    #[cfg(debug_assertions)]
                     cluster_key: self.cluster_key,
                 },
             )
@@ -651,8 +647,8 @@ impl IndexBucket {
         #[cfg(debug_assertions)]
         {
             drop(indices); // sanity checking will grab the lock!
-            self.sanity_check(self.cluster_key).unwrap();
-            bucket2.sanity_check(bucket2.cluster_key).unwrap();
+            self.sanity_check().unwrap();
+            bucket2.sanity_check().unwrap();
 
             let total_rows1 = self.total_rows() as i64;
             let total_rows2 = bucket2.total_rows() as i64;

@@ -310,7 +310,7 @@ impl DataStore {
         }
 
         for table in self.indices.values() {
-            table.sanity_check(self.cluster_key())?;
+            table.sanity_check()?;
         }
 
         for table in self.components.values() {
@@ -509,9 +509,8 @@ pub struct IndexTable {
     /// though the bucket doesn't actually contains data with a timestamp of `-∞`!
     pub(crate) buckets: BTreeMap<TimeInt, IndexBucket>,
 
-    /// Carrying the cluster key around in debug builds to help with assertions and sanity checks
-    /// all over the place.
-    #[cfg(debug_assertions)]
+    /// Carrying the cluster key around to help with assertions and sanity checks all over the
+    /// place.
     pub(crate) cluster_key: ComponentName,
 }
 
@@ -522,8 +521,7 @@ impl std::fmt::Display for IndexTable {
             timeline,
             ent_path,
             buckets,
-            #[cfg(debug_assertions)]
-                cluster_key: _,
+            cluster_key: _,
         } = self;
 
         f.write_fmt(format_args!("timeline: {}\n", timeline.name()))?;
@@ -577,7 +575,7 @@ impl IndexTable {
     /// Runs the sanity check suite for the entire table.
     ///
     /// Returns an error if anything looks wrong.
-    pub fn sanity_check(&self, cluster_key: ComponentName) -> anyhow::Result<()> {
+    pub fn sanity_check(&self) -> anyhow::Result<()> {
         // No two buckets should ever overlap time-range-wise.
         {
             let time_ranges = self
@@ -600,7 +598,7 @@ impl IndexTable {
 
         // Run individual bucket sanity check suites too.
         for bucket in self.buckets.values() {
-            bucket.sanity_check(cluster_key)?;
+            bucket.sanity_check()?;
         }
 
         Ok(())
@@ -621,9 +619,8 @@ pub struct IndexBucket {
 
     pub(crate) indices: RwLock<IndexBucketIndices>,
 
-    /// Carrying the cluster key around in debug builds to help with assertions and sanity checks
-    /// all over the place.
-    #[cfg(debug_assertions)]
+    /// Carrying the cluster key around to help with assertions and sanity checks all over the
+    /// place.
     pub(crate) cluster_key: ComponentName,
 }
 
@@ -727,7 +724,7 @@ impl IndexBucket {
     /// Runs the sanity check suite for the entire bucket.
     ///
     /// Returns an error if anything looks wrong.
-    pub fn sanity_check(&self, cluster_key: ComponentName) -> anyhow::Result<()> {
+    pub fn sanity_check(&self) -> anyhow::Result<()> {
         let IndexBucketIndices {
             is_sorted: _,
             time_range: _,
@@ -750,6 +747,7 @@ impl IndexBucket {
 
         // The cluster index must be fully dense.
         {
+            let cluster_key = self.cluster_key;
             let cluster_idx = indices
                 .get(&cluster_key)
                 .ok_or_else(|| anyhow!("no index found for cluster key: {cluster_key:?}"))?;
