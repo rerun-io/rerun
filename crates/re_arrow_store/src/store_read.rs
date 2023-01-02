@@ -439,23 +439,11 @@ impl IndexTable {
     ) -> impl Iterator<Item = (TimeInt, IndexRowNr, [Option<RowIndex>; N])> + '_ {
         let timeline = self.timeline;
 
-        // Note the lack of a minimum value in that range!
-        //
-        // That's because any bucket with a lower bound <= `time_range.min` could potentially
-        // hold data within the `time_range` we're looking for, as long as it also has an upper
-        // bound that is >= `time_range.min` (see filter below).
-
-        // dbg!(time_range.min, i64::MIN);
-        // dbg!(&self.buckets);
+        // We need to find the _indexing time_ that corresponds to this time range's minimum bound!
         let (time_range_min, _) = self.find_bucket(time_range.min);
-
-        // dbg!(&time_range_min);
-        // dbg!(&self.buckets);
 
         self.range_buckets(time_range_min..=time_range.max)
             .map(|(_, bucket)| bucket)
-            // self.range_buckets(..=time_range.max)
-            //     .filter(move |bucket| bucket.indices.read().time_range.max >= time_range.min)
             .enumerate()
             .flat_map(move |(bucket_nr, bucket)| {
                 trace!(
@@ -477,7 +465,7 @@ impl IndexTable {
     ///
     /// In addition to returning a reference to the `IndexBucket` itself, this also returns its
     /// _indexing time_, which is different from its minimum time range bound!
-    /// See [`IndexTable::buckets`] for more information.
+    /// See `IndexTable::buckets` for more information.
     pub fn find_bucket(&self, time: TimeInt) -> (TimeInt, &IndexBucket) {
         // This cannot fail, `iter_bucket` is guaranteed to always yield at least one bucket,
         // since index tables always spawn with a default bucket that covers [-∞;+∞].
@@ -488,7 +476,7 @@ impl IndexTable {
     ///
     /// In addition to returning a reference to the `IndexBucket` itself, this also returns its
     /// _indexing time_, which is different from its minimum time range bound!
-    /// See [`IndexTable::buckets`] for more information.
+    /// See `IndexTable::buckets` for more information.
     pub fn find_bucket_mut(&mut self, time: TimeInt) -> (TimeInt, &mut IndexBucket) {
         // This cannot fail, `iter_bucket_mut` is guaranteed to always yield at least one bucket,
         // since index tables always spawn with a default bucket that covers [-∞;+∞].
@@ -502,7 +490,7 @@ impl IndexTable {
     ///
     /// In addition to yielding references to the `IndexBucket`s themselves, this also returns
     /// their _indexing times_, which are different from their minimum time range bounds!
-    /// See [`IndexTable::buckets`] for more information.
+    /// See `IndexTable::buckets` for more information.
     pub fn range_buckets(
         &self,
         time_range: impl RangeBounds<TimeInt>,
@@ -519,7 +507,7 @@ impl IndexTable {
     ///
     /// In addition to yielding references to the `IndexBucket`s themselves, this also returns
     /// their _indexing times_, which are different from their minimum time range bounds!
-    /// See [`IndexTable::buckets`] for more information.
+    /// See `IndexTable::buckets` for more information.
     pub fn range_buckets_rev(
         &self,
         time_range: impl RangeBounds<TimeInt>,
@@ -537,7 +525,7 @@ impl IndexTable {
     ///
     /// In addition to yielding references to the `IndexBucket`s themselves, this also returns
     /// their _indexing times_, which are different from their minimum time range bounds!
-    /// See [`IndexTable::buckets`] for more information.
+    /// See `IndexTable::buckets` for more information.
     pub fn range_bucket_rev_mut(
         &mut self,
         time_range: impl RangeBounds<TimeInt>,
@@ -693,13 +681,11 @@ impl IndexBucket {
 
         let bucket_time_range = *bucket_time_range;
 
-        let mut comp_indices = [(); N].map(|_| None);
-        for (i, component) in components.iter().enumerate() {
-            comp_indices[i] = indices.get(component);
-        }
-
         // Early-exit if this bucket is unaware of any of our components of interest.
-        if comp_indices.iter().all(Option::is_none) {
+        if components
+            .iter()
+            .all(|component| indices.get(component).is_none())
+        {
             return itertools::Either::Right(std::iter::empty());
         }
 
