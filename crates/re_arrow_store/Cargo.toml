@@ -79,11 +79,6 @@ path = "examples/latest_components.rs"
 required-features = ["polars"]
 
 [[example]]
-name = "range_component"
-path = "examples/range_component.rs"
-required-features = ["polars"]
-
-[[example]]
 name = "range_components"
 path = "examples/range_components.rs"
 required-features = ["polars"]

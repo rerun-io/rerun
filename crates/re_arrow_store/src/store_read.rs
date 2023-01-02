@@ -92,7 +92,7 @@ impl DataStore {
         );
 
         let index = self.indices.get(&(query.timeline, *ent_path_hash))?;
-        let bucket = index.find_bucket(query.at);
+        let (_, bucket) = index.find_bucket(query.at);
         let components = bucket.named_indices().0;
 
         trace!(
@@ -161,9 +161,6 @@ impl DataStore {
     /// This is what our `latest_components` polars helper does.
     ///
     /// For more information about working with dataframes, see the `polars` feature.
-    //
-    // TODO(cmc): at one point we're gonna need a high-level documentation/user-guide of the
-    // semantics of latest-at PoV queries, giving readers a walkthrough of a real-world query.
     pub fn latest_at<const N: usize>(
         &self,
         query: &LatestAtQuery,
@@ -288,7 +285,7 @@ impl DataStore {
     ///     std::iter::once(df_latest.map(|df| (latest_time, df)))
     ///         // ..but only if it's not an empty dataframe.
     ///         .filter(|df| df.as_ref().map_or(true, |(_, df)| !df.is_empty()))
-    ///         .chain(store.range(query, ent_path, primary, components).map(
+    ///         .chain(store.range(query, ent_path, components).map(
     ///             move |(time, _, row_indices)| {
     ///                 let results = store.get(&components, &row_indices);
     ///                 dataframe_from_results(&components, results).map(|df| (time, df))
@@ -303,14 +300,10 @@ impl DataStore {
     /// This is what our `range_components` polars helper does.
     ///
     /// For more information about working with dataframes, see the `polars` feature.
-    //
-    // TODO(cmc): at one point we're gonna need a high-level documentation/user-guide of the
-    // semantics of latest-at PoV queries, giving readers a walkthrough of a real-world query.
     pub fn range<'a, const N: usize>(
         &'a self,
         query: &RangeQuery,
         ent_path: &EntityPath,
-        primary: ComponentName,
         components: [ComponentName; N],
     ) -> impl Iterator<Item = (TimeInt, IndexRowNr, [Option<RowIndex>; N])> + 'a {
         // TODO(cmc): kind & query_id need to somehow propagate through the span system.
@@ -323,7 +316,6 @@ impl DataStore {
             id = self.query_id.load(Ordering::Relaxed),
             query = ?query,
             entity = %ent_path,
-            %primary,
             ?components,
             "query started..."
         );
@@ -331,7 +323,7 @@ impl DataStore {
         let index = self.indices.get(&(query.timeline, *ent_path_hash));
 
         index
-            .map(|index| index.range(query.range, primary, components))
+            .map(|index| index.range(query.range, components))
             .into_iter()
             .flatten()
     }
@@ -404,7 +396,11 @@ impl IndexTable {
         // walk backwards within an index bucket, but sometimes even walk backwards across
         // multiple index buckets within the same table!
 
-        for (attempt, bucket) in self.range_buckets_rev(..=time).enumerate() {
+        let buckets = self
+            .range_buckets_rev(..=time)
+            .map(|(_, bucket)| bucket)
+            .enumerate();
+        for (attempt, bucket) in buckets {
             trace!(
                 kind = "latest_at",
                 timeline = %timeline.name(),
@@ -427,18 +423,15 @@ impl IndexTable {
     pub fn range<const N: usize>(
         &self,
         time_range: TimeRange,
-        primary: ComponentName,
         components: [ComponentName; N],
     ) -> impl Iterator<Item = (TimeInt, IndexRowNr, [Option<RowIndex>; N])> + '_ {
         let timeline = self.timeline;
 
-        // Note the lack of a minimum value in that range!
-        //
-        // That's because any bucket with a lower bound <= `time_range.min` could potentially
-        // hold data within the `time_range` we're looking for, as long as it also has an upper
-        // bound that is >= `time_range.min` (see filter below).
-        self.range_buckets(..=time_range.max)
-            .filter(move |bucket| bucket.indices.read().time_range.max >= time_range.min)
+        // We need to find the _indexing time_ that corresponds to this time range's minimum bound!
+        let (time_range_min, _) = self.find_bucket(time_range.min);
+
+        self.range_buckets(time_range_min..=time_range.max)
+            .map(|(_, bucket)| bucket)
             .enumerate()
             .flat_map(move |(bucket_nr, bucket)| {
                 trace!(
@@ -448,24 +441,31 @@ impl IndexTable {
                         timeline.typ().format_range(bucket.indices.read().time_range),
                     timeline = %timeline.name(),
                     ?time_range,
-                    %primary,
                     ?components,
                     "found bucket in range"
                 );
 
-                bucket.range(time_range, primary, components)
+                bucket.range(time_range, components)
             })
     }
 
     /// Returns the index bucket whose time range covers the given `time`.
-    pub fn find_bucket(&self, time: TimeInt) -> &IndexBucket {
+    ///
+    /// In addition to returning a reference to the `IndexBucket` itself, this also returns its
+    /// _indexing time_, which is different from its minimum time range bound!
+    /// See `IndexTable::buckets` for more information.
+    pub fn find_bucket(&self, time: TimeInt) -> (TimeInt, &IndexBucket) {
         // This cannot fail, `iter_bucket` is guaranteed to always yield at least one bucket,
         // since index tables always spawn with a default bucket that covers [-∞;+∞].
-        self.range_buckets(..=time).next().unwrap()
+        self.range_buckets_rev(..=time).next().unwrap()
     }
 
     /// Returns the index bucket whose time range covers the given `time`.
-    pub fn find_bucket_mut(&mut self, time: TimeInt) -> &mut IndexBucket {
+    ///
+    /// In addition to returning a reference to the `IndexBucket` itself, this also returns its
+    /// _indexing time_, which is different from its minimum time range bound!
+    /// See `IndexTable::buckets` for more information.
+    pub fn find_bucket_mut(&mut self, time: TimeInt) -> (TimeInt, &mut IndexBucket) {
         // This cannot fail, `iter_bucket_mut` is guaranteed to always yield at least one bucket,
         // since index tables always spawn with a default bucket that covers [-∞;+∞].
         self.range_bucket_rev_mut(..=time).next().unwrap()
@@ -475,39 +475,53 @@ impl IndexTable {
     /// whose time range covers the start bound of the given `time_range`.
     ///
     /// It then continues yielding buckets until it runs out, in increasing time range order.
+    ///
+    /// In addition to yielding references to the `IndexBucket`s themselves, this also returns
+    /// their _indexing times_, which are different from their minimum time range bounds!
+    /// See `IndexTable::buckets` for more information.
     pub fn range_buckets(
         &self,
         time_range: impl RangeBounds<TimeInt>,
-    ) -> impl Iterator<Item = &IndexBucket> {
-        self.buckets.range(time_range).map(|(_, bucket)| bucket)
+    ) -> impl Iterator<Item = (TimeInt, &IndexBucket)> {
+        self.buckets
+            .range(time_range)
+            .map(|(time, bucket)| (*time, bucket))
     }
 
     /// Returns an iterator that is guaranteed to yield at least one bucket, which is the bucket
     /// whose time range covers the end bound of the given `time_range`.
     ///
     /// It then continues yielding buckets until it runs out, in decreasing time range order.
+    ///
+    /// In addition to yielding references to the `IndexBucket`s themselves, this also returns
+    /// their _indexing times_, which are different from their minimum time range bounds!
+    /// See `IndexTable::buckets` for more information.
     pub fn range_buckets_rev(
         &self,
         time_range: impl RangeBounds<TimeInt>,
-    ) -> impl Iterator<Item = &IndexBucket> {
+    ) -> impl Iterator<Item = (TimeInt, &IndexBucket)> {
         self.buckets
             .range(time_range)
             .rev()
-            .map(|(_, bucket)| bucket)
+            .map(|(time, bucket)| (*time, bucket))
     }
 
     /// Returns an iterator that is guaranteed to yield at least one bucket, which is the bucket
     /// whose time range covers the end bound of the given `time_range`.
     ///
     /// It then continues yielding buckets until it runs out, in decreasing time range order.
+    ///
+    /// In addition to yielding references to the `IndexBucket`s themselves, this also returns
+    /// their _indexing times_, which are different from their minimum time range bounds!
+    /// See `IndexTable::buckets` for more information.
     pub fn range_bucket_rev_mut(
         &mut self,
         time_range: impl RangeBounds<TimeInt>,
-    ) -> impl Iterator<Item = &mut IndexBucket> {
+    ) -> impl Iterator<Item = (TimeInt, &mut IndexBucket)> {
         self.buckets
             .range_mut(time_range)
             .rev()
-            .map(|(_, bucket)| bucket)
+            .map(|(time, bucket)| (*time, bucket))
     }
 
     /// Sort all unsorted index buckets in this table.
@@ -545,11 +559,12 @@ impl IndexBucket {
         self.sort_indices_if_needed();
 
         let IndexBucketIndices {
-            is_sorted: _,
+            is_sorted,
             time_range: _,
             times,
             indices,
         } = &*self.indices.read();
+        debug_assert!(is_sorted);
 
         // Early-exit if this bucket is unaware of this component.
         let index = indices.get(&primary)?;
@@ -640,93 +655,50 @@ impl IndexBucket {
     pub fn range<'a, const N: usize>(
         &'a self,
         time_range: TimeRange,
-        primary: ComponentName,
         components: [ComponentName; N],
     ) -> impl Iterator<Item = (TimeInt, IndexRowNr, [Option<RowIndex>; N])> + 'a {
         self.sort_indices_if_needed();
 
         let IndexBucketIndices {
-            is_sorted: _,
+            is_sorted,
             time_range: bucket_time_range,
             times,
             indices,
         } = &*self.indices.read();
+        debug_assert!(is_sorted);
 
         let bucket_time_range = *bucket_time_range;
 
-        // We need to walk forwards until we find a non-null row for the primary component.
-        let comp_idx_row_nr = 'search: {
-            // Early-exit if this bucket is unaware of this component.
-            let Some(comp_idx) = indices.get(&primary) else { break 'search None };
-
-            trace!(
-                kind = "range",
-                bucket_time_range = self.timeline.typ().format_range(bucket_time_range),
-                %primary,
-                ?components,
-                timeline = %self.timeline.name(),
-                time_range = self.timeline.typ().format_range(time_range),
-                "searching for time & component row index numbers..."
-            );
-
-            // find the time index's row number for the primary component
-            let time_idx_row_nr: IndexRowNr =
-                IndexRowNr(times.partition_point(|t| *t < time_range.min.as_i64()) as u64);
-
-            trace!(
-                kind = "range",
-                bucket_time_range = self.timeline.typ().format_range(bucket_time_range),
-                %primary,
-                ?components,
-                timeline = %self.timeline.name(),
-                time_range = self.timeline.typ().format_range(time_range),
-                %time_idx_row_nr,
-                "found time index row number",
-            );
-
-            // find the component index's row number for the primary component
-            let mut comp_idx_row_nr = time_idx_row_nr;
-            while comp_idx[comp_idx_row_nr.0 as usize].is_none() {
-                comp_idx_row_nr.0 += 1;
-                if comp_idx_row_nr.0 as usize >= comp_idx.len() {
-                    trace!(
-                        kind = "range",
-                        bucket_time_range = self.timeline.typ().format_range(bucket_time_range),
-                        %primary,
-                        ?components,
-                        timeline = %self.timeline.name(),
-                        time_range = self.timeline.typ().format_range(time_range),
-                        %time_idx_row_nr,
-                        "no component index row number could be found",
-                    );
-                    break 'search None;
-                }
-            }
-
-            trace!(
-                kind = "range",
-                bucket_time_range = self.timeline.typ().format_range(bucket_time_range),
-                %primary,
-                ?components,
-                timeline = %self.timeline.name(),
-                time_range = self.timeline.typ().format_range(time_range),
-                %time_idx_row_nr, %comp_idx_row_nr,
-                "found component index row number",
-            );
-            debug_assert!(comp_idx[comp_idx_row_nr.0 as usize].is_some());
-
-            // did we go so far forwards that we're not within the time range anymore?
-            let comp_time = times[comp_idx_row_nr.0 as usize];
-            time_range
-                .contains(comp_time.into())
-                .then_some(comp_idx_row_nr)
-        };
-
-        // The bucket does contain data for the primary component, and does contain data for the
-        // time range we're interested in, but not both at the same time!
-        let Some(comp_idx_row_nr) = comp_idx_row_nr else {
+        // Early-exit if this bucket is unaware of any of our components of interest.
+        if components
+            .iter()
+            .all(|component| indices.get(component).is_none())
+        {
             return itertools::Either::Right(std::iter::empty());
-        };
+        }
+
+        trace!(
+            kind = "range",
+            bucket_time_range = self.timeline.typ().format_range(bucket_time_range),
+            ?components,
+            timeline = %self.timeline.name(),
+            time_range = self.timeline.typ().format_range(time_range),
+            "searching for time & component row index numbers..."
+        );
+
+        // find the time index's row number
+        let time_idx_row_nr: IndexRowNr =
+            IndexRowNr(times.partition_point(|t| *t < time_range.min.as_i64()) as u64);
+
+        trace!(
+            kind = "range",
+            bucket_time_range = self.timeline.typ().format_range(bucket_time_range),
+            ?components,
+            timeline = %self.timeline.name(),
+            time_range = self.timeline.typ().format_range(time_range),
+            %time_idx_row_nr,
+            "found time index row number",
+        );
 
         // TODO(cmc): Cloning these is obviously not great and will need to be addressed at
         // some point.
@@ -735,38 +707,39 @@ impl IndexBucket {
         let time_idx = times.clone();
         let comp_indices = indices.clone();
 
-        // We have found the index of the first row that contains data for the primary component.
+        // We have found the index of the first row that possibly contains data for any single one
+        // of the components we're interested in.
         //
         // Now we need to iterate through every remaining rows in the bucket and yield any that
-        // contains data for the primary component and is still within the time range.
+        // contains data for these components and is still within the time range.
         let row_indices = time_idx
             .into_iter()
-            .skip(comp_idx_row_nr.0 as usize)
+            .skip(time_idx_row_nr.0 as usize)
             // don't go beyond the time range we're interested in!
             .filter(move |time| time_range.contains((*time).into()))
             .enumerate()
-            .filter_map(move |(comp_idx_offset, time)| {
-                let comp_idx_row_nr = IndexRowNr(comp_idx_row_nr.0 + comp_idx_offset as u64);
-
-                // We must only yield rows that contain data for the primary component!!
-                comp_indices
-                    .get(&primary)
-                    .and_then(|index| index.get(comp_idx_row_nr.0 as usize).copied())??;
+            .filter_map(move |(time_idx_offset, time)| {
+                let comp_idx_row_nr = IndexRowNr(time_idx_row_nr.0 + time_idx_offset as u64);
 
                 let mut row_indices = [None; N];
                 for (i, component) in components.iter().enumerate() {
                     if let Some(index) = comp_indices.get(component) {
-                        if let Some(row_idx) = index[comp_idx_row_nr.0 as usize] {
-                            row_indices[i] = Some(row_idx);
+                        if let row_idx @ Some(_) = index[comp_idx_row_nr.0 as usize] {
+                            row_indices[i] = row_idx;
                         }
                     }
+                }
+
+                // We only yield rows that contain data for at least one of the components of
+                // interest.
+                if row_indices.iter().all(Option::is_none) {
+                    return None;
                 }
 
                 trace!(
                     kind = "range",
                     bucket_time_range =
                         self.timeline.typ().format_range(bucket_time_range),
-                    %primary,
                     ?components,
                     timeline = %self.timeline.name(),
                     time_range = self.timeline.typ().format_range(time_range),

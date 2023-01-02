@@ -7,10 +7,7 @@
 use polars_core::prelude::JoinType;
 use re_arrow_store::{polars_util, test_bundle, DataStore, RangeQuery, TimeRange};
 use re_log_types::{
-    datagen::{
-        build_frame_nr, build_some_instances, build_some_instances_from, build_some_point2d,
-        build_some_rects,
-    },
+    datagen::{build_frame_nr, build_some_point2d, build_some_rects},
     field_types::{Instance, Point2D, Rect2D},
     msg_bundle::Component as _,
     ObjPath as EntityPath, TimeType, Timeline,
@@ -26,39 +23,26 @@ fn main() {
     let frame3 = 3.into();
     let frame4 = 4.into();
 
-    let insts1 = build_some_instances(2);
-    let rects1 = build_some_rects(2);
-    let bundle1 = test_bundle!(ent_path @ [build_frame_nr(frame1)] => [insts1.clone(), rects1]);
-    store.insert(&bundle1).unwrap();
+    let bundle = test_bundle!(ent_path @ [build_frame_nr(frame1)] => [build_some_rects(2)]);
+    store.insert(&bundle).unwrap();
 
-    let points2 = build_some_point2d(2);
-    let bundle2 = test_bundle!(ent_path @ [build_frame_nr(frame2)] => [insts1, points2]);
-    store.insert(&bundle2).unwrap();
+    let bundle = test_bundle!(ent_path @ [build_frame_nr(frame2)] => [build_some_point2d(2)]);
+    store.insert(&bundle).unwrap();
 
-    let insts3 = build_some_instances_from(25..29);
-    let points3 = build_some_point2d(4);
-    let bundle3 = test_bundle!(ent_path @ [build_frame_nr(frame3)] => [insts3, points3]);
-    store.insert(&bundle3).unwrap();
+    let bundle = test_bundle!(ent_path @ [build_frame_nr(frame3)] => [build_some_point2d(4)]);
+    store.insert(&bundle).unwrap();
 
-    let insts4_1 = build_some_instances_from(20..23);
-    let rects4_1 = build_some_rects(3);
-    let bundle4_1 =
-        test_bundle!(ent_path @ [build_frame_nr(frame4)] => [insts4_1.clone(), rects4_1]);
-    store.insert(&bundle4_1).unwrap();
+    let bundle = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [build_some_rects(3)]);
+    store.insert(&bundle).unwrap();
 
-    let points4_15 = build_some_point2d(3);
-    let bundle4_15 =
-        test_bundle!(ent_path @ [build_frame_nr(frame4)] => [insts4_1.clone(), points4_15]);
-    store.insert(&bundle4_15).unwrap();
+    let bundle = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [build_some_point2d(1)]);
+    store.insert(&bundle).unwrap();
 
-    let insts4_2 = build_some_instances_from(25..28);
-    let rects4_2 = build_some_rects(3);
-    let bundle4_2 = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [insts4_2, rects4_2]);
-    store.insert(&bundle4_2).unwrap();
+    let bundle = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [build_some_rects(3)]);
+    store.insert(&bundle).unwrap();
 
-    let points4_25 = build_some_point2d(3);
-    let bundle4_25 = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [insts4_1, points4_25]);
-    store.insert(&bundle4_25).unwrap();
+    let bundle = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [build_some_point2d(3)]);
+    store.insert(&bundle).unwrap();
 
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
     let query = RangeQuery {
@@ -75,7 +59,7 @@ fn main() {
         &query,
         &ent_path,
         Rect2D::name(),
-        &[Point2D::name()],
+        [Instance::name(), Rect2D::name(), Point2D::name()],
         &JoinType::Outer,
     );
     for (time, df) in dfs.map(Result::unwrap) {
@@ -94,7 +78,7 @@ fn main() {
         &query,
         &ent_path,
         Point2D::name(),
-        &[Rect2D::name()],
+        [Instance::name(), Rect2D::name(), Point2D::name()],
         &JoinType::Outer,
     );
     for (time, df) in dfs.map(Result::unwrap) {
