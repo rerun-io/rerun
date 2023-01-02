@@ -72,8 +72,8 @@ fn simple_range() {
         TimeRange::new((timepoint1[0].1.as_i64() + 1).into(), timepoint3[0].1),
     );
 
-    let components = &[ColorRGBA::name()];
-    let ent_views = range_entity_with_primary::<Point2D>(&store, &query, &ent_path, components);
+    let components = [Instance::name(), Point2D::name(), ColorRGBA::name()];
+    let ent_views = range_entity_with_primary::<Point2D, 3>(&store, &query, &ent_path, components);
 
     let results = ent_views.collect::<Vec<_>>();
 
@@ -158,8 +158,8 @@ fn simple_range() {
         TimeRange::new(timepoint1[0].1, timepoint3[0].1),
     );
 
-    let components = &[ColorRGBA::name()];
-    let ent_views = range_entity_with_primary::<Point2D>(&store, &query, &ent_path, components);
+    let components = [Instance::name(), Point2D::name(), ColorRGBA::name()];
+    let ent_views = range_entity_with_primary::<Point2D, 3>(&store, &query, &ent_path, components);
 
     let results = ent_views.collect::<Vec<_>>();
 
