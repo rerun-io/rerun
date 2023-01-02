@@ -1,9 +1,7 @@
 use arrow2::array::Array;
 use itertools::Itertools;
 use polars_core::{prelude::*, series::Series};
-use re_log_types::{
-    field_types::Instance, msg_bundle::Component, ComponentName, ObjPath as EntityPath, TimeInt,
-};
+use re_log_types::{ComponentName, ObjPath as EntityPath, TimeInt};
 
 use crate::{DataStore, LatestAtQuery, RangeQuery};
 
@@ -356,13 +354,27 @@ pub fn range_components<'a, const N: usize>(
             state = Some(join_dataframes(
                 cluster_key,
                 join_type,
-                [Some(df), state.clone() /* shallow */]
+                // The order matters here: the newly yielded dataframe goes to the right so that it
+                // overwrites the data in the state if their column overlaps!
+                // See [`join_dataframes`].
+                [state.clone() /* shallow */, Some(df)]
                     .into_iter()
                     .flatten(),
             ));
 
             // We only yield if the primary component has been updated!
-            is_primary.then_some(state.clone().unwrap().map(|df| (time, df)))
+            is_primary.then_some(state.clone().unwrap().map(|df| {
+                // Make sure to return everything in the order it was asked!
+                let columns = df.get_column_names();
+                let df = df
+                    .select(
+                        components
+                            .iter()
+                            .filter(|col| columns.contains(&col.as_str())),
+                    )
+                    .unwrap();
+                (time, df)
+            }))
         }))
 }
 
@@ -382,6 +394,12 @@ pub fn dataframe_from_results<const N: usize>(
     DataFrame::new(series?).map_err(Into::into)
 }
 
+/// Reduces an iterator of dataframes into a single dataframe by sequentially joining them using
+/// the specified `join_type` and `cluster_key`.
+///
+/// Note that if both the accumulator and the next dataframe in the stream share a column name
+/// (other than the cluster key), the column data from the next dataframe takes precedence and
+/// completely overwrites the current column data in the accumulator!
 pub fn join_dataframes(
     cluster_key: ComponentName,
     join_type: &JoinType,
@@ -391,18 +409,18 @@ pub fn join_dataframes(
         .into_iter()
         .filter(|df| df.as_ref().map_or(true, |df| !df.is_empty()))
         .reduce(|left, right| {
-            let left = left?;
-            let mut right = right?;
+            let mut left = left?;
+            let right = right?;
 
-            // If both `left` and `right` have data for a single column, `left` always takes
+            // If both `left` and `right` have data for the same column, `right` always takes
             // precedence.
-            for col in left
+            for col in right
                 .get_column_names()
                 .iter()
-                .filter(|col| *col != &Instance::name().as_str())
+                .filter(|col| *col != &cluster_key.as_str())
             {
-                _ = right.drop_in_place(col);
-                right = right.drop_nulls(None).unwrap();
+                _ = left.drop_in_place(col);
+                left = left.drop_nulls(None).unwrap();
             }
 
             left.join(
