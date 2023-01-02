@@ -1,5 +1,5 @@
 use arrow2::{
-    array::{new_empty_array, Array, ListArray, UInt64Array, Utf8Array},
+    array::{Array, ListArray, UInt64Array, Utf8Array},
     bitmap::Bitmap,
     buffer::Buffer,
     compute::concatenate::concatenate,
@@ -138,29 +138,15 @@ impl IndexBucket {
             // available in the component tables.
             let comp_validity: Vec<_> = comp_rows.iter().map(|row| row.is_some()).collect();
 
-            // We have to build empty arrays where data is missing, otherwise we'd have a length
-            // mismatch between the validity bitmap and the data, which results in an error when
-            // building the final ListArray.
-            let comp_values: Vec<_> = comp_rows
-                .into_iter()
-                .map(|row| row.unwrap_or_else(|| new_empty_array(comp_table.datatype.clone())))
-                .collect();
-            let comp_values: Vec<_> = comp_values.iter().map(|arr| &**arr).collect();
-
             // Each cell is actually a list, so we need to compute offsets one cell at a time.
             let mut offset = 0i32;
-            let comp_offsets: Vec<_> = comp_values
-                .iter()
-                .map(|row| {
-                    let ret = offset;
-                    offset += row.len() as i32;
-                    ret
-                })
-                // don't forget the last element!
-                .chain(std::iter::once(
-                    comp_values.iter().map(|row| row.len() as i32).sum(),
-                ))
+            let comp_offsets: Vec<_> = std::iter::once(0)
+                .chain(comp_rows.iter().map(|row| {
+                    offset += row.as_ref().map_or(0, |row| row.len()) as i32;
+                    offset
+                }))
                 .collect();
+            let comp_values: Vec<_> = comp_rows.iter().flatten().map(|row| row.as_ref()).collect();
 
             // Bring everything together into one big list.
             let comp_values = ListArray::<i32>::from_data(
