@@ -49,8 +49,7 @@ fn main() {
 
     let query = RangeQuery::new(frame2[0].0, TimeRange::new(frame2[0].1, frame4[0].1));
 
-    // TODO(cmc): requires a PR in another multiverse
-    // println!("Store contents:\n{}", store.to_dataframe());
+    println!("Store contents:\n{}", store.to_dataframe());
 
     println!("\n-----\n");
 

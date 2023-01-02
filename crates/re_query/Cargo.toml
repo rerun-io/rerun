@@ -9,7 +9,7 @@ publish = false
 
 [features]
 default = []
-polars = ["polars-core"]
+polars = ["dep:polars-core", "re_arrow_store/polars"]
 
 
 [dependencies]
