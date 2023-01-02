@@ -20,48 +20,7 @@ pub type SharedResult<T> = ::std::result::Result<T, SharedPolarsError>;
 /// with any number of other dataframes returned by this function [`latest_component`] and
 /// [`latest_components`].
 ///
-/// Usage:
-/// ```
-/// # use re_arrow_store::{test_bundle, DataStore, LatestAtQuery, TimeType, Timeline};
-/// # use re_arrow_store::polars_util::latest_component;
-/// # use re_log_types::{
-/// #     datagen::{build_frame_nr, build_some_point2d},
-/// #     field_types::{Instance, Point2D},
-/// #     msg_bundle::Component,
-/// #     ObjPath as EntityPath,
-/// # };
-///
-/// let mut store = DataStore::new(Instance::name(), Default::default());
-///
-/// let ent_path = EntityPath::from("my/entity");
-///
-/// let bundle3 = test_bundle!(ent_path @ [build_frame_nr(3.into())] => [build_some_point2d(2)]);
-/// store.insert(&bundle3).unwrap();
-///
-/// let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
-/// let df = latest_component(
-///     &store,
-///     &LatestAtQuery::new(timeline_frame_nr, 10.into()),
-///     &ent_path,
-///     Point2D::name(),
-/// )
-/// .unwrap();
-///
-/// println!("{df:?}");
-/// ```
-///
-/// Outputs:
-/// ```text
-/// ┌────────────────┬─────────────────────┐
-/// │ rerun.instance ┆ rerun.point2d       │
-/// │ ---            ┆ ---                 │
-/// │ u64            ┆ struct[2]           │
-/// ╞════════════════╪═════════════════════╡
-/// │ 0              ┆ {3.339503,6.287318} │
-/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-/// │ 1              ┆ {2.813822,9.160795} │
-/// └────────────────┴─────────────────────┘
-/// ```
+/// See `example/latest_component.rs` for an example of use.
 //
 // TODO(cmc): can this really fail though?
 pub fn latest_component(
@@ -88,57 +47,7 @@ pub fn latest_component(
 /// with any number of other dataframes returned by this function [`latest_component`] and
 /// [`latest_components`].
 ///
-/// Usage:
-/// ```
-/// # use polars_core::prelude::*;
-/// # use re_arrow_store::{test_bundle, DataStore, LatestAtQuery, TimeType, Timeline};
-/// # use re_arrow_store::polars_util::latest_components;
-/// # use re_log_types::{
-/// #     datagen::{build_frame_nr, build_some_point2d, build_some_rects},
-/// #     field_types::{Instance, Point2D, Rect2D},
-/// #     msg_bundle::Component,
-/// #     ObjPath as EntityPath,
-/// # };
-///
-/// let mut store = DataStore::new(Instance::name(), Default::default());
-///
-/// let ent_path = EntityPath::from("my/entity");
-///
-/// let bundle = test_bundle!(ent_path @ [build_frame_nr(3.into())] => [build_some_point2d(2)]);
-/// store.insert(&bundle).unwrap();
-///
-/// let bundle = test_bundle!(ent_path @ [build_frame_nr(5.into())] => [build_some_rects(4)]);
-/// store.insert(&bundle).unwrap();
-///
-/// let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
-/// let df = latest_components(
-///     &store,
-///     &LatestAtQuery::new(timeline_frame_nr, 10.into()),
-///     &ent_path,
-///     &[Point2D::name(), Rect2D::name()],
-///     &JoinType::Outer,
-/// )
-/// .unwrap();
-///
-/// println!("{df:?}");
-/// ```
-///
-/// Outputs:
-/// ```text
-/// ┌────────────────┬─────────────────────┬───────────────────┐
-/// │ rerun.instance ┆ rerun.point2d       ┆ rerun.rect2d      │
-/// │ ---            ┆ ---                 ┆ ---               │
-/// │ u64            ┆ struct[2]           ┆ struct[4]         │
-/// ╞════════════════╪═════════════════════╪═══════════════════╡
-/// │ 0              ┆ {2.936338,1.308388} ┆ {0.0,0.0,0.0,0.0} │
-/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-/// │ 1              ┆ {0.924683,7.757691} ┆ {1.0,1.0,0.0,0.0} │
-/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-/// │ 2              ┆ {null,null}         ┆ {2.0,2.0,1.0,1.0} │
-/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-/// │ 3              ┆ {null,null}         ┆ {3.0,3.0,1.0,1.0} │
-/// └────────────────┴─────────────────────┴───────────────────┘
-/// ```
+/// See `example/latest_components.rs` for an example of use.
 //
 // TODO(cmc): can this really fail though?
 pub fn latest_components(
@@ -166,123 +75,13 @@ pub fn latest_components(
 /// An initial dataframe is yielded with the latest-at state at the start of the time range, if
 /// there is any.
 ///
-/// The iterator only ever yields dataframes iff the `primary` component has changed: a change
-/// affecting only secondary components will not yield a dataframe.
-/// However, the changes in those secondary components will be accumulated into the next yielded
-/// dataframe.
+/// The iterator only ever yields dataframes iff the `primary` component has changed.
+/// A change affecting only secondary components will not yield a dataframe.
 ///
 /// This is a streaming-join: every yielded dataframe will be the result of joining the latest
 /// known state of all components, from their respective point-of-views.
 ///
-/// ⚠ The semantics are subtle! Study carefully the example below.
-///
-/// Usage:
-/// ```
-/// use polars_core::prelude::JoinType;
-/// use re_arrow_store::{polars_util, test_bundle, DataStore, RangeQuery, TimeRange};
-/// use re_log_types::{
-///     datagen::{build_frame_nr, build_some_point2d, build_some_rects},
-///     field_types::{Instance, Point2D, Rect2D},
-///     msg_bundle::Component as _,
-///     ObjPath as EntityPath, TimeType, Timeline,
-/// };
-///
-/// let mut store = DataStore::new(Instance::name(), Default::default());
-///
-/// let ent_path = EntityPath::from("this/that");
-///
-/// let frame1 = 1.into();
-/// let frame2 = 2.into();
-/// let frame3 = 3.into();
-/// let frame4 = 4.into();
-///
-/// let bundle = test_bundle!(ent_path @ [build_frame_nr(frame1)] => [build_some_rects(2)]);
-/// store.insert(&bundle).unwrap();
-///
-/// let bundle = test_bundle!(ent_path @ [build_frame_nr(frame2)] => [build_some_point2d(2)]);
-/// store.insert(&bundle).unwrap();
-///
-/// let bundle = test_bundle!(ent_path @ [build_frame_nr(frame3)] => [build_some_point2d(4)]);
-/// store.insert(&bundle).unwrap();
-///
-/// let bundle = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [build_some_rects(3)]);
-/// store.insert(&bundle).unwrap();
-///
-/// let bundle = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [build_some_point2d(1)]);
-/// store.insert(&bundle).unwrap();
-///
-/// let bundle = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [build_some_rects(3)]);
-/// store.insert(&bundle).unwrap();
-///
-/// let bundle = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [build_some_point2d(3)]);
-/// store.insert(&bundle).unwrap();
-///
-/// let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
-/// let query = RangeQuery {
-///     timeline: timeline_frame_nr,
-///     range: TimeRange::new(2.into(), 4.into()),
-/// };
-///
-/// let dfs = polars_util::range_components(
-///     &store,
-///     &query,
-///     &ent_path,
-///     Rect2D::name(),
-///     [Instance::name(), Rect2D::name(), Point2D::name()],
-///     &JoinType::Outer,
-/// );
-///
-/// for (time, df) in dfs.map(Result::unwrap) {
-///     eprintln!(
-///         "Found data at time {} from {}'s PoV (outer-joining):\n{:?}",
-///         TimeType::Sequence.format(time),
-///         Rect2D::name(),
-///         df,
-///     );
-/// }
-/// ```
-///
-/// Outputs:
-/// ```text
-/// Found data at time #1 from rerun.rect2d's PoV (outer-joining):
-/// ┌────────────────┬───────────────────┐
-/// │ rerun.instance ┆ rerun.rect2d      │
-/// │ ---            ┆ ---               │
-/// │ u64            ┆ struct[4]         │
-/// ╞════════════════╪═══════════════════╡
-/// │ 0              ┆ {0.0,0.0,0.0,0.0} │
-/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-/// │ 1              ┆ {1.0,1.0,0.0,0.0} │
-/// └────────────────┴───────────────────┘
-///
-/// Found data at time #4 from rerun.rect2d's PoV (outer-joining):
-/// ┌────────────────┬───────────────────────┬───────────────┐
-/// │ rerun.instance ┆ rerun.rect2d          ┆ rerun.point2d │
-/// │ ---            ┆ ---                   ┆ ---           │
-/// │ u64            ┆ struct[4]             ┆ struct[2]     │
-/// ╞════════════════╪═══════════════════════╪═══════════════╡
-/// │ 0              ┆ {0.0,0.0,0.0,0.0}     ┆ {20.0,20.0}   │
-/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-/// │ 1              ┆ {1.0,1.0,0.0,0.0}     ┆ {21.0,21.0}   │
-/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-/// │ 2              ┆ {2.0,2.0,1.0,1.0}     ┆ {22.0,22.0}   │
-/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-/// │ 3              ┆ {null,null,null,null} ┆ {23.0,23.0}   │
-/// └────────────────┴───────────────────────┴───────────────┘
-///
-/// Found data at time #4 from rerun.rect2d's PoV (outer-joining):
-/// ┌────────────────┬───────────────────┬───────────────┐
-/// │ rerun.instance ┆ rerun.rect2d      ┆ rerun.point2d │
-/// │ ---            ┆ ---               ┆ ---           │
-/// │ u64            ┆ struct[4]         ┆ struct[2]     │
-/// ╞════════════════╪═══════════════════╪═══════════════╡
-/// │ 0              ┆ {0.0,0.0,0.0,0.0} ┆ {30.0,30.0}   │
-/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-/// │ 1              ┆ {1.0,1.0,0.0,0.0} ┆ {null,null}   │
-/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-/// │ 2              ┆ {2.0,2.0,1.0,1.0} ┆ {null,null}   │
-/// └────────────────┴───────────────────┴───────────────┘
-/// ``
+/// ⚠ The semantics are subtle! See `example/range_components.rs` for an example of use.
 pub fn range_components<'a, const N: usize>(
     store: &'a DataStore,
     query: &'a RangeQuery,

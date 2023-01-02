@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::num::NonZeroU64;
 use std::sync::atomic::AtomicU64;
 
-use anyhow::ensure;
+use anyhow::{anyhow, ensure};
 use arrow2::array::Array;
 use arrow2::datatypes::DataType;
 
@@ -138,6 +138,16 @@ pub struct DataStoreConfig {
     ///
     /// See [`Self::DEFAULT`] for defaults.
     pub index_bucket_nb_rows: u64,
+
+    /// If enabled, will store the ID of the write request alongside the inserted data.
+    ///
+    /// This can make inspecting the data within the store much easier, at the cost of an extra
+    /// `u64` value stored per row.
+    ///
+    /// Enabled by default in debug builds.
+    ///
+    /// See [`DataStore::insert_id_key`].
+    pub store_insert_ids: bool,
 }
 
 impl Default for DataStoreConfig {
@@ -152,6 +162,7 @@ impl DataStoreConfig {
         component_bucket_nb_rows: u64::MAX,
         index_bucket_size_bytes: 32 * 1024, // 32kiB
         index_bucket_nb_rows: 1024,
+        store_insert_ids: cfg!(debug_assertions),
     };
 }
 
@@ -159,10 +170,15 @@ impl DataStoreConfig {
 
 /// A complete data store: covers all timelines, all entities, everything.
 ///
+/// ## Debugging
+///
 /// `DataStore` provides a very thorough `Display` implementation that makes it manageable to
 /// know what's going on internally.
 /// For even more information, you can set `RERUN_DATA_STORE_DISPLAY_SCHEMAS=1` in your
 /// environment, which will result in additional schema information being printed out.
+///
+/// Additionally, if the `polars` feature is enabled, you can dump the entire datastore as a
+/// flat denormalized dataframe using [`Self::to_dataframe`].
 pub struct DataStore {
     /// The cluster key specifies a column/component that is guaranteed to always be present for
     /// every single row of data within the store.
@@ -181,7 +197,7 @@ pub struct DataStore {
     pub(crate) config: DataStoreConfig,
 
     /// Used to cache auto-generated cluster components, i.e. `[0]`, `[0, 1]`, `[0, 1, 2]`, etc
-    /// so that they properly deduplicated.
+    /// so that they can be properly deduplicated.
     pub(crate) cluster_comp_cache: IntMap<usize, RowIndex>,
 
     /// Maps an entity to its index, for a specific timeline.
@@ -212,6 +228,16 @@ impl DataStore {
             insert_id: 0,
             query_id: AtomicU64::new(0),
         }
+    }
+
+    /// The column name used for storing insert requests' IDs alongside the data.
+    ///
+    /// The insert IDs are stored as-is directly into the index tables, this is _not_ an
+    /// indirection into an associated component table!
+    ///
+    /// See [`DataStoreConfig::store_insert_ids`].
+    pub fn insert_id_key() -> ComponentName {
+        "rerun.insert_id".into()
     }
 
     /// See [`Self::cluster_key`] for more information about the cluster key.
@@ -482,6 +508,10 @@ pub struct IndexTable {
     /// indexing standpoint, all reads and writes with a time `t >= -∞` should go there, even
     /// though the bucket doesn't actually contains data with a timestamp of `-∞`!
     pub(crate) buckets: BTreeMap<TimeInt, IndexBucket>,
+
+    /// Carrying the cluster key around to help with assertions and sanity checks all over the
+    /// place.
+    pub(crate) cluster_key: ComponentName,
 }
 
 impl std::fmt::Display for IndexTable {
@@ -491,6 +521,7 @@ impl std::fmt::Display for IndexTable {
             timeline,
             ent_path,
             buckets,
+            cluster_key: _,
         } = self;
 
         f.write_fmt(format_args!("timeline: {}\n", timeline.name()))?;
@@ -587,6 +618,10 @@ pub struct IndexBucket {
     pub(crate) timeline: Timeline,
 
     pub(crate) indices: RwLock<IndexBucketIndices>,
+
+    /// Carrying the cluster key around to help with assertions and sanity checks all over the
+    /// place.
+    pub(crate) cluster_key: ComponentName,
 }
 
 /// Just the indices, to simplify interior mutability.
@@ -708,6 +743,19 @@ impl IndexBucket {
                         expected {primary_len} rows, got {secondary_len} instead",
                 );
             }
+        }
+
+        // The cluster index must be fully dense.
+        {
+            let cluster_key = self.cluster_key;
+            let cluster_idx = indices
+                .get(&cluster_key)
+                .ok_or_else(|| anyhow!("no index found for cluster key: {cluster_key:?}"))?;
+            ensure!(
+                cluster_idx.iter().all(|row| row.is_some()),
+                "the cluster index ({cluster_key:?}) must be fully dense: \
+                    got {cluster_idx:?}",
+            );
         }
 
         Ok(())
