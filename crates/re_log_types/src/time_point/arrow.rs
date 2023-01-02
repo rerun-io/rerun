@@ -173,11 +173,11 @@ fn test_timepoint_roundtrip() {
     let time_points_in = vec![
         TimePoint::from([
             datagen::build_log_time(crate::Time::from_ns_since_epoch(100)),
-            datagen::build_frame_nr(1234),
+            datagen::build_frame_nr(1234.into()),
         ]),
         TimePoint::from([
             datagen::build_log_time(crate::Time::from_ns_since_epoch(200)),
-            datagen::build_frame_nr(2345),
+            datagen::build_frame_nr(2345.into()),
         ]),
     ];
 

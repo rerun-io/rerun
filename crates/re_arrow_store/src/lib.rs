@@ -1,6 +1,9 @@
 //! The Rerun Arrow-based datastore.
 //!
-//! See `src/store.rs` for an overview of the core datastructures.
+//! * See [`DataStore`] for an overview of the core datastructures.
+//! * See [`DataStore::latest_at`] and [`DataStore::range`] for the documentation of the public
+//!   read APIs.
+//! * See [`DataStore::insert`] for the documentation of the public write APIs.
 //!
 //! ## Feature flags
 #![doc = document_features::document_features!()]
@@ -18,8 +21,8 @@ pub mod polars_util;
 pub mod test_util;
 
 pub use self::arrow_util::ArrayExt;
-pub use self::store::{DataStore, DataStoreConfig, IndexBucket, IndexTable, RowIndex};
-pub use self::store_read::{TimeQuery, TimelineQuery};
+pub use self::store::{DataStore, DataStoreConfig, IndexBucket, IndexRowNr, IndexTable, RowIndex};
+pub use self::store_read::{LatestAtQuery, RangeQuery};
 pub use self::store_write::{WriteError, WriteResult};
 
 pub(crate) use self::store::{

@@ -14,7 +14,7 @@ use re_log_types::{
     Timeline,
 };
 
-// --- Data store ---
+// --- Indices & offsets ---
 
 /// A vector of times. Our primary column, always densely filled.
 pub type TimeIndex = Vec<i64>;
@@ -24,29 +24,58 @@ pub type TimeIndex = Vec<i64>;
 pub type SecondaryIndex = Vec<Option<RowIndex>>;
 static_assertions::assert_eq_size!(u64, Option<RowIndex>);
 
+// TODO(#639): We desperately need to work on the terminology here:
+//
+// - `TimeIndex` is a vector of `TimeInt`s.
+//   It's the primary column and it's always dense.
+//   It's used to search the datastore by time.
+//
+// - `ComponentIndex` (currently `SecondaryIndex`) is a vector of `ComponentRowNr`s.
+//   It's the secondary column and is sparse.
+//   It's used to search the datastore by component once the search by time is complete.
+//
+// - `ComponentRowNr` (currently `RowIndex`) is a row offset into a component table.
+//   It only makes sense when associated with a component name.
+//   It is absolute.
+//   It's used to fetch actual data from the datastore.
+//
+// - `IndexRowNr` is a row offset into an index bucket.
+//   It only makes sense when associated with an entity path and a specific time.
+//   It is relative per bucket.
+//   It's used to tiebreak results with an identical time, should you need too.
+
 /// An opaque type that directly refers to a row of data within the datastore, iff it is associated
 /// with a component name.
 ///
-/// See [`DataStore::query`] & [`DataStore::get`].
+/// See [`DataStore::latest_at`], [`DataStore::range`] & [`DataStore::get`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct RowIndex(pub(crate) NonZeroU64);
-
 impl RowIndex {
     /// Panics if `v` is 0.
     pub(crate) fn from_u64(v: u64) -> Self {
         Self(v.try_into().unwrap())
     }
 
+    // TODO(cmc): useless, remove.
     pub(crate) fn as_u64(self) -> u64 {
         self.0.into()
     }
 }
-
 impl std::fmt::Display for RowIndex {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!("{}", self.0))
     }
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct IndexRowNr(pub(crate) u64);
+impl std::fmt::Display for IndexRowNr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("{}", self.0))
+    }
+}
+
+// --- Data store ---
 
 #[derive(Debug, Clone)]
 pub struct DataStoreConfig {
@@ -481,7 +510,7 @@ impl std::fmt::Display for IndexTable {
                 format!("index time bound: >= {}\n", timeline.typ().format(*time),),
             ))?;
             f.write_str(&indent::indent_all_by(8, bucket.to_string()))?;
-            f.write_str(&indent::indent_all_by(0, "}\n"))?;
+            f.write_str(&indent::indent_all_by(4, "}\n"))?;
         }
         f.write_str("]")?;
 
@@ -618,7 +647,7 @@ impl std::fmt::Display for IndexBucket {
         let table = arrow::format_table(values, names);
 
         let is_sorted = self.is_sorted();
-        f.write_fmt(format_args!("data (sorted={is_sorted}):\n{table}"))?;
+        f.write_fmt(format_args!("data (sorted={is_sorted}):\n{table}\n"))?;
 
         Ok(())
     }
@@ -963,7 +992,7 @@ impl std::fmt::Display for ComponentBucket {
         };
 
         let table = arrow::format_table([data], [self.name.as_str()]);
-        f.write_fmt(format_args!("{table}"))?;
+        f.write_fmt(format_args!("{table}\n"))?;
 
         Ok(())
     }
