@@ -20,7 +20,7 @@ pub struct SpaceInfo {
     pub descendants_without_transform: IntSet<ObjPath>,
 
     /// Nearest ancestor to whom we are not connected via an identity transform.
-    /// The transform is from parent to child, i.e. the *same* as in its child_spaces array.
+    /// The transform is from parent to child, i.e. the *same* as in its [`Self::child_spaces`] array.
     parent: Option<(ObjPath, Transform)>,
 
     /// Nearest descendants to whom we are not connected with an identity transform.
@@ -53,7 +53,9 @@ impl SpaceInfo {
     }
 
     /// Invokes visitor for `self` and all connected nodes that are not descendants.
-    /// (i.e. all parents and their children in turn, except the children of `self`)
+    ///
+    /// I.e. all parents and their children in turn, except the children of `self`.
+    /// In other words, everything that [`Self::visit_descendants`] doesn't visit plus `self`.
     pub fn visit_non_descendants(
         &self,
         spaces_info: &SpacesInfo,

@@ -168,10 +168,8 @@ impl TransformCache {
         );
 
         for (child_path, transform) in &space.child_spaces {
-            if let Some(skipped_child_path) = skipped_child_path {
-                if skipped_child_path == child_path {
-                    continue;
-                }
+            if skipped_child_path == Some(child_path) {
+                continue;
             }
 
             if let Some(child_space) = spaces_info.get(child_path) {

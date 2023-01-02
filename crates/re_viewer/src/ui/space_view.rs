@@ -259,11 +259,11 @@ impl SpaceView {
                 UnreachableTransformReason::Unconnected =>
                      "No object path connection from this space view.",
                 UnreachableTransformReason::NestedPinholeCameras =>
-                    "Can't display objects nested under several pinhole cameras.",
+                    "Can't display objects under nested pinhole cameras.",
                 UnreachableTransformReason::UnknownTransform =>
                     "Can't display objects that are connected via an unknown transform to this space.",
                 UnreachableTransformReason::InversePinholeCameraWithoutResolution =>
-                    "Can't display objects that are require inverting a pinhole camera without a specified resolution.",
+                    "Can't display objects that would require inverting a pinhole camera without a specified resolution.",
                 }),
             ReferenceFromObjTransform::Reachable(_) => None,
         };
