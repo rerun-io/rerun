@@ -52,6 +52,9 @@ pub enum MsgBundleError {
     #[error("Expect a single TimePoint, but found more than one")]
     MultipleTimepoints,
 
+    #[error(transparent)]
+    PathParseError(#[from] PathParseError),
+
     #[error("Could not serialize components to Arrow")]
     ArrowSerializationError(#[from] arrow2::error::Error),
 
@@ -62,7 +65,7 @@ pub enum MsgBundleError {
 
 pub type Result<T> = std::result::Result<T, MsgBundleError>;
 
-use crate::{ArrowMsg, ComponentName, MsgId, ObjPath, TimePoint};
+use crate::{parse_obj_path, ArrowMsg, ComponentName, MsgId, ObjPath, PathParseError, TimePoint};
 
 //TODO(john) get rid of this eventually
 const ENTITY_PATH_KEY: &str = "RERUN:entity_path";
@@ -289,11 +292,13 @@ impl TryFrom<&ArrowMsg> for MsgBundle {
             chunk,
         } = msg;
 
-        let obj_path = schema
+        let obj_path_cmp = schema
             .metadata
             .get(ENTITY_PATH_KEY)
             .ok_or(MsgBundleError::MissingEntityPath)
-            .map(|path| ObjPath::from(path.as_str()))?;
+            .and_then(|path| {
+                parse_obj_path(path.as_str()).map_err(MsgBundleError::PathParseError)
+            })?;
 
         let time_point = extract_timelines(schema, chunk)?;
         let components = extract_components(schema, chunk)?;
@@ -302,7 +307,7 @@ impl TryFrom<&ArrowMsg> for MsgBundle {
 
         Ok(Self {
             msg_id: *msg_id,
-            obj_path,
+            obj_path: obj_path_cmp.into(),
             time_point,
             components,
         })
