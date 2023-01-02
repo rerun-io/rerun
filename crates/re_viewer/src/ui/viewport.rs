@@ -90,7 +90,7 @@ impl Viewport {
             // If we're connected with a rigid transform to our parent, don't create a new space view automatically,
             // since we're showing those objects in the parent by default.
             // (it is still possible to create this space view manually)
-            if let Some((_, transform)) = &space_info.parent {
+            if let Some(transform) = &space_info.parent_transform() {
                 match transform {
                     re_log_types::Transform::Rigid3(_) => continue,
                     re_log_types::Transform::Pinhole(_) | re_log_types::Transform::Unknown => {}
@@ -378,7 +378,7 @@ impl Viewport {
                 for space_info in spaces_info.iter() {
                     // Ignore spaces that have a parent connected via a rigid transform to their parent,
                     // since they should be picked up automatically by existing parent spaces.
-                    if let Some((_, transform)) = &space_info.parent {
+                    if let Some(transform) = &space_info.parent_transform() {
                         match transform {
                             re_log_types::Transform::Rigid3(_) => continue,
                             re_log_types::Transform::Pinhole(_)
