@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use ahash::{HashMap, HashMapExt};
 use glam::{Mat4, Vec3};
+
 use re_arrow_store::TimeQuery;
 use re_data_store::{
     query::visit_type_data_5, FieldName, InstanceIdHash, ObjPath, ObjectsProperties,

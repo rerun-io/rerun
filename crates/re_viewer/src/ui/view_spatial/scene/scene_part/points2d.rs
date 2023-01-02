@@ -1,4 +1,3 @@
-use ahash::HashMap;
 use re_data_store::{query::visit_type_data_5, FieldName};
 use re_log_types::{
     field_types::{ClassId, KeypointId},
