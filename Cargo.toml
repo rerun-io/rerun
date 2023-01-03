@@ -13,13 +13,14 @@ repository = "https://github.com/rerun-io/rerun"
 
 [workspace.dependencies]
 anyhow = "1.0"
-arrow2 = "0.14"
+arrow2 = "0.15"
 arrow2_convert = "0.3"
 comfy-table = { version = "6.1", default-features = false }
 ecolor = { version = "0.20" }
 lazy_static = "1.4"
-polars-core = "0.25"
-polars-lazy = "0.25"
+polars-core = "0.26"
+polars-lazy = "0.26"
+polars-ops = "0.26"
 puffin = "0.14"
 thiserror = "1.0"
 
@@ -62,6 +63,9 @@ wgpu = { git = "https://github.com/gfx-rs/wgpu.git", ref = "a377ae2b7fe6c1c94127
 wgpu-core = { git = "https://github.com/gfx-rs/wgpu.git", ref = "a377ae2b7fe6c1c9412751166f0917e617164e49" }
 #wgpu = { path = "../wgpu/wgpu" }
 
-# Upstream PR https://github.com/jorgecarleitao/arrow2/pull/1334
-arrow2 = { git = "https://github.com/rerun-io/arrow2", rev = "ed459eb9e3b49877e3e827753621d75426a8496d" }
+# Upstream PR https://github.com/jorgecarleitao/arrow2/pull/1334 merged, but not released
+arrow2 = { git = "https://github.com/rerun-io/arrow2", rev = "26d1b1139ac3db22c4973772ddb0d30c16027ff6" }
+# Upstream PRs https://github.com/DataEngineeringLabs/arrow2-convert/pull/88 and https://github.com/DataEngineeringLabs/arrow2-convert/pull/89
+arrow2_convert = { git = "https://github.com/rerun-io/arrow2", rev = "5b98b537d8095fac807bb6f018536125668f7e90" }
 #arrow2 = { path = "../arrow2" }
+#arrow2_convert = { path = "../arrow2-convert/arrow2_convert" }

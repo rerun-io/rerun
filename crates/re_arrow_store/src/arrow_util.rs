@@ -57,13 +57,18 @@ impl ArrayExt for dyn Array {
         }
     }
 
+    /// Return the length of the first child.
+    ///
+    /// ## Panics
+    ///
+    /// Panics if `Self` is not a `ListArray<i32>`, or if the array is empty (no children).
     fn get_child_length(&self, child_nr: usize) -> usize {
         let offsets = self
             .as_any()
             .downcast_ref::<ListArray<i32>>()
             .unwrap()
-            .offsets();
-
+            .offsets()
+            .buffer();
         (offsets[child_nr + 1] - offsets[child_nr]) as usize
     }
 }

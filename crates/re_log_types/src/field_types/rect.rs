@@ -1,4 +1,4 @@
-use arrow2_convert::ArrowField;
+use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 
 use crate::msg_bundle::Component;
 
@@ -19,7 +19,7 @@ use crate::msg_bundle::Component;
 ///     ])
 /// );
 /// ```
-#[derive(Clone, Debug, ArrowField, PartialEq)]
+#[derive(Clone, Debug, ArrowField, ArrowSerialize, ArrowDeserialize, PartialEq)]
 pub struct Rect2D {
     /// Rect X-coordinate
     pub x: f32,

@@ -1,6 +1,7 @@
 use arrow2::array::Array;
 use itertools::Itertools;
 use polars_core::{prelude::*, series::Series};
+use polars_ops::prelude::DataFrameJoinOps;
 use re_log_types::{ComponentName, ObjPath as EntityPath, TimeInt};
 
 use crate::{DataStore, LatestAtQuery, RangeQuery};

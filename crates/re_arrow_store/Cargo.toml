@@ -8,11 +8,11 @@ publish = false
 
 
 [features]
-default = []
+default = ["polars"]
 ## Enables `parking_lot`'s deadlock detection background thread.
 deadlock_detection = ["parking_lot/deadlock_detection"]
 ## Integration with `polars`, to efficiently use the datastore with dataframes.
-polars = ["dep:polars-core"]
+polars = ["dep:polars-core", "dep:polars-ops"]
 
 
 [dependencies]
@@ -45,6 +45,12 @@ polars-core = { workspace = true, optional = true, features = [
   "dtype-struct",
   "sort_multiple",
 ] }
+polars-ops = { workspace = true, optional = true, features = [
+  "dtype-date",
+  "dtype-datetime",
+  "dtype-time",
+  "dtype-struct",
+] }
 
 
 [dev-dependencies]
@@ -55,6 +61,11 @@ polars-core = { workspace = true, features = [
   "dtype-time",
   "dtype-struct",
   "fmt",
+] }
+polars-ops = { workspace = true, features = [
+  "dtype-date",
+  "dtype-time",
+  "dtype-struct",
 ] }
 tracing-subscriber = "0.3"
 

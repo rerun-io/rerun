@@ -20,6 +20,7 @@ mod radius;
 mod rect;
 mod size;
 mod text_entry;
+mod tensor;
 
 pub use class_id::ClassId;
 pub use color::ColorRGBA;
@@ -31,6 +32,8 @@ pub use point::{Point2D, Point3D};
 pub use quaternion::Quaternion;
 pub use radius::Radius;
 pub use rect::Rect2D;
+pub use tensor::Tensor;
+
 pub use size::Size3D;
 pub use text_entry::TextEntry;
 

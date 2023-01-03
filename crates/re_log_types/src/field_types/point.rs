@@ -1,4 +1,4 @@
-use arrow2_convert::ArrowField;
+use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 
 use crate::msg_bundle::Component;
 
@@ -17,7 +17,7 @@ use crate::msg_bundle::Component;
 ///     ])
 /// );
 /// ```
-#[derive(Clone, Debug, ArrowField, PartialEq)]
+#[derive(Clone, Debug, ArrowField, ArrowSerialize, ArrowDeserialize, PartialEq)]
 pub struct Point2D {
     pub x: f32,
     pub y: f32,
@@ -45,7 +45,7 @@ impl Component for Point2D {
 ///     ])
 /// );
 /// ```
-#[derive(Clone, Debug, ArrowField, PartialEq)]
+#[derive(Clone, Debug, ArrowField, ArrowSerialize, ArrowDeserialize, PartialEq)]
 pub struct Point3D {
     pub x: f32,
     pub y: f32,
