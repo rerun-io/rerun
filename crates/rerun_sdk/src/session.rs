@@ -18,10 +18,18 @@ pub struct Session {
     recording_id: Option<RecordingId>,
 
     has_sent_begin_recording_msg: bool,
+
+    exp_arrow: bool,
 }
 
 impl Session {
     pub fn new() -> Self {
+        let exp_arrow = match std::env::var("RERUN_EXP_ARROW") {
+            Ok(val) if val == "mixed" => true,
+            Ok(val) if val == "pure" => true,
+            _ => false,
+        };
+
         Self {
             #[cfg(feature = "web")]
             tokio_rt: tokio::runtime::Runtime::new().unwrap(),
@@ -31,6 +39,7 @@ impl Session {
             application_id: None,
             recording_id: None,
             has_sent_begin_recording_msg: false,
+            exp_arrow,
         }
     }
 
@@ -210,6 +219,10 @@ impl Session {
             time_point: time_point.clone(),
             path_op,
         }));
+    }
+
+    pub fn arrow_logging_enabled(&self) -> bool {
+        self.exp_arrow
     }
 }
 
