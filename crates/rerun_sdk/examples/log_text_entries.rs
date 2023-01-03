@@ -2,7 +2,7 @@ use clap::Parser;
 
 use re_log_types::{
     field_types::{ColorRGBA, TextEntry},
-    msg_bundle::{ComponentBundle, MsgBundle},
+    msg_bundle::MsgBundle,
     LogMsg, MsgId, ObjPath, Time, TimePoint, TimeType, Timeline,
 };
 use rerun::Session;

@@ -3,7 +3,7 @@ use re_data_store::{query::visit_type_data_2, FieldName, ObjPath, TimeQuery};
 use re_log_types::{
     field_types::{self, Instance},
     msg_bundle::Component,
-    IndexHash, MsgId, ObjectType, TimePoint,
+    IndexHash, MsgId, ObjectType,
 };
 use re_query::{range_entity_with_primary, QueryError};
 
