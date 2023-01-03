@@ -187,7 +187,6 @@ def log_points(
             comps["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
 
         if len(radii):
-            print(radii)
             comps["rerun.radius"] = RadiusArray.from_numpy(radii)
 
         if labels:
