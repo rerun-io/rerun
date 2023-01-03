@@ -290,6 +290,34 @@ fn view_2d_scrollable(
 
     // ------------------------------------------------------------------------
 
+    // Draw a re_renderer driven view.
+    // Camera & projection are configured to ingest space coordinates directly.
+    {
+        crate::profile_scope!("build command buffer for 2D view {}", space.to_string());
+
+        let Ok(target_config) = setup_target_config(
+            &painter,
+            space_from_ui,
+            space_from_pixel,
+            &space.to_string(),
+        ) else {
+            return response;
+        };
+
+        let Ok(callback) = create_scene_paint_callback(
+            ctx.render_ctx,
+            target_config, painter.clip_rect(),
+            &scene.primitives,
+            &ScreenBackground::ClearColor(parent_ui.visuals().extreme_bg_color.into()),
+        ) else {
+            return response;
+        };
+
+        painter.add(callback);
+    }
+
+    // ------------------------------------------------------------------------
+
     // Add egui driven labels on top of re_renderer content.
     // Needs to come before hovering checks because it adds more objects for hovering.
     {
@@ -409,34 +437,6 @@ fn view_2d_scrollable(
                 }
             }
         }
-    }
-
-    // ------------------------------------------------------------------------
-
-    // Draw a re_renderer driven view.
-    // Camera & projection are configured to ingest space coordinates directly.
-    {
-        crate::profile_scope!("build command buffer for 2D view {}", space.to_string());
-
-        let Ok(target_config) = setup_target_config(
-            &painter,
-            space_from_ui,
-            space_from_pixel,
-            &space.to_string(),
-        ) else {
-            return response;
-        };
-
-        let Ok(callback) = create_scene_paint_callback(
-            ctx.render_ctx,
-            target_config, painter.clip_rect(),
-            &scene.primitives,
-            &ScreenBackground::ClearColor(parent_ui.visuals().extreme_bg_color.into()),
-        ) else {
-            return response;
-        };
-
-        painter.add(callback);
     }
 
     // ------------------------------------------------------------------------
