@@ -1,6 +1,10 @@
 use re_arrow_store::TimeRange;
 use re_data_store::{query::visit_type_data_2, FieldName, ObjPath, TimeQuery};
-use re_log_types::{field_types, msg_bundle::Component, IndexHash, MsgId, ObjectType, TimePoint};
+use re_log_types::{
+    field_types::{self, Instance},
+    msg_bundle::Component,
+    IndexHash, MsgId, ObjectType, TimePoint,
+};
 use re_query::{range_entity_with_primary, QueryError};
 
 use crate::{ui::SceneQuery, ViewerContext};
@@ -132,12 +136,14 @@ impl SceneText {
                 TimeRange::new(i64::MIN.into(), i64::MAX.into()),
             );
 
-            let components = [MsgId::name(), field_types::ColorRGBA::name()];
-            let ent_views = range_entity_with_primary::<field_types::TextEntry>(
-                store,
-                &query,
-                ent_path,
-                &components,
+            let components = [
+                Instance::name(),
+                MsgId::name(),
+                field_types::TextEntry::name(),
+                field_types::ColorRGBA::name(),
+            ];
+            let ent_views = range_entity_with_primary::<field_types::TextEntry, 4>(
+                store, &query, ent_path, components,
             );
 
             for (time, ent_view) in ent_views {
