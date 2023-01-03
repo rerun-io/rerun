@@ -70,14 +70,14 @@ impl PickingResult {
 
         // Delete subset that is behind opaque hit.
         if let Some(opaque_hit) = &self.opaque_hit {
+            let mut num_hidden = 0;
             for (i, transparent_hit) in self.transparent_hits.iter().enumerate() {
-                if transparent_hit.ray_t >= opaque_hit.ray_t {
-                    if i > 0 {
-                        self.transparent_hits.drain(0..i);
-                    }
+                if transparent_hit.ray_t <= opaque_hit.ray_t {
                     break;
                 }
+                num_hidden = i + 1;
             }
+            self.transparent_hits.drain(0..num_hidden);
         }
     }
 }
