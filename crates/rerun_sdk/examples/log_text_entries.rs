@@ -58,27 +58,21 @@ fn main() -> std::process::ExitCode {
 
     let path = ObjPath::from("my/text/logs");
 
-    // Send a single text entry
+    // Send a single text entry.
     let text_entries = Some(vec![
         TextEntry::new("catastrophic failure", Some(LogLevel::CRITICAL)), //
     ]);
     log_text_entries(&mut session, &path, text_entries, None);
 
+    // Sending the same text entry twice in a single frame is fine!
+    // Both will visible in the UI, as expected.
     let text_entries = Some(vec![
         TextEntry::new("catastrophic failure", Some(LogLevel::CRITICAL)), //
     ]);
     log_text_entries(&mut session, &path, text_entries, None);
 
-    // Send a larger collection of rects
-    let text_entries = Some(vec![
-        TextEntry::new("catastrophic failure", Some(LogLevel::CRITICAL)), //
-        TextEntry::new("not going too well", Some(LogLevel::ERROR)),
-        TextEntry::new("somewhat relevant", Some(LogLevel::INFO)),
-        TextEntry::new("potentially interesting", Some(LogLevel::DEBUG)),
-    ]);
-    log_text_entries(&mut session, &path, text_entries, None);
-
-    // Send a collection of colors
+    // Send a collection of colors: these will be taken into account by the UI when rendering the
+    // any text entries that follow.
     let colors = Some(vec![
         ColorRGBA(0xffffffff),
         ColorRGBA(0xff0000ff),
@@ -87,7 +81,17 @@ fn main() -> std::process::ExitCode {
     ]);
     log_text_entries(&mut session, &path, None, colors);
 
-    // Send both rects and colors
+    // Send a larger collection of text entries: these will be rendered using the color defined
+    // above!
+    let text_entries = Some(vec![
+        TextEntry::new("catastrophic failure", Some(LogLevel::CRITICAL)), //
+        TextEntry::new("not going too well", Some(LogLevel::ERROR)),
+        TextEntry::new("somewhat relevant", Some(LogLevel::INFO)),
+        TextEntry::new("potentially interesting", Some(LogLevel::DEBUG)),
+    ]);
+    log_text_entries(&mut session, &path, text_entries, None);
+
+    // Send both text entries and their colors at the same time.
     let text_entries = Some(vec![
         TextEntry::new("very", Some(LogLevel::TRACE)), //
         TextEntry::new("detailed", Some(LogLevel::TRACE)),
@@ -141,7 +145,7 @@ impl From<LogLevel> for String {
     }
 }
 
-/// Log a collection of rects and/or colors
+/// Log a collection of text entries and/or colors at both `Time::now()` and frame #42.
 /// TODO(cmc): Make this fancier and move into the SDK
 fn log_text_entries(
     session: &mut Session,
