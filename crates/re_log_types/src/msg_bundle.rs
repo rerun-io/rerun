@@ -200,36 +200,26 @@ impl MsgBundle {
         msg_id: MsgId,
         obj_path: ObjPath,
         time_point: TimePoint,
-        mut bundles: Vec<ComponentBundle>,
+        components: Vec<ComponentBundle>,
     ) -> Self {
+        let mut this = Self {
+            msg_id,
+            obj_path,
+            time_point,
+            components,
+        };
+
         // Since we don't yet support splats, we need to craft an array of `MsgId`s that matches
         // the length of the other components.
         //
         // TODO(#440): support splats & remove this hack.
-        if let Some(bundle) = bundles.first() {
-            let offsets = bundle
-                .value
-                .as_any()
-                .downcast_ref::<ListArray<i32>>()
-                .unwrap()
-                .offsets();
-            let len = (offsets[1] - offsets[0]) as usize;
-            let msg_ids: ComponentBundle = vec![msg_id; len].try_into().unwrap();
-            bundles.push(msg_ids);
-        }
+        this.components
+            .push(vec![msg_id; this.len()].try_into().unwrap());
 
         // // What the above would look like if we had support for splats.
-        // {
-        //     let msg_ids: ComponentBundle = vec![msg_id].try_into().unwrap();
-        //     bundles.push(msg_ids);
-        // }
+        // this.components.push(vec![msg_id].try_into().unwrap());
 
-        Self {
-            msg_id,
-            obj_path,
-            time_point,
-            components: bundles,
-        }
+        this
     }
 
     /// Try to append a collection of `Component` onto the `MessageBundle`.
@@ -253,6 +243,33 @@ impl MsgBundle {
 
         self.components.push(bundle);
         Ok(())
+    }
+
+    /// Returns the length of the bundle, i.e. its _number of rows_.
+    pub fn len(&self) -> usize {
+        self.components.first().map_or(0, |bundle| {
+            let offsets = bundle
+                .value
+                .as_any()
+                .downcast_ref::<ListArray<i32>>()
+                .unwrap()
+                .offsets();
+            (offsets[1] - offsets[0]) as usize
+        })
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    /// Returns the index of `component` in the bundle, if it exists.
+    ///
+    /// This is `O(n)`.
+    pub fn find_component(&self, component: &ComponentName) -> Option<usize> {
+        self.components
+            .iter()
+            .map(|bundle| bundle.name)
+            .position(|name| name == *component)
     }
 }
 

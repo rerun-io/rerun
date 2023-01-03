@@ -4,7 +4,7 @@
 
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use arrow2::array::{Array, ListArray, UInt64Array};
+use arrow2::array::{Array, UInt64Array};
 use nohash_hasher::IntMap;
 use polars_core::{prelude::*, series::Series};
 use re_arrow_store::{
@@ -388,26 +388,24 @@ fn joint_df(cluster_key: ComponentName, bundles: &[(ComponentName, &MsgBundle)])
     let df = bundles
         .iter()
         .map(|(component, bundle)| {
-            let instances = if bundle.components.len() < 3 {
-                let len = bundle.components[0]
-                    .value
-                    .as_any()
-                    .downcast_ref::<ListArray<i32>>()
-                    .unwrap()
-                    .value(0)
-                    .len();
+            let instances = if let Some(idx) = bundle.find_component(&Instance::name()) {
                 Series::try_from((
                     cluster_key.as_str(),
-                    wrap_in_listarray(UInt64Array::from_vec((0..len as u64).collect()).to_boxed())
-                        .to_boxed(),
+                    bundle.components[idx].value.to_boxed(),
                 ))
                 .unwrap()
             } else {
-                Series::try_from((cluster_key.as_str(), bundle.components[0].value.to_boxed()))
-                    .unwrap()
+                Series::try_from((
+                    cluster_key.as_str(),
+                    wrap_in_listarray(
+                        UInt64Array::from_vec((0..bundle.len() as u64).collect()).to_boxed(),
+                    )
+                    .to_boxed(),
+                ))
+                .unwrap()
             };
 
-            let comp_idx = if bundle.components.len() < 3 { 0 } else { 1 };
+            let comp_idx = bundle.find_component(component).unwrap();
             let df = DataFrame::new(vec![
                 instances,
                 Series::try_from((
