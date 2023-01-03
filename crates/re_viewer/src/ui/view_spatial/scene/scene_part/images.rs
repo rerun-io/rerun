@@ -97,7 +97,6 @@ impl ScenePart for ImagesPart {
                             multiplicative_tint: paint_props.fg_stroke.color.into(),
                         },
                     );
-                    // TODO: put into ui data instead?
                     scene.primitives.textured_rectangles_ids.push(instance_hash);
                 }
 
