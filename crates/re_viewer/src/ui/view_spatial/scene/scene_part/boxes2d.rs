@@ -3,8 +3,7 @@ use re_data_store::{
     query::visit_type_data_4, FieldName, InstanceIdHash, ObjPath, ObjectsProperties,
 };
 use re_log_types::{
-    context::ClassId,
-    field_types::{ColorRGBA, Rect2D},
+    field_types::{ClassId, ColorRGBA, Rect2D},
     msg_bundle::Component,
     IndexHash, MsgId, ObjectType,
 };
@@ -31,6 +30,7 @@ pub struct Boxes2DPartClassic;
 
 impl ScenePart for Boxes2DPartClassic {
     fn load(
+        &self,
         scene: &mut SceneSpatial,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
@@ -38,7 +38,7 @@ impl ScenePart for Boxes2DPartClassic {
         objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
-        crate::profile_function!();
+        crate::profile_scope!("Boxes2DPartClassic");
 
         for (_obj_type, obj_path, time_query, obj_store) in
             query.iter_object_stores(ctx.log_db, &[ObjectType::BBox2D])
@@ -188,6 +188,7 @@ impl Boxes2DPart {
 
 impl ScenePart for Boxes2DPart {
     fn load(
+        &self,
         scene: &mut SceneSpatial,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
@@ -195,6 +196,8 @@ impl ScenePart for Boxes2DPart {
         objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
+        crate::profile_scope!("Boxes2DPart");
+
         for ent_path in query.obj_paths {
             let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(ent_path) else {
                 continue;

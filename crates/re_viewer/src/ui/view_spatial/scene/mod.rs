@@ -5,7 +5,7 @@ use egui::NumExt as _;
 use glam::{vec3, Vec3};
 use re_data_store::{InstanceIdHash, ObjPath, ObjectsProperties};
 use re_log_types::{
-    context::{ClassId, KeypointId},
+    field_types::{ClassId, KeypointId},
     IndexHash, MeshId, Tensor,
 };
 use re_renderer::{Color32, Size};
@@ -132,6 +132,8 @@ fn instance_hash_if_interactive(
     }
 }
 
+pub type Keypoints = HashMap<(ClassId, i64), HashMap<KeypointId, glam::Vec3>>;
+
 impl SceneSpatial {
     /// Loads all 3D objects into the scene according to the given query.
     pub(crate) fn load_objects(
@@ -144,23 +146,29 @@ impl SceneSpatial {
     ) {
         crate::profile_function!();
 
+        //TODO(john) implement this for Arrow data store
         self.annotation_map.load(ctx, query);
 
-        let parts = [
-            scene_part::Points3DPart::load,
-            scene_part::Boxes3DPart::load,
-            scene_part::Lines3DPart::load,
-            scene_part::Arrows3DPart::load,
-            scene_part::MeshPart::load,
-            scene_part::ImagesPart::load,
-            scene_part::Boxes2DPartClassic::load,
-            scene_part::Boxes2DPart::load,
-            scene_part::LineSegments2DPart::load,
-            scene_part::Points2DPart::load,
+        let parts: Vec<&dyn ScenePart> = vec![
+            &scene_part::Points3DPartClassic,
+            &scene_part::Points3DPart { max_labels: 10 },
+            // --
+            &scene_part::Points2DPart,
+            &scene_part::Boxes3DPart,
+            &scene_part::Lines3DPart,
+            &scene_part::Arrows3DPart,
+            &scene_part::MeshPart,
+            &scene_part::ImagesPart,
+            // --
+            &scene_part::Boxes2DPartClassic,
+            &scene_part::Boxes2DPart,
+            // --
+            &scene_part::LineSegments2DPart,
+            &scene_part::Points2DPart,
         ];
 
-        for load in parts {
-            (load)(self, ctx, query, transforms, objects_properties, hovered);
+        for part in parts {
+            part.load(self, ctx, query, transforms, objects_properties, hovered);
         }
 
         self.primitives.recalculate_bounding_box();
@@ -179,7 +187,7 @@ impl SceneSpatial {
     fn load_keypoint_connections(
         &mut self,
         obj_path: &re_data_store::ObjPath,
-        keypoints: HashMap<(ClassId, i64), HashMap<KeypointId, glam::Vec3>>,
+        keypoints: Keypoints,
         annotations: &Arc<Annotations>,
         interactive: bool,
     ) {

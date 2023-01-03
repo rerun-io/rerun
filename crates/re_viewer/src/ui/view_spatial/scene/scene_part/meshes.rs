@@ -18,6 +18,7 @@ pub struct MeshPart;
 
 impl ScenePart for MeshPart {
     fn load(
+        &self,
         scene: &mut SceneSpatial,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
@@ -25,7 +26,7 @@ impl ScenePart for MeshPart {
         objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
-        crate::profile_function!("load_meshes");
+        crate::profile_scope!("MeshPart");
 
         for (_obj_type, obj_path, time_query, obj_store) in
             query.iter_object_stores(ctx.log_db, &[ObjectType::Mesh3D])

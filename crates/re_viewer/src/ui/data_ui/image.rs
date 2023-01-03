@@ -1,6 +1,6 @@
 use itertools::Itertools as _;
 
-use re_log_types::{context::ClassId, Tensor, TensorDataMeaning};
+use re_log_types::{field_types::ClassId, Tensor, TensorDataMeaning};
 
 use crate::misc::{caches::TensorImageView, ViewerContext};
 
