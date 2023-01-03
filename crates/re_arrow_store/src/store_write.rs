@@ -318,7 +318,7 @@ impl IndexTable {
         Self {
             timeline,
             ent_path,
-            buckets: [(0.into(), IndexBucket::new(timeline))].into(),
+            buckets: [(i64::MIN.into(), IndexBucket::new(timeline))].into(),
         }
     }
 
@@ -332,7 +332,7 @@ impl IndexTable {
         let timeline = self.timeline;
         let ent_path = self.ent_path.clone(); // shallow
 
-        let bucket = self.find_bucket_mut(time);
+        let (_, bucket) = self.find_bucket_mut(time);
 
         let size = bucket.total_size_bytes();
         let size_overflow = bucket.total_size_bytes() > config.index_bucket_size_bytes;

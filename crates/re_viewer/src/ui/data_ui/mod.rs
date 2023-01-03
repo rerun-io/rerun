@@ -10,7 +10,6 @@ use crate::misc::ViewerContext;
 
 use super::Preview;
 
-mod class_description;
 mod context;
 mod data;
 pub(crate) mod image;
