@@ -16,8 +16,8 @@ use crate::msg_bundle::Component;
 ///
 /// assert_eq!(Scalar::data_type(), DataType::Float64);
 /// ```
-#[derive(Debug, Clone, Copy)]
-pub struct Scalar(f64);
+#[derive(Debug, Clone, Copy, derive_more::From, derive_more::Into)]
+pub struct Scalar(pub f64);
 
 arrow_enable_vec_for_type!(Scalar);
 
@@ -77,7 +77,7 @@ impl Component for Scalar {
 /// ```
 #[derive(Debug, Clone, Copy, arrow2_convert::ArrowField)]
 pub struct ScalarPlotProps {
-    scattered: bool,
+    pub scattered: bool,
 }
 
 impl Component for ScalarPlotProps {
