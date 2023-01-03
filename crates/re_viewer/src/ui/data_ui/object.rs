@@ -1,4 +1,3 @@
-use re_arrow_store::TimeQuery;
 use re_data_store::{Index, InstanceId, ObjPath};
 use re_log_types::{
     external::arrow2::array,
@@ -12,7 +11,7 @@ use crate::{
     ui::{annotations::AnnotationMap, Preview},
 };
 
-use super::{class_description::class_description_ui, DataUi};
+use super::DataUi;
 
 /// Previously `object_ui()`
 impl DataUi for ObjPath {
@@ -39,7 +38,6 @@ impl DataUi for InstanceId {
         preview: Preview,
     ) -> egui::Response {
         match ctx.log_db.obj_db.types.get(self.obj_path.obj_type_path()) {
-            Some(ObjectType::ClassDescription) => class_description_ui(ctx, ui, self),
             Some(ObjectType::ArrowObject) => generic_arrow_ui(ctx, ui, self, preview),
             _ => generic_instance_ui(ctx, ui, self, preview),
         }
@@ -55,14 +53,13 @@ fn generic_arrow_ui(
     let timeline = ctx.rec_cfg.time_ctrl.timeline();
     let store = &ctx.log_db.obj_db.arrow_store;
 
-    let Some(time_i64) = ctx.rec_cfg.time_ctrl.time_i64() else {
+    let Some(time) = ctx.rec_cfg.time_ctrl.time_int() else {
         return ui.label(ctx.re_ui.error_text("No current time."))
     };
 
-    let timeline_query =
-        re_arrow_store::TimelineQuery::new(*timeline, TimeQuery::LatestAt(time_i64));
+    let query = re_arrow_store::LatestAtQuery::new(*timeline, time);
 
-    let Some(components) = store.query_components(&timeline_query, &instance_id.obj_path)
+    let Some(components) = store.latest_components_at(&query, &instance_id.obj_path)
     else {
         return ui.label("No Components")
     };
@@ -71,12 +68,8 @@ fn generic_arrow_ui(
         .num_columns(2)
         .show(ui, |ui| {
             for component in components {
-                let data = get_component_with_instances(
-                    store,
-                    &timeline_query,
-                    &instance_id.obj_path,
-                    component,
-                );
+                let data =
+                    get_component_with_instances(store, &query, &instance_id.obj_path, component);
 
                 ui.label(component.as_str());
 

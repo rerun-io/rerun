@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::num::NonZeroU64;
 use std::sync::atomic::AtomicU64;
 
-use anyhow::ensure;
+use anyhow::{anyhow, ensure};
 use arrow2::array::Array;
 use arrow2::datatypes::DataType;
 
@@ -14,7 +14,7 @@ use re_log_types::{
     Timeline,
 };
 
-// --- Data store ---
+// --- Indices & offsets ---
 
 /// A vector of times. Our primary column, always densely filled.
 pub type TimeIndex = Vec<i64>;
@@ -24,29 +24,58 @@ pub type TimeIndex = Vec<i64>;
 pub type SecondaryIndex = Vec<Option<RowIndex>>;
 static_assertions::assert_eq_size!(u64, Option<RowIndex>);
 
+// TODO(#639): We desperately need to work on the terminology here:
+//
+// - `TimeIndex` is a vector of `TimeInt`s.
+//   It's the primary column and it's always dense.
+//   It's used to search the datastore by time.
+//
+// - `ComponentIndex` (currently `SecondaryIndex`) is a vector of `ComponentRowNr`s.
+//   It's the secondary column and is sparse.
+//   It's used to search the datastore by component once the search by time is complete.
+//
+// - `ComponentRowNr` (currently `RowIndex`) is a row offset into a component table.
+//   It only makes sense when associated with a component name.
+//   It is absolute.
+//   It's used to fetch actual data from the datastore.
+//
+// - `IndexRowNr` is a row offset into an index bucket.
+//   It only makes sense when associated with an entity path and a specific time.
+//   It is relative per bucket.
+//   It's used to tiebreak results with an identical time, should you need too.
+
 /// An opaque type that directly refers to a row of data within the datastore, iff it is associated
 /// with a component name.
 ///
-/// See [`DataStore::query`] & [`DataStore::get`].
+/// See [`DataStore::latest_at`], [`DataStore::range`] & [`DataStore::get`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct RowIndex(pub(crate) NonZeroU64);
-
 impl RowIndex {
     /// Panics if `v` is 0.
     pub(crate) fn from_u64(v: u64) -> Self {
         Self(v.try_into().unwrap())
     }
 
+    // TODO(cmc): useless, remove.
     pub(crate) fn as_u64(self) -> u64 {
         self.0.into()
     }
 }
-
 impl std::fmt::Display for RowIndex {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!("{}", self.0))
     }
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct IndexRowNr(pub(crate) u64);
+impl std::fmt::Display for IndexRowNr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("{}", self.0))
+    }
+}
+
+// --- Data store ---
 
 #[derive(Debug, Clone)]
 pub struct DataStoreConfig {
@@ -109,6 +138,16 @@ pub struct DataStoreConfig {
     ///
     /// See [`Self::DEFAULT`] for defaults.
     pub index_bucket_nb_rows: u64,
+
+    /// If enabled, will store the ID of the write request alongside the inserted data.
+    ///
+    /// This can make inspecting the data within the store much easier, at the cost of an extra
+    /// `u64` value stored per row.
+    ///
+    /// Enabled by default in debug builds.
+    ///
+    /// See [`DataStore::insert_id_key`].
+    pub store_insert_ids: bool,
 }
 
 impl Default for DataStoreConfig {
@@ -123,6 +162,7 @@ impl DataStoreConfig {
         component_bucket_nb_rows: u64::MAX,
         index_bucket_size_bytes: 32 * 1024, // 32kiB
         index_bucket_nb_rows: 1024,
+        store_insert_ids: cfg!(debug_assertions),
     };
 }
 
@@ -130,10 +170,15 @@ impl DataStoreConfig {
 
 /// A complete data store: covers all timelines, all entities, everything.
 ///
+/// ## Debugging
+///
 /// `DataStore` provides a very thorough `Display` implementation that makes it manageable to
 /// know what's going on internally.
 /// For even more information, you can set `RERUN_DATA_STORE_DISPLAY_SCHEMAS=1` in your
 /// environment, which will result in additional schema information being printed out.
+///
+/// Additionally, if the `polars` feature is enabled, you can dump the entire datastore as a
+/// flat denormalized dataframe using [`Self::to_dataframe`].
 pub struct DataStore {
     /// The cluster key specifies a column/component that is guaranteed to always be present for
     /// every single row of data within the store.
@@ -152,7 +197,7 @@ pub struct DataStore {
     pub(crate) config: DataStoreConfig,
 
     /// Used to cache auto-generated cluster components, i.e. `[0]`, `[0, 1]`, `[0, 1, 2]`, etc
-    /// so that they properly deduplicated.
+    /// so that they can be properly deduplicated.
     pub(crate) cluster_comp_cache: IntMap<usize, RowIndex>,
 
     /// Maps an entity to its index, for a specific timeline.
@@ -183,6 +228,16 @@ impl DataStore {
             insert_id: 0,
             query_id: AtomicU64::new(0),
         }
+    }
+
+    /// The column name used for storing insert requests' IDs alongside the data.
+    ///
+    /// The insert IDs are stored as-is directly into the index tables, this is _not_ an
+    /// indirection into an associated component table!
+    ///
+    /// See [`DataStoreConfig::store_insert_ids`].
+    pub fn insert_id_key() -> ComponentName {
+        "rerun.insert_id".into()
     }
 
     /// See [`Self::cluster_key`] for more information about the cluster key.
@@ -453,6 +508,10 @@ pub struct IndexTable {
     /// indexing standpoint, all reads and writes with a time `t >= -∞` should go there, even
     /// though the bucket doesn't actually contains data with a timestamp of `-∞`!
     pub(crate) buckets: BTreeMap<TimeInt, IndexBucket>,
+
+    /// Carrying the cluster key around to help with assertions and sanity checks all over the
+    /// place.
+    pub(crate) cluster_key: ComponentName,
 }
 
 impl std::fmt::Display for IndexTable {
@@ -462,6 +521,7 @@ impl std::fmt::Display for IndexTable {
             timeline,
             ent_path,
             buckets,
+            cluster_key: _,
         } = self;
 
         f.write_fmt(format_args!("timeline: {}\n", timeline.name()))?;
@@ -481,7 +541,7 @@ impl std::fmt::Display for IndexTable {
                 format!("index time bound: >= {}\n", timeline.typ().format(*time),),
             ))?;
             f.write_str(&indent::indent_all_by(8, bucket.to_string()))?;
-            f.write_str(&indent::indent_all_by(0, "}\n"))?;
+            f.write_str(&indent::indent_all_by(4, "}\n"))?;
         }
         f.write_str("]")?;
 
@@ -558,6 +618,10 @@ pub struct IndexBucket {
     pub(crate) timeline: Timeline,
 
     pub(crate) indices: RwLock<IndexBucketIndices>,
+
+    /// Carrying the cluster key around to help with assertions and sanity checks all over the
+    /// place.
+    pub(crate) cluster_key: ComponentName,
 }
 
 /// Just the indices, to simplify interior mutability.
@@ -618,7 +682,7 @@ impl std::fmt::Display for IndexBucket {
         let table = arrow::format_table(values, names);
 
         let is_sorted = self.is_sorted();
-        f.write_fmt(format_args!("data (sorted={is_sorted}):\n{table}"))?;
+        f.write_fmt(format_args!("data (sorted={is_sorted}):\n{table}\n"))?;
 
         Ok(())
     }
@@ -679,6 +743,19 @@ impl IndexBucket {
                         expected {primary_len} rows, got {secondary_len} instead",
                 );
             }
+        }
+
+        // The cluster index must be fully dense.
+        {
+            let cluster_key = self.cluster_key;
+            let cluster_idx = indices
+                .get(&cluster_key)
+                .ok_or_else(|| anyhow!("no index found for cluster key: {cluster_key:?}"))?;
+            ensure!(
+                cluster_idx.iter().all(|row| row.is_some()),
+                "the cluster index ({cluster_key:?}) must be fully dense: \
+                    got {cluster_idx:?}",
+            );
         }
 
         Ok(())
@@ -963,7 +1040,7 @@ impl std::fmt::Display for ComponentBucket {
         };
 
         let table = arrow::format_table([data], [self.name.as_str()]);
-        f.write_fmt(format_args!("{table}"))?;
+        f.write_fmt(format_args!("{table}\n"))?;
 
         Ok(())
     }

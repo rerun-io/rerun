@@ -51,11 +51,8 @@ pub fn build_log_time(log_time: Time) -> (Timeline, TimeInt) {
 }
 
 /// Build a ([`Timeline`], [`TimeInt`]) tuple from `frame_nr` suitable for inserting in a [`crate::TimePoint`].
-pub fn build_frame_nr(frame_nr: i64) -> (Timeline, TimeInt) {
-    (
-        Timeline::new("frame_nr", TimeType::Sequence),
-        frame_nr.into(),
-    )
+pub fn build_frame_nr(frame_nr: TimeInt) -> (Timeline, TimeInt) {
+    (Timeline::new("frame_nr", TimeType::Sequence), frame_nr)
 }
 
 /// Create `len` dummy `Instance` keys. These keys will be sorted.
@@ -73,4 +70,10 @@ pub fn build_some_instances(nb_instances: usize) -> Vec<Instance> {
         .into_iter()
         .map(|id| Instance(id as u64))
         .collect()
+}
+
+pub fn build_some_instances_from(instances: impl IntoIterator<Item = u64>) -> Vec<Instance> {
+    let mut instances = instances.into_iter().map(Instance).collect::<Vec<_>>();
+    instances.sort();
+    instances
 }

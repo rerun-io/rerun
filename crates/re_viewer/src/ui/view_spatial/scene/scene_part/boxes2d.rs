@@ -1,5 +1,4 @@
 use glam::Mat4;
-use re_arrow_store::TimeQuery;
 use re_data_store::{
     query::visit_type_data_4, FieldName, InstanceIdHash, ObjPath, ObjectsProperties,
 };
@@ -204,14 +203,11 @@ impl ScenePart for Boxes2DPart {
                 continue;
             };
 
-            let timeline_query = re_arrow_store::TimelineQuery::new(
-                query.timeline,
-                TimeQuery::LatestAt(query.latest_at.as_i64()),
-            );
+            let query = re_arrow_store::LatestAtQuery::new(query.timeline, query.latest_at);
 
             match query_entity_with_primary::<Rect2D>(
                 &ctx.log_db.obj_db.arrow_store,
-                &timeline_query,
+                &query,
                 ent_path,
                 &[ColorRGBA::name()],
             )
