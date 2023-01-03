@@ -18,6 +18,7 @@ mod point;
 mod quaternion;
 mod radius;
 mod rect;
+mod scalar;
 mod size;
 mod text_entry;
 
@@ -31,6 +32,7 @@ pub use point::{Point2D, Point3D};
 pub use quaternion::Quaternion;
 pub use radius::Radius;
 pub use rect::Rect2D;
+pub use scalar::Scalar;
 pub use size::Size3D;
 pub use text_entry::TextEntry;
 
