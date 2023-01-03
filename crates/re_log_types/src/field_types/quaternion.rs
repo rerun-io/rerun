@@ -19,7 +19,8 @@ use crate::msg_bundle::Component;
 ///     ])
 /// );
 /// ```
-#[derive(Debug, ArrowField, ArrowSerialize, ArrowDeserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Quaternion {
     pub x: f32,
     pub y: f32,
@@ -30,5 +31,20 @@ pub struct Quaternion {
 impl Component for Quaternion {
     fn name() -> crate::ComponentName {
         "rerun.quaternion".into()
+    }
+}
+
+#[cfg(feature = "glam")]
+impl From<Quaternion> for glam::Quat {
+    fn from(q: Quaternion) -> Self {
+        Self::from_xyzw(q.x, q.y, q.z, q.w)
+    }
+}
+
+#[cfg(feature = "glam")]
+impl From<glam::Quat> for Quaternion {
+    fn from(q: glam::Quat) -> Self {
+        let (x, y, z, w) = q.into();
+        Self { x, y, z, w }
     }
 }

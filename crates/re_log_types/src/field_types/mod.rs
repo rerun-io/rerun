@@ -21,6 +21,8 @@ mod rect;
 mod scalar;
 mod size;
 mod text_entry;
+mod transform;
+mod vec;
 
 pub use class_id::ClassId;
 pub use color::ColorRGBA;
@@ -35,10 +37,12 @@ pub use rect::Rect2D;
 pub use scalar::{Scalar, ScalarPlotProps};
 pub use size::Size3D;
 pub use text_entry::TextEntry;
+pub use transform::{Pinhole, Rigid3, Transform};
+pub use vec::{Vec2D, Vec3D};
 
 lazy_static! {
     //TODO(john) actully use a run-time type registry
-    static ref FIELDS: [Field; 14] = [
+    static ref FIELDS: [Field; 17] = [
         <ColorRGBA as Component>::field(),
         <Instance as Component>::field(),
         <KeypointId as Component>::field(),
@@ -53,6 +57,9 @@ lazy_static! {
         <ScalarPlotProps as Component>::field(),
         <Size3D as Component>::field(),
         <TextEntry as Component>::field(),
+        <Transform as Component>::field(),
+        <Vec2D as Component>::field(),
+        <Vec3D as Component>::field(),
     ];
 }
 
