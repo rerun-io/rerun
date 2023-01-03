@@ -416,13 +416,12 @@ pub fn view_3d(
                             if let [h, w, ..] = image.tensor.shape.as_slice() {
                                 ui.separator();
                                 ui.horizontal(|ui| {
-                                    data_ui::image::show_zoomed_image_region_at_position(
+                                    let (w, h) = (w.size as f32, h.size as f32);
+                                    let center = [(uv.x * w) as isize, (uv.y * h) as isize];
+                                    data_ui::image::show_zoomed_image_region(
                                         ui,
                                         &tensor_view,
-                                        [
-                                            (uv.x * w.size as f32) as isize,
-                                            (uv.y * h.size as f32) as isize,
-                                        ],
+                                        center,
                                         image.meter,
                                     );
                                 });

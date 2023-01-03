@@ -366,8 +366,7 @@ fn view_2d_scrollable(
             } else {
                 None
             };
-            // TODO: use uv
-            response = if let Some((image, _uv)) = picked_image_with_uv {
+            response = if let Some((image, uv)) = picked_image_with_uv {
                 // TODO(andreas): This is different in 3d view.
                 if let Some(meter) = image.meter {
                     if let Some(raw_value) = image.tensor.get(&[
@@ -397,18 +396,22 @@ fn view_2d_scrollable(
                             );
 
                             if let [h, w, ..] = image.tensor.shape.as_slice() {
-                                let (w, h) = (w.size as f32, h.size as f32);
-                                let rect = Rect::from_min_size(Pos2::ZERO, egui::vec2(w, h));
-
                                 ui.separator();
                                 ui.horizontal(|ui| {
-                                    // TODO(andreas): 3d uses an inner method here that doesn't display the previewed rectangle.
-                                    data_ui::image::show_zoomed_image_region(
+                                    // TODO(andreas): 3d skips the show_zoomed_image_region_rect part here.
+                                    let (w, h) = (w.size as f32, h.size as f32);
+                                    let center = [(uv.x * w) as isize, (uv.y * h) as isize];
+                                    let rect = Rect::from_min_size(Pos2::ZERO, egui::vec2(w, h));
+                                    data_ui::image::show_zoomed_image_region_area_outline(
                                         parent_ui,
+                                        &tensor_view,
+                                        center,
+                                        ui_from_space.transform_rect(rect),
+                                    );
+                                    data_ui::image::show_zoomed_image_region(
                                         ui,
                                         &tensor_view,
-                                        ui_from_space.transform_rect(rect),
-                                        pointer_pos_ui,
+                                        center,
                                         image.meter,
                                     );
                                 });

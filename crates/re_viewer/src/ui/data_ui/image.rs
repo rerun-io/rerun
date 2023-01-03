@@ -71,65 +71,60 @@ fn show_zoomed_image_region_tooltip(
         .on_hover_cursor(egui::CursorIcon::ZoomIn)
         .on_hover_ui_at_pointer(|ui| {
             ui.horizontal(|ui| {
-                show_zoomed_image_region(
-                    parent_ui,
-                    ui,
-                    tensor_view,
-                    image_rect,
-                    pointer_pos,
-                    meter,
-                );
+                let Some(dynamic_img) = tensor_view.dynamic_img else { return };
+                let w = dynamic_img.width() as _;
+                let h = dynamic_img.height() as _;
+
+                use egui::NumExt;
+
+                let center = [
+                    (egui::remap(pointer_pos.x, image_rect.x_range(), 0.0..=w as f32) as isize)
+                        .at_most(w),
+                    (egui::remap(pointer_pos.y, image_rect.y_range(), 0.0..=h as f32) as isize)
+                        .at_most(h),
+                ];
+                show_zoomed_image_region_area_outline(parent_ui, tensor_view, center, image_rect);
+                show_zoomed_image_region(ui, tensor_view, center, meter);
             });
         })
 }
 
-/// meter: iff this is a depth map, how long is one meter?
-
 // Show the surrounding pixels:
 const ZOOMED_IMAGE_TEXEL_RADIUS: isize = 12;
 
-pub fn show_zoomed_image_region(
-    parent_ui: &mut egui::Ui,
-    tooltip_ui: &mut egui::Ui,
+pub fn show_zoomed_image_region_area_outline(
+    ui: &mut egui::Ui,
     tensor_view: &TensorImageView<'_, '_>,
+    [center_x, center_y]: [isize; 2],
     image_rect: egui::Rect,
-    pointer_pos: egui::Pos2,
-    meter: Option<f32>,
 ) {
     let Some(dynamic_img) = tensor_view.dynamic_img else { return };
 
-    use egui::{pos2, remap, Color32, NumExt, Rect};
+    use egui::{pos2, remap, Color32, Rect};
 
     let w = dynamic_img.width() as _;
     let h = dynamic_img.height() as _;
-    let center_x =
-        (remap(pointer_pos.x, image_rect.x_range(), 0.0..=(w as f32)).floor() as isize).at_most(w);
-    let center_y =
-        (remap(pointer_pos.y, image_rect.y_range(), 0.0..=(h as f32)).floor() as isize).at_most(h);
 
-    {
-        // Show where on the original image the zoomed-in region is at:
-        let left = (center_x - ZOOMED_IMAGE_TEXEL_RADIUS) as f32;
-        let right = (center_x + ZOOMED_IMAGE_TEXEL_RADIUS) as f32;
-        let top = (center_y - ZOOMED_IMAGE_TEXEL_RADIUS) as f32;
-        let bottom = (center_y + ZOOMED_IMAGE_TEXEL_RADIUS) as f32;
+    // Show where on the original image the zoomed-in region is at:
+    let left = (center_x - ZOOMED_IMAGE_TEXEL_RADIUS) as f32;
+    let right = (center_x + ZOOMED_IMAGE_TEXEL_RADIUS) as f32;
+    let top = (center_y - ZOOMED_IMAGE_TEXEL_RADIUS) as f32;
+    let bottom = (center_y + ZOOMED_IMAGE_TEXEL_RADIUS) as f32;
 
-        let left = remap(left, 0.0..=w as f32, image_rect.x_range());
-        let right = remap(right, 0.0..=w as f32, image_rect.x_range());
-        let top = remap(top, 0.0..=h as f32, image_rect.y_range());
-        let bottom = remap(bottom, 0.0..=h as f32, image_rect.y_range());
+    let left = remap(left, 0.0..=w, image_rect.x_range());
+    let right = remap(right, 0.0..=w, image_rect.x_range());
+    let top = remap(top, 0.0..=h, image_rect.y_range());
+    let bottom = remap(bottom, 0.0..=h, image_rect.y_range());
 
-        let rect = Rect::from_min_max(pos2(left, top), pos2(right, bottom));
-        // TODO(emilk): use `parent_ui.painter()` and put it in a high Z layer, when https://github.com/emilk/egui/issues/1516 is done
-        let painter = parent_ui.ctx().debug_painter();
-        painter.rect_stroke(rect, 0.0, (2.0, Color32::BLACK));
-        painter.rect_stroke(rect, 0.0, (1.0, Color32::WHITE));
-    }
-
-    show_zoomed_image_region_at_position(tooltip_ui, tensor_view, [center_x, center_y], meter);
+    let rect = Rect::from_min_max(pos2(left, top), pos2(right, bottom));
+    // TODO(emilk): use `parent_ui.painter()` and put it in a high Z layer, when https://github.com/emilk/egui/issues/1516 is done
+    let painter = ui.ctx().debug_painter();
+    painter.rect_stroke(rect, 0.0, (2.0, Color32::BLACK));
+    painter.rect_stroke(rect, 0.0, (1.0, Color32::WHITE));
 }
 
-pub fn show_zoomed_image_region_at_position(
+/// `meter`: iff this is a depth map, how long is one meter?
+pub fn show_zoomed_image_region(
     tooltip_ui: &mut egui::Ui,
     tensor_view: &TensorImageView<'_, '_>,
     image_position: [isize; 2],

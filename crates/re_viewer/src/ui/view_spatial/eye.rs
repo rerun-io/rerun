@@ -91,10 +91,8 @@ impl Eye {
             // The ray originates on the camera plane, not from the camera position
             let ray_dir = self.world_from_view.rotation().mul_vec3(glam::Vec3::Z);
             let origin = self.world_from_view.translation()
-                + self.world_from_view.rotation().mul_vec3(glam::Vec3::X)
-                    * (pointer.x - screen_rect.top())
-                + self.world_from_view.rotation().mul_vec3(glam::Vec3::Y)
-                    * (pointer.y - screen_rect.left())
+                + self.world_from_view.rotation().mul_vec3(glam::Vec3::X) * pointer.x
+                + self.world_from_view.rotation().mul_vec3(glam::Vec3::Y) * pointer.y
                 + ray_dir * self.near();
 
             macaw::Ray3::from_origin_dir(origin, ray_dir)
