@@ -5,7 +5,7 @@ use crate::msg_bundle::Component;
 
 /// A 16-bit ID representing a type of semantic class.
 ///
-/// Used to look up a [`ClassDescription`] within the [`AnnotationContext`].
+/// Used to look up a [`crate::context::ClassDescription`] within the [`crate::context::AnnotationContext`].
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ClassId(pub u16);
