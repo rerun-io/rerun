@@ -2,9 +2,7 @@
 //!
 //! Time-ordered unique 128-bit identifiers.
 
-mod arrow;
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, arrow2_convert::ArrowField)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Tuid {
     /// Approximate nanoseconds since epoch.
