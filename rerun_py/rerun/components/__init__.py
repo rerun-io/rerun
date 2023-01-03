@@ -15,6 +15,7 @@ all = [
     "radius",
     "rect2d",
     "scalar",
+    "scalar_plot_props",
     "text_entry",
 ]
 
