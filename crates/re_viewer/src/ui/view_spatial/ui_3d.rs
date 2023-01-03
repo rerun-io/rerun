@@ -377,84 +377,85 @@ pub fn view_3d(
 
     // TODO(andreas): We're very close making the hover reaction of ui2d and ui3d the same. Finish the job!
     *hovered_instance = None;
-    let picking_results = response.hover_pos().map_or(Vec::new(), |pointer_pos| {
-        scene
-            .primitives
-            .picking(glam::vec2(pointer_pos.x, pointer_pos.y), &rect, &eye)
-    });
+    if let Some(pointer_pos) = response.hover_pos() {
+        let picking_result = scene.primitives.picking(
+            glam::vec2(pointer_pos.x, pointer_pos.y),
+            &rect,
+            &eye,
+            &scene.ui.rects,
+        );
 
-    for picking_result in &picking_results {
-        let Some(instance_id) = picking_result.instance_hash.resolve(&ctx.log_db.obj_db)
+        for hit in picking_result.iter_hits() {
+            let Some(instance_id) = hit.instance_hash.resolve(&ctx.log_db.obj_db)
             else { continue; };
 
-        // Special hover ui for images.
-        let picked_image_with_uv = match picking_result.info {
-            AdditionalPickingInfo::None => None,
-            AdditionalPickingInfo::TexturedRect(uv) => scene
-                .ui
-                .images
-                .iter()
-                .find(|image| image.instance_hash == picking_result.instance_hash)
-                .map(|image| (image, uv)),
-        };
-        response = if let Some((image, uv)) = picked_image_with_uv {
-            response
-                .on_hover_cursor(egui::CursorIcon::ZoomIn)
-                .on_hover_ui_at_pointer(|ui| {
-                    ui.set_max_width(400.0);
+            // Special hover ui for images.
+            let picked_image_with_uv = match hit.info {
+                AdditionalPickingInfo::None => None,
+                AdditionalPickingInfo::TexturedRect(uv) => scene
+                    .ui
+                    .images
+                    .iter()
+                    .find(|image| image.instance_hash == hit.instance_hash)
+                    .map(|image| (image, uv)),
+            };
+            response = if let Some((image, uv)) = picked_image_with_uv {
+                response
+                    .on_hover_cursor(egui::CursorIcon::ZoomIn)
+                    .on_hover_ui_at_pointer(|ui| {
+                        ui.set_max_width(400.0);
 
-                    ui.vertical(|ui| {
-                        ui.label(instance_id.to_string());
-                        instance_id.data_ui(ctx, ui, Preview::Small);
+                        ui.vertical(|ui| {
+                            ui.label(instance_id.to_string());
+                            instance_id.data_ui(ctx, ui, Preview::Small);
 
-                        let legend = Some(image.annotations.clone());
-                        let tensor_view = ctx.cache.image.get_view_with_annotations(
-                            &image.tensor,
-                            &legend,
-                            ctx.render_ctx,
-                        );
+                            let legend = Some(image.annotations.clone());
+                            let tensor_view = ctx.cache.image.get_view_with_annotations(
+                                &image.tensor,
+                                &legend,
+                                ctx.render_ctx,
+                            );
 
-                        if let [h, w, ..] = image.tensor.shape.as_slice() {
-                            ui.separator();
-                            ui.horizontal(|ui| {
-                                data_ui::image::show_zoomed_image_region_at_position(
-                                    ui,
-                                    &tensor_view,
-                                    [
-                                        (uv.x * w.size as f32) as isize,
-                                        (uv.y * h.size as f32) as isize,
-                                    ],
-                                    image.meter,
-                                );
-                            });
-                        }
-                    });
+                            if let [h, w, ..] = image.tensor.shape.as_slice() {
+                                ui.separator();
+                                ui.horizontal(|ui| {
+                                    data_ui::image::show_zoomed_image_region_at_position(
+                                        ui,
+                                        &tensor_view,
+                                        [
+                                            (uv.x * w.size as f32) as isize,
+                                            (uv.y * h.size as f32) as isize,
+                                        ],
+                                        image.meter,
+                                    );
+                                });
+                            }
+                        });
+                    })
+            } else {
+                // Hover ui for everything else
+                response.on_hover_ui_at_pointer(|ui| {
+                    ctx.instance_id_button(ui, &instance_id);
+                    instance_id.data_ui(ctx, ui, crate::ui::Preview::Medium);
                 })
-        } else {
-            // Hover ui for everything else
-            response.on_hover_ui_at_pointer(|ui| {
-                ctx.instance_id_button(ui, &instance_id);
-                instance_id.data_ui(ctx, ui, crate::ui::Preview::Medium);
-            })
-        };
-    }
-
-    *hovered_instance = None;
-    if let Some(closest_pick) = picking_results.last() {
-        // Save last known hovered object.
-        if let Some(instance_id) = closest_pick.instance_hash.resolve(&ctx.log_db.obj_db) {
-            state.hovered_point = Some(closest_pick.space_position);
-            *hovered_instance = Some(instance_id);
+            };
         }
-    }
-    // Clicking the last hovered object.
-    if let Some(instance_id) = hovered_instance {
-        if ui.input().pointer.any_click() {
-            click_object(ctx, space_cameras, state, instance_id);
-        }
-    }
 
-    if response.hovered() {
+        if let Some(closest_pick) = picking_result.iter_hits().last() {
+            // Save last known hovered object.
+            if let Some(instance_id) = closest_pick.instance_hash.resolve(&ctx.log_db.obj_db) {
+                state.hovered_point = Some(picking_result.space_position(closest_pick));
+                *hovered_instance = Some(instance_id);
+            }
+        }
+
+        // Clicking the last hovered object.
+        if let Some(instance_id) = hovered_instance {
+            if ui.input().pointer.any_click() {
+                click_object(ctx, space_cameras, state, instance_id);
+            }
+        }
+
         project_onto_other_spaces(ctx, space_cameras, state, space);
     }
     show_projections_from_2d_space(ctx, space_cameras, &mut scene, scene_bbox_accum);
