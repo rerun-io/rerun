@@ -1,4 +1,4 @@
-use egui::WidgetText;
+use egui::{NumExt, WidgetText};
 use macaw::BoundingBox;
 use re_data_store::{InstanceId, InstanceIdHash, ObjPath, ObjectsProperties};
 use re_format::format_f32;
@@ -56,6 +56,9 @@ pub struct ViewSpatialState {
     /// Estimated bounding box of all data. Accumulated over every time data is displayed.
     #[serde(skip)]
     pub scene_bbox_accum: BoundingBox,
+    /// Estimated number of primitives last frame. Used to inform some heuristics.
+    #[serde(skip)]
+    pub scene_num_primitives: usize,
 
     pub(super) state_2d: View2DState,
     pub(super) state_3d: View3DState,
@@ -70,6 +73,7 @@ impl Default for ViewSpatialState {
             hovered_instance: Default::default(),
             nav_mode: Default::default(),
             scene_bbox_accum: BoundingBox::nothing(),
+            scene_num_primitives: 0,
             state_2d: Default::default(),
             state_3d: Default::default(),
             auto_size_config: None,
@@ -96,7 +100,16 @@ impl ViewSpatialState {
     }
 
     fn default_auto_size_world(&self) -> f32 {
-        self.scene_bbox_accum.size().max_element() * 0.0025
+        if self.scene_bbox_accum.is_nothing() || self.scene_bbox_accum.is_nan() {
+            return 0.01;
+        }
+
+        let diagonal_length = (self.scene_bbox_accum.max - self.scene_bbox_accum.min).length();
+
+        let heuristic0 = diagonal_length * 0.005;
+        let heuristic1 = 3.0 * diagonal_length / (self.scene_num_primitives.at_least(1) as f32);
+
+        heuristic0.min(heuristic1)
     }
 
     pub fn settings_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
@@ -225,6 +238,7 @@ impl ViewSpatialState {
         objects_properties: &ObjectsProperties,
     ) -> egui::Response {
         self.scene_bbox_accum = self.scene_bbox_accum.union(scene.primitives.bounding_box());
+        self.scene_num_primitives = scene.primitives.num_primitives();
 
         match self.nav_mode {
             SpatialNavigationMode::ThreeD => {
