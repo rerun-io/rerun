@@ -214,7 +214,7 @@ impl MsgBundle {
         //
         // TODO(#440): support splats & remove this hack.
         this.components
-            .push(vec![msg_id; this.len()].try_into().unwrap());
+            .push(vec![msg_id; this.row_len(0)].try_into().unwrap());
 
         this
     }
@@ -242,8 +242,12 @@ impl MsgBundle {
         Ok(())
     }
 
-    /// Returns the length of the bundle, i.e. its _number of rows_.
-    pub fn len(&self) -> usize {
+    /// Returns the length of a specific row within the bundle, i.e. the row's _number of
+    /// instances_.
+    ///
+    /// Panics if `row_nr` is out of bounds.
+    pub fn row_len(&self, row_nr: usize) -> usize {
+        // TODO(#440): won't be able to pick any component randomly once we support splats!
         self.components.first().map_or(0, |bundle| {
             let offsets = bundle
                 .value
@@ -251,7 +255,20 @@ impl MsgBundle {
                 .downcast_ref::<ListArray<i32>>()
                 .unwrap()
                 .offsets();
-            (offsets[1] - offsets[0]) as usize
+            (offsets[row_nr + 1] - offsets[row_nr]) as usize
+        })
+    }
+
+    /// Returns the length of the bundle, i.e. its _number of rows_.
+    pub fn len(&self) -> usize {
+        // TODO(#440): won't be able to pick any component randomly once we support splats!
+        self.components.first().map_or(0, |bundle| {
+            bundle
+                .value
+                .as_any()
+                .downcast_ref::<ListArray<i32>>()
+                .unwrap()
+                .len()
         })
     }
 
