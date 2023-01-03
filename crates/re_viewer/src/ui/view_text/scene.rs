@@ -25,7 +25,7 @@ pub struct TextEntry {
     pub level: Option<String>,
     pub body: String,
 
-    // temp
+    // TODO(cmc): remove once legacy store goes away
     pub is_arrow: bool,
 }
 
