@@ -455,7 +455,7 @@ fn view_2d_scrollable(
             space_from_ui,
             space_from_pixel,
             &space.to_string(),
-            state.auto_size_config,
+            state.auto_size_config(),
         ) else {
             return response;
         };

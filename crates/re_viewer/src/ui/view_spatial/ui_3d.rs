@@ -449,7 +449,7 @@ pub fn view_3d(
         &scene,
         ctx.render_ctx,
         &space.to_string(),
-        state.auto_size_config,
+        state.auto_size_config(),
     );
 
     response
