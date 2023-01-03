@@ -127,4 +127,76 @@ where
 
         Ok(())
     }
+
+    /// Visit the primary and joined components of an [`EntityView`]
+    /// See [`Self::visit2`]
+    pub fn visit4<C1: Component, C2: Component, C3: Component>(
+        &self,
+        mut visit: impl FnMut(Instance, Primary, Option<C1>, Option<C2>, Option<C3>),
+    ) -> crate::Result<()>
+    where
+        C1: ArrowDeserialize + ArrowField<Type = C1> + 'static,
+        C1::ArrayType: ArrowArray,
+        for<'a> &'a C1::ArrayType: IntoIterator,
+        C2: ArrowDeserialize + ArrowField<Type = C2> + 'static,
+        C2::ArrayType: ArrowArray,
+        for<'a> &'a C2::ArrayType: IntoIterator,
+        C3: ArrowDeserialize + ArrowField<Type = C3> + 'static,
+        C3::ArrayType: ArrowArray,
+        for<'a> &'a C3::ArrayType: IntoIterator,
+    {
+        let instance_iter = self.primary.iter_instance_keys()?;
+        let prim_iter = self.primary.iter_values::<Primary>()?;
+        let c1_iter = self.iter_component::<C1>()?;
+        let c2_iter = self.iter_component::<C2>()?;
+        let c3_iter = self.iter_component::<C3>()?;
+
+        itertools::izip!(instance_iter, prim_iter, c1_iter, c2_iter, c3_iter).for_each(
+            |(instance, primary, c1_data, c2_data, c3_iter)| {
+                if let Some(primary) = primary {
+                    visit(instance, primary, c1_data, c2_data, c3_iter);
+                }
+            },
+        );
+
+        Ok(())
+    }
+
+    /// Visit the primary and joined components of an [`EntityView`]
+    /// See [`Self::visit2`]
+    pub fn visit5<C1: Component, C2: Component, C3: Component, C4: Component>(
+        &self,
+        mut visit: impl FnMut(Instance, Primary, Option<C1>, Option<C2>, Option<C3>, Option<C4>),
+    ) -> crate::Result<()>
+    where
+        C1: ArrowDeserialize + ArrowField<Type = C1> + 'static,
+        C1::ArrayType: ArrowArray,
+        for<'a> &'a C1::ArrayType: IntoIterator,
+        C2: ArrowDeserialize + ArrowField<Type = C2> + 'static,
+        C2::ArrayType: ArrowArray,
+        for<'a> &'a C2::ArrayType: IntoIterator,
+        C3: ArrowDeserialize + ArrowField<Type = C3> + 'static,
+        C3::ArrayType: ArrowArray,
+        for<'a> &'a C3::ArrayType: IntoIterator,
+        C4: ArrowDeserialize + ArrowField<Type = C4> + 'static,
+        C4::ArrayType: ArrowArray,
+        for<'a> &'a C4::ArrayType: IntoIterator,
+    {
+        let instance_iter = self.primary.iter_instance_keys()?;
+        let prim_iter = self.primary.iter_values::<Primary>()?;
+        let c1_iter = self.iter_component::<C1>()?;
+        let c2_iter = self.iter_component::<C2>()?;
+        let c3_iter = self.iter_component::<C3>()?;
+        let c4_iter = self.iter_component::<C4>()?;
+
+        itertools::izip!(instance_iter, prim_iter, c1_iter, c2_iter, c3_iter, c4_iter).for_each(
+            |(instance, primary, c1_data, c2_data, c3_iter, c4_iter)| {
+                if let Some(primary) = primary {
+                    visit(instance, primary, c1_data, c2_data, c3_iter, c4_iter);
+                }
+            },
+        );
+
+        Ok(())
+    }
 }
