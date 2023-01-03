@@ -1,13 +1,13 @@
 use itertools::Itertools as _;
 
-use re_log_types::{field_types::ClassId, Tensor, TensorDataMeaning};
+use re_log_types::{field_types::ClassId, ClassicTensor, Tensor, TensorDataMeaning};
 
 use crate::misc::{caches::TensorImageView, ViewerContext};
 
 use super::DataUi;
 
 /// Previously `tensor_ui()`
-impl DataUi for Tensor {
+impl DataUi for ClassicTensor {
     fn data_ui(
         &self,
         ctx: &mut ViewerContext<'_>,
@@ -19,8 +19,8 @@ impl DataUi for Tensor {
         let ui_resp = ui
             .vertical(|ui| {
                 ui.set_min_width(100.0);
-                ui.label(format!("dtype: {}", self.dtype));
-                ui.label(format!("shape: {:?}", self.shape));
+                ui.label(format!("dtype: {}", self.dtype()));
+                ui.label(format!("shape: {:?}", self.shape()));
             })
             .response;
 
@@ -205,7 +205,7 @@ pub fn show_zoomed_image_region(
                 }
             } else if tensor_view.tensor.num_dim() == 3 {
                 let mut s = "Raw values:".to_owned();
-                for c in 0..tensor_view.tensor.shape[2].size {
+                for c in 0..tensor_view.tensor.shape()[2].size {
                     if let Some(raw_value) = tensor_view.tensor.get(&[y, x, c]) {
                         use std::fmt::Write as _;
                         write!(&mut s, " {}", raw_value.as_f64()).unwrap();
@@ -353,7 +353,7 @@ fn histogram_ui(ui: &mut egui::Ui, rgb_image: &image::RgbImage) -> egui::Respons
 #[cfg(not(target_arch = "wasm32"))]
 fn image_options(
     ui: &mut egui::Ui,
-    tensor: &re_log_types::Tensor,
+    tensor: &re_log_types::ClassicTensor,
     dynamic_image: &image::DynamicImage,
 ) {
     // TODO(emilk): support copying images on web

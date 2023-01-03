@@ -338,7 +338,7 @@ macro_rules! impl_into_logged_data {
 impl_into_logged_data!(i32, I32);
 impl_into_logged_data!(f32, F32);
 impl_into_logged_data!(BBox2D, BBox2D);
-impl_into_logged_data!(Tensor, Tensor);
+impl_into_logged_data!(ClassicTensor, Tensor);
 impl_into_logged_data!(Box3, Box3);
 impl_into_logged_data!(Mesh3D, Mesh3D);
 impl_into_logged_data!(ObjPath, ObjPath);

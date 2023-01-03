@@ -1,8 +1,9 @@
 use std::sync::Arc;
 
+use arrow2_convert::{ArrowField, ArrowSerialize};
 use half::f16;
 
-use crate::{impl_into_enum, AnnotationContext, ObjPath, ViewCoordinates};
+use crate::{field_types, impl_into_enum, AnnotationContext, ObjPath, ViewCoordinates};
 
 pub use crate::field_types::{Pinhole, Rigid3, Transform};
 
@@ -121,7 +122,7 @@ pub mod data_types {
         }
     }
 
-    impl DataTrait for crate::Tensor {
+    impl DataTrait for crate::ClassicTensor {
         fn data_typ() -> DataType {
             DataType::Tensor
         }
@@ -208,7 +209,7 @@ pub enum Data {
 
     // ----------------------------
     // N-D:
-    Tensor(Tensor),
+    Tensor(ClassicTensor),
 
     /// Homogenous vector
     DataVec(DataVec),
@@ -259,7 +260,7 @@ impl_into_enum!(i32, Data, I32);
 impl_into_enum!(f32, Data, F32);
 impl_into_enum!(f64, Data, F64);
 impl_into_enum!(BBox2D, Data, BBox2D);
-impl_into_enum!(Tensor, Data, Tensor);
+impl_into_enum!(ClassicTensor, Data, Tensor);
 impl_into_enum!(Box3, Data, Box3);
 impl_into_enum!(Mesh3D, Data, Mesh3D);
 impl_into_enum!(ObjPath, Data, ObjPath);
@@ -289,7 +290,7 @@ pub enum DataVec {
     Mesh3D(Vec<Mesh3D>),
     Arrow3D(Vec<Arrow3D>),
 
-    Tensor(Vec<Tensor>),
+    Tensor(Vec<ClassicTensor>),
 
     /// A vector of [`DataVec`] (vector of vectors)
     DataVec(Vec<DataVec>),
@@ -394,7 +395,7 @@ macro_rules! data_type_map_none(
                 $action
             },
             $crate::DataType::Tensor => {
-                let $value = Option::<$crate::Tensor>::None;
+                let $value = Option::<$crate::ClassicTensor>::None;
                 $action
             },
             $crate::DataType::DataVec => {
@@ -959,56 +960,6 @@ impl std::fmt::Debug for TensorDataStore {
     }
 }
 
-#[derive(Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct TensorDimension {
-    /// Number of elements on this dimension.
-    /// I.e. size-1 is the maximum allowed index.
-    pub size: u64,
-
-    /// Optional name of the dimension, e.g. "color" or "width"
-    pub name: String,
-}
-
-impl TensorDimension {
-    const DEFAULT_NAME_WIDTH: &'static str = "width";
-    const DEFAULT_NAME_HEIGHT: &'static str = "height";
-    const DEFAULT_NAME_DEPTH: &'static str = "depth";
-
-    pub fn height(size: u64) -> Self {
-        Self::named(size, String::from(Self::DEFAULT_NAME_HEIGHT))
-    }
-
-    pub fn width(size: u64) -> Self {
-        Self::named(size, String::from(Self::DEFAULT_NAME_WIDTH))
-    }
-
-    pub fn depth(size: u64) -> Self {
-        Self::named(size, String::from(Self::DEFAULT_NAME_DEPTH))
-    }
-
-    pub fn named(size: u64, name: String) -> Self {
-        Self { size, name }
-    }
-
-    pub fn unnamed(size: u64) -> Self {
-        Self {
-            size,
-            name: String::new(),
-        }
-    }
-}
-
-impl std::fmt::Debug for TensorDimension {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.name.is_empty() {
-            self.size.fmt(f)
-        } else {
-            write!(f, "{}={}", self.name, self.size)
-        }
-    }
-}
-
 // ----------------------------------------------------------------------------
 
 /// A unique id per [`Tensor`].
@@ -1038,12 +989,18 @@ impl TensorId {
 
 // ----------------------------------------------------------------------------
 
+pub trait Tensor: std::fmt::Debug + Clone + PartialEq + Eq {
+    fn id(&self) -> TensorId;
+    fn shape(&self) -> &[field_types::TensorDimension];
+    fn dtype(&self) -> TensorDataType;
+}
+
 /// An N-dimensional collection of numbers.
 ///
 /// Most often used to describe image pixels.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct Tensor {
+pub struct ClassicTensor {
     /// Unique identifier for the tensor
     pub tensor_id: TensorId,
 
@@ -1055,7 +1012,7 @@ pub struct Tensor {
     /// An empty vector has shape `[0]`, an empty matrix shape `[0, 0]`, etc.
     ///
     /// Conceptually `[h,w]` == `[h,w,1]` == `[h,w,1,1,1]` etc in most circumstances.
-    pub shape: Vec<TensorDimension>,
+    pub shape: Vec<field_types::TensorDimension>,
 
     /// The per-element data format.
     /// numpy calls this `dtype`.
@@ -1069,7 +1026,24 @@ pub struct Tensor {
     pub data: TensorDataStore,
 }
 
-impl Tensor {
+impl Tensor for ClassicTensor {
+    #[inline]
+    fn id(&self) -> TensorId {
+        self.tensor_id
+    }
+
+    #[inline]
+    fn shape(&self) -> &[field_types::TensorDimension] {
+        self.shape.as_slice()
+    }
+
+    #[inline]
+    fn dtype(&self) -> TensorDataType {
+        self.dtype
+    }
+}
+
+impl ClassicTensor {
     /// True if the shape has a zero in it anywhere.
     ///
     /// Note that `shape=[]` means this tensor is a scalar, and thus NOT empty.
@@ -1127,7 +1101,8 @@ impl Tensor {
             TensorDataStore::Dense(bytes) => {
                 let mut stride = self.dtype.size();
                 let mut offset = 0;
-                for (TensorDimension { size, name: _ }, index) in self.shape.iter().zip(index).rev()
+                for (field_types::TensorDimension { size, name: _ }, index) in
+                    self.shape.iter().zip(index).rev()
                 {
                     if size <= index {
                         return None;

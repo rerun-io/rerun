@@ -42,6 +42,7 @@ arrow_datagen = ["dep:rand"]
 re_log = { path = "../re_log" }
 re_string_interner = { path = "../re_string_interner" }
 re_tuid = { path = "../re_tuid" }
+re_format = { path = "../re_format" }
 
 # External
 ahash = "0.8"
@@ -52,7 +53,7 @@ chrono = { version = "0.4", features = [
   "js-sys",
   "wasmbind",
 ] } # TODO(emilk): replace `chrono` with `time` crate
-derive_more = "0.99"
+derive_more.workspace = true
 document-features = "0.2"
 fixed = { version = "1.17", default-features = false, features = ["serde"] }
 half = { version = "1.8", features = ["bytemuck"] }
@@ -63,6 +64,8 @@ num-traits = "0.2"
 thiserror.workspace = true
 typenum = "1.15"
 uuid = { version = "1.1", features = ["serde", "v4", "js"] }
+
+ndarray.workspace = true
 
 # Optional dependencies:
 anyhow = { workspace = true, optional = true }

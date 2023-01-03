@@ -1611,7 +1611,7 @@ fn tensor_extract_helper(
     any: &PyAny,
     names: Option<Vec<String>>,
     meaning: re_log_types::TensorDataMeaning,
-) -> Result<re_log_types::Tensor, re_tensor_ops::TensorCastError> {
+) -> Result<re_log_types::ClassicTensor, re_tensor_ops::TensorCastError> {
     if let Ok(tensor) = any.extract::<numpy::PyReadonlyArrayDyn<'_, u8>>() {
         re_tensor_ops::to_rerun_tensor(&tensor.as_array(), names, meaning)
     } else if let Ok(tensor) = any.extract::<numpy::PyReadonlyArrayDyn<'_, u16>>() {
@@ -1808,7 +1808,7 @@ fn log_image_file(
     session.send_data(
         &time_point,
         (&obj_path, "tensor"),
-        LoggedData::Single(Data::Tensor(re_log_types::Tensor {
+        LoggedData::Single(Data::Tensor(re_log_types::ClassicTensor {
             tensor_id: TensorId::random(),
             shape: vec![
                 TensorDimension::height(h as _),

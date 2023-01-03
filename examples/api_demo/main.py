@@ -35,6 +35,12 @@ def run_segmentation() -> None:
     segmentation_img[20:50, 90:110] = 99
     rerun.log_segmentation_image("seg_demo/img", segmentation_img)
 
+    segmentation_img = np.zeros([138, 138, 138], dtype="float32")
+    segmentation_img[10:20, 30:50, 0] = 42
+    segmentation_img[80:100, 60:80, 0] = 13
+    segmentation_img[20:50, 90:110, 0] = 99
+    rerun.log_segmentation_image("seg_demo/img", segmentation_img)
+
     # Log a bunch of classified 2D points
     rerun.log_point("seg_demo/single_point", np.array([64, 64]), class_id=13)
     rerun.log_point("seg_demo/single_point_labeled", np.array([90, 50]), class_id=13, label="labeled point")

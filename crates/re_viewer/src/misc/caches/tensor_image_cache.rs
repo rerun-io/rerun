@@ -4,8 +4,8 @@ use egui::{Color32, ColorImage};
 use egui_extras::RetainedImage;
 use image::DynamicImage;
 use re_log_types::{
-    field_types::ClassId, MsgId, Tensor, TensorDataMeaning, TensorDataStore, TensorDataType,
-    TensorId,
+    field_types::ClassId, ClassicTensor, MsgId, Tensor, TensorDataMeaning, TensorDataStore,
+    TensorDataType, TensorId,
 };
 use re_renderer::{
     resource_managers::{GpuTexture2DHandle, Texture2DCreationDesc},
@@ -28,7 +28,7 @@ use crate::ui::{Annotations, DefaultColor};
 /// retained images.
 pub struct TensorImageView<'store, 'cache> {
     /// Borrowed tensor from the object store
-    pub tensor: &'store Tensor,
+    pub tensor: &'store ClassicTensor,
 
     /// Annotations used to create the view
     pub annotations: &'store Option<Arc<Annotations>>,
@@ -79,18 +79,18 @@ pub struct ImageCache {
 impl ImageCache {
     pub(crate) fn get_view_with_annotations<'store, 'cache>(
         &'cache mut self,
-        tensor: &'store Tensor,
+        tensor: &'store ClassicTensor,
         annotations: &'store Option<Arc<Annotations>>,
         render_ctx: &mut RenderContext,
     ) -> TensorImageView<'store, 'cache> {
         let ci = self
             .images
             .entry(ImageCacheKey {
-                tensor_id: tensor.tensor_id,
+                tensor_id: tensor.id(),
                 annotation_msg_id: annotations.as_ref().map(|seg_map| seg_map.msg_id),
             })
             .or_insert_with(|| {
-                let debug_name = format!("tensor {:?}", tensor.shape);
+                let debug_name = format!("tensor {:?}", tensor.shape());
                 let ci = CachedImage::from_tensor(render_ctx, debug_name, tensor, annotations);
                 self.memory_used += ci.memory_used;
                 ci
@@ -108,7 +108,7 @@ impl ImageCache {
 
     pub(crate) fn get_view<'store, 'cache>(
         &'cache mut self,
-        tensor: &'store Tensor,
+        tensor: &'store ClassicTensor,
         render_ctx: &mut RenderContext,
     ) -> TensorImageView<'store, 'cache> {
         self.get_view_with_annotations(tensor, &None, render_ctx)
@@ -171,7 +171,7 @@ impl CachedImage {
     fn from_tensor(
         render_ctx: &mut RenderContext,
         debug_name: String,
-        tensor: &Tensor,
+        tensor: &ClassicTensor,
         annotations: &Option<Arc<Annotations>>,
     ) -> Self {
         crate::profile_function!();
@@ -237,13 +237,13 @@ impl CachedImage {
 }
 
 fn tensor_to_dynamic_image(
-    tensor: &Tensor,
+    tensor: &ClassicTensor,
     annotations: &Option<Arc<Annotations>>,
 ) -> anyhow::Result<DynamicImage> {
     crate::profile_function!();
     use anyhow::Context as _;
 
-    let shape = &tensor.shape;
+    let shape = &tensor.shape();
 
     anyhow::ensure!(
         shape.len() == 2 || shape.len() == 3,
@@ -275,11 +275,11 @@ fn tensor_to_dynamic_image(
     match &tensor.data {
         TensorDataStore::Dense(bytes) => {
             anyhow::ensure!(
-                bytes.len() as u64 == tensor.len() * tensor.dtype.size(),
+                bytes.len() as u64 == tensor.len() * tensor.dtype().size(),
                 "Tensor data length doesn't match tensor shape and dtype"
             );
 
-            match (annotations, depth, tensor.dtype, tensor.meaning) {
+            match (annotations, depth, tensor.dtype(), tensor.meaning) {
                 (Some(annotations), 1, TensorDataType::U8, TensorDataMeaning::ClassId) => {
                     // Apply annotation mapping to raw bytes interpreted as u8
                     image::RgbaImage::from_raw(

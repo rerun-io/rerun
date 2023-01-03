@@ -16,8 +16,10 @@ anyhow = "1.0"
 arrow2 = "0.15"
 arrow2_convert = "0.3"
 comfy-table = { version = "6.1", default-features = false }
+derive_more = "0.99"
 ecolor = { version = "0.20" }
 lazy_static = "1.4"
+ndarray = "0.15"
 polars-core = "0.26"
 polars-lazy = "0.26"
 polars-ops = "0.26"

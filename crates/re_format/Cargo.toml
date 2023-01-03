@@ -9,3 +9,4 @@ publish = false
 [dependencies]
 arrow2.workspace = true
 comfy-table.workspace = true
+derive_more.workspace = true

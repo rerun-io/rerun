@@ -5,7 +5,8 @@
 //! dimensionality reduction.
 
 use re_log_types::{
-    Tensor, TensorDataMeaning, TensorDataStore, TensorDataTypeTrait, TensorDimension, TensorId,
+    field_types, ClassicTensor, Tensor, TensorDataMeaning, TensorDataStore, TensorDataTypeTrait,
+    TensorId,
 };
 
 pub mod dimension_mapping;
@@ -32,12 +33,12 @@ pub enum TensorCastError {
 }
 
 pub fn as_ndarray<A: bytemuck::Pod + TensorDataTypeTrait>(
-    tensor: &Tensor,
+    tensor: &ClassicTensor,
 ) -> Result<ndarray::ArrayViewD<'_, A>, TensorCastError> {
-    let shape: Vec<_> = tensor.shape.iter().map(|d| d.size as usize).collect();
+    let shape: Vec<_> = tensor.shape().iter().map(|d| d.size as usize).collect();
     let shape = ndarray::IxDyn(shape.as_slice());
 
-    if A::DTYPE != tensor.dtype {
+    if A::DTYPE != tensor.dtype() {
         return Err(TensorCastError::TypeMismatch);
     }
 
@@ -55,7 +56,7 @@ pub fn to_rerun_tensor<A: ndarray::Data + ndarray::RawData, D: ndarray::Dimensio
     data: &ndarray::ArrayBase<A, D>,
     names: Option<Vec<String>>,
     meaning: TensorDataMeaning,
-) -> Result<Tensor, TensorCastError>
+) -> Result<ClassicTensor, TensorCastError>
 where
     <A as ndarray::RawData>::Elem: TensorDataTypeTrait + bytemuck::Pod,
 {
@@ -74,16 +75,16 @@ where
         data.shape()
             .iter()
             .zip(names)
-            .map(|(&d, name)| TensorDimension::named(d as _, name))
+            .map(|(&d, name)| field_types::TensorDimension::named(d as _, name))
             .collect()
     } else {
         data.shape()
             .iter()
-            .map(|&d| TensorDimension::unnamed(d as _))
+            .map(|&d| field_types::TensorDimension::unnamed(d as _))
             .collect()
     };
 
-    Ok(Tensor {
+    Ok(ClassicTensor {
         tensor_id: TensorId::random(),
         shape,
         dtype: A::Elem::DTYPE,
@@ -94,13 +95,13 @@ where
 
 #[cfg(test)]
 mod tests {
-    use re_log_types::{TensorDataStore, TensorDataType, TensorDimension};
+    use re_log_types::{field_types::TensorDimension, TensorDataStore, TensorDataType};
 
     use super::*;
 
     #[test]
     fn convert_tensor_to_ndarray_u8() {
-        let t = Tensor {
+        let t = ClassicTensor {
             tensor_id: TensorId::random(),
             shape: vec![
                 TensorDimension::unnamed(3),
@@ -119,7 +120,7 @@ mod tests {
 
     #[test]
     fn convert_tensor_to_ndarray_u16() {
-        let t = Tensor {
+        let t = ClassicTensor {
             tensor_id: TensorId::random(),
             shape: vec![
                 TensorDimension::unnamed(3),
@@ -138,7 +139,7 @@ mod tests {
 
     #[test]
     fn convert_tensor_to_ndarray_f32() {
-        let t = Tensor {
+        let t = ClassicTensor {
             tensor_id: TensorId::random(),
             shape: vec![
                 TensorDimension::unnamed(3),
@@ -166,8 +167,8 @@ mod tests {
         .unwrap();
 
         assert_eq!(
-            t.shape,
-            vec![TensorDimension::height(2), TensorDimension::width(3)]
+            t.shape(),
+            &[TensorDimension::height(2), TensorDimension::width(3)]
         );
     }
 
@@ -182,12 +183,12 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(t.shape, vec![TensorDimension::height(2)]);
+        assert_eq!(t.shape(), &[TensorDimension::height(2)]);
     }
 
     #[test]
     fn check_slices() {
-        let t = Tensor {
+        let t = ClassicTensor {
             tensor_id: TensorId::random(),
             shape: vec![
                 TensorDimension::unnamed(3),
@@ -232,7 +233,7 @@ mod tests {
 
     #[test]
     fn check_tensor_shape_error() {
-        let t = Tensor {
+        let t = ClassicTensor {
             tensor_id: TensorId::random(),
             shape: vec![
                 TensorDimension::unnamed(3),
@@ -256,7 +257,7 @@ mod tests {
 
     #[test]
     fn check_tensor_type_error() {
-        let t = Tensor {
+        let t = ClassicTensor {
             tensor_id: TensorId::random(),
             shape: vec![
                 TensorDimension::unnamed(3),

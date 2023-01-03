@@ -1,8 +1,16 @@
 use egui::NumExt;
 use glam::Vec3;
 use itertools::Itertools;
-use re_data_store::{query::visit_type_data_2, FieldName, InstanceIdHash, ObjectsProperties};
-use re_log_types::{IndexHash, MsgId, ObjectType};
+use re_arrow_store::LatestAtQuery;
+use re_data_store::{
+    query::visit_type_data_2, FieldName, InstanceIdHash, ObjPath, ObjectProps, ObjectsProperties,
+};
+use re_log_types::{
+    field_types::{self, ColorRGBA, Tensor},
+    msg_bundle::Component,
+    IndexHash, MsgId, ObjectType,
+};
+use re_query::{query_entity_with_primary, EntityView, QueryError};
 use re_renderer::Size;
 
 use crate::{
@@ -20,9 +28,31 @@ use crate::{
 
 use super::ScenePart;
 
-pub struct ImagesPart;
+pub struct ImagesPartClassic;
 
-impl ScenePart for ImagesPart {
+#[allow(clippy::too_many_arguments)]
+fn image_instance_visitor(
+    instance_index: Option<&IndexHash>,
+    _time: i64,
+    _msg_id: &MsgId,
+    tensor: &re_log_types::ClassicTensor,
+    color: Option<&[u8; 4]>,
+    meter: Option<&f32>,
+
+    obj_path: &ObjPath,
+    properties: ObjectProps,
+) {
+    if !tensor.is_shaped_like_an_image() {
+        return;
+    }
+
+    let (h, w) = (tensor.shape[0].size as f32, tensor.shape[1].size as f32);
+
+    let instance_hash =
+        instance_hash_if_interactive(obj_path, instance_index, properties.interactive);
+}
+
+impl ScenePart for ImagesPartClassic {
     fn load(
         &self,
         scene: &mut SceneSpatial,
@@ -32,7 +62,7 @@ impl ScenePart for ImagesPart {
         objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
-        crate::profile_scope!("ImagesPart");
+        crate::profile_scope!("ImagesPartClassic");
 
         for (_obj_type, obj_path, time_query, obj_store) in
             query.iter_object_stores(ctx.log_db, &[ObjectType::Image])
@@ -47,7 +77,7 @@ impl ScenePart for ImagesPart {
             let visitor = |instance_index: Option<&IndexHash>,
                            _time: i64,
                            _msg_id: &MsgId,
-                           tensor: &re_log_types::Tensor,
+                           tensor: &re_log_types::ClassicTensor,
                            color: Option<&[u8; 4]>,
                            meter: Option<&f32>| {
                 if !tensor.is_shaped_like_an_image() {
@@ -172,6 +202,68 @@ impl ScenePart for ImagesPart {
                     1.0 / total_num_images.at_most(20) as f32
                 }; // avoid precision problems in framebuffer
                 rect.multiplicative_tint = rect.multiplicative_tint.multiply(opacity);
+            }
+        }
+    }
+}
+
+pub(crate) struct ImagesPart;
+
+impl ImagesPart {
+    #[allow(clippy::too_many_arguments)]
+    fn process_entity_view(
+        &self,
+        entity_view: &EntityView<Tensor>,
+        scene: &mut SceneSpatial,
+        query: &SceneQuery<'_>,
+        objects_properties: &ObjectsProperties,
+        hovered_instance: InstanceIdHash,
+        ent_path: &ObjPath,
+        world_from_obj: glam::Mat4,
+    ) -> Result<(), QueryError> {
+    }
+}
+
+impl ScenePart for ImagesPart {
+    fn load(
+        &self,
+        scene: &mut SceneSpatial,
+        ctx: &mut ViewerContext<'_>,
+        query: &SceneQuery<'_>,
+        transforms: &TransformCache,
+        objects_properties: &ObjectsProperties,
+        hovered_instance: InstanceIdHash,
+    ) {
+        crate::profile_scope!("ImagesPart");
+
+        for ent_path in query.obj_paths {
+            let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(ent_path) else {
+                continue;
+            };
+
+            let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
+
+            match query_entity_with_primary::<Tensor>(
+                &ctx.log_db.obj_db.arrow_store,
+                &timeline_query,
+                ent_path,
+                &[ColorRGBA::name()],
+            )
+            .and_then(|entity_view| {
+                self.process_entity_view(
+                    &entity_view,
+                    scene,
+                    query,
+                    objects_properties,
+                    hovered_instance,
+                    ent_path,
+                    world_from_obj,
+                )
+            }) {
+                Ok(_) | Err(QueryError::PrimaryNotFound) => {}
+                Err(err) => {
+                    re_log::error_once!("Unexpected error querying '{:?}': {:?}", ent_path, err);
+                }
             }
         }
     }
