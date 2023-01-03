@@ -14,6 +14,7 @@ all = [
     "point",
     "radius",
     "rect2d",
+    "text_entry",
 ]
 
 REGISTERED_FIELDS: Final[Dict[str, pa.field]] = bindings.get_registered_fields()

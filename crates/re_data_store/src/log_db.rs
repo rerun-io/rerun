@@ -2,7 +2,7 @@ use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 
 use re_log_types::{
-    field_types::Instance,
+    field_types::{Instance, TextEntry},
     msg_bundle::{Component as _, MsgBundle},
     objects, ArrowMsg, BatchIndex, BeginRecordingMsg, DataMsg, DataPath, DataVec, LogMsg,
     LoggedData, MsgId, ObjPath, ObjPathHash, ObjTypePath, ObjectType, PathOp, PathOpMsg,
@@ -128,11 +128,24 @@ impl ObjDb {
     fn try_add_arrow_data_msg(&mut self, msg: &ArrowMsg) -> Result<(), Error> {
         let msg_bundle = MsgBundle::try_from(msg).map_err(Error::MsgBundleError)?;
 
-        // TODO(jleibs): Hack in a type so the UI treats these objects as visible
-        // This can go away once we determine object categories directly from the arrow table
-        self.types
-            .entry(msg_bundle.obj_path.obj_type_path().clone())
-            .or_insert(ObjectType::ArrowObject);
+        // Determine the kind of object we're looking at based on the components that have been
+        // uploaded _first_.
+        //
+        // TODO(cmc): That's an extension of the hack below, and will disappear at the same time
+        // and for the same reasons.
+        {
+            let obj_type = if msg_bundle.find_component(&TextEntry::name()).is_some() {
+                ObjectType::TextEntry
+            } else {
+                // TODO(jleibs): Hack in a type so the UI treats these objects as visible
+                // This can go away once we determine object categories directly from the arrow
+                // table
+                ObjectType::ArrowObject
+            };
+            self.types
+                .entry(msg_bundle.obj_path.obj_type_path().clone())
+                .or_insert(obj_type);
+        }
 
         self.register_obj_path(&msg_bundle.obj_path);
 

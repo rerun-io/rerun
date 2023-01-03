@@ -398,7 +398,7 @@ fn joint_df(cluster_key: ComponentName, bundles: &[(ComponentName, &MsgBundle)])
                 Series::try_from((
                     cluster_key.as_str(),
                     wrap_in_listarray(
-                        UInt64Array::from_vec((0..bundle.len() as u64).collect()).to_boxed(),
+                        UInt64Array::from_vec((0..bundle.row_len(0) as u64).collect()).to_boxed(),
                     )
                     .to_boxed(),
                 ))
