@@ -1,5 +1,5 @@
 use itertools::Itertools as _;
-use nohash_hasher::{IntMap, IntSet};
+use nohash_hasher::IntMap;
 
 use re_log_types::{
     field_types::{Instance, TextEntry},
@@ -134,13 +134,7 @@ impl ObjDb {
         // TODO(cmc): That's an extension of the hack below, and will disappear at the same time
         // and for the same reasons.
         {
-            let components = msg_bundle
-                .components
-                .iter()
-                .map(|bundle| bundle.name)
-                .collect::<IntSet<_>>();
-
-            let obj_type = if components.contains(&TextEntry::name()) {
+            let obj_type = if msg_bundle.find_component(&TextEntry::name()).is_some() {
                 ObjectType::TextEntry
             } else {
                 // TODO(jleibs): Hack in a type so the UI treats these objects as visible
