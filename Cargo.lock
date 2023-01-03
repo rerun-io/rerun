@@ -3668,6 +3668,7 @@ dependencies = [
  "rand",
  "re_error",
  "re_log",
+ "serde",
  "slotmap",
  "smallvec",
  "static_assertions",

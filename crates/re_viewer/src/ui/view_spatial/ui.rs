@@ -40,8 +40,11 @@ pub struct ViewSpatialState {
     #[serde(skip)]
     pub scene_bbox_accum: BoundingBox,
 
-    state_2d: View2DState,
-    state_3d: View3DState,
+    pub(super) state_2d: View2DState,
+    pub(super) state_3d: View3DState,
+
+    /// Size of automatically sized objects
+    pub(super) auto_size_config: re_renderer::Size,
 }
 
 impl Default for ViewSpatialState {
@@ -52,6 +55,7 @@ impl Default for ViewSpatialState {
             scene_bbox_accum: BoundingBox::nothing(),
             state_2d: Default::default(),
             state_3d: Default::default(),
+            auto_size_config: re_renderer::Size::AUTO,
         }
     }
 }
@@ -131,12 +135,10 @@ impl ViewSpatialState {
                 super::view_3d(
                     ctx,
                     ui,
-                    &mut self.state_3d,
+                    self,
                     space,
                     scene,
                     space_cameras,
-                    &self.scene_bbox_accum,
-                    &mut self.hovered_instance,
                     objects_properties,
                 )
             }
@@ -145,15 +147,7 @@ impl ViewSpatialState {
                     self.scene_bbox_accum.min.truncate().to_array().into(),
                     self.scene_bbox_accum.max.truncate().to_array().into(),
                 );
-                super::view_2d(
-                    ctx,
-                    ui,
-                    &mut self.state_2d,
-                    space,
-                    scene,
-                    scene_rect_accum,
-                    &mut self.hovered_instance,
-                )
+                super::view_2d(ctx, ui, self, space, scene, scene_rect_accum)
             }
         }
     }

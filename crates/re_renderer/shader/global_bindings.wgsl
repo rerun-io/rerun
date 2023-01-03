@@ -23,10 +23,10 @@ struct FrameUniformBuffer {
     tan_half_fov: vec2<f32>,
 
     /// Size used for all sizes given with Size::AUTO
-    auto_size_in_points: f32,
+    auto_size: f32,
 
     /// Size used for all sizes given with Size::AUTO_LARGE
-    auto_size_large_in_points: f32,
+    auto_size_large: f32,
 };
 @group(0) @binding(0)
 var<uniform> frame: FrameUniformBuffer;
