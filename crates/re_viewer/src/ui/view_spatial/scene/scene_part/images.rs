@@ -24,6 +24,7 @@ pub struct ImagesPart;
 
 impl ScenePart for ImagesPart {
     fn load(
+        &self,
         scene: &mut SceneSpatial,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
@@ -31,7 +32,7 @@ impl ScenePart for ImagesPart {
         objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
-        crate::profile_function!();
+        crate::profile_scope!("ImagesPart");
 
         for (_obj_type, obj_path, time_query, obj_store) in
             query.iter_object_stores(ctx.log_db, &[ObjectType::Image])

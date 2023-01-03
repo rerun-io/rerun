@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Final, Type, cast
+from typing import Any, Dict, Final, Type, cast
 
 import pyarrow as pa
 
@@ -12,11 +12,12 @@ all = [
     "color",
     "label",
     "point",
+    "radius",
     "rect2d",
     "text_entry",
 ]
 
-REGISTERED_FIELDS: Final = bindings.get_registered_fields()
+REGISTERED_FIELDS: Final[Dict[str, pa.field]] = bindings.get_registered_fields()
 
 
 def ComponentTypeFactory(name: str, array_cls: type[pa.ExtensionArray], field: pa.Field) -> type[pa.ExtensionType]:

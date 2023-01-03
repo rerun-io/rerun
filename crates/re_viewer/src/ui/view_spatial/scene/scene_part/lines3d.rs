@@ -23,7 +23,9 @@ pub struct Lines3DPart;
 
 impl ScenePart for Lines3DPart {
     /// Both `Path3D` and `LineSegments3D`.
+
     fn load(
+        &self,
         scene: &mut SceneSpatial,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
@@ -31,7 +33,7 @@ impl ScenePart for Lines3DPart {
         objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
-        crate::profile_function!();
+        crate::profile_scope!("Lines3DPart");
 
         for (obj_type, obj_path, time_query, obj_store) in query.iter_object_stores(
             ctx.log_db,
