@@ -1,8 +1,8 @@
 use itertools::Itertools as _;
-use nohash_hasher::IntMap;
+use nohash_hasher::{IntMap, IntSet};
 
 use re_log_types::{
-    field_types::{Instance, TextEntry},
+    field_types::{Instance, Scalar, TextEntry},
     msg_bundle::{Component as _, MsgBundle},
     objects, ArrowMsg, BatchIndex, BeginRecordingMsg, DataMsg, DataPath, DataVec, LogMsg,
     LoggedData, MsgId, ObjPath, ObjPathHash, ObjTypePath, ObjectType, PathOp, PathOpMsg,
@@ -134,8 +134,16 @@ impl ObjDb {
         // TODO(cmc): That's an extension of the hack below, and will disappear at the same time
         // and for the same reasons.
         {
-            let obj_type = if msg_bundle.find_component(&TextEntry::name()).is_some() {
+            let components = msg_bundle
+                .components
+                .iter()
+                .map(|bundle| bundle.name)
+                .collect::<IntSet<_>>();
+
+            let obj_type = if components.contains(&TextEntry::name()) {
                 ObjectType::TextEntry
+            } else if components.contains(&Scalar::name()) {
+                ObjectType::Scalar
             } else {
                 // TODO(jleibs): Hack in a type so the UI treats these objects as visible
                 // This can go away once we determine object categories directly from the arrow
