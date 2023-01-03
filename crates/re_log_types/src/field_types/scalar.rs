@@ -5,6 +5,8 @@ use arrow2_convert::{
 
 use crate::msg_bundle::Component;
 
+// ---
+
 /// A double-precision scalar.
 ///
 /// ```
@@ -54,5 +56,32 @@ impl ArrowDeserialize for Scalar {
 impl Component for Scalar {
     fn name() -> crate::ComponentName {
         "rerun.scalar".into()
+    }
+}
+
+// ---
+
+/// Additional properties of a scalar when rendered as a plot.
+///
+/// ```
+/// use re_log_types::field_types::ScalarPlotProps;
+/// use arrow2_convert::field::ArrowField;
+/// use arrow2::datatypes::{DataType, Field};
+///
+/// assert_eq!(
+///     ScalarPlotProps::data_type(),
+///     DataType::Struct(vec![
+///         Field::new("scattered", DataType::Boolean, false),
+///     ])
+/// );
+/// ```
+#[derive(Debug, Clone, Copy, arrow2_convert::ArrowField)]
+pub struct ScalarPlotProps {
+    scattered: bool,
+}
+
+impl Component for ScalarPlotProps {
+    fn name() -> crate::ComponentName {
+        "rerun.scalar_plot_props".into()
     }
 }
