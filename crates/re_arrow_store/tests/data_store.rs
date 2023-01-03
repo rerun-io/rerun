@@ -50,8 +50,7 @@ fn latest_components_at() {
                 ent_path,
             );
 
-            let components = components.map(|components| {
-                let mut components = components.to_vec();
+            let components = components.map(|mut components| {
                 components.sort();
                 components
             });
