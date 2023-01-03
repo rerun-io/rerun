@@ -21,6 +21,7 @@ pub struct LineSegments2DPart;
 
 impl ScenePart for LineSegments2DPart {
     fn load(
+        &self,
         scene: &mut SceneSpatial,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
@@ -28,7 +29,7 @@ impl ScenePart for LineSegments2DPart {
         objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
-        crate::profile_function!();
+        crate::profile_scope!("LineSegments2DPart");
 
         // TODO(andreas): Workaround for unstable z index when interacting on images.
         //                See also https://github.com/rerun-io/rerun/issues/647

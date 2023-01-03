@@ -192,19 +192,31 @@ pub struct MsgBundle {
 }
 
 impl MsgBundle {
-    /// Create a new `MsgBundle` with a pre-build Vec of [`ComponentBundle`] components.
+    /// Create a new `MsgBundle` with a pre-built Vec of [`ComponentBundle`] components.
+    ///
+    /// The `MsgId` will automatically be appended as a component to the given `bundles`, allowing
+    /// the backend to keep track of the origin of any row of data.
     pub fn new(
         msg_id: MsgId,
         obj_path: ObjPath,
         time_point: TimePoint,
-        bundles: Vec<ComponentBundle>,
+        components: Vec<ComponentBundle>,
     ) -> Self {
-        Self {
+        let mut this = Self {
             msg_id,
             obj_path,
             time_point,
-            components: bundles,
-        }
+            components,
+        };
+
+        // Since we don't yet support splats, we need to craft an array of `MsgId`s that matches
+        // the length of the other components.
+        //
+        // TODO(#440): support splats & remove this hack.
+        this.components
+            .push(vec![msg_id; this.row_len(0)].try_into().unwrap());
+
+        this
     }
 
     /// Try to append a collection of `Component` onto the `MessageBundle`.
@@ -228,6 +240,50 @@ impl MsgBundle {
 
         self.components.push(bundle);
         Ok(())
+    }
+
+    /// Returns the length of a specific row within the bundle, i.e. the row's _number of
+    /// instances_.
+    ///
+    /// Panics if `row_nr` is out of bounds.
+    pub fn row_len(&self, row_nr: usize) -> usize {
+        // TODO(#440): won't be able to pick any component randomly once we support splats!
+        self.components.first().map_or(0, |bundle| {
+            let offsets = bundle
+                .value
+                .as_any()
+                .downcast_ref::<ListArray<i32>>()
+                .unwrap()
+                .offsets();
+            (offsets[row_nr + 1] - offsets[row_nr]) as usize
+        })
+    }
+
+    /// Returns the length of the bundle, i.e. its _number of rows_.
+    pub fn len(&self) -> usize {
+        // TODO(#440): won't be able to pick any component randomly once we support splats!
+        self.components.first().map_or(0, |bundle| {
+            bundle
+                .value
+                .as_any()
+                .downcast_ref::<ListArray<i32>>()
+                .unwrap()
+                .len()
+        })
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    /// Returns the index of `component` in the bundle, if it exists.
+    ///
+    /// This is `O(n)`.
+    pub fn find_component(&self, component: &ComponentName) -> Option<usize> {
+        self.components
+            .iter()
+            .map(|bundle| bundle.name)
+            .position(|name| name == *component)
     }
 }
 

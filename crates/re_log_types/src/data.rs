@@ -686,6 +686,7 @@ pub struct Pinhole {
 
 impl Pinhole {
     /// Field of View on the Y axis, i.e. the angle between top and bottom (in radians).
+    #[inline]
     pub fn fov_y(&self) -> Option<f32> {
         self.resolution
             .map(|resolution| 2.0 * (0.5 * resolution[1] / self.image_from_cam[1][1]).atan())
@@ -694,12 +695,14 @@ impl Pinhole {
     /// X & Y focal length in pixels.
     ///
     /// [see definition of intrinsic matrix](https://en.wikipedia.org/wiki/Camera_resectioning#Intrinsic_parameters)
+    #[inline]
     #[cfg(feature = "glam")]
     pub fn focal_length_in_pixels(&self) -> glam::Vec2 {
         glam::vec2(self.image_from_cam[0][0], self.image_from_cam[1][1])
     }
 
     /// Focal length.
+    #[inline]
     pub fn focal_length(&self) -> Option<f32> {
         self.resolution.map(|r| self.image_from_cam[0][0] / r[0])
     }
@@ -710,8 +713,20 @@ impl Pinhole {
     /// [see definition of intrinsic matrix](https://en.wikipedia.org/wiki/Camera_resectioning#Intrinsic_parameters)
     #[cfg(feature = "glam")]
     #[inline]
+    #[cfg(feature = "glam")]
     pub fn principal_point(&self) -> glam::Vec2 {
         glam::vec2(self.image_from_cam[2][0], self.image_from_cam[2][1])
+    }
+
+    #[inline]
+    #[cfg(feature = "glam")]
+    pub fn resolution(&self) -> Option<glam::Vec2> {
+        self.resolution.map(|r| glam::vec2(r[0], r[1]))
+    }
+
+    #[inline]
+    pub fn aspect_ratio(&self) -> f32 {
+        self.image_from_cam[0][0] / self.image_from_cam[1][1]
     }
 }
 
@@ -901,7 +916,7 @@ impl std::fmt::Display for TensorDataType {
 pub enum TensorDataMeaning {
     /// Default behavior: guess based on shape
     Unknown,
-    /// The data is an annotated [`crate::context::ClassId`] which should be
+    /// The data is an annotated [`crate::field_types::ClassId`] which should be
     /// looked up using the appropriate [`crate::context::AnnotationContext`]
     ClassId,
 }

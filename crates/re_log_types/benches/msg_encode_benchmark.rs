@@ -132,7 +132,7 @@ fn mono_points_arrow(c: &mut Criterion) {
                 try_build_msg_bundle2(
                     MsgId::ZERO,
                     obj_path!("points", Index::Sequence(i as _)),
-                    [build_frame_nr(0)],
+                    [build_frame_nr(0.into())],
                     (build_some_point2d(1), build_some_colors(1)),
                 )
                 .unwrap()
@@ -242,7 +242,7 @@ fn batch_points_arrow(c: &mut Criterion) {
         vec![try_build_msg_bundle2(
             MsgId::ZERO,
             obj_path!("points"),
-            [build_frame_nr(0)],
+            [build_frame_nr(0.into())],
             (
                 build_some_point2d(NUM_POINTS),
                 build_some_colors(NUM_POINTS),

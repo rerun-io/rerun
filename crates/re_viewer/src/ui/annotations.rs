@@ -1,7 +1,8 @@
 use lazy_static::lazy_static;
 use re_data_store::{FieldName, ObjPath, TimeQuery};
 use re_log_types::{
-    context::{AnnotationInfo, ClassDescription, ClassId, KeypointId},
+    context::{AnnotationInfo, ClassDescription},
+    field_types::{ClassId, KeypointId},
     AnnotationContext, DataPath, MsgId,
 };
 use std::{collections::BTreeMap, sync::Arc};
