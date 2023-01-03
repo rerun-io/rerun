@@ -216,9 +216,6 @@ impl MsgBundle {
         this.components
             .push(vec![msg_id; this.len()].try_into().unwrap());
 
-        // // What the above would look like if we had support for splats.
-        // this.components.push(vec![msg_id].try_into().unwrap());
-
         this
     }
 
