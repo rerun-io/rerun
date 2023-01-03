@@ -11,6 +11,7 @@ use crate::msg_bundle::Component;
 mod color;
 mod instance;
 mod label;
+mod msg_id;
 mod point;
 mod quaternion;
 mod rect;
@@ -20,6 +21,7 @@ mod text_entry;
 pub use color::ColorRGBA;
 pub use instance::Instance;
 pub use label::Label;
+pub use msg_id::MsgId;
 pub use point::{Point2D, Point3D};
 pub use quaternion::Quaternion;
 pub use rect::Rect2D;
@@ -28,10 +30,11 @@ pub use text_entry::TextEntry;
 
 lazy_static! {
     //TODO(john) actully use a run-time type registry
-    static ref FIELDS: [Field; 9] = [
+    static ref FIELDS: [Field; 10] = [
         <ColorRGBA as Component>::field(),
         <Instance as Component>::field(),
         <Label as Component>::field(),
+        <MsgId as Component>::field(),
         <Point2D as Component>::field(),
         <Point3D as Component>::field(),
         <Quaternion as Component>::field(),

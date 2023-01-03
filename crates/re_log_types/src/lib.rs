@@ -45,16 +45,17 @@ pub mod external {
     pub use arrow2_convert;
 }
 
+pub use self::context::AnnotationContext;
+pub use self::coordinates::ViewCoordinates;
+pub use self::data::*;
+pub use self::field_types::MsgId;
+pub use self::index::*;
+pub use self::objects::ObjectType;
+pub use self::path::*;
+pub use self::time::{Duration, Time};
+pub use self::time_point::{TimeInt, TimePoint, TimeType, Timeline, TimelineName};
 pub use self::time_range::{TimeRange, TimeRangeF};
 pub use self::time_real::TimeReal;
-pub use context::AnnotationContext;
-pub use coordinates::ViewCoordinates;
-pub use data::*;
-pub use index::*;
-pub use objects::ObjectType;
-pub use path::*;
-pub use time::{Duration, Time};
-pub use time_point::{TimeInt, TimePoint, TimeType, Timeline, TimelineName};
 
 pub type ComponentName = FieldName;
 
@@ -68,83 +69,6 @@ macro_rules! impl_into_enum {
             }
         }
     };
-}
-
-// ----------------------------------------------------------------------------
-
-use arrow2_convert::{
-    arrow_enable_vec_for_type, deserialize::ArrowDeserialize, field::ArrowField,
-    serialize::ArrowSerialize,
-};
-
-/// A unique id per [`LogMsg`].
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct MsgId(re_tuid::Tuid);
-
-impl std::fmt::Display for MsgId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:x}", self.0.as_u128())
-    }
-}
-
-impl MsgId {
-    /// All zeroes.
-    pub const ZERO: Self = Self(re_tuid::Tuid::ZERO);
-
-    /// All ones.
-    pub const MAX: Self = Self(re_tuid::Tuid::MAX);
-
-    #[inline]
-    #[cfg(not(target_arch = "wasm32"))]
-    pub fn random() -> Self {
-        Self(re_tuid::Tuid::random())
-    }
-
-    #[inline]
-    pub fn as_u128(&self) -> u128 {
-        self.0.as_u128()
-    }
-}
-
-arrow_enable_vec_for_type!(MsgId);
-
-impl ArrowField for MsgId {
-    type Type = Self;
-    fn data_type() -> arrow2::datatypes::DataType {
-        <re_tuid::Tuid as ArrowField>::data_type()
-    }
-}
-
-impl ArrowSerialize for MsgId {
-    type MutableArrayType = <re_tuid::Tuid as ArrowSerialize>::MutableArrayType;
-
-    #[inline]
-    fn new_array() -> Self::MutableArrayType {
-        <re_tuid::Tuid as ArrowSerialize>::new_array()
-    }
-
-    #[inline]
-    fn arrow_serialize(v: &Self, array: &mut Self::MutableArrayType) -> arrow2::error::Result<()> {
-        <re_tuid::Tuid as ArrowSerialize>::arrow_serialize(&v.0, array)
-    }
-}
-
-impl ArrowDeserialize for MsgId {
-    type ArrayType = <re_tuid::Tuid as ArrowDeserialize>::ArrayType;
-
-    #[inline]
-    fn arrow_deserialize(
-        v: <&Self::ArrayType as IntoIterator>::Item,
-    ) -> Option<<Self as ArrowField>::Type> {
-        <re_tuid::Tuid as ArrowDeserialize>::arrow_deserialize(v).map(MsgId)
-    }
-}
-
-impl msg_bundle::Component for MsgId {
-    fn name() -> crate::ComponentName {
-        "rerun.msg_id".into()
-    }
 }
 
 // ----------------------------------------------------------------------------

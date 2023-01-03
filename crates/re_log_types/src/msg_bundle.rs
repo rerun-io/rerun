@@ -192,14 +192,20 @@ pub struct MsgBundle {
 }
 
 impl MsgBundle {
-    /// Create a new `MsgBundle` with a pre-build Vec of [`ComponentBundle`] components.
+    /// Create a new `MsgBundle` with a pre-built Vec of [`ComponentBundle`] components.
+    ///
+    /// The `MsgId` will automatically be appended as a component to the given `bundles`, allowing
+    /// the backend to keep track of the origin of any row of data.
     pub fn new(
         msg_id: MsgId,
         obj_path: ObjPath,
         time_point: TimePoint,
         mut bundles: Vec<ComponentBundle>,
     ) -> Self {
-        // TODO(#440): just a crappy hack while we set up splats.
+        // Since we don't yet support splats, we need to craft an array of `MsgId`s that matches
+        // the length of the other components.
+        //
+        // TODO(#440): support splats & remove this hack.
         if let Some(bundle) = bundles.first() {
             let offsets = bundle
                 .value
@@ -212,8 +218,7 @@ impl MsgBundle {
             bundles.push(msg_ids);
         }
 
-        // What the above would look like if we had support for splats.
-        //
+        // // What the above would look like if we had support for splats.
         // {
         //     let msg_ids: ComponentBundle = vec![msg_id].try_into().unwrap();
         //     bundles.push(msg_ids);
