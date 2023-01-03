@@ -21,10 +21,12 @@ use crate::{
     },
 };
 
+mod picking;
 mod primitives;
 mod scene_part;
 
-pub use self::primitives::{AdditionalPickingInfo, PickingRayHit, SceneSpatialPrimitives};
+pub use self::picking::{AdditionalPickingInfo, PickingRayHit, PickingResult};
+pub use self::primitives::SceneSpatialPrimitives;
 use scene_part::ScenePart;
 
 // ----------------------------------------------------------------------------
@@ -385,6 +387,15 @@ impl SceneSpatial {
         } else {
             SpatialNavigationMode::ThreeD
         }
+    }
+
+    pub fn picking(
+        &self,
+        pointer_in_ui: glam::Vec2,
+        ui_rect: &egui::Rect,
+        eye: &Eye,
+    ) -> PickingResult {
+        picking::picking(pointer_in_ui, ui_rect, eye, &self.primitives, &self.ui)
     }
 }
 

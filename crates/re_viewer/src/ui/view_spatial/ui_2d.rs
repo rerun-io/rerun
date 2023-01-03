@@ -316,14 +316,13 @@ fn view_2d_scrollable(
         let pointer_pos_space = space_from_ui.transform_pos(pointer_pos_ui);
         let pointer_pos_space_glam = glam::vec2(pointer_pos_space.x, pointer_pos_space.y);
 
-        let picking_result = scene.primitives.picking(
+        let picking_result = scene.picking(
             pointer_pos_space_glam,
             &scene_rect_accum,
             &Eye {
                 world_from_view: IsoTransform::IDENTITY,
                 fov_y: None,
             },
-            &scene.ui.rects,
         );
 
         for hit in picking_result.iter_hits() {
