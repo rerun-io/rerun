@@ -73,10 +73,6 @@ impl ScenePart for Boxes2DPartClassic {
                 let color = annotation_info.color(color, DefaultColor::ObjPath(obj_path));
                 let label = annotation_info.label(label);
 
-                // Hovering with a rect.
-                let rect = egui::Rect::from_min_max(bbox.min.into(), bbox.max.into());
-                scene.ui.pickable_ui_rects.push((rect, instance_hash));
-
                 let mut paint_props = paint_properties(color, stroke_width);
                 if instance_hash.is_some() && hovered_instance == instance_hash {
                     apply_hover_effect(&mut paint_props);
@@ -97,7 +93,10 @@ impl ScenePart for Boxes2DPartClassic {
                     scene.ui.labels_2d.push(Label2D {
                         text: label,
                         color: paint_props.fg_stroke.color,
-                        target: Label2DTarget::Rect(rect),
+                        target: Label2DTarget::Rect(egui::Rect::from_min_max(
+                            bbox.min.into(),
+                            bbox.max.into(),
+                        )),
                         labled_instance: instance_hash,
                     });
                 }
@@ -141,11 +140,6 @@ impl Boxes2DPart {
         let color = annotation_info.color(color.as_ref(), DefaultColor::ObjPath(obj_path));
         let label = annotation_info.label(label);
 
-        // Hovering with a rect.
-        let hover_rect =
-            egui::Rect::from_min_size(egui::pos2(rect.x, rect.y), egui::vec2(rect.w, rect.h));
-        scene.ui.pickable_ui_rects.push((hover_rect, instance));
-
         let mut paint_props = paint_properties(color, stroke_width);
         if hovered_instance == instance {
             apply_hover_effect(&mut paint_props);
@@ -180,7 +174,10 @@ impl Boxes2DPart {
             scene.ui.labels_2d.push(Label2D {
                 text: label,
                 color: paint_props.fg_stroke.color,
-                target: Label2DTarget::Rect(hover_rect),
+                target: Label2DTarget::Rect(egui::Rect::from_min_size(
+                    egui::pos2(rect.x, rect.y),
+                    egui::vec2(rect.w, rect.h),
+                )),
                 labled_instance: instance,
             });
         }
