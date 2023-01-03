@@ -15,9 +15,10 @@ pub struct SceneSpatialPrimitives {
     /// Estimated bounding box of all data in scene coordinates. Accumulated.
     pub(super) bounding_box: macaw::BoundingBox,
 
-    // TODO: should we store metadata on renderer? probably not future proof for upcoming changes.
-    pub textured_rectangles: Vec<re_renderer::renderer::TexturedRect>,
+    // TODO(andreas): Storing extra data like so is unsafe and not future proof either
+    //                (see also above comment on the need to separate cpu-readable data)
     pub textured_rectangles_ids: Vec<InstanceIdHash>,
+    pub textured_rectangles: Vec<re_renderer::renderer::TexturedRect>,
 
     pub line_strips: LineStripSeriesBuilder<InstanceIdHash>,
     pub points: PointCloudBuilder<InstanceIdHash>,

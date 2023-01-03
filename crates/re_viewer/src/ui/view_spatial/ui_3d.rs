@@ -378,21 +378,23 @@ pub fn view_3d(
     // TODO(andreas): We're very close making the hover reaction of ui2d and ui3d the same. Finish the job!
     *hovered_instance = None;
     if let Some(pointer_pos) = response.hover_pos() {
-        let picking_result = scene.picking(glam::vec2(pointer_pos.x, pointer_pos.y), &rect, &eye);
+        let picking_result =
+            scene.picking(glam::vec2(pointer_pos.x, pointer_pos.y), &rect, &eye, 5.0);
 
         for hit in picking_result.iter_hits() {
             let Some(instance_id) = hit.instance_hash.resolve(&ctx.log_db.obj_db)
             else { continue; };
 
             // Special hover ui for images.
-            let picked_image_with_uv = match hit.info {
-                AdditionalPickingInfo::None => None,
-                AdditionalPickingInfo::TexturedRect(uv) => scene
+            let picked_image_with_uv = if let AdditionalPickingInfo::TexturedRect(uv) = hit.info {
+                scene
                     .ui
                     .images
                     .iter()
                     .find(|image| image.instance_hash == hit.instance_hash)
-                    .map(|image| (image, uv)),
+                    .map(|image| (image, uv))
+            } else {
+                None
             };
             response = if let Some((image, uv)) = picked_image_with_uv {
                 response

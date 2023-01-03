@@ -75,7 +75,7 @@ impl ScenePart for Boxes2DPartClassic {
 
                 // Hovering with a rect.
                 let rect = egui::Rect::from_min_max(bbox.min.into(), bbox.max.into());
-                scene.ui.rects.push((rect, instance_hash));
+                scene.ui.pickable_ui_rects.push((rect, instance_hash));
 
                 let mut paint_props = paint_properties(color, stroke_width);
                 if instance_hash.is_some() && hovered_instance == instance_hash {
@@ -144,7 +144,7 @@ impl Boxes2DPart {
         // Hovering with a rect.
         let hover_rect =
             egui::Rect::from_min_size(egui::pos2(rect.x, rect.y), egui::vec2(rect.w, rect.h));
-        scene.ui.rects.push((hover_rect, instance));
+        scene.ui.pickable_ui_rects.push((hover_rect, instance));
 
         let mut paint_props = paint_properties(color, stroke_width);
         if hovered_instance == instance {

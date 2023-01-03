@@ -311,18 +311,16 @@ fn view_2d_scrollable(
     *hovered_instance = None;
     let mut depth_at_pointer = None;
     if let Some(pointer_pos_ui) = response.hover_pos() {
-        // All hover primitives have their coordinates in space units.
-        // Transform the pointer pos so we don't have to transform anything else!
         let pointer_pos_space = space_from_ui.transform_pos(pointer_pos_ui);
-        let pointer_pos_space_glam = glam::vec2(pointer_pos_space.x, pointer_pos_space.y);
-
+        let hover_radius = space_from_ui.scale().y * 5.0; // TODO(emilk): from egui?
         let picking_result = scene.picking(
-            pointer_pos_space_glam,
+            glam::vec2(pointer_pos_space.x, pointer_pos_space.y),
             &scene_rect_accum,
             &Eye {
                 world_from_view: IsoTransform::IDENTITY,
                 fov_y: None,
             },
+            hover_radius,
         );
 
         for hit in picking_result.iter_hits() {
@@ -330,15 +328,17 @@ fn view_2d_scrollable(
             else { continue; };
 
             // Special hover ui for images.
-            let picked_image_with_uv = match hit.info {
-                AdditionalPickingInfo::None => None,
-                AdditionalPickingInfo::TexturedRect(uv) => scene
+            let picked_image_with_uv = if let AdditionalPickingInfo::TexturedRect(uv) = hit.info {
+                scene
                     .ui
                     .images
                     .iter()
                     .find(|image| image.instance_hash == hit.instance_hash)
-                    .map(|image| (image, uv)),
+                    .map(|image| (image, uv))
+            } else {
+                None
             };
+            // TODO: use uv
             response = if let Some((image, _uv)) = picked_image_with_uv {
                 // TODO(andreas): This is different in 3d view.
                 if let Some(meter) = image.meter {
@@ -513,7 +513,7 @@ fn create_labels(
 
         scene
             .ui
-            .rects
+            .pickable_ui_rects
             .push((space_from_ui.transform_rect(bg_rect), label.labled_instance));
     }
 

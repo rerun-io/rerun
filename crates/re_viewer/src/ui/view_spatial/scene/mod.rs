@@ -82,7 +82,7 @@ pub enum Label2DTarget {
 pub struct Label2D {
     pub text: String,
     pub color: Color32,
-    /// The shape being labled.
+    /// The shape being labeled.
     pub target: Label2DTarget,
     /// What is hovered if this label is hovered.
     pub labled_instance: InstanceIdHash,
@@ -105,8 +105,9 @@ pub struct SceneSpatialUiData {
     pub labels_3d: Vec<Label3D>,
     pub labels_2d: Vec<Label2D>,
 
-    /// Cursor within any of these rects cause the referred instance to be hovered.
-    pub rects: Vec<(egui::Rect, InstanceIdHash)>,
+    /// Picking any any of these rects cause the referred instance to be hovered.
+    /// Only use this for 2d overlays!
+    pub pickable_ui_rects: Vec<(egui::Rect, InstanceIdHash)>,
 
     /// Images are a special case of rects where we're storing some extra information to allow miniature previews etc.
     pub images: Vec<Image>,
@@ -394,8 +395,16 @@ impl SceneSpatial {
         pointer_in_ui: glam::Vec2,
         ui_rect: &egui::Rect,
         eye: &Eye,
+        ui_interaction_radius: f32,
     ) -> PickingResult {
-        picking::picking(pointer_in_ui, ui_rect, eye, &self.primitives, &self.ui)
+        picking::picking(
+            pointer_in_ui,
+            ui_rect,
+            eye,
+            &self.primitives,
+            &self.ui,
+            ui_interaction_radius,
+        )
     }
 }
 

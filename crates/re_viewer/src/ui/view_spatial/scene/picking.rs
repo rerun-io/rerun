@@ -13,6 +13,8 @@ pub enum AdditionalPickingInfo {
     None,
     /// The hit was a textured rect at the given uv coordinates (ranging from 0 to 1)
     TexturedRect(glam::Vec2),
+    /// We hit a egui ui element, meaning that depth information is not usable.
+    GuiOverlay,
 }
 
 pub struct PickingRayHit {
@@ -86,6 +88,7 @@ pub fn picking(
     eye: &Eye,
     primitives: &SceneSpatialPrimitives,
     ui_data: &SceneSpatialUiData,
+    ui_interaction_radius: f32,
 ) -> PickingResult {
     crate::profile_function!();
 
@@ -102,7 +105,7 @@ pub fn picking(
     } = primitives;
 
     // in ui points
-    let max_side_ui_dist_sq = 5.0 * 5.0; // TODO(emilk): interaction radius from egui
+    let max_side_ui_dist_sq = ui_interaction_radius * ui_interaction_radius; // TODO(emilk): interaction radius from egui
     let mut closest_opaque_side_ui_dist_sq = max_side_ui_dist_sq;
     let mut closest_opqaue_pick = PickingRayHit {
         instance_hash: InstanceIdHash::NONE,
@@ -111,7 +114,7 @@ pub fn picking(
     };
     let mut transparent_hits = Vec::new(); // Combined, sorted (and partially "hidden") by opaque results later.
 
-    let mut add_hit = |side_ui_dist_sq, ray_hit: PickingRayHit, transparent| {
+    let mut check_hit = |side_ui_dist_sq, ray_hit: PickingRayHit, transparent| {
         if ray_hit.ray_t < closest_opqaue_pick.ray_t
             && side_ui_dist_sq <= closest_opaque_side_ui_dist_sq
         {
@@ -143,7 +146,7 @@ pub fn picking(
                 if dist_sq <= max_side_ui_dist_sq {
                     let t = ray_in_world
                         .closest_t_to_point(batch.world_from_obj.transform_point3(point.position));
-                    add_hit(
+                    check_hit(
                         dist_sq,
                         PickingRayHit::from_instance_and_t(*instance_hash, t),
                         false,
@@ -185,7 +188,7 @@ pub fn picking(
                     let end_world = batch.world_from_obj.transform_point3(end.position);
                     let t = ray_closet_t_line_segment(&ray_in_world, [start_world, end_world]);
 
-                    add_hit(
+                    check_hit(
                         side_ui_dist_sq,
                         PickingRayHit::from_instance_and_t(instance_hash, t),
                         false,
@@ -206,7 +209,7 @@ pub fn picking(
 
             if t < 0.0 {
                 let side_ui_dist_sq = 0.0;
-                add_hit(
+                check_hit(
                     side_ui_dist_sq,
                     PickingRayHit::from_instance_and_t(mesh.instance_hash, t),
                     false,
@@ -246,29 +249,26 @@ pub fn picking(
                     ray_t: t,
                     info: AdditionalPickingInfo::TexturedRect(glam::vec2(u, v)),
                 };
-                add_hit(0.0, picking_hit, rect.multiplicative_tint.a() < 1.0);
+                check_hit(0.0, picking_hit, rect.multiplicative_tint.a() < 1.0);
             }
         }
     }
 
-    // TODO(andreas): This doesn't make sense anymore in this framework as it is limited to pure 2d views.
     {
-        crate::profile_scope!("2d rectangles");
-        let mut check_hovering = |instance_hash, dist_sq: f32| {
-            if dist_sq <= closest_opaque_side_ui_dist_sq {
-                closest_opaque_side_ui_dist_sq = dist_sq;
-                closest_opqaue_pick = PickingRayHit {
-                    instance_hash,
-                    ray_t: 0.0,
-                    info: AdditionalPickingInfo::None,
-                };
-            }
-        };
-        let pointer_pos2d = ray_in_world.origin.truncate();
-        let pointer_pos2d = egui::pos2(pointer_pos2d.x, pointer_pos2d.y);
+        crate::profile_scope!("ui rectangles");
+        let egui_pos = egui::pos2(pointer_in_ui.x, pointer_in_ui.y);
 
-        for (bbox, instance_hash) in &ui_data.rects {
-            check_hovering(*instance_hash, bbox.distance_sq_to_pos(pointer_pos2d));
+        for (bbox, instance_hash) in &ui_data.pickable_ui_rects {
+            let side_ui_dist_sq = bbox.distance_sq_to_pos(egui_pos);
+            check_hit(
+                side_ui_dist_sq,
+                PickingRayHit {
+                    instance_hash: *instance_hash,
+                    ray_t: 0.0,
+                    info: AdditionalPickingInfo::GuiOverlay,
+                },
+                false,
+            );
         }
     }
 
