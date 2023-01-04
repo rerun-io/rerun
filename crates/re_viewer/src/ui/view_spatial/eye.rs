@@ -81,11 +81,15 @@ impl Eye {
     /// Picking ray for a given pointer in the parent space
     /// (i.e. prior to camera transform, "world" space)
     pub fn picking_ray(&self, screen_rect: &Rect, pointer: glam::Vec2) -> macaw::Ray3 {
-        if self.is_perspective() {
+        if let Some(fov_y) = self.fov_y {
+            let (w, h) = (screen_rect.width(), screen_rect.height());
+            let aspect_ratio = w / h;
+            let f = (fov_y * 0.5).tan();
+            let px = (2.0 * (pointer.x - screen_rect.left()) / w - 1.0) * f * aspect_ratio;
+            let py = (1.0 - 2.0 * (pointer.y - screen_rect.top()) / h) * f;
             let ray_dir = self
-                .world_from_ui(screen_rect)
-                .project_point3(glam::Vec3::new(pointer.x, pointer.y, -1.0))
-                - self.pos_in_world();
+                .world_from_view
+                .transform_vector3(glam::vec3(px, py, -1.0));
             macaw::Ray3::from_origin_dir(self.pos_in_world(), ray_dir.normalize())
         } else {
             // The ray originates on the camera plane, not from the camera position
@@ -97,10 +101,6 @@ impl Eye {
 
             macaw::Ray3::from_origin_dir(origin, ray_dir)
         }
-    }
-
-    pub fn world_from_ui(&self, rect: &Rect) -> Mat4 {
-        self.ui_from_world(rect).inverse()
     }
 
     pub fn pos_in_world(&self) -> glam::Vec3 {
