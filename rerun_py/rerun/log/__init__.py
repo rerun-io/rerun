@@ -15,6 +15,7 @@ __all__ = [
     "arrow",
     "bounding_box",
     "camera",
+    "error_utils",
     "file",
     "image",
     "lines",
