@@ -4038,6 +4038,7 @@ dependencies = [
  "mimalloc",
  "nohash-hasher",
  "once_cell",
+ "rand",
  "re_error",
  "re_log",
  "re_log_types",

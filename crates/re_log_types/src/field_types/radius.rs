@@ -14,7 +14,7 @@ use crate::msg_bundle::Component;
 ///
 /// assert_eq!(Radius::data_type(), DataType::Float32);
 /// ```
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, derive_more::From, derive_more::Into)]
 pub struct Radius(pub f32);
 
 arrow_enable_vec_for_type!(Radius);
