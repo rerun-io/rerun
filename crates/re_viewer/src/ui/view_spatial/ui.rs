@@ -1,3 +1,4 @@
+use cgmath::num_traits::Pow;
 use egui::{NumExt, WidgetText};
 use macaw::BoundingBox;
 use re_data_store::{InstanceId, InstanceIdHash, ObjPath, ObjectsProperties};
@@ -86,28 +87,37 @@ impl ViewSpatialState {
         self.auto_size_config
             .unwrap_or_else(|| match self.nav_mode {
                 SpatialNavigationMode::TwoD => {
-                    re_renderer::Size::new_points(self.default_auto_size_points())
+                    re_renderer::Size::new_points(self.auto_size_points_heuristic())
                 }
                 SpatialNavigationMode::ThreeD => {
-                    re_renderer::Size::new_scene(self.default_auto_size_world())
+                    re_renderer::Size::new_scene(self.auto_size_world_heuristic())
                 }
             })
     }
 
     #[allow(clippy::unused_self)]
-    fn default_auto_size_points(&self) -> f32 {
+    fn auto_size_points_heuristic(&self) -> f32 {
         2.0 // TODO(andreas): Screen size dependent?
     }
 
-    fn default_auto_size_world(&self) -> f32 {
+    fn auto_size_world_heuristic(&self) -> f32 {
         if self.scene_bbox_accum.is_nothing() || self.scene_bbox_accum.is_nan() {
             return 0.01;
         }
 
+        // Motivation: Size should be proportional to the scene extent, here covered by its diagonal
         let diagonal_length = (self.scene_bbox_accum.max - self.scene_bbox_accum.min).length();
+        let heuristic0 = diagonal_length * 0.001;
 
-        let heuristic0 = diagonal_length * 0.005;
-        let heuristic1 = 3.0 * diagonal_length / (self.scene_num_primitives.at_least(1) as f32);
+        // Motivation: A lot of times we look at the entire scene and expect to see everything on a flat screen with some gaps between.
+        let size = self.scene_bbox_accum.size();
+        let mut sorted_components = size.to_array();
+        sorted_components.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        // Median is more robust against outlier in one direction (as such pretty pour still though)
+        let median_extent = sorted_components[1];
+        // sqrt would make more sense but using a smaller root works better in practice.
+        let heuristic1 =
+            (median_extent / (self.scene_num_primitives.at_least(1) as f32).pow(1.0 / 1.8)) * 0.1;
 
         heuristic0.min(heuristic1)
     }
@@ -125,7 +135,7 @@ impl ViewSpatialState {
                         (
                             size.0.abs(),
                             AutoSizeUnit::World,
-                            self.default_auto_size_world() * 0.01,
+                            self.auto_size_world_heuristic() * 0.01,
                         )
                     }
                 }
@@ -164,11 +174,11 @@ impl ViewSpatialState {
                 self.auto_size_config = match mode {
                     AutoSizeUnit::Auto => None,
                     AutoSizeUnit::UiPoints => Some(re_renderer::Size::new_points(
-                        self.default_auto_size_points(),
+                        self.auto_size_points_heuristic(),
                     )),
-                    AutoSizeUnit::World => {
-                        Some(re_renderer::Size::new_scene(self.default_auto_size_world()))
-                    }
+                    AutoSizeUnit::World => Some(re_renderer::Size::new_scene(
+                        self.auto_size_world_heuristic(),
+                    )),
                 }
             }
         })
