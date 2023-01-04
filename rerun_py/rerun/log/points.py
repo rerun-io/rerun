@@ -184,9 +184,15 @@ def log_points(
                 raise TypeError("Positions should be either Nx2 or Nx3")
 
         if len(colors):
-            comps["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
+            # TODO(jleibs) remove once we have storage-side splats
+            if len(colors.shape) == 1:
+                colors = np.broadcast_to(colors.reshape(1, len(colors)), (len(positions), len(colors)))
+            comps["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)  # type: ignore[arg-type]
 
         if len(radii):
+            # TODO(jleibs) remove once we have storage-side splats
+            if len(radii) == 1:
+                radii = np.broadcast_to(radii, (len(positions),))
             comps["rerun.radius"] = RadiusArray.from_numpy(radii)
 
         if labels:
