@@ -7,6 +7,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use arrow2::array::{Array, UInt64Array};
 use nohash_hasher::IntMap;
 use polars_core::{prelude::*, series::Series};
+use polars_ops::prelude::DataFrameJoinOps;
 use re_arrow_store::{
     polars_util, test_bundle, DataStore, DataStoreConfig, LatestAtQuery, RangeQuery, TimeInt,
     TimeRange,

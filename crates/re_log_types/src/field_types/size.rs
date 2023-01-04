@@ -1,8 +1,8 @@
-use arrow2_convert::ArrowField;
+use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 
 use crate::msg_bundle::Component;
 
-#[derive(Debug, ArrowField)]
+#[derive(Debug, ArrowField, ArrowSerialize, ArrowDeserialize)]
 pub struct Size3D {
     pub x: f32,
     pub y: f32,
