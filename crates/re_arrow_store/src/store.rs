@@ -16,6 +16,11 @@ use re_log_types::{
 
 // --- Indices & offsets ---
 
+pub enum RowIndexUUU {
+    Temporal(RowIndex),
+    Timeless(RowIndex),
+}
+
 /// A vector of times. Our primary column, always densely filled.
 pub type TimeIndex = Vec<i64>;
 
@@ -213,6 +218,8 @@ pub struct DataStore {
     /// `BTreeMap` because of garbage collection.
     pub(crate) messages: BTreeMap<MsgId, TimePoint>,
 
+    // TODO: in general, explain why timeless vs. vanilla are completely separate (GC, row
+    // indices..)
     /// Maps an entity to its index, for a specific timeline.
     ///
     /// An index maps specific points in time to rows in component tables.

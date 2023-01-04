@@ -10,7 +10,7 @@ use re_log_types::{ComponentName, ObjPath as EntityPath, TimeInt, TimeRange, Tim
 
 use crate::{
     ComponentBucket, ComponentTable, DataStore, IndexBucket, IndexBucketIndices, IndexRowNr,
-    IndexTable, RowIndex, SecondaryIndex,
+    IndexTable, PersistentComponentTable, PersistentIndexTable, RowIndex, SecondaryIndex,
 };
 
 // --- Queries ---
@@ -167,7 +167,7 @@ impl DataStore {
         ent_path: &EntityPath,
         primary: ComponentName,
         components: &[ComponentName; N],
-    ) -> Option<[Option<RowIndex>; N]> {
+    ) -> Option<[Option<RowIndexUUU>; N]> {
         // TODO(cmc): kind & query_id need to somehow propagate through the span system.
         self.query_id.fetch_add(1, Ordering::Relaxed);
 
@@ -192,6 +192,24 @@ impl DataStore {
                     %primary,
                     ?components,
                     ?row_indices,
+                    timeless = false,
+                    "row indices fetched"
+                );
+                return row_indices;
+            }
+        }
+
+        // TODO: prob gonna need some doc update here...
+        if let Some(index) = self.timeless_indices.get(ent_path_hash) {
+            if let row_indices @ Some(_) = index.latest_at(primary, components) {
+                trace!(
+                    kind = "latest_at",
+                    query = ?query,
+                    entity = %ent_path,
+                    %primary,
+                    ?components,
+                    ?row_indices,
+                    timeless = true,
                     "row indices fetched"
                 );
                 return row_indices;
@@ -320,12 +338,24 @@ impl DataStore {
             "query started..."
         );
 
+        let timeless_index = self.timeless_indices.get(ent_path_hash);
         let index = self.indices.get(&(query.timeline, *ent_path_hash));
 
-        index
-            .map(|index| index.range(query.range, components))
+        timeless_index
+            .map(|index| {
+                index
+                    .range(components)
+                    // TODO: need to return timepoints now
+                    .map(|(idx_row_nr, row_indices)| (i64::MIN.into(), idx_row_nr, row_indices))
+            })
             .into_iter()
             .flatten()
+            .chain(
+                index
+                    .map(|index| index.range(query.range, components))
+                    .into_iter()
+                    .flatten(),
+            )
     }
 
     /// Retrieves the data associated with a list of `components` at the specified `indices`.
@@ -374,6 +404,142 @@ impl DataStore {
         self.indices.iter().map(|((timeline, _), table)| {
             ((*timeline, table.ent_path.clone() /* shallow */), table)
         })
+    }
+}
+
+// --- Persistent Indices ---
+
+impl PersistentIndexTable {
+    /// Returns `None` iff no row index could be found for the `primary` component.
+    pub fn latest_at<const N: usize>(
+        &self,
+        primary: ComponentName,
+        components: &[ComponentName; N],
+    ) -> Option<[Option<RowIndex>; N]> {
+        if self.nb_rows == 0 {
+            return None;
+        }
+
+        // Early-exit if this bucket is unaware of this component.
+        let index = self.indices.get(&primary)?;
+
+        trace!(
+            kind = "latest_at",
+            %primary,
+            ?components,
+            timeless = true,
+            "searching for primary & secondary row indices..."
+        );
+
+        // find the primary index's row.
+        let primary_idx = self.nb_rows - 1;
+
+        trace!(
+            kind = "latest_at",
+            %primary,
+            ?components,
+            %primary_idx,
+            timeless = true,
+            "found primary index",
+        );
+
+        // find the secondary indices' rows, and the associated row indices.
+        let mut secondary_idx = primary_idx as i64;
+        while index[secondary_idx as usize].is_none() {
+            secondary_idx -= 1;
+            if secondary_idx < 0 {
+                trace!(
+                    kind = "latest_at",
+                    %primary,
+                    ?components,
+                    timeless = true,
+                    %primary_idx,
+                    "no secondary index found",
+                );
+                return None;
+            }
+        }
+
+        trace!(
+            kind = "latest_at",
+            %primary,
+            ?components,
+            timeless = true,
+            %primary_idx, %secondary_idx,
+            "found secondary index",
+        );
+        debug_assert!(index[secondary_idx as usize].is_some());
+
+        let mut row_indices = [None; N];
+        for (i, component) in components.iter().enumerate() {
+            if let Some(index) = self.indices.get(component) {
+                if let Some(row_idx) = index[secondary_idx as usize] {
+                    trace!(
+                        kind = "latest_at",
+                        %primary,
+                        %component,
+                        timeless = true,
+                        %primary_idx, %secondary_idx, %row_idx,
+                        "found row index",
+                    );
+                    row_indices[i] = Some(row_idx);
+                }
+            }
+        }
+
+        Some(row_indices)
+    }
+
+    /// Returns an empty iterator if no data could be found for any reason.
+    pub fn range<'a, const N: usize>(
+        &'a self,
+        components: [ComponentName; N],
+    ) -> impl Iterator<Item = (IndexRowNr, [Option<RowIndex>; N])> + 'a {
+        // Early-exit if the table is unaware of any of our components of interest.
+        if components
+            .iter()
+            .all(|component| self.indices.get(component).is_none())
+        {
+            return itertools::Either::Right(std::iter::empty());
+        }
+
+        // TODO(cmc): Cloning these is obviously not great and will need to be addressed at
+        // some point.
+        // But, really, it's not _that_ bad either: these are integers and e.g. with the default
+        // configuration there are only 1024 of them (times the number of components).
+        let comp_indices = self.indices.clone();
+
+        let row_indices = (0..self.nb_rows).filter_map(move |comp_idx_row_nr| {
+            let comp_idx_row_nr = IndexRowNr(comp_idx_row_nr);
+
+            let mut row_indices = [None; N];
+            for (i, component) in components.iter().enumerate() {
+                if let Some(index) = comp_indices.get(component) {
+                    if let row_idx @ Some(_) = index[comp_idx_row_nr.0 as usize] {
+                        row_indices[i] = row_idx;
+                    }
+                }
+            }
+
+            // We only yield rows that contain data for at least one of the components of
+            // interest.
+            if row_indices.iter().all(Option::is_none) {
+                return None;
+            }
+
+            trace!(
+                kind = "range",
+                ?components,
+                timeless = true,
+                %comp_idx_row_nr,
+                ?row_indices,
+                "yielding row indices",
+            );
+
+            Some((comp_idx_row_nr, row_indices))
+        });
+
+        itertools::Either::Left(row_indices)
     }
 }
 
@@ -759,6 +925,7 @@ impl IndexBucket {
         self.indices.read().is_sorted
     }
 
+    // TODO: move to core
     /// Returns an (name, [`Int64Array`]) with a logical type matching the timeline.
     pub fn times(&self) -> (String, Int64Array) {
         let times = Int64Array::from_vec(self.indices.read().times.clone());
@@ -769,6 +936,7 @@ impl IndexBucket {
         (self.timeline.name().to_string(), times.to(logical_type))
     }
 
+    // TODO: move to core
     /// Returns a Vec each of (name, array) for each index in the bucket
     pub fn named_indices(&self) -> (Vec<ComponentName>, Vec<UInt64Array>) {
         self.indices

@@ -24,7 +24,9 @@ pub mod polars_util;
 pub mod test_util;
 
 pub use self::arrow_util::ArrayExt;
-pub use self::store::{DataStore, DataStoreConfig, IndexBucket, IndexRowNr, IndexTable, RowIndex};
+pub use self::store::{
+    DataStore, DataStoreConfig, IndexBucket, IndexRowNr, IndexTable, RowIndex, RowIndexUUU,
+};
 pub use self::store_read::{LatestAtQuery, RangeQuery};
 pub use self::store_write::{WriteError, WriteResult};
 
