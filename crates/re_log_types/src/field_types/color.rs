@@ -15,7 +15,7 @@ use crate::msg_bundle::Component;
 ///
 /// assert_eq!(ColorRGBA::data_type(), DataType::UInt32);
 /// ```
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, derive_more::From, derive_more::Into)]
 pub struct ColorRGBA(pub u32);
 
 impl ColorRGBA {

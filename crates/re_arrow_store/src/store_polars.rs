@@ -1,8 +1,8 @@
 use arrow2::{
     array::{Array, ListArray, UInt64Array, Utf8Array},
     bitmap::Bitmap,
-    buffer::Buffer,
     compute::concatenate::concatenate,
+    offset::Offsets,
 };
 use nohash_hasher::IntMap;
 use polars_core::{functions::diag_concat_df, prelude::*};
@@ -139,19 +139,16 @@ impl IndexBucket {
             let comp_validity: Vec<_> = comp_rows.iter().map(|row| row.is_some()).collect();
 
             // Each cell is actually a list, so we need to compute offsets one cell at a time.
-            let mut offset = 0i32;
-            let comp_offsets: Vec<_> = std::iter::once(0)
-                .chain(comp_rows.iter().map(|row| {
-                    offset += row.as_ref().map_or(0, |row| row.len()) as i32;
-                    offset
-                }))
-                .collect();
+            let comp_lengths = comp_rows
+                .iter()
+                .map(|row| row.as_ref().map_or(0, |row| row.len()));
+
             let comp_values: Vec<_> = comp_rows.iter().flatten().map(|row| row.as_ref()).collect();
 
             // Bring everything together into one big list.
-            let comp_values = ListArray::<i32>::from_data(
+            let comp_values = ListArray::<i32>::new(
                 ListArray::<i32>::default_datatype(comp_table.datatype.clone()),
-                Buffer::from(comp_offsets),
+                Offsets::try_from_lengths(comp_lengths).unwrap().into(),
                 concatenate(comp_values.as_slice()).unwrap().to_boxed(),
                 Some(Bitmap::from(comp_validity)),
             )
