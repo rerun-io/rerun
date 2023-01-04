@@ -165,7 +165,7 @@ dependencies = [
 [[package]]
 name = "arrow2"
 version = "0.15.0"
-source = "git+https://github.com/rerun-io/arrow2?rev=26d1b1139ac3db22c4973772ddb0d30c16027ff6#26d1b1139ac3db22c4973772ddb0d30c16027ff6"
+source = "git+https://github.com/rerun-io/arrow2?rev=f134e58bb554b069392f6bd495aa43aa06b58944#f134e58bb554b069392f6bd495aa43aa06b58944"
 dependencies = [
  "ahash 0.8.2",
  "arrow-format",
