@@ -128,7 +128,7 @@ fn build_lines(re_ctx: &mut RenderContext, seconds_since_startup: f32) -> LineDr
     // Blue spiral, rotating
     builder
         .batch("blue sprial")
-        .world_from_scene(glam::Mat4::from_rotation_x(seconds_since_startup * 10.0))
+        .world_from_obj(glam::Mat4::from_rotation_x(seconds_since_startup * 10.0))
         .add_strip((0..1000).map(|i| {
             glam::vec3(
                 (i as f32 * 0.01).sin() * 2.0,
@@ -258,9 +258,9 @@ impl Example for Multiview {
             PointCloudBuilder::<()>::new(re_ctx, self.random_points.len(), 1);
         point_cloud_builder
             .batch("Random points")
-            .world_from_scene(glam::Mat4::from_rotation_x(seconds_since_startup))
+            .world_from_obj(glam::Mat4::from_rotation_x(seconds_since_startup))
             .add_vertices(self.random_points.iter().cloned())
-            .colors(&self.random_points_colors);
+            .colors(self.random_points_colors.iter().cloned());
 
         let triangle = TestTriangleDrawData::new(re_ctx);
         let skybox = GenericSkyboxDrawData::new(re_ctx);

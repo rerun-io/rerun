@@ -13,11 +13,14 @@ repository = "https://github.com/rerun-io/rerun"
 
 [workspace.dependencies]
 anyhow = "1.0"
-arrow2 = "0.14"
+arrow2 = "0.15"
 arrow2_convert = "0.3"
+comfy-table = { version = "6.1", default-features = false }
+ecolor = { version = "0.20" }
 lazy_static = "1.4"
-polars-core = "0.25"
-polars-lazy = "0.25"
+polars-core = "0.26"
+polars-lazy = "0.26"
+polars-ops = "0.26"
 puffin = "0.14"
 thiserror = "1.0"
 
@@ -35,14 +38,14 @@ opt-level = 2
 debug = true
 
 [patch.crates-io]
-# 2022-12-15 - Add Slider::drag_value_speed
-ecolor = { git = "https://github.com/emilk/egui", rev = "6ae4bc486b2608212f5fc8453f5aa7e5106853f8" }
-eframe = { git = "https://github.com/emilk/egui", rev = "6ae4bc486b2608212f5fc8453f5aa7e5106853f8" }
-egui = { git = "https://github.com/emilk/egui", rev = "6ae4bc486b2608212f5fc8453f5aa7e5106853f8" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "6ae4bc486b2608212f5fc8453f5aa7e5106853f8" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "6ae4bc486b2608212f5fc8453f5aa7e5106853f8" }
-emath = { git = "https://github.com/emilk/egui", rev = "6ae4bc486b2608212f5fc8453f5aa7e5106853f8" }
-epaint = { git = "https://github.com/emilk/egui", rev = "6ae4bc486b2608212f5fc8453f5aa7e5106853f8" }
+# 2022-12-22 - Add emath::inverse_lerp
+ecolor = { git = "https://github.com/emilk/egui", rev = "34f587d1e1cc69146f7a02f20903e4f573030ffd" }
+eframe = { git = "https://github.com/emilk/egui", rev = "34f587d1e1cc69146f7a02f20903e4f573030ffd" }
+egui = { git = "https://github.com/emilk/egui", rev = "34f587d1e1cc69146f7a02f20903e4f573030ffd" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "34f587d1e1cc69146f7a02f20903e4f573030ffd" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "34f587d1e1cc69146f7a02f20903e4f573030ffd" }
+emath = { git = "https://github.com/emilk/egui", rev = "34f587d1e1cc69146f7a02f20903e4f573030ffd" }
+epaint = { git = "https://github.com/emilk/egui", rev = "34f587d1e1cc69146f7a02f20903e4f573030ffd" }
 
 # ecolor = { path = "../../egui/crates/ecolor" }
 # eframe = { path = "../../egui/crates/eframe" }
@@ -59,3 +62,10 @@ gltf = { git = "https://github.com/rerun-io/gltf", rev = "3c14ded73755d1ce9e4701
 wgpu = { git = "https://github.com/gfx-rs/wgpu.git", ref = "a377ae2b7fe6c1c9412751166f0917e617164e49" }
 wgpu-core = { git = "https://github.com/gfx-rs/wgpu.git", ref = "a377ae2b7fe6c1c9412751166f0917e617164e49" }
 #wgpu = { path = "../wgpu/wgpu" }
+
+# Upstream PR https://github.com/jorgecarleitao/arrow2/pull/1334 merged, but not released
+arrow2 = { git = "https://github.com/rerun-io/arrow2", rev = "26d1b1139ac3db22c4973772ddb0d30c16027ff6" }
+# Upstream PRs https://github.com/DataEngineeringLabs/arrow2-convert/pull/88 and https://github.com/DataEngineeringLabs/arrow2-convert/pull/89
+arrow2_convert = { git = "https://github.com/rerun-io/arrow2-convert", rev = "1e770145fd2fbd4a4c9ac47d3d527959e8c0bb69" }
+#arrow2 = { path = "../arrow2" }
+#arrow2_convert = { path = "../arrow2-convert/arrow2_convert" }

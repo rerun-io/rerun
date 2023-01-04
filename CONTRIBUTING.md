@@ -52,7 +52,7 @@ All PR:s are all merged with [`Squash and Merge`](https://docs.github.com/en/pul
 We log problems using our own `re_log` crate (which is currently a wrapper around [`tracing`](https://crates.io/crates/tracing/)).
 
 * An error should never happen in silence.
-* Validate code invariants using `assert!`.
+* Validate code invariants using `assert!` or `debug_assert!`.
 * Validate user data and return errors using [`thiserror`](https://crates.io/crates/thiserror).
 * Attach context to errors as they bubble up the stack using [`anyhow`](https://crates.io/crates/anyhow).
 * Log errors using `re_log::error!` or `re_log::error_once!`.
@@ -61,6 +61,39 @@ We log problems using our own `re_log` crate (which is currently a wrapper aroun
 * The code should only panic if there is a bug in the code.
 * Never ignore an error: either pass it on, or log it.
 * Handle each error exactly once. If you log it, don't pass it on. If you pass it on, don't log it.
+
+### Log levels
+
+The log is for several distinct users:
+* The application user
+* The application programmer
+* The library user
+* The library programmer
+
+We are all sharing the same log stream, so we must cooperate carefully.
+
+#### `ERROR`
+This is for _unrecoverable_ problems. The application or library couldn't complete an operation.
+
+Libraries should ideally not log `ERROR`, but instead return `Err` in a `Result`, but there are rare cases where returning a `Result` isn't possible (e.g. then doing an operation in a background task).
+
+Application can "handle" `Err`ors by logging them as `ERROR` (perhaps in addition to showing a popup, if this is a GUI app).
+
+#### `WARNING`
+This is for _recoverable_ problems. The operation completed, but couldn't do exactly what it was instructed to do.
+
+Sometimes an `Err` is handled by logging it as `WARNING` and then running some fallback code.
+
+#### `INFO`
+This is the default verbosity level. This should mostly be used _only by application code_ to write interesting and rare things to the application user. For instance, you may perhaps log that a file was saved to specific path, or where the default configuration was read from. These things lets application users understand what the application is doing, and debug their use of the application.
+
+#### `DEBUG`
+This is a level you opt-in to to debug either an application or a library. These are logged when high-level operations are performed (e.g. texture creation). If it is likely going to be logged each frame, move it to `TRACE` instead.
+
+#### `TRACE`
+This is the last-resort log level, and mostly for debugging libraries or the use of libraries. Here any and all spam goes, logging low-level operations.
+
+The distinction between `DEBUG` and `TRACE` is the least clear. Here we use a rule of thumb: if it generates a lot of continuous logging (e.g. each frame), it should go to `TRACE`.
 
 
 ### Libraries

@@ -29,8 +29,11 @@ pub struct TopBarStyle {
 
 // ----------------------------------------------------------------------------
 
-use parking_lot::Mutex;
 use std::sync::Arc;
+
+use parking_lot::Mutex;
+
+use egui::{pos2, Align2, Color32, Mesh, Rect, Shape, Vec2};
 
 #[derive(Clone)]
 pub struct ReUi {
@@ -141,12 +144,11 @@ impl ReUi {
     }
 
     pub fn loop_selection_color() -> egui::Color32 {
-        egui::Color32::from_rgb(40, 200, 130)
+        egui::Color32::from_rgb(30, 140, 90)
     }
 
     /// Paint a watermark
     pub fn paint_watermark(&self) {
-        use egui::{pos2, Align2, Color32, Mesh, Rect, Shape, Vec2};
         let logo = self.rerun_logo();
         let screen_rect = self.egui_ctx.input().screen_rect;
         let size = logo.size_vec2();
@@ -206,6 +208,16 @@ impl ReUi {
         TopBarStyle { height, indent }
     }
 
+    pub fn small_icon(&self, ui: &mut egui::Ui, icon: &Icon) -> egui::Response {
+        let size_points = egui::Vec2::splat(12.0); // TODO(emilk): get from design tokens
+
+        let image = self.static_image_cache.lock().get(icon.id, icon.png_bytes);
+        let texture_id = image.texture_id(ui.ctx());
+        // TODO(emilk): change color and size on hover
+        let tint = ui.visuals().widgets.inactive.fg_stroke.color;
+        ui.add(egui::ImageButton::new(texture_id, size_points).tint(tint))
+    }
+
     pub fn medium_icon_toggle_button(
         &self,
         ui: &mut egui::Ui,
@@ -227,5 +239,57 @@ impl ReUi {
             response.mark_changed();
         }
         response
+    }
+
+    fn large_button_impl(
+        &self,
+        ui: &mut egui::Ui,
+        icon: &Icon,
+        bg_fill: Option<Color32>,
+        tint: Option<Color32>,
+    ) -> egui::Response {
+        let image = self.static_image_cache.lock().get(icon.id, icon.png_bytes);
+        let texture_id = image.texture_id(ui.ctx());
+
+        let button_size = Vec2::splat(28.0);
+        let icon_size = Vec2::splat(12.0); // centered inside the button
+        let rounding = 6.0;
+
+        let (rect, response) = ui.allocate_exact_size(button_size, egui::Sense::click());
+        response.widget_info(|| egui::WidgetInfo::new(egui::WidgetType::ImageButton));
+
+        if ui.is_rect_visible(rect) {
+            let visuals = ui.style().interact(&response);
+            let bg_fill = bg_fill.unwrap_or(visuals.bg_fill);
+            let tint = tint.unwrap_or(visuals.fg_stroke.color);
+
+            let image_rect = egui::Align2::CENTER_CENTER.align_size_within_rect(icon_size, rect);
+            // let image_rect = image_rect.expand2(expansion); // can make it blurry, so let's not
+
+            ui.painter()
+                .rect_filled(rect.expand(visuals.expansion), rounding, bg_fill);
+
+            let mut mesh = egui::Mesh::with_texture(texture_id);
+            let uv = egui::Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0));
+            mesh.add_rect_with_uv(image_rect, uv, tint);
+            ui.painter().add(egui::Shape::mesh(mesh));
+        }
+
+        response
+    }
+
+    pub fn large_button(&self, ui: &mut egui::Ui, icon: &Icon) -> egui::Response {
+        self.large_button_impl(ui, icon, None, None)
+    }
+
+    pub fn large_button_selected(
+        &self,
+        ui: &mut egui::Ui,
+        icon: &Icon,
+        selected: bool,
+    ) -> egui::Response {
+        let bg_fill = selected.then(|| ui.visuals().selection.bg_fill);
+        let tint = selected.then(|| ui.visuals().selection.stroke.color);
+        self.large_button_impl(ui, icon, bg_fill, tint)
     }
 }

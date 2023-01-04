@@ -19,10 +19,14 @@ glam = ["dep:glam", "dep:macaw"]
 ## Enable saving data to a file.
 save = ["anyhow", "rmp-serde", "serde", "zstd"]
 
+## Enable conversions
+ecolor = ["dep:ecolor"]
+
 ## Enable (de)serialization using serde.
 serde = [
   "dep:serde",
   "dep:serde_bytes",
+  "half/serde",
   "re_string_interner/serde",
   "re_tuid/serde",
 ]
@@ -41,13 +45,17 @@ re_tuid = { path = "../re_tuid" }
 
 # External
 ahash = "0.8"
-arrow2 = { workspace = true, features = ["io_ipc"] }
+arrow2 = { workspace = true, features = ["io_ipc", "io_print"] }
 arrow2_convert.workspace = true
 bytemuck = "1.11"
-chrono = { version = "0.4", features = ["js-sys", "wasmbind"] }
+chrono = { version = "0.4", features = [
+  "js-sys",
+  "wasmbind",
+] } # TODO(emilk): replace `chrono` with `time` crate
 derive_more = "0.99"
 document-features = "0.2"
-fixed = { version = "1.17", features = ["serde"] }
+fixed = { version = "1.17", default-features = false, features = ["serde"] }
+half = { version = "1.8", features = ["bytemuck"] }
 lazy_static.workspace = true
 nohash-hasher = "0.2"
 num-derive = "0.3"
@@ -58,6 +66,7 @@ uuid = { version = "1.1", features = ["serde", "v4", "js"] }
 
 # Optional dependencies:
 anyhow = { workspace = true, optional = true }
+ecolor = { workspace = true, optional = true }
 glam = { version = "0.20", optional = true }                            # can't update glam until a new version of `macaw` is released
 macaw = { version = "0.17", optional = true }
 rand = { version = "0.8", optional = true }
@@ -75,4 +84,13 @@ zstd = { version = "0.11.0", optional = true } # native only
 ruzstd = { version = "0.3.0", optional = true } # works on wasm
 
 [dev-dependencies]
+criterion = "0.4"
+mimalloc = "0.1"
 serde_test = { version = "1" }
+
+[lib]
+bench = false
+
+[[bench]]
+name = "msg_encode_benchmark"
+harness = false

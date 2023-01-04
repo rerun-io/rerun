@@ -40,7 +40,7 @@ re_ws_comms = { path = "../re_ws_comms", optional = true, features = [
 re_viewer = { path = "../re_viewer", default-features = false, optional = true }
 re_web_server = { path = "../re_web_server", optional = true }
 
-eframe = { verison = "0.20", default-features = false, optional = true }
+eframe = { version = "0.20", default-features = false, optional = true }
 webbrowser = { version = "0.8", optional = true }
 
 # Native dependencies:
@@ -49,6 +49,7 @@ tokio = { version = "1.16", features = ["macros", "rt-multi-thread"] }
 
 [dev-dependencies]
 arrow2_convert.workspace = true
+rand = "0.8"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 clap = { version = "4.0", features = ["derive"] }

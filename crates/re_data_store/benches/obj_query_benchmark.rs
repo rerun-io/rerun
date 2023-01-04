@@ -6,8 +6,8 @@ use itertools::Itertools;
 use nohash_hasher::IntMap;
 
 use re_data_store::{
-    query::visit_type_data_2, DataStore, FieldName, Index, ObjPath, ObjPathComp, ObjTypePath,
-    ObjTypePathComp, TimeInt, TimeQuery, Timeline,
+    query::visit_type_data_2, DataStore, FieldName, Index, ObjTypePath, ObjTypePathComp, TimeInt,
+    TimeQuery, Timeline,
 };
 use re_log_types::{
     obj_path, BatchIndex, Data, DataMsg, DataPath, DataVec, IndexHash, LoggedData, MsgId,

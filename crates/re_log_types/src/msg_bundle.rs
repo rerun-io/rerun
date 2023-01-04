@@ -22,9 +22,9 @@ use std::collections::BTreeMap;
 
 use arrow2::{
     array::{Array, ListArray, StructArray},
-    buffer::Buffer,
     chunk::Chunk,
     datatypes::{DataType, Field, Schema},
+    offset::Offsets,
 };
 use arrow2_convert::{
     field::ArrowField,
@@ -52,6 +52,9 @@ pub enum MsgBundleError {
     #[error("Expect a single TimePoint, but found more than one")]
     MultipleTimepoints,
 
+    #[error(transparent)]
+    PathParseError(#[from] PathParseError),
+
     #[error("Could not serialize components to Arrow")]
     ArrowSerializationError(#[from] arrow2::error::Error),
 
@@ -62,7 +65,7 @@ pub enum MsgBundleError {
 
 pub type Result<T> = std::result::Result<T, MsgBundleError>;
 
-use crate::{ArrowMsg, ComponentName, ComponentNameRef, MsgId, ObjPath, TimePoint};
+use crate::{parse_obj_path, ArrowMsg, ComponentName, MsgId, ObjPath, PathParseError, TimePoint};
 
 //TODO(john) get rid of this eventually
 const ENTITY_PATH_KEY: &str = "RERUN:entity_path";
@@ -72,11 +75,11 @@ const COL_TIMELINES: &str = "timelines";
 
 pub trait Component: ArrowField {
     /// The name of the component
-    const NAME: ComponentNameRef<'static>;
+    fn name() -> ComponentName;
 
     /// Create a [`Field`] for this `Component`
     fn field() -> Field {
-        Field::new(Self::NAME, Self::data_type(), false)
+        Field::new(Self::name().as_str(), Self::data_type(), false)
     }
 }
 
@@ -110,7 +113,7 @@ where
         let array: Box<dyn Array> = TryIntoArrow::try_into_arrow(c)?;
         let wrapped = wrap_in_listarray(array).boxed();
         Ok(ComponentBundle {
-            name: C::NAME.to_owned(),
+            name: C::name(),
             value: wrapped,
         })
     }
@@ -179,7 +182,7 @@ where
 /// | [{timeline: frame_nr, type: 1, time: 0}] | {point2d: [{x: 9.765961, y: 5.532682}]} |
 /// +------------------------------------------+-----------------------------------------+
 /// ```
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct MsgBundle {
     /// A unique id per [`crate::LogMsg`].
     pub msg_id: MsgId,
@@ -189,19 +192,31 @@ pub struct MsgBundle {
 }
 
 impl MsgBundle {
-    /// Create a new `MsgBundle` with a pre-build Vec of [`ComponentBundle`] components.
+    /// Create a new `MsgBundle` with a pre-built Vec of [`ComponentBundle`] components.
+    ///
+    /// The `MsgId` will automatically be appended as a component to the given `bundles`, allowing
+    /// the backend to keep track of the origin of any row of data.
     pub fn new(
         msg_id: MsgId,
         obj_path: ObjPath,
         time_point: TimePoint,
-        bundles: Vec<ComponentBundle>,
+        components: Vec<ComponentBundle>,
     ) -> Self {
-        Self {
+        let mut this = Self {
             msg_id,
             obj_path,
             time_point,
-            components: bundles,
-        }
+            components,
+        };
+
+        // Since we don't yet support splats, we need to craft an array of `MsgId`s that matches
+        // the length of the other components.
+        //
+        // TODO(#440): support splats & remove this hack.
+        this.components
+            .push(vec![msg_id; this.row_len(0)].try_into().unwrap());
+
+        this
     }
 
     /// Try to append a collection of `Component` onto the `MessageBundle`.
@@ -219,12 +234,76 @@ impl MsgBundle {
         let wrapped = wrap_in_listarray(array).boxed();
 
         let bundle = ComponentBundle {
-            name: Element::NAME.to_owned(),
+            name: Element::name(),
             value: wrapped,
         };
 
         self.components.push(bundle);
         Ok(())
+    }
+
+    /// Returns the length of a specific row within the bundle, i.e. the row's _number of
+    /// instances_.
+    ///
+    /// Panics if `row_nr` is out of bounds.
+    pub fn row_len(&self, row_nr: usize) -> usize {
+        // TODO(#440): won't be able to pick any component randomly once we support splats!
+        self.components.first().map_or(0, |bundle| {
+            bundle
+                .value
+                .as_any()
+                .downcast_ref::<ListArray<i32>>()
+                .unwrap()
+                .offsets()
+                .lengths()
+                .nth(row_nr)
+                .unwrap()
+        })
+    }
+
+    /// Returns the length of the bundle, i.e. its _number of rows_.
+    pub fn len(&self) -> usize {
+        // TODO(#440): won't be able to pick any component randomly once we support splats!
+        self.components.first().map_or(0, |bundle| {
+            bundle
+                .value
+                .as_any()
+                .downcast_ref::<ListArray<i32>>()
+                .unwrap()
+                .len()
+        })
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    /// Returns the index of `component` in the bundle, if it exists.
+    ///
+    /// This is `O(n)`.
+    pub fn find_component(&self, component: &ComponentName) -> Option<usize> {
+        self.components
+            .iter()
+            .map(|bundle| bundle.name)
+            .position(|name| name == *component)
+    }
+}
+
+impl std::fmt::Display for MsgBundle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let (names, values): (Vec<_>, Vec<_>) = self
+            .components
+            .iter()
+            .map(|ComponentBundle { name, value }| (name.as_str(), value))
+            .unzip();
+
+        let chunk = Chunk::new(values);
+        let table_string = arrow2::io::print::write(&[chunk], names.as_slice());
+
+        f.write_fmt(format_args!(
+            "MsgBundle '{}' @ {:?}:\n{}",
+            self.obj_path, self.time_point, table_string
+        ))
     }
 }
 
@@ -232,17 +311,16 @@ impl MsgBundle {
 #[inline]
 fn pack_components(components: impl Iterator<Item = ComponentBundle>) -> (Schema, StructArray) {
     let (component_fields, component_cols): (Vec<Field>, Vec<Box<dyn Array>>) = components
-        .map(
-            |ComponentBundle {
-                 name,
-                 value: component,
-             }| {
-                (
-                    Field::new(name, component.data_type().clone(), false),
-                    component.to_boxed(),
-                )
-            },
-        )
+        .map(|bundle| {
+            let ComponentBundle {
+                name,
+                value: component,
+            } = bundle;
+            (
+                Field::new(name.as_str(), component.data_type().clone(), false),
+                component.to_boxed(),
+            )
+        })
         .unzip();
 
     let data_type = DataType::Struct(component_fields);
@@ -272,18 +350,22 @@ impl TryFrom<&ArrowMsg> for MsgBundle {
             chunk,
         } = msg;
 
-        let obj_path = schema
+        let obj_path_cmp = schema
             .metadata
             .get(ENTITY_PATH_KEY)
             .ok_or(MsgBundleError::MissingEntityPath)
-            .map(|path| ObjPath::from(path.as_str()))?;
+            .and_then(|path| {
+                parse_obj_path(path.as_str()).map_err(MsgBundleError::PathParseError)
+            })?;
 
         let time_point = extract_timelines(schema, chunk)?;
         let components = extract_components(schema, chunk)?;
 
+        re_log::debug!("Got components: {components:?}");
+
         Ok(Self {
             msg_id: *msg_id,
-            obj_path,
+            obj_path: obj_path_cmp.into(),
             time_point,
             components,
         })
@@ -374,7 +456,7 @@ fn extract_components(
         .iter()
         .zip(components.values())
         .map(|(field, component)| ComponentBundle {
-            name: field.name.clone(),
+            name: ComponentName::from(field.name.as_str()),
             value: component.clone(),
         })
         .collect())
@@ -385,10 +467,12 @@ fn extract_components(
 /// Wrap `field_array` in a single-element `ListArray`
 pub fn wrap_in_listarray(field_array: Box<dyn Array>) -> ListArray<i32> {
     let datatype = ListArray::<i32>::default_datatype(field_array.data_type().clone());
-    let offsets = Buffer::from(vec![0, field_array.len() as i32]);
+    let offsets = Offsets::try_from_lengths(std::iter::once(field_array.len()))
+        .unwrap()
+        .into();
     let values = field_array;
     let validity = None;
-    ListArray::<i32>::from_data(datatype, offsets, values, validity)
+    ListArray::<i32>::new(datatype, offsets, values, validity)
 }
 
 /// Helper to build a `MessageBundle` from 1 component

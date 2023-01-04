@@ -34,11 +34,29 @@ where
     ) -> LineBatchBuilder<'_, PerStripUserData> {
         self.batches.push(LineBatchInfo {
             label: label.into(),
-            world_from_scene: glam::Mat4::IDENTITY,
+            world_from_obj: glam::Mat4::IDENTITY,
             line_vertex_count: 0,
         });
 
         LineBatchBuilder(self)
+    }
+
+    // Iterate over all batches, yielding the batch info and all line vertices (note that these will span several line strips!)
+    pub fn iter_vertices_by_batch(
+        &self,
+    ) -> impl Iterator<Item = (&LineBatchInfo, impl Iterator<Item = &LineVertex>)> {
+        let mut vertex_offset = 0;
+        self.batches.iter().map(move |batch| {
+            let out = (
+                batch,
+                self.vertices
+                    .iter()
+                    .skip(vertex_offset)
+                    .take(batch.line_vertex_count as usize),
+            );
+            vertex_offset += batch.line_vertex_count as usize;
+            out
+        })
     }
 
     /// Finalizes the builder and returns a line draw data with all the lines added so far.
@@ -89,22 +107,31 @@ where
     /// Every time we add a 2d line, we advance the z coordinate given to the next by this.
     /// We want it to be as small as possible so that if the camera shifts around to 3d, things still looks like it's on a plane
     /// But if we make it too small we risk ambiguous z values (known as z fighting) under some circumstances
-    const NEXT_2D_Z_STEP: f32 = -0.05;
+    /// TODO(andreas): This is not a very stable solution. Need to find a better way to express this, at least in something that is relative to the relevant scales.
+    const NEXT_2D_Z_STEP: f32 = -0.01;
+
+    #[inline]
+    fn batch_mut(&mut self) -> &mut LineBatchInfo {
+        self.0
+            .batches
+            .last_mut()
+            .expect("batch should have been added on PointCloudBatchBuilder creation")
+    }
 
     fn add_vertices(&mut self, points: impl Iterator<Item = glam::Vec3>, strip_index: u32) {
         let old_len = self.0.vertices.len();
 
-        self.0
-            .vertices
-            .extend(points.map(|pos| LineVertex { pos, strip_index }));
-        self.0.batches.last_mut().unwrap().line_vertex_count +=
-            (self.0.vertices.len() - old_len) as u32;
+        self.0.vertices.extend(points.map(|pos| LineVertex {
+            position: pos,
+            strip_index,
+        }));
+        self.batch_mut().line_vertex_count += (self.0.vertices.len() - old_len) as u32;
     }
 
-    /// Sets the `world_from_scene` matrix for the *entire* batch.
+    /// Sets the `world_from_obj` matrix for the *entire* batch.
     #[inline]
-    pub fn world_from_scene(&mut self, world_from_scene: glam::Mat4) -> &mut Self {
-        self.0.batches.last_mut().unwrap().world_from_scene = world_from_scene;
+    pub fn world_from_obj(mut self, world_from_obj: glam::Mat4) -> Self {
+        self.batch_mut().world_from_obj = world_from_obj;
         self
     }
 

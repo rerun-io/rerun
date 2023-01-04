@@ -1,20 +1,22 @@
 use re_data_store::{InstanceId, ObjPath, ObjectTree, ObjectsProperties, TimeInt};
 
-use nohash_hasher::{IntMap, IntSet};
+use nohash_hasher::IntSet;
 
 use crate::{
     misc::{
         space_info::{SpaceInfo, SpacesInfo},
         ViewerContext,
     },
+    ui::transform_cache::TransformCache,
     ui::view_category::categorize_obj_path,
 };
 
 use super::{
+    transform_cache::{ReferenceFromObjTransform, UnreachableTransformReason},
+    view_bar_chart,
     view_category::ViewCategory,
-    view_plot,
     view_spatial::{self, SpatialNavigationMode},
-    view_tensor, view_text,
+    view_tensor, view_text, view_time_series,
 };
 
 // ----------------------------------------------------------------------------
@@ -59,16 +61,16 @@ pub(crate) struct SpaceView {
     /// We only show data that match this category.
     pub category: ViewCategory,
 
-    /// Set to `true` the first time the user messes around with the list of queried objects.
-    pub has_been_user_edited: bool,
+    /// Set to `false` the first time the user messes around with the list of queried objects.
+    pub allow_auto_adding_more_object: bool,
 }
 
 impl SpaceView {
     pub fn new(
         ctx: &ViewerContext<'_>,
         category: ViewCategory,
-        space_path: ObjPath,
         space_info: &SpaceInfo,
+        spaces_info: &SpacesInfo,
         default_spatial_naviation_mode: SpatialNavigationMode,
     ) -> Self {
         let mut view_state = ViewState::default();
@@ -77,21 +79,31 @@ impl SpaceView {
             view_state.state_spatial.nav_mode = default_spatial_naviation_mode;
         }
 
-        let root_path = space_path
-            .iter()
-            .next()
-            .map_or_else(|| space_path.clone(), |c| ObjPath::from(vec![c.to_owned()]));
+        let root_path = space_info.path.iter().next().map_or_else(
+            || space_info.path.clone(),
+            |c| ObjPath::from(vec![c.to_owned()]),
+        );
+
+        let queried_objects = Self::default_queried_objects(ctx, category, space_info, spaces_info);
+
+        let name = if queried_objects.len() == 1 {
+            // a single object in this space-view - name the space after it
+            let obj_path = queried_objects.iter().next().unwrap();
+            obj_path.to_string()
+        } else {
+            space_info.path.to_string()
+        };
 
         Self {
-            name: space_path.to_string(),
+            name,
             id: SpaceViewId::random(),
             root_path,
-            space_path,
-            queried_objects: Self::default_queried_objects(ctx, category, space_info),
+            space_path: space_info.path.clone(),
+            queried_objects,
             obj_properties: Default::default(),
             view_state,
             category,
-            has_been_user_edited: false,
+            allow_auto_adding_more_object: true,
         }
     }
 
@@ -99,67 +111,32 @@ impl SpaceView {
     fn default_queried_objects(
         ctx: &ViewerContext<'_>,
         category: ViewCategory,
-        space_info: &SpaceInfo,
+        root_space: &SpaceInfo,
+        spaces_info: &SpacesInfo,
     ) -> IntSet<ObjPath> {
         crate::profile_function!();
 
         let timeline = ctx.rec_cfg.time_ctrl.timeline();
         let log_db = &ctx.log_db;
-        space_info
-            .descendants_without_transform
+
+        root_space
+            .descendants_with_rigid_or_no_transform(spaces_info)
             .iter()
-            .filter(|obj_path| categorize_obj_path(timeline, log_db, obj_path).contains(category))
             .cloned()
+            .filter(|obj_path| categorize_obj_path(timeline, log_db, obj_path).contains(category))
             .collect()
     }
 
     pub fn on_frame_start(&mut self, ctx: &mut ViewerContext<'_>, spaces_info: &SpacesInfo) {
-        if self.has_been_user_edited {
+        if !self.allow_auto_adding_more_object {
             return;
         }
-        let Some(space) = spaces_info.spaces.get(&self.space_path) else {
+        let Some(space) = spaces_info.get(&self.space_path) else {
             return;
         };
-        self.queried_objects = Self::default_queried_objects(ctx, self.category, space);
-    }
-
-    /// All object paths that are under the root but can't be added to the space view and why.
-    ///
-    /// We're not storing this since the circumstances for this may change over time.
-    /// (either by choosing a different reference space path or by having new paths added)
-    fn unreachable_elements(&mut self, spaces_info: &SpacesInfo) -> IntMap<ObjPath, &'static str> {
-        crate::profile_function!();
-
-        let mut forced_invisible = IntMap::default();
-
-        let Some(reference_space) = spaces_info.spaces.get(&self.space_path) else {
-            return forced_invisible; // Should never happen?
-        };
-
-        // Direct children of the current reference space.
-        for (path, transform) in &reference_space.child_spaces {
-            match transform {
-                re_log_types::Transform::Unknown => {}
-
-                // TODO(andreas): This should be made possible!
-                re_log_types::Transform::Rigid3(_) => {
-                    forced_invisible.insert(
-                        path.clone(),
-                        "Can't display elements with a rigid transform relative to the reference path in the same spaceview yet",
-                    );
-                }
-
-                // TODO(andreas): This should be made possible *iff* the reference space itself doesn't define a pinhole camera (or is there a way to deal with that?)
-                re_log_types::Transform::Pinhole(_) => {
-                    forced_invisible.insert(
-                        path.clone(),
-                        "Can't display elements with a pinhole transform relative to the reference path in the same spaceview yet",
-                    );
-                }
-            }
-        }
-
-        forced_invisible
+        // Add objects that have been logged since we were created
+        self.queried_objects =
+            Self::default_queried_objects(ctx, self.category, space, spaces_info);
     }
 
     pub fn selection_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
@@ -168,19 +145,33 @@ impl SpaceView {
             ui.text_edit_singleline(&mut self.name);
             ui.end_row();
 
-            ui.label("Space Path:");
+            ui.label("Space path:");
             ctx.obj_path_button(ui, &self.space_path);
             ui.end_row();
         });
 
         ui.separator();
 
-        ui.strong("Query Tree");
+        ui.strong("Query tree");
         self.query_tree_ui(ctx, ui);
 
         ui.separator();
 
         match self.category {
+            ViewCategory::Text => {
+                ui.strong("Text view");
+                ui.add_space(4.0);
+                self.view_state.state_text.selection_ui(ui);
+            }
+
+            ViewCategory::TimeSeries => {
+                ui.strong("Time series view");
+            }
+
+            ViewCategory::BarChart => {
+                ui.strong("Bar chart view");
+            }
+
             ViewCategory::Spatial => {
                 ui.strong("Spatial view");
                 self.view_state.state_spatial.settings_ui(ctx, ui);
@@ -195,12 +186,6 @@ impl SpaceView {
                     }
                 }
             }
-            ViewCategory::Text => {
-                ui.strong("Text view");
-                ui.add_space(4.0);
-                self.view_state.state_text.selection_ui(ui);
-            }
-            ViewCategory::Plot => {}
         }
     }
 
@@ -221,8 +206,14 @@ impl SpaceView {
         .body(|ui| {
             if let Some(subtree) = obj_tree.subtree(&self.root_path) {
                 let spaces_info = SpacesInfo::new(&ctx.log_db.obj_db, &ctx.rec_cfg.time_ctrl);
-                let forced_invisible = self.unreachable_elements(&spaces_info);
-                self.obj_tree_children_ui(ctx, ui, &spaces_info, subtree, &forced_invisible);
+                if let Some(reference_space) = spaces_info.get(&self.space_path) {
+                    let transforms = TransformCache::determine_transforms(
+                        &spaces_info,
+                        reference_space,
+                        &self.obj_properties,
+                    );
+                    self.obj_tree_children_ui(ctx, ui, &spaces_info, subtree, &transforms);
+                }
             }
         });
     }
@@ -233,7 +224,7 @@ impl SpaceView {
         ui: &mut egui::Ui,
         spaces_info: &SpacesInfo,
         tree: &ObjectTree,
-        forced_invisible: &IntMap<ObjPath, &str>,
+        transforms: &TransformCache,
     ) {
         if tree.children.is_empty() {
             ui.weak("(nothing)");
@@ -247,7 +238,7 @@ impl SpaceView {
                 spaces_info,
                 &path_comp.to_string(),
                 child_tree,
-                forced_invisible,
+                transforms,
             );
         }
     }
@@ -260,47 +251,58 @@ impl SpaceView {
         spaces_info: &SpacesInfo,
         name: &str,
         tree: &ObjectTree,
-        forced_invisible: &IntMap<ObjPath, &str>,
+        transforms: &TransformCache,
     ) {
-        let disabled_reason = if self.space_path.is_descendant_of(&tree.path) {
-            Some(&"Can't display entities that aren't children of the reference path yet.")
-        } else {
-            forced_invisible.get(&tree.path)
+        let unreachable_reason = match transforms.reference_from_obj(&tree.path) {
+            ReferenceFromObjTransform::Unreachable(reason) => Some(match reason {
+                // Should never happen
+                UnreachableTransformReason::Unconnected =>
+                     "No object path connection from this space view.",
+                UnreachableTransformReason::NestedPinholeCameras =>
+                    "Can't display objects under nested pinhole cameras.",
+                UnreachableTransformReason::UnknownTransform =>
+                    "Can't display objects that are connected via an unknown transform to this space.",
+                UnreachableTransformReason::InversePinholeCameraWithoutResolution =>
+                    "Can't display objects that would require inverting a pinhole camera without a specified resolution.",
+                }),
+            ReferenceFromObjTransform::Reachable(_) => None,
         };
-        let response = ui
-            .add_enabled_ui(disabled_reason.is_none(), |ui| {
-                if tree.is_leaf() {
-                    ui.horizontal(|ui| {
-                        self.object_path_button(ctx, ui, &tree.path, spaces_info, name);
-                        if has_visualization_for_category(ctx, self.category, &tree.path) {
-                            self.object_add_button(ui, &tree.path, &ctx.log_db.obj_db.tree);
-                        }
-                    });
-                } else {
-                    let collapsing_header_id = ui.id().with(&tree.path);
-
-                    // Default open so that the reference path is visible.
-                    let default_open = self.space_path.is_descendant_of(&tree.path);
-                    egui::collapsing_header::CollapsingState::load_with_default_open(
-                        ui.ctx(),
-                        collapsing_header_id,
-                        default_open,
-                    )
-                    .show_header(ui, |ui| {
-                        self.object_path_button(ctx, ui, &tree.path, spaces_info, name);
-                        if has_visualization_for_category(ctx, self.category, &tree.path) {
-                            self.object_add_button(ui, &tree.path, &ctx.log_db.obj_db.tree);
-                        }
-                    })
-                    .body(|ui| {
-                        self.obj_tree_children_ui(ctx, ui, spaces_info, tree, forced_invisible);
-                    });
-                }
+        let response = if tree.is_leaf() {
+            ui.horizontal(|ui| {
+                ui.add_enabled_ui(unreachable_reason.is_none(), |ui| {
+                    self.object_path_button(ctx, ui, &tree.path, spaces_info, name);
+                    if has_visualization_for_category(ctx, self.category, &tree.path) {
+                        self.object_add_button(ui, &tree.path, &ctx.log_db.obj_db.tree);
+                    }
+                });
             })
-            .response;
+            .response
+        } else {
+            let collapsing_header_id = ui.id().with(&tree.path);
 
-        if let Some(disabled_reason) = disabled_reason {
-            response.on_hover_text(*disabled_reason);
+            // Default open so that the reference path is visible.
+            let default_open = self.space_path.is_descendant_of(&tree.path);
+            egui::collapsing_header::CollapsingState::load_with_default_open(
+                ui.ctx(),
+                collapsing_header_id,
+                default_open,
+            )
+            .show_header(ui, |ui| {
+                ui.add_enabled_ui(unreachable_reason.is_none(), |ui| {
+                    self.object_path_button(ctx, ui, &tree.path, spaces_info, name);
+                    if has_visualization_for_category(ctx, self.category, &tree.path) {
+                        self.object_add_button(ui, &tree.path, &ctx.log_db.obj_db.tree);
+                    }
+                });
+            })
+            .body(|ui| {
+                self.obj_tree_children_ui(ctx, ui, spaces_info, tree, transforms);
+            })
+            .0
+        };
+
+        if let Some(unreachable_reason) = unreachable_reason {
+            response.on_hover_text(unreachable_reason);
         }
     }
 
@@ -313,7 +315,7 @@ impl SpaceView {
         name: &str,
     ) {
         let mut is_space_info = false;
-        let label_text = if spaces_info.spaces.contains_key(path) {
+        let label_text = if spaces_info.get(path).is_some() {
             is_space_info = true;
             let label_text = egui::RichText::new(format!("📐 {}", name));
             if *path == self.space_path {
@@ -348,7 +350,7 @@ impl SpaceView {
                         self.queried_objects.insert(path.clone());
                     },
                 );
-                self.has_been_user_edited = true;
+                self.allow_auto_adding_more_object = false;
             }
             response.on_hover_text("Add to this Space View's query")
         });
@@ -372,11 +374,38 @@ impl SpaceView {
         };
 
         match self.category {
+            ViewCategory::Text => {
+                let mut scene = view_text::SceneText::default();
+                scene.load_objects(ctx, &query, &self.view_state.state_text.filters);
+                self.view_state.ui_text(ctx, ui, &scene);
+            }
+
+            ViewCategory::TimeSeries => {
+                let mut scene = view_time_series::SceneTimeSeries::default();
+                scene.load_objects(ctx, &query);
+                self.view_state.ui_time_series(ctx, ui, &scene);
+            }
+
+            ViewCategory::BarChart => {
+                let mut scene = view_bar_chart::SceneBarChart::default();
+                scene.load_objects(ctx, &query);
+                self.view_state.ui_bar_chart(ctx, ui, &scene);
+            }
+
             ViewCategory::Spatial => {
+                let Some(reference_space) = spaces_info.get(&self.space_path) else {
+                    return;
+                };
+                let transforms = TransformCache::determine_transforms(
+                    spaces_info,
+                    reference_space,
+                    &self.obj_properties,
+                );
                 let mut scene = view_spatial::SceneSpatial::new(ctx.render_ctx);
                 scene.load_objects(
                     ctx,
                     &query,
+                    &transforms,
                     &self.obj_properties,
                     self.view_state.state_spatial.hovered_instance_hash(),
                 );
@@ -387,6 +416,7 @@ impl SpaceView {
                     spaces_info,
                     reference_space_info,
                     scene,
+                    &self.obj_properties,
                 );
             }
 
@@ -396,16 +426,6 @@ impl SpaceView {
                 let mut scene = view_tensor::SceneTensor::default();
                 scene.load_objects(ctx, &query);
                 self.view_state.ui_tensor(ctx, ui, &scene);
-            }
-            ViewCategory::Text => {
-                let mut scene = view_text::SceneText::default();
-                scene.load_objects(ctx, &query, &self.view_state.state_text.filters);
-                self.view_state.ui_text(ctx, ui, &scene);
-            }
-            ViewCategory::Plot => {
-                let mut scene = view_plot::ScenePlot::default();
-                scene.load_objects(ctx, &query);
-                self.view_state.ui_plot(ctx, ui, &scene);
             }
         };
     }
@@ -423,34 +443,22 @@ fn has_visualization_for_category(
 
 // ----------------------------------------------------------------------------
 
-/// Show help-text on top of space
-fn help_button_overlay_ui(
-    ui: &mut egui::Ui,
-    rect: egui::Rect,
-    ctx: &mut ViewerContext<'_>,
-    help_text: &str,
-) {
-    let mut ui = ui.child_ui(rect, egui::Layout::right_to_left(egui::Align::TOP));
-    ctx.re_ui.hovering_frame().show(&mut ui, |ui| {
-        crate::misc::help_hover_button(ui).on_hover_text(help_text);
-    });
-}
-
-// ----------------------------------------------------------------------------
-
 /// Camera position and similar.
 #[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
 pub(crate) struct ViewState {
     /// Selects in [`Self::state_tensors`].
     selected_tensor: Option<InstanceId>,
 
+    state_text: view_text::ViewTextState,
+    state_time_series: view_time_series::ViewTimeSeriesState,
+    state_bar_chart: view_bar_chart::BarChartState,
     pub state_spatial: view_spatial::ViewSpatialState,
     state_tensors: ahash::HashMap<InstanceId, view_tensor::ViewTensorState>,
-    state_text: view_text::ViewTextState,
-    state_plot: view_plot::ViewPlotState,
 }
 
 impl ViewState {
+    // TODO(andreas): split into smaller parts, some of it shouldn't be part of the ui path and instead scene loading.
+    #[allow(clippy::too_many_arguments)]
     fn ui_spatial(
         &mut self,
         ctx: &mut ViewerContext<'_>,
@@ -459,12 +467,18 @@ impl ViewState {
         spaces_info: &SpacesInfo,
         space_info: &SpaceInfo,
         scene: view_spatial::SceneSpatial,
+        obj_properties: &ObjectsProperties,
     ) {
         ui.vertical(|ui| {
-            let response =
-                self.state_spatial
-                    .view_spatial(ctx, ui, space, scene, spaces_info, space_info);
-            help_button_overlay_ui(ui, response.rect, ctx, self.state_spatial.help_text());
+            self.state_spatial.view_spatial(
+                ctx,
+                ui,
+                space,
+                scene,
+                spaces_info,
+                space_info,
+                obj_properties,
+            );
         });
     }
 
@@ -532,21 +546,29 @@ impl ViewState {
         });
     }
 
-    fn ui_plot(
+    fn ui_bar_chart(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        scene: &view_plot::ScenePlot,
-    ) -> egui::Response {
+        scene: &view_bar_chart::SceneBarChart,
+    ) {
         ui.vertical(|ui| {
-            let response = ui
-                .scope(|ui| {
-                    view_plot::view_plot(ctx, ui, &mut self.state_plot, scene);
-                })
-                .response;
+            ui.scope(|ui| {
+                view_bar_chart::view_bar_chart(ctx, ui, &mut self.state_bar_chart, scene);
+            });
+        });
+    }
 
-            help_button_overlay_ui(ui, response.rect, ctx, view_plot::HELP_TEXT);
-        })
-        .response
+    fn ui_time_series(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        scene: &view_time_series::SceneTimeSeries,
+    ) {
+        ui.vertical(|ui| {
+            ui.scope(|ui| {
+                view_time_series::view_time_series(ctx, ui, &mut self.state_time_series, scene);
+            });
+        });
     }
 }

@@ -2,6 +2,8 @@
 
 A rough time-line of major user-facing things added, removed and changed. Newest on top.
 
+* 2022-12-21: Allow objects under pinhole transform to be placed into 3D spaces. [#621](https://github.com/rerun-io/rerun/pull/621).
+* 2022-12-19: Add support for bar-charts. [#581](https://github.com/rerun-io/rerun/pull/581).
 * 2022-12-15: Support non-uniform scaling for meshes/models. [#570](https://github.com/rerun-io/rerun/pull/570).
 * 2022-12-15: Support albedo color factors for meshes imported from GLB/GLTF. [#562](https://github.com/rerun-io/rerun/pull/562).
 * 2022-12-15: Fix import issues for GLB/GTLF if there are more than one primitive in a mesh. [#562](https://github.com/rerun-io/rerun/pull/562).

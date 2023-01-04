@@ -154,12 +154,15 @@ impl framework::Example for Render2D {
                 ]
                 .into_iter(),
             )
-            .radii(&[
-                Size::new_scene(4.0),
-                Size::new_points(4.0),
-                Size::AUTO,
-                Size::AUTO_LARGE,
-            ])
+            .radii(
+                [
+                    Size::new_scene(4.0),
+                    Size::new_points(4.0),
+                    Size::AUTO,
+                    Size::AUTO_LARGE,
+                ]
+                .into_iter(),
+            )
             .color(Color32::from_rgb(55, 180, 1));
 
         let point_draw_data = point_cloud_builder.to_draw_data(re_ctx).unwrap();

@@ -1,3 +1,5 @@
+use egui::Color32;
+
 /// The look and feel of the UI.
 ///
 /// Not everything is covered by this.
@@ -5,6 +7,7 @@
 #[derive(Clone, Copy, Debug)]
 pub struct DesignTokens {
     pub top_bar_color: egui::Color32,
+    pub bottom_bar_color: egui::Color32,
 }
 
 impl DesignTokens {
@@ -71,6 +74,8 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
     let default = get_aliased_color(&json, "{Alias.Color.Text.Default.value}");
     let strong = get_aliased_color(&json, "{Alias.Color.Text.Strong.value}");
 
+    egui_style.visuals.button_frame = false;
+
     egui_style.visuals.widgets.noninteractive.fg_stroke.color = subudued; // non-interactive text
     egui_style.visuals.widgets.inactive.fg_stroke.color = default; // button text
     egui_style.visuals.widgets.active.fg_stroke.color = strong; // strong text and active button text
@@ -97,10 +102,13 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
     // Add stripes to grids and tables?
     egui_style.visuals.striped = false;
 
+    egui_style.debug.show_blocking_widget = false; // turn this on to debug interaction problems
+
     ctx.set_style(egui_style);
 
     DesignTokens {
-        top_bar_color: floating_color,
+        top_bar_color: Color32::from_gray(20),    // copied from figma
+        bottom_bar_color: Color32::from_gray(25), // copied from figma
     }
 }
 

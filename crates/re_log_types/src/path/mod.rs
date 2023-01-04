@@ -27,7 +27,7 @@ pub use index_path::{IndexPath, IndexPathHash};
 pub use obj_path::{ObjPath, ObjPathHash};
 pub use obj_path_impl::{ObjPathCompRef, ObjPathImpl};
 pub use obj_type_path::ObjTypePath;
-pub use parse_path::parse_obj_path;
+pub use parse_path::{parse_obj_path, PathParseError};
 
 use re_string_interner::InternedString;
 
@@ -126,7 +126,7 @@ macro_rules! obj_path_vec {
             vec![]
         };
         ($($comp: expr),* $(,)?) => {
-            vec![ $(ObjPathComp::from($comp),)+ ]
+            vec![ $($crate::ObjPathComp::from($comp),)+ ]
         };
     }
 
@@ -141,6 +141,6 @@ macro_rules! obj_path {
             vec![]
         };
         ($($comp: expr),* $(,)?) => {
-            ObjPath::from(vec![ $(ObjPathComp::from($comp),)+ ])
+            $crate::ObjPath::from(vec![ $($crate::ObjPathComp::from($comp),)+ ])
         };
     }

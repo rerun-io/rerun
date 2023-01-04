@@ -38,9 +38,15 @@ where
     /// We do *not* allow reading from this buffer as it is typically write-combined memory.
     /// Reading would work, but it can be *insanely* slow.
     #[inline]
-    pub fn write(&mut self, elements: &[T], offset_in_element_sizes: usize) {
-        self.write_only_memory[offset_in_element_sizes..(offset_in_element_sizes + elements.len())]
-            .copy_from_slice(elements);
+    pub fn write(&mut self, elements: impl Iterator<Item = T>, offset_in_element_sizes: usize) {
+        for (target, source) in self
+            .write_only_memory
+            .iter_mut()
+            .skip(offset_in_element_sizes)
+            .zip(elements)
+        {
+            *target = source;
+        }
     }
 
     /// Writes a single objects to the buffer at a given location.

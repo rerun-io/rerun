@@ -2,10 +2,13 @@ use itertools::Itertools as _;
 
 use re_format::format_number;
 use re_log_types::{
-    ArrowMsg, BeginRecordingMsg, DataMsg, DataType, LogMsg, PathOpMsg, RecordingInfo, TypeMsg,
+    msg_bundle::MsgBundle, BeginRecordingMsg, DataMsg, DataType, LogMsg, PathOpMsg, RecordingInfo,
+    TypeMsg,
 };
 
 use crate::{Preview, ViewerContext};
+
+use super::data_ui::DataUi;
 
 /// An event log, a table of all log messages.
 #[derive(Default, serde::Deserialize, serde::Serialize)]
@@ -191,7 +194,7 @@ fn table_row(
                 ctx.data_path_button(ui, data_path);
             });
             row.col(|ui| {
-                crate::data_ui::logged_data_ui(ctx, ui, data, Preview::Specific(row_height));
+                data.data_ui(ctx, ui, Preview::Specific(row_height));
             });
         }
         LogMsg::PathOpMsg(msg) => {
@@ -218,42 +221,43 @@ fn table_row(
                 ctx.obj_path_button(ui, path_op.obj_path());
             });
             row.col(|ui| {
-                crate::data_ui::path_op_ui(ctx, ui, path_op);
+                path_op.data_ui(ctx, ui, Preview::Medium);
             });
         }
-        LogMsg::ArrowMsg(msg) => {
-            let ArrowMsg {
+        LogMsg::ArrowMsg(msg) => match MsgBundle::try_from(msg) {
+            Ok(MsgBundle {
                 msg_id,
-                schema: _,
-                chunk: _,
-            } = msg;
-
-            row.col(|ui| {
-                ui.label(msg_id.to_string());
-            });
-            row.col(|ui| {
-                ui.monospace("ArrowMsg");
-            });
-            //TODO(john) extract timelines
-            for _timeline in ctx.log_db.timelines() {
+                obj_path,
+                time_point,
+                components,
+            }) => {
                 row.col(|ui| {
-                    ui.label("-");
+                    ui.label(msg_id.to_string());
+                });
+                row.col(|ui| {
+                    ui.monospace("ArrowMsg");
+                });
+                for timeline in ctx.log_db.timelines() {
+                    row.col(|ui| {
+                        if let Some(value) = time_point.get(timeline) {
+                            ctx.time_button(ui, timeline, *value);
+                        }
+                    });
+                }
+                row.col(|ui| {
+                    ctx.obj_path_button(ui, &obj_path);
+                });
+
+                row.col(|ui| {
+                    components.data_ui(ctx, ui, Preview::Specific(row_height));
                 });
             }
-            //TODO(john) extract object path
-            row.col(|ui| {
-                ui.label("-");
-            });
-
-            row.col(|ui| {
-                crate::data_ui::logged_arrow_data_ui(
-                    ctx,
-                    ui,
-                    msg_id,
-                    msg,
-                    Preview::Specific(row_height),
-                );
-            });
-        }
+            Err(err) => {
+                re_log::error_once!("Bad arrow payload: {:?}", err);
+                row.col(|ui| {
+                    ui.label("Bad Arrow Payload".to_owned());
+                });
+            }
+        },
     }
 }

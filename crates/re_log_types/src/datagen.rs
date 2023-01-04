@@ -1,11 +1,9 @@
 //! Generate random data for tests and benchmarks.
 
 use crate::{
-    field_types,
-    msg_bundle::{wrap_in_listarray, ComponentBundle},
+    field_types::{self, Instance},
     Time, TimeInt, TimeType, Timeline,
 };
-use arrow2::array::PrimitiveArray;
 
 /// Create `len` dummy rectangles
 pub fn build_some_rects(len: usize) -> Vec<field_types::Rect2D> {
@@ -53,28 +51,29 @@ pub fn build_log_time(log_time: Time) -> (Timeline, TimeInt) {
 }
 
 /// Build a ([`Timeline`], [`TimeInt`]) tuple from `frame_nr` suitable for inserting in a [`crate::TimePoint`].
-pub fn build_frame_nr(frame_nr: i64) -> (Timeline, TimeInt) {
-    (
-        Timeline::new("frame_nr", TimeType::Sequence),
-        frame_nr.into(),
-    )
+pub fn build_frame_nr(frame_nr: TimeInt) -> (Timeline, TimeInt) {
+    (Timeline::new("frame_nr", TimeType::Sequence), frame_nr)
 }
 
-//TODO(john) convert this to a Component struct
-pub fn build_instances(nb_instances: usize) -> ComponentBundle {
-    use rand::Rng as _;
+/// Create `len` dummy `Instance` keys. These keys will be sorted.
+pub fn build_some_instances(nb_instances: usize) -> Vec<Instance> {
+    use rand::seq::SliceRandom;
     let mut rng = rand::thread_rng();
 
-    let data = PrimitiveArray::from(
-        (0..nb_instances)
-            .into_iter()
-            .map(|_| Some(rng.gen()))
-            .collect::<Vec<Option<u32>>>(),
-    );
-    let data = wrap_in_listarray(data.boxed());
+    // Allocate pool of 10x the potential instance keys, draw a random sampling, and then sort it
+    let mut instance_pool = (0..(nb_instances * 10)).collect::<Vec<_>>();
+    let (rand_instances, _) = instance_pool.partial_shuffle(&mut rng, nb_instances);
+    let mut sorted_instances = rand_instances.to_vec();
+    sorted_instances.sort();
 
-    ComponentBundle {
-        name: "instances".to_owned(),
-        value: data.boxed(),
-    }
+    sorted_instances
+        .into_iter()
+        .map(|id| Instance(id as u64))
+        .collect()
+}
+
+pub fn build_some_instances_from(instances: impl IntoIterator<Item = u64>) -> Vec<Instance> {
+    let mut instances = instances.into_iter().map(Instance).collect::<Vec<_>>();
+    instances.sort();
+    instances
 }

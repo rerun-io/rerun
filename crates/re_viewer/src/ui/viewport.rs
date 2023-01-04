@@ -6,10 +6,13 @@
 //! * [ ] Controlling visibility of objects inside each Space View
 //! * [ ] Transforming objects between spaces
 
+use std::collections::{BTreeMap, BTreeSet};
+
 use ahash::HashMap;
 use itertools::Itertools as _;
 
-use re_data_store::{ObjPath, TimeInt};
+use nohash_hasher::{IntMap, IntSet};
+use re_data_store::{ObjPath, ObjPathComp, ObjectsProperties, TimeInt};
 
 use crate::{
     misc::{
@@ -19,13 +22,17 @@ use crate::{
     ui::{view_category::group_by_category, view_spatial::SceneSpatial},
 };
 
-use super::{view_category::ViewCategory, SceneQuery, SpaceView, SpaceViewId};
+use super::{
+    transform_cache::TransformCache, view_category::ViewCategory, SceneQuery, SpaceView,
+    SpaceViewId,
+};
 
 // ----------------------------------------------------------------------------
 
 fn query_scene_spatial(
     ctx: &mut ViewerContext<'_>,
     obj_paths: &nohash_hasher::IntSet<ObjPath>,
+    transforms: &TransformCache,
 ) -> SceneSpatial {
     crate::profile_function!();
 
@@ -37,7 +44,7 @@ fn query_scene_spatial(
     };
     let mut scene = SceneSpatial::new(ctx.render_ctx);
     let hovered = re_data_store::InstanceIdHash::NONE;
-    scene.load_objects(ctx, &query, query.obj_props, hovered);
+    scene.load_objects(ctx, &query, transforms, query.obj_props, hovered);
     scene
 }
 
@@ -79,13 +86,31 @@ impl Viewport {
 
         let mut blueprint = Self::default();
 
-        for (path, space_info) in &spaces_info.spaces {
+        for space_info in spaces_info.iter() {
+            // If we're connected with a rigid transform to our parent, don't create a new space view automatically,
+            // since we're showing those objects in the parent by default.
+            // (it is still possible to create this space view manually)
+            if let Some(transform) = &space_info.parent_transform() {
+                match transform {
+                    re_log_types::Transform::Rigid3(_) => continue,
+                    re_log_types::Transform::Pinhole(_) | re_log_types::Transform::Unknown => {}
+                }
+            }
+
+            let transforms = TransformCache::determine_transforms(
+                spaces_info,
+                space_info,
+                &ObjectsProperties::default(),
+            );
+
             for (category, obj_paths) in group_by_category(
                 ctx.rec_cfg.time_ctrl.timeline(),
                 ctx.log_db,
-                space_info.descendants_without_transform.iter(),
+                space_info
+                    .descendants_with_rigid_or_no_transform(spaces_info)
+                    .iter(),
             ) {
-                let scene_spatial = query_scene_spatial(ctx, &obj_paths);
+                let scene_spatial = query_scene_spatial(ctx, &obj_paths, &transforms);
 
                 if category == ViewCategory::Spatial
                     && scene_spatial.prefer_2d_mode()
@@ -95,35 +120,42 @@ impl Viewport {
                     // Stacking them on top of each other works, but is often confusing.
                     // Let's create one space view for each image, where the other images are disabled:
 
-                    let store = &ctx.log_db.obj_db.store;
+                    let obj_db = &ctx.log_db.obj_db;
+
+                    let mut image_sizes = BTreeSet::default();
 
                     for visible_image in &scene_spatial.ui.images {
+                        debug_assert!(matches!(visible_image.tensor.shape.len(), 2 | 3));
+                        let image_size = (
+                            visible_image.tensor.shape[0].size,
+                            visible_image.tensor.shape[1].size,
+                        );
+                        image_sizes.insert(image_size);
+
                         if let Some(visible_instance_id) =
-                            visible_image.instance_hash.resolve(store)
+                            visible_image.instance_hash.resolve(obj_db)
                         {
                             let mut space_view = SpaceView::new(
                                 ctx,
                                 category,
-                                path.clone(),
                                 space_info,
+                                spaces_info,
                                 scene_spatial.preferred_navigation_mode(),
                             );
                             space_view.name = visible_instance_id.obj_path.to_string();
 
                             for other_image in &scene_spatial.ui.images {
-                                if let Some(image_instance_id) =
-                                    other_image.instance_hash.resolve(store)
+                                if let Some(other_image_instance_id) =
+                                    other_image.instance_hash.resolve(obj_db)
                                 {
-                                    let visible =
-                                        visible_instance_id.obj_path == image_instance_id.obj_path;
-
-                                    space_view.obj_properties.set(
-                                        image_instance_id.obj_path,
-                                        re_data_store::ObjectProps {
-                                            visible,
-                                            ..Default::default()
-                                        },
-                                    );
+                                    if visible_instance_id.obj_path
+                                        != other_image_instance_id.obj_path
+                                    {
+                                        space_view
+                                            .queried_objects
+                                            .remove(&other_image_instance_id.obj_path);
+                                        space_view.allow_auto_adding_more_object = false;
+                                    }
                                 }
                             }
 
@@ -131,8 +163,13 @@ impl Viewport {
                         }
                     }
 
-                    // We _also_ want to create the stacked version, e.g. rgb + segmentation
-                    // so we keep going here.
+                    if image_sizes.len() == 1 {
+                        // All images have the same size, so we _also_ want to
+                        // create the stacked version (e.g. rgb + segmentation)
+                        // so we keep going here.
+                    } else {
+                        continue; // Different sizes, skip creating the stacked version
+                    }
                 }
 
                 // Create one SpaceView for the whole space:
@@ -140,8 +177,8 @@ impl Viewport {
                     let space_view = SpaceView::new(
                         ctx,
                         category,
-                        path.clone(),
                         space_info,
+                        spaces_info,
                         scene_spatial.preferred_navigation_mode(),
                     );
                     blueprint.add_space_view(space_view);
@@ -224,13 +261,14 @@ impl Viewport {
         )
         .show_header(ui, |ui| {
             match space_view.category {
+                ViewCategory::Text => ui.label("📃"),
+                ViewCategory::TimeSeries => ui.label("📈"),
+                ViewCategory::BarChart => ui.label("📊"),
                 ViewCategory::Spatial => match space_view.view_state.state_spatial.nav_mode {
                     super::view_spatial::SpatialNavigationMode::TwoD => ui.label("🖼"),
                     super::view_spatial::SpatialNavigationMode::ThreeD => ui.label("🔭"),
                 },
                 ViewCategory::Tensor => ui.label("🇹"),
-                ViewCategory::Text => ui.label("📃"),
-                ViewCategory::Plot => ui.label("📈"),
             };
 
             if ctx
@@ -293,20 +331,28 @@ impl Viewport {
     fn add_space_view_for(
         &mut self,
         ctx: &mut ViewerContext<'_>,
-        path: &ObjPath,
         space_info: &SpaceInfo,
+        spaces_info: &SpacesInfo,
     ) {
         for (category, obj_paths) in group_by_category(
             ctx.rec_cfg.time_ctrl.timeline(),
             ctx.log_db,
             space_info.descendants_without_transform.iter(),
         ) {
-            let scene_spatial = query_scene_spatial(ctx, &obj_paths);
+            let scene_spatial = query_scene_spatial(
+                ctx,
+                &obj_paths,
+                &TransformCache::determine_transforms(
+                    spaces_info,
+                    space_info,
+                    &ObjectsProperties::default(),
+                ),
+            );
             self.add_space_view(SpaceView::new(
                 ctx,
                 category,
-                path.clone(),
                 space_info,
+                spaces_info,
                 scene_spatial.preferred_navigation_mode(),
             ));
         }
@@ -329,9 +375,19 @@ impl Viewport {
 
                 // Check if the blueprint is missing a space,
                 // maybe one that has been added by new data:
-                for (path, space_info) in &spaces_info.spaces {
-                    if !self.has_space(path) {
-                        self.add_space_view_for(ctx, path, space_info);
+                for space_info in spaces_info.iter() {
+                    // Ignore spaces that have a parent connected via a rigid transform to their parent,
+                    // since they should be picked up automatically by existing parent spaces.
+                    if let Some(transform) = &space_info.parent_transform() {
+                        match transform {
+                            re_log_types::Transform::Rigid3(_) => continue,
+                            re_log_types::Transform::Pinhole(_)
+                            | re_log_types::Transform::Unknown => {}
+                        }
+                    }
+
+                    if !self.has_space(&space_info.path) {
+                        self.add_space_view_for(ctx, space_info, spaces_info);
                     }
                 }
             }
@@ -378,6 +434,7 @@ impl Viewport {
             let frame = ctx.re_ui.hovering_frame();
             hovering_panel(ui, frame, response.rect, |ui| {
                 space_view_options_link(ctx, selection_panel_expanded, space_view.id, ui, "⛭");
+                help_text_ui(ui, space_view);
             });
         } else if let Some(space_view_id) = self.maximized {
             let space_view = self
@@ -391,14 +448,16 @@ impl Viewport {
 
             let frame = ctx.re_ui.hovering_frame();
             hovering_panel(ui, frame, response.rect, |ui| {
-                if ui
-                    .button("⬅")
+                if ctx
+                    .re_ui
+                    .small_icon(ui, &re_ui::icons::MINIMIZE)
                     .on_hover_text("Restore - show all spaces")
                     .clicked()
                 {
                     self.maximized = None;
                 }
                 space_view_options_link(ctx, selection_panel_expanded, space_view.id, ui, "⛭");
+                help_text_ui(ui, space_view);
             });
         } else {
             let mut dock_style = egui_dock::Style::from_egui(ui.style().as_ref());
@@ -435,24 +494,36 @@ impl Viewport {
         ui.vertical_centered(|ui| {
             ui.menu_button("Add new space view…", |ui| {
                 ui.style_mut().wrap = Some(false);
-                for (path, space_info) in &spaces_info.spaces {
-                    let categories = group_by_category(
-                        ctx.rec_cfg.time_ctrl.timeline(),
-                        ctx.log_db,
-                        space_info.descendants_without_transform.iter(),
-                    );
 
-                    if !categories.is_empty() {
-                        if ui.button(path.to_string()).clicked() {
+                let objects_per_root_grouped_by_category =
+                    objects_per_root_grouped_by_category(ctx);
+
+                for space_info in spaces_info.iter() {
+                    let categories = objects_per_root_grouped_by_category
+                        .get(&ObjPath::from(&space_info.path.to_components()[..1]));
+
+                    if let Some(categories) = categories {
+                        if categories.is_empty() {
+                            continue;
+                        }
+
+                        let transforms = TransformCache::determine_transforms(
+                            spaces_info,
+                            space_info,
+                            &ObjectsProperties::default(),
+                        );
+
+                        if ui.button(space_info.path.to_string()).clicked() {
                             ui.close_menu();
 
                             for (category, obj_paths) in categories {
-                                let scene_spatial = query_scene_spatial(ctx, &obj_paths);
+                                let scene_spatial =
+                                    query_scene_spatial(ctx, obj_paths, &transforms);
                                 let new_space_view_id = self.add_space_view(SpaceView::new(
                                     ctx,
-                                    category,
-                                    path.clone(),
+                                    *category,
                                     space_info,
+                                    spaces_info,
                                     scene_spatial.preferred_navigation_mode(),
                                 ));
                                 ctx.set_selection(Selection::SpaceView(new_space_view_id));
@@ -463,6 +534,35 @@ impl Viewport {
             });
         });
     }
+}
+
+/// Returns iterator over all root paths, each with a list of object paths under it.
+fn objects_per_root<'a>(
+    ctx: &mut ViewerContext<'a>,
+) -> impl Iterator<Item = (ObjPath, Vec<ObjPath>)> + 'a {
+    let roots = &ctx.log_db.obj_db.tree.children;
+    roots.iter().map(|(root_path, root_tree)| {
+        let mut objects = Vec::new();
+        root_tree.visit_children_recursively(&mut |child_path| {
+            objects.push(child_path.clone());
+        });
+        let root_path: &[ObjPathComp] = &[root_path.clone()];
+        (ObjPath::from(root_path), objects)
+    })
+}
+
+/// Returns all map from all root paths to objects grouped by category.
+fn objects_per_root_grouped_by_category(
+    ctx: &mut ViewerContext<'_>,
+) -> IntMap<ObjPath, BTreeMap<ViewCategory, IntSet<ObjPath>>> {
+    objects_per_root(ctx)
+        .map(|(root, objects)| {
+            (
+                root,
+                group_by_category(ctx.rec_cfg.time_ctrl.timeline(), ctx.log_db, objects.iter()),
+            )
+        })
+        .collect()
 }
 
 fn visibility_button(ui: &mut egui::Ui, enabled: bool, visible: &mut bool) -> egui::Response {
@@ -509,8 +609,10 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
         // Show buttons for maximize and space view options:
         let frame = self.ctx.re_ui.hovering_frame();
         hovering_panel(ui, frame, response.rect, |ui| {
-            if ui
-                .button("🗖")
+            if self
+                .ctx
+                .re_ui
+                .small_icon(ui, &re_ui::icons::MAXIMIZE)
                 .on_hover_text("Maximize Space View")
                 .clicked()
             {
@@ -525,6 +627,8 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
                 ui,
                 "⛭",
             );
+
+            help_text_ui(ui, space_view);
         });
     }
 
@@ -534,6 +638,19 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
             .get_mut(tab)
             .expect("Should have been populated beforehand");
         space_view.name.clone().into()
+    }
+}
+
+fn help_text_ui(ui: &mut egui::Ui, space_view: &SpaceView) {
+    let help_text = match space_view.category {
+        ViewCategory::TimeSeries => Some(crate::ui::view_time_series::HELP_TEXT),
+        ViewCategory::BarChart => Some(crate::ui::view_bar_chart::HELP_TEXT),
+        ViewCategory::Spatial => Some(space_view.view_state.state_spatial.help_text()),
+        ViewCategory::Text | ViewCategory::Tensor => None,
+    };
+
+    if let Some(help_text) = help_text {
+        crate::misc::help_hover_button(ui).on_hover_text(help_text);
     }
 }
 
@@ -579,7 +696,7 @@ fn space_view_ui(
     spaces_info: &SpacesInfo,
     space_view: &mut SpaceView,
 ) {
-    let Some(reference_space_info) = spaces_info.spaces.get(&space_view.space_path) else {
+    let Some(reference_space_info) = spaces_info.get(&space_view.space_path) else {
         ui.centered_and_justified(|ui| {
             ui.label(ctx.re_ui.warning_text(format!("Unknown space {}", space_view.space_path)));
         });

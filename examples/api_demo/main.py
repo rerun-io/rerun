@@ -15,28 +15,14 @@ from time import sleep
 from typing import Any, Final
 
 import numpy as np
+from rerun.log.annotation import AnnotationInfo
+from rerun.log.rects import RectFormat
+from rerun.log.text import LoggingHandler, LogLevel
+from scipy.spatial.transform import Rotation
 
 import rerun
-from rerun import AnnotationInfo, LoggingHandler, LogLevel, RectFormat
 
-
-def run_misc() -> None:
-    CAMERA_GLB: Final = Path(os.path.dirname(__file__)).joinpath("../../crates/re_viewer/data/camera.glb")
-    mesh_data = CAMERA_GLB.read_bytes()
-
-    # Optional affine transformation matrix to apply (in this case: scale it up by a factor x2)
-    transform = np.array(
-        [
-            [2, 0, 0, 0],
-            [0, 2, 0, 0],
-            [0, 0, 2, 0],
-        ]
-    )
-    rerun.set_time_seconds("sim_time", 1)
-
-    rerun.log_mesh_file("world/example_mesh", rerun.MeshFormat.GLB, mesh_data, transform=transform)
-
-    rerun.log_path("world/a_box", np.array([[0, 0, 0], [0, 1, 0], [1, 1, 0], [1, 0, 0], [0, 0, 0]]))
+# from rerun import AnnotationInfo, LoggingHandler, LogLevel, RectFormat
 
 
 def run_segmentation() -> None:
@@ -94,6 +80,8 @@ def run_segmentation() -> None:
 
 
 def run_points_3d() -> None:
+    import random
+
     rerun.set_time_seconds("sim_time", 1)
     rerun.log_point("3d_points/single_point_unlabeled", np.array([10.0, 0.0, 0.0]))
     rerun.log_point("3d_points/single_point_labeled", np.array([0.0, 0.0, 0.0]), label="labeled point")
@@ -101,11 +89,13 @@ def run_points_3d() -> None:
         "3d_points/spiral_small",
         np.array([[math.sin(i * 0.2) * 5, math.cos(i * 0.2) * 5 + 10.0, i * 4.0 - 5.0] for i in range(9)]),
         labels=[str(i) for i in range(9)],
+        radii=np.linspace(0.1, 2.0, num=9),
     )
     rerun.log_points(
         "3d_points/spiral_big",
         np.array([[math.sin(i * 0.2) * 5, math.cos(i * 0.2) * 5 - 10.0, i * 0.4 - 5.0] for i in range(100)]),
         labels=[str(i) for i in range(100)],
+        colors=np.array([[random.randrange(255) for _ in range(3)] for _ in range(100)]),
     )
 
 
@@ -155,14 +145,87 @@ def run_log_cleared() -> None:
     rerun.log_rect("null_demo/rect/1", [10, 5, 4, 4])
 
 
+def transforms_rigid_3d() -> None:
+    rerun.set_time_seconds("sim_time", 0)
+
+    sun_to_planet_distance = 6.0
+    planet_to_moon_distance = 3.0
+    rotation_speed_planet = 2.0
+    rotation_speed_moon = 5.0
+
+    # Planetary motion is typically in the XY plane.
+    rerun.log_view_coordinates("transforms3d", up="+Z", timeless=True)
+    rerun.log_view_coordinates("transforms3d/sun", up="+Z", timeless=True)
+    rerun.log_view_coordinates("transforms3d/planet", up="+Z", timeless=True)
+    rerun.log_view_coordinates("transforms3d/planet/moon", up="+Z", timeless=True)
+
+    # All are in the center of their own space:
+    rerun.log_point("transforms3d/sun", [0.0, 0.0, 0.0], radius=1.0, color=[255, 200, 10])
+    rerun.log_point("transforms3d/sun/planet", [0.0, 0.0, 0.0], radius=0.4, color=[40, 80, 200])
+    rerun.log_point("transforms3d/sun/planet/moon", [0.0, 0.0, 0.0], radius=0.15, color=[180, 180, 180])
+
+    # "dust" around the "planet" (and inside, don't care)
+    # distribution is quadratically higher in the middle
+    radii = np.random.rand(200) * planet_to_moon_distance * 0.5
+    angles = np.random.rand(200) * math.tau
+    height = np.power(np.random.rand(200), 0.2) * 0.5 - 0.5
+    rerun.log_points(
+        "transforms3d/sun/planet/dust",
+        np.array([np.sin(angles) * radii, np.cos(angles) * radii, height]).transpose(),
+        colors=[80, 80, 80],
+        radii=0.025,
+    )
+
+    # paths where the planet & moon move
+    angles = np.arange(0.0, 1.01, 0.01) * math.tau
+    circle = np.array([np.sin(angles), np.cos(angles), angles * 0.0]).transpose()
+    rerun.log_path(
+        "transforms3d/sun/planet_path",
+        circle * sun_to_planet_distance,
+    )
+    rerun.log_path(
+        "transforms3d/sun/planet/moon_path",
+        circle * planet_to_moon_distance,
+    )
+
+    # movement via transforms
+    for i in range(0, 6 * 120):
+        time = i / 120.0
+        rerun.set_time_seconds("sim_time", time)
+        rotation_q = [0, 0, 0, 1]
+
+        rerun.log_rigid3(
+            "transforms3d/sun/planet",
+            parent_from_child=(
+                [
+                    math.sin(time * rotation_speed_planet) * sun_to_planet_distance,
+                    math.cos(time * rotation_speed_planet) * sun_to_planet_distance,
+                    0.0,
+                ],
+                Rotation.from_euler("x", 20, degrees=True).as_quat(),
+            ),
+        )
+        rerun.log_rigid3(
+            "transforms3d/sun/planet/moon",
+            child_from_parent=(
+                [
+                    math.cos(time * rotation_speed_moon) * planet_to_moon_distance,
+                    math.sin(time * rotation_speed_moon) * planet_to_moon_distance,
+                    0.0,
+                ],
+                rotation_q,
+            ),
+        )
+
+
 def main() -> None:
     demos = {
-        "misc": run_misc,
-        "segmentation": run_segmentation,
-        "rects": run_rects,
-        "text": run_text_logs,
-        "log_cleared": run_log_cleared,
         "3d_points": run_points_3d,
+        "log_cleared": run_log_cleared,
+        "rects": run_rects,
+        "segmentation": run_segmentation,
+        "text": run_text_logs,
+        "transforms_3d": transforms_rigid_3d,
     }
 
     parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")

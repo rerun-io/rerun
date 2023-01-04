@@ -367,7 +367,7 @@ impl eframe::App for App {
         if log_db.is_empty() && self.rx.is_some() {
             egui::CentralPanel::default().show(egui_ctx, |ui| {
                 ui.centered_and_justified(|ui| {
-                    ui.heading("Waiting for data…"); // TODO(emilk): show what ip/port we are listening to
+                    ui.strong("Waiting for data…"); // TODO(emilk): show what ip/port we are listening to
                 });
             });
         } else {
@@ -587,7 +587,7 @@ fn preview_files_being_dropped(egui_ctx: &egui::Context) {
             screen_rect.center(),
             Align2::CENTER_CENTER,
             text,
-            TextStyle::Heading.resolve(&egui_ctx.style()),
+            TextStyle::Body.resolve(&egui_ctx.style()),
             Color32::WHITE,
         );
     }
@@ -677,8 +677,8 @@ impl AppState {
         };
 
         let blueprint = blueprints.entry(selected_app_id.clone()).or_default();
-        selection_panel.show_panel(&mut ctx, egui_ctx, blueprint);
         time_panel.show_panel(&mut ctx, blueprint, egui_ctx);
+        selection_panel.show_panel(&mut ctx, egui_ctx, blueprint);
 
         let central_panel_frame = egui::Frame {
             fill: egui_ctx.style().visuals.panel_fill,

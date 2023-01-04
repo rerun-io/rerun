@@ -4,21 +4,21 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 use criterion::{criterion_group, criterion_main, Criterion};
 
 use itertools::Itertools;
-use re_arrow_store::{DataStore, TimeQuery, TimelineQuery};
+use re_arrow_store::{DataStore, LatestAtQuery};
 use re_log_types::{
     datagen::{build_frame_nr, build_some_colors, build_some_point2d},
     field_types::{ColorRGBA, Instance, Point2D},
     msg_bundle::{try_build_msg_bundle2, Component, MsgBundle},
-    obj_path, Index, MsgId, ObjPath, ObjPathComp, TimeType, Timeline,
+    obj_path, Index, MsgId, ObjPath, TimeType, Timeline,
 };
-use re_query::{query_entity_with_primary, visit_components3};
+use re_query::query_entity_with_primary;
 
 // ---
 
 #[cfg(not(debug_assertions))]
-const NUM_FRAMES: u32 = 100;
+const NUM_FRAMES: u32 = 1_000;
 #[cfg(not(debug_assertions))]
-const NUM_POINTS: u32 = 100;
+const NUM_POINTS: u32 = 1_000;
 
 // `cargo test` also runs the benchmark setup code, so make sure they run quickly:
 #[cfg(debug_assertions)]
@@ -39,6 +39,8 @@ fn obj_mono_points(c: &mut Criterion) {
 
         {
             let mut group = c.benchmark_group("arrow_mono_points");
+            // Mono-insert is slow -- decrease the sample size
+            group.sample_size(10);
             group.throughput(criterion::Throughput::Elements(
                 (NUM_POINTS * NUM_FRAMES) as _,
             ));
@@ -98,7 +100,7 @@ fn build_messages(paths: &[ObjPath], pts: usize) -> Vec<MsgBundle> {
                 try_build_msg_bundle2(
                     MsgId::ZERO,
                     path.clone(),
-                    [build_frame_nr(frame_idx as _)],
+                    [build_frame_nr((frame_idx as i64).into())],
                     (build_some_point2d(pts), build_some_colors(pts)),
                 )
                 .unwrap()
@@ -108,7 +110,7 @@ fn build_messages(paths: &[ObjPath], pts: usize) -> Vec<MsgBundle> {
 }
 
 fn insert_messages<'a>(msgs: impl Iterator<Item = &'a MsgBundle>) -> DataStore {
-    let mut store = DataStore::default();
+    let mut store = DataStore::new(Instance::name(), Default::default());
     msgs.for_each(|msg_bundle| store.insert(msg_bundle).unwrap());
     store
 }
@@ -119,31 +121,24 @@ struct Point {
 }
 
 fn query_and_visit(store: &mut DataStore, paths: &[ObjPath]) -> Vec<Point> {
-    let time_query = TimeQuery::LatestAt((NUM_FRAMES as i64) / 2);
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
-    let timeline_query = TimelineQuery::new(timeline_frame_nr, time_query);
+    let query = LatestAtQuery::new(timeline_frame_nr, (NUM_FRAMES as i64 / 2).into());
 
     let mut points = Vec::with_capacity(NUM_POINTS as _);
 
     // TODO(jleibs): Add Radius once we have support for it in field_types
     for path in paths.iter() {
-        if let Ok(df) = query_entity_with_primary(
-            store,
-            &timeline_query,
-            path,
-            Point2D::NAME,
-            &[ColorRGBA::NAME],
-        ) {
-            visit_components3(
-                &df,
-                |pos: &Point2D, _instance: Option<&Instance>, color: Option<&ColorRGBA>| {
+        query_entity_with_primary::<Point2D>(store, &query, path, &[ColorRGBA::name()])
+            .and_then(|entity_view| {
+                entity_view.visit2(|_: Instance, pos: Point2D, color: Option<ColorRGBA>| {
                     points.push(Point {
-                        _pos: pos.clone(),
-                        _color: color.cloned(),
+                        _pos: pos,
+                        _color: color,
                     });
-                },
-            );
-        };
+                })
+            })
+            .ok()
+            .unwrap();
     }
     assert_eq!(NUM_POINTS as usize, points.len());
     points

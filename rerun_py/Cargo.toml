@@ -41,11 +41,12 @@ rerun = { path = "../crates/rerun" }
 rerun_sdk = { path = "../crates/rerun_sdk" }
 
 ahash = "0.8"
-arrow2 = { workspace = true, features = ["io_ipc"] }
+arrow2 = { workspace = true, features = ["io_ipc", "io_print"] }
 bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }
 crossbeam = "0.8"
 document-features = "0.2"
 glam = "0.20"
+half = "1.8"
 image = { version = "0.24", default-features = false, features = [
   "jpeg",
   "jpeg_rayon",
@@ -53,7 +54,7 @@ image = { version = "0.24", default-features = false, features = [
 itertools = "0.10"
 macaw = "0.17"
 mimalloc = { version = "0.1.29", features = ["local_dynamic_tls"] }
-numpy = "0.17"
+numpy = { version = "0.17", features = ["half"] }
 pyo3 = "0.17"
 rand = { version = "0.8", features = ["std_rng"] }
 tokio = { version = "1.16", features = ["rt-multi-thread"] }

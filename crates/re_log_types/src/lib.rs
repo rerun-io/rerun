@@ -45,19 +45,19 @@ pub mod external {
     pub use arrow2_convert;
 }
 
+pub use self::context::AnnotationContext;
+pub use self::coordinates::ViewCoordinates;
+pub use self::data::*;
+pub use self::field_types::MsgId;
+pub use self::index::*;
+pub use self::objects::ObjectType;
+pub use self::path::*;
+pub use self::time::{Duration, Time};
+pub use self::time_point::{TimeInt, TimePoint, TimeType, Timeline, TimelineName};
 pub use self::time_range::{TimeRange, TimeRangeF};
 pub use self::time_real::TimeReal;
-pub use context::AnnotationContext;
-pub use coordinates::ViewCoordinates;
-pub use data::*;
-pub use index::*;
-pub use objects::ObjectType;
-pub use path::*;
-pub use time::{Duration, Time};
-pub use time_point::{TimeInt, TimePoint, TimeType, Timeline, TimelineName};
 
-pub type ComponentName = String;
-pub type ComponentNameRef<'a> = &'a str;
+pub type ComponentName = FieldName;
 
 #[macro_export]
 macro_rules! impl_into_enum {
@@ -69,38 +69,6 @@ macro_rules! impl_into_enum {
             }
         }
     };
-}
-
-// ----------------------------------------------------------------------------
-
-/// A unique id per [`LogMsg`].
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct MsgId(re_tuid::Tuid);
-
-impl std::fmt::Display for MsgId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:x}", self.0.as_u128())
-    }
-}
-
-impl MsgId {
-    /// All zeroes.
-    pub const ZERO: Self = Self(re_tuid::Tuid::ZERO);
-
-    /// All ones.
-    pub const MAX: Self = Self(re_tuid::Tuid::MAX);
-
-    #[inline]
-    #[cfg(not(target_arch = "wasm32"))]
-    pub fn random() -> Self {
-        Self(re_tuid::Tuid::random())
-    }
-
-    #[inline]
-    pub fn as_u128(&self) -> u128 {
-        self.0.as_u128()
-    }
 }
 
 // ----------------------------------------------------------------------------

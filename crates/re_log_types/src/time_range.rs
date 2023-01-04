@@ -31,6 +31,11 @@ impl TimeRange {
     pub fn length(&self) -> TimeInt {
         self.max - self.min
     }
+
+    #[inline]
+    pub fn contains(&self, time: TimeInt) -> bool {
+        self.min <= time && time <= self.max
+    }
 }
 
 impl From<TimeRange> for RangeInclusive<TimeInt> {

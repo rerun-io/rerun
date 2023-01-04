@@ -1,929 +1,680 @@
-use std::{
-    collections::HashMap,
-    sync::atomic::{AtomicBool, Ordering::SeqCst},
+//! Straightforward high-level API tests.
+//!
+//! Testing & demonstrating expected usage of the datastore APIs, no funny stuff.
+
+use std::sync::atomic::{AtomicBool, Ordering};
+
+use arrow2::array::{Array, UInt64Array};
+use nohash_hasher::IntMap;
+use polars_core::{prelude::*, series::Series};
+use polars_ops::prelude::DataFrameJoinOps;
+use re_arrow_store::{
+    polars_util, test_bundle, DataStore, DataStoreConfig, LatestAtQuery, RangeQuery, TimeInt,
+    TimeRange,
 };
-
-use arrow2::array::Array;
-
-use polars_core::{prelude::DataFrame, series::Series};
-use re_arrow_store::{DataStore, DataStoreConfig, TimeInt, TimeQuery, TimelineQuery};
 use re_log_types::{
     datagen::{
-        build_frame_nr, build_instances, build_log_time, build_some_point2d, build_some_rects,
+        build_frame_nr, build_some_instances, build_some_instances_from, build_some_point2d,
+        build_some_rects,
     },
-    field_types::{Point2D, Rect2D},
-    msg_bundle::{Component, ComponentBundle, MsgBundle},
-    ComponentName, ComponentNameRef, Duration, MsgId, ObjPath as EntityPath, Time, TimePoint,
-    TimeType, Timeline,
+    field_types::{Instance, Point2D, Rect2D},
+    msg_bundle::{wrap_in_listarray, Component as _, MsgBundle},
+    ComponentName, MsgId, ObjPath as EntityPath, TimeType, Timeline,
 };
 
-// --- Configs ---
-
-const COMPONENT_CONFIGS: &[DataStoreConfig] = &[
-    DataStoreConfig::DEFAULT,
-    DataStoreConfig {
-        component_bucket_nb_rows: 0,
-        ..DataStoreConfig::DEFAULT
-    },
-    DataStoreConfig {
-        component_bucket_nb_rows: 1,
-        ..DataStoreConfig::DEFAULT
-    },
-    DataStoreConfig {
-        component_bucket_nb_rows: 2,
-        ..DataStoreConfig::DEFAULT
-    },
-    DataStoreConfig {
-        component_bucket_nb_rows: 3,
-        ..DataStoreConfig::DEFAULT
-    },
-    DataStoreConfig {
-        component_bucket_size_bytes: 0,
-        ..DataStoreConfig::DEFAULT
-    },
-    DataStoreConfig {
-        component_bucket_size_bytes: 16,
-        ..DataStoreConfig::DEFAULT
-    },
-    DataStoreConfig {
-        component_bucket_size_bytes: 32,
-        ..DataStoreConfig::DEFAULT
-    },
-    DataStoreConfig {
-        component_bucket_size_bytes: 64,
-        ..DataStoreConfig::DEFAULT
-    },
-];
-
-const INDEX_CONFIGS: &[DataStoreConfig] = &[
-    DataStoreConfig::DEFAULT,
-    DataStoreConfig {
-        index_bucket_nb_rows: 0,
-        ..DataStoreConfig::DEFAULT
-    },
-    DataStoreConfig {
-        index_bucket_nb_rows: 1,
-        ..DataStoreConfig::DEFAULT
-    },
-    DataStoreConfig {
-        index_bucket_nb_rows: 2,
-        ..DataStoreConfig::DEFAULT
-    },
-    DataStoreConfig {
-        index_bucket_nb_rows: 3,
-        ..DataStoreConfig::DEFAULT
-    },
-    DataStoreConfig {
-        index_bucket_size_bytes: 0,
-        ..DataStoreConfig::DEFAULT
-    },
-    DataStoreConfig {
-        index_bucket_size_bytes: 16,
-        ..DataStoreConfig::DEFAULT
-    },
-    DataStoreConfig {
-        index_bucket_size_bytes: 32,
-        ..DataStoreConfig::DEFAULT
-    },
-    DataStoreConfig {
-        index_bucket_size_bytes: 64,
-        ..DataStoreConfig::DEFAULT
-    },
-];
-
-fn all_configs() -> impl Iterator<Item = DataStoreConfig> {
-    COMPONENT_CONFIGS.iter().flat_map(|comp| {
-        INDEX_CONFIGS.iter().map(|idx| DataStoreConfig {
-            component_bucket_size_bytes: comp.component_bucket_size_bytes,
-            component_bucket_nb_rows: comp.component_bucket_nb_rows,
-            index_bucket_size_bytes: idx.index_bucket_size_bytes,
-            index_bucket_nb_rows: idx.index_bucket_nb_rows,
-        })
-    })
-}
-
-// --- Scenarios ---
-
-macro_rules! test_bundle {
-    ($entity:ident @ $frames:tt => [$c0:expr $(,)*]) => {
-        re_log_types::msg_bundle::try_build_msg_bundle1(MsgId::ZERO, $entity.clone(), $frames, $c0)
-            .unwrap()
-    };
-    ($entity:ident @ $frames:tt => [$c0:expr, $c1:expr $(,)*]) => {
-        re_log_types::msg_bundle::try_build_msg_bundle2(
-            MsgId::ZERO,
-            $entity.clone(),
-            $frames,
-            ($c0, $c1),
-        )
-        .unwrap()
-    };
-}
+// --- LatestComponentsAt ---
 
 #[test]
-fn empty_query_edge_cases() {
+fn latest_components_at() {
     init_logs();
 
-    for config in all_configs() {
-        let mut store = DataStore::new(config.clone());
-        empty_query_edge_cases_impl(&mut store);
-    }
-}
-fn empty_query_edge_cases_impl(store: &mut DataStore) {
-    let ent_path = EntityPath::from("this/that");
-    let now = Time::now();
-    let now_nanos = now.nanos_since_epoch();
-    let now_minus_1s = now - Duration::from_secs(1.0);
-    let now_minus_1s_nanos = now_minus_1s.nanos_since_epoch();
-    let frame39 = 39;
-    let frame40 = 40;
-    let nb_instances = 3;
-
-    let mut tracker = DataTracker::default();
-    {
-        tracker.insert_bundle(
-            store,
-            &test_bundle!(ent_path @ [build_log_time(now), build_frame_nr(frame40)] => [
-                build_instances(nb_instances),
-            ]),
-        );
-    }
-
-    if let err @ Err(_) = store.sanity_check() {
-        store.sort_indices();
-        eprintln!("{store}");
-        err.unwrap();
-    }
-
-    let timeline_wrong_name = Timeline::new("lag_time", TimeType::Time);
-    let timeline_wrong_kind = Timeline::new("log_time", TimeType::Sequence);
-    let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
-    let timeline_log_time = Timeline::new("log_time", TimeType::Time);
-    let components_all = &["instances"];
-
-    tracker.assert_scenario(
-        "query at `last_frame`",
-        "dataframe with our instances in it",
-        store,
-        &TimelineQuery::new(timeline_frame_nr, TimeQuery::LatestAt(frame40)),
-        &ent_path,
-        components_all,
-        vec![("instances", frame40.into())],
-    );
-
-    tracker.assert_scenario(
-        "query at `last_log_time`",
-        "dataframe with our instances in it",
-        store,
-        &TimelineQuery::new(timeline_log_time, TimeQuery::LatestAt(now_nanos)),
-        &ent_path,
-        components_all,
-        vec![("instances", now_nanos.into())],
-    );
-
-    tracker.assert_scenario(
-        "query an empty store at `first_frame - 1`",
-        "empty dataframe",
-        store,
-        &TimelineQuery::new(timeline_frame_nr, TimeQuery::LatestAt(frame39)),
-        &ent_path,
-        components_all,
-        vec![],
-    );
-
-    tracker.assert_scenario(
-        "query an empty store at `first_log_time - 1s`",
-        "empty dataframe",
-        store,
-        &TimelineQuery::new(timeline_log_time, TimeQuery::LatestAt(now_minus_1s_nanos)),
-        &ent_path,
-        components_all,
-        vec![],
-    );
-
-    tracker.assert_scenario(
-        "query a non-existing entity path",
-        "empty dataframe",
-        store,
-        &TimelineQuery::new(timeline_frame_nr, TimeQuery::LatestAt(frame40)),
-        &EntityPath::from("does/not/exist"),
-        components_all,
-        vec![],
-    );
-
-    tracker.assert_scenario(
-        "query a bunch of non-existing components",
-        "empty dataframe",
-        store,
-        &TimelineQuery::new(timeline_frame_nr, TimeQuery::LatestAt(frame40)),
-        &ent_path,
-        &["they", "dont", "exist"],
-        vec![],
-    );
-
-    tracker.assert_scenario(
-        "query with an empty list of components",
-        "empty dataframe",
-        store,
-        &TimelineQuery::new(timeline_frame_nr, TimeQuery::LatestAt(frame40)),
-        &ent_path,
-        &[],
-        vec![],
-    );
-
-    tracker.assert_scenario(
-        "query with wrong timeline name",
-        "empty dataframe",
-        store,
-        &TimelineQuery::new(timeline_wrong_name, TimeQuery::LatestAt(frame40)),
-        &ent_path,
-        components_all,
-        vec![],
-    );
-
-    tracker.assert_scenario(
-        "query with wrong timeline kind",
-        "empty dataframe",
-        store,
-        &TimelineQuery::new(timeline_wrong_kind, TimeQuery::LatestAt(frame40)),
-        &ent_path,
-        components_all,
-        vec![],
-    );
-}
-
-/// Covering a very common end-to-end use case:
-/// - single entity path
-/// - static set of instances
-/// - multiple components uploaded at different rates
-/// - multiple timelines with non-monotically increasing updates
-/// - no weird stuff (duplicated components etc)
-#[test]
-fn end_to_end_roundtrip_standard() {
-    init_logs();
-
-    for config in all_configs() {
-        let mut store = DataStore::new(config.clone());
-        end_to_end_roundtrip_standard_impl(&mut store);
-    }
-}
-fn end_to_end_roundtrip_standard_impl(store: &mut DataStore) {
     let ent_path = EntityPath::from("this/that");
 
-    let now = Time::now();
-    let now_nanos = now.nanos_since_epoch();
-    let now_minus_2s = now - Duration::from_secs(2.0);
-    let now_minus_1s = now - Duration::from_secs(1.0);
-    let now_minus_1s_nanos = now_minus_1s.nanos_since_epoch();
-    let now_plus_1s = now + Duration::from_secs(1.0);
-    let now_plus_1s_nanos = now_plus_1s.nanos_since_epoch();
-    let now_plus_2s = now + Duration::from_secs(2.0);
+    let frame0 = 0.into();
+    let frame1 = 1.into();
+    let frame2 = 2.into();
+    let frame3 = 3.into();
+    let frame4 = 4.into();
 
-    let frame40 = 40;
-    let frame41 = 41;
-    let frame42 = 42;
-    let frame43 = 43;
-    let frame44 = 44;
+    let assert_latest_components_at =
+        |store: &mut DataStore,
+         ent_path: &EntityPath,
+         frame_nr: TimeInt,
+         expected: Option<&[ComponentName]>| {
+            let timeline = Timeline::new("frame_nr", TimeType::Sequence);
 
-    let nb_instances = 3;
+            let components = store.latest_components_at(
+                &LatestAtQuery {
+                    timeline,
+                    at: frame_nr,
+                },
+                ent_path,
+            );
 
-    let mut tracker = DataTracker::default();
+            let components = components.map(|mut components| {
+                components.sort();
+                components
+            });
+
+            let expected = expected.map(|expected| {
+                let mut expected = expected.to_vec();
+                expected.sort();
+                expected
+            });
+
+            store.sort_indices_if_needed();
+            assert_eq!(
+                expected,
+                components,
+                "expected to find {expected:?} at frame {}, found {components:?} instead\n{store}",
+                timeline.typ().format(frame_nr)
+            );
+        };
+
+    // One big bucket, demonstrating the easier-to-reason-about cases.
     {
-        tracker.insert_bundle(
-            store,
-            &test_bundle!(ent_path @ [build_frame_nr(frame41)] => [
-                build_instances(nb_instances),
-            ]),
+        let mut store = DataStore::new(
+            Instance::name(),
+            DataStoreConfig {
+                component_bucket_nb_rows: u64::MAX,
+                index_bucket_nb_rows: u64::MAX,
+                ..Default::default()
+            },
         );
-        tracker.insert_bundle(
-            store,
-            &test_bundle!(ent_path @ [build_frame_nr(frame41)] => [
-                build_some_point2d(nb_instances),
-            ]),
-        );
-        tracker.insert_bundle(
-            store,
-            &test_bundle!(ent_path @ [build_log_time(now), build_frame_nr(frame42)] => [
-                build_some_rects(nb_instances),
-            ]),
-        );
-        tracker.insert_bundle(
-            store,
-            &test_bundle!(ent_path @ [build_log_time(now_plus_1s)] => [
-                build_instances(nb_instances),
-                build_some_rects(nb_instances),
-            ]),
-        );
-        tracker.insert_bundle(
-            store,
-            &test_bundle!(ent_path @ [build_frame_nr(frame41)] => [
-                build_some_rects(nb_instances),
-            ]),
-        );
-        tracker.insert_bundle(
-            store,
-            &test_bundle!(ent_path @ [build_log_time(now), build_frame_nr(frame42)] => [
-                build_instances(nb_instances),
-            ]),
-        );
-        tracker.insert_bundle(
-            store,
-            &test_bundle!(ent_path @ [build_log_time(now_minus_1s), build_frame_nr(frame42)] => [
-                build_some_point2d(nb_instances),
-            ]),
-        );
-        tracker.insert_bundle(
-            store,
-            &test_bundle!(ent_path @ [build_log_time(now_minus_1s), build_frame_nr(frame43)] => [
-                build_some_rects(nb_instances),
-            ]),
-        );
-        tracker.insert_bundle(
-            store,
-            &test_bundle!(ent_path @ [build_frame_nr(frame44)] => [
-                build_some_point2d(nb_instances),
-            ]),
-        );
-    }
+        let cluster_key = store.cluster_key();
 
-    if let err @ Err(_) = store.sanity_check() {
-        store.sort_indices();
-        eprintln!("{store}");
-        err.unwrap();
-    }
+        let bundle = test_bundle!(ent_path @ [
+            build_frame_nr(frame2),
+        ] => [build_some_rects(2), build_some_point2d(2)]);
+        store.insert(&bundle).unwrap();
 
-    let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
-    let timeline_log_time = Timeline::new("log_time", TimeType::Time);
-    let components_all = &["instances", Rect2D::NAME, Point2D::NAME];
-
-    // --- Testing at all frames ---
-
-    let scenarios = [
-        (
-            "query all components at frame #40 (i.e. before first frame)",
-            "empy dataframe",
-            frame40,
-            vec![],
-        ),
-        (
-            "query all components at frame #41 (i.e. first frame with data)",
-            "data at that point in time",
-            frame41,
-            vec![
-                ("instances", frame41.into()),
-                (Rect2D::NAME, frame41.into()),
-                (Point2D::NAME, frame41.into()),
-            ],
-        ),
-        (
-            "query all components at frame #42 (i.e. second frame with data)",
-            "data at that point in time",
-            frame42,
-            vec![
-                ("instances", frame42.into()),
-                (Rect2D::NAME, frame42.into()),
-                (Point2D::NAME, frame42.into()),
-            ],
-        ),
-        (
-            "query all components at frame #43 (i.e. last frame with data)",
-            "latest data for all components",
-            frame43,
-            vec![
-                ("instances", frame42.into()),
-                (Rect2D::NAME, frame43.into()),
-                (Point2D::NAME, frame42.into()),
-            ],
-        ),
-        (
-            "query all components at frame #44 (i.e. after last frame)",
-            "latest data for all components",
-            frame44,
-            vec![
-                ("instances", frame42.into()),
-                (Rect2D::NAME, frame43.into()),
-                (Point2D::NAME, frame44.into()),
-            ],
-        ),
-    ];
-
-    for (scenario, expectation, frame_nr, expected) in scenarios {
-        tracker.assert_scenario(
-            scenario,
-            expectation,
-            store,
-            &TimelineQuery::new(timeline_frame_nr, TimeQuery::LatestAt(frame_nr)),
-            &ent_path,
-            components_all,
-            expected,
-        );
-    }
-
-    // --- Testing at all times ---
-
-    let scenarios = [
-        (
-            "query all components at -2s (i.e. before first update)",
-            "empty dataframe",
-            now_minus_2s,
-            vec![],
-        ),
-        (
-            "query all components at -1s (i.e. first update)",
-            "data at that point in time",
-            now_minus_1s,
-            vec![
-                (Rect2D::NAME, now_minus_1s_nanos.into()),
-                (Point2D::NAME, now_minus_1s_nanos.into()),
-            ],
-        ),
-        (
-            "query all components at 0s (i.e. second update)",
-            "data at that point in time",
-            now,
-            vec![
-                ("instances", now_nanos.into()),
-                (Rect2D::NAME, now_nanos.into()),
-                (Point2D::NAME, now_minus_1s_nanos.into()),
-            ],
-        ),
-        (
-            "query all components at +1s (i.e. last update)",
-            "latest data for all components",
-            now_plus_1s,
-            vec![
-                ("instances", now_plus_1s_nanos.into()),
-                (Rect2D::NAME, now_plus_1s_nanos.into()),
-                (Point2D::NAME, now_minus_1s_nanos.into()),
-            ],
-        ),
-        (
-            "query all components at +2s (i.e. after last update)",
-            "latest data for all components",
-            now_plus_2s,
-            vec![
-                ("instances", now_plus_1s_nanos.into()),
-                (Rect2D::NAME, now_plus_1s_nanos.into()),
-                (Point2D::NAME, now_minus_1s_nanos.into()),
-            ],
-        ),
-    ];
-
-    for (scenario, expectation, log_time, expected) in scenarios {
-        tracker.assert_scenario(
-            scenario,
-            expectation,
-            store,
-            &TimelineQuery::new(
-                timeline_log_time,
-                TimeQuery::LatestAt(log_time.nanos_since_epoch()),
-            ),
-            &ent_path,
-            components_all,
-            expected,
-        );
-    }
-}
-
-#[test]
-fn query_model_specifics() {
-    init_logs();
-
-    for config in all_configs() {
-        let mut store = DataStore::new(config.clone());
-        query_model_specifics_impl(&mut store);
-    }
-}
-fn query_model_specifics_impl(store: &mut DataStore) {
-    let ent_path = EntityPath::from("this/that");
-
-    let frame40 = 40;
-    let frame41 = 41;
-    let frame42 = 42;
-
-    let nb_rects = 3;
-    let nb_positions_before = 10;
-    let nb_positions_after = 2;
-
-    let mut tracker = DataTracker::default();
-    {
-        // PoV queries
-        tracker.insert_bundle(
-            store,
-            &test_bundle!(ent_path @ [build_frame_nr(frame41)] => [
-                build_instances(nb_rects),
-                build_some_rects(nb_rects),
-            ]),
-        );
-        tracker.insert_bundle(
-            store,
-            &test_bundle!(ent_path @ [build_frame_nr(frame41)] => [
-                build_instances(nb_positions_before),
-                build_some_point2d(nb_positions_before),
-            ]),
-        );
-
-        // "Sparse but no diffs"
-        tracker.insert_bundle(
-            store,
-            &test_bundle!(ent_path @ [build_frame_nr(frame42)] => [
-                build_instances(nb_positions_after),
-                build_some_point2d(nb_positions_after),
-            ]),
-        );
-        tracker.insert_bundle(
-            store,
-            &test_bundle!(ent_path @ [build_frame_nr(frame42)] => [
-                build_some_rects(nb_rects),
-            ]),
-        );
-    }
-
-    if let err @ Err(_) = store.sanity_check() {
-        store.sort_indices();
-        eprintln!("{store}");
-        err.unwrap();
-    }
-
-    let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
-    let components_all = &["instances", Rect2D::NAME, Point2D::NAME];
-
-    let scenarios = [
-        (
-            "query all components at frame #40, from `rects` PoV",
-            "empty dataframe",
-            frame40,
-            Rect2D::NAME,
-            vec![],
-        ),
-        (
-            "query all components at frame #40, from `positions` PoV",
-            "empty dataframe",
-            frame40,
-            Point2D::NAME,
-            vec![],
-        ),
-        (
-            "query all components at frame #40, from `instances` PoV",
-            "empty dataframe",
-            frame40,
-            "instances",
-            vec![],
-        ),
-        (
-            "query all components at frame #41, from `rects` PoV",
-            "the set of `rects` and the _first_ set of `instances` at that time",
-            frame41,
-            Rect2D::NAME,
-            vec![
-                ("instances", frame41.into(), 0),
-                (Rect2D::NAME, frame41.into(), 0),
-            ],
-        ),
-        (
-            "query all components at frame #41, from `positions` PoV",
-            "the set of `positions` and the _second_ set of `instances` at that time",
-            frame41,
-            Point2D::NAME,
-            vec![
-                ("instances", frame41.into(), 1),
-                (Point2D::NAME, frame41.into(), 0),
-            ],
-        ),
-        (
-            "query all components at frame #41, from `instances` PoV",
-            "the _second_ set of `instances` and the set of `positions` at that time",
-            frame41,
-            "instances",
-            vec![
-                ("instances", frame41.into(), 1),
-                (Point2D::NAME, frame41.into(), 0),
-            ],
-        ),
-        (
-            "query all components at frame #42, from `positions` PoV",
-            "the set of `positions` and the set of `instances` at that time",
-            frame42,
-            Point2D::NAME,
-            vec![
-                ("instances", frame42.into(), 0),
-                (Point2D::NAME, frame42.into(), 0),
-            ],
-        ),
-        (
-            "query all components at frame #42, from `rects` PoV",
-            "the set of `rects` at that time",
-            frame42,
-            Rect2D::NAME,
-            vec![(Rect2D::NAME, frame42.into(), 0)],
-        ),
-        (
-            "query all components at frame #42, from `instances` PoV",
-            "the set of `positions` and the set of `instances` at that time",
-            frame42,
-            "instances",
-            vec![
-                ("instances", frame42.into(), 0),
-                (Point2D::NAME, frame42.into(), 0),
-            ],
-        ),
-    ];
-
-    for (scenario, expectation, frame_nr, primary, expected) in scenarios {
-        tracker.assert_scenario_pov(
-            scenario,
-            expectation,
-            store,
-            &TimelineQuery::new(timeline_frame_nr, TimeQuery::LatestAt(frame_nr)),
-            &ent_path,
-            primary,
-            components_all,
-            expected,
-        );
-    }
-}
-
-// --- Helpers ---
-
-#[derive(Default)]
-struct DataTracker {
-    all_data: HashMap<(ComponentName, TimeInt), Vec<Box<dyn Array>>>,
-}
-
-impl DataTracker {
-    fn insert_bundle(&mut self, store: &mut DataStore, msg_bundle: &MsgBundle) {
-        for time in msg_bundle.time_point.times() {
-            for bundle in &msg_bundle.components {
-                let ComponentBundle { name, value } = bundle;
-                let comps = self.all_data.entry((name.clone(), *time)).or_default();
-                comps.push(value.clone());
-            }
+        if let err @ Err(_) = store.sanity_check() {
+            store.sort_indices_if_needed();
+            eprintln!("{store}");
+            err.unwrap();
         }
-        store.insert(msg_bundle).unwrap();
+
+        let components = &[
+            Point2D::name(), // added by us
+            Rect2D::name(),  // added by us
+            cluster_key,     // always here
+            MsgId::name(),   // automatically appended by MsgBundle
+            #[cfg(debug_assertions)]
+            DataStore::insert_id_key(), // automatically added in debug
+        ];
+
+        // `frame0` & `frame1` don't actually have any data, but since they share the same
+        // _indexing time_ as `frame2`, we'll get the same results.
+        assert_latest_components_at(&mut store, &ent_path, frame0, Some(components));
+        assert_latest_components_at(&mut store, &ent_path, frame1, Some(components));
+
+        assert_latest_components_at(&mut store, &ent_path, frame2, Some(components));
+        assert_latest_components_at(&mut store, &ent_path, frame3, Some(components));
+        assert_latest_components_at(&mut store, &ent_path, frame4, Some(components));
     }
 
-    /// Asserts a simple scenario, where every component is fetched from its own point-of-view.
-    #[allow(clippy::too_many_arguments)]
-    fn assert_scenario<const N: usize>(
-        &self,
-        scenario: &str,
-        expectation: &str,
-        store: &mut DataStore,
-        timeline_query: &TimelineQuery,
-        ent_path: &EntityPath,
-        components: &[ComponentNameRef<'_>; N],
-        expected: Vec<(ComponentNameRef<'static>, TimeInt)>,
-    ) {
-        self.assert_scenario_pov_impl(
-            scenario,
-            expectation,
-            store,
-            timeline_query,
-            ent_path,
-            None,
-            components,
-            expected
-                .into_iter()
-                .map(|(name, time)| (name, time, 0))
-                .collect(),
+    // Tiny buckets, demonstrating the harder-to-reason-about cases.
+    {
+        let mut store = DataStore::new(
+            Instance::name(),
+            DataStoreConfig {
+                component_bucket_nb_rows: 0,
+                index_bucket_nb_rows: 0,
+                ..Default::default()
+            },
         );
+        let cluster_key = store.cluster_key();
+
+        // ┌──────────┬────────┬────────┬───────────┬──────────┐
+        // │ frame_nr ┆ rect2d ┆ msg_id ┆ insert_id ┆ instance │
+        // ╞══════════╪════════╪════════╪═══════════╪══════════╡
+        // │ 1        ┆ 1      ┆ 1      ┆ 1         ┆ 1        │
+        // └──────────┴────────┴────────┴───────────┴──────────┘
+        // ┌──────────┬────────┬─────────┬────────┬───────────┬──────────┐
+        // │ frame_nr ┆ rect2d ┆ point2d ┆ msg_id ┆ insert_id ┆ instance │
+        // ╞══════════╪════════╪═════════╪════════╪═══════════╪══════════╡
+        // │ 2        ┆ -      ┆ -       ┆ 2      ┆ 2         ┆ 2        │
+        // ├╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌┤
+        // │ 3        ┆ -      ┆ 1       ┆ 3      ┆ 3         ┆ 1        │
+        // └──────────┴────────┴─────────┴────────┴───────────┴──────────┘
+
+        let bundle = test_bundle!(ent_path @ [build_frame_nr(frame1)] => [build_some_rects(2)]);
+        store.insert(&bundle).unwrap();
+
+        let bundle = test_bundle!(ent_path @ [build_frame_nr(frame2)] => [build_some_instances(2)]);
+        store.insert(&bundle).unwrap();
+
+        let bundle = test_bundle!(ent_path @ [build_frame_nr(frame3)] => [build_some_point2d(2)]);
+        store.insert(&bundle).unwrap();
+
+        if let err @ Err(_) = store.sanity_check() {
+            store.sort_indices_if_needed();
+            eprintln!("{store}");
+            err.unwrap();
+        }
+
+        let components1 = &[
+            Rect2D::name(), // added by us
+            cluster_key,    // always here
+            MsgId::name(),  // automatically appended by MsgBundle
+            #[cfg(debug_assertions)]
+            DataStore::insert_id_key(), // automatically added in debug
+        ];
+
+        let components23 = &[
+            Rect2D::name(),  // ⚠ inherited before the buckets got splitted apart!
+            Point2D::name(), // added by us
+            cluster_key,     // always here
+            MsgId::name(),   // automatically appended by MsgBundle
+            #[cfg(debug_assertions)]
+            DataStore::insert_id_key(), // automatically added in debug
+        ];
+
+        // `frame0` doesn't actually have any data, but since it shares the same _indexing time_
+        // as `frame1`, we'll get the same results.
+        assert_latest_components_at(&mut store, &ent_path, frame0, Some(components1));
+
+        assert_latest_components_at(&mut store, &ent_path, frame1, Some(components1));
+
+        assert_latest_components_at(&mut store, &ent_path, frame2, Some(components23));
+        assert_latest_components_at(&mut store, &ent_path, frame3, Some(components23));
+        assert_latest_components_at(&mut store, &ent_path, frame4, Some(components23));
     }
 
-    /// Asserts a pov scenario, where every component is fetched as it is seen from the
-    /// point-of-view of another component.
-    #[allow(clippy::too_many_arguments)]
-    fn assert_scenario_pov<const N: usize>(
-        &self,
-        scenario: &str,
-        expectation: &str,
-        store: &mut DataStore,
-        timeline_query: &TimelineQuery,
-        ent_path: &EntityPath,
-        primary: ComponentNameRef<'_>,
-        components: &[ComponentNameRef<'_>; N],
-        expected: Vec<(ComponentNameRef<'static>, TimeInt, usize)>,
-    ) {
-        self.assert_scenario_pov_impl(
-            scenario,
-            expectation,
-            store,
-            timeline_query,
-            ent_path,
-            primary.into(),
-            components,
-            expected,
+    // Tiny buckets and tricky splits, demonstrating a case that is not only extremely hard to
+    // reason about, it is technically incorrect.
+    {
+        let mut store = DataStore::new(
+            Instance::name(),
+            DataStoreConfig {
+                component_bucket_nb_rows: 0,
+                index_bucket_nb_rows: 0,
+                ..Default::default()
+            },
         );
-    }
+        let cluster_key = store.cluster_key();
 
-    /// Asserts a complex scenario, where every component is either fetched as it is seen from the
-    /// point-of-view of another component, or its own point-of-view if primary is None.
-    #[allow(clippy::too_many_arguments)]
-    fn assert_scenario_pov_impl<const N: usize>(
-        &self,
-        scenario: &str,
-        expectation: &str,
-        store: &mut DataStore,
-        timeline_query: &TimelineQuery,
-        ent_path: &EntityPath,
-        primary: Option<ComponentNameRef<'_>>,
-        components: &[ComponentNameRef<'_>; N],
-        expected: Vec<(ComponentNameRef<'static>, TimeInt, usize)>,
-    ) {
-        let df = if let Some(primary) = primary {
-            Self::fetch_components_pov(store, timeline_query, ent_path, primary, components)
-        } else {
-            let series = components
-                .iter()
-                .filter_map(|&component| {
-                    Self::fetch_component_pov(store, timeline_query, ent_path, component, component)
-                })
-                .collect::<Vec<_>>();
+        // ┌──────────┬────────┬─────────┬────────┬───────────┬──────────┐
+        // │ frame_nr ┆ rect2d ┆ point2d ┆ msg_id ┆ insert_id ┆ instance │
+        // ╞══════════╪════════╪═════════╪════════╪═══════════╪══════════╡
+        // │ 1        ┆ -      ┆ 1       ┆ 4      ┆ 4         ┆ 1        │
+        // ├╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌┤
+        // │ 2        ┆ 1      ┆ -       ┆ 1      ┆ 1         ┆ 1        │
+        // └──────────┴────────┴─────────┴────────┴───────────┴──────────┘
+        // ┌──────────┬────────┬────────┬───────────┬──────────┐
+        // │ frame_nr ┆ rect2d ┆ msg_id ┆ insert_id ┆ instance │
+        // ╞══════════╪════════╪════════╪═══════════╪══════════╡
+        // │ 3        ┆ 2      ┆ 2      ┆ 2         ┆ 1        │
+        // ├╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌┤
+        // │ 4        ┆ 3      ┆ 3      ┆ 3         ┆ 1        │
+        // └──────────┴────────┴────────┴───────────┴──────────┘
 
-            DataFrame::new(series).unwrap()
-        };
+        let bundle = test_bundle!(ent_path @ [build_frame_nr(frame2)] => [build_some_rects(2)]);
+        store.insert(&bundle).unwrap();
 
-        let series = expected
-            .into_iter()
-            .filter_map(|(name, time, idx)| {
-                self.all_data
-                    .get(&(name.to_owned(), time))
-                    .and_then(|entries| entries.get(idx).cloned())
-                    .map(|data| (name, data))
-            })
-            .map(|(name, data)| Series::try_from((name, data)).unwrap())
-            .collect::<Vec<_>>();
-        let expected = DataFrame::new(series).unwrap();
-        let expected = expected.explode(expected.get_column_names()).unwrap();
+        let bundle = test_bundle!(ent_path @ [build_frame_nr(frame3)] => [build_some_rects(2)]);
+        store.insert(&bundle).unwrap();
 
-        store.sort_indices();
-        assert_eq!(
-            expected, df,
-            "\nScenario: {scenario}.\nExpected: {expectation}.\n{store}"
-        );
-    }
+        let bundle = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [build_some_rects(2)]);
+        store.insert(&bundle).unwrap();
 
-    fn fetch_component_pov(
-        store: &DataStore,
-        timeline_query: &TimelineQuery,
-        ent_path: &EntityPath,
-        primary: ComponentNameRef<'_>,
-        component: ComponentNameRef<'_>,
-    ) -> Option<Series> {
-        let row_indices = store
-            .query(timeline_query, ent_path, primary, &[component])
-            .unwrap_or_default();
-        let mut results = store.get(&[component], &row_indices);
-        std::mem::take(&mut results[0]).map(|row| Series::try_from((component, row)).unwrap())
-    }
+        let bundle = test_bundle!(ent_path @ [build_frame_nr(frame1)] => [build_some_point2d(2)]);
+        store.insert(&bundle).unwrap();
 
-    fn fetch_components_pov<const N: usize>(
-        store: &DataStore,
-        timeline_query: &TimelineQuery,
-        ent_path: &EntityPath,
-        primary: ComponentNameRef<'_>,
-        components: &[ComponentNameRef<'_>; N],
-    ) -> DataFrame {
-        let row_indices = store
-            .query(timeline_query, ent_path, primary, components)
-            .unwrap_or([None; N]);
-        let results = store.get(components, &row_indices);
+        if let err @ Err(_) = store.sanity_check() {
+            store.sort_indices_if_needed();
+            eprintln!("{store}");
+            err.unwrap();
+        }
 
-        let df = {
-            let series: Vec<_> = components
-                .iter()
-                .zip(results)
-                .filter_map(|(component, col)| col.map(|col| (component, col)))
-                .map(|(&component, col)| Series::try_from((component, col)).unwrap())
-                .collect();
+        let components12 = &[
+            Point2D::name(), // added by us
+            Rect2D::name(),  // added by us
+            cluster_key,     // always here
+            MsgId::name(),   // automatically appended by MsgBundle
+            #[cfg(debug_assertions)]
+            DataStore::insert_id_key(), // automatically added in debug
+        ];
 
-            DataFrame::new(series).unwrap()
-        };
+        let components34 = &[
+            // Point2D is missing!
+            Rect2D::name(), // added by use
+            cluster_key,    // always here
+            MsgId::name(),  // automatically appended by MsgBundle
+            #[cfg(debug_assertions)]
+            DataStore::insert_id_key(), // automatically added in debug
+        ];
 
-        df
+        // `frame0` doesn't actually have any data, but since it shares the same _indexing time_
+        // as `frame1` & `frame2`, we'll get the same results.
+        assert_latest_components_at(&mut store, &ent_path, frame0, Some(components12));
+
+        assert_latest_components_at(&mut store, &ent_path, frame1, Some(components12));
+        assert_latest_components_at(&mut store, &ent_path, frame2, Some(components12));
+
+        // Note how none of these two have a Point2D component, while they should!
+        assert_latest_components_at(&mut store, &ent_path, frame3, Some(components34));
+        assert_latest_components_at(&mut store, &ent_path, frame4, Some(components34));
     }
 }
 
-fn init_logs() {
+// --- LatestAt ---
+
+#[test]
+fn latest_at() {
+    init_logs();
+
+    for config in re_arrow_store::test_util::all_configs() {
+        let mut store = DataStore::new(Instance::name(), config.clone());
+        latest_at_impl(&mut store);
+    }
+}
+fn latest_at_impl(store: &mut DataStore) {
+    init_logs();
+
+    let ent_path = EntityPath::from("this/that");
+
+    let frame0 = 0.into();
+    let frame1 = 1.into();
+    let frame2 = 2.into();
+    let frame3 = 3.into();
+    let frame4 = 4.into();
+
+    let (instances1, rects1) = (build_some_instances(3), build_some_rects(3));
+    let bundle1 = test_bundle!(ent_path @ [build_frame_nr(frame1)] => [instances1.clone(), rects1]);
+    store.insert(&bundle1).unwrap();
+
+    let points2 = build_some_point2d(3);
+    let bundle2 = test_bundle!(ent_path @ [build_frame_nr(frame2)] => [instances1, points2]);
+    store.insert(&bundle2).unwrap();
+
+    let points3 = build_some_point2d(10);
+    let bundle3 = test_bundle!(ent_path @ [build_frame_nr(frame3)] => [points3]);
+    store.insert(&bundle3).unwrap();
+
+    let rects4 = build_some_rects(5);
+    let bundle4 = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [rects4]);
+    store.insert(&bundle4).unwrap();
+
+    if let err @ Err(_) = store.sanity_check() {
+        store.sort_indices_if_needed();
+        eprintln!("{store}");
+        err.unwrap();
+    }
+
+    let mut assert_latest_components =
+        |frame_nr: TimeInt, bundles: &[(ComponentName, &MsgBundle)]| {
+            let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
+            let components_all = &[Rect2D::name(), Point2D::name()];
+
+            let df = polars_util::latest_components(
+                store,
+                &LatestAtQuery::new(timeline_frame_nr, frame_nr),
+                &ent_path,
+                components_all,
+                &JoinType::Outer,
+            )
+            .unwrap();
+
+            let df_expected = joint_df(store.cluster_key(), bundles);
+
+            store.sort_indices_if_needed();
+            assert_eq!(df_expected, df, "{store}");
+        };
+
+    // TODO(cmc): bring back some log_time scenarios
+
+    assert_latest_components(frame0, &[]);
+    assert_latest_components(frame1, &[(Rect2D::name(), &bundle1)]);
+    assert_latest_components(
+        frame2,
+        &[(Rect2D::name(), &bundle1), (Point2D::name(), &bundle2)],
+    );
+    assert_latest_components(
+        frame3,
+        &[(Rect2D::name(), &bundle1), (Point2D::name(), &bundle3)],
+    );
+    assert_latest_components(
+        frame4,
+        &[(Rect2D::name(), &bundle4), (Point2D::name(), &bundle3)],
+    );
+}
+
+// --- Range ---
+
+#[test]
+fn range() {
+    init_logs();
+
+    for config in re_arrow_store::test_util::all_configs() {
+        let mut store = DataStore::new(Instance::name(), config.clone());
+        range_impl(&mut store);
+    }
+}
+fn range_impl(store: &mut DataStore) {
+    init_logs();
+
+    let ent_path = EntityPath::from("this/that");
+
+    let frame1 = 1.into();
+    let frame2 = 2.into();
+    let frame3 = 3.into();
+    let frame4 = 4.into();
+    let frame5 = 5.into();
+
+    let insts1 = build_some_instances(3);
+    let rects1 = build_some_rects(3);
+    let bundle1 = test_bundle!(ent_path @ [build_frame_nr(frame1)] => [insts1.clone(), rects1]);
+    store.insert(&bundle1).unwrap();
+
+    let points2 = build_some_point2d(3);
+    let bundle2 = test_bundle!(ent_path @ [build_frame_nr(frame2)] => [insts1, points2]);
+    store.insert(&bundle2).unwrap();
+
+    let points3 = build_some_point2d(10);
+    let bundle3 = test_bundle!(ent_path @ [build_frame_nr(frame3)] => [points3]);
+    store.insert(&bundle3).unwrap();
+
+    let insts4_1 = build_some_instances_from(20..25);
+    let rects4_1 = build_some_rects(5);
+    let bundle4_1 = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [insts4_1, rects4_1]);
+    store.insert(&bundle4_1).unwrap();
+
+    let insts4_2 = build_some_instances_from(25..30);
+    let rects4_2 = build_some_rects(5);
+    let bundle4_2 =
+        test_bundle!(ent_path @ [build_frame_nr(frame4)] => [insts4_2.clone(), rects4_2]);
+    store.insert(&bundle4_2).unwrap();
+
+    let points4_25 = build_some_point2d(5);
+    let bundle4_25 = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [insts4_2, points4_25]);
+    store.insert(&bundle4_25).unwrap();
+
+    let insts4_3 = build_some_instances_from(30..35);
+    let rects4_3 = build_some_rects(5);
+    let bundle4_3 =
+        test_bundle!(ent_path @ [build_frame_nr(frame4)] => [insts4_3.clone(), rects4_3]);
+    store.insert(&bundle4_3).unwrap();
+
+    let points4_4 = build_some_point2d(5);
+    let bundle4_4 = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [insts4_3, points4_4]);
+    store.insert(&bundle4_4).unwrap();
+
+    if let err @ Err(_) = store.sanity_check() {
+        store.sort_indices_if_needed();
+        eprintln!("{store}");
+        err.unwrap();
+    }
+
+    // Each entry in `bundles_at_times` corresponds to a dataframe that's expected to be returned
+    // by the range query.
+    // A single timepoint might have several of those! That's one of the behaviors specific to
+    // range queries.
+    let mut assert_range_components =
+        |time_range: TimeRange,
+         components: [ComponentName; 2],
+         bundles_at_times: &[(TimeInt, &[(ComponentName, &MsgBundle)])]| {
+            let mut expected_at_times: IntMap<TimeInt, Vec<DataFrame>> = Default::default();
+
+            for (time, bundles) in bundles_at_times {
+                let dfs = expected_at_times.entry(*time).or_default();
+                dfs.push(joint_df(store.cluster_key(), bundles));
+            }
+
+            let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
+
+            store.sort_indices_if_needed(); // for assertions below
+
+            let components = [Instance::name(), components[0], components[1]];
+            let query = RangeQuery::new(timeline_frame_nr, time_range);
+            let dfs = polars_util::range_components(
+                store,
+                &query,
+                &ent_path,
+                components[1],
+                components,
+                &JoinType::Outer,
+            );
+
+            let mut dfs_processed = 0usize;
+            let mut time_counters: IntMap<i64, usize> = Default::default();
+            for (time, df) in dfs.map(Result::unwrap) {
+                let time_count = time_counters.entry(time.as_i64()).or_default();
+                let df_expected = &expected_at_times[&time][*time_count];
+                *time_count += 1;
+
+                assert_eq!(*df_expected, df, "{store}");
+
+                dfs_processed += 1;
+            }
+
+            let dfs_processed_expected = bundles_at_times.len();
+            assert_eq!(dfs_processed_expected, dfs_processed);
+        };
+
+    // TODO(cmc): bring back some log_time scenarios
+
+    // Unit ranges (Rect2D's PoV)
+
+    assert_range_components(
+        TimeRange::new(frame1, frame1),
+        [Rect2D::name(), Point2D::name()],
+        &[
+            (frame1, &[(Rect2D::name(), &bundle1)]), //
+        ],
+    );
+    assert_range_components(
+        TimeRange::new(frame2, frame2),
+        [Rect2D::name(), Point2D::name()],
+        &[
+            (frame1, &[(Rect2D::name(), &bundle1)]), //
+        ],
+    );
+    assert_range_components(
+        TimeRange::new(frame3, frame3),
+        [Rect2D::name(), Point2D::name()],
+        &[
+            (
+                frame2,
+                &[(Rect2D::name(), &bundle1), (Point2D::name(), &bundle2)],
+            ), //
+        ],
+    );
+    assert_range_components(
+        TimeRange::new(frame4, frame4),
+        [Rect2D::name(), Point2D::name()],
+        &[
+            (
+                frame3,
+                &[(Rect2D::name(), &bundle1), (Point2D::name(), &bundle3)],
+            ),
+            (
+                frame4,
+                &[(Rect2D::name(), &bundle4_1), (Point2D::name(), &bundle3)],
+            ),
+            (
+                frame4,
+                &[(Rect2D::name(), &bundle4_2), (Point2D::name(), &bundle3)],
+            ),
+            (
+                frame4,
+                &[(Rect2D::name(), &bundle4_3), (Point2D::name(), &bundle4_25)], // !!!
+            ),
+        ],
+    );
+    assert_range_components(
+        TimeRange::new(frame5, frame5),
+        [Rect2D::name(), Point2D::name()],
+        &[
+            (
+                frame4,
+                &[(Rect2D::name(), &bundle4_3), (Point2D::name(), &bundle4_4)], // !!!
+            ), //
+        ],
+    );
+
+    // Unit ranges (Point2D's PoV)
+
+    assert_range_components(
+        TimeRange::new(frame1, frame1),
+        [Point2D::name(), Rect2D::name()],
+        &[],
+    );
+    assert_range_components(
+        TimeRange::new(frame2, frame2),
+        [Point2D::name(), Rect2D::name()],
+        &[
+            // The latest-at state does not contain any data for Point2D and is thus discarded.
+            (frame2, &[(Point2D::name(), &bundle2)]), //
+        ],
+    );
+    assert_range_components(
+        TimeRange::new(frame3, frame3),
+        [Point2D::name(), Rect2D::name()],
+        &[
+            (
+                frame2,
+                &[(Point2D::name(), &bundle2), (Rect2D::name(), &bundle1)],
+            ),
+            (
+                frame3,
+                &[(Point2D::name(), &bundle3), (Rect2D::name(), &bundle1)],
+            ),
+        ],
+    );
+    assert_range_components(
+        TimeRange::new(frame4, frame4),
+        [Point2D::name(), Rect2D::name()],
+        &[
+            (
+                frame3,
+                &[(Point2D::name(), &bundle3), (Rect2D::name(), &bundle1)],
+            ),
+            (
+                frame4,
+                &[(Point2D::name(), &bundle4_25), (Rect2D::name(), &bundle4_2)],
+            ),
+            (
+                frame4,
+                &[(Point2D::name(), &bundle4_4), (Rect2D::name(), &bundle4_3)],
+            ),
+        ],
+    );
+    assert_range_components(
+        TimeRange::new(frame5, frame5),
+        [Point2D::name(), Rect2D::name()],
+        &[
+            (
+                frame4,
+                &[(Point2D::name(), &bundle4_4), (Rect2D::name(), &bundle4_3)],
+            ), //
+        ],
+    );
+
+    // Full range (Rect2D's PoV)
+
+    assert_range_components(
+        TimeRange::new(frame1, frame5),
+        [Rect2D::name(), Point2D::name()],
+        &[
+            (frame1, &[(Rect2D::name(), &bundle1)]), //
+            (
+                frame4,
+                &[(Rect2D::name(), &bundle4_1), (Point2D::name(), &bundle3)],
+            ),
+            (
+                frame4,
+                &[(Rect2D::name(), &bundle4_2), (Point2D::name(), &bundle3)],
+            ),
+            (
+                frame4,
+                &[(Rect2D::name(), &bundle4_3), (Point2D::name(), &bundle4_25)], // !!!
+            ),
+        ],
+    );
+
+    // Full range (Point2D's PoV)
+
+    assert_range_components(
+        TimeRange::new(frame1, frame5),
+        [Point2D::name(), Rect2D::name()],
+        &[
+            (
+                frame2,
+                &[(Point2D::name(), &bundle2), (Rect2D::name(), &bundle1)],
+            ),
+            (
+                frame3,
+                &[(Point2D::name(), &bundle3), (Rect2D::name(), &bundle1)],
+            ),
+            (
+                frame4,
+                &[(Point2D::name(), &bundle4_25), (Rect2D::name(), &bundle4_2)],
+            ),
+            (
+                frame4,
+                &[(Point2D::name(), &bundle4_4), (Rect2D::name(), &bundle4_3)],
+            ),
+        ],
+    );
+}
+
+// --- Common helpers ---
+
+/// Given a list of bundles, crafts a `latest_components`-looking dataframe.
+fn joint_df(cluster_key: ComponentName, bundles: &[(ComponentName, &MsgBundle)]) -> DataFrame {
+    let df = bundles
+        .iter()
+        .map(|(component, bundle)| {
+            let cluster_comp = if let Some(idx) = bundle.find_component(&cluster_key) {
+                Series::try_from((
+                    cluster_key.as_str(),
+                    bundle.components[idx].value.to_boxed(),
+                ))
+                .unwrap()
+            } else {
+                Series::try_from((
+                    cluster_key.as_str(),
+                    wrap_in_listarray(
+                        UInt64Array::from_vec((0..bundle.row_len(0) as u64).collect()).to_boxed(),
+                    )
+                    .to_boxed(),
+                ))
+                .unwrap()
+            };
+
+            let comp_idx = bundle.find_component(component).unwrap();
+            let df = DataFrame::new(vec![
+                cluster_comp,
+                Series::try_from((
+                    component.as_str(),
+                    bundle.components[comp_idx].value.to_boxed(),
+                ))
+                .unwrap(),
+            ])
+            .unwrap();
+
+            df.explode(df.get_column_names()).unwrap()
+        })
+        .reduce(|acc, df| {
+            acc.outer_join(&df, [cluster_key.as_str()], [cluster_key.as_str()])
+                .unwrap()
+        })
+        .unwrap_or_default();
+
+    df.sort([cluster_key.as_str()], false).unwrap_or(df)
+}
+
+// ---
+
+pub fn init_logs() {
     static INIT: AtomicBool = AtomicBool::new(false);
 
-    if INIT.compare_exchange(false, true, SeqCst, SeqCst).is_ok() {
+    if INIT
+        .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+        .is_ok()
+    {
         re_log::set_default_rust_log_env();
         tracing_subscriber::fmt::init(); // log to stdout
-    }
-}
-
-// --- Internals ---
-
-// TODO(cmc): One should _never_ run assertions on the internal state of the datastore, this
-// is a recipe for disaster.
-//
-// The contract that needs to be asserted here, from the point of view of the actual user,
-// is performance: getting the datastore into a pathological topology should show up in
-// integration query benchmarks.
-//
-// In the current state of things, though, it is much easier to test for it that way... so we
-// make an exception, for now...
-#[test]
-fn pathological_bucket_topology() {
-    init_logs();
-
-    let mut store_forward = DataStore::new(DataStoreConfig {
-        index_bucket_nb_rows: 10,
-        ..Default::default()
-    });
-    let mut store_backward = DataStore::new(DataStoreConfig {
-        index_bucket_nb_rows: 10,
-        ..Default::default()
-    });
-
-    fn store_repeated_frame(
-        frame_nr: i64,
-        num: usize,
-        store_forward: &mut DataStore,
-        store_backward: &mut DataStore,
-    ) {
-        let ent_path = EntityPath::from("this/that");
-        let nb_instances = 1;
-
-        let time_point = TimePoint::from([build_frame_nr(frame_nr)]);
-        for _ in 0..num {
-            let msg = MsgBundle::new(
-                MsgId::ZERO,
-                ent_path.clone(),
-                time_point.clone(),
-                vec![build_instances(nb_instances)],
-            );
-            store_forward.insert(&msg).unwrap();
-
-            let msg = MsgBundle::new(
-                MsgId::ZERO,
-                ent_path.clone(),
-                time_point.clone(),
-                vec![build_instances(nb_instances)],
-            );
-            store_backward.insert(&msg).unwrap();
-        }
-    }
-
-    fn store_frame_range(
-        range: core::ops::RangeInclusive<i64>,
-        store_forward: &mut DataStore,
-        store_backward: &mut DataStore,
-    ) {
-        let ent_path = EntityPath::from("this/that");
-        let nb_instances = 1;
-
-        let msgs = range
-            .map(|frame_nr| {
-                let time_point = TimePoint::from([build_frame_nr(frame_nr)]);
-                MsgBundle::new(
-                    MsgId::ZERO,
-                    ent_path.clone(),
-                    time_point,
-                    vec![build_instances(nb_instances)],
-                )
-            })
-            .collect::<Vec<_>>();
-
-        msgs.iter()
-            .for_each(|msg| store_forward.insert(msg).unwrap());
-
-        msgs.iter()
-            .rev()
-            .for_each(|msg| store_backward.insert(msg).unwrap());
-    }
-
-    store_repeated_frame(1000, 10, &mut store_forward, &mut store_backward);
-    store_frame_range(970..=979, &mut store_forward, &mut store_backward);
-    store_frame_range(990..=999, &mut store_forward, &mut store_backward);
-    store_frame_range(980..=989, &mut store_forward, &mut store_backward);
-    store_repeated_frame(1000, 7, &mut store_forward, &mut store_backward);
-    store_frame_range(1000..=1009, &mut store_forward, &mut store_backward);
-    store_repeated_frame(975, 10, &mut store_forward, &mut store_backward);
-
-    {
-        let nb_buckets = store_forward
-            .iter_indices()
-            .flat_map(|(_, table)| table.iter_buckets())
-            .count();
-        assert_eq!(7usize, nb_buckets, "pathological topology (forward): {}", {
-            store_forward.sort_indices();
-            store_forward
-        });
-    }
-    {
-        let nb_buckets = store_backward
-            .iter_indices()
-            .flat_map(|(_, table)| table.iter_buckets())
-            .count();
-        assert_eq!(
-            8usize,
-            nb_buckets,
-            "pathological topology (backward): {}",
-            {
-                store_backward.sort_indices();
-                store_backward
-            }
-        );
     }
 }

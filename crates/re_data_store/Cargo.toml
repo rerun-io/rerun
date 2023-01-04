@@ -26,6 +26,7 @@ document-features = "0.2"
 itertools = "0.10"
 nohash-hasher = "0.2"
 once_cell = "1.15.0"
+ordered-float = { version = "3.2", features = ["serde"] }
 serde = { version = "1", features = ["derive", "rc"], optional = true }
 thiserror = "1.0"
 
@@ -37,6 +38,7 @@ puffin.workspace = true
 [dev-dependencies]
 criterion = "0.4"
 mimalloc = "0.1"
+rand = "0.8"
 
 [lib]
 bench = false

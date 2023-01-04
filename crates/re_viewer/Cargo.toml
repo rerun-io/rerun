@@ -27,7 +27,12 @@ re_data_store = { path = "../re_data_store", features = ["serde"] }
 re_error = { path = "../re_error" }
 re_format = { path = "../re_format" }
 re_log = { path = "../re_log" }
-re_log_types = { path = "../re_log_types", features = ["glam", "save", "load"] }
+re_log_types = { path = "../re_log_types", features = [
+  "ecolor",
+  "glam",
+  "save",
+  "load",
+] }
 re_memory = { path = "../re_memory" }
 re_query = { path = "../re_query" }
 re_renderer = { path = "../re_renderer" }
@@ -56,6 +61,7 @@ enumset = "1.0.12"
 glam = { version = "0.20", features = [
   "mint",
 ] } # can't update glam until a new version of `macaw` is released
+half = "1.8"
 image = { version = "0.24", default-features = false, features = [
   "jpeg",
   "png",
@@ -67,6 +73,7 @@ macaw = { version = "0.17", features = ["with_serde"] }
 mint = "0.5"
 ndarray = "0.15"
 nohash-hasher = "0.2"
+ordered-float = { version = "3.2", features = ["serde"] }
 poll-promise = "0.1"
 rand = { version = "0.8", features = ["small_rng"] }
 rfd = "0.10"

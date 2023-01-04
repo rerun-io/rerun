@@ -18,7 +18,7 @@ pub struct PointCloudBuilder<PerPointUserData> {
     pub vertices: Vec<PointCloudVertex>,
     pub user_data: Vec<PerPointUserData>,
 
-    pub batches: Vec<PointCloudBatchInfo>,
+    pub(crate) batches: Vec<PointCloudBatchInfo>,
 
     pub(crate) vertices_gpu: StagingWriteBeltBuffer,
     pub(crate) colors_gpu: StagingWriteBeltBuffer,
@@ -71,11 +71,57 @@ where
     ) -> PointCloudBatchBuilder<'_, PerPointUserData> {
         self.batches.push(PointCloudBatchInfo {
             label: label.into(),
-            world_from_scene: glam::Mat4::IDENTITY,
+            world_from_obj: glam::Mat4::IDENTITY,
             point_count: 0,
         });
 
         PointCloudBatchBuilder(self)
+    }
+
+    // Iterate over all batches, yielding the batch info and a point vertex iterator.
+    pub fn iter_vertices_by_batch(
+        &self,
+    ) -> impl Iterator<
+        Item = (
+            &PointCloudBatchInfo,
+            impl Iterator<Item = &PointCloudVertex>,
+        ),
+    > {
+        let mut vertex_offset = 0;
+        self.batches.iter().map(move |batch| {
+            let out = (
+                batch,
+                self.vertices
+                    .iter()
+                    .skip(vertex_offset)
+                    .take(batch.point_count as usize),
+            );
+            vertex_offset += batch.point_count as usize;
+            out
+        })
+    }
+
+    // Iterate over all batches, yielding the batch info and a point vertex iterator zipped with its user data.
+    pub fn iter_vertices_and_userdata_by_batch(
+        &self,
+    ) -> impl Iterator<
+        Item = (
+            &PointCloudBatchInfo,
+            impl Iterator<Item = (&PointCloudVertex, &PerPointUserData)>,
+        ),
+    > {
+        let mut vertex_offset = 0;
+        self.batches.iter().map(move |batch| {
+            let out = (
+                batch,
+                self.vertices
+                    .iter()
+                    .zip(self.user_data.iter())
+                    .skip(vertex_offset),
+            );
+            vertex_offset += batch.point_count as usize;
+            out
+        })
     }
 
     /// Finalizes the builder and returns a point cloud draw data with all the added points.
@@ -108,10 +154,10 @@ where
             .expect("batch should have been added on PointCloudBatchBuilder creation")
     }
 
-    /// Sets the `world_from_scene` matrix for the *entire* batch.
+    /// Sets the `world_from_obj` matrix for the *entire* batch.
     #[inline]
-    pub fn world_from_scene(&mut self, world_from_scene: glam::Mat4) -> &mut Self {
-        self.batch_mut().world_from_scene = world_from_scene;
+    pub fn world_from_obj(mut self, world_from_obj: glam::Mat4) -> Self {
+        self.batch_mut().world_from_obj = world_from_obj;
         self
     }
 
@@ -257,9 +303,9 @@ where
     /// If the iterator doesn't cover all points, some will not be assigned.
     /// If the iterator provides more values than there are points, the extra values will be ignored.
     #[inline]
-    pub fn radii(self, radii: &[Size]) -> Self {
-        for (point, radius) in self.vertices.iter_mut().zip(radii.iter()) {
-            point.radius = *radius;
+    pub fn radii(self, radii: impl Iterator<Item = Size>) -> Self {
+        for (point, radius) in self.vertices.iter_mut().zip(radii) {
+            point.radius = radius;
         }
         self
     }
@@ -275,18 +321,29 @@ where
     ///
     /// The slice is required to cover all points.
     #[inline]
-    pub fn colors(mut self, colors: &[Color32]) -> Self {
+    pub fn colors(mut self, colors: impl Iterator<Item = Color32>) -> Self {
         self.colors_gpu.write(colors, 0);
         self
     }
 
-    /// Splats user data to all points in this builder.
+    /// Splats a single user data to all points in this builder.
     ///
     /// User data is currently not available on the GPU.
     #[inline]
-    pub fn user_data(self, data: PerPointUserData) -> Self {
+    pub fn user_data_splat(self, data: PerPointUserData) -> Self {
         for user_data in self.user_data.iter_mut() {
             *user_data = data.clone();
+        }
+        self
+    }
+
+    /// Assigns user data for all points in this builder.
+    ///
+    /// User data is currently not available on the GPU.
+    #[inline]
+    pub fn user_data(self, data: impl Iterator<Item = PerPointUserData>) -> Self {
+        for (d, data) in self.user_data.iter_mut().zip(data) {
+            *d = data;
         }
         self
     }
@@ -295,6 +352,6 @@ where
 impl<'a, PerPointUserData> Drop for PointsBuilder<'a, PerPointUserData> {
     #[inline]
     fn drop(&mut self) {
-        self.vertices_gpu.write(self.vertices, 0);
+        self.vertices_gpu.write(self.vertices.iter().cloned(), 0);
     }
 }

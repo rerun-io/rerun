@@ -1,9 +1,11 @@
 use itertools::Itertools as _;
-use nohash_hasher::IntMap;
+use nohash_hasher::{IntMap, IntSet};
 
 use re_log_types::{
-    msg_bundle::MsgBundle, objects, ArrowMsg, BatchIndex, BeginRecordingMsg, DataMsg, DataPath,
-    DataVec, FieldName, LogMsg, LoggedData, MsgId, ObjTypePath, ObjectType, PathOp, PathOpMsg,
+    field_types::{Instance, Scalar, TextEntry},
+    msg_bundle::{Component as _, MsgBundle},
+    objects, ArrowMsg, BatchIndex, BeginRecordingMsg, DataMsg, DataPath, DataVec, LogMsg,
+    LoggedData, MsgId, ObjPath, ObjPathHash, ObjTypePath, ObjectType, PathOp, PathOpMsg,
     RecordingId, RecordingInfo, TimeInt, TimePoint, Timeline, TypeMsg,
 };
 
@@ -16,6 +18,9 @@ pub struct ObjDb {
     /// The types of all the objects.
     /// Must be registered before adding them.
     pub types: IntMap<ObjTypePath, ObjectType>,
+
+    /// In many places we just store the hashes, so we need a way to translate back.
+    pub obj_path_from_hash: IntMap<ObjPathHash, ObjPath>,
 
     /// A tree-view (split on path components) of the objects.
     pub tree: crate::ObjectTree,
@@ -31,14 +36,26 @@ impl Default for ObjDb {
     fn default() -> Self {
         Self {
             types: Default::default(),
+            obj_path_from_hash: Default::default(),
             tree: crate::ObjectTree::root(),
             store: Default::default(),
-            arrow_store: Default::default(),
+            arrow_store: re_arrow_store::DataStore::new(Instance::name(), Default::default()),
         }
     }
 }
 
 impl ObjDb {
+    #[inline]
+    pub fn obj_path_from_hash(&self, obj_path_hash: &ObjPathHash) -> Option<&ObjPath> {
+        self.obj_path_from_hash.get(obj_path_hash)
+    }
+
+    fn register_obj_path(&mut self, obj_path: &ObjPath) {
+        self.obj_path_from_hash
+            .entry(*obj_path.hash())
+            .or_insert_with(|| obj_path.clone());
+    }
+
     fn add_data_msg(
         &mut self,
         msg_id: MsgId,
@@ -68,6 +85,8 @@ impl ObjDb {
                 }
             }
         }
+
+        self.register_obj_path(&data_path.obj_path);
 
         if let Err(err) = self.store.insert_data(msg_id, time_point, data_path, data) {
             re_log::warn!("Failed to add data to data_store: {err:?}");
@@ -109,26 +128,46 @@ impl ObjDb {
     fn try_add_arrow_data_msg(&mut self, msg: &ArrowMsg) -> Result<(), Error> {
         let msg_bundle = MsgBundle::try_from(msg).map_err(Error::MsgBundleError)?;
 
-        // TODO(jleibs): Hack in a type so the UI treats these objects as visible
-        // This can go away once we determine object categories directly from the arrow table
-        self.types
-            .entry(msg_bundle.obj_path.obj_type_path().clone())
-            .or_insert(ObjectType::ArrowObject);
+        // Determine the kind of object we're looking at based on the components that have been
+        // uploaded _first_.
+        //
+        // TODO(cmc): That's an extension of the hack below, and will disappear at the same time
+        // and for the same reasons.
+        {
+            let components = msg_bundle
+                .components
+                .iter()
+                .map(|bundle| bundle.name)
+                .collect::<IntSet<_>>();
+
+            let obj_type = if components.contains(&TextEntry::name()) {
+                ObjectType::TextEntry
+            } else if components.contains(&Scalar::name()) {
+                ObjectType::Scalar
+            } else {
+                // TODO(jleibs): Hack in a type so the UI treats these objects as visible
+                // This can go away once we determine object categories directly from the arrow
+                // table
+                ObjectType::ArrowObject
+            };
+            self.types
+                .entry(msg_bundle.obj_path.obj_type_path().clone())
+                .or_insert(obj_type);
+        }
+
+        self.register_obj_path(&msg_bundle.obj_path);
 
         for component in &msg_bundle.components {
             //TODO(jleibs): Actually handle pending clears
             let _pending_clears = self.tree.add_data_msg(
                 msg.msg_id,
                 &msg_bundle.time_point,
-                &DataPath::new(
-                    msg_bundle.obj_path.clone(),
-                    FieldName::from(component.name.clone()),
-                ),
+                &DataPath::new(msg_bundle.obj_path.clone(), component.name),
                 None,
             );
         }
 
-        self.arrow_store.insert(&msg_bundle).map_err(Error::Other)
+        self.arrow_store.insert(&msg_bundle).map_err(Into::into)
     }
 
     fn add_path_op(&mut self, msg_id: MsgId, time_point: &TimePoint, path_op: &PathOp) {
@@ -166,6 +205,7 @@ impl ObjDb {
 
         let Self {
             types: _,
+            obj_path_from_hash: _,
             tree,
             store,
             arrow_store: _,

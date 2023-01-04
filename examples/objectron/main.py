@@ -33,10 +33,10 @@ from dataset.proto.objectron.proto import (
     ObjectType,
     Sequence,
 )
+from rerun.log.file import ImageFormat
 from scipy.spatial.transform import Rotation as R
 
 import rerun
-from rerun import ImageFormat
 
 
 @dataclass
@@ -267,7 +267,7 @@ def main() -> None:
         "--recording",
         type=str,
         choices=AVAILABLE_RECORDINGS,
-        default=AVAILABLE_RECORDINGS[3],
+        default=AVAILABLE_RECORDINGS[1],
         help="The objectron recording to log to Rerun.",
     )
     parser.add_argument(

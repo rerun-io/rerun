@@ -1,5 +1,6 @@
 use macaw::BoundingBox;
-use re_data_store::{InstanceId, InstanceIdHash, ObjPath};
+use re_data_store::{InstanceId, InstanceIdHash, ObjPath, ObjectsProperties};
+use re_format::format_f32;
 use re_log_types::Transform;
 
 use crate::misc::{
@@ -79,14 +80,22 @@ impl ViewSpatialState {
         match self.nav_mode {
             SpatialNavigationMode::TwoD => {
                 ui.label(format!(
-                    "Bounding box, x: [{} - {}], y: [{} - {}]",
-                    min.x, max.x, min.y, max.y,
+                    "Bounding box:\n  x: [{} - {}]\n  y: [{} - {}]",
+                    format_f32(min.x),
+                    format_f32(max.x),
+                    format_f32(min.y),
+                    format_f32(max.y),
                 ));
             }
             SpatialNavigationMode::ThreeD => {
                 ui.label(format!(
-                    "Bounding box, x: [{} - {}], y: [{} - {}], z: [{} - {}]",
-                    min.x, max.x, min.y, max.y, min.z, max.z
+                    "Bounding box:\n  x: [{} - {}]\n  y: [{} - {}]\n  z: [{} - {}]",
+                    format_f32(min.x),
+                    format_f32(max.x),
+                    format_f32(min.y),
+                    format_f32(max.y),
+                    format_f32(min.z),
+                    format_f32(max.z)
                 ));
                 self.state_3d.settings_ui(ctx, ui, &self.scene_bbox_accum);
             }
@@ -99,6 +108,8 @@ impl ViewSpatialState {
             .map_or(InstanceIdHash::NONE, |i| i.hash())
     }
 
+    // TODO(andreas): split into smaller parts, some of it shouldn't be part of the ui path and instead scene loading.
+    #[allow(clippy::too_many_arguments)]
     pub fn view_spatial(
         &mut self,
         ctx: &mut ViewerContext<'_>,
@@ -107,6 +118,7 @@ impl ViewSpatialState {
         scene: SceneSpatial,
         spaces_info: &SpacesInfo,
         space_info: &SpaceInfo,
+        objects_properties: &ObjectsProperties,
     ) -> egui::Response {
         self.scene_bbox_accum = self.scene_bbox_accum.union(scene.primitives.bounding_box());
 
@@ -125,6 +137,7 @@ impl ViewSpatialState {
                     space_cameras,
                     &self.scene_bbox_accum,
                     &mut self.hovered_instance,
+                    objects_properties,
                 )
             }
             SpatialNavigationMode::TwoD => {
@@ -165,13 +178,10 @@ fn space_cameras(spaces_info: &SpacesInfo, space_info: &SpaceInfo) -> Vec<SpaceC
             let world_from_camera = world_from_camera.parent_from_child();
 
             let view_space = spaces_info
-                .spaces
                 .get(child_path)
                 .and_then(|child| child.coordinates);
 
-            let mut found_any_pinhole = false;
-
-            if let Some(child_space_info) = spaces_info.spaces.get(child_path) {
+            if let Some(child_space_info) = spaces_info.get(child_path) {
                 for (grand_child_path, grand_child_transform) in &child_space_info.child_spaces {
                     if let Transform::Pinhole(pinhole) = grand_child_transform {
                         space_cameras.push(SpaceCamera3D {
@@ -182,20 +192,8 @@ fn space_cameras(spaces_info: &SpacesInfo, space_info: &SpaceInfo) -> Vec<SpaceC
                             pinhole: Some(*pinhole),
                             target_space: Some(grand_child_path.clone()),
                         });
-                        found_any_pinhole = true;
                     }
                 }
-            }
-
-            if !found_any_pinhole {
-                space_cameras.push(SpaceCamera3D {
-                    camera_obj_path: child_path.clone(),
-                    instance_index_hash: re_log_types::IndexHash::NONE,
-                    camera_view_coordinates: view_space,
-                    world_from_camera,
-                    pinhole: None,
-                    target_space: None,
-                });
             }
         }
     }
