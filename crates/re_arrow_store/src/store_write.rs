@@ -14,7 +14,8 @@ use re_log_types::{
 
 use crate::{
     ArrayExt as _, ComponentBucket, ComponentTable, DataStore, DataStoreConfig, IndexBucket,
-    IndexBucketIndices, IndexTable, PersistentComponentTable, RowIndex, TimeIndex,
+    IndexBucketIndices, IndexTable, PersistentComponentTable, PersistentIndexTable, RowIndex,
+    TimeIndex,
 };
 
 // --- Data store ---
@@ -130,29 +131,115 @@ impl DataStore {
             .find_position(|bundle| bundle.name == self.cluster_key)
             .map(|(pos, _)| pos);
 
-        let mut row_indices = IntMap::default();
+        if time_point.is_timeless() {
+            let mut row_indices = IntMap::default();
 
-        // TODO(#589): support for batched row component insertions
-        for row_nr in 0..nb_rows {
-            self.insert_row(
-                time_point,
-                row_nr,
-                cluster_comp_pos,
-                components,
-                &mut row_indices,
-            )?;
-        }
+            // TODO(#589): support for batched row component insertions
+            for row_nr in 0..nb_rows {
+                self.insert_timeless_row(row_nr, cluster_comp_pos, components, &mut row_indices)?;
+            }
 
-        for (timeline, time) in time_point.iter() {
-            let ent_path = ent_path.clone(); // shallow
             let index = self
-                .indices
-                .entry((*timeline, ent_path_hash))
-                .or_insert_with(|| IndexTable::new(self.cluster_key, *timeline, ent_path));
-            index.insert(&self.config, *time, &row_indices)?;
+                .timeless_indices
+                .entry(ent_path_hash)
+                .or_insert_with(|| PersistentIndexTable::new(self.cluster_key, ent_path.clone()));
+            index.insert(&row_indices)?;
+        } else {
+            let mut row_indices = IntMap::default();
+
+            // TODO(#589): support for batched row component insertions
+            for row_nr in 0..nb_rows {
+                self.insert_row(
+                    time_point,
+                    row_nr,
+                    cluster_comp_pos,
+                    components,
+                    &mut row_indices,
+                )?;
+            }
+
+            for (timeline, time) in time_point.iter() {
+                let ent_path = ent_path.clone(); // shallow
+                let index = self
+                    .indices
+                    .entry((*timeline, ent_path_hash))
+                    .or_insert_with(|| IndexTable::new(self.cluster_key, *timeline, ent_path));
+                index.insert(&self.config, *time, &row_indices)?;
+            }
+
+            self.messages.insert(*msg_id, time_point.clone());
         }
 
-        self.messages.insert(*msg_id, time_point.clone());
+        Ok(())
+    }
+
+    fn insert_timeless_row(
+        &mut self,
+        row_nr: usize,
+        cluster_comp_pos: Option<usize>,
+        components: &[ComponentBundle],
+        row_indices: &mut IntMap<ComponentName, RowIndex>,
+    ) -> WriteResult<()> {
+        let (cluster_row_idx, cluster_len) = self.get_or_create_cluster_component(
+            row_nr,
+            cluster_comp_pos,
+            components,
+            &TimePoint::default(),
+        )?;
+
+        // Always insert the cluster component.
+        row_indices.insert(self.cluster_key, cluster_row_idx);
+
+        if self.config.store_insert_ids {
+            // Store the ID of the write request alongside the data.
+            //
+            // This is _not_ an actual `RowIndex`, there isn't even a component table associated
+            // with insert IDs!
+            // We're just abusing the fact that any value we push here as a `RowIndex` will end up
+            // as-is in the index.
+            row_indices.insert(Self::insert_id_key(), RowIndex::from_u64(self.insert_id));
+        }
+
+        for bundle in components
+            .iter()
+            .filter(|bundle| bundle.name != self.cluster_key)
+        {
+            let ComponentBundle { name, value: rows } = bundle;
+
+            // Unwrapping a ListArray is somewhat costly, especially considering we're just
+            // gonna rewrap it again in a minute... so we'd rather just slice it to a list of
+            // one instead.
+            //
+            // let rows_single = rows.slice(row_nr, 1);
+            //
+            // Except it turns out that slicing is _extremely_ costly!
+            // So use the fact that `rows` is always of unit-length for now.
+            let rows_single = rows;
+
+            // TODO(#440): support for splats
+            let nb_instances = rows_single.get_child_length(0);
+            if nb_instances != cluster_len {
+                return Err(WriteError::MismatchedInstances {
+                    cluster_comp: self.cluster_key,
+                    cluster_comp_nb_instances: cluster_len,
+                    key: *name,
+                    nb_instances,
+                });
+            }
+
+            let table = self
+                .timeless_components
+                .entry(bundle.name)
+                .or_insert_with(|| {
+                    PersistentComponentTable::new(
+                        *name,
+                        ListArray::<i32>::get_child_type(rows_single.data_type()),
+                    )
+                });
+
+            let row_idx = table.push(rows_single.as_ref());
+            row_indices.insert(*name, row_idx);
+        }
 
         Ok(())
     }
@@ -337,6 +424,49 @@ impl DataStore {
 
     pub fn get_msg_metadata(&self, msg_id: &MsgId) -> Option<&TimePoint> {
         self.messages.get(msg_id)
+    }
+}
+
+// --- Persistent Indices ---
+
+impl PersistentIndexTable {
+    pub fn new(cluster_key: ComponentName, ent_path: EntityPath) -> Self {
+        Self {
+            cluster_key,
+            ent_path,
+            indices: Default::default(),
+            nb_rows: 0,
+        }
+    }
+
+    #[allow(clippy::unnecessary_wraps)]
+    pub fn insert(&mut self, row_indices: &IntMap<ComponentName, RowIndex>) -> anyhow::Result<()> {
+        // 2-way merge, step1: left-to-right
+        //
+        // push new row indices to their associated secondary index
+        for (name, row_idx) in row_indices {
+            let index = self
+                .indices
+                .entry(*name)
+                .or_insert_with(|| vec![None; self.nb_rows as usize]);
+            index.push(Some(*row_idx));
+        }
+
+        // 2-way merge, step2: right-to-left
+        //
+        // fill unimpacted secondary indices with null values
+        for (name, index) in &mut self.indices {
+            if !row_indices.contains_key(name) {
+                index.push(None);
+            }
+        }
+
+        self.nb_rows += 1;
+
+        #[cfg(debug_assertions)]
+        self.sanity_check().unwrap();
+
+        Ok(())
     }
 }
 
