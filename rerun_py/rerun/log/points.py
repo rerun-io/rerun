@@ -94,6 +94,10 @@ def log_point(
             colors = _normalize_colors([color])
             comps["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
 
+        if radius:
+            radii = _normalize_radii([radius])
+            comps["rerun.radius"] = RadiusArray.from_numpy(radii)
+
         if label:
             comps["rerun.label"] = LabelArray.new([label])
 
