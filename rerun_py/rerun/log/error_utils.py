@@ -1,4 +1,5 @@
 import inspect
+import logging
 
 from rerun.log.text import LogLevel, log_text_entry
 
@@ -18,3 +19,4 @@ def _send_warning(message: str, depth_to_user_code: int) -> None:
     context_descriptor = _build_warning_context_string(skip_first=depth_to_user_code + 1)
     warning = f"{message}\n{context_descriptor}"
     log_text_entry("rerun", warning, LogLevel.WARN)
+    logging.warning(warning)
