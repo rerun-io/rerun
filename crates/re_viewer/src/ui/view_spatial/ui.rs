@@ -57,7 +57,7 @@ pub struct ViewSpatialState {
     /// Estimated bounding box of all data. Accumulated over every time data is displayed.
     ///
     /// Specify default explicitly, otherwise it will be a box at 0.0 after deserialization.
-    #[serde(default = "default_scene_bbox_accum")]
+    #[serde(skip, default = "default_scene_bbox_accum")]
     pub scene_bbox_accum: BoundingBox,
     /// Estimated number of primitives last frame. Used to inform some heuristics.
     #[serde(skip)]
@@ -130,7 +130,7 @@ impl ViewSpatialState {
 
     pub fn settings_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
-            ui.label("Auto size:");
+            ui.label("Default size:");
 
             let (mut displayed_size, mut mode, drag_speed) = match self.auto_size_config {
                 None => (self.auto_size_config().0.abs(), AutoSizeUnit::Auto, 0.0),
