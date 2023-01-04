@@ -230,7 +230,7 @@ impl<'a> IntoIterator for &'a PinholeArray {
     type IntoIter = PinholeArrayIterator<'a>;
     fn into_iter(self) -> Self::IntoIter {
         // Following the pattern established inside arrow2-convert
-        unimplemented!("Use iter_from_array_ref");
+        unimplemented!("Use iter_from_array_ref"); // NOLINT
     }
 }
 
