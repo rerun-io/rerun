@@ -63,8 +63,8 @@ def log_view_coordinates(
         _send_warning("You must set either 'xyz' or 'up'. Ignoring log.", 1)
         return
     if xyz != "" and up != "":
-        _send_warning("You must set either 'xyz' or 'up', but not both. Ignoring log.", 1)
-        return
+        _send_warning("You must set either 'xyz' or 'up', but not both. Dropping up.", 1)
+        up = ""
     if xyz != "":
         bindings.log_view_coordinates_xyz(obj_path, xyz, right_handed, timeless)
     else:
