@@ -46,6 +46,7 @@ pub mod external {
 
 pub use self::context::AnnotationContext;
 pub use self::data::*;
+pub use self::field_types::coordinates;
 pub use self::field_types::MsgId;
 pub use self::field_types::ViewCoordinates;
 pub use self::index::*;

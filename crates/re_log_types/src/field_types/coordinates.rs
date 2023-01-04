@@ -1,6 +1,8 @@
 use arrow2::{array::TryPush, datatypes::DataType};
 use arrow2_convert::{deserialize::ArrowDeserialize, field::ArrowField, serialize::ArrowSerialize};
 
+use crate::msg_bundle::Component;
+
 /// The six cardinal directions for 3D view-space and image-space.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
@@ -78,6 +80,12 @@ impl TryFrom<u8> for ViewDir {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct ViewCoordinates(pub [ViewDir; 3]);
+
+impl Component for ViewCoordinates {
+    fn name() -> crate::ComponentName {
+        "rerun.view_coordinates".into()
+    }
+}
 
 impl ViewCoordinates {
     /// Choses a coordinate system based on just an up-axis.

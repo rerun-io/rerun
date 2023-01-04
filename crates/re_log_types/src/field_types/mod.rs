@@ -10,7 +10,7 @@ use crate::msg_bundle::Component;
 
 mod class_id;
 mod color;
-mod coordinates;
+pub mod coordinates;
 mod instance;
 mod keypoint_id;
 mod label;
