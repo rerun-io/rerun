@@ -15,10 +15,11 @@ use pyo3::{
 use re_log_types::{
     context, coordinates,
     field_types::{ClassId, KeypointId},
+    msg_bundle::MsgBundle,
     AnnotationContext, ApplicationId, BBox2D, BatchIndex, Data, DataVec, EncodedMesh3D, Index,
-    LoggedData, Mesh3D, MeshFormat, MeshId, ObjPath, ObjectType, PathOp, RecordingId,
-    TensorDataStore, TensorDataType, TensorDimension, TensorId, Time, TimeInt, TimePoint, TimeType,
-    Timeline, ViewCoordinates,
+    LogMsg, LoggedData, Mesh3D, MeshFormat, MeshId, MsgId, ObjPath, ObjectType, PathOp,
+    RecordingId, TensorDataStore, TensorDataType, TensorDimension, TensorId, Time, TimeInt,
+    TimePoint, TimeType, Timeline, ViewCoordinates,
 };
 
 use rerun_sdk::global_session;
@@ -497,6 +498,8 @@ fn log_transform(
     transform: re_log_types::Transform,
     timeless: bool,
 ) -> PyResult<()> {
+    let mut arrow_path = "arrow/".to_owned();
+    arrow_path.push_str(obj_path);
     let obj_path = parse_obj_path(obj_path)?;
     if obj_path.len() == 1 {
         // Stop people from logging a transform to a root-object, such as "world" (which doesn't have a parent).
@@ -504,11 +507,27 @@ fn log_transform(
     }
     let mut session = global_session();
     let time_point = time(timeless);
+
+    if session.arrow_logging_enabled() {
+        let arrow_path = parse_obj_path(arrow_path.as_str())?;
+        let bundle = MsgBundle::new(
+            MsgId::random(),
+            arrow_path,
+            time_point.clone(),
+            vec![vec![transform.clone()].try_into().unwrap()],
+        );
+
+        let msg = bundle.try_into().unwrap();
+
+        session.send(LogMsg::ArrowMsg(msg));
+    }
+
     session.send_data(
         &time_point,
         (&obj_path, "_transform"),
         LoggedData::Single(Data::Transform(transform)),
     );
+
     Ok(())
 }
 
