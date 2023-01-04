@@ -29,7 +29,7 @@ pub fn line_segment_distance_to_point_3d([a, b]: [glam::Vec3; 2], p: glam::Vec3)
 }
 
 /// Returns the distance the ray traveled to the closest point on the line segment.
-pub fn ray_closet_t_line_segment(ray: &macaw::Ray3, [a, b]: [glam::Vec3; 2]) -> f32 {
+pub fn ray_closest_t_line_segment(ray: &macaw::Ray3, [a, b]: [glam::Vec3; 2]) -> f32 {
     let (t_ray, t_segment) = ray.closest_ts(&macaw::Ray3::from_origin_dir(a, b - a));
     if t_segment < 0.0 {
         ray.closest_t_to_point(a)

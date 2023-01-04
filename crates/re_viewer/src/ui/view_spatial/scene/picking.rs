@@ -4,7 +4,7 @@ use re_data_store::InstanceIdHash;
 
 use super::{SceneSpatialPrimitives, SceneSpatialUiData};
 use crate::{
-    math::{line_segment_distance_sq_to_point_2d, ray_closet_t_line_segment},
+    math::{line_segment_distance_sq_to_point_2d, ray_closest_t_line_segment},
     ui::view_spatial::eye::Eye,
 };
 
@@ -107,7 +107,7 @@ pub fn picking(
     // in ui points
     let max_side_ui_dist_sq = ui_interaction_radius * ui_interaction_radius; // TODO(emilk): interaction radius from egui
     let mut closest_opaque_side_ui_dist_sq = max_side_ui_dist_sq;
-    let mut closest_opqaue_pick = PickingRayHit {
+    let mut closest_opaque_pick = PickingRayHit {
         instance_hash: InstanceIdHash::NONE,
         ray_t: f32::INFINITY,
         info: AdditionalPickingInfo::None,
@@ -115,13 +115,13 @@ pub fn picking(
     let mut transparent_hits = Vec::new(); // Combined, sorted (and partially "hidden") by opaque results later.
 
     let mut check_hit = |side_ui_dist_sq, ray_hit: PickingRayHit, transparent| {
-        if ray_hit.ray_t < closest_opqaue_pick.ray_t
+        if ray_hit.ray_t < closest_opaque_pick.ray_t
             && side_ui_dist_sq <= closest_opaque_side_ui_dist_sq
         {
             if transparent {
                 transparent_hits.push(ray_hit);
             } else {
-                closest_opqaue_pick = ray_hit;
+                closest_opaque_pick = ray_hit;
                 closest_opaque_side_ui_dist_sq = side_ui_dist_sq;
             }
         }
@@ -186,7 +186,7 @@ pub fn picking(
                 if side_ui_dist_sq < max_side_ui_dist_sq {
                     let start_world = batch.world_from_obj.transform_point3(start.position);
                     let end_world = batch.world_from_obj.transform_point3(end.position);
-                    let t = ray_closet_t_line_segment(&ray_in_world, [start_world, end_world]);
+                    let t = ray_closest_t_line_segment(&ray_in_world, [start_world, end_world]);
 
                     check_hit(
                         side_ui_dist_sq,
@@ -273,10 +273,10 @@ pub fn picking(
     }
 
     let mut result = PickingResult {
-        opaque_hit: closest_opqaue_pick
+        opaque_hit: closest_opaque_pick
             .instance_hash
             .is_some()
-            .then_some(closest_opqaue_pick),
+            .then_some(closest_opaque_pick),
         transparent_hits,
         picking_ray: ray_in_world,
     };
