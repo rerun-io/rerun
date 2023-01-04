@@ -522,11 +522,13 @@ fn log_transform(
         session.send(LogMsg::ArrowMsg(msg));
     }
 
-    session.send_data(
-        &time_point,
-        (&obj_path, "_transform"),
-        LoggedData::Single(Data::Transform(transform)),
-    );
+    if session.classic_logging_enabled() {
+        session.send_data(
+            &time_point,
+            (&obj_path, "_transform"),
+            LoggedData::Single(Data::Transform(transform)),
+        );
+    }
 
     Ok(())
 }
