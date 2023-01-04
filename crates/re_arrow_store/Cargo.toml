@@ -57,15 +57,13 @@ polars-ops = { workspace = true, optional = true, features = [
 criterion = "0.4"
 mimalloc = "0.1"
 polars-core = { workspace = true, features = [
+  "diagonal_concat",
   "dtype-date",
-  "dtype-time",
+  "dtype-datetime",
   "dtype-struct",
+  "dtype-time",
   "fmt",
-] }
-polars-ops = { workspace = true, features = [
-  "dtype-date",
-  "dtype-time",
-  "dtype-struct",
+  "sort_multiple",
 ] }
 tracing-subscriber = "0.3"
 
