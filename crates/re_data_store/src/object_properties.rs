@@ -1,4 +1,10 @@
-use re_log_types::{FieldName, ObjPath, Transform};
+use re_arrow_store::{LatestAtQuery, TimeInt, Timeline};
+use re_log_types::{
+    external::arrow2_convert::deserialize::arrow_array_deserialize_iterator, msg_bundle::Component,
+    FieldName, ObjPath, Transform,
+};
+
+use crate::log_db::ObjDb;
 
 // ----------------------------------------------------------------------------
 
@@ -86,13 +92,15 @@ pub struct ExtraQueryHistory {
 
 // ----------------------------------------------------------------------------
 
-/// Get the latest value of the `_transform` meta-field of the given object.
-pub fn query_transform(
-    store: Option<&crate::TimelineStore<i64>>,
+fn query_transform_classic(
+    obj_db: &ObjDb,
+    timeline: &Timeline,
     obj_path: &ObjPath,
     query_time: Option<i64>,
 ) -> Option<Transform> {
-    let field_store = store?.get(obj_path)?.get(&FieldName::from("_transform"))?;
+    let store = obj_db.store.get(timeline)?;
+
+    let field_store = store.get(obj_path)?.get(&FieldName::from("_transform"))?;
     let mono_field_store = field_store.get_mono::<Transform>().ok()?;
 
     // There is a transform, at least at _some_ time.
@@ -104,4 +112,47 @@ pub fn query_transform(
     // If not, return an unknown transform to indicate that there is
     // still a space-split.
     Some(latest.unwrap_or(Transform::Unknown))
+}
+
+#[allow(clippy::let_and_return)]
+fn query_transform_arrow(
+    obj_db: &ObjDb,
+    timeline: &Timeline,
+    ent_path: &ObjPath,
+    query_time: Option<i64>,
+) -> Option<Transform> {
+    // Although it would be nice to use the `re_query` helpers for this, we would need to move
+    // this out of re_data_store to avoid a circular dep. Since we don't need to do a join for
+    // transforms this is easy enough.
+    let arrow_store = &obj_db.arrow_store;
+
+    let query = LatestAtQuery::new(*timeline, TimeInt::from(query_time?));
+
+    let components = [Transform::name()];
+
+    let row_indices = arrow_store.latest_at(&query, ent_path, Transform::name(), &components)?;
+
+    let results = arrow_store.get(&components, &row_indices);
+    let arr = results.get(0)?.as_ref()?.as_ref();
+
+    let mut iter = arrow_array_deserialize_iterator::<Transform>(arr).ok()?;
+
+    let transform = iter.next();
+
+    if iter.next().is_some() {
+        re_log::warn_once!("Unexpected batch for Transform at: {}", ent_path);
+    }
+
+    transform
+}
+
+/// Get the latest value of the `_transform` meta-field of the given object.
+pub fn query_transform(
+    obj_db: &ObjDb,
+    timeline: &Timeline,
+    obj_path: &ObjPath,
+    query_time: Option<i64>,
+) -> Option<Transform> {
+    query_transform_classic(obj_db, timeline, obj_path, query_time)
+        .or_else(|| query_transform_arrow(obj_db, timeline, obj_path, query_time))
 }

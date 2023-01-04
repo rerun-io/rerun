@@ -245,9 +245,8 @@ fn obj_props_ui(
 
     let timeline = ctx.rec_cfg.time_ctrl.timeline();
     let query_time = ctx.rec_cfg.time_ctrl.time_i64();
-    let timeline_store = ctx.log_db.obj_db.store.get(timeline);
     if let Some(re_log_types::Transform::Pinhole(pinhole)) =
-        query_transform(timeline_store, obj_path, query_time)
+        query_transform(&ctx.log_db.obj_db, timeline, obj_path, query_time)
     {
         ui.horizontal(|ui| {
             ui.label("Image plane distance:");
