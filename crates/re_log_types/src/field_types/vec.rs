@@ -1,4 +1,4 @@
-use arrow2_convert::ArrowField;
+use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 
 use crate::msg_bundle::Component;
 
@@ -17,7 +17,7 @@ use crate::msg_bundle::Component;
 ///     ])
 /// );
 /// ```
-#[derive(Clone, Debug, ArrowField, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 pub struct Vec2D {
     pub x: f32,
     pub y: f32,
@@ -45,7 +45,7 @@ impl Component for Vec2D {
 ///     ])
 /// );
 /// ```
-#[derive(Copy, Clone, Debug, ArrowField, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Vec3D {
     pub x: f32,

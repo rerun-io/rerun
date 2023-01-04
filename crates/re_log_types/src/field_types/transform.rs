@@ -1,14 +1,14 @@
 use arrow2::{
     array::{
-        Array, FixedSizeListArray, ListValuesIter, MutableArray, MutableFixedSizeListArray,
+        Array, ArrayValuesIter, FixedSizeListArray, MutableArray, MutableFixedSizeListArray,
         MutablePrimitiveArray, MutableStructArray, PrimitiveArray,
     },
-    bitmap::utils::ZipValidity,
+    bitmap::utils::{BitmapIter, ZipValidity},
     datatypes::{DataType, Field},
 };
 use arrow2_convert::{
     arrow_enable_vec_for_type, deserialize::ArrowDeserialize, field::ArrowField,
-    serialize::ArrowSerialize, ArrowField,
+    serialize::ArrowSerialize, ArrowDeserialize, ArrowField, ArrowSerialize,
 };
 
 use crate::msg_bundle::Component;
@@ -18,7 +18,7 @@ use super::{Quaternion, Vec3D};
 /// A proper rigid 3D transform, i.e. a rotation and a translation.
 ///
 /// Also known as an isometric transform, or a pose.
-#[derive(Copy, Clone, Debug, PartialEq, ArrowField)]
+#[derive(Copy, Clone, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Rigid3 {
     /// How is the child rotated?
@@ -264,8 +264,8 @@ impl arrow2_convert::deserialize::ArrowArray for PinholeArray {
     }
 }
 pub struct PinholeArrayIterator<'a> {
-    cam_iter: ZipValidity<'a, Box<dyn Array>, ListValuesIter<'a, FixedSizeListArray>>,
-    res_iter: ZipValidity<'a, Box<dyn Array>, ListValuesIter<'a, FixedSizeListArray>>,
+    cam_iter: ZipValidity<Box<dyn Array>, ArrayValuesIter<'a, FixedSizeListArray>, BitmapIter<'a>>,
+    res_iter: ZipValidity<Box<dyn Array>, ArrayValuesIter<'a, FixedSizeListArray>, BitmapIter<'a>>,
 }
 
 impl<'a> Iterator for PinholeArrayIterator<'a> {
@@ -323,7 +323,7 @@ impl ArrowDeserialize for Pinhole {
 
 // ----------------------------------------------------------------------------
 
-#[derive(Clone, Debug, PartialEq, ArrowField)]
+#[derive(Clone, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[arrow_field(type = "dense")]
 pub enum Transform {
