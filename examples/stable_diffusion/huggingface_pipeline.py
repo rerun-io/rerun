@@ -554,7 +554,7 @@ class StableDiffusionDepth2ImgPipeline(DiffusionPipeline):
         # 5. Prepare depth mask
         rr.log_image("image/original", image)
         image = preprocess(image)
-        rr.log_image("input_image/preprocessed", image)
+        rr.log_tensor("input_image/preprocessed", image)
 
         # 6. set timesteps
         self.scheduler.set_timesteps(num_inference_steps, device=device)
