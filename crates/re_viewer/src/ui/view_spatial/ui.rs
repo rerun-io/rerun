@@ -55,7 +55,9 @@ pub struct ViewSpatialState {
     pub nav_mode: SpatialNavigationMode,
 
     /// Estimated bounding box of all data. Accumulated over every time data is displayed.
-    #[serde(skip)]
+    ///
+    /// Specify default explicitly, otherwise it will be a box at 0.0 after deserialization.
+    #[serde(default = "default_scene_bbox_accum")]
     pub scene_bbox_accum: BoundingBox,
     /// Estimated number of primitives last frame. Used to inform some heuristics.
     #[serde(skip)]
@@ -68,12 +70,16 @@ pub struct ViewSpatialState {
     auto_size_config: Option<re_renderer::Size>,
 }
 
+fn default_scene_bbox_accum() -> BoundingBox {
+    BoundingBox::nothing()
+}
+
 impl Default for ViewSpatialState {
     fn default() -> Self {
         Self {
             hovered_instance: Default::default(),
             nav_mode: Default::default(),
-            scene_bbox_accum: BoundingBox::nothing(),
+            scene_bbox_accum: default_scene_bbox_accum(),
             scene_num_primitives: 0,
             state_2d: Default::default(),
             state_3d: Default::default(),
