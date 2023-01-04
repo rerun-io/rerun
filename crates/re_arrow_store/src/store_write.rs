@@ -456,9 +456,7 @@ impl IndexTable {
         bucket.insert(time, indices)?;
 
         // Insert components last, only if bucket-insert succeeded.
-        for k in indices.keys() {
-            self.all_components.insert(*k);
-        }
+        self.all_components.extend(indices.keys());
 
         Ok(())
     }
