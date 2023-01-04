@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Iterable, Optional, Union
+from typing import Any, Iterable, Optional, Protocol, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -12,64 +12,44 @@ __all__ = [
     "log_tensor",
 ]
 
-TensorDType = Union[
-    np.uint8, np.uint16, np.uint32, np.uint64, np.int8, np.int16, np.int32, np.int64, np.float16, np.float32, np.float64
-]
+
+class TorchTensorLike(Protocol):
+    """Describes what is need from a Torch Tensor to be loggable to Rerun."""
+
+    def numpy(self, force: bool) -> npt.NDArray[Any]:
+        ...
+
+
+Tensor = Union[npt.ArrayLike, TorchTensorLike]
+
+
+def _to_numpy(tensor: Tensor) -> npt.NDArray[Any]:
+    try:
+        # Make available to the cpu
+        return tensor.numpy(force=True)  # type: ignore[union-attr]
+    except AttributeError:
+        return np.array(tensor, copy=False)
 
 
 def log_tensor(
     obj_path: str,
-    tensor: npt.NDArray[TensorDType],
+    tensor: npt.ArrayLike,
     names: Optional[Iterable[str]] = None,
     meter: Optional[float] = None,
     timeless: bool = False,
 ) -> None:
-    _log_tensor(obj_path, tensor=tensor, names=names, meter=meter, timeless=timeless)
-
-
-def _get_pytorch_dim_names(torch_tensor: Any) -> Optional[Iterable[Optional[str]]]:
-    """
-    Attempt to read dimensions names from a tensor as if it's a pytorch tensor.
-
-    May raise an AttributeError.
-    """
-    names = []  # type: Iterable[Optional[str]]
-    names = torch_tensor.names
-
-    # TODO(#631): Remove this check when we can handle lists of optional names.
-    names = list(names)
-    if names.count(None) == len(names):
-        return None
-
-    return names
+    _log_tensor(obj_path, tensor=_to_numpy(tensor), names=names, meter=meter, timeless=timeless)
 
 
 def _log_tensor(
     obj_path: str,
-    tensor: npt.NDArray[TensorDType],
+    tensor: npt.NDArray[Any],
     names: Optional[Iterable[Optional[str]]] = None,
     meter: Optional[float] = None,
     meaning: bindings.TensorDataMeaning = None,
     timeless: bool = False,
-    squeeze_dims: bool = False,
 ) -> None:
     """Log a general tensor, perhaps with named dimensions."""
-    # Duck-typing way to handle pytorch tensors
-    try:
-        if names is None:
-            names = _get_pytorch_dim_names(tensor)
-
-        # Make available to the cpu
-        tensor = tensor.detach().cpu()  # type: ignore[attr-defined]
-    except AttributeError:
-        pass
-
-    # Handle non-numpy arrays (like Pillow images or torch tensors)
-    tensor = np.array(tensor, copy=False)
-
-    if squeeze_dims:
-        tensor = np.squeeze(tensor)
-
     if names is not None:
         names = list(names)
 

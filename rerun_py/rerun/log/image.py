@@ -1,10 +1,9 @@
-from typing import Any, Optional, Tuple
+from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
-from rerun.log import Colors
 from rerun.log.error_utils import _send_warning
-from rerun.log.tensor import _log_tensor
+from rerun.log.tensor import Tensor, _log_tensor, _to_numpy
 
 from rerun import bindings
 
@@ -15,19 +14,9 @@ __all__ = [
 ]
 
 
-def _get_image_shape(image: Any) -> Tuple[int, ...]:
-    try:
-        return image.shape  # type: ignore[no-any-return]
-    except AttributeError:
-        size = image.size  # If it's a Pillow image, this will be a (width, height) tuple
-        if isinstance(size, tuple):
-            return size
-        return (len(image),)
-
-
 def log_image(
     obj_path: str,
-    image: Colors,
+    image: Tensor,
     *,
     timeless: bool = False,
 ) -> None:
@@ -44,32 +33,36 @@ def log_image(
     * float32/float64: all color components should be in 0-1 linear space.
 
     """
-    shape = _get_image_shape(image)
+    image = _to_numpy(image)
+
+    shape = image.shape
     non_empty_dims = [d for d in shape if d != 1]
     num_non_empty_dims = len(non_empty_dims)
 
-    interpretable_as_image = True
+    interpretable_as_image = False
     # Catch some errors early:
     if num_non_empty_dims < 2 or 3 < num_non_empty_dims:
         _send_warning(f"Expected image, got array of shape {shape}", 1)
         interpretable_as_image = False
 
-    if len(shape) == 3:
-        depth = shape[2]
+    if num_non_empty_dims == 3:
+        depth = shape[-1]
         if depth not in (1, 3, 4):
             _send_warning(
                 f"Expected image depth of 1 (gray), 3 (RGB) or 4 (RGBA). Instead got array of shape {shape}", 1
             )
             interpretable_as_image = False
 
-    needs_dim_squeeze = interpretable_as_image and num_non_empty_dims != len(shape)
+    # TODO(#672): Don't squeeze once the image view can handle extra empty dimensions
+    if interpretable_as_image and num_non_empty_dims != len(shape):
+        image = np.squeeze(image)
 
-    _log_tensor(obj_path, image, timeless=timeless, squeeze_dims=needs_dim_squeeze)
+    _log_tensor(obj_path, image, timeless=timeless)
 
 
 def log_depth_image(
     obj_path: str,
-    image: Colors,
+    image: Tensor,
     *,
     meter: Optional[float] = None,
     timeless: bool = False,
@@ -84,21 +77,25 @@ def log_depth_image(
            you have millimeter precision and a range of up to ~65 meters (2^16 / 1000).
 
     """
-    shape = _get_image_shape(image)
-    non_empty_dims = [d for d in shape if d != 1]
-    num_non_empty_dims = len(non_empty_dims)
+    image = _to_numpy(image)
 
     # TODO(#635): Remove when issue with displaying f64 depth images is fixed.
-    if isinstance(image, np.ndarray) and image.dtype == np.float64:  # type: ignore[redundant-expr]
+    if image.dtype == np.float64:
         image = image.astype(np.float32)
+
+    shape = image.shape
+    non_empty_dims = [d for d in shape if d != 1]
+    num_non_empty_dims = len(non_empty_dims)
 
     # Catch some errors early:
     if num_non_empty_dims != 2:
         _send_warning(f"Expected 2D depth image, got array of shape {shape}", 1)
         _log_tensor(obj_path, image, timeless=timeless)
     else:
-        needs_dim_squeeze = num_non_empty_dims != len(shape)
-        _log_tensor(obj_path, image, meter=meter, timeless=timeless, squeeze_dims=needs_dim_squeeze)
+        # TODO(#672): Don't squeeze once the image view can handle extra empty dimensions.
+        if num_non_empty_dims != len(shape):
+            image = np.squeeze(image)
+        _log_tensor(obj_path, image, meter=meter, timeless=timeless)
 
 
 def log_segmentation_image(
@@ -112,8 +109,7 @@ def log_segmentation_image(
 
     The image should have 1 channel, i.e. be either `H x W` or `H x W x 1`.
     """
-    if not isinstance(image, np.ndarray):
-        image = np.array(image, dtype=np.uint16)
+    image = np.array(image, dtype=np.uint16, copy=False)
     non_empty_dims = [d for d in image.shape if d != 1]
     num_non_empty_dims = len(non_empty_dims)
 
@@ -129,11 +125,12 @@ def log_segmentation_image(
             timeless=timeless,
         )
     else:
-        needs_dim_squeeze = num_non_empty_dims != len(image.shape)
+        # TODO(#672): Don't squeeze once the image view can handle extra empty dimensions.
+        if num_non_empty_dims != len(image.shape):
+            image = np.squeeze(image)
         _log_tensor(
             obj_path,
             tensor=image,
             meaning=bindings.TensorDataMeaning.ClassId,
             timeless=timeless,
-            squeeze_dims=needs_dim_squeeze,
         )
