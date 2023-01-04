@@ -14,7 +14,7 @@ use super::{eye::Eye, SpaceCamera3D, SpatialNavigationMode};
 use crate::{
     misc::{mesh_loader::LoadedMesh, ViewerContext},
     ui::{
-        annotations::{auto_color, AnnotationMap},
+        annotations::{auto_color_egui, AnnotationMap},
         transform_cache::TransformCache,
         Annotations, SceneQuery,
     },
@@ -208,10 +208,10 @@ impl SceneSpatial {
                 continue;
             };
 
-            let color = class_description
-                .info
-                .color
-                .unwrap_or_else(|| auto_color(class_description.info.id));
+            let color = class_description.info.color.map_or_else(
+                || auto_color_egui(class_description.info.id),
+                |color| color.into(),
+            );
 
             for (a, b) in &class_description.keypoint_connections {
                 let (Some(a), Some(b)) = (keypoints_in_class.get(a), keypoints_in_class.get(b)) else {
@@ -224,7 +224,7 @@ impl SceneSpatial {
                 line_batch
                     .add_segment(*a, *b)
                     .radius(Size::AUTO)
-                    .color(to_ecolor(color))
+                    .color(color)
                     .user_data(instance_hash);
             }
         }

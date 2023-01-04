@@ -1,8 +1,8 @@
-use std::sync::Arc;
-
 use ahash::HashMap;
 
 use crate::field_types::{ClassId, KeypointId};
+
+use super::{ColorRGBA, Label};
 
 /// Information about an Annotation.
 ///
@@ -12,8 +12,8 @@ use crate::field_types::{ClassId, KeypointId};
 pub struct AnnotationInfo {
     /// [`ClassId`] or [`KeypointId`] to which this annotation info belongs.
     pub id: u16,
-    pub label: Option<Arc<String>>,
-    pub color: Option<[u8; 4]>,
+    pub label: Option<Label>,
+    pub color: Option<ColorRGBA>,
 }
 
 /// The description of a semantic Class.

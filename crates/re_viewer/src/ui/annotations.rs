@@ -66,11 +66,11 @@ impl ResolvedAnnotationInfo {
     pub fn color(&self, color: Option<&[u8; 4]>, default_color: DefaultColor<'_>) -> [u8; 4] {
         if let Some(color) = color {
             *color
-        } else if let Some(color) = self
-            .0
-            .as_ref()
-            .and_then(|info| info.color.or_else(|| Some(auto_color(info.id))))
-        {
+        } else if let Some(color) = self.0.as_ref().and_then(|info| {
+            info.color
+                .map(|c| c.to_array())
+                .or_else(|| Some(auto_color(info.id)))
+        }) {
             color
         } else {
             match default_color {
@@ -89,7 +89,7 @@ impl ResolvedAnnotationInfo {
         } else {
             self.0
                 .as_ref()
-                .and_then(|info| info.label.as_ref().map(ToString::to_string))
+                .and_then(|info| info.label.as_ref().map(|label| label.0.clone()))
         }
     }
 }
@@ -185,9 +185,13 @@ lazy_static! {
 
 // default colors
 // Borrowed from `egui::PlotUi`
-pub fn auto_color(val: u16) -> [u8; 4] {
+pub fn auto_color_egui(val: u16) -> egui::Color32 {
     let golden_ratio = (5.0_f32.sqrt() - 1.0) / 2.0; // 0.61803398875
     let h = val as f32 * golden_ratio;
-    let color = egui::Color32::from(egui::ecolor::Hsva::new(h, 0.85, 0.5, 1.0));
+    egui::Color32::from(egui::ecolor::Hsva::new(h, 0.85, 0.5, 1.0))
+}
+
+pub fn auto_color(val: u16) -> [u8; 4] {
+    let color = auto_color_egui(val);
     color.to_array()
 }
