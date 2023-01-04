@@ -1,9 +1,7 @@
-use macaw::Ray3;
-
 use re_data_store::{log_db::LogDb, InstanceId, ObjTypePath};
 use re_log_types::{DataPath, MsgId, ObjPath, TimeInt, Timeline};
 
-use crate::ui::{SelectionHistory, SpaceViewId};
+use crate::ui::{data_ui::DataUi, Preview, SelectionHistory, SpaceViewId};
 
 /// Common things needed by many parts of the viewer.
 pub struct ViewerContext<'a> {
@@ -70,7 +68,7 @@ impl<'a> ViewerContext<'a> {
             .on_hover_ui(|ui| {
                 ui.strong("Object");
                 ui.label(format!("Path: {obj_path}"));
-                crate::ui::data_ui::object_ui(self, ui, obj_path, crate::ui::Preview::Medium);
+                obj_path.data_ui(self, ui, crate::ui::Preview::Medium);
             });
         if response.clicked() {
             self.set_selection(Selection::Instance(InstanceId {
@@ -103,7 +101,7 @@ impl<'a> ViewerContext<'a> {
             .on_hover_ui(|ui| {
                 ui.strong("Object Instance");
                 ui.label(format!("Path: {instance_id}"));
-                crate::ui::data_ui::instance_ui(self, ui, instance_id, crate::ui::Preview::Medium);
+                instance_id.data_ui(self, ui, crate::ui::Preview::Medium);
             });
         if response.clicked() {
             self.set_selection(Selection::Instance(instance_id.clone()));
@@ -160,7 +158,7 @@ impl<'a> ViewerContext<'a> {
             .on_hover_ui(|ui| {
                 ui.strong("Space View Object");
                 ui.label(format!("Path: {obj_path}"));
-                crate::ui::data_ui::object_ui(self, ui, obj_path, crate::ui::Preview::Medium);
+                obj_path.data_ui(self, ui, Preview::Medium);
             });
         if response.clicked() {
             self.set_selection(selection);
@@ -238,7 +236,7 @@ pub enum HoveredSpace {
         space_3d: ObjPath,
 
         /// 2D spaces and pixel coordinates (with Z=depth)
-        target_spaces: Vec<(ObjPath, Option<Ray3>, Option<glam::Vec3>)>,
+        target_spaces: Vec<(ObjPath, Option<glam::Vec3>)>,
     },
 }
 

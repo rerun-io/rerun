@@ -24,6 +24,10 @@ Tensor = Union[npt.ArrayLike, TorchTensorLike]
 
 
 def _to_numpy(tensor: Tensor) -> npt.NDArray[Any]:
+    # isinstance is 4x faster than catching AttributeError
+    if isinstance(tensor, np.ndarray):
+        return tensor
+
     try:
         # Make available to the cpu
         return tensor.numpy(force=True)  # type: ignore[union-attr]

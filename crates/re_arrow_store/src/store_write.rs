@@ -9,7 +9,7 @@ use parking_lot::RwLock;
 use re_log::{debug, trace};
 use re_log_types::{
     msg_bundle::{wrap_in_listarray, ComponentBundle, MsgBundle},
-    ComponentName, ObjPath as EntityPath, TimeInt, TimePoint, TimeRange, Timeline,
+    ComponentName, MsgId, ObjPath as EntityPath, TimeInt, TimePoint, TimeRange, Timeline,
 };
 
 use crate::{
@@ -70,7 +70,7 @@ impl DataStore {
         self.insert_id += 1;
 
         let MsgBundle {
-            msg_id: _,
+            msg_id,
             obj_path: ent_path,
             time_point,
             components,
@@ -148,9 +148,11 @@ impl DataStore {
             let index = self
                 .indices
                 .entry((*timeline, ent_path_hash))
-                .or_insert_with(|| IndexTable::new(*timeline, ent_path));
+                .or_insert_with(|| IndexTable::new(self.cluster_key, *timeline, ent_path));
             index.insert(&self.config, *time, &row_indices)?;
         }
+
+        self.messages.insert(*msg_id, time_point.clone());
 
         Ok(())
     }
@@ -168,6 +170,16 @@ impl DataStore {
 
         // Always insert the cluster component.
         row_indices.insert(self.cluster_key, cluster_row_idx);
+
+        if self.config.store_insert_ids {
+            // Store the ID of the write request alongside the data.
+            //
+            // This is _not_ an actual `RowIndex`, there isn't even a component table associated
+            // with insert IDs!
+            // We're just abusing the fact that any value we push here as a `RowIndex` will end up
+            // as-is in the index.
+            row_indices.insert(Self::insert_id_key(), RowIndex::from_u64(self.insert_id));
+        }
 
         for bundle in components
             .iter()
@@ -303,16 +315,22 @@ impl DataStore {
             }
         }
     }
+
+    pub fn get_msg_metadata(&self, msg_id: &MsgId) -> Option<&TimePoint> {
+        self.messages.get(msg_id)
+    }
 }
 
 // --- Indices ---
 
 impl IndexTable {
-    pub fn new(timeline: Timeline, ent_path: EntityPath) -> Self {
+    pub fn new(cluster_key: ComponentName, timeline: Timeline, ent_path: EntityPath) -> Self {
         Self {
             timeline,
             ent_path,
-            buckets: [(0.into(), IndexBucket::new(timeline))].into(),
+            buckets: [(i64::MIN.into(), IndexBucket::new(cluster_key, timeline))].into(),
+            cluster_key,
+            all_components: Default::default(),
         }
     }
 
@@ -326,7 +344,7 @@ impl IndexTable {
         let timeline = self.timeline;
         let ent_path = self.ent_path.clone(); // shallow
 
-        let bucket = self.find_bucket_mut(time.as_i64());
+        let (_, bucket) = self.find_bucket_mut(time);
 
         let size = bucket.total_size_bytes();
         let size_overflow = bucket.total_size_bytes() > config.index_bucket_size_bytes;
@@ -406,6 +424,7 @@ impl IndexTable {
                                 times: Default::default(),
                                 indices: Default::default(),
                             }),
+                            cluster_key: self.cluster_key,
                         },
                     );
                     return self.insert(config, time, indices);
@@ -434,15 +453,21 @@ impl IndexTable {
             "inserted into index table"
         );
 
-        bucket.insert(time, indices)
+        bucket.insert(time, indices)?;
+
+        // Insert components last, only if bucket-insert succeeded.
+        self.all_components.extend(indices.keys());
+
+        Ok(())
     }
 }
 
 impl IndexBucket {
-    pub fn new(timeline: Timeline) -> Self {
+    pub fn new(cluster_key: ComponentName, timeline: Timeline) -> Self {
         Self {
             timeline,
             indices: RwLock::new(IndexBucketIndices::default()),
+            cluster_key,
         }
     }
 
@@ -569,7 +594,9 @@ impl IndexBucket {
     /// }
     /// ```
     pub fn split(&self) -> Option<(TimeInt, Self)> {
-        let Self { timeline, indices } = self;
+        let Self {
+            timeline, indices, ..
+        } = self;
 
         let mut indices = indices.write();
         indices.sort();
@@ -593,7 +620,7 @@ impl IndexBucket {
 
         let timeline = *timeline;
         // Used down the line to assert that we've left everything in a sane state.
-        let total_rows = times1.len();
+        let _total_rows = times1.len();
 
         let (min2, bucket2) = {
             let split_idx = find_split_index(times1).expect("must be splittable at this point");
@@ -623,12 +650,14 @@ impl IndexBucket {
                         times: times2,
                         indices: indices2,
                     }),
+                    cluster_key: self.cluster_key,
                 },
             )
         };
 
         // sanity checks
-        if cfg!(debug_assertions) {
+        #[cfg(debug_assertions)]
+        {
             drop(indices); // sanity checking will grab the lock!
             self.sanity_check().unwrap();
             bucket2.sanity_check().unwrap();
@@ -636,13 +665,13 @@ impl IndexBucket {
             let total_rows1 = self.total_rows() as i64;
             let total_rows2 = bucket2.total_rows() as i64;
             debug_assert!(
-                total_rows as i64 == total_rows1 + total_rows2,
+                _total_rows as i64 == total_rows1 + total_rows2,
                 "expected both buckets to sum up to the length of the original bucket: \
                     got bucket={} vs. bucket1+bucket2={}",
-                total_rows,
+                _total_rows,
                 total_rows1 + total_rows2,
             );
-            debug_assert_eq!(total_rows as i64, total_rows1 + total_rows2);
+            debug_assert_eq!(_total_rows as i64, total_rows1 + total_rows2);
         }
 
         Some((min2, bucket2))

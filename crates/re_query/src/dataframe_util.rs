@@ -165,31 +165,23 @@ impl ComponentWithInstances {
     }
 }
 
-impl EntityView {
-    pub fn as_df1<C0>(&self) -> crate::Result<DataFrame>
-    where
-        C0: Component,
-        Option<C0>: ArrowSerialize + ArrowField<Type = Option<C0>>,
-        C0: ArrowDeserialize + ArrowField<Type = C0> + 'static,
-        C0::ArrayType: ArrowArray,
-        for<'a> &'a C0::ArrayType: IntoIterator,
-    {
+impl<Primary> EntityView<Primary>
+where
+    Primary: Component + ArrowSerialize + ArrowDeserialize + ArrowField<Type = Primary> + 'static,
+    Primary::ArrayType: ArrowArray,
+    for<'a> &'a Primary::ArrayType: IntoIterator,
+{
+    pub fn as_df1(&self) -> crate::Result<DataFrame> {
         let instances = self.primary.iter_instance_keys()?.map(Some).collect_vec();
 
         let primary_values =
-            arrow_array_deserialize_iterator::<Option<C0>>(self.primary.values.as_ref())?
-                .collect_vec();
+            arrow_array_deserialize_iterator(self.primary.values.as_ref())?.collect_vec();
 
-        df_builder2::<Instance, C0>(&instances, &primary_values)
+        df_builder2::<Instance, Primary>(&instances, &primary_values)
     }
 
-    pub fn as_df2<C0, C1>(&self) -> crate::Result<DataFrame>
+    pub fn as_df2<C1>(&self) -> crate::Result<DataFrame>
     where
-        C0: Component,
-        Option<C0>: ArrowSerialize + ArrowField<Type = Option<C0>>,
-        C0: ArrowDeserialize + ArrowField<Type = C0> + 'static,
-        C0::ArrayType: ArrowArray,
-        for<'a> &'a C0::ArrayType: IntoIterator,
         C1: Component,
         Option<C1>: ArrowSerialize + ArrowField<Type = Option<C1>>,
         C1: ArrowDeserialize + ArrowField<Type = C1> + 'static,
@@ -199,12 +191,11 @@ impl EntityView {
         let instances = self.primary.iter_instance_keys()?.map(Some).collect_vec();
 
         let primary_values =
-            arrow_array_deserialize_iterator::<Option<C0>>(self.primary.values.as_ref())?
-                .collect_vec();
+            arrow_array_deserialize_iterator(self.primary.values.as_ref())?.collect_vec();
 
         let c1_values = self.iter_component::<C1>()?.collect_vec();
 
-        df_builder3(&instances, &primary_values, &c1_values)
+        df_builder3::<Instance, Primary, C1>(&instances, &primary_values, &c1_values)
     }
 }
 

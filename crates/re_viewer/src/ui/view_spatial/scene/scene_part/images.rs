@@ -24,6 +24,7 @@ pub struct ImagesPart;
 
 impl ScenePart for ImagesPart {
     fn load(
+        &self,
         scene: &mut SceneSpatial,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
@@ -31,7 +32,7 @@ impl ScenePart for ImagesPart {
         objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
-        crate::profile_function!();
+        crate::profile_scope!("ImagesPart");
 
         for (_obj_type, obj_path, time_query, obj_store) in
             query.iter_object_stores(ctx.log_db, &[ObjectType::Image])
@@ -69,6 +70,7 @@ impl ScenePart for ImagesPart {
                         .primitives
                         .line_strips
                         .batch("image outlines")
+                        .world_from_obj(world_from_obj)
                         .add_axis_aligned_rectangle_outline_2d(glam::Vec2::ZERO, glam::vec2(w, h))
                         .color(paint_props.fg_stroke.color)
                         .radius(Size::new_points(paint_props.fg_stroke.width * 0.5));
@@ -95,6 +97,7 @@ impl ScenePart for ImagesPart {
                             multiplicative_tint: paint_props.fg_stroke.color.into(),
                         },
                     );
+                    scene.primitives.textured_rectangles_ids.push(instance_hash);
                 }
 
                 scene.ui.images.push(Image {
@@ -115,6 +118,7 @@ impl ScenePart for ImagesPart {
 
         // Handle layered rectangles that are on (roughly) the same plane and were logged in sequence.
         // First, group by similar plane.
+        // TODO(andreas): Need planes later for picking as well!
         let rects_grouped_by_plane = {
             let mut cur_plane = macaw::Plane3::from_normal_dist(Vec3::NAN, std::f32::NAN);
             let mut rectangle_group = Vec::new();
@@ -126,10 +130,9 @@ impl ScenePart for ImagesPart {
                     for rect in it.by_ref() {
                         let prev_plane = cur_plane;
                         cur_plane = macaw::Plane3::from_normal_point(
-                            rect.extent_u.cross(rect.extent_v),
+                            rect.extent_u.cross(rect.extent_v).normalize(),
                             rect.top_left_corner_position,
-                        )
-                        .normalized();
+                        );
 
                         // Are the image planes too unsimilar? Then this is a new group.
                         if !rectangle_group.is_empty()

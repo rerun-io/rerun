@@ -26,11 +26,12 @@ pub use images::ImagesPart;
 pub use lines3d::Lines3DPart;
 pub use meshes::MeshPart;
 pub use points2d::Points2DPart;
-pub use points3d::Points3DPart;
+pub use points3d::{Points3DPart, Points3DPartClassic};
 pub use segments2d::LineSegments2DPart;
 
 pub trait ScenePart {
     fn load(
+        &self,
         scene: &mut SceneSpatial,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,

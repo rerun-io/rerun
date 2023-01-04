@@ -1,6 +1,6 @@
 mod common;
 
-use re_arrow_store::{DataStore, TimeQuery};
+use re_arrow_store::DataStore;
 use re_log_types::{
     datagen::build_frame_nr,
     field_types::Instance,
@@ -17,7 +17,7 @@ fn simple_query() {
     let mut store = DataStore::new(Instance::name(), Default::default());
 
     let ent_path = "point";
-    let timepoint = [build_frame_nr(123)];
+    let timepoint = [build_frame_nr(123.into())];
 
     // Create some points with implicit instances
     let points = vec![Point2D { x: 1.0, y: 2.0 }, Point2D { x: 3.0, y: 4.0 }];
@@ -37,16 +37,12 @@ fn simple_query() {
     store.insert(&bundle).unwrap();
 
     // Retrieve the view
-    let timeline_query = re_arrow_store::TimelineQuery::new(
-        timepoint[0].0,
-        TimeQuery::LatestAt(timepoint[0].1.as_i64()),
-    );
+    let timeline_query = re_arrow_store::LatestAtQuery::new(timepoint[0].0, timepoint[0].1);
 
-    let entity_view = query_entity_with_primary(
+    let entity_view = query_entity_with_primary::<Point2D>(
         &store,
         &timeline_query,
         &ent_path.into(),
-        Point2D::name(),
         &[ColorRGBA::name()],
     )
     .unwrap();
@@ -78,10 +74,7 @@ fn simple_query() {
         //eprintln!("{:?}", df);
         //eprintln!("{:?}", expected);
 
-        common::compare_df(
-            &expected,
-            &entity_view.as_df2::<Point2D, ColorRGBA>().unwrap(),
-        );
+        common::compare_df(&expected, &entity_view.as_df2::<ColorRGBA>().unwrap());
     }
     #[cfg(not(feature = "polars"))]
     {
@@ -95,7 +88,7 @@ fn no_instance_join_query() {
     let mut store = DataStore::new(Instance::name(), Default::default());
 
     let ent_path = "point";
-    let timepoint = [build_frame_nr(123)];
+    let timepoint = [build_frame_nr(123.into())];
 
     // Create some points with an implicit instance
     let points = vec![Point2D { x: 1.0, y: 2.0 }, Point2D { x: 3.0, y: 4.0 }];
@@ -108,16 +101,12 @@ fn no_instance_join_query() {
     store.insert(&bundle).unwrap();
 
     // Retrieve the view
-    let timeline_query = re_arrow_store::TimelineQuery::new(
-        timepoint[0].0,
-        TimeQuery::LatestAt(timepoint[0].1.as_i64()),
-    );
+    let timeline_query = re_arrow_store::LatestAtQuery::new(timepoint[0].0, timepoint[0].1);
 
-    let entity_view = query_entity_with_primary(
+    let entity_view = query_entity_with_primary::<Point2D>(
         &store,
         &timeline_query,
         &ent_path.into(),
-        Point2D::name(),
         &[ColorRGBA::name()],
     )
     .unwrap();
@@ -149,10 +138,7 @@ fn no_instance_join_query() {
         //eprintln!("{:?}", df);
         //eprintln!("{:?}", expected);
 
-        common::compare_df(
-            &expected,
-            &entity_view.as_df2::<Point2D, ColorRGBA>().unwrap(),
-        );
+        common::compare_df(&expected, &entity_view.as_df2::<ColorRGBA>().unwrap());
     }
     #[cfg(not(feature = "polars"))]
     {
@@ -166,7 +152,7 @@ fn missing_column_join_query() {
     let mut store = DataStore::new(Instance::name(), Default::default());
 
     let ent_path = "point";
-    let timepoint = [build_frame_nr(123)];
+    let timepoint = [build_frame_nr(123.into())];
 
     // Create some points with an implicit instance
     let points = vec![Point2D { x: 1.0, y: 2.0 }, Point2D { x: 3.0, y: 4.0 }];
@@ -174,16 +160,12 @@ fn missing_column_join_query() {
     store.insert(&bundle).unwrap();
 
     // Retrieve the view
-    let timeline_query = re_arrow_store::TimelineQuery::new(
-        timepoint[0].0,
-        TimeQuery::LatestAt(timepoint[0].1.as_i64()),
-    );
+    let timeline_query = re_arrow_store::LatestAtQuery::new(timepoint[0].0, timepoint[0].1);
 
-    let entity_view = query_entity_with_primary(
+    let entity_view = query_entity_with_primary::<Point2D>(
         &store,
         &timeline_query,
         &ent_path.into(),
-        Point2D::name(),
         &[ColorRGBA::name()],
     )
     .unwrap();
@@ -214,7 +196,7 @@ fn missing_column_join_query() {
         //eprintln!("{:?}", df);
         //eprintln!("{:?}", expected);
 
-        common::compare_df(&expected, &entity_view.as_df1::<Point2D>().unwrap());
+        common::compare_df(&expected, &entity_view.as_df1().unwrap());
     }
     #[cfg(not(feature = "polars"))]
     {

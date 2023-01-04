@@ -5,7 +5,7 @@ use egui::NumExt as _;
 use glam::{vec3, Vec3};
 use re_data_store::{InstanceIdHash, ObjPath, ObjectsProperties};
 use re_log_types::{
-    context::{ClassId, KeypointId},
+    field_types::{ClassId, KeypointId},
     IndexHash, MeshId, Tensor,
 };
 use re_renderer::{Color32, Size};
@@ -21,9 +21,11 @@ use crate::{
     },
 };
 
+mod picking;
 mod primitives;
 mod scene_part;
 
+pub use self::picking::{AdditionalPickingInfo, PickingRayHit, PickingResult};
 pub use self::primitives::SceneSpatialPrimitives;
 use scene_part::ScenePart;
 
@@ -80,7 +82,7 @@ pub enum Label2DTarget {
 pub struct Label2D {
     pub text: String,
     pub color: Color32,
-    /// The shape being labled.
+    /// The shape being labeled.
     pub target: Label2DTarget,
     /// What is hovered if this label is hovered.
     pub labled_instance: InstanceIdHash,
@@ -103,8 +105,9 @@ pub struct SceneSpatialUiData {
     pub labels_3d: Vec<Label3D>,
     pub labels_2d: Vec<Label2D>,
 
-    /// Cursor within any of these rects cause the referred instance to be hovered.
-    pub rects: Vec<(egui::Rect, InstanceIdHash)>,
+    /// Picking any any of these rects cause the referred instance to be hovered.
+    /// Only use this for 2d overlays!
+    pub pickable_ui_rects: Vec<(egui::Rect, InstanceIdHash)>,
 
     /// Images are a special case of rects where we're storing some extra information to allow miniature previews etc.
     pub images: Vec<Image>,
@@ -132,6 +135,8 @@ fn instance_hash_if_interactive(
     }
 }
 
+pub type Keypoints = HashMap<(ClassId, i64), HashMap<KeypointId, glam::Vec3>>;
+
 impl SceneSpatial {
     /// Loads all 3D objects into the scene according to the given query.
     pub(crate) fn load_objects(
@@ -144,23 +149,29 @@ impl SceneSpatial {
     ) {
         crate::profile_function!();
 
+        //TODO(john) implement this for Arrow data store
         self.annotation_map.load(ctx, query);
 
-        let parts = [
-            scene_part::Points3DPart::load,
-            scene_part::Boxes3DPart::load,
-            scene_part::Lines3DPart::load,
-            scene_part::Arrows3DPart::load,
-            scene_part::MeshPart::load,
-            scene_part::ImagesPart::load,
-            scene_part::Boxes2DPartClassic::load,
-            scene_part::Boxes2DPart::load,
-            scene_part::LineSegments2DPart::load,
-            scene_part::Points2DPart::load,
+        let parts: Vec<&dyn ScenePart> = vec![
+            &scene_part::Points3DPartClassic,
+            &scene_part::Points3DPart { max_labels: 10 },
+            // --
+            &scene_part::Points2DPart,
+            &scene_part::Boxes3DPart,
+            &scene_part::Lines3DPart,
+            &scene_part::Arrows3DPart,
+            &scene_part::MeshPart,
+            &scene_part::ImagesPart,
+            // --
+            &scene_part::Boxes2DPartClassic,
+            &scene_part::Boxes2DPart,
+            // --
+            &scene_part::LineSegments2DPart,
+            &scene_part::Points2DPart,
         ];
 
-        for load in parts {
-            (load)(self, ctx, query, transforms, objects_properties, hovered);
+        for part in parts {
+            part.load(self, ctx, query, transforms, objects_properties, hovered);
         }
 
         self.primitives.recalculate_bounding_box();
@@ -179,7 +190,7 @@ impl SceneSpatial {
     fn load_keypoint_connections(
         &mut self,
         obj_path: &re_data_store::ObjPath,
-        keypoints: HashMap<(ClassId, i64), HashMap<KeypointId, glam::Vec3>>,
+        keypoints: Keypoints,
         annotations: &Arc<Annotations>,
         interactive: bool,
     ) {
@@ -231,7 +242,7 @@ impl SceneSpatial {
         crate::profile_function!();
 
         // Size of a pixel (in meters), when projected out one meter:
-        let point_size_at_one_meter = eye.fov_y / viewport_size.y;
+        let point_size_at_one_meter = eye.fov_y.unwrap() / viewport_size.y;
 
         let eye_camera_plane =
             macaw::Plane3::from_normal_point(eye.forward_in_world(), eye.pos_in_world());
@@ -385,6 +396,23 @@ impl SceneSpatial {
         } else {
             SpatialNavigationMode::ThreeD
         }
+    }
+
+    pub fn picking(
+        &self,
+        pointer_in_ui: glam::Vec2,
+        ui_rect: &egui::Rect,
+        eye: &Eye,
+        ui_interaction_radius: f32,
+    ) -> PickingResult {
+        picking::picking(
+            pointer_in_ui,
+            ui_rect,
+            eye,
+            &self.primitives,
+            &self.ui,
+            ui_interaction_radius,
+        )
     }
 }
 

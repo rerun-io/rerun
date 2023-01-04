@@ -22,9 +22,9 @@ use std::collections::BTreeMap;
 
 use arrow2::{
     array::{Array, ListArray, StructArray},
-    buffer::Buffer,
     chunk::Chunk,
     datatypes::{DataType, Field, Schema},
+    offset::Offsets,
 };
 use arrow2_convert::{
     field::ArrowField,
@@ -52,6 +52,9 @@ pub enum MsgBundleError {
     #[error("Expect a single TimePoint, but found more than one")]
     MultipleTimepoints,
 
+    #[error(transparent)]
+    PathParseError(#[from] PathParseError),
+
     #[error("Could not serialize components to Arrow")]
     ArrowSerializationError(#[from] arrow2::error::Error),
 
@@ -62,7 +65,7 @@ pub enum MsgBundleError {
 
 pub type Result<T> = std::result::Result<T, MsgBundleError>;
 
-use crate::{ArrowMsg, ComponentName, MsgId, ObjPath, TimePoint};
+use crate::{parse_obj_path, ArrowMsg, ComponentName, MsgId, ObjPath, PathParseError, TimePoint};
 
 //TODO(john) get rid of this eventually
 const ENTITY_PATH_KEY: &str = "RERUN:entity_path";
@@ -189,19 +192,31 @@ pub struct MsgBundle {
 }
 
 impl MsgBundle {
-    /// Create a new `MsgBundle` with a pre-build Vec of [`ComponentBundle`] components.
+    /// Create a new `MsgBundle` with a pre-built Vec of [`ComponentBundle`] components.
+    ///
+    /// The `MsgId` will automatically be appended as a component to the given `bundles`, allowing
+    /// the backend to keep track of the origin of any row of data.
     pub fn new(
         msg_id: MsgId,
         obj_path: ObjPath,
         time_point: TimePoint,
-        bundles: Vec<ComponentBundle>,
+        components: Vec<ComponentBundle>,
     ) -> Self {
-        Self {
+        let mut this = Self {
             msg_id,
             obj_path,
             time_point,
-            components: bundles,
-        }
+            components,
+        };
+
+        // Since we don't yet support splats, we need to craft an array of `MsgId`s that matches
+        // the length of the other components.
+        //
+        // TODO(#440): support splats & remove this hack.
+        this.components
+            .push(vec![msg_id; this.row_len(0)].try_into().unwrap());
+
+        this
     }
 
     /// Try to append a collection of `Component` onto the `MessageBundle`.
@@ -225,6 +240,52 @@ impl MsgBundle {
 
         self.components.push(bundle);
         Ok(())
+    }
+
+    /// Returns the length of a specific row within the bundle, i.e. the row's _number of
+    /// instances_.
+    ///
+    /// Panics if `row_nr` is out of bounds.
+    pub fn row_len(&self, row_nr: usize) -> usize {
+        // TODO(#440): won't be able to pick any component randomly once we support splats!
+        self.components.first().map_or(0, |bundle| {
+            bundle
+                .value
+                .as_any()
+                .downcast_ref::<ListArray<i32>>()
+                .unwrap()
+                .offsets()
+                .lengths()
+                .nth(row_nr)
+                .unwrap()
+        })
+    }
+
+    /// Returns the length of the bundle, i.e. its _number of rows_.
+    pub fn len(&self) -> usize {
+        // TODO(#440): won't be able to pick any component randomly once we support splats!
+        self.components.first().map_or(0, |bundle| {
+            bundle
+                .value
+                .as_any()
+                .downcast_ref::<ListArray<i32>>()
+                .unwrap()
+                .len()
+        })
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    /// Returns the index of `component` in the bundle, if it exists.
+    ///
+    /// This is `O(n)`.
+    pub fn find_component(&self, component: &ComponentName) -> Option<usize> {
+        self.components
+            .iter()
+            .map(|bundle| bundle.name)
+            .position(|name| name == *component)
     }
 }
 
@@ -289,11 +350,13 @@ impl TryFrom<&ArrowMsg> for MsgBundle {
             chunk,
         } = msg;
 
-        let obj_path = schema
+        let obj_path_cmp = schema
             .metadata
             .get(ENTITY_PATH_KEY)
             .ok_or(MsgBundleError::MissingEntityPath)
-            .map(|path| ObjPath::from(path.as_str()))?;
+            .and_then(|path| {
+                parse_obj_path(path.as_str()).map_err(MsgBundleError::PathParseError)
+            })?;
 
         let time_point = extract_timelines(schema, chunk)?;
         let components = extract_components(schema, chunk)?;
@@ -302,7 +365,7 @@ impl TryFrom<&ArrowMsg> for MsgBundle {
 
         Ok(Self {
             msg_id: *msg_id,
-            obj_path,
+            obj_path: obj_path_cmp.into(),
             time_point,
             components,
         })
@@ -404,10 +467,12 @@ fn extract_components(
 /// Wrap `field_array` in a single-element `ListArray`
 pub fn wrap_in_listarray(field_array: Box<dyn Array>) -> ListArray<i32> {
     let datatype = ListArray::<i32>::default_datatype(field_array.data_type().clone());
-    let offsets = Buffer::from(vec![0, field_array.len() as i32]);
+    let offsets = Offsets::try_from_lengths(std::iter::once(field_array.len()))
+        .unwrap()
+        .into();
     let values = field_array;
     let validity = None;
-    ListArray::<i32>::from_data(datatype, offsets, values, validity)
+    ListArray::<i32>::new(datatype, offsets, values, validity)
 }
 
 /// Helper to build a `MessageBundle` from 1 component

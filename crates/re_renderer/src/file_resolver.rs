@@ -76,10 +76,7 @@
 //! xyz
 //! ```
 //!
-//! Both have their use cases and drawbacks, there's no "right solution".
-//!
-//! At the moment, our import system only provides support for `#pragma many` semantics.
-//! We will most likely add support for `#pragma once` at some point.
+//! At the moment, our import system only provides support for `#pragma once` semantics.
 //!
 //! ## Hot-reloading: platform specifics
 //!
@@ -180,7 +177,10 @@
 // TODO(cmc): might want to support implicitly dropping file suffixes at some point, e.g.
 // `#import <my_shader>` which works with "my_shader.wgsl"
 
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    rc::Rc,
+};
 
 use ahash::{HashMap, HashSet, HashSetExt};
 use anyhow::{anyhow, bail, ensure, Context as _};
@@ -470,20 +470,14 @@ pub fn new_recommended() -> RecommendedFileResolver {
     FileResolver::with_search_path(crate::get_filesystem(), SearchPath::from_env())
 }
 
-#[derive(Clone)]
-struct InterpolatedFile {
-    contents: String,
-    imports: HashSet<PathBuf>,
+#[derive(Clone, Debug, Default)]
+pub struct InterpolatedFile {
+    pub contents: String,
+    pub imports: HashSet<PathBuf>,
 }
 
-/// Then `FileResolver` handles both resolving import clauses and doing the actual string
+/// The `FileResolver` handles both resolving import clauses and doing the actual string
 /// interpolation.
-///
-/// A `FileResolver` lazily caches all resolved and interpolated files, and keeps track of
-/// those for the entire duration of its lifetime.
-/// This means you should never keep a `FileResolver` alive across frames in a hot-reloading
-/// setup (...unless you `clear()` it as needed)!
-// TODO(cmc): support "#pragma once".
 #[derive(Default)]
 pub struct FileResolver<Fs> {
     /// A handle to the filesystem being used.
@@ -493,9 +487,6 @@ pub struct FileResolver<Fs> {
     /// The search path that we will go through when an import cannot be resolved neither
     /// as an absolute path or a relative one.
     search_path: SearchPath,
-
-    /// Cache for all files that have been interpolated so far.
-    files: HashMap<PathBuf, InterpolatedFile>,
 }
 
 // Constructors
@@ -504,136 +495,108 @@ impl<Fs: FileSystem> FileResolver<Fs> {
         Self {
             fs,
             search_path: Default::default(),
-            files: Default::default(),
         }
     }
 
     pub fn with_search_path(fs: Fs, search_path: SearchPath) -> Self {
-        Self {
-            fs,
-            search_path,
-            files: Default::default(),
-        }
-    }
-
-    /// Wipes out the internal cache.
-    ///
-    /// Useful when keeping a long-lived `FileResolver` around.
-    pub fn clear(&mut self) {
-        self.files.clear();
+        Self { fs, search_path }
     }
 }
 
-// Public APIs: resolution & interpolation
 impl<Fs: FileSystem> FileResolver<Fs> {
-    /// Resolves the contents of the file at `path`, recursively interpolating imported
-    /// dependencies.
-    pub fn resolve_contents(&mut self, path: impl AsRef<Path>) -> anyhow::Result<&str> {
-        crate::profile_function!();
-
-        self.populate(&path)?;
-
-        Ok(&self
-            .files
-            .get(path.as_ref())
-            .expect("we've just populated it!")
-            .contents)
-    }
-
-    /// Recursively resolves all dependencies imported by the file at `path`.
-    pub fn resolve_imports(
-        &mut self,
-        path: impl AsRef<Path>,
-    ) -> anyhow::Result<impl Iterator<Item = &Path>> {
-        crate::profile_function!();
-
-        self.populate(&path)?;
-
-        Ok(self
-            .files
-            .get(path.as_ref())
-            .expect("we've just populated it!")
-            .imports
-            .iter()
-            .map(|p| p.as_path()))
-    }
-}
-
-// Cache management
-impl<Fs: FileSystem> FileResolver<Fs> {
-    /// Populates the local, pre-interpolated cache.
-    // TODO(cmc): performance-wise, this is astonishingly disgusting: we're cloning full files
-    // at every corner.
-    fn populate(&mut self, path: impl AsRef<Path>) -> anyhow::Result<()> {
+    pub fn populate(&mut self, path: impl AsRef<Path>) -> anyhow::Result<InterpolatedFile> {
         crate::profile_function!();
 
         fn populate_rec<Fs: FileSystem>(
             this: &mut FileResolver<Fs>,
             path: impl AsRef<Path>,
+            interp_files: &mut HashMap<PathBuf, Rc<InterpolatedFile>>,
             path_stack: &mut Vec<PathBuf>,
-            visited: &mut HashSet<PathBuf>,
-        ) -> anyhow::Result<String> {
+            visited_stack: &mut HashSet<PathBuf>,
+        ) -> anyhow::Result<Rc<InterpolatedFile>> {
             let path = path.as_ref().clean();
 
             // Cycle detection
             path_stack.push(path.clone());
             ensure!(
-                visited.insert(path.clone()),
+                visited_stack.insert(path.clone()),
                 "import cycle detected: {path_stack:?}"
             );
 
-            let contents = if let Some(contents) = &this.files.get(&path).map(|f| &f.contents) {
-                (*contents).to_string()
-            } else {
-                let contents = this.fs.read_to_string(&path)?;
+            // #pragma once
+            if interp_files.contains_key(&path) {
+                // Cycle detection
+                path_stack.pop().unwrap();
+                visited_stack.remove(&path);
 
-                // Using implicit Vec<Result> -> Result<Vec> collection.
-                let mut imports = HashSet::new();
-                let lines: Result<Vec<_>, _> = contents
-                    .lines()
-                    .map(|line| {
-                        if line.trim().starts_with(ImportClause::PREFIX) {
-                            let clause = line.parse::<ImportClause>()?;
-                            // We do not use `Path::parent` on purpose!
-                            let cwd = path.join("..").clean();
-                            let clause_path =
-                                this.resolve_clause_path(cwd, &clause.path).ok_or_else(|| {
-                                    anyhow!(
-                                        "couldn't resolve import clause path at {:?}",
-                                        clause.path
-                                    )
-                                })?;
-                            imports.insert(clause_path.clone());
-                            populate_rec(this, clause_path, path_stack, visited)
-                        } else {
-                            Ok(line.to_owned())
-                        }
-                    })
-                    .collect();
-                let lines = lines?;
+                return Ok(Default::default());
+            }
 
-                let contents = lines.join("\n");
-                this.files.insert(
-                    path.clone(),
-                    InterpolatedFile {
-                        contents: contents.clone(),
-                        imports,
+            let contents = this.fs.read_to_string(&path)?;
+
+            // Using implicit Vec<Result> -> Result<Vec> collection.
+            let mut imports = HashSet::new();
+            let children: Result<Vec<_>, _> = contents
+                .lines()
+                .map(|line| {
+                    if line.trim().starts_with(ImportClause::PREFIX) {
+                        let clause = line.parse::<ImportClause>()?;
+                        // We do not use `Path::parent` on purpose!
+                        let cwd = path.join("..").clean();
+                        let clause_path =
+                            this.resolve_clause_path(cwd, &clause.path).ok_or_else(|| {
+                                anyhow!("couldn't resolve import clause path at {:?}", clause.path)
+                            })?;
+                        imports.insert(clause_path.clone());
+                        populate_rec(this, clause_path, interp_files, path_stack, visited_stack)
+                    } else {
+                        // Fake child, just the line itself.
+                        Ok(Rc::new(InterpolatedFile {
+                            contents: line.to_owned(),
+                            ..Default::default()
+                        }))
+                    }
+                })
+                .collect();
+            let children = children?;
+
+            let interp = children.into_iter().fold(
+                InterpolatedFile {
+                    imports,
+                    ..Default::default()
+                },
+                |acc, child| InterpolatedFile {
+                    contents: match (acc.contents.is_empty(), child.contents.is_empty()) {
+                        (true, _) => child.contents.clone(),
+                        (_, true) => acc.contents,
+                        _ => [acc.contents.as_str(), child.contents.as_str()].join("\n"),
                     },
-                );
+                    imports: acc.imports.union(&child.imports).cloned().collect(),
+                },
+            );
 
-                contents
-            };
+            let interp = Rc::new(interp);
+            interp_files.insert(path.clone(), Rc::clone(&interp));
 
             // Cycle detection
             path_stack.pop().unwrap();
-            visited.remove(&path);
+            visited_stack.remove(&path);
 
-            Ok(contents)
+            Ok(interp)
         }
 
         let mut path_stack = Vec::new();
-        let mut visited = HashSet::new();
-        populate_rec(self, path, &mut path_stack, &mut visited).map(|_| ())
+        let mut visited_stack = HashSet::new();
+        let mut interp_files = HashMap::default();
+
+        populate_rec(
+            self,
+            path,
+            &mut interp_files,
+            &mut path_stack,
+            &mut visited_stack,
+        )
+        .map(|interp| (*interp).clone())
     }
 
     fn resolve_clause_path(
@@ -687,7 +650,13 @@ mod tests_file_resolver {
 
             fs.create_file(
                 "/shaders1/common/shader1.wgsl",
-                unindent(r#"my first shader!"#).into(),
+                unindent(
+                    r#"
+                    my first shader!
+                    #import </shaders1/common/shader4.wgsl>
+                    "#,
+                )
+                .into(),
             )
             .unwrap();
 
@@ -728,6 +697,12 @@ mod tests_file_resolver {
                 .into(),
             )
             .unwrap();
+
+            fs.create_file(
+                "/shaders1/common/shader4.wgsl",
+                unindent(r#"my fourth shader!"#).into(),
+            )
+            .unwrap();
         }
 
         let mut resolver = FileResolver::with_search_path(fs, {
@@ -741,95 +716,63 @@ mod tests_file_resolver {
         for _ in 0..3 {
             //   ^^^^  just making sure the stateful stuff behaves correctly
 
+            let shader1_interp = resolver.populate("/shaders1/common/shader1.wgsl").unwrap();
+
             // Shader 1: resolve
-            let mut imports = resolver
-                .resolve_imports("/shaders1/common/shader1.wgsl")
-                .unwrap()
-                .collect::<Vec<_>>();
+            let mut imports = shader1_interp.imports.into_iter().collect::<Vec<_>>();
             imports.sort();
-            let expected: Vec<PathBuf> = vec![];
+            let expected: Vec<PathBuf> = vec!["/shaders1/common/shader4.wgsl".into()];
             assert_eq!(expected, imports);
 
             // Shader 1: interpolate
-            let contents = resolver
-                .resolve_contents("/shaders1/common/shader1.wgsl")
-                .map_err(re_error::format)
-                .unwrap();
-            let expected = unindent(r#"my first shader!"#);
+            let contents = shader1_interp.contents;
+            let expected = unindent(
+                r#"
+                my first shader!
+                my fourth shader!"#,
+            );
             assert_eq!(expected, contents);
 
+            let shader2_interp = resolver.populate("/shaders1/a/b/shader2.wgsl").unwrap();
             // Shader 2: resolve
-            let mut imports = resolver
-                .resolve_imports("/shaders1/a/b/shader2.wgsl")
-                .unwrap()
-                .collect::<Vec<_>>();
+            let mut imports = shader2_interp.imports.into_iter().collect::<Vec<_>>();
             imports.sort();
             let expected: Vec<PathBuf> = vec![
                 "/shaders1/a/b/c/d/shader3.wgsl".into(),
                 "/shaders1/common/shader1.wgsl".into(),
+                "/shaders1/common/shader4.wgsl".into(),
             ];
             assert_eq!(expected, imports);
 
             // Shader 2: interpolate
-            let contents = resolver
-                .resolve_contents("/shaders1/a/b/shader2.wgsl")
-                .map_err(re_error::format)
-                .unwrap();
+            let contents = shader2_interp.contents;
             let expected = unindent(
                 r#"
                 my first shader!
-                my first shader!
-
-                my first shader!
-                my first shader!
+                my fourth shader!
                 my third shader!
-                my first shader!
-                my first shader!
-                my first shader!
-                my first shader!
-                my third shader!
-                my first shader!
-                my first shader!
-
-                my second shader!
-
-                my first shader!
-                my first shader!
-
-                my first shader!
-                my first shader!
-                my third shader!
-                my first shader!
-                my first shader!
-                my first shader!
-                my first shader!
-                my third shader!
-                my first shader!
-                my first shader!"#,
+                my second shader!"#,
             );
             assert_eq!(expected, contents);
 
+            let shader3_interp = resolver.populate("/shaders1/a/b/c/d/shader3.wgsl").unwrap();
+
             // Shader 3: resolve
-            let mut imports = resolver
-                .resolve_imports("/shaders1/a/b/c/d/shader3.wgsl")
-                .unwrap()
-                .collect::<Vec<_>>();
+            let mut imports = shader3_interp.imports.into_iter().collect::<Vec<_>>();
             imports.sort();
-            let expected: Vec<PathBuf> = vec!["/shaders1/common/shader1.wgsl".into()];
+            let expected: Vec<PathBuf> = vec![
+                "/shaders1/common/shader1.wgsl".into(),
+                "/shaders1/common/shader4.wgsl".into(),
+            ];
             assert_eq!(expected, imports);
 
             // Shader 3: interpolate
-            let contents = resolver
-                .resolve_contents("/shaders1/a/b/c/d/shader3.wgsl")
-                .map_err(re_error::format)
-                .unwrap();
+            let contents = shader3_interp.contents;
             let expected = unindent(
                 r#"
                 my first shader!
-                my first shader!
-                my third shader!
-                my first shader!
-                my first shader!"#,
+                my fourth shader!
+                my third shader!"#,
             );
             assert_eq!(expected, contents);
         }
@@ -869,12 +812,10 @@ mod tests_file_resolver {
 
         let mut resolver = FileResolver::new(fs);
 
-        let contents = resolver
-            .resolve_contents("/shaders2/shader1.wgsl")
+        resolver
+            .populate("/shaders2/shader1.wgsl")
             .map_err(re_error::format)
             .unwrap();
-        let expected = unindent(r#"my first shader!"#);
-        assert_eq!(expected, contents);
     }
 
     #[test]
@@ -924,7 +865,7 @@ mod tests_file_resolver {
         let mut resolver = FileResolver::new(fs);
 
         resolver
-            .resolve_contents("/shaders3/shader1.wgsl")
+            .populate("/shaders3/shader1.wgsl")
             .map_err(re_error::format)
             .unwrap();
     }

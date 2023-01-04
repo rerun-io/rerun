@@ -2,6 +2,7 @@ from typing import Optional, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
+from rerun.components.radius import RadiusArray
 from rerun.log import (
     EXP_ARROW,
     Color,
@@ -93,6 +94,10 @@ def log_point(
             colors = _normalize_colors([color])
             comps["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
 
+        if radius:
+            radii = _normalize_radii([radius])
+            comps["rerun.radius"] = RadiusArray.from_numpy(radii)
+
         if label:
             comps["rerun.label"] = LabelArray.new([label])
 
@@ -182,8 +187,17 @@ def log_points(
             else:
                 raise TypeError("Positions should be either Nx2 or Nx3")
 
-        if colors:
-            comps["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
+        if len(colors):
+            # TODO(jleibs) remove once we have storage-side splats
+            if len(colors.shape) == 1:
+                colors = np.broadcast_to(colors.reshape(1, len(colors)), (len(positions), len(colors)))
+            comps["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)  # type: ignore[arg-type]
+
+        if len(radii):
+            # TODO(jleibs) remove once we have storage-side splats
+            if len(radii) == 1:
+                radii = np.broadcast_to(radii, (len(positions),))
+            comps["rerun.radius"] = RadiusArray.from_numpy(radii)
 
         if labels:
             comps["rerun.label"] = LabelArray.new(labels)

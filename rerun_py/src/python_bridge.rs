@@ -13,12 +13,12 @@ use pyo3::{
 };
 
 use re_log_types::{
-    context,
-    context::{ClassId, KeypointId},
-    coordinates, AnnotationContext, ApplicationId, BBox2D, BatchIndex, Data, DataVec,
-    EncodedMesh3D, Index, LoggedData, Mesh3D, MeshFormat, MeshId, ObjPath, ObjectType, PathOp,
-    RecordingId, TensorDataStore, TensorDataType, TensorDimension, TensorId, Time, TimeInt,
-    TimePoint, TimeType, Timeline, ViewCoordinates,
+    context, coordinates,
+    field_types::{ClassId, KeypointId},
+    AnnotationContext, ApplicationId, BBox2D, BatchIndex, Data, DataVec, EncodedMesh3D, Index,
+    LoggedData, Mesh3D, MeshFormat, MeshId, ObjPath, ObjectType, PathOp, RecordingId,
+    TensorDataStore, TensorDataType, TensorDimension, TensorId, Time, TimeInt, TimePoint, TimeType,
+    Timeline, ViewCoordinates,
 };
 
 use rerun_sdk::global_session;
@@ -1858,12 +1858,7 @@ fn log_cleared(obj_path: &str, recursive: bool) -> PyResult<()> {
 fn log_arrow_msg(obj_path: &str, components: &PyDict) -> PyResult<()> {
     let mut session = global_session();
 
-    // We normally disallow logging to root, but we make an exception for class_descriptions
-    let obj_path = if obj_path == "/" {
-        ObjPath::root()
-    } else {
-        parse_obj_path(obj_path)?
-    };
+    let obj_path = parse_obj_path(obj_path)?;
 
     let msg = crate::arrow::build_chunk_from_components(&obj_path, components, &time(false))?;
     session.send(msg);

@@ -12,10 +12,14 @@ all = [
     "color",
     "label",
     "point",
+    "radius",
     "rect2d",
+    "scalar",
+    "scalar_plot_props",
+    "text_entry",
 ]
 
-REGISTERED_FIELDS: Final = bindings.get_registered_fields()
+REGISTERED_FIELDS: Final[dict[str, pa.field]] = bindings.get_registered_fields()
 
 
 def ComponentTypeFactory(name: str, array_cls: type[pa.ExtensionArray], field: pa.Field) -> type[pa.ExtensionType]:

@@ -101,7 +101,7 @@ def _normalize_radii(radii: Optional[npt.ArrayLike] = None) -> npt.NDArray[np.fl
     if radii is None:
         return np.array((), dtype=np.float32)
     else:
-        return np.array(radii, dtype=np.float32, copy=False)
+        return np.atleast_1d(np.array(radii, dtype=np.float32, copy=False))
 
 
 def log_cleared(obj_path: str, *, recursive: bool = False) -> None:

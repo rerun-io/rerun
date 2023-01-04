@@ -15,7 +15,7 @@ use crate::msg_bundle::Component;
 ///
 /// assert_eq!(ColorRGBA::data_type(), DataType::UInt32);
 /// ```
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, derive_more::From, derive_more::Into)]
 pub struct ColorRGBA(pub u32);
 
 impl ColorRGBA {
@@ -66,6 +66,14 @@ impl ArrowDeserialize for ColorRGBA {
 impl Component for ColorRGBA {
     fn name() -> crate::ComponentName {
         "rerun.colorrgba".into()
+    }
+}
+
+#[cfg(feature = "ecolor")]
+impl From<ColorRGBA> for ecolor::Color32 {
+    fn from(color: ColorRGBA) -> Self {
+        let [r, g, b, a] = color.to_array();
+        Self::from_rgba_premultiplied(r, g, b, a)
     }
 }
 
