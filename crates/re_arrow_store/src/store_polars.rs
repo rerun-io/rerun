@@ -143,13 +143,6 @@ impl IndexBucket {
                 .iter()
                 .map(|row| row.as_ref().map_or(0, |row| row.len()));
 
-            let mut offset = 0i32;
-            let comp_offsets: Vec<_> = std::iter::once(0)
-                .chain(comp_rows.iter().map(|row| {
-                    offset += row.as_ref().map_or(0, |row| row.len()) as i32;
-                    offset
-                }))
-                .collect();
             let comp_values: Vec<_> = comp_rows.iter().flatten().map(|row| row.as_ref()).collect();
 
             // Bring everything together into one big list.
