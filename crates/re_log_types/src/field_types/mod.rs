@@ -71,3 +71,11 @@ lazy_static! {
 pub fn iter_registered_field_types() -> impl Iterator<Item = &'static Field> {
     FIELDS.iter()
 }
+
+#[derive(thiserror::Error, Debug)]
+pub enum FieldError {
+    #[error("Encountered bad value")]
+    BadValue,
+}
+
+pub type Result<T> = std::result::Result<T, FieldError>;

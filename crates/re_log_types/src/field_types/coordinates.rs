@@ -1,13 +1,16 @@
+use arrow2::{array::TryPush, datatypes::DataType};
+use arrow2_convert::{deserialize::ArrowDeserialize, field::ArrowField, serialize::ArrowSerialize};
+
 /// The six cardinal directions for 3D view-space and image-space.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum ViewDir {
-    Up,
-    Down,
-    Right,
-    Left,
-    Forward,
-    Back,
+    Up = 1,
+    Down = 2,
+    Right = 3,
+    Left = 4,
+    Forward = 5,
+    Back = 6,
 }
 
 impl ViewDir {
@@ -45,6 +48,22 @@ impl ViewDir {
             Self::Left => "Left",
             Self::Forward => "Forward",
             Self::Back => "Back",
+        }
+    }
+}
+
+impl TryFrom<u8> for ViewDir {
+    type Error = super::FieldError;
+
+    fn try_from(i: u8) -> super::Result<Self> {
+        match i {
+            1 => Ok(Self::Up),
+            2 => Ok(Self::Down),
+            3 => Ok(Self::Right),
+            4 => Ok(Self::Left),
+            5 => Ok(Self::Forward),
+            6 => Ok(Self::Back),
+            _ => Err(super::FieldError::BadValue),
         }
     }
 }
@@ -216,6 +235,47 @@ impl std::str::FromStr for ViewCoordinates {
             }
             _ => Err(format!("Expected three letters, got: {s:?}")),
         }
+    }
+}
+
+impl ArrowField for ViewCoordinates {
+    type Type = Self;
+    fn data_type() -> DataType {
+        <u32 as ArrowField>::data_type()
+    }
+}
+
+impl ArrowSerialize for ViewCoordinates {
+    type MutableArrayType = <u32 as ArrowSerialize>::MutableArrayType;
+
+    #[inline]
+    fn new_array() -> Self::MutableArrayType {
+        Self::MutableArrayType::default()
+    }
+
+    #[inline]
+    fn arrow_serialize(v: &Self, array: &mut Self::MutableArrayType) -> arrow2::error::Result<()> {
+        let bytes = [v.0[0] as u8, v.0[1] as u8, v.0[2] as u8, 0];
+        array.try_push(Some(*bytemuck::from_bytes::<u32>(&bytes)))
+    }
+}
+
+impl ArrowDeserialize for ViewCoordinates {
+    type ArrayType = <u32 as ArrowDeserialize>::ArrayType;
+
+    #[inline]
+    fn arrow_deserialize(
+        v: <&Self::ArrayType as IntoIterator>::Item,
+    ) -> Option<<Self as ArrowField>::Type> {
+        v.and_then(|v| {
+            let bytes = bytemuck::bytes_of(v);
+            let dirs = [
+                bytes[0].try_into().ok()?,
+                bytes[1].try_into().ok()?,
+                bytes[2].try_into().ok()?,
+            ];
+            Some(ViewCoordinates(dirs))
+        })
     }
 }
 
@@ -396,4 +456,18 @@ fn view_coordinatess() {
             }
         }
     }
+}
+
+#[test]
+fn test_viewcoordinates_roundtrip() {
+    use arrow2::array::Array;
+    use arrow2_convert::{deserialize::TryIntoCollection, serialize::TryIntoArrow};
+
+    let views_in = vec![
+        "RUB".parse::<ViewCoordinates>().unwrap(),
+        "LFD".parse::<ViewCoordinates>().unwrap(),
+    ];
+    let array: Box<dyn Array> = views_in.try_into_arrow().unwrap();
+    let views_out: Vec<ViewCoordinates> = TryIntoCollection::try_into_collection(array).unwrap();
+    assert_eq!(views_in, views_out);
 }
