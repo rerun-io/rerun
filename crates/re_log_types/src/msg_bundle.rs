@@ -249,14 +249,15 @@ impl MsgBundle {
     pub fn row_len(&self, row_nr: usize) -> usize {
         // TODO(#440): won't be able to pick any component randomly once we support splats!
         self.components.first().map_or(0, |bundle| {
-            let offsets = bundle
+            bundle
                 .value
                 .as_any()
                 .downcast_ref::<ListArray<i32>>()
                 .unwrap()
                 .offsets()
-                .buffer();
-            (offsets[row_nr + 1] - offsets[row_nr]) as usize
+                .lengths()
+                .nth(row_nr)
+                .unwrap()
         })
     }
 
@@ -466,7 +467,7 @@ fn extract_components(
 /// Wrap `field_array` in a single-element `ListArray`
 pub fn wrap_in_listarray(field_array: Box<dyn Array>) -> ListArray<i32> {
     let datatype = ListArray::<i32>::default_datatype(field_array.data_type().clone());
-    let offsets = Offsets::try_from_lengths([0, field_array.len()].into_iter())
+    let offsets = Offsets::try_from_lengths(std::iter::once(field_array.len()))
         .unwrap()
         .into();
     let values = field_array;

@@ -44,14 +44,12 @@ polars-core = { workspace = true, optional = true, features = [
   "dtype-time",
   "dtype-struct",
   "sort_multiple",
-  "asof_join",
 ] }
 polars-ops = { workspace = true, optional = true, features = [
   "dtype-date",
   "dtype-datetime",
   "dtype-time",
   "dtype-struct",
-  "asof_join",
 ] }
 
 
@@ -62,14 +60,12 @@ polars-core = { workspace = true, features = [
   "dtype-date",
   "dtype-time",
   "dtype-struct",
-  "asof_join",
   "fmt",
 ] }
 polars-ops = { workspace = true, features = [
   "dtype-date",
   "dtype-time",
   "dtype-struct",
-  "asof_join",
 ] }
 tracing-subscriber = "0.3"
 
