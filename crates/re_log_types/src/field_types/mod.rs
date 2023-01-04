@@ -10,6 +10,7 @@ use crate::msg_bundle::Component;
 
 mod class_id;
 mod color;
+mod coordinates;
 mod instance;
 mod keypoint_id;
 mod label;
@@ -27,6 +28,7 @@ mod vec;
 
 pub use class_id::ClassId;
 pub use color::ColorRGBA;
+pub use coordinates::ViewCoordinates;
 pub use instance::Instance;
 pub use keypoint_id::KeypointId;
 pub use label::Label;

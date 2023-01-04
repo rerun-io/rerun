@@ -28,7 +28,6 @@ pub mod arrow_msg;
 pub mod field_types;
 pub use arrow_msg::ArrowMsg;
 pub mod context;
-pub mod coordinates;
 mod data;
 pub mod hash;
 mod index;
@@ -46,9 +45,9 @@ pub mod external {
 }
 
 pub use self::context::AnnotationContext;
-pub use self::coordinates::ViewCoordinates;
 pub use self::data::*;
 pub use self::field_types::MsgId;
+pub use self::field_types::ViewCoordinates;
 pub use self::index::*;
 pub use self::objects::ObjectType;
 pub use self::path::*;
