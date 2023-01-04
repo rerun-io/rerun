@@ -330,6 +330,7 @@ impl IndexTable {
             ent_path,
             buckets: [(i64::MIN.into(), IndexBucket::new(cluster_key, timeline))].into(),
             cluster_key,
+            all_components: Default::default(),
         }
     }
 
@@ -452,7 +453,12 @@ impl IndexTable {
             "inserted into index table"
         );
 
-        bucket.insert(time, indices)
+        bucket.insert(time, indices)?;
+
+        // Insert components last, only if bucket-insert succeeded.
+        self.all_components.extend(indices.keys());
+
+        Ok(())
     }
 }
 

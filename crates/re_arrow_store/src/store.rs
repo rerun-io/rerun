@@ -6,7 +6,7 @@ use anyhow::{anyhow, ensure};
 use arrow2::array::Array;
 use arrow2::datatypes::DataType;
 
-use nohash_hasher::IntMap;
+use nohash_hasher::{IntMap, IntSet};
 use parking_lot::RwLock;
 use re_format::{arrow, format_bytes, format_number};
 use re_log_types::{
@@ -519,6 +519,13 @@ pub struct IndexTable {
     /// Carrying the cluster key around to help with assertions and sanity checks all over the
     /// place.
     pub(crate) cluster_key: ComponentName,
+
+    /// Track all of the components that have been written to.
+    ///
+    /// Note that this set will never be purged and will continue to return
+    /// components that may have been set in the past even if all instances of
+    /// that component have since been purged to free up space.
+    pub(crate) all_components: IntSet<ComponentName>,
 }
 
 impl std::fmt::Display for IndexTable {
@@ -529,6 +536,7 @@ impl std::fmt::Display for IndexTable {
             ent_path,
             buckets,
             cluster_key: _,
+            all_components: _,
         } = self;
 
         f.write_fmt(format_args!("timeline: {}\n", timeline.name()))?;

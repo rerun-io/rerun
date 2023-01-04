@@ -5,6 +5,7 @@ use arrow2::{
     datatypes::{DataType, TimeUnit},
 };
 
+use itertools::Itertools;
 use re_log::trace;
 use re_log_types::{ComponentName, ObjPath as EntityPath, TimeInt, TimeRange, Timeline};
 
@@ -72,10 +73,10 @@ impl RangeQuery {
 // --- Data store ---
 
 impl DataStore {
-    /// Retrieve all the `ComponentName`s that have been written to for a given `EntityPath`
-    pub fn latest_components_at(
+    /// Retrieve all the `ComponentName`s that have been written to for a given `Timeline` and `EntityPath`
+    pub fn all_components(
         &self,
-        query: &LatestAtQuery,
+        timeline: &Timeline,
         ent_path: &EntityPath,
     ) -> Option<Vec<ComponentName>> {
         // TODO(cmc): kind & query_id need to somehow propagate through the span system.
@@ -84,21 +85,20 @@ impl DataStore {
         let ent_path_hash = ent_path.hash();
 
         trace!(
-            kind = "latest_components_at",
+            kind = "all_components",
             id = self.query_id.load(Ordering::Relaxed),
-            query = ?query,
+            timeline = ?timeline,
             entity = %ent_path,
             "query started..."
         );
 
-        let index = self.indices.get(&(query.timeline, *ent_path_hash))?;
-        let (_, bucket) = index.find_bucket(query.at);
-        let components = bucket.named_indices().0;
+        let index = self.indices.get(&(*timeline, *ent_path_hash))?;
+        let components = index.all_components.iter().cloned().collect_vec();
 
         trace!(
             kind = "latest_components_at",
             id = self.query_id.load(Ordering::Relaxed),
-            query = ?query,
+            timeline = ?timeline,
             entity = %ent_path,
             ?components,
             "found components"
