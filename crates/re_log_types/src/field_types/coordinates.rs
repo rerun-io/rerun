@@ -1,5 +1,9 @@
-use arrow2::{array::TryPush, datatypes::DataType};
-use arrow2_convert::{deserialize::ArrowDeserialize, field::ArrowField, serialize::ArrowSerialize};
+use arrow2::datatypes::DataType;
+use arrow2_convert::{
+    deserialize::ArrowDeserialize,
+    field::{ArrowField, FixedSizeBinary},
+    serialize::ArrowSerialize,
+};
 
 use crate::msg_bundle::Component;
 
@@ -249,34 +253,33 @@ impl std::str::FromStr for ViewCoordinates {
 impl ArrowField for ViewCoordinates {
     type Type = Self;
     fn data_type() -> DataType {
-        <u32 as ArrowField>::data_type()
+        <FixedSizeBinary<3> as ArrowField>::data_type()
     }
 }
 
 impl ArrowSerialize for ViewCoordinates {
-    type MutableArrayType = <u32 as ArrowSerialize>::MutableArrayType;
+    type MutableArrayType = <FixedSizeBinary<3> as ArrowSerialize>::MutableArrayType;
 
     #[inline]
     fn new_array() -> Self::MutableArrayType {
-        Self::MutableArrayType::default()
+        FixedSizeBinary::<3>::new_array()
     }
 
     #[inline]
     fn arrow_serialize(v: &Self, array: &mut Self::MutableArrayType) -> arrow2::error::Result<()> {
-        let bytes = [v.0[0] as u8, v.0[1] as u8, v.0[2] as u8, 0];
-        array.try_push(Some(*bytemuck::from_bytes::<u32>(&bytes)))
+        let bytes = [v.0[0] as u8, v.0[1] as u8, v.0[2] as u8];
+        array.try_push(Some(bytes))
     }
 }
 
 impl ArrowDeserialize for ViewCoordinates {
-    type ArrayType = <u32 as ArrowDeserialize>::ArrayType;
+    type ArrayType = <FixedSizeBinary<3> as ArrowDeserialize>::ArrayType;
 
     #[inline]
     fn arrow_deserialize(
-        v: <&Self::ArrayType as IntoIterator>::Item,
+        bytes: <&Self::ArrayType as IntoIterator>::Item,
     ) -> Option<<Self as ArrowField>::Type> {
-        v.and_then(|v| {
-            let bytes = bytemuck::bytes_of(v);
+        bytes.and_then(|bytes| {
             let dirs = [
                 bytes[0].try_into().ok()?,
                 bytes[1].try_into().ok()?,
