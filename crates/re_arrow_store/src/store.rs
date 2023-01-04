@@ -1087,9 +1087,9 @@ impl ComponentBucket {
 fn test_arrow_estimated_size_bytes() {
     use arrow2::{
         array::{Float64Array, ListArray, StructArray, UInt64Array, Utf8Array},
-        buffer::Buffer,
         compute::aggregate::estimated_bytes_size,
         datatypes::{DataType, Field},
+        offset::Offsets,
     };
 
     // simple primitive array
@@ -1127,16 +1127,11 @@ fn test_arrow_estimated_size_bytes() {
             let array_flattened =
                 UInt64Array::from_vec(data.clone().into_iter().flatten().collect()).boxed();
 
-            let mut i = 0i32;
-            let indices = std::iter::from_fn(move || {
-                let ret = i;
-                i += 50;
-                Some(ret)
-            });
-
-            ListArray::<i32>::from_data(
+            ListArray::<i32>::new(
                 ListArray::<i32>::default_datatype(DataType::UInt64),
-                Buffer::from_iter(indices.take(50)),
+                Offsets::try_from_lengths(std::iter::repeat(50).take(50))
+                    .unwrap()
+                    .into(),
                 array_flattened,
                 None,
             )
@@ -1214,16 +1209,11 @@ fn test_arrow_estimated_size_bytes() {
                 StructArray::new(DataType::Struct(fields), vec![x, y], None)
             };
 
-            let mut i = 0i32;
-            let indices = std::iter::from_fn(move || {
-                let ret = i;
-                i += 50;
-                Some(ret)
-            });
-
-            ListArray::<i32>::from_data(
+            ListArray::<i32>::new(
                 ListArray::<i32>::default_datatype(array.data_type().clone()),
-                Buffer::from_iter(indices.take(50)),
+                Offsets::try_from_lengths(std::iter::repeat(50).take(50))
+                    .unwrap()
+                    .into(),
                 array.boxed(),
                 None,
             )

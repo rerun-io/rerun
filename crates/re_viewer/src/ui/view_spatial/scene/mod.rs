@@ -21,9 +21,11 @@ use crate::{
     },
 };
 
+mod picking;
 mod primitives;
 mod scene_part;
 
+pub use self::picking::{AdditionalPickingInfo, PickingRayHit, PickingResult};
 pub use self::primitives::SceneSpatialPrimitives;
 use scene_part::ScenePart;
 
@@ -80,7 +82,7 @@ pub enum Label2DTarget {
 pub struct Label2D {
     pub text: String,
     pub color: Color32,
-    /// The shape being labled.
+    /// The shape being labeled.
     pub target: Label2DTarget,
     /// What is hovered if this label is hovered.
     pub labled_instance: InstanceIdHash,
@@ -103,8 +105,9 @@ pub struct SceneSpatialUiData {
     pub labels_3d: Vec<Label3D>,
     pub labels_2d: Vec<Label2D>,
 
-    /// Cursor within any of these rects cause the referred instance to be hovered.
-    pub rects: Vec<(egui::Rect, InstanceIdHash)>,
+    /// Picking any any of these rects cause the referred instance to be hovered.
+    /// Only use this for 2d overlays!
+    pub pickable_ui_rects: Vec<(egui::Rect, InstanceIdHash)>,
 
     /// Images are a special case of rects where we're storing some extra information to allow miniature previews etc.
     pub images: Vec<Image>,
@@ -239,7 +242,7 @@ impl SceneSpatial {
         crate::profile_function!();
 
         // Size of a pixel (in meters), when projected out one meter:
-        let point_size_at_one_meter = eye.fov_y / viewport_size.y;
+        let point_size_at_one_meter = eye.fov_y.unwrap() / viewport_size.y;
 
         let eye_camera_plane =
             macaw::Plane3::from_normal_point(eye.forward_in_world(), eye.pos_in_world());
@@ -393,6 +396,23 @@ impl SceneSpatial {
         } else {
             SpatialNavigationMode::ThreeD
         }
+    }
+
+    pub fn picking(
+        &self,
+        pointer_in_ui: glam::Vec2,
+        ui_rect: &egui::Rect,
+        eye: &Eye,
+        ui_interaction_radius: f32,
+    ) -> PickingResult {
+        picking::picking(
+            pointer_in_ui,
+            ui_rect,
+            eye,
+            &self.primitives,
+            &self.ui,
+            ui_interaction_radius,
+        )
     }
 }
 
