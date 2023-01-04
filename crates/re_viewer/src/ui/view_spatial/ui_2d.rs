@@ -3,24 +3,23 @@ use egui::{
     pos2, vec2, Align, Align2, Color32, NumExt as _, Pos2, Rect, Response, ScrollArea, Shape,
     TextFormat, TextStyle, Vec2,
 };
-use itertools::Itertools;
+use macaw::IsoTransform;
 use re_data_store::{InstanceIdHash, ObjPath};
 use re_renderer::view_builder::TargetConfiguration;
 
+use super::{eye::Eye, scene::AdditionalPickingInfo, ViewSpatialState};
 use crate::{
     misc::HoveredSpace,
     ui::{
         data_ui::{self, DataUi},
         view_spatial::{
             ui_renderer_bridge::{create_scene_paint_callback, get_viewport, ScreenBackground},
-            Image, Label2DTarget, SceneSpatial,
+            Label2DTarget, SceneSpatial,
         },
         Preview,
     },
-    Selection, ViewerContext,
+    ViewerContext,
 };
-
-use super::ViewSpatialState;
 
 // ---
 
@@ -293,158 +292,6 @@ fn view_2d_scrollable(
 
     // ------------------------------------------------------------------------
 
-    // Add egui driven labels on top of re_renderer content.
-    // Needs to come before hovering checks because it adds more objects for hovering.
-    {
-        let hovered_instance_hash = state
-            .hovered_instance
-            .as_ref()
-            .map_or(InstanceIdHash::NONE, |i| i.hash());
-        painter.extend(create_labels(
-            &mut scene,
-            ui_from_space,
-            space_from_ui,
-            parent_ui,
-            hovered_instance_hash,
-        ));
-    }
-
-    // ------------------------------------------------------------------------
-
-    // What tooltips we've shown so far
-    let mut shown_tooltips = ahash::HashSet::default();
-    let mut depths_at_pointer = vec![];
-    let mut closest_instance_id_hash = InstanceIdHash::NONE;
-
-    // Check if we're hovering any hover primitive.
-    if let Some(pointer_pos_ui) = response.hover_pos() {
-        // All hover primitives have their coordinates in space units.
-        // Transform the pointer pos so we don't have to transform anything else!
-        let pointer_pos_space = space_from_ui.transform_pos(pointer_pos_ui);
-        let pointer_pos_space_glam = glam::vec2(pointer_pos_space.x, pointer_pos_space.y);
-
-        let hover_radius = space_from_ui.scale().y * 5.0; // TODO(emilk): from egui?
-        let mut closest_dist = hover_radius;
-
-        let mut check_hovering = |instance_hash, dist: f32| {
-            if dist <= closest_dist {
-                closest_dist = dist;
-                closest_instance_id_hash = instance_hash;
-            }
-        };
-
-        for (bbox, instance_hash) in &scene.ui.rects {
-            check_hovering(*instance_hash, bbox.distance_to_pos(pointer_pos_space));
-        }
-
-        for (point, instance_hash) in scene
-            .primitives
-            .points
-            .vertices
-            .iter()
-            .zip(scene.primitives.points.user_data.iter())
-        {
-            if instance_hash.is_none() {
-                continue;
-            }
-
-            check_hovering(
-                *instance_hash,
-                point.position.truncate().distance(pointer_pos_space_glam),
-            );
-        }
-
-        for ((_info, instance_hash), vertices) in
-            scene.primitives.line_strips.iter_strips_with_vertices()
-        {
-            if instance_hash.is_none() {
-                continue;
-            }
-
-            let mut min_dist_sq = f32::INFINITY;
-
-            for (a, b) in vertices.tuple_windows() {
-                let line_segment_distance_sq = crate::math::line_segment_distance_sq_to_point_2d(
-                    [a.position.truncate(), b.position.truncate()],
-                    pointer_pos_space_glam,
-                );
-                min_dist_sq = min_dist_sq.min(line_segment_distance_sq);
-            }
-
-            check_hovering(*instance_hash, min_dist_sq.sqrt());
-        }
-
-        for img in &scene.ui.images {
-            let Image {
-                instance_hash,
-                tensor,
-                meter,
-                annotations,
-            } = img;
-
-            if instance_hash.is_none() {
-                continue;
-            }
-
-            let (w, h) = (tensor.shape[1].size as f32, tensor.shape[0].size as f32);
-            let rect = Rect::from_min_size(Pos2::ZERO, vec2(w, h));
-            let dist = rect.distance_sq_to_pos(pointer_pos_space).sqrt();
-            let dist = dist.at_least(hover_radius); // allow stuff on top of us to "win"
-            check_hovering(*instance_hash, dist);
-
-            // Show tooltips for all images, not just the "most hovered" one.
-            //TODO(john) this should probably be factored out into `data_ui`
-            if rect.contains(pointer_pos_space) {
-                response = response
-                    .on_hover_cursor(egui::CursorIcon::ZoomIn)
-                    .on_hover_ui_at_pointer(|ui| {
-                        ui.set_max_width(400.0);
-
-                        ui.vertical(|ui| {
-                            if let Some(instance_id) = instance_hash.resolve(&ctx.log_db.obj_db) {
-                                ui.label(instance_id.to_string());
-                                instance_id.data_ui(ctx, ui, Preview::Small);
-                                ui.separator();
-                            }
-
-                            let legend = Some(annotations.clone());
-                            let tensor_view = ctx.cache.image.get_view_with_annotations(
-                                tensor,
-                                &legend,
-                                ctx.render_ctx,
-                            );
-
-                            ui.horizontal(|ui| {
-                                data_ui::image::show_zoomed_image_region(
-                                    parent_ui,
-                                    ui,
-                                    &tensor_view,
-                                    ui_from_space.transform_rect(rect),
-                                    pointer_pos_ui,
-                                    *meter,
-                                );
-                            });
-                        });
-                    });
-
-                shown_tooltips.insert(*instance_hash);
-            }
-
-            if let Some(meter) = *meter {
-                if let Some(raw_value) = tensor.get(&[
-                    pointer_pos_space.y.round() as _,
-                    pointer_pos_space.x.round() as _,
-                ]) {
-                    let raw_value = raw_value.as_f64();
-                    let depth_in_meters = raw_value / meter as f64;
-                    depths_at_pointer.push(depth_in_meters);
-                }
-            }
-        }
-    }
-
-    // ------------------------------------------------------------------------
-
     // Draw a re_renderer driven view.
     // Camera & projection are configured to ingest space coordinates directly.
     {
@@ -474,25 +321,133 @@ fn view_2d_scrollable(
 
     // ------------------------------------------------------------------------
 
-    if let Some(instance_id) = &state.hovered_instance {
-        if response.clicked() {
-            ctx.set_selection(Selection::Instance(instance_id.clone()));
-        }
-        if !shown_tooltips.contains(&instance_id.hash()) {
-            response = response.on_hover_ui_at_pointer(|ui| {
-                ctx.instance_id_button(ui, instance_id);
-                instance_id.data_ui(ctx, ui, Preview::Small);
-            });
+    // Add egui driven labels on top of re_renderer content.
+    // Needs to come before hovering checks because it adds more objects for hovering.
+    {
+        let hovered_instance_hash = state
+            .hovered_instance
+            .as_ref()
+            .map_or(InstanceIdHash::NONE, |i| i.hash());
+        painter.extend(create_labels(
+            &mut scene,
+            ui_from_space,
+            space_from_ui,
+            parent_ui,
+            hovered_instance_hash,
+        ));
+    }
+
+    // ------------------------------------------------------------------------
+
+    // Check if we're hovering any hover primitive.
+    state.hovered_instance = None;
+    let mut depth_at_pointer = None;
+    if let Some(pointer_pos_ui) = response.hover_pos() {
+        let pointer_pos_space = space_from_ui.transform_pos(pointer_pos_ui);
+        let hover_radius = space_from_ui.scale().y * 5.0; // TODO(emilk): from egui?
+        let picking_result = scene.picking(
+            glam::vec2(pointer_pos_space.x, pointer_pos_space.y),
+            &scene_rect_accum,
+            &Eye {
+                world_from_view: IsoTransform::IDENTITY,
+                fov_y: None,
+            },
+            hover_radius,
+        );
+
+        for hit in picking_result.iter_hits() {
+            let Some(instance_id) = hit.instance_hash.resolve(&ctx.log_db.obj_db)
+            else { continue; };
+
+            // Special hover ui for images.
+            let picked_image_with_uv = if let AdditionalPickingInfo::TexturedRect(uv) = hit.info {
+                scene
+                    .ui
+                    .images
+                    .iter()
+                    .find(|image| image.instance_hash == hit.instance_hash)
+                    .map(|image| (image, uv))
+            } else {
+                None
+            };
+            response = if let Some((image, uv)) = picked_image_with_uv {
+                // TODO(andreas): This is different in 3d view.
+                if let Some(meter) = image.meter {
+                    if let Some(raw_value) = image.tensor.get(&[
+                        pointer_pos_space.y.round() as _,
+                        pointer_pos_space.x.round() as _,
+                    ]) {
+                        let raw_value = raw_value.as_f64();
+                        let depth_in_meters = raw_value / meter as f64;
+                        depth_at_pointer = Some(depth_in_meters as f32);
+                    }
+                }
+
+                response
+                    .on_hover_cursor(egui::CursorIcon::ZoomIn)
+                    .on_hover_ui_at_pointer(|ui| {
+                        ui.set_max_width(400.0);
+
+                        ui.vertical(|ui| {
+                            ui.label(instance_id.to_string());
+                            instance_id.data_ui(ctx, ui, Preview::Small);
+
+                            let legend = Some(image.annotations.clone());
+                            let tensor_view = ctx.cache.image.get_view_with_annotations(
+                                &image.tensor,
+                                &legend,
+                                ctx.render_ctx,
+                            );
+
+                            if let [h, w, ..] = image.tensor.shape.as_slice() {
+                                ui.separator();
+                                ui.horizontal(|ui| {
+                                    // TODO(andreas): 3d skips the show_zoomed_image_region_rect part here.
+                                    let (w, h) = (w.size as f32, h.size as f32);
+                                    let center = [(uv.x * w) as isize, (uv.y * h) as isize];
+                                    let rect = Rect::from_min_size(Pos2::ZERO, egui::vec2(w, h));
+                                    data_ui::image::show_zoomed_image_region_area_outline(
+                                        parent_ui,
+                                        &tensor_view,
+                                        center,
+                                        ui_from_space.transform_rect(rect),
+                                    );
+                                    data_ui::image::show_zoomed_image_region(
+                                        ui,
+                                        &tensor_view,
+                                        center,
+                                        image.meter,
+                                    );
+                                });
+                            }
+                        });
+                    })
+            } else {
+                // Hover ui for everything else
+                response.on_hover_ui_at_pointer(|ui| {
+                    ctx.instance_id_button(ui, &instance_id);
+                    instance_id.data_ui(ctx, ui, crate::ui::Preview::Medium);
+                })
+            };
+
+            if let Some(closest_pick) = picking_result.iter_hits().last() {
+                // Save last known hovered object.
+                if let Some(instance_id) = closest_pick.instance_hash.resolve(&ctx.log_db.obj_db) {
+                    state.hovered_instance = Some(instance_id);
+                }
+            }
+
+            // Clicking the last hovered object.
+            if let Some(instance_id) = &state.hovered_instance {
+                if response.clicked() {
+                    ctx.set_selection(crate::Selection::Instance(instance_id.clone()));
+                }
+            }
         }
     }
 
     // ------------------------------------------------------------------------
 
-    let depth_at_pointer = if depths_at_pointer.len() == 1 {
-        depths_at_pointer[0] as f32
-    } else {
-        f32::INFINITY
-    };
     project_onto_other_spaces(ctx, space, &response, &space_from_ui, depth_at_pointer);
     painter.extend(show_projections_from_3d_space(
         ctx,
@@ -500,10 +455,6 @@ fn view_2d_scrollable(
         space,
         &ui_from_space,
     ));
-
-    // ------------------------------------------------------------------------
-
-    state.hovered_instance = closest_instance_id_hash.resolve(&ctx.log_db.obj_db);
 
     response
 }
@@ -567,7 +518,7 @@ fn create_labels(
 
         scene
             .ui
-            .rects
+            .pickable_ui_rects
             .push((space_from_ui.transform_rect(bg_rect), label.labled_instance));
     }
 
@@ -614,13 +565,17 @@ fn project_onto_other_spaces(
     space: &ObjPath,
     response: &Response,
     space_from_ui: &RectTransform,
-    z: f32,
+    z: Option<f32>,
 ) {
     if let Some(pointer_in_screen) = response.hover_pos() {
         let pointer_in_space = space_from_ui.transform_pos(pointer_in_screen);
         ctx.rec_cfg.hovered_space_this_frame = HoveredSpace::TwoD {
             space_2d: space.clone(),
-            pos: glam::vec3(pointer_in_space.x, pointer_in_space.y, z),
+            pos: glam::vec3(
+                pointer_in_space.x,
+                pointer_in_space.y,
+                z.unwrap_or(f32::INFINITY),
+            ),
         };
     }
 }
@@ -633,7 +588,7 @@ fn show_projections_from_3d_space(
 ) -> Vec<Shape> {
     let mut shapes = Vec::new();
     if let HoveredSpace::ThreeD { target_spaces, .. } = &ctx.rec_cfg.hovered_space_previous_frame {
-        for (space_2d, ray_2d, pos_2d) in target_spaces {
+        for (space_2d, pos_2d) in target_spaces {
             if space_2d == space {
                 if let Some(pos_2d) = pos_2d {
                     // User is hovering a 2D point inside a 3D view.
@@ -659,26 +614,6 @@ fn show_projections_from_3d_space(
                         Color32::from_black_alpha(196),
                     ));
                     shapes.push(Shape::galley(rect.min, galley));
-                }
-
-                let show_ray = false; // This visualization is mostly confusing
-                if show_ray {
-                    if let Some(ray_2d) = ray_2d {
-                        // User is hovering a 3D view with a camera in it.
-                        // TODO(emilk): figure out a nice visualization here, or delete the code.
-                        let origin = ray_2d.origin;
-                        let end = ray_2d.point_along(10_000.0);
-
-                        let origin = pos2(origin.x / origin.z, origin.y / origin.z);
-                        let end = pos2(end.x / end.z, end.y / end.z);
-
-                        let origin = ui_from_space.transform_pos(origin);
-                        let end = ui_from_space.transform_pos(end);
-
-                        shapes.push(Shape::circle_filled(origin, 5.0, Color32::WHITE));
-                        shapes.push(Shape::line_segment([origin, end], (3.0, Color32::BLACK)));
-                        shapes.push(Shape::line_segment([origin, end], (2.0, Color32::WHITE)));
-                    }
                 }
             }
         }

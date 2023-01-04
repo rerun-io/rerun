@@ -13,7 +13,7 @@ __all__ = [
 
 class RadiusArray(pa.ExtensionArray):  # type: ignore[misc]
     def from_numpy(array: npt.NDArray[np.float32]) -> RadiusArray:
-        """Build a `ColorRGBAArray` from an numpy array."""
+        """Build a `RadiusArray` from an numpy array."""
         storage = pa.array(array, type=RadiusType.storage_type)
         # TODO(john) enable extension type wrapper
         # return cast(RadiusArray, pa.ExtensionArray.from_storage(RadiusType(), storage))

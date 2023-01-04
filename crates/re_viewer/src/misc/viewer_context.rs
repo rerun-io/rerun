@@ -1,5 +1,3 @@
-use macaw::Ray3;
-
 use re_data_store::{log_db::LogDb, InstanceId, ObjTypePath};
 use re_log_types::{DataPath, MsgId, ObjPath, TimeInt, Timeline};
 
@@ -238,7 +236,7 @@ pub enum HoveredSpace {
         space_3d: ObjPath,
 
         /// 2D spaces and pixel coordinates (with Z=depth)
-        target_spaces: Vec<(ObjPath, Option<Ray3>, Option<glam::Vec3>)>,
+        target_spaces: Vec<(ObjPath, Option<glam::Vec3>)>,
     },
 }
 
