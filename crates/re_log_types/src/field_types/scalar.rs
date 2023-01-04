@@ -75,14 +75,7 @@ impl Component for Scalar {
 ///     ])
 /// );
 /// ```
-#[derive(
-    Debug,
-    Clone,
-    Copy,
-    arrow2_convert::ArrowField,
-    arrow2_convert::ArrowSerialize,
-    arrow2_convert::ArrowDeserialize,
-)]
+#[derive(Debug, Clone, Copy, arrow2_convert::ArrowField)]
 pub struct ScalarPlotProps {
     pub scattered: bool,
 }
