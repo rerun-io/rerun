@@ -202,6 +202,11 @@ pub struct DataStore {
     /// Used to cache auto-generated cluster components, i.e. `[0]`, `[0, 1]`, `[0, 1, 2]`, etc
     /// so that they can be properly deduplicated.
     pub(crate) cluster_comp_cache: IntMap<usize, RowIndex>,
+    /// Used to cache auto-generated cluster components, i.e. `[0]`, `[0, 1]`, `[0, 1, 2]`, etc
+    /// so that they can be properly deduplicated.
+    //
+    // TODO: this is absolutely disgusting.
+    pub(crate) timeless_cluster_comp_cache: IntMap<usize, RowIndex>,
 
     /// Maps `MsgId`s to some metadata (just timepoints at the moment).
     ///
@@ -212,15 +217,13 @@ pub struct DataStore {
     ///
     /// An index maps specific points in time to rows in component tables.
     pub(crate) indices: HashMap<(Timeline, EntityPathHash), IndexTable>,
+    /// Dedicated index tables for timeless data. Never garbage collected.
+    pub(crate) timeless_indices: IntMap<EntityPathHash, PersistentIndexTable>,
 
     /// Maps a component name to its associated table, for all timelines and all entities.
     ///
     /// A component table holds all the values ever inserted for a given component.
     pub(crate) components: IntMap<ComponentName, ComponentTable>,
-
-    /// Dedicated index tables for timeless data. Never garbage collected.
-    pub(crate) timeless_indices: IntMap<EntityPathHash, PersistentIndexTable>,
-
     /// Dedicated component tables for timeless data. Never garbage collected.
     pub(crate) timeless_components: IntMap<ComponentName, PersistentComponentTable>,
 
@@ -237,6 +240,7 @@ impl DataStore {
             cluster_key,
             config,
             cluster_comp_cache: Default::default(),
+            timeless_cluster_comp_cache: Default::default(),
             messages: Default::default(),
             indices: Default::default(),
             components: Default::default(),
@@ -421,6 +425,7 @@ impl std::fmt::Display for DataStore {
             cluster_key,
             config,
             cluster_comp_cache: _,
+            timeless_cluster_comp_cache: _,
             messages: _,
             indices,
             components,
@@ -1040,8 +1045,6 @@ impl IndexBucket {
 pub struct PersistentComponentTable {
     /// Name of the underlying component, for debugging purposes.
     pub(crate) name: ComponentName,
-    /// The entity this table is related to, for debugging purposes.
-    pub(crate) ent_path: EntityPath,
     /// Type of the underlying component.
     pub(crate) datatype: DataType,
 
@@ -1087,7 +1090,6 @@ impl std::fmt::Display for PersistentComponentTable {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
             name,
-            ent_path,
             datatype,
             chunks,
             total_rows,
@@ -1095,7 +1097,6 @@ impl std::fmt::Display for PersistentComponentTable {
         } = self;
 
         f.write_fmt(format_args!("name: {}\n", name))?;
-        f.write_fmt(format_args!("entity: {}\n", ent_path))?;
         if matches!(
             std::env::var("RERUN_DATA_STORE_DISPLAY_SCHEMAS").as_deref(),
             Ok("1")

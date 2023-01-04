@@ -14,7 +14,7 @@ use re_log_types::{
 
 use crate::{
     ArrayExt as _, ComponentBucket, ComponentTable, DataStore, DataStoreConfig, IndexBucket,
-    IndexBucketIndices, IndexTable, RowIndex, TimeIndex,
+    IndexBucketIndices, IndexTable, PersistentComponentTable, RowIndex, TimeIndex,
 };
 
 // --- Data store ---
@@ -240,6 +240,12 @@ impl DataStore {
             Data(Box<dyn Array>),
         }
 
+        let cluster_comp_cache = if time_point.is_timeless() {
+            &mut self.timeless_cluster_comp_cache
+        } else {
+            &mut self.cluster_comp_cache
+        };
+
         let (found, comp, len) = if let Some(cluster_comp_pos) = cluster_comp_pos {
             // We found a component with a name matching the cluster key's, let's make sure it's
             // valid (dense, sorted, no duplicates) and use that if so.
@@ -278,7 +284,7 @@ impl DataStore {
                 .first()
                 .map_or(0, |comp| comp.value.get_child_length(0));
 
-            if let Some(row_idx) = self.cluster_comp_cache.get(&len) {
+            if let Some(row_idx) = cluster_comp_cache.get(&len) {
                 // Cache hit! Re-use that row index.
                 (false, RowIndexOrData::RowIndex(*row_idx), len)
             } else {
@@ -295,20 +301,33 @@ impl DataStore {
                 // If we didn't hit the cache, then we have to insert this cluster component in the
                 // right tables, just like any other component.
 
-                let table = self.components.entry(self.cluster_key).or_insert_with(|| {
-                    ComponentTable::new(
-                        self.cluster_key,
-                        ListArray::<i32>::get_child_type(data.data_type()),
-                    )
-                });
-
-                let row_idx = table.push(&self.config, time_point, &*data);
+                // TODO: explain this, oh god...
+                let row_idx = if time_point.is_timeless() {
+                    let table = self
+                        .timeless_components
+                        .entry(self.cluster_key)
+                        .or_insert_with(|| {
+                            PersistentComponentTable::new(
+                                self.cluster_key,
+                                ListArray::<i32>::get_child_type(data.data_type()),
+                            )
+                        });
+                    table.push(&*data)
+                } else {
+                    let table = self.components.entry(self.cluster_key).or_insert_with(|| {
+                        ComponentTable::new(
+                            self.cluster_key,
+                            ListArray::<i32>::get_child_type(data.data_type()),
+                        )
+                    });
+                    table.push(&self.config, time_point, &*data)
+                };
 
                 // If we auto-generated the cluster component, then keep its row index around for
                 // the next time we have to insert a component of the same length with a missing
                 // cluster key.
                 if !found {
-                    self.cluster_comp_cache.insert(len, row_idx);
+                    cluster_comp_cache.insert(len, row_idx);
                 }
 
                 Ok((row_idx, len))
@@ -786,6 +805,55 @@ fn split_time_range_off(
     );
 
     time_range2
+}
+
+// --- Persistent Components ---
+
+impl PersistentComponentTable {
+    /// Creates a new timeless component table for the specified component `datatype`.
+    ///
+    /// `datatype` must be the type of the component itself, devoid of any wrapping layers
+    /// (i.e. _not_ a `ListArray<...>`!).
+    fn new(name: ComponentName, datatype: &DataType) -> Self {
+        Self {
+            name,
+            datatype: datatype.clone(),
+            chunks: Default::default(),
+            total_rows: 0,
+            total_size_bytes: 0,
+        }
+    }
+
+    /// Pushes `rows_single` to the end of the bucket, returning the _global_ `RowIndex` of the
+    /// freshly added row.
+    ///
+    /// `rows_single` must be a unit-length list of arrays of structs,
+    /// i.e. `ListArray<StructArray>`:
+    /// - the list layer corresponds to the different rows (always unit-length for now),
+    /// - the array layer corresponds to the different instances within that single row,
+    /// - and finally the struct layer holds the components themselves.
+    /// E.g.:
+    /// ```text
+    /// [[{x: 8.687487, y: 1.9590926}, {x: 2.0559108, y: 0.1494348}, {x: 7.09219, y: 0.9616637}]]
+    /// ```
+    //
+    // TODO(#589): support for batched row component insertions
+    pub fn push(&mut self, rows_single: &dyn Array) -> RowIndex {
+        debug_assert!(
+            rows_single.len() == 1,
+            "batched row component insertions are not supported yet"
+        );
+
+        self.total_rows += 1;
+        // Warning: this is surprisingly costly!
+        self.total_size_bytes +=
+            arrow2::compute::aggregate::estimated_bytes_size(rows_single) as u64;
+
+        // TODO(#589): support for non-unit-length chunks
+        self.chunks.push(rows_single.to_boxed()); // shallow
+
+        RowIndex::from_u64(self.chunks.len() as u64 - 1)
+    }
 }
 
 // --- Components ---
