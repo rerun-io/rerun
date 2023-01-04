@@ -38,11 +38,11 @@ where
     /// We do *not* allow reading from this buffer as it is typically write-combined memory.
     /// Reading would work, but it can be *insanely* slow.
     #[inline]
-    pub fn write(&mut self, elements: impl Iterator<Item = T>, offset_in_element_sizes: usize) {
+    pub fn write(&mut self, elements: impl Iterator<Item = T>, num_elements_offset: usize) {
         for (target, source) in self
             .write_only_memory
             .iter_mut()
-            .skip(offset_in_element_sizes)
+            .skip(num_elements_offset)
             .zip(elements)
         {
             *target = source;
@@ -52,12 +52,13 @@ where
     /// Writes a single objects to the buffer at a given location.
     /// User is responsible for ensuring the element offset is valid with the element types's alignment requirement.
     /// (panics otherwise)
-    #[inline]
-    pub fn write_single(&mut self, element: &T, offset_in_element_sizes: usize) {
-        self.write_only_memory[offset_in_element_sizes] = *element;
+    #[inline(always)]
+    pub fn write_single(&mut self, element: &T, num_elements_offset: usize) {
+        self.write_only_memory[num_elements_offset] = *element;
     }
 
     /// Overwrites all elements in the buffer with a copy of the given value.
+    #[inline]
     pub fn fill(&mut self, element: &T) {
         for buffer_element in self.write_only_memory.iter_mut() {
             *buffer_element = *element;
