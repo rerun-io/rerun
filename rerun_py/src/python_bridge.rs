@@ -604,7 +604,7 @@ fn log_view_coordinates(
             MsgId::random(),
             arrow_path,
             time_point.clone(),
-            vec![vec![coordinates.clone()].try_into().unwrap()],
+            vec![vec![coordinates].try_into().unwrap()],
         );
 
         let msg = bundle.try_into().unwrap();

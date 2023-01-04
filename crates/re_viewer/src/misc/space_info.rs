@@ -2,9 +2,10 @@ use std::collections::BTreeMap;
 
 use nohash_hasher::IntSet;
 
-use re_arrow_store::Timeline;
+use re_arrow_store::{LatestAtQuery, TimeInt, Timeline};
 use re_data_store::{log_db::ObjDb, query_transform, ObjPath, ObjectTree};
 use re_log_types::{Transform, ViewCoordinates};
+use re_query::query_entity_with_primary;
 
 use super::TimeControl;
 
@@ -229,7 +230,7 @@ impl SpacesInfo {
 // ----------------------------------------------------------------------------
 
 /// Get the latest value of the `_view_coordinates` meta-field of the given object.
-fn query_view_coordinates(
+fn query_view_coordinates_classic(
     obj_db: &ObjDb,
     time_ctrl: &TimeControl,
     obj_path: &ObjPath,
@@ -251,4 +252,38 @@ fn query_view_coordinates(
     mono_field_store
         .latest_at(&query_time.floor().as_i64())
         .map(|(_time, _msg_id, system)| *system)
+}
+
+fn query_view_coordinates_arrow(
+    obj_db: &ObjDb,
+    time_ctrl: &TimeControl,
+    ent_path: &ObjPath,
+) -> Option<re_log_types::ViewCoordinates> {
+    let arrow_store = &obj_db.arrow_store;
+
+    let query_time = time_ctrl.time().map(|time| time.floor().as_i64())?;
+
+    let query = LatestAtQuery::new(*time_ctrl.timeline(), TimeInt::from(query_time));
+
+    let entity_view =
+        query_entity_with_primary::<ViewCoordinates>(arrow_store, &query, ent_path, &[]).ok()?;
+
+    let mut iter = entity_view.iter_primary().ok()?;
+
+    let view_coords = iter.next()?;
+
+    if iter.next().is_some() {
+        re_log::warn_once!("Unexpected batch for ViewCoordinates at: {}", ent_path);
+    }
+
+    view_coords
+}
+
+fn query_view_coordinates(
+    obj_db: &ObjDb,
+    time_ctrl: &TimeControl,
+    obj_path: &ObjPath,
+) -> Option<re_log_types::ViewCoordinates> {
+    query_view_coordinates_classic(obj_db, time_ctrl, obj_path)
+        .or_else(|| query_view_coordinates_arrow(obj_db, time_ctrl, obj_path))
 }
