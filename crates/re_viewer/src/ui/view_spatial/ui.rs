@@ -97,7 +97,7 @@ impl ViewSpatialState {
 
     #[allow(clippy::unused_self)]
     fn auto_size_points_heuristic(&self) -> f32 {
-        2.0 // TODO(andreas): Screen size dependent?
+        2.0
     }
 
     fn auto_size_world_heuristic(&self) -> f32 {
@@ -107,7 +107,7 @@ impl ViewSpatialState {
 
         // Motivation: Size should be proportional to the scene extent, here covered by its diagonal
         let diagonal_length = (self.scene_bbox_accum.max - self.scene_bbox_accum.min).length();
-        let heuristic0 = diagonal_length * 0.001;
+        let heuristic0 = diagonal_length * 0.0025;
 
         // Motivation: A lot of times we look at the entire scene and expect to see everything on a flat screen with some gaps between.
         let size = self.scene_bbox_accum.size();
@@ -117,7 +117,7 @@ impl ViewSpatialState {
         let median_extent = sorted_components[1];
         // sqrt would make more sense but using a smaller root works better in practice.
         let heuristic1 =
-            (median_extent / (self.scene_num_primitives.at_least(1) as f32).pow(1.0 / 1.8)) * 0.1;
+            (median_extent / (self.scene_num_primitives.at_least(1) as f32).pow(1.0 / 1.7)) * 0.25;
 
         heuristic0.min(heuristic1)
     }
