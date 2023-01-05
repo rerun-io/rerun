@@ -16,7 +16,7 @@ use crate::{
         view_spatial::{
             scene::AdditionalPickingInfo,
             ui_renderer_bridge::{create_scene_paint_callback, get_viewport, ScreenBackground},
-            SceneSpatial, SpaceCamera3D, AXIS_COLOR_X, AXIS_COLOR_Y, AXIS_COLOR_Z,
+            SceneSpatial, SpaceCamera3D,
         },
         Preview,
     },
@@ -456,7 +456,12 @@ pub fn view_3d(
     }
     show_projections_from_2d_space(ctx, space_cameras, &mut scene, scene_bbox_accum);
     if state.show_axes {
-        show_origin_axis(&mut scene);
+        scene.primitives.add_axis_lines(
+            macaw::IsoTransform::IDENTITY,
+            InstanceIdHash::NONE,
+            &eye,
+            rect.size(),
+        );
     }
 
     {
@@ -637,27 +642,6 @@ fn project_onto_other_spaces(
         space_3d: space.clone(),
         target_spaces,
     }
-}
-
-fn show_origin_axis(scene: &mut SceneSpatial) {
-    let radius = Size::new_points(8.0);
-
-    let mut line_batch = scene.primitives.line_strips.batch("origin axis");
-    line_batch
-        .add_segment(glam::Vec3::ZERO, glam::Vec3::X)
-        .radius(radius)
-        .color(AXIS_COLOR_X)
-        .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE);
-    line_batch
-        .add_segment(glam::Vec3::ZERO, glam::Vec3::Y)
-        .radius(radius)
-        .color(AXIS_COLOR_Y)
-        .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE);
-    line_batch
-        .add_segment(glam::Vec3::ZERO, glam::Vec3::Z)
-        .radius(radius)
-        .color(AXIS_COLOR_Z)
-        .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE);
 }
 
 fn default_eye(scene_bbox: &macaw::BoundingBox, space_specs: &SpaceSpecs) -> OrbitEye {
