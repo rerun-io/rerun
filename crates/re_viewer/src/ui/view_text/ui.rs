@@ -59,7 +59,9 @@ pub(crate) fn view_text(
     let time_cursor_moved = state.latest_time != time;
     let scroll_to_row = time_cursor_moved.then(|| {
         crate::profile_scope!("TextEntryState - search scroll time");
-        scene.text_entries.partition_point(|te| te.time < time)
+        scene
+            .text_entries
+            .partition_point(|te| te.time.unwrap_or(i64::MIN) < time)
     });
 
     state.latest_time = time;

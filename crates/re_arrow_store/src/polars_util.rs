@@ -90,7 +90,7 @@ pub fn range_components<'a, const N: usize>(
     primary: ComponentName,
     components: [ComponentName; N],
     join_type: &'a JoinType,
-) -> impl Iterator<Item = SharedResult<(TimeInt, DataFrame)>> + 'a {
+) -> impl Iterator<Item = SharedResult<(Option<TimeInt>, DataFrame)>> + 'a {
     let cluster_key = store.cluster_key();
 
     // TODO(cmc): Ideally, we'd want to simply add the cluster and primary key to the `components`
@@ -126,7 +126,7 @@ pub fn range_components<'a, const N: usize>(
         }
     }
 
-    let df_latest = if let (Some(latest_time), Some(state)) = (latest_time, state.as_ref()) {
+    let df_latest = if let (latest_time @ Some(_), Some(state)) = (latest_time, state.as_ref()) {
         Some(state.clone().map(|df| (latest_time, df)) /* shallow */)
     } else {
         None

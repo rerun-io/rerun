@@ -18,7 +18,8 @@ pub struct TextEntry {
     // props
     pub msg_id: MsgId,
     pub obj_path: ObjPath,
-    pub time: i64,
+    /// `None` for timeless data.
+    pub time: Option<i64>,
     pub color: Option<[u8; 4]>,
 
     // text entry
@@ -94,7 +95,7 @@ impl SceneText {
                             self.text_entries.push(TextEntry {
                                 msg_id: *msg_id,
                                 obj_path: obj_path.clone(),
-                                time,
+                                time: time.into(),
                                 color: color.copied(),
                                 level: level.map(ToOwned::to_owned),
                                 body: body.clone(),
@@ -163,7 +164,7 @@ impl SceneText {
                             self.text_entries.push(TextEntry {
                                 msg_id: msg_id.unwrap(), // always present
                                 obj_path: obj_path.clone(),
-                                time: time.as_i64(),
+                                time: time.map(|time| time.as_i64()),
                                 color: color.map(|c| c.to_array()),
                                 level,
                                 body,

@@ -310,7 +310,7 @@ impl DataStore {
     ///     query: &'a RangeQuery,
     ///     ent_path: &'a EntityPath,
     ///     primary: ComponentName,
-    /// ) -> impl Iterator<Item = anyhow::Result<(TimeInt, DataFrame)>> + 'a {
+    /// ) -> impl Iterator<Item = anyhow::Result<(Option<TimeInt>, DataFrame)>> + 'a {
     ///     let cluster_key = store.cluster_key();
     ///
     ///     let components = [cluster_key, primary];
@@ -327,7 +327,7 @@ impl DataStore {
     ///     };
     ///
     ///     // Send the latest-at state before anything else..
-    ///     std::iter::once(df_latest.map(|df| (latest_time, df)))
+    ///     std::iter::once(df_latest.map(|df| (Some(latest_time), df)))
     ///         // ..but only if it's not an empty dataframe.
     ///         .filter(|df| df.as_ref().map_or(true, |(_, df)| !df.is_empty()))
     ///         .chain(store.range(query, ent_path, components).map(
@@ -350,7 +350,7 @@ impl DataStore {
         query: &RangeQuery,
         ent_path: &EntityPath,
         components: [ComponentName; N],
-    ) -> impl Iterator<Item = (TimeInt, IndexRowNr, [Option<RowIndex>; N])> + 'a {
+    ) -> impl Iterator<Item = (Option<TimeInt>, IndexRowNr, [Option<RowIndex>; N])> + 'a {
         // TODO(cmc): kind & query_id need to somehow propagate through the span system.
         self.query_id.fetch_add(1, Ordering::Relaxed);
 
@@ -372,8 +372,7 @@ impl DataStore {
             .map(|index| {
                 index
                     .range(components)
-                    // TODO: need to return timepoints now
-                    .map(|(idx_row_nr, row_indices)| (i64::MIN.into(), idx_row_nr, row_indices))
+                    .map(|(idx_row_nr, row_indices)| (None, idx_row_nr, row_indices))
             })
             .into_iter()
             .flatten()
@@ -381,7 +380,8 @@ impl DataStore {
                 index
                     .map(|index| index.range(query.range, components))
                     .into_iter()
-                    .flatten(),
+                    .flatten()
+                    .map(|(time, idx_row_nr, row_indices)| (Some(time), idx_row_nr, row_indices)),
             )
     }
 

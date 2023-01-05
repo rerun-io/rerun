@@ -166,9 +166,10 @@ impl DataStore {
                     .or_insert_with(|| IndexTable::new(self.cluster_key, *timeline, ent_path));
                 index.insert(&self.config, *time, &row_indices)?;
             }
-
-            self.messages.insert(*msg_id, time_point.clone());
         }
+
+        // This is valuable information, even for a timeless timepoint!
+        self.messages.insert(*msg_id, time_point.clone());
 
         Ok(())
     }

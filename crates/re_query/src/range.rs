@@ -26,7 +26,7 @@ pub fn range_entity_with_primary<'a, Primary: Component + 'a, const N: usize>(
     query: &'a RangeQuery,
     ent_path: &'a ObjPath,
     components: [ComponentName; N],
-) -> impl Iterator<Item = (TimeInt, EntityView<Primary>)> + 'a {
+) -> impl Iterator<Item = (Option<TimeInt>, EntityView<Primary>)> + 'a {
     let primary = Primary::name();
     let cluster_key = store.cluster_key();
 
@@ -76,7 +76,7 @@ pub fn range_entity_with_primary<'a, Primary: Component + 'a, const N: usize>(
     // Iff the primary component has some initial state, then we want to be sending out an initial
     // entity-view.
     let ent_view_latest =
-        if let (Some(latest_time), Some(cwi_prim)) = (latest_time, &state[primary_col]) {
+        if let (latest_time @ Some(_), Some(cwi_prim)) = (latest_time, &state[primary_col]) {
             let ent_view = EntityView {
                 primary: cwi_prim.clone(),
                 components: components

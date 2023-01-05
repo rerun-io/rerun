@@ -459,6 +459,7 @@ fn range_impl(store: &mut DataStore) {
             let mut dfs_processed = 0usize;
             let mut time_counters: IntMap<i64, usize> = Default::default();
             for (time, df) in dfs.map(Result::unwrap) {
+                let time = time.unwrap();
                 let time_count = time_counters.entry(time.as_i64()).or_default();
                 let df_expected = &expected_at_times[&time][*time_count];
                 *time_count += 1;

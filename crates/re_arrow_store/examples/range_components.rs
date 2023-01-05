@@ -13,6 +13,8 @@ use re_log_types::{
     ObjPath as EntityPath, TimeType, Timeline,
 };
 
+// TODO: examples need some timeless data
+
 fn main() {
     let mut store = DataStore::new(Instance::name(), Default::default());
 
@@ -65,7 +67,10 @@ fn main() {
     for (time, df) in dfs.map(Result::unwrap) {
         eprintln!(
             "Found data at time {} from {}'s PoV (outer-joining):\n{}",
-            TimeType::Sequence.format(time),
+            time.map_or_else(
+                || "<timeless>".into(),
+                |time| TimeType::Sequence.format(time)
+            ),
             Rect2D::name(),
             df,
         );
@@ -84,7 +89,10 @@ fn main() {
     for (time, df) in dfs.map(Result::unwrap) {
         eprintln!(
             "Found data at time {} from {}'s PoV (outer-joining):\n{}",
-            TimeType::Sequence.format(time),
+            time.map_or_else(
+                || "<timeless>".into(),
+                |time| TimeType::Sequence.format(time)
+            ),
             Point2D::name(),
             df,
         );
