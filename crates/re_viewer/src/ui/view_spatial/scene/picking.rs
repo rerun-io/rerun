@@ -209,7 +209,7 @@ fn picking_points(
             // TODO(emilk): take point radius into account
             let pos_in_ui = ui_from_batch.project_point3(point.position);
             let dist_sq = pos_in_ui.truncate().distance_squared(context.pointer_in_ui);
-            if dist_sq <= context.max_side_ui_dist_sq {
+            if dist_sq <= state.closest_opaque_side_ui_dist_sq {
                 let t = context
                     .ray_in_world
                     .closest_t_to_point(batch.world_from_obj.transform_point3(point.position));
