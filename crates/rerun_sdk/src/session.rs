@@ -30,9 +30,9 @@ pub struct Session {
 
 impl Session {
     pub fn new() -> Self {
-        let arrow_logging = match std::env::var("RERUN_EXP_ARROW") {
-            Ok(val) if val == "mixed" => ArrowLogging::Mixed,
-            Ok(val) if val == "pure" => ArrowLogging::Pure,
+        let arrow_logging = match std::env::var("RERUN_EXP_ARROW").as_deref() {
+            Ok("mixed") => ArrowLogging::Mixed,
+            Ok("pure") => ArrowLogging::Pure,
             _ => ArrowLogging::None,
         };
 
