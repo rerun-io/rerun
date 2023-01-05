@@ -50,13 +50,6 @@ pub struct ClassDescription {
 
 /// Helper struct for converting `ClassDescription` to arrow
 #[derive(ArrowField, ArrowSerialize, ArrowDeserialize)]
-pub struct KeypointAnnotationMapElemArrow {
-    keypoint: KeypointId,
-    annotation_info: AnnotationInfo,
-}
-
-/// Helper struct for converting `ClassDescription` to arrow
-#[derive(ArrowField, ArrowSerialize, ArrowDeserialize)]
 pub struct KeypointPairArrow {
     keypoint0: KeypointId,
     keypoint1: KeypointId,
@@ -66,7 +59,7 @@ pub struct KeypointPairArrow {
 #[derive(ArrowField, ArrowSerialize, ArrowDeserialize)]
 pub struct ClassDescriptionArrow {
     info: AnnotationInfo,
-    keypoint_map: Vec<KeypointAnnotationMapElemArrow>,
+    keypoint_map: Vec<AnnotationInfo>,
     keypoint_connections: Vec<KeypointPairArrow>,
 }
 
@@ -74,14 +67,7 @@ impl From<&ClassDescription> for ClassDescriptionArrow {
     fn from(v: &ClassDescription) -> Self {
         ClassDescriptionArrow {
             info: v.info.clone(),
-            keypoint_map: v
-                .keypoint_map
-                .iter()
-                .map(|(k, a)| KeypointAnnotationMapElemArrow {
-                    keypoint: *k,
-                    annotation_info: a.clone(),
-                })
-                .collect(),
+            keypoint_map: v.keypoint_map.values().cloned().collect(),
             keypoint_connections: v
                 .keypoint_connections
                 .iter()
@@ -101,7 +87,7 @@ impl From<ClassDescriptionArrow> for ClassDescription {
             keypoint_map: v
                 .keypoint_map
                 .into_iter()
-                .map(|elem| (elem.keypoint, elem.annotation_info))
+                .map(|elem| (KeypointId(elem.id), elem))
                 .collect(),
             keypoint_connections: v
                 .keypoint_connections
