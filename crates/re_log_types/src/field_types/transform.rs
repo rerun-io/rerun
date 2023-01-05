@@ -29,21 +29,18 @@ use super::{Quaternion, Vec3D};
 ///     DataType::Struct(vec![
 ///         Field::new(
 ///             "rotation",
-///             DataType::Struct(vec![
-///                 Field::new("x", DataType::Float32, false),
-///                 Field::new("y", DataType::Float32, false),
-///                 Field::new("z", DataType::Float32, false),
-///                 Field::new("w", DataType::Float32, false),
-///             ]),
+///             DataType::FixedSizeList(
+///                 Box::new(Field::new("item", DataType::Float32, false)),
+///                 4
+///             ),
 ///             false
 ///         ),
 ///         Field::new(
 ///             "translation",
-///             DataType::Struct(vec![
-///                 Field::new("x", DataType::Float32, false),
-///                 Field::new("y", DataType::Float32, false),
-///                 Field::new("z", DataType::Float32, false),
-///             ]),
+///             DataType::FixedSizeList(
+///                 Box::new(Field::new("item", DataType::Float32, false)),
+///                 3
+///             ),
 ///             false
 ///         )
 ///     ]),

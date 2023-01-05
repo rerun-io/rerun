@@ -1,4 +1,10 @@
-use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
+use arrow2::{array::PrimitiveArray, datatypes::DataType};
+use arrow2_convert::{
+    arrow_enable_vec_for_type,
+    deserialize::ArrowDeserialize,
+    field::{ArrowField, FixedSizeVec},
+    serialize::ArrowSerialize,
+};
 
 use crate::msg_bundle::Component;
 
@@ -11,13 +17,13 @@ use crate::msg_bundle::Component;
 ///
 /// assert_eq!(
 ///     Vec2D::data_type(),
-///     DataType::Struct(vec![
-///         Field::new("x", DataType::Float32, false),
-///         Field::new("y", DataType::Float32, false),
-///     ])
+///     DataType::FixedSizeList(
+///         Box::new(Field::new("item", DataType::Float32, false)),
+///         2
+///     )
 /// );
 /// ```
-#[derive(Copy, Clone, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Vec2D {
     pub x: f32,
     pub y: f32,
@@ -26,6 +32,49 @@ pub struct Vec2D {
 impl Component for Vec2D {
     fn name() -> crate::ComponentName {
         "rerun.vec2d".into()
+    }
+}
+
+arrow_enable_vec_for_type!(Vec2D);
+
+impl ArrowField for Vec2D {
+    type Type = Self;
+    fn data_type() -> DataType {
+        <FixedSizeVec<f32, 2> as ArrowField>::data_type()
+    }
+}
+
+impl ArrowSerialize for Vec2D {
+    type MutableArrayType = <FixedSizeVec<f32, 2> as ArrowSerialize>::MutableArrayType;
+
+    #[inline]
+    fn new_array() -> Self::MutableArrayType {
+        FixedSizeVec::<f32, 2>::new_array()
+    }
+
+    #[inline]
+    fn arrow_serialize(v: &Self, array: &mut Self::MutableArrayType) -> arrow2::error::Result<()> {
+        array.mut_values().extend_from_slice(&[v.x, v.y]);
+        array.try_push_valid()
+    }
+}
+
+impl ArrowDeserialize for Vec2D {
+    type ArrayType = <FixedSizeVec<f32, 2> as ArrowDeserialize>::ArrayType;
+
+    #[inline]
+    fn arrow_deserialize(
+        v: <&Self::ArrayType as IntoIterator>::Item,
+    ) -> Option<<Self as ArrowField>::Type> {
+        v.map(|v| {
+            let v = v
+                .as_any()
+                .downcast_ref::<PrimitiveArray<f32>>()
+                .unwrap()
+                .values()
+                .as_slice();
+            Vec2D { x: v[0], y: v[1] }
+        })
     }
 }
 
@@ -38,14 +87,13 @@ impl Component for Vec2D {
 ///
 /// assert_eq!(
 ///     Vec3D::data_type(),
-///     DataType::Struct(vec![
-///         Field::new("x", DataType::Float32, false),
-///         Field::new("y", DataType::Float32, false),
-///         Field::new("z", DataType::Float32, false),
-///     ])
+///     DataType::FixedSizeList(
+///         Box::new(Field::new("item", DataType::Float32, false)),
+///         3
+///     )
 /// );
 /// ```
-#[derive(Copy, Clone, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Vec3D {
     pub x: f32,
@@ -74,5 +122,52 @@ impl From<glam::Vec3> for Vec3D {
             y: v.y,
             z: v.z,
         }
+    }
+}
+
+arrow_enable_vec_for_type!(Vec3D);
+
+impl ArrowField for Vec3D {
+    type Type = Self;
+    fn data_type() -> DataType {
+        <FixedSizeVec<f32, 3> as ArrowField>::data_type()
+    }
+}
+
+impl ArrowSerialize for Vec3D {
+    type MutableArrayType = <FixedSizeVec<f32, 3> as ArrowSerialize>::MutableArrayType;
+
+    #[inline]
+    fn new_array() -> Self::MutableArrayType {
+        FixedSizeVec::<f32, 3>::new_array()
+    }
+
+    #[inline]
+    fn arrow_serialize(v: &Self, array: &mut Self::MutableArrayType) -> arrow2::error::Result<()> {
+        array.mut_values().extend_from_slice(&[v.x, v.y, v.z]);
+        array.try_push_valid()
+    }
+}
+
+impl ArrowDeserialize for Vec3D {
+    type ArrayType = <FixedSizeVec<f32, 3> as ArrowDeserialize>::ArrayType;
+
+    #[inline]
+    fn arrow_deserialize(
+        v: <&Self::ArrayType as IntoIterator>::Item,
+    ) -> Option<<Self as ArrowField>::Type> {
+        v.map(|v| {
+            let v = v
+                .as_any()
+                .downcast_ref::<PrimitiveArray<f32>>()
+                .unwrap()
+                .values()
+                .as_slice();
+            Vec3D {
+                x: v[0],
+                y: v[1],
+                z: v[2],
+            }
+        })
     }
 }
