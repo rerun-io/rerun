@@ -39,7 +39,7 @@ def log_image(
     non_empty_dims = [d for d in shape if d != 1]
     num_non_empty_dims = len(non_empty_dims)
 
-    interpretable_as_image = False
+    interpretable_as_image = True
     # Catch some errors early:
     if num_non_empty_dims < 2 or 3 < num_non_empty_dims:
         _send_warning(f"Expected image, got array of shape {shape}", 1)
