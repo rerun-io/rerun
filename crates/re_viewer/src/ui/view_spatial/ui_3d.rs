@@ -480,7 +480,8 @@ pub fn view_3d(
                         orbit_eye.orbit_center + *axis * half_line_length,
                     )
                 }))
-                .radius(Size::new_points(1.0))
+                .radius(Size::new_points(0.75))
+                .flags(re_renderer::renderer::LineStripFlags::NO_COLOR_GRADIENT)
                 // TODO(andreas): Fade this out.
                 .color(re_renderer::Color32::WHITE);
 
