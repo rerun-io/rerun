@@ -280,21 +280,32 @@ fn latest_at_impl(store: &mut DataStore) {
     let frame3 = 3.into();
     let frame4 = 4.into();
 
+    // helper to insert a bundle both as a temporal and timeless payload
+    let insert = |store: &mut DataStore, bundle| {
+        // insert temporal
+        store.insert(bundle).unwrap();
+
+        // insert timeless
+        let mut bundle_timeless = bundle.clone();
+        bundle_timeless.time_point = Default::default();
+        store.insert(&bundle_timeless).unwrap();
+    };
+
     let (instances1, rects1) = (build_some_instances(3), build_some_rects(3));
     let bundle1 = test_bundle!(ent_path @ [build_frame_nr(frame1)] => [instances1.clone(), rects1]);
-    store.insert(&bundle1).unwrap();
+    insert(store, &bundle1);
 
     let points2 = build_some_point2d(3);
     let bundle2 = test_bundle!(ent_path @ [build_frame_nr(frame2)] => [instances1, points2]);
-    store.insert(&bundle2).unwrap();
+    insert(store, &bundle2);
 
     let points3 = build_some_point2d(10);
     let bundle3 = test_bundle!(ent_path @ [build_frame_nr(frame3)] => [points3]);
-    store.insert(&bundle3).unwrap();
+    insert(store, &bundle3);
 
     let rects4 = build_some_rects(5);
     let bundle4 = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [rects4]);
-    store.insert(&bundle4).unwrap();
+    insert(store, &bundle4);
 
     if let err @ Err(_) = store.sanity_check() {
         store.sort_indices_if_needed();
@@ -324,8 +335,17 @@ fn latest_at_impl(store: &mut DataStore) {
 
     // TODO(cmc): bring back some log_time scenarios
 
-    assert_latest_components(frame0, &[]);
-    assert_latest_components(frame1, &[(Rect2D::name(), &bundle1)]);
+    assert_latest_components(
+        frame0,
+        &[(Rect2D::name(), &bundle4), (Point2D::name(), &bundle3)], // timeless
+    );
+    assert_latest_components(
+        frame1,
+        &[
+            (Rect2D::name(), &bundle1),
+            (Point2D::name(), &bundle3), // timeless
+        ],
+    );
     assert_latest_components(
         frame2,
         &[(Rect2D::name(), &bundle1), (Point2D::name(), &bundle2)],
