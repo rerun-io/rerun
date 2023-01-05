@@ -1,4 +1,9 @@
 use ahash::HashMap;
+use arrow2::{array::TryPush, datatypes::DataType};
+use arrow2_convert::{
+    deserialize::ArrowDeserialize, field::ArrowField, serialize::ArrowSerialize, ArrowDeserialize,
+    ArrowField, ArrowSerialize,
+};
 
 use crate::field_types::{ClassId, KeypointId};
 
@@ -8,7 +13,7 @@ use super::{ColorRGBA, Label};
 ///
 /// Can be looked up for a [`ClassId`] or [`KeypointId`].
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 pub struct AnnotationInfo {
     /// [`ClassId`] or [`KeypointId`] to which this annotation info belongs.
     pub id: u16,
@@ -43,7 +48,71 @@ pub struct ClassDescription {
     pub keypoint_connections: Vec<(KeypointId, KeypointId)>,
 }
 
-/// The `AnnotationContext` provides aditional information on how to display
+/// Helper struct for converting `ClassDescription` to arrow
+#[derive(ArrowField, ArrowSerialize, ArrowDeserialize)]
+pub struct KeypointAnnotationMapElemArrow {
+    keypoint: KeypointId,
+    annotation_info: AnnotationInfo,
+}
+
+/// Helper struct for converting `ClassDescription` to arrow
+#[derive(ArrowField, ArrowSerialize, ArrowDeserialize)]
+pub struct KeypointPairArrow {
+    keypoint0: KeypointId,
+    keypoint1: KeypointId,
+}
+
+/// Helper struct for converting `ClassDescription` to arrow
+#[derive(ArrowField, ArrowSerialize, ArrowDeserialize)]
+pub struct ClassDescriptionArrow {
+    info: AnnotationInfo,
+    keypoint_map: Vec<KeypointAnnotationMapElemArrow>,
+    keypoint_connections: Vec<KeypointPairArrow>,
+}
+
+impl From<&ClassDescription> for ClassDescriptionArrow {
+    fn from(v: &ClassDescription) -> Self {
+        ClassDescriptionArrow {
+            info: v.info.clone(),
+            keypoint_map: v
+                .keypoint_map
+                .iter()
+                .map(|(k, a)| KeypointAnnotationMapElemArrow {
+                    keypoint: *k,
+                    annotation_info: a.clone(),
+                })
+                .collect(),
+            keypoint_connections: v
+                .keypoint_connections
+                .iter()
+                .map(|(k0, k1)| KeypointPairArrow {
+                    keypoint0: *k0,
+                    keypoint1: *k1,
+                })
+                .collect(),
+        }
+    }
+}
+
+impl From<ClassDescriptionArrow> for ClassDescription {
+    fn from(v: ClassDescriptionArrow) -> Self {
+        ClassDescription {
+            info: v.info,
+            keypoint_map: v
+                .keypoint_map
+                .into_iter()
+                .map(|elem| (elem.keypoint, elem.annotation_info))
+                .collect(),
+            keypoint_connections: v
+                .keypoint_connections
+                .into_iter()
+                .map(|elem| (elem.keypoint0, elem.keypoint1))
+                .collect(),
+        }
+    }
+}
+
+/// The `AnnotationContext` provides additional information on how to display
 /// entities.
 ///
 /// Entities can use `ClassId`s and `KeypointId`s to provide annotations, and
@@ -55,4 +124,125 @@ pub struct ClassDescription {
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct AnnotationContext {
     pub class_map: HashMap<ClassId, ClassDescription>,
+}
+
+/// Helper struct for converting `AnnotationContext` to arrow
+#[derive(ArrowField, ArrowSerialize, ArrowDeserialize)]
+pub struct ClassMapElemArrow {
+    class_id: ClassId,
+    class_description: ClassDescriptionArrow,
+}
+
+/// Helper struct for converting `AnnotationContext` to arrow
+#[derive(ArrowField, ArrowSerialize, ArrowDeserialize)]
+pub struct AnnotationContextArrow {
+    class_map: Vec<ClassMapElemArrow>,
+}
+
+impl From<&AnnotationContext> for AnnotationContextArrow {
+    fn from(v: &AnnotationContext) -> Self {
+        AnnotationContextArrow {
+            class_map: v
+                .class_map
+                .iter()
+                .map(|(class_id, class_description)| ClassMapElemArrow {
+                    class_id: *class_id,
+                    class_description: class_description.into(),
+                })
+                .collect(),
+        }
+    }
+}
+
+impl From<AnnotationContextArrow> for AnnotationContext {
+    fn from(v: AnnotationContextArrow) -> Self {
+        AnnotationContext {
+            class_map: v
+                .class_map
+                .into_iter()
+                .map(|elem| (elem.class_id, elem.class_description.into()))
+                .collect(),
+        }
+    }
+}
+
+impl ArrowField for AnnotationContext {
+    type Type = Self;
+    fn data_type() -> DataType {
+        <AnnotationContextArrow as ArrowField>::data_type()
+    }
+}
+
+impl ArrowSerialize for AnnotationContext {
+    type MutableArrayType = <AnnotationContextArrow as ArrowSerialize>::MutableArrayType;
+
+    #[inline]
+    fn new_array() -> Self::MutableArrayType {
+        AnnotationContextArrow::new_array()
+    }
+
+    #[inline]
+    fn arrow_serialize(v: &Self, array: &mut Self::MutableArrayType) -> arrow2::error::Result<()> {
+        let v: AnnotationContextArrow = v.into();
+        array.try_push(Some(v))
+    }
+}
+
+impl ArrowDeserialize for AnnotationContext {
+    type ArrayType = <AnnotationContextArrow as ArrowDeserialize>::ArrayType;
+
+    #[inline]
+    fn arrow_deserialize(
+        v: <&Self::ArrayType as IntoIterator>::Item,
+    ) -> Option<<Self as ArrowField>::Type> {
+        v.map(|v| v.into())
+    }
+}
+
+#[test]
+fn test_context_roundtrip() {
+    use arrow2::array::Array;
+    use arrow2_convert::{deserialize::TryIntoCollection, serialize::TryIntoArrow};
+
+    let context = AnnotationContext {
+        class_map: vec![(
+            ClassId(13),
+            ClassDescription {
+                info: AnnotationInfo {
+                    id: 32,
+                    label: Some(Label("hello".to_owned())),
+                    color: Some(ColorRGBA(0x123456)),
+                },
+                keypoint_map: vec![
+                    (
+                        KeypointId(43),
+                        AnnotationInfo {
+                            id: 43,
+                            label: Some(Label("head".to_owned())),
+                            color: None,
+                        },
+                    ),
+                    (
+                        KeypointId(94),
+                        AnnotationInfo {
+                            id: 94,
+                            label: Some(Label("leg".to_owned())),
+                            color: Some(ColorRGBA(0x654321)),
+                        },
+                    ),
+                ]
+                .into_iter()
+                .collect(),
+                keypoint_connections: vec![(KeypointId(43), KeypointId(94))].into_iter().collect(),
+            },
+        )]
+        .into_iter()
+        .collect(),
+    };
+
+    let context_in = vec![context];
+    let array: Box<dyn Array> = context_in.try_into_arrow().unwrap();
+    let context_out: Vec<AnnotationContext> =
+        TryIntoCollection::try_into_collection(array).unwrap();
+    assert_eq!(context_in, context_out);
 }
