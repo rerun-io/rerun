@@ -423,7 +423,7 @@ pub struct ObjectPaintProperties {
 // TODO(andreas): we're no longer using egui strokes. Replace this.
 fn paint_properties(color: [u8; 4], stroke_width: Option<&f32>) -> ObjectPaintProperties {
     let fg_color = to_ecolor(color);
-    let stroke_width = stroke_width.map_or(1.5, |w| *w);
+    let stroke_width = stroke_width.map_or(2.0, |w| *w); // TODO(andreas): use re_renderer auto_size
     let fg_stroke = egui::Stroke::new(stroke_width, fg_color);
 
     ObjectPaintProperties { fg_stroke }

@@ -75,7 +75,8 @@ impl ScenePart for LineSegments2DPart {
                         )
                     }))
                     .color(paint_props.fg_stroke.color)
-                    .radius(Size::new_points(paint_props.fg_stroke.width * 0.5));
+                    .radius(Size::new_points(paint_props.fg_stroke.width * 0.5))
+                    .user_data(instance_hash);
             };
 
             visit_type_data_2(

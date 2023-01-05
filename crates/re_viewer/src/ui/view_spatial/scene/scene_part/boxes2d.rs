@@ -77,11 +77,11 @@ impl ScenePart for Boxes2DPartClassic {
                     apply_hover_effect(&mut paint_props);
                 }
 
-                // Lines don't associated with instance (i.e. won't participate in hovering)
                 line_batch
                     .add_axis_aligned_rectangle_outline_2d(bbox.min.into(), bbox.max.into())
                     .color(paint_props.fg_stroke.color)
-                    .radius(Size::new_points(paint_props.fg_stroke.width * 0.5));
+                    .radius(Size::new_points(paint_props.fg_stroke.width * 0.5))
+                    .user_data(instance_hash);
 
                 if let Some(label) = label {
                     scene.ui.labels_2d.push(Label2D {
@@ -139,7 +139,6 @@ impl Boxes2DPart {
             apply_hover_effect(&mut paint_props);
         }
 
-        // Lines don't associated with instance (i.e. won't participate in hovering)
         let mut line_batch = scene
             .primitives
             .line_strips
@@ -153,7 +152,8 @@ impl Boxes2DPart {
                 glam::vec2(0.0, rect.h),
             )
             .color(paint_props.fg_stroke.color)
-            .radius(Size::new_points(paint_props.fg_stroke.width * 0.5));
+            .radius(Size::new_points(paint_props.fg_stroke.width * 0.5))
+            .user_data(instance);
 
         if let Some(label) = label {
             scene.ui.labels_2d.push(Label2D {

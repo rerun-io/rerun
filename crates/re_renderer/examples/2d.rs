@@ -1,10 +1,11 @@
+use ecolor::Hsva;
 use re_renderer::{
     renderer::{
         LineStripFlags, RectangleDrawData, TextureFilterMag, TextureFilterMin, TexturedRect,
     },
     resource_managers::{GpuTexture2DHandle, Texture2DCreationDesc},
     view_builder::{self, Projection, ViewBuilder},
-    Color32, LineStripSeriesBuilder, PointCloudBuilder, Rgba, Size,
+    Color32, LineStripSeriesBuilder, PointCloudBuilder, Size,
 };
 
 mod framework;
@@ -135,8 +136,6 @@ impl framework::Example for Render2D {
             .radius(Size::AUTO_LARGE)
             .color(Color32::from_rgb(255, 180, 1));
 
-        let line_strip_draw_data = line_strip_builder.to_draw_data(re_ctx);
-
         // Points with different kinds of radius
         // The first two points are the same thickness if there no (!) scaling.
         // Moving the windows to a high dpi screen makes the second one bigger.
@@ -165,6 +164,19 @@ impl framework::Example for Render2D {
             )
             .color(Color32::from_rgb(55, 180, 1));
 
+        // Pile stuff to test for overlap handling
+        {
+            let mut batch = line_strip_builder.batch("overlapping objects");
+            for i in 0..10 {
+                let x = 5.0 * i as f32 + 20.0;
+                batch
+                    .add_segment_2d(glam::vec2(x, 700.0), glam::vec2(x, 780.0))
+                    .color(Hsva::new(10.0 / i as f32, 1.0, 0.5, 1.0).into())
+                    .radius(Size::new_points(10.0));
+            }
+        }
+
+        let line_strip_draw_data = line_strip_builder.to_draw_data(re_ctx);
         let point_draw_data = point_cloud_builder.to_draw_data(re_ctx).unwrap();
 
         let image_scale = 4.0;

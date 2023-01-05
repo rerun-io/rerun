@@ -95,7 +95,8 @@ impl ScenePart for ImagesPart {
                             texture_filter_minification:
                                 re_renderer::renderer::TextureFilterMin::Linear,
                             multiplicative_tint: paint_props.fg_stroke.color.into(),
-                            depth_offset: 0, // adjusted later
+                            // Push to background. Mostly important for mouse picking order!
+                            depth_offset: -1,
                         },
                     );
                     scene.primitives.textured_rectangles_ids.push(instance_hash);
@@ -158,7 +159,10 @@ impl ScenePart for ImagesPart {
             let total_num_images = grouped_rects.len();
             for (idx, rect) in grouped_rects.iter_mut().enumerate() {
                 // Set depth offset for correct order and avoid z fighting when there is a 3d camera.
-                rect.depth_offset = idx as re_renderer::DepthOffset;
+                // Keep behind depth offset 0 for correct picking order.
+                rect.depth_offset =
+                    (idx as isize - total_num_images as isize) as re_renderer::DepthOffset;
+
                 // make top images transparent
                 let opacity = if idx == 0 {
                     1.0
