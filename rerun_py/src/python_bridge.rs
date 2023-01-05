@@ -486,8 +486,8 @@ fn log_pinhole(
     timeless: bool,
 ) -> PyResult<()> {
     let transform = re_log_types::Transform::Pinhole(re_log_types::Pinhole {
-        image_from_cam: child_from_parent,
-        resolution: Some(resolution),
+        image_from_cam: child_from_parent.into(),
+        resolution: Some(resolution.into()),
     });
 
     log_transform(obj_path, transform, timeless)

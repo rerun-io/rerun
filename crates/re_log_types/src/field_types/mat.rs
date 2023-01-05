@@ -25,7 +25,7 @@ use super::Vec3D;
 /// ```
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct Mat3x3([Vec3D; 3]);
+pub struct Mat3x3(pub [Vec3D; 3]);
 
 impl<Idx> std::ops::Index<Idx> for Mat3x3
 where
@@ -41,6 +41,13 @@ where
 impl From<[[f32; 3]; 3]> for Mat3x3 {
     fn from(v: [[f32; 3]; 3]) -> Self {
         Self([Vec3D(v[0]), Vec3D(v[1]), Vec3D(v[2])])
+    }
+}
+
+#[cfg(feature = "glam")]
+impl From<Mat3x3> for glam::Mat3 {
+    fn from(v: Mat3x3) -> Self {
+        Self::from_cols(v[0].into(), v[1].into(), v[2].into())
     }
 }
 
