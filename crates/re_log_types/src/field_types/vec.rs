@@ -24,14 +24,43 @@ use crate::msg_bundle::Component;
 /// );
 /// ```
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub struct Vec2D {
-    pub x: f32,
-    pub y: f32,
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub struct Vec2D(pub [f32; 2]);
+
+impl From<[f32; 2]> for Vec2D {
+    fn from(v: [f32; 2]) -> Self {
+        Self(v)
+    }
+}
+
+impl<Idx> std::ops::Index<Idx> for Vec2D
+where
+    Idx: std::slice::SliceIndex<[f32]>,
+{
+    type Output = Idx::Output;
+
+    fn index(&self, index: Idx) -> &Self::Output {
+        &self.0[index]
+    }
 }
 
 impl Component for Vec2D {
     fn name() -> crate::ComponentName {
         "rerun.vec2d".into()
+    }
+}
+
+#[cfg(feature = "glam")]
+impl From<Vec2D> for glam::Vec2 {
+    fn from(v: Vec2D) -> Self {
+        Self::from_slice(&v.0)
+    }
+}
+
+#[cfg(feature = "glam")]
+impl From<glam::Vec2> for Vec2D {
+    fn from(v: glam::Vec2) -> Self {
+        Self(v.to_array())
     }
 }
 
@@ -54,7 +83,7 @@ impl ArrowSerialize for Vec2D {
 
     #[inline]
     fn arrow_serialize(v: &Self, array: &mut Self::MutableArrayType) -> arrow2::error::Result<()> {
-        array.mut_values().extend_from_slice(&[v.x, v.y]);
+        array.mut_values().extend_from_slice(&v.0);
         array.try_push_valid()
     }
 }
@@ -67,13 +96,15 @@ impl ArrowDeserialize for Vec2D {
         v: <&Self::ArrayType as IntoIterator>::Item,
     ) -> Option<<Self as ArrowField>::Type> {
         v.map(|v| {
-            let v = v
-                .as_any()
-                .downcast_ref::<PrimitiveArray<f32>>()
-                .unwrap()
-                .values()
-                .as_slice();
-            Vec2D { x: v[0], y: v[1] }
+            Vec2D(
+                v.as_any()
+                    .downcast_ref::<PrimitiveArray<f32>>()
+                    .unwrap()
+                    .values()
+                    .as_slice()
+                    .try_into()
+                    .unwrap(),
+            )
         })
     }
 }
@@ -95,10 +126,23 @@ impl ArrowDeserialize for Vec2D {
 /// ```
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct Vec3D {
-    pub x: f32,
-    pub y: f32,
-    pub z: f32,
+pub struct Vec3D(pub [f32; 3]);
+
+impl From<[f32; 3]> for Vec3D {
+    fn from(v: [f32; 3]) -> Self {
+        Self(v)
+    }
+}
+
+impl<Idx> std::ops::Index<Idx> for Vec3D
+where
+    Idx: std::slice::SliceIndex<[f32]>,
+{
+    type Output = Idx::Output;
+
+    fn index(&self, index: Idx) -> &Self::Output {
+        &self.0[index]
+    }
 }
 
 impl Component for Vec3D {
@@ -110,18 +154,14 @@ impl Component for Vec3D {
 #[cfg(feature = "glam")]
 impl From<Vec3D> for glam::Vec3 {
     fn from(v: Vec3D) -> Self {
-        Self::new(v.x, v.y, v.z)
+        Self::from_slice(&v.0)
     }
 }
 
 #[cfg(feature = "glam")]
 impl From<glam::Vec3> for Vec3D {
     fn from(v: glam::Vec3) -> Self {
-        Self {
-            x: v.x,
-            y: v.y,
-            z: v.z,
-        }
+        Self(v.to_array())
     }
 }
 
@@ -144,7 +184,7 @@ impl ArrowSerialize for Vec3D {
 
     #[inline]
     fn arrow_serialize(v: &Self, array: &mut Self::MutableArrayType) -> arrow2::error::Result<()> {
-        array.mut_values().extend_from_slice(&[v.x, v.y, v.z]);
+        array.mut_values().extend_from_slice(&v.0);
         array.try_push_valid()
     }
 }
@@ -157,17 +197,15 @@ impl ArrowDeserialize for Vec3D {
         v: <&Self::ArrayType as IntoIterator>::Item,
     ) -> Option<<Self as ArrowField>::Type> {
         v.map(|v| {
-            let v = v
-                .as_any()
-                .downcast_ref::<PrimitiveArray<f32>>()
-                .unwrap()
-                .values()
-                .as_slice();
-            Vec3D {
-                x: v[0],
-                y: v[1],
-                z: v[2],
-            }
+            Vec3D(
+                v.as_any()
+                    .downcast_ref::<PrimitiveArray<f32>>()
+                    .unwrap()
+                    .values()
+                    .as_slice()
+                    .try_into()
+                    .unwrap(),
+            )
         })
     }
 }

@@ -1,19 +1,8 @@
-use arrow2::{
-    array::{
-        Array, ArrayValuesIter, FixedSizeListArray, MutableArray, MutableFixedSizeListArray,
-        MutablePrimitiveArray, MutableStructArray, PrimitiveArray,
-    },
-    bitmap::utils::{BitmapIter, ZipValidity},
-    datatypes::{DataType, Field},
-};
-use arrow2_convert::{
-    arrow_enable_vec_for_type, deserialize::ArrowDeserialize, field::ArrowField,
-    serialize::ArrowSerialize, ArrowDeserialize, ArrowField, ArrowSerialize,
-};
+use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 
 use crate::msg_bundle::Component;
 
-use super::{Quaternion, Vec3D};
+use super::{mat::Mat3x3, Quaternion, Vec2D, Vec3D};
 
 /// A proper rigid 3D transform, i.e. a rotation and a translation.
 ///
@@ -102,7 +91,7 @@ impl Rigid3 {
 ///         Field::new(
 ///             "image_from_cam",
 ///             DataType::FixedSizeList(
-///                 Box::new(Field::new("elem", DataType::Float32, false)),
+///                 Box::new(Field::new("item", DataType::Float32, false)),
 ///                 9
 ///             ),
 ///             false,
@@ -110,7 +99,7 @@ impl Rigid3 {
 ///         Field::new(
 ///             "resolution",
 ///             DataType::FixedSizeList(
-///                 Box::new(Field::new("elem", DataType::Float32, false)),
+///                 Box::new(Field::new("item", DataType::Float32, false)),
 ///                 2
 ///             ),
 ///             true,
@@ -118,7 +107,7 @@ impl Rigid3 {
 ///     ]),
 /// );
 /// ```
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Pinhole {
     /// Column-major projection matrix.
@@ -132,7 +121,7 @@ pub struct Pinhole {
     ///  [0.0,    1496.1, 0.0], // col 1
     ///  [980.5,  744.5,  1.0]] // col 2
     /// ```
-    pub image_from_cam: [[f32; 3]; 3],
+    pub image_from_cam: Mat3x3,
 
     /// Pixel resolution (usually integers) of child image space. Width and height.
     ///
@@ -142,7 +131,7 @@ pub struct Pinhole {
     /// ```
     ///
     /// [`Self::image_from_cam`] project onto the space spanned by `(0,0)` and `resolution - 1`.
-    pub resolution: Option<[f32; 2]>,
+    pub resolution: Option<Vec2D>,
 }
 
 impl Pinhole {
@@ -182,199 +171,12 @@ impl Pinhole {
     #[inline]
     #[cfg(feature = "glam")]
     pub fn resolution(&self) -> Option<glam::Vec2> {
-        self.resolution.map(|r| glam::vec2(r[0], r[1]))
+        self.resolution.map(|r| r.into())
     }
 
     #[inline]
     pub fn aspect_ratio(&self) -> f32 {
         self.image_from_cam[0][0] / self.image_from_cam[1][1]
-    }
-}
-
-// ----------------------------------------------------------------------------
-// Arrow2 serialization for Pinhole
-
-arrow_enable_vec_for_type!(Pinhole);
-
-impl ArrowField for Pinhole {
-    type Type = Self;
-    fn data_type() -> DataType {
-        DataType::Struct(vec![
-            Field::new(
-                "image_from_cam",
-                DataType::FixedSizeList(Box::new(Field::new("elem", DataType::Float32, false)), 9),
-                false,
-            ),
-            Field::new(
-                "resolution",
-                DataType::FixedSizeList(Box::new(Field::new("elem", DataType::Float32, false)), 2),
-                true,
-            ),
-        ])
-    }
-}
-
-impl ArrowSerialize for Pinhole {
-    type MutableArrayType = arrow2::array::MutableStructArray;
-
-    #[inline]
-    fn new_array() -> Self::MutableArrayType {
-        let empty_mat = MutablePrimitiveArray::<f32>::new();
-        let empty_res = MutablePrimitiveArray::<f32>::new();
-        let image_from_cal = Box::new(MutableFixedSizeListArray::new_with_field(
-            empty_mat, "elem", false, 9,
-        ));
-        let resolution = Box::new(MutableFixedSizeListArray::new_with_field(
-            empty_res, "elem", false, 2,
-        ));
-        MutableStructArray::new(Pinhole::data_type(), vec![image_from_cal, resolution])
-    }
-
-    #[inline]
-    fn arrow_serialize(v: &Self, array: &mut Self::MutableArrayType) -> arrow2::error::Result<()> {
-        let Self {
-            image_from_cam,
-            resolution,
-        } = v;
-
-        let cam_list = array
-            .mut_values()
-            .get_mut(0)
-            .ok_or_else(|| {
-                arrow2::error::Error::ExternalFormat("Bad conversion for Pinhole".to_owned())
-            })?
-            .as_mut_any()
-            .downcast_mut::<MutableFixedSizeListArray<MutablePrimitiveArray<f32>>>()
-            .ok_or_else(|| {
-                arrow2::error::Error::ExternalFormat("Bad conversion for Pinhole".to_owned())
-            })?;
-        let cam_values: &mut MutablePrimitiveArray<f32> = cam_list.mut_values();
-        cam_values.extend_from_slice(image_from_cam[0].as_slice());
-        cam_values.extend_from_slice(image_from_cam[1].as_slice());
-        cam_values.extend_from_slice(image_from_cam[2].as_slice());
-        cam_list.try_push_valid()?;
-
-        let res_list = array
-            .mut_values()
-            .get_mut(1)
-            .ok_or_else(|| {
-                arrow2::error::Error::ExternalFormat("Bad conversion for Pinhole".to_owned())
-            })?
-            .as_mut_any()
-            .downcast_mut::<MutableFixedSizeListArray<MutablePrimitiveArray<f32>>>()
-            .ok_or_else(|| {
-                arrow2::error::Error::ExternalFormat("Bad conversion for Pinhole".to_owned())
-            })?;
-        let res_values: &mut MutablePrimitiveArray<f32> = res_list.mut_values();
-        if let Some(res) = resolution {
-            res_values.extend(res.iter().map(|v| Some(*v)));
-            res_list.try_push_valid()?;
-        } else {
-            res_list.push_null();
-        }
-
-        array.push(true);
-        Ok(())
-    }
-}
-
-/// Helper for deserializing a Pinhole camera transform
-pub struct PinholeArray {}
-
-#[allow(clippy::unimplemented)]
-impl<'a> IntoIterator for &'a PinholeArray {
-    type Item = Option<Pinhole>;
-    type IntoIter = PinholeArrayIterator<'a>;
-    fn into_iter(self) -> Self::IntoIter {
-        // Following the pattern established inside arrow2-convert
-        unimplemented!("Use iter_from_array_ref"); // NOLINT
-    }
-}
-
-impl arrow2_convert::deserialize::ArrowArray for PinholeArray {
-    type BaseArrayType = arrow2::array::StructArray;
-    #[inline]
-    fn iter_from_array_ref(b: &dyn arrow2::array::Array) -> PinholeArrayIterator<'_> {
-        // TODO(jleibs): Would be nice to avoid these unwraps but it seems like arrow2-convert
-        // hasn't left us much of an option.
-        let struct_arr = b.as_any().downcast_ref::<Self::BaseArrayType>().unwrap();
-
-        let cam_iter = struct_arr
-            .values()
-            .get(0)
-            .unwrap()
-            .as_any()
-            .downcast_ref::<FixedSizeListArray>()
-            .unwrap()
-            .into_iter();
-
-        let res_iter = struct_arr
-            .values()
-            .get(1)
-            .unwrap()
-            .as_any()
-            .downcast_ref::<FixedSizeListArray>()
-            .unwrap()
-            .into_iter();
-
-        PinholeArrayIterator { cam_iter, res_iter }
-    }
-}
-pub struct PinholeArrayIterator<'a> {
-    cam_iter: ZipValidity<Box<dyn Array>, ArrayValuesIter<'a, FixedSizeListArray>, BitmapIter<'a>>,
-    res_iter: ZipValidity<Box<dyn Array>, ArrayValuesIter<'a, FixedSizeListArray>, BitmapIter<'a>>,
-}
-
-impl<'a> Iterator for PinholeArrayIterator<'a> {
-    type Item = Option<Pinhole>;
-    #[inline]
-    fn next(&mut self) -> Option<Self::Item> {
-        // If either iterator runs out, stop iterating
-        let next_cam = self.cam_iter.next()?;
-        let next_res = self.res_iter.next()?;
-
-        let cam_values = next_cam.expect("Cam projection cannot be null");
-        let cam_slice = cam_values
-            .as_any()
-            .downcast_ref::<PrimitiveArray<f32>>()
-            .unwrap()
-            .values()
-            .as_slice();
-
-        let image_from_cam = [
-            cam_slice[0..3].try_into().unwrap(),
-            cam_slice[3..6].try_into().unwrap(),
-            cam_slice[6..9].try_into().unwrap(),
-        ];
-
-        let resolution = if let Some(res) = next_res {
-            let res_slice = res
-                .as_any()
-                .downcast_ref::<PrimitiveArray<f32>>()
-                .unwrap()
-                .values()
-                .as_slice();
-
-            Some(res_slice[0..2].try_into().unwrap())
-        } else {
-            None
-        };
-
-        Some(Some(Pinhole {
-            image_from_cam,
-            resolution,
-        }))
-    }
-}
-
-impl ArrowDeserialize for Pinhole {
-    type ArrayType = PinholeArray;
-
-    #[inline]
-    fn arrow_deserialize(
-        v: <&Self::ArrayType as IntoIterator>::Item,
-    ) -> Option<<Self as ArrowField>::Type> {
-        v
     }
 }
 
@@ -408,7 +210,7 @@ fn test_transform_roundtrip() {
 
     let transforms_in = vec![
         Transform::Pinhole(Pinhole {
-            image_from_cam: [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]],
+            image_from_cam: [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]].into(),
             resolution: None,
         }),
         Transform::Rigid3(Rigid3 {
@@ -418,15 +220,11 @@ fn test_transform_roundtrip() {
                 z: 13.0,
                 w: 14.0,
             },
-            translation: Vec3D {
-                x: 15.0,
-                y: 16.0,
-                z: 17.0,
-            },
+            translation: [15.0, 16.0, 17.0].into(),
         }),
         Transform::Pinhole(Pinhole {
-            image_from_cam: [[21.0, 22.0, 23.0], [24.0, 25.0, 26.0], [27.0, 28.0, 29.0]],
-            resolution: Some([123.0, 456.0]),
+            image_from_cam: [[21.0, 22.0, 23.0], [24.0, 25.0, 26.0], [27.0, 28.0, 29.0]].into(),
+            resolution: Some([123.0, 456.0].into()),
         }),
     ];
     let array: Box<dyn Array> = transforms_in.try_into_arrow().unwrap();
