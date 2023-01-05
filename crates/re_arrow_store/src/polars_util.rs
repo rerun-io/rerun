@@ -108,10 +108,11 @@ pub fn range_components<'a, const N: usize>(
 
     let latest_time = query.range.min.as_i64().checked_sub(1).map(Into::into);
 
+    let mut df_latest = None;
     if let Some(latest_time) = latest_time {
         let df = latest_components(
             store,
-            &LatestAtQuery::new(query.timeline, latest_time),
+            &LatestAtQuery::temporal_only(query.timeline, latest_time),
             ent_path,
             &components,
             join_type,
@@ -122,15 +123,9 @@ pub fn range_components<'a, const N: usize>(
             // at all for the primary component.
             !df.is_empty() && df.column(primary.as_str()).is_ok()
         }) {
-            state = Some(df);
+            df_latest = Some(df);
         }
     }
-
-    let df_latest = if let (latest_time @ Some(_), Some(state)) = (latest_time, state.as_ref()) {
-        Some(state.clone().map(|df| (latest_time, df)) /* shallow */)
-    } else {
-        None
-    };
 
     let primary_col = components
         .iter()
@@ -138,7 +133,7 @@ pub fn range_components<'a, const N: usize>(
         .map(|(col, _)| col)
         .unwrap(); // asserted on entry
 
-    let range = store
+    let mut range = store
         .range(query, ent_path, components)
         .map(move |(time, _, row_indices)| {
             let results = store.get(&components, &row_indices);
@@ -149,35 +144,73 @@ pub fn range_components<'a, const N: usize>(
             )
         });
 
-    // Send the latest-at state before anything else
-    df_latest
-        .into_iter()
-        .chain(range.filter_map(move |(time, is_primary, df)| {
-            state = Some(join_dataframes(
-                cluster_key,
-                join_type,
-                // The order matters here: the newly yielded dataframe goes to the right so that it
-                // overwrites the data in the state if their column overlaps!
-                // See [`join_dataframes`].
-                [state.clone() /* shallow */, Some(df)]
-                    .into_iter()
-                    .flatten(),
-            ));
+    // TODO: explain
+    let range = if let Some(df_latest) = df_latest {
+        let range = std::iter::from_fn({
+            let mut peeked = range.next();
+            let mut is_timeless = true;
+            move || {
+                let next = if let peeked @ Some(_) = peeked.take() {
+                    peeked
+                } else {
+                    range.next()
+                };
+                if let Some((time, is_primary, df)) = next {
+                    let is_switching = is_timeless && time.is_some();
+                    is_timeless = time.is_none();
 
-            // We only yield if the primary component has been updated!
-            is_primary.then_some(state.clone().unwrap().map(|df| {
-                // Make sure to return everything in the order it was asked!
-                let columns = df.get_column_names();
-                let df = df
-                    .select(
-                        components
-                            .iter()
-                            .filter(|col| columns.contains(&col.as_str())),
-                    )
-                    .unwrap();
-                (time, df)
-            }))
+                    if is_switching {
+                        peeked = Some((time, is_primary, df));
+                        return Some((latest_time, true, df_latest.clone()));
+                    }
+
+                    Some((time, is_primary, df))
+                } else {
+                    if is_timeless {
+                        is_timeless = false;
+                        return Some((latest_time, true, df_latest.clone()));
+                    }
+                    None
+                }
+            }
+        });
+        itertools::Either::Left(range)
+    } else {
+        itertools::Either::Right(range)
+    };
+
+    // Send the latest-at state before anything else
+    //
+    // TODO:
+    // Timeless data
+    // Latest temporal-only state
+    // Temporal data
+    range.filter_map(move |(time, is_primary, df)| {
+        state = Some(join_dataframes(
+            cluster_key,
+            join_type,
+            // The order matters here: the newly yielded dataframe goes to the right so that it
+            // overwrites the data in the state if their column overlaps!
+            // See [`join_dataframes`].
+            [state.clone() /* shallow */, Some(df)]
+                .into_iter()
+                .flatten(),
+        ));
+
+        // We only yield if the primary component has been updated!
+        is_primary.then_some(state.clone().unwrap().map(|df| {
+            // Make sure to return everything in the order it was asked!
+            let columns = df.get_column_names();
+            let df = df
+                .select(
+                    components
+                        .iter()
+                        .filter(|col| columns.contains(&col.as_str())),
+                )
+                .unwrap();
+            (time, df)
         }))
+    })
 }
 
 // --- Joins ---
@@ -222,7 +255,6 @@ pub fn join_dataframes(
                 .filter(|col| *col != &cluster_key.as_str())
             {
                 _ = left.drop_in_place(col);
-                left = left.drop_nulls(None).unwrap();
             }
 
             left.join(
@@ -232,9 +264,36 @@ pub fn join_dataframes(
                 join_type.clone(),
                 None,
             )
+            .map(|df| drop_all_nulls(&df, &cluster_key).unwrap())
             .map_err(Into::into)
         })
         .unwrap_or_else(|| Ok(DataFrame::default()))?;
 
     Ok(df.sort([cluster_key.as_str()], false).unwrap_or(df))
+}
+
+/// Return a new `DataFrame` where all rows in the given `subset` of columns that only have null
+/// values are dropped.
+pub fn drop_all_nulls(df: &DataFrame, cluster_key: &ComponentName) -> PolarsResult<DataFrame> {
+    let cols = df
+        .get_column_names()
+        .into_iter()
+        .filter(|col| *col != cluster_key.as_str());
+
+    let mut iter = df.select_series(cols)?.into_iter();
+
+    // fast path for no nulls in df
+    if iter.clone().all(|s| !s.has_validity()) {
+        return Ok(df.clone());
+    }
+
+    let mask = iter
+        .next()
+        .ok_or_else(|| PolarsError::NoData("No data to drop nulls from".into()))?;
+    let mut mask = mask.is_not_null();
+
+    for s in iter {
+        mask = mask | s.is_not_null();
+    }
+    df.filter(&mask)
 }

@@ -14,6 +14,22 @@ use crate::{
     SecondaryIndex,
 };
 
+// TODO:
+// - latest-at timeless low-level semantics:
+//   - do a temporal latest-at
+//   - fill the holes with a timeless latest-at
+//
+// - latest-at timeless high-level semantics are identical
+//
+// - range timeless low-level semantics:
+//   - range over timeless data first
+//   - range over temporal data second
+//
+// - range timeless high-level semantics:
+//   - range over timeless data first
+//   - send TEMPORAL latest-at state second
+//   - and finally range over temporal data from there
+
 // --- Queries ---
 
 /// A query a given time, for a given timeline.
@@ -23,21 +39,40 @@ use crate::{
 pub struct LatestAtQuery {
     pub timeline: Timeline,
     pub at: TimeInt,
+    /// When set to `true` (the default), the query will take timeless data into account.
+    pub include_timeless: bool,
 }
 
 impl std::fmt::Debug for LatestAtQuery {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!(
-            "<latest at {} on {:?}>",
+            "<latest at {} on {:?} ({} timeless)>",
             self.timeline.typ().format(self.at),
             self.timeline.name(),
+            if self.include_timeless {
+                "including"
+            } else {
+                "excluding"
+            },
         ))
     }
 }
 
 impl LatestAtQuery {
     pub const fn new(timeline: Timeline, at: TimeInt) -> Self {
-        Self { timeline, at }
+        Self {
+            timeline,
+            at,
+            include_timeless: true,
+        }
+    }
+
+    pub const fn temporal_only(timeline: Timeline, at: TimeInt) -> Self {
+        Self {
+            timeline,
+            at,
+            include_timeless: false,
+        }
     }
 }
 
@@ -51,22 +86,38 @@ impl LatestAtQuery {
 pub struct RangeQuery {
     pub timeline: Timeline,
     pub range: TimeRange,
+    /// When set to `true` (the default), the query will take temporal data into account.
+    // TODO: that's weird
+    pub include_temporal: bool,
 }
 
 impl std::fmt::Debug for RangeQuery {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!(
-            "<ranging from {} to {} (all inclusive) on {:?}>",
+            "<ranging from {} to {} (all inclusive) on {:?} ({} temporal)>",
             self.timeline.typ().format(self.range.min),
             self.timeline.typ().format(self.range.max),
             self.timeline.name(),
+            self.include_temporal,
         ))
     }
 }
 
 impl RangeQuery {
     pub const fn new(timeline: Timeline, range: TimeRange) -> Self {
-        Self { timeline, range }
+        Self {
+            timeline,
+            range,
+            include_temporal: true,
+        }
+    }
+
+    pub const fn timeless_only(timeline: Timeline, range: TimeRange) -> Self {
+        Self {
+            timeline,
+            range,
+            include_temporal: false,
+        }
     }
 }
 
@@ -208,39 +259,41 @@ impl DataStore {
             return row_indices;
         }
 
-        let row_indices_timeless = self.timeless_indices.get(ent_path_hash).and_then(|index| {
-            let row_indices = index.latest_at(primary, components);
-            trace!(
-                kind = "latest_at",
-                query = ?query,
-                entity = %ent_path,
-                %primary,
-                ?components,
-                ?row_indices,
-                timeless = true,
-                "row indices fetched"
-            );
-            row_indices
-        });
+        if query.include_timeless {
+            let row_indices_timeless = self.timeless_indices.get(ent_path_hash).and_then(|index| {
+                let row_indices = index.latest_at(primary, components);
+                trace!(
+                    kind = "latest_at",
+                    query = ?query,
+                    entity = %ent_path,
+                    %primary,
+                    ?components,
+                    ?row_indices,
+                    timeless = true,
+                    "row indices fetched"
+                );
+                row_indices
+            });
 
-        // Otherwise, let's see what's in the timeless index, and then..:
-        match (row_indices, row_indices_timeless) {
-            // nothing in the timeless index: return those partial row indices we got.
-            (Some(row_indices), None) => return Some(row_indices),
-            // no temporal row indices, but some timeless ones: return those as-is.
-            (None, Some(row_indices_timeless)) => return Some(row_indices_timeless),
-            // we have both temporal & timeless indices: let's merge the two when it makes sense
-            // and return the end result.
-            (Some(mut row_indices), Some(row_indices_timeless)) => {
-                for (i, row_idx) in row_indices_timeless.into_iter().enumerate() {
-                    if row_indices[i].is_none() {
-                        row_indices[i] = row_idx;
+            // Otherwise, let's see what's in the timeless index, and then..:
+            match (row_indices, row_indices_timeless) {
+                // nothing in the timeless index: return those partial row indices we got.
+                (Some(row_indices), None) => return Some(row_indices),
+                // no temporal row indices, but some timeless ones: return those as-is.
+                (None, Some(row_indices_timeless)) => return Some(row_indices_timeless),
+                // we have both temporal & timeless indices: let's merge the two when it makes sense
+                // and return the end result.
+                (Some(mut row_indices), Some(row_indices_timeless)) => {
+                    for (i, row_idx) in row_indices_timeless.into_iter().enumerate() {
+                        if row_indices[i].is_none() {
+                            row_indices[i] = row_idx;
+                        }
                     }
+                    return Some(row_indices);
                 }
-                return Some(row_indices);
+                // no row indices at all.
+                (None, None) => {}
             }
-            // no row indices at all.
-            (None, None) => {}
         }
 
         trace!(
@@ -365,24 +418,31 @@ impl DataStore {
             "query started..."
         );
 
-        let timeless_index = self.timeless_indices.get(ent_path_hash);
-        let index = self.indices.get(&(query.timeline, *ent_path_hash));
-
-        timeless_index
+        let timeless = self
+            .timeless_indices
+            .get(ent_path_hash)
             .map(|index| {
                 index
                     .range(components)
                     .map(|(idx_row_nr, row_indices)| (None, idx_row_nr, row_indices))
             })
             .into_iter()
-            .flatten()
-            .chain(
-                index
-                    .map(|index| index.range(query.range, components))
-                    .into_iter()
-                    .flatten()
-                    .map(|(time, idx_row_nr, row_indices)| (Some(time), idx_row_nr, row_indices)),
-            )
+            .flatten();
+
+        let temporal = if query.include_temporal {
+            let it = self
+                .indices
+                .get(&(query.timeline, *ent_path_hash))
+                .map(|index| index.range(query.range, components))
+                .into_iter()
+                .flatten()
+                .map(|(time, idx_row_nr, row_indices)| (Some(time), idx_row_nr, row_indices));
+            itertools::Either::Left(it)
+        } else {
+            itertools::Either::Right(std::iter::empty())
+        };
+
+        timeless.chain(temporal)
     }
 
     /// Retrieves the data associated with a list of `components` at the specified `indices`.
@@ -529,10 +589,10 @@ impl PersistentIndexTable {
     }
 
     /// Returns an empty iterator if no data could be found for any reason.
-    pub fn range<'a, const N: usize>(
-        &'a self,
+    pub fn range<const N: usize>(
+        &self,
         components: [ComponentName; N],
-    ) -> impl Iterator<Item = (IndexRowNr, [Option<RowIndex>; N])> + 'a {
+    ) -> impl Iterator<Item = (IndexRowNr, [Option<RowIndex>; N])> + '_ {
         // Early-exit if the table is unaware of any of our components of interest.
         if components
             .iter()
