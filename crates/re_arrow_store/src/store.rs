@@ -16,9 +16,14 @@ use re_log_types::{
 
 // --- Indices & offsets ---
 
-pub enum RowIndexUUU {
-    Temporal(RowIndex),
-    Timeless(RowIndex),
+/// An opaque type that directly refers to a row of data within the datastore, iff it is associated
+/// with a component name.
+///
+/// See [`DataStore::latest_at`], [`DataStore::range`] & [`DataStore::get`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum RowIndex {
+    Temporal(RowIndexErased),
+    Timeless(RowIndexErased),
 }
 
 /// A vector of times. Our primary column, always densely filled.
@@ -26,8 +31,8 @@ pub type TimeIndex = Vec<i64>;
 
 /// A vector of references into the component tables. None = null.
 // TODO(cmc): keeping a separate validity might be a better option, maybe.
-pub type SecondaryIndex = Vec<Option<RowIndex>>;
-static_assertions::assert_eq_size!(u64, Option<RowIndex>);
+pub type SecondaryIndex = Vec<Option<RowIndexErased>>;
+static_assertions::assert_eq_size!(u64, Option<RowIndexErased>);
 
 // TODO(#639): We desperately need to work on the terminology here:
 //
@@ -49,13 +54,9 @@ static_assertions::assert_eq_size!(u64, Option<RowIndex>);
 //   It is relative per bucket.
 //   It's used to tiebreak results with an identical time, should you need too.
 
-/// An opaque type that directly refers to a row of data within the datastore, iff it is associated
-/// with a component name.
-///
-/// See [`DataStore::latest_at`], [`DataStore::range`] & [`DataStore::get`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct RowIndex(pub(crate) NonZeroU64);
-impl RowIndex {
+pub struct RowIndexErased(pub(crate) NonZeroU64);
+impl RowIndexErased {
     /// Panics if `v` is 0.
     pub(crate) fn from_u64(v: u64) -> Self {
         Self(v.try_into().unwrap())
@@ -65,7 +66,7 @@ impl RowIndex {
         self.0.into()
     }
 }
-impl std::fmt::Display for RowIndex {
+impl std::fmt::Display for RowIndexErased {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!("{}", self.0))
     }
@@ -206,12 +207,12 @@ pub struct DataStore {
 
     /// Used to cache auto-generated cluster components, i.e. `[0]`, `[0, 1]`, `[0, 1, 2]`, etc
     /// so that they can be properly deduplicated.
-    pub(crate) cluster_comp_cache: IntMap<usize, RowIndex>,
+    pub(crate) cluster_comp_cache: IntMap<usize, RowIndexErased>,
     /// Used to cache auto-generated cluster components, i.e. `[0]`, `[0, 1]`, `[0, 1, 2]`, etc
     /// so that they can be properly deduplicated.
     //
     // TODO: this is absolutely disgusting.
-    pub(crate) timeless_cluster_comp_cache: IntMap<usize, RowIndex>,
+    pub(crate) timeless_cluster_comp_cache: IntMap<usize, RowIndexErased>,
 
     /// Maps `MsgId`s to some metadata (just timepoints at the moment).
     ///
@@ -357,7 +358,7 @@ impl DataStore {
         // Row indices should be continuous across all index tables.
         // TODO(#449): update this one appropriately when GC lands.
         {
-            let mut row_indices: IntMap<_, Vec<RowIndex>> = IntMap::default();
+            let mut row_indices: IntMap<_, Vec<RowIndexErased>> = IntMap::default();
             for table in self.indices.values() {
                 for bucket in table.buckets.values() {
                     for (comp, index) in &bucket.indices.read().indices {
@@ -383,7 +384,7 @@ impl DataStore {
 
         // Row indices should be continuous across all timeless index tables.
         {
-            let mut row_indices: IntMap<_, Vec<RowIndex>> = IntMap::default();
+            let mut row_indices: IntMap<_, Vec<RowIndexErased>> = IntMap::default();
             for table in self.timeless_indices.values() {
                 for (comp, index) in &table.indices {
                     let row_indices = row_indices.entry(*comp).or_default();
@@ -408,7 +409,6 @@ impl DataStore {
         for table in self.timeless_indices.values() {
             table.sanity_check()?;
         }
-
         for table in self.timeless_components.values() {
             table.sanity_check()?;
         }
@@ -416,7 +416,6 @@ impl DataStore {
         for table in self.indices.values() {
             table.sanity_check()?;
         }
-
         for table in self.components.values() {
             table.sanity_check()?;
         }

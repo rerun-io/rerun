@@ -10,7 +10,8 @@ use re_log_types::{ComponentName, ObjPath as EntityPath, TimeInt, TimeRange, Tim
 
 use crate::{
     ComponentBucket, ComponentTable, DataStore, IndexBucket, IndexBucketIndices, IndexRowNr,
-    IndexTable, PersistentComponentTable, PersistentIndexTable, RowIndex, SecondaryIndex,
+    IndexTable, PersistentComponentTable, PersistentIndexTable, RowIndex, RowIndexErased,
+    SecondaryIndex,
 };
 
 // --- Queries ---
@@ -167,7 +168,7 @@ impl DataStore {
         ent_path: &EntityPath,
         primary: ComponentName,
         components: &[ComponentName; N],
-    ) -> Option<[Option<RowIndexUUU>; N]> {
+    ) -> Option<[Option<RowIndex>; N]> {
         // TODO(cmc): kind & query_id need to somehow propagate through the span system.
         self.query_id.fetch_add(1, Ordering::Relaxed);
 
@@ -199,6 +200,7 @@ impl DataStore {
             }
         }
 
+        // TODO: proper merge rules
         // TODO: prob gonna need some doc update here...
         if let Some(index) = self.timeless_indices.get(ent_path_hash) {
             if let row_indices @ Some(_) = index.latest_at(primary, components) {
@@ -378,11 +380,22 @@ impl DataStore {
             .enumerate()
             .filter_map(|(i, (comp, row_idx))| row_idx.map(|row_idx| (i, comp, row_idx)))
         {
-            let row = self
-                .components
-                .get(&component)
-                .and_then(|table| table.get(row_idx));
-            results[i] = row;
+            match row_idx {
+                RowIndex::Timeless(row_idx) => {
+                    let row = self
+                        .timeless_components
+                        .get(&component)
+                        .map(|table| table.get(row_idx));
+                    results[i] = row;
+                }
+                RowIndex::Temporal(row_idx) => {
+                    let row = self
+                        .components
+                        .get(&component)
+                        .and_then(|table| table.get(row_idx));
+                    results[i] = row;
+                }
+            }
         }
 
         results
@@ -482,7 +495,7 @@ impl PersistentIndexTable {
                         %primary_idx, %secondary_idx, %row_idx,
                         "found row index",
                     );
-                    row_indices[i] = Some(row_idx);
+                    row_indices[i] = Some(RowIndex::Timeless(row_idx));
                 }
             }
         }
@@ -515,8 +528,8 @@ impl PersistentIndexTable {
             let mut row_indices = [None; N];
             for (i, component) in components.iter().enumerate() {
                 if let Some(index) = comp_indices.get(component) {
-                    if let row_idx @ Some(_) = index[comp_idx_row_nr.0 as usize] {
-                        row_indices[i] = row_idx;
+                    if let Some(row_idx) = index[comp_idx_row_nr.0 as usize] {
+                        row_indices[i] = Some(RowIndex::Timeless(row_idx));
                     }
                 }
             }
@@ -809,7 +822,7 @@ impl IndexBucket {
                         %primary_idx, %secondary_idx, %row_idx,
                         "found row index",
                     );
-                    row_indices[i] = Some(row_idx);
+                    row_indices[i] = Some(RowIndex::Temporal(row_idx));
                 }
             }
         }
@@ -890,8 +903,8 @@ impl IndexBucket {
                 let mut row_indices = [None; N];
                 for (i, component) in components.iter().enumerate() {
                     if let Some(index) = comp_indices.get(component) {
-                        if let row_idx @ Some(_) = index[comp_idx_row_nr.0 as usize] {
-                            row_indices[i] = row_idx;
+                        if let Some(row_idx) = index[comp_idx_row_nr.0 as usize] {
+                            row_indices[i] = Some(RowIndex::Temporal(row_idx));
                         }
                     }
                 }
@@ -1012,10 +1025,27 @@ impl IndexBucketIndices {
     }
 }
 
+// --- Persistent Components ---
+
+impl PersistentComponentTable {
+    /// Returns a shallow clone of the row data present at the given `row_idx`.
+    ///
+    /// Panics if `row_idx` is out of bounds.
+    //
+    // TODO(cmc): probably have to relax these panics once GC lands.
+    pub fn get(&self, row_idx: RowIndexErased) -> Box<dyn Array> {
+        self.chunks[row_idx.as_u64() as usize]
+            .as_any()
+            .downcast_ref::<ListArray<i32>>()
+            .unwrap()
+            .value(0)
+    }
+}
+
 // --- Components ---
 
 impl ComponentTable {
-    pub fn get(&self, row_idx: RowIndex) -> Option<Box<dyn Array>> {
+    pub fn get(&self, row_idx: RowIndexErased) -> Option<Box<dyn Array>> {
         let mut bucket_nr = self
             .buckets
             .partition_point(|bucket| row_idx.as_u64() >= bucket.row_offset);
@@ -1066,7 +1096,7 @@ impl ComponentBucket {
     }
 
     /// Returns a shallow clone of the row data present at the given `row_idx`.
-    pub fn get(&self, row_idx: RowIndex) -> Box<dyn Array> {
+    pub fn get(&self, row_idx: RowIndexErased) -> Box<dyn Array> {
         let row_idx = row_idx.as_u64() - self.row_offset;
         // This has to be safe to unwrap, otherwise it would never have made it past insertion.
         if self.archived {

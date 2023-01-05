@@ -14,7 +14,7 @@ use re_log_types::{
 
 use crate::{
     ArrayExt as _, ComponentBucket, ComponentTable, DataStore, DataStoreConfig, IndexBucket,
-    IndexBucketIndices, IndexTable, PersistentComponentTable, PersistentIndexTable, RowIndex,
+    IndexBucketIndices, IndexTable, PersistentComponentTable, PersistentIndexTable, RowIndexErased,
     TimeIndex,
 };
 
@@ -178,7 +178,7 @@ impl DataStore {
         row_nr: usize,
         cluster_comp_pos: Option<usize>,
         components: &[ComponentBundle],
-        row_indices: &mut IntMap<ComponentName, RowIndex>,
+        row_indices: &mut IntMap<ComponentName, RowIndexErased>,
     ) -> WriteResult<()> {
         let (cluster_row_idx, cluster_len) = self.get_or_create_cluster_component(
             row_nr,
@@ -197,7 +197,10 @@ impl DataStore {
             // with insert IDs!
             // We're just abusing the fact that any value we push here as a `RowIndex` will end up
             // as-is in the index.
-            row_indices.insert(Self::insert_id_key(), RowIndex::from_u64(self.insert_id));
+            row_indices.insert(
+                Self::insert_id_key(),
+                RowIndexErased::from_u64(self.insert_id),
+            );
         }
 
         for bundle in components
@@ -250,7 +253,7 @@ impl DataStore {
         row_nr: usize,
         cluster_comp_pos: Option<usize>,
         components: &[ComponentBundle],
-        row_indices: &mut IntMap<ComponentName, RowIndex>,
+        row_indices: &mut IntMap<ComponentName, RowIndexErased>,
     ) -> WriteResult<()> {
         let (cluster_row_idx, cluster_len) =
             self.get_or_create_cluster_component(row_nr, cluster_comp_pos, components, time_point)?;
@@ -265,7 +268,10 @@ impl DataStore {
             // with insert IDs!
             // We're just abusing the fact that any value we push here as a `RowIndex` will end up
             // as-is in the index.
-            row_indices.insert(Self::insert_id_key(), RowIndex::from_u64(self.insert_id));
+            row_indices.insert(
+                Self::insert_id_key(),
+                RowIndexErased::from_u64(self.insert_id),
+            );
         }
 
         for bundle in components
@@ -321,9 +327,9 @@ impl DataStore {
         cluster_comp_pos: Option<usize>,
         components: &[ComponentBundle],
         time_point: &TimePoint,
-    ) -> WriteResult<(RowIndex, usize)> {
+    ) -> WriteResult<(RowIndexErased, usize)> {
         enum RowIndexOrData {
-            RowIndex(RowIndex),
+            RowIndex(RowIndexErased),
             Data(Box<dyn Array>),
         }
 
@@ -440,7 +446,10 @@ impl PersistentIndexTable {
     }
 
     #[allow(clippy::unnecessary_wraps)]
-    pub fn insert(&mut self, row_indices: &IntMap<ComponentName, RowIndex>) -> anyhow::Result<()> {
+    pub fn insert(
+        &mut self,
+        row_indices: &IntMap<ComponentName, RowIndexErased>,
+    ) -> anyhow::Result<()> {
         // 2-way merge, step1: left-to-right
         //
         // push new row indices to their associated secondary index
@@ -486,7 +495,7 @@ impl IndexTable {
         &mut self,
         config: &DataStoreConfig,
         time: TimeInt,
-        indices: &IntMap<ComponentName, RowIndex>,
+        indices: &IntMap<ComponentName, RowIndexErased>,
     ) -> anyhow::Result<()> {
         // borrowck workaround
         let timeline = self.timeline;
@@ -618,7 +627,7 @@ impl IndexBucket {
     pub fn insert(
         &mut self,
         time: TimeInt,
-        row_indices: &IntMap<ComponentName, RowIndex>,
+        row_indices: &IntMap<ComponentName, RowIndexErased>,
     ) -> anyhow::Result<()> {
         let mut guard = self.indices.write();
         let IndexBucketIndices {
@@ -968,7 +977,7 @@ impl PersistentComponentTable {
     /// ```
     //
     // TODO(#589): support for batched row component insertions
-    pub fn push(&mut self, rows_single: &dyn Array) -> RowIndex {
+    pub fn push(&mut self, rows_single: &dyn Array) -> RowIndexErased {
         debug_assert!(
             rows_single.len() == 1,
             "batched row component insertions are not supported yet"
@@ -982,7 +991,7 @@ impl PersistentComponentTable {
         // TODO(#589): support for non-unit-length chunks
         self.chunks.push(rows_single.to_boxed()); // shallow
 
-        RowIndex::from_u64(self.chunks.len() as u64 - 1)
+        RowIndexErased::from_u64(self.chunks.len() as u64 - 1)
     }
 }
 
@@ -1020,7 +1029,7 @@ impl ComponentTable {
         config: &DataStoreConfig,
         time_point: &TimePoint,
         rows_single: &dyn Array,
-    ) -> RowIndex {
+    ) -> RowIndexErased {
         debug_assert!(
             ListArray::<i32>::get_child_type(rows_single.data_type()) == &self.datatype,
             "trying to insert data of the wrong datatype in a component table, \
@@ -1070,7 +1079,7 @@ impl ComponentTable {
         //   offset 0, thus this cannot fail.
         // - If the table has just overflowed, then we've just pushed a bucket to the dequeue.
         let active_bucket = self.buckets.back_mut().unwrap();
-        let row_idx = RowIndex::from_u64(
+        let row_idx = RowIndexErased::from_u64(
             active_bucket.push(time_point, rows_single) + active_bucket.row_offset,
         );
 
