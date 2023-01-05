@@ -25,26 +25,22 @@ use re_log_types::{
 // --- LatestComponentsAt ---
 
 #[test]
-fn latest_components_at() {
+fn all_components() {
     init_logs();
 
     let ent_path = EntityPath::from("this/that");
 
-    let frame0 = 0.into();
+    //let frame0 = 0.into();
     let frame1 = 1.into();
     let frame2 = 2.into();
     let frame3 = 3.into();
     let frame4 = 4.into();
 
     let assert_latest_components_at =
-        |store: &mut DataStore,
-         ent_path: &EntityPath,
-         frame_nr: TimeInt,
-         expected: Option<&[ComponentName]>| {
+        |store: &mut DataStore, ent_path: &EntityPath, expected: Option<&[ComponentName]>| {
             let timeline = Timeline::new("frame_nr", TimeType::Sequence);
 
-            let components =
-                store.latest_components_at(&LatestAtQuery::new(timeline, frame_nr), ent_path);
+            let components = store.all_components(&timeline, ent_path);
 
             let components = components.map(|mut components| {
                 components.sort();
@@ -59,10 +55,8 @@ fn latest_components_at() {
 
             store.sort_indices_if_needed();
             assert_eq!(
-                expected,
-                components,
-                "expected to find {expected:?} at frame {}, found {components:?} instead\n{store}",
-                timeline.typ().format(frame_nr)
+                expected, components,
+                "expected to find {expected:?}, found {components:?} instead\n{store}",
             );
         };
 
@@ -78,18 +72,15 @@ fn latest_components_at() {
         );
         let cluster_key = store.cluster_key();
 
-        let bundle = test_bundle!(ent_path @ [
-            build_frame_nr(frame2),
-        ] => [build_some_rects(2), build_some_point2d(2)]);
-        store.insert(&bundle).unwrap();
+        let components_a = &[
+            Rect2D::name(), // added by us
+            cluster_key,    // always here
+            MsgId::name(),  // automatically appended by MsgBundle
+            #[cfg(debug_assertions)]
+            DataStore::insert_id_key(), // automatically added in debug
+        ];
 
-        if let err @ Err(_) = store.sanity_check() {
-            store.sort_indices_if_needed();
-            eprintln!("{store}");
-            err.unwrap();
-        }
-
-        let components = &[
+        let components_b = &[
             Point2D::name(), // added by us
             Rect2D::name(),  // added by us
             cluster_key,     // always here
@@ -98,14 +89,25 @@ fn latest_components_at() {
             DataStore::insert_id_key(), // automatically added in debug
         ];
 
-        // `frame0` & `frame1` don't actually have any data, but since they share the same
-        // _indexing time_ as `frame2`, we'll get the same results.
-        assert_latest_components_at(&mut store, &ent_path, frame0, Some(components));
-        assert_latest_components_at(&mut store, &ent_path, frame1, Some(components));
+        let bundle = test_bundle!(ent_path @ [
+            build_frame_nr(frame1),
+        ] => [build_some_rects(2)]);
+        store.insert(&bundle).unwrap();
 
-        assert_latest_components_at(&mut store, &ent_path, frame2, Some(components));
-        assert_latest_components_at(&mut store, &ent_path, frame3, Some(components));
-        assert_latest_components_at(&mut store, &ent_path, frame4, Some(components));
+        assert_latest_components_at(&mut store, &ent_path, Some(components_a));
+
+        let bundle = test_bundle!(ent_path @ [
+            build_frame_nr(frame2),
+        ] => [build_some_rects(2), build_some_point2d(2)]);
+        store.insert(&bundle).unwrap();
+
+        assert_latest_components_at(&mut store, &ent_path, Some(components_b));
+
+        if let err @ Err(_) = store.sanity_check() {
+            store.sort_indices_if_needed();
+            eprintln!("{store}");
+            err.unwrap();
+        }
     }
 
     // Tiny buckets, demonstrating the harder-to-reason-about cases.
@@ -133,22 +135,7 @@ fn latest_components_at() {
         // │ 3        ┆ -      ┆ 1       ┆ 3      ┆ 3         ┆ 1        │
         // └──────────┴────────┴─────────┴────────┴───────────┴──────────┘
 
-        let bundle = test_bundle!(ent_path @ [build_frame_nr(frame1)] => [build_some_rects(2)]);
-        store.insert(&bundle).unwrap();
-
-        let bundle = test_bundle!(ent_path @ [build_frame_nr(frame2)] => [build_some_instances(2)]);
-        store.insert(&bundle).unwrap();
-
-        let bundle = test_bundle!(ent_path @ [build_frame_nr(frame3)] => [build_some_point2d(2)]);
-        store.insert(&bundle).unwrap();
-
-        if let err @ Err(_) = store.sanity_check() {
-            store.sort_indices_if_needed();
-            eprintln!("{store}");
-            err.unwrap();
-        }
-
-        let components1 = &[
+        let components_a = &[
             Rect2D::name(), // added by us
             cluster_key,    // always here
             MsgId::name(),  // automatically appended by MsgBundle
@@ -156,7 +143,7 @@ fn latest_components_at() {
             DataStore::insert_id_key(), // automatically added in debug
         ];
 
-        let components23 = &[
+        let components_b = &[
             Rect2D::name(),  // ⚠ inherited before the buckets got splitted apart!
             Point2D::name(), // added by us
             cluster_key,     // always here
@@ -165,15 +152,26 @@ fn latest_components_at() {
             DataStore::insert_id_key(), // automatically added in debug
         ];
 
-        // `frame0` doesn't actually have any data, but since it shares the same _indexing time_
-        // as `frame1`, we'll get the same results.
-        assert_latest_components_at(&mut store, &ent_path, frame0, Some(components1));
+        let bundle = test_bundle!(ent_path @ [build_frame_nr(frame1)] => [build_some_rects(2)]);
+        store.insert(&bundle).unwrap();
 
-        assert_latest_components_at(&mut store, &ent_path, frame1, Some(components1));
+        assert_latest_components_at(&mut store, &ent_path, Some(components_a));
 
-        assert_latest_components_at(&mut store, &ent_path, frame2, Some(components23));
-        assert_latest_components_at(&mut store, &ent_path, frame3, Some(components23));
-        assert_latest_components_at(&mut store, &ent_path, frame4, Some(components23));
+        let bundle = test_bundle!(ent_path @ [build_frame_nr(frame2)] => [build_some_instances(2)]);
+        store.insert(&bundle).unwrap();
+
+        assert_latest_components_at(&mut store, &ent_path, Some(components_a));
+
+        let bundle = test_bundle!(ent_path @ [build_frame_nr(frame3)] => [build_some_point2d(2)]);
+        store.insert(&bundle).unwrap();
+
+        assert_latest_components_at(&mut store, &ent_path, Some(components_b));
+
+        if let err @ Err(_) = store.sanity_check() {
+            store.sort_indices_if_needed();
+            eprintln!("{store}");
+            err.unwrap();
+        }
     }
 
     // Tiny buckets and tricky splits, demonstrating a case that is not only extremely hard to
@@ -204,52 +202,48 @@ fn latest_components_at() {
         // │ 4        ┆ 3      ┆ 3      ┆ 3         ┆ 1        │
         // └──────────┴────────┴────────┴───────────┴──────────┘
 
-        let bundle = test_bundle!(ent_path @ [build_frame_nr(frame2)] => [build_some_rects(2)]);
-        store.insert(&bundle).unwrap();
-
-        let bundle = test_bundle!(ent_path @ [build_frame_nr(frame3)] => [build_some_rects(2)]);
-        store.insert(&bundle).unwrap();
-
-        let bundle = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [build_some_rects(2)]);
-        store.insert(&bundle).unwrap();
-
-        let bundle = test_bundle!(ent_path @ [build_frame_nr(frame1)] => [build_some_point2d(2)]);
-        store.insert(&bundle).unwrap();
-
-        if let err @ Err(_) = store.sanity_check() {
-            store.sort_indices_if_needed();
-            eprintln!("{store}");
-            err.unwrap();
-        }
-
-        let components12 = &[
-            Point2D::name(), // added by us
-            Rect2D::name(),  // added by us
-            cluster_key,     // always here
-            MsgId::name(),   // automatically appended by MsgBundle
-            #[cfg(debug_assertions)]
-            DataStore::insert_id_key(), // automatically added in debug
-        ];
-
-        let components34 = &[
-            // Point2D is missing!
-            Rect2D::name(), // added by use
+        let components_a = &[
+            Rect2D::name(), // added by us
             cluster_key,    // always here
             MsgId::name(),  // automatically appended by MsgBundle
             #[cfg(debug_assertions)]
             DataStore::insert_id_key(), // automatically added in debug
         ];
 
-        // `frame0` doesn't actually have any data, but since it shares the same _indexing time_
-        // as `frame1` & `frame2`, we'll get the same results.
-        assert_latest_components_at(&mut store, &ent_path, frame0, Some(components12));
+        let components_b = &[
+            Point2D::name(), // added by us but not contained in the second bucket
+            Rect2D::name(),  // added by use
+            cluster_key,     // always here
+            MsgId::name(),   // automatically appended by MsgBundle
+            #[cfg(debug_assertions)]
+            DataStore::insert_id_key(), // automatically added in debug
+        ];
 
-        assert_latest_components_at(&mut store, &ent_path, frame1, Some(components12));
-        assert_latest_components_at(&mut store, &ent_path, frame2, Some(components12));
+        let bundle = test_bundle!(ent_path @ [build_frame_nr(frame2)] => [build_some_rects(2)]);
+        store.insert(&bundle).unwrap();
 
-        // Note how none of these two have a Point2D component, while they should!
-        assert_latest_components_at(&mut store, &ent_path, frame3, Some(components34));
-        assert_latest_components_at(&mut store, &ent_path, frame4, Some(components34));
+        assert_latest_components_at(&mut store, &ent_path, Some(components_a));
+
+        let bundle = test_bundle!(ent_path @ [build_frame_nr(frame3)] => [build_some_rects(2)]);
+        store.insert(&bundle).unwrap();
+
+        assert_latest_components_at(&mut store, &ent_path, Some(components_a));
+
+        let bundle = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [build_some_rects(2)]);
+        store.insert(&bundle).unwrap();
+
+        assert_latest_components_at(&mut store, &ent_path, Some(components_a));
+
+        let bundle = test_bundle!(ent_path @ [build_frame_nr(frame1)] => [build_some_point2d(2)]);
+        store.insert(&bundle).unwrap();
+
+        assert_latest_components_at(&mut store, &ent_path, Some(components_b));
+
+        if let err @ Err(_) = store.sanity_check() {
+            store.sort_indices_if_needed();
+            eprintln!("{store}");
+            err.unwrap();
+        }
     }
 }
 

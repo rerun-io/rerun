@@ -43,6 +43,8 @@ impl ScenePart for Boxes2DPartClassic {
         for (_obj_type, obj_path, time_query, obj_store) in
             query.iter_object_stores(ctx.log_db, &[ObjectType::BBox2D])
         {
+            scene.num_logged_2d_objects += 1;
+
             let properties = objects_properties.get(obj_path);
             let annotations = scene.annotation_map.find(obj_path);
             let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(obj_path) else {
@@ -72,31 +74,25 @@ impl ScenePart for Boxes2DPartClassic {
                 let color = annotation_info.color(color, DefaultColor::ObjPath(obj_path));
                 let label = annotation_info.label(label);
 
-                // Hovering with a rect.
-                let rect = egui::Rect::from_min_max(bbox.min.into(), bbox.max.into());
-                scene.ui.rects.push((rect, instance_hash));
-
                 let mut paint_props = paint_properties(color, stroke_width);
                 if instance_hash.is_some() && hovered_instance == instance_hash {
                     apply_hover_effect(&mut paint_props);
                 }
 
-                // Lines don't associated with instance (i.e. won't participate in hovering)
-                line_batch
-                    .add_axis_aligned_rectangle_outline_2d(bbox.min.into(), bbox.max.into())
-                    .color(paint_props.bg_stroke.color)
-                    .radius(Size::new_points(paint_props.bg_stroke.width * 0.5))
-                    .user_data(instance_hash);
                 line_batch
                     .add_axis_aligned_rectangle_outline_2d(bbox.min.into(), bbox.max.into())
                     .color(paint_props.fg_stroke.color)
-                    .radius(Size::new_points(paint_props.fg_stroke.width * 0.5));
+                    .radius(Size::new_points(paint_props.fg_stroke.width * 0.5))
+                    .user_data(instance_hash);
 
                 if let Some(label) = label {
                     scene.ui.labels_2d.push(Label2D {
                         text: label,
                         color: paint_props.fg_stroke.color,
-                        target: Label2DTarget::Rect(rect),
+                        target: Label2DTarget::Rect(egui::Rect::from_min_max(
+                            bbox.min.into(),
+                            bbox.max.into(),
+                        )),
                         labled_instance: instance_hash,
                     });
                 }
@@ -126,6 +122,8 @@ impl Boxes2DPart {
         rect: &Rect2D,
         color: Option<ColorRGBA>,
     ) {
+        scene.num_logged_2d_objects += 1;
+
         let color = color.map(|c| c.to_array());
 
         // TODO(jleibs): Lots of missing components
@@ -140,17 +138,11 @@ impl Boxes2DPart {
         let color = annotation_info.color(color.as_ref(), DefaultColor::ObjPath(obj_path));
         let label = annotation_info.label(label);
 
-        // Hovering with a rect.
-        let hover_rect =
-            egui::Rect::from_min_size(egui::pos2(rect.x, rect.y), egui::vec2(rect.w, rect.h));
-        scene.ui.rects.push((hover_rect, instance));
-
         let mut paint_props = paint_properties(color, stroke_width);
         if hovered_instance == instance {
             apply_hover_effect(&mut paint_props);
         }
 
-        // Lines don't associated with instance (i.e. won't participate in hovering)
         let mut line_batch = scene
             .primitives
             .line_strips
@@ -163,23 +155,18 @@ impl Boxes2DPart {
                 glam::vec2(rect.w, 0.0),
                 glam::vec2(0.0, rect.h),
             )
-            .color(paint_props.bg_stroke.color)
-            .radius(Size::new_points(paint_props.bg_stroke.width * 0.5));
-
-        line_batch
-            .add_rectangle_outline_2d(
-                glam::vec2(rect.x, rect.y),
-                glam::vec2(rect.w, 0.0),
-                glam::vec2(0.0, rect.h),
-            )
             .color(paint_props.fg_stroke.color)
-            .radius(Size::new_points(paint_props.fg_stroke.width * 0.5));
+            .radius(Size::new_points(paint_props.fg_stroke.width * 0.5))
+            .user_data(instance);
 
         if let Some(label) = label {
             scene.ui.labels_2d.push(Label2D {
                 text: label,
                 color: paint_props.fg_stroke.color,
-                target: Label2DTarget::Rect(hover_rect),
+                target: Label2DTarget::Rect(egui::Rect::from_min_size(
+                    egui::pos2(rect.x, rect.y),
+                    egui::vec2(rect.w, rect.h),
+                )),
                 labled_instance: instance,
             });
         }

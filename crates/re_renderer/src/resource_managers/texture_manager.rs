@@ -15,6 +15,12 @@ use super::ResourceManagerError;
 #[derive(Clone)]
 pub struct GpuTexture2DHandle(GpuTextureHandleStrong);
 
+impl GpuTexture2DHandle {
+    pub fn invalid() -> Self {
+        Self(Arc::new(crate::wgpu_resources::GpuTextureHandle::default()))
+    }
+}
+
 /// Data required to create a texture 2d resource.
 ///
 /// It is *not* stored along side the resulting texture resource!

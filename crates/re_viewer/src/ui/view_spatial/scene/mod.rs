@@ -16,14 +16,15 @@ use crate::{
     ui::{
         annotations::{auto_color, AnnotationMap},
         transform_cache::TransformCache,
-        view_spatial::axis_color,
         Annotations, SceneQuery,
     },
 };
 
+mod picking;
 mod primitives;
 mod scene_part;
 
+pub use self::picking::{AdditionalPickingInfo, PickingRayHit, PickingResult};
 pub use self::primitives::SceneSpatialPrimitives;
 use scene_part::ScenePart;
 
@@ -80,7 +81,7 @@ pub enum Label2DTarget {
 pub struct Label2D {
     pub text: String,
     pub color: Color32,
-    /// The shape being labled.
+    /// The shape being labeled.
     pub target: Label2DTarget,
     /// What is hovered if this label is hovered.
     pub labled_instance: InstanceIdHash,
@@ -103,8 +104,9 @@ pub struct SceneSpatialUiData {
     pub labels_3d: Vec<Label3D>,
     pub labels_2d: Vec<Label2D>,
 
-    /// Cursor within any of these rects cause the referred instance to be hovered.
-    pub rects: Vec<(egui::Rect, InstanceIdHash)>,
+    /// Picking any any of these rects cause the referred instance to be hovered.
+    /// Only use this for 2d overlays!
+    pub pickable_ui_rects: Vec<(egui::Rect, InstanceIdHash)>,
 
     /// Images are a special case of rects where we're storing some extra information to allow miniature previews etc.
     pub images: Vec<Image>,
@@ -115,6 +117,11 @@ pub struct SceneSpatial {
     pub annotation_map: AnnotationMap,
     pub primitives: SceneSpatialPrimitives,
     pub ui: SceneSpatialUiData,
+
+    /// Number of 2d primitives logged, used for heuristics.
+    num_logged_2d_objects: usize,
+    /// Number of 3d primitives logged, used for heuristics.
+    num_logged_3d_objects: usize,
 }
 
 fn instance_hash_if_interactive(
@@ -239,7 +246,7 @@ impl SceneSpatial {
         crate::profile_function!();
 
         // Size of a pixel (in meters), when projected out one meter:
-        let point_size_at_one_meter = eye.fov_y / viewport_size.y;
+        let point_size_at_one_meter = eye.fov_y.unwrap() / viewport_size.y;
 
         let eye_camera_plane =
             macaw::Plane3::from_normal_point(eye.forward_in_world(), eye.pos_in_world());
@@ -293,23 +300,12 @@ impl SceneSpatial {
             }
 
             if ctx.options.show_camera_axes_in_3d {
-                let world_from_cam = camera.world_from_cam();
-
-                // TODO(emilk): include the names of the axes ("Right", "Down", "Forward", etc)
-                let cam_origin = camera.position();
-
-                let mut batch = self.primitives.line_strips.batch("camera axis");
-
-                for (axis_index, dir) in [Vec3::X, Vec3::Y, Vec3::Z].iter().enumerate() {
-                    let axis_end = world_from_cam.transform_point3(scale * *dir);
-                    let color = axis_color(axis_index);
-
-                    batch
-                        .add_segment(cam_origin, axis_end)
-                        .radius(Size::new_points(2.0))
-                        .color(color)
-                        .user_data(instance_id);
-                }
+                self.primitives.add_axis_lines(
+                    camera.world_from_cam(),
+                    instance_id,
+                    eye,
+                    viewport_size,
+                );
             }
 
             let mut frustum_length = scene_bbox.size().length() * 0.3;
@@ -382,9 +378,14 @@ impl SceneSpatial {
             return false;
         }
 
-        // Otherwise do an heuristic based on the z extent of bounding box
-        let bbox = self.primitives.bounding_box();
-        bbox.min.z >= self.primitives.line_strips.next_2d_z * 2.0 && bbox.max.z < 1.0
+        if self.num_logged_3d_objects == 0 {
+            return true;
+        }
+        if self.num_logged_2d_objects == 0 {
+            return false;
+        }
+
+        false
     }
 
     pub fn preferred_navigation_mode(&self) -> SpatialNavigationMode {
@@ -394,31 +395,39 @@ impl SceneSpatial {
             SpatialNavigationMode::ThreeD
         }
     }
+
+    pub fn picking(
+        &self,
+        pointer_in_ui: glam::Vec2,
+        ui_rect: &egui::Rect,
+        eye: &Eye,
+        ui_interaction_radius: f32,
+    ) -> PickingResult {
+        picking::picking(
+            pointer_in_ui,
+            ui_rect,
+            eye,
+            &self.primitives,
+            &self.ui,
+            ui_interaction_radius,
+        )
+    }
 }
 
 pub struct ObjectPaintProperties {
-    pub bg_stroke: egui::Stroke,
     pub fg_stroke: egui::Stroke,
 }
 
 // TODO(andreas): we're no longer using egui strokes. Replace this.
 fn paint_properties(color: [u8; 4], stroke_width: Option<&f32>) -> ObjectPaintProperties {
-    let bg_color = Color32::from_black_alpha(196);
     let fg_color = to_ecolor(color);
-    let stroke_width = stroke_width.map_or(1.5, |w| *w);
-    let bg_stroke = egui::Stroke::new(stroke_width + 2.0, bg_color);
+    let stroke_width = stroke_width.map_or(2.0, |w| *w); // TODO(andreas): use re_renderer auto_size
     let fg_stroke = egui::Stroke::new(stroke_width, fg_color);
 
-    ObjectPaintProperties {
-        bg_stroke,
-        fg_stroke,
-    }
+    ObjectPaintProperties { fg_stroke }
 }
 
 fn apply_hover_effect(paint_props: &mut ObjectPaintProperties) {
-    paint_props.bg_stroke.width *= 2.0;
-    paint_props.bg_stroke.color = Color32::BLACK;
-
     paint_props.fg_stroke.width *= 2.0;
     paint_props.fg_stroke.color = Color32::WHITE;
 }

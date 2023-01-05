@@ -45,6 +45,8 @@ impl ScenePart for Points3DPartClassic {
         for (_obj_type, obj_path, time_query, obj_store) in
             query.iter_object_stores(ctx.log_db, &[ObjectType::Point3D])
         {
+            scene.num_logged_3d_objects += 1;
+
             let mut batch_size = 0;
             let mut show_labels = true;
             let mut label_batch = Vec::new();
@@ -265,6 +267,8 @@ impl Points3DPart {
         ent_path: &ObjPath,
         world_from_obj: Mat4,
     ) -> Result<(), QueryError> {
+        scene.num_logged_3d_objects += 1;
+
         let annotations = scene.annotation_map.find(ent_path);
         let properties = objects_properties.get(ent_path);
         let show_labels = true;
