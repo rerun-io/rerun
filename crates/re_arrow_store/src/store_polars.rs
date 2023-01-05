@@ -8,7 +8,9 @@ use nohash_hasher::IntMap;
 use polars_core::{functions::diag_concat_df, prelude::*};
 use re_log_types::ComponentName;
 
-use crate::{ComponentTable, DataStore, DataStoreConfig, IndexBucket, IndexBucketIndices};
+use crate::{
+    clean_for_polars, ComponentTable, DataStore, DataStoreConfig, IndexBucket, IndexBucketIndices,
+};
 
 // ---
 
@@ -171,7 +173,7 @@ impl IndexBucket {
 // ---
 
 fn new_infallible_series(name: &str, data: Box<dyn Array>, len: usize) -> Series {
-    Series::try_from((name, data)).unwrap_or_else(|_| {
+    Series::try_from((name, clean_for_polars(data))).unwrap_or_else(|_| {
         let errs = Utf8Array::<i32>::from(vec![Some("<ERR>"); len]);
         Series::try_from((name, errs.boxed())).unwrap() // cannot fail
     })
