@@ -90,7 +90,8 @@ where
                 self.vertices
                     .iter()
                     .zip(self.user_data.iter())
-                    .skip(vertex_offset),
+                    .skip(vertex_offset)
+                    .take(batch.point_count as usize),
             );
             vertex_offset += batch.point_count as usize;
             out
