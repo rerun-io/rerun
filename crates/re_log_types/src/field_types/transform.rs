@@ -182,6 +182,34 @@ impl Pinhole {
 
 // ----------------------------------------------------------------------------
 
+/// A transform between two spaces.
+///
+/// ```
+/// use re_log_types::field_types::{Transform, Rigid3, Pinhole};
+/// use arrow2_convert::field::ArrowField;
+/// use arrow2::datatypes::{DataType, Field, UnionMode};
+///
+/// assert_eq!(
+///     Transform::data_type(),
+///     DataType::Union(
+///        vec![
+///            Field::new("Unknown", DataType::Boolean, false),
+///            Field::new(
+///                "Rigid3",
+///                Rigid3::data_type(),
+///                false
+///            ),
+///            Field::new(
+///                "Pinhole",
+///                Pinhole::data_type(),
+///                false
+///            )
+///        ],
+///        None,
+///        UnionMode::Dense
+///     )
+/// );
+/// ```
 #[derive(Clone, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[arrow_field(type = "dense")]
