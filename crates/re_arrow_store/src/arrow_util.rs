@@ -271,7 +271,7 @@ fn test_clean_for_polars_modify() {
     use re_log_types::{Pinhole, Transform};
     // transforms are a nice pathological type with both Unions and FixedSizeLists
     let transforms = vec![Transform::Pinhole(Pinhole {
-        image_from_cam: [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]],
+        image_from_cam: [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]].into(),
         resolution: None,
     })];
 
@@ -288,21 +288,18 @@ fn test_clean_for_polars_modify() {
                         DataType::Struct(vec![
                             Field::new(
                                 "rotation",
-                                DataType::Struct(vec![
-                                    Field::new("x", DataType::Float32, false),
-                                    Field::new("y", DataType::Float32, false),
-                                    Field::new("z", DataType::Float32, false),
-                                    Field::new("w", DataType::Float32, false),
-                                ]),
+                                DataType::FixedSizeList(
+                                    Box::new(Field::new("item", DataType::Float32, false)),
+                                    4
+                                ),
                                 false
                             ),
                             Field::new(
                                 "translation",
-                                DataType::Struct(vec![
-                                    Field::new("x", DataType::Float32, false),
-                                    Field::new("y", DataType::Float32, false),
-                                    Field::new("z", DataType::Float32, false),
-                                ]),
+                                DataType::FixedSizeList(
+                                    Box::new(Field::new("item", DataType::Float32, false)),
+                                    3
+                                ),
                                 false
                             )
                         ]),
@@ -314,7 +311,7 @@ fn test_clean_for_polars_modify() {
                             Field::new(
                                 "image_from_cam",
                                 DataType::FixedSizeList(
-                                    Box::new(Field::new("elem", DataType::Float32, false)),
+                                    Box::new(Field::new("item", DataType::Float32, false)),
                                     9
                                 ),
                                 false,
@@ -322,7 +319,7 @@ fn test_clean_for_polars_modify() {
                             Field::new(
                                 "resolution",
                                 DataType::FixedSizeList(
-                                    Box::new(Field::new("elem", DataType::Float32, false)),
+                                    Box::new(Field::new("item", DataType::Float32, false)),
                                     2
                                 ),
                                 true,
@@ -351,21 +348,12 @@ fn test_clean_for_polars_modify() {
                     DataType::Struct(vec![
                         Field::new(
                             "rotation",
-                            DataType::Struct(vec![
-                                Field::new("x", DataType::Float32, false),
-                                Field::new("y", DataType::Float32, false),
-                                Field::new("z", DataType::Float32, false),
-                                Field::new("w", DataType::Float32, false),
-                            ]),
+                            DataType::List(Box::new(Field::new("item", DataType::Float32, false)),),
                             false
                         ),
                         Field::new(
                             "translation",
-                            DataType::Struct(vec![
-                                Field::new("x", DataType::Float32, false),
-                                Field::new("y", DataType::Float32, false),
-                                Field::new("z", DataType::Float32, false),
-                            ]),
+                            DataType::List(Box::new(Field::new("item", DataType::Float32, false)),),
                             false
                         )
                     ]),
@@ -376,12 +364,12 @@ fn test_clean_for_polars_modify() {
                     DataType::Struct(vec![
                         Field::new(
                             "image_from_cam",
-                            DataType::List(Box::new(Field::new("elem", DataType::Float32, false))),
+                            DataType::List(Box::new(Field::new("item", DataType::Float32, false))),
                             false,
                         ),
                         Field::new(
                             "resolution",
-                            DataType::List(Box::new(Field::new("elem", DataType::Float32, false))),
+                            DataType::List(Box::new(Field::new("item", DataType::Float32, false))),
                             true,
                         ),
                     ]),
