@@ -51,14 +51,14 @@ pub fn split_resolution(
 ) -> impl Iterator<Item = SplitView> {
     let total_width = resolution[0] as f32;
     let total_height = resolution[1] as f32;
-    let width = total_width / nb_cols as f32;
-    let height = total_height / nb_rows as f32;
+    let width = (total_width / nb_cols as f32).floor();
+    let height = (total_height / nb_rows as f32).floor();
     (0..nb_rows)
         .flat_map(move |row| (0..nb_cols).map(move |col| (row, col)))
         .map(move |(row, col)| {
             // very quick'n'dirty (uneven) borders
-            let y = f32::clamp(row as f32 * height + 2.0, 2.0, total_height - 2.0);
-            let x = f32::clamp(col as f32 * width + 2.0, 2.0, total_width - 2.0);
+            let y = f32::clamp(row as f32 * height + 2.0, 2.0, total_height - 2.0).floor();
+            let x = f32::clamp(col as f32 * width + 2.0, 2.0, total_width - 2.0).floor();
             SplitView {
                 target_location: glam::vec2(x, y),
                 resolution_in_pixel: [(width - 4.0) as u32, (height - 4.0) as u32],
