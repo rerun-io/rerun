@@ -27,6 +27,9 @@ struct FrameUniformBuffer {
 
     /// Size used for all sizes given with Size::AUTO_LARGE
     auto_size_large_in_points: f32,
+
+    /// TODO: doc
+    depth_offset_factor: f32,
 };
 @group(0) @binding(0)
 var<uniform> frame: FrameUniformBuffer;

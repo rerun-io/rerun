@@ -115,7 +115,7 @@ pub fn picking(
     let mut transparent_hits = Vec::new(); // Combined, sorted (and partially "hidden") by opaque results later.
 
     let mut check_hit = |side_ui_dist_sq, ray_hit: PickingRayHit, transparent| {
-        if ray_hit.ray_t < closest_opaque_pick.ray_t
+        if ray_hit.ray_t <= closest_opaque_pick.ray_t
             && side_ui_dist_sq <= closest_opaque_side_ui_dist_sq
         {
             if transparent {

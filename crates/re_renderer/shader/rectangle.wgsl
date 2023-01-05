@@ -1,5 +1,6 @@
 #import <./types.wgsl>
 #import <./global_bindings.wgsl>
+#import <./utils/depth_offset.wgsl>
 
 struct UniformBuffer {
     /// Top left corner position in world space.
@@ -8,6 +9,7 @@ struct UniformBuffer {
     extent_u: Vec3,
     /// Vector that spans up the rectangle from its top left corner along the v axis of the texture.
     extent_v: Vec3,
+    depth_offset: f32,
     /// Tint multiplied with the texture color.
     multiplicative_tint: Vec4,
 };
@@ -33,7 +35,7 @@ fn vs_main(@builtin(vertex_index) v_idx: u32) -> VertexOut {
                 rect_info.top_left_corner_position;
 
     var out: VertexOut;
-    out.position = frame.projection_from_world * Vec4(pos, 1.0);
+    out.position = apply_depth_offset(frame.projection_from_world * Vec4(pos, 1.0), rect_info.depth_offset);
     out.texcoord = texcoord;
 
     return out;

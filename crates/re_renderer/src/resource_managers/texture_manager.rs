@@ -1,7 +1,7 @@
 use std::{num::NonZeroU32, sync::Arc};
 
 use crate::{
-    wgpu_resources::{GpuTextureHandleStrong, GpuTexturePool, TextureDesc},
+    wgpu_resources::{GpuTexture, GpuTextureHandleStrong, GpuTexturePool, TextureDesc},
     DebugLabel,
 };
 
@@ -14,6 +14,12 @@ use super::ResourceManagerError;
 /// there is no difference as with buffer reliant data like meshes or most contents of draw-data.
 #[derive(Clone)]
 pub struct GpuTexture2DHandle(GpuTextureHandleStrong);
+
+impl GpuTexture2DHandle {
+    pub fn invalid() -> Self {
+        Self(Arc::new(crate::wgpu_resources::GpuTextureHandle::default()))
+    }
+}
 
 /// Data required to create a texture 2d resource.
 ///

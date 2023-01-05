@@ -95,6 +95,7 @@ impl ScenePart for ImagesPart {
                             texture_filter_minification:
                                 re_renderer::renderer::TextureFilterMin::Linear,
                             multiplicative_tint: paint_props.fg_stroke.color.into(),
+                            depth_offset: 0, // adjusted later
                         },
                     );
                     scene.primitives.textured_rectangles_ids.push(instance_hash);
@@ -156,9 +157,8 @@ impl ScenePart for ImagesPart {
         for (plane, mut grouped_rects) in rects_grouped_by_plane {
             let total_num_images = grouped_rects.len();
             for (idx, rect) in grouped_rects.iter_mut().enumerate() {
-                // Move a bit to avoid z fighting.
-                rect.top_left_corner_position +=
-                    plane.normal * (total_num_images - idx - 1) as f32 * 0.1;
+                // Set depth offset for correct order and avoid z fighting when there is a 3d camera.
+                rect.depth_offset = idx as re_renderer::DepthOffset;
                 // make top images transparent
                 let opacity = if idx == 0 {
                     1.0

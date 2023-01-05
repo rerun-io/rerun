@@ -365,6 +365,9 @@ impl ViewBuilder {
         let auto_size_in_points = (0.0005 * viewport_size_in_points.length()).clamp(1.5, 5.0);
         let auto_size_large_in_points = auto_size_in_points * 1.5;
 
+        // TODO: doc
+        let depth_offset_factor = f32::EPSILON;
+
         ctx.queue.write_buffer(
             ctx.gpu_resources
                 .buffers
@@ -383,6 +386,9 @@ impl ViewBuilder {
 
                 auto_size_in_points,
                 auto_size_large_in_points,
+
+                depth_offset_factor,
+                _padding: glam::Vec3::ZERO,
             }),
         );
 

@@ -178,12 +178,13 @@ impl framework::Example for Render2D {
                     texture: self.rerun_logo_texture.clone(),
                     texture_filter_magnification: TextureFilterMag::Nearest,
                     texture_filter_minification: TextureFilterMin::Linear,
-                    multiplicative_tint: Rgba::WHITE,
+                    ..Default::default()
                 },
                 TexturedRect {
                     top_left_corner_position: glam::vec3(
                         500.0,
-                        170.0 + self.rerun_logo_texture_height as f32 * image_scale,
+                        // Intentionally overlap pictures to illustrate z-fighting resolution
+                        170.0 + self.rerun_logo_texture_height as f32 * image_scale * 0.25,
                         -0.05,
                     ),
                     extent_u: self.rerun_logo_texture_width as f32 * image_scale * glam::Vec3::X,
@@ -191,7 +192,8 @@ impl framework::Example for Render2D {
                     texture: self.rerun_logo_texture.clone(),
                     texture_filter_magnification: TextureFilterMag::Linear,
                     texture_filter_minification: TextureFilterMin::Linear,
-                    multiplicative_tint: Rgba::WHITE,
+                    depth_offset: 1,
+                    ..Default::default()
                 },
             ],
         )

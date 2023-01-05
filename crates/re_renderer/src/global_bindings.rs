@@ -45,6 +45,10 @@ pub(crate) struct FrameUniformBuffer {
 
     /// Size used for all sizes given with Size::AUTO_LARGE
     pub auto_size_large_in_points: f32,
+
+    /// TODO: docs
+    pub depth_offset_factor: f32,
+    pub _padding: glam::Vec3,
 }
 
 pub(crate) struct GlobalBindings {
