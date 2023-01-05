@@ -147,23 +147,6 @@ impl ViewSpatialState {
                 }
             };
 
-            if ui
-                .add_enabled(
-                    !matches!(mode, AutoSizeUnit::Auto),
-                    egui::DragValue::new(&mut displayed_size)
-                        .clamp_range(0.0..=f32::INFINITY)
-                        .max_decimals(4)
-                        .speed(drag_speed),
-                )
-                .changed()
-            {
-                self.auto_size_config = match mode {
-                    AutoSizeUnit::Auto => self.auto_size_config, // Shouldn't happen since the DragValue is disabled
-                    AutoSizeUnit::UiPoints => Some(re_renderer::Size::new_points(displayed_size)),
-                    AutoSizeUnit::World => Some(re_renderer::Size::new_scene(displayed_size)),
-                };
-            }
-
             let mode_before = mode;
             egui::ComboBox::from_id_source("auto_size_mode")
                 .width(80.0)
@@ -185,6 +168,27 @@ impl ViewSpatialState {
                     AutoSizeUnit::World => Some(re_renderer::Size::new_scene(
                         self.auto_size_world_heuristic(),
                     )),
+                }
+            }
+
+            #[allow(clippy::collapsible_if)]
+            if !matches!(mode, AutoSizeUnit::Auto) {
+                if ui
+                    .add(
+                        egui::DragValue::new(&mut displayed_size)
+                            .clamp_range(0.0..=f32::INFINITY)
+                            .max_decimals(4)
+                            .speed(drag_speed),
+                    )
+                    .changed()
+                {
+                    self.auto_size_config = match mode {
+                        AutoSizeUnit::Auto => self.auto_size_config, // Shouldn't happen since the DragValue is disabled
+                        AutoSizeUnit::UiPoints => {
+                            Some(re_renderer::Size::new_points(displayed_size))
+                        }
+                        AutoSizeUnit::World => Some(re_renderer::Size::new_scene(displayed_size)),
+                    };
                 }
             }
         })
