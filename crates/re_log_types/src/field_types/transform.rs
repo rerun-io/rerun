@@ -41,12 +41,12 @@ pub struct Rigid3 {
     /// How is the child rotated?
     ///
     /// This transforms to parent-space from child-space.
-    rotation: Quaternion,
+    pub rotation: Quaternion,
 
     /// Translation to parent from child.
     ///
     /// You can also think of this as the position of the child.
-    translation: Vec3D,
+    pub translation: Vec3D,
 }
 
 #[cfg(feature = "glam")]

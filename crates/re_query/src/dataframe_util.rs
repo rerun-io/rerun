@@ -73,7 +73,7 @@ where
     res.into_iter()
 }
 
-pub fn df_builder1<C0, C1>(c0: &Vec<Option<C0>>) -> crate::Result<DataFrame>
+pub fn df_builder1<C0>(c0: &Vec<Option<C0>>) -> crate::Result<DataFrame>
 where
     C0: Component + 'static,
     Option<C0>: ArrowSerialize + ArrowField<Type = Option<C0>>,
