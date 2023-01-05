@@ -142,19 +142,19 @@ impl ScenePart for ImagesPart {
                         {
                             let previous_group =
                                 std::mem::replace(&mut rectangle_group, vec![rect]);
-                            return Some((cur_plane, previous_group));
+                            return Some(previous_group);
                         }
                         rectangle_group.push(rect);
                     }
                     if !rectangle_group.is_empty() {
-                        Some((cur_plane, rectangle_group.drain(..).collect()))
+                        Some(rectangle_group.drain(..).collect())
                     } else {
                         None
                     }
                 })
         };
         // Then, change opacity & transformation for planes within group except the base plane.
-        for (plane, mut grouped_rects) in rects_grouped_by_plane {
+        for mut grouped_rects in rects_grouped_by_plane {
             let total_num_images = grouped_rects.len();
             for (idx, rect) in grouped_rects.iter_mut().enumerate() {
                 // Set depth offset for correct order and avoid z fighting when there is a 3d camera.

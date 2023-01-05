@@ -80,11 +80,6 @@ impl ScenePart for Boxes2DPartClassic {
                 // Lines don't associated with instance (i.e. won't participate in hovering)
                 line_batch
                     .add_axis_aligned_rectangle_outline_2d(bbox.min.into(), bbox.max.into())
-                    .color(paint_props.bg_stroke.color)
-                    .radius(Size::new_points(paint_props.bg_stroke.width * 0.5))
-                    .user_data(instance_hash);
-                line_batch
-                    .add_axis_aligned_rectangle_outline_2d(bbox.min.into(), bbox.max.into())
                     .color(paint_props.fg_stroke.color)
                     .radius(Size::new_points(paint_props.fg_stroke.width * 0.5));
 
@@ -150,15 +145,6 @@ impl Boxes2DPart {
             .line_strips
             .batch("2d box")
             .world_from_obj(world_from_obj);
-
-        line_batch
-            .add_rectangle_outline_2d(
-                glam::vec2(rect.x, rect.y),
-                glam::vec2(rect.w, 0.0),
-                glam::vec2(0.0, rect.h),
-            )
-            .color(paint_props.bg_stroke.color)
-            .radius(Size::new_points(paint_props.bg_stroke.width * 0.5));
 
         line_batch
             .add_rectangle_outline_2d(

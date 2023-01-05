@@ -36,10 +36,6 @@ impl ScenePart for Points2DPart {
     ) {
         crate::profile_function!("load_points2d");
 
-        // Ensure keypoint connection lines are behind points.
-        let connection_depth = scene.primitives.line_strips.next_2d_z;
-        let point_depth = scene.primitives.line_strips.next_2d_z - 0.1;
-
         for (_obj_type, obj_path, time_query, obj_store) in
             query.iter_object_stores(ctx.log_db, &[ObjectType::Point2D])
         {
@@ -85,7 +81,7 @@ impl ScenePart for Points2DPart {
                         keypoints
                             .entry((class_id, time))
                             .or_insert_with(Default::default)
-                            .insert(keypoint_id, pos.extend(connection_depth));
+                            .insert(keypoint_id, pos.extend(0.0));
                     }
 
                     class_description.annotation_info_with_keypoint(keypoint_id)
@@ -101,18 +97,10 @@ impl ScenePart for Points2DPart {
                 }
 
                 point_batch
-                    .add_points(
-                        [pos.extend(point_depth), pos.extend(point_depth - 0.1)].into_iter(),
-                    )
-                    .colors([paint_props.bg_stroke.color, paint_props.fg_stroke.color].into_iter())
-                    .radii(
-                        [
-                            Size::new_points(paint_props.bg_stroke.width * 0.5),
-                            Size::new_points(paint_props.fg_stroke.width * 0.5),
-                        ]
-                        .into_iter(),
-                    )
-                    .user_data_splat(instance_hash);
+                    .add_point_2d(pos)
+                    .color(paint_props.fg_stroke.color)
+                    .radius(Size::new_points(paint_props.fg_stroke.width * 0.5))
+                    .user_data(instance_hash);
 
                 if let Some(label) = label {
                     if label_batch.len() < max_num_labels {
