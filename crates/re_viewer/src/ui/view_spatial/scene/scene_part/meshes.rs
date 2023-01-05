@@ -31,6 +31,8 @@ impl ScenePart for MeshPart {
         for (_obj_type, obj_path, time_query, obj_store) in
             query.iter_object_stores(ctx.log_db, &[ObjectType::Mesh3D])
         {
+            scene.num_logged_3d_objects += 1;
+
             let properties = objects_properties.get(obj_path);
             let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(obj_path) else {
                 continue;

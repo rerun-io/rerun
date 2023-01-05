@@ -34,6 +34,8 @@ impl ScenePart for LineSegments2DPart {
         for (_obj_type, obj_path, time_query, obj_store) in
             query.iter_object_stores(ctx.log_db, &[ObjectType::LineSegments2D])
         {
+            scene.num_logged_2d_objects += 1;
+
             let annotations = scene.annotation_map.find(obj_path);
             let properties = objects_properties.get(obj_path);
             let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(obj_path) else {

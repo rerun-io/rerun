@@ -39,6 +39,8 @@ impl ScenePart for Points2DPart {
         for (_obj_type, obj_path, time_query, obj_store) in
             query.iter_object_stores(ctx.log_db, &[ObjectType::Point2D])
         {
+            scene.num_logged_2d_objects += 1;
+
             let mut label_batch = Vec::new();
             let max_num_labels = 10;
 

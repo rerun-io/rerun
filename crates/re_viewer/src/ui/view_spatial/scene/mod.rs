@@ -118,6 +118,11 @@ pub struct SceneSpatial {
     pub annotation_map: AnnotationMap,
     pub primitives: SceneSpatialPrimitives,
     pub ui: SceneSpatialUiData,
+
+    /// Number of 2d primitives logged, used for heuristics.
+    num_logged_2d_objects: usize,
+    /// Number of 3d primitives logged, used for heuristics.
+    num_logged_3d_objects: usize,
 }
 
 fn instance_hash_if_interactive(
@@ -385,9 +390,14 @@ impl SceneSpatial {
             return false;
         }
 
-        // Otherwise do an heuristic based on the z extent of bounding box
-        let bbox = self.primitives.bounding_box();
-        bbox.max.z < 1.0
+        if self.num_logged_3d_objects == 0 {
+            return true;
+        }
+        if self.num_logged_2d_objects == 0 {
+            return false;
+        }
+
+        false
     }
 
     pub fn preferred_navigation_mode(&self) -> SpatialNavigationMode {

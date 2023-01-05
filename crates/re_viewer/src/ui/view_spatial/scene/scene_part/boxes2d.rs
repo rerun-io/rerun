@@ -43,6 +43,8 @@ impl ScenePart for Boxes2DPartClassic {
         for (_obj_type, obj_path, time_query, obj_store) in
             query.iter_object_stores(ctx.log_db, &[ObjectType::BBox2D])
         {
+            scene.num_logged_2d_objects += 1;
+
             let properties = objects_properties.get(obj_path);
             let annotations = scene.annotation_map.find(obj_path);
             let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(obj_path) else {
@@ -120,6 +122,8 @@ impl Boxes2DPart {
         rect: &Rect2D,
         color: Option<ColorRGBA>,
     ) {
+        scene.num_logged_2d_objects += 1;
+
         let color = color.map(|c| c.to_array());
 
         // TODO(jleibs): Lots of missing components
