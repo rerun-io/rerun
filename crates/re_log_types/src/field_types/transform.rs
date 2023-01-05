@@ -18,6 +18,37 @@ use super::{Quaternion, Vec3D};
 /// A proper rigid 3D transform, i.e. a rotation and a translation.
 ///
 /// Also known as an isometric transform, or a pose.
+///
+/// ```
+/// use re_log_types::field_types::Rigid3;
+/// use arrow2_convert::field::ArrowField;
+/// use arrow2::datatypes::{DataType, Field};
+///
+/// assert_eq!(
+///     Rigid3::data_type(),
+///     DataType::Struct(vec![
+///         Field::new(
+///             "rotation",
+///             DataType::Struct(vec![
+///                 Field::new("x", DataType::Float32, false),
+///                 Field::new("y", DataType::Float32, false),
+///                 Field::new("z", DataType::Float32, false),
+///                 Field::new("w", DataType::Float32, false),
+///             ]),
+///             false
+///         ),
+///         Field::new(
+///             "translation",
+///             DataType::Struct(vec![
+///                 Field::new("x", DataType::Float32, false),
+///                 Field::new("y", DataType::Float32, false),
+///                 Field::new("z", DataType::Float32, false),
+///             ]),
+///             false
+///         )
+///     ]),
+/// );
+/// ```
 #[derive(Copy, Clone, Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Rigid3 {
@@ -61,6 +92,35 @@ impl Rigid3 {
 }
 
 /// Camera perspective projection (a.k.a. intrinsics).
+///
+///
+/// ```
+/// use re_log_types::field_types::Pinhole;
+/// use arrow2_convert::field::ArrowField;
+/// use arrow2::datatypes::{DataType, Field};
+///
+/// assert_eq!(
+///     Pinhole::data_type(),
+///     DataType::Struct(vec![
+///         Field::new(
+///             "image_from_cam",
+///             DataType::FixedSizeList(
+///                 Box::new(Field::new("elem", DataType::Float32, false)),
+///                 9
+///             ),
+///             false,
+///         ),
+///         Field::new(
+///             "resolution",
+///             DataType::FixedSizeList(
+///                 Box::new(Field::new("elem", DataType::Float32, false)),
+///                 2
+///             ),
+///             true,
+///         ),
+///     ]),
+/// );
+/// ```
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Pinhole {

@@ -92,6 +92,7 @@ pub struct ExtraQueryHistory {
 
 // ----------------------------------------------------------------------------
 
+/// Get the latest value of the `_transform` meta-field of the given object.
 fn query_transform_classic(
     obj_db: &ObjDb,
     timeline: &Timeline,
@@ -114,7 +115,7 @@ fn query_transform_classic(
     Some(latest.unwrap_or(Transform::Unknown))
 }
 
-#[allow(clippy::let_and_return)]
+/// Get the latest value of the `Transform` component from arrow
 fn query_transform_arrow(
     obj_db: &ObjDb,
     timeline: &Timeline,
@@ -146,7 +147,11 @@ fn query_transform_arrow(
     transform
 }
 
-/// Get the latest value of the `_transform` meta-field of the given object.
+/// Get the latest value of the transform
+///
+/// We first look for the transform in the classic storage system since that's
+/// what most users are still using. If we don't find the transform there, then
+/// we check to see if it exists in the arrow storage.
 pub fn query_transform(
     obj_db: &ObjDb,
     timeline: &Timeline,
