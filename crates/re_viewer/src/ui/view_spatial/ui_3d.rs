@@ -481,7 +481,14 @@ pub fn view_3d(
                     )
                 }))
                 .radius(Size::new_points(1.0))
+                // TODO(andreas): Fade this out.
                 .color(re_renderer::Color32::WHITE);
+
+            // TODO(andreas): Idea for nice depth perception:
+            // Render the lines once with additive blending and depth test enabled
+            // and another time without depth test. In both cases it needs to be rendered last,
+            // something re_renderer doesn't support yet for primitives within renderers.
+
             ui.ctx().request_repaint(); // show it for a bit longer.
         }
     }
