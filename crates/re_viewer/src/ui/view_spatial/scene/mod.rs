@@ -117,6 +117,11 @@ pub struct SceneSpatial {
     pub annotation_map: AnnotationMap,
     pub primitives: SceneSpatialPrimitives,
     pub ui: SceneSpatialUiData,
+
+    /// Number of 2d primitives logged, used for heuristics.
+    num_logged_2d_objects: usize,
+    /// Number of 3d primitives logged, used for heuristics.
+    num_logged_3d_objects: usize,
 }
 
 fn instance_hash_if_interactive(
@@ -373,9 +378,14 @@ impl SceneSpatial {
             return false;
         }
 
-        // Otherwise do an heuristic based on the z extent of bounding box
-        let bbox = self.primitives.bounding_box();
-        bbox.min.z >= self.primitives.line_strips.next_2d_z * 2.0 && bbox.max.z < 1.0
+        if self.num_logged_3d_objects == 0 {
+            return true;
+        }
+        if self.num_logged_2d_objects == 0 {
+            return false;
+        }
+
+        false
     }
 
     pub fn preferred_navigation_mode(&self) -> SpatialNavigationMode {
@@ -405,28 +415,19 @@ impl SceneSpatial {
 }
 
 pub struct ObjectPaintProperties {
-    pub bg_stroke: egui::Stroke,
     pub fg_stroke: egui::Stroke,
 }
 
 // TODO(andreas): we're no longer using egui strokes. Replace this.
 fn paint_properties(color: [u8; 4], stroke_width: Option<&f32>) -> ObjectPaintProperties {
-    let bg_color = Color32::from_black_alpha(196);
     let fg_color = to_ecolor(color);
-    let stroke_width = stroke_width.map_or(1.5, |w| *w);
-    let bg_stroke = egui::Stroke::new(stroke_width + 2.0, bg_color);
+    let stroke_width = stroke_width.map_or(2.0, |w| *w); // TODO(andreas): use re_renderer auto_size
     let fg_stroke = egui::Stroke::new(stroke_width, fg_color);
 
-    ObjectPaintProperties {
-        bg_stroke,
-        fg_stroke,
-    }
+    ObjectPaintProperties { fg_stroke }
 }
 
 fn apply_hover_effect(paint_props: &mut ObjectPaintProperties) {
-    paint_props.bg_stroke.width *= 2.0;
-    paint_props.bg_stroke.color = Color32::BLACK;
-
     paint_props.fg_stroke.width *= 2.0;
     paint_props.fg_stroke.color = Color32::WHITE;
 }

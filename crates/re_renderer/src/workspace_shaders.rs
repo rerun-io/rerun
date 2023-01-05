@@ -99,6 +99,15 @@ pub fn init() {
     }
 
     {
+        let virtpath = ::std::path::Path::new("crates/re_renderer/shader/utils/depth_offset.wgsl");
+        fs.create_file(
+            virtpath,
+            include_str!("../shader/utils/depth_offset.wgsl").into(),
+        )
+        .unwrap();
+    }
+
+    {
         let virtpath = ::std::path::Path::new("crates/re_renderer/shader/utils/encoding.wgsl");
         fs.create_file(
             virtpath,

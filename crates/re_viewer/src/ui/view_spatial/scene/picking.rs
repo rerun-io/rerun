@@ -26,6 +26,8 @@ pub struct PickingRayHit {
     /// Where along the picking ray the hit occurred.
     pub ray_t: f32,
 
+    pub depth_offset: re_renderer::DepthOffset,
+
     /// Any additional information about the picking hit.
     pub info: AdditionalPickingInfo,
 }
@@ -36,6 +38,7 @@ impl PickingRayHit {
             instance_hash,
             ray_t: t,
             info: AdditionalPickingInfo::None,
+            depth_offset: 0,
         }
     }
 }
@@ -82,6 +85,8 @@ impl PickingResult {
     }
 }
 
+const RAY_T_EPSILON: f32 = f32::EPSILON;
+
 pub fn picking(
     pointer_in_ui: glam::Vec2,
     ui_rect: &egui::Rect,
@@ -111,13 +116,25 @@ pub fn picking(
         instance_hash: InstanceIdHash::NONE,
         ray_t: f32::INFINITY,
         info: AdditionalPickingInfo::None,
+        depth_offset: 0,
     };
     let mut transparent_hits = Vec::new(); // Combined, sorted (and partially "hidden") by opaque results later.
 
     let mut check_hit = |side_ui_dist_sq, ray_hit: PickingRayHit, transparent| {
-        if ray_hit.ray_t < closest_opaque_pick.ray_t
-            && side_ui_dist_sq <= closest_opaque_side_ui_dist_sq
+        let gap_to_closest_opaque = closest_opaque_pick.ray_t - ray_hit.ray_t;
+
+        // Use depth offset if very close to each other in relative distance.
+        if gap_to_closest_opaque.abs()
+            < closest_opaque_pick.ray_t.max(ray_hit.ray_t) * RAY_T_EPSILON
         {
+            if ray_hit.depth_offset < closest_opaque_pick.depth_offset {
+                return;
+            }
+        } else if gap_to_closest_opaque < 0.0 {
+            return;
+        }
+
+        if side_ui_dist_sq <= closest_opaque_side_ui_dist_sq {
             if transparent {
                 transparent_hits.push(ray_hit);
             } else {
@@ -248,6 +265,7 @@ pub fn picking(
                     instance_hash: *id,
                     ray_t: t,
                     info: AdditionalPickingInfo::TexturedRect(glam::vec2(u, v)),
+                    depth_offset: rect.depth_offset,
                 };
                 check_hit(0.0, picking_hit, rect.multiplicative_tint.a() < 1.0);
             }
@@ -266,6 +284,7 @@ pub fn picking(
                     instance_hash: *instance_hash,
                     ray_t: 0.0,
                     info: AdditionalPickingInfo::GuiOverlay,
+                    depth_offset: 0,
                 },
                 false,
             );

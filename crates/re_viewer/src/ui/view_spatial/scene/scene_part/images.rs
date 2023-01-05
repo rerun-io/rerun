@@ -37,6 +37,8 @@ impl ScenePart for ImagesPart {
         for (_obj_type, obj_path, time_query, obj_store) in
             query.iter_object_stores(ctx.log_db, &[ObjectType::Image])
         {
+            scene.num_logged_2d_objects += 1;
+
             let properties = objects_properties.get(obj_path);
             let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(obj_path) else {
                 continue;
@@ -95,6 +97,8 @@ impl ScenePart for ImagesPart {
                             texture_filter_minification:
                                 re_renderer::renderer::TextureFilterMin::Linear,
                             multiplicative_tint: paint_props.fg_stroke.color.into(),
+                            // Push to background. Mostly important for mouse picking order!
+                            depth_offset: -1,
                         },
                     );
                     scene.primitives.textured_rectangles_ids.push(instance_hash);
@@ -141,24 +145,26 @@ impl ScenePart for ImagesPart {
                         {
                             let previous_group =
                                 std::mem::replace(&mut rectangle_group, vec![rect]);
-                            return Some((cur_plane, previous_group));
+                            return Some(previous_group);
                         }
                         rectangle_group.push(rect);
                     }
                     if !rectangle_group.is_empty() {
-                        Some((cur_plane, rectangle_group.drain(..).collect()))
+                        Some(rectangle_group.drain(..).collect())
                     } else {
                         None
                     }
                 })
         };
         // Then, change opacity & transformation for planes within group except the base plane.
-        for (plane, mut grouped_rects) in rects_grouped_by_plane {
+        for mut grouped_rects in rects_grouped_by_plane {
             let total_num_images = grouped_rects.len();
             for (idx, rect) in grouped_rects.iter_mut().enumerate() {
-                // Move a bit to avoid z fighting.
-                rect.top_left_corner_position +=
-                    plane.normal * (total_num_images - idx - 1) as f32 * 0.1;
+                // Set depth offset for correct order and avoid z fighting when there is a 3d camera.
+                // Keep behind depth offset 0 for correct picking order.
+                rect.depth_offset =
+                    (idx as isize - total_num_images as isize) as re_renderer::DepthOffset;
+
                 // make top images transparent
                 let opacity = if idx == 0 {
                     1.0
