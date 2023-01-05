@@ -954,12 +954,20 @@ impl PersistentComponentTable {
     /// `datatype` must be the type of the component itself, devoid of any wrapping layers
     /// (i.e. _not_ a `ListArray<...>`!).
     fn new(name: ComponentName, datatype: &DataType) -> Self {
+        // TODO(cmc): think about this when implementing deletion.
+        let chunks = vec![wrap_in_listarray(new_empty_array(datatype.clone())).to_boxed()];
+        let total_rows = chunks.iter().map(|values| values.len() as u64).sum();
+        let total_size_bytes = chunks
+            .iter()
+            .map(|values| arrow2::compute::aggregate::estimated_bytes_size(&**values) as u64)
+            .sum();
+
         Self {
             name,
             datatype: datatype.clone(),
-            chunks: Default::default(),
-            total_rows: 0,
-            total_size_bytes: 0,
+            chunks,
+            total_rows,
+            total_size_bytes,
         }
     }
 
@@ -978,6 +986,13 @@ impl PersistentComponentTable {
     //
     // TODO(#589): support for batched row component insertions
     pub fn push(&mut self, rows_single: &dyn Array) -> RowIndexErased {
+        debug_assert!(
+            ListArray::<i32>::get_child_type(rows_single.data_type()) == &self.datatype,
+            "trying to insert data of the wrong datatype in a component table, \
+                expected {:?}, got {:?}",
+            &self.datatype,
+            ListArray::<i32>::get_child_type(rows_single.data_type()),
+        );
         debug_assert!(
             rows_single.len() == 1,
             "batched row component insertions are not supported yet"

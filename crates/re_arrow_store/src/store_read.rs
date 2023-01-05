@@ -184,8 +184,11 @@ impl DataStore {
             "query started..."
         );
 
-        if let Some(index) = self.indices.get(&(query.timeline, *ent_path_hash)) {
-            if let row_indices @ Some(_) = index.latest_at(query.at, primary, components) {
+        let row_indices = self
+            .indices
+            .get(&(query.timeline, *ent_path_hash))
+            .and_then(|index| {
+                let row_indices = index.latest_at(query.at, primary, components);
                 trace!(
                     kind = "latest_at",
                     query = ?query,
@@ -196,26 +199,48 @@ impl DataStore {
                     timeless = false,
                     "row indices fetched"
                 );
-                return row_indices;
-            }
+                row_indices
+            });
+
+        // If we've found everything we were looking for in the temporal index, then we can
+        // return the results immediately.
+        if row_indices.map_or(false, |row_indices| row_indices.iter().all(Option::is_some)) {
+            return row_indices;
         }
 
-        // TODO: proper merge rules
-        // TODO: prob gonna need some doc update here...
-        if let Some(index) = self.timeless_indices.get(ent_path_hash) {
-            if let row_indices @ Some(_) = index.latest_at(primary, components) {
-                trace!(
-                    kind = "latest_at",
-                    query = ?query,
-                    entity = %ent_path,
-                    %primary,
-                    ?components,
-                    ?row_indices,
-                    timeless = true,
-                    "row indices fetched"
-                );
-                return row_indices;
+        let row_indices_timeless = self.timeless_indices.get(ent_path_hash).and_then(|index| {
+            let row_indices = index.latest_at(primary, components);
+            trace!(
+                kind = "latest_at",
+                query = ?query,
+                entity = %ent_path,
+                %primary,
+                ?components,
+                ?row_indices,
+                timeless = true,
+                "row indices fetched"
+            );
+            row_indices
+        });
+
+        // Otherwise, let's see what's in the timeless index, and then..:
+        match (row_indices, row_indices_timeless) {
+            // nothing in the timeless index: return those partial row indices we got.
+            (Some(row_indices), None) => return Some(row_indices),
+            // no temporal row indices, but some timeless ones: return those as-is.
+            (None, Some(row_indices_timeless)) => return Some(row_indices_timeless),
+            // we have both temporal & timeless indices: let's merge the two when it makes sense
+            // and return the end result.
+            (Some(mut row_indices), Some(row_indices_timeless)) => {
+                for (i, row_idx) in row_indices_timeless.into_iter().enumerate() {
+                    if row_indices[i].is_none() {
+                        row_indices[i] = row_idx;
+                    }
+                }
+                return Some(row_indices);
             }
+            // no row indices at all.
+            (None, None) => {}
         }
 
         trace!(

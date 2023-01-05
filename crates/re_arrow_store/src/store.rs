@@ -369,6 +369,11 @@ impl DataStore {
             }
 
             for (comp, mut row_indices) in row_indices {
+                // Not an actual row index!
+                if comp == DataStore::insert_id_key() {
+                    continue;
+                }
+
                 row_indices.sort();
                 row_indices.dedup();
                 for pair in row_indices.windows(2) {
@@ -393,6 +398,11 @@ impl DataStore {
             }
 
             for (comp, mut row_indices) in row_indices {
+                // Not an actual row index!
+                if comp == DataStore::insert_id_key() {
+                    continue;
+                }
+
                 row_indices.sort();
                 row_indices.dedup();
                 for pair in row_indices.windows(2) {
