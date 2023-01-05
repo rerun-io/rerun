@@ -16,7 +16,6 @@ use crate::{
     ui::{
         annotations::{auto_color, AnnotationMap},
         transform_cache::TransformCache,
-        view_spatial::axis_color,
         Annotations, SceneQuery,
     },
 };
@@ -296,23 +295,12 @@ impl SceneSpatial {
             }
 
             if ctx.options.show_camera_axes_in_3d {
-                let world_from_cam = camera.world_from_cam();
-
-                // TODO(emilk): include the names of the axes ("Right", "Down", "Forward", etc)
-                let cam_origin = camera.position();
-
-                let mut batch = self.primitives.line_strips.batch("camera axis");
-
-                for (axis_index, dir) in [Vec3::X, Vec3::Y, Vec3::Z].iter().enumerate() {
-                    let axis_end = world_from_cam.transform_point3(scale * *dir);
-                    let color = axis_color(axis_index);
-
-                    batch
-                        .add_segment(cam_origin, axis_end)
-                        .radius(Size::new_points(2.0))
-                        .color(color)
-                        .user_data(instance_id);
-                }
+                self.primitives.add_axis_lines(
+                    camera.world_from_cam(),
+                    instance_id,
+                    eye,
+                    viewport_size,
+                );
             }
 
             let mut frustum_length = scene_bbox.size().length() * 0.3;
