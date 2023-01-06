@@ -179,12 +179,6 @@ impl DataStoreConfig {
 
 /// A complete data store: covers all timelines, all entities, everything.
 ///
-/// ## Temporarily
-///
-/// TODO
-// TODO: in general, explain why timeless vs. vanilla are completely separate (GC, row
-// indices..)
-///
 /// ## Debugging
 ///
 /// `DataStore` provides a very thorough `Display` implementation that makes it manageable to
