@@ -549,7 +549,7 @@ impl std::fmt::Display for DataStore {
 
 /// A `PersistentIndexTable` maps specific entries to rows in persistent component tables.
 ///
-/// See also [`Self::IndexTable`].
+/// See also `DataStore::IndexTable`.
 #[derive(Debug)]
 pub struct PersistentIndexTable {
     /// The entity this table is related to, for debugging purposes.
@@ -1097,7 +1097,7 @@ impl IndexBucket {
 
 /// A `PersistentComponentTable` holds all the timeless values ever inserted for a given component.
 ///
-/// See also [`Self::ComponentTable`].
+/// See also `DataStore::ComponentTable`.
 #[derive(Debug)]
 pub struct PersistentComponentTable {
     /// Name of the underlying component, for debugging purposes.

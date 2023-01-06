@@ -112,8 +112,8 @@ pub fn range_components<'a, const N: usize>(
     if let Some(latest_time) = latest_time {
         let df = latest_components(
             store,
-            // Temporal only! Otherwise we'd potentially end up with a duplicated entry when merged
-            // the latest state with the timeless stream.
+            // Temporal only! Otherwise we'd potentially end up with a duplicated entry when
+            // merging the latest state with the timeless stream.
             &LatestAtQuery::temporal_only(query.timeline, latest_time),
             ent_path,
             &components,
@@ -279,8 +279,8 @@ pub fn join_dataframes(
     Ok(df.sort([cluster_key.as_str()], false).unwrap_or(df))
 }
 
-/// Return a new `DataFrame` where all rows in the given `subset` of columns that only have null
-/// values are dropped.
+/// Returns a new `DataFrame` where all rows that only contain null values (ignoring the cluster
+/// column) are dropped.
 pub fn drop_all_nulls(df: &DataFrame, cluster_key: &ComponentName) -> PolarsResult<DataFrame> {
     let cols = df
         .get_column_names()
