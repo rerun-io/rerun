@@ -8,7 +8,7 @@ use arrow2_convert::{
 
 use super::Vec3D;
 
-/// A 3x3 Matrix made up of 3 Vecs
+/// A 3x3 column-major Matrix made up of 3 Vecs
 ///
 /// ```
 /// use re_log_types::field_types::Mat3x3;
@@ -78,7 +78,7 @@ impl ArrowSerialize for Mat3x3 {
 }
 
 impl ArrowDeserialize for Mat3x3 {
-    type ArrayType = <FixedSizeVec<f32, 2> as ArrowDeserialize>::ArrayType;
+    type ArrayType = <FixedSizeVec<f32, 9> as ArrowDeserialize>::ArrayType;
 
     #[inline]
     fn arrow_deserialize(
@@ -98,4 +98,18 @@ impl ArrowDeserialize for Mat3x3 {
             ])
         })
     }
+}
+
+#[test]
+fn test_mat3x3_roundtrip() {
+    use arrow2::array::Array;
+    use arrow2_convert::{deserialize::TryIntoCollection, serialize::TryIntoArrow};
+
+    let mats_in: Vec<Mat3x3> = vec![
+        [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]].into(),
+        [[11.0, 12.0, 13.0], [14.0, 15.0, 16.0], [17.0, 18.0, 19.0]].into(),
+    ];
+    let array: Box<dyn Array> = mats_in.try_into_arrow().unwrap();
+    let mats_out: Vec<Mat3x3> = TryIntoCollection::try_into_collection(array).unwrap();
+    assert_eq!(mats_in, mats_out);
 }
