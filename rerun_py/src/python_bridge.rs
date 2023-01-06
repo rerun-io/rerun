@@ -584,21 +584,26 @@ fn log_view_coordinates_up_handedness(
 }
 
 fn log_view_coordinates(
-    obj_path: &str,
+    obj_path_str: &str,
     coordinates: ViewCoordinates,
     timeless: bool,
 ) -> PyResult<()> {
-    let mut arrow_path = "arrow/".to_owned();
-    arrow_path.push_str(obj_path);
     if coordinates.handedness() == Some(coordinates::Handedness::Left) {
         re_log::warn_once!("Left-handed coordinate systems are not yet fully supported by Rerun");
     }
 
     let mut session = global_session();
-    let obj_path = parse_obj_path(obj_path)?;
+    let obj_path = parse_obj_path(obj_path_str)?;
     let time_point = time(timeless);
 
+    // We currently log view coordinates from inside the bridge because the code
+    // that does matching and validation on different string representations is
+    // non-trivial. Implementing this functionality on the python side will take
+    // a bit of additional work and testing to ensure we aren't introducing new
+    // conversion errors.
     if session.arrow_logging_enabled() {
+        let mut arrow_path = "arrow/".to_owned();
+        arrow_path.push_str(obj_path_str);
         let arrow_path = parse_obj_path(arrow_path.as_str())?;
         let bundle = MsgBundle::new(
             MsgId::random(),
