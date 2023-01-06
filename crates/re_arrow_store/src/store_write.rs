@@ -334,6 +334,8 @@ impl DataStore {
             Data(Box<dyn Array>),
         }
 
+        // We can't ever have temporal indices referring to timeless component rows, and
+        // vice-versa!
         let cluster_comp_cache = if time_point.is_timeless() {
             &mut self.timeless_cluster_comp_cache
         } else {
@@ -369,11 +371,11 @@ impl DataStore {
             )
         } else {
             // The caller has not specified any cluster component, and so we'll have to generate
-            // one... unless we've already generated one of this exact length in the past, in which
-            // case we can simply re-use that row index.
+            // one... unless we've already generated one of this exact length in the past,
+            // in which case we can simply re-use that row index.
 
-            // Use the length of any other component in the batch, they are guaranteed to all share
-            // the same length at this point anyway.
+            // Use the length of any other component in the batch, they are guaranteed to all
+            // share the same length at this point anyway.
             let len = components
                 .first()
                 .map_or(0, |comp| comp.value.get_child_length(0));
@@ -392,10 +394,11 @@ impl DataStore {
         match comp {
             RowIndexOrData::RowIndex(row_idx) => Ok((row_idx, len)),
             RowIndexOrData::Data(data) => {
-                // If we didn't hit the cache, then we have to insert this cluster component in the
-                // right tables, just like any other component.
+                // If we didn't hit the cache, then we have to insert this cluster component in
+                // the right tables, just like any other component.
 
-                // TODO: explain this, oh god...
+                // We can't ever have temporal indices referring to timeless component rows, and
+                // vice-versa!
                 let row_idx = if time_point.is_timeless() {
                     let table = self
                         .timeless_components

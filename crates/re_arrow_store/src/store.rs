@@ -179,6 +179,12 @@ impl DataStoreConfig {
 
 /// A complete data store: covers all timelines, all entities, everything.
 ///
+/// ## Temporarily
+///
+/// TODO
+// TODO: in general, explain why timeless vs. vanilla are completely separate (GC, row
+// indices..)
+///
 /// ## Debugging
 ///
 /// `DataStore` provides a very thorough `Display` implementation that makes it manageable to
@@ -205,35 +211,41 @@ pub struct DataStore {
     /// The configuration of the data store (e.g. bucket sizes).
     pub(crate) config: DataStoreConfig,
 
-    /// Used to cache auto-generated cluster components, i.e. `[0]`, `[0, 1]`, `[0, 1, 2]`, etc
-    /// so that they can be properly deduplicated.
-    pub(crate) cluster_comp_cache: IntMap<usize, RowIndexErased>,
-    /// Used to cache auto-generated cluster components, i.e. `[0]`, `[0, 1]`, `[0, 1, 2]`, etc
-    /// so that they can be properly deduplicated.
-    //
-    // TODO: this is absolutely disgusting.
-    pub(crate) timeless_cluster_comp_cache: IntMap<usize, RowIndexErased>,
-
     /// Maps `MsgId`s to some metadata (just timepoints at the moment).
     ///
     /// `BTreeMap` because of garbage collection.
     pub(crate) messages: BTreeMap<MsgId, TimePoint>,
 
-    // TODO: in general, explain why timeless vs. vanilla are completely separate (GC, row
-    // indices..)
+    /// Dedicated index tables for timeless data. Never garbage collected.
+    ///
+    /// See also `Self::indices`.
+    pub(crate) timeless_indices: IntMap<EntityPathHash, PersistentIndexTable>,
+    /// Dedicated component tables for timeless data. Never garbage collected.
+    ///
+    /// See also `Self::components`.
+    pub(crate) timeless_components: IntMap<ComponentName, PersistentComponentTable>,
+    /// Used to cache auto-generated timeless cluster components, i.e. `[0]`, `[0, 1]`,
+    /// `[0, 1, 2]`, etc so that they can be properly deduplicated.
+    ///
+    /// See also `Self::cluster_comp_cache`.
+    //
+    // TODO(cmc): In an ideal world, auto-generated cluster components would always be timeless.
+    // Making temporal indices transparently refer to timeless components gets tricky for a whole
+    // bunch of reasons though, so for now this'll do.
+    // I might shake things up a little when GC lands.
+    pub(crate) timeless_cluster_comp_cache: IntMap<usize, RowIndexErased>,
+
     /// Maps an entity to its index, for a specific timeline.
     ///
     /// An index maps specific points in time to rows in component tables.
     pub(crate) indices: HashMap<(Timeline, EntityPathHash), IndexTable>,
-    /// Dedicated index tables for timeless data. Never garbage collected.
-    pub(crate) timeless_indices: IntMap<EntityPathHash, PersistentIndexTable>,
-
     /// Maps a component name to its associated table, for all timelines and all entities.
     ///
     /// A component table holds all the values ever inserted for a given component.
     pub(crate) components: IntMap<ComponentName, ComponentTable>,
-    /// Dedicated component tables for timeless data. Never garbage collected.
-    pub(crate) timeless_components: IntMap<ComponentName, PersistentComponentTable>,
+    /// Used to cache auto-generated cluster components, i.e. `[0]`, `[0, 1]`, `[0, 1, 2]`, etc
+    /// so that they can be properly deduplicated.
+    pub(crate) cluster_comp_cache: IntMap<usize, RowIndexErased>,
 
     /// Monotically increasing ID for insertions.
     pub(crate) insert_id: u64,
