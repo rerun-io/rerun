@@ -112,6 +112,8 @@ pub fn range_components<'a, const N: usize>(
     if let Some(latest_time) = latest_time {
         let df = latest_components(
             store,
+            // Temporal only! Otherwise we'd potentially end up with a duplicated entry when merged
+            // the latest state with the timeless stream.
             &LatestAtQuery::temporal_only(query.timeline, latest_time),
             ent_path,
             &components,
@@ -144,8 +146,9 @@ pub fn range_components<'a, const N: usize>(
             )
         });
 
-    // TODO: explain
     let range = if let Some(df_latest) = df_latest {
+        // Complex case: there's some latest-at state that we need to carefully fit in-between the
+        // timeless and temporal parts of the stream.
         let range = std::iter::from_fn({
             let mut peeked = range.next();
             let mut is_timeless = true;
@@ -156,9 +159,12 @@ pub fn range_components<'a, const N: usize>(
                     range.next()
                 };
                 if let Some((time, is_primary, df)) = next {
+                    // did we just witness the switch from timeless to temporal?
                     let is_switching = is_timeless && time.is_some();
                     is_timeless = time.is_none();
 
+                    // if so, stash the current value somewhere, and yield our latest state
+                    // instead!
                     if is_switching {
                         peeked = Some((time, is_primary, df));
                         return Some((latest_time, true, df_latest.clone()));
@@ -166,25 +172,24 @@ pub fn range_components<'a, const N: usize>(
 
                     Some((time, is_primary, df))
                 } else {
+                    // if the stream did not contain any temporal data at all, make sure we still
+                    // yield the latest-at state at the end of the timeless part.
                     if is_timeless {
                         is_timeless = false;
                         return Some((latest_time, true, df_latest.clone()));
                     }
+
                     None
                 }
             }
         });
         itertools::Either::Left(range)
     } else {
+        // Easy case: no latest-at state.
+        // Just stream everything as-is.
         itertools::Either::Right(range)
     };
 
-    // Send the latest-at state before anything else
-    //
-    // TODO:
-    // Timeless data
-    // Latest temporal-only state
-    // Temporal data
     range.filter_map(move |(time, is_primary, df)| {
         state = Some(join_dataframes(
             cluster_key,

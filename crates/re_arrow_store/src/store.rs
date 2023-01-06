@@ -555,11 +555,7 @@ impl std::fmt::Display for DataStore {
 
 /// A `PersistentIndexTable` maps specific entries to rows in persistent component tables.
 ///
-/// Example of a time-based index table (`MAX_ROWS_PER_BUCKET=2`):
-/// TODO
-///
-/// Example of a sequence-based index table (`MAX_ROWS_PER_BUCKET=2`):
-/// TODO
+/// See also [`Self::IndexTable`].
 #[derive(Debug)]
 pub struct PersistentIndexTable {
     /// The entity this table is related to, for debugging purposes.
@@ -1107,11 +1103,7 @@ impl IndexBucket {
 
 /// A `PersistentComponentTable` holds all the timeless values ever inserted for a given component.
 ///
-/// Example of a component table holding instances:
-/// TODO
-///
-/// Example of a component-table holding 2D positions:
-/// TODO
+/// See also [`Self::ComponentTable`].
 #[derive(Debug)]
 pub struct PersistentComponentTable {
     /// Name of the underlying component, for debugging purposes.
@@ -1135,8 +1127,6 @@ pub struct PersistentComponentTable {
     ///
     /// This can contain any number of chunks, depending on how the data was inserted (e.g. single
     /// insertions vs. batches).
-    /// All of these chunks get merged into one contiguous array when the table itself is
-    /// compacted, which happens... TODO: when???????????
     ///
     /// Note that, as of today, we do not actually support batched insertion nor do we support
     /// chunks of non-unit length (batches are inserted on a per-row basis internally).
@@ -1144,7 +1134,7 @@ pub struct PersistentComponentTable {
     /// the bucket is compacted one or more times.
     /// See also #589.
     //
-    // TODO: compact those too
+    // TODO(cmc): compact timeless tables once in a while
     pub(crate) chunks: Vec<Box<dyn Array>>,
 
     /// The total number of rows present in this bucket, across all chunks.
