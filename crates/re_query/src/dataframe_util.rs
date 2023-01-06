@@ -4,6 +4,7 @@ use arrow2::{
 };
 use itertools::Itertools;
 use polars_core::prelude::*;
+use re_arrow_store::ArrayExt;
 use re_log_types::{
     external::arrow2_convert::{
         deserialize::{arrow_array_deserialize_iterator, ArrowArray, ArrowDeserialize},
@@ -73,7 +74,7 @@ where
     res.into_iter()
 }
 
-pub fn df_builder1<C0, C1>(c0: &Vec<Option<C0>>) -> crate::Result<DataFrame>
+pub fn df_builder1<C0>(c0: &Vec<Option<C0>>) -> crate::Result<DataFrame>
 where
     C0: Component + 'static,
     Option<C0>: ArrowSerialize + ArrowField<Type = Option<C0>>,
@@ -84,9 +85,9 @@ where
     let array0 =
         arrow_serialize_to_mutable_array::<Option<C0>, Option<C0>, &Vec<Option<C0>>>(c0)?.as_box();
 
-    let series0 = Series::try_from((C0::name().as_str(), array0))?;
+    let series0 = Series::try_from((C0::name().as_str(), array0.as_ref().clean_for_polars()));
 
-    Ok(DataFrame::new(vec![series0])?)
+    Ok(DataFrame::new(vec![series0?])?)
 }
 
 pub fn df_builder2<C0, C1>(c0: &Vec<Option<C0>>, c1: &Vec<Option<C1>>) -> crate::Result<DataFrame>
@@ -104,8 +105,8 @@ where
     let array1 =
         arrow_serialize_to_mutable_array::<Option<C1>, Option<C1>, &Vec<Option<C1>>>(c1)?.as_box();
 
-    let series0 = Series::try_from((C0::name().as_str(), array0))?;
-    let series1 = Series::try_from((C1::name().as_str(), array1))?;
+    let series0 = Series::try_from((C0::name().as_str(), array0.as_ref().clean_for_polars()))?;
+    let series1 = Series::try_from((C1::name().as_str(), array1.as_ref().clean_for_polars()))?;
 
     Ok(DataFrame::new(vec![series0, series1])?)
 }
@@ -133,9 +134,9 @@ where
     let array2 =
         arrow_serialize_to_mutable_array::<Option<C2>, Option<C2>, &Vec<Option<C2>>>(c2)?.as_box();
 
-    let series0 = Series::try_from((C0::name().as_str(), array0))?;
-    let series1 = Series::try_from((C1::name().as_str(), array1))?;
-    let series2 = Series::try_from((C2::name().as_str(), array2))?;
+    let series0 = Series::try_from((C0::name().as_str(), array0.as_ref().clean_for_polars()))?;
+    let series1 = Series::try_from((C1::name().as_str(), array1.as_ref().clean_for_polars()))?;
+    let series2 = Series::try_from((C2::name().as_str(), array2.as_ref().clean_for_polars()))?;
 
     Ok(DataFrame::new(vec![series0, series1, series2])?)
 }

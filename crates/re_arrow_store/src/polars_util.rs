@@ -4,7 +4,7 @@ use polars_core::{prelude::*, series::Series};
 use polars_ops::prelude::*;
 use re_log_types::{ComponentName, ObjPath as EntityPath, TimeInt};
 
-use crate::{DataStore, LatestAtQuery, RangeQuery};
+use crate::{ArrayExt, DataStore, LatestAtQuery, RangeQuery};
 
 // ---
 
@@ -228,7 +228,9 @@ pub fn dataframe_from_results<const N: usize>(
         .iter()
         .zip(results)
         .filter_map(|(component, col)| col.map(|col| (component, col)))
-        .map(|(&component, col)| Series::try_from((component.as_str(), col)))
+        .map(|(&component, col)| {
+            Series::try_from((component.as_str(), col.as_ref().clean_for_polars()))
+        })
         .collect();
 
     DataFrame::new(series?).map_err(Into::into)

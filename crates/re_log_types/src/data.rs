@@ -4,6 +4,8 @@ use half::f16;
 
 use crate::{impl_into_enum, AnnotationContext, ObjPath, ViewCoordinates};
 
+pub use crate::field_types::{Pinhole, Rigid3, Transform};
+
 // ----------------------------------------------------------------------------
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
@@ -57,6 +59,7 @@ pub trait DataTrait: 'static + Clone {
 pub mod data_types {
     use super::DataTrait;
     use super::DataType;
+    use super::Transform;
 
     impl DataTrait for super::DataVec {
         fn data_typ() -> DataType {
@@ -159,7 +162,7 @@ pub mod data_types {
         }
     }
 
-    impl DataTrait for crate::Transform {
+    impl DataTrait for Transform {
         fn data_typ() -> DataType {
             DataType::Transform
         }
@@ -215,7 +218,7 @@ pub enum Data {
     /// One object referring to another (a pointer).
     ObjPath(ObjPath),
 
-    Transform(Transform),
+    Transform(crate::field_types::Transform),
     ViewCoordinates(ViewCoordinates),
     AnnotationContext(AnnotationContext),
 }
@@ -403,7 +406,7 @@ macro_rules! data_type_map_none(
                 $action
             },
             $crate::DataType::Transform => {
-                let $value = Option::<$crate::Transform>::None;
+                let $value = Option::<$crate::field_types::Transform>::None;
                 $action
             },
             $crate::DataType::ViewCoordinates => {
@@ -608,144 +611,6 @@ pub struct Arrow3D {
 
 /// Order: XYZW
 pub type Quaternion = [f32; 4];
-
-// ----------------------------------------------------------------------------
-
-/// A proper rigid 3D transform, i.e. a rotation and a translation.
-///
-/// Also known as an isometric transform, or a pose.
-#[derive(Copy, Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct Rigid3 {
-    /// How is the child rotated?
-    ///
-    /// This transforms to parent-space from child-space.
-    rotation: Quaternion,
-
-    /// Translation to parent from child.
-    ///
-    /// You can also think of this as the position of the child.
-    translation: [f32; 3],
-}
-
-#[cfg(feature = "glam")]
-impl Rigid3 {
-    #[inline]
-    pub fn new_parent_from_child(parent_from_child: macaw::IsoTransform) -> Self {
-        Self {
-            rotation: parent_from_child.rotation().into(),
-            translation: parent_from_child.translation().into(),
-        }
-    }
-
-    #[inline]
-    pub fn new_child_from_parent(child_from_parent: macaw::IsoTransform) -> Self {
-        Self::new_parent_from_child(child_from_parent.inverse())
-    }
-
-    #[inline]
-    pub fn parent_from_child(&self) -> macaw::IsoTransform {
-        let rotation = glam::Quat::from_slice(&self.rotation);
-        let translation = glam::Vec3::from_slice(&self.translation);
-        macaw::IsoTransform::from_rotation_translation(rotation, translation)
-    }
-
-    #[inline]
-    pub fn child_from_parent(&self) -> macaw::IsoTransform {
-        self.parent_from_child().inverse()
-    }
-}
-
-/// Camera perspective projection (a.k.a. intrinsics).
-#[derive(Copy, Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct Pinhole {
-    /// Column-major projection matrix.
-    ///
-    /// Child from parent.
-    /// Image coordinates from camera view coordinates.
-    ///
-    /// Example:
-    /// ```text
-    /// [[1496.1, 0.0,    0.0], // col 0
-    ///  [0.0,    1496.1, 0.0], // col 1
-    ///  [980.5,  744.5,  1.0]] // col 2
-    /// ```
-    pub image_from_cam: [[f32; 3]; 3],
-
-    /// Pixel resolution (usually integers) of child image space. Width and height.
-    ///
-    /// Example:
-    /// ```text
-    /// [1920.0, 1440.0]
-    /// ```
-    ///
-    /// [`Self::image_from_cam`] project onto the space spanned by `(0,0)` and `resolution - 1`.
-    pub resolution: Option<[f32; 2]>,
-}
-
-impl Pinhole {
-    /// Field of View on the Y axis, i.e. the angle between top and bottom (in radians).
-    #[inline]
-    pub fn fov_y(&self) -> Option<f32> {
-        self.resolution
-            .map(|resolution| 2.0 * (0.5 * resolution[1] / self.image_from_cam[1][1]).atan())
-    }
-
-    /// X & Y focal length in pixels.
-    ///
-    /// [see definition of intrinsic matrix](https://en.wikipedia.org/wiki/Camera_resectioning#Intrinsic_parameters)
-    #[inline]
-    #[cfg(feature = "glam")]
-    pub fn focal_length_in_pixels(&self) -> glam::Vec2 {
-        glam::vec2(self.image_from_cam[0][0], self.image_from_cam[1][1])
-    }
-
-    /// Focal length.
-    #[inline]
-    pub fn focal_length(&self) -> Option<f32> {
-        self.resolution.map(|r| self.image_from_cam[0][0] / r[0])
-    }
-
-    /// Principal point of the pinhole camera,
-    /// i.e. the intersection of the optical axis and the image plane.
-    ///
-    /// [see definition of intrinsic matrix](https://en.wikipedia.org/wiki/Camera_resectioning#Intrinsic_parameters)
-    #[cfg(feature = "glam")]
-    #[inline]
-    #[cfg(feature = "glam")]
-    pub fn principal_point(&self) -> glam::Vec2 {
-        glam::vec2(self.image_from_cam[2][0], self.image_from_cam[2][1])
-    }
-
-    #[inline]
-    #[cfg(feature = "glam")]
-    pub fn resolution(&self) -> Option<glam::Vec2> {
-        self.resolution.map(|r| glam::vec2(r[0], r[1]))
-    }
-
-    #[inline]
-    pub fn aspect_ratio(&self) -> f32 {
-        self.image_from_cam[0][0] / self.image_from_cam[1][1]
-    }
-}
-
-// ----------------------------------------------------------------------------
-
-/// A transform between two spaces.
-#[derive(Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum Transform {
-    /// We don't know the transform, but it is likely/potentially non-identity.
-    /// Maybe the user intend to set the transform later.
-    Unknown,
-
-    /// For instance: the parent is a 3D world space, the child a camera space.
-    Rigid3(Rigid3),
-
-    /// The parent is some local camera space, the child an image space.
-    Pinhole(Pinhole),
-}
 
 // ----------------------------------------------------------------------------
 
