@@ -14,7 +14,7 @@ use pyo3::{
 
 use re_log_types::{
     context, coordinates,
-    field_types::{ClassId, ColorRGBA, KeypointId, Label},
+    field_types::{ClassId, KeypointId, Label},
     msg_bundle::MsgBundle,
     AnnotationContext, ApplicationId, BBox2D, BatchIndex, Data, DataVec, EncodedMesh3D, Index,
     LogMsg, LoggedData, Mesh3D, MeshFormat, MeshId, MsgId, ObjPath, ObjectType, PathOp,
@@ -1836,14 +1836,7 @@ impl From<AnnotationInfoTuple> for context::AnnotationInfo {
             color: color
                 .as_ref()
                 .map(|color| convert_color(color.clone()).unwrap())
-                .map(|bytes| {
-                    ColorRGBA(
-                        (bytes[0] as u32) << 24
-                            | (bytes[1] as u32) << 16
-                            | (bytes[2] as u32) << 8
-                            | (bytes[3] as u32),
-                    )
-                }),
+                .map(|bytes| bytes.into()),
         }
     }
 }
