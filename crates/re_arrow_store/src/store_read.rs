@@ -12,22 +12,6 @@ use crate::{
     SecondaryIndex,
 };
 
-// TODO:
-// - latest-at timeless low-level semantics:
-//   - do a temporal latest-at
-//   - fill the holes with a timeless latest-at
-//
-// - latest-at timeless high-level semantics are identical
-//
-// - range timeless low-level semantics:
-//   - range over timeless data first
-//   - range over temporal data second
-//
-// - range timeless high-level semantics:
-//   - range over timeless data first
-//   - send TEMPORAL latest-at state second
-//   - and finally range over temporal data from there
-
 // --- Queries ---
 
 /// A query a given time, for a given timeline.
@@ -121,7 +105,10 @@ impl RangeQuery {
 // --- Data store ---
 
 impl DataStore {
-    /// Retrieve all the `ComponentName`s that have been written to for a given `Timeline` and `EntityPath`
+    /// Retrieve all the `ComponentName`s that have been written to for a given `EntityPath` on a
+    /// specific `Timeline`.
+    ///
+    /// This also includes `ComponentName`s present in the timeless indices for this entity.
     pub fn all_components(
         &self,
         timeline: &Timeline,
@@ -140,8 +127,24 @@ impl DataStore {
             "query started..."
         );
 
-        let index = self.indices.get(&(*timeline, *ent_path_hash))?;
-        let components = index.all_components.iter().cloned().collect_vec();
+        let timeless = self
+            .timeless_indices
+            .get(ent_path_hash)
+            .map(|index| &index.all_components);
+
+        let temporal = self
+            .indices
+            .get(&(*timeline, *ent_path_hash))
+            .map(|index| &index.all_components);
+
+        let components = match (timeless, temporal) {
+            (None, Some(temporal)) => temporal.iter().cloned().collect_vec(),
+            (Some(timeless), None) => timeless.iter().cloned().collect_vec(),
+            (Some(timeless), Some(temporal)) => {
+                timeless.union(temporal).cloned().into_iter().collect_vec()
+            }
+            (None, None) => return None,
+        };
 
         trace!(
             kind = "latest_components_at",

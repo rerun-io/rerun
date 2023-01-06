@@ -443,6 +443,7 @@ impl PersistentIndexTable {
             ent_path,
             indices: Default::default(),
             nb_rows: 0,
+            all_components: Default::default(),
         }
     }
 
@@ -475,6 +476,9 @@ impl PersistentIndexTable {
 
         #[cfg(debug_assertions)]
         self.sanity_check().unwrap();
+
+        // Insert components last, only if bucket-insert succeeded.
+        self.all_components.extend(row_indices.keys());
 
         Ok(())
     }

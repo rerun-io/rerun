@@ -13,8 +13,6 @@ use re_log_types::{
     ObjPath as EntityPath, TimeType, Timeline,
 };
 
-// TODO: examples need some timeless data
-
 fn main() {
     let mut store = DataStore::new(Instance::name(), Default::default());
 

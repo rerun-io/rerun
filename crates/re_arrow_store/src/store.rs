@@ -567,6 +567,9 @@ pub struct PersistentIndexTable {
     /// When that happens, they will be retro-filled with nulls until they are [`Self::nb_rows`]
     /// long.
     pub(crate) indices: IntMap<ComponentName, SecondaryIndex>,
+
+    /// Track all of the components that have been written to.
+    pub(crate) all_components: IntSet<ComponentName>,
 }
 
 impl std::fmt::Display for PersistentIndexTable {
@@ -577,6 +580,7 @@ impl std::fmt::Display for PersistentIndexTable {
             cluster_key: _,
             nb_rows: _,
             indices: _,
+            all_components: _,
         } = self;
 
         f.write_fmt(format_args!("entity: {}\n", ent_path))?;
@@ -626,6 +630,7 @@ impl PersistentIndexTable {
             cluster_key,
             nb_rows,
             indices,
+            all_components: _,
         } = self;
 
         // All indices should be `Self::nb_rows` long.

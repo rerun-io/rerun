@@ -14,10 +14,10 @@ use re_arrow_store::{
 };
 use re_log_types::{
     datagen::{
-        build_frame_nr, build_some_instances, build_some_instances_from, build_some_point2d,
-        build_some_rects,
+        build_frame_nr, build_some_colors, build_some_instances, build_some_instances_from,
+        build_some_point2d, build_some_rects,
     },
-    field_types::{Instance, Point2D, Rect2D},
+    field_types::{ColorRGBA, Instance, Point2D, Rect2D},
     msg_bundle::{wrap_in_listarray, Component as _, MsgBundle},
     ComponentName, MsgId, ObjPath as EntityPath, TimeType, Timeline,
 };
@@ -73,21 +73,26 @@ fn all_components() {
         let cluster_key = store.cluster_key();
 
         let components_a = &[
-            Rect2D::name(), // added by us
-            cluster_key,    // always here
-            MsgId::name(),  // automatically appended by MsgBundle
+            ColorRGBA::name(), // added by us, timeless
+            Rect2D::name(),    // added by us
+            cluster_key,       // always here
+            MsgId::name(),     // automatically appended by MsgBundle
             #[cfg(debug_assertions)]
             DataStore::insert_id_key(), // automatically added in debug
         ];
 
         let components_b = &[
-            Point2D::name(), // added by us
-            Rect2D::name(),  // added by us
-            cluster_key,     // always here
-            MsgId::name(),   // automatically appended by MsgBundle
+            ColorRGBA::name(), // added by us, timeless
+            Point2D::name(),   // added by us
+            Rect2D::name(),    // added by us
+            cluster_key,       // always here
+            MsgId::name(),     // automatically appended by MsgBundle
             #[cfg(debug_assertions)]
             DataStore::insert_id_key(), // automatically added in debug
         ];
+
+        let bundle = test_bundle!(ent_path @ [] => [build_some_colors(2)]);
+        store.insert(&bundle).unwrap();
 
         let bundle = test_bundle!(ent_path @ [
             build_frame_nr(frame1),
@@ -136,21 +141,26 @@ fn all_components() {
         // └──────────┴────────┴─────────┴────────┴───────────┴──────────┘
 
         let components_a = &[
-            Rect2D::name(), // added by us
-            cluster_key,    // always here
-            MsgId::name(),  // automatically appended by MsgBundle
+            ColorRGBA::name(), // added by us, timeless
+            Rect2D::name(),    // added by us
+            cluster_key,       // always here
+            MsgId::name(),     // automatically appended by MsgBundle
             #[cfg(debug_assertions)]
             DataStore::insert_id_key(), // automatically added in debug
         ];
 
         let components_b = &[
-            Rect2D::name(),  // ⚠ inherited before the buckets got splitted apart!
-            Point2D::name(), // added by us
-            cluster_key,     // always here
-            MsgId::name(),   // automatically appended by MsgBundle
+            ColorRGBA::name(), // added by us, timeless
+            Rect2D::name(),    // ⚠ inherited before the buckets got splitted apart!
+            Point2D::name(),   // added by us
+            cluster_key,       // always here
+            MsgId::name(),     // automatically appended by MsgBundle
             #[cfg(debug_assertions)]
             DataStore::insert_id_key(), // automatically added in debug
         ];
+
+        let bundle = test_bundle!(ent_path @ [] => [build_some_colors(2)]);
+        store.insert(&bundle).unwrap();
 
         let bundle = test_bundle!(ent_path @ [build_frame_nr(frame1)] => [build_some_rects(2)]);
         store.insert(&bundle).unwrap();
@@ -203,21 +213,26 @@ fn all_components() {
         // └──────────┴────────┴────────┴───────────┴──────────┘
 
         let components_a = &[
-            Rect2D::name(), // added by us
-            cluster_key,    // always here
-            MsgId::name(),  // automatically appended by MsgBundle
+            ColorRGBA::name(), // added by us, timeless
+            Rect2D::name(),    // added by us
+            cluster_key,       // always here
+            MsgId::name(),     // automatically appended by MsgBundle
             #[cfg(debug_assertions)]
             DataStore::insert_id_key(), // automatically added in debug
         ];
 
         let components_b = &[
-            Point2D::name(), // added by us but not contained in the second bucket
-            Rect2D::name(),  // added by use
-            cluster_key,     // always here
-            MsgId::name(),   // automatically appended by MsgBundle
+            ColorRGBA::name(), // added by us, timeless
+            Point2D::name(),   // added by us but not contained in the second bucket
+            Rect2D::name(),    // added by use
+            cluster_key,       // always here
+            MsgId::name(),     // automatically appended by MsgBundle
             #[cfg(debug_assertions)]
             DataStore::insert_id_key(), // automatically added in debug
         ];
+
+        let bundle = test_bundle!(ent_path @ [] => [build_some_colors(2)]);
+        store.insert(&bundle).unwrap();
 
         let bundle = test_bundle!(ent_path @ [build_frame_nr(frame2)] => [build_some_rects(2)]);
         store.insert(&bundle).unwrap();
