@@ -57,7 +57,7 @@ impl SpaceCamera3D {
     pub fn world_from_image(&self) -> Option<Affine3A> {
         let pinhole = self.pinhole?;
         let world_from_cam = self.world_from_cam();
-        let image_from_cam = Mat3::from_cols_array_2d(&pinhole.image_from_cam);
+        let image_from_cam: Mat3 = pinhole.image_from_cam.into();
         let cam_from_image = Affine3A::from_mat3(image_from_cam.inverse());
         Some(world_from_cam * cam_from_image)
     }
@@ -67,7 +67,7 @@ impl SpaceCamera3D {
         let pinhole = self.pinhole?;
         let cam_from_world = self.cam_from_world();
 
-        let image_from_cam = Mat3::from_cols_array_2d(&pinhole.image_from_cam);
+        let image_from_cam = pinhole.image_from_cam.into();
         let image_from_cam = Affine3A::from_mat3(image_from_cam);
         Some(image_from_cam * cam_from_world)
     }

@@ -1,5 +1,7 @@
 use egui::Vec2;
-use re_log_types::{Arrow3D, Data, DataVec, Pinhole, Rigid3, Transform, ViewCoordinates};
+use re_log_types::{
+    field_types::Mat3x3, Arrow3D, Data, DataVec, Pinhole, Rigid3, Transform, ViewCoordinates,
+};
 
 use crate::ui::Preview;
 
@@ -220,7 +222,7 @@ impl DataUi for Pinhole {
 }
 
 /// Previously `mat3_ui()`
-impl DataUi for [[f32; 3]; 3] {
+impl DataUi for Mat3x3 {
     fn data_ui(
         &self,
         _ctx: &mut crate::misc::ViewerContext<'_>,

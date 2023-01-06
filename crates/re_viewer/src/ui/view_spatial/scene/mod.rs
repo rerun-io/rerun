@@ -329,7 +329,7 @@ impl SceneSpatial {
         color: Color32,
     ) -> Option<()> {
         let world_from_image = camera.world_from_image()?;
-        let [w, h] = camera.pinhole?.resolution?;
+        let [w, h] = camera.pinhole?.resolution?.0;
 
         // TODO(emilk): there is probably a off-by-one or off-by-half error here.
         // The image coordinates are in [0, w-1] range, so either we should use those limits
