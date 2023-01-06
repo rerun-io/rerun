@@ -81,6 +81,17 @@ impl TryFrom<u8> for ViewDir {
 /// For instance: What is "up"? What does the Z axis mean? Is this right-handed or left-handed?
 ///
 /// For 3D view-space and image-space.
+///
+/// ```
+/// use re_log_types::field_types::ViewCoordinates;
+/// use arrow2_convert::field::ArrowField;
+/// use arrow2::datatypes::{DataType, Field};
+///
+/// assert_eq!(
+///     ViewCoordinates::data_type(),
+///     DataType::FixedSizeBinary(3)
+/// );
+/// ```
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct ViewCoordinates(pub [ViewDir; 3]);
