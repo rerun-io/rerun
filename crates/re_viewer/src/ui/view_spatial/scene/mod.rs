@@ -159,8 +159,9 @@ impl SceneSpatial {
         let parts: Vec<&dyn ScenePart> = vec![
             &scene_part::Points3DPartClassic,
             &scene_part::Points3DPart { max_labels: 10 },
-            // --
+            &scene_part::Points2DPartClassic,
             &scene_part::Points2DPart,
+            // --
             &scene_part::Boxes3DPart,
             &scene_part::Lines3DPart,
             &scene_part::Arrows3DPart,
