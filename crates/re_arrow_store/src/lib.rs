@@ -23,7 +23,6 @@ pub mod polars_util;
 #[doc(hidden)]
 pub mod test_util;
 
-pub use self::arrow_util::clean_for_polars;
 pub use self::arrow_util::ArrayExt;
 pub use self::store::{DataStore, DataStoreConfig, IndexBucket, IndexRowNr, IndexTable, RowIndex};
 pub use self::store_read::{LatestAtQuery, RangeQuery};
