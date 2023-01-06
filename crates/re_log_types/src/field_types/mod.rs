@@ -10,6 +10,7 @@ use crate::msg_bundle::Component;
 
 mod class_id;
 mod color;
+pub mod coordinates;
 mod instance;
 mod keypoint_id;
 mod label;
@@ -27,6 +28,7 @@ mod vec;
 
 pub use class_id::ClassId;
 pub use color::ColorRGBA;
+pub use coordinates::ViewCoordinates;
 pub use instance::Instance;
 pub use keypoint_id::KeypointId;
 pub use label::Label;
@@ -69,3 +71,11 @@ lazy_static! {
 pub fn iter_registered_field_types() -> impl Iterator<Item = &'static Field> {
     FIELDS.iter()
 }
+
+#[derive(thiserror::Error, Debug)]
+pub enum FieldError {
+    #[error("Encountered bad value")]
+    BadValue,
+}
+
+pub type Result<T> = std::result::Result<T, FieldError>;

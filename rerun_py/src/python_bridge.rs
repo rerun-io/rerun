@@ -584,7 +584,7 @@ fn log_view_coordinates_up_handedness(
 }
 
 fn log_view_coordinates(
-    obj_path: &str,
+    obj_path_str: &str,
     coordinates: ViewCoordinates,
     timeless: bool,
 ) -> PyResult<()> {
@@ -593,13 +593,37 @@ fn log_view_coordinates(
     }
 
     let mut session = global_session();
-    let obj_path = parse_obj_path(obj_path)?;
+    let obj_path = parse_obj_path(obj_path_str)?;
     let time_point = time(timeless);
-    session.send_data(
-        &time_point,
-        (&obj_path, "_view_coordinates"),
-        LoggedData::Single(Data::ViewCoordinates(coordinates)),
-    );
+
+    // We currently log view coordinates from inside the bridge because the code
+    // that does matching and validation on different string representations is
+    // non-trivial. Implementing this functionality on the python side will take
+    // a bit of additional work and testing to ensure we aren't introducing new
+    // conversion errors.
+    if session.arrow_logging_enabled() {
+        let mut arrow_path = "arrow/".to_owned();
+        arrow_path.push_str(obj_path_str);
+        let arrow_path = parse_obj_path(arrow_path.as_str())?;
+        let bundle = MsgBundle::new(
+            MsgId::random(),
+            arrow_path,
+            time_point.clone(),
+            vec![vec![coordinates].try_into().unwrap()],
+        );
+
+        let msg = bundle.try_into().unwrap();
+
+        session.send(LogMsg::ArrowMsg(msg));
+    }
+
+    if session.classic_logging_enabled() {
+        session.send_data(
+            &time_point,
+            (&obj_path, "_view_coordinates"),
+            LoggedData::Single(Data::ViewCoordinates(coordinates)),
+        );
+    }
 
     Ok(())
 }
