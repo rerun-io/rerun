@@ -118,7 +118,7 @@ impl ArrayExt for dyn Array {
                 // Recursively clean the contents
                 let typed_arr = self.as_any().downcast_ref::<ListArray<i64>>().unwrap();
                 let clean_vals = typed_arr.values().as_ref().clean_for_polars();
-                let clean_data = DataType::List(Box::new(Field::new(
+                let clean_data = DataType::LargeList(Box::new(Field::new(
                     &field.name,
                     clean_vals.data_type().clone(),
                     field.is_nullable,
