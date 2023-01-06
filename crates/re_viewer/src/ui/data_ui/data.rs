@@ -1,6 +1,7 @@
 use egui::Vec2;
 use re_log_types::{
-    field_types::Mat3x3, Arrow3D, Data, DataVec, Pinhole, Rigid3, Transform, ViewCoordinates,
+    field_types::ColorRGBA, field_types::Mat3x3, Arrow3D, Data, DataVec, Pinhole, Rigid3,
+    Transform, ViewCoordinates,
 };
 
 use crate::ui::Preview;
@@ -110,6 +111,26 @@ impl DataUi for [u8; 4] {
     ) -> egui::Response {
         let [r, g, b, a] = self;
         let color = egui::Color32::from_rgba_unmultiplied(*r, *g, *b, *a);
+        let response = egui::color_picker::show_color(ui, color, Vec2::new(32.0, 16.0));
+        ui.painter().rect_stroke(
+            response.rect,
+            1.0,
+            ui.visuals().widgets.noninteractive.fg_stroke,
+        );
+        response.on_hover_text(format!("Color #{:02x}{:02x}{:02x}{:02x}", r, g, b, a))
+    }
+}
+
+/// Previously `color_field_ui()`
+impl DataUi for ColorRGBA {
+    fn data_ui(
+        &self,
+        _ctx: &mut crate::misc::ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        _preview: Preview,
+    ) -> egui::Response {
+        let [r, g, b, a] = self.to_array();
+        let color = egui::Color32::from_rgba_unmultiplied(r, g, b, a);
         let response = egui::color_picker::show_color(ui, color, Vec2::new(32.0, 16.0));
         ui.painter().rect_stroke(
             response.rect,

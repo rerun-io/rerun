@@ -2,7 +2,7 @@ use egui::{color_picker, Vec2};
 use itertools::Itertools;
 use re_log_types::{context::AnnotationInfo, AnnotationContext};
 
-use crate::ui::annotations::auto_color;
+use crate::ui::annotations::auto_color_egui;
 
 use super::DataUi;
 
@@ -84,7 +84,7 @@ impl DataUi for AnnotationContext {
                                                         .and_then(|info| info.label.as_ref())
                                                         .map_or_else(
                                                             || format!("id {:?}", id),
-                                                            |label| String::clone(label),
+                                                            |label| label.0.clone(),
                                                         ),
                                                 );
                                             });
@@ -141,7 +141,7 @@ fn annotation_info_table_ui<'a>(
                     });
                     row.col(|ui| {
                         let label = if let Some(label) = &info.label {
-                            label.as_str()
+                            label.0.as_str()
                         } else {
                             ""
                         };
@@ -150,8 +150,9 @@ fn annotation_info_table_ui<'a>(
                     row.col(|ui| {
                         ui.horizontal(|ui| {
                             ui.spacing_mut().item_spacing.x = 8.0;
-                            let color = info.color.unwrap_or_else(|| auto_color(info.id));
-                            let color = egui::Color32::from_rgb(color[0], color[1], color[2]);
+                            let color = info
+                                .color
+                                .map_or_else(|| auto_color_egui(info.id), |color| color.into());
                             color_picker::show_color(ui, color, Vec2::new(64.0, row_height));
                             if info.color.is_none() {
                                 ui.weak("(auto)").on_hover_text(

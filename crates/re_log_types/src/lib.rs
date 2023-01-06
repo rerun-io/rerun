@@ -27,7 +27,6 @@ pub mod datagen;
 pub mod arrow_msg;
 pub mod field_types;
 pub use arrow_msg::ArrowMsg;
-pub mod context;
 mod data;
 pub mod hash;
 mod index;
@@ -44,9 +43,10 @@ pub mod external {
     pub use arrow2_convert;
 }
 
-pub use self::context::AnnotationContext;
 pub use self::data::*;
+pub use self::field_types::context;
 pub use self::field_types::coordinates;
+pub use self::field_types::AnnotationContext;
 pub use self::field_types::MsgId;
 pub use self::field_types::ViewCoordinates;
 pub use self::index::*;
