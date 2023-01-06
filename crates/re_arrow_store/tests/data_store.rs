@@ -430,6 +430,7 @@ fn range_impl(store: &mut DataStore) {
     // by the range query.
     // A single timepoint might have several of those! That's one of the behaviors specific to
     // range queries.
+    #[allow(clippy::type_complexity)]
     let mut assert_range_components =
         |time_range: TimeRange,
          components: [ComponentName; 2],

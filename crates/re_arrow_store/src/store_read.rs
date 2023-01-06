@@ -1,9 +1,6 @@
 use std::{ops::RangeBounds, sync::atomic::Ordering};
 
-use arrow2::{
-    array::{Array, Int64Array, ListArray, UInt64Array},
-    datatypes::{DataType, TimeUnit},
-};
+use arrow2::array::{Array, ListArray};
 
 use itertools::Itertools;
 use re_log::trace;
@@ -1018,38 +1015,6 @@ impl IndexBucket {
     /// Whether the indices in this `IndexBucket` are sorted
     pub fn is_sorted(&self) -> bool {
         self.indices.read().is_sorted
-    }
-
-    // TODO: move to core
-    /// Returns an (name, [`Int64Array`]) with a logical type matching the timeline.
-    pub fn times(&self) -> (String, Int64Array) {
-        let times = Int64Array::from_vec(self.indices.read().times.clone());
-        let logical_type = match self.timeline.typ() {
-            re_log_types::TimeType::Time => DataType::Timestamp(TimeUnit::Nanosecond, None),
-            re_log_types::TimeType::Sequence => DataType::Int64,
-        };
-        (self.timeline.name().to_string(), times.to(logical_type))
-    }
-
-    // TODO: move to core
-    /// Returns a Vec each of (name, array) for each index in the bucket
-    pub fn named_indices(&self) -> (Vec<ComponentName>, Vec<UInt64Array>) {
-        self.indices
-            .read()
-            .indices
-            .iter()
-            .map(|(name, index)| {
-                (
-                    name,
-                    UInt64Array::from(
-                        index
-                            .iter()
-                            .map(|row_idx| row_idx.map(|row_idx| row_idx.as_u64()))
-                            .collect::<Vec<_>>(),
-                    ),
-                )
-            })
-            .unzip()
     }
 }
 

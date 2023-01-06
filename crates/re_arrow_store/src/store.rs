@@ -3,8 +3,8 @@ use std::num::NonZeroU64;
 use std::sync::atomic::AtomicU64;
 
 use anyhow::{anyhow, ensure};
-use arrow2::array::{Array, UInt64Array};
-use arrow2::datatypes::DataType;
+use arrow2::array::{Array, Int64Array, UInt64Array};
+use arrow2::datatypes::{DataType, TimeUnit};
 
 use nohash_hasher::{IntMap, IntSet};
 use parking_lot::RwLock;
@@ -1013,6 +1013,36 @@ impl IndexBucket {
         } else {
             "time range: N/A\n".to_owned()
         }
+    }
+
+    /// Returns an (name, [`Int64Array`]) with a logical type matching the timeline.
+    pub fn times(&self) -> (String, Int64Array) {
+        let times = Int64Array::from_vec(self.indices.read().times.clone());
+        let logical_type = match self.timeline.typ() {
+            re_log_types::TimeType::Time => DataType::Timestamp(TimeUnit::Nanosecond, None),
+            re_log_types::TimeType::Sequence => DataType::Int64,
+        };
+        (self.timeline.name().to_string(), times.to(logical_type))
+    }
+
+    /// Returns a Vec each of (name, array) for each index in the bucket
+    pub fn named_indices(&self) -> (Vec<ComponentName>, Vec<UInt64Array>) {
+        self.indices
+            .read()
+            .indices
+            .iter()
+            .map(|(name, index)| {
+                (
+                    name,
+                    UInt64Array::from(
+                        index
+                            .iter()
+                            .map(|row_idx| row_idx.map(|row_idx| row_idx.as_u64()))
+                            .collect::<Vec<_>>(),
+                    ),
+                )
+            })
+            .unzip()
     }
 
     /// Runs the sanity check suite for the entire bucket.
