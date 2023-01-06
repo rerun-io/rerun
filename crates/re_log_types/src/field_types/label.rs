@@ -15,7 +15,8 @@ use crate::msg_bundle::Component;
 ///
 /// assert_eq!(Label::data_type(), DataType::Utf8);
 /// ```
-#[derive(Debug, Clone, derive_more::From, derive_more::Into)]
+#[derive(Debug, Clone, PartialEq, Eq, derive_more::From, derive_more::Into)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Label(pub String);
 
 arrow_enable_vec_for_type!(Label);

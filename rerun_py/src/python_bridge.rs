@@ -2,7 +2,7 @@
 #![allow(clippy::borrow_deref_ref)] // False positive due to #[pufunction] macro
 #![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pufunction] macro
 
-use std::{borrow::Cow, io::Cursor, path::PathBuf, sync::Arc};
+use std::{borrow::Cow, io::Cursor, path::PathBuf};
 
 use bytemuck::allocation::pod_collect_to_vec;
 use itertools::Itertools as _;
@@ -14,7 +14,7 @@ use pyo3::{
 
 use re_log_types::{
     context, coordinates,
-    field_types::{ClassId, KeypointId},
+    field_types::{ClassId, KeypointId, Label},
     msg_bundle::MsgBundle,
     AnnotationContext, ApplicationId, BBox2D, BatchIndex, Data, DataVec, EncodedMesh3D, Index,
     LogMsg, LoggedData, Mesh3D, MeshFormat, MeshId, MsgId, ObjPath, ObjectType, PathOp,
@@ -1832,10 +1832,11 @@ impl From<AnnotationInfoTuple> for context::AnnotationInfo {
         let AnnotationInfoTuple(id, label, color) = tuple;
         Self {
             id,
-            label: label.map(Arc::new),
+            label: label.map(Label),
             color: color
                 .as_ref()
-                .map(|color| convert_color(color.clone()).unwrap()),
+                .map(|color| convert_color(color.clone()).unwrap())
+                .map(|bytes| bytes.into()),
         }
     }
 }
