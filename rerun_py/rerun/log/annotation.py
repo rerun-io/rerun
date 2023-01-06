@@ -128,8 +128,5 @@ def log_annotation_context(
         for d in typed_class_descriptions
     ]
 
-    if EXP_ARROW.classic_log_gate():
-        bindings.log_annotation_context(obj_path, tuple_class_descriptions, timeless)
-
-    if EXP_ARROW.arrow_log_gate():
-        logging.warning("log_annotation_context() not yet implemented for Arrow.")
+    # AnnotationContext arrow handling happens inside the python bridge
+    bindings.log_annotation_context(obj_path, tuple_class_descriptions, timeless)

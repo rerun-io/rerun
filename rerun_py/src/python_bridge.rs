@@ -1879,11 +1879,12 @@ fn log_annotation_context(
 
     let time_point = time(timeless);
 
-    // We currently log view coordinates from inside the bridge because the code
-    // that does matching and validation on different string representations is
-    // non-trivial. Implementing this functionality on the python side will take
-    // a bit of additional work and testing to ensure we aren't introducing new
-    // conversion errors.
+    // We currently log AnnotationContext from inside the bridge because it's a
+    // fairly complex type with a need for a fair amount of data-validation. We
+    // already have the serialization implemented in rust so we start with this
+    // implementation.
+    //
+    // TODO(jleibs) replace with python-native implementation
     if session.arrow_logging_enabled() {
         let mut arrow_path = "arrow/".to_owned();
         arrow_path.push_str(obj_path_str);

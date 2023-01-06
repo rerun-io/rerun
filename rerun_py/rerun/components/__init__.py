@@ -9,6 +9,7 @@ import pyarrow as pa
 from rerun import bindings
 
 all = [
+    "annotation",
     "color",
     "label",
     "point",
