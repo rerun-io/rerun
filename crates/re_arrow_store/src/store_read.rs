@@ -87,19 +87,18 @@ impl LatestAtQuery {
 pub struct RangeQuery {
     pub timeline: Timeline,
     pub range: TimeRange,
-    /// When set to `true` (the default), the query will take temporal data into account.
-    // TODO: that's weird
-    pub include_temporal: bool,
+    /// When set to `true` (the default), the query will take timeless data into account.
+    pub include_timeless: bool,
 }
 
 impl std::fmt::Debug for RangeQuery {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!(
-            "<ranging from {} to {} (all inclusive) on {:?} ({} temporal)>",
+            "<ranging from {} to {} (all inclusive) on {:?} ({} timeless)>",
             self.timeline.typ().format(self.range.min),
             self.timeline.typ().format(self.range.max),
             self.timeline.name(),
-            self.include_temporal,
+            self.include_timeless,
         ))
     }
 }
@@ -109,15 +108,15 @@ impl RangeQuery {
         Self {
             timeline,
             range,
-            include_temporal: true,
+            include_timeless: true,
         }
     }
 
-    pub const fn timeless_only(timeline: Timeline, range: TimeRange) -> Self {
+    pub const fn temporal_only(timeline: Timeline, range: TimeRange) -> Self {
         Self {
             timeline,
             range,
-            include_temporal: false,
+            include_timeless: false,
         }
     }
 }
@@ -418,31 +417,29 @@ impl DataStore {
             "query started..."
         );
 
-        let timeless = self
-            .timeless_indices
-            .get(ent_path_hash)
-            .map(|index| {
-                index
-                    .range(components)
-                    .map(|(idx_row_nr, row_indices)| (None, idx_row_nr, row_indices))
-            })
+        let temporal = self
+            .indices
+            .get(&(query.timeline, *ent_path_hash))
+            .map(|index| index.range(query.range, components))
             .into_iter()
-            .flatten();
+            .flatten()
+            .map(|(time, idx_row_nr, row_indices)| (Some(time), idx_row_nr, row_indices));
 
-        let temporal = if query.include_temporal {
-            let it = self
-                .indices
-                .get(&(query.timeline, *ent_path_hash))
-                .map(|index| index.range(query.range, components))
+        if query.include_timeless {
+            let timeless = self
+                .timeless_indices
+                .get(ent_path_hash)
+                .map(|index| {
+                    index
+                        .range(components)
+                        .map(|(idx_row_nr, row_indices)| (None, idx_row_nr, row_indices))
+                })
                 .into_iter()
-                .flatten()
-                .map(|(time, idx_row_nr, row_indices)| (Some(time), idx_row_nr, row_indices));
-            itertools::Either::Left(it)
+                .flatten();
+            itertools::Either::Left(timeless.chain(temporal))
         } else {
-            itertools::Either::Right(std::iter::empty())
-        };
-
-        timeless.chain(temporal)
+            itertools::Either::Right(temporal)
+        }
     }
 
     /// Retrieves the data associated with a list of `components` at the specified `indices`.
