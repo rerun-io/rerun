@@ -50,14 +50,14 @@ pub struct ClassDescription {
 
 /// Helper struct for converting `ClassDescription` to arrow
 #[derive(ArrowField, ArrowSerialize, ArrowDeserialize)]
-pub struct KeypointPairArrow {
+struct KeypointPairArrow {
     keypoint0: KeypointId,
     keypoint1: KeypointId,
 }
 
 /// Helper struct for converting `ClassDescription` to arrow
 #[derive(ArrowField, ArrowSerialize, ArrowDeserialize)]
-pub struct ClassDescriptionArrow {
+struct ClassDescriptionArrow {
     info: AnnotationInfo,
     keypoint_map: Vec<AnnotationInfo>,
     keypoint_connections: Vec<KeypointPairArrow>,
@@ -114,12 +114,15 @@ pub struct AnnotationContext {
 
 /// Helper struct for converting `AnnotationContext` to arrow
 #[derive(ArrowField, ArrowSerialize, ArrowDeserialize)]
-pub struct ClassMapElemArrow {
+struct ClassMapElemArrow {
     class_id: ClassId,
     class_description: ClassDescriptionArrow,
 }
 
 /// Helper struct for converting `AnnotationContext` to arrow
+///
+/// This needs to be public because it is leaked in the implementation of
+/// `ArrowSerialize`
 #[derive(ArrowField, ArrowSerialize, ArrowDeserialize)]
 pub struct AnnotationContextArrow {
     class_map: Vec<ClassMapElemArrow>,
