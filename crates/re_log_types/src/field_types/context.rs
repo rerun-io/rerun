@@ -1,5 +1,5 @@
 use ahash::HashMap;
-use arrow2::{array::TryPush, datatypes::DataType};
+use arrow2::{array::TryExtend, datatypes::DataType};
 use arrow2_convert::{
     deserialize::ArrowDeserialize, field::ArrowField, serialize::ArrowSerialize, ArrowDeserialize,
     ArrowField, ArrowSerialize,
@@ -106,6 +106,63 @@ impl From<ClassDescriptionArrow> for ClassDescription {
 /// `AnnotationContext`. We use the *first* annotation context we find in the
 /// path-hierarchy when searching up through the ancestors of a given object
 /// path.
+///
+/// ```
+/// use re_log_types::field_types::AnnotationContext;
+/// use arrow2_convert::field::ArrowField;
+/// use arrow2::datatypes::{DataType, Field};
+///
+/// assert_eq!(
+///     AnnotationContext::data_type(),
+///     DataType::List(Box::new(Field::new(
+///         "item",
+///         DataType::Struct(vec![
+///             Field::new("class_id", DataType::UInt16, false),
+///             Field::new(
+///                 "class_description",
+///                 DataType::Struct(vec![
+///                     Field::new(
+///                         "info",
+///                         DataType::Struct(vec![
+///                             Field::new("id", DataType::UInt16, false),
+///                             Field::new("label", DataType::Utf8, true),
+///                             Field::new("color", DataType::UInt32, true),
+///                         ]),
+///                         false
+///                     ),
+///                     Field::new(
+///                         "keypoint_map",
+///                         DataType::List(Box::new(Field::new(
+///                             "item",
+///                             DataType::Struct(vec![
+///                                 Field::new("id", DataType::UInt16, false),
+///                                 Field::new("label", DataType::Utf8, true),
+///                                 Field::new("color", DataType::UInt32, true),
+///                             ]),
+///                             false
+///                         ))),
+///                         false
+///                     ),
+///                     Field::new(
+///                         "keypoint_connections",
+///                         DataType::List(Box::new(Field::new(
+///                             "item",
+///                             DataType::Struct(vec![
+///                                 Field::new("keypoint0", DataType::UInt16, false),
+///                                 Field::new("keypoint1", DataType::UInt16, false),
+///                             ]),
+///                             false
+///                         ))),
+///                         false
+///                     ),
+///                 ]),
+///                 false
+///             )
+///         ]),
+///         false
+///     )))
+/// );
+/// ```
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct AnnotationContext {
@@ -114,40 +171,29 @@ pub struct AnnotationContext {
 
 /// Helper struct for converting `AnnotationContext` to arrow
 #[derive(ArrowField, ArrowSerialize, ArrowDeserialize)]
-struct ClassMapElemArrow {
+pub struct ClassMapElemArrow {
     class_id: ClassId,
     class_description: ClassDescriptionArrow,
 }
 
-/// Helper struct for converting `AnnotationContext` to arrow
-///
-/// This needs to be public because it is leaked in the implementation of
-/// `ArrowSerialize`
-#[derive(ArrowField, ArrowSerialize, ArrowDeserialize)]
-pub struct AnnotationContextArrow {
-    class_map: Vec<ClassMapElemArrow>,
-}
+type AnnotationContextArrow = Vec<ClassMapElemArrow>;
 
 impl From<&AnnotationContext> for AnnotationContextArrow {
     fn from(v: &AnnotationContext) -> Self {
-        AnnotationContextArrow {
-            class_map: v
-                .class_map
-                .iter()
-                .map(|(class_id, class_description)| ClassMapElemArrow {
-                    class_id: *class_id,
-                    class_description: class_description.into(),
-                })
-                .collect(),
-        }
+        v.class_map
+            .iter()
+            .map(|(class_id, class_description)| ClassMapElemArrow {
+                class_id: *class_id,
+                class_description: class_description.into(),
+            })
+            .collect()
     }
 }
 
-impl From<AnnotationContextArrow> for AnnotationContext {
+impl From<Vec<ClassMapElemArrow>> for AnnotationContext {
     fn from(v: AnnotationContextArrow) -> Self {
         AnnotationContext {
             class_map: v
-                .class_map
                 .into_iter()
                 .map(|elem| (elem.class_id, elem.class_description.into()))
                 .collect(),
@@ -173,7 +219,8 @@ impl ArrowSerialize for AnnotationContext {
     #[inline]
     fn arrow_serialize(v: &Self, array: &mut Self::MutableArrayType) -> arrow2::error::Result<()> {
         let v: AnnotationContextArrow = v.into();
-        array.try_push(Some(v))
+        array.mut_values().try_extend(v.iter().map(Some))?;
+        array.try_push_valid()
     }
 }
 
@@ -184,6 +231,7 @@ impl ArrowDeserialize for AnnotationContext {
     fn arrow_deserialize(
         v: <&Self::ArrayType as IntoIterator>::Item,
     ) -> Option<<Self as ArrowField>::Type> {
+        let v = <AnnotationContextArrow as ArrowDeserialize>::arrow_deserialize(v);
         v.map(|v| v.into())
     }
 }
