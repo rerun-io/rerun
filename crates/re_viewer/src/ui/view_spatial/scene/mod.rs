@@ -153,7 +153,6 @@ impl SceneSpatial {
     ) {
         crate::profile_function!();
 
-        //TODO(john) implement this for Arrow data store
         self.annotation_map.load(ctx, query);
 
         let parts: Vec<&dyn ScenePart> = vec![
