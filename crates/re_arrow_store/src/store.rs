@@ -1162,7 +1162,16 @@ impl PersistentComponentTable {
     ///
     /// Returns an error if anything looks wrong.
     pub fn sanity_check(&self) -> anyhow::Result<()> {
-        // TODO: shouldn't components always be dense?
+        // All chunks should always be dense
+        {
+            for chunk in &self.chunks {
+                ensure!(
+                    chunk.validity().is_none(),
+                    "persistent component chunks should always be dense",
+                );
+            }
+        }
+
         Ok(())
     }
 }
@@ -1335,7 +1344,10 @@ impl ComponentTable {
             }
         }
 
-        // TODO: shouldn't components always be dense?
+        for bucket in &self.buckets {
+            bucket.sanity_check()?;
+        }
+
         Ok(())
     }
 }
@@ -1461,6 +1473,23 @@ impl ComponentBucket {
     /// Returns the size of the data stored across this bucket, in bytes.
     pub fn total_size_bytes(&self) -> u64 {
         self.total_size_bytes
+    }
+
+    /// Runs the sanity check suite for the entire table.
+    ///
+    /// Returns an error if anything looks wrong.
+    pub fn sanity_check(&self) -> anyhow::Result<()> {
+        // All chunks should always be dense
+        {
+            for chunk in &self.chunks {
+                ensure!(
+                    chunk.validity().is_none(),
+                    "component bucket chunks should always be dense",
+                );
+            }
+        }
+
+        Ok(())
     }
 }
 
