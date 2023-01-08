@@ -96,6 +96,7 @@ impl Renderer for TestTriangle {
     fn draw<'a>(
         &self,
         pools: &'a WgpuResourcePools,
+        _phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'a>,
         _draw_data: &TestTriangleDrawData,
     ) -> anyhow::Result<()> {
