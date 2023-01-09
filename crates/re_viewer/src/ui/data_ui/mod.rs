@@ -12,10 +12,10 @@ use super::Preview;
 
 mod context;
 mod data;
+mod data_path;
 pub(crate) mod image;
 mod log_msg;
 mod object;
-mod path;
 
 /// Types implementing `DataUi` can draw themselves with a `ViewerContext` and `egui::Ui`.
 pub(crate) trait DataUi {
