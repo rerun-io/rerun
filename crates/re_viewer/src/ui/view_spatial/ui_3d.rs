@@ -473,16 +473,29 @@ pub fn view_3d(
 
         if orbit_center_alpha > 0.0 {
             // Show center of orbit camera when interacting with camera (it's quite helpful).
+            let half_line_length = orbit_eye.orbit_radius * 0.03;
+
             scene
                 .primitives
-                .points
-                .batch("center orbit point")
-                .add_point(orbit_eye.orbit_center)
-                .radius(Size::new_scene(orbit_eye.orbit_radius * 0.01))
-                .color(
-                    egui::Rgba::from_rgba_unmultiplied(1.0, 0.0, 1.0, orbit_center_alpha).into(),
-                );
-            ui.ctx().request_repaint(); // let it fade out
+                .line_strips
+                .batch("center orbit orientation help")
+                .add_segments(glam::Vec3::AXES.iter().map(|axis| {
+                    (
+                        orbit_eye.orbit_center - *axis * half_line_length,
+                        orbit_eye.orbit_center + *axis * half_line_length,
+                    )
+                }))
+                .radius(Size::new_points(0.75))
+                .flags(re_renderer::renderer::LineStripFlags::NO_COLOR_GRADIENT)
+                // TODO(andreas): Fade this out.
+                .color(re_renderer::Color32::WHITE);
+
+            // TODO(andreas): Idea for nice depth perception:
+            // Render the lines once with additive blending and depth test enabled
+            // and another time without depth test. In both cases it needs to be rendered last,
+            // something re_renderer doesn't support yet for primitives within renderers.
+
+            ui.ctx().request_repaint(); // show it for a bit longer.
         }
     }
 
