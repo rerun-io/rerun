@@ -341,271 +341,140 @@ fn timeless_range() {
     // │ 7         ┆ 323      ┆ point  ┆ null            ┆ [0, 1]         ┆ [{167328063302248... ┆ [{10.0,20.0}, {30.0,40.0}] │
     // └───────────┴──────────┴────────┴─────────────────┴────────────────┴──────────────────────┴────────────────────────────┘
 
-    // --- First test: `(timepoint1, timepoint3]` ---
-
-    let query = re_arrow_store::RangeQuery::new(
-        timepoint1[0].0,
-        TimeRange::new((timepoint1[0].1.as_i64() + 1).into(), timepoint3[0].1),
-    );
-
-    let components = [Instance::name(), Point2D::name(), ColorRGBA::name()];
-    let ent_views = range_entity_with_primary::<Point2D, 3>(&store, &query, &ent_path, components);
-
-    let results = ent_views.collect::<Vec<_>>();
-
-    // We expect this to generate the following `DataFrame`s:
-    //
-    // Timeless #1:
-    // ┌────────────────┬───────────────┬─────────────────┐
-    // │ rerun.instance ┆ rerun.point2d ┆ rerun.colorrgba │
-    // │ ---            ┆ ---           ┆ ---             │
-    // │ u64            ┆ struct[2]     ┆ u32             │
-    // ╞════════════════╪═══════════════╪═════════════════╡
-    // │ 0              ┆ {1.0,2.0}     ┆ null            │
-    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    // │ 1              ┆ {3.0,4.0}     ┆ null            │
-    // └────────────────┴───────────────┴─────────────────┘
-    //
-    // Timeless #2:
-    // ┌────────────────┬───────────────┬─────────────────┐
-    // │ rerun.instance ┆ rerun.point2d ┆ rerun.colorrgba │
-    // │ ---            ┆ ---           ┆ ---             │
-    // │ u64            ┆ struct[2]     ┆ u32             │
-    // ╞════════════════╪═══════════════╪═════════════════╡
-    // │ 0              ┆ {10.0,20.0}   ┆ null            │
-    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    // │ 1              ┆ {30.0,40.0}   ┆ 4278190080      │
-    // └────────────────┴───────────────┴─────────────────┘
-    //
-    // Frame #123:
-    // ┌────────────────┬───────────────┬─────────────────┐
-    // │ rerun.instance ┆ rerun.point2d ┆ rerun.colorrgba │
-    // │ ---            ┆ ---           ┆ ---             │
-    // │ u64            ┆ struct[2]     ┆ u32             │
-    // ╞════════════════╪═══════════════╪═════════════════╡
-    // │ 0              ┆ {1.0,2.0}     ┆ null            │
-    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    // │ 1              ┆ {3.0,4.0}     ┆ 4278190080      │
-    // └────────────────┴───────────────┴─────────────────┘
-    //
-    // Frame #323
-    // ┌────────────────┬───────────────┬─────────────────┐
-    // │ rerun.instance ┆ rerun.point2d ┆ rerun.colorrgba │
-    // │ ---            ┆ ---           ┆ ---             │
-    // │ u64            ┆ struct[2]     ┆ u32             │
-    // ╞════════════════╪═══════════════╪═════════════════╡
-    // │ 0              ┆ {10.0,20.0}   ┆ 4278190080      │
-    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    // │ 1              ┆ {30.0,40.0}   ┆ null            │
-    // └────────────────┴───────────────┴─────────────────┘
-
-    #[cfg(feature = "polars")]
-    {
-        use re_query::dataframe_util::df_builder3;
-
-        // Timeless #1
-
-        // Build expected df manually
-        let instances = vec![Some(Instance(0)), Some(Instance(1))];
-        let points = vec![
-            Some(Point2D { x: 1.0, y: 2.0 }),
-            Some(Point2D { x: 3.0, y: 4.0 }),
-        ];
-        let colors: Vec<Option<ColorRGBA>> = vec![None, None];
-        let expected = df_builder3(&instances, &points, &colors).unwrap();
-
-        let (time, ent_view) = &results[0];
-
-        assert_eq!(&None, time);
-        common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
-
-        // Timeless #2
-
-        // Build expected df manually
-        let instances = vec![Some(Instance(0)), Some(Instance(1))];
-        let points = vec![
-            Some(Point2D { x: 10.0, y: 20.0 }),
-            Some(Point2D { x: 30.0, y: 40.0 }),
-        ];
-        let colors = vec![None, Some(ColorRGBA(0xff000000))];
-        let expected = df_builder3(&instances, &points, &colors).unwrap();
-
-        let (time, ent_view) = &results[1];
-
-        assert_eq!(&None, time);
-        common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
-
-        // Frame #123
-
-        // Build expected df manually
-        let instances = vec![Some(Instance(0)), Some(Instance(1))];
-        let points = vec![
-            Some(Point2D { x: 1.0, y: 2.0 }),
-            Some(Point2D { x: 3.0, y: 4.0 }),
-        ];
-        let colors = vec![None, Some(ColorRGBA(0xff000000))];
-        let expected = df_builder3(&instances, &points, &colors).unwrap();
-
-        let (time, ent_view) = &results[2];
-        let time = time.unwrap();
-
-        assert_eq!(TimeInt::from(123), time);
-        common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
-
-        // Frame #323
-
-        // Build expected df manually
-        let instances = vec![Some(Instance(0)), Some(Instance(1))];
-        let points = vec![
-            Some(Point2D { x: 10.0, y: 20.0 }),
-            Some(Point2D { x: 30.0, y: 40.0 }),
-        ];
-        let colors = vec![Some(ColorRGBA(0xff000000)), None];
-        let expected = df_builder3(&instances, &points, &colors).unwrap();
-
-        let (time, ent_view) = &results[3];
-        let time = time.unwrap();
-
-        assert_eq!(TimeInt::from(323), time);
-        common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
-    }
-    #[cfg(not(feature = "polars"))]
-    {
-        //TODO(jleibs): non-polars test validation
-        _ = results;
-    }
-
-    // --- Second test: `[timepoint1, timepoint3]` ---
-
-    let query = re_arrow_store::RangeQuery::new(
-        timepoint1[0].0,
+    let time_ranges = [
         TimeRange::new(timepoint1[0].1, timepoint3[0].1),
-    );
+        TimeRange::new((timepoint1[0].1.as_i64() + 1).into(), timepoint3[0].1),
+    ];
 
-    let components = [Instance::name(), Point2D::name(), ColorRGBA::name()];
-    let ent_views = range_entity_with_primary::<Point2D, 3>(&store, &query, &ent_path, components);
+    for time_range in time_ranges {
+        let query = re_arrow_store::RangeQuery::new(timepoint1[0].0, time_range);
 
-    let results = ent_views.collect::<Vec<_>>();
+        let components = [Instance::name(), Point2D::name(), ColorRGBA::name()];
+        let ent_views =
+            range_entity_with_primary::<Point2D, 3>(&store, &query, &ent_path, components);
 
-    // We expect this to generate the following `DataFrame`s:
-    //
-    // Timeless #1:
-    // ┌────────────────┬───────────────┬─────────────────┐
-    // │ rerun.instance ┆ rerun.point2d ┆ rerun.colorrgba │
-    // │ ---            ┆ ---           ┆ ---             │
-    // │ u64            ┆ struct[2]     ┆ u32             │
-    // ╞════════════════╪═══════════════╪═════════════════╡
-    // │ 0              ┆ {1.0,2.0}     ┆ null            │
-    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    // │ 1              ┆ {3.0,4.0}     ┆ null            │
-    // └────────────────┴───────────────┴─────────────────┘
-    //
-    // Timeless #2:
-    // ┌────────────────┬───────────────┬─────────────────┐
-    // │ rerun.instance ┆ rerun.point2d ┆ rerun.colorrgba │
-    // │ ---            ┆ ---           ┆ ---             │
-    // │ u64            ┆ struct[2]     ┆ u32             │
-    // ╞════════════════╪═══════════════╪═════════════════╡
-    // │ 0              ┆ {10.0,20.0}   ┆ null            │
-    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    // │ 1              ┆ {30.0,40.0}   ┆ 4278190080      │
-    // └────────────────┴───────────────┴─────────────────┘
-    //
-    // Frame #123:
-    // ┌────────────────┬───────────────┬─────────────────┐
-    // │ rerun.instance ┆ rerun.point2d ┆ rerun.colorrgba │
-    // │ ---            ┆ ---           ┆ ---             │
-    // │ u64            ┆ struct[2]     ┆ u32             │
-    // ╞════════════════╪═══════════════╪═════════════════╡
-    // │ 0              ┆ {1.0,2.0}     ┆ null            │
-    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    // │ 1              ┆ {3.0,4.0}     ┆ 4278190080      │
-    // └────────────────┴───────────────┴─────────────────┘
-    //
-    // Frame #323:
-    // ┌────────────────┬───────────────┬─────────────────┐
-    // │ rerun.instance ┆ rerun.point2d ┆ rerun.colorrgba │
-    // │ ---            ┆ ---           ┆ ---             │
-    // │ u64            ┆ struct[2]     ┆ u32             │
-    // ╞════════════════╪═══════════════╪═════════════════╡
-    // │ 0              ┆ {10.0,20.0}   ┆ 4278190080      │
-    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    // │ 1              ┆ {30.0,40.0}   ┆ null            │
-    // └────────────────┴───────────────┴─────────────────┘
+        let results = ent_views.collect::<Vec<_>>();
 
-    #[cfg(feature = "polars")]
-    {
-        use re_query::dataframe_util::df_builder3;
-
-        // Timeless #1
-
-        // Build expected df manually
-        let instances = vec![Some(Instance(0)), Some(Instance(1))];
-        let points = vec![
-            Some(Point2D { x: 1.0, y: 2.0 }),
-            Some(Point2D { x: 3.0, y: 4.0 }),
-        ];
-        let colors: Vec<Option<ColorRGBA>> = vec![None, None];
-        let expected = df_builder3(&instances, &points, &colors).unwrap();
-
-        let (time, ent_view) = &results[0];
-
-        assert_eq!(&None, time);
-        common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
-
-        // Timeless #2
-
-        // Build expected df manually
-        let instances = vec![Some(Instance(0)), Some(Instance(1))];
-        let points = vec![
-            Some(Point2D { x: 10.0, y: 20.0 }),
-            Some(Point2D { x: 30.0, y: 40.0 }),
-        ];
-        let colors = vec![None, Some(ColorRGBA(0xff000000))];
-        let expected = df_builder3(&instances, &points, &colors).unwrap();
-
-        let (time, ent_view) = &results[1];
-
-        assert_eq!(&None, time);
-        common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
-
-        // Frame #123
-
-        let (time, ent_view) = &results[2];
-        let time = time.unwrap();
-
-        // Build expected df manually
-        let instances = vec![Some(Instance(0)), Some(Instance(1))];
-        let points = vec![
-            Some(Point2D { x: 1.0, y: 2.0 }),
-            Some(Point2D { x: 3.0, y: 4.0 }),
-        ];
-        let colors: Vec<Option<ColorRGBA>> = vec![None, Some(ColorRGBA(0xff000000))];
-        let expected = df_builder3(&instances, &points, &colors).unwrap();
-
-        assert_eq!(TimeInt::from(123), time);
-        common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
-
+        // We expect this to generate the following `DataFrame`s:
+        //
+        // Timeless #1:
+        // ┌────────────────┬───────────────┬─────────────────┐
+        // │ rerun.instance ┆ rerun.point2d ┆ rerun.colorrgba │
+        // │ ---            ┆ ---           ┆ ---             │
+        // │ u64            ┆ struct[2]     ┆ u32             │
+        // ╞════════════════╪═══════════════╪═════════════════╡
+        // │ 0              ┆ {1.0,2.0}     ┆ null            │
+        // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+        // │ 1              ┆ {3.0,4.0}     ┆ null            │
+        // └────────────────┴───────────────┴─────────────────┘
+        //
+        // Timeless #2:
+        // ┌────────────────┬───────────────┬─────────────────┐
+        // │ rerun.instance ┆ rerun.point2d ┆ rerun.colorrgba │
+        // │ ---            ┆ ---           ┆ ---             │
+        // │ u64            ┆ struct[2]     ┆ u32             │
+        // ╞════════════════╪═══════════════╪═════════════════╡
+        // │ 0              ┆ {10.0,20.0}   ┆ null            │
+        // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+        // │ 1              ┆ {30.0,40.0}   ┆ 4278190080      │
+        // └────────────────┴───────────────┴─────────────────┘
+        //
+        // Frame #123:
+        // ┌────────────────┬───────────────┬─────────────────┐
+        // │ rerun.instance ┆ rerun.point2d ┆ rerun.colorrgba │
+        // │ ---            ┆ ---           ┆ ---             │
+        // │ u64            ┆ struct[2]     ┆ u32             │
+        // ╞════════════════╪═══════════════╪═════════════════╡
+        // │ 0              ┆ {1.0,2.0}     ┆ null            │
+        // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+        // │ 1              ┆ {3.0,4.0}     ┆ 4278190080      │
+        // └────────────────┴───────────────┴─────────────────┘
+        //
         // Frame #323
+        // ┌────────────────┬───────────────┬─────────────────┐
+        // │ rerun.instance ┆ rerun.point2d ┆ rerun.colorrgba │
+        // │ ---            ┆ ---           ┆ ---             │
+        // │ u64            ┆ struct[2]     ┆ u32             │
+        // ╞════════════════╪═══════════════╪═════════════════╡
+        // │ 0              ┆ {10.0,20.0}   ┆ 4278190080      │
+        // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+        // │ 1              ┆ {30.0,40.0}   ┆ null            │
+        // └────────────────┴───────────────┴─────────────────┘
 
-        let (time, ent_view) = &results[3];
-        let time = time.unwrap();
+        #[cfg(feature = "polars")]
+        {
+            use re_query::dataframe_util::df_builder3;
 
-        // Build expected df manually
-        let instances = vec![Some(Instance(0)), Some(Instance(1))];
-        let points = vec![
-            Some(Point2D { x: 10.0, y: 20.0 }),
-            Some(Point2D { x: 30.0, y: 40.0 }),
-        ];
-        let colors = vec![Some(ColorRGBA(0xff000000)), None];
-        let expected = df_builder3(&instances, &points, &colors).unwrap();
+            // Timeless #1
 
-        assert_eq!(TimeInt::from(323), time);
-        common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
-    }
-    #[cfg(not(feature = "polars"))]
-    {
-        //TODO(jleibs): non-polars test validation
-        _ = results;
+            // Build expected df manually
+            let instances = vec![Some(Instance(0)), Some(Instance(1))];
+            let points = vec![
+                Some(Point2D { x: 1.0, y: 2.0 }),
+                Some(Point2D { x: 3.0, y: 4.0 }),
+            ];
+            let colors: Vec<Option<ColorRGBA>> = vec![None, None];
+            let expected = df_builder3(&instances, &points, &colors).unwrap();
+
+            let (time, ent_view) = &results[0];
+
+            assert_eq!(&None, time);
+            common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
+
+            // Timeless #2
+
+            // Build expected df manually
+            let instances = vec![Some(Instance(0)), Some(Instance(1))];
+            let points = vec![
+                Some(Point2D { x: 10.0, y: 20.0 }),
+                Some(Point2D { x: 30.0, y: 40.0 }),
+            ];
+            let colors = vec![None, Some(ColorRGBA(0xff000000))];
+            let expected = df_builder3(&instances, &points, &colors).unwrap();
+
+            let (time, ent_view) = &results[1];
+
+            assert_eq!(&None, time);
+            common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
+
+            // Frame #123
+
+            // Build expected df manually
+            let instances = vec![Some(Instance(0)), Some(Instance(1))];
+            let points = vec![
+                Some(Point2D { x: 1.0, y: 2.0 }),
+                Some(Point2D { x: 3.0, y: 4.0 }),
+            ];
+            let colors = vec![None, Some(ColorRGBA(0xff000000))];
+            let expected = df_builder3(&instances, &points, &colors).unwrap();
+
+            let (time, ent_view) = &results[2];
+            let time = time.unwrap();
+
+            assert_eq!(TimeInt::from(123), time);
+            common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
+
+            // Frame #323
+
+            // Build expected df manually
+            let instances = vec![Some(Instance(0)), Some(Instance(1))];
+            let points = vec![
+                Some(Point2D { x: 10.0, y: 20.0 }),
+                Some(Point2D { x: 30.0, y: 40.0 }),
+            ];
+            let colors = vec![Some(ColorRGBA(0xff000000)), None];
+            let expected = df_builder3(&instances, &points, &colors).unwrap();
+
+            let (time, ent_view) = &results[3];
+            let time = time.unwrap();
+
+            assert_eq!(TimeInt::from(323), time);
+            common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
+        }
+        #[cfg(not(feature = "polars"))]
+        {
+            //TODO(jleibs): non-polars test validation
+            _ = results;
+        }
     }
 }
