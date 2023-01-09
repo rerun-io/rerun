@@ -1,5 +1,9 @@
-use re_log_types::{external::arrow2::array, field_types::Instance};
-use re_query::ComponentWithInstances;
+use re_log_types::{
+    external::arrow2::array, field_types::Instance, msg_bundle::Component, AnnotationContext,
+};
+use re_query::{ComponentWithInstances, QueryError};
+
+use super::DataUi;
 
 pub(crate) fn arrow_component_ui(
     ctx: &mut crate::misc::ViewerContext<'_>,
@@ -45,15 +49,20 @@ pub(crate) fn arrow_component_ui(
 }
 
 pub(crate) fn arrow_component_elem_ui(
-    _ctx: &mut crate::misc::ViewerContext<'_>,
+    ctx: &mut crate::misc::ViewerContext<'_>,
     ui: &mut egui::Ui,
     component: &ComponentWithInstances,
     instance: &Instance,
-    _preview: crate::ui::Preview,
+    preview: crate::ui::Preview,
 ) -> egui::Response {
-    if let Some(value) = component.lookup(instance) {
-        // TODO(jleibs): Dispatch to prettier printers for
-        // component types we know about.
+    // TODO(jleibs): More generic dispatch for arbitrary components
+    if component.name() == AnnotationContext::name() {
+        match component.lookup::<AnnotationContext>(instance) {
+            Ok(annotations) => annotations.data_ui(ctx, ui, preview),
+            Err(QueryError::ComponentNotFound) => ui.label("<unset>"),
+            Err(err) => ui.label(format!("Error: {}", err)),
+        }
+    } else if let Some(value) = component.lookup_arrow(instance) {
         let mut repr = String::new();
         let display = array::get_display(value.as_ref(), "null");
         display(&mut repr, 0).unwrap();

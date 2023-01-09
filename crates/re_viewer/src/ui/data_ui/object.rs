@@ -10,7 +10,10 @@ use crate::{
     ui::{annotations::AnnotationMap, Preview},
 };
 
-use super::{component::arrow_component_elem_ui, DataUi};
+use super::{
+    component::{arrow_component_elem_ui, arrow_component_ui},
+    DataUi,
+};
 
 /// Previously `object_ui()`
 impl DataUi for ObjPath {
@@ -55,7 +58,7 @@ fn generic_arrow_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     instance_id: &InstanceId,
-    preview: Preview,
+    _preview: Preview,
 ) -> egui::Response {
     let timeline = ctx.rec_cfg.time_ctrl.timeline();
     let store = &ctx.log_db.obj_db.arrow_store;
@@ -90,10 +93,12 @@ fn generic_arrow_ui(
                     // Any other failure to get a component is unexpected
                     (Err(err), _) => ui.label(format!("Error: {}", err)),
                     // If an `instance_index` wasn't provided, just report the number of values
-                    (Ok(data), None) => ui.label(format!("{} values", data.len())),
+                    (Ok(component_data), None) => {
+                        arrow_component_ui(ctx, ui, &component_data, Preview::Small)
+                    }
                     // If the `instance_index` is an `ArrowInstance` show the value
                     (Ok(component_data), Some(Index::ArrowInstance(instance))) => {
-                        arrow_component_elem_ui(ctx, ui, &component_data, instance, preview)
+                        arrow_component_elem_ui(ctx, ui, &component_data, instance, Preview::Small)
                     }
                     // If the `instance_index` isn't an `ArrowInstance` something has gone wrong
                     // TODO(jleibs) this goes away once all indexes are just `Instances`
