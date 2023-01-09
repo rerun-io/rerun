@@ -59,7 +59,7 @@ fn generic_arrow_ui(
 
     let query = re_arrow_store::LatestAtQuery::new(*timeline, time);
 
-    let Some(components) = store.latest_components_at(&query, &instance_id.obj_path)
+    let Some(components) = store.all_components(timeline, &instance_id.obj_path)
     else {
         return ui.label("No Components")
     };
@@ -202,7 +202,7 @@ fn generic_instance_ui(
                             .or(class_annotation.label.as_ref())
                         {
                             ui.label("label");
-                            ui.label(label.as_ref());
+                            ui.label(label.0.as_str());
                             ui.end_row();
                         }
                         if let Some(color) = keypoint_annotation

@@ -1,4 +1,3 @@
-import logging
 from enum import Enum
 from typing import Optional, Sequence, Union
 
@@ -69,7 +68,22 @@ def log_rect(
         bindings.log_rect(obj_path, rect_format.value, _to_sequence(rect), color, label, class_id, timeless)
 
     if EXP_ARROW.arrow_log_gate():
-        logging.warning("log_rect() not yet implemented for Arrow.")
+        from rerun.components.color import ColorRGBAArray
+        from rerun.components.label import LabelArray
+        from rerun.components.rect2d import Rect2DArray
+
+        rects = np.asarray([rect], dtype="float32")
+
+        comps = {"rerun.rect2d": Rect2DArray.from_numpy_and_format(rects, rect_format)}
+
+        if color:
+            colors = _normalize_colors([color])
+            comps["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
+
+        if label:
+            comps["rerun.label"] = LabelArray.new([label])
+
+        bindings.log_arrow_msg(f"arrow/{obj_path}", components=comps)
 
 
 def log_rects(

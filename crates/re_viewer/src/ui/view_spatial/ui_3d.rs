@@ -16,7 +16,7 @@ use crate::{
         view_spatial::{
             scene::AdditionalPickingInfo,
             ui_renderer_bridge::{create_scene_paint_callback, get_viewport, ScreenBackground},
-            SceneSpatial, SpaceCamera3D, AXIS_COLOR_X, AXIS_COLOR_Y, AXIS_COLOR_Z,
+            SceneSpatial, SpaceCamera3D,
         },
         Preview,
     },
@@ -460,7 +460,12 @@ pub fn view_3d(
     }
     show_projections_from_2d_space(ctx, space_cameras, &mut scene, &state.scene_bbox_accum);
     if state.state_3d.show_axes {
-        show_origin_axis(&mut scene);
+        scene.primitives.add_axis_lines(
+            macaw::IsoTransform::IDENTITY,
+            InstanceIdHash::NONE,
+            &eye,
+            rect.size(),
+        );
     }
 
     {
@@ -472,16 +477,29 @@ pub fn view_3d(
 
         if orbit_center_alpha > 0.0 {
             // Show center of orbit camera when interacting with camera (it's quite helpful).
+            let half_line_length = orbit_eye.orbit_radius * 0.03;
+
             scene
                 .primitives
-                .points
-                .batch("center orbit point")
-                .add_point(orbit_eye.orbit_center)
-                .radius(Size::new_scene(orbit_eye.orbit_radius * 0.01))
-                .color(
-                    egui::Rgba::from_rgba_unmultiplied(1.0, 0.0, 1.0, orbit_center_alpha).into(),
-                );
-            ui.ctx().request_repaint(); // let it fade out
+                .line_strips
+                .batch("center orbit orientation help")
+                .add_segments(glam::Vec3::AXES.iter().map(|axis| {
+                    (
+                        orbit_eye.orbit_center - *axis * half_line_length,
+                        orbit_eye.orbit_center + *axis * half_line_length,
+                    )
+                }))
+                .radius(Size::new_points(0.75))
+                .flags(re_renderer::renderer::LineStripFlags::NO_COLOR_GRADIENT)
+                // TODO(andreas): Fade this out.
+                .color(re_renderer::Color32::WHITE);
+
+            // TODO(andreas): Idea for nice depth perception:
+            // Render the lines once with additive blending and depth test enabled
+            // and another time without depth test. In both cases it needs to be rendered last,
+            // something re_renderer doesn't support yet for primitives within renderers.
+
+            ui.ctx().request_repaint(); // show it for a bit longer.
         }
     }
 
@@ -652,27 +670,6 @@ fn project_onto_other_spaces(
         space_3d: space.clone(),
         target_spaces,
     }
-}
-
-fn show_origin_axis(scene: &mut SceneSpatial) {
-    let radius = Size::new_points(8.0);
-
-    let mut line_batch = scene.primitives.line_strips.batch("origin axis");
-    line_batch
-        .add_segment(glam::Vec3::ZERO, glam::Vec3::X)
-        .radius(radius)
-        .color(AXIS_COLOR_X)
-        .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE);
-    line_batch
-        .add_segment(glam::Vec3::ZERO, glam::Vec3::Y)
-        .radius(radius)
-        .color(AXIS_COLOR_Y)
-        .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE);
-    line_batch
-        .add_segment(glam::Vec3::ZERO, glam::Vec3::Z)
-        .radius(radius)
-        .color(AXIS_COLOR_Z)
-        .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE);
 }
 
 fn default_eye(scene_bbox: &macaw::BoundingBox, space_specs: &SpaceSpecs) -> OrbitEye {

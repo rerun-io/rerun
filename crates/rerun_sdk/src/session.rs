@@ -5,6 +5,12 @@ use re_log_types::{
     PathOp, RecordingId, RecordingInfo, Time, TimePoint, TypeMsg,
 };
 
+enum ArrowLogging {
+    None,
+    Mixed,
+    Pure,
+}
+
 pub struct Session {
     #[cfg(feature = "web")]
     tokio_rt: tokio::runtime::Runtime,
@@ -18,10 +24,18 @@ pub struct Session {
     recording_id: Option<RecordingId>,
 
     has_sent_begin_recording_msg: bool,
+
+    arrow_logging: ArrowLogging,
 }
 
 impl Session {
     pub fn new() -> Self {
+        let arrow_logging = match std::env::var("RERUN_EXP_ARROW").as_deref() {
+            Ok("mixed") => ArrowLogging::Mixed,
+            Ok("pure") => ArrowLogging::Pure,
+            _ => ArrowLogging::None,
+        };
+
         Self {
             #[cfg(feature = "web")]
             tokio_rt: tokio::runtime::Runtime::new().unwrap(),
@@ -31,6 +45,7 @@ impl Session {
             application_id: None,
             recording_id: None,
             has_sent_begin_recording_msg: false,
+            arrow_logging,
         }
     }
 
@@ -210,6 +225,14 @@ impl Session {
             time_point: time_point.clone(),
             path_op,
         }));
+    }
+
+    pub fn arrow_logging_enabled(&self) -> bool {
+        matches!(self.arrow_logging, ArrowLogging::Mixed | ArrowLogging::Pure)
+    }
+
+    pub fn classic_logging_enabled(&self) -> bool {
+        matches!(self.arrow_logging, ArrowLogging::Mixed | ArrowLogging::None)
     }
 }
 

@@ -16,6 +16,7 @@ use crate::msg_bundle::Component;
 /// assert_eq!(ColorRGBA::data_type(), DataType::UInt32);
 /// ```
 #[derive(Clone, Copy, Debug, PartialEq, Eq, derive_more::From, derive_more::Into)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct ColorRGBA(pub u32);
 
 impl ColorRGBA {
@@ -26,6 +27,17 @@ impl ColorRGBA {
             (self.0 >> 8) as u8,
             self.0 as u8,
         ]
+    }
+}
+
+impl From<[u8; 4]> for ColorRGBA {
+    fn from(bytes: [u8; 4]) -> Self {
+        Self(
+            (bytes[0] as u32) << 24
+                | (bytes[1] as u32) << 16
+                | (bytes[2] as u32) << 8
+                | (bytes[3] as u32),
+        )
     }
 }
 

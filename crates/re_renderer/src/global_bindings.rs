@@ -45,6 +45,10 @@ pub(crate) struct FrameUniformBuffer {
 
     /// Size used for all sizes given with Size::AUTO_LARGE, may be both a point or a world size.
     pub auto_size_large: f32,
+
+    /// Factor used to compute depth offsets, see `depth_offset.wgsl`.
+    pub depth_offset_factor: f32,
+    pub _padding: glam::Vec3,
 }
 
 pub(crate) struct GlobalBindings {

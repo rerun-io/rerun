@@ -15,6 +15,7 @@ __all__ = [
     "arrow",
     "bounding_box",
     "camera",
+    "error_utils",
     "file",
     "image",
     "lines",
@@ -92,7 +93,7 @@ def _normalize_ids(class_ids: OptionalClassIds = None) -> npt.NDArray[np.uint16]
         return np.array((), dtype=np.uint16)
     else:
         # TODO(andreas): Does this need optimizing for the case where class_ids is already an np array?
-        return np.array(class_ids, dtype=np.uint16, copy=False)
+        return np.atleast_1d(np.array(class_ids, dtype=np.uint16, copy=False))
 
 
 def _normalize_radii(radii: Optional[npt.ArrayLike] = None) -> npt.NDArray[np.float32]:
@@ -100,7 +101,7 @@ def _normalize_radii(radii: Optional[npt.ArrayLike] = None) -> npt.NDArray[np.fl
     if radii is None:
         return np.array((), dtype=np.float32)
     else:
-        return np.array(radii, dtype=np.float32, copy=False)
+        return np.atleast_1d(np.array(radii, dtype=np.float32, copy=False))
 
 
 def log_cleared(obj_path: str, *, recursive: bool = False) -> None:

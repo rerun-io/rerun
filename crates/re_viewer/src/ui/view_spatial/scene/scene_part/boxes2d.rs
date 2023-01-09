@@ -43,6 +43,8 @@ impl ScenePart for Boxes2DPartClassic {
         for (_obj_type, obj_path, time_query, obj_store) in
             query.iter_object_stores(ctx.log_db, &[ObjectType::BBox2D])
         {
+            scene.num_logged_2d_objects += 1;
+
             let properties = objects_properties.get(obj_path);
             let annotations = scene.annotation_map.find(obj_path);
             let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(obj_path) else {
@@ -77,16 +79,11 @@ impl ScenePart for Boxes2DPartClassic {
                     apply_hover_effect(&mut paint_props);
                 }
 
-                // Lines don't associated with instance (i.e. won't participate in hovering)
-                line_batch
-                    .add_axis_aligned_rectangle_outline_2d(bbox.min.into(), bbox.max.into())
-                    .color(paint_props.bg_stroke.color)
-                    .radius(Size::new_points(paint_props.bg_stroke.width * 0.5))
-                    .user_data(instance_hash);
                 line_batch
                     .add_axis_aligned_rectangle_outline_2d(bbox.min.into(), bbox.max.into())
                     .color(paint_props.fg_stroke.color)
-                    .radius(Size::new_points(paint_props.fg_stroke.width * 0.5));
+                    .radius(Size::new_points(paint_props.fg_stroke.width * 0.5))
+                    .user_data(instance_hash);
 
                 if let Some(label) = label {
                     scene.ui.labels_2d.push(Label2D {
@@ -125,6 +122,8 @@ impl Boxes2DPart {
         rect: &Rect2D,
         color: Option<ColorRGBA>,
     ) {
+        scene.num_logged_2d_objects += 1;
+
         let color = color.map(|c| c.to_array());
 
         // TODO(jleibs): Lots of missing components
@@ -144,7 +143,6 @@ impl Boxes2DPart {
             apply_hover_effect(&mut paint_props);
         }
 
-        // Lines don't associated with instance (i.e. won't participate in hovering)
         let mut line_batch = scene
             .primitives
             .line_strips
@@ -157,17 +155,9 @@ impl Boxes2DPart {
                 glam::vec2(rect.w, 0.0),
                 glam::vec2(0.0, rect.h),
             )
-            .color(paint_props.bg_stroke.color)
-            .radius(Size::new_points(paint_props.bg_stroke.width * 0.5));
-
-        line_batch
-            .add_rectangle_outline_2d(
-                glam::vec2(rect.x, rect.y),
-                glam::vec2(rect.w, 0.0),
-                glam::vec2(0.0, rect.h),
-            )
             .color(paint_props.fg_stroke.color)
-            .radius(Size::new_points(paint_props.fg_stroke.width * 0.5));
+            .radius(Size::new_points(paint_props.fg_stroke.width * 0.5))
+            .user_data(instance);
 
         if let Some(label) = label {
             scene.ui.labels_2d.push(Label2D {

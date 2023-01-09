@@ -73,6 +73,36 @@ impl From<glam::Vec3A> for Vec3 {
     }
 }
 
+#[repr(C, align(4))]
+#[derive(Clone, Copy, Zeroable, Pod)]
+pub struct Vec3Unpadded {
+    pub x: f32,
+    pub y: f32,
+    pub z: f32,
+}
+
+impl From<glam::Vec3> for Vec3Unpadded {
+    #[inline]
+    fn from(v: glam::Vec3) -> Self {
+        Vec3Unpadded {
+            x: v.x,
+            y: v.y,
+            z: v.z,
+        }
+    }
+}
+
+impl From<glam::Vec3A> for Vec3Unpadded {
+    #[inline]
+    fn from(v: glam::Vec3A) -> Self {
+        Vec3Unpadded {
+            x: v.x,
+            y: v.y,
+            z: v.z,
+        }
+    }
+}
+
 #[repr(C, align(16))]
 #[derive(Clone, Copy, Zeroable, Pod)]
 pub struct Vec4 {

@@ -2,6 +2,8 @@ use egui::Color32;
 use re_data_store::InstanceIdHash;
 use re_renderer::{renderer::MeshInstance, LineStripSeriesBuilder, PointCloudBuilder};
 
+use crate::ui::view_spatial::eye::Eye;
+
 use super::MeshSource;
 
 /// Primitives sent off to `re_renderer`.
@@ -25,6 +27,10 @@ pub struct SceneSpatialPrimitives {
 
     pub meshes: Vec<MeshSource>,
 }
+
+const AXIS_COLOR_X: Color32 = Color32::from_rgb(255, 25, 25);
+const AXIS_COLOR_Y: Color32 = Color32::from_rgb(0, 240, 0);
+const AXIS_COLOR_Z: Color32 = Color32::from_rgb(80, 80, 255);
 
 impl SceneSpatialPrimitives {
     /// bounding box covering the rendered scene
@@ -108,5 +114,48 @@ impl SceneSpatialPrimitives {
                     })
             })
             .collect()
+    }
+
+    pub fn add_axis_lines(
+        &mut self,
+        transform: macaw::IsoTransform,
+        instance: InstanceIdHash,
+        eye: &Eye,
+        viewport_size: egui::Vec2,
+    ) {
+        // TODO(andreas): It would be nice if could display the semantics (left/right/up) as a tooltip on hover.
+        let line_radius = re_renderer::Size::new_points(2.5);
+        let axis_length =
+            eye.approx_pixel_world_size_at(transform.translation(), viewport_size) * 32.0;
+        let origin = transform.translation();
+
+        let mut line_batch = self.line_strips.batch("origin axis");
+        line_batch
+            .add_segment(
+                origin,
+                origin + transform.transform_vector3(glam::Vec3::X) * axis_length,
+            )
+            .radius(line_radius)
+            .color(AXIS_COLOR_X)
+            .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE)
+            .user_data(instance);
+        line_batch
+            .add_segment(
+                origin,
+                origin + transform.transform_vector3(glam::Vec3::Y) * axis_length,
+            )
+            .radius(line_radius)
+            .color(AXIS_COLOR_Y)
+            .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE)
+            .user_data(instance);
+        line_batch
+            .add_segment(
+                origin,
+                origin + transform.transform_vector3(glam::Vec3::Z) * axis_length,
+            )
+            .radius(line_radius)
+            .color(AXIS_COLOR_Z)
+            .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE)
+            .user_data(instance);
     }
 }

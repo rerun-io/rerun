@@ -1,5 +1,8 @@
 use arrow2::array::TryPush;
-use arrow2_convert::{deserialize::ArrowDeserialize, field::ArrowField, serialize::ArrowSerialize};
+use arrow2_convert::{
+    arrow_enable_vec_for_type, deserialize::ArrowDeserialize, field::ArrowField,
+    serialize::ArrowSerialize,
+};
 
 use crate::msg_bundle::Component;
 
@@ -50,3 +53,5 @@ impl Component for KeypointId {
         "rerun.keypoint_id".into()
     }
 }
+
+arrow_enable_vec_for_type!(KeypointId);

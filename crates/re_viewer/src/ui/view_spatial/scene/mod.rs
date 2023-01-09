@@ -14,9 +14,8 @@ use super::{eye::Eye, SpaceCamera3D, SpatialNavigationMode};
 use crate::{
     misc::{mesh_loader::LoadedMesh, ViewerContext},
     ui::{
-        annotations::{auto_color, AnnotationMap},
+        annotations::{auto_color_egui, AnnotationMap},
         transform_cache::TransformCache,
-        view_spatial::axis_color,
         Annotations, SceneQuery,
     },
 };
@@ -118,6 +117,11 @@ pub struct SceneSpatial {
     pub annotation_map: AnnotationMap,
     pub primitives: SceneSpatialPrimitives,
     pub ui: SceneSpatialUiData,
+
+    /// Number of 2d primitives logged, used for heuristics.
+    num_logged_2d_objects: usize,
+    /// Number of 3d primitives logged, used for heuristics.
+    num_logged_3d_objects: usize,
 }
 
 fn instance_hash_if_interactive(
@@ -149,7 +153,6 @@ impl SceneSpatial {
     ) {
         crate::profile_function!();
 
-        //TODO(john) implement this for Arrow data store
         self.annotation_map.load(ctx, query);
 
         let parts: Vec<&dyn ScenePart> = vec![
@@ -204,10 +207,10 @@ impl SceneSpatial {
                 continue;
             };
 
-            let color = class_description
-                .info
-                .color
-                .unwrap_or_else(|| auto_color(class_description.info.id));
+            let color = class_description.info.color.map_or_else(
+                || auto_color_egui(class_description.info.id),
+                |color| color.into(),
+            );
 
             for (a, b) in &class_description.keypoint_connections {
                 let (Some(a), Some(b)) = (keypoints_in_class.get(a), keypoints_in_class.get(b)) else {
@@ -220,7 +223,7 @@ impl SceneSpatial {
                 line_batch
                     .add_segment(*a, *b)
                     .radius(Size::AUTO)
-                    .color(to_ecolor(color))
+                    .color(color)
                     .user_data(instance_hash);
             }
         }
@@ -296,23 +299,12 @@ impl SceneSpatial {
             }
 
             if ctx.options.show_camera_axes_in_3d {
-                let world_from_cam = camera.world_from_cam();
-
-                // TODO(emilk): include the names of the axes ("Right", "Down", "Forward", etc)
-                let cam_origin = camera.position();
-
-                let mut batch = self.primitives.line_strips.batch("camera axis");
-
-                for (axis_index, dir) in [Vec3::X, Vec3::Y, Vec3::Z].iter().enumerate() {
-                    let axis_end = world_from_cam.transform_point3(scale * *dir);
-                    let color = axis_color(axis_index);
-
-                    batch
-                        .add_segment(cam_origin, axis_end)
-                        .radius(Size::new_points(2.0))
-                        .color(color)
-                        .user_data(instance_id);
-                }
+                self.primitives.add_axis_lines(
+                    camera.world_from_cam(),
+                    instance_id,
+                    eye,
+                    viewport_size,
+                );
             }
 
             let mut frustum_length = scene_bbox.size().length() * 0.3;
@@ -336,7 +328,7 @@ impl SceneSpatial {
         color: Color32,
     ) -> Option<()> {
         let world_from_image = camera.world_from_image()?;
-        let [w, h] = camera.pinhole?.resolution?;
+        let [w, h] = camera.pinhole?.resolution?.0;
 
         // TODO(emilk): there is probably a off-by-one or off-by-half error here.
         // The image coordinates are in [0, w-1] range, so either we should use those limits
@@ -385,9 +377,14 @@ impl SceneSpatial {
             return false;
         }
 
-        // Otherwise do an heuristic based on the z extent of bounding box
-        let bbox = self.primitives.bounding_box();
-        bbox.min.z >= self.primitives.line_strips.next_2d_z * 2.0 && bbox.max.z < 1.0
+        if self.num_logged_3d_objects == 0 {
+            return true;
+        }
+        if self.num_logged_2d_objects == 0 {
+            return false;
+        }
+
+        false
     }
 
     pub fn preferred_navigation_mode(&self) -> SpatialNavigationMode {
@@ -417,28 +414,19 @@ impl SceneSpatial {
 }
 
 pub struct ObjectPaintProperties {
-    pub bg_stroke: egui::Stroke,
     pub fg_stroke: egui::Stroke,
 }
 
 // TODO(andreas): we're no longer using egui strokes. Replace this.
 fn paint_properties(color: [u8; 4], stroke_width: Option<&f32>) -> ObjectPaintProperties {
-    let bg_color = Color32::from_black_alpha(196);
     let fg_color = to_ecolor(color);
-    let stroke_width = stroke_width.map_or(1.5, |w| *w);
-    let bg_stroke = egui::Stroke::new(stroke_width + 2.0, bg_color);
+    let stroke_width = stroke_width.map_or(2.0, |w| *w); // TODO(andreas): use re_renderer auto_size
     let fg_stroke = egui::Stroke::new(stroke_width, fg_color);
 
-    ObjectPaintProperties {
-        bg_stroke,
-        fg_stroke,
-    }
+    ObjectPaintProperties { fg_stroke }
 }
 
 fn apply_hover_effect(paint_props: &mut ObjectPaintProperties) {
-    paint_props.bg_stroke.width *= 2.0;
-    paint_props.bg_stroke.color = Color32::BLACK;
-
     paint_props.fg_stroke.width *= 2.0;
     paint_props.fg_stroke.color = Color32::WHITE;
 }

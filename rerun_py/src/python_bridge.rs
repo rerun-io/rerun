@@ -2,7 +2,7 @@
 #![allow(clippy::borrow_deref_ref)] // False positive due to #[pufunction] macro
 #![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pufunction] macro
 
-use std::{borrow::Cow, io::Cursor, path::PathBuf, sync::Arc};
+use std::{borrow::Cow, io::Cursor, path::PathBuf};
 
 use bytemuck::allocation::pod_collect_to_vec;
 use itertools::Itertools as _;
@@ -14,11 +14,12 @@ use pyo3::{
 
 use re_log_types::{
     context, coordinates,
-    field_types::{ClassId, KeypointId},
+    field_types::{ClassId, KeypointId, Label},
+    msg_bundle::MsgBundle,
     AnnotationContext, ApplicationId, BBox2D, BatchIndex, Data, DataVec, EncodedMesh3D, Index,
-    LoggedData, Mesh3D, MeshFormat, MeshId, ObjPath, ObjectType, PathOp, RecordingId,
-    TensorDataStore, TensorDataType, TensorDimension, TensorId, Time, TimeInt, TimePoint, TimeType,
-    Timeline, ViewCoordinates,
+    LogMsg, LoggedData, Mesh3D, MeshFormat, MeshId, MsgId, ObjPath, ObjectType, PathOp,
+    RecordingId, TensorDataStore, TensorDataType, TensorDimension, TensorId, Time, TimeInt,
+    TimePoint, TimeType, Timeline, ViewCoordinates,
 };
 
 use rerun_sdk::global_session;
@@ -485,30 +486,55 @@ fn log_pinhole(
     timeless: bool,
 ) -> PyResult<()> {
     let transform = re_log_types::Transform::Pinhole(re_log_types::Pinhole {
-        image_from_cam: child_from_parent,
-        resolution: Some(resolution),
+        image_from_cam: child_from_parent.into(),
+        resolution: Some(resolution.into()),
     });
 
     log_transform(obj_path, transform, timeless)
 }
 
 fn log_transform(
-    obj_path: &str,
+    obj_path_str: &str,
     transform: re_log_types::Transform,
     timeless: bool,
 ) -> PyResult<()> {
-    let obj_path = parse_obj_path(obj_path)?;
+    let obj_path = parse_obj_path(obj_path_str)?;
     if obj_path.len() == 1 {
         // Stop people from logging a transform to a root-object, such as "world" (which doesn't have a parent).
         return Err(PyTypeError::new_err("Transforms are between a child object and its parent, so root objects cannot have transforms"));
     }
     let mut session = global_session();
     let time_point = time(timeless);
-    session.send_data(
-        &time_point,
-        (&obj_path, "_transform"),
-        LoggedData::Single(Data::Transform(transform)),
-    );
+
+    // We currently log arrow transforms from inside the bridge because we are
+    // using glam and macaw to potentially do matrix-inversion as part of the
+    // logging pipeline. Implementing these data-transforms consistently on the
+    // python side will take a bit of additional work and testing to ensure we aren't
+    // introducing new numerical issues.
+    if session.arrow_logging_enabled() {
+        let mut arrow_path = "arrow/".to_owned();
+        arrow_path.push_str(obj_path_str);
+        let arrow_path = parse_obj_path(arrow_path.as_str())?;
+        let bundle = MsgBundle::new(
+            MsgId::random(),
+            arrow_path,
+            time_point.clone(),
+            vec![vec![transform.clone()].try_into().unwrap()],
+        );
+
+        let msg = bundle.try_into().unwrap();
+
+        session.send(LogMsg::ArrowMsg(msg));
+    }
+
+    if session.classic_logging_enabled() {
+        session.send_data(
+            &time_point,
+            (&obj_path, "_transform"),
+            LoggedData::Single(Data::Transform(transform)),
+        );
+    }
+
     Ok(())
 }
 
@@ -558,7 +584,7 @@ fn log_view_coordinates_up_handedness(
 }
 
 fn log_view_coordinates(
-    obj_path: &str,
+    obj_path_str: &str,
     coordinates: ViewCoordinates,
     timeless: bool,
 ) -> PyResult<()> {
@@ -567,13 +593,37 @@ fn log_view_coordinates(
     }
 
     let mut session = global_session();
-    let obj_path = parse_obj_path(obj_path)?;
+    let obj_path = parse_obj_path(obj_path_str)?;
     let time_point = time(timeless);
-    session.send_data(
-        &time_point,
-        (&obj_path, "_view_coordinates"),
-        LoggedData::Single(Data::ViewCoordinates(coordinates)),
-    );
+
+    // We currently log view coordinates from inside the bridge because the code
+    // that does matching and validation on different string representations is
+    // non-trivial. Implementing this functionality on the python side will take
+    // a bit of additional work and testing to ensure we aren't introducing new
+    // conversion errors.
+    if session.arrow_logging_enabled() {
+        let mut arrow_path = "arrow/".to_owned();
+        arrow_path.push_str(obj_path_str);
+        let arrow_path = parse_obj_path(arrow_path.as_str())?;
+        let bundle = MsgBundle::new(
+            MsgId::random(),
+            arrow_path,
+            time_point.clone(),
+            vec![vec![coordinates].try_into().unwrap()],
+        );
+
+        let msg = bundle.try_into().unwrap();
+
+        session.send(LogMsg::ArrowMsg(msg));
+    }
+
+    if session.classic_logging_enabled() {
+        session.send_data(
+            &time_point,
+            (&obj_path, "_view_coordinates"),
+            LoggedData::Single(Data::ViewCoordinates(coordinates)),
+        );
+    }
 
     Ok(())
 }
@@ -1782,10 +1832,11 @@ impl From<AnnotationInfoTuple> for context::AnnotationInfo {
         let AnnotationInfoTuple(id, label, color) = tuple;
         Self {
             id,
-            label: label.map(Arc::new),
+            label: label.map(Label),
             color: color
                 .as_ref()
-                .map(|color| convert_color(color.clone()).unwrap()),
+                .map(|color| convert_color(color.clone()).unwrap())
+                .map(|bytes| bytes.into()),
         }
     }
 }
@@ -1794,17 +1845,17 @@ type ClassDescriptionTuple = (AnnotationInfoTuple, Vec<AnnotationInfoTuple>, Vec
 
 #[pyfunction]
 fn log_annotation_context(
-    obj_path: &str,
+    obj_path_str: &str,
     class_descriptions: Vec<ClassDescriptionTuple>,
     timeless: bool,
 ) -> PyResult<()> {
     let mut session = global_session();
 
     // We normally disallow logging to root, but we make an exception for class_descriptions
-    let obj_path = if obj_path == "/" {
+    let obj_path = if obj_path_str == "/" {
         ObjPath::root()
     } else {
-        parse_obj_path(obj_path)?
+        parse_obj_path(obj_path_str)?
     };
 
     let mut annotation_context = AnnotationContext::default();
@@ -1828,11 +1879,35 @@ fn log_annotation_context(
 
     let time_point = time(timeless);
 
-    session.send_data(
-        &time_point,
-        (&obj_path, "_annotation_context"),
-        LoggedData::Single(Data::AnnotationContext(annotation_context)),
-    );
+    // We currently log AnnotationContext from inside the bridge because it's a
+    // fairly complex type with a need for a fair amount of data-validation. We
+    // already have the serialization implemented in rust so we start with this
+    // implementation.
+    //
+    // TODO(jleibs) replace with python-native implementation
+    if session.arrow_logging_enabled() {
+        let mut arrow_path = "arrow/".to_owned();
+        arrow_path.push_str(obj_path_str);
+        let arrow_path = parse_obj_path(arrow_path.as_str())?;
+        let bundle = MsgBundle::new(
+            MsgId::random(),
+            arrow_path,
+            time_point.clone(),
+            vec![vec![annotation_context.clone()].try_into().unwrap()],
+        );
+
+        let msg = bundle.try_into().unwrap();
+
+        session.send(LogMsg::ArrowMsg(msg));
+    }
+
+    if session.classic_logging_enabled() {
+        session.send_data(
+            &time_point,
+            (&obj_path, "_annotation_context"),
+            LoggedData::Single(Data::AnnotationContext(annotation_context)),
+        );
+    }
 
     Ok(())
 }

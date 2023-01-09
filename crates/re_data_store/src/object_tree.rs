@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use itertools::Itertools;
 use re_log_types::{
-    DataPath, DataType, FieldName, LoggedData, MsgId, ObjPath, ObjPathComp, PathOp, TimeInt,
+    DataPath, DataType, FieldOrComponent, LoggedData, MsgId, ObjPath, ObjPathComp, PathOp, TimeInt,
     TimePoint, Timeline,
 };
 
@@ -51,7 +51,7 @@ pub struct ObjectTree {
     pub recursive_clears: BTreeMap<MsgId, TimePoint>,
 
     /// Data logged at this object path.
-    pub fields: BTreeMap<FieldName, DataColumns>,
+    pub fields: BTreeMap<FieldOrComponent, DataColumns>,
 }
 
 impl ObjectTree {
@@ -117,7 +117,7 @@ impl ObjectTree {
     }
 
     /// Add a path operation into the the object tree
-    ///j
+    ///
     /// Returns a collection of data paths to clear as a result of the operation
     /// Additional pending clear operations will be stored in the tree for future
     /// insertion.
@@ -152,7 +152,7 @@ impl ObjectTree {
                             .iter()
                             .map(|((data_type, multi_or_mono), _)| {
                                 (
-                                    DataPath::new(obj_path.clone(), *field_name),
+                                    DataPath::new_any(obj_path.clone(), *field_name),
                                     *data_type,
                                     *multi_or_mono,
                                 )
@@ -188,7 +188,7 @@ impl ObjectTree {
                             .iter()
                             .map(|((data_type, multi_or_mono), _)| {
                                 (
-                                    DataPath::new(next.path.clone(), *field_name),
+                                    DataPath::new_any(next.path.clone(), *field_name),
                                     *data_type,
                                     *multi_or_mono,
                                 )

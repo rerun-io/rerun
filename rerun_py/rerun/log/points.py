@@ -76,6 +76,7 @@ def log_point(
         )
 
     if EXP_ARROW.arrow_log_gate():
+        from rerun.components.annotation import ClassIdArray
         from rerun.components.color import ColorRGBAArray
         from rerun.components.label import LabelArray
         from rerun.components.point import Point2DArray, Point3DArray
@@ -94,8 +95,16 @@ def log_point(
             colors = _normalize_colors([color])
             comps["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
 
+        if radius:
+            radii = _normalize_radii([radius])
+            comps["rerun.radius"] = RadiusArray.from_numpy(radii)
+
         if label:
             comps["rerun.label"] = LabelArray.new([label])
+
+        if class_id:
+            class_ids = _normalize_ids([class_id])
+            comps["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
 
         bindings.log_arrow_msg(f"arrow/{obj_path}", components=comps)
 
@@ -169,6 +178,7 @@ def log_points(
         )
 
     if EXP_ARROW.arrow_log_gate():
+        from rerun.components.annotation import ClassIdArray
         from rerun.components.color import ColorRGBAArray
         from rerun.components.label import LabelArray
         from rerun.components.point import Point2DArray, Point3DArray
@@ -184,12 +194,23 @@ def log_points(
                 raise TypeError("Positions should be either Nx2 or Nx3")
 
         if len(colors):
-            comps["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
+            # TODO(jleibs) remove once we have storage-side splats
+            if len(colors.shape) == 1:
+                colors = np.broadcast_to(colors.reshape(1, len(colors)), (len(positions), len(colors)))
+            comps["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)  # type: ignore[arg-type]
 
         if len(radii):
+            # TODO(jleibs) remove once we have storage-side splats
+            if len(radii) == 1:
+                radii = np.broadcast_to(radii, (len(positions),))
             comps["rerun.radius"] = RadiusArray.from_numpy(radii)
 
         if labels:
             comps["rerun.label"] = LabelArray.new(labels)
+
+        if len(class_ids):
+            if len(class_ids) == 1:
+                class_ids = np.broadcast_to(class_ids, (len(positions),))
+            comps["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
 
         bindings.log_arrow_msg(f"arrow/{obj_path}", components=comps)

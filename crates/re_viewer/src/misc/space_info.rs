@@ -2,8 +2,10 @@ use std::collections::BTreeMap;
 
 use nohash_hasher::IntSet;
 
-use re_data_store::{log_db::ObjDb, query_transform, ObjPath, ObjectTree, TimelineStore};
+use re_arrow_store::{LatestAtQuery, TimeInt, Timeline};
+use re_data_store::{log_db::ObjDb, query_transform, ObjPath, ObjectTree};
 use re_log_types::{Transform, ViewCoordinates};
+use re_query::query_entity_with_primary;
 
 use super::TimeControl;
 
@@ -131,13 +133,14 @@ impl SpacesInfo {
         crate::profile_function!();
 
         fn add_children(
-            timeline_store: Option<&TimelineStore<i64>>,
+            obj_db: &ObjDb,
+            timeline: &Timeline,
             query_time: Option<i64>,
             spaces_info: &mut SpacesInfo,
             parent_space: &mut SpaceInfo,
             tree: &ObjectTree,
         ) {
-            if let Some(transform) = query_transform(timeline_store, &tree.path, query_time) {
+            if let Some(transform) = query_transform(obj_db, timeline, &tree.path, query_time) {
                 // A set transform (likely non-identity) - create a new space.
                 parent_space
                     .child_spaces
@@ -151,7 +154,8 @@ impl SpacesInfo {
 
                 for child_tree in tree.children.values() {
                     add_children(
-                        timeline_store,
+                        obj_db,
+                        timeline,
                         query_time,
                         spaces_info,
                         &mut child_space_info,
@@ -169,7 +173,8 @@ impl SpacesInfo {
 
                 for child_tree in tree.children.values() {
                     add_children(
-                        timeline_store,
+                        obj_db,
+                        timeline,
                         query_time,
                         spaces_info,
                         parent_space,
@@ -181,14 +186,13 @@ impl SpacesInfo {
 
         let timeline = time_ctrl.timeline();
         let query_time = time_ctrl.time().map(|time| time.floor().as_i64());
-        let timeline_store = obj_db.store.get(timeline);
 
         let mut spaces_info = Self::default();
 
         for tree in obj_db.tree.children.values() {
             // Each root object is its own space (or should be)
 
-            if query_transform(timeline_store, &tree.path, query_time).is_some() {
+            if query_transform(obj_db, timeline, &tree.path, query_time).is_some() {
                 re_log::warn_once!(
                     "Root object '{}' has a _transform - this is not allowed!",
                     tree.path
@@ -197,7 +201,8 @@ impl SpacesInfo {
 
             let mut space_info = SpaceInfo::new(tree.path.clone());
             add_children(
-                timeline_store,
+                obj_db,
+                timeline,
                 query_time,
                 &mut spaces_info,
                 &mut space_info,
@@ -225,7 +230,7 @@ impl SpacesInfo {
 // ----------------------------------------------------------------------------
 
 /// Get the latest value of the `_view_coordinates` meta-field of the given object.
-fn query_view_coordinates(
+fn query_view_coordinates_classic(
     obj_db: &ObjDb,
     time_ctrl: &TimeControl,
     obj_path: &ObjPath,
@@ -247,4 +252,38 @@ fn query_view_coordinates(
     mono_field_store
         .latest_at(&query_time.floor().as_i64())
         .map(|(_time, _msg_id, system)| *system)
+}
+
+fn query_view_coordinates_arrow(
+    obj_db: &ObjDb,
+    time_ctrl: &TimeControl,
+    ent_path: &ObjPath,
+) -> Option<re_log_types::ViewCoordinates> {
+    let arrow_store = &obj_db.arrow_store;
+
+    let query_time = time_ctrl.time().map(|time| time.floor().as_i64())?;
+
+    let query = LatestAtQuery::new(*time_ctrl.timeline(), TimeInt::from(query_time));
+
+    let entity_view =
+        query_entity_with_primary::<ViewCoordinates>(arrow_store, &query, ent_path, &[]).ok()?;
+
+    let mut iter = entity_view.iter_primary().ok()?;
+
+    let view_coords = iter.next()?;
+
+    if iter.next().is_some() {
+        re_log::warn_once!("Unexpected batch for ViewCoordinates at: {}", ent_path);
+    }
+
+    view_coords
+}
+
+fn query_view_coordinates(
+    obj_db: &ObjDb,
+    time_ctrl: &TimeControl,
+    obj_path: &ObjPath,
+) -> Option<re_log_types::ViewCoordinates> {
+    query_view_coordinates_classic(obj_db, time_ctrl, obj_path)
+        .or_else(|| query_view_coordinates_arrow(obj_db, time_ctrl, obj_path))
 }

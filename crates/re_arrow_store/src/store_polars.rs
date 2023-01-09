@@ -8,7 +8,9 @@ use nohash_hasher::IntMap;
 use polars_core::{functions::diag_concat_df, prelude::*};
 use re_log_types::ComponentName;
 
-use crate::{ComponentTable, DataStore, DataStoreConfig, IndexBucket, IndexBucketIndices};
+use crate::{
+    ArrayExt, ComponentTable, DataStore, DataStoreConfig, IndexBucket, IndexBucketIndices,
+};
 
 // ---
 
@@ -35,7 +37,7 @@ impl DataStore {
                             let ent_path = ent_path.to_string();
                             let ent_path = Some(ent_path.as_str());
                             let entities = Utf8Array::<i32>::from(vec![ent_path; nb_rows]).boxed();
-                            new_infallible_series("entity", entities, nb_rows)
+                            new_infallible_series("entity", entities.as_ref(), nb_rows)
                         };
                         let df = df.with_column(entities).unwrap(); // cannot fail
 
@@ -102,11 +104,7 @@ impl IndexBucket {
                         .map(|id| id.map(|id| id.0.get()))
                         .collect::<Vec<_>>();
                     let insert_ids = UInt64Array::from(insert_ids);
-                    new_infallible_series(
-                        DataStore::insert_id_key().as_str(),
-                        insert_ids.boxed(),
-                        nb_rows,
-                    )
+                    new_infallible_series(DataStore::insert_id_key().as_str(), &insert_ids, nb_rows)
                 })
             })
             .flatten();
@@ -118,7 +116,7 @@ impl IndexBucket {
             // One column for the time index.
             Some(new_infallible_series(
                 self.timeline.name().as_str(),
-                times.boxed(),
+                &times,
                 nb_rows,
             )),
         ]
@@ -151,12 +149,11 @@ impl IndexBucket {
                 Offsets::try_from_lengths(comp_lengths).unwrap().into(),
                 concatenate(comp_values.as_slice()).unwrap().to_boxed(),
                 Some(Bitmap::from(comp_validity)),
-            )
-            .boxed();
+            );
 
             Some(new_infallible_series(
                 component.as_str(),
-                comp_values,
+                &comp_values,
                 nb_rows,
             ))
         }));
@@ -170,8 +167,8 @@ impl IndexBucket {
 
 // ---
 
-fn new_infallible_series(name: &str, data: Box<dyn Array>, len: usize) -> Series {
-    Series::try_from((name, data)).unwrap_or_else(|_| {
+fn new_infallible_series(name: &str, data: &dyn Array, len: usize) -> Series {
+    Series::try_from((name, data.as_ref().clean_for_polars())).unwrap_or_else(|_| {
         let errs = Utf8Array::<i32>::from(vec![Some("<ERR>"); len]);
         Series::try_from((name, errs.boxed())).unwrap() // cannot fail
     })

@@ -364,6 +364,10 @@ impl ViewBuilder {
             config.auto_size_config
         };
 
+        // See `depth_offset.wgsl`.
+        // Factor applied to depth offsets.
+        let depth_offset_factor = f32::EPSILON;
+
         ctx.queue.write_buffer(
             ctx.gpu_resources
                 .buffers
@@ -382,6 +386,9 @@ impl ViewBuilder {
 
                 auto_size: auto_size.0,
                 auto_size_large: auto_size.0 * config.auto_size_large_factor,
+
+                depth_offset_factor,
+                _padding: glam::Vec3::ZERO,
             }),
         );
 
