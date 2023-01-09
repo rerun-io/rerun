@@ -11,7 +11,7 @@ use polars_core::{
     series::Series,
 };
 use re_arrow_store::{
-    polars_util, test_bundle, DataStore, LatestAtQuery, RangeQuery, RowIndex, TimeRange, WriteError,
+    polars_util, test_bundle, DataStore, LatestAtQuery, RangeQuery, TimeRange, WriteError,
 };
 use re_log_types::{
     datagen::{
