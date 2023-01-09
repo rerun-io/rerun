@@ -1,5 +1,5 @@
 use arrow2::{
-    array::{Array, ListArray, UInt64Array, Utf8Array},
+    array::{Array, BooleanArray, ListArray, UInt64Array, Utf8Array},
     bitmap::Bitmap,
     compute::concatenate::concatenate,
     offset::Offsets,
@@ -9,7 +9,8 @@ use polars_core::{functions::diag_concat_df, prelude::*};
 use re_log_types::ComponentName;
 
 use crate::{
-    ArrayExt, ComponentTable, DataStore, DataStoreConfig, IndexBucket, IndexBucketIndices,
+    store::SecondaryIndex, ArrayExt, ComponentTable, DataStore, DataStoreConfig, IndexBucket,
+    IndexBucketIndices, PersistentComponentTable, PersistentIndexTable, RowIndexErased,
 };
 
 // ---
@@ -20,38 +21,69 @@ impl DataStore {
     /// This cannot fail: it always tries to yield as much valuable information as it can, even in
     /// the face of errors.
     pub fn to_dataframe(&self) -> DataFrame {
-        let dfs: Vec<DataFrame> = self
-            .indices
-            .values()
-            .map(|index| {
-                let dfs: Vec<_> = index
-                    .buckets
-                    .values()
-                    .map(|bucket| (index.ent_path.clone(), bucket))
-                    .map(|(ent_path, bucket)| {
-                        let mut df = bucket.to_dataframe(&self.config, &self.components);
-                        let nb_rows = df.get_columns()[0].len();
+        const IS_TIMELESS_COL: &str = "_is_timeless";
 
-                        // Add a column where every row is the entity path.
-                        let entities = {
-                            let ent_path = ent_path.to_string();
-                            let ent_path = Some(ent_path.as_str());
-                            let entities = Utf8Array::<i32>::from(vec![ent_path; nb_rows]).boxed();
-                            new_infallible_series("entity", entities.as_ref(), nb_rows)
-                        };
-                        let df = df.with_column(entities).unwrap(); // cannot fail
+        let timeless_dfs = self.timeless_indices.values().map(|index| {
+            let ent_path = index.ent_path.clone();
 
-                        df.clone()
-                    })
-                    .collect();
+            let mut df = index.to_dataframe(&self.config, &self.timeless_components);
+            let nb_rows = df.get_columns()[0].len();
 
-                // Concatenate all buckets of the index together.
-                //
-                // This has to be done diagonally since each bucket can and will have different
-                // numbers of columns (== components) and rows.
-                diag_concat_df(dfs.as_slice())
-                    // TODO(cmc): is there any way this can fail in this case?
-                    .unwrap()
+            // Add a column where every row is a boolean true (timeless)
+            let timeless = {
+                let timeless = BooleanArray::from(vec![Some(true); nb_rows]).boxed();
+                new_infallible_series(IS_TIMELESS_COL, timeless.as_ref(), nb_rows)
+            };
+            let df = df.with_column(timeless).unwrap(); // cannot fail
+
+            (ent_path, df.clone())
+        });
+
+        let temporal_dfs = self.indices.values().map(|index| {
+            let dfs: Vec<_> = index
+                .buckets
+                .values()
+                .map(|bucket| (index.ent_path.clone(), bucket))
+                .map(|(ent_path, bucket)| {
+                    let mut df = bucket.to_dataframe(&self.config, &self.components);
+                    let nb_rows = df.get_columns()[0].len();
+
+                    // Add a column where every row is the entity path.
+                    let entities = {
+                        let ent_path = ent_path.to_string();
+                        let ent_path = Some(ent_path.as_str());
+                        let entities = Utf8Array::<i32>::from(vec![ent_path; nb_rows]).boxed();
+                        new_infallible_series("entity", entities.as_ref(), nb_rows)
+                    };
+                    let df = df.with_column(entities).unwrap(); // cannot fail
+
+                    df.clone()
+                })
+                .collect();
+
+            // Concatenate all buckets of the index together.
+            //
+            // This has to be done diagonally since each bucket can and will have different
+            // numbers of columns (== components) and rows.
+            let df = diag_concat_df(dfs.as_slice())
+                // TODO(cmc): is there any way this can fail in this case?
+                .unwrap();
+
+            (index.ent_path.clone(), df)
+        });
+
+        let dfs: Vec<_> = timeless_dfs
+            .chain(temporal_dfs)
+            .map(|(ent_path, mut df)| {
+                let nb_rows = df.get_columns()[0].len();
+                // Add a column where every row is the entity path.
+                let entities = {
+                    let ent_path = ent_path.to_string();
+                    let ent_path = Some(ent_path.as_str());
+                    let entities = Utf8Array::<i32>::from(vec![ent_path; nb_rows]).boxed();
+                    new_infallible_series("entity", entities.as_ref(), nb_rows)
+                };
+                df.with_column(entities).unwrap().clone() // cannot fail
             })
             .collect();
 
@@ -59,19 +91,74 @@ impl DataStore {
         //
         // This has to be done diagonally since these indices refer to different entities with
         // potentially wildly different sets of components and lengths.
-        let df = diag_concat_df(&dfs)
+        let df = diag_concat_df(dfs.as_slice())
             // TODO(cmc): is there any way this can fail in this case?
             .unwrap();
 
         let df = sort_df_columns(&df, self.config.store_insert_ids);
 
-        if self.config.store_insert_ids {
-            // If insert IDs are available, sort rows based on those.
-            df.sort(vec![DataStore::insert_id_key().as_str()], vec![false])
-                .unwrap()
+        let has_insert_ids = df.column(DataStore::insert_id_key().as_str()).is_ok();
+        let has_timeless = df.column(IS_TIMELESS_COL).is_ok();
+
+        let (sort_cols, sort_orders): (Vec<_>, Vec<_>) = [
+            has_timeless.then_some((IS_TIMELESS_COL, true)),
+            has_insert_ids.then_some((DataStore::insert_id_key().as_str(), false)),
+        ]
+        .into_iter()
+        .flatten()
+        .unzip();
+
+        let df = if !sort_cols.is_empty() {
+            df.sort(sort_cols, sort_orders).unwrap()
+        } else {
+            df
+        };
+
+        if has_timeless {
+            df.drop(IS_TIMELESS_COL).unwrap()
         } else {
             df
         }
+    }
+}
+
+impl PersistentIndexTable {
+    /// Dumps the entire table as a flat, denormalized dataframe.
+    ///
+    /// This cannot fail: it always tries to yield as much valuable information as it can, even in
+    /// the face of errors.
+    pub fn to_dataframe(
+        &self,
+        config: &DataStoreConfig,
+        components: &IntMap<ComponentName, PersistentComponentTable>,
+    ) -> DataFrame {
+        let Self {
+            ent_path: _,
+            cluster_key: _,
+            nb_rows,
+            indices,
+            all_components: _,
+        } = self;
+
+        let insert_ids = config
+            .store_insert_ids
+            .then(|| insert_ids_as_series(*nb_rows as usize, indices))
+            .flatten();
+
+        let comp_series =
+        // One column for insert IDs, if they are available.
+        std::iter::once(insert_ids)
+            .flatten() // filter options
+            // One column for each component index.
+            .chain(indices.iter().filter_map(|(component, comp_row_nrs)| {
+                let comp_table = components.get(component)?;
+                component_as_series(*nb_rows as usize, comp_table, component, comp_row_nrs).into()
+            }));
+
+        DataFrame::new(comp_series.collect::<Vec<_>>())
+            // This cannot fail at this point, all series are guaranteed to have data and be of
+            // same length.
+            .unwrap()
     }
 }
 
@@ -97,16 +184,7 @@ impl IndexBucket {
 
         let insert_ids = config
             .store_insert_ids
-            .then(|| {
-                indices.get(&DataStore::insert_id_key()).map(|insert_ids| {
-                    let insert_ids = insert_ids
-                        .iter()
-                        .map(|id| id.map(|id| id.0.get()))
-                        .collect::<Vec<_>>();
-                    let insert_ids = UInt64Array::from(insert_ids);
-                    new_infallible_series(DataStore::insert_id_key().as_str(), &insert_ids, nb_rows)
-                })
-            })
+            .then(|| insert_ids_as_series(nb_rows, indices))
             .flatten();
 
         // Need to create one `Series` for the time index and one for each component index.
@@ -125,43 +203,86 @@ impl IndexBucket {
         // One column for each component index.
         .chain(indices.iter().filter_map(|(component, comp_row_nrs)| {
             let comp_table = components.get(component)?;
-
-            // For each row in the index, grab the associated data from the component tables.
-            let comp_rows: Vec<Option<_>> = comp_row_nrs
-                .iter()
-                .map(|comp_row_nr| comp_row_nr.and_then(|comp_row_nr| comp_table.get(comp_row_nr)))
-                .collect();
-
-            // Computing the validity bitmap is just a matter of checking whether the data was
-            // available in the component tables.
-            let comp_validity: Vec<_> = comp_rows.iter().map(|row| row.is_some()).collect();
-
-            // Each cell is actually a list, so we need to compute offsets one cell at a time.
-            let comp_lengths = comp_rows
-                .iter()
-                .map(|row| row.as_ref().map_or(0, |row| row.len()));
-
-            let comp_values: Vec<_> = comp_rows.iter().flatten().map(|row| row.as_ref()).collect();
-
-            // Bring everything together into one big list.
-            let comp_values = ListArray::<i32>::new(
-                ListArray::<i32>::default_datatype(comp_table.datatype.clone()),
-                Offsets::try_from_lengths(comp_lengths).unwrap().into(),
-                concatenate(comp_values.as_slice()).unwrap().to_boxed(),
-                Some(Bitmap::from(comp_validity)),
-            );
-
-            Some(new_infallible_series(
-                component.as_str(),
-                &comp_values,
-                nb_rows,
-            ))
+            component_as_series(nb_rows, comp_table, component, comp_row_nrs).into()
         }));
 
         DataFrame::new(comp_series.collect::<Vec<_>>())
             // This cannot fail at this point, all series are guaranteed to have data and be of
             // same length.
             .unwrap()
+    }
+}
+
+// ---
+
+fn insert_ids_as_series(
+    nb_rows: usize,
+    indices: &IntMap<ComponentName, SecondaryIndex>,
+) -> Option<Series> {
+    indices.get(&DataStore::insert_id_key()).map(|insert_ids| {
+        let insert_ids = insert_ids
+            .iter()
+            .map(|id| id.map(|id| id.0.get()))
+            .collect::<Vec<_>>();
+        let insert_ids = UInt64Array::from(insert_ids);
+        new_infallible_series(DataStore::insert_id_key().as_str(), &insert_ids, nb_rows)
+    })
+}
+
+fn component_as_series<T: AnyComponentTable>(
+    nb_rows: usize,
+    comp_table: &T,
+    component: &ComponentName,
+    comp_row_nrs: &[Option<RowIndexErased>],
+) -> Series {
+    // For each row in the index, grab the associated data from the component tables.
+    let comp_rows: Vec<Option<_>> = comp_row_nrs
+        .iter()
+        .map(|comp_row_nr| comp_row_nr.and_then(|comp_row_nr| comp_table.get(comp_row_nr)))
+        .collect();
+
+    // Computing the validity bitmap is just a matter of checking whether the data was
+    // available in the component tables.
+    let comp_validity: Vec<_> = comp_rows.iter().map(|row| row.is_some()).collect();
+
+    // Each cell is actually a list, so we need to compute offsets one cell at a time.
+    let comp_lengths = comp_rows
+        .iter()
+        .map(|row| row.as_ref().map_or(0, |row| row.len()));
+
+    let comp_values: Vec<_> = comp_rows.iter().flatten().map(|row| row.as_ref()).collect();
+
+    // Bring everything together into one big list.
+    let comp_values = ListArray::<i32>::new(
+        ListArray::<i32>::default_datatype(comp_table.datatype()),
+        Offsets::try_from_lengths(comp_lengths).unwrap().into(),
+        concatenate(comp_values.as_slice()).unwrap().to_boxed(),
+        Some(Bitmap::from(comp_validity)),
+    );
+
+    new_infallible_series(component.as_str(), &comp_values, nb_rows)
+}
+
+trait AnyComponentTable {
+    fn get(&self, row_idx: RowIndexErased) -> Option<Box<dyn Array>>;
+    fn datatype(&self) -> arrow2::datatypes::DataType;
+}
+
+impl AnyComponentTable for PersistentComponentTable {
+    fn get(&self, row_idx: RowIndexErased) -> Option<Box<dyn Array>> {
+        Some(self.get(row_idx))
+    }
+    fn datatype(&self) -> arrow2::datatypes::DataType {
+        self.datatype.clone()
+    }
+}
+
+impl AnyComponentTable for ComponentTable {
+    fn get(&self, row_idx: RowIndexErased) -> Option<Box<dyn Array>> {
+        self.get(row_idx)
+    }
+    fn datatype(&self) -> arrow2::datatypes::DataType {
+        self.datatype.clone()
     }
 }
 

@@ -429,7 +429,7 @@ impl TimePanel {
                     continue; // ignore fields that have no data for the current timeline
                 }
 
-                let data_path = DataPath::new(tree.path.clone(), *field_name);
+                let data_path = DataPath::new_any(tree.path.clone(), *field_name);
 
                 let response = ui
                     .horizontal(|ui| {

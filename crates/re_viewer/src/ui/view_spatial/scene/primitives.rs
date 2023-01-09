@@ -38,6 +38,23 @@ impl SceneSpatialPrimitives {
         self.bounding_box
     }
 
+    /// Number of primitives. Rather arbitrary what counts as a primitive so use this only for heuristic purposes!
+    pub fn num_primitives(&self) -> usize {
+        let Self {
+            bounding_box: _,
+            textured_rectangles,
+            textured_rectangles_ids: _,
+            line_strips,
+            points,
+            meshes,
+        } = &self;
+
+        textured_rectangles.len()
+            + line_strips.vertices.len()
+            + points.vertices.len()
+            + meshes.len()
+    }
+
     pub fn recalculate_bounding_box(&mut self) {
         crate::profile_function!();
 
