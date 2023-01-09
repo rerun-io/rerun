@@ -389,4 +389,7 @@ fn lookup_value() {
             .as_box();
 
     assert_eq!(expected_arrow, value);
+
+    let value = component.lookup::<Point2D>(&Instance(99)).unwrap();
+    assert_eq!(expected_point[0], value);
 }
