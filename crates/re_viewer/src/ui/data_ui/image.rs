@@ -1,6 +1,9 @@
 use itertools::Itertools as _;
 
-use re_log_types::{field_types::ClassId, ClassicTensor, Tensor, TensorDataMeaning};
+use re_log_types::{
+    field_types::{ClassId, TensorDataMeaning},
+    ClassicTensor,
+};
 
 use crate::misc::{caches::TensorImageView, ViewerContext};
 
@@ -189,7 +192,7 @@ pub fn show_zoomed_image_region(
                     ui.monospace(format!("Raw value: {}", raw_value.as_f64()));
 
                     if let (TensorDataMeaning::ClassId, Some(annotations), Some(u16_val)) = (
-                        tensor_view.tensor.meaning,
+                        tensor_view.tensor.meaning(),
                         tensor_view.annotations,
                         raw_value.try_as_u16(),
                     ) {

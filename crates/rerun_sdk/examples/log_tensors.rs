@@ -1,5 +1,6 @@
 use clap::Parser;
 
+use ndarray_rand::RandomExt;
 use re_log_types::{field_types::Tensor, msg_bundle::MsgBundle, LogMsg, MsgId, ObjPath};
 use rerun::Session;
 use rerun_sdk as rerun;
@@ -55,46 +56,9 @@ fn main() -> std::process::ExitCode {
     let path = ObjPath::from("world/tensors");
 
     // Send a single tensor
-    let a = ndarray::array![[0.0, 1.0, 2.0], [0.0, 2.0, 4.0]]
-        .try_into()
-        .unwrap();
-    let tensors = Some(vec![a]);
-
-    // Send a single rect
+    let a = ndarray::Array::random((48, 48), ndarray_rand::rand_distr::Uniform::new(0u8, 255u8));
+    let tensors = Some(vec![a.try_into().unwrap()]);
     log_tensors(&mut session, &path, tensors);
-
-    // Send a larger collection of rects
-    /*
-    let rects = Some(vec![
-        Rect2D::from_xywh(1.0, 1.0, 2.0, 2.0),
-        Rect2D::from_xywh(6.0, 4.0, 1.0, 5.0),
-        Rect2D::from_xywh(2.0, 2.0, 2.0, 2.0),
-        Rect2D::from_xywh(0.0, 7.0, 5.0, 2.0),
-    ]);
-    log_tensors(&mut session, &path, rects, None);
-
-    // Send a collection of colors
-    let colors = Some(vec![
-        ColorRGBA(0xffffffff),
-        ColorRGBA(0xff0000ff),
-        ColorRGBA(0x00ff00ff),
-        ColorRGBA(0x0000ffff),
-    ]);
-    log_tensors(&mut session, &path, None, colors);
-
-    // Send both rects and colors
-    let rects = Some(vec![
-        Rect2D::from_xywh(2.0, 2.0, 2.0, 2.0),
-        Rect2D::from_xywh(4.0, 2.0, 1.0, 1.0),
-        Rect2D::from_xywh(2.0, 4.0, 1.0, 1.0),
-    ]);
-    let colors = Some(vec![
-        ColorRGBA(0xaaaa00ff),
-        ColorRGBA(0xaa00aaff),
-        ColorRGBA(0x00aaaaff),
-    ]);
-    log_tensors(&mut session, &path, rects, colors);
-    */
 
     // If not connected, show the GUI inline
     if args.connect {
@@ -125,8 +89,6 @@ fn log_tensors(session: &mut Session, obj_path: &ObjPath, tensors: Option<Vec<Te
             .flatten()
             .collect(),
     );
-
-    println!("Logged {bundle}");
 
     // Create and send one message to the sdk
     let msg = bundle.try_into().unwrap();

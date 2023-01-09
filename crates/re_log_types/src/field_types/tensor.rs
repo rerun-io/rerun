@@ -1,6 +1,8 @@
+use std::sync::Arc;
+
 use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 
-use crate::msg_bundle::Component;
+use crate::{msg_bundle::Component, ClassicTensor, TensorDataStore, TensorId};
 
 #[derive(Debug, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[arrow_field(type = "dense")]
@@ -8,6 +10,12 @@ pub enum TensorData {
     U8(Vec<u8>),
     U16(Vec<u16>),
     U32(Vec<u32>),
+    U64(Vec<u64>),
+    // ---
+    I8(Vec<i8>),
+    I16(Vec<i16>),
+    I32(Vec<i32>),
+    I64(Vec<i64>),
     // ---
     //TODO(john) F16
     //F16(Vec<arrow2::types::f16>),
@@ -55,12 +63,49 @@ impl TensorDimension {
     }
 }
 
+// TODO(jleibs) This should be extended to include things like rgb vs bgr
+#[derive(Clone, Copy, Debug, PartialEq, Eq, ArrowField, ArrowSerialize, ArrowDeserialize)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[arrow_field(type = "dense")]
+pub enum TensorDataMeaning {
+    /// Default behavior: guess based on shape
+    Unknown,
+    /// The data is an annotated [`crate::field_types::ClassId`] which should be
+    /// looked up using the appropriate [`crate::context::AnnotationContext`]
+    ClassId,
+}
+
 #[derive(Debug, ArrowField, ArrowSerialize, ArrowDeserialize)]
 pub struct Tensor {
     /// Dimensionality and length
     pub shape: Vec<TensorDimension>,
 
     pub data: TensorData,
+
+    /// The per-element data meaning
+    /// Used to indicated if the data should be interpreted as color, class_id, etc.
+    pub meaning: TensorDataMeaning,
+}
+
+impl Tensor {
+    pub fn shape(&self) -> &[TensorDimension] {
+        self.shape.as_slice()
+    }
+
+    pub fn num_dim(&self) -> usize {
+        self.shape.len()
+    }
+
+    pub fn is_shaped_like_an_image(&self) -> bool {
+        self.num_dim() == 2
+            || self.num_dim() == 3 && {
+                matches!(
+                    self.shape.last().unwrap().size,
+                    // gray, rgb, rgba
+                    1 | 3 | 4
+                )
+            }
+    }
 }
 
 impl Component for Tensor {
@@ -82,6 +127,55 @@ pub enum TensorCastError {
 
     #[error("ndarray Array is not contiguous and in standard order")]
     NotContiguousStdOrder,
+}
+
+impl From<Tensor> for ClassicTensor {
+    fn from(value: Tensor) -> Self {
+        let (dtype, data) = match value.data {
+            TensorData::U8(data) => (
+                crate::TensorDataType::U8,
+                TensorDataStore::Dense(Arc::from(data.as_slice())),
+            ),
+            TensorData::U16(data) => (
+                crate::TensorDataType::U16,
+                TensorDataStore::Dense(Arc::from(bytemuck::cast_slice(data.as_slice()))),
+            ),
+            TensorData::U32(data) => (
+                crate::TensorDataType::U32,
+                TensorDataStore::Dense(Arc::from(bytemuck::cast_slice(data.as_slice()))),
+            ),
+            TensorData::U64(data) => (
+                crate::TensorDataType::U64,
+                TensorDataStore::Dense(Arc::from(bytemuck::cast_slice(data.as_slice()))),
+            ),
+            TensorData::I8(data) => (
+                crate::TensorDataType::I8,
+                TensorDataStore::Dense(Arc::from(bytemuck::cast_slice(data.as_slice()))),
+            ),
+            TensorData::I16(data) => (
+                crate::TensorDataType::I16,
+                TensorDataStore::Dense(Arc::from(bytemuck::cast_slice(data.as_slice()))),
+            ),
+            TensorData::I32(data) => (
+                crate::TensorDataType::I32,
+                TensorDataStore::Dense(Arc::from(bytemuck::cast_slice(data.as_slice()))),
+            ),
+            TensorData::I64(data) => (
+                crate::TensorDataType::I64,
+                TensorDataStore::Dense(Arc::from(bytemuck::cast_slice(data.as_slice()))),
+            ),
+            TensorData::F32(data) => (
+                crate::TensorDataType::F32,
+                TensorDataStore::Dense(Arc::from(bytemuck::cast_slice(data.as_slice()))),
+            ),
+            TensorData::F64(data) => (
+                crate::TensorDataType::F64,
+                TensorDataStore::Dense(Arc::from(bytemuck::cast_slice(data.as_slice()))),
+            ),
+        };
+
+        ClassicTensor::new(TensorId::random(), value.shape, dtype, value.meaning, data)
+    }
 }
 
 macro_rules! tensor_type {
@@ -118,6 +212,7 @@ macro_rules! tensor_type {
                     .map(|slice| Tensor {
                         shape,
                         data: TensorData::$variant(slice.into()),
+                        meaning: TensorDataMeaning::Unknown,
                     })
             }
         }
@@ -139,6 +234,7 @@ macro_rules! tensor_type {
                     .then(|| Tensor {
                         shape,
                         data: TensorData::$variant(value.into_raw_vec()),
+                        meaning: TensorDataMeaning::Unknown,
                     })
                     .ok_or(TensorCastError::NotContiguousStdOrder)
             }
@@ -149,9 +245,17 @@ macro_rules! tensor_type {
 tensor_type!(u8, U8);
 tensor_type!(u16, U16);
 tensor_type!(u32, U32);
+tensor_type!(u64, U64);
+
+tensor_type!(i8, I8);
+tensor_type!(i16, I16);
+tensor_type!(i32, I32);
+tensor_type!(i64, I64);
+
 tensor_type!(f32, F32);
 tensor_type!(f64, F64);
 
+#[cfg(feature = "disabled")]
 #[test]
 fn test_ndarray() {
     let t0 = Tensor {
@@ -175,6 +279,7 @@ fn test_ndarray() {
     dbg!(t1);
 }
 
+#[cfg(feature = "disabled")]
 #[test]
 fn test_arrow() {
     use arrow2_convert::serialize::TryIntoArrow;

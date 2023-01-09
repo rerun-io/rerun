@@ -14,12 +14,12 @@ use pyo3::{
 
 use re_log_types::{
     context, coordinates,
-    field_types::{ClassId, KeypointId, Label},
+    field_types::{ClassId, KeypointId, Label, TensorDimension},
     msg_bundle::MsgBundle,
     AnnotationContext, ApplicationId, BBox2D, BatchIndex, Data, DataVec, EncodedMesh3D, Index,
     LogMsg, LoggedData, Mesh3D, MeshFormat, MeshId, MsgId, ObjPath, ObjectType, PathOp,
-    RecordingId, TensorDataStore, TensorDataType, TensorDimension, TensorId, Time, TimeInt,
-    TimePoint, TimeType, Timeline, ViewCoordinates,
+    RecordingId, TensorDataStore, TensorDataType, TensorId, Time, TimeInt, TimePoint, TimeType,
+    Timeline, ViewCoordinates,
 };
 
 use rerun_sdk::global_session;
@@ -1610,7 +1610,7 @@ enum TensorDataMeaning {
 fn tensor_extract_helper(
     any: &PyAny,
     names: Option<Vec<String>>,
-    meaning: re_log_types::TensorDataMeaning,
+    meaning: re_log_types::field_types::TensorDataMeaning,
 ) -> Result<re_log_types::ClassicTensor, re_tensor_ops::TensorCastError> {
     if let Ok(tensor) = any.extract::<numpy::PyReadonlyArrayDyn<'_, u8>>() {
         re_tensor_ops::to_rerun_tensor(&tensor.as_array(), names, meaning)
@@ -1660,8 +1660,8 @@ fn log_tensor(
 
     // Convert from pyclass TensorDataMeaning -> re_log_types
     let meaning = match meaning {
-        Some(TensorDataMeaning::ClassId) => re_log_types::TensorDataMeaning::ClassId,
-        _ => re_log_types::TensorDataMeaning::Unknown,
+        Some(TensorDataMeaning::ClassId) => re_log_types::field_types::TensorDataMeaning::ClassId,
+        _ => re_log_types::field_types::TensorDataMeaning::Unknown,
     };
 
     let tensor = tensor_extract_helper(img, names, meaning)
@@ -1808,17 +1808,17 @@ fn log_image_file(
     session.send_data(
         &time_point,
         (&obj_path, "tensor"),
-        LoggedData::Single(Data::Tensor(re_log_types::ClassicTensor {
-            tensor_id: TensorId::random(),
-            shape: vec![
+        LoggedData::Single(Data::Tensor(re_log_types::ClassicTensor::new(
+            TensorId::random(),
+            vec![
                 TensorDimension::height(h as _),
                 TensorDimension::width(w as _),
                 TensorDimension::depth(3),
             ],
-            dtype: TensorDataType::U8,
-            meaning: re_log_types::TensorDataMeaning::Unknown,
+            TensorDataType::U8,
+            re_log_types::field_types::TensorDataMeaning::Unknown,
             data,
-        })),
+        ))),
     );
 
     Ok(())

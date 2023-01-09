@@ -1,7 +1,6 @@
 mod mesh_cache;
 mod tensor_image_cache;
 
-use re_log_types::Tensor;
 pub use tensor_image_cache::TensorImageView;
 
 /// Does memoization of different things for the immediate mode UI.

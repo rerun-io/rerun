@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use arrow2_convert::{ArrowField, ArrowSerialize};
 use half::f16;
 
 use crate::{field_types, impl_into_enum, AnnotationContext, ObjPath, ViewCoordinates};
@@ -776,17 +775,6 @@ impl std::fmt::Display for TensorDataType {
 
 // ----------------------------------------------------------------------------
 
-// TODO(jleibs) This should be extended to include things like rgb vs bgr
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum TensorDataMeaning {
-    /// Default behavior: guess based on shape
-    Unknown,
-    /// The data is an annotated [`crate::field_types::ClassId`] which should be
-    /// looked up using the appropriate [`crate::context::AnnotationContext`]
-    ClassId,
-}
-
 pub trait TensorDataTypeTrait: Copy + Clone + Send + Sync {
     const DTYPE: TensorDataType;
 }
@@ -989,12 +977,6 @@ impl TensorId {
 
 // ----------------------------------------------------------------------------
 
-pub trait Tensor: std::fmt::Debug + Clone + PartialEq + Eq {
-    fn id(&self) -> TensorId;
-    fn shape(&self) -> &[field_types::TensorDimension];
-    fn dtype(&self) -> TensorDataType;
-}
-
 /// An N-dimensional collection of numbers.
 ///
 /// Most often used to describe image pixels.
@@ -1002,7 +984,7 @@ pub trait Tensor: std::fmt::Debug + Clone + PartialEq + Eq {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct ClassicTensor {
     /// Unique identifier for the tensor
-    pub tensor_id: TensorId,
+    tensor_id: TensorId,
 
     /// Example: `[h, w, 3]` for an RGB image, stored in row-major-order.
     /// The order matches that of numpy etc, and is ordered so that
@@ -1012,7 +994,7 @@ pub struct ClassicTensor {
     /// An empty vector has shape `[0]`, an empty matrix shape `[0, 0]`, etc.
     ///
     /// Conceptually `[h,w]` == `[h,w,1]` == `[h,w,1,1,1]` etc in most circumstances.
-    pub shape: Vec<field_types::TensorDimension>,
+    shape: Vec<field_types::TensorDimension>,
 
     /// The per-element data format.
     /// numpy calls this `dtype`.
@@ -1020,30 +1002,54 @@ pub struct ClassicTensor {
 
     /// The per-element data meaning
     /// Used to indicated if the data should be interpreted as color, class_id, etc.
-    pub meaning: TensorDataMeaning,
+    pub meaning: field_types::TensorDataMeaning,
 
     /// The actual contents of the tensor.
     pub data: TensorDataStore,
 }
 
-impl Tensor for ClassicTensor {
+impl ClassicTensor {
+    pub fn new(
+        tensor_id: TensorId,
+        shape: Vec<field_types::TensorDimension>,
+        dtype: TensorDataType,
+        meaning: field_types::TensorDataMeaning,
+        data: TensorDataStore,
+    ) -> Self {
+        Self {
+            tensor_id,
+            shape,
+            dtype,
+            meaning,
+            data,
+        }
+    }
+
     #[inline]
-    fn id(&self) -> TensorId {
+    pub fn id(&self) -> TensorId {
         self.tensor_id
     }
 
     #[inline]
-    fn shape(&self) -> &[field_types::TensorDimension] {
+    pub fn shape(&self) -> &[field_types::TensorDimension] {
         self.shape.as_slice()
     }
 
     #[inline]
-    fn dtype(&self) -> TensorDataType {
+    pub fn dtype(&self) -> TensorDataType {
         self.dtype
     }
-}
 
-impl ClassicTensor {
+    #[inline]
+    pub fn meaning(&self) -> field_types::TensorDataMeaning {
+        self.meaning
+    }
+
+    #[inline]
+    pub fn data<A: bytemuck::Pod + TensorDataTypeTrait>(&self) -> Option<&[A]> {
+        self.data.as_slice()
+    }
+
     /// True if the shape has a zero in it anywhere.
     ///
     /// Note that `shape=[]` means this tensor is a scalar, and thus NOT empty.

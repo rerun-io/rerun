@@ -4,8 +4,8 @@ use egui::{Color32, ColorImage};
 use egui_extras::RetainedImage;
 use image::DynamicImage;
 use re_log_types::{
-    field_types::ClassId, ClassicTensor, MsgId, Tensor, TensorDataMeaning, TensorDataStore,
-    TensorDataType, TensorId,
+    field_types::{ClassId, TensorDataMeaning},
+    ClassicTensor, MsgId, TensorDataStore, TensorDataType, TensorId,
 };
 use re_renderer::{
     resource_managers::{GpuTexture2DHandle, Texture2DCreationDesc},

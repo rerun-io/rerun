@@ -5,7 +5,7 @@ use egui::{epaint::TextShape, Color32, ColorImage, NumExt as _, Vec2};
 use half::f16;
 use ndarray::{Axis, Ix2};
 
-use re_log_types::{field_types, ClassicTensor, Tensor, TensorDataType};
+use re_log_types::{field_types, ClassicTensor, TensorDataType};
 use re_tensor_ops::dimension_mapping::DimensionMapping;
 
 use super::dimension_mapping_ui;
@@ -52,7 +52,7 @@ impl ViewTensorState {
 
                 dimension_mapping_ui(ui, &mut self.dimension_mapping, tensor.shape());
 
-                let default_mapping = DimensionMapping::create(&tensor.shape());
+                let default_mapping = DimensionMapping::create(tensor.shape());
                 if ui
                     .add_enabled(
                         self.dimension_mapping != default_mapping,
@@ -83,12 +83,12 @@ pub(crate) fn view_tensor(
     state.tensor = Some(tensor.clone());
 
     if !state.dimension_mapping.is_valid(tensor.num_dim()) {
-        state.dimension_mapping = DimensionMapping::create(&tensor.shape);
+        state.dimension_mapping = DimensionMapping::create(tensor.shape());
     }
 
     selectors_ui(ui, state, tensor);
 
-    let tensor_shape = &tensor.shape;
+    let tensor_shape = tensor.shape();
 
     let tensor_stats = ctx.cache.tensor_stats(tensor);
     let range = tensor_stats.range;
@@ -593,10 +593,10 @@ fn slice_ui<T: Copy>(
 
 fn dimension_name(shape: &[field_types::TensorDimension], dim_idx: usize) -> String {
     let dim = &shape[dim_idx];
-    dim.name
-        .as_ref()
-        .map(|name| format!("{name} (size={})", dim.size))
-        .unwrap_or_else(|| format!("Dimension {dim_idx} (size={})", dim.size))
+    dim.name.as_ref().map_or_else(
+        || format!("Dimension {dim_idx} (size={})", dim.size),
+        |name| format!("{name} (size={})", dim.size),
+    )
 }
 
 fn into_image<T: Copy>(
@@ -684,7 +684,7 @@ fn image_ui(
 
 fn selectors_ui(ui: &mut egui::Ui, state: &mut ViewTensorState, tensor: &ClassicTensor) {
     for &dim_idx in &state.dimension_mapping.selectors {
-        let dim = &tensor.shape[dim_idx];
+        let dim = &tensor.shape()[dim_idx];
         let size = dim.size;
 
         let selector_value = state
@@ -698,11 +698,10 @@ fn selectors_ui(ui: &mut egui::Ui, state: &mut ViewTensorState, tensor: &Classic
 
         if size > 1 {
             ui.horizontal(|ui| {
-                let name = dim
-                    .name
-                    .as_ref()
-                    .map(|name| format!("{name:?}"))
-                    .unwrap_or_else(|| format!("dimension {dim_idx}"));
+                let name = dim.name.as_ref().map_or_else(
+                    || format!("dimension {dim_idx}"),
+                    |name| format!("{name:?}"),
+                );
 
                 ui.weak(format!("Slice selector for {}:", name));
 

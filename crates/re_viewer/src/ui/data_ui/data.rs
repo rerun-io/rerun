@@ -1,6 +1,6 @@
 use egui::Vec2;
 use re_log_types::{
-    field_types::ColorRGBA, field_types::Mat3x3, Arrow3D, Data, DataVec, Pinhole, Rigid3, Tensor,
+    field_types::ColorRGBA, field_types::Mat3x3, Arrow3D, Data, DataVec, Pinhole, Rigid3,
     Transform, ViewCoordinates,
 };
 

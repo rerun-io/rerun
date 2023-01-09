@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use egui::NumExt;
 use glam::Vec3;
 use itertools::Itertools;
@@ -6,9 +8,9 @@ use re_data_store::{
     query::visit_type_data_2, FieldName, InstanceIdHash, ObjPath, ObjectProps, ObjectsProperties,
 };
 use re_log_types::{
-    field_types::{self, ColorRGBA, Tensor},
+    field_types::{ColorRGBA, Tensor},
     msg_bundle::Component,
-    IndexHash, MsgId, ObjectType,
+    ClassicTensor, IndexHash, MsgId, ObjectType,
 };
 use re_query::{query_entity_with_primary, EntityView, QueryError};
 use re_renderer::Size;
@@ -22,7 +24,7 @@ use crate::{
             scene::{instance_hash_if_interactive, paint_properties},
             Image, SceneSpatial,
         },
-        DefaultColor,
+        Annotations, DefaultColor,
     },
 };
 
@@ -30,26 +32,39 @@ use super::ScenePart;
 
 pub struct ImagesPartClassic;
 
-#[allow(clippy::too_many_arguments)]
-fn image_instance_visitor(
-    instance_index: Option<&IndexHash>,
-    _time: i64,
-    _msg_id: &MsgId,
+fn push_tensor_texture(
+    scene: &mut SceneSpatial,
+    ctx: &mut ViewerContext<'_>,
+    annotations: &Arc<Annotations>,
+    world_from_obj: glam::Mat4,
+    instance_hash: InstanceIdHash,
     tensor: &re_log_types::ClassicTensor,
-    color: Option<&[u8; 4]>,
-    meter: Option<&f32>,
-
-    obj_path: &ObjPath,
-    properties: ObjectProps,
+    tint: egui::Rgba,
 ) {
-    if !tensor.is_shaped_like_an_image() {
-        return;
+    let legend = Some(annotations.clone());
+    let tensor_view = ctx
+        .cache
+        .image
+        .get_view_with_annotations(tensor, &legend, ctx.render_ctx);
+
+    if let Some(texture_handle) = tensor_view.texture_handle {
+        let (h, w) = (tensor.shape()[0].size as f32, tensor.shape()[1].size as f32);
+        scene
+            .primitives
+            .textured_rectangles
+            .push(re_renderer::renderer::TexturedRect {
+                top_left_corner_position: world_from_obj.transform_point3(glam::Vec3::ZERO),
+                extent_u: world_from_obj.transform_vector3(glam::Vec3::X * w),
+                extent_v: world_from_obj.transform_vector3(glam::Vec3::Y * h),
+                texture: texture_handle,
+                texture_filter_magnification: re_renderer::renderer::TextureFilterMag::Nearest,
+                texture_filter_minification: re_renderer::renderer::TextureFilterMin::Linear,
+                multiplicative_tint: tint,
+                // Push to background. Mostly important for mouse picking order!
+                depth_offset: -1,
+            });
+        scene.primitives.textured_rectangles_ids.push(instance_hash);
     }
-
-    let (h, w) = (tensor.shape[0].size as f32, tensor.shape[1].size as f32);
-
-    let instance_hash =
-        instance_hash_if_interactive(obj_path, instance_index, properties.interactive);
 }
 
 impl ScenePart for ImagesPartClassic {
@@ -84,18 +99,19 @@ impl ScenePart for ImagesPartClassic {
                     return;
                 }
 
-                let (h, w) = (tensor.shape[0].size as f32, tensor.shape[1].size as f32);
+                let rect = glam::vec2(tensor.shape()[0].size as f32, tensor.shape()[1].size as f32);
 
                 let instance_hash =
                     instance_hash_if_interactive(obj_path, instance_index, properties.interactive);
 
                 let annotations = scene.annotation_map.find(obj_path);
-                let color = annotations
-                    .class_description(None)
-                    .annotation_info()
-                    .color(color, DefaultColor::OpaqueWhite);
-
-                let paint_props = paint_properties(color, None);
+                let paint_props = paint_properties(
+                    annotations
+                        .class_description(None)
+                        .annotation_info()
+                        .color(color, DefaultColor::OpaqueWhite),
+                    None,
+                );
 
                 if instance_hash.is_some() && hovered_instance == instance_hash {
                     scene
@@ -103,36 +119,20 @@ impl ScenePart for ImagesPartClassic {
                         .line_strips
                         .batch("image outlines")
                         .world_from_obj(world_from_obj)
-                        .add_axis_aligned_rectangle_outline_2d(glam::Vec2::ZERO, glam::vec2(w, h))
+                        .add_axis_aligned_rectangle_outline_2d(glam::Vec2::ZERO, rect)
                         .color(paint_props.fg_stroke.color)
                         .radius(Size::new_points(paint_props.fg_stroke.width * 0.5));
                 }
 
-                let legend = Some(annotations.clone());
-                let tensor_view =
-                    ctx.cache
-                        .image
-                        .get_view_with_annotations(tensor, &legend, ctx.render_ctx);
-
-                if let Some(texture_handle) = tensor_view.texture_handle {
-                    scene.primitives.textured_rectangles.push(
-                        re_renderer::renderer::TexturedRect {
-                            top_left_corner_position: world_from_obj
-                                .transform_point3(glam::Vec3::ZERO),
-                            extent_u: world_from_obj.transform_vector3(glam::Vec3::X * w),
-                            extent_v: world_from_obj.transform_vector3(glam::Vec3::Y * h),
-                            texture: texture_handle,
-                            texture_filter_magnification:
-                                re_renderer::renderer::TextureFilterMag::Nearest,
-                            texture_filter_minification:
-                                re_renderer::renderer::TextureFilterMin::Linear,
-                            multiplicative_tint: paint_props.fg_stroke.color.into(),
-                            // Push to background. Mostly important for mouse picking order!
-                            depth_offset: -1,
-                        },
-                    );
-                    scene.primitives.textured_rectangles_ids.push(instance_hash);
-                }
+                push_tensor_texture(
+                    scene,
+                    ctx,
+                    &annotations,
+                    world_from_obj,
+                    instance_hash,
+                    tensor,
+                    paint_props.fg_stroke.color.into(),
+                );
 
                 scene.ui.images.push(Image {
                     instance_hash,
@@ -212,15 +212,79 @@ pub(crate) struct ImagesPart;
 impl ImagesPart {
     #[allow(clippy::too_many_arguments)]
     fn process_entity_view(
-        &self,
         entity_view: &EntityView<Tensor>,
         scene: &mut SceneSpatial,
-        query: &SceneQuery<'_>,
-        objects_properties: &ObjectsProperties,
+        ctx: &mut ViewerContext<'_>,
+        properties: &ObjectProps,
         hovered_instance: InstanceIdHash,
         ent_path: &ObjPath,
         world_from_obj: glam::Mat4,
     ) -> Result<(), QueryError> {
+        for (instance, tensor, color) in itertools::izip!(
+            entity_view.iter_instances()?,
+            entity_view.iter_primary()?,
+            entity_view.iter_component::<ColorRGBA>()?
+        ) {
+            //TODO(john) add this component
+            let meter: Option<&f32> = None;
+
+            if let Some(tensor) = tensor {
+                if !tensor.is_shaped_like_an_image() {
+                    return Ok(());
+                }
+
+                let rect = glam::vec2(tensor.shape()[0].size as f32, tensor.shape()[1].size as f32);
+
+                let instance_hash = {
+                    if properties.interactive {
+                        InstanceIdHash::from_path_and_arrow_instance(ent_path, &instance)
+                    } else {
+                        InstanceIdHash::NONE
+                    }
+                };
+
+                let annotations = scene.annotation_map.find(ent_path);
+
+                let color = annotations.class_description(None).annotation_info().color(
+                    color.map(|c| c.to_array()).as_ref(),
+                    DefaultColor::OpaqueWhite,
+                );
+
+                let paint_props = paint_properties(color, None);
+
+                if instance_hash.is_some() && hovered_instance == instance_hash {
+                    scene
+                        .primitives
+                        .line_strips
+                        .batch("image outlines")
+                        .world_from_obj(world_from_obj)
+                        .add_axis_aligned_rectangle_outline_2d(glam::Vec2::ZERO, rect)
+                        .color(paint_props.fg_stroke.color)
+                        .radius(Size::new_points(paint_props.fg_stroke.width * 0.5));
+                }
+
+                let classic_tensor: ClassicTensor = tensor.into();
+
+                push_tensor_texture(
+                    scene,
+                    ctx,
+                    &annotations,
+                    world_from_obj,
+                    instance_hash,
+                    &classic_tensor,
+                    paint_props.fg_stroke.color.into(),
+                );
+
+                scene.ui.images.push(Image {
+                    instance_hash,
+                    tensor: classic_tensor,
+                    meter: meter.copied(),
+                    annotations,
+                });
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -243,6 +307,8 @@ impl ScenePart for ImagesPart {
 
             let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
 
+            let properties = objects_properties.get(ent_path);
+
             match query_entity_with_primary::<Tensor>(
                 &ctx.log_db.obj_db.arrow_store,
                 &timeline_query,
@@ -250,11 +316,11 @@ impl ScenePart for ImagesPart {
                 &[ColorRGBA::name()],
             )
             .and_then(|entity_view| {
-                self.process_entity_view(
+                Self::process_entity_view(
                     &entity_view,
                     scene,
-                    query,
-                    objects_properties,
+                    ctx,
+                    &properties,
                     hovered_instance,
                     ent_path,
                     world_from_obj,

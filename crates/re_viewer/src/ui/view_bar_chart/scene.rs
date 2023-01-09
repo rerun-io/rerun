@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use re_data_store::InstanceId;
-use re_log_types::{ClassicTensor, Tensor, TensorDataType};
+use re_log_types::{ClassicTensor, TensorDataType};
 
 use crate::{misc::ViewerContext, ui::scene::SceneQuery};
 
