@@ -25,7 +25,7 @@ pub use boxes3d::Boxes3DPart;
 pub use images::ImagesPart;
 pub use lines3d::Lines3DPart;
 pub use meshes::MeshPart;
-pub use points2d::Points2DPart;
+pub use points2d::{Points2DPart, Points2DPartClassic};
 pub use points3d::{Points3DPart, Points3DPartClassic};
 pub use segments2d::LineSegments2DPart;
 
