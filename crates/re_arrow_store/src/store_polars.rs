@@ -1,5 +1,5 @@
 use arrow2::{
-    array::{Array, ListArray, UInt64Array, Utf8Array},
+    array::{Array, BooleanArray, ListArray, UInt64Array, Utf8Array},
     bitmap::Bitmap,
     compute::concatenate::concatenate,
     offset::Offsets,
@@ -21,6 +21,8 @@ impl DataStore {
     /// This cannot fail: it always tries to yield as much valuable information as it can, even in
     /// the face of errors.
     pub fn to_dataframe(&self) -> DataFrame {
+        const IS_TIMELESS_COL: &str = "_is_timeless";
+
         let timeless_dfs = self.timeless_indices.values().map(|index| {
             let ent_path = index.ent_path.clone();
 
@@ -35,6 +37,13 @@ impl DataStore {
                 new_infallible_series("entity", entities.as_ref(), nb_rows)
             };
             let df = df.with_column(entities).unwrap(); // cannot fail
+
+            // Add a column where every row is a boolean true (timeless)
+            let timeless = {
+                let timeless = BooleanArray::from(vec![Some(true); nb_rows]).boxed();
+                new_infallible_series(IS_TIMELESS_COL, timeless.as_ref(), nb_rows)
+            };
+            let df = df.with_column(timeless).unwrap(); // cannot fail
 
             df.clone()
         });
@@ -80,10 +89,25 @@ impl DataStore {
 
         let df = sort_df_columns(&df, self.config.store_insert_ids);
 
-        if self.config.store_insert_ids {
-            // If insert IDs are available, sort rows based on those.
-            df.sort(vec![DataStore::insert_id_key().as_str()], vec![false])
-                .unwrap()
+        let has_insert_ids = df.column(DataStore::insert_id_key().as_str()).is_ok();
+        let has_timeless = df.column(IS_TIMELESS_COL).is_ok();
+
+        let (sort_cols, sort_orders): (Vec<_>, Vec<_>) = [
+            has_timeless.then_some((IS_TIMELESS_COL, true)),
+            has_insert_ids.then_some((DataStore::insert_id_key().as_str(), false)),
+        ]
+        .into_iter()
+        .flatten()
+        .unzip();
+
+        let df = if !sort_cols.is_empty() {
+            df.sort(sort_cols, sort_orders).unwrap()
+        } else {
+            df
+        };
+
+        if has_timeless {
+            df.drop(IS_TIMELESS_COL).unwrap()
         } else {
             df
         }
