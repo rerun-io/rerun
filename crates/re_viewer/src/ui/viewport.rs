@@ -23,8 +23,10 @@ use crate::{
 };
 
 use super::{
-    transform_cache::TransformCache, view_category::ViewCategory, SceneQuery, SpaceView,
-    SpaceViewId,
+    data_blueprint_group::{DataBlueprintGroupHandle, DataBlueprintTree},
+    transform_cache::TransformCache,
+    view_category::ViewCategory,
+    SceneQuery, SpaceView, SpaceViewId,
 };
 
 // ----------------------------------------------------------------------------
@@ -291,29 +293,81 @@ impl Viewport {
             }
         })
         .body(|ui| {
-            for path in &space_view.queried_objects {
-                ui.horizontal(|ui| {
-                    let name = if path.is_descendant_of(&space_view.space_path) {
-                        ObjPath::from(
-                            path.iter()
-                                .skip(space_view.space_path.len())
-                                .map(|r| r.to_owned())
-                                .collect::<Vec<_>>(),
-                        )
-                        .to_string()
-                    } else {
-                        path.iter().last().unwrap().to_string()
-                    };
-
-                    ctx.space_view_obj_path_button_to(ui, name, *space_view_id, path);
-
-                    let mut properties = space_view.obj_properties.get(path);
-                    if visibility_button(ui, true, &mut properties.visible).changed() {
-                        space_view.obj_properties.set(path.clone(), properties);
-                    }
-                });
-            }
+            Self::data_blueprint_tree_ui(
+                ctx,
+                ui,
+                space_view.data_blueprint_tree.root(),
+                &mut space_view.data_blueprint_tree,
+                &mut space_view.obj_properties,
+                space_view_id,
+            );
         });
+    }
+
+    fn data_blueprint_tree_ui(
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        group_handle: DataBlueprintGroupHandle,
+        data_blueprint_tree: &mut DataBlueprintTree,
+        obj_properties: &mut ObjectsProperties,
+        space_view_id: &SpaceViewId,
+    ) {
+        let Some(group) = data_blueprint_tree.get_group(group_handle) else {
+            return; // Should never happen. TODO: log warn once
+        };
+
+        // TODO(andreas): First all children and then all objects may not be what we want?
+        for path in &group.objects {
+            ui.horizontal(|ui| {
+                let name = path.iter().last().unwrap().to_string();
+
+                ctx.space_view_obj_path_button_to(ui, name, *space_view_id, path);
+
+                let mut properties = obj_properties.get(path);
+                if visibility_button(ui, true, &mut properties.visible).changed() {
+                    obj_properties.set(path.clone(), properties);
+                }
+            });
+        }
+
+        let children = group.children.clone(); // TODO: how to avoid?
+        for child_group_handle in &children {
+            let Some(child_group) = data_blueprint_tree.get_group(*child_group_handle) else {
+                continue; // Should never happen. TODO: log warn once
+            };
+
+            let collapsing_header_id = ui.id().with(child_group.id);
+            egui::collapsing_header::CollapsingState::load_with_default_open(
+                ui.ctx(),
+                collapsing_header_id,
+                child_group.expanded,
+            )
+            .show_header(ui, |ui| {
+                ui.label("📁");
+
+                ctx.datablueprint_group_button_to(ui, &child_group.name);
+
+                // TODO.
+                // if visibility_button(ui, true, &mut child_group.vis).changed() {
+                //     self.has_been_user_edited = true;
+                //     if is_space_view_visible {
+                //         self.visible.insert(*space_view_id);
+                //     } else {
+                //         self.visible.remove(space_view_id);
+                //     }
+                // }
+            })
+            .body(|ui| {
+                Self::data_blueprint_tree_ui(
+                    ctx,
+                    ui,
+                    *child_group_handle,
+                    data_blueprint_tree,
+                    obj_properties,
+                    space_view_id,
+                );
+            });
+        }
     }
 
     pub(crate) fn mark_user_interaction(&mut self) {

@@ -145,6 +145,22 @@ impl<'a> ViewerContext<'a> {
         response
     }
 
+    pub fn datablueprint_group_button_to(
+        &mut self,
+        ui: &mut egui::Ui,
+        text: impl Into<egui::WidgetText>,
+    ) -> egui::Response {
+        let is_selected = false; // TODO: self.selection() == Selection::SpaceView(space_view_id);
+        let response = ui
+            .selectable_label(is_selected, text)
+            .on_hover_text("Space View");
+        if response.clicked() {
+            // TODO:
+            //self.set_selection(Selection::SpaceView(space_view_id));
+        }
+        response
+    }
+
     pub fn space_view_obj_path_button_to(
         &mut self,
         ui: &mut egui::Ui,

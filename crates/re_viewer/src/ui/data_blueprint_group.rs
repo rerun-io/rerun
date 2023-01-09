@@ -8,8 +8,11 @@ slotmap::new_key_type! { pub struct DataBlueprintGroupHandle; }
 /// A grouping of several data blueprints.
 #[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
 pub struct DataBlueprintGroup {
+    pub id: uuid::Uuid,
+
     pub name: String,
-    pub collapsed: bool,
+    /// Whether this is expanded in the ui.
+    pub expanded: bool,
 
     // TODO(andreas): We should have the same properties as on data blueprints themselves, see https://github.com/rerun-io/rerun/issues/703
     //                  What to do about things that may or may not apply? Expand ObjectProps?
@@ -45,22 +48,41 @@ impl Default for DataBlueprintTree {
     fn default() -> Self {
         let mut groups = SlotMap::default();
         let root_group = groups.insert(DataBlueprintGroup {
+            id: uuid::Uuid::new_v4(),
             name: String::new(),
             parent: slotmap::Key::null(),
-            collapsed: false,
+            expanded: true,
             children: SmallVec::new(),
             objects: IntSet::default(),
         });
 
+        let mut path_to_blueprint = IntMap::default();
+        path_to_blueprint.insert(ObjPath::root(), root_group);
+
         Self {
             groups,
-            path_to_blueprint: Default::default(),
+            path_to_blueprint,
             root_group,
         }
     }
 }
 
 impl DataBlueprintTree {
+    pub fn root(&self) -> DataBlueprintGroupHandle {
+        self.root_group
+    }
+
+    pub fn get_group(&self, handle: DataBlueprintGroupHandle) -> Option<&DataBlueprintGroup> {
+        self.groups.get(handle)
+    }
+
+    pub fn get_group_mut(
+        &mut self,
+        handle: DataBlueprintGroupHandle,
+    ) -> Option<&mut DataBlueprintGroup> {
+        self.groups.get_mut(handle)
+    }
+
     /// Adds a list of object paths to the tree, using grouping as dictated by their object path hierarchy.
     ///
     /// Creates a group at *every* step of every path.
@@ -75,8 +97,9 @@ impl DataBlueprintTree {
             } else {
                 // Otherwise, create a new group which only contains this object and add the group to the hierarchy.
                 let new_group = self.groups.insert(DataBlueprintGroup {
+                    id: uuid::Uuid::new_v4(),
                     name: path.to_string(), // TODO:
-                    collapsed: false,
+                    expanded: false,
                     children: SmallVec::new(),
                     objects: IntSet::default(),
                     parent: slotmap::Key::null(), // To be determined.
@@ -98,28 +121,33 @@ impl DataBlueprintTree {
             return;
         };
 
-        match self.path_to_blueprint.entry(parent_path.clone()) {
+        let parent_group = match self.path_to_blueprint.entry(parent_path.clone()) {
             std::collections::hash_map::Entry::Occupied(parent_group) => {
-                self.groups.get_mut(new_group).unwrap().parent = *parent_group.get();
+                let parent_group = *parent_group.get();
                 self.groups
-                    .get_mut(*parent_group.get())
+                    .get_mut(parent_group)
                     .unwrap()
                     .children
                     .push(new_group);
+                parent_group
             }
 
             std::collections::hash_map::Entry::Vacant(vacant_mapping) => {
                 let parent_group = self.groups.insert(DataBlueprintGroup {
+                    id: uuid::Uuid::new_v4(),
                     name: parent_path.to_string(),
-                    collapsed: false,
+                    expanded: false,
                     children: smallvec![new_group],
                     objects: IntSet::default(),
                     parent: slotmap::Key::null(), // To be determined.
                 });
                 vacant_mapping.insert(parent_group);
                 self.add_group_to_hierarchy_recursively(parent_group, &parent_path);
+                parent_group
             }
-        }
+        };
+
+        self.groups.get_mut(new_group).unwrap().parent = parent_group;
     }
 
     /// Adds a path to a group.
@@ -137,8 +165,10 @@ impl DataBlueprintTree {
         }
 
         if let Some(previous_group) = self.path_to_blueprint.insert(path.clone(), group_handle) {
-            if let Some(previous_group) = self.groups.get_mut(previous_group) {
-                previous_group.objects.retain(|obj| obj != path);
+            if previous_group != group_handle {
+                if let Some(previous_group) = self.groups.get_mut(previous_group) {
+                    previous_group.objects.retain(|obj| obj != path);
+                }
             }
         }
     }
