@@ -27,6 +27,18 @@ pub enum ViewCategory {
     Tensor,
 }
 
+impl ViewCategory {
+    pub fn icon(&self) -> &'static str {
+        match self {
+            ViewCategory::Text => "📃",
+            ViewCategory::TimeSeries => "📈",
+            ViewCategory::BarChart => "📊",
+            ViewCategory::Spatial => "🖼",
+            ViewCategory::Tensor => "🇹",
+        }
+    }
+}
+
 pub type ViewCategorySet = enumset::EnumSet<ViewCategory>;
 
 pub fn categorize_obj_path(
