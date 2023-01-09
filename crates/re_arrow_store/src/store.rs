@@ -606,10 +606,6 @@ impl std::fmt::Display for PersistentIndexTable {
 }
 
 impl PersistentIndexTable {
-    // pub fn entity_path(&self) -> &EntityPath {
-    //     &self.ent_path
-    // }
-
     /// Returns the number of rows stored across this table.
     pub fn total_rows(&self) -> u64 {
         self.nb_rows
