@@ -82,6 +82,12 @@ impl ComponentWithInstances {
         C::ArrayType: ArrowArray,
         for<'a> &'a C::ArrayType: IntoIterator,
     {
+        if C::name() != self.name {
+            return Err(QueryError::TypeMismatch {
+                actual: self.name,
+                requested: C::name(),
+            });
+        }
         let arr = self
             .lookup_arrow(instance)
             .map_or_else(|| Err(QueryError::ComponentNotFound), Ok)?;
@@ -343,7 +349,7 @@ where
 #[test]
 fn lookup_value() {
     use re_log_types::external::arrow2_convert::serialize::arrow_serialize_to_mutable_array;
-    use re_log_types::field_types::{Instance, Point2D};
+    use re_log_types::field_types::{Instance, Point2D, Rect2D};
     let points = vec![
         Point2D { x: 1.0, y: 2.0 }, //
         Point2D { x: 3.0, y: 4.0 },
@@ -390,6 +396,20 @@ fn lookup_value() {
 
     assert_eq!(expected_arrow, value);
 
+    // Lookups with serialization
+
     let value = component.lookup::<Point2D>(&Instance(99)).unwrap();
     assert_eq!(expected_point[0], value);
+
+    let missing_value = component.lookup::<Point2D>(&Instance(46));
+    assert!(matches!(
+        missing_value.err().unwrap(),
+        QueryError::ComponentNotFound
+    ));
+
+    let missing_value = component.lookup::<Rect2D>(&Instance(99));
+    assert!(matches!(
+        missing_value.err().unwrap(),
+        QueryError::TypeMismatch { .. }
+    ));
 }
