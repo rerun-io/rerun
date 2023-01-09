@@ -71,6 +71,9 @@ impl<'s> SceneQuery<'s> {
             })
     }
 
+    /// Iter over all of the currently visible `EntityPath`s in the `SceneQuery`
+    ///
+    /// Also includes the corresponding `ObjectProps`.
     pub(crate) fn iter_entities(&self) -> impl Iterator<Item = (&ObjPath, ObjectProps)> {
         self.obj_paths
             .iter()
