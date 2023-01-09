@@ -406,7 +406,6 @@ impl SpaceView {
                     ctx,
                     &query,
                     &transforms,
-                    &self.obj_properties,
                     self.view_state.state_spatial.hovered_instance_hash(),
                 );
                 self.view_state.ui_spatial(
