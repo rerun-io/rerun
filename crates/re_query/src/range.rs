@@ -58,78 +58,121 @@ pub fn range_entity_with_primary<'a, Primary: Component + 'a, const N: usize>(
 
     let latest_time = query.range.min.as_i64().checked_sub(1).map(Into::into);
 
+    let mut state_latest = None;
     if let Some(latest_time) = latest_time {
+        let mut state_latest_raw: Vec<_> = std::iter::repeat_with(|| None)
+            .take(components.len())
+            .collect();
+
         // Fetch the latest data for every single component from their respective point-of-views,
         // this will allow us to build up the initial state and send an initial latest-at
         // entity-view if needed.
         for (i, primary) in components.iter().enumerate() {
             let cwi = get_component_with_instances(
                 store,
-                &LatestAtQuery::new(query.timeline, latest_time),
+                &LatestAtQuery::temporal_only(query.timeline, latest_time),
                 ent_path,
                 *primary,
             );
-            state[i] = cwi.ok();
+            state_latest_raw[i] = cwi.ok();
+        }
+
+        if state_latest_raw[primary_col].is_some() {
+            state_latest = Some(state_latest_raw);
         }
     }
 
-    // Iff the primary component has some initial state, then we want to be sending out an initial
-    // entity-view.
-    let ent_view_latest =
-        if let (latest_time @ Some(_), Some(cwi_prim)) = (latest_time, &state[primary_col]) {
-            let ent_view = EntityView {
-                primary: cwi_prim.clone(),
-                components: components
-                    .iter()
-                    .copied()
-                    .zip(state.iter().cloned() /* shallow */)
-                    .filter(|(component, _)| *component != Primary::name())
-                    .filter_map(|(component, cwi)| cwi.map(|cwi| (component, cwi)))
-                    .collect(),
-                phantom: std::marker::PhantomData,
-            };
-            Some((latest_time, ent_view))
-        } else {
-            None
-        };
-
-    let range = store
+    let mut range = store
         .range(query, ent_path, components)
         .map(move |(time, _, row_indices)| {
             let results = store.get(&components, &row_indices);
+            let instance_keys = results[cluster_col].clone(); // shallow
+            let cwis = results
+                .into_iter()
+                .enumerate()
+                .map(|(i, res)| {
+                    res.map(|res| {
+                        ComponentWithInstances {
+                            name: components[i],
+                            instance_keys: instance_keys.clone(), // shallow
+                            values: res.clone(),                  // shallow
+                        }
+                    })
+                })
+                .collect::<Vec<_>>();
             (
                 time,
                 row_indices[primary_col].is_some(), // is_primary
-                results,
+                cwis,
             )
         });
 
-    ent_view_latest
-        .into_iter()
-        .chain(range.filter_map(move |(time, is_primary, results)| {
-            for (i, component) in components.iter().copied().enumerate() {
-                if let Some(res) = results[i].as_ref() {
-                    state[i] = Some(ComponentWithInstances {
-                        name: component,
-                        instance_keys: results[cluster_col].clone(), // shallow
-                        values: res.clone(),                         // shallow
-                    });
+    let range = if let Some(state_latest) = state_latest {
+        // Complex case: there's some latest-at state that we need to carefully fit in-between the
+        // timeless and temporal parts of the stream.
+        let range = std::iter::from_fn({
+            let mut peeked = range.next();
+            let mut is_timeless = true;
+            move || {
+                let next = if let peeked @ Some(_) = peeked.take() {
+                    peeked
+                } else {
+                    range.next()
+                };
+                if let Some((time, is_primary, cwis)) = next {
+                    // did we just witness the switch from timeless to temporal?
+                    let is_switching = is_timeless && time.is_some();
+                    is_timeless = time.is_none();
+
+                    // if so, stash the current value somewhere, and yield our latest state
+                    // instead!
+                    if is_switching {
+                        peeked = Some((time, is_primary, cwis));
+                        return Some((latest_time, true, state_latest.clone()));
+                    }
+
+                    Some((time, is_primary, cwis))
+                } else {
+                    // if the stream did not contain any temporal data at all, make sure we still
+                    // yield the latest-at state at the end of the timeless part.
+                    if is_timeless {
+                        is_timeless = false;
+                        return Some((latest_time, true, state_latest.clone()));
+                    }
+
+                    None
                 }
             }
+        });
+        itertools::Either::Left(range)
+    } else {
+        // Easy case: no latest-at state.
+        // Just stream everything as-is.
+        itertools::Either::Right(range)
+    };
 
-            // We only yield if the primary component has been updated!
-            is_primary.then(|| {
-                let ent_view = EntityView {
-                    // safe to unwrap, set just above
-                    primary: state[primary_col].clone().unwrap(), // shallow
-                    components: components
-                        .iter()
-                        .zip(state.iter().cloned() /* shallow */)
-                        .filter_map(|(component, cwi)| cwi.map(|cwi| (*component, cwi)))
-                        .collect(),
-                    phantom: std::marker::PhantomData,
-                };
-                (time, ent_view)
-            })
-        }))
+    range.filter_map(move |(time, is_primary, cwis)| {
+        for (i, cwi) in cwis
+            .into_iter()
+            .enumerate()
+            .filter(|(_, cwi)| cwi.is_some())
+        {
+            state[i] = cwi;
+        }
+
+        // We only yield if the primary component has been updated!
+        is_primary.then(|| {
+            let ent_view = EntityView {
+                // safe to unwrap, set just above
+                primary: state[primary_col].clone().unwrap(), // shallow
+                components: components
+                    .iter()
+                    .zip(state.iter().cloned() /* shallow */)
+                    .filter_map(|(component, cwi)| cwi.map(|cwi| (*component, cwi)))
+                    .collect(),
+                phantom: std::marker::PhantomData,
+            };
+            (time, ent_view)
+        })
+    })
 }
