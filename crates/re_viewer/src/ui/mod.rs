@@ -1,6 +1,7 @@
 mod annotations;
 mod auto_layout;
 mod blueprint;
+mod data_blueprint_group;
 mod scene;
 mod selection_history;
 mod selection_history_ui;

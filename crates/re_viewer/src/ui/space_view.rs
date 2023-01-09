@@ -12,6 +12,7 @@ use crate::{
 };
 
 use super::{
+    data_blueprint_group::DataBlueprintTree,
     transform_cache::{ReferenceFromObjTransform, UnreachableTransformReason},
     view_bar_chart,
     view_category::ViewCategory,
@@ -56,6 +57,9 @@ pub(crate) struct SpaceView {
 
     pub obj_properties: ObjectsProperties,
 
+    /// TODO: ObjProperties should be managed by this entirely!
+    pub data_blueprint_tree: DataBlueprintTree,
+
     pub view_state: ViewState,
 
     /// We only show data that match this category.
@@ -94,6 +98,9 @@ impl SpaceView {
             space_info.path.to_string()
         };
 
+        let mut data_blueprint_tree = DataBlueprintTree::default();
+        data_blueprint_tree.insert_objects_according_to_hierarchy(&queried_objects);
+
         Self {
             name,
             id: SpaceViewId::random(),
@@ -101,6 +108,7 @@ impl SpaceView {
             space_path: space_info.path.clone(),
             queried_objects,
             obj_properties: Default::default(),
+            data_blueprint_tree,
             view_state,
             category,
             allow_auto_adding_more_object: true,
@@ -137,6 +145,8 @@ impl SpaceView {
         // Add objects that have been logged since we were created
         self.queried_objects =
             Self::default_queried_objects(ctx, self.category, space, spaces_info);
+        self.data_blueprint_tree
+            .insert_objects_according_to_hierarchy(&self.queried_objects);
     }
 
     pub fn selection_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
