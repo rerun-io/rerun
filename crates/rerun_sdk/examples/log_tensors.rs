@@ -84,10 +84,9 @@ fn log_tensors(session: &mut Session, obj_path: &ObjPath, tensors: Option<Vec<Te
         MsgId::random(),
         obj_path.clone(),
         time_point,
-        [tensors.map(|tensors| tensors.try_into().unwrap())]
-            .into_iter()
-            .flatten()
-            .collect(),
+        tensors
+            .map(|tensors| vec![tensors.try_into().unwrap()])
+            .unwrap_or_default(),
     );
 
     // Create and send one message to the sdk
