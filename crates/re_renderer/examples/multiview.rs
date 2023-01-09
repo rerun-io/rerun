@@ -302,6 +302,7 @@ impl Example for Multiview {
                         view_from_world,
                         projection_from_view: projection_from_view.clone(),
                         pixels_from_point,
+                        ..Default::default()
                     },
                     &skybox,
                     &$name

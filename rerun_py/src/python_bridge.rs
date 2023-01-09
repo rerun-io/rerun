@@ -1845,17 +1845,17 @@ type ClassDescriptionTuple = (AnnotationInfoTuple, Vec<AnnotationInfoTuple>, Vec
 
 #[pyfunction]
 fn log_annotation_context(
-    obj_path: &str,
+    obj_path_str: &str,
     class_descriptions: Vec<ClassDescriptionTuple>,
     timeless: bool,
 ) -> PyResult<()> {
     let mut session = global_session();
 
     // We normally disallow logging to root, but we make an exception for class_descriptions
-    let obj_path = if obj_path == "/" {
+    let obj_path = if obj_path_str == "/" {
         ObjPath::root()
     } else {
-        parse_obj_path(obj_path)?
+        parse_obj_path(obj_path_str)?
     };
 
     let mut annotation_context = AnnotationContext::default();
@@ -1879,11 +1879,35 @@ fn log_annotation_context(
 
     let time_point = time(timeless);
 
-    session.send_data(
-        &time_point,
-        (&obj_path, "_annotation_context"),
-        LoggedData::Single(Data::AnnotationContext(annotation_context)),
-    );
+    // We currently log AnnotationContext from inside the bridge because it's a
+    // fairly complex type with a need for a fair amount of data-validation. We
+    // already have the serialization implemented in rust so we start with this
+    // implementation.
+    //
+    // TODO(jleibs) replace with python-native implementation
+    if session.arrow_logging_enabled() {
+        let mut arrow_path = "arrow/".to_owned();
+        arrow_path.push_str(obj_path_str);
+        let arrow_path = parse_obj_path(arrow_path.as_str())?;
+        let bundle = MsgBundle::new(
+            MsgId::random(),
+            arrow_path,
+            time_point.clone(),
+            vec![vec![annotation_context.clone()].try_into().unwrap()],
+        );
+
+        let msg = bundle.try_into().unwrap();
+
+        session.send(LogMsg::ArrowMsg(msg));
+    }
+
+    if session.classic_logging_enabled() {
+        session.send_data(
+            &time_point,
+            (&obj_path, "_annotation_context"),
+            LoggedData::Single(Data::AnnotationContext(annotation_context)),
+        );
+    }
 
     Ok(())
 }

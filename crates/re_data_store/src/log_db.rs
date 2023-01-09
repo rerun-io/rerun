@@ -162,7 +162,7 @@ impl ObjDb {
             let _pending_clears = self.tree.add_data_msg(
                 msg.msg_id,
                 &msg_bundle.time_point,
-                &DataPath::new(msg_bundle.obj_path.clone(), component.name),
+                &DataPath::new_arrow(msg_bundle.obj_path.clone(), component.name),
                 None,
             );
         }

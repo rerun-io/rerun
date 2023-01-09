@@ -4,9 +4,10 @@ use egui::{
     TextFormat, TextStyle, Vec2,
 };
 use macaw::IsoTransform;
-use re_data_store::{InstanceId, InstanceIdHash, ObjPath};
+use re_data_store::{InstanceIdHash, ObjPath};
 use re_renderer::view_builder::TargetConfiguration;
 
+use super::{eye::Eye, scene::AdditionalPickingInfo, ViewSpatialState};
 use crate::{
     misc::HoveredSpace,
     ui::{
@@ -19,8 +20,6 @@ use crate::{
     },
     ViewerContext,
 };
-
-use super::{eye::Eye, scene::AdditionalPickingInfo};
 
 // ---
 
@@ -221,18 +220,19 @@ pub const HELP_TEXT: &str = "Ctrl-scroll  to zoom (⌘-scroll or Mac).\n\
 pub fn view_2d(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    state: &mut View2DState,
+    state: &mut ViewSpatialState,
     space: &ObjPath,
     scene: SceneSpatial,
     scene_rect_accum: Rect,
-    hovered_instance: &mut Option<InstanceId>,
 ) -> egui::Response {
     crate::profile_function!();
 
     // Save off the available_size since this is used for some of the layout updates later
     let available_size = ui.available_size();
 
-    let (desired_size, offset) = state.desired_size_and_offset(available_size, scene_rect_accum);
+    let (desired_size, offset) = state
+        .state_2d
+        .desired_size_and_offset(available_size, scene_rect_accum);
 
     // Bound the offset based on sizes
     // TODO(jleibs): can we derive this from the ScrollArea shape?
@@ -253,13 +253,14 @@ pub fn view_2d(
             space,
             scene,
             scene_rect_accum,
-            hovered_instance,
         )
     });
 
     // Update the scroll area based on the computed offset
     // This handles cases of dragging/zooming the space
-    state.capture_scroll(scroll_out.state.offset, available_size, scene_rect_accum);
+    state
+        .state_2d
+        .capture_scroll(scroll_out.state.offset, available_size, scene_rect_accum);
     scroll_out.inner
 }
 
@@ -270,11 +271,10 @@ fn view_2d_scrollable(
     available_size: Vec2,
     ctx: &mut ViewerContext<'_>,
     parent_ui: &mut egui::Ui,
-    state: &mut View2DState,
+    state: &mut ViewSpatialState,
     space: &ObjPath,
     mut scene: SceneSpatial,
     scene_rect_accum: Rect,
-    hovered_instance: &mut Option<InstanceId>,
 ) -> egui::Response {
     let (mut response, painter) =
         parent_ui.allocate_painter(desired_size, egui::Sense::click_and_drag());
@@ -286,7 +286,9 @@ fn view_2d_scrollable(
     let points_from_pixels = 1.0 / painter.ctx().pixels_per_point();
     let space_from_pixel = space_from_points * points_from_pixels;
 
-    state.update(&response, space_from_ui, scene_rect_accum, available_size);
+    state
+        .state_2d
+        .update(&response, space_from_ui, scene_rect_accum, available_size);
 
     // ------------------------------------------------------------------------
 
@@ -300,6 +302,7 @@ fn view_2d_scrollable(
             space_from_ui,
             space_from_pixel,
             &space.to_string(),
+            state.auto_size_config(),
         ) else {
             return response;
         };
@@ -321,7 +324,8 @@ fn view_2d_scrollable(
     // Add egui driven labels on top of re_renderer content.
     // Needs to come before hovering checks because it adds more objects for hovering.
     {
-        let hovered_instance_hash = hovered_instance
+        let hovered_instance_hash = state
+            .hovered_instance
             .as_ref()
             .map_or(InstanceIdHash::NONE, |i| i.hash());
         painter.extend(create_labels(
@@ -336,7 +340,7 @@ fn view_2d_scrollable(
     // ------------------------------------------------------------------------
 
     // Check if we're hovering any hover primitive.
-    *hovered_instance = None;
+    state.hovered_instance = None;
     let mut depth_at_pointer = None;
     if let Some(pointer_pos_ui) = response.hover_pos() {
         let pointer_pos_space = space_from_ui.transform_pos(pointer_pos_ui);
@@ -429,12 +433,12 @@ fn view_2d_scrollable(
             if let Some(closest_pick) = picking_result.iter_hits().last() {
                 // Save last known hovered object.
                 if let Some(instance_id) = closest_pick.instance_hash.resolve(&ctx.log_db.obj_db) {
-                    *hovered_instance = Some(instance_id);
+                    state.hovered_instance = Some(instance_id);
                 }
             }
 
             // Clicking the last hovered object.
-            if let Some(instance_id) = hovered_instance {
+            if let Some(instance_id) = &state.hovered_instance {
                 if response.clicked() {
                     ctx.set_selection(crate::Selection::Instance(instance_id.clone()));
                 }
@@ -451,8 +455,6 @@ fn view_2d_scrollable(
         space,
         &ui_from_space,
     ));
-
-    // ------------------------------------------------------------------------
 
     response
 }
@@ -528,6 +530,7 @@ fn setup_target_config(
     space_from_ui: RectTransform,
     space_from_pixel: f32,
     space_name: &str,
+    auto_size: re_renderer::Size,
 ) -> anyhow::Result<TargetConfiguration> {
     let pixels_from_points = painter.ctx().pixels_per_point();
     let resolution_in_pixel = get_viewport(painter.clip_rect(), pixels_from_points);
@@ -535,13 +538,24 @@ fn setup_target_config(
 
     let camera_position_space = space_from_ui.transform_pos(painter.clip_rect().min);
 
-    Ok(TargetConfiguration::new_2d_target(
-        space_name.into(),
-        resolution_in_pixel,
-        space_from_pixel,
-        pixels_from_points,
-        glam::vec2(camera_position_space.x, camera_position_space.y),
-    ))
+    Ok({
+        let name = space_name.into();
+        let top_left_position = glam::vec2(camera_position_space.x, camera_position_space.y);
+        TargetConfiguration {
+            name,
+            resolution_in_pixel,
+            view_from_world: macaw::IsoTransform::from_translation(-top_left_position.extend(0.0)),
+            projection_from_view: re_renderer::view_builder::Projection::Orthographic {
+                camera_mode:
+                    re_renderer::view_builder::OrthographicCameraMode::TopLeftCornerAndExtendZ,
+                vertical_world_size: space_from_pixel * resolution_in_pixel[1] as f32,
+                far_plane_distance: 1000.0,
+            },
+            pixels_from_point: pixels_from_points,
+            auto_size_config: auto_size,
+            auto_size_large_factor: 1.5,
+        }
+    })
 }
 
 // ------------------------------------------------------------------------

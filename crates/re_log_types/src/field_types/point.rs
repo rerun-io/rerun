@@ -29,6 +29,13 @@ impl Component for Point2D {
     }
 }
 
+#[cfg(feature = "glam")]
+impl From<Point2D> for glam::Vec2 {
+    fn from(pt: Point2D) -> Self {
+        Self::new(pt.x, pt.y)
+    }
+}
+
 /// A point in 3D space.
 ///
 /// ```
