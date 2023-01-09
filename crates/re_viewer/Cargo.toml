@@ -35,7 +35,7 @@ re_log_types = { path = "../re_log_types", features = [
 ] }
 re_memory = { path = "../re_memory" }
 re_query = { path = "../re_query" }
-re_renderer = { path = "../re_renderer" }
+re_renderer = { path = "../re_renderer", features = ["serde"] }
 re_smart_channel = { path = "../re_smart_channel" }
 re_string_interner = { path = "../re_string_interner" }
 re_tensor_ops = { path = "../re_tensor_ops" }

@@ -4,7 +4,7 @@ use re_renderer::{
         LineStripFlags, RectangleDrawData, TextureFilterMag, TextureFilterMin, TexturedRect,
     },
     resource_managers::{GpuTexture2DHandle, Texture2DCreationDesc},
-    view_builder::{self, Projection, ViewBuilder},
+    view_builder::{self, Projection, TargetConfiguration, ViewBuilder},
     Color32, LineStripSeriesBuilder, PointCloudBuilder, Size,
 };
 
@@ -218,13 +218,19 @@ impl framework::Example for Render2D {
                 view_builder
                     .setup_view(
                         re_ctx,
-                        view_builder::TargetConfiguration::new_2d_target(
-                            "2D".into(),
-                            splits[0].resolution_in_pixel,
-                            1.0,
+                        TargetConfiguration {
+                            name: "2D".into(),
+                            resolution_in_pixel: splits[0].resolution_in_pixel,
+                            view_from_world: macaw::IsoTransform::IDENTITY,
+                            projection_from_view: Projection::Orthographic {
+                                camera_mode:
+                                    view_builder::OrthographicCameraMode::TopLeftCornerAndExtendZ,
+                                vertical_world_size: splits[0].resolution_in_pixel[1] as f32,
+                                far_plane_distance: 1000.0,
+                            },
                             pixels_from_point,
-                            glam::Vec2::ZERO,
-                        ),
+                            ..Default::default()
+                        },
                     )
                     .unwrap();
                 view_builder.queue_draw(&line_strip_draw_data);
@@ -267,6 +273,7 @@ impl framework::Example for Render2D {
                                 near_plane_distance: 0.01,
                             },
                             pixels_from_point,
+                            ..Default::default()
                         },
                     )
                     .unwrap();

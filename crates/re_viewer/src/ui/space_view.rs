@@ -108,7 +108,7 @@ impl SpaceView {
     }
 
     /// List of objects a space view queries by default.
-    fn default_queried_objects(
+    pub fn default_queried_objects(
         ctx: &ViewerContext<'_>,
         category: ViewCategory,
         root_space: &SpaceInfo,

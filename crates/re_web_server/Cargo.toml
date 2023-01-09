@@ -23,7 +23,7 @@ anyhow.workspace = true
 document-features = "0.2"
 futures-util = "0.3"
 hyper = { version = "0.14", features = ["full"] }
-tokio = { version = "1.0.0", default-features = false, features = [
+tokio = { workspace = true, default-features = false, features = [
   "macros",
   "rt-multi-thread",
 ] }

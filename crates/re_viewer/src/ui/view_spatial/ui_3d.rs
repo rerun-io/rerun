@@ -23,7 +23,10 @@ use crate::{
     ViewerContext,
 };
 
-use super::eye::{Eye, OrbitEye};
+use super::{
+    eye::{Eye, OrbitEye},
+    ViewSpatialState,
+};
 
 // ---
 
@@ -326,39 +329,40 @@ pub const HELP_TEXT: &str = "Drag to rotate.\n\
     Double-click anywhere to reset the view.";
 
 /// TODO(andreas): Split into smaller parts, more re-use with `ui_2d`
-#[allow(clippy::too_many_arguments)]
 pub fn view_3d(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    state: &mut View3DState,
+    state: &mut ViewSpatialState,
     space: &ObjPath,
     mut scene: SceneSpatial,
     space_cameras: &[SpaceCamera3D],
-    scene_bbox_accum: &BoundingBox,
-    hovered_instance: &mut Option<InstanceId>,
     objects_properties: &ObjectsProperties,
 ) -> egui::Response {
     crate::profile_function!();
 
-    state.space_camera = space_cameras.to_vec();
+    state.state_3d.space_camera = space_cameras.to_vec();
 
     let (rect, mut response) =
         ui.allocate_at_least(ui.available_size(), egui::Sense::click_and_drag());
 
     let tracking_camera = tracking_camera(ctx, space_cameras);
-    let orbit_eye = state.update_eye(ctx, tracking_camera, &response, scene_bbox_accum);
+    let orbit_eye =
+        state
+            .state_3d
+            .update_eye(ctx, tracking_camera, &response, &state.scene_bbox_accum);
 
     let did_interact_wth_eye = orbit_eye.interact(&response);
     let orbit_eye = *orbit_eye;
     let eye = orbit_eye.to_eye();
 
     {
-        let hovered_instance_hash = hovered_instance
+        let hovered_instance_hash = state
+            .hovered_instance
             .as_ref()
             .map_or(InstanceIdHash::NONE, |i| i.hash());
         scene.add_cameras(
             ctx,
-            scene_bbox_accum,
+            &state.scene_bbox_accum,
             rect.size(),
             &eye,
             space_cameras,
@@ -368,15 +372,15 @@ pub fn view_3d(
     }
 
     if did_interact_wth_eye {
-        state.last_eye_interact_time = ui.input().time;
-        state.eye_interpolation = None;
+        state.state_3d.last_eye_interact_time = ui.input().time;
+        state.state_3d.eye_interpolation = None;
         if tracking_camera.is_some() {
             ctx.clear_selection();
         }
     }
 
     // TODO(andreas): We're very close making the hover reaction of ui2d and ui3d the same. Finish the job!
-    *hovered_instance = None;
+    state.hovered_instance = None;
     if let Some(pointer_pos) = response.hover_pos() {
         let picking_result =
             scene.picking(glam::vec2(pointer_pos.x, pointer_pos.y), &rect, &eye, 5.0);
@@ -440,22 +444,22 @@ pub fn view_3d(
         if let Some(closest_pick) = picking_result.iter_hits().last() {
             // Save last known hovered object.
             if let Some(instance_id) = closest_pick.instance_hash.resolve(&ctx.log_db.obj_db) {
-                state.hovered_point = Some(picking_result.space_position(closest_pick));
-                *hovered_instance = Some(instance_id);
+                state.state_3d.hovered_point = Some(picking_result.space_position(closest_pick));
+                state.hovered_instance = Some(instance_id);
             }
         }
 
         // Clicking the last hovered object.
-        if let Some(instance_id) = hovered_instance {
+        if let Some(instance_id) = &state.hovered_instance {
             if ui.input().pointer.any_click() {
-                click_object(ctx, space_cameras, state, instance_id);
+                click_object(ctx, space_cameras, &mut state.state_3d, instance_id);
             }
         }
 
-        project_onto_other_spaces(ctx, space_cameras, state, space);
+        project_onto_other_spaces(ctx, space_cameras, &mut state.state_3d, space);
     }
-    show_projections_from_2d_space(ctx, space_cameras, &mut scene, scene_bbox_accum);
-    if state.show_axes {
+    show_projections_from_2d_space(ctx, space_cameras, &mut scene, &state.scene_bbox_accum);
+    if state.state_3d.show_axes {
         scene.primitives.add_axis_lines(
             macaw::IsoTransform::IDENTITY,
             InstanceIdHash::NONE,
@@ -466,7 +470,7 @@ pub fn view_3d(
 
     {
         let orbit_center_alpha = egui::remap_clamp(
-            ui.input().time - state.last_eye_interact_time,
+            ui.input().time - state.state_3d.last_eye_interact_time,
             0.0..=0.4,
             0.7..=0.0,
         ) as f32;
@@ -499,7 +503,15 @@ pub fn view_3d(
         }
     }
 
-    paint_view(ui, eye, rect, &scene, ctx.render_ctx, &space.to_string());
+    paint_view(
+        ui,
+        eye,
+        rect,
+        &scene,
+        ctx.render_ctx,
+        &space.to_string(),
+        state.auto_size_config(),
+    );
 
     response
 }
@@ -511,6 +523,7 @@ fn paint_view(
     scene: &SceneSpatial,
     render_ctx: &mut RenderContext,
     name: &str,
+    auto_size_config: re_renderer::Size,
 ) {
     crate::profile_function!();
 
@@ -570,6 +583,8 @@ fn paint_view(
         },
 
         pixels_from_point,
+        auto_size_config,
+        auto_size_large_factor: 1.5,
     };
 
     let Ok(callback) = create_scene_paint_callback(
