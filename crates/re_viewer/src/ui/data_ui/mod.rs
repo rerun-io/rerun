@@ -10,6 +10,7 @@ use crate::misc::ViewerContext;
 
 use super::Preview;
 
+mod component;
 mod context;
 mod data;
 mod data_path;

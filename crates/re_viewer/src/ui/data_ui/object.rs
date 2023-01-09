@@ -1,8 +1,7 @@
 use re_data_store::{Index, InstanceId, ObjPath};
 use re_log_types::{
-    external::arrow2::array,
     field_types::{ClassId, KeypointId},
-    Data, DataPath, ObjectType,
+    Data, DataPath,
 };
 use re_query::{get_component_with_instances, QueryError};
 
@@ -11,7 +10,7 @@ use crate::{
     ui::{annotations::AnnotationMap, Preview},
 };
 
-use super::DataUi;
+use super::{component::arrow_component_elem_ui, DataUi};
 
 /// Previously `object_ui()`
 impl DataUi for ObjPath {
@@ -37,9 +36,17 @@ impl DataUi for InstanceId {
         ui: &mut egui::Ui,
         preview: Preview,
     ) -> egui::Response {
-        match ctx.log_db.obj_db.types.get(self.obj_path.obj_type_path()) {
-            Some(ObjectType::ArrowObject) => generic_arrow_ui(ctx, ui, self, preview),
-            _ => generic_instance_ui(ctx, ui, self, preview),
+        let timeline = ctx.rec_cfg.time_ctrl.timeline();
+        if ctx
+            .log_db
+            .obj_db
+            .arrow_store
+            .all_components(timeline, &self.obj_path)
+            .is_some()
+        {
+            generic_arrow_ui(ctx, ui, self, preview)
+        } else {
+            generic_instance_ui(ctx, ui, self, preview)
         }
     }
 }
@@ -48,7 +55,7 @@ fn generic_arrow_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     instance_id: &InstanceId,
-    _preview: Preview,
+    preview: Preview,
 ) -> egui::Response {
     let timeline = ctx.rec_cfg.time_ctrl.timeline();
     let store = &ctx.log_db.obj_db.arrow_store;
@@ -68,12 +75,16 @@ fn generic_arrow_ui(
         .num_columns(2)
         .show(ui, |ui| {
             for component in components {
-                let data =
+                let component_data =
                     get_component_with_instances(store, &query, &instance_id.obj_path, component);
 
-                ui.label(component.as_str());
+                ctx.data_path_button_to(
+                    ui,
+                    component.to_string(),
+                    &DataPath::new_arrow(instance_id.obj_path.clone(), component),
+                );
 
-                match (data, &instance_id.instance_index) {
+                match (component_data, &instance_id.instance_index) {
                     // If we didn't find the component then it's not set at this point in time
                     (Err(QueryError::PrimaryNotFound), _) => ui.label("<unset>"),
                     // Any other failure to get a component is unexpected
@@ -81,17 +92,8 @@ fn generic_arrow_ui(
                     // If an `instance_index` wasn't provided, just report the number of values
                     (Ok(data), None) => ui.label(format!("{} values", data.len())),
                     // If the `instance_index` is an `ArrowInstance` show the value
-                    (Ok(data), Some(Index::ArrowInstance(instance))) => {
-                        if let Some(value) = data.lookup(instance) {
-                            // TODO(jleibs): Dispatch to prettier printers for
-                            // component types we know about.
-                            let mut repr = String::new();
-                            let display = array::get_display(value.as_ref(), "null");
-                            display(&mut repr, 0).unwrap();
-                            ui.label(repr)
-                        } else {
-                            ui.label("<unset>")
-                        }
+                    (Ok(component_data), Some(Index::ArrowInstance(instance))) => {
+                        arrow_component_elem_ui(ctx, ui, &component_data, instance, preview)
                     }
                     // If the `instance_index` isn't an `ArrowInstance` something has gone wrong
                     // TODO(jleibs) this goes away once all indexes are just `Instances`
