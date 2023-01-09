@@ -76,6 +76,7 @@ def log_point(
         )
 
     if EXP_ARROW.arrow_log_gate():
+        from rerun.components.annotation import ClassIdArray
         from rerun.components.color import ColorRGBAArray
         from rerun.components.label import LabelArray
         from rerun.components.point import Point2DArray, Point3DArray
@@ -100,6 +101,10 @@ def log_point(
 
         if label:
             comps["rerun.label"] = LabelArray.new([label])
+
+        if class_id:
+            class_ids = _normalize_ids([class_id])
+            comps["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
 
         bindings.log_arrow_msg(f"arrow/{obj_path}", components=comps)
 
@@ -173,6 +178,7 @@ def log_points(
         )
 
     if EXP_ARROW.arrow_log_gate():
+        from rerun.components.annotation import ClassIdArray
         from rerun.components.color import ColorRGBAArray
         from rerun.components.label import LabelArray
         from rerun.components.point import Point2DArray, Point3DArray
@@ -201,5 +207,10 @@ def log_points(
 
         if labels:
             comps["rerun.label"] = LabelArray.new(labels)
+
+        if len(class_ids):
+            if len(class_ids) == 1:
+                class_ids = np.broadcast_to(class_ids, (len(positions),))
+            comps["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
 
         bindings.log_arrow_msg(f"arrow/{obj_path}", components=comps)

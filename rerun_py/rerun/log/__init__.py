@@ -93,7 +93,7 @@ def _normalize_ids(class_ids: OptionalClassIds = None) -> npt.NDArray[np.uint16]
         return np.array((), dtype=np.uint16)
     else:
         # TODO(andreas): Does this need optimizing for the case where class_ids is already an np array?
-        return np.array(class_ids, dtype=np.uint16, copy=False)
+        return np.atleast_1d(np.array(class_ids, dtype=np.uint16, copy=False))
 
 
 def _normalize_radii(radii: Optional[npt.ArrayLike] = None) -> npt.NDArray[np.float32]:

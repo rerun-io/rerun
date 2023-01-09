@@ -5,7 +5,10 @@ use arrow2_convert::{
     ArrowField, ArrowSerialize,
 };
 
-use crate::field_types::{ClassId, KeypointId};
+use crate::{
+    field_types::{ClassId, KeypointId},
+    msg_bundle::Component,
+};
 
 use super::{ColorRGBA, Label};
 
@@ -167,6 +170,12 @@ impl From<ClassDescriptionArrow> for ClassDescription {
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct AnnotationContext {
     pub class_map: HashMap<ClassId, ClassDescription>,
+}
+
+impl Component for AnnotationContext {
+    fn name() -> crate::ComponentName {
+        "rerun.annotation_context".into()
+    }
 }
 
 /// Helper struct for converting `AnnotationContext` to arrow
