@@ -29,15 +29,6 @@ impl DataStore {
             let mut df = index.to_dataframe(&self.config, &self.timeless_components);
             let nb_rows = df.get_columns()[0].len();
 
-            // Add a column where every row is the entity path.
-            let entities = {
-                let ent_path = ent_path.to_string();
-                let ent_path = Some(ent_path.as_str());
-                let entities = Utf8Array::<i32>::from(vec![ent_path; nb_rows]).boxed();
-                new_infallible_series("entity", entities.as_ref(), nb_rows)
-            };
-            let df = df.with_column(entities).unwrap(); // cannot fail
-
             // Add a column where every row is a boolean true (timeless)
             let timeless = {
                 let timeless = BooleanArray::from(vec![Some(true); nb_rows]).boxed();
@@ -45,7 +36,7 @@ impl DataStore {
             };
             let df = df.with_column(timeless).unwrap(); // cannot fail
 
-            df.clone()
+            (ent_path, df.clone())
         });
 
         let temporal_dfs = self.indices.values().map(|index| {
@@ -74,16 +65,33 @@ impl DataStore {
             //
             // This has to be done diagonally since each bucket can and will have different
             // numbers of columns (== components) and rows.
-            diag_concat_df(dfs.as_slice())
+            let df = diag_concat_df(dfs.as_slice())
                 // TODO(cmc): is there any way this can fail in this case?
-                .unwrap()
+                .unwrap();
+
+            (index.ent_path.clone(), df)
         });
+
+        let dfs: Vec<_> = timeless_dfs
+            .chain(temporal_dfs)
+            .map(|(ent_path, mut df)| {
+                let nb_rows = df.get_columns()[0].len();
+                // Add a column where every row is the entity path.
+                let entities = {
+                    let ent_path = ent_path.to_string();
+                    let ent_path = Some(ent_path.as_str());
+                    let entities = Utf8Array::<i32>::from(vec![ent_path; nb_rows]).boxed();
+                    new_infallible_series("entity", entities.as_ref(), nb_rows)
+                };
+                df.with_column(entities).unwrap().clone() // cannot fail
+            })
+            .collect();
 
         // Concatenate all indices together.
         //
         // This has to be done diagonally since these indices refer to different entities with
         // potentially wildly different sets of components and lengths.
-        let df = diag_concat_df(&timeless_dfs.chain(temporal_dfs).collect::<Vec<_>>())
+        let df = diag_concat_df(dfs.as_slice())
             // TODO(cmc): is there any way this can fail in this case?
             .unwrap();
 
