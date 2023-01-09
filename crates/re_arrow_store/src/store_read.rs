@@ -254,7 +254,9 @@ impl DataStore {
 
         // If we've found everything we were looking for in the temporal index, then we can
         // return the results immediately.
-        if row_indices.map_or(false, |row_indices| row_indices.iter().all(Option::is_some)) {
+        if !query.include_timeless
+            || row_indices.map_or(false, |row_indices| row_indices.iter().all(Option::is_some))
+        {
             return row_indices;
         }
 
