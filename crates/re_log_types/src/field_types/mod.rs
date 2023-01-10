@@ -15,6 +15,7 @@ pub mod coordinates;
 mod instance;
 mod keypoint_id;
 mod label;
+mod line;
 mod mat;
 mod msg_id;
 mod point;
@@ -34,6 +35,7 @@ pub use coordinates::ViewCoordinates;
 pub use instance::Instance;
 pub use keypoint_id::KeypointId;
 pub use label::Label;
+pub use line::LineStrip3D;
 pub use mat::Mat3x3;
 pub use msg_id::MsgId;
 pub use point::{Point2D, Point3D};
@@ -48,13 +50,14 @@ pub use vec::{Vec2D, Vec3D};
 
 lazy_static! {
     //TODO(john) actully use a run-time type registry
-    static ref FIELDS: [Field; 19] = [
+    static ref FIELDS: [Field; 20] = [
         <AnnotationContext as Component>::field(),
         <ClassId as Component>::field(),
         <ColorRGBA as Component>::field(),
         <Instance as Component>::field(),
         <KeypointId as Component>::field(),
         <Label as Component>::field(),
+        <LineStrip3D as Component>::field(),
         <MsgId as Component>::field(),
         <Point2D as Component>::field(),
         <Point3D as Component>::field(),
