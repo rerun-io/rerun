@@ -23,6 +23,7 @@ polars-lazy = "0.26"
 polars-ops = "0.26"
 puffin = "0.14"
 thiserror = "1.0"
+tokio = "1.24"
 
 [profile.dev]
 opt-level = 1 # Make debug builds run faster
