@@ -2,6 +2,7 @@
 
 A rough time-line of major user-facing things added, removed and changed. Newest on top.
 
+* 2022-01-10: (Re-)Introduce groupings in the blueprint. [#724](https://github.com/rerun-io/rerun/pull/724).
 * 2022-12-21: Allow objects under pinhole transform to be placed into 3D spaces. [#621](https://github.com/rerun-io/rerun/pull/621).
 * 2022-12-19: Add support for bar-charts. [#581](https://github.com/rerun-io/rerun/pull/581).
 * 2022-12-15: Support non-uniform scaling for meshes/models. [#570](https://github.com/rerun-io/rerun/pull/570).
