@@ -158,6 +158,9 @@ impl ObjDb {
         self.register_obj_path(&msg_bundle.obj_path);
 
         for component in &msg_bundle.components {
+            if component.name == MsgId::name() {
+                continue;
+            }
             //TODO(jleibs): Actually handle pending clears
             let _pending_clears = self.tree.add_data_msg(
                 msg.msg_id,
