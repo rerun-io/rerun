@@ -22,8 +22,8 @@ class LineStrip2DArray(pa.ExtensionArray):  # type: ignore[misc]
 
         offsets = itertools.chain([0], itertools.accumulate(len(line) for line in array))
         values = np.concatenate(array)  # type: ignore[call-overload]
-        fixed = pa.FixedSizeListArray.from_arrays(values.flatten(), 2)
-        storage = pa.ListArray.from_arrays(offsets, fixed)
+        fixed = pa.FixedSizeListArray.from_arrays(values.flatten(), type=LineStrip2DType.storage_type.value_type)
+        storage = pa.ListArray.from_arrays(offsets, fixed, type=LineStrip2DType.storage_type)
 
         # TODO(john) enable extension type wrapper
         # return cast(LineStrip2DArray, pa.ExtensionArray.from_storage(LineStrip2DType(), storage))
@@ -43,8 +43,8 @@ class LineStrip3DArray(pa.ExtensionArray):  # type: ignore[misc]
 
         offsets = itertools.chain([0], itertools.accumulate(len(line) for line in array))
         values = np.concatenate(array)  # type: ignore[call-overload]
-        fixed = pa.FixedSizeListArray.from_arrays(values.flatten(), 3)
-        storage = pa.ListArray.from_arrays(offsets, fixed)
+        fixed = pa.FixedSizeListArray.from_arrays(values.flatten(), type=LineStrip3DType.storage_type.value_type)
+        storage = pa.ListArray.from_arrays(offsets, fixed, type=LineStrip3DType.storage_type)
 
         # TODO(john) enable extension type wrapper
         # return cast(LineStrip3DArray, pa.ExtensionArray.from_storage(LineStrip3DType(), storage))
