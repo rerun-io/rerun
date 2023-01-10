@@ -106,4 +106,4 @@ def log_text_entry(
             colors = _normalize_colors(color)
             comps["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
 
-        bindings.log_arrow_msg(f"arrow/{obj_path}", components=comps)
+        bindings.log_arrow_msg(f"arrow/{obj_path}", components=comps, timeless=timeless)

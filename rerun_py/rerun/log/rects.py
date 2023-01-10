@@ -83,7 +83,7 @@ def log_rect(
         if label:
             comps["rerun.label"] = LabelArray.new([label])
 
-        bindings.log_arrow_msg(f"arrow/{obj_path}", components=comps)
+        bindings.log_arrow_msg(f"arrow/{obj_path}", components=comps, timeless=timeless)
 
 
 def log_rects(
@@ -159,4 +159,4 @@ def log_rects(
         if labels:
             comps["rerun.label"] = LabelArray.new(labels)
 
-        bindings.log_arrow_msg(f"arrow/{obj_path}", components=comps)
+        bindings.log_arrow_msg(f"arrow/{obj_path}", components=comps, timeless=timeless)
