@@ -50,6 +50,8 @@ pub struct ObjectTree {
     ///
     /// Data logged at this exact path or any child path.
     pub prefix_times: TimesPerTimeline,
+
+    /// Extra book-keeping used to seed any timelines that include timeless msgs
     pub timeless_msgs: BTreeMap<TimeInt, BTreeSet<MsgId>>,
 
     /// Book-keeping around whether we should clear fields when data is added
@@ -216,12 +218,16 @@ impl ObjectTree {
         time_point: &TimePoint,
     ) -> &mut Self {
         let mut new_timeline = false;
+
+        // If the time_point is timeless...
         if time_point.is_timeless() {
+            // Save it so that we can duplicate it into future timelines
             self.timeless_msgs
                 .entry(TimeInt::BEGINNING)
                 .or_default()
                 .insert(msg_id);
 
+            // Add it to any existing timelines
             for (_, timeline) in self.prefix_times.iter_mut() {
                 timeline
                     .entry(TimeInt::BEGINNING)
@@ -243,6 +249,8 @@ impl ObjectTree {
             }
         }
 
+        // If a new timeline was added at this path, touch all the fields
+        // to make sure deferred timeless msgs get inserted
         if new_timeline {
             self.fields.iter_mut().for_each(|(_, field)| {
                 field.populate_timeless(time_point);
@@ -336,18 +344,22 @@ pub enum MonoOrMulti {
 pub struct DataColumns {
     /// When do we have data?
     pub times: BTreeMap<Timeline, BTreeMap<TimeInt, BTreeSet<MsgId>>>,
+    /// Extra book-keeping used to seed any timelines that include timeless msgs
     pub timeless_msgs: BTreeMap<TimeInt, BTreeSet<MsgId>>,
     pub per_type: HashMap<(DataType, MonoOrMulti), BTreeSet<MsgId>>,
 }
 
 impl DataColumns {
     pub fn add(&mut self, msg_id: MsgId, time_point: &TimePoint, data: Option<&LoggedData>) {
+        // If the `time_point` is timeless...
         if time_point.is_timeless() {
+            // Save it so that we can duplicate it into future timelines
             self.timeless_msgs
                 .entry(TimeInt::BEGINNING)
                 .or_default()
                 .insert(msg_id);
 
+            // Add it to any existing timelines
             for timeline in &mut self.times.values_mut() {
                 timeline
                     .entry(TimeInt::BEGINNING)
@@ -379,6 +391,9 @@ impl DataColumns {
     }
 
     pub fn populate_timeless(&mut self, time_point: &TimePoint) {
+        // This `Timepoint` contains a timeline with timeless data that created
+        // a new timeline in our parent. Sweep all the timelines listed and seed
+        // with the timeless_msgs as necessary.
         for (timeline, _) in time_point.iter() {
             self.times
                 .entry(*timeline)
