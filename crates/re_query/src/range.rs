@@ -56,9 +56,16 @@ pub fn range_entity_with_primary<'a, Primary: Component + 'a, const N: usize>(
         .take(components.len())
         .collect();
 
+    // NOTE: This will return none for `TimeInt::Min`, i.e. range queries that start infinitely far
+    // into the past don't have a latest-at state!
     let latest_time = query.range.min.as_i64().checked_sub(1).map(Into::into);
 
+    let mut cwis_latest = None;
     if let Some(latest_time) = latest_time {
+        let mut cwis_latest_raw: Vec<_> = std::iter::repeat_with(|| None)
+            .take(components.len())
+            .collect();
+
         // Fetch the latest data for every single component from their respective point-of-views,
         // this will allow us to build up the initial state and send an initial latest-at
         // entity-view if needed.
@@ -69,52 +76,51 @@ pub fn range_entity_with_primary<'a, Primary: Component + 'a, const N: usize>(
                 ent_path,
                 *primary,
             );
-            state[i] = cwi.ok();
+            cwis_latest_raw[i] = cwi.ok();
+        }
+
+        if cwis_latest_raw[primary_col].is_some() {
+            cwis_latest = Some(cwis_latest_raw);
         }
     }
 
-    // Iff the primary component has some initial state, then we want to be sending out an initial
-    // entity-view.
-    let ent_view_latest =
-        if let (latest_time @ Some(_), Some(cwi_prim)) = (latest_time, &state[primary_col]) {
-            let ent_view = EntityView {
-                primary: cwi_prim.clone(),
-                components: components
-                    .iter()
-                    .copied()
-                    .zip(state.iter().cloned() /* shallow */)
-                    .filter(|(component, _)| *component != Primary::name())
-                    .filter_map(|(component, cwi)| cwi.map(|cwi| (component, cwi)))
-                    .collect(),
-                phantom: std::marker::PhantomData,
-            };
-            Some((latest_time, ent_view))
-        } else {
-            None
-        };
-
-    let range = store
-        .range(query, ent_path, components)
-        .map(move |(time, _, row_indices)| {
-            let results = store.get(&components, &row_indices);
-            (
-                time,
-                row_indices[primary_col].is_some(), // is_primary
-                results,
-            )
-        });
-
-    ent_view_latest
+    // send the latest-at state before anything else
+    cwis_latest
         .into_iter()
-        .chain(range.filter_map(move |(time, is_primary, results)| {
-            for (i, component) in components.iter().copied().enumerate() {
-                if let Some(res) = results[i].as_ref() {
-                    state[i] = Some(ComponentWithInstances {
-                        name: component,
-                        instance_keys: results[cluster_col].clone(), // shallow
-                        values: res.clone(),                         // shallow
-                    });
-                }
+        .map(move |cwis| (latest_time, true, cwis))
+        .chain(
+            store
+                .range(query, ent_path, components)
+                .map(move |(time, _, row_indices)| {
+                    let results = store.get(&components, &row_indices);
+                    let instance_keys = results[cluster_col].clone(); // shallow
+                    let cwis = results
+                        .into_iter()
+                        .enumerate()
+                        .map(|(i, res)| {
+                            res.map(|res| {
+                                ComponentWithInstances {
+                                    name: components[i],
+                                    instance_keys: instance_keys.clone(), // shallow
+                                    values: res.clone(),                  // shallow
+                                }
+                            })
+                        })
+                        .collect::<Vec<_>>();
+                    (
+                        time,
+                        row_indices[primary_col].is_some(), // is_primary
+                        cwis,
+                    )
+                }),
+        )
+        .filter_map(move |(time, is_primary, cwis)| {
+            for (i, cwi) in cwis
+                .into_iter()
+                .enumerate()
+                .filter(|(_, cwi)| cwi.is_some())
+            {
+                state[i] = cwi;
             }
 
             // We only yield if the primary component has been updated!
@@ -131,5 +137,5 @@ pub fn range_entity_with_primary<'a, Primary: Component + 'a, const N: usize>(
                 };
                 (time, ent_view)
             })
-        }))
+        })
 }
