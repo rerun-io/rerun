@@ -10,7 +10,7 @@ use re_log_types::ComponentName;
 
 use crate::{
     store::SecondaryIndex, ArrayExt, ComponentTable, DataStore, DataStoreConfig, IndexBucket,
-    IndexBucketIndices, PersistentComponentTable, PersistentIndexTable, RowIndexErased,
+    IndexBucketIndices, PersistentComponentTable, PersistentIndexTable, RowIndex,
 };
 
 // ---
@@ -233,7 +233,7 @@ fn component_as_series<T: AnyComponentTable>(
     nb_rows: usize,
     comp_table: &T,
     component: &ComponentName,
-    comp_row_nrs: &[Option<RowIndexErased>],
+    comp_row_nrs: &[Option<RowIndex>],
 ) -> Series {
     // For each row in the index, grab the associated data from the component tables.
     let comp_rows: Vec<Option<_>> = comp_row_nrs
@@ -264,12 +264,12 @@ fn component_as_series<T: AnyComponentTable>(
 }
 
 trait AnyComponentTable {
-    fn get(&self, row_idx: RowIndexErased) -> Option<Box<dyn Array>>;
+    fn get(&self, row_idx: RowIndex) -> Option<Box<dyn Array>>;
     fn datatype(&self) -> arrow2::datatypes::DataType;
 }
 
 impl AnyComponentTable for PersistentComponentTable {
-    fn get(&self, row_idx: RowIndexErased) -> Option<Box<dyn Array>> {
+    fn get(&self, row_idx: RowIndex) -> Option<Box<dyn Array>> {
         Some(self.get(row_idx))
     }
     fn datatype(&self) -> arrow2::datatypes::DataType {
@@ -278,7 +278,7 @@ impl AnyComponentTable for PersistentComponentTable {
 }
 
 impl AnyComponentTable for ComponentTable {
-    fn get(&self, row_idx: RowIndexErased) -> Option<Box<dyn Array>> {
+    fn get(&self, row_idx: RowIndex) -> Option<Box<dyn Array>> {
         self.get(row_idx)
     }
     fn datatype(&self) -> arrow2::datatypes::DataType {

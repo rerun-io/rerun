@@ -16,23 +16,13 @@ use re_log_types::{
 
 // --- Indices & offsets ---
 
-/// An opaque type that directly refers to a row of data within the datastore, iff it is associated
-/// with a component name.
-///
-/// See [`DataStore::latest_at`], [`DataStore::range`] & [`DataStore::get`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub enum RowIndex {
-    Temporal(RowIndexErased),
-    Timeless(RowIndexErased),
-}
-
 /// A vector of times. Our primary column, always densely filled.
 pub type TimeIndex = Vec<i64>;
 
 /// A vector of references into the component tables. None = null.
 // TODO(cmc): keeping a separate validity might be a better option, maybe.
-pub type SecondaryIndex = Vec<Option<RowIndexErased>>;
-static_assertions::assert_eq_size!(u64, Option<RowIndexErased>);
+pub type SecondaryIndex = Vec<Option<RowIndex>>;
+static_assertions::assert_eq_size!(u64, Option<RowIndex>);
 
 // TODO(#639): We desperately need to work on the terminology here:
 //
@@ -55,20 +45,47 @@ static_assertions::assert_eq_size!(u64, Option<RowIndexErased>);
 //   It's used to tiebreak results with an identical time, should you need too.
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct RowIndexErased(pub(crate) NonZeroU64);
-impl RowIndexErased {
+#[repr(u64)]
+pub enum RowIndexKind {
+    Temporal = 0,
+    Timeless = 1,
+}
+
+/// An opaque type that directly refers to a row of data within the datastore, iff it is
+/// associated with a component name.
+///
+/// See [`DataStore::latest_at`], [`DataStore::range`] & [`DataStore::get`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct RowIndex(pub(crate) NonZeroU64);
+impl RowIndex {
+    const KIND_MASK: u64 = 0x8000_0000_0000_0000;
+
     /// Panics if `v` is 0.
-    pub(crate) fn from_u64(v: u64) -> Self {
+    /// In debug, panics if `v` has its most significant bit set.
+    pub(crate) fn from_u63(kind: RowIndexKind, v: u64) -> Self {
+        debug_assert!(v & Self::KIND_MASK == 0);
+
+        let v = v | ((kind as u64) << 63);
         Self(v.try_into().unwrap())
     }
 
     pub(crate) fn as_u64(self) -> u64 {
-        self.0.into()
+        self.0.get() & !Self::KIND_MASK
+    }
+
+    pub(crate) fn kind(self) -> RowIndexKind {
+        match self.0.get() & Self::KIND_MASK > 0 {
+            false => RowIndexKind::Temporal,
+            true => RowIndexKind::Timeless,
+        }
     }
 }
-impl std::fmt::Display for RowIndexErased {
+impl std::fmt::Display for RowIndex {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!("{}", self.0))
+        match self.kind() {
+            RowIndexKind::Temporal => f.write_fmt(format_args!("Temporal({})", self.0)),
+            RowIndexKind::Timeless => f.write_fmt(format_args!("Timeless({})", self.0)),
+        }
     }
 }
 
@@ -227,7 +244,7 @@ pub struct DataStore {
     // Making temporal indices transparently refer to timeless components gets tricky for a whole
     // bunch of reasons though, so for now this'll do.
     // I might shake things up a little when GC lands.
-    pub(crate) timeless_cluster_comp_cache: IntMap<usize, RowIndexErased>,
+    pub(crate) timeless_cluster_comp_cache: IntMap<usize, RowIndex>,
 
     /// Maps an entity to its index, for a specific timeline.
     ///
@@ -239,7 +256,7 @@ pub struct DataStore {
     pub(crate) components: IntMap<ComponentName, ComponentTable>,
     /// Used to cache auto-generated cluster components, i.e. `[0]`, `[0, 1]`, `[0, 1, 2]`, etc
     /// so that they can be properly deduplicated.
-    pub(crate) cluster_comp_cache: IntMap<usize, RowIndexErased>,
+    pub(crate) cluster_comp_cache: IntMap<usize, RowIndex>,
 
     /// Monotically increasing ID for insertions.
     pub(crate) insert_id: u64,
@@ -364,7 +381,7 @@ impl DataStore {
         // Row indices should be continuous across all index tables.
         // TODO(#449): update this one appropriately when GC lands.
         {
-            let mut row_indices: IntMap<_, Vec<RowIndexErased>> = IntMap::default();
+            let mut row_indices: IntMap<_, Vec<RowIndex>> = IntMap::default();
             for table in self.indices.values() {
                 for bucket in table.buckets.values() {
                     for (comp, index) in &bucket.indices.read().indices {
@@ -395,7 +412,7 @@ impl DataStore {
 
         // Row indices should be continuous across all timeless index tables.
         {
-            let mut row_indices: IntMap<_, Vec<RowIndexErased>> = IntMap::default();
+            let mut row_indices: IntMap<_, Vec<RowIndex>> = IntMap::default();
             for table in self.timeless_indices.values() {
                 for (comp, index) in &table.indices {
                     let row_indices = row_indices.entry(*comp).or_default();
