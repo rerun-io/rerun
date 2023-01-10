@@ -19,9 +19,9 @@ use crate::{
 
 use super::ScenePart;
 
-pub struct Lines3DPart;
+pub struct Lines3DPartClassic;
 
-impl ScenePart for Lines3DPart {
+impl ScenePart for Lines3DPartClassic {
     /// Both `Path3D` and `LineSegments3D`.
 
     fn load(
