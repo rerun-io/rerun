@@ -154,12 +154,13 @@ impl<'a> ViewerContext<'a> {
         space_view_id: SpaceViewId,
         group_handle: DataBlueprintGroupHandle,
     ) -> egui::Response {
-        let is_selected = false; // TODO: self.selection() == Selection::SpaceView(space_view_id);
+        let selection = Selection::DataBlueprintGroup(space_view_id, group_handle);
+        let is_selected = self.selection() == selection;
         let response = ui
             .selectable_label(is_selected, text)
             .on_hover_text("Group");
         if response.clicked() {
-            self.set_selection(Selection::DataBlueprintGroup(space_view_id, group_handle));
+            self.set_selection(selection);
         }
         response
     }
