@@ -12,9 +12,6 @@ slotmap::new_key_type! { pub struct DataBlueprintGroupHandle; }
 pub struct DataBlueprintGroup {
     pub display_name: String,
 
-    /// Whether this group is expanded in the blueprint ui.
-    pub expanded: bool,
-
     /// Individual settings. Mutate & display this.
     pub properties_individual: ObjectProps,
 
@@ -78,15 +75,7 @@ pub struct DataBlueprintTree {
 impl Default for DataBlueprintTree {
     fn default() -> Self {
         let mut groups = SlotMap::default();
-        let root_group = groups.insert(DataBlueprintGroup {
-            display_name: String::new(),
-            expanded: true,
-            properties_individual: ObjectProps::default(),
-            properties_projected: ObjectProps::default(),
-            parent: slotmap::Key::null(),
-            children: SmallVec::new(),
-            objects: IntSet::default(),
-        });
+        let root_group = groups.insert(DataBlueprintGroup::default());
 
         let mut path_to_blueprint = IntMap::default();
         path_to_blueprint.insert(ObjPath::root(), root_group);
@@ -105,8 +94,12 @@ impl DataBlueprintTree {
     ///
     /// Even if there are no other groups, we always have a root group at the top.
     /// Typically, we don't show the root group in the ui.
-    pub fn root(&self) -> DataBlueprintGroupHandle {
+    pub fn root_handle(&self) -> DataBlueprintGroupHandle {
         self.root_group_handle
+    }
+
+    pub fn root_group(&self) -> &DataBlueprintGroup {
+        self.groups.get(self.root_group_handle).unwrap()
     }
 
     /// Resolves a data blueprint group handle.
@@ -184,7 +177,6 @@ impl DataBlueprintTree {
         crate::profile_function!();
 
         let mut new_leaf_groups = Vec::new();
-        let mut new_groups = Vec::new();
 
         for path in paths.iter() {
             // Is there already a group associated with this exact path? (maybe because a child was logged there earlier)
@@ -198,15 +190,9 @@ impl DataBlueprintTree {
                 // Otherwise, create a new group which only contains this object and add the group to the hierarchy.
                 let new_group = self.groups.insert(DataBlueprintGroup {
                     display_name: path_to_group_name(path),
-                    expanded: true,
                     ..Default::default()
                 });
-                self.add_group_to_hierarchy_recursively(
-                    new_group,
-                    path,
-                    base_path,
-                    &mut new_groups,
-                );
+                self.add_group_to_hierarchy_recursively(new_group, path, base_path);
                 new_leaf_groups.push(new_group);
                 new_group
             };
@@ -238,17 +224,6 @@ impl DataBlueprintTree {
             self.path_to_blueprint
                 .insert(single_object, parent_group_handle);
         }
-
-        // If a new group has a total of n elements or more, collapse it by default
-        const MIN_NUM_DEFAULT_COLLAPSED: usize = 4;
-        for group_handle in new_groups {
-            let Some(group) = self.groups.get_mut(group_handle) else {
-                continue; // This happens if it was removed again in an earlier processing step!
-            };
-
-            group.expanded =
-                (group.children.len() + group.objects.len()) < MIN_NUM_DEFAULT_COLLAPSED;
-        }
     }
 
     fn add_group_to_hierarchy_recursively(
@@ -256,7 +231,6 @@ impl DataBlueprintTree {
         new_group: DataBlueprintGroupHandle,
         associated_path: &ObjPath,
         base_path: &ObjPath,
-        new_groups: &mut Vec<DataBlueprintGroupHandle>,
     ) {
         let Some(mut parent_path) = associated_path.parent() else {
             // Already the root, nothing to do.
@@ -284,18 +258,11 @@ impl DataBlueprintTree {
             std::collections::hash_map::Entry::Vacant(vacant_mapping) => {
                 let parent_group = self.groups.insert(DataBlueprintGroup {
                     display_name: path_to_group_name(&parent_path),
-                    expanded: true,
                     children: smallvec![new_group],
                     ..Default::default()
                 });
                 vacant_mapping.insert(parent_group);
-                new_groups.push(parent_group);
-                self.add_group_to_hierarchy_recursively(
-                    parent_group,
-                    &parent_path,
-                    base_path,
-                    new_groups,
-                );
+                self.add_group_to_hierarchy_recursively(parent_group, &parent_path, base_path);
                 parent_group
             }
         };

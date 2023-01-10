@@ -246,6 +246,9 @@ impl Viewport {
             });
     }
 
+    // If a group or spaceview has a total of this number of elements or more, collapse it by default
+    const MAX_NUM_FOR_DEFAULT_OPEN: usize = 3;
+
     fn space_view_entry_ui(
         &mut self,
         ctx: &mut ViewerContext<'_>,
@@ -255,11 +258,14 @@ impl Viewport {
         let space_view = self.space_views.get_mut(space_view_id).unwrap();
         debug_assert_eq!(space_view.id, *space_view_id);
 
+        let root_group = space_view.data_blueprint.root_group();
+        let default_open =
+            root_group.children.len() + root_group.objects.len() <= Self::MAX_NUM_FOR_DEFAULT_OPEN;
         let collapsing_header_id = ui.id().with(space_view.id);
         egui::collapsing_header::CollapsingState::load_with_default_open(
             ui.ctx(),
             collapsing_header_id,
-            true,
+            default_open,
         )
         .show_header(ui, |ui| {
             match space_view.category {
@@ -296,7 +302,7 @@ impl Viewport {
             Self::data_blueprint_tree_ui(
                 ctx,
                 ui,
-                space_view.data_blueprint.root(),
+                space_view.data_blueprint.root_handle(),
                 &mut space_view.data_blueprint,
                 space_view_id,
                 self.visible.contains(space_view_id),
@@ -341,10 +347,12 @@ impl Viewport {
                 continue; // Should never happen. TODO: log warn once
             };
 
+            let default_open = child_group.children.len() + child_group.objects.len()
+                <= Self::MAX_NUM_FOR_DEFAULT_OPEN;
             egui::collapsing_header::CollapsingState::load_with_default_open(
                 ui.ctx(),
                 ui.id().with(child_group_handle),
-                child_group.expanded,
+                default_open,
             )
             .show_header(ui, |ui| {
                 ui.label("📁");
