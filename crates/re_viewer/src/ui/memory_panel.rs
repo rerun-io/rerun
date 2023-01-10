@@ -193,38 +193,40 @@ impl MemoryPanel {
                     total_component_size_bytes,
                 } = *store_stats;
 
+                let label_rows = |ui: &mut egui::Ui, nb_rows| {
+                    ui.label(format!("rows: {}", re_format::format_number(nb_rows as _)))
+                };
+                let label_size =
+                    |ui: &mut egui::Ui, size| ui.label(re_format::format_bytes(size as _));
+
                 ui.label("Indices (timeless):");
-                ui.label(re_format::format_number(total_timeless_index_rows as _));
-                ui.label(re_format::format_bytes(
-                    total_timeless_index_size_bytes as _,
-                ));
+                label_rows(ui, total_timeless_index_rows);
+                label_size(ui, total_timeless_index_size_bytes);
                 ui.end_row();
+
                 ui.label("Indices (temporal):");
-                ui.label(re_format::format_number(total_temporal_index_rows as _));
-                ui.label(re_format::format_bytes(
-                    total_temporal_index_size_bytes as _,
-                ));
+                label_rows(ui, total_temporal_index_rows);
+                label_size(ui, total_temporal_index_size_bytes);
                 ui.end_row();
+
                 ui.label("Indices (total):");
-                ui.label(re_format::format_number(total_index_rows as _));
-                ui.label(re_format::format_bytes(total_index_size_bytes as _));
+                label_rows(ui, total_index_rows);
+                label_size(ui, total_index_size_bytes);
                 ui.end_row();
 
                 ui.label("Components (timeless):");
-                ui.label(re_format::format_number(total_timeless_component_rows as _));
-                ui.label(re_format::format_bytes(
-                    total_timeless_component_size_bytes as _,
-                ));
+                label_rows(ui, total_timeless_component_rows);
+                label_size(ui, total_timeless_component_size_bytes);
                 ui.end_row();
+
                 ui.label("Components (temporal):");
-                ui.label(re_format::format_number(total_temporal_component_rows as _));
-                ui.label(re_format::format_bytes(
-                    total_temporal_component_size_bytes as _,
-                ));
+                label_rows(ui, total_temporal_component_rows);
+                label_size(ui, total_temporal_component_size_bytes);
                 ui.end_row();
+
                 ui.label("Components (total):");
-                ui.label(re_format::format_number(total_component_rows as _));
-                ui.label(re_format::format_bytes(total_component_size_bytes as _));
+                label_rows(ui, total_component_rows);
+                label_size(ui, total_component_size_bytes);
                 ui.end_row();
             });
     }
