@@ -56,6 +56,8 @@ pub fn range_entity_with_primary<'a, Primary: Component + 'a, const N: usize>(
         .take(components.len())
         .collect();
 
+    // NOTE: This will return none for `TimeInt::Min`, i.e. range queries that start infinitely far
+    // into the past don't have a latest-at state!
     let latest_time = query.range.min.as_i64().checked_sub(1).map(Into::into);
 
     let mut cwis_latest = None;
