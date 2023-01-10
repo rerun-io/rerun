@@ -213,4 +213,9 @@ def log_points(
                 class_ids = np.broadcast_to(class_ids, (len(positions),))
             comps["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
 
+        if len(keypoint_ids):
+            if len(keypoint_ids) == 1:
+                keypoint_ids = np.broadcast_to(keypoint_ids, (len(positions),))
+            comps["rerun.keypoint_id"] = ClassIdArray.from_numpy(keypoint_ids)
+
         bindings.log_arrow_msg(f"arrow/{obj_path}", components=comps)
