@@ -30,11 +30,11 @@ fn all_components() {
 
     let ent_path = EntityPath::from("this/that");
 
-    //let frame0 = 0.into();
-    let frame1 = 1.into();
-    let frame2 = 2.into();
-    let frame3 = 3.into();
-    let frame4 = 4.into();
+    // let frame0: TimeInt = 0.into();
+    let frame1: TimeInt = 1.into();
+    let frame2: TimeInt = 2.into();
+    let frame3: TimeInt = 3.into();
+    let frame4: TimeInt = 4.into();
 
     let assert_latest_components_at =
         |store: &mut DataStore, ent_path: &EntityPath, expected: Option<&[ComponentName]>| {
@@ -278,11 +278,11 @@ fn latest_at_impl(store: &mut DataStore) {
 
     let ent_path = EntityPath::from("this/that");
 
-    let frame0 = 0.into();
-    let frame1 = 1.into();
-    let frame2 = 2.into();
-    let frame3 = 3.into();
-    let frame4 = 4.into();
+    let frame0: TimeInt = 0.into();
+    let frame1: TimeInt = 1.into();
+    let frame2: TimeInt = 2.into();
+    let frame3: TimeInt = 3.into();
+    let frame4: TimeInt = 4.into();
 
     // helper to insert a bundle both as a temporal and timeless payload
     let insert = |store: &mut DataStore, bundle| {

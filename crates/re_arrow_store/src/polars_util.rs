@@ -93,6 +93,14 @@ pub fn latest_components(
 /// known state of all components, from their respective point-of-views.
 ///
 /// ⚠ The semantics are subtle! See `example/range_components.rs` for an example of use.
+///
+/// # Temporal semantics
+///
+/// Yields the contents of the temporal indices.
+/// Iff the query's time range starts at `TimeInt::MIN`, this will yield the contents of the
+/// timeless indices before anything else.
+///
+/// When yielding timeless entries, the associated time will be `None`.
 pub fn range_components<'a, const N: usize>(
     store: &'a DataStore,
     query: &'a RangeQuery,
@@ -143,7 +151,7 @@ pub fn range_components<'a, const N: usize>(
         .map(|(col, _)| col)
         .unwrap(); // asserted on entry
 
-    // dend the latest-at state before anything else
+    // send the latest-at state before anything else
     df_latest
         .into_iter()
         .map(move |df| (latest_time, true, df))

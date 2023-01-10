@@ -54,10 +54,15 @@ pub struct RangeQuery {
 impl std::fmt::Debug for RangeQuery {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!(
-            "<ranging from {} to {} (all inclusive) on {:?}>",
+            "<ranging from {} to {} (all inclusive) on {:?} ({} timeless)>",
             self.timeline.typ().format(self.range.min),
             self.timeline.typ().format(self.range.max),
             self.timeline.name(),
+            if self.range.min == TimeInt::MIN {
+                "including"
+            } else {
+                "excluding"
+            }
         ))
     }
 }
