@@ -33,6 +33,7 @@ use super::Vec3D;
 pub struct LineStrip2D(Vec<Vec2D>);
 
 impl From<Vec<[f32; 2]>> for LineStrip2D {
+    #[inline]
     fn from(v: Vec<[f32; 2]>) -> Self {
         Self(v.into_iter().map(Vec2D).collect())
     }
@@ -115,6 +116,7 @@ impl ArrowDeserialize for LineStrip2D {
 pub struct LineStrip3D(Vec<Vec3D>);
 
 impl From<Vec<[f32; 3]>> for LineStrip3D {
+    #[inline]
     fn from(v: Vec<[f32; 3]>) -> Self {
         Self(v.into_iter().map(Vec3D).collect())
     }
