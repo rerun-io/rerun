@@ -114,7 +114,7 @@ impl SpaceView {
     }
 
     /// List of objects a space view queries by default.
-    fn default_queried_objects(
+    pub fn default_queried_objects(
         ctx: &ViewerContext<'_>,
         category: ViewCategory,
         root_space: &SpaceInfo,
@@ -426,7 +426,6 @@ impl SpaceView {
                     ctx,
                     &query,
                     &transforms,
-                    self.data_blueprint.data_blueprints_projected(),
                     self.view_state.state_spatial.hovered_instance_hash(),
                 );
                 self.view_state.ui_spatial(

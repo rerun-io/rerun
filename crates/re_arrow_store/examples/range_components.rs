@@ -45,10 +45,7 @@ fn main() {
     store.insert(&bundle).unwrap();
 
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
-    let query = RangeQuery {
-        timeline: timeline_frame_nr,
-        range: TimeRange::new(2.into(), 4.into()),
-    };
+    let query = RangeQuery::new(timeline_frame_nr, TimeRange::new(2.into(), 4.into()));
 
     println!("Store contents:\n{}", store.to_dataframe());
 
@@ -65,7 +62,10 @@ fn main() {
     for (time, df) in dfs.map(Result::unwrap) {
         eprintln!(
             "Found data at time {} from {}'s PoV (outer-joining):\n{}",
-            TimeType::Sequence.format(time),
+            time.map_or_else(
+                || "<timeless>".into(),
+                |time| TimeType::Sequence.format(time)
+            ),
             Rect2D::name(),
             df,
         );
@@ -84,7 +84,10 @@ fn main() {
     for (time, df) in dfs.map(Result::unwrap) {
         eprintln!(
             "Found data at time {} from {}'s PoV (outer-joining):\n{}",
-            TimeType::Sequence.format(time),
+            time.map_or_else(
+                || "<timeless>".into(),
+                |time| TimeType::Sequence.format(time)
+            ),
             Point2D::name(),
             df,
         );

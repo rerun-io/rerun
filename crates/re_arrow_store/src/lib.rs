@@ -29,7 +29,8 @@ pub use self::store_read::{LatestAtQuery, RangeQuery};
 pub use self::store_write::{WriteError, WriteResult};
 
 pub(crate) use self::store::{
-    ComponentBucket, ComponentTable, IndexBucketIndices, SecondaryIndex, TimeIndex,
+    ComponentBucket, ComponentTable, IndexBucketIndices, PersistentComponentTable,
+    PersistentIndexTable, RowIndexErased, SecondaryIndex, TimeIndex,
 };
 
 // Re-exports

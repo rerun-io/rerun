@@ -181,7 +181,7 @@ impl SceneTimeSeries {
                         let label = annotation_info.label(label.map(|l| l.into()).as_ref());
 
                         points.push(PlotPoint {
-                            time: time.as_i64(),
+                            time: time.unwrap().as_i64(), // scalars cannot be timeless
                             value: scalar.into(),
                             attrs: PlotPointAttrs {
                                 label,

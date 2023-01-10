@@ -22,6 +22,11 @@ pub type SharedResult<T> = ::std::result::Result<T, SharedPolarsError>;
 /// [`latest_components`].
 ///
 /// See `example/latest_component.rs` for an example of use.
+///
+/// # Temporal semantics
+///
+/// Temporal indices take precedence, then timeless indices are queried to fill the holes left
+/// by missing temporal data.
 //
 // TODO(cmc): can this really fail though?
 pub fn latest_component(
@@ -49,6 +54,11 @@ pub fn latest_component(
 /// [`latest_components`].
 ///
 /// See `example/latest_components.rs` for an example of use.
+///
+/// # Temporal semantics
+///
+/// Temporal indices take precedence, then timeless indices are queried to fill the holes left
+/// by missing temporal data.
 //
 // TODO(cmc): can this really fail though?
 pub fn latest_components(
@@ -83,6 +93,14 @@ pub fn latest_components(
 /// known state of all components, from their respective point-of-views.
 ///
 /// ⚠ The semantics are subtle! See `example/range_components.rs` for an example of use.
+///
+/// # Temporal semantics
+///
+/// Yields the contents of the temporal indices.
+/// Iff the query's time range starts at `TimeInt::MIN`, this will yield the contents of the
+/// timeless indices before anything else.
+///
+/// When yielding timeless entries, the associated time will be `None`.
 pub fn range_components<'a, const N: usize>(
     store: &'a DataStore,
     query: &'a RangeQuery,
@@ -90,7 +108,7 @@ pub fn range_components<'a, const N: usize>(
     primary: ComponentName,
     components: [ComponentName; N],
     join_type: &'a JoinType,
-) -> impl Iterator<Item = SharedResult<(TimeInt, DataFrame)>> + 'a {
+) -> impl Iterator<Item = SharedResult<(Option<TimeInt>, DataFrame)>> + 'a {
     let cluster_key = store.cluster_key();
 
     // TODO(cmc): Ideally, we'd want to simply add the cluster and primary key to the `components`
@@ -106,8 +124,11 @@ pub fn range_components<'a, const N: usize>(
 
     let mut state = None;
 
+    // NOTE: This will return none for `TimeInt::Min`, i.e. range queries that start infinitely far
+    // into the past don't have a latest-at state!
     let latest_time = query.range.min.as_i64().checked_sub(1).map(Into::into);
 
+    let mut df_latest = None;
     if let Some(latest_time) = latest_time {
         let df = latest_components(
             store,
@@ -122,15 +143,9 @@ pub fn range_components<'a, const N: usize>(
             // at all for the primary component.
             !df.is_empty() && df.column(primary.as_str()).is_ok()
         }) {
-            state = Some(df);
+            df_latest = Some(df);
         }
     }
-
-    let df_latest = if let (Some(latest_time), Some(state)) = (latest_time, state.as_ref()) {
-        Some(state.clone().map(|df| (latest_time, df)) /* shallow */)
-    } else {
-        None
-    };
 
     let primary_col = components
         .iter()
@@ -138,21 +153,24 @@ pub fn range_components<'a, const N: usize>(
         .map(|(col, _)| col)
         .unwrap(); // asserted on entry
 
-    let range = store
-        .range(query, ent_path, components)
-        .map(move |(time, _, row_indices)| {
-            let results = store.get(&components, &row_indices);
-            (
-                time,
-                row_indices[primary_col].is_some(), // is_primary
-                dataframe_from_results(&components, results),
-            )
-        });
-
-    // Send the latest-at state before anything else
+    // send the latest-at state before anything else
     df_latest
         .into_iter()
-        .chain(range.filter_map(move |(time, is_primary, df)| {
+        .map(move |df| (latest_time, true, df))
+        // followed by the range
+        .chain(
+            store
+                .range(query, ent_path, components)
+                .map(move |(time, _, row_indices)| {
+                    let results = store.get(&components, &row_indices);
+                    (
+                        time,
+                        row_indices[primary_col].is_some(), // is_primary
+                        dataframe_from_results(&components, results),
+                    )
+                }),
+        )
+        .filter_map(move |(time, is_primary, df)| {
             state = Some(join_dataframes(
                 cluster_key,
                 join_type,
@@ -177,7 +195,7 @@ pub fn range_components<'a, const N: usize>(
                     .unwrap();
                 (time, df)
             }))
-        }))
+        })
 }
 
 // --- Joins ---
@@ -224,7 +242,6 @@ pub fn join_dataframes(
                 .filter(|col| *col != &cluster_key.as_str())
             {
                 _ = left.drop_in_place(col);
-                left = left.drop_nulls(None).unwrap();
             }
 
             left.join(
@@ -234,9 +251,36 @@ pub fn join_dataframes(
                 join_type.clone(),
                 None,
             )
+            .map(|df| drop_all_nulls(&df, &cluster_key).unwrap())
             .map_err(Into::into)
         })
         .unwrap_or_else(|| Ok(DataFrame::default()))?;
 
     Ok(df.sort([cluster_key.as_str()], false).unwrap_or(df))
+}
+
+/// Returns a new `DataFrame` where all rows that only contain null values (ignoring the cluster
+/// column) are dropped.
+pub fn drop_all_nulls(df: &DataFrame, cluster_key: &ComponentName) -> PolarsResult<DataFrame> {
+    let cols = df
+        .get_column_names()
+        .into_iter()
+        .filter(|col| *col != cluster_key.as_str());
+
+    let mut iter = df.select_series(cols)?.into_iter();
+
+    // fast path for no nulls in df
+    if iter.clone().all(|s| !s.has_validity()) {
+        return Ok(df.clone());
+    }
+
+    let mask = iter
+        .next()
+        .ok_or_else(|| PolarsError::NoData("No data to drop nulls from".into()))?;
+    let mut mask = mask.is_not_null();
+
+    for s in iter {
+        mask = mask | s.is_not_null();
+    }
+    df.filter(&mask)
 }

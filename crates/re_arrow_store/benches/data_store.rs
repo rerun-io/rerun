@@ -112,6 +112,7 @@ fn range_batch(c: &mut Criterion) {
             b.iter(|| {
                 let msgs = range_messages(&store, [Rect2D::name()]);
                 for (cur_time, (time, results)) in msgs.enumerate() {
+                    let time = time.unwrap();
                     assert_eq!(cur_time as i64, time.as_i64());
 
                     let rects = results[0]
@@ -180,7 +181,7 @@ fn latest_messages_at<const N: usize>(
 fn range_messages<const N: usize>(
     store: &DataStore,
     components: [ComponentName; N],
-) -> impl Iterator<Item = (TimeInt, [Option<Box<dyn Array>>; N])> + '_ {
+) -> impl Iterator<Item = (Option<TimeInt>, [Option<Box<dyn Array>>; N])> + '_ {
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
     let query = RangeQuery::new(
         timeline_frame_nr,

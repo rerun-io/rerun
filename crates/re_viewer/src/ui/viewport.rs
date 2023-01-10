@@ -1,18 +1,13 @@
 //! The viewport panel.
 //!
 //! Contains all space views.
-//!
-//! To do:
-//! * [ ] Controlling visibility of objects inside each Space View
-//! * [ ] Transforming objects between spaces
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 
 use ahash::HashMap;
 use itertools::Itertools as _;
 
-use nohash_hasher::{IntMap, IntSet};
-use re_data_store::{ObjPath, ObjPathComp, ObjectsProperties, TimeInt};
+use re_data_store::{ObjPath, ObjectsProperties, TimeInt};
 
 use crate::{
     misc::{
@@ -46,7 +41,7 @@ fn query_scene_spatial(
     };
     let mut scene = SceneSpatial::default();
     let hovered = re_data_store::InstanceIdHash::NONE;
-    scene.load_objects(ctx, &query, transforms, query.obj_props, hovered);
+    scene.load_objects(ctx, &query, transforms, hovered);
     scene
 }
 
@@ -268,16 +263,7 @@ impl Viewport {
             default_open,
         )
         .show_header(ui, |ui| {
-            match space_view.category {
-                ViewCategory::Text => ui.label("📃"),
-                ViewCategory::TimeSeries => ui.label("📈"),
-                ViewCategory::BarChart => ui.label("📊"),
-                ViewCategory::Spatial => match space_view.view_state.state_spatial.nav_mode {
-                    super::view_spatial::SpatialNavigationMode::TwoD => ui.label("🖼"),
-                    super::view_spatial::SpatialNavigationMode::ThreeD => ui.label("🔭"),
-                },
-                ViewCategory::Tensor => ui.label("🇹"),
-            };
+            ui.label(space_view.category.icon());
 
             if ctx
                 .space_view_button_to(ui, space_view.name.clone(), *space_view_id)
@@ -560,74 +546,47 @@ impl Viewport {
             ui.menu_button("Add new space view…", |ui| {
                 ui.style_mut().wrap = Some(false);
 
-                let objects_per_root_grouped_by_category =
-                    objects_per_root_grouped_by_category(ctx);
+                let all_categories = enumset::EnumSet::<ViewCategory>::all();
 
                 for space_info in spaces_info.iter() {
-                    let categories = objects_per_root_grouped_by_category
-                        .get(&ObjPath::from(&space_info.path.to_components()[..1]));
-
-                    if let Some(categories) = categories {
-                        if categories.is_empty() {
+                    for category in all_categories {
+                        let obj_paths = SpaceView::default_queried_objects(
+                            ctx,
+                            category,
+                            space_info,
+                            spaces_info,
+                        );
+                        if obj_paths.is_empty() {
                             continue;
                         }
 
-                        let transforms = TransformCache::determine_transforms(
-                            spaces_info,
-                            space_info,
-                            &ObjectsProperties::default(),
-                        );
-
-                        if ui.button(space_info.path.to_string()).clicked() {
+                        if ui
+                            .button(format!("{} {}", category.icon(), space_info.path))
+                            .clicked()
+                        {
                             ui.close_menu();
 
-                            for (category, obj_paths) in categories {
-                                let scene_spatial =
-                                    query_scene_spatial(ctx, obj_paths, &transforms);
-                                let new_space_view_id = self.add_space_view(SpaceView::new(
-                                    ctx,
-                                    *category,
-                                    space_info,
-                                    spaces_info,
-                                    scene_spatial.preferred_navigation_mode(),
-                                ));
-                                ctx.set_selection(Selection::SpaceView(new_space_view_id));
-                            }
+                            let transforms = TransformCache::determine_transforms(
+                                spaces_info,
+                                space_info,
+                                &ObjectsProperties::default(),
+                            );
+
+                            let scene_spatial = query_scene_spatial(ctx, &obj_paths, &transforms);
+                            let new_space_view_id = self.add_space_view(SpaceView::new(
+                                ctx,
+                                category,
+                                space_info,
+                                spaces_info,
+                                scene_spatial.preferred_navigation_mode(),
+                            ));
+                            ctx.set_selection(Selection::SpaceView(new_space_view_id));
                         }
                     }
                 }
             });
         });
     }
-}
-
-/// Returns iterator over all root paths, each with a list of object paths under it.
-fn objects_per_root<'a>(
-    ctx: &mut ViewerContext<'a>,
-) -> impl Iterator<Item = (ObjPath, Vec<ObjPath>)> + 'a {
-    let roots = &ctx.log_db.obj_db.tree.children;
-    roots.iter().map(|(root_path, root_tree)| {
-        let mut objects = Vec::new();
-        root_tree.visit_children_recursively(&mut |child_path| {
-            objects.push(child_path.clone());
-        });
-        let root_path: &[ObjPathComp] = &[root_path.clone()];
-        (ObjPath::from(root_path), objects)
-    })
-}
-
-/// Returns all map from all root paths to objects grouped by category.
-fn objects_per_root_grouped_by_category(
-    ctx: &mut ViewerContext<'_>,
-) -> IntMap<ObjPath, BTreeMap<ViewCategory, IntSet<ObjPath>>> {
-    objects_per_root(ctx)
-        .map(|(root, objects)| {
-            (
-                root,
-                group_by_category(ctx.rec_cfg.time_ctrl.timeline(), ctx.log_db, objects.iter()),
-            )
-        })
-        .collect()
 }
 
 fn visibility_button(ui: &mut egui::Ui, enabled: bool, visible: &mut bool) -> egui::Response {

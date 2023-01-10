@@ -25,6 +25,9 @@ pub enum QueryError {
     #[error("Could not find primary")]
     PrimaryNotFound,
 
+    #[error("Could not find component")]
+    ComponentNotFound,
+
     #[error("Tried to access component of type '{actual:?}' using deserializer for type '{requested:?}'")]
     TypeMismatch {
         actual: re_log_types::ComponentName,

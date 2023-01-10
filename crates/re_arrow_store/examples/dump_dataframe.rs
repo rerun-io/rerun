@@ -37,10 +37,17 @@ fn main() {
             build_frame_nr(2.into())
         ] => [build_some_instances(2), build_some_point2d(2)]);
         store.insert(&bundle2).unwrap();
+        // Insert timelessly too!
+        let bundle2 =
+            test_bundle!(ent_path @ [] => [build_some_instances(2), build_some_point2d(2)]);
+        store.insert(&bundle2).unwrap();
 
         let bundle3 = test_bundle!(ent_path @ [
             build_frame_nr(3.into()), build_log_time(Time::now()),
         ] => [build_some_instances_from(25..29), build_some_point2d(4)]);
+        store.insert(&bundle3).unwrap();
+        // Insert timelessly too!
+        let bundle3 = test_bundle!(ent_path @ [] => [build_some_instances_from(25..29), build_some_point2d(4)]);
         store.insert(&bundle3).unwrap();
     }
 
