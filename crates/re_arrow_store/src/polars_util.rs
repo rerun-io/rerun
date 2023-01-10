@@ -124,6 +124,8 @@ pub fn range_components<'a, const N: usize>(
 
     let mut state = None;
 
+    // NOTE: This will return none for `TimeInt::Min`, i.e. range queries that start infinitely far
+    // into the past don't have a latest-at state!
     let latest_time = query.range.min.as_i64().checked_sub(1).map(Into::into);
 
     let mut df_latest = None;
