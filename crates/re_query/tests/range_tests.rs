@@ -82,8 +82,6 @@ fn simple_range() {
     // Frame #123:
     // ┌────────────────┬───────────────┬─────────────────┐
     // │ rerun.instance ┆ rerun.point2d ┆ rerun.colorrgba │
-    // │ ---            ┆ ---           ┆ ---             │
-    // │ u64            ┆ struct[2]     ┆ u32             │
     // ╞════════════════╪═══════════════╪═════════════════╡
     // │ 0              ┆ {1.0,2.0}     ┆ null            │
     // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
@@ -93,8 +91,6 @@ fn simple_range() {
     // Frame #323:
     // ┌────────────────┬───────────────┬─────────────────┐
     // │ rerun.instance ┆ rerun.point2d ┆ rerun.colorrgba │
-    // │ ---            ┆ ---           ┆ ---             │
-    // │ u64            ┆ struct[2]     ┆ u32             │
     // ╞════════════════╪═══════════════╪═════════════════╡
     // │ 0              ┆ {10.0,20.0}   ┆ 4278190080      │
     // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
@@ -170,8 +166,6 @@ fn simple_range() {
     // Frame #123:
     // ┌────────────────┬───────────────┬─────────────────┐
     // │ rerun.instance ┆ rerun.point2d ┆ rerun.colorrgba │
-    // │ ---            ┆ ---           ┆ ---             │
-    // │ u64            ┆ struct[2]     ┆ u32             │
     // ╞════════════════╪═══════════════╪═════════════════╡
     // │ 0              ┆ {1.0,2.0}     ┆ null            │
     // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
@@ -181,8 +175,6 @@ fn simple_range() {
     // Frame #323:
     // ┌────────────────┬───────────────┬─────────────────┐
     // │ rerun.instance ┆ rerun.point2d ┆ rerun.colorrgba │
-    // │ ---            ┆ ---           ┆ ---             │
-    // │ u64            ┆ struct[2]     ┆ u32             │
     // ╞════════════════╪═══════════════╪═════════════════╡
     // │ 0              ┆ {10.0,20.0}   ┆ 4278190080      │
     // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
@@ -321,8 +313,6 @@ fn timeless_range() {
 
     // ┌───────────┬──────────┬────────┬─────────────────┬────────────────┬──────────────────────┬────────────────────────────┐
     // │ insert_id ┆ frame_nr ┆ entity ┆ rerun.colorrgba ┆ rerun.instance ┆ rerun.msg_id         ┆ rerun.point2d              │
-    // │ ---       ┆ ---      ┆ ---    ┆ ---             ┆ ---            ┆ ---                  ┆ ---                        │
-    // │ u64       ┆ i64      ┆ str    ┆ list[u32]       ┆ list[u64]      ┆ list[struct[2]]      ┆ list[struct[2]]            │
     // ╞═══════════╪══════════╪════════╪═════════════════╪════════════════╪══════════════════════╪════════════════════════════╡
     // │ 2         ┆ null     ┆ point  ┆ null            ┆ [0, 1]         ┆ [{167328063302243... ┆ [{1.0,2.0}, {3.0,4.0}]     │
     // ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
@@ -360,8 +350,6 @@ fn timeless_range() {
     // Frame #123:
     // ┌────────────────┬───────────────┬─────────────────┐
     // │ rerun.instance ┆ rerun.point2d ┆ rerun.colorrgba │
-    // │ ---            ┆ ---           ┆ ---             │
-    // │ u64            ┆ struct[2]     ┆ u32             │
     // ╞════════════════╪═══════════════╪═════════════════╡
     // │ 0              ┆ {1.0,2.0}     ┆ null            │
     // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
@@ -371,8 +359,6 @@ fn timeless_range() {
     // Frame #323:
     // ┌────────────────┬───────────────┬─────────────────┐
     // │ rerun.instance ┆ rerun.point2d ┆ rerun.colorrgba │
-    // │ ---            ┆ ---           ┆ ---             │
-    // │ u64            ┆ struct[2]     ┆ u32             │
     // ╞════════════════╪═══════════════╪═════════════════╡
     // │ 0              ┆ {10.0,20.0}   ┆ 4278190080      │
     // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
@@ -445,11 +431,18 @@ fn timeless_range() {
 
     // We expect this to generate the following `DataFrame`s:
     //
+    // Frame #122:
+    // ┌────────────────┬───────────────┬─────────────────┐
+    // │ rerun.instance ┆ rerun.point2d ┆ rerun.colorrgba │
+    // ╞════════════════╪═══════════════╪═════════════════╡
+    // │ 0              ┆ {10.0,20.0}   ┆ null            │
+    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    // │ 1              ┆ {30.0,40.0}   ┆ 4278190080      │
+    // └────────────────┴───────────────┴─────────────────┘
+    //
     // Frame #123:
     // ┌────────────────┬───────────────┬─────────────────┐
     // │ rerun.instance ┆ rerun.point2d ┆ rerun.colorrgba │
-    // │ ---            ┆ ---           ┆ ---             │
-    // │ u64            ┆ struct[2]     ┆ u32             │
     // ╞════════════════╪═══════════════╪═════════════════╡
     // │ 0              ┆ {1.0,2.0}     ┆ null            │
     // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
@@ -459,8 +452,6 @@ fn timeless_range() {
     // Frame #323:
     // ┌────────────────┬───────────────┬─────────────────┐
     // │ rerun.instance ┆ rerun.point2d ┆ rerun.colorrgba │
-    // │ ---            ┆ ---           ┆ ---             │
-    // │ u64            ┆ struct[2]     ┆ u32             │
     // ╞════════════════╪═══════════════╪═════════════════╡
     // │ 0              ┆ {10.0,20.0}   ┆ 4278190080      │
     // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
@@ -514,6 +505,144 @@ fn timeless_range() {
         // Frame #323
 
         let (time, ent_view) = &results[2];
+        let time = time.unwrap();
+
+        // Build expected df manually
+        let instances = vec![Some(Instance(0)), Some(Instance(1))];
+        let points = vec![
+            Some(Point2D { x: 10.0, y: 20.0 }),
+            Some(Point2D { x: 30.0, y: 40.0 }),
+        ];
+        let colors = vec![Some(ColorRGBA(0xff000000)), None];
+        let expected = df_builder3(&instances, &points, &colors).unwrap();
+
+        //eprintln!("{:?}", df);
+        //eprintln!("{:?}", expected);
+
+        assert_eq!(TimeInt::from(323), time);
+        common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
+    }
+    #[cfg(not(feature = "polars"))]
+    {
+        //TODO(jleibs): non-polars test validation
+        _ = results;
+    }
+
+    // --- Third test: `[-inf, +inf]` ---
+
+    let query = re_arrow_store::RangeQuery::new(
+        timepoint1[0].0,
+        TimeRange::new(TimeInt::MIN, TimeInt::MAX),
+    );
+
+    let components = [Instance::name(), Point2D::name(), ColorRGBA::name()];
+    let ent_views = range_entity_with_primary::<Point2D, 3>(&store, &query, &ent_path, components);
+
+    let results = ent_views.collect::<Vec<_>>();
+
+    // We expect this to generate the following `DataFrame`s:
+    //
+    // Timeless #1:
+    // ┌────────────────┬───────────────┬─────────────────┐
+    // │ rerun.instance ┆ rerun.point2d ┆ rerun.colorrgba │
+    // ╞════════════════╪═══════════════╪═════════════════╡
+    // │ 0              ┆ {1.0,2.0}     ┆ null            │
+    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    // │ 1              ┆ {3.0,4.0}     ┆ null            │
+    // └────────────────┴───────────────┴─────────────────┘
+    //
+    // Timeless #2:
+    // ┌────────────────┬───────────────┬─────────────────┐
+    // │ rerun.instance ┆ rerun.point2d ┆ rerun.colorrgba │
+    // ╞════════════════╪═══════════════╪═════════════════╡
+    // │ 0              ┆ {10.0,20.0}   ┆ null            │
+    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    // │ 1              ┆ {30.0,40.0}   ┆ 4278190080      │
+    // └────────────────┴───────────────┴─────────────────┘
+    //
+    // Frame #123:
+    // ┌────────────────┬───────────────┬─────────────────┐
+    // │ rerun.instance ┆ rerun.point2d ┆ rerun.colorrgba │
+    // ╞════════════════╪═══════════════╪═════════════════╡
+    // │ 0              ┆ {1.0,2.0}     ┆ null            │
+    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    // │ 1              ┆ {3.0,4.0}     ┆ 4278190080      │
+    // └────────────────┴───────────────┴─────────────────┘
+    //
+    // Frame #323:
+    // ┌────────────────┬───────────────┬─────────────────┐
+    // │ rerun.instance ┆ rerun.point2d ┆ rerun.colorrgba │
+    // ╞════════════════╪═══════════════╪═════════════════╡
+    // │ 0              ┆ {10.0,20.0}   ┆ 4278190080      │
+    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+    // │ 1              ┆ {30.0,40.0}   ┆ null            │
+    // └────────────────┴───────────────┴─────────────────┘
+
+    #[cfg(feature = "polars")]
+    {
+        use re_query::dataframe_util::df_builder3;
+
+        // Timeless #1
+
+        let (time, ent_view) = &results[0];
+
+        // Build expected df manually
+        let instances = vec![Some(Instance(0)), Some(Instance(1))];
+        let points = vec![
+            Some(Point2D { x: 1.0, y: 2.0 }),
+            Some(Point2D { x: 3.0, y: 4.0 }),
+        ];
+        let colors: Vec<Option<ColorRGBA>> = vec![None, None];
+        let expected = df_builder3(&instances, &points, &colors).unwrap();
+
+        //eprintln!("{:?}", df);
+        //eprintln!("{:?}", expected);
+
+        assert_eq!(&None, time);
+        common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
+
+        // Timeless #2
+
+        let (time, ent_view) = &results[1];
+
+        // Build expected df manually
+        let instances = vec![Some(Instance(0)), Some(Instance(1))];
+        let points = vec![
+            Some(Point2D { x: 10.0, y: 20.0 }),
+            Some(Point2D { x: 30.0, y: 40.0 }),
+        ];
+        let colors = vec![None, Some(ColorRGBA(0xff000000))];
+        let expected = df_builder3(&instances, &points, &colors).unwrap();
+
+        //eprintln!("{:?}", df);
+        //eprintln!("{:?}", expected);
+
+        assert_eq!(&None, time);
+        common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
+
+        // Frame #123 (partially timeless)
+
+        let (time, ent_view) = &results[2];
+        let time = time.unwrap();
+
+        // Build expected df manually
+        let instances = vec![Some(Instance(0)), Some(Instance(1))];
+        let points = vec![
+            Some(Point2D { x: 1.0, y: 2.0 }),
+            Some(Point2D { x: 3.0, y: 4.0 }),
+        ];
+        let colors = vec![None, Some(ColorRGBA(0xff000000))];
+        let expected = df_builder3(&instances, &points, &colors).unwrap();
+
+        //eprintln!("{:?}", df);
+        //eprintln!("{:?}", expected);
+
+        assert_eq!(TimeInt::from(123), time);
+        common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
+
+        // Frame #323
+
+        let (time, ent_view) = &results[3];
         let time = time.unwrap();
 
         // Build expected df manually
