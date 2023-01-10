@@ -44,8 +44,8 @@ def log_path(
         bindings.log_path(obj_path, positions, stroke_width, color, timeless)
 
     if EXP_ARROW.arrow_log_gate():
-        from rerun.components.linestrip import LineStrip3DArray
         from rerun.components.color import ColorRGBAArray
+        from rerun.components.linestrip import LineStrip3DArray
         from rerun.components.radius import RadiusArray
 
         comps = {}

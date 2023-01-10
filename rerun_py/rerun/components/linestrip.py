@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import itertools
 from typing import Iterable
+
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
@@ -15,7 +16,7 @@ __all__ = [
 
 class LineStrip2DArray(pa.ExtensionArray):  # type: ignore[misc]
     def from_numpy_arrays(array: Iterable[npt.NDArray[np.float32]]) -> LineStrip2DArray:
-        """Build a `LineStrip2DArray` from an array of [Nx2 numpy array]"""
+        """Build a `LineStrip2DArray` from an array of [Nx2 numpy array]."""
         for line in array:
             assert line.shape[1] == 2
 
@@ -36,7 +37,7 @@ pa.register_extension_type(LineStrip2DType())
 
 class LineStrip3DArray(pa.ExtensionArray):  # type: ignore[misc]
     def from_numpy_arrays(array: Iterable[npt.NDArray[np.float32]]) -> LineStrip3DArray:
-        """Build a `LineStrip3DArray` from an array of [Nx3 numpy array]"""
+        """Build a `LineStrip3DArray` from an array of [Nx3 numpy array]."""
         for line in array:
             assert line.shape[1] == 3
 
