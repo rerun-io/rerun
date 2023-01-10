@@ -57,9 +57,20 @@ impl MemoryPanel {
         limit: &MemoryLimit,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
     ) {
-        ui.strong("Rerun Viewer memory usage");
-        ui.separator();
+        ui.strong("Rerun Viewer resource usage");
 
+        ui.separator();
+        ui.collapsing("CPU Resources", |ui| {
+            Self::cpu_stats(ui, limit);
+        });
+
+        ui.separator();
+        ui.collapsing("GPU Resources", |ui| {
+            Self::gpu_stats(ui, gpu_resource_stats);
+        });
+    }
+
+    fn cpu_stats(ui: &mut egui::Ui, limit: &MemoryLimit) {
         if let Some(limit) = limit.limit {
             ui.label(format!("Memory limit: {}", format_bytes(limit as _)));
         } else {
@@ -94,10 +105,6 @@ impl MemoryPanel {
                 "Set {RERUN_TRACK_ALLOCATIONS}=1 to turn on detailed allocation tracking."
             ));
         }
-
-        ui.separator();
-        ui.strong("GPU Resources:");
-        Self::gpu_stats(ui, gpu_resource_stats);
     }
 
     fn gpu_stats(ui: &mut egui::Ui, gpu_resource_stats: &WgpuResourcePoolStatistics) {
