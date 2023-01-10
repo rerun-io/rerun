@@ -200,7 +200,7 @@ impl DataStore {
             // as-is in the index.
             row_indices.insert(
                 Self::insert_id_key(),
-                RowIndex::from_u63(RowIndexKind::Timeless, self.insert_id),
+                RowIndex::from_u63(RowIndexKind::Temporal, self.insert_id),
             );
         }
 
