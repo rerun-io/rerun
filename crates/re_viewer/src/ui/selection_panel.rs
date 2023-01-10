@@ -174,8 +174,7 @@ impl SelectionPanel {
 
                     ui.separator();
 
-                    let data_blueprint =
-                        space_view.data_blueprint_tree.data_blueprints_individual();
+                    let data_blueprint = space_view.data_blueprint.data_blueprints_individual();
                     let mut props = data_blueprint.get(&obj_path);
                     obj_props_ui(ctx, ui, Some(&obj_path), &mut props);
                     data_blueprint.set(obj_path.clone(), props);
@@ -194,7 +193,7 @@ impl SelectionPanel {
                         .space_view_mut(&space_view_id)
                         .and_then(|space_view| {
                             space_view
-                                .data_blueprint_tree
+                                .data_blueprint
                                 .get_group_mut(data_blueprint_group_handle)
                         })
                 {

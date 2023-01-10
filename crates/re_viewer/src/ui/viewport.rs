@@ -296,8 +296,8 @@ impl Viewport {
             Self::data_blueprint_tree_ui(
                 ctx,
                 ui,
-                space_view.data_blueprint_tree.root(),
-                &mut space_view.data_blueprint_tree,
+                space_view.data_blueprint.root(),
+                &mut space_view.data_blueprint,
                 space_view_id,
                 self.visible.contains(space_view_id),
             );
@@ -350,7 +350,7 @@ impl Viewport {
                 ui.label("📁");
                 ctx.datablueprint_group_button_to(
                     ui,
-                    &child_group.name,
+                    &child_group.display_name,
                     *space_view_id,
                     *child_group_handle,
                 );

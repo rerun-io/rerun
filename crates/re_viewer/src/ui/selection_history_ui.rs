@@ -199,8 +199,8 @@ fn selection_to_string(blueprint: &Blueprint, sel: &Selection) -> String {
         Selection::SpaceViewObjPath(_, obj_path) => return obj_path.to_string(),
         Selection::DataBlueprintGroup(sid, handle) => {
             if let Some(space_view) = blueprint.viewport.space_view(sid) {
-                if let Some(group) = space_view.data_blueprint_tree.get_group(*handle) {
-                    return group.name.clone();
+                if let Some(group) = space_view.data_blueprint.get_group(*handle) {
+                    return group.display_name.clone();
                 }
             }
         }

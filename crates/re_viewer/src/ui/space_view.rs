@@ -55,8 +55,8 @@ pub(crate) struct SpaceView {
     /// TODO(andreas): This is a HashSet for the time being, but in the future it might be possible to add the same object twice.
     pub queried_objects: IntSet<ObjPath>,
 
-    /// TODO: ObjProperties should be managed by this entirely!
-    pub data_blueprint_tree: DataBlueprintTree,
+    /// The data blueprint tree, has blueprint settings for all blueprint groups and objects in this spaceview.
+    pub data_blueprint: DataBlueprintTree,
 
     pub view_state: ViewState,
 
@@ -106,7 +106,7 @@ impl SpaceView {
             root_path,
             space_path: space_info.path.clone(),
             queried_objects,
-            data_blueprint_tree,
+            data_blueprint: data_blueprint_tree,
             view_state,
             category,
             allow_auto_adding_more_object: true,
@@ -134,7 +134,7 @@ impl SpaceView {
     }
 
     pub fn on_frame_start(&mut self, ctx: &mut ViewerContext<'_>, spaces_info: &SpacesInfo) {
-        self.data_blueprint_tree.on_frame_start();
+        self.data_blueprint.on_frame_start();
 
         if !self.allow_auto_adding_more_object {
             return;
@@ -145,7 +145,7 @@ impl SpaceView {
         // Add objects that have been logged since we were created
         self.queried_objects =
             Self::default_queried_objects(ctx, self.category, space, spaces_info);
-        self.data_blueprint_tree
+        self.data_blueprint
             .insert_objects_according_to_hierarchy(&self.queried_objects, &self.space_path);
     }
 
@@ -220,7 +220,7 @@ impl SpaceView {
                     let transforms = TransformCache::determine_transforms(
                         &spaces_info,
                         reference_space,
-                        self.data_blueprint_tree.data_blueprints_projected(),
+                        self.data_blueprint.data_blueprints_projected(),
                     );
                     self.obj_tree_children_ui(ctx, ui, &spaces_info, subtree, &transforms);
                 }
@@ -368,7 +368,7 @@ impl SpaceView {
                         }
                     },
                 );
-                self.data_blueprint_tree
+                self.data_blueprint
                     .insert_objects_according_to_hierarchy(&self.queried_objects, &self.space_path);
                 self.allow_auto_adding_more_object = false;
             }
@@ -390,7 +390,7 @@ impl SpaceView {
             obj_paths: &self.queried_objects,
             timeline: *ctx.rec_cfg.time_ctrl.timeline(),
             latest_at,
-            obj_props: self.data_blueprint_tree.data_blueprints_projected(),
+            obj_props: self.data_blueprint.data_blueprints_projected(),
         };
 
         match self.category {
@@ -419,14 +419,14 @@ impl SpaceView {
                 let transforms = TransformCache::determine_transforms(
                     spaces_info,
                     reference_space,
-                    self.data_blueprint_tree.data_blueprints_projected(),
+                    self.data_blueprint.data_blueprints_projected(),
                 );
                 let mut scene = view_spatial::SceneSpatial::default();
                 scene.load_objects(
                     ctx,
                     &query,
                     &transforms,
-                    self.data_blueprint_tree.data_blueprints_projected(),
+                    self.data_blueprint.data_blueprints_projected(),
                     self.view_state.state_spatial.hovered_instance_hash(),
                 );
                 self.view_state.ui_spatial(
@@ -436,7 +436,7 @@ impl SpaceView {
                     spaces_info,
                     reference_space_info,
                     scene,
-                    self.data_blueprint_tree.data_blueprints_projected(),
+                    self.data_blueprint.data_blueprints_projected(),
                 );
             }
 

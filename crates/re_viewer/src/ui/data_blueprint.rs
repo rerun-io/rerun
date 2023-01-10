@@ -7,12 +7,12 @@ use crate::misc::ViewerContext;
 
 slotmap::new_key_type! { pub struct DataBlueprintGroupHandle; }
 
-/// A grouping of several data blueprints.
+/// A grouping of several data-blueprints.
 #[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
 pub struct DataBlueprintGroup {
-    pub name: String,
+    pub display_name: String,
 
-    /// Whether this is expanded in the ui.
+    /// Whether this group is expanded in the blueprint ui.
     pub expanded: bool,
 
     /// Individual settings. Mutate & display this.
@@ -38,12 +38,12 @@ impl DataBlueprintGroup {
             .num_columns(2)
             .show(ui, |ui| {
                 ui.label("Name:");
-                ui.text_edit_singleline(&mut self.name);
+                ui.text_edit_singleline(&mut self.display_name);
             });
     }
 }
 
-/// Stores a visibility toggle for a tree.
+/// Data blueprints for all object paths in a space view.
 #[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
 struct DataBlueprints {
     /// Individual settings. Mutate this.
@@ -78,7 +78,7 @@ impl Default for DataBlueprintTree {
     fn default() -> Self {
         let mut groups = SlotMap::default();
         let root_group = groups.insert(DataBlueprintGroup {
-            name: String::new(),
+            display_name: String::new(),
             expanded: true,
             properties_individual: ObjectProps::default(),
             properties_projected: ObjectProps::default(),
@@ -108,10 +108,12 @@ impl DataBlueprintTree {
         self.root_group_handle
     }
 
+    /// Resolves a data blueprint group handle.
     pub fn get_group(&self, handle: DataBlueprintGroupHandle) -> Option<&DataBlueprintGroup> {
         self.groups.get(handle)
     }
 
+    /// Resolves a data blueprint group handle.
     pub fn get_group_mut(
         &mut self,
         handle: DataBlueprintGroupHandle,
@@ -136,8 +138,7 @@ impl DataBlueprintTree {
         crate::profile_function!();
 
         // NOTE: We could do this projection only when the object properties changes
-        // and/or when new object paths are added, but such memoization would add complexity,
-        // and in most cases this is pretty fast already.
+        // and/or when new object paths are added, but such memoization would add complexity.
 
         fn project_tree(
             tree: &mut DataBlueprintTree,
@@ -173,8 +174,7 @@ impl DataBlueprintTree {
     ///
     /// `base_path` indicates a path at which we short-circuit to the root group.
     ///
-    /// Creates a group at *every* step of every path. Groups directly at the object path will be discarded if they only contain the object itself.
-    /// It's up to the ui to not show groups with only a single object.
+    /// Creates a group at *every* step of every path, unless a new group would only contain the object itself.
     pub fn insert_objects_according_to_hierarchy(
         &mut self,
         paths: &IntSet<ObjPath>,
@@ -193,13 +193,9 @@ impl DataBlueprintTree {
             } else {
                 // Otherwise, create a new group which only contains this object and add the group to the hierarchy.
                 let new_group = self.groups.insert(DataBlueprintGroup {
-                    name: path_to_group_name(path),
+                    display_name: path_to_group_name(path),
                     expanded: true,
-                    properties_individual: ObjectProps::default(),
-                    properties_projected: ObjectProps::default(),
-                    parent: slotmap::Key::null(), // To be determined.
-                    children: SmallVec::new(),
-                    objects: IntSet::default(),
+                    ..Default::default()
                 });
                 self.add_group_to_hierarchy_recursively(new_group, path, base_path);
                 new_leaf_groups.push(new_group);
@@ -264,13 +260,10 @@ impl DataBlueprintTree {
 
             std::collections::hash_map::Entry::Vacant(vacant_mapping) => {
                 let parent_group = self.groups.insert(DataBlueprintGroup {
-                    name: path_to_group_name(&parent_path),
+                    display_name: path_to_group_name(&parent_path),
                     expanded: true,
-                    properties_individual: ObjectProps::default(),
-                    properties_projected: ObjectProps::default(),
-                    parent: slotmap::Key::null(), // To be determined.
                     children: smallvec![new_group],
-                    objects: IntSet::default(),
+                    ..Default::default()
                 });
                 vacant_mapping.insert(parent_group);
                 self.add_group_to_hierarchy_recursively(parent_group, &parent_path, base_path);
