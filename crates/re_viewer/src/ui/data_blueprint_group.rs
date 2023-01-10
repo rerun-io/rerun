@@ -3,6 +3,8 @@ use re_data_store::ObjPath;
 use slotmap::SlotMap;
 use smallvec::{smallvec, SmallVec};
 
+use super::editable_auto_value::EditableAutoValue;
+
 slotmap::new_key_type! { pub struct DataBlueprintGroupHandle; }
 
 /// A grouping of several data blueprints.
@@ -10,7 +12,8 @@ slotmap::new_key_type! { pub struct DataBlueprintGroupHandle; }
 pub struct DataBlueprintGroup {
     pub id: uuid::Uuid,
 
-    pub name: String,
+    pub name: EditableAutoValue<String>,
+
     /// Whether this is expanded in the ui.
     pub expanded: bool,
 
@@ -49,7 +52,7 @@ impl Default for DataBlueprintTree {
         let mut groups = SlotMap::default();
         let root_group = groups.insert(DataBlueprintGroup {
             id: uuid::Uuid::new_v4(),
-            name: String::new(),
+            name: EditableAutoValue::default(),
             parent: slotmap::Key::null(),
             expanded: true,
             children: SmallVec::new(),
@@ -101,11 +104,14 @@ impl DataBlueprintTree {
             // If so, we can simply move it under this existing group.
             let group_handle = if let Some(group_handle) = self.path_to_blueprint.get(path) {
                 *group_handle
+            } else if path == base_path {
+                // Object might have directly been logged on the base_path. We map then to the root!
+                self.root_group
             } else {
                 // Otherwise, create a new group which only contains this object and add the group to the hierarchy.
                 let new_group = self.groups.insert(DataBlueprintGroup {
                     id: uuid::Uuid::new_v4(),
-                    name: path.to_string(), // TODO:
+                    name: EditableAutoValue::Auto(path.to_string()),
                     expanded: true,
                     children: SmallVec::new(),
                     objects: IntSet::default(),
@@ -175,7 +181,7 @@ impl DataBlueprintTree {
             std::collections::hash_map::Entry::Vacant(vacant_mapping) => {
                 let parent_group = self.groups.insert(DataBlueprintGroup {
                     id: uuid::Uuid::new_v4(),
-                    name: parent_path.to_string(),
+                    name: EditableAutoValue::Auto(parent_path.to_string()),
                     expanded: true,
                     children: smallvec![new_group],
                     objects: IntSet::default(),

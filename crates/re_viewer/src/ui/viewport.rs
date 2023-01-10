@@ -24,6 +24,7 @@ use crate::{
 
 use super::{
     data_blueprint_group::{DataBlueprintGroupHandle, DataBlueprintTree},
+    editable_auto_value::EditableAutoValue,
     transform_cache::TransformCache,
     view_category::ViewCategory,
     SceneQuery, SpaceView, SpaceViewId,
@@ -316,6 +317,9 @@ impl Viewport {
             return; // Should never happen. TODO: log warn once
         };
 
+        // (Clone name since we can't hold on to the borrow of `group`)
+        let group_name = group.name.clone();
+
         // TODO(andreas): First all children and then all objects may not be what we want?
         for path in &group.objects {
             ui.horizontal(|ui| {
@@ -337,6 +341,7 @@ impl Viewport {
             };
 
             let collapsing_header_id = ui.id().with(child_group.id);
+
             egui::collapsing_header::CollapsingState::load_with_default_open(
                 ui.ctx(),
                 collapsing_header_id,
@@ -345,7 +350,15 @@ impl Viewport {
             .show_header(ui, |ui| {
                 ui.label("📁");
 
-                ctx.datablueprint_group_button_to(ui, &child_group.name);
+                let display_name = match &child_group.name {
+                    EditableAutoValue::UserEdited(user_name) => user_name,
+                    EditableAutoValue::Auto(auto_name) => auto_name
+                        .strip_prefix(group_name.get())
+                        .map_or(auto_name.as_str(), |name| {
+                            name.strip_prefix('/').unwrap_or(name)
+                        }),
+                };
+                ctx.datablueprint_group_button_to(ui, display_name);
 
                 // TODO.
                 // if visibility_button(ui, true, &mut child_group.vis).changed() {
