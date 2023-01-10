@@ -58,9 +58,9 @@ pub fn range_entity_with_primary<'a, Primary: Component + 'a, const N: usize>(
 
     let latest_time = query.range.min.as_i64().checked_sub(1).map(Into::into);
 
-    let mut state_latest = None;
+    let mut cwis_latest = None;
     if let Some(latest_time) = latest_time {
-        let mut state_latest_raw: Vec<_> = std::iter::repeat_with(|| None)
+        let mut cwis_latest_raw: Vec<_> = std::iter::repeat_with(|| None)
             .take(components.len())
             .collect();
 
@@ -70,21 +70,25 @@ pub fn range_entity_with_primary<'a, Primary: Component + 'a, const N: usize>(
         for (i, primary) in components.iter().enumerate() {
             let cwi = get_component_with_instances(
                 store,
-                &LatestAtQuery::temporal_only(query.timeline, latest_time),
+                &LatestAtQuery::new(query.timeline, latest_time),
                 ent_path,
                 *primary,
             );
-            state_latest_raw[i] = cwi.ok();
+            cwis_latest_raw[i] = cwi.ok();
         }
 
-        if state_latest_raw[primary_col].is_some() {
-            state_latest = Some(state_latest_raw);
+        if cwis_latest_raw[primary_col].is_some() {
+            cwis_latest = Some(cwis_latest_raw);
         }
     }
 
-    let mut range = store
-        .range(query, ent_path, components)
-        .map(move |(time, _, row_indices)| {
+    // send the latest-at state before anything else
+    let range = cwis_latest
+        .into_iter()
+        .map(move |cwis| (latest_time, true, cwis));
+
+    let range = range.chain(store.range(query, ent_path, components).map(
+        move |(time, _, row_indices)| {
             let results = store.get(&components, &row_indices);
             let instance_keys = results[cluster_col].clone(); // shallow
             let cwis = results
@@ -105,51 +109,8 @@ pub fn range_entity_with_primary<'a, Primary: Component + 'a, const N: usize>(
                 row_indices[primary_col].is_some(), // is_primary
                 cwis,
             )
-        });
-
-    let range = if let Some(state_latest) = state_latest {
-        // Complex case: there's some latest-at state that we need to carefully fit in-between the
-        // timeless and temporal parts of the stream.
-        let range = std::iter::from_fn({
-            let mut peeked = range.next();
-            let mut is_timeless = true;
-            move || {
-                let next = if let peeked @ Some(_) = peeked.take() {
-                    peeked
-                } else {
-                    range.next()
-                };
-                if let Some((time, is_primary, cwis)) = next {
-                    // did we just witness the switch from timeless to temporal?
-                    let is_switching = is_timeless && time.is_some();
-                    is_timeless = time.is_none();
-
-                    // if so, stash the current value somewhere, and yield our latest state
-                    // instead!
-                    if is_switching {
-                        peeked = Some((time, is_primary, cwis));
-                        return Some((latest_time, true, state_latest.clone()));
-                    }
-
-                    Some((time, is_primary, cwis))
-                } else {
-                    // if the stream did not contain any temporal data at all, make sure we still
-                    // yield the latest-at state at the end of the timeless part.
-                    if is_timeless {
-                        is_timeless = false;
-                        return Some((latest_time, true, state_latest.clone()));
-                    }
-
-                    None
-                }
-            }
-        });
-        itertools::Either::Left(range)
-    } else {
-        // Easy case: no latest-at state.
-        // Just stream everything as-is.
-        itertools::Either::Right(range)
-    };
+        },
+    ));
 
     range.filter_map(move |(time, is_primary, cwis)| {
         for (i, cwi) in cwis
