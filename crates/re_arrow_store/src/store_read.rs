@@ -21,40 +21,21 @@ use crate::{
 pub struct LatestAtQuery {
     pub timeline: Timeline,
     pub at: TimeInt,
-    /// When set to `true` (the default), the query will take timeless data into account.
-    pub include_timeless: bool,
 }
 
 impl std::fmt::Debug for LatestAtQuery {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!(
-            "<latest at {} on {:?} ({} timeless)>",
+            "<latest at {} on {:?} (including timeless)>",
             self.timeline.typ().format(self.at),
             self.timeline.name(),
-            if self.include_timeless {
-                "including"
-            } else {
-                "excluding"
-            },
         ))
     }
 }
 
 impl LatestAtQuery {
     pub const fn new(timeline: Timeline, at: TimeInt) -> Self {
-        Self {
-            timeline,
-            at,
-            include_timeless: true,
-        }
-    }
-
-    pub const fn temporal_only(timeline: Timeline, at: TimeInt) -> Self {
-        Self {
-            timeline,
-            at,
-            include_timeless: false,
-        }
+        Self { timeline, at }
     }
 }
 
@@ -68,47 +49,35 @@ impl LatestAtQuery {
 pub struct RangeQuery {
     pub timeline: Timeline,
     pub range: TimeRange,
-    /// When set to `true` (the default), the query will take timeless data into account.
-    pub include_timeless: bool,
 }
 
 impl std::fmt::Debug for RangeQuery {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!(
-            "<ranging from {} to {} (all inclusive) on {:?} ({} timeless)>",
+            "<ranging from {} to {} (all inclusive) on {:?}>",
             self.timeline.typ().format(self.range.min),
             self.timeline.typ().format(self.range.max),
             self.timeline.name(),
-            self.include_timeless,
         ))
     }
 }
 
 impl RangeQuery {
     pub const fn new(timeline: Timeline, range: TimeRange) -> Self {
-        Self {
-            timeline,
-            range,
-            include_timeless: true,
-        }
-    }
-
-    pub const fn temporal_only(timeline: Timeline, range: TimeRange) -> Self {
-        Self {
-            timeline,
-            range,
-            include_timeless: false,
-        }
+        Self { timeline, range }
     }
 }
 
 // --- Data store ---
 
 impl DataStore {
-    /// Retrieve all the `ComponentName`s that have been written to for a given `EntityPath` on a
-    /// specific `Timeline`.
+    /// Retrieve all the `ComponentName`s that have been written to for a given `EntityPath` on
+    /// a specific `Timeline`.
     ///
-    /// This also includes `ComponentName`s present in the timeless indices for this entity.
+    /// # Temporal semantics
+    ///
+    /// In addition to the temporal results, this also includes all `ComponentName`s present in
+    /// the timeless indices for this entity.
     pub fn all_components(
         &self,
         timeline: &Timeline,
@@ -170,6 +139,11 @@ impl DataStore {
     ///   component in `components`, or `None` if said component is not available in that row.
     ///
     /// To actually retrieve the data associated with these indices, see [`Self::get`].
+    ///
+    /// # Temporal semantics
+    ///
+    /// Temporal indices take precedence, then timeless indices are queried to fill the holes left
+    /// by missing temporal data.
     ///
     /// ## Example
     ///
@@ -254,47 +228,43 @@ impl DataStore {
 
         // If we've found everything we were looking for in the temporal index, then we can
         // return the results immediately.
-        if !query.include_timeless
-            || row_indices.map_or(false, |row_indices| row_indices.iter().all(Option::is_some))
-        {
+        if row_indices.map_or(false, |row_indices| row_indices.iter().all(Option::is_some)) {
             return row_indices;
         }
 
-        if query.include_timeless {
-            let row_indices_timeless = self.timeless_indices.get(ent_path_hash).and_then(|index| {
-                let row_indices = index.latest_at(primary, components);
-                trace!(
-                    kind = "latest_at",
-                    query = ?query,
-                    entity = %ent_path,
-                    %primary,
-                    ?components,
-                    ?row_indices,
-                    timeless = true,
-                    "row indices fetched"
-                );
-                row_indices
-            });
+        let row_indices_timeless = self.timeless_indices.get(ent_path_hash).and_then(|index| {
+            let row_indices = index.latest_at(primary, components);
+            trace!(
+                kind = "latest_at",
+                query = ?query,
+                entity = %ent_path,
+                %primary,
+                ?components,
+                ?row_indices,
+                timeless = true,
+                "row indices fetched"
+            );
+            row_indices
+        });
 
-            // Otherwise, let's see what's in the timeless index, and then..:
-            match (row_indices, row_indices_timeless) {
-                // nothing in the timeless index: return those partial row indices we got.
-                (Some(row_indices), None) => return Some(row_indices),
-                // no temporal row indices, but some timeless ones: return those as-is.
-                (None, Some(row_indices_timeless)) => return Some(row_indices_timeless),
-                // we have both temporal & timeless indices: let's merge the two when it makes sense
-                // and return the end result.
-                (Some(mut row_indices), Some(row_indices_timeless)) => {
-                    for (i, row_idx) in row_indices_timeless.into_iter().enumerate() {
-                        if row_indices[i].is_none() {
-                            row_indices[i] = row_idx;
-                        }
+        // Otherwise, let's see what's in the timeless index, and then..:
+        match (row_indices, row_indices_timeless) {
+            // nothing in the timeless index: return those partial row indices we got.
+            (Some(row_indices), None) => return Some(row_indices),
+            // no temporal row indices, but some timeless ones: return those as-is.
+            (None, Some(row_indices_timeless)) => return Some(row_indices_timeless),
+            // we have both temporal & timeless indices: let's merge the two when it makes sense
+            // and return the end result.
+            (Some(mut row_indices), Some(row_indices_timeless)) => {
+                for (i, row_idx) in row_indices_timeless.into_iter().enumerate() {
+                    if row_indices[i].is_none() {
+                        row_indices[i] = row_idx;
                     }
-                    return Some(row_indices);
                 }
-                // no row indices at all.
-                (None, None) => {}
+                return Some(row_indices);
             }
+            // no row indices at all.
+            (None, None) => {}
         }
 
         trace!(
@@ -329,6 +299,14 @@ impl DataStore {
     /// component.
     /// On the contrary, they won't yield any rows that don't contain an actual value for the
     /// `primary` component, _even if said rows do contain a value for one the secondaries_!
+    ///
+    /// # Temporal semantics
+    ///
+    /// Yields the contents of the temporal indices.
+    /// Iff the query's time range starts at `TimeInt::MIN`, this will yield the contents of the
+    /// timeless indices before anything else.
+    ///
+    /// When yielding timeless entries, the associated time will be `None`.
     ///
     /// ## Example
     ///
@@ -427,7 +405,7 @@ impl DataStore {
             .flatten()
             .map(|(time, idx_row_nr, row_indices)| (Some(time), idx_row_nr, row_indices));
 
-        if query.include_timeless {
+        if query.range.min == TimeInt::MIN {
             let timeless = self
                 .timeless_indices
                 .get(ent_path_hash)
