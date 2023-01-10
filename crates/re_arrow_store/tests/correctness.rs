@@ -18,7 +18,7 @@ use re_log_types::{
         build_frame_nr, build_log_time, build_some_instances, build_some_point2d, build_some_rects,
     },
     external::arrow2_convert::serialize::TryIntoArrow,
-    field_types::{ColorRGBA, Instance, Point2D, Rect2D},
+    field_types::{Instance, Point2D, Rect2D},
     msg_bundle::{wrap_in_listarray, Component as _, ComponentBundle},
     Duration, ObjPath as EntityPath, Time, TimeType, Timeline,
 };
@@ -268,50 +268,6 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
         );
         assert!(row_indices.is_none());
     }
-}
-
-// ---
-
-#[test]
-fn latest_at_temporal_only_edge_case() {
-    init_logs();
-
-    for config in re_arrow_store::test_util::all_configs().take(1) {
-        let mut store = DataStore::new(Instance::name(), config.clone());
-        latest_at_temporal_only_edge_case_impl(&mut store);
-    }
-}
-fn latest_at_temporal_only_edge_case_impl(store: &mut DataStore) {
-    init_logs();
-
-    let ent_path = EntityPath::from("this/that");
-
-    let frame1 = 1.into();
-
-    let bundle1 = test_bundle!(ent_path @ [build_frame_nr(frame1)] => [build_some_rects(3)]);
-    store.insert(&bundle1).unwrap();
-
-    if let err @ Err(_) = store.sanity_check() {
-        store.sort_indices_if_needed();
-        eprintln!("{store}");
-        err.unwrap();
-    }
-
-    let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
-    let components_all = &[Rect2D::name(), Point2D::name(), ColorRGBA::name()];
-
-    let row_indices = store
-        .latest_at(
-            &LatestAtQuery::temporal_only(timeline_frame_nr, 2.into()),
-            &ent_path,
-            Rect2D::name(),
-            components_all,
-        )
-        .unwrap();
-
-    assert!(row_indices[0].is_some());
-    assert!(row_indices[1].is_none());
-    assert!(row_indices[2].is_none());
 }
 
 // ---

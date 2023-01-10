@@ -22,6 +22,11 @@ pub type SharedResult<T> = ::std::result::Result<T, SharedPolarsError>;
 /// [`latest_components`].
 ///
 /// See `example/latest_component.rs` for an example of use.
+///
+/// # Temporal semantics
+///
+/// Temporal indices take precedence, then timeless indices are queried to fill the holes left
+/// by missing temporal data.
 //
 // TODO(cmc): can this really fail though?
 pub fn latest_component(
@@ -49,6 +54,11 @@ pub fn latest_component(
 /// [`latest_components`].
 ///
 /// See `example/latest_components.rs` for an example of use.
+///
+/// # Temporal semantics
+///
+/// Temporal indices take precedence, then timeless indices are queried to fill the holes left
+/// by missing temporal data.
 //
 // TODO(cmc): can this really fail though?
 pub fn latest_components(
@@ -83,6 +93,14 @@ pub fn latest_components(
 /// known state of all components, from their respective point-of-views.
 ///
 /// ⚠ The semantics are subtle! See `example/range_components.rs` for an example of use.
+///
+/// # Temporal semantics
+///
+/// Yields the contents of the temporal indices.
+/// Iff the query's time range starts at `TimeInt::MIN`, this will yield the contents of the
+/// timeless indices before anything else.
+///
+/// When yielding timeless entries, the associated time will be `None`.
 pub fn range_components<'a, const N: usize>(
     store: &'a DataStore,
     query: &'a RangeQuery,
@@ -112,9 +130,7 @@ pub fn range_components<'a, const N: usize>(
     if let Some(latest_time) = latest_time {
         let df = latest_components(
             store,
-            // Temporal only! Otherwise we'd potentially end up with a duplicated entry when
-            // merging the latest state with the timeless stream.
-            &LatestAtQuery::temporal_only(query.timeline, latest_time),
+            &LatestAtQuery::new(query.timeline, latest_time),
             ent_path,
             &components,
             join_type,
@@ -135,87 +151,49 @@ pub fn range_components<'a, const N: usize>(
         .map(|(col, _)| col)
         .unwrap(); // asserted on entry
 
-    let mut range = store
-        .range(query, ent_path, components)
-        .map(move |(time, _, row_indices)| {
-            let results = store.get(&components, &row_indices);
-            (
-                time,
-                row_indices[primary_col].is_some(), // is_primary
-                dataframe_from_results(&components, results),
-            )
-        });
+    // send the latest-at state before anything else
+    df_latest
+        .into_iter()
+        .map(move |df| (latest_time, true, df))
+        // followed by the range
+        .chain(
+            store
+                .range(query, ent_path, components)
+                .map(move |(time, _, row_indices)| {
+                    let results = store.get(&components, &row_indices);
+                    (
+                        time,
+                        row_indices[primary_col].is_some(), // is_primary
+                        dataframe_from_results(&components, results),
+                    )
+                }),
+        )
+        .filter_map(move |(time, is_primary, df)| {
+            state = Some(join_dataframes(
+                cluster_key,
+                join_type,
+                // The order matters here: the newly yielded dataframe goes to the right so that it
+                // overwrites the data in the state if their column overlaps!
+                // See [`join_dataframes`].
+                [state.clone() /* shallow */, Some(df)]
+                    .into_iter()
+                    .flatten(),
+            ));
 
-    let range = if let Some(df_latest) = df_latest {
-        // Complex case: there's some latest-at state that we need to carefully fit in-between the
-        // timeless and temporal parts of the stream.
-        let range = std::iter::from_fn({
-            let mut peeked = range.next();
-            let mut is_timeless = true;
-            move || {
-                let next = if let peeked @ Some(_) = peeked.take() {
-                    peeked
-                } else {
-                    range.next()
-                };
-                if let Some((time, is_primary, df)) = next {
-                    // did we just witness the switch from timeless to temporal?
-                    let is_switching = is_timeless && time.is_some();
-                    is_timeless = time.is_none();
-
-                    // if so, stash the current value somewhere, and yield our latest state
-                    // instead!
-                    if is_switching {
-                        peeked = Some((time, is_primary, df));
-                        return Some((latest_time, true, df_latest.clone()));
-                    }
-
-                    Some((time, is_primary, df))
-                } else {
-                    // if the stream did not contain any temporal data at all, make sure we still
-                    // yield the latest-at state at the end of the timeless part.
-                    if is_timeless {
-                        is_timeless = false;
-                        return Some((latest_time, true, df_latest.clone()));
-                    }
-
-                    None
-                }
-            }
-        });
-        itertools::Either::Left(range)
-    } else {
-        // Easy case: no latest-at state.
-        // Just stream everything as-is.
-        itertools::Either::Right(range)
-    };
-
-    range.filter_map(move |(time, is_primary, df)| {
-        state = Some(join_dataframes(
-            cluster_key,
-            join_type,
-            // The order matters here: the newly yielded dataframe goes to the right so that it
-            // overwrites the data in the state if their column overlaps!
-            // See [`join_dataframes`].
-            [state.clone() /* shallow */, Some(df)]
-                .into_iter()
-                .flatten(),
-        ));
-
-        // We only yield if the primary component has been updated!
-        is_primary.then_some(state.clone().unwrap().map(|df| {
-            // Make sure to return everything in the order it was asked!
-            let columns = df.get_column_names();
-            let df = df
-                .select(
-                    components
-                        .iter()
-                        .filter(|col| columns.contains(&col.as_str())),
-                )
-                .unwrap();
-            (time, df)
-        }))
-    })
+            // We only yield if the primary component has been updated!
+            is_primary.then_some(state.clone().unwrap().map(|df| {
+                // Make sure to return everything in the order it was asked!
+                let columns = df.get_column_names();
+                let df = df
+                    .select(
+                        components
+                            .iter()
+                            .filter(|col| columns.contains(&col.as_str())),
+                    )
+                    .unwrap();
+                (time, df)
+            }))
+        })
 }
 
 // --- Joins ---
