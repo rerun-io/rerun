@@ -160,6 +160,7 @@ impl SceneSpatial {
             &scene_part::Points2DPartClassic,
             &scene_part::Points2DPart,
             &scene_part::Lines3DPartClassic,
+            &scene_part::Lines3DPart,
             // --
             &scene_part::Boxes3DPart,
             &scene_part::Arrows3DPart,

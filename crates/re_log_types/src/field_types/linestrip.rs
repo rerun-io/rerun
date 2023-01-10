@@ -30,7 +30,7 @@ use super::Vec3D;
 /// ```
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct LineStrip2D(Vec<Vec2D>);
+pub struct LineStrip2D(pub Vec<Vec2D>);
 
 impl From<Vec<[f32; 2]>> for LineStrip2D {
     #[inline]
@@ -113,7 +113,7 @@ impl ArrowDeserialize for LineStrip2D {
 /// ```
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct LineStrip3D(Vec<Vec3D>);
+pub struct LineStrip3D(pub Vec<Vec3D>);
 
 impl From<Vec<[f32; 3]>> for LineStrip3D {
     #[inline]
