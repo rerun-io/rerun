@@ -6,7 +6,7 @@ use itertools::Itertools;
 
 use re_arrow_store::LatestAtQuery;
 use re_data_store::{
-    query::visit_type_data_2, FieldName, InstanceIdHash, ObjPath, ObjectProps, ObjectsProperties,
+    query::visit_type_data_2, FieldName, InstanceIdHash, ObjPath, ObjectProps,
 };
 use re_log_types::{
     field_types::{ColorRGBA, Tensor, TensorTrait},

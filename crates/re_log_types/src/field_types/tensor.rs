@@ -11,7 +11,7 @@ pub trait TensorTrait {
     fn is_shaped_like_an_image(&self) -> bool;
 }
 
-#[derive(Debug, ArrowField, ArrowSerialize, ArrowDeserialize)]
+#[derive(Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[arrow_field(type = "dense")]
 pub enum TensorData {
     U8(Vec<u8>),
@@ -82,7 +82,7 @@ pub enum TensorDataMeaning {
     ClassId,
 }
 
-#[derive(Debug, ArrowField, ArrowSerialize, ArrowDeserialize)]
+#[derive(Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 pub struct Tensor {
     /// Unique identifier for the tensor
     #[arrow_field(skip)]
@@ -302,29 +302,34 @@ fn test_ndarray() {
     dbg!(t1);
 }
 
-#[cfg(feature = "disabled")]
 #[test]
 fn test_arrow() {
-    use arrow2_convert::serialize::TryIntoArrow;
-    let x: Box<dyn arrow2::array::Array> = [
+    use arrow2_convert::{
+        deserialize::TryIntoCollection, serialize::TryIntoArrow,
+    };
+
+    let tensors_in = vec![
         Tensor {
+            tensor_id: TensorId(std::default::Default::default()),
             shape: vec![TensorDimension {
                 size: 4,
                 name: None,
             }],
             data: TensorData::U16(vec![1, 2, 3, 4]),
+            meaning: TensorDataMeaning::Unknown,
         },
         Tensor {
+            tensor_id: TensorId(std::default::Default::default()),
             shape: vec![TensorDimension {
                 size: 2,
                 name: None,
             }],
             data: TensorData::F32(vec![1.23, 2.45]),
+            meaning: TensorDataMeaning::Unknown,
         },
-    ]
-    .try_into_arrow()
-    .unwrap();
+    ];
 
-    let table = re_format::arrow::format_table(&[x], ["x"]);
-    println!("{table}");
+    let array: Box<dyn arrow2::array::Array> = tensors_in.iter().try_into_arrow().unwrap();
+    let tensors_out: Vec<Tensor> = TryIntoCollection::try_into_collection(array).unwrap();
+    assert_eq!(tensors_in, tensors_out);
 }
