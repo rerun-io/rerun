@@ -1,6 +1,6 @@
-use re_log_types::DataPath;
+use re_log_types::{DataPath, FieldOrComponent};
 
-use super::DataUi;
+use super::{component::arrow_component_ui, DataUi};
 
 /// Previously `data_path_ui()`
 impl DataUi for DataPath {
@@ -10,12 +10,24 @@ impl DataUi for DataPath {
         ui: &mut egui::Ui,
         preview: crate::ui::Preview,
     ) -> egui::Response {
-        if self.is_arrow() {
-            ui.label("TODO(jleibs): DataPath query for Arrow")
-        } else {
-            let timeline = ctx.rec_cfg.time_ctrl.timeline();
+        let timeline = ctx.rec_cfg.time_ctrl.timeline();
+        if let Some(time_i64) = ctx.rec_cfg.time_ctrl.time_i64() {
+            if let FieldOrComponent::Component(component) = self.field_name {
+                let store = &ctx.log_db.obj_db.arrow_store;
+                let query = re_arrow_store::LatestAtQuery::new(*timeline, time_i64.into());
 
-            if let Some(time_i64) = ctx.rec_cfg.time_ctrl.time_i64() {
+                match re_query::get_component_with_instances(
+                    store,
+                    &query,
+                    self.obj_path(),
+                    component,
+                ) {
+                    Err(re_query::QueryError::PrimaryNotFound) => ui.label("<unset>"),
+                    // Any other failure to get a component is unexpected
+                    Err(err) => ui.label(format!("Error: {}", err)),
+                    Ok(component_data) => arrow_component_ui(ctx, ui, &component_data, preview),
+                }
+            } else {
                 let time_query = re_data_store::TimeQuery::LatestAt(time_i64);
 
                 match ctx
@@ -38,9 +50,9 @@ impl DataUi for DataPath {
                     }
                     None => ui.label(ctx.re_ui.error_text(format!("No data at time {time_i64}"))),
                 }
-            } else {
-                ui.label(ctx.re_ui.error_text("No current time."))
             }
+        } else {
+            ui.label(ctx.re_ui.error_text("No current time."))
         }
     }
 }

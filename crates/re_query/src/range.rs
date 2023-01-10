@@ -85,57 +85,57 @@ pub fn range_entity_with_primary<'a, Primary: Component + 'a, const N: usize>(
     }
 
     // send the latest-at state before anything else
-    let range = cwis_latest
+    cwis_latest
         .into_iter()
-        .map(move |cwis| (latest_time, true, cwis));
-
-    let range = range.chain(store.range(query, ent_path, components).map(
-        move |(time, _, row_indices)| {
-            let results = store.get(&components, &row_indices);
-            let instance_keys = results[cluster_col].clone(); // shallow
-            let cwis = results
+        .map(move |cwis| (latest_time, true, cwis))
+        .chain(
+            store
+                .range(query, ent_path, components)
+                .map(move |(time, _, row_indices)| {
+                    let results = store.get(&components, &row_indices);
+                    let instance_keys = results[cluster_col].clone(); // shallow
+                    let cwis = results
+                        .into_iter()
+                        .enumerate()
+                        .map(|(i, res)| {
+                            res.map(|res| {
+                                ComponentWithInstances {
+                                    name: components[i],
+                                    instance_keys: instance_keys.clone(), // shallow
+                                    values: res.clone(),                  // shallow
+                                }
+                            })
+                        })
+                        .collect::<Vec<_>>();
+                    (
+                        time,
+                        row_indices[primary_col].is_some(), // is_primary
+                        cwis,
+                    )
+                }),
+        )
+        .filter_map(move |(time, is_primary, cwis)| {
+            for (i, cwi) in cwis
                 .into_iter()
                 .enumerate()
-                .map(|(i, res)| {
-                    res.map(|res| {
-                        ComponentWithInstances {
-                            name: components[i],
-                            instance_keys: instance_keys.clone(), // shallow
-                            values: res.clone(),                  // shallow
-                        }
-                    })
-                })
-                .collect::<Vec<_>>();
-            (
-                time,
-                row_indices[primary_col].is_some(), // is_primary
-                cwis,
-            )
-        },
-    ));
+                .filter(|(_, cwi)| cwi.is_some())
+            {
+                state[i] = cwi;
+            }
 
-    range.filter_map(move |(time, is_primary, cwis)| {
-        for (i, cwi) in cwis
-            .into_iter()
-            .enumerate()
-            .filter(|(_, cwi)| cwi.is_some())
-        {
-            state[i] = cwi;
-        }
-
-        // We only yield if the primary component has been updated!
-        is_primary.then(|| {
-            let ent_view = EntityView {
-                // safe to unwrap, set just above
-                primary: state[primary_col].clone().unwrap(), // shallow
-                components: components
-                    .iter()
-                    .zip(state.iter().cloned() /* shallow */)
-                    .filter_map(|(component, cwi)| cwi.map(|cwi| (*component, cwi)))
-                    .collect(),
-                phantom: std::marker::PhantomData,
-            };
-            (time, ent_view)
+            // We only yield if the primary component has been updated!
+            is_primary.then(|| {
+                let ent_view = EntityView {
+                    // safe to unwrap, set just above
+                    primary: state[primary_col].clone().unwrap(), // shallow
+                    components: components
+                        .iter()
+                        .zip(state.iter().cloned() /* shallow */)
+                        .filter_map(|(component, cwi)| cwi.map(|cwi| (*component, cwi)))
+                        .collect(),
+                    phantom: std::marker::PhantomData,
+                };
+                (time, ent_view)
+            })
         })
-    })
 }
