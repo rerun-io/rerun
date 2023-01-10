@@ -329,20 +329,13 @@ impl DataStore {
         components: &[ComponentBundle],
         time_point: &TimePoint,
     ) -> WriteResult<(RowIndex, usize)> {
-        enum RowIndexOrData {
-            RowIndex(RowIndex),
-            Data(Box<dyn Array>),
+        enum ClusterData {
+            Cached(RowIndex),
+            GenData(Box<dyn Array>),
+            UserData(Box<dyn Array>),
         }
 
-        // We can't ever have temporal indices referring to timeless component rows, and
-        // vice-versa!
-        let cluster_comp_cache = if time_point.is_timeless() {
-            &mut self.timeless_cluster_comp_cache
-        } else {
-            &mut self.cluster_comp_cache
-        };
-
-        let (found, comp, len) = if let Some(cluster_comp_pos) = cluster_comp_pos {
+        let (cluster_len, cluster_data) = if let Some(cluster_comp_pos) = cluster_comp_pos {
             // We found a component with a name matching the cluster key's, let's make sure it's
             // valid (dense, sorted, no duplicates) and use that if so.
 
@@ -365,9 +358,8 @@ impl DataStore {
             }
 
             (
-                true,
-                RowIndexOrData::Data(cluster_comp.value.clone() /* shallow */),
                 len,
+                ClusterData::UserData(cluster_comp.value.clone() /* shallow */),
             )
         } else {
             // The caller has not specified any cluster component, and so we'll have to generate
@@ -380,25 +372,42 @@ impl DataStore {
                 .first()
                 .map_or(0, |comp| comp.value.get_child_length(0));
 
-            if let Some(row_idx) = cluster_comp_cache.get(&len) {
+            if let Some(row_idx) = self.cluster_comp_cache.get(&len) {
                 // Cache hit! Re-use that row index.
-                (false, RowIndexOrData::RowIndex(*row_idx), len)
+                (len, ClusterData::Cached(*row_idx))
             } else {
                 // Cache miss! Craft a new u64 array from the ground up.
                 let data = UInt64Array::from_vec((0..len as u64).collect_vec()).boxed();
                 let data = wrap_in_listarray(data).to_boxed();
-                (false, RowIndexOrData::Data(data), len)
+                (len, ClusterData::GenData(data))
             }
         };
 
-        match comp {
-            RowIndexOrData::RowIndex(row_idx) => Ok((row_idx, len)),
-            RowIndexOrData::Data(data) => {
+        match cluster_data {
+            ClusterData::Cached(row_idx) => Ok((row_idx, cluster_len)),
+            ClusterData::GenData(data) => {
+                // We had to generate a cluster component of the given length for the first time,
+                // let's store it forever.
+
+                let table = self
+                    .timeless_components
+                    .entry(self.cluster_key)
+                    .or_insert_with(|| {
+                        PersistentComponentTable::new(
+                            self.cluster_key,
+                            ListArray::<i32>::get_child_type(data.data_type()),
+                        )
+                    });
+                let row_idx = table.push(&*data);
+
+                self.cluster_comp_cache.insert(cluster_len, row_idx);
+
+                Ok((row_idx, cluster_len))
+            }
+            ClusterData::UserData(data) => {
                 // If we didn't hit the cache, then we have to insert this cluster component in
                 // the right tables, just like any other component.
 
-                // We can't ever have temporal indices referring to timeless component rows, and
-                // vice-versa!
                 let row_idx = if time_point.is_timeless() {
                     let table = self
                         .timeless_components
@@ -420,14 +429,7 @@ impl DataStore {
                     table.push(&self.config, time_point, &*data)
                 };
 
-                // If we auto-generated the cluster component, then keep its row index around for
-                // the next time we have to insert a component of the same length with a missing
-                // cluster key.
-                if !found {
-                    cluster_comp_cache.insert(len, row_idx);
-                }
-
-                Ok((row_idx, len))
+                Ok((row_idx, cluster_len))
             }
         }
     }

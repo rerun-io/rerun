@@ -227,6 +227,10 @@ pub struct DataStore {
     /// `BTreeMap` because of garbage collection.
     pub(crate) messages: BTreeMap<MsgId, TimePoint>,
 
+    /// Used to cache auto-generated cluster components, i.e. `[0]`, `[0, 1]`, `[0, 1, 2]`, etc
+    /// so that they can be properly deduplicated.
+    pub(crate) cluster_comp_cache: IntMap<usize, RowIndex>,
+
     /// Dedicated index tables for timeless data. Never garbage collected.
     ///
     /// See also `Self::indices`.
@@ -235,16 +239,6 @@ pub struct DataStore {
     ///
     /// See also `Self::components`.
     pub(crate) timeless_components: IntMap<ComponentName, PersistentComponentTable>,
-    /// Used to cache auto-generated timeless cluster components, i.e. `[0]`, `[0, 1]`,
-    /// `[0, 1, 2]`, etc so that they can be properly deduplicated.
-    ///
-    /// See also `Self::cluster_comp_cache`.
-    //
-    // TODO(cmc): In an ideal world, auto-generated cluster components would always be timeless.
-    // Making temporal indices transparently refer to timeless components gets tricky for a whole
-    // bunch of reasons though, so for now this'll do.
-    // I might shake things up a little when GC lands.
-    pub(crate) timeless_cluster_comp_cache: IntMap<usize, RowIndex>,
 
     /// Maps an entity to its index, for a specific timeline.
     ///
@@ -254,9 +248,6 @@ pub struct DataStore {
     ///
     /// A component table holds all the values ever inserted for a given component.
     pub(crate) components: IntMap<ComponentName, ComponentTable>,
-    /// Used to cache auto-generated cluster components, i.e. `[0]`, `[0, 1]`, `[0, 1, 2]`, etc
-    /// so that they can be properly deduplicated.
-    pub(crate) cluster_comp_cache: IntMap<usize, RowIndex>,
 
     /// Monotically increasing ID for insertions.
     pub(crate) insert_id: u64,
@@ -271,7 +262,6 @@ impl DataStore {
             cluster_key,
             config,
             cluster_comp_cache: Default::default(),
-            timeless_cluster_comp_cache: Default::default(),
             messages: Default::default(),
             indices: Default::default(),
             components: Default::default(),
@@ -381,12 +371,12 @@ impl DataStore {
         // Row indices should be continuous across all index tables.
         // TODO(#449): update this one appropriately when GC lands.
         {
-            let mut row_indices: IntMap<_, Vec<RowIndex>> = IntMap::default();
+            let mut row_indices: IntMap<_, Vec<u64>> = IntMap::default();
             for table in self.indices.values() {
                 for bucket in table.buckets.values() {
                     for (comp, index) in &bucket.indices.read().indices {
                         let row_indices = row_indices.entry(*comp).or_default();
-                        row_indices.extend(index.iter().copied().flatten());
+                        row_indices.extend(index.iter().flatten().map(|row_idx| row_idx.as_u64()));
                     }
                 }
             }
@@ -402,7 +392,7 @@ impl DataStore {
                 for pair in row_indices.windows(2) {
                     let &[i1, i2] = pair else { unreachable!() };
                     ensure!(
-                        i1.as_u64() + 1 == i2.as_u64(),
+                        i1 + 1 == i2,
                         "found hole in index coverage for {comp:?}: \
                             in {row_indices:?}, {i1} -> {i2}"
                     );
@@ -412,11 +402,11 @@ impl DataStore {
 
         // Row indices should be continuous across all timeless index tables.
         {
-            let mut row_indices: IntMap<_, Vec<RowIndex>> = IntMap::default();
+            let mut row_indices: IntMap<_, Vec<u64>> = IntMap::default();
             for table in self.timeless_indices.values() {
                 for (comp, index) in &table.indices {
                     let row_indices = row_indices.entry(*comp).or_default();
-                    row_indices.extend(index.iter().copied().flatten());
+                    row_indices.extend(index.iter().flatten().map(|row_idx| row_idx.as_u64()));
                 }
             }
 
@@ -431,7 +421,7 @@ impl DataStore {
                 for pair in row_indices.windows(2) {
                     let &[i1, i2] = pair else { unreachable!() };
                     ensure!(
-                        i1.as_u64() + 1 == i2.as_u64(),
+                        i1 + 1 == i2,
                         "found hole in timeless index coverage for {comp:?}: \
                             in {row_indices:?}, {i1} -> {i2}"
                     );
@@ -464,7 +454,6 @@ impl std::fmt::Display for DataStore {
             cluster_key,
             config,
             cluster_comp_cache: _,
-            timeless_cluster_comp_cache: _,
             messages: _,
             indices,
             components,
