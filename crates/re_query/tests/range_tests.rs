@@ -108,6 +108,7 @@ fn simple_range() {
         // Frame #123
 
         let (time, ent_view) = &results[0];
+        let time = time.unwrap();
 
         // Build expected df manually
         let instances = vec![Some(Instance(0)), Some(Instance(1))];
@@ -121,12 +122,13 @@ fn simple_range() {
         //eprintln!("{:?}", df);
         //eprintln!("{:?}", expected);
 
-        assert_eq!(TimeInt::from(123), *time);
+        assert_eq!(TimeInt::from(123), time);
         common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
 
         // Frame #323
 
         let (time, ent_view) = &results[1];
+        let time = time.unwrap();
 
         // Build expected df manually
         let instances = vec![Some(Instance(0)), Some(Instance(1))];
@@ -140,7 +142,7 @@ fn simple_range() {
         //eprintln!("{:?}", df);
         //eprintln!("{:?}", expected);
 
-        assert_eq!(TimeInt::from(323), *time);
+        assert_eq!(TimeInt::from(323), time);
         common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
     }
     #[cfg(not(feature = "polars"))]
@@ -194,6 +196,7 @@ fn simple_range() {
         // Frame #123
 
         let (time, ent_view) = &results[0];
+        let time = time.unwrap();
 
         // Build expected df manually
         let instances = vec![Some(Instance(0)), Some(Instance(1))];
@@ -207,12 +210,13 @@ fn simple_range() {
         //eprintln!("{:?}", df);
         //eprintln!("{:?}", expected);
 
-        assert_eq!(TimeInt::from(123), *time);
+        assert_eq!(TimeInt::from(123), time);
         common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
 
         // Frame #323
 
         let (time, ent_view) = &results[1];
+        let time = time.unwrap();
 
         // Build expected df manually
         let instances = vec![Some(Instance(0)), Some(Instance(1))];
@@ -226,7 +230,7 @@ fn simple_range() {
         //eprintln!("{:?}", df);
         //eprintln!("{:?}", expected);
 
-        assert_eq!(TimeInt::from(323), *time);
+        assert_eq!(TimeInt::from(323), time);
         common::compare_df(&expected, &ent_view.as_df2::<ColorRGBA>().unwrap());
     }
     #[cfg(not(feature = "polars"))]
