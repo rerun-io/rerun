@@ -99,7 +99,8 @@ impl SpaceView {
         };
 
         let mut data_blueprint_tree = DataBlueprintTree::default();
-        data_blueprint_tree.insert_objects_according_to_hierarchy(&queried_objects);
+        data_blueprint_tree
+            .insert_objects_according_to_hierarchy(&queried_objects, &space_info.path);
 
         Self {
             name,
@@ -146,7 +147,7 @@ impl SpaceView {
         self.queried_objects =
             Self::default_queried_objects(ctx, self.category, space, spaces_info);
         self.data_blueprint_tree
-            .insert_objects_according_to_hierarchy(&self.queried_objects);
+            .insert_objects_according_to_hierarchy(&self.queried_objects, &self.space_path);
     }
 
     pub fn selection_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
@@ -360,6 +361,8 @@ impl SpaceView {
                         self.queried_objects.insert(path.clone());
                     },
                 );
+                self.data_blueprint_tree
+                    .insert_objects_according_to_hierarchy(&self.queried_objects, &self.space_path);
                 self.allow_auto_adding_more_object = false;
             }
             response.on_hover_text("Add to this Space View's query")

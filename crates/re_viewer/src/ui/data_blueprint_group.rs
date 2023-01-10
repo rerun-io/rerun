@@ -85,10 +85,17 @@ impl DataBlueprintTree {
 
     /// Adds a list of object paths to the tree, using grouping as dictated by their object path hierarchy.
     ///
-    /// Creates a group at *every* step of every path.
+    /// `base_path` indicates a path at which we short-circuit to the root group.
+    ///
+    /// Creates a group at *every* step of every path. Groups directly at the object path will be discarded if they only contain the object itself.
     /// It's up to the ui to not show groups with only a single object.
-    /// TODO: Or should we just collapse them after we're done here?
-    pub fn insert_objects_according_to_hierarchy(&mut self, paths: &IntSet<ObjPath>) {
+    pub fn insert_objects_according_to_hierarchy(
+        &mut self,
+        paths: &IntSet<ObjPath>,
+        base_path: &ObjPath,
+    ) {
+        let mut new_leaf_groups = Vec::new();
+
         for path in paths.iter() {
             // Is there already a group associated with this exact path? (maybe because a child was logged there earlier)
             // If so, we can simply move it under this existing group.
@@ -99,16 +106,42 @@ impl DataBlueprintTree {
                 let new_group = self.groups.insert(DataBlueprintGroup {
                     id: uuid::Uuid::new_v4(),
                     name: path.to_string(), // TODO:
-                    expanded: false,
+                    expanded: true,
                     children: SmallVec::new(),
                     objects: IntSet::default(),
                     parent: slotmap::Key::null(), // To be determined.
                 });
-                self.add_group_to_hierarchy_recursively(new_group, path);
+                self.add_group_to_hierarchy_recursively(new_group, path, base_path);
+                new_leaf_groups.push(new_group);
                 new_group
             };
 
+            // TODO: collapse if too many
             self.add_path_to_group(group_handle, path);
+        }
+
+        // If a leaf group contains only a single element, collapse it.
+        for leaf_group_handle in new_leaf_groups {
+            let Some(leaf_group) = self.groups.get_mut(leaf_group_handle) else {
+                continue;
+            };
+            if !leaf_group.children.is_empty() || leaf_group.objects.len() != 1 {
+                continue;
+            }
+
+            // Remove group.
+            let single_object = leaf_group.objects.drain().next().unwrap();
+            let parent_group_handle = leaf_group.parent;
+            self.groups.remove(leaf_group_handle);
+
+            // Add to its parent.
+            let parent_group = self.groups.get_mut(parent_group_handle).unwrap();
+            parent_group
+                .children
+                .retain(|child_group| *child_group != leaf_group_handle);
+            parent_group.objects.insert(single_object.clone());
+            self.path_to_blueprint
+                .insert(single_object, parent_group_handle);
         }
     }
 
@@ -116,10 +149,17 @@ impl DataBlueprintTree {
         &mut self,
         new_group: DataBlueprintGroupHandle,
         associated_path: &ObjPath,
+        base_path: &ObjPath,
     ) {
-        let Some(parent_path) = associated_path.parent() else {
+        let Some(mut parent_path) = associated_path.parent() else {
             return;
         };
+        // Short circuit to the root group at base_path.
+        // If the object is outside of the base path we would walk up all the way to the root
+        // That's ok but we want to stop one element short (since a space view can only show elements under a shared path)
+        if &parent_path == base_path || parent_path.iter().count() == 1 {
+            parent_path = ObjPath::root();
+        }
 
         let parent_group = match self.path_to_blueprint.entry(parent_path.clone()) {
             std::collections::hash_map::Entry::Occupied(parent_group) => {
@@ -136,13 +176,13 @@ impl DataBlueprintTree {
                 let parent_group = self.groups.insert(DataBlueprintGroup {
                     id: uuid::Uuid::new_v4(),
                     name: parent_path.to_string(),
-                    expanded: false,
+                    expanded: true,
                     children: smallvec![new_group],
                     objects: IntSet::default(),
                     parent: slotmap::Key::null(), // To be determined.
                 });
                 vacant_mapping.insert(parent_group);
-                self.add_group_to_hierarchy_recursively(parent_group, &parent_path);
+                self.add_group_to_hierarchy_recursively(parent_group, &parent_path, base_path);
                 parent_group
             }
         };
