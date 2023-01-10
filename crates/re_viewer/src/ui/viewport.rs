@@ -299,6 +299,7 @@ impl Viewport {
                 space_view.data_blueprint_tree.root(),
                 &mut space_view.data_blueprint_tree,
                 space_view_id,
+                self.visible.contains(space_view_id),
             );
         });
     }
@@ -309,14 +310,16 @@ impl Viewport {
         group_handle: DataBlueprintGroupHandle,
         data_blueprint_tree: &mut DataBlueprintTree,
         space_view_id: &SpaceViewId,
+        space_view_visible: bool,
     ) {
         let Some(group) = data_blueprint_tree.get_group(group_handle) else {
             return; // Should never happen.
         };
 
-        // TODO(andreas): ugly workaround against borrowing multiple times from data_blueprint_tree.
+        // TODO(andreas): These clones are workarounds against borrowing multiple times from data_blueprint_tree.
         let children = group.children.clone();
         let objects = group.objects.clone();
+        let group_is_visible = group.properties_projected.visible && space_view_visible;
 
         for path in &objects {
             ui.horizontal(|ui| {
@@ -325,7 +328,7 @@ impl Viewport {
                 ctx.space_view_obj_path_button_to(ui, name, *space_view_id, path);
 
                 let mut properties = data_blueprint_tree.data_blueprints_individual().get(path);
-                if visibility_button(ui, true, &mut properties.visible).changed() {
+                if visibility_button(ui, group_is_visible, &mut properties.visible).changed() {
                     data_blueprint_tree
                         .data_blueprints_individual()
                         .set(path.clone(), properties);
@@ -334,7 +337,7 @@ impl Viewport {
         }
 
         for child_group_handle in &children {
-            let Some(child_group) = data_blueprint_tree.get_group(*child_group_handle) else {
+            let Some(child_group) = data_blueprint_tree.get_group_mut(*child_group_handle) else {
                 continue; // Should never happen. TODO: log warn once
             };
 
@@ -351,16 +354,11 @@ impl Viewport {
                     *space_view_id,
                     *child_group_handle,
                 );
-
-                // TODO.
-                // if visibility_button(ui, true, &mut child_group.vis).changed() {
-                //     self.has_been_user_edited = true;
-                //     if is_space_view_visible {
-                //         self.visible.insert(*space_view_id);
-                //     } else {
-                //         self.visible.remove(space_view_id);
-                //     }
-                // }
+                visibility_button(
+                    ui,
+                    group_is_visible,
+                    &mut child_group.properties_individual.visible,
+                );
             })
             .body(|ui| {
                 Self::data_blueprint_tree_ui(
@@ -369,6 +367,7 @@ impl Viewport {
                     *child_group_handle,
                     data_blueprint_tree,
                     space_view_id,
+                    space_view_visible,
                 );
             });
         }
