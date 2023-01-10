@@ -241,8 +241,8 @@ impl Viewport {
             });
     }
 
-    // If a group or spaceview has a total of this number of elements or more, collapse it by default
-    const MAX_NUM_FOR_DEFAULT_OPEN: usize = 3;
+    // If a group or spaceview has a total of this number of elements or less, show its subtree by default.
+    const MAX_ELEM_FOR_DEFAULT_OPEN: usize = 3;
 
     fn space_view_entry_ui(
         &mut self,
@@ -255,7 +255,7 @@ impl Viewport {
 
         let root_group = space_view.data_blueprint.root_group();
         let default_open =
-            root_group.children.len() + root_group.objects.len() <= Self::MAX_NUM_FOR_DEFAULT_OPEN;
+            root_group.children.len() + root_group.objects.len() <= Self::MAX_ELEM_FOR_DEFAULT_OPEN;
         let collapsing_header_id = ui.id().with(space_view.id);
         egui::collapsing_header::CollapsingState::load_with_default_open(
             ui.ctx(),
@@ -305,12 +305,14 @@ impl Viewport {
         space_view_visible: bool,
     ) {
         let Some(group) = data_blueprint_tree.get_group(group_handle) else {
-            return; // Should never happen.
+            re_log::warn_once!("Invalid data blueprint group handle");
+            return;
         };
 
         // TODO(andreas): These clones are workarounds against borrowing multiple times from data_blueprint_tree.
         let children = group.children.clone();
         let objects = group.objects.clone();
+        let group_name = group.display_name.clone();
         let group_is_visible = group.properties_projected.visible && space_view_visible;
 
         for path in &objects {
@@ -330,11 +332,12 @@ impl Viewport {
 
         for child_group_handle in &children {
             let Some(child_group) = data_blueprint_tree.get_group_mut(*child_group_handle) else {
-                continue; // Should never happen. TODO: log warn once
+                re_log::warn_once!("Data blueprint group {group_name} has an invalid child");
+                continue;
             };
 
             let default_open = child_group.children.len() + child_group.objects.len()
-                <= Self::MAX_NUM_FOR_DEFAULT_OPEN;
+                <= Self::MAX_ELEM_FOR_DEFAULT_OPEN;
             egui::collapsing_header::CollapsingState::load_with_default_open(
                 ui.ctx(),
                 ui.id().with(child_group_handle),

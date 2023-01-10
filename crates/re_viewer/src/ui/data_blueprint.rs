@@ -17,7 +17,7 @@ pub struct DataBlueprintGroup {
 
     /// Properties, as inherited from parent. Read from this.
     ///
-    /// Recalculated at the start of each frame from [`Self::individual`].
+    /// Recalculated at the start of each frame from [`Self::properties_individual`].
     #[cfg_attr(feature = "serde", serde(skip))]
     pub properties_projected: ObjectProps,
 
