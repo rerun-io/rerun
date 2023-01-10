@@ -1,7 +1,5 @@
 use glam::Mat4;
-use re_data_store::{
-    query::visit_type_data_4, FieldName, InstanceIdHash, ObjPath, ObjectsProperties,
-};
+use re_data_store::{query::visit_type_data_4, FieldName, InstanceIdHash, ObjPath};
 use re_log_types::{
     field_types::{ClassId, ColorRGBA, Rect2D},
     msg_bundle::Component,
@@ -35,7 +33,6 @@ impl ScenePart for Boxes2DPartClassic {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
-        objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
         crate::profile_scope!("Boxes2DPartClassic");
@@ -45,7 +42,7 @@ impl ScenePart for Boxes2DPartClassic {
         {
             scene.num_logged_2d_objects += 1;
 
-            let properties = objects_properties.get(obj_path);
+            let properties = query.obj_props.get(obj_path);
             let annotations = scene.annotation_map.find(obj_path);
             let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(obj_path) else {
                 continue;
@@ -180,12 +177,11 @@ impl ScenePart for Boxes2DPart {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
-        objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
         crate::profile_scope!("Boxes2DPart");
 
-        for ent_path in query.obj_paths {
+        for (ent_path, props) in query.iter_entities() {
             let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(ent_path) else {
                 continue;
             };
@@ -201,8 +197,7 @@ impl ScenePart for Boxes2DPart {
             .and_then(|entity_view| {
                 entity_view.visit2(|instance, rect, color| {
                     let instance_hash = {
-                        let properties = objects_properties.get(ent_path);
-                        if properties.interactive {
+                        if props.interactive {
                             InstanceIdHash::from_path_and_arrow_instance(ent_path, &instance)
                         } else {
                             InstanceIdHash::NONE

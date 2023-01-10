@@ -1,4 +1,4 @@
-use re_data_store::{query::visit_type_data_1, FieldName, InstanceIdHash, ObjectsProperties};
+use re_data_store::{query::visit_type_data_1, FieldName, InstanceIdHash};
 use re_log_types::{IndexHash, MsgId, ObjectType};
 
 use crate::{
@@ -23,7 +23,6 @@ impl ScenePart for MeshPart {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
-        objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
         crate::profile_scope!("MeshPart");
@@ -33,7 +32,7 @@ impl ScenePart for MeshPart {
         {
             scene.num_logged_3d_objects += 1;
 
-            let properties = objects_properties.get(obj_path);
+            let properties = query.obj_props.get(obj_path);
             let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(obj_path) else {
                 continue;
             };

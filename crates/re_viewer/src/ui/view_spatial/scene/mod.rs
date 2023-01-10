@@ -148,7 +148,6 @@ impl SceneSpatial {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
-        objects_properties: &ObjectsProperties,
         hovered: InstanceIdHash,
     ) {
         crate::profile_function!();
@@ -175,7 +174,7 @@ impl SceneSpatial {
         ];
 
         for part in parts {
-            part.load(self, ctx, query, transforms, objects_properties, hovered);
+            part.load(self, ctx, query, transforms, hovered);
         }
 
         self.primitives.recalculate_bounding_box();

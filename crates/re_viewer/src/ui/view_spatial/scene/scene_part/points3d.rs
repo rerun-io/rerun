@@ -4,9 +4,7 @@ use ahash::{HashMap, HashMapExt};
 use glam::{Mat4, Vec3};
 
 use re_arrow_store::LatestAtQuery;
-use re_data_store::{
-    query::visit_type_data_5, FieldName, InstanceIdHash, ObjPath, ObjectsProperties,
-};
+use re_data_store::{query::visit_type_data_5, FieldName, InstanceIdHash, ObjPath, ObjectProps};
 use re_log_types::{
     field_types::{ClassId, ColorRGBA, KeypointId, Label, Point3D, Radius},
     msg_bundle::Component,
@@ -37,7 +35,6 @@ impl ScenePart for Points3DPartClassic {
         ctx: &mut crate::misc::ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &crate::ui::transform_cache::TransformCache,
-        objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
         crate::profile_scope!("Points3DPartClassic");
@@ -57,7 +54,7 @@ impl ScenePart for Points3DPartClassic {
 
             let annotations = scene.annotation_map.find(obj_path);
             let default_color = DefaultColor::ObjPath(obj_path);
-            let properties = objects_properties.get(obj_path);
+            let properties = query.obj_props.get(obj_path);
             let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(obj_path) else {
                 continue;
             };
@@ -261,7 +258,7 @@ impl Points3DPart {
         &self,
         scene: &mut SceneSpatial,
         query: &SceneQuery<'_>,
-        objects_properties: &ObjectsProperties,
+        properties: &ObjectProps,
         hovered_instance: InstanceIdHash,
         entity_view: &EntityView<Point3D>,
         ent_path: &ObjPath,
@@ -270,7 +267,6 @@ impl Points3DPart {
         scene.num_logged_3d_objects += 1;
 
         let annotations = scene.annotation_map.find(ent_path);
-        let properties = objects_properties.get(ent_path);
         let show_labels = true;
 
         let mut point_batch = scene
@@ -336,12 +332,11 @@ impl ScenePart for Points3DPart {
         ctx: &mut crate::misc::ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &crate::ui::transform_cache::TransformCache,
-        objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
         crate::profile_scope!("Points3DPart");
 
-        for ent_path in query.obj_paths {
+        for (ent_path, props) in query.iter_entities() {
             let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(ent_path) else {
                 continue;
             };
@@ -364,7 +359,7 @@ impl ScenePart for Points3DPart {
                 self.process_entity_view(
                     scene,
                     query,
-                    objects_properties,
+                    &props,
                     hovered_instance,
                     &entity_view,
                     ent_path,

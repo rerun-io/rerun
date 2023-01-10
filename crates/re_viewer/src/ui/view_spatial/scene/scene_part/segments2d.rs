@@ -1,4 +1,4 @@
-use re_data_store::{query::visit_type_data_2, FieldName, InstanceIdHash, ObjectsProperties};
+use re_data_store::{query::visit_type_data_2, FieldName, InstanceIdHash};
 use re_log_types::{DataVec, IndexHash, MsgId, ObjectType};
 use re_renderer::Size;
 
@@ -26,7 +26,6 @@ impl ScenePart for LineSegments2DPart {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
-        objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
         crate::profile_scope!("LineSegments2DPart");
@@ -37,7 +36,7 @@ impl ScenePart for LineSegments2DPart {
             scene.num_logged_2d_objects += 1;
 
             let annotations = scene.annotation_map.find(obj_path);
-            let properties = objects_properties.get(obj_path);
+            let properties = query.obj_props.get(obj_path);
             let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(obj_path) else {
                 continue;
             };
