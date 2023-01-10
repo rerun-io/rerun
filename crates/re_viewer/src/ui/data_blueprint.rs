@@ -64,8 +64,9 @@ pub struct DataBlueprintTree {
 
     /// Mapping from object paths to blueprints.
     ///
-    /// Note that not every group may map directly to a path.
-    /// But every path maps to a group it is in!
+    /// We also use this for building up groups from hierarchy, meaning that some paths in here
+    /// may not represent existing objects, i.e. the blueprint groups they are pointing to may not
+    /// necessarily have the respective path as a child.
     path_to_blueprint: IntMap<ObjPath, DataBlueprintGroupHandle>,
 
     /// Root group, always exists as a placeholder
@@ -180,7 +181,10 @@ impl DataBlueprintTree {
         paths: &IntSet<ObjPath>,
         base_path: &ObjPath,
     ) {
+        crate::profile_function!();
+
         let mut new_leaf_groups = Vec::new();
+        let mut new_groups = Vec::new();
 
         for path in paths.iter() {
             // Is there already a group associated with this exact path? (maybe because a child was logged there earlier)
@@ -197,16 +201,21 @@ impl DataBlueprintTree {
                     expanded: true,
                     ..Default::default()
                 });
-                self.add_group_to_hierarchy_recursively(new_group, path, base_path);
+                self.add_group_to_hierarchy_recursively(
+                    new_group,
+                    path,
+                    base_path,
+                    &mut new_groups,
+                );
                 new_leaf_groups.push(new_group);
                 new_group
             };
 
-            // TODO: collapse if too many
             self.add_object_to_group(group_handle, path);
         }
 
-        // If a leaf group contains only a single element, collapse it.
+        // If a leaf group contains only a single element, move that element to the parent and remove the leaf again.
+        // (we can't do this as we iterate initially on `paths`, as we don't know if we're data on non-leaf paths until we touched all of them)
         for leaf_group_handle in new_leaf_groups {
             let Some(leaf_group) = self.groups.get_mut(leaf_group_handle) else {
                 continue;
@@ -220,7 +229,7 @@ impl DataBlueprintTree {
             let parent_group_handle = leaf_group.parent;
             self.groups.remove(leaf_group_handle);
 
-            // Add to its parent.
+            // Add object to its parent and remove the now deleted child.
             let parent_group = self.groups.get_mut(parent_group_handle).unwrap();
             parent_group
                 .children
@@ -229,6 +238,17 @@ impl DataBlueprintTree {
             self.path_to_blueprint
                 .insert(single_object, parent_group_handle);
         }
+
+        // If a new group has a total of n elements or more, collapse it by default
+        const MIN_NUM_DEFAULT_COLLAPSED: usize = 4;
+        for group_handle in new_groups {
+            let Some(group) = self.groups.get_mut(group_handle) else {
+                continue; // This happens if it was removed again in an earlier processing step!
+            };
+
+            group.expanded =
+                (group.children.len() + group.objects.len()) < MIN_NUM_DEFAULT_COLLAPSED;
+        }
     }
 
     fn add_group_to_hierarchy_recursively(
@@ -236,10 +256,13 @@ impl DataBlueprintTree {
         new_group: DataBlueprintGroupHandle,
         associated_path: &ObjPath,
         base_path: &ObjPath,
+        new_groups: &mut Vec<DataBlueprintGroupHandle>,
     ) {
         let Some(mut parent_path) = associated_path.parent() else {
+            // Already the root, nothing to do.
             return;
         };
+
         // Short circuit to the root group at base_path.
         // If the object is outside of the base path we would walk up all the way to the root
         // That's ok but we want to stop one element short (since a space view can only show elements under a shared path)
@@ -266,7 +289,13 @@ impl DataBlueprintTree {
                     ..Default::default()
                 });
                 vacant_mapping.insert(parent_group);
-                self.add_group_to_hierarchy_recursively(parent_group, &parent_path, base_path);
+                new_groups.push(parent_group);
+                self.add_group_to_hierarchy_recursively(
+                    parent_group,
+                    &parent_path,
+                    base_path,
+                    new_groups,
+                );
                 parent_group
             }
         };
