@@ -24,7 +24,6 @@ use crate::{
 
 use super::{
     data_blueprint_group::{DataBlueprintGroupHandle, DataBlueprintTree},
-    editable_auto_value::EditableAutoValue,
     transform_cache::TransformCache,
     view_category::ViewCategory,
     SceneQuery, SpaceView, SpaceViewId,
@@ -314,13 +313,9 @@ impl Viewport {
         space_view_id: &SpaceViewId,
     ) {
         let Some(group) = data_blueprint_tree.get_group(group_handle) else {
-            return; // Should never happen. TODO: log warn once
+            return; // Should never happen.
         };
 
-        // (Clone name since we can't hold on to the borrow of `group`)
-        let group_name = group.name.clone();
-
-        // TODO(andreas): First all children and then all objects may not be what we want?
         for path in &group.objects {
             ui.horizontal(|ui| {
                 let name = path.iter().last().unwrap().to_string();
@@ -340,25 +335,19 @@ impl Viewport {
                 continue; // Should never happen. TODO: log warn once
             };
 
-            let collapsing_header_id = ui.id().with(child_group.id);
-
             egui::collapsing_header::CollapsingState::load_with_default_open(
                 ui.ctx(),
-                collapsing_header_id,
+                ui.id().with(child_group_handle),
                 child_group.expanded,
             )
             .show_header(ui, |ui| {
                 ui.label("📁");
-
-                let display_name = match &child_group.name {
-                    EditableAutoValue::UserEdited(user_name) => user_name,
-                    EditableAutoValue::Auto(auto_name) => auto_name
-                        .strip_prefix(group_name.get())
-                        .map_or(auto_name.as_str(), |name| {
-                            name.strip_prefix('/').unwrap_or(name)
-                        }),
-                };
-                ctx.datablueprint_group_button_to(ui, display_name);
+                ctx.datablueprint_group_button_to(
+                    ui,
+                    &child_group.name,
+                    *space_view_id,
+                    *child_group_handle,
+                );
 
                 // TODO.
                 // if visibility_button(ui, true, &mut child_group.vis).changed() {

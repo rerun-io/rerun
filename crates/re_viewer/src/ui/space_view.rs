@@ -13,7 +13,6 @@ use crate::{
 
 use super::{
     data_blueprint_group::DataBlueprintTree,
-    editable_auto_value::EditableAutoValue,
     transform_cache::{ReferenceFromObjTransform, UnreachableTransformReason},
     view_bar_chart,
     view_category::ViewCategory,
@@ -104,7 +103,7 @@ impl SpaceView {
         data_blueprint_tree
             .get_group_mut(data_blueprint_tree.root())
             .unwrap()
-            .name = EditableAutoValue::Auto(space_info.path.to_string());
+            .name = space_info.path.to_string();
         data_blueprint_tree
             .insert_objects_according_to_hierarchy(&queried_objects, &space_info.path);
 

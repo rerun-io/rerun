@@ -185,6 +185,7 @@ fn selection_kind_ui(ui: &mut egui::Ui, sel: &Selection) {
         Selection::Space(_) => "(space)",
         Selection::SpaceView(_) => "(view)",
         Selection::SpaceViewObjPath(_, _) => "(obj)",
+        Selection::DataBlueprintGroup(_, _) => "(group)",
     }));
 }
 

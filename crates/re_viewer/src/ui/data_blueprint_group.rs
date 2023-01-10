@@ -3,16 +3,14 @@ use re_data_store::ObjPath;
 use slotmap::SlotMap;
 use smallvec::{smallvec, SmallVec};
 
-use super::editable_auto_value::EditableAutoValue;
+use crate::misc::ViewerContext;
 
 slotmap::new_key_type! { pub struct DataBlueprintGroupHandle; }
 
 /// A grouping of several data blueprints.
 #[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
 pub struct DataBlueprintGroup {
-    pub id: uuid::Uuid,
-
-    pub name: EditableAutoValue<String>,
+    pub name: String,
 
     /// Whether this is expanded in the ui.
     pub expanded: bool,
@@ -25,6 +23,21 @@ pub struct DataBlueprintGroup {
 
     pub children: SmallVec<[DataBlueprintGroupHandle; 1]>,
     pub objects: IntSet<ObjPath>,
+}
+
+impl DataBlueprintGroup {
+    pub fn selection_ui(&mut self, _ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
+        egui::Grid::new("blueprint_group")
+            .num_columns(2)
+            .show(ui, |ui| {
+                ui.label("Name:");
+                ui.text_edit_singleline(&mut self.name);
+            });
+
+        ui.separator();
+
+        // TODO: ui for object properties
+    }
 }
 
 /// Tree of all data blueprint groups for a single space view.
@@ -51,8 +64,7 @@ impl Default for DataBlueprintTree {
     fn default() -> Self {
         let mut groups = SlotMap::default();
         let root_group = groups.insert(DataBlueprintGroup {
-            id: uuid::Uuid::new_v4(),
-            name: EditableAutoValue::default(),
+            name: String::new(),
             parent: slotmap::Key::null(),
             expanded: true,
             children: SmallVec::new(),
@@ -110,8 +122,7 @@ impl DataBlueprintTree {
             } else {
                 // Otherwise, create a new group which only contains this object and add the group to the hierarchy.
                 let new_group = self.groups.insert(DataBlueprintGroup {
-                    id: uuid::Uuid::new_v4(),
-                    name: EditableAutoValue::Auto(path.to_string()),
+                    name: path_to_group_name(path),
                     expanded: true,
                     children: SmallVec::new(),
                     objects: IntSet::default(),
@@ -123,7 +134,7 @@ impl DataBlueprintTree {
             };
 
             // TODO: collapse if too many
-            self.add_path_to_group(group_handle, path);
+            self.add_object_to_group(group_handle, path);
         }
 
         // If a leaf group contains only a single element, collapse it.
@@ -180,8 +191,7 @@ impl DataBlueprintTree {
 
             std::collections::hash_map::Entry::Vacant(vacant_mapping) => {
                 let parent_group = self.groups.insert(DataBlueprintGroup {
-                    id: uuid::Uuid::new_v4(),
-                    name: EditableAutoValue::Auto(parent_path.to_string()),
+                    name: path_to_group_name(&parent_path),
                     expanded: true,
                     children: smallvec![new_group],
                     objects: IntSet::default(),
@@ -196,11 +206,11 @@ impl DataBlueprintTree {
         self.groups.get_mut(new_group).unwrap().parent = parent_group;
     }
 
-    /// Adds a path to a group.
+    /// Adds an objectpath to a group.
     ///
     /// If it was already associated with this group, nothing will happen.
     /// If it was already associated with a different group, it will move from there.
-    fn add_path_to_group(&mut self, group_handle: DataBlueprintGroupHandle, path: &ObjPath) {
+    pub fn add_object_to_group(&mut self, group_handle: DataBlueprintGroupHandle, path: &ObjPath) {
         if let Some(group) = self.groups.get_mut(group_handle) {
             if !group.objects.insert(path.clone()) {
                 // If the object was already in here it won't be in another group previously.
@@ -218,4 +228,8 @@ impl DataBlueprintTree {
             }
         }
     }
+}
+
+fn path_to_group_name(path: &ObjPath) -> String {
+    path.iter().last().map_or(String::new(), |c| c.to_string())
 }

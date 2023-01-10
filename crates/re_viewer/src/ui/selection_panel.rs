@@ -185,6 +185,25 @@ impl SelectionPanel {
                     ctx.clear_selection();
                 }
             }
+            Selection::DataBlueprintGroup(space_view_id, data_blueprint_group_handle) => {
+                if let Some(group) =
+                    blueprint
+                        .viewport
+                        .space_view_mut(&space_view_id)
+                        .and_then(|space_view| {
+                            space_view
+                                .data_blueprint_tree
+                                .get_group_mut(data_blueprint_group_handle)
+                        })
+                {
+                    ui.strong("Group");
+                    ui.add_space(4.0);
+
+                    group.selection_ui(ctx, ui);
+                } else {
+                    ctx.clear_selection();
+                }
+            }
         }
     }
 }

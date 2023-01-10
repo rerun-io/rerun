@@ -1,7 +1,9 @@
 use re_data_store::{log_db::LogDb, InstanceId, ObjTypePath};
 use re_log_types::{DataPath, MsgId, ObjPath, TimeInt, Timeline};
 
-use crate::ui::{data_ui::DataUi, Preview, SelectionHistory, SpaceViewId};
+use crate::ui::{
+    data_ui::DataUi, DataBlueprintGroupHandle, Preview, SelectionHistory, SpaceViewId,
+};
 
 /// Common things needed by many parts of the viewer.
 pub struct ViewerContext<'a> {
@@ -149,14 +151,15 @@ impl<'a> ViewerContext<'a> {
         &mut self,
         ui: &mut egui::Ui,
         text: impl Into<egui::WidgetText>,
+        space_view_id: SpaceViewId,
+        group_handle: DataBlueprintGroupHandle,
     ) -> egui::Response {
         let is_selected = false; // TODO: self.selection() == Selection::SpaceView(space_view_id);
         let response = ui
             .selectable_label(is_selected, text)
-            .on_hover_text("Space View");
+            .on_hover_text("Group");
         if response.clicked() {
-            // TODO:
-            //self.set_selection(Selection::SpaceView(space_view_id));
+            self.set_selection(Selection::DataBlueprintGroup(space_view_id, group_handle));
         }
         response
     }
@@ -351,6 +354,7 @@ pub enum Selection {
     SpaceView(crate::ui::SpaceViewId),
     /// An object within a space-view.
     SpaceViewObjPath(crate::ui::SpaceViewId, ObjPath),
+    DataBlueprintGroup(crate::ui::SpaceViewId, crate::ui::DataBlueprintGroupHandle),
 }
 
 impl std::fmt::Display for Selection {
@@ -364,6 +368,7 @@ impl std::fmt::Display for Selection {
             Selection::Space(s) => s.fmt(f),
             Selection::SpaceView(s) => write!(f, "{s:?}"),
             Selection::SpaceViewObjPath(sid, path) => write!(f, "({sid:?}, {path})"),
+            Selection::DataBlueprintGroup(sid, ghwnd) => write!(f, "({sid:?}, {ghwnd:?})"),
         }
     }
 }
