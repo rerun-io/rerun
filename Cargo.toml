@@ -18,6 +18,7 @@ arrow2_convert = "0.3"
 comfy-table = { version = "6.1", default-features = false }
 derive_more = "0.99"
 ecolor = { version = "0.20" }
+image = "0.24"
 lazy_static = "1.4"
 ndarray = "0.15"
 polars-core = "0.26"
@@ -68,7 +69,7 @@ wgpu-core = { git = "https://github.com/gfx-rs/wgpu.git", ref = "a377ae2b7fe6c1c
 
 # Upstream PR https://github.com/jorgecarleitao/arrow2/pull/1351
 arrow2 = { git = "https://github.com/rerun-io/arrow2", rev = "f134e58bb554b069392f6bd495aa43aa06b58944" }
-# Upstream PRs https://github.com/DataEngineeringLabs/arrow2-convert/pull/88 and https://github.com/DataEngineeringLabs/arrow2-convert/pull/89
-arrow2_convert = { git = "https://github.com/rerun-io/arrow2-convert", rev = "1e770145fd2fbd4a4c9ac47d3d527959e8c0bb69" }
+# Upstream PRs
+arrow2_convert = { git = "https://github.com/rerun-io/arrow2-convert", rev = "85696465ef59ae6b8eb5c5c29b3c3aa8a61ee65f" }
 #arrow2 = { path = "../arrow2" }
 #arrow2_convert = { path = "../arrow2-convert/arrow2_convert" }

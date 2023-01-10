@@ -224,9 +224,6 @@ impl ImagesPart {
             entity_view.iter_primary()?,
             entity_view.iter_component::<ColorRGBA>()?
         ) {
-            //TODO(john) add this component
-            let meter: Option<&f32> = None;
-
             if let Some(tensor) = tensor {
                 if !tensor.is_shaped_like_an_image() {
                     return Ok(());
@@ -273,6 +270,8 @@ impl ImagesPart {
                 );
 
                 /*
+                //TODO(john) add this component
+                let meter: Option<&f32> = None;
                 scene.ui.images.push(Image {
                     instance_hash,
                     tensor: classic_tensor,
