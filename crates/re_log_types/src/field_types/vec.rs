@@ -27,6 +27,18 @@ use crate::msg_bundle::Component;
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Vec2D(pub [f32; 2]);
 
+impl Vec2D {
+    #[inline]
+    pub fn x(&self) -> f32 {
+        self.0[0]
+    }
+
+    #[inline]
+    pub fn y(&self) -> f32 {
+        self.0[1]
+    }
+}
+
 impl From<[f32; 2]> for Vec2D {
     fn from(v: [f32; 2]) -> Self {
         Self(v)
@@ -127,6 +139,23 @@ impl ArrowDeserialize for Vec2D {
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Vec3D(pub [f32; 3]);
+
+impl Vec3D {
+    #[inline]
+    pub fn x(&self) -> f32 {
+        self.0[0]
+    }
+
+    #[inline]
+    pub fn y(&self) -> f32 {
+        self.0[1]
+    }
+
+    #[inline]
+    pub fn z(&self) -> f32 {
+        self.0[2]
+    }
+}
 
 impl From<[f32; 3]> for Vec3D {
     fn from(v: [f32; 3]) -> Self {
