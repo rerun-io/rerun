@@ -174,9 +174,11 @@ impl SelectionPanel {
 
                     ui.separator();
 
-                    let mut props = space_view.obj_properties.get(&obj_path);
-                    obj_props_ui(ctx, ui, &obj_path, &mut props);
-                    space_view.obj_properties.set(obj_path.clone(), props);
+                    let data_blueprint =
+                        space_view.data_blueprint_tree.data_blueprints_individual();
+                    let mut props = data_blueprint.get(&obj_path);
+                    obj_props_ui(ctx, ui, Some(&obj_path), &mut props);
+                    data_blueprint.set(obj_path.clone(), props);
 
                     ui.separator();
 
@@ -200,6 +202,12 @@ impl SelectionPanel {
                     ui.add_space(4.0);
 
                     group.selection_ui(ctx, ui);
+
+                    ui.separator();
+
+                    obj_props_ui(ctx, ui, None, &mut group.properties_individual);
+
+                    ui.separator();
                 } else {
                     ctx.clear_selection();
                 }
@@ -219,7 +227,7 @@ fn obj_type_name(log_db: &LogDb, obj_type_path: &ObjTypePath) -> String {
 fn obj_props_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    obj_path: &ObjPath,
+    obj_path: Option<&ObjPath>,
     obj_props: &mut ObjectProps,
 ) {
     use egui::NumExt;
@@ -262,26 +270,28 @@ fn obj_props_ui(
         }
     });
 
-    let timeline = ctx.rec_cfg.time_ctrl.timeline();
-    let query_time = ctx.rec_cfg.time_ctrl.time_i64();
-    if let Some(re_log_types::Transform::Pinhole(pinhole)) =
-        query_transform(&ctx.log_db.obj_db, timeline, obj_path, query_time)
-    {
-        ui.horizontal(|ui| {
-            ui.label("Image plane distance:");
-            let mut distance = obj_props.pinhole_image_plane_distance(&pinhole);
-            let speed = (distance * 0.05).at_least(0.01);
-            if ui
-                .add(
-                    egui::DragValue::new(&mut distance)
-                        .clamp_range(0.0..=f32::INFINITY)
-                        .speed(speed),
-                )
-                .on_hover_text("Controls how far away the image plane is.")
-                .changed()
-            {
-                obj_props.set_pinhole_image_plane_distance(distance);
-            }
-        });
+    if let Some(obj_path) = obj_path {
+        let timeline = ctx.rec_cfg.time_ctrl.timeline();
+        let query_time = ctx.rec_cfg.time_ctrl.time_i64();
+        if let Some(re_log_types::Transform::Pinhole(pinhole)) =
+            query_transform(&ctx.log_db.obj_db, timeline, obj_path, query_time)
+        {
+            ui.horizontal(|ui| {
+                ui.label("Image plane distance:");
+                let mut distance = obj_props.pinhole_image_plane_distance(&pinhole);
+                let speed = (distance * 0.05).at_least(0.01);
+                if ui
+                    .add(
+                        egui::DragValue::new(&mut distance)
+                            .clamp_range(0.0..=f32::INFINITY)
+                            .speed(speed),
+                    )
+                    .on_hover_text("Controls how far away the image plane is.")
+                    .changed()
+                {
+                    obj_props.set_pinhole_image_plane_distance(distance);
+                }
+            });
+        }
     }
 }

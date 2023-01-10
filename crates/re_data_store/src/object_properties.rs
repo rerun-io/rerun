@@ -63,6 +63,18 @@ impl ObjectProps {
     pub fn set_pinhole_image_plane_distance(&mut self, distance: f32) {
         self.pinhole_image_plane_distance = ordered_float::NotNan::new(distance).ok();
     }
+
+    /// Multiply/and these together.
+    pub fn with_child(&self, child: &Self) -> Self {
+        Self {
+            visible: self.visible && child.visible,
+            visible_history: self.visible_history.with_child(&child.visible_history),
+            interactive: self.interactive && child.interactive,
+            pinhole_image_plane_distance: child
+                .pinhole_image_plane_distance
+                .or(self.pinhole_image_plane_distance),
+        }
+    }
 }
 
 impl Default for ObjectProps {
@@ -88,6 +100,16 @@ pub struct ExtraQueryHistory {
 
     /// Zero = off.
     pub sequences: i64,
+}
+
+impl ExtraQueryHistory {
+    /// Multiply/and these together.
+    fn with_child(&self, child: &Self) -> Self {
+        Self {
+            nanos: self.nanos.max(child.nanos),
+            sequences: self.sequences.max(child.sequences),
+        }
+    }
 }
 
 // ----------------------------------------------------------------------------

@@ -12,7 +12,7 @@ use crate::{
 };
 
 use super::{
-    data_blueprint_group::DataBlueprintTree,
+    data_blueprint::DataBlueprintTree,
     transform_cache::{ReferenceFromObjTransform, UnreachableTransformReason},
     view_bar_chart,
     view_category::ViewCategory,
@@ -54,8 +54,6 @@ pub(crate) struct SpaceView {
     /// List of all shown objects.
     /// TODO(andreas): This is a HashSet for the time being, but in the future it might be possible to add the same object twice.
     pub queried_objects: IntSet<ObjPath>,
-
-    pub obj_properties: ObjectsProperties,
 
     /// TODO: ObjProperties should be managed by this entirely!
     pub data_blueprint_tree: DataBlueprintTree,
@@ -99,11 +97,6 @@ impl SpaceView {
         };
 
         let mut data_blueprint_tree = DataBlueprintTree::default();
-        // Change the root group name to be the same as the space view object path. This helps heuristics to make good subgroup names.
-        data_blueprint_tree
-            .get_group_mut(data_blueprint_tree.root())
-            .unwrap()
-            .name = space_info.path.to_string();
         data_blueprint_tree
             .insert_objects_according_to_hierarchy(&queried_objects, &space_info.path);
 
@@ -113,7 +106,6 @@ impl SpaceView {
             root_path,
             space_path: space_info.path.clone(),
             queried_objects,
-            obj_properties: Default::default(),
             data_blueprint_tree,
             view_state,
             category,
@@ -142,6 +134,8 @@ impl SpaceView {
     }
 
     pub fn on_frame_start(&mut self, ctx: &mut ViewerContext<'_>, spaces_info: &SpacesInfo) {
+        self.data_blueprint_tree.on_frame_start();
+
         if !self.allow_auto_adding_more_object {
             return;
         }
@@ -226,7 +220,7 @@ impl SpaceView {
                     let transforms = TransformCache::determine_transforms(
                         &spaces_info,
                         reference_space,
-                        &self.obj_properties,
+                        self.data_blueprint_tree.data_blueprints_projected(),
                     );
                     self.obj_tree_children_ui(ctx, ui, &spaces_info, subtree, &transforms);
                 }
@@ -396,7 +390,7 @@ impl SpaceView {
             obj_paths: &self.queried_objects,
             timeline: *ctx.rec_cfg.time_ctrl.timeline(),
             latest_at,
-            obj_props: &self.obj_properties,
+            obj_props: self.data_blueprint_tree.data_blueprints_projected(),
         };
 
         match self.category {
@@ -425,14 +419,14 @@ impl SpaceView {
                 let transforms = TransformCache::determine_transforms(
                     spaces_info,
                     reference_space,
-                    &self.obj_properties,
+                    self.data_blueprint_tree.data_blueprints_projected(),
                 );
                 let mut scene = view_spatial::SceneSpatial::default();
                 scene.load_objects(
                     ctx,
                     &query,
                     &transforms,
-                    &self.obj_properties,
+                    self.data_blueprint_tree.data_blueprints_projected(),
                     self.view_state.state_spatial.hovered_instance_hash(),
                 );
                 self.view_state.ui_spatial(
@@ -442,7 +436,7 @@ impl SpaceView {
                     spaces_info,
                     reference_space_info,
                     scene,
-                    &self.obj_properties,
+                    self.data_blueprint_tree.data_blueprints_projected(),
                 );
             }
 

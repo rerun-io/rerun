@@ -13,8 +13,6 @@ pub struct SceneQuery<'s> {
     pub obj_paths: &'s IntSet<ObjPath>,
     pub timeline: Timeline,
     pub latest_at: TimeInt,
-
-    /// Controls what objects are visible
     pub obj_props: &'s ObjectsProperties,
 }
 

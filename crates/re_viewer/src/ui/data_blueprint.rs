@@ -1,5 +1,5 @@
 use nohash_hasher::{IntMap, IntSet};
-use re_data_store::ObjPath;
+use re_data_store::{ObjPath, ObjectProps, ObjectsProperties};
 use slotmap::SlotMap;
 use smallvec::{smallvec, SmallVec};
 
@@ -15,13 +15,20 @@ pub struct DataBlueprintGroup {
     /// Whether this is expanded in the ui.
     pub expanded: bool,
 
-    // TODO(andreas): We should have the same properties as on data blueprints themselves, see https://github.com/rerun-io/rerun/issues/703
-    //                  What to do about things that may or may not apply? Expand ObjectProps?
-    //properties: ObjectProps,
+    /// Individual settings. Mutate & display this.
+    pub properties_individual: ObjectProps,
+
+    /// Properties, as inherited from parent. Read from this.
+    ///
+    /// Recalculated at the start of each frame from [`Self::individual`].
+    #[cfg_attr(feature = "serde", serde(skip))]
+    pub properties_projected: ObjectProps,
+
     /// Parent of this blueprint group. Every data blueprint except the root has a parent.
     pub parent: DataBlueprintGroupHandle,
 
     pub children: SmallVec<[DataBlueprintGroupHandle; 1]>,
+
     pub objects: IntSet<ObjPath>,
 }
 
@@ -33,11 +40,20 @@ impl DataBlueprintGroup {
                 ui.label("Name:");
                 ui.text_edit_singleline(&mut self.name);
             });
-
-        ui.separator();
-
-        // TODO: ui for object properties
     }
+}
+
+/// Stores a visibility toggle for a tree.
+#[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
+struct DataBlueprints {
+    /// Individual settings. Mutate this.
+    individual: ObjectsProperties,
+
+    /// Properties, as inherited from parent. Read from this.
+    ///
+    /// Recalculated at the start of each frame from [`Self::individual`].
+    #[cfg_attr(feature = "serde", serde(skip))]
+    projected: ObjectsProperties,
 }
 
 /// Tree of all data blueprint groups for a single space view.
@@ -53,11 +69,9 @@ pub struct DataBlueprintTree {
     path_to_blueprint: IntMap<ObjPath, DataBlueprintGroupHandle>,
 
     /// Root group, always exists as a placeholder
-    root_group: DataBlueprintGroupHandle,
-    // TODO: Requirements
-    // * lookup in which group a given obj path is quickly and determine object properties from there
-    // * insert object path into a fitting group, potentially creating new groups
-    // * walk down the tree to render a ui containing all connected groups and objects
+    root_group_handle: DataBlueprintGroupHandle,
+
+    data_blueprints: DataBlueprints,
 }
 
 impl Default for DataBlueprintTree {
@@ -65,8 +79,10 @@ impl Default for DataBlueprintTree {
         let mut groups = SlotMap::default();
         let root_group = groups.insert(DataBlueprintGroup {
             name: String::new(),
-            parent: slotmap::Key::null(),
             expanded: true,
+            properties_individual: ObjectProps::default(),
+            properties_projected: ObjectProps::default(),
+            parent: slotmap::Key::null(),
             children: SmallVec::new(),
             objects: IntSet::default(),
         });
@@ -77,14 +93,19 @@ impl Default for DataBlueprintTree {
         Self {
             groups,
             path_to_blueprint,
-            root_group,
+            root_group_handle: root_group,
+            data_blueprints: DataBlueprints::default(),
         }
     }
 }
 
 impl DataBlueprintTree {
+    /// Returns a handle to the root data blueprint.
+    ///
+    /// Even if there are no other groups, we always have a root group at the top.
+    /// Typically, we don't show the root group in the ui.
     pub fn root(&self) -> DataBlueprintGroupHandle {
-        self.root_group
+        self.root_group_handle
     }
 
     pub fn get_group(&self, handle: DataBlueprintGroupHandle) -> Option<&DataBlueprintGroup> {
@@ -96,6 +117,56 @@ impl DataBlueprintTree {
         handle: DataBlueprintGroupHandle,
     ) -> Option<&mut DataBlueprintGroup> {
         self.groups.get_mut(handle)
+    }
+
+    /// Returns object properties with the hierarchy applied.
+    pub fn data_blueprints_projected(&self) -> &ObjectsProperties {
+        &self.data_blueprints.projected
+    }
+
+    /// Returns mutable individual object properties, the hierarchy was not applied to this.
+    pub fn data_blueprints_individual(&mut self) -> &mut ObjectsProperties {
+        &mut self.data_blueprints.individual
+    }
+
+    /// Should be called on frame start.
+    ///
+    /// Propagates any data blueprint changes along the tree.
+    pub fn on_frame_start(&mut self) {
+        crate::profile_function!();
+
+        // NOTE: We could do this projection only when the object properties changes
+        // and/or when new object paths are added, but such memoization would add complexity,
+        // and in most cases this is pretty fast already.
+
+        fn project_tree(
+            tree: &mut DataBlueprintTree,
+            parent_properties: &ObjectProps,
+            group_handle: DataBlueprintGroupHandle,
+        ) {
+            let Some(group) = tree.groups.get_mut(group_handle) else {
+                return; // should never happen.
+            };
+
+            let group_properties_projected =
+                parent_properties.with_child(&group.properties_individual);
+            group.properties_projected = group_properties_projected;
+
+            for obj_path in &group.objects {
+                let projected_properties = group_properties_projected
+                    .with_child(&tree.data_blueprints.individual.get(obj_path));
+                tree.data_blueprints
+                    .projected
+                    .set(obj_path.clone(), projected_properties);
+            }
+
+            let children = group.children.clone(); // TODO(andreas): How to avoid this clone?
+            for child in &children {
+                project_tree(tree, &group_properties_projected, *child);
+            }
+        }
+
+        project_tree(self, &ObjectProps::default(), self.root_group_handle);
     }
 
     /// Adds a list of object paths to the tree, using grouping as dictated by their object path hierarchy.
@@ -118,15 +189,17 @@ impl DataBlueprintTree {
                 *group_handle
             } else if path == base_path {
                 // Object might have directly been logged on the base_path. We map then to the root!
-                self.root_group
+                self.root_group_handle
             } else {
                 // Otherwise, create a new group which only contains this object and add the group to the hierarchy.
                 let new_group = self.groups.insert(DataBlueprintGroup {
                     name: path_to_group_name(path),
                     expanded: true,
+                    properties_individual: ObjectProps::default(),
+                    properties_projected: ObjectProps::default(),
+                    parent: slotmap::Key::null(), // To be determined.
                     children: SmallVec::new(),
                     objects: IntSet::default(),
-                    parent: slotmap::Key::null(), // To be determined.
                 });
                 self.add_group_to_hierarchy_recursively(new_group, path, base_path);
                 new_leaf_groups.push(new_group);
@@ -193,9 +266,11 @@ impl DataBlueprintTree {
                 let parent_group = self.groups.insert(DataBlueprintGroup {
                     name: path_to_group_name(&parent_path),
                     expanded: true,
+                    properties_individual: ObjectProps::default(),
+                    properties_projected: ObjectProps::default(),
+                    parent: slotmap::Key::null(), // To be determined.
                     children: smallvec![new_group],
                     objects: IntSet::default(),
-                    parent: slotmap::Key::null(), // To be determined.
                 });
                 vacant_mapping.insert(parent_group);
                 self.add_group_to_hierarchy_recursively(parent_group, &parent_path, base_path);

@@ -23,7 +23,7 @@ use crate::{
 };
 
 use super::{
-    data_blueprint_group::{DataBlueprintGroupHandle, DataBlueprintTree},
+    data_blueprint::{DataBlueprintGroupHandle, DataBlueprintTree},
     transform_cache::TransformCache,
     view_category::ViewCategory,
     SceneQuery, SpaceView, SpaceViewId,
@@ -298,7 +298,6 @@ impl Viewport {
                 ui,
                 space_view.data_blueprint_tree.root(),
                 &mut space_view.data_blueprint_tree,
-                &mut space_view.obj_properties,
                 space_view_id,
             );
         });
@@ -309,27 +308,31 @@ impl Viewport {
         ui: &mut egui::Ui,
         group_handle: DataBlueprintGroupHandle,
         data_blueprint_tree: &mut DataBlueprintTree,
-        obj_properties: &mut ObjectsProperties,
         space_view_id: &SpaceViewId,
     ) {
         let Some(group) = data_blueprint_tree.get_group(group_handle) else {
             return; // Should never happen.
         };
 
-        for path in &group.objects {
+        // TODO(andreas): ugly workaround against borrowing multiple times from data_blueprint_tree.
+        let children = group.children.clone();
+        let objects = group.objects.clone();
+
+        for path in &objects {
             ui.horizontal(|ui| {
                 let name = path.iter().last().unwrap().to_string();
 
                 ctx.space_view_obj_path_button_to(ui, name, *space_view_id, path);
 
-                let mut properties = obj_properties.get(path);
+                let mut properties = data_blueprint_tree.data_blueprints_individual().get(path);
                 if visibility_button(ui, true, &mut properties.visible).changed() {
-                    obj_properties.set(path.clone(), properties);
+                    data_blueprint_tree
+                        .data_blueprints_individual()
+                        .set(path.clone(), properties);
                 }
             });
         }
 
-        let children = group.children.clone(); // TODO: how to avoid?
         for child_group_handle in &children {
             let Some(child_group) = data_blueprint_tree.get_group(*child_group_handle) else {
                 continue; // Should never happen. TODO: log warn once
@@ -365,7 +368,6 @@ impl Viewport {
                     ui,
                     *child_group_handle,
                     data_blueprint_tree,
-                    obj_properties,
                     space_view_id,
                 );
             });
