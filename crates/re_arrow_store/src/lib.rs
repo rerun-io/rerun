@@ -12,6 +12,7 @@
 mod arrow_util;
 mod store;
 mod store_read;
+mod store_stats;
 mod store_write;
 
 #[cfg(feature = "polars")]
