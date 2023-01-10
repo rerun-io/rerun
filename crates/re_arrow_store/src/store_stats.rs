@@ -3,6 +3,66 @@ use crate::{
     PersistentComponentTable, PersistentIndexTable,
 };
 
+// ---
+
+// TODO(cmc): count buckets?
+// TODO(cmc): compute incrementally once/if this becomes too expensive.
+#[derive(Default)]
+pub struct DataStoreStats {
+    pub total_timeless_index_rows: u64,
+    pub total_timeless_index_size_bytes: u64,
+    pub total_timeless_component_rows: u64,
+    pub total_timeless_component_size_bytes: u64,
+
+    pub total_temporal_index_rows: u64,
+    pub total_temporal_index_size_bytes: u64,
+    pub total_temporal_component_rows: u64,
+    pub total_temporal_component_size_bytes: u64,
+
+    pub total_index_rows: u64,
+    pub total_index_size_bytes: u64,
+    pub total_component_rows: u64,
+    pub total_component_size_bytes: u64,
+}
+
+impl DataStoreStats {
+    pub fn from_store(store: &DataStore) -> Self {
+        puffin::profile_function!();
+
+        let total_timeless_index_rows = store.total_timeless_index_rows();
+        let total_timeless_index_size_bytes = store.total_timeless_index_size_bytes();
+        let total_timeless_component_rows = store.total_timeless_component_rows();
+        let total_timeless_component_size_bytes = store.total_timeless_component_size_bytes();
+
+        let total_temporal_index_rows = store.total_temporal_index_rows();
+        let total_temporal_index_size_bytes = store.total_temporal_index_size_bytes();
+        let total_temporal_component_rows = store.total_temporal_component_rows();
+        let total_temporal_component_size_bytes = store.total_temporal_component_size_bytes();
+
+        let total_index_rows = total_timeless_index_rows + total_temporal_index_rows;
+        let total_index_size_bytes =
+            total_timeless_index_size_bytes + total_temporal_index_size_bytes;
+        let total_component_rows = total_timeless_component_rows + total_temporal_component_rows;
+        let total_component_size_bytes =
+            total_timeless_component_size_bytes + total_temporal_component_size_bytes;
+
+        Self {
+            total_timeless_index_rows,
+            total_timeless_index_size_bytes,
+            total_timeless_component_rows,
+            total_timeless_component_size_bytes,
+            total_temporal_index_rows,
+            total_temporal_index_size_bytes,
+            total_temporal_component_rows,
+            total_temporal_component_size_bytes,
+            total_index_rows,
+            total_index_size_bytes,
+            total_component_rows,
+            total_component_size_bytes,
+        }
+    }
+}
+
 // --- Data store ---
 
 impl DataStore {
@@ -42,41 +102,33 @@ impl DataStore {
             .sum()
     }
 
-    /// Returns the number of index rows stored across this entire store, i.e. the sum of
-    /// the number of rows across all of its index tables.
-    ///
-    /// This doesn't account for timeless data!
-    pub fn total_index_rows(&self) -> u64 {
+    /// Returns the number of temporal index rows stored across this entire store, i.e. the sum of
+    /// the number of rows across all of its temporal index tables.
+    pub fn total_temporal_index_rows(&self) -> u64 {
         self.indices.values().map(|table| table.total_rows()).sum()
     }
 
-    /// Returns the size of the index data stored across this entire store, i.e. the sum of
-    /// the size of the data stored across all of its index tables, in bytes.
-    ///
-    /// This doesn't account for timeless data!
-    pub fn total_index_size_bytes(&self) -> u64 {
+    /// Returns the size of the temporal index data stored across this entire store, i.e. the sum
+    /// of the size of the data stored across all of its temporal index tables, in bytes.
+    pub fn total_temporal_index_size_bytes(&self) -> u64 {
         self.indices
             .values()
             .map(|table| table.total_size_bytes())
             .sum()
     }
 
-    /// Returns the number of component rows stored across this entire store, i.e. the sum of
-    /// the number of rows across all of its component tables.
-    ///
-    /// This doesn't account for timeless data!
-    pub fn total_component_rows(&self) -> u64 {
+    /// Returns the number of temporal component rows stored across this entire store, i.e. the
+    /// sum of the number of rows across all of its temporal component tables.
+    pub fn total_temporal_component_rows(&self) -> u64 {
         self.components
             .values()
             .map(|table| table.total_rows())
             .sum()
     }
 
-    /// Returns the size of the component data stored across this entire store, i.e. the sum of
-    /// the size of the data stored across all of its component tables, in bytes.
-    ///
-    /// This doesn't account for timeless data!
-    pub fn total_component_size_bytes(&self) -> u64 {
+    /// Returns the size of the temporal component data stored across this entire store, i.e. the
+    /// sum of the size of the data stored across all of its temporal component tables, in bytes.
+    pub fn total_temporal_component_size_bytes(&self) -> u64 {
         self.components
             .values()
             .map(|table| table.total_size_bytes())

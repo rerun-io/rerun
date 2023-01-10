@@ -3555,6 +3555,7 @@ dependencies = [
  "parking_lot",
  "polars-core",
  "polars-ops",
+ "puffin",
  "re_format",
  "re_log",
  "re_log_types",

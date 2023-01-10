@@ -1,3 +1,4 @@
+use re_arrow_store::DataStoreStats;
 use re_format::{format_bytes, format_number};
 use re_memory::{util::sec_since_start, MemoryHistory, MemoryLimit, MemoryUse};
 use re_renderer::WgpuResourcePoolStatistics;
@@ -14,12 +15,21 @@ pub struct MemoryPanel {
 
 impl MemoryPanel {
     /// Call once per frame
-    pub fn update(&mut self, gpu_resource_stats: &WgpuResourcePoolStatistics) {
+    pub fn update(
+        &mut self,
+        gpu_resource_stats: &WgpuResourcePoolStatistics,
+        store_stats: &DataStoreStats,
+    ) {
         crate::profile_function!();
-        self.history.capture(Some(
-            (gpu_resource_stats.total_buffer_size_in_bytes
-                + gpu_resource_stats.total_texture_size_in_bytes) as _,
-        ));
+        self.history.capture(
+            Some(
+                (gpu_resource_stats.total_buffer_size_in_bytes
+                    + gpu_resource_stats.total_texture_size_in_bytes) as _,
+            ),
+            Some(
+                (store_stats.total_index_size_bytes + store_stats.total_component_size_bytes) as _,
+            ),
+        );
     }
 
     /// Note that we purged memory at this time, to show in stats.
@@ -32,6 +42,7 @@ impl MemoryPanel {
         ui: &mut egui::Ui,
         limit: &MemoryLimit,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
+        store_stats: &DataStoreStats,
     ) {
         crate::profile_function!();
 
@@ -43,7 +54,7 @@ impl MemoryPanel {
             .min_width(250.0)
             .default_width(300.0)
             .show_inside(ui, |ui| {
-                Self::left_side(ui, limit, gpu_resource_stats);
+                Self::left_side(ui, limit, gpu_resource_stats, store_stats);
             });
 
         egui::CentralPanel::default().show_inside(ui, |ui| {
@@ -56,6 +67,7 @@ impl MemoryPanel {
         ui: &mut egui::Ui,
         limit: &MemoryLimit,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
+        store_stats: &DataStoreStats,
     ) {
         ui.strong("Rerun Viewer resource usage");
 
@@ -67,6 +79,11 @@ impl MemoryPanel {
         ui.separator();
         ui.collapsing("GPU Resources", |ui| {
             Self::gpu_stats(ui, gpu_resource_stats);
+        });
+
+        ui.separator();
+        ui.collapsing("Datastore Resources", |ui| {
+            Self::store_stats(ui, store_stats);
         });
     }
 
@@ -153,6 +170,61 @@ impl MemoryPanel {
                 ui.end_row();
                 ui.label("Texture Memory:");
                 ui.label(re_format::format_bytes(*total_texture_size_in_bytes as _));
+                ui.end_row();
+            });
+    }
+
+    fn store_stats(ui: &mut egui::Ui, store_stats: &DataStoreStats) {
+        egui::Grid::new("gpu resource grid")
+            .num_columns(3)
+            .show(ui, |ui| {
+                let DataStoreStats {
+                    total_timeless_index_rows,
+                    total_timeless_index_size_bytes,
+                    total_timeless_component_rows,
+                    total_timeless_component_size_bytes,
+                    total_temporal_index_rows,
+                    total_temporal_index_size_bytes,
+                    total_temporal_component_rows,
+                    total_temporal_component_size_bytes,
+                    total_index_rows,
+                    total_index_size_bytes,
+                    total_component_rows,
+                    total_component_size_bytes,
+                } = *store_stats;
+
+                ui.label("Indices (timeless):");
+                ui.label(re_format::format_number(total_timeless_index_rows as _));
+                ui.label(re_format::format_bytes(
+                    total_timeless_index_size_bytes as _,
+                ));
+                ui.end_row();
+                ui.label("Indices (temporal):");
+                ui.label(re_format::format_number(total_temporal_index_rows as _));
+                ui.label(re_format::format_bytes(
+                    total_temporal_index_size_bytes as _,
+                ));
+                ui.end_row();
+                ui.label("Indices (total):");
+                ui.label(re_format::format_number(total_index_rows as _));
+                ui.label(re_format::format_bytes(total_index_size_bytes as _));
+                ui.end_row();
+
+                ui.label("Components (timeless):");
+                ui.label(re_format::format_number(total_timeless_component_rows as _));
+                ui.label(re_format::format_bytes(
+                    total_timeless_component_size_bytes as _,
+                ));
+                ui.end_row();
+                ui.label("Components (temporal):");
+                ui.label(re_format::format_number(total_temporal_component_rows as _));
+                ui.label(re_format::format_bytes(
+                    total_temporal_component_size_bytes as _,
+                ));
+                ui.end_row();
+                ui.label("Components (total):");
+                ui.label(re_format::format_number(total_component_rows as _));
+                ui.label(re_format::format_bytes(total_component_size_bytes as _));
                 ui.end_row();
             });
     }
@@ -264,13 +336,17 @@ impl MemoryPanel {
                     );
                 }
 
-                plot_ui.line(to_line(&self.history.resident).name("Resident").width(1.5));
-                plot_ui.line(to_line(&self.history.counted).name("Counted").width(1.5));
-                plot_ui.line(
-                    to_line(&self.history.counted_gpu)
-                        .name("Counted GPU")
-                        .width(1.5),
-                );
+                let MemoryHistory {
+                    resident,
+                    counted,
+                    counted_gpu,
+                    counted_store,
+                } = &self.history;
+
+                plot_ui.line(to_line(resident).name("Resident").width(1.5));
+                plot_ui.line(to_line(counted).name("Counted").width(1.5));
+                plot_ui.line(to_line(counted_gpu).name("Counted GPU").width(1.5));
+                plot_ui.line(to_line(counted_store).name("Counted Store").width(1.5));
             });
     }
 }

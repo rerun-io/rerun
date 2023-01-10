@@ -437,8 +437,8 @@ impl std::fmt::Display for DataStore {
                 format!(
                     "{} index tables, for a total of {} across {} total rows\n",
                     indices.len(),
-                    format_bytes(self.total_index_size_bytes() as _),
-                    format_number(self.total_index_rows() as _)
+                    format_bytes(self.total_temporal_index_size_bytes() as _),
+                    format_number(self.total_temporal_index_rows() as _)
                 ),
             ))?;
             f.write_str(&indent::indent_all_by(4, "indices: [\n"))?;
@@ -455,8 +455,8 @@ impl std::fmt::Display for DataStore {
                 format!(
                     "{} component tables, for a total of {} across {} total rows\n",
                     components.len(),
-                    format_bytes(self.total_component_size_bytes() as _),
-                    format_number(self.total_component_rows() as _)
+                    format_bytes(self.total_temporal_component_size_bytes() as _),
+                    format_number(self.total_temporal_component_rows() as _)
                 ),
             ))?;
             f.write_str(&indent::indent_all_by(4, "components: [\n"))?;

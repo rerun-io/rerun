@@ -29,6 +29,7 @@ pub use self::store::{
     DataStore, DataStoreConfig, IndexBucket, IndexRowNr, IndexTable, RowIndex, RowIndexKind,
 };
 pub use self::store_read::{LatestAtQuery, RangeQuery};
+pub use self::store_stats::DataStoreStats;
 pub use self::store_write::{WriteError, WriteResult};
 
 pub(crate) use self::store::{
