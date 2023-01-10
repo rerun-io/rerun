@@ -4,6 +4,13 @@ use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 
 use crate::{msg_bundle::Component, ClassicTensor, TensorDataStore, TensorId};
 
+pub trait TensorTrait {
+    fn id(&self) -> TensorId;
+    fn shape(&self) -> &[TensorDimension];
+    fn num_dim(&self) -> usize;
+    fn is_shaped_like_an_image(&self) -> bool;
+}
+
 #[derive(Debug, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[arrow_field(type = "dense")]
 pub enum TensorData {
@@ -77,6 +84,10 @@ pub enum TensorDataMeaning {
 
 #[derive(Debug, ArrowField, ArrowSerialize, ArrowDeserialize)]
 pub struct Tensor {
+    /// Unique identifier for the tensor
+    #[arrow_field(skip)]
+    pub tensor_id: TensorId,
+
     /// Dimensionality and length
     pub shape: Vec<TensorDimension>,
 
@@ -87,16 +98,20 @@ pub struct Tensor {
     pub meaning: TensorDataMeaning,
 }
 
-impl Tensor {
-    pub fn shape(&self) -> &[TensorDimension] {
+impl TensorTrait for Tensor {
+    fn id(&self) -> TensorId {
+        self.tensor_id
+    }
+
+    fn shape(&self) -> &[TensorDimension] {
         self.shape.as_slice()
     }
 
-    pub fn num_dim(&self) -> usize {
+    fn num_dim(&self) -> usize {
         self.shape.len()
     }
 
-    pub fn is_shaped_like_an_image(&self) -> bool {
+    fn is_shaped_like_an_image(&self) -> bool {
         self.num_dim() == 2
             || self.num_dim() == 3 && {
                 matches!(
@@ -129,9 +144,9 @@ pub enum TensorCastError {
     NotContiguousStdOrder,
 }
 
-impl From<Tensor> for ClassicTensor {
-    fn from(value: Tensor) -> Self {
-        let (dtype, data) = match value.data {
+impl From<&Tensor> for ClassicTensor {
+    fn from(value: &Tensor) -> Self {
+        let (dtype, data) = match &value.data {
             TensorData::U8(data) => (
                 crate::TensorDataType::U8,
                 TensorDataStore::Dense(Arc::from(data.as_slice())),
@@ -174,7 +189,13 @@ impl From<Tensor> for ClassicTensor {
             ),
         };
 
-        ClassicTensor::new(TensorId::random(), value.shape, dtype, value.meaning, data)
+        ClassicTensor::new(
+            value.tensor_id,
+            value.shape.clone(),
+            dtype,
+            value.meaning,
+            data,
+        )
     }
 }
 
@@ -210,6 +231,7 @@ macro_rules! tensor_type {
                 view.to_slice()
                     .ok_or(TensorCastError::NotContiguousStdOrder)
                     .map(|slice| Tensor {
+                        tensor_id: TensorId::random(),
                         shape,
                         data: TensorData::$variant(slice.into()),
                         meaning: TensorDataMeaning::Unknown,
@@ -232,6 +254,7 @@ macro_rules! tensor_type {
                 value
                     .is_standard_layout()
                     .then(|| Tensor {
+                        tensor_id: TensorId::random(),
                         shape,
                         data: TensorData::$variant(value.into_raw_vec()),
                         meaning: TensorDataMeaning::Unknown,

@@ -3,20 +3,21 @@ use std::sync::Arc;
 use egui::NumExt;
 use glam::Vec3;
 use itertools::Itertools;
+
 use re_arrow_store::LatestAtQuery;
 use re_data_store::{
     query::visit_type_data_2, FieldName, InstanceIdHash, ObjPath, ObjectProps, ObjectsProperties,
 };
 use re_log_types::{
-    field_types::{ColorRGBA, Tensor},
+    field_types::{ColorRGBA, Tensor, TensorTrait},
     msg_bundle::Component,
-    ClassicTensor, IndexHash, MsgId, ObjectType,
+    IndexHash, MsgId, ObjectType,
 };
 use re_query::{query_entity_with_primary, EntityView, QueryError};
 use re_renderer::Size;
 
 use crate::{
-    misc::ViewerContext,
+    misc::{caches::AsDynamicImage, ViewerContext},
     ui::{
         scene::SceneQuery,
         transform_cache::{ReferenceFromObjTransform, TransformCache},
@@ -32,13 +33,13 @@ use super::ScenePart;
 
 pub struct ImagesPartClassic;
 
-fn push_tensor_texture(
+fn push_tensor_texture<T: AsDynamicImage>(
     scene: &mut SceneSpatial,
     ctx: &mut ViewerContext<'_>,
     annotations: &Arc<Annotations>,
     world_from_obj: glam::Mat4,
     instance_hash: InstanceIdHash,
-    tensor: &re_log_types::ClassicTensor,
+    tensor: &T,
     tint: egui::Rgba,
 ) {
     let legend = Some(annotations.clone());
@@ -206,7 +207,6 @@ impl ScenePart for ImagesPartClassic {
         }
     }
 }
-
 pub(crate) struct ImagesPart;
 
 impl ImagesPart {
@@ -263,24 +263,24 @@ impl ImagesPart {
                         .radius(Size::new_points(paint_props.fg_stroke.width * 0.5));
                 }
 
-                let classic_tensor: ClassicTensor = tensor.into();
-
                 push_tensor_texture(
                     scene,
                     ctx,
                     &annotations,
                     world_from_obj,
                     instance_hash,
-                    &classic_tensor,
+                    &tensor,
                     paint_props.fg_stroke.color.into(),
                 );
 
+                /*
                 scene.ui.images.push(Image {
                     instance_hash,
                     tensor: classic_tensor,
                     meter: meter.copied(),
                     annotations,
                 });
+                */
             }
         }
 

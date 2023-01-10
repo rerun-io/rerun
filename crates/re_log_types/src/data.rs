@@ -975,6 +975,12 @@ impl TensorId {
     }
 }
 
+impl Default for TensorId {
+    fn default() -> Self {
+        Self::random()
+    }
+}
+
 // ----------------------------------------------------------------------------
 
 /// An N-dimensional collection of numbers.
@@ -1006,6 +1012,24 @@ pub struct ClassicTensor {
 
     /// The actual contents of the tensor.
     pub data: TensorDataStore,
+}
+
+impl field_types::TensorTrait for ClassicTensor {
+    fn id(&self) -> TensorId {
+        self.tensor_id
+    }
+
+    fn shape(&self) -> &[field_types::TensorDimension] {
+        self.shape.as_slice()
+    }
+
+    fn num_dim(&self) -> usize {
+        self.num_dim()
+    }
+
+    fn is_shaped_like_an_image(&self) -> bool {
+        self.is_shaped_like_an_image()
+    }
 }
 
 impl ClassicTensor {

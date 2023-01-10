@@ -1,7 +1,7 @@
 mod mesh_cache;
 mod tensor_image_cache;
 
-pub use tensor_image_cache::TensorImageView;
+pub use tensor_image_cache::{AsDynamicImage, TensorImageView};
 
 /// Does memoization of different things for the immediate mode UI.
 #[derive(Default)]
