@@ -289,7 +289,7 @@ impl SpaceView {
                 ui.add_enabled_ui(unreachable_reason.is_none(), |ui| {
                     self.object_path_button(ctx, ui, &tree.path, spaces_info, name);
                     if has_visualization_for_category(ctx, self.category, &tree.path) {
-                        self.object_add_button(ui, &tree.path, &ctx.log_db.obj_db.tree);
+                        self.object_add_button(ctx, ui, &tree.path, &ctx.log_db.obj_db.tree);
                     }
                 });
             })
@@ -308,7 +308,7 @@ impl SpaceView {
                 ui.add_enabled_ui(unreachable_reason.is_none(), |ui| {
                     self.object_path_button(ctx, ui, &tree.path, spaces_info, name);
                     if has_visualization_for_category(ctx, self.category, &tree.path) {
-                        self.object_add_button(ui, &tree.path, &ctx.log_db.obj_db.tree);
+                        self.object_add_button(ctx, ui, &tree.path, &ctx.log_db.obj_db.tree);
                     }
                 });
             })
@@ -354,7 +354,13 @@ impl SpaceView {
         }
     }
 
-    fn object_add_button(&mut self, ui: &mut egui::Ui, path: &ObjPath, obj_tree: &ObjectTree) {
+    fn object_add_button(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        path: &ObjPath,
+        obj_tree: &ObjectTree,
+    ) {
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             // Can't add things we already added.
             ui.set_enabled(!self.queried_objects.contains(path));
@@ -364,7 +370,9 @@ impl SpaceView {
                 // Insert the object itself and all its children as far as they haven't been added yet
                 obj_tree.subtree(path).unwrap().visit_children_recursively(
                     &mut |path: &ObjPath| {
-                        self.queried_objects.insert(path.clone());
+                        if has_visualization_for_category(ctx, self.category, path) {
+                            self.queried_objects.insert(path.clone());
+                        }
                     },
                 );
                 self.data_blueprint_tree
