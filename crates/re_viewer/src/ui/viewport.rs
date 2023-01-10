@@ -39,7 +39,7 @@ fn query_scene_spatial(
     };
     let mut scene = SceneSpatial::default();
     let hovered = re_data_store::InstanceIdHash::NONE;
-    scene.load_objects(ctx, &query, transforms, query.obj_props, hovered);
+    scene.load_objects(ctx, &query, transforms, hovered);
     scene
 }
 

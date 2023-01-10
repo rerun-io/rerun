@@ -75,7 +75,6 @@ impl ScenePart for ImagesPartClassic {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
-        objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
         crate::profile_scope!("ImagesPartClassic");
@@ -85,7 +84,7 @@ impl ScenePart for ImagesPartClassic {
         {
             scene.num_logged_2d_objects += 1;
 
-            let properties = objects_properties.get(obj_path);
+            let properties = query.obj_props.get(obj_path);
             let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(obj_path) else {
                 continue;
             };
@@ -295,7 +294,6 @@ impl ScenePart for ImagesPart {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
-        objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
         crate::profile_scope!("ImagesPart");
@@ -307,7 +305,7 @@ impl ScenePart for ImagesPart {
 
             let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
 
-            let properties = objects_properties.get(ent_path);
+            let properties = query.obj_props.get(ent_path);
 
             match query_entity_with_primary::<Tensor>(
                 &ctx.log_db.obj_db.arrow_store,

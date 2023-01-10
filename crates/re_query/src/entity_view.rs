@@ -31,6 +31,10 @@ pub struct ComponentWithInstances {
 }
 
 impl ComponentWithInstances {
+    pub fn name(&self) -> ComponentName {
+        self.name
+    }
+
     pub fn len(&self) -> usize {
         self.values.len()
     }
@@ -71,8 +75,32 @@ impl ComponentWithInstances {
         )?)
     }
 
-    /// Look up the value that corresponds to a given `Instance`
-    pub fn lookup(&self, instance: &Instance) -> Option<Box<dyn Array>> {
+    /// Look up the value that corresponds to a given `Instance` and convert to `Component`
+    pub fn lookup<C: Component>(&self, instance: &Instance) -> crate::Result<C>
+    where
+        C: ArrowDeserialize + ArrowField<Type = C> + 'static,
+        C::ArrayType: ArrowArray,
+        for<'a> &'a C::ArrayType: IntoIterator,
+    {
+        if C::name() != self.name {
+            return Err(QueryError::TypeMismatch {
+                actual: self.name,
+                requested: C::name(),
+            });
+        }
+        let arr = self
+            .lookup_arrow(instance)
+            .map_or_else(|| Err(QueryError::ComponentNotFound), Ok)?;
+        let mut iter = arrow_array_deserialize_iterator::<Option<C>>(arr.as_ref())?;
+        let val = iter
+            .next()
+            .flatten()
+            .map_or_else(|| Err(QueryError::ComponentNotFound), Ok)?;
+        Ok(val)
+    }
+
+    /// Look up the value that corresponds to a given `Instance` and return as an arrow `Array`
+    pub fn lookup_arrow(&self, instance: &Instance) -> Option<Box<dyn Array>> {
         let offset = if let Some(keys) = &self.instance_keys {
             // If `instance_keys` is set, extract the `PrimitiveArray`, and find
             // the index of the value by `binary_search`
@@ -321,7 +349,7 @@ where
 #[test]
 fn lookup_value() {
     use re_log_types::external::arrow2_convert::serialize::arrow_serialize_to_mutable_array;
-    use re_log_types::field_types::{Instance, Point2D};
+    use re_log_types::field_types::{Instance, Point2D, Rect2D};
     let points = vec![
         Point2D { x: 1.0, y: 2.0 }, //
         Point2D { x: 3.0, y: 4.0 },
@@ -332,10 +360,10 @@ fn lookup_value() {
 
     let component = ComponentWithInstances::from_native(None, &points).unwrap();
 
-    let missing_value = component.lookup(&Instance(5));
+    let missing_value = component.lookup_arrow(&Instance(5));
     assert_eq!(missing_value, None);
 
-    let value = component.lookup(&Instance(2)).unwrap();
+    let value = component.lookup_arrow(&Instance(2)).unwrap();
 
     let expected_point = vec![points[2].clone()];
     let expected_arrow =
@@ -355,10 +383,10 @@ fn lookup_value() {
 
     let component = ComponentWithInstances::from_native(Some(&instance_keys), &points).unwrap();
 
-    let missing_value = component.lookup(&Instance(46));
+    let missing_value = component.lookup_arrow(&Instance(46));
     assert_eq!(missing_value, None);
 
-    let value = component.lookup(&Instance(99)).unwrap();
+    let value = component.lookup_arrow(&Instance(99)).unwrap();
 
     let expected_point = vec![points[3].clone()];
     let expected_arrow =
@@ -367,4 +395,21 @@ fn lookup_value() {
             .as_box();
 
     assert_eq!(expected_arrow, value);
+
+    // Lookups with serialization
+
+    let value = component.lookup::<Point2D>(&Instance(99)).unwrap();
+    assert_eq!(expected_point[0], value);
+
+    let missing_value = component.lookup::<Point2D>(&Instance(46));
+    assert!(matches!(
+        missing_value.err().unwrap(),
+        QueryError::ComponentNotFound
+    ));
+
+    let missing_value = component.lookup::<Rect2D>(&Instance(99));
+    assert!(matches!(
+        missing_value.err().unwrap(),
+        QueryError::TypeMismatch { .. }
+    ));
 }

@@ -1,9 +1,6 @@
 use std::{ops::RangeBounds, sync::atomic::Ordering};
 
-use arrow2::{
-    array::{Array, Int64Array, ListArray, UInt64Array},
-    datatypes::{DataType, TimeUnit},
-};
+use arrow2::array::{Array, ListArray};
 
 use itertools::Itertools;
 use re_log::trace;
@@ -11,7 +8,8 @@ use re_log_types::{ComponentName, ObjPath as EntityPath, TimeInt, TimeRange, Tim
 
 use crate::{
     ComponentBucket, ComponentTable, DataStore, IndexBucket, IndexBucketIndices, IndexRowNr,
-    IndexTable, RowIndex, SecondaryIndex,
+    IndexTable, PersistentComponentTable, PersistentIndexTable, RowIndex, RowIndexErased,
+    SecondaryIndex,
 };
 
 // --- Queries ---
@@ -28,7 +26,7 @@ pub struct LatestAtQuery {
 impl std::fmt::Debug for LatestAtQuery {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!(
-            "<latest at {} on {:?}>",
+            "<latest at {} on {:?} (including timeless)>",
             self.timeline.typ().format(self.at),
             self.timeline.name(),
         ))
@@ -56,10 +54,15 @@ pub struct RangeQuery {
 impl std::fmt::Debug for RangeQuery {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!(
-            "<ranging from {} to {} (all inclusive) on {:?}>",
+            "<ranging from {} to {} (all inclusive) on {:?} ({} timeless)>",
             self.timeline.typ().format(self.range.min),
             self.timeline.typ().format(self.range.max),
             self.timeline.name(),
+            if self.range.min == TimeInt::MIN {
+                "including"
+            } else {
+                "excluding"
+            }
         ))
     }
 }
@@ -73,7 +76,13 @@ impl RangeQuery {
 // --- Data store ---
 
 impl DataStore {
-    /// Retrieve all the `ComponentName`s that have been written to for a given `Timeline` and `EntityPath`
+    /// Retrieve all the `ComponentName`s that have been written to for a given `EntityPath` on
+    /// a specific `Timeline`.
+    ///
+    /// # Temporal semantics
+    ///
+    /// In addition to the temporal results, this also includes all `ComponentName`s present in
+    /// the timeless indices for this entity.
     pub fn all_components(
         &self,
         timeline: &Timeline,
@@ -92,8 +101,24 @@ impl DataStore {
             "query started..."
         );
 
-        let index = self.indices.get(&(*timeline, *ent_path_hash))?;
-        let components = index.all_components.iter().cloned().collect_vec();
+        let timeless = self
+            .timeless_indices
+            .get(ent_path_hash)
+            .map(|index| &index.all_components);
+
+        let temporal = self
+            .indices
+            .get(&(*timeline, *ent_path_hash))
+            .map(|index| &index.all_components);
+
+        let components = match (timeless, temporal) {
+            (None, Some(temporal)) => temporal.iter().cloned().collect_vec(),
+            (Some(timeless), None) => timeless.iter().cloned().collect_vec(),
+            (Some(timeless), Some(temporal)) => {
+                timeless.union(temporal).cloned().into_iter().collect_vec()
+            }
+            (None, None) => return None,
+        };
 
         trace!(
             kind = "latest_components_at",
@@ -119,6 +144,11 @@ impl DataStore {
     ///   component in `components`, or `None` if said component is not available in that row.
     ///
     /// To actually retrieve the data associated with these indices, see [`Self::get`].
+    ///
+    /// # Temporal semantics
+    ///
+    /// Temporal indices take precedence, then timeless indices are queried to fill the holes left
+    /// by missing temporal data.
     ///
     /// ## Example
     ///
@@ -183,8 +213,11 @@ impl DataStore {
             "query started..."
         );
 
-        if let Some(index) = self.indices.get(&(query.timeline, *ent_path_hash)) {
-            if let row_indices @ Some(_) = index.latest_at(query.at, primary, components) {
+        let row_indices = self
+            .indices
+            .get(&(query.timeline, *ent_path_hash))
+            .and_then(|index| {
+                let row_indices = index.latest_at(query.at, primary, components);
                 trace!(
                     kind = "latest_at",
                     query = ?query,
@@ -192,10 +225,51 @@ impl DataStore {
                     %primary,
                     ?components,
                     ?row_indices,
+                    timeless = false,
                     "row indices fetched"
                 );
-                return row_indices;
+                row_indices
+            });
+
+        // If we've found everything we were looking for in the temporal index, then we can
+        // return the results immediately.
+        if row_indices.map_or(false, |row_indices| row_indices.iter().all(Option::is_some)) {
+            return row_indices;
+        }
+
+        let row_indices_timeless = self.timeless_indices.get(ent_path_hash).and_then(|index| {
+            let row_indices = index.latest_at(primary, components);
+            trace!(
+                kind = "latest_at",
+                query = ?query,
+                entity = %ent_path,
+                %primary,
+                ?components,
+                ?row_indices,
+                timeless = true,
+                "row indices fetched"
+            );
+            row_indices
+        });
+
+        // Otherwise, let's see what's in the timeless index, and then..:
+        match (row_indices, row_indices_timeless) {
+            // nothing in the timeless index: return those partial row indices we got.
+            (Some(row_indices), None) => return Some(row_indices),
+            // no temporal row indices, but some timeless ones: return those as-is.
+            (None, Some(row_indices_timeless)) => return Some(row_indices_timeless),
+            // we have both temporal & timeless indices: let's merge the two when it makes sense
+            // and return the end result.
+            (Some(mut row_indices), Some(row_indices_timeless)) => {
+                for (i, row_idx) in row_indices_timeless.into_iter().enumerate() {
+                    if row_indices[i].is_none() {
+                        row_indices[i] = row_idx;
+                    }
+                }
+                return Some(row_indices);
             }
+            // no row indices at all.
+            (None, None) => {}
         }
 
         trace!(
@@ -231,6 +305,14 @@ impl DataStore {
     /// On the contrary, they won't yield any rows that don't contain an actual value for the
     /// `primary` component, _even if said rows do contain a value for one the secondaries_!
     ///
+    /// # Temporal semantics
+    ///
+    /// Yields the contents of the temporal indices.
+    /// Iff the query's time range starts at `TimeInt::MIN`, this will yield the contents of the
+    /// timeless indices before anything else.
+    ///
+    /// When yielding timeless entries, the associated time will be `None`.
+    ///
     /// ## Example
     ///
     /// The following example demonstrate how to range over the row indices of a given
@@ -265,7 +347,7 @@ impl DataStore {
     ///     query: &'a RangeQuery,
     ///     ent_path: &'a EntityPath,
     ///     primary: ComponentName,
-    /// ) -> impl Iterator<Item = anyhow::Result<(TimeInt, DataFrame)>> + 'a {
+    /// ) -> impl Iterator<Item = anyhow::Result<(Option<TimeInt>, DataFrame)>> + 'a {
     ///     let cluster_key = store.cluster_key();
     ///
     ///     let components = [cluster_key, primary];
@@ -282,7 +364,7 @@ impl DataStore {
     ///     };
     ///
     ///     // Send the latest-at state before anything else..
-    ///     std::iter::once(df_latest.map(|df| (latest_time, df)))
+    ///     std::iter::once(df_latest.map(|df| (Some(latest_time), df)))
     ///         // ..but only if it's not an empty dataframe.
     ///         .filter(|df| df.as_ref().map_or(true, |(_, df)| !df.is_empty()))
     ///         .chain(store.range(query, ent_path, components).map(
@@ -305,7 +387,7 @@ impl DataStore {
         query: &RangeQuery,
         ent_path: &EntityPath,
         components: [ComponentName; N],
-    ) -> impl Iterator<Item = (TimeInt, IndexRowNr, [Option<RowIndex>; N])> + 'a {
+    ) -> impl Iterator<Item = (Option<TimeInt>, IndexRowNr, [Option<RowIndex>; N])> + 'a {
         // TODO(cmc): kind & query_id need to somehow propagate through the span system.
         self.query_id.fetch_add(1, Ordering::Relaxed);
 
@@ -320,12 +402,29 @@ impl DataStore {
             "query started..."
         );
 
-        let index = self.indices.get(&(query.timeline, *ent_path_hash));
-
-        index
+        let temporal = self
+            .indices
+            .get(&(query.timeline, *ent_path_hash))
             .map(|index| index.range(query.range, components))
             .into_iter()
             .flatten()
+            .map(|(time, idx_row_nr, row_indices)| (Some(time), idx_row_nr, row_indices));
+
+        if query.range.min == TimeInt::MIN {
+            let timeless = self
+                .timeless_indices
+                .get(ent_path_hash)
+                .map(|index| {
+                    index
+                        .range(components)
+                        .map(|(idx_row_nr, row_indices)| (None, idx_row_nr, row_indices))
+                })
+                .into_iter()
+                .flatten();
+            itertools::Either::Left(timeless.chain(temporal))
+        } else {
+            itertools::Either::Right(temporal)
+        }
     }
 
     /// Retrieves the data associated with a list of `components` at the specified `indices`.
@@ -348,11 +447,22 @@ impl DataStore {
             .enumerate()
             .filter_map(|(i, (comp, row_idx))| row_idx.map(|row_idx| (i, comp, row_idx)))
         {
-            let row = self
-                .components
-                .get(&component)
-                .and_then(|table| table.get(row_idx));
-            results[i] = row;
+            match row_idx {
+                RowIndex::Timeless(row_idx) => {
+                    let row = self
+                        .timeless_components
+                        .get(&component)
+                        .map(|table| table.get(row_idx));
+                    results[i] = row;
+                }
+                RowIndex::Temporal(row_idx) => {
+                    let row = self
+                        .components
+                        .get(&component)
+                        .and_then(|table| table.get(row_idx));
+                    results[i] = row;
+                }
+            }
         }
 
         results
@@ -374,6 +484,142 @@ impl DataStore {
         self.indices.iter().map(|((timeline, _), table)| {
             ((*timeline, table.ent_path.clone() /* shallow */), table)
         })
+    }
+}
+
+// --- Persistent Indices ---
+
+impl PersistentIndexTable {
+    /// Returns `None` iff no row index could be found for the `primary` component.
+    pub fn latest_at<const N: usize>(
+        &self,
+        primary: ComponentName,
+        components: &[ComponentName; N],
+    ) -> Option<[Option<RowIndex>; N]> {
+        if self.nb_rows == 0 {
+            return None;
+        }
+
+        // Early-exit if this bucket is unaware of this component.
+        let index = self.indices.get(&primary)?;
+
+        trace!(
+            kind = "latest_at",
+            %primary,
+            ?components,
+            timeless = true,
+            "searching for primary & secondary row indices..."
+        );
+
+        // find the primary index's row.
+        let primary_idx = self.nb_rows - 1;
+
+        trace!(
+            kind = "latest_at",
+            %primary,
+            ?components,
+            %primary_idx,
+            timeless = true,
+            "found primary index",
+        );
+
+        // find the secondary indices' rows, and the associated row indices.
+        let mut secondary_idx = primary_idx as i64;
+        while index[secondary_idx as usize].is_none() {
+            secondary_idx -= 1;
+            if secondary_idx < 0 {
+                trace!(
+                    kind = "latest_at",
+                    %primary,
+                    ?components,
+                    timeless = true,
+                    %primary_idx,
+                    "no secondary index found",
+                );
+                return None;
+            }
+        }
+
+        trace!(
+            kind = "latest_at",
+            %primary,
+            ?components,
+            timeless = true,
+            %primary_idx, %secondary_idx,
+            "found secondary index",
+        );
+        debug_assert!(index[secondary_idx as usize].is_some());
+
+        let mut row_indices = [None; N];
+        for (i, component) in components.iter().enumerate() {
+            if let Some(index) = self.indices.get(component) {
+                if let Some(row_idx) = index[secondary_idx as usize] {
+                    trace!(
+                        kind = "latest_at",
+                        %primary,
+                        %component,
+                        timeless = true,
+                        %primary_idx, %secondary_idx, %row_idx,
+                        "found row index",
+                    );
+                    row_indices[i] = Some(RowIndex::Timeless(row_idx));
+                }
+            }
+        }
+
+        Some(row_indices)
+    }
+
+    /// Returns an empty iterator if no data could be found for any reason.
+    pub fn range<const N: usize>(
+        &self,
+        components: [ComponentName; N],
+    ) -> impl Iterator<Item = (IndexRowNr, [Option<RowIndex>; N])> + '_ {
+        // Early-exit if the table is unaware of any of our components of interest.
+        if components
+            .iter()
+            .all(|component| self.indices.get(component).is_none())
+        {
+            return itertools::Either::Right(std::iter::empty());
+        }
+
+        // TODO(cmc): Cloning these is obviously not great and will need to be addressed at
+        // some point.
+        // But, really, it's not _that_ bad either: these are integers and e.g. with the default
+        // configuration there are only 1024 of them (times the number of components).
+        let comp_indices = self.indices.clone();
+
+        let row_indices = (0..self.nb_rows).filter_map(move |comp_idx_row_nr| {
+            let comp_idx_row_nr = IndexRowNr(comp_idx_row_nr);
+
+            let mut row_indices = [None; N];
+            for (i, component) in components.iter().enumerate() {
+                if let Some(index) = comp_indices.get(component) {
+                    if let Some(row_idx) = index[comp_idx_row_nr.0 as usize] {
+                        row_indices[i] = Some(RowIndex::Timeless(row_idx));
+                    }
+                }
+            }
+
+            // We only yield rows that contain data for at least one of the components of
+            // interest.
+            if row_indices.iter().all(Option::is_none) {
+                return None;
+            }
+
+            trace!(
+                kind = "range",
+                ?components,
+                timeless = true,
+                %comp_idx_row_nr,
+                ?row_indices,
+                "yielding row indices",
+            );
+
+            Some((comp_idx_row_nr, row_indices))
+        });
+
+        itertools::Either::Left(row_indices)
     }
 }
 
@@ -643,7 +889,7 @@ impl IndexBucket {
                         %primary_idx, %secondary_idx, %row_idx,
                         "found row index",
                     );
-                    row_indices[i] = Some(row_idx);
+                    row_indices[i] = Some(RowIndex::Temporal(row_idx));
                 }
             }
         }
@@ -724,8 +970,8 @@ impl IndexBucket {
                 let mut row_indices = [None; N];
                 for (i, component) in components.iter().enumerate() {
                     if let Some(index) = comp_indices.get(component) {
-                        if let row_idx @ Some(_) = index[comp_idx_row_nr.0 as usize] {
-                            row_indices[i] = row_idx;
+                        if let Some(row_idx) = index[comp_idx_row_nr.0 as usize] {
+                            row_indices[i] = Some(RowIndex::Temporal(row_idx));
                         }
                     }
                 }
@@ -757,36 +1003,6 @@ impl IndexBucket {
     /// Whether the indices in this `IndexBucket` are sorted
     pub fn is_sorted(&self) -> bool {
         self.indices.read().is_sorted
-    }
-
-    /// Returns an (name, [`Int64Array`]) with a logical type matching the timeline.
-    pub fn times(&self) -> (String, Int64Array) {
-        let times = Int64Array::from_vec(self.indices.read().times.clone());
-        let logical_type = match self.timeline.typ() {
-            re_log_types::TimeType::Time => DataType::Timestamp(TimeUnit::Nanosecond, None),
-            re_log_types::TimeType::Sequence => DataType::Int64,
-        };
-        (self.timeline.name().to_string(), times.to(logical_type))
-    }
-
-    /// Returns a Vec each of (name, array) for each index in the bucket
-    pub fn named_indices(&self) -> (Vec<ComponentName>, Vec<UInt64Array>) {
-        self.indices
-            .read()
-            .indices
-            .iter()
-            .map(|(name, index)| {
-                (
-                    name,
-                    UInt64Array::from(
-                        index
-                            .iter()
-                            .map(|row_idx| row_idx.map(|row_idx| row_idx.as_u64()))
-                            .collect::<Vec<_>>(),
-                    ),
-                )
-            })
-            .unzip()
     }
 }
 
@@ -844,10 +1060,27 @@ impl IndexBucketIndices {
     }
 }
 
+// --- Persistent Components ---
+
+impl PersistentComponentTable {
+    /// Returns a shallow clone of the row data present at the given `row_idx`.
+    ///
+    /// Panics if `row_idx` is out of bounds.
+    //
+    // TODO(cmc): probably have to relax these panics once GC lands.
+    pub fn get(&self, row_idx: RowIndexErased) -> Box<dyn Array> {
+        self.chunks[row_idx.as_u64() as usize]
+            .as_any()
+            .downcast_ref::<ListArray<i32>>()
+            .unwrap()
+            .value(0)
+    }
+}
+
 // --- Components ---
 
 impl ComponentTable {
-    pub fn get(&self, row_idx: RowIndex) -> Option<Box<dyn Array>> {
+    pub fn get(&self, row_idx: RowIndexErased) -> Option<Box<dyn Array>> {
         let mut bucket_nr = self
             .buckets
             .partition_point(|bucket| row_idx.as_u64() >= bucket.row_offset);
@@ -898,7 +1131,7 @@ impl ComponentBucket {
     }
 
     /// Returns a shallow clone of the row data present at the given `row_idx`.
-    pub fn get(&self, row_idx: RowIndex) -> Box<dyn Array> {
+    pub fn get(&self, row_idx: RowIndexErased) -> Box<dyn Array> {
         let row_idx = row_idx.as_u64() - self.row_offset;
         // This has to be safe to unwrap, otherwise it would never have made it past insertion.
         if self.archived {

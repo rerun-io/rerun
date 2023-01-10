@@ -1,8 +1,6 @@
 use glam::Mat4;
 use re_arrow_store::LatestAtQuery;
-use re_data_store::{
-    query::visit_type_data_5, FieldName, InstanceIdHash, ObjPath, ObjectsProperties,
-};
+use re_data_store::{query::visit_type_data_5, FieldName, InstanceIdHash, ObjPath, ObjectProps};
 use re_log_types::{
     field_types::{ClassId, ColorRGBA, Instance, KeypointId, Label, Point2D, Radius},
     msg_bundle::Component,
@@ -37,7 +35,6 @@ impl ScenePart for Points2DPartClassic {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
-        objects_properties: &re_data_store::ObjectsProperties,
         hovered_instance: re_data_store::InstanceIdHash,
     ) {
         crate::profile_scope!("Points2DPartClassic");
@@ -52,7 +49,7 @@ impl ScenePart for Points2DPartClassic {
 
             let annotations = scene.annotation_map.find(obj_path);
             let default_color = DefaultColor::ObjPath(obj_path);
-            let properties = objects_properties.get(obj_path);
+            let properties = query.obj_props.get(obj_path);
             let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(obj_path) else {
                 continue;
             };
@@ -152,7 +149,7 @@ impl Points2DPart {
     fn process_entity_view(
         scene: &mut SceneSpatial,
         _query: &SceneQuery<'_>,
-        objects_properties: &ObjectsProperties,
+        props: &ObjectProps,
         hovered_instance: InstanceIdHash,
         entity_view: &EntityView<Point2D>,
         ent_path: &ObjPath,
@@ -165,7 +162,6 @@ impl Points2DPart {
 
         let annotations = scene.annotation_map.find(ent_path);
         let default_color = DefaultColor::ObjPath(ent_path);
-        let _properties = objects_properties.get(ent_path);
 
         // If keypoints ids show up we may need to connect them later!
         // We include time in the key, so that the "Visible history" (time range queries) feature works.
@@ -185,8 +181,7 @@ impl Points2DPart {
                        class_id: Option<ClassId>,
                        keypoint_id: Option<KeypointId>| {
             let instance_hash = {
-                let properties = objects_properties.get(ent_path);
-                if properties.interactive {
+                if props.interactive {
                     InstanceIdHash::from_path_and_arrow_instance(ent_path, &instance)
                 } else {
                     InstanceIdHash::NONE
@@ -243,8 +238,7 @@ impl Points2DPart {
         }
 
         // Generate keypoint connections if any.
-        let properties = objects_properties.get(ent_path);
-        scene.load_keypoint_connections(ent_path, keypoints, &annotations, properties.interactive);
+        scene.load_keypoint_connections(ent_path, keypoints, &annotations, props.interactive);
 
         Ok(())
     }
@@ -257,12 +251,11 @@ impl ScenePart for Points2DPart {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
-        objects_properties: &re_data_store::ObjectsProperties,
         hovered_instance: re_data_store::InstanceIdHash,
     ) {
         crate::profile_scope!("Points2DPart");
 
-        for ent_path in query.obj_paths {
+        for (ent_path, props) in query.iter_entities() {
             let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(ent_path) else {
                 continue;
             };
@@ -285,7 +278,7 @@ impl ScenePart for Points2DPart {
                 Self::process_entity_view(
                     scene,
                     query,
-                    objects_properties,
+                    &props,
                     hovered_instance,
                     &entity_view,
                     ent_path,

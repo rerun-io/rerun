@@ -58,7 +58,10 @@ fn main() {
     for (time, ent_view) in ent_views {
         eprintln!(
             "Found data at time {} from {}'s PoV:\n{}",
-            TimeType::Sequence.format(time),
+            time.map_or_else(
+                || "<timeless>".into(),
+                |time| TimeType::Sequence.format(time)
+            ),
             Rect2D::name(),
             &ent_view.as_df2::<Point2D>().unwrap()
         );
@@ -71,7 +74,10 @@ fn main() {
     for (time, ent_view) in ent_views {
         eprintln!(
             "Found data at time {} from {}'s PoV:\n{}",
-            TimeType::Sequence.format(time),
+            time.map_or_else(
+                || "<timeless>".into(),
+                |time| TimeType::Sequence.format(time)
+            ),
             Point2D::name(),
             &ent_view.as_df2::<Rect2D>().unwrap()
         );
