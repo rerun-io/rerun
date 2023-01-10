@@ -30,11 +30,11 @@ fn all_components() {
 
     let ent_path = EntityPath::from("this/that");
 
-    //let frame0 = 0.into();
-    let frame1 = 1.into();
-    let frame2 = 2.into();
-    let frame3 = 3.into();
-    let frame4 = 4.into();
+    // let frame0: TimeInt = 0.into();
+    let frame1: TimeInt = 1.into();
+    let frame2: TimeInt = 2.into();
+    let frame3: TimeInt = 3.into();
+    let frame4: TimeInt = 4.into();
 
     let assert_latest_components_at =
         |store: &mut DataStore, ent_path: &EntityPath, expected: Option<&[ComponentName]>| {
@@ -278,11 +278,11 @@ fn latest_at_impl(store: &mut DataStore) {
 
     let ent_path = EntityPath::from("this/that");
 
-    let frame0 = 0.into();
-    let frame1 = 1.into();
-    let frame2 = 2.into();
-    let frame3 = 3.into();
-    let frame4 = 4.into();
+    let frame0: TimeInt = 0.into();
+    let frame1: TimeInt = 1.into();
+    let frame2: TimeInt = 2.into();
+    let frame3: TimeInt = 3.into();
+    let frame4: TimeInt = 4.into();
 
     // helper to insert a bundle both as a temporal and timeless payload
     let insert = |store: &mut DataStore, bundle| {
@@ -380,11 +380,12 @@ fn range_impl(store: &mut DataStore) {
 
     let ent_path = EntityPath::from("this/that");
 
-    let frame1 = 1.into();
-    let frame2 = 2.into();
-    let frame3 = 3.into();
-    let frame4 = 4.into();
-    let frame5 = 5.into();
+    let frame0: TimeInt = 0.into();
+    let frame1: TimeInt = 1.into();
+    let frame2: TimeInt = 2.into();
+    let frame3: TimeInt = 3.into();
+    let frame4: TimeInt = 4.into();
+    let frame5: TimeInt = 5.into();
 
     // helper to insert a bundle both as a temporal and timeless payload
     let insert = |store: &mut DataStore, bundle| {
@@ -509,45 +510,29 @@ fn range_impl(store: &mut DataStore) {
         TimeRange::new(frame1, frame1),
         [Rect2D::name(), Point2D::name()],
         &[
-            (None, &[(Rect2D::name(), &bundle1)]), //
             (
-                None,
-                &[(Rect2D::name(), &bundle4_1), (Point2D::name(), &bundle3)],
-            ),
-            (
-                None,
-                &[(Rect2D::name(), &bundle4_2), (Point2D::name(), &bundle3)],
-            ),
-            (
-                None,
-                &[(Rect2D::name(), &bundle4_3), (Point2D::name(), &bundle4_25)], // !!!
-            ),
+                Some(frame0),
+                &[(Rect2D::name(), &bundle4_3), (Point2D::name(), &bundle4_4)],
+            ), // timeless
             (
                 Some(frame1),
-                &[(Rect2D::name(), &bundle1), (Point2D::name(), &bundle4_4)], // !!!
-            ), //
+                &[
+                    (Rect2D::name(), &bundle1),
+                    (Point2D::name(), &bundle4_4), // timeless
+                ],
+            ),
         ],
     );
     assert_range_components(
         TimeRange::new(frame2, frame2),
         [Rect2D::name(), Point2D::name()],
         &[
-            (None, &[(Rect2D::name(), &bundle1)]), //
-            (
-                None,
-                &[(Rect2D::name(), &bundle4_1), (Point2D::name(), &bundle3)],
-            ),
-            (
-                None,
-                &[(Rect2D::name(), &bundle4_2), (Point2D::name(), &bundle3)],
-            ),
-            (
-                None,
-                &[(Rect2D::name(), &bundle4_3), (Point2D::name(), &bundle4_25)], // !!!
-            ),
             (
                 Some(frame1),
-                &[(Rect2D::name(), &bundle1), (Point2D::name(), &bundle4_4)], // !!!
+                &[
+                    (Rect2D::name(), &bundle1),
+                    (Point2D::name(), &bundle4_4), // timeless
+                ],
             ), //
         ],
     );
@@ -555,19 +540,6 @@ fn range_impl(store: &mut DataStore) {
         TimeRange::new(frame3, frame3),
         [Rect2D::name(), Point2D::name()],
         &[
-            (None, &[(Rect2D::name(), &bundle1)]), //
-            (
-                None,
-                &[(Rect2D::name(), &bundle4_1), (Point2D::name(), &bundle3)],
-            ),
-            (
-                None,
-                &[(Rect2D::name(), &bundle4_2), (Point2D::name(), &bundle3)],
-            ),
-            (
-                None,
-                &[(Rect2D::name(), &bundle4_3), (Point2D::name(), &bundle4_25)], // !!!
-            ),
             (
                 Some(frame2),
                 &[(Rect2D::name(), &bundle1), (Point2D::name(), &bundle2)],
@@ -578,19 +550,6 @@ fn range_impl(store: &mut DataStore) {
         TimeRange::new(frame4, frame4),
         [Rect2D::name(), Point2D::name()],
         &[
-            (None, &[(Rect2D::name(), &bundle1)]), //
-            (
-                None,
-                &[(Rect2D::name(), &bundle4_1), (Point2D::name(), &bundle3)],
-            ),
-            (
-                None,
-                &[(Rect2D::name(), &bundle4_2), (Point2D::name(), &bundle3)],
-            ),
-            (
-                None,
-                &[(Rect2D::name(), &bundle4_3), (Point2D::name(), &bundle4_25)], // !!!
-            ),
             (
                 Some(frame3),
                 &[(Rect2D::name(), &bundle1), (Point2D::name(), &bundle3)],
@@ -613,19 +572,6 @@ fn range_impl(store: &mut DataStore) {
         TimeRange::new(frame5, frame5),
         [Rect2D::name(), Point2D::name()],
         &[
-            (None, &[(Rect2D::name(), &bundle1)]), //
-            (
-                None,
-                &[(Rect2D::name(), &bundle4_1), (Point2D::name(), &bundle3)],
-            ),
-            (
-                None,
-                &[(Rect2D::name(), &bundle4_2), (Point2D::name(), &bundle3)],
-            ),
-            (
-                None,
-                &[(Rect2D::name(), &bundle4_3), (Point2D::name(), &bundle4_25)], // !!!
-            ),
             (
                 Some(frame4),
                 &[(Rect2D::name(), &bundle4_3), (Point2D::name(), &bundle4_4)], // !!!
@@ -640,21 +586,9 @@ fn range_impl(store: &mut DataStore) {
         [Point2D::name(), Rect2D::name()],
         &[
             (
-                None,
-                &[(Point2D::name(), &bundle2), (Rect2D::name(), &bundle1)],
-            ),
-            (
-                None,
-                &[(Point2D::name(), &bundle3), (Rect2D::name(), &bundle1)],
-            ),
-            (
-                None,
-                &[(Point2D::name(), &bundle4_25), (Rect2D::name(), &bundle4_2)],
-            ),
-            (
-                None,
+                Some(frame0),
                 &[(Point2D::name(), &bundle4_4), (Rect2D::name(), &bundle4_3)],
-            ),
+            ), // timeless
         ],
     );
     assert_range_components(
@@ -662,25 +596,15 @@ fn range_impl(store: &mut DataStore) {
         [Point2D::name(), Rect2D::name()],
         &[
             (
-                None,
-                &[(Point2D::name(), &bundle2), (Rect2D::name(), &bundle1)],
+                Some(frame1),
+                &[
+                    (Point2D::name(), &bundle4_4), // timeless
+                    (Rect2D::name(), &bundle1),
+                ],
             ),
-            (
-                None,
-                &[(Point2D::name(), &bundle3), (Rect2D::name(), &bundle1)],
-            ),
-            (
-                None,
-                &[(Point2D::name(), &bundle4_25), (Rect2D::name(), &bundle4_2)],
-            ),
-            (
-                None,
-                &[(Point2D::name(), &bundle4_4), (Rect2D::name(), &bundle4_3)],
-            ),
-            // The latest-at state does not contain any data for Point2D and is thus discarded.
             (
                 Some(frame2),
-                &[(Point2D::name(), &bundle2), (Rect2D::name(), &bundle4_3)],
+                &[(Point2D::name(), &bundle2), (Rect2D::name(), &bundle1)],
             ), //
         ],
     );
@@ -688,22 +612,6 @@ fn range_impl(store: &mut DataStore) {
         TimeRange::new(frame3, frame3),
         [Point2D::name(), Rect2D::name()],
         &[
-            (
-                None,
-                &[(Point2D::name(), &bundle2), (Rect2D::name(), &bundle1)],
-            ),
-            (
-                None,
-                &[(Point2D::name(), &bundle3), (Rect2D::name(), &bundle1)],
-            ),
-            (
-                None,
-                &[(Point2D::name(), &bundle4_25), (Rect2D::name(), &bundle4_2)],
-            ),
-            (
-                None,
-                &[(Point2D::name(), &bundle4_4), (Rect2D::name(), &bundle4_3)],
-            ),
             (
                 Some(frame2),
                 &[(Point2D::name(), &bundle2), (Rect2D::name(), &bundle1)],
@@ -718,22 +626,6 @@ fn range_impl(store: &mut DataStore) {
         TimeRange::new(frame4, frame4),
         [Point2D::name(), Rect2D::name()],
         &[
-            (
-                None,
-                &[(Point2D::name(), &bundle2), (Rect2D::name(), &bundle1)],
-            ),
-            (
-                None,
-                &[(Point2D::name(), &bundle3), (Rect2D::name(), &bundle1)],
-            ),
-            (
-                None,
-                &[(Point2D::name(), &bundle4_25), (Rect2D::name(), &bundle4_2)],
-            ),
-            (
-                None,
-                &[(Point2D::name(), &bundle4_4), (Rect2D::name(), &bundle4_3)],
-            ),
             (
                 Some(frame3),
                 &[(Point2D::name(), &bundle3), (Rect2D::name(), &bundle1)],
@@ -753,22 +645,6 @@ fn range_impl(store: &mut DataStore) {
         [Point2D::name(), Rect2D::name()],
         &[
             (
-                None,
-                &[(Point2D::name(), &bundle2), (Rect2D::name(), &bundle1)],
-            ),
-            (
-                None,
-                &[(Point2D::name(), &bundle3), (Rect2D::name(), &bundle1)],
-            ),
-            (
-                None,
-                &[(Point2D::name(), &bundle4_25), (Rect2D::name(), &bundle4_2)],
-            ),
-            (
-                None,
-                &[(Point2D::name(), &bundle4_4), (Rect2D::name(), &bundle4_3)],
-            ),
-            (
                 Some(frame4),
                 &[(Point2D::name(), &bundle4_4), (Rect2D::name(), &bundle4_3)],
             ), //
@@ -781,7 +657,68 @@ fn range_impl(store: &mut DataStore) {
         TimeRange::new(frame1, frame5),
         [Rect2D::name(), Point2D::name()],
         &[
-            (None, &[(Rect2D::name(), &bundle1)]), //
+            (
+                Some(frame0),
+                &[(Rect2D::name(), &bundle4_3), (Point2D::name(), &bundle4_4)],
+            ), // timeless
+            (
+                Some(frame1),
+                &[
+                    (Rect2D::name(), &bundle1),
+                    (Point2D::name(), &bundle4_4), // timeless
+                ],
+            ),
+            (
+                Some(frame4),
+                &[(Rect2D::name(), &bundle4_1), (Point2D::name(), &bundle3)],
+            ),
+            (
+                Some(frame4),
+                &[(Rect2D::name(), &bundle4_2), (Point2D::name(), &bundle3)],
+            ),
+            (
+                Some(frame4),
+                &[(Rect2D::name(), &bundle4_3), (Point2D::name(), &bundle4_25)], // !!!
+            ),
+        ],
+    );
+
+    // Full range (Point2D's PoV)
+
+    assert_range_components(
+        TimeRange::new(frame1, frame5),
+        [Point2D::name(), Rect2D::name()],
+        &[
+            (
+                Some(frame0),
+                &[(Point2D::name(), &bundle4_4), (Rect2D::name(), &bundle4_3)],
+            ), // timeless
+            (
+                Some(frame2),
+                &[(Point2D::name(), &bundle2), (Rect2D::name(), &bundle1)],
+            ),
+            (
+                Some(frame3),
+                &[(Point2D::name(), &bundle3), (Rect2D::name(), &bundle1)],
+            ),
+            (
+                Some(frame4),
+                &[(Point2D::name(), &bundle4_25), (Rect2D::name(), &bundle4_2)],
+            ),
+            (
+                Some(frame4),
+                &[(Point2D::name(), &bundle4_4), (Rect2D::name(), &bundle4_3)],
+            ),
+        ],
+    );
+
+    // Infinite range (Rect2D's PoV)
+
+    assert_range_components(
+        TimeRange::new(TimeInt::MIN, TimeInt::MAX),
+        [Rect2D::name(), Point2D::name()],
+        &[
+            (None, &[(Rect2D::name(), &bundle1)]),
             (
                 None,
                 &[(Rect2D::name(), &bundle4_1), (Point2D::name(), &bundle3)],
@@ -796,7 +733,10 @@ fn range_impl(store: &mut DataStore) {
             ),
             (
                 Some(frame1),
-                &[(Rect2D::name(), &bundle1), (Point2D::name(), &bundle4_4)], // !!!
+                &[
+                    (Rect2D::name(), &bundle1),
+                    (Point2D::name(), &bundle4_4), // timeless
+                ],
             ),
             (
                 Some(frame4),
@@ -813,10 +753,10 @@ fn range_impl(store: &mut DataStore) {
         ],
     );
 
-    // // Full range (Point2D's PoV)
+    // Infinite range (Point2D's PoV)
 
     assert_range_components(
-        TimeRange::new(frame1, frame5),
+        TimeRange::new(TimeInt::MIN, TimeInt::MAX),
         [Point2D::name(), Rect2D::name()],
         &[
             (
