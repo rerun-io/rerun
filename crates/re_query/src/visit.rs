@@ -40,7 +40,7 @@
 //!
 //! assert_eq!(points, points_out);
 //! assert_eq!(colors, colors_out);
-//! ``
+//! ```
 
 use re_log_types::{
     external::arrow2_convert::{
