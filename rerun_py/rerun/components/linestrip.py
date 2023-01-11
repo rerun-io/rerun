@@ -9,6 +9,8 @@ import pyarrow as pa
 from rerun.components import REGISTERED_FIELDS, ComponentTypeFactory
 
 __all__ = [
+    "LineStrip2DArray",
+    "LineStrip2DType",
     "LineStrip3DArray",
     "LineStrip3DType",
 ]
