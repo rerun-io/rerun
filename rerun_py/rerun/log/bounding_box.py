@@ -1,9 +1,15 @@
 import logging
 from typing import Optional, Sequence
-import numpy as np
 
+import numpy as np
 import numpy.typing as npt
-from rerun.log import EXP_ARROW, _normalize_colors, _normalize_ids, _normalize_radii, _to_sequence
+from rerun.log import (
+    EXP_ARROW,
+    _normalize_colors,
+    _normalize_ids,
+    _normalize_radii,
+    _to_sequence,
+)
 
 from rerun import bindings
 
@@ -49,13 +55,13 @@ def log_obb(
         )
 
     if EXP_ARROW.arrow_log_gate():
-        from rerun.components.color import ColorRGBAArray
-        from rerun.components.radius import RadiusArray
         from rerun.components.annotation import ClassIdArray
         from rerun.components.box import Box3DArray
-        from rerun.components.quaternion import QuaternionArray
-        from rerun.components.vec import Vec3DArray
+        from rerun.components.color import ColorRGBAArray
         from rerun.components.label import LabelArray
+        from rerun.components.quaternion import QuaternionArray
+        from rerun.components.radius import RadiusArray
+        from rerun.components.vec import Vec3DArray
 
         comps = {}
 
