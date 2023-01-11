@@ -77,7 +77,7 @@ impl ScenePart for ImagesPart {
                         .radius(Size::new_points(paint_props.fg_stroke.width * 0.5));
                 }
 
-                let legend = Some(annotations.clone());
+                let legend = annotations.clone();
                 let tensor_view =
                     ctx.cache
                         .image

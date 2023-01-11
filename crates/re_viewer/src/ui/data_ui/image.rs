@@ -188,7 +188,7 @@ pub fn show_zoomed_image_region(
                 if let Some(raw_value) = tensor_view.tensor.get(&[y, x]) {
                     ui.monospace(format!("Raw value: {}", raw_value.as_f64()));
 
-                    if let (TensorDataMeaning::ClassId, Some(annotations), Some(u16_val)) = (
+                    if let (TensorDataMeaning::ClassId, annotations, Some(u16_val)) = (
                         tensor_view.tensor.meaning,
                         tensor_view.annotations,
                         raw_value.try_as_u16(),
