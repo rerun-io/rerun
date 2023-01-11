@@ -123,7 +123,8 @@ pub struct SceneSpatial {
     /// Number of 3d primitives logged, used for heuristics.
     num_logged_3d_objects: usize,
 
-    // TODO: various
+    /// All space cameras in this scene.
+    /// TODO(andreas): Does this belong to [`SceneSpatialUiData`]?
     pub space_cameras: Vec<SpaceCamera3D>,
 }
 

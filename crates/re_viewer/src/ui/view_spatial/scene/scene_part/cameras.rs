@@ -102,8 +102,9 @@ impl CamerasPart {
         scene: &mut SceneSpatial,
         obj_path: &ObjPath,
         transforms: &TransformCache,
-        instance: InstanceIdHash,
-        hovered_instance: InstanceIdHash,
+        // TODO(andreas): Don't need instance & hovered instances *yet* since most of the primitive handling is delayed.
+        _instance: InstanceIdHash,
+        _hovered_instance: InstanceIdHash,
         pinhole: Pinhole,
         view_coordinates: ViewCoordinates,
     ) {
@@ -127,6 +128,12 @@ impl CamerasPart {
             return;
         };
 
+        // Actual primitives are generated later.
+        // Currently, we need information about viewport to display it correctly.
+        // TODO(andreas): Would be great if we add all the lines etc. right away!
+        //                  Let's attempt this as part of
+        //                  https://github.com/rerun-io/rerun/issues/681 (Improve camera frustum length heuristic & editability)
+        //                  and https://github.com/rerun-io/rerun/issues/686 (Replace camera mesh with expressive camera gizmo (extension of current frustum)
         scene.space_cameras.push(SpaceCamera3D {
             obj_path: obj_path.clone(),
             instance_index_hash: re_log_types::IndexHash::NONE,
