@@ -591,6 +591,7 @@ fn show_data_over_time(
         let num_messages: usize = stretch.msg_ids.iter().map(|l| l.len()).sum();
         let radius = 2.5 * (1.0 + 0.5 * (num_messages as f32).log10());
         let radius = radius.at_most(full_width_rect.height() / 3.0);
+        debug_assert!(radius.is_finite());
 
         let x = (stretch.start_x + stop_x) * 0.5;
         let pos = scatter.add(x, radius, (full_width_rect.top(), full_width_rect.bottom()));
@@ -642,6 +643,9 @@ fn show_data_over_time(
     for (&time, msg_ids) in
         messages_over_time.range(visible_time_range.min..=visible_time_range.max)
     {
+        if msg_ids.is_empty() {
+            continue;
+        }
         let time_real = TimeReal::from(time);
 
         let selected = selected_time_range.map_or(true, |range| range.contains(time_real));
