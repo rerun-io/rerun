@@ -287,6 +287,11 @@ impl DataStore {
         self.cluster_key
     }
 
+    /// Lookup the datatype of a component
+    pub fn lookup_data_type(&self, component: &ComponentName) -> Option<&DataType> {
+        self.components.get(component).map(|c| &c.datatype)
+    }
+
     /// Returns the number of timeless index rows stored across this entire store, i.e. the sum of
     /// the number of rows across all of its timeless index tables.
     pub fn total_timeless_index_rows(&self) -> u64 {

@@ -3,9 +3,9 @@ use nohash_hasher::{IntMap, IntSet};
 
 use re_log_types::{
     field_types::{Instance, Scalar, TextEntry},
-    msg_bundle::{Component as _, MsgBundle},
-    objects, ArrowMsg, BatchIndex, BeginRecordingMsg, DataMsg, DataPath, DataVec, LogMsg,
-    LoggedData, MsgId, ObjPath, ObjPathHash, ObjTypePath, ObjectType, PathOp, PathOpMsg,
+    msg_bundle::{Component as _, ComponentBundle, MsgBundle},
+    objects, ArrowMsg, BatchIndex, BeginRecordingMsg, DataMsg, DataPath, DataVec, FieldOrComponent,
+    LogMsg, LoggedData, MsgId, ObjPath, ObjPathHash, ObjTypePath, ObjectType, PathOp, PathOpMsg,
     RecordingId, RecordingInfo, TimeInt, TimePoint, Timeline, TypeMsg,
 };
 
@@ -162,12 +162,25 @@ impl ObjDb {
                 continue;
             }
             //TODO(jleibs): Actually handle pending clears
-            let _pending_clears = self.tree.add_data_msg(
+            let pending_clears = self.tree.add_data_msg(
                 msg.msg_id,
                 &msg_bundle.time_point,
                 &DataPath::new_arrow(msg_bundle.obj_path.clone(), component.name),
                 None,
             );
+
+            for (msg_id, time_point) in pending_clears {
+                // TODO(jleibs): Faster empty-array creation
+                let bundle =
+                    ComponentBundle::new_empty(component.name, component.data_type().clone());
+                let msg_bundle = MsgBundle::new(
+                    msg_id,
+                    msg_bundle.obj_path.clone(),
+                    time_point.clone(),
+                    vec![bundle],
+                );
+                self.arrow_store.insert(&msg_bundle).ok();
+            }
         }
 
         self.arrow_store.insert(&msg_bundle).map_err(Into::into)
@@ -177,26 +190,42 @@ impl ObjDb {
         let cleared_paths = self.tree.add_path_op(msg_id, time_point, path_op);
 
         for (data_path, data_type, mono_or_multi) in cleared_paths {
-            if !objects::META_FIELDS.contains(&data_path.field_name.as_str()) {
-                match mono_or_multi {
-                    crate::MonoOrMulti::Mono => {
-                        self.add_data_msg(
+            if data_path.is_arrow() {
+                if let FieldOrComponent::Component(component) = data_path.field_name {
+                    if let Some(data_type) = self.arrow_store.lookup_data_type(&component) {
+                        // TODO(jleibs): Faster empty-array creation
+                        let bundle = ComponentBundle::new_empty(component, data_type.clone());
+                        let msg_bundle = MsgBundle::new(
                             msg_id,
-                            time_point,
-                            &data_path,
-                            &LoggedData::Null(data_type),
+                            data_path.obj_path,
+                            time_point.clone(),
+                            vec![bundle],
                         );
+                        self.arrow_store.insert(&msg_bundle).ok();
                     }
-                    crate::MonoOrMulti::Multi => {
-                        self.add_data_msg(
-                            msg_id,
-                            time_point,
-                            &data_path,
-                            &LoggedData::Batch {
-                                indices: BatchIndex::SequentialIndex(0),
-                                data: DataVec::empty_from_data_type(data_type),
-                            },
-                        );
+                }
+            } else {
+                if !objects::META_FIELDS.contains(&data_path.field_name.as_str()) {
+                    match mono_or_multi {
+                        crate::MonoOrMulti::Mono => {
+                            self.add_data_msg(
+                                msg_id,
+                                time_point,
+                                &data_path,
+                                &LoggedData::Null(data_type),
+                            );
+                        }
+                        crate::MonoOrMulti::Multi => {
+                            self.add_data_msg(
+                                msg_id,
+                                time_point,
+                                &data_path,
+                                &LoggedData::Batch {
+                                    indices: BatchIndex::SequentialIndex(0),
+                                    data: DataVec::empty_from_data_type(data_type),
+                                },
+                            );
+                        }
                     }
                 }
             }
