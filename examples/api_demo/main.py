@@ -156,8 +156,8 @@ def transforms_rigid_3d() -> None:
     # Planetary motion is typically in the XY plane.
     rerun.log_view_coordinates("transforms3d", up="+Z", timeless=True)
     rerun.log_view_coordinates("transforms3d/sun", up="+Z", timeless=True)
-    rerun.log_view_coordinates("transforms3d/planet", up="+Z", timeless=True)
-    rerun.log_view_coordinates("transforms3d/planet/moon", up="+Z", timeless=True)
+    rerun.log_view_coordinates("transforms3d/sun/planet", up="+Z", timeless=True)
+    rerun.log_view_coordinates("transforms3d/sun/planet/moon", up="+Z", timeless=True)
 
     # All are in the center of their own space:
     rerun.log_point("transforms3d/sun", [0.0, 0.0, 0.0], radius=1.0, color=[255, 200, 10])
