@@ -19,6 +19,13 @@ use crate::msg_bundle::Component;
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Instance(pub u64);
 
+impl Instance {
+    #[inline]
+    pub fn splat() -> Instance {
+        Self(u64::MAX)
+    }
+}
+
 arrow_enable_vec_for_type!(Instance);
 
 impl std::fmt::Display for Instance {

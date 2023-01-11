@@ -180,10 +180,12 @@ def log_points(
     if EXP_ARROW.arrow_log_gate():
         from rerun.components.annotation import ClassIdArray
         from rerun.components.color import ColorRGBAArray
+        from rerun.components.instance import InstanceArray
         from rerun.components.label import LabelArray
         from rerun.components.point import Point2DArray, Point3DArray
 
         comps = {}
+        splats = {}
 
         if positions.any():
             if positions.shape[1] == 2:
@@ -196,8 +198,9 @@ def log_points(
         if len(colors):
             # TODO(jleibs) remove once we have storage-side splats
             if len(colors.shape) == 1:
-                colors = np.broadcast_to(colors.reshape(1, len(colors)), (len(positions), len(colors)))
-            comps["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)  # type: ignore[arg-type]
+                splats["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors.reshape(1, len(colors)))  # type: ignore[arg-type]
+            else:
+                comps["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)  # type: ignore[arg-type]
 
         if len(radii):
             # TODO(jleibs) remove once we have storage-side splats
@@ -218,4 +221,8 @@ def log_points(
                 keypoint_ids = np.broadcast_to(keypoint_ids, (len(positions),))
             comps["rerun.keypoint_id"] = ClassIdArray.from_numpy(keypoint_ids)
 
-        bindings.log_arrow_msg(f"arrow/{obj_path}", components=comps, timeless=timeless)
+        bindings.log_arrow_msg(f"arrow/{obj_path}", components=comps)
+
+        if splats:
+            splats["rerun.instance"] = InstanceArray.splat()
+            bindings.log_arrow_msg(f"arrow/{obj_path}", components=splats, timeless=timeless)
