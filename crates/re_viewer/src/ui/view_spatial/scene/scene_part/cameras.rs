@@ -1,4 +1,3 @@
-use glam::Mat4;
 use re_data_store::{query_transform, InstanceIdHash, ObjPath};
 use re_log_types::{IndexHash, Pinhole, Transform};
 use re_query::{query_entity_with_primary, QueryError};

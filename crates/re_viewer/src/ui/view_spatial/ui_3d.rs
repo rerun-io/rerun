@@ -53,7 +53,7 @@ pub struct View3DState {
     #[serde(skip)]
     pub(crate) space_specs: SpaceSpecs,
     #[serde(skip)]
-    space_camera: Vec<SpaceCamera3D>,
+    space_camera: Vec<SpaceCamera3D>, // TODO(andreas): remove this once camera meshes are gone
 }
 
 impl Default for View3DState {
@@ -339,7 +339,7 @@ pub fn view_3d(
 ) -> egui::Response {
     crate::profile_function!();
 
-    state.state_3d.space_camera = scene.space_cameras.to_vec();
+    state.state_3d.space_camera = scene.space_cameras.clone();
 
     let (rect, mut response) =
         ui.allocate_at_least(ui.available_size(), egui::Sense::click_and_drag());

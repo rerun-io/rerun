@@ -4,10 +4,7 @@ use macaw::BoundingBox;
 use re_data_store::{InstanceId, InstanceIdHash, ObjPath, ObjectsProperties};
 use re_format::format_f32;
 
-use crate::misc::{
-    space_info::{SpaceInfo, SpacesInfo},
-    ViewerContext,
-};
+use crate::misc::{space_info::SpaceInfo, ViewerContext};
 
 use super::{ui_2d::View2DState, ui_3d::View3DState, SceneSpatial, SpaceSpecs};
 
@@ -252,7 +249,6 @@ impl ViewSpatialState {
         ui: &mut egui::Ui,
         space: &ObjPath,
         scene: SceneSpatial,
-        spaces_info: &SpacesInfo,
         space_info: &SpaceInfo,
         objects_properties: &ObjectsProperties,
     ) -> egui::Response {

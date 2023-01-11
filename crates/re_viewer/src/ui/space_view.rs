@@ -432,7 +432,6 @@ impl SpaceView {
                     ctx,
                     ui,
                     &self.space_path,
-                    spaces_info,
                     reference_space_info,
                     scene,
                     self.data_blueprint.data_blueprints_projected(),
@@ -477,27 +476,18 @@ pub(crate) struct ViewState {
 
 impl ViewState {
     // TODO(andreas): split into smaller parts, some of it shouldn't be part of the ui path and instead scene loading.
-    #[allow(clippy::too_many_arguments)]
     fn ui_spatial(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         space: &ObjPath,
-        spaces_info: &SpacesInfo,
         space_info: &SpaceInfo,
         scene: view_spatial::SceneSpatial,
         obj_properties: &ObjectsProperties,
     ) {
         ui.vertical(|ui| {
-            self.state_spatial.view_spatial(
-                ctx,
-                ui,
-                space,
-                scene,
-                spaces_info,
-                space_info,
-                obj_properties,
-            );
+            self.state_spatial
+                .view_spatial(ctx, ui, space, scene, space_info, obj_properties);
         });
     }
 
