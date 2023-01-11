@@ -206,32 +206,29 @@ impl ObjDb {
                         );
                         self.arrow_store.insert(&msg_bundle).ok();
                         // Also update the object tree with the clear-event
-                        self.tree
-                            .add_data_msg(msg_id, &time_point, &data_path, None);
+                        self.tree.add_data_msg(msg_id, time_point, &data_path, None);
                     }
                 }
-            } else {
-                if !objects::META_FIELDS.contains(&data_path.field_name.as_str()) {
-                    match mono_or_multi {
-                        crate::MonoOrMulti::Mono => {
-                            self.add_data_msg(
-                                msg_id,
-                                time_point,
-                                &data_path,
-                                &LoggedData::Null(data_type),
-                            );
-                        }
-                        crate::MonoOrMulti::Multi => {
-                            self.add_data_msg(
-                                msg_id,
-                                time_point,
-                                &data_path,
-                                &LoggedData::Batch {
-                                    indices: BatchIndex::SequentialIndex(0),
-                                    data: DataVec::empty_from_data_type(data_type),
-                                },
-                            );
-                        }
+            } else if !objects::META_FIELDS.contains(&data_path.field_name.as_str()) {
+                match mono_or_multi {
+                    crate::MonoOrMulti::Mono => {
+                        self.add_data_msg(
+                            msg_id,
+                            time_point,
+                            &data_path,
+                            &LoggedData::Null(data_type),
+                        );
+                    }
+                    crate::MonoOrMulti::Multi => {
+                        self.add_data_msg(
+                            msg_id,
+                            time_point,
+                            &data_path,
+                            &LoggedData::Batch {
+                                indices: BatchIndex::SequentialIndex(0),
+                                data: DataVec::empty_from_data_type(data_type),
+                            },
+                        );
                     }
                 }
             }

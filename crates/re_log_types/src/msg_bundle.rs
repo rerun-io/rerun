@@ -105,7 +105,7 @@ pub struct ComponentBundle {
 
 impl ComponentBundle {
     pub fn new_empty(name: ComponentName, data_type: DataType) -> Self {
-        let empty_array = wrap_in_listarray(new_empty_array(data_type.clone())).boxed();
+        let empty_array = wrap_in_listarray(new_empty_array(data_type)).boxed();
         Self {
             name,
             value: empty_array,
