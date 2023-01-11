@@ -287,7 +287,7 @@ impl DataStore {
         self.cluster_key
     }
 
-    /// Lookup the datatype of a component
+    /// Lookup the arrow `DataType` of a `Component`
     pub fn lookup_data_type(&self, component: &ComponentName) -> Option<&DataType> {
         self.components.get(component).map(|c| &c.datatype)
     }
