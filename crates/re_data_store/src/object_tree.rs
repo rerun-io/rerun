@@ -238,7 +238,11 @@ impl ObjectTree {
                     .entry(*timeline)
                     .or_insert_with(|| {
                         new_timeline = true;
-                        [(TimeInt::BEGINNING, self.timeless_msgs.clone())].into()
+                        if self.timeless_msgs.is_empty() {
+                            Default::default()
+                        } else {
+                            [(TimeInt::BEGINNING, self.timeless_msgs.clone())].into()
+                        }
                     })
                     .entry(*time_value)
                     .or_default()
@@ -364,7 +368,13 @@ impl DataColumns {
             for (timeline, time_value) in time_point.iter() {
                 self.times
                     .entry(*timeline)
-                    .or_insert_with(|| [(TimeInt::BEGINNING, self.timeless_msgs.clone())].into())
+                    .or_insert_with(|| {
+                        if self.timeless_msgs.is_empty() {
+                            Default::default()
+                        } else {
+                            [(TimeInt::BEGINNING, self.timeless_msgs.clone())].into()
+                        }
+                    })
                     .entry(*time_value)
                     .or_default()
                     .insert(msg_id);
@@ -388,9 +398,13 @@ impl DataColumns {
         // For any timeline in `time_point` populate an initial entry from the current
         // `timeless_msgs` seed.
         for (timeline, _) in time_point.iter() {
-            self.times
-                .entry(*timeline)
-                .or_insert_with(|| [(TimeInt::BEGINNING, self.timeless_msgs.clone())].into());
+            self.times.entry(*timeline).or_insert_with(|| {
+                if self.timeless_msgs.is_empty() {
+                    Default::default()
+                } else {
+                    [(TimeInt::BEGINNING, self.timeless_msgs.clone())].into()
+                }
+            });
         }
     }
 
