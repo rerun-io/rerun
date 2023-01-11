@@ -5,9 +5,7 @@ use glam::Vec3;
 use itertools::Itertools;
 
 use re_arrow_store::LatestAtQuery;
-use re_data_store::{
-    query::visit_type_data_2, FieldName, InstanceIdHash, ObjPath, ObjectProps,
-};
+use re_data_store::{query::visit_type_data_2, FieldName, InstanceIdHash, ObjPath, ObjectProps};
 use re_log_types::{
     field_types::{ColorRGBA, Tensor, TensorTrait},
     msg_bundle::Component,
@@ -42,11 +40,10 @@ fn push_tensor_texture<T: AsDynamicImage>(
     tensor: &T,
     tint: egui::Rgba,
 ) {
-    let legend = Some(annotations.clone());
-    let tensor_view = ctx
-        .cache
-        .image
-        .get_view_with_annotations(tensor, &legend, ctx.render_ctx);
+    let tensor_view =
+        ctx.cache
+            .image
+            .get_view_with_annotations(tensor, annotations, ctx.render_ctx);
 
     if let Some(texture_handle) = tensor_view.texture_handle {
         let (h, w) = (tensor.shape()[0].size as f32, tensor.shape()[1].size as f32);

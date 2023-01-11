@@ -14,8 +14,8 @@ use re_log_types::{
 
 use crate::{
     ArrayExt as _, ComponentBucket, ComponentTable, DataStore, DataStoreConfig, IndexBucket,
-    IndexBucketIndices, IndexTable, PersistentComponentTable, PersistentIndexTable, RowIndexErased,
-    TimeIndex,
+    IndexBucketIndices, IndexTable, PersistentComponentTable, PersistentIndexTable, RowIndex,
+    RowIndexKind, TimeIndex,
 };
 
 // --- Data store ---
@@ -179,7 +179,7 @@ impl DataStore {
         row_nr: usize,
         cluster_comp_pos: Option<usize>,
         components: &[ComponentBundle],
-        row_indices: &mut IntMap<ComponentName, RowIndexErased>,
+        row_indices: &mut IntMap<ComponentName, RowIndex>,
     ) -> WriteResult<()> {
         let (cluster_row_idx, cluster_len) = self.get_or_create_cluster_component(
             row_nr,
@@ -200,7 +200,7 @@ impl DataStore {
             // as-is in the index.
             row_indices.insert(
                 Self::insert_id_key(),
-                RowIndexErased::from_u64(self.insert_id),
+                RowIndex::from_u63(RowIndexKind::Temporal, self.insert_id),
             );
         }
 
@@ -254,7 +254,7 @@ impl DataStore {
         row_nr: usize,
         cluster_comp_pos: Option<usize>,
         components: &[ComponentBundle],
-        row_indices: &mut IntMap<ComponentName, RowIndexErased>,
+        row_indices: &mut IntMap<ComponentName, RowIndex>,
     ) -> WriteResult<()> {
         let (cluster_row_idx, cluster_len) =
             self.get_or_create_cluster_component(row_nr, cluster_comp_pos, components, time_point)?;
@@ -271,7 +271,7 @@ impl DataStore {
             // as-is in the index.
             row_indices.insert(
                 Self::insert_id_key(),
-                RowIndexErased::from_u64(self.insert_id),
+                RowIndex::from_u63(RowIndexKind::Temporal, self.insert_id),
             );
         }
 
@@ -328,21 +328,14 @@ impl DataStore {
         cluster_comp_pos: Option<usize>,
         components: &[ComponentBundle],
         time_point: &TimePoint,
-    ) -> WriteResult<(RowIndexErased, usize)> {
-        enum RowIndexOrData {
-            RowIndex(RowIndexErased),
-            Data(Box<dyn Array>),
+    ) -> WriteResult<(RowIndex, usize)> {
+        enum ClusterData {
+            Cached(RowIndex),
+            GenData(Box<dyn Array>),
+            UserData(Box<dyn Array>),
         }
 
-        // We can't ever have temporal indices referring to timeless component rows, and
-        // vice-versa!
-        let cluster_comp_cache = if time_point.is_timeless() {
-            &mut self.timeless_cluster_comp_cache
-        } else {
-            &mut self.cluster_comp_cache
-        };
-
-        let (found, comp, len) = if let Some(cluster_comp_pos) = cluster_comp_pos {
+        let (cluster_len, cluster_data) = if let Some(cluster_comp_pos) = cluster_comp_pos {
             // We found a component with a name matching the cluster key's, let's make sure it's
             // valid (dense, sorted, no duplicates) and use that if so.
 
@@ -365,9 +358,8 @@ impl DataStore {
             }
 
             (
-                true,
-                RowIndexOrData::Data(cluster_comp.value.clone() /* shallow */),
                 len,
+                ClusterData::UserData(cluster_comp.value.clone() /* shallow */),
             )
         } else {
             // The caller has not specified any cluster component, and so we'll have to generate
@@ -380,25 +372,42 @@ impl DataStore {
                 .first()
                 .map_or(0, |comp| comp.value.get_child_length(0));
 
-            if let Some(row_idx) = cluster_comp_cache.get(&len) {
+            if let Some(row_idx) = self.cluster_comp_cache.get(&len) {
                 // Cache hit! Re-use that row index.
-                (false, RowIndexOrData::RowIndex(*row_idx), len)
+                (len, ClusterData::Cached(*row_idx))
             } else {
                 // Cache miss! Craft a new u64 array from the ground up.
                 let data = UInt64Array::from_vec((0..len as u64).collect_vec()).boxed();
                 let data = wrap_in_listarray(data).to_boxed();
-                (false, RowIndexOrData::Data(data), len)
+                (len, ClusterData::GenData(data))
             }
         };
 
-        match comp {
-            RowIndexOrData::RowIndex(row_idx) => Ok((row_idx, len)),
-            RowIndexOrData::Data(data) => {
+        match cluster_data {
+            ClusterData::Cached(row_idx) => Ok((row_idx, cluster_len)),
+            ClusterData::GenData(data) => {
+                // We had to generate a cluster component of the given length for the first time,
+                // let's store it forever.
+
+                let table = self
+                    .timeless_components
+                    .entry(self.cluster_key)
+                    .or_insert_with(|| {
+                        PersistentComponentTable::new(
+                            self.cluster_key,
+                            ListArray::<i32>::get_child_type(data.data_type()),
+                        )
+                    });
+                let row_idx = table.push(&*data);
+
+                self.cluster_comp_cache.insert(cluster_len, row_idx);
+
+                Ok((row_idx, cluster_len))
+            }
+            ClusterData::UserData(data) => {
                 // If we didn't hit the cache, then we have to insert this cluster component in
                 // the right tables, just like any other component.
 
-                // We can't ever have temporal indices referring to timeless component rows, and
-                // vice-versa!
                 let row_idx = if time_point.is_timeless() {
                     let table = self
                         .timeless_components
@@ -420,14 +429,7 @@ impl DataStore {
                     table.push(&self.config, time_point, &*data)
                 };
 
-                // If we auto-generated the cluster component, then keep its row index around for
-                // the next time we have to insert a component of the same length with a missing
-                // cluster key.
-                if !found {
-                    cluster_comp_cache.insert(len, row_idx);
-                }
-
-                Ok((row_idx, len))
+                Ok((row_idx, cluster_len))
             }
         }
     }
@@ -451,10 +453,7 @@ impl PersistentIndexTable {
     }
 
     #[allow(clippy::unnecessary_wraps)]
-    pub fn insert(
-        &mut self,
-        row_indices: &IntMap<ComponentName, RowIndexErased>,
-    ) -> anyhow::Result<()> {
+    pub fn insert(&mut self, row_indices: &IntMap<ComponentName, RowIndex>) -> anyhow::Result<()> {
         // 2-way merge, step1: left-to-right
         //
         // push new row indices to their associated secondary index
@@ -504,7 +503,7 @@ impl IndexTable {
         &mut self,
         config: &DataStoreConfig,
         time: TimeInt,
-        indices: &IntMap<ComponentName, RowIndexErased>,
+        indices: &IntMap<ComponentName, RowIndex>,
     ) -> anyhow::Result<()> {
         // borrowck workaround
         let timeline = self.timeline;
@@ -641,7 +640,7 @@ impl IndexBucket {
     pub fn insert(
         &mut self,
         time: TimeInt,
-        row_indices: &IntMap<ComponentName, RowIndexErased>,
+        row_indices: &IntMap<ComponentName, RowIndex>,
     ) -> anyhow::Result<()> {
         let mut guard = self.indices.write();
         let IndexBucketIndices {
@@ -999,7 +998,7 @@ impl PersistentComponentTable {
     /// ```
     //
     // TODO(#589): support for batched row component insertions
-    pub fn push(&mut self, rows_single: &dyn Array) -> RowIndexErased {
+    pub fn push(&mut self, rows_single: &dyn Array) -> RowIndex {
         debug_assert!(
             ListArray::<i32>::get_child_type(rows_single.data_type()) == &self.datatype,
             "trying to insert data of the wrong datatype in a component table, \
@@ -1020,7 +1019,7 @@ impl PersistentComponentTable {
         // TODO(#589): support for non-unit-length chunks
         self.chunks.push(rows_single.to_boxed()); // shallow
 
-        RowIndexErased::from_u64(self.chunks.len() as u64 - 1)
+        RowIndex::from_u63(RowIndexKind::Timeless, self.chunks.len() as u64 - 1)
     }
 }
 
@@ -1058,7 +1057,7 @@ impl ComponentTable {
         config: &DataStoreConfig,
         time_point: &TimePoint,
         rows_single: &dyn Array,
-    ) -> RowIndexErased {
+    ) -> RowIndex {
         debug_assert!(
             ListArray::<i32>::get_child_type(rows_single.data_type()) == &self.datatype,
             "trying to insert data of the wrong datatype in a component table, \
@@ -1108,7 +1107,8 @@ impl ComponentTable {
         //   offset 0, thus this cannot fail.
         // - If the table has just overflowed, then we've just pushed a bucket to the dequeue.
         let active_bucket = self.buckets.back_mut().unwrap();
-        let row_idx = RowIndexErased::from_u64(
+        let row_idx = RowIndex::from_u63(
+            RowIndexKind::Temporal,
             active_bucket.push(time_point, rows_single) + active_bucket.row_offset,
         );
 

@@ -146,9 +146,8 @@ impl Pinhole {
     ///
     /// [see definition of intrinsic matrix](https://en.wikipedia.org/wiki/Camera_resectioning#Intrinsic_parameters)
     #[inline]
-    #[cfg(feature = "glam")]
-    pub fn focal_length_in_pixels(&self) -> glam::Vec2 {
-        glam::vec2(self.image_from_cam[0][0], self.image_from_cam[1][1])
+    pub fn focal_length_in_pixels(&self) -> Vec2D {
+        [self.image_from_cam[0][0], self.image_from_cam[1][1]].into()
     }
 
     /// Focal length.

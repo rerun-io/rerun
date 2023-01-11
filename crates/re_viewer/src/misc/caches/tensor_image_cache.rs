@@ -12,7 +12,7 @@ use re_renderer::{
     RenderContext,
 };
 
-use crate::ui::{Annotations, DefaultColor};
+use crate::ui::{Annotations, DefaultColor, MISSING_ANNOTATIONS};
 
 // ---
 
@@ -31,7 +31,7 @@ pub struct TensorImageView<'store, 'cache, T> {
     pub tensor: &'store T,
 
     /// Annotations used to create the view
-    pub annotations: &'store Option<Arc<Annotations>>,
+    pub annotations: &'store Arc<Annotations>,
 
     /// DynamicImage helper for things like zoom
     pub dynamic_img: Option<&'cache DynamicImage>,
@@ -48,7 +48,7 @@ pub struct TensorImageView<'store, 'cache, T> {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 struct ImageCacheKey {
     tensor_id: TensorId,
-    annotation_msg_id: Option<MsgId>,
+    annotation_msg_id: MsgId,
 }
 impl nohash_hasher::IsEnabled for ImageCacheKey {}
 
@@ -58,13 +58,7 @@ impl std::hash::Hash for ImageCacheKey {
     #[inline]
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         let msg_hash = self.tensor_id.0.as_u128() as u64;
-
-        let annotation_hash = if let Some(annotation_msg_id) = self.annotation_msg_id {
-            (annotation_msg_id.as_u128() >> 1) as u64
-        } else {
-            0
-        };
-
+        let annotation_hash = (self.annotation_msg_id.as_u128() >> 1) as u64;
         state.write_u64(msg_hash ^ annotation_hash);
     }
 }
@@ -80,14 +74,14 @@ impl ImageCache {
     pub(crate) fn get_view_with_annotations<'store, 'cache, T: AsDynamicImage>(
         &'cache mut self,
         tensor: &'store T,
-        annotations: &'store Option<Arc<Annotations>>,
+        annotations: &'store Arc<Annotations>,
         render_ctx: &mut RenderContext,
     ) -> TensorImageView<'store, 'cache, T> {
         let ci = self
             .images
             .entry(ImageCacheKey {
                 tensor_id: tensor.id(),
-                annotation_msg_id: annotations.as_ref().map(|seg_map| seg_map.msg_id),
+                annotation_msg_id: annotations.msg_id,
             })
             .or_insert_with(|| {
                 let debug_name = format!("tensor {:?}", tensor.shape());
@@ -111,7 +105,7 @@ impl ImageCache {
         tensor: &'store T,
         render_ctx: &mut RenderContext,
     ) -> TensorImageView<'store, 'cache, T> {
-        self.get_view_with_annotations(tensor, &None, render_ctx)
+        self.get_view_with_annotations(tensor, &MISSING_ANNOTATIONS, render_ctx)
     }
 
     /// Call once per frame to (potentially) flush the cache.
@@ -172,7 +166,7 @@ impl CachedImage {
         render_ctx: &mut RenderContext,
         debug_name: String,
         tensor: &impl AsDynamicImage,
-        annotations: &Option<Arc<Annotations>>,
+        annotations: &Arc<Annotations>,
     ) -> Self {
         crate::profile_function!();
 
@@ -234,27 +228,18 @@ impl CachedImage {
 
 //TODO(john) this should live in re_log_types along with annotations-related stuff
 pub trait AsDynamicImage: field_types::TensorTrait {
-    fn as_dynamic_image(
-        &self,
-        annotations: &Option<Arc<Annotations>>,
-    ) -> anyhow::Result<DynamicImage>;
+    fn as_dynamic_image(&self, annotations: &Arc<Annotations>) -> anyhow::Result<DynamicImage>;
 }
 
 impl AsDynamicImage for field_types::Tensor {
-    fn as_dynamic_image(
-        &self,
-        annotations: &Option<Arc<Annotations>>,
-    ) -> anyhow::Result<DynamicImage> {
+    fn as_dynamic_image(&self, annotations: &Arc<Annotations>) -> anyhow::Result<DynamicImage> {
         let classic_tensor = ClassicTensor::from(self);
         classic_tensor.as_dynamic_image(annotations)
     }
 }
 
 impl AsDynamicImage for ClassicTensor {
-    fn as_dynamic_image(
-        &self,
-        annotations: &Option<Arc<Annotations>>,
-    ) -> anyhow::Result<DynamicImage> {
+    fn as_dynamic_image(&self, annotations: &Arc<Annotations>) -> anyhow::Result<DynamicImage> {
         let tensor = self;
         crate::profile_function!();
         use anyhow::Context as _;
@@ -295,8 +280,8 @@ impl AsDynamicImage for ClassicTensor {
                     "Tensor data length doesn't match tensor shape and dtype"
                 );
 
-                match (annotations, depth, tensor.dtype(), tensor.meaning) {
-                    (Some(annotations), 1, TensorDataType::U8, TensorDataMeaning::ClassId) => {
+                match (depth, tensor.dtype, tensor.meaning) {
+                    (1, TensorDataType::U8, TensorDataMeaning::ClassId) => {
                         // Apply annotation mapping to raw bytes interpreted as u8
                         image::RgbaImage::from_raw(
                             width,
@@ -315,7 +300,7 @@ impl AsDynamicImage for ClassicTensor {
                         .context("Bad RGBA8")
                         .map(DynamicImage::ImageRgba8)
                     }
-                    (Some(annotations), 1, TensorDataType::U16, TensorDataMeaning::ClassId) => {
+                    (1, TensorDataType::U16, TensorDataMeaning::ClassId) => {
                         // Apply annotations mapping to bytes interpreted as u16
                         image::RgbaImage::from_raw(
                             width,
@@ -334,19 +319,19 @@ impl AsDynamicImage for ClassicTensor {
                         .context("Bad RGBA8")
                         .map(DynamicImage::ImageRgba8)
                     }
-                    (_, 1, TensorDataType::U8, _) => {
+                    (1, TensorDataType::U8, _) => {
                         // TODO(emilk): we should read some meta-data to check if this is luminance or alpha.
                         image::GrayImage::from_raw(width, height, bytes.to_vec())
                             .context("Bad Luminance8")
                             .map(DynamicImage::ImageLuma8)
                     }
-                    (_, 1, TensorDataType::U16, _) => {
+                    (1, TensorDataType::U16, _) => {
                         // TODO(emilk): we should read some meta-data to check if this is luminance or alpha.
                         Gray16Image::from_raw(width, height, bytemuck::cast_slice(bytes).to_vec())
                             .context("Bad Luminance16")
                             .map(DynamicImage::ImageLuma16)
                     }
-                    (_, 1, TensorDataType::F32, _) => {
+                    (1, TensorDataType::F32, _) => {
                         let assume_depth = true; // TODO(emilk): we should read some meta-data to check if this is luminance, alpha or a depth map.
 
                         if assume_depth {
@@ -402,17 +387,17 @@ impl AsDynamicImage for ClassicTensor {
                         }
                     }
 
-                    (_, 3, TensorDataType::U8, _) => {
+                    (3, TensorDataType::U8, _) => {
                         image::RgbImage::from_raw(width, height, bytes.to_vec())
                             .context("Bad RGB8")
                             .map(DynamicImage::ImageRgb8)
                     }
-                    (_, 3, TensorDataType::U16, _) => {
+                    (3, TensorDataType::U16, _) => {
                         Rgb16Image::from_raw(width, height, bytemuck::cast_slice(bytes).to_vec())
                             .context("Bad RGB16 image")
                             .map(DynamicImage::ImageRgb16)
                     }
-                    (_, 3, TensorDataType::F32, _) => {
+                    (3, TensorDataType::F32, _) => {
                         let rgb: &[[f32; 3]] = bytemuck::cast_slice(bytes);
                         let colors: Vec<u8> = rgb
                             .iter()
@@ -428,17 +413,17 @@ impl AsDynamicImage for ClassicTensor {
                             .map(DynamicImage::ImageRgb8)
                     }
 
-                    (_, 4, TensorDataType::U8, _) => {
+                    (4, TensorDataType::U8, _) => {
                         image::RgbaImage::from_raw(width, height, bytes.to_vec())
                             .context("Bad RGBA8")
                             .map(DynamicImage::ImageRgba8)
                     }
-                    (_, 4, TensorDataType::U16, _) => {
+                    (4, TensorDataType::U16, _) => {
                         Rgba16Image::from_raw(width, height, bytemuck::cast_slice(bytes).to_vec())
                             .context("Bad RGBA16 image")
                             .map(DynamicImage::ImageRgba16)
                     }
-                    (_, 4, TensorDataType::F32, _) => {
+                    (4, TensorDataType::F32, _) => {
                         let rgba: &[[f32; 4]] = bytemuck::cast_slice(bytes);
                         let colors: Vec<u8> = rgba
                             .iter()
@@ -454,13 +439,13 @@ impl AsDynamicImage for ClassicTensor {
                             .context("Bad RGBA f32")
                             .map(DynamicImage::ImageRgba8)
                     }
-                    (Some(_), _depth, dtype, meaning @ TensorDataMeaning::ClassId) => {
+                    (_depth, dtype, meaning @ TensorDataMeaning::ClassId) => {
                         anyhow::bail!(
                                 "Shape={shape:?} and dtype={dtype:?} is incompatible with meaning={meaning:?}"
                             )
                     }
 
-                    (_, _depth, dtype, _) => {
+                    (_depth, dtype, _) => {
                         anyhow::bail!(
                                 "Don't know how to turn a tensor of shape={shape:?} and dtype={dtype:?} into an image"
                             )

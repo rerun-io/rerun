@@ -8,6 +8,7 @@ use lazy_static::lazy_static;
 
 use crate::msg_bundle::Component;
 
+mod bbox;
 mod class_id;
 mod color;
 pub mod context;
@@ -15,6 +16,7 @@ pub mod coordinates;
 mod instance;
 mod keypoint_id;
 mod label;
+mod linestrip;
 mod mat;
 mod msg_id;
 mod point;
@@ -28,6 +30,7 @@ mod text_entry;
 mod transform;
 mod vec;
 
+pub use bbox::Box3D;
 pub use class_id::ClassId;
 pub use color::ColorRGBA;
 pub use context::AnnotationContext;
@@ -35,6 +38,7 @@ pub use coordinates::ViewCoordinates;
 pub use instance::Instance;
 pub use keypoint_id::KeypointId;
 pub use label::Label;
+pub use linestrip::{LineStrip2D, LineStrip3D};
 pub use mat::Mat3x3;
 pub use msg_id::MsgId;
 pub use point::{Point2D, Point3D};
@@ -50,13 +54,16 @@ pub use vec::{Vec2D, Vec3D};
 
 lazy_static! {
     //TODO(john) actully use a run-time type registry
-    static ref FIELDS: [Field; 20] = [
+    static ref FIELDS: [Field; 23] = [
         <AnnotationContext as Component>::field(),
+        <Box3D as Component>::field(),
         <ClassId as Component>::field(),
         <ColorRGBA as Component>::field(),
         <Instance as Component>::field(),
         <KeypointId as Component>::field(),
         <Label as Component>::field(),
+        <LineStrip2D as Component>::field(),
+        <LineStrip3D as Component>::field(),
         <MsgId as Component>::field(),
         <Point2D as Component>::field(),
         <Point3D as Component>::field(),

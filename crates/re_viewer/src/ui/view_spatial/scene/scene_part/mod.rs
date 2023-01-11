@@ -21,9 +21,9 @@ mod segments2d;
 
 pub(crate) use arrows3d::Arrows3DPart;
 pub(crate) use boxes2d::{Boxes2DPart, Boxes2DPartClassic};
-pub(crate) use boxes3d::Boxes3DPart;
+pub(crate) use boxes3d::{Boxes3DPart, Boxes3DPartClassic};
 pub(crate) use images::{ImagesPart, ImagesPartClassic};
-pub(crate) use lines3d::Lines3DPart;
+pub(crate) use lines3d::{Lines3DPart, Lines3DPartClassic};
 pub(crate) use meshes::MeshPart;
 pub(crate) use points2d::{Points2DPart, Points2DPartClassic};
 pub(crate) use points3d::{Points3DPart, Points3DPartClassic};

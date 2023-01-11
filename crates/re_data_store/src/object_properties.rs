@@ -53,7 +53,7 @@ impl ObjectProps {
             .unwrap_or_else(|| {
                 let distance = pinhole
                     .focal_length()
-                    .unwrap_or_else(|| pinhole.focal_length_in_pixels().y);
+                    .unwrap_or_else(|| pinhole.focal_length_in_pixels().y());
                 ordered_float::NotNan::new(distance).unwrap_or_default()
             })
             .into()
@@ -62,6 +62,18 @@ impl ObjectProps {
     /// see `pinhole_image_plane_distance()`
     pub fn set_pinhole_image_plane_distance(&mut self, distance: f32) {
         self.pinhole_image_plane_distance = ordered_float::NotNan::new(distance).ok();
+    }
+
+    /// Multiply/and these together.
+    pub fn with_child(&self, child: &Self) -> Self {
+        Self {
+            visible: self.visible && child.visible,
+            visible_history: self.visible_history.with_child(&child.visible_history),
+            interactive: self.interactive && child.interactive,
+            pinhole_image_plane_distance: child
+                .pinhole_image_plane_distance
+                .or(self.pinhole_image_plane_distance),
+        }
     }
 }
 
@@ -88,6 +100,16 @@ pub struct ExtraQueryHistory {
 
     /// Zero = off.
     pub sequences: i64,
+}
+
+impl ExtraQueryHistory {
+    /// Multiply/and these together.
+    fn with_child(&self, child: &Self) -> Self {
+        Self {
+            nanos: self.nanos.max(child.nanos),
+            sequences: self.sequences.max(child.sequences),
+        }
+    }
 }
 
 // ----------------------------------------------------------------------------

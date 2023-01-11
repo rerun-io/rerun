@@ -304,9 +304,7 @@ fn test_ndarray() {
 
 #[test]
 fn test_arrow() {
-    use arrow2_convert::{
-        deserialize::TryIntoCollection, serialize::TryIntoArrow,
-    };
+    use arrow2_convert::{deserialize::TryIntoCollection, serialize::TryIntoArrow};
 
     let tensors_in = vec![
         Tensor {
