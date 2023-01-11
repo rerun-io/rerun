@@ -335,17 +335,16 @@ pub fn view_3d(
     state: &mut ViewSpatialState,
     space: &ObjPath,
     mut scene: SceneSpatial,
-    space_cameras: &[SpaceCamera3D],
     objects_properties: &ObjectsProperties,
 ) -> egui::Response {
     crate::profile_function!();
 
-    state.state_3d.space_camera = space_cameras.to_vec();
+    state.state_3d.space_camera = scene.space_cameras.to_vec();
 
     let (rect, mut response) =
         ui.allocate_at_least(ui.available_size(), egui::Sense::click_and_drag());
 
-    let tracking_camera = tracking_camera(ctx, space_cameras);
+    let tracking_camera = tracking_camera(ctx, &scene.space_cameras);
     let orbit_eye =
         state
             .state_3d
@@ -355,6 +354,7 @@ pub fn view_3d(
     let orbit_eye = *orbit_eye;
     let eye = orbit_eye.to_eye();
 
+    // TODO: this should happen in the scene!
     {
         let hovered_instance_hash = state
             .hovered_instance
@@ -365,7 +365,6 @@ pub fn view_3d(
             &state.scene_bbox_accum,
             rect.size(),
             &eye,
-            space_cameras,
             hovered_instance_hash,
             objects_properties,
         );
@@ -451,13 +450,13 @@ pub fn view_3d(
         // Clicking the last hovered object.
         if let Some(instance_id) = &state.hovered_instance {
             if ui.input().pointer.any_click() {
-                click_object(ctx, space_cameras, &mut state.state_3d, instance_id);
+                click_object(ctx, &scene.space_cameras, &mut state.state_3d, instance_id);
             }
         }
 
-        project_onto_other_spaces(ctx, space_cameras, &mut state.state_3d, space);
+        project_onto_other_spaces(ctx, &scene.space_cameras, &mut state.state_3d, space);
     }
-    show_projections_from_2d_space(ctx, space_cameras, &mut scene, &state.scene_bbox_accum);
+    show_projections_from_2d_space(ctx, &mut scene, &state.scene_bbox_accum);
     if state.state_3d.show_axes {
         scene.primitives.add_axis_lines(
             macaw::IsoTransform::IDENTITY,
@@ -599,7 +598,6 @@ fn paint_view(
 
 fn show_projections_from_2d_space(
     ctx: &mut ViewerContext<'_>,
-    space_cameras: &[SpaceCamera3D],
     scene: &mut SceneSpatial,
     scene_bbox_accum: &BoundingBox,
 ) {
@@ -609,7 +607,7 @@ fn show_projections_from_2d_space(
             .points
             .batch("projection from 2d hit points");
 
-        for cam in space_cameras {
+        for cam in &scene.space_cameras {
             if cam.target_space.as_ref() == Some(space_2d) {
                 if let Some(ray) = cam.unproject_as_ray(glam::vec2(pos.x, pos.y)) {
                     // TODO(emilk): better visualization of a ray
