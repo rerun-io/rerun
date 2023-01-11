@@ -2,6 +2,7 @@
 
 A rough time-line of major user-facing things added, removed and changed. Newest on top.
 
+* 2022-01-11: (Re-)Introduce groupings in the blueprint. [#724](https://github.com/rerun-io/rerun/pull/724).
 * 2023-01-11: Fix high memory consumption & slow loading due to images being loaded twice. [#730](https://github.com/rerun-io/rerun/pull/730)
 * 2022-12-21: Allow objects under pinhole transform to be placed into 3D spaces. [#621](https://github.com/rerun-io/rerun/pull/621).
 * 2022-12-19: Add support for bar-charts. [#581](https://github.com/rerun-io/rerun/pull/581).

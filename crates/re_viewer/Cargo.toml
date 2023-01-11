@@ -78,7 +78,8 @@ poll-promise = "0.1"
 rand = { version = "0.8", features = ["small_rng"] }
 rfd = "0.10"
 serde = { version = "1", features = ["derive"] }
-smallvec = "1.10"
+slotmap = { version = "1.0.6", features = ["serde"] }
+smallvec = { version = "1.10", features = ["serde"] }
 uuid = { version = "1.1", features = ["serde", "v4", "js"] }
 vec1 = "1.8"
 wgpu = "0.14"

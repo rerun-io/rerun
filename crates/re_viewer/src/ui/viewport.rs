@@ -18,8 +18,10 @@ use crate::{
 };
 
 use super::{
-    transform_cache::TransformCache, view_category::ViewCategory, SceneQuery, SpaceView,
-    SpaceViewId,
+    data_blueprint::{DataBlueprintGroupHandle, DataBlueprintTree},
+    transform_cache::TransformCache,
+    view_category::ViewCategory,
+    SceneQuery, SpaceView, SpaceViewId,
 };
 
 // ----------------------------------------------------------------------------
@@ -239,6 +241,9 @@ impl Viewport {
             });
     }
 
+    // If a group or spaceview has a total of this number of elements or less, show its subtree by default.
+    const MAX_ELEM_FOR_DEFAULT_OPEN: usize = 3;
+
     fn space_view_entry_ui(
         &mut self,
         ctx: &mut ViewerContext<'_>,
@@ -248,11 +253,14 @@ impl Viewport {
         let space_view = self.space_views.get_mut(space_view_id).unwrap();
         debug_assert_eq!(space_view.id, *space_view_id);
 
+        let root_group = space_view.data_blueprint.root_group();
+        let default_open =
+            root_group.children.len() + root_group.objects.len() <= Self::MAX_ELEM_FOR_DEFAULT_OPEN;
         let collapsing_header_id = ui.id().with(space_view.id);
         egui::collapsing_header::CollapsingState::load_with_default_open(
             ui.ctx(),
             collapsing_header_id,
-            true,
+            default_open,
         )
         .show_header(ui, |ui| {
             ui.label(space_view.category.icon());
@@ -277,29 +285,89 @@ impl Viewport {
             }
         })
         .body(|ui| {
-            for path in &space_view.queried_objects {
-                ui.horizontal(|ui| {
-                    let name = if path.is_descendant_of(&space_view.space_path) {
-                        ObjPath::from(
-                            path.iter()
-                                .skip(space_view.space_path.len())
-                                .map(|r| r.to_owned())
-                                .collect::<Vec<_>>(),
-                        )
-                        .to_string()
-                    } else {
-                        path.iter().last().unwrap().to_string()
-                    };
-
-                    ctx.space_view_obj_path_button_to(ui, name, *space_view_id, path);
-
-                    let mut properties = space_view.obj_properties.get(path);
-                    if visibility_button(ui, true, &mut properties.visible).changed() {
-                        space_view.obj_properties.set(path.clone(), properties);
-                    }
-                });
-            }
+            Self::data_blueprint_tree_ui(
+                ctx,
+                ui,
+                space_view.data_blueprint.root_handle(),
+                &mut space_view.data_blueprint,
+                space_view_id,
+                self.visible.contains(space_view_id),
+            );
         });
+    }
+
+    fn data_blueprint_tree_ui(
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        group_handle: DataBlueprintGroupHandle,
+        data_blueprint_tree: &mut DataBlueprintTree,
+        space_view_id: &SpaceViewId,
+        space_view_visible: bool,
+    ) {
+        let Some(group) = data_blueprint_tree.get_group(group_handle) else {
+            debug_assert!(false, "Invalid group handle in blueprint group tree");
+            return;
+        };
+
+        // TODO(andreas): These clones are workarounds against borrowing multiple times from data_blueprint_tree.
+        let children = group.children.clone();
+        let objects = group.objects.clone();
+        let group_name = group.display_name.clone();
+        let group_is_visible = group.properties_projected.visible && space_view_visible;
+
+        for path in &objects {
+            ui.horizontal(|ui| {
+                let name = path.iter().last().unwrap().to_string();
+
+                ctx.space_view_obj_path_button_to(ui, name, *space_view_id, path);
+
+                let mut properties = data_blueprint_tree.data_blueprints_individual().get(path);
+                if visibility_button(ui, group_is_visible, &mut properties.visible).changed() {
+                    data_blueprint_tree
+                        .data_blueprints_individual()
+                        .set(path.clone(), properties);
+                }
+            });
+        }
+
+        for child_group_handle in &children {
+            let Some(child_group) = data_blueprint_tree.get_group_mut(*child_group_handle) else {
+                debug_assert!(false, "Data blueprint group {group_name} has an invalid child");
+                continue;
+            };
+
+            let default_open = child_group.children.len() + child_group.objects.len()
+                <= Self::MAX_ELEM_FOR_DEFAULT_OPEN;
+            egui::collapsing_header::CollapsingState::load_with_default_open(
+                ui.ctx(),
+                ui.id().with(child_group_handle),
+                default_open,
+            )
+            .show_header(ui, |ui| {
+                ui.label("📁");
+                ctx.datablueprint_group_button_to(
+                    ui,
+                    &child_group.display_name,
+                    *space_view_id,
+                    *child_group_handle,
+                );
+                visibility_button(
+                    ui,
+                    group_is_visible,
+                    &mut child_group.properties_individual.visible,
+                );
+            })
+            .body(|ui| {
+                Self::data_blueprint_tree_ui(
+                    ctx,
+                    ui,
+                    *child_group_handle,
+                    data_blueprint_tree,
+                    space_view_id,
+                    space_view_visible,
+                );
+            });
+        }
     }
 
     pub(crate) fn mark_user_interaction(&mut self) {
