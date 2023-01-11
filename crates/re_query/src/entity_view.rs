@@ -160,6 +160,9 @@ impl ComponentWithInstances {
 /// instance-keys from the primary component and another table with the
 /// instance-keys and values of the iterated component.
 ///
+/// Instances have a special "splat" key that will cause the value to be
+/// repeated for the entirety of the join.
+///
 /// For example
 /// ```text
 /// primary
