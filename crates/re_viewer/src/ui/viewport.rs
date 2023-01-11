@@ -305,7 +305,7 @@ impl Viewport {
         space_view_visible: bool,
     ) {
         let Some(group) = data_blueprint_tree.get_group(group_handle) else {
-            re_log::warn_once!("Invalid data blueprint group handle");
+            debug_assert!(false, "Invalid group handle in blueprint group tree");
             return;
         };
 
@@ -332,7 +332,7 @@ impl Viewport {
 
         for child_group_handle in &children {
             let Some(child_group) = data_blueprint_tree.get_group_mut(*child_group_handle) else {
-                re_log::warn_once!("Data blueprint group {group_name} has an invalid child");
+                debug_assert!(false, "Data blueprint group {group_name} has an invalid child");
                 continue;
             };
 

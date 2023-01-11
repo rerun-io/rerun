@@ -24,7 +24,7 @@ pub struct DataBlueprintGroup {
     /// Parent of this blueprint group. Every data blueprint except the root has a parent.
     pub parent: DataBlueprintGroupHandle,
 
-    pub children: SmallVec<[DataBlueprintGroupHandle; 1]>,
+    pub children: SmallVec<[DataBlueprintGroupHandle; 4]>,
 
     pub objects: IntSet<ObjPath>,
 }
@@ -140,7 +140,8 @@ impl DataBlueprintTree {
             group_handle: DataBlueprintGroupHandle,
         ) {
             let Some(group) = tree.groups.get_mut(group_handle) else {
-                return; // should never happen.
+                debug_assert!(false, "Invalid group handle in blueprint group tree");
+                return;
             };
 
             let group_properties_projected =
