@@ -192,18 +192,19 @@ impl Points2DPart {
 
             let class_description = annotations.class_description(class_id);
 
-            let annotation_info = if let Some(keypoint_id) = keypoint_id {
-                if let Some(class_id) = class_id {
-                    keypoints
-                        .entry((class_id, 0))
-                        .or_insert_with(Default::default)
-                        .insert(keypoint_id, pos.extend(0.0));
-                }
+            let annotation_info = keypoint_id.map_or_else(
+                || class_description.annotation_info(),
+                |keypoint_id| {
+                    if let Some(class_id) = class_id {
+                        keypoints
+                            .entry((class_id, 0))
+                            .or_insert_with(Default::default)
+                            .insert(keypoint_id, pos.extend(0.0));
+                    }
+                    class_description.annotation_info_with_keypoint(keypoint_id)
+                },
+            );
 
-                class_description.annotation_info_with_keypoint(keypoint_id)
-            } else {
-                class_description.annotation_info()
-            };
             let color =
                 annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color);
             let label = annotation_info.label(label.map(|l| l.0).as_ref());
