@@ -158,18 +158,16 @@ impl ObjDb {
         self.register_obj_path(&msg_bundle.obj_path);
 
         for component in &msg_bundle.components {
+            let data_path = DataPath::new_arrow(msg_bundle.obj_path.clone(), component.name);
             if component.name == MsgId::name() {
                 continue;
             }
-            //TODO(jleibs): Actually handle pending clears
-            let pending_clears = self.tree.add_data_msg(
-                msg.msg_id,
-                &msg_bundle.time_point,
-                &DataPath::new_arrow(msg_bundle.obj_path.clone(), component.name),
-                None,
-            );
+            let pending_clears =
+                self.tree
+                    .add_data_msg(msg.msg_id, &msg_bundle.time_point, &data_path, None);
 
             for (msg_id, time_point) in pending_clears {
+                // Create and insert an empty component into the arrow store
                 // TODO(jleibs): Faster empty-array creation
                 let bundle =
                     ComponentBundle::new_empty(component.name, component.data_type().clone());
@@ -180,6 +178,10 @@ impl ObjDb {
                     vec![bundle],
                 );
                 self.arrow_store.insert(&msg_bundle).ok();
+
+                // Also update the object tree with the clear-event
+                self.tree
+                    .add_data_msg(msg_id, &time_point, &data_path, None);
             }
         }
 
@@ -193,15 +195,19 @@ impl ObjDb {
             if data_path.is_arrow() {
                 if let FieldOrComponent::Component(component) = data_path.field_name {
                     if let Some(data_type) = self.arrow_store.lookup_data_type(&component) {
+                        // Create and insert an empty component into the arrow store
                         // TODO(jleibs): Faster empty-array creation
                         let bundle = ComponentBundle::new_empty(component, data_type.clone());
                         let msg_bundle = MsgBundle::new(
                             msg_id,
-                            data_path.obj_path,
+                            data_path.obj_path.clone(),
                             time_point.clone(),
                             vec![bundle],
                         );
                         self.arrow_store.insert(&msg_bundle).ok();
+                        // Also update the object tree with the clear-event
+                        self.tree
+                            .add_data_msg(msg_id, &time_point, &data_path, None);
                     }
                 }
             } else {
