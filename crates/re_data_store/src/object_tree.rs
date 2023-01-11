@@ -385,9 +385,8 @@ impl DataColumns {
     }
 
     pub fn populate_timeless(&mut self, time_point: &TimePoint) {
-        // This `Timepoint` contains a timeline with timeless data that created
-        // a new timeline in our parent. Sweep all the timelines listed and seed
-        // with the timeless_msgs as necessary.
+        // For any timeline in `time_point` populate an initial entry from the current
+        // `timeless_msgs` seed.
         for (timeline, _) in time_point.iter() {
             self.times
                 .entry(*timeline)
