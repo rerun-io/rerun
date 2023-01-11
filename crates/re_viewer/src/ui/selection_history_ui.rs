@@ -185,6 +185,7 @@ fn selection_kind_ui(ui: &mut egui::Ui, sel: &Selection) {
         Selection::Space(_) => "(space)",
         Selection::SpaceView(_) => "(view)",
         Selection::SpaceViewObjPath(_, _) => "(obj)",
+        Selection::DataBlueprintGroup(_, _) => "(group)",
     }));
 }
 
@@ -196,6 +197,13 @@ fn selection_to_string(blueprint: &Blueprint, sel: &Selection) -> String {
             }
         }
         Selection::SpaceViewObjPath(_, obj_path) => return obj_path.to_string(),
+        Selection::DataBlueprintGroup(sid, handle) => {
+            if let Some(space_view) = blueprint.viewport.space_view(sid) {
+                if let Some(group) = space_view.data_blueprint.get_group(*handle) {
+                    return group.display_name.clone();
+                }
+            }
+        }
         _ => {}
     }
 
