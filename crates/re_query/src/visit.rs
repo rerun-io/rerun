@@ -72,7 +72,7 @@ macro_rules! create_visitor {
 
         ) -> crate::Result<()>
         where $(
-            $CC: ArrowDeserialize + ArrowField<Type = $CC> + 'static,
+            $CC: Clone + ArrowDeserialize + ArrowField<Type = $CC> + 'static,
             $CC::ArrayType: ArrowArray,
             for<'a> &'a $CC::ArrayType: IntoIterator,
         )*

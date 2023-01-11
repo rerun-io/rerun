@@ -24,6 +24,10 @@ impl Instance {
     pub fn splat() -> Instance {
         Self(u64::MAX)
     }
+
+    pub fn is_splat(&self) -> bool {
+        self.0 == u64::MAX
+    }
 }
 
 arrow_enable_vec_for_type!(Instance);
