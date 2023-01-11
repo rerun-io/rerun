@@ -63,11 +63,11 @@ impl ArrowField for Box3D {
 }
 
 impl ArrowSerialize for Box3D {
-    type MutableArrayType = <FixedSizeVec<f32, 4> as ArrowSerialize>::MutableArrayType;
+    type MutableArrayType = <FixedSizeVec<f32, 3> as ArrowSerialize>::MutableArrayType;
 
     #[inline]
     fn new_array() -> Self::MutableArrayType {
-        FixedSizeVec::<f32, 4>::new_array()
+        FixedSizeVec::<f32, 3>::new_array()
     }
 
     #[inline]
@@ -78,7 +78,7 @@ impl ArrowSerialize for Box3D {
 }
 
 impl ArrowDeserialize for Box3D {
-    type ArrayType = <FixedSizeVec<f32, 4> as ArrowDeserialize>::ArrayType;
+    type ArrayType = <FixedSizeVec<f32, 3> as ArrowDeserialize>::ArrayType;
 
     #[inline]
     fn arrow_deserialize(
