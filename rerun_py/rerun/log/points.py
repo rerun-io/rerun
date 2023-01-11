@@ -11,6 +11,7 @@ from rerun.log import (
     OptionalKeyPointIds,
     _normalize_colors,
     _normalize_ids,
+    _normalize_labels,
     _normalize_radii,
 )
 
@@ -158,11 +159,10 @@ def log_points(
     identifiers = [] if identifiers is None else [str(s) for s in identifiers]
 
     colors = _normalize_colors(colors)
+    radii = _normalize_radii(radii)
+    labels = _normalize_labels(labels)
     class_ids = _normalize_ids(class_ids)
     keypoint_ids = _normalize_ids(keypoint_ids)
-    radii = _normalize_radii(radii)
-    if labels is None:
-        labels = []
 
     if EXP_ARROW.classic_log_gate():
         bindings.log_points(
@@ -196,32 +196,36 @@ def log_points(
                 raise TypeError("Positions should be either Nx2 or Nx3")
 
         if len(colors):
-            # TODO(jleibs) remove once we have storage-side splats
             if len(colors.shape) == 1:
-                splats["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors.reshape(1, len(colors)))  # type: ignore[arg-type]
+                splats["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors.reshape(1, len(colors)))
             else:
-                comps["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)  # type: ignore[arg-type]
+                comps["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
 
         if len(radii):
-            # TODO(jleibs) remove once we have storage-side splats
             if len(radii) == 1:
-                radii = np.broadcast_to(radii, (len(positions),))
-            comps["rerun.radius"] = RadiusArray.from_numpy(radii)
+                splats["rerun.radius"] = RadiusArray.from_numpy(radii)
+            else:
+                comps["rerun.radius"] = RadiusArray.from_numpy(radii)
 
-        if labels:
-            comps["rerun.label"] = LabelArray.new(labels)
+        if len(labels):
+            if len(labels) == 1:
+                splats["rerun.label"] = LabelArray.new(labels)
+            else:
+                comps["rerun.label"] = LabelArray.new(labels)
 
         if len(class_ids):
             if len(class_ids) == 1:
-                class_ids = np.broadcast_to(class_ids, (len(positions),))
-            comps["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
+                splats["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
+            else:
+                comps["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
 
         if len(keypoint_ids):
             if len(keypoint_ids) == 1:
-                keypoint_ids = np.broadcast_to(keypoint_ids, (len(positions),))
-            comps["rerun.keypoint_id"] = ClassIdArray.from_numpy(keypoint_ids)
+                comps["rerun.keypoint_id"] = ClassIdArray.from_numpy(keypoint_ids)
+            else:
+                splats["rerun.keypoint_id"] = ClassIdArray.from_numpy(keypoint_ids)
 
-        bindings.log_arrow_msg(f"arrow/{obj_path}", components=comps)
+        bindings.log_arrow_msg(f"arrow/{obj_path}", components=comps, timeless=timeless)
 
         if splats:
             splats["rerun.instance"] = InstanceArray.splat()

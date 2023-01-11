@@ -3,7 +3,6 @@ from __future__ import annotations
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
-from rerun.color_conversion import u8_array_to_rgba
 from rerun.components import REGISTERED_FIELDS, ComponentTypeFactory
 
 __all__ = [

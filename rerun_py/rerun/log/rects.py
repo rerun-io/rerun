@@ -10,6 +10,7 @@ from rerun.log import (
     OptionalClassIds,
     _normalize_colors,
     _normalize_ids,
+    _normalize_labels,
     _to_sequence,
 )
 
@@ -68,6 +69,7 @@ def log_rect(
         bindings.log_rect(obj_path, rect_format.value, _to_sequence(rect), color, label, class_id, timeless)
 
     if EXP_ARROW.arrow_log_gate():
+        from rerun.components.annotation import ClassIdArray
         from rerun.components.color import ColorRGBAArray
         from rerun.components.label import LabelArray
         from rerun.components.rect2d import Rect2DArray
@@ -82,6 +84,10 @@ def log_rect(
 
         if label:
             comps["rerun.label"] = LabelArray.new([label])
+
+        if class_id:
+            class_ids = _normalize_ids([class_id])
+            comps["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
 
         bindings.log_arrow_msg(f"arrow/{obj_path}", components=comps, timeless=timeless)
 
@@ -129,10 +135,10 @@ def log_rects(
         rects = rects.reshape((0, 4))
 
     identifiers = [] if identifiers is None else [str(s) for s in identifiers]
+
     colors = _normalize_colors(colors)
     class_ids = _normalize_ids(class_ids)
-    if labels is None:
-        labels = []
+    labels = _normalize_labels(labels)
 
     if EXP_ARROW.classic_log_gate():
         bindings.log_rects(
@@ -147,16 +153,35 @@ def log_rects(
         )
 
     if EXP_ARROW.arrow_log_gate():
+        from rerun.components.annotation import ClassIdArray
         from rerun.components.color import ColorRGBAArray
+        from rerun.components.instance import InstanceArray
         from rerun.components.label import LabelArray
         from rerun.components.rect2d import Rect2DArray
 
         comps = {"rerun.rect2d": Rect2DArray.from_numpy_and_format(rects, rect_format)}
+        splats = {}
 
         if len(colors):
-            comps["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
+            if len(colors.shape) == 1:
+                splats["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors.reshape(1, len(colors)))
+            else:
+                comps["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
 
-        if labels:
-            comps["rerun.label"] = LabelArray.new(labels)
+        if len(labels):
+            if len(labels) == 1:
+                splats["rerun.label"] = LabelArray.new(labels)
+            else:
+                comps["rerun.label"] = LabelArray.new(labels)
+
+        if len(class_ids):
+            if len(class_ids) == 1:
+                splats["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
+            else:
+                comps["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
 
         bindings.log_arrow_msg(f"arrow/{obj_path}", components=comps, timeless=timeless)
+
+        if splats:
+            splats["rerun.instance"] = InstanceArray.splat()
+            bindings.log_arrow_msg(f"arrow/{obj_path}", components=splats, timeless=timeless)

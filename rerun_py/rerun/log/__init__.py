@@ -104,6 +104,13 @@ def _normalize_radii(radii: Optional[npt.ArrayLike] = None) -> npt.NDArray[np.fl
         return np.atleast_1d(np.array(radii, dtype=np.float32, copy=False))
 
 
+def _normalize_labels(labels: Optional[Union[str, Sequence[str]]]) -> Sequence[str]:
+    if labels is None:
+        return []
+    else:
+        return labels
+
+
 def log_cleared(obj_path: str, *, recursive: bool = False) -> None:
     """
     Indicate that an object at a given path should no longer be displayed.
