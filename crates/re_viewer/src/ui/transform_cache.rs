@@ -213,7 +213,7 @@ impl TransformCache {
                             .get(child_path)
                             .pinhole_image_plane_distance(pinhole);
 
-                        let scale = distance / pinhole.focal_length_in_pixels().y;
+                        let scale = distance / pinhole.focal_length_in_pixels().y();
                         let translation = (-pinhole.principal_point() * scale).extend(distance);
                         let parent_from_child = glam::Mat4::from_scale_rotation_translation(
                             glam::vec3(scale, scale, 1.0),
