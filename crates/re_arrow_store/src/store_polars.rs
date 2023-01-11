@@ -9,8 +9,8 @@ use polars_core::{functions::diag_concat_df, prelude::*};
 use re_log_types::ComponentName;
 
 use crate::{
-    store::SecondaryIndex, ArrayExt, ComponentTable, DataStore, DataStoreConfig, IndexBucket,
-    IndexBucketIndices, PersistentComponentTable, PersistentIndexTable, RowIndex,
+    store::SecondaryIndex, ArrayExt, DataStore, DataStoreConfig, IndexBucket, IndexBucketIndices,
+    PersistentIndexTable, RowIndex,
 };
 
 // ---
@@ -26,7 +26,7 @@ impl DataStore {
         let timeless_dfs = self.timeless_indices.values().map(|index| {
             let ent_path = index.ent_path.clone();
 
-            let mut df = index.to_dataframe(&self.config, &self.timeless_components);
+            let mut df = index.to_dataframe(self, &self.config);
             let nb_rows = df.get_columns()[0].len();
 
             // Add a column where every row is a boolean true (timeless)
@@ -45,7 +45,7 @@ impl DataStore {
                 .values()
                 .map(|bucket| (index.ent_path.clone(), bucket))
                 .map(|(ent_path, bucket)| {
-                    let mut df = bucket.to_dataframe(&self.config, &self.components);
+                    let mut df = bucket.to_dataframe(self, &self.config);
                     let nb_rows = df.get_columns()[0].len();
 
                     // Add a column where every row is the entity path.
@@ -127,11 +127,7 @@ impl PersistentIndexTable {
     ///
     /// This cannot fail: it always tries to yield as much valuable information as it can, even in
     /// the face of errors.
-    pub fn to_dataframe(
-        &self,
-        config: &DataStoreConfig,
-        components: &IntMap<ComponentName, PersistentComponentTable>,
-    ) -> DataFrame {
+    pub fn to_dataframe(&self, store: &DataStore, config: &DataStoreConfig) -> DataFrame {
         let Self {
             ent_path: _,
             cluster_key: _,
@@ -151,8 +147,8 @@ impl PersistentIndexTable {
             .flatten() // filter options
             // One column for each component index.
             .chain(indices.iter().filter_map(|(component, comp_row_nrs)| {
-                let comp_table = components.get(component)?;
-                component_as_series(*nb_rows as usize, comp_table, component, comp_row_nrs).into()
+            let datatype = find_component_datatype(store, component)?;
+                component_as_series(store, *nb_rows as usize, datatype, *component, comp_row_nrs).into()
             }));
 
         DataFrame::new(comp_series.collect::<Vec<_>>())
@@ -167,11 +163,7 @@ impl IndexBucket {
     ///
     /// This cannot fail: it always tries to yield as much valuable information as it can, even in
     /// the face of errors.
-    pub fn to_dataframe(
-        &self,
-        config: &DataStoreConfig,
-        components: &IntMap<ComponentName, ComponentTable>,
-    ) -> DataFrame {
+    pub fn to_dataframe(&self, store: &DataStore, config: &DataStoreConfig) -> DataFrame {
         let (_, times) = self.times();
         let nb_rows = times.len();
 
@@ -202,8 +194,8 @@ impl IndexBucket {
         .flatten() // filter options
         // One column for each component index.
         .chain(indices.iter().filter_map(|(component, comp_row_nrs)| {
-            let comp_table = components.get(component)?;
-            component_as_series(nb_rows, comp_table, component, comp_row_nrs).into()
+            let datatype = find_component_datatype(store, component)?;
+            component_as_series(store, nb_rows, datatype, *component, comp_row_nrs).into()
         }));
 
         DataFrame::new(comp_series.collect::<Vec<_>>())
@@ -229,16 +221,35 @@ fn insert_ids_as_series(
     })
 }
 
-fn component_as_series<T: AnyComponentTable>(
-    nb_rows: usize,
-    comp_table: &T,
+fn find_component_datatype(
+    store: &DataStore,
     component: &ComponentName,
+) -> Option<arrow2::datatypes::DataType> {
+    let timeless = store
+        .timeless_components
+        .get(component)
+        .map(|table| table.datatype.clone());
+    let temporal = store
+        .components
+        .get(component)
+        .map(|table| table.datatype.clone());
+    timeless.or(temporal)
+}
+
+fn component_as_series(
+    store: &DataStore,
+    nb_rows: usize,
+    datatype: arrow2::datatypes::DataType,
+    component: ComponentName,
     comp_row_nrs: &[Option<RowIndex>],
 ) -> Series {
+    let components = &[component];
+
     // For each row in the index, grab the associated data from the component tables.
     let comp_rows: Vec<Option<_>> = comp_row_nrs
         .iter()
-        .map(|comp_row_nr| comp_row_nr.and_then(|comp_row_nr| comp_table.get(comp_row_nr)))
+        .cloned()
+        .map(|comp_row_nr| store.get(components, &[comp_row_nr])[0].clone())
         .collect();
 
     // Computing the validity bitmap is just a matter of checking whether the data was
@@ -254,36 +265,13 @@ fn component_as_series<T: AnyComponentTable>(
 
     // Bring everything together into one big list.
     let comp_values = ListArray::<i32>::new(
-        ListArray::<i32>::default_datatype(comp_table.datatype()),
+        ListArray::<i32>::default_datatype(datatype),
         Offsets::try_from_lengths(comp_lengths).unwrap().into(),
         concatenate(comp_values.as_slice()).unwrap().to_boxed(),
         Some(Bitmap::from(comp_validity)),
     );
 
     new_infallible_series(component.as_str(), &comp_values, nb_rows)
-}
-
-trait AnyComponentTable {
-    fn get(&self, row_idx: RowIndex) -> Option<Box<dyn Array>>;
-    fn datatype(&self) -> arrow2::datatypes::DataType;
-}
-
-impl AnyComponentTable for PersistentComponentTable {
-    fn get(&self, row_idx: RowIndex) -> Option<Box<dyn Array>> {
-        Some(self.get(row_idx))
-    }
-    fn datatype(&self) -> arrow2::datatypes::DataType {
-        self.datatype.clone()
-    }
-}
-
-impl AnyComponentTable for ComponentTable {
-    fn get(&self, row_idx: RowIndex) -> Option<Box<dyn Array>> {
-        self.get(row_idx)
-    }
-    fn datatype(&self) -> arrow2::datatypes::DataType {
-        self.datatype.clone()
-    }
 }
 
 // ---
