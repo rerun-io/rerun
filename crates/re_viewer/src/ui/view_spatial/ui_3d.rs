@@ -410,10 +410,9 @@ pub fn view_3d(
                             ui.label(instance_id.to_string());
                             instance_id.data_ui(ctx, ui, Preview::Small);
 
-                            let legend = image.annotations.clone();
                             let tensor_view = ctx.cache.image.get_view_with_annotations(
                                 &image.tensor,
-                                &legend,
+                                &image.annotations,
                                 ctx.render_ctx,
                             );
 

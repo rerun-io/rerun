@@ -77,11 +77,10 @@ impl ScenePart for ImagesPart {
                         .radius(Size::new_points(paint_props.fg_stroke.width * 0.5));
                 }
 
-                let legend = annotations.clone();
                 let tensor_view =
                     ctx.cache
                         .image
-                        .get_view_with_annotations(tensor, &legend, ctx.render_ctx);
+                        .get_view_with_annotations(tensor, &annotations, ctx.render_ctx);
 
                 if let Some(texture_handle) = tensor_view.texture_handle {
                     scene.primitives.textured_rectangles.push(
