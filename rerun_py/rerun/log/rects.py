@@ -159,29 +159,26 @@ def log_rects(
         from rerun.components.label import LabelArray
         from rerun.components.rect2d import Rect2DArray
 
-        comps = {"rerun.rect2d": Rect2DArray.from_numpy_and_format(rects, rect_format)}
-        splats = {}
+        # 0 = instanced, 1 = splat
+        comps = [{}, {}]  # type: ignore[var-annotated]
+        comps[0]["rerun.rect2d"] = Rect2DArray.from_numpy_and_format(rects, rect_format)
 
         if len(colors):
-            if len(colors.shape) == 1:
-                splats["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors.reshape(1, len(colors)))
-            else:
-                comps["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
+            is_splat = len(colors.shape) == 1
+            if is_splat:
+                colors = colors.reshape(1, len(colors))
+            comps[is_splat]["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
 
         if len(labels):
-            if len(labels) == 1:
-                splats["rerun.label"] = LabelArray.new(labels)
-            else:
-                comps["rerun.label"] = LabelArray.new(labels)
+            is_splat = len(labels) == 1
+            comps[is_splat]["rerun.label"] = LabelArray.new(labels)
 
         if len(class_ids):
-            if len(class_ids) == 1:
-                splats["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
-            else:
-                comps["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
+            is_splat = len(class_ids) == 1
+            comps[is_splat]["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
 
-        bindings.log_arrow_msg(f"arrow/{obj_path}", components=comps, timeless=timeless)
+        bindings.log_arrow_msg(f"arrow/{obj_path}", components=comps[0], timeless=timeless)
 
-        if splats:
-            splats["rerun.instance"] = InstanceArray.splat()
-            bindings.log_arrow_msg(f"arrow/{obj_path}", components=splats, timeless=timeless)
+        if comps[1]:
+            comps[1]["rerun.instance"] = InstanceArray.splat()
+            bindings.log_arrow_msg(f"arrow/{obj_path}", components=comps[1], timeless=timeless)

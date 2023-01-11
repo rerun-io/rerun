@@ -25,6 +25,7 @@ impl Instance {
         Self(u64::MAX)
     }
 
+    #[inline]
     pub fn is_splat(&self) -> bool {
         self.0 == u64::MAX
     }
