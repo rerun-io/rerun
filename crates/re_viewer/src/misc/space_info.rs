@@ -279,7 +279,7 @@ fn query_view_coordinates_arrow(
     view_coords
 }
 
-fn query_view_coordinates(
+pub fn query_view_coordinates(
     obj_db: &ObjDb,
     time_ctrl: &TimeControl,
     obj_path: &ObjPath,

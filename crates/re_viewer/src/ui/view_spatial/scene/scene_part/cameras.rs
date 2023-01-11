@@ -1,9 +1,12 @@
 use re_data_store::{query_transform, InstanceIdHash, ObjPath};
-use re_log_types::{IndexHash, Pinhole, Transform};
+use re_log_types::{
+    coordinates::{Handedness, SignedAxis3},
+    IndexHash, Pinhole, Transform, ViewCoordinates,
+};
 use re_query::{query_entity_with_primary, QueryError};
 
 use crate::{
-    misc::ViewerContext,
+    misc::{space_info::query_view_coordinates, ViewerContext},
     ui::{
         scene::SceneQuery,
         transform_cache::{ReferenceFromObjTransform, TransformCache},
@@ -46,6 +49,12 @@ impl ScenePart for CamerasPartClassic {
                 }
             };
 
+            let view_coordinates = determine_view_coordinates(
+                &ctx.log_db.obj_db,
+                &ctx.rec_cfg.time_ctrl,
+                obj_path.clone(),
+            );
+
             CamerasPart::visit_instance(
                 scene,
                 obj_path,
@@ -53,54 +62,40 @@ impl ScenePart for CamerasPartClassic {
                 instance_hash,
                 hovered_instance,
                 pinhole,
+                view_coordinates,
+            );
+        }
+    }
+}
+
+// Determine the view coordinates (i.e.) the axis semantics.
+// The recommended way to log this is on the object holding the extrinsic camera properties
+// (i.e. the last rigid transform from here)
+// But for ease of use allow it everywhere along the path.
+fn determine_view_coordinates(
+    obj_db: &re_data_store::log_db::ObjDb,
+    time_ctrl: &crate::misc::TimeControl,
+    mut obj_path: ObjPath,
+) -> ViewCoordinates {
+    loop {
+        if let Some(view_coordinates) = query_view_coordinates(obj_db, time_ctrl, &obj_path) {
+            return view_coordinates;
+        }
+
+        if let Some(parent) = obj_path.parent() {
+            obj_path = parent;
+        } else {
+            // Keep in mind, there is no universal convention for any of this!
+            // https://twitter.com/freyaholmer/status/1325556229410861056
+            return ViewCoordinates::from_up_and_handedness(
+                SignedAxis3::POSITIVE_Y,
+                Handedness::Right,
             );
         }
     }
 }
 
 pub struct CamerasPart;
-
-/*
-
-
-/// Look for camera transform and pinhole in the transform hierarchy
-/// and return them as cameras.
-fn space_cameras(spaces_info: &SpacesInfo, space_info: &SpaceInfo) -> Vec<SpaceCamera3D> {
-    crate::profile_function!();
-
-    let mut space_cameras = vec![];
-
-    for (child_path, child_transform) in &space_info.child_spaces {
-        if let Transform::Rigid3(world_from_camera) = child_transform {
-            let world_from_camera = world_from_camera.parent_from_child();
-
-            let view_space = spaces_info
-                .get(child_path)
-                .and_then(|child| child.coordinates);
-
-            if let Some(child_space_info) = spaces_info.get(child_path) {
-                for (grand_child_path, grand_child_transform) in &child_space_info.child_spaces {
-                    if let Transform::Pinhole(pinhole) = grand_child_transform {
-                        space_cameras.push(SpaceCamera3D {
-                            camera_obj_path: child_path.clone(),
-                            instance_index_hash: re_log_types::IndexHash::NONE,
-                            camera_view_coordinates: view_space,
-                            world_from_camera,
-                            pinhole: Some(*pinhole),
-                            target_space: Some(grand_child_path.clone()),
-                        });
-                    }
-                }
-            }
-        }
-    }
-
-    space_cameras
-}
-
-
-
-*/
 
 impl CamerasPart {
     fn visit_instance(
@@ -110,6 +105,7 @@ impl CamerasPart {
         instance: InstanceIdHash,
         hovered_instance: InstanceIdHash,
         pinhole: Pinhole,
+        view_coordinates: ViewCoordinates,
     ) {
         // The transform *at* this object path already has the pinhole transformation we got passed in!
         // This makes sense, since if there's an image logged here one would expect that the transform applies.
@@ -134,7 +130,7 @@ impl CamerasPart {
         scene.space_cameras.push(SpaceCamera3D {
             obj_path: obj_path.clone(),
             instance_index_hash: re_log_types::IndexHash::NONE,
-            camera_view_coordinates: None, //  view_space, // TODO:
+            view_coordinates,
             world_from_camera,
             pinhole: Some(pinhole),
         });
@@ -175,6 +171,12 @@ impl ScenePart for CamerasPart {
                         }
                     };
 
+                    let view_coordinates = determine_view_coordinates(
+                        &ctx.log_db.obj_db,
+                        &ctx.rec_cfg.time_ctrl,
+                        ent_path.clone(),
+                    );
+
                     Self::visit_instance(
                         scene,
                         ent_path,
@@ -182,6 +184,7 @@ impl ScenePart for CamerasPart {
                         instance_hash,
                         hovered_instance,
                         pinhole,
+                        view_coordinates,
                     );
                 })
             }) {

@@ -16,7 +16,7 @@ pub struct SpaceCamera3D {
     pub instance_index_hash: IndexHash,
 
     /// The coordinate system of the camera ("view-space").
-    pub camera_view_coordinates: Option<ViewCoordinates>,
+    pub view_coordinates: ViewCoordinates,
 
     /// Camera "Extrinsics", i.e. the pose of the camera.
     pub world_from_camera: IsoTransform,
@@ -43,7 +43,7 @@ impl SpaceCamera3D {
 
     /// Scene-space from Rerun view-space (RUB).
     pub fn world_from_rub_view(&self) -> Option<IsoTransform> {
-        match from_rub_quat(self.camera_view_coordinates) {
+        match from_rub_quat(self.view_coordinates) {
             Ok(from_rub) => Some(self.world_from_camera * IsoTransform::from_quat(from_rub)),
             Err(err) => {
                 re_log::warn_once!("Camera {:?}: {}", self.obj_path, err);
@@ -90,17 +90,8 @@ impl SpaceCamera3D {
     }
 }
 
-/// Rerun uses RUB (X=Right Y=Up Z=Back) view coordinates.
-fn from_rub_mat3(system: Option<ViewCoordinates>) -> Result<Mat3, String> {
-    match system {
-        None => Err("lacks a coordinate system".to_owned()),
-        Some(system) => Ok(system.from_rub()),
-    }
-}
-
-fn from_rub_quat(system: Option<ViewCoordinates>) -> Result<Quat, String> {
-    let mat3 = from_rub_mat3(system)?;
-    let system = system.unwrap(); // Safe, or `from_rub_mat3` would have returned an `Err`.
+fn from_rub_quat(system: ViewCoordinates) -> Result<Quat, String> {
+    let mat3 = system.from_rub();
 
     let det = mat3.determinant();
     if det == 1.0 {
