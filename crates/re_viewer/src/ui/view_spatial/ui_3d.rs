@@ -280,7 +280,7 @@ fn find_camera(space_cameras: &[SpaceCamera3D], needle: &InstanceId) -> Option<E
     let mut found_camera = None;
 
     for camera in space_cameras {
-        if needle.obj_path == camera.camera_obj_path
+        if needle.obj_path == camera.obj_path
             && camera.instance_index_hash == needle.instance_index_hash()
         {
             if found_camera.is_some() {
@@ -608,7 +608,7 @@ fn show_projections_from_2d_space(
             .batch("projection from 2d hit points");
 
         for cam in &scene.space_cameras {
-            if cam.target_space.as_ref() == Some(space_2d) {
+            if &cam.obj_path == space_2d {
                 if let Some(ray) = cam.unproject_as_ray(glam::vec2(pos.x, pos.y)) {
                     // TODO(emilk): better visualization of a ray
                     let mut hit_pos = None;
@@ -656,12 +656,10 @@ fn project_onto_other_spaces(
 ) {
     let mut target_spaces = vec![];
     for cam in space_cameras {
-        if let Some(target_space) = cam.target_space.clone() {
-            let point_in_2d = state
-                .hovered_point
-                .and_then(|hovered_point| cam.project_onto_2d(hovered_point));
-            target_spaces.push((target_space, point_in_2d));
-        }
+        let point_in_2d = state
+            .hovered_point
+            .and_then(|hovered_point| cam.project_onto_2d(hovered_point));
+        target_spaces.push((cam.obj_path.clone(), point_in_2d));
     }
     ctx.rec_cfg.hovered_space_this_frame = HoveredSpace::ThreeD {
         space_3d: space.clone(),

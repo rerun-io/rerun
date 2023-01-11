@@ -256,10 +256,8 @@ impl SceneSpatial {
             macaw::Plane3::from_normal_point(eye.forward_in_world(), eye.pos_in_world());
 
         for camera in &self.space_cameras {
-            let instance_id = InstanceIdHash::from_path_and_index(
-                &camera.camera_obj_path,
-                camera.instance_index_hash,
-            );
+            let instance_id =
+                InstanceIdHash::from_path_and_index(&camera.obj_path, camera.instance_index_hash);
             let is_hovered = instance_id == hovered_instance;
 
             let (line_radius, line_color) = if is_hovered {
@@ -313,7 +311,7 @@ impl SceneSpatial {
             }
 
             let mut frustum_length = scene_bbox.size().length() * 0.3;
-            if let (Some(pinhole), Some(child_space)) = (&camera.pinhole, &camera.target_space) {
+            if let (Some(pinhole), child_space) = (&camera.pinhole, &camera.obj_path) {
                 frustum_length = obj_properties
                     .get(child_space)
                     .pinhole_image_plane_distance(pinhole);

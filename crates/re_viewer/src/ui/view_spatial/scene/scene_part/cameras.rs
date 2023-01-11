@@ -132,12 +132,11 @@ impl CamerasPart {
         };
 
         scene.space_cameras.push(SpaceCamera3D {
-            camera_obj_path: obj_path.clone(),
+            obj_path: obj_path.clone(),
             instance_index_hash: re_log_types::IndexHash::NONE,
             camera_view_coordinates: None, //  view_space, // TODO:
             world_from_camera,
             pinhole: Some(pinhole),
-            target_space: Some(obj_path.clone()), // TODO: This is ALWAYS a pinhole camera. change space camera accordingly!
         });
     }
 }

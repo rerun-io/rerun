@@ -7,8 +7,10 @@ use re_log_types::{IndexHash, ViewCoordinates};
 /// A logged camera that connects spaces.
 #[derive(Clone)]
 pub struct SpaceCamera3D {
-    /// Path to the object which has the rigid [Self::world_from_camera`] transforms.
-    pub camera_obj_path: ObjPath,
+    /// Path to the object which has the projection (pinhole, ortho or otherwise) transforms.
+    ///
+    /// We expect the camera transform to apply to this object and every path below it.
+    pub obj_path: ObjPath,
 
     /// The hash of the instance index (if any) of the object at [`Self::camera_obj_path`].
     pub instance_index_hash: IndexHash,
@@ -23,9 +25,6 @@ pub struct SpaceCamera3D {
     // Optional projection-related things:
     /// The projection transform of a child-object.
     pub pinhole: Option<re_log_types::Pinhole>,
-
-    /// The child 2D space we project into.
-    pub target_space: Option<ObjPath>,
 }
 
 impl SpaceCamera3D {
@@ -47,7 +46,7 @@ impl SpaceCamera3D {
         match from_rub_quat(self.camera_view_coordinates) {
             Ok(from_rub) => Some(self.world_from_camera * IsoTransform::from_quat(from_rub)),
             Err(err) => {
-                re_log::warn_once!("Camera {:?}: {}", self.camera_obj_path, err);
+                re_log::warn_once!("Camera {:?}: {}", self.obj_path, err);
                 None
             }
         }
