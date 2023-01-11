@@ -19,9 +19,9 @@ use crate::{
 
 use super::ScenePart;
 
-pub struct Boxes3DPart;
+pub struct Boxes3DPartClassic;
 
-impl ScenePart for Boxes3DPart {
+impl ScenePart for Boxes3DPartClassic {
     fn load(
         &self,
         scene: &mut SceneSpatial,
@@ -131,3 +131,5 @@ impl ScenePart for Boxes3DPart {
         }
     }
 }
+
+pub struct Boxes3DPart;
