@@ -52,7 +52,7 @@ pub struct ObjectTree {
     pub prefix_times: TimesPerTimeline,
 
     /// Extra book-keeping used to seed any timelines that include timeless msgs
-    pub timeless_msgs: BTreeMap<TimeInt, BTreeSet<MsgId>>,
+    pub timeless_msgs: BTreeSet<MsgId>,
 
     /// Book-keeping around whether we should clear fields when data is added
     pub nonrecursive_clears: BTreeMap<MsgId, TimePoint>,
@@ -222,10 +222,7 @@ impl ObjectTree {
         // If the time_point is timeless...
         if time_point.is_timeless() {
             // Save it so that we can duplicate it into future timelines
-            self.timeless_msgs
-                .entry(TimeInt::BEGINNING)
-                .or_default()
-                .insert(msg_id);
+            self.timeless_msgs.insert(msg_id);
 
             // Add it to any existing timelines
             for (_, timeline) in self.prefix_times.iter_mut() {
@@ -241,7 +238,7 @@ impl ObjectTree {
                     .entry(*timeline)
                     .or_insert_with(|| {
                         new_timeline = true;
-                        self.timeless_msgs.clone()
+                        [(TimeInt::BEGINNING, self.timeless_msgs.clone())].into()
                     })
                     .entry(*time_value)
                     .or_default()
@@ -345,7 +342,7 @@ pub struct DataColumns {
     /// When do we have data?
     pub times: BTreeMap<Timeline, BTreeMap<TimeInt, BTreeSet<MsgId>>>,
     /// Extra book-keeping used to seed any timelines that include timeless msgs
-    pub timeless_msgs: BTreeMap<TimeInt, BTreeSet<MsgId>>,
+    pub timeless_msgs: BTreeSet<MsgId>,
     pub per_type: HashMap<(DataType, MonoOrMulti), BTreeSet<MsgId>>,
 }
 
@@ -354,10 +351,7 @@ impl DataColumns {
         // If the `time_point` is timeless...
         if time_point.is_timeless() {
             // Save it so that we can duplicate it into future timelines
-            self.timeless_msgs
-                .entry(TimeInt::BEGINNING)
-                .or_default()
-                .insert(msg_id);
+            self.timeless_msgs.insert(msg_id);
 
             // Add it to any existing timelines
             for timeline in &mut self.times.values_mut() {
@@ -370,7 +364,7 @@ impl DataColumns {
             for (timeline, time_value) in time_point.iter() {
                 self.times
                     .entry(*timeline)
-                    .or_insert_with(|| self.timeless_msgs.clone())
+                    .or_insert_with(|| [(TimeInt::BEGINNING, self.timeless_msgs.clone())].into())
                     .entry(*time_value)
                     .or_default()
                     .insert(msg_id);
@@ -397,7 +391,7 @@ impl DataColumns {
         for (timeline, _) in time_point.iter() {
             self.times
                 .entry(*timeline)
-                .or_insert_with(|| self.timeless_msgs.clone());
+                .or_insert_with(|| [(TimeInt::BEGINNING, self.timeless_msgs.clone())].into());
         }
     }
 
