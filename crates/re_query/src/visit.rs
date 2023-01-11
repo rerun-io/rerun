@@ -61,7 +61,7 @@ macro_rules! create_visitor {
     // $cc: List of the names of the component variables, e.g., _c1, _c2
     ($name:ident; $($CC:ident),* ; $($cc:ident),*) => (
 
-        #[doc = "Visit the primary component of an [`EntityView`]. See [`re_query::src::visit`]"]
+        #[doc = "Visit the primary component of an [`EntityView`]. See [`crate::src::visit`]"]
         pub fn $name < $( $CC: Component, )* >(
             &self,
             mut visit: impl FnMut(
