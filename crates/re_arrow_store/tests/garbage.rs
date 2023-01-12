@@ -23,16 +23,6 @@ fn gc() {
         let mut store = DataStore::new(Instance::name(), config.clone());
         gc_impl(&mut store);
     }
-
-    // let mut store = DataStore::new(
-    //     Instance::name(),
-    //     DataStoreConfig {
-    //         component_bucket_size_bytes: 1 * 1024 * 1024, // 1 MiB
-    //         component_bucket_nb_rows: 100,
-    //         ..Default::default()
-    //     },
-    // );
-    // gc_impl(&mut store);
 }
 fn gc_impl(store: &mut DataStore) {
     let mut rng = rand::thread_rng();
@@ -82,6 +72,109 @@ fn gc_impl(store: &mut DataStore) {
             assert!(store.get_msg_metadata(msg_id).is_none());
         }
     }
+}
+
+#[test]
+fn gc_correct() {
+    init_logs();
+
+    let mut store = DataStore::new(
+        Instance::name(),
+        DataStoreConfig {
+            component_bucket_size_bytes: 0,
+            component_bucket_nb_rows: 0,
+            ..Default::default()
+        },
+    );
+
+    let mut rng = rand::thread_rng();
+
+    let nb_ents = 10;
+    for i in 0..nb_ents {
+        let ent_path = EntityPath::from(format!("this/that/{i}"));
+
+        let nb_frames = rng.gen_range(0..=100);
+        let frames = (0..nb_frames).filter(|_| rand::thread_rng().gen());
+        for frame_nr in frames {
+            let nb_instances = rng.gen_range(0..=1_000);
+            let bundle = test_bundle!(ent_path @ [build_frame_nr(frame_nr.into())] => [
+                build_some_rects(nb_instances),
+            ]);
+            store.insert(&bundle).unwrap();
+        }
+    }
+
+    if let err @ Err(_) = store.sanity_check() {
+        store.sort_indices_if_needed();
+        eprintln!("{store}");
+        err.unwrap();
+    }
+    _ = store.to_dataframe(); // nice way to check everything is readable
+
+    dbg!(DataStoreStats::from_store(&store).total_temporal_component_rows);
+
+    let msg_id_chunks = store
+        .gc(
+            MsgId::name(),
+            GarbageCollectionTarget::DropAtLeastPercentage(1.0),
+        )
+        .unwrap();
+
+    let msg_ids = msg_id_chunks
+        .iter()
+        .flat_map(|chunk| arrow_array_deserialize_iterator::<Option<MsgId>>(&**chunk).unwrap())
+        .map(Option::unwrap) // MsgId is always present
+        .collect::<ahash::HashSet<_>>();
+
+    if let err @ Err(_) = store.sanity_check() {
+        store.sort_indices_if_needed();
+        eprintln!("{store}");
+        err.unwrap();
+    }
+    _ = store.to_dataframe(); // nice way to check everything is readable
+    for msg_id in &msg_ids {
+        assert!(store.get_msg_metadata(msg_id).is_some());
+    }
+
+    store.clear_msg_metadata(&msg_ids);
+
+    if let err @ Err(_) = store.sanity_check() {
+        store.sort_indices_if_needed();
+        eprintln!("{store}");
+        err.unwrap();
+    }
+    _ = store.to_dataframe(); // nice way to check everything is readable
+    for msg_id in &msg_ids {
+        assert!(store.get_msg_metadata(msg_id).is_none());
+    }
+
+    dbg!(DataStoreStats::from_store(&store).total_temporal_component_rows);
+
+    let msg_id_chunks = store
+        .gc(
+            MsgId::name(),
+            GarbageCollectionTarget::DropAtLeastPercentage(1.0),
+        )
+        .unwrap();
+
+    let msg_ids = msg_id_chunks
+        .iter()
+        .flat_map(|chunk| arrow_array_deserialize_iterator::<Option<MsgId>>(&**chunk).unwrap())
+        .map(Option::unwrap) // MsgId is always present
+        .collect::<ahash::HashSet<_>>();
+    assert!(msg_ids.is_empty());
+
+    if let err @ Err(_) = store.sanity_check() {
+        store.sort_indices_if_needed();
+        eprintln!("{store}");
+        err.unwrap();
+    }
+    _ = store.to_dataframe(); // nice way to check everything is readable
+
+    dbg!(DataStoreStats::from_store(&store).total_temporal_component_rows);
+
+    // eprintln!("{store}");
+    // dbg!(store.to_dataframe());
 }
 
 // ---

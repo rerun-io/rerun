@@ -38,9 +38,10 @@ pub enum GarbageCollectionTarget {
 impl std::fmt::Display for GarbageCollectionTarget {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            GarbageCollectionTarget::DropAtLeastPercentage(p) => {
-                f.write_fmt(format_args!("DropAtLeast({}%)", re_format::format_f64(*p)))
-            }
+            GarbageCollectionTarget::DropAtLeastPercentage(p) => f.write_fmt(format_args!(
+                "DropAtLeast({}%)",
+                re_format::format_f64(*p * 100.0)
+            )),
         }
     }
 }
@@ -126,14 +127,18 @@ impl DataStore {
             for table in self.components.values_mut() {
                 while table.buckets.len() > 1 {
                     let bucket = table.buckets.front().unwrap();
-                    if primary_bucket.contains(bucket) {
+                    if primary_bucket.contains(&bucket.time_ranges) {
                         let bucket = table.buckets.pop_front().unwrap();
                         drop_at_least_size_bytes -= bucket.total_size_bytes() as f64;
                     } else {
+                        // dbg!(&primary_bucket.time_ranges);
+                        // dbg!(&bucket.time_ranges);
                         break;
                     }
                 }
             }
+
+            // TODO: remove indices... maybe? I kinda like those tombstones tho
 
             dropped.extend(primary_bucket.chunks.into_iter().map(|chunk| {
                 chunk
@@ -151,17 +156,16 @@ impl DataStore {
 
 impl ComponentBucket {
     // TODO: doc
-    fn contains(&self, other: &ComponentBucket) -> bool {
-        for timeline2 in other.time_ranges.keys() {
+    fn contains(&self, time_ranges: &HashMap<Timeline, TimeRange>) -> bool {
+        for timeline2 in time_ranges.keys() {
             if !self.time_ranges.contains_key(timeline2) {
                 return false;
             }
         }
 
         for (timeline1, time_range1) in &self.time_ranges {
-            if let Some(time_range2) = other.time_ranges.get(timeline1) {
-                if !time_range1.contains(time_range2.min) || !time_range1.contains(time_range2.max)
-                {
+            if let Some(time_range2) = time_ranges.get(timeline1) {
+                if time_range2.max > time_range1.max {
                     return false;
                 }
             }

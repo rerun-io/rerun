@@ -1097,8 +1097,10 @@ impl ComponentTable {
         //
         // Since component tables always spawn with a default bucket at offset 0, the smallest
         // partition point that can ever be returned is one, thus this operation is overflow-safe.
-        debug_assert!(bucket_nr > 0);
-        bucket_nr -= 1;
+        // debug_assert!(bucket_nr > 0);
+        // bucket_nr -= 1;
+        let Some(bucket_nr) = bucket_nr.checked_sub(1) else { return None };
+        // TODO: GC'd RowIndex
 
         if let Some(bucket) = self.buckets.get(bucket_nr) {
             trace!(

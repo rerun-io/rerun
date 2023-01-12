@@ -45,7 +45,7 @@ impl Default for ObjDb {
                 Instance::name(),
                 DataStoreConfig {
                     component_bucket_size_bytes: 1 * 1024 * 1024, // 1 MiB
-                    component_bucket_nb_rows: 100,
+                    component_bucket_nb_rows: 1,
                     ..Default::default()
                 },
             ),
