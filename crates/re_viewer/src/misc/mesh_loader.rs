@@ -71,7 +71,7 @@ impl LoadedMesh {
         let mut slf = Self::load_raw(name, *format, bytes, render_ctx)?;
 
         let (scale, rotation, translation) =
-            glam::Affine3A::from_cols_array_2d(transform.into()).to_scale_rotation_translation();
+            glam::Affine3A::from_cols_array_2d(transform).to_scale_rotation_translation();
         let transform =
             glam::Affine3A::from_scale_rotation_translation(scale, rotation, translation);
         for instance in &mut slf.mesh_instances {
@@ -82,6 +82,7 @@ impl LoadedMesh {
         Ok(slf)
     }
 
+    #[allow(dead_code)]
     fn load_raw_mesh(
         name: String,
         raw_mesh: &RawMesh3D,

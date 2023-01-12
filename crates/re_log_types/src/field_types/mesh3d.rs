@@ -1,11 +1,13 @@
 use arrow2::array::{FixedSizeBinaryArray, MutableFixedSizeBinaryArray};
-use arrow2::datatypes::{DataType, Field, UnionMode};
+use arrow2::datatypes::DataType;
 use arrow2_convert::arrow_enable_vec_for_type;
 use arrow2_convert::deserialize::ArrowDeserialize;
 use arrow2_convert::field::ArrowField;
 use arrow2_convert::{serialize::ArrowSerialize, ArrowDeserialize, ArrowField, ArrowSerialize};
 
 use crate::msg_bundle::Component;
+
+use super::FieldError;
 
 // ----------------------------------------------------------------------------
 
@@ -112,33 +114,35 @@ impl From<&EncodedMesh3D> for EncodedMesh3DArrow {
             transform,
         } = v;
         Self {
-            mesh_id: mesh_id.clone(),
-            format: format.clone(),
+            mesh_id: *mesh_id,
+            format: *format,
             bytes: bytes.as_ref().into(),
             transform: transform.iter().flat_map(|c| c.iter().cloned()).collect(),
         }
     }
 }
 
-impl From<EncodedMesh3DArrow> for EncodedMesh3D {
-    fn from(v: EncodedMesh3DArrow) -> Self {
+impl TryFrom<EncodedMesh3DArrow> for EncodedMesh3D {
+    type Error = FieldError;
+    fn try_from(v: EncodedMesh3DArrow) -> super::Result<Self> {
         let EncodedMesh3DArrow {
             mesh_id,
             format,
             bytes,
             transform,
         } = v;
-        Self {
+
+        Ok(Self {
             mesh_id,
             format,
             bytes: bytes.into(),
             transform: [
-                transform.as_slice()[0..3].try_into().unwrap(),
-                transform.as_slice()[3..6].try_into().unwrap(),
-                transform.as_slice()[6..9].try_into().unwrap(),
-                transform.as_slice()[9..12].try_into().unwrap(),
+                transform.as_slice()[0..3].try_into()?,
+                transform.as_slice()[3..6].try_into()?,
+                transform.as_slice()[6..9].try_into()?,
+                transform.as_slice()[9..12].try_into()?,
             ],
-        }
+        })
     }
 }
 
@@ -173,7 +177,7 @@ impl ArrowDeserialize for EncodedMesh3D {
         v: <&Self::ArrayType as IntoIterator>::Item,
     ) -> Option<<Self as ArrowField>::Type> {
         let v = <EncodedMesh3DArrow as ArrowDeserialize>::arrow_deserialize(v);
-        v.map(|v| v.into())
+        v.and_then(|v| v.try_into().ok())
     }
 }
 

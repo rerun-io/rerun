@@ -93,6 +93,9 @@ pub fn iter_registered_field_types() -> impl Iterator<Item = &'static Field> {
 pub enum FieldError {
     #[error("Encountered bad value")]
     BadValue,
+
+    #[error("Slice over bad indicies")]
+    BadSlice(#[from] std::array::TryFromSliceError),
 }
 
 pub type Result<T> = std::result::Result<T, FieldError>;
