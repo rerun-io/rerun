@@ -6,7 +6,7 @@ use glam::{vec3, Vec3};
 use re_data_store::{InstanceIdHash, ObjPath, ObjectsProperties};
 use re_log_types::{
     field_types::{ClassId, KeypointId},
-    IndexHash, MeshId, Tensor,
+    ClassicTensor, IndexHash, MeshId,
 };
 use re_renderer::{Color32, Size};
 
@@ -58,7 +58,7 @@ pub struct MeshSource {
 pub struct Image {
     pub instance_hash: InstanceIdHash,
 
-    pub tensor: Tensor,
+    pub tensor: ClassicTensor,
     /// If this is a depth map, how long is a meter?
     ///
     /// For instance, with a `u16` dtype one might have
@@ -164,6 +164,7 @@ impl SceneSpatial {
             &scene_part::Lines3DPart,
             &scene_part::Arrows3DPart,
             &scene_part::MeshPart,
+            &scene_part::ImagesPartClassic,
             &scene_part::ImagesPart,
             // --
             &scene_part::Boxes2DPartClassic,

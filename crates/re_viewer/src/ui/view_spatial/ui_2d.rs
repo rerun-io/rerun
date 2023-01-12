@@ -398,7 +398,7 @@ fn view_2d_scrollable(
                                 ctx.render_ctx,
                             );
 
-                            if let [h, w, ..] = image.tensor.shape.as_slice() {
+                            if let [h, w, ..] = image.tensor.shape() {
                                 ui.separator();
                                 ui.horizontal(|ui| {
                                     // TODO(andreas): 3d skips the show_zoomed_image_region_rect part here.

@@ -305,18 +305,12 @@ impl MsgBundle {
 
 impl std::fmt::Display for MsgBundle {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let (names, values): (Vec<_>, Vec<_>) = self
-            .components
-            .iter()
-            .map(|ComponentBundle { name, value }| (name.as_str(), value))
-            .unzip();
-
-        let chunk = Chunk::new(values);
-        let table_string = arrow2::io::print::write(&[chunk], names.as_slice());
-
+        let values = self.components.iter().map(|bundle| &bundle.value);
+        let names = self.components.iter().map(|bundle| bundle.name.as_str());
+        let table = re_format::arrow::format_table(values, names);
         f.write_fmt(format_args!(
-            "MsgBundle '{}' @ {:?}:\n{}",
-            self.obj_path, self.time_point, table_string
+            "MsgBundle '{}' @ {:?}:\n{table}",
+            self.obj_path, self.time_point
         ))
     }
 }

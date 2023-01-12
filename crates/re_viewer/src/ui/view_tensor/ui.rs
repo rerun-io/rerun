@@ -5,7 +5,7 @@ use egui::{epaint::TextShape, Color32, ColorImage, NumExt as _, Vec2};
 use half::f16;
 use ndarray::{Axis, Ix2};
 
-use re_log_types::{Tensor, TensorDataType, TensorDimension};
+use re_log_types::{field_types, ClassicTensor, TensorDataType};
 use re_tensor_ops::dimension_mapping::DimensionMapping;
 
 use super::dimension_mapping_ui;
@@ -29,14 +29,14 @@ pub struct ViewTensorState {
     /// Last viewed tensor, copied each frame.
     /// Used for the selection view.
     #[serde(skip)]
-    tensor: Option<Tensor>,
+    tensor: Option<ClassicTensor>,
 }
 
 impl ViewTensorState {
-    pub fn create(tensor: &Tensor) -> ViewTensorState {
+    pub fn create(tensor: &ClassicTensor) -> ViewTensorState {
         Self {
             selector_values: Default::default(),
-            dimension_mapping: DimensionMapping::create(&tensor.shape),
+            dimension_mapping: DimensionMapping::create(tensor.shape()),
             color_mapping: ColorMapping::default(),
             texture_settings: TextureSettings::default(),
             tensor: Some(tensor.clone()),
@@ -46,13 +46,13 @@ impl ViewTensorState {
     pub(crate) fn ui(&mut self, ctx: &mut crate::misc::ViewerContext<'_>, ui: &mut egui::Ui) {
         if let Some(tensor) = &self.tensor {
             ui.collapsing("Dimension Mapping", |ui| {
-                ui.label(format!("shape: {:?}", tensor.shape));
-                ui.label(format!("dtype: {}", tensor.dtype));
+                ui.label(format!("shape: {:?}", tensor.shape()));
+                ui.label(format!("dtype: {}", tensor.dtype()));
                 ui.add_space(12.0);
 
-                dimension_mapping_ui(ui, &mut self.dimension_mapping, &tensor.shape);
+                dimension_mapping_ui(ui, &mut self.dimension_mapping, tensor.shape());
 
-                let default_mapping = DimensionMapping::create(&tensor.shape);
+                let default_mapping = DimensionMapping::create(tensor.shape());
                 if ui
                     .add_enabled(
                         self.dimension_mapping != default_mapping,
@@ -61,7 +61,7 @@ impl ViewTensorState {
                     .on_disabled_hover_text("The default is already set up")
                     .clicked()
                 {
-                    self.dimension_mapping = DimensionMapping::create(&tensor.shape);
+                    self.dimension_mapping = DimensionMapping::create(tensor.shape());
                 }
             });
         }
@@ -76,19 +76,19 @@ pub(crate) fn view_tensor(
     ctx: &mut crate::misc::ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &mut ViewTensorState,
-    tensor: &Tensor,
+    tensor: &ClassicTensor,
 ) {
     crate::profile_function!();
 
     state.tensor = Some(tensor.clone());
 
     if !state.dimension_mapping.is_valid(tensor.num_dim()) {
-        state.dimension_mapping = DimensionMapping::create(&tensor.shape);
+        state.dimension_mapping = DimensionMapping::create(tensor.shape());
     }
 
     selectors_ui(ui, state, tensor);
 
-    let tensor_shape = &tensor.shape;
+    let tensor_shape = tensor.shape();
 
     let tensor_stats = ctx.cache.tensor_stats(tensor);
     let range = tensor_stats.range;
@@ -112,9 +112,8 @@ pub(crate) fn view_tensor(
 
         TensorDataType::U16 => match re_tensor_ops::as_ndarray::<u16>(tensor) {
             Ok(tensor) => {
-                let (tensor_min, tensor_max) = range.unwrap_or((0.0, u16::MAX as f64)); // the cache should provide the range
-
                 let color_from_value = |value: u16| {
+                    let (tensor_min, tensor_max) = range.unwrap_or((0.0, u16::MAX as f64)); // the cache should provide the range
                     color_mapping.color_from_normalized(egui::remap(
                         value as f32,
                         tensor_min as f32..=tensor_max as f32,
@@ -152,9 +151,8 @@ pub(crate) fn view_tensor(
 
         TensorDataType::U64 => match re_tensor_ops::as_ndarray::<u64>(tensor) {
             Ok(tensor) => {
-                let (tensor_min, tensor_max) = range.unwrap_or((0.0, u64::MAX as f64)); // the cache should provide the range
-
                 let color_from_value = |value: u64| {
+                    let (tensor_min, tensor_max) = range.unwrap_or((0.0, u64::MAX as f64)); // the cache should provide the range
                     color_mapping.color_from_normalized(egui::remap(
                         value as f64,
                         tensor_min..=tensor_max,
@@ -192,9 +190,9 @@ pub(crate) fn view_tensor(
 
         TensorDataType::I16 => match re_tensor_ops::as_ndarray::<i16>(tensor) {
             Ok(tensor) => {
-                let (tensor_min, tensor_max) = range.unwrap_or((i16::MIN as f64, i16::MAX as f64)); // the cache should provide the range
-
                 let color_from_value = |value: i16| {
+                    let (tensor_min, tensor_max) =
+                        range.unwrap_or((i16::MIN as f64, i16::MAX as f64)); // the cache should provide the range
                     color_mapping.color_from_normalized(egui::remap(
                         value as f32,
                         tensor_min as f32..=tensor_max as f32,
@@ -212,9 +210,9 @@ pub(crate) fn view_tensor(
 
         TensorDataType::I32 => match re_tensor_ops::as_ndarray::<i32>(tensor) {
             Ok(tensor) => {
-                let (tensor_min, tensor_max) = range.unwrap_or((i32::MIN as f64, i32::MAX as f64)); // the cache should provide the range
-
                 let color_from_value = |value: i32| {
+                    let (tensor_min, tensor_max) =
+                        range.unwrap_or((i32::MIN as f64, i32::MAX as f64)); // the cache should provide the range
                     color_mapping.color_from_normalized(egui::remap(
                         value as f64,
                         tensor_min..=tensor_max,
@@ -232,9 +230,9 @@ pub(crate) fn view_tensor(
 
         TensorDataType::I64 => match re_tensor_ops::as_ndarray::<i64>(tensor) {
             Ok(tensor) => {
-                let (tensor_min, tensor_max) = range.unwrap_or((i64::MIN as f64, i64::MAX as f64)); // the cache should provide the range
-
                 let color_from_value = |value: i64| {
+                    let (tensor_min, tensor_max) =
+                        range.unwrap_or((i64::MIN as f64, i64::MAX as f64)); // the cache should provide the range
                     color_mapping.color_from_normalized(egui::remap(
                         value as f64,
                         tensor_min..=tensor_max,
@@ -252,9 +250,8 @@ pub(crate) fn view_tensor(
 
         TensorDataType::F16 => match re_tensor_ops::as_ndarray::<f16>(tensor) {
             Ok(tensor) => {
-                let (tensor_min, tensor_max) = range.unwrap_or((0.0, 1.0)); // the cache should provide the range
-
                 let color_from_value = |value: f16| {
+                    let (tensor_min, tensor_max) = range.unwrap_or((0.0, 1.0)); // the cache should provide the range
                     color_mapping.color_from_normalized(egui::remap(
                         value.to_f32(),
                         tensor_min as f32..=tensor_max as f32,
@@ -272,9 +269,8 @@ pub(crate) fn view_tensor(
 
         TensorDataType::F32 => match re_tensor_ops::as_ndarray::<f32>(tensor) {
             Ok(tensor) => {
-                let (tensor_min, tensor_max) = range.unwrap_or((0.0, 1.0)); // the cache should provide the range
-
                 let color_from_value = |value: f32| {
+                    let (tensor_min, tensor_max) = range.unwrap_or((0.0, 1.0)); // the cache should provide the range
                     color_mapping.color_from_normalized(egui::remap(
                         value,
                         tensor_min as f32..=tensor_max as f32,
@@ -292,9 +288,8 @@ pub(crate) fn view_tensor(
 
         TensorDataType::F64 => match re_tensor_ops::as_ndarray::<f64>(tensor) {
             Ok(tensor) => {
-                let (tensor_min, tensor_max) = range.unwrap_or((0.0, 1.0)); // the cache should provide the range
-
                 let color_from_value = |value: f64| {
+                    let (tensor_min, tensor_max) = range.unwrap_or((0.0, 1.0)); // the cache should provide the range
                     color_mapping.color_from_normalized(egui::remap(
                         value,
                         tensor_min..=tensor_max,
@@ -348,7 +343,7 @@ fn color_mapping_ui(
     ctx: &mut crate::misc::ViewerContext<'_>,
     ui: &mut egui::Ui,
     color_mapping: &mut ColorMapping,
-    tensor: Option<&Tensor>,
+    tensor: Option<&ClassicTensor>,
 ) {
     ui.group(|ui| {
         ui.strong("Color map");
@@ -565,7 +560,7 @@ fn slice_ui<T: Copy>(
     ctx: &mut crate::misc::ViewerContext<'_>,
     ui: &mut egui::Ui,
     view_state: &ViewTensorState,
-    tensor_shape: &[TensorDimension],
+    tensor_shape: &[field_types::TensorDimension],
     slice: ndarray::ArrayViewD<'_, T>,
     color_from_value: impl Fn(T) -> Color32,
 ) {
@@ -596,13 +591,12 @@ fn slice_ui<T: Copy>(
     }
 }
 
-fn dimension_name(shape: &[TensorDimension], dim_idx: usize) -> String {
+fn dimension_name(shape: &[field_types::TensorDimension], dim_idx: usize) -> String {
     let dim = &shape[dim_idx];
-    if dim.name.is_empty() {
-        format!("Dimension {} (size={})", dim_idx, dim.size)
-    } else {
-        format!("{} (size={})", dim.name, dim.size)
-    }
+    dim.name.as_ref().map_or_else(
+        || format!("Dimension {dim_idx} (size={})", dim.size),
+        |name| format!("{name} (size={})", dim.size),
+    )
 }
 
 fn into_image<T: Copy>(
@@ -688,9 +682,9 @@ fn image_ui(
     });
 }
 
-fn selectors_ui(ui: &mut egui::Ui, state: &mut ViewTensorState, tensor: &Tensor) {
+fn selectors_ui(ui: &mut egui::Ui, state: &mut ViewTensorState, tensor: &ClassicTensor) {
     for &dim_idx in &state.dimension_mapping.selectors {
-        let dim = &tensor.shape[dim_idx];
+        let dim = &tensor.shape()[dim_idx];
         let size = dim.size;
 
         let selector_value = state
@@ -704,11 +698,10 @@ fn selectors_ui(ui: &mut egui::Ui, state: &mut ViewTensorState, tensor: &Tensor)
 
         if size > 1 {
             ui.horizontal(|ui| {
-                let name = if dim.name.is_empty() {
-                    format!("dimension {dim_idx}")
-                } else {
-                    format!("{:?}", dim.name)
-                };
+                let name = dim.name.as_ref().map_or_else(
+                    || format!("dimension {dim_idx}"),
+                    |name| format!("{name:?}"),
+                );
 
                 ui.weak(format!("Slice selector for {}:", name));
 
