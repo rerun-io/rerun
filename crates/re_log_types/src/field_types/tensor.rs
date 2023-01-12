@@ -78,6 +78,69 @@ impl ArrowDeserialize for TensorId {
 
 // ----------------------------------------------------------------------------
 
+/// Flattened `Tensor` data payload
+///
+/// ```
+/// use re_log_types::field_types::TensorData;
+/// use arrow2_convert::field::ArrowField;
+/// use arrow2::datatypes::{DataType, Field, UnionMode};
+///
+/// assert_eq!(
+///     TensorData::data_type(),
+///     DataType::Union(
+///         vec![
+///             Field::new("U8", DataType::Binary, false),
+///             Field::new(
+///                 "U16",
+///                 DataType::List(Box::new(Field::new("item", DataType::UInt16, false))),
+///                 false
+///             ),
+///             Field::new(
+///                 "U32",
+///                 DataType::List(Box::new(Field::new("item", DataType::UInt32, false))),
+///                 false
+///             ),
+///             Field::new(
+///                 "U64",
+///                 DataType::List(Box::new(Field::new("item", DataType::UInt64, false))),
+///                 false
+///             ),
+///             Field::new(
+///                 "I8",
+///                 DataType::List(Box::new(Field::new("item", DataType::Int8, false))),
+///                 false
+///             ),
+///             Field::new(
+///                 "I16",
+///                 DataType::List(Box::new(Field::new("item", DataType::Int16, false))),
+///                 false
+///             ),
+///             Field::new(
+///                 "I32",
+///                 DataType::List(Box::new(Field::new("item", DataType::Int32, false))),
+///                 false
+///             ),
+///             Field::new(
+///                 "I64",
+///                 DataType::List(Box::new(Field::new("item", DataType::Int64, false))),
+///                 false
+///             ),
+///             Field::new(
+///                 "F32",
+///                 DataType::List(Box::new(Field::new("item", DataType::Float32, false))),
+///                 false
+///             ),
+///             Field::new(
+///                 "F64",
+///                 DataType::List(Box::new(Field::new("item", DataType::Float64, false))),
+///                 false
+///             ),
+///         ],
+///         None,
+///         UnionMode::Dense
+///     ),
+/// );
+/// ```
 #[derive(Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[arrow_field(type = "dense")]
 pub enum TensorData {
@@ -97,6 +160,21 @@ pub enum TensorData {
     F64(Vec<f64>),
 }
 
+// Flattened `Tensor` data payload
+///
+/// ```
+/// use re_log_types::field_types::TensorDimension;
+/// use arrow2_convert::field::ArrowField;
+/// use arrow2::datatypes::{DataType, Field};
+///
+/// assert_eq!(
+///     TensorDimension::data_type(),
+///     DataType::Struct(vec![
+///         Field::new("size", DataType::UInt64, false),
+///         Field::new("name", DataType::Utf8, true),
+///     ])
+/// );
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct TensorDimension {
@@ -149,6 +227,41 @@ pub enum TensorDataMeaning {
     ClassId,
 }
 
+/// A Multi-dimensional Tensor
+///
+/// ```
+/// use re_log_types::field_types::{TensorData, TensorDimension, Tensor};
+/// use arrow2_convert::field::ArrowField;
+/// use arrow2::datatypes::{DataType, Field, UnionMode};
+/// assert_eq!(
+///     Tensor::data_type(),
+///     DataType::Struct(vec![
+///         //Field::new("tensor_id", DataType::FixedSizeBinary(16), false),
+///         Field::new(
+///             "shape",
+///             DataType::List(Box::new(Field::new(
+///                 "item",
+///                 TensorDimension::data_type(),
+///                 false
+///             )),),
+///             false
+///         ),
+///         Field::new("data", TensorData::data_type(), false),
+///         Field::new(
+///             "meaning",
+///             DataType::Union(
+///                 vec![
+///                     Field::new("Unknown", DataType::Boolean, false),
+///                     Field::new("ClassId", DataType::Boolean, false)
+///                 ],
+///                 None,
+///                 UnionMode::Dense
+///             ),
+///             false
+///         )
+///     ])
+/// );
+/// ```
 #[derive(Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 pub struct Tensor {
     /// Unique identifier for the tensor
