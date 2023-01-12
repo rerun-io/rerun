@@ -287,6 +287,11 @@ impl DataStore {
         self.cluster_key
     }
 
+    /// Lookup the arrow `DataType` of a `Component`
+    pub fn lookup_data_type(&self, component: &ComponentName) -> Option<&DataType> {
+        self.components.get(component).map(|c| &c.datatype)
+    }
+
     /// Runs the sanity check suite for the entire datastore.
     ///
     /// Returns an error if anything looks wrong.
