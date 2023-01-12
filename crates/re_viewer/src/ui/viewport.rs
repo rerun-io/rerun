@@ -555,6 +555,7 @@ impl Viewport {
                             ctx,
                             category,
                             space_info,
+                            spaces_info,
                             &transforms,
                         );
                         if obj_paths.is_empty() {

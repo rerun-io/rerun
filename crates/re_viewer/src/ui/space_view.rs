@@ -70,6 +70,7 @@ pub(crate) struct SpaceView {
 
     /// Transforms seen last frame, renewed every frame.
     /// TODO(andreas): This should probably live on `SpacesInfo` and created there lazily?
+    ///                 See also https://github.com/rerun-io/rerun/issues/741
     #[serde(skip)]
     cached_transforms: TransformCache,
 }
@@ -120,10 +121,13 @@ impl SpaceView {
     }
 
     /// List of objects a space view queries by default for a given category.
+    ///
+    /// These are all objects in the given space which have the requested category and are reachable by a transform.
     pub fn default_queried_objects(
         ctx: &ViewerContext<'_>,
         category: ViewCategory,
         space_info: &SpaceInfo,
+        spaces_info: &SpacesInfo,
         transforms: &TransformCache,
     ) -> IntSet<ObjPath> {
         crate::profile_function!();
@@ -131,14 +135,20 @@ impl SpaceView {
         let timeline = ctx.rec_cfg.time_ctrl.timeline();
         let log_db = &ctx.log_db;
 
-        transforms
-            .objects_with_reachable_transform()
-            .filter(|obj_path| {
-                (*obj_path == &space_info.path || obj_path.is_descendant_of(&space_info.path))
-                    && categorize_obj_path(timeline, log_db, obj_path).contains(category)
-            })
-            .cloned()
-            .collect()
+        let mut objects = IntSet::default();
+        space_info.visit_descendants(spaces_info, &mut |space| {
+            objects.extend(
+                space
+                    .descendants_without_transform
+                    .iter()
+                    .filter(|obj_path| {
+                        transforms.reference_from_obj(obj_path).is_reachable()
+                            && categorize_obj_path(timeline, log_db, obj_path).contains(category)
+                    })
+                    .cloned(),
+            );
+        });
+        objects
     }
 
     /// List of objects a space view queries by default for all any possible category.
@@ -180,6 +190,7 @@ impl SpaceView {
                 ctx,
                 self.category,
                 space_info,
+                spaces_info,
                 &self.cached_transforms,
             );
             self.data_blueprint

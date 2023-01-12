@@ -68,10 +68,13 @@ impl ScenePart for CamerasPartClassic {
     }
 }
 
-// Determine the view coordinates (i.e.) the axis semantics.
-// The recommended way to log this is on the object holding the extrinsic camera properties
-// (i.e. the last rigid transform from here)
-// But for ease of use allow it everywhere along the path.
+/// Determine the view coordinates (i.e.) the axis semantics.
+///
+/// The recommended way to log this is on the object holding the extrinsic camera properties
+/// (i.e. the last rigid transform from here)
+/// But for ease of use allow it everywhere along the path.
+///
+/// TODO(andreas): Doing a search upwards here isn't great. Maybe this can be part of the transform cache or similar?
 fn determine_view_coordinates(
     obj_db: &re_data_store::log_db::ObjDb,
     time_ctrl: &crate::misc::TimeControl,

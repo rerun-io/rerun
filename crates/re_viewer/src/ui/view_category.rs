@@ -46,8 +46,9 @@ pub fn categorize_obj_path(
     crate::profile_function!();
 
     let Some(obj_type) = log_db.obj_db.types.get(obj_path.obj_type_path()) else {
-        // If it has a transform it is a 3D object (a camera!)
-        if query_transform(&log_db.obj_db, timeline, obj_path, None).is_some() {
+        // If it has a transform we might want to visualize it in space
+        // (as of writing we do that only for projections, i.e. cameras, but visualizations for rigid transforms may be added)
+        if query_transform(&log_db.obj_db, timeline, obj_path, Some(i64::MAX)).is_some() {
             return ViewCategory::Spatial.into();
         }
 
