@@ -19,12 +19,28 @@ use crate::msg_bundle::Component;
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Instance(pub u64);
 
+impl Instance {
+    #[inline]
+    pub fn splat() -> Instance {
+        Self(u64::MAX)
+    }
+
+    #[inline]
+    pub fn is_splat(&self) -> bool {
+        self.0 == u64::MAX
+    }
+}
+
 arrow_enable_vec_for_type!(Instance);
 
 impl std::fmt::Display for Instance {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let key = self.0;
-        format!("key:{key}").fmt(f)
+        if self.is_splat() {
+            "splat".fmt(f)
+        } else {
+            let key = self.0;
+            format!("key:{key}").fmt(f)
+        }
     }
 }
 

@@ -183,7 +183,7 @@ where
 
     pub fn as_df2<C1>(&self) -> crate::Result<DataFrame>
     where
-        C1: Component,
+        C1: Clone + Component,
         Option<C1>: ArrowSerialize + ArrowField<Type = Option<C1>>,
         C1: ArrowDeserialize + ArrowField<Type = C1> + 'static,
         C1::ArrayType: ArrowArray,

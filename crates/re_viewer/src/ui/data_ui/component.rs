@@ -62,6 +62,9 @@ pub(crate) fn arrow_component_elem_ui(
             Err(QueryError::ComponentNotFound) => ui.label("<unset>"),
             Err(err) => ui.label(format!("Error: {}", err)),
         }
+    } else if component.name() == Instance::name() {
+        // No reason to do another lookup -- this is the instance itself
+        ui.label(format!("{}", instance))
     } else if let Some(value) = component.lookup_arrow(instance) {
         let mut repr = String::new();
         let display = array::get_display(value.as_ref(), "null");
