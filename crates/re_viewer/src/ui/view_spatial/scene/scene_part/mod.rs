@@ -21,7 +21,7 @@ mod segments2d;
 
 pub use arrows3d::Arrows3DPart;
 pub use boxes2d::{Boxes2DPart, Boxes2DPartClassic};
-pub use boxes3d::Boxes3DPart;
+pub use boxes3d::{Boxes3DPart, Boxes3DPartClassic};
 pub use images::ImagesPart;
 pub use lines3d::{Lines3DPart, Lines3DPartClassic};
 pub use meshes::MeshPart;

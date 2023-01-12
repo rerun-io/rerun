@@ -10,14 +10,17 @@ from rerun import bindings
 
 all = [
     "annotation",
+    "box",
     "color",
     "label",
     "point",
+    "quaternion",
     "radius",
     "rect2d",
     "scalar",
     "scalar_plot_props",
     "text_entry",
+    "vec",
 ]
 
 REGISTERED_FIELDS: Final[dict[str, pa.field]] = bindings.get_registered_fields()
