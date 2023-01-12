@@ -70,7 +70,7 @@ pub(crate) struct SpaceView {
 
     /// Transforms seen last frame, renewed every frame.
     /// TODO(andreas): This should probably live on `SpacesInfo` and created there lazily?
-    ///                 See also https://github.com/rerun-io/rerun/issues/741
+    ///                 See also [#741](https://github.com/rerun-io/rerun/issues/741)
     #[serde(skip)]
     cached_transforms: TransformCache,
 }
