@@ -14,7 +14,7 @@ use crate::{
         space_info::{SpaceInfo, SpacesInfo},
         Selection, ViewerContext,
     },
-    ui::{view_category::group_by_category, view_spatial::SceneSpatial},
+    ui::view_spatial::{SceneSpatial, SpatialNavigationMode},
 };
 
 use super::{
@@ -100,17 +100,14 @@ impl Viewport {
                 &ObjectsProperties::default(),
             );
 
-            for (category, obj_paths) in group_by_category(
-                ctx.rec_cfg.time_ctrl.timeline(),
-                ctx.log_db,
-                space_info
-                    .descendants_with_rigid_or_no_transform(spaces_info)
-                    .iter(),
-            ) {
+            for (category, obj_paths) in
+                SpaceView::default_queried_objects_by_category(ctx, space_info, &transforms)
+            {
                 let scene_spatial = query_scene_spatial(ctx, &obj_paths, &transforms);
 
                 if category == ViewCategory::Spatial
-                    && scene_spatial.prefer_2d_mode()
+                    && scene_spatial.preferred_navigation_mode(&space_info.path)
+                        == SpatialNavigationMode::TwoD
                     && scene_spatial.ui.images.len() > 1
                 {
                     // Multiple images (e.g. depth and rgb, or rgb and segmentation) in the same 2D scene.
@@ -133,11 +130,10 @@ impl Viewport {
                             visible_image.instance_hash.resolve(obj_db)
                         {
                             let mut space_view = SpaceView::new(
-                                ctx,
                                 category,
                                 space_info,
-                                spaces_info,
-                                scene_spatial.preferred_navigation_mode(),
+                                obj_paths.clone(),
+                                scene_spatial.preferred_navigation_mode(&space_info.path),
                             );
                             space_view.name = visible_instance_id.obj_path.to_string();
 
@@ -172,11 +168,10 @@ impl Viewport {
                 // Create one SpaceView for the whole space:
                 {
                     let space_view = SpaceView::new(
-                        ctx,
                         category,
                         space_info,
-                        spaces_info,
-                        scene_spatial.preferred_navigation_mode(),
+                        obj_paths.clone(),
+                        scene_spatial.preferred_navigation_mode(&space_info.path),
                     );
                     blueprint.add_space_view(space_view);
                 }
@@ -388,26 +383,20 @@ impl Viewport {
         space_info: &SpaceInfo,
         spaces_info: &SpacesInfo,
     ) {
-        for (category, obj_paths) in group_by_category(
-            ctx.rec_cfg.time_ctrl.timeline(),
-            ctx.log_db,
-            space_info.descendants_without_transform.iter(),
-        ) {
-            let scene_spatial = query_scene_spatial(
-                ctx,
-                &obj_paths,
-                &TransformCache::determine_transforms(
-                    spaces_info,
-                    space_info,
-                    &ObjectsProperties::default(),
-                ),
-            );
+        let transforms = TransformCache::determine_transforms(
+            spaces_info,
+            space_info,
+            &ObjectsProperties::default(),
+        );
+        for (category, obj_paths) in
+            SpaceView::default_queried_objects_by_category(ctx, space_info, &transforms)
+        {
+            let scene_spatial = query_scene_spatial(ctx, &obj_paths, &transforms);
             self.add_space_view(SpaceView::new(
-                ctx,
                 category,
                 space_info,
-                spaces_info,
-                scene_spatial.preferred_navigation_mode(),
+                obj_paths,
+                scene_spatial.preferred_navigation_mode(&space_info.path),
             ));
         }
     }
@@ -432,6 +421,8 @@ impl Viewport {
                 for space_info in spaces_info.iter() {
                     // Ignore spaces that have a parent connected via a rigid transform to their parent,
                     // since they should be picked up automatically by existing parent spaces.
+                    //
+                    // Pinhole connections are picked up only in some cases, also they indicate a new 2d view which we don't want to miss.
                     if let Some(transform) = &space_info.parent_transform() {
                         match transform {
                             re_log_types::Transform::Rigid3(_) => continue,
@@ -552,12 +543,18 @@ impl Viewport {
                 let all_categories = enumset::EnumSet::<ViewCategory>::all();
 
                 for space_info in spaces_info.iter() {
+                    let transforms = TransformCache::determine_transforms(
+                        spaces_info,
+                        space_info,
+                        &ObjectsProperties::default(),
+                    );
+
                     for category in all_categories {
                         let obj_paths = SpaceView::default_queried_objects(
                             ctx,
                             category,
                             space_info,
-                            spaces_info,
+                            &transforms,
                         );
                         if obj_paths.is_empty() {
                             continue;
@@ -577,11 +574,10 @@ impl Viewport {
 
                             let scene_spatial = query_scene_spatial(ctx, &obj_paths, &transforms);
                             let new_space_view_id = self.add_space_view(SpaceView::new(
-                                ctx,
                                 category,
                                 space_info,
-                                spaces_info,
-                                scene_spatial.preferred_navigation_mode(),
+                                obj_paths,
+                                scene_spatial.preferred_navigation_mode(&space_info.path),
                             ));
                             ctx.set_selection(Selection::SpaceView(new_space_view_id));
                         }
@@ -737,7 +733,7 @@ fn space_view_ui(
         return
     };
 
-    space_view.scene_ui(ctx, ui, spaces_info, reference_space_info, latest_at);
+    space_view.scene_ui(ctx, ui, reference_space_info, latest_at);
 }
 
 // ----------------------------------------------------------------------------

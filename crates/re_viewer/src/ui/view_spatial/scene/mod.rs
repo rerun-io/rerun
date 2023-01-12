@@ -358,33 +358,34 @@ impl SceneSpatial {
     }
 
     /// Heuristic whether the default way of looking at this scene should be 2d or 3d.
-    pub fn prefer_2d_mode(&self) -> bool {
+    pub fn preferred_navigation_mode(&self, space_info_path: &ObjPath) -> SpatialNavigationMode {
+        // If there's any space cameras that are not the root, we need to go 3D, otherwise we can't display them.
+        if self
+            .space_cameras
+            .iter()
+            .any(|camera| &camera.obj_path != space_info_path)
+        {
+            return SpatialNavigationMode::ThreeD;
+        }
+
         // If any 2D interactable picture is there we regard it as 2d.
         if !self.ui.images.is_empty() {
-            return true;
+            return SpatialNavigationMode::TwoD;
         }
 
         // Instead a mesh indicates 3d.
         if !self.primitives.meshes.is_empty() {
-            return false;
+            return SpatialNavigationMode::ThreeD;
         }
 
         if self.num_logged_3d_objects == 0 {
-            return true;
+            return SpatialNavigationMode::TwoD;
         }
         if self.num_logged_2d_objects == 0 {
-            return false;
+            return SpatialNavigationMode::ThreeD;
         }
 
-        false
-    }
-
-    pub fn preferred_navigation_mode(&self) -> SpatialNavigationMode {
-        if self.prefer_2d_mode() {
-            SpatialNavigationMode::TwoD
-        } else {
-            SpatialNavigationMode::ThreeD
-        }
+        SpatialNavigationMode::ThreeD
     }
 
     pub fn picking(

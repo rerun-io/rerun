@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use re_data_store::{InstanceId, ObjPath, ObjectTree, ObjectsProperties, TimeInt};
 
 use nohash_hasher::IntSet;
@@ -65,28 +67,30 @@ pub(crate) struct SpaceView {
 
     /// Set to `false` the first time the user messes around with the list of queried objects.
     pub allow_auto_adding_more_object: bool,
+
+    /// Transforms seen last frame, renewed every frame.
+    /// TODO(andreas): This should probably live on `SpaceInfo` and created there lazily?
+    #[serde(skip)]
+    cached_transforms: TransformCache,
 }
 
 impl SpaceView {
     pub fn new(
-        ctx: &ViewerContext<'_>,
         category: ViewCategory,
         space_info: &SpaceInfo,
-        spaces_info: &SpacesInfo,
-        default_spatial_naviation_mode: SpatialNavigationMode,
+        queried_objects: IntSet<ObjPath>,
+        default_spatial_navigation_mode: SpatialNavigationMode,
     ) -> Self {
         let mut view_state = ViewState::default();
 
         if category == ViewCategory::Spatial {
-            view_state.state_spatial.nav_mode = default_spatial_naviation_mode;
+            view_state.state_spatial.nav_mode = default_spatial_navigation_mode;
         }
 
         let root_path = space_info.path.iter().next().map_or_else(
             || space_info.path.clone(),
             |c| ObjPath::from(vec![c.to_owned()]),
         );
-
-        let queried_objects = Self::default_queried_objects(ctx, category, space_info, spaces_info);
 
         let name = if queried_objects.len() == 1 {
             // a single object in this space-view - name the space after it
@@ -110,43 +114,77 @@ impl SpaceView {
             view_state,
             category,
             allow_auto_adding_more_object: true,
+            cached_transforms: TransformCache::default(),
         }
     }
 
-    /// List of objects a space view queries by default.
+    /// List of objects a space view queries by default for a given category.
     pub fn default_queried_objects(
         ctx: &ViewerContext<'_>,
         category: ViewCategory,
-        root_space: &SpaceInfo,
-        spaces_info: &SpacesInfo,
+        space_info: &SpaceInfo,
+        transforms: &TransformCache,
     ) -> IntSet<ObjPath> {
         crate::profile_function!();
 
         let timeline = ctx.rec_cfg.time_ctrl.timeline();
         let log_db = &ctx.log_db;
 
-        root_space
-            .descendants_with_rigid_or_no_transform(spaces_info)
-            .iter()
+        transforms
+            .objects_with_reachable_transform()
+            .filter(|obj_path| {
+                (*obj_path == &space_info.path || obj_path.is_descendant_of(&space_info.path))
+                    && categorize_obj_path(timeline, log_db, obj_path).contains(category)
+            })
             .cloned()
-            .filter(|obj_path| categorize_obj_path(timeline, log_db, obj_path).contains(category))
             .collect()
+    }
+
+    /// List of objects a space view queries by default for all any possible category.
+    pub fn default_queried_objects_by_category(
+        ctx: &ViewerContext<'_>,
+        space_info: &SpaceInfo,
+        transforms: &TransformCache,
+    ) -> BTreeMap<ViewCategory, IntSet<ObjPath>> {
+        let timeline = ctx.rec_cfg.time_ctrl.timeline();
+        let log_db = &ctx.log_db;
+
+        let mut groups: BTreeMap<ViewCategory, IntSet<ObjPath>> = Default::default();
+        for obj_path in transforms.objects_with_reachable_transform() {
+            if obj_path == &space_info.path || obj_path.is_descendant_of(&space_info.path) {
+                for category in categorize_obj_path(timeline, log_db, obj_path) {
+                    groups.entry(category).or_default().insert(obj_path.clone());
+                }
+            }
+        }
+        groups
     }
 
     pub fn on_frame_start(&mut self, ctx: &mut ViewerContext<'_>, spaces_info: &SpacesInfo) {
         self.data_blueprint.on_frame_start();
 
-        if !self.allow_auto_adding_more_object {
-            return;
-        }
-        let Some(space) = spaces_info.get(&self.space_path) else {
+        let Some(space_info) =  spaces_info.get(&self.space_path) else {
+            re_log::warn_once!("Space for Spaceview {} no longer exists.", self.name);
             return;
         };
-        // Add objects that have been logged since we were created
-        self.queried_objects =
-            Self::default_queried_objects(ctx, self.category, space, spaces_info);
-        self.data_blueprint
-            .insert_objects_according_to_hierarchy(&self.queried_objects, &self.space_path);
+
+        self.cached_transforms = TransformCache::determine_transforms(
+            spaces_info,
+            space_info,
+            self.data_blueprint.data_blueprints_projected(),
+        );
+
+        if self.allow_auto_adding_more_object {
+            // Add objects that have been logged since we were created
+            self.queried_objects = Self::default_queried_objects(
+                ctx,
+                self.category,
+                space_info,
+                &self.cached_transforms,
+            );
+            self.data_blueprint
+                .insert_objects_according_to_hierarchy(&self.queried_objects, &self.space_path);
+        }
     }
 
     pub fn selection_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
@@ -380,7 +418,6 @@ impl SpaceView {
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        spaces_info: &SpacesInfo,
         reference_space_info: &SpaceInfo,
         latest_at: TimeInt,
     ) {
@@ -413,19 +450,11 @@ impl SpaceView {
             }
 
             ViewCategory::Spatial => {
-                let Some(reference_space) = spaces_info.get(&self.space_path) else {
-                    return;
-                };
-                let transforms = TransformCache::determine_transforms(
-                    spaces_info,
-                    reference_space,
-                    self.data_blueprint.data_blueprints_projected(),
-                );
                 let mut scene = view_spatial::SceneSpatial::default();
                 scene.load_objects(
                     ctx,
                     &query,
-                    &transforms,
+                    &self.cached_transforms,
                     self.view_state.state_spatial.hovered_instance_hash(),
                 );
                 self.view_state.ui_spatial(
