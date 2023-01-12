@@ -60,10 +60,10 @@ impl<Time: 'static + Copy + Ord> TimelineStore<Time> {
             .insert_batch(field_name, time, msg_id, batch)
     }
 
-    pub fn purge_everything_but(&mut self, keep_msg_ids: &ahash::HashSet<MsgId>) {
+    pub fn purge_everything(&mut self, drop_msg_ids: &ahash::HashSet<MsgId>) {
         let Self { objects } = self;
         for obj_store in objects.values_mut() {
-            obj_store.purge_everything_but(keep_msg_ids);
+            obj_store.purge_everything(drop_msg_ids);
         }
     }
 }

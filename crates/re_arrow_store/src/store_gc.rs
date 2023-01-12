@@ -83,11 +83,7 @@ impl DataStore {
                     "starting GC"
                 );
 
-                self.gc_drop_at_least_size_bytes(
-                    primary,
-                    target_size_bytes,
-                    drop_at_least_size_bytes,
-                )
+                self.gc_drop_at_least_size_bytes(primary, drop_at_least_size_bytes)
             }
         };
 
@@ -104,16 +100,15 @@ impl DataStore {
             "GC done"
         );
 
-        res
+        Ok(res)
     }
 
     // TODO: doc
     fn gc_drop_at_least_size_bytes(
         &mut self,
         primary: ComponentName,
-        target_size_bytes: f64,
         mut drop_at_least_size_bytes: f64,
-    ) -> GarbageCollectionResult<Vec<Box<dyn Array>>> {
+    ) -> Vec<Box<dyn Array>> {
         let mut dropped = Vec::<Box<dyn Array>>::new();
 
         while drop_at_least_size_bytes > 0.0 {
@@ -128,7 +123,7 @@ impl DataStore {
 
             drop_at_least_size_bytes -= primary_bucket.total_size_bytes() as f64;
 
-            for (component, table) in &mut self.components {
+            for table in self.components.values_mut() {
                 while table.buckets.len() > 1 {
                     let bucket = table.buckets.front().unwrap();
                     if primary_bucket.contains(bucket) {
@@ -150,9 +145,7 @@ impl DataStore {
             }));
         }
 
-        // TODO: clear DataStore::messages too... maybe?
-
-        Ok(dropped)
+        dropped
     }
 }
 

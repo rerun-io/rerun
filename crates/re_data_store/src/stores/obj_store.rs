@@ -99,10 +99,10 @@ impl<Time: 'static + Copy + Ord> ObjStore<Time> {
         Ok(())
     }
 
-    pub fn purge_everything_but(&mut self, keep_msg_ids: &ahash::HashSet<MsgId>) {
+    pub fn purge_everything(&mut self, drop_msg_ids: &ahash::HashSet<MsgId>) {
         let Self { mono: _, fields } = self;
         for field_store in fields.values_mut() {
-            field_store.purge_everything_but(keep_msg_ids);
+            field_store.purge_everything(drop_msg_ids);
         }
     }
 }

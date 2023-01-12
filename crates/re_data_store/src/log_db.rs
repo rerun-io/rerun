@@ -1,7 +1,7 @@
 use itertools::Itertools as _;
 use nohash_hasher::{IntMap, IntSet};
 
-use re_arrow_store::GarbageCollectionTarget;
+use re_arrow_store::{DataStoreConfig, GarbageCollectionTarget};
 use re_log_types::{
     external::arrow2_convert::deserialize::arrow_array_deserialize_iterator,
     field_types::{Instance, Scalar, TextEntry},
@@ -41,7 +41,14 @@ impl Default for ObjDb {
             obj_path_from_hash: Default::default(),
             tree: crate::ObjectTree::root(),
             store: Default::default(),
-            arrow_store: re_arrow_store::DataStore::new(Instance::name(), Default::default()),
+            arrow_store: re_arrow_store::DataStore::new(
+                Instance::name(),
+                DataStoreConfig {
+                    component_bucket_size_bytes: 1 * 1024 * 1024, // 1 MiB
+                    component_bucket_nb_rows: 100,
+                    ..Default::default()
+                },
+            ),
         }
     }
 }
@@ -237,7 +244,7 @@ impl ObjDb {
         }
     }
 
-    pub fn purge_everything_but(&mut self, keep_msg_ids: &ahash::HashSet<MsgId>) {
+    pub fn purge_everything(&mut self, drop_msg_ids: &ahash::HashSet<MsgId>) {
         crate::profile_function!();
 
         let Self {
@@ -250,10 +257,10 @@ impl ObjDb {
 
         {
             crate::profile_scope!("tree");
-            tree.purge_everything_but(keep_msg_ids);
+            tree.purge_everything(drop_msg_ids);
         }
 
-        store.purge_everything_but(keep_msg_ids);
+        store.purge_everything(drop_msg_ids);
     }
 }
 
@@ -441,7 +448,7 @@ impl LogDb {
 
         assert!((0.0..=1.0).contains(&fraction_to_purge));
 
-        let keep_msg_ids = {
+        let drop_msg_ids = {
             let msg_id_chunks = self
                 .obj_db
                 .arrow_store
@@ -449,7 +456,7 @@ impl LogDb {
                     MsgId::name(),
                     GarbageCollectionTarget::DropAtLeastPercentage(fraction_to_purge as _),
                 )
-                .unwrap();
+                .unwrap(); // TODO
 
             msg_id_chunks
                 .iter()
@@ -460,6 +467,8 @@ impl LogDb {
                 .collect::<ahash::HashSet<_>>()
         };
 
+        dbg!(drop_msg_ids.len());
+
         let Self {
             chronological_message_ids,
             log_messages,
@@ -468,17 +477,17 @@ impl LogDb {
             obj_db,
         } = self;
 
-        chronological_message_ids.retain(|msg_id| keep_msg_ids.contains(msg_id));
+        chronological_message_ids.retain(|msg_id| !drop_msg_ids.contains(msg_id));
 
         {
             crate::profile_scope!("log_messages");
-            log_messages.retain(|msg_id, _| keep_msg_ids.contains(msg_id));
+            log_messages.retain(|msg_id, _| !drop_msg_ids.contains(msg_id));
         }
         {
             crate::profile_scope!("timeless_message_ids");
-            timeless_message_ids.retain(|msg_id| keep_msg_ids.contains(msg_id));
+            timeless_message_ids.retain(|msg_id| !drop_msg_ids.contains(msg_id));
         }
 
-        obj_db.purge_everything_but(&keep_msg_ids);
+        obj_db.purge_everything(&drop_msg_ids);
     }
 }

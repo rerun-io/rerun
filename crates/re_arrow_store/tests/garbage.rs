@@ -66,13 +66,20 @@ fn gc_impl(store: &mut DataStore) {
             )
             .unwrap();
 
-        for msg_ids in msg_id_chunks {
-            let msg_ids = arrow_array_deserialize_iterator::<Option<MsgId>>(&*msg_ids).unwrap();
-            for msg_id in msg_ids {
-                msg_id.unwrap();
-                // TODO: maybe?
-                // assert!(store.get_msg_metadata(&msg_id.unwrap()).is_none());
-            }
+        let msg_ids = msg_id_chunks
+            .iter()
+            .flat_map(|chunk| arrow_array_deserialize_iterator::<Option<MsgId>>(&**chunk).unwrap())
+            .map(Option::unwrap) // MsgId is always present
+            .collect::<ahash::HashSet<_>>();
+
+        for msg_id in &msg_ids {
+            assert!(store.get_msg_metadata(msg_id).is_some());
+        }
+
+        store.clear_msg_metadata(&msg_ids);
+
+        for msg_id in &msg_ids {
+            assert!(store.get_msg_metadata(msg_id).is_none());
         }
     }
 }

@@ -4,7 +4,9 @@ use arrow2::array::{Array, ListArray};
 
 use itertools::Itertools;
 use re_log::trace;
-use re_log_types::{ComponentName, ObjPath as EntityPath, TimeInt, TimeRange, Timeline};
+use re_log_types::{
+    ComponentName, MsgId, ObjPath as EntityPath, TimeInt, TimePoint, TimeRange, Timeline,
+};
 
 use crate::{
     ComponentBucket, ComponentTable, DataStore, IndexBucket, IndexBucketIndices, IndexRowNr,
@@ -466,6 +468,10 @@ impl DataStore {
         }
 
         results
+    }
+
+    pub fn get_msg_metadata(&self, msg_id: &MsgId) -> Option<&TimePoint> {
+        self.messages.get(msg_id)
     }
 
     /// Sort all unsorted indices in the store.
