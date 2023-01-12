@@ -368,21 +368,11 @@ impl SceneSpatial {
             return SpatialNavigationMode::ThreeD;
         }
 
-        // If any 2D interactable picture is there we regard it as 2d.
         if !self.ui.images.is_empty() {
             return SpatialNavigationMode::TwoD;
         }
-
-        // Instead a mesh indicates 3d.
-        if !self.primitives.meshes.is_empty() {
-            return SpatialNavigationMode::ThreeD;
-        }
-
         if self.num_logged_3d_objects == 0 {
             return SpatialNavigationMode::TwoD;
-        }
-        if self.num_logged_2d_objects == 0 {
-            return SpatialNavigationMode::ThreeD;
         }
 
         SpatialNavigationMode::ThreeD

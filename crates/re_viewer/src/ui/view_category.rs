@@ -1,4 +1,4 @@
-use re_data_store::{LogDb, ObjPath, Timeline};
+use re_data_store::{query_transform, LogDb, ObjPath, Timeline};
 use re_log_types::DataPath;
 
 #[derive(
@@ -45,7 +45,12 @@ pub fn categorize_obj_path(
 ) -> ViewCategorySet {
     crate::profile_function!();
 
-    let Some(obj_type) = log_db.obj_db.types.get(obj_path.obj_type_path())  else {
+    let Some(obj_type) = log_db.obj_db.types.get(obj_path.obj_type_path()) else {
+        // If it has a transform it is a 3D object (a camera!)
+        if query_transform(&log_db.obj_db, timeline, obj_path, None).is_some() {
+            return ViewCategory::Spatial.into();
+        }
+
         return ViewCategorySet::default();
     };
 

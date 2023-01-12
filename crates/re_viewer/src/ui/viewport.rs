@@ -133,7 +133,7 @@ impl Viewport {
                                 category,
                                 space_info,
                                 obj_paths.clone(),
-                                scene_spatial.preferred_navigation_mode(&space_info.path),
+                                SpatialNavigationMode::TwoD,
                                 transforms.clone(),
                             );
                             space_view.name = visible_instance_id.obj_path.to_string();
