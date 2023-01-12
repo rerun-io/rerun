@@ -1,7 +1,9 @@
 use itertools::Itertools as _;
 use nohash_hasher::{IntMap, IntSet};
 
+use re_arrow_store::GarbageCollectionTarget;
 use re_log_types::{
+    external::arrow2_convert::deserialize::arrow_array_deserialize_iterator,
     field_types::{Instance, Scalar, TextEntry},
     msg_bundle::{Component as _, ComponentBundle, MsgBundle},
     objects, ArrowMsg, BatchIndex, BeginRecordingMsg, DataMsg, DataPath, DataVec, FieldOrComponent,
@@ -252,8 +254,6 @@ impl ObjDb {
         }
 
         store.purge_everything_but(keep_msg_ids);
-
-        //TODO(john,clement) wire up purging to the ArrowStore
     }
 }
 
@@ -437,36 +437,27 @@ impl LogDb {
 
     /// Free up some RAM by forgetting the older parts of all timelines.
     pub fn purge_fraction_of_ram(&mut self, fraction_to_purge: f32) {
-        fn always_keep(msg: &LogMsg) -> bool {
-            match msg {
-                //TODO(john) allow purging ArrowMsg
-                LogMsg::ArrowMsg(_) | LogMsg::BeginRecordingMsg(_) | LogMsg::TypeMsg(_) => true,
-                LogMsg::DataMsg(msg) => msg.time_point.is_timeless(),
-                LogMsg::PathOpMsg(msg) => msg.time_point.is_timeless(),
-            }
-        }
-
         crate::profile_function!();
 
         assert!((0.0..=1.0).contains(&fraction_to_purge));
 
-        // Start by figuring out what `MsgId`:s to keep:
         let keep_msg_ids = {
-            crate::profile_scope!("calc_what_to_keep");
-            let mut keep_msg_ids = ahash::HashSet::default();
-            for (_, time_points) in self.obj_db.tree.prefix_times.iter() {
-                let num_to_purge = (time_points.len() as f32 * fraction_to_purge).round() as usize;
-                for (_, msg_id) in time_points.iter().skip(num_to_purge) {
-                    keep_msg_ids.extend(msg_id);
-                }
-            }
+            let msg_id_chunks = self
+                .obj_db
+                .arrow_store
+                .gc(
+                    MsgId::name(),
+                    GarbageCollectionTarget::DropAtLeastPercentage(fraction_to_purge as _),
+                )
+                .unwrap();
 
-            keep_msg_ids.extend(
-                self.log_messages
-                    .iter()
-                    .filter_map(|(msg_id, msg)| always_keep(msg).then_some(*msg_id)),
-            );
-            keep_msg_ids
+            msg_id_chunks
+                .iter()
+                .flat_map(|chunk| {
+                    arrow_array_deserialize_iterator::<Option<MsgId>>(&**chunk).unwrap()
+                })
+                .map(Option::unwrap) // MsgId is always present
+                .collect::<ahash::HashSet<_>>()
         };
 
         let Self {

@@ -46,7 +46,8 @@ impl std::fmt::Display for GarbageCollectionTarget {
 }
 
 impl DataStore {
-    /// Triggers a garbage collection according to the desired `target`.
+    /// Triggers a garbage collection according to the desired `target`, driven by the specified
+    /// `primary` component.
     ///
     /// Returns the set of `MsgId`s that were removed from the store.
     //
@@ -56,6 +57,8 @@ impl DataStore {
         primary: ComponentName,
         target: GarbageCollectionTarget,
     ) -> GarbageCollectionResult<Vec<Box<dyn Array>>> {
+        puffin::profile_function!();
+
         let initial_size_bytes = self.total_temporal_component_size_bytes() as f64;
 
         let res = match target {
