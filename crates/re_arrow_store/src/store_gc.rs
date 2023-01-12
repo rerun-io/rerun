@@ -160,8 +160,14 @@ impl DataStore {
                     } else {
                         break;
                     }
+                }
 
-                    // TODO: i figure we just killed the -inf indexing time?
+                if !table.buckets.is_empty() {
+                    let bucket = table
+                        .buckets
+                        .remove(&table.buckets.keys().next().unwrap().clone())
+                        .unwrap();
+                    table.buckets.insert(TimeInt::MIN, bucket);
                 }
             }
 

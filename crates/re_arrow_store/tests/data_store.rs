@@ -26,6 +26,7 @@ use re_log_types::{
 
 // --- LatestComponentsAt ---
 
+// TODO: need some GC sprinkled in there
 #[test]
 fn all_components() {
     init_logs();
@@ -270,6 +271,7 @@ fn all_components() {
 fn latest_at() {
     init_logs();
 
+    // TODO: need some GC sprinkled in there
     for config in re_arrow_store::test_util::all_configs() {
         let mut store = DataStore::new(Instance::name(), config.clone());
         latest_at_impl(&mut store);
@@ -368,6 +370,7 @@ fn latest_at_impl(store: &mut DataStore) {
 
 // --- Range ---
 
+// TODO: need some GC sprinkled in there
 #[test]
 fn range() {
     init_logs();
