@@ -167,7 +167,7 @@ impl<Time: 'static + Copy + Ord> FieldStore<Time> {
             DataType::Box3 => handle_type!(Box3, re_log_types::Box3),
             DataType::Mesh3D => handle_type!(Mesh3D, re_log_types::Mesh3D),
             DataType::Arrow3D => handle_type!(Arrow3D, re_log_types::Arrow3D),
-            DataType::Tensor => handle_type!(Tensor, re_log_types::Tensor),
+            DataType::Tensor => handle_type!(Tensor, re_log_types::ClassicTensor),
             DataType::ObjPath => handle_type!(ObjPath, ObjPath),
             DataType::Transform => handle_type!(Transform, re_log_types::Transform),
             DataType::ViewCoordinates => {
@@ -221,7 +221,7 @@ impl<Time: 'static + Copy + Ord> FieldStore<Time> {
             DataType::Box3 => handle_type!(Box3, re_log_types::Box3),
             DataType::Mesh3D => handle_type!(Mesh3D, re_log_types::Mesh3D),
             DataType::Arrow3D => handle_type!(Arrow3D, re_log_types::Arrow3D),
-            DataType::Tensor => handle_type!(Tensor, re_log_types::Tensor),
+            DataType::Tensor => handle_type!(Tensor, re_log_types::ClassicTensor),
             DataType::ObjPath => handle_type!(ObjPath, ObjPath),
             DataType::Transform => handle_type!(Transform, re_log_types::Transform),
             DataType::ViewCoordinates => {

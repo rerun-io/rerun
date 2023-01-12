@@ -49,6 +49,8 @@ tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 [dev-dependencies]
 arrow2_convert.workspace = true
+ndarray.workspace = true
+ndarray-rand = "0.14"
 rand = "0.8"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]

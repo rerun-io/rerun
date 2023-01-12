@@ -413,7 +413,7 @@ pub fn view_3d(
                                 ctx.render_ctx,
                             );
 
-                            if let [h, w, ..] = image.tensor.shape.as_slice() {
+                            if let [h, w, ..] = image.tensor.shape() {
                                 ui.separator();
                                 ui.horizontal(|ui| {
                                     let (w, h) = (w.size as f32, h.size as f32);

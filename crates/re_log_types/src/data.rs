@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use half::f16;
 
-use crate::{impl_into_enum, AnnotationContext, ObjPath, ViewCoordinates};
+use crate::{field_types, impl_into_enum, AnnotationContext, ObjPath, ViewCoordinates};
 
 pub use crate::field_types::{Pinhole, Rigid3, Transform};
 
@@ -121,7 +121,7 @@ pub mod data_types {
         }
     }
 
-    impl DataTrait for crate::Tensor {
+    impl DataTrait for crate::ClassicTensor {
         fn data_typ() -> DataType {
             DataType::Tensor
         }
@@ -208,7 +208,7 @@ pub enum Data {
 
     // ----------------------------
     // N-D:
-    Tensor(Tensor),
+    Tensor(ClassicTensor),
 
     /// Homogenous vector
     DataVec(DataVec),
@@ -259,7 +259,7 @@ impl_into_enum!(i32, Data, I32);
 impl_into_enum!(f32, Data, F32);
 impl_into_enum!(f64, Data, F64);
 impl_into_enum!(BBox2D, Data, BBox2D);
-impl_into_enum!(Tensor, Data, Tensor);
+impl_into_enum!(ClassicTensor, Data, Tensor);
 impl_into_enum!(Box3, Data, Box3);
 impl_into_enum!(Mesh3D, Data, Mesh3D);
 impl_into_enum!(ObjPath, Data, ObjPath);
@@ -289,7 +289,7 @@ pub enum DataVec {
     Mesh3D(Vec<Mesh3D>),
     Arrow3D(Vec<Arrow3D>),
 
-    Tensor(Vec<Tensor>),
+    Tensor(Vec<ClassicTensor>),
 
     /// A vector of [`DataVec`] (vector of vectors)
     DataVec(Vec<DataVec>),
@@ -394,7 +394,7 @@ macro_rules! data_type_map_none(
                 $action
             },
             $crate::DataType::Tensor => {
-                let $value = Option::<$crate::Tensor>::None;
+                let $value = Option::<$crate::ClassicTensor>::None;
                 $action
             },
             $crate::DataType::DataVec => {
@@ -686,7 +686,7 @@ pub enum MeshFormat {
 
 // ----------------------------------------------------------------------------
 
-/// The data types supported by a [`Tensor`].
+/// The data types supported by a [`ClassicTensor`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum TensorDataType {
@@ -775,17 +775,6 @@ impl std::fmt::Display for TensorDataType {
 
 // ----------------------------------------------------------------------------
 
-// TODO(jleibs) This should be extended to include things like rgb vs bgr
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum TensorDataMeaning {
-    /// Default behavior: guess based on shape
-    Unknown,
-    /// The data is an annotated [`crate::field_types::ClassId`] which should be
-    /// looked up using the appropriate [`crate::context::AnnotationContext`]
-    ClassId,
-}
-
 pub trait TensorDataTypeTrait: Copy + Clone + Send + Sync {
     const DTYPE: TensorDataType;
 }
@@ -824,7 +813,7 @@ impl TensorDataTypeTrait for f64 {
     const DTYPE: TensorDataType = TensorDataType::F64;
 }
 
-/// The data that can be stored in a [`Tensor`].
+/// The data that can be stored in a [`ClassicTensor`].
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum TensorElement {
@@ -915,12 +904,12 @@ impl TensorElement {
     }
 }
 
-/// The data types supported by a [`Tensor`].
+/// The data types supported by a [`ClassicTensor`].
 ///
 /// NOTE: `PartialEq` takes into account _how_ the data is stored,
 /// which can be surprising! As of 2022-08-15, `PartialEq` is only used by tests.
 ///
-/// [`TensorDataStore`] uses [`Arc`] internally so that cloning a [`Tensor`] is cheap
+/// [`TensorDataStore`] uses [`Arc`] internally so that cloning a [`ClassicTensor`] is cheap
 /// and memory efficient.
 /// This is crucial, since we clone data for different timelines in the data store.
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -959,83 +948,6 @@ impl std::fmt::Debug for TensorDataStore {
     }
 }
 
-#[derive(Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct TensorDimension {
-    /// Number of elements on this dimension.
-    /// I.e. size-1 is the maximum allowed index.
-    pub size: u64,
-
-    /// Optional name of the dimension, e.g. "color" or "width"
-    pub name: String,
-}
-
-impl TensorDimension {
-    const DEFAULT_NAME_WIDTH: &'static str = "width";
-    const DEFAULT_NAME_HEIGHT: &'static str = "height";
-    const DEFAULT_NAME_DEPTH: &'static str = "depth";
-
-    pub fn height(size: u64) -> Self {
-        Self::named(size, String::from(Self::DEFAULT_NAME_HEIGHT))
-    }
-
-    pub fn width(size: u64) -> Self {
-        Self::named(size, String::from(Self::DEFAULT_NAME_WIDTH))
-    }
-
-    pub fn depth(size: u64) -> Self {
-        Self::named(size, String::from(Self::DEFAULT_NAME_DEPTH))
-    }
-
-    pub fn named(size: u64, name: String) -> Self {
-        Self { size, name }
-    }
-
-    pub fn unnamed(size: u64) -> Self {
-        Self {
-            size,
-            name: String::new(),
-        }
-    }
-}
-
-impl std::fmt::Debug for TensorDimension {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.name.is_empty() {
-            self.size.fmt(f)
-        } else {
-            write!(f, "{}={}", self.name, self.size)
-        }
-    }
-}
-
-// ----------------------------------------------------------------------------
-
-/// A unique id per [`Tensor`].
-///
-/// TODO(emilk): this should be a hash of the tensor (CAS).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct TensorId(pub uuid::Uuid);
-
-impl nohash_hasher::IsEnabled for TensorId {}
-
-// required for [`nohash_hasher`].
-#[allow(clippy::derive_hash_xor_eq)]
-impl std::hash::Hash for TensorId {
-    #[inline]
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        state.write_u64(self.0.as_u128() as u64);
-    }
-}
-
-impl TensorId {
-    #[inline]
-    pub fn random() -> Self {
-        Self(uuid::Uuid::new_v4())
-    }
-}
-
 // ----------------------------------------------------------------------------
 
 /// An N-dimensional collection of numbers.
@@ -1043,9 +955,9 @@ impl TensorId {
 /// Most often used to describe image pixels.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct Tensor {
+pub struct ClassicTensor {
     /// Unique identifier for the tensor
-    pub tensor_id: TensorId,
+    tensor_id: field_types::TensorId,
 
     /// Example: `[h, w, 3]` for an RGB image, stored in row-major-order.
     /// The order matches that of numpy etc, and is ordered so that
@@ -1055,7 +967,7 @@ pub struct Tensor {
     /// An empty vector has shape `[0]`, an empty matrix shape `[0, 0]`, etc.
     ///
     /// Conceptually `[h,w]` == `[h,w,1]` == `[h,w,1,1,1]` etc in most circumstances.
-    pub shape: Vec<TensorDimension>,
+    shape: Vec<field_types::TensorDimension>,
 
     /// The per-element data format.
     /// numpy calls this `dtype`.
@@ -1063,13 +975,72 @@ pub struct Tensor {
 
     /// The per-element data meaning
     /// Used to indicated if the data should be interpreted as color, class_id, etc.
-    pub meaning: TensorDataMeaning,
+    pub meaning: field_types::TensorDataMeaning,
 
     /// The actual contents of the tensor.
     pub data: TensorDataStore,
 }
 
-impl Tensor {
+impl field_types::TensorTrait for ClassicTensor {
+    fn id(&self) -> field_types::TensorId {
+        self.tensor_id
+    }
+
+    fn shape(&self) -> &[field_types::TensorDimension] {
+        self.shape.as_slice()
+    }
+
+    fn num_dim(&self) -> usize {
+        self.num_dim()
+    }
+
+    fn is_shaped_like_an_image(&self) -> bool {
+        self.is_shaped_like_an_image()
+    }
+}
+
+impl ClassicTensor {
+    pub fn new(
+        tensor_id: field_types::TensorId,
+        shape: Vec<field_types::TensorDimension>,
+        dtype: TensorDataType,
+        meaning: field_types::TensorDataMeaning,
+        data: TensorDataStore,
+    ) -> Self {
+        Self {
+            tensor_id,
+            shape,
+            dtype,
+            meaning,
+            data,
+        }
+    }
+
+    #[inline]
+    pub fn id(&self) -> field_types::TensorId {
+        self.tensor_id
+    }
+
+    #[inline]
+    pub fn shape(&self) -> &[field_types::TensorDimension] {
+        self.shape.as_slice()
+    }
+
+    #[inline]
+    pub fn dtype(&self) -> TensorDataType {
+        self.dtype
+    }
+
+    #[inline]
+    pub fn meaning(&self) -> field_types::TensorDataMeaning {
+        self.meaning
+    }
+
+    #[inline]
+    pub fn data<A: bytemuck::Pod + TensorDataTypeTrait>(&self) -> Option<&[A]> {
+        self.data.as_slice()
+    }
+
     /// True if the shape has a zero in it anywhere.
     ///
     /// Note that `shape=[]` means this tensor is a scalar, and thus NOT empty.
@@ -1127,7 +1098,8 @@ impl Tensor {
             TensorDataStore::Dense(bytes) => {
                 let mut stride = self.dtype.size();
                 let mut offset = 0;
-                for (TensorDimension { size, name: _ }, index) in self.shape.iter().zip(index).rev()
+                for (field_types::TensorDimension { size, name: _ }, index) in
+                    self.shape.iter().zip(index).rev()
                 {
                     if size <= index {
                         return None;
