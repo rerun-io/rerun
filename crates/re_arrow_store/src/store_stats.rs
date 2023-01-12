@@ -1,6 +1,6 @@
 use crate::{
-    ComponentBucket, ComponentTable, DataStore, IndexBucket, IndexBucketIndices, IndexTable,
-    PersistentComponentTable, PersistentIndexTable,
+    ComponentBucket, ComponentTable, DataStore, IndexBucket, IndexTable, PersistentComponentTable,
+    PersistentIndexTable,
 };
 
 // ---
@@ -178,17 +178,19 @@ impl IndexTable {
 impl IndexBucket {
     /// Returns the number of rows stored across this bucket.
     pub fn total_rows(&self) -> u64 {
-        self.indices.read().times.len() as u64
+        self.times.len() as u64
     }
 
     /// Returns the size of the data stored across this bucket, in bytes.
     pub fn total_size_bytes(&self) -> u64 {
-        let IndexBucketIndices {
-            is_sorted: _,
-            time_range: _,
+        let Self {
+            timeline,
+            is_sorted,
+            time_range,
             times,
             indices,
-        } = &*self.indices.read();
+            cluster_key,
+        } = self;
 
         std::mem::size_of_val(times.as_slice()) as u64
             + indices

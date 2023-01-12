@@ -7,9 +7,8 @@ use re_log::trace;
 use re_log_types::{ComponentName, ObjPath as EntityPath, TimeInt, TimeRange, Timeline};
 
 use crate::{
-    ComponentBucket, ComponentTable, DataStore, IndexBucket, IndexBucketIndices, IndexRowNr,
-    IndexTable, PersistentComponentTable, PersistentIndexTable, RowIndex, RowIndexKind,
-    SecondaryIndex,
+    ComponentBucket, ComponentTable, DataStore, IndexBucket, IndexRowNr, IndexTable,
+    PersistentComponentTable, PersistentIndexTable, RowIndex, RowIndexKind,
 };
 
 // --- Queries ---
@@ -383,7 +382,7 @@ impl DataStore {
     ///
     /// For more information about working with dataframes, see the `polars` feature.
     pub fn range<'a, const N: usize>(
-        &'a self,
+        &'a mut self,
         query: &RangeQuery,
         ent_path: &EntityPath,
         components: [ComponentName; N],
@@ -404,7 +403,7 @@ impl DataStore {
 
         let temporal = self
             .indices
-            .get(&(query.timeline, *ent_path_hash))
+            .get_mut(&(query.timeline, *ent_path_hash))
             .map(|index| index.range(query.range, components))
             .into_iter()
             .flatten()
@@ -654,7 +653,7 @@ impl IndexTable {
                 %primary,
                 ?components,
                 attempt,
-                bucket_time_range = timeline.typ().format_range(bucket.indices.read().time_range),
+                bucket_time_range = timeline.typ().format_range(bucket.time_range),
                 "found candidate bucket"
             );
             if let row_indices @ Some(_) = bucket.latest_at(time, primary, components) {
@@ -667,7 +666,7 @@ impl IndexTable {
 
     /// Returns an empty iterator if no data could be found for any reason.
     pub fn range<const N: usize>(
-        &self,
+        &mut self,
         time_range: TimeRange,
         components: [ComponentName; N],
     ) -> impl Iterator<Item = (TimeInt, IndexRowNr, [Option<RowIndex>; N])> + '_ {
@@ -676,7 +675,7 @@ impl IndexTable {
         // We need to find the _indexing time_ that corresponds to this time range's minimum bound!
         let (time_range_min, _) = self.find_bucket(time_range.min);
 
-        self.range_buckets(time_range_min..=time_range.max)
+        self.range_buckets_mut(time_range_min..=time_range.max)
             .map(|(_, bucket)| bucket)
             .enumerate()
             .flat_map(move |(bucket_nr, bucket)| {
@@ -684,7 +683,7 @@ impl IndexTable {
                     kind = "range",
                     bucket_nr,
                     bucket_time_range =
-                        timeline.typ().format_range(bucket.indices.read().time_range),
+                        timeline.typ().format_range(bucket.time_range),
                     timeline = %timeline.name(),
                     ?time_range,
                     ?components,
@@ -731,6 +730,23 @@ impl IndexTable {
     ) -> impl Iterator<Item = (TimeInt, &IndexBucket)> {
         self.buckets
             .range(time_range)
+            .map(|(time, bucket)| (*time, bucket))
+    }
+
+    /// Returns an iterator that is guaranteed to yield at least one bucket, which is the bucket
+    /// whose time range covers the start bound of the given `time_range`.
+    ///
+    /// It then continues yielding buckets until it runs out, in increasing time range order.
+    ///
+    /// In addition to yielding references to the `IndexBucket`s themselves, this also returns
+    /// their _indexing times_, which are different from their minimum time range bounds!
+    /// See `IndexTable::buckets` for more information.
+    pub fn range_buckets_mut(
+        &mut self,
+        time_range: impl RangeBounds<TimeInt>,
+    ) -> impl Iterator<Item = (TimeInt, &mut IndexBucket)> {
+        self.buckets
+            .range_mut(time_range)
             .map(|(time, bucket)| (*time, bucket))
     }
 
@@ -786,15 +802,6 @@ impl IndexTable {
 }
 
 impl IndexBucket {
-    /// Sort all component indices by time, provided that's not already the case.
-    pub fn sort_indices_if_needed(&self) {
-        if self.indices.read().is_sorted {
-            return; // early read-only exit
-        }
-
-        self.indices.write().sort();
-    }
-
     /// Returns `None` iff no row index could be found for the `primary` component.
     pub fn latest_at<const N: usize>(
         &self,
@@ -804,12 +811,14 @@ impl IndexBucket {
     ) -> Option<[Option<RowIndex>; N]> {
         self.sort_indices_if_needed();
 
-        let IndexBucketIndices {
+        let Self {
+            timeline,
             is_sorted,
-            time_range: _,
+            time_range,
             times,
             indices,
-        } = &*self.indices.read();
+            cluster_key,
+        } = self;
         debug_assert!(is_sorted);
 
         // Early-exit if this bucket is unaware of this component.
@@ -899,19 +908,21 @@ impl IndexBucket {
 
     /// Returns an empty iterator if no data could be found for any reason.
     pub fn range<'a, const N: usize>(
-        &'a self,
+        &'a mut self,
         time_range: TimeRange,
         components: [ComponentName; N],
     ) -> impl Iterator<Item = (TimeInt, IndexRowNr, [Option<RowIndex>; N])> + 'a {
         self.sort_indices_if_needed();
 
-        let IndexBucketIndices {
+        let Self {
+            timeline,
             is_sorted,
             time_range: bucket_time_range,
             times,
             indices,
-        } = &*self.indices.read();
-        debug_assert!(is_sorted);
+            cluster_key,
+        } = self;
+        debug_assert!(*is_sorted);
 
         let bucket_time_range = *bucket_time_range;
 
@@ -1000,63 +1011,9 @@ impl IndexBucket {
         itertools::Either::Left(row_indices)
     }
 
-    /// Whether the indices in this `IndexBucket` are sorted
+    /// Whether the indices in this `IndexBucket` are sorted.
     pub fn is_sorted(&self) -> bool {
-        self.indices.read().is_sorted
-    }
-}
-
-impl IndexBucketIndices {
-    pub fn sort(&mut self) {
-        let Self {
-            is_sorted,
-            time_range: _,
-            times,
-            indices,
-        } = self;
-
-        if *is_sorted {
-            return;
-        }
-
-        let swaps = {
-            let mut swaps = (0..times.len()).collect::<Vec<_>>();
-            swaps.sort_by_key(|&i| &times[i]);
-            swaps
-                .iter()
-                .copied()
-                .enumerate()
-                .map(|(to, from)| (from, to))
-                .collect::<Vec<_>>()
-        };
-
-        // Yep, the reshuffle implementation is very dumb and very slow :)
-        // TODO(#442): re_datastore: implement efficient shuffling on the read path.
-
-        // shuffle time index back into a sorted state
-        {
-            let source = times.clone();
-            for (from, to) in swaps.iter().copied() {
-                times[to] = source[from];
-            }
-        }
-
-        fn reshuffle_index(index: &mut SecondaryIndex, swaps: &[(usize, usize)]) {
-            // shuffle data
-            {
-                let source = index.clone();
-                for (from, to) in swaps.iter().copied() {
-                    index[to] = source[from];
-                }
-            }
-        }
-
-        // shuffle component indices back into a sorted state
-        for index in indices.values_mut() {
-            reshuffle_index(index, &swaps);
-        }
-
-        *is_sorted = true;
+        self.is_sorted
     }
 }
 

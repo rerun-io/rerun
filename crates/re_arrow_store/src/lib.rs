@@ -33,8 +33,8 @@ pub use self::store_stats::DataStoreStats;
 pub use self::store_write::{WriteError, WriteResult};
 
 pub(crate) use self::store::{
-    ComponentBucket, ComponentTable, IndexBucketIndices, PersistentComponentTable,
-    PersistentIndexTable, SecondaryIndex, TimeIndex,
+    ComponentBucket, ComponentTable, PersistentComponentTable, PersistentIndexTable,
+    SecondaryIndex, TimeIndex,
 };
 
 // Re-exports

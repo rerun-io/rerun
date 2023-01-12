@@ -102,7 +102,7 @@ pub fn latest_components(
 ///
 /// When yielding timeless entries, the associated time will be `None`.
 pub fn range_components<'a, const N: usize>(
-    store: &'a DataStore,
+    store: &'a mut DataStore,
     query: &'a RangeQuery,
     ent_path: &'a EntityPath,
     primary: ComponentName,

@@ -14,8 +14,8 @@ use re_log_types::{
 
 use crate::{
     ArrayExt as _, ComponentBucket, ComponentTable, DataStore, DataStoreConfig, IndexBucket,
-    IndexBucketIndices, IndexTable, PersistentComponentTable, PersistentIndexTable, RowIndex,
-    RowIndexKind, TimeIndex,
+    IndexTable, PersistentComponentTable, PersistentIndexTable, RowIndex, RowIndexKind,
+    SecondaryIndex, TimeIndex,
 };
 
 // --- Data store ---
@@ -559,10 +559,8 @@ impl IndexTable {
             //   unsplittable bucket and indefinitely creates new single-entry buckets, leading
             //   to the worst-possible case of fragmentation.
 
-            let (bucket_upper_bound, bucket_len) = {
-                let guard = bucket.indices.read();
-                (guard.times.last().copied(), guard.times.len())
-            };
+            let (bucket_upper_bound, bucket_len) =
+                (bucket.times.last().copied(), bucket.times.len());
 
             if let Some(upper_bound) = bucket_upper_bound {
                 if bucket_len > 2 && time.as_i64() > upper_bound {
@@ -583,12 +581,10 @@ impl IndexTable {
                         (new_time_bound).into(),
                         IndexBucket {
                             timeline,
-                            indices: RwLock::new(IndexBucketIndices {
-                                is_sorted: true,
-                                time_range: TimeRange::new(time, time),
-                                times: Default::default(),
-                                indices: Default::default(),
-                            }),
+                            is_sorted: true,
+                            time_range: TimeRange::new(time, time),
+                            times: Default::default(),
+                            indices: Default::default(),
                             cluster_key: self.cluster_key,
                         },
                     );
@@ -631,7 +627,10 @@ impl IndexBucket {
     pub fn new(cluster_key: ComponentName, timeline: Timeline) -> Self {
         Self {
             timeline,
-            indices: RwLock::new(IndexBucketIndices::default()),
+            is_sorted: true,
+            time_range: TimeRange::new(i64::MAX.into(), i64::MIN.into()),
+            times: Default::default(),
+            indices: Default::default(),
             cluster_key,
         }
     }
@@ -642,13 +641,14 @@ impl IndexBucket {
         time: TimeInt,
         row_indices: &IntMap<ComponentName, RowIndex>,
     ) -> anyhow::Result<()> {
-        let mut guard = self.indices.write();
-        let IndexBucketIndices {
+        let Self {
+            timeline,
             is_sorted,
             time_range,
             times,
             indices,
-        } = &mut *guard;
+            cluster_key,
+        } = self;
 
         // append time to primary index and update time range approriately
         times.push(time.as_i64());
@@ -679,10 +679,7 @@ impl IndexBucket {
         *is_sorted = false;
 
         #[cfg(debug_assertions)]
-        {
-            drop(guard); // sanity checking will grab the lock!
-            self.sanity_check().unwrap();
-        }
+        self.sanity_check().unwrap();
 
         Ok(())
     }
@@ -759,19 +756,16 @@ impl IndexBucket {
     /// }
     /// ```
     pub fn split(&self) -> Option<(TimeInt, Self)> {
+        self.sort_indices_if_needed();
+
         let Self {
-            timeline, indices, ..
-        } = self;
-
-        let mut indices = indices.write();
-        indices.sort();
-
-        let IndexBucketIndices {
+            timeline,
             is_sorted: _,
             time_range: time_range1,
             times: times1,
             indices: indices1,
-        } = &mut *indices;
+            cluster_key: _,
+        } = self;
 
         if times1.len() < 2 {
             return None; // early exit: can't split the unsplittable
@@ -809,12 +803,10 @@ impl IndexBucket {
                 time_range2.min,
                 Self {
                     timeline,
-                    indices: RwLock::new(IndexBucketIndices {
-                        is_sorted: true,
-                        time_range: time_range2,
-                        times: times2,
-                        indices: indices2,
-                    }),
+                    is_sorted: true,
+                    time_range: time_range2,
+                    times: times2,
+                    indices: indices2,
                     cluster_key: self.cluster_key,
                 },
             )
@@ -823,7 +815,6 @@ impl IndexBucket {
         // sanity checks
         #[cfg(debug_assertions)]
         {
-            drop(indices); // sanity checking will grab the lock!
             self.sanity_check().unwrap();
             bucket2.sanity_check().unwrap();
 
@@ -840,6 +831,61 @@ impl IndexBucket {
         }
 
         Some((min2, bucket2))
+    }
+
+    /// Sort all component indices by time, provided that's not already the case.
+    pub fn sort_indices_if_needed(&mut self) {
+        let Self {
+            is_sorted,
+            time_range: _,
+            times,
+            indices,
+            timeline: _,
+            cluster_key: _,
+        } = self;
+
+        if *is_sorted {
+            return;
+        }
+
+        let swaps = {
+            let mut swaps = (0..times.len()).collect::<Vec<_>>();
+            swaps.sort_by_key(|&i| &times[i]);
+            swaps
+                .iter()
+                .copied()
+                .enumerate()
+                .map(|(to, from)| (from, to))
+                .collect::<Vec<_>>()
+        };
+
+        // Yep, the reshuffle implementation is very dumb and very slow :)
+        // TODO(#442): re_datastore: implement efficient shuffling on the read path.
+
+        // shuffle time index back into a sorted state
+        {
+            let source = times.clone();
+            for (from, to) in swaps.iter().copied() {
+                times[to] = source[from];
+            }
+        }
+
+        fn reshuffle_index(index: &mut SecondaryIndex, swaps: &[(usize, usize)]) {
+            // shuffle data
+            {
+                let source = index.clone();
+                for (from, to) in swaps.iter().copied() {
+                    index[to] = source[from];
+                }
+            }
+        }
+
+        // shuffle component indices back into a sorted state
+        for index in indices.values_mut() {
+            reshuffle_index(index, &swaps);
+        }
+
+        *is_sorted = true;
     }
 }
 

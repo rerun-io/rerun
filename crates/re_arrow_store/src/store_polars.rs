@@ -9,8 +9,8 @@ use polars_core::{functions::diag_concat_df, prelude::*};
 use re_log_types::ComponentName;
 
 use crate::{
-    store::SecondaryIndex, ArrayExt, DataStore, DataStoreConfig, IndexBucket, IndexBucketIndices,
-    PersistentIndexTable, RowIndex,
+    store::SecondaryIndex, ArrayExt, DataStore, DataStoreConfig, IndexBucket, PersistentIndexTable,
+    RowIndex,
 };
 
 // ---
@@ -167,16 +167,9 @@ impl IndexBucket {
         let (_, times) = self.times();
         let nb_rows = times.len();
 
-        let IndexBucketIndices {
-            is_sorted: _,
-            time_range: _,
-            times: _,
-            indices,
-        } = &*self.indices.read();
-
         let insert_ids = config
             .store_insert_ids
-            .then(|| insert_ids_as_series(nb_rows, indices))
+            .then(|| insert_ids_as_series(nb_rows, &self.indices))
             .flatten();
 
         // Need to create one `Series` for the time index and one for each component index.
@@ -193,7 +186,7 @@ impl IndexBucket {
         .into_iter()
         .flatten() // filter options
         // One column for each component index.
-        .chain(indices.iter().filter_map(|(component, comp_row_nrs)| {
+        .chain(self.indices.iter().filter_map(|(component, comp_row_nrs)| {
             let datatype = find_component_datatype(store, component)?;
             component_as_series(store, nb_rows, datatype, *component, comp_row_nrs).into()
         }));

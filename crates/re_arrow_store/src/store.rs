@@ -194,6 +194,8 @@ impl DataStoreConfig {
 
 // ---
 
+// TODO: SharedDataStore
+
 /// A complete data store: covers all timelines, all entities, everything.
 ///
 /// ## Debugging
@@ -297,7 +299,7 @@ impl DataStore {
             let mut row_indices: IntMap<_, Vec<u64>> = IntMap::default();
             for table in self.indices.values() {
                 for bucket in table.buckets.values() {
-                    for (comp, index) in &bucket.indices.read().indices {
+                    for (comp, index) in &bucket.indices {
                         let row_indices = row_indices.entry(*comp).or_default();
                         row_indices.extend(index.iter().flatten().map(|row_idx| row_idx.as_u64()));
                     }
@@ -777,7 +779,7 @@ impl IndexTable {
             let time_ranges = self
                 .buckets
                 .values()
-                .map(|bucket| bucket.indices.read().time_range)
+                .map(|bucket| bucket.time_range)
                 .collect::<Vec<_>>();
             for time_ranges in time_ranges.windows(2) {
                 let &[t1, t2] = time_ranges else { unreachable!() };
@@ -813,16 +815,6 @@ pub struct IndexBucket {
     /// The timeline the bucket's parent table operates in, for debugging purposes.
     pub(crate) timeline: Timeline,
 
-    pub(crate) indices: RwLock<IndexBucketIndices>,
-
-    /// Carrying the cluster key around to help with assertions and sanity checks all over the
-    /// place.
-    pub(crate) cluster_key: ComponentName,
-}
-
-/// Just the indices, to simplify interior mutability.
-#[derive(Debug)]
-pub struct IndexBucketIndices {
     /// Whether the indices (all of them!) are currently sorted.
     ///
     /// Querying an `IndexBucket` will always trigger a sort if the indices aren't already sorted.
@@ -846,17 +838,10 @@ pub struct IndexBucketIndices {
     /// When that happens, they will be retro-filled with nulls so that they share the same
     /// length as the primary index ([`Self::times`]).
     pub(crate) indices: IntMap<ComponentName, SecondaryIndex>,
-}
 
-impl Default for IndexBucketIndices {
-    fn default() -> Self {
-        Self {
-            is_sorted: true,
-            time_range: TimeRange::new(i64::MAX.into(), i64::MIN.into()),
-            times: Default::default(),
-            indices: Default::default(),
-        }
-    }
+    /// Carrying the cluster key around to help with assertions and sanity checks all over the
+    /// place.
+    pub(crate) cluster_key: ComponentName,
 }
 
 impl std::fmt::Display for IndexBucket {
@@ -887,9 +872,8 @@ impl std::fmt::Display for IndexBucket {
 impl IndexBucket {
     /// Returns a formatted string of the time range in the bucket
     pub fn formatted_time_range(&self) -> String {
-        let time_range = &self.indices.read().time_range;
-        if time_range.min.as_i64() != i64::MAX && time_range.max.as_i64() != i64::MIN {
-            self.timeline.format_time_range(time_range)
+        if self.time_range.min.as_i64() != i64::MAX && self.time_range.max.as_i64() != i64::MIN {
+            self.timeline.format_time_range(&self.time_range)
         } else {
             "time range: N/A\n".to_owned()
         }
@@ -897,7 +881,7 @@ impl IndexBucket {
 
     /// Returns an (name, [`Int64Array`]) with a logical type matching the timeline.
     pub fn times(&self) -> (String, Int64Array) {
-        let times = Int64Array::from_vec(self.indices.read().times.clone());
+        let times = Int64Array::from_vec(self.times.clone());
         let logical_type = match self.timeline.typ() {
             re_log_types::TimeType::Time => DataType::Timestamp(TimeUnit::Nanosecond, None),
             re_log_types::TimeType::Sequence => DataType::Int64,
@@ -908,8 +892,6 @@ impl IndexBucket {
     /// Returns a Vec each of (name, array) for each index in the bucket
     pub fn named_indices(&self) -> (Vec<ComponentName>, Vec<UInt64Array>) {
         self.indices
-            .read()
-            .indices
             .iter()
             .map(|(name, index)| {
                 (
@@ -929,12 +911,14 @@ impl IndexBucket {
     ///
     /// Returns an error if anything looks wrong.
     pub fn sanity_check(&self) -> anyhow::Result<()> {
-        let IndexBucketIndices {
-            is_sorted: _,
-            time_range: _,
+        let Self {
+            timeline,
+            is_sorted,
+            time_range,
             times,
             indices,
-        } = &*self.indices.read();
+            cluster_key,
+        } = self;
 
         // All indices should contain the exact same number of rows as the time index.
         {
