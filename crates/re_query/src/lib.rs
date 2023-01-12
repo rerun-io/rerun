@@ -4,7 +4,7 @@
 mod entity_view;
 mod query;
 mod range;
-mod visit;
+pub mod visit;
 
 #[cfg(feature = "polars")]
 pub mod dataframe_util;

@@ -9,6 +9,13 @@ pub struct Size3D {
     pub z: f32,
 }
 
+#[cfg(feature = "glam")]
+impl From<Size3D> for glam::Vec3 {
+    fn from(size: Size3D) -> Self {
+        glam::vec3(size.x, size.y, size.z)
+    }
+}
+
 impl Component for Size3D {
     fn name() -> crate::ComponentName {
         "rerun.size3d".into()

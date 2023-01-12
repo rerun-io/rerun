@@ -156,8 +156,8 @@ def transforms_rigid_3d() -> None:
     # Planetary motion is typically in the XY plane.
     rerun.log_view_coordinates("transforms3d", up="+Z", timeless=True)
     rerun.log_view_coordinates("transforms3d/sun", up="+Z", timeless=True)
-    rerun.log_view_coordinates("transforms3d/planet", up="+Z", timeless=True)
-    rerun.log_view_coordinates("transforms3d/planet/moon", up="+Z", timeless=True)
+    rerun.log_view_coordinates("transforms3d/sun/planet", up="+Z", timeless=True)
+    rerun.log_view_coordinates("transforms3d/sun/planet/moon", up="+Z", timeless=True)
 
     # All are in the center of their own space:
     rerun.log_point("transforms3d/sun", [0.0, 0.0, 0.0], radius=1.0, color=[255, 200, 10])
@@ -218,6 +218,30 @@ def transforms_rigid_3d() -> None:
         )
 
 
+def run_bounding_box() -> None:
+    rerun.set_time_seconds("sim_time", 0)
+    rerun.log_obb(
+        "bbox_demo/bbox",
+        half_size=[1.0, 0.5, 0.25],
+        position=np.array([0.0, 0.0, 0.0]),
+        rotation_q=np.array([0, 0, np.sin(np.pi / 4), np.cos(np.pi / 4)]),
+        color=[0, 255, 0],
+        stroke_width=0.01,
+        label="box/t0",
+    )
+
+    rerun.set_time_seconds("sim_time", 1)
+    rerun.log_obb(
+        "bbox_demo/bbox",
+        half_size=[1.0, 0.5, 0.25],
+        position=np.array([1.0, 0.0, 0.0]),
+        rotation_q=np.array([0, 0, np.sin(np.pi / 4), np.cos(np.pi / 4)]),
+        color=[255, 255, 0],
+        stroke_width=0.02,
+        label="box/t1",
+    )
+
+
 def main() -> None:
     demos = {
         "3d_points": run_points_3d,
@@ -226,6 +250,7 @@ def main() -> None:
         "segmentation": run_segmentation,
         "text": run_text_logs,
         "transforms_3d": transforms_rigid_3d,
+        "bbox": run_bounding_box,
     }
 
     parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")

@@ -165,7 +165,7 @@ impl ScenePart for CamerasPart {
                 &[],
             )
             .and_then(|entity_view| {
-                entity_view.visit(|instance, transform| {
+                entity_view.visit1(|instance, transform| {
                     let Transform::Pinhole(pinhole) = transform else {
                         return;
                     };
