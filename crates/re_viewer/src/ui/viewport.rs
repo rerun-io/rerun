@@ -134,6 +134,7 @@ impl Viewport {
                                 space_info,
                                 obj_paths.clone(),
                                 scene_spatial.preferred_navigation_mode(&space_info.path),
+                                transforms.clone(),
                             );
                             space_view.name = visible_instance_id.obj_path.to_string();
 
@@ -172,6 +173,7 @@ impl Viewport {
                         space_info,
                         obj_paths.clone(),
                         scene_spatial.preferred_navigation_mode(&space_info.path),
+                        transforms.clone(),
                     );
                     blueprint.add_space_view(space_view);
                 }
@@ -397,6 +399,7 @@ impl Viewport {
                 space_info,
                 obj_paths,
                 scene_spatial.preferred_navigation_mode(&space_info.path),
+                transforms.clone(),
             ));
         }
     }
@@ -578,6 +581,7 @@ impl Viewport {
                                 space_info,
                                 obj_paths,
                                 scene_spatial.preferred_navigation_mode(&space_info.path),
+                                transforms.clone(),
                             ));
                             ctx.set_selection(Selection::SpaceView(new_space_view_id));
                         }

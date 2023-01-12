@@ -69,7 +69,7 @@ pub(crate) struct SpaceView {
     pub allow_auto_adding_more_object: bool,
 
     /// Transforms seen last frame, renewed every frame.
-    /// TODO(andreas): This should probably live on `SpaceInfo` and created there lazily?
+    /// TODO(andreas): This should probably live on `SpacesInfo` and created there lazily?
     #[serde(skip)]
     cached_transforms: TransformCache,
 }
@@ -80,6 +80,7 @@ impl SpaceView {
         space_info: &SpaceInfo,
         queried_objects: IntSet<ObjPath>,
         default_spatial_navigation_mode: SpatialNavigationMode,
+        initial_transforms: TransformCache,
     ) -> Self {
         let mut view_state = ViewState::default();
 
@@ -114,7 +115,7 @@ impl SpaceView {
             view_state,
             category,
             allow_auto_adding_more_object: true,
-            cached_transforms: TransformCache::default(),
+            cached_transforms: initial_transforms,
         }
     }
 
