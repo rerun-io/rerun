@@ -1,5 +1,8 @@
 use re_log_types::{
-    external::arrow2::array, field_types::Instance, msg_bundle::Component, AnnotationContext,
+    external::arrow2::{self, array},
+    field_types::Instance,
+    msg_bundle::Component,
+    AnnotationContext,
 };
 use re_query::{ComponentWithInstances, QueryError};
 
@@ -66,10 +69,16 @@ pub(crate) fn arrow_component_elem_ui(
         // No reason to do another lookup -- this is the instance itself
         ui.label(format!("{}", instance))
     } else if let Some(value) = component.lookup_arrow(instance) {
-        let mut repr = String::new();
-        let display = array::get_display(value.as_ref(), "null");
-        display(&mut repr, 0).unwrap();
-        ui.label(repr)
+        let bytes = arrow2::compute::aggregate::estimated_bytes_size(value.as_ref());
+        // For small items, print them
+        if bytes < 256 {
+            let mut repr = String::new();
+            let display = array::get_display(value.as_ref(), "null");
+            display(&mut repr, 0).unwrap();
+            ui.label(repr)
+        } else {
+            ui.label(format!("{} bytes", bytes))
+        }
     } else {
         ui.label("<unset>")
     }
