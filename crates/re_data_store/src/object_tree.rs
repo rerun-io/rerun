@@ -201,16 +201,26 @@ impl ObjectTree {
                     // For every existing field append a clear event into the
                     // results
                     results.extend(next.fields.iter().flat_map(|(field_name, fields)| {
-                        fields
-                            .per_type
-                            .iter()
-                            .map(|((data_type, multi_or_mono), _)| {
-                                (
+                        match field_name {
+                            FieldOrComponent::Field(_) => {
+                                itertools::Either::Left(fields.per_type.iter().map(
+                                    |((data_type, multi_or_mono), _)| {
+                                        (
+                                            DataPath::new_any(next.path.clone(), *field_name),
+                                            *data_type,
+                                            *multi_or_mono,
+                                        )
+                                    },
+                                ))
+                            }
+                            FieldOrComponent::Component(_) => {
+                                itertools::Either::Right(std::iter::once((
                                     DataPath::new_any(next.path.clone(), *field_name),
-                                    *data_type,
-                                    *multi_or_mono,
-                                )
-                            })
+                                    DataType::Bool, // Doesn't matter what we use here. Arrow clears by field_name.
+                                    MonoOrMulti::Multi,
+                                )))
+                            }
+                        }
                     }));
                 }
                 results
