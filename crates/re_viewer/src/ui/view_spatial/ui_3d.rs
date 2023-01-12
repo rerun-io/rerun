@@ -354,7 +354,7 @@ pub fn view_3d(
     let orbit_eye = *orbit_eye;
     let eye = orbit_eye.to_eye();
 
-    // TODO: this should happen in the scene!
+    // TODO(andreas): this should happen in the camera scene-part
     {
         let hovered_instance_hash = state
             .hovered_instance

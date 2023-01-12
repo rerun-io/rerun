@@ -165,7 +165,6 @@ impl SpaceView {
         self.data_blueprint.on_frame_start();
 
         let Some(space_info) =  spaces_info.get(&self.space_path) else {
-            re_log::warn_once!("Space for Spaceview {} no longer exists.", self.name);
             return;
         };
 
