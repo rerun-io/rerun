@@ -76,6 +76,26 @@ pub struct Viewport {
     has_been_user_edited: bool,
 }
 
+fn should_create_space_view(space_info: &&SpaceInfo) -> bool {
+    // If we're connected with a rigid transform to our parent, don't create a new space view automatically,
+    // since we're showing those objects in the parent by default.
+    // (it is still possible to create this space view manually)
+    if let Some(transform) = &space_info.parent_transform() {
+        match transform {
+            re_log_types::Transform::Rigid3(_) => return false,
+            re_log_types::Transform::Pinhole(_) | re_log_types::Transform::Unknown => {}
+        }
+
+        // If there is _only_ a transform, skip as well.
+        if space_info.descendants_without_transform.len() == 1 {
+            // TODO(andreas): Query if there are any non-transform properties.
+            return false;
+        }
+    }
+
+    true
+}
+
 impl Viewport {
     /// Create a default suggested blueprint using some heuristics.
     pub fn new(ctx: &mut ViewerContext<'_>, spaces_info: &SpacesInfo) -> Self {
@@ -83,17 +103,7 @@ impl Viewport {
 
         let mut blueprint = Self::default();
 
-        for space_info in spaces_info.iter() {
-            // If we're connected with a rigid transform to our parent, don't create a new space view automatically,
-            // since we're showing those objects in the parent by default.
-            // (it is still possible to create this space view manually)
-            if let Some(transform) = &space_info.parent_transform() {
-                match transform {
-                    re_log_types::Transform::Rigid3(_) => continue,
-                    re_log_types::Transform::Pinhole(_) | re_log_types::Transform::Unknown => {}
-                }
-            }
-
+        for space_info in spaces_info.iter().filter(should_create_space_view) {
             let transforms = TransformCache::determine_transforms(
                 spaces_info,
                 space_info,
@@ -421,19 +431,7 @@ impl Viewport {
 
                 // Check if the blueprint is missing a space,
                 // maybe one that has been added by new data:
-                for space_info in spaces_info.iter() {
-                    // Ignore spaces that have a parent connected via a rigid transform to their parent,
-                    // since they should be picked up automatically by existing parent spaces.
-                    //
-                    // Pinhole connections are picked up only in some cases, also they indicate a new 2d view which we don't want to miss.
-                    if let Some(transform) = &space_info.parent_transform() {
-                        match transform {
-                            re_log_types::Transform::Rigid3(_) => continue,
-                            re_log_types::Transform::Pinhole(_)
-                            | re_log_types::Transform::Unknown => {}
-                        }
-                    }
-
+                for space_info in spaces_info.iter().filter(should_create_space_view) {
                     if !self.has_space(&space_info.path) {
                         self.add_space_view_for(ctx, space_info, spaces_info);
                     }
