@@ -140,6 +140,30 @@ impl DataStore {
             }
 
             // TODO: remove indices... maybe? I kinda like those tombstones tho
+            // TODO: make optional?
+            for ((timeline, _), table) in &mut self.indices {
+                while table.buckets.len() > 1 {
+                    let time_range = table
+                        .buckets
+                        .values()
+                        .next()
+                        .unwrap()
+                        .indices
+                        .read()
+                        .time_range;
+                    if primary_bucket.contains(&[(*timeline, time_range)].into()) {
+                        let bucket = table
+                            .buckets
+                            .remove(&table.buckets.keys().next().unwrap().clone())
+                            .unwrap();
+                        drop_at_least_size_bytes -= bucket.total_size_bytes() as f64;
+                    } else {
+                        break;
+                    }
+
+                    // TODO: i figure we just killed the -inf indexing time?
+                }
+            }
 
             dropped.extend(primary_bucket.chunks.into_iter().map(|chunk| {
                 chunk

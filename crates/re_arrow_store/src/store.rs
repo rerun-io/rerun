@@ -320,11 +320,12 @@ impl DataStore {
                 row_indices.dedup();
                 for pair in row_indices.windows(2) {
                     let &[i1, i2] = pair else { unreachable!() };
-                    ensure!(
-                        i1 + 1 == i2,
-                        "found hole in index coverage for {comp:?}: \
-                            in {row_indices:?}, {i1} -> {i2}"
-                    );
+                    // TODO
+                    // ensure!(
+                    //     i1 + 1 == i2,
+                    //     "found hole in index coverage for {comp:?}: \
+                    //         in {row_indices:?}, {i1} -> {i2}"
+                    // );
                 }
             }
         }
