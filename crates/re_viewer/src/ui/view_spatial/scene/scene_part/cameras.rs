@@ -102,8 +102,8 @@ impl CamerasPart {
         scene: &mut SceneSpatial,
         obj_path: &ObjPath,
         transforms: &TransformCache,
-        // TODO(andreas): Don't need instance & hovered instances *yet* since most of the primitive handling is delayed.
-        _instance: InstanceIdHash,
+        instance: InstanceIdHash,
+        // TODO(andreas): Don't need hovered instances *yet* since most of the primitive handling is delayed.
         _hovered_instance: InstanceIdHash,
         pinhole: Pinhole,
         view_coordinates: ViewCoordinates,
@@ -136,7 +136,7 @@ impl CamerasPart {
         //                  and https://github.com/rerun-io/rerun/issues/686 (Replace camera mesh with expressive camera gizmo (extension of current frustum)
         scene.space_cameras.push(SpaceCamera3D {
             obj_path: obj_path.clone(),
-            instance_index_hash: re_log_types::IndexHash::NONE,
+            instance,
             view_coordinates,
             world_from_camera,
             pinhole: Some(pinhole),

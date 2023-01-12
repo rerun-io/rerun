@@ -270,19 +270,17 @@ impl SpaceSpecs {
 /// If the path to a camera is selected, we follow that camera.
 fn tracking_camera(ctx: &ViewerContext<'_>, space_cameras: &[SpaceCamera3D]) -> Option<Eye> {
     if let Selection::Instance(selected) = ctx.selection() {
-        find_camera(space_cameras, &selected)
+        find_camera(space_cameras, &selected.hash())
     } else {
         None
     }
 }
 
-fn find_camera(space_cameras: &[SpaceCamera3D], needle: &InstanceId) -> Option<Eye> {
+fn find_camera(space_cameras: &[SpaceCamera3D], needle: &InstanceIdHash) -> Option<Eye> {
     let mut found_camera = None;
 
     for camera in space_cameras {
-        if needle.obj_path == camera.obj_path
-            && camera.instance_index_hash == needle.instance_index_hash()
-        {
+        if &camera.instance == needle {
             if found_camera.is_some() {
                 return None; // More than one camera
             } else {
@@ -302,7 +300,7 @@ fn click_object(
 ) {
     ctx.set_selection(crate::Selection::Instance(instance_id.clone()));
 
-    if let Some(camera) = find_camera(space_cameras, instance_id) {
+    if let Some(camera) = find_camera(space_cameras, &instance_id.hash()) {
         state.interpolate_to_eye(camera);
     } else if let Some(clicked_point) = state.hovered_point {
         // center camera on what we click on

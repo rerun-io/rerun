@@ -1,8 +1,8 @@
 use glam::{vec3, Affine3A, Mat3, Quat, Vec2, Vec3};
 use macaw::{IsoTransform, Ray3};
 
-use re_data_store::ObjPath;
-use re_log_types::{IndexHash, ViewCoordinates};
+use re_data_store::{InstanceIdHash, ObjPath};
+use re_log_types::ViewCoordinates;
 
 /// A logged camera that connects spaces.
 #[derive(Clone)]
@@ -12,8 +12,8 @@ pub struct SpaceCamera3D {
     /// We expect the camera transform to apply to this object and every path below it.
     pub obj_path: ObjPath,
 
-    /// The hash of the instance index (if any) of the object at [`Self::camera_obj_path`].
-    pub instance_index_hash: IndexHash,
+    /// The instance id hash of the object that has the projection.
+    pub instance: InstanceIdHash,
 
     /// The coordinate system of the camera ("view-space").
     pub view_coordinates: ViewCoordinates,

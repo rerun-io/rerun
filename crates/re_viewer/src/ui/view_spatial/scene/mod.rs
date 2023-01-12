@@ -258,9 +258,7 @@ impl SceneSpatial {
             macaw::Plane3::from_normal_point(eye.forward_in_world(), eye.pos_in_world());
 
         for camera in &self.space_cameras {
-            let instance_id =
-                InstanceIdHash::from_path_and_index(&camera.obj_path, camera.instance_index_hash);
-            let is_hovered = instance_id == hovered_instance;
+            let is_hovered = camera.instance == hovered_instance;
 
             let (line_radius, line_color) = if is_hovered {
                 (Size::AUTO_LARGE, Self::HOVER_COLOR)
@@ -294,7 +292,7 @@ impl SceneSpatial {
                         let additive_tint = is_hovered.then_some(Self::HOVER_COLOR);
 
                         self.primitives.meshes.push(MeshSource {
-                            instance_hash: instance_id,
+                            instance_hash: camera.instance,
                             world_from_mesh,
                             mesh: cpu_mesh,
                             additive_tint,
@@ -306,7 +304,7 @@ impl SceneSpatial {
             if ctx.options.show_camera_axes_in_3d {
                 self.primitives.add_axis_lines(
                     camera.world_from_cam(),
-                    instance_id,
+                    camera.instance,
                     eye,
                     viewport_size,
                 );
@@ -353,7 +351,7 @@ impl SceneSpatial {
                     .add_segments(segments.into_iter())
                     .radius(line_radius)
                     .color(line_color)
-                    .user_data(instance_id);
+                    .user_data(camera.instance);
             };
         }
     }
