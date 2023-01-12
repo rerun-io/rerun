@@ -24,7 +24,7 @@ impl LoadedMesh {
                 Self::load_encoded_mesh(name, encoded_mesh, render_ctx)
             }
             // Mesh from some file format. File passed in bytes.
-            Mesh3D::Raw(raw_mesh) => Ok(Self::load_raw_mesh(name, raw_mesh, render_ctx)?),
+            //Mesh3D::Raw(raw_mesh) => Ok(Self::load_raw_mesh(name, raw_mesh, render_ctx)?),
         }
     }
 
@@ -71,7 +71,7 @@ impl LoadedMesh {
         let mut slf = Self::load_raw(name, *format, bytes, render_ctx)?;
 
         let (scale, rotation, translation) =
-            glam::Affine3A::from_cols_array_2d(transform).to_scale_rotation_translation();
+            glam::Affine3A::from_cols_array_2d(transform.into()).to_scale_rotation_translation();
         let transform =
             glam::Affine3A::from_scale_rotation_translation(scale, rotation, translation);
         for instance in &mut slf.mesh_instances {
