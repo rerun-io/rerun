@@ -1,4 +1,4 @@
-use re_log_types::TensorDimension;
+use re_log_types::field_types::TensorDimension;
 use re_tensor_ops::dimension_mapping::DimensionMapping;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -67,20 +67,15 @@ fn tensor_dimension_ui(
             let dim = &shape[dim_idx];
             let dim_ui_id = drag_source_ui_id(drag_context_id, dim_idx);
 
-            let tmp: String;
-            let display_name = if dim.name.is_empty() {
-                tmp = format!("{}", dim_idx);
-                &tmp
+            let label_text = if let Some(dim_name) = dim.name.as_ref() {
+                format!("▓ {dim_name} ({})", dim.size)
             } else {
-                &dim.name
+                format!("▓ {dim_idx} ({})", dim.size)
             };
 
             drag_source_ui(ui, dim_ui_id, |ui| {
                 // TODO(emilk): make these buttons respond on hover.
-                ui.colored_label(
-                    ui.visuals().widgets.inactive.fg_stroke.color,
-                    format!("▓ {} ({})", display_name, dim.size),
-                );
+                ui.colored_label(ui.visuals().widgets.inactive.fg_stroke.color, label_text);
             });
 
             if ui.memory().is_being_dragged(dim_ui_id) {

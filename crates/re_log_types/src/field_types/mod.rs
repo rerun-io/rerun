@@ -25,6 +25,7 @@ mod radius;
 mod rect;
 mod scalar;
 mod size;
+mod tensor;
 mod text_entry;
 mod transform;
 mod vec;
@@ -46,13 +47,14 @@ pub use radius::Radius;
 pub use rect::Rect2D;
 pub use scalar::{Scalar, ScalarPlotProps};
 pub use size::Size3D;
+pub use tensor::{Tensor, TensorData, TensorDataMeaning, TensorDimension, TensorId, TensorTrait};
 pub use text_entry::TextEntry;
 pub use transform::{Pinhole, Rigid3, Transform};
 pub use vec::{Vec2D, Vec3D};
 
 lazy_static! {
     //TODO(john) actully use a run-time type registry
-    static ref FIELDS: [Field; 22] = [
+    static ref FIELDS: [Field; 23] = [
         <AnnotationContext as Component>::field(),
         <Box3D as Component>::field(),
         <ClassId as Component>::field(),
@@ -71,6 +73,7 @@ lazy_static! {
         <Scalar as Component>::field(),
         <ScalarPlotProps as Component>::field(),
         <Size3D as Component>::field(),
+        <Tensor as Component>::field(),
         <TextEntry as Component>::field(),
         <Transform as Component>::field(),
         <Vec2D as Component>::field(),

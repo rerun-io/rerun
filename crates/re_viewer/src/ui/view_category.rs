@@ -1,7 +1,4 @@
-use std::collections::BTreeMap;
-
-use nohash_hasher::IntSet;
-use re_data_store::{LogDb, ObjPath, Timeline};
+use re_data_store::{query_transform, LogDb, ObjPath, Timeline};
 use re_log_types::DataPath;
 
 #[derive(
@@ -48,7 +45,13 @@ pub fn categorize_obj_path(
 ) -> ViewCategorySet {
     crate::profile_function!();
 
-    let Some(obj_type) = log_db.obj_db.types.get(obj_path.obj_type_path())  else {
+    let Some(obj_type) = log_db.obj_db.types.get(obj_path.obj_type_path()) else {
+        // If it has a transform we might want to visualize it in space
+        // (as of writing we do that only for projections, i.e. cameras, but visualizations for rigid transforms may be added)
+        if query_transform(&log_db.obj_db, timeline, obj_path, Some(i64::MAX)).is_some() {
+            return ViewCategory::Spatial.into();
+        }
+
         return ViewCategorySet::default();
     };
 
@@ -96,18 +99,4 @@ pub fn categorize_obj_path(
             ViewCategory::Spatial.into() // TODO(emilk): implement some sort of entity categorization based on components
         }
     }
-}
-
-pub fn group_by_category<'a>(
-    timeline: &Timeline,
-    log_db: &LogDb,
-    objects: impl Iterator<Item = &'a ObjPath>,
-) -> BTreeMap<ViewCategory, IntSet<ObjPath>> {
-    let mut groups: BTreeMap<ViewCategory, IntSet<ObjPath>> = Default::default();
-    for obj_path in objects {
-        for category in categorize_obj_path(timeline, log_db, obj_path) {
-            groups.entry(category).or_default().insert(obj_path.clone());
-        }
-    }
-    groups
 }

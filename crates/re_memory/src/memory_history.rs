@@ -21,6 +21,9 @@ pub struct MemoryHistory {
     /// Values are usually a rough estimate as the actual amount of VRAM used depends a lot
     /// on the specific GPU and driver. Accounted typically only raw buffer & texture sizes.
     pub counted_gpu: History<i64>,
+
+    /// Bytes used by the datastore according to its own accounting.
+    pub counted_store: History<i64>,
 }
 
 impl Default for MemoryHistory {
@@ -31,6 +34,7 @@ impl Default for MemoryHistory {
             resident: History::new(0..max_elems, max_seconds),
             counted: History::new(0..max_elems, max_seconds),
             counted_gpu: History::new(0..max_elems, max_seconds),
+            counted_store: History::new(0..max_elems, max_seconds),
         }
     }
 }
@@ -41,12 +45,16 @@ impl MemoryHistory {
             resident,
             counted,
             counted_gpu,
+            counted_store,
         } = self;
-        resident.is_empty() && counted.is_empty() && counted_gpu.is_empty()
+        resident.is_empty()
+            && counted.is_empty()
+            && counted_gpu.is_empty()
+            && counted_store.is_empty()
     }
 
     /// Add data to history
-    pub fn capture(&mut self, counted_gpu: Option<i64>) {
+    pub fn capture(&mut self, counted_gpu: Option<i64>, counted_store: Option<i64>) {
         let mem_use = crate::MemoryUse::capture();
         let now = crate::util::sec_since_start();
 
@@ -58,6 +66,9 @@ impl MemoryHistory {
         }
         if let Some(counted_gpu) = counted_gpu {
             self.counted_gpu.add(now, counted_gpu);
+        }
+        if let Some(counted_store) = counted_store {
+            self.counted_store.add(now, counted_store);
         }
     }
 }

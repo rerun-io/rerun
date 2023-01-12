@@ -53,7 +53,7 @@ pub struct View3DState {
     #[serde(skip)]
     pub(crate) space_specs: SpaceSpecs,
     #[serde(skip)]
-    space_camera: Vec<SpaceCamera3D>,
+    space_camera: Vec<SpaceCamera3D>, // TODO(andreas): remove this once camera meshes are gone
 }
 
 impl Default for View3DState {
@@ -270,19 +270,17 @@ impl SpaceSpecs {
 /// If the path to a camera is selected, we follow that camera.
 fn tracking_camera(ctx: &ViewerContext<'_>, space_cameras: &[SpaceCamera3D]) -> Option<Eye> {
     if let Selection::Instance(selected) = ctx.selection() {
-        find_camera(space_cameras, &selected)
+        find_camera(space_cameras, &selected.hash())
     } else {
         None
     }
 }
 
-fn find_camera(space_cameras: &[SpaceCamera3D], needle: &InstanceId) -> Option<Eye> {
+fn find_camera(space_cameras: &[SpaceCamera3D], needle: &InstanceIdHash) -> Option<Eye> {
     let mut found_camera = None;
 
     for camera in space_cameras {
-        if needle.obj_path == camera.camera_obj_path
-            && camera.instance_index_hash == needle.instance_index_hash()
-        {
+        if &camera.instance == needle {
             if found_camera.is_some() {
                 return None; // More than one camera
             } else {
@@ -302,7 +300,7 @@ fn click_object(
 ) {
     ctx.set_selection(crate::Selection::Instance(instance_id.clone()));
 
-    if let Some(camera) = find_camera(space_cameras, instance_id) {
+    if let Some(camera) = find_camera(space_cameras, &instance_id.hash()) {
         state.interpolate_to_eye(camera);
     } else if let Some(clicked_point) = state.hovered_point {
         // center camera on what we click on
@@ -335,17 +333,16 @@ pub fn view_3d(
     state: &mut ViewSpatialState,
     space: &ObjPath,
     mut scene: SceneSpatial,
-    space_cameras: &[SpaceCamera3D],
     objects_properties: &ObjectsProperties,
 ) -> egui::Response {
     crate::profile_function!();
 
-    state.state_3d.space_camera = space_cameras.to_vec();
+    state.state_3d.space_camera = scene.space_cameras.clone();
 
     let (rect, mut response) =
         ui.allocate_at_least(ui.available_size(), egui::Sense::click_and_drag());
 
-    let tracking_camera = tracking_camera(ctx, space_cameras);
+    let tracking_camera = tracking_camera(ctx, &scene.space_cameras);
     let orbit_eye =
         state
             .state_3d
@@ -355,6 +352,7 @@ pub fn view_3d(
     let orbit_eye = *orbit_eye;
     let eye = orbit_eye.to_eye();
 
+    // TODO(andreas): this should happen in the camera scene-part
     {
         let hovered_instance_hash = state
             .hovered_instance
@@ -365,7 +363,6 @@ pub fn view_3d(
             &state.scene_bbox_accum,
             rect.size(),
             &eye,
-            space_cameras,
             hovered_instance_hash,
             objects_properties,
         );
@@ -416,7 +413,7 @@ pub fn view_3d(
                                 ctx.render_ctx,
                             );
 
-                            if let [h, w, ..] = image.tensor.shape.as_slice() {
+                            if let [h, w, ..] = image.tensor.shape() {
                                 ui.separator();
                                 ui.horizontal(|ui| {
                                     let (w, h) = (w.size as f32, h.size as f32);
@@ -451,13 +448,13 @@ pub fn view_3d(
         // Clicking the last hovered object.
         if let Some(instance_id) = &state.hovered_instance {
             if ui.input().pointer.any_click() {
-                click_object(ctx, space_cameras, &mut state.state_3d, instance_id);
+                click_object(ctx, &scene.space_cameras, &mut state.state_3d, instance_id);
             }
         }
 
-        project_onto_other_spaces(ctx, space_cameras, &mut state.state_3d, space);
+        project_onto_other_spaces(ctx, &scene.space_cameras, &mut state.state_3d, space);
     }
-    show_projections_from_2d_space(ctx, space_cameras, &mut scene, &state.scene_bbox_accum);
+    show_projections_from_2d_space(ctx, &mut scene, &state.scene_bbox_accum);
     if state.state_3d.show_axes {
         scene.primitives.add_axis_lines(
             macaw::IsoTransform::IDENTITY,
@@ -599,7 +596,6 @@ fn paint_view(
 
 fn show_projections_from_2d_space(
     ctx: &mut ViewerContext<'_>,
-    space_cameras: &[SpaceCamera3D],
     scene: &mut SceneSpatial,
     scene_bbox_accum: &BoundingBox,
 ) {
@@ -609,8 +605,8 @@ fn show_projections_from_2d_space(
             .points
             .batch("projection from 2d hit points");
 
-        for cam in space_cameras {
-            if cam.target_space.as_ref() == Some(space_2d) {
+        for cam in &scene.space_cameras {
+            if &cam.obj_path == space_2d {
                 if let Some(ray) = cam.unproject_as_ray(glam::vec2(pos.x, pos.y)) {
                     // TODO(emilk): better visualization of a ray
                     let mut hit_pos = None;
@@ -658,12 +654,10 @@ fn project_onto_other_spaces(
 ) {
     let mut target_spaces = vec![];
     for cam in space_cameras {
-        if let Some(target_space) = cam.target_space.clone() {
-            let point_in_2d = state
-                .hovered_point
-                .and_then(|hovered_point| cam.project_onto_2d(hovered_point));
-            target_spaces.push((target_space, point_in_2d));
-        }
+        let point_in_2d = state
+            .hovered_point
+            .and_then(|hovered_point| cam.project_onto_2d(hovered_point));
+        target_spaces.push((cam.obj_path.clone(), point_in_2d));
     }
     ctx.rec_cfg.hovered_space_this_frame = HoveredSpace::ThreeD {
         space_3d: space.clone(),

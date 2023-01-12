@@ -21,7 +21,7 @@
 use std::collections::BTreeMap;
 
 use arrow2::{
-    array::{Array, ListArray, StructArray},
+    array::{new_empty_array, Array, ListArray, StructArray},
     chunk::Chunk,
     datatypes::{DataType, Field, Schema},
     offset::Offsets,
@@ -101,6 +101,20 @@ pub struct ComponentBundle {
     pub name: ComponentName,
     /// The Component payload `Array`.
     pub value: Box<dyn Array>,
+}
+
+impl ComponentBundle {
+    pub fn new_empty(name: ComponentName, data_type: DataType) -> Self {
+        let empty_array = wrap_in_listarray(new_empty_array(data_type)).boxed();
+        Self {
+            name,
+            value: empty_array,
+        }
+    }
+
+    pub fn data_type(&self) -> &DataType {
+        ListArray::<i32>::get_child_type(self.value.data_type())
+    }
 }
 
 impl<C> TryFrom<&[C]> for ComponentBundle
@@ -291,18 +305,12 @@ impl MsgBundle {
 
 impl std::fmt::Display for MsgBundle {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let (names, values): (Vec<_>, Vec<_>) = self
-            .components
-            .iter()
-            .map(|ComponentBundle { name, value }| (name.as_str(), value))
-            .unzip();
-
-        let chunk = Chunk::new(values);
-        let table_string = arrow2::io::print::write(&[chunk], names.as_slice());
-
+        let values = self.components.iter().map(|bundle| &bundle.value);
+        let names = self.components.iter().map(|bundle| bundle.name.as_str());
+        let table = re_format::arrow::format_table(values, names);
         f.write_fmt(format_args!(
-            "MsgBundle '{}' @ {:?}:\n{}",
-            self.obj_path, self.time_point, table_string
+            "MsgBundle '{}' @ {:?}:\n{table}",
+            self.obj_path, self.time_point
         ))
     }
 }

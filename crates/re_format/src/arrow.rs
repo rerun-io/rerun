@@ -40,6 +40,7 @@ impl std::fmt::Display for DisplayIntervalUnit {
 }
 
 //TODO(john) move this and the Display impl upstream into arrow2
+#[derive(derive_more::From, derive_more::Into)]
 #[repr(transparent)]
 pub struct DisplayDataType(DataType);
 

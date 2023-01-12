@@ -1,13 +1,16 @@
 use itertools::Itertools as _;
 
-use re_log_types::{field_types::ClassId, Tensor, TensorDataMeaning};
+use re_log_types::{
+    field_types::{ClassId, TensorDataMeaning},
+    ClassicTensor,
+};
 
 use crate::misc::{caches::TensorImageView, ViewerContext};
 
 use super::DataUi;
 
 /// Previously `tensor_ui()`
-impl DataUi for Tensor {
+impl DataUi for ClassicTensor {
     fn data_ui(
         &self,
         ctx: &mut ViewerContext<'_>,
@@ -19,8 +22,8 @@ impl DataUi for Tensor {
         let ui_resp = ui
             .vertical(|ui| {
                 ui.set_min_width(100.0);
-                ui.label(format!("dtype: {}", self.dtype));
-                ui.label(format!("shape: {:?}", self.shape));
+                ui.label(format!("dtype: {}", self.dtype()));
+                ui.label(format!("shape: {:?}", self.shape()));
             })
             .response;
 
@@ -62,7 +65,7 @@ impl DataUi for Tensor {
 fn show_zoomed_image_region_tooltip(
     parent_ui: &mut egui::Ui,
     response: egui::Response,
-    tensor_view: &TensorImageView<'_, '_>,
+    tensor_view: &TensorImageView<'_, '_, ClassicTensor>,
     image_rect: egui::Rect,
     pointer_pos: egui::Pos2,
     meter: Option<f32>,
@@ -94,7 +97,7 @@ const ZOOMED_IMAGE_TEXEL_RADIUS: isize = 12;
 
 pub fn show_zoomed_image_region_area_outline(
     ui: &mut egui::Ui,
-    tensor_view: &TensorImageView<'_, '_>,
+    tensor_view: &TensorImageView<'_, '_, ClassicTensor>,
     [center_x, center_y]: [isize; 2],
     image_rect: egui::Rect,
 ) {
@@ -126,7 +129,7 @@ pub fn show_zoomed_image_region_area_outline(
 /// `meter`: iff this is a depth map, how long is one meter?
 pub fn show_zoomed_image_region(
     tooltip_ui: &mut egui::Ui,
-    tensor_view: &TensorImageView<'_, '_>,
+    tensor_view: &TensorImageView<'_, '_, ClassicTensor>,
     image_position: [isize; 2],
     meter: Option<f32>,
 ) {
@@ -189,7 +192,7 @@ pub fn show_zoomed_image_region(
                     ui.monospace(format!("Raw value: {}", raw_value.as_f64()));
 
                     if let (TensorDataMeaning::ClassId, annotations, Some(u16_val)) = (
-                        tensor_view.tensor.meaning,
+                        tensor_view.tensor.meaning(),
                         tensor_view.annotations,
                         raw_value.try_as_u16(),
                     ) {
@@ -205,7 +208,7 @@ pub fn show_zoomed_image_region(
                 }
             } else if tensor_view.tensor.num_dim() == 3 {
                 let mut s = "Raw values:".to_owned();
-                for c in 0..tensor_view.tensor.shape[2].size {
+                for c in 0..tensor_view.tensor.shape()[2].size {
                     if let Some(raw_value) = tensor_view.tensor.get(&[y, x, c]) {
                         use std::fmt::Write as _;
                         write!(&mut s, " {}", raw_value.as_f64()).unwrap();
@@ -353,7 +356,7 @@ fn histogram_ui(ui: &mut egui::Ui, rgb_image: &image::RgbImage) -> egui::Respons
 #[cfg(not(target_arch = "wasm32"))]
 fn image_options(
     ui: &mut egui::Ui,
-    tensor: &re_log_types::Tensor,
+    tensor: &re_log_types::ClassicTensor,
     dynamic_image: &image::DynamicImage,
 ) {
     // TODO(emilk): support copying images on web
