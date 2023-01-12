@@ -72,7 +72,7 @@ impl ArrowDeserialize for MeshId {
 
 // ----------------------------------------------------------------------------
 
-// TODO(jleibs) Arrow support for Raw Meshes
+// TODO(#749) Re-enable `RawMesh3D`
 // These seem totally unused at the moment and not even supported by the SDK
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
@@ -240,7 +240,8 @@ pub enum MeshFormat {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum Mesh3D {
     Encoded(EncodedMesh3D),
-    //Raw(Arc<RawMesh3D>),
+    // TODO(#749) Re-enable `RawMesh3D`
+    // Raw(Arc<RawMesh3D>),
 }
 
 impl Component for Mesh3D {
@@ -253,7 +254,8 @@ impl Mesh3D {
     pub fn mesh_id(&self) -> MeshId {
         match self {
             Mesh3D::Encoded(mesh) => mesh.mesh_id,
-            //Mesh3D::Raw(mesh) => mesh.mesh_id,
+            // TODO(#749) Re-enable `RawMesh3D`
+            // Mesh3D::Raw(mesh) => mesh.mesh_id,
         }
     }
 }
