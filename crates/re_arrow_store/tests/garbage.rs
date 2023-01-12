@@ -173,8 +173,7 @@ fn gc_correct() {
 
     dbg!(DataStoreStats::from_store(&store).total_temporal_component_rows);
 
-    // eprintln!("{store}");
-    // dbg!(store.to_dataframe());
+    assert_eq!(2, store.total_temporal_component_rows());
 }
 
 // ---

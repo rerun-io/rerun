@@ -12,6 +12,7 @@ use crate::{ComponentBucket, ComponentTable, DataStore, RowIndex, RowIndexKind};
 
 // ---
 
+// TODO: remove; dont need it in the end
 #[derive(thiserror::Error, Debug)]
 pub enum GarbageCollectionError {
     // Batches
