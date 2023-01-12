@@ -80,11 +80,12 @@ impl ArrowDeserialize for TensorId {
 
 /// Flattened `Tensor` data payload
 ///
-/// ```
-/// use re_log_types::field_types::TensorData;
-/// use arrow2_convert::field::ArrowField;
-/// use arrow2::datatypes::{DataType, Field, UnionMode};
+/// ## Examples
 ///
+/// ```
+/// # use re_log_types::field_types::TensorData;
+/// # use arrow2_convert::field::ArrowField;
+/// # use arrow2::datatypes::{DataType, Field, UnionMode};
 /// assert_eq!(
 ///     TensorData::data_type(),
 ///     DataType::Union(
@@ -160,13 +161,14 @@ pub enum TensorData {
     F64(Vec<f64>),
 }
 
-// Flattened `Tensor` data payload
+/// Flattened `Tensor` data payload
+///
+/// ## Examples
 ///
 /// ```
-/// use re_log_types::field_types::TensorDimension;
-/// use arrow2_convert::field::ArrowField;
-/// use arrow2::datatypes::{DataType, Field};
-///
+/// # use re_log_types::field_types::TensorDimension;
+/// # use arrow2_convert::field::ArrowField;
+/// # use arrow2::datatypes::{DataType, Field};
 /// assert_eq!(
 ///     TensorDimension::data_type(),
 ///     DataType::Struct(vec![
@@ -209,7 +211,6 @@ impl TensorDimension {
             name: Some(name),
         }
     }
-
     pub fn unnamed(size: u64) -> Self {
         Self { size, name: None }
     }
@@ -229,14 +230,16 @@ pub enum TensorDataMeaning {
 
 /// A Multi-dimensional Tensor
 ///
+/// ## Examples
+///
 /// ```
-/// use re_log_types::field_types::{TensorData, TensorDimension, Tensor};
-/// use arrow2_convert::field::ArrowField;
-/// use arrow2::datatypes::{DataType, Field, UnionMode};
+/// # use re_log_types::field_types::{TensorData, TensorDimension, Tensor};
+/// # use arrow2_convert::field::ArrowField;
+/// # use arrow2::datatypes::{DataType, Field, UnionMode};
 /// assert_eq!(
 ///     Tensor::data_type(),
 ///     DataType::Struct(vec![
-///         //Field::new("tensor_id", DataType::FixedSizeBinary(16), false),
+///         Field::new("tensor_id", DataType::FixedSizeBinary(16), false),
 ///         Field::new(
 ///             "shape",
 ///             DataType::List(Box::new(Field::new(
@@ -266,12 +269,10 @@ pub enum TensorDataMeaning {
 pub struct Tensor {
     /// Unique identifier for the tensor
     pub tensor_id: TensorId,
-
     /// Dimensionality and length
     pub shape: Vec<TensorDimension>,
-
+    /// Data payload
     pub data: TensorData,
-
     /// The per-element data meaning
     /// Used to indicated if the data should be interpreted as color, class_id, etc.
     pub meaning: TensorDataMeaning,
