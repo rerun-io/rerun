@@ -7,7 +7,7 @@ use crate::DataStoreConfig;
 macro_rules! test_bundle {
     ($entity:ident @ $frames:tt => [$c0:expr $(,)*]) => {
         ::re_log_types::msg_bundle::try_build_msg_bundle1(
-            ::re_log_types::MsgId::ZERO,
+            ::re_log_types::MsgId::random(),
             $entity.clone(),
             $frames,
             $c0,
@@ -16,7 +16,7 @@ macro_rules! test_bundle {
     };
     ($entity:ident @ $frames:tt => [$c0:expr, $c1:expr $(,)*]) => {
         re_log_types::msg_bundle::try_build_msg_bundle2(
-            ::re_log_types::MsgId::ZERO,
+            ::re_log_types::MsgId::random(),
             $entity.clone(),
             $frames,
             ($c0, $c1),

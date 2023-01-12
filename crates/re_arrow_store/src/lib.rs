@@ -11,6 +11,7 @@
 
 mod arrow_util;
 mod store;
+mod store_gc;
 mod store_read;
 mod store_stats;
 mod store_write;
@@ -27,6 +28,9 @@ pub mod test_util;
 pub use self::arrow_util::ArrayExt;
 pub use self::store::{
     DataStore, DataStoreConfig, IndexBucket, IndexRowNr, IndexTable, RowIndex, RowIndexKind,
+};
+pub use self::store_gc::{
+    GarbageCollectionError, GarbageCollectionResult, GarbageCollectionTarget,
 };
 pub use self::store_read::{LatestAtQuery, RangeQuery};
 pub use self::store_stats::DataStoreStats;

@@ -253,6 +253,7 @@ pub struct DataStore {
     pub(crate) insert_id: u64,
     /// Monotically increasing ID for queries.
     pub(crate) query_id: AtomicU64,
+    // TODO: gc id
 }
 
 impl DataStore {

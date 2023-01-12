@@ -2,6 +2,8 @@
 //!
 //! Testing & demonstrating expected usage of the datastore APIs, no funny stuff.
 
+// TODO: rename tests/api.rs
+
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use arrow2::array::{Array, UInt64Array};
