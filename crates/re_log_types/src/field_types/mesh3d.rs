@@ -5,6 +5,8 @@ use arrow2_convert::deserialize::ArrowDeserialize;
 use arrow2_convert::field::ArrowField;
 use arrow2_convert::{serialize::ArrowSerialize, ArrowDeserialize, ArrowField, ArrowSerialize};
 
+use crate::msg_bundle::Component;
+
 // ----------------------------------------------------------------------------
 
 /// A unique id per [`Mesh3D`].
@@ -235,6 +237,12 @@ pub enum MeshFormat {
 pub enum Mesh3D {
     Encoded(EncodedMesh3D),
     //Raw(Arc<RawMesh3D>),
+}
+
+impl Component for Mesh3D {
+    fn name() -> crate::ComponentName {
+        "rerun.mesh3d".into()
+    }
 }
 
 impl Mesh3D {
