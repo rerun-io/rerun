@@ -47,7 +47,7 @@ pub use radius::Radius;
 pub use rect::Rect2D;
 pub use scalar::{Scalar, ScalarPlotProps};
 pub use size::Size3D;
-pub use tensor::{Tensor, TensorDataMeaning, TensorDimension, TensorTrait};
+pub use tensor::{Tensor, TensorDataMeaning, TensorDimension, TensorId, TensorTrait};
 pub use text_entry::TextEntry;
 pub use transform::{Pinhole, Rigid3, Transform};
 pub use vec::{Vec2D, Vec3D};

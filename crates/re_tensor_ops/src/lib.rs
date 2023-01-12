@@ -4,7 +4,7 @@
 //! This is particularly helpful for performing slice-operations for
 //! dimensionality reduction.
 
-use re_log_types::{field_types, ClassicTensor, TensorDataStore, TensorDataTypeTrait, TensorId};
+use re_log_types::{field_types, ClassicTensor, TensorDataStore, TensorDataTypeTrait};
 
 pub mod dimension_mapping;
 
@@ -81,7 +81,7 @@ where
     };
 
     Ok(ClassicTensor::new(
-        TensorId::random(),
+        field_types::TensorId::random(),
         shape,
         A::Elem::DTYPE,
         meaning,
@@ -92,7 +92,7 @@ where
 #[cfg(test)]
 mod tests {
     use re_log_types::{
-        field_types::{TensorDataMeaning, TensorDimension},
+        field_types::{TensorDataMeaning, TensorDimension, TensorId},
         TensorDataStore, TensorDataType,
     };
 

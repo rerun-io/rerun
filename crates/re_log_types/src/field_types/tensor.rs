@@ -1,8 +1,11 @@
 use std::sync::Arc;
 
-use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
+use arrow2::array::{FixedSizeBinaryArray, MutableFixedSizeBinaryArray};
+use arrow2_convert::deserialize::ArrowDeserialize;
+use arrow2_convert::field::ArrowField;
+use arrow2_convert::{serialize::ArrowSerialize, ArrowDeserialize, ArrowField, ArrowSerialize};
 
-use crate::{msg_bundle::Component, ClassicTensor, TensorDataStore, TensorId};
+use crate::{msg_bundle::Component, ClassicTensor, TensorDataStore};
 
 pub trait TensorTrait {
     fn id(&self) -> TensorId;
@@ -10,6 +13,70 @@ pub trait TensorTrait {
     fn num_dim(&self) -> usize;
     fn is_shaped_like_an_image(&self) -> bool;
 }
+
+// ----------------------------------------------------------------------------
+
+/// A unique id per [`Tensor`].
+///
+/// TODO(emilk): this should be a hash of the tensor (CAS).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub struct TensorId(pub uuid::Uuid);
+
+impl nohash_hasher::IsEnabled for TensorId {}
+
+// required for [`nohash_hasher`].
+#[allow(clippy::derive_hash_xor_eq)]
+impl std::hash::Hash for TensorId {
+    #[inline]
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        state.write_u64(self.0.as_u128() as u64);
+    }
+}
+
+impl TensorId {
+    #[inline]
+    pub fn random() -> Self {
+        Self(uuid::Uuid::new_v4())
+    }
+}
+
+impl ArrowField for TensorId {
+    type Type = Self;
+
+    fn data_type() -> arrow2::datatypes::DataType {
+        arrow2::datatypes::DataType::FixedSizeBinary(16)
+    }
+}
+
+//TODO(https://github.com/DataEngineeringLabs/arrow2-convert/issues/79#issue-1415520918)
+impl ArrowSerialize for TensorId {
+    type MutableArrayType = MutableFixedSizeBinaryArray;
+
+    fn new_array() -> Self::MutableArrayType {
+        MutableFixedSizeBinaryArray::new(16)
+    }
+
+    fn arrow_serialize(
+        v: &<Self as arrow2_convert::field::ArrowField>::Type,
+        array: &mut Self::MutableArrayType,
+    ) -> arrow2::error::Result<()> {
+        array.try_push(Some(v.0.as_bytes()))
+    }
+}
+
+impl ArrowDeserialize for TensorId {
+    type ArrayType = FixedSizeBinaryArray;
+
+    fn arrow_deserialize(
+        v: <&Self::ArrayType as IntoIterator>::Item,
+    ) -> Option<<Self as ArrowField>::Type> {
+        v.and_then(|bytes| uuid::Uuid::from_slice(bytes).ok())
+            .map(Self)
+    }
+}
+
+// ----------------------------------------------------------------------------
 
 #[derive(Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[arrow_field(type = "dense")]
@@ -85,7 +152,6 @@ pub enum TensorDataMeaning {
 #[derive(Debug, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 pub struct Tensor {
     /// Unique identifier for the tensor
-    #[arrow_field(skip)]
     pub tensor_id: TensorId,
 
     /// Dimensionality and length

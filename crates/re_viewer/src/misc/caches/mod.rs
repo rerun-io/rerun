@@ -1,6 +1,7 @@
 mod mesh_cache;
 mod tensor_image_cache;
 
+use re_log_types::field_types;
 pub use tensor_image_cache::{AsDynamicImage, TensorImageView};
 
 /// Does memoization of different things for the immediate mode UI.
@@ -12,7 +13,7 @@ pub struct Caches {
     /// For displaying meshes efficiently in immediate mode.
     pub mesh: mesh_cache::MeshCache,
 
-    pub tensor_stats: nohash_hasher::IntMap<re_log_types::TensorId, TensorStats>,
+    pub tensor_stats: nohash_hasher::IntMap<field_types::TensorId, TensorStats>,
 }
 
 impl Caches {

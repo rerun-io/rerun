@@ -5,7 +5,7 @@ use egui_extras::RetainedImage;
 use image::DynamicImage;
 use re_log_types::{
     field_types::{self, ClassId, TensorDataMeaning},
-    ClassicTensor, MsgId, TensorDataStore, TensorDataType, TensorId,
+    ClassicTensor, MsgId, TensorDataStore, TensorDataType,
 };
 use re_renderer::{
     resource_managers::{GpuTexture2DHandle, Texture2DCreationDesc},
@@ -47,7 +47,7 @@ pub struct TensorImageView<'store, 'cache, T> {
 // changes to the annotations
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 struct ImageCacheKey {
-    tensor_id: TensorId,
+    tensor_id: field_types::TensorId,
     annotation_msg_id: MsgId,
 }
 impl nohash_hasher::IsEnabled for ImageCacheKey {}

@@ -69,7 +69,7 @@ wgpu-core = { git = "https://github.com/gfx-rs/wgpu.git", ref = "a377ae2b7fe6c1c
 
 # Upstream PR https://github.com/jorgecarleitao/arrow2/pull/1351
 arrow2 = { git = "https://github.com/rerun-io/arrow2", rev = "f134e58bb554b069392f6bd495aa43aa06b58944" }
-# Upstream PRs
-arrow2_convert = { git = "https://github.com/rerun-io/arrow2-convert", rev = "85696465ef59ae6b8eb5c5c29b3c3aa8a61ee65f" }
+# Upstream PRs https://github.com/DataEngineeringLabs/arrow2-convert/pull/90
+arrow2_convert = { git = "https://github.com/rerun-io/arrow2-convert", rev = "4d381e0408c3543a120fa288b75e54fbf5e10b1d" }
 #arrow2 = { path = "../arrow2" }
 #arrow2_convert = { path = "../arrow2-convert/arrow2_convert" }

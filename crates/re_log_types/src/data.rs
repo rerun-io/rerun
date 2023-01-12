@@ -950,39 +950,6 @@ impl std::fmt::Debug for TensorDataStore {
 
 // ----------------------------------------------------------------------------
 
-/// A unique id per [`Tensor`].
-///
-/// TODO(emilk): this should be a hash of the tensor (CAS).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct TensorId(pub uuid::Uuid);
-
-impl nohash_hasher::IsEnabled for TensorId {}
-
-// required for [`nohash_hasher`].
-#[allow(clippy::derive_hash_xor_eq)]
-impl std::hash::Hash for TensorId {
-    #[inline]
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        state.write_u64(self.0.as_u128() as u64);
-    }
-}
-
-impl TensorId {
-    #[inline]
-    pub fn random() -> Self {
-        Self(uuid::Uuid::new_v4())
-    }
-}
-
-impl Default for TensorId {
-    fn default() -> Self {
-        Self::random()
-    }
-}
-
-// ----------------------------------------------------------------------------
-
 /// An N-dimensional collection of numbers.
 ///
 /// Most often used to describe image pixels.
@@ -990,7 +957,7 @@ impl Default for TensorId {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct ClassicTensor {
     /// Unique identifier for the tensor
-    tensor_id: TensorId,
+    tensor_id: field_types::TensorId,
 
     /// Example: `[h, w, 3]` for an RGB image, stored in row-major-order.
     /// The order matches that of numpy etc, and is ordered so that
@@ -1015,7 +982,7 @@ pub struct ClassicTensor {
 }
 
 impl field_types::TensorTrait for ClassicTensor {
-    fn id(&self) -> TensorId {
+    fn id(&self) -> field_types::TensorId {
         self.tensor_id
     }
 
@@ -1034,7 +1001,7 @@ impl field_types::TensorTrait for ClassicTensor {
 
 impl ClassicTensor {
     pub fn new(
-        tensor_id: TensorId,
+        tensor_id: field_types::TensorId,
         shape: Vec<field_types::TensorDimension>,
         dtype: TensorDataType,
         meaning: field_types::TensorDataMeaning,
@@ -1050,7 +1017,7 @@ impl ClassicTensor {
     }
 
     #[inline]
-    pub fn id(&self) -> TensorId {
+    pub fn id(&self) -> field_types::TensorId {
         self.tensor_id
     }
 
