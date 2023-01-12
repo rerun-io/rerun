@@ -175,6 +175,7 @@ impl SceneSpatial {
             &scene_part::Boxes2DPart,
             // --
             &scene_part::LineSegments2DPart,
+            &scene_part::Lines2DPart,
             &scene_part::Points2DPartClassic,
             &scene_part::Points2DPart,
             // ---
