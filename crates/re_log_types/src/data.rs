@@ -686,7 +686,7 @@ pub enum MeshFormat {
 
 // ----------------------------------------------------------------------------
 
-/// The data types supported by a [`Tensor`].
+/// The data types supported by a [`ClassicTensor`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum TensorDataType {
@@ -813,7 +813,7 @@ impl TensorDataTypeTrait for f64 {
     const DTYPE: TensorDataType = TensorDataType::F64;
 }
 
-/// The data that can be stored in a [`Tensor`].
+/// The data that can be stored in a [`ClassicTensor`].
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum TensorElement {
@@ -904,12 +904,12 @@ impl TensorElement {
     }
 }
 
-/// The data types supported by a [`Tensor`].
+/// The data types supported by a [`ClassicTensor`].
 ///
 /// NOTE: `PartialEq` takes into account _how_ the data is stored,
 /// which can be surprising! As of 2022-08-15, `PartialEq` is only used by tests.
 ///
-/// [`TensorDataStore`] uses [`Arc`] internally so that cloning a [`Tensor`] is cheap
+/// [`TensorDataStore`] uses [`Arc`] internally so that cloning a [`ClassicTensor`] is cheap
 /// and memory efficient.
 /// This is crucial, since we clone data for different timelines in the data store.
 #[allow(clippy::derive_partial_eq_without_eq)]
