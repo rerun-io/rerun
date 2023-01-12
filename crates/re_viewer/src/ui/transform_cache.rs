@@ -1,6 +1,5 @@
 use nohash_hasher::IntMap;
 use re_data_store::{ObjPath, ObjectsProperties};
-use re_log_types::ObjPathHash;
 
 use crate::misc::space_info::{SpaceInfo, SpacesInfo};
 
@@ -8,8 +7,9 @@ use crate::misc::space_info::{SpaceInfo, SpacesInfo};
 ///
 /// The renderer then uses this reference space as its world space,
 /// making world and reference space equivalent for a given space view.
+#[derive(Clone, Default)]
 pub struct TransformCache {
-    reference_from_obj_per_object: IntMap<ObjPathHash, ReferenceFromObjTransform>,
+    reference_from_obj_per_object: IntMap<ObjPath, ReferenceFromObjTransform>,
 }
 
 #[derive(Clone, Copy)]
@@ -31,6 +31,15 @@ pub enum ReferenceFromObjTransform {
 
     /// We're able to transform this object into the reference space.
     Reachable(glam::Mat4),
+}
+
+impl ReferenceFromObjTransform {
+    pub fn is_reachable(&self) -> bool {
+        match self {
+            ReferenceFromObjTransform::Unreachable(_) => false,
+            ReferenceFromObjTransform::Reachable(_) => true,
+        }
+    }
 }
 
 impl TransformCache {
@@ -149,7 +158,7 @@ impl TransformCache {
             space
                 .descendants_without_transform
                 .iter()
-                .map(|obj| (*obj.hash(), transform.clone())),
+                .map(|obj| (obj.clone(), transform.clone())),
         );
     }
 
@@ -242,10 +251,19 @@ impl TransformCache {
     /// This is typically used as the "world space" for the renderer in a given frame.
     pub fn reference_from_obj(&self, obj_path: &ObjPath) -> ReferenceFromObjTransform {
         self.reference_from_obj_per_object
-            .get(obj_path.hash())
+            .get(obj_path)
             .cloned()
             .unwrap_or(ReferenceFromObjTransform::Unreachable(
                 UnreachableTransformReason::Unconnected,
             ))
+    }
+
+    pub fn objects_with_reachable_transform(&self) -> impl Iterator<Item = &ObjPath> {
+        self.reference_from_obj_per_object
+            .iter()
+            .filter_map(|(obj, transform)| match transform {
+                ReferenceFromObjTransform::Unreachable(_) => None,
+                ReferenceFromObjTransform::Reachable(_) => Some(obj),
+            })
     }
 }

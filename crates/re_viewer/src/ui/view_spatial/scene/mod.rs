@@ -122,6 +122,10 @@ pub struct SceneSpatial {
     num_logged_2d_objects: usize,
     /// Number of 3d primitives logged, used for heuristics.
     num_logged_3d_objects: usize,
+
+    /// All space cameras in this scene.
+    /// TODO(andreas): Does this belong to [`SceneSpatialUiData`]?
+    pub space_cameras: Vec<SpaceCamera3D>,
 }
 
 fn instance_hash_if_interactive(
@@ -173,6 +177,9 @@ impl SceneSpatial {
             &scene_part::LineSegments2DPart,
             &scene_part::Points2DPartClassic,
             &scene_part::Points2DPart,
+            // ---
+            &scene_part::CamerasPart,
+            &scene_part::CamerasPartClassic,
         ];
 
         for part in parts {
@@ -240,7 +247,6 @@ impl SceneSpatial {
         scene_bbox: &macaw::BoundingBox,
         viewport_size: egui::Vec2,
         eye: &Eye,
-        cameras: &[SpaceCamera3D],
         hovered_instance: InstanceIdHash,
         obj_properties: &ObjectsProperties,
     ) {
@@ -252,12 +258,8 @@ impl SceneSpatial {
         let eye_camera_plane =
             macaw::Plane3::from_normal_point(eye.forward_in_world(), eye.pos_in_world());
 
-        for camera in cameras {
-            let instance_id = InstanceIdHash::from_path_and_index(
-                &camera.camera_obj_path,
-                camera.instance_index_hash,
-            );
-            let is_hovered = instance_id == hovered_instance;
+        for camera in &self.space_cameras {
+            let is_hovered = camera.instance == hovered_instance;
 
             let (line_radius, line_color) = if is_hovered {
                 (Size::AUTO_LARGE, Self::HOVER_COLOR)
@@ -291,7 +293,7 @@ impl SceneSpatial {
                         let additive_tint = is_hovered.then_some(Self::HOVER_COLOR);
 
                         self.primitives.meshes.push(MeshSource {
-                            instance_hash: instance_id,
+                            instance_hash: camera.instance,
                             world_from_mesh,
                             mesh: cpu_mesh,
                             additive_tint,
@@ -303,98 +305,77 @@ impl SceneSpatial {
             if ctx.options.show_camera_axes_in_3d {
                 self.primitives.add_axis_lines(
                     camera.world_from_cam(),
-                    instance_id,
+                    camera.instance,
                     eye,
                     viewport_size,
                 );
             }
 
             let mut frustum_length = scene_bbox.size().length() * 0.3;
-            if let (Some(pinhole), Some(child_space)) = (&camera.pinhole, &camera.target_space) {
+            if let (Some(pinhole), child_space) = (&camera.pinhole, &camera.obj_path) {
                 frustum_length = obj_properties
                     .get(child_space)
                     .pinhole_image_plane_distance(pinhole);
             }
 
-            self.add_camera_frustum(camera, instance_id, line_radius, frustum_length, line_color);
+            {
+                let world_from_image = camera.world_from_image().unwrap();
+                let [w, h] = camera.pinhole.unwrap().resolution.unwrap().0;
+
+                // TODO(emilk): there is probably a off-by-one or off-by-half error here.
+                // The image coordinates are in [0, w-1] range, so either we should use those limits
+                // or [-0.5, w-0.5] for the "pixels are tiny squares" interpretation of the frustum.
+
+                let corners = [
+                    world_from_image.transform_point3(frustum_length * vec3(0.0, 0.0, 1.0)),
+                    world_from_image.transform_point3(frustum_length * vec3(0.0, h, 1.0)),
+                    world_from_image.transform_point3(frustum_length * vec3(w, h, 1.0)),
+                    world_from_image.transform_point3(frustum_length * vec3(w, 0.0, 1.0)),
+                ];
+
+                let center = camera.position();
+
+                let segments = [
+                    (center, corners[0]),     // frustum corners
+                    (center, corners[1]),     // frustum corners
+                    (center, corners[2]),     // frustum corners
+                    (center, corners[3]),     // frustum corners
+                    (corners[0], corners[1]), // `d` distance plane sides
+                    (corners[1], corners[2]), // `d` distance plane sides
+                    (corners[2], corners[3]), // `d` distance plane sides
+                    (corners[3], corners[0]), // `d` distance plane sides
+                ];
+
+                self.primitives
+                    .line_strips
+                    .batch("camera frustum")
+                    .add_segments(segments.into_iter())
+                    .radius(line_radius)
+                    .color(line_color)
+                    .user_data(camera.instance);
+            };
         }
-    }
-
-    /// Paint frustum lines
-    fn add_camera_frustum(
-        &mut self,
-        camera: &SpaceCamera3D,
-        instance_id: InstanceIdHash,
-        line_radius: Size,
-        frustum_length: f32,
-        color: Color32,
-    ) -> Option<()> {
-        let world_from_image = camera.world_from_image()?;
-        let [w, h] = camera.pinhole?.resolution?.0;
-
-        // TODO(emilk): there is probably a off-by-one or off-by-half error here.
-        // The image coordinates are in [0, w-1] range, so either we should use those limits
-        // or [-0.5, w-0.5] for the "pixels are tiny squares" interpretation of the frustum.
-
-        let corners = [
-            world_from_image.transform_point3(frustum_length * vec3(0.0, 0.0, 1.0)),
-            world_from_image.transform_point3(frustum_length * vec3(0.0, h, 1.0)),
-            world_from_image.transform_point3(frustum_length * vec3(w, h, 1.0)),
-            world_from_image.transform_point3(frustum_length * vec3(w, 0.0, 1.0)),
-        ];
-
-        let center = camera.position();
-
-        let segments = [
-            (center, corners[0]),     // frustum corners
-            (center, corners[1]),     // frustum corners
-            (center, corners[2]),     // frustum corners
-            (center, corners[3]),     // frustum corners
-            (corners[0], corners[1]), // `d` distance plane sides
-            (corners[1], corners[2]), // `d` distance plane sides
-            (corners[2], corners[3]), // `d` distance plane sides
-            (corners[3], corners[0]), // `d` distance plane sides
-        ];
-
-        self.primitives
-            .line_strips
-            .batch("camera frustum")
-            .add_segments(segments.into_iter())
-            .radius(line_radius)
-            .color(color)
-            .user_data(instance_id);
-
-        Some(())
     }
 
     /// Heuristic whether the default way of looking at this scene should be 2d or 3d.
-    pub fn prefer_2d_mode(&self) -> bool {
-        // If any 2D interactable picture is there we regard it as 2d.
+    pub fn preferred_navigation_mode(&self, space_info_path: &ObjPath) -> SpatialNavigationMode {
+        // If there's any space cameras that are not the root, we need to go 3D, otherwise we can't display them.
+        if self
+            .space_cameras
+            .iter()
+            .any(|camera| &camera.obj_path != space_info_path)
+        {
+            return SpatialNavigationMode::ThreeD;
+        }
+
         if !self.ui.images.is_empty() {
-            return true;
+            return SpatialNavigationMode::TwoD;
         }
-
-        // Instead a mesh indicates 3d.
-        if !self.primitives.meshes.is_empty() {
-            return false;
-        }
-
         if self.num_logged_3d_objects == 0 {
-            return true;
-        }
-        if self.num_logged_2d_objects == 0 {
-            return false;
+            return SpatialNavigationMode::TwoD;
         }
 
-        false
-    }
-
-    pub fn preferred_navigation_mode(&self) -> SpatialNavigationMode {
-        if self.prefer_2d_mode() {
-            SpatialNavigationMode::TwoD
-        } else {
-            SpatialNavigationMode::ThreeD
-        }
+        SpatialNavigationMode::ThreeD
     }
 
     pub fn picking(
