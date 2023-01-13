@@ -1960,12 +1960,12 @@ fn log_cleared(obj_path: &str, recursive: bool) -> PyResult<()> {
 
     if session.arrow_log_gate() {
         let obj_path = session.arrow_prefix_obj_path(obj_path.clone());
-        session.send_path_op(&time_point, PathOp::new(recursive, obj_path));
+        session.send_path_op(&time_point, PathOp::clear(recursive, obj_path));
     }
 
     if session.classic_log_gate() {
         let obj_path = session.classic_prefix_obj_path(obj_path);
-        session.send_path_op(&time_point, PathOp::new(recursive, obj_path));
+        session.send_path_op(&time_point, PathOp::clear(recursive, obj_path));
     }
 
     Ok(())
