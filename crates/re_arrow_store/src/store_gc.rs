@@ -2,9 +2,9 @@ use std::collections::HashMap;
 
 use arrow2::array::{Array, ListArray};
 use re_log::info;
-use re_log_types::{ComponentName, TimeInt, TimeRange, Timeline};
+use re_log_types::{ComponentName, TimeRange, Timeline};
 
-use crate::{ComponentBucket, DataStore, IndexBucket, IndexTable};
+use crate::{ComponentBucket, DataStore};
 
 // ---
 
@@ -29,26 +29,28 @@ impl std::fmt::Display for GarbageCollectionTarget {
 
 impl DataStore {
     /// Triggers a garbage collection according to the desired `target`, driven by the specified
-    /// `primary` component.
+    /// `primary_component` and `primary_timeline`.
+    /// Returns all the raw data that was removed from the store for the given `primary_component`.
     ///
-    /// Returns all the raw data that was removed from the store for the given `primary` component.
+    /// This only affects component tables, indices are left as-is, effectively behaving as
+    /// tombstones.
     ///
     /// The garbage collection is based on _insertion order_, which makes it both very efficient
-    /// and very simple from an implementation standpoint, but it does come with a tradeoff: data
-    /// written far enough "into the future" might be unexpectedly collected.
+    /// and very simple from an implementation standpoint.
+    /// The tradeoff is that the given `primary_timeline` is expected to roughly follow insertion
+    /// order, otherwise the behaviour is essentially undefined.
     pub fn gc(
         &mut self,
-        primary: ComponentName,
         target: GarbageCollectionTarget,
+        primary_timeline: Timeline,
+        primary_component: ComponentName,
     ) -> Vec<Box<dyn Array>> {
         puffin::profile_function!();
 
         self.gc_id += 1;
 
-        let initial_nb_rows =
-            self.total_temporal_index_rows() + self.total_temporal_component_rows();
-        let initial_size_bytes = (self.total_temporal_index_size_bytes()
-            + self.total_temporal_component_size_bytes()) as f64;
+        let initial_nb_rows = self.total_temporal_component_rows();
+        let initial_size_bytes = self.total_temporal_component_size_bytes() as f64;
 
         let res = match target {
             GarbageCollectionTarget::DropAtLeastPercentage(p) => {
@@ -61,6 +63,8 @@ impl DataStore {
                     kind = "gc",
                     id = self.gc_id,
                     %target,
+                    timeline = %primary_timeline.name(),
+                    %primary_component,
                     initial_nb_rows = re_format::format_large_number(initial_nb_rows as _),
                     initial_size_bytes = re_format::format_bytes(initial_size_bytes),
                     target_size_bytes = re_format::format_bytes(target_size_bytes),
@@ -68,21 +72,26 @@ impl DataStore {
                     "starting GC"
                 );
 
-                self.gc_drop_at_least_size_bytes(primary, drop_at_least_size_bytes)
+                self.gc_drop_at_least_size_bytes(
+                    primary_timeline,
+                    primary_component,
+                    drop_at_least_size_bytes,
+                )
             }
         };
 
         #[cfg(debug_assertions)]
         self.sanity_check().unwrap();
 
-        let new_nb_rows = self.total_temporal_index_rows() + self.total_temporal_component_rows();
-        let new_size_bytes = (self.total_temporal_index_size_bytes()
-            + self.total_temporal_component_size_bytes()) as f64;
+        let new_nb_rows = self.total_temporal_component_rows();
+        let new_size_bytes = self.total_temporal_component_size_bytes() as f64;
 
         info!(
             kind = "gc",
             id = self.gc_id,
             %target,
+            timeline = %primary_timeline.name(),
+            %primary_component,
             initial_nb_rows = re_format::format_large_number(initial_nb_rows as _),
             initial_size_bytes = re_format::format_bytes(initial_size_bytes),
             new_nb_rows = re_format::format_large_number(new_nb_rows as _),
@@ -95,17 +104,18 @@ impl DataStore {
 
     fn gc_drop_at_least_size_bytes(
         &mut self,
-        primary: ComponentName,
+        primary_timeline: Timeline,
+        primary_component: ComponentName,
         mut drop_at_least_size_bytes: f64,
     ) -> Vec<Box<dyn Array>> {
         let mut dropped = Vec::<Box<dyn Array>>::new();
 
         while drop_at_least_size_bytes > 0.0 {
-            // Find and drop the earliest (in _insertion order_) primary component bucket that we
-            // can find.
+            // Find and drop the earliest (in terms of _insertion order_) primary component bucket
+            // that we can find.
             let Some(primary_bucket) = self
                 .components
-                .get_mut(&primary)
+                .get_mut(&primary_component)
                 .and_then(|table| (table.buckets.len() > 1).then(|| table.buckets.pop_front()))
                 .flatten()
             else {
@@ -115,12 +125,12 @@ impl DataStore {
             drop_at_least_size_bytes -= primary_bucket.total_size_bytes() as f64;
 
             // From there, find and drop all component buckets (in _insertion order_) that do not
-            // contain any data that's more recent than the time range covered by the primary
-            // component bucket.
+            // contain any data more recent than the time range covered by the primary
+            // component bucket (for the primary timeline!).
             for table in self.components.values_mut() {
                 while table.buckets.len() > 1 {
                     let bucket = table.buckets.front().unwrap();
-                    if primary_bucket.contains(&bucket.time_ranges) {
+                    if primary_bucket.encompasses(primary_timeline, &bucket.time_ranges) {
                         let bucket = table.buckets.pop_front().unwrap();
                         drop_at_least_size_bytes -= bucket.total_size_bytes() as f64;
                     } else {
@@ -129,29 +139,7 @@ impl DataStore {
                 }
             }
 
-            // Find and drop all index buckets (in _time order_) that are fully encompassed by the
-            // time ranges of the primary bucket we've just dropped.
-            //
-            // There's a tradeoff here: if one or more buckets at further points in time still
-            // refer to data within the dead primary component bucket (i.e. because the original
-            // insertions were done for timepoints "far into the future"), they will now refer to
-            // deleted data (read requests will return `None`s).
-            for ((timeline, _), table) in &mut self.indices {
-                while table.buckets.len() > 1 {
-                    let time_range = table.first_time_range().unwrap();
-                    if primary_bucket.contains(&[(*timeline, time_range)].into()) {
-                        let bucket = table.pop_first_bucket().unwrap();
-                        drop_at_least_size_bytes -= bucket.total_size_bytes() as f64;
-                    } else {
-                        break;
-                    }
-                }
-
-                // The first index bucket of every table should always cover the smallest possible
-                // indexing time: make sure this is still the case!
-                let bucket = table.pop_first_bucket().unwrap();
-                table.buckets.insert(TimeInt::MIN, bucket);
-            }
+            // We don't collect indices: they behave as tombstones.
 
             dropped.extend(primary_bucket.chunks.into_iter().map(|chunk| {
                 chunk
@@ -168,39 +156,19 @@ impl DataStore {
 }
 
 impl ComponentBucket {
-    /// Does `self` fully encompass the given `time_ranges`?
-    fn contains(&self, time_ranges: &HashMap<Timeline, TimeRange>) -> bool {
-        for timeline2 in time_ranges.keys() {
-            if !self.time_ranges.contains_key(timeline2) {
-                return false;
-            }
+    /// Does `self` fully encompass `time_ranges` for the given `primary_timeline`?
+    fn encompasses(
+        &self,
+        primary_timeline: Timeline,
+        time_ranges: &HashMap<Timeline, TimeRange>,
+    ) -> bool {
+        if let (Some(time_range1), Some(time_range2)) = (
+            self.time_ranges.get(&primary_timeline),
+            time_ranges.get(&primary_timeline),
+        ) {
+            return time_range1.max >= time_range2.max;
         }
 
-        for (timeline1, time_range1) in &self.time_ranges {
-            if let Some(time_range2) = time_ranges.get(timeline1) {
-                if time_range2.max > time_range1.max {
-                    return false;
-                }
-            }
-        }
-
-        true
-    }
-}
-
-impl IndexTable {
-    fn pop_first_bucket(&mut self) -> Option<IndexBucket> {
-        self.buckets
-            .keys()
-            .next()
-            .cloned()
-            .and_then(|key| self.buckets.remove(&key))
-    }
-
-    fn first_time_range(&mut self) -> Option<TimeRange> {
-        self.buckets
-            .values()
-            .next()
-            .map(|bucket| bucket.indices.read().time_range)
+        false
     }
 }

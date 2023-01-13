@@ -356,13 +356,12 @@ fn gc_correct() {
 
     let mut rng = rand::thread_rng();
 
-    let nb_ents = 10;
-    for i in 0..nb_ents {
-        let ent_path = EntityPath::from(format!("this/that/{i}"));
-
-        let nb_frames = rng.gen_range(0..=100);
-        let frames = (0..nb_frames).filter(|_| rand::thread_rng().gen());
-        for frame_nr in frames {
+    let nb_frames = rng.gen_range(0..=100);
+    let frames = (0..nb_frames).filter(|_| rand::thread_rng().gen());
+    for frame_nr in frames {
+        let nb_ents = 10;
+        for i in 0..nb_ents {
+            let ent_path = EntityPath::from(format!("this/that/{i}"));
             let nb_instances = rng.gen_range(0..=1_000);
             let bundle = test_bundle!(ent_path @ [build_frame_nr(frame_nr.into())] => [
                 build_some_rects(nb_instances),
@@ -379,8 +378,9 @@ fn gc_correct() {
     _ = store.to_dataframe(); // simple way of checking that everything is still readable
 
     let msg_id_chunks = store.gc(
-        MsgId::name(),
         GarbageCollectionTarget::DropAtLeastPercentage(1.0),
+        Timeline::new("frame_nr", TimeType::Sequence),
+        MsgId::name(),
     );
 
     let msg_ids = msg_id_chunks
@@ -412,8 +412,9 @@ fn gc_correct() {
     }
 
     let msg_id_chunks = store.gc(
-        MsgId::name(),
         GarbageCollectionTarget::DropAtLeastPercentage(1.0),
+        Timeline::new("frame_nr", TimeType::Sequence),
+        MsgId::name(),
     );
 
     let msg_ids = msg_id_chunks

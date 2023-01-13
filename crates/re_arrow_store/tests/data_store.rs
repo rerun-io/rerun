@@ -274,8 +274,9 @@ fn latest_at() {
         let mut store = DataStore::new(Instance::name(), config.clone());
         latest_at_impl(&mut store);
         store.gc(
-            MsgId::name(),
             GarbageCollectionTarget::DropAtLeastPercentage(1.0),
+            Timeline::new("frame_nr", TimeType::Sequence),
+            MsgId::name(),
         );
         latest_at_impl(&mut store);
     }
@@ -888,8 +889,9 @@ fn gc_impl(store: &mut DataStore) {
         _ = store.to_dataframe(); // simple way of checking that everything is still readable
 
         let msg_id_chunks = store.gc(
-            MsgId::name(),
             GarbageCollectionTarget::DropAtLeastPercentage(1.0 / 3.0),
+            Timeline::new("frame_nr", TimeType::Sequence),
+            MsgId::name(),
         );
 
         let msg_ids = msg_id_chunks
