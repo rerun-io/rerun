@@ -12,6 +12,8 @@ var position_data_texture: texture_2d<u32>;
 
 struct BatchUniformBuffer {
     world_from_obj: Mat4,
+    first_quad_index: i32,
+    last_quad_index: i32,
 };
 @group(2) @binding(0)
 var<uniform> batch: BatchUniformBuffer;
@@ -102,39 +104,50 @@ fn has_any_flag(flags: u32, flags_to_check: u32) -> bool {
 @vertex
 fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     // Basic properties of the vertex we're at.
-    let is_at_quad_end = (i32(vertex_idx) % 2) == 1;
-    let quad_idx = i32(vertex_idx) / 6;
+    var is_at_quad_end_or_cap_start = (i32(vertex_idx) % 2) == 1;
+    var quad_idx = i32(vertex_idx) / 6;
     let local_idx = vertex_idx % 6u;
+    let is_first_triangle = local_idx < 3u;
     let top_bottom = f32(local_idx <= 1u || local_idx == 5u) * 2.0 - 1.0; // 1 for a top vertex, -1 for a bottom vertex.
 
     // Position data at the beginning and the end of the current quad.
-    let pos_data_quad_begin = read_position_data(quad_idx);
-    let pos_data_quad_end = read_position_data(quad_idx + 1);
+    var pos_data_quad_begin = read_position_data(quad_idx);
+    var pos_data_quad_end = read_position_data(quad_idx + 1);
 
-    // Position data at and before the vertex
-    var pos_data_current: PositionData;
-    if is_at_quad_end {
-        pos_data_current = pos_data_quad_end;
-    } else {
-        pos_data_current = pos_data_quad_begin;
-    }
-
-    // True if this is a trailing quad - should either turn into a cap(s) or collapse!
+    // True if this is a trailing quad - should either turn into caps or collapse!
     let is_trailing_quad = pos_data_quad_begin.strip_index != pos_data_quad_end.strip_index;
 
-    // The first triangle (local_index 0-2) forms an end cap of the "current" strip,
-    // the second triangle (local_index 3-5) is a start cap for the next strip!
-    var strip_index = pos_data_quad_end.strip_index;
-    let is_end_cap_triangle = is_trailing_quad && local_idx < 3u;
-    if is_end_cap_triangle {
-        strip_index = pos_data_quad_begin.strip_index;
+    // For line caps, the quad we're looking at so far is invalid.
+    // Let's pretend we're on a different one instead.
+    if is_trailing_quad {
+        // The first triangle (local_index 0-2) forms an end cap of the "current" strip,
+        if is_first_triangle {
+            quad_idx -= 1; // Go one quad back to arrive at valid quad again.
+            is_at_quad_end_or_cap_start = !is_at_quad_end_or_cap_start;
+        }
+        // The second triangle (local_index 3-5) is a start cap for the next strip.
+        else {
+            // If this is first triangle in the last cap-quad of the batch,
+            // we need to make this the start-cap of the FIRST strip in the batch!
+            if quad_idx == batch.last_quad_index { // Last quad of batch
+                quad_idx = batch.first_quad_index;
+            } else {
+                quad_idx += 1; // Step one quad forward to arrive at a valid quad again.
+            }
+        }
+
+        // Reload the quad for this new index.
+        pos_data_quad_begin = read_position_data(quad_idx);
+        pos_data_quad_end = read_position_data(quad_idx + 1);
     }
 
-    // Data valid for the entire strip that this vertex belongs to.
-    let strip_data = read_strip_data(strip_index);
-
-    // Even though the strip asks for caps, they can only be enabled on trailing quads and in specific conditions, which we check below
-    var currently_active_flags = strip_data.flags & (~(CAP_START_TRIANGLE | CAP_END_TRIANGLE | CAP_START_ROUND | CAP_END_ROUND));
+    // Determine the line position data at the vertex.
+    var center_position: Vec3;
+    if is_at_quad_end_or_cap_start {
+        center_position = pos_data_quad_end.pos;
+    } else {
+        center_position = pos_data_quad_begin.pos;
+    }
 
     // For a (triangle) end cap:
     // s == closest_strip_position
@@ -147,55 +160,47 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     //              |   /
     //              | /
     // For non-caps s == c!
-    var center_position = pos_data_current.pos; // line center of the quad (triangle for caps) we're spanning.
+    // This is mostly important to determine cut-outs in the fragment shader.
     var closest_strip_position = center_position;
 
-    var quad_dir = ZERO; // If this remains zero, the quad is discarded automatically.
-    var radius = strip_data.unresolved_radius;
-    var pointy_end = false;
+    // The direction of the quad always follows the direction of the line (even for caps!).
+    let quad_dir = normalize(pos_data_quad_end.pos - pos_data_quad_begin.pos);
 
-    // Calculate the direction the current quad is facing in and adjust various parameters if this is a cap.
-    if is_trailing_quad { // A end quad, potentially used for caps.
-        // Determine the direction of the cap if any.
-        // Despite only working with a single triangle we're still thinking in terms of quads here!
-        // We're now either a quad before the actual strip or a quad after the strip we belong to,
-        // therefore we need to look-up a new position to make sense of the quad dir.
-        if is_end_cap_triangle && has_any_flag(strip_data.flags, CAP_END_TRIANGLE | CAP_END_ROUND) {
-            currently_active_flags |= strip_data.flags & (CAP_END_TRIANGLE | CAP_END_ROUND);
-            quad_dir = pos_data_quad_begin.pos - read_position_data(quad_idx - 1).pos;
-
-            pointy_end = is_at_quad_end;
-            if pointy_end {
-                closest_strip_position = pos_data_quad_begin.pos; // The last point of this strip
-            }
-        } else if !is_end_cap_triangle && has_any_flag(strip_data.flags, CAP_START_TRIANGLE | CAP_START_ROUND) {
-            currently_active_flags |= strip_data.flags & (CAP_START_TRIANGLE | CAP_START_ROUND);
-            quad_dir = pos_data_quad_end.pos - read_position_data(quad_idx + 2).pos;
-
-            pointy_end = !is_at_quad_end;
-            if pointy_end {
-                closest_strip_position = pos_data_quad_end.pos; // The first point of this strip
-            }
-        }
-    } else {
-        // Regular "body" quad of the line.
-        quad_dir = pos_data_quad_begin.pos - pos_data_quad_end.pos;
-    }
-    quad_dir = normalize(quad_dir);
+    // Data valid for the entire strip that this vertex belongs to.
+    let strip_data = read_strip_data(pos_data_quad_begin.strip_index);
 
     // Now that we know the world position of the closest skeleton point, we can resolve the radius and some other things alongside.
+    // (slight inaccuracy: End caps are going to adjust their center_position again)
     let camera_ray = camera_ray_to_world_pos(closest_strip_position);
-    // (!) Some redundant computation here, we already normalized the camera direction earlier.
     var radius = unresolved_size_to_world(strip_data.unresolved_radius, length(camera_ray.origin - closest_strip_position), 1.0);
 
-    // Make radius and position adjustments depending on cap properties.
+    // Adjust center position, radius and calculate active flag in case of a cap.
+    // Even though the strip as a hole asks for caps, we enable them only if they're active on the current triangle.
+    var currently_active_flags = strip_data.flags & (~(CAP_START_TRIANGLE | CAP_END_TRIANGLE | CAP_START_ROUND | CAP_END_ROUND));
     if is_trailing_quad {
-        if pointy_end {
-            // The pointy end is an extension of the line, need to calculate it and collapse the thickness
-            center_position = closest_strip_position + quad_dir * (radius * 4.0);
+        var cap_dir = quad_dir;
+        if is_first_triangle && has_any_flag(strip_data.flags, CAP_END_TRIANGLE | CAP_END_ROUND) {
+            currently_active_flags |= strip_data.flags & (CAP_END_TRIANGLE | CAP_END_ROUND);
+            closest_strip_position = pos_data_quad_end.pos; // The last valid point of this strip
+        } else if !is_first_triangle && has_any_flag(strip_data.flags, CAP_START_TRIANGLE | CAP_START_ROUND) {
+            currently_active_flags |= strip_data.flags & (CAP_START_TRIANGLE | CAP_START_ROUND);
+            closest_strip_position = pos_data_quad_begin.pos; // The first valid point of this strip
+            cap_dir *= -1.0;
+        } else {
+            // Discard vertex.
+            center_position = Vec3(0.0/0.0, 0.0/0.0, 0.0/0.0);
+        }
+
+        if is_at_quad_end_or_cap_start {
+            center_position = closest_strip_position;
+        } else {
+            center_position = closest_strip_position + cap_dir * (radius * 4.0);
             radius = 0.0;
-        } else if has_any_flag(currently_active_flags, CAP_START_TRIANGLE | CAP_END_TRIANGLE ) {
-            // If this is a triangle cap and not the pointy end, we blow up our ("virtual") quad by twice the size
+        }
+
+        // If this is a triangle cap, we blow up our ("virtual") quad by twice the size.
+        // (the pointy end remaings radius==0.0)
+        if has_any_flag(currently_active_flags, CAP_START_TRIANGLE | CAP_END_TRIANGLE) {
             radius *= 2.0;
         }
     }
