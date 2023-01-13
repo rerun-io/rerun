@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use ahash::HashMap;
-use egui::NumExt as _;
 use glam::{vec3, Vec3};
 use re_data_store::{InstanceIdHash, ObjPath, ObjectsProperties};
 use re_log_types::{
@@ -33,7 +32,10 @@ use scene_part::ScenePart;
 pub enum MeshSourceData {
     Mesh3D(re_log_types::Mesh3D),
 
-    /// e.g. the camera mesh
+    /// Static meshes that are embedded in the player
+    ///
+    /// Not used as of writing but may come back.
+    #[allow(dead_code)]
     StaticGlb(MeshId, &'static [u8]),
 }
 
@@ -252,12 +254,6 @@ impl SceneSpatial {
     ) {
         crate::profile_function!();
 
-        // Size of a pixel (in meters), when projected out one meter:
-        let point_size_at_one_meter = eye.fov_y.unwrap() / viewport_size.y;
-
-        let eye_camera_plane =
-            macaw::Plane3::from_normal_point(eye.forward_in_world(), eye.pos_in_world());
-
         for camera in &self.space_cameras {
             let is_hovered = camera.instance == hovered_instance;
 
@@ -266,41 +262,6 @@ impl SceneSpatial {
             } else {
                 (Size::AUTO, Color32::from_rgb(255, 128, 128))
             }; // TODO(emilk): camera color
-
-            let scale_based_on_scene_size = 0.05 * scene_bbox.size().length();
-            let dist_to_eye = eye_camera_plane.distance(camera.position()).at_least(0.0);
-            let scale_based_on_distance = dist_to_eye * point_size_at_one_meter * 50.0; // shrink as we get very close. TODO(emilk): fade instead!
-            let scale = scale_based_on_scene_size.min(scale_based_on_distance);
-
-            if ctx.options.show_camera_mesh_in_3d {
-                if let Some(world_from_rub_view) = camera.world_from_rub_view() {
-                    // The camera mesh file is 1m long in RUB (X=Right, Y=Up, Z=Back).
-                    // The lens is at the origin.
-
-                    let scale = Vec3::splat(scale);
-
-                    let mesh_id = MeshId(uuid::uuid!("0de12a29-64ea-40b9-898b-63686b5436af"));
-                    let world_from_mesh = world_from_rub_view * glam::Affine3A::from_scale(scale);
-
-                    if let Some(cpu_mesh) = ctx.cache.mesh.load(
-                        "camera_mesh",
-                        &MeshSourceData::StaticGlb(
-                            mesh_id,
-                            include_bytes!("../../../../data/camera.glb"),
-                        ),
-                        ctx.render_ctx,
-                    ) {
-                        let additive_tint = is_hovered.then_some(Self::HOVER_COLOR);
-
-                        self.primitives.meshes.push(MeshSource {
-                            instance_hash: camera.instance,
-                            world_from_mesh,
-                            mesh: cpu_mesh,
-                            additive_tint,
-                        });
-                    }
-                }
-            }
 
             if ctx.options.show_camera_axes_in_3d {
                 self.primitives.add_axis_lines(

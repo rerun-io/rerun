@@ -124,7 +124,7 @@ impl ViewSpatialState {
         heuristic0.min(heuristic1)
     }
 
-    pub fn settings_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
+    pub fn settings_ui(&mut self, _ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
             ui.label("Default size:");
 
@@ -230,7 +230,7 @@ impl ViewSpatialState {
                     format_f32(min.z),
                     format_f32(max.z)
                 ));
-                self.state_3d.settings_ui(ctx, ui, &self.scene_bbox_accum);
+                self.state_3d.settings_ui(ui, &self.scene_bbox_accum);
             }
         }
     }

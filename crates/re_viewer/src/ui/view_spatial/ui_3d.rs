@@ -166,12 +166,7 @@ impl View3DState {
         }
     }
 
-    pub fn settings_ui(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        scene_bbox_accum: &BoundingBox,
-    ) {
+    pub fn settings_ui(&mut self, ui: &mut egui::Ui, scene_bbox_accum: &BoundingBox) {
         {
             let up_response = if let Some(up) = self.space_specs.up {
                 if up == Vec3::X {
@@ -221,13 +216,6 @@ impl View3DState {
             .on_hover_text("Spin view");
         ui.checkbox(&mut self.show_axes, "Show origin axes")
             .on_hover_text("Show X-Y-Z axes");
-
-        if !self.space_camera.is_empty() {
-            ui.checkbox(
-                &mut ctx.options.show_camera_mesh_in_3d,
-                "Show camera meshes",
-            );
-        }
     }
 }
 
