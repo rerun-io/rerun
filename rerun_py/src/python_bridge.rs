@@ -1746,8 +1746,6 @@ fn log_mesh_file(
     let mut session = global_session();
     let obj_path = session.classic_prefix_obj_path(obj_path);
 
-    session.register_type(obj_path.obj_type_path(), ObjectType::Mesh3D);
-
     let time_point = time(timeless);
 
     let mesh3d = Mesh3D::Encoded(EncodedMesh3D {
@@ -1764,9 +1762,7 @@ fn log_mesh_file(
     //
     // TODO(jleibs) replace with python-native implementation
     if session.arrow_log_gate() {
-        let mut arrow_path = "arrow/".to_owned();
-        arrow_path.push_str(obj_path_str);
-        let arrow_path = parse_obj_path(arrow_path.as_str())?;
+        let arrow_path = session.arrow_prefix_obj_path(obj_path.clone());
 
         let bundle = MsgBundle::new(
             MsgId::random(),
@@ -1781,6 +1777,8 @@ fn log_mesh_file(
     }
 
     if session.classic_log_gate() {
+        let obj_path = session.arrow_prefix_obj_path(obj_path);
+        session.register_type(obj_path.obj_type_path(), ObjectType::Mesh3D);
         session.send_data(
             &time_point,
             (&obj_path, "mesh"),
