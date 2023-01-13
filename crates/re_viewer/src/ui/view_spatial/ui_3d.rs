@@ -313,6 +313,9 @@ pub fn view_3d(
     let (rect, mut response) =
         ui.allocate_at_least(ui.available_size(), egui::Sense::click_and_drag());
 
+    // If we're tracking a camera right now, we want to make it slightly sticky,
+    // so that a click on some object doesn't immediately break the tracked state.
+    // (Threshold is in amount of ui points the mouse was moved.)
     let orbit_eye_drag_threshold = match &state.state_3d.tracked_camera {
         Some(_) => 4.0,
         None => 0.0,
@@ -438,6 +441,9 @@ pub fn view_3d(
                 state.state_3d.tracked_camera = Some(instance_id.clone());
             } else if let Some(clicked_point) = state.state_3d.hovered_point {
                 if let Some(mut new_orbit_eye) = state.state_3d.orbit_eye {
+                    // TODO(andreas): It would be nice if we could focus on the center of the object rather than the clicked point.
+                    //                  We can figure out the transform/translation at the hovered path but that's usually not what we'd expect either
+                    //                  (especially for objects with many "subthings" like a point cloud)
                     new_orbit_eye.orbit_radius = new_orbit_eye.position().distance(clicked_point);
                     new_orbit_eye.orbit_center = clicked_point;
                     state.state_3d.interpolate_to_orbit_eye(new_orbit_eye);
