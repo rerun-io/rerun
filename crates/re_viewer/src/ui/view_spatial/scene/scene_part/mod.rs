@@ -31,7 +31,7 @@ pub(crate) use lines3d::{Lines3DPart, Lines3DPartClassic};
 pub(crate) use meshes::MeshPart;
 pub(crate) use points2d::{Points2DPart, Points2DPartClassic};
 pub(crate) use points3d::{Points3DPart, Points3DPartClassic};
-pub(crate) use segments2d::LineSegments2DPart;
+pub(crate) use segments2d::LineSegments2DPartClassic;
 
 pub trait ScenePart {
     fn load(
