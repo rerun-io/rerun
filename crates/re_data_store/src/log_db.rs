@@ -45,10 +45,8 @@ impl Default for ObjDb {
             arrow_store: re_arrow_store::DataStore::new(
                 Instance::name(),
                 DataStoreConfig {
-                    // component_bucket_size_bytes: 1024 * 1024, // 1 MiB
-                    // index_bucket_size_bytes: 1024,            // 1KiB
-                    component_bucket_nb_rows: 0,
-                    index_bucket_nb_rows: 0,
+                    component_bucket_size_bytes: 1024 * 1024, // 1 MiB
+                    index_bucket_size_bytes: 1024,            // 1KiB
                     ..Default::default()
                 },
             ),
