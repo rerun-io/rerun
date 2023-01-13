@@ -136,7 +136,7 @@ impl ArrowDeserialize for Vec2D {
 ///     )
 /// );
 /// ```
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Vec3D(pub [f32; 3]);
 
