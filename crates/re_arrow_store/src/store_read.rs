@@ -1110,7 +1110,7 @@ impl ComponentTable {
                 %bucket.row_offset,
                 "fetching component data"
             );
-            Some(bucket.get(row_idx))
+            bucket.get(row_idx)
         } else {
             trace!(
                 kind = "get",
@@ -1138,22 +1138,24 @@ impl ComponentBucket {
     }
 
     /// Returns a shallow clone of the row data present at the given `row_idx`.
-    pub fn get(&self, row_idx: RowIndex) -> Box<dyn Array> {
+    pub fn get(&self, row_idx: RowIndex) -> Option<Box<dyn Array>> {
         let row_idx = row_idx.as_u64() - self.row_offset;
         // This has to be safe to unwrap, otherwise it would never have made it past insertion.
         if self.archived {
             debug_assert_eq!(self.chunks.len(), 1);
-            self.chunks[0]
+            let list = self.chunks[0]
                 .as_any()
                 .downcast_ref::<ListArray<i32>>()
-                .unwrap()
-                .value(row_idx as _)
+                .unwrap();
+            (row_idx < list.len() as u64).then(|| list.value(row_idx as _))
         } else {
-            self.chunks[row_idx as usize]
-                .as_any()
-                .downcast_ref::<ListArray<i32>>()
-                .unwrap()
-                .value(0)
+            self.chunks.get(row_idx as usize).map(|chunk| {
+                chunk
+                    .as_any()
+                    .downcast_ref::<ListArray<i32>>()
+                    .unwrap()
+                    .value(0)
+            })
         }
     }
 

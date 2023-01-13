@@ -348,7 +348,6 @@ fn gc_correct() {
     let mut store = DataStore::new(
         Instance::name(),
         DataStoreConfig {
-            component_bucket_size_bytes: 0,
             component_bucket_nb_rows: 0,
             ..Default::default()
         },
@@ -388,6 +387,7 @@ fn gc_correct() {
         .flat_map(|chunk| arrow_array_deserialize_iterator::<Option<MsgId>>(&**chunk).unwrap())
         .map(Option::unwrap) // MsgId is always present
         .collect::<ahash::HashSet<_>>();
+    assert!(!msg_ids.is_empty());
 
     if let err @ Err(_) = store.sanity_check() {
         store.sort_indices_if_needed();

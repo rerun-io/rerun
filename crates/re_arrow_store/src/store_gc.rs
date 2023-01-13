@@ -127,7 +127,11 @@ impl DataStore {
             // From there, find and drop all component buckets (in _insertion order_) that do not
             // contain any data more recent than the time range covered by the primary
             // component bucket (for the primary timeline!).
-            for table in self.components.values_mut() {
+            for table in self
+                .components
+                .iter_mut()
+                .filter_map(|(component, table)| (*component != primary_component).then_some(table))
+            {
                 while table.buckets.len() > 1 {
                     let bucket = table.buckets.front().unwrap();
                     if primary_bucket.encompasses(primary_timeline, &bucket.time_ranges) {
@@ -169,6 +173,9 @@ impl ComponentBucket {
             return time_range1.max >= time_range2.max;
         }
 
-        false
+        // There's only one way this can happen: this is a bucket that only holds the fake row at
+        // offset #0.
+        // Ignore it.
+        true
     }
 }
