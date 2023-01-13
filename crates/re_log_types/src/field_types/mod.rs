@@ -18,6 +18,7 @@ mod keypoint_id;
 mod label;
 mod linestrip;
 mod mat;
+mod mesh3d;
 mod msg_id;
 mod point;
 mod quaternion;
@@ -40,6 +41,7 @@ pub use keypoint_id::KeypointId;
 pub use label::Label;
 pub use linestrip::{LineStrip2D, LineStrip3D};
 pub use mat::Mat3x3;
+pub use mesh3d::{EncodedMesh3D, Mesh3D, MeshFormat, MeshId, RawMesh3D};
 pub use msg_id::MsgId;
 pub use point::{Point2D, Point3D};
 pub use quaternion::Quaternion;
@@ -54,7 +56,7 @@ pub use vec::{Vec2D, Vec3D};
 
 lazy_static! {
     //TODO(john) actully use a run-time type registry
-    static ref FIELDS: [Field; 23] = [
+    static ref FIELDS: [Field; 24] = [
         <AnnotationContext as Component>::field(),
         <Box3D as Component>::field(),
         <ClassId as Component>::field(),
@@ -64,6 +66,7 @@ lazy_static! {
         <Label as Component>::field(),
         <LineStrip2D as Component>::field(),
         <LineStrip3D as Component>::field(),
+        <Mesh3D as Component>::field(),
         <MsgId as Component>::field(),
         <Point2D as Component>::field(),
         <Point3D as Component>::field(),
@@ -90,6 +93,9 @@ pub fn iter_registered_field_types() -> impl Iterator<Item = &'static Field> {
 pub enum FieldError {
     #[error("Encountered bad value")]
     BadValue,
+
+    #[error("Slice over bad indicies")]
+    BadSlice(#[from] std::array::TryFromSliceError),
 }
 
 pub type Result<T> = std::result::Result<T, FieldError>;
