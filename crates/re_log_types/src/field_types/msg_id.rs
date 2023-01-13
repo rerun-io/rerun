@@ -1,15 +1,15 @@
-use arrow2_convert::{
-    arrow_enable_vec_for_type, deserialize::ArrowDeserialize, field::ArrowField,
-    serialize::ArrowSerialize,
-};
+use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
+
+use crate::{msg_bundle::Component, ComponentName};
 
 /// A unique id per [`crate::LogMsg`].
 ///
-/// ```
-/// use re_log_types::field_types::MsgId;
-/// use arrow2_convert::field::ArrowField;
-/// use arrow2::datatypes::{DataType, Field};
+/// ## Examples
 ///
+/// ```
+/// # use re_log_types::field_types::MsgId;
+/// # use arrow2_convert::field::ArrowField;
+/// # use arrow2::datatypes::{DataType, Field};
 /// assert_eq!(
 ///     MsgId::data_type(),
 ///     DataType::Struct(vec![
@@ -18,8 +18,21 @@ use arrow2_convert::{
 ///     ])
 /// );
 /// ```
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    Hash,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    ArrowField,
+    ArrowSerialize,
+    ArrowDeserialize,
+)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[arrow_field(transparent)]
 pub struct MsgId(re_tuid::Tuid);
 
 impl std::fmt::Display for MsgId {
@@ -47,42 +60,8 @@ impl MsgId {
     }
 }
 
-arrow_enable_vec_for_type!(MsgId);
-
-impl ArrowField for MsgId {
-    type Type = Self;
-    fn data_type() -> arrow2::datatypes::DataType {
-        <re_tuid::Tuid as ArrowField>::data_type()
-    }
-}
-
-impl ArrowSerialize for MsgId {
-    type MutableArrayType = <re_tuid::Tuid as ArrowSerialize>::MutableArrayType;
-
-    #[inline]
-    fn new_array() -> Self::MutableArrayType {
-        <re_tuid::Tuid as ArrowSerialize>::new_array()
-    }
-
-    #[inline]
-    fn arrow_serialize(v: &Self, array: &mut Self::MutableArrayType) -> arrow2::error::Result<()> {
-        <re_tuid::Tuid as ArrowSerialize>::arrow_serialize(&v.0, array)
-    }
-}
-
-impl ArrowDeserialize for MsgId {
-    type ArrayType = <re_tuid::Tuid as ArrowDeserialize>::ArrayType;
-
-    #[inline]
-    fn arrow_deserialize(
-        v: <&Self::ArrayType as IntoIterator>::Item,
-    ) -> Option<<Self as ArrowField>::Type> {
-        <re_tuid::Tuid as ArrowDeserialize>::arrow_deserialize(v).map(MsgId)
-    }
-}
-
-impl crate::msg_bundle::Component for MsgId {
-    fn name() -> crate::ComponentName {
+impl Component for MsgId {
+    fn name() -> ComponentName {
         "rerun.msg_id".into()
     }
 }
