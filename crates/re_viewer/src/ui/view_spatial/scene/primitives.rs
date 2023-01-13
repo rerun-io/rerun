@@ -123,6 +123,8 @@ impl SceneSpatialPrimitives {
         eye: &Eye,
         viewport_size: egui::Vec2,
     ) {
+        use re_renderer::renderer::LineStripFlags;
+
         // TODO(andreas): It would be nice if could display the semantics (left/right/up) as a tooltip on hover.
         let line_radius = re_renderer::Size::new_points(2.5);
         let axis_length =
@@ -137,7 +139,7 @@ impl SceneSpatialPrimitives {
             )
             .radius(line_radius)
             .color(AXIS_COLOR_X)
-            .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE)
+            .flags(LineStripFlags::CAP_END_TRIANGLE | LineStripFlags::CAP_START_ROUND)
             .user_data(instance);
         line_batch
             .add_segment(
@@ -146,7 +148,7 @@ impl SceneSpatialPrimitives {
             )
             .radius(line_radius)
             .color(AXIS_COLOR_Y)
-            .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE)
+            .flags(LineStripFlags::CAP_END_TRIANGLE | LineStripFlags::CAP_START_ROUND)
             .user_data(instance);
         line_batch
             .add_segment(
@@ -155,7 +157,7 @@ impl SceneSpatialPrimitives {
             )
             .radius(line_radius)
             .color(AXIS_COLOR_Z)
-            .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE)
+            .flags(LineStripFlags::CAP_END_TRIANGLE | LineStripFlags::CAP_START_ROUND)
             .user_data(instance);
     }
 }

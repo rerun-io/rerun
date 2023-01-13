@@ -7,7 +7,7 @@ use re_log_types::{
     field_types::{ClassId, KeypointId},
     ClassicTensor, IndexHash, MeshId,
 };
-use re_renderer::{Color32, Size};
+use re_renderer::{renderer::LineStripFlags, Color32, Size};
 
 use super::{eye::Eye, SpaceCamera3D, SpatialNavigationMode};
 use crate::{
@@ -191,7 +191,9 @@ impl SceneSpatial {
         self.primitives.recalculate_bounding_box();
     }
 
+    // TODO(andreas): Better ways to determine these?
     const HOVER_COLOR: Color32 = Color32::from_rgb(255, 200, 200);
+    const CAMERA_COLOR: Color32 = Color32::from_rgb(255, 128, 128);
 
     fn hover_size_boost(size: Size) -> Size {
         if size.is_auto() {
@@ -255,14 +257,6 @@ impl SceneSpatial {
         crate::profile_function!();
 
         for camera in &self.space_cameras {
-            let is_hovered = camera.instance == hovered_instance;
-
-            let (line_radius, line_color) = if is_hovered {
-                (Size::AUTO_LARGE, Self::HOVER_COLOR)
-            } else {
-                (Size::AUTO, Color32::from_rgb(255, 128, 128))
-            }; // TODO(emilk): camera color
-
             if ctx.options.show_camera_axes_in_3d {
                 self.primitives.add_axis_lines(
                     camera.world_from_cam(),
@@ -271,7 +265,6 @@ impl SceneSpatial {
                     viewport_size,
                 );
             }
-
             let mut frustum_length = scene_bbox.size().length() * 0.3;
             if let (Some(pinhole), child_space) = (&camera.pinhole, &camera.obj_path) {
                 frustum_length = obj_properties
@@ -279,40 +272,67 @@ impl SceneSpatial {
                     .pinhole_image_plane_distance(pinhole);
             }
 
-            {
-                let world_from_image = camera.world_from_image().unwrap();
-                let [w, h] = camera.pinhole.unwrap().resolution.unwrap().0;
+            if let Some(pinhole) = &camera.pinhole {
+                // TODO(andreas): FOV fallback doesn't make much sense. What does pinhole without fov mean?
+                let fov_y = pinhole.fov_y().unwrap_or(std::f32::consts::FRAC_PI_2);
+                let fy = (fov_y * 0.5).tan() * frustum_length;
+                let fx = fy * pinhole.aspect_ratio().unwrap_or(1.0);
 
-                // TODO(emilk): there is probably a off-by-one or off-by-half error here.
-                // The image coordinates are in [0, w-1] range, so either we should use those limits
-                // or [-0.5, w-0.5] for the "pixels are tiny squares" interpretation of the frustum.
+                let image_center_pixel = pinhole.resolution().unwrap_or(glam::Vec2::ZERO) * 0.5;
+                let principal_point_offset_pixel = image_center_pixel - pinhole.principal_point();
+                let principal_point_offset =
+                    principal_point_offset_pixel / pinhole.resolution().unwrap_or(glam::Vec2::ONE);
+                // Don't multiply with (fx,fy) because that would multiply the aspect ratio twice!
+                // Times two since fy is the half screen size (extending from -fy to fy!).
+                let offset = principal_point_offset * (fy * 2.0);
 
                 let corners = [
-                    world_from_image.transform_point3(frustum_length * vec3(0.0, 0.0, 1.0)),
-                    world_from_image.transform_point3(frustum_length * vec3(0.0, h, 1.0)),
-                    world_from_image.transform_point3(frustum_length * vec3(w, h, 1.0)),
-                    world_from_image.transform_point3(frustum_length * vec3(w, 0.0, 1.0)),
+                    (offset + glam::vec2(fx, -fy)).extend(frustum_length),
+                    (offset + glam::vec2(fx, fy)).extend(frustum_length),
+                    (offset + glam::vec2(-fx, fy)).extend(frustum_length),
+                    (offset + glam::vec2(-fx, -fy)).extend(frustum_length),
                 ];
-
-                let center = camera.position();
+                let up_triangle = [
+                    (offset + glam::vec2(-fx * 0.25, -fy * 1.05)).extend(frustum_length),
+                    (offset + glam::vec2(0.0, -fy * 1.25)).extend(frustum_length),
+                    (offset + glam::vec2(fx * 0.25, -fy * 1.05)).extend(frustum_length),
+                ];
 
                 let segments = [
-                    (center, corners[0]),     // frustum corners
-                    (center, corners[1]),     // frustum corners
-                    (center, corners[2]),     // frustum corners
-                    (center, corners[3]),     // frustum corners
-                    (corners[0], corners[1]), // `d` distance plane sides
-                    (corners[1], corners[2]), // `d` distance plane sides
-                    (corners[2], corners[3]), // `d` distance plane sides
-                    (corners[3], corners[0]), // `d` distance plane sides
+                    // Frustum corners
+                    (glam::Vec3::ZERO, corners[0]),
+                    (glam::Vec3::ZERO, corners[1]),
+                    (glam::Vec3::ZERO, corners[2]),
+                    (glam::Vec3::ZERO, corners[3]),
+                    // rectangle around "far plane"
+                    (corners[0], corners[1]),
+                    (corners[1], corners[2]),
+                    (corners[2], corners[3]),
+                    (corners[3], corners[0]),
+                    // triangle indicating direction
+                    (up_triangle[0], up_triangle[1]),
+                    (up_triangle[1], up_triangle[2]),
+                    (up_triangle[2], up_triangle[0]),
                 ];
+
+                let (line_radius, line_color) = if camera.instance == hovered_instance {
+                    (Size::new_points(2.0), Self::HOVER_COLOR)
+                } else {
+                    (Size::new_points(1.0), Self::CAMERA_COLOR)
+                };
 
                 self.primitives
                     .line_strips
                     .batch("camera frustum")
+                    .world_from_obj(camera.world_from_cam().into())
                     .add_segments(segments.into_iter())
                     .radius(line_radius)
                     .color(line_color)
+                    .flags(
+                        LineStripFlags::NO_COLOR_GRADIENT
+                            | LineStripFlags::CAP_END_ROUND
+                            | LineStripFlags::CAP_START_ROUND,
+                    )
                     .user_data(camera.instance);
             };
         }
