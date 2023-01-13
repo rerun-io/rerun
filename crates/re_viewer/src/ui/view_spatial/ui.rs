@@ -1,7 +1,7 @@
 use cgmath::num_traits::Pow;
 use egui::{NumExt, WidgetText};
 use macaw::BoundingBox;
-use re_data_store::{InstanceId, InstanceIdHash, ObjPath, ObjectsProperties};
+use re_data_store::{InstanceId, InstanceIdHash, ObjPath};
 use re_format::format_f32;
 
 use crate::misc::{space_info::SpaceInfo, ViewerContext};
@@ -249,7 +249,6 @@ impl ViewSpatialState {
         space: &ObjPath,
         scene: SceneSpatial,
         space_info: &SpaceInfo,
-        objects_properties: &ObjectsProperties,
     ) -> egui::Response {
         self.scene_bbox_accum = self.scene_bbox_accum.union(scene.primitives.bounding_box());
         self.scene_num_primitives = scene.primitives.num_primitives();
@@ -259,7 +258,7 @@ impl ViewSpatialState {
                 let coordinates = space_info.coordinates;
                 self.state_3d.space_specs = SpaceSpecs::from_view_coordinates(coordinates);
 
-                super::view_3d(ctx, ui, self, space, scene, objects_properties)
+                super::view_3d(ctx, ui, self, space, scene)
             }
             SpatialNavigationMode::TwoD => {
                 let scene_rect_accum = egui::Rect::from_min_max(

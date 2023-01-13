@@ -1,13 +1,12 @@
 use std::sync::Arc;
 
 use ahash::HashMap;
-use glam::{vec3, Vec3};
-use re_data_store::{InstanceIdHash, ObjPath, ObjectsProperties};
+use re_data_store::{InstanceIdHash, ObjPath};
 use re_log_types::{
     field_types::{ClassId, KeypointId},
     ClassicTensor, IndexHash, MeshId,
 };
-use re_renderer::{renderer::LineStripFlags, Color32, Size};
+use re_renderer::{Color32, Size};
 
 use super::{eye::Eye, SpaceCamera3D, SpatialNavigationMode};
 use crate::{
@@ -92,7 +91,7 @@ pub struct Label2D {
 pub struct Label3D {
     pub(crate) text: String,
     /// Origin of the label
-    pub(crate) origin: Vec3,
+    pub(crate) origin: glam::Vec3,
 }
 
 fn to_ecolor([r, g, b, a]: [u8; 4]) -> Color32 {
@@ -239,102 +238,6 @@ impl SceneSpatial {
                     .color(color)
                     .user_data(instance_hash);
             }
-        }
-    }
-
-    // ---
-
-    #[allow(clippy::too_many_arguments)]
-    pub(crate) fn add_cameras(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        scene_bbox: &macaw::BoundingBox,
-        viewport_size: egui::Vec2,
-        eye: &Eye,
-        hovered_instance: InstanceIdHash,
-        obj_properties: &ObjectsProperties,
-    ) {
-        crate::profile_function!();
-
-        for camera in &self.space_cameras {
-            if ctx.options.show_camera_axes_in_3d {
-                self.primitives.add_axis_lines(
-                    camera.world_from_cam(),
-                    camera.instance,
-                    eye,
-                    viewport_size,
-                );
-            }
-            let mut frustum_length = scene_bbox.size().length() * 0.3;
-            if let (Some(pinhole), child_space) = (&camera.pinhole, &camera.obj_path) {
-                frustum_length = obj_properties
-                    .get(child_space)
-                    .pinhole_image_plane_distance(pinhole);
-            }
-
-            if let Some(pinhole) = &camera.pinhole {
-                // TODO(andreas): FOV fallback doesn't make much sense. What does pinhole without fov mean?
-                let fov_y = pinhole.fov_y().unwrap_or(std::f32::consts::FRAC_PI_2);
-                let fy = (fov_y * 0.5).tan() * frustum_length;
-                let fx = fy * pinhole.aspect_ratio().unwrap_or(1.0);
-
-                let image_center_pixel = pinhole.resolution().unwrap_or(glam::Vec2::ZERO) * 0.5;
-                let principal_point_offset_pixel = image_center_pixel - pinhole.principal_point();
-                let principal_point_offset =
-                    principal_point_offset_pixel / pinhole.resolution().unwrap_or(glam::Vec2::ONE);
-                // Don't multiply with (fx,fy) because that would multiply the aspect ratio twice!
-                // Times two since fy is the half screen size (extending from -fy to fy!).
-                let offset = principal_point_offset * (fy * 2.0);
-
-                let corners = [
-                    (offset + glam::vec2(fx, -fy)).extend(frustum_length),
-                    (offset + glam::vec2(fx, fy)).extend(frustum_length),
-                    (offset + glam::vec2(-fx, fy)).extend(frustum_length),
-                    (offset + glam::vec2(-fx, -fy)).extend(frustum_length),
-                ];
-                let up_triangle = [
-                    (offset + glam::vec2(-fx * 0.25, -fy * 1.05)).extend(frustum_length),
-                    (offset + glam::vec2(0.0, -fy * 1.25)).extend(frustum_length),
-                    (offset + glam::vec2(fx * 0.25, -fy * 1.05)).extend(frustum_length),
-                ];
-
-                let segments = [
-                    // Frustum corners
-                    (glam::Vec3::ZERO, corners[0]),
-                    (glam::Vec3::ZERO, corners[1]),
-                    (glam::Vec3::ZERO, corners[2]),
-                    (glam::Vec3::ZERO, corners[3]),
-                    // rectangle around "far plane"
-                    (corners[0], corners[1]),
-                    (corners[1], corners[2]),
-                    (corners[2], corners[3]),
-                    (corners[3], corners[0]),
-                    // triangle indicating direction
-                    (up_triangle[0], up_triangle[1]),
-                    (up_triangle[1], up_triangle[2]),
-                    (up_triangle[2], up_triangle[0]),
-                ];
-
-                let (line_radius, line_color) = if camera.instance == hovered_instance {
-                    (Size::new_points(2.0), Self::HOVER_COLOR)
-                } else {
-                    (Size::new_points(1.0), Self::CAMERA_COLOR)
-                };
-
-                self.primitives
-                    .line_strips
-                    .batch("camera frustum")
-                    .world_from_obj(camera.world_from_cam().into())
-                    .add_segments(segments.into_iter())
-                    .radius(line_radius)
-                    .color(line_color)
-                    .flags(
-                        LineStripFlags::NO_COLOR_GRADIENT
-                            | LineStripFlags::CAP_END_ROUND
-                            | LineStripFlags::CAP_START_ROUND,
-                    )
-                    .user_data(camera.instance);
-            };
         }
     }
 

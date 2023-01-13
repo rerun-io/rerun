@@ -2,7 +2,7 @@ use egui::NumExt as _;
 use glam::Affine3A;
 use macaw::{vec3, BoundingBox, Quat, Vec3};
 
-use re_data_store::{InstanceId, InstanceIdHash, ObjectsProperties};
+use re_data_store::{InstanceId, InstanceIdHash};
 use re_log_types::{ObjPath, ViewCoordinates};
 use re_renderer::{
     view_builder::{Projection, TargetConfiguration},
@@ -321,7 +321,6 @@ pub fn view_3d(
     state: &mut ViewSpatialState,
     space: &ObjPath,
     mut scene: SceneSpatial,
-    objects_properties: &ObjectsProperties,
 ) -> egui::Response {
     crate::profile_function!();
 
@@ -340,27 +339,23 @@ pub fn view_3d(
     let orbit_eye = *orbit_eye;
     let eye = orbit_eye.to_eye();
 
-    // TODO(andreas): this should happen in the camera scene-part
-    {
-        let hovered_instance_hash = state
-            .hovered_instance
-            .as_ref()
-            .map_or(InstanceIdHash::NONE, |i| i.hash());
-        scene.add_cameras(
-            ctx,
-            &state.scene_bbox_accum,
-            rect.size(),
-            &eye,
-            hovered_instance_hash,
-            objects_properties,
-        );
-    }
-
     if did_interact_wth_eye {
         state.state_3d.last_eye_interact_time = ui.input().time;
         state.state_3d.eye_interpolation = None;
         if tracking_camera.is_some() {
             ctx.clear_selection();
+        }
+    }
+
+    // TODO(andreas): This isn't part of the camera, but of the transform https://github.com/rerun-io/rerun/issues/753
+    for camera in &scene.space_cameras {
+        if ctx.options.show_camera_axes_in_3d {
+            scene.primitives.add_axis_lines(
+                camera.world_from_cam(),
+                camera.instance,
+                &eye,
+                rect.size(),
+            );
         }
     }
 
