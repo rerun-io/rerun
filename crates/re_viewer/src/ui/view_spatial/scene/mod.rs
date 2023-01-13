@@ -175,7 +175,12 @@ impl SceneSpatial {
             &scene_part::Boxes2DPartClassic,
             &scene_part::Boxes2DPart,
             // --
-            &scene_part::LineSegments2DPart,
+            &scene_part::LineSegments2DPartClassic,
+            // Note: Lines2DPart handles both Segments and LinesPaths now since
+            // they are unified on the logging-side. No need for
+            // LineSegmentsPart in Arrow. Lines2DClassic, likewise was never
+            // exposed through the SDK, which only allows for 3d LinePaths.
+            &scene_part::Lines2DPart,
             &scene_part::Points2DPartClassic,
             &scene_part::Points2DPart,
             // ---
