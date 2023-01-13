@@ -89,7 +89,7 @@ def log_rect(
             class_ids = _normalize_ids([class_id])
             comps["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
 
-        bindings.log_arrow_msg(f"arrow/{obj_path}", components=comps, timeless=timeless)
+        bindings.log_arrow_msg(obj_path, components=comps, timeless=timeless)
 
 
 def log_rects(
@@ -177,8 +177,8 @@ def log_rects(
             is_splat = len(class_ids) == 1
             comps[is_splat]["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
 
-        bindings.log_arrow_msg(f"arrow/{obj_path}", components=comps[0], timeless=timeless)
+        bindings.log_arrow_msg(obj_path, components=comps[0], timeless=timeless)
 
         if comps[1]:
             comps[1]["rerun.instance"] = InstanceArray.splat()
-            bindings.log_arrow_msg(f"arrow/{obj_path}", components=comps[1], timeless=timeless)
+            bindings.log_arrow_msg(obj_path, components=comps[1], timeless=timeless)
