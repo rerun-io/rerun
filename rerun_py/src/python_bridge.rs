@@ -1763,7 +1763,7 @@ fn log_mesh_file(
     // worth fighting with in the short term.
     //
     // TODO(jleibs) replace with python-native implementation
-    if session.arrow_logging_enabled() {
+    if session.arrow_log_gate() {
         let mut arrow_path = "arrow/".to_owned();
         arrow_path.push_str(obj_path_str);
         let arrow_path = parse_obj_path(arrow_path.as_str())?;
@@ -1780,7 +1780,7 @@ fn log_mesh_file(
         session.send(LogMsg::ArrowMsg(msg));
     }
 
-    if session.classic_logging_enabled() {
+    if session.classic_log_gate() {
         session.send_data(
             &time_point,
             (&obj_path, "mesh"),
