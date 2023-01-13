@@ -1970,13 +1970,13 @@ fn log_arrow_msg(obj_path: &str, components: &PyDict, timeless: bool) -> PyResul
 }
 
 #[pyfunction]
-fn classic_log_gate() -> PyResult<bool> {
+fn classic_log_gate() -> bool {
     let session = global_session();
-    Ok(session.classic_log_gate())
+    session.classic_log_gate()
 }
 
 #[pyfunction]
-fn arrow_log_gate() -> PyResult<bool> {
+fn arrow_log_gate() -> bool {
     let session = global_session();
-    Ok(session.arrow_log_gate())
+    session.arrow_log_gate()
 }
