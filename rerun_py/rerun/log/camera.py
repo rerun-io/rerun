@@ -1,8 +1,5 @@
-import logging
-
 import numpy as np
 import numpy.typing as npt
-from rerun.log import EXP_ARROW
 
 from rerun import bindings
 
@@ -36,13 +33,10 @@ def log_pinhole(
     `resolution`: Array with [width, height] image resolution in pixels.
 
     """
-    if EXP_ARROW.classic_log_gate():
-        bindings.log_pinhole(
-            obj_path,
-            resolution=[width, height],
-            child_from_parent=np.asarray(child_from_parent).T.tolist(),
-            timeless=timeless,
-        )
-
-    if EXP_ARROW.arrow_log_gate():
-        logging.warning("log_pinhole() not yet implemented for Arrow.")
+    # Transform arrow handling happens inside the python bridge
+    bindings.log_pinhole(
+        obj_path,
+        resolution=[width, height],
+        child_from_parent=np.asarray(child_from_parent).T.tolist(),
+        timeless=timeless,
+    )

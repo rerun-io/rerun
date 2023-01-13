@@ -1930,12 +1930,12 @@ fn log_cleared(obj_path: &str, recursive: bool) -> PyResult<()> {
 }
 
 #[pyfunction]
-fn log_arrow_msg(obj_path: &str, components: &PyDict) -> PyResult<()> {
+fn log_arrow_msg(obj_path: &str, components: &PyDict, timeless: bool) -> PyResult<()> {
     let mut session = global_session();
 
     let obj_path = parse_obj_path(obj_path)?;
 
-    let msg = crate::arrow::build_chunk_from_components(&obj_path, components, &time(false))?;
+    let msg = crate::arrow::build_chunk_from_components(&obj_path, components, &time(timeless))?;
     session.send(msg);
 
     Ok(())

@@ -3,14 +3,10 @@ use egui::{NumExt, WidgetText};
 use macaw::BoundingBox;
 use re_data_store::{InstanceId, InstanceIdHash, ObjPath, ObjectsProperties};
 use re_format::format_f32;
-use re_log_types::Transform;
 
-use crate::misc::{
-    space_info::{SpaceInfo, SpacesInfo},
-    ViewerContext,
-};
+use crate::misc::{space_info::SpaceInfo, ViewerContext};
 
-use super::{ui_2d::View2DState, ui_3d::View3DState, SceneSpatial, SpaceCamera3D, SpaceSpecs};
+use super::{ui_2d::View2DState, ui_3d::View3DState, SceneSpatial, SpaceSpecs};
 
 /// Describes how the scene is navigated, determining if it is a 2D or 3D experience.
 #[derive(Clone, Copy, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
@@ -246,14 +242,12 @@ impl ViewSpatialState {
     }
 
     // TODO(andreas): split into smaller parts, some of it shouldn't be part of the ui path and instead scene loading.
-    #[allow(clippy::too_many_arguments)]
     pub fn view_spatial(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         space: &ObjPath,
         scene: SceneSpatial,
-        spaces_info: &SpacesInfo,
         space_info: &SpaceInfo,
         objects_properties: &ObjectsProperties,
     ) -> egui::Response {
@@ -262,19 +256,10 @@ impl ViewSpatialState {
 
         match self.nav_mode {
             SpatialNavigationMode::ThreeD => {
-                let space_cameras = &space_cameras(spaces_info, space_info);
                 let coordinates = space_info.coordinates;
                 self.state_3d.space_specs = SpaceSpecs::from_view_coordinates(coordinates);
 
-                super::view_3d(
-                    ctx,
-                    ui,
-                    self,
-                    space,
-                    scene,
-                    space_cameras,
-                    objects_properties,
-                )
+                super::view_3d(ctx, ui, self, space, scene, objects_properties)
             }
             SpatialNavigationMode::TwoD => {
                 let scene_rect_accum = egui::Rect::from_min_max(
@@ -292,39 +277,4 @@ impl ViewSpatialState {
             SpatialNavigationMode::ThreeD => super::ui_3d::HELP_TEXT,
         }
     }
-}
-
-/// Look for camera transform and pinhole in the transform hierarchy
-/// and return them as cameras.
-fn space_cameras(spaces_info: &SpacesInfo, space_info: &SpaceInfo) -> Vec<SpaceCamera3D> {
-    crate::profile_function!();
-
-    let mut space_cameras = vec![];
-
-    for (child_path, child_transform) in &space_info.child_spaces {
-        if let Transform::Rigid3(world_from_camera) = child_transform {
-            let world_from_camera = world_from_camera.parent_from_child();
-
-            let view_space = spaces_info
-                .get(child_path)
-                .and_then(|child| child.coordinates);
-
-            if let Some(child_space_info) = spaces_info.get(child_path) {
-                for (grand_child_path, grand_child_transform) in &child_space_info.child_spaces {
-                    if let Transform::Pinhole(pinhole) = grand_child_transform {
-                        space_cameras.push(SpaceCamera3D {
-                            camera_obj_path: child_path.clone(),
-                            instance_index_hash: re_log_types::IndexHash::NONE,
-                            camera_view_coordinates: view_space,
-                            world_from_camera,
-                            pinhole: Some(*pinhole),
-                            target_space: Some(grand_child_path.clone()),
-                        });
-                    }
-                }
-            }
-        }
-    }
-
-    space_cameras
 }

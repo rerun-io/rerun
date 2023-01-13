@@ -28,10 +28,26 @@ use crate::msg_bundle::Component;
 #[arrow_field(transparent)]
 pub struct Instance(pub u64);
 
+impl Instance {
+    #[inline]
+    pub fn splat() -> Instance {
+        Self(u64::MAX)
+    }
+
+    #[inline]
+    pub fn is_splat(&self) -> bool {
+        self.0 == u64::MAX
+    }
+}
+
 impl std::fmt::Display for Instance {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let key = self.0;
-        format!("key:{key}").fmt(f)
+        if self.is_splat() {
+            "splat".fmt(f)
+        } else {
+            let key = self.0;
+            format!("key:{key}").fmt(f)
+        }
     }
 }
 

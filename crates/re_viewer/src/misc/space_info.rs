@@ -79,32 +79,6 @@ impl SpaceInfo {
         }
     }
 
-    /// Recursively gather all descendants that have no or only a rigid transform.
-    pub fn descendants_with_rigid_or_no_transform(
-        &self,
-        spaces_info: &SpacesInfo,
-    ) -> IntSet<ObjPath> {
-        fn gather_rigidly_transformed_children(
-            space: &SpaceInfo,
-            spaces_info: &SpacesInfo,
-            objects: &mut IntSet<ObjPath>,
-        ) {
-            objects.extend(space.descendants_without_transform.iter().cloned());
-
-            for (child_path, transform) in &space.child_spaces {
-                if let re_log_types::Transform::Rigid3(_) = transform {
-                    if let Some(child_space) = spaces_info.get(child_path) {
-                        gather_rigidly_transformed_children(child_space, spaces_info, objects);
-                    }
-                }
-            }
-        }
-
-        let mut objects = IntSet::default();
-        gather_rigidly_transformed_children(self, spaces_info, &mut objects);
-        objects
-    }
-
     pub fn parent<'a>(&self, spaces_info: &'a SpacesInfo) -> Option<(&'a SpaceInfo, &Transform)> {
         self.parent.as_ref().and_then(|(parent_path, transform)| {
             spaces_info.get(parent_path).map(|space| (space, transform))
@@ -279,7 +253,7 @@ fn query_view_coordinates_arrow(
     view_coords
 }
 
-fn query_view_coordinates(
+pub fn query_view_coordinates(
     obj_db: &ObjDb,
     time_ctrl: &TimeControl,
     obj_path: &ObjPath,
