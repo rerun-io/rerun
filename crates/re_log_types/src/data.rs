@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use half::f16;
 
-use crate::{field_types, impl_into_enum, AnnotationContext, ObjPath, ViewCoordinates};
+use crate::{field_types, impl_into_enum, AnnotationContext, Mesh3D, ObjPath, ViewCoordinates};
 
 pub use crate::field_types::{Pinhole, Rigid3, Transform};
 
@@ -57,6 +57,8 @@ pub trait DataTrait: 'static + Clone {
 }
 
 pub mod data_types {
+    use crate::field_types::Mesh3D;
+
     use super::DataTrait;
     use super::DataType;
     use super::Transform;
@@ -142,7 +144,7 @@ pub mod data_types {
         }
     }
 
-    impl DataTrait for crate::Mesh3D {
+    impl DataTrait for Mesh3D {
         fn data_typ() -> DataType {
             DataType::Mesh3D
         }
@@ -611,78 +613,6 @@ pub struct Arrow3D {
 
 /// Order: XYZW
 pub type Quaternion = [f32; 4];
-
-// ----------------------------------------------------------------------------
-
-/// A unique id per [`Mesh3D`].
-///
-/// TODO(emilk): this should be a hash of the mesh (CAS).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct MeshId(pub uuid::Uuid);
-
-impl nohash_hasher::IsEnabled for MeshId {}
-
-// required for [`nohash_hasher`].
-#[allow(clippy::derive_hash_xor_eq)]
-impl std::hash::Hash for MeshId {
-    #[inline]
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        state.write_u64(self.0.as_u128() as u64);
-    }
-}
-
-impl MeshId {
-    #[inline]
-    pub fn random() -> Self {
-        Self(uuid::Uuid::new_v4())
-    }
-}
-
-// ----------------
-
-#[derive(Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum Mesh3D {
-    Encoded(EncodedMesh3D),
-    Raw(Arc<RawMesh3D>),
-}
-
-impl Mesh3D {
-    pub fn mesh_id(&self) -> MeshId {
-        match self {
-            Mesh3D::Encoded(mesh) => mesh.mesh_id,
-            Mesh3D::Raw(mesh) => mesh.mesh_id,
-        }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct RawMesh3D {
-    pub mesh_id: MeshId,
-    pub positions: Vec<[f32; 3]>,
-    pub indices: Vec<[u32; 3]>,
-}
-
-/// Compressed/encoded mesh format
-#[derive(Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct EncodedMesh3D {
-    pub mesh_id: MeshId,
-    pub format: MeshFormat,
-    pub bytes: std::sync::Arc<[u8]>,
-    /// four columns of an affine transformation matrix
-    pub transform: [[f32; 3]; 4],
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum MeshFormat {
-    Gltf,
-    Glb,
-    Obj,
-}
 
 // ----------------------------------------------------------------------------
 
