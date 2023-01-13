@@ -99,6 +99,7 @@ def log_line_segments(
         from rerun.components.linestrip import LineStrip2DArray, LineStrip3DArray
         from rerun.components.radius import RadiusArray
 
+        # 0 = instanced, 1 = splat
         comps = [{}, {}]  # type: ignore[var-annotated]
 
         if positions is not None:
