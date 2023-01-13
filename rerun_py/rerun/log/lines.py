@@ -106,11 +106,15 @@ def log_line_segments(
             if len(positions) % 2:
                 positions = positions[:-1]
             if positions.shape[1] == 2:
+                # Reshape even-odd pairs into a collection of line-strips of length2
+                # [[a00, a01], [a10, a11], [b00, b01], [b10, b11]]
+                # -> [[[a00, a01], [a10, a11]], [[b00, b01], [b10, b11]]]
                 positions = positions.reshape([len(positions) // 2, 2, 2])
                 comps[0]["rerun.linestrip2d"] = LineStrip2DArray.from_numpy_arrays(positions)
             elif positions.shape[1] == 3:
+                # Same as above but for 3d points
                 positions = positions.reshape([len(positions) // 2, 2, 3])
-                comps[0]["rerun.linestrip3d"] = LineStrip3DArray._arrays(positions)
+                comps[0]["rerun.linestrip3d"] = LineStrip3DArray.from_numpy_arrays(positions)
             else:
                 raise TypeError("Positions should be either Nx2 or Nx3")
 
