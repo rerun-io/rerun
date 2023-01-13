@@ -49,8 +49,8 @@ impl Session {
             Ok("arrow") => StoreSelect::Arrow,
             Ok("classic") => StoreSelect::Classic,
             Ok("mixed") => StoreSelect::Mixed,
-            Ok("") => DEFAULT_STORE,
-            _ => {
+            Ok("") | Err(_) => DEFAULT_STORE,
+            Ok(_) => {
                 re_log::error!("Unexpected value of RERUN_STORE_SELECT. Please set to: arrow, classic, or mixed");
                 DEFAULT_STORE
             }
