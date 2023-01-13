@@ -17,10 +17,10 @@ enum StoreSelect {
 
 // TODO(#707): Make this the default for Debug-builds, and eventually release builds
 //#[cfg(debug_assertions)]
-const DEFAULT_STORE: StoreSelect = StoreSelect::Arrow;
+//const DEFAULT_STORE: StoreSelect = StoreSelect::Arrow;
 
 //#[cfg(not(debug_assertions))]
-//const DEFAULT_STORE: StoreSelect = StoreSelect::Classic;
+const DEFAULT_STORE: StoreSelect = StoreSelect::Classic;
 
 lazy_static! {
     static ref ARROW_PREFIX: InternedString = "arrow".into();
