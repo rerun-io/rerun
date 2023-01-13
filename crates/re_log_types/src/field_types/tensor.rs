@@ -136,6 +136,7 @@ impl ArrowDeserialize for TensorId {
 ///                 DataType::List(Box::new(Field::new("item", DataType::Float64, false))),
 ///                 false
 ///             ),
+///             Field::new("JPEG", DataType::Binary, false),
 ///         ],
 ///         None,
 ///         UnionMode::Dense
@@ -159,6 +160,7 @@ pub enum TensorData {
     //F16(Vec<arrow2::types::f16>),
     F32(Vec<f32>),
     F64(Vec<f64>),
+    JPEG(Vec<u8>),
 }
 
 /// Flattened `Tensor` data payload
@@ -366,6 +368,10 @@ impl From<&Tensor> for ClassicTensor {
             TensorData::F64(data) => (
                 crate::TensorDataType::F64,
                 TensorDataStore::Dense(Arc::from(bytemuck::cast_slice(data.as_slice()))),
+            ),
+            TensorData::JPEG(data) => (
+                crate::TensorDataType::U8,
+                TensorDataStore::Jpeg(Arc::from(data.as_slice())),
             ),
         };
 
