@@ -125,4 +125,4 @@ def log_scalar(
             props = [{"scattered": scattered}]
             comps["rerun.scalar_plot_props"] = ScalarPlotPropsArray.from_props(props)
 
-        bindings.log_arrow_msg(f"arrow/{obj_path}", components=comps, timeless=False)
+        bindings.log_arrow_msg(obj_path, components=comps, timeless=False)

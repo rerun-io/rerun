@@ -61,7 +61,7 @@ def log_path(
             radii = _normalize_radii([stroke_width / 2])
             comps["rerun.radius"] = RadiusArray.from_numpy(radii)
 
-        bindings.log_arrow_msg(f"arrow/{obj_path}", components=comps, timeless=timeless)
+        bindings.log_arrow_msg(obj_path, components=comps, timeless=timeless)
 
 
 def log_line_segments(

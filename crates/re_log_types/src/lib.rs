@@ -373,6 +373,14 @@ pub enum PathOp {
 }
 
 impl PathOp {
+    pub fn clear(recursive: bool, obj_path: ObjPath) -> Self {
+        if recursive {
+            PathOp::ClearRecursive(obj_path)
+        } else {
+            PathOp::ClearFields(obj_path)
+        }
+    }
+
     pub fn obj_path(&self) -> &ObjPath {
         match &self {
             PathOp::ClearFields(path) | PathOp::ClearRecursive(path) => path,

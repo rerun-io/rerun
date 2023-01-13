@@ -136,6 +136,8 @@ fn rerun_bindings(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(log_image_file, m)?)?;
     m.add_function(wrap_pyfunction!(log_cleared, m)?)?;
     m.add_function(wrap_pyfunction!(log_arrow_msg, m)?)?;
+    m.add_function(wrap_pyfunction!(arrow_log_gate, m)?)?;
+    m.add_function(wrap_pyfunction!(classic_log_gate, m)?)?;
 
     m.add_class::<TensorDataMeaning>()?;
 
@@ -494,11 +496,11 @@ fn log_pinhole(
 }
 
 fn log_transform(
-    obj_path_str: &str,
+    obj_path: &str,
     transform: re_log_types::Transform,
     timeless: bool,
 ) -> PyResult<()> {
-    let obj_path = parse_obj_path(obj_path_str)?;
+    let obj_path = parse_obj_path(obj_path)?;
     if obj_path.len() == 1 {
         // Stop people from logging a transform to a root-object, such as "world" (which doesn't have a parent).
         return Err(PyTypeError::new_err("Transforms are between a child object and its parent, so root objects cannot have transforms"));
@@ -511,10 +513,8 @@ fn log_transform(
     // logging pipeline. Implementing these data-transforms consistently on the
     // python side will take a bit of additional work and testing to ensure we aren't
     // introducing new numerical issues.
-    if session.arrow_logging_enabled() {
-        let mut arrow_path = "arrow/".to_owned();
-        arrow_path.push_str(obj_path_str);
-        let arrow_path = parse_obj_path(arrow_path.as_str())?;
+    if session.arrow_log_gate() {
+        let arrow_path = session.arrow_prefix_obj_path(obj_path.clone());
         let bundle = MsgBundle::new(
             MsgId::random(),
             arrow_path,
@@ -527,7 +527,8 @@ fn log_transform(
         session.send(LogMsg::ArrowMsg(msg));
     }
 
-    if session.classic_logging_enabled() {
+    if session.classic_log_gate() {
+        let obj_path = session.classic_prefix_obj_path(obj_path);
         session.send_data(
             &time_point,
             (&obj_path, "_transform"),
@@ -584,7 +585,7 @@ fn log_view_coordinates_up_handedness(
 }
 
 fn log_view_coordinates(
-    obj_path_str: &str,
+    obj_path: &str,
     coordinates: ViewCoordinates,
     timeless: bool,
 ) -> PyResult<()> {
@@ -593,7 +594,7 @@ fn log_view_coordinates(
     }
 
     let mut session = global_session();
-    let obj_path = parse_obj_path(obj_path_str)?;
+    let obj_path = parse_obj_path(obj_path)?;
     let time_point = time(timeless);
 
     // We currently log view coordinates from inside the bridge because the code
@@ -601,10 +602,8 @@ fn log_view_coordinates(
     // non-trivial. Implementing this functionality on the python side will take
     // a bit of additional work and testing to ensure we aren't introducing new
     // conversion errors.
-    if session.arrow_logging_enabled() {
-        let mut arrow_path = "arrow/".to_owned();
-        arrow_path.push_str(obj_path_str);
-        let arrow_path = parse_obj_path(arrow_path.as_str())?;
+    if session.arrow_log_gate() {
+        let arrow_path = session.arrow_prefix_obj_path(obj_path.clone());
         let bundle = MsgBundle::new(
             MsgId::random(),
             arrow_path,
@@ -617,7 +616,8 @@ fn log_view_coordinates(
         session.send(LogMsg::ArrowMsg(msg));
     }
 
-    if session.classic_logging_enabled() {
+    if session.classic_log_gate() {
+        let obj_path = session.classic_prefix_obj_path(obj_path);
         session.send_data(
             &time_point,
             (&obj_path, "_view_coordinates"),
@@ -642,6 +642,7 @@ fn log_text_entry(
     let mut session = global_session();
 
     let obj_path = parse_obj_path(obj_path)?;
+    let obj_path = session.classic_prefix_obj_path(obj_path);
     session.register_type(obj_path.obj_type_path(), ObjectType::TextEntry);
 
     let time_point = time(timeless);
@@ -703,6 +704,7 @@ fn log_scalar(
     let mut session = global_session();
 
     let obj_path = parse_obj_path(obj_path)?;
+    let obj_path = session.classic_prefix_obj_path(obj_path);
     session.register_type(obj_path.obj_type_path(), ObjectType::Scalar);
 
     let time_point = time(false);
@@ -812,6 +814,7 @@ fn log_rect(
     let time_point = time(timeless);
 
     let obj_path = parse_obj_path(obj_path)?;
+    let obj_path = session.classic_prefix_obj_path(obj_path);
 
     let Some(rect) = rect
     else {
@@ -963,6 +966,7 @@ fn log_rects(
     let time_point = time(timeless);
 
     let obj_path = parse_obj_path(obj_path)?;
+    let obj_path = session.classic_prefix_obj_path(obj_path);
 
     if rects.is_empty() {
         session.send_path_op(&time_point, PathOp::ClearFields(obj_path));
@@ -1050,6 +1054,7 @@ fn log_point(
     let time_point = time(timeless);
 
     let obj_path = parse_obj_path(obj_path)?;
+    let obj_path = session.classic_prefix_obj_path(obj_path);
 
     let Some(position) = position
     else {
@@ -1151,6 +1156,7 @@ fn log_points(
     let time_point = time(timeless);
 
     let obj_path = parse_obj_path(obj_path)?;
+    let obj_path = session.classic_prefix_obj_path(obj_path);
 
     if positions.is_empty() {
         session.send_path_op(&time_point, PathOp::ClearFields(obj_path));
@@ -1330,6 +1336,7 @@ fn log_path(
     let time_point = time(timeless);
 
     let obj_path = parse_obj_path(obj_path)?;
+    let obj_path = session.classic_prefix_obj_path(obj_path);
 
     let Some(positions) = positions
     else {
@@ -1394,6 +1401,7 @@ fn log_line_segments(
     let time_point = time(timeless);
 
     let obj_path = parse_obj_path(obj_path)?;
+    let obj_path = session.classic_prefix_obj_path(obj_path);
 
     if positions.is_empty() {
         session.send_path_op(&time_point, PathOp::ClearFields(obj_path));
@@ -1463,6 +1471,7 @@ fn log_arrow(
     let mut session = global_session();
 
     let obj_path = parse_obj_path(obj_path)?;
+    let obj_path = session.classic_prefix_obj_path(obj_path);
 
     session.register_type(obj_path.obj_type_path(), ObjectType::Arrow3D);
 
@@ -1535,6 +1544,7 @@ fn log_obb(
     let mut session = global_session();
 
     let obj_path = parse_obj_path(obj_path)?;
+    let obj_path = session.classic_prefix_obj_path(obj_path);
     session.register_type(obj_path.obj_type_path(), ObjectType::Box3D);
 
     let time_point = time(timeless);
@@ -1651,6 +1661,7 @@ fn log_tensor(
     let mut session = global_session();
 
     let obj_path = parse_obj_path(obj_path)?;
+    let obj_path = session.classic_prefix_obj_path(obj_path);
     session.register_type(obj_path.obj_type_path(), ObjectType::Image);
 
     let time_point = time(timeless);
@@ -1733,6 +1744,7 @@ fn log_mesh_file(
     };
 
     let mut session = global_session();
+    let obj_path = session.classic_prefix_obj_path(obj_path);
 
     session.register_type(obj_path.obj_type_path(), ObjectType::Mesh3D);
 
@@ -1751,7 +1763,7 @@ fn log_mesh_file(
     // worth fighting with in the short term.
     //
     // TODO(jleibs) replace with python-native implementation
-    if session.arrow_logging_enabled() {
+    if session.arrow_log_gate() {
         let mut arrow_path = "arrow/".to_owned();
         arrow_path.push_str(obj_path_str);
         let arrow_path = parse_obj_path(arrow_path.as_str())?;
@@ -1768,7 +1780,7 @@ fn log_mesh_file(
         session.send(LogMsg::ArrowMsg(msg));
     }
 
-    if session.classic_logging_enabled() {
+    if session.classic_log_gate() {
         session.send_data(
             &time_point,
             (&obj_path, "mesh"),
@@ -1827,6 +1839,7 @@ fn log_image_file(
     };
 
     let mut session = global_session();
+    let obj_path = session.classic_prefix_obj_path(obj_path);
 
     session.register_type(obj_path.obj_type_path(), ObjectType::Image);
 
@@ -1912,10 +1925,8 @@ fn log_annotation_context(
     // implementation.
     //
     // TODO(jleibs) replace with python-native implementation
-    if session.arrow_logging_enabled() {
-        let mut arrow_path = "arrow/".to_owned();
-        arrow_path.push_str(obj_path_str);
-        let arrow_path = parse_obj_path(arrow_path.as_str())?;
+    if session.arrow_log_gate() {
+        let arrow_path = session.arrow_prefix_obj_path(obj_path.clone());
         let bundle = MsgBundle::new(
             MsgId::random(),
             arrow_path,
@@ -1928,7 +1939,8 @@ fn log_annotation_context(
         session.send(LogMsg::ArrowMsg(msg));
     }
 
-    if session.classic_logging_enabled() {
+    if session.classic_log_gate() {
+        let obj_path = session.classic_prefix_obj_path(obj_path);
         session.send_data(
             &time_point,
             (&obj_path, "_annotation_context"),
@@ -1941,16 +1953,19 @@ fn log_annotation_context(
 
 #[pyfunction]
 fn log_cleared(obj_path: &str, recursive: bool) -> PyResult<()> {
-    let mut session = global_session();
-
     let obj_path = parse_obj_path(obj_path)?;
+    let mut session = global_session();
 
     let time_point = time(false);
 
-    if recursive {
-        session.send_path_op(&time_point, PathOp::ClearRecursive(obj_path));
-    } else {
-        session.send_path_op(&time_point, PathOp::ClearFields(obj_path));
+    if session.arrow_log_gate() {
+        let obj_path = session.arrow_prefix_obj_path(obj_path.clone());
+        session.send_path_op(&time_point, PathOp::clear(recursive, obj_path));
+    }
+
+    if session.classic_log_gate() {
+        let obj_path = session.classic_prefix_obj_path(obj_path);
+        session.send_path_op(&time_point, PathOp::clear(recursive, obj_path));
     }
 
     Ok(())
@@ -1961,9 +1976,22 @@ fn log_arrow_msg(obj_path: &str, components: &PyDict, timeless: bool) -> PyResul
     let mut session = global_session();
 
     let obj_path = parse_obj_path(obj_path)?;
+    let obj_path = session.arrow_prefix_obj_path(obj_path);
 
     let msg = crate::arrow::build_chunk_from_components(&obj_path, components, &time(timeless))?;
     session.send(msg);
 
     Ok(())
+}
+
+#[pyfunction]
+fn classic_log_gate() -> bool {
+    let session = global_session();
+    session.classic_log_gate()
+}
+
+#[pyfunction]
+fn arrow_log_gate() -> bool {
+    let session = global_session();
+    session.arrow_log_gate()
 }
