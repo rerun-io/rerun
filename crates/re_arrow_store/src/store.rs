@@ -253,7 +253,8 @@ pub struct DataStore {
     pub(crate) insert_id: u64,
     /// Monotically increasing ID for queries.
     pub(crate) query_id: AtomicU64,
-    // TODO: gc id
+    /// Monotically increasing ID for GCs.
+    pub(crate) gc_id: u64,
 }
 
 impl DataStore {
@@ -270,6 +271,7 @@ impl DataStore {
             timeless_components: Default::default(),
             insert_id: 0,
             query_id: AtomicU64::new(0),
+            gc_id: 0,
         }
     }
 
@@ -298,8 +300,7 @@ impl DataStore {
     /// Returns an error if anything looks wrong.
     pub fn sanity_check(&self) -> anyhow::Result<()> {
         // Row indices should be continuous across all index tables.
-        // TODO(#449): update this one appropriately when GC lands.
-        {
+        if self.gc_id == 0 {
             let mut row_indices: IntMap<_, Vec<u64>> = IntMap::default();
             for table in self.indices.values() {
                 for bucket in table.buckets.values() {
@@ -320,12 +321,11 @@ impl DataStore {
                 row_indices.dedup();
                 for pair in row_indices.windows(2) {
                     let &[i1, i2] = pair else { unreachable!() };
-                    // TODO
-                    // ensure!(
-                    //     i1 + 1 == i2,
-                    //     "found hole in index coverage for {comp:?}: \
-                    //         in {row_indices:?}, {i1} -> {i2}"
-                    // );
+                    ensure!(
+                        i1 + 1 == i2,
+                        "found hole in index coverage for {comp:?}: \
+                            in {row_indices:?}, {i1} -> {i2}"
+                    );
                 }
             }
         }
@@ -391,6 +391,7 @@ impl std::fmt::Display for DataStore {
             timeless_components,
             insert_id: _,
             query_id: _,
+            gc_id: _,
         } = self;
 
         f.write_str("DataStore {\n")?;

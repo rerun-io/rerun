@@ -5,9 +5,6 @@ use crate::{
 
 // ---
 
-// TODO: number of unique entities?
-// TODO: number of unique components?
-
 // TODO(cmc): count buckets?
 // TODO(cmc): compute incrementally once/if this becomes too expensive.
 #[derive(Default, Debug)]

@@ -450,14 +450,10 @@ impl LogDb {
         assert!((0.0..=1.0).contains(&fraction_to_purge));
 
         let drop_msg_ids = {
-            let msg_id_chunks = self
-                .obj_db
-                .arrow_store
-                .gc(
-                    MsgId::name(),
-                    GarbageCollectionTarget::DropAtLeastPercentage(fraction_to_purge as _),
-                )
-                .unwrap(); // TODO
+            let msg_id_chunks = self.obj_db.arrow_store.gc(
+                MsgId::name(),
+                GarbageCollectionTarget::DropAtLeastPercentage(fraction_to_purge as _),
+            );
 
             msg_id_chunks
                 .iter()
@@ -467,8 +463,6 @@ impl LogDb {
                 .map(Option::unwrap) // MsgId is always present
                 .collect::<ahash::HashSet<_>>()
         };
-
-        dbg!(drop_msg_ids.len());
 
         let Self {
             chronological_message_ids,

@@ -2,23 +2,23 @@
 //!
 //! Testing & demonstrating expected usage of the datastore APIs, no funny stuff.
 
-// TODO: rename tests/api.rs
-
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use arrow2::array::{Array, UInt64Array};
 use nohash_hasher::IntMap;
 use polars_core::{prelude::*, series::Series};
 use polars_ops::prelude::DataFrameJoinOps;
+use rand::Rng;
 use re_arrow_store::{
-    polars_util, test_bundle, DataStore, DataStoreConfig, LatestAtQuery, RangeQuery, TimeInt,
-    TimeRange,
+    polars_util, test_bundle, DataStore, DataStoreConfig, GarbageCollectionTarget, LatestAtQuery,
+    RangeQuery, TimeInt, TimeRange,
 };
 use re_log_types::{
     datagen::{
         build_frame_nr, build_some_colors, build_some_instances, build_some_instances_from,
         build_some_point2d, build_some_rects,
     },
+    external::arrow2_convert::deserialize::arrow_array_deserialize_iterator,
     field_types::{ColorRGBA, Instance, Point2D, Rect2D},
     msg_bundle::{wrap_in_listarray, Component as _, MsgBundle},
     ComponentName, MsgId, ObjPath as EntityPath, TimeType, Timeline,
@@ -26,7 +26,6 @@ use re_log_types::{
 
 // --- LatestComponentsAt ---
 
-// TODO: need some GC sprinkled in there
 #[test]
 fn all_components() {
     init_logs();
@@ -271,9 +270,13 @@ fn all_components() {
 fn latest_at() {
     init_logs();
 
-    // TODO: need some GC sprinkled in there
     for config in re_arrow_store::test_util::all_configs() {
         let mut store = DataStore::new(Instance::name(), config.clone());
+        latest_at_impl(&mut store);
+        store.gc(
+            MsgId::name(),
+            GarbageCollectionTarget::DropAtLeastPercentage(1.0),
+        );
         latest_at_impl(&mut store);
     }
 }
@@ -370,7 +373,6 @@ fn latest_at_impl(store: &mut DataStore) {
 
 // --- Range ---
 
-// TODO: need some GC sprinkled in there
 #[test]
 fn range() {
     init_logs();
@@ -846,6 +848,66 @@ fn joint_df(cluster_key: ComponentName, bundles: &[(ComponentName, &MsgBundle)])
     let df = polars_util::drop_all_nulls(&df, &cluster_key).unwrap();
 
     df.sort([cluster_key.as_str()], false).unwrap_or(df)
+}
+
+// --- GC ---
+
+#[test]
+fn gc() {
+    init_logs();
+
+    for config in re_arrow_store::test_util::all_configs() {
+        let mut store = DataStore::new(Instance::name(), config.clone());
+        gc_impl(&mut store);
+    }
+}
+fn gc_impl(store: &mut DataStore) {
+    let mut rng = rand::thread_rng();
+
+    for _ in 0..2 {
+        let nb_ents = 10;
+        for i in 0..nb_ents {
+            let ent_path = EntityPath::from(format!("this/that/{i}"));
+
+            let nb_frames = rng.gen_range(0..=100);
+            let frames = (0..nb_frames).filter(|_| rand::thread_rng().gen());
+            for frame_nr in frames {
+                let nb_instances = rng.gen_range(0..=1_000);
+                let bundle = test_bundle!(ent_path @ [build_frame_nr(frame_nr.into())] => [
+                    build_some_rects(nb_instances),
+                ]);
+                store.insert(&bundle).unwrap();
+            }
+        }
+
+        if let err @ Err(_) = store.sanity_check() {
+            store.sort_indices_if_needed();
+            eprintln!("{store}");
+            err.unwrap();
+        }
+        _ = store.to_dataframe(); // simple way of checking that everything is still readable
+
+        let msg_id_chunks = store.gc(
+            MsgId::name(),
+            GarbageCollectionTarget::DropAtLeastPercentage(1.0 / 3.0),
+        );
+
+        let msg_ids = msg_id_chunks
+            .iter()
+            .flat_map(|chunk| arrow_array_deserialize_iterator::<Option<MsgId>>(&**chunk).unwrap())
+            .map(Option::unwrap) // MsgId is always present
+            .collect::<ahash::HashSet<_>>();
+
+        for msg_id in &msg_ids {
+            assert!(store.get_msg_metadata(msg_id).is_some());
+        }
+
+        store.clear_msg_metadata(&msg_ids);
+
+        for msg_id in &msg_ids {
+            assert!(store.get_msg_metadata(msg_id).is_none());
+        }
+    }
 }
 
 // ---

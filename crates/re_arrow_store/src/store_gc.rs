@@ -1,36 +1,16 @@
-use std::{collections::HashMap, mem::needs_drop};
+use std::collections::HashMap;
 
-use arrow2::{
-    array::{Array, ListArray},
-    compute::aggregate::estimated_bytes_size,
-};
-use nohash_hasher::{IntMap, IntSet};
-use re_log::{info, trace};
-use re_log_types::{msg_bundle::Component, ComponentName, MsgId, TimeInt, TimeRange, Timeline};
+use arrow2::array::{Array, ListArray};
+use re_log::info;
+use re_log_types::{ComponentName, TimeInt, TimeRange, Timeline};
 
-use crate::{ComponentBucket, ComponentTable, DataStore, RowIndex, RowIndexKind};
+use crate::{ComponentBucket, DataStore, IndexBucket, IndexTable};
 
 // ---
-
-// TODO: remove; dont need it in the end
-#[derive(thiserror::Error, Debug)]
-pub enum GarbageCollectionError {
-    // Batches
-    #[error("Percentage must be a float in the range [0.0 : 1.0], got {0}")]
-    InvalidPercentage(GarbageCollectionTarget),
-}
-
-pub type GarbageCollectionResult<T> = ::std::result::Result<T, GarbageCollectionError>;
-
-// ---
-
-// TODO: invert responsibilities (this PR?)
-// TODO: remove fine-grained locking (after discussions?)
-// TODO: is it time to introduce changelogs? (next PR?)
 
 #[derive(Debug, Clone, Copy)]
 pub enum GarbageCollectionTarget {
-    /// Try to drop _at most_ the given percentage.
+    /// Try to drop _at least_ the given percentage.
     ///
     /// The percentage must be a float in the range [0.0 : 1.0].
     DropAtLeastPercentage(f64),
@@ -51,34 +31,37 @@ impl DataStore {
     /// Triggers a garbage collection according to the desired `target`, driven by the specified
     /// `primary` component.
     ///
-    /// Returns the set of `MsgId`s that were removed from the store.
-    //
-    // TODO: pass the component driving the GC?
+    /// Returns all the raw data that was removed from the store for the given `primary` component.
+    ///
+    /// The garbage collection is based on _insertion order_, which makes it both very efficient
+    /// and very simple from an implementation standpoint, but it does come with a tradeoff: data
+    /// written far enough "into the future" might be unexpectedly collected.
     pub fn gc(
         &mut self,
         primary: ComponentName,
         target: GarbageCollectionTarget,
-    ) -> GarbageCollectionResult<Vec<Box<dyn Array>>> {
+    ) -> Vec<Box<dyn Array>> {
         puffin::profile_function!();
 
-        let initial_size_bytes = self.total_temporal_component_size_bytes() as f64;
+        self.gc_id += 1;
+
+        let initial_nb_rows =
+            self.total_temporal_index_rows() + self.total_temporal_component_rows();
+        let initial_size_bytes = (self.total_temporal_index_size_bytes()
+            + self.total_temporal_component_size_bytes()) as f64;
 
         let res = match target {
             GarbageCollectionTarget::DropAtLeastPercentage(p) => {
-                if !(0.0..=1.0).contains(&p) {
-                    return Err(GarbageCollectionError::InvalidPercentage(target));
-                }
+                assert!((0.0..=1.0).contains(&p));
 
-                let total_temporal_component_size_bytes =
-                    self.total_temporal_component_size_bytes() as f64;
-
-                let drop_at_least_size_bytes = total_temporal_component_size_bytes * p;
-                let target_size_bytes =
-                    total_temporal_component_size_bytes - drop_at_least_size_bytes;
+                let drop_at_least_size_bytes = initial_size_bytes * p;
+                let target_size_bytes = initial_size_bytes - drop_at_least_size_bytes;
 
                 info!(
                     kind = "gc",
+                    id = self.gc_id,
                     %target,
+                    initial_nb_rows = re_format::format_large_number(initial_nb_rows as _),
                     initial_size_bytes = re_format::format_bytes(initial_size_bytes),
                     target_size_bytes = re_format::format_bytes(target_size_bytes),
                     drop_at_least_size_bytes = re_format::format_bytes(drop_at_least_size_bytes),
@@ -92,20 +75,24 @@ impl DataStore {
         #[cfg(debug_assertions)]
         self.sanity_check().unwrap();
 
-        let new_size_bytes = self.total_temporal_component_size_bytes() as f64;
+        let new_nb_rows = self.total_temporal_index_rows() + self.total_temporal_component_rows();
+        let new_size_bytes = (self.total_temporal_index_size_bytes()
+            + self.total_temporal_component_size_bytes()) as f64;
 
         info!(
             kind = "gc",
+            id = self.gc_id,
             %target,
+            initial_nb_rows = re_format::format_large_number(initial_nb_rows as _),
             initial_size_bytes = re_format::format_bytes(initial_size_bytes),
+            new_nb_rows = re_format::format_large_number(new_nb_rows as _),
             new_size_bytes = re_format::format_bytes(new_size_bytes),
             "GC done"
         );
 
-        Ok(res)
+        res
     }
 
-    // TODO: doc
     fn gc_drop_at_least_size_bytes(
         &mut self,
         primary: ComponentName,
@@ -114,17 +101,22 @@ impl DataStore {
         let mut dropped = Vec::<Box<dyn Array>>::new();
 
         while drop_at_least_size_bytes > 0.0 {
+            // Find and drop the earliest (in _insertion order_) primary component bucket that we
+            // can find.
             let Some(primary_bucket) = self
                 .components
                 .get_mut(&primary)
                 .and_then(|table| (table.buckets.len() > 1).then(|| table.buckets.pop_front()))
                 .flatten()
             else {
-                break
+                break;
             };
 
             drop_at_least_size_bytes -= primary_bucket.total_size_bytes() as f64;
 
+            // From there, find and drop all component buckets (in _insertion order_) that do not
+            // contain any data that's more recent than the time range covered by the primary
+            // component bucket.
             for table in self.components.values_mut() {
                 while table.buckets.len() > 1 {
                     let bucket = table.buckets.front().unwrap();
@@ -132,43 +124,33 @@ impl DataStore {
                         let bucket = table.buckets.pop_front().unwrap();
                         drop_at_least_size_bytes -= bucket.total_size_bytes() as f64;
                     } else {
-                        // dbg!(&primary_bucket.time_ranges);
-                        // dbg!(&bucket.time_ranges);
                         break;
                     }
                 }
             }
 
-            // TODO: remove indices... maybe? I kinda like those tombstones tho
-            // TODO: make optional?
+            // Find and drop all index buckets (in _time order_) that are fully encompassed by the
+            // time ranges of the primary bucket we've just dropped.
+            //
+            // There's a tradeoff here: if one or more buckets at further points in time still
+            // refer to data within the dead primary component bucket (i.e. because the original
+            // insertions were done for timepoints "far into the future"), they will now refer to
+            // deleted data (read requests will return `None`s).
             for ((timeline, _), table) in &mut self.indices {
                 while table.buckets.len() > 1 {
-                    let time_range = table
-                        .buckets
-                        .values()
-                        .next()
-                        .unwrap()
-                        .indices
-                        .read()
-                        .time_range;
+                    let time_range = table.first_time_range().unwrap();
                     if primary_bucket.contains(&[(*timeline, time_range)].into()) {
-                        let bucket = table
-                            .buckets
-                            .remove(&table.buckets.keys().next().unwrap().clone())
-                            .unwrap();
+                        let bucket = table.pop_first_bucket().unwrap();
                         drop_at_least_size_bytes -= bucket.total_size_bytes() as f64;
                     } else {
                         break;
                     }
                 }
 
-                if !table.buckets.is_empty() {
-                    let bucket = table
-                        .buckets
-                        .remove(&table.buckets.keys().next().unwrap().clone())
-                        .unwrap();
-                    table.buckets.insert(TimeInt::MIN, bucket);
-                }
+                // The first index bucket of every table should always cover the smallest possible
+                // indexing time: make sure this is still the case!
+                let bucket = table.pop_first_bucket().unwrap();
+                table.buckets.insert(TimeInt::MIN, bucket);
             }
 
             dropped.extend(primary_bucket.chunks.into_iter().map(|chunk| {
@@ -186,7 +168,7 @@ impl DataStore {
 }
 
 impl ComponentBucket {
-    // TODO: doc
+    /// Does `self` fully encompass the given `time_ranges`?
     fn contains(&self, time_ranges: &HashMap<Timeline, TimeRange>) -> bool {
         for timeline2 in time_ranges.keys() {
             if !self.time_ranges.contains_key(timeline2) {
@@ -203,5 +185,22 @@ impl ComponentBucket {
         }
 
         true
+    }
+}
+
+impl IndexTable {
+    fn pop_first_bucket(&mut self) -> Option<IndexBucket> {
+        self.buckets
+            .keys()
+            .next()
+            .cloned()
+            .and_then(|key| self.buckets.remove(&key))
+    }
+
+    fn first_time_range(&mut self) -> Option<TimeRange> {
+        self.buckets
+            .values()
+            .next()
+            .map(|bucket| bucket.indices.read().time_range)
     }
 }

@@ -1087,7 +1087,7 @@ impl PersistentComponentTable {
 
 impl ComponentTable {
     pub fn get(&self, row_idx: RowIndex) -> Option<Box<dyn Array>> {
-        let mut bucket_nr = self
+        let bucket_nr = self
             .buckets
             .partition_point(|bucket| row_idx.as_u64() >= bucket.row_offset);
 
@@ -1095,12 +1095,11 @@ impl ComponentTable {
         // strictly greater than the row index we're looking for, therefore we need to take a
         // step back to find what we're looking for.
         //
-        // Since component tables always spawn with a default bucket at offset 0, the smallest
-        // partition point that can ever be returned is one, thus this operation is overflow-safe.
-        // debug_assert!(bucket_nr > 0);
-        // bucket_nr -= 1;
+        // Component tables always spawn with a default bucket at offset 0, so the smallest
+        // partition point that can ever be returned is one, making this operation always
+        // overflow-safe... unless the garbage collector has ever run, in which case all bets are
+        // off!
         let Some(bucket_nr) = bucket_nr.checked_sub(1) else { return None };
-        // TODO: GC'd RowIndex
 
         if let Some(bucket) = self.buckets.get(bucket_nr) {
             trace!(
