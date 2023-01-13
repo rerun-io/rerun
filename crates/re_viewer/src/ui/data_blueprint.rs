@@ -70,7 +70,7 @@ pub struct DataBlueprintTree {
     ///
     /// Two things to keep in sync:
     /// * children on [`DataBlueprintGroup`] this is on
-    /// * elements in [`Self::path_to_blueprint`]
+    /// * elements in [`Self::path_to_group`]
     /// TODO(andreas): Can we reduce the amount of these dependencies?
     object_paths: IntSet<ObjPath>,
 
