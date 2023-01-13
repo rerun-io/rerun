@@ -1,7 +1,7 @@
 use itertools::Itertools as _;
 use nohash_hasher::{IntMap, IntSet};
 
-use re_arrow_store::GarbageCollectionTarget;
+use re_arrow_store::{DataStoreConfig, GarbageCollectionTarget};
 use re_log_types::{
     external::arrow2_convert::deserialize::arrow_array_deserialize_iterator,
     field_types::{Instance, Scalar, TextEntry},
@@ -41,7 +41,14 @@ impl Default for ObjDb {
             obj_path_from_hash: Default::default(),
             tree: crate::ObjectTree::root(),
             store: Default::default(),
-            arrow_store: re_arrow_store::DataStore::new(Instance::name(), Default::default()),
+            arrow_store: re_arrow_store::DataStore::new(
+                Instance::name(),
+                DataStoreConfig {
+                    component_bucket_size_bytes: 1024 * 1024, // 1 MiB
+                    index_bucket_size_bytes: 1024,            // 1KiB
+                    ..Default::default()
+                },
+            ),
         }
     }
 }
