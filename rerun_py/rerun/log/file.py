@@ -67,11 +67,8 @@ def log_mesh_file(
     else:
         transform = np.require(transform, dtype="float32")
 
-    if EXP_ARROW.classic_log_gate():
-        bindings.log_mesh_file(obj_path, mesh_format.value, mesh_file, transform, timeless)
-
-    if EXP_ARROW.arrow_log_gate():
-        logging.warning("log_mesh_file() not yet implemented for Arrow.")
+    # Mesh arrow handling happens inside the python bridge
+    bindings.log_mesh_file(obj_path, mesh_format.value, mesh_file, transform, timeless)
 
 
 def log_image_file(
