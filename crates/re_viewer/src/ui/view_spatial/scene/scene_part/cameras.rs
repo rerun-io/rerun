@@ -169,10 +169,12 @@ impl CamerasPart {
             (offset + glam::vec2(-fx, fy)).extend(frustum_length),
             (offset + glam::vec2(-fx, -fy)).extend(frustum_length),
         ];
+        let triangle_frustum_offset = fy * 1.05;
         let up_triangle = [
-            (offset + glam::vec2(-fx * 0.25, -fy * 1.05)).extend(frustum_length),
-            (offset + glam::vec2(0.0, -fy * 1.25)).extend(frustum_length),
-            (offset + glam::vec2(fx * 0.25, -fy * 1.05)).extend(frustum_length),
+            // Use only fx for with and height of the triangle, so that the aspect ratio of the triangle i always the same.
+            (offset + glam::vec2(-fx * 0.25, -triangle_frustum_offset)).extend(frustum_length),
+            (offset + glam::vec2(0.0, -fx * 0.25 - triangle_frustum_offset)).extend(frustum_length),
+            (offset + glam::vec2(fx * 0.25, -triangle_frustum_offset)).extend(frustum_length),
         ];
 
         let segments = [
