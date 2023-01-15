@@ -93,6 +93,11 @@ ruzstd = { version = "0.3.0", optional = true } # works on wasm
 criterion = "0.4"
 mimalloc = "0.1"
 serde_test = { version = "1" }
+arrow2 = { workspace = true, features = [
+  "io_ipc",
+  "io_print",
+  "compute_concatenate",
+] }
 
 [lib]
 bench = false
