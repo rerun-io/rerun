@@ -25,7 +25,7 @@ import numpy.typing as npt
 import pydicom as dicom
 import requests
 
-import rerun
+import rerun as rr
 
 DATASET_DIR: Final = Path(os.path.dirname(__file__)) / "dataset"
 DATASET_URL: Final = "https://storage.googleapis.com/rerun-example-datasets/dicom.zip"
@@ -56,7 +56,7 @@ def read_and_log_dicom_dataset(dicom_files: Iterable[Path]) -> None:
     # the data is i16, but in range [0, 536].
     voxels_volume_u16: npt.NDArray[np.uint16] = np.require(voxels_volume, np.uint16)
 
-    rerun.log_tensor(
+    rr.log_tensor(
         "tensor",
         voxels_volume_u16,
         names=["right", "back", "up"],
@@ -89,20 +89,20 @@ if __name__ == "__main__":
     parser.add_argument("--headless", action="store_true", help="Don't show GUI")
     args = parser.parse_args()
 
-    rerun.init("dicom")
+    rr.init("dicom")
 
     if args.connect:
         # Send logging data to separate `rerun` process.
         # You can ommit the argument to connect to the default address,
         # which is `127.0.0.1:9876`.
-        rerun.connect(args.addr)
+        rr.connect(args.addr)
 
     dicom_files = ensure_dataset_downloaded()
     read_and_log_dicom_dataset(dicom_files)
 
     if args.save is not None:
-        rerun.save(args.save)
+        rr.save(args.save)
     elif args.headless:
         pass
     elif not args.connect:
-        rerun.show()
+        rr.show()
