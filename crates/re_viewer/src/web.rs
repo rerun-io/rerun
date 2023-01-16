@@ -56,9 +56,8 @@ fn redirect_tracing_to_console_log() {
     use tracing_subscriber::layer::SubscriberExt as _;
     tracing::subscriber::set_global_default(
         tracing_subscriber::Registry::default()
-            // Filtering out wgpu spam seems to mitigate https://linear.app/rerun/issue/PRO-256/wgpu-crashes-on-web
             .with(tracing_subscriber::EnvFilter::new(
-                re_log::default_log_filter(),
+                re_log::default_web_log_filter(),
             ))
             .with(tracing_wasm::WASMLayer::new(
                 tracing_wasm::WASMLayerConfig::default(),
