@@ -1,4 +1,8 @@
 # Rerun Examples
+## Setup
+First follow [the main setup instructions](https://github.com/rerun-io/rerun#setup).
+
+## Running the examples
 Each example comes with its own set of dependencies listed in a `requirements.txt` file. For example, to install dependencies and run the toy `car` example (which doesn't need to download any data) run:
 
 ```sh
