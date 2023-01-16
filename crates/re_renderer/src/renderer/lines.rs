@@ -88,13 +88,13 @@
 //! Again, we keep all the geometry calculating logic in the vertex shader.
 //!
 //! For all batches, independent whether we use caps or not our topology is as follow:
-//!  ___________________________________________________________________________
-//! |                           |          |                         |          |
-//! |  ... 1-n strip quads ...  | cap quad | ... 1-m strip quads ... | cap quad | ...
-//! |___________________________|__________|_________________________|__________|
+//!            _________________________________________________________
+//!            \  |                         |\  |                       |\
+//!             \ |  ... n strip quads ...  | \ | ... m strip quads ... | \
+//!              \|_________________________|__\|_______________________|__\
+//! (start cap triangle only)         (start+end triangle)              (end triangle only)
 //!
-//! Each cap quad supplies the end-cap for the strip before AND the start-cap for the strip after.
-//! The last cap quad supplies the start-cap for the first strip in the batch.
+//!
 //!
 //! Things we might try in the future
 //! ----------------------------------
@@ -164,9 +164,6 @@ pub mod gpu_data {
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct BatchUniformBuffer {
         pub world_from_obj: wgpu_buffer_types::Mat4,
-        pub first_quad_index: i32,
-        pub last_quad_index: i32,
-        pub _padding: glam::Vec2,
     }
 }
 
@@ -523,9 +520,6 @@ impl LineDrawData {
                     [offset..(offset + std::mem::size_of::<gpu_data::BatchUniformBuffer>())]
                     .copy_from_slice(bytemuck::bytes_of(&gpu_data::BatchUniformBuffer {
                         world_from_obj: batch_info.world_from_obj.into(),
-                        first_quad_index: start_vertex_for_next_batch as i32,
-                        last_quad_index: line_vertex_range_end as i32 - 1,
-                        _padding: glam::Vec2::ZERO,
                     }));
 
                 let bind_group = ctx.gpu_resources.bind_groups.alloc(
@@ -549,9 +543,9 @@ impl LineDrawData {
 
                 batches_internal.push(LineStripBatch {
                     bind_group,
-                    // We spawn a quad for every vertex. Naturally, this yields one extra quad at the beginning of each batch.
-                    // Each strip uses the quad before it for the start cap and the quad after it for the end cap (each of which need just one triangle!)
-                    // (Exception: The first strip of a batch gets its start cap from the last quad of the batch!)
+                    // We spawn a quad for every line skeleton vertex. Naturally, this yields one extra quad in total.
+                    // Which is rather convenient because we need to ensure there are start and end triangles,
+                    // so just from a number-of=vertices perspective this is correct already and the shader can take care of offsets.
                     vertex_range: (start_vertex_for_next_batch * 6)..(line_vertex_range_end * 6),
                 });
 
