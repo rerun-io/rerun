@@ -10,7 +10,8 @@ use rand::Rng;
 use re_renderer::{
     renderer::{
         GenericSkyboxDrawData, LineDrawData, LineStripFlags, MeshDrawData, MeshInstance,
-        PointCloudBatchInfo, PointCloudDrawData, PointCloudVertex, TestTriangleDrawData,
+        PointCloudBatchFlags, PointCloudBatchInfo, PointCloudDrawData, PointCloudVertex,
+        TestTriangleDrawData,
     },
     resource_managers::ResourceLifeTime,
     view_builder::{OrthographicCameraMode, Projection, TargetConfiguration, ViewBuilder},
@@ -265,6 +266,7 @@ impl Example for Multiview {
                 label: "Random points".into(),
                 world_from_obj: glam::Mat4::from_rotation_x(seconds_since_startup),
                 point_count: self.random_points.len() as _,
+                flags: PointCloudBatchFlags::ENABLE_SHADING,
             }],
         )
         .unwrap();
