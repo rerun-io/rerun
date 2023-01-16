@@ -26,6 +26,10 @@ py-dev-env:
     venv/bin/pip install -r rerun_py/requirements-lint.txt
     echo "Do 'source venv/bin/activate' to use the virtual environment!"
 
+# Run all examples
+py-run-all: py-build
+    fd main.py | xargs -I _ sh -c "echo _ && python3 _"
+
 # Build and install the package into the venv
 py-build:
     #!/usr/bin/env bash
@@ -53,10 +57,6 @@ py-lint:
 # Run fast unittests
 py-test:
     python -m pytest rerun_py/tests/unit/
-
-# Run all examples
-py-run-all:
-    fd main.py | xargs -I _ sh -c "echo _ && python3 _"
 
 ### Rust
 
