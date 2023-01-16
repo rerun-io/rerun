@@ -49,6 +49,7 @@ pub use self::field_types::coordinates;
 pub use self::field_types::AnnotationContext;
 pub use self::field_types::MsgId;
 pub use self::field_types::ViewCoordinates;
+pub use self::field_types::{EncodedMesh3D, Mesh3D, MeshFormat, MeshId, RawMesh3D};
 pub use self::index::*;
 pub use self::objects::ObjectType;
 pub use self::path::*;
@@ -372,6 +373,14 @@ pub enum PathOp {
 }
 
 impl PathOp {
+    pub fn clear(recursive: bool, obj_path: ObjPath) -> Self {
+        if recursive {
+            PathOp::ClearRecursive(obj_path)
+        } else {
+            PathOp::ClearFields(obj_path)
+        }
+    }
+
     pub fn obj_path(&self) -> &ObjPath {
         match &self {
             PathOp::ClearFields(path) | PathOp::ClearRecursive(path) => path,

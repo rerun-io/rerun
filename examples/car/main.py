@@ -10,7 +10,7 @@ import cv2
 import numpy as np
 import numpy.typing as npt
 
-import rerun
+import rerun as rr
 
 
 def log_car_data() -> None:
@@ -18,25 +18,25 @@ def log_car_data() -> None:
     NUM_FRAMES = 40
 
     # Set our preferred up-axis on the space that we will log the points to:
-    rerun.log_view_coordinates("world", up="-Y", timeless=True)
+    rr.log_view_coordinates("world", up="-Y", timeless=True)
 
     for sample in generate_car_data(num_frames=NUM_FRAMES):
         # This will assign logged objects a timeline called `frame_nr`.
         # In the viewer you can select how to view objects - by frame_nr or the built-in `log_time`.
-        rerun.set_time_sequence("frame_nr", sample.frame_idx)
+        rr.set_time_sequence("frame_nr", sample.frame_idx)
 
         # We log the projected points in the "world" space:
-        rerun.log_points("world/points", sample.point_cloud)
+        rr.log_points("world/points", sample.point_cloud)
 
         # Log the camera pose:
-        rerun.log_rigid3(
+        rr.log_rigid3(
             "world/camera",
             parent_from_child=(sample.camera.position, sample.camera.rotation_q),
             xyz="RDF",  # X=Right, Y=Down, Z=Forward
         )
 
         # Log the camera projection matrix:
-        rerun.log_pinhole(
+        rr.log_pinhole(
             "world/camera/image",
             child_from_parent=sample.camera.intrinsics,
             width=sample.camera.resolution[0],
@@ -44,14 +44,14 @@ def log_car_data() -> None:
         )
 
         # We log the rgb image to the image-space of the camera:
-        rerun.log_image("world/camera/image/rgb", sample.rgb_image)
+        rr.log_image("world/camera/image/rgb", sample.rgb_image)
 
         # Same with the bounding box:
         ((car_x, car_y), (car_w, car_h)) = sample.car_bbox
-        rerun.log_rect("world/camera/image/bbox", [car_x, car_y, car_w, car_h], label="A car", color=(0, 128, 255))
+        rr.log_rect("world/camera/image/bbox", [car_x, car_y, car_w, car_h], label="A car", color=(0, 128, 255))
 
         # The depth image is in millimeters, so we set meter=1000
-        rerun.log_depth_image("world/camera/image/depth", sample.depth_image_mm, meter=1000)
+        rr.log_depth_image("world/camera/image/depth", sample.depth_image_mm, meter=1000)
 
 
 class DummyCar:
@@ -298,15 +298,15 @@ def main() -> None:
     parser.add_argument("--save", type=str, default=None, help="Save data to a .rrd file at this path")
     args = parser.parse_args()
 
-    rerun.init("car")
+    rr.init("car")
 
     if args.serve:
-        rerun.serve()
+        rr.serve()
     elif args.connect:
         # Send logging data to separate `rerun` process.
         # You can ommit the argument to connect to the default address,
         # which is `127.0.0.1:9876`.
-        rerun.connect(args.addr)
+        rr.connect(args.addr)
 
     log_car_data()
 
@@ -317,12 +317,12 @@ def main() -> None:
         except:
             pass
     elif args.save is not None:
-        rerun.save(args.save)
+        rr.save(args.save)
     elif args.headless:
         pass
     elif not args.connect:
         # Show the logged data inside the Python process:
-        rerun.show()
+        rr.show()
 
 
 if __name__ == "__main__":

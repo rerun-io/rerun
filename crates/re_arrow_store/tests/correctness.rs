@@ -10,17 +10,21 @@ use polars_core::{
     prelude::{DataFrame, JoinType},
     series::Series,
 };
+use rand::Rng;
 use re_arrow_store::{
-    polars_util, test_bundle, DataStore, LatestAtQuery, RangeQuery, TimeRange, WriteError,
+    polars_util, test_bundle, DataStore, DataStoreConfig, GarbageCollectionTarget, LatestAtQuery,
+    RangeQuery, TimeRange, WriteError,
 };
 use re_log_types::{
     datagen::{
         build_frame_nr, build_log_time, build_some_instances, build_some_point2d, build_some_rects,
     },
-    external::arrow2_convert::serialize::TryIntoArrow,
+    external::arrow2_convert::{
+        deserialize::arrow_array_deserialize_iterator, serialize::TryIntoArrow,
+    },
     field_types::{Instance, Point2D, Rect2D},
     msg_bundle::{wrap_in_listarray, Component as _, ComponentBundle},
-    Duration, ObjPath as EntityPath, Time, TimeType, Timeline,
+    Duration, MsgId, ObjPath as EntityPath, Time, TimeType, Timeline,
 };
 
 // ---
@@ -333,6 +337,101 @@ fn range_join_across_single_row_impl(store: &mut DataStore) {
     let (_, df) = dfs[0].clone().unwrap();
 
     assert_eq!(df_expected, df);
+}
+
+// ---
+
+#[test]
+fn gc_correct() {
+    init_logs();
+
+    let mut store = DataStore::new(
+        Instance::name(),
+        DataStoreConfig {
+            component_bucket_nb_rows: 0,
+            ..Default::default()
+        },
+    );
+
+    let mut rng = rand::thread_rng();
+
+    let nb_frames = rng.gen_range(0..=100);
+    let frames = (0..nb_frames).filter(|_| rand::thread_rng().gen());
+    for frame_nr in frames {
+        let nb_ents = 10;
+        for i in 0..nb_ents {
+            let ent_path = EntityPath::from(format!("this/that/{i}"));
+            let nb_instances = rng.gen_range(0..=1_000);
+            let bundle = test_bundle!(ent_path @ [build_frame_nr(frame_nr.into())] => [
+                build_some_rects(nb_instances),
+            ]);
+            store.insert(&bundle).unwrap();
+        }
+    }
+
+    if let err @ Err(_) = store.sanity_check() {
+        store.sort_indices_if_needed();
+        eprintln!("{store}");
+        err.unwrap();
+    }
+    _ = store.to_dataframe(); // simple way of checking that everything is still readable
+
+    let msg_id_chunks = store.gc(
+        GarbageCollectionTarget::DropAtLeastPercentage(1.0),
+        Timeline::new("frame_nr", TimeType::Sequence),
+        MsgId::name(),
+    );
+
+    let msg_ids = msg_id_chunks
+        .iter()
+        .flat_map(|chunk| arrow_array_deserialize_iterator::<Option<MsgId>>(&**chunk).unwrap())
+        .map(Option::unwrap) // MsgId is always present
+        .collect::<ahash::HashSet<_>>();
+    assert!(!msg_ids.is_empty());
+
+    if let err @ Err(_) = store.sanity_check() {
+        store.sort_indices_if_needed();
+        eprintln!("{store}");
+        err.unwrap();
+    }
+    _ = store.to_dataframe(); // simple way of checking that everything is still readable
+    for msg_id in &msg_ids {
+        assert!(store.get_msg_metadata(msg_id).is_some());
+    }
+
+    store.clear_msg_metadata(&msg_ids);
+
+    if let err @ Err(_) = store.sanity_check() {
+        store.sort_indices_if_needed();
+        eprintln!("{store}");
+        err.unwrap();
+    }
+    _ = store.to_dataframe(); // simple way of checking that everything is still readable
+    for msg_id in &msg_ids {
+        assert!(store.get_msg_metadata(msg_id).is_none());
+    }
+
+    let msg_id_chunks = store.gc(
+        GarbageCollectionTarget::DropAtLeastPercentage(1.0),
+        Timeline::new("frame_nr", TimeType::Sequence),
+        MsgId::name(),
+    );
+
+    let msg_ids = msg_id_chunks
+        .iter()
+        .flat_map(|chunk| arrow_array_deserialize_iterator::<Option<MsgId>>(&**chunk).unwrap())
+        .map(Option::unwrap) // MsgId is always present
+        .collect::<ahash::HashSet<_>>();
+    assert!(msg_ids.is_empty());
+
+    if let err @ Err(_) = store.sanity_check() {
+        store.sort_indices_if_needed();
+        eprintln!("{store}");
+        err.unwrap();
+    }
+    _ = store.to_dataframe(); // simple way of checking that everything is still readable
+
+    assert_eq!(2, store.total_temporal_component_rows());
 }
 
 // ---

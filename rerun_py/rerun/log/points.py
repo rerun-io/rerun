@@ -107,7 +107,7 @@ def log_point(
             class_ids = _normalize_ids([class_id])
             comps["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
 
-        bindings.log_arrow_msg(f"arrow/{obj_path}", components=comps, timeless=timeless)
+        bindings.log_arrow_msg(obj_path, components=comps, timeless=timeless)
 
 
 def log_points(
@@ -217,8 +217,8 @@ def log_points(
             is_splat = len(keypoint_ids) == 1
             comps[is_splat]["rerun.keypoint_id"] = ClassIdArray.from_numpy(keypoint_ids)
 
-        bindings.log_arrow_msg(f"{obj_path}/arrow", components=comps[0], timeless=timeless)
+        bindings.log_arrow_msg(obj_path, components=comps[0], timeless=timeless)
 
         if comps[1]:
             comps[1]["rerun.instance"] = InstanceArray.splat()
-            bindings.log_arrow_msg(f"{obj_path}/arrow", components=comps[1], timeless=timeless)
+            bindings.log_arrow_msg(obj_path, components=comps[1], timeless=timeless)

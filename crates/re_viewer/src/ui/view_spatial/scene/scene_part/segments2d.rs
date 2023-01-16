@@ -17,9 +17,9 @@ use crate::{
 
 use super::ScenePart;
 
-pub struct LineSegments2DPart;
+pub struct LineSegments2DPartClassic;
 
-impl ScenePart for LineSegments2DPart {
+impl ScenePart for LineSegments2DPartClassic {
     fn load(
         &self,
         scene: &mut SceneSpatial,

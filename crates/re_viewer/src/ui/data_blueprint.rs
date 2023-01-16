@@ -64,7 +64,15 @@ pub struct DataBlueprintTree {
     /// We also use this for building up groups from hierarchy, meaning that some paths in here
     /// may not represent existing objects, i.e. the blueprint groups they are pointing to may not
     /// necessarily have the respective path as a child.
-    path_to_blueprint: IntMap<ObjPath, DataBlueprintGroupHandle>,
+    path_to_group: IntMap<ObjPath, DataBlueprintGroupHandle>,
+
+    /// List of all objects that we query via this data blueprint collection.
+    ///
+    /// Two things to keep in sync:
+    /// * children on [`DataBlueprintGroup`] this is on
+    /// * elements in [`Self::path_to_group`]
+    /// TODO(andreas): Can we reduce the amount of these dependencies?
+    object_paths: IntSet<ObjPath>,
 
     /// Root group, always exists as a placeholder
     root_group_handle: DataBlueprintGroupHandle,
@@ -82,7 +90,8 @@ impl Default for DataBlueprintTree {
 
         Self {
             groups,
-            path_to_blueprint,
+            path_to_group: path_to_blueprint,
+            object_paths: IntSet::default(),
             root_group_handle: root_group,
             data_blueprints: DataBlueprints::default(),
         }
@@ -123,6 +132,15 @@ impl DataBlueprintTree {
     /// Returns mutable individual object properties, the hierarchy was not applied to this.
     pub fn data_blueprints_individual(&mut self) -> &mut ObjectsProperties {
         &mut self.data_blueprints.individual
+    }
+
+    pub fn contains_object(&self, path: &ObjPath) -> bool {
+        self.path_to_group.contains_key(path)
+    }
+
+    /// List of all objects that we query via this data blueprint collection.
+    pub fn object_paths(&self) -> &IntSet<ObjPath> {
+        &self.object_paths
     }
 
     /// Should be called on frame start.
@@ -177,12 +195,14 @@ impl DataBlueprintTree {
     ) {
         crate::profile_function!();
 
+        self.object_paths.extend(paths.iter().cloned());
+
         let mut new_leaf_groups = Vec::new();
 
         for path in paths.iter() {
             // Is there already a group associated with this exact path? (maybe because a child was logged there earlier)
             // If so, we can simply move it under this existing group.
-            let group_handle = if let Some(group_handle) = self.path_to_blueprint.get(path) {
+            let group_handle = if let Some(group_handle) = self.path_to_group.get(path) {
                 *group_handle
             } else if path == base_path {
                 // Object might have directly been logged on the base_path. We map then to the root!
@@ -222,7 +242,7 @@ impl DataBlueprintTree {
                 .children
                 .retain(|child_group| *child_group != leaf_group_handle);
             parent_group.objects.insert(single_object.clone());
-            self.path_to_blueprint
+            self.path_to_group
                 .insert(single_object, parent_group_handle);
         }
     }
@@ -245,7 +265,7 @@ impl DataBlueprintTree {
             parent_path = ObjPath::root();
         }
 
-        let parent_group = match self.path_to_blueprint.entry(parent_path.clone()) {
+        let parent_group = match self.path_to_group.entry(parent_path.clone()) {
             std::collections::hash_map::Entry::Occupied(parent_group) => {
                 let parent_group = *parent_group.get();
                 self.groups
@@ -285,13 +305,26 @@ impl DataBlueprintTree {
             return;
         }
 
-        if let Some(previous_group) = self.path_to_blueprint.insert(path.clone(), group_handle) {
+        if let Some(previous_group) = self.path_to_group.insert(path.clone(), group_handle) {
             if previous_group != group_handle {
                 if let Some(previous_group) = self.groups.get_mut(previous_group) {
                     previous_group.objects.retain(|obj| obj != path);
                 }
             }
         }
+    }
+
+    /// Removes an object from the data blueprint collection.
+    ///
+    /// If the object was not known by this data blueprint tree nothing happens.
+    pub fn remove_object(&mut self, path: &ObjPath) {
+        if let Some(group_handle) = self.path_to_group.get(path) {
+            if let Some(group) = self.groups.get_mut(*group_handle) {
+                group.objects.remove(path);
+            }
+        }
+        self.path_to_group.remove(path);
+        self.object_paths.remove(path);
     }
 }
 

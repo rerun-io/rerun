@@ -142,7 +142,7 @@ impl Viewport {
                             let mut space_view = SpaceView::new(
                                 category,
                                 space_info,
-                                obj_paths.clone(),
+                                &obj_paths,
                                 SpatialNavigationMode::TwoD,
                                 transforms.clone(),
                             );
@@ -156,8 +156,8 @@ impl Viewport {
                                         != other_image_instance_id.obj_path
                                     {
                                         space_view
-                                            .queried_objects
-                                            .remove(&other_image_instance_id.obj_path);
+                                            .data_blueprint
+                                            .remove_object(&other_image_instance_id.obj_path);
                                         space_view.allow_auto_adding_more_object = false;
                                     }
                                 }
@@ -181,7 +181,7 @@ impl Viewport {
                     let space_view = SpaceView::new(
                         category,
                         space_info,
-                        obj_paths.clone(),
+                        &obj_paths,
                         scene_spatial.preferred_navigation_mode(&space_info.path),
                         transforms.clone(),
                     );
@@ -407,7 +407,7 @@ impl Viewport {
             self.add_space_view(SpaceView::new(
                 category,
                 space_info,
-                obj_paths,
+                &obj_paths,
                 scene_spatial.preferred_navigation_mode(&space_info.path),
                 transforms.clone(),
             ));
@@ -578,7 +578,7 @@ impl Viewport {
                             let new_space_view_id = self.add_space_view(SpaceView::new(
                                 category,
                                 space_info,
-                                obj_paths,
+                                &obj_paths,
                                 scene_spatial.preferred_navigation_mode(&space_info.path),
                                 transforms.clone(),
                             ));
