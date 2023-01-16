@@ -13,7 +13,7 @@ Run:
 import argparse
 import logging
 
-import rerun
+import rerun as rr
 
 
 def setup_logging() -> None:
@@ -25,7 +25,7 @@ def setup_logging() -> None:
     # default).
     #
     # For more info: https://docs.python.org/3/howto/logging.html#handlers
-    logging.getLogger().addHandler(rerun.log.text.LoggingHandler())
+    logging.getLogger().addHandler(rr.log.text.LoggingHandler())
     logging.getLogger().setLevel(-1)
 
 
@@ -51,7 +51,7 @@ def log_stuff(frame_offset: int) -> None:
     # Test that we can log multiple times to the same sequence timeline and still
     # have the log messages show up in the correct chronological order in the viewer:
     for frame_nr in range(2):
-        rerun.set_time_sequence("frame_nr", 2 * frame_offset + frame_nr)
+        rr.set_time_sequence("frame_nr", 2 * frame_offset + frame_nr)
         logging.info(f"Log one thing during frame {frame_nr}")
         logging.info(f"Log second thing during the same frame {frame_nr}")
         logging.info(f"Log third thing during the same frame {frame_nr}")
@@ -63,7 +63,7 @@ def log_stuff(frame_offset: int) -> None:
     # Use spaces to create distinct logging streams
     other_logger = logging.getLogger("totally.unrelated")
     other_logger.propagate = False  # don't want root logger to catch those
-    other_logger.addHandler(rerun.log.text.LoggingHandler("3rd_party_logs"))
+    other_logger.addHandler(rr.log.text.LoggingHandler("3rd_party_logs"))
     for _ in range(10):
         other_logger.debug("look ma, got my very own view!")
 
@@ -85,15 +85,15 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    rerun.init("logging")
+    rr.init("logging")
 
     if args.serve:
-        rerun.serve()
+        rr.serve()
     elif args.connect:
         # Send logging data to separate `rerun` process.
         # You can omit the argument to connect to the default address,
         # which is `127.0.0.1:9876`.
-        rerun.connect(args.addr)
+        rr.connect(args.addr)
 
     setup_logging()
     for frame_offset in range(args.repeat):
@@ -108,11 +108,11 @@ def main() -> None:
         except:
             pass
     elif args.save is not None:
-        rerun.save(args.save)
+        rr.save(args.save)
     elif args.headless:
         pass
     elif not args.connect:
-        rerun.show()
+        rr.show()
 
 
 if __name__ == "__main__":

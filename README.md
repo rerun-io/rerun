@@ -69,8 +69,8 @@ python examples/car/main.py --connect  # The Rerun SDK will connect and send dat
 ## Using the Rerun Python SDK
 Most documentation is found in the docstrings of the functions in the Rerun. Either check out the docstrings directly in code or use the built in `help()` function. For example, to see the docstring of the `log_image` function, open a python terminal and run:
 ```python
-import rerun
-help(rerun.log_image)
+import rerun as rr
+help(rr.log_image)
 ```
 For a description of how to use the SDK, including some of the key concepts, see [`rerun_py/USAGE.md`](rerun_py/USAGE.md).
 
