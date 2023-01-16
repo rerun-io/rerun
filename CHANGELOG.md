@@ -2,6 +2,7 @@
 
 A rough time-line of major user-facing things added, removed and changed. Newest on top.
 
+* 2022-01-16: Added a command palette (Ctrl-P or Cmd-P) [#656](https://github.com/rerun-io/rerun/pull/656).
 * 2022-01-13: Introduce RERUN_STORAGE environment variable to choose storage mechanism [#752](https://github.com/rerun-io/rerun/pull/752).
 * 2022-01-13: Camera/object focus in 3D views is now on double click, moving camera never clears selection now. [#744](https://github.com/rerun-io/rerun/pull/744)
 * 2022-01-11: (Re-)Introduce groupings in the blueprint. [#724](https://github.com/rerun-io/rerun/pull/724).

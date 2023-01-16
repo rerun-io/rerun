@@ -42,14 +42,14 @@ opt-level = 2
 debug = true
 
 [patch.crates-io]
-# 2022-12-22 - Add emath::inverse_lerp
-ecolor = { git = "https://github.com/emilk/egui", rev = "34f587d1e1cc69146f7a02f20903e4f573030ffd" }
-eframe = { git = "https://github.com/emilk/egui", rev = "34f587d1e1cc69146f7a02f20903e4f573030ffd" }
-egui = { git = "https://github.com/emilk/egui", rev = "34f587d1e1cc69146f7a02f20903e4f573030ffd" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "34f587d1e1cc69146f7a02f20903e4f573030ffd" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "34f587d1e1cc69146f7a02f20903e4f573030ffd" }
-emath = { git = "https://github.com/emilk/egui", rev = "34f587d1e1cc69146f7a02f20903e4f573030ffd" }
-epaint = { git = "https://github.com/emilk/egui", rev = "34f587d1e1cc69146f7a02f20903e4f573030ffd" }
+# 2022-01-16: prevent ctrl-p from opening the print dialog
+ecolor = { git = "https://github.com/emilk/egui", rev = "cd0f66b9ae661be737ce57f26fb305cf124f6b73" }
+eframe = { git = "https://github.com/emilk/egui", rev = "cd0f66b9ae661be737ce57f26fb305cf124f6b73" }
+egui = { git = "https://github.com/emilk/egui", rev = "cd0f66b9ae661be737ce57f26fb305cf124f6b73" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "cd0f66b9ae661be737ce57f26fb305cf124f6b73" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "cd0f66b9ae661be737ce57f26fb305cf124f6b73" }
+emath = { git = "https://github.com/emilk/egui", rev = "cd0f66b9ae661be737ce57f26fb305cf124f6b73" }
+epaint = { git = "https://github.com/emilk/egui", rev = "cd0f66b9ae661be737ce57f26fb305cf124f6b73" }
 
 # ecolor = { path = "../../egui/crates/ecolor" }
 # eframe = { path = "../../egui/crates/eframe" }

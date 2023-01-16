@@ -304,7 +304,11 @@ impl ObjectTree {
         subtree_recursive(self, &path.to_components())
     }
 
-    pub fn purge_everything_but(&mut self, keep_msg_ids: &ahash::HashSet<MsgId>) {
+    pub fn retain(
+        &mut self,
+        keep_msg_ids: Option<&ahash::HashSet<MsgId>>,
+        drop_msg_ids: Option<&ahash::HashSet<MsgId>>,
+    ) {
         let Self {
             path: _,
             children,
@@ -318,28 +322,43 @@ impl ObjectTree {
         for map in prefix_times.0.values_mut() {
             crate::profile_scope!("prefix_times");
             map.retain(|_, msg_ids| {
-                msg_ids.retain(|msg_id| keep_msg_ids.contains(msg_id));
+                if let Some(keep_msg_ids) = keep_msg_ids {
+                    msg_ids.retain(|msg_id| keep_msg_ids.contains(msg_id));
+                }
+                if let Some(drop_msg_ids) = drop_msg_ids {
+                    msg_ids.retain(|msg_id| !drop_msg_ids.contains(msg_id));
+                }
                 !msg_ids.is_empty()
             });
         }
         {
             crate::profile_scope!("nonrecursive_clears");
-            nonrecursive_clears.retain(|msg_id, _| keep_msg_ids.contains(msg_id));
+            if let Some(keep_msg_ids) = keep_msg_ids {
+                nonrecursive_clears.retain(|msg_id, _| keep_msg_ids.contains(msg_id));
+            }
+            if let Some(drop_msg_ids) = drop_msg_ids {
+                nonrecursive_clears.retain(|msg_id, _| !drop_msg_ids.contains(msg_id));
+            }
         }
         {
             crate::profile_scope!("recursive_clears");
-            recursive_clears.retain(|msg_id, _| keep_msg_ids.contains(msg_id));
+            if let Some(keep_msg_ids) = keep_msg_ids {
+                recursive_clears.retain(|msg_id, _| keep_msg_ids.contains(msg_id));
+            }
+            if let Some(drop_msg_ids) = drop_msg_ids {
+                recursive_clears.retain(|msg_id, _| !drop_msg_ids.contains(msg_id));
+            }
         }
 
         {
             crate::profile_scope!("fields");
             for columns in fields.values_mut() {
-                columns.purge_everything_but(keep_msg_ids);
+                columns.retain(keep_msg_ids, drop_msg_ids);
             }
         }
 
         for child in children.values_mut() {
-            child.purge_everything_but(keep_msg_ids);
+            child.retain(keep_msg_ids, drop_msg_ids);
         }
     }
 
@@ -462,7 +481,11 @@ impl DataColumns {
         summaries.join(", ")
     }
 
-    pub fn purge_everything_but(&mut self, keep_msg_ids: &ahash::HashSet<MsgId>) {
+    pub fn retain(
+        &mut self,
+        keep_msg_ids: Option<&ahash::HashSet<MsgId>>,
+        drop_msg_ids: Option<&ahash::HashSet<MsgId>>,
+    ) {
         let Self {
             times,
             per_type,
@@ -471,12 +494,22 @@ impl DataColumns {
 
         for map in times.values_mut() {
             map.retain(|_, msg_ids| {
-                msg_ids.retain(|msg_id| keep_msg_ids.contains(msg_id));
+                if let Some(keep_msg_ids) = keep_msg_ids {
+                    msg_ids.retain(|msg_id| keep_msg_ids.contains(msg_id));
+                }
+                if let Some(drop_msg_ids) = drop_msg_ids {
+                    msg_ids.retain(|msg_id| !drop_msg_ids.contains(msg_id));
+                }
                 !msg_ids.is_empty()
             });
         }
         for msg_set in per_type.values_mut() {
-            msg_set.retain(|msg_id| keep_msg_ids.contains(msg_id));
+            if let Some(keep_msg_ids) = keep_msg_ids {
+                msg_set.retain(|msg_id| keep_msg_ids.contains(msg_id));
+            }
+            if let Some(drop_msg_ids) = drop_msg_ids {
+                msg_set.retain(|msg_id| !drop_msg_ids.contains(msg_id));
+            }
         }
     }
 }
