@@ -130,8 +130,8 @@ def log_line_segments(
             radii = _normalize_radii([stroke_width / 2])
             comps[1]["rerun.radius"] = RadiusArray.from_numpy(radii)
 
-        bindings.log_arrow_msg(f"arrow/{obj_path}", components=comps[0], timeless=timeless)
+        bindings.log_arrow_msg(obj_path, components=comps[0], timeless=timeless)
 
         if comps[1]:
             comps[1]["rerun.instance"] = InstanceArray.splat()
-            bindings.log_arrow_msg(f"arrow/{obj_path}", components=comps[1], timeless=timeless)
+            bindings.log_arrow_msg(obj_path, components=comps[1], timeless=timeless)
