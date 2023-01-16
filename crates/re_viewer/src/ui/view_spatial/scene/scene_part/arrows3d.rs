@@ -1,4 +1,3 @@
-use glam::Vec3;
 use re_data_store::{query::visit_type_data_3, FieldName, InstanceIdHash};
 use re_log_types::{IndexHash, MsgId, ObjectType};
 use re_renderer::{renderer::LineStripFlags, Size};
@@ -72,8 +71,8 @@ impl ScenePart for Arrows3DPart {
                 let re_log_types::Arrow3D { origin, vector } = arrow;
 
                 let width_scale = width_scale.unwrap_or(1.0);
-                let vector = Vec3::from_slice(vector);
-                let origin = Vec3::from_slice(origin);
+                let vector: glam::Vec3 = vector.clone().into();
+                let origin: glam::Vec3 = origin.clone().into();
 
                 let mut radius = Size::new_scene(width_scale * 0.5);
                 let tip_length = LineStripFlags::get_triangle_cap_tip_length(radius.0);
