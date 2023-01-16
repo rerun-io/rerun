@@ -512,42 +512,44 @@ fn paint_view(
     crate::profile_function!();
 
     // Draw labels:
-    ui.with_layer_id(
-        egui::LayerId::new(egui::Order::Foreground, egui::Id::new("LabelsLayer")),
-        |ui| {
-            crate::profile_function!("labels");
-            let ui_from_world = eye.ui_from_world(&rect);
-            for label in &scene.ui.labels_3d {
-                let pos_in_ui = ui_from_world * label.origin.extend(1.0);
-                if pos_in_ui.w <= 0.0 {
-                    continue; // behind camera
-                }
-                let pos_in_ui = pos_in_ui / pos_in_ui.w;
+    {
+        let painter = ui.painter().clone().with_layer_id(egui::LayerId::new(
+            egui::Order::Foreground,
+            egui::Id::new("LabelsLayer"),
+        ));
 
-                let font_id = egui::TextStyle::Monospace.resolve(ui.style());
-
-                let galley = ui.fonts().layout(
-                    (*label.text).to_owned(),
-                    font_id,
-                    ui.style().visuals.text_color(),
-                    100.0,
-                );
-
-                let text_rect = egui::Align2::CENTER_TOP.anchor_rect(egui::Rect::from_min_size(
-                    egui::pos2(pos_in_ui.x, pos_in_ui.y),
-                    galley.size(),
-                ));
-
-                let bg_rect = text_rect.expand2(egui::vec2(6.0, 2.0));
-                ui.painter().add(egui::Shape::rect_filled(
-                    bg_rect,
-                    3.0,
-                    ui.style().visuals.code_bg_color,
-                ));
-                ui.painter().add(egui::Shape::galley(text_rect.min, galley));
+        crate::profile_function!("labels");
+        let ui_from_world = eye.ui_from_world(&rect);
+        for label in &scene.ui.labels_3d {
+            let pos_in_ui = ui_from_world * label.origin.extend(1.0);
+            if pos_in_ui.w <= 0.0 {
+                continue; // behind camera
             }
-        },
-    );
+            let pos_in_ui = pos_in_ui / pos_in_ui.w;
+
+            let font_id = egui::TextStyle::Monospace.resolve(ui.style());
+
+            let galley = ui.fonts().layout(
+                (*label.text).to_owned(),
+                font_id,
+                ui.style().visuals.text_color(),
+                100.0,
+            );
+
+            let text_rect = egui::Align2::CENTER_TOP.anchor_rect(egui::Rect::from_min_size(
+                egui::pos2(pos_in_ui.x, pos_in_ui.y),
+                galley.size(),
+            ));
+
+            let bg_rect = text_rect.expand2(egui::vec2(6.0, 2.0));
+            painter.add(egui::Shape::rect_filled(
+                bg_rect,
+                3.0,
+                ui.style().visuals.code_bg_color,
+            ));
+            painter.add(egui::Shape::galley(text_rect.min, galley));
+        }
+    }
 
     // Determine view port resolution and position.
     let pixels_from_point = ui.ctx().pixels_per_point();
