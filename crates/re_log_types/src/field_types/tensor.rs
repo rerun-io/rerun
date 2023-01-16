@@ -177,7 +177,7 @@ pub enum TensorData {
 ///     ])
 /// );
 /// ```
-#[derive(Debug, Clone, PartialEq, Eq, ArrowField, ArrowSerialize, ArrowDeserialize)]
+#[derive(Clone, PartialEq, Eq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct TensorDimension {
     /// Number of elements on this dimension.
@@ -213,6 +213,26 @@ impl TensorDimension {
     }
     pub fn unnamed(size: u64) -> Self {
         Self { size, name: None }
+    }
+}
+
+impl std::fmt::Debug for TensorDimension {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(name) = &self.name {
+            write!(f, "{}={}", name, self.size)
+        } else {
+            self.size.fmt(f)
+        }
+    }
+}
+
+impl std::fmt::Display for TensorDimension {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(name) = &self.name {
+            write!(f, "{}={}", name, self.size)
+        } else {
+            self.size.fmt(f)
+        }
     }
 }
 
