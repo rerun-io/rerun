@@ -275,10 +275,7 @@ fn obj_props_ui(
         }
     });
 
-    if matches!(
-        view_state.state_spatial.nav_mode,
-        SpatialNavigationMode::ThreeD
-    ) {
+    if view_state.state_spatial.nav_mode == SpatialNavigationMode::ThreeD {
         if let Some(obj_path) = obj_path {
             let timeline = ctx.rec_cfg.time_ctrl.timeline();
             let query_time = ctx.rec_cfg.time_ctrl.time_i64();
