@@ -68,50 +68,55 @@ impl framework::Example for Render2D {
         );
 
         let mut line_strip_builder = LineStripSeriesBuilder::<()>::default();
-        let mut line_batch = line_strip_builder.batch("all lines");
 
         // Blue rect outline around the bottom right quarter.
-        let line_radius = 10.0;
-        let blue_rect_position = screen_size * 0.5 - glam::vec2(line_radius, line_radius);
-        line_batch
-            .add_rectangle_outline_2d(
-                blue_rect_position,
-                glam::vec2(screen_size.x * 0.5, 0.0),
-                glam::vec2(0.0, screen_size.y * 0.5),
-            )
-            .radius(Size::new_scene(line_radius))
-            .color(Color32::BLUE);
+        {
+            let mut line_batch = line_strip_builder.batch("quads");
+            let line_radius = 10.0;
+            let blue_rect_position = screen_size * 0.5 - glam::vec2(line_radius, line_radius);
+            line_batch
+                .add_rectangle_outline_2d(
+                    blue_rect_position,
+                    glam::vec2(screen_size.x * 0.5, 0.0),
+                    glam::vec2(0.0, screen_size.y * 0.5),
+                )
+                .radius(Size::new_scene(line_radius))
+                .color(Color32::BLUE);
 
-        // .. within, a orange rectangle
-        line_batch
-            .add_rectangle_outline_2d(
-                blue_rect_position + screen_size * 0.125,
-                glam::vec2(screen_size.x * 0.25, 0.0),
-                glam::vec2(0.0, screen_size.y * 0.25),
-            )
-            .radius(Size::new_scene(5.0))
-            .color(Color32::from_rgb(255, 100, 1));
+            // .. within, a orange rectangle
+            line_batch
+                .add_rectangle_outline_2d(
+                    blue_rect_position + screen_size * 0.125,
+                    glam::vec2(screen_size.x * 0.25, 0.0),
+                    glam::vec2(0.0, screen_size.y * 0.25),
+                )
+                .radius(Size::new_scene(5.0))
+                .color(Color32::from_rgb(255, 100, 1));
+        }
 
         // All variations of line caps
-        for (i, flags) in [
-            LineStripFlags::empty(),
-            LineStripFlags::CAP_START_ROUND,
-            LineStripFlags::CAP_END_ROUND,
-            LineStripFlags::CAP_START_TRIANGLE,
-            LineStripFlags::CAP_END_TRIANGLE,
-            LineStripFlags::CAP_START_ROUND | LineStripFlags::CAP_END_ROUND,
-            LineStripFlags::CAP_START_ROUND | LineStripFlags::CAP_END_TRIANGLE,
-            LineStripFlags::CAP_START_TRIANGLE | LineStripFlags::CAP_END_ROUND,
-            LineStripFlags::CAP_START_TRIANGLE | LineStripFlags::CAP_END_TRIANGLE,
-        ]
-        .iter()
-        .enumerate()
         {
-            let y = (i + 1) as f32 * 70.0;
-            line_batch
-                .add_segment_2d(glam::vec2(70.0, y), glam::vec2(400.0, y))
-                .radius(Size::new_scene(15.0))
-                .flags(*flags);
+            let mut line_batch = line_strip_builder.batch("line cap variations");
+            for (i, flags) in [
+                LineStripFlags::empty(),
+                LineStripFlags::CAP_START_ROUND,
+                LineStripFlags::CAP_END_ROUND,
+                LineStripFlags::CAP_START_TRIANGLE,
+                LineStripFlags::CAP_END_TRIANGLE,
+                LineStripFlags::CAP_START_ROUND | LineStripFlags::CAP_END_ROUND,
+                LineStripFlags::CAP_START_ROUND | LineStripFlags::CAP_END_TRIANGLE,
+                LineStripFlags::CAP_START_TRIANGLE | LineStripFlags::CAP_END_ROUND,
+                LineStripFlags::CAP_START_TRIANGLE | LineStripFlags::CAP_END_TRIANGLE,
+            ]
+            .iter()
+            .enumerate()
+            {
+                let y = (i + 1) as f32 * 70.0;
+                line_batch
+                    .add_segment_2d(glam::vec2(70.0, y), glam::vec2(400.0, y))
+                    .radius(Size::new_scene(15.0))
+                    .flags(*flags);
+            }
         }
 
         // Lines with different kinds of radius
@@ -119,22 +124,25 @@ impl framework::Example for Render2D {
         // Moving the windows to a high dpi screen makes the second one bigger.
         // Also, it looks different under perspective projection.
         // The third line is automatic thickness which is determined by the line renderer implementation.
-        line_batch
-            .add_segment_2d(glam::vec2(500.0, 10.0), glam::vec2(1000.0, 10.0))
-            .radius(Size::new_scene(4.0))
-            .color(Color32::from_rgb(255, 180, 1));
-        line_batch
-            .add_segment_2d(glam::vec2(500.0, 30.0), glam::vec2(1000.0, 30.0))
-            .radius(Size::new_points(4.0))
-            .color(Color32::from_rgb(255, 180, 1));
-        line_batch
-            .add_segment_2d(glam::vec2(500.0, 60.0), glam::vec2(1000.0, 60.0))
-            .radius(Size::AUTO)
-            .color(Color32::from_rgb(255, 180, 1));
-        line_batch
-            .add_segment_2d(glam::vec2(500.0, 90.0), glam::vec2(1000.0, 90.0))
-            .radius(Size::AUTO_LARGE)
-            .color(Color32::from_rgb(255, 180, 1));
+        {
+            let mut line_batch = line_strip_builder.batch("radius variations");
+            line_batch
+                .add_segment_2d(glam::vec2(500.0, 10.0), glam::vec2(1000.0, 10.0))
+                .radius(Size::new_scene(4.0))
+                .color(Color32::from_rgb(255, 180, 1));
+            line_batch
+                .add_segment_2d(glam::vec2(500.0, 30.0), glam::vec2(1000.0, 30.0))
+                .radius(Size::new_points(4.0))
+                .color(Color32::from_rgb(255, 180, 1));
+            line_batch
+                .add_segment_2d(glam::vec2(500.0, 60.0), glam::vec2(1000.0, 60.0))
+                .radius(Size::AUTO)
+                .color(Color32::from_rgb(255, 180, 1));
+            line_batch
+                .add_segment_2d(glam::vec2(500.0, 90.0), glam::vec2(1000.0, 90.0))
+                .radius(Size::AUTO_LARGE)
+                .color(Color32::from_rgb(255, 180, 1));
+        }
 
         // Points with different kinds of radius
         // The first two points are the same thickness if there no (!) scaling.

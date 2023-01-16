@@ -42,7 +42,7 @@
 //! As long as we're not able to restart the strip (requires indices!), we can't discard a quad in a triangle strip setup.
 //! However, this could be solved with an index buffer which has the ability to restart triangle strips (something we haven't tried yet).
 //!
-//! Another much more tricky issue is handling of line caps:
+//! Another much more tricky issue is handling of line miters:
 //! Let's have a look at a corner between two line positions (line positions marked with `X`)
 //! ```raw
 //! o--------------------------o
@@ -82,10 +82,19 @@
 //! TODO(andreas): Implement (3). Right now we don't implement line caps at all.
 //!
 //!
-//! Arrow Heads
+//! Line start/end caps (arrows/rounded/etc.)
 //! -----------------------------------------------
 //! Yet another place where our triangle *strip* comes in handy is that we can take triangles from superfluous quads to form pointy arrows.
 //! Again, we keep all the geometry calculating logic in the vertex shader.
+//!
+//! For all batches, independent whether we use caps or not our topology is as follow:
+//!            _________________________________________________________
+//!            \  |                         |\  |                       |\
+//!             \ |  ... n strip quads ...  | \ | ... m strip quads ... | \
+//!              \|_________________________|__\|_______________________|__\
+//! (start cap triangle only)         (start+end triangle)              (end triangle only)
+//!
+//!
 //!
 //! Things we might try in the future
 //! ----------------------------------
@@ -323,9 +332,8 @@ impl LineDrawData {
         );
 
         let num_strips = strips.len() as u32;
-        // Add a placeholder vertex at the beginning to simplify line cap handling
-        // (need this only if the first line starts with a cap, but not specialcasing this makes things easier!)
-        let num_segments = vertices.len() as u32 + 1;
+        // Add a sentinel vertex both at the beginning and the end to make cap calculation easier.
+        let num_segments = vertices.len() as u32 + 2;
 
         // TODO(andreas): just create more draw work items each with its own texture to become "unlimited"
         if num_strips > LINE_STRIP_TEXTURE_SIZE * LINE_STRIP_TEXTURE_SIZE {
@@ -386,6 +394,11 @@ impl LineDrawData {
         // To make the data upload simpler (and have it be done in one go), we always update full rows of each of our textures
         let mut position_data_staging =
             Vec::with_capacity(wgpu::util::align_to(num_segments, POSITION_TEXTURE_SIZE) as usize);
+        // sentinel at the beginning to facilitate caps.
+        position_data_staging.push(LineVertex {
+            position: glam::vec3(f32::INFINITY, f32::INFINITY, f32::INFINITY),
+            strip_index: u32::MAX,
+        });
         position_data_staging.extend(vertices.iter());
         // placeholder at the end to facilitate caps.
         position_data_staging.push(LineVertex {
@@ -506,6 +519,8 @@ impl LineDrawData {
             for (i, batch_info) in batches.iter().enumerate() {
                 // CAREFUL: Memory from `write_buffer_with` may not be aligned, causing bytemuck to fail at runtime if we use it to cast the memory to a slice!
                 let offset = i * allocation_size_per_uniform_buffer as usize;
+                let line_vertex_range_end =
+                    start_vertex_for_next_batch + batch_info.line_vertex_count;
                 staging_buffer
                     [offset..(offset + std::mem::size_of::<gpu_data::BatchUniformBuffer>())]
                     .copy_from_slice(bytemuck::bytes_of(&gpu_data::BatchUniformBuffer {
@@ -533,14 +548,13 @@ impl LineDrawData {
 
                 batches_internal.push(LineStripBatch {
                     bind_group,
-                    // We spawn a quad for every vertex. Naturally, this yields one extra quad at the beginning of each batch,
-                    // which is necessary to make line cap handling homogenous (each strip uses its first quad for both end and start cap)
-                    // Note that the vertex indices of batches are intentionally overlapping.
-                    vertex_range: (start_vertex_for_next_batch * 6)
-                        ..((start_vertex_for_next_batch + batch_info.line_vertex_count) * 6),
+                    // We spawn a quad for every line skeleton vertex. Naturally, this yields one extra quad in total.
+                    // Which is rather convenient because we need to ensure there are start and end triangles,
+                    // so just from a number-of=vertices perspective this is correct already and the shader can take care of offsets.
+                    vertex_range: (start_vertex_for_next_batch * 6)..(line_vertex_range_end * 6),
                 });
 
-                start_vertex_for_next_batch += batch_info.line_vertex_count;
+                start_vertex_for_next_batch = line_vertex_range_end;
             }
 
             if start_vertex_for_next_batch > vertices.len() as u32 {
