@@ -3,7 +3,9 @@ use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 
 use crate::msg_bundle::Component;
 
-/// A point in 2D space.
+/// A 3D Arrow
+///
+/// ## Examples
 ///
 /// ```
 /// use re_log_types::field_types::Arrow3D;
