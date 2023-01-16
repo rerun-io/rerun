@@ -36,7 +36,7 @@ from dataset.proto.objectron.proto import (
 from rerun.log.file import ImageFormat
 from scipy.spatial.transform import Rotation as R
 
-import rerun
+import rerun as rr
 
 
 @dataclass
@@ -112,15 +112,15 @@ def read_annotations(dirpath: Path) -> Sequence:
 def log_ar_frames(samples: Iterable[SampleARFrame], seq: Sequence) -> None:
     """Logs a stream of `ARFrame` samples and their annotations with the Rerun SDK."""
 
-    rerun.log_view_coordinates("world", up="+Y", timeless=True)
+    rr.log_view_coordinates("world", up="+Y", timeless=True)
 
     frame_times = []
     for sample in samples:
-        rerun.set_time_sequence("frame", sample.index)
-        rerun.set_time_seconds("time", sample.timestamp)
+        rr.set_time_sequence("frame", sample.index)
+        rr.set_time_seconds("time", sample.timestamp)
         frame_times.append(sample.timestamp)
 
-        rerun.log_image_file("world/camera/video", sample.image_path, img_format=ImageFormat.JPEG)
+        rr.log_image_file("world/camera/video", sample.image_path, img_format=ImageFormat.JPEG)
         log_camera(sample.frame.camera)
         log_point_cloud(sample.frame.raw_feature_points)
 
@@ -148,10 +148,10 @@ def log_camera(cam: ARCamera) -> None:
 
     rot = rot * R.from_rotvec((math.tau / 2.0) * X)  # TODO(emilk): figure out why this is needed
 
-    rerun.log_rigid3(
+    rr.log_rigid3(
         "world/camera", parent_from_child=(translation, rot.as_quat()), xyz="RDF"  # X=Right, Y=Down, Z=Forward
     )
-    rerun.log_pinhole(
+    rr.log_pinhole(
         "world/camera/video",
         child_from_parent=intrinsics,
         width=w,
@@ -164,7 +164,7 @@ def log_point_cloud(point_cloud: ARPointCloud) -> None:
 
     positions = np.array([[p.x, p.y, p.z] for p in point_cloud.point]).astype(np.float32)
     identifiers = point_cloud.identifier
-    rerun.log_points(f"world/points", positions=positions, identifiers=identifiers, colors=[255, 255, 255, 255])
+    rr.log_points(f"world/points", positions=positions, identifiers=identifiers, colors=[255, 255, 255, 255])
 
 
 def log_annotated_bboxes(bboxes: Iterable[Object]) -> None:
@@ -176,7 +176,7 @@ def log_annotated_bboxes(bboxes: Iterable[Object]) -> None:
             continue
 
         rot = R.from_matrix(np.asarray(bbox.rotation).reshape((3, 3)))
-        rerun.log_obb(
+        rr.log_obb(
             f"world/objects/{bbox.id}",
             bbox.scale,
             bbox.translation,
@@ -196,8 +196,8 @@ def log_frame_annotations(frame_times: List[float], frame_annotations: List[Fram
             continue
 
         time = frame_times[frame_idx]
-        rerun.set_time_sequence("frame", frame_idx)
-        rerun.set_time_seconds("time", time)
+        rr.set_time_sequence("frame", frame_idx)
+        rr.set_time_seconds("time", time)
 
         for obj_ann in frame_ann.annotations:
             keypoint_ids = [kp.id for kp in obj_ann.keypoints]
@@ -209,7 +209,7 @@ def log_frame_annotations(frame_times: List[float], frame_annotations: List[Fram
                 log_projected_bbox(f"world/camera/video/objects/{obj_ann.object_id}", keypoint_pos2s)
             else:
                 for (id, pos2) in zip(keypoint_ids, keypoint_pos2s):
-                    rerun.log_point(
+                    rr.log_point(
                         f"world/camera/video/objects/{obj_ann.object_id}/{id}",
                         pos2,
                         color=[130, 160, 250, 255],
@@ -247,7 +247,7 @@ def log_projected_bbox(path: str, keypoints: npt.NDArray[np.float32]) -> None:
                          dtype=np.float32)
     # fmt: on
 
-    rerun.log_line_segments(path, segments, color=[130, 160, 250, 255])
+    rr.log_line_segments(path, segments, color=[130, 160, 250, 255])
 
 
 def main() -> None:
@@ -284,13 +284,13 @@ def main() -> None:
     if args.run_forever:
         assert args.connect, "If you run forever, you need to --connect"
 
-    rerun.init("objectron")
+    rr.init("objectron")
 
     if args.connect:
         # Send logging data to separate `rerun` process.
         # You can ommit the argument to connect to the default address,
         # which is `127.0.0.1:9876`.
-        rerun.connect(args.addr)
+        rr.connect(args.addr)
 
     dir = ensure_recording_available(args.recording, args.dataset_dir, args.force_reprocess_video)
 
@@ -299,11 +299,11 @@ def main() -> None:
     log_ar_frames(samples, seq)
 
     if args.save is not None:
-        rerun.save(args.save)
+        rr.save(args.save)
     elif args.headless:
         pass
     elif not args.connect:
-        rerun.show()
+        rr.show()
 
 
 if __name__ == "__main__":

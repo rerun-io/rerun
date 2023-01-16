@@ -8,6 +8,8 @@ use ndarray::{Axis, Ix2};
 use re_log_types::{field_types, ClassicTensor, TensorDataType};
 use re_tensor_ops::dimension_mapping::DimensionMapping;
 
+use crate::ui::data_ui::image::format_tensor_shape;
+
 use super::dimension_mapping_ui;
 
 // ---
@@ -46,8 +48,8 @@ impl ViewTensorState {
     pub(crate) fn ui(&mut self, ctx: &mut crate::misc::ViewerContext<'_>, ui: &mut egui::Ui) {
         if let Some(tensor) = &self.tensor {
             ui.collapsing("Dimension Mapping", |ui| {
-                ui.label(format!("shape: {:?}", tensor.shape()));
                 ui.label(format!("dtype: {}", tensor.dtype()));
+                ui.label(format!("shape: {}", format_tensor_shape(tensor.shape())));
                 ui.add_space(12.0);
 
                 dimension_mapping_ui(ui, &mut self.dimension_mapping, tensor.shape());

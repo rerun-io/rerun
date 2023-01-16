@@ -122,7 +122,7 @@ impl TransformCache {
                             )
                             * glam::Mat4::perspective_infinite_lh(
                                 pinhole.fov_y().unwrap(),
-                                pinhole.aspect_ratio(),
+                                pinhole.aspect_ratio().unwrap_or(1.0),
                                 0.0,
                             )
                     } else {
@@ -215,17 +215,21 @@ impl TransformCache {
                         encountered_pinhole = true;
 
                         // A pinhole camera means that we're looking at an image.
-                        // Images are spanned in their local x/y space with their r
+                        // Images are spanned in their local x/y space.
                         // Center it and move it along z, scaling the further we move.
 
                         let distance = obj_properties
                             .get(child_path)
                             .pinhole_image_plane_distance(pinhole);
 
-                        let scale = distance / pinhole.focal_length_in_pixels().y();
+                        let focal_length = pinhole.focal_length_in_pixels();
+                        let focal_length = glam::vec2(focal_length.x(), focal_length.y());
+                        let scale = distance / focal_length;
                         let translation = (-pinhole.principal_point() * scale).extend(distance);
                         let parent_from_child = glam::Mat4::from_scale_rotation_translation(
-                            glam::vec3(scale, scale, 1.0),
+                            // We want to preserve any depth that might be on the pinhole image.
+                            // Use harmonic mean of x/y scale for those.
+                            scale.extend(1.0 / (1.0 / scale.x + 1.0 / scale.y)),
                             glam::Quat::IDENTITY,
                             translation,
                         );

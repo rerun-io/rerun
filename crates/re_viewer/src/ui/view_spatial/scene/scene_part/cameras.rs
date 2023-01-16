@@ -1,9 +1,10 @@
-use re_data_store::{query_transform, InstanceIdHash, ObjPath};
+use re_data_store::{query_transform, InstanceIdHash, ObjPath, ObjectProps};
 use re_log_types::{
     coordinates::{Handedness, SignedAxis3},
     IndexHash, Pinhole, Transform, ViewCoordinates,
 };
 use re_query::{query_entity_with_primary, QueryError};
+use re_renderer::renderer::LineStripFlags;
 
 use crate::{
     misc::{space_info::query_view_coordinates, ViewerContext},
@@ -58,6 +59,7 @@ impl ScenePart for CamerasPartClassic {
             CamerasPart::visit_instance(
                 scene,
                 obj_path,
+                &props,
                 transforms,
                 instance_hash,
                 hovered_instance,
@@ -101,13 +103,14 @@ fn determine_view_coordinates(
 pub struct CamerasPart;
 
 impl CamerasPart {
+    #[allow(clippy::too_many_arguments)]
     fn visit_instance(
         scene: &mut SceneSpatial,
         obj_path: &ObjPath,
+        props: &ObjectProps,
         transforms: &TransformCache,
         instance: InstanceIdHash,
-        // TODO(andreas): Don't need hovered instances *yet* since most of the primitive handling is delayed.
-        _hovered_instance: InstanceIdHash,
+        hovered_instance: InstanceIdHash,
         pinhole: Pinhole,
         view_coordinates: ViewCoordinates,
     ) {
@@ -144,6 +147,78 @@ impl CamerasPart {
             world_from_camera,
             pinhole: Some(pinhole),
         });
+
+        let frustum_length = props.pinhole_image_plane_distance(&pinhole);
+
+        // TODO(andreas): FOV fallback doesn't make much sense. What does pinhole without fov mean?
+        let fov_y = pinhole.fov_y().unwrap_or(std::f32::consts::FRAC_PI_2);
+        let fy = (fov_y * 0.5).tan() * frustum_length;
+        let fx = fy * pinhole.aspect_ratio().unwrap_or(1.0);
+
+        let image_center_pixel = pinhole.resolution().unwrap_or(glam::Vec2::ZERO) * 0.5;
+        let principal_point_offset_pixel = image_center_pixel - pinhole.principal_point();
+        let principal_point_offset =
+            principal_point_offset_pixel / pinhole.resolution().unwrap_or(glam::Vec2::ONE);
+        // Don't multiply with (fx,fy) because that would multiply the aspect ratio twice!
+        // Times two since fy is the half screen size (extending from -fy to fy!).
+        let offset = principal_point_offset * (fy * 2.0);
+
+        let corners = [
+            (offset + glam::vec2(fx, -fy)).extend(frustum_length),
+            (offset + glam::vec2(fx, fy)).extend(frustum_length),
+            (offset + glam::vec2(-fx, fy)).extend(frustum_length),
+            (offset + glam::vec2(-fx, -fy)).extend(frustum_length),
+        ];
+        let triangle_frustum_offset = fy * 1.05;
+        let up_triangle = [
+            // Use only fx for with and height of the triangle, so that the aspect ratio of the triangle is always the same.
+            (offset + glam::vec2(-fx * 0.25, -triangle_frustum_offset)).extend(frustum_length),
+            (offset + glam::vec2(0.0, -fx * 0.25 - triangle_frustum_offset)).extend(frustum_length),
+            (offset + glam::vec2(fx * 0.25, -triangle_frustum_offset)).extend(frustum_length),
+        ];
+
+        let segments = [
+            // Frustum corners
+            (glam::Vec3::ZERO, corners[0]),
+            (glam::Vec3::ZERO, corners[1]),
+            (glam::Vec3::ZERO, corners[2]),
+            (glam::Vec3::ZERO, corners[3]),
+            // rectangle around "far plane"
+            (corners[0], corners[1]),
+            (corners[1], corners[2]),
+            (corners[2], corners[3]),
+            (corners[3], corners[0]),
+            // triangle indicating up direction
+            (up_triangle[0], up_triangle[1]),
+            (up_triangle[1], up_triangle[2]),
+            (up_triangle[2], up_triangle[0]),
+        ];
+
+        let (line_radius, line_color) = if instance == hovered_instance {
+            (
+                re_renderer::Size::new_points(2.0),
+                SceneSpatial::HOVER_COLOR,
+            )
+        } else {
+            (
+                re_renderer::Size::new_points(1.0),
+                SceneSpatial::CAMERA_COLOR,
+            )
+        };
+        scene
+            .primitives
+            .line_strips
+            .batch("camera frustum")
+            .world_from_obj(world_from_parent)
+            .add_segments(segments.into_iter())
+            .radius(line_radius)
+            .color(line_color)
+            .flags(
+                LineStripFlags::NO_COLOR_GRADIENT
+                    | LineStripFlags::CAP_END_ROUND
+                    | LineStripFlags::CAP_START_ROUND,
+            )
+            .user_data(instance);
     }
 }
 
@@ -190,6 +265,7 @@ impl ScenePart for CamerasPart {
                     Self::visit_instance(
                         scene,
                         ent_path,
+                        &props,
                         transforms,
                         instance_hash,
                         hovered_instance,

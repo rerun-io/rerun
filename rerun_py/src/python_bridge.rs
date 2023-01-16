@@ -1746,8 +1746,6 @@ fn log_mesh_file(
     let mut session = global_session();
     let obj_path = session.classic_prefix_obj_path(obj_path);
 
-    session.register_type(obj_path.obj_type_path(), ObjectType::Mesh3D);
-
     let time_point = time(timeless);
 
     let mesh3d = Mesh3D::Encoded(EncodedMesh3D {
@@ -1764,9 +1762,7 @@ fn log_mesh_file(
     //
     // TODO(jleibs) replace with python-native implementation
     if session.arrow_log_gate() {
-        let mut arrow_path = "arrow/".to_owned();
-        arrow_path.push_str(obj_path_str);
-        let arrow_path = parse_obj_path(arrow_path.as_str())?;
+        let arrow_path = session.arrow_prefix_obj_path(obj_path.clone());
 
         let bundle = MsgBundle::new(
             MsgId::random(),
@@ -1781,6 +1777,8 @@ fn log_mesh_file(
     }
 
     if session.classic_log_gate() {
+        let obj_path = session.arrow_prefix_obj_path(obj_path);
+        session.register_type(obj_path.obj_type_path(), ObjectType::Mesh3D);
         session.send_data(
             &time_point,
             (&obj_path, "mesh"),
@@ -1813,7 +1811,7 @@ fn log_image_file(
     };
 
     use image::ImageDecoder as _;
-    let ((w, h), data) = match img_format {
+    let (w, h) = match img_format {
         image::ImageFormat::Jpeg => {
             use image::codecs::jpeg::JpegDecoder;
             let jpeg = JpegDecoder::new(Cursor::new(&img_bytes))
@@ -1828,7 +1826,7 @@ fn log_image_file(
                 )));
             }
 
-            (jpeg.dimensions(), TensorDataStore::Jpeg(img_bytes.into()))
+            jpeg.dimensions()
         }
         _ => {
             return Err(PyTypeError::new_err(format!(
@@ -1839,27 +1837,53 @@ fn log_image_file(
     };
 
     let mut session = global_session();
-    let obj_path = session.classic_prefix_obj_path(obj_path);
-
-    session.register_type(obj_path.obj_type_path(), ObjectType::Image);
 
     let time_point = time(timeless);
 
-    session.send_data(
-        &time_point,
-        (&obj_path, "tensor"),
-        LoggedData::Single(Data::Tensor(re_log_types::ClassicTensor::new(
-            TensorId::random(),
-            vec![
-                TensorDimension::height(h as _),
-                TensorDimension::width(w as _),
-                TensorDimension::depth(3),
-            ],
-            TensorDataType::U8,
-            re_log_types::field_types::TensorDataMeaning::Unknown,
-            data,
-        ))),
-    );
+    if session.arrow_log_gate() {
+        let arrow_path = session.arrow_prefix_obj_path(obj_path.clone());
+        let bundle = MsgBundle::new(
+            MsgId::random(),
+            arrow_path,
+            time_point.clone(),
+            vec![vec![re_log_types::field_types::Tensor {
+                tensor_id: TensorId::random(),
+                shape: vec![
+                    TensorDimension::height(h as _),
+                    TensorDimension::width(w as _),
+                    TensorDimension::depth(3),
+                ],
+                data: re_log_types::field_types::TensorData::JPEG(img_bytes.clone()),
+                meaning: re_log_types::field_types::TensorDataMeaning::Unknown,
+            }]
+            .try_into()
+            .unwrap()],
+        );
+
+        let msg = bundle.try_into().unwrap();
+
+        session.send(LogMsg::ArrowMsg(msg));
+    }
+
+    if session.classic_log_gate() {
+        let obj_path = session.classic_prefix_obj_path(obj_path);
+        session.register_type(obj_path.obj_type_path(), ObjectType::Image);
+        session.send_data(
+            &time_point,
+            (&obj_path, "tensor"),
+            LoggedData::Single(Data::Tensor(re_log_types::ClassicTensor::new(
+                TensorId::random(),
+                vec![
+                    TensorDimension::height(h as _),
+                    TensorDimension::width(w as _),
+                    TensorDimension::depth(3),
+                ],
+                TensorDataType::U8,
+                re_log_types::field_types::TensorDataMeaning::Unknown,
+                TensorDataStore::Jpeg(img_bytes.into()),
+            ))),
+        );
+    }
 
     Ok(())
 }
