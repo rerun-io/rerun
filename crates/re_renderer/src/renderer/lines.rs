@@ -394,7 +394,7 @@ impl LineDrawData {
         // To make the data upload simpler (and have it be done in one go), we always update full rows of each of our textures
         let mut position_data_staging =
             Vec::with_capacity(wgpu::util::align_to(num_segments, POSITION_TEXTURE_SIZE) as usize);
-        // placeholder at the beginning to facilitate caps.
+        // sentinel at the beginning to facilitate caps.
         position_data_staging.push(LineVertex {
             position: glam::vec3(f32::INFINITY, f32::INFINITY, f32::INFINITY),
             strip_index: u32::MAX,
