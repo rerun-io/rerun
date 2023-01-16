@@ -296,6 +296,11 @@ impl OrbitEye {
 
     /// Listen to WSAD and QE to move the eye.
     fn keyboard_navigation(&mut self, egui_ctx: &egui::Context) {
+        let anything_has_focus = egui_ctx.memory().focus().is_some();
+        if anything_has_focus {
+            return; // e.g. we're typing in a TextField
+        }
+
         let input = egui_ctx.input();
         let dt = input.stable_dt.at_most(0.1);
 

@@ -37,6 +37,7 @@ pub fn set_default_rust_log_env() {
     }
 }
 
-pub fn default_log_filter() -> String {
-    "info,naga=warn,wgpu_core=warn,wgpu_hal=warn".to_owned()
+#[cfg(target_arch = "wasm32")]
+pub fn default_web_log_filter() -> String {
+    "debug,naga=warn,wgpu_core=warn,wgpu_hal=warn".to_owned()
 }
