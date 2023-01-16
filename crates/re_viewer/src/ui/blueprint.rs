@@ -66,7 +66,9 @@ impl Blueprint {
         panel.show_animated_inside(ui, self.blueprint_panel_expanded, |ui: &mut egui::Ui| {
             ui.horizontal(|ui| {
                 ui.vertical_centered(|ui| {
-                    ui.strong("Blueprint");
+                    ui.strong("Blueprint").on_hover_text(
+                        "The Blueprint is where you can configure the Rerun Viewer.",
+                    );
                 });
             });
 
