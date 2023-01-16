@@ -512,10 +512,14 @@ fn paint_view(
 
     // Draw labels:
     {
-        let painter = ui.painter().clone().with_layer_id(egui::LayerId::new(
-            egui::Order::Foreground,
-            egui::Id::new("LabelsLayer"),
-        ));
+        let painter = ui
+            .painter()
+            .clone()
+            .with_layer_id(egui::LayerId::new(
+                egui::Order::Foreground,
+                egui::Id::new("LabelsLayer"),
+            ))
+            .with_clip_rect(ui.max_rect());
 
         crate::profile_function!("labels");
         let ui_from_world = eye.ui_from_world(&rect);
