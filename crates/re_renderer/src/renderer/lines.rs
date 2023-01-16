@@ -332,8 +332,8 @@ impl LineDrawData {
         );
 
         let num_strips = strips.len() as u32;
-        // Add a placeholder vertex at the end to simplify line cap handling.
-        let num_segments = vertices.len() as u32 + 1;
+        // Add a placeholder vertex both at the beginning and the end to make cap calculation easier.
+        let num_segments = vertices.len() as u32 + 2;
 
         // TODO(andreas): just create more draw work items each with its own texture to become "unlimited"
         if num_strips > LINE_STRIP_TEXTURE_SIZE * LINE_STRIP_TEXTURE_SIZE {
@@ -394,6 +394,11 @@ impl LineDrawData {
         // To make the data upload simpler (and have it be done in one go), we always update full rows of each of our textures
         let mut position_data_staging =
             Vec::with_capacity(wgpu::util::align_to(num_segments, POSITION_TEXTURE_SIZE) as usize);
+        // placeholder at the beginning to facilitate caps.
+        position_data_staging.push(LineVertex {
+            position: glam::vec3(f32::INFINITY, f32::INFINITY, f32::INFINITY),
+            strip_index: u32::MAX,
+        });
         position_data_staging.extend(vertices.iter());
         // placeholder at the end to facilitate caps.
         position_data_staging.push(LineVertex {
