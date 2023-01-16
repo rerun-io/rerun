@@ -78,8 +78,8 @@ impl ScenePart for Arrows3DPartClassic {
                 let re_log_types::Arrow3D { origin, vector } = arrow;
 
                 let width_scale = width_scale.unwrap_or(1.0);
-                let vector: glam::Vec3 = (*vector).into();
-                let origin: glam::Vec3 = (*origin).into();
+                let vector = glam::Vec3::from(*vector);
+                let origin = glam::Vec3::from(*origin);
 
                 let mut radius = Size::new_scene(width_scale * 0.5);
                 let tip_length = LineStripFlags::get_triangle_cap_tip_length(radius.0);
@@ -156,8 +156,8 @@ impl Arrows3DPart {
 
             let re_log_types::Arrow3D { origin, vector } = arrow;
 
-            let vector: glam::Vec3 = vector.into();
-            let origin: glam::Vec3 = origin.into();
+            let vector = glam::Vec3::from(vector);
+            let origin = glam::Vec3::from(origin);
 
             let mut radius = radius.map_or(Size(0.5), |r| Size(r.0));
             let tip_length = LineStripFlags::get_triangle_cap_tip_length(radius.0);
