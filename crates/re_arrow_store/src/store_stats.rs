@@ -7,7 +7,7 @@ use crate::{
 
 // TODO(cmc): count buckets?
 // TODO(cmc): compute incrementally once/if this becomes too expensive.
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct DataStoreStats {
     pub total_timeless_index_rows: u64,
     pub total_timeless_index_size_bytes: u64,

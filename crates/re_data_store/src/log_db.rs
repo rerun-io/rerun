@@ -1,7 +1,10 @@
 use itertools::Itertools as _;
 use nohash_hasher::{IntMap, IntSet};
 
+use re_arrow_store::{DataStoreConfig, GarbageCollectionTarget, TimeType};
+use re_log::warn_once;
 use re_log_types::{
+    external::arrow2_convert::deserialize::arrow_array_deserialize_iterator,
     field_types::{Instance, Scalar, TextEntry},
     msg_bundle::{Component as _, ComponentBundle, MsgBundle},
     objects, ArrowMsg, BatchIndex, BeginRecordingMsg, DataMsg, DataPath, DataVec, FieldOrComponent,
@@ -39,7 +42,14 @@ impl Default for ObjDb {
             obj_path_from_hash: Default::default(),
             tree: crate::ObjectTree::root(),
             store: Default::default(),
-            arrow_store: re_arrow_store::DataStore::new(Instance::name(), Default::default()),
+            arrow_store: re_arrow_store::DataStore::new(
+                Instance::name(),
+                DataStoreConfig {
+                    component_bucket_size_bytes: 1024 * 1024, // 1 MiB
+                    index_bucket_size_bytes: 1024,            // 1KiB
+                    ..Default::default()
+                },
+            ),
         }
     }
 }
@@ -235,7 +245,11 @@ impl ObjDb {
         }
     }
 
-    pub fn purge_everything_but(&mut self, keep_msg_ids: &ahash::HashSet<MsgId>) {
+    pub fn retain(
+        &mut self,
+        keep_msg_ids: Option<&ahash::HashSet<MsgId>>,
+        drop_msg_ids: Option<&ahash::HashSet<MsgId>>,
+    ) {
         crate::profile_function!();
 
         let Self {
@@ -248,12 +262,10 @@ impl ObjDb {
 
         {
             crate::profile_scope!("tree");
-            tree.purge_everything_but(keep_msg_ids);
+            tree.retain(keep_msg_ids, drop_msg_ids);
         }
 
-        store.purge_everything_but(keep_msg_ids);
-
-        //TODO(john,clement) wire up purging to the ArrowStore
+        store.retain(keep_msg_ids, drop_msg_ids);
     }
 }
 
@@ -437,6 +449,66 @@ impl LogDb {
 
     /// Free up some RAM by forgetting the older parts of all timelines.
     pub fn purge_fraction_of_ram(&mut self, fraction_to_purge: f32) {
+        crate::profile_function!();
+
+        assert!((0.0..=1.0).contains(&fraction_to_purge));
+
+        match (
+            !self.obj_db.store.is_empty(),
+            self.obj_db.arrow_store.total_temporal_index_rows() > 0,
+        ) {
+            (true, true) => warn_once!("GC not supported in mixed mode"),
+            (true, false) => self.purge_fraction_of_ram_classic(fraction_to_purge),
+            (false, true) => self.purge_fraction_of_ram_arrow(fraction_to_purge),
+            (false, false) => {}
+        }
+    }
+
+    fn purge_fraction_of_ram_arrow(&mut self, fraction_to_purge: f32) {
+        crate::profile_function!();
+
+        assert!((0.0..=1.0).contains(&fraction_to_purge));
+
+        let drop_msg_ids = {
+            let msg_id_chunks = self.obj_db.arrow_store.gc(
+                GarbageCollectionTarget::DropAtLeastPercentage(fraction_to_purge as _),
+                Timeline::new("log_time", TimeType::Time),
+                MsgId::name(),
+            );
+
+            msg_id_chunks
+                .iter()
+                .flat_map(|chunk| {
+                    arrow_array_deserialize_iterator::<Option<MsgId>>(&**chunk).unwrap()
+                })
+                .map(Option::unwrap) // MsgId is always present
+                .collect::<ahash::HashSet<_>>()
+        };
+
+        let Self {
+            chronological_message_ids,
+            log_messages,
+            timeless_message_ids,
+            recording_info: _,
+            obj_db,
+        } = self;
+
+        chronological_message_ids.retain(|msg_id| !drop_msg_ids.contains(msg_id));
+
+        {
+            crate::profile_scope!("log_messages");
+            log_messages.retain(|msg_id, _| !drop_msg_ids.contains(msg_id));
+        }
+        {
+            crate::profile_scope!("timeless_message_ids");
+            timeless_message_ids.retain(|msg_id| !drop_msg_ids.contains(msg_id));
+        }
+
+        obj_db.retain(None, Some(&drop_msg_ids));
+    }
+
+    /// Free up some RAM by forgetting the older parts of all timelines.
+    fn purge_fraction_of_ram_classic(&mut self, fraction_to_purge: f32) {
         fn always_keep(msg: &LogMsg) -> bool {
             match msg {
                 //TODO(john) allow purging ArrowMsg
@@ -488,6 +560,6 @@ impl LogDb {
             timeless_message_ids.retain(|msg_id| keep_msg_ids.contains(msg_id));
         }
 
-        obj_db.purge_everything_but(&keep_msg_ids);
+        obj_db.retain(Some(&keep_msg_ids), None);
     }
 }
