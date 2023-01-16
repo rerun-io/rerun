@@ -84,7 +84,7 @@ def log_nyud_data(recording_path: Path, subset_idx: int = 0, depth_image_interva
     with zipfile.ZipFile(recording_path, "r") as archive:
         archive_dirs = [f.filename for f in archive.filelist if f.is_dir()]
 
-        print(f"Chose recording subset {subset_idx} ([0 - {len(archive_dirs) - 1}] available).")
+        print(f"Using recording subset {subset_idx} ([0 - {len(archive_dirs) - 1}] available).")
 
         dir_to_log = archive_dirs[subset_idx]
         subset = [
