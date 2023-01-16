@@ -36,12 +36,12 @@ impl CommandPalette {
             .fixed_size([width, max_height])
             .pivot(egui::Align2::CENTER_TOP)
             .fixed_pos(screen_rect.center() - 0.5 * max_height * egui::Vec2::Y)
-            .show(egui_ctx, |ui| self.window_content(ui))?
+            .show(egui_ctx, |ui| self.window_content_ui(ui))?
             .inner?
     }
 
     #[must_use = "Returns the command that was selected"]
-    fn window_content(&mut self, ui: &mut egui::Ui) -> Option<Command> {
+    fn window_content_ui(&mut self, ui: &mut egui::Ui) -> Option<Command> {
         // Check _before_ we add the `TextEdit`, so it doesn't steal it.
         let enter_pressed = ui.input_mut().consume_key(Default::default(), Key::Enter);
 
@@ -60,7 +60,7 @@ impl CommandPalette {
         let selected_command = egui::ScrollArea::vertical()
             .auto_shrink([false, true])
             .show(ui, |ui| {
-                self.alternatives(ui, enter_pressed, scroll_to_selected_alternative)
+                self.alternatives_ui(ui, enter_pressed, scroll_to_selected_alternative)
             })
             .inner;
 
@@ -72,7 +72,7 @@ impl CommandPalette {
     }
 
     #[must_use = "Returns the command that was selected"]
-    fn alternatives(
+    fn alternatives_ui(
         &mut self,
         ui: &mut egui::Ui,
         enter_pressed: bool,
