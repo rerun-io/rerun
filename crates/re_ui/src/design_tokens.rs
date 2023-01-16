@@ -61,7 +61,7 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
 
     let panel_bg_color = get_aliased_color(&json, "{Alias.Color.Surface.Default.value}");
     // let floating_color = get_aliased_color(&json, "{Alias.Color.Surface.Floating.value}");
-    let floating_color = Color32::from_gray(38); // HACK: the one in design_tokens.json is too similar to bottom_bar_color
+    let floating_color = Color32::from_gray(38); // TODO(emilk): we need this because the one in design_tokens.json is too similar to bottom_bar_color
 
     egui_style.visuals.widgets.noninteractive.bg_fill = panel_bg_color;
 

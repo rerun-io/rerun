@@ -213,7 +213,7 @@ impl TimePanel {
             let size = egui::vec2(self.prev_col_width, 28.0);
             ui.allocate_ui_with_layout(size, egui::Layout::top_down(egui::Align::Center), |ui| {
                 ui.set_min_size(size);
-                ui.add_space(4.0); // HACK to vertically center the text
+                ui.add_space(4.0); // hack to vertically center the text
                 ui.strong("Streams").on_hover_text(
                     "A hierarchial view of the paths used during logging.\n\
                         \n\
