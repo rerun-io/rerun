@@ -332,7 +332,7 @@ impl LineDrawData {
         );
 
         let num_strips = strips.len() as u32;
-        // Add a placeholder vertex both at the beginning and the end to make cap calculation easier.
+        // Add a sentinel vertex both at the beginning and the end to make cap calculation easier.
         let num_segments = vertices.len() as u32 + 2;
 
         // TODO(andreas): just create more draw work items each with its own texture to become "unlimited"
