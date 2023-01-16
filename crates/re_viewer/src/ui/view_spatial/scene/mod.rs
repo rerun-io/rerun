@@ -167,6 +167,7 @@ impl SceneSpatial {
             &scene_part::Boxes3DPart,
             &scene_part::Lines3DPartClassic,
             &scene_part::Lines3DPart,
+            &scene_part::Arrows3DPartClassic,
             &scene_part::Arrows3DPart,
             &scene_part::MeshPartClassic,
             &scene_part::MeshPart,

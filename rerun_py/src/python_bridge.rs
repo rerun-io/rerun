@@ -1478,7 +1478,10 @@ fn log_arrow(
     let time_point = time(timeless);
 
     let arrow = match (origin, vector) {
-        (Some(origin), Some(vector)) => re_log_types::Arrow3D { origin, vector },
+        (Some(origin), Some(vector)) => re_log_types::Arrow3D {
+            origin: origin.into(),
+            vector: vector.into(),
+        },
         (None, None) => {
             // None, None means to clear the arrow
             session.send_path_op(&time_point, PathOp::ClearFields(obj_path));

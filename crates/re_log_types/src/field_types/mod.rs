@@ -8,6 +8,7 @@ use lazy_static::lazy_static;
 
 use crate::msg_bundle::Component;
 
+mod arrow;
 mod bbox;
 mod class_id;
 mod color;
@@ -31,6 +32,7 @@ mod text_entry;
 mod transform;
 mod vec;
 
+pub use arrow::Arrow3D;
 pub use bbox::Box3D;
 pub use class_id::ClassId;
 pub use color::ColorRGBA;
@@ -56,8 +58,9 @@ pub use vec::{Vec2D, Vec3D};
 
 lazy_static! {
     //TODO(john) actully use a run-time type registry
-    static ref FIELDS: [Field; 24] = [
+    static ref FIELDS: [Field; 25] = [
         <AnnotationContext as Component>::field(),
+        <Arrow3D as Component>::field(),
         <Box3D as Component>::field(),
         <ClassId as Component>::field(),
         <ColorRGBA as Component>::field(),
