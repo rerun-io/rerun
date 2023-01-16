@@ -214,12 +214,15 @@ impl TimePanel {
             ui.allocate_ui_with_layout(size, egui::Layout::top_down(egui::Align::Center), |ui| {
                 ui.set_min_size(size);
                 ui.add_space(4.0); // hack to vertically center the text
-                ui.strong("Streams").on_hover_text(
-                    "A hierarchial view of the paths used during logging.\n\
+                ui.strong("Streams");
+            })
+            .response
+            .on_hover_text(
+                "A hierarchial view of the paths used during logging.\n\
                         \n\
                         On the right you can see when there was a log event for a stream.",
-                );
-            });
+            );
+
             let bottom = ui.min_rect().bottom();
             Rect::from_x_y_ranges(time_fg_x_range.clone(), top..=bottom)
         };
