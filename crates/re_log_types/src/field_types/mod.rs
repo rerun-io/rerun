@@ -8,6 +8,7 @@ use lazy_static::lazy_static;
 
 use crate::msg_bundle::Component;
 
+mod arrow;
 mod bbox;
 mod class_id;
 mod color;
@@ -31,6 +32,7 @@ mod text_entry;
 mod transform;
 mod vec;
 
+pub use arrow::Arrow3D;
 pub use bbox::Box3D;
 pub use class_id::ClassId;
 pub use color::ColorRGBA;
