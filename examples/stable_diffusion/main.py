@@ -13,7 +13,6 @@ from typing import Final
 if platform.system() == "Darwin":
     os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
 
-
 import requests
 import torch
 from huggingface_pipeline import StableDiffusionDepth2ImgPipeline
@@ -23,7 +22,7 @@ import rerun as rr
 
 EXAMPLE_DIR: Final = Path(os.path.dirname(__file__))
 DATASET_DIR: Final = EXAMPLE_DIR / "dataset"
-IMAGE_PATH: Final = DATASET_DIR / "portrait-emil.jpg"
+CACHE_DIR: Final = EXAMPLE_DIR / "cache"
 
 IMAGE_NAME_TO_URL: Final = {
     "old_man": "https://github.com/Stability-AI/stablediffusion/raw/main/assets/stable-samples/depth2img/old_man.png",
@@ -37,7 +36,7 @@ def run_stable_diffusion(
 ) -> None:
 
     pipe = StableDiffusionDepth2ImgPipeline.from_pretrained(
-        "stabilityai/stable-diffusion-2-depth", local_files_only=False
+        "stabilityai/stable-diffusion-2-depth", local_files_only=False, cache_dir=CACHE_DIR.absolute()
     )
 
     if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
