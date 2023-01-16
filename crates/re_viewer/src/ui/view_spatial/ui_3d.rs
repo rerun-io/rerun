@@ -292,7 +292,7 @@ pub fn view_3d(
     state: &mut ViewSpatialState,
     space: &ObjPath,
     mut scene: SceneSpatial,
-) -> egui::Response {
+) {
     crate::profile_function!();
 
     state.state_3d.space_camera = scene.space_cameras.clone();
@@ -443,6 +443,7 @@ pub fn view_3d(
     }
 
     show_projections_from_2d_space(ctx, &mut scene, &state.scene_bbox_accum);
+
     if state.state_3d.show_axes {
         scene.primitives.add_axis_lines(
             macaw::IsoTransform::IDENTITY,
@@ -496,8 +497,6 @@ pub fn view_3d(
         &space.to_string(),
         state.auto_size_config(),
     );
-
-    response
 }
 
 fn paint_view(
