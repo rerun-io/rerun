@@ -1,7 +1,7 @@
-import logging
 from typing import Optional, Sequence
 
-from rerun.log import EXP_ARROW
+import numpy as np
+from rerun.log import EXP_ARROW, _normalize_colors
 
 from rerun import bindings
 
@@ -104,4 +104,25 @@ def log_scalar(
         bindings.log_scalar(obj_path, scalar, label, color, radius, scattered)
 
     if EXP_ARROW.arrow_log_gate():
-        logging.warning("log_scalar() not yet implemented for Arrow.")
+        from rerun.components.color import ColorRGBAArray
+        from rerun.components.label import LabelArray
+        from rerun.components.radius import RadiusArray
+        from rerun.components.scalar import ScalarArray, ScalarPlotPropsArray
+
+        comps = {"rerun.scalar": ScalarArray.from_numpy(np.array([scalar]))}
+
+        if label:
+            comps["rerun.label"] = LabelArray.new([label])
+
+        if color:
+            colors = _normalize_colors(np.array([color]))
+            comps["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
+
+        if radius:
+            comps["rerun.radius"] = RadiusArray.from_numpy(np.array([radius]))
+
+        if scattered:
+            props = [{"scattered": scattered}]
+            comps["rerun.scalar_plot_props"] = ScalarPlotPropsArray.from_props(props)
+
+        bindings.log_arrow_msg(obj_path, components=comps, timeless=False)

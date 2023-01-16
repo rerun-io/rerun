@@ -62,6 +62,9 @@ pub enum Error {
         expected: DataType,
     },
 
+    #[error("Tried to write into classic store using arrow component")]
+    WrongFieldType,
+
     #[error(transparent)]
     MsgBundleError(#[from] msg_bundle::MsgBundleError),
 

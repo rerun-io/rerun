@@ -1,8 +1,4 @@
-use arrow2::{array::TryPush, datatypes::DataType};
-use arrow2_convert::{
-    arrow_enable_vec_for_type, deserialize::ArrowDeserialize, field::ArrowField,
-    serialize::ArrowSerialize,
-};
+use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 
 use crate::msg_bundle::Component;
 
@@ -15,7 +11,20 @@ use crate::msg_bundle::Component;
 ///
 /// assert_eq!(ColorRGBA::data_type(), DataType::UInt32);
 /// ```
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    derive_more::From,
+    derive_more::Into,
+    ArrowField,
+    ArrowSerialize,
+    ArrowDeserialize,
+)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[arrow_field(transparent)]
 pub struct ColorRGBA(pub u32);
 
 impl ColorRGBA {
@@ -29,37 +38,14 @@ impl ColorRGBA {
     }
 }
 
-arrow_enable_vec_for_type!(ColorRGBA);
-
-impl ArrowField for ColorRGBA {
-    type Type = Self;
-    fn data_type() -> DataType {
-        <u32 as ArrowField>::data_type()
-    }
-}
-
-impl ArrowSerialize for ColorRGBA {
-    type MutableArrayType = <u32 as ArrowSerialize>::MutableArrayType;
-
-    #[inline]
-    fn new_array() -> Self::MutableArrayType {
-        Self::MutableArrayType::default()
-    }
-
-    #[inline]
-    fn arrow_serialize(v: &Self, array: &mut Self::MutableArrayType) -> arrow2::error::Result<()> {
-        array.try_push(Some(v.0))
-    }
-}
-
-impl ArrowDeserialize for ColorRGBA {
-    type ArrayType = <u32 as ArrowDeserialize>::ArrayType;
-
-    #[inline]
-    fn arrow_deserialize(
-        v: <&Self::ArrayType as IntoIterator>::Item,
-    ) -> Option<<Self as ArrowField>::Type> {
-        <u32 as ArrowDeserialize>::arrow_deserialize(v).map(ColorRGBA)
+impl From<[u8; 4]> for ColorRGBA {
+    fn from(bytes: [u8; 4]) -> Self {
+        Self(
+            (bytes[0] as u32) << 24
+                | (bytes[1] as u32) << 16
+                | (bytes[2] as u32) << 8
+                | (bytes[3] as u32),
+        )
     }
 }
 

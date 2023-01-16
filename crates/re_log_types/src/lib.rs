@@ -27,8 +27,6 @@ pub mod datagen;
 pub mod arrow_msg;
 pub mod field_types;
 pub use arrow_msg::ArrowMsg;
-pub mod context;
-pub mod coordinates;
 mod data;
 pub mod hash;
 mod index;
@@ -45,16 +43,20 @@ pub mod external {
     pub use arrow2_convert;
 }
 
+pub use self::data::*;
+pub use self::field_types::context;
+pub use self::field_types::coordinates;
+pub use self::field_types::AnnotationContext;
+pub use self::field_types::MsgId;
+pub use self::field_types::ViewCoordinates;
+pub use self::field_types::{EncodedMesh3D, Mesh3D, MeshFormat, MeshId, RawMesh3D};
+pub use self::index::*;
+pub use self::objects::ObjectType;
+pub use self::path::*;
+pub use self::time::{Duration, Time};
+pub use self::time_point::{TimeInt, TimePoint, TimeType, Timeline, TimelineName};
 pub use self::time_range::{TimeRange, TimeRangeF};
 pub use self::time_real::TimeReal;
-pub use context::AnnotationContext;
-pub use coordinates::ViewCoordinates;
-pub use data::*;
-pub use index::*;
-pub use objects::ObjectType;
-pub use path::*;
-pub use time::{Duration, Time};
-pub use time_point::{TimeInt, TimePoint, TimeType, Timeline, TimelineName};
 
 pub type ComponentName = FieldName;
 
@@ -68,38 +70,6 @@ macro_rules! impl_into_enum {
             }
         }
     };
-}
-
-// ----------------------------------------------------------------------------
-
-/// A unique id per [`LogMsg`].
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct MsgId(re_tuid::Tuid);
-
-impl std::fmt::Display for MsgId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:x}", self.0.as_u128())
-    }
-}
-
-impl MsgId {
-    /// All zeroes.
-    pub const ZERO: Self = Self(re_tuid::Tuid::ZERO);
-
-    /// All ones.
-    pub const MAX: Self = Self(re_tuid::Tuid::MAX);
-
-    #[inline]
-    #[cfg(not(target_arch = "wasm32"))]
-    pub fn random() -> Self {
-        Self(re_tuid::Tuid::random())
-    }
-
-    #[inline]
-    pub fn as_u128(&self) -> u128 {
-        self.0.as_u128()
-    }
 }
 
 // ----------------------------------------------------------------------------
@@ -369,7 +339,7 @@ macro_rules! impl_into_logged_data {
 impl_into_logged_data!(i32, I32);
 impl_into_logged_data!(f32, F32);
 impl_into_logged_data!(BBox2D, BBox2D);
-impl_into_logged_data!(Tensor, Tensor);
+impl_into_logged_data!(ClassicTensor, Tensor);
 impl_into_logged_data!(Box3, Box3);
 impl_into_logged_data!(Mesh3D, Mesh3D);
 impl_into_logged_data!(ObjPath, ObjPath);
@@ -403,6 +373,14 @@ pub enum PathOp {
 }
 
 impl PathOp {
+    pub fn clear(recursive: bool, obj_path: ObjPath) -> Self {
+        if recursive {
+            PathOp::ClearRecursive(obj_path)
+        } else {
+            PathOp::ClearFields(obj_path)
+        }
+    }
+
     pub fn obj_path(&self) -> &ObjPath {
         match &self {
             PathOp::ClearFields(path) | PathOp::ClearRecursive(path) => path,

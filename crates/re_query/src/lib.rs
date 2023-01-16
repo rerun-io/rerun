@@ -3,13 +3,15 @@
 
 mod entity_view;
 mod query;
-mod visit;
+mod range;
+pub mod visit;
 
 #[cfg(feature = "polars")]
 pub mod dataframe_util;
 
 pub use self::entity_view::{ComponentWithInstances, EntityView};
 pub use self::query::{get_component_with_instances, query_entity_with_primary};
+pub use self::range::range_entity_with_primary;
 
 // Used for doc-tests
 #[doc(hidden)]
@@ -22,6 +24,9 @@ pub enum QueryError {
 
     #[error("Could not find primary")]
     PrimaryNotFound,
+
+    #[error("Could not find component")]
+    ComponentNotFound,
 
     #[error("Tried to access component of type '{actual:?}' using deserializer for type '{requested:?}'")]
     TypeMismatch {

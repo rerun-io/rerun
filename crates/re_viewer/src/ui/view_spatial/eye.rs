@@ -12,7 +12,9 @@ use super::SpaceCamera3D;
 #[derive(Clone, Copy, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
 pub struct Eye {
     pub world_from_view: IsoTransform,
-    pub fov_y: f32,
+
+    /// If no angle is present, this is an orthographic camera.
+    pub fov_y: Option<f32>,
 }
 
 impl Eye {
@@ -26,25 +28,79 @@ impl Eye {
 
         Some(Self {
             world_from_view: space_cameras.world_from_rub_view()?,
-            fov_y,
+            fov_y: Some(fov_y),
         })
     }
 
-    #[allow(clippy::unused_self)]
     pub fn near(&self) -> f32 {
-        0.01 // TODO(emilk)
+        if self.is_perspective() {
+            0.01 // TODO(emilk)
+        } else {
+            -1000.0 // TODO(andreas)
+        }
+    }
+
+    pub fn far(&self) -> f32 {
+        if self.is_perspective() {
+            f32::INFINITY
+        } else {
+            1000.0
+        }
     }
 
     pub fn ui_from_world(&self, rect: &Rect) -> Mat4 {
         let aspect_ratio = rect.width() / rect.height();
+
+        let projection = if let Some(fov_y) = self.fov_y {
+            Mat4::perspective_infinite_rh(fov_y, aspect_ratio, self.near())
+        } else {
+            Mat4::orthographic_rh(
+                rect.left(),
+                rect.right(),
+                rect.bottom(),
+                rect.top(),
+                self.near(),
+                self.far(),
+            )
+        };
+
         Mat4::from_translation(vec3(rect.center().x, rect.center().y, 0.0))
             * Mat4::from_scale(0.5 * vec3(rect.width(), -rect.height(), 1.0))
-            * Mat4::perspective_infinite_rh(self.fov_y, aspect_ratio, self.near())
+            * projection
             * self.world_from_view.inverse()
     }
 
-    pub fn world_from_ui(&self, rect: &Rect) -> Mat4 {
-        self.ui_from_world(rect).inverse()
+    pub fn is_perspective(&self) -> bool {
+        self.fov_y.is_some()
+    }
+
+    // pub fn is_orthographic(&self) -> bool {
+    //     self.fov_y.is_none()
+    // }
+
+    /// Picking ray for a given pointer in the parent space
+    /// (i.e. prior to camera transform, "world" space)
+    pub fn picking_ray(&self, screen_rect: &Rect, pointer: glam::Vec2) -> macaw::Ray3 {
+        if let Some(fov_y) = self.fov_y {
+            let (w, h) = (screen_rect.width(), screen_rect.height());
+            let aspect_ratio = w / h;
+            let f = (fov_y * 0.5).tan();
+            let px = (2.0 * (pointer.x - screen_rect.left()) / w - 1.0) * f * aspect_ratio;
+            let py = (1.0 - 2.0 * (pointer.y - screen_rect.top()) / h) * f;
+            let ray_dir = self
+                .world_from_view
+                .transform_vector3(glam::vec3(px, py, -1.0));
+            macaw::Ray3::from_origin_dir(self.pos_in_world(), ray_dir.normalize())
+        } else {
+            // The ray originates on the camera plane, not from the camera position
+            let ray_dir = self.world_from_view.rotation().mul_vec3(glam::Vec3::Z);
+            let origin = self.world_from_view.translation()
+                + self.world_from_view.rotation().mul_vec3(glam::Vec3::X) * pointer.x
+                + self.world_from_view.rotation().mul_vec3(glam::Vec3::Y) * pointer.y
+                + ray_dir * self.near();
+
+            macaw::Ray3::from_origin_dir(origin, ray_dir)
+        }
     }
 
     pub fn pos_in_world(&self) -> glam::Vec3 {
@@ -64,10 +120,40 @@ impl Eye {
             .world_from_view
             .rotation()
             .slerp(other.world_from_view.rotation(), t);
-        let fov_y = egui::lerp(self.fov_y..=other.fov_y, t);
+
+        let fov_y = if t < 0.02 {
+            self.fov_y
+        } else if t > 0.98 {
+            other.fov_y
+        } else if self.fov_y.is_none() && other.fov_y.is_none() {
+            None
+        } else {
+            // TODO(andreas): Interpolating between perspective and ortho is untested and likely more involved than this.
+            Some(egui::lerp(
+                self.fov_y.unwrap_or(0.01)..=other.fov_y.unwrap_or(0.01),
+                t,
+            ))
+        };
+
         Eye {
             world_from_view: IsoTransform::from_rotation_translation(rotation, translation),
             fov_y,
+        }
+    }
+
+    /// The approximate size of pixels in world coordinates at a given position.
+    ///
+    /// Avoid this method, use [`re_renderer::Size`] wherever possible.
+    pub fn approx_pixel_world_size_at(
+        &self,
+        position: glam::Vec3,
+        viewport_size: egui::Vec2,
+    ) -> f32 {
+        if let Some(fov_y) = self.fov_y {
+            let distance = position.distance(self.world_from_view.translation());
+            (fov_y * 0.5).tan() * 2.0 / viewport_size.y * distance
+        } else {
+            1.0 / viewport_size.y
         }
     }
 }
@@ -102,7 +188,7 @@ impl OrbitEye {
                 self.world_from_view_rot,
                 self.position(),
             ),
-            fov_y: self.fov_y,
+            fov_y: Some(self.fov_y),
         }
     }
 
@@ -115,7 +201,7 @@ impl OrbitEye {
         self.orbit_radius = distance.at_least(self.orbit_radius / 5.0);
         self.orbit_center = eye.pos_in_world() + self.orbit_radius * eye.forward_in_world();
         self.world_from_view_rot = eye.world_from_view.rotation();
-        self.fov_y = eye.fov_y;
+        self.fov_y = eye.fov_y.unwrap_or(Eye::DEFAULT_FOV_Y);
         self.velocity = Vec3::ZERO;
     }
 
@@ -176,19 +262,21 @@ impl OrbitEye {
     }
 
     /// Returns `true` if any change
-    pub fn interact(&mut self, response: &egui::Response) -> bool {
+    pub fn interact(&mut self, response: &egui::Response, drag_threshold: f32) -> bool {
         let mut did_interact = false;
 
-        if response.dragged_by(egui::PointerButton::Primary) {
-            self.rotate(response.drag_delta());
-            did_interact = true;
-        } else if response.dragged_by(egui::PointerButton::Secondary) {
-            self.translate(response.drag_delta());
-            did_interact = true;
-        } else if response.dragged_by(egui::PointerButton::Middle) {
-            if let Some(pointer_pos) = response.ctx.pointer_latest_pos() {
-                self.roll(&response.rect, pointer_pos, response.drag_delta());
+        if response.drag_delta().length() > drag_threshold {
+            if response.dragged_by(egui::PointerButton::Primary) {
+                self.rotate(response.drag_delta());
                 did_interact = true;
+            } else if response.dragged_by(egui::PointerButton::Secondary) {
+                self.translate(response.drag_delta());
+                did_interact = true;
+            } else if response.dragged_by(egui::PointerButton::Middle) {
+                if let Some(pointer_pos) = response.ctx.pointer_latest_pos() {
+                    self.roll(&response.rect, pointer_pos, response.drag_delta());
+                    did_interact = true;
+                }
             }
         }
 

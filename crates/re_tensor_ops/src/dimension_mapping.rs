@@ -1,4 +1,4 @@
-use re_log_types::TensorDimension;
+use re_log_types::field_types;
 
 #[derive(Clone, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub struct DimensionMapping {
@@ -19,7 +19,7 @@ pub struct DimensionMapping {
 }
 
 impl DimensionMapping {
-    pub fn create(shape: &[TensorDimension]) -> DimensionMapping {
+    pub fn create(shape: &[field_types::TensorDimension]) -> DimensionMapping {
         match shape.len() {
             0 => DimensionMapping {
                 selectors: Default::default(),
@@ -43,12 +43,23 @@ impl DimensionMapping {
                     .filter(|&i| i != width && i != height)
                     .collect();
 
+                let invert_width = shape[width]
+                    .name
+                    .as_ref()
+                    .map(|name| name.to_lowercase().eq("left"))
+                    .unwrap_or_default();
+                let invert_height = shape[height]
+                    .name
+                    .as_ref()
+                    .map(|name| name.to_lowercase().eq("up"))
+                    .unwrap_or_default();
+
                 DimensionMapping {
                     selectors,
                     width: Some(width),
                     height: Some(height),
-                    invert_width: shape[width].name.to_lowercase() == "left",
-                    invert_height: shape[height].name.to_lowercase() == "up",
+                    invert_width,
+                    invert_height,
                 }
             }
         }
@@ -85,7 +96,7 @@ impl DimensionMapping {
 }
 
 #[allow(clippy::collapsible_else_if)]
-fn find_width_height_dim_indices(shape: &[TensorDimension]) -> (usize, usize) {
+fn find_width_height_dim_indices(shape: &[field_types::TensorDimension]) -> (usize, usize) {
     assert!(shape.len() >= 2);
 
     let mut width = None;
@@ -93,7 +104,11 @@ fn find_width_height_dim_indices(shape: &[TensorDimension]) -> (usize, usize) {
 
     // First, go by name:
     for (i, dim) in shape.iter().enumerate() {
-        let lowercase = dim.name.to_lowercase();
+        let lowercase = dim
+            .name
+            .as_ref()
+            .map(|name| name.to_lowercase())
+            .unwrap_or_default();
         if is_name_like_width(&lowercase) {
             width = Some(i);
         }
@@ -142,7 +157,9 @@ fn is_name_like_height(lowercase: &str) -> bool {
 }
 
 /// Returns the longest and second longest dimensions
-fn longest_and_second_longest_dim_indices(shape: &[TensorDimension]) -> (usize, usize) {
+fn longest_and_second_longest_dim_indices(
+    shape: &[field_types::TensorDimension],
+) -> (usize, usize) {
     let mut longest_idx = 0;
     let mut second_longest_idx = 0;
 
@@ -164,11 +181,11 @@ fn longest_and_second_longest_dim_indices(shape: &[TensorDimension]) -> (usize, 
 
 #[test]
 fn test_find_width_height_dim_indices() {
-    fn named(size: u64, name: &str) -> TensorDimension {
-        TensorDimension::named(size, name.to_owned())
+    fn named(size: u64, name: &str) -> field_types::TensorDimension {
+        field_types::TensorDimension::named(size, name.to_owned())
     }
-    fn dim(size: u64) -> TensorDimension {
-        TensorDimension::unnamed(size)
+    fn dim(size: u64) -> field_types::TensorDimension {
+        field_types::TensorDimension::unnamed(size)
     }
     let wh = find_width_height_dim_indices;
 

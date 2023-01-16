@@ -9,13 +9,21 @@ import pyarrow as pa
 from rerun import bindings
 
 all = [
+    "annotation",
+    "box",
     "color",
     "label",
     "point",
+    "quaternion",
+    "radius",
     "rect2d",
+    "scalar",
+    "scalar_plot_props",
+    "text_entry",
+    "vec",
 ]
 
-REGISTERED_FIELDS: Final = bindings.get_registered_fields()
+REGISTERED_FIELDS: Final[dict[str, pa.field]] = bindings.get_registered_fields()
 
 
 def ComponentTypeFactory(name: str, array_cls: type[pa.ExtensionArray], field: pa.Field) -> type[pa.ExtensionType]:

@@ -10,7 +10,7 @@ use crate::{
         DrawData, Renderer,
     },
     wgpu_resources::{BufferDesc, GpuBindGroupHandleStrong, GpuTextureHandleStrong, TextureDesc},
-    DebugLabel, Rgba,
+    DebugLabel, Rgba, Size,
 };
 
 type DrawFn = dyn for<'a, 'b> Fn(&'b RenderContext, &'a mut wgpu::RenderPass<'b>) -> anyhow::Result<()>
@@ -80,7 +80,7 @@ pub enum OrthographicCameraMode {
 pub enum Projection {
     /// Perspective camera looking along the negative z view space axis.
     Perspective {
-        /// Viewing angle in view space y direction (which is the vertical screen axis).
+        /// Viewing angle in view space y direction (which is the vertical screen axis) in radian.
         vertical_fov: f32,
 
         /// Distance of the near plane.
@@ -111,29 +111,28 @@ pub struct TargetConfiguration {
     /// How many pixels are there per point.
     /// I.e. the ui scaling factor.
     pub pixels_from_point: f32,
+
+    /// Determines the size of [`crate::Size::AUTO`].
+    ///
+    /// If this in turn is an auto size, a size in points will be chosen.
+    pub auto_size_config: Size,
+    /// By which factor  [`crate::Size::AUTO_LARGE`] should be larger.
+    pub auto_size_large_factor: f32,
 }
 
-impl TargetConfiguration {
-    /// Utility method for a 2D target with world coordinates mapping to pixels.
-    ///
-    /// TODO(andreas): Once we start informing the renderer about points->pixels, this should have one world unit per *point*
-    pub fn new_2d_target(
-        name: DebugLabel,
-        resolution_in_pixel: [u32; 2],
-        units_from_pixel: f32,
-        pixels_from_point: f32,
-        top_left_position: glam::Vec2,
-    ) -> Self {
-        TargetConfiguration {
-            name,
-            resolution_in_pixel,
-            view_from_world: macaw::IsoTransform::from_translation(-top_left_position.extend(0.0)),
-            projection_from_view: Projection::Orthographic {
-                camera_mode: OrthographicCameraMode::TopLeftCornerAndExtendZ,
-                vertical_world_size: units_from_pixel * resolution_in_pixel[1] as f32,
-                far_plane_distance: 1000.0,
+impl Default for TargetConfiguration {
+    fn default() -> Self {
+        Self {
+            name: "default view".into(),
+            resolution_in_pixel: [100, 100],
+            view_from_world: Default::default(),
+            projection_from_view: Projection::Perspective {
+                vertical_fov: 70.0 * std::f32::consts::TAU / 360.0,
+                near_plane_distance: 0.01,
             },
-            pixels_from_point,
+            pixels_from_point: 1.0,
+            auto_size_config: Size::AUTO,
+            auto_size_large_factor: 1.5,
         }
     }
 }
@@ -359,11 +358,15 @@ impl ViewBuilder {
             config.resolution_in_pixel[1] as f32 / config.pixels_from_point,
         );
 
-        // TODO(andreas): Make configurable?
-        // TODO(andreas): Different for different primitives?
-        // TODO(andreas): Different for amount of primitives? (done by re_renderer user?)
-        let auto_size_in_points = (0.0005 * viewport_size_in_points.length()).clamp(1.5, 5.0);
-        let auto_size_large_in_points = auto_size_in_points * 1.5;
+        let auto_size = if config.auto_size_config.is_auto() {
+            Size::new_points((0.0005 * viewport_size_in_points.length()).clamp(1.5, 5.0))
+        } else {
+            config.auto_size_config
+        };
+
+        // See `depth_offset.wgsl`.
+        // Factor applied to depth offsets.
+        let depth_offset_factor = f32::EPSILON;
 
         ctx.queue.write_buffer(
             ctx.gpu_resources
@@ -381,8 +384,11 @@ impl ViewBuilder {
                 pixel_world_size_from_camera_distance,
                 pixels_from_point: config.pixels_from_point,
 
-                auto_size_in_points,
-                auto_size_large_in_points,
+                auto_size: auto_size.0,
+                auto_size_large: auto_size.0 * config.auto_size_large_factor,
+
+                depth_offset_factor,
+                _padding: glam::Vec3::ZERO,
             }),
         );
 

@@ -1,7 +1,8 @@
 mod mesh_cache;
 mod tensor_image_cache;
 
-pub use tensor_image_cache::TensorImageView;
+use re_log_types::field_types;
+pub use tensor_image_cache::{AsDynamicImage, TensorImageView};
 
 /// Does memoization of different things for the immediate mode UI.
 #[derive(Default)]
@@ -12,7 +13,7 @@ pub struct Caches {
     /// For displaying meshes efficiently in immediate mode.
     pub mesh: mesh_cache::MeshCache,
 
-    pub tensor_stats: nohash_hasher::IntMap<re_log_types::TensorId, TensorStats>,
+    pub tensor_stats: nohash_hasher::IntMap<field_types::TensorId, TensorStats>,
 }
 
 impl Caches {
@@ -32,9 +33,9 @@ impl Caches {
         tensor_stats.clear();
     }
 
-    pub fn tensor_stats(&mut self, tensor: &re_log_types::Tensor) -> &TensorStats {
+    pub fn tensor_stats(&mut self, tensor: &re_log_types::ClassicTensor) -> &TensorStats {
         self.tensor_stats
-            .entry(tensor.tensor_id)
+            .entry(tensor.id())
             .or_insert_with(|| TensorStats::new(tensor))
     }
 }
@@ -44,7 +45,7 @@ pub struct TensorStats {
 }
 
 impl TensorStats {
-    fn new(tensor: &re_log_types::Tensor) -> Self {
+    fn new(tensor: &re_log_types::ClassicTensor) -> Self {
         use re_log_types::TensorDataType;
         use re_tensor_ops::as_ndarray;
 
@@ -101,7 +102,7 @@ impl TensorStats {
             (min.to_f64(), max.to_f64())
         }
 
-        let range = match tensor.dtype {
+        let range = match tensor.dtype() {
             TensorDataType::U8 => as_ndarray::<u8>(tensor).ok().map(tensor_range_u8),
             TensorDataType::U16 => as_ndarray::<u16>(tensor).ok().map(tensor_range_u16),
             TensorDataType::U32 => as_ndarray::<u32>(tensor).ok().map(tensor_range_u32),

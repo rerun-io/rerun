@@ -2,6 +2,7 @@ from typing import Optional, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
+from rerun.components.radius import RadiusArray
 from rerun.log import (
     EXP_ARROW,
     Color,
@@ -10,6 +11,7 @@ from rerun.log import (
     OptionalKeyPointIds,
     _normalize_colors,
     _normalize_ids,
+    _normalize_labels,
     _normalize_radii,
 )
 
@@ -75,6 +77,7 @@ def log_point(
         )
 
     if EXP_ARROW.arrow_log_gate():
+        from rerun.components.annotation import ClassIdArray
         from rerun.components.color import ColorRGBAArray
         from rerun.components.label import LabelArray
         from rerun.components.point import Point2DArray, Point3DArray
@@ -93,10 +96,18 @@ def log_point(
             colors = _normalize_colors([color])
             comps["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
 
+        if radius:
+            radii = _normalize_radii([radius])
+            comps["rerun.radius"] = RadiusArray.from_numpy(radii)
+
         if label:
             comps["rerun.label"] = LabelArray.new([label])
 
-        bindings.log_arrow_msg(f"arrow/{obj_path}", components=comps)
+        if class_id:
+            class_ids = _normalize_ids([class_id])
+            comps["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
+
+        bindings.log_arrow_msg(obj_path, components=comps, timeless=timeless)
 
 
 def log_points(
@@ -148,11 +159,10 @@ def log_points(
     identifiers = [] if identifiers is None else [str(s) for s in identifiers]
 
     colors = _normalize_colors(colors)
+    radii = _normalize_radii(radii)
+    labels = _normalize_labels(labels)
     class_ids = _normalize_ids(class_ids)
     keypoint_ids = _normalize_ids(keypoint_ids)
-    radii = _normalize_radii(radii)
-    if labels is None:
-        labels = []
 
     if EXP_ARROW.classic_log_gate():
         bindings.log_points(
@@ -168,24 +178,47 @@ def log_points(
         )
 
     if EXP_ARROW.arrow_log_gate():
+        from rerun.components.annotation import ClassIdArray
         from rerun.components.color import ColorRGBAArray
+        from rerun.components.instance import InstanceArray
         from rerun.components.label import LabelArray
         from rerun.components.point import Point2DArray, Point3DArray
 
-        comps = {}
+        # 0 = instanced, 1 = splat
+        comps = [{}, {}]  # type: ignore[var-annotated]
 
         if positions.any():
             if positions.shape[1] == 2:
-                comps["rerun.point2d"] = Point2DArray.from_numpy(positions)
+                comps[0]["rerun.point2d"] = Point2DArray.from_numpy(positions)
             elif positions.shape[1] == 3:
-                comps["rerun.point3d"] = Point3DArray.from_numpy(positions)
+                comps[0]["rerun.point3d"] = Point3DArray.from_numpy(positions)
             else:
                 raise TypeError("Positions should be either Nx2 or Nx3")
 
-        if colors:
-            comps["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
+        if len(colors):
+            is_splat = len(colors.shape) == 1
+            if is_splat:
+                colors = colors.reshape(1, len(colors))
+            comps[is_splat]["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
 
-        if labels:
-            comps["rerun.label"] = LabelArray.new(labels)
+        if len(radii):
+            is_splat = len(radii) == 1
+            comps[is_splat]["rerun.radius"] = RadiusArray.from_numpy(radii)
 
-        bindings.log_arrow_msg(f"arrow/{obj_path}", components=comps)
+        if len(labels):
+            is_splat = len(labels) == 1
+            comps[is_splat]["rerun.label"] = LabelArray.new(labels)
+
+        if len(class_ids):
+            is_splat = len(class_ids) == 1
+            comps[is_splat]["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
+
+        if len(keypoint_ids):
+            is_splat = len(keypoint_ids) == 1
+            comps[is_splat]["rerun.keypoint_id"] = ClassIdArray.from_numpy(keypoint_ids)
+
+        bindings.log_arrow_msg(obj_path, components=comps[0], timeless=timeless)
+
+        if comps[1]:
+            comps[1]["rerun.instance"] = InstanceArray.splat()
+            bindings.log_arrow_msg(obj_path, components=comps[1], timeless=timeless)

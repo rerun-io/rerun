@@ -2,7 +2,9 @@ use std::sync::Arc;
 
 use half::f16;
 
-use crate::{impl_into_enum, AnnotationContext, ObjPath, ViewCoordinates};
+use crate::{field_types, impl_into_enum, AnnotationContext, Mesh3D, ObjPath, ViewCoordinates};
+
+pub use crate::field_types::{Pinhole, Rigid3, Transform};
 
 // ----------------------------------------------------------------------------
 
@@ -55,8 +57,11 @@ pub trait DataTrait: 'static + Clone {
 }
 
 pub mod data_types {
+    use crate::field_types::Mesh3D;
+
     use super::DataTrait;
     use super::DataType;
+    use super::Transform;
 
     impl DataTrait for super::DataVec {
         fn data_typ() -> DataType {
@@ -118,7 +123,7 @@ pub mod data_types {
         }
     }
 
-    impl DataTrait for crate::Tensor {
+    impl DataTrait for crate::ClassicTensor {
         fn data_typ() -> DataType {
             DataType::Tensor
         }
@@ -139,7 +144,7 @@ pub mod data_types {
         }
     }
 
-    impl DataTrait for crate::Mesh3D {
+    impl DataTrait for Mesh3D {
         fn data_typ() -> DataType {
             DataType::Mesh3D
         }
@@ -159,7 +164,7 @@ pub mod data_types {
         }
     }
 
-    impl DataTrait for crate::Transform {
+    impl DataTrait for Transform {
         fn data_typ() -> DataType {
             DataType::Transform
         }
@@ -205,7 +210,7 @@ pub enum Data {
 
     // ----------------------------
     // N-D:
-    Tensor(Tensor),
+    Tensor(ClassicTensor),
 
     /// Homogenous vector
     DataVec(DataVec),
@@ -215,7 +220,7 @@ pub enum Data {
     /// One object referring to another (a pointer).
     ObjPath(ObjPath),
 
-    Transform(Transform),
+    Transform(crate::field_types::Transform),
     ViewCoordinates(ViewCoordinates),
     AnnotationContext(AnnotationContext),
 }
@@ -256,7 +261,7 @@ impl_into_enum!(i32, Data, I32);
 impl_into_enum!(f32, Data, F32);
 impl_into_enum!(f64, Data, F64);
 impl_into_enum!(BBox2D, Data, BBox2D);
-impl_into_enum!(Tensor, Data, Tensor);
+impl_into_enum!(ClassicTensor, Data, Tensor);
 impl_into_enum!(Box3, Data, Box3);
 impl_into_enum!(Mesh3D, Data, Mesh3D);
 impl_into_enum!(ObjPath, Data, ObjPath);
@@ -286,7 +291,7 @@ pub enum DataVec {
     Mesh3D(Vec<Mesh3D>),
     Arrow3D(Vec<Arrow3D>),
 
-    Tensor(Vec<Tensor>),
+    Tensor(Vec<ClassicTensor>),
 
     /// A vector of [`DataVec`] (vector of vectors)
     DataVec(Vec<DataVec>),
@@ -391,7 +396,7 @@ macro_rules! data_type_map_none(
                 $action
             },
             $crate::DataType::Tensor => {
-                let $value = Option::<$crate::Tensor>::None;
+                let $value = Option::<$crate::ClassicTensor>::None;
                 $action
             },
             $crate::DataType::DataVec => {
@@ -403,7 +408,7 @@ macro_rules! data_type_map_none(
                 $action
             },
             $crate::DataType::Transform => {
-                let $value = Option::<$crate::Transform>::None;
+                let $value = Option::<$crate::field_types::Transform>::None;
                 $action
             },
             $crate::DataType::ViewCoordinates => {
@@ -611,202 +616,7 @@ pub type Quaternion = [f32; 4];
 
 // ----------------------------------------------------------------------------
 
-/// A proper rigid 3D transform, i.e. a rotation and a translation.
-///
-/// Also known as an isometric transform, or a pose.
-#[derive(Copy, Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct Rigid3 {
-    /// How is the child rotated?
-    ///
-    /// This transforms to parent-space from child-space.
-    rotation: Quaternion,
-
-    /// Translation to parent from child.
-    ///
-    /// You can also think of this as the position of the child.
-    translation: [f32; 3],
-}
-
-#[cfg(feature = "glam")]
-impl Rigid3 {
-    #[inline]
-    pub fn new_parent_from_child(parent_from_child: macaw::IsoTransform) -> Self {
-        Self {
-            rotation: parent_from_child.rotation().into(),
-            translation: parent_from_child.translation().into(),
-        }
-    }
-
-    #[inline]
-    pub fn new_child_from_parent(child_from_parent: macaw::IsoTransform) -> Self {
-        Self::new_parent_from_child(child_from_parent.inverse())
-    }
-
-    #[inline]
-    pub fn parent_from_child(&self) -> macaw::IsoTransform {
-        let rotation = glam::Quat::from_slice(&self.rotation);
-        let translation = glam::Vec3::from_slice(&self.translation);
-        macaw::IsoTransform::from_rotation_translation(rotation, translation)
-    }
-
-    #[inline]
-    pub fn child_from_parent(&self) -> macaw::IsoTransform {
-        self.parent_from_child().inverse()
-    }
-}
-
-/// Camera perspective projection (a.k.a. intrinsics).
-#[derive(Copy, Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct Pinhole {
-    /// Column-major projection matrix.
-    ///
-    /// Child from parent.
-    /// Image coordinates from camera view coordinates.
-    ///
-    /// Example:
-    /// ```text
-    /// [[1496.1, 0.0,    0.0], // col 0
-    ///  [0.0,    1496.1, 0.0], // col 1
-    ///  [980.5,  744.5,  1.0]] // col 2
-    /// ```
-    pub image_from_cam: [[f32; 3]; 3],
-
-    /// Pixel resolution (usually integers) of child image space. Width and height.
-    ///
-    /// Example:
-    /// ```text
-    /// [1920.0, 1440.0]
-    /// ```
-    ///
-    /// [`Self::image_from_cam`] project onto the space spanned by `(0,0)` and `resolution - 1`.
-    pub resolution: Option<[f32; 2]>,
-}
-
-impl Pinhole {
-    /// Field of View on the Y axis, i.e. the angle between top and bottom (in radians).
-    pub fn fov_y(&self) -> Option<f32> {
-        self.resolution
-            .map(|resolution| 2.0 * (0.5 * resolution[1] / self.image_from_cam[1][1]).atan())
-    }
-
-    /// X & Y focal length in pixels.
-    ///
-    /// [see definition of intrinsic matrix](https://en.wikipedia.org/wiki/Camera_resectioning#Intrinsic_parameters)
-    #[cfg(feature = "glam")]
-    pub fn focal_length_in_pixels(&self) -> glam::Vec2 {
-        glam::vec2(self.image_from_cam[0][0], self.image_from_cam[1][1])
-    }
-
-    /// Focal length.
-    pub fn focal_length(&self) -> Option<f32> {
-        self.resolution.map(|r| self.image_from_cam[0][0] / r[0])
-    }
-
-    /// Principal point of the pinhole camera,
-    /// i.e. the intersection of the optical axis and the image plane.
-    ///
-    /// [see definition of intrinsic matrix](https://en.wikipedia.org/wiki/Camera_resectioning#Intrinsic_parameters)
-    #[cfg(feature = "glam")]
-    #[inline]
-    pub fn principal_point(&self) -> glam::Vec2 {
-        glam::vec2(self.image_from_cam[2][0], self.image_from_cam[2][1])
-    }
-}
-
-// ----------------------------------------------------------------------------
-
-/// A transform between two spaces.
-#[derive(Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum Transform {
-    /// We don't know the transform, but it is likely/potentially non-identity.
-    /// Maybe the user intend to set the transform later.
-    Unknown,
-
-    /// For instance: the parent is a 3D world space, the child a camera space.
-    Rigid3(Rigid3),
-
-    /// The parent is some local camera space, the child an image space.
-    Pinhole(Pinhole),
-}
-
-// ----------------------------------------------------------------------------
-
-/// A unique id per [`Mesh3D`].
-///
-/// TODO(emilk): this should be a hash of the mesh (CAS).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct MeshId(pub uuid::Uuid);
-
-impl nohash_hasher::IsEnabled for MeshId {}
-
-// required for [`nohash_hasher`].
-#[allow(clippy::derive_hash_xor_eq)]
-impl std::hash::Hash for MeshId {
-    #[inline]
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        state.write_u64(self.0.as_u128() as u64);
-    }
-}
-
-impl MeshId {
-    #[inline]
-    pub fn random() -> Self {
-        Self(uuid::Uuid::new_v4())
-    }
-}
-
-// ----------------
-
-#[derive(Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum Mesh3D {
-    Encoded(EncodedMesh3D),
-    Raw(Arc<RawMesh3D>),
-}
-
-impl Mesh3D {
-    pub fn mesh_id(&self) -> MeshId {
-        match self {
-            Mesh3D::Encoded(mesh) => mesh.mesh_id,
-            Mesh3D::Raw(mesh) => mesh.mesh_id,
-        }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct RawMesh3D {
-    pub mesh_id: MeshId,
-    pub positions: Vec<[f32; 3]>,
-    pub indices: Vec<[u32; 3]>,
-}
-
-/// Compressed/encoded mesh format
-#[derive(Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct EncodedMesh3D {
-    pub mesh_id: MeshId,
-    pub format: MeshFormat,
-    pub bytes: std::sync::Arc<[u8]>,
-    /// four columns of an affine transformation matrix
-    pub transform: [[f32; 3]; 4],
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum MeshFormat {
-    Gltf,
-    Glb,
-    Obj,
-}
-
-// ----------------------------------------------------------------------------
-
-/// The data types supported by a [`Tensor`].
+/// The data types supported by a [`ClassicTensor`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum TensorDataType {
@@ -895,17 +705,6 @@ impl std::fmt::Display for TensorDataType {
 
 // ----------------------------------------------------------------------------
 
-// TODO(jleibs) This should be extended to include things like rgb vs bgr
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum TensorDataMeaning {
-    /// Default behavior: guess based on shape
-    Unknown,
-    /// The data is an annotated [`crate::context::ClassId`] which should be
-    /// looked up using the appropriate [`crate::context::AnnotationContext`]
-    ClassId,
-}
-
 pub trait TensorDataTypeTrait: Copy + Clone + Send + Sync {
     const DTYPE: TensorDataType;
 }
@@ -944,7 +743,7 @@ impl TensorDataTypeTrait for f64 {
     const DTYPE: TensorDataType = TensorDataType::F64;
 }
 
-/// The data that can be stored in a [`Tensor`].
+/// The data that can be stored in a [`ClassicTensor`].
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum TensorElement {
@@ -1035,12 +834,12 @@ impl TensorElement {
     }
 }
 
-/// The data types supported by a [`Tensor`].
+/// The data types supported by a [`ClassicTensor`].
 ///
 /// NOTE: `PartialEq` takes into account _how_ the data is stored,
 /// which can be surprising! As of 2022-08-15, `PartialEq` is only used by tests.
 ///
-/// [`TensorDataStore`] uses [`Arc`] internally so that cloning a [`Tensor`] is cheap
+/// [`TensorDataStore`] uses [`Arc`] internally so that cloning a [`ClassicTensor`] is cheap
 /// and memory efficient.
 /// This is crucial, since we clone data for different timelines in the data store.
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -1079,83 +878,6 @@ impl std::fmt::Debug for TensorDataStore {
     }
 }
 
-#[derive(Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct TensorDimension {
-    /// Number of elements on this dimension.
-    /// I.e. size-1 is the maximum allowed index.
-    pub size: u64,
-
-    /// Optional name of the dimension, e.g. "color" or "width"
-    pub name: String,
-}
-
-impl TensorDimension {
-    const DEFAULT_NAME_WIDTH: &'static str = "width";
-    const DEFAULT_NAME_HEIGHT: &'static str = "height";
-    const DEFAULT_NAME_DEPTH: &'static str = "depth";
-
-    pub fn height(size: u64) -> Self {
-        Self::named(size, String::from(Self::DEFAULT_NAME_HEIGHT))
-    }
-
-    pub fn width(size: u64) -> Self {
-        Self::named(size, String::from(Self::DEFAULT_NAME_WIDTH))
-    }
-
-    pub fn depth(size: u64) -> Self {
-        Self::named(size, String::from(Self::DEFAULT_NAME_DEPTH))
-    }
-
-    pub fn named(size: u64, name: String) -> Self {
-        Self { size, name }
-    }
-
-    pub fn unnamed(size: u64) -> Self {
-        Self {
-            size,
-            name: String::new(),
-        }
-    }
-}
-
-impl std::fmt::Debug for TensorDimension {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.name.is_empty() {
-            self.size.fmt(f)
-        } else {
-            write!(f, "{}={}", self.name, self.size)
-        }
-    }
-}
-
-// ----------------------------------------------------------------------------
-
-/// A unique id per [`Tensor`].
-///
-/// TODO(emilk): this should be a hash of the tensor (CAS).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct TensorId(pub uuid::Uuid);
-
-impl nohash_hasher::IsEnabled for TensorId {}
-
-// required for [`nohash_hasher`].
-#[allow(clippy::derive_hash_xor_eq)]
-impl std::hash::Hash for TensorId {
-    #[inline]
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        state.write_u64(self.0.as_u128() as u64);
-    }
-}
-
-impl TensorId {
-    #[inline]
-    pub fn random() -> Self {
-        Self(uuid::Uuid::new_v4())
-    }
-}
-
 // ----------------------------------------------------------------------------
 
 /// An N-dimensional collection of numbers.
@@ -1163,9 +885,9 @@ impl TensorId {
 /// Most often used to describe image pixels.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct Tensor {
+pub struct ClassicTensor {
     /// Unique identifier for the tensor
-    pub tensor_id: TensorId,
+    tensor_id: field_types::TensorId,
 
     /// Example: `[h, w, 3]` for an RGB image, stored in row-major-order.
     /// The order matches that of numpy etc, and is ordered so that
@@ -1175,7 +897,7 @@ pub struct Tensor {
     /// An empty vector has shape `[0]`, an empty matrix shape `[0, 0]`, etc.
     ///
     /// Conceptually `[h,w]` == `[h,w,1]` == `[h,w,1,1,1]` etc in most circumstances.
-    pub shape: Vec<TensorDimension>,
+    shape: Vec<field_types::TensorDimension>,
 
     /// The per-element data format.
     /// numpy calls this `dtype`.
@@ -1183,13 +905,72 @@ pub struct Tensor {
 
     /// The per-element data meaning
     /// Used to indicated if the data should be interpreted as color, class_id, etc.
-    pub meaning: TensorDataMeaning,
+    pub meaning: field_types::TensorDataMeaning,
 
     /// The actual contents of the tensor.
     pub data: TensorDataStore,
 }
 
-impl Tensor {
+impl field_types::TensorTrait for ClassicTensor {
+    fn id(&self) -> field_types::TensorId {
+        self.tensor_id
+    }
+
+    fn shape(&self) -> &[field_types::TensorDimension] {
+        self.shape.as_slice()
+    }
+
+    fn num_dim(&self) -> usize {
+        self.num_dim()
+    }
+
+    fn is_shaped_like_an_image(&self) -> bool {
+        self.is_shaped_like_an_image()
+    }
+}
+
+impl ClassicTensor {
+    pub fn new(
+        tensor_id: field_types::TensorId,
+        shape: Vec<field_types::TensorDimension>,
+        dtype: TensorDataType,
+        meaning: field_types::TensorDataMeaning,
+        data: TensorDataStore,
+    ) -> Self {
+        Self {
+            tensor_id,
+            shape,
+            dtype,
+            meaning,
+            data,
+        }
+    }
+
+    #[inline]
+    pub fn id(&self) -> field_types::TensorId {
+        self.tensor_id
+    }
+
+    #[inline]
+    pub fn shape(&self) -> &[field_types::TensorDimension] {
+        self.shape.as_slice()
+    }
+
+    #[inline]
+    pub fn dtype(&self) -> TensorDataType {
+        self.dtype
+    }
+
+    #[inline]
+    pub fn meaning(&self) -> field_types::TensorDataMeaning {
+        self.meaning
+    }
+
+    #[inline]
+    pub fn data<A: bytemuck::Pod + TensorDataTypeTrait>(&self) -> Option<&[A]> {
+        self.data.as_slice()
+    }
+
     /// True if the shape has a zero in it anywhere.
     ///
     /// Note that `shape=[]` means this tensor is a scalar, and thus NOT empty.
@@ -1247,7 +1028,8 @@ impl Tensor {
             TensorDataStore::Dense(bytes) => {
                 let mut stride = self.dtype.size();
                 let mut offset = 0;
-                for (TensorDimension { size, name: _ }, index) in self.shape.iter().zip(index).rev()
+                for (field_types::TensorDimension { size, name: _ }, index) in
+                    self.shape.iter().zip(index).rev()
                 {
                     if size <= index {
                         return None;

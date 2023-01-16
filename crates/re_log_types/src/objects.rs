@@ -4,9 +4,6 @@
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum ObjectType {
-    // A label and color associated with a particular class id
-    ClassDescription,
-
     /// A logging message.
     TextEntry,
 
@@ -51,8 +48,6 @@ impl ObjectType {
     pub fn members(self) -> &'static [&'static str] {
         #[allow(clippy::match_same_arms)]
         match self {
-            Self::ClassDescription => &["id", "label", "color"],
-
             Self::TextEntry => &["color", "body", "level"],
             Self::Scalar => &["scalar", "label", "color", "radius", "scattered"],
 

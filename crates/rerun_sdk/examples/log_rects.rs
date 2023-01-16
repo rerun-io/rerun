@@ -2,7 +2,7 @@ use clap::Parser;
 
 use re_log_types::{
     field_types::{ColorRGBA, Rect2D},
-    msg_bundle::{ComponentBundle, MsgBundle},
+    msg_bundle::MsgBundle,
     LogMsg, MsgId, ObjPath,
 };
 use rerun::Session;
@@ -118,20 +118,18 @@ fn log_rects(
     // Capture the log_time and object_path
     let time_point = rerun::log_time();
 
-    // Create the initial message bundle
-    let mut bundle = MsgBundle::new(MsgId::random(), obj_path.clone(), time_point, vec![]);
-
-    // Add in the rects if provided
-    if let Some(rects) = rects {
-        let component: ComponentBundle = rects.try_into().unwrap();
-        bundle.components.push(component);
-    }
-
-    // Add in the colors if provided
-    if let Some(colors) = colors {
-        let component: ComponentBundle = colors.try_into().unwrap();
-        bundle.components.push(component);
-    }
+    let bundle = MsgBundle::new(
+        MsgId::random(),
+        obj_path.clone(),
+        time_point,
+        [
+            rects.map(|rects| rects.try_into().unwrap()),
+            colors.map(|colors| colors.try_into().unwrap()),
+        ]
+        .into_iter()
+        .flatten()
+        .collect(),
+    );
 
     println!("Logged {bundle}");
 

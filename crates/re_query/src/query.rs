@@ -1,25 +1,22 @@
 use std::collections::BTreeMap;
 
-use re_arrow_store::{DataStore, TimelineQuery};
+use re_arrow_store::{DataStore, LatestAtQuery};
 use re_log_types::{field_types::Instance, msg_bundle::Component, ComponentName, ObjPath};
 
 use crate::{ComponentWithInstances, EntityView, QueryError};
 
 /// Retrieves a [`ComponentWithInstances`] from the [`DataStore`].
 /// ```
-/// # use re_arrow_store::{TimelineQuery, TimeQuery};
+/// # use re_arrow_store::LatestAtQuery;
 /// # use re_log_types::{Timeline, field_types::Point2D, msg_bundle::Component};
 /// # let store = re_query::__populate_example_store();
 ///
 /// let ent_path = "point";
-/// let timeline_query = TimelineQuery::new(
-///   Timeline::new_sequence("frame_nr"),
-///   TimeQuery::LatestAt(123.into()),
-/// );
+/// let query = LatestAtQuery::new(Timeline::new_sequence("frame_nr"), 123.into());
 ///
 /// let component = re_query::get_component_with_instances(
 ///   &store,
-///   &timeline_query,
+///   &query,
 ///   &ent_path.into(),
 ///   Point2D::name(),
 /// )
@@ -46,14 +43,14 @@ use crate::{ComponentWithInstances, EntityView, QueryError};
 ///
 pub fn get_component_with_instances(
     store: &DataStore,
-    timeline_query: &TimelineQuery,
+    query: &LatestAtQuery,
     ent_path: &ObjPath,
     component: ComponentName,
 ) -> crate::Result<ComponentWithInstances> {
     let components = [Instance::name(), component];
 
     let row_indices = store
-        .query(timeline_query, ent_path, component, &components)
+        .latest_at(query, ent_path, component, &components)
         .ok_or(QueryError::PrimaryNotFound)?;
 
     let mut results = store.get(&components, &row_indices);
@@ -76,27 +73,23 @@ pub fn get_component_with_instances(
 /// length.
 ///
 /// ```
-/// # use re_arrow_store::{TimelineQuery, TimeQuery};
+/// # use re_arrow_store::LatestAtQuery;
 /// # use re_log_types::{Timeline, field_types::{Point2D, ColorRGBA}, msg_bundle::Component};
 /// # let store = re_query::__populate_example_store();
 ///
 /// let ent_path = "point";
-/// let timeline_query = TimelineQuery::new(
-///   Timeline::new_sequence("frame_nr"),
-///   TimeQuery::LatestAt(123.into()),
-/// );
+/// let query = LatestAtQuery::new(Timeline::new_sequence("frame_nr"), 123.into());
 ///
-/// let entity_view = re_query::query_entity_with_primary(
+/// let entity_view = re_query::query_entity_with_primary::<Point2D>(
 ///   &store,
-///   &timeline_query,
+///   &query,
 ///   &ent_path.into(),
-///   Point2D::name(),
 ///   &[ColorRGBA::name()],
 /// )
 /// .unwrap();
 ///
 /// # #[cfg(feature = "polars")]
-/// let df = entity_view.as_df1::<Point2D>().unwrap();
+/// let df = entity_view.as_df1().unwrap();
 ///
 /// //println!("{:?}", df);
 /// ```
@@ -114,14 +107,13 @@ pub fn get_component_with_instances(
 /// └──────────┴───────────┴────────────┘
 /// ```
 ///
-pub fn query_entity_with_primary<const N: usize>(
+pub fn query_entity_with_primary<Primary: Component>(
     store: &DataStore,
-    timeline_query: &TimelineQuery,
+    query: &LatestAtQuery,
     ent_path: &ObjPath,
-    primary: ComponentName,
-    components: &[ComponentName; N],
-) -> crate::Result<EntityView> {
-    let primary = get_component_with_instances(store, timeline_query, ent_path, primary)?;
+    components: &[ComponentName],
+) -> crate::Result<EntityView<Primary>> {
+    let primary = get_component_with_instances(store, query, ent_path, Primary::name())?;
 
     // TODO(jleibs): lots of room for optimization here. Once "instance" is
     // guaranteed to be sorted we should be able to leverage this during the
@@ -131,7 +123,7 @@ pub fn query_entity_with_primary<const N: usize>(
     let components: crate::Result<BTreeMap<ComponentName, ComponentWithInstances>> = components
         .iter()
         .filter_map(|component| {
-            match get_component_with_instances(store, timeline_query, ent_path, *component) {
+            match get_component_with_instances(store, query, ent_path, *component) {
                 Ok(component_result) => Some(Ok((*component, component_result))),
                 Err(QueryError::PrimaryNotFound) => None,
                 Err(err) => Some(Err(err)),
@@ -142,6 +134,7 @@ pub fn query_entity_with_primary<const N: usize>(
     Ok(EntityView {
         primary,
         components: components?,
+        phantom: std::marker::PhantomData,
     })
 }
 
@@ -157,7 +150,7 @@ pub fn __populate_example_store() -> DataStore {
     let mut store = DataStore::new(Instance::name(), Default::default());
 
     let ent_path = "point";
-    let timepoint = [build_frame_nr(123)];
+    let timepoint = [build_frame_nr(123.into())];
 
     let instances = vec![Instance(42), Instance(96)];
     let points = vec![Point2D { x: 1.0, y: 2.0 }, Point2D { x: 3.0, y: 4.0 }];
@@ -178,20 +171,16 @@ pub fn __populate_example_store() -> DataStore {
 // Minimal test matching the doctest for `get_component_with_instances`
 #[test]
 fn simple_get_component() {
-    use re_arrow_store::{TimeQuery, TimelineQuery};
+    use re_arrow_store::LatestAtQuery;
     use re_log_types::{field_types::Point2D, msg_bundle::Component as _, Timeline};
 
     let store = __populate_example_store();
 
     let ent_path = "point";
-    let timeline_query = TimelineQuery::new(
-        Timeline::new_sequence("frame_nr"),
-        TimeQuery::LatestAt(123.into()),
-    );
+    let query = LatestAtQuery::new(Timeline::new_sequence("frame_nr"), 123.into());
 
     let component =
-        get_component_with_instances(&store, &timeline_query, &ent_path.into(), Point2D::name())
-            .unwrap();
+        get_component_with_instances(&store, &query, &ent_path.into(), Point2D::name()).unwrap();
 
     #[cfg(feature = "polars")]
     {
@@ -217,7 +206,7 @@ fn simple_get_component() {
 // Minimal test matching the doctest for `query_entity_with_primary`
 #[test]
 fn simple_query_entity() {
-    use re_arrow_store::{TimeQuery, TimelineQuery};
+    use re_arrow_store::LatestAtQuery;
     use re_log_types::{
         field_types::{ColorRGBA, Point2D},
         msg_bundle::Component as _,
@@ -227,23 +216,19 @@ fn simple_query_entity() {
     let store = __populate_example_store();
 
     let ent_path = "point";
-    let timeline_query = TimelineQuery::new(
-        Timeline::new_sequence("frame_nr"),
-        TimeQuery::LatestAt(123.into()),
-    );
+    let query = LatestAtQuery::new(Timeline::new_sequence("frame_nr"), 123.into());
 
-    let entity_view = query_entity_with_primary(
+    let entity_view = query_entity_with_primary::<Point2D>(
         &store,
-        &timeline_query,
+        &query,
         &ent_path.into(),
-        Point2D::name(),
         &[ColorRGBA::name()],
     )
     .unwrap();
 
     #[cfg(feature = "polars")]
     {
-        let df = entity_view.as_df2::<Point2D, ColorRGBA>().unwrap();
+        let df = entity_view.as_df2::<ColorRGBA>().unwrap();
         eprintln!("{:?}", df);
 
         let instances = vec![Some(Instance(42)), Some(Instance(96))];

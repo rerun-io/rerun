@@ -21,10 +21,10 @@
 use std::collections::BTreeMap;
 
 use arrow2::{
-    array::{Array, ListArray, StructArray},
-    buffer::Buffer,
+    array::{new_empty_array, Array, ListArray, StructArray},
     chunk::Chunk,
     datatypes::{DataType, Field, Schema},
+    offset::Offsets,
 };
 use arrow2_convert::{
     field::ArrowField,
@@ -101,6 +101,20 @@ pub struct ComponentBundle {
     pub name: ComponentName,
     /// The Component payload `Array`.
     pub value: Box<dyn Array>,
+}
+
+impl ComponentBundle {
+    pub fn new_empty(name: ComponentName, data_type: DataType) -> Self {
+        let empty_array = wrap_in_listarray(new_empty_array(data_type)).boxed();
+        Self {
+            name,
+            value: empty_array,
+        }
+    }
+
+    pub fn data_type(&self) -> &DataType {
+        ListArray::<i32>::get_child_type(self.value.data_type())
+    }
 }
 
 impl<C> TryFrom<&[C]> for ComponentBundle
@@ -192,19 +206,31 @@ pub struct MsgBundle {
 }
 
 impl MsgBundle {
-    /// Create a new `MsgBundle` with a pre-build Vec of [`ComponentBundle`] components.
+    /// Create a new `MsgBundle` with a pre-built Vec of [`ComponentBundle`] components.
+    ///
+    /// The `MsgId` will automatically be appended as a component to the given `bundles`, allowing
+    /// the backend to keep track of the origin of any row of data.
     pub fn new(
         msg_id: MsgId,
         obj_path: ObjPath,
         time_point: TimePoint,
-        bundles: Vec<ComponentBundle>,
+        components: Vec<ComponentBundle>,
     ) -> Self {
-        Self {
+        let mut this = Self {
             msg_id,
             obj_path,
             time_point,
-            components: bundles,
-        }
+            components,
+        };
+
+        // Since we don't yet support splats, we need to craft an array of `MsgId`s that matches
+        // the length of the other components.
+        //
+        // TODO(#440): support splats & remove this hack.
+        this.components
+            .push(vec![msg_id; this.row_len(0)].try_into().unwrap());
+
+        this
     }
 
     /// Try to append a collection of `Component` onto the `MessageBundle`.
@@ -229,22 +255,62 @@ impl MsgBundle {
         self.components.push(bundle);
         Ok(())
     }
+
+    /// Returns the length of a specific row within the bundle, i.e. the row's _number of
+    /// instances_.
+    ///
+    /// Panics if `row_nr` is out of bounds.
+    pub fn row_len(&self, row_nr: usize) -> usize {
+        // TODO(#440): won't be able to pick any component randomly once we support splats!
+        self.components.first().map_or(0, |bundle| {
+            bundle
+                .value
+                .as_any()
+                .downcast_ref::<ListArray<i32>>()
+                .unwrap()
+                .offsets()
+                .lengths()
+                .nth(row_nr)
+                .unwrap()
+        })
+    }
+
+    /// Returns the length of the bundle, i.e. its _number of rows_.
+    pub fn len(&self) -> usize {
+        // TODO(#440): won't be able to pick any component randomly once we support splats!
+        self.components.first().map_or(0, |bundle| {
+            bundle
+                .value
+                .as_any()
+                .downcast_ref::<ListArray<i32>>()
+                .unwrap()
+                .len()
+        })
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    /// Returns the index of `component` in the bundle, if it exists.
+    ///
+    /// This is `O(n)`.
+    pub fn find_component(&self, component: &ComponentName) -> Option<usize> {
+        self.components
+            .iter()
+            .map(|bundle| bundle.name)
+            .position(|name| name == *component)
+    }
 }
 
 impl std::fmt::Display for MsgBundle {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let (names, values): (Vec<_>, Vec<_>) = self
-            .components
-            .iter()
-            .map(|ComponentBundle { name, value }| (name.as_str(), value))
-            .unzip();
-
-        let chunk = Chunk::new(values);
-        let table_string = arrow2::io::print::write(&[chunk], names.as_slice());
-
+        let values = self.components.iter().map(|bundle| &bundle.value);
+        let names = self.components.iter().map(|bundle| bundle.name.as_str());
+        let table = re_format::arrow::format_table(values, names);
         f.write_fmt(format_args!(
-            "MsgBundle '{}' @ {:?}:\n{}",
-            self.obj_path, self.time_point, table_string
+            "MsgBundle '{}' @ {:?}:\n{table}",
+            self.obj_path, self.time_point
         ))
     }
 }
@@ -409,10 +475,12 @@ fn extract_components(
 /// Wrap `field_array` in a single-element `ListArray`
 pub fn wrap_in_listarray(field_array: Box<dyn Array>) -> ListArray<i32> {
     let datatype = ListArray::<i32>::default_datatype(field_array.data_type().clone());
-    let offsets = Buffer::from(vec![0, field_array.len() as i32]);
+    let offsets = Offsets::try_from_lengths(std::iter::once(field_array.len()))
+        .unwrap()
+        .into();
     let values = field_array;
     let validity = None;
-    ListArray::<i32>::from_data(datatype, offsets, values, validity)
+    ListArray::<i32>::new(datatype, offsets, values, validity)
 }
 
 /// Helper to build a `MessageBundle` from 1 component

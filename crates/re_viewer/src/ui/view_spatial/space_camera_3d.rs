@@ -1,20 +1,22 @@
 use glam::{vec3, Affine3A, Mat3, Quat, Vec2, Vec3};
 use macaw::{IsoTransform, Ray3};
 
-use re_data_store::ObjPath;
-use re_log_types::{IndexHash, ViewCoordinates};
+use re_data_store::{InstanceIdHash, ObjPath};
+use re_log_types::ViewCoordinates;
 
 /// A logged camera that connects spaces.
 #[derive(Clone)]
 pub struct SpaceCamera3D {
-    /// Path to the object which has the rigid [Self::world_from_camera`] transforms.
-    pub camera_obj_path: ObjPath,
+    /// Path to the object which has the projection (pinhole, ortho or otherwise) transforms.
+    ///
+    /// We expect the camera transform to apply to this object and every path below it.
+    pub obj_path: ObjPath,
 
-    /// The hash of the instance index (if any) of the object at [`Self::camera_obj_path`].
-    pub instance_index_hash: IndexHash,
+    /// The instance id hash of the object that has the projection.
+    pub instance: InstanceIdHash,
 
     /// The coordinate system of the camera ("view-space").
-    pub camera_view_coordinates: Option<ViewCoordinates>,
+    pub view_coordinates: ViewCoordinates,
 
     /// Camera "Extrinsics", i.e. the pose of the camera.
     pub world_from_camera: IsoTransform,
@@ -23,9 +25,6 @@ pub struct SpaceCamera3D {
     // Optional projection-related things:
     /// The projection transform of a child-object.
     pub pinhole: Option<re_log_types::Pinhole>,
-
-    /// The child 2D space we project into.
-    pub target_space: Option<ObjPath>,
 }
 
 impl SpaceCamera3D {
@@ -44,10 +43,10 @@ impl SpaceCamera3D {
 
     /// Scene-space from Rerun view-space (RUB).
     pub fn world_from_rub_view(&self) -> Option<IsoTransform> {
-        match from_rub_quat(self.camera_view_coordinates) {
+        match from_rub_quat(self.view_coordinates) {
             Ok(from_rub) => Some(self.world_from_camera * IsoTransform::from_quat(from_rub)),
             Err(err) => {
-                re_log::warn_once!("Camera {:?}: {}", self.camera_obj_path, err);
+                re_log::warn_once!("Camera {:?}: {}", self.obj_path, err);
                 None
             }
         }
@@ -57,7 +56,7 @@ impl SpaceCamera3D {
     pub fn world_from_image(&self) -> Option<Affine3A> {
         let pinhole = self.pinhole?;
         let world_from_cam = self.world_from_cam();
-        let image_from_cam = Mat3::from_cols_array_2d(&pinhole.image_from_cam);
+        let image_from_cam: Mat3 = pinhole.image_from_cam.into();
         let cam_from_image = Affine3A::from_mat3(image_from_cam.inverse());
         Some(world_from_cam * cam_from_image)
     }
@@ -67,7 +66,7 @@ impl SpaceCamera3D {
         let pinhole = self.pinhole?;
         let cam_from_world = self.cam_from_world();
 
-        let image_from_cam = Mat3::from_cols_array_2d(&pinhole.image_from_cam);
+        let image_from_cam = pinhole.image_from_cam.into();
         let image_from_cam = Affine3A::from_mat3(image_from_cam);
         Some(image_from_cam * cam_from_world)
     }
@@ -91,17 +90,8 @@ impl SpaceCamera3D {
     }
 }
 
-/// Rerun uses RUB (X=Right Y=Up Z=Back) view coordinates.
-fn from_rub_mat3(system: Option<ViewCoordinates>) -> Result<Mat3, String> {
-    match system {
-        None => Err("lacks a coordinate system".to_owned()),
-        Some(system) => Ok(system.from_rub()),
-    }
-}
-
-fn from_rub_quat(system: Option<ViewCoordinates>) -> Result<Quat, String> {
-    let mat3 = from_rub_mat3(system)?;
-    let system = system.unwrap(); // Safe, or `from_rub_mat3` would have returned an `Err`.
+fn from_rub_quat(system: ViewCoordinates) -> Result<Quat, String> {
+    let mat3 = system.from_rub();
 
     let det = mat3.determinant();
     if det == 1.0 {

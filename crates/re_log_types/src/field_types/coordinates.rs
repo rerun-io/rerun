@@ -1,13 +1,22 @@
+use arrow2::datatypes::DataType;
+use arrow2_convert::{
+    deserialize::ArrowDeserialize,
+    field::{ArrowField, FixedSizeBinary},
+    serialize::ArrowSerialize,
+};
+
+use crate::msg_bundle::Component;
+
 /// The six cardinal directions for 3D view-space and image-space.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum ViewDir {
-    Up,
-    Down,
-    Right,
-    Left,
-    Forward,
-    Back,
+    Up = 1,
+    Down = 2,
+    Right = 3,
+    Left = 4,
+    Forward = 5,
+    Back = 6,
 }
 
 impl ViewDir {
@@ -49,6 +58,22 @@ impl ViewDir {
     }
 }
 
+impl TryFrom<u8> for ViewDir {
+    type Error = super::FieldError;
+
+    fn try_from(i: u8) -> super::Result<Self> {
+        match i {
+            1 => Ok(Self::Up),
+            2 => Ok(Self::Down),
+            3 => Ok(Self::Right),
+            4 => Ok(Self::Left),
+            5 => Ok(Self::Forward),
+            6 => Ok(Self::Back),
+            _ => Err(super::FieldError::BadValue),
+        }
+    }
+}
+
 // ----------------------------------------------------------------------------
 
 /// How we interpret the coordinate system of an object/space.
@@ -56,9 +81,26 @@ impl ViewDir {
 /// For instance: What is "up"? What does the Z axis mean? Is this right-handed or left-handed?
 ///
 /// For 3D view-space and image-space.
+///
+/// ```
+/// use re_log_types::field_types::ViewCoordinates;
+/// use arrow2_convert::field::ArrowField;
+/// use arrow2::datatypes::{DataType, Field};
+///
+/// assert_eq!(
+///     ViewCoordinates::data_type(),
+///     DataType::FixedSizeBinary(3)
+/// );
+/// ```
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct ViewCoordinates(pub [ViewDir; 3]);
+
+impl Component for ViewCoordinates {
+    fn name() -> crate::ComponentName {
+        "rerun.view_coordinates".into()
+    }
+}
 
 impl ViewCoordinates {
     /// Choses a coordinate system based on just an up-axis.
@@ -216,6 +258,46 @@ impl std::str::FromStr for ViewCoordinates {
             }
             _ => Err(format!("Expected three letters, got: {s:?}")),
         }
+    }
+}
+
+impl ArrowField for ViewCoordinates {
+    type Type = Self;
+    fn data_type() -> DataType {
+        <FixedSizeBinary<3> as ArrowField>::data_type()
+    }
+}
+
+impl ArrowSerialize for ViewCoordinates {
+    type MutableArrayType = <FixedSizeBinary<3> as ArrowSerialize>::MutableArrayType;
+
+    #[inline]
+    fn new_array() -> Self::MutableArrayType {
+        FixedSizeBinary::<3>::new_array()
+    }
+
+    #[inline]
+    fn arrow_serialize(v: &Self, array: &mut Self::MutableArrayType) -> arrow2::error::Result<()> {
+        let bytes = [v.0[0] as u8, v.0[1] as u8, v.0[2] as u8];
+        array.try_push(Some(bytes))
+    }
+}
+
+impl ArrowDeserialize for ViewCoordinates {
+    type ArrayType = <FixedSizeBinary<3> as ArrowDeserialize>::ArrayType;
+
+    #[inline]
+    fn arrow_deserialize(
+        bytes: <&Self::ArrayType as IntoIterator>::Item,
+    ) -> Option<<Self as ArrowField>::Type> {
+        bytes.and_then(|bytes| {
+            let dirs = [
+                bytes[0].try_into().ok()?,
+                bytes[1].try_into().ok()?,
+                bytes[2].try_into().ok()?,
+            ];
+            Some(ViewCoordinates(dirs))
+        })
     }
 }
 
@@ -396,4 +478,18 @@ fn view_coordinatess() {
             }
         }
     }
+}
+
+#[test]
+fn test_viewcoordinates_roundtrip() {
+    use arrow2::array::Array;
+    use arrow2_convert::{deserialize::TryIntoCollection, serialize::TryIntoArrow};
+
+    let views_in = vec![
+        "RUB".parse::<ViewCoordinates>().unwrap(),
+        "LFD".parse::<ViewCoordinates>().unwrap(),
+    ];
+    let array: Box<dyn Array> = views_in.try_into_arrow().unwrap();
+    let views_out: Vec<ViewCoordinates> = TryIntoCollection::try_into_collection(array).unwrap();
+    assert_eq!(views_in, views_out);
 }

@@ -103,6 +103,7 @@ pub fn all_configs() -> impl Iterator<Item = DataStoreConfig> {
             component_bucket_nb_rows: comp.component_bucket_nb_rows,
             index_bucket_size_bytes: idx.index_bucket_size_bytes,
             index_bucket_nb_rows: idx.index_bucket_nb_rows,
+            store_insert_ids: comp.store_insert_ids || idx.store_insert_ids,
         })
     })
 }

@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use itertools::Itertools;
 use re_log_types::{
-    DataPath, DataType, FieldName, LoggedData, MsgId, ObjPath, ObjPathComp, PathOp, TimeInt,
+    DataPath, DataType, FieldOrComponent, LoggedData, MsgId, ObjPath, ObjPathComp, PathOp, TimeInt,
     TimePoint, Timeline,
 };
 
@@ -29,6 +29,12 @@ impl TimesPerTimeline {
     ) -> impl ExactSizeIterator<Item = (&Timeline, &BTreeMap<TimeInt, BTreeSet<MsgId>>)> {
         self.0.iter()
     }
+
+    pub fn iter_mut(
+        &mut self,
+    ) -> impl ExactSizeIterator<Item = (&Timeline, &mut BTreeMap<TimeInt, BTreeSet<MsgId>>)> {
+        self.0.iter_mut()
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -45,13 +51,16 @@ pub struct ObjectTree {
     /// Data logged at this exact path or any child path.
     pub prefix_times: TimesPerTimeline,
 
+    /// Extra book-keeping used to seed any timelines that include timeless msgs
+    pub timeless_msgs: BTreeSet<MsgId>,
+
     /// Book-keeping around whether we should clear fields when data is added
     pub nonrecursive_clears: BTreeMap<MsgId, TimePoint>,
     /// Book-keeping around whether we should clear recursively when data is added
     pub recursive_clears: BTreeMap<MsgId, TimePoint>,
 
     /// Data logged at this object path.
-    pub fields: BTreeMap<FieldName, DataColumns>,
+    pub fields: BTreeMap<FieldOrComponent, DataColumns>,
 }
 
 impl ObjectTree {
@@ -64,6 +73,7 @@ impl ObjectTree {
             path,
             children: Default::default(),
             prefix_times: Default::default(),
+            timeless_msgs: Default::default(),
             nonrecursive_clears: recursive_clears.clone(),
             recursive_clears,
             fields: Default::default(),
@@ -117,7 +127,7 @@ impl ObjectTree {
     }
 
     /// Add a path operation into the the object tree
-    ///j
+    ///
     /// Returns a collection of data paths to clear as a result of the operation
     /// Additional pending clear operations will be stored in the tree for future
     /// insertion.
@@ -146,17 +156,25 @@ impl ObjectTree {
                 // For every existing field return a clear event
                 leaf.fields
                     .iter()
-                    .flat_map(|(field_name, fields)| {
-                        fields
-                            .per_type
-                            .iter()
-                            .map(|((data_type, multi_or_mono), _)| {
-                                (
-                                    DataPath::new(obj_path.clone(), *field_name),
-                                    *data_type,
-                                    *multi_or_mono,
-                                )
-                            })
+                    .flat_map(|(field_name, fields)| match field_name {
+                        FieldOrComponent::Field(_) => {
+                            itertools::Either::Left(fields.per_type.iter().map(
+                                |((data_type, multi_or_mono), _)| {
+                                    (
+                                        DataPath::new_any(obj_path.clone(), *field_name),
+                                        *data_type,
+                                        *multi_or_mono,
+                                    )
+                                },
+                            ))
+                        }
+                        FieldOrComponent::Component(_) => {
+                            itertools::Either::Right(std::iter::once((
+                                DataPath::new_any(obj_path.clone(), *field_name),
+                                DataType::Bool, // Doesn't matter what we use here. Arrow clears by field_name.
+                                MonoOrMulti::Multi,
+                            )))
+                        }
                     })
                     .collect_vec()
             }
@@ -183,16 +201,26 @@ impl ObjectTree {
                     // For every existing field append a clear event into the
                     // results
                     results.extend(next.fields.iter().flat_map(|(field_name, fields)| {
-                        fields
-                            .per_type
-                            .iter()
-                            .map(|((data_type, multi_or_mono), _)| {
-                                (
-                                    DataPath::new(next.path.clone(), *field_name),
-                                    *data_type,
-                                    *multi_or_mono,
-                                )
-                            })
+                        match field_name {
+                            FieldOrComponent::Field(_) => {
+                                itertools::Either::Left(fields.per_type.iter().map(
+                                    |((data_type, multi_or_mono), _)| {
+                                        (
+                                            DataPath::new_any(next.path.clone(), *field_name),
+                                            *data_type,
+                                            *multi_or_mono,
+                                        )
+                                    },
+                                ))
+                            }
+                            FieldOrComponent::Component(_) => {
+                                itertools::Either::Right(std::iter::once((
+                                    DataPath::new_any(next.path.clone(), *field_name),
+                                    DataType::Bool, // Doesn't matter what we use here. Arrow clears by field_name.
+                                    MonoOrMulti::Multi,
+                                )))
+                            }
+                        }
                     }));
                 }
                 results
@@ -207,14 +235,45 @@ impl ObjectTree {
         msg_id: MsgId,
         time_point: &TimePoint,
     ) -> &mut Self {
-        for (timeline, time_value) in time_point.iter() {
-            self.prefix_times
-                .0
-                .entry(*timeline)
-                .or_default()
-                .entry(*time_value)
-                .or_default()
-                .insert(msg_id);
+        let mut new_timeline = false;
+
+        // If the time_point is timeless...
+        if time_point.is_timeless() {
+            // Save it so that we can duplicate it into future timelines
+            self.timeless_msgs.insert(msg_id);
+
+            // Add it to any existing timelines
+            for (_, timeline) in self.prefix_times.iter_mut() {
+                timeline
+                    .entry(TimeInt::BEGINNING)
+                    .or_default()
+                    .insert(msg_id);
+            }
+        } else {
+            for (timeline, time_value) in time_point.iter() {
+                self.prefix_times
+                    .0
+                    .entry(*timeline)
+                    .or_insert_with(|| {
+                        new_timeline = true;
+                        if self.timeless_msgs.is_empty() {
+                            Default::default()
+                        } else {
+                            [(TimeInt::BEGINNING, self.timeless_msgs.clone())].into()
+                        }
+                    })
+                    .entry(*time_value)
+                    .or_default()
+                    .insert(msg_id);
+            }
+        }
+
+        // If a new timeline was added at this path, touch all the fields
+        // to make sure deferred timeless msgs get inserted
+        if new_timeline {
+            self.fields.iter_mut().for_each(|(_, field)| {
+                field.populate_timeless(time_point);
+            });
         }
 
         match full_path.get(depth) {
@@ -250,6 +309,7 @@ impl ObjectTree {
             path: _,
             children,
             prefix_times,
+            timeless_msgs: _,
             nonrecursive_clears,
             recursive_clears,
             fields,
@@ -303,18 +363,40 @@ pub enum MonoOrMulti {
 pub struct DataColumns {
     /// When do we have data?
     pub times: BTreeMap<Timeline, BTreeMap<TimeInt, BTreeSet<MsgId>>>,
+    /// Extra book-keeping used to seed any timelines that include timeless msgs
+    pub timeless_msgs: BTreeSet<MsgId>,
     pub per_type: HashMap<(DataType, MonoOrMulti), BTreeSet<MsgId>>,
 }
 
 impl DataColumns {
     pub fn add(&mut self, msg_id: MsgId, time_point: &TimePoint, data: Option<&LoggedData>) {
-        for (timeline, time_value) in time_point.iter() {
-            self.times
-                .entry(*timeline)
-                .or_default()
-                .entry(*time_value)
-                .or_default()
-                .insert(msg_id);
+        // If the `time_point` is timeless...
+        if time_point.is_timeless() {
+            // Save it so that we can duplicate it into future timelines
+            self.timeless_msgs.insert(msg_id);
+
+            // Add it to any existing timelines
+            for timeline in &mut self.times.values_mut() {
+                timeline
+                    .entry(TimeInt::BEGINNING)
+                    .or_default()
+                    .insert(msg_id);
+            }
+        } else {
+            for (timeline, time_value) in time_point.iter() {
+                self.times
+                    .entry(*timeline)
+                    .or_insert_with(|| {
+                        if self.timeless_msgs.is_empty() {
+                            Default::default()
+                        } else {
+                            [(TimeInt::BEGINNING, self.timeless_msgs.clone())].into()
+                        }
+                    })
+                    .entry(*time_value)
+                    .or_default()
+                    .insert(msg_id);
+            }
         }
 
         if let Some(data) = data {
@@ -327,6 +409,20 @@ impl DataColumns {
                 .entry((data.data_type(), mono_or_multi))
                 .or_default()
                 .insert(msg_id);
+        }
+    }
+
+    pub fn populate_timeless(&mut self, time_point: &TimePoint) {
+        // For any timeline in `time_point` populate an initial entry from the current
+        // `timeless_msgs` seed.
+        for (timeline, _) in time_point.iter() {
+            self.times.entry(*timeline).or_insert_with(|| {
+                if self.timeless_msgs.is_empty() {
+                    Default::default()
+                } else {
+                    [(TimeInt::BEGINNING, self.timeless_msgs.clone())].into()
+                }
+            });
         }
     }
 
@@ -367,7 +463,11 @@ impl DataColumns {
     }
 
     pub fn purge_everything_but(&mut self, keep_msg_ids: &ahash::HashSet<MsgId>) {
-        let Self { times, per_type } = self;
+        let Self {
+            times,
+            per_type,
+            timeless_msgs: _,
+        } = self;
 
         for map in times.values_mut() {
             map.retain(|_, msg_ids| {

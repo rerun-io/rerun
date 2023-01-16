@@ -2,19 +2,19 @@ use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::num::NonZeroU64;
 use std::sync::atomic::AtomicU64;
 
-use anyhow::ensure;
-use arrow2::array::Array;
-use arrow2::datatypes::DataType;
+use anyhow::{anyhow, ensure};
+use arrow2::array::{Array, Int64Array, UInt64Array};
+use arrow2::datatypes::{DataType, TimeUnit};
 
-use nohash_hasher::IntMap;
+use nohash_hasher::{IntMap, IntSet};
 use parking_lot::RwLock;
 use re_format::{arrow, format_bytes, format_number};
 use re_log_types::{
-    ComponentName, ObjPath as EntityPath, ObjPathHash as EntityPathHash, TimeInt, TimeRange,
-    Timeline,
+    ComponentName, MsgId, ObjPath as EntityPath, ObjPathHash as EntityPathHash, TimeInt, TimePoint,
+    TimeRange, Timeline,
 };
 
-// --- Data store ---
+// --- Indices & offsets ---
 
 /// A vector of times. Our primary column, always densely filled.
 pub type TimeIndex = Vec<i64>;
@@ -24,33 +24,85 @@ pub type TimeIndex = Vec<i64>;
 pub type SecondaryIndex = Vec<Option<RowIndex>>;
 static_assertions::assert_eq_size!(u64, Option<RowIndex>);
 
-/// An opaque type that directly refers to a row of data within the datastore, iff it is associated
-/// with a component name.
+// TODO(#639): We desperately need to work on the terminology here:
+//
+// - `TimeIndex` is a vector of `TimeInt`s.
+//   It's the primary column and it's always dense.
+//   It's used to search the datastore by time.
+//
+// - `ComponentIndex` (currently `SecondaryIndex`) is a vector of `ComponentRowNr`s.
+//   It's the secondary column and is sparse.
+//   It's used to search the datastore by component once the search by time is complete.
+//
+// - `ComponentRowNr` (currently `RowIndex`) is a row offset into a component table.
+//   It only makes sense when associated with a component name.
+//   It is absolute.
+//   It's used to fetch actual data from the datastore.
+//
+// - `IndexRowNr` is a row offset into an index bucket.
+//   It only makes sense when associated with an entity path and a specific time.
+//   It is relative per bucket.
+//   It's used to tiebreak results with an identical time, should you need too.
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[repr(u64)]
+pub enum RowIndexKind {
+    Temporal = 0,
+    Timeless = 1,
+}
+
+/// An opaque type that directly refers to a row of data within the datastore, iff it is
+/// associated with a component name.
 ///
-/// See [`DataStore::query`] & [`DataStore::get`].
+/// See [`DataStore::latest_at`], [`DataStore::range`] & [`DataStore::get`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct RowIndex(pub(crate) NonZeroU64);
-
 impl RowIndex {
+    const KIND_MASK: u64 = 0x8000_0000_0000_0000;
+
     /// Panics if `v` is 0.
-    pub(crate) fn from_u64(v: u64) -> Self {
+    /// In debug, panics if `v` has its most significant bit set.
+    pub(crate) fn from_u63(kind: RowIndexKind, v: u64) -> Self {
+        debug_assert!(v & Self::KIND_MASK == 0);
+
+        let v = v | ((kind as u64) << 63);
         Self(v.try_into().unwrap())
     }
 
     pub(crate) fn as_u64(self) -> u64 {
-        self.0.into()
+        self.0.get() & !Self::KIND_MASK
+    }
+
+    pub(crate) fn kind(self) -> RowIndexKind {
+        match self.0.get() & Self::KIND_MASK > 0 {
+            false => RowIndexKind::Temporal,
+            true => RowIndexKind::Timeless,
+        }
+    }
+}
+impl std::fmt::Display for RowIndex {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.kind() {
+            RowIndexKind::Temporal => f.write_fmt(format_args!("Temporal({})", self.0)),
+            RowIndexKind::Timeless => f.write_fmt(format_args!("Timeless({})", self.0)),
+        }
     }
 }
 
-impl std::fmt::Display for RowIndex {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct IndexRowNr(pub(crate) u64);
+impl std::fmt::Display for IndexRowNr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!("{}", self.0))
     }
 }
 
+// --- Data store ---
+
 #[derive(Debug, Clone)]
 pub struct DataStoreConfig {
     /// The maximum size of a component bucket before triggering a split.
+    /// Does not apply to timeless data.
     ///
     /// ⚠ When configuring this threshold, do keep in mind that component tables are shared
     /// across all timelines and all entities!
@@ -66,6 +118,7 @@ pub struct DataStoreConfig {
     /// See [`Self::DEFAULT`] for defaults.
     pub component_bucket_size_bytes: u64,
     /// The maximum number of rows in a component bucket before triggering a split.
+    /// Does not apply to timeless data.
     ///
     /// ⚠ When configuring this threshold, do keep in mind that component tables are shared
     /// across all timelines and all entities!
@@ -82,6 +135,7 @@ pub struct DataStoreConfig {
     pub component_bucket_nb_rows: u64,
 
     /// The maximum size of an index bucket before triggering a split.
+    /// Does not apply to timeless data.
     ///
     /// ⚠ When configuring this threshold, do keep in mind that index tables are always scoped
     /// to a specific timeline _and_ a specific entity.
@@ -96,6 +150,7 @@ pub struct DataStoreConfig {
     /// See [`Self::DEFAULT`] for defaults.
     pub index_bucket_size_bytes: u64,
     /// The maximum number of rows in an index bucket before triggering a split.
+    /// Does not apply to timeless data.
     ///
     /// ⚠ When configuring this threshold, do keep in mind that index tables are always scoped
     /// to a specific timeline _and_ a specific entity.
@@ -109,6 +164,16 @@ pub struct DataStoreConfig {
     ///
     /// See [`Self::DEFAULT`] for defaults.
     pub index_bucket_nb_rows: u64,
+
+    /// If enabled, will store the ID of the write request alongside the inserted data.
+    ///
+    /// This can make inspecting the data within the store much easier, at the cost of an extra
+    /// `u64` value stored per row.
+    ///
+    /// Enabled by default in debug builds.
+    ///
+    /// See [`DataStore::insert_id_key`].
+    pub store_insert_ids: bool,
 }
 
 impl Default for DataStoreConfig {
@@ -123,6 +188,7 @@ impl DataStoreConfig {
         component_bucket_nb_rows: u64::MAX,
         index_bucket_size_bytes: 32 * 1024, // 32kiB
         index_bucket_nb_rows: 1024,
+        store_insert_ids: cfg!(debug_assertions),
     };
 }
 
@@ -130,10 +196,15 @@ impl DataStoreConfig {
 
 /// A complete data store: covers all timelines, all entities, everything.
 ///
+/// ## Debugging
+///
 /// `DataStore` provides a very thorough `Display` implementation that makes it manageable to
 /// know what's going on internally.
 /// For even more information, you can set `RERUN_DATA_STORE_DISPLAY_SCHEMAS=1` in your
 /// environment, which will result in additional schema information being printed out.
+///
+/// Additionally, if the `polars` feature is enabled, you can dump the entire datastore as a
+/// flat denormalized dataframe using [`Self::to_dataframe`].
 pub struct DataStore {
     /// The cluster key specifies a column/component that is guaranteed to always be present for
     /// every single row of data within the store.
@@ -151,15 +222,28 @@ pub struct DataStore {
     /// The configuration of the data store (e.g. bucket sizes).
     pub(crate) config: DataStoreConfig,
 
+    /// Maps `MsgId`s to some metadata (just timepoints at the moment).
+    ///
+    /// `BTreeMap` because of garbage collection.
+    pub(crate) messages: BTreeMap<MsgId, TimePoint>,
+
     /// Used to cache auto-generated cluster components, i.e. `[0]`, `[0, 1]`, `[0, 1, 2]`, etc
-    /// so that they properly deduplicated.
+    /// so that they can be properly deduplicated.
     pub(crate) cluster_comp_cache: IntMap<usize, RowIndex>,
+
+    /// Dedicated index tables for timeless data. Never garbage collected.
+    ///
+    /// See also `Self::indices`.
+    pub(crate) timeless_indices: IntMap<EntityPathHash, PersistentIndexTable>,
+    /// Dedicated component tables for timeless data. Never garbage collected.
+    ///
+    /// See also `Self::components`.
+    pub(crate) timeless_components: IntMap<ComponentName, PersistentComponentTable>,
 
     /// Maps an entity to its index, for a specific timeline.
     ///
     /// An index maps specific points in time to rows in component tables.
     pub(crate) indices: HashMap<(Timeline, EntityPathHash), IndexTable>,
-
     /// Maps a component name to its associated table, for all timelines and all entities.
     ///
     /// A component table holds all the values ever inserted for a given component.
@@ -178,11 +262,24 @@ impl DataStore {
             cluster_key,
             config,
             cluster_comp_cache: Default::default(),
+            messages: Default::default(),
             indices: Default::default(),
             components: Default::default(),
+            timeless_indices: Default::default(),
+            timeless_components: Default::default(),
             insert_id: 0,
             query_id: AtomicU64::new(0),
         }
+    }
+
+    /// The column name used for storing insert requests' IDs alongside the data.
+    ///
+    /// The insert IDs are stored as-is directly into the index tables, this is _not_ an
+    /// indirection into an associated component table!
+    ///
+    /// See [`DataStoreConfig::store_insert_ids`].
+    pub fn insert_id_key() -> ComponentName {
+        "rerun.insert_id".into()
     }
 
     /// See [`Self::cluster_key`] for more information about the cluster key.
@@ -190,37 +287,9 @@ impl DataStore {
         self.cluster_key
     }
 
-    /// Returns the number of index rows stored across this entire store, i.e. the sum of
-    /// the number of rows across all of its index tables.
-    pub fn total_index_rows(&self) -> u64 {
-        self.indices.values().map(|table| table.total_rows()).sum()
-    }
-
-    /// Returns the size of the index data stored across this entire store, i.e. the sum of
-    /// the size of the data stored across all of its index tables, in bytes.
-    pub fn total_index_size_bytes(&self) -> u64 {
-        self.indices
-            .values()
-            .map(|table| table.total_size_bytes())
-            .sum()
-    }
-
-    /// Returns the number of component rows stored across this entire store, i.e. the sum of
-    /// the number of rows across all of its component tables.
-    pub fn total_component_rows(&self) -> u64 {
-        self.components
-            .values()
-            .map(|table| table.total_rows())
-            .sum()
-    }
-
-    /// Returns the size of the component data stored across this entire store, i.e. the sum of
-    /// the size of the data stored across all of its component tables, in bytes.
-    pub fn total_component_size_bytes(&self) -> u64 {
-        self.components
-            .values()
-            .map(|table| table.total_size_bytes())
-            .sum()
+    /// Lookup the arrow `DataType` of a `Component`
+    pub fn lookup_data_type(&self, component: &ComponentName) -> Option<&DataType> {
+        self.components.get(component).map(|c| &c.datatype)
     }
 
     /// Runs the sanity check suite for the entire datastore.
@@ -230,23 +299,28 @@ impl DataStore {
         // Row indices should be continuous across all index tables.
         // TODO(#449): update this one appropriately when GC lands.
         {
-            let mut row_indices: IntMap<_, Vec<RowIndex>> = IntMap::default();
+            let mut row_indices: IntMap<_, Vec<u64>> = IntMap::default();
             for table in self.indices.values() {
                 for bucket in table.buckets.values() {
                     for (comp, index) in &bucket.indices.read().indices {
                         let row_indices = row_indices.entry(*comp).or_default();
-                        row_indices.extend(index.iter().copied().flatten());
+                        row_indices.extend(index.iter().flatten().map(|row_idx| row_idx.as_u64()));
                     }
                 }
             }
 
             for (comp, mut row_indices) in row_indices {
+                // Not an actual row index!
+                if comp == DataStore::insert_id_key() {
+                    continue;
+                }
+
                 row_indices.sort();
                 row_indices.dedup();
                 for pair in row_indices.windows(2) {
                     let &[i1, i2] = pair else { unreachable!() };
                     ensure!(
-                        i1.as_u64() + 1 == i2.as_u64(),
+                        i1 + 1 == i2,
                         "found hole in index coverage for {comp:?}: \
                             in {row_indices:?}, {i1} -> {i2}"
                     );
@@ -254,10 +328,45 @@ impl DataStore {
             }
         }
 
-        for table in self.indices.values() {
+        // Row indices should be continuous across all timeless index tables.
+        {
+            let mut row_indices: IntMap<_, Vec<u64>> = IntMap::default();
+            for table in self.timeless_indices.values() {
+                for (comp, index) in &table.indices {
+                    let row_indices = row_indices.entry(*comp).or_default();
+                    row_indices.extend(index.iter().flatten().map(|row_idx| row_idx.as_u64()));
+                }
+            }
+
+            for (comp, mut row_indices) in row_indices {
+                // Not an actual row index!
+                if comp == DataStore::insert_id_key() {
+                    continue;
+                }
+
+                row_indices.sort();
+                row_indices.dedup();
+                for pair in row_indices.windows(2) {
+                    let &[i1, i2] = pair else { unreachable!() };
+                    ensure!(
+                        i1 + 1 == i2,
+                        "found hole in timeless index coverage for {comp:?}: \
+                            in {row_indices:?}, {i1} -> {i2}"
+                    );
+                }
+            }
+        }
+
+        for table in self.timeless_indices.values() {
+            table.sanity_check()?;
+        }
+        for table in self.timeless_components.values() {
             table.sanity_check()?;
         }
 
+        for table in self.indices.values() {
+            table.sanity_check()?;
+        }
         for table in self.components.values() {
             table.sanity_check()?;
         }
@@ -273,8 +382,11 @@ impl std::fmt::Display for DataStore {
             cluster_key,
             config,
             cluster_comp_cache: _,
+            messages: _,
             indices,
             components,
+            timeless_indices,
+            timeless_components,
             insert_id: _,
             query_id: _,
         } = self;
@@ -291,16 +403,34 @@ impl std::fmt::Display for DataStore {
             f.write_str(&indent::indent_all_by(
                 4,
                 format!(
-                    "{} index tables, for a total of {} across {} total rows\n",
-                    self.indices.len(),
-                    format_bytes(self.total_index_size_bytes() as _),
-                    format_number(self.total_index_rows() as _)
+                    "{} timeless index tables, for a total of {} across {} total rows\n",
+                    timeless_indices.len(),
+                    format_bytes(self.total_timeless_index_size_bytes() as _),
+                    format_number(self.total_timeless_index_rows() as _)
                 ),
             ))?;
-            f.write_str(&indent::indent_all_by(4, "indices: [\n"))?;
-            for index in indices.values() {
-                f.write_str(&indent::indent_all_by(8, "IndexTable {\n"))?;
-                f.write_str(&indent::indent_all_by(12, index.to_string() + "\n"))?;
+            f.write_str(&indent::indent_all_by(4, "timeless_indices: [\n"))?;
+            for table in timeless_indices.values() {
+                f.write_str(&indent::indent_all_by(8, "PersistentIndexTable {\n"))?;
+                f.write_str(&indent::indent_all_by(12, table.to_string() + "\n"))?;
+                f.write_str(&indent::indent_all_by(8, "}\n"))?;
+            }
+            f.write_str(&indent::indent_all_by(4, "]\n"))?;
+        }
+        {
+            f.write_str(&indent::indent_all_by(
+                4,
+                format!(
+                    "{} persistent component tables, for a total of {} across {} total rows\n",
+                    timeless_components.len(),
+                    format_bytes(self.total_timeless_component_size_bytes() as _),
+                    format_number(self.total_timeless_component_rows() as _)
+                ),
+            ))?;
+            f.write_str(&indent::indent_all_by(4, "timeless_components: [\n"))?;
+            for table in timeless_components.values() {
+                f.write_str(&indent::indent_all_by(8, "PersistentComponentTable {\n"))?;
+                f.write_str(&indent::indent_all_by(12, table.to_string() + "\n"))?;
                 f.write_str(&indent::indent_all_by(8, "}\n"))?;
             }
             f.write_str(&indent::indent_all_by(4, "]\n"))?;
@@ -310,16 +440,34 @@ impl std::fmt::Display for DataStore {
             f.write_str(&indent::indent_all_by(
                 4,
                 format!(
+                    "{} index tables, for a total of {} across {} total rows\n",
+                    indices.len(),
+                    format_bytes(self.total_temporal_index_size_bytes() as _),
+                    format_number(self.total_temporal_index_rows() as _)
+                ),
+            ))?;
+            f.write_str(&indent::indent_all_by(4, "indices: [\n"))?;
+            for table in indices.values() {
+                f.write_str(&indent::indent_all_by(8, "IndexTable {\n"))?;
+                f.write_str(&indent::indent_all_by(12, table.to_string() + "\n"))?;
+                f.write_str(&indent::indent_all_by(8, "}\n"))?;
+            }
+            f.write_str(&indent::indent_all_by(4, "]\n"))?;
+        }
+        {
+            f.write_str(&indent::indent_all_by(
+                4,
+                format!(
                     "{} component tables, for a total of {} across {} total rows\n",
-                    self.components.len(),
-                    format_bytes(self.total_component_size_bytes() as _),
-                    format_number(self.total_component_rows() as _)
+                    components.len(),
+                    format_bytes(self.total_temporal_component_size_bytes() as _),
+                    format_number(self.total_temporal_component_rows() as _)
                 ),
             ))?;
             f.write_str(&indent::indent_all_by(4, "components: [\n"))?;
-            for comp in components.values() {
+            for table in components.values() {
                 f.write_str(&indent::indent_all_by(8, "ComponentTable {\n"))?;
-                f.write_str(&indent::indent_all_by(12, comp.to_string() + "\n"))?;
+                f.write_str(&indent::indent_all_by(12, table.to_string() + "\n"))?;
                 f.write_str(&indent::indent_all_by(8, "}\n"))?;
             }
             f.write_str(&indent::indent_all_by(4, "]\n"))?;
@@ -328,6 +476,124 @@ impl std::fmt::Display for DataStore {
         f.write_str("}")?;
 
         Ok(())
+    }
+}
+
+// --- Persistent Indices ---
+
+/// A `PersistentIndexTable` maps specific entries to rows in persistent component tables.
+///
+/// See also `DataStore::IndexTable`.
+#[derive(Debug)]
+pub struct PersistentIndexTable {
+    /// The entity this table is related to, for debugging purposes.
+    pub(crate) ent_path: EntityPath,
+
+    /// Carrying the cluster key around to help with assertions and sanity checks all over the
+    /// place.
+    pub(crate) cluster_key: ComponentName,
+
+    /// The number of rows in the table: all indices should always be exactly of that length.
+    pub(crate) nb_rows: u64,
+
+    /// All component indices for this bucket.
+    ///
+    /// One index per component: new components (and as such, new indices) can be added at any
+    /// time!
+    /// When that happens, they will be retro-filled with nulls until they are [`Self::nb_rows`]
+    /// long.
+    pub(crate) indices: IntMap<ComponentName, SecondaryIndex>,
+
+    /// Track all of the components that have been written to.
+    pub(crate) all_components: IntSet<ComponentName>,
+}
+
+impl std::fmt::Display for PersistentIndexTable {
+    #[allow(clippy::string_add)]
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self {
+            ent_path,
+            cluster_key: _,
+            nb_rows: _,
+            indices: _,
+            all_components: _,
+        } = self;
+
+        f.write_fmt(format_args!("entity: {}\n", ent_path))?;
+
+        f.write_fmt(format_args!(
+            "size: {} across {} rows\n",
+            format_bytes(self.total_size_bytes() as _),
+            format_number(self.total_rows() as _),
+        ))?;
+
+        let (col_names, cols) = self.named_indices();
+
+        let names = col_names.into_iter().map(|name| name.to_string());
+        let values = cols.into_iter().map(|c| c.boxed());
+        let table = arrow::format_table(values, names);
+
+        f.write_fmt(format_args!("data:\n{table}\n"))?;
+
+        Ok(())
+    }
+}
+
+impl PersistentIndexTable {
+    /// Runs the sanity check suite for the entire table.
+    ///
+    /// Returns an error if anything looks wrong.
+    pub fn sanity_check(&self) -> anyhow::Result<()> {
+        let Self {
+            ent_path: _,
+            cluster_key,
+            nb_rows,
+            indices,
+            all_components: _,
+        } = self;
+
+        // All indices should be `Self::nb_rows` long.
+        {
+            for (comp, index) in indices {
+                let secondary_len = index.len() as u64;
+                ensure!(
+                    *nb_rows == secondary_len,
+                    "found rogue secondary index for {comp:?}: \
+                        expected {nb_rows} rows, got {secondary_len} instead",
+                );
+            }
+        }
+
+        // The cluster index must be fully dense.
+        {
+            let cluster_idx = indices
+                .get(cluster_key)
+                .ok_or_else(|| anyhow!("no index found for cluster key: {cluster_key:?}"))?;
+            ensure!(
+                cluster_idx.iter().all(|row| row.is_some()),
+                "the cluster index ({cluster_key:?}) must be fully dense: \
+                    got {cluster_idx:?}",
+            );
+        }
+
+        Ok(())
+    }
+
+    pub fn named_indices(&self) -> (Vec<ComponentName>, Vec<UInt64Array>) {
+        self.indices
+            .iter()
+            .map(|(name, index)| {
+                (
+                    name,
+                    UInt64Array::from(
+                        index
+                            .iter()
+                            .map(|row_idx| row_idx.map(|row_idx| row_idx.as_u64()))
+                            .collect::<Vec<_>>(),
+                    ),
+                )
+            })
+            .unzip()
     }
 }
 
@@ -453,6 +719,17 @@ pub struct IndexTable {
     /// indexing standpoint, all reads and writes with a time `t >= -∞` should go there, even
     /// though the bucket doesn't actually contains data with a timestamp of `-∞`!
     pub(crate) buckets: BTreeMap<TimeInt, IndexBucket>,
+
+    /// Carrying the cluster key around to help with assertions and sanity checks all over the
+    /// place.
+    pub(crate) cluster_key: ComponentName,
+
+    /// Track all of the components that have been written to.
+    ///
+    /// Note that this set will never be purged and will continue to return
+    /// components that may have been set in the past even if all instances of
+    /// that component have since been purged to free up space.
+    pub(crate) all_components: IntSet<ComponentName>,
 }
 
 impl std::fmt::Display for IndexTable {
@@ -462,6 +739,8 @@ impl std::fmt::Display for IndexTable {
             timeline,
             ent_path,
             buckets,
+            cluster_key: _,
+            all_components: _,
         } = self;
 
         f.write_fmt(format_args!("timeline: {}\n", timeline.name()))?;
@@ -481,7 +760,7 @@ impl std::fmt::Display for IndexTable {
                 format!("index time bound: >= {}\n", timeline.typ().format(*time),),
             ))?;
             f.write_str(&indent::indent_all_by(8, bucket.to_string()))?;
-            f.write_str(&indent::indent_all_by(0, "}\n"))?;
+            f.write_str(&indent::indent_all_by(4, "}\n"))?;
         }
         f.write_str("]")?;
 
@@ -492,24 +771,6 @@ impl std::fmt::Display for IndexTable {
 impl IndexTable {
     pub fn entity_path(&self) -> &EntityPath {
         &self.ent_path
-    }
-
-    /// Returns the number of rows stored across this entire table, i.e. the sum of the number
-    /// of rows stored across all of its buckets.
-    pub fn total_rows(&self) -> u64 {
-        self.buckets
-            .values()
-            .map(|bucket| bucket.total_rows())
-            .sum()
-    }
-
-    /// Returns the size of data stored across this entire table, i.e. the sum of the size of
-    /// the data stored across all of its buckets, in bytes.
-    pub fn total_size_bytes(&self) -> u64 {
-        self.buckets
-            .values()
-            .map(|bucket| bucket.total_size_bytes())
-            .sum()
     }
 
     /// Runs the sanity check suite for the entire table.
@@ -558,6 +819,10 @@ pub struct IndexBucket {
     pub(crate) timeline: Timeline,
 
     pub(crate) indices: RwLock<IndexBucketIndices>,
+
+    /// Carrying the cluster key around to help with assertions and sanity checks all over the
+    /// place.
+    pub(crate) cluster_key: ComponentName,
 }
 
 /// Just the indices, to simplify interior mutability.
@@ -618,35 +883,13 @@ impl std::fmt::Display for IndexBucket {
         let table = arrow::format_table(values, names);
 
         let is_sorted = self.is_sorted();
-        f.write_fmt(format_args!("data (sorted={is_sorted}):\n{table}"))?;
+        f.write_fmt(format_args!("data (sorted={is_sorted}):\n{table}\n"))?;
 
         Ok(())
     }
 }
 
 impl IndexBucket {
-    /// Returns the number of rows stored across this bucket.
-    pub fn total_rows(&self) -> u64 {
-        self.indices.read().times.len() as u64
-    }
-
-    /// Returns the size of the data stored across this bucket, in bytes.
-    // NOTE: for mutable, non-erased arrays, it's actually easier to compute ourselves.
-    pub fn total_size_bytes(&self) -> u64 {
-        let IndexBucketIndices {
-            is_sorted: _,
-            time_range: _,
-            times,
-            indices,
-        } = &*self.indices.read();
-
-        std::mem::size_of_val(times.as_slice()) as u64
-            + indices
-                .values()
-                .map(|index| std::mem::size_of_val(index.as_slice()) as u64)
-                .sum::<u64>()
-    }
-
     /// Returns a formatted string of the time range in the bucket
     pub fn formatted_time_range(&self) -> String {
         let time_range = &self.indices.read().time_range;
@@ -655,6 +898,36 @@ impl IndexBucket {
         } else {
             "time range: N/A\n".to_owned()
         }
+    }
+
+    /// Returns an (name, [`Int64Array`]) with a logical type matching the timeline.
+    pub fn times(&self) -> (String, Int64Array) {
+        let times = Int64Array::from_vec(self.indices.read().times.clone());
+        let logical_type = match self.timeline.typ() {
+            re_log_types::TimeType::Time => DataType::Timestamp(TimeUnit::Nanosecond, None),
+            re_log_types::TimeType::Sequence => DataType::Int64,
+        };
+        (self.timeline.name().to_string(), times.to(logical_type))
+    }
+
+    /// Returns a Vec each of (name, array) for each index in the bucket
+    pub fn named_indices(&self) -> (Vec<ComponentName>, Vec<UInt64Array>) {
+        self.indices
+            .read()
+            .indices
+            .iter()
+            .map(|(name, index)| {
+                (
+                    name,
+                    UInt64Array::from(
+                        index
+                            .iter()
+                            .map(|row_idx| row_idx.map(|row_idx| row_idx.as_u64()))
+                            .collect::<Vec<_>>(),
+                    ),
+                )
+            })
+            .unzip()
     }
 
     /// Runs the sanity check suite for the entire bucket.
@@ -677,6 +950,123 @@ impl IndexBucket {
                     primary_len == secondary_len,
                     "found rogue secondary index for {comp:?}: \
                         expected {primary_len} rows, got {secondary_len} instead",
+                );
+            }
+        }
+
+        // The cluster index must be fully dense.
+        {
+            let cluster_key = self.cluster_key;
+            let cluster_idx = indices
+                .get(&cluster_key)
+                .ok_or_else(|| anyhow!("no index found for cluster key: {cluster_key:?}"))?;
+            ensure!(
+                cluster_idx.iter().all(|row| row.is_some()),
+                "the cluster index ({cluster_key:?}) must be fully dense: \
+                    got {cluster_idx:?}",
+            );
+        }
+
+        Ok(())
+    }
+}
+
+// --- Persistent Components ---
+
+/// A `PersistentComponentTable` holds all the timeless values ever inserted for a given component.
+///
+/// See also `DataStore::ComponentTable`.
+#[derive(Debug)]
+pub struct PersistentComponentTable {
+    /// Name of the underlying component, for debugging purposes.
+    pub(crate) name: ComponentName,
+    /// Type of the underlying component.
+    pub(crate) datatype: DataType,
+
+    /// All the data for this table: many rows of a single column.
+    ///
+    /// Each chunk is a list of arrays of structs, i.e. `ListArray<StructArray>`:
+    /// - the list layer corresponds to the different rows,
+    /// - the array layer corresponds to the different instances within a single row,
+    /// - and finally the struct layer holds the components themselves.
+    /// E.g.:
+    /// ```text
+    /// [
+    ///   [{x: 8.687487, y: 1.9590926}, {x: 2.0559108, y: 0.1494348}, {x: 7.09219, y: 0.9616637}],
+    ///   [{x: 7.158843, y: 0.68897724}, {x: 8.934421, y: 2.8420508}],
+    /// ]
+    /// ```
+    ///
+    /// This can contain any number of chunks, depending on how the data was inserted (e.g. single
+    /// insertions vs. batches).
+    ///
+    /// Note that, as of today, we do not actually support batched insertion nor do we support
+    /// chunks of non-unit length (batches are inserted on a per-row basis internally).
+    /// As a result, chunks always contain one and only one row's worth of data, at least until
+    /// the bucket is compacted one or more times.
+    /// See also #589.
+    //
+    // TODO(cmc): compact timeless tables once in a while
+    pub(crate) chunks: Vec<Box<dyn Array>>,
+
+    /// The total number of rows present in this bucket, across all chunks.
+    pub(crate) total_rows: u64,
+    /// The size of this bucket in bytes, across all chunks.
+    ///
+    /// Accurately computing the size of arrow arrays is surprisingly costly, which is why we
+    /// cache this.
+    pub(crate) total_size_bytes: u64,
+}
+
+impl std::fmt::Display for PersistentComponentTable {
+    #[allow(clippy::string_add)]
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self {
+            name,
+            datatype,
+            chunks,
+            total_rows,
+            total_size_bytes,
+        } = self;
+
+        f.write_fmt(format_args!("name: {}\n", name))?;
+        if matches!(
+            std::env::var("RERUN_DATA_STORE_DISPLAY_SCHEMAS").as_deref(),
+            Ok("1")
+        ) {
+            f.write_fmt(format_args!("datatype: {:#?}\n", datatype))?;
+        }
+
+        f.write_fmt(format_args!(
+            "size: {} across {} total rows\n",
+            format_bytes(*total_size_bytes as _),
+            format_number(*total_rows as _),
+        ))?;
+
+        let data = {
+            use arrow2::compute::concatenate::concatenate;
+            let chunks = chunks.iter().map(|chunk| &**chunk).collect::<Vec<_>>();
+            concatenate(&chunks).unwrap()
+        };
+
+        let table = arrow::format_table([data], [self.name.as_str()]);
+        f.write_fmt(format_args!("{table}\n"))?;
+
+        Ok(())
+    }
+}
+
+impl PersistentComponentTable {
+    /// Runs the sanity check suite for the entire table.
+    ///
+    /// Returns an error if anything looks wrong.
+    pub fn sanity_check(&self) -> anyhow::Result<()> {
+        // All chunks should always be dense
+        {
+            for chunk in &self.chunks {
+                ensure!(
+                    chunk.validity().is_none(),
+                    "persistent component chunks should always be dense",
                 );
             }
         }
@@ -818,21 +1208,6 @@ impl std::fmt::Display for ComponentTable {
 }
 
 impl ComponentTable {
-    /// Returns the number of rows stored across this entire table, i.e. the sum of the number
-    /// of rows stored across all of its buckets.
-    pub fn total_rows(&self) -> u64 {
-        self.buckets.iter().map(|bucket| bucket.total_rows()).sum()
-    }
-
-    /// Returns the size of data stored across this entire table, i.e. the sum of the size of
-    /// the data stored across all of its buckets, in bytes.
-    pub fn total_size_bytes(&self) -> u64 {
-        self.buckets
-            .iter()
-            .map(|bucket| bucket.total_size_bytes())
-            .sum()
-    }
-
     /// Runs the sanity check suite for the entire table.
     ///
     /// Returns an error if anything looks wrong.
@@ -851,6 +1226,10 @@ impl ComponentTable {
                     "found overlapping component buckets: {r1:?} <-> {r2:?}"
                 );
             }
+        }
+
+        for bucket in &self.buckets {
+            bucket.sanity_check()?;
         }
 
         Ok(())
@@ -963,189 +1342,27 @@ impl std::fmt::Display for ComponentBucket {
         };
 
         let table = arrow::format_table([data], [self.name.as_str()]);
-        f.write_fmt(format_args!("{table}"))?;
+        f.write_fmt(format_args!("{table}\n"))?;
 
         Ok(())
     }
 }
 
 impl ComponentBucket {
-    /// Returns the number of rows stored across this bucket.
-    pub fn total_rows(&self) -> u64 {
-        self.total_rows
-    }
-
-    /// Returns the size of the data stored across this bucket, in bytes.
-    pub fn total_size_bytes(&self) -> u64 {
-        self.total_size_bytes
-    }
-}
-
-// This test exists because the documentation and online discussions revolving around
-// arrow2's `estimated_bytes_size()` function indicate that there's a lot of limitations and
-// edge cases to be aware of.
-//
-// Also, it's just plain hard to be sure that the answer you get is the answer you're looking
-// for with these kinds of tools. When in doubt.. test everything we're going to need from it.
-//
-// In many ways, this is a specification of what we mean when we ask "what's the size of this
-// Arrow array?".
-#[test]
-#[allow(clippy::from_iter_instead_of_collect)]
-fn test_arrow_estimated_size_bytes() {
-    use arrow2::{
-        array::{Float64Array, ListArray, StructArray, UInt64Array, Utf8Array},
-        buffer::Buffer,
-        compute::aggregate::estimated_bytes_size,
-        datatypes::{DataType, Field},
-    };
-
-    // simple primitive array
-    {
-        let data = vec![42u64; 100];
-        let array = UInt64Array::from_vec(data.clone()).boxed();
-        assert_eq!(
-            std::mem::size_of_val(data.as_slice()),
-            estimated_bytes_size(&*array)
-        );
-    }
-
-    // utf8 strings array
-    {
-        let data = vec![Some("some very, very, very long string indeed"); 100];
-        let array = Utf8Array::<i32>::from(data.clone()).to_boxed();
-
-        let raw_size_bytes = data
-            .iter()
-            // headers + bodies!
-            .map(|s| std::mem::size_of_val(s) + std::mem::size_of_val(s.unwrap().as_bytes()))
-            .sum::<usize>();
-        let arrow_size_bytes = estimated_bytes_size(&*array);
-
-        assert_eq!(5600, raw_size_bytes);
-        assert_eq!(4404, arrow_size_bytes); // smaller because validity bitmaps instead of opts
-    }
-
-    // simple primitive list array
-    {
-        let data = std::iter::repeat(vec![42u64; 100])
-            .take(50)
-            .collect::<Vec<_>>();
-        let array = {
-            let array_flattened =
-                UInt64Array::from_vec(data.clone().into_iter().flatten().collect()).boxed();
-
-            let mut i = 0i32;
-            let indices = std::iter::from_fn(move || {
-                let ret = i;
-                i += 50;
-                Some(ret)
-            });
-
-            ListArray::<i32>::from_data(
-                ListArray::<i32>::default_datatype(DataType::UInt64),
-                Buffer::from_iter(indices.take(50)),
-                array_flattened,
-                None,
-            )
-            .boxed()
-        };
-
-        let raw_size_bytes = data
-            .iter()
-            // headers + bodies!
-            .map(|s| std::mem::size_of_val(s) + std::mem::size_of_val(s.as_slice()))
-            .sum::<usize>();
-        let arrow_size_bytes = estimated_bytes_size(&*array);
-
-        assert_eq!(41200, raw_size_bytes);
-        assert_eq!(40200, arrow_size_bytes); // smaller because smaller inner headers
-    }
-
-    // compound type array
-    {
-        #[derive(Clone, Copy)]
-        struct Point {
-            x: f64,
-            y: f64,
-        }
-        impl Default for Point {
-            fn default() -> Self {
-                Self { x: 42.0, y: 666.0 }
+    /// Runs the sanity check suite for the entire table.
+    ///
+    /// Returns an error if anything looks wrong.
+    pub fn sanity_check(&self) -> anyhow::Result<()> {
+        // All chunks should always be dense
+        {
+            for chunk in &self.chunks {
+                ensure!(
+                    chunk.validity().is_none(),
+                    "component bucket chunks should always be dense",
+                );
             }
         }
 
-        let data = vec![Point::default(); 100];
-        let array = {
-            let x = Float64Array::from_vec(data.iter().map(|p| p.x).collect()).boxed();
-            let y = Float64Array::from_vec(data.iter().map(|p| p.y).collect()).boxed();
-            let fields = vec![
-                Field::new("x", DataType::Float64, false),
-                Field::new("y", DataType::Float64, false),
-            ];
-            StructArray::new(DataType::Struct(fields), vec![x, y], None).boxed()
-        };
-
-        let raw_size_bytes = std::mem::size_of_val(data.as_slice());
-        let arrow_size_bytes = estimated_bytes_size(&*array);
-
-        assert_eq!(1600, raw_size_bytes);
-        assert_eq!(1600, arrow_size_bytes);
-    }
-
-    // compound type list array
-    {
-        #[derive(Clone, Copy)]
-        struct Point {
-            x: f64,
-            y: f64,
-        }
-        impl Default for Point {
-            fn default() -> Self {
-                Self { x: 42.0, y: 666.0 }
-            }
-        }
-
-        let data = std::iter::repeat(vec![Point::default(); 100])
-            .take(50)
-            .collect::<Vec<_>>();
-        let array: Box<dyn Array> = {
-            let array = {
-                let x =
-                    Float64Array::from_vec(data.iter().flatten().map(|p| p.x).collect()).boxed();
-                let y =
-                    Float64Array::from_vec(data.iter().flatten().map(|p| p.y).collect()).boxed();
-                let fields = vec![
-                    Field::new("x", DataType::Float64, false),
-                    Field::new("y", DataType::Float64, false),
-                ];
-                StructArray::new(DataType::Struct(fields), vec![x, y], None)
-            };
-
-            let mut i = 0i32;
-            let indices = std::iter::from_fn(move || {
-                let ret = i;
-                i += 50;
-                Some(ret)
-            });
-
-            ListArray::<i32>::from_data(
-                ListArray::<i32>::default_datatype(array.data_type().clone()),
-                Buffer::from_iter(indices.take(50)),
-                array.boxed(),
-                None,
-            )
-            .boxed()
-        };
-
-        let raw_size_bytes = data
-            .iter()
-            // headers + bodies!
-            .map(|s| std::mem::size_of_val(s) + std::mem::size_of_val(s.as_slice()))
-            .sum::<usize>();
-        let arrow_size_bytes = estimated_bytes_size(&*array);
-
-        assert_eq!(81200, raw_size_bytes);
-        assert_eq!(80200, arrow_size_bytes); // smaller because smaller inner headers
+        Ok(())
     }
 }

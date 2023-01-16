@@ -1,11 +1,11 @@
 use itertools::Itertools as _;
-use nohash_hasher::IntMap;
+use nohash_hasher::{IntMap, IntSet};
 
 use re_log_types::{
-    field_types::Instance,
-    msg_bundle::{Component as _, MsgBundle},
-    objects, ArrowMsg, BatchIndex, BeginRecordingMsg, DataMsg, DataPath, DataVec, LogMsg,
-    LoggedData, MsgId, ObjPath, ObjPathHash, ObjTypePath, ObjectType, PathOp, PathOpMsg,
+    field_types::{Instance, Scalar, TextEntry},
+    msg_bundle::{Component as _, ComponentBundle, MsgBundle},
+    objects, ArrowMsg, BatchIndex, BeginRecordingMsg, DataMsg, DataPath, DataVec, FieldOrComponent,
+    LogMsg, LoggedData, MsgId, ObjPath, ObjPathHash, ObjTypePath, ObjectType, PathOp, PathOpMsg,
     RecordingId, RecordingInfo, TimeInt, TimePoint, Timeline, TypeMsg,
 };
 
@@ -128,22 +128,61 @@ impl ObjDb {
     fn try_add_arrow_data_msg(&mut self, msg: &ArrowMsg) -> Result<(), Error> {
         let msg_bundle = MsgBundle::try_from(msg).map_err(Error::MsgBundleError)?;
 
-        // TODO(jleibs): Hack in a type so the UI treats these objects as visible
-        // This can go away once we determine object categories directly from the arrow table
-        self.types
-            .entry(msg_bundle.obj_path.obj_type_path().clone())
-            .or_insert(ObjectType::ArrowObject);
+        // Determine the kind of object we're looking at based on the components that have been
+        // uploaded _first_.
+        //
+        // TODO(cmc): That's an extension of the hack below, and will disappear at the same time
+        // and for the same reasons.
+        {
+            let components = msg_bundle
+                .components
+                .iter()
+                .map(|bundle| bundle.name)
+                .collect::<IntSet<_>>();
+
+            let obj_type = if components.contains(&TextEntry::name()) {
+                ObjectType::TextEntry
+            } else if components.contains(&Scalar::name()) {
+                ObjectType::Scalar
+            } else {
+                // TODO(jleibs): Hack in a type so the UI treats these objects as visible
+                // This can go away once we determine object categories directly from the arrow
+                // table
+                ObjectType::ArrowObject
+            };
+            self.types
+                .entry(msg_bundle.obj_path.obj_type_path().clone())
+                .or_insert(obj_type);
+        }
 
         self.register_obj_path(&msg_bundle.obj_path);
 
         for component in &msg_bundle.components {
-            //TODO(jleibs): Actually handle pending clears
-            let _pending_clears = self.tree.add_data_msg(
-                msg.msg_id,
-                &msg_bundle.time_point,
-                &DataPath::new(msg_bundle.obj_path.clone(), component.name),
-                None,
-            );
+            let data_path = DataPath::new_arrow(msg_bundle.obj_path.clone(), component.name);
+            if component.name == MsgId::name() {
+                continue;
+            }
+            let pending_clears =
+                self.tree
+                    .add_data_msg(msg.msg_id, &msg_bundle.time_point, &data_path, None);
+
+            for (msg_id, time_point) in pending_clears {
+                // Create and insert an empty component into the arrow store
+                // TODO(jleibs): Faster empty-array creation
+                let bundle =
+                    ComponentBundle::new_empty(component.name, component.data_type().clone());
+                let msg_bundle = MsgBundle::new(
+                    msg_id,
+                    msg_bundle.obj_path.clone(),
+                    time_point.clone(),
+                    vec![bundle],
+                );
+                self.arrow_store.insert(&msg_bundle).ok();
+
+                // Also update the object tree with the clear-event
+                self.tree
+                    .add_data_msg(msg_id, &time_point, &data_path, None);
+            }
         }
 
         self.arrow_store.insert(&msg_bundle).map_err(Into::into)
@@ -153,7 +192,24 @@ impl ObjDb {
         let cleared_paths = self.tree.add_path_op(msg_id, time_point, path_op);
 
         for (data_path, data_type, mono_or_multi) in cleared_paths {
-            if !objects::META_FIELDS.contains(&data_path.field_name.as_str()) {
+            if data_path.is_arrow() {
+                if let FieldOrComponent::Component(component) = data_path.field_name {
+                    if let Some(data_type) = self.arrow_store.lookup_data_type(&component) {
+                        // Create and insert an empty component into the arrow store
+                        // TODO(jleibs): Faster empty-array creation
+                        let bundle = ComponentBundle::new_empty(component, data_type.clone());
+                        let msg_bundle = MsgBundle::new(
+                            msg_id,
+                            data_path.obj_path.clone(),
+                            time_point.clone(),
+                            vec![bundle],
+                        );
+                        self.arrow_store.insert(&msg_bundle).ok();
+                        // Also update the object tree with the clear-event
+                        self.tree.add_data_msg(msg_id, time_point, &data_path, None);
+                    }
+                }
+            } else if !objects::META_FIELDS.contains(&data_path.field_name.as_str()) {
                 match mono_or_multi {
                     crate::MonoOrMulti::Mono => {
                         self.add_data_msg(

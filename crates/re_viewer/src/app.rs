@@ -7,6 +7,7 @@ use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 use poll_promise::Promise;
 
+use re_arrow_store::DataStoreStats;
 use re_data_store::log_db::LogDb;
 use re_format::format_number;
 use re_log_types::{ApplicationId, LogMsg, RecordingId};
@@ -322,7 +323,9 @@ impl eframe::App for App {
             render_ctx.gpu_resources.statistics()
         };
 
-        self.memory_panel.update(&gpu_resource_stats); // do first, before doing too many allocations
+        let store_stats = DataStoreStats::from_store(&self.log_db().obj_db.arrow_store);
+
+        self.memory_panel.update(&gpu_resource_stats, &store_stats); // do first, before doing too many allocations
 
         self.check_keyboard_shortcuts(egui_ctx, frame);
 
@@ -341,8 +344,12 @@ impl eframe::App for App {
             .default_height(300.0)
             .resizable(true)
             .show_animated(egui_ctx, self.memory_panel_open, |ui| {
-                self.memory_panel
-                    .ui(ui, &self.startup_options.memory_limit, &gpu_resource_stats);
+                self.memory_panel.ui(
+                    ui,
+                    &self.startup_options.memory_limit,
+                    &gpu_resource_stats,
+                    &store_stats,
+                );
             });
 
         let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();

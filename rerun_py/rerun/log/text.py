@@ -2,7 +2,7 @@ import logging
 from dataclasses import dataclass
 from typing import Final, Optional, Sequence
 
-from rerun.log import EXP_ARROW
+from rerun.log import EXP_ARROW, _normalize_colors
 
 from rerun import bindings
 
@@ -97,4 +97,13 @@ def log_text_entry(
         bindings.log_text_entry(obj_path, text, level, color, timeless)
 
     if EXP_ARROW.arrow_log_gate():
-        logging.warning("log_annotation_context() not yet implemented for Arrow.")
+        from rerun.components.color import ColorRGBAArray
+        from rerun.components.text_entry import TextEntryArray
+
+        comps = {"rerun.text_entry": TextEntryArray.from_bodies_and_levels([(text, level)])}
+
+        if color:
+            colors = _normalize_colors([color])
+            comps["rerun.colorrgba"] = ColorRGBAArray.from_numpy(colors)
+
+        bindings.log_arrow_msg(obj_path, components=comps, timeless=timeless)

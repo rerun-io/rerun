@@ -1,4 +1,4 @@
-use re_data_store::{query::visit_type_data_2, FieldName, InstanceIdHash, ObjectsProperties};
+use re_data_store::{query::visit_type_data_2, FieldName, InstanceIdHash};
 use re_log_types::{DataVec, IndexHash, MsgId, ObjectType};
 use re_renderer::Size;
 
@@ -17,24 +17,26 @@ use crate::{
 
 use super::ScenePart;
 
-pub struct LineSegments2DPart;
+pub struct LineSegments2DPartClassic;
 
-impl ScenePart for LineSegments2DPart {
+impl ScenePart for LineSegments2DPartClassic {
     fn load(
+        &self,
         scene: &mut SceneSpatial,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
-        objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
-        crate::profile_function!();
+        crate::profile_scope!("LineSegments2DPart");
 
         for (_obj_type, obj_path, time_query, obj_store) in
             query.iter_object_stores(ctx.log_db, &[ObjectType::LineSegments2D])
         {
+            scene.num_logged_2d_objects += 1;
+
             let annotations = scene.annotation_map.find(obj_path);
-            let properties = objects_properties.get(obj_path);
+            let properties = query.obj_props.get(obj_path);
             let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(obj_path) else {
                 continue;
             };
@@ -66,17 +68,6 @@ impl ScenePart for LineSegments2DPart {
                     apply_hover_effect(&mut paint_props);
                 }
 
-                // TODO(andreas): support outlines directly by re_renderer (need only 1 and 2 *point* black outlines)
-                line_batch
-                    .add_segments_2d(points.chunks_exact(2).map(|chunk| {
-                        (
-                            glam::vec2(chunk[0][0], chunk[0][1]),
-                            glam::vec2(chunk[1][0], chunk[1][1]),
-                        )
-                    }))
-                    .color(paint_props.bg_stroke.color)
-                    .radius(Size::new_points(paint_props.bg_stroke.width * 0.5))
-                    .user_data(instance_hash);
                 line_batch
                     .add_segments_2d(points.chunks_exact(2).map(|chunk| {
                         (
@@ -85,7 +76,8 @@ impl ScenePart for LineSegments2DPart {
                         )
                     }))
                     .color(paint_props.fg_stroke.color)
-                    .radius(Size::new_points(paint_props.fg_stroke.width * 0.5));
+                    .radius(Size::new_points(paint_props.fg_stroke.width * 0.5))
+                    .user_data(instance_hash);
             };
 
             visit_type_data_2(

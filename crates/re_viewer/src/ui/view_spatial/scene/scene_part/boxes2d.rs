@@ -1,11 +1,7 @@
 use glam::Mat4;
-use re_arrow_store::TimeQuery;
-use re_data_store::{
-    query::visit_type_data_4, FieldName, InstanceIdHash, ObjPath, ObjectsProperties,
-};
+use re_data_store::{query::visit_type_data_4, FieldName, InstanceIdHash, ObjPath};
 use re_log_types::{
-    context::ClassId,
-    field_types::{ColorRGBA, Rect2D},
+    field_types::{ClassId, ColorRGBA, Rect2D},
     msg_bundle::Component,
     IndexHash, MsgId, ObjectType,
 };
@@ -32,19 +28,21 @@ pub struct Boxes2DPartClassic;
 
 impl ScenePart for Boxes2DPartClassic {
     fn load(
+        &self,
         scene: &mut SceneSpatial,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
-        objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
-        crate::profile_function!();
+        crate::profile_scope!("Boxes2DPartClassic");
 
         for (_obj_type, obj_path, time_query, obj_store) in
             query.iter_object_stores(ctx.log_db, &[ObjectType::BBox2D])
         {
-            let properties = objects_properties.get(obj_path);
+            scene.num_logged_2d_objects += 1;
+
+            let properties = query.obj_props.get(obj_path);
             let annotations = scene.annotation_map.find(obj_path);
             let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(obj_path) else {
                 continue;
@@ -73,31 +71,25 @@ impl ScenePart for Boxes2DPartClassic {
                 let color = annotation_info.color(color, DefaultColor::ObjPath(obj_path));
                 let label = annotation_info.label(label);
 
-                // Hovering with a rect.
-                let rect = egui::Rect::from_min_max(bbox.min.into(), bbox.max.into());
-                scene.ui.rects.push((rect, instance_hash));
-
                 let mut paint_props = paint_properties(color, stroke_width);
                 if instance_hash.is_some() && hovered_instance == instance_hash {
                     apply_hover_effect(&mut paint_props);
                 }
 
-                // Lines don't associated with instance (i.e. won't participate in hovering)
-                line_batch
-                    .add_axis_aligned_rectangle_outline_2d(bbox.min.into(), bbox.max.into())
-                    .color(paint_props.bg_stroke.color)
-                    .radius(Size::new_points(paint_props.bg_stroke.width * 0.5))
-                    .user_data(instance_hash);
                 line_batch
                     .add_axis_aligned_rectangle_outline_2d(bbox.min.into(), bbox.max.into())
                     .color(paint_props.fg_stroke.color)
-                    .radius(Size::new_points(paint_props.fg_stroke.width * 0.5));
+                    .radius(Size::new_points(paint_props.fg_stroke.width * 0.5))
+                    .user_data(instance_hash);
 
                 if let Some(label) = label {
                     scene.ui.labels_2d.push(Label2D {
                         text: label,
                         color: paint_props.fg_stroke.color,
-                        target: Label2DTarget::Rect(rect),
+                        target: Label2DTarget::Rect(egui::Rect::from_min_max(
+                            bbox.min.into(),
+                            bbox.max.into(),
+                        )),
                         labled_instance: instance_hash,
                     });
                 }
@@ -127,6 +119,8 @@ impl Boxes2DPart {
         rect: &Rect2D,
         color: Option<ColorRGBA>,
     ) {
+        scene.num_logged_2d_objects += 1;
+
         let color = color.map(|c| c.to_array());
 
         // TODO(jleibs): Lots of missing components
@@ -141,17 +135,11 @@ impl Boxes2DPart {
         let color = annotation_info.color(color.as_ref(), DefaultColor::ObjPath(obj_path));
         let label = annotation_info.label(label);
 
-        // Hovering with a rect.
-        let hover_rect =
-            egui::Rect::from_min_size(egui::pos2(rect.x, rect.y), egui::vec2(rect.w, rect.h));
-        scene.ui.rects.push((hover_rect, instance));
-
         let mut paint_props = paint_properties(color, stroke_width);
         if hovered_instance == instance {
             apply_hover_effect(&mut paint_props);
         }
 
-        // Lines don't associated with instance (i.e. won't participate in hovering)
         let mut line_batch = scene
             .primitives
             .line_strips
@@ -164,23 +152,18 @@ impl Boxes2DPart {
                 glam::vec2(rect.w, 0.0),
                 glam::vec2(0.0, rect.h),
             )
-            .color(paint_props.bg_stroke.color)
-            .radius(Size::new_points(paint_props.bg_stroke.width * 0.5));
-
-        line_batch
-            .add_rectangle_outline_2d(
-                glam::vec2(rect.x, rect.y),
-                glam::vec2(rect.w, 0.0),
-                glam::vec2(0.0, rect.h),
-            )
             .color(paint_props.fg_stroke.color)
-            .radius(Size::new_points(paint_props.fg_stroke.width * 0.5));
+            .radius(Size::new_points(paint_props.fg_stroke.width * 0.5))
+            .user_data(instance);
 
         if let Some(label) = label {
             scene.ui.labels_2d.push(Label2D {
                 text: label,
                 color: paint_props.fg_stroke.color,
-                target: Label2DTarget::Rect(hover_rect),
+                target: Label2DTarget::Rect(egui::Rect::from_min_size(
+                    egui::pos2(rect.x, rect.y),
+                    egui::vec2(rect.w, rect.h),
+                )),
                 labled_instance: instance,
             });
         }
@@ -189,38 +172,33 @@ impl Boxes2DPart {
 
 impl ScenePart for Boxes2DPart {
     fn load(
+        &self,
         scene: &mut SceneSpatial,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
-        objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
-        for obj_path in query.obj_paths {
-            let ent_path = obj_path;
+        crate::profile_scope!("Boxes2DPart");
 
-            let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(obj_path) else {
+        for (ent_path, props) in query.iter_entities() {
+            let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(ent_path) else {
                 continue;
             };
 
-            let timeline_query = re_arrow_store::TimelineQuery::new(
-                query.timeline,
-                TimeQuery::LatestAt(query.latest_at.as_i64()),
-            );
+            let query = re_arrow_store::LatestAtQuery::new(query.timeline, query.latest_at);
 
-            match query_entity_with_primary(
+            match query_entity_with_primary::<Rect2D>(
                 &ctx.log_db.obj_db.arrow_store,
-                &timeline_query,
+                &query,
                 ent_path,
-                Rect2D::name(),
                 &[ColorRGBA::name()],
             )
             .and_then(|entity_view| {
                 entity_view.visit2(|instance, rect, color| {
                     let instance_hash = {
-                        let properties = objects_properties.get(obj_path);
-                        if properties.interactive {
-                            InstanceIdHash::from_path_and_arrow_instance(obj_path, &instance)
+                        if props.interactive {
+                            InstanceIdHash::from_path_and_arrow_instance(ent_path, &instance)
                         } else {
                             InstanceIdHash::NONE
                         }
@@ -239,7 +217,7 @@ impl ScenePart for Boxes2DPart {
             }) {
                 Ok(_) | Err(QueryError::PrimaryNotFound) => {}
                 Err(err) => {
-                    re_log::error_once!("Unexpected error querying '{:?}': {:?}", obj_path, err);
+                    re_log::error_once!("Unexpected error querying '{:?}': {:?}", ent_path, err);
                 }
             }
         }

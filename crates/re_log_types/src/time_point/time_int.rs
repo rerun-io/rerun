@@ -9,6 +9,8 @@ use crate::time::{Duration, Time};
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct TimeInt(pub(crate) i64);
 
+impl nohash_hasher::IsEnabled for TimeInt {}
+
 impl TimeInt {
     /// The beginning of time.
     ///

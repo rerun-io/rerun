@@ -10,7 +10,7 @@ publish = false
 [dependencies]
 ahash = "0.8"
 bytemuck = { version = "1.12", features = ["extern_crate_alloc"] }
-ndarray = "0.15"
+ndarray.workspace = true
 re_log_types = { path = "../re_log_types" }
 serde = { version = "1", features = ["derive"] }
 thiserror = "1.0"

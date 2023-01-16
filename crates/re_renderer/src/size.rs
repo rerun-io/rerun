@@ -8,13 +8,14 @@
 /// Resolved on-the-fly in shader code. See shader/utils/size.wgsl
 #[repr(C)]
 #[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Size(pub f32);
 
 impl Size {
-    /// Automatically sized based the screen size.
+    /// Automatically sized, based on a view builder setting.
     pub const AUTO: Self = Self(f32::INFINITY);
 
-    /// Automatically sized based the screen size, but larger by a renderer defined factor.
+    /// Like [`Size::AUTO`], but larger by view builder setting.
     pub const AUTO_LARGE: Self = Self(-f32::INFINITY);
 
     /// Creates a new size in scene units.

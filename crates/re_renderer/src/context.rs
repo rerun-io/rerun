@@ -170,9 +170,6 @@ impl RenderContext {
         #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
         self.err_tracker.tick();
 
-        // Clear the resolver cache before we start reloading shaders!
-        self.resolver.clear();
-
         // The set of files on disk that were modified in any way since last frame,
         // ignoring deletions.
         // Always an empty set in release builds.

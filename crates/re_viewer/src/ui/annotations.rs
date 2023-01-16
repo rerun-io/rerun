@@ -1,9 +1,14 @@
 use lazy_static::lazy_static;
+use nohash_hasher::IntSet;
+use re_arrow_store::LatestAtQuery;
 use re_data_store::{FieldName, ObjPath, TimeQuery};
 use re_log_types::{
-    context::{AnnotationInfo, ClassDescription, ClassId, KeypointId},
+    context::{AnnotationInfo, ClassDescription},
+    field_types::{ClassId, KeypointId},
+    msg_bundle::Component,
     AnnotationContext, DataPath, MsgId,
 };
+use re_query::query_entity_with_primary;
 use std::{collections::BTreeMap, sync::Arc};
 
 use crate::{misc::ViewerContext, ui::scene::SceneQuery};
@@ -65,11 +70,11 @@ impl ResolvedAnnotationInfo {
     pub fn color(&self, color: Option<&[u8; 4]>, default_color: DefaultColor<'_>) -> [u8; 4] {
         if let Some(color) = color {
             *color
-        } else if let Some(color) = self
-            .0
-            .as_ref()
-            .and_then(|info| info.color.or_else(|| Some(auto_color(info.id))))
-        {
+        } else if let Some(color) = self.0.as_ref().and_then(|info| {
+            info.color
+                .map(|c| c.to_array())
+                .or_else(|| Some(auto_color(info.id)))
+        }) {
             color
         } else {
             match default_color {
@@ -88,7 +93,7 @@ impl ResolvedAnnotationInfo {
         } else {
             self.0
                 .as_ref()
-                .and_then(|info| info.label.as_ref().map(ToString::to_string))
+                .and_then(|info| info.label.as_ref().map(|label| label.0.clone()))
         }
     }
 }
@@ -97,7 +102,7 @@ impl ResolvedAnnotationInfo {
 pub struct AnnotationMap(pub BTreeMap<ObjPath, Arc<Annotations>>);
 
 impl AnnotationMap {
-    pub(crate) fn load(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
+    fn load_classic(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
 
         for (obj_path, field_store) in
@@ -116,6 +121,77 @@ impl AnnotationMap {
                 });
             }
         }
+    }
+
+    /// For each `ObjPath` in the `SceneQuery`, walk up the tree and find the nearest ancestor
+    ///
+    /// An object is considered its own (nearest) ancestor.
+    fn load_arrow(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
+        crate::profile_function!();
+
+        let mut visited = IntSet::<ObjPath>::default();
+
+        let arrow_store = &ctx.log_db.obj_db.arrow_store;
+        let arrow_query = LatestAtQuery::new(query.timeline, query.latest_at);
+
+        // This logic is borrowed from `iter_ancestor_meta_field`, but using the arrow-store instead
+        // not made generic as `AnnotationContext` was the only user of that function
+        for obj_path in query
+            .obj_paths
+            .iter()
+            .filter(|obj_path| query.obj_props.get(obj_path).visible)
+        {
+            let mut next_parent = Some(obj_path.clone());
+            while let Some(parent) = next_parent {
+                // If we've visited this parent before it's safe to break early.
+                // All of it's parents have have also been visited.
+                if !visited.insert(parent.clone()) {
+                    break;
+                }
+
+                match self.0.entry(parent.clone()) {
+                    // If we've hit this path before and found a match, we can also break.
+                    // This should not actually get hit due to the above early-exit.
+                    std::collections::btree_map::Entry::Occupied(_) => break,
+                    // Otherwise check the obj_store for the field.
+                    // If we find one, insert it and then we can break.
+                    std::collections::btree_map::Entry::Vacant(entry) => {
+                        if query_entity_with_primary::<AnnotationContext>(
+                            arrow_store,
+                            &arrow_query,
+                            &parent,
+                            &[MsgId::name()],
+                        )
+                        .ok()
+                        .and_then(|entity| {
+                            if let (Some(context), Some(msg_id)) = (
+                                entity.iter_primary().ok()?.next()?,
+                                entity.iter_component::<MsgId>().ok()?.next()?,
+                            ) {
+                                Some(entry.insert(Arc::new(Annotations { msg_id, context })))
+                            } else {
+                                None
+                            }
+                        })
+                        .is_some()
+                        {
+                            break;
+                        }
+                    }
+                }
+                // Finally recurse to the next parent up the path
+                // TODO(jleibs): this is somewhat expensive as it needs to re-hash the object path
+                // given ObjPathImpl is already an Arc, consider pre-computing and storing parents
+                // for faster iteration.
+                next_parent = parent.parent();
+            }
+        }
+    }
+
+    pub(crate) fn load(&mut self, ctx: &mut ViewerContext<'_>, query: &SceneQuery<'_>) {
+        crate::profile_function!();
+        self.load_classic(ctx, query);
+        self.load_arrow(ctx, query);
     }
 
     pub(crate) fn find_associated(
@@ -174,7 +250,7 @@ impl AnnotationMap {
 const MISSING_MSG_ID: MsgId = MsgId::ZERO;
 
 lazy_static! {
-    static ref MISSING_ANNOTATIONS: Arc<Annotations> = {
+    pub static ref MISSING_ANNOTATIONS: Arc<Annotations> = {
         Arc::new(Annotations {
             msg_id: MISSING_MSG_ID,
             context: Default::default(),
@@ -184,9 +260,13 @@ lazy_static! {
 
 // default colors
 // Borrowed from `egui::PlotUi`
-pub fn auto_color(val: u16) -> [u8; 4] {
+pub fn auto_color_egui(val: u16) -> egui::Color32 {
     let golden_ratio = (5.0_f32.sqrt() - 1.0) / 2.0; // 0.61803398875
     let h = val as f32 * golden_ratio;
-    let color = egui::Color32::from(egui::ecolor::Hsva::new(h, 0.85, 0.5, 1.0));
+    egui::Color32::from(egui::ecolor::Hsva::new(h, 0.85, 0.5, 1.0))
+}
+
+pub fn auto_color(val: u16) -> [u8; 4] {
+    let color = auto_color_egui(val);
     color.to_array()
 }

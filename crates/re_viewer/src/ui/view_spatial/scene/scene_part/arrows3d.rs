@@ -1,5 +1,5 @@
 use glam::Vec3;
-use re_data_store::{query::visit_type_data_3, FieldName, InstanceIdHash, ObjectsProperties};
+use re_data_store::{query::visit_type_data_3, FieldName, InstanceIdHash};
 use re_log_types::{IndexHash, MsgId, ObjectType};
 use re_renderer::{renderer::LineStripFlags, Size};
 
@@ -22,21 +22,23 @@ pub struct Arrows3DPart;
 
 impl ScenePart for Arrows3DPart {
     fn load(
+        &self,
         scene: &mut SceneSpatial,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
-        objects_properties: &ObjectsProperties,
         hovered_instance: InstanceIdHash,
     ) {
-        crate::profile_function!();
+        crate::profile_scope!("Arrows3DPart");
 
         for (_obj_type, obj_path, time_query, obj_store) in
             query.iter_object_stores(ctx.log_db, &[ObjectType::Arrow3D])
         {
+            scene.num_logged_3d_objects += 1;
+
             let annotations = scene.annotation_map.find(obj_path);
             let default_color = DefaultColor::ObjPath(obj_path);
-            let properties = objects_properties.get(obj_path);
+            let properties = query.obj_props.get(obj_path);
             let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(obj_path) else {
                 continue;
             };

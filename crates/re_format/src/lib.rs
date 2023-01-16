@@ -36,6 +36,38 @@ fn test_format_number() {
     assert_eq!(format_number(1_234_567), "1 234 567");
 }
 
+/// Format a number with a decent number of decimals.
+pub fn format_f64(value: f64) -> String {
+    let is_integer = value.round() == value;
+    if is_integer {
+        return format!("{:.0}", value);
+    }
+
+    let magnitude = value.abs().log10();
+    let num_decimals = (3.5 - magnitude).round().max(1.0) as usize;
+    format!("{:.*}", num_decimals, value)
+}
+
+/// Format a number with a decent number of decimals.
+pub fn format_f32(value: f32) -> String {
+    format_f64(value as f64)
+}
+
+#[test]
+fn test_format_float() {
+    assert_eq!(format_f64(42.0), "42");
+    assert_eq!(format_f64(123_456_789.0), "123456789");
+    assert_eq!(format_f64(123_456_789.123_45), "123456789.1");
+    assert_eq!(format_f64(0.0000123456789), "0.00001235");
+    assert_eq!(format_f64(0.123456789), "0.1235");
+    assert_eq!(format_f64(1.23456789), "1.235");
+    assert_eq!(format_f64(12.3456789), "12.35");
+    assert_eq!(format_f64(123.456789), "123.5");
+    assert_eq!(format_f64(1234.56789), "1234.6");
+    assert_eq!(format_f64(12345.6789), "12345.7");
+    assert_eq!(format_f64(78.4321), "78.43");
+}
+
 /// Pretty format a large number by using SI notation (base 10), e.g.
 ///
 /// ```

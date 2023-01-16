@@ -4,9 +4,7 @@
 //! This is particularly helpful for performing slice-operations for
 //! dimensionality reduction.
 
-use re_log_types::{
-    Tensor, TensorDataMeaning, TensorDataStore, TensorDataTypeTrait, TensorDimension, TensorId,
-};
+use re_log_types::{field_types, ClassicTensor, TensorDataStore, TensorDataTypeTrait};
 
 pub mod dimension_mapping;
 
@@ -32,20 +30,19 @@ pub enum TensorCastError {
 }
 
 pub fn as_ndarray<A: bytemuck::Pod + TensorDataTypeTrait>(
-    tensor: &Tensor,
+    tensor: &ClassicTensor,
 ) -> Result<ndarray::ArrayViewD<'_, A>, TensorCastError> {
-    let shape: Vec<_> = tensor.shape.iter().map(|d| d.size as usize).collect();
+    let shape: Vec<_> = tensor.shape().iter().map(|d| d.size as usize).collect();
     let shape = ndarray::IxDyn(shape.as_slice());
 
-    if A::DTYPE != tensor.dtype {
+    if A::DTYPE != tensor.dtype() {
         return Err(TensorCastError::TypeMismatch);
     }
 
     ndarray::ArrayViewD::from_shape(
         shape,
         tensor
-            .data
-            .as_slice()
+            .data()
             .ok_or(TensorCastError::UnsupportedTensorStorage)?,
     )
     .map_err(|err| TensorCastError::BadTensorShape { source: err })
@@ -54,8 +51,8 @@ pub fn as_ndarray<A: bytemuck::Pod + TensorDataTypeTrait>(
 pub fn to_rerun_tensor<A: ndarray::Data + ndarray::RawData, D: ndarray::Dimension>(
     data: &ndarray::ArrayBase<A, D>,
     names: Option<Vec<String>>,
-    meaning: TensorDataMeaning,
-) -> Result<Tensor, TensorCastError>
+    meaning: field_types::TensorDataMeaning,
+) -> Result<ClassicTensor, TensorCastError>
 where
     <A as ndarray::RawData>::Elem: TensorDataTypeTrait + bytemuck::Pod,
 {
@@ -74,43 +71,46 @@ where
         data.shape()
             .iter()
             .zip(names)
-            .map(|(&d, name)| TensorDimension::named(d as _, name))
+            .map(|(&d, name)| field_types::TensorDimension::named(d as _, name))
             .collect()
     } else {
         data.shape()
             .iter()
-            .map(|&d| TensorDimension::unnamed(d as _))
+            .map(|&d| field_types::TensorDimension::unnamed(d as _))
             .collect()
     };
 
-    Ok(Tensor {
-        tensor_id: TensorId::random(),
+    Ok(ClassicTensor::new(
+        field_types::TensorId::random(),
         shape,
-        dtype: A::Elem::DTYPE,
+        A::Elem::DTYPE,
         meaning,
-        data: TensorDataStore::Dense(arc),
-    })
+        TensorDataStore::Dense(arc),
+    ))
 }
 
 #[cfg(test)]
 mod tests {
-    use re_log_types::{TensorDataStore, TensorDataType, TensorDimension};
+    use re_log_types::{
+        field_types::{TensorDataMeaning, TensorDimension, TensorId},
+        TensorDataStore, TensorDataType,
+    };
 
     use super::*;
 
     #[test]
     fn convert_tensor_to_ndarray_u8() {
-        let t = Tensor {
-            tensor_id: TensorId::random(),
-            shape: vec![
+        let t = ClassicTensor::new(
+            TensorId::random(),
+            vec![
                 TensorDimension::unnamed(3),
                 TensorDimension::unnamed(4),
                 TensorDimension::unnamed(5),
             ],
-            dtype: TensorDataType::U8,
-            meaning: TensorDataMeaning::Unknown,
-            data: TensorDataStore::Dense(vec![0; 60].into()),
-        };
+            TensorDataType::U8,
+            TensorDataMeaning::Unknown,
+            TensorDataStore::Dense(vec![0; 60].into()),
+        );
 
         let n = as_ndarray::<u8>(&t).unwrap();
 
@@ -119,17 +119,17 @@ mod tests {
 
     #[test]
     fn convert_tensor_to_ndarray_u16() {
-        let t = Tensor {
-            tensor_id: TensorId::random(),
-            shape: vec![
+        let t = ClassicTensor::new(
+            TensorId::random(),
+            vec![
                 TensorDimension::unnamed(3),
                 TensorDimension::unnamed(4),
                 TensorDimension::unnamed(5),
             ],
-            dtype: TensorDataType::U16,
-            meaning: TensorDataMeaning::Unknown,
-            data: TensorDataStore::Dense(bytemuck::pod_collect_to_vec(&[0_u16; 60]).into()),
-        };
+            TensorDataType::U16,
+            TensorDataMeaning::Unknown,
+            TensorDataStore::Dense(bytemuck::pod_collect_to_vec(&[0_u16; 60]).into()),
+        );
 
         let n = as_ndarray::<u16>(&t).unwrap();
 
@@ -138,17 +138,17 @@ mod tests {
 
     #[test]
     fn convert_tensor_to_ndarray_f32() {
-        let t = Tensor {
-            tensor_id: TensorId::random(),
-            shape: vec![
+        let t = ClassicTensor::new(
+            TensorId::random(),
+            vec![
                 TensorDimension::unnamed(3),
                 TensorDimension::unnamed(4),
                 TensorDimension::unnamed(5),
             ],
-            dtype: TensorDataType::F32,
-            meaning: TensorDataMeaning::Unknown,
-            data: TensorDataStore::Dense(bytemuck::pod_collect_to_vec(&[0_f32; 60]).into()),
-        };
+            TensorDataType::F32,
+            field_types::TensorDataMeaning::Unknown,
+            TensorDataStore::Dense(bytemuck::pod_collect_to_vec(&[0_f32; 60]).into()),
+        );
 
         let n = as_ndarray::<f32>(&t).unwrap();
 
@@ -166,8 +166,8 @@ mod tests {
         .unwrap();
 
         assert_eq!(
-            t.shape,
-            vec![TensorDimension::height(2), TensorDimension::width(3)]
+            t.shape(),
+            &[TensorDimension::height(2), TensorDimension::width(3)]
         );
     }
 
@@ -182,25 +182,25 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(t.shape, vec![TensorDimension::height(2)]);
+        assert_eq!(t.shape(), &[TensorDimension::height(2)]);
     }
 
     #[test]
     fn check_slices() {
-        let t = Tensor {
-            tensor_id: TensorId::random(),
-            shape: vec![
+        let t = ClassicTensor::new(
+            TensorId::random(),
+            vec![
                 TensorDimension::unnamed(3),
                 TensorDimension::unnamed(4),
                 TensorDimension::unnamed(5),
             ],
-            dtype: TensorDataType::U16,
-            meaning: TensorDataMeaning::Unknown,
-            data: TensorDataStore::Dense(
+            TensorDataType::U16,
+            TensorDataMeaning::Unknown,
+            TensorDataStore::Dense(
                 bytemuck::pod_collect_to_vec(&(0..60).map(|x| x as i16).collect::<Vec<i16>>())
                     .into(),
             ),
-        };
+        );
 
         let n = as_ndarray::<u16>(&t).unwrap();
 
@@ -232,17 +232,17 @@ mod tests {
 
     #[test]
     fn check_tensor_shape_error() {
-        let t = Tensor {
-            tensor_id: TensorId::random(),
-            shape: vec![
+        let t = ClassicTensor::new(
+            TensorId::random(),
+            vec![
                 TensorDimension::unnamed(3),
                 TensorDimension::unnamed(4),
                 TensorDimension::unnamed(5),
             ],
-            dtype: TensorDataType::U8,
-            meaning: TensorDataMeaning::Unknown,
-            data: TensorDataStore::Dense(vec![0; 59].into()),
-        };
+            TensorDataType::U8,
+            TensorDataMeaning::Unknown,
+            TensorDataStore::Dense(vec![0; 59].into()),
+        );
 
         let n = as_ndarray::<u8>(&t);
 
@@ -256,17 +256,17 @@ mod tests {
 
     #[test]
     fn check_tensor_type_error() {
-        let t = Tensor {
-            tensor_id: TensorId::random(),
-            shape: vec![
+        let t = ClassicTensor::new(
+            TensorId::random(),
+            vec![
                 TensorDimension::unnamed(3),
                 TensorDimension::unnamed(4),
                 TensorDimension::unnamed(5),
             ],
-            dtype: TensorDataType::U16,
-            meaning: TensorDataMeaning::Unknown,
-            data: TensorDataStore::Dense(vec![0; 60].into()),
-        };
+            TensorDataType::U16,
+            TensorDataMeaning::Unknown,
+            TensorDataStore::Dense(vec![0; 60].into()),
+        );
 
         let n = as_ndarray::<u8>(&t);
 

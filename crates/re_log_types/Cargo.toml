@@ -35,6 +35,8 @@ serde = [
 ## tests and benchmarks.
 arrow_datagen = ["dep:rand"]
 
+## Enables support for converting 2d-tensors into images
+image_tensor = ["dep:image"]
 
 [dependencies]
 
@@ -42,6 +44,7 @@ arrow_datagen = ["dep:rand"]
 re_log = { path = "../re_log" }
 re_string_interner = { path = "../re_string_interner" }
 re_tuid = { path = "../re_tuid" }
+re_format = { path = "../re_format" }
 
 # External
 ahash = "0.8"
@@ -52,11 +55,12 @@ chrono = { version = "0.4", features = [
   "js-sys",
   "wasmbind",
 ] } # TODO(emilk): replace `chrono` with `time` crate
-derive_more = "0.99"
+derive_more.workspace = true
 document-features = "0.2"
 fixed = { version = "1.17", default-features = false, features = ["serde"] }
 half = { version = "1.8", features = ["bytemuck"] }
 lazy_static.workspace = true
+ndarray.workspace = true
 nohash-hasher = "0.2"
 num-derive = "0.3"
 num-traits = "0.2"
@@ -64,10 +68,12 @@ thiserror.workspace = true
 typenum = "1.15"
 uuid = { version = "1.1", features = ["serde", "v4", "js"] }
 
+
 # Optional dependencies:
 anyhow = { workspace = true, optional = true }
 ecolor = { workspace = true, optional = true }
 glam = { version = "0.20", optional = true }                            # can't update glam until a new version of `macaw` is released
+image = { workspace = true, default-features = false, optional = true }
 macaw = { version = "0.17", optional = true }
 rand = { version = "0.8", optional = true }
 rmp-serde = { version = "1", optional = true }

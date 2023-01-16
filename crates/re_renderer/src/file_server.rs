@@ -168,8 +168,9 @@ mod file_server_impl {
             // Watch all of its imported dependencies too!
             {
                 let imports = resolver
-                    .resolve_imports(&path)
-                    .with_context(|| format!("couldn't resolve imports for file at {path:?}"))?;
+                    .populate(&path)
+                    .with_context(|| format!("couldn't resolve imports for file at {path:?}"))?
+                    .imports;
 
                 for path in imports {
                     self.watcher

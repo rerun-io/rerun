@@ -305,7 +305,7 @@ fn log_messages() {
             try_build_msg_bundle1(
                 MsgId::random(),
                 obj_path!("points"),
-                [build_frame_nr(0)],
+                [build_frame_nr(0.into())],
                 build_some_point2d(1),
             )
             .unwrap(),
@@ -353,7 +353,7 @@ fn log_messages() {
             try_build_msg_bundle1(
                 MsgId::random(),
                 obj_path!("points"),
-                [build_frame_nr(0)],
+                [build_frame_nr(0.into())],
                 build_some_point2d(NUM_POINTS),
             )
             .unwrap(),

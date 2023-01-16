@@ -26,10 +26,13 @@ re_log_types = { path = "../re_log_types" }
 re_memory = { path = "../re_memory" }
 re_sdk_comms = { path = "../re_sdk_comms", features = ["client"] }
 re_smart_channel = { path = "../re_smart_channel" }
+re_string_interner = { path = "../re_string_interner" }
+
 
 arrow2.workspace = true
 crossbeam = "0.8"
 document-features = "0.2"
+lazy_static.workspace = true
 nohash-hasher = "0.2"
 once_cell = "1.12"
 
@@ -45,10 +48,13 @@ webbrowser = { version = "0.8", optional = true }
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-tokio = { version = "1.16", features = ["macros", "rt-multi-thread"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 [dev-dependencies]
 arrow2_convert.workspace = true
+ndarray.workspace = true
+ndarray-rand = "0.14"
+rand = "0.8"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 clap = { version = "4.0", features = ["derive"] }

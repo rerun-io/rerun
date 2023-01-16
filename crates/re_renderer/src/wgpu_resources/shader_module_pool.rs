@@ -41,9 +41,8 @@ impl ShaderModuleDesc {
         device: &wgpu::Device,
         resolver: &mut FileResolver<Fs>,
     ) -> wgpu::ShaderModule {
-        let code = resolver
-            .resolve_contents(&self.source)
-            .map(|s| s.to_owned())
+        let source_interpolated = resolver
+            .populate(&self.source)
             .context("couldn't resolve shader module's contents")
             .map_err(|err| re_log::error!(err=%re_error::format(err)))
             .unwrap_or_default();
@@ -55,7 +54,7 @@ impl ShaderModuleDesc {
         device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: self.label.get(),
             // TODO(cmc): handle non-WGSL shaders.
-            source: wgpu::ShaderSource::Wgsl(code.into()),
+            source: wgpu::ShaderSource::Wgsl(source_interpolated.contents.into()),
         })
     }
 }
@@ -96,12 +95,12 @@ impl GpuShaderModulePool {
             // Not only do we care about filesystem events that touch upon the source
             // path of the current shader, we also care about events that affect any of
             // our direct and indirect dependencies (#import)!
-            let mut paths = vec![desc.source.as_path()];
-            if let Ok(imports) = resolver.resolve_imports(&desc.source) {
-                paths.extend(imports);
+            let mut paths = vec![desc.source.clone()];
+            if let Ok(source_interpolated) = resolver.populate(&desc.source) {
+                paths.extend(source_interpolated.imports.into_iter());
             }
 
-            paths.iter().any(|p| updated_paths.contains(*p)).then(|| {
+            paths.iter().any(|p| updated_paths.contains(p)).then(|| {
                 let shader_module = desc.create_shader_module(device, resolver);
                 re_log::debug!(?desc.source, label = desc.label.get(), "recompiled shader module");
                 shader_module

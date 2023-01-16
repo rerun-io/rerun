@@ -6,9 +6,11 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
+
 [features]
 default = []
-polars = ["polars-core"]
+polars = ["dep:polars-core", "re_arrow_store/polars"]
+
 
 [dependencies]
 # Rerun
@@ -41,7 +43,6 @@ criterion = "0.4"
 itertools = "0.10"
 mimalloc = "0.1"
 polars-core = { workspace = true, features = [
-  "asof_join",
   "dtype-date",
   "dtype-time",
   "dtype-struct",
@@ -49,8 +50,16 @@ polars-core = { workspace = true, features = [
 ] }
 tracing-subscriber = "0.3"
 
+
 [lib]
 bench = false
+
+
+[[example]]
+name = "range"
+path = "examples/range.rs"
+required-features = ["polars"]
+
 
 [[bench]]
 name = "obj_query_benchmark"

@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use re_data_store::InstanceId;
-use re_log_types::{Tensor, TensorDataType};
+use re_log_types::{ClassicTensor, TensorDataType};
 
 use crate::{misc::ViewerContext, ui::scene::SceneQuery};
 
@@ -35,7 +35,7 @@ impl SceneBarChart {
                 |instance_index_hash: Option<&re_log_types::IndexHash>,
                  _time: i64,
                  _msg_id: &re_log_types::MsgId,
-                 tensor: &re_log_types::Tensor| {
+                 tensor: &re_log_types::ClassicTensor| {
                     if tensor.is_vector() {
                         if let Some(values) = tensor_to_values(tensor) {
                             let instance_index =
@@ -54,8 +54,8 @@ impl SceneBarChart {
     }
 }
 
-fn tensor_to_values(tensor: &Tensor) -> Option<Vec<f64>> {
-    match tensor.dtype {
+fn tensor_to_values(tensor: &ClassicTensor) -> Option<Vec<f64>> {
+    match tensor.dtype() {
         TensorDataType::U8 => tensor
             .data
             .as_slice::<u8>()

@@ -1,7 +1,8 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, marker::PhantomData};
 
 use arrow2::array::{Array, MutableArray, PrimitiveArray};
 use re_arrow_store::ArrayExt;
+use re_format::arrow;
 use re_log_types::{
     external::arrow2_convert::{
         deserialize::{arrow_array_deserialize_iterator, ArrowArray, ArrowDeserialize},
@@ -30,6 +31,10 @@ pub struct ComponentWithInstances {
 }
 
 impl ComponentWithInstances {
+    pub fn name(&self) -> ComponentName {
+        self.name
+    }
+
     pub fn len(&self) -> usize {
         self.values.len()
     }
@@ -70,8 +75,32 @@ impl ComponentWithInstances {
         )?)
     }
 
-    /// Look up the value that corresponds to a given `Instance`
-    pub fn lookup(&self, instance: &Instance) -> Option<Box<dyn Array>> {
+    /// Look up the value that corresponds to a given `Instance` and convert to `Component`
+    pub fn lookup<C: Component>(&self, instance: &Instance) -> crate::Result<C>
+    where
+        C: ArrowDeserialize + ArrowField<Type = C> + 'static,
+        C::ArrayType: ArrowArray,
+        for<'a> &'a C::ArrayType: IntoIterator,
+    {
+        if C::name() != self.name {
+            return Err(QueryError::TypeMismatch {
+                actual: self.name,
+                requested: C::name(),
+            });
+        }
+        let arr = self
+            .lookup_arrow(instance)
+            .map_or_else(|| Err(QueryError::ComponentNotFound), Ok)?;
+        let mut iter = arrow_array_deserialize_iterator::<Option<C>>(arr.as_ref())?;
+        let val = iter
+            .next()
+            .flatten()
+            .map_or_else(|| Err(QueryError::ComponentNotFound), Ok)?;
+        Ok(val)
+    }
+
+    /// Look up the value that corresponds to a given `Instance` and return as an arrow `Array`
+    pub fn lookup_arrow(&self, instance: &Instance) -> Option<Box<dyn Array>> {
         let offset = if let Some(keys) = &self.instance_keys {
             // If `instance_keys` is set, extract the `PrimitiveArray`, and find
             // the index of the value by `binary_search`
@@ -131,6 +160,9 @@ impl ComponentWithInstances {
 /// instance-keys from the primary component and another table with the
 /// instance-keys and values of the iterated component.
 ///
+/// Instances have a special "splat" key that will cause the value to be
+/// repeated for the entirety of the join.
+///
 /// For example
 /// ```text
 /// primary
@@ -159,18 +191,20 @@ impl ComponentWithInstances {
 /// | val2  |
 ///
 /// ```
-struct ComponentJoinedIterator<IIter1, IIter2, VIter> {
+struct ComponentJoinedIterator<IIter1, IIter2, VIter, Val> {
     primary_instance_iter: IIter1,
     component_instance_iter: IIter2,
     component_value_iter: VIter,
     next_component_instance: Option<Instance>,
+    splatted_component_value: Option<Val>,
 }
 
-impl<IIter1, IIter2, VIter, C> Iterator for ComponentJoinedIterator<IIter1, IIter2, VIter>
+impl<IIter1, IIter2, VIter, C> Iterator for ComponentJoinedIterator<IIter1, IIter2, VIter, C>
 where
     IIter1: Iterator<Item = Instance>,
     IIter2: Iterator<Item = Instance>,
     VIter: Iterator<Item = Option<C>>,
+    C: Clone,
 {
     type Item = Option<C>;
 
@@ -181,18 +215,28 @@ where
                 match &self.next_component_instance {
                     // If we have a next component key, we either...
                     Some(instance_key) => {
-                        match primary_key.0.cmp(&instance_key.0) {
-                            // Return a None if the primary_key hasn't reached it yet
-                            std::cmp::Ordering::Less => break Some(None),
-                            // Return the value if the keys match
-                            std::cmp::Ordering::Equal => {
-                                self.next_component_instance = self.component_instance_iter.next();
-                                break self.component_value_iter.next();
+                        if instance_key.is_splat() {
+                            if self.splatted_component_value.is_none() {
+                                self.splatted_component_value =
+                                    self.component_value_iter.next().flatten();
                             }
-                            // Skip this component if the key is behind the primary key
-                            std::cmp::Ordering::Greater => {
-                                _ = self.component_value_iter.next();
-                                self.next_component_instance = self.component_instance_iter.next();
+                            break Some(self.splatted_component_value.clone());
+                        } else {
+                            match primary_key.0.cmp(&instance_key.0) {
+                                // Return a None if the primary_key hasn't reached it yet
+                                std::cmp::Ordering::Less => break Some(None),
+                                // Return the value if the keys match
+                                std::cmp::Ordering::Equal => {
+                                    self.next_component_instance =
+                                        self.component_instance_iter.next();
+                                    break self.component_value_iter.next();
+                                }
+                                // Skip this component if the key is behind the primary key
+                                std::cmp::Ordering::Greater => {
+                                    _ = self.component_value_iter.next();
+                                    self.next_component_instance =
+                                        self.component_instance_iter.next();
+                                }
                             }
                         }
                     }
@@ -209,15 +253,46 @@ where
 
 /// A view of an entity at a particular point in time returned by [`crate::get_component_with_instances`]
 ///
-/// `EntityView` has a special `primary` component which determines the length of an entity
+/// `EntityView` has a special `primary` [`Component`] which determines the length of an entity
 /// batch. When iterating over individual components, they will be implicitly joined onto
 /// the primary component using instance keys.
 #[derive(Clone, Debug)]
-pub struct EntityView {
+pub struct EntityView<Primary: Component> {
     pub(crate) primary: ComponentWithInstances,
     pub(crate) components: BTreeMap<ComponentName, ComponentWithInstances>,
+    pub(crate) phantom: PhantomData<Primary>,
 }
-impl EntityView {
+
+impl<Primary: Component> std::fmt::Display for EntityView<Primary> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let primary_table = arrow::format_table(
+            [
+                self.primary.instance_keys.as_ref().unwrap().as_ref(),
+                self.primary.values.as_ref(),
+            ],
+            ["InstanceId", self.primary.name.as_str()],
+        );
+
+        f.write_fmt(format_args!("EntityView:\n{primary_table}"))
+    }
+}
+
+impl<Primary> EntityView<Primary>
+where
+    Primary: Component + ArrowSerialize + ArrowDeserialize + ArrowField<Type = Primary> + 'static,
+    Primary::ArrayType: ArrowArray,
+    for<'a> &'a Primary::ArrayType: IntoIterator,
+{
+    /// Iterate over the instance keys
+    pub fn iter_instances(&self) -> crate::Result<impl Iterator<Item = Instance> + '_> {
+        self.primary.iter_instance_keys()
+    }
+
+    /// Iterate over the primary component values.
+    pub fn iter_primary(&self) -> crate::Result<impl Iterator<Item = Option<Primary>> + '_> {
+        self.primary.iter_values()
+    }
+
     /// Iterate over the values of a `Component`.
     ///
     /// Always produces an iterator of length `self.primary.len()`
@@ -225,7 +300,7 @@ impl EntityView {
         &self,
     ) -> crate::Result<impl Iterator<Item = Option<C>> + '_>
     where
-        C: ArrowDeserialize + ArrowField<Type = C> + 'static,
+        C: Clone + ArrowDeserialize + ArrowField<Type = C> + 'static,
         C::ArrayType: ArrowArray,
         for<'b> &'b C::ArrayType: IntoIterator,
     {
@@ -246,6 +321,7 @@ impl EntityView {
                 component_instance_iter,
                 component_value_iter,
                 next_component_instance: next_component,
+                splatted_component_value: None,
             }))
         } else {
             let nulls = (0..self.primary.values.len()).map(|_| None);
@@ -254,38 +330,34 @@ impl EntityView {
     }
 
     /// Helper function to produce an `EntityView` from rust-native `field_types`
-    pub fn from_native<C0>(c0: (Option<&Vec<Instance>>, &Vec<C0>)) -> crate::Result<EntityView>
-    where
-        C0: Component + 'static,
-        C0: ArrowSerialize + ArrowField<Type = C0>,
-    {
+    pub fn from_native(c0: (Option<&Vec<Instance>>, &Vec<Primary>)) -> crate::Result<Self> {
         let primary = ComponentWithInstances::from_native(c0.0, c0.1)?;
 
-        Ok(EntityView {
+        Ok(Self {
             primary,
             components: Default::default(),
+            phantom: PhantomData,
         })
     }
 
     /// Helper function to produce an `EntityView` from rust-native `field_types`
-    pub fn from_native2<C0, C1>(
-        c0: (Option<&Vec<Instance>>, &Vec<C0>),
-        c1: (Option<&Vec<Instance>>, &Vec<C1>),
-    ) -> crate::Result<EntityView>
+    pub fn from_native2<C>(
+        primary: (Option<&Vec<Instance>>, &Vec<Primary>),
+        component: (Option<&Vec<Instance>>, &Vec<C>),
+    ) -> crate::Result<Self>
     where
-        C0: Component + 'static,
-        C0: ArrowSerialize + ArrowField<Type = C0>,
-        C1: Component + 'static,
-        C1: ArrowSerialize + ArrowField<Type = C1>,
+        C: Component + 'static,
+        C: ArrowSerialize + ArrowField<Type = C>,
     {
-        let primary = ComponentWithInstances::from_native(c0.0, c0.1)?;
-        let component_c1 = ComponentWithInstances::from_native(c1.0, c1.1)?;
+        let primary = ComponentWithInstances::from_native(primary.0, primary.1)?;
+        let component_c1 = ComponentWithInstances::from_native(component.0, component.1)?;
 
         let components = [(component_c1.name, component_c1)].into();
 
-        Ok(EntityView {
+        Ok(Self {
             primary,
             components,
+            phantom: PhantomData,
         })
     }
 }
@@ -293,7 +365,7 @@ impl EntityView {
 #[test]
 fn lookup_value() {
     use re_log_types::external::arrow2_convert::serialize::arrow_serialize_to_mutable_array;
-    use re_log_types::field_types::{Instance, Point2D};
+    use re_log_types::field_types::{Instance, Point2D, Rect2D};
     let points = vec![
         Point2D { x: 1.0, y: 2.0 }, //
         Point2D { x: 3.0, y: 4.0 },
@@ -304,10 +376,10 @@ fn lookup_value() {
 
     let component = ComponentWithInstances::from_native(None, &points).unwrap();
 
-    let missing_value = component.lookup(&Instance(5));
+    let missing_value = component.lookup_arrow(&Instance(5));
     assert_eq!(missing_value, None);
 
-    let value = component.lookup(&Instance(2)).unwrap();
+    let value = component.lookup_arrow(&Instance(2)).unwrap();
 
     let expected_point = vec![points[2].clone()];
     let expected_arrow =
@@ -327,10 +399,10 @@ fn lookup_value() {
 
     let component = ComponentWithInstances::from_native(Some(&instance_keys), &points).unwrap();
 
-    let missing_value = component.lookup(&Instance(46));
+    let missing_value = component.lookup_arrow(&Instance(46));
     assert_eq!(missing_value, None);
 
-    let value = component.lookup(&Instance(99)).unwrap();
+    let value = component.lookup_arrow(&Instance(99)).unwrap();
 
     let expected_point = vec![points[3].clone()];
     let expected_arrow =
@@ -339,4 +411,21 @@ fn lookup_value() {
             .as_box();
 
     assert_eq!(expected_arrow, value);
+
+    // Lookups with serialization
+
+    let value = component.lookup::<Point2D>(&Instance(99)).unwrap();
+    assert_eq!(expected_point[0], value);
+
+    let missing_value = component.lookup::<Point2D>(&Instance(46));
+    assert!(matches!(
+        missing_value.err().unwrap(),
+        QueryError::ComponentNotFound
+    ));
+
+    let missing_value = component.lookup::<Rect2D>(&Instance(99));
+    assert!(matches!(
+        missing_value.err().unwrap(),
+        QueryError::TypeMismatch { .. }
+    ));
 }

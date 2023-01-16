@@ -2,8 +2,8 @@ use itertools::Itertools;
 use nohash_hasher::IntMap;
 
 use re_log_types::{
-    BatchIndex, DataMsg, DataPath, Index, IndexHash, LoggedData, MsgId, TimePoint, TimeType,
-    Timeline,
+    BatchIndex, DataMsg, DataPath, FieldOrComponent, Index, IndexHash, LoggedData, MsgId,
+    TimePoint, TimeType, Timeline,
 };
 
 use crate::{
@@ -56,8 +56,12 @@ impl DataStore {
     ) -> Option<Result<FieldQueryOutput<i64>>> {
         let store = self.get(timeline)?;
         let obj_store = store.get(&data_path.obj_path)?;
-        let field_store = obj_store.get(&data_path.field_name)?;
-        Some(field_store.query_field_to_datavec(time_query, None))
+        if let FieldOrComponent::Field(field) = data_path.field_name {
+            let field_store = obj_store.get(&field)?;
+            Some(field_store.query_field_to_datavec(time_query, None))
+        } else {
+            None
+        }
     }
 
     pub fn insert_data_msg(&mut self, data_msg: &DataMsg) -> Result<()> {
@@ -171,6 +175,11 @@ fn insert_msg_into_timeline_store(
         obj_path,
         field_name,
     } = data_path.clone();
+
+    let FieldOrComponent::Field(field_name) = field_name
+    else {
+        return Err(crate::Error::WrongFieldType)
+    };
 
     match data {
         LoggedData::Null(data_type) => {

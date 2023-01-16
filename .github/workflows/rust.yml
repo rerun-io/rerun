@@ -74,6 +74,7 @@ jobs:
           auto-push: true
           gh-pages-branch: gh-pages
           benchmark-data-dir-path: dev/bench
+          max-items-in-chart: 30
 
   # ---------------------------------------------------------------------------
 

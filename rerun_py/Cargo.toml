@@ -57,7 +57,7 @@ mimalloc = { version = "0.1.29", features = ["local_dynamic_tls"] }
 numpy = { version = "0.17", features = ["half"] }
 pyo3 = "0.17"
 rand = { version = "0.8", features = ["std_rng"] }
-tokio = { version = "1.16", features = ["rt-multi-thread"] }
+tokio = { workspace = true, features = ["rt-multi-thread"] }
 tracing-subscriber = "0.3"
 uuid = "1.1"
 

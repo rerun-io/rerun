@@ -15,6 +15,7 @@ use std::num::NonZeroU64;
 
 use crate::{
     context::uniform_buffer_allocation_size,
+    depth_offset::DepthOffset,
     include_file,
     resource_managers::{GpuTexture2DHandle, ResourceManagerError},
     view_builder::ViewBuilder,
@@ -40,7 +41,8 @@ mod gpu_data {
     pub struct UniformBuffer {
         pub top_left_corner_position: wgpu_buffer_types::Vec3,
         pub extent_u: wgpu_buffer_types::Vec3,
-        pub extent_v: wgpu_buffer_types::Vec3,
+        pub extent_v: wgpu_buffer_types::Vec3Unpadded,
+        pub depth_offset: f32,
         pub multiplicative_tint: crate::Rgba,
     }
 }
@@ -75,8 +77,25 @@ pub struct TexturedRect {
     pub texture_filter_magnification: TextureFilterMag,
     pub texture_filter_minification: TextureFilterMin,
 
-    // Tint that is multiplied to the rect, supports pre-multiplied alpha.
+    /// Tint that is multiplied to the rect, supports pre-multiplied alpha.
     pub multiplicative_tint: Rgba,
+
+    pub depth_offset: DepthOffset,
+}
+
+impl Default for TexturedRect {
+    fn default() -> Self {
+        Self {
+            top_left_corner_position: glam::Vec3::ZERO,
+            extent_u: glam::Vec3::ZERO,
+            extent_v: glam::Vec3::ZERO,
+            texture: GpuTexture2DHandle::invalid(),
+            texture_filter_magnification: TextureFilterMag::Nearest,
+            texture_filter_minification: TextureFilterMin::Linear,
+            multiplicative_tint: Rgba::WHITE,
+            depth_offset: 0,
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -152,6 +171,7 @@ impl RectangleDrawData {
                         top_left_corner_position: rectangle.top_left_corner_position.into(),
                         extent_u: rectangle.extent_u.into(),
                         extent_v: rectangle.extent_v.into(),
+                        depth_offset: rectangle.depth_offset as f32,
                         multiplicative_tint: rectangle.multiplicative_tint,
                     }));
             }

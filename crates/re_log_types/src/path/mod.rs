@@ -22,7 +22,7 @@ mod obj_path_impl;
 mod obj_type_path;
 mod parse_path;
 
-pub use data_path::DataPath;
+pub use data_path::{DataPath, FieldOrComponent};
 pub use index_path::{IndexPath, IndexPathHash};
 pub use obj_path::{ObjPath, ObjPathHash};
 pub use obj_path_impl::{ObjPathCompRef, ObjPathImpl};

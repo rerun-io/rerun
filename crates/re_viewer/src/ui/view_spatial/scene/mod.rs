@@ -5,8 +5,8 @@ use egui::NumExt as _;
 use glam::{vec3, Vec3};
 use re_data_store::{InstanceIdHash, ObjPath, ObjectsProperties};
 use re_log_types::{
-    context::{ClassId, KeypointId},
-    IndexHash, MeshId, Tensor,
+    field_types::{ClassId, KeypointId},
+    ClassicTensor, IndexHash, MeshId,
 };
 use re_renderer::{Color32, Size};
 
@@ -14,16 +14,17 @@ use super::{eye::Eye, SpaceCamera3D, SpatialNavigationMode};
 use crate::{
     misc::{mesh_loader::LoadedMesh, ViewerContext},
     ui::{
-        annotations::{auto_color, AnnotationMap},
+        annotations::{auto_color_egui, AnnotationMap},
         transform_cache::TransformCache,
-        view_spatial::axis_color,
         Annotations, SceneQuery,
     },
 };
 
+mod picking;
 mod primitives;
 mod scene_part;
 
+pub use self::picking::{AdditionalPickingInfo, PickingRayHit, PickingResult};
 pub use self::primitives::SceneSpatialPrimitives;
 use scene_part::ScenePart;
 
@@ -57,7 +58,7 @@ pub struct MeshSource {
 pub struct Image {
     pub instance_hash: InstanceIdHash,
 
-    pub tensor: Tensor,
+    pub tensor: ClassicTensor,
     /// If this is a depth map, how long is a meter?
     ///
     /// For instance, with a `u16` dtype one might have
@@ -80,7 +81,7 @@ pub enum Label2DTarget {
 pub struct Label2D {
     pub text: String,
     pub color: Color32,
-    /// The shape being labled.
+    /// The shape being labeled.
     pub target: Label2DTarget,
     /// What is hovered if this label is hovered.
     pub labled_instance: InstanceIdHash,
@@ -103,8 +104,9 @@ pub struct SceneSpatialUiData {
     pub labels_3d: Vec<Label3D>,
     pub labels_2d: Vec<Label2D>,
 
-    /// Cursor within any of these rects cause the referred instance to be hovered.
-    pub rects: Vec<(egui::Rect, InstanceIdHash)>,
+    /// Picking any any of these rects cause the referred instance to be hovered.
+    /// Only use this for 2d overlays!
+    pub pickable_ui_rects: Vec<(egui::Rect, InstanceIdHash)>,
 
     /// Images are a special case of rects where we're storing some extra information to allow miniature previews etc.
     pub images: Vec<Image>,
@@ -115,6 +117,15 @@ pub struct SceneSpatial {
     pub annotation_map: AnnotationMap,
     pub primitives: SceneSpatialPrimitives,
     pub ui: SceneSpatialUiData,
+
+    /// Number of 2d primitives logged, used for heuristics.
+    num_logged_2d_objects: usize,
+    /// Number of 3d primitives logged, used for heuristics.
+    num_logged_3d_objects: usize,
+
+    /// All space cameras in this scene.
+    /// TODO(andreas): Does this belong to [`SceneSpatialUiData`]?
+    pub space_cameras: Vec<SpaceCamera3D>,
 }
 
 fn instance_hash_if_interactive(
@@ -132,6 +143,8 @@ fn instance_hash_if_interactive(
     }
 }
 
+pub type Keypoints = HashMap<(ClassId, i64), HashMap<KeypointId, glam::Vec3>>;
+
 impl SceneSpatial {
     /// Loads all 3D objects into the scene according to the given query.
     pub(crate) fn load_objects(
@@ -139,28 +152,44 @@ impl SceneSpatial {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
-        objects_properties: &ObjectsProperties,
         hovered: InstanceIdHash,
     ) {
         crate::profile_function!();
 
         self.annotation_map.load(ctx, query);
 
-        let parts = [
-            scene_part::Points3DPart::load,
-            scene_part::Boxes3DPart::load,
-            scene_part::Lines3DPart::load,
-            scene_part::Arrows3DPart::load,
-            scene_part::MeshPart::load,
-            scene_part::ImagesPart::load,
-            scene_part::Boxes2DPartClassic::load,
-            scene_part::Boxes2DPart::load,
-            scene_part::LineSegments2DPart::load,
-            scene_part::Points2DPart::load,
+        let parts: Vec<&dyn ScenePart> = vec![
+            &scene_part::Points3DPartClassic,
+            &scene_part::Points3DPart { max_labels: 10 },
+            // --
+            &scene_part::Boxes3DPartClassic,
+            &scene_part::Boxes3DPart,
+            &scene_part::Lines3DPartClassic,
+            &scene_part::Lines3DPart,
+            &scene_part::Arrows3DPart,
+            &scene_part::MeshPartClassic,
+            &scene_part::MeshPart,
+            &scene_part::ImagesPartClassic,
+            &scene_part::ImagesPart,
+            // --
+            &scene_part::Boxes2DPartClassic,
+            &scene_part::Boxes2DPart,
+            // --
+            &scene_part::LineSegments2DPartClassic,
+            // Note: Lines2DPart handles both Segments and LinesPaths now since
+            // they are unified on the logging-side. No need for
+            // LineSegmentsPart in Arrow. Lines2DClassic, likewise was never
+            // exposed through the SDK, which only allows for 3d LinePaths.
+            &scene_part::Lines2DPart,
+            &scene_part::Points2DPartClassic,
+            &scene_part::Points2DPart,
+            // ---
+            &scene_part::CamerasPart,
+            &scene_part::CamerasPartClassic,
         ];
 
-        for load in parts {
-            (load)(self, ctx, query, transforms, objects_properties, hovered);
+        for part in parts {
+            part.load(self, ctx, query, transforms, hovered);
         }
 
         self.primitives.recalculate_bounding_box();
@@ -179,7 +208,7 @@ impl SceneSpatial {
     fn load_keypoint_connections(
         &mut self,
         obj_path: &re_data_store::ObjPath,
-        keypoints: HashMap<(ClassId, i64), HashMap<KeypointId, glam::Vec3>>,
+        keypoints: Keypoints,
         annotations: &Arc<Annotations>,
         interactive: bool,
     ) {
@@ -193,10 +222,10 @@ impl SceneSpatial {
                 continue;
             };
 
-            let color = class_description
-                .info
-                .color
-                .unwrap_or_else(|| auto_color(class_description.info.id));
+            let color = class_description.info.color.map_or_else(
+                || auto_color_egui(class_description.info.id),
+                |color| color.into(),
+            );
 
             for (a, b) in &class_description.keypoint_connections {
                 let (Some(a), Some(b)) = (keypoints_in_class.get(a), keypoints_in_class.get(b)) else {
@@ -209,7 +238,7 @@ impl SceneSpatial {
                 line_batch
                     .add_segment(*a, *b)
                     .radius(Size::AUTO)
-                    .color(to_ecolor(color))
+                    .color(color)
                     .user_data(instance_hash);
             }
         }
@@ -224,24 +253,19 @@ impl SceneSpatial {
         scene_bbox: &macaw::BoundingBox,
         viewport_size: egui::Vec2,
         eye: &Eye,
-        cameras: &[SpaceCamera3D],
         hovered_instance: InstanceIdHash,
         obj_properties: &ObjectsProperties,
     ) {
         crate::profile_function!();
 
         // Size of a pixel (in meters), when projected out one meter:
-        let point_size_at_one_meter = eye.fov_y / viewport_size.y;
+        let point_size_at_one_meter = eye.fov_y.unwrap() / viewport_size.y;
 
         let eye_camera_plane =
             macaw::Plane3::from_normal_point(eye.forward_in_world(), eye.pos_in_world());
 
-        for camera in cameras {
-            let instance_id = InstanceIdHash::from_path_and_index(
-                &camera.camera_obj_path,
-                camera.instance_index_hash,
-            );
-            let is_hovered = instance_id == hovered_instance;
+        for camera in &self.space_cameras {
+            let is_hovered = camera.instance == hovered_instance;
 
             let (line_radius, line_color) = if is_hovered {
                 (Size::AUTO_LARGE, Self::HOVER_COLOR)
@@ -275,7 +299,7 @@ impl SceneSpatial {
                         let additive_tint = is_hovered.then_some(Self::HOVER_COLOR);
 
                         self.primitives.meshes.push(MeshSource {
-                            instance_hash: instance_id,
+                            instance_hash: camera.instance,
                             world_from_mesh,
                             mesh: cpu_mesh,
                             additive_tint,
@@ -285,132 +309,113 @@ impl SceneSpatial {
             }
 
             if ctx.options.show_camera_axes_in_3d {
-                let world_from_cam = camera.world_from_cam();
-
-                // TODO(emilk): include the names of the axes ("Right", "Down", "Forward", etc)
-                let cam_origin = camera.position();
-
-                let mut batch = self.primitives.line_strips.batch("camera axis");
-
-                for (axis_index, dir) in [Vec3::X, Vec3::Y, Vec3::Z].iter().enumerate() {
-                    let axis_end = world_from_cam.transform_point3(scale * *dir);
-                    let color = axis_color(axis_index);
-
-                    batch
-                        .add_segment(cam_origin, axis_end)
-                        .radius(Size::new_points(2.0))
-                        .color(color)
-                        .user_data(instance_id);
-                }
+                self.primitives.add_axis_lines(
+                    camera.world_from_cam(),
+                    camera.instance,
+                    eye,
+                    viewport_size,
+                );
             }
 
             let mut frustum_length = scene_bbox.size().length() * 0.3;
-            if let (Some(pinhole), Some(child_space)) = (&camera.pinhole, &camera.target_space) {
+            if let (Some(pinhole), child_space) = (&camera.pinhole, &camera.obj_path) {
                 frustum_length = obj_properties
                     .get(child_space)
                     .pinhole_image_plane_distance(pinhole);
             }
 
-            self.add_camera_frustum(camera, instance_id, line_radius, frustum_length, line_color);
+            {
+                let world_from_image = camera.world_from_image().unwrap();
+                let [w, h] = camera.pinhole.unwrap().resolution.unwrap().0;
+
+                // TODO(emilk): there is probably a off-by-one or off-by-half error here.
+                // The image coordinates are in [0, w-1] range, so either we should use those limits
+                // or [-0.5, w-0.5] for the "pixels are tiny squares" interpretation of the frustum.
+
+                let corners = [
+                    world_from_image.transform_point3(frustum_length * vec3(0.0, 0.0, 1.0)),
+                    world_from_image.transform_point3(frustum_length * vec3(0.0, h, 1.0)),
+                    world_from_image.transform_point3(frustum_length * vec3(w, h, 1.0)),
+                    world_from_image.transform_point3(frustum_length * vec3(w, 0.0, 1.0)),
+                ];
+
+                let center = camera.position();
+
+                let segments = [
+                    (center, corners[0]),     // frustum corners
+                    (center, corners[1]),     // frustum corners
+                    (center, corners[2]),     // frustum corners
+                    (center, corners[3]),     // frustum corners
+                    (corners[0], corners[1]), // `d` distance plane sides
+                    (corners[1], corners[2]), // `d` distance plane sides
+                    (corners[2], corners[3]), // `d` distance plane sides
+                    (corners[3], corners[0]), // `d` distance plane sides
+                ];
+
+                self.primitives
+                    .line_strips
+                    .batch("camera frustum")
+                    .add_segments(segments.into_iter())
+                    .radius(line_radius)
+                    .color(line_color)
+                    .user_data(camera.instance);
+            };
         }
-    }
-
-    /// Paint frustum lines
-    fn add_camera_frustum(
-        &mut self,
-        camera: &SpaceCamera3D,
-        instance_id: InstanceIdHash,
-        line_radius: Size,
-        frustum_length: f32,
-        color: Color32,
-    ) -> Option<()> {
-        let world_from_image = camera.world_from_image()?;
-        let [w, h] = camera.pinhole?.resolution?;
-
-        // TODO(emilk): there is probably a off-by-one or off-by-half error here.
-        // The image coordinates are in [0, w-1] range, so either we should use those limits
-        // or [-0.5, w-0.5] for the "pixels are tiny squares" interpretation of the frustum.
-
-        let corners = [
-            world_from_image.transform_point3(frustum_length * vec3(0.0, 0.0, 1.0)),
-            world_from_image.transform_point3(frustum_length * vec3(0.0, h, 1.0)),
-            world_from_image.transform_point3(frustum_length * vec3(w, h, 1.0)),
-            world_from_image.transform_point3(frustum_length * vec3(w, 0.0, 1.0)),
-        ];
-
-        let center = camera.position();
-
-        let segments = [
-            (center, corners[0]),     // frustum corners
-            (center, corners[1]),     // frustum corners
-            (center, corners[2]),     // frustum corners
-            (center, corners[3]),     // frustum corners
-            (corners[0], corners[1]), // `d` distance plane sides
-            (corners[1], corners[2]), // `d` distance plane sides
-            (corners[2], corners[3]), // `d` distance plane sides
-            (corners[3], corners[0]), // `d` distance plane sides
-        ];
-
-        self.primitives
-            .line_strips
-            .batch("camera frustum")
-            .add_segments(segments.into_iter())
-            .radius(line_radius)
-            .color(color)
-            .user_data(instance_id);
-
-        Some(())
     }
 
     /// Heuristic whether the default way of looking at this scene should be 2d or 3d.
-    pub fn prefer_2d_mode(&self) -> bool {
-        // If any 2D interactable picture is there we regard it as 2d.
+    pub fn preferred_navigation_mode(&self, space_info_path: &ObjPath) -> SpatialNavigationMode {
+        // If there's any space cameras that are not the root, we need to go 3D, otherwise we can't display them.
+        if self
+            .space_cameras
+            .iter()
+            .any(|camera| &camera.obj_path != space_info_path)
+        {
+            return SpatialNavigationMode::ThreeD;
+        }
+
         if !self.ui.images.is_empty() {
-            return true;
+            return SpatialNavigationMode::TwoD;
+        }
+        if self.num_logged_3d_objects == 0 {
+            return SpatialNavigationMode::TwoD;
         }
 
-        // Instead a mesh indicates 3d.
-        if !self.primitives.meshes.is_empty() {
-            return false;
-        }
-
-        // Otherwise do an heuristic based on the z extent of bounding box
-        let bbox = self.primitives.bounding_box();
-        bbox.min.z >= self.primitives.line_strips.next_2d_z * 2.0 && bbox.max.z < 1.0
+        SpatialNavigationMode::ThreeD
     }
 
-    pub fn preferred_navigation_mode(&self) -> SpatialNavigationMode {
-        if self.prefer_2d_mode() {
-            SpatialNavigationMode::TwoD
-        } else {
-            SpatialNavigationMode::ThreeD
-        }
+    pub fn picking(
+        &self,
+        pointer_in_ui: glam::Vec2,
+        ui_rect: &egui::Rect,
+        eye: &Eye,
+        ui_interaction_radius: f32,
+    ) -> PickingResult {
+        picking::picking(
+            pointer_in_ui,
+            ui_rect,
+            eye,
+            &self.primitives,
+            &self.ui,
+            ui_interaction_radius,
+        )
     }
 }
 
 pub struct ObjectPaintProperties {
-    pub bg_stroke: egui::Stroke,
     pub fg_stroke: egui::Stroke,
 }
 
 // TODO(andreas): we're no longer using egui strokes. Replace this.
 fn paint_properties(color: [u8; 4], stroke_width: Option<&f32>) -> ObjectPaintProperties {
-    let bg_color = Color32::from_black_alpha(196);
     let fg_color = to_ecolor(color);
-    let stroke_width = stroke_width.map_or(1.5, |w| *w);
-    let bg_stroke = egui::Stroke::new(stroke_width + 2.0, bg_color);
+    let stroke_width = stroke_width.map_or(2.0, |w| *w); // TODO(andreas): use re_renderer auto_size
     let fg_stroke = egui::Stroke::new(stroke_width, fg_color);
 
-    ObjectPaintProperties {
-        bg_stroke,
-        fg_stroke,
-    }
+    ObjectPaintProperties { fg_stroke }
 }
 
 fn apply_hover_effect(paint_props: &mut ObjectPaintProperties) {
-    paint_props.bg_stroke.width *= 2.0;
-    paint_props.bg_stroke.color = Color32::BLACK;
-
     paint_props.fg_stroke.width *= 2.0;
     paint_props.fg_stroke.color = Color32::WHITE;
 }

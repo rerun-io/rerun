@@ -40,11 +40,15 @@ pub(crate) struct FrameUniformBuffer {
     /// Both values are set to positive infinity for orthographic projection
     pub tan_half_fov: wgpu_buffer_types::Vec2,
 
-    /// Size used for all sizes given with Size::AUTO
-    pub auto_size_in_points: f32,
+    /// Size used for all sizes given with Size::AUTO, may be both a point or a world size.
+    pub auto_size: f32,
 
-    /// Size used for all sizes given with Size::AUTO_LARGE
-    pub auto_size_large_in_points: f32,
+    /// Size used for all sizes given with Size::AUTO_LARGE, may be both a point or a world size.
+    pub auto_size_large: f32,
+
+    /// Factor used to compute depth offsets, see `depth_offset.wgsl`.
+    pub depth_offset_factor: f32,
+    pub _padding: glam::Vec3,
 }
 
 pub(crate) struct GlobalBindings {

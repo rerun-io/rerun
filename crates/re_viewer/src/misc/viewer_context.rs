@@ -1,9 +1,9 @@
-use macaw::Ray3;
-
 use re_data_store::{log_db::LogDb, InstanceId, ObjTypePath};
 use re_log_types::{DataPath, MsgId, ObjPath, TimeInt, Timeline};
 
-use crate::ui::{SelectionHistory, SpaceViewId};
+use crate::ui::{
+    data_ui::DataUi, DataBlueprintGroupHandle, Preview, SelectionHistory, SpaceViewId,
+};
 
 /// Common things needed by many parts of the viewer.
 pub struct ViewerContext<'a> {
@@ -70,7 +70,7 @@ impl<'a> ViewerContext<'a> {
             .on_hover_ui(|ui| {
                 ui.strong("Object");
                 ui.label(format!("Path: {obj_path}"));
-                crate::ui::data_ui::object_ui(self, ui, obj_path, crate::ui::Preview::Medium);
+                obj_path.data_ui(self, ui, crate::ui::Preview::Medium);
             });
         if response.clicked() {
             self.set_selection(Selection::Instance(InstanceId {
@@ -103,7 +103,7 @@ impl<'a> ViewerContext<'a> {
             .on_hover_ui(|ui| {
                 ui.strong("Object Instance");
                 ui.label(format!("Path: {instance_id}"));
-                crate::ui::data_ui::instance_ui(self, ui, instance_id, crate::ui::Preview::Medium);
+                instance_id.data_ui(self, ui, crate::ui::Preview::Medium);
             });
         if response.clicked() {
             self.set_selection(Selection::Instance(instance_id.clone()));
@@ -147,6 +147,24 @@ impl<'a> ViewerContext<'a> {
         response
     }
 
+    pub fn datablueprint_group_button_to(
+        &mut self,
+        ui: &mut egui::Ui,
+        text: impl Into<egui::WidgetText>,
+        space_view_id: SpaceViewId,
+        group_handle: DataBlueprintGroupHandle,
+    ) -> egui::Response {
+        let selection = Selection::DataBlueprintGroup(space_view_id, group_handle);
+        let is_selected = self.selection() == selection;
+        let response = ui
+            .selectable_label(is_selected, text)
+            .on_hover_text("Group");
+        if response.clicked() {
+            self.set_selection(selection);
+        }
+        response
+    }
+
     pub fn space_view_obj_path_button_to(
         &mut self,
         ui: &mut egui::Ui,
@@ -160,7 +178,7 @@ impl<'a> ViewerContext<'a> {
             .on_hover_ui(|ui| {
                 ui.strong("Space View Object");
                 ui.label(format!("Path: {obj_path}"));
-                crate::ui::data_ui::object_ui(self, ui, obj_path, crate::ui::Preview::Medium);
+                obj_path.data_ui(self, ui, Preview::Medium);
             });
         if response.clicked() {
             self.set_selection(selection);
@@ -238,7 +256,7 @@ pub enum HoveredSpace {
         space_3d: ObjPath,
 
         /// 2D spaces and pixel coordinates (with Z=depth)
-        target_spaces: Vec<(ObjPath, Option<Ray3>, Option<glam::Vec3>)>,
+        target_spaces: Vec<(ObjPath, Option<glam::Vec3>)>,
     },
 }
 
@@ -337,6 +355,7 @@ pub enum Selection {
     SpaceView(crate::ui::SpaceViewId),
     /// An object within a space-view.
     SpaceViewObjPath(crate::ui::SpaceViewId, ObjPath),
+    DataBlueprintGroup(crate::ui::SpaceViewId, crate::ui::DataBlueprintGroupHandle),
 }
 
 impl std::fmt::Display for Selection {
@@ -350,6 +369,7 @@ impl std::fmt::Display for Selection {
             Selection::Space(s) => s.fmt(f),
             Selection::SpaceView(s) => write!(f, "{s:?}"),
             Selection::SpaceViewObjPath(sid, path) => write!(f, "({sid:?}, {path})"),
+            Selection::DataBlueprintGroup(sid, handle) => write!(f, "({sid:?}, {handle:?})"),
         }
     }
 }

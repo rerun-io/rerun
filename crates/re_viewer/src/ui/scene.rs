@@ -2,8 +2,8 @@ use ahash::HashMap;
 use nohash_hasher::IntSet;
 
 use re_data_store::{
-    FieldName, FieldStore, LogDb, ObjPath, ObjStore, ObjectsProperties, TimeInt, TimeQuery,
-    Timeline,
+    FieldName, FieldStore, LogDb, ObjPath, ObjStore, ObjectProps, ObjectsProperties, TimeInt,
+    TimeQuery, Timeline,
 };
 use re_log_types::ObjectType;
 
@@ -13,8 +13,6 @@ pub struct SceneQuery<'s> {
     pub obj_paths: &'s IntSet<ObjPath>,
     pub timeline: Timeline,
     pub latest_at: TimeInt,
-
-    /// Controls what objects are visible
     pub obj_props: &'s ObjectsProperties,
 }
 
@@ -69,6 +67,16 @@ impl<'s> SceneQuery<'s> {
                             .flatten()
                     })
             })
+    }
+
+    /// Iter over all of the currently visible `EntityPath`s in the `SceneQuery`
+    ///
+    /// Also includes the corresponding `ObjectProps`.
+    pub(crate) fn iter_entities(&self) -> impl Iterator<Item = (&ObjPath, ObjectProps)> {
+        self.obj_paths
+            .iter()
+            .map(|obj_path| (obj_path, self.obj_props.get(obj_path)))
+            .filter(|(_obj_path, obj_props)| obj_props.visible)
     }
 
     /// Given a [`FieldName`], this will return all relevant [`ObjStore`]s that contain

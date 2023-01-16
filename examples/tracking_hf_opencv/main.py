@@ -31,7 +31,6 @@ DETECTION_SCORE_THRESHOLD = 0.8
 
 os.environ["TRANSFORMERS_CACHE"] = str(CACHE_DIR.absolute())
 from transformers import DetrFeatureExtractor, DetrForSegmentation
-from transformers.models.detr.feature_extraction_detr import masks_to_boxes, rgb_to_id
 
 
 @dataclass

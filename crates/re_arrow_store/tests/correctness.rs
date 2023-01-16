@@ -4,12 +4,21 @@
 
 use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
 
-use arrow2::array::UInt64Array;
+use arrow2::array::{Array, UInt64Array};
 
-use re_arrow_store::{test_bundle, DataStore, TimeQuery, TimelineQuery, WriteError};
+use polars_core::{
+    prelude::{DataFrame, JoinType},
+    series::Series,
+};
+use re_arrow_store::{
+    polars_util, test_bundle, DataStore, LatestAtQuery, RangeQuery, TimeRange, WriteError,
+};
 use re_log_types::{
-    datagen::{build_frame_nr, build_log_time, build_some_instances, build_some_point2d},
-    field_types::Instance,
+    datagen::{
+        build_frame_nr, build_log_time, build_some_instances, build_some_point2d, build_some_rects,
+    },
+    external::arrow2_convert::serialize::TryIntoArrow,
+    field_types::{Instance, Point2D, Rect2D},
     msg_bundle::{wrap_in_listarray, Component as _, ComponentBundle},
     Duration, ObjPath as EntityPath, Time, TimeType, Timeline,
 };
@@ -27,7 +36,7 @@ fn write_errors() {
 
         let mut store = DataStore::new(Instance::name(), Default::default());
         let mut bundle = test_bundle!(ent_path @
-            [build_frame_nr(32), build_log_time(Time::now())] => [
+            [build_frame_nr(32.into()), build_log_time(Time::now())] => [
                 build_some_instances(10), build_some_point2d(10)
         ]);
 
@@ -49,7 +58,7 @@ fn write_errors() {
 
         let mut store = DataStore::new(Instance::name(), Default::default());
         let mut bundle = test_bundle!(ent_path @
-            [build_frame_nr(32), build_log_time(Time::now())] => [
+            [build_frame_nr(32.into()), build_log_time(Time::now())] => [
                 build_some_instances(10), build_some_point2d(10)
         ]);
 
@@ -77,7 +86,7 @@ fn write_errors() {
 
         let mut store = DataStore::new(Instance::name(), Default::default());
         let bundle = test_bundle!(ent_path @
-            [build_frame_nr(32), build_log_time(Time::now())] => [
+            [build_frame_nr(32.into()), build_log_time(Time::now())] => [
                 build_sparse_instances(), build_some_point2d(3)
         ]);
         assert!(matches!(
@@ -105,7 +114,7 @@ fn write_errors() {
         let mut store = DataStore::new(Instance::name(), Default::default());
         {
             let bundle = test_bundle!(ent_path @
-                [build_frame_nr(32), build_log_time(Time::now())] => [
+                [build_frame_nr(32.into()), build_log_time(Time::now())] => [
                     build_unsorted_instances(), build_some_point2d(3)
             ]);
             assert!(matches!(
@@ -115,7 +124,7 @@ fn write_errors() {
         }
         {
             let bundle = test_bundle!(ent_path @
-                [build_frame_nr(32), build_log_time(Time::now())] => [
+                [build_frame_nr(32.into()), build_log_time(Time::now())] => [
                     build_duped_instances(), build_some_point2d(3)
             ]);
             assert!(matches!(
@@ -128,7 +137,7 @@ fn write_errors() {
     {
         let mut store = DataStore::new(Instance::name(), Default::default());
         let bundle = test_bundle!(ent_path @
-            [build_frame_nr(32), build_log_time(Time::now())] => [
+            [build_frame_nr(32.into()), build_log_time(Time::now())] => [
                 build_some_instances(4), build_some_point2d(3)
         ]);
         assert!(matches!(
@@ -141,21 +150,21 @@ fn write_errors() {
 // ---
 
 #[test]
-fn empty_query_edge_cases() {
+fn latest_at_emptiness_edge_cases() {
     init_logs();
 
     for config in re_arrow_store::test_util::all_configs() {
         let mut store = DataStore::new(Instance::name(), config.clone());
-        empty_query_edge_cases_impl(&mut store);
+        latest_at_emptiness_edge_cases_impl(&mut store);
     }
 }
-fn empty_query_edge_cases_impl(store: &mut DataStore) {
+fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
     let ent_path = EntityPath::from("this/that");
     let now = Time::now();
     let now_minus_1s = now - Duration::from_secs(1.0);
-    let now_minus_1s_nanos = now_minus_1s.nanos_since_epoch();
-    let frame39 = 39;
-    let frame40 = 40;
+    let now_minus_1s_nanos = now_minus_1s.nanos_since_epoch().into();
+    let frame39 = 39.into();
+    let frame40 = 40.into();
     let nb_instances = 3;
 
     store
@@ -167,7 +176,7 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
         .unwrap();
 
     if let err @ Err(_) = store.sanity_check() {
-        store.sort_indices();
+        store.sort_indices_if_needed();
         eprintln!("{store}");
         err.unwrap();
     }
@@ -179,8 +188,8 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
 
     // empty frame_nr
     {
-        let row_indices = store.query(
-            &TimelineQuery::new(timeline_frame_nr, TimeQuery::LatestAt(frame39)),
+        let row_indices = store.latest_at(
+            &LatestAtQuery::new(timeline_frame_nr, frame39),
             &ent_path,
             Instance::name(),
             &[Instance::name()],
@@ -190,8 +199,8 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
 
     // empty log_time
     {
-        let row_indices = store.query(
-            &TimelineQuery::new(timeline_log_time, TimeQuery::LatestAt(now_minus_1s_nanos)),
+        let row_indices = store.latest_at(
+            &LatestAtQuery::new(timeline_log_time, now_minus_1s_nanos),
             &ent_path,
             Instance::name(),
             &[Instance::name()],
@@ -201,8 +210,8 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
 
     // wrong entity path
     {
-        let row_indices = store.query(
-            &TimelineQuery::new(timeline_frame_nr, TimeQuery::LatestAt(frame40)),
+        let row_indices = store.latest_at(
+            &LatestAtQuery::new(timeline_frame_nr, frame40),
             &EntityPath::from("does/not/exist"),
             Instance::name(),
             &[Instance::name()],
@@ -214,8 +223,8 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
     {
         let components = &["they".into(), "dont".into(), "exist".into()];
         let row_indices = store
-            .query(
-                &TimelineQuery::new(timeline_frame_nr, TimeQuery::LatestAt(frame40)),
+            .latest_at(
+                &LatestAtQuery::new(timeline_frame_nr, frame40),
                 &ent_path,
                 Instance::name(),
                 components,
@@ -228,8 +237,8 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
     // empty component list
     {
         let row_indices = store
-            .query(
-                &TimelineQuery::new(timeline_frame_nr, TimeQuery::LatestAt(frame40)),
+            .latest_at(
+                &LatestAtQuery::new(timeline_frame_nr, frame40),
                 &ent_path,
                 Instance::name(),
                 &[],
@@ -240,8 +249,8 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
 
     // wrong timeline name
     {
-        let row_indices = store.query(
-            &TimelineQuery::new(timeline_wrong_name, TimeQuery::LatestAt(frame40)),
+        let row_indices = store.latest_at(
+            &LatestAtQuery::new(timeline_wrong_name, frame40),
             &EntityPath::from("does/not/exist"),
             Instance::name(),
             &[Instance::name()],
@@ -251,14 +260,79 @@ fn empty_query_edge_cases_impl(store: &mut DataStore) {
 
     // wrong timeline kind
     {
-        let row_indices = store.query(
-            &TimelineQuery::new(timeline_wrong_kind, TimeQuery::LatestAt(frame40)),
+        let row_indices = store.latest_at(
+            &LatestAtQuery::new(timeline_wrong_kind, frame40),
             &EntityPath::from("does/not/exist"),
             Instance::name(),
             &[Instance::name()],
         );
         assert!(row_indices.is_none());
     }
+}
+
+// ---
+
+// This one demonstrates a nasty edge case when stream-joining multiple iterators that happen to
+// share the same exact row of data at some point (because, for that specific entry, it turns out
+// that those component where inserted together).
+//
+// When that happens, one must be very careful to not only compare time and index row numbers, but
+// also make sure that, if all else if equal, the primary iterator comes last so that it gathers as
+// much state as possible!
+
+#[test]
+fn range_join_across_single_row() {
+    init_logs();
+
+    for config in re_arrow_store::test_util::all_configs() {
+        let mut store = DataStore::new(Instance::name(), config.clone());
+        range_join_across_single_row_impl(&mut store);
+    }
+}
+fn range_join_across_single_row_impl(store: &mut DataStore) {
+    let ent_path = EntityPath::from("this/that");
+
+    let points = build_some_point2d(3);
+    let rects = build_some_rects(3);
+    let bundle =
+        test_bundle!(ent_path @ [build_frame_nr(42.into())] => [points.clone(), rects.clone()]);
+    store.insert(&bundle).unwrap();
+
+    let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
+    let query = RangeQuery::new(
+        timeline_frame_nr,
+        TimeRange::new(i64::MIN.into(), i64::MAX.into()),
+    );
+    let components = [Instance::name(), Point2D::name(), Rect2D::name()];
+    let dfs = polars_util::range_components(
+        store,
+        &query,
+        &ent_path,
+        Point2D::name(),
+        components,
+        &JoinType::Outer,
+    )
+    .collect::<Vec<_>>();
+
+    let df_expected = {
+        let instances: Box<dyn Array> = vec![Instance(0), Instance(1), Instance(2)]
+            .try_into_arrow()
+            .unwrap();
+        let points: Box<dyn Array> = points.try_into_arrow().unwrap();
+        let rects: Box<dyn Array> = rects.try_into_arrow().unwrap();
+
+        DataFrame::new(vec![
+            Series::try_from((Instance::name().as_str(), instances)).unwrap(),
+            Series::try_from((Point2D::name().as_str(), points)).unwrap(),
+            Series::try_from((Rect2D::name().as_str(), rects)).unwrap(),
+        ])
+        .unwrap()
+    };
+
+    assert_eq!(1, dfs.len());
+    let (_, df) = dfs[0].clone().unwrap();
+
+    assert_eq!(df_expected, df);
 }
 
 // ---

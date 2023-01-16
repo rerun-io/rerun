@@ -219,7 +219,7 @@ fn single_visit() {
     ];
 
     entity_view
-        .visit(|instance: Instance, point: Point2D| {
+        .visit1(|instance: Instance, point: Point2D| {
             instance_out.push(instance);
             points_out.push(point);
         })

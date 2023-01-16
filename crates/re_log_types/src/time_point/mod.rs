@@ -4,7 +4,7 @@ mod arrow;
 mod time_int;
 mod timeline;
 
-use crate::time::Time;
+use crate::{time::Time, TimeRange};
 
 // Re-exports
 pub use time_int::TimeInt;
@@ -99,6 +99,14 @@ impl TimeType {
                 Self::Sequence => format!("#{}", time_int.0),
             }
         }
+    }
+
+    pub fn format_range(&self, time_range: TimeRange) -> String {
+        format!(
+            "{}..={}",
+            self.format(time_range.min),
+            self.format(time_range.max)
+        )
     }
 }
 

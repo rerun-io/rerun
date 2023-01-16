@@ -19,7 +19,7 @@ use crate::{
     ViewerContext,
 };
 
-use super::Blueprint;
+use super::{data_ui::DataUi, Blueprint};
 
 /// A panel that shows objects to the left, time on the top.
 ///
@@ -429,7 +429,7 @@ impl TimePanel {
                     continue; // ignore fields that have no data for the current timeline
                 }
 
-                let data_path = DataPath::new(tree.path.clone(), *field_name);
+                let data_path = DataPath::new_any(tree.path.clone(), *field_name);
 
                 let response = ui
                     .horizontal(|ui| {
@@ -591,6 +591,7 @@ fn show_data_over_time(
         let num_messages: usize = stretch.msg_ids.iter().map(|l| l.len()).sum();
         let radius = 2.5 * (1.0 + 0.5 * (num_messages as f32).log10());
         let radius = radius.at_most(full_width_rect.height() / 3.0);
+        debug_assert!(radius.is_finite());
 
         let x = (stretch.start_x + stop_x) * 0.5;
         let pos = scatter.add(x, radius, (full_width_rect.top(), full_width_rect.bottom()));
@@ -642,6 +643,9 @@ fn show_data_over_time(
     for (&time, msg_ids) in
         messages_over_time.range(visible_time_range.min..=visible_time_range.max)
     {
+        if msg_ids.is_empty() {
+            continue;
+        }
         let time_real = TimeReal::from(time);
 
         let selected = selected_time_range.map_or(true, |range| range.contains(time_real));
@@ -706,7 +710,7 @@ fn show_msg_ids_tooltip(ctx: &mut ViewerContext<'_>, egui_ctx: &egui::Context, m
             if let Some(msg) = ctx.log_db.get_log_msg(&msg_id) {
                 ui.push_id(msg_id, |ui| {
                     ui.group(|ui| {
-                        crate::data_ui::log_msg_ui(ctx, ui, msg, crate::Preview::Small);
+                        msg.data_ui(ctx, ui, crate::Preview::Small);
                     });
                 });
             }

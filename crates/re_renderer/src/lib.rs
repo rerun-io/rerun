@@ -12,6 +12,7 @@ pub mod view_builder;
 
 mod context;
 mod debug_label;
+mod depth_offset;
 mod global_bindings;
 mod line_strip_builder;
 mod point_cloud_builder;
@@ -21,6 +22,7 @@ mod wgpu_resources;
 
 pub use context::RenderContext;
 pub use debug_label::DebugLabel;
+pub use depth_offset::DepthOffset;
 pub use line_strip_builder::{LineStripBuilder, LineStripSeriesBuilder};
 pub use point_cloud_builder::{PointCloudBatchBuilder, PointCloudBuilder};
 pub use size::Size;

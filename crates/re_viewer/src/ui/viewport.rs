@@ -1,30 +1,27 @@
 //! The viewport panel.
 //!
 //! Contains all space views.
-//!
-//! To do:
-//! * [ ] Controlling visibility of objects inside each Space View
-//! * [ ] Transforming objects between spaces
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 
 use ahash::HashMap;
 use itertools::Itertools as _;
 
-use nohash_hasher::{IntMap, IntSet};
-use re_data_store::{ObjPath, ObjPathComp, ObjectsProperties, TimeInt};
+use re_data_store::{ObjPath, ObjectsProperties, TimeInt};
 
 use crate::{
     misc::{
         space_info::{SpaceInfo, SpacesInfo},
         Selection, ViewerContext,
     },
-    ui::{view_category::group_by_category, view_spatial::SceneSpatial},
+    ui::view_spatial::{SceneSpatial, SpatialNavigationMode},
 };
 
 use super::{
-    transform_cache::TransformCache, view_category::ViewCategory, SceneQuery, SpaceView,
-    SpaceViewId,
+    data_blueprint::{DataBlueprintGroupHandle, DataBlueprintTree},
+    transform_cache::TransformCache,
+    view_category::ViewCategory,
+    SceneQuery, SpaceView, SpaceViewId,
 };
 
 // ----------------------------------------------------------------------------
@@ -44,7 +41,7 @@ fn query_scene_spatial(
     };
     let mut scene = SceneSpatial::default();
     let hovered = re_data_store::InstanceIdHash::NONE;
-    scene.load_objects(ctx, &query, transforms, query.obj_props, hovered);
+    scene.load_objects(ctx, &query, transforms, hovered);
     scene
 }
 
@@ -79,6 +76,26 @@ pub struct Viewport {
     has_been_user_edited: bool,
 }
 
+fn should_create_space_view(space_info: &&SpaceInfo) -> bool {
+    // If we're connected with a rigid transform to our parent, don't create a new space view automatically,
+    // since we're showing those objects in the parent by default.
+    // (it is still possible to create this space view manually)
+    if let Some(transform) = &space_info.parent_transform() {
+        match transform {
+            re_log_types::Transform::Rigid3(_) => return false,
+            re_log_types::Transform::Pinhole(_) | re_log_types::Transform::Unknown => {}
+        }
+
+        // If there is _only_ a transform, skip as well.
+        if space_info.descendants_without_transform.len() == 1 {
+            // TODO(andreas): Query if there are any non-transform properties.
+            return false;
+        }
+    }
+
+    true
+}
+
 impl Viewport {
     /// Create a default suggested blueprint using some heuristics.
     pub fn new(ctx: &mut ViewerContext<'_>, spaces_info: &SpacesInfo) -> Self {
@@ -86,34 +103,21 @@ impl Viewport {
 
         let mut blueprint = Self::default();
 
-        for space_info in spaces_info.iter() {
-            // If we're connected with a rigid transform to our parent, don't create a new space view automatically,
-            // since we're showing those objects in the parent by default.
-            // (it is still possible to create this space view manually)
-            if let Some((_, transform)) = &space_info.parent {
-                match transform {
-                    re_log_types::Transform::Rigid3(_) => continue,
-                    re_log_types::Transform::Pinhole(_) | re_log_types::Transform::Unknown => {}
-                }
-            }
-
+        for space_info in spaces_info.iter().filter(should_create_space_view) {
             let transforms = TransformCache::determine_transforms(
                 spaces_info,
                 space_info,
                 &ObjectsProperties::default(),
             );
 
-            for (category, obj_paths) in group_by_category(
-                ctx.rec_cfg.time_ctrl.timeline(),
-                ctx.log_db,
-                space_info
-                    .descendants_with_rigid_or_no_transform(spaces_info)
-                    .iter(),
-            ) {
+            for (category, obj_paths) in
+                SpaceView::default_queried_objects_by_category(ctx, space_info, &transforms)
+            {
                 let scene_spatial = query_scene_spatial(ctx, &obj_paths, &transforms);
 
                 if category == ViewCategory::Spatial
-                    && scene_spatial.prefer_2d_mode()
+                    && scene_spatial.preferred_navigation_mode(&space_info.path)
+                        == SpatialNavigationMode::TwoD
                     && scene_spatial.ui.images.len() > 1
                 {
                     // Multiple images (e.g. depth and rgb, or rgb and segmentation) in the same 2D scene.
@@ -125,10 +129,10 @@ impl Viewport {
                     let mut image_sizes = BTreeSet::default();
 
                     for visible_image in &scene_spatial.ui.images {
-                        debug_assert!(matches!(visible_image.tensor.shape.len(), 2 | 3));
+                        debug_assert!(matches!(visible_image.tensor.shape().len(), 2 | 3));
                         let image_size = (
-                            visible_image.tensor.shape[0].size,
-                            visible_image.tensor.shape[1].size,
+                            visible_image.tensor.shape()[0].size,
+                            visible_image.tensor.shape()[1].size,
                         );
                         image_sizes.insert(image_size);
 
@@ -136,11 +140,11 @@ impl Viewport {
                             visible_image.instance_hash.resolve(obj_db)
                         {
                             let mut space_view = SpaceView::new(
-                                ctx,
                                 category,
                                 space_info,
-                                spaces_info,
-                                scene_spatial.preferred_navigation_mode(),
+                                &obj_paths,
+                                SpatialNavigationMode::TwoD,
+                                transforms.clone(),
                             );
                             space_view.name = visible_instance_id.obj_path.to_string();
 
@@ -152,8 +156,8 @@ impl Viewport {
                                         != other_image_instance_id.obj_path
                                     {
                                         space_view
-                                            .queried_objects
-                                            .remove(&other_image_instance_id.obj_path);
+                                            .data_blueprint
+                                            .remove_object(&other_image_instance_id.obj_path);
                                         space_view.allow_auto_adding_more_object = false;
                                     }
                                 }
@@ -175,11 +179,11 @@ impl Viewport {
                 // Create one SpaceView for the whole space:
                 {
                     let space_view = SpaceView::new(
-                        ctx,
                         category,
                         space_info,
-                        spaces_info,
-                        scene_spatial.preferred_navigation_mode(),
+                        &obj_paths,
+                        scene_spatial.preferred_navigation_mode(&space_info.path),
+                        transforms.clone(),
                     );
                     blueprint.add_space_view(space_view);
                 }
@@ -244,6 +248,9 @@ impl Viewport {
             });
     }
 
+    // If a group or spaceview has a total of this number of elements or less, show its subtree by default.
+    const MAX_ELEM_FOR_DEFAULT_OPEN: usize = 3;
+
     fn space_view_entry_ui(
         &mut self,
         ctx: &mut ViewerContext<'_>,
@@ -253,23 +260,17 @@ impl Viewport {
         let space_view = self.space_views.get_mut(space_view_id).unwrap();
         debug_assert_eq!(space_view.id, *space_view_id);
 
+        let root_group = space_view.data_blueprint.root_group();
+        let default_open =
+            root_group.children.len() + root_group.objects.len() <= Self::MAX_ELEM_FOR_DEFAULT_OPEN;
         let collapsing_header_id = ui.id().with(space_view.id);
         egui::collapsing_header::CollapsingState::load_with_default_open(
             ui.ctx(),
             collapsing_header_id,
-            true,
+            default_open,
         )
         .show_header(ui, |ui| {
-            match space_view.category {
-                ViewCategory::Text => ui.label("📃"),
-                ViewCategory::TimeSeries => ui.label("📈"),
-                ViewCategory::BarChart => ui.label("📊"),
-                ViewCategory::Spatial => match space_view.view_state.state_spatial.nav_mode {
-                    super::view_spatial::SpatialNavigationMode::TwoD => ui.label("🖼"),
-                    super::view_spatial::SpatialNavigationMode::ThreeD => ui.label("🔭"),
-                },
-                ViewCategory::Tensor => ui.label("🇹"),
-            };
+            ui.label(space_view.category.icon());
 
             if ctx
                 .space_view_button_to(ui, space_view.name.clone(), *space_view_id)
@@ -291,29 +292,89 @@ impl Viewport {
             }
         })
         .body(|ui| {
-            for path in &space_view.queried_objects {
-                ui.horizontal(|ui| {
-                    let name = if path.is_descendant_of(&space_view.space_path) {
-                        ObjPath::from(
-                            path.iter()
-                                .skip(space_view.space_path.len())
-                                .map(|r| r.to_owned())
-                                .collect::<Vec<_>>(),
-                        )
-                        .to_string()
-                    } else {
-                        path.iter().last().unwrap().to_string()
-                    };
-
-                    ctx.space_view_obj_path_button_to(ui, name, *space_view_id, path);
-
-                    let mut properties = space_view.obj_properties.get(path);
-                    if visibility_button(ui, true, &mut properties.visible).changed() {
-                        space_view.obj_properties.set(path.clone(), properties);
-                    }
-                });
-            }
+            Self::data_blueprint_tree_ui(
+                ctx,
+                ui,
+                space_view.data_blueprint.root_handle(),
+                &mut space_view.data_blueprint,
+                space_view_id,
+                self.visible.contains(space_view_id),
+            );
         });
+    }
+
+    fn data_blueprint_tree_ui(
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        group_handle: DataBlueprintGroupHandle,
+        data_blueprint_tree: &mut DataBlueprintTree,
+        space_view_id: &SpaceViewId,
+        space_view_visible: bool,
+    ) {
+        let Some(group) = data_blueprint_tree.get_group(group_handle) else {
+            debug_assert!(false, "Invalid group handle in blueprint group tree");
+            return;
+        };
+
+        // TODO(andreas): These clones are workarounds against borrowing multiple times from data_blueprint_tree.
+        let children = group.children.clone();
+        let objects = group.objects.clone();
+        let group_name = group.display_name.clone();
+        let group_is_visible = group.properties_projected.visible && space_view_visible;
+
+        for path in &objects {
+            ui.horizontal(|ui| {
+                let name = path.iter().last().unwrap().to_string();
+
+                ctx.space_view_obj_path_button_to(ui, name, *space_view_id, path);
+
+                let mut properties = data_blueprint_tree.data_blueprints_individual().get(path);
+                if visibility_button(ui, group_is_visible, &mut properties.visible).changed() {
+                    data_blueprint_tree
+                        .data_blueprints_individual()
+                        .set(path.clone(), properties);
+                }
+            });
+        }
+
+        for child_group_handle in &children {
+            let Some(child_group) = data_blueprint_tree.get_group_mut(*child_group_handle) else {
+                debug_assert!(false, "Data blueprint group {group_name} has an invalid child");
+                continue;
+            };
+
+            let default_open = child_group.children.len() + child_group.objects.len()
+                <= Self::MAX_ELEM_FOR_DEFAULT_OPEN;
+            egui::collapsing_header::CollapsingState::load_with_default_open(
+                ui.ctx(),
+                ui.id().with(child_group_handle),
+                default_open,
+            )
+            .show_header(ui, |ui| {
+                ui.label("📁");
+                ctx.datablueprint_group_button_to(
+                    ui,
+                    &child_group.display_name,
+                    *space_view_id,
+                    *child_group_handle,
+                );
+                visibility_button(
+                    ui,
+                    group_is_visible,
+                    &mut child_group.properties_individual.visible,
+                );
+            })
+            .body(|ui| {
+                Self::data_blueprint_tree_ui(
+                    ctx,
+                    ui,
+                    *child_group_handle,
+                    data_blueprint_tree,
+                    space_view_id,
+                    space_view_visible,
+                );
+            });
+        }
     }
 
     pub(crate) fn mark_user_interaction(&mut self) {
@@ -334,26 +395,21 @@ impl Viewport {
         space_info: &SpaceInfo,
         spaces_info: &SpacesInfo,
     ) {
-        for (category, obj_paths) in group_by_category(
-            ctx.rec_cfg.time_ctrl.timeline(),
-            ctx.log_db,
-            space_info.descendants_without_transform.iter(),
-        ) {
-            let scene_spatial = query_scene_spatial(
-                ctx,
-                &obj_paths,
-                &TransformCache::determine_transforms(
-                    spaces_info,
-                    space_info,
-                    &ObjectsProperties::default(),
-                ),
-            );
+        let transforms = TransformCache::determine_transforms(
+            spaces_info,
+            space_info,
+            &ObjectsProperties::default(),
+        );
+        for (category, obj_paths) in
+            SpaceView::default_queried_objects_by_category(ctx, space_info, &transforms)
+        {
+            let scene_spatial = query_scene_spatial(ctx, &obj_paths, &transforms);
             self.add_space_view(SpaceView::new(
-                ctx,
                 category,
                 space_info,
-                spaces_info,
-                scene_spatial.preferred_navigation_mode(),
+                &obj_paths,
+                scene_spatial.preferred_navigation_mode(&space_info.path),
+                transforms.clone(),
             ));
         }
     }
@@ -375,17 +431,7 @@ impl Viewport {
 
                 // Check if the blueprint is missing a space,
                 // maybe one that has been added by new data:
-                for space_info in spaces_info.iter() {
-                    // Ignore spaces that have a parent connected via a rigid transform to their parent,
-                    // since they should be picked up automatically by existing parent spaces.
-                    if let Some((_, transform)) = &space_info.parent {
-                        match transform {
-                            re_log_types::Transform::Rigid3(_) => continue,
-                            re_log_types::Transform::Pinhole(_)
-                            | re_log_types::Transform::Unknown => {}
-                        }
-                    }
-
+                for space_info in spaces_info.iter().filter(should_create_space_view) {
                     if !self.has_space(&space_info.path) {
                         self.add_space_view_for(ctx, space_info, spaces_info);
                     }
@@ -495,74 +541,54 @@ impl Viewport {
             ui.menu_button("Add new space view…", |ui| {
                 ui.style_mut().wrap = Some(false);
 
-                let objects_per_root_grouped_by_category =
-                    objects_per_root_grouped_by_category(ctx);
+                let all_categories = enumset::EnumSet::<ViewCategory>::all();
 
                 for space_info in spaces_info.iter() {
-                    let categories = objects_per_root_grouped_by_category
-                        .get(&ObjPath::from(&space_info.path.to_components()[..1]));
+                    let transforms = TransformCache::determine_transforms(
+                        spaces_info,
+                        space_info,
+                        &ObjectsProperties::default(),
+                    );
 
-                    if let Some(categories) = categories {
-                        if categories.is_empty() {
+                    for category in all_categories {
+                        let obj_paths = SpaceView::default_queried_objects(
+                            ctx,
+                            category,
+                            space_info,
+                            spaces_info,
+                            &transforms,
+                        );
+                        if obj_paths.is_empty() {
                             continue;
                         }
 
-                        let transforms = TransformCache::determine_transforms(
-                            spaces_info,
-                            space_info,
-                            &ObjectsProperties::default(),
-                        );
-
-                        if ui.button(space_info.path.to_string()).clicked() {
+                        if ui
+                            .button(format!("{} {}", category.icon(), space_info.path))
+                            .clicked()
+                        {
                             ui.close_menu();
 
-                            for (category, obj_paths) in categories {
-                                let scene_spatial =
-                                    query_scene_spatial(ctx, obj_paths, &transforms);
-                                let new_space_view_id = self.add_space_view(SpaceView::new(
-                                    ctx,
-                                    *category,
-                                    space_info,
-                                    spaces_info,
-                                    scene_spatial.preferred_navigation_mode(),
-                                ));
-                                ctx.set_selection(Selection::SpaceView(new_space_view_id));
-                            }
+                            let transforms = TransformCache::determine_transforms(
+                                spaces_info,
+                                space_info,
+                                &ObjectsProperties::default(),
+                            );
+
+                            let scene_spatial = query_scene_spatial(ctx, &obj_paths, &transforms);
+                            let new_space_view_id = self.add_space_view(SpaceView::new(
+                                category,
+                                space_info,
+                                &obj_paths,
+                                scene_spatial.preferred_navigation_mode(&space_info.path),
+                                transforms.clone(),
+                            ));
+                            ctx.set_selection(Selection::SpaceView(new_space_view_id));
                         }
                     }
                 }
             });
         });
     }
-}
-
-/// Returns iterator over all root paths, each with a list of object paths under it.
-fn objects_per_root<'a>(
-    ctx: &mut ViewerContext<'a>,
-) -> impl Iterator<Item = (ObjPath, Vec<ObjPath>)> + 'a {
-    let roots = &ctx.log_db.obj_db.tree.children;
-    roots.iter().map(|(root_path, root_tree)| {
-        let mut objects = Vec::new();
-        root_tree.visit_children_recursively(&mut |child_path| {
-            objects.push(child_path.clone());
-        });
-        let root_path: &[ObjPathComp] = &[root_path.clone()];
-        (ObjPath::from(root_path), objects)
-    })
-}
-
-/// Returns all map from all root paths to objects grouped by category.
-fn objects_per_root_grouped_by_category(
-    ctx: &mut ViewerContext<'_>,
-) -> IntMap<ObjPath, BTreeMap<ViewCategory, IntSet<ObjPath>>> {
-    objects_per_root(ctx)
-        .map(|(root, objects)| {
-            (
-                root,
-                group_by_category(ctx.rec_cfg.time_ctrl.timeline(), ctx.log_db, objects.iter()),
-            )
-        })
-        .collect()
 }
 
 fn visibility_button(ui: &mut egui::Ui, enabled: bool, visible: &mut bool) -> egui::Response {
@@ -710,7 +736,7 @@ fn space_view_ui(
         return
     };
 
-    space_view.scene_ui(ctx, ui, spaces_info, reference_space_info, latest_at);
+    space_view.scene_ui(ctx, ui, reference_space_info, latest_at);
 }
 
 // ----------------------------------------------------------------------------

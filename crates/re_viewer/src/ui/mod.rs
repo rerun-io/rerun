@@ -1,8 +1,7 @@
 mod annotations;
 mod auto_layout;
 mod blueprint;
-mod class_description_ui;
-mod image_ui;
+mod data_blueprint;
 mod scene;
 mod selection_history;
 mod selection_history_ui;
@@ -31,7 +30,8 @@ use self::scene::SceneQuery;
 pub(crate) use self::blueprint::Blueprint;
 pub(crate) use self::space_view::{SpaceView, SpaceViewId};
 
-pub use self::annotations::{Annotations, DefaultColor};
+pub use self::annotations::{Annotations, DefaultColor, MISSING_ANNOTATIONS};
+pub use self::data_blueprint::DataBlueprintGroupHandle;
 pub use self::selection_history::{HistoricalSelection, SelectionHistory};
 
 // ----

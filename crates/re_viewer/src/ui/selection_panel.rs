@@ -1,14 +1,9 @@
 use re_data_store::{log_db::LogDb, query_transform, ObjPath, ObjectProps};
 use re_log_types::{LogMsg, ObjTypePath, TimeType};
 
-use crate::{
-    data_ui::{
-        arrow_msg_ui, begin_recording_msg_ui, data_path_ui, detailed_data_msg_ui, instance_ui,
-        object_ui, path_op_msg_ui, type_msg_ui,
-    },
-    ui::Blueprint,
-    Preview, Selection, ViewerContext,
-};
+use crate::{ui::Blueprint, Preview, Selection, ViewerContext};
+
+use super::data_ui::DataUi;
 
 // ---
 
@@ -84,22 +79,16 @@ impl SelectionPanel {
                 };
 
                 match msg {
-                    LogMsg::BeginRecordingMsg(msg) => {
-                        begin_recording_msg_ui(ui, msg);
-                    }
-                    LogMsg::TypeMsg(msg) => {
-                        type_msg_ui(ctx, ui, msg);
-                    }
+                    LogMsg::BeginRecordingMsg(msg) => msg.data_ui(ctx, ui, Preview::Medium),
+                    LogMsg::TypeMsg(msg) => msg.data_ui(ctx, ui, Preview::Medium),
                     LogMsg::DataMsg(msg) => {
-                        detailed_data_msg_ui(ctx, ui, msg);
+                        msg.detailed_data_ui(ctx, ui, Preview::Medium);
                         ui.separator();
-                        object_ui(ctx, ui, &msg.data_path.obj_path, Preview::Medium);
+                        msg.data_path.obj_path.data_ui(ctx, ui, Preview::Medium)
                     }
-                    LogMsg::PathOpMsg(msg) => {
-                        path_op_msg_ui(ctx, ui, msg);
-                    }
-                    LogMsg::ArrowMsg(msg) => arrow_msg_ui(ctx, ui, msg, Preview::Medium),
-                }
+                    LogMsg::PathOpMsg(msg) => msg.data_ui(ctx, ui, Preview::Medium),
+                    LogMsg::ArrowMsg(msg) => msg.data_ui(ctx, ui, Preview::Medium),
+                };
             }
             Selection::ObjTypePath(obj_type_path) => {
                 ui.label(format!("Selected object type path: {}", obj_type_path));
@@ -118,7 +107,7 @@ impl SelectionPanel {
                     ));
                 });
                 ui.separator();
-                instance_ui(ctx, ui, &instance_id, Preview::Medium);
+                instance_id.data_ui(ctx, ui, Preview::Medium);
             }
             Selection::DataPath(data_path) => {
                 ui.label(format!("Selected data path: {}", data_path));
@@ -140,7 +129,7 @@ impl SelectionPanel {
 
                 ui.separator();
 
-                data_path_ui(ctx, ui, &data_path);
+                data_path.data_ui(ctx, ui, Preview::Medium);
             }
             Selection::Space(space) => {
                 ui.label(format!("Selected space: {}", space));
@@ -185,13 +174,39 @@ impl SelectionPanel {
 
                     ui.separator();
 
-                    let mut props = space_view.obj_properties.get(&obj_path);
-                    obj_props_ui(ctx, ui, &obj_path, &mut props);
-                    space_view.obj_properties.set(obj_path.clone(), props);
+                    let data_blueprint = space_view.data_blueprint.data_blueprints_individual();
+                    let mut props = data_blueprint.get(&obj_path);
+                    obj_props_ui(ctx, ui, Some(&obj_path), &mut props);
+                    data_blueprint.set(obj_path.clone(), props);
 
                     ui.separator();
 
-                    object_ui(ctx, ui, &obj_path, Preview::Medium);
+                    obj_path.data_ui(ctx, ui, Preview::Medium);
+                } else {
+                    ctx.clear_selection();
+                }
+            }
+            Selection::DataBlueprintGroup(space_view_id, data_blueprint_group_handle) => {
+                if let Some(group) =
+                    blueprint
+                        .viewport
+                        .space_view_mut(&space_view_id)
+                        .and_then(|space_view| {
+                            space_view
+                                .data_blueprint
+                                .get_group_mut(data_blueprint_group_handle)
+                        })
+                {
+                    ui.strong("Group");
+                    ui.add_space(4.0);
+
+                    group.selection_ui(ctx, ui);
+
+                    ui.separator();
+
+                    obj_props_ui(ctx, ui, None, &mut group.properties_individual);
+
+                    ui.separator();
                 } else {
                     ctx.clear_selection();
                 }
@@ -211,7 +226,7 @@ fn obj_type_name(log_db: &LogDb, obj_type_path: &ObjTypePath) -> String {
 fn obj_props_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    obj_path: &ObjPath,
+    obj_path: Option<&ObjPath>,
     obj_props: &mut ObjectProps,
 ) {
     use egui::NumExt;
@@ -254,27 +269,28 @@ fn obj_props_ui(
         }
     });
 
-    let timeline = ctx.rec_cfg.time_ctrl.timeline();
-    let query_time = ctx.rec_cfg.time_ctrl.time_i64();
-    let timeline_store = ctx.log_db.obj_db.store.get(timeline);
-    if let Some(re_log_types::Transform::Pinhole(pinhole)) =
-        query_transform(timeline_store, obj_path, query_time)
-    {
-        ui.horizontal(|ui| {
-            ui.label("Image plane distance:");
-            let mut distance = obj_props.pinhole_image_plane_distance(&pinhole);
-            let speed = (distance * 0.05).at_least(0.01);
-            if ui
-                .add(
-                    egui::DragValue::new(&mut distance)
-                        .clamp_range(0.0..=f32::INFINITY)
-                        .speed(speed),
-                )
-                .on_hover_text("Controls how far away the image plane is.")
-                .changed()
-            {
-                obj_props.set_pinhole_image_plane_distance(distance);
-            }
-        });
+    if let Some(obj_path) = obj_path {
+        let timeline = ctx.rec_cfg.time_ctrl.timeline();
+        let query_time = ctx.rec_cfg.time_ctrl.time_i64();
+        if let Some(re_log_types::Transform::Pinhole(pinhole)) =
+            query_transform(&ctx.log_db.obj_db, timeline, obj_path, query_time)
+        {
+            ui.horizontal(|ui| {
+                ui.label("Image plane distance:");
+                let mut distance = obj_props.pinhole_image_plane_distance(&pinhole);
+                let speed = (distance * 0.05).at_least(0.01);
+                if ui
+                    .add(
+                        egui::DragValue::new(&mut distance)
+                            .clamp_range(0.0..=f32::INFINITY)
+                            .speed(speed),
+                    )
+                    .on_hover_text("Controls how far away the image plane is.")
+                    .changed()
+                {
+                    obj_props.set_pinhole_image_plane_distance(distance);
+                }
+            });
+        }
     }
 }

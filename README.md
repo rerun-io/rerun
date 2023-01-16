@@ -61,6 +61,9 @@ You can install dependencies needed run all examples by running:
 ```sh
 pip install -r examples/requirements.txt  # Install the dependencies needed to run all car examples
 ```
+
+> Note: The Stable Diffusion currently requires installing `diffusers` and `transformers` directly from main. To install run `pip install -U -r examples/stable_diffusion/requirements.txt`.
+
 ### Buffered or live visualization
 By default, the examples run in buffered mode. This means they run through the whole example, and then show the viewer (UI) at the end in the same process by calling blocking function `rerun.show()`.
 

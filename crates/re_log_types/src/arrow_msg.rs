@@ -156,7 +156,7 @@ mod tests {
         let bundle = try_build_msg_bundle2(
             MsgId::ZERO,
             "world/rects",
-            [build_frame_nr(0)],
+            [build_frame_nr(0.into())],
             (build_some_point2d(1), build_some_rects(1)),
         )
         .unwrap();

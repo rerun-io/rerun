@@ -6,12 +6,14 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
+
 [features]
 default = []
 ## Enables `parking_lot`'s deadlock detection background thread.
 deadlock_detection = ["parking_lot/deadlock_detection"]
 ## Integration with `polars`, to efficiently use the datastore with dataframes.
-polars = ["dep:polars-core"]
+polars = ["dep:polars-core", "dep:polars-ops"]
+
 
 [dependencies]
 # Rerun
@@ -31,29 +33,66 @@ indent = "0.1"
 itertools = "0.10"
 nohash-hasher = "0.2"
 parking_lot = "0.12"
+puffin.workspace = true
 static_assertions = "1.1"
 thiserror.workspace = true
 
 # Optional
 polars-core = { workspace = true, optional = true, features = [
+  "diagonal_concat",
   "dtype-date",
+  "dtype-datetime",
+  "dtype-time",
+  "dtype-struct",
+  "sort_multiple",
+] }
+polars-ops = { workspace = true, optional = true, features = [
+  "dtype-date",
+  "dtype-datetime",
   "dtype-time",
   "dtype-struct",
 ] }
+
 
 [dev-dependencies]
 criterion = "0.4"
 mimalloc = "0.1"
 polars-core = { workspace = true, features = [
+  "diagonal_concat",
   "dtype-date",
-  "dtype-time",
+  "dtype-datetime",
   "dtype-struct",
+  "dtype-time",
   "fmt",
+  "sort_multiple",
 ] }
 tracing-subscriber = "0.3"
 
+
 [lib]
 bench = false
+
+
+[[example]]
+name = "dump_dataframe"
+path = "examples/dump_dataframe.rs"
+required-features = ["polars"]
+
+[[example]]
+name = "latest_component"
+path = "examples/latest_component.rs"
+required-features = ["polars"]
+
+[[example]]
+name = "latest_components"
+path = "examples/latest_components.rs"
+required-features = ["polars"]
+
+[[example]]
+name = "range_components"
+path = "examples/range_components.rs"
+required-features = ["polars"]
+
 
 [[bench]]
 name = "data_store"

@@ -1,6 +1,6 @@
 use egui::NumExt as _;
 use glam::Affine3A;
-use macaw::{vec3, BoundingBox, Quat, Ray3, Vec3};
+use macaw::{vec3, BoundingBox, Quat, Vec3};
 
 use re_data_store::{InstanceId, InstanceIdHash, ObjectsProperties};
 use re_log_types::{ObjPath, ViewCoordinates};
@@ -10,15 +10,23 @@ use re_renderer::{
 };
 
 use crate::{
-    misc::{HoveredSpace, Selection},
-    ui::view_spatial::{
-        ui_renderer_bridge::{create_scene_paint_callback, get_viewport, ScreenBackground},
-        SceneSpatial, SpaceCamera3D, AXIS_COLOR_X, AXIS_COLOR_Y, AXIS_COLOR_Z,
+    misc::HoveredSpace,
+    ui::{
+        data_ui::{self, DataUi},
+        view_spatial::{
+            scene::AdditionalPickingInfo,
+            ui_renderer_bridge::{create_scene_paint_callback, get_viewport, ScreenBackground},
+            SceneSpatial, SpaceCamera3D,
+        },
+        Preview,
     },
     ViewerContext,
 };
 
-use super::eye::{Eye, OrbitEye};
+use super::{
+    eye::{Eye, OrbitEye},
+    ViewSpatialState,
+};
 
 // ---
 
@@ -26,6 +34,9 @@ use super::eye::{Eye, OrbitEye};
 #[serde(default)]
 pub struct View3DState {
     orbit_eye: Option<OrbitEye>,
+
+    /// Currently tracked camera.
+    tracked_camera: Option<InstanceId>,
 
     #[serde(skip)]
     eye_interpolation: Option<EyeInterpolation>,
@@ -45,13 +56,14 @@ pub struct View3DState {
     #[serde(skip)]
     pub(crate) space_specs: SpaceSpecs,
     #[serde(skip)]
-    space_camera: Vec<SpaceCamera3D>,
+    space_camera: Vec<SpaceCamera3D>, // TODO(andreas): remove this once camera meshes are gone
 }
 
 impl Default for View3DState {
     fn default() -> Self {
         Self {
             orbit_eye: Default::default(),
+            tracked_camera: None,
             eye_interpolation: Default::default(),
             hovered_point: Default::default(),
             spin: false,
@@ -66,18 +78,14 @@ impl Default for View3DState {
 impl View3DState {
     fn update_eye(
         &mut self,
-        ctx: &mut ViewerContext<'_>,
-        tracking_camera: Option<Eye>,
         response: &egui::Response,
         scene_bbox_accum: &BoundingBox,
+        space_cameras: &[SpaceCamera3D],
     ) -> &mut OrbitEye {
-        if response.double_clicked() {
-            // Reset eye
-            if tracking_camera.is_some() {
-                ctx.clear_selection();
-            }
-            self.interpolate_to_orbit_eye(default_eye(scene_bbox_accum, &self.space_specs));
-        }
+        let tracking_camera = self
+            .tracked_camera
+            .as_ref()
+            .and_then(|c| find_camera(space_cameras, &c.hash()));
 
         if let Some(tracking_camera) = tracking_camera {
             if let Some(cam_interpolation) = &mut self.eye_interpolation {
@@ -259,22 +267,11 @@ impl SpaceSpecs {
     }
 }
 
-/// If the path to a camera is selected, we follow that camera.
-fn tracking_camera(ctx: &ViewerContext<'_>, space_cameras: &[SpaceCamera3D]) -> Option<Eye> {
-    if let Selection::Instance(selected) = ctx.selection() {
-        find_camera(space_cameras, &selected)
-    } else {
-        None
-    }
-}
-
-fn find_camera(space_cameras: &[SpaceCamera3D], needle: &InstanceId) -> Option<Eye> {
+fn find_camera(space_cameras: &[SpaceCamera3D], needle: &InstanceIdHash) -> Option<Eye> {
     let mut found_camera = None;
 
     for camera in space_cameras {
-        if needle.obj_path == camera.camera_obj_path
-            && camera.instance_index_hash == needle.instance_index_hash()
-        {
+        if &camera.instance == needle {
             if found_camera.is_some() {
                 return None; // More than one camera
             } else {
@@ -284,26 +281,6 @@ fn find_camera(space_cameras: &[SpaceCamera3D], needle: &InstanceId) -> Option<E
     }
 
     found_camera.and_then(Eye::from_camera)
-}
-
-fn click_object(
-    ctx: &mut ViewerContext<'_>,
-    space_cameras: &[SpaceCamera3D],
-    state: &mut View3DState,
-    instance_id: &InstanceId,
-) {
-    ctx.set_selection(crate::Selection::Instance(instance_id.clone()));
-
-    if let Some(camera) = find_camera(space_cameras, instance_id) {
-        state.interpolate_to_eye(camera);
-    } else if let Some(clicked_point) = state.hovered_point {
-        // center camera on what we click on
-        if let Some(mut new_orbit_eye) = state.orbit_eye {
-            new_orbit_eye.orbit_radius = new_orbit_eye.position().distance(clicked_point);
-            new_orbit_eye.orbit_center = clicked_point;
-            state.interpolate_to_orbit_eye(new_orbit_eye);
-        }
-    }
 }
 
 // ----------------------------------------------------------------------------
@@ -316,119 +293,226 @@ pub const HELP_TEXT: &str = "Drag to rotate.\n\
     While hovering the 3D view, navigate with WSAD and QE.\n\
     CTRL slows down, SHIFT speeds up.\n\
     \n\
-    Click on a object to focus the view on it.\n\
+    Double-click on a object to focus the view on it.\n\
     \n\
-    Double-click anywhere to reset the view.";
+    Double-click on empty space to reset the view.";
 
 /// TODO(andreas): Split into smaller parts, more re-use with `ui_2d`
-#[allow(clippy::too_many_arguments)]
 pub fn view_3d(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    state: &mut View3DState,
+    state: &mut ViewSpatialState,
     space: &ObjPath,
     mut scene: SceneSpatial,
-    space_cameras: &[SpaceCamera3D],
-    scene_bbox_accum: &BoundingBox,
-    hovered_instance: &mut Option<InstanceId>,
     objects_properties: &ObjectsProperties,
 ) -> egui::Response {
     crate::profile_function!();
 
-    state.space_camera = space_cameras.to_vec();
+    state.state_3d.space_camera = scene.space_cameras.clone();
 
     let (rect, mut response) =
         ui.allocate_at_least(ui.available_size(), egui::Sense::click_and_drag());
 
-    let tracking_camera = tracking_camera(ctx, space_cameras);
-    let orbit_eye = state.update_eye(ctx, tracking_camera, &response, scene_bbox_accum);
+    // If we're tracking a camera right now, we want to make it slightly sticky,
+    // so that a click on some object doesn't immediately break the tracked state.
+    // (Threshold is in amount of ui points the mouse was moved.)
+    let orbit_eye_drag_threshold = match &state.state_3d.tracked_camera {
+        Some(_) => 4.0,
+        None => 0.0,
+    };
+    let orbit_eye =
+        state
+            .state_3d
+            .update_eye(&response, &state.scene_bbox_accum, &scene.space_cameras);
+    let did_interact_with_eye = orbit_eye.interact(&response, orbit_eye_drag_threshold);
 
-    let did_interact_wth_eye = orbit_eye.interact(&response);
     let orbit_eye = *orbit_eye;
     let eye = orbit_eye.to_eye();
 
+    // TODO(andreas): this should happen in the camera scene-part
     {
-        let hovered_instance_hash = hovered_instance
+        let hovered_instance_hash = state
+            .hovered_instance
             .as_ref()
             .map_or(InstanceIdHash::NONE, |i| i.hash());
         scene.add_cameras(
             ctx,
-            scene_bbox_accum,
+            &state.scene_bbox_accum,
             rect.size(),
             &eye,
-            space_cameras,
             hovered_instance_hash,
             objects_properties,
         );
     }
 
-    if did_interact_wth_eye {
-        state.last_eye_interact_time = ui.input().time;
-        state.eye_interpolation = None;
-        if tracking_camera.is_some() {
-            ctx.clear_selection();
+    if did_interact_with_eye {
+        state.state_3d.last_eye_interact_time = ui.input().time;
+        state.state_3d.eye_interpolation = None;
+        state.state_3d.tracked_camera = None;
+    }
+
+    // TODO(andreas): We're very close making the hover reaction of ui2d and ui3d the same. Finish the job!
+    state.hovered_instance = None;
+    if let Some(pointer_pos) = response.hover_pos() {
+        let picking_result =
+            scene.picking(glam::vec2(pointer_pos.x, pointer_pos.y), &rect, &eye, 5.0);
+
+        for hit in picking_result.iter_hits() {
+            let Some(instance_id) = hit.instance_hash.resolve(&ctx.log_db.obj_db)
+            else { continue; };
+
+            // Special hover ui for images.
+            let picked_image_with_uv = if let AdditionalPickingInfo::TexturedRect(uv) = hit.info {
+                scene
+                    .ui
+                    .images
+                    .iter()
+                    .find(|image| image.instance_hash == hit.instance_hash)
+                    .map(|image| (image, uv))
+            } else {
+                None
+            };
+            response = if let Some((image, uv)) = picked_image_with_uv {
+                response
+                    .on_hover_cursor(egui::CursorIcon::ZoomIn)
+                    .on_hover_ui_at_pointer(|ui| {
+                        ui.set_max_width(400.0);
+
+                        ui.vertical(|ui| {
+                            ui.label(instance_id.to_string());
+                            instance_id.data_ui(ctx, ui, Preview::Small);
+
+                            let tensor_view = ctx.cache.image.get_view_with_annotations(
+                                &image.tensor,
+                                &image.annotations,
+                                ctx.render_ctx,
+                            );
+
+                            if let [h, w, ..] = image.tensor.shape() {
+                                ui.separator();
+                                ui.horizontal(|ui| {
+                                    let (w, h) = (w.size as f32, h.size as f32);
+                                    let center = [(uv.x * w) as isize, (uv.y * h) as isize];
+                                    data_ui::image::show_zoomed_image_region(
+                                        ui,
+                                        &tensor_view,
+                                        center,
+                                        image.meter,
+                                    );
+                                });
+                            }
+                        });
+                    })
+            } else {
+                // Hover ui for everything else
+                response.on_hover_ui_at_pointer(|ui| {
+                    ctx.instance_id_button(ui, &instance_id);
+                    instance_id.data_ui(ctx, ui, crate::ui::Preview::Medium);
+                })
+            };
+        }
+
+        if let Some(closest_pick) = picking_result.iter_hits().last() {
+            // Save last known hovered object.
+            if let Some(instance_id) = closest_pick.instance_hash.resolve(&ctx.log_db.obj_db) {
+                state.state_3d.hovered_point = Some(picking_result.space_position(closest_pick));
+                state.hovered_instance = Some(instance_id);
+            }
+        }
+
+        if let Some(instance_id) = &state.hovered_instance {
+            // Click changes selection.
+            if ui.input().pointer.any_click() {
+                ctx.set_selection(crate::Selection::Instance(instance_id.clone()));
+            }
+        }
+
+        project_onto_other_spaces(ctx, &scene.space_cameras, &mut state.state_3d, space);
+    }
+
+    // Double click changes camera
+    if response.double_clicked() {
+        state.state_3d.tracked_camera = None;
+
+        // While hovering an object, focuses the camera on it.
+        if let Some(instance_id) = &state.hovered_instance {
+            if let Some(camera) = find_camera(&scene.space_cameras, &instance_id.hash()) {
+                state.state_3d.interpolate_to_eye(camera);
+                state.state_3d.tracked_camera = Some(instance_id.clone());
+            } else if let Some(clicked_point) = state.state_3d.hovered_point {
+                if let Some(mut new_orbit_eye) = state.state_3d.orbit_eye {
+                    // TODO(andreas): It would be nice if we could focus on the center of the object rather than the clicked point.
+                    //                  We can figure out the transform/translation at the hovered path but that's usually not what we'd expect either
+                    //                  (especially for objects with many "subthings" like a point cloud)
+                    new_orbit_eye.orbit_radius = new_orbit_eye.position().distance(clicked_point);
+                    new_orbit_eye.orbit_center = clicked_point;
+                    state.state_3d.interpolate_to_orbit_eye(new_orbit_eye);
+                }
+            }
+        }
+        // Without hovering, resets the camera.
+        else {
+            state.state_3d.interpolate_to_orbit_eye(default_eye(
+                &state.scene_bbox_accum,
+                &state.state_3d.space_specs,
+            ));
         }
     }
 
-    if ui.input().pointer.any_click() {
-        if let Some(hovered_instance) = &hovered_instance {
-            click_object(ctx, space_cameras, state, hovered_instance);
-        }
-    } else if ui.input().pointer.any_down() {
-        *hovered_instance = None;
-    }
-
-    if let Some(instance_id) = &hovered_instance {
-        response = response.on_hover_ui_at_pointer(|ui| {
-            ctx.instance_id_button(ui, instance_id);
-            crate::ui::data_ui::instance_ui(ctx, ui, instance_id, crate::ui::Preview::Medium);
-        });
-    }
-
-    let hovered = response.hover_pos().and_then(|pointer_pos| {
-        scene
-            .primitives
-            .picking(glam::vec2(pointer_pos.x, pointer_pos.y), &rect, &eye)
-    });
-
-    *hovered_instance = None;
-    state.hovered_point = None;
-    if let Some((instance_id, point)) = hovered {
-        if let Some(instance_id) = instance_id.resolve(&ctx.log_db.obj_db) {
-            *hovered_instance = Some(instance_id);
-            state.hovered_point = Some(point);
-        }
-    }
-
-    project_onto_other_spaces(ctx, space_cameras, state, space, &response, orbit_eye);
-    show_projections_from_2d_space(ctx, space_cameras, &mut scene, scene_bbox_accum);
-    if state.show_axes {
-        show_origin_axis(&mut scene);
+    show_projections_from_2d_space(ctx, &mut scene, &state.scene_bbox_accum);
+    if state.state_3d.show_axes {
+        scene.primitives.add_axis_lines(
+            macaw::IsoTransform::IDENTITY,
+            InstanceIdHash::NONE,
+            &eye,
+            rect.size(),
+        );
     }
 
     {
         let orbit_center_alpha = egui::remap_clamp(
-            ui.input().time - state.last_eye_interact_time,
+            ui.input().time - state.state_3d.last_eye_interact_time,
             0.0..=0.4,
             0.7..=0.0,
         ) as f32;
 
         if orbit_center_alpha > 0.0 {
             // Show center of orbit camera when interacting with camera (it's quite helpful).
+            let half_line_length = orbit_eye.orbit_radius * 0.03;
+
             scene
                 .primitives
-                .points
-                .batch("center orbit point")
-                .add_point(orbit_eye.orbit_center)
-                .radius(Size::new_scene(orbit_eye.orbit_radius * 0.01))
-                .color(
-                    egui::Rgba::from_rgba_unmultiplied(1.0, 0.0, 1.0, orbit_center_alpha).into(),
-                );
-            ui.ctx().request_repaint(); // let it fade out
+                .line_strips
+                .batch("center orbit orientation help")
+                .add_segments(glam::Vec3::AXES.iter().map(|axis| {
+                    (
+                        orbit_eye.orbit_center - *axis * half_line_length,
+                        orbit_eye.orbit_center + *axis * half_line_length,
+                    )
+                }))
+                .radius(Size::new_points(0.75))
+                .flags(re_renderer::renderer::LineStripFlags::NO_COLOR_GRADIENT)
+                // TODO(andreas): Fade this out.
+                .color(re_renderer::Color32::WHITE);
+
+            // TODO(andreas): Idea for nice depth perception:
+            // Render the lines once with additive blending and depth test enabled
+            // and another time without depth test. In both cases it needs to be rendered last,
+            // something re_renderer doesn't support yet for primitives within renderers.
+
+            ui.ctx().request_repaint(); // show it for a bit longer.
         }
     }
 
-    paint_view(ui, eye, rect, &scene, ctx.render_ctx, &space.to_string());
+    paint_view(
+        ui,
+        eye,
+        rect,
+        &scene,
+        ctx.render_ctx,
+        &space.to_string(),
+        state.auto_size_config(),
+    );
 
     response
 }
@@ -440,6 +524,7 @@ fn paint_view(
     scene: &SceneSpatial,
     render_ctx: &mut RenderContext,
     name: &str,
+    auto_size_config: re_renderer::Size,
 ) {
     crate::profile_function!();
 
@@ -494,11 +579,13 @@ fn paint_view(
 
         view_from_world: eye.world_from_view.inverse(),
         projection_from_view: Projection::Perspective {
-            vertical_fov: eye.fov_y,
+            vertical_fov: eye.fov_y.unwrap(),
             near_plane_distance: eye.near(),
         },
 
         pixels_from_point,
+        auto_size_config,
+        auto_size_large_factor: 1.5,
     };
 
     let Ok(callback) = create_scene_paint_callback(
@@ -514,7 +601,6 @@ fn paint_view(
 
 fn show_projections_from_2d_space(
     ctx: &mut ViewerContext<'_>,
-    space_cameras: &[SpaceCamera3D],
     scene: &mut SceneSpatial,
     scene_bbox_accum: &BoundingBox,
 ) {
@@ -524,8 +610,8 @@ fn show_projections_from_2d_space(
             .points
             .batch("projection from 2d hit points");
 
-        for cam in space_cameras {
-            if cam.target_space.as_ref() == Some(space_2d) {
+        for cam in &scene.space_cameras {
+            if &cam.obj_path == space_2d {
                 if let Some(ray) = cam.unproject_as_ray(glam::vec2(pos.x, pos.y)) {
                     // TODO(emilk): better visualization of a ray
                     let mut hit_pos = None;
@@ -570,59 +656,18 @@ fn project_onto_other_spaces(
     space_cameras: &[SpaceCamera3D],
     state: &mut View3DState,
     space: &ObjPath,
-    response: &egui::Response,
-    orbit_eye: OrbitEye,
 ) {
-    let Some(pos_in_ui) = response.hover_pos() else { return };
-
-    let ray_in_world = {
-        let eye = orbit_eye.to_eye();
-        let world_from_ui = eye.world_from_ui(&response.rect);
-        let ray_origin = eye.pos_in_world();
-        let ray_dir =
-            world_from_ui.project_point3(glam::vec3(pos_in_ui.x, pos_in_ui.y, 1.0)) - ray_origin;
-        Ray3::from_origin_dir(ray_origin, ray_dir.normalize())
-    };
-
     let mut target_spaces = vec![];
     for cam in space_cameras {
-        if let Some(target_space) = cam.target_space.clone() {
-            let ray_in_2d = cam
-                .image_from_world()
-                .map(|image_from_world| (image_from_world * ray_in_world).normalize());
-
-            let point_in_2d = state
-                .hovered_point
-                .and_then(|hovered_point| cam.project_onto_2d(hovered_point));
-
-            target_spaces.push((target_space, ray_in_2d, point_in_2d));
-        }
+        let point_in_2d = state
+            .hovered_point
+            .and_then(|hovered_point| cam.project_onto_2d(hovered_point));
+        target_spaces.push((cam.obj_path.clone(), point_in_2d));
     }
     ctx.rec_cfg.hovered_space_this_frame = HoveredSpace::ThreeD {
         space_3d: space.clone(),
         target_spaces,
     }
-}
-
-fn show_origin_axis(scene: &mut SceneSpatial) {
-    let radius = Size::new_points(8.0);
-
-    let mut line_batch = scene.primitives.line_strips.batch("origin axis");
-    line_batch
-        .add_segment(glam::Vec3::ZERO, glam::Vec3::X)
-        .radius(radius)
-        .color(AXIS_COLOR_X)
-        .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE);
-    line_batch
-        .add_segment(glam::Vec3::ZERO, glam::Vec3::Y)
-        .radius(radius)
-        .color(AXIS_COLOR_Y)
-        .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE);
-    line_batch
-        .add_segment(glam::Vec3::ZERO, glam::Vec3::Z)
-        .radius(radius)
-        .color(AXIS_COLOR_Z)
-        .flags(re_renderer::renderer::LineStripFlags::CAP_END_TRIANGLE);
 }
 
 fn default_eye(scene_bbox: &macaw::BoundingBox, space_specs: &SpaceSpecs) -> OrbitEye {
