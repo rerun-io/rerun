@@ -10,6 +10,7 @@ from rerun import bindings
 
 __all__ = [
     "log_tensor",
+    "TensorType",
 ]
 
 
@@ -89,4 +90,9 @@ def _log_tensor(
         bindings.log_tensor(obj_path, tensor, names, meter, meaning, timeless)
 
     if EXP_ARROW.arrow_log_gate():
-        logging.warning("log_tensor() not yet implemented for Arrow.")
+        from rerun.components.tensor import TensorArray
+
+        comps = {}
+        comps["rerun.tensor"] = TensorArray.from_numpy(tensor, names)
+
+        bindings.log_arrow_msg(f"{obj_path}/arrow", components=comps, timeless=timeless)
