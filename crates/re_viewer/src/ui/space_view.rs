@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use re_data_store::{InstanceId, ObjPath, ObjectTree, ObjectsProperties, TimeInt};
+use re_data_store::{InstanceId, ObjPath, ObjectTree, TimeInt};
 
 use nohash_hasher::IntSet;
 
@@ -470,14 +470,8 @@ impl SpaceView {
                     &self.cached_transforms,
                     self.view_state.state_spatial.hovered_instance_hash(),
                 );
-                self.view_state.ui_spatial(
-                    ctx,
-                    ui,
-                    &self.space_path,
-                    reference_space_info,
-                    scene,
-                    self.data_blueprint.data_blueprints_projected(),
-                );
+                self.view_state
+                    .ui_spatial(ctx, ui, &self.space_path, reference_space_info, scene);
             }
 
             ViewCategory::Tensor => {
@@ -525,11 +519,10 @@ impl ViewState {
         space: &ObjPath,
         space_info: &SpaceInfo,
         scene: view_spatial::SceneSpatial,
-        obj_properties: &ObjectsProperties,
     ) {
         ui.vertical(|ui| {
             self.state_spatial
-                .view_spatial(ctx, ui, space, scene, space_info, obj_properties);
+                .view_spatial(ctx, ui, space, scene, space_info);
         });
     }
 

@@ -2,7 +2,7 @@ use egui::NumExt as _;
 use glam::Affine3A;
 use macaw::{vec3, BoundingBox, Quat, Vec3};
 
-use re_data_store::{InstanceId, InstanceIdHash, ObjectsProperties};
+use re_data_store::{InstanceId, InstanceIdHash};
 use re_log_types::{ObjPath, ViewCoordinates};
 use re_renderer::{
     view_builder::{Projection, TargetConfiguration},
@@ -166,12 +166,7 @@ impl View3DState {
         }
     }
 
-    pub fn settings_ui(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        scene_bbox_accum: &BoundingBox,
-    ) {
+    pub fn settings_ui(&mut self, ui: &mut egui::Ui, scene_bbox_accum: &BoundingBox) {
         {
             let up_response = if let Some(up) = self.space_specs.up {
                 if up == Vec3::X {
@@ -221,13 +216,6 @@ impl View3DState {
             .on_hover_text("Spin view");
         ui.checkbox(&mut self.show_axes, "Show origin axes")
             .on_hover_text("Show X-Y-Z axes");
-
-        if !self.space_camera.is_empty() {
-            ui.checkbox(
-                &mut ctx.options.show_camera_mesh_in_3d,
-                "Show camera meshes",
-            );
-        }
     }
 }
 
@@ -304,7 +292,6 @@ pub fn view_3d(
     state: &mut ViewSpatialState,
     space: &ObjPath,
     mut scene: SceneSpatial,
-    objects_properties: &ObjectsProperties,
 ) -> egui::Response {
     crate::profile_function!();
 
@@ -329,26 +316,22 @@ pub fn view_3d(
     let orbit_eye = *orbit_eye;
     let eye = orbit_eye.to_eye();
 
-    // TODO(andreas): this should happen in the camera scene-part
-    {
-        let hovered_instance_hash = state
-            .hovered_instance
-            .as_ref()
-            .map_or(InstanceIdHash::NONE, |i| i.hash());
-        scene.add_cameras(
-            ctx,
-            &state.scene_bbox_accum,
-            rect.size(),
-            &eye,
-            hovered_instance_hash,
-            objects_properties,
-        );
-    }
-
     if did_interact_with_eye {
         state.state_3d.last_eye_interact_time = ui.input().time;
         state.state_3d.eye_interpolation = None;
         state.state_3d.tracked_camera = None;
+    }
+
+    // TODO(andreas): This isn't part of the camera, but of the transform https://github.com/rerun-io/rerun/issues/753
+    for camera in &scene.space_cameras {
+        if ctx.options.show_camera_axes_in_3d {
+            scene.primitives.add_axis_lines(
+                camera.world_from_cam(),
+                camera.instance,
+                &eye,
+                rect.size(),
+            );
+        }
     }
 
     // TODO(andreas): We're very close making the hover reaction of ui2d and ui3d the same. Finish the job!
