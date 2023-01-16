@@ -227,7 +227,9 @@ impl TransformCache {
                         let scale = distance / focal_length;
                         let translation = (-pinhole.principal_point() * scale).extend(distance);
                         let parent_from_child = glam::Mat4::from_scale_rotation_translation(
-                            scale.extend(0.0),
+                            // We want to preserve any depth that might be on the pinhole image.
+                            // Use harmonic mean of x/y scale for those.
+                            scale.extend(1.0 / (1.0 / scale.x + 1.0 / scale.y)),
                             glam::Quat::IDENTITY,
                             translation,
                         );
