@@ -95,4 +95,4 @@ def _log_tensor(
         comps = {}
         comps["rerun.tensor"] = TensorArray.from_numpy(tensor, names)
 
-        bindings.log_arrow_msg(f"{obj_path}/arrow", components=comps, timeless=timeless)
+        bindings.log_arrow_msg(obj_path, components=comps, timeless=timeless)
