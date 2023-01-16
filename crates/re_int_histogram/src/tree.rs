@@ -15,7 +15,7 @@ type Level = u64;
 // 5.7 B/dense entry
 // 25-35 B/sparse entry
 const ROOT_LEVEL: Level = 61;
-const LEAF_LEVEL: Level = 1;
+const BOTTOM_LEVEL: Level = 1;
 const LEVEL_STEP: u64 = 3;
 const NUM_CHILDREN_IN_DENSE: u64 = 16;
 
@@ -26,7 +26,7 @@ const NUM_CHILDREN_IN_DENSE: u64 = 16;
 // 9.6 B/dense entry
 // 26-73 B/sparse entry
 // const ROOT_LEVEL: Level = 60;
-// const LEAF_LEVEL: Level = 0;
+// const BOTTOM_LEVEL: Level = 0;
 // const LEVEL_STEP: u64 = 4;
 // const NUM_CHILDREN_IN_DENSE: u64 = 16;
 
@@ -107,6 +107,7 @@ impl Int64Histogram {
     }
 
     /// Iterate over a certain range, returning ranges that are at most `cutoff_size` long.
+    ///
     /// To get all individual entries, use `cutoff_size=1`.
     /// When `cutoff_size > 1` you will get approximate ranges, which may cover elements that has no count.
     ///
@@ -168,19 +169,19 @@ impl<'a> Iterator for Iter<'a> {
 enum Tree {
     /// An inner node, addressed by the next few bits of the key/address.
     ///
-    /// Never at the [`LEAF_LEVEL`] level.
+    /// Never at the [`BOTTOM_LEVEL`] level.
     BranchNode(BranchNode),
 
     /// A list of `(key, count)` pairs.
     ///
     /// When this becomes too long, it will be converted into a [`BranchNode`].
     ///
-    /// Never at the [`LEAF_LEVEL`] level.
+    /// Never at the [`BOTTOM_LEVEL`] level.
     SparseLeaf(SparseLeaf),
 
     /// Optimization for dense histograms (entries at `N, N+1, N+2, …`).
     ///
-    /// Always at the [`LEAF_LEVEL`] level.
+    /// Always at the [`BOTTOM_LEVEL`] level.
     DenseLeaf(DenseLeaf),
 }
 static_assertions::assert_eq_size!(Tree, (u64, BranchNode), [u8; 80]); // 8-way tree
@@ -213,7 +214,7 @@ struct DenseLeaf {
 impl Tree {
     /// The default node for a certain level.
     fn for_level(level: Level) -> Self {
-        if level == LEAF_LEVEL {
+        if level == BOTTOM_LEVEL {
             Self::DenseLeaf(DenseLeaf::default())
         } else {
             Self::SparseLeaf(SparseLeaf::default())
@@ -276,7 +277,7 @@ impl Tree {
 
 impl BranchNode {
     fn increment(&mut self, level: Level, addr: u64, inc: u32) {
-        debug_assert!(level != LEAF_LEVEL);
+        debug_assert!(level != BOTTOM_LEVEL);
         let child_level = level - LEVEL_STEP;
         let top_addr = (addr >> level) & ADDR_MASK;
         self.children[top_addr as usize]
@@ -295,7 +296,7 @@ impl BranchNode {
 
     fn range_count(&self, my_addr: u64, my_level: Level, range: RangeU64) -> u64 {
         debug_assert!(range.min <= range.max);
-        debug_assert!(my_level != LEAF_LEVEL);
+        debug_assert!(my_level != BOTTOM_LEVEL);
 
         let (child_level, child_size) = child_level_and_size(my_level);
 
@@ -322,7 +323,7 @@ impl BranchNode {
     #[must_use]
     fn remove(&mut self, my_addr: u64, my_level: Level, range: RangeU64) -> u64 {
         debug_assert!(range.min <= range.max);
-        debug_assert!(my_level != LEAF_LEVEL);
+        debug_assert!(my_level != BOTTOM_LEVEL);
 
         let mut count_loss = 0;
         let (child_level, child_size) = child_level_and_size(my_level);
@@ -354,7 +355,7 @@ impl BranchNode {
 impl SparseLeaf {
     #[must_use]
     fn overflow(self, level: Level) -> BranchNode {
-        debug_assert!(level != LEAF_LEVEL);
+        debug_assert!(level != BOTTOM_LEVEL);
 
         let mut node = BranchNode::default();
         for (key, count) in self.addrs.iter().zip(&self.counts) {
