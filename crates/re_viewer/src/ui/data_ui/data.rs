@@ -6,7 +6,7 @@ use re_log_types::{
 
 use crate::ui::Preview;
 
-use super::DataUi;
+use super::{image::format_tensor_shape, DataUi};
 
 /// Previously `data_ui::data_ui()`
 impl DataUi for Data {
@@ -75,7 +75,7 @@ impl DataUi for Data {
                     ui.vertical(|ui| {
                         ui.set_min_width(100.0);
                         ui.label(format!("dtype: {}", tensor.dtype()));
-                        ui.label(format!("shape: {:?}", tensor.shape()));
+                        ui.label(format!("shape: {}", format_tensor_shape(tensor.shape())));
                     });
                 })
                 .response
