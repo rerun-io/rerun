@@ -24,7 +24,8 @@ impl LoadedMesh {
                 Self::load_encoded_mesh(name, encoded_mesh, render_ctx)
             }
             // Mesh from some file format. File passed in bytes.
-            Mesh3D::Raw(raw_mesh) => Ok(Self::load_raw_mesh(name, raw_mesh, render_ctx)?),
+            // TODO(#749) Re-enable `RawMesh3D`
+            //Mesh3D::Raw(raw_mesh) => Ok(Self::load_raw_mesh(name, raw_mesh, render_ctx)?),
         }
     }
 
@@ -82,6 +83,8 @@ impl LoadedMesh {
         Ok(slf)
     }
 
+    // TODO(#749) Re-enable `RawMesh3D`
+    #[allow(dead_code)]
     fn load_raw_mesh(
         name: String,
         raw_mesh: &RawMesh3D,

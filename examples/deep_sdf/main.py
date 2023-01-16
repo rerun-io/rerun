@@ -42,7 +42,7 @@ from rerun.log.file import MeshFormat
 from rerun.log.text import LogLevel
 from trimesh import Trimesh
 
-import rerun
+import rerun as rr
 
 CACHE_DIR = Path(os.path.dirname(__file__)) / "cache"
 
@@ -57,7 +57,7 @@ def log_timing_decorator(objpath: str, level: str):  # type: ignore[no-untyped-d
             now = timer()
             result = func(*args, **kwargs)
             elapsed_ms = (timer() - now) * 1_000.0
-            rerun.log_text_entry(objpath, f"execution took {elapsed_ms:.1f}ms", level=level)
+            rr.log_text_entry(objpath, f"execution took {elapsed_ms:.1f}ms", level=level)
             return result
 
         return wrapper
@@ -111,7 +111,7 @@ def log_mesh(path: Path, mesh: Trimesh) -> None:
     with open(path, mode="rb") as file:
         scale = bs2.scale / bs1.scale
         center = bs2.center - bs1.center * scale
-        rerun.log_mesh_file(
+        rr.log_mesh_file(
             "world/mesh",
             mesh_format,
             file.read(),
@@ -120,24 +120,24 @@ def log_mesh(path: Path, mesh: Trimesh) -> None:
 
 
 def log_sampled_sdf(points: npt.NDArray[np.float32], sdf: npt.NDArray[np.float32]) -> None:
-    # rerun.log_view_coordinates("world", up="+Y", timeless=True # TODO(cmc): depends on the mesh really
-    rerun.log_annotation_context("world/sdf", [(0, "inside", (255, 0, 0)), (1, "outside", (0, 255, 0))], timeless=False)
-    rerun.log_points("world/sdf/points", points, class_ids=np.array(sdf > 0, dtype=np.uint8))
+    # rr.log_view_coordinates("world", up="+Y", timeless=True # TODO(cmc): depends on the mesh really
+    rr.log_annotation_context("world/sdf", [(0, "inside", (255, 0, 0)), (1, "outside", (0, 255, 0))], timeless=False)
+    rr.log_points("world/sdf/points", points, class_ids=np.array(sdf > 0, dtype=np.uint8))
 
     outside = points[sdf > 0]
-    rerun.log_text_entry(
+    rr.log_text_entry(
         "world/sdf/inside/logs",
         f"{len(points) - len(outside)} points inside ({len(points)} total)",
         level=LogLevel.TRACE,
     )
-    rerun.log_text_entry(
+    rr.log_text_entry(
         "world/sdf/outside/logs", f"{len(outside)} points outside ({len(points)} total)", level=LogLevel.TRACE
     )
 
 
 def log_volumetric_sdf(voxvol: npt.NDArray[np.float32]) -> None:
     names = ["width", "height", "depth"]
-    rerun.log_tensor("tensor", voxvol, names=names)
+    rr.log_tensor("tensor", voxvol, names=names)
 
 
 @log_timing_decorator("global/log_mesh", LogLevel.DEBUG)  # type: ignore[misc]
@@ -148,7 +148,7 @@ def compute_and_log_volumetric_sdf(mesh_path: Path, mesh: Trimesh, resolution: i
     try:
         with open(voxvol_path, "rb") as f:
             voxvol = np.load(voxvol_path)
-            rerun.log_text_entry("global", "loading volumetric SDF from cache")
+            rr.log_text_entry("global", "loading volumetric SDF from cache")
     except:
         voxvol = compute_voxel_sdf(mesh, resolution)
 
@@ -156,7 +156,7 @@ def compute_and_log_volumetric_sdf(mesh_path: Path, mesh: Trimesh, resolution: i
 
     with open(voxvol_path, "wb+") as f:
         np.save(f, voxvol)
-        rerun.log_text_entry("global", "writing volumetric SDF to cache", level=LogLevel.DEBUG)
+        rr.log_text_entry("global", "writing volumetric SDF to cache", level=LogLevel.DEBUG)
 
 
 @log_timing_decorator("global/log_mesh", LogLevel.DEBUG)  # type: ignore[misc]
@@ -169,10 +169,10 @@ def compute_and_log_sample_sdf(mesh_path: Path, mesh: Trimesh, num_points: int) 
     try:
         with open(sdf_path, "rb") as f:
             sdf = np.load(sdf_path)
-            rerun.log_text_entry("global", "loading sampled SDF from cache")
+            rr.log_text_entry("global", "loading sampled SDF from cache")
         with open(points_path, "rb") as f:
             points = np.load(points_path)
-            rerun.log_text_entry("global", "loading point cloud from cache")
+            rr.log_text_entry("global", "loading point cloud from cache")
     except:
         (points, sdf) = compute_sample_sdf(mesh, num_points)
 
@@ -181,10 +181,10 @@ def compute_and_log_sample_sdf(mesh_path: Path, mesh: Trimesh, num_points: int) 
 
     with open(points_path, "wb+") as f:
         np.save(f, points)
-        rerun.log_text_entry("global", "writing sampled SDF to cache", level=LogLevel.DEBUG)
+        rr.log_text_entry("global", "writing sampled SDF to cache", level=LogLevel.DEBUG)
     with open(sdf_path, "wb+") as f:
         np.save(f, sdf)
-        rerun.log_text_entry("global", "writing point cloud to cache", level=LogLevel.DEBUG)
+        rr.log_text_entry("global", "writing point cloud to cache", level=LogLevel.DEBUG)
 
 
 def main() -> None:
@@ -219,15 +219,15 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    rerun.init("deep_sdf")
+    rr.init("deep_sdf")
 
     if args.serve:
-        rerun.serve()
+        rr.serve()
     elif args.connect:
         # Send logging data to separate `rerun` process.
         # You can omit the argument to connect to the default address,
         # which is `127.0.0.1:9876`.
-        rerun.connect(args.addr)
+        rr.connect(args.addr)
 
     mesh_path = args.mesh_path
     if mesh_path is None:
@@ -247,11 +247,11 @@ def main() -> None:
         except:
             pass
     elif args.save is not None:
-        rerun.save(args.save)
+        rr.save(args.save)
     elif args.headless:
         pass
     elif not args.connect:
-        rerun.show()
+        rr.show()
 
 
 if __name__ == "__main__":

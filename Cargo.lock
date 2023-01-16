@@ -165,7 +165,7 @@ dependencies = [
 [[package]]
 name = "arrow2"
 version = "0.15.0"
-source = "git+https://github.com/rerun-io/arrow2?rev=f134e58bb554b069392f6bd495aa43aa06b58944#f134e58bb554b069392f6bd495aa43aa06b58944"
+source = "git+https://github.com/rerun-io/arrow2?rev=c6ef5e3dde4a18c35c8a1d91d9a741835be0305f#c6ef5e3dde4a18c35c8a1d91d9a741835be0305f"
 dependencies = [
  "ahash 0.8.2",
  "arrow-format",
@@ -189,7 +189,7 @@ dependencies = [
 [[package]]
 name = "arrow2_convert"
 version = "0.3.2"
-source = "git+https://github.com/rerun-io/arrow2-convert?rev=4d381e0408c3543a120fa288b75e54fbf5e10b1d#4d381e0408c3543a120fa288b75e54fbf5e10b1d"
+source = "git+https://github.com/rerun-io/arrow2-convert?rev=aa48be082d0039e8c1a67b581ce5f697b89f3765#aa48be082d0039e8c1a67b581ce5f697b89f3765"
 dependencies = [
  "arrow2",
  "arrow2_convert_derive",
@@ -201,7 +201,7 @@ dependencies = [
 [[package]]
 name = "arrow2_convert_derive"
 version = "0.3.2"
-source = "git+https://github.com/rerun-io/arrow2-convert?rev=4d381e0408c3543a120fa288b75e54fbf5e10b1d#4d381e0408c3543a120fa288b75e54fbf5e10b1d"
+source = "git+https://github.com/rerun-io/arrow2-convert?rev=aa48be082d0039e8c1a67b581ce5f697b89f3765#aa48be082d0039e8c1a67b581ce5f697b89f3765"
 dependencies = [
  "proc-macro-error",
  "proc-macro2",
@@ -4154,6 +4154,7 @@ dependencies = [
  "crossbeam",
  "document-features",
  "eframe",
+ "lazy_static",
  "mimalloc",
  "ndarray",
  "ndarray-rand",
@@ -4166,6 +4167,7 @@ dependencies = [
  "re_memory",
  "re_sdk_comms",
  "re_smart_channel",
+ "re_string_interner",
  "re_viewer",
  "re_web_server",
  "re_ws_comms",

@@ -160,6 +160,9 @@ impl ComponentWithInstances {
 /// instance-keys from the primary component and another table with the
 /// instance-keys and values of the iterated component.
 ///
+/// Instances have a special "splat" key that will cause the value to be
+/// repeated for the entirety of the join.
+///
 /// For example
 /// ```text
 /// primary
@@ -188,18 +191,20 @@ impl ComponentWithInstances {
 /// | val2  |
 ///
 /// ```
-struct ComponentJoinedIterator<IIter1, IIter2, VIter> {
+struct ComponentJoinedIterator<IIter1, IIter2, VIter, Val> {
     primary_instance_iter: IIter1,
     component_instance_iter: IIter2,
     component_value_iter: VIter,
     next_component_instance: Option<Instance>,
+    splatted_component_value: Option<Val>,
 }
 
-impl<IIter1, IIter2, VIter, C> Iterator for ComponentJoinedIterator<IIter1, IIter2, VIter>
+impl<IIter1, IIter2, VIter, C> Iterator for ComponentJoinedIterator<IIter1, IIter2, VIter, C>
 where
     IIter1: Iterator<Item = Instance>,
     IIter2: Iterator<Item = Instance>,
     VIter: Iterator<Item = Option<C>>,
+    C: Clone,
 {
     type Item = Option<C>;
 
@@ -210,18 +215,28 @@ where
                 match &self.next_component_instance {
                     // If we have a next component key, we either...
                     Some(instance_key) => {
-                        match primary_key.0.cmp(&instance_key.0) {
-                            // Return a None if the primary_key hasn't reached it yet
-                            std::cmp::Ordering::Less => break Some(None),
-                            // Return the value if the keys match
-                            std::cmp::Ordering::Equal => {
-                                self.next_component_instance = self.component_instance_iter.next();
-                                break self.component_value_iter.next();
+                        if instance_key.is_splat() {
+                            if self.splatted_component_value.is_none() {
+                                self.splatted_component_value =
+                                    self.component_value_iter.next().flatten();
                             }
-                            // Skip this component if the key is behind the primary key
-                            std::cmp::Ordering::Greater => {
-                                _ = self.component_value_iter.next();
-                                self.next_component_instance = self.component_instance_iter.next();
+                            break Some(self.splatted_component_value.clone());
+                        } else {
+                            match primary_key.0.cmp(&instance_key.0) {
+                                // Return a None if the primary_key hasn't reached it yet
+                                std::cmp::Ordering::Less => break Some(None),
+                                // Return the value if the keys match
+                                std::cmp::Ordering::Equal => {
+                                    self.next_component_instance =
+                                        self.component_instance_iter.next();
+                                    break self.component_value_iter.next();
+                                }
+                                // Skip this component if the key is behind the primary key
+                                std::cmp::Ordering::Greater => {
+                                    _ = self.component_value_iter.next();
+                                    self.next_component_instance =
+                                        self.component_instance_iter.next();
+                                }
                             }
                         }
                     }
@@ -285,7 +300,7 @@ where
         &self,
     ) -> crate::Result<impl Iterator<Item = Option<C>> + '_>
     where
-        C: ArrowDeserialize + ArrowField<Type = C> + 'static,
+        C: Clone + ArrowDeserialize + ArrowField<Type = C> + 'static,
         C::ArrayType: ArrowArray,
         for<'b> &'b C::ArrayType: IntoIterator,
     {
@@ -306,6 +321,7 @@ where
                 component_instance_iter,
                 component_value_iter,
                 next_component_instance: next_component,
+                splatted_component_value: None,
             }))
         } else {
             let nulls = (0..self.primary.values.len()).map(|_| None);

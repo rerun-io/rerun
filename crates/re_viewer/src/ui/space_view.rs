@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use re_data_store::{InstanceId, ObjPath, ObjectTree, ObjectsProperties, TimeInt};
+use re_data_store::{InstanceId, ObjPath, ObjectTree, TimeInt};
 
 use nohash_hasher::IntSet;
 
@@ -53,11 +53,8 @@ pub(crate) struct SpaceView {
     /// Furthermore, this is the primary indicator for heuristics on what objects we show in this space view.
     pub space_path: ObjPath,
 
-    /// List of all shown objects.
-    /// TODO(andreas): This is a HashSet for the time being, but in the future it might be possible to add the same object twice.
-    pub queried_objects: IntSet<ObjPath>,
-
     /// The data blueprint tree, has blueprint settings for all blueprint groups and objects in this spaceview.
+    /// It determines which objects are part of the spaceview.
     pub data_blueprint: DataBlueprintTree,
 
     pub view_state: ViewState,
@@ -79,7 +76,7 @@ impl SpaceView {
     pub fn new(
         category: ViewCategory,
         space_info: &SpaceInfo,
-        queried_objects: IntSet<ObjPath>,
+        queried_objects: &IntSet<ObjPath>,
         default_spatial_navigation_mode: SpatialNavigationMode,
         initial_transforms: TransformCache,
     ) -> Self {
@@ -104,14 +101,13 @@ impl SpaceView {
 
         let mut data_blueprint_tree = DataBlueprintTree::default();
         data_blueprint_tree
-            .insert_objects_according_to_hierarchy(&queried_objects, &space_info.path);
+            .insert_objects_according_to_hierarchy(queried_objects, &space_info.path);
 
         Self {
             name,
             id: SpaceViewId::random(),
             root_path,
             space_path: space_info.path.clone(),
-            queried_objects,
             data_blueprint: data_blueprint_tree,
             view_state,
             category,
@@ -186,7 +182,7 @@ impl SpaceView {
 
         if self.allow_auto_adding_more_object {
             // Add objects that have been logged since we were created
-            self.queried_objects = Self::default_queried_objects(
+            let queried_objects = Self::default_queried_objects(
                 ctx,
                 self.category,
                 space_info,
@@ -194,7 +190,7 @@ impl SpaceView {
                 &self.cached_transforms,
             );
             self.data_blueprint
-                .insert_objects_according_to_hierarchy(&self.queried_objects, &self.space_path);
+                .insert_objects_according_to_hierarchy(&queried_objects, &self.space_path);
         }
     }
 
@@ -405,20 +401,26 @@ impl SpaceView {
     ) {
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             // Can't add things we already added.
-            ui.set_enabled(!self.queried_objects.contains(path));
+
+            // Insert the object itself and all its children as far as they haven't been added yet
+            let mut objects = IntSet::default();
+            obj_tree
+                .subtree(path)
+                .unwrap()
+                .visit_children_recursively(&mut |path: &ObjPath| {
+                    if has_visualization_for_category(ctx, self.category, path)
+                        && !self.data_blueprint.contains_object(path)
+                    {
+                        objects.insert(path.clone());
+                    }
+                });
+
+            ui.set_enabled(!objects.is_empty());
 
             let response = ui.button("➕");
             if response.clicked() {
-                // Insert the object itself and all its children as far as they haven't been added yet
-                obj_tree.subtree(path).unwrap().visit_children_recursively(
-                    &mut |path: &ObjPath| {
-                        if has_visualization_for_category(ctx, self.category, path) {
-                            self.queried_objects.insert(path.clone());
-                        }
-                    },
-                );
                 self.data_blueprint
-                    .insert_objects_according_to_hierarchy(&self.queried_objects, &self.space_path);
+                    .insert_objects_according_to_hierarchy(&objects, &self.space_path);
                 self.allow_auto_adding_more_object = false;
             }
             response.on_hover_text("Add to this Space View's query")
@@ -435,7 +437,7 @@ impl SpaceView {
         crate::profile_function!();
 
         let query = crate::ui::scene::SceneQuery {
-            obj_paths: &self.queried_objects,
+            obj_paths: self.data_blueprint.object_paths(),
             timeline: *ctx.rec_cfg.time_ctrl.timeline(),
             latest_at,
             obj_props: self.data_blueprint.data_blueprints_projected(),
@@ -468,14 +470,8 @@ impl SpaceView {
                     &self.cached_transforms,
                     self.view_state.state_spatial.hovered_instance_hash(),
                 );
-                self.view_state.ui_spatial(
-                    ctx,
-                    ui,
-                    &self.space_path,
-                    reference_space_info,
-                    scene,
-                    self.data_blueprint.data_blueprints_projected(),
-                );
+                self.view_state
+                    .ui_spatial(ctx, ui, &self.space_path, reference_space_info, scene);
             }
 
             ViewCategory::Tensor => {
@@ -523,11 +519,10 @@ impl ViewState {
         space: &ObjPath,
         space_info: &SpaceInfo,
         scene: view_spatial::SceneSpatial,
-        obj_properties: &ObjectsProperties,
     ) {
         ui.vertical(|ui| {
             self.state_spatial
-                .view_spatial(ctx, ui, space, scene, space_info, obj_properties);
+                .view_spatial(ctx, ui, space, scene, space_info);
         });
     }
 

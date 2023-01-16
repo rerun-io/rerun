@@ -174,8 +174,8 @@ impl Pinhole {
     }
 
     #[inline]
-    pub fn aspect_ratio(&self) -> f32 {
-        self.image_from_cam[0][0] / self.image_from_cam[1][1]
+    pub fn aspect_ratio(&self) -> Option<f32> {
+        self.resolution.map(|r| r[0] / r[1])
     }
 }
 

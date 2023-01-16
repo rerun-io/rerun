@@ -51,18 +51,6 @@ pip install ./rerun_py
 ## Getting started with examples
 The easiest way to get started is to run and look at [`examples`](examples).
 
-### Install dependencies and run an example
-Each example comes with its own set of dependencies listed in a `requirements.txt` file. To install dependencies and run the `car` example (a toy example that doesn't need to download data) run:
-```sh
-pip install -r examples/car/requirements.txt  # Install the dependencies needed to run the car example
-python examples/car/main.py
-```
-You can install dependencies needed run all examples by running:
-```sh
-pip install -r examples/requirements.txt  # Install the dependencies needed to run all car examples
-```
-
-> Note: The Stable Diffusion currently requires installing `diffusers` and `transformers` directly from main. To install run `pip install -U -r examples/stable_diffusion/requirements.txt`.
 
 ### Buffered or live visualization
 By default, the examples run in buffered mode. This means they run through the whole example, and then show the viewer (UI) at the end in the same process by calling blocking function `rerun.show()`.
@@ -81,8 +69,8 @@ python examples/car/main.py --connect  # The Rerun SDK will connect and send dat
 ## Using the Rerun Python SDK
 Most documentation is found in the docstrings of the functions in the Rerun. Either check out the docstrings directly in code or use the built in `help()` function. For example, to see the docstring of the `log_image` function, open a python terminal and run:
 ```python
-import rerun
-help(rerun.log_image)
+import rerun as rr
+help(rr.log_image)
 ```
 For a description of how to use the SDK, including some of the key concepts, see [`rerun_py/USAGE.md`](rerun_py/USAGE.md).
 

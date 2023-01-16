@@ -136,6 +136,7 @@ impl ArrowDeserialize for TensorId {
 ///                 DataType::List(Box::new(Field::new("item", DataType::Float64, false))),
 ///                 false
 ///             ),
+///             Field::new("JPEG", DataType::Binary, false),
 ///         ],
 ///         None,
 ///         UnionMode::Dense
@@ -159,6 +160,7 @@ pub enum TensorData {
     //F16(Vec<arrow2::types::f16>),
     F32(Vec<f32>),
     F64(Vec<f64>),
+    JPEG(Vec<u8>),
 }
 
 /// Flattened `Tensor` data payload
@@ -177,7 +179,7 @@ pub enum TensorData {
 ///     ])
 /// );
 /// ```
-#[derive(Debug, Clone, PartialEq, Eq, ArrowField, ArrowSerialize, ArrowDeserialize)]
+#[derive(Clone, PartialEq, Eq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct TensorDimension {
     /// Number of elements on this dimension.
@@ -213,6 +215,26 @@ impl TensorDimension {
     }
     pub fn unnamed(size: u64) -> Self {
         Self { size, name: None }
+    }
+}
+
+impl std::fmt::Debug for TensorDimension {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(name) = &self.name {
+            write!(f, "{}={}", name, self.size)
+        } else {
+            self.size.fmt(f)
+        }
+    }
+}
+
+impl std::fmt::Display for TensorDimension {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(name) = &self.name {
+            write!(f, "{}={}", name, self.size)
+        } else {
+            self.size.fmt(f)
+        }
     }
 }
 
@@ -367,6 +389,10 @@ impl From<&Tensor> for ClassicTensor {
                 crate::TensorDataType::F64,
                 TensorDataStore::Dense(Arc::from(bytemuck::cast_slice(data.as_slice()))),
             ),
+            TensorData::JPEG(data) => (
+                crate::TensorDataType::U8,
+                TensorDataStore::Jpeg(Arc::from(data.as_slice())),
+            ),
         };
 
         ClassicTensor::new(
@@ -510,4 +536,59 @@ fn test_arrow() {
     let array: Box<dyn arrow2::array::Array> = tensors_in.iter().try_into_arrow().unwrap();
     let tensors_out: Vec<Tensor> = TryIntoCollection::try_into_collection(array).unwrap();
     assert_eq!(tensors_in, tensors_out);
+}
+
+#[test]
+fn test_concat_and_slice() {
+    use crate::msg_bundle::wrap_in_listarray;
+    use arrow2::array::ListArray;
+    use arrow2::compute::concatenate::concatenate;
+    use arrow2_convert::{deserialize::TryIntoCollection, serialize::TryIntoArrow};
+
+    let tensor1 = vec![Tensor {
+        tensor_id: TensorId::random(),
+        shape: vec![TensorDimension {
+            size: 4,
+            name: None,
+        }],
+        data: TensorData::JPEG(vec![1, 2, 3, 4]),
+        meaning: TensorDataMeaning::Unknown,
+    }];
+
+    let tensor2 = vec![Tensor {
+        tensor_id: TensorId::random(),
+        shape: vec![TensorDimension {
+            size: 4,
+            name: None,
+        }],
+        data: TensorData::JPEG(vec![5, 6, 7, 8]),
+        meaning: TensorDataMeaning::Unknown,
+    }];
+
+    let array1: Box<dyn arrow2::array::Array> = tensor1.iter().try_into_arrow().unwrap();
+    let list1 = wrap_in_listarray(array1).boxed();
+    let array2: Box<dyn arrow2::array::Array> = tensor2.iter().try_into_arrow().unwrap();
+    let list2 = wrap_in_listarray(array2).boxed();
+
+    let pre_concat = list1
+        .as_any()
+        .downcast_ref::<ListArray<i32>>()
+        .unwrap()
+        .value(0);
+
+    let tensor_out: Vec<Tensor> = TryIntoCollection::try_into_collection(pre_concat).unwrap();
+
+    assert_eq!(tensor1, tensor_out);
+
+    let concat = concatenate(&[list1.as_ref(), list2.as_ref()]).unwrap();
+
+    let slice = concat
+        .as_any()
+        .downcast_ref::<ListArray<i32>>()
+        .unwrap()
+        .value(1);
+
+    let tensor_out: Vec<Tensor> = TryIntoCollection::try_into_collection(slice).unwrap();
+
+    assert_eq!(tensor2[0], tensor_out[0]);
 }

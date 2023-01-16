@@ -1,6 +1,4 @@
-import os
-from enum import Enum
-from typing import Final, Optional, Sequence, Union
+from typing import Optional, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -28,33 +26,17 @@ __all__ = [
 ]
 
 
-class ArrowState(Enum):
+class ArrowState:
     """ArrowState is a enum used to configure the logging behaviour of the SDK during the transition to Arrow."""
 
-    # No Arrow loggin
-    NONE = "none"
-    # Log both classic and Arrow
-    MIXED = "mixed"
-    # Log *only* Arrow
-    PURE = "pure"
-
     def classic_log_gate(self) -> bool:
-        """Should classic logging be performed."""
-        return self in [ArrowState.NONE, ArrowState.MIXED]
+        return bindings.classic_log_gate()  # type: ignore[no-any-return]
 
     def arrow_log_gate(self) -> bool:
-        """Should Arrow logging be performed."""
-        return self in [ArrowState.MIXED, ArrowState.PURE]
+        return bindings.arrow_log_gate()  # type: ignore[no-any-return]
 
 
-try:
-    env_var = os.environ.get("RERUN_EXP_ARROW")
-    EXP_ARROW: Final = ArrowState[env_var.upper()] if env_var else ArrowState.NONE
-
-except KeyError:
-    raise RuntimeWarning(
-        f"RERUN_EXP_ARROW should be set to one of {list(ArrowState.__members__.keys())}, but got {env_var}"
-    )
+EXP_ARROW = ArrowState()
 
 
 ColorDtype = Union[np.uint8, np.float32, np.float64]
@@ -104,6 +86,13 @@ def _normalize_radii(radii: Optional[npt.ArrayLike] = None) -> npt.NDArray[np.fl
         return np.atleast_1d(np.array(radii, dtype=np.float32, copy=False))
 
 
+def _normalize_labels(labels: Optional[Union[str, Sequence[str]]]) -> Sequence[str]:
+    if labels is None:
+        return []
+    else:
+        return labels
+
+
 def log_cleared(obj_path: str, *, recursive: bool = False) -> None:
     """
     Indicate that an object at a given path should no longer be displayed.
@@ -114,7 +103,7 @@ def log_cleared(obj_path: str, *, recursive: bool = False) -> None:
         bindings.log_cleared(obj_path, recursive)
 
     if EXP_ARROW.arrow_log_gate():
-        bindings.log_cleared("arrow/" + obj_path, recursive)
+        bindings.log_cleared(obj_path, recursive)
 
 
 def set_visible(obj_path: str, visibile: bool) -> None:

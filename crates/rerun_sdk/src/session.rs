@@ -1,14 +1,30 @@
 use std::net::SocketAddr;
 
-use re_log_types::{
-    ApplicationId, BeginRecordingMsg, LogMsg, LoggedData, MsgId, ObjPath, ObjTypePath, ObjectType,
-    PathOp, RecordingId, RecordingInfo, Time, TimePoint, TypeMsg,
-};
+use lazy_static::lazy_static;
 
-enum ArrowLogging {
-    None,
+use re_log_types::{
+    ApplicationId, BeginRecordingMsg, LogMsg, LoggedData, MsgId, ObjPath, ObjPathComp, ObjTypePath,
+    ObjectType, PathOp, RecordingId, RecordingInfo, Time, TimePoint, TypeMsg,
+};
+use re_string_interner::InternedString;
+
+#[derive(Debug)]
+enum StoreSelect {
+    Arrow,
+    Classic,
     Mixed,
-    Pure,
+}
+
+// TODO(#707): Make this the default for Debug-builds, and eventually release builds
+//#[cfg(debug_assertions)]
+//const DEFAULT_STORE: StoreSelect = StoreSelect::Arrow;
+
+//#[cfg(not(debug_assertions))]
+const DEFAULT_STORE: StoreSelect = StoreSelect::Classic;
+
+lazy_static! {
+    static ref ARROW_PREFIX: InternedString = "arrow".into();
+    static ref CLASSIC_PREFIX: InternedString = "classic".into();
 }
 
 pub struct Session {
@@ -25,15 +41,22 @@ pub struct Session {
 
     has_sent_begin_recording_msg: bool,
 
-    arrow_logging: ArrowLogging,
+    store_select: StoreSelect,
 }
 
 impl Session {
     pub fn new() -> Self {
-        let arrow_logging = match std::env::var("RERUN_EXP_ARROW").as_deref() {
-            Ok("mixed") => ArrowLogging::Mixed,
-            Ok("pure") => ArrowLogging::Pure,
-            _ => ArrowLogging::None,
+        let store_select = match std::env::var("RERUN_STORE").as_deref() {
+            Ok("arrow") => StoreSelect::Arrow,
+            Ok("classic") => StoreSelect::Classic,
+            Ok("mixed") => StoreSelect::Mixed,
+            Ok("") | Err(_) => DEFAULT_STORE,
+            Ok(_) => {
+                re_log::error!(
+                    "Unexpected value of RERUN_STORE. Please set to: arrow, classic, or mixed"
+                );
+                DEFAULT_STORE
+            }
         };
 
         Self {
@@ -45,7 +68,7 @@ impl Session {
             application_id: None,
             recording_id: None,
             has_sent_begin_recording_msg: false,
-            arrow_logging,
+            store_select,
         }
     }
 
@@ -227,12 +250,54 @@ impl Session {
         }));
     }
 
-    pub fn arrow_logging_enabled(&self) -> bool {
-        matches!(self.arrow_logging, ArrowLogging::Mixed | ArrowLogging::Pure)
+    pub fn arrow_log_gate(&self) -> bool {
+        matches!(self.store_select, StoreSelect::Mixed | StoreSelect::Arrow)
     }
 
-    pub fn classic_logging_enabled(&self) -> bool {
-        matches!(self.arrow_logging, ArrowLogging::Mixed | ArrowLogging::None)
+    pub fn classic_log_gate(&self) -> bool {
+        matches!(self.store_select, StoreSelect::Mixed | StoreSelect::Classic)
+    }
+
+    pub fn arrow_prefix_obj_path(&self, obj_path: ObjPath) -> ObjPath {
+        match self.store_select {
+            StoreSelect::Arrow => obj_path,
+            StoreSelect::Classic => {
+                re_log::error_once!(
+                    "Tried to log to arrow store when in mode {:?}. Path: {:?}",
+                    self.store_select,
+                    obj_path
+                );
+                let mut components = obj_path.to_components();
+                components.insert(0, ObjPathComp::Name(*CLASSIC_PREFIX));
+                components.into()
+            }
+            StoreSelect::Mixed => {
+                let mut components = obj_path.to_components();
+                components.insert(0, ObjPathComp::Name(*ARROW_PREFIX));
+                components.into()
+            }
+        }
+    }
+
+    pub fn classic_prefix_obj_path(&self, obj_path: ObjPath) -> ObjPath {
+        match self.store_select {
+            StoreSelect::Arrow => {
+                re_log::error_once!(
+                    "Tried to log to classic store when in mode {:?}. Path: {:?}",
+                    self.store_select,
+                    obj_path
+                );
+                let mut components = obj_path.to_components();
+                components.insert(0, ObjPathComp::Name(*ARROW_PREFIX));
+                components.into()
+            }
+            StoreSelect::Classic => obj_path,
+            StoreSelect::Mixed => {
+                let mut components = obj_path.to_components();
+                components.insert(0, ObjPathComp::Name(*CLASSIC_PREFIX));
+                components.into()
+            }
+        }
     }
 }
 

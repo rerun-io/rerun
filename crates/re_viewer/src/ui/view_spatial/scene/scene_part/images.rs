@@ -96,8 +96,6 @@ impl ScenePart for ImagesPartClassic {
                     return;
                 }
 
-                let rect = glam::vec2(tensor.shape()[0].size as f32, tensor.shape()[1].size as f32);
-
                 let instance_hash =
                     instance_hash_if_interactive(obj_path, instance_index, properties.interactive);
 
@@ -111,6 +109,8 @@ impl ScenePart for ImagesPartClassic {
                 );
 
                 if instance_hash.is_some() && hovered_instance == instance_hash {
+                    let rect =
+                        glam::vec2(tensor.shape()[1].size as f32, tensor.shape()[0].size as f32);
                     scene
                         .primitives
                         .line_strips
@@ -226,8 +226,6 @@ impl ImagesPart {
                     return Ok(());
                 }
 
-                let rect = glam::vec2(tensor.shape()[0].size as f32, tensor.shape()[1].size as f32);
-
                 let instance_hash = {
                     if properties.interactive {
                         InstanceIdHash::from_path_and_arrow_instance(ent_path, &instance)
@@ -246,6 +244,8 @@ impl ImagesPart {
                 let paint_props = paint_properties(color, None);
 
                 if instance_hash.is_some() && hovered_instance == instance_hash {
+                    let rect =
+                        glam::vec2(tensor.shape()[1].size as f32, tensor.shape()[0].size as f32);
                     scene
                         .primitives
                         .line_strips
