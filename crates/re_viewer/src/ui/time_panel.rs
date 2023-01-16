@@ -117,7 +117,7 @@ impl TimePanel {
 
                         // Draw separator between top bar and the rest:
                         ui.painter().hline(
-                            rop_row_rect.x_range(),
+                            0.0..=rop_row_rect.right(),
                             rop_row_rect.bottom(),
                             ui.visuals().widgets.noninteractive.bg_stroke,
                         );
@@ -226,7 +226,11 @@ impl TimePanel {
         let time_bg_area_painter = ui.painter().with_clip_rect(time_bg_area_rect);
         let time_area_painter = ui.painter().with_clip_rect(time_fg_area_rect);
 
-        ui.separator();
+        ui.painter().hline(
+            0.0..=ui.max_rect().right(),
+            timeline_rect.bottom(),
+            ui.visuals().widgets.noninteractive.bg_stroke,
+        );
 
         paint_time_ranges_and_ticks(
             &self.time_ranges_ui,
