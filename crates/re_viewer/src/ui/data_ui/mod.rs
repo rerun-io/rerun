@@ -51,8 +51,7 @@ impl DataUi for TimePoint {
             egui::Grid::new("time_point").num_columns(2).show(ui, |ui| {
                 ui.spacing_mut().item_spacing.x = 0.0;
                 for (timeline, value) in self.iter() {
-                    ctx.timeline_button(ui, timeline);
-                    ui.label(": ");
+                    ctx.timeline_button_to(ui, format!("{}:", timeline.name()), timeline);
                     ctx.time_button(ui, timeline, *value);
                     ui.end_row();
                 }
