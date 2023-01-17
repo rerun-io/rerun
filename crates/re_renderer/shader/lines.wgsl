@@ -1,9 +1,10 @@
-#import <./types.wgsl>
 #import <./global_bindings.wgsl>
-#import <./utils/srgb.wgsl>
-#import <./utils/encoding.wgsl>
+#import <./types.wgsl>
 #import <./utils/camera.wgsl>
+#import <./utils/encoding.wgsl>
+#import <./utils/flags.wgsl>
 #import <./utils/size.wgsl>
+#import <./utils/srgb.wgsl>
 
 @group(1) @binding(0)
 var line_strip_texture: texture_2d<f32>;
@@ -23,7 +24,7 @@ let LINESTRIP_TEXTURE_SIZE: i32 = 512;
 let POSITION_DATA_TEXTURE_SIZE: i32 = 256;
 
 // Flags
-// See lines.wgsl#LineStripFlags
+// See lines.rs#LineStripFlags
 let CAP_END_TRIANGLE: u32 = 1u;
 let CAP_END_ROUND: u32 = 2u;
 let CAP_START_TRIANGLE: u32 = 4u;
@@ -95,10 +96,6 @@ fn read_position_data(idx: u32) -> PositionData {
     data.pos = pos_4d.xyz / pos_4d.w;
     data.strip_index = bitcast<u32>(raw_data.w);
     return data;
-}
-
-fn has_any_flag(flags: u32, flags_to_check: u32) -> bool {
-    return (flags & flags_to_check) > 0u;
 }
 
 @vertex

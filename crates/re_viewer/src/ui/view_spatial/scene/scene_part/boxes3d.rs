@@ -1,4 +1,4 @@
-use glam::{vec3, Mat4, Vec3};
+use glam::{Mat4, Vec3};
 
 use re_arrow_store::LatestAtQuery;
 use re_data_store::{query::visit_type_data_4, FieldName, InstanceIdHash, ObjPath, ObjectProps};
@@ -24,52 +24,6 @@ use crate::{
 };
 
 use super::ScenePart;
-
-lazy_static::lazy_static! {
-    /// Vertices for a unit cube at the origin
-    static ref UNIT_CUBE: [Vec3; 8] = [
-        vec3(-0.5, -0.5, -0.5),
-        vec3(-0.5, -0.5, 0.5),
-        vec3(-0.5, 0.5, -0.5),
-        vec3(-0.5, 0.5, 0.5),
-        vec3(0.5, -0.5, -0.5),
-        vec3(0.5, -0.5, 0.5),
-        vec3(0.5, 0.5, -0.5),
-        vec3(0.5, 0.5, 0.5),
-    ];
-}
-
-/// Create an iterator of line segments that build unit cube transformed by `transform`.
-fn transformed_box_segments(transform: glam::Affine3A) -> impl Iterator<Item = (Vec3, Vec3)> {
-    let corners = [
-        transform.transform_point3(UNIT_CUBE[0]),
-        transform.transform_point3(UNIT_CUBE[1]),
-        transform.transform_point3(UNIT_CUBE[2]),
-        transform.transform_point3(UNIT_CUBE[3]),
-        transform.transform_point3(UNIT_CUBE[4]),
-        transform.transform_point3(UNIT_CUBE[5]),
-        transform.transform_point3(UNIT_CUBE[6]),
-        transform.transform_point3(UNIT_CUBE[7]),
-    ];
-    [
-        // bottom:
-        (corners[0b000], corners[0b001]),
-        (corners[0b000], corners[0b010]),
-        (corners[0b011], corners[0b001]),
-        (corners[0b011], corners[0b010]),
-        // top:
-        (corners[0b100], corners[0b101]),
-        (corners[0b100], corners[0b110]),
-        (corners[0b111], corners[0b101]),
-        (corners[0b111], corners[0b110]),
-        // sides:
-        (corners[0b000], corners[0b100]),
-        (corners[0b001], corners[0b101]),
-        (corners[0b010], corners[0b110]),
-        (corners[0b011], corners[0b111]),
-    ]
-    .into_iter()
-}
 
 pub struct Boxes3DPartClassic;
 
@@ -135,9 +89,8 @@ impl ScenePart for Boxes3DPartClassic {
                     glam::Quat::from_array(obb.rotation),
                     Vec3::from(obb.translation),
                 );
-
                 line_batch
-                    .add_segments(transformed_box_segments(transform))
+                    .add_box_outline(transform)
                     .radius(line_radius)
                     .color(color)
                     .user_data(instance_hash);
@@ -212,7 +165,7 @@ impl Boxes3DPart {
             let transform = glam::Affine3A::from_scale_rotation_translation(scale, rot, tran);
 
             line_batch
-                .add_segments(transformed_box_segments(transform))
+                .add_box_outline(transform)
                 .radius(radius)
                 .color(color)
                 .user_data(instance_hash);
