@@ -399,7 +399,7 @@ class StableDiffusionDepth2ImgPipeline(DiffusionPipeline):
             init_latents = torch.cat([init_latents] * num_images_per_prompt, dim=0)
 
         # add noise to latents using the timesteps
-        noise = randn_tensor(shape, generator=generator, device=device, dtype=dtype)
+        noise = randn_tensor(init_latents.shape, generator=generator, device=device, dtype=dtype)
 
         # get latents
         init_latents = self.scheduler.add_noise(init_latents, noise, timestep)
