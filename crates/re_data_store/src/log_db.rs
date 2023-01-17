@@ -62,7 +62,7 @@ impl ObjDb {
 
     fn register_obj_path(&mut self, obj_path: &ObjPath) {
         self.obj_path_from_hash
-            .entry(*obj_path.hash())
+            .entry(obj_path.hash())
             .or_insert_with(|| obj_path.clone());
     }
 

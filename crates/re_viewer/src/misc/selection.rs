@@ -4,7 +4,7 @@ use re_log_types::{DataPath, IndexHash, MsgId, ObjPathHash};
 
 #[derive(Clone, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub enum Selection {
-    None,
+    None, // TODO(andreas): Once single selection is removed, None doesn't make sense anymore as it is implied by an empty MultiSelection
     MsgId(MsgId),
     ObjTypePath(ObjTypePath),
     Instance(InstanceId),
@@ -19,7 +19,7 @@ pub enum Selection {
 impl std::fmt::Display for Selection {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Selection::None => write!(f, "<empty>"), // TODO(andreas): Once single selection is removed, None doesn't make sense anymore as it is implied by an empty MultiSelection
+            Selection::None => write!(f, "<empty>"),
             Selection::MsgId(s) => s.fmt(f),
             Selection::ObjTypePath(s) => s.fmt(f),
             Selection::Instance(s) => s.fmt(f),
@@ -114,14 +114,22 @@ impl ObjectPathSelectionQuery {
     }
 }
 
+/// Describing a single selection of things.
+///
+/// Immutable object, may pre-compute additional information about the selection on creation.
 #[derive(Default, Clone, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub struct MultiSelection {
     selection: Vec<Selection>,
 }
 
 impl MultiSelection {
+    pub fn new(items: impl Iterator<Item = Selection>) -> Self {
+        let selection = items.collect();
+        Self { selection }
+    }
+
     /// Whether an object path is part of the selection.
-    pub fn is_path_selected(&self, obj_path_hash: &ObjPathHash) -> ObjectPathSelectionQuery {
+    pub fn is_path_selected(&self, obj_path_hash: ObjPathHash) -> ObjectPathSelectionQuery {
         let mut relevant_selected_indices = IntSet::default();
 
         for selection in &self.selection {
@@ -179,13 +187,8 @@ impl MultiSelection {
     /// Avoid this when checking large arrays of instances, instead use [`Self::is_path_selected`] on the object
     /// and then [`ObjectPathSelectionQuery::is_index_in_selection`] for each index!
     pub fn is_instance_selected(&self, instance: InstanceIdHash) -> bool {
-        self.is_path_selected(&instance.obj_path_hash)
+        self.is_path_selected(instance.obj_path_hash)
             .is_index_in_selection(instance.instance_index_hash)
-    }
-
-    pub fn set_selection(&mut self, items: impl Iterator<Item = Selection>) {
-        self.selection.clear();
-        self.selection.extend(items);
     }
 
     // pub fn selection(&self) -> impl Iterator<Item = &Selection> {

@@ -348,7 +348,7 @@ impl RecordingConfig {
 
     /// Set the hovered objects. Will be in [`Self::hovered`] on the next frame.
     pub fn set_hovered(&mut self, hovered_objects: impl Iterator<Item = Selection>) {
-        self.hovered_this_frame.set_selection(hovered_objects);
+        self.hovered_this_frame = MultiSelection::new(hovered_objects);
     }
 }
 
