@@ -49,6 +49,11 @@ impl SelectionPanel {
     ) {
         crate::profile_function!();
 
+        if !ctx.selection().is_valid(ctx, blueprint) {
+            // TODO(emilk): also prune history
+            ctx.clear_selection();
+        }
+
         ui.separator();
 
         egui::ScrollArea::both()
@@ -112,10 +117,6 @@ fn selection_ui(
                     ui.label("Space view:");
                     ui.text_edit_singleline(&mut space_view.name);
                 });
-            } else {
-                // TODO: auto-prune these from any active selection and from the selection history!
-                ui.weak("(nothing)");
-                ctx.clear_selection();
             }
         }
         Selection::SpaceViewObjPath(space_view_id, obj_path) => {
@@ -132,10 +133,6 @@ fn selection_ui(
                     ctx.space_view_button_to(ui, &space_view.name, *space_view_id);
                     ui.end_row();
                 });
-            } else {
-                // TODO: auto-prune these from any active selection and from the selection history!
-                ui.weak("(nothing)");
-                ctx.clear_selection();
             }
         }
         Selection::DataBlueprintGroup(space_view_id, data_blueprint_group_handle) => {
@@ -156,15 +153,7 @@ fn selection_ui(
                         ctx.space_view_button_to(ui, &space_view.name, *space_view_id);
                         ui.end_row();
                     });
-                } else {
-                    // TODO: auto-prune these from any active selection and from the selection history!
-                    ui.weak("(nothing)");
-                    ctx.clear_selection();
                 }
-            } else {
-                // TODO: auto-prune these from any active selection and from the selection history!
-                ui.weak("(nothing)");
-                ctx.clear_selection();
             }
         }
     }
@@ -185,9 +174,6 @@ fn data_ui(
             let msg = if let Some(msg) = ctx.log_db.get_log_msg(msg_id) {
                 msg
             } else {
-                // TODO: auto-prune these from any active selection and from the selection history!
-                ui.weak("(nothing)");
-                ctx.clear_selection();
                 return;
             };
 

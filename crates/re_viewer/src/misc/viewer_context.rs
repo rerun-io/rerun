@@ -382,4 +382,29 @@ impl Selection {
             false
         }
     }
+
+    /// If `false`, the selection is referring to data that is no longer present.
+    pub(crate) fn is_valid(
+        &self,
+        ctx: &ViewerContext<'_>,
+        blueprint: &crate::ui::Blueprint,
+    ) -> bool {
+        match self {
+            Selection::None | Selection::Instance(_) | Selection::DataPath(_) => true,
+            Selection::MsgId(msg_id) => ctx.log_db.get_log_msg(msg_id).is_some(),
+            Selection::SpaceView(space_view_id) | Selection::SpaceViewObjPath(space_view_id, _) => {
+                blueprint.viewport.space_view(space_view_id).is_some()
+            }
+            Selection::DataBlueprintGroup(space_view_id, data_blueprint_group_handle) => {
+                if let Some(space_view) = blueprint.viewport.space_view(space_view_id) {
+                    space_view
+                        .data_blueprint
+                        .get_group(*data_blueprint_group_handle)
+                        .is_some()
+                } else {
+                    false
+                }
+            }
+        }
+    }
 }
