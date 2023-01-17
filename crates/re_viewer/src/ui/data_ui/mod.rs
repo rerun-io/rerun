@@ -19,9 +19,14 @@ mod object;
 /// Controls how large we show the data in [`DataUi`].
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) enum Preview {
+    /// Keep it very small, e.g. to fit into a table of many values.
     Small,
+
+    /// As large as you want.
     Medium,
-    Specific(f32),
+
+    /// At most this height
+    MaxHeight(f32),
 }
 
 /// Types implementing [`DataUi`] can draw themselves with a [`ViewerContext`] and [`egui::Ui`].

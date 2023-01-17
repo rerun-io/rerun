@@ -15,9 +15,13 @@ impl DataUi for AnnotationContext {
         ui: &mut egui::Ui,
         preview: crate::ui::Preview,
     ) -> egui::Response {
-        if preview == Preview::Small {
-            return ui.label(format!("{} classes", self.class_map.len()));
+        if preview != Preview::Medium {
+            return ui.label(format!(
+                "AnnotationContext with {} classes",
+                self.class_map.len()
+            ));
         }
+
         let row_height = re_ui::ReUi::table_line_height();
         ui.vertical(|ui| {
             annotation_info_table_ui(

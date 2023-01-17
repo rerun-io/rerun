@@ -70,7 +70,7 @@ impl DataUi for ClassicTensor {
                 let max_height = match preview {
                     Preview::Small => 32.0,
                     Preview::Medium => 128.0,
-                    Preview::Specific(height) => height,
+                    Preview::MaxHeight(height) => height,
                 };
 
                 if let Some(retained_img) = tensor_view.retained_img {

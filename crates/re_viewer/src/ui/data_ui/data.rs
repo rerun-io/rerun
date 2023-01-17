@@ -39,25 +39,14 @@ impl DataUi for Data {
                     "Arrow3D(origin: [{x:.1},{y:.1},{z:.1}], vector: [{v0:.1},{v1:.1},{v2:.1}])"
                 ))
             }
-            Data::Transform(transform) => match preview {
-                Preview::Small | Preview::Specific(_) => ui.monospace("Transform"),
-                Preview::Medium => DataUi::data_ui(transform, ctx, ui, preview),
-            },
-            Data::ViewCoordinates(coordinates) => match preview {
-                Preview::Small | Preview::Specific(_) => {
-                    ui.label(format!("ViewCoordinates: {}", coordinates.describe()))
-                }
-                Preview::Medium => coordinates.data_ui(ctx, ui, preview),
-            },
-            Data::AnnotationContext(context) => match preview {
-                Preview::Small | Preview::Specific(_) => ui.monospace("AnnotationContext"),
-                Preview::Medium => DataUi::data_ui(context, ctx, ui, preview),
-            },
+            Data::Transform(transform) => transform.data_ui(ctx, ui, preview),
+            Data::ViewCoordinates(coordinates) => coordinates.data_ui(ctx, ui, preview),
+            Data::AnnotationContext(context) => context.data_ui(ctx, ui, preview),
             Data::Tensor(tensor) => tensor.data_ui(ctx, ui, preview),
 
             Data::ObjPath(obj_path) => ctx.obj_path_button(ui, obj_path),
 
-            Data::DataVec(data_vec) => DataUi::data_ui(data_vec, ctx, ui, preview),
+            Data::DataVec(data_vec) => data_vec.data_ui(ctx, ui, preview),
         }
     }
 }
@@ -119,7 +108,7 @@ impl DataUi for Transform {
         preview: Preview,
     ) -> egui::Response {
         match self {
-            Transform::Unknown => ui.label("Unknown"),
+            Transform::Unknown => ui.label("Unknown transform"),
             Transform::Rigid3(rigid3) => rigid3.data_ui(ctx, ui, preview),
             Transform::Pinhole(pinhole) => pinhole.data_ui(ctx, ui, preview),
         }
@@ -131,9 +120,14 @@ impl DataUi for ViewCoordinates {
         &self,
         _ctx: &mut crate::misc::ViewerContext<'_>,
         ui: &mut egui::Ui,
-        _preview: Preview,
+        preview: Preview,
     ) -> egui::Response {
-        ui.label(self.describe())
+        match preview {
+            Preview::Small | Preview::MaxHeight(_) => {
+                ui.label(format!("ViewCoordinates: {}", self.describe()))
+            }
+            Preview::Medium => ui.label(self.describe()),
+        }
     }
 }
 
@@ -142,27 +136,31 @@ impl DataUi for Rigid3 {
         &self,
         _ctx: &mut crate::misc::ViewerContext<'_>,
         ui: &mut egui::Ui,
-        _preview: Preview,
+        preview: Preview,
     ) -> egui::Response {
-        let pose = self.parent_from_child(); // TODO(emilk): which one to show?
-        let rotation = pose.rotation();
-        let translation = pose.translation();
+        if preview == Preview::Medium {
+            let pose = self.parent_from_child(); // TODO(emilk): which one to show?
+            let rotation = pose.rotation();
+            let translation = pose.translation();
 
-        ui.vertical(|ui| {
-            ui.label("Rigid3");
-            ui.indent("rigid3", |ui| {
-                egui::Grid::new("rigid3").num_columns(2).show(ui, |ui| {
-                    ui.label("rotation");
-                    ui.monospace(format!("{rotation:?}"));
-                    ui.end_row();
+            ui.vertical(|ui| {
+                ui.label("Rigid3 transform:");
+                ui.indent("rigid3", |ui| {
+                    egui::Grid::new("rigid3").num_columns(2).show(ui, |ui| {
+                        ui.label("rotation");
+                        ui.monospace(format!("{rotation:?}"));
+                        ui.end_row();
 
-                    ui.label("translation");
-                    ui.monospace(format!("{translation:?}"));
-                    ui.end_row();
+                        ui.label("translation");
+                        ui.monospace(format!("{translation:?}"));
+                        ui.end_row();
+                    });
                 });
-            });
-        })
-        .response
+            })
+            .response
+        } else {
+            ui.label("Rigid3 transform")
+        }
     }
 }
 
@@ -173,26 +171,34 @@ impl DataUi for Pinhole {
         ui: &mut egui::Ui,
         preview: Preview,
     ) -> egui::Response {
-        let Pinhole {
-            image_from_cam: image_from_view,
-            resolution,
-        } = self;
+        if preview == Preview::Medium {
+            let Pinhole {
+                image_from_cam: image_from_view,
+                resolution,
+            } = self;
 
-        ui.vertical(|ui| {
-            ui.label("Pinhole");
-            ui.indent("pinole", |ui| {
-                egui::Grid::new("pinole").num_columns(2).show(ui, |ui| {
-                    ui.label("image from view");
-                    image_from_view.data_ui(ctx, ui, preview);
-                    ui.end_row();
+            ui.vertical(|ui| {
+                ui.label("Pinhole transform:");
+                ui.indent("pinole", |ui| {
+                    ui.horizontal(|ui| {
+                        ui.label("resolution:");
+                        if let Some(re_log_types::field_types::Vec2D([x, y])) = resolution {
+                            ui.monospace(format!("{x}x{y}"));
+                        } else {
+                            ui.weak("(none)");
+                        }
+                    });
 
-                    ui.label("resolution");
-                    ui.monospace(format!("{resolution:?}"));
-                    ui.end_row();
+                    ui.label("image from view:");
+                    ui.indent("image_from_view", |ui| {
+                        image_from_view.data_ui(ctx, ui, preview);
+                    });
                 });
-            });
-        })
-        .response
+            })
+            .response
+        } else {
+            ui.label("Pinhole transform")
+        }
     }
 }
 

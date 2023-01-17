@@ -194,7 +194,7 @@ fn table_row(
                 ctx.data_path_button(ui, data_path);
             });
             row.col(|ui| {
-                data.data_ui(ctx, ui, Preview::Specific(row_height));
+                data.data_ui(ctx, ui, Preview::MaxHeight(row_height));
             });
         }
         LogMsg::PathOpMsg(msg) => {
@@ -249,7 +249,7 @@ fn table_row(
                 });
 
                 row.col(|ui| {
-                    components.data_ui(ctx, ui, Preview::Specific(row_height));
+                    components.data_ui(ctx, ui, Preview::MaxHeight(row_height));
                 });
             }
             Err(err) => {

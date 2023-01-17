@@ -16,9 +16,9 @@ pub(crate) fn arrow_component_ui(
 ) -> egui::Response {
     let count = component.len();
 
-    // TODO(jleibs) be smarter in case of `Specific`
+    // TODO(jleibs) be smarter in case of `MaxHeight`
     let max_elems = match preview {
-        crate::ui::Preview::Small | crate::ui::Preview::Specific(_) => 1,
+        crate::ui::Preview::Small | crate::ui::Preview::MaxHeight(_) => 1,
         crate::ui::Preview::Medium => 20,
     };
 

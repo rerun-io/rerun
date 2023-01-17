@@ -157,9 +157,9 @@ fn generic_instance_ui(
                                     keypoint_id = Some(KeypointId(id as _));
                                 }
                             }
-                            data.data_ui(ctx, ui, preview);
+                            data.data_ui(ctx, ui, Preview::Small);
                         } else {
-                            data_vec.data_ui(ctx, ui, preview);
+                            data_vec.data_ui(ctx, ui, Preview::Small);
                         }
                     }
                     Err(err) => {
