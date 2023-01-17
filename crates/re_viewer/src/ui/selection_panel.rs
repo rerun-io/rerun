@@ -134,10 +134,6 @@ impl SelectionPanel {
 
                 data_path.data_ui(ctx, ui, Preview::Medium);
             }
-            Selection::Space(space) => {
-                ui.label(format!("Selected space: {}", space));
-                // I really don't know what we should show here.
-            }
             Selection::SpaceView(space_view_id) => {
                 if let Some(space_view) = blueprint.viewport.space_view(&space_view_id) {
                     ui.strong("SpaceView");

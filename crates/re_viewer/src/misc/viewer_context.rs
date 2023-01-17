@@ -349,7 +349,6 @@ pub enum Selection {
     ObjTypePath(ObjTypePath),
     Instance(InstanceId),
     DataPath(DataPath),
-    Space(ObjPath),
     SpaceView(crate::ui::SpaceViewId),
     /// An object within a space-view.
     SpaceViewObjPath(crate::ui::SpaceViewId, ObjPath),
@@ -364,7 +363,6 @@ impl std::fmt::Display for Selection {
             Selection::ObjTypePath(s) => s.fmt(f),
             Selection::Instance(s) => s.fmt(f),
             Selection::DataPath(s) => s.fmt(f),
-            Selection::Space(s) => s.fmt(f),
             Selection::SpaceView(s) => write!(f, "{s:?}"),
             Selection::SpaceViewObjPath(sid, path) => write!(f, "({sid:?}, {path})"),
             Selection::DataBlueprintGroup(sid, handle) => write!(f, "({sid:?}, {handle:?})"),
