@@ -1,4 +1,3 @@
-rerun
 requests
 # Avoid opencv-4.6 since it rotates images incorrectly:
 # See: https://github.com/opencv/opencv/issues/22088
