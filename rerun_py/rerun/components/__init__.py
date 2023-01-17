@@ -10,6 +10,7 @@ from rerun import bindings
 
 all = [
     "annotation",
+    "arrow",
     "box",
     "color",
     "label",

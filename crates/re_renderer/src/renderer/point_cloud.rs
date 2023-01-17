@@ -21,6 +21,7 @@ use std::{
 use crate::{
     context::uniform_buffer_allocation_size, wgpu_resources::BufferDesc, Color32, DebugLabel,
 };
+use bitflags::bitflags;
 use bytemuck::Zeroable;
 use itertools::Itertools;
 use smallvec::smallvec;
@@ -41,11 +42,23 @@ use super::{
     WgpuResourcePools,
 };
 
-mod gpu_data {
-    // Don't use `wgsl_buffer_types` since none of this data goes into a buffer, so its alignment rules don't apply.
+bitflags! {
+    /// Property flags for a point batch
+    ///
+    /// Needs to be kept in sync with `point_cloud.wgsl`
+    #[repr(C)]
+    #[derive(Default, bytemuck::Pod, bytemuck::Zeroable)]
+    pub struct PointCloudBatchFlags : u32 {
+        /// If true, we shade all points in the batch like spheres.
+        const ENABLE_SHADING = 0b0001;
+    }
+}
 
+mod gpu_data {
+    use super::PointCloudBatchFlags;
     use crate::{wgpu_buffer_types, Size};
 
+    // Don't use `wgsl_buffer_types` since this data doesn't go into a buffer, so alignment rules don't apply like on buffers..
     #[repr(C, packed)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct PositionData {
@@ -59,6 +72,8 @@ mod gpu_data {
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct BatchUniformBuffer {
         pub world_from_obj: wgpu_buffer_types::Mat4,
+        pub flags: PointCloudBatchFlags,
+        pub _padding: glam::Vec3,
     }
 }
 
@@ -91,6 +106,9 @@ pub struct PointCloudBatchInfo {
     /// TODO(andreas): We don't apply scaling to the radius yet. Need to pass a scaling factor like this in
     /// `let scale = Mat3::from(world_from_obj).determinant().abs().cbrt()`
     pub world_from_obj: glam::Mat4,
+
+    /// Additional properties of this point cloud batch.
+    pub flags: PointCloudBatchFlags,
 
     /// Number of points covered by this batch.
     ///
@@ -149,8 +167,9 @@ impl PointCloudDrawData {
         }
 
         let fallback_batches = [PointCloudBatchInfo {
-            world_from_obj: glam::Mat4::IDENTITY,
             label: "all points".into(),
+            world_from_obj: glam::Mat4::IDENTITY,
+            flags: PointCloudBatchFlags::empty(),
             point_count: vertices.len() as _,
         }];
         let batches = if batches.is_empty() {
@@ -349,6 +368,8 @@ impl PointCloudDrawData {
                     [offset..(offset + std::mem::size_of::<gpu_data::BatchUniformBuffer>())]
                     .copy_from_slice(bytemuck::bytes_of(&gpu_data::BatchUniformBuffer {
                         world_from_obj: batch_info.world_from_obj.into(),
+                        flags: batch_info.flags,
+                        _padding: glam::Vec3::ZERO,
                     }));
 
                 let bind_group = ctx.gpu_resources.bind_groups.alloc(
@@ -443,7 +464,7 @@ impl Renderer for PointCloudRenderer {
                 label: "point cloud - batch".into(),
                 entries: vec![wgpu::BindGroupLayoutEntry {
                     binding: 0,
-                    visibility: wgpu::ShaderStages::VERTEX,
+                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: false,

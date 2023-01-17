@@ -10,3 +10,8 @@ This will host an SDK server that SDK:s can connect to:
 ```sh
 cargo run -p rerun
 ```
+
+## Running a web viewer
+```sh
+cargo run -p rerun --features web -- --web-viewer ../nyud.rrd
+```

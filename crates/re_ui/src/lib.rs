@@ -1,10 +1,14 @@
 //! Rerun GUI theme and helpers, built around [`egui`](https://www.egui.rs/).
 
+mod command;
+mod command_palette;
 mod design_tokens;
 pub mod icons;
 mod static_image_cache;
 mod toggle_switch;
 
+pub use command::Command;
+pub use command_palette::CommandPalette;
 pub use design_tokens::DesignTokens;
 pub use icons::Icon;
 pub use static_image_cache::StaticImageCache;
@@ -71,7 +75,7 @@ impl ReUi {
 
     /// Margin on the side of views
     pub fn view_padding() -> f32 {
-        16.0
+        12.0
     }
 
     pub fn window_rounding() -> f32 {

@@ -21,7 +21,7 @@ mod points2d;
 mod points3d;
 mod segments2d;
 
-pub(crate) use arrows3d::Arrows3DPart;
+pub(crate) use arrows3d::{Arrows3DPart, Arrows3DPartClassic};
 pub(crate) use boxes2d::{Boxes2DPart, Boxes2DPartClassic};
 pub(crate) use boxes3d::{Boxes3DPart, Boxes3DPartClassic};
 pub(crate) use cameras::{CamerasPart, CamerasPartClassic};
