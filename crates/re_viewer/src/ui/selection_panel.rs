@@ -130,10 +130,7 @@ fn selection_ui(
                     ctx.obj_path_button(ui, obj_path);
                     ui.end_row();
 
-                    ui.weak("in");
-                    ui.end_row();
-
-                    ui.label("Space View:");
+                    ui.label("in Space View:");
                     ctx.space_view_button_to(ui, &space_view.name, *space_view_id);
                     ui.end_row();
                 });
@@ -150,10 +147,7 @@ fn selection_ui(
                         ui.text_edit_singleline(&mut group.display_name);
                         ui.end_row();
 
-                        ui.weak("in");
-                        ui.end_row();
-
-                        ui.label("Space View:");
+                        ui.label("in Space View:");
                         ctx.space_view_button_to(ui, &space_view.name, *space_view_id);
                         ui.end_row();
                     });
@@ -171,7 +165,7 @@ fn data_ui(
     preview: Preview,
 ) {
     match selection {
-        Selection::None => {
+        Selection::None | Selection::SpaceView(_) => {
             ui.weak("(nothing)");
         }
         Selection::MsgId(msg_id) => {
@@ -199,7 +193,6 @@ fn data_ui(
             });
             data_path.data_ui(ctx, ui, preview);
         }
-        Selection::SpaceView(_) => {}
         Selection::SpaceViewObjPath(_, obj_path) => {
             obj_path.data_ui(ctx, ui, preview);
         }
@@ -216,6 +209,8 @@ fn blueprint_ui(
 ) {
     match selection {
         Selection::None | Selection::MsgId(_) | Selection::Instance(_) | Selection::DataPath(_) => {
+            // TODO(emilk): look up which, if any, blueprints this instances/DataPath is part of.
+            ui.weak("(nothing)");
         }
 
         Selection::SpaceView(space_view_id) => {
@@ -226,7 +221,9 @@ fn blueprint_ui(
                     ctx.clear_selection();
                 } else {
                     if ui.button("Clone Space View").clicked() {
-                        blueprint.viewport.add_space_view(space_view.clone());
+                        let mut new_space_view = space_view.clone();
+                        new_space_view.id = super::SpaceViewId::random();
+                        blueprint.viewport.add_space_view(new_space_view);
                         blueprint.viewport.mark_user_interaction();
                     }
 
@@ -253,13 +250,6 @@ fn blueprint_ui(
                     .data_blueprint
                     .get_group_mut(*data_blueprint_group_handle)
                 {
-                    ui.strong("Group");
-                    ui.add_space(4.0);
-
-                    group.selection_ui(ctx, ui);
-
-                    ui.separator();
-
                     obj_props_ui(
                         ctx,
                         ui,
