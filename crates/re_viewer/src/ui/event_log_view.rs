@@ -163,7 +163,7 @@ fn table_row(
                 });
             }
             row.col(|ui| {
-                ctx.type_path_button(ui, type_path);
+                ui.monospace(type_path.to_string());
             });
             row.col(|ui| {
                 ui.monospace(format!("{obj_type:?}"));

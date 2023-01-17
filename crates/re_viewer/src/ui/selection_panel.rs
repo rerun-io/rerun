@@ -93,15 +93,8 @@ impl SelectionPanel {
                     LogMsg::ArrowMsg(msg) => msg.data_ui(ctx, ui, Preview::Medium),
                 };
             }
-            Selection::ObjTypePath(obj_type_path) => {
-                ui.label(format!("Selected object type path: {}", obj_type_path));
-            }
             Selection::Instance(instance_id) => {
                 ui.label(format!("Selected object: {}", instance_id));
-                ui.horizontal(|ui| {
-                    ui.label("Type path:");
-                    ctx.type_path_button(ui, instance_id.obj_path.obj_type_path());
-                });
                 ui.horizontal(|ui| {
                     ui.label("Object type:");
                     ui.label(obj_type_name(
@@ -117,10 +110,6 @@ impl SelectionPanel {
                 ui.horizontal(|ui| {
                     ui.label("Object path:");
                     ctx.obj_path_button(ui, &data_path.obj_path);
-                });
-                ui.horizontal(|ui| {
-                    ui.label("Type path:");
-                    ctx.type_path_button(ui, data_path.obj_path.obj_type_path());
                 });
                 ui.horizontal(|ui| {
                     ui.label("Object type:");

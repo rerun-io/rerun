@@ -194,7 +194,6 @@ fn selection_kind_ui(ui: &mut egui::Ui, sel: &Selection) {
     ui.weak(RichText::new(match sel {
         Selection::None => "(none)",
         Selection::MsgId(_) => "(msg)",
-        Selection::ObjTypePath(_) => "(type)",
         Selection::Instance(_) => "(instance)",
         Selection::DataPath(_) => "(field)",
         Selection::SpaceView(_) => "(view)",

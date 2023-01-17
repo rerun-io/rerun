@@ -1,4 +1,4 @@
-use re_data_store::{log_db::LogDb, InstanceId, ObjTypePath};
+use re_data_store::{log_db::LogDb, InstanceId};
 use re_log_types::{DataPath, MsgId, ObjPath, TimeInt, Timeline};
 
 use crate::ui::{
@@ -28,30 +28,6 @@ pub struct ViewerContext<'a> {
 }
 
 impl<'a> ViewerContext<'a> {
-    /// Show a type path and make it selectable.
-    pub fn type_path_button(
-        &mut self,
-        ui: &mut egui::Ui,
-        type_path: &ObjTypePath,
-    ) -> egui::Response {
-        self.type_path_button_to(ui, type_path.to_string(), type_path)
-    }
-
-    /// Show a type path and make it selectable.
-    pub fn type_path_button_to(
-        &mut self,
-        ui: &mut egui::Ui,
-        text: impl Into<egui::WidgetText>,
-        type_path: &ObjTypePath,
-    ) -> egui::Response {
-        // TODO(emilk): common hover-effect of all buttons for the same type_path!
-        let response = ui.selectable_label(self.selection().is_type_path(type_path), text);
-        if response.clicked() {
-            self.set_selection(Selection::ObjTypePath(type_path.clone()));
-        }
-        response
-    }
-
     /// Show a obj path and make it selectable.
     pub fn obj_path_button(&mut self, ui: &mut egui::Ui, obj_path: &ObjPath) -> egui::Response {
         self.obj_path_button_to(ui, obj_path.to_string(), obj_path)
@@ -346,7 +322,6 @@ impl Default for Options {
 pub enum Selection {
     None,
     MsgId(MsgId),
-    ObjTypePath(ObjTypePath),
     Instance(InstanceId),
     DataPath(DataPath),
     SpaceView(crate::ui::SpaceViewId),
@@ -360,7 +335,6 @@ impl std::fmt::Display for Selection {
         match self {
             Selection::None => write!(f, "<empty>"),
             Selection::MsgId(s) => s.fmt(f),
-            Selection::ObjTypePath(s) => s.fmt(f),
             Selection::Instance(s) => s.fmt(f),
             Selection::DataPath(s) => s.fmt(f),
             Selection::SpaceView(s) => write!(f, "{s:?}"),
@@ -383,14 +357,6 @@ impl Selection {
 
     pub fn is_some(&self) -> bool {
         !matches!(self, Self::None)
-    }
-
-    pub fn is_type_path(&self, needle: &ObjTypePath) -> bool {
-        if let Self::ObjTypePath(hay) = self {
-            hay == needle
-        } else {
-            false
-        }
     }
 
     pub fn is_instance_id(&self, needle: &InstanceId) -> bool {

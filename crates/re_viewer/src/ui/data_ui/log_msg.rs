@@ -66,12 +66,12 @@ impl DataUi for BeginRecordingMsg {
 impl DataUi for TypeMsg {
     fn data_ui(
         &self,
-        ctx: &mut ViewerContext<'_>,
+        _ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         _preview: Preview,
     ) -> egui::Response {
         ui.horizontal(|ui| {
-            ctx.type_path_button(ui, &self.type_path);
+            ui.code(self.type_path.to_string());
             ui.label(" = ");
             ui.code(format!("{:?}", self.obj_type));
         })
@@ -131,10 +131,6 @@ impl DataUi for DataMsg {
             .show(ui, |ui| {
                 ui.monospace("data_path:");
                 ctx.data_path_button(ui, data_path);
-                ui.end_row();
-
-                ui.monospace("object type path:");
-                ctx.type_path_button(ui, data_path.obj_path.obj_type_path());
                 ui.end_row();
 
                 ui.monospace("time_point:");
