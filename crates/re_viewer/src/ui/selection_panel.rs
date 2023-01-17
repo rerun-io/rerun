@@ -69,15 +69,19 @@ impl SelectionPanel {
 
                 ui.separator();
 
-                ui.collapsing("Data", |ui| {
-                    data_ui(ui, ctx, &selection, Preview::Medium);
-                });
+                egui::CollapsingHeader::new("Data")
+                    .default_open(true)
+                    .show(ui, |ui| {
+                        data_ui(ui, ctx, &selection, Preview::Medium);
+                    });
 
                 ui.separator();
 
-                ui.collapsing("Blueprint", |ui| {
-                    blueprint_ui(ui, ctx, blueprint, &selection);
-                });
+                egui::CollapsingHeader::new("Blueprint")
+                    .default_open(true)
+                    .show(ui, |ui| {
+                        blueprint_ui(ui, ctx, blueprint, &selection);
+                    });
             });
     }
 }
