@@ -12,6 +12,7 @@ pub trait TensorTrait {
     fn shape(&self) -> &[TensorDimension];
     fn num_dim(&self) -> usize;
     fn is_shaped_like_an_image(&self) -> bool;
+    fn is_vector(&self) -> bool;
 }
 
 // ----------------------------------------------------------------------------
@@ -322,6 +323,11 @@ impl TensorTrait for Tensor {
                     1 | 3 | 4
                 )
             }
+    }
+
+    fn is_vector(&self) -> bool {
+        let shape = &self.shape;
+        shape.len() == 1 || { shape.len() == 2 && (shape[0].size == 1 || shape[1].size == 1) }
     }
 }
 

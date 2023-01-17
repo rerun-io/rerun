@@ -1,5 +1,10 @@
-use re_data_store::{query::visit_type_data, FieldName, InstanceId};
-use re_log_types::{ClassicTensor, IndexHash, MsgId, ObjectType};
+use re_arrow_store::LatestAtQuery;
+use re_data_store::{query::visit_type_data, FieldName, Index, InstanceId, ObjPath, ObjectProps};
+use re_log_types::{
+    field_types::{Instance, Tensor},
+    ClassicTensor, IndexHash, MsgId, ObjectType,
+};
+use re_query::{query_entity_with_primary, EntityView, QueryError};
 
 use crate::{misc::ViewerContext, ui::SceneQuery};
 
@@ -16,10 +21,11 @@ impl SceneTensor {
     pub(crate) fn load_objects(&mut self, ctx: &ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
 
-        self.load_tensors(ctx, query);
+        self.load_tensors_classic(ctx, query);
+        self.load_tensors_arrow(ctx, query);
     }
 
-    fn load_tensors(&mut self, ctx: &ViewerContext<'_>, query: &SceneQuery<'_>) {
+    fn load_tensors_classic(&mut self, ctx: &ViewerContext<'_>, query: &SceneQuery<'_>) {
         crate::profile_function!();
 
         for (_obj_type, obj_path, time_query, obj_store) in
@@ -44,5 +50,43 @@ impl SceneTensor {
                 },
             );
         }
+    }
+
+    fn load_tensors_arrow(&mut self, ctx: &ViewerContext<'_>, query: &SceneQuery<'_>) {
+        crate::profile_function!();
+
+        for (ent_path, props) in query.iter_entities() {
+            let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
+
+            match query_entity_with_primary::<Tensor>(
+                &ctx.log_db.obj_db.arrow_store,
+                &timeline_query,
+                ent_path,
+                &[],
+            )
+            .and_then(|entity_view| self.load_tensor_entity(&ent_path, &props, &entity_view))
+            {
+                Ok(_) | Err(QueryError::PrimaryNotFound) => {}
+                Err(err) => {
+                    re_log::error_once!("Unexpected error querying '{:?}': {:?}", ent_path, err);
+                }
+            }
+        }
+    }
+
+    fn load_tensor_entity(
+        &mut self,
+        ent_path: &ObjPath,
+        _props: &ObjectProps,
+        entity_view: &EntityView<Tensor>,
+    ) -> Result<(), QueryError> {
+        entity_view.visit1(|instance: Instance, tensor: Tensor| {
+            let tensor = ClassicTensor::from(&tensor);
+            if !tensor.is_shaped_like_an_image() {
+                let instance_id =
+                    InstanceId::new(ent_path.clone(), Some(Index::ArrowInstance(instance)));
+                self.tensors.insert(instance_id, tensor.clone());
+            }
+        })
     }
 }

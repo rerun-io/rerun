@@ -1,5 +1,13 @@
+use re_arrow_store::{LatestAtQuery, TimeInt};
 use re_data_store::{query_transform, LogDb, ObjPath, Timeline};
-use re_log_types::DataPath;
+use re_log_types::{
+    field_types::{
+        Box3D, LineStrip2D, LineStrip3D, Point2D, Point3D, Rect2D, Tensor, TensorTrait, TextEntry,
+    },
+    msg_bundle::Component,
+    Arrow3D, DataPath, Mesh3D,
+};
+use re_query::query_entity_with_primary;
 
 #[derive(
     Debug, Default, PartialOrd, Ord, enumset::EnumSetType, serde::Deserialize, serde::Serialize,
@@ -96,7 +104,68 @@ pub fn categorize_obj_path(
         }
 
         re_log_types::ObjectType::ArrowObject => {
-            ViewCategory::Spatial.into() // TODO(emilk): implement some sort of entity categorization based on components
+            categorize_arrow_obj_path(timeline, log_db, obj_path)
         }
     }
+}
+
+pub fn categorize_arrow_obj_path(
+    timeline: &Timeline,
+    log_db: &LogDb,
+    obj_path: &ObjPath,
+) -> ViewCategorySet {
+    log_db
+        .obj_db
+        .arrow_store
+        .all_components(timeline, obj_path)
+        .unwrap_or(vec![])
+        .into_iter()
+        .fold(ViewCategorySet::default(), |mut set, component| {
+            if component == TextEntry::name() {
+                set.insert(ViewCategory::Text);
+            } else if component == Point2D::name() {
+                set.insert(ViewCategory::Spatial);
+            } else if component == Point2D::name() {
+                set.insert(ViewCategory::Spatial);
+            } else if component == Point3D::name() {
+                set.insert(ViewCategory::Spatial);
+            } else if component == Rect2D::name() {
+                set.insert(ViewCategory::Spatial);
+            } else if component == Box3D::name() {
+                set.insert(ViewCategory::Spatial);
+            } else if component == LineStrip2D::name() {
+                set.insert(ViewCategory::Spatial);
+            } else if component == LineStrip3D::name() {
+                set.insert(ViewCategory::Spatial);
+            } else if component == Mesh3D::name() {
+                set.insert(ViewCategory::Spatial);
+            } else if component == Arrow3D::name() {
+                set.insert(ViewCategory::Spatial);
+            } else if component == Tensor::name() {
+                let timeline_query = LatestAtQuery::new(*timeline, TimeInt::from(i64::MAX));
+
+                query_entity_with_primary::<Tensor>(
+                    &log_db.obj_db.arrow_store,
+                    &timeline_query,
+                    obj_path,
+                    &[],
+                )
+                .ok()
+                .and_then(|entity_view| {
+                    for tensor in entity_view.iter_primary().unwrap() {
+                        if let Some(tensor) = tensor {
+                            if tensor.is_vector() {
+                                set.insert(ViewCategory::BarChart);
+                            } else if tensor.is_shaped_like_an_image() {
+                                set.insert(ViewCategory::Spatial);
+                            } else {
+                                set.insert(ViewCategory::Tensor);
+                            }
+                        }
+                    }
+                    Some(())
+                });
+            }
+            set
+        })
 }
