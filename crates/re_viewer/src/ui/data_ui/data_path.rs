@@ -9,6 +9,11 @@ impl DataUi for DataPath {
         ui: &mut egui::Ui,
         preview: crate::ui::Preview,
     ) {
+        ui.horizontal(|ui| {
+            ui.label("Object path:");
+            ctx.obj_path_button(ui, &self.obj_path);
+        });
+
         let timeline = ctx.rec_cfg.time_ctrl.timeline();
         if let Some(time_i64) = ctx.rec_cfg.time_ctrl.time_i64() {
             if let FieldOrComponent::Component(component) = self.field_name {

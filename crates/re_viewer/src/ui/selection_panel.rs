@@ -1,5 +1,5 @@
 use re_data_store::{query_transform, ObjPath, ObjectProps};
-use re_log_types::{LogMsg, MsgId, TimeType};
+use re_log_types::TimeType;
 
 use crate::{
     ui::{view_spatial::SpatialNavigationMode, Blueprint},
@@ -171,48 +171,18 @@ fn data_ui(
             ui.weak("(nothing)");
         }
         Selection::MsgId(msg_id) => {
-            msg_id_data_ui(ui, ctx, preview, msg_id);
+            msg_id.data_ui(ctx, ui, preview);
         }
         Selection::Instance(instance_id) => {
             instance_id.data_ui(ctx, ui, preview);
         }
         Selection::DataPath(data_path) => {
-            ui.horizontal(|ui| {
-                ui.label("Object path:");
-                ctx.obj_path_button(ui, &data_path.obj_path);
-            });
             data_path.data_ui(ctx, ui, preview);
         }
         Selection::SpaceViewObjPath(_, obj_path) => {
             obj_path.data_ui(ctx, ui, preview);
         }
     }
-}
-
-pub(crate) fn msg_id_data_ui(
-    ui: &mut egui::Ui,
-    ctx: &mut ViewerContext<'_>,
-    preview: Preview,
-    msg_id: &MsgId,
-) {
-    if let Some(msg) = ctx.log_db.get_log_msg(msg_id) {
-        log_msg_data_ui(ctx, ui, preview, msg);
-    }
-}
-
-pub(crate) fn log_msg_data_ui(
-    ctx: &mut ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    preview: Preview,
-    msg: &LogMsg,
-) {
-    match msg {
-        LogMsg::BeginRecordingMsg(msg) => msg.data_ui(ctx, ui, preview),
-        LogMsg::TypeMsg(msg) => msg.data_ui(ctx, ui, preview),
-        LogMsg::DataMsg(msg) => msg.data_ui(ctx, ui, preview),
-        LogMsg::PathOpMsg(msg) => msg.data_ui(ctx, ui, preview),
-        LogMsg::ArrowMsg(msg) => msg.data_ui(ctx, ui, preview),
-    };
 }
 
 /// What is the blueprint stuff for this selection?

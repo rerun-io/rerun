@@ -36,7 +36,7 @@ impl<'a> ViewerContext<'a> {
             .on_hover_ui(|ui| {
                 ui.label(format!("Message ID: {msg_id}"));
                 ui.separator();
-                crate::ui::selection_panel::msg_id_data_ui(ui, self, Preview::Small, &msg_id);
+                msg_id.data_ui(self, ui, Preview::Small);
             });
         if response.clicked() {
             self.set_selection(Selection::MsgId(msg_id));

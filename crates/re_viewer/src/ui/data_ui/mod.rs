@@ -14,6 +14,7 @@ mod data;
 mod data_path;
 pub(crate) mod image;
 mod log_msg;
+mod msg_id;
 mod object;
 
 /// Controls how large we show the data in [`DataUi`].
