@@ -118,53 +118,40 @@ pub fn categorize_arrow_obj_path(
         .obj_db
         .arrow_store
         .all_components(timeline, obj_path)
-        .unwrap_or(vec![])
+        .unwrap_or_default()
         .into_iter()
         .fold(ViewCategorySet::default(), |mut set, component| {
             if component == TextEntry::name() {
                 set.insert(ViewCategory::Text);
-            } else if component == Point2D::name() {
-                set.insert(ViewCategory::Spatial);
-            } else if component == Point2D::name() {
-                set.insert(ViewCategory::Spatial);
-            } else if component == Point3D::name() {
-                set.insert(ViewCategory::Spatial);
-            } else if component == Rect2D::name() {
-                set.insert(ViewCategory::Spatial);
-            } else if component == Box3D::name() {
-                set.insert(ViewCategory::Spatial);
-            } else if component == LineStrip2D::name() {
-                set.insert(ViewCategory::Spatial);
-            } else if component == LineStrip3D::name() {
-                set.insert(ViewCategory::Spatial);
-            } else if component == Mesh3D::name() {
-                set.insert(ViewCategory::Spatial);
-            } else if component == Arrow3D::name() {
+            } else if component == Point2D::name()
+                || component == Point3D::name()
+                || component == Rect2D::name()
+                || component == Box3D::name()
+                || component == LineStrip2D::name()
+                || component == LineStrip3D::name()
+                || component == Mesh3D::name()
+                || component == Arrow3D::name()
+            {
                 set.insert(ViewCategory::Spatial);
             } else if component == Tensor::name() {
                 let timeline_query = LatestAtQuery::new(*timeline, TimeInt::from(i64::MAX));
 
-                query_entity_with_primary::<Tensor>(
+                if let Ok(entity_view) = query_entity_with_primary::<Tensor>(
                     &log_db.obj_db.arrow_store,
                     &timeline_query,
                     obj_path,
                     &[],
-                )
-                .ok()
-                .and_then(|entity_view| {
-                    for tensor in entity_view.iter_primary().unwrap() {
-                        if let Some(tensor) = tensor {
-                            if tensor.is_vector() {
-                                set.insert(ViewCategory::BarChart);
-                            } else if tensor.is_shaped_like_an_image() {
-                                set.insert(ViewCategory::Spatial);
-                            } else {
-                                set.insert(ViewCategory::Tensor);
-                            }
+                ) {
+                    for tensor in entity_view.iter_primary().unwrap().flatten() {
+                        if tensor.is_vector() {
+                            set.insert(ViewCategory::BarChart);
+                        } else if tensor.is_shaped_like_an_image() {
+                            set.insert(ViewCategory::Spatial);
+                        } else {
+                            set.insert(ViewCategory::Tensor);
                         }
                     }
-                    Some(())
-                });
+                }
             }
             set
         })

@@ -64,7 +64,7 @@ impl SceneTensor {
                 ent_path,
                 &[],
             )
-            .and_then(|entity_view| self.load_tensor_entity(&ent_path, &props, &entity_view))
+            .and_then(|entity_view| self.load_tensor_entity(ent_path, &props, &entity_view))
             {
                 Ok(_) | Err(QueryError::PrimaryNotFound) => {}
                 Err(err) => {
@@ -85,7 +85,7 @@ impl SceneTensor {
             if !tensor.is_shaped_like_an_image() {
                 let instance_id =
                     InstanceId::new(ent_path.clone(), Some(Index::ArrowInstance(instance)));
-                self.tensors.insert(instance_id, tensor.clone());
+                self.tensors.insert(instance_id, tensor);
             }
         })
     }
