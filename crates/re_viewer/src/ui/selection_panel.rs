@@ -65,7 +65,7 @@ impl SelectionPanel {
                     return;
                 }
 
-                selection_ui(ui, ctx, blueprint, &selection);
+                what_is_selected_ui(ui, ctx, blueprint, &selection);
 
                 ui.separator();
 
@@ -87,7 +87,7 @@ impl SelectionPanel {
 }
 
 /// What is selected? Not the contents, just the short id of it.
-fn selection_ui(
+fn what_is_selected_ui(
     ui: &mut egui::Ui,
     ctx: &mut ViewerContext<'_>,
     blueprint: &mut Blueprint,
