@@ -1,7 +1,5 @@
 //! Responsible for populating `SceneSpatialPrimitives` and `SceneSpatialUiData`
 
-use re_data_store::InstanceIdHash;
-
 use crate::{
     misc::ViewerContext,
     ui::{scene::SceneQuery, transform_cache::TransformCache},
@@ -40,6 +38,5 @@ pub trait ScenePart {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
-        hovered_instance: InstanceIdHash,
     );
 }

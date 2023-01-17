@@ -36,7 +36,6 @@ impl ScenePart for Lines3DPartClassic {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
-        hovered_instance: InstanceIdHash,
     ) {
         crate::profile_scope!("Lines3DPart");
 
@@ -52,6 +51,8 @@ impl ScenePart for Lines3DPartClassic {
             let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(obj_path) else {
                 continue;
             };
+
+            let highlighted_paths = ctx.hovered().is_path_selected(obj_path.hash());
 
             let mut line_batch = scene
                 .primitives
@@ -80,7 +81,7 @@ impl ScenePart for Lines3DPartClassic {
                 let annotation_info = annotations.class_description(None).annotation_info();
                 let mut color = to_ecolor(annotation_info.color(color, default_color));
 
-                if instance_hash.is_some() && instance_hash == hovered_instance {
+                if highlighted_paths.is_index_in_selection(instance_hash.instance_index_hash) {
                     color = SceneSpatial::HOVER_COLOR;
                     radius = SceneSpatial::hover_size_boost(radius);
                 }
@@ -119,9 +120,9 @@ impl Lines3DPart {
     #[allow(clippy::too_many_arguments)]
     fn process_entity_view(
         scene: &mut SceneSpatial,
+        ctx: &mut ViewerContext<'_>,
         _query: &SceneQuery<'_>,
         props: &ObjectProps,
-        hovered_instance: InstanceIdHash,
         entity_view: &EntityView<LineStrip3D>,
         ent_path: &ObjPath,
         world_from_obj: Mat4,
@@ -136,6 +137,8 @@ impl Lines3DPart {
             .line_strips
             .batch("lines 3d")
             .world_from_obj(world_from_obj);
+
+        let highlighted_paths = ctx.hovered().is_path_selected(ent_path.hash());
 
         let visitor = |instance: Instance,
                        strip: LineStrip3D,
@@ -157,7 +160,7 @@ impl Lines3DPart {
                 annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color),
             );
 
-            if instance_hash.is_some() && instance_hash == hovered_instance {
+            if highlighted_paths.is_index_in_selection(instance_hash.instance_index_hash) {
                 color = SceneSpatial::HOVER_COLOR;
                 radius = SceneSpatial::hover_size_boost(radius);
             }
@@ -182,7 +185,6 @@ impl ScenePart for Lines3DPart {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
-        hovered_instance: re_data_store::InstanceIdHash,
     ) {
         crate::profile_scope!("Lines3DPart");
 
@@ -202,9 +204,9 @@ impl ScenePart for Lines3DPart {
             .and_then(|entity_view| {
                 Self::process_entity_view(
                     scene,
+                    ctx,
                     query,
                     &props,
-                    hovered_instance,
                     &entity_view,
                     ent_path,
                     world_from_obj,

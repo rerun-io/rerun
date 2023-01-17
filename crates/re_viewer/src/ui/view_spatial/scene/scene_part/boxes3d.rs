@@ -34,7 +34,6 @@ impl ScenePart for Boxes3DPartClassic {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
-        hovered_instance: InstanceIdHash,
     ) {
         crate::profile_scope!("Boxes3DPartClassic");
 
@@ -49,6 +48,9 @@ impl ScenePart for Boxes3DPartClassic {
             let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(obj_path) else {
                 continue;
             };
+
+            let highlighted_paths = ctx.hovered().is_path_selected(obj_path.hash());
+
             let mut line_batch = scene
                 .primitives
                 .line_strips
@@ -79,7 +81,7 @@ impl ScenePart for Boxes3DPartClassic {
 
                 let instance_hash =
                     instance_hash_if_interactive(obj_path, instance_index, properties.interactive);
-                if instance_hash.is_some() && instance_hash == hovered_instance {
+                if highlighted_paths.is_index_in_selection(instance_hash.instance_index_hash) {
                     color = SceneSpatial::HOVER_COLOR;
                     line_radius = SceneSpatial::hover_size_boost(line_radius);
                 }
@@ -113,8 +115,8 @@ impl Boxes3DPart {
     #[allow(clippy::too_many_arguments)]
     fn process_entity_view(
         scene: &mut SceneSpatial,
+        ctx: &mut ViewerContext<'_>,
         props: &ObjectProps,
-        hovered_instance: InstanceIdHash,
         entity_view: &EntityView<Box3D>,
         ent_path: &ObjPath,
         world_from_obj: Mat4,
@@ -129,6 +131,9 @@ impl Boxes3DPart {
             .line_strips
             .batch("box 3d")
             .world_from_obj(world_from_obj);
+
+        dbg!(ctx.hovered());
+        let highlighted_paths = ctx.hovered().is_path_selected(ent_path.hash());
 
         let visitor = |instance: Instance,
                        half_size: Box3D,
@@ -154,7 +159,7 @@ impl Boxes3DPart {
                 annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color),
             );
 
-            if instance_hash.is_some() && instance_hash == hovered_instance {
+            if highlighted_paths.is_index_in_selection(instance_hash.instance_index_hash) {
                 color = SceneSpatial::HOVER_COLOR;
                 radius = SceneSpatial::hover_size_boost(radius);
             }
@@ -189,7 +194,6 @@ impl ScenePart for Boxes3DPart {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
-        hovered_instance: InstanceIdHash,
     ) {
         crate::profile_scope!("Boxes3DPart");
 
@@ -216,8 +220,8 @@ impl ScenePart for Boxes3DPart {
             .and_then(|entity_view| {
                 Self::process_entity_view(
                     scene,
+                    ctx,
                     &props,
-                    hovered_instance,
                     &entity_view,
                     ent_path,
                     world_from_obj,

@@ -22,7 +22,7 @@ pub(crate) mod profiler;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod clipboard;
 
-pub use selection::{MultiSelection, Selection};
+pub use selection::{MultiSelection, ObjectPathSelectionQuery, Selection};
 
 // ----------------------------------------------------------------------------
 

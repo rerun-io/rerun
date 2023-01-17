@@ -7,7 +7,7 @@ use re_query::{query_entity_with_primary, QueryError};
 use re_renderer::renderer::LineStripFlags;
 
 use crate::{
-    misc::{space_info::query_view_coordinates, ViewerContext},
+    misc::{space_info::query_view_coordinates, ObjectPathSelectionQuery, ViewerContext},
     ui::{
         scene::SceneQuery,
         transform_cache::{ReferenceFromObjTransform, TransformCache},
@@ -27,7 +27,6 @@ impl ScenePart for CamerasPartClassic {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
-        hovered_instance: InstanceIdHash,
     ) {
         crate::profile_scope!("CamerasPartClassic");
 
@@ -49,6 +48,7 @@ impl ScenePart for CamerasPartClassic {
                     InstanceIdHash::NONE
                 }
             };
+            let highlighted_paths = ctx.hovered().is_path_selected(obj_path.hash());
 
             let view_coordinates = determine_view_coordinates(
                 &ctx.log_db.obj_db,
@@ -62,9 +62,9 @@ impl ScenePart for CamerasPartClassic {
                 &props,
                 transforms,
                 instance_hash,
-                hovered_instance,
                 pinhole,
                 view_coordinates,
+                &highlighted_paths,
             );
         }
     }
@@ -110,9 +110,9 @@ impl CamerasPart {
         props: &ObjectProps,
         transforms: &TransformCache,
         instance: InstanceIdHash,
-        hovered_instance: InstanceIdHash,
         pinhole: Pinhole,
         view_coordinates: ViewCoordinates,
+        highlighted_paths: &ObjectPathSelectionQuery,
     ) {
         // The transform *at* this object path already has the pinhole transformation we got passed in!
         // This makes sense, since if there's an image logged here one would expect that the transform applies.
@@ -194,17 +194,18 @@ impl CamerasPart {
             (up_triangle[2], up_triangle[0]),
         ];
 
-        let (line_radius, line_color) = if instance == hovered_instance {
-            (
-                re_renderer::Size::new_points(2.0),
-                SceneSpatial::HOVER_COLOR,
-            )
-        } else {
-            (
-                re_renderer::Size::new_points(1.0),
-                SceneSpatial::CAMERA_COLOR,
-            )
-        };
+        let (line_radius, line_color) =
+            if highlighted_paths.is_index_in_selection(instance.instance_index_hash) {
+                (
+                    re_renderer::Size::new_points(2.0),
+                    SceneSpatial::HOVER_COLOR,
+                )
+            } else {
+                (
+                    re_renderer::Size::new_points(1.0),
+                    SceneSpatial::CAMERA_COLOR,
+                )
+            };
         scene
             .primitives
             .line_strips
@@ -229,7 +230,6 @@ impl ScenePart for CamerasPart {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
-        hovered_instance: InstanceIdHash,
     ) {
         crate::profile_scope!("CamerasPart");
 
@@ -243,6 +243,8 @@ impl ScenePart for CamerasPart {
                 &[],
             )
             .and_then(|entity_view| {
+                let highlighted_paths = ctx.hovered().is_path_selected(ent_path.hash());
+
                 entity_view.visit1(|instance, transform| {
                     let Transform::Pinhole(pinhole) = transform else {
                         return;
@@ -268,9 +270,9 @@ impl ScenePart for CamerasPart {
                         &props,
                         transforms,
                         instance_hash,
-                        hovered_instance,
                         pinhole,
                         view_coordinates,
+                        &highlighted_paths,
                     );
                 })
             }) {

@@ -90,6 +90,7 @@ pub enum ObjectPathSelectionQuery {
     EntireObject,
 
     /// Parts of the object path are part of the selection.
+    /// TODO(andreas): Optimize for the single-item case?
     Partial(IntSet<IndexHash>),
 }
 
@@ -120,7 +121,7 @@ pub struct MultiSelection {
 
 impl MultiSelection {
     /// Whether an object path is part of the selection.
-    pub fn is_path_selected(&self, obj_path_hash: ObjPathHash) -> ObjectPathSelectionQuery {
+    pub fn is_path_selected(&self, obj_path_hash: &ObjPathHash) -> ObjectPathSelectionQuery {
         let mut relevant_selected_indices = IntSet::default();
 
         for selection in &self.selection {
@@ -132,7 +133,7 @@ impl MultiSelection {
                 Selection::ObjTypePath(_) => {} // TODO(andreas): to be removed
 
                 Selection::Instance(inst) => {
-                    if inst.obj_path.hash() == &obj_path_hash {
+                    if inst.obj_path.hash() == obj_path_hash {
                         if let Some(index) = &inst.instance_index {
                             // TODO(andreas): Hash should be precomputed upon setting the selection.
                             relevant_selected_indices.insert(index.hash());
@@ -143,7 +144,7 @@ impl MultiSelection {
                 }
 
                 Selection::DataPath(data_path) => {
-                    if data_path.obj_path.hash() == &obj_path_hash {
+                    if data_path.obj_path.hash() == obj_path_hash {
                         return ObjectPathSelectionQuery::EntireObject;
                     }
                 }
@@ -154,7 +155,7 @@ impl MultiSelection {
                 Selection::SpaceView(_) => {}
 
                 Selection::SpaceViewObjPath(_, obj_path) => {
-                    if obj_path.hash() == &obj_path_hash {
+                    if obj_path.hash() == obj_path_hash {
                         return ObjectPathSelectionQuery::EntireObject;
                     }
                 }
@@ -177,7 +178,7 @@ impl MultiSelection {
     /// Avoid this when checking large arrays of instances, instead use [`Self::is_path_selected`] on the object
     /// and then [`ObjectPathSelectionQuery::is_index_in_selection`] for each index!
     pub fn is_instance_selected(&self, instance: InstanceIdHash) -> bool {
-        self.is_path_selected(instance.obj_path_hash)
+        self.is_path_selected(&instance.obj_path_hash)
             .is_index_in_selection(instance.instance_index_hash)
     }
 

@@ -30,9 +30,9 @@ impl Lines2DPart {
     #[allow(clippy::too_many_arguments)]
     fn process_entity_view(
         scene: &mut SceneSpatial,
+        ctx: &mut ViewerContext<'_>,
         _query: &SceneQuery<'_>,
         props: &ObjectProps,
-        hovered_instance: InstanceIdHash,
         entity_view: &EntityView<LineStrip2D>,
         ent_path: &ObjPath,
         world_from_obj: Mat4,
@@ -47,6 +47,8 @@ impl Lines2DPart {
             .line_strips
             .batch("lines 2d")
             .world_from_obj(world_from_obj);
+
+        let highlighted_paths = ctx.hovered().is_path_selected(ent_path.hash());
 
         let visitor = |instance: Instance,
                        strip: LineStrip2D,
@@ -69,7 +71,7 @@ impl Lines2DPart {
 
             let mut paint_props = paint_properties(color, stroke_width.as_ref());
 
-            if instance_hash.is_some() && instance_hash == hovered_instance {
+            if highlighted_paths.is_index_in_selection(instance_hash.instance_index_hash) {
                 apply_hover_effect(&mut paint_props);
             }
 
@@ -93,7 +95,6 @@ impl ScenePart for Lines2DPart {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
-        hovered_instance: re_data_store::InstanceIdHash,
     ) {
         crate::profile_scope!("Lines2DPart");
 
@@ -113,9 +114,9 @@ impl ScenePart for Lines2DPart {
             .and_then(|entity_view| {
                 Self::process_entity_view(
                     scene,
+                    ctx,
                     query,
                     &props,
-                    hovered_instance,
                     &entity_view,
                     ent_path,
                     world_from_obj,
