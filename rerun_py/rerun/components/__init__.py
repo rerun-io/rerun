@@ -20,6 +20,7 @@ all = [
     "rect2d",
     "scalar",
     "scalar_plot_props",
+    "tensor",
     "text_entry",
     "vec",
 ]
