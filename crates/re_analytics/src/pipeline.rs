@@ -233,6 +233,7 @@ fn flush_events(
 
 // TODO(cmc): abstract away when comes the day where we want to re-use the pipeline for another
 // provider.
+// TODO: actually maybe abstract away right now at this point...
 
 // TODO: events other than capture, especially views
 

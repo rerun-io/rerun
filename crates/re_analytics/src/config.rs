@@ -49,7 +49,7 @@ impl Config {
     pub fn load() -> Result<Config, ConfigError> {
         let dirs = Self::project_dirs()?;
         let config_path = dirs.config_dir().join("analytics.json");
-        let data_path = dirs.config_dir().join("pending");
+        let data_path = dirs.data_local_dir().join("analytics");
         let config = match File::open(&config_path) {
             Ok(file) => {
                 let reader = BufReader::new(file);
