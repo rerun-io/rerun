@@ -4,7 +4,7 @@ use half::f16;
 
 use crate::{field_types, impl_into_enum, AnnotationContext, Mesh3D, ObjPath, ViewCoordinates};
 
-pub use crate::field_types::{Pinhole, Rigid3, Transform};
+pub use crate::field_types::{Arrow3D, Pinhole, Rigid3, Transform};
 
 // ----------------------------------------------------------------------------
 
@@ -602,13 +602,6 @@ pub struct Box3 {
     pub rotation: Quaternion,
     pub translation: [f32; 3],
     pub half_size: [f32; 3],
-}
-
-#[derive(Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct Arrow3D {
-    pub origin: [f32; 3],
-    pub vector: [f32; 3],
 }
 
 /// Order: XYZW

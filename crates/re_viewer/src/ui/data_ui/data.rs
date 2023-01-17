@@ -34,8 +34,8 @@ impl DataUi for Data {
             Data::Box3(_) => ui.label("3D box"),
             Data::Mesh3D(_) => ui.label("3D mesh"),
             Data::Arrow3D(Arrow3D { origin, vector }) => {
-                let &[x, y, z] = origin;
-                let &[v0, v1, v2] = vector;
+                let [x, y, z] = origin.0;
+                let [v0, v1, v2] = vector.0;
                 ui.label(format!(
                     "Arrow3D(origin: [{x:.1},{y:.1},{z:.1}], vector: [{v0:.1},{v1:.1},{v2:.1}])"
                 ))

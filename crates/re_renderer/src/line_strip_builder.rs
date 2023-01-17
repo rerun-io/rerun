@@ -188,6 +188,52 @@ where
         }
     }
 
+    /// Add box outlines from a unit cube transformed by `transform`.
+    ///
+    /// Internally adds 12 line segments with rounded line heads.
+    /// Disables color gradient since we don't support gradients in this setup yet (i.e. enabling them does not look good)
+    #[inline]
+    pub fn add_box_outline(
+        &mut self,
+        transform: glam::Affine3A,
+    ) -> LineStripBuilder<'_, PerStripUserData> {
+        let corners = [
+            transform.transform_point3(glam::vec3(-0.5, -0.5, -0.5)),
+            transform.transform_point3(glam::vec3(-0.5, -0.5, 0.5)),
+            transform.transform_point3(glam::vec3(-0.5, 0.5, -0.5)),
+            transform.transform_point3(glam::vec3(-0.5, 0.5, 0.5)),
+            transform.transform_point3(glam::vec3(0.5, -0.5, -0.5)),
+            transform.transform_point3(glam::vec3(0.5, -0.5, 0.5)),
+            transform.transform_point3(glam::vec3(0.5, 0.5, -0.5)),
+            transform.transform_point3(glam::vec3(0.5, 0.5, 0.5)),
+        ];
+        self.add_segments(
+            [
+                // bottom:
+                (corners[0b000], corners[0b001]),
+                (corners[0b000], corners[0b010]),
+                (corners[0b011], corners[0b001]),
+                (corners[0b011], corners[0b010]),
+                // top:
+                (corners[0b100], corners[0b101]),
+                (corners[0b100], corners[0b110]),
+                (corners[0b111], corners[0b101]),
+                (corners[0b111], corners[0b110]),
+                // sides:
+                (corners[0b000], corners[0b100]),
+                (corners[0b001], corners[0b101]),
+                (corners[0b010], corners[0b110]),
+                (corners[0b011], corners[0b111]),
+            ]
+            .into_iter(),
+        )
+        .flags(
+            LineStripFlags::CAP_END_ROUND
+                | LineStripFlags::CAP_START_ROUND
+                | LineStripFlags::NO_COLOR_GRADIENT,
+        )
+    }
+
     /// Add rectangle outlines.
     ///
     /// Internally adds 4 line segments with rounded line heads.

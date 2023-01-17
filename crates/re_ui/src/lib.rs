@@ -75,7 +75,7 @@ impl ReUi {
 
     /// Margin on the side of views
     pub fn view_padding() -> f32 {
-        16.0
+        12.0
     }
 
     pub fn window_rounding() -> f32 {

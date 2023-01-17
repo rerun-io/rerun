@@ -1,6 +1,7 @@
-#import <./types.wgsl>
 #import <./global_bindings.wgsl>
+#import <./types.wgsl>
 #import <./utils/camera.wgsl>
+#import <./utils/flags.wgsl>
 #import <./utils/size.wgsl>
 
 @group(1) @binding(0)
@@ -10,10 +11,14 @@ var color_texture: texture_2d<f32>;
 
 struct BatchUniformBuffer {
     world_from_obj: Mat4,
+    flags: u32,
 };
 @group(2) @binding(0)
 var<uniform> batch: BatchUniformBuffer;
 
+// Flags
+// See point_cloud.rs#PointCloudBatchFlags
+let ENABLE_SHADING: u32 = 1u;
 
 // textureLoad needs i32 right now, so we use that with all sizes & indices to avoid casts
 // https://github.com/gfx-rs/naga/issues/1997
@@ -166,6 +171,9 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
 
     // TODO(andreas): Proper shading
     // TODO(andreas): This doesn't even use the sphere's world position for shading, the world position used here is flat!
-    let shading = max(0.2, 1.2 - distance(in.point_center, in.world_position) / in.radius); // quick and dirty coloring)
+    var shading = 1.0;
+    if has_any_flag(batch.flags, ENABLE_SHADING) {
+        shading = max(0.2, 1.2 - distance(in.point_center, in.world_position) / in.radius); // quick and dirty coloring)
+    }
     return vec4(in.color.rgb * shading, coverage);
 }
