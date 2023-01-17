@@ -43,10 +43,6 @@ impl From<AutoSizeUnit> for WidgetText {
 
 #[derive(Clone, serde::Deserialize, serde::Serialize)]
 pub struct ViewSpatialState {
-    /// What the mouse is hovering (from previous frame)
-    #[serde(skip)]
-    pub hovered_instance: Option<InstanceId>,
-
     /// How the scene is navigated.
     pub nav_mode: SpatialNavigationMode,
 
@@ -73,7 +69,6 @@ fn default_scene_bbox_accum() -> BoundingBox {
 impl Default for ViewSpatialState {
     fn default() -> Self {
         Self {
-            hovered_instance: Default::default(),
             nav_mode: Default::default(),
             scene_bbox_accum: default_scene_bbox_accum(),
             scene_num_primitives: 0,
@@ -233,12 +228,6 @@ impl ViewSpatialState {
                 self.state_3d.settings_ui(ui, &self.scene_bbox_accum);
             }
         }
-    }
-
-    pub fn hovered_instance_hash(&self) -> InstanceIdHash {
-        self.hovered_instance
-            .as_ref()
-            .map_or(InstanceIdHash::NONE, |i| i.hash())
     }
 
     // TODO(andreas): split into smaller parts, some of it shouldn't be part of the ui path and instead scene loading.

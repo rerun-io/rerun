@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use re_data_store::{InstanceId, ObjPath, ObjectTree, TimeInt};
+use re_data_store::{InstanceId, InstanceIdHash, ObjPath, ObjectTree, TimeInt};
 
 use nohash_hasher::IntSet;
 
@@ -464,12 +464,9 @@ impl SpaceView {
 
             ViewCategory::Spatial => {
                 let mut scene = view_spatial::SceneSpatial::default();
-                scene.load_objects(
-                    ctx,
-                    &query,
-                    &self.cached_transforms,
-                    self.view_state.state_spatial.hovered_instance_hash(),
-                );
+                // TODO:
+                let instance_hash = InstanceIdHash::NONE;
+                scene.load_objects(ctx, &query, &self.cached_transforms, instance_hash);
                 self.view_state
                     .ui_spatial(ctx, ui, &self.space_path, reference_space_info, scene);
             }
