@@ -41,6 +41,7 @@ Copy this checklist to the the PR description, go through it from top to bottom,
 * [ ] Open the PR up for review
 * [ ] Bump version numbers
 * [ ] Update `CHANGELOG.md` with the new version number and the summary and the gif
+    * [ ] Make sure to it includes instructions for handling any breaking changes
 * [ ] Get the PR reviewed
 * [ ] Check that CI is green
 * [ ] Publish new Rust crates
