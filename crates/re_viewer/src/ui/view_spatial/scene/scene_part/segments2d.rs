@@ -65,7 +65,7 @@ impl ScenePart for LineSegments2DPartClassic {
                 let color = annotation_info.color(color, DefaultColor::ObjPath(obj_path));
 
                 let mut paint_props = paint_properties(color, stroke_width);
-                if highlighted_paths.is_index_in_selection(instance_hash.instance_index_hash) {
+                if highlighted_paths.is_index_selected(instance_hash.instance_index_hash) {
                     apply_hover_effect(&mut paint_props);
                 }
 

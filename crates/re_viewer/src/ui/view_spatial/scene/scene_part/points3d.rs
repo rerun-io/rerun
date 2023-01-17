@@ -105,7 +105,7 @@ impl ScenePart for Points3DPartClassic {
                 let mut color = to_ecolor(annotation_info.color(color, default_color));
                 let mut radius = radius.copied().map_or(Size::AUTO, Size::new_scene);
 
-                if highlighted_paths.is_index_in_selection(instance_hash.instance_index_hash) {
+                if highlighted_paths.is_index_selected(instance_hash.instance_index_hash) {
                     color = SceneSpatial::HOVER_COLOR;
                     radius = SceneSpatial::hover_size_boost(radius);
                 }
@@ -300,7 +300,7 @@ impl Points3DPart {
             .collect::<Vec<_>>();
         let highlighted = instance_hashes
             .iter()
-            .map(|hash| highlighted_paths.is_index_in_selection(hash.instance_index_hash))
+            .map(|hash| highlighted_paths.is_index_selected(hash.instance_index_hash))
             .collect::<Vec<_>>();
 
         let colors = Self::process_colors(entity_view, ent_path, &highlighted, &annotation_infos)?;

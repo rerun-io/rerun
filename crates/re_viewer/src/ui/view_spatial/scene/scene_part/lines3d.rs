@@ -81,7 +81,7 @@ impl ScenePart for Lines3DPartClassic {
                 let annotation_info = annotations.class_description(None).annotation_info();
                 let mut color = to_ecolor(annotation_info.color(color, default_color));
 
-                if highlighted_paths.is_index_in_selection(instance_hash.instance_index_hash) {
+                if highlighted_paths.is_index_selected(instance_hash.instance_index_hash) {
                     color = SceneSpatial::HOVER_COLOR;
                     radius = SceneSpatial::hover_size_boost(radius);
                 }
@@ -160,7 +160,7 @@ impl Lines3DPart {
                 annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color),
             );
 
-            if highlighted_paths.is_index_in_selection(instance_hash.instance_index_hash) {
+            if highlighted_paths.is_index_selected(instance_hash.instance_index_hash) {
                 color = SceneSpatial::HOVER_COLOR;
                 radius = SceneSpatial::hover_size_boost(radius);
             }

@@ -81,7 +81,7 @@ impl Selection {
 }
 
 #[derive(Default, Clone, Debug, PartialEq, Eq)]
-pub enum ObjectPathSelectionQuery {
+pub enum ObjectPathSelectionResult {
     /// No direct relation between query and what is selected.
     #[default]
     None,
@@ -94,20 +94,12 @@ pub enum ObjectPathSelectionQuery {
     Partial(IntSet<IndexHash>),
 }
 
-impl ObjectPathSelectionQuery {
-    // pub fn is_none(&self) -> bool {
-    //     *self == ObjectPathSelectionQuery::None
-    // }
-
-    // pub fn is_some(&self) -> bool {
-    //     *self != ObjectPathSelectionQuery::None
-    // }
-
-    pub fn is_index_in_selection(&self, index: IndexHash) -> bool {
+impl ObjectPathSelectionResult {
+    pub fn is_index_selected(&self, index: IndexHash) -> bool {
         match self {
-            ObjectPathSelectionQuery::None => false,
-            ObjectPathSelectionQuery::EntireObject => true,
-            ObjectPathSelectionQuery::Partial(selected_indices) => {
+            ObjectPathSelectionResult::None => false,
+            ObjectPathSelectionResult::EntireObject => true,
+            ObjectPathSelectionResult::Partial(selected_indices) => {
                 selected_indices.contains(&index)
             }
         }
@@ -129,7 +121,7 @@ impl MultiSelection {
     }
 
     /// Whether an object path is part of the selection.
-    pub fn is_path_selected(&self, obj_path_hash: ObjPathHash) -> ObjectPathSelectionQuery {
+    pub fn is_path_selected(&self, obj_path_hash: ObjPathHash) -> ObjectPathSelectionResult {
         let mut relevant_selected_indices = IntSet::default();
 
         for selection in &self.selection {
@@ -147,14 +139,14 @@ impl MultiSelection {
                             // TODO(andreas): Hash should be precomputed upon setting the selection.
                             relevant_selected_indices.insert(index.hash());
                         } else {
-                            return ObjectPathSelectionQuery::EntireObject;
+                            return ObjectPathSelectionResult::EntireObject;
                         }
                     }
                 }
 
                 Selection::DataPath(data_path) => {
                     if data_path.obj_path.hash() == obj_path_hash {
-                        return ObjectPathSelectionQuery::EntireObject;
+                        return ObjectPathSelectionResult::EntireObject;
                     }
                 }
 
@@ -165,7 +157,7 @@ impl MultiSelection {
 
                 Selection::SpaceViewObjPath(_, obj_path) => {
                     if obj_path.hash() == obj_path_hash {
-                        return ObjectPathSelectionQuery::EntireObject;
+                        return ObjectPathSelectionResult::EntireObject;
                     }
                 }
 
@@ -175,9 +167,9 @@ impl MultiSelection {
         }
 
         if relevant_selected_indices.is_empty() {
-            ObjectPathSelectionQuery::None
+            ObjectPathSelectionResult::None
         } else {
-            ObjectPathSelectionQuery::Partial(relevant_selected_indices)
+            ObjectPathSelectionResult::Partial(relevant_selected_indices)
         }
     }
 
@@ -188,12 +180,8 @@ impl MultiSelection {
     /// and then [`ObjectPathSelectionQuery::is_index_in_selection`] for each index!
     pub fn is_instance_selected(&self, instance: InstanceIdHash) -> bool {
         self.is_path_selected(instance.obj_path_hash)
-            .is_index_in_selection(instance.instance_index_hash)
+            .is_index_selected(instance.instance_index_hash)
     }
-
-    // pub fn selection(&self) -> impl Iterator<Item = &Selection> {
-    //     self.selection.iter()
-    // }
 
     pub fn is_empty(&self) -> bool {
         self.selection.is_empty()

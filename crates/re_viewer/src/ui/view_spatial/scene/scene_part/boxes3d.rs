@@ -81,7 +81,7 @@ impl ScenePart for Boxes3DPartClassic {
 
                 let instance_hash =
                     instance_hash_if_interactive(obj_path, instance_index, properties.interactive);
-                if highlighted_paths.is_index_in_selection(instance_hash.instance_index_hash) {
+                if highlighted_paths.is_index_selected(instance_hash.instance_index_hash) {
                     color = SceneSpatial::HOVER_COLOR;
                     line_radius = SceneSpatial::hover_size_boost(line_radius);
                 }
@@ -158,7 +158,7 @@ impl Boxes3DPart {
                 annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color),
             );
 
-            if highlighted_paths.is_index_in_selection(instance_hash.instance_index_hash) {
+            if highlighted_paths.is_index_selected(instance_hash.instance_index_hash) {
                 color = SceneSpatial::HOVER_COLOR;
                 radius = SceneSpatial::hover_size_boost(radius);
             }

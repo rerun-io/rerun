@@ -71,7 +71,7 @@ impl Lines2DPart {
 
             let mut paint_props = paint_properties(color, stroke_width.as_ref());
 
-            if highlighted_paths.is_index_in_selection(instance_hash.instance_index_hash) {
+            if highlighted_paths.is_index_selected(instance_hash.instance_index_hash) {
                 apply_hover_effect(&mut paint_props);
             }
 

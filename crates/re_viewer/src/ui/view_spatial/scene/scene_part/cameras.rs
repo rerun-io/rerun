@@ -7,7 +7,7 @@ use re_query::{query_entity_with_primary, QueryError};
 use re_renderer::renderer::LineStripFlags;
 
 use crate::{
-    misc::{space_info::query_view_coordinates, ObjectPathSelectionQuery, ViewerContext},
+    misc::{space_info::query_view_coordinates, ObjectPathSelectionResult, ViewerContext},
     ui::{
         scene::SceneQuery,
         transform_cache::{ReferenceFromObjTransform, TransformCache},
@@ -112,7 +112,7 @@ impl CamerasPart {
         instance: InstanceIdHash,
         pinhole: Pinhole,
         view_coordinates: ViewCoordinates,
-        highlighted_paths: &ObjectPathSelectionQuery,
+        highlighted_paths: &ObjectPathSelectionResult,
     ) {
         // The transform *at* this object path already has the pinhole transformation we got passed in!
         // This makes sense, since if there's an image logged here one would expect that the transform applies.
@@ -195,7 +195,7 @@ impl CamerasPart {
         ];
 
         let (line_radius, line_color) =
-            if highlighted_paths.is_index_in_selection(instance.instance_index_hash) {
+            if highlighted_paths.is_index_selected(instance.instance_index_hash) {
                 (
                     re_renderer::Size::new_points(2.0),
                     SceneSpatial::HOVER_COLOR,

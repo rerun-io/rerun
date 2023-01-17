@@ -58,7 +58,7 @@ impl ScenePart for MeshPartClassic {
                     instance_hash_if_interactive(obj_path, instance_index, properties.interactive);
 
                 let additive_tint =
-                    if highlighted_paths.is_index_in_selection(instance_hash.instance_index_hash) {
+                    if highlighted_paths.is_index_selected(instance_hash.instance_index_hash) {
                         Some(SceneSpatial::HOVER_COLOR)
                     } else {
                         None
@@ -125,7 +125,7 @@ impl MeshPart {
                 };
 
                 let additive_tint =
-                    if highlighted_paths.is_index_in_selection(instance_hash.instance_index_hash) {
+                    if highlighted_paths.is_index_selected(instance_hash.instance_index_hash) {
                         Some(SceneSpatial::HOVER_COLOR)
                     } else {
                         None

@@ -98,7 +98,7 @@ impl ScenePart for Points2DPartClassic {
                 let label = annotation_info.label(label);
 
                 let mut paint_props = paint_properties(color, radius);
-                if highlighted_paths.is_index_in_selection(instance_hash.instance_index_hash) {
+                if highlighted_paths.is_index_selected(instance_hash.instance_index_hash) {
                     apply_hover_effect(&mut paint_props);
                 }
 
@@ -213,7 +213,7 @@ impl Points2DPart {
             let label = annotation_info.label(label.map(|l| l.0).as_ref());
 
             let mut paint_props = paint_properties(color, radius.map(|r| r.0).as_ref());
-            if highlighted_paths.is_index_in_selection(instance_hash.instance_index_hash) {
+            if highlighted_paths.is_index_selected(instance_hash.instance_index_hash) {
                 apply_hover_effect(&mut paint_props);
             }
 

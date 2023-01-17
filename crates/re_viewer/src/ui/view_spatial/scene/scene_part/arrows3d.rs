@@ -87,7 +87,7 @@ impl ScenePart for Arrows3DPartClassic {
                 let end = origin + vector * ((vector_len - tip_length) / vector_len);
 
                 let mut color = to_ecolor(color);
-                if highlighted_paths.is_index_in_selection(instance_hash.instance_index_hash) {
+                if highlighted_paths.is_index_selected(instance_hash.instance_index_hash) {
                     color = SceneSpatial::HOVER_COLOR;
                     radius = SceneSpatial::hover_size_boost(radius);
                 }
@@ -167,7 +167,7 @@ impl Arrows3DPart {
             let end = origin + vector * ((vector_len - tip_length) / vector_len);
 
             let mut color = to_ecolor(color);
-            if highlighted_paths.is_index_in_selection(instance_hash.instance_index_hash) {
+            if highlighted_paths.is_index_selected(instance_hash.instance_index_hash) {
                 color = SceneSpatial::HOVER_COLOR;
                 radius = SceneSpatial::hover_size_boost(radius);
             }

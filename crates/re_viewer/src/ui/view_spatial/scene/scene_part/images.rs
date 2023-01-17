@@ -109,7 +109,7 @@ impl ScenePart for ImagesPartClassic {
                     None,
                 );
 
-                if highlighted_paths.is_index_in_selection(instance_hash.instance_index_hash) {
+                if highlighted_paths.is_index_selected(instance_hash.instance_index_hash) {
                     let rect =
                         glam::vec2(tensor.shape()[1].size as f32, tensor.shape()[0].size as f32);
                     scene
@@ -245,7 +245,7 @@ impl ImagesPart {
 
                 let paint_props = paint_properties(color, None);
 
-                if highlighted_paths.is_index_in_selection(instance_hash.instance_index_hash) {
+                if highlighted_paths.is_index_selected(instance_hash.instance_index_hash) {
                     let rect =
                         glam::vec2(tensor.shape()[1].size as f32, tensor.shape()[0].size as f32);
                     scene
