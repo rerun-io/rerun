@@ -14,12 +14,13 @@ impl DataUi for AnnotationContext {
         _ctx: &mut crate::misc::ViewerContext<'_>,
         ui: &mut egui::Ui,
         preview: crate::ui::Preview,
-    ) -> egui::Response {
+    ) {
         if preview != Preview::Medium {
-            return ui.label(format!(
+            ui.label(format!(
                 "AnnotationContext with {} classes",
                 self.class_map.len()
             ));
+            return;
         }
 
         let row_height = re_ui::ReUi::table_line_height();
@@ -101,8 +102,7 @@ impl DataUi for AnnotationContext {
                     });
                 }
             }
-        })
-        .response
+        });
     }
 }
 

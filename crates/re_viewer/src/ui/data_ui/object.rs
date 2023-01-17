@@ -16,27 +16,17 @@ use super::{
 };
 
 impl DataUi for ObjPath {
-    fn data_ui(
-        &self,
-        ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        preview: Preview,
-    ) -> egui::Response {
+    fn data_ui(&self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, preview: Preview) {
         InstanceId {
             obj_path: self.clone(),
             instance_index: None,
         }
-        .data_ui(ctx, ui, preview)
+        .data_ui(ctx, ui, preview);
     }
 }
 
 impl DataUi for InstanceId {
-    fn data_ui(
-        &self,
-        ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        preview: Preview,
-    ) -> egui::Response {
+    fn data_ui(&self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, preview: Preview) {
         let timeline = ctx.rec_cfg.time_ctrl.timeline();
         if ctx
             .log_db
@@ -45,9 +35,9 @@ impl DataUi for InstanceId {
             .all_components(timeline, &self.obj_path)
             .is_some()
         {
-            generic_arrow_ui(ctx, ui, self, preview)
+            generic_arrow_ui(ctx, ui, self, preview);
         } else {
-            generic_instance_ui(ctx, ui, self, preview)
+            generic_instance_ui(ctx, ui, self, preview);
         }
     }
 }
@@ -57,19 +47,21 @@ fn generic_arrow_ui(
     ui: &mut egui::Ui,
     instance_id: &InstanceId,
     _preview: Preview,
-) -> egui::Response {
+) {
     let timeline = ctx.rec_cfg.time_ctrl.timeline();
     let store = &ctx.log_db.obj_db.arrow_store;
 
     let Some(time) = ctx.rec_cfg.time_ctrl.time_int() else {
-        return ui.label(ctx.re_ui.error_text("No current time."))
+        ui.label(ctx.re_ui.error_text("No current time."));
+        return;
     };
 
     let query = re_arrow_store::LatestAtQuery::new(*timeline, time);
 
     let Some(components) = store.all_components(timeline, &instance_id.obj_path)
     else {
-        return ui.label("No Components")
+        ui.label("No Components");
+        return ;
     };
 
     egui::Grid::new("entity_instance")
@@ -87,27 +79,32 @@ fn generic_arrow_ui(
 
                 match (component_data, &instance_id.instance_index) {
                     // If we didn't find the component then it's not set at this point in time
-                    (Err(QueryError::PrimaryNotFound), _) => ui.label("<unset>"),
+                    (Err(QueryError::PrimaryNotFound), _) => {
+                        ui.label("<unset>");
+                    }
                     // Any other failure to get a component is unexpected
-                    (Err(err), _) => ui.label(format!("Error: {}", err)),
+                    (Err(err), _) => {
+                        ui.label(format!("Error: {}", err));
+                    }
                     // If an `instance_index` wasn't provided, just report the number of values
                     (Ok(component_data), None) => {
-                        arrow_component_ui(ctx, ui, &component_data, Preview::Small)
+                        arrow_component_ui(ctx, ui, &component_data, Preview::Small);
                     }
                     // If the `instance_index` is an `ArrowInstance` show the value
                     (Ok(component_data), Some(Index::ArrowInstance(instance))) => {
-                        arrow_component_elem_ui(ctx, ui, &component_data, instance, Preview::Small)
+                        arrow_component_elem_ui(ctx, ui, &component_data, instance, Preview::Small);
                     }
                     // If the `instance_index` isn't an `ArrowInstance` something has gone wrong
                     // TODO(jleibs) this goes away once all indexes are just `Instances`
-                    (Ok(_), Some(_)) => ui.label("<bad index>"),
+                    (Ok(_), Some(_)) => {
+                        ui.label("<bad index>");
+                    }
                 };
 
                 ui.end_row();
             }
             Some(())
-        })
-        .response
+        });
 }
 
 fn generic_instance_ui(
@@ -115,23 +112,26 @@ fn generic_instance_ui(
     ui: &mut egui::Ui,
     instance_id: &InstanceId,
     preview: Preview,
-) -> egui::Response {
+) {
     let timeline = ctx.rec_cfg.time_ctrl.timeline();
     let Some(store) = ctx.log_db.obj_db.store.get(timeline) else {
-        return ui.label(ctx.re_ui.error_text("No store with timeline {timeline}."))
+        ui.label(ctx.re_ui.error_text("No store with timeline {timeline}."));
+        return;
     };
     let Some(time_i64) = ctx.rec_cfg.time_ctrl.time_i64() else {
-        return ui.label(ctx.re_ui.error_text("No current time."))
+        ui.label(ctx.re_ui.error_text("No current time."));
+        return;
     };
     let time_query = re_data_store::TimeQuery::LatestAt(time_i64);
     let Some(obj_store) = store.get(&instance_id.obj_path) else {
-        return ui.label(ctx.re_ui.error_text(format!("No object at path {}", instance_id.obj_path)))
+        ui.label(ctx.re_ui.error_text(format!("No object at path {}", instance_id.obj_path)));
+        return;
     };
 
     let mut class_id = None;
     let mut keypoint_id = None;
 
-    let grid_resp = egui::Grid::new("object_instance")
+    egui::Grid::new("object_instance")
         .num_columns(2)
         .show(ui, |ui| {
             for (field_name, field_store) in obj_store.iter() {
@@ -170,14 +170,13 @@ fn generic_instance_ui(
 
                 ui.end_row();
             }
-        })
-        .response;
+        });
 
     // If we have a class id, show some information about the resolved style!
     if let Some(class_id) = class_id {
         ui.separator();
 
-        let resp = if let Some((data_path, annotations)) =
+        if let Some((data_path, annotations)) =
             AnnotationMap::find_associated(ctx, instance_id.obj_path.clone())
         {
             ctx.data_path_button_to(
@@ -232,9 +231,5 @@ fn generic_instance_ui(
                     .warning_text("class_id specified, but no annotation context found"),
             )
         };
-
-        resp.union(grid_resp)
-    } else {
-        grid_resp
     }
 }

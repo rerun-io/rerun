@@ -8,7 +8,7 @@ impl DataUi for DataPath {
         ctx: &mut crate::misc::ViewerContext<'_>,
         ui: &mut egui::Ui,
         preview: crate::ui::Preview,
-    ) -> egui::Response {
+    ) {
         let timeline = ctx.rec_cfg.time_ctrl.timeline();
         if let Some(time_i64) = ctx.rec_cfg.time_ctrl.time_i64() {
             if let FieldOrComponent::Component(component) = self.field_name {
@@ -21,9 +21,13 @@ impl DataUi for DataPath {
                     self.obj_path(),
                     component,
                 ) {
-                    Err(re_query::QueryError::PrimaryNotFound) => ui.label("<unset>"),
+                    Err(re_query::QueryError::PrimaryNotFound) => {
+                        ui.label("<unset>");
+                    }
                     // Any other failure to get a component is unexpected
-                    Err(err) => ui.label(format!("Error: {}", err)),
+                    Err(err) => {
+                        ui.label(format!("Error: {}", err));
+                    }
                     Ok(component_data) => arrow_component_ui(ctx, ui, &component_data, preview),
                 }
             } else {
@@ -38,20 +42,22 @@ impl DataUi for DataPath {
                     Some(Ok((_, data_vec))) => {
                         if data_vec.len() == 1 {
                             let data = data_vec.last().unwrap();
-                            data.data_ui(ctx, ui, preview)
+                            data.data_ui(ctx, ui, preview);
                         } else {
-                            data_vec.data_ui(ctx, ui, preview)
+                            data_vec.data_ui(ctx, ui, preview);
                         }
                     }
                     Some(Err(err)) => {
                         re_log::warn_once!("Bad data for {self}: {err}");
-                        ui.label(ctx.re_ui.error_text(format!("Data error: {:?}", err)))
+                        ui.label(ctx.re_ui.error_text(format!("Data error: {:?}", err)));
                     }
-                    None => ui.label(ctx.re_ui.error_text(format!("No data at time {time_i64}"))),
+                    None => {
+                        ui.label(ctx.re_ui.error_text(format!("No data at time {time_i64}")));
+                    }
                 }
             }
         } else {
-            ui.label(ctx.re_ui.error_text("No current time."))
+            ui.label(ctx.re_ui.error_text("No current time."));
         }
     }
 }

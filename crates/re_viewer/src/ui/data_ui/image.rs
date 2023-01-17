@@ -15,12 +15,7 @@ pub fn format_tensor_shape(shape: &[re_log_types::field_types::TensorDimension])
 }
 
 impl DataUi for ClassicTensor {
-    fn data_ui(
-        &self,
-        ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        preview: crate::ui::Preview,
-    ) -> egui::Response {
+    fn data_ui(&self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, preview: crate::ui::Preview) {
         let tensor_view = ctx.cache.image.get_view(self, ctx.render_ctx);
 
         if preview == Preview::Medium {
@@ -62,8 +57,7 @@ impl DataUi for ClassicTensor {
                         });
                     }
                 }
-            })
-            .response
+            });
         } else {
             // Compact:
             ui.horizontal_centered(|ui| {
@@ -86,8 +80,7 @@ impl DataUi for ClassicTensor {
                     ui.label(format!("dtype: {}", self.dtype()));
                     ui.label(format!("shape: {}", format_tensor_shape(self.shape())));
                 });
-            })
-            .response
+            });
         }
     }
 }

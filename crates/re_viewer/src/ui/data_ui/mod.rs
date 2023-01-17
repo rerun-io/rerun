@@ -31,23 +31,13 @@ pub(crate) enum Preview {
 
 /// Types implementing [`DataUi`] can draw themselves with a [`ViewerContext`] and [`egui::Ui`].
 pub(crate) trait DataUi {
-    fn data_ui(
-        &self,
-        ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        preview: Preview,
-    ) -> egui::Response;
+    fn data_ui(&self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, preview: Preview);
 }
 
 // ----------------------------------------------------------------------------
 
 impl DataUi for TimePoint {
-    fn data_ui(
-        &self,
-        ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        _preview: Preview,
-    ) -> egui::Response {
+    fn data_ui(&self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, _preview: Preview) {
         ui.vertical(|ui| {
             egui::Grid::new("time_point").num_columns(2).show(ui, |ui| {
                 ui.spacing_mut().item_spacing.x = 0.0;
@@ -57,37 +47,26 @@ impl DataUi for TimePoint {
                     ui.end_row();
                 }
             });
-        })
-        .response
+        });
     }
 }
 
 // TODO(jleibs): Better ArrowMsg view
 impl DataUi for [ComponentBundle] {
-    fn data_ui(
-        &self,
-        _ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        _preview: Preview,
-    ) -> egui::Response {
+    fn data_ui(&self, _ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, _preview: Preview) {
         // TODO(john): more handling
         ui.label(format!(
             "Arrow Payload of {:?}",
             self.iter().map(|bundle| &bundle.name).collect_vec()
-        ))
+        ));
     }
 }
 
 impl DataUi for PathOp {
-    fn data_ui(
-        &self,
-        _ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        _preview: Preview,
-    ) -> egui::Response {
+    fn data_ui(&self, _ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, _preview: Preview) {
         match self {
             PathOp::ClearFields(obj_path) => ui.label(format!("ClearFields: {obj_path}")),
             PathOp::ClearRecursive(obj_path) => ui.label(format!("ClearRecursive: {obj_path}")),
-        }
+        };
     }
 }
