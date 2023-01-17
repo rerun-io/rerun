@@ -249,7 +249,7 @@ impl ViewSpatialState {
         space: &ObjPath,
         scene: SceneSpatial,
         space_info: &SpaceInfo,
-    ) -> egui::Response {
+    ) {
         self.scene_bbox_accum = self.scene_bbox_accum.union(scene.primitives.bounding_box());
         self.scene_num_primitives = scene.primitives.num_primitives();
 
@@ -258,14 +258,14 @@ impl ViewSpatialState {
                 let coordinates = space_info.coordinates;
                 self.state_3d.space_specs = SpaceSpecs::from_view_coordinates(coordinates);
 
-                super::view_3d(ctx, ui, self, space, scene)
+                super::view_3d(ctx, ui, self, space, scene);
             }
             SpatialNavigationMode::TwoD => {
                 let scene_rect_accum = egui::Rect::from_min_max(
                     self.scene_bbox_accum.min.truncate().to_array().into(),
                     self.scene_bbox_accum.max.truncate().to_array().into(),
                 );
-                super::view_2d(ctx, ui, self, space, scene, scene_rect_accum)
+                super::view_2d(ctx, ui, self, space, scene, scene_rect_accum);
             }
         }
     }
