@@ -32,15 +32,6 @@ pub(crate) trait DataUi {
         ui: &mut egui::Ui,
         preview: Preview,
     ) -> egui::Response;
-
-    fn detailed_data_ui(
-        &self,
-        ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        preview: Preview,
-    ) -> egui::Response {
-        self.data_ui(ctx, ui, preview)
-    }
 }
 
 // ----------------------------------------------------------------------------

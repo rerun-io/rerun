@@ -38,7 +38,7 @@ impl DataUi for DataPath {
                     Some(Ok((_, data_vec))) => {
                         if data_vec.len() == 1 {
                             let data = data_vec.last().unwrap();
-                            data.detailed_data_ui(ctx, ui, preview)
+                            data.data_ui(ctx, ui, preview)
                         } else {
                             data_vec.data_ui(ctx, ui, preview)
                         }

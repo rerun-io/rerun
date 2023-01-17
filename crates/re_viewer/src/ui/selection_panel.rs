@@ -209,7 +209,7 @@ pub(crate) fn log_msg_data_ui(
     match msg {
         LogMsg::BeginRecordingMsg(msg) => msg.data_ui(ctx, ui, preview),
         LogMsg::TypeMsg(msg) => msg.data_ui(ctx, ui, preview),
-        LogMsg::DataMsg(msg) => msg.detailed_data_ui(ctx, ui, preview),
+        LogMsg::DataMsg(msg) => msg.data_ui(ctx, ui, preview),
         LogMsg::PathOpMsg(msg) => msg.data_ui(ctx, ui, preview),
         LogMsg::ArrowMsg(msg) => msg.data_ui(ctx, ui, preview),
     };

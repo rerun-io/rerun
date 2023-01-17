@@ -1,6 +1,6 @@
 use re_log_types::{
-    msg_bundle::MsgBundle, ArrowMsg, BeginRecordingMsg, Data, DataMsg, LogMsg, LoggedData,
-    PathOpMsg, RecordingInfo, TypeMsg,
+    msg_bundle::MsgBundle, ArrowMsg, BeginRecordingMsg, DataMsg, LogMsg, LoggedData, PathOpMsg,
+    RecordingInfo, TypeMsg,
 };
 
 use crate::{misc::ViewerContext, ui::Preview};
@@ -109,47 +109,6 @@ impl DataUi for DataMsg {
                 ui.end_row();
             })
             .response
-    }
-
-    fn detailed_data_ui(
-        &self,
-        ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        preview: Preview,
-    ) -> egui::Response {
-        let DataMsg {
-            msg_id: _,
-            time_point,
-            data_path,
-            data,
-        } = self;
-
-        let is_image = matches!(data, LoggedData::Single(Data::Tensor(_)));
-
-        let grid_resp = egui::Grid::new("fields")
-            .num_columns(2)
-            .show(ui, |ui| {
-                ui.monospace("data_path:");
-                ctx.data_path_button(ui, data_path);
-                ui.end_row();
-
-                ui.monospace("time_point:");
-                time_point.data_ui(ctx, ui, preview);
-                ui.end_row();
-
-                if !is_image {
-                    ui.monospace("data:");
-                    data.data_ui(ctx, ui, Preview::Medium);
-                    ui.end_row();
-                }
-            })
-            .response;
-
-        if let LoggedData::Single(Data::Tensor(tensor)) = &data {
-            tensor.data_ui(ctx, ui, preview)
-        } else {
-            grid_resp
-        }
     }
 }
 

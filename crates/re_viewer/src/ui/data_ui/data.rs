@@ -6,7 +6,7 @@ use re_log_types::{
 
 use crate::ui::Preview;
 
-use super::{image::format_tensor_shape, DataUi};
+use super::DataUi;
 
 impl DataUi for Data {
     fn data_ui(
@@ -53,49 +53,11 @@ impl DataUi for Data {
                 Preview::Small | Preview::Specific(_) => ui.monospace("AnnotationContext"),
                 Preview::Medium => DataUi::data_ui(context, ctx, ui, preview),
             },
-            Data::Tensor(tensor) => {
-                let tensor_view = ctx.cache.image.get_view(tensor, ctx.render_ctx);
-
-                ui.horizontal_centered(|ui| {
-                    let max_width = match preview {
-                        Preview::Small => 32.0,
-                        Preview::Medium => 128.0,
-                        Preview::Specific(height) => height,
-                    };
-
-                    if let Some(retained_img) = tensor_view.retained_img {
-                        retained_img
-                            .show_max_size(ui, Vec2::new(4.0 * max_width, max_width))
-                            .on_hover_ui(|ui| {
-                                retained_img.show_max_size(ui, Vec2::splat(400.0));
-                            });
-                    }
-
-                    ui.vertical(|ui| {
-                        ui.set_min_width(100.0);
-                        ui.label(format!("dtype: {}", tensor.dtype()));
-                        ui.label(format!("shape: {}", format_tensor_shape(tensor.shape())));
-                    });
-                })
-                .response
-            }
+            Data::Tensor(tensor) => tensor.data_ui(ctx, ui, preview),
 
             Data::ObjPath(obj_path) => ctx.obj_path_button(ui, obj_path),
 
             Data::DataVec(data_vec) => DataUi::data_ui(data_vec, ctx, ui, preview),
-        }
-    }
-
-    fn detailed_data_ui(
-        &self,
-        ctx: &mut crate::misc::ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        preview: Preview,
-    ) -> egui::Response {
-        if let Data::Tensor(tensor) = self {
-            tensor.data_ui(ctx, ui, preview)
-        } else {
-            self.data_ui(ctx, ui, Preview::Medium)
         }
     }
 }
