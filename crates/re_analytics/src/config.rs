@@ -23,26 +23,26 @@ pub enum ConfigError {
 
 // pub type WriteResult<T> = ::std::result::Result<T, WriteError>;
 
+// TODO: I guess it better be named UserConfig
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Config {
+    pub analytics_enabled: bool,
     // TODO: explain that this is _not_ a UUID on purpose.
     pub analytics_id: String,
-    pub analytics_enabled: bool,
 
     // TODO: explain
     // TODO: probably better served by a time-based uuid there
-    #[serde(skip)]
+    #[serde(skip, default = "::uuid::Uuid::new_v4")]
     pub session_id: Uuid,
+
+    pub path: PathBuf,
+    // TODO: gotta be in XDG_DATA!!!
+    pub data_path: PathBuf,
 
     // TODO: explain
     // TODO: never written, so default to false when read from disk.
     #[serde(skip)]
     is_first_run: bool,
-
-    #[serde(skip)]
-    path: PathBuf,
-    #[serde(skip)]
-    data_path: PathBuf,
 }
 
 impl Config {
@@ -83,7 +83,7 @@ impl Config {
         &self.path
     }
     pub fn data_path(&self) -> &Path {
-        &self.path
+        &self.data_path
     }
 
     pub fn is_first_run(&self) -> bool {

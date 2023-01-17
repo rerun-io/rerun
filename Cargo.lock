@@ -3754,6 +3754,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "crossbeam",
+ "derive_more",
  "directories-next",
  "re_log",
  "reqwest",
@@ -3761,6 +3762,7 @@ dependencies = [
  "serde_json",
  "thiserror",
  "time 0.3.17",
+ "tracing-subscriber",
  "uuid",
  "web-sys",
 ]

@@ -1,10 +1,13 @@
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::time::Duration;
 
+use re_log::trace;
 use time::OffsetDateTime;
 
 // ---
 
+// TODO: `analytics_id` and `session_id` have to be stored here! no way around it.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Event {
     // NOTE: serialized in a human-readable format as we want end users to be able to inspect the
@@ -13,11 +16,27 @@ pub struct Event {
     #[serde(with = "::time::serde::rfc3339")]
     pub time_utc: OffsetDateTime,
     // TODO: the static string forces people to list it as part of src/events.
-    pub name: &'static str,
+    pub name: Cow<'static, str>,
     pub props: HashMap<String, Property>,
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+impl Event {
+    pub fn new(name: Cow<'static, str>) -> Self {
+        Self {
+            time_utc: OffsetDateTime::now_utc(),
+            name,
+            props: Default::default(),
+        }
+    }
+
+    pub fn with_prop(mut self, name: String, value: impl Into<Property>) -> Self {
+        self.props.insert(name, value.into());
+        self
+    }
+}
+
+// TODO: guess that's more than enough for now...?
+#[derive(Debug, Clone, derive_more::From, serde::Serialize, serde::Deserialize)]
 pub enum Property {
     Integer(i64),
     Float(f64),
@@ -47,6 +66,7 @@ impl Analytics {
     // TODO: fill with logs
     pub fn new(tick: Duration) -> Result<Self, AnalyticsError> {
         let config = Config::load()?;
+        trace!(?config, ?tick, "loaded analytics config");
 
         if config.is_first_run() {
             // TODO: that's when we display analytics disclaimer in terminal!
