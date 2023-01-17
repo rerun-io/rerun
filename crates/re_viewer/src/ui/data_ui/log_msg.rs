@@ -175,7 +175,6 @@ impl DataUi for LoggedData {
     }
 }
 
-/// Previously `path_op_msg_ui()`
 impl DataUi for PathOpMsg {
     fn data_ui(
         &self,
@@ -204,7 +203,6 @@ impl DataUi for PathOpMsg {
     }
 }
 
-/// Previously `arrow_msg_ui()`
 impl DataUi for ArrowMsg {
     fn data_ui(
         &self,

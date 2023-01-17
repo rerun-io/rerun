@@ -8,8 +8,6 @@ use re_log_types::{PathOp, TimePoint};
 
 use crate::misc::ViewerContext;
 
-use super::Preview;
-
 mod component;
 mod context;
 mod data;
@@ -18,7 +16,15 @@ pub(crate) mod image;
 mod log_msg;
 mod object;
 
-/// Types implementing `DataUi` can draw themselves with a `ViewerContext` and `egui::Ui`.
+/// Controls how large we show the data in [`DataUi`].
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) enum Preview {
+    Small,
+    Medium,
+    Specific(f32),
+}
+
+/// Types implementing [`DataUi`] can draw themselves with a [`ViewerContext`] and [`egui::Ui`].
 pub(crate) trait DataUi {
     fn data_ui(
         &self,
@@ -39,7 +45,6 @@ pub(crate) trait DataUi {
 
 // ----------------------------------------------------------------------------
 
-/// Previously: `time_point_ui()`
 impl DataUi for TimePoint {
     fn data_ui(
         &self,
@@ -62,7 +67,6 @@ impl DataUi for TimePoint {
 }
 
 // TODO(jleibs): Better ArrowMsg view
-/// Previously `logged_arrow_data_ui()`
 impl DataUi for [ComponentBundle] {
     fn data_ui(
         &self,
@@ -78,7 +82,6 @@ impl DataUi for [ComponentBundle] {
     }
 }
 
-/// Previously `path_op_ui()`
 impl DataUi for PathOp {
     fn data_ui(
         &self,

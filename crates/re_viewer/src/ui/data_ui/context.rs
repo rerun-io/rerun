@@ -8,7 +8,6 @@ use super::DataUi;
 
 const TABLE_SCROLL_AREA_HEIGHT: f32 = 500.0; // add scroll-bars when we get to this height
 
-/// Previously `annotation_context_ui()`
 impl DataUi for AnnotationContext {
     fn data_ui(
         &self,

@@ -2,7 +2,6 @@ use re_log_types::{DataPath, FieldOrComponent};
 
 use super::{component::arrow_component_ui, DataUi};
 
-/// Previously `data_path_ui()`
 impl DataUi for DataPath {
     fn data_ui(
         &self,

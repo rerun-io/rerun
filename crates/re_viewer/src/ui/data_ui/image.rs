@@ -13,7 +13,6 @@ pub fn format_tensor_shape(shape: &[re_log_types::field_types::TensorDimension])
     format!("[{}]", shape.iter().join(", "))
 }
 
-/// Previously `tensor_ui()`
 impl DataUi for ClassicTensor {
     fn data_ui(
         &self,

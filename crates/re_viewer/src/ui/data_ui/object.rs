@@ -15,7 +15,6 @@ use super::{
     DataUi,
 };
 
-/// Previously `object_ui()`
 impl DataUi for ObjPath {
     fn data_ui(
         &self,
@@ -31,7 +30,6 @@ impl DataUi for ObjPath {
     }
 }
 
-/// Previously `instance_ui()`
 impl DataUi for InstanceId {
     fn data_ui(
         &self,
