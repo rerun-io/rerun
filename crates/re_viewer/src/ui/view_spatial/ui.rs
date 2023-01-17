@@ -1,7 +1,7 @@
 use cgmath::num_traits::Pow;
 use egui::{NumExt, WidgetText};
 use macaw::BoundingBox;
-use re_data_store::{InstanceId, InstanceIdHash, ObjPath};
+use re_data_store::ObjPath;
 use re_format::format_f32;
 
 use crate::misc::{space_info::SpaceInfo, ViewerContext};

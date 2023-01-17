@@ -1,5 +1,6 @@
+use nohash_hasher::IntSet;
 use re_data_store::{InstanceId, InstanceIdHash, ObjPath, ObjTypePath};
-use re_log_types::{DataPath, MsgId};
+use re_log_types::{DataPath, IndexHash, MsgId, ObjPathHash};
 
 #[derive(Clone, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub enum Selection {
@@ -80,28 +81,35 @@ impl Selection {
 }
 
 #[derive(Default, Clone, Debug, PartialEq, Eq)]
-pub enum SelectionQueryMatch {
+pub enum ObjectPathSelectionQuery {
     /// No direct relation between query and what is selected.
     #[default]
     None,
 
-    /// Perfect match, the user selected exactly what was queried with.
-    ExactObject,
+    /// The entire object is in the selection.
+    EntireObject,
 
-    /// An instance is selected and the query object is one of them.
-    InstanceInCurrentObject,
-
-    /// A group containing this object is selected.
-    BlueprintGroup,
+    /// Parts of the object path are part of the selection.
+    Partial(IntSet<IndexHash>),
 }
 
-impl SelectionQueryMatch {
-    pub fn is_none(&self) -> bool {
-        *self == SelectionQueryMatch::None
-    }
+impl ObjectPathSelectionQuery {
+    // pub fn is_none(&self) -> bool {
+    //     *self == ObjectPathSelectionQuery::None
+    // }
 
-    pub fn is_some(&self) -> bool {
-        *self != SelectionQueryMatch::None
+    // pub fn is_some(&self) -> bool {
+    //     *self != ObjectPathSelectionQuery::None
+    // }
+
+    pub fn is_index_in_selection(&self, index: IndexHash) -> bool {
+        match self {
+            ObjectPathSelectionQuery::None => false,
+            ObjectPathSelectionQuery::EntireObject => true,
+            ObjectPathSelectionQuery::Partial(selected_indices) => {
+                selected_indices.contains(&index)
+            }
+        }
     }
 }
 
@@ -111,8 +119,66 @@ pub struct MultiSelection {
 }
 
 impl MultiSelection {
-    pub fn is_selected(&self, instance: InstanceIdHash) -> SelectionQueryMatch {
-        SelectionQueryMatch::None
+    /// Whether an object path is part of the selection.
+    pub fn is_path_selected(&self, obj_path_hash: ObjPathHash) -> ObjectPathSelectionQuery {
+        let mut relevant_selected_indices = IntSet::default();
+
+        for selection in &self.selection {
+            match selection {
+                Selection::None => {}
+
+                Selection::MsgId(_) => {} // TODO(andreas): Should resolve
+
+                Selection::ObjTypePath(_) => {} // TODO(andreas): to be removed
+
+                Selection::Instance(inst) => {
+                    if inst.obj_path.hash() == &obj_path_hash {
+                        if let Some(index) = &inst.instance_index {
+                            // TODO(andreas): Hash should be precomputed upon setting the selection.
+                            relevant_selected_indices.insert(index.hash());
+                        } else {
+                            return ObjectPathSelectionQuery::EntireObject;
+                        }
+                    }
+                }
+
+                Selection::DataPath(data_path) => {
+                    if data_path.obj_path.hash() == &obj_path_hash {
+                        return ObjectPathSelectionQuery::EntireObject;
+                    }
+                }
+
+                Selection::Space(_) => {} // TODO(andreas): remove
+
+                // Selecting an entire spaceview doesn't mark each object as selected.
+                Selection::SpaceView(_) => {}
+
+                Selection::SpaceViewObjPath(_, obj_path) => {
+                    if obj_path.hash() == &obj_path_hash {
+                        return ObjectPathSelectionQuery::EntireObject;
+                    }
+                }
+
+                // TODO(andreas): Should resolve - "is path part of this group?"
+                Selection::DataBlueprintGroup(_, _) => {}
+            }
+        }
+
+        if relevant_selected_indices.is_empty() {
+            ObjectPathSelectionQuery::None
+        } else {
+            ObjectPathSelectionQuery::Partial(relevant_selected_indices)
+        }
+    }
+
+    /// Whether an instance is part of the selection.
+    ///
+    /// Should only be used if we're checking against a single instance.
+    /// Avoid this when checking large arrays of instances, instead use [`Self::is_path_selected`] on the object
+    /// and then [`ObjectPathSelectionQuery::is_index_in_selection`] for each index!
+    pub fn is_instance_selected(&self, instance: InstanceIdHash) -> bool {
+        self.is_path_selected(instance.obj_path_hash)
+            .is_index_in_selection(instance.instance_index_hash)
     }
 
     pub fn set_selection(&mut self, items: impl Iterator<Item = Selection>) {
@@ -120,9 +186,9 @@ impl MultiSelection {
         self.selection.extend(items);
     }
 
-    pub fn selection(&self) -> impl Iterator<Item = &Selection> {
-        self.selection.iter()
-    }
+    // pub fn selection(&self) -> impl Iterator<Item = &Selection> {
+    //     self.selection.iter()
+    // }
 
     pub fn is_empty(&self) -> bool {
         self.selection.is_empty()

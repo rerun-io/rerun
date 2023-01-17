@@ -1,5 +1,5 @@
 use re_data_store::{log_db::LogDb, InstanceId, ObjTypePath};
-use re_log_types::{DataPath, MsgId, ObjPath, TimeInt, Timeline};
+use re_log_types::{DataPath, ObjPath, TimeInt, Timeline};
 
 use crate::ui::{
     data_ui::DataUi, DataBlueprintGroupHandle, Preview, SelectionHistory, SpaceViewId,
