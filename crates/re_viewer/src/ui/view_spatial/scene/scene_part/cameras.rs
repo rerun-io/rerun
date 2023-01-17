@@ -195,15 +195,9 @@ impl CamerasPart {
         ];
 
         let (line_radius, line_color) = if instance == hovered_instance {
-            (
-                re_renderer::Size::new_points(2.0),
-                SceneSpatial::HOVER_COLOR,
-            )
+            (re_renderer::Size::THICK_LINE, SceneSpatial::HOVER_COLOR)
         } else {
-            (
-                re_renderer::Size::new_points(1.0),
-                SceneSpatial::CAMERA_COLOR,
-            )
+            (re_renderer::Size::NORMAL_LINE, SceneSpatial::CAMERA_COLOR)
         };
         scene
             .primitives

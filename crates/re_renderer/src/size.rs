@@ -18,6 +18,9 @@ impl Size {
     /// Like [`Size::AUTO`], but larger by view builder setting.
     pub const AUTO_LARGE: Self = Self(-f32::INFINITY);
 
+    pub const NORMAL_LINE: Self = Self(-1.0);
+    pub const THICK_LINE: Self = Self(-2.0);
+
     /// Creates a new size in scene units.
     ///
     /// Values passed must be finite positive.

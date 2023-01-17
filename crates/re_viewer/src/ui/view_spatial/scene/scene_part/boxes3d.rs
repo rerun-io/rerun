@@ -63,7 +63,8 @@ impl ScenePart for Boxes3DPartClassic {
                            stroke_width: Option<&f32>,
                            label: Option<&String>,
                            class_id: Option<&i32>| {
-                let mut line_radius = stroke_width.map_or(Size::AUTO, |w| Size::new_scene(w / 2.0));
+                let mut line_radius =
+                    stroke_width.map_or(Size::NORMAL_LINE, |w| Size::new_scene(w / 2.0));
 
                 let annotation_info = annotations
                     .class_description(class_id.map(|i| ClassId(*i as _)))
@@ -149,7 +150,7 @@ impl Boxes3DPart {
             let class_description = annotations.class_description(class_id);
             let annotation_info = class_description.annotation_info();
 
-            let mut radius = radius.map_or(Size::AUTO, |r| Size::new_scene(r.0));
+            let mut radius = radius.map_or(Size::NORMAL_LINE, |r| Size::new_scene(r.0));
             let mut color = to_ecolor(
                 annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color),
             );

@@ -241,7 +241,7 @@ impl SceneSpatial {
                 };
                 line_batch
                     .add_segment(*a, *b)
-                    .radius(Size::AUTO)
+                    .radius(Size::NORMAL_LINE)
                     .color(color)
                     .user_data(instance_hash);
             }

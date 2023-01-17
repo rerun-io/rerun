@@ -474,7 +474,7 @@ pub fn view_3d(
                         orbit_eye.orbit_center + *axis * half_line_length,
                     )
                 }))
-                .radius(Size::new_points(0.75))
+                .radius(Size::THICK_LINE)
                 .flags(re_renderer::renderer::LineStripFlags::NO_COLOR_GRADIENT)
                 // TODO(andreas): Fade this out.
                 .color(re_renderer::Color32::WHITE);
@@ -617,7 +617,7 @@ fn show_projections_from_2d_space(
                     };
                     let origin = ray.point_along(0.0);
                     let end = ray.point_along(length);
-                    let radius = Size::new_points(1.5);
+                    let radius = Size::THICK_LINE;
 
                     scene
                         .primitives

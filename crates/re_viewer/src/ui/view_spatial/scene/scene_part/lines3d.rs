@@ -74,7 +74,8 @@ impl ScenePart for Lines3DPartClassic {
                 let instance_hash =
                     instance_hash_if_interactive(obj_path, instance_index, properties.interactive);
 
-                let mut radius = stroke_width.map_or(Size::AUTO, |w| Size::new_scene(w / 2.0));
+                let mut radius =
+                    stroke_width.map_or(Size::NORMAL_LINE, |w| Size::new_scene(w / 2.0));
 
                 // TODO(andreas): support class ids for lines
                 let annotation_info = annotations.class_description(None).annotation_info();
@@ -149,7 +150,7 @@ impl Lines3DPart {
                 }
             };
 
-            let mut radius = radius.map_or(Size::AUTO, |r| Size::new_scene(r.0));
+            let mut radius = radius.map_or(Size::NORMAL_LINE, |r| Size::new_scene(r.0));
 
             // TODO(andreas): support class ids for lines
             let annotation_info = annotations.class_description(None).annotation_info();
