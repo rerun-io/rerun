@@ -171,23 +171,19 @@ fn data_ui(
             ui.weak("(nothing)");
         }
         Selection::MsgId(msg_id) => {
-            let msg = if let Some(msg) = ctx.log_db.get_log_msg(msg_id) {
-                msg
-            } else {
-                return;
-            };
-
-            match msg {
-                LogMsg::BeginRecordingMsg(msg) => msg.data_ui(ctx, ui, preview),
-                LogMsg::TypeMsg(msg) => msg.data_ui(ctx, ui, preview),
-                LogMsg::DataMsg(msg) => {
-                    msg.detailed_data_ui(ctx, ui, preview);
-                    ui.separator();
-                    msg.data_path.obj_path.data_ui(ctx, ui, preview)
-                }
-                LogMsg::PathOpMsg(msg) => msg.data_ui(ctx, ui, preview),
-                LogMsg::ArrowMsg(msg) => msg.data_ui(ctx, ui, preview),
-            };
+            if let Some(msg) = ctx.log_db.get_log_msg(msg_id) {
+                match msg {
+                    LogMsg::BeginRecordingMsg(msg) => msg.data_ui(ctx, ui, preview),
+                    LogMsg::TypeMsg(msg) => msg.data_ui(ctx, ui, preview),
+                    LogMsg::DataMsg(msg) => {
+                        msg.detailed_data_ui(ctx, ui, preview);
+                        ui.separator();
+                        msg.data_path.obj_path.data_ui(ctx, ui, preview)
+                    }
+                    LogMsg::PathOpMsg(msg) => msg.data_ui(ctx, ui, preview),
+                    LogMsg::ArrowMsg(msg) => msg.data_ui(ctx, ui, preview),
+                };
+            }
         }
         Selection::Instance(instance_id) => {
             instance_id.data_ui(ctx, ui, preview);
