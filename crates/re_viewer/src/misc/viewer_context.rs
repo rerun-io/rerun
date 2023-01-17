@@ -28,6 +28,22 @@ pub struct ViewerContext<'a> {
 }
 
 impl<'a> ViewerContext<'a> {
+    /// Show an [`MsgId`] and make it selectable
+    pub fn msg_id_button(&mut self, ui: &mut egui::Ui, msg_id: MsgId) -> egui::Response {
+        // TODO(emilk): common hover-effect
+        let response = ui
+            .selectable_label(self.selection().is_msg_id(&msg_id), msg_id.to_string())
+            .on_hover_ui(|ui| {
+                ui.label(format!("Message ID: {msg_id}"));
+                ui.separator();
+                crate::ui::selection_panel::msg_id_data_ui(ui, self, Preview::Small, &msg_id);
+            });
+        if response.clicked() {
+            self.set_selection(Selection::MsgId(msg_id));
+        }
+        response
+    }
+
     /// Show a obj path and make it selectable.
     pub fn obj_path_button(&mut self, ui: &mut egui::Ui, obj_path: &ObjPath) -> egui::Response {
         self.obj_path_button_to(ui, obj_path.to_string(), obj_path)
@@ -357,6 +373,14 @@ impl Selection {
 
     pub fn is_some(&self) -> bool {
         !matches!(self, Self::None)
+    }
+
+    pub fn is_msg_id(&self, needle: &MsgId) -> bool {
+        if let Self::MsgId(hay) = self {
+            hay == needle
+        } else {
+            false
+        }
     }
 
     pub fn is_instance_id(&self, needle: &InstanceId) -> bool {

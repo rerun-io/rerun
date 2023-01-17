@@ -1,5 +1,5 @@
 use re_data_store::{query_transform, ObjPath, ObjectProps};
-use re_log_types::{LogMsg, TimeType};
+use re_log_types::{LogMsg, MsgId, TimeType};
 
 use crate::{
     ui::{view_spatial::SpatialNavigationMode, Blueprint},
@@ -99,7 +99,7 @@ fn selection_ui(
         }
         Selection::MsgId(msg_id) => {
             ui.horizontal(|ui| {
-                ui.label("Message:");
+                ui.label("Message ID:");
                 ui.code(msg_id.to_string());
             });
         }
@@ -142,15 +142,17 @@ fn selection_ui(
                     .data_blueprint
                     .get_group_mut(*data_blueprint_group_handle)
                 {
-                    egui::Grid::new("data_blueprint_group").show(ui, |ui| {
-                        ui.label("Data Group:");
-                        ui.text_edit_singleline(&mut group.display_name);
-                        ui.end_row();
+                    egui::Grid::new("data_blueprint_group")
+                        .num_columns(2)
+                        .show(ui, |ui| {
+                            ui.label("Data Group:");
+                            ui.text_edit_singleline(&mut group.display_name);
+                            ui.end_row();
 
-                        ui.label("in Space View:");
-                        ctx.space_view_button_to(ui, &space_view.name, *space_view_id);
-                        ui.end_row();
-                    });
+                            ui.label("in Space View:");
+                            ctx.space_view_button_to(ui, &space_view.name, *space_view_id);
+                            ui.end_row();
+                        });
                 }
             }
         }
@@ -165,23 +167,11 @@ fn data_ui(
     preview: Preview,
 ) {
     match selection {
-        Selection::None | Selection::SpaceView(_) => {
+        Selection::None | Selection::SpaceView(_) | Selection::DataBlueprintGroup(_, _) => {
             ui.weak("(nothing)");
         }
         Selection::MsgId(msg_id) => {
-            if let Some(msg) = ctx.log_db.get_log_msg(msg_id) {
-                match msg {
-                    LogMsg::BeginRecordingMsg(msg) => msg.data_ui(ctx, ui, preview),
-                    LogMsg::TypeMsg(msg) => msg.data_ui(ctx, ui, preview),
-                    LogMsg::DataMsg(msg) => {
-                        msg.detailed_data_ui(ctx, ui, preview);
-                        ui.separator();
-                        msg.data_path.obj_path.data_ui(ctx, ui, preview)
-                    }
-                    LogMsg::PathOpMsg(msg) => msg.data_ui(ctx, ui, preview),
-                    LogMsg::ArrowMsg(msg) => msg.data_ui(ctx, ui, preview),
-                };
-            }
+            msg_id_data_ui(ui, ctx, preview, msg_id);
         }
         Selection::Instance(instance_id) => {
             instance_id.data_ui(ctx, ui, preview);
@@ -196,8 +186,37 @@ fn data_ui(
         Selection::SpaceViewObjPath(_, obj_path) => {
             obj_path.data_ui(ctx, ui, preview);
         }
-        Selection::DataBlueprintGroup(_, _) => {}
     }
+}
+
+pub(crate) fn msg_id_data_ui(
+    ui: &mut egui::Ui,
+    ctx: &mut ViewerContext<'_>,
+    preview: Preview,
+    msg_id: &MsgId,
+) {
+    if let Some(msg) = ctx.log_db.get_log_msg(msg_id) {
+        log_msg_data_ui(ctx, ui, preview, msg);
+    }
+}
+
+pub(crate) fn log_msg_data_ui(
+    ctx: &mut ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    preview: Preview,
+    msg: &LogMsg,
+) {
+    match msg {
+        LogMsg::BeginRecordingMsg(msg) => msg.data_ui(ctx, ui, preview),
+        LogMsg::TypeMsg(msg) => msg.data_ui(ctx, ui, preview),
+        LogMsg::DataMsg(msg) => {
+            msg.detailed_data_ui(ctx, ui, preview);
+            ui.separator();
+            msg.data_path.obj_path.data_ui(ctx, ui, preview)
+        }
+        LogMsg::PathOpMsg(msg) => msg.data_ui(ctx, ui, preview),
+        LogMsg::ArrowMsg(msg) => msg.data_ui(ctx, ui, preview),
+    };
 }
 
 /// What is the blueprint stuff for this selection?

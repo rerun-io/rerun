@@ -126,7 +126,7 @@ fn table_row(
             } = info;
 
             row.col(|ui| {
-                ui.label(msg_id.to_string());
+                ctx.msg_id_button(ui, *msg_id);
             });
             row.col(|ui| {
                 ui.monospace("BeginRecordingMsg");
@@ -152,7 +152,7 @@ fn table_row(
             } = msg;
 
             row.col(|ui| {
-                ui.label(msg_id.to_string());
+                ctx.msg_id_button(ui, *msg_id);
             });
             row.col(|ui| {
                 ui.monospace("TypeMsg");
@@ -178,7 +178,7 @@ fn table_row(
             } = msg;
 
             row.col(|ui| {
-                ui.label(msg_id.to_string());
+                ctx.msg_id_button(ui, *msg_id);
             });
             row.col(|ui| {
                 ui.monospace("DataMsg");
@@ -205,7 +205,7 @@ fn table_row(
             } = msg;
 
             row.col(|ui| {
-                ui.label(msg_id.to_string());
+                ctx.msg_id_button(ui, *msg_id);
             });
             row.col(|ui| {
                 ui.monospace("PathOpMsg");
@@ -232,7 +232,7 @@ fn table_row(
                 components,
             }) => {
                 row.col(|ui| {
-                    ui.label(msg_id.to_string());
+                    ctx.msg_id_button(ui, msg_id);
                 });
                 row.col(|ui| {
                     ui.monospace("ArrowMsg");
