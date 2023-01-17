@@ -97,7 +97,7 @@ impl DataUi for DataMsg {
             .num_columns(2)
             .show(ui, |ui| {
                 ui.monospace("data_path:");
-                ui.label(format!("{data_path}"));
+                ctx.data_path_button(ui, data_path);
                 ui.end_row();
 
                 ui.monospace("time_point:");
