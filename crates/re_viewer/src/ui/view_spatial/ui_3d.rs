@@ -398,7 +398,7 @@ pub fn view_3d(
             pick.instance_hash
                 .resolve(&ctx.log_db.obj_db)
                 // TODO(andreas): Associate current space view
-                .map(|instance| Selection::Instance(instance))
+                .map(Selection::Instance)
         }));
 
         project_onto_other_spaces(ctx, &scene.space_cameras, &mut state.state_3d, space);

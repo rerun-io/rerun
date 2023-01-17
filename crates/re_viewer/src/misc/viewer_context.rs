@@ -313,8 +313,7 @@ impl RecordingConfig {
 
         self.hovered_space_previous_frame =
             std::mem::replace(&mut self.hovered_space_this_frame, HoveredSpace::None);
-        self.hovered_previous_frame =
-            std::mem::replace(&mut self.hovered_this_frame, Default::default());
+        self.hovered_previous_frame = std::mem::take(&mut self.hovered_this_frame);
     }
 
     /// Sets the current selection, updating history as needed.

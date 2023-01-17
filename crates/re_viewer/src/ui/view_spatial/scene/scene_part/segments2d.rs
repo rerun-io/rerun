@@ -1,4 +1,4 @@
-use re_data_store::{query::visit_type_data_2, FieldName, InstanceIdHash};
+use re_data_store::{query::visit_type_data_2, FieldName};
 use re_log_types::{DataVec, IndexHash, MsgId, ObjectType};
 use re_renderer::Size;
 

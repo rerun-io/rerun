@@ -125,6 +125,7 @@ impl MultiSelection {
         let mut relevant_selected_indices = IntSet::default();
 
         for selection in &self.selection {
+            #[allow(clippy::match_same_arms)]
             match selection {
                 Selection::None => {}
 

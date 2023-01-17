@@ -132,7 +132,6 @@ impl Boxes3DPart {
             .batch("box 3d")
             .world_from_obj(world_from_obj);
 
-        dbg!(ctx.hovered());
         let highlighted_paths = ctx.hovered().is_path_selected(ent_path.hash());
 
         let visitor = |instance: Instance,

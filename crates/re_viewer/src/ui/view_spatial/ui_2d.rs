@@ -425,7 +425,7 @@ fn view_2d_scrollable(
                 pick.instance_hash
                     .resolve(&ctx.log_db.obj_db)
                     // TODO(andreas): Associate current space view
-                    .map(|instance| Selection::Instance(instance))
+                    .map(Selection::Instance)
             }));
         }
     }
