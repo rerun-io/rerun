@@ -1,4 +1,3 @@
-import logging
 from typing import Any, Iterable, Optional, Protocol, Union
 
 import numpy as np
@@ -10,7 +9,6 @@ from rerun import bindings
 
 __all__ = [
     "log_tensor",
-    "TensorType",
 ]
 
 
@@ -92,7 +90,6 @@ def _log_tensor(
     if EXP_ARROW.arrow_log_gate():
         from rerun.components.tensor import TensorArray
 
-        comps = {}
-        comps["rerun.tensor"] = TensorArray.from_numpy(tensor, names)
+        comps = {"rerun.tensor": TensorArray.from_numpy(tensor, names, meaning)}
 
         bindings.log_arrow_msg(obj_path, components=comps, timeless=timeless)
