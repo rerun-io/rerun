@@ -2,9 +2,8 @@ use std::{
     collections::HashMap,
     fs::{File, OpenOptions},
     io::{BufRead, BufReader, Seek, Write},
-    path::{Path, PathBuf},
     thread::JoinHandle,
-    time::{Duration, Instant},
+    time::Duration,
 };
 
 use crossbeam::{
@@ -15,9 +14,8 @@ use reqwest::blocking::Client as HttpClient;
 use time::OffsetDateTime;
 
 use re_log::{error, trace};
-use uuid::Uuid;
 
-use crate::{Config, Event, Property};
+use crate::{Config, Event, PostHogSink, Property};
 
 // TODO: in general, deal with broken anlytics files (whether it's the file as a whole or just some
 // lines in there).
@@ -68,11 +66,8 @@ impl Drop for EventPipeline {
     }
 }
 
-// TODO:
-// - dump to storage (file on native, localstore on web)
-
 impl EventPipeline {
-    pub fn new(config: &Config, tick: Duration) -> Result<Self, PipelineError> {
+    pub fn new(config: &Config, tick: Duration, sink: PostHogSink) -> Result<Self, PipelineError> {
         let (event_tx, event_rx) = channel::unbounded(); // TODO: bounded?
 
         // TODO: try to send on shutdown as best as possible
@@ -95,8 +90,6 @@ impl EventPipeline {
         let session_id = config.session_id.to_string();
         let is_first_run = config.is_first_run();
 
-        let client = PostHogClient::new()?;
-
         let ticker_rx = crossbeam::channel::tick(tick);
 
         // TODO: when do we join this one? do we?
@@ -111,7 +104,7 @@ impl EventPipeline {
                     recv(ticker_rx) -> _elapsed => {
                         if !is_first_run {
                             trace!(tick_id, ?session_file_path, %analytics_id, %session_id, "flushing analytics");
-                            flush_events(tick_id, &mut session_file, &analytics_id, &session_id, &client);
+                            flush_events(tick_id, &mut session_file, &analytics_id, &session_id, &sink);
                         }
                         tick_id += 1;
                     },
@@ -170,7 +163,7 @@ fn flush_events(
     session_file: &mut File,
     analytics_id: &str,
     session_id: &str,
-    client: &PostHogClient,
+    sink: &PostHogSink,
 ) {
     if let Err(err) = session_file.seek(std::io::SeekFrom::Start(0)) {
         // TODO: ???
@@ -197,22 +190,10 @@ fn flush_events(
         }).collect::<Vec<_>>();
 
     if events.is_empty() {
-        trace!(
-            tick_id,
-            %analytics_id,
-            %session_id,
-            "cancelling flush: no events"
-        );
         return;
     }
 
-    let events = events
-        .iter()
-        .map(|event| PostHogEvent::from_event(&analytics_id, &session_id, event))
-        .collect::<Vec<_>>();
-    let batch = PostHogBatch::from_events(&events);
-
-    if let Err(err) = client.send(&batch) {
+    if let Err(err) = sink.send(analytics_id, session_id, &events) {
         error!(%err, "failed to send analytics to PostHog, will try again later");
         return;
     }
@@ -220,147 +201,12 @@ fn flush_events(
         tick_id,
         %analytics_id,
         %session_id,
-        nb_events = batch.batch.len(),
+        nb_events = events.len(),
         "batch successfully sent to PostHog"
     );
 
     if let Err(err) = session_file.set_len(0) {
         error!(%err, "couldn't truncate analytics data file");
         // TODO: wat now?
-    }
-}
-
-// ---
-
-// TODO(cmc): abstract away when comes the day where we want to re-use the pipeline for another
-// provider.
-// TODO: actually maybe abstract away right now at this point...
-
-// TODO: view event
-
-#[derive(Debug, serde::Serialize)]
-#[serde(untagged)]
-enum PostHogEvent<'a> {
-    Capture(PostHogCaptureEvent<'a>),
-    Identify(PostHogIdentifyEvent<'a>),
-}
-
-impl<'a> PostHogEvent<'a> {
-    fn from_event(analytics_id: &'a str, session_id: &'a str, event: &'a Event) -> Self {
-        let properties = event.props.iter().map(|(name, value)| {
-            (
-                name.as_str(),
-                match value {
-                    &Property::Integer(v) => v.into(),
-                    &Property::Float(v) => v.into(),
-                    Property::String(v) => v.as_str().into(),
-                    &Property::Bool(v) => v.into(),
-                },
-            )
-        });
-
-        match event.kind {
-            crate::EventKind::Append => Self::Capture(PostHogCaptureEvent {
-                timestamp: event.time_utc,
-                event: event.name.as_ref(),
-                distinct_id: analytics_id,
-                properties: properties
-                    .chain([
-                        // TODO: surely there has to be some nicer way of dealing with sessions...
-                        ("session_id", session_id.into()),
-                    ])
-                    // TODO: application_id (hashed)
-                    // TODO: recording_id (hashed)
-                    // (unless these belong only to viewer-opened?)
-                    .collect(),
-            }),
-            crate::EventKind::Update => Self::Identify(PostHogIdentifyEvent {
-                timestamp: event.time_utc,
-                event: "$identify",
-                distinct_id: analytics_id,
-                properties: [("session_id", session_id.into())].into(),
-                set: properties.collect(),
-            }),
-        }
-    }
-}
-
-// See https://posthog.com/docs/api/post-only-endpoints#single-event.
-#[derive(Debug, serde::Serialize)]
-struct PostHogCaptureEvent<'a> {
-    #[serde(with = "::time::serde::rfc3339")]
-    timestamp: OffsetDateTime,
-    event: &'a str,
-    distinct_id: &'a str,
-    properties: HashMap<&'a str, serde_json::Value>,
-}
-
-#[derive(Debug, serde::Serialize)]
-struct PostHogIdentifyEvent<'a> {
-    #[serde(with = "::time::serde::rfc3339")]
-    timestamp: OffsetDateTime,
-    event: &'a str,
-    distinct_id: &'a str,
-    properties: HashMap<&'a str, serde_json::Value>,
-    #[serde(rename = "$set")]
-    set: HashMap<&'a str, serde_json::Value>,
-}
-
-// TODO: no idea how we're supposed to deal with some entity actively trashing our analytics?
-// only way I can think of is to go through our own server first and have asymetric encryption...
-
-const PUBLIC_POSTHOG_PROJECT_KEY: &str = "phc_XD1QbqTGdPJbzdVCbvbA9zGOG38wJFTl8RAwqMwBvTY";
-
-// See https://posthog.com/docs/api/post-only-endpoints#batch-events.
-#[derive(Debug, serde::Serialize)]
-struct PostHogBatch<'a> {
-    api_key: &'static str,
-    batch: &'a [PostHogEvent<'a>],
-}
-
-impl<'a> PostHogBatch<'a> {
-    fn from_events(events: &'a [PostHogEvent<'a>]) -> Self {
-        Self {
-            api_key: PUBLIC_POSTHOG_PROJECT_KEY,
-            batch: events,
-        }
-    }
-}
-
-struct PostHogClient {
-    client: HttpClient,
-}
-
-impl PostHogClient {
-    fn new() -> Result<Self, PipelineError> {
-        use reqwest::header;
-        let mut headers = header::HeaderMap::new();
-        headers.insert(
-            header::CONTENT_TYPE,
-            header::HeaderValue::from_static("application/json"),
-        );
-
-        let client = HttpClient::builder()
-            .timeout(Duration::from_secs(5))
-            .connect_timeout(Duration::from_secs(5))
-            .pool_idle_timeout(Duration::from_secs(120))
-            .default_headers(headers)
-            .build()?;
-
-        Ok(Self { client })
-    }
-
-    // TODO: blocking!
-    fn send(&self, batch: &PostHogBatch<'_>) -> Result<(), PipelineError> {
-        const URL: &str = "https://eu.posthog.com/capture";
-
-        eprintln!("{}", serde_json::to_string_pretty(&batch)?);
-        let resp = self
-            .client
-            .post(URL)
-            .body(serde_json::to_vec(&batch)?)
-            .send()?;
-
-        resp.error_for_status().map(|_| ()).map_err(Into::into)
     }
 }

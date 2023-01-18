@@ -88,6 +88,9 @@ pub enum AnalyticsError {
     ConfigError(#[from] ConfigError),
 
     #[error(transparent)]
+    SinkError(#[from] SinkError),
+
+    #[error(transparent)]
     PipelineError(#[from] PipelineError),
 }
 
@@ -110,7 +113,8 @@ impl Analytics {
             config.save()?;
         }
 
-        let pipeline = EventPipeline::new(&config, tick)?;
+        let sink = PostHogSink::new()?;
+        let pipeline = EventPipeline::new(&config, tick, sink)?;
 
         if config.is_first_run() {
             pipeline.record(Event::update_metadata());
@@ -136,8 +140,13 @@ pub use self::config::{Config, ConfigError};
 
 pub mod events;
 
+// TODO: web pipeline
 mod pipeline;
 pub use self::pipeline::{EventPipeline, PipelineError};
+
+// TODO: web sink
+mod sink;
+pub use self::sink::{PostHogSink, SinkError};
 
 pub mod cli;
 
