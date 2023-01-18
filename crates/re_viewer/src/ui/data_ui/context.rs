@@ -8,17 +8,21 @@ use super::DataUi;
 
 const TABLE_SCROLL_AREA_HEIGHT: f32 = 500.0; // add scroll-bars when we get to this height
 
-/// Previously `annotation_context_ui()`
 impl DataUi for AnnotationContext {
     fn data_ui(
         &self,
         _ctx: &mut crate::misc::ViewerContext<'_>,
         ui: &mut egui::Ui,
         preview: crate::ui::Preview,
-    ) -> egui::Response {
-        if preview == Preview::Small {
-            return ui.label(format!("{} classes", self.class_map.len()));
+    ) {
+        if preview != Preview::Medium {
+            ui.label(format!(
+                "AnnotationContext with {} classes",
+                self.class_map.len()
+            ));
+            return;
         }
+
         let row_height = re_ui::ReUi::table_line_height();
         ui.vertical(|ui| {
             annotation_info_table_ui(
@@ -98,8 +102,7 @@ impl DataUi for AnnotationContext {
                     });
                 }
             }
-        })
-        .response
+        });
     }
 }
 

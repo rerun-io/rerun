@@ -102,6 +102,7 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
 
     // Add stripes to grids and tables?
     egui_style.visuals.striped = false;
+    egui_style.visuals.faint_bg_color = Color32::from_additive_luminance(8);
 
     egui_style.debug.show_blocking_widget = false; // turn this on to debug interaction problems
 

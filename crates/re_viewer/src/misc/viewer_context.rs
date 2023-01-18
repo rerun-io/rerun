@@ -1,4 +1,4 @@
-use re_data_store::{log_db::LogDb, InstanceId, ObjTypePath};
+use re_data_store::{log_db::LogDb, InstanceId};
 use re_log_types::{DataPath, MsgId, ObjPath, TimeInt, Timeline};
 
 use crate::ui::{
@@ -28,26 +28,18 @@ pub struct ViewerContext<'a> {
 }
 
 impl<'a> ViewerContext<'a> {
-    /// Show a type path and make it selectable.
-    pub fn type_path_button(
-        &mut self,
-        ui: &mut egui::Ui,
-        type_path: &ObjTypePath,
-    ) -> egui::Response {
-        self.type_path_button_to(ui, type_path.to_string(), type_path)
-    }
-
-    /// Show a type path and make it selectable.
-    pub fn type_path_button_to(
-        &mut self,
-        ui: &mut egui::Ui,
-        text: impl Into<egui::WidgetText>,
-        type_path: &ObjTypePath,
-    ) -> egui::Response {
-        // TODO(emilk): common hover-effect of all buttons for the same type_path!
-        let response = ui.selectable_label(self.selection().is_type_path(type_path), text);
+    /// Show an [`MsgId`] and make it selectable
+    pub fn msg_id_button(&mut self, ui: &mut egui::Ui, msg_id: MsgId) -> egui::Response {
+        // TODO(emilk): common hover-effect
+        let response = ui
+            .selectable_label(self.selection().is_msg_id(&msg_id), msg_id.to_string())
+            .on_hover_ui(|ui| {
+                ui.label(format!("Message ID: {msg_id}"));
+                ui.separator();
+                msg_id.data_ui(self, ui, Preview::Small);
+            });
         if response.clicked() {
-            self.set_selection(Selection::ObjTypePath(type_path.clone()));
+            self.set_selection(Selection::MsgId(msg_id));
         }
         response
     }
@@ -205,10 +197,19 @@ impl<'a> ViewerContext<'a> {
     }
 
     pub fn timeline_button(&mut self, ui: &mut egui::Ui, timeline: &Timeline) -> egui::Response {
+        self.timeline_button_to(ui, timeline.name().to_string(), timeline)
+    }
+
+    pub fn timeline_button_to(
+        &mut self,
+        ui: &mut egui::Ui,
+        text: impl Into<egui::WidgetText>,
+        timeline: &Timeline,
+    ) -> egui::Response {
         let is_selected = self.rec_cfg.time_ctrl.timeline() == timeline;
 
         let response = ui
-            .selectable_label(is_selected, timeline.name().as_str())
+            .selectable_label(is_selected, text)
             .on_hover_text("Click to switch to this timeline");
         if response.clicked() {
             self.rec_cfg.time_ctrl.set_timeline(*timeline);
@@ -346,10 +347,8 @@ impl Default for Options {
 pub enum Selection {
     None,
     MsgId(MsgId),
-    ObjTypePath(ObjTypePath),
     Instance(InstanceId),
     DataPath(DataPath),
-    Space(ObjPath),
     SpaceView(crate::ui::SpaceViewId),
     /// An object within a space-view.
     SpaceViewObjPath(crate::ui::SpaceViewId, ObjPath),
@@ -361,10 +360,8 @@ impl std::fmt::Display for Selection {
         match self {
             Selection::None => write!(f, "<empty>"),
             Selection::MsgId(s) => s.fmt(f),
-            Selection::ObjTypePath(s) => s.fmt(f),
             Selection::Instance(s) => s.fmt(f),
             Selection::DataPath(s) => s.fmt(f),
-            Selection::Space(s) => s.fmt(f),
             Selection::SpaceView(s) => write!(f, "{s:?}"),
             Selection::SpaceViewObjPath(sid, path) => write!(f, "({sid:?}, {path})"),
             Selection::DataBlueprintGroup(sid, handle) => write!(f, "({sid:?}, {handle:?})"),
@@ -387,8 +384,8 @@ impl Selection {
         !matches!(self, Self::None)
     }
 
-    pub fn is_type_path(&self, needle: &ObjTypePath) -> bool {
-        if let Self::ObjTypePath(hay) = self {
+    pub fn is_msg_id(&self, needle: &MsgId) -> bool {
+        if let Self::MsgId(hay) = self {
             hay == needle
         } else {
             false
@@ -416,6 +413,31 @@ impl Selection {
             hay == needle
         } else {
             false
+        }
+    }
+
+    /// If `false`, the selection is referring to data that is no longer present.
+    pub(crate) fn is_valid(
+        &self,
+        ctx: &ViewerContext<'_>,
+        blueprint: &crate::ui::Blueprint,
+    ) -> bool {
+        match self {
+            Selection::None | Selection::Instance(_) | Selection::DataPath(_) => true,
+            Selection::MsgId(msg_id) => ctx.log_db.get_log_msg(msg_id).is_some(),
+            Selection::SpaceView(space_view_id) | Selection::SpaceViewObjPath(space_view_id, _) => {
+                blueprint.viewport.space_view(space_view_id).is_some()
+            }
+            Selection::DataBlueprintGroup(space_view_id, data_blueprint_group_handle) => {
+                if let Some(space_view) = blueprint.viewport.space_view(space_view_id) {
+                    space_view
+                        .data_blueprint
+                        .get_group(*data_blueprint_group_handle)
+                        .is_some()
+                } else {
+                    false
+                }
+            }
         }
     }
 }
