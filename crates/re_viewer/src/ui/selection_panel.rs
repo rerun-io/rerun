@@ -49,11 +49,12 @@ impl SelectionPanel {
     ) {
         crate::profile_function!();
 
-        if ctx
-            .selection()
-            .selected()
-            .iter()
-            .all(|s| !s.is_valid(ctx, blueprint))
+        if !ctx.selection().is_empty()
+            && ctx
+                .selection()
+                .selected()
+                .iter()
+                .all(|s| !s.is_valid(ctx, blueprint))
         {
             // TODO(emilk): also prune history
             ctx.clear_selection();

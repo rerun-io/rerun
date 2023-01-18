@@ -280,6 +280,7 @@ impl<'a> ViewerContext<'a> {
 
     /// Select currently hovered objects.
     pub fn add_hovered_to_selection(&mut self) {
+        #[allow(clippy::needless_collect)]
         let combined = self
             .selection()
             .selected()

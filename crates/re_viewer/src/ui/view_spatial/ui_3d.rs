@@ -406,7 +406,7 @@ pub fn view_3d(
 
     // Clicking the last hovered object.
     // TODO(andreas): Should this happen in a single global location?
-    if ui.input().pointer.primary_clicked() {
+    if response.clicked() {
         if ui.input().modifiers.ctrl {
             ctx.add_hovered_to_selection();
         } else {
