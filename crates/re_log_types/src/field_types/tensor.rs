@@ -6,6 +6,7 @@ use arrow2_convert::deserialize::ArrowDeserialize;
 use arrow2_convert::field::ArrowField;
 use arrow2_convert::{serialize::ArrowSerialize, ArrowDeserialize, ArrowField, ArrowSerialize};
 
+use crate::TensorElement;
 use crate::{msg_bundle::Component, ClassicTensor, TensorDataStore};
 
 pub trait TensorTrait {
@@ -14,6 +15,8 @@ pub trait TensorTrait {
     fn num_dim(&self) -> usize;
     fn is_shaped_like_an_image(&self) -> bool;
     fn is_vector(&self) -> bool;
+    fn meaning(&self) -> TensorDataMeaning;
+    fn get(&self, index: &[u64]) -> Option<TensorElement>;
 }
 
 // ----------------------------------------------------------------------------
@@ -329,6 +332,36 @@ impl TensorTrait for Tensor {
     fn is_vector(&self) -> bool {
         let shape = &self.shape;
         shape.len() == 1 || { shape.len() == 2 && (shape[0].size == 1 || shape[1].size == 1) }
+    }
+
+    fn meaning(&self) -> TensorDataMeaning {
+        self.meaning
+    }
+
+    fn get(&self, index: &[u64]) -> Option<TensorElement> {
+        let mut stride: usize = 1;
+        let mut offset: usize = 0;
+        for (TensorDimension { size, .. }, index) in self.shape.iter().zip(index).rev() {
+            if size <= index {
+                return None;
+            }
+            offset += *index as usize * stride;
+            stride *= *size as usize;
+        }
+
+        match &self.data {
+            TensorData::U8(buf) => Some(TensorElement::U8(buf[offset])),
+            TensorData::U16(buf) => Some(TensorElement::U16(buf[offset])),
+            TensorData::U32(buf) => Some(TensorElement::U32(buf[offset])),
+            TensorData::U64(buf) => Some(TensorElement::U64(buf[offset])),
+            TensorData::I8(buf) => Some(TensorElement::I8(buf[offset])),
+            TensorData::I16(buf) => Some(TensorElement::I16(buf[offset])),
+            TensorData::I32(buf) => Some(TensorElement::I32(buf[offset])),
+            TensorData::I64(buf) => Some(TensorElement::I64(buf[offset])),
+            TensorData::F32(buf) => Some(TensorElement::F32(buf[offset])),
+            TensorData::F64(buf) => Some(TensorElement::F64(buf[offset])),
+            TensorData::JPEG(_) => None, // Too expensive to unpack here.
+        }
     }
 }
 

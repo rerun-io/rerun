@@ -1,15 +1,18 @@
 #import <../global_bindings.wgsl>
 #import <camera.wgsl>
 
-fn unresolved_size_to_world(_unresolved_size: f32, camera_distance: f32, auto_size_factor: f32) -> f32 {
+
+
+fn unresolved_size_to_world(_unresolved_size: f32, camera_distance: f32, auto_size: f32) -> f32 {
     // Resolve auto size.
     var unresolved_size: f32;
     if _unresolved_size == inf() {
         // positive inf for small auto size
-        unresolved_size = frame.auto_size * auto_size_factor;
+        unresolved_size = auto_size;
     } else if _unresolved_size == -inf() {
         // negative inf for large auto size
-        unresolved_size = frame.auto_size_large * auto_size_factor;
+        let large_factor = 2.0;
+        unresolved_size = auto_size * large_factor;
     } else {
         unresolved_size = _unresolved_size;
     }

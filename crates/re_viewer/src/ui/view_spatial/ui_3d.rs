@@ -365,12 +365,12 @@ pub fn view_3d(
                             instance_id.data_ui(ctx, ui, Preview::Small);
 
                             let tensor_view = ctx.cache.image.get_view_with_annotations(
-                                &image.tensor,
+                                image.tensor.as_ref(),
                                 &image.annotations,
                                 ctx.render_ctx,
                             );
 
-                            if let [h, w, ..] = image.tensor.shape() {
+                            if let [h, w, ..] = image.tensor.as_ref().shape() {
                                 ui.separator();
                                 ui.horizontal(|ui| {
                                     let (w, h) = (w.size as f32, h.size as f32);
@@ -493,7 +493,7 @@ pub fn view_3d(
         &scene,
         ctx.render_ctx,
         &space.to_string(),
-        state.auto_size_config(),
+        state.auto_size_config(rect.size()),
     );
 }
 
@@ -504,7 +504,7 @@ fn paint_view(
     scene: &SceneSpatial,
     render_ctx: &mut RenderContext,
     name: &str,
-    auto_size_config: re_renderer::Size,
+    auto_size_config: re_renderer::AutoSizeConfig,
 ) {
     crate::profile_function!();
 
@@ -571,7 +571,6 @@ fn paint_view(
 
         pixels_from_point,
         auto_size_config,
-        auto_size_large_factor: 1.5,
     };
 
     let Ok(callback) = create_scene_paint_callback(

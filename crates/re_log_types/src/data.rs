@@ -924,6 +924,14 @@ impl field_types::TensorTrait for ClassicTensor {
     fn is_vector(&self) -> bool {
         self.is_vector()
     }
+
+    fn meaning(&self) -> field_types::TensorDataMeaning {
+        self.meaning
+    }
+
+    fn get(&self, index: &[u64]) -> Option<TensorElement> {
+        self.get(index)
+    }
 }
 
 impl ClassicTensor {
