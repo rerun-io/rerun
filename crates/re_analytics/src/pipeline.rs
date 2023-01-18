@@ -99,7 +99,6 @@ impl EventPipeline {
 
         let ticker_rx = crossbeam::channel::tick(tick);
 
-        // TODO: maybe we do it all in one thread tho?
         // TODO: when do we join this one? do we?
         // TODO: name the thread too
         let thread_handle = std::thread::spawn(move || {
@@ -213,7 +212,7 @@ fn flush_events(
         .collect::<Vec<_>>();
     let batch = PostHogBatch::from_events(&events);
 
-    if let Err(err) = client.send(dbg!(&batch)) {
+    if let Err(err) = client.send(&batch) {
         error!(%err, "failed to send analytics to PostHog, will try again later");
         return;
     }
@@ -237,11 +236,58 @@ fn flush_events(
 // provider.
 // TODO: actually maybe abstract away right now at this point...
 
-// TODO: events other than capture, especially views
+// TODO: view event
+
+#[derive(Debug, serde::Serialize)]
+#[serde(untagged)]
+enum PostHogEvent<'a> {
+    Capture(PostHogCaptureEvent<'a>),
+    Identify(PostHogIdentifyEvent<'a>),
+}
+
+impl<'a> PostHogEvent<'a> {
+    fn from_event(analytics_id: &'a str, session_id: &'a str, event: &'a Event) -> Self {
+        let properties = event.props.iter().map(|(name, value)| {
+            (
+                name.as_str(),
+                match value {
+                    &Property::Integer(v) => v.into(),
+                    &Property::Float(v) => v.into(),
+                    Property::String(v) => v.as_str().into(),
+                    &Property::Bool(v) => v.into(),
+                },
+            )
+        });
+
+        match event.kind {
+            crate::EventKind::Append => Self::Capture(PostHogCaptureEvent {
+                timestamp: event.time_utc,
+                event: event.name.as_ref(),
+                distinct_id: analytics_id,
+                properties: properties
+                    .chain([
+                        // TODO: surely there has to be some nicer way of dealing with sessions...
+                        ("session_id", session_id.into()),
+                    ])
+                    // TODO: application_id (hashed)
+                    // TODO: recording_id (hashed)
+                    // (unless these belong only to viewer-opened?)
+                    .collect(),
+            }),
+            crate::EventKind::Update => Self::Identify(PostHogIdentifyEvent {
+                timestamp: event.time_utc,
+                event: "$identify",
+                distinct_id: analytics_id,
+                properties: [("session_id", session_id.into())].into(),
+                set: properties.collect(),
+            }),
+        }
+    }
+}
 
 // See https://posthog.com/docs/api/post-only-endpoints#single-event.
 #[derive(Debug, serde::Serialize)]
-struct PostHogEvent<'a> {
+struct PostHogCaptureEvent<'a> {
     #[serde(with = "::time::serde::rfc3339")]
     timestamp: OffsetDateTime,
     event: &'a str,
@@ -249,38 +295,15 @@ struct PostHogEvent<'a> {
     properties: HashMap<&'a str, serde_json::Value>,
 }
 
-impl<'a> PostHogEvent<'a> {
-    fn from_event(analytics_id: &'a str, session_id: &'a str, event: &'a Event) -> Self {
-        let properties = event
-            .props
-            .iter()
-            .map(|(name, value)| {
-                (
-                    name.as_str(),
-                    match value {
-                        &Property::Integer(v) => v.into(),
-                        &Property::Float(v) => v.into(),
-                        Property::String(v) => v.as_str().into(),
-                        &Property::Bool(v) => v.into(),
-                    },
-                )
-            })
-            .chain([
-                // TODO: surely there has to be some nicer way of dealing with sessions...
-                ("session_id", session_id.into()),
-            ])
-            // TODO: application_id (hashed)
-            // TODO: recording_id (hashed)
-            // (unless these belong only to viewer-opened?)
-            .collect();
-
-        Self {
-            timestamp: event.time_utc,
-            event: event.name.as_ref(),
-            distinct_id: analytics_id,
-            properties,
-        }
-    }
+#[derive(Debug, serde::Serialize)]
+struct PostHogIdentifyEvent<'a> {
+    #[serde(with = "::time::serde::rfc3339")]
+    timestamp: OffsetDateTime,
+    event: &'a str,
+    distinct_id: &'a str,
+    properties: HashMap<&'a str, serde_json::Value>,
+    #[serde(rename = "$set")]
+    set: HashMap<&'a str, serde_json::Value>,
 }
 
 // TODO: no idea how we're supposed to deal with some entity actively trashing our analytics?
@@ -331,6 +354,7 @@ impl PostHogClient {
     fn send(&self, batch: &PostHogBatch<'_>) -> Result<(), PipelineError> {
         const URL: &str = "https://eu.posthog.com/capture";
 
+        eprintln!("{}", serde_json::to_string_pretty(&batch)?);
         let resp = self
             .client
             .post(URL)

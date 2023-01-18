@@ -7,6 +7,12 @@ use time::OffsetDateTime;
 
 // ---
 
+#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
+pub enum EventKind {
+    Append,
+    Update,
+}
+
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Event {
     // NOTE: serialized in a human-readable format as we want end users to be able to inspect the
@@ -14,15 +20,25 @@ pub struct Event {
     // TODO: is UTC fine? do we care about user's tz?
     #[serde(with = "::time::serde::rfc3339")]
     pub time_utc: OffsetDateTime,
-    // TODO: the static string forces people to list it as part of src/events.
+    pub kind: EventKind,
     pub name: Cow<'static, str>,
     pub props: HashMap<String, Property>,
 }
 
 impl Event {
-    pub fn new(name: Cow<'static, str>) -> Self {
+    pub fn append(name: Cow<'static, str>) -> Self {
         Self {
             time_utc: OffsetDateTime::now_utc(),
+            kind: EventKind::Append,
+            name,
+            props: Default::default(),
+        }
+    }
+
+    pub fn update(name: Cow<'static, str>) -> Self {
+        Self {
+            time_utc: OffsetDateTime::now_utc(),
+            kind: EventKind::Update,
             name,
             props: Default::default(),
         }
@@ -80,6 +96,7 @@ pub struct Analytics {
     pipeline: EventPipeline,
 }
 
+// TODO: hashed application_id + recording_id
 impl Analytics {
     // TODO: fill with logs
     pub fn new(tick: Duration) -> Result<Self, AnalyticsError> {
@@ -94,6 +111,10 @@ impl Analytics {
         }
 
         let pipeline = EventPipeline::new(&config, tick)?;
+
+        if config.is_first_run() {
+            pipeline.record(Event::update_metadata());
+        }
 
         Ok(Self { config, pipeline })
     }
