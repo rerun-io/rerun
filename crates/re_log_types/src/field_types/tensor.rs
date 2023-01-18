@@ -348,19 +348,19 @@ impl TensorTrait for Tensor {
             stride *= *size as usize;
         }
 
-        Some(match &self.data {
-            TensorData::U8(buf) => TensorElement::U8(buf[offset]),
-            TensorData::U16(buf) => TensorElement::U16(buf[offset]),
-            TensorData::U32(buf) => TensorElement::U32(buf[offset]),
-            TensorData::U64(buf) => TensorElement::U64(buf[offset]),
-            TensorData::I8(buf) => TensorElement::I8(buf[offset]),
-            TensorData::I16(buf) => TensorElement::I16(buf[offset]),
-            TensorData::I32(buf) => TensorElement::I32(buf[offset]),
-            TensorData::I64(buf) => TensorElement::I64(buf[offset]),
-            TensorData::F32(buf) => TensorElement::F32(buf[offset]),
-            TensorData::F64(buf) => TensorElement::F64(buf[offset]),
-            TensorData::JPEG(_) => todo!(),
-        })
+        match &self.data {
+            TensorData::U8(buf) => Some(TensorElement::U8(buf[offset])),
+            TensorData::U16(buf) => Some(TensorElement::U16(buf[offset])),
+            TensorData::U32(buf) => Some(TensorElement::U32(buf[offset])),
+            TensorData::U64(buf) => Some(TensorElement::U64(buf[offset])),
+            TensorData::I8(buf) => Some(TensorElement::I8(buf[offset])),
+            TensorData::I16(buf) => Some(TensorElement::I16(buf[offset])),
+            TensorData::I32(buf) => Some(TensorElement::I32(buf[offset])),
+            TensorData::I64(buf) => Some(TensorElement::I64(buf[offset])),
+            TensorData::F32(buf) => Some(TensorElement::F32(buf[offset])),
+            TensorData::F64(buf) => Some(TensorElement::F64(buf[offset])),
+            TensorData::JPEG(_) => None, // Too expensive to unpack here.
+        }
     }
 }
 
