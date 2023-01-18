@@ -406,11 +406,13 @@ pub fn view_3d(
 
     // Clicking the last hovered object.
     // TODO(andreas): Should this happen in a single global location?
-    // TODO(andreas): Multiselect.
-    if response.clicked() && !ctx.hovered().is_empty() {
-        ctx.set_single_selection(ctx.hovered().primary().unwrap().clone());
+    if ui.input().pointer.primary_clicked() {
+        if ui.input().modifiers.ctrl {
+            ctx.add_hovered_to_selection();
+        } else {
+            ctx.select_hovered();
+        }
     }
-
     // Double click changes camera
     if response.double_clicked() {
         state.state_3d.tracked_camera = None;

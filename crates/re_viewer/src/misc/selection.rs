@@ -7,7 +7,7 @@ use crate::ui::{DataBlueprintGroupHandle, SpaceViewId};
 
 use super::ViewerContext;
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
 pub enum Selection {
     MsgId(MsgId),
     Instance(InstanceId),

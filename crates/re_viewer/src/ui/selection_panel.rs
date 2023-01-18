@@ -69,24 +69,26 @@ impl SelectionPanel {
                     return;
                 }
 
-                for selection in ctx.selection().selected() {
-                    what_is_selected_ui(ui, ctx, blueprint, selection);
+                for (i, selection) in ctx.selection().selected().iter().enumerate() {
+                    ui.push_id(i, |ui| {
+                        what_is_selected_ui(ui, ctx, blueprint, selection);
 
-                    ui.separator();
+                        ui.separator();
 
-                    egui::CollapsingHeader::new("Data")
-                        .default_open(true)
-                        .show(ui, |ui| {
-                            data_ui(ui, ctx, selection, Preview::Large);
-                        });
+                        egui::CollapsingHeader::new("Data")
+                            .default_open(true)
+                            .show(ui, |ui| {
+                                data_ui(ui, ctx, selection, Preview::Large);
+                            });
 
-                    ui.separator();
+                        ui.separator();
 
-                    egui::CollapsingHeader::new("Blueprint")
-                        .default_open(true)
-                        .show(ui, |ui| {
-                            blueprint_ui(ui, ctx, blueprint, selection);
-                        });
+                        egui::CollapsingHeader::new("Blueprint")
+                            .default_open(true)
+                            .show(ui, |ui| {
+                                blueprint_ui(ui, ctx, blueprint, selection);
+                            });
+                    });
                 }
             });
     }

@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use re_data_store::{log_db::LogDb, InstanceId};
 use re_log_types::{DataPath, MsgId, ObjPath, TimeInt, Timeline};
 
@@ -243,6 +244,8 @@ impl<'a> ViewerContext<'a> {
         response
     }
 
+    // TODO(andreas): Have another object for selection history, selection & hover which has all these helper functions
+
     /// Sets a single selection, updating history as needed.
     ///
     /// Returns the previous selection.
@@ -266,6 +269,26 @@ impl<'a> ViewerContext<'a> {
     /// Returns the previous selection.
     pub fn clear_selection(&mut self) -> MultiSelection {
         self.rec_cfg.clear_selection()
+    }
+
+    /// Select currently hovered objects.
+    pub fn select_hovered(&mut self) {
+        let combined = self.hovered().selected().to_vec();
+        self.rec_cfg
+            .set_selection(self.selection_history, combined.into_iter());
+    }
+
+    /// Select currently hovered objects.
+    pub fn add_hovered_to_selection(&mut self) {
+        let combined = self
+            .selection()
+            .selected()
+            .iter()
+            .chain(self.hovered().selected().iter())
+            .cloned()
+            .collect::<Vec<_>>();
+        self.rec_cfg
+            .set_selection(self.selection_history, combined.into_iter());
     }
 
     /// Returns the current selection.
@@ -358,7 +381,7 @@ impl RecordingConfig {
         history: &mut SelectionHistory,
         items: impl Iterator<Item = Selection>,
     ) -> MultiSelection {
-        let new_selection = MultiSelection::new(items);
+        let new_selection = MultiSelection::new(items.unique());
         history.update_selection(&new_selection);
         std::mem::replace(&mut self.selection, new_selection)
     }
