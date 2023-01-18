@@ -1,7 +1,7 @@
 use cgmath::num_traits::Pow;
 use egui::{NumExt, WidgetText};
 use macaw::BoundingBox;
-use re_data_store::{InstanceId, InstanceIdHash, ObjPath};
+use re_data_store::ObjPath;
 use re_format::format_f32;
 
 use crate::misc::{space_info::SpaceInfo, ViewerContext};
@@ -34,19 +34,15 @@ pub enum AutoSizeUnit {
 impl From<AutoSizeUnit> for WidgetText {
     fn from(val: AutoSizeUnit) -> Self {
         match val {
-            AutoSizeUnit::Auto => "auto".into(),
-            AutoSizeUnit::UiPoints => "points".into(),
-            AutoSizeUnit::World => "units".into(),
+            AutoSizeUnit::Auto => "Auto".into(),
+            AutoSizeUnit::UiPoints => "UI points".into(),
+            AutoSizeUnit::World => "Scene units".into(),
         }
     }
 }
 
 #[derive(Clone, serde::Deserialize, serde::Serialize)]
 pub struct ViewSpatialState {
-    /// What the mouse is hovering (from previous frame)
-    #[serde(skip)]
-    pub hovered_instance: Option<InstanceId>,
-
     /// How the scene is navigated.
     pub nav_mode: SpatialNavigationMode,
 
@@ -73,7 +69,6 @@ fn default_scene_bbox_accum() -> BoundingBox {
 impl Default for ViewSpatialState {
     fn default() -> Self {
         Self {
-            hovered_instance: Default::default(),
             nav_mode: Default::default(),
             scene_bbox_accum: default_scene_bbox_accum(),
             scene_num_primitives: 0,
@@ -125,8 +120,9 @@ impl ViewSpatialState {
     }
 
     pub fn settings_ui(&mut self, _ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
-        ui.horizontal(|ui| {
-            ui.label("Default size:");
+        egui::Grid::new("spatial_settings_ui").show(ui, |ui| {
+            ui.label("Default size:")
+                .on_hover_text("Size/radius used whenever not explicitly specified.");
 
             let (mut displayed_size, mut mode, drag_speed) = match self.auto_size_config {
                 None => (self.auto_size_config().0.abs(), AutoSizeUnit::Auto, 0.0),
@@ -148,6 +144,7 @@ impl ViewSpatialState {
                 .width(80.0)
                 .selected_text(mode)
                 .show_ui(ui, |ui| {
+                    ui.style_mut().wrap = Some(false);
                     ui.selectable_value(&mut mode, AutoSizeUnit::Auto, AutoSizeUnit::Auto)
                         .on_hover_text("Determine automatically.");
                     ui.selectable_value(&mut mode, AutoSizeUnit::UiPoints, AutoSizeUnit::UiPoints)
@@ -187,24 +184,26 @@ impl ViewSpatialState {
                     };
                 }
             }
-        })
-        .response
-        .on_hover_text("Size/radius used whenever not explicitly specified.");
+            ui.end_row();
 
-        egui::ComboBox::from_label("Navigation Mode")
-            .selected_text(self.nav_mode)
-            .show_ui(ui, |ui| {
-                ui.selectable_value(
-                    &mut self.nav_mode,
-                    SpatialNavigationMode::TwoD,
-                    SpatialNavigationMode::TwoD,
-                );
-                ui.selectable_value(
-                    &mut self.nav_mode,
-                    SpatialNavigationMode::ThreeD,
-                    SpatialNavigationMode::ThreeD,
-                );
-            });
+            ui.label("Navigation mode:");
+            egui::ComboBox::from_id_source("nav_mode")
+                .selected_text(self.nav_mode)
+                .show_ui(ui, |ui| {
+                    ui.style_mut().wrap = Some(false);
+                    ui.selectable_value(
+                        &mut self.nav_mode,
+                        SpatialNavigationMode::TwoD,
+                        SpatialNavigationMode::TwoD,
+                    );
+                    ui.selectable_value(
+                        &mut self.nav_mode,
+                        SpatialNavigationMode::ThreeD,
+                        SpatialNavigationMode::ThreeD,
+                    );
+                });
+            ui.end_row();
+        });
 
         ui.separator();
 
@@ -233,12 +232,6 @@ impl ViewSpatialState {
                 self.state_3d.settings_ui(ui, &self.scene_bbox_accum);
             }
         }
-    }
-
-    pub fn hovered_instance_hash(&self) -> InstanceIdHash {
-        self.hovered_instance
-            .as_ref()
-            .map_or(InstanceIdHash::NONE, |i| i.hash())
     }
 
     // TODO(andreas): split into smaller parts, some of it shouldn't be part of the ui path and instead scene loading.

@@ -1,9 +1,11 @@
-use re_data_store::{log_db::LogDb, InstanceId, ObjTypePath};
+use re_data_store::{log_db::LogDb, InstanceId};
 use re_log_types::{DataPath, MsgId, ObjPath, TimeInt, Timeline};
 
 use crate::ui::{
     data_ui::DataUi, DataBlueprintGroupHandle, Preview, SelectionHistory, SpaceViewId,
 };
+
+use super::selection::{MultiSelection, Selection};
 
 /// Common things needed by many parts of the viewer.
 pub struct ViewerContext<'a> {
@@ -28,26 +30,18 @@ pub struct ViewerContext<'a> {
 }
 
 impl<'a> ViewerContext<'a> {
-    /// Show a type path and make it selectable.
-    pub fn type_path_button(
-        &mut self,
-        ui: &mut egui::Ui,
-        type_path: &ObjTypePath,
-    ) -> egui::Response {
-        self.type_path_button_to(ui, type_path.to_string(), type_path)
-    }
-
-    /// Show a type path and make it selectable.
-    pub fn type_path_button_to(
-        &mut self,
-        ui: &mut egui::Ui,
-        text: impl Into<egui::WidgetText>,
-        type_path: &ObjTypePath,
-    ) -> egui::Response {
-        // TODO(emilk): common hover-effect of all buttons for the same type_path!
-        let response = ui.selectable_label(self.selection().is_type_path(type_path), text);
+    /// Show an [`MsgId`] and make it selectable
+    pub fn msg_id_button(&mut self, ui: &mut egui::Ui, msg_id: MsgId) -> egui::Response {
+        // TODO(emilk): common hover-effect
+        let response = ui
+            .selectable_label(self.selection().is_msg_id(&msg_id), msg_id.to_string())
+            .on_hover_ui(|ui| {
+                ui.label(format!("Message ID: {msg_id}"));
+                ui.separator();
+                msg_id.data_ui(self, ui, Preview::Small);
+            });
         if response.clicked() {
-            self.set_selection(Selection::ObjTypePath(type_path.clone()));
+            self.set_selection(Selection::MsgId(msg_id));
         }
         response
     }
@@ -205,10 +199,19 @@ impl<'a> ViewerContext<'a> {
     }
 
     pub fn timeline_button(&mut self, ui: &mut egui::Ui, timeline: &Timeline) -> egui::Response {
+        self.timeline_button_to(ui, timeline.name().to_string(), timeline)
+    }
+
+    pub fn timeline_button_to(
+        &mut self,
+        ui: &mut egui::Ui,
+        text: impl Into<egui::WidgetText>,
+        timeline: &Timeline,
+    ) -> egui::Response {
         let is_selected = self.rec_cfg.time_ctrl.timeline() == timeline;
 
         let response = ui
-            .selectable_label(is_selected, timeline.name().as_str())
+            .selectable_label(is_selected, text)
             .on_hover_text("Click to switch to this timeline");
         if response.clicked() {
             self.rec_cfg.time_ctrl.set_timeline(*timeline);
@@ -235,6 +238,16 @@ impl<'a> ViewerContext<'a> {
     /// Returns the current selection.
     pub fn selection(&self) -> Selection {
         self.rec_cfg.selection()
+    }
+
+    /// Returns the currently hovered objects.
+    pub fn hovered(&self) -> &MultiSelection {
+        self.rec_cfg.hovered()
+    }
+
+    /// Set the hovered objects. Will be in [`Self::hovered`] on the next frame.
+    pub fn set_hovered(&mut self, hovered_objects: impl Iterator<Item = Selection>) {
+        self.rec_cfg.set_hovered(hovered_objects);
     }
 }
 
@@ -275,11 +288,21 @@ pub struct RecordingConfig {
     /// to properly maintain the undo/redo history.
     selection: Selection,
 
+    /// What objects are hovered? Read from this.
+    #[serde(skip)]
+    hovered_previous_frame: MultiSelection,
+
+    /// What objects are hovered? Write to this.
+    #[serde(skip)]
+    hovered_this_frame: MultiSelection,
+
     /// What space is the pointer hovering over? Read from this.
+    /// TODO(andreas): Merge with [`RecordingConfig::hovered_previous_frame`]
     #[serde(skip)]
     pub hovered_space_previous_frame: HoveredSpace,
 
     /// What space is the pointer hovering over? Write to this.
+    /// TODO(andreas): Merge with [`RecordingConfig::hovered_previous_frame`]
     #[serde(skip)]
     pub hovered_space_this_frame: HoveredSpace,
 }
@@ -291,6 +314,7 @@ impl RecordingConfig {
 
         self.hovered_space_previous_frame =
             std::mem::replace(&mut self.hovered_space_this_frame, HoveredSpace::None);
+        self.hovered_previous_frame = std::mem::take(&mut self.hovered_this_frame);
     }
 
     /// Sets the current selection, updating history as needed.
@@ -317,6 +341,16 @@ impl RecordingConfig {
     pub fn selection(&self) -> Selection {
         self.selection.clone()
     }
+
+    /// Returns the currently hovered objects.
+    pub fn hovered(&self) -> &MultiSelection {
+        &self.hovered_previous_frame
+    }
+
+    /// Set the hovered objects. Will be in [`Self::hovered`] on the next frame.
+    pub fn set_hovered(&mut self, hovered_objects: impl Iterator<Item = Selection>) {
+        self.hovered_this_frame = MultiSelection::new(hovered_objects);
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -341,81 +375,3 @@ impl Default for Options {
 }
 
 // ----------------------------------------------------------------------------
-
-#[derive(Clone, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
-pub enum Selection {
-    None,
-    MsgId(MsgId),
-    ObjTypePath(ObjTypePath),
-    Instance(InstanceId),
-    DataPath(DataPath),
-    Space(ObjPath),
-    SpaceView(crate::ui::SpaceViewId),
-    /// An object within a space-view.
-    SpaceViewObjPath(crate::ui::SpaceViewId, ObjPath),
-    DataBlueprintGroup(crate::ui::SpaceViewId, crate::ui::DataBlueprintGroupHandle),
-}
-
-impl std::fmt::Display for Selection {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Selection::None => write!(f, "<empty>"),
-            Selection::MsgId(s) => s.fmt(f),
-            Selection::ObjTypePath(s) => s.fmt(f),
-            Selection::Instance(s) => s.fmt(f),
-            Selection::DataPath(s) => s.fmt(f),
-            Selection::Space(s) => s.fmt(f),
-            Selection::SpaceView(s) => write!(f, "{s:?}"),
-            Selection::SpaceViewObjPath(sid, path) => write!(f, "({sid:?}, {path})"),
-            Selection::DataBlueprintGroup(sid, handle) => write!(f, "({sid:?}, {handle:?})"),
-        }
-    }
-}
-
-impl Default for Selection {
-    fn default() -> Self {
-        Self::None
-    }
-}
-
-impl Selection {
-    // pub fn is_none(&self) -> bool {
-    //     matches!(self, Self::None)
-    // }
-
-    pub fn is_some(&self) -> bool {
-        !matches!(self, Self::None)
-    }
-
-    pub fn is_type_path(&self, needle: &ObjTypePath) -> bool {
-        if let Self::ObjTypePath(hay) = self {
-            hay == needle
-        } else {
-            false
-        }
-    }
-
-    pub fn is_instance_id(&self, needle: &InstanceId) -> bool {
-        if let Self::Instance(hay) = self {
-            hay == needle
-        } else {
-            false
-        }
-    }
-
-    pub fn is_obj_path(&self, needle: &ObjPath) -> bool {
-        if let Self::Instance(hay) = self {
-            &hay.obj_path == needle
-        } else {
-            false
-        }
-    }
-
-    pub fn is_data_path(&self, needle: &DataPath) -> bool {
-        if let Self::DataPath(hay) = self {
-            hay == needle
-        } else {
-            false
-        }
-    }
-}

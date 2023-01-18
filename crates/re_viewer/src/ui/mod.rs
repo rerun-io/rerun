@@ -33,11 +33,4 @@ pub use self::annotations::{Annotations, DefaultColor, MISSING_ANNOTATIONS};
 pub use self::data_blueprint::DataBlueprintGroupHandle;
 pub use self::selection_history::{HistoricalSelection, SelectionHistory};
 
-// ----
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub(crate) enum Preview {
-    Small,
-    Medium,
-    Specific(f32),
-}
+pub(crate) use data_ui::Preview;

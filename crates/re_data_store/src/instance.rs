@@ -28,7 +28,7 @@ impl InstanceId {
     #[inline]
     pub fn hash(&self) -> InstanceIdHash {
         InstanceIdHash {
-            obj_path_hash: *self.obj_path.hash(),
+            obj_path_hash: self.obj_path.hash(),
             instance_index_hash: self.instance_index_hash(),
             arrow_instance: {
                 if let Some(Index::ArrowInstance(key)) = &self.instance_index {
@@ -110,7 +110,7 @@ impl InstanceIdHash {
     #[inline]
     pub fn from_path_and_index(obj_path: &ObjPath, instance_index: IndexHash) -> Self {
         Self {
-            obj_path_hash: *obj_path.hash(),
+            obj_path_hash: obj_path.hash(),
             instance_index_hash: instance_index,
             arrow_instance: None,
         }
@@ -119,7 +119,7 @@ impl InstanceIdHash {
     #[inline]
     pub fn from_path_and_arrow_instance(obj_path: &ObjPath, arrow_instance: &Instance) -> Self {
         Self {
-            obj_path_hash: *obj_path.hash(),
+            obj_path_hash: obj_path.hash(),
             instance_index_hash: Index::ArrowInstance(*arrow_instance).hash(),
             arrow_instance: Some(*arrow_instance),
         }
@@ -154,7 +154,7 @@ impl InstanceIdHash {
     /// Does this object match this instance id?
     #[inline]
     pub fn is_instance(&self, obj_path: &ObjPath, instance_index: IndexHash) -> bool {
-        &self.obj_path_hash == obj_path.hash() && self.instance_index_hash == instance_index
+        self.obj_path_hash == obj_path.hash() && self.instance_index_hash == instance_index
     }
 }
 
