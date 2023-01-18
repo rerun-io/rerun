@@ -540,7 +540,7 @@ class StableDiffusionDepth2ImgPipeline(DiffusionPipeline):
             prompt, device, num_images_per_prompt, do_classifier_free_guidance, negative_prompt
         )
 
-        # 4. Preprocess image
+        # 4. Prepare depth mask
         depth_mask = self.prepare_depth_map(
             image,
             depth_map,
@@ -550,7 +550,7 @@ class StableDiffusionDepth2ImgPipeline(DiffusionPipeline):
             device,
         )
 
-        # 5. Prepare depth mask
+        # 5. Preprocess image
         rr.log_image("image/original", image)
         image = preprocess(image)
         rr.log_tensor("input_image/preprocessed", image)
