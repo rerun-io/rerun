@@ -150,7 +150,7 @@ impl DataUi for ViewCoordinates {
             Preview::Small | Preview::MaxHeight(_) => {
                 ui.label(format!("ViewCoordinates: {}", self.describe()));
             }
-            Preview::Medium => {
+            Preview::Large => {
                 ui.label(self.describe());
             }
         }
@@ -167,11 +167,11 @@ impl DataUi for Rigid3 {
         match preview {
             Preview::Small | Preview::MaxHeight(_) => {
                 ui.label("Rigid 3D transform").on_hover_ui(|ui| {
-                    self.data_ui(_ctx, ui, Preview::Medium);
+                    self.data_ui(_ctx, ui, Preview::Large);
                 });
             }
 
-            Preview::Medium => {
+            Preview::Large => {
                 let pose = self.parent_from_child(); // TODO(emilk): which one to show?
                 let rotation = pose.rotation();
                 let translation = pose.translation();
@@ -205,11 +205,11 @@ impl DataUi for Pinhole {
         match preview {
             Preview::Small | Preview::MaxHeight(_) => {
                 ui.label("Pinhole transform").on_hover_ui(|ui| {
-                    self.data_ui(ctx, ui, Preview::Medium);
+                    self.data_ui(ctx, ui, Preview::Large);
                 });
             }
 
-            Preview::Medium => {
+            Preview::Large => {
                 let Pinhole {
                     image_from_cam: image_from_view,
                     resolution,

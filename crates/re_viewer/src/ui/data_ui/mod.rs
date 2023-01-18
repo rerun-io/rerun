@@ -23,11 +23,11 @@ pub(crate) enum Preview {
     /// Keep it small enough to fit on one row.
     Small,
 
-    /// As large as you want.
-    Medium,
-
     /// At most this height
     MaxHeight(f32),
+
+    /// As large as you want.
+    Large,
 }
 
 /// Types implementing [`DataUi`] can draw themselves with a [`ViewerContext`] and [`egui::Ui`].

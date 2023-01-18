@@ -22,7 +22,7 @@ impl DataUi for AnnotationContext {
                     self.class_map.len()
                 ));
             }
-            Preview::Medium => {
+            Preview::Large => {
                 let row_height = re_ui::ReUi::table_line_height();
                 ui.vertical(|ui| {
                     annotation_info_table_ui(

@@ -221,7 +221,7 @@ fn table_row(
                 ctx.obj_path_button(ui, path_op.obj_path());
             });
             row.col(|ui| {
-                path_op.data_ui(ctx, ui, Preview::Medium);
+                path_op.data_ui(ctx, ui, Preview::Large);
             });
         }
         LogMsg::ArrowMsg(msg) => match MsgBundle::try_from(msg) {
