@@ -71,12 +71,12 @@ def build_dense_union(data_type: pa.DenseUnionType, discriminant: str, child: pa
     try:
         idx = [f.name for f in list(data_type)].index(discriminant)
         type_ids = pa.array([idx] * len(child), type=pa.int8())
-        value_offsets = pa.array([0] * len(child), type=pa.int32())
+        value_offsets = pa.array(range(len(child)), type=pa.int32())
         children = [pa.nulls(0, type=f.type) for f in list(data_type)]
         children[idx] = child.cast(data_type[idx].type)
         return pa.Array.from_buffers(
             type=data_type,
-            length=1,
+            length=len(child),
             buffers=[None, type_ids.buffers()[1], value_offsets.buffers()[1]],
             children=children,
         ).cast(data_type)

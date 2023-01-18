@@ -20,9 +20,9 @@ class Rect2DArray(pa.ExtensionArray):  # type: ignore[misc]
         values = pa.array(rects.flatten(), type=pa.float32())
         inner = pa.FixedSizeListArray.from_arrays(values=values, type=Rect2DType.storage_type[0].type)
         storage = build_dense_union(data_type=Rect2DType.storage_type, discriminant=rect_format.value, child=inner)
+        storage.validate(full=True)
         # TODO(john) enable extension type wrapper
         # return cast(Rect2DArray, pa.ExtensionArray.from_storage(Rect2DType(), storage))
-        print(storage)
         return storage  # type: ignore[no-any-return]
 
 
