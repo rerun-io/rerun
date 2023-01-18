@@ -302,7 +302,7 @@ fn view_2d_scrollable(
             space_from_ui,
             space_from_pixel,
             &space.to_string(),
-            state.auto_size_config(),
+            state.auto_size_config(response.rect.size()),
         ) else {
             return response;
         };
@@ -521,7 +521,7 @@ fn setup_target_config(
     space_from_ui: RectTransform,
     space_from_pixel: f32,
     space_name: &str,
-    auto_size: re_renderer::Size,
+    auto_size_config: re_renderer::AutoSizeConfig,
 ) -> anyhow::Result<TargetConfiguration> {
     let pixels_from_points = painter.ctx().pixels_per_point();
     let resolution_in_pixel = get_viewport(painter.clip_rect(), pixels_from_points);
@@ -543,8 +543,7 @@ fn setup_target_config(
                 far_plane_distance: 1000.0,
             },
             pixels_from_point: pixels_from_points,
-            auto_size_config: auto_size,
-            auto_size_large_factor: 1.5,
+            auto_size_config,
         }
     })
 }
