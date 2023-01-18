@@ -38,7 +38,8 @@ impl DataUi for ClassicTensor {
                         "{} x {}",
                         self.dtype(),
                         format_tensor_shape(self.shape())
-                    ));
+                    ))
+                    .on_hover_ui(|ui| tensor_dtype_and_shape_ui(ui, self));
                 });
             }
 
@@ -87,8 +88,17 @@ impl DataUi for ClassicTensor {
 }
 
 pub fn tensor_dtype_and_shape_ui(ui: &mut egui::Ui, tensor: &ClassicTensor) {
-    ui.label(format!("dtype: {}", tensor.dtype()));
-    ui.label(format!("shape: {}", format_tensor_shape(tensor.shape())));
+    egui::Grid::new("tensor_dtype_and_shape_ui")
+        .num_columns(2)
+        .show(ui, |ui| {
+            ui.label("Data type:");
+            ui.label(tensor.dtype().to_string());
+            ui.end_row();
+
+            ui.label("Shape:");
+            ui.label(format_tensor_shape(tensor.shape()));
+            ui.end_row();
+        });
 }
 
 fn show_zoomed_image_region_tooltip(
