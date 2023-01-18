@@ -7,7 +7,7 @@ use time::OffsetDateTime;
 
 // ---
 
-#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum EventKind {
     Append,
     Update,
@@ -96,13 +96,17 @@ pub enum AnalyticsError {
 
 pub struct Analytics {
     config: Config,
+    default_props: HashMap<String, Property>,
     pipeline: EventPipeline,
 }
 
 // TODO: hashed application_id + recording_id
 impl Analytics {
     // TODO: fill with logs
-    pub fn new(tick: Duration) -> Result<Self, AnalyticsError> {
+    pub fn new(
+        tick: Duration,
+        default_props: HashMap<String, Property>,
+    ) -> Result<Self, AnalyticsError> {
         let config = Config::load()?;
         trace!(?config, ?tick, "loaded analytics config");
 
@@ -120,11 +124,18 @@ impl Analytics {
             pipeline.record(Event::update_metadata());
         }
 
-        Ok(Self { config, pipeline })
+        Ok(Self {
+            config,
+            default_props,
+            pipeline,
+        })
     }
 
-    pub fn record(&self, event: Event) {
+    pub fn record(&self, mut event: Event) {
         if self.config.analytics_enabled {
+            if event.kind == EventKind::Append {
+                event.props.extend(self.default_props.clone());
+            }
             self.pipeline.record(event);
         }
     }

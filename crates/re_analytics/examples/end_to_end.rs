@@ -9,7 +9,21 @@ fn input_filled_event(body: String) -> Event {
 fn main() {
     tracing_subscriber::fmt::init(); // log to stdout
 
-    let analytics = Analytics::new(Duration::from_secs(3)).unwrap();
+    let analytics = Analytics::new(
+        Duration::from_secs(3),
+        [
+            (
+                "application_id".to_owned(),
+                "end_to_end_example".to_owned().into(),
+            ),
+            (
+                "recording_id".to_owned(),
+                uuid::Uuid::new_v4().to_string().into(),
+            ),
+        ]
+        .into(),
+    )
+    .unwrap();
 
     println!("any non-empty line written here will be sent as an analytics datapoint");
     loop {

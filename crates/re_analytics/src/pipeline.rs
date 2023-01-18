@@ -10,19 +10,10 @@ use crossbeam::{
     channel::{self, RecvError},
     select,
 };
-use reqwest::blocking::Client as HttpClient;
-use time::OffsetDateTime;
 
 use re_log::{error, trace};
 
 use crate::{Config, Event, PostHogSink, Property, SinkError};
-
-// TODO: in general, deal with broken anlytics files (whether it's the file as a whole or just some
-// lines in there).
-
-// TODO: let's say this is specifically our _native posthog_ pipeline
-
-// TODO: endpoint configuration would ideally not live in code...
 
 // ---
 
@@ -40,6 +31,7 @@ pub enum PipelineError {
 
 // TODO: do we want a singleton? do we just pass it around in ctx? let's just do ctx for now
 
+// TODO: just pipeline?
 #[derive(Debug)]
 pub struct EventPipeline {
     // TODO: not cloning this everytime
@@ -77,9 +69,6 @@ impl EventPipeline {
         // TODO: try to send on shutdown as best as possible
 
         let data_path = config.data_dir().to_owned();
-
-        // TODO: anyone can edit these files, is that an issue? considering that our write-only key
-        // is public anyway, I don't think it matters too much...
 
         // TODO: named thread
         // TODO: do we care about joining this thread actually?
@@ -145,7 +134,7 @@ fn send_unsent_events(config: &Config, sink: &PostHogSink) -> anyhow::Result<()>
 
     let read_dir = data_path.read_dir()?;
     for entry in read_dir {
-        // TODO: errors here should definitely stop the whole loop
+        // TODO: errors here should definitely _not_ stop the whole loop
 
         let entry = entry?;
 

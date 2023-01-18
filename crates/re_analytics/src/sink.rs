@@ -37,10 +37,6 @@ pub enum SinkError {
     HttpError(#[from] reqwest::Error),
 }
 
-// TODO(cmc): abstract away when comes the day where we want to re-use the pipeline for another
-// provider.
-// TODO: actually maybe abstract away right now at this point...
-
 // TODO: view event
 
 #[derive(Debug, Clone)]
