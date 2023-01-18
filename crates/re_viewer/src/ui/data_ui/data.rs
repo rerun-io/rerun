@@ -160,7 +160,7 @@ impl DataUi for ViewCoordinates {
 impl DataUi for Rigid3 {
     fn data_ui(
         &self,
-        ctx: &mut crate::misc::ViewerContext<'_>,
+        _ctx: &mut crate::misc::ViewerContext<'_>,
         ui: &mut egui::Ui,
         preview: Preview,
     ) {
@@ -185,7 +185,7 @@ impl DataUi for Rigid3 {
             });
         } else {
             ui.label("Rigid 3D transform").on_hover_ui(|ui| {
-                self.data_ui(ctx, ui, Preview::Medium);
+                self.data_ui(_ctx, ui, Preview::Medium);
             });
         }
     }
