@@ -452,7 +452,6 @@ macro_rules! tensor_type {
             }
         }
 
-        /*
         impl<D: ::ndarray::Dimension> TryFrom<::ndarray::Array<$type, D>> for Tensor {
             type Error = TensorCastError;
 
@@ -470,13 +469,12 @@ macro_rules! tensor_type {
                     .then(|| Tensor {
                         tensor_id: TensorId::random(),
                         shape,
-                        data: TensorData::$variant(value.into_raw_vec()),
+                        data: TensorData::$variant(value.into_raw_vec().into()),
                         meaning: TensorDataMeaning::Unknown,
                     })
                     .ok_or(TensorCastError::NotContiguousStdOrder)
             }
         }
-        */
     };
 }
 
