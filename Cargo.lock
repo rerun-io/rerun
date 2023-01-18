@@ -4284,6 +4284,7 @@ dependencies = [
  "mimalloc",
  "puffin",
  "puffin_http",
+ "re_analytics",
  "re_error",
  "re_format",
  "re_log",

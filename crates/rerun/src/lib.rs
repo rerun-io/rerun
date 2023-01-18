@@ -8,6 +8,7 @@
 
 use anyhow::Context;
 
+use clap::{Subcommand, FromArgMatches};
 use re_format::parse_duration;
 use re_log_types::LogMsg;
 use re_smart_channel::Receiver;
@@ -64,6 +65,32 @@ struct Args {
     /// than Rerun can index it.
     #[clap(long)]
     drop_at_latency: Option<String>,
+
+    #[command(subcommand)]
+    commands: Option<Commands>,
+}
+
+#[derive(Debug, Clone, Subcommand)]
+enum Commands {
+    /// Configure the behaviour of our analytics.
+    #[cfg(feature = "analytics")]
+    #[command(subcommand)]
+    Analytics(AnalyticsCommands),
+}
+
+#[derive(Debug, Clone, Subcommand)]
+pub enum AnalyticsCommands {
+    /// Deletes everything related to analytics.
+    ///
+    /// This will remove all pending data that hasn't yet been sent to our servers, as well as
+    /// reset your analytics ID.
+    Clear,
+    /// Enable analytics.
+    Enable,
+    /// Disable analytics.
+    Disable,
+    /// Prints the current configuration.
+    PrintConfig,
 }
 
 pub async fn run<I, T>(args: I) -> anyhow::Result<()>
@@ -77,7 +104,23 @@ where
 
     use clap::Parser as _;
     let args = Args::parse_from(args);
-    run_impl(args).await
+
+    if let Some(commands) = &args.commands {
+        match commands {
+            Commands::Analytics(analytics) => run_analytics(analytics).map_err(Into::into),
+        }
+    } else {
+        run_impl(args).await
+    }
+}
+
+fn run_analytics(cmd: &AnalyticsCommands) -> Result<(), re_analytics::cli::CliError> {
+    match cmd {
+        AnalyticsCommands::Clear => re_analytics::cli::clear(),
+        AnalyticsCommands::Enable => re_analytics::cli::opt(true),
+        AnalyticsCommands::Disable => re_analytics::cli::opt(false),
+        AnalyticsCommands::PrintConfig => re_analytics::cli::print_config(),
+    }
 }
 
 async fn run_impl(args: Args) -> anyhow::Result<()> {

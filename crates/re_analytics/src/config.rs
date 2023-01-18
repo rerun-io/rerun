@@ -24,10 +24,13 @@ pub enum ConfigError {
 // pub type WriteResult<T> = ::std::result::Result<T, WriteError>;
 
 // TODO: I guess it better be named UserConfig
+// NOTE: all the `rename` clauses are to avoid a potential catastrophe :)
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Config {
+    #[serde(rename = "analytics_enabled")]
     pub analytics_enabled: bool,
     // TODO: explain that this is _not_ a UUID on purpose.
+    #[serde(rename = "analytics_id")]
     pub analytics_id: String,
 
     // TODO: explain
@@ -35,9 +38,12 @@ pub struct Config {
     #[serde(skip, default = "::uuid::Uuid::new_v4")]
     pub session_id: Uuid,
 
-    pub path: PathBuf,
-    // TODO: gotta be in XDG_DATA!!!
-    pub data_path: PathBuf,
+    /// The path of the config file.
+    #[serde(rename = "config_file_path")]
+    pub config_file_path: PathBuf,
+    /// The directory where pending data is stored.
+    #[serde(rename = "data_dir_path")]
+    pub data_dir_path: PathBuf,
 
     // TODO: explain
     // TODO: never written, so default to false when read from disk.
@@ -60,8 +66,8 @@ impl Config {
                 analytics_enabled: true,
                 session_id: Uuid::new_v4(),
                 is_first_run: true,
-                path: config_path,
-                data_path,
+                config_file_path: config_path,
+                data_dir_path: data_path,
             },
             Err(err) => return Err(ConfigError::IoError(err)),
         };
@@ -71,19 +77,22 @@ impl Config {
 
     pub fn save(&self) -> Result<(), ConfigError> {
         // create data directory
-        std::fs::create_dir_all(&self.data_path)?;
+        std::fs::create_dir_all(self.data_dir())?;
 
         // create config file
-        std::fs::create_dir_all(self.path.parent().unwrap())?;
-        let file = File::create(&self.path)?;
+        std::fs::create_dir_all(self.config_dir())?;
+        let file = File::create(self.config_file())?;
         serde_json::to_writer(file, self).map_err(Into::into)
     }
 
-    pub fn path(&self) -> &Path {
-        &self.path
+    pub fn config_dir(&self) -> &Path {
+        self.config_file_path.parent().unwrap()
     }
-    pub fn data_path(&self) -> &Path {
-        &self.data_path
+    pub fn config_file(&self) -> &Path {
+        &self.config_file_path
+    }
+    pub fn data_dir(&self) -> &Path {
+        &self.data_dir_path
     }
 
     pub fn is_first_run(&self) -> bool {

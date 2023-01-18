@@ -19,6 +19,9 @@ use uuid::Uuid;
 
 use crate::{Config, Event, Property};
 
+// TODO: in general, deal with broken anlytics files (whether it's the file as a whole or just some
+// lines in there).
+
 // TODO: let's say this is specifically our _native posthog_ pipeline
 
 // TODO: web impl (how does one POST when in web?)
@@ -78,7 +81,7 @@ impl EventPipeline {
 
         // TODO: try to send on shutdown as best as possible
 
-        let data_path = config.data_path().to_owned();
+        let data_path = config.data_dir().to_owned();
         // TODO: during boot, push existing files into the pipe
         // TODO: file names are session IDs, which are tuids, which are sorted
         // TODO: anyone can edit these files, is that an issue? considering that our write-only key
@@ -102,6 +105,7 @@ impl EventPipeline {
 
         // TODO: maybe we do it all in one thread tho?
         // TODO: when do we join this one? do we?
+        // TODO: name the thread too
         let thread_handle = std::thread::spawn(move || {
             let mut tick_id = 1u64;
 
@@ -184,6 +188,8 @@ fn flush_events(
                 match serde_json::from_str::<Event>(&event_str) {
                     Ok(event) => Some(event),
                     Err(err) => {
+                        // TODO: if we're here, we gotta drop the original file or something...
+                        // TODO: also this probably shouldn't be an error!()...
                         error!(%err, "couldn't deserialize event from analytics data file: dropping event");
                         None
                     },

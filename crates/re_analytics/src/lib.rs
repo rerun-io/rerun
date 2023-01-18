@@ -87,7 +87,9 @@ impl Analytics {
     }
 
     pub fn record(&self, event: Event) {
-        self.pipeline.record(event);
+        if self.config.analytics_enabled {
+            self.pipeline.record(event);
+        }
     }
 }
 
@@ -103,6 +105,8 @@ pub mod events;
 
 mod pipeline;
 pub use self::pipeline::{EventPipeline, PipelineError};
+
+pub mod cli;
 
 // TODO: events and pipeline/buffering
 // TODO: backends and posthog

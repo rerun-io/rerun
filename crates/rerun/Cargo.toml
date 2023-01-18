@@ -9,7 +9,8 @@ default-run = "rerun"
 
 
 [features]
-default = ["server"]
+default = ["server", "analytics"]
+analytics = ["dep:re_analytics"]
 
 ## Support for running a HTTP server that listens to incoming log messages from a Rerun SDK.
 server = ["re_sdk_comms/server"]
@@ -37,6 +38,7 @@ egui = { version = "0.20.1", default-features = false }
 puffin.workspace = true
 
 # Optional dependencies:
+re_analytics = { path = "../re_analytics", optional = true }
 re_sdk_comms = { path = "../re_sdk_comms", optional = true }
 re_web_server = { path = "../re_web_server", optional = true }
 
