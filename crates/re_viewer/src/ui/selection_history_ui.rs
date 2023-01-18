@@ -2,7 +2,7 @@ use egui::RichText;
 use re_ui::Command;
 
 use super::{HistoricalSelection, SelectionHistory};
-use crate::{ui::Blueprint, Selection};
+use crate::{misc::MultiSelection, ui::Blueprint, Selection};
 
 // ---
 
@@ -11,7 +11,7 @@ impl SelectionHistory {
         &mut self,
         ui: &mut egui::Ui,
         blueprint: &Blueprint,
-    ) -> Option<Selection> {
+    ) -> Option<MultiSelection> {
         ui
             // so the strip doesn't try and occupy the entire vertical space
             .horizontal(|ui| self.control_bar_ui(ui, blueprint))
@@ -70,10 +70,12 @@ impl SelectionHistory {
                                     selection_index_ui(ui, i);
                                     {
                                         // borrow checker workaround
-                                        let sel = selection_to_string(blueprint, sel);
+                                        let sel = multi_selection_to_string(blueprint, sel);
                                         ui.selectable_value(&mut self.current, i, sel);
                                     }
-                                    selection_kind_ui(ui, sel);
+                                    if sel.selected().len() == 1 {
+                                        selection_kind_ui(ui, sel.selected().first().unwrap());
+                                    }
                                 });
                             }
                         })
@@ -132,7 +134,7 @@ impl SelectionHistory {
                     "Go to previous selection{}:\n[{}] {}",
                     Command::SelectionPrevious.format_shortcut_tooltip_suffix(ui.ctx()),
                     previous.index,
-                    selection_to_string(blueprint, &previous.selection),
+                    multi_selection_to_string(blueprint, &previous.selection),
                 ))
                 .clicked();
             // TODO(cmc): feels like using the shortcut should highlight the associated
@@ -164,7 +166,7 @@ impl SelectionHistory {
                     "Go to next selection{}:\n[{}] {}",
                     Command::SelectionNext.format_shortcut_tooltip_suffix(ui.ctx()),
                     next.index,
-                    selection_to_string(blueprint, &next.selection),
+                    multi_selection_to_string(blueprint, &next.selection),
                 ))
                 .clicked();
             // TODO(cmc): feels like using the shortcut should highlight the associated
@@ -192,7 +194,6 @@ fn selection_index_ui(ui: &mut egui::Ui, index: usize) {
 // differentiate those in the UI to avoid confusion.
 fn selection_kind_ui(ui: &mut egui::Ui, sel: &Selection) {
     ui.weak(RichText::new(match sel {
-        Selection::None => "(none)",
         Selection::MsgId(_) => "(msg)",
         Selection::Instance(_) => "(instance)",
         Selection::DataPath(_) => "(field)",
@@ -202,7 +203,15 @@ fn selection_kind_ui(ui: &mut egui::Ui, sel: &Selection) {
     }));
 }
 
-fn selection_to_string(blueprint: &Blueprint, sel: &Selection) -> String {
+fn multi_selection_to_string(blueprint: &Blueprint, sel: &MultiSelection) -> String {
+    if sel.selected().len() == 1 {
+        single_selection_to_string(blueprint, &sel.selected().first().unwrap())
+    } else {
+        "<multiple objects>".to_owned()
+    }
+}
+
+fn single_selection_to_string(blueprint: &Blueprint, sel: &Selection) -> String {
     match sel {
         Selection::SpaceView(sid) => {
             if let Some(space_view) = blueprint.viewport.space_view(sid) {
@@ -223,7 +232,6 @@ fn selection_to_string(blueprint: &Blueprint, sel: &Selection) -> String {
                 "<group in removed space view>".to_owned()
             }
         }
-        Selection::None => "<empty>".to_owned(),
         Selection::MsgId(s) => s.to_string(),
         Selection::Instance(s) => s.to_string(),
         Selection::DataPath(s) => s.to_string(),
@@ -235,12 +243,12 @@ fn selection_to_string(blueprint: &Blueprint, sel: &Selection) -> String {
 fn selection_to_clipped_string(
     ui: &mut egui::Ui,
     blueprint: &Blueprint,
-    sel: &Selection,
+    sel: &MultiSelection,
     font_id: &egui::FontId,
     width: f32,
 ) -> String {
     let mut width = width - ui.fonts().glyph_width(font_id, '…');
-    let mut sel = selection_to_string(blueprint, sel)
+    let mut sel = multi_selection_to_string(blueprint, sel)
         .chars()
         .rev()
         .take_while(|c| {

@@ -1,14 +1,14 @@
-use crate::misc::Selection;
+use crate::misc::MultiSelection;
 
 /// A `Selection` and its index into the historical stack.
 #[derive(Debug, Clone)]
 pub struct HistoricalSelection {
     pub index: usize,
-    pub selection: Selection,
+    pub selection: MultiSelection,
 }
 
-impl From<(usize, Selection)> for HistoricalSelection {
-    fn from((index, selection): (usize, Selection)) -> Self {
+impl From<(usize, MultiSelection)> for HistoricalSelection {
+    fn from((index, selection): (usize, MultiSelection)) -> Self {
         Self { index, selection }
     }
 }
@@ -19,7 +19,7 @@ impl From<(usize, Selection)> for HistoricalSelection {
 #[derive(Default, Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct SelectionHistory {
     pub(crate) current: usize, // index into `self.stack`
-    pub(crate) stack: Vec<Selection>,
+    pub(crate) stack: Vec<MultiSelection>,
 }
 
 impl SelectionHistory {
@@ -38,9 +38,9 @@ impl SelectionHistory {
             .map(|sel| (self.current + 1, sel.clone()).into())
     }
 
-    pub fn update_selection(&mut self, selection: &Selection) {
+    pub fn update_selection(&mut self, selection: &MultiSelection) {
         // Selecting nothing is irrelevant from a history standpoint.
-        if *selection == Selection::None {
+        if selection.is_empty() {
             return;
         }
 

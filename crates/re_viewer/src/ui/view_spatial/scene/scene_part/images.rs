@@ -85,7 +85,7 @@ impl ScenePart for ImagesPartClassic {
                 continue;
             };
 
-            let highlighted_paths = ctx.hovered().is_path_selected(obj_path.hash());
+            let highlighted_paths = ctx.hovered().is_obj_path_selected(obj_path.hash());
 
             let visitor = |instance_index: Option<&IndexHash>,
                            _time: i64,
@@ -109,7 +109,7 @@ impl ScenePart for ImagesPartClassic {
                     None,
                 );
 
-                if highlighted_paths.is_index_selected(instance_hash.instance_index_hash) {
+                if highlighted_paths.index_part_of_selection(instance_hash.instance_index_hash) {
                     let rect =
                         glam::vec2(tensor.shape()[1].size as f32, tensor.shape()[0].size as f32);
                     scene
@@ -216,7 +216,7 @@ impl ImagesPart {
         ent_path: &ObjPath,
         world_from_obj: glam::Mat4,
     ) -> Result<(), QueryError> {
-        let highlighted_paths = ctx.hovered().is_path_selected(ent_path.hash());
+        let highlighted_paths = ctx.hovered().is_obj_path_selected(ent_path.hash());
 
         for (instance, tensor, color) in itertools::izip!(
             entity_view.iter_instances()?,
@@ -245,7 +245,7 @@ impl ImagesPart {
 
                 let paint_props = paint_properties(color, None);
 
-                if highlighted_paths.is_index_selected(instance_hash.instance_index_hash) {
+                if highlighted_paths.index_part_of_selection(instance_hash.instance_index_hash) {
                     let rect =
                         glam::vec2(tensor.shape()[1].size as f32, tensor.shape()[0].size as f32);
                     scene

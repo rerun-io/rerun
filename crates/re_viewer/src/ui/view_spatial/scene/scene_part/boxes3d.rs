@@ -49,7 +49,7 @@ impl ScenePart for Boxes3DPartClassic {
                 continue;
             };
 
-            let highlighted_paths = ctx.hovered().is_path_selected(obj_path.hash());
+            let highlighted_paths = ctx.hovered().is_obj_path_selected(obj_path.hash());
 
             let mut line_batch = scene
                 .primitives
@@ -81,7 +81,7 @@ impl ScenePart for Boxes3DPartClassic {
 
                 let instance_hash =
                     instance_hash_if_interactive(obj_path, instance_index, properties.interactive);
-                if highlighted_paths.is_index_selected(instance_hash.instance_index_hash) {
+                if highlighted_paths.index_part_of_selection(instance_hash.instance_index_hash) {
                     color = SceneSpatial::HOVER_COLOR;
                     line_radius = SceneSpatial::hover_size_boost(line_radius);
                 }
@@ -132,7 +132,7 @@ impl Boxes3DPart {
             .batch("box 3d")
             .world_from_obj(world_from_obj);
 
-        let highlighted_paths = ctx.hovered().is_path_selected(ent_path.hash());
+        let highlighted_paths = ctx.hovered().is_obj_path_selected(ent_path.hash());
 
         let visitor = |instance: Instance,
                        half_size: Box3D,
@@ -158,7 +158,7 @@ impl Boxes3DPart {
                 annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color),
             );
 
-            if highlighted_paths.is_index_selected(instance_hash.instance_index_hash) {
+            if highlighted_paths.index_part_of_selection(instance_hash.instance_index_hash) {
                 color = SceneSpatial::HOVER_COLOR;
                 radius = SceneSpatial::hover_size_boost(radius);
             }

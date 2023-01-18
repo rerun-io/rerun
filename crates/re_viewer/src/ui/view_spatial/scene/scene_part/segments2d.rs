@@ -46,7 +46,7 @@ impl ScenePart for LineSegments2DPartClassic {
                 .batch("lines 2d")
                 .world_from_obj(world_from_obj);
 
-            let highlighted_paths = ctx.hovered().is_path_selected(obj_path.hash());
+            let highlighted_paths = ctx.hovered().is_obj_path_selected(obj_path.hash());
 
             let visitor = |instance_index: Option<&IndexHash>,
                            _time: i64,
@@ -65,7 +65,7 @@ impl ScenePart for LineSegments2DPartClassic {
                 let color = annotation_info.color(color, DefaultColor::ObjPath(obj_path));
 
                 let mut paint_props = paint_properties(color, stroke_width);
-                if highlighted_paths.is_index_selected(instance_hash.instance_index_hash) {
+                if highlighted_paths.index_part_of_selection(instance_hash.instance_index_hash) {
                     apply_hover_effect(&mut paint_props);
                 }
 

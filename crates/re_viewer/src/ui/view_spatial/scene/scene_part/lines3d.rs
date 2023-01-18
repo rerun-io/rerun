@@ -52,7 +52,7 @@ impl ScenePart for Lines3DPartClassic {
                 continue;
             };
 
-            let highlighted_paths = ctx.hovered().is_path_selected(obj_path.hash());
+            let highlighted_paths = ctx.hovered().is_obj_path_selected(obj_path.hash());
 
             let mut line_batch = scene
                 .primitives
@@ -81,7 +81,7 @@ impl ScenePart for Lines3DPartClassic {
                 let annotation_info = annotations.class_description(None).annotation_info();
                 let mut color = to_ecolor(annotation_info.color(color, default_color));
 
-                if highlighted_paths.is_index_selected(instance_hash.instance_index_hash) {
+                if highlighted_paths.index_part_of_selection(instance_hash.instance_index_hash) {
                     color = SceneSpatial::HOVER_COLOR;
                     radius = SceneSpatial::hover_size_boost(radius);
                 }
@@ -138,7 +138,7 @@ impl Lines3DPart {
             .batch("lines 3d")
             .world_from_obj(world_from_obj);
 
-        let highlighted_paths = ctx.hovered().is_path_selected(ent_path.hash());
+        let highlighted_paths = ctx.hovered().is_obj_path_selected(ent_path.hash());
 
         let visitor = |instance: Instance,
                        strip: LineStrip3D,
@@ -160,7 +160,7 @@ impl Lines3DPart {
                 annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color),
             );
 
-            if highlighted_paths.is_index_selected(instance_hash.instance_index_hash) {
+            if highlighted_paths.index_part_of_selection(instance_hash.instance_index_hash) {
                 color = SceneSpatial::HOVER_COLOR;
                 radius = SceneSpatial::hover_size_boost(radius);
             }

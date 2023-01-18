@@ -581,7 +581,7 @@ impl Viewport {
                                 scene_spatial.preferred_navigation_mode(&space_info.path),
                                 transforms.clone(),
                             ));
-                            ctx.set_selection(Selection::SpaceView(new_space_view_id));
+                            ctx.set_single_selection(Selection::SpaceView(new_space_view_id));
                         }
                     }
                 }
@@ -642,7 +642,8 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
                 .clicked()
             {
                 *self.maximized = Some(*space_view_id);
-                self.ctx.set_selection(Selection::SpaceView(*space_view_id));
+                self.ctx
+                    .set_single_selection(Selection::SpaceView(*space_view_id));
             }
 
             space_view_options_link(
@@ -686,8 +687,11 @@ fn space_view_options_link(
     ui: &mut egui::Ui,
     text: &str,
 ) {
-    let is_selected =
-        ctx.selection() == Selection::SpaceView(space_view_id) && *selection_panel_expanded;
+    let is_selected = ctx
+        .selection()
+        .is_space_view_selected(space_view_id)
+        .is_exact()
+        && *selection_panel_expanded;
     if ui
         .selectable_label(is_selected, text)
         .on_hover_text("Space View options")
@@ -697,7 +701,7 @@ fn space_view_options_link(
             ctx.clear_selection();
             *selection_panel_expanded = false;
         } else {
-            ctx.set_selection(Selection::SpaceView(space_view_id));
+            ctx.set_single_selection(Selection::SpaceView(space_view_id));
             *selection_panel_expanded = true;
         }
     }
