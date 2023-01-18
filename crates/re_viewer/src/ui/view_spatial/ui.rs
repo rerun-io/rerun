@@ -97,6 +97,7 @@ impl ViewSpatialState {
         config
     }
 
+    #[allow(clippy::unused_self)]
     pub fn default_line_radius(&self) -> re_renderer::Size {
         re_renderer::Size::new_points(1.5)
     }
