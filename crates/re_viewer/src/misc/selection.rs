@@ -4,7 +4,7 @@ use re_log_types::{DataPath, IndexHash, MsgId, ObjPathHash};
 
 use super::ViewerContext;
 
-#[derive(Clone, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub enum Selection {
     None, // TODO(andreas): Once single selection is removed, None doesn't make sense anymore as it is implied by an empty MultiSelection
     MsgId(MsgId),
@@ -16,7 +16,7 @@ pub enum Selection {
     DataBlueprintGroup(crate::ui::SpaceViewId, crate::ui::DataBlueprintGroupHandle),
 }
 
-impl std::fmt::Display for Selection {
+impl std::fmt::Debug for Selection {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Selection::None => write!(f, "<empty>"),
