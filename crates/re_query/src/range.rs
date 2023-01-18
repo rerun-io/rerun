@@ -21,8 +21,10 @@ use crate::{get_component_with_instances, ComponentWithInstances, EntityView};
 /// known state of all components, from their respective point-of-views.
 ///
 /// ⚠ The semantics are subtle! See `examples/range.rs` for an example of use.
-// TODO(jleibs): We need to pass by value because if if we in fact pass by reference
-// then the borrow checker gets angry about returning an iterator in: `ugly_query_helper`
+//
+// TODO(jleibs): We need to pass by value because if we pass by reference then
+// the borrow checker gets angry about returning an iterator in:
+// `ugly_query_helper`
 #[allow(clippy::needless_pass_by_value)]
 pub fn range_entity_with_primary<'a, Primary: Component + 'a, const N: usize>(
     store: &'a DataStore,
