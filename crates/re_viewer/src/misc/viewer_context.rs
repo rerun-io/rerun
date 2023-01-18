@@ -5,6 +5,8 @@ use crate::ui::{
     data_ui::DataUi, DataBlueprintGroupHandle, Preview, SelectionHistory, SpaceViewId,
 };
 
+use super::selection::{MultiSelection, Selection};
+
 /// Common things needed by many parts of the viewer.
 pub struct ViewerContext<'a> {
     /// Global options for the whole viewer.
@@ -237,6 +239,16 @@ impl<'a> ViewerContext<'a> {
     pub fn selection(&self) -> Selection {
         self.rec_cfg.selection()
     }
+
+    /// Returns the currently hovered objects.
+    pub fn hovered(&self) -> &MultiSelection {
+        self.rec_cfg.hovered()
+    }
+
+    /// Set the hovered objects. Will be in [`Self::hovered`] on the next frame.
+    pub fn set_hovered(&mut self, hovered_objects: impl Iterator<Item = Selection>) {
+        self.rec_cfg.set_hovered(hovered_objects);
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -276,11 +288,21 @@ pub struct RecordingConfig {
     /// to properly maintain the undo/redo history.
     selection: Selection,
 
+    /// What objects are hovered? Read from this.
+    #[serde(skip)]
+    hovered_previous_frame: MultiSelection,
+
+    /// What objects are hovered? Write to this.
+    #[serde(skip)]
+    hovered_this_frame: MultiSelection,
+
     /// What space is the pointer hovering over? Read from this.
+    /// TODO(andreas): Merge with [`RecordingConfig::hovered_previous_frame`]
     #[serde(skip)]
     pub hovered_space_previous_frame: HoveredSpace,
 
     /// What space is the pointer hovering over? Write to this.
+    /// TODO(andreas): Merge with [`RecordingConfig::hovered_previous_frame`]
     #[serde(skip)]
     pub hovered_space_this_frame: HoveredSpace,
 }
@@ -292,6 +314,7 @@ impl RecordingConfig {
 
         self.hovered_space_previous_frame =
             std::mem::replace(&mut self.hovered_space_this_frame, HoveredSpace::None);
+        self.hovered_previous_frame = std::mem::take(&mut self.hovered_this_frame);
     }
 
     /// Sets the current selection, updating history as needed.
@@ -318,6 +341,16 @@ impl RecordingConfig {
     pub fn selection(&self) -> Selection {
         self.selection.clone()
     }
+
+    /// Returns the currently hovered objects.
+    pub fn hovered(&self) -> &MultiSelection {
+        &self.hovered_previous_frame
+    }
+
+    /// Set the hovered objects. Will be in [`Self::hovered`] on the next frame.
+    pub fn set_hovered(&mut self, hovered_objects: impl Iterator<Item = Selection>) {
+        self.hovered_this_frame = MultiSelection::new(hovered_objects);
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -342,102 +375,3 @@ impl Default for Options {
 }
 
 // ----------------------------------------------------------------------------
-
-#[derive(Clone, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
-pub enum Selection {
-    None,
-    MsgId(MsgId),
-    Instance(InstanceId),
-    DataPath(DataPath),
-    SpaceView(crate::ui::SpaceViewId),
-    /// An object within a space-view.
-    SpaceViewObjPath(crate::ui::SpaceViewId, ObjPath),
-    DataBlueprintGroup(crate::ui::SpaceViewId, crate::ui::DataBlueprintGroupHandle),
-}
-
-impl std::fmt::Display for Selection {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Selection::None => write!(f, "<empty>"),
-            Selection::MsgId(s) => s.fmt(f),
-            Selection::Instance(s) => s.fmt(f),
-            Selection::DataPath(s) => s.fmt(f),
-            Selection::SpaceView(s) => write!(f, "{s:?}"),
-            Selection::SpaceViewObjPath(sid, path) => write!(f, "({sid:?}, {path})"),
-            Selection::DataBlueprintGroup(sid, handle) => write!(f, "({sid:?}, {handle:?})"),
-        }
-    }
-}
-
-impl Default for Selection {
-    fn default() -> Self {
-        Self::None
-    }
-}
-
-impl Selection {
-    // pub fn is_none(&self) -> bool {
-    //     matches!(self, Self::None)
-    // }
-
-    pub fn is_some(&self) -> bool {
-        !matches!(self, Self::None)
-    }
-
-    pub fn is_msg_id(&self, needle: &MsgId) -> bool {
-        if let Self::MsgId(hay) = self {
-            hay == needle
-        } else {
-            false
-        }
-    }
-
-    pub fn is_instance_id(&self, needle: &InstanceId) -> bool {
-        if let Self::Instance(hay) = self {
-            hay == needle
-        } else {
-            false
-        }
-    }
-
-    pub fn is_obj_path(&self, needle: &ObjPath) -> bool {
-        if let Self::Instance(hay) = self {
-            &hay.obj_path == needle
-        } else {
-            false
-        }
-    }
-
-    pub fn is_data_path(&self, needle: &DataPath) -> bool {
-        if let Self::DataPath(hay) = self {
-            hay == needle
-        } else {
-            false
-        }
-    }
-
-    /// If `false`, the selection is referring to data that is no longer present.
-    pub(crate) fn is_valid(
-        &self,
-        ctx: &ViewerContext<'_>,
-        blueprint: &crate::ui::Blueprint,
-    ) -> bool {
-        match self {
-            Selection::None | Selection::Instance(_) | Selection::DataPath(_) => true,
-            Selection::MsgId(msg_id) => ctx.log_db.get_log_msg(msg_id).is_some(),
-            Selection::SpaceView(space_view_id) | Selection::SpaceViewObjPath(space_view_id, _) => {
-                blueprint.viewport.space_view(space_view_id).is_some()
-            }
-            Selection::DataBlueprintGroup(space_view_id, data_blueprint_group_handle) => {
-                if let Some(space_view) = blueprint.viewport.space_view(space_view_id) {
-                    space_view
-                        .data_blueprint
-                        .get_group(*data_blueprint_group_handle)
-                        .is_some()
-                } else {
-                    false
-                }
-            }
-        }
-    }
-}

@@ -81,7 +81,7 @@ impl DataStore {
             return Ok(());
         }
 
-        let ent_path_hash = *ent_path.hash();
+        let ent_path_hash = ent_path.hash();
         let nb_rows = components[0].value.len();
 
         // Effectively the same thing as having a non-unit length batch, except it's really not
