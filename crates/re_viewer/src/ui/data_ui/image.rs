@@ -21,13 +21,12 @@ impl DataUi for ClassicTensor {
         match preview {
             Preview::Small | Preview::MaxHeight(_) => {
                 ui.horizontal_centered(|ui| {
-                    let max_height = match preview {
-                        Preview::Small => 32.0,
-                        Preview::Medium => 128.0,
-                        Preview::MaxHeight(height) => height,
-                    };
-
                     if let Some(retained_img) = tensor_view.retained_img {
+                        let max_height = match preview {
+                            Preview::Small => 24.0,
+                            Preview::Medium => 128.0,
+                            Preview::MaxHeight(height) => height,
+                        };
                         retained_img
                             .show_max_size(ui, Vec2::new(4.0 * max_height, max_height))
                             .on_hover_ui(|ui| {
@@ -35,19 +34,18 @@ impl DataUi for ClassicTensor {
                             });
                     }
 
-                    ui.vertical(|ui| {
-                        ui.set_min_width(100.0);
-                        ui.label(format!("dtype: {}", self.dtype()));
-                        ui.label(format!("shape: {}", format_tensor_shape(self.shape())));
-                    });
+                    ui.label(format!(
+                        "{} x {}",
+                        self.dtype(),
+                        format_tensor_shape(self.shape())
+                    ));
                 });
             }
 
             Preview::Medium => {
                 ui.vertical(|ui| {
                     ui.set_min_width(100.0);
-                    ui.label(format!("dtype: {}", self.dtype()));
-                    ui.label(format!("shape: {}", format_tensor_shape(self.shape())));
+                    tensor_dtype_and_shape_ui(ui, self);
 
                     if let Some(retained_img) = tensor_view.retained_img {
                         let max_size = ui
@@ -86,6 +84,11 @@ impl DataUi for ClassicTensor {
             }
         }
     }
+}
+
+pub fn tensor_dtype_and_shape_ui(ui: &mut egui::Ui, tensor: &ClassicTensor) {
+    ui.label(format!("dtype: {}", tensor.dtype()));
+    ui.label(format!("shape: {}", format_tensor_shape(tensor.shape())));
 }
 
 fn show_zoomed_image_region_tooltip(
