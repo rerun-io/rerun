@@ -123,7 +123,7 @@ impl SceneSpatialPrimitives {
         use re_renderer::renderer::LineStripFlags;
 
         // TODO(andreas): It would be nice if could display the semantics (left/right/up) as a tooltip on hover.
-        let line_radius = re_renderer::Size::new_points(2.5);
+        let line_radius = re_renderer::Size::new_scene(axis_length * 0.05);
         let origin = transform.translation();
 
         let mut line_batch = self.line_strips.batch("origin axis");
