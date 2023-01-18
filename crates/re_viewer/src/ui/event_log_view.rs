@@ -126,7 +126,7 @@ fn table_row(
             } = info;
 
             row.col(|ui| {
-                ui.label(msg_id.to_string());
+                ctx.msg_id_button(ui, *msg_id);
             });
             row.col(|ui| {
                 ui.monospace("BeginRecordingMsg");
@@ -152,7 +152,7 @@ fn table_row(
             } = msg;
 
             row.col(|ui| {
-                ui.label(msg_id.to_string());
+                ctx.msg_id_button(ui, *msg_id);
             });
             row.col(|ui| {
                 ui.monospace("TypeMsg");
@@ -163,7 +163,7 @@ fn table_row(
                 });
             }
             row.col(|ui| {
-                ctx.type_path_button(ui, type_path);
+                ui.monospace(type_path.to_string());
             });
             row.col(|ui| {
                 ui.monospace(format!("{obj_type:?}"));
@@ -178,7 +178,7 @@ fn table_row(
             } = msg;
 
             row.col(|ui| {
-                ui.label(msg_id.to_string());
+                ctx.msg_id_button(ui, *msg_id);
             });
             row.col(|ui| {
                 ui.monospace("DataMsg");
@@ -194,7 +194,7 @@ fn table_row(
                 ctx.data_path_button(ui, data_path);
             });
             row.col(|ui| {
-                data.data_ui(ctx, ui, Preview::Specific(row_height));
+                data.data_ui(ctx, ui, Preview::MaxHeight(row_height));
             });
         }
         LogMsg::PathOpMsg(msg) => {
@@ -205,7 +205,7 @@ fn table_row(
             } = msg;
 
             row.col(|ui| {
-                ui.label(msg_id.to_string());
+                ctx.msg_id_button(ui, *msg_id);
             });
             row.col(|ui| {
                 ui.monospace("PathOpMsg");
@@ -232,7 +232,7 @@ fn table_row(
                 components,
             }) => {
                 row.col(|ui| {
-                    ui.label(msg_id.to_string());
+                    ctx.msg_id_button(ui, msg_id);
                 });
                 row.col(|ui| {
                     ui.monospace("ArrowMsg");
@@ -249,7 +249,7 @@ fn table_row(
                 });
 
                 row.col(|ui| {
-                    components.data_ui(ctx, ui, Preview::Specific(row_height));
+                    components.data_ui(ctx, ui, Preview::MaxHeight(row_height));
                 });
             }
             Err(err) => {

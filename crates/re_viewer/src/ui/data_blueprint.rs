@@ -3,8 +3,6 @@ use re_data_store::{ObjPath, ObjectProps, ObjectsProperties};
 use slotmap::SlotMap;
 use smallvec::{smallvec, SmallVec};
 
-use crate::misc::ViewerContext;
-
 slotmap::new_key_type! { pub struct DataBlueprintGroupHandle; }
 
 /// A grouping of several data-blueprints.
@@ -27,17 +25,6 @@ pub struct DataBlueprintGroup {
     pub children: SmallVec<[DataBlueprintGroupHandle; 4]>,
 
     pub objects: IntSet<ObjPath>,
-}
-
-impl DataBlueprintGroup {
-    pub fn selection_ui(&mut self, _ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
-        egui::Grid::new("blueprint_group")
-            .num_columns(2)
-            .show(ui, |ui| {
-                ui.label("Name:");
-                ui.text_edit_singleline(&mut self.display_name);
-            });
-    }
 }
 
 /// Data blueprints for all object paths in a space view.

@@ -325,12 +325,12 @@ pub fn view_3d(
     // TODO(andreas): This isn't part of the camera, but of the transform https://github.com/rerun-io/rerun/issues/753
     for camera in &scene.space_cameras {
         if ctx.options.show_camera_axes_in_3d {
-            scene.primitives.add_axis_lines(
-                camera.world_from_cam(),
-                camera.instance,
-                &eye,
-                rect.size(),
-            );
+            let transform = camera.world_from_cam();
+            let axis_length =
+                eye.approx_pixel_world_size_at(transform.translation(), rect.size()) * 32.0;
+            scene
+                .primitives
+                .add_axis_lines(transform, camera.instance, axis_length);
         }
     }
 
@@ -443,11 +443,11 @@ pub fn view_3d(
     show_projections_from_2d_space(ctx, &mut scene, &state.scene_bbox_accum);
 
     if state.state_3d.show_axes {
+        let axis_length = 1.0; // The axes are also a measuring stick
         scene.primitives.add_axis_lines(
             macaw::IsoTransform::IDENTITY,
             InstanceIdHash::NONE,
-            &eye,
-            rect.size(),
+            axis_length,
         );
     }
 

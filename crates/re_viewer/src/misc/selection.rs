@@ -1,15 +1,15 @@
 use nohash_hasher::IntSet;
-use re_data_store::{InstanceId, InstanceIdHash, ObjPath, ObjTypePath};
+use re_data_store::{InstanceId, InstanceIdHash, ObjPath};
 use re_log_types::{DataPath, IndexHash, MsgId, ObjPathHash};
+
+use super::ViewerContext;
 
 #[derive(Clone, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub enum Selection {
     None, // TODO(andreas): Once single selection is removed, None doesn't make sense anymore as it is implied by an empty MultiSelection
     MsgId(MsgId),
-    ObjTypePath(ObjTypePath),
     Instance(InstanceId),
     DataPath(DataPath),
-    Space(ObjPath),
     SpaceView(crate::ui::SpaceViewId),
     /// An object within a space-view.
     SpaceViewObjPath(crate::ui::SpaceViewId, ObjPath),
@@ -21,10 +21,8 @@ impl std::fmt::Display for Selection {
         match self {
             Selection::None => write!(f, "<empty>"),
             Selection::MsgId(s) => s.fmt(f),
-            Selection::ObjTypePath(s) => s.fmt(f),
             Selection::Instance(s) => s.fmt(f),
             Selection::DataPath(s) => s.fmt(f),
-            Selection::Space(s) => s.fmt(f),
             Selection::SpaceView(s) => write!(f, "{s:?}"),
             Selection::SpaceViewObjPath(sid, path) => write!(f, "({sid:?}, {path})"),
             Selection::DataBlueprintGroup(sid, handle) => write!(f, "({sid:?}, {handle:?})"),
@@ -43,16 +41,16 @@ impl Selection {
     //     matches!(self, Self::None)
     // }
 
-    pub fn is_some(&self) -> bool {
-        !matches!(self, Self::None)
-    }
-
-    pub fn is_type_path(&self, needle: &ObjTypePath) -> bool {
-        if let Self::ObjTypePath(hay) = self {
+    pub fn is_msg_id(&self, needle: &MsgId) -> bool {
+        if let Self::MsgId(hay) = self {
             hay == needle
         } else {
             false
         }
+    }
+
+    pub fn is_some(&self) -> bool {
+        !matches!(self, Self::None)
     }
 
     pub fn is_instance_id(&self, needle: &InstanceId) -> bool {
@@ -76,6 +74,31 @@ impl Selection {
             hay == needle
         } else {
             false
+        }
+    }
+
+    /// If `false`, the selection is referring to data that is no longer present.
+    pub(crate) fn is_valid(
+        &self,
+        ctx: &ViewerContext<'_>,
+        blueprint: &crate::ui::Blueprint,
+    ) -> bool {
+        match self {
+            Selection::None | Selection::Instance(_) | Selection::DataPath(_) => true,
+            Selection::MsgId(msg_id) => ctx.log_db.get_log_msg(msg_id).is_some(),
+            Selection::SpaceView(space_view_id) | Selection::SpaceViewObjPath(space_view_id, _) => {
+                blueprint.viewport.space_view(space_view_id).is_some()
+            }
+            Selection::DataBlueprintGroup(space_view_id, data_blueprint_group_handle) => {
+                if let Some(space_view) = blueprint.viewport.space_view(space_view_id) {
+                    space_view
+                        .data_blueprint
+                        .get_group(*data_blueprint_group_handle)
+                        .is_some()
+                } else {
+                    false
+                }
+            }
         }
     }
 }
@@ -131,8 +154,6 @@ impl MultiSelection {
 
                 Selection::MsgId(_) => {} // TODO(andreas): Should resolve
 
-                Selection::ObjTypePath(_) => {} // TODO(andreas): to be removed
-
                 Selection::Instance(inst) => {
                     if inst.obj_path.hash() == obj_path_hash {
                         if let Some(index) = &inst.instance_index {
@@ -149,8 +170,6 @@ impl MultiSelection {
                         return ObjectPathSelectionResult::EntireObject;
                     }
                 }
-
-                Selection::Space(_) => {} // TODO(andreas): remove
 
                 // Selecting an entire spaceview doesn't mark each object as selected.
                 Selection::SpaceView(_) => {}

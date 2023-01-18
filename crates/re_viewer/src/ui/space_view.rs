@@ -195,15 +195,9 @@ impl SpaceView {
     }
 
     pub fn selection_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
-        egui::Grid::new("space_view").num_columns(2).show(ui, |ui| {
-            ui.label("Name:");
-            ui.text_edit_singleline(&mut self.name);
-            ui.end_row();
-
-            ui.label("Space path:");
-            ctx.obj_path_button(ui, &self.space_path);
-            ui.end_row();
-        });
+        ui.label("Space path:");
+        ctx.obj_path_button(ui, &self.space_path);
+        ui.end_row();
 
         ui.separator();
 
