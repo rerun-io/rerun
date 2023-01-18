@@ -59,7 +59,7 @@ pub struct ViewSpatialState {
     pub(super) state_3d: View3DState,
 
     /// Size of automatically sized objects. None if it wasn't configured.
-    auto_size_config: Option<re_renderer::Size>,
+    auto_size_config: re_renderer::AutoSizeConfig,
 }
 
 fn default_scene_bbox_accum() -> BoundingBox {
@@ -74,27 +74,32 @@ impl Default for ViewSpatialState {
             scene_num_primitives: 0,
             state_2d: Default::default(),
             state_3d: Default::default(),
-            auto_size_config: None,
+            auto_size_config: re_renderer::AutoSizeConfig {
+                points: re_renderer::Size::AUTO, // let re_renderer decide
+                lines: re_renderer::Size::AUTO,  // let re_renderer decide
+            },
         }
     }
 }
 
 impl ViewSpatialState {
-    pub fn auto_size_config(&self) -> re_renderer::Size {
-        self.auto_size_config
-            .unwrap_or_else(|| match self.nav_mode {
-                SpatialNavigationMode::TwoD => {
-                    re_renderer::Size::new_points(self.auto_size_points_heuristic())
-                }
-                SpatialNavigationMode::ThreeD => {
-                    re_renderer::Size::new_scene(self.auto_size_world_heuristic())
-                }
-            })
-    }
-
-    #[allow(clippy::unused_self)]
-    fn auto_size_points_heuristic(&self) -> f32 {
-        2.0
+    pub fn auto_size_config(
+        &self,
+        viewport_size_in_points: egui::Vec2,
+    ) -> re_renderer::AutoSizeConfig {
+        let mut config = self.auto_size_config;
+        if config.points.is_auto() {
+            // More points -> smaller points.
+            // Larger view -> larger points.
+            let num_points = self.scene_num_primitives; // approximately the same thing
+            let radius = 0.005 * viewport_size_in_points.length() / (num_points as f32 + 1.0);
+            let radius = radius.clamp(1.0, 5.0);
+            config.points = re_renderer::Size::new_points(radius);
+        }
+        if config.lines.is_auto() {
+            config.lines = re_renderer::Size::new_points(1.5);
+        }
+        config
     }
 
     fn auto_size_world_heuristic(&self) -> f32 {
@@ -121,69 +126,20 @@ impl ViewSpatialState {
 
     pub fn settings_ui(&mut self, _ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         egui::Grid::new("spatial_settings_ui").show(ui, |ui| {
-            ui.label("Default size:")
-                .on_hover_text("Size/radius used whenever not explicitly specified.");
+            let auto_size_world = self.auto_size_world_heuristic();
 
-            let (mut displayed_size, mut mode, drag_speed) = match self.auto_size_config {
-                None => (self.auto_size_config().0.abs(), AutoSizeUnit::Auto, 0.0),
-                Some(size) => {
-                    if size.points().is_some() {
-                        (size.0.abs(), AutoSizeUnit::UiPoints, 0.25)
-                    } else {
-                        (
-                            size.0.abs(),
-                            AutoSizeUnit::World,
-                            self.auto_size_world_heuristic() * 0.01,
-                        )
-                    }
-                }
-            };
+            ui.label("Default point radius:")
+                .on_hover_text("Point radius used whenever not explicitly specified.");
+            ui.push_id("points", |ui| {
+                size_ui(ui, auto_size_world, 2.0, &mut self.auto_size_config.points);
+            });
+            ui.end_row();
 
-            let mode_before = mode;
-            egui::ComboBox::from_id_source("auto_size_mode")
-                .width(80.0)
-                .selected_text(mode)
-                .show_ui(ui, |ui| {
-                    ui.style_mut().wrap = Some(false);
-                    ui.selectable_value(&mut mode, AutoSizeUnit::Auto, AutoSizeUnit::Auto)
-                        .on_hover_text("Determine automatically.");
-                    ui.selectable_value(&mut mode, AutoSizeUnit::UiPoints, AutoSizeUnit::UiPoints)
-                        .on_hover_text("Manual in ui points.");
-                    ui.selectable_value(&mut mode, AutoSizeUnit::World, AutoSizeUnit::World)
-                        .on_hover_text("Manual in scene units.");
-                });
-            if mode != mode_before {
-                self.auto_size_config = match mode {
-                    AutoSizeUnit::Auto => None,
-                    AutoSizeUnit::UiPoints => Some(re_renderer::Size::new_points(
-                        self.auto_size_points_heuristic(),
-                    )),
-                    AutoSizeUnit::World => Some(re_renderer::Size::new_scene(
-                        self.auto_size_world_heuristic(),
-                    )),
-                }
-            }
-
-            #[allow(clippy::collapsible_if)]
-            if !matches!(mode, AutoSizeUnit::Auto) {
-                if ui
-                    .add(
-                        egui::DragValue::new(&mut displayed_size)
-                            .clamp_range(0.0..=f32::INFINITY)
-                            .max_decimals(4)
-                            .speed(drag_speed),
-                    )
-                    .changed()
-                {
-                    self.auto_size_config = match mode {
-                        AutoSizeUnit::Auto => self.auto_size_config, // Shouldn't happen since the DragValue is disabled
-                        AutoSizeUnit::UiPoints => {
-                            Some(re_renderer::Size::new_points(displayed_size))
-                        }
-                        AutoSizeUnit::World => Some(re_renderer::Size::new_scene(displayed_size)),
-                    };
-                }
-            }
+            ui.label("Default line radius:")
+                .on_hover_text("Line radius used whenever not explicitly specified.");
+            ui.push_id("lines", |ui| {
+                size_ui(ui, auto_size_world, 1.5, &mut self.auto_size_config.lines);
+            });
             ui.end_row();
 
             ui.label("Navigation mode:");
@@ -267,6 +223,63 @@ impl ViewSpatialState {
         match self.nav_mode {
             SpatialNavigationMode::TwoD => super::ui_2d::HELP_TEXT,
             SpatialNavigationMode::ThreeD => super::ui_3d::HELP_TEXT,
+        }
+    }
+}
+
+fn size_ui(
+    ui: &mut egui::Ui,
+    default_size_points: f32,
+    default_size_world: f32,
+    size: &mut re_renderer::Size,
+) {
+    use re_renderer::Size;
+
+    let (mut displayed_size, mut mode, drag_speed) = if size.is_auto() {
+        (2.0, AutoSizeUnit::Auto, 0.0)
+    } else if size.points().is_some() {
+        (size.0.abs(), AutoSizeUnit::UiPoints, 0.25)
+    } else {
+        (size.0.abs(), AutoSizeUnit::World, size.0.abs() * 0.01)
+    };
+
+    let mode_before = mode;
+    egui::ComboBox::from_id_source("auto_size_mode")
+        .width(80.0)
+        .selected_text(mode)
+        .show_ui(ui, |ui| {
+            ui.style_mut().wrap = Some(false);
+            ui.selectable_value(&mut mode, AutoSizeUnit::Auto, AutoSizeUnit::Auto)
+                .on_hover_text("Determine automatically.");
+            ui.selectable_value(&mut mode, AutoSizeUnit::UiPoints, AutoSizeUnit::UiPoints)
+                .on_hover_text("Manual in ui points.");
+            ui.selectable_value(&mut mode, AutoSizeUnit::World, AutoSizeUnit::World)
+                .on_hover_text("Manual in scene units.");
+        });
+    if mode != mode_before {
+        *size = match mode {
+            AutoSizeUnit::Auto => Size::AUTO,
+            AutoSizeUnit::UiPoints => Size::new_points(default_size_points),
+            AutoSizeUnit::World => Size::new_scene(default_size_world),
+        }
+    }
+
+    #[allow(clippy::collapsible_if)]
+    if mode != AutoSizeUnit::Auto {
+        if ui
+            .add(
+                egui::DragValue::new(&mut displayed_size)
+                    .clamp_range(0.0..=f32::INFINITY)
+                    .max_decimals(4)
+                    .speed(drag_speed),
+            )
+            .changed()
+        {
+            *size = match mode {
+                AutoSizeUnit::Auto => unreachable!(),
+                AutoSizeUnit::UiPoints => Size::new_points(displayed_size),
+                AutoSizeUnit::World => Size::new_scene(displayed_size),
+            };
         }
     }
 }
