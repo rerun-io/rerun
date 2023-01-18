@@ -144,7 +144,7 @@ impl SceneText {
                 field_types::ColorRGBA::name(),
             ];
             let ent_views = range_entity_with_primary::<field_types::TextEntry, 4>(
-                store, query, ent_path, components,
+                store, &query, ent_path, components,
             );
 
             for (time, ent_view) in ent_views {

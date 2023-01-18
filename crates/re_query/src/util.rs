@@ -28,7 +28,7 @@ pub fn ugly_query_helper<'a, Primary: Component + 'a, const N: usize>(
         let range_query = RangeQuery::new(*timeline, TimeRange::new(min_time, *time));
 
         let range =
-            range_entity_with_primary::<Primary, N>(store, range_query, ent_path, components);
+            range_entity_with_primary::<Primary, N>(store, &range_query, ent_path, components);
 
         Ok(itertools::Either::Right(range.map(|(_, entity)| entity)))
     }
