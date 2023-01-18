@@ -49,7 +49,7 @@ impl SelectionPanel {
     ) {
         crate::profile_function!();
 
-        if !ctx
+        if ctx
             .selection()
             .selected()
             .iter()
@@ -69,21 +69,15 @@ impl SelectionPanel {
                     return;
                 }
 
-                let all_selected = ctx
-                    .selection()
-                    .selected()
-                    .iter()
-                    .cloned()
-                    .collect::<Vec<_>>();
-                for selection in all_selected {
-                    what_is_selected_ui(ui, ctx, blueprint, &selection);
+                for selection in ctx.selection().selected() {
+                    what_is_selected_ui(ui, ctx, blueprint, selection);
 
                     ui.separator();
 
                     egui::CollapsingHeader::new("Data")
                         .default_open(true)
                         .show(ui, |ui| {
-                            data_ui(ui, ctx, &selection, Preview::Large);
+                            data_ui(ui, ctx, selection, Preview::Large);
                         });
 
                     ui.separator();
@@ -91,7 +85,7 @@ impl SelectionPanel {
                     egui::CollapsingHeader::new("Blueprint")
                         .default_open(true)
                         .show(ui, |ui| {
-                            blueprint_ui(ui, ctx, blueprint, &selection);
+                            blueprint_ui(ui, ctx, blueprint, selection);
                         });
                 }
             });

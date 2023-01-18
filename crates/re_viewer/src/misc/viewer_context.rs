@@ -248,7 +248,7 @@ impl<'a> ViewerContext<'a> {
     /// Returns the previous selection.
     pub fn set_single_selection(&mut self, item: Selection) -> MultiSelection {
         self.rec_cfg
-            .set_selection(self.selection_history, [item].into_iter())
+            .set_selection(self.selection_history, std::iter::once(item))
     }
 
     /// Sets several objects to be selected, updating history as needed.

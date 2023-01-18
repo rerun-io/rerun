@@ -148,7 +148,7 @@ impl MultiSelection {
                         // TODO(andreas): Hash should be precomputed upon setting the selection - maybe just an IntSet of hashes here?
                         partial
                             .selected_fields_or_components
-                            .insert(data_path.field_name.clone());
+                            .insert(data_path.field_name);
                     }
                 }
 

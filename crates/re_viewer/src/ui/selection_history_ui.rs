@@ -205,7 +205,7 @@ fn selection_kind_ui(ui: &mut egui::Ui, sel: &Selection) {
 
 fn multi_selection_to_string(blueprint: &Blueprint, sel: &MultiSelection) -> String {
     if sel.selected().len() == 1 {
-        single_selection_to_string(blueprint, &sel.selected().first().unwrap())
+        single_selection_to_string(blueprint, sel.selected().first().unwrap())
     } else {
         "<multiple objects>".to_owned()
     }
