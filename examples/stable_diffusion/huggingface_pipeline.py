@@ -272,7 +272,6 @@ class StableDiffusionDepth2ImgPipeline(DiffusionPipeline):
             rr.log_tensor("prompt/uncond_input/ids", uncond_input.input_ids)
 
             if hasattr(self.text_encoder.config, "use_attention_mask") and self.text_encoder.config.use_attention_mask:
-                rr.log_tensor("prompt/uncond_input/attention_mask", uncond_input.attention_mask)
                 attention_mask = uncond_input.attention_mask.to(device)
             else:
                 attention_mask = None
@@ -287,13 +286,13 @@ class StableDiffusionDepth2ImgPipeline(DiffusionPipeline):
             seq_len = uncond_embeddings.shape[1]
             uncond_embeddings = uncond_embeddings.repeat(1, num_images_per_prompt, 1)
             uncond_embeddings = uncond_embeddings.view(batch_size * num_images_per_prompt, seq_len, -1)
-            rr.log_tensor("prompt/uncond_embeddings", uncond_embeddings)
 
             # For classifier free guidance, we need to do two forward passes.
             # Here we concatenate the unconditional and text embeddings into a single batch
             # to avoid doing two forward passes
-            text_embeddings = torch.cat([uncond_embeddings, text_embeddings])
             rr.log_tensor("prompt/text_embeddings", text_embeddings)
+            rr.log_tensor("prompt/uncond_embeddings", uncond_embeddings)
+            text_embeddings = torch.cat([uncond_embeddings, text_embeddings])
 
         return text_embeddings
 
