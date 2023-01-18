@@ -48,6 +48,22 @@ pub enum Property {
 
 // TODO: web too
 
+const DISCLAIMER: &str = "
+    Welcome to Rerun!
+
+    Summary:
+    - This open source library collects anonymous usage statistics.
+    - We cannot see and do not store information contained inside Rerun apps,
+      such as text logs, images, point clouds, etc.
+    - Telemetry data is stored in servers in Europe.
+    - If you'd like to opt out, run the following: `rerun analytics disable`.
+
+    As this is this your first session, we will _not_ send out any telemetry data yet,
+    giving you an opportunity to opt-out first.
+
+    You can audit the data being sent out by looking at our data directory at the end of your session:
+";
+
 #[derive(thiserror::Error, Debug)]
 pub enum AnalyticsError {
     #[error(transparent)]
@@ -76,7 +92,8 @@ impl Analytics {
             //     - we print to terminal everything analytics related on first run
             //     - and we make it clear we havent sent anything
             //     - we can point out where the actual data lives
-            println!("Welcome, this is our analytics disclaimer!");
+            eprintln!("{DISCLAIMER}");
+            eprintln!("    {:?}\n", config.data_dir());
 
             config.save()?;
         }
