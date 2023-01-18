@@ -31,6 +31,7 @@ When doing a normal release, we create a branch off of `main`. If we are doing a
 ### Release checklist
 Copy this checklist to the the PR description, go through it from top to bottom, and check each item before moving onto the next. This is a living document. Strive to improve it on each new release.
 
+* [ ] Use `cargo +nightly udeps` to find and update outdated crates (NOT for patch releases!)
 * [ ] Create a release branch called `release-0.x.y`
 * [ ] If it is a patch release, cherry-pick the commits that should be included
 * [ ] For the draft PR description, add a:
@@ -71,3 +72,4 @@ Copy this checklist to the the PR description, go through it from top to bottom,
 * [ ] Find a tool that auto-updates our `CHANGELOG.md` on each merged PR
 * [ ] See if we can use [`cargo-release`](https://github.com/crate-ci/cargo-release)
 * [ ] Write instructions for how to publish the Python wheels
+* [ ] Stop using patched versions of crates

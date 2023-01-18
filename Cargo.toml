@@ -56,8 +56,16 @@ debug = true
 
 
 [patch.crates-io]
-# Try to avoid patching crates! It prevents using our crates outside this repository.
-# Prefer to put the crate you want to patch under [workspace.dependencies] above.
+# Try to avoid patching crates! It prevents us from publishing the crates on crates.io.
+# Prefer to put the crate you want to patch under [workspace.dependencies] above, if possible.
+# Of course, if the crates are used transitevly, that is not possible (e.g. polars uses arrow2).
+
+# Upstream PR https://github.com/jorgecarleitao/arrow2/pull/1360
+arrow2 = { git = "https://github.com/rerun-io/arrow2", rev = "c6ef5e3dde4a18c35c8a1d91d9a741835be0305f" }
+# Upstream PR https://github.com/DataEngineeringLabs/arrow2-convert/pull/91
+arrow2_convert = { git = "https://github.com/rerun-io/arrow2-convert", rev = "aa48be082d0039e8c1a67b581ce5f697b89f3765" }
+# arrow2 = { path = "../arrow2" }
+# arrow2_convert = { path = "../arrow2-convert/arrow2_convert" }
 
 # 2022-01-16: prevent ctrl-p from opening the print dialog
 ecolor = { git = "https://github.com/emilk/egui", rev = "cd0f66b9ae661be737ce57f26fb305cf124f6b73" }
@@ -80,10 +88,3 @@ epaint = { git = "https://github.com/emilk/egui", rev = "cd0f66b9ae661be737ce57f
 wgpu = { git = "https://github.com/gfx-rs/wgpu.git", ref = "a377ae2b7fe6c1c9412751166f0917e617164e49" }
 wgpu-core = { git = "https://github.com/gfx-rs/wgpu.git", ref = "a377ae2b7fe6c1c9412751166f0917e617164e49" }
 # wgpu = { path = "../wgpu/wgpu" }
-
-# Upstream PR https://github.com/jorgecarleitao/arrow2/pull/1360
-arrow2 = { git = "https://github.com/rerun-io/arrow2", rev = "c6ef5e3dde4a18c35c8a1d91d9a741835be0305f" }
-# Upstream PR https://github.com/DataEngineeringLabs/arrow2-convert/pull/91
-arrow2_convert = { git = "https://github.com/rerun-io/arrow2-convert", rev = "aa48be082d0039e8c1a67b581ce5f697b89f3765" }
-# arrow2 = { path = "../arrow2" }
-# arrow2_convert = { path = "../arrow2-convert/arrow2_convert" }
