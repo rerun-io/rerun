@@ -57,6 +57,7 @@ pub struct PickingResult {
 
 impl PickingResult {
     /// The space position of a given hit.
+    #[allow(dead_code)]
     pub fn space_position(&self, hit: &PickingRayHit) -> glam::Vec3 {
         self.picking_ray.origin + self.picking_ray.dir * hit.ray_t
     }

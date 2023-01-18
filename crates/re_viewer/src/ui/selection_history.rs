@@ -1,6 +1,4 @@
-use crate::Selection;
-
-// ---
+use crate::misc::Selection;
 
 /// A `Selection` and its index into the historical stack.
 #[derive(Debug, Clone)]
@@ -42,7 +40,7 @@ impl SelectionHistory {
 
     pub fn update_selection(&mut self, selection: &Selection) {
         // Selecting nothing is irrelevant from a history standpoint.
-        if matches!(selection, Selection::None) {
+        if *selection == Selection::None {
             return;
         }
 

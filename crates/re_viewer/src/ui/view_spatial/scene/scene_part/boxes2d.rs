@@ -9,7 +9,7 @@ use re_query::{query_entity_with_primary, QueryError};
 use re_renderer::Size;
 
 use crate::{
-    misc::ViewerContext,
+    misc::{ObjectPathSelectionResult, ViewerContext},
     ui::{
         scene::SceneQuery,
         transform_cache::{ReferenceFromObjTransform, TransformCache},
@@ -33,7 +33,6 @@ impl ScenePart for Boxes2DPartClassic {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
-        hovered_instance: InstanceIdHash,
     ) {
         crate::profile_scope!("Boxes2DPartClassic");
 
@@ -47,6 +46,8 @@ impl ScenePart for Boxes2DPartClassic {
             let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(obj_path) else {
                 continue;
             };
+
+            let highlighted_paths = ctx.hovered().is_path_selected(obj_path.hash());
 
             let mut line_batch = scene
                 .primitives
@@ -72,7 +73,7 @@ impl ScenePart for Boxes2DPartClassic {
                 let label = annotation_info.label(label);
 
                 let mut paint_props = paint_properties(color, stroke_width);
-                if instance_hash.is_some() && hovered_instance == instance_hash {
+                if highlighted_paths.is_index_selected(instance_hash.instance_index_hash) {
                     apply_hover_effect(&mut paint_props);
                 }
 
@@ -115,9 +116,9 @@ impl Boxes2DPart {
         obj_path: &ObjPath,
         world_from_obj: Mat4,
         instance: InstanceIdHash,
-        hovered_instance: InstanceIdHash,
         rect: &Rect2D,
         color: Option<ColorRGBA>,
+        highlighted_paths: &ObjectPathSelectionResult,
     ) {
         scene.num_logged_2d_objects += 1;
 
@@ -136,7 +137,7 @@ impl Boxes2DPart {
         let label = annotation_info.label(label);
 
         let mut paint_props = paint_properties(color, stroke_width);
-        if hovered_instance == instance {
+        if highlighted_paths.is_index_selected(instance.instance_index_hash) {
             apply_hover_effect(&mut paint_props);
         }
 
@@ -177,7 +178,6 @@ impl ScenePart for Boxes2DPart {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
-        hovered_instance: InstanceIdHash,
     ) {
         crate::profile_scope!("Boxes2DPart");
 
@@ -195,6 +195,8 @@ impl ScenePart for Boxes2DPart {
                 &[ColorRGBA::name()],
             )
             .and_then(|entity_view| {
+                let highlighted_paths = ctx.hovered().is_path_selected(ent_path.hash());
+
                 entity_view.visit2(|instance, rect, color| {
                     let instance_hash = {
                         if props.interactive {
@@ -209,9 +211,9 @@ impl ScenePart for Boxes2DPart {
                         ent_path,
                         world_from_obj,
                         instance_hash,
-                        hovered_instance,
                         &rect,
                         color,
+                        &highlighted_paths,
                     );
                 })
             }) {

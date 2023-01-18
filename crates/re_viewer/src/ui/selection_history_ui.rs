@@ -194,10 +194,8 @@ fn selection_kind_ui(ui: &mut egui::Ui, sel: &Selection) {
     ui.weak(RichText::new(match sel {
         Selection::None => "(none)",
         Selection::MsgId(_) => "(msg)",
-        Selection::ObjTypePath(_) => "(type)",
         Selection::Instance(_) => "(instance)",
         Selection::DataPath(_) => "(field)",
-        Selection::Space(_) => "(space)",
         Selection::SpaceView(_) => "(view)",
         Selection::SpaceViewObjPath(_, _) => "(obj)",
         Selection::DataBlueprintGroup(_, _) => "(group)",
@@ -208,21 +206,28 @@ fn selection_to_string(blueprint: &Blueprint, sel: &Selection) -> String {
     match sel {
         Selection::SpaceView(sid) => {
             if let Some(space_view) = blueprint.viewport.space_view(sid) {
-                return space_view.name.clone();
+                space_view.name.clone()
+            } else {
+                "<removed space view>".to_owned()
             }
         }
-        Selection::SpaceViewObjPath(_, obj_path) => return obj_path.to_string(),
+        Selection::SpaceViewObjPath(_, obj_path) => obj_path.to_string(),
         Selection::DataBlueprintGroup(sid, handle) => {
             if let Some(space_view) = blueprint.viewport.space_view(sid) {
                 if let Some(group) = space_view.data_blueprint.get_group(*handle) {
-                    return group.display_name.clone();
+                    group.display_name.clone()
+                } else {
+                    format!("<removed group in {}>", space_view.name)
                 }
+            } else {
+                "<group in removed space view>".to_owned()
             }
         }
-        _ => {}
+        Selection::None => "<empty>".to_owned(),
+        Selection::MsgId(s) => s.to_string(),
+        Selection::Instance(s) => s.to_string(),
+        Selection::DataPath(s) => s.to_string(),
     }
-
-    sel.to_string()
 }
 
 // TODO(cmc): This is both ad-hoc and technically incorrect: we should be using egui's

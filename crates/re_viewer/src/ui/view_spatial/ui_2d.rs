@@ -4,12 +4,12 @@ use egui::{
     TextFormat, TextStyle, Vec2,
 };
 use macaw::IsoTransform;
-use re_data_store::{InstanceIdHash, ObjPath};
+use re_data_store::ObjPath;
 use re_renderer::view_builder::TargetConfiguration;
 
 use super::{eye::Eye, scene::AdditionalPickingInfo, ViewSpatialState};
 use crate::{
-    misc::HoveredSpace,
+    misc::{HoveredSpace, MultiSelection, Selection},
     ui::{
         data_ui::{self, DataUi},
         view_spatial::{
@@ -322,25 +322,17 @@ fn view_2d_scrollable(
     // ------------------------------------------------------------------------
 
     // Add egui driven labels on top of re_renderer content.
-    // Needs to come before hovering checks because it adds more objects for hovering.
-    {
-        let hovered_instance_hash = state
-            .hovered_instance
-            .as_ref()
-            .map_or(InstanceIdHash::NONE, |i| i.hash());
-        painter.extend(create_labels(
-            &mut scene,
-            ui_from_space,
-            space_from_ui,
-            parent_ui,
-            hovered_instance_hash,
-        ));
-    }
+    painter.extend(create_labels(
+        &mut scene,
+        ui_from_space,
+        space_from_ui,
+        parent_ui,
+        ctx.hovered(),
+    ));
 
     // ------------------------------------------------------------------------
 
     // Check if we're hovering any hover primitive.
-    state.hovered_instance = None;
     let mut depth_at_pointer = None;
     if let Some(pointer_pos_ui) = response.hover_pos() {
         let pointer_pos_space = space_from_ui.transform_pos(pointer_pos_ui);
@@ -386,7 +378,7 @@ fn view_2d_scrollable(
                 response
                     .on_hover_cursor(egui::CursorIcon::ZoomIn)
                     .on_hover_ui_at_pointer(|ui| {
-                        ui.set_max_width(400.0);
+                        ui.set_max_width(320.0);
 
                         ui.vertical(|ui| {
                             ui.label(instance_id.to_string());
@@ -425,24 +417,24 @@ fn view_2d_scrollable(
                 // Hover ui for everything else
                 response.on_hover_ui_at_pointer(|ui| {
                     ctx.instance_id_button(ui, &instance_id);
-                    instance_id.data_ui(ctx, ui, crate::ui::Preview::Medium);
+                    instance_id.data_ui(ctx, ui, crate::ui::Preview::Large);
                 })
             };
 
-            if let Some(closest_pick) = picking_result.iter_hits().last() {
-                // Save last known hovered object.
-                if let Some(instance_id) = closest_pick.instance_hash.resolve(&ctx.log_db.obj_db) {
-                    state.hovered_instance = Some(instance_id);
-                }
-            }
-
-            // Clicking the last hovered object.
-            if let Some(instance_id) = &state.hovered_instance {
-                if response.clicked() {
-                    ctx.set_selection(crate::Selection::Instance(instance_id.clone()));
-                }
-            }
+            ctx.set_hovered(picking_result.iter_hits().filter_map(|pick| {
+                pick.instance_hash
+                    .resolve(&ctx.log_db.obj_db)
+                    // TODO(andreas): Associate current space view
+                    .map(Selection::Instance)
+            }));
         }
+    }
+
+    // Clicking the last hovered object.
+    // TODO(andreas): Should this happen in a single global location?
+    // TODO(andreas): Multiselect.
+    if response.clicked() && !ctx.hovered().is_empty() {
+        ctx.set_selection(ctx.hovered().primary().unwrap().clone());
     }
 
     // ------------------------------------------------------------------------
@@ -463,7 +455,7 @@ fn create_labels(
     ui_from_space: RectTransform,
     space_from_ui: RectTransform,
     parent_ui: &mut egui::Ui,
-    hovered_instance: InstanceIdHash,
+    hovered: &MultiSelection,
 ) -> Vec<Shape> {
     let mut label_shapes = Vec::with_capacity(scene.ui.labels_2d.len() * 2);
 
@@ -506,7 +498,7 @@ fn create_labels(
             Align2::CENTER_TOP.anchor_rect(Rect::from_min_size(text_anchor_pos, galley.size()));
         let bg_rect = text_rect.expand2(vec2(4.0, 2.0));
 
-        let fill_color = if label.labled_instance == hovered_instance {
+        let fill_color = if hovered.is_instance_selected(label.labled_instance) {
             parent_ui.style().visuals.widgets.active.bg_fill
         } else {
             parent_ui.style().visuals.widgets.inactive.bg_fill

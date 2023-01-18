@@ -72,7 +72,6 @@ impl ScenePart for ImagesPartClassic {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
-        hovered_instance: InstanceIdHash,
     ) {
         crate::profile_scope!("ImagesPartClassic");
 
@@ -85,6 +84,8 @@ impl ScenePart for ImagesPartClassic {
             let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(obj_path) else {
                 continue;
             };
+
+            let highlighted_paths = ctx.hovered().is_path_selected(obj_path.hash());
 
             let visitor = |instance_index: Option<&IndexHash>,
                            _time: i64,
@@ -108,7 +109,7 @@ impl ScenePart for ImagesPartClassic {
                     None,
                 );
 
-                if instance_hash.is_some() && hovered_instance == instance_hash {
+                if highlighted_paths.is_index_selected(instance_hash.instance_index_hash) {
                     let rect =
                         glam::vec2(tensor.shape()[1].size as f32, tensor.shape()[0].size as f32);
                     scene
@@ -212,10 +213,11 @@ impl ImagesPart {
         scene: &mut SceneSpatial,
         ctx: &mut ViewerContext<'_>,
         properties: &ObjectProps,
-        hovered_instance: InstanceIdHash,
         ent_path: &ObjPath,
         world_from_obj: glam::Mat4,
     ) -> Result<(), QueryError> {
+        let highlighted_paths = ctx.hovered().is_path_selected(ent_path.hash());
+
         for (instance, tensor, color) in itertools::izip!(
             entity_view.iter_instances()?,
             entity_view.iter_primary()?,
@@ -243,7 +245,7 @@ impl ImagesPart {
 
                 let paint_props = paint_properties(color, None);
 
-                if instance_hash.is_some() && hovered_instance == instance_hash {
+                if highlighted_paths.is_index_selected(instance_hash.instance_index_hash) {
                     let rect =
                         glam::vec2(tensor.shape()[1].size as f32, tensor.shape()[0].size as f32);
                     scene
@@ -290,7 +292,6 @@ impl ScenePart for ImagesPart {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
-        hovered_instance: InstanceIdHash,
     ) {
         crate::profile_scope!("ImagesPart");
 
@@ -315,7 +316,6 @@ impl ScenePart for ImagesPart {
                     scene,
                     ctx,
                     &properties,
-                    hovered_instance,
                     ent_path,
                     world_from_obj,
                 )
