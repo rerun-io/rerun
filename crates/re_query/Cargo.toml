@@ -9,6 +9,8 @@ publish = false
 
 [features]
 default = []
+
+## Polars support
 polars = ["dep:polars-core", "re_arrow_store/polars"]
 
 
