@@ -57,7 +57,7 @@ impl DataUi for DataPath {
                         ui.label(ctx.re_ui.error_text(format!("Data error: {:?}", err)));
                     }
                     None => {
-                        ui.label(ctx.re_ui.error_text(format!("No data at time {time_i64}")));
+                        ui.label(format!("No data at time {time_i64}"));
                     }
                 }
             }

@@ -160,7 +160,7 @@ impl DataUi for ViewCoordinates {
 impl DataUi for Rigid3 {
     fn data_ui(
         &self,
-        _ctx: &mut crate::misc::ViewerContext<'_>,
+        ctx: &mut crate::misc::ViewerContext<'_>,
         ui: &mut egui::Ui,
         preview: Preview,
     ) {
@@ -170,7 +170,7 @@ impl DataUi for Rigid3 {
             let translation = pose.translation();
 
             ui.vertical(|ui| {
-                ui.label("Rigid3 transform:");
+                ui.label("Rigid 3D transform:");
                 ui.indent("rigid3", |ui| {
                     egui::Grid::new("rigid3").num_columns(2).show(ui, |ui| {
                         ui.label("rotation");
@@ -184,7 +184,9 @@ impl DataUi for Rigid3 {
                 });
             });
         } else {
-            ui.label("Rigid3 transform");
+            ui.label("Rigid 3D transform").on_hover_ui(|ui| {
+                self.data_ui(ctx, ui, Preview::Medium);
+            });
         }
     }
 }
@@ -221,7 +223,9 @@ impl DataUi for Pinhole {
                 });
             });
         } else {
-            ui.label("Pinhole transform");
+            ui.label("Pinhole transform").on_hover_ui(|ui| {
+                self.data_ui(ctx, ui, Preview::Medium);
+            });
         }
     }
 }
