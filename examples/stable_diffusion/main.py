@@ -25,6 +25,7 @@ DATASET_DIR: Final = EXAMPLE_DIR / "dataset"
 CACHE_DIR: Final = EXAMPLE_DIR / "cache"
 
 IMAGE_NAME_TO_URL: Final = {
+    "sitting_wooden_figure": "https://storage.googleapis.com/rerun-example-datasets/stable_diffusion/sitting_wooden_figure.jpg",
     "old_man": "https://github.com/Stability-AI/stablediffusion/raw/main/assets/stable-samples/depth2img/old_man.png",
     "fantasy": "https://github.com/Stability-AI/stablediffusion/raw/main/assets/stable-samples/depth2img/depth2fantasy.jpeg",
 }
@@ -98,18 +99,18 @@ def main() -> None:
         "--prompt",
         type=str,
         help="Positive prompt describing the image you want to generate.",
-        default="Old man in a smoky disco wearing futuristic glasses.",
+        default="A tired robot sitting down on a dirt floor. Rusty metal. Unreal Engine. Wall-e",
     )
     parser.add_argument(
         "--n_prompt",
         type=str,
         help="Negative prompt describing what you don't want in the image you generate.",
-        default=None,
+        default="White uniform floor and background",
     )
     parser.add_argument(
         "--strength",
         type=float,
-        default=0.65,
+        default=0.7,
         help="""
 Conceptually, indicates how much to transform the reference `image`. Must be between 0 and 1. `image`
 will be used as a starting point, adding more noise to it the larger the `strength`. The number of
@@ -121,7 +122,7 @@ be maximum and the denoising process will run for the full number of iterations 
     parser.add_argument(
         "--guidance_scale",
         type=float,
-        default=8.5,
+        default=8,
         help="""
 Guidance scale as defined in [Classifier-Free Diffusion Guidance](https://arxiv.org/abs/2207.12598).
 `guidance_scale` is defined as `w` of equation 2. of [Imagen
