@@ -1,0 +1,34 @@
+# mkdocs.yml
+site_name: Rerun Python APIs
+repo_url: https://github.com/rerun-io/rerun/
+
+theme:
+  name: "material"
+  features:
+    #- navigation.tabs
+    #- navigation.tabs.sticky
+    - navigation.instant
+    - navigation.indexes
+    - navigation.tracking
+
+plugins:
+  - search
+  - mkdocstrings:
+      custom_templates: docs/templates
+      handlers:
+        python:
+          options:
+            #show_signature_annotations: yes
+            merge_init_into_class: yes
+            show_source: no
+            docstring_style: numpy
+  - gen-files:
+      scripts:
+        - docs/gen_ref_nav.py
+  - literate-nav:
+      nav_file: SUMMARY.txt
+  - redirects:
+      redirect_maps:
+        "index.md": "rerun/index.md"
+markdown_extensions:
+  - pymdownx.highlight
