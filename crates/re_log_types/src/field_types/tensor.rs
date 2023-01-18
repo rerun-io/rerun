@@ -337,8 +337,30 @@ impl TensorTrait for Tensor {
         self.meaning
     }
 
-    fn get(&self, _index: &[u64]) -> Option<TensorElement> {
-        None
+    fn get(&self, index: &[u64]) -> Option<TensorElement> {
+        let mut stride: usize = 1;
+        let mut offset: usize = 0;
+        for (TensorDimension { size, name: _ }, index) in self.shape.iter().zip(index).rev() {
+            if size <= index {
+                return None;
+            }
+            offset += (*index as usize * stride);
+            stride *= *size as usize;
+        }
+
+        Some(match &self.data {
+            TensorData::U8(buf) => TensorElement::U8(buf[offset]),
+            TensorData::U16(buf) => TensorElement::U16(buf[offset]),
+            TensorData::U32(buf) => TensorElement::U32(buf[offset]),
+            TensorData::U64(buf) => TensorElement::U64(buf[offset]),
+            TensorData::I8(buf) => TensorElement::I8(buf[offset]),
+            TensorData::I16(buf) => TensorElement::I16(buf[offset]),
+            TensorData::I32(buf) => TensorElement::I32(buf[offset]),
+            TensorData::I64(buf) => TensorElement::I64(buf[offset]),
+            TensorData::F32(buf) => TensorElement::F32(buf[offset]),
+            TensorData::F64(buf) => TensorElement::F64(buf[offset]),
+            TensorData::JPEG(_) => todo!(),
+        })
     }
 }
 
