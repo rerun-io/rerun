@@ -148,9 +148,9 @@ impl Boxes2DPart {
 
         line_batch
             .add_rectangle_outline_2d(
-                glam::vec2(rect.x, rect.y),
-                glam::vec2(rect.w, 0.0),
-                glam::vec2(0.0, rect.h),
+                rect.top_left_corner().into(),
+                glam::vec2(rect.width(), 0.0),
+                glam::vec2(0.0, rect.height()),
             )
             .color(paint_props.fg_stroke.color)
             .radius(Size::new_points(paint_props.fg_stroke.width * 0.5))
@@ -161,8 +161,8 @@ impl Boxes2DPart {
                 text: label,
                 color: paint_props.fg_stroke.color,
                 target: Label2DTarget::Rect(egui::Rect::from_min_size(
-                    egui::pos2(rect.x, rect.y),
-                    egui::vec2(rect.w, rect.h),
+                    rect.top_left_corner().into(),
+                    egui::vec2(rect.width(), rect.height()),
                 )),
                 labled_instance: instance,
             });
