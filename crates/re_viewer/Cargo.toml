@@ -46,17 +46,17 @@ ahash = "0.8"
 anyhow.workspace = true
 bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }
 cgmath = { version = "0.18", features = ["mint"] }
-eframe = { version = "0.20", default-features = false, features = [
+eframe = { workspace = true, default-features = false, features = [
   "default_fonts",
   "persistence",
   "puffin",
   "wgpu",
 ] }
-egui = { version = "0.20", features = ["extra_debug_asserts", "tracing"] }
+egui = { workspace = true, features = ["extra_debug_asserts", "tracing"] }
 egui_dock = { version = "0.3", features = ["serde"] }
-egui_extras = { version = "0.20", features = ["tracing"] }
+egui_extras = { workspace = true, features = ["tracing"] }
 egui-notify = "0.5"
-egui-wgpu = "0.20"
+egui-wgpu.workspace = true
 enumset = "1.0.12"
 glam = { version = "0.20", features = [
   "mint",
@@ -82,7 +82,7 @@ slotmap = { version = "1.0.6", features = ["serde"] }
 smallvec = { version = "1.10", features = ["serde"] }
 uuid = { version = "1.1", features = ["serde", "v4", "js"] }
 vec1 = "1.8"
-wgpu = "0.14"
+wgpu.workspace = true
 
 # native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
