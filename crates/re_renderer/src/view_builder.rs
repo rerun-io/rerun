@@ -107,19 +107,19 @@ pub struct AutoSizeConfig {
     /// Determines the point radius when [`crate::Size::AUTO`].
     ///
     /// If this in turn is an auto size, re_renderer will pick an arbitrary but okish ui size.
-    pub points: Size,
+    pub point_radius: Size,
 
     /// Determines the line radius for [`crate::Size::AUTO`] for lines.
     ///
     /// If this in turn is an auto size, re_renderer will pick an arbitrary but okish ui size.
-    pub lines: Size,
+    pub line_radius: Size,
 }
 
 impl Default for AutoSizeConfig {
     fn default() -> Self {
         Self {
-            points: Size::AUTO,
-            lines: Size::AUTO,
+            point_radius: Size::AUTO,
+            line_radius: Size::AUTO,
         }
     }
 }
@@ -372,15 +372,15 @@ impl ViewBuilder {
         let camera_forward = -view_from_world.row(2).truncate();
         let projection_from_world = projection_from_view * view_from_world;
 
-        let auto_size_points = if config.auto_size_config.points.is_auto() {
+        let auto_size_points = if config.auto_size_config.point_radius.is_auto() {
             Size::new_points(2.5)
         } else {
-            config.auto_size_config.points
+            config.auto_size_config.point_radius
         };
-        let auto_size_lines = if config.auto_size_config.lines.is_auto() {
+        let auto_size_lines = if config.auto_size_config.line_radius.is_auto() {
             Size::new_points(1.5)
         } else {
-            config.auto_size_config.lines
+            config.auto_size_config.line_radius
         };
 
         // See `depth_offset.wgsl`.

@@ -75,8 +75,8 @@ impl Default for ViewSpatialState {
             state_2d: Default::default(),
             state_3d: Default::default(),
             auto_size_config: re_renderer::AutoSizeConfig {
-                points: re_renderer::Size::AUTO, // let re_renderer decide
-                lines: re_renderer::Size::AUTO,  // let re_renderer decide
+                point_radius: re_renderer::Size::AUTO, // let re_renderer decide
+                line_radius: re_renderer::Size::AUTO,  // let re_renderer decide
             },
         }
     }
@@ -88,18 +88,29 @@ impl ViewSpatialState {
         viewport_size_in_points: egui::Vec2,
     ) -> re_renderer::AutoSizeConfig {
         let mut config = self.auto_size_config;
-        if config.points.is_auto() {
-            // More points -> smaller points.
-            // Larger view -> larger points.
-            let num_points = self.scene_num_primitives; // approximately the same thing
-            let radius = 0.005 * viewport_size_in_points.length() / (num_points as f32 + 1.0);
-            let radius = radius.clamp(1.0, 5.0);
-            config.points = re_renderer::Size::new_points(radius);
+        if config.point_radius.is_auto() {
+            config.point_radius = self.default_point_radius(viewport_size_in_points);
         }
-        if config.lines.is_auto() {
-            config.lines = re_renderer::Size::new_points(1.5);
+        if config.line_radius.is_auto() {
+            config.line_radius = self.default_line_radius();
         }
         config
+    }
+
+    pub fn default_line_radius(&self) -> re_renderer::Size {
+        re_renderer::Size::new_points(1.5)
+    }
+
+    pub fn default_point_radius(&self, viewport_size_in_points: egui::Vec2) -> re_renderer::Size {
+        let num_points = self.scene_num_primitives; // approximately the same thing when there are many points
+
+        // Larger view -> larger points.
+        let viewport_area = viewport_size_in_points.x * viewport_size_in_points.y;
+
+        // More points -> smaller points.
+        let radius = (0.3 * (viewport_area / (num_points + 1) as f32).sqrt()).clamp(0.2, 5.0);
+
+        re_renderer::Size::new_points(radius)
     }
 
     fn auto_size_world_heuristic(&self) -> f32 {
@@ -131,14 +142,24 @@ impl ViewSpatialState {
             ui.label("Default point radius:")
                 .on_hover_text("Point radius used whenever not explicitly specified.");
             ui.push_id("points", |ui| {
-                size_ui(ui, auto_size_world, 2.0, &mut self.auto_size_config.points);
+                size_ui(
+                    ui,
+                    auto_size_world,
+                    2.0,
+                    &mut self.auto_size_config.point_radius,
+                );
             });
             ui.end_row();
 
             ui.label("Default line radius:")
                 .on_hover_text("Line radius used whenever not explicitly specified.");
             ui.push_id("lines", |ui| {
-                size_ui(ui, auto_size_world, 1.5, &mut self.auto_size_config.lines);
+                size_ui(
+                    ui,
+                    auto_size_world,
+                    1.5,
+                    &mut self.auto_size_config.line_radius,
+                );
             });
             ui.end_row();
 
@@ -238,7 +259,7 @@ fn size_ui(
     let (mut displayed_size, mut mode, drag_speed) = if size.is_auto() {
         (2.0, AutoSizeUnit::Auto, 0.0)
     } else if size.points().is_some() {
-        (size.0.abs(), AutoSizeUnit::UiPoints, 0.25)
+        (size.0.abs(), AutoSizeUnit::UiPoints, 0.1)
     } else {
         (size.0.abs(), AutoSizeUnit::World, size.0.abs() * 0.01)
     };
