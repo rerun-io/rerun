@@ -9,7 +9,7 @@ use re_log_types::{
     msg_bundle::Component,
     IndexHash, MsgId, ObjectType,
 };
-use re_query::{ugly_query_helper, EntityView, QueryError};
+use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::Size;
 
 use crate::{
@@ -338,7 +338,7 @@ impl ScenePart for Points3DPart {
                 continue;
             };
 
-            match ugly_query_helper::<Point3D, 7>(
+            match query_primary_with_history::<Point3D, 7>(
                 &ctx.log_db.obj_db.arrow_store,
                 &query.timeline,
                 &query.latest_at,

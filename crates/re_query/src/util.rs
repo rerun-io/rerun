@@ -4,7 +4,9 @@ use re_log_types::{msg_bundle::Component, ComponentName, ObjPath};
 
 use crate::{query_entity_with_primary, range_entity_with_primary, EntityView};
 
-pub fn ugly_query_helper<'a, Primary: Component + 'a, const N: usize>(
+/// Either dispatch to `query_entity_with_primary` or `range_entity_with_primary`
+/// depending on whether `ExtraQueryHistory` is set.
+pub fn query_primary_with_history<'a, Primary: Component + 'a, const N: usize>(
     store: &'a DataStore,
     timeline: &'a Timeline,
     time: &'a TimeInt,
