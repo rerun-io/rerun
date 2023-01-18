@@ -112,6 +112,7 @@ fn show_zoomed_image_region_tooltip(
     response
         .on_hover_cursor(egui::CursorIcon::ZoomIn)
         .on_hover_ui_at_pointer(|ui| {
+            ui.set_max_width(320.0);
             ui.horizontal(|ui| {
                 let Some(dynamic_img) = tensor_view.dynamic_img else { return };
                 let w = dynamic_img.width() as _;
@@ -132,7 +133,7 @@ fn show_zoomed_image_region_tooltip(
 }
 
 // Show the surrounding pixels:
-const ZOOMED_IMAGE_TEXEL_RADIUS: isize = 12;
+const ZOOMED_IMAGE_TEXEL_RADIUS: isize = 10;
 
 pub fn show_zoomed_image_region_area_outline(
     ui: &mut egui::Ui,
@@ -176,7 +177,8 @@ pub fn show_zoomed_image_region(
 
     use egui::{color_picker, pos2, remap, Color32, Mesh, Rect};
 
-    let size = Vec2::splat(128.0);
+    const POINTS_PER_TEXEL: f32 = 5.0;
+    let size = Vec2::splat((ZOOMED_IMAGE_TEXEL_RADIUS * 2 + 1) as f32 * POINTS_PER_TEXEL);
 
     let (_id, zoom_rect) = tooltip_ui.allocate_space(size);
     let painter = tooltip_ui.painter();
@@ -258,14 +260,6 @@ pub fn show_zoomed_image_region(
 
             let image::Rgba([r, g, b, a]) = color;
 
-            if meter.is_none() {
-                color_picker::show_color(
-                    ui,
-                    Color32::from_rgba_unmultiplied(r, g, b, a),
-                    Vec2::splat(64.0),
-                );
-            }
-
             if let Some(meter) = meter {
                 // This is a depth map
                 if let Some(raw_value) = tensor_view.tensor.get(&[y, x]) {
@@ -298,7 +292,7 @@ pub fn show_zoomed_image_region(
                     | DynamicImage::ImageRgb16(_)
                     | DynamicImage::ImageRgb32F(_) => {
                         // TODO(emilk): show 16-bit and 32f values differently
-                        format!("R: {}, G: {}, B: {}\n#{:02X}{:02X}{:02X}", r, g, b, r, g, b)
+                        format!("R: {}, G: {}, B: {}, #{:02X}{:02X}{:02X}", r, g, b, r, g, b)
                     }
 
                     DynamicImage::ImageRgba8(_)
@@ -306,7 +300,7 @@ pub fn show_zoomed_image_region(
                     | DynamicImage::ImageRgba32F(_) => {
                         // TODO(emilk): show 16-bit and 32f values differently
                         format!(
-                            "R: {}, G: {}, B: {}, A: {}\n#{:02X}{:02X}{:02X}{:02X}",
+                            "R: {}, G: {}, B: {}, A: {}, #{:02X}{:02X}{:02X}{:02X}",
                             r, g, b, a, r, g, b, a
                         )
                     }
@@ -314,12 +308,20 @@ pub fn show_zoomed_image_region(
                     _ => {
                         re_log::warn_once!("Unknown image color type: {:?}", dynamic_img.color());
                         format!(
-                            "R: {}, G: {}, B: {}, A: {}\n#{:02X}{:02X}{:02X}{:02X}",
+                            "R: {}, G: {}, B: {}, A: {}, #{:02X}{:02X}{:02X}{:02X}",
                             r, g, b, a, r, g, b, a
                         )
                     }
                 };
                 ui.label(text);
+            }
+
+            if meter.is_none() {
+                color_picker::show_color(
+                    ui,
+                    Color32::from_rgba_unmultiplied(r, g, b, a),
+                    Vec2::splat(ui.available_height()),
+                );
             }
         });
     }

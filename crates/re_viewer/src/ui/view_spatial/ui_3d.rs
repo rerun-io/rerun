@@ -359,7 +359,7 @@ pub fn view_3d(
                 response
                     .on_hover_cursor(egui::CursorIcon::ZoomIn)
                     .on_hover_ui_at_pointer(|ui| {
-                        ui.set_max_width(400.0);
+                        ui.set_max_width(320.0);
 
                         ui.vertical(|ui| {
                             ui.label(instance_id.to_string());
