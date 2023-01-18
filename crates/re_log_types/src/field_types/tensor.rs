@@ -340,7 +340,7 @@ impl TensorTrait for Tensor {
     fn get(&self, index: &[u64]) -> Option<TensorElement> {
         let mut stride: usize = 1;
         let mut offset: usize = 0;
-        for (TensorDimension { size, name: _ }, index) in self.shape.iter().zip(index).rev() {
+        for (TensorDimension { size, .. }, index) in self.shape.iter().zip(index).rev() {
             if size <= index {
                 return None;
             }
