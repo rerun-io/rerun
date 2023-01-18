@@ -144,8 +144,8 @@ impl ViewSpatialState {
             ui.push_id("points", |ui| {
                 size_ui(
                     ui,
-                    auto_size_world,
                     2.0,
+                    auto_size_world,
                     &mut self.auto_size_config.point_radius,
                 );
             });
@@ -156,8 +156,8 @@ impl ViewSpatialState {
             ui.push_id("lines", |ui| {
                 size_ui(
                     ui,
-                    auto_size_world,
                     1.5,
+                    auto_size_world,
                     &mut self.auto_size_config.line_radius,
                 );
             });
@@ -256,12 +256,12 @@ fn size_ui(
 ) {
     use re_renderer::Size;
 
-    let (mut displayed_size, mut mode, drag_speed) = if size.is_auto() {
-        (2.0, AutoSizeUnit::Auto, 0.0)
+    let mut mode = if size.is_auto() {
+        AutoSizeUnit::Auto
     } else if size.points().is_some() {
-        (size.0.abs(), AutoSizeUnit::UiPoints, 0.1)
+        AutoSizeUnit::UiPoints
     } else {
-        (size.0.abs(), AutoSizeUnit::World, size.0.abs() * 0.01)
+        AutoSizeUnit::World
     };
 
     let mode_before = mode;
@@ -273,7 +273,7 @@ fn size_ui(
             ui.selectable_value(&mut mode, AutoSizeUnit::Auto, AutoSizeUnit::Auto)
                 .on_hover_text("Determine automatically.");
             ui.selectable_value(&mut mode, AutoSizeUnit::UiPoints, AutoSizeUnit::UiPoints)
-                .on_hover_text("Manual in ui points.");
+                .on_hover_text("Manual in UI points.");
             ui.selectable_value(&mut mode, AutoSizeUnit::World, AutoSizeUnit::World)
                 .on_hover_text("Manual in scene units.");
         });
@@ -282,17 +282,22 @@ fn size_ui(
             AutoSizeUnit::Auto => Size::AUTO,
             AutoSizeUnit::UiPoints => Size::new_points(default_size_points),
             AutoSizeUnit::World => Size::new_scene(default_size_world),
-        }
+        };
     }
 
-    #[allow(clippy::collapsible_if)]
     if mode != AutoSizeUnit::Auto {
+        let mut displayed_size = size.0.abs();
+        let (drag_speed, clamp_range) = if mode == AutoSizeUnit::UiPoints {
+            (0.1, 0.1..=250.0)
+        } else {
+            (0.01 * displayed_size, 0.0001..=f32::INFINITY)
+        };
         if ui
             .add(
                 egui::DragValue::new(&mut displayed_size)
-                    .clamp_range(0.0..=f32::INFINITY)
-                    .max_decimals(4)
-                    .speed(drag_speed),
+                    .speed(drag_speed)
+                    .clamp_range(clamp_range)
+                    .max_decimals(4),
             )
             .changed()
         {
