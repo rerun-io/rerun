@@ -15,7 +15,7 @@ use time::OffsetDateTime;
 
 use re_log::{error, trace};
 
-use crate::{Config, Event, PostHogSink, Property};
+use crate::{Config, Event, PostHogSink, Property, SinkError};
 
 // TODO: in general, deal with broken anlytics files (whether it's the file as a whole or just some
 // lines in there).
@@ -66,6 +66,10 @@ impl Drop for EventPipeline {
     }
 }
 
+// TODO: load and send previous unsent sessions at boot
+// TODO: grab session_id from file_name directly I guess
+// TODO: delete fully sent sessions
+
 impl EventPipeline {
     pub fn new(config: &Config, tick: Duration, sink: PostHogSink) -> Result<Self, PipelineError> {
         let (event_tx, event_rx) = channel::unbounded(); // TODO: bounded?
@@ -73,57 +77,45 @@ impl EventPipeline {
         // TODO: try to send on shutdown as best as possible
 
         let data_path = config.data_dir().to_owned();
-        // TODO: during boot, push existing files into the pipe
-        // TODO: file names are session IDs, which are tuids, which are sorted
+
         // TODO: anyone can edit these files, is that an issue? considering that our write-only key
         // is public anyway, I don't think it matters too much...
 
+        // TODO: named thread
+        // TODO: do we care about joining this thread actually?
+        let _handle = std::thread::spawn({
+            let config = config.clone();
+            let sink = sink.clone();
+            move || {
+                let analytics_id = &config.analytics_id;
+                let session_id = &config.session_id.to_string();
+
+                trace!(%analytics_id, %session_id, "pipeline catchup thread started");
+                let res = send_unsent_events(&config, &sink);
+                trace!(%analytics_id, %session_id, ?res, "pipeline catchup thread shut down");
+            }
+        });
+
         let session_file_path = data_path.join(format!("{}.json", config.session_id));
-        let mut session_file = OpenOptions::new()
+        let session_file = OpenOptions::new()
             .write(true)
             .create(true)
             .truncate(true)
             .read(true)
             .open(&session_file_path)?;
 
-        let analytics_id = config.analytics_id.clone();
-        let session_id = config.session_id.to_string();
-        let is_first_run = config.is_first_run();
-
-        let ticker_rx = crossbeam::channel::tick(tick);
-
         // TODO: when do we join this one? do we?
         // TODO: name the thread too
-        let thread_handle = std::thread::spawn(move || {
-            let mut tick_id = 1u64;
+        let thread_handle = std::thread::spawn({
+            let config = config.clone();
+            move || {
+                let analytics_id = &config.analytics_id;
+                let session_id = &config.session_id.to_string();
 
-            trace!(tick_id, ?session_file_path, %analytics_id, %session_id, "PostHog native pipeline started");
-
-            'recv_loop: loop {
-                select! {
-                    recv(ticker_rx) -> _elapsed => {
-                        if !is_first_run {
-                            trace!(tick_id, ?session_file_path, %analytics_id, %session_id, "flushing analytics");
-                            flush_events(tick_id, &mut session_file, &analytics_id, &session_id, &sink);
-                        }
-                        tick_id += 1;
-                    },
-                    recv(event_rx) -> event => {
-                        let Ok(event) = event.unwrap() else { break 'recv_loop };
-                        trace!(
-                            tick_id, ?session_file_path, %analytics_id, %session_id,
-                            "appending event to current session file..."
-                        );
-                        append_event(tick_id, &mut session_file, event);
-                    },
-                }
+                trace!(%analytics_id, %session_id, "pipeline thread started");
+                let res = realtime_pipeline(&config, &sink, session_file, tick, event_rx);
+                trace!(%analytics_id, %session_id, ?res, "pipeline thread shut down");
             }
-
-            trace!(
-                tick_id,
-                ?session_file_path,
-                "PostHog native pipeline shut down"
-            );
         });
 
         Ok(Self {
@@ -144,69 +136,158 @@ impl EventPipeline {
     }
 }
 
-fn append_event(_tick_id: u64, session_file: &mut File, event: Event) {
-    // TODO: how could this ever fail?
-    let mut event_str = serde_json::to_string(&event).unwrap();
+// ---
+
+fn send_unsent_events(config: &Config, sink: &PostHogSink) -> anyhow::Result<()> {
+    let data_path = config.data_dir();
+    let analytics_id = config.analytics_id.clone();
+    let current_session_id = config.session_id.to_string();
+
+    let read_dir = data_path.read_dir()?;
+    for entry in read_dir {
+        // TODO: errors here should definitely stop the whole loop
+
+        let entry = entry?;
+
+        let path = entry.path();
+        let name = entry.file_name().into_string().unwrap(); // TODO
+
+        let is_file = entry.metadata()?.is_file();
+        let has_json_suffix = name.ends_with(".json");
+
+        if is_file && has_json_suffix {
+            let session_id = name.strip_suffix(".json").unwrap(); // TODO
+
+            if session_id == current_session_id {
+                continue;
+            }
+
+            let mut session_file = File::open(&path)?;
+            if flush_events(&mut session_file, &analytics_id, session_id, &sink).is_ok() {
+                std::fs::remove_file(&path)?;
+                trace!(%analytics_id, %session_id, ?path, "removed session file");
+            }
+        }
+    }
+
+    Ok::<_, anyhow::Error>(())
+}
+
+fn realtime_pipeline(
+    config: &Config,
+    sink: &PostHogSink,
+    mut session_file: File,
+    tick: Duration,
+    event_rx: channel::Receiver<Result<Event, RecvError>>,
+) -> anyhow::Result<()> {
+    let analytics_id = config.analytics_id.clone();
+    let session_id = config.session_id.to_string();
+    let is_first_run = config.is_first_run();
+
+    let ticker_rx = crossbeam::channel::tick(tick);
+
+    loop {
+        select! {
+            recv(ticker_rx) -> _elapsed => {
+                if !is_first_run {
+                    flush_events(&mut session_file, &analytics_id, &session_id, &sink);
+                    if let Err(err) = session_file.set_len(0) {
+                        error!(%err, %analytics_id, %session_id,
+                            "couldn't truncate analytics data file");
+                        // TODO: wat now?
+                    }
+                    if let Err(err) = session_file.seek(std::io::SeekFrom::Start(0)) {
+                        // TODO: ???
+                        error!(%err, %analytics_id, %session_id,
+                            "couldn't seek into analytics data file");
+                    }
+                }
+            },
+            recv(event_rx) -> event => {
+                let Ok(event) = event.unwrap() else { break; };
+                trace!(
+                    %analytics_id, %session_id,
+                    "appending event to current session file..."
+                );
+                append_event(&mut session_file, &analytics_id, &session_id, event);
+            },
+        }
+    }
+
+    Ok(())
+}
+
+// ---
+
+fn append_event(
+    session_file: &mut File,
+    analytics_id: &str,
+    session_id: &str,
+    event: Event,
+) -> Result<(), PipelineError> {
+    let mut event_str = serde_json::to_string(&event)?;
     event_str.push('\n');
+
     if let Err(err) = session_file.write_all(event_str.as_bytes()) {
         // TODO: we're not gonna have a good time if the write fails halfway... then again
         // there's really no reason it should, so...
-        error!(%err, "couldn't write to analytics data file");
-
-        // TODO: i guess we truncate it and move on then?
-        // TODO: also gl testing this...
+        // If that happens, we _could_ detect it and clear that specific line...
+        error!(%err, %analytics_id, %session_id, "couldn't write to analytics data file");
+        return Err(err.into());
     }
+
+    Ok(())
 }
 
 fn flush_events(
-    tick_id: u64,
     session_file: &mut File,
     analytics_id: &str,
     session_id: &str,
     sink: &PostHogSink,
-) {
+) -> Result<(), SinkError> {
     if let Err(err) = session_file.seek(std::io::SeekFrom::Start(0)) {
-        // TODO: ???
-        error!(%err, "couldn't seek into analytics data file");
+        error!(%err, %analytics_id, %session_id, "couldn't seek into analytics data file");
+        return Err(err.into());
     }
 
-    let events = BufReader::new(&*session_file).lines().filter_map(|event_str|
-        match event_str {
+    let events = BufReader::new(&*session_file)
+        .lines()
+        .filter_map(|event_str| match event_str {
             Ok(event_str) => {
-                match serde_json::from_str::<Event>(&event_str) {
+                match serde_json::from_str::<Event>(dbg!(&event_str)) {
                     Ok(event) => Some(event),
                     Err(err) => {
                         // TODO: if we're here, we gotta drop the original file or something...
                         // TODO: also this probably shouldn't be an error!()...
-                        error!(%err, "couldn't deserialize event from analytics data file: dropping event");
+                        error!(%err, %analytics_id, %session_id,
+                            "couldn't deserialize event from analytics data file: dropping event");
                         None
-                    },
+                    }
                 }
             }
             Err(err) => {
-                error!(%err, "couldn't read line from analytics data file: dropping event");
+                error!(%err, %analytics_id, %session_id,
+                    "couldn't read line from analytics data file: dropping event");
                 None
             }
-        }).collect::<Vec<_>>();
+        })
+        .collect::<Vec<_>>();
 
     if events.is_empty() {
-        return;
+        return Ok(());
     }
 
     if let Err(err) = sink.send(analytics_id, session_id, &events) {
         error!(%err, "failed to send analytics to PostHog, will try again later");
-        return;
+        return Err(err);
     }
+
     trace!(
-        tick_id,
         %analytics_id,
         %session_id,
         nb_events = events.len(),
-        "batch successfully sent to PostHog"
+        "events successfully flushed"
     );
 
-    if let Err(err) = session_file.set_len(0) {
-        error!(%err, "couldn't truncate analytics data file");
-        // TODO: wat now?
-    }
+    Ok(())
 }

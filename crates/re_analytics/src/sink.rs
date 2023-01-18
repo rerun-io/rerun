@@ -43,7 +43,7 @@ pub enum SinkError {
 
 // TODO: view event
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PostHogSink {
     client: HttpClient,
 }
