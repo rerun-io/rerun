@@ -378,7 +378,7 @@ fn view_2d_scrollable(
                 response
                     .on_hover_cursor(egui::CursorIcon::ZoomIn)
                     .on_hover_ui_at_pointer(|ui| {
-                        ui.set_max_width(400.0);
+                        ui.set_max_width(320.0);
 
                         ui.vertical(|ui| {
                             ui.label(instance_id.to_string());
@@ -417,7 +417,7 @@ fn view_2d_scrollable(
                 // Hover ui for everything else
                 response.on_hover_ui_at_pointer(|ui| {
                     ctx.instance_id_button(ui, &instance_id);
-                    instance_id.data_ui(ctx, ui, crate::ui::Preview::Medium);
+                    instance_id.data_ui(ctx, ui, crate::ui::Preview::Large);
                 })
             };
 

@@ -64,7 +64,7 @@ impl<'a> ViewerContext<'a> {
             .on_hover_ui(|ui| {
                 ui.strong("Object");
                 ui.label(format!("Path: {obj_path}"));
-                obj_path.data_ui(self, ui, crate::ui::Preview::Medium);
+                obj_path.data_ui(self, ui, crate::ui::Preview::Large);
             });
         if response.clicked() {
             self.set_selection(Selection::Instance(InstanceId {
@@ -97,7 +97,7 @@ impl<'a> ViewerContext<'a> {
             .on_hover_ui(|ui| {
                 ui.strong("Object Instance");
                 ui.label(format!("Path: {instance_id}"));
-                instance_id.data_ui(self, ui, crate::ui::Preview::Medium);
+                instance_id.data_ui(self, ui, crate::ui::Preview::Large);
             });
         if response.clicked() {
             self.set_selection(Selection::Instance(instance_id.clone()));
@@ -172,7 +172,7 @@ impl<'a> ViewerContext<'a> {
             .on_hover_ui(|ui| {
                 ui.strong("Space View Object");
                 ui.label(format!("Path: {obj_path}"));
-                obj_path.data_ui(self, ui, Preview::Medium);
+                obj_path.data_ui(self, ui, Preview::Large);
             });
         if response.clicked() {
             self.set_selection(selection);

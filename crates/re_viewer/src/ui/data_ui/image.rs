@@ -18,71 +18,87 @@ impl DataUi for ClassicTensor {
     fn data_ui(&self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, preview: crate::ui::Preview) {
         let tensor_view = ctx.cache.image.get_view(self, ctx.render_ctx);
 
-        if preview == Preview::Medium {
-            ui.vertical(|ui| {
-                ui.set_min_width(100.0);
-                ui.label(format!("dtype: {}", self.dtype()));
-                ui.label(format!("shape: {}", format_tensor_shape(self.shape())));
-
-                if let Some(retained_img) = tensor_view.retained_img {
-                    let max_size = ui
-                        .available_size()
-                        .min(retained_img.size_vec2())
-                        .min(egui::vec2(150.0, 300.0));
-                    let response = retained_img.show_max_size(ui, max_size);
-
-                    let image_rect = response.rect;
-
-                    if let Some(pointer_pos) = ui.ctx().pointer_latest_pos() {
-                        show_zoomed_image_region_tooltip(
-                            ui,
-                            response,
-                            &tensor_view,
-                            image_rect,
-                            pointer_pos,
-                            None,
-                        );
+        match preview {
+            Preview::Small | Preview::MaxHeight(_) => {
+                ui.horizontal_centered(|ui| {
+                    if let Some(retained_img) = tensor_view.retained_img {
+                        let max_height = match preview {
+                            Preview::Small => 24.0,
+                            Preview::Large => 128.0,
+                            Preview::MaxHeight(height) => height,
+                        };
+                        retained_img
+                            .show_max_size(ui, Vec2::new(4.0 * max_height, max_height))
+                            .on_hover_ui(|ui| {
+                                retained_img.show_max_size(ui, Vec2::splat(400.0));
+                            });
                     }
-                }
 
-                if let Some(dynamic_img) = tensor_view.dynamic_img {
-                    // TODO(emilk): support copying and saving images on web
-                    #[cfg(not(target_arch = "wasm32"))]
-                    ui.horizontal(|ui| image_options(ui, self, dynamic_img));
+                    ui.label(format!(
+                        "{} x {}",
+                        self.dtype(),
+                        format_tensor_shape(self.shape())
+                    ))
+                    .on_hover_ui(|ui| tensor_dtype_and_shape_ui(ui, self));
+                });
+            }
 
-                    // TODO(emilk): support histograms of non-RGB images too
-                    if let image::DynamicImage::ImageRgb8(rgb_image) = dynamic_img {
-                        ui.collapsing("Histogram", |ui| {
-                            histogram_ui(ui, rgb_image);
-                        });
-                    }
-                }
-            });
-        } else {
-            // Compact:
-            ui.horizontal_centered(|ui| {
-                let max_height = match preview {
-                    Preview::Small => 32.0,
-                    Preview::Medium => 128.0,
-                    Preview::MaxHeight(height) => height,
-                };
-
-                if let Some(retained_img) = tensor_view.retained_img {
-                    retained_img
-                        .show_max_size(ui, Vec2::new(4.0 * max_height, max_height))
-                        .on_hover_ui(|ui| {
-                            retained_img.show_max_size(ui, Vec2::splat(400.0));
-                        });
-                }
-
+            Preview::Large => {
                 ui.vertical(|ui| {
                     ui.set_min_width(100.0);
-                    ui.label(format!("dtype: {}", self.dtype()));
-                    ui.label(format!("shape: {}", format_tensor_shape(self.shape())));
+                    tensor_dtype_and_shape_ui(ui, self);
+
+                    if let Some(retained_img) = tensor_view.retained_img {
+                        let max_size = ui
+                            .available_size()
+                            .min(retained_img.size_vec2())
+                            .min(egui::vec2(150.0, 300.0));
+                        let response = retained_img.show_max_size(ui, max_size);
+
+                        let image_rect = response.rect;
+
+                        if let Some(pointer_pos) = ui.ctx().pointer_latest_pos() {
+                            show_zoomed_image_region_tooltip(
+                                ui,
+                                response,
+                                &tensor_view,
+                                image_rect,
+                                pointer_pos,
+                                None,
+                            );
+                        }
+                    }
+
+                    if let Some(dynamic_img) = tensor_view.dynamic_img {
+                        // TODO(emilk): support copying and saving images on web
+                        #[cfg(not(target_arch = "wasm32"))]
+                        ui.horizontal(|ui| image_options(ui, self, dynamic_img));
+
+                        // TODO(emilk): support histograms of non-RGB images too
+                        if let image::DynamicImage::ImageRgb8(rgb_image) = dynamic_img {
+                            ui.collapsing("Histogram", |ui| {
+                                histogram_ui(ui, rgb_image);
+                            });
+                        }
+                    }
                 });
-            });
+            }
         }
     }
+}
+
+pub fn tensor_dtype_and_shape_ui(ui: &mut egui::Ui, tensor: &ClassicTensor) {
+    egui::Grid::new("tensor_dtype_and_shape_ui")
+        .num_columns(2)
+        .show(ui, |ui| {
+            ui.label("Data type:");
+            ui.label(tensor.dtype().to_string());
+            ui.end_row();
+
+            ui.label("Shape:");
+            ui.label(format_tensor_shape(tensor.shape()));
+            ui.end_row();
+        });
 }
 
 fn show_zoomed_image_region_tooltip(
@@ -96,6 +112,7 @@ fn show_zoomed_image_region_tooltip(
     response
         .on_hover_cursor(egui::CursorIcon::ZoomIn)
         .on_hover_ui_at_pointer(|ui| {
+            ui.set_max_width(320.0);
             ui.horizontal(|ui| {
                 let Some(dynamic_img) = tensor_view.dynamic_img else { return };
                 let w = dynamic_img.width() as _;
@@ -116,7 +133,7 @@ fn show_zoomed_image_region_tooltip(
 }
 
 // Show the surrounding pixels:
-const ZOOMED_IMAGE_TEXEL_RADIUS: isize = 12;
+const ZOOMED_IMAGE_TEXEL_RADIUS: isize = 10;
 
 pub fn show_zoomed_image_region_area_outline(
     ui: &mut egui::Ui,
@@ -160,7 +177,8 @@ pub fn show_zoomed_image_region(
 
     use egui::{color_picker, pos2, remap, Color32, Mesh, Rect};
 
-    let size = Vec2::splat(128.0);
+    const POINTS_PER_TEXEL: f32 = 5.0;
+    let size = Vec2::splat((ZOOMED_IMAGE_TEXEL_RADIUS * 2 + 1) as f32 * POINTS_PER_TEXEL);
 
     let (_id, zoom_rect) = tooltip_ui.allocate_space(size);
     let painter = tooltip_ui.painter();
@@ -242,14 +260,6 @@ pub fn show_zoomed_image_region(
 
             let image::Rgba([r, g, b, a]) = color;
 
-            if meter.is_none() {
-                color_picker::show_color(
-                    ui,
-                    Color32::from_rgba_unmultiplied(r, g, b, a),
-                    Vec2::splat(64.0),
-                );
-            }
-
             if let Some(meter) = meter {
                 // This is a depth map
                 if let Some(raw_value) = tensor_view.tensor.get(&[y, x]) {
@@ -282,7 +292,7 @@ pub fn show_zoomed_image_region(
                     | DynamicImage::ImageRgb16(_)
                     | DynamicImage::ImageRgb32F(_) => {
                         // TODO(emilk): show 16-bit and 32f values differently
-                        format!("R: {}, G: {}, B: {}\n#{:02X}{:02X}{:02X}", r, g, b, r, g, b)
+                        format!("R: {}, G: {}, B: {}, #{:02X}{:02X}{:02X}", r, g, b, r, g, b)
                     }
 
                     DynamicImage::ImageRgba8(_)
@@ -290,7 +300,7 @@ pub fn show_zoomed_image_region(
                     | DynamicImage::ImageRgba32F(_) => {
                         // TODO(emilk): show 16-bit and 32f values differently
                         format!(
-                            "R: {}, G: {}, B: {}, A: {}\n#{:02X}{:02X}{:02X}{:02X}",
+                            "R: {}, G: {}, B: {}, A: {}, #{:02X}{:02X}{:02X}{:02X}",
                             r, g, b, a, r, g, b, a
                         )
                     }
@@ -298,12 +308,20 @@ pub fn show_zoomed_image_region(
                     _ => {
                         re_log::warn_once!("Unknown image color type: {:?}", dynamic_img.color());
                         format!(
-                            "R: {}, G: {}, B: {}, A: {}\n#{:02X}{:02X}{:02X}{:02X}",
+                            "R: {}, G: {}, B: {}, A: {}, #{:02X}{:02X}{:02X}{:02X}",
                             r, g, b, a, r, g, b, a
                         )
                     }
                 };
                 ui.label(text);
+            }
+
+            if meter.is_none() {
+                color_picker::show_color(
+                    ui,
+                    Color32::from_rgba_unmultiplied(r, g, b, a),
+                    Vec2::splat(ui.available_height()),
+                );
             }
         });
     }

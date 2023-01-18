@@ -72,7 +72,7 @@ impl SelectionPanel {
                 egui::CollapsingHeader::new("Data")
                     .default_open(true)
                     .show(ui, |ui| {
-                        data_ui(ui, ctx, &selection, Preview::Medium);
+                        data_ui(ui, ctx, &selection, Preview::Large);
                     });
 
                 ui.separator();
