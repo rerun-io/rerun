@@ -21,7 +21,6 @@ use crate::{get_component_with_instances, ComponentWithInstances, EntityView};
 /// known state of all components, from their respective point-of-views.
 ///
 /// ⚠ The semantics are subtle! See `examples/range.rs` for an example of use.
-#[allow(clippy::needless_pass_by_value)]
 pub fn range_entity_with_primary<'a, Primary: Component + 'a, const N: usize>(
     store: &'a DataStore,
     query: &RangeQuery,
