@@ -344,7 +344,7 @@ impl TensorTrait for Tensor {
             if size <= index {
                 return None;
             }
-            offset += (*index as usize * stride);
+            offset += *index as usize * stride;
             stride *= *size as usize;
         }
 
