@@ -18,7 +18,7 @@ mod msg_id;
 mod object;
 
 /// Controls how large we show the data in [`DataUi`].
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug)]
 pub(crate) enum Preview {
     /// Keep it very small, e.g. to fit into a table of many values.
     Small,

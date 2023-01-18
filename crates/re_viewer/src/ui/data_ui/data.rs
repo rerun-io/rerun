@@ -164,29 +164,33 @@ impl DataUi for Rigid3 {
         ui: &mut egui::Ui,
         preview: Preview,
     ) {
-        if preview == Preview::Medium {
-            let pose = self.parent_from_child(); // TODO(emilk): which one to show?
-            let rotation = pose.rotation();
-            let translation = pose.translation();
+        match preview {
+            Preview::Small | Preview::MaxHeight(_) => {
+                ui.label("Rigid 3D transform").on_hover_ui(|ui| {
+                    self.data_ui(_ctx, ui, Preview::Medium);
+                });
+            }
 
-            ui.vertical(|ui| {
-                ui.label("Rigid 3D transform:");
-                ui.indent("rigid3", |ui| {
-                    egui::Grid::new("rigid3").num_columns(2).show(ui, |ui| {
-                        ui.label("rotation");
-                        ui.monospace(format!("{rotation:?}"));
-                        ui.end_row();
+            Preview::Medium => {
+                let pose = self.parent_from_child(); // TODO(emilk): which one to show?
+                let rotation = pose.rotation();
+                let translation = pose.translation();
 
-                        ui.label("translation");
-                        ui.monospace(format!("{translation:?}"));
-                        ui.end_row();
+                ui.vertical(|ui| {
+                    ui.label("Rigid 3D transform:");
+                    ui.indent("rigid3", |ui| {
+                        egui::Grid::new("rigid3").num_columns(2).show(ui, |ui| {
+                            ui.label("rotation");
+                            ui.monospace(format!("{rotation:?}"));
+                            ui.end_row();
+
+                            ui.label("translation");
+                            ui.monospace(format!("{translation:?}"));
+                            ui.end_row();
+                        });
                     });
                 });
-            });
-        } else {
-            ui.label("Rigid 3D transform").on_hover_ui(|ui| {
-                self.data_ui(_ctx, ui, Preview::Medium);
-            });
+            }
         }
     }
 }
@@ -198,34 +202,38 @@ impl DataUi for Pinhole {
         ui: &mut egui::Ui,
         preview: Preview,
     ) {
-        if preview == Preview::Medium {
-            let Pinhole {
-                image_from_cam: image_from_view,
-                resolution,
-            } = self;
+        match preview {
+            Preview::Small | Preview::MaxHeight(_) => {
+                ui.label("Pinhole transform").on_hover_ui(|ui| {
+                    self.data_ui(ctx, ui, Preview::Medium);
+                });
+            }
 
-            ui.vertical(|ui| {
-                ui.label("Pinhole transform:");
-                ui.indent("pinole", |ui| {
-                    ui.horizontal(|ui| {
-                        ui.label("resolution:");
-                        if let Some(re_log_types::field_types::Vec2D([x, y])) = resolution {
-                            ui.monospace(format!("{x}x{y}"));
-                        } else {
-                            ui.weak("(none)");
-                        }
-                    });
+            Preview::Medium => {
+                let Pinhole {
+                    image_from_cam: image_from_view,
+                    resolution,
+                } = self;
 
-                    ui.label("image from view:");
-                    ui.indent("image_from_view", |ui| {
-                        image_from_view.data_ui(ctx, ui, preview);
+                ui.vertical(|ui| {
+                    ui.label("Pinhole transform:");
+                    ui.indent("pinole", |ui| {
+                        ui.horizontal(|ui| {
+                            ui.label("resolution:");
+                            if let Some(re_log_types::field_types::Vec2D([x, y])) = resolution {
+                                ui.monospace(format!("{x}x{y}"));
+                            } else {
+                                ui.weak("(none)");
+                            }
+                        });
+
+                        ui.label("image from view:");
+                        ui.indent("image_from_view", |ui| {
+                            image_from_view.data_ui(ctx, ui, preview);
+                        });
                     });
                 });
-            });
-        } else {
-            ui.label("Pinhole transform").on_hover_ui(|ui| {
-                self.data_ui(ctx, ui, Preview::Medium);
-            });
+            }
         }
     }
 }
