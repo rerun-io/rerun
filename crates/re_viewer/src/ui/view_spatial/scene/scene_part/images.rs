@@ -20,7 +20,7 @@ use crate::{
         scene::SceneQuery,
         transform_cache::{ReferenceFromObjTransform, TransformCache},
         view_spatial::{
-            scene::{instance_hash_if_interactive, paint_properties},
+            scene::{instance_hash_if_interactive, paint_properties, AnyTensor},
             Image, SceneSpatial,
         },
         Annotations, DefaultColor,
@@ -134,7 +134,7 @@ impl ScenePart for ImagesPartClassic {
 
                 scene.ui.images.push(Image {
                     instance_hash,
-                    tensor: tensor.clone(),
+                    tensor: AnyTensor::ClassicTensor(tensor.clone()),
                     meter: meter.copied(),
                     annotations,
                 });
@@ -268,16 +268,14 @@ impl ImagesPart {
                     paint_props.fg_stroke.color.into(),
                 );
 
-                /*
                 //TODO(john) add this component
                 let meter: Option<&f32> = None;
                 scene.ui.images.push(Image {
                     instance_hash,
-                    tensor: classic_tensor,
+                    tensor: AnyTensor::ArrowTensor(tensor),
                     meter: meter.copied(),
                     annotations,
                 });
-                */
             }
         }
 

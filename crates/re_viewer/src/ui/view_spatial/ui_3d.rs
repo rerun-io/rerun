@@ -365,12 +365,12 @@ pub fn view_3d(
                             instance_id.data_ui(ctx, ui, Preview::Small);
 
                             let tensor_view = ctx.cache.image.get_view_with_annotations(
-                                &image.tensor,
+                                image.tensor.as_ref(),
                                 &image.annotations,
                                 ctx.render_ctx,
                             );
 
-                            if let [h, w, ..] = image.tensor.shape() {
+                            if let [h, w, ..] = image.tensor.as_ref().shape() {
                                 ui.separator();
                                 ui.horizontal(|ui| {
                                     let (w, h) = (w.size as f32, h.size as f32);

@@ -365,7 +365,7 @@ fn view_2d_scrollable(
             response = if let Some((image, uv)) = picked_image_with_uv {
                 // TODO(andreas): This is different in 3d view.
                 if let Some(meter) = image.meter {
-                    if let Some(raw_value) = image.tensor.get(&[
+                    if let Some(raw_value) = image.tensor.as_ref().get(&[
                         pointer_pos_space.y.round() as _,
                         pointer_pos_space.x.round() as _,
                     ]) {
@@ -385,12 +385,12 @@ fn view_2d_scrollable(
                             instance_id.data_ui(ctx, ui, Preview::Small);
 
                             let tensor_view = ctx.cache.image.get_view_with_annotations(
-                                &image.tensor,
+                                image.tensor.as_ref(),
                                 &image.annotations,
                                 ctx.render_ctx,
                             );
 
-                            if let [h, w, ..] = image.tensor.shape() {
+                            if let [h, w, ..] = image.tensor.as_ref().shape() {
                                 ui.separator();
                                 ui.horizontal(|ui| {
                                     // TODO(andreas): 3d skips the show_zoomed_image_region_rect part here.
