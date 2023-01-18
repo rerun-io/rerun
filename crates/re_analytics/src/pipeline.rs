@@ -1,8 +1,6 @@
 use std::{
-    collections::HashMap,
     fs::{File, OpenOptions},
     io::{BufRead, BufReader, Seek, Write},
-    thread::JoinHandle,
     time::Duration,
 };
 
@@ -13,7 +11,7 @@ use crossbeam::{
 
 use re_log::{error, trace};
 
-use crate::{Config, Event, PostHogSink, Property, SinkError};
+use crate::{Config, Event, PostHogSink, SinkError};
 
 // ---
 
@@ -31,34 +29,16 @@ pub enum PipelineError {
 
 // TODO: do we want a singleton? do we just pass it around in ctx? let's just do ctx for now
 
-// TODO: just pipeline?
 #[derive(Debug)]
-pub struct EventPipeline {
+pub struct Pipeline {
     event_tx: channel::Sender<Result<Event, RecvError>>,
-    thread_handle: Option<JoinHandle<()>>,
-}
-
-impl Drop for EventPipeline {
-    fn drop(&mut self) {
-        // TODO: when shutting down, we want to try and POST everything in a fire-and-forget way,
-        // so that we don't have to wait for the next time the user uses the viewer (which might be
-        // _never_) in order to send the pending events.
-        //
-        // Problem is: if we do so, we'll end up with duplicated data when we try to send the same
-        // batch of events the next time the viewer is spawned... and I don't think there's anywway
-        // to deduplicate on ingestion on PostHog's side... though of course we can always
-        // deduplicate at query time with session IDs etc.
-        if let Err(err) = self.thread_handle.take().unwrap().join() {
-            error!(?err, "failed to join analytics thread handle");
-        }
-    }
 }
 
 // TODO: load and send previous unsent sessions at boot
 // TODO: grab session_id from file_name directly I guess
 // TODO: delete fully sent sessions
 
-impl EventPipeline {
+impl Pipeline {
     pub fn new(config: &Config, tick: Duration, sink: PostHogSink) -> Result<Self, PipelineError> {
         let (event_tx, event_rx) = channel::unbounded(); // TODO: bounded?
 
@@ -67,6 +47,11 @@ impl EventPipeline {
         let data_path = config.data_dir().to_owned();
 
         // NOTE: We purposefully drop the handle and forget about this thread.
+        //
+        // Joining this thread is not a viable strategy for two reasons:
+        // 1. We _never_ want to delay the shutdown process, analytics must never be in the way.
+        // 2. We need to deal with unexpected shutdowns anyway (crashes, SIGINT, SIGKILL), and we
+        //    do indeed.
         //
         // The worst thing that can happen is that the user kills the app at the exact moment where
         // the catchup thread has sent the data over to the sink and got a response back, but
@@ -96,9 +81,15 @@ impl EventPipeline {
             .read(true)
             .open(&session_file_path)?;
 
-        // TODO: when do we join this one? do we?
-        // TODO: name the thread too
-        let thread_handle = std::thread::spawn({
+        // NOTE: We purposefully drop the handle and forget about this thread.
+        //
+        // Joining this thread is not a viable strategy for two reasons:
+        // 1. We _never_ want to delay the shutdown process, analytics must never be in the way.
+        // 2. We need to deal with unexpected shutdowns anyway (crashes, SIGINT, SIGKILL), and we
+        //    do indeed.
+        //
+        // TODO: what are the possible situations here?
+        _ = std::thread::Builder::new().name("pipeline".into()).spawn({
             let config = config.clone();
             move || {
                 let analytics_id = &config.analytics_id;
@@ -110,19 +101,17 @@ impl EventPipeline {
             }
         });
 
-        Ok(Self {
-            event_tx,
-            thread_handle: Some(thread_handle),
-        })
+        Ok(Self { event_tx })
     }
 
-    // TODO: there's gonna be some dedup mess in here
-
     pub fn record(&self, event: Event) {
-        self.event_tx
-            .send(Ok(event))
-            // TODO: can only fail if we close the channel, which we don't... should we, tho?
-            .unwrap();
+        // NOTE: We ignore the error on purpose.
+        //
+        // The only way this can fail is if the other end of the channel was previously closed,
+        // which we _never_ do.
+        // Technically, we should call `.unwrap()` here, but analytics _must never_ be the cause
+        // of a crash, so let's not take any unnecessary risk and just ignore the error instead.
+        _ = self.event_tx.send(Ok(event));
     }
 }
 
@@ -210,26 +199,37 @@ fn realtime_pipeline(
 
 // ---
 
+/// Appends the `event` to the active `session_file`.
+///
+/// On retriable errors, the event to retry is returned.
 fn append_event(
     session_file: &mut File,
     analytics_id: &str,
     session_id: &str,
     event: Event,
-) -> Result<(), PipelineError> {
-    let mut event_str = serde_json::to_string(&event)?;
+) -> Option<Event> {
+    let mut event_str = match serde_json::to_string(&event) {
+        Ok(event_str) => event_str,
+        Err(err) => {
+            error!(%err, %analytics_id, %session_id, "corrupt analytics event: discarding");
+            return None;
+        }
+    };
     event_str.push('\n');
 
     if let Err(err) = session_file.write_all(event_str.as_bytes()) {
         // TODO: we're not gonna have a good time if the write fails halfway... then again
         // there's really no reason it should, so...
         // If that happens, we _could_ detect it and clear that specific line...
+        // TODO: actually, it's fine if we handle corrupt lines at real time.
         error!(%err, %analytics_id, %session_id, "couldn't write to analytics data file");
-        return Err(err.into());
+        return Some(event);
     }
 
-    Ok(())
+    None
 }
 
+/// Sends all events currently buffered in the `session_file` down the `sink`.
 fn flush_events(
     session_file: &mut File,
     analytics_id: &str,
@@ -245,7 +245,7 @@ fn flush_events(
         .lines()
         .filter_map(|event_str| match event_str {
             Ok(event_str) => {
-                match serde_json::from_str::<Event>(dbg!(&event_str)) {
+                match serde_json::from_str::<Event>(&event_str) {
                     Ok(event) => Some(event),
                     Err(err) => {
                         // TODO: if we're here, we gotta drop the original file or something...

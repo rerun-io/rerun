@@ -97,7 +97,7 @@ pub enum AnalyticsError {
 
 pub struct Analytics {
     config: Config,
-    pipeline: EventPipeline,
+    pipeline: Pipeline,
 
     default_props: HashMap<String, Property>,
     event_id: AtomicU64,
@@ -121,7 +121,7 @@ impl Analytics {
         }
 
         let sink = PostHogSink::new()?;
-        let pipeline = EventPipeline::new(&config, tick, sink)?;
+        let pipeline = Pipeline::new(&config, tick, sink)?;
 
         if config.is_first_run() {
             pipeline.record(Event::update_metadata());
@@ -165,7 +165,7 @@ pub mod events;
 
 // TODO: web pipeline
 mod pipeline;
-pub use self::pipeline::{EventPipeline, PipelineError};
+pub use self::pipeline::{Pipeline, PipelineError};
 
 // TODO: web sink
 mod sink;
