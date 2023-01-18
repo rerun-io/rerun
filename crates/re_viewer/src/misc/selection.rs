@@ -196,7 +196,7 @@ impl MultiSelection {
     ///
     /// Should only be used if we're checking against a single instance.
     /// Avoid this when checking large arrays of instances, instead use [`Self::is_path_selected`] on the object
-    /// and then [`ObjectPathSelectionQuery::is_index_in_selection`] for each index!
+    /// and then [`ObjectPathSelectionResult::is_index_selected`] for each index!
     pub fn is_instance_selected(&self, instance: InstanceIdHash) -> bool {
         self.is_path_selected(instance.obj_path_hash)
             .is_index_selected(instance.instance_index_hash)
