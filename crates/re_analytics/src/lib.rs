@@ -7,7 +7,6 @@ use time::OffsetDateTime;
 
 // ---
 
-// TODO: `analytics_id` and `session_id` have to be stored here! no way around it.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Event {
     // NOTE: serialized in a human-readable format as we want end users to be able to inspect the
@@ -58,10 +57,13 @@ const DISCLAIMER: &str = "
     - Telemetry data is stored in servers in Europe.
     - If you'd like to opt out, run the following: `rerun analytics disable`.
 
+    You can check out all of our telemetry events in `re_analytics/src/all_events.rs`.
+
     As this is this your first session, we will _not_ send out any telemetry data yet,
     giving you an opportunity to opt-out first.
 
-    You can audit the data being sent out by looking at our data directory at the end of your session:
+    You can audit the actual data being sent out by looking at our data directory at the
+    end of your session:
 ";
 
 #[derive(thiserror::Error, Debug)]
@@ -85,13 +87,6 @@ impl Analytics {
         trace!(?config, ?tick, "loaded analytics config");
 
         if config.is_first_run() {
-            // TODO: that's when we display analytics disclaimer in terminal!
-            //
-            // if this file doens't exist, this is the first run
-            //     - we never send data on the first run
-            //     - we print to terminal everything analytics related on first run
-            //     - and we make it clear we havent sent anything
-            //     - we can point out where the actual data lives
             eprintln!("{DISCLAIMER}");
             eprintln!("    {:?}\n", config.data_dir());
 

@@ -21,8 +21,6 @@ pub enum ConfigError {
     SerdeError(#[from] serde_json::Error),
 }
 
-// pub type WriteResult<T> = ::std::result::Result<T, WriteError>;
-
 // TODO: I guess it better be named UserConfig
 // NOTE: all the `rename` clauses are to avoid a potential catastrophe :)
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]

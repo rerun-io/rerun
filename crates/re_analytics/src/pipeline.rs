@@ -24,9 +24,7 @@ use crate::{Config, Event, Property};
 
 // TODO: let's say this is specifically our _native posthog_ pipeline
 
-// TODO: web impl (how does one POST when in web?)
 // TODO: endpoint configuration would ideally not live in code...
-// TODO: what do we do on web? do we even send stats when running on web?
 
 // ---
 
@@ -77,8 +75,6 @@ impl EventPipeline {
     pub fn new(config: &Config, tick: Duration) -> Result<Self, PipelineError> {
         let (event_tx, event_rx) = channel::unbounded(); // TODO: bounded?
 
-        // let (file_tx, file_rx) = channel::unbounded(); // TODO: bounded?
-
         // TODO: try to send on shutdown as best as possible
 
         let data_path = config.data_dir().to_owned();
@@ -113,7 +109,7 @@ impl EventPipeline {
 
             'recv_loop: loop {
                 select! {
-                    recv(ticker_rx) -> elapsed => {
+                    recv(ticker_rx) -> _elapsed => {
                         if !is_first_run {
                             trace!(tick_id, ?session_file_path, %analytics_id, %session_id, "flushing analytics");
                             flush_events(tick_id, &mut session_file, &analytics_id, &session_id, &client);
@@ -156,7 +152,7 @@ impl EventPipeline {
     }
 }
 
-fn append_event(tick_id: u64, session_file: &mut File, event: Event) {
+fn append_event(_tick_id: u64, session_file: &mut File, event: Event) {
     // TODO: how could this ever fail?
     let mut event_str = serde_json::to_string(&event).unwrap();
     event_str.push('\n');

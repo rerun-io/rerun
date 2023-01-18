@@ -2,7 +2,7 @@ use time::OffsetDateTime;
 
 use crate::Event;
 
-// TODO: explain why this file exists (audit purposes)
+// All of our telemtry events are defined in this one file, to facilitate auditing.
 
 // ---
 
