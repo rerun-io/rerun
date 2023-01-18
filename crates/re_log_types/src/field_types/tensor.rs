@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use arrow2::array::{FixedSizeBinaryArray, MutableFixedSizeBinaryArray};
+use arrow2::buffer::Buffer;
 use arrow2_convert::deserialize::ArrowDeserialize;
 use arrow2_convert::field::ArrowField;
 use arrow2_convert::{serialize::ArrowSerialize, ArrowDeserialize, ArrowField, ArrowSerialize};
@@ -148,19 +149,19 @@ impl ArrowDeserialize for TensorId {
 #[arrow_field(type = "dense")]
 pub enum TensorData {
     U8(Vec<u8>),
-    U16(Vec<u16>),
-    U32(Vec<u32>),
-    U64(Vec<u64>),
+    U16(Buffer<u16>),
+    U32(Buffer<u32>),
+    U64(Buffer<u64>),
     // ---
-    I8(Vec<i8>),
-    I16(Vec<i16>),
-    I32(Vec<i32>),
-    I64(Vec<i64>),
+    I8(Buffer<i8>),
+    I16(Buffer<i16>),
+    I32(Buffer<i32>),
+    I64(Buffer<i64>),
     // ---
     //TODO(john) F16
     //F16(Vec<arrow2::types::f16>),
-    F32(Vec<f32>),
-    F64(Vec<f64>),
+    F32(Buffer<f32>),
+    F64(Buffer<f64>),
     JPEG(Vec<u8>),
 }
 
@@ -445,12 +446,13 @@ macro_rules! tensor_type {
                     .map(|slice| Tensor {
                         tensor_id: TensorId::random(),
                         shape,
-                        data: TensorData::$variant(slice.into()),
+                        data: TensorData::$variant(Vec::from(slice).into()),
                         meaning: TensorDataMeaning::Unknown,
                     })
             }
         }
 
+        /*
         impl<D: ::ndarray::Dimension> TryFrom<::ndarray::Array<$type, D>> for Tensor {
             type Error = TensorCastError;
 
@@ -474,6 +476,7 @@ macro_rules! tensor_type {
                     .ok_or(TensorCastError::NotContiguousStdOrder)
             }
         }
+        */
     };
 }
 
@@ -525,7 +528,7 @@ fn test_arrow() {
                 size: 4,
                 name: None,
             }],
-            data: TensorData::U16(vec![1, 2, 3, 4]),
+            data: TensorData::U16(vec![1, 2, 3, 4].into()),
             meaning: TensorDataMeaning::Unknown,
         },
         Tensor {
@@ -534,7 +537,7 @@ fn test_arrow() {
                 size: 2,
                 name: None,
             }],
-            data: TensorData::F32(vec![1.23, 2.45]),
+            data: TensorData::F32(vec![1.23, 2.45].into()),
             meaning: TensorDataMeaning::Unknown,
         },
     ];
