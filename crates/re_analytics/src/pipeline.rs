@@ -34,10 +34,6 @@ pub enum PipelineError {
 // TODO: just pipeline?
 #[derive(Debug)]
 pub struct EventPipeline {
-    // TODO: not cloning this everytime
-    pub analytics_id: String,
-    pub session_id: String,
-
     event_tx: channel::Sender<Result<Event, RecvError>>,
     thread_handle: Option<JoinHandle<()>>,
 }
@@ -70,20 +66,27 @@ impl EventPipeline {
 
         let data_path = config.data_dir().to_owned();
 
-        // TODO: named thread
-        // TODO: do we care about joining this thread actually?
-        let _handle = std::thread::spawn({
-            let config = config.clone();
-            let sink = sink.clone();
-            move || {
-                let analytics_id = &config.analytics_id;
-                let session_id = &config.session_id.to_string();
+        // NOTE: We purposefully drop the handle and forget about this thread.
+        //
+        // The worst thing that can happen is that the user kills the app at the exact moment where
+        // the catchup thread has sent the data over to the sink and got a response back, but
+        // hasn't deleted the associated files yet.
+        // This will result in duplicated data that we can easily deduplicate at query time using
+        // the session and event IDs.
+        _ = std::thread::Builder::new()
+            .name("pipeline_catchup".into())
+            .spawn({
+                let config = config.clone();
+                let sink = sink.clone();
+                move || {
+                    let analytics_id = &config.analytics_id;
+                    let session_id = &config.session_id.to_string();
 
-                trace!(%analytics_id, %session_id, "pipeline catchup thread started");
-                let res = send_unsent_events(&config, &sink);
-                trace!(%analytics_id, %session_id, ?res, "pipeline catchup thread shut down");
-            }
-        });
+                    trace!(%analytics_id, %session_id, "pipeline catchup thread started");
+                    let res = send_unsent_events(&config, &sink);
+                    trace!(%analytics_id, %session_id, ?res, "pipeline catchup thread shut down");
+                }
+            });
 
         let session_file_path = data_path.join(format!("{}.json", config.session_id));
         let session_file = OpenOptions::new()
@@ -108,8 +111,6 @@ impl EventPipeline {
         });
 
         Ok(Self {
-            analytics_id: config.analytics_id.clone(),
-            session_id: config.session_id.to_string(),
             event_tx,
             thread_handle: Some(thread_handle),
         })
@@ -132,6 +133,7 @@ fn send_unsent_events(config: &Config, sink: &PostHogSink) -> anyhow::Result<()>
     let analytics_id = config.analytics_id.clone();
     let current_session_id = config.session_id.to_string();
 
+    // TODO: send everything at once?
     let read_dir = data_path.read_dir()?;
     for entry in read_dir {
         // TODO: errors here should definitely _not_ stop the whole loop
@@ -152,7 +154,7 @@ fn send_unsent_events(config: &Config, sink: &PostHogSink) -> anyhow::Result<()>
             }
 
             let mut session_file = File::open(&path)?;
-            if flush_events(&mut session_file, &analytics_id, session_id, &sink).is_ok() {
+            if flush_events(&mut session_file, &analytics_id, session_id, sink).is_ok() {
                 std::fs::remove_file(&path)?;
                 trace!(%analytics_id, %session_id, ?path, "removed session file");
             }

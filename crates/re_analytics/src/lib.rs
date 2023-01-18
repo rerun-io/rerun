@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
 use re_log::trace;
@@ -96,8 +97,10 @@ pub enum AnalyticsError {
 
 pub struct Analytics {
     config: Config,
-    default_props: HashMap<String, Property>,
     pipeline: EventPipeline,
+
+    default_props: HashMap<String, Property>,
+    event_id: AtomicU64,
 }
 
 // TODO: hashed application_id + recording_id
@@ -128,14 +131,23 @@ impl Analytics {
             config,
             default_props,
             pipeline,
+            event_id: AtomicU64::new(1),
         })
     }
 
     pub fn record(&self, mut event: Event) {
         if self.config.analytics_enabled {
+            // Insert default props
             if event.kind == EventKind::Append {
                 event.props.extend(self.default_props.clone());
             }
+
+            // Insert event ID
+            event.props.insert(
+                "event_id".into(),
+                (self.event_id.fetch_add(1, Ordering::Relaxed) as i64).into(),
+            );
+
             self.pipeline.record(event);
         }
     }
