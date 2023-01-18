@@ -21,9 +21,12 @@ use crate::{get_component_with_instances, ComponentWithInstances, EntityView};
 /// known state of all components, from their respective point-of-views.
 ///
 /// ⚠ The semantics are subtle! See `examples/range.rs` for an example of use.
+// TODO(jleibs): We need to pass by value because if if we in fact pass by reference
+// then the borrow checker gets angry about returning an iterator in: `ugly_query_helper`
+#[allow(clippy::needless_pass_by_value)]
 pub fn range_entity_with_primary<'a, Primary: Component + 'a, const N: usize>(
     store: &'a DataStore,
-    query: &'a RangeQuery,
+    query: RangeQuery,
     ent_path: &'a ObjPath,
     components: [ComponentName; N],
 ) -> impl Iterator<Item = (Option<TimeInt>, EntityView<Primary>)> + 'a {
@@ -90,7 +93,7 @@ pub fn range_entity_with_primary<'a, Primary: Component + 'a, const N: usize>(
         .map(move |cwis| (latest_time, true, cwis))
         .chain(
             store
-                .range(query, ent_path, components)
+                .range(&query, ent_path, components)
                 .map(move |(time, _, row_indices)| {
                     let results = store.get(&components, &row_indices);
                     let instance_keys = results[cluster_col].clone(); // shallow

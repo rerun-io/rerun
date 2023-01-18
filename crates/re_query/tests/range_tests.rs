@@ -73,7 +73,7 @@ fn simple_range() {
     );
 
     let components = [Instance::name(), Point2D::name(), ColorRGBA::name()];
-    let ent_views = range_entity_with_primary::<Point2D, 3>(&store, &query, &ent_path, components);
+    let ent_views = range_entity_with_primary::<Point2D, 3>(&store, query, &ent_path, components);
 
     let results = ent_views.collect::<Vec<_>>();
 
@@ -157,7 +157,7 @@ fn simple_range() {
     );
 
     let components = [Instance::name(), Point2D::name(), ColorRGBA::name()];
-    let ent_views = range_entity_with_primary::<Point2D, 3>(&store, &query, &ent_path, components);
+    let ent_views = range_entity_with_primary::<Point2D, 3>(&store, query, &ent_path, components);
 
     let results = ent_views.collect::<Vec<_>>();
 
@@ -341,7 +341,7 @@ fn timeless_range() {
     );
 
     let components = [Instance::name(), Point2D::name(), ColorRGBA::name()];
-    let ent_views = range_entity_with_primary::<Point2D, 3>(&store, &query, &ent_path, components);
+    let ent_views = range_entity_with_primary::<Point2D, 3>(&store, query, &ent_path, components);
 
     let results = ent_views.collect::<Vec<_>>();
 
@@ -425,7 +425,7 @@ fn timeless_range() {
     );
 
     let components = [Instance::name(), Point2D::name(), ColorRGBA::name()];
-    let ent_views = range_entity_with_primary::<Point2D, 3>(&store, &query, &ent_path, components);
+    let ent_views = range_entity_with_primary::<Point2D, 3>(&store, query, &ent_path, components);
 
     let results = ent_views.collect::<Vec<_>>();
 
@@ -536,7 +536,7 @@ fn timeless_range() {
     );
 
     let components = [Instance::name(), Point2D::name(), ColorRGBA::name()];
-    let ent_views = range_entity_with_primary::<Point2D, 3>(&store, &query, &ent_path, components);
+    let ent_views = range_entity_with_primary::<Point2D, 3>(&store, query, &ent_path, components);
 
     let results = ent_views.collect::<Vec<_>>();
 
@@ -728,7 +728,7 @@ fn simple_splatted_range() {
     );
 
     let components = [Instance::name(), Point2D::name(), ColorRGBA::name()];
-    let ent_views = range_entity_with_primary::<Point2D, 3>(&store, &query, &ent_path, components);
+    let ent_views = range_entity_with_primary::<Point2D, 3>(&store, query, &ent_path, components);
 
     let results = ent_views.collect::<Vec<_>>();
 
@@ -812,7 +812,7 @@ fn simple_splatted_range() {
     );
 
     let components = [Instance::name(), Point2D::name(), ColorRGBA::name()];
-    let ent_views = range_entity_with_primary::<Point2D, 3>(&store, &query, &ent_path, components);
+    let ent_views = range_entity_with_primary::<Point2D, 3>(&store, query, &ent_path, components);
 
     let results = ent_views.collect::<Vec<_>>();
 

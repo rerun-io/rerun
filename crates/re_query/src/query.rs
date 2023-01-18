@@ -122,6 +122,7 @@ pub fn query_entity_with_primary<Primary: Component>(
 
     let components: crate::Result<BTreeMap<ComponentName, ComponentWithInstances>> = components
         .iter()
+        .filter(|component| *component != &Primary::name() && *component != &Instance::name())
         .filter_map(|component| {
             match get_component_with_instances(store, query, ent_path, *component) {
                 Ok(component_result) => Some(Ok((*component, component_result))),

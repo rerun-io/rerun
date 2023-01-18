@@ -54,7 +54,8 @@ fn main() {
     println!("\n-----\n");
 
     let components = [Instance::name(), Rect2D::name(), Point2D::name()];
-    let ent_views = range_entity_with_primary::<Rect2D, 3>(&store, &query, &ent_path, components);
+    let ent_views =
+        range_entity_with_primary::<Rect2D, 3>(&store, query.clone(), &ent_path, components);
     for (time, ent_view) in ent_views {
         eprintln!(
             "Found data at time {} from {}'s PoV:\n{}",
@@ -70,7 +71,7 @@ fn main() {
     println!("\n-----\n");
 
     let components = [Instance::name(), Rect2D::name(), Point2D::name()];
-    let ent_views = range_entity_with_primary::<Point2D, 3>(&store, &query, &ent_path, components);
+    let ent_views = range_entity_with_primary::<Point2D, 3>(&store, query, &ent_path, components);
     for (time, ent_view) in ent_views {
         eprintln!(
             "Found data at time {} from {}'s PoV:\n{}",
