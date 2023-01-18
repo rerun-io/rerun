@@ -5,6 +5,7 @@ use arrow2_convert::deserialize::ArrowDeserialize;
 use arrow2_convert::field::ArrowField;
 use arrow2_convert::{serialize::ArrowSerialize, ArrowDeserialize, ArrowField, ArrowSerialize};
 
+use crate::TensorElement;
 use crate::{msg_bundle::Component, ClassicTensor, TensorDataStore};
 
 pub trait TensorTrait {
@@ -13,6 +14,8 @@ pub trait TensorTrait {
     fn num_dim(&self) -> usize;
     fn is_shaped_like_an_image(&self) -> bool;
     fn is_vector(&self) -> bool;
+    fn meaning(&self) -> TensorDataMeaning;
+    fn get(&self, index: &[u64]) -> Option<TensorElement>;
 }
 
 // ----------------------------------------------------------------------------
@@ -328,6 +331,14 @@ impl TensorTrait for Tensor {
     fn is_vector(&self) -> bool {
         let shape = &self.shape;
         shape.len() == 1 || { shape.len() == 2 && (shape[0].size == 1 || shape[1].size == 1) }
+    }
+
+    fn meaning(&self) -> TensorDataMeaning {
+        self.meaning
+    }
+
+    fn get(&self, _index: &[u64]) -> Option<TensorElement> {
+        None
     }
 }
 

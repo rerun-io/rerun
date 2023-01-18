@@ -128,10 +128,10 @@ impl Viewport {
                     let mut image_sizes = BTreeSet::default();
 
                     for visible_image in &scene_spatial.ui.images {
-                        debug_assert!(matches!(visible_image.tensor.shape().len(), 2 | 3));
+                        debug_assert!(matches!(visible_image.tensor.as_ref().shape().len(), 2 | 3));
                         let image_size = (
-                            visible_image.tensor.shape()[0].size,
-                            visible_image.tensor.shape()[1].size,
+                            visible_image.tensor.as_ref().shape()[0].size,
+                            visible_image.tensor.as_ref().shape()[1].size,
                         );
                         image_sizes.insert(image_size);
 
