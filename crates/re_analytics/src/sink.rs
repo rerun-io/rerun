@@ -91,7 +91,7 @@ impl<'a> PostHogEvent<'a> {
     fn from_event(analytics_id: &'a str, session_id: &'a str, event: &'a Event) -> Self {
         let properties = event.props.iter().map(|(name, value)| {
             (
-                name.as_str(),
+                name.as_ref(),
                 match value {
                     &Property::Integer(v) => v.into(),
                     &Property::Float(v) => v.into(),

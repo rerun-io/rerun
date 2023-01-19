@@ -8,7 +8,6 @@ publish = false
 default-run = "rerun"
 
 
-# TODO: somehow disable analytics when targeting the web... for now.
 [features]
 default = ["server", "analytics"]
 analytics = ["dep:re_analytics"]

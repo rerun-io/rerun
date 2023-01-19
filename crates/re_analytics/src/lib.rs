@@ -27,7 +27,7 @@ pub struct Event {
     pub time_utc: OffsetDateTime,
     pub kind: EventKind,
     pub name: Cow<'static, str>,
-    pub props: HashMap<String, Property>,
+    pub props: HashMap<Cow<'static, str>, Property>,
 }
 
 impl Event {
@@ -49,7 +49,7 @@ impl Event {
         }
     }
 
-    pub fn with_prop(mut self, name: String, value: impl Into<Property>) -> Self {
+    pub fn with_prop(mut self, name: Cow<'static, str>, value: impl Into<Property>) -> Self {
         self.props.insert(name, value.into());
         self
     }
@@ -76,7 +76,7 @@ const DISCLAIMER: &str = "
     - Telemetry data is stored in servers in Europe.
     - If you'd like to opt out, run the following: `rerun analytics disable`.
 
-    You can check out all of our telemetry events in `re_analytics/src/all_events.rs`.
+    You can check out all of our telemetry events in `re_analytics/src/events.rs`.
 
     As this is this your first session, we will _not_ send out any telemetry data yet,
     giving you an opportunity to opt-out first.
@@ -101,14 +101,14 @@ pub struct Analytics {
     /// `None` if analytics are disabled.
     pipeline: Option<Pipeline>,
 
-    default_props: HashMap<String, Property>,
+    default_props: HashMap<Cow<'static, str>, Property>,
     event_id: AtomicU64,
 }
 
 impl Analytics {
     pub fn new(
         tick: Duration,
-        default_props: HashMap<String, Property>,
+        default_props: HashMap<Cow<'static, str>, Property>,
     ) -> Result<Self, AnalyticsError> {
         let config = Config::load()?;
         trace!(?config, ?tick, "loaded analytics config");

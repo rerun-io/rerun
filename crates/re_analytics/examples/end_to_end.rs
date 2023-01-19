@@ -13,11 +13,11 @@ fn main() {
         Duration::from_secs(3),
         [
             (
-                "application_id".to_owned(),
+                "application_id".into(),
                 "end_to_end_example".to_owned().into(),
             ),
             (
-                "recording_id".to_owned(),
+                "recording_id".into(),
                 uuid::Uuid::new_v4().to_string().into(),
             ),
         ]

@@ -20,9 +20,6 @@ use crate::{Config, Event, PostHogSink, SinkError};
 
 #[derive(thiserror::Error, Debug)]
 pub enum PipelineError {
-    #[error("analytics are disabled")]
-    AnalyticsDisabled,
-
     #[error(transparent)]
     Io(#[from] std::io::Error),
 
@@ -55,6 +52,14 @@ impl Pipeline {
 
         let data_path = config.data_dir().to_owned();
 
+        let session_file_path = data_path.join(format!("{}.json", config.session_id));
+        let session_file = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .read(true)
+            .open(&session_file_path)?;
+
         // NOTE: We purposefully drop the handles and just forget about all pipeline threads.
         //
         // Joining these threads is not a viable strategy for two reasons:
@@ -80,18 +85,10 @@ impl Pipeline {
                     let session_id = &config.session_id.to_string();
 
                     trace!(%analytics_id, %session_id, "pipeline catchup thread started");
-                    let res = send_unsent_events(&config, &sink);
+                    let res = flush_pending_events(&config, &sink);
                     trace!(%analytics_id, %session_id, ?res, "pipeline catchup thread shut down");
                 }
             });
-
-        let session_file_path = data_path.join(format!("{}.json", config.session_id));
-        let session_file = OpenOptions::new()
-            .write(true)
-            .create(true)
-            .truncate(true)
-            .read(true)
-            .open(&session_file_path)?;
 
         _ = std::thread::Builder::new().name("pipeline".into()).spawn({
             let config = config.clone();
@@ -134,7 +131,7 @@ fn try_send_event(event_tx: &channel::Sender<Result<Event, RecvError>>, event: E
     }
 }
 
-fn send_unsent_events(config: &Config, sink: &PostHogSink) -> anyhow::Result<()> {
+fn flush_pending_events(config: &Config, sink: &PostHogSink) -> anyhow::Result<()> {
     let data_path = config.data_dir();
     let analytics_id = config.analytics_id.clone();
     let current_session_id = config.session_id.to_string();
@@ -156,14 +153,21 @@ fn send_unsent_events(config: &Config, sink: &PostHogSink) -> anyhow::Result<()>
             }
 
             let Ok(mut session_file) = File::open(&path) else { continue; };
-            if flush_events(&mut session_file, &analytics_id, session_id, sink).is_ok() {
-                if std::fs::remove_file(&path).is_ok() {
-                    // NOTE: this will eventually lead to duplicated data, though we'll be able
-                    // to deduplicate it at query time.
-                    trace!(%analytics_id, %session_id, ?path, "removed session file");
+            match flush_events(&mut session_file, &analytics_id, session_id, sink) {
+                Ok(_) => {
+                    trace!(%analytics_id, %session_id, ?path, "flushed pending events");
+                    match std::fs::remove_file(&path) {
+                        Ok(_) => trace!(%analytics_id, %session_id, ?path, "removed session file"),
+                        Err(err) => {
+                            // NOTE: this will eventually lead to duplicated data, though we'll be
+                            // able to deduplicate it at query time.
+                            trace!(%analytics_id, %session_id, ?path, %err,
+                                "failed to remove session file");
+                        }
+                    }
                 }
-            } else {
-                trace!(%analytics_id, %session_id, ?path, "failed to flush session file");
+                Err(err) => trace!(%analytics_id, %session_id, ?path, %err,
+                    "failed to flush pending events"),
             }
         }
     }

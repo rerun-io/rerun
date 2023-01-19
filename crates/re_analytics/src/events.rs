@@ -1,6 +1,6 @@
 use crate::Event;
 
-// All of our telemtry events are defined in this one file, to facilitate auditing.
+// All of our telemetry events are defined in this one file, to facilitate auditing.
 
 // TODO(cmc): all rerun events need hashed application_id + recording_id
 // TODO(cmc): add first rerun events
