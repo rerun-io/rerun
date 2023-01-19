@@ -180,12 +180,16 @@ where
     fn arrow_deserialize(
         v: <&Self::ArrayType as IntoIterator>::Item,
     ) -> Option<<Self as ArrowField>::Type> {
-        v.map(|array| {
-            // Create an iterator from the Arrow array, map to inner item deserialize, collect to vec, then convert to Rust array
-            <<T as ArrowDeserialize>::ArrayType as ArrowArray>::iter_from_array_ref(array.as_ref())
-                .map(<T as ArrowDeserialize>::arrow_deserialize_internal)
-                .collect::<Vec<_>>()
-        })
-        .and_then(|v| v.try_into().ok())
+        if let Some(array) = v {
+            let mut iter = <<T as ArrowDeserialize>::ArrayType as ArrowArray>::iter_from_array_ref(
+                array.as_ref(),
+            )
+            .map(<T as ArrowDeserialize>::arrow_deserialize_internal);
+            let out: Result<[T; SIZE]> =
+                array_init::try_array_init(|_i: usize| iter.next().ok_or(FieldError::BadValue));
+            out.ok()
+        } else {
+            None
+        }
     }
 }
