@@ -3806,6 +3806,7 @@ dependencies = [
  "nohash-hasher",
  "polars-core",
  "re_arrow_store",
+ "re_data_store",
  "re_format",
  "re_log",
  "re_log_types",

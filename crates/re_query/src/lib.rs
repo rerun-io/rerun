@@ -4,6 +4,7 @@
 mod entity_view;
 mod query;
 mod range;
+mod util;
 pub mod visit;
 
 #[cfg(feature = "polars")]
@@ -12,6 +13,7 @@ pub mod dataframe_util;
 pub use self::entity_view::{ComponentWithInstances, EntityView};
 pub use self::query::{get_component_with_instances, query_entity_with_primary};
 pub use self::range::range_entity_with_primary;
+pub use self::util::query_primary_with_history;
 
 // Used for doc-tests
 #[doc(hidden)]
