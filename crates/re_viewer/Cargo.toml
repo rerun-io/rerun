@@ -18,10 +18,14 @@ crate-type = ["cdylib", "rlib"]
 
 
 [features]
-default = []
+default = ["analytics"]
+
+## Enable telemetry using our analytics SDK.
+analytics = ["dep:re_analytics"]
 
 
 [dependencies]
+# Internal
 re_arrow_store = { path = "../re_arrow_store" }
 re_data_store = { path = "../re_data_store", features = ["serde"] }
 re_error = { path = "../re_error" }
@@ -41,6 +45,8 @@ re_string_interner = { path = "../re_string_interner" }
 re_tensor_ops = { path = "../re_tensor_ops" }
 re_ui = { path = "../re_ui" }
 re_ws_comms = { path = "../re_ws_comms", features = ["client"] }
+# Internal (optional)
+re_analytics = { path = "../re_analytics", optional = true }
 
 ahash = "0.8"
 anyhow.workspace = true

@@ -273,7 +273,7 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    rr.init("api_demo")
+    rr.init("api_demo", is_official_example = True)
 
     if args.serve:
         rr.serve()

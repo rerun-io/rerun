@@ -89,7 +89,7 @@ if __name__ == "__main__":
     parser.add_argument("--headless", action="store_true", help="Don't show GUI")
     args = parser.parse_args()
 
-    rr.init("dicom")
+    rr.init("dicom", is_official_example = True)
 
     if args.connect:
         # Send logging data to separate `rerun` process.

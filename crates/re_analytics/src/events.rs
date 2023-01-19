@@ -16,4 +16,12 @@ impl Event {
             .with_prop("rust_version".into(), rust_version)
             .with_prop("target".into(), target)
     }
+
+    pub fn viewer_started() -> Self {
+        Self::append("viewer_started".into())
+    }
+
+    pub fn data_source_opened() -> Self {
+        Self::append("viewer_started".into())
+    }
 }

@@ -7,9 +7,11 @@ use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 use poll_promise::Promise;
 
+use re_analytics::Analytics;
 use re_arrow_store::DataStoreStats;
 use re_data_store::log_db::LogDb;
 use re_format::format_number;
+use re_log::error;
 use re_log_types::{ApplicationId, LogMsg, RecordingId};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::Receiver;
@@ -81,6 +83,9 @@ pub struct App {
     /// Commands to run at the end of the frame.
     pending_commands: Vec<Command>,
     cmd_palette: re_ui::CommandPalette,
+
+    // TODO: or maybe we make analytics transparently handle this messy case?
+    analytics: Option<Analytics>,
 }
 
 impl App {
@@ -157,6 +162,14 @@ impl App {
             log_dbs.insert(log_db.recording_id(), log_db);
         }
 
+        let analytics = match Analytics::new(std::time::Duration::from_secs(2)) {
+            Ok(analytics) => Some(analytics),
+            Err(err) => {
+                error!(%err, "failed to initialize analytics SDK");
+                None
+            }
+        };
+
         Self {
             startup_options,
             re_ui,
@@ -178,6 +191,9 @@ impl App {
 
             pending_commands: Default::default(),
             cmd_palette: Default::default(),
+
+            #[cfg(feature = "analytics")]
+            analytics, // TODO
         }
     }
 
@@ -505,6 +521,24 @@ impl App {
                 if let LogMsg::BeginRecordingMsg(msg) = &msg {
                     re_log::info!("Beginning a new recording: {:?}", msg.info);
                     self.state.selected_rec_id = msg.info.recording_id;
+
+                    if let Some(analytics) = self.analytics.as_mut() {
+                        // TODO: hash
+                        analytics.default_props_mut().extend([
+                            (
+                                "application_id".into(),
+                                msg.info.application_id.0.clone().into(),
+                            ),
+                            (
+                                "recording_id".into(),
+                                msg.info.recording_id.to_string().into(),
+                            ),
+                            (
+                                "recording_source".into(),
+                                msg.info.recording_source.to_string().into(),
+                            ),
+                        ]);
+                    }
                 }
 
                 let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();

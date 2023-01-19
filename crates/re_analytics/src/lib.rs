@@ -105,10 +105,7 @@ pub struct Analytics {
 }
 
 impl Analytics {
-    pub fn new(
-        tick: Duration,
-        default_props: HashMap<Cow<'static, str>, Property>,
-    ) -> Result<Self, AnalyticsError> {
+    pub fn new(tick: Duration) -> Result<Self, AnalyticsError> {
         let config = Config::load()?;
         trace!(?config, ?tick, "loaded analytics config");
 
@@ -130,7 +127,7 @@ impl Analytics {
 
         Ok(Self {
             config,
-            default_append_props: default_props,
+            default_append_props: Default::default(),
             pipeline,
             event_id: AtomicU64::new(1),
         })
@@ -138,6 +135,10 @@ impl Analytics {
 
     pub fn config(&self) -> &Config {
         &self.config
+    }
+
+    pub fn default_props_mut(&mut self) -> &mut HashMap<Cow<'static, str>, Property> {
+        &mut self.default_append_props
     }
 
     pub fn record(&self, mut event: Event) {

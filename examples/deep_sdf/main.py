@@ -219,7 +219,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    rr.init("deep_sdf")
+    rr.init("deep_sdf", is_official_example = True)
 
     if args.serve:
         rr.serve()

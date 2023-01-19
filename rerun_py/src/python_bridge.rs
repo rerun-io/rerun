@@ -293,8 +293,11 @@ fn set_recording_id(recording_id: &str) -> PyResult<()> {
 }
 
 #[pyfunction]
-fn init(application_id: String) {
-    global_session().set_application_id(ApplicationId(application_id));
+fn init(application_id: String, is_official_example: Option<bool>) {
+    global_session().set_application_id(
+        ApplicationId(application_id),
+        is_official_example.unwrap_or_default(),
+    );
 }
 
 #[pyfunction]
