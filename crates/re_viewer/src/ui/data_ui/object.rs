@@ -92,7 +92,7 @@ fn generic_arrow_ui(
                     }
                     // If the `instance_index` is an `ArrowInstance` show the value
                     (Ok(component_data), Some(Index::ArrowInstance(instance))) => {
-                        arrow_component_elem_ui(ctx, ui, &component_data, instance, Preview::Small);
+                        arrow_component_elem_ui(ctx, ui, Preview::Small, &component_data, instance);
                     }
                     // If the `instance_index` isn't an `ArrowInstance` something has gone wrong
                     // TODO(jleibs) this goes away once all indexes are just `Instances`

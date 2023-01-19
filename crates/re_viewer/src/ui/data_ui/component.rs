@@ -1,10 +1,5 @@
-use re_log_types::{
-    external::arrow2::{self, array},
-    field_types::Instance,
-    msg_bundle::Component,
-    AnnotationContext,
-};
-use re_query::{ComponentWithInstances, QueryError};
+use re_log_types::{field_types::Instance, msg_bundle::Component};
+use re_query::ComponentWithInstances;
 
 use super::DataUi;
 
@@ -28,20 +23,23 @@ pub(crate) fn arrow_component_ui(
                 ui.label("empty");
             } else if count == 1 {
                 if let Some(instance) = instance_keys.next() {
-                    arrow_component_elem_ui(ctx, ui, component, &instance, preview);
+                    arrow_component_elem_ui(ctx, ui, preview, component, &instance);
                 } else {
                     ui.label("Error: missing instance key");
                 }
             } else if count <= max_elems {
                 egui::Grid::new("component").num_columns(2).show(ui, |ui| {
                     for instance in instance_keys {
-                        ui.label(format!("{}", instance));
-                        arrow_component_elem_ui(ctx, ui, component, &instance, preview);
-                        ui.end_row();
+                        // We ignore unset/null components
+                        if let Some(_) = component.lookup_arrow(&instance) {
+                            ui.label(format!("{}", instance));
+                            arrow_component_elem_ui(ctx, ui, preview, component, &instance);
+                            ui.end_row();
+                        }
                     }
                 });
             } else {
-                ui.label(format!("{} values", count));
+                ui.label(format!("{} values", count)); // TODO: write component name
             }
         }
         Err(err) => {
@@ -53,36 +51,26 @@ pub(crate) fn arrow_component_ui(
 pub(crate) fn arrow_component_elem_ui(
     ctx: &mut crate::misc::ViewerContext<'_>,
     ui: &mut egui::Ui,
+    preview: crate::ui::Preview,
     component: &ComponentWithInstances,
     instance: &Instance,
-    preview: crate::ui::Preview,
 ) {
-    // TODO(jleibs): More generic dispatch for arbitrary components
-    if component.name() == AnnotationContext::name() {
-        match component.lookup::<AnnotationContext>(instance) {
-            Ok(annotations) => annotations.data_ui(ctx, ui, preview),
-            Err(QueryError::ComponentNotFound) => {
-                ui.label("<unset>");
-            }
-            Err(err) => {
-                ui.label(format!("Error: {}", err));
-            }
-        }
-    } else if component.name() == Instance::name() {
+    if component.name() == Instance::name() {
         // No reason to do another lookup -- this is the instance itself
         ui.label(format!("{}", instance));
-    } else if let Some(value) = component.lookup_arrow(instance) {
-        let bytes = arrow2::compute::aggregate::estimated_bytes_size(value.as_ref());
-        // For small items, print them
-        if bytes < 256 {
-            let mut repr = String::new();
-            let display = array::get_display(value.as_ref(), "null");
-            display(&mut repr, 0).unwrap();
-            ui.label(repr);
-        } else {
-            ui.label(format!("{} bytes", bytes));
+    } else if component.name() == re_log_types::field_types::ColorRGBA::name() {
+        // Explicit test  - TODO: remove
+        match component.lookup::<re_log_types::field_types::ColorRGBA>(instance) {
+            Ok(component) => component.data_ui(ctx, ui, preview),
+            Err(re_query::QueryError::ComponentNotFound) => {
+                ui.weak("(color not found)");
+            }
+            Err(err) => {
+                ui.label(format!("color error: {}", err));
+            }
         }
     } else {
-        ui.label("<unset>");
+        ctx.component_ui_registry
+            .ui(ctx, ui, preview, component, instance);
     }
 }

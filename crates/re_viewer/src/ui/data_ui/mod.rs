@@ -9,6 +9,7 @@ use re_log_types::{PathOp, TimePoint};
 use crate::misc::ViewerContext;
 
 mod component;
+mod component_ui_registry;
 mod context;
 mod data;
 mod data_path;
@@ -16,6 +17,8 @@ pub(crate) mod image;
 mod log_msg;
 mod msg_id;
 mod object;
+
+pub(crate) use component_ui_registry::ComponentUiRegistry;
 
 /// Controls how large we show the data in [`DataUi`].
 #[derive(Clone, Copy, Debug)]

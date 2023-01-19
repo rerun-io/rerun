@@ -445,7 +445,7 @@ fn calc_row_height(entry: &TextEntry) -> f32 {
     num_rows as f32 * re_ui::ReUi::table_line_height()
 }
 
-fn level_to_rich_text(ui: &egui::Ui, lvl: &str) -> RichText {
+pub fn level_to_rich_text(ui: &egui::Ui, lvl: &str) -> RichText {
     match lvl {
         "CRITICAL" => RichText::new(lvl)
             .color(Color32::WHITE)

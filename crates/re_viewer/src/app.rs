@@ -17,7 +17,7 @@ use re_ui::Command;
 
 use crate::{
     misc::{Caches, Options, RecordingConfig, ViewerContext},
-    ui::Blueprint,
+    ui::{data_ui::ComponentUiRegistry, Blueprint},
 };
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -48,6 +48,8 @@ pub struct StartupOptions {
 pub struct App {
     startup_options: StartupOptions,
     re_ui: re_ui::ReUi,
+
+    component_ui_registry: ComponentUiRegistry,
 
     rx: Option<Receiver<LogMsg>>,
 
@@ -158,6 +160,7 @@ impl App {
         Self {
             startup_options,
             re_ui,
+            component_ui_registry: Default::default(),
             rx,
             log_dbs,
             state,
@@ -459,7 +462,13 @@ impl eframe::App for App {
                     });
                 });
             } else {
-                self.state.show(egui_ctx, render_ctx, log_db, &self.re_ui);
+                self.state.show(
+                    egui_ctx,
+                    render_ctx,
+                    log_db,
+                    &self.re_ui,
+                    &self.component_ui_registry,
+                );
             }
         }
 
@@ -734,6 +743,7 @@ impl AppState {
         render_ctx: &mut re_renderer::RenderContext,
         log_db: &LogDb,
         re_ui: &re_ui::ReUi,
+        component_ui_registry: &ComponentUiRegistry,
     ) {
         crate::profile_function!();
 
@@ -762,6 +772,7 @@ impl AppState {
         let mut ctx = ViewerContext {
             options,
             cache,
+            component_ui_registry,
             log_db,
             rec_cfg,
             selection_history,
