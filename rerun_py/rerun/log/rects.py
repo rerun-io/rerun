@@ -74,7 +74,11 @@ def log_rect(
         from rerun.components.label import LabelArray
         from rerun.components.rect2d import Rect2DArray
 
-        rects = np.asarray([rect], dtype="float32")
+        if np.any(rect):  # type: ignore[arg-type]
+            rects = np.asarray([rect], dtype="float32")
+        else:
+            rects = np.zeros((0, 4), dtype="float32")
+        assert type(rects) is np.ndarray
 
         comps = {"rerun.rect2d": Rect2DArray.from_numpy_and_format(rects, rect_format)}
 
@@ -128,11 +132,11 @@ def log_rects(
 
     """
     # Treat None the same as []
-    if rects is None:
-        rects = []
-    rects = np.asarray(rects, dtype="float32")
-    if len(rects) == 0:
-        rects = rects.reshape((0, 4))
+    if np.any(rects):  # type: ignore[arg-type]
+        rects = np.asarray(rects, dtype="float32")
+    else:
+        rects = np.zeros((0, 4), dtype="float32")
+    assert type(rects) is np.ndarray
 
     identifiers = [] if identifiers is None else [str(s) for s in identifiers]
 

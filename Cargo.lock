@@ -129,6 +129,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "array-init"
+version = "2.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3d62b7694a562cdf5a74227903507c56ab2cc8bdd1f781ed5cb4cf9c9f810bfc"
+
+[[package]]
 name = "array-init-cursor"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3731,6 +3737,7 @@ version = "0.1.0"
 dependencies = [
  "ahash 0.8.2",
  "anyhow",
+ "array-init",
  "arrow2",
  "arrow2_convert",
  "bytemuck",

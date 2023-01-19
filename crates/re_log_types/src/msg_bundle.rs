@@ -163,38 +163,43 @@ where
 /// ```
 /// # use re_log_types::{field_types::Rect2D, msg_bundle::MsgBundle, MsgId, ObjPath, TimePoint};
 /// let component = vec![
-///     Rect2D { x: 0.0, y: 0.0, w: 0.0, h: 0.0, },
-///     Rect2D { x: 1.0, y: 1.0, w: 0.0, h: 0.0, }
+///     Rect2D::from_xywh(0.0, 0.0, 0.0, 0.0),
+///     Rect2D::from_xywh(1.0, 1.0, 0.0, 0.0)
 /// ];
 /// let mut bundle = MsgBundle::new(MsgId::ZERO, ObjPath::root(), TimePoint::default(), vec![]);
 /// bundle.try_append_component(&component).unwrap();
 /// println!("{:?}", &bundle.components[0].value);
 /// ```
 ///
-/// The resultant Arrow array for the `rect2d` component looks as follows:
+/// The resultant Arrow [`arrow2::array::Array`] for the `Rect2D` component looks as follows:
 /// ```text
-/// +------------------------------------------------------+
-/// | rect2d                                               |
-/// +------------------------------------------------------+
-/// | [{x: 0, y: 0, w: 0, h: 0}, {x: 1, y: 1, w: 0, h: 0}] |
-/// +------------------------------------------------------+
+/// ┌─────────────────┬──────────────────────────────┐
+/// │ rerun.msg_id    ┆ rerun.rect2d                 │
+/// │ ---             ┆ ---                          │
+/// │ list[struct[2]] ┆ list[union[6]]               │
+/// ╞═════════════════╪══════════════════════════════╡
+/// │ []              ┆ [[0, 0, 0, 0], [1, 1, 0, 0]] │
+/// └─────────────────┴──────────────────────────────┘
 /// ```
-///
 /// The `MsgBundle` can then also be converted into an [`crate::arrow_msg::ArrowMsg`]:
+///
 /// ```
 /// # use re_log_types::{ArrowMsg, field_types::Rect2D, msg_bundle::MsgBundle, MsgId, ObjPath, TimePoint};
 /// # let mut bundle = MsgBundle::new(MsgId::ZERO, ObjPath::root(), TimePoint::default(), vec![]);
 /// # bundle.try_append_component(re_log_types::datagen::build_some_rects(2).iter()).unwrap();
 /// let msg: ArrowMsg = bundle.try_into().unwrap();
+/// dbg!(&msg);
 /// ```
 ///
-/// And the resulting Arrow array in the `ArrowMsg` looks as follows:
+/// And the resulting Arrow [`arrow2::array::Array`] in the [`ArrowMsg`] looks as follows:
 /// ```text
-/// +------------------------------------------+-----------------------------------------+
-/// | timelines                                | components                              |
-/// +------------------------------------------+-----------------------------------------+
-/// | [{timeline: frame_nr, type: 1, time: 0}] | {point2d: [{x: 9.765961, y: 5.532682}]} |
-/// +------------------------------------------+-----------------------------------------+
+/// ┌─────────────────┬────────────────────────────────────────────────────────────────┐
+/// │ timelines       ┆ components                                                     │
+/// │ ---             ┆ ---                                                            │
+/// │ list[struct[3]] ┆ struct[2]                                                      │
+/// ╞═════════════════╪════════════════════════════════════════════════════════════════╡
+/// │ []              ┆ {rerun.msg_id: [], rerun.rect2d: [[0, 0, 0, 0], [1, 1, 0, 0]]} │
+/// └─────────────────┴────────────────────────────────────────────────────────────────┘
 /// ```
 #[derive(Clone, Debug)]
 pub struct MsgBundle {
