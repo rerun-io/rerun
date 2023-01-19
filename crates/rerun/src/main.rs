@@ -30,4 +30,4 @@ async fn main() -> anyhow::Result<()> {
 // - [x] recording_source
 // - [ ] recording_source_is_remote (?)
 //         most likely superseded by start_method..?
-// - [ ] is_official_example
+// - [x] is_official_example

@@ -162,8 +162,12 @@ impl App {
             log_dbs.insert(log_db.recording_id(), log_db);
         }
 
+        #[cfg(feature = "analytics")]
         let analytics = match Analytics::new(std::time::Duration::from_secs(2)) {
-            Ok(analytics) => Some(analytics),
+            Ok(analytics) => {
+                analytics.record(re_analytics::Event::viewer_started());
+                Some(analytics)
+            }
             Err(err) => {
                 error!(%err, "failed to initialize analytics SDK");
                 None
@@ -522,11 +526,12 @@ impl App {
                     re_log::info!("Beginning a new recording: {:?}", msg.info);
                     self.state.selected_rec_id = msg.info.recording_id;
 
+                    #[cfg(feature = "analytics")]
                     if let Some(analytics) = self.analytics.as_mut() {
-                        // TODO: hash
                         analytics.default_props_mut().extend([
                             (
                                 "application_id".into(),
+                                // TODO: hash
                                 msg.info.application_id.0.clone().into(),
                             ),
                             (
@@ -537,7 +542,13 @@ impl App {
                                 "recording_source".into(),
                                 msg.info.recording_source.to_string().into(),
                             ),
+                            (
+                                "is_official_example".into(),
+                                msg.info.is_official_example.into(),
+                            ),
                         ]);
+
+                        analytics.record(re_analytics::Event::data_source_opened());
                     }
                 }
 

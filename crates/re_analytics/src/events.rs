@@ -22,6 +22,6 @@ impl Event {
     }
 
     pub fn data_source_opened() -> Self {
-        Self::append("viewer_started".into())
+        Self::append("data_source_opened".into())
     }
 }
