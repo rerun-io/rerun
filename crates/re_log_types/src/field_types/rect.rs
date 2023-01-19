@@ -64,23 +64,23 @@ impl Rect2D {
 
     pub fn width(&self) -> f32 {
         match self {
-            Rect2D::XYWH(Vec4D([x, y, w, h])) => *w,
-            Rect2D::YXHW(Vec4D([y, x, h, w])) => *w,
-            Rect2D::XYXY(Vec4D([x0, y0, x1, y1])) => x1 - x0,
-            Rect2D::YXYX(Vec4D([y0, x0, y1, x1])) => x1 - x0,
-            Rect2D::XCYCWH(Vec4D([x_cen, y_cen, w, h])) => *w,
-            Rect2D::XCYCW2H2(Vec4D([x_cen, y_cen, w_2, h_2])) => 2.0 * w_2,
+            Rect2D::XYWH(Vec4D([_x, _y, w, _h])) => *w,
+            Rect2D::YXHW(Vec4D([_y, _x, _h, w])) => *w,
+            Rect2D::XYXY(Vec4D([x0, _y0, x1, _y1])) => x1 - x0,
+            Rect2D::YXYX(Vec4D([_y0, x0, _y1, x1])) => x1 - x0,
+            Rect2D::XCYCWH(Vec4D([_x_cen, _y_cen, w, _h])) => *w,
+            Rect2D::XCYCW2H2(Vec4D([_x_cen, _y_cen, w_2, _h_2])) => 2.0 * w_2,
         }
     }
 
     pub fn height(&self) -> f32 {
         match self {
-            Rect2D::XYWH(Vec4D([x, y, w, h])) => *h,
-            Rect2D::YXHW(Vec4D([y, x, h, w])) => *h,
-            Rect2D::XYXY(Vec4D([x0, y0, x1, y1])) => y1 - y0,
-            Rect2D::YXYX(Vec4D([y0, x0, y1, x1])) => y1 - y0,
-            Rect2D::XCYCWH(Vec4D([x_cen, y_cen, w, h])) => *h,
-            Rect2D::XCYCW2H2(Vec4D([x_cen, y_cen, w_2, h_2])) => 2.0 * h_2,
+            Rect2D::XYWH(Vec4D([_x, _y, _w, h])) => *h,
+            Rect2D::YXHW(Vec4D([_y, _x, h, _w])) => *h,
+            Rect2D::XYXY(Vec4D([_x0, y0, _x1, y1])) => y1 - y0,
+            Rect2D::YXYX(Vec4D([y0, _x0, y1, _x1])) => y1 - y0,
+            Rect2D::XCYCWH(Vec4D([_x_cen, _y_cen, _w, h])) => *h,
+            Rect2D::XCYCW2H2(Vec4D([_x_cen, _y_cen, _w_2, h_2])) => 2.0 * h_2,
         }
     }
 }

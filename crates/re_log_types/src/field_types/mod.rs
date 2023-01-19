@@ -111,7 +111,7 @@ pub enum FieldError {
 
 pub type Result<T> = std::result::Result<T, FieldError>;
 
-/// arrow2_convert helper for fields of type `[T; SIZE]`
+/// `arrow2_convert` helper for fields of type `[T; SIZE]`
 pub struct FixedSizeArrayField<T, const SIZE: usize>(std::marker::PhantomData<T>);
 
 impl<T, const SIZE: usize> ArrowField for FixedSizeArrayField<T, SIZE>
