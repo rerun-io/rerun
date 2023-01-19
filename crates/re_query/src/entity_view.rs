@@ -113,8 +113,8 @@ impl ComponentWithInstances {
                 .downcast_ref::<PrimitiveArray<u64>>()?
                 .values();
 
-            // If the value is splatted, return offset 0
-            if keys.len() == 1 && keys[0] == u64::MAX {
+            // If the value is splatted, return the offset of the splat
+            if keys.len() == 1 && keys[0] == Instance::splat().0 {
                 0
             } else {
                 // Otherwise binary search to find the offset of the instance
@@ -438,8 +438,7 @@ fn lookup_value() {
 
 #[test]
 fn lookup_splat() {
-    use re_log_types::external::arrow2_convert::serialize::arrow_serialize_to_mutable_array;
-    use re_log_types::field_types::{Instance, Point2D, Rect2D};
+    use re_log_types::field_types::{Instance, Point2D};
     let instances = vec![
         Instance::splat(), //
     ];
