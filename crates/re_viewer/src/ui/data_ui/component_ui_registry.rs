@@ -30,6 +30,9 @@ impl Default for ComponentUiRegistry {
             components: Default::default(),
         };
 
+        // The things that are out-commented are components we have, but
+        // where the default arrow-format for them looks good enough (at least for now).
+        // Basically: adding custom UI:s for these out-commented components would be nice, but is not a must.
         registry.add::<re_log_types::field_types::AnnotationContext>();
         // registry.add::<re_log_types::field_types::Arrow3D>();
         // registry.add::<re_log_types::field_types::Box3D>();

@@ -57,14 +57,17 @@ impl DataUi for TimePoint {
 // TODO(jleibs): Better ArrowMsg view
 impl DataUi for [ComponentBundle] {
     fn data_ui(&self, _ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, preview: Preview) {
+        let mut sorted = self.to_vec();
+        sorted.sort_by_key(|cb| cb.name);
+
         match preview {
             Preview::Small | Preview::MaxHeight(_) => {
-                ui.label(self.iter().map(format_component_bundle).join(", "));
+                ui.label(sorted.iter().map(format_component_bundle).join(", "));
             }
 
             Preview::Large => {
                 ui.vertical(|ui| {
-                    for component_bundle in self {
+                    for component_bundle in &sorted {
                         ui.label(format_component_bundle(component_bundle));
                     }
                 });
