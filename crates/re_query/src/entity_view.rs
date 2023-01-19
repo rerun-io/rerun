@@ -113,7 +113,13 @@ impl ComponentWithInstances {
                 .downcast_ref::<PrimitiveArray<u64>>()?
                 .values();
 
-            keys.binary_search(&instance.0).ok()?
+            // If the value is splatted, return the offset of the splat
+            if keys.len() == 1 && keys[0] == Instance::splat().0 {
+                0
+            } else {
+                // Otherwise binary search to find the offset of the instance
+                keys.binary_search(&instance.0).ok()?
+            }
         } else {
             // If `instance_keys` is not set, then offset is the instance because the implicit
             // index is a sequential list
@@ -428,4 +434,24 @@ fn lookup_value() {
         missing_value.err().unwrap(),
         QueryError::TypeMismatch { .. }
     ));
+}
+
+#[test]
+fn lookup_splat() {
+    use re_log_types::field_types::{Instance, Point2D};
+    let instances = vec![
+        Instance::splat(), //
+    ];
+    let points = vec![
+        Point2D { x: 1.0, y: 2.0 }, //
+    ];
+
+    let component = ComponentWithInstances::from_native(Some(&instances), &points).unwrap();
+
+    // Any instance we look up will return the slatted value
+    let value = component.lookup::<Point2D>(&Instance(1)).unwrap();
+    assert_eq!(points[0], value);
+
+    let value = component.lookup::<Point2D>(&Instance(99)).unwrap();
+    assert_eq!(points[0], value);
 }
