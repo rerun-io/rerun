@@ -64,15 +64,11 @@ impl SelectionPanel {
                     ui.push_id(i, |ui| {
                         what_is_selected_ui(ui, ctx, blueprint, selection);
 
-                        ui.separator();
-
                         egui::CollapsingHeader::new("Data")
                             .default_open(true)
                             .show(ui, |ui| {
                                 data_ui(ui, ctx, selection, Preview::Large);
                             });
-
-                        ui.separator();
 
                         egui::CollapsingHeader::new("Blueprint")
                             .default_open(true)
@@ -81,7 +77,7 @@ impl SelectionPanel {
                             });
 
                         if num_selections > i + 1 {
-                            ui.add_space(12.0);
+                            ui.add(egui::Separator::default().spacing(12.0));
                         }
                     });
                 }
