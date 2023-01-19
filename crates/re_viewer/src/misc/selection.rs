@@ -264,8 +264,8 @@ impl MultiSelection {
     /// Whether an instance is part of the selection.
     ///
     /// Should only be used if we're checking against a single instance.
-    /// Avoid this when checking large arrays of instances, instead use [`Self::is_path_selected`] on the object
-    /// and then [`SelectionScope::is_index_selected`] for each index!
+    /// Avoid this when checking large arrays of instances, instead use [`Self::is_obj_path_selected`] on the object
+    /// and then [`SelectionScope::index_part_of_selection`] for each index!
     pub fn is_instance_selected(&self, instance: InstanceIdHash) -> bool {
         self.is_obj_path_selected(instance.obj_path_hash)
             .index_part_of_selection(instance.instance_index_hash)
