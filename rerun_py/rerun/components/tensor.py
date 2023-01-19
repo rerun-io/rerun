@@ -75,7 +75,7 @@ class TensorArray(pa.ExtensionArray):  # type: ignore[misc]
 
         meaning = build_dense_union(
             TensorType.storage_type["meaning"].type,
-            discriminant=("Unknown" if meaning == bindings.TensorDataMeaning.Unknown else "ClassId"),
+            discriminant=("ClassId" if meaning == bindings.TensorDataMeaning.ClassId else "Unknown"),
             child=pa.array([True], type=pa.bool_()),
         )
 

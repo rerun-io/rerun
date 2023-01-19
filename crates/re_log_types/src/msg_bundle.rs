@@ -374,8 +374,6 @@ impl TryFrom<&ArrowMsg> for MsgBundle {
         let time_point = extract_timelines(schema, chunk)?;
         let components = extract_components(schema, chunk)?;
 
-        re_log::debug!("Got components: {components:?}");
-
         Ok(Self {
             msg_id: *msg_id,
             obj_path: obj_path_cmp.into(),

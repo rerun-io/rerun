@@ -400,16 +400,16 @@ pub fn view_3d(
                 // TODO(andreas): Associate current space view
                 .map(Selection::Instance)
         }));
+        state.state_3d.hovered_point = picking_result
+            .opaque_hit
+            .as_ref()
+            .or_else(|| picking_result.transparent_hits.last())
+            .map(|hit| picking_result.space_position(hit));
 
         project_onto_other_spaces(ctx, &scene.space_cameras, &mut state.state_3d, space);
     }
 
-    // Clicking the last hovered object.
-    // TODO(andreas): Should this happen in a single global location?
-    // TODO(andreas): Multiselect.
-    if response.clicked() && !ctx.hovered().is_empty() {
-        ctx.set_selection(ctx.hovered().primary().unwrap().clone());
-    }
+    ctx.select_hovered_on_click(&response);
 
     // Double click changes camera
     if response.double_clicked() {
