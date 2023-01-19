@@ -2,10 +2,10 @@
 //! types in `egui`.
 //!
 
-use re_log_types::msg_bundle::ComponentBundle;
-use re_log_types::{PathOp, TimePoint};
+use itertools::Itertools;
+use re_log_types::{msg_bundle::ComponentBundle, PathOp, TimePoint};
 
-use crate::misc::ViewerContext;
+use crate::{misc::ViewerContext, ui::format_component_name};
 
 mod component;
 mod component_ui_registry;
@@ -56,21 +56,30 @@ impl DataUi for TimePoint {
 
 // TODO(jleibs): Better ArrowMsg view
 impl DataUi for [ComponentBundle] {
-    fn data_ui(&self, _ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, _preview: Preview) {
-        ui.vertical(|ui| {
-            for component_bundle in self {
-                let ComponentBundle { name, value } = component_bundle;
+    fn data_ui(&self, _ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, preview: Preview) {
+        match preview {
+            Preview::Small | Preview::MaxHeight(_) => {
+                ui.label(self.iter().map(format_component_bundle).join(", "));
+            }
 
-                use re_arrow_store::ArrayExt as _;
-                let num_instances = value.get_child_length(0); // TODO: this is wrong, somehow
-
-                ui.horizontal(|ui| {
-                    ui.label(format!("{}x", num_instances));
-                    ui.label(crate::ui::format_component_name(name));
+            Preview::Large => {
+                ui.vertical(|ui| {
+                    for component_bundle in self {
+                        ui.label(format_component_bundle(component_bundle));
+                    }
                 });
             }
-        });
+        }
     }
+}
+
+fn format_component_bundle(component_bundle: &ComponentBundle) -> String {
+    let ComponentBundle { name, value } = component_bundle;
+
+    use re_arrow_store::ArrayExt as _;
+    let num_instances = value.get_child_length(0);
+
+    format!("{}x {}", num_instances, format_component_name(name))
 }
 
 impl DataUi for PathOp {
