@@ -53,7 +53,7 @@ impl ScenePart for Points2DPartClassic {
                 continue;
             };
 
-            let highlighted_paths = ctx.hovered().is_path_selected(obj_path.hash());
+            let highlighted_paths = ctx.hovered().check_obj_path(obj_path.hash());
 
             // If keypoints ids show up we may need to connect them later!
             // We include time in the key, so that the "Visible history" (time range queries) feature works.
@@ -98,7 +98,7 @@ impl ScenePart for Points2DPartClassic {
                 let label = annotation_info.label(label);
 
                 let mut paint_props = paint_properties(color, radius);
-                if highlighted_paths.is_index_selected(instance_hash.instance_index_hash) {
+                if highlighted_paths.contains_index(instance_hash.instance_index_hash) {
                     apply_hover_effect(&mut paint_props);
                 }
 
@@ -174,7 +174,7 @@ impl Points2DPart {
             .batch("2d points")
             .world_from_obj(world_from_obj);
 
-        let highlighted_paths = ctx.hovered().is_path_selected(ent_path.hash());
+        let highlighted_paths = ctx.hovered().check_obj_path(ent_path.hash());
 
         let visitor = |instance: Instance,
                        pos: Point2D,
@@ -213,7 +213,7 @@ impl Points2DPart {
             let label = annotation_info.label(label.map(|l| l.0).as_ref());
 
             let mut paint_props = paint_properties(color, radius.map(|r| r.0).as_ref());
-            if highlighted_paths.is_index_selected(instance_hash.instance_index_hash) {
+            if highlighted_paths.contains_index(instance_hash.instance_index_hash) {
                 apply_hover_effect(&mut paint_props);
             }
 

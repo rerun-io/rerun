@@ -7,7 +7,7 @@ use re_query::{query_entity_with_primary, QueryError};
 use re_renderer::renderer::LineStripFlags;
 
 use crate::{
-    misc::{space_info::query_view_coordinates, ObjectPathSelectionResult, ViewerContext},
+    misc::{space_info::query_view_coordinates, ObjectPathSelectionScope, ViewerContext},
     ui::{
         scene::SceneQuery,
         transform_cache::{ReferenceFromObjTransform, TransformCache},
@@ -48,7 +48,7 @@ impl ScenePart for CamerasPartClassic {
                     InstanceIdHash::NONE
                 }
             };
-            let highlighted_paths = ctx.hovered().is_path_selected(obj_path.hash());
+            let highlighted_paths = ctx.hovered().check_obj_path(obj_path.hash());
 
             let view_coordinates = determine_view_coordinates(
                 &ctx.log_db.obj_db,
@@ -112,7 +112,7 @@ impl CamerasPart {
         instance: InstanceIdHash,
         pinhole: Pinhole,
         view_coordinates: ViewCoordinates,
-        highlighted_paths: &ObjectPathSelectionResult,
+        highlighted_paths: &ObjectPathSelectionScope,
     ) {
         // The transform *at* this object path already has the pinhole transformation we got passed in!
         // This makes sense, since if there's an image logged here one would expect that the transform applies.
@@ -195,7 +195,7 @@ impl CamerasPart {
         ];
 
         let (line_radius, line_color) =
-            if highlighted_paths.is_index_selected(instance.instance_index_hash) {
+            if highlighted_paths.contains_index(instance.instance_index_hash) {
                 (
                     re_renderer::Size::new_points(2.0),
                     SceneSpatial::HOVER_COLOR,
@@ -243,7 +243,7 @@ impl ScenePart for CamerasPart {
                 &[],
             )
             .and_then(|entity_view| {
-                let highlighted_paths = ctx.hovered().is_path_selected(ent_path.hash());
+                let highlighted_paths = ctx.hovered().check_obj_path(ent_path.hash());
 
                 entity_view.visit1(|instance, transform| {
                     let Transform::Pinhole(pinhole) = transform else {

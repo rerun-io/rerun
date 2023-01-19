@@ -9,7 +9,7 @@ use re_query::{query_entity_with_primary, QueryError};
 use re_renderer::Size;
 
 use crate::{
-    misc::{ObjectPathSelectionResult, ViewerContext},
+    misc::{ObjectPathSelectionScope, ViewerContext},
     ui::{
         scene::SceneQuery,
         transform_cache::{ReferenceFromObjTransform, TransformCache},
@@ -47,7 +47,7 @@ impl ScenePart for Boxes2DPartClassic {
                 continue;
             };
 
-            let highlighted_paths = ctx.hovered().is_path_selected(obj_path.hash());
+            let highlighted_paths = ctx.hovered().check_obj_path(obj_path.hash());
 
             let mut line_batch = scene
                 .primitives
@@ -73,7 +73,7 @@ impl ScenePart for Boxes2DPartClassic {
                 let label = annotation_info.label(label);
 
                 let mut paint_props = paint_properties(color, stroke_width);
-                if highlighted_paths.is_index_selected(instance_hash.instance_index_hash) {
+                if highlighted_paths.contains_index(instance_hash.instance_index_hash) {
                     apply_hover_effect(&mut paint_props);
                 }
 
@@ -118,7 +118,7 @@ impl Boxes2DPart {
         instance: InstanceIdHash,
         rect: &Rect2D,
         color: Option<ColorRGBA>,
-        highlighted_paths: &ObjectPathSelectionResult,
+        highlighted_paths: &ObjectPathSelectionScope,
     ) {
         scene.num_logged_2d_objects += 1;
 
@@ -137,7 +137,7 @@ impl Boxes2DPart {
         let label = annotation_info.label(label);
 
         let mut paint_props = paint_properties(color, stroke_width);
-        if highlighted_paths.is_index_selected(instance.instance_index_hash) {
+        if highlighted_paths.contains_index(instance.instance_index_hash) {
             apply_hover_effect(&mut paint_props);
         }
 
@@ -195,7 +195,7 @@ impl ScenePart for Boxes2DPart {
                 &[ColorRGBA::name()],
             )
             .and_then(|entity_view| {
-                let highlighted_paths = ctx.hovered().is_path_selected(ent_path.hash());
+                let highlighted_paths = ctx.hovered().check_obj_path(ent_path.hash());
 
                 entity_view.visit2(|instance, rect, color| {
                     let instance_hash = {
