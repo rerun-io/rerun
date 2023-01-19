@@ -3,14 +3,14 @@ use std::sync::Arc;
 use ahash::HashMap;
 use re_data_store::{InstanceIdHash, ObjPath};
 use re_log_types::{
-    field_types::{ClassId, KeypointId},
+    field_types::{ClassId, KeypointId, Tensor},
     ClassicTensor, IndexHash, MeshId,
 };
 use re_renderer::{Color32, Size};
 
 use super::{eye::Eye, SpaceCamera3D, SpatialNavigationMode};
 use crate::{
-    misc::{mesh_loader::LoadedMesh, ViewerContext},
+    misc::{caches::AsDynamicImage, mesh_loader::LoadedMesh, ViewerContext},
     ui::{
         annotations::{auto_color_egui, AnnotationMap},
         transform_cache::TransformCache,
@@ -56,10 +56,24 @@ pub struct MeshSource {
     pub additive_tint: Option<Color32>,
 }
 
+pub enum AnyTensor {
+    ClassicTensor(ClassicTensor),
+    ArrowTensor(Tensor),
+}
+
+impl AnyTensor {
+    pub fn as_ref(&self) -> &(dyn AsDynamicImage) {
+        match self {
+            Self::ClassicTensor(t) => t,
+            Self::ArrowTensor(t) => t,
+        }
+    }
+}
+
 pub struct Image {
     pub instance_hash: InstanceIdHash,
 
-    pub tensor: ClassicTensor,
+    pub tensor: AnyTensor,
     /// If this is a depth map, how long is a meter?
     ///
     /// For instance, with a `u16` dtype one might have
@@ -153,7 +167,6 @@ impl SceneSpatial {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
-        hovered: InstanceIdHash,
     ) {
         crate::profile_function!();
 
@@ -167,6 +180,7 @@ impl SceneSpatial {
             &scene_part::Boxes3DPart,
             &scene_part::Lines3DPartClassic,
             &scene_part::Lines3DPart,
+            &scene_part::Arrows3DPartClassic,
             &scene_part::Arrows3DPart,
             &scene_part::MeshPartClassic,
             &scene_part::MeshPart,
@@ -190,7 +204,7 @@ impl SceneSpatial {
         ];
 
         for part in parts {
-            part.load(self, ctx, query, transforms, hovered);
+            part.load(self, ctx, query, transforms);
         }
 
         self.primitives.recalculate_bounding_box();

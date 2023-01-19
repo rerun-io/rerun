@@ -1,11 +1,11 @@
 use itertools::Itertools as _;
-use nohash_hasher::{IntMap, IntSet};
+use nohash_hasher::IntMap;
 
 use re_arrow_store::{DataStoreConfig, GarbageCollectionTarget, TimeType};
 use re_log::warn_once;
 use re_log_types::{
     external::arrow2_convert::deserialize::arrow_array_deserialize_iterator,
-    field_types::{Instance, Scalar, TextEntry},
+    field_types::Instance,
     msg_bundle::{Component as _, ComponentBundle, MsgBundle},
     objects, ArrowMsg, BatchIndex, BeginRecordingMsg, DataMsg, DataPath, DataVec, FieldOrComponent,
     LogMsg, LoggedData, MsgId, ObjPath, ObjPathHash, ObjTypePath, ObjectType, PathOp, PathOpMsg,
@@ -62,7 +62,7 @@ impl ObjDb {
 
     fn register_obj_path(&mut self, obj_path: &ObjPath) {
         self.obj_path_from_hash
-            .entry(*obj_path.hash())
+            .entry(obj_path.hash())
             .or_insert_with(|| obj_path.clone());
     }
 
@@ -138,32 +138,9 @@ impl ObjDb {
     fn try_add_arrow_data_msg(&mut self, msg: &ArrowMsg) -> Result<(), Error> {
         let msg_bundle = MsgBundle::try_from(msg).map_err(Error::MsgBundleError)?;
 
-        // Determine the kind of object we're looking at based on the components that have been
-        // uploaded _first_.
-        //
-        // TODO(cmc): That's an extension of the hack below, and will disappear at the same time
-        // and for the same reasons.
-        {
-            let components = msg_bundle
-                .components
-                .iter()
-                .map(|bundle| bundle.name)
-                .collect::<IntSet<_>>();
-
-            let obj_type = if components.contains(&TextEntry::name()) {
-                ObjectType::TextEntry
-            } else if components.contains(&Scalar::name()) {
-                ObjectType::Scalar
-            } else {
-                // TODO(jleibs): Hack in a type so the UI treats these objects as visible
-                // This can go away once we determine object categories directly from the arrow
-                // table
-                ObjectType::ArrowObject
-            };
-            self.types
-                .entry(msg_bundle.obj_path.obj_type_path().clone())
-                .or_insert(obj_type);
-        }
+        self.types
+            .entry(msg_bundle.obj_path.obj_type_path().clone())
+            .or_insert(ObjectType::ArrowObject);
 
         self.register_obj_path(&msg_bundle.obj_path);
 

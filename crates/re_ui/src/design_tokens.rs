@@ -60,7 +60,8 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
     }
 
     let panel_bg_color = get_aliased_color(&json, "{Alias.Color.Surface.Default.value}");
-    let floating_color = get_aliased_color(&json, "{Alias.Color.Surface.Floating.value}");
+    // let floating_color = get_aliased_color(&json, "{Alias.Color.Surface.Floating.value}");
+    let floating_color = Color32::from_gray(38); // TODO(emilk): change the content of the design_tokens.json origin instead
 
     egui_style.visuals.widgets.noninteractive.bg_fill = panel_bg_color;
 
@@ -83,7 +84,7 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
     egui_style.visuals.popup_shadow = egui::epaint::Shadow::NONE;
     egui_style.visuals.window_shadow = egui::epaint::Shadow::NONE;
 
-    egui_style.visuals.window_fill = floating_color;
+    egui_style.visuals.window_fill = floating_color; // tooltips and menus
     egui_style.visuals.window_stroke = egui::Stroke::NONE;
     egui_style.visuals.panel_fill = panel_bg_color;
 
@@ -101,6 +102,7 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
 
     // Add stripes to grids and tables?
     egui_style.visuals.striped = false;
+    egui_style.visuals.faint_bg_color = Color32::from_additive_luminance(8);
 
     egui_style.debug.show_blocking_widget = false; // turn this on to debug interaction problems
 

@@ -368,7 +368,7 @@ fn redirect_tracing_to_console_log() {
     tracing::subscriber::set_global_default(
         tracing_subscriber::Registry::default()
             .with(tracing_subscriber::EnvFilter::new(
-                re_log::default_log_filter(),
+                re_log::default_web_log_filter(),
             ))
             .with(tracing_wasm::WASMLayer::new(
                 tracing_wasm::WASMLayerConfig::default(),

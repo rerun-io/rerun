@@ -1,6 +1,7 @@
 use crate::{
     renderer::{
-        PointCloudBatchInfo, PointCloudDrawData, PointCloudDrawDataError, PointCloudVertex,
+        PointCloudBatchFlags, PointCloudBatchInfo, PointCloudDrawData, PointCloudDrawDataError,
+        PointCloudVertex,
     },
     Color32, DebugLabel, Size,
 };
@@ -45,6 +46,7 @@ where
         self.batches.push(PointCloudBatchInfo {
             label: label.into(),
             world_from_obj: glam::Mat4::IDENTITY,
+            flags: PointCloudBatchFlags::ENABLE_SHADING,
             point_count: 0,
         });
 
@@ -197,6 +199,12 @@ where
     #[inline]
     pub fn add_point_2d(&mut self, position: glam::Vec2) -> PointBuilder<'_, PerPointUserData> {
         self.add_point(position.extend(0.0))
+    }
+
+    /// Set flags for this batch.
+    pub fn flags(mut self, flags: PointCloudBatchFlags) -> Self {
+        self.batch_mut().flags = flags;
+        self
     }
 }
 

@@ -40,8 +40,7 @@ fn query_scene_spatial(
         obj_props: &Default::default(), // all visible
     };
     let mut scene = SceneSpatial::default();
-    let hovered = re_data_store::InstanceIdHash::NONE;
-    scene.load_objects(ctx, &query, transforms, hovered);
+    scene.load_objects(ctx, &query, transforms);
     scene
 }
 
@@ -129,10 +128,10 @@ impl Viewport {
                     let mut image_sizes = BTreeSet::default();
 
                     for visible_image in &scene_spatial.ui.images {
-                        debug_assert!(matches!(visible_image.tensor.shape().len(), 2 | 3));
+                        debug_assert!(matches!(visible_image.tensor.as_ref().shape().len(), 2 | 3));
                         let image_size = (
-                            visible_image.tensor.shape()[0].size,
-                            visible_image.tensor.shape()[1].size,
+                            visible_image.tensor.as_ref().shape()[0].size,
+                            visible_image.tensor.as_ref().shape()[1].size,
                         );
                         image_sizes.insert(image_size);
 

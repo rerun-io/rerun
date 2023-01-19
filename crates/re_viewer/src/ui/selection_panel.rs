@@ -1,5 +1,5 @@
-use re_data_store::{log_db::LogDb, query_transform, ObjPath, ObjectProps};
-use re_log_types::{LogMsg, ObjTypePath, TimeType};
+use re_data_store::{query_transform, ObjPath, ObjectProps};
+use re_log_types::TimeType;
 
 use crate::{
     ui::{view_spatial::SpatialNavigationMode, Blueprint},
@@ -49,182 +49,206 @@ impl SelectionPanel {
     ) {
         crate::profile_function!();
 
+        if !ctx.selection().is_valid(ctx, blueprint) {
+            // TODO(emilk): also prune history
+            ctx.clear_selection();
+        }
+
         ui.separator();
 
         egui::ScrollArea::both()
             .auto_shrink([false; 2])
             .show(ui, |ui| {
-                self.inner_ui(ctx, blueprint, ui);
-            });
-    }
-
-    #[allow(clippy::unused_self)]
-    fn inner_ui(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        blueprint: &mut Blueprint,
-        ui: &mut egui::Ui,
-    ) {
-        match ctx.selection() {
-            Selection::None => {
-                ui.weak("(nothing)");
-            }
-            Selection::MsgId(msg_id) => {
-                // ui.label(format!("Selected msg_id: {:?}", msg_id));
-                ui.label("Selected a specific log message");
-
-                let msg = if let Some(msg) = ctx.log_db.get_log_msg(&msg_id) {
-                    msg
-                } else {
-                    re_log::warn!("Unknown msg_id selected. Resetting selection");
-                    ctx.clear_selection();
+                let selection = ctx.selection();
+                if selection == Selection::None {
+                    ui.weak("(none)");
                     return;
-                };
-
-                match msg {
-                    LogMsg::BeginRecordingMsg(msg) => msg.data_ui(ctx, ui, Preview::Medium),
-                    LogMsg::TypeMsg(msg) => msg.data_ui(ctx, ui, Preview::Medium),
-                    LogMsg::DataMsg(msg) => {
-                        msg.detailed_data_ui(ctx, ui, Preview::Medium);
-                        ui.separator();
-                        msg.data_path.obj_path.data_ui(ctx, ui, Preview::Medium)
-                    }
-                    LogMsg::PathOpMsg(msg) => msg.data_ui(ctx, ui, Preview::Medium),
-                    LogMsg::ArrowMsg(msg) => msg.data_ui(ctx, ui, Preview::Medium),
-                };
-            }
-            Selection::ObjTypePath(obj_type_path) => {
-                ui.label(format!("Selected object type path: {}", obj_type_path));
-            }
-            Selection::Instance(instance_id) => {
-                ui.label(format!("Selected object: {}", instance_id));
-                ui.horizontal(|ui| {
-                    ui.label("Type path:");
-                    ctx.type_path_button(ui, instance_id.obj_path.obj_type_path());
-                });
-                ui.horizontal(|ui| {
-                    ui.label("Object type:");
-                    ui.label(obj_type_name(
-                        ctx.log_db,
-                        instance_id.obj_path.obj_type_path(),
-                    ));
-                });
-                ui.separator();
-                instance_id.data_ui(ctx, ui, Preview::Medium);
-            }
-            Selection::DataPath(data_path) => {
-                ui.label(format!("Selected data path: {}", data_path));
-                ui.horizontal(|ui| {
-                    ui.label("Object path:");
-                    ctx.obj_path_button(ui, &data_path.obj_path);
-                });
-                ui.horizontal(|ui| {
-                    ui.label("Type path:");
-                    ctx.type_path_button(ui, data_path.obj_path.obj_type_path());
-                });
-                ui.horizontal(|ui| {
-                    ui.label("Object type:");
-                    ui.label(obj_type_name(
-                        ctx.log_db,
-                        data_path.obj_path.obj_type_path(),
-                    ));
-                });
-
-                ui.separator();
-
-                data_path.data_ui(ctx, ui, Preview::Medium);
-            }
-            Selection::Space(space) => {
-                ui.label(format!("Selected space: {}", space));
-                // I really don't know what we should show here.
-            }
-            Selection::SpaceView(space_view_id) => {
-                if let Some(space_view) = blueprint.viewport.space_view(&space_view_id) {
-                    ui.strong("SpaceView");
-                    ui.add_space(4.0);
-
-                    if ui.button("Remove from Viewport").clicked() {
-                        blueprint.viewport.remove(&space_view_id);
-                        blueprint.viewport.mark_user_interaction();
-                        ctx.clear_selection();
-                    } else {
-                        if ui.button("Clone Space View").clicked() {
-                            blueprint.viewport.add_space_view(space_view.clone());
-                            blueprint.viewport.mark_user_interaction();
-                        }
-
-                        if let Some(space_view) = blueprint.viewport.space_view_mut(&space_view_id)
-                        {
-                            ui.add_space(4.0);
-                            space_view.selection_ui(ctx, ui);
-                        }
-                    }
-                } else {
-                    ctx.clear_selection();
                 }
-            }
-            Selection::SpaceViewObjPath(space_view_id, obj_path) => {
-                if let Some(space_view) = blueprint.viewport.space_view_mut(&space_view_id) {
-                    egui::Grid::new("space_view_id_obj_path").show(ui, |ui| {
-                        ui.label("Space View:");
-                        ctx.space_view_button_to(ui, &space_view.name, space_view_id);
-                        ui.end_row();
 
-                        ui.label("Object Path:");
-                        ctx.obj_path_button(ui, &obj_path);
-                        ui.end_row();
+                what_is_selected_ui(ui, ctx, blueprint, &selection);
+
+                ui.separator();
+
+                egui::CollapsingHeader::new("Data")
+                    .default_open(true)
+                    .show(ui, |ui| {
+                        data_ui(ui, ctx, &selection, Preview::Large);
                     });
 
-                    ui.separator();
+                ui.separator();
 
-                    let data_blueprint = space_view.data_blueprint.data_blueprints_individual();
-                    let mut props = data_blueprint.get(&obj_path);
-                    obj_props_ui(ctx, ui, Some(&obj_path), &mut props, &space_view.view_state);
-                    data_blueprint.set(obj_path.clone(), props);
+                egui::CollapsingHeader::new("Blueprint")
+                    .default_open(true)
+                    .show(ui, |ui| {
+                        blueprint_ui(ui, ctx, blueprint, &selection);
+                    });
+            });
+    }
+}
 
-                    ui.separator();
-
-                    obj_path.data_ui(ctx, ui, Preview::Medium);
-                } else {
-                    ctx.clear_selection();
-                }
+/// What is selected? Not the contents, just the short id of it.
+fn what_is_selected_ui(
+    ui: &mut egui::Ui,
+    ctx: &mut ViewerContext<'_>,
+    blueprint: &mut Blueprint,
+    selection: &Selection,
+) {
+    match selection {
+        Selection::None => {
+            ui.weak("(nothing)");
+        }
+        Selection::MsgId(msg_id) => {
+            ui.horizontal(|ui| {
+                ui.label("Message ID:");
+                ui.code(msg_id.to_string());
+            });
+        }
+        Selection::Instance(instance_id) => {
+            ui.horizontal(|ui| {
+                ui.label("Instance:");
+                ui.code(instance_id.to_string());
+            });
+        }
+        Selection::DataPath(data_path) => {
+            ui.horizontal(|ui| {
+                ui.label("Data path:");
+                ui.code(data_path.to_string());
+            });
+        }
+        Selection::SpaceView(space_view_id) => {
+            if let Some(space_view) = blueprint.viewport.space_view_mut(space_view_id) {
+                ui.horizontal(|ui| {
+                    ui.label("Space view:");
+                    ui.text_edit_singleline(&mut space_view.name);
+                });
             }
-            Selection::DataBlueprintGroup(space_view_id, data_blueprint_group_handle) => {
-                if let Some(space_view) = blueprint.viewport.space_view_mut(&space_view_id) {
-                    if let Some(group) = space_view
-                        .data_blueprint
-                        .get_group_mut(data_blueprint_group_handle)
-                    {
-                        ui.strong("Group");
-                        ui.add_space(4.0);
+        }
+        Selection::SpaceViewObjPath(space_view_id, obj_path) => {
+            if let Some(space_view) = blueprint.viewport.space_view_mut(space_view_id) {
+                egui::Grid::new("space_view_id_obj_path").show(ui, |ui| {
+                    ui.label("Object Path:");
+                    ctx.obj_path_button(ui, obj_path);
+                    ui.end_row();
 
-                        group.selection_ui(ctx, ui);
+                    ui.label("in Space View:");
+                    ctx.space_view_button_to(ui, &space_view.name, *space_view_id);
+                    ui.end_row();
+                });
+            }
+        }
+        Selection::DataBlueprintGroup(space_view_id, data_blueprint_group_handle) => {
+            if let Some(space_view) = blueprint.viewport.space_view_mut(space_view_id) {
+                if let Some(group) = space_view
+                    .data_blueprint
+                    .get_group_mut(*data_blueprint_group_handle)
+                {
+                    egui::Grid::new("data_blueprint_group")
+                        .num_columns(2)
+                        .show(ui, |ui| {
+                            ui.label("Data Group:");
+                            ui.text_edit_singleline(&mut group.display_name);
+                            ui.end_row();
 
-                        ui.separator();
-
-                        obj_props_ui(
-                            ctx,
-                            ui,
-                            None,
-                            &mut group.properties_individual,
-                            &space_view.view_state,
-                        );
-
-                        ui.separator();
-                    } else {
-                        ctx.clear_selection();
-                    }
+                            ui.label("in Space View:");
+                            ctx.space_view_button_to(ui, &space_view.name, *space_view_id);
+                            ui.end_row();
+                        });
                 }
             }
         }
     }
 }
 
-fn obj_type_name(log_db: &LogDb, obj_type_path: &ObjTypePath) -> String {
-    if let Some(typ) = log_db.obj_db.types.get(obj_type_path) {
-        format!("{typ:?}")
-    } else {
-        "<UNKNOWN>".to_owned()
+/// What is the data contained by this selection?
+fn data_ui(
+    ui: &mut egui::Ui,
+    ctx: &mut ViewerContext<'_>,
+    selection: &Selection,
+    preview: Preview,
+) {
+    match selection {
+        Selection::None | Selection::SpaceView(_) | Selection::DataBlueprintGroup(_, _) => {
+            ui.weak("(nothing)");
+        }
+        Selection::MsgId(msg_id) => {
+            msg_id.data_ui(ctx, ui, preview);
+        }
+        Selection::Instance(instance_id) => {
+            instance_id.data_ui(ctx, ui, preview);
+        }
+        Selection::DataPath(data_path) => {
+            data_path.data_ui(ctx, ui, preview);
+        }
+        Selection::SpaceViewObjPath(_, obj_path) => {
+            obj_path.data_ui(ctx, ui, preview);
+        }
+    }
+}
+
+/// What is the blueprint stuff for this selection?
+fn blueprint_ui(
+    ui: &mut egui::Ui,
+    ctx: &mut ViewerContext<'_>,
+    blueprint: &mut Blueprint,
+    selection: &Selection,
+) {
+    match selection {
+        Selection::None | Selection::MsgId(_) | Selection::Instance(_) | Selection::DataPath(_) => {
+            // TODO(emilk): look up which, if any, blueprints this instances/DataPath is part of.
+            ui.weak("(nothing)");
+        }
+
+        Selection::SpaceView(space_view_id) => {
+            if let Some(space_view) = blueprint.viewport.space_view(space_view_id) {
+                if ui.button("Remove from Viewport").clicked() {
+                    blueprint.viewport.remove(space_view_id);
+                    blueprint.viewport.mark_user_interaction();
+                    ctx.clear_selection();
+                } else {
+                    if ui.button("Clone Space View").clicked() {
+                        let mut new_space_view = space_view.clone();
+                        new_space_view.id = super::SpaceViewId::random();
+                        blueprint.viewport.add_space_view(new_space_view);
+                        blueprint.viewport.mark_user_interaction();
+                    }
+
+                    if let Some(space_view) = blueprint.viewport.space_view_mut(space_view_id) {
+                        ui.add_space(4.0);
+                        space_view.selection_ui(ctx, ui);
+                    }
+                }
+            }
+        }
+
+        Selection::SpaceViewObjPath(space_view_id, obj_path) => {
+            if let Some(space_view) = blueprint.viewport.space_view_mut(space_view_id) {
+                let data_blueprint = space_view.data_blueprint.data_blueprints_individual();
+                let mut props = data_blueprint.get(obj_path);
+                obj_props_ui(ctx, ui, Some(obj_path), &mut props, &space_view.view_state);
+                data_blueprint.set(obj_path.clone(), props);
+            }
+        }
+
+        Selection::DataBlueprintGroup(space_view_id, data_blueprint_group_handle) => {
+            if let Some(space_view) = blueprint.viewport.space_view_mut(space_view_id) {
+                if let Some(group) = space_view
+                    .data_blueprint
+                    .get_group_mut(*data_blueprint_group_handle)
+                {
+                    obj_props_ui(
+                        ctx,
+                        ui,
+                        None,
+                        &mut group.properties_individual,
+                        &space_view.view_state,
+                    );
+
+                    ui.separator();
+                } else {
+                    ctx.clear_selection();
+                }
+            }
+        }
     }
 }
 

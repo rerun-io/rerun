@@ -1,4 +1,5 @@
 use egui::RichText;
+use re_ui::Command;
 
 use super::{HistoricalSelection, SelectionHistory};
 use crate::{ui::Blueprint, Selection};
@@ -98,6 +99,26 @@ impl SelectionHistory {
     // We might want to change this at some point, though the way things are currently designed,
     // there isn't much point in selecting stuff while the selection panel is hidden anyway.
 
+    pub fn select_previous(&mut self) -> Option<HistoricalSelection> {
+        if let Some(previous) = self.previous() {
+            if previous.index != self.current {
+                self.current = previous.index;
+                return self.current();
+            }
+        }
+        None
+    }
+
+    pub fn select_next(&mut self) -> Option<HistoricalSelection> {
+        if let Some(next) = self.next() {
+            if next.index != self.current {
+                self.current = next.index;
+                return self.current();
+            }
+        }
+        None
+    }
+
     fn prev_button_ui(
         &mut self,
         ui: &mut egui::Ui,
@@ -105,12 +126,11 @@ impl SelectionHistory {
     ) -> Option<HistoricalSelection> {
         const PREV_BUTTON: &str = "⏴";
         if let Some(previous) = self.previous() {
-            let shortcut = &crate::ui::kb_shortcuts::SELECTION_PREVIOUS;
             let button_clicked = ui
                 .small_button(PREV_BUTTON)
                 .on_hover_text(format!(
-                    "Go to previous selection ({}):\n[{}] {}",
-                    ui.ctx().format_shortcut(shortcut),
+                    "Go to previous selection{}:\n[{}] {}",
+                    Command::SelectionPrevious.format_shortcut_tooltip_suffix(ui.ctx()),
                     previous.index,
                     selection_to_string(blueprint, &previous.selection),
                 ))
@@ -118,10 +138,8 @@ impl SelectionHistory {
             // TODO(cmc): feels like using the shortcut should highlight the associated
             // button or something (but then again it, it'd make more sense to do that
             // at the egui level rather than specifically here).
-            let shortcut_used = ui.ctx().input_mut().consume_shortcut(shortcut);
-            if (button_clicked || shortcut_used) && previous.index != self.current {
-                self.current = previous.index;
-                return self.current();
+            if button_clicked {
+                return self.select_previous();
             }
         } else {
             // Creating a superfluous horizontal UI so that we can still have hover text.
@@ -140,12 +158,11 @@ impl SelectionHistory {
     ) -> Option<HistoricalSelection> {
         const NEXT_BUTTON: &str = "⏵";
         if let Some(next) = self.next() {
-            let shortcut = &crate::ui::kb_shortcuts::SELECTION_NEXT;
             let button_clicked = ui
                 .small_button(NEXT_BUTTON)
                 .on_hover_text(format!(
-                    "Go to next selection ({}):\n[{}] {}",
-                    ui.ctx().format_shortcut(shortcut),
+                    "Go to next selection{}:\n[{}] {}",
+                    Command::SelectionNext.format_shortcut_tooltip_suffix(ui.ctx()),
                     next.index,
                     selection_to_string(blueprint, &next.selection),
                 ))
@@ -153,10 +170,8 @@ impl SelectionHistory {
             // TODO(cmc): feels like using the shortcut should highlight the associated
             // button or something (but then again it, it'd make more sense to do that
             // at the egui level rather than specifically here).
-            let shortcut_used = ui.ctx().input_mut().consume_shortcut(shortcut);
-            if (button_clicked || shortcut_used) && next.index != self.current {
-                self.current = next.index;
-                return self.current();
+            if button_clicked {
+                return self.select_next();
             }
         } else {
             // Creating a superfluous horizontal UI so that we can still have hover text.
@@ -179,10 +194,8 @@ fn selection_kind_ui(ui: &mut egui::Ui, sel: &Selection) {
     ui.weak(RichText::new(match sel {
         Selection::None => "(none)",
         Selection::MsgId(_) => "(msg)",
-        Selection::ObjTypePath(_) => "(type)",
         Selection::Instance(_) => "(instance)",
         Selection::DataPath(_) => "(field)",
-        Selection::Space(_) => "(space)",
         Selection::SpaceView(_) => "(view)",
         Selection::SpaceViewObjPath(_, _) => "(obj)",
         Selection::DataBlueprintGroup(_, _) => "(group)",
@@ -193,21 +206,28 @@ fn selection_to_string(blueprint: &Blueprint, sel: &Selection) -> String {
     match sel {
         Selection::SpaceView(sid) => {
             if let Some(space_view) = blueprint.viewport.space_view(sid) {
-                return space_view.name.clone();
+                space_view.name.clone()
+            } else {
+                "<removed space view>".to_owned()
             }
         }
-        Selection::SpaceViewObjPath(_, obj_path) => return obj_path.to_string(),
+        Selection::SpaceViewObjPath(_, obj_path) => obj_path.to_string(),
         Selection::DataBlueprintGroup(sid, handle) => {
             if let Some(space_view) = blueprint.viewport.space_view(sid) {
                 if let Some(group) = space_view.data_blueprint.get_group(*handle) {
-                    return group.display_name.clone();
+                    group.display_name.clone()
+                } else {
+                    format!("<removed group in {}>", space_view.name)
                 }
+            } else {
+                "<group in removed space view>".to_owned()
             }
         }
-        _ => {}
+        Selection::None => "<empty>".to_owned(),
+        Selection::MsgId(s) => s.to_string(),
+        Selection::Instance(s) => s.to_string(),
+        Selection::DataPath(s) => s.to_string(),
     }
-
-    sel.to_string()
 }
 
 // TODO(cmc): This is both ad-hoc and technically incorrect: we should be using egui's

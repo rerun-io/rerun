@@ -1478,7 +1478,10 @@ fn log_arrow(
     let time_point = time(timeless);
 
     let arrow = match (origin, vector) {
-        (Some(origin), Some(vector)) => re_log_types::Arrow3D { origin, vector },
+        (Some(origin), Some(vector)) => re_log_types::Arrow3D {
+            origin: origin.into(),
+            vector: vector.into(),
+        },
         (None, None) => {
             // None, None means to clear the arrow
             session.send_path_op(&time_point, PathOp::ClearFields(obj_path));
@@ -1744,7 +1747,6 @@ fn log_mesh_file(
     };
 
     let mut session = global_session();
-    let obj_path = session.classic_prefix_obj_path(obj_path);
 
     let time_point = time(timeless);
 
@@ -1777,7 +1779,7 @@ fn log_mesh_file(
     }
 
     if session.classic_log_gate() {
-        let obj_path = session.arrow_prefix_obj_path(obj_path);
+        let obj_path = session.classic_prefix_obj_path(obj_path);
         session.register_type(obj_path.obj_type_path(), ObjectType::Mesh3D);
         session.send_data(
             &time_point,

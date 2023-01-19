@@ -10,6 +10,7 @@ from rerun import bindings
 
 all = [
     "annotation",
+    "arrow",
     "box",
     "color",
     "label",
@@ -19,6 +20,7 @@ all = [
     "rect2d",
     "scalar",
     "scalar_plot_props",
+    "tensor",
     "text_entry",
     "vec",
 ]

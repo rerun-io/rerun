@@ -42,14 +42,14 @@ opt-level = 2
 debug = true
 
 [patch.crates-io]
-# 2022-12-22 - Add emath::inverse_lerp
-ecolor = { git = "https://github.com/emilk/egui", rev = "34f587d1e1cc69146f7a02f20903e4f573030ffd" }
-eframe = { git = "https://github.com/emilk/egui", rev = "34f587d1e1cc69146f7a02f20903e4f573030ffd" }
-egui = { git = "https://github.com/emilk/egui", rev = "34f587d1e1cc69146f7a02f20903e4f573030ffd" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "34f587d1e1cc69146f7a02f20903e4f573030ffd" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "34f587d1e1cc69146f7a02f20903e4f573030ffd" }
-emath = { git = "https://github.com/emilk/egui", rev = "34f587d1e1cc69146f7a02f20903e4f573030ffd" }
-epaint = { git = "https://github.com/emilk/egui", rev = "34f587d1e1cc69146f7a02f20903e4f573030ffd" }
+# 2022-01-16: prevent ctrl-p from opening the print dialog
+ecolor = { git = "https://github.com/emilk/egui", rev = "cd0f66b9ae661be737ce57f26fb305cf124f6b73" }
+eframe = { git = "https://github.com/emilk/egui", rev = "cd0f66b9ae661be737ce57f26fb305cf124f6b73" }
+egui = { git = "https://github.com/emilk/egui", rev = "cd0f66b9ae661be737ce57f26fb305cf124f6b73" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "cd0f66b9ae661be737ce57f26fb305cf124f6b73" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "cd0f66b9ae661be737ce57f26fb305cf124f6b73" }
+emath = { git = "https://github.com/emilk/egui", rev = "cd0f66b9ae661be737ce57f26fb305cf124f6b73" }
+epaint = { git = "https://github.com/emilk/egui", rev = "cd0f66b9ae661be737ce57f26fb305cf124f6b73" }
 
 # ecolor = { path = "../../egui/crates/ecolor" }
 # eframe = { path = "../../egui/crates/eframe" }
@@ -70,6 +70,6 @@ wgpu-core = { git = "https://github.com/gfx-rs/wgpu.git", ref = "a377ae2b7fe6c1c
 # Upstream PR https://github.com/jorgecarleitao/arrow2/pull/1360
 arrow2 = { git = "https://github.com/rerun-io/arrow2", rev = "c6ef5e3dde4a18c35c8a1d91d9a741835be0305f" }
 # Upstream PR https://github.com/DataEngineeringLabs/arrow2-convert/pull/91
-arrow2_convert = { git = "https://github.com/rerun-io/arrow2-convert", rev = "aa48be082d0039e8c1a67b581ce5f697b89f3765" }
+arrow2_convert = { git = "https://github.com/rerun-io/arrow2-convert", rev = "7e63de5ce71741aaea3c36572d3e6831658ec3ed" }
 #arrow2 = { path = "../arrow2" }
 #arrow2_convert = { path = "../arrow2-convert/arrow2_convert" }

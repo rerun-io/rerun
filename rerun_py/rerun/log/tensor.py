@@ -1,4 +1,3 @@
-import logging
 from typing import Any, Iterable, Optional, Protocol, Union
 
 import numpy as np
@@ -89,4 +88,8 @@ def _log_tensor(
         bindings.log_tensor(obj_path, tensor, names, meter, meaning, timeless)
 
     if EXP_ARROW.arrow_log_gate():
-        logging.warning("log_tensor() not yet implemented for Arrow.")
+        from rerun.components.tensor import TensorArray
+
+        comps = {"rerun.tensor": TensorArray.from_numpy(tensor, names, meaning)}
+
+        bindings.log_arrow_msg(obj_path, components=comps, timeless=timeless)

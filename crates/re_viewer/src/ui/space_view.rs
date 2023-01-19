@@ -195,15 +195,9 @@ impl SpaceView {
     }
 
     pub fn selection_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
-        egui::Grid::new("space_view").num_columns(2).show(ui, |ui| {
-            ui.label("Name:");
-            ui.text_edit_singleline(&mut self.name);
-            ui.end_row();
-
-            ui.label("Space path:");
-            ctx.obj_path_button(ui, &self.space_path);
-            ui.end_row();
-        });
+        ui.label("Space path:");
+        ctx.obj_path_button(ui, &self.space_path);
+        ui.end_row();
 
         ui.separator();
 
@@ -464,12 +458,7 @@ impl SpaceView {
 
             ViewCategory::Spatial => {
                 let mut scene = view_spatial::SceneSpatial::default();
-                scene.load_objects(
-                    ctx,
-                    &query,
-                    &self.cached_transforms,
-                    self.view_state.state_spatial.hovered_instance_hash(),
-                );
+                scene.load_objects(ctx, &query, &self.cached_transforms);
                 self.view_state
                     .ui_spatial(ctx, ui, &self.space_path, reference_space_info, scene);
             }
