@@ -100,7 +100,9 @@ def log_text_entry(
         from rerun.components.color import ColorRGBAArray
         from rerun.components.text_entry import TextEntryArray
 
-        comps = {"rerun.text_entry": TextEntryArray.from_bodies_and_levels([(text, level)])}
+        comps = {}
+        if text:
+            comps["rerun.text_entry"]: TextEntryArray.from_bodies_and_levels([(text, level)])
 
         if color:
             colors = _normalize_colors([color])
