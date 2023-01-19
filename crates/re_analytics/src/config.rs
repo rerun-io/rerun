@@ -15,24 +15,22 @@ pub enum ConfigError {
     UnknownLocation,
 
     #[error(transparent)]
-    IoError(#[from] std::io::Error),
+    Io(#[from] std::io::Error),
 
     #[error(transparent)]
-    SerdeError(#[from] serde_json::Error),
+    Serde(#[from] serde_json::Error),
 }
 
-// TODO: I guess it better be named UserConfig
 // NOTE: all the `rename` clauses are to avoid a potential catastrophe :)
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Config {
     #[serde(rename = "analytics_enabled")]
     pub analytics_enabled: bool,
-    // TODO: explain that this is _not_ a UUID on purpose.
+    // NOTE: not a UUID on purpose, it is sometimes useful to use handcrafted IDs.
     #[serde(rename = "analytics_id")]
     pub analytics_id: String,
 
-    // TODO: explain
-    // TODO: probably better served by a time-based uuid there
+    /// A unique UID for this session.
     #[serde(skip, default = "::uuid::Uuid::new_v4")]
     pub session_id: Uuid,
 
@@ -43,8 +41,9 @@ pub struct Config {
     #[serde(rename = "data_dir_path")]
     pub data_dir_path: PathBuf,
 
-    // TODO: explain
-    // TODO: never written, so default to false when read from disk.
+    /// Is this the first time the user runs the app?
+    ///
+    /// This is determined based on whether the analytics config already exists on disk.
     #[serde(skip)]
     is_first_run: bool,
 }
@@ -67,7 +66,7 @@ impl Config {
                 config_file_path: config_path,
                 data_dir_path: data_path,
             },
-            Err(err) => return Err(ConfigError::IoError(err)),
+            Err(err) => return Err(ConfigError::Io(err)),
         };
 
         Ok(config)

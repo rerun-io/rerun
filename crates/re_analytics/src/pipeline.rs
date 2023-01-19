@@ -20,6 +20,9 @@ use crate::{Config, Event, PostHogSink, SinkError};
 
 #[derive(thiserror::Error, Debug)]
 pub enum PipelineError {
+    #[error("analytics are disabled")]
+    AnalyticsDisabled,
+
     #[error(transparent)]
     Io(#[from] std::io::Error),
 
@@ -30,30 +33,43 @@ pub enum PipelineError {
     Http(#[from] reqwest::Error),
 }
 
+/// An eventual, at-least-once(-ish) event pipeline, backed by a write-ahead log on the local disk.
+///
+/// Flushing of the WAL is entirely left up to the OS page cache, hance the -ish.
 #[derive(Debug)]
 pub struct Pipeline {
     event_tx: channel::Sender<Result<Event, RecvError>>,
 }
 
 impl Pipeline {
-    pub fn new(config: &Config, tick: Duration, sink: PostHogSink) -> Result<Self, PipelineError> {
-        // TODO: make this bounded and drop events as needed
-        let (event_tx, event_rx) = channel::unbounded();
+    pub fn new(
+        config: &Config,
+        tick: Duration,
+        sink: PostHogSink,
+    ) -> Result<Option<Self>, PipelineError> {
+        if !config.analytics_enabled {
+            return Ok(None);
+        }
+
+        let (event_tx, event_rx) = channel::bounded(2048);
 
         let data_path = config.data_dir().to_owned();
 
-        // NOTE: We purposefully drop the handle and forget about this thread.
+        // NOTE: We purposefully drop the handles and just forget about all pipeline threads.
         //
-        // Joining this thread is not a viable strategy for two reasons:
+        // Joining these threads is not a viable strategy for two reasons:
         // 1. We _never_ want to delay the shutdown process, analytics must never be in the way.
-        // 2. We need to deal with unexpected shutdowns anyway (crashes, SIGINT, SIGKILL), and we
-        //    do indeed.
+        // 2. We need to deal with unexpected shutdowns anyway (crashes, SIGINT, SIGKILL, ...),
+        //    and we do indeed.
         //
-        // The worst thing that can happen is that the user kills the app at the exact moment where
-        // the catchup thread has sent the data over to the sink and got a response back, but
-        // hasn't deleted the associated files yet.
-        // This will result in duplicated data that we can easily deduplicate at query time using
-        // the session and event IDs.
+        // This is an at-least-once pipeline: in the worst case, unexpected shutdowns will lead to
+        // _eventually_ duplicated data.
+        //
+        // The duplication part comes from the fact that we might successfully flush events down
+        // the sink but still fail to remove and/or truncate the file.
+        // The eventual part comes from the fact that this only runs as part of the Rerun viewer,
+        // and as such there's no guarantee it will ever run again, even if there's pending data.
+
         _ = std::thread::Builder::new()
             .name("pipeline_catchup".into())
             .spawn({
@@ -77,71 +93,77 @@ impl Pipeline {
             .read(true)
             .open(&session_file_path)?;
 
-        // NOTE: We purposefully drop the handle and forget about this thread.
-        //
-        // Joining this thread is not a viable strategy for two reasons:
-        // 1. We _never_ want to delay the shutdown process, analytics must never be in the way.
-        // 2. We need to deal with unexpected shutdowns anyway (crashes, SIGINT, SIGKILL), and we
-        //    do indeed.
-        //
-        // TODO: what are the possible situations here?
         _ = std::thread::Builder::new().name("pipeline".into()).spawn({
             let config = config.clone();
+            let event_tx = event_tx.clone();
             move || {
                 let analytics_id = &config.analytics_id;
                 let session_id = &config.session_id.to_string();
 
                 trace!(%analytics_id, %session_id, "pipeline thread started");
-                let res = realtime_pipeline(&config, &sink, session_file, tick, &event_rx);
+                let res =
+                    realtime_pipeline(&config, &sink, session_file, tick, &event_tx, &event_rx);
                 trace!(%analytics_id, %session_id, ?res, "pipeline thread shut down");
             }
         });
 
-        Ok(Self { event_tx })
+        Ok(Some(Self { event_tx }))
     }
 
     pub fn record(&self, event: Event) {
-        // NOTE: We ignore the error on purpose.
-        //
-        // The only way this can fail is if the other end of the channel was previously closed,
-        // which we _never_ do.
-        // Technically, we should call `.unwrap()` here, but analytics _must never_ be the cause
-        // of a crash, so let's not take any unnecessary risk and just ignore the error instead.
-        _ = self.event_tx.send(Ok(event));
+        try_send_event(&self.event_tx, event);
     }
 }
 
 // ---
+
+fn try_send_event(event_tx: &channel::Sender<Result<Event, RecvError>>, event: Event) {
+    match event_tx.try_send(Ok(event)) {
+        Ok(_) => {}
+        Err(channel::TrySendError::Full(_)) => {
+            trace!("dropped event, analytics channel is full");
+        }
+        Err(channel::TrySendError::Disconnected(_)) => {
+            // The only way this can happen is if the other end of the channel was previously
+            // closed, which we _never_ do.
+            // Technically, we should call `.unwrap()` here, but analytics _must never_ be the
+            // cause of a crash, so let's not take any unnecessary risk and just ignore the
+            // error instead.
+            trace!("dropped event, analytics channel is disconnected");
+        }
+    }
+}
 
 fn send_unsent_events(config: &Config, sink: &PostHogSink) -> anyhow::Result<()> {
     let data_path = config.data_dir();
     let analytics_id = config.analytics_id.clone();
     let current_session_id = config.session_id.to_string();
 
-    // TODO: send everything at once?
     let read_dir = data_path.read_dir()?;
     for entry in read_dir {
-        // TODO: errors here should definitely _not_ stop the whole loop
-
-        let entry = entry?;
-
+        // NOTE: all of these can only be transient I/O errors, so no reason to delete the
+        // associated file; we'll retry later.
+        let Ok(entry) = entry else { continue; };
+        let Ok(name) = entry.file_name().into_string() else { continue; };
+        let Ok(metadata) = entry.metadata() else { continue; };
         let path = entry.path();
-        let name = entry.file_name().into_string().unwrap(); // TODO
 
-        let is_file = entry.metadata()?.is_file();
-        let has_json_suffix = name.ends_with(".json");
-
-        if is_file && has_json_suffix {
-            let session_id = name.strip_suffix(".json").unwrap(); // TODO
+        if metadata.is_file() && name.ends_with(".json") {
+            let session_id = name.strip_suffix(".json").unwrap(); // can't fail
 
             if session_id == current_session_id {
                 continue;
             }
 
-            let mut session_file = File::open(&path)?;
+            let Ok(mut session_file) = File::open(&path) else { continue; };
             if flush_events(&mut session_file, &analytics_id, session_id, sink).is_ok() {
-                std::fs::remove_file(&path)?;
-                trace!(%analytics_id, %session_id, ?path, "removed session file");
+                if std::fs::remove_file(&path).is_ok() {
+                    // NOTE: this will eventually lead to duplicated data, though we'll be able
+                    // to deduplicate it at query time.
+                    trace!(%analytics_id, %session_id, ?path, "removed session file");
+                }
+            } else {
+                trace!(%analytics_id, %session_id, ?path, "failed to flush session file");
             }
         }
     }
@@ -155,6 +177,7 @@ fn realtime_pipeline(
     sink: &PostHogSink,
     mut session_file: File,
     tick: Duration,
+    event_tx: &channel::Sender<Result<Event, RecvError>>,
     event_rx: &channel::Receiver<Result<Event, RecvError>>,
 ) -> anyhow::Result<()> {
     let analytics_id = config.analytics_id.clone();
@@ -163,30 +186,50 @@ fn realtime_pipeline(
 
     let ticker_rx = crossbeam::channel::tick(tick);
 
+    let on_tick = |session_file: &mut _, _elapsed| {
+        if is_first_run {
+            // We never send data on first run, to give end users an opportunity to opt-out.
+            return;
+        }
+
+        if let Err(err) = flush_events(session_file, &analytics_id, &session_id, sink) {
+            error!(%err, %analytics_id, %session_id, "couldn't flush analytics data file");
+            // We couldn't flush the session file: keep it intact so that we can retry later.
+            return;
+        }
+
+        if let Err(err) = session_file.set_len(0) {
+            error!(%err, %analytics_id, %session_id, "couldn't truncate analytics data file");
+            // We couldn't truncate the session file: we'll have to keep it intact for now, which
+            // will result in duplicated data that we'll be able to deduplicate at query time.
+            return;
+        }
+        if let Err(err) = session_file.seek(std::io::SeekFrom::Start(0)) {
+            // We couldn't reset the session file... That one is a bit messy and will likely break
+            // analytics for the entire duration of this session, but that really _really_ should
+            // never happen.
+            error!(%err, %analytics_id, %session_id, "couldn't seek into analytics data file");
+        }
+    };
+
+    let on_event = |session_file: &mut _, event| {
+        trace!(
+            %analytics_id, %session_id,
+            "appending event to current session file..."
+        );
+        if let Some(event) = append_event(session_file, &analytics_id, &session_id, event) {
+            // We failed to append the event to the current session, so push it back at the end of
+            // the queue to be retried later.
+            try_send_event(event_tx, event);
+        }
+    };
+
     loop {
         select! {
-            recv(ticker_rx) -> _elapsed => {
-                if !is_first_run {
-                    flush_events(&mut session_file, &analytics_id, &session_id, sink);
-                    if let Err(err) = session_file.set_len(0) {
-                        error!(%err, %analytics_id, %session_id,
-                            "couldn't truncate analytics data file");
-                        // TODO: wat now?
-                    }
-                    if let Err(err) = session_file.seek(std::io::SeekFrom::Start(0)) {
-                        // TODO: ???
-                        error!(%err, %analytics_id, %session_id,
-                            "couldn't seek into analytics data file");
-                    }
-                }
-            },
+            recv(ticker_rx) -> elapsed => on_tick(&mut session_file, elapsed),
             recv(event_rx) -> event => {
                 let Ok(event) = event.unwrap() else { break; };
-                trace!(
-                    %analytics_id, %session_id,
-                    "appending event to current session file..."
-                );
-                append_event(&mut session_file, &analytics_id, &session_id, event);
+                on_event(&mut session_file, event);
             },
         }
     }
@@ -214,11 +257,15 @@ fn append_event(
     };
     event_str.push('\n');
 
+    // NOTE: We leave the how and when to flush the file entirely up to the OS page cache, kinda
+    // breaking our promise of at-least-once semantics, though this is more than enough
+    // considering the use case at hand.
     if let Err(err) = session_file.write_all(event_str.as_bytes()) {
-        // TODO: we're not gonna have a good time if the write fails halfway... then again
-        // there's really no reason it should, so...
-        // If that happens, we _could_ detect it and clear that specific line...
-        // TODO: actually, it's fine if we handle corrupt lines at real time.
+        // NOTE: If the write failed halfway through for some crazy reason, we'll end up with a
+        // corrupt row in the analytics file, that we'll simply discard later on.
+        // We'll try to write a linefeed one more time, just in case, to avoid potentially
+        // impacting other events.
+        _ = session_file.write_all(b"\n");
         error!(%err, %analytics_id, %session_id, "couldn't write to analytics data file");
         return Some(event);
     }
@@ -245,10 +292,9 @@ fn flush_events(
                 match serde_json::from_str::<Event>(&event_str) {
                     Ok(event) => Some(event),
                     Err(err) => {
-                        // TODO: if we're here, we gotta drop the original file or something...
-                        // TODO: also this probably shouldn't be an error!()...
+                        // NOTE: This is effectively where we detect posssible half-writes.
                         error!(%err, %analytics_id, %session_id,
-                            "couldn't deserialize event from analytics data file: dropping event");
+                            "couldn't deserialize event from analytics data file: dropping it");
                         None
                     }
                 }
@@ -266,7 +312,7 @@ fn flush_events(
     }
 
     if let Err(err) = sink.send(analytics_id, session_id, &events) {
-        error!(%err, "failed to send analytics to PostHog, will try again later");
+        error!(%err, "failed to send analytics down the sink, will try again later");
         return Err(err);
     }
 

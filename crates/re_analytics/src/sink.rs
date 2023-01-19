@@ -3,17 +3,13 @@ use std::{collections::HashMap, time::Duration};
 use reqwest::blocking::Client as HttpClient;
 use time::OffsetDateTime;
 
-use re_log::error;
+use re_log::{debug, error};
 
 use crate::{Event, Property};
 
 // TODO(cmc): abstract away the concept of a `Sink` behind an actual trait when comes the time to
 // support more than just PostHog.
 
-// ---
-
-// TODO: no idea how we're supposed to deal with some entity actively trashing our analytics?
-// only way I can think of is to go through our own server first and have asymetric encryption...
 // TODO: do we ship this as-is or want some kind of "light friction"?
 const PUBLIC_POSTHOG_PROJECT_KEY: &str = "phc_XD1QbqTGdPJbzdVCbvbA9zGOG38wJFTl8RAwqMwBvTY";
 
@@ -30,8 +26,6 @@ pub enum SinkError {
     #[error(transparent)]
     Http(#[from] reqwest::Error),
 }
-
-// TODO: view event
 
 #[derive(Debug, Clone)]
 pub struct PostHogSink {
@@ -57,7 +51,6 @@ impl PostHogSink {
         Ok(Self { client })
     }
 
-    // TODO: blocking!
     pub fn send(
         &self,
         analytics_id: &str,
@@ -72,7 +65,7 @@ impl PostHogSink {
             .collect::<Vec<_>>();
         let batch = PostHogBatch::from_events(&events);
 
-        eprintln!("{}", serde_json::to_string_pretty(&batch)?);
+        debug!("{}", serde_json::to_string_pretty(&batch)?);
         let resp = self
             .client
             .post(URL)
@@ -84,6 +77,8 @@ impl PostHogSink {
 }
 
 // ---
+
+// TODO(cmc): support PostHog's view event
 
 #[derive(Debug, serde::Serialize)]
 #[serde(untagged)]
@@ -112,13 +107,7 @@ impl<'a> PostHogEvent<'a> {
                 event: event.name.as_ref(),
                 distinct_id: analytics_id,
                 properties: properties
-                    .chain([
-                        // TODO: surely there has to be some nicer way of dealing with sessions...
-                        ("session_id", session_id.into()),
-                    ])
-                    // TODO: application_id (hashed)
-                    // TODO: recording_id (hashed)
-                    // (unless these belong only to viewer-opened?)
+                    .chain([("session_id", session_id.into())])
                     .collect(),
             }),
             crate::EventKind::Update => Self::Identify(PostHogIdentifyEvent {
@@ -132,7 +121,7 @@ impl<'a> PostHogEvent<'a> {
     }
 }
 
-// See https://posthog.com/docs/api/post-only-endpoints#single-event.
+// See https://posthog.com/docs/api/post-only-endpoints#capture.
 #[derive(Debug, serde::Serialize)]
 struct PostHogCaptureEvent<'a> {
     #[serde(with = "::time::serde::rfc3339")]
@@ -142,6 +131,7 @@ struct PostHogCaptureEvent<'a> {
     properties: HashMap<&'a str, serde_json::Value>,
 }
 
+// See https://posthog.com/docs/api/post-only-endpoints#identify.
 #[derive(Debug, serde::Serialize)]
 struct PostHogIdentifyEvent<'a> {
     #[serde(with = "::time::serde::rfc3339")]

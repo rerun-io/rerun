@@ -1,54 +1,4 @@
-// TODO: turn the following into proper crate-level doc.
-//
-// Config manager
-// ==============
-//
-// $XDG_CONFIG/rerun/analytics.json
-//
-// If it does not exist, we interpret it as "first run".
-//
-// On first run, we print a disclaimer, and never send any data.
-//
-// CLI
-// ===
-//
-// Just a user-friendly way to work with the config file.
-//
-// `rerun analytics <clear|opt-out>`
-//
-// Native path
-// ===========
-//
-// Everything happens in two different threads: file writer and file POSTer.
-//
-// File writer:
-// - Always append to a file on disk
-//   - just keep it perma open, leave it to the FS cache
-// - Based on space and time: send the fd to the file POSTer thread
-//
-// File POSTer:
-// - Receives a fd and tries to POST it to posthog
-//   - on success, deletes it
-//   - on failure, tries again later
-//
-// Questions:
-// - Is there any part of this that we can reasonably test?
-// - Anyway we can simulate posthog being down?
-//
-// Web path
-// ========
-//
-// Everything has to happen in the same thread, obviously :/
-// It's gotta be frame-based.
-//
-// - Just synchronously dump events into local store
-// - Every N frame (or something along that line), send it to posthog
-//   - on success, deletes it
-//   - on failure, tries again later
-//
-// Questions:
-// - Can we just write synchronously to local store? is that fast enough?
-// - Can we even do a POST through web-sys? Can we detect failure???
+//! Rerun's analytics SDK.
 
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -62,7 +12,9 @@ use time::OffsetDateTime;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum EventKind {
+    /// Append a new event to the time series associated with this analytics ID.
     Append,
+    /// Update the permanent state associated with this analytics ID.
     Update,
 }
 
@@ -70,7 +22,7 @@ pub enum EventKind {
 pub struct Event {
     // NOTE: serialized in a human-readable format as we want end users to be able to inspect the
     // data we send out.
-    // TODO: is UTC fine? do we care about user's tz?
+    // TODO: is UTC fine? do we care about users' tz?
     #[serde(with = "::time::serde::rfc3339")]
     pub time_utc: OffsetDateTime,
     pub kind: EventKind,
@@ -146,8 +98,8 @@ pub enum AnalyticsError {
 }
 
 pub struct Analytics {
-    config: Config,
-    pipeline: Pipeline,
+    /// `None` if analytics are disabled.
+    pipeline: Option<Pipeline>,
 
     default_props: HashMap<String, Property>,
     event_id: AtomicU64,
@@ -172,12 +124,13 @@ impl Analytics {
         let sink = PostHogSink::new()?;
         let pipeline = Pipeline::new(&config, tick, sink)?;
 
-        if config.is_first_run() {
-            pipeline.record(Event::update_metadata());
+        if let Some(pipeline) = pipeline.as_ref() {
+            if config.is_first_run() {
+                pipeline.record(Event::update_metadata());
+            }
         }
 
         Ok(Self {
-            config,
             default_props,
             pipeline,
             event_id: AtomicU64::new(1),
@@ -185,7 +138,7 @@ impl Analytics {
     }
 
     pub fn record(&self, mut event: Event) {
-        if self.config.analytics_enabled {
+        if let Some(pipeline) = self.pipeline.as_ref() {
             // Insert default props
             if event.kind == EventKind::Append {
                 event.props.extend(self.default_props.clone());
@@ -197,7 +150,7 @@ impl Analytics {
                 (self.event_id.fetch_add(1, Ordering::Relaxed) as i64).into(),
             );
 
-            self.pipeline.record(event);
+            pipeline.record(event);
         }
     }
 }
