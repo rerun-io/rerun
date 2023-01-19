@@ -32,25 +32,30 @@ impl SelectionHistory {
     pub(crate) fn on_frame_start(&mut self, log_db: &LogDb, blueprint: &Blueprint) {
         crate::profile_function!();
 
-        // Remove all invalid elements from each multiselection.
-        for stack_element in &mut self.stack {
-            if stack_element
-                .selected()
-                .iter()
-                .any(|s| !s.is_valid(log_db, blueprint))
-            {
-                *stack_element = MultiSelection::new(
-                    stack_element
-                        .selected()
-                        .iter()
-                        .filter(|s| s.is_valid(log_db, blueprint))
-                        .cloned(),
-                );
-            }
-        }
+        // Prune all invalid elements from the stack.
+        self.stack = self
+            .stack
+            .drain(..)
+            .enumerate()
+            .filter_map(|(i, stack_element)| {
+                let valid_elements = stack_element
+                    .selected()
+                    .iter()
+                    .filter(|s| s.is_valid(log_db, blueprint))
+                    .collect::<Vec<_>>();
 
-        // .. and then remove all empty elements!
-        self.stack.retain(|stack_element| !stack_element.is_empty());
+                if valid_elements.is_empty() {
+                    if i < self.current {
+                        self.current -= 1; // Ensure the current counter stays valid!
+                    }
+                    None
+                } else if valid_elements.len() == stack_element.selected().len() {
+                    Some(stack_element)
+                } else {
+                    Some(MultiSelection::new(valid_elements.into_iter().cloned()))
+                }
+            })
+            .collect();
     }
 
     pub fn current(&self) -> Option<HistoricalSelection> {
