@@ -72,6 +72,10 @@ fn generic_arrow_ui(
                 let component_data =
                     get_component_with_instances(store, &query, &instance_id.obj_path, component);
 
+                if matches!(component_data, Err(QueryError::PrimaryNotFound)) {
+                    continue; // no need to show components that are unset
+                }
+
                 ctx.data_path_button_to(
                     ui,
                     component.to_string(),
