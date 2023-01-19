@@ -51,6 +51,17 @@ impl Selection {
             }
         }
     }
+
+    pub fn kind(self: &Selection) -> &'static str {
+        match self {
+            Selection::MsgId(_) => "Message",
+            Selection::Instance(_) => "Instance",
+            Selection::DataPath(_) => "Field",
+            Selection::SpaceView(_) => "SpaceView",
+            Selection::SpaceViewObjPath(_, _) => "Data Blueprint",
+            Selection::DataBlueprintGroup(_, _) => "Group",
+        }
+    }
 }
 
 /// Information on whether a certain object is part of a `MultiSelection`.
