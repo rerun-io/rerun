@@ -48,7 +48,7 @@ impl Lines2DPart {
             .batch("lines 2d")
             .world_from_obj(world_from_obj);
 
-        let highlighted_paths = ctx.hovered().is_obj_path_selected(ent_path.hash());
+        let highlighted_paths = ctx.hovered().check_obj_path(ent_path.hash());
 
         let visitor = |instance: Instance,
                        strip: LineStrip2D,
@@ -71,7 +71,7 @@ impl Lines2DPart {
 
             let mut paint_props = paint_properties(color, stroke_width.as_ref());
 
-            if highlighted_paths.index_part_of_selection(instance_hash.instance_index_hash) {
+            if highlighted_paths.contains_index(instance_hash.instance_index_hash) {
                 apply_hover_effect(&mut paint_props);
             }
 

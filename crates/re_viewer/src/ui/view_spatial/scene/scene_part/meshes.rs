@@ -47,7 +47,7 @@ impl ScenePart for MeshPartClassic {
             // TODO(andreas): This throws away perspective transformation!
             let world_from_obj_affine = glam::Affine3A::from_mat4(world_from_obj);
 
-            let highlighted_paths = ctx.hovered().is_obj_path_selected(obj_path.hash());
+            let highlighted_paths = ctx.hovered().check_obj_path(obj_path.hash());
 
             let visitor = |instance_index: Option<&IndexHash>,
                            _time: i64,
@@ -57,13 +57,12 @@ impl ScenePart for MeshPartClassic {
                 let instance_hash =
                     instance_hash_if_interactive(obj_path, instance_index, properties.interactive);
 
-                let additive_tint = if highlighted_paths
-                    .index_part_of_selection(instance_hash.instance_index_hash)
-                {
-                    Some(SceneSpatial::HOVER_COLOR)
-                } else {
-                    None
-                };
+                let additive_tint =
+                    if highlighted_paths.contains_index(instance_hash.instance_index_hash) {
+                        Some(SceneSpatial::HOVER_COLOR)
+                    } else {
+                        None
+                    };
 
                 if let Some(mesh) = ctx
                     .cache
@@ -113,44 +112,43 @@ impl MeshPart {
         let _default_color = DefaultColor::ObjPath(ent_path);
         let world_from_obj_affine = glam::Affine3A::from_mat4(world_from_obj);
 
-        let highlighted_paths = ctx.hovered().is_obj_path_selected(ent_path.hash());
+        let highlighted_paths = ctx.hovered().check_obj_path(ent_path.hash());
 
-        let visitor = |instance: Instance,
-                       mesh: re_log_types::Mesh3D,
-                       _color: Option<ColorRGBA>| {
-            let instance_hash = {
-                if props.interactive {
-                    InstanceIdHash::from_path_and_arrow_instance(ent_path, &instance)
-                } else {
-                    InstanceIdHash::NONE
-                }
-            };
-
-            let additive_tint =
-                if highlighted_paths.index_part_of_selection(instance_hash.instance_index_hash) {
-                    Some(SceneSpatial::HOVER_COLOR)
-                } else {
-                    None
+        let visitor =
+            |instance: Instance, mesh: re_log_types::Mesh3D, _color: Option<ColorRGBA>| {
+                let instance_hash = {
+                    if props.interactive {
+                        InstanceIdHash::from_path_and_arrow_instance(ent_path, &instance)
+                    } else {
+                        InstanceIdHash::NONE
+                    }
                 };
 
-            if let Some(mesh) = ctx
-                .cache
-                .mesh
-                .load(
-                    &ent_path.to_string(),
-                    &MeshSourceData::Mesh3D(mesh),
-                    ctx.render_ctx,
-                )
-                .map(|cpu_mesh| MeshSource {
-                    instance_hash,
-                    world_from_mesh: world_from_obj_affine,
-                    mesh: cpu_mesh,
-                    additive_tint,
-                })
-            {
-                scene.primitives.meshes.push(mesh);
+                let additive_tint =
+                    if highlighted_paths.contains_index(instance_hash.instance_index_hash) {
+                        Some(SceneSpatial::HOVER_COLOR)
+                    } else {
+                        None
+                    };
+
+                if let Some(mesh) = ctx
+                    .cache
+                    .mesh
+                    .load(
+                        &ent_path.to_string(),
+                        &MeshSourceData::Mesh3D(mesh),
+                        ctx.render_ctx,
+                    )
+                    .map(|cpu_mesh| MeshSource {
+                        instance_hash,
+                        world_from_mesh: world_from_obj_affine,
+                        mesh: cpu_mesh,
+                        additive_tint,
+                    })
+                {
+                    scene.primitives.meshes.push(mesh);
+                };
             };
-        };
 
         entity_view.visit2(visitor)?;
 

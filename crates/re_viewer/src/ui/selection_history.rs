@@ -1,4 +1,8 @@
+use re_data_store::LogDb;
+
 use crate::misc::MultiSelection;
+
+use super::Blueprint;
 
 /// A `Selection` and its index into the historical stack.
 #[derive(Debug, Clone)]
@@ -13,6 +17,8 @@ impl From<(usize, MultiSelection)> for HistoricalSelection {
     }
 }
 
+const MAX_SELECTION_HISTORY_LENGTH: usize = 100;
+
 // ---
 
 /// A stack of `Selection`s, used to implement "undo/redo"-like semantics for selections.
@@ -23,15 +29,41 @@ pub struct SelectionHistory {
 }
 
 impl SelectionHistory {
+    pub(crate) fn on_frame_start(&mut self, log_db: &LogDb, blueprint: &Blueprint) {
+        crate::profile_function!();
+
+        // Remove all invalid elements from each multiselection.
+        for stack_element in &mut self.stack {
+            if stack_element
+                .selected()
+                .iter()
+                .any(|s| !s.is_valid(log_db, blueprint))
+            {
+                *stack_element = MultiSelection::new(
+                    stack_element
+                        .selected()
+                        .iter()
+                        .filter(|s| s.is_valid(log_db, blueprint))
+                        .cloned(),
+                );
+            }
+        }
+
+        // .. and then remove all empty elements!
+        self.stack.retain(|stack_element| !stack_element.is_empty());
+    }
+
     pub fn current(&self) -> Option<HistoricalSelection> {
         self.stack
             .get(self.current)
             .cloned()
             .map(|s| (self.current, s).into())
     }
+
     pub fn previous(&self) -> Option<HistoricalSelection> {
         (self.current > 0).then(|| (self.current - 1, self.stack[self.current - 1].clone()).into())
     }
+
     pub fn next(&self) -> Option<HistoricalSelection> {
         self.stack
             .get(self.current + 1)
@@ -56,5 +88,11 @@ impl SelectionHistory {
 
         self.stack.push(selection.clone());
         self.current = self.stack.len() - 1;
+
+        // Keep size under a certain maximum.
+        if self.stack.len() > MAX_SELECTION_HISTORY_LENGTH {
+            self.stack
+                .drain((self.stack.len() - MAX_SELECTION_HISTORY_LENGTH)..self.stack.len());
+        }
     }
 }

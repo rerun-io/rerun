@@ -433,12 +433,21 @@ impl eframe::App for App {
             });
 
         let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
+        let selected_app_id = log_db
+            .recording_info()
+            .map_or_else(ApplicationId::unknown, |rec_info| {
+                rec_info.application_id.clone()
+            });
+        let blueprint = self.state.blueprints.entry(selected_app_id).or_default();
 
         self.state
             .recording_configs
             .entry(self.state.selected_rec_id)
             .or_default()
             .on_frame_start();
+        self.state
+            .selection_history
+            .on_frame_start(log_db, blueprint);
 
         {
             // TODO(andreas): store the re_renderer somewhere else.

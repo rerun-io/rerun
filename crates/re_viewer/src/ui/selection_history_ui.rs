@@ -193,21 +193,40 @@ fn selection_index_ui(ui: &mut egui::Ui, index: usize) {
 // Different kinds of selections can share the same path in practice! We need to
 // differentiate those in the UI to avoid confusion.
 fn selection_kind_ui(ui: &mut egui::Ui, sel: &Selection) {
-    ui.weak(RichText::new(match sel {
-        Selection::MsgId(_) => "(msg)",
-        Selection::Instance(_) => "(instance)",
-        Selection::DataPath(_) => "(field)",
-        Selection::SpaceView(_) => "(view)",
-        Selection::SpaceViewObjPath(_, _) => "(obj)",
-        Selection::DataBlueprintGroup(_, _) => "(group)",
-    }));
+    ui.weak(RichText::new(format!("({})", selection_kind(sel))));
+}
+
+fn selection_kind(sel: &Selection) -> &'static str {
+    match sel {
+        Selection::MsgId(_) => "msg",
+        Selection::Instance(_) => "instance",
+        Selection::DataPath(_) => "field",
+        Selection::SpaceView(_) => "view",
+        Selection::SpaceViewObjPath(_, _) => "obj",
+        Selection::DataBlueprintGroup(_, _) => "group",
+    }
 }
 
 fn multi_selection_to_string(blueprint: &Blueprint, sel: &MultiSelection) -> String {
+    assert!(!sel.is_empty()); // history never contains empty selections.
     if sel.selected().len() == 1 {
         single_selection_to_string(blueprint, sel.selected().first().unwrap())
     } else {
-        "<multiple objects>".to_owned()
+        let first_selection = sel.selected().first().unwrap();
+        let all_same_type =
+            sel.selected().iter().skip(1).all(|item| {
+                std::mem::discriminant(first_selection) == std::mem::discriminant(item)
+            });
+
+        if all_same_type {
+            format!(
+                "{}x {}",
+                sel.selected().len(),
+                selection_kind(first_selection)
+            )
+        } else {
+            "<multiple selections>".to_owned()
+        }
     }
 }
 

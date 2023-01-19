@@ -687,11 +687,8 @@ fn space_view_options_link(
     ui: &mut egui::Ui,
     text: &str,
 ) {
-    let is_selected = ctx
-        .selection()
-        .is_space_view_selected(space_view_id)
-        .is_exact()
-        && *selection_panel_expanded;
+    let is_selected =
+        ctx.selection().check_space_view(space_view_id).is_exact() && *selection_panel_expanded;
     if ui
         .selectable_label(is_selected, text)
         .on_hover_text("Space View options")

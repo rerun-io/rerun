@@ -404,15 +404,8 @@ pub fn view_3d(
         project_onto_other_spaces(ctx, &scene.space_cameras, &mut state.state_3d, space);
     }
 
-    // Clicking the last hovered object.
-    // TODO(andreas): Should this happen in a single global location?
-    if response.clicked() {
-        if ui.input().modifiers.ctrl {
-            ctx.add_hovered_to_selection();
-        } else {
-            ctx.select_hovered();
-        }
-    }
+    ctx.select_hovered_on_click(&response);
+
     // Double click changes camera
     if response.double_clicked() {
         state.state_3d.tracked_camera = None;

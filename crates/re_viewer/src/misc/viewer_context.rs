@@ -1,3 +1,4 @@
+use ahash::HashSet;
 use itertools::Itertools;
 use re_data_store::{log_db::LogDb, InstanceId};
 use re_log_types::{DataPath, MsgId, ObjPath, TimeInt, Timeline};
@@ -33,9 +34,10 @@ pub struct ViewerContext<'a> {
 impl<'a> ViewerContext<'a> {
     /// Show an [`MsgId`] and make it selectable
     pub fn msg_id_button(&mut self, ui: &mut egui::Ui, msg_id: MsgId) -> egui::Response {
+        // TODO(emilk): common hover-effect
         let response = ui
             .selectable_label(
-                self.selection().is_msg_id_selected(msg_id).is_exact(),
+                self.selection().check_msg_id(msg_id).is_exact(),
                 msg_id.to_string(),
             )
             .on_hover_ui(|ui| {
@@ -63,9 +65,7 @@ impl<'a> ViewerContext<'a> {
     ) -> egui::Response {
         let response = ui
             .selectable_label(
-                self.selection()
-                    .is_obj_path_selected(obj_path.hash())
-                    .is_exact(),
+                self.selection().check_obj_path(obj_path.hash()).is_exact(),
                 text,
             )
             .on_hover_ui(|ui| {
@@ -101,7 +101,9 @@ impl<'a> ViewerContext<'a> {
         // TODO(emilk): common hover-effect of all buttons for the same instance_id!
         let response = ui
             .selectable_label(
-                self.selection().is_instance_selected(instance_id.hash()),
+                self.selection()
+                    .check_instance(instance_id.hash())
+                    .is_exact(),
                 text,
             )
             .on_hover_ui(|ui| {
@@ -128,10 +130,8 @@ impl<'a> ViewerContext<'a> {
         data_path: &DataPath,
     ) -> egui::Response {
         // TODO(emilk): common hover-effect of all buttons for the same data_path!
-        let response = ui.selectable_label(
-            self.selection().is_data_path_selected(data_path).is_exact(),
-            text,
-        );
+        let response =
+            ui.selectable_label(self.selection().check_data_path(data_path).is_exact(), text);
         if response.clicked() {
             self.set_single_selection(Selection::DataPath(data_path.clone()));
         }
@@ -144,10 +144,7 @@ impl<'a> ViewerContext<'a> {
         text: impl Into<egui::WidgetText>,
         space_view_id: SpaceViewId,
     ) -> egui::Response {
-        let is_selected = self
-            .selection()
-            .is_space_view_selected(space_view_id)
-            .is_exact();
+        let is_selected = self.selection().check_space_view(space_view_id).is_exact();
         let response = ui
             .selectable_label(is_selected, text)
             .on_hover_text("Space View");
@@ -167,7 +164,7 @@ impl<'a> ViewerContext<'a> {
         let response = ui
             .selectable_label(
                 self.selection()
-                    .is_data_blueprint_group_selected(space_view_id, group_handle)
+                    .check_data_blueprint_group(space_view_id, group_handle)
                     .is_exact(),
                 text,
             )
@@ -188,9 +185,7 @@ impl<'a> ViewerContext<'a> {
         let selection = Selection::SpaceViewObjPath(space_view_id, obj_path.clone());
         let response = ui
             .selectable_label(
-                self.selection()
-                    .is_obj_path_selected(obj_path.hash())
-                    .is_exact(),
+                self.selection().check_obj_path(obj_path.hash()).is_exact(),
                 text,
             )
             .on_hover_ui(|ui| {
@@ -272,24 +267,33 @@ impl<'a> ViewerContext<'a> {
     }
 
     /// Select currently hovered objects.
-    pub fn select_hovered(&mut self) {
-        let combined = self.hovered().selected().to_vec();
+    pub fn toggle_selection(&mut self, items: impl Iterator<Item = Selection>) {
+        crate::profile_function!();
+
+        let mut selected_items = HashSet::default();
+        selected_items.extend(self.selection().selected().iter().cloned());
+
+        // Toggling means removing if it was there and add otherwise!
+        for item in items.unique() {
+            if !selected_items.remove(&item) {
+                selected_items.insert(item);
+            }
+        }
+
         self.rec_cfg
-            .set_selection(self.selection_history, combined.into_iter());
+            .set_selection(self.selection_history, selected_items.into_iter());
     }
 
-    /// Select currently hovered objects.
-    pub fn add_hovered_to_selection(&mut self) {
-        #[allow(clippy::needless_collect)]
-        let combined = self
-            .selection()
-            .selected()
-            .iter()
-            .chain(self.hovered().selected().iter())
-            .cloned()
-            .collect::<Vec<_>>();
-        self.rec_cfg
-            .set_selection(self.selection_history, combined.into_iter());
+    /// Selects (or toggles selection if modifier is clicked) currently hovered elements on click.
+    pub fn select_hovered_on_click(&mut self, response: &egui::Response) {
+        if response.clicked() {
+            let hovered = self.hovered().selected().to_vec();
+            if response.ctx.input().modifiers.command {
+                self.toggle_selection(hovered.into_iter());
+            } else {
+                self.set_multi_selection(hovered.into_iter());
+            }
+        }
     }
 
     /// Returns the current selection.
@@ -382,7 +386,7 @@ impl RecordingConfig {
         history: &mut SelectionHistory,
         items: impl Iterator<Item = Selection>,
     ) -> MultiSelection {
-        let new_selection = MultiSelection::new(items.unique());
+        let new_selection = MultiSelection::new(items);
         history.update_selection(&new_selection);
         std::mem::replace(&mut self.selection, new_selection)
     }

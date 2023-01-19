@@ -47,7 +47,7 @@ impl ScenePart for Arrows3DPartClassic {
             let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(obj_path) else {
                 continue;
             };
-            let highlighted_paths = ctx.hovered().is_obj_path_selected(obj_path.hash());
+            let highlighted_paths = ctx.hovered().check_obj_path(obj_path.hash());
 
             let mut line_batch = scene
                 .primitives
@@ -87,7 +87,7 @@ impl ScenePart for Arrows3DPartClassic {
                 let end = origin + vector * ((vector_len - tip_length) / vector_len);
 
                 let mut color = to_ecolor(color);
-                if highlighted_paths.index_part_of_selection(instance_hash.instance_index_hash) {
+                if highlighted_paths.contains_index(instance_hash.instance_index_hash) {
                     color = SceneSpatial::HOVER_COLOR;
                     radius = SceneSpatial::hover_size_boost(radius);
                 }
@@ -134,7 +134,7 @@ impl Arrows3DPart {
             .batch("arrows")
             .world_from_obj(world_from_obj);
 
-        let highlighted_paths = ctx.hovered().is_obj_path_selected(ent_path.hash());
+        let highlighted_paths = ctx.hovered().check_obj_path(ent_path.hash());
 
         let visitor = |instance: Instance,
                        arrow: Arrow3D,
@@ -167,7 +167,7 @@ impl Arrows3DPart {
             let end = origin + vector * ((vector_len - tip_length) / vector_len);
 
             let mut color = to_ecolor(color);
-            if highlighted_paths.index_part_of_selection(instance_hash.instance_index_hash) {
+            if highlighted_paths.contains_index(instance_hash.instance_index_hash) {
                 color = SceneSpatial::HOVER_COLOR;
                 radius = SceneSpatial::hover_size_boost(radius);
             }

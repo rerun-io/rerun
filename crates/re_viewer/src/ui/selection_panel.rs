@@ -49,17 +49,6 @@ impl SelectionPanel {
     ) {
         crate::profile_function!();
 
-        if !ctx.selection().is_empty()
-            && ctx
-                .selection()
-                .selected()
-                .iter()
-                .all(|s| !s.is_valid(ctx, blueprint))
-        {
-            // TODO(emilk): also prune history
-            ctx.clear_selection();
-        }
-
         ui.separator();
 
         egui::ScrollArea::both()
@@ -70,6 +59,7 @@ impl SelectionPanel {
                     return;
                 }
 
+                let num_selections = ctx.selection().selected().len();
                 for (i, selection) in ctx.selection().selected().iter().enumerate() {
                     ui.push_id(i, |ui| {
                         what_is_selected_ui(ui, ctx, blueprint, selection);
@@ -89,6 +79,10 @@ impl SelectionPanel {
                             .show(ui, |ui| {
                                 blueprint_ui(ui, ctx, blueprint, selection);
                             });
+
+                        if num_selections > i + 1 {
+                            ui.add_space(4.0);
+                        }
                     });
                 }
             });

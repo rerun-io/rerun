@@ -1,11 +1,10 @@
 use ahash::HashSet;
+use itertools::Itertools;
 use nohash_hasher::IntSet;
-use re_data_store::{InstanceId, InstanceIdHash, ObjPath};
+use re_data_store::{InstanceId, InstanceIdHash, LogDb, ObjPath};
 use re_log_types::{DataPath, FieldOrComponent, IndexHash, MsgId, ObjPathHash};
 
 use crate::ui::{DataBlueprintGroupHandle, SpaceViewId};
-
-use super::ViewerContext;
 
 #[derive(Clone, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
 pub enum Selection {
@@ -33,14 +32,10 @@ impl std::fmt::Debug for Selection {
 
 impl Selection {
     /// If `false`, the selection is referring to data that is no longer present.
-    pub(crate) fn is_valid(
-        &self,
-        ctx: &ViewerContext<'_>,
-        blueprint: &crate::ui::Blueprint,
-    ) -> bool {
+    pub(crate) fn is_valid(&self, log_db: &LogDb, blueprint: &crate::ui::Blueprint) -> bool {
         match self {
             Selection::Instance(_) | Selection::DataPath(_) => true,
-            Selection::MsgId(msg_id) => ctx.log_db.get_log_msg(msg_id).is_some(),
+            Selection::MsgId(msg_id) => log_db.get_log_msg(msg_id).is_some(),
             Selection::SpaceView(space_view_id) | Selection::SpaceViewObjPath(space_view_id, _) => {
                 blueprint.viewport.space_view(space_view_id).is_some()
             }
@@ -72,7 +67,8 @@ pub enum SelectionScope<PartialInfo: std::cmp::PartialEq> {
 
     /// Indirectly selected by a parent object.
     ///
-    /// We may use [`Self::None`] for a certain level of indirections. I.e. a space view selection doesn't count as selection)
+    /// We may use [`Self::None`] for a certain level of indirections.
+    /// E.g. a space view selection doesn't count as indirect object path selection.
     Indirect,
 
     /// The exact object was explicitly selected.
@@ -83,9 +79,19 @@ impl<PartialInfo> SelectionScope<PartialInfo>
 where
     PartialInfo: std::cmp::PartialEq,
 {
-    /// If true the exact object was selected by the user.
+    /// If true the exact entity was selected by the user.
     pub fn is_exact(&self) -> bool {
         self == &SelectionScope::<_>::Exact
+    }
+
+    /// True if the entity itself is included - either exactly or via parent.
+    ///
+    /// (i.e. partial selection of this entity isn't included)
+    pub fn is_included(&self) -> bool {
+        match self {
+            SelectionScope::None | SelectionScope::Partial(_) => false,
+            SelectionScope::Indirect | SelectionScope::Exact => true,
+        }
     }
 }
 
@@ -98,7 +104,7 @@ pub struct PartialObjectPathSelection {
 pub type ObjectPathSelectionScope = SelectionScope<PartialObjectPathSelection>;
 
 impl ObjectPathSelectionScope {
-    pub fn index_part_of_selection(&self, index: IndexHash) -> bool {
+    pub fn contains_index(&self, index: IndexHash) -> bool {
         match self {
             SelectionScope::None => false,
             SelectionScope::Exact | SelectionScope::Indirect => true,
@@ -119,12 +125,12 @@ pub struct MultiSelection {
 
 impl MultiSelection {
     pub fn new(items: impl Iterator<Item = Selection>) -> Self {
-        let selection = items.collect();
+        let selection = items.unique().collect();
         Self { selection }
     }
 
     /// Whether an object path is part of the selection.
-    pub fn is_obj_path_selected(&self, obj_path_hash: ObjPathHash) -> ObjectPathSelectionScope {
+    pub fn check_obj_path(&self, obj_path_hash: ObjPathHash) -> ObjectPathSelectionScope {
         let mut partial = PartialObjectPathSelection::default();
 
         for selection in &self.selection {
@@ -174,7 +180,7 @@ impl MultiSelection {
     }
 
     /// Whether a message id is part of the selection
-    pub fn is_msg_id_selected(&self, msg_id: MsgId) -> SelectionScope<()> {
+    pub fn check_msg_id(&self, msg_id: MsgId) -> SelectionScope<()> {
         for selection in &self.selection {
             #[allow(clippy::match_same_arms)]
             match selection {
@@ -195,7 +201,7 @@ impl MultiSelection {
     }
 
     /// Whether a data path is part of the selection
-    pub fn is_data_path_selected(&self, data_path: &DataPath) -> SelectionScope<()> {
+    pub fn check_data_path(&self, data_path: &DataPath) -> SelectionScope<()> {
         for selection in &self.selection {
             #[allow(clippy::match_same_arms)]
             match selection {
@@ -216,7 +222,7 @@ impl MultiSelection {
     }
 
     /// Whether a space view is part of the selection
-    pub fn is_space_view_selected(&self, space_view: SpaceViewId) -> SelectionScope<()> {
+    pub fn check_space_view(&self, space_view: SpaceViewId) -> SelectionScope<()> {
         for selection in &self.selection {
             #[allow(clippy::match_same_arms)]
             match selection {
@@ -237,7 +243,7 @@ impl MultiSelection {
     }
 
     /// Whether a data blueprint group is part of the selection
-    pub fn is_data_blueprint_group_selected(
+    pub fn check_data_blueprint_group(
         &self,
         space_view: SpaceViewId,
         blueprint_group: DataBlueprintGroupHandle,
@@ -264,11 +270,23 @@ impl MultiSelection {
     /// Whether an instance is part of the selection.
     ///
     /// Should only be used if we're checking against a single instance.
-    /// Avoid this when checking large arrays of instances, instead use [`Self::is_obj_path_selected`] on the object
-    /// and then [`SelectionScope::index_part_of_selection`] for each index!
-    pub fn is_instance_selected(&self, instance: InstanceIdHash) -> bool {
-        self.is_obj_path_selected(instance.obj_path_hash)
-            .index_part_of_selection(instance.instance_index_hash)
+    /// Avoid this when checking large arrays of instances, instead use [`Self::check_obj_path`] on the object
+    /// and then [`SelectionScope::contains_index`] for each index!
+    pub fn check_instance(&self, instance: InstanceIdHash) -> SelectionScope<()> {
+        match self.check_obj_path(instance.obj_path_hash) {
+            SelectionScope::None => SelectionScope::None,
+            SelectionScope::Partial(partial) => {
+                if partial
+                    .selected_indices
+                    .contains(&instance.instance_index_hash)
+                {
+                    SelectionScope::Exact
+                } else {
+                    SelectionScope::None
+                }
+            }
+            SelectionScope::Indirect | SelectionScope::Exact => SelectionScope::Indirect,
+        }
     }
 
     pub fn is_empty(&self) -> bool {

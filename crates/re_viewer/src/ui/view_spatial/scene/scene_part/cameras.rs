@@ -48,7 +48,7 @@ impl ScenePart for CamerasPartClassic {
                     InstanceIdHash::NONE
                 }
             };
-            let highlighted_paths = ctx.hovered().is_obj_path_selected(obj_path.hash());
+            let highlighted_paths = ctx.hovered().check_obj_path(obj_path.hash());
 
             let view_coordinates = determine_view_coordinates(
                 &ctx.log_db.obj_db,
@@ -195,7 +195,7 @@ impl CamerasPart {
         ];
 
         let (line_radius, line_color) =
-            if highlighted_paths.index_part_of_selection(instance.instance_index_hash) {
+            if highlighted_paths.contains_index(instance.instance_index_hash) {
                 (
                     re_renderer::Size::new_points(2.0),
                     SceneSpatial::HOVER_COLOR,
@@ -243,7 +243,7 @@ impl ScenePart for CamerasPart {
                 &[],
             )
             .and_then(|entity_view| {
-                let highlighted_paths = ctx.hovered().is_obj_path_selected(ent_path.hash());
+                let highlighted_paths = ctx.hovered().check_obj_path(ent_path.hash());
 
                 entity_view.visit1(|instance, transform| {
                     let Transform::Pinhole(pinhole) = transform else {
