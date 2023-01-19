@@ -103,6 +103,8 @@ def log_text_entry(
         comps = {}
         if text:
             comps["rerun.text_entry"] = TextEntryArray.from_bodies_and_levels([(text, level)])
+        else:
+            logging.warning(f"Null  text entry in log_text_entry('{obj_path}') will be dropped.")
 
         if color:
             colors = _normalize_colors([color])
