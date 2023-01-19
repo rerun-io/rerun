@@ -111,6 +111,7 @@ pub struct Boxes2DPart;
 
 impl Boxes2DPart {
     /// Build scene parts for a single box instance
+    #[allow(clippy::too_many_arguments)]
     fn visit_instance(
         scene: &mut SceneSpatial,
         obj_path: &ObjPath,

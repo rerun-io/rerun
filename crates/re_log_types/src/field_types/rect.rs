@@ -38,10 +38,10 @@ pub enum Rect2D {
     /// \[y0, x0, y1, x1\], with x0,y0 = left,top and x1,y1 = right,bottom
     YXYX(Vec4D),
 
-    /// [x_center, y_center, width, height]
+    /// \[x_center, y_center, width, height\]
     XCYCWH(Vec4D),
 
-    /// [x_center, y_center, width/2, height/2]
+    /// \[x_center, y_center, width/2, height/2\]
     XCYCW2H2(Vec4D),
 }
 

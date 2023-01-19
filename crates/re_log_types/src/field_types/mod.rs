@@ -112,6 +112,21 @@ pub enum FieldError {
 pub type Result<T> = std::result::Result<T, FieldError>;
 
 /// `arrow2_convert` helper for fields of type `[T; SIZE]`
+///
+/// This allows us to use fields of type `[T; SIZE]` in `arrow2_convert`. Since this is a helper,
+/// it must be specified as the type of the field using the `#[arrow_field(type = "FixedSizeArrayField<T,SIZE>")]` attribute.
+///
+/// ## Example:
+/// ```
+/// use arrow2_convert::{ArrowField, ArrowSerialize, ArrowDeserialize};
+/// use re_log_types::field_types::FixedSizeArrayField;
+///
+/// #[derive(ArrowField, ArrowSerialize, ArrowDeserialize)]
+/// pub struct ConvertibleType {
+///     #[arrow_field(type = "FixedSizeArrayField<bool,2>")]
+///     data: [bool; 2],
+/// }
+/// ```
 pub struct FixedSizeArrayField<T, const SIZE: usize>(std::marker::PhantomData<T>);
 
 impl<T, const SIZE: usize> ArrowField for FixedSizeArrayField<T, SIZE>
