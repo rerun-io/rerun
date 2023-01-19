@@ -6,9 +6,9 @@ use re_log_types::{
         deserialize::{ArrowArray, ArrowDeserialize},
         field::ArrowField,
     },
-    field_types::Instance,
+    field_types::{Instance, Tensor},
     msg_bundle::Component,
-    ComponentName,
+    ClassicTensor, ComponentName,
 };
 use re_query::ComponentWithInstances;
 
@@ -50,7 +50,7 @@ impl Default for ComponentUiRegistry {
         // registry.add::<re_log_types::field_types::Scalar>();
         // registry.add::<re_log_types::field_types::ScalarPlotProps>();
         // registry.add::<re_log_types::field_types::Size3D>();
-        // registry.add::<re_log_types::field_types::Tensor>();
+        registry.add::<re_log_types::field_types::Tensor>();
         registry.add::<re_log_types::field_types::TextEntry>();
         registry.add::<re_log_types::field_types::Transform>();
         // registry.add::<re_log_types::field_types::Vec2D>();
@@ -145,5 +145,11 @@ impl DataUi for re_log_types::field_types::TextEntry {
                 });
             }
         }
+    }
+}
+
+impl DataUi for Tensor {
+    fn data_ui(&self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, preview: Preview) {
+        ClassicTensor::from(self).data_ui(ctx, ui, preview);
     }
 }
