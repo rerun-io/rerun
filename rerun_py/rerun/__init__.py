@@ -121,7 +121,9 @@ def spawn_and_connect(port: int = 9876) -> None:
     if python_executable is None:
         python_executable = "python3"
 
-    rerun_process = subprocess.Popen([python_executable, "-m", "rerun", "--port", str(port)])
+    # start_new_session=True ensures the spawned process does NOT die when
+    # we hit ctrl-c in the terminal running the parent Python process.
+    rerun_process = subprocess.Popen([python_executable, "-m", "rerun", "--port", str(port)], start_new_session=True)
     print(f"Spawned Rerun Viewer with pid {rerun_process.pid}")
 
     # TODO(emilk): figure out a way to postpone connecting until the rerun viewer is listening.
