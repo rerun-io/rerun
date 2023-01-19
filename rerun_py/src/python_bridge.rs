@@ -1747,7 +1747,6 @@ fn log_mesh_file(
     };
 
     let mut session = global_session();
-    let obj_path = session.classic_prefix_obj_path(obj_path);
 
     let time_point = time(timeless);
 
