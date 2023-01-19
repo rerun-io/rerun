@@ -14,6 +14,12 @@ pub fn format_tensor_shape(shape: &[re_log_types::field_types::TensorDimension])
     format!("[{}]", shape.iter().join(", "))
 }
 
+impl DataUi for re_log_types::field_types::Tensor {
+    fn data_ui(&self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, preview: Preview) {
+        ClassicTensor::from(self).data_ui(ctx, ui, preview);
+    }
+}
+
 impl DataUi for ClassicTensor {
     fn data_ui(&self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, preview: crate::ui::Preview) {
         let tensor_view = ctx.cache.image.get_view(self, ctx.render_ctx);

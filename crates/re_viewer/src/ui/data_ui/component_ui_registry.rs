@@ -6,9 +6,9 @@ use re_log_types::{
         deserialize::{ArrowArray, ArrowDeserialize},
         field::ArrowField,
     },
-    field_types::{Instance, Tensor},
+    field_types::Instance,
     msg_bundle::Component,
-    ClassicTensor, ComponentName,
+    ComponentName,
 };
 use re_query::ComponentWithInstances;
 
@@ -145,11 +145,5 @@ impl DataUi for re_log_types::field_types::TextEntry {
                 });
             }
         }
-    }
-}
-
-impl DataUi for Tensor {
-    fn data_ui(&self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, preview: Preview) {
-        ClassicTensor::from(self).data_ui(ctx, ui, preview);
     }
 }

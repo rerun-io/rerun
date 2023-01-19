@@ -7,7 +7,7 @@ use re_query::{get_component_with_instances, QueryError};
 
 use crate::{
     misc::ViewerContext,
-    ui::{annotations::AnnotationMap, Preview},
+    ui::{annotations::AnnotationMap, format_component_name, Preview},
 };
 
 use super::{
@@ -78,7 +78,7 @@ fn generic_arrow_ui(
 
                 ctx.data_path_button_to(
                     ui,
-                    component.to_string(),
+                    format_component_name(&component),
                     &DataPath::new_arrow(instance_id.obj_path.clone(), component),
                 );
 
@@ -142,7 +142,7 @@ fn generic_instance_ui(
             for (field_name, field_store) in obj_store.iter() {
                 ctx.data_path_button_to(
                     ui,
-                    field_name.to_string(),
+                    format_component_name(field_name),
                     &DataPath::new(instance_id.obj_path.clone(), *field_name),
                 );
 
