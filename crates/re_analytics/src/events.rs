@@ -2,6 +2,8 @@ use crate::Event;
 
 // All of our telemtry events are defined in this one file, to facilitate auditing.
 
+// TODO: all rerun events need hashed application_id + recording_id
+
 // ---
 
 impl Event {

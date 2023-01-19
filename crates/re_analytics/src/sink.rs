@@ -1,26 +1,20 @@
-use std::{
-    collections::HashMap,
-    fs::{File, OpenOptions},
-    io::{BufRead, BufReader, Seek, Write},
-    thread::JoinHandle,
-    time::Duration,
-};
+use std::{collections::HashMap, time::Duration};
 
-use crossbeam::{
-    channel::{self, RecvError},
-    select,
-};
 use reqwest::blocking::Client as HttpClient;
 use time::OffsetDateTime;
 
-use re_log::{error, trace};
+use re_log::error;
 
-use crate::{Config, Event, Property};
+use crate::{Event, Property};
+
+// TODO(cmc): abstract away the concept of a `Sink` behind an actual trait when comes the time to
+// support more than just PostHog.
 
 // ---
 
 // TODO: no idea how we're supposed to deal with some entity actively trashing our analytics?
 // only way I can think of is to go through our own server first and have asymetric encryption...
+// TODO: do we ship this as-is or want some kind of "light friction"?
 const PUBLIC_POSTHOG_PROJECT_KEY: &str = "phc_XD1QbqTGdPJbzdVCbvbA9zGOG38wJFTl8RAwqMwBvTY";
 
 // ---
@@ -28,13 +22,13 @@ const PUBLIC_POSTHOG_PROJECT_KEY: &str = "phc_XD1QbqTGdPJbzdVCbvbA9zGOG38wJFTl8R
 #[derive(thiserror::Error, Debug)]
 pub enum SinkError {
     #[error(transparent)]
-    IoError(#[from] std::io::Error),
+    Io(#[from] std::io::Error),
 
     #[error(transparent)]
-    SerdeError(#[from] serde_json::Error),
+    Serde(#[from] serde_json::Error),
 
     #[error(transparent)]
-    HttpError(#[from] reqwest::Error),
+    Http(#[from] reqwest::Error),
 }
 
 // TODO: view event

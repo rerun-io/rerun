@@ -6,13 +6,13 @@ use crate::{Config, ConfigError};
 #[derive(thiserror::Error, Debug)]
 pub enum CliError {
     #[error(transparent)]
-    ConfigError(#[from] ConfigError),
+    Config(#[from] ConfigError),
 
     #[error(transparent)]
-    IoError(#[from] std::io::Error),
+    Io(#[from] std::io::Error),
 
     #[error(transparent)]
-    SerdeError(#[from] serde_json::Error),
+    Serde(#[from] serde_json::Error),
 }
 
 pub fn clear() -> Result<(), CliError> {

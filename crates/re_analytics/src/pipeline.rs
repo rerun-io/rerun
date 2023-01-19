@@ -13,36 +13,32 @@ use re_log::{error, trace};
 
 use crate::{Config, Event, PostHogSink, SinkError};
 
+// TODO(cmc): abstract away the concept of a `Pipeline` behind an actual trait when comes the time
+// to support more than just PostHog.
+
 // ---
 
 #[derive(thiserror::Error, Debug)]
 pub enum PipelineError {
     #[error(transparent)]
-    IoError(#[from] std::io::Error),
+    Io(#[from] std::io::Error),
 
     #[error(transparent)]
-    SerdeError(#[from] serde_json::Error),
+    Serde(#[from] serde_json::Error),
 
     #[error(transparent)]
-    HttpError(#[from] reqwest::Error),
+    Http(#[from] reqwest::Error),
 }
-
-// TODO: do we want a singleton? do we just pass it around in ctx? let's just do ctx for now
 
 #[derive(Debug)]
 pub struct Pipeline {
     event_tx: channel::Sender<Result<Event, RecvError>>,
 }
 
-// TODO: load and send previous unsent sessions at boot
-// TODO: grab session_id from file_name directly I guess
-// TODO: delete fully sent sessions
-
 impl Pipeline {
     pub fn new(config: &Config, tick: Duration, sink: PostHogSink) -> Result<Self, PipelineError> {
-        let (event_tx, event_rx) = channel::unbounded(); // TODO: bounded?
-
-        // TODO: try to send on shutdown as best as possible
+        // TODO: make this bounded and drop events as needed
+        let (event_tx, event_rx) = channel::unbounded();
 
         let data_path = config.data_dir().to_owned();
 
@@ -96,7 +92,7 @@ impl Pipeline {
                 let session_id = &config.session_id.to_string();
 
                 trace!(%analytics_id, %session_id, "pipeline thread started");
-                let res = realtime_pipeline(&config, &sink, session_file, tick, event_rx);
+                let res = realtime_pipeline(&config, &sink, session_file, tick, &event_rx);
                 trace!(%analytics_id, %session_id, ?res, "pipeline thread shut down");
             }
         });
@@ -153,12 +149,13 @@ fn send_unsent_events(config: &Config, sink: &PostHogSink) -> anyhow::Result<()>
     Ok::<_, anyhow::Error>(())
 }
 
+#[allow(clippy::unnecessary_wraps)]
 fn realtime_pipeline(
     config: &Config,
     sink: &PostHogSink,
     mut session_file: File,
     tick: Duration,
-    event_rx: channel::Receiver<Result<Event, RecvError>>,
+    event_rx: &channel::Receiver<Result<Event, RecvError>>,
 ) -> anyhow::Result<()> {
     let analytics_id = config.analytics_id.clone();
     let session_id = config.session_id.to_string();
@@ -170,7 +167,7 @@ fn realtime_pipeline(
         select! {
             recv(ticker_rx) -> _elapsed => {
                 if !is_first_run {
-                    flush_events(&mut session_file, &analytics_id, &session_id, &sink);
+                    flush_events(&mut session_file, &analytics_id, &session_id, sink);
                     if let Err(err) = session_file.set_len(0) {
                         error!(%err, %analytics_id, %session_id,
                             "couldn't truncate analytics data file");

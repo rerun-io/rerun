@@ -1,3 +1,55 @@
+// TODO: turn the following into proper crate-level doc.
+//
+// Config manager
+// ==============
+//
+// $XDG_CONFIG/rerun/analytics.json
+//
+// If it does not exist, we interpret it as "first run".
+//
+// On first run, we print a disclaimer, and never send any data.
+//
+// CLI
+// ===
+//
+// Just a user-friendly way to work with the config file.
+//
+// `rerun analytics <clear|opt-out>`
+//
+// Native path
+// ===========
+//
+// Everything happens in two different threads: file writer and file POSTer.
+//
+// File writer:
+// - Always append to a file on disk
+//   - just keep it perma open, leave it to the FS cache
+// - Based on space and time: send the fd to the file POSTer thread
+//
+// File POSTer:
+// - Receives a fd and tries to POST it to posthog
+//   - on success, deletes it
+//   - on failure, tries again later
+//
+// Questions:
+// - Is there any part of this that we can reasonably test?
+// - Anyway we can simulate posthog being down?
+//
+// Web path
+// ========
+//
+// Everything has to happen in the same thread, obviously :/
+// It's gotta be frame-based.
+//
+// - Just synchronously dump events into local store
+// - Every N frame (or something along that line), send it to posthog
+//   - on success, deletes it
+//   - on failure, tries again later
+//
+// Questions:
+// - Can we just write synchronously to local store? is that fast enough?
+// - Can we even do a POST through web-sys? Can we detect failure???
+
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -51,7 +103,6 @@ impl Event {
     }
 }
 
-// TODO: guess that's more than enough for now...?
 #[derive(Debug, Clone, derive_more::From, serde::Serialize, serde::Deserialize)]
 pub enum Property {
     Integer(i64),
@@ -62,8 +113,7 @@ pub enum Property {
 
 // ---
 
-// TODO: web too
-
+// TODO: needs a real copy here!
 const DISCLAIMER: &str = "
     Welcome to Rerun!
 
@@ -86,13 +136,13 @@ const DISCLAIMER: &str = "
 #[derive(thiserror::Error, Debug)]
 pub enum AnalyticsError {
     #[error(transparent)]
-    ConfigError(#[from] ConfigError),
+    Config(#[from] ConfigError),
 
     #[error(transparent)]
-    SinkError(#[from] SinkError),
+    Pipeline(#[from] PipelineError),
 
     #[error(transparent)]
-    PipelineError(#[from] PipelineError),
+    Sink(#[from] SinkError),
 }
 
 pub struct Analytics {
@@ -103,9 +153,7 @@ pub struct Analytics {
     event_id: AtomicU64,
 }
 
-// TODO: hashed application_id + recording_id
 impl Analytics {
-    // TODO: fill with logs
     pub fn new(
         tick: Duration,
         default_props: HashMap<String, Property>,
@@ -118,6 +166,7 @@ impl Analytics {
             eprintln!("    {:?}\n", config.data_dir());
 
             config.save()?;
+            trace!(?config, ?tick, "saved analytics config");
         }
 
         let sink = PostHogSink::new()?;
@@ -155,74 +204,17 @@ impl Analytics {
 
 // ---
 
-// TODO: flag everything cfg(native) vs. cfg(web)
-// TODO: all of this should prob be private
-
 mod config;
-pub use self::config::{Config, ConfigError};
+use self::config::{Config, ConfigError};
 
 pub mod events;
 
-// TODO: web pipeline
+// TODO(cmc): web pipeline
 mod pipeline;
-pub use self::pipeline::{Pipeline, PipelineError};
+use self::pipeline::{Pipeline, PipelineError};
 
-// TODO: web sink
+// TODO(cmc): web sink
 mod sink;
-pub use self::sink::{PostHogSink, SinkError};
+use self::sink::{PostHogSink, SinkError};
 
 pub mod cli;
-
-// TODO: events and pipeline/buffering
-// TODO: backends and posthog
-// TODO: cli (extends the existing one!)
-
-// Config manager
-// ==============
-//
-// $XDG_CONFIG/rerun/analytics.json
-//
-// If it does not exist, we interpret it as "first run".
-//
-// On first run, we print a disclaimer, and never send any data.
-
-// CLI
-// ===
-//
-// Just a user-friendly way to work with the config file.
-//
-// `rerun analytics <clear|opt-out>`
-
-// Native path
-// ===========
-//
-// Everything happens in two different threads: file writer and file POSTer.
-//
-// File writer:
-// - Always append to a file on disk
-//   - just keep it perma open, leave it to the FS cache
-// - Based on space and time: send the fd to the file POSTer thread
-//
-// File POSTer:
-// - Receives a fd and tries to POST it to posthog
-//   - on success, deletes it
-//   - on failure, tries again later
-//
-// Questions:
-// - Is there any part of this that we can reasonably test?
-// - Anyway we can simulate posthog being down?
-//
-// Web path
-// ========
-//
-// Everything has to happen in the same thread, obviously :/
-// It's gotta be frame-based.
-//
-// - Just synchronously dump events into local store
-// - Every N frame (or something along that line), send it to posthog
-//   - on success, deletes it
-//   - on failure, tries again later
-//
-// Questions:
-// - Can we just write synchronously to local store? is that fast enough?
-// - Can we even do a POST through web-sys? Can we detect failure???
