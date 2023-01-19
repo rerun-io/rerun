@@ -41,7 +41,13 @@ from diffusers.schedulers import (
     LMSDiscreteScheduler,
     PNDMScheduler,
 )
-from diffusers.utils import PIL_INTERPOLATION, deprecate, is_accelerate_available, logging, randn_tensor
+from diffusers.utils import (
+    PIL_INTERPOLATION,
+    deprecate,
+    is_accelerate_available,
+    logging,
+    randn_tensor,
+)
 from packaging import version
 from transformers import (
     CLIPTextModel,
