@@ -67,7 +67,6 @@ log = "0.4"
 pollster = "0.2"
 rand = "0.8"
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 winit = "0.27"
 zip = { version = "0.6", default-features = false, features = ["deflate"] }
 
@@ -80,7 +79,6 @@ async-executor = "1.0"
 console_error_panic_hook = "0.1.6"
 # required to make rand work on wasm, see https://github.com/rust-random/rand#wasm-support
 getrandom = { version = "0.2", features = ["js"] }
-tracing-wasm = "0.2"
 wasm-bindgen-futures = "0.4.33"
 web-sys = { version = "0.3.60", features = [
   "Location",

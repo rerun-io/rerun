@@ -6,8 +6,6 @@ static GLOBAL: AccountingAllocator<mimalloc::MiMalloc> =
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    re_log::set_default_rust_log_env();
-    tracing_subscriber::fmt::init(); // log to stdout
-
+    re_log::setup_native_logging();
     rerun::run(std::env::args()).await
 }

@@ -58,7 +58,6 @@ numpy = { version = "0.17", features = ["half"] }
 pyo3 = "0.17"
 rand = { version = "0.8", features = ["std_rng"] }
 tokio = { workspace = true, features = ["rt-multi-thread"] }
-tracing-subscriber = "0.3"
 uuid = "1.1"
 
 [build-dependencies]

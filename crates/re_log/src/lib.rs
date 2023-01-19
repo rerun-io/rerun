@@ -19,7 +19,7 @@ pub use log_once::{debug_once, error_once, info_once, trace_once, warn_once};
 /// Set `RUST_LOG` environment variable to `info`, unless set,
 /// and also set some other log levels on crates that are too loud.
 #[cfg(not(target_arch = "wasm32"))]
-pub fn set_default_rust_log_env() {
+fn set_default_rust_log_env() {
     let mut rust_log = std::env::var("RUST_LOG").unwrap_or_else(|_| "info".to_owned());
 
     // TODO(emilk): remove once https://github.com/gfx-rs/wgpu/issues/3206 is fixed
@@ -37,7 +37,26 @@ pub fn set_default_rust_log_env() {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
+pub fn setup_native_logging() {
+    set_default_rust_log_env();
+    tracing_subscriber::fmt::init(); // log to stdout
+}
+
 #[cfg(target_arch = "wasm32")]
-pub fn default_web_log_filter() -> String {
+fn default_web_log_filter() -> String {
     "debug,naga=warn,wgpu_core=warn,wgpu_hal=warn".to_owned()
+}
+
+#[cfg(target_arch = "wasm32")]
+pub fn setup_web_logging() {
+    use tracing_subscriber::layer::SubscriberExt as _;
+    tracing::subscriber::set_global_default(
+        tracing_subscriber::Registry::default()
+            .with(tracing_subscriber::EnvFilter::new(default_web_log_filter()))
+            .with(tracing_wasm::WASMLayer::new(
+                tracing_wasm::WASMLayerConfig::default(),
+            )),
+    )
+    .expect("Failed to set tracing subscriber.");
 }

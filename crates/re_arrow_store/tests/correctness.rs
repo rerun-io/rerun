@@ -440,7 +440,6 @@ pub fn init_logs() {
     static INIT: AtomicBool = AtomicBool::new(false);
 
     if INIT.compare_exchange(false, true, SeqCst, SeqCst).is_ok() {
-        re_log::set_default_rust_log_env();
-        tracing_subscriber::fmt::init(); // log to stdout
+        re_log::setup_native_logging();
     }
 }

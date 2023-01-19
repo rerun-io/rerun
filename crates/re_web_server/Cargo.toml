@@ -27,7 +27,6 @@ tokio = { workspace = true, default-features = false, features = [
   "macros",
   "rt-multi-thread",
 ] }
-tracing-subscriber = "0.3"
 
 [build-dependencies]
 glob = "0.3.0"

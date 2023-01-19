@@ -81,8 +81,7 @@ impl ThreadInfo {
 /// The python module is called "rerun_bindings".
 #[pymodule]
 fn rerun_bindings(py: Python<'_>, m: &PyModule) -> PyResult<()> {
-    re_log::set_default_rust_log_env();
-    tracing_subscriber::fmt::init();
+    re_log::setup_native_logging();
 
     global_session().set_recording_id(default_recording_id(py));
 

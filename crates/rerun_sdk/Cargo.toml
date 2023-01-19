@@ -59,4 +59,3 @@ rand = "0.8"
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 clap = { version = "4.0", features = ["derive"] }
 mimalloc = "0.1.29"
-tracing-subscriber = "0.3"

@@ -3675,7 +3675,6 @@ dependencies = [
  "re_log_types",
  "static_assertions",
  "thiserror",
- "tracing-subscriber",
 ]
 
 [[package]]
@@ -3723,6 +3722,8 @@ version = "0.1.0"
 dependencies = [
  "log-once",
  "tracing",
+ "tracing-subscriber",
+ "tracing-wasm",
 ]
 
 [[package]]
@@ -3803,7 +3804,6 @@ dependencies = [
  "re_log",
  "re_log_types",
  "thiserror",
- "tracing-subscriber",
 ]
 
 [[package]]
@@ -3846,8 +3846,6 @@ dependencies = [
  "thiserror",
  "tobj",
  "tracing",
- "tracing-subscriber",
- "tracing-wasm",
  "type-map",
  "unindent",
  "walkdir",
@@ -3904,7 +3902,6 @@ dependencies = [
  "rerun",
  "rerun_sdk",
  "tokio",
- "tracing-subscriber",
  "uuid",
 ]
 
@@ -4019,8 +4016,6 @@ dependencies = [
  "slotmap",
  "smallvec",
  "tracing",
- "tracing-subscriber",
- "tracing-wasm",
  "uuid",
  "vec1",
  "wasm-bindgen-futures",
@@ -4039,7 +4034,6 @@ dependencies = [
  "hyper",
  "re_log",
  "tokio",
- "tracing-subscriber",
 ]
 
 [[package]]
@@ -4145,7 +4139,6 @@ dependencies = [
  "re_web_server",
  "re_ws_comms",
  "tokio",
- "tracing-subscriber",
  "webbrowser",
 ]
 
@@ -4177,7 +4170,6 @@ dependencies = [
  "re_web_server",
  "re_ws_comms",
  "tokio",
- "tracing-subscriber",
  "webbrowser",
 ]
 
