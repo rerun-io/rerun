@@ -97,7 +97,7 @@ pub enum FieldError {
     #[error("Encountered bad value")]
     BadValue,
 
-    #[error("Slice over bad indicies")]
+    #[error("Slice over bad indices")]
     BadSlice(#[from] std::array::TryFromSliceError),
 }
 
