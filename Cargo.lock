@@ -3865,7 +3865,6 @@ dependencies = [
  "anyhow",
  "bincode",
  "crossbeam",
- "ctrlc",
  "document-features",
  "emath",
  "rand",

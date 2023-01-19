@@ -15,6 +15,9 @@ impl DataUi for LogMsg {
             LogMsg::DataMsg(msg) => msg.data_ui(ctx, ui, preview),
             LogMsg::PathOpMsg(msg) => msg.data_ui(ctx, ui, preview),
             LogMsg::ArrowMsg(msg) => msg.data_ui(ctx, ui, preview),
+            LogMsg::Goodbye(_) => {
+                ui.label("Goodbye");
+            }
         }
     }
 }

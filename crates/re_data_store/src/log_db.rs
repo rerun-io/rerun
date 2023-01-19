@@ -316,6 +316,7 @@ impl LogDb {
             LogMsg::ArrowMsg(msg) => {
                 self.obj_db.try_add_arrow_data_msg(msg)?;
             }
+            LogMsg::Goodbye(_) => {}
         }
         self.chronological_message_ids.push(msg.id());
         self.log_messages.insert(msg.id(), msg);
@@ -489,7 +490,10 @@ impl LogDb {
         fn always_keep(msg: &LogMsg) -> bool {
             match msg {
                 //TODO(john) allow purging ArrowMsg
-                LogMsg::ArrowMsg(_) | LogMsg::BeginRecordingMsg(_) | LogMsg::TypeMsg(_) => true,
+                LogMsg::ArrowMsg(_)
+                | LogMsg::BeginRecordingMsg(_)
+                | LogMsg::TypeMsg(_)
+                | LogMsg::Goodbye(_) => true,
                 LogMsg::DataMsg(msg) => msg.time_point.is_timeless(),
                 LogMsg::PathOpMsg(msg) => msg.time_point.is_timeless(),
             }

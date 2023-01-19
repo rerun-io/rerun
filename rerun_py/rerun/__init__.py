@@ -49,7 +49,7 @@ __all__ = [
 
 
 def rerun_shutdown() -> None:
-    bindings.flush()
+    bindings.shutdown()
 
 
 atexit.register(rerun_shutdown)
