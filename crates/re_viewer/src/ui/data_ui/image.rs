@@ -104,7 +104,7 @@ pub fn tensor_dtype_and_shape_ui(ui: &mut egui::Ui, tensor: &ClassicTensor) {
 fn show_zoomed_image_region_tooltip(
     parent_ui: &mut egui::Ui,
     response: egui::Response,
-    tensor_view: &TensorImageView<'_, '_, ClassicTensor>,
+    tensor_view: &TensorImageView<'_, '_>,
     image_rect: egui::Rect,
     pointer_pos: egui::Pos2,
     meter: Option<f32>,
@@ -137,7 +137,7 @@ const ZOOMED_IMAGE_TEXEL_RADIUS: isize = 10;
 
 pub fn show_zoomed_image_region_area_outline(
     ui: &mut egui::Ui,
-    tensor_view: &TensorImageView<'_, '_, ClassicTensor>,
+    tensor_view: &TensorImageView<'_, '_>,
     [center_x, center_y]: [isize; 2],
     image_rect: egui::Rect,
 ) {
@@ -169,7 +169,7 @@ pub fn show_zoomed_image_region_area_outline(
 /// `meter`: iff this is a depth map, how long is one meter?
 pub fn show_zoomed_image_region(
     tooltip_ui: &mut egui::Ui,
-    tensor_view: &TensorImageView<'_, '_, ClassicTensor>,
+    tensor_view: &TensorImageView<'_, '_>,
     image_position: [isize; 2],
     meter: Option<f32>,
 ) {

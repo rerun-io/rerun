@@ -161,7 +161,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     // Resolve radius.
     // (slight inaccuracy: End caps are going to adjust their center_position)
     let camera_ray = camera_ray_to_world_pos(center_position);
-    let strip_radius = unresolved_size_to_world(strip_data.unresolved_radius, length(camera_ray.origin - center_position), 1.0);
+    let strip_radius = unresolved_size_to_world(strip_data.unresolved_radius, length(camera_ray.origin - center_position), frame.auto_size_lines);
 
     // Active flags are all flags that we react to at the current vertex.
     // I.e. cap flags are only active in the respective cap triangle.

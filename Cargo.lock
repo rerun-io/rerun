@@ -189,7 +189,7 @@ dependencies = [
 [[package]]
 name = "arrow2_convert"
 version = "0.3.2"
-source = "git+https://github.com/rerun-io/arrow2-convert?rev=aa48be082d0039e8c1a67b581ce5f697b89f3765#aa48be082d0039e8c1a67b581ce5f697b89f3765"
+source = "git+https://github.com/rerun-io/arrow2-convert?rev=7e63de5ce71741aaea3c36572d3e6831658ec3ed#7e63de5ce71741aaea3c36572d3e6831658ec3ed"
 dependencies = [
  "arrow2",
  "arrow2_convert_derive",
@@ -201,7 +201,7 @@ dependencies = [
 [[package]]
 name = "arrow2_convert_derive"
 version = "0.3.2"
-source = "git+https://github.com/rerun-io/arrow2-convert?rev=aa48be082d0039e8c1a67b581ce5f697b89f3765#aa48be082d0039e8c1a67b581ce5f697b89f3765"
+source = "git+https://github.com/rerun-io/arrow2-convert?rev=7e63de5ce71741aaea3c36572d3e6831658ec3ed#7e63de5ce71741aaea3c36572d3e6831658ec3ed"
 dependencies = [
  "proc-macro-error",
  "proc-macro2",

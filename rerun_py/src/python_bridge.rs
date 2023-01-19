@@ -1747,7 +1747,6 @@ fn log_mesh_file(
     };
 
     let mut session = global_session();
-    let obj_path = session.classic_prefix_obj_path(obj_path);
 
     let time_point = time(timeless);
 
@@ -1780,7 +1779,7 @@ fn log_mesh_file(
     }
 
     if session.classic_log_gate() {
-        let obj_path = session.arrow_prefix_obj_path(obj_path);
+        let obj_path = session.classic_prefix_obj_path(obj_path);
         session.register_type(obj_path.obj_type_path(), ObjectType::Mesh3D);
         session.send_data(
             &time_point,
