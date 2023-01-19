@@ -92,12 +92,14 @@ impl SelectionHistory {
         self.stack.truncate(self.current + 1);
 
         self.stack.push(selection.clone());
-        self.current = self.stack.len() - 1;
 
         // Keep size under a certain maximum.
         if self.stack.len() > MAX_SELECTION_HISTORY_LENGTH {
             self.stack
                 .drain((self.stack.len() - MAX_SELECTION_HISTORY_LENGTH)..self.stack.len());
         }
+
+        // Update current index last so it points to something valid!
+        self.current = self.stack.len() - 1;
     }
 }

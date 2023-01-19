@@ -81,7 +81,7 @@ impl SelectionPanel {
                             });
 
                         if num_selections > i + 1 {
-                            ui.add_space(4.0);
+                            ui.add_space(12.0);
                         }
                     });
                 }
