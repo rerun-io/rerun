@@ -40,7 +40,7 @@ impl Default for ComponentUiRegistry {
         // registry.add::<re_log_types::field_types::Label>();
         // registry.add::<re_log_types::field_types::LineStrip2D>();
         // registry.add::<re_log_types::field_types::LineStrip3D>();
-        // registry.add::<re_log_types::field_types::Mesh3D>();
+        registry.add::<re_log_types::field_types::Mesh3D>();
         registry.add::<re_log_types::field_types::MsgId>();
         // registry.add::<re_log_types::field_types::Point2D>();
         // registry.add::<re_log_types::field_types::Point3D>();
@@ -145,5 +145,19 @@ impl DataUi for re_log_types::field_types::TextEntry {
                 });
             }
         }
+    }
+}
+
+impl DataUi for re_log_types::field_types::Mesh3D {
+    fn data_ui(&self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, preview: Preview) {
+        match self {
+            re_log_types::Mesh3D::Encoded(mesh) => mesh.data_ui(ctx, ui, preview),
+        }
+    }
+}
+
+impl DataUi for re_log_types::field_types::EncodedMesh3D {
+    fn data_ui(&self, _ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, _preview: Preview) {
+        ui.label(format!("{} mesh", self.format));
     }
 }
