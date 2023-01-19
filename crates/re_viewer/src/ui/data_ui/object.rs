@@ -58,11 +58,12 @@ fn generic_arrow_ui(
 
     let query = re_arrow_store::LatestAtQuery::new(*timeline, time);
 
-    let Some(components) = store.all_components(timeline, &instance_id.obj_path)
+    let Some(mut components) = store.all_components(timeline, &instance_id.obj_path)
     else {
         ui.label("No Components");
         return ;
     };
+    components.sort();
 
     egui::Grid::new("entity_instance")
         .num_columns(2)
