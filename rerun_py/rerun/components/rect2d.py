@@ -15,9 +15,8 @@ __all__ = [
 class Rect2DArray(pa.ExtensionArray):  # type: ignore[misc]
     def from_numpy_and_format(array: npt.NDArray[np.float_], rect_format: RectFormat) -> Rect2DArray:
         """Build a `Rect2DArray` from an Nx4 numpy array."""
-        rects = np.asarray(array, dtype="float32")
         # Inner is a FixedSizeList<4>
-        values = pa.array(rects.flatten(), type=pa.float32())
+        values = pa.array(array.flatten(), type=pa.float32())
         inner = pa.FixedSizeListArray.from_arrays(values=values, type=Rect2DType.storage_type[0].type)
         storage = build_dense_union(data_type=Rect2DType.storage_type, discriminant=rect_format.value, child=inner)
         storage.validate(full=True)

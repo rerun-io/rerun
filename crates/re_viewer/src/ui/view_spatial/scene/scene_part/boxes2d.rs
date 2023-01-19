@@ -1,7 +1,7 @@
 use glam::Mat4;
 use re_data_store::{query::visit_type_data_4, FieldName, InstanceIdHash, ObjPath};
 use re_log_types::{
-    field_types::{ClassId, ColorRGBA, Rect2D},
+    field_types::{ClassId, ColorRGBA, Label, Radius, Rect2D},
     msg_bundle::Component,
     IndexHash, MsgId, ObjectType,
 };
@@ -118,25 +118,20 @@ impl Boxes2DPart {
         instance: InstanceIdHash,
         rect: &Rect2D,
         color: Option<ColorRGBA>,
+        radius: Option<Radius>,
+        label: Option<Label>,
+        class_id: Option<ClassId>,
         highlighted_paths: &ObjectPathSelectionResult,
     ) {
         scene.num_logged_2d_objects += 1;
 
         let color = color.map(|c| c.to_array());
-
-        // TODO(jleibs): Lots of missing components
-        let class_id = Some(&1);
-        let label: Option<&String> = None;
-        let stroke_width: Option<&f32> = None;
-
         let annotations = scene.annotation_map.find(obj_path);
-        let annotation_info = annotations
-            .class_description(class_id.map(|i| ClassId(*i as _)))
-            .annotation_info();
+        let annotation_info = annotations.class_description(class_id).annotation_info();
         let color = annotation_info.color(color.as_ref(), DefaultColor::ObjPath(obj_path));
-        let label = annotation_info.label(label);
+        let label = annotation_info.label(label.map(|l| l.0).as_ref());
 
-        let mut paint_props = paint_properties(color, stroke_width);
+        let mut paint_props = paint_properties(color, radius.map(|r| r.0).as_ref());
         if highlighted_paths.is_index_selected(instance.instance_index_hash) {
             apply_hover_effect(&mut paint_props);
         }
@@ -192,12 +187,17 @@ impl ScenePart for Boxes2DPart {
                 &ctx.log_db.obj_db.arrow_store,
                 &query,
                 ent_path,
-                &[ColorRGBA::name()],
+                &[
+                    ColorRGBA::name(),
+                    Radius::name(),
+                    Label::name(),
+                    ClassId::name(),
+                ],
             )
             .and_then(|entity_view| {
                 let highlighted_paths = ctx.hovered().is_path_selected(ent_path.hash());
 
-                entity_view.visit2(|instance, rect, color| {
+                entity_view.visit5(|instance, rect, color, radius, label, class_id| {
                     let instance_hash = {
                         if props.interactive {
                             InstanceIdHash::from_path_and_arrow_instance(ent_path, &instance)
@@ -213,6 +213,9 @@ impl ScenePart for Boxes2DPart {
                         instance_hash,
                         &rect,
                         color,
+                        radius,
+                        label,
+                        class_id,
                         &highlighted_paths,
                     );
                 })

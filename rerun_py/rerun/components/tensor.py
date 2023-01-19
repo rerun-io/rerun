@@ -61,7 +61,7 @@ class TensorArray(pa.ExtensionArray):  # type: ignore[misc]
         shape_data = [[{"name": x[0], "size": x[1]} for x in zip(names, array.shape)]]
         shape = pa.array(shape_data, type=TensorType.storage_type["shape"].type)
 
-        if array.dtype == np.uint8:  # type: ignore[comparison-overlap]
+        if array.dtype == np.uint8:
             data_inner = pa.array([array.flatten().tobytes()], type=pa.binary())
         else:
             data_storage = pa.array(array.flatten())
