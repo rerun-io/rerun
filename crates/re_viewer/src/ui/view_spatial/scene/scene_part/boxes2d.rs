@@ -13,10 +13,7 @@ use crate::{
     ui::{
         scene::SceneQuery,
         transform_cache::{ReferenceFromObjTransform, TransformCache},
-        view_spatial::{
-            scene::{apply_hover_effect, instance_hash_if_interactive, paint_properties},
-            Label2D, Label2DTarget, SceneSpatial,
-        },
+        view_spatial::{scene::instance_hash_if_interactive, Label2D, Label2DTarget, SceneSpatial},
         DefaultColor,
     },
 };
@@ -47,7 +44,8 @@ impl ScenePart for Boxes2DPartClassic {
                 continue;
             };
 
-            let highlighted_paths = ctx.hovered().check_obj_path(obj_path.hash());
+            let hovered_paths = ctx.hovered().check_obj_path(obj_path.hash());
+            let selected_paths = ctx.selection().check_obj_path(obj_path.hash());
 
             let mut line_batch = scene
                 .primitives
@@ -69,24 +67,28 @@ impl ScenePart for Boxes2DPartClassic {
                 let annotation_info = annotations
                     .class_description(class_id.map(|i| ClassId(*i as _)))
                     .annotation_info();
-                let color = annotation_info.color(color, DefaultColor::ObjPath(obj_path));
+                let mut color = annotation_info.color(color, DefaultColor::ObjPath(obj_path));
+                let mut radius = stroke_width.map_or(Size::AUTO, |r| Size::new_scene(r * 0.5));
                 let label = annotation_info.label(label);
 
-                let mut paint_props = paint_properties(color, stroke_width);
-                if highlighted_paths.contains_index(instance_hash.instance_index_hash) {
-                    apply_hover_effect(&mut paint_props);
-                }
+                SceneSpatial::apply_hover_and_selection_effect(
+                    &mut radius,
+                    &mut color,
+                    instance_hash.instance_index_hash,
+                    &hovered_paths,
+                    &selected_paths,
+                );
 
                 line_batch
                     .add_axis_aligned_rectangle_outline_2d(bbox.min.into(), bbox.max.into())
-                    .color(paint_props.fg_stroke.color)
-                    .radius(Size::new_points(paint_props.fg_stroke.width * 0.5))
+                    .color(color)
+                    .radius(radius)
                     .user_data(instance_hash);
 
                 if let Some(label) = label {
                     scene.ui.labels_2d.push(Label2D {
                         text: label,
-                        color: paint_props.fg_stroke.color,
+                        color,
                         target: Label2DTarget::Rect(egui::Rect::from_min_max(
                             bbox.min.into(),
                             bbox.max.into(),
@@ -111,6 +113,7 @@ pub struct Boxes2DPart;
 
 impl Boxes2DPart {
     /// Build scene parts for a single box instance
+    #[allow(clippy::too_many_arguments)]
     fn visit_instance(
         scene: &mut SceneSpatial,
         obj_path: &ObjPath,
@@ -118,7 +121,8 @@ impl Boxes2DPart {
         instance: InstanceIdHash,
         rect: &Rect2D,
         color: Option<ColorRGBA>,
-        highlighted_paths: &ObjectPathSelectionScope,
+        hovered_paths: &ObjectPathSelectionScope,
+        selected_paths: &ObjectPathSelectionScope,
     ) {
         scene.num_logged_2d_objects += 1;
 
@@ -127,19 +131,22 @@ impl Boxes2DPart {
         // TODO(jleibs): Lots of missing components
         let class_id = Some(&1);
         let label: Option<&String> = None;
-        let stroke_width: Option<&f32> = None;
 
         let annotations = scene.annotation_map.find(obj_path);
         let annotation_info = annotations
             .class_description(class_id.map(|i| ClassId(*i as _)))
             .annotation_info();
-        let color = annotation_info.color(color.as_ref(), DefaultColor::ObjPath(obj_path));
+        let mut radius = Size::AUTO;
+        let mut color = annotation_info.color(color.as_ref(), DefaultColor::ObjPath(obj_path));
         let label = annotation_info.label(label);
 
-        let mut paint_props = paint_properties(color, stroke_width);
-        if highlighted_paths.contains_index(instance.instance_index_hash) {
-            apply_hover_effect(&mut paint_props);
-        }
+        SceneSpatial::apply_hover_and_selection_effect(
+            &mut radius,
+            &mut color,
+            instance.instance_index_hash,
+            hovered_paths,
+            selected_paths,
+        );
 
         let mut line_batch = scene
             .primitives
@@ -153,14 +160,14 @@ impl Boxes2DPart {
                 glam::vec2(rect.w, 0.0),
                 glam::vec2(0.0, rect.h),
             )
-            .color(paint_props.fg_stroke.color)
-            .radius(Size::new_points(paint_props.fg_stroke.width * 0.5))
+            .color(color)
+            .radius(radius)
             .user_data(instance);
 
         if let Some(label) = label {
             scene.ui.labels_2d.push(Label2D {
                 text: label,
-                color: paint_props.fg_stroke.color,
+                color,
                 target: Label2DTarget::Rect(egui::Rect::from_min_size(
                     egui::pos2(rect.x, rect.y),
                     egui::vec2(rect.w, rect.h),
@@ -195,7 +202,8 @@ impl ScenePart for Boxes2DPart {
                 &[ColorRGBA::name()],
             )
             .and_then(|entity_view| {
-                let highlighted_paths = ctx.hovered().check_obj_path(ent_path.hash());
+                let hovered_paths = ctx.hovered().check_obj_path(ent_path.hash());
+                let selected_paths = ctx.selection().check_obj_path(ent_path.hash());
 
                 entity_view.visit2(|instance, rect, color| {
                     let instance_hash = {
@@ -213,7 +221,8 @@ impl ScenePart for Boxes2DPart {
                         instance_hash,
                         &rect,
                         color,
-                        &highlighted_paths,
+                        &hovered_paths,
+                        &selected_paths,
                     );
                 })
             }) {

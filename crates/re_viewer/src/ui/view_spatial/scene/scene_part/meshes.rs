@@ -47,7 +47,8 @@ impl ScenePart for MeshPartClassic {
             // TODO(andreas): This throws away perspective transformation!
             let world_from_obj_affine = glam::Affine3A::from_mat4(world_from_obj);
 
-            let highlighted_paths = ctx.hovered().check_obj_path(obj_path.hash());
+            let hovered_paths = ctx.hovered().check_obj_path(obj_path.hash());
+            let selected_paths = ctx.selection().check_obj_path(obj_path.hash());
 
             let visitor = |instance_index: Option<&IndexHash>,
                            _time: i64,
@@ -58,8 +59,10 @@ impl ScenePart for MeshPartClassic {
                     instance_hash_if_interactive(obj_path, instance_index, properties.interactive);
 
                 let additive_tint =
-                    if highlighted_paths.contains_index(instance_hash.instance_index_hash) {
+                    if hovered_paths.contains_index(instance_hash.instance_index_hash) {
                         Some(SceneSpatial::HOVER_COLOR)
+                    } else if selected_paths.contains_index(instance_hash.instance_index_hash) {
+                        Some(SceneSpatial::SELECTION_COLOR)
                     } else {
                         None
                     };
@@ -112,43 +115,46 @@ impl MeshPart {
         let _default_color = DefaultColor::ObjPath(ent_path);
         let world_from_obj_affine = glam::Affine3A::from_mat4(world_from_obj);
 
-        let highlighted_paths = ctx.hovered().check_obj_path(ent_path.hash());
+        let hovered_paths = ctx.hovered().check_obj_path(ent_path.hash());
+        let selected_paths = ctx.selection().check_obj_path(ent_path.hash());
 
-        let visitor =
-            |instance: Instance, mesh: re_log_types::Mesh3D, _color: Option<ColorRGBA>| {
-                let instance_hash = {
-                    if props.interactive {
-                        InstanceIdHash::from_path_and_arrow_instance(ent_path, &instance)
-                    } else {
-                        InstanceIdHash::NONE
-                    }
-                };
-
-                let additive_tint =
-                    if highlighted_paths.contains_index(instance_hash.instance_index_hash) {
-                        Some(SceneSpatial::HOVER_COLOR)
-                    } else {
-                        None
-                    };
-
-                if let Some(mesh) = ctx
-                    .cache
-                    .mesh
-                    .load(
-                        &ent_path.to_string(),
-                        &MeshSourceData::Mesh3D(mesh),
-                        ctx.render_ctx,
-                    )
-                    .map(|cpu_mesh| MeshSource {
-                        instance_hash,
-                        world_from_mesh: world_from_obj_affine,
-                        mesh: cpu_mesh,
-                        additive_tint,
-                    })
-                {
-                    scene.primitives.meshes.push(mesh);
-                };
+        let visitor = |instance: Instance,
+                       mesh: re_log_types::Mesh3D,
+                       _color: Option<ColorRGBA>| {
+            let instance_hash = {
+                if props.interactive {
+                    InstanceIdHash::from_path_and_arrow_instance(ent_path, &instance)
+                } else {
+                    InstanceIdHash::NONE
+                }
             };
+
+            let additive_tint = if hovered_paths.contains_index(instance_hash.instance_index_hash) {
+                Some(SceneSpatial::HOVER_COLOR)
+            } else if selected_paths.contains_index(instance_hash.instance_index_hash) {
+                Some(SceneSpatial::SELECTION_COLOR)
+            } else {
+                None
+            };
+
+            if let Some(mesh) = ctx
+                .cache
+                .mesh
+                .load(
+                    &ent_path.to_string(),
+                    &MeshSourceData::Mesh3D(mesh),
+                    ctx.render_ctx,
+                )
+                .map(|cpu_mesh| MeshSource {
+                    instance_hash,
+                    world_from_mesh: world_from_obj_affine,
+                    mesh: cpu_mesh,
+                    additive_tint,
+                })
+            {
+                scene.primitives.meshes.push(mesh);
+            };
+        };
 
         entity_view.visit2(visitor)?;
 

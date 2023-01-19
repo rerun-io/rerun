@@ -20,7 +20,7 @@ use crate::{
         scene::SceneQuery,
         transform_cache::ReferenceFromObjTransform,
         view_spatial::{
-            scene::{instance_hash_if_interactive, to_ecolor, Keypoints},
+            scene::{instance_hash_if_interactive, Keypoints},
             Label3D, SceneSpatial,
         },
         Annotations, DefaultColor,
@@ -61,7 +61,8 @@ impl ScenePart for Points3DPartClassic {
                 continue;
             };
 
-            let highlighted_paths = ctx.hovered().check_obj_path(obj_path.hash());
+            let hovered_paths = ctx.hovered().check_obj_path(obj_path.hash());
+            let selected_paths = ctx.selection().check_obj_path(obj_path.hash());
 
             let mut point_batch = scene
                 .primitives
@@ -102,13 +103,16 @@ impl ScenePart for Points3DPartClassic {
                     class_description.annotation_info()
                 };
 
-                let mut color = to_ecolor(annotation_info.color(color, default_color));
+                let mut color = annotation_info.color(color, default_color);
                 let mut radius = radius.copied().map_or(Size::AUTO, Size::new_scene);
 
-                if highlighted_paths.contains_index(instance_hash.instance_index_hash) {
-                    color = SceneSpatial::HOVER_COLOR;
-                    radius = SceneSpatial::hover_size_boost(radius);
-                }
+                SceneSpatial::apply_hover_and_selection_effect(
+                    &mut radius,
+                    &mut color,
+                    instance_hash.instance_index_hash,
+                    &hovered_paths,
+                    &selected_paths,
+                );
 
                 show_labels = batch_size < 10;
                 if show_labels {
@@ -154,6 +158,13 @@ pub struct Points3DPart {
     pub(crate) max_labels: usize,
 }
 
+#[derive(Clone, Copy)]
+enum HighlightType {
+    None,
+    Hover,
+    Select,
+}
+
 impl Points3DPart {
     fn process_annotations(
         query: &SceneQuery<'_>,
@@ -191,7 +202,7 @@ impl Points3DPart {
     fn process_colors<'a>(
         entity_view: &'a EntityView<Point3D>,
         ent_path: &'a ObjPath,
-        highlighted: &'a [bool],
+        highlighted: &'a [HighlightType],
         annotation_infos: &'a [ResolvedAnnotationInfo],
     ) -> Result<impl Iterator<Item = egui::Color32> + 'a, QueryError> {
         let default_color = DefaultColor::ObjPath(ent_path);
@@ -201,29 +212,30 @@ impl Points3DPart {
             annotation_infos.iter(),
             entity_view.iter_component::<ColorRGBA>()?,
         )
-        .map(move |(highlighted, annotation_info, color)| {
-            if *highlighted {
-                SceneSpatial::HOVER_COLOR
-            } else {
-                to_ecolor(
-                    annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color),
-                )
-            }
-        });
+        .map(
+            move |(highlighted, annotation_info, color)| match highlighted {
+                HighlightType::None => {
+                    annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color)
+                }
+                HighlightType::Hover => SceneSpatial::HOVER_COLOR,
+                HighlightType::Select => SceneSpatial::SELECTION_COLOR,
+            },
+        );
         Ok(colors)
     }
 
     fn process_radii<'a>(
         entity_view: &'a EntityView<Point3D>,
-        highlighted: &'a [bool],
+        highlighted: &'a [HighlightType],
     ) -> Result<impl Iterator<Item = Size> + 'a, QueryError> {
         let radii = itertools::izip!(highlighted.iter(), entity_view.iter_component::<Radius>()?,)
             .map(move |(highlighted, radius)| {
                 let radius = radius.map_or(Size::AUTO, |radius| Size::new_scene(radius.0));
-                if *highlighted {
-                    SceneSpatial::hover_size_boost(radius)
-                } else {
-                    radius
+                match highlighted {
+                    HighlightType::None => radius,
+                    HighlightType::Select | HighlightType::Hover => {
+                        SceneSpatial::hover_size_boost(radius)
+                    }
                 }
             });
         Ok(radii)
@@ -286,7 +298,8 @@ impl Points3DPart {
             point_positions.as_slice(),
         )?;
 
-        let highlighted_paths = ctx.hovered().check_obj_path(ent_path.hash());
+        let hovered_paths = ctx.hovered().check_obj_path(ent_path.hash());
+        let selected_paths = ctx.selection().check_obj_path(ent_path.hash());
 
         let instance_hashes = entity_view
             .iter_instances()?
@@ -300,7 +313,15 @@ impl Points3DPart {
             .collect::<Vec<_>>();
         let highlighted = instance_hashes
             .iter()
-            .map(|hash| highlighted_paths.contains_index(hash.instance_index_hash))
+            .map(|hash| {
+                if hovered_paths.contains_index(hash.instance_index_hash) {
+                    HighlightType::Hover
+                } else if selected_paths.contains_index(hash.instance_index_hash) {
+                    HighlightType::Select
+                } else {
+                    HighlightType::None
+                }
+            })
             .collect::<Vec<_>>();
 
         let colors = Self::process_colors(entity_view, ent_path, &highlighted, &annotation_infos)?;

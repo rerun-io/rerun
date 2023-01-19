@@ -48,7 +48,8 @@ impl ScenePart for CamerasPartClassic {
                     InstanceIdHash::NONE
                 }
             };
-            let highlighted_paths = ctx.hovered().check_obj_path(obj_path.hash());
+            let hovered_paths = ctx.hovered().check_obj_path(obj_path.hash());
+            let selected_paths = ctx.selection().check_obj_path(obj_path.hash());
 
             let view_coordinates = determine_view_coordinates(
                 &ctx.log_db.obj_db,
@@ -64,7 +65,8 @@ impl ScenePart for CamerasPartClassic {
                 instance_hash,
                 pinhole,
                 view_coordinates,
-                &highlighted_paths,
+                &hovered_paths,
+                &selected_paths,
             );
         }
     }
@@ -112,7 +114,8 @@ impl CamerasPart {
         instance: InstanceIdHash,
         pinhole: Pinhole,
         view_coordinates: ViewCoordinates,
-        highlighted_paths: &ObjectPathSelectionScope,
+        hovered_paths: &ObjectPathSelectionScope,
+        selected_paths: &ObjectPathSelectionScope,
     ) {
         // The transform *at* this object path already has the pinhole transformation we got passed in!
         // This makes sense, since if there's an image logged here one would expect that the transform applies.
@@ -194,26 +197,24 @@ impl CamerasPart {
             (up_triangle[2], up_triangle[0]),
         ];
 
-        let (line_radius, line_color) =
-            if highlighted_paths.contains_index(instance.instance_index_hash) {
-                (
-                    re_renderer::Size::new_points(2.0),
-                    SceneSpatial::HOVER_COLOR,
-                )
-            } else {
-                (
-                    re_renderer::Size::new_points(1.0),
-                    SceneSpatial::CAMERA_COLOR,
-                )
-            };
+        let mut radius = re_renderer::Size::new_points(1.0);
+        let mut color = SceneSpatial::CAMERA_COLOR;
+        SceneSpatial::apply_hover_and_selection_effect(
+            &mut radius,
+            &mut color,
+            instance.instance_index_hash,
+            hovered_paths,
+            selected_paths,
+        );
+
         scene
             .primitives
             .line_strips
             .batch("camera frustum")
             .world_from_obj(world_from_parent)
             .add_segments(segments.into_iter())
-            .radius(line_radius)
-            .color(line_color)
+            .radius(radius)
+            .color(color)
             .flags(
                 LineStripFlags::NO_COLOR_GRADIENT
                     | LineStripFlags::CAP_END_ROUND
@@ -243,7 +244,8 @@ impl ScenePart for CamerasPart {
                 &[],
             )
             .and_then(|entity_view| {
-                let highlighted_paths = ctx.hovered().check_obj_path(ent_path.hash());
+                let hovered_paths = ctx.hovered().check_obj_path(ent_path.hash());
+                let selected_paths = ctx.selection().check_obj_path(ent_path.hash());
 
                 entity_view.visit1(|instance, transform| {
                     let Transform::Pinhole(pinhole) = transform else {
@@ -272,7 +274,8 @@ impl ScenePart for CamerasPart {
                         instance_hash,
                         pinhole,
                         view_coordinates,
-                        &highlighted_paths,
+                        &hovered_paths,
+                        &selected_paths,
                     );
                 })
             }) {

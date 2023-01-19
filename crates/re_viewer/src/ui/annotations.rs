@@ -67,19 +67,23 @@ pub enum DefaultColor<'a> {
 pub struct ResolvedAnnotationInfo(pub Option<AnnotationInfo>);
 
 impl ResolvedAnnotationInfo {
-    pub fn color(&self, color: Option<&[u8; 4]>, default_color: DefaultColor<'_>) -> [u8; 4] {
-        if let Some(color) = color {
-            *color
+    pub fn color(
+        &self,
+        color: Option<&[u8; 4]>,
+        default_color: DefaultColor<'_>,
+    ) -> re_renderer::Color32 {
+        if let Some([r, g, b, a]) = color {
+            re_renderer::Color32::from_rgba_premultiplied(*r, *g, *b, *a)
         } else if let Some(color) = self.0.as_ref().and_then(|info| {
             info.color
-                .map(|c| c.to_array())
+                .map(|c| c.into())
                 .or_else(|| Some(auto_color(info.id)))
         }) {
             color
         } else {
             match default_color {
-                DefaultColor::TransparentBlack => [0, 0, 0, 0],
-                DefaultColor::OpaqueWhite => [255, 255, 255, 255],
+                DefaultColor::TransparentBlack => re_renderer::Color32::TRANSPARENT,
+                DefaultColor::OpaqueWhite => re_renderer::Color32::WHITE,
                 DefaultColor::ObjPath(obj_path) => {
                     auto_color((obj_path.hash64() % std::u16::MAX as u64) as u16)
                 }
@@ -260,13 +264,8 @@ lazy_static! {
 
 // default colors
 // Borrowed from `egui::PlotUi`
-pub fn auto_color_egui(val: u16) -> egui::Color32 {
+pub fn auto_color(val: u16) -> re_renderer::Color32 {
     let golden_ratio = (5.0_f32.sqrt() - 1.0) / 2.0; // 0.61803398875
     let h = val as f32 * golden_ratio;
     egui::Color32::from(egui::ecolor::Hsva::new(h, 0.85, 0.5, 1.0))
-}
-
-pub fn auto_color(val: u16) -> [u8; 4] {
-    let color = auto_color_egui(val);
-    color.to_array()
 }

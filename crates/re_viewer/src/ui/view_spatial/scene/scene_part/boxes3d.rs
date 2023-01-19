@@ -15,10 +15,7 @@ use crate::{
     ui::{
         scene::SceneQuery,
         transform_cache::{ReferenceFromObjTransform, TransformCache},
-        view_spatial::{
-            scene::{instance_hash_if_interactive, to_ecolor},
-            Label3D, SceneSpatial,
-        },
+        view_spatial::{scene::instance_hash_if_interactive, Label3D, SceneSpatial},
         DefaultColor,
     },
 };
@@ -49,7 +46,8 @@ impl ScenePart for Boxes3DPartClassic {
                 continue;
             };
 
-            let highlighted_paths = ctx.hovered().check_obj_path(obj_path.hash());
+            let hovered_paths = ctx.hovered().check_obj_path(obj_path.hash());
+            let selected_paths = ctx.selection().check_obj_path(obj_path.hash());
 
             let mut line_batch = scene
                 .primitives
@@ -65,12 +63,12 @@ impl ScenePart for Boxes3DPartClassic {
                            stroke_width: Option<&f32>,
                            label: Option<&String>,
                            class_id: Option<&i32>| {
-                let mut line_radius = stroke_width.map_or(Size::AUTO, |w| Size::new_scene(w / 2.0));
+                let mut radius = stroke_width.map_or(Size::AUTO, |w| Size::new_scene(w / 2.0));
 
                 let annotation_info = annotations
                     .class_description(class_id.map(|i| ClassId(*i as _)))
                     .annotation_info();
-                let mut color = to_ecolor(annotation_info.color(color, default_color));
+                let mut color = annotation_info.color(color, default_color);
                 let label = annotation_info.label(label);
                 if let Some(label) = label {
                     scene.ui.labels_3d.push(Label3D {
@@ -81,10 +79,13 @@ impl ScenePart for Boxes3DPartClassic {
 
                 let instance_hash =
                     instance_hash_if_interactive(obj_path, instance_index, properties.interactive);
-                if highlighted_paths.contains_index(instance_hash.instance_index_hash) {
-                    color = SceneSpatial::HOVER_COLOR;
-                    line_radius = SceneSpatial::hover_size_boost(line_radius);
-                }
+                SceneSpatial::apply_hover_and_selection_effect(
+                    &mut radius,
+                    &mut color,
+                    instance_hash.instance_index_hash,
+                    &hovered_paths,
+                    &selected_paths,
+                );
 
                 let transform = glam::Affine3A::from_scale_rotation_translation(
                     Vec3::from(obb.half_size),
@@ -93,7 +94,7 @@ impl ScenePart for Boxes3DPartClassic {
                 );
                 line_batch
                     .add_box_outline(transform)
-                    .radius(line_radius)
+                    .radius(radius)
                     .color(color)
                     .user_data(instance_hash);
             };
@@ -132,7 +133,8 @@ impl Boxes3DPart {
             .batch("box 3d")
             .world_from_obj(world_from_obj);
 
-        let highlighted_paths = ctx.hovered().check_obj_path(ent_path.hash());
+        let hovered_paths = ctx.hovered().check_obj_path(ent_path.hash());
+        let selected_paths = ctx.selection().check_obj_path(ent_path.hash());
 
         let visitor = |instance: Instance,
                        half_size: Box3D,
@@ -154,14 +156,16 @@ impl Boxes3DPart {
             let annotation_info = class_description.annotation_info();
 
             let mut radius = radius.map_or(Size::AUTO, |r| Size::new_scene(r.0));
-            let mut color = to_ecolor(
-                annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color),
-            );
+            let mut color =
+                annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color);
 
-            if highlighted_paths.contains_index(instance_hash.instance_index_hash) {
-                color = SceneSpatial::HOVER_COLOR;
-                radius = SceneSpatial::hover_size_boost(radius);
-            }
+            SceneSpatial::apply_hover_and_selection_effect(
+                &mut radius,
+                &mut color,
+                instance_hash.instance_index_hash,
+                &hovered_paths,
+                &selected_paths,
+            );
 
             let scale = glam::Vec3::from(half_size);
             let rot = rotation.map(glam::Quat::from).unwrap_or_default();

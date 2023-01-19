@@ -20,7 +20,7 @@ use crate::{
         scene::SceneQuery,
         transform_cache::{ReferenceFromObjTransform, TransformCache},
         view_spatial::{
-            scene::{instance_hash_if_interactive, paint_properties, AnyTensor},
+            scene::{instance_hash_if_interactive, AnyTensor},
             Image, SceneSpatial,
         },
         Annotations, DefaultColor,
@@ -85,7 +85,8 @@ impl ScenePart for ImagesPartClassic {
                 continue;
             };
 
-            let highlighted_paths = ctx.hovered().check_obj_path(obj_path.hash());
+            let hovered_paths = ctx.hovered().check_obj_path(obj_path.hash());
+            let selected_paths = ctx.selection().check_obj_path(obj_path.hash());
 
             let visitor = |instance_index: Option<&IndexHash>,
                            _time: i64,
@@ -101,15 +102,18 @@ impl ScenePart for ImagesPartClassic {
                     instance_hash_if_interactive(obj_path, instance_index, properties.interactive);
 
                 let annotations = scene.annotation_map.find(obj_path);
-                let paint_props = paint_properties(
-                    annotations
-                        .class_description(None)
-                        .annotation_info()
-                        .color(color, DefaultColor::OpaqueWhite),
-                    None,
-                );
+                let color = annotations
+                    .class_description(None)
+                    .annotation_info()
+                    .color(color, DefaultColor::OpaqueWhite);
 
-                if highlighted_paths.contains_index(instance_hash.instance_index_hash) {
+                let hovered = hovered_paths.contains_index(instance_hash.instance_index_hash);
+                if hovered || selected_paths.contains_index(instance_hash.instance_index_hash) {
+                    let color = if hovered {
+                        SceneSpatial::HOVER_COLOR
+                    } else {
+                        SceneSpatial::SELECTION_COLOR
+                    };
                     let rect =
                         glam::vec2(tensor.shape()[1].size as f32, tensor.shape()[0].size as f32);
                     scene
@@ -118,8 +122,8 @@ impl ScenePart for ImagesPartClassic {
                         .batch("image outlines")
                         .world_from_obj(world_from_obj)
                         .add_axis_aligned_rectangle_outline_2d(glam::Vec2::ZERO, rect)
-                        .color(paint_props.fg_stroke.color)
-                        .radius(Size::new_points(paint_props.fg_stroke.width * 0.5));
+                        .color(color)
+                        .radius(Size::new_points(1.0));
                 }
 
                 push_tensor_texture(
@@ -129,7 +133,7 @@ impl ScenePart for ImagesPartClassic {
                     world_from_obj,
                     instance_hash,
                     tensor,
-                    paint_props.fg_stroke.color.into(),
+                    color.into(),
                 );
 
                 scene.ui.images.push(Image {
@@ -216,7 +220,8 @@ impl ImagesPart {
         ent_path: &ObjPath,
         world_from_obj: glam::Mat4,
     ) -> Result<(), QueryError> {
-        let highlighted_paths = ctx.hovered().check_obj_path(ent_path.hash());
+        let hovered_paths = ctx.hovered().check_obj_path(ent_path.hash());
+        let selected_paths = ctx.selection().check_obj_path(ent_path.hash());
 
         for (instance, tensor, color) in itertools::izip!(
             entity_view.iter_instances()?,
@@ -243,9 +248,13 @@ impl ImagesPart {
                     DefaultColor::OpaqueWhite,
                 );
 
-                let paint_props = paint_properties(color, None);
-
-                if highlighted_paths.contains_index(instance_hash.instance_index_hash) {
+                let hovered = hovered_paths.contains_index(instance_hash.instance_index_hash);
+                if hovered || selected_paths.contains_index(instance_hash.instance_index_hash) {
+                    let color = if hovered {
+                        SceneSpatial::HOVER_COLOR
+                    } else {
+                        SceneSpatial::SELECTION_COLOR
+                    };
                     let rect =
                         glam::vec2(tensor.shape()[1].size as f32, tensor.shape()[0].size as f32);
                     scene
@@ -254,8 +263,8 @@ impl ImagesPart {
                         .batch("image outlines")
                         .world_from_obj(world_from_obj)
                         .add_axis_aligned_rectangle_outline_2d(glam::Vec2::ZERO, rect)
-                        .color(paint_props.fg_stroke.color)
-                        .radius(Size::new_points(paint_props.fg_stroke.width * 0.5));
+                        .color(color)
+                        .radius(Size::new_points(1.0));
                 }
 
                 push_tensor_texture(
@@ -265,7 +274,7 @@ impl ImagesPart {
                     world_from_obj,
                     instance_hash,
                     &tensor,
-                    paint_props.fg_stroke.color.into(),
+                    color.into(),
                 );
 
                 //TODO(john) add this component

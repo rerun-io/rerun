@@ -294,6 +294,7 @@ impl AsDynamicImage for ClassicTensor {
                                         .class_description(Some(ClassId(*p as u16)))
                                         .annotation_info()
                                         .color(None, DefaultColor::TransparentBlack)
+                                        .to_array()
                                 })
                                 .collect(),
                         )
@@ -313,6 +314,7 @@ impl AsDynamicImage for ClassicTensor {
                                         .class_description(Some(ClassId(*p)))
                                         .annotation_info()
                                         .color(None, DefaultColor::TransparentBlack)
+                                        .to_array()
                                 })
                                 .collect(),
                         )

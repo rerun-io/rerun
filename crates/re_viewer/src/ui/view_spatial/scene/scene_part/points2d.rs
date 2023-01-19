@@ -15,9 +15,7 @@ use crate::{
         scene::SceneQuery,
         transform_cache::{ReferenceFromObjTransform, TransformCache},
         view_spatial::{
-            scene::{
-                apply_hover_effect, instance_hash_if_interactive, paint_properties, Keypoints,
-            },
+            scene::{instance_hash_if_interactive, Keypoints},
             Label2D, Label2DTarget, SceneSpatial,
         },
         DefaultColor,
@@ -53,7 +51,8 @@ impl ScenePart for Points2DPartClassic {
                 continue;
             };
 
-            let highlighted_paths = ctx.hovered().check_obj_path(obj_path.hash());
+            let hovered_paths = ctx.hovered().check_obj_path(obj_path.hash());
+            let selected_paths = ctx.selection().check_obj_path(obj_path.hash());
 
             // If keypoints ids show up we may need to connect them later!
             // We include time in the key, so that the "Visible history" (time range queries) feature works.
@@ -94,25 +93,28 @@ impl ScenePart for Points2DPartClassic {
                 } else {
                     class_description.annotation_info()
                 };
-                let color = annotation_info.color(color, default_color);
+                let mut color = annotation_info.color(color, default_color);
+                let mut radius = radius.map_or(Size::AUTO, |r| Size::new_scene(*r));
                 let label = annotation_info.label(label);
 
-                let mut paint_props = paint_properties(color, radius);
-                if highlighted_paths.contains_index(instance_hash.instance_index_hash) {
-                    apply_hover_effect(&mut paint_props);
-                }
-
+                SceneSpatial::apply_hover_and_selection_effect(
+                    &mut radius,
+                    &mut color,
+                    instance_hash.instance_index_hash,
+                    &hovered_paths,
+                    &selected_paths,
+                );
                 point_batch
                     .add_point_2d(pos)
-                    .color(paint_props.fg_stroke.color)
-                    .radius(Size::new_points(paint_props.fg_stroke.width * 0.5))
+                    .color(color)
+                    .radius(radius)
                     .user_data(instance_hash);
 
                 if let Some(label) = label {
                     if label_batch.len() < max_num_labels {
                         label_batch.push(Label2D {
                             text: label,
-                            color: paint_props.fg_stroke.color,
+                            color,
                             target: Label2DTarget::Point(egui::pos2(pos.x, pos.y)),
                             labled_instance: instance_hash,
                         });
@@ -174,7 +176,8 @@ impl Points2DPart {
             .batch("2d points")
             .world_from_obj(world_from_obj);
 
-        let highlighted_paths = ctx.hovered().check_obj_path(ent_path.hash());
+        let hovered_paths = ctx.hovered().check_obj_path(ent_path.hash());
+        let selected_paths = ctx.selection().check_obj_path(ent_path.hash());
 
         let visitor = |instance: Instance,
                        pos: Point2D,
@@ -208,26 +211,30 @@ impl Points2DPart {
                 },
             );
 
-            let color =
+            let mut color =
                 annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color);
+            let mut radius = radius.map_or(Size::AUTO, |r| Size::new_scene(r.0));
             let label = annotation_info.label(label.map(|l| l.0).as_ref());
 
-            let mut paint_props = paint_properties(color, radius.map(|r| r.0).as_ref());
-            if highlighted_paths.contains_index(instance_hash.instance_index_hash) {
-                apply_hover_effect(&mut paint_props);
-            }
+            SceneSpatial::apply_hover_and_selection_effect(
+                &mut radius,
+                &mut color,
+                instance_hash.instance_index_hash,
+                &hovered_paths,
+                &selected_paths,
+            );
 
             point_batch
                 .add_point_2d(pos)
-                .color(paint_props.fg_stroke.color)
-                .radius(Size::new_points(paint_props.fg_stroke.width * 0.5))
+                .color(color)
+                .radius(radius)
                 .user_data(instance_hash);
 
             if let Some(label) = label {
                 if label_batch.len() < max_num_labels {
                     label_batch.push(Label2D {
                         text: label,
-                        color: paint_props.fg_stroke.color,
+                        color,
                         target: Label2DTarget::Point(egui::pos2(pos.x, pos.y)),
                         labled_instance: instance_hash,
                     });
