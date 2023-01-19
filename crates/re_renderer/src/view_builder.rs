@@ -100,6 +100,30 @@ pub enum Projection {
     },
 }
 
+/// How [`Size::AUTO`] is interpreted.
+#[derive(Clone, Copy, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub struct AutoSizeConfig {
+    /// Determines the point radius when [`crate::Size::AUTO`].
+    ///
+    /// If this in turn is an auto size, re_renderer will pick an arbitrary but okish ui size.
+    pub point_radius: Size,
+
+    /// Determines the line radius for [`crate::Size::AUTO`] for lines.
+    ///
+    /// If this in turn is an auto size, re_renderer will pick an arbitrary but okish ui size.
+    pub line_radius: Size,
+}
+
+impl Default for AutoSizeConfig {
+    fn default() -> Self {
+        Self {
+            point_radius: Size::AUTO,
+            line_radius: Size::AUTO,
+        }
+    }
+}
+
 /// Basic configuration for a target view.
 #[derive(Debug, Clone)]
 pub struct TargetConfiguration {
@@ -112,12 +136,8 @@ pub struct TargetConfiguration {
     /// I.e. the ui scaling factor.
     pub pixels_from_point: f32,
 
-    /// Determines the size of [`crate::Size::AUTO`].
-    ///
-    /// If this in turn is an auto size, a size in points will be chosen.
-    pub auto_size_config: Size,
-    /// By which factor  [`crate::Size::AUTO_LARGE`] should be larger.
-    pub auto_size_large_factor: f32,
+    /// How [`Size::AUTO`] is interpreted.
+    pub auto_size_config: AutoSizeConfig,
 }
 
 impl Default for TargetConfiguration {
@@ -131,8 +151,7 @@ impl Default for TargetConfiguration {
                 near_plane_distance: 0.01,
             },
             pixels_from_point: 1.0,
-            auto_size_config: Size::AUTO,
-            auto_size_large_factor: 1.5,
+            auto_size_config: Default::default(),
         }
     }
 }
@@ -353,15 +372,15 @@ impl ViewBuilder {
         let camera_forward = -view_from_world.row(2).truncate();
         let projection_from_world = projection_from_view * view_from_world;
 
-        let viewport_size_in_points = glam::vec2(
-            config.resolution_in_pixel[0] as f32 / config.pixels_from_point,
-            config.resolution_in_pixel[1] as f32 / config.pixels_from_point,
-        );
-
-        let auto_size = if config.auto_size_config.is_auto() {
-            Size::new_points((0.0005 * viewport_size_in_points.length()).clamp(1.5, 5.0))
+        let auto_size_points = if config.auto_size_config.point_radius.is_auto() {
+            Size::new_points(2.5)
         } else {
-            config.auto_size_config
+            config.auto_size_config.point_radius
+        };
+        let auto_size_lines = if config.auto_size_config.line_radius.is_auto() {
+            Size::new_points(1.5)
+        } else {
+            config.auto_size_config.line_radius
         };
 
         // See `depth_offset.wgsl`.
@@ -384,8 +403,8 @@ impl ViewBuilder {
                 pixel_world_size_from_camera_distance,
                 pixels_from_point: config.pixels_from_point,
 
-                auto_size: auto_size.0,
-                auto_size_large: auto_size.0 * config.auto_size_large_factor,
+                auto_size_points: auto_size_points.0,
+                auto_size_lines: auto_size_lines.0,
 
                 depth_offset_factor,
                 _padding: glam::Vec3::ZERO,

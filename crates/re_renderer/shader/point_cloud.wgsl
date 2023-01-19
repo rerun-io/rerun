@@ -114,7 +114,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     // Resolve radius to a world size. We need the camera distance for this, which is useful later on.
     let to_camera = frame.camera_position - point_data.pos;
     let camera_distance = length(to_camera);
-    let radius = unresolved_size_to_world(point_data.unresolved_radius, camera_distance, 1.0);
+    let radius = unresolved_size_to_world(point_data.unresolved_radius, camera_distance, frame.auto_size_points);
 
     // Span quad
     var pos: Vec3;
