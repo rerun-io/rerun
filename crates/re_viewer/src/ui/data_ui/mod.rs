@@ -2,7 +2,6 @@
 //! types in `egui`.
 //!
 
-use itertools::Itertools;
 use re_log_types::msg_bundle::ComponentBundle;
 use re_log_types::{PathOp, TimePoint};
 
@@ -58,11 +57,19 @@ impl DataUi for TimePoint {
 // TODO(jleibs): Better ArrowMsg view
 impl DataUi for [ComponentBundle] {
     fn data_ui(&self, _ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, _preview: Preview) {
-        // TODO(john): more handling
-        ui.label(format!(
-            "Arrow Payload of {:?}",
-            self.iter().map(|bundle| &bundle.name).collect_vec()
-        ));
+        ui.vertical(|ui| {
+            for component_bundle in self {
+                let ComponentBundle { name, value } = component_bundle;
+
+                use re_arrow_store::ArrayExt as _;
+                let num_instances = value.get_child_length(0); // TODO: this is wrong, somehow
+
+                ui.horizontal(|ui| {
+                    ui.label(format!("{}x", num_instances));
+                    ui.label(crate::ui::format_component_name(name));
+                });
+            }
+        });
     }
 }
 
