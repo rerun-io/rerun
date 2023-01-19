@@ -102,6 +102,7 @@ def init(application_id: str) -> None:
     """
     bindings.init(application_id)
 
+
 def spawn_and_connect(port: int = 9876) -> None:
     """
     Spawn a Rerun Viewer and stream logging data to it.
@@ -125,9 +126,7 @@ def connect(addr: Optional[str] = None) -> None:
 
 
 def spawn_viewer(port: int = 9876) -> None:
-    """
-    Spawn a Rerun Viewer, listening on the given port.
-    """
+    """Spawn a Rerun Viewer, listening on the given port."""
     import subprocess
     import sys
     from time import sleep
