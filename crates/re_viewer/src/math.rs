@@ -78,7 +78,6 @@ pub fn ease_out(t: f32) -> f32 {
 #[cfg(test)]
 mod tests {
     use crate::math::ray_closest_t_line_segment;
-    use cgmath::assert_ulps_eq;
     use glam::vec3;
 
     #[test]
@@ -86,37 +85,37 @@ mod tests {
         let ray_x = macaw::Ray3::from_origin_dir(glam::Vec3::ZERO, glam::Vec3::X);
 
         // through origin.
-        assert_ulps_eq!(
+        assert_eq!(
             ray_closest_t_line_segment(&ray_x, [vec3(0.0, 0.0, 1.0), vec3(0.0, 0.0, -1.0)]),
             0.0
         );
 
         // behind origin, orthogonal to ray.
-        assert_ulps_eq!(
+        assert_eq!(
             ray_closest_t_line_segment(&ray_x, [vec3(-1.0, 0.0, 1.0), vec3(-1.0, 0.0, -1.0)]),
             -1.0
         );
 
         // in front of origin, orthogonal to ray.
-        assert_ulps_eq!(
+        assert_eq!(
             ray_closest_t_line_segment(&ray_x, [vec3(1.0, 0.0, 1.0), vec3(1.0, 0.0, -1.0)]),
             1.0
         );
 
         // parallel to ray, half way in front
-        assert_ulps_eq!(
+        assert_eq!(
             ray_closest_t_line_segment(&ray_x, [vec3(0.5, 1.0, 0.0), vec3(1.5, 1.0, 0.0)]),
             0.5
         );
 
         // parallel to ray, half way behind
-        assert_ulps_eq!(
+        assert_eq!(
             ray_closest_t_line_segment(&ray_x, [vec3(-0.5, 1.0, 0.0), vec3(-1.5, 1.0, 0.0)]),
             -0.5
         );
 
         // Degenerated line segment at origin.
-        assert_ulps_eq!(
+        assert_eq!(
             ray_closest_t_line_segment(&ray_x, [vec3(0.0, 0.0, 0.0), vec3(0.0, 0.0, 0.0)]),
             0.0
         );

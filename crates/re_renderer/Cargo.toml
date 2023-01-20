@@ -9,8 +9,14 @@ publish = false
 [features]
 default = ["import-obj", "import-gltf"]
 
+## Support importing .obj files
 import-obj = ["dep:tobj"]
+
+## Support importing .gltf and .glb files
 import-gltf = ["dep:gltf"]
+
+## Enable (de)serialization using serde.
+serde = ["dep:serde"]
 
 [dependencies]
 re_error = { path = "../re_error" }
@@ -21,6 +27,7 @@ anyhow.workspace = true
 bitflags = "1.3"
 bytemuck = { version = "1.12", features = ["derive"] }
 clean-path = "0.2"
+document-features = "0.2"
 ecolor = { workspace = true, features = ["bytemuck"] }
 glam = { version = "0.20", features = [
   "bytemuck",
@@ -39,27 +46,27 @@ type-map = "0.5"
 unindent = "0.1"
 
 # optional
-gltf = { version = "1.0", optional = true }
+gltf = { workspace = true, optional = true }
 serde = { version = "1", features = ["derive"], optional = true }
 tobj = { version = "3.2", optional = true }
+
 # native
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 crossbeam = "0.8"
 notify = "5.0"
 puffin.workspace = true
-wgpu = { version = "0.14", default-features = false, features = ["wgsl"] }
-wgpu-core = "0.14"
+wgpu = { workspace = true, default-features = false, features = ["wgsl"] }
+wgpu-core = { workspace = true }
 
 # wasm
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-wgpu = { version = "0.14", default-features = false, features = [
+wgpu = { workspace = true, default-features = false, features = [
   "webgl",
   "wgsl",
 ] }
 
 
-## Examples
-
+# For examples:
 [dev-dependencies]
 image = { version = "0.24", default-features = false, features = ["png"] }
 instant = { version = "0.1", features = ["wasm-bindgen"] }
@@ -67,7 +74,6 @@ log = "0.4"
 pollster = "0.2"
 rand = "0.8"
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 winit = "0.27"
 zip = { version = "0.6", default-features = false, features = ["deflate"] }
 
@@ -80,7 +86,6 @@ async-executor = "1.0"
 console_error_panic_hook = "0.1.6"
 # required to make rand work on wasm, see https://github.com/rust-random/rand#wasm-support
 getrandom = { version = "0.2", features = ["js"] }
-tracing-wasm = "0.2"
 wasm-bindgen-futures = "0.4.33"
 web-sys = { version = "0.3.60", features = [
   "Location",
@@ -92,8 +97,7 @@ web-sys = { version = "0.3.60", features = [
 ] }
 
 
-## Build
-
+# For build.rs:
 [build-dependencies]
 anyhow.workspace = true
 clean-path = "0.2"

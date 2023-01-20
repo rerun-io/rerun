@@ -198,6 +198,8 @@ if __name__ == "__main__":
         # You can ommit the argument to connect to the default address,
         # which is `127.0.0.1:9876`.
         rr.connect(args.addr)
+    elif args.save is None:
+        rr.spawn_and_connect()
 
     recording_path = ensure_recording_downloaded(args.recording)
 
@@ -210,6 +212,3 @@ if __name__ == "__main__":
 
     if args.save is not None:
         rr.save(args.save)
-    elif not args.connect:
-        # Show the logged data inside the Python process:
-        rr.show()

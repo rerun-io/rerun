@@ -3,7 +3,15 @@
 //! The SDK is responsible for submitting component columns that conforms to these schemas. The
 //! schemas are additionally documented in doctests.
 
-use arrow2::datatypes::Field;
+use arrow2::{
+    array::{FixedSizeListArray, MutableFixedSizeListArray},
+    datatypes::{DataType, Field},
+};
+use arrow2_convert::{
+    deserialize::{ArrowArray, ArrowDeserialize},
+    field::{ArrowEnableVecForType, ArrowField},
+    serialize::ArrowSerialize,
+};
 use lazy_static::lazy_static;
 
 use crate::msg_bundle::Component;
@@ -54,7 +62,7 @@ pub use size::Size3D;
 pub use tensor::{Tensor, TensorData, TensorDataMeaning, TensorDimension, TensorId, TensorTrait};
 pub use text_entry::TextEntry;
 pub use transform::{Pinhole, Rigid3, Transform};
-pub use vec::{Vec2D, Vec3D};
+pub use vec::{Vec2D, Vec3D, Vec4D};
 
 lazy_static! {
     //TODO(john) actully use a run-time type registry
@@ -102,3 +110,86 @@ pub enum FieldError {
 }
 
 pub type Result<T> = std::result::Result<T, FieldError>;
+
+/// `arrow2_convert` helper for fields of type `[T; SIZE]`
+///
+/// This allows us to use fields of type `[T; SIZE]` in `arrow2_convert`. Since this is a helper,
+/// it must be specified as the type of the field using the `#[arrow_field(type = "FixedSizeArrayField<T,SIZE>")]` attribute.
+///
+/// ## Example:
+/// ```
+/// use arrow2_convert::{ArrowField, ArrowSerialize, ArrowDeserialize};
+/// use re_log_types::field_types::FixedSizeArrayField;
+///
+/// #[derive(ArrowField, ArrowSerialize, ArrowDeserialize)]
+/// pub struct ConvertibleType {
+///     #[arrow_field(type = "FixedSizeArrayField<bool,2>")]
+///     data: [bool; 2],
+/// }
+/// ```
+pub struct FixedSizeArrayField<T, const SIZE: usize>(std::marker::PhantomData<T>);
+
+impl<T, const SIZE: usize> ArrowField for FixedSizeArrayField<T, SIZE>
+where
+    T: ArrowField + ArrowEnableVecForType,
+{
+    type Type = [T; SIZE];
+
+    #[inline]
+    fn data_type() -> DataType {
+        arrow2::datatypes::DataType::FixedSizeList(Box::new(<T as ArrowField>::field("item")), SIZE)
+    }
+}
+
+impl<T, const SIZE: usize> ArrowSerialize for FixedSizeArrayField<T, SIZE>
+where
+    T: ArrowSerialize + ArrowEnableVecForType + ArrowField<Type = T> + 'static,
+    <T as ArrowSerialize>::MutableArrayType: Default,
+{
+    type MutableArrayType = MutableFixedSizeListArray<<T as ArrowSerialize>::MutableArrayType>;
+    #[inline]
+    fn new_array() -> Self::MutableArrayType {
+        Self::MutableArrayType::new_with_field(
+            <T as ArrowSerialize>::new_array(),
+            "item",
+            <T as ArrowField>::is_nullable(),
+            SIZE,
+        )
+    }
+
+    fn arrow_serialize(
+        v: &<Self as ArrowField>::Type,
+        array: &mut Self::MutableArrayType,
+    ) -> arrow2::error::Result<()> {
+        let values = array.mut_values();
+        for i in v.iter() {
+            <T as ArrowSerialize>::arrow_serialize(i, values)?;
+        }
+        array.try_push_valid()
+    }
+}
+
+impl<T, const SIZE: usize> ArrowDeserialize for FixedSizeArrayField<T, SIZE>
+where
+    T: ArrowDeserialize + ArrowEnableVecForType + ArrowField<Type = T> + 'static,
+    <T as ArrowDeserialize>::ArrayType: 'static,
+    for<'b> &'b <T as ArrowDeserialize>::ArrayType: IntoIterator,
+{
+    type ArrayType = FixedSizeListArray;
+
+    fn arrow_deserialize(
+        v: <&Self::ArrayType as IntoIterator>::Item,
+    ) -> Option<<Self as ArrowField>::Type> {
+        if let Some(array) = v {
+            let mut iter = <<T as ArrowDeserialize>::ArrayType as ArrowArray>::iter_from_array_ref(
+                array.as_ref(),
+            )
+            .map(<T as ArrowDeserialize>::arrow_deserialize_internal);
+            let out: Result<[T; SIZE]> =
+                array_init::try_array_init(|_i: usize| iter.next().ok_or(FieldError::BadValue));
+            out.ok()
+        } else {
+            None
+        }
+    }
+}

@@ -100,7 +100,11 @@ def log_text_entry(
         from rerun.components.color import ColorRGBAArray
         from rerun.components.text_entry import TextEntryArray
 
-        comps = {"rerun.text_entry": TextEntryArray.from_bodies_and_levels([(text, level)])}
+        comps = {}
+        if text:
+            comps["rerun.text_entry"] = TextEntryArray.from_bodies_and_levels([(text, level)])
+        else:
+            logging.warning(f"Null  text entry in log_text_entry('{obj_path}') will be dropped.")
 
         if color:
             colors = _normalize_colors([color])

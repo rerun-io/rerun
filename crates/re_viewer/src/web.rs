@@ -15,8 +15,7 @@ pub async fn start(canvas_id: &str) -> std::result::Result<(), eframe::wasm_bind
     // Make sure panics are logged using `console.error`.
     console_error_panic_hook::set_once();
 
-    // Redirect tracing to `console.log`:
-    redirect_tracing_to_console_log();
+    re_log::setup_web_logging();
 
     let web_options = eframe::WebOptions {
         follow_system_theme: false,
@@ -50,18 +49,4 @@ fn get_url(info: &eframe::IntegrationInfo) -> String {
     } else {
         url
     }
-}
-
-fn redirect_tracing_to_console_log() {
-    use tracing_subscriber::layer::SubscriberExt as _;
-    tracing::subscriber::set_global_default(
-        tracing_subscriber::Registry::default()
-            .with(tracing_subscriber::EnvFilter::new(
-                re_log::default_web_log_filter(),
-            ))
-            .with(tracing_wasm::WASMLayer::new(
-                tracing_wasm::WASMLayerConfig::default(),
-            )),
-    )
-    .expect("Failed to set tracing subscriber.");
 }

@@ -261,14 +261,12 @@ impl ArrayExt for dyn Array {
 
 #[test]
 fn test_clean_for_polars_nomodify() {
-    use re_log_types::datagen::build_some_rects;
+    use re_log_types::datagen::build_some_colors;
     use re_log_types::msg_bundle::ComponentBundle;
 
-    // Rects don't need polars cleaning
-    let bundle: ComponentBundle = build_some_rects(5).try_into().unwrap();
-
+    // Colors don't need polars cleaning
+    let bundle: ComponentBundle = build_some_colors(5).try_into().unwrap();
     let cleaned = bundle.value.clean_for_polars();
-
     assert_eq!(bundle.value, cleaned);
 }
 

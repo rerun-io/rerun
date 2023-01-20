@@ -100,15 +100,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "216261ddc8289130e551ddcd5ce8a064710c0d064a4d2895c67151c92b5443f6"
 
 [[package]]
-name = "approx"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f2a05fd1bd10b2527e20a2cd32d8873d115b8b39fe219ee25f42a8aca6ba278"
-dependencies = [
- "num-traits",
-]
-
-[[package]]
 name = "arboard"
 version = "3.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -127,6 +118,12 @@ dependencies = [
  "winapi",
  "x11rb",
 ]
+
+[[package]]
+name = "array-init"
+version = "2.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3d62b7694a562cdf5a74227903507c56ab2cc8bdd1f781ed5cb4cf9c9f810bfc"
 
 [[package]]
 name = "array-init-cursor"
@@ -545,17 +542,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fd16c4719339c4530435d38e511904438d07cce7950afa3718a84ac36c10e89e"
 
 [[package]]
-name = "cgmath"
-version = "0.18.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1a98d30140e3296250832bbaaff83b27dcd6fa3cc70fb6f1f3e5c9c0023b5317"
-dependencies = [
- "approx",
- "mint",
- "num-traits",
-]
-
-[[package]]
 name = "chrono"
 version = "0.4.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -768,6 +754,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bd7bef69dc86e3c610e4e7aed41035e2a7ed12e72dd7530f61327a6579a4390b"
 dependencies = [
  "crossbeam-utils",
+]
+
+[[package]]
+name = "console"
+version = "0.15.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c050367d967ced717c04b65d8c619d863ef9292ce0c5760028655a2fb298718c"
+dependencies = [
+ "encode_unicode",
+ "lazy_static",
+ "libc",
+ "terminal_size",
+ "winapi",
 ]
 
 [[package]]
@@ -1425,6 +1424,12 @@ dependencies = [
  "bytemuck",
  "serde",
 ]
+
+[[package]]
+name = "encode_unicode"
+version = "0.3.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a357d28ed41a50f9c765dbfe56cbc04a64e53e5fc58ba79fbc34c10ef3df831f"
 
 [[package]]
 name = "encoding_rs"
@@ -2347,6 +2352,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "insta"
+version = "1.23.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e48b08a091dfe5b09a6a9688c468fdd5b4396e92ce09e2eb932f0884b02788a4"
+dependencies = [
+ "console",
+ "lazy_static",
+ "linked-hash-map",
+ "similar",
+ "yaml-rust",
+]
+
+[[package]]
 name = "instant"
 version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2589,6 +2607,12 @@ checksum = "9272ab7b96c9046fbc5bc56c06c117cb639fe2d509df0c421cad82d2915cf369"
 dependencies = [
  "cc",
 ]
+
+[[package]]
+name = "linked-hash-map"
+version = "0.5.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0717cef1bc8b636c6e1c1bbdefc09e6322da8a9321966e8928ef80d20f7f770f"
 
 [[package]]
 name = "litrs"
@@ -3734,7 +3758,6 @@ dependencies = [
  "re_log_types",
  "static_assertions",
  "thiserror",
- "tracing-subscriber",
 ]
 
 [[package]]
@@ -3777,11 +3800,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_int_histogram"
+version = "0.1.0"
+dependencies = [
+ "criterion",
+ "insta",
+ "mimalloc",
+ "smallvec",
+ "static_assertions",
+]
+
+[[package]]
 name = "re_log"
 version = "0.1.0"
 dependencies = [
  "log-once",
  "tracing",
+ "tracing-subscriber",
+ "tracing-wasm",
 ]
 
 [[package]]
@@ -3790,6 +3826,7 @@ version = "0.1.0"
 dependencies = [
  "ahash 0.8.2",
  "anyhow",
+ "array-init",
  "arrow2",
  "arrow2_convert",
  "bytemuck",
@@ -3858,11 +3895,11 @@ dependencies = [
  "nohash-hasher",
  "polars-core",
  "re_arrow_store",
+ "re_data_store",
  "re_format",
  "re_log",
  "re_log_types",
  "thiserror",
- "tracing-subscriber",
 ]
 
 [[package]]
@@ -3877,6 +3914,7 @@ dependencies = [
  "clean-path",
  "console_error_panic_hook",
  "crossbeam",
+ "document-features",
  "ecolor",
  "getrandom",
  "glam",
@@ -3905,8 +3943,6 @@ dependencies = [
  "thiserror",
  "tobj",
  "tracing",
- "tracing-subscriber",
- "tracing-wasm",
  "type-map",
  "unindent",
  "walkdir",
@@ -3926,7 +3962,6 @@ dependencies = [
  "anyhow",
  "bincode",
  "crossbeam",
- "ctrlc",
  "document-features",
  "emath",
  "rand",
@@ -3963,7 +3998,6 @@ dependencies = [
  "rerun",
  "rerun_sdk",
  "tokio",
- "tracing-subscriber",
  "uuid",
 ]
 
@@ -4005,6 +4039,7 @@ dependencies = [
  "arrow2",
  "arrow2_convert",
  "criterion",
+ "document-features",
  "getrandom",
  "once_cell",
  "serde",
@@ -4034,7 +4069,6 @@ dependencies = [
  "anyhow",
  "arboard",
  "bytemuck",
- "cgmath",
  "console_error_panic_hook",
  "ctrlc",
  "eframe",
@@ -4078,8 +4112,6 @@ dependencies = [
  "slotmap",
  "smallvec",
  "tracing",
- "tracing-subscriber",
- "tracing-wasm",
  "uuid",
  "vec1",
  "wasm-bindgen-futures",
@@ -4098,7 +4130,6 @@ dependencies = [
  "hyper",
  "re_log",
  "tokio",
- "tracing-subscriber",
 ]
 
 [[package]]
@@ -4183,11 +4214,11 @@ checksum = "f1382d1f0a252c4bf97dc20d979a2fdd05b024acd7c2ed0f7595d7817666a157"
 
 [[package]]
 name = "reqwest"
-version = "0.11.13"
+version = "0.11.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "68cc60575865c7831548863cc02356512e3f1dc2f3f82cb837d7fc4cc8f3c97c"
+checksum = "21eed90ec8570952d53b772ecf8f206aa1ec9a3d76b2521c56c42973f2d91ee9"
 dependencies = [
- "base64 0.13.1",
+ "base64 0.21.0",
  "bytes",
  "encoding_rs",
  "futures-core",
@@ -4244,7 +4275,6 @@ dependencies = [
  "re_web_server",
  "re_ws_comms",
  "tokio",
- "tracing-subscriber",
  "webbrowser",
 ]
 
@@ -4276,7 +4306,6 @@ dependencies = [
  "re_web_server",
  "re_ws_comms",
  "tokio",
- "tracing-subscriber",
  "webbrowser",
 ]
 
@@ -4644,6 +4673,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f27f6278552951f1f2b8cf9da965d10969b2efdea95a6ec47987ab46edfe263a"
 
 [[package]]
+name = "similar"
+version = "2.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "420acb44afdae038210c99e69aae24109f32f15500aa708e81d46c9f29d55fcf"
+
+[[package]]
 name = "slab"
 version = "0.4.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4880,6 +4915,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bab24d30b911b2376f3a13cc2cd443142f0c81dda04c118693e35b3835757755"
 dependencies = [
  "winapi-util",
+]
+
+[[package]]
+name = "terminal_size"
+version = "0.1.17"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "633c1a546cee861a1a6d0dc69ebeca693bf4296661ba7852b9d21d159e0506df"
+dependencies = [
+ "libc",
+ "winapi",
 ]
 
 [[package]]
@@ -6201,6 +6246,15 @@ name = "xxhash-rust"
 version = "0.8.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "735a71d46c4d68d71d4b24d03fdc2b98e38cea81730595801db779c04fe80d70"
+
+[[package]]
+name = "yaml-rust"
+version = "0.4.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "56c1936c4cc7a1c9ab21a1ebb602eb942ba868cbd44a99cb7cdc5892335e1c85"
+dependencies = [
+ "linked-hash-map",
+]
 
 [[package]]
 name = "zip"

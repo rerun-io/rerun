@@ -3,14 +3,13 @@ use std::sync::Arc;
 use ahash::{HashMap, HashMapExt};
 use glam::{Mat4, Vec3};
 
-use re_arrow_store::LatestAtQuery;
 use re_data_store::{query::visit_type_data_5, FieldName, InstanceIdHash, ObjPath, ObjectProps};
 use re_log_types::{
-    field_types::{ClassId, ColorRGBA, KeypointId, Label, Point3D, Radius},
+    field_types::{ClassId, ColorRGBA, Instance, KeypointId, Label, Point3D, Radius},
     msg_bundle::Component,
     IndexHash, MsgId, ObjectType,
 };
-use re_query::{query_entity_with_primary, EntityView, QueryError};
+use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::Size;
 
 use crate::{
@@ -61,7 +60,7 @@ impl ScenePart for Points3DPartClassic {
                 continue;
             };
 
-            let highlighted_paths = ctx.hovered().is_path_selected(obj_path.hash());
+            let highlighted_paths = ctx.hovered().check_obj_path(obj_path.hash());
 
             let mut point_batch = scene
                 .primitives
@@ -105,7 +104,7 @@ impl ScenePart for Points3DPartClassic {
                 let mut color = to_ecolor(annotation_info.color(color, default_color));
                 let mut radius = radius.copied().map_or(Size::AUTO, Size::new_scene);
 
-                if highlighted_paths.is_index_selected(instance_hash.instance_index_hash) {
+                if highlighted_paths.contains_index(instance_hash.instance_index_hash) {
                     color = SceneSpatial::HOVER_COLOR;
                     radius = SceneSpatial::hover_size_boost(radius);
                 }
@@ -286,7 +285,7 @@ impl Points3DPart {
             point_positions.as_slice(),
         )?;
 
-        let highlighted_paths = ctx.hovered().is_path_selected(ent_path.hash());
+        let highlighted_paths = ctx.hovered().check_obj_path(ent_path.hash());
 
         let instance_hashes = entity_view
             .iter_instances()?
@@ -300,7 +299,7 @@ impl Points3DPart {
             .collect::<Vec<_>>();
         let highlighted = instance_hashes
             .iter()
-            .map(|hash| highlighted_paths.is_index_selected(hash.instance_index_hash))
+            .map(|hash| highlighted_paths.contains_index(hash.instance_index_hash))
             .collect::<Vec<_>>();
 
         let colors = Self::process_colors(entity_view, ent_path, &highlighted, &annotation_infos)?;
@@ -339,13 +338,15 @@ impl ScenePart for Points3DPart {
                 continue;
             };
 
-            let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
-
-            match query_entity_with_primary::<Point3D>(
+            match query_primary_with_history::<Point3D, 7>(
                 &ctx.log_db.obj_db.arrow_store,
-                &timeline_query,
+                &query.timeline,
+                &query.latest_at,
+                &props.visible_history,
                 ent_path,
-                &[
+                [
+                    Point3D::name(),
+                    Instance::name(),
                     ColorRGBA::name(),
                     Radius::name(),
                     Label::name(),
@@ -353,16 +354,19 @@ impl ScenePart for Points3DPart {
                     KeypointId::name(),
                 ],
             )
-            .and_then(|entity_view| {
-                self.process_entity_view(
-                    scene,
-                    ctx,
-                    query,
-                    &props,
-                    &entity_view,
-                    ent_path,
-                    world_from_obj,
-                )
+            .and_then(|entities| {
+                for entity in entities {
+                    self.process_entity_view(
+                        scene,
+                        ctx,
+                        query,
+                        &props,
+                        &entity,
+                        ent_path,
+                        world_from_obj,
+                    )?;
+                }
+                Ok(())
             }) {
                 Ok(_) | Err(QueryError::PrimaryNotFound) => {}
                 Err(err) => {

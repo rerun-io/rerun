@@ -328,8 +328,7 @@ pub fn start<E: Example + 'static>() {
 
     #[cfg(not(target_arch = "wasm32"))]
     {
-        re_log::set_default_rust_log_env();
-        tracing_subscriber::fmt::init();
+        re_log::setup_native_logging();
 
         // Set size to a common physical resolution as a comparable start-up default.
         window.set_inner_size(winit::dpi::PhysicalSize {
@@ -345,8 +344,7 @@ pub fn start<E: Example + 'static>() {
         // Make sure panics are logged using `console.error`.
         console_error_panic_hook::set_once();
 
-        // Redirect tracing to `console.log`:
-        redirect_tracing_to_console_log();
+        re_log::setup_web_logging();
 
         use winit::platform::web::WindowExtWebSys;
         // On wasm, append the canvas to the document body
@@ -360,21 +358,6 @@ pub fn start<E: Example + 'static>() {
             .expect("couldn't append canvas to document body");
         wasm_bindgen_futures::spawn_local(run::<E>(event_loop, window));
     }
-}
-
-#[cfg(target_arch = "wasm32")]
-fn redirect_tracing_to_console_log() {
-    use tracing_subscriber::layer::SubscriberExt as _;
-    tracing::subscriber::set_global_default(
-        tracing_subscriber::Registry::default()
-            .with(tracing_subscriber::EnvFilter::new(
-                re_log::default_web_log_filter(),
-            ))
-            .with(tracing_wasm::WASMLayer::new(
-                tracing_wasm::WASMLayerConfig::default(),
-            )),
-    )
-    .expect("Failed to set tracing subscriber.");
 }
 
 // This allows treating the framework as a standalone example,
