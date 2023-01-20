@@ -14,9 +14,9 @@ from rerun.log import (
     _normalize_labels,
     _normalize_radii,
 )
+from rerun.log.error_utils import _send_warning
 
 from rerun import bindings
-from rerun.log.error_utils import _send_warning
 
 __all__ = [
     "log_point",
@@ -190,7 +190,7 @@ def log_points(
                 identifiers = [int(id) for id in identifiers]
                 identifiers_np = np.array(identifiers, dtype="int64")
             except ValueError:
-                _send_warning(f"Only integer identifies supported", 1)
+                _send_warning("Only integer identifies supported", 1)
 
         # 0 = instanced, 1 = splat
         comps = [{}, {}]  # type: ignore[var-annotated]
