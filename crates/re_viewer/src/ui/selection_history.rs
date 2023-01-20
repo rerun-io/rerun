@@ -35,11 +35,18 @@ impl SelectionHistory {
     pub(crate) fn on_frame_start(&mut self, log_db: &LogDb, blueprint: &Blueprint) {
         crate::profile_function!();
 
+        let mut i = 0;
         self.stack.retain_mut(|selection| {
             selection.purge_invalid(log_db, blueprint);
-            !selection.is_empty()
+            let retain = !selection.is_empty();
+            if !retain && i <= self.current {
+                self.current = self.current.saturating_sub(1);
+            }
+            i += 1;
+            retain
         });
 
+        // In case `self.current` was bad going in to this function:
         self.current = self.current.min(self.stack.len().saturating_sub(1));
     }
 
