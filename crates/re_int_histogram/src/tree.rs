@@ -108,7 +108,7 @@ impl Int64Histogram {
 
     /// Iterate over a certain range, returning ranges that are at most `cutoff_size` long.
     ///
-    /// To get all individual entries, use `cutoff_size=1`.
+    /// To get all individual entries, use `cutoff_size<=1`.
     /// When `cutoff_size > 1` you will get approximate ranges, which may cover elements that has no count.
     ///
     /// For instance, inserting tow elements at `10` and `15` and setting a `cutoff_size=10`
