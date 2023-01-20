@@ -80,6 +80,8 @@ enum Commands {
 
 #[derive(Debug, Clone, Subcommand)]
 pub enum AnalyticsCommands {
+    /// Prints extra information about analytics.
+    Details,
     /// Deletes everything related to analytics.
     ///
     /// This will remove all pending data that hasn't yet been sent to our servers, as well as
@@ -90,7 +92,7 @@ pub enum AnalyticsCommands {
     /// Disable analytics.
     Disable,
     /// Prints the current configuration.
-    PrintConfig,
+    Config,
 }
 
 pub async fn run<I, T>(args: I) -> anyhow::Result<()>
@@ -116,10 +118,12 @@ where
 
 fn run_analytics(cmd: &AnalyticsCommands) -> Result<(), re_analytics::cli::CliError> {
     match cmd {
+        #[allow(clippy::unit_arg)]
+        AnalyticsCommands::Details => Ok(re_analytics::cli::print_details()),
         AnalyticsCommands::Clear => re_analytics::cli::clear(),
         AnalyticsCommands::Enable => re_analytics::cli::opt(true),
         AnalyticsCommands::Disable => re_analytics::cli::opt(false),
-        AnalyticsCommands::PrintConfig => re_analytics::cli::print_config(),
+        AnalyticsCommands::Config => re_analytics::cli::print_config(),
     }
 }
 

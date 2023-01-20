@@ -22,7 +22,6 @@ pub enum EventKind {
 pub struct Event {
     // NOTE: serialized in a human-readable format as we want end users to be able to inspect the
     // data we send out.
-    // TODO: is UTC fine? do we care about users' tz?
     #[serde(with = "::time::serde::rfc3339")]
     pub time_utc: OffsetDateTime,
     pub kind: EventKind,
@@ -70,19 +69,15 @@ const DISCLAIMER: &str = "
     Welcome to Rerun!
 
     Summary:
-    - This open source library collects anonymous usage statistics.
-    - We cannot see and do not store information contained inside Rerun apps,
-      such as text logs, images, point clouds, etc.
-    - Telemetry data is stored in servers in Europe.
-    - If you'd like to opt out, run the following: `rerun analytics disable`.
+    - This open source library collects anonymous usage data
+      to help the Rerun team improve the library.
+    - The data you pass to Rerun apps, such as point clouds, images, or text logs,
+      will never be collected.
+    - Collected usage data is sent to and stored in servers within the EU.
+    - For more details and instructions on how to opt out, run: `rerun analytics details`.
 
-    You can check out all of our telemetry events in `re_analytics/src/events.rs`.
-
-    As this is this your first session, we will _not_ send out any telemetry data yet,
+    As this is this your first session, _no_ usage data has been sent yet,
     giving you an opportunity to opt-out first.
-
-    You can audit the actual data being sent out by looking at our data directory at the
-    end of your session:
 ";
 
 #[derive(thiserror::Error, Debug)]
@@ -98,6 +93,7 @@ pub enum AnalyticsError {
 }
 
 pub struct Analytics {
+    config: Config,
     /// `None` if analytics are disabled.
     pipeline: Option<Pipeline>,
 
@@ -115,7 +111,6 @@ impl Analytics {
 
         if config.is_first_run() {
             eprintln!("{DISCLAIMER}");
-            eprintln!("    {:?}\n", config.data_dir());
 
             config.save()?;
             trace!(?config, ?tick, "saved analytics config");
@@ -131,10 +126,15 @@ impl Analytics {
         }
 
         Ok(Self {
+            config,
             default_props,
             pipeline,
             event_id: AtomicU64::new(1),
         })
+    }
+
+    pub fn config(&self) -> &Config {
+        &self.config
     }
 
     pub fn record(&self, mut event: Event) {
