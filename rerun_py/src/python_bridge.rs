@@ -260,9 +260,8 @@ fn parse_index(s: String) -> PyResult<Index> {
 }
 
 // ----------------------------------------------------------------------------
-
 #[pyfunction]
-fn main(argv: Vec<String>) -> PyResult<()> {
+fn main(argv: Vec<String>) -> PyResult<u8> {
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
