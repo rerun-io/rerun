@@ -284,12 +284,13 @@ impl ImagesPart {
                     color.into(),
                 );
 
-                //TODO(john) add this component
-                let meter: Option<&f32> = None;
+                // TODO(jleibs): Meter should really be its own component
+                let meter = tensor.meter.clone();
+
                 scene.ui.images.push(Image {
                     instance_hash,
                     tensor: AnyTensor::ArrowTensor(tensor),
-                    meter: meter.copied(),
+                    meter: meter,
                     annotations,
                 });
             }
