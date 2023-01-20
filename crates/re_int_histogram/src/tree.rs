@@ -191,6 +191,7 @@ impl<'a> Iterator for Iter<'a> {
 // ----------------------------------------------------------------------------
 // Low-level data structure.
 
+#[allow(clippy::enum_variant_names)]
 #[derive(Clone, Debug)]
 enum Node {
     /// An inner node, addressed by the next few bits of the key/address.
