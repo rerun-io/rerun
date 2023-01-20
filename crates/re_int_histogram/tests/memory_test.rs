@@ -39,6 +39,10 @@ fn live_bytes() -> usize {
     LIVE_BYTES_IN_THREAD.with(|bytes| bytes.load(Relaxed))
 }
 
+/// Assumes all allocations are on the calling thread.
+///
+/// The reason we use thread-local counting is so that
+/// the counting won't be confused by anyt other running threads (e.g. other tests).
 fn memory_use<R>(run: impl Fn() -> R) -> usize {
     let used_bytes_start = live_bytes();
     let ret = run();

@@ -35,6 +35,13 @@ unsafe impl std::alloc::GlobalAlloc for TrackingAllocator {
     }
 }
 
+/// Can be used to track amount of memory allocates,
+/// assuming all allocations are on the calling thread.
+///
+/// The reason we use thread-local counting is so that
+/// the counting won't be confused by any other running threads.
+/// This is not currently important, but would be important if this file were to
+/// be converted into a regression test instead (tests run in parallel).
 fn live_bytes() -> usize {
     LIVE_BYTES_IN_THREAD.with(|bytes| bytes.load(Relaxed))
 }
