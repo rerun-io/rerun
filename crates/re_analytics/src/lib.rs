@@ -13,8 +13,12 @@ use time::OffsetDateTime;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum EventKind {
     /// Append a new event to the time series associated with this analytics ID.
+    ///
+    /// Used e.g. to send an event everytime the app start.
     Append,
     /// Update the permanent state associated with this analytics ID.
+    ///
+    /// Used e.g. to associate an OS with a particular analytics ID upon its creation.
     Update,
 }
 
@@ -64,7 +68,6 @@ pub enum Property {
 
 // ---
 
-// TODO: needs a real copy here!
 const DISCLAIMER: &str = "
     Welcome to Rerun!
 
@@ -97,7 +100,7 @@ pub struct Analytics {
     /// `None` if analytics are disabled.
     pipeline: Option<Pipeline>,
 
-    default_props: HashMap<Cow<'static, str>, Property>,
+    default_append_props: HashMap<Cow<'static, str>, Property>,
     event_id: AtomicU64,
 }
 
@@ -127,7 +130,7 @@ impl Analytics {
 
         Ok(Self {
             config,
-            default_props,
+            default_append_props: default_props,
             pipeline,
             event_id: AtomicU64::new(1),
         })
@@ -141,7 +144,7 @@ impl Analytics {
         if let Some(pipeline) = self.pipeline.as_ref() {
             // Insert default props
             if event.kind == EventKind::Append {
-                event.props.extend(self.default_props.clone());
+                event.props.extend(self.default_append_props.clone());
             }
 
             // Insert event ID

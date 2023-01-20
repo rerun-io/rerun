@@ -10,6 +10,8 @@ default-run = "rerun"
 
 [features]
 default = ["server", "analytics"]
+
+## Enable telemetry using our analytics SDK.
 analytics = ["dep:re_analytics"]
 
 ## Support for running a HTTP server that listens to incoming log messages from a Rerun SDK.

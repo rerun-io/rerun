@@ -30,7 +30,7 @@ pub struct Config {
     #[serde(rename = "analytics_id")]
     pub analytics_id: String,
 
-    /// A unique UID for this session.
+    /// A unique ID for this session.
     #[serde(skip, default = "::uuid::Uuid::new_v4")]
     pub session_id: Uuid,
 

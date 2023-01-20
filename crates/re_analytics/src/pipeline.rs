@@ -9,7 +9,7 @@ use crossbeam::{
     select,
 };
 
-use re_log::{error, trace};
+use re_log::{error, trace, warn, warn_once};
 
 use crate::{Config, Event, PostHogSink, SinkError};
 
@@ -126,7 +126,7 @@ fn try_send_event(event_tx: &channel::Sender<Result<Event, RecvError>>, event: E
             // Technically, we should call `.unwrap()` here, but analytics _must never_ be the
             // cause of a crash, so let's not take any unnecessary risk and just ignore the
             // error instead.
-            trace!("dropped event, analytics channel is disconnected");
+            warn_once!("dropped event, analytics channel is disconnected");
         }
     }
 }
@@ -197,13 +197,13 @@ fn realtime_pipeline(
         }
 
         if let Err(err) = flush_events(session_file, &analytics_id, &session_id, sink) {
-            error!(%err, %analytics_id, %session_id, "couldn't flush analytics data file");
+            warn!(%err, %analytics_id, %session_id, "couldn't flush analytics data file");
             // We couldn't flush the session file: keep it intact so that we can retry later.
             return;
         }
 
         if let Err(err) = session_file.set_len(0) {
-            error!(%err, %analytics_id, %session_id, "couldn't truncate analytics data file");
+            warn!(%err, %analytics_id, %session_id, "couldn't truncate analytics data file");
             // We couldn't truncate the session file: we'll have to keep it intact for now, which
             // will result in duplicated data that we'll be able to deduplicate at query time.
             return;
@@ -212,7 +212,7 @@ fn realtime_pipeline(
             // We couldn't reset the session file... That one is a bit messy and will likely break
             // analytics for the entire duration of this session, but that really _really_ should
             // never happen.
-            error!(%err, %analytics_id, %session_id, "couldn't seek into analytics data file");
+            warn!(%err, %analytics_id, %session_id, "couldn't seek into analytics data file");
         }
     };
 
@@ -221,9 +221,9 @@ fn realtime_pipeline(
             %analytics_id, %session_id,
             "appending event to current session file..."
         );
-        if let Some(event) = append_event(session_file, &analytics_id, &session_id, event) {
+        if let Err(event) = append_event(session_file, &analytics_id, &session_id, event) {
             // We failed to append the event to the current session, so push it back at the end of
-            // the queue to be retried later.
+            // the queue to be retried later on.
             try_send_event(event_tx, event);
         }
     };
@@ -251,12 +251,12 @@ fn append_event(
     analytics_id: &str,
     session_id: &str,
     event: Event,
-) -> Option<Event> {
+) -> Result<(), Event> {
     let mut event_str = match serde_json::to_string(&event) {
         Ok(event_str) => event_str,
         Err(err) => {
             error!(%err, %analytics_id, %session_id, "corrupt analytics event: discarding");
-            return None;
+            return Ok(());
         }
     };
     event_str.push('\n');
@@ -270,11 +270,11 @@ fn append_event(
         // We'll try to write a linefeed one more time, just in case, to avoid potentially
         // impacting other events.
         _ = session_file.write_all(b"\n");
-        error!(%err, %analytics_id, %session_id, "couldn't write to analytics data file");
-        return Some(event);
+        warn!(%err, %analytics_id, %session_id, "couldn't write to analytics data file");
+        return Err(event);
     }
 
-    None
+    Ok(())
 }
 
 /// Sends all events currently buffered in the `session_file` down the `sink`.
@@ -285,7 +285,7 @@ fn flush_events(
     sink: &PostHogSink,
 ) -> Result<(), SinkError> {
     if let Err(err) = session_file.seek(std::io::SeekFrom::Start(0)) {
-        error!(%err, %analytics_id, %session_id, "couldn't seek into analytics data file");
+        warn!(%err, %analytics_id, %session_id, "couldn't seek into analytics data file");
         return Err(err.into());
     }
 
@@ -316,7 +316,7 @@ fn flush_events(
     }
 
     if let Err(err) = sink.send(analytics_id, session_id, &events) {
-        error!(%err, "failed to send analytics down the sink, will try again later");
+        warn!(%err, "failed to send analytics down the sink, will try again later");
         return Err(err);
     }
 
