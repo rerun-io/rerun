@@ -83,13 +83,13 @@ fn range_u64_from_range_bounds(range: impl std::ops::RangeBounds<i64>) -> RangeU
 /// optimizing for very fast range-queries.
 #[derive(Clone, Debug)]
 pub struct Int64Histogram {
-    root: Tree,
+    root: Node,
 }
 
 impl Default for Int64Histogram {
     fn default() -> Self {
         Self {
-            root: Tree::SparseLeaf(SparseLeaf::default()),
+            root: Node::SparseLeaf(SparseLeaf::default()),
         }
     }
 }
@@ -136,7 +136,7 @@ impl Int64Histogram {
                 stack: vec![NodeIterator {
                     level: ROOT_LEVEL,
                     abs_addr: 0,
-                    tree: &self.root,
+                    node: &self.root,
                     index: 0,
                 }],
             },
@@ -186,7 +186,7 @@ impl<'a> Iterator for Iter<'a> {
 // Low-level data structure.
 
 #[derive(Clone, Debug)]
-enum Tree {
+enum Node {
     /// An inner node, addressed by the next few bits of the key/address.
     ///
     /// Never at the [`BOTTOM_LEVEL`] level.
@@ -204,7 +204,7 @@ enum Tree {
     /// Always at the [`BOTTOM_LEVEL`] level.
     DenseLeaf(DenseLeaf),
 }
-static_assertions::assert_eq_size!(Tree, (u64, BranchNode), [u8; 80]); // 8-way tree
+static_assertions::assert_eq_size!(Node, (u64, BranchNode), [u8; 80]); // 8-way tree
 
 #[derive(Clone, Debug, Default)]
 struct BranchNode {
@@ -212,7 +212,7 @@ struct BranchNode {
     total_count: u64,
 
     /// The index is the next few bits of the key
-    children: [Option<Box<Tree>>; NUM_CHILDREN_IN_NODE as usize],
+    children: [Option<Box<Node>>; NUM_CHILDREN_IN_NODE as usize],
 }
 
 #[derive(Clone, Debug, Default)]
@@ -233,7 +233,7 @@ struct DenseLeaf {
 // ----------------------------------------------------------------------------
 // Insert
 
-impl Tree {
+impl Node {
     /// The default node for a certain level.
     fn for_level(level: Level) -> Self {
         if level == BOTTOM_LEVEL {
@@ -245,13 +245,13 @@ impl Tree {
 
     fn increment(&mut self, level: Level, addr: u64, inc: u32) {
         match self {
-            Tree::BranchNode(node) => {
+            Node::BranchNode(node) => {
                 node.increment(level, addr, inc);
             }
-            Tree::SparseLeaf(sparse) => {
+            Node::SparseLeaf(sparse) => {
                 *self = std::mem::take(sparse).increment(level, addr, inc);
             }
-            Tree::DenseLeaf(dense) => {
+            Node::DenseLeaf(dense) => {
                 dense.increment(addr, inc);
             }
         }
@@ -259,43 +259,43 @@ impl Tree {
 
     fn is_empty(&self) -> bool {
         match self {
-            Tree::BranchNode(node) => node.is_empty(),
-            Tree::SparseLeaf(sparse) => sparse.is_empty(),
-            Tree::DenseLeaf(dense) => dense.is_empty(),
+            Node::BranchNode(node) => node.is_empty(),
+            Node::SparseLeaf(sparse) => sparse.is_empty(),
+            Node::DenseLeaf(dense) => dense.is_empty(),
         }
     }
 
     fn total_count(&self) -> u64 {
         match self {
-            Tree::BranchNode(node) => node.total_count(),
-            Tree::SparseLeaf(sparse) => sparse.total_count(),
-            Tree::DenseLeaf(dense) => dense.total_count(),
+            Node::BranchNode(node) => node.total_count(),
+            Node::SparseLeaf(sparse) => sparse.total_count(),
+            Node::DenseLeaf(dense) => dense.total_count(),
         }
     }
 
     fn range_count(&self, my_addr: u64, my_level: Level, range: RangeU64) -> u64 {
         match self {
-            Tree::BranchNode(node) => node.range_count(my_addr, my_level, range),
-            Tree::SparseLeaf(sparse) => sparse.range_count(range),
-            Tree::DenseLeaf(dense) => dense.range_count(my_addr, range),
+            Node::BranchNode(node) => node.range_count(my_addr, my_level, range),
+            Node::SparseLeaf(sparse) => sparse.range_count(range),
+            Node::DenseLeaf(dense) => dense.range_count(my_addr, range),
         }
     }
 
     /// Returns how much the total count decreased by.
     fn remove(&mut self, my_addr: u64, my_level: Level, range: RangeU64) -> u64 {
         match self {
-            Tree::BranchNode(node) => {
+            Node::BranchNode(node) => {
                 let count_loss = node.remove(my_addr, my_level, range);
                 if node.is_empty() {
-                    *self = Tree::SparseLeaf(SparseLeaf::default());
+                    *self = Node::SparseLeaf(SparseLeaf::default());
                 }
                 // TODO(emilk): if we only have leaf children (sparse or dense)
                 // and the number of keys in all of them is less then `MAX_SPARSE_LEAF_LEN`,
                 // then we should convert this BranchNode into a SparseLeaf.
                 count_loss
             }
-            Tree::SparseLeaf(sparse) => sparse.remove(range),
-            Tree::DenseLeaf(dense) => dense.remove(my_addr, range),
+            Node::SparseLeaf(sparse) => sparse.remove(range),
+            Node::DenseLeaf(dense) => dense.remove(my_addr, range),
         }
     }
 }
@@ -306,7 +306,7 @@ impl BranchNode {
         let child_level = level - LEVEL_STEP;
         let top_addr = (addr >> level) & ADDR_MASK;
         self.children[top_addr as usize]
-            .get_or_insert_with(|| Box::new(Tree::for_level(child_level)))
+            .get_or_insert_with(|| Box::new(Node::for_level(child_level)))
             .increment(child_level, addr, inc);
         self.total_count += inc as u64;
     }
@@ -390,24 +390,24 @@ impl SparseLeaf {
     }
 
     #[must_use]
-    fn increment(mut self, level: Level, abs_addr: u64, inc: u32) -> Tree {
+    fn increment(mut self, level: Level, abs_addr: u64, inc: u32) -> Node {
         let index = self.addrs.partition_point(|&addr| addr < abs_addr);
 
         if let (Some(addr), Some(count)) = (self.addrs.get_mut(index), self.counts.get_mut(index)) {
             if *addr == abs_addr {
                 *count += inc;
-                return Tree::SparseLeaf(self);
+                return Node::SparseLeaf(self);
             }
         }
 
         if self.addrs.len() < MAX_SPARSE_LEAF_LEN {
             self.addrs.insert(index, abs_addr);
             self.counts.insert(index, inc);
-            Tree::SparseLeaf(self)
+            Node::SparseLeaf(self)
         } else {
             let mut node = self.overflow(level);
             node.increment(level, abs_addr, inc);
-            Tree::BranchNode(node)
+            Node::BranchNode(node)
         }
     }
 
@@ -503,7 +503,7 @@ struct TreeIterator<'a> {
 struct NodeIterator<'a> {
     level: Level,
     abs_addr: u64,
-    tree: &'a Tree,
+    node: &'a Node,
     index: usize,
 }
 
@@ -513,8 +513,8 @@ impl<'a> Iterator for TreeIterator<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         'outer: while let Some(it) = self.stack.last_mut() {
-            match it.tree {
-                Tree::BranchNode(node) => {
+            match it.node {
+                Node::BranchNode(node) => {
                     let (child_level, child_size) = child_level_and_size(it.level);
 
                     while it.index < NUM_CHILDREN_IN_NODE as _ {
@@ -537,7 +537,7 @@ impl<'a> Iterator for TreeIterator<'a> {
                                 self.stack.push(NodeIterator {
                                     level: child_level,
                                     abs_addr: child_addr,
-                                    tree: child,
+                                    node: child,
                                     index: 0,
                                 });
                                 continue 'outer;
@@ -546,7 +546,7 @@ impl<'a> Iterator for TreeIterator<'a> {
                         it.index += 1;
                     }
                 }
-                Tree::SparseLeaf(sparse) => {
+                Node::SparseLeaf(sparse) => {
                     while let (Some(abs_addr), Some(count)) =
                         (sparse.addrs.get(it.index), sparse.counts.get(it.index))
                     {
@@ -556,7 +556,7 @@ impl<'a> Iterator for TreeIterator<'a> {
                         }
                     }
                 }
-                Tree::DenseLeaf(dense) => {
+                Node::DenseLeaf(dense) => {
                     while let Some(count) = dense.counts.get(it.index) {
                         let abs_addr = it.abs_addr + it.index as u64;
                         it.index += 1;
