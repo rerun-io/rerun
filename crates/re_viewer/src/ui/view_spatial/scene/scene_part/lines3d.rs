@@ -15,10 +15,7 @@ use crate::{
     ui::{
         scene::SceneQuery,
         transform_cache::{ReferenceFromObjTransform, TransformCache},
-        view_spatial::{
-            scene::{instance_hash_if_interactive, to_ecolor},
-            SceneSpatial,
-        },
+        view_spatial::{scene::instance_hash_if_interactive, SceneSpatial},
         DefaultColor,
     },
 };
@@ -52,7 +49,8 @@ impl ScenePart for Lines3DPartClassic {
                 continue;
             };
 
-            let highlighted_paths = ctx.hovered().check_obj_path(obj_path.hash());
+            let hovered_paths = ctx.hovered().check_obj_path(obj_path.hash());
+            let selected_paths = ctx.selection().check_obj_path(obj_path.hash());
 
             let mut line_batch = scene
                 .primitives
@@ -79,12 +77,14 @@ impl ScenePart for Lines3DPartClassic {
 
                 // TODO(andreas): support class ids for lines
                 let annotation_info = annotations.class_description(None).annotation_info();
-                let mut color = to_ecolor(annotation_info.color(color, default_color));
+                let mut color = annotation_info.color(color, default_color);
 
-                if highlighted_paths.contains_index(instance_hash.instance_index_hash) {
-                    color = SceneSpatial::HOVER_COLOR;
-                    radius = SceneSpatial::hover_size_boost(radius);
-                }
+                SceneSpatial::apply_hover_and_selection_effect(
+                    &mut radius,
+                    &mut color,
+                    hovered_paths.contains_index(instance_hash.instance_index_hash),
+                    selected_paths.contains_index(instance_hash.instance_index_hash),
+                );
 
                 // Add renderer primitive
                 match obj_type {
@@ -138,7 +138,8 @@ impl Lines3DPart {
             .batch("lines 3d")
             .world_from_obj(world_from_obj);
 
-        let highlighted_paths = ctx.hovered().check_obj_path(ent_path.hash());
+        let hovered_paths = ctx.hovered().check_obj_path(ent_path.hash());
+        let selected_paths = ctx.selection().check_obj_path(ent_path.hash());
 
         let visitor = |instance: Instance,
                        strip: LineStrip3D,
@@ -156,14 +157,15 @@ impl Lines3DPart {
 
             // TODO(andreas): support class ids for lines
             let annotation_info = annotations.class_description(None).annotation_info();
-            let mut color = to_ecolor(
-                annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color),
-            );
+            let mut color =
+                annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color);
 
-            if highlighted_paths.contains_index(instance_hash.instance_index_hash) {
-                color = SceneSpatial::HOVER_COLOR;
-                radius = SceneSpatial::hover_size_boost(radius);
-            }
+            SceneSpatial::apply_hover_and_selection_effect(
+                &mut radius,
+                &mut color,
+                hovered_paths.contains_index(instance_hash.instance_index_hash),
+                selected_paths.contains_index(instance_hash.instance_index_hash),
+            );
 
             line_batch
                 .add_strip(strip.0.into_iter().map(|v| v.into()))

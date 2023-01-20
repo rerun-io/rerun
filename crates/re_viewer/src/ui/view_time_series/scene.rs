@@ -16,7 +16,7 @@ use re_query::{range_entity_with_primary, QueryError};
 #[derive(Clone, Debug)]
 pub struct PlotPointAttrs {
     pub label: Option<String>,
-    pub color: [u8; 4],
+    pub color: egui::Color32,
     pub radius: f32,
     pub scattered: bool,
 }
@@ -52,7 +52,7 @@ pub enum PlotSeriesKind {
 #[derive(Clone, Debug)]
 pub struct PlotSeries {
     pub label: String,
-    pub color: [u8; 4],
+    pub color: egui::Color32,
     pub width: f32,
     pub kind: PlotSeriesKind,
     pub points: Vec<(i64, f64)>,
