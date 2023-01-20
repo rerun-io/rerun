@@ -107,7 +107,6 @@ impl ScenePart for ImagesPartClassic {
                     .annotation_info()
                     .color(color, DefaultColor::OpaqueWhite);
 
-
                 let hovered = hovered_paths.contains_index(instance_hash.instance_index_hash);
                 let selected = selected_paths.contains_index(instance_hash.instance_index_hash);
                 if hovered || selected {
@@ -116,7 +115,8 @@ impl ScenePart for ImagesPartClassic {
                     SceneSpatial::apply_hover_and_selection_effect(
                         &mut radius,
                         &mut color,
-                        hovered, selected
+                        hovered,
+                        selected,
                     );
 
                     let rect =
