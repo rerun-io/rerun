@@ -1,8 +1,8 @@
-use cgmath::num_traits::Pow;
-use egui::{NumExt, WidgetText};
-use macaw::BoundingBox;
 use re_data_store::ObjPath;
 use re_format::format_f32;
+
+use egui::{NumExt, WidgetText};
+use macaw::BoundingBox;
 
 use crate::misc::{space_info::SpaceInfo, ViewerContext};
 
@@ -131,7 +131,7 @@ impl ViewSpatialState {
         let median_extent = sorted_components[1];
         // sqrt would make more sense but using a smaller root works better in practice.
         let heuristic1 =
-            (median_extent / (self.scene_num_primitives.at_least(1) as f32).pow(1.0 / 1.7)) * 0.25;
+            (median_extent / (self.scene_num_primitives.at_least(1) as f32).powf(1.0 / 1.7)) * 0.25;
 
         heuristic0.min(heuristic1)
     }

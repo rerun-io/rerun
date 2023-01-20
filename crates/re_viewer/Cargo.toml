@@ -45,7 +45,6 @@ re_ws_comms = { path = "../re_ws_comms", features = ["client"] }
 ahash = "0.8"
 anyhow.workspace = true
 bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }
-cgmath = { version = "0.18", features = ["mint"] }
 eframe = { workspace = true, default-features = false, features = [
   "default_fonts",
   "persistence",
