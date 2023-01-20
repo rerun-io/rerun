@@ -16,6 +16,7 @@ pub use tree::{Int64Histogram, Iter};
 /// We use `u64` keys in the internal structures,
 /// because it is so much easier to work with
 pub(crate) fn u64_key_from_i64_key(key: i64) -> u64 {
+    // key.wrapping_add_unsigned(i64::MIN.unsigned_abs()) // unstable
     (key as i128 + i64::MAX as i128 + 1) as _
 }
 
