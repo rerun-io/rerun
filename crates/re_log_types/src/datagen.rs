@@ -9,12 +9,7 @@ use crate::{
 pub fn build_some_rects(len: usize) -> Vec<field_types::Rect2D> {
     (0..len)
         .into_iter()
-        .map(|i| field_types::Rect2D {
-            x: i as f32,
-            y: i as f32,
-            w: (i / 2) as f32,
-            h: (i / 2) as f32,
-        })
+        .map(|i| field_types::Rect2D::from_xywh(i as f32, i as f32, (i / 2) as f32, (i / 2) as f32))
         .collect()
 }
 

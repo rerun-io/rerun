@@ -302,7 +302,7 @@ fn view_2d_scrollable(
             space_from_ui,
             space_from_pixel,
             &space.to_string(),
-            state.auto_size_config(),
+            state.auto_size_config(response.rect.size()),
         ) else {
             return response;
         };
@@ -365,7 +365,7 @@ fn view_2d_scrollable(
             response = if let Some((image, uv)) = picked_image_with_uv {
                 // TODO(andreas): This is different in 3d view.
                 if let Some(meter) = image.meter {
-                    if let Some(raw_value) = image.tensor.get(&[
+                    if let Some(raw_value) = image.tensor.as_ref().get(&[
                         pointer_pos_space.y.round() as _,
                         pointer_pos_space.x.round() as _,
                     ]) {
@@ -378,19 +378,19 @@ fn view_2d_scrollable(
                 response
                     .on_hover_cursor(egui::CursorIcon::ZoomIn)
                     .on_hover_ui_at_pointer(|ui| {
-                        ui.set_max_width(400.0);
+                        ui.set_max_width(320.0);
 
                         ui.vertical(|ui| {
                             ui.label(instance_id.to_string());
                             instance_id.data_ui(ctx, ui, Preview::Small);
 
                             let tensor_view = ctx.cache.image.get_view_with_annotations(
-                                &image.tensor,
+                                image.tensor.as_ref(),
                                 &image.annotations,
                                 ctx.render_ctx,
                             );
 
-                            if let [h, w, ..] = image.tensor.shape() {
+                            if let [h, w, ..] = image.tensor.as_ref().shape() {
                                 ui.separator();
                                 ui.horizontal(|ui| {
                                     // TODO(andreas): 3d skips the show_zoomed_image_region_rect part here.
@@ -417,7 +417,7 @@ fn view_2d_scrollable(
                 // Hover ui for everything else
                 response.on_hover_ui_at_pointer(|ui| {
                     ctx.instance_id_button(ui, &instance_id);
-                    instance_id.data_ui(ctx, ui, crate::ui::Preview::Medium);
+                    instance_id.data_ui(ctx, ui, crate::ui::Preview::Large);
                 })
             };
 
@@ -430,12 +430,7 @@ fn view_2d_scrollable(
         }
     }
 
-    // Clicking the last hovered object.
-    // TODO(andreas): Should this happen in a single global location?
-    // TODO(andreas): Multiselect.
-    if response.clicked() && !ctx.hovered().is_empty() {
-        ctx.set_selection(ctx.hovered().primary().unwrap().clone());
-    }
+    ctx.select_hovered_on_click(&response);
 
     // ------------------------------------------------------------------------
 
@@ -457,6 +452,8 @@ fn create_labels(
     parent_ui: &mut egui::Ui,
     hovered: &MultiSelection,
 ) -> Vec<Shape> {
+    crate::profile_function!();
+
     let mut label_shapes = Vec::with_capacity(scene.ui.labels_2d.len() * 2);
 
     for label in &scene.ui.labels_2d {
@@ -498,7 +495,7 @@ fn create_labels(
             Align2::CENTER_TOP.anchor_rect(Rect::from_min_size(text_anchor_pos, galley.size()));
         let bg_rect = text_rect.expand2(vec2(4.0, 2.0));
 
-        let fill_color = if hovered.is_instance_selected(label.labled_instance) {
+        let fill_color = if hovered.check_instance(label.labled_instance).is_included() {
             parent_ui.style().visuals.widgets.active.bg_fill
         } else {
             parent_ui.style().visuals.widgets.inactive.bg_fill
@@ -521,7 +518,7 @@ fn setup_target_config(
     space_from_ui: RectTransform,
     space_from_pixel: f32,
     space_name: &str,
-    auto_size: re_renderer::Size,
+    auto_size_config: re_renderer::AutoSizeConfig,
 ) -> anyhow::Result<TargetConfiguration> {
     let pixels_from_points = painter.ctx().pixels_per_point();
     let resolution_in_pixel = get_viewport(painter.clip_rect(), pixels_from_points);
@@ -543,8 +540,7 @@ fn setup_target_config(
                 far_plane_distance: 1000.0,
             },
             pixels_from_point: pixels_from_points,
-            auto_size_config: auto_size,
-            auto_size_large_factor: 1.5,
+            auto_size_config,
         }
     })
 }

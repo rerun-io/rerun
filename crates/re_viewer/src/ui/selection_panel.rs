@@ -32,7 +32,7 @@ impl SelectionPanel {
             blueprint.selection_panel_expanded,
             |ui: &mut egui::Ui| {
                 if let Some(selection) = ctx.selection_history.selection_ui(ui, blueprint) {
-                    ctx.set_selection(selection);
+                    ctx.set_multi_selection(selection.selected().iter().cloned());
                 }
 
                 self.contents(ui, ctx, blueprint);
@@ -49,39 +49,38 @@ impl SelectionPanel {
     ) {
         crate::profile_function!();
 
-        if !ctx.selection().is_valid(ctx, blueprint) {
-            // TODO(emilk): also prune history
-            ctx.clear_selection();
-        }
-
         ui.separator();
 
         egui::ScrollArea::both()
             .auto_shrink([false; 2])
             .show(ui, |ui| {
-                let selection = ctx.selection();
-                if selection == Selection::None {
+                if ctx.selection().is_empty() {
                     ui.weak("(none)");
                     return;
                 }
 
-                what_is_selected_ui(ui, ctx, blueprint, &selection);
+                let num_selections = ctx.selection().selected().len();
+                for (i, selection) in ctx.selection().selected().iter().enumerate() {
+                    ui.push_id(i, |ui| {
+                        what_is_selected_ui(ui, ctx, blueprint, selection);
 
-                ui.separator();
+                        egui::CollapsingHeader::new("Data")
+                            .default_open(true)
+                            .show(ui, |ui| {
+                                data_ui(ui, ctx, selection, Preview::Large);
+                            });
 
-                egui::CollapsingHeader::new("Data")
-                    .default_open(true)
-                    .show(ui, |ui| {
-                        data_ui(ui, ctx, &selection, Preview::Medium);
+                        egui::CollapsingHeader::new("Blueprint")
+                            .default_open(true)
+                            .show(ui, |ui| {
+                                blueprint_ui(ui, ctx, blueprint, selection);
+                            });
+
+                        if num_selections > i + 1 {
+                            ui.add(egui::Separator::default().spacing(12.0));
+                        }
                     });
-
-                ui.separator();
-
-                egui::CollapsingHeader::new("Blueprint")
-                    .default_open(true)
-                    .show(ui, |ui| {
-                        blueprint_ui(ui, ctx, blueprint, &selection);
-                    });
+                }
             });
     }
 }
@@ -94,9 +93,6 @@ fn what_is_selected_ui(
     selection: &Selection,
 ) {
     match selection {
-        Selection::None => {
-            ui.weak("(nothing)");
-        }
         Selection::MsgId(msg_id) => {
             ui.horizontal(|ui| {
                 ui.label("Message ID:");
@@ -167,7 +163,7 @@ fn data_ui(
     preview: Preview,
 ) {
     match selection {
-        Selection::None | Selection::SpaceView(_) | Selection::DataBlueprintGroup(_, _) => {
+        Selection::SpaceView(_) | Selection::DataBlueprintGroup(_, _) => {
             ui.weak("(nothing)");
         }
         Selection::MsgId(msg_id) => {
@@ -193,7 +189,7 @@ fn blueprint_ui(
     selection: &Selection,
 ) {
     match selection {
-        Selection::None | Selection::MsgId(_) | Selection::Instance(_) | Selection::DataPath(_) => {
+        Selection::MsgId(_) | Selection::Instance(_) | Selection::DataPath(_) => {
             // TODO(emilk): look up which, if any, blueprints this instances/DataPath is part of.
             ui.weak("(nothing)");
         }

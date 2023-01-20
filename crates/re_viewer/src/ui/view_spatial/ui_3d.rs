@@ -358,19 +358,19 @@ pub fn view_3d(
                 response
                     .on_hover_cursor(egui::CursorIcon::ZoomIn)
                     .on_hover_ui_at_pointer(|ui| {
-                        ui.set_max_width(400.0);
+                        ui.set_max_width(320.0);
 
                         ui.vertical(|ui| {
                             ui.label(instance_id.to_string());
                             instance_id.data_ui(ctx, ui, Preview::Small);
 
                             let tensor_view = ctx.cache.image.get_view_with_annotations(
-                                &image.tensor,
+                                image.tensor.as_ref(),
                                 &image.annotations,
                                 ctx.render_ctx,
                             );
 
-                            if let [h, w, ..] = image.tensor.shape() {
+                            if let [h, w, ..] = image.tensor.as_ref().shape() {
                                 ui.separator();
                                 ui.horizontal(|ui| {
                                     let (w, h) = (w.size as f32, h.size as f32);
@@ -389,7 +389,7 @@ pub fn view_3d(
                 // Hover ui for everything else
                 response.on_hover_ui_at_pointer(|ui| {
                     ctx.instance_id_button(ui, &instance_id);
-                    instance_id.data_ui(ctx, ui, crate::ui::Preview::Medium);
+                    instance_id.data_ui(ctx, ui, crate::ui::Preview::Large);
                 })
             };
         }
@@ -400,16 +400,16 @@ pub fn view_3d(
                 // TODO(andreas): Associate current space view
                 .map(Selection::Instance)
         }));
+        state.state_3d.hovered_point = picking_result
+            .opaque_hit
+            .as_ref()
+            .or_else(|| picking_result.transparent_hits.last())
+            .map(|hit| picking_result.space_position(hit));
 
         project_onto_other_spaces(ctx, &scene.space_cameras, &mut state.state_3d, space);
     }
 
-    // Clicking the last hovered object.
-    // TODO(andreas): Should this happen in a single global location?
-    // TODO(andreas): Multiselect.
-    if response.clicked() && !ctx.hovered().is_empty() {
-        ctx.set_selection(ctx.hovered().primary().unwrap().clone());
-    }
+    ctx.select_hovered_on_click(&response);
 
     // Double click changes camera
     if response.double_clicked() {
@@ -493,7 +493,7 @@ pub fn view_3d(
         &scene,
         ctx.render_ctx,
         &space.to_string(),
-        state.auto_size_config(),
+        state.auto_size_config(rect.size()),
     );
 }
 
@@ -504,7 +504,7 @@ fn paint_view(
     scene: &SceneSpatial,
     render_ctx: &mut RenderContext,
     name: &str,
-    auto_size_config: re_renderer::Size,
+    auto_size_config: re_renderer::AutoSizeConfig,
 ) {
     crate::profile_function!();
 
@@ -571,7 +571,6 @@ fn paint_view(
 
         pixels_from_point,
         auto_size_config,
-        auto_size_large_factor: 1.5,
     };
 
     let Ok(callback) = create_scene_paint_callback(

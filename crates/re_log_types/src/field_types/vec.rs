@@ -1,20 +1,14 @@
-use arrow2::{array::PrimitiveArray, datatypes::DataType};
-use arrow2_convert::{
-    arrow_enable_vec_for_type,
-    deserialize::ArrowDeserialize,
-    field::{ArrowField, FixedSizeVec},
-    serialize::ArrowSerialize,
-};
+use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 
+use super::FixedSizeArrayField;
 use crate::msg_bundle::Component;
 
 /// A vector in 2D space.
 ///
 /// ```
-/// use re_log_types::field_types::Vec2D;
-/// use arrow2_convert::field::ArrowField;
-/// use arrow2::datatypes::{DataType, Field};
-///
+/// # use re_log_types::field_types::Vec2D;
+/// # use arrow2_convert::field::ArrowField;
+/// # use arrow2::datatypes::{DataType, Field};
 /// assert_eq!(
 ///     Vec2D::data_type(),
 ///     DataType::FixedSizeList(
@@ -23,9 +17,10 @@ use crate::msg_bundle::Component;
 ///     )
 /// );
 /// ```
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct Vec2D(pub [f32; 2]);
+#[arrow_field(transparent)]
+pub struct Vec2D(#[arrow_field(type = "FixedSizeArrayField<f32,2>")] pub [f32; 2]);
 
 impl Vec2D {
     #[inline]
@@ -76,51 +71,6 @@ impl From<glam::Vec2> for Vec2D {
     }
 }
 
-arrow_enable_vec_for_type!(Vec2D);
-
-impl ArrowField for Vec2D {
-    type Type = Self;
-    fn data_type() -> DataType {
-        <FixedSizeVec<f32, 2> as ArrowField>::data_type()
-    }
-}
-
-impl ArrowSerialize for Vec2D {
-    type MutableArrayType = <FixedSizeVec<f32, 2> as ArrowSerialize>::MutableArrayType;
-
-    #[inline]
-    fn new_array() -> Self::MutableArrayType {
-        FixedSizeVec::<f32, 2>::new_array()
-    }
-
-    #[inline]
-    fn arrow_serialize(v: &Self, array: &mut Self::MutableArrayType) -> arrow2::error::Result<()> {
-        array.mut_values().extend_from_slice(&v.0);
-        array.try_push_valid()
-    }
-}
-
-impl ArrowDeserialize for Vec2D {
-    type ArrayType = <FixedSizeVec<f32, 2> as ArrowDeserialize>::ArrayType;
-
-    #[inline]
-    fn arrow_deserialize(
-        v: <&Self::ArrayType as IntoIterator>::Item,
-    ) -> Option<<Self as ArrowField>::Type> {
-        v.map(|v| {
-            Vec2D(
-                v.as_any()
-                    .downcast_ref::<PrimitiveArray<f32>>()
-                    .unwrap()
-                    .values()
-                    .as_slice()
-                    .try_into()
-                    .unwrap(),
-            )
-        })
-    }
-}
-
 /// A vector in 3D space.
 ///
 /// ```
@@ -136,9 +86,10 @@ impl ArrowDeserialize for Vec2D {
 ///     )
 /// );
 /// ```
-#[derive(Copy, Clone, Debug, Default, PartialEq)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct Vec3D(pub [f32; 3]);
+#[arrow_field(transparent)]
+pub struct Vec3D(#[arrow_field(type = "FixedSizeArrayField<f32,3>")] pub [f32; 3]);
 
 impl Vec3D {
     #[inline]
@@ -194,47 +145,30 @@ impl From<glam::Vec3> for Vec3D {
     }
 }
 
-arrow_enable_vec_for_type!(Vec3D);
+/// A vector in 4D space.
+///
+/// ```
+/// # use re_log_types::field_types::Vec4D;
+/// # use arrow2_convert::field::ArrowField;
+/// # use arrow2::datatypes::{DataType, Field};
+/// assert_eq!(
+///     Vec4D::data_type(),
+///     DataType::FixedSizeList(
+///         Box::new(Field::new("item", DataType::Float32, false)),
+///         4
+///     )
+/// );
+/// ```
+#[derive(Copy, Clone, Debug, Default, PartialEq, ArrowField, ArrowSerialize, ArrowDeserialize)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[arrow_field(transparent)]
+pub struct Vec4D(#[arrow_field(type = "FixedSizeArrayField<f32,4>")] pub [f32; 4]);
 
-impl ArrowField for Vec3D {
-    type Type = Self;
-    fn data_type() -> DataType {
-        <FixedSizeVec<f32, 3> as ArrowField>::data_type()
-    }
-}
-
-impl ArrowSerialize for Vec3D {
-    type MutableArrayType = <FixedSizeVec<f32, 3> as ArrowSerialize>::MutableArrayType;
-
-    #[inline]
-    fn new_array() -> Self::MutableArrayType {
-        FixedSizeVec::<f32, 3>::new_array()
-    }
-
-    #[inline]
-    fn arrow_serialize(v: &Self, array: &mut Self::MutableArrayType) -> arrow2::error::Result<()> {
-        array.mut_values().extend_from_slice(&v.0);
-        array.try_push_valid()
-    }
-}
-
-impl ArrowDeserialize for Vec3D {
-    type ArrayType = <FixedSizeVec<f32, 3> as ArrowDeserialize>::ArrayType;
-
-    #[inline]
-    fn arrow_deserialize(
-        v: <&Self::ArrayType as IntoIterator>::Item,
-    ) -> Option<<Self as ArrowField>::Type> {
-        v.map(|v| {
-            Vec3D(
-                v.as_any()
-                    .downcast_ref::<PrimitiveArray<f32>>()
-                    .unwrap()
-                    .values()
-                    .as_slice()
-                    .try_into()
-                    .unwrap(),
-            )
-        })
-    }
+#[test]
+fn test_vec4d() {
+    use arrow2_convert::{deserialize::TryIntoCollection, serialize::TryIntoArrow};
+    let data = [Vec4D([0.0, 1.0, 2.0, 3.0]), Vec4D([0.1, 1.1, 2.1, 3.1])];
+    let array: Box<dyn arrow2::array::Array> = data.try_into_arrow().unwrap();
+    let ret: Vec<Vec4D> = array.try_into_collection().unwrap();
+    assert_eq!(&data, ret.as_slice());
 }

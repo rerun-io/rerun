@@ -15,7 +15,7 @@ impl Size {
     /// Automatically sized, based on a view builder setting.
     pub const AUTO: Self = Self(f32::INFINITY);
 
-    /// Like [`Size::AUTO`], but larger by view builder setting.
+    /// Like [`Size::AUTO`], but larger by some small factor (~2).
     pub const AUTO_LARGE: Self = Self(-f32::INFINITY);
 
     /// Creates a new size in scene units.
@@ -36,7 +36,7 @@ impl Size {
         Self(-size)
     }
 
-    /// Returns true if the size is an automatically determined size.
+    /// Returns true if the size is an automatically determined size ([`Self::AUTO`] or [`Self::AUTO_LARGE`]).
     #[inline]
     pub fn is_auto(&self) -> bool {
         self.0.is_infinite()

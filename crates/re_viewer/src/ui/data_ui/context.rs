@@ -15,94 +15,98 @@ impl DataUi for AnnotationContext {
         ui: &mut egui::Ui,
         preview: crate::ui::Preview,
     ) {
-        if preview != Preview::Medium {
-            ui.label(format!(
-                "AnnotationContext with {} classes",
-                self.class_map.len()
-            ));
-            return;
-        }
+        match preview {
+            Preview::Small | Preview::MaxHeight(_) => {
+                ui.label(format!(
+                    "AnnotationContext with {} classes",
+                    self.class_map.len()
+                ));
+            }
+            Preview::Large => {
+                let row_height = re_ui::ReUi::table_line_height();
+                ui.vertical(|ui| {
+                    annotation_info_table_ui(
+                        ui,
+                        self.class_map
+                            .iter()
+                            .map(|(_, class)| &class.info)
+                            .sorted_by_key(|info| info.id),
+                    );
 
-        let row_height = re_ui::ReUi::table_line_height();
-        ui.vertical(|ui| {
-            annotation_info_table_ui(
-                ui,
-                self.class_map
-                    .iter()
-                    .map(|(_, class)| &class.info)
-                    .sorted_by_key(|info| info.id),
-            );
+                    for (id, class) in &self.class_map {
+                        if class.keypoint_connections.is_empty() && class.keypoint_map.is_empty() {
+                            continue;
+                        }
 
-            for (id, class) in &self.class_map {
-                if class.keypoint_connections.is_empty() && class.keypoint_map.is_empty() {
-                    continue;
-                }
+                        ui.separator();
+                        ui.strong(format!("Keypoints for Class {}", id.0));
 
-                ui.separator();
-                ui.strong(format!("Keypoints for Class {}", id.0));
+                        if !class.keypoint_connections.is_empty() {
+                            ui.add_space(8.0);
+                            ui.strong("Keypoints Annotations");
+                            ui.push_id(format!("keypoint_annotations_{}", id.0), |ui| {
+                                annotation_info_table_ui(
+                                    ui,
+                                    class
+                                        .keypoint_map
+                                        .values()
+                                        .sorted_by_key(|annotation| annotation.id),
+                                );
+                            });
+                        }
 
-                if !class.keypoint_connections.is_empty() {
-                    ui.add_space(8.0);
-                    ui.strong("Keypoints Annotations");
-                    ui.push_id(format!("keypoint_annotations_{}", id.0), |ui| {
-                        annotation_info_table_ui(
-                            ui,
-                            class
-                                .keypoint_map
-                                .values()
-                                .sorted_by_key(|annotation| annotation.id),
-                        );
-                    });
-                }
+                        if !class.keypoint_connections.is_empty() {
+                            ui.add_space(8.0);
+                            ui.strong("Keypoint Connections");
+                            ui.push_id(format!("keypoints_connections_{}", id.0), |ui| {
+                                use egui_extras::{Column, TableBuilder};
 
-                if !class.keypoint_connections.is_empty() {
-                    ui.add_space(8.0);
-                    ui.strong("Keypoint Connections");
-                    ui.push_id(format!("keypoints_connections_{}", id.0), |ui| {
-                        use egui_extras::{Column, TableBuilder};
+                                let table = TableBuilder::new(ui)
+                                    .min_scrolled_height(TABLE_SCROLL_AREA_HEIGHT)
+                                    .max_scroll_height(TABLE_SCROLL_AREA_HEIGHT)
+                                    .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
+                                    .column(Column::auto().clip(true).at_least(40.0))
+                                    .column(Column::auto().clip(true).at_least(40.0));
+                                table
+                                    .header(re_ui::ReUi::table_header_height(), |mut header| {
+                                        re_ui::ReUi::setup_table_header(&mut header);
+                                        header.col(|ui| {
+                                            ui.strong("From");
+                                        });
+                                        header.col(|ui| {
+                                            ui.strong("To");
+                                        });
+                                    })
+                                    .body(|mut body| {
+                                        re_ui::ReUi::setup_table_body(&mut body);
 
-                        let table = TableBuilder::new(ui)
-                            .min_scrolled_height(TABLE_SCROLL_AREA_HEIGHT)
-                            .max_scroll_height(TABLE_SCROLL_AREA_HEIGHT)
-                            .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-                            .column(Column::auto().clip(true).at_least(40.0))
-                            .column(Column::auto().clip(true).at_least(40.0));
-                        table
-                            .header(re_ui::ReUi::table_header_height(), |mut header| {
-                                re_ui::ReUi::setup_table_header(&mut header);
-                                header.col(|ui| {
-                                    ui.strong("From");
-                                });
-                                header.col(|ui| {
-                                    ui.strong("To");
-                                });
-                            })
-                            .body(|mut body| {
-                                re_ui::ReUi::setup_table_body(&mut body);
-
-                                for (from, to) in &class.keypoint_connections {
-                                    body.row(row_height, |mut row| {
-                                        for id in [from, to] {
-                                            row.col(|ui| {
-                                                ui.label(
-                                                    class
-                                                        .keypoint_map
-                                                        .get(id)
-                                                        .and_then(|info| info.label.as_ref())
-                                                        .map_or_else(
-                                                            || format!("id {:?}", id),
-                                                            |label| label.0.clone(),
-                                                        ),
-                                                );
+                                        for (from, to) in &class.keypoint_connections {
+                                            body.row(row_height, |mut row| {
+                                                for id in [from, to] {
+                                                    row.col(|ui| {
+                                                        ui.label(
+                                                            class
+                                                                .keypoint_map
+                                                                .get(id)
+                                                                .and_then(|info| {
+                                                                    info.label.as_ref()
+                                                                })
+                                                                .map_or_else(
+                                                                    || format!("id {:?}", id),
+                                                                    |label| label.0.clone(),
+                                                                ),
+                                                        );
+                                                    });
+                                                }
                                             });
                                         }
                                     });
-                                }
                             });
-                    });
-                }
+                        }
+                    }
+                });
             }
-        });
+        }
     }
 }
 
