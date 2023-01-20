@@ -72,4 +72,7 @@ Copy this checklist to the the PR description, go through it from top to bottom,
 * [ ] Find a tool that auto-updates our `CHANGELOG.md` on each merged PR
 * [ ] See if we can use [`cargo-release`](https://github.com/crate-ci/cargo-release)
 * [ ] Write instructions for how to publish the Python wheels
-* [ ] Stop using patched versions of crates
+* [ ] Remove all crates from `[patch.crates-io]` in the main `Cargo.toml`
+    * [ ] Release new `egui`
+    * [ ] Update wgpu
+    * [ ] Either try to get a new `arrow2` and `polars` published, or use unreleased versions of both
