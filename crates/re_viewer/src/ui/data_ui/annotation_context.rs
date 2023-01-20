@@ -132,7 +132,7 @@ fn annotation_info_table_ui<'a>(
         .header(re_ui::ReUi::table_header_height(), |mut header| {
             re_ui::ReUi::setup_table_header(&mut header);
             header.col(|ui| {
-                ui.strong("Id");
+                ui.strong("Class Id");
             });
             header.col(|ui| {
                 ui.strong("Label");
