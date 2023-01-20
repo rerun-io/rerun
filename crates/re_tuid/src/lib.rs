@@ -1,6 +1,10 @@
 //! TUID: Time-based Unique Identifiers.
 //!
 //! Time-ordered unique 128-bit identifiers.
+//!
+//! ## Feature flags
+#![doc = document_features::document_features!()]
+//!
 
 use arrow2_convert::{ArrowDeserialize, ArrowField, ArrowSerialize};
 

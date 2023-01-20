@@ -1,13 +1,12 @@
 use glam::{Mat4, Vec3};
 
-use re_arrow_store::LatestAtQuery;
 use re_data_store::{query::visit_type_data_2, FieldName, InstanceIdHash, ObjPath, ObjectProps};
 use re_log_types::{
     field_types::{ColorRGBA, Instance, LineStrip3D, Radius},
     msg_bundle::Component,
     DataVec, IndexHash, MsgId, ObjectType,
 };
-use re_query::{query_entity_with_primary, EntityView, QueryError};
+use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::Size;
 
 use crate::{
@@ -15,10 +14,7 @@ use crate::{
     ui::{
         scene::SceneQuery,
         transform_cache::{ReferenceFromObjTransform, TransformCache},
-        view_spatial::{
-            scene::{instance_hash_if_interactive, to_ecolor},
-            SceneSpatial,
-        },
+        view_spatial::{scene::instance_hash_if_interactive, SceneSpatial},
         DefaultColor,
     },
 };
@@ -52,7 +48,8 @@ impl ScenePart for Lines3DPartClassic {
                 continue;
             };
 
-            let highlighted_paths = ctx.hovered().is_path_selected(obj_path.hash());
+            let hovered_paths = ctx.hovered().check_obj_path(obj_path.hash());
+            let selected_paths = ctx.selection().check_obj_path(obj_path.hash());
 
             let mut line_batch = scene
                 .primitives
@@ -79,12 +76,14 @@ impl ScenePart for Lines3DPartClassic {
 
                 // TODO(andreas): support class ids for lines
                 let annotation_info = annotations.class_description(None).annotation_info();
-                let mut color = to_ecolor(annotation_info.color(color, default_color));
+                let mut color = annotation_info.color(color, default_color);
 
-                if highlighted_paths.is_index_selected(instance_hash.instance_index_hash) {
-                    color = SceneSpatial::HOVER_COLOR;
-                    radius = SceneSpatial::hover_size_boost(radius);
-                }
+                SceneSpatial::apply_hover_and_selection_effect(
+                    &mut radius,
+                    &mut color,
+                    hovered_paths.contains_index(instance_hash.instance_index_hash),
+                    selected_paths.contains_index(instance_hash.instance_index_hash),
+                );
 
                 // Add renderer primitive
                 match obj_type {
@@ -138,7 +137,8 @@ impl Lines3DPart {
             .batch("lines 3d")
             .world_from_obj(world_from_obj);
 
-        let highlighted_paths = ctx.hovered().is_path_selected(ent_path.hash());
+        let hovered_paths = ctx.hovered().check_obj_path(ent_path.hash());
+        let selected_paths = ctx.selection().check_obj_path(ent_path.hash());
 
         let visitor = |instance: Instance,
                        strip: LineStrip3D,
@@ -156,14 +156,15 @@ impl Lines3DPart {
 
             // TODO(andreas): support class ids for lines
             let annotation_info = annotations.class_description(None).annotation_info();
-            let mut color = to_ecolor(
-                annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color),
-            );
+            let mut color =
+                annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color);
 
-            if highlighted_paths.is_index_selected(instance_hash.instance_index_hash) {
-                color = SceneSpatial::HOVER_COLOR;
-                radius = SceneSpatial::hover_size_boost(radius);
-            }
+            SceneSpatial::apply_hover_and_selection_effect(
+                &mut radius,
+                &mut color,
+                hovered_paths.contains_index(instance_hash.instance_index_hash),
+                selected_paths.contains_index(instance_hash.instance_index_hash),
+            );
 
             line_batch
                 .add_strip(strip.0.into_iter().map(|v| v.into()))
@@ -193,24 +194,32 @@ impl ScenePart for Lines3DPart {
                 continue;
             };
 
-            let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
-
-            match query_entity_with_primary::<LineStrip3D>(
+            match query_primary_with_history::<LineStrip3D, 4>(
                 &ctx.log_db.obj_db.arrow_store,
-                &timeline_query,
+                &query.timeline,
+                &query.latest_at,
+                &props.visible_history,
                 ent_path,
-                &[ColorRGBA::name(), Radius::name()],
+                [
+                    LineStrip3D::name(),
+                    Instance::name(),
+                    ColorRGBA::name(),
+                    Radius::name(),
+                ],
             )
-            .and_then(|entity_view| {
-                Self::process_entity_view(
-                    scene,
-                    ctx,
-                    query,
-                    &props,
-                    &entity_view,
-                    ent_path,
-                    world_from_obj,
-                )
+            .and_then(|entities| {
+                for entity in entities {
+                    Self::process_entity_view(
+                        scene,
+                        ctx,
+                        query,
+                        &props,
+                        &entity,
+                        ent_path,
+                        world_from_obj,
+                    )?;
+                }
+                Ok(())
             }) {
                 Ok(_) | Err(QueryError::PrimaryNotFound) => {}
                 Err(err) => {

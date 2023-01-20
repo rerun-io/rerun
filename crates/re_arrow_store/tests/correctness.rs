@@ -17,12 +17,12 @@ use re_arrow_store::{
 };
 use re_log_types::{
     datagen::{
-        build_frame_nr, build_log_time, build_some_instances, build_some_point2d, build_some_rects,
+        build_frame_nr, build_log_time, build_some_colors, build_some_instances, build_some_point2d,
     },
     external::arrow2_convert::{
         deserialize::arrow_array_deserialize_iterator, serialize::TryIntoArrow,
     },
-    field_types::{Instance, Point2D, Rect2D},
+    field_types::{ColorRGBA, Instance, Point2D},
     msg_bundle::{wrap_in_listarray, Component as _, ComponentBundle},
     Duration, MsgId, ObjPath as EntityPath, Time, TimeType, Timeline,
 };
@@ -297,9 +297,9 @@ fn range_join_across_single_row_impl(store: &mut DataStore) {
     let ent_path = EntityPath::from("this/that");
 
     let points = build_some_point2d(3);
-    let rects = build_some_rects(3);
+    let colors = build_some_colors(3);
     let bundle =
-        test_bundle!(ent_path @ [build_frame_nr(42.into())] => [points.clone(), rects.clone()]);
+        test_bundle!(ent_path @ [build_frame_nr(42.into())] => [points.clone(), colors.clone()]);
     store.insert(&bundle).unwrap();
 
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
@@ -307,7 +307,7 @@ fn range_join_across_single_row_impl(store: &mut DataStore) {
         timeline_frame_nr,
         TimeRange::new(i64::MIN.into(), i64::MAX.into()),
     );
-    let components = [Instance::name(), Point2D::name(), Rect2D::name()];
+    let components = [Instance::name(), Point2D::name(), ColorRGBA::name()];
     let dfs = polars_util::range_components(
         store,
         &query,
@@ -323,12 +323,12 @@ fn range_join_across_single_row_impl(store: &mut DataStore) {
             .try_into_arrow()
             .unwrap();
         let points: Box<dyn Array> = points.try_into_arrow().unwrap();
-        let rects: Box<dyn Array> = rects.try_into_arrow().unwrap();
+        let colors: Box<dyn Array> = colors.try_into_arrow().unwrap();
 
         DataFrame::new(vec![
             Series::try_from((Instance::name().as_str(), instances)).unwrap(),
             Series::try_from((Point2D::name().as_str(), points)).unwrap(),
-            Series::try_from((Rect2D::name().as_str(), rects)).unwrap(),
+            Series::try_from((ColorRGBA::name().as_str(), colors)).unwrap(),
         ])
         .unwrap()
     };
@@ -363,7 +363,7 @@ fn gc_correct() {
             let ent_path = EntityPath::from(format!("this/that/{i}"));
             let nb_instances = rng.gen_range(0..=1_000);
             let bundle = test_bundle!(ent_path @ [build_frame_nr(frame_nr.into())] => [
-                build_some_rects(nb_instances),
+                build_some_colors(nb_instances),
             ]);
             store.insert(&bundle).unwrap();
         }
@@ -440,7 +440,6 @@ pub fn init_logs() {
     static INIT: AtomicBool = AtomicBool::new(false);
 
     if INIT.compare_exchange(false, true, SeqCst, SeqCst).is_ok() {
-        re_log::set_default_rust_log_env();
-        tracing_subscriber::fmt::init(); // log to stdout
+        re_log::setup_native_logging();
     }
 }

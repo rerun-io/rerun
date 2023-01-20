@@ -13,7 +13,6 @@ from typing import Final
 if platform.system() == "Darwin":
     os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
 
-
 import requests
 import torch
 from huggingface_pipeline import StableDiffusionDepth2ImgPipeline
@@ -23,9 +22,10 @@ import rerun as rr
 
 EXAMPLE_DIR: Final = Path(os.path.dirname(__file__))
 DATASET_DIR: Final = EXAMPLE_DIR / "dataset"
-IMAGE_PATH: Final = DATASET_DIR / "portrait-emil.jpg"
+CACHE_DIR: Final = EXAMPLE_DIR / "cache"
 
 IMAGE_NAME_TO_URL: Final = {
+    "sitting_wooden_figure": "https://storage.googleapis.com/rerun-example-datasets/stable_diffusion/sitting_wooden_figure.jpg",
     "old_man": "https://github.com/Stability-AI/stablediffusion/raw/main/assets/stable-samples/depth2img/old_man.png",
     "fantasy": "https://github.com/Stability-AI/stablediffusion/raw/main/assets/stable-samples/depth2img/depth2fantasy.jpeg",
 }
@@ -37,7 +37,7 @@ def run_stable_diffusion(
 ) -> None:
 
     pipe = StableDiffusionDepth2ImgPipeline.from_pretrained(
-        "stabilityai/stable-diffusion-2-depth", local_files_only=False
+        "stabilityai/stable-diffusion-2-depth", local_files_only=False, cache_dir=CACHE_DIR.absolute()
     )
 
     if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
@@ -99,18 +99,18 @@ def main() -> None:
         "--prompt",
         type=str,
         help="Positive prompt describing the image you want to generate.",
-        default="Old man in a smoky disco wearing futuristic glasses.",
+        default="A tired robot sitting down on a dirt floor. Rusty metal. Unreal Engine. Wall-e",
     )
     parser.add_argument(
         "--n_prompt",
         type=str,
         help="Negative prompt describing what you don't want in the image you generate.",
-        default=None,
+        default="White uniform floor and background",
     )
     parser.add_argument(
         "--strength",
         type=float,
-        default=0.65,
+        default=0.7,
         help="""
 Conceptually, indicates how much to transform the reference `image`. Must be between 0 and 1. `image`
 will be used as a starting point, adding more noise to it the larger the `strength`. The number of
@@ -122,7 +122,7 @@ be maximum and the denoising process will run for the full number of iterations 
     parser.add_argument(
         "--guidance_scale",
         type=float,
-        default=8.5,
+        default=8,
         help="""
 Guidance scale as defined in [Classifier-Free Diffusion Guidance](https://arxiv.org/abs/2207.12598).
 `guidance_scale` is defined as `w` of equation 2. of [Imagen
@@ -154,6 +154,8 @@ expense of slower inference. This parameter will be modulated by `strength`.
         # You can ommit the argument to connect to the default address,
         # which is `127.0.0.1:9876`.
         rr.connect(args.addr)
+    elif args.save is None and not args.headless:
+        rr.spawn_and_connect()
 
     run_stable_diffusion(
         image_path=image_path,
@@ -166,10 +168,6 @@ expense of slower inference. This parameter will be modulated by `strength`.
 
     if args.save is not None:
         rr.save(args.save)
-    elif args.headless:
-        pass
-    elif not args.connect:
-        rr.show()
 
 
 if __name__ == "__main__":

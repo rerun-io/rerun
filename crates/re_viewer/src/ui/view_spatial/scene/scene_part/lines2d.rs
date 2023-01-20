@@ -1,23 +1,19 @@
 use glam::Mat4;
 
-use re_arrow_store::LatestAtQuery;
 use re_data_store::{InstanceIdHash, ObjPath, ObjectProps};
 use re_log_types::{
     field_types::{ColorRGBA, Instance, LineStrip2D, Radius},
     msg_bundle::Component,
 };
-use re_query::{query_entity_with_primary, EntityView, QueryError};
-use re_renderer::Size;
+use re_query::{query_primary_with_history, EntityView, QueryError};
+use re_renderer::{renderer::LineStripFlags, Size};
 
 use crate::{
     misc::ViewerContext,
     ui::{
         scene::SceneQuery,
         transform_cache::{ReferenceFromObjTransform, TransformCache},
-        view_spatial::{
-            scene::{apply_hover_effect, paint_properties},
-            SceneSpatial,
-        },
+        view_spatial::SceneSpatial,
         DefaultColor,
     },
 };
@@ -48,7 +44,8 @@ impl Lines2DPart {
             .batch("lines 2d")
             .world_from_obj(world_from_obj);
 
-        let highlighted_paths = ctx.hovered().is_path_selected(ent_path.hash());
+        let hovered_paths = ctx.hovered().check_obj_path(ent_path.hash());
+        let selected_paths = ctx.selection().check_obj_path(ent_path.hash());
 
         let visitor = |instance: Instance,
                        strip: LineStrip2D,
@@ -62,23 +59,24 @@ impl Lines2DPart {
                 }
             };
 
-            let stroke_width = radius.map(|r| r.0 * 2.0);
-
             // TODO(andreas): support class ids for lines
             let annotation_info = annotations.class_description(None).annotation_info();
-            let color =
+            let mut radius = radius.map_or(Size::AUTO, |r| Size::new_scene(r.0));
+            let mut color =
                 annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color);
 
-            let mut paint_props = paint_properties(color, stroke_width.as_ref());
-
-            if highlighted_paths.is_index_selected(instance_hash.instance_index_hash) {
-                apply_hover_effect(&mut paint_props);
-            }
+            SceneSpatial::apply_hover_and_selection_effect(
+                &mut radius,
+                &mut color,
+                hovered_paths.contains_index(instance_hash.instance_index_hash),
+                selected_paths.contains_index(instance_hash.instance_index_hash),
+            );
 
             line_batch
                 .add_strip_2d(strip.0.into_iter().map(|v| v.into()))
-                .color(paint_props.fg_stroke.color)
-                .radius(Size::new_points(paint_props.fg_stroke.width * 0.5))
+                .color(color)
+                .radius(radius)
+                .flags(LineStripFlags::NO_COLOR_GRADIENT)
                 .user_data(instance_hash);
         };
 
@@ -103,24 +101,32 @@ impl ScenePart for Lines2DPart {
                 continue;
             };
 
-            let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
-
-            match query_entity_with_primary::<LineStrip2D>(
+            match query_primary_with_history::<LineStrip2D, 4>(
                 &ctx.log_db.obj_db.arrow_store,
-                &timeline_query,
+                &query.timeline,
+                &query.latest_at,
+                &props.visible_history,
                 ent_path,
-                &[ColorRGBA::name(), Radius::name()],
+                [
+                    LineStrip2D::name(),
+                    Instance::name(),
+                    ColorRGBA::name(),
+                    Radius::name(),
+                ],
             )
-            .and_then(|entity_view| {
-                Self::process_entity_view(
-                    scene,
-                    ctx,
-                    query,
-                    &props,
-                    &entity_view,
-                    ent_path,
-                    world_from_obj,
-                )
+            .and_then(|entities| {
+                for entity in entities {
+                    Self::process_entity_view(
+                        scene,
+                        ctx,
+                        query,
+                        &props,
+                        &entity,
+                        ent_path,
+                        world_from_obj,
+                    )?;
+                }
+                Ok(())
             }) {
                 Ok(_) | Err(QueryError::PrimaryNotFound) => {}
                 Err(err) => {

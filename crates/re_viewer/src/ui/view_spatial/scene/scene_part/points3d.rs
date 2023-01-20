@@ -3,14 +3,13 @@ use std::sync::Arc;
 use ahash::{HashMap, HashMapExt};
 use glam::{Mat4, Vec3};
 
-use re_arrow_store::LatestAtQuery;
 use re_data_store::{query::visit_type_data_5, FieldName, InstanceIdHash, ObjPath, ObjectProps};
 use re_log_types::{
-    field_types::{ClassId, ColorRGBA, KeypointId, Label, Point3D, Radius},
+    field_types::{ClassId, ColorRGBA, Instance, KeypointId, Label, Point3D, Radius},
     msg_bundle::Component,
     IndexHash, MsgId, ObjectType,
 };
-use re_query::{query_entity_with_primary, EntityView, QueryError};
+use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::Size;
 
 use crate::{
@@ -20,7 +19,7 @@ use crate::{
         scene::SceneQuery,
         transform_cache::ReferenceFromObjTransform,
         view_spatial::{
-            scene::{instance_hash_if_interactive, to_ecolor, Keypoints},
+            scene::{instance_hash_if_interactive, Keypoints},
             Label3D, SceneSpatial,
         },
         Annotations, DefaultColor,
@@ -61,7 +60,8 @@ impl ScenePart for Points3DPartClassic {
                 continue;
             };
 
-            let highlighted_paths = ctx.hovered().is_path_selected(obj_path.hash());
+            let hovered_paths = ctx.hovered().check_obj_path(obj_path.hash());
+            let selected_paths = ctx.selection().check_obj_path(obj_path.hash());
 
             let mut point_batch = scene
                 .primitives
@@ -102,13 +102,15 @@ impl ScenePart for Points3DPartClassic {
                     class_description.annotation_info()
                 };
 
-                let mut color = to_ecolor(annotation_info.color(color, default_color));
+                let mut color = annotation_info.color(color, default_color);
                 let mut radius = radius.copied().map_or(Size::AUTO, Size::new_scene);
 
-                if highlighted_paths.is_index_selected(instance_hash.instance_index_hash) {
-                    color = SceneSpatial::HOVER_COLOR;
-                    radius = SceneSpatial::hover_size_boost(radius);
-                }
+                SceneSpatial::apply_hover_and_selection_effect(
+                    &mut radius,
+                    &mut color,
+                    hovered_paths.contains_index(instance_hash.instance_index_hash),
+                    selected_paths.contains_index(instance_hash.instance_index_hash),
+                );
 
                 show_labels = batch_size < 10;
                 if show_labels {
@@ -161,6 +163,8 @@ impl Points3DPart {
         annotations: &Arc<Annotations>,
         point_positions: &[Vec3],
     ) -> Result<(Vec<ResolvedAnnotationInfo>, Keypoints), QueryError> {
+        crate::profile_function!();
+
         let mut keypoints: Keypoints = HashMap::new();
 
         let annotation_info = itertools::izip!(
@@ -191,41 +195,46 @@ impl Points3DPart {
     fn process_colors<'a>(
         entity_view: &'a EntityView<Point3D>,
         ent_path: &'a ObjPath,
-        highlighted: &'a [bool],
+        hovered: &'a [bool],
+        selected: &'a [bool],
         annotation_infos: &'a [ResolvedAnnotationInfo],
     ) -> Result<impl Iterator<Item = egui::Color32> + 'a, QueryError> {
+        crate::profile_function!();
         let default_color = DefaultColor::ObjPath(ent_path);
 
         let colors = itertools::izip!(
-            highlighted.iter(),
+            hovered.iter(),
+            selected.iter(),
             annotation_infos.iter(),
             entity_view.iter_component::<ColorRGBA>()?,
         )
-        .map(move |(highlighted, annotation_info, color)| {
-            if *highlighted {
-                SceneSpatial::HOVER_COLOR
-            } else {
-                to_ecolor(
-                    annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color),
-                )
-            }
+        .map(move |(hovered, selected, annotation_info, color)| {
+            SceneSpatial::apply_hover_and_selection_effect_color(
+                annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color),
+                *hovered,
+                *selected,
+            )
         });
         Ok(colors)
     }
 
     fn process_radii<'a>(
         entity_view: &'a EntityView<Point3D>,
-        highlighted: &'a [bool],
+        hovered: &'a [bool],
+        selected: &'a [bool],
     ) -> Result<impl Iterator<Item = Size> + 'a, QueryError> {
-        let radii = itertools::izip!(highlighted.iter(), entity_view.iter_component::<Radius>()?,)
-            .map(move |(highlighted, radius)| {
-                let radius = radius.map_or(Size::AUTO, |radius| Size::new_scene(radius.0));
-                if *highlighted {
-                    SceneSpatial::hover_size_boost(radius)
-                } else {
-                    radius
-                }
-            });
+        let radii = itertools::izip!(
+            hovered.iter(),
+            selected.iter(),
+            entity_view.iter_component::<Radius>()?,
+        )
+        .map(move |(hovered, selected, radius)| {
+            SceneSpatial::apply_hover_and_selection_effect_size(
+                radius.map_or(Size::AUTO, |radius| Size::new_scene(radius.0)),
+                *hovered,
+                *selected,
+            )
+        });
         Ok(radii)
     }
 
@@ -263,6 +272,8 @@ impl Points3DPart {
         ent_path: &ObjPath,
         world_from_obj: Mat4,
     ) -> Result<(), QueryError> {
+        crate::profile_function!();
+
         scene.num_logged_3d_objects += 1;
 
         let annotations = scene.annotation_map.find(ent_path);
@@ -274,10 +285,13 @@ impl Points3DPart {
             .batch("3d points")
             .world_from_obj(world_from_obj);
 
-        let point_positions = entity_view
-            .iter_primary()?
-            .filter_map(|pt| pt.map(glam::Vec3::from))
-            .collect::<Vec<_>>();
+        let point_positions = {
+            crate::profile_scope!("collect_points");
+            entity_view
+                .iter_primary()?
+                .filter_map(|pt| pt.map(glam::Vec3::from))
+                .collect::<Vec<_>>()
+        };
 
         let (annotation_infos, keypoints) = Self::process_annotations(
             query,
@@ -286,26 +300,47 @@ impl Points3DPart {
             point_positions.as_slice(),
         )?;
 
-        let highlighted_paths = ctx.hovered().is_path_selected(ent_path.hash());
+        let instance_hashes = {
+            crate::profile_scope!("instance_hashes");
+            entity_view
+                .iter_instances()?
+                .map(|instance| {
+                    if properties.interactive {
+                        InstanceIdHash::from_path_and_arrow_instance(ent_path, &instance)
+                    } else {
+                        InstanceIdHash::NONE
+                    }
+                })
+                .collect::<Vec<_>>()
+        };
 
-        let instance_hashes = entity_view
-            .iter_instances()?
-            .map(|instance| {
-                if properties.interactive {
-                    InstanceIdHash::from_path_and_arrow_instance(ent_path, &instance)
-                } else {
-                    InstanceIdHash::NONE
-                }
-            })
-            .collect::<Vec<_>>();
-        let highlighted = instance_hashes
-            .iter()
-            .map(|hash| highlighted_paths.is_index_selected(hash.instance_index_hash))
-            .collect::<Vec<_>>();
+        // TODO(andreas): lot of optimization potential here!
+        let hovered_paths = ctx.hovered().check_obj_path(ent_path.hash());
+        let selected_paths = ctx.selection().check_obj_path(ent_path.hash());
+        let hovered = {
+            crate::profile_scope!("hovered");
+            instance_hashes
+                .iter()
+                .map(|hash| hovered_paths.contains_index(hash.instance_index_hash))
+                .collect::<Vec<_>>()
+        };
+        let selected = {
+            crate::profile_scope!("selected");
+            instance_hashes
+                .iter()
+                .map(|hash| selected_paths.contains_index(hash.instance_index_hash))
+                .collect::<Vec<_>>()
+        };
 
-        let colors = Self::process_colors(entity_view, ent_path, &highlighted, &annotation_infos)?;
+        let colors = Self::process_colors(
+            entity_view,
+            ent_path,
+            &hovered,
+            &selected,
+            &annotation_infos,
+        )?;
 
-        let radii = Self::process_radii(entity_view, &highlighted)?;
+        let radii = Self::process_radii(entity_view, &hovered, &selected)?;
         let labels = Self::process_labels(entity_view, &annotation_infos, world_from_obj)?;
 
         if show_labels && instance_hashes.len() <= self.max_labels {
@@ -339,13 +374,15 @@ impl ScenePart for Points3DPart {
                 continue;
             };
 
-            let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
-
-            match query_entity_with_primary::<Point3D>(
+            match query_primary_with_history::<Point3D, 7>(
                 &ctx.log_db.obj_db.arrow_store,
-                &timeline_query,
+                &query.timeline,
+                &query.latest_at,
+                &props.visible_history,
                 ent_path,
-                &[
+                [
+                    Point3D::name(),
+                    Instance::name(),
                     ColorRGBA::name(),
                     Radius::name(),
                     Label::name(),
@@ -353,16 +390,19 @@ impl ScenePart for Points3DPart {
                     KeypointId::name(),
                 ],
             )
-            .and_then(|entity_view| {
-                self.process_entity_view(
-                    scene,
-                    ctx,
-                    query,
-                    &props,
-                    &entity_view,
-                    ent_path,
-                    world_from_obj,
-                )
+            .and_then(|entities| {
+                for entity in entities {
+                    self.process_entity_view(
+                        scene,
+                        ctx,
+                        query,
+                        &props,
+                        &entity,
+                        ent_path,
+                        world_from_obj,
+                    )?;
+                }
+                Ok(())
             }) {
                 Ok(_) | Err(QueryError::PrimaryNotFound) => {}
                 Err(err) => {

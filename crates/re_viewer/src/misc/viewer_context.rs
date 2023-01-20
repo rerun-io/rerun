@@ -1,8 +1,11 @@
+use ahash::HashSet;
+use itertools::Itertools;
 use re_data_store::{log_db::LogDb, InstanceId};
 use re_log_types::{DataPath, MsgId, ObjPath, TimeInt, Timeline};
 
 use crate::ui::{
-    data_ui::DataUi, DataBlueprintGroupHandle, Preview, SelectionHistory, SpaceViewId,
+    data_ui::{ComponentUiRegistry, DataUi},
+    Blueprint, DataBlueprintGroupHandle, Preview, SpaceViewId,
 };
 
 use super::selection::{MultiSelection, Selection};
@@ -15,13 +18,14 @@ pub struct ViewerContext<'a> {
     /// Things that need caching.
     pub cache: &'a mut super::Caches,
 
+    /// How to display components
+    pub component_ui_registry: &'a ComponentUiRegistry,
+
     /// The current recording
     pub log_db: &'a LogDb,
 
     /// UI config for the current recording (found in [`LogDb`]).
     pub rec_cfg: &'a mut RecordingConfig,
-
-    pub selection_history: &'a mut SelectionHistory,
 
     /// The look and feel of the UI
     pub re_ui: &'a re_ui::ReUi,
@@ -34,14 +38,17 @@ impl<'a> ViewerContext<'a> {
     pub fn msg_id_button(&mut self, ui: &mut egui::Ui, msg_id: MsgId) -> egui::Response {
         // TODO(emilk): common hover-effect
         let response = ui
-            .selectable_label(self.selection().is_msg_id(&msg_id), msg_id.to_string())
+            .selectable_label(
+                self.selection().check_msg_id(msg_id).is_exact(),
+                msg_id.to_string(),
+            )
             .on_hover_ui(|ui| {
                 ui.label(format!("Message ID: {msg_id}"));
                 ui.separator();
                 msg_id.data_ui(self, ui, Preview::Small);
             });
         if response.clicked() {
-            self.set_selection(Selection::MsgId(msg_id));
+            self.set_single_selection(Selection::MsgId(msg_id));
         }
         response
     }
@@ -58,16 +65,18 @@ impl<'a> ViewerContext<'a> {
         text: impl Into<egui::WidgetText>,
         obj_path: &ObjPath,
     ) -> egui::Response {
-        // TODO(emilk): common hover-effect of all buttons for the same obj_path!
         let response = ui
-            .selectable_label(self.selection().is_obj_path(obj_path), text)
+            .selectable_label(
+                self.selection().check_obj_path(obj_path.hash()).is_exact(),
+                text,
+            )
             .on_hover_ui(|ui| {
                 ui.strong("Object");
                 ui.label(format!("Path: {obj_path}"));
                 obj_path.data_ui(self, ui, crate::ui::Preview::Large);
             });
         if response.clicked() {
-            self.set_selection(Selection::Instance(InstanceId {
+            self.set_single_selection(Selection::Instance(InstanceId {
                 obj_path: obj_path.clone(),
                 instance_index: None,
             }));
@@ -93,14 +102,19 @@ impl<'a> ViewerContext<'a> {
     ) -> egui::Response {
         // TODO(emilk): common hover-effect of all buttons for the same instance_id!
         let response = ui
-            .selectable_label(self.selection().is_instance_id(instance_id), text)
+            .selectable_label(
+                self.selection()
+                    .check_instance(instance_id.hash())
+                    .is_exact(),
+                text,
+            )
             .on_hover_ui(|ui| {
                 ui.strong("Object Instance");
                 ui.label(format!("Path: {instance_id}"));
                 instance_id.data_ui(self, ui, crate::ui::Preview::Large);
             });
         if response.clicked() {
-            self.set_selection(Selection::Instance(instance_id.clone()));
+            self.set_single_selection(Selection::Instance(instance_id.clone()));
         }
         response
     }
@@ -118,9 +132,10 @@ impl<'a> ViewerContext<'a> {
         data_path: &DataPath,
     ) -> egui::Response {
         // TODO(emilk): common hover-effect of all buttons for the same data_path!
-        let response = ui.selectable_label(self.selection().is_data_path(data_path), text);
+        let response =
+            ui.selectable_label(self.selection().check_data_path(data_path).is_exact(), text);
         if response.clicked() {
-            self.set_selection(Selection::DataPath(data_path.clone()));
+            self.set_single_selection(Selection::DataPath(data_path.clone()));
         }
         response
     }
@@ -131,12 +146,12 @@ impl<'a> ViewerContext<'a> {
         text: impl Into<egui::WidgetText>,
         space_view_id: SpaceViewId,
     ) -> egui::Response {
-        let is_selected = self.selection() == Selection::SpaceView(space_view_id);
+        let is_selected = self.selection().check_space_view(space_view_id).is_exact();
         let response = ui
             .selectable_label(is_selected, text)
             .on_hover_text("Space View");
         if response.clicked() {
-            self.set_selection(Selection::SpaceView(space_view_id));
+            self.set_single_selection(Selection::SpaceView(space_view_id));
         }
         response
     }
@@ -148,13 +163,16 @@ impl<'a> ViewerContext<'a> {
         space_view_id: SpaceViewId,
         group_handle: DataBlueprintGroupHandle,
     ) -> egui::Response {
-        let selection = Selection::DataBlueprintGroup(space_view_id, group_handle);
-        let is_selected = self.selection() == selection;
         let response = ui
-            .selectable_label(is_selected, text)
+            .selectable_label(
+                self.selection()
+                    .check_data_blueprint_group(space_view_id, group_handle)
+                    .is_exact(),
+                text,
+            )
             .on_hover_text("Group");
         if response.clicked() {
-            self.set_selection(selection);
+            self.set_single_selection(Selection::DataBlueprintGroup(space_view_id, group_handle));
         }
         response
     }
@@ -168,14 +186,17 @@ impl<'a> ViewerContext<'a> {
     ) -> egui::Response {
         let selection = Selection::SpaceViewObjPath(space_view_id, obj_path.clone());
         let response = ui
-            .selectable_label(self.selection() == selection, text)
+            .selectable_label(
+                self.selection().check_obj_path(obj_path.hash()).is_exact(),
+                text,
+            )
             .on_hover_ui(|ui| {
                 ui.strong("Space View Object");
                 ui.label(format!("Path: {obj_path}"));
                 obj_path.data_ui(self, ui, Preview::Large);
             });
         if response.clicked() {
-            self.set_selection(selection);
+            self.set_single_selection(selection);
         }
         response
     }
@@ -220,23 +241,63 @@ impl<'a> ViewerContext<'a> {
         response
     }
 
-    /// Sets the current selection, updating history as needed.
+    // TODO(andreas): Have another object for selection history, selection & hover which has all these helper functions
+
+    /// Sets a single selection, updating history as needed.
     ///
     /// Returns the previous selection.
-    pub fn set_selection(&mut self, selection: Selection) -> Selection {
-        self.rec_cfg
-            .set_selection(self.selection_history, selection)
+    pub fn set_single_selection(&mut self, item: Selection) -> MultiSelection {
+        self.rec_cfg.set_selection(std::iter::once(item))
+    }
+
+    /// Sets several objects to be selected, updating history as needed.
+    ///
+    /// Returns the previous selection.
+    pub fn set_multi_selection(
+        &mut self,
+        items: impl Iterator<Item = Selection>,
+    ) -> MultiSelection {
+        self.rec_cfg.set_selection(items)
     }
 
     /// Clears the current selection.
     ///
     /// Returns the previous selection.
-    pub fn clear_selection(&mut self) -> Selection {
+    pub fn clear_selection(&mut self) -> MultiSelection {
         self.rec_cfg.clear_selection()
     }
 
+    /// Select currently hovered objects.
+    pub fn toggle_selection(&mut self, items: impl Iterator<Item = Selection>) {
+        crate::profile_function!();
+
+        let mut selected_items = HashSet::default();
+        selected_items.extend(self.selection().selected().iter().cloned());
+
+        // Toggling means removing if it was there and add otherwise!
+        for item in items.unique() {
+            if !selected_items.remove(&item) {
+                selected_items.insert(item);
+            }
+        }
+
+        self.rec_cfg.set_selection(selected_items.into_iter());
+    }
+
+    /// Selects (or toggles selection if modifier is clicked) currently hovered elements on click.
+    pub fn select_hovered_on_click(&mut self, response: &egui::Response) {
+        if response.clicked() {
+            let hovered = self.hovered().selected().to_vec();
+            if response.ctx.input().modifiers.command {
+                self.toggle_selection(hovered.into_iter());
+            } else {
+                self.set_multi_selection(hovered.into_iter());
+            }
+        }
+    }
+
     /// Returns the current selection.
-    pub fn selection(&self) -> Selection {
+    pub fn selection(&self) -> MultiSelection {
         self.rec_cfg.selection()
     }
 
@@ -282,11 +343,14 @@ pub struct RecordingConfig {
     /// The current time of the time panel, how fast it is moving, etc.
     pub time_ctrl: crate::TimeControl,
 
-    /// Currently selected thing; shown in the [`crate::selection_panel::SelectionPanel`].
+    #[serde(skip)]
+    pub selection_history: crate::SelectionHistory,
+
+    /// Currently selected things; shown in the [`crate::selection_panel::SelectionPanel`].
     ///
     /// Do not access this field directly! Use the helper methods instead, which will make sure
     /// to properly maintain the undo/redo history.
-    selection: Selection,
+    selection: MultiSelection,
 
     /// What objects are hovered? Read from this.
     #[serde(skip)]
@@ -309,8 +373,10 @@ pub struct RecordingConfig {
 
 impl RecordingConfig {
     /// Called at the start of each frame
-    pub fn on_frame_start(&mut self) {
+    pub fn on_frame_start(&mut self, log_db: &LogDb, blueprint: &Blueprint) {
         crate::profile_function!();
+
+        self.selection_history.on_frame_start(log_db, blueprint);
 
         self.hovered_space_previous_frame =
             std::mem::replace(&mut self.hovered_space_this_frame, HoveredSpace::None);
@@ -320,25 +386,21 @@ impl RecordingConfig {
     /// Sets the current selection, updating history as needed.
     ///
     /// Returns the previous selection.
-    pub fn set_selection(
-        &mut self,
-        history: &mut SelectionHistory,
-        selection: Selection,
-    ) -> Selection {
-        history.update_selection(&selection);
-        std::mem::replace(&mut self.selection, selection)
+    pub fn set_selection(&mut self, items: impl Iterator<Item = Selection>) -> MultiSelection {
+        let new_selection = MultiSelection::new(items);
+        self.selection_history.update_selection(&new_selection);
+        std::mem::replace(&mut self.selection, new_selection)
     }
 
     /// Clears the current selection.
     ///
     /// Returns the previous selection.
-    pub fn clear_selection(&mut self) -> Selection {
-        // NOTE: at least for now, we consider a lack of selection irrelevant history-wise.
-        std::mem::replace(&mut self.selection, Selection::None)
+    pub fn clear_selection(&mut self) -> MultiSelection {
+        std::mem::take(&mut self.selection)
     }
 
     /// Returns the current selection.
-    pub fn selection(&self) -> Selection {
+    pub fn selection(&self) -> MultiSelection {
         self.selection.clone()
     }
 
@@ -348,8 +410,8 @@ impl RecordingConfig {
     }
 
     /// Set the hovered objects. Will be in [`Self::hovered`] on the next frame.
-    pub fn set_hovered(&mut self, hovered_objects: impl Iterator<Item = Selection>) {
-        self.hovered_this_frame = MultiSelection::new(hovered_objects);
+    pub fn set_hovered(&mut self, items: impl Iterator<Item = Selection>) {
+        self.hovered_this_frame = MultiSelection::new(items);
     }
 }
 

@@ -121,6 +121,11 @@ fn run_client(
 
         let msg = crate::decode_log_msg(&packet)?;
 
+        if matches!(msg, LogMsg::Goodbye(_)) {
+            re_log::debug!("Client sent goodbye message.");
+            return Ok(());
+        }
+
         if congestion_manager.should_send(&msg) {
             tx.send(msg)?;
         } else {
@@ -167,7 +172,10 @@ impl CongestionManager {
 
         #[allow(clippy::match_same_arms)]
         match msg {
-            LogMsg::BeginRecordingMsg(_) | LogMsg::TypeMsg(_) | LogMsg::PathOpMsg(_) => true, // we don't want to drop any of these
+            LogMsg::BeginRecordingMsg(_)
+            | LogMsg::TypeMsg(_)
+            | LogMsg::PathOpMsg(_)
+            | LogMsg::Goodbye(_) => true, // we don't want to drop any of these
 
             LogMsg::DataMsg(data_msg) => self.should_send_time_point(&data_msg.time_point),
 

@@ -25,7 +25,7 @@ use super::Vec3D;
 /// ```
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct Mat3x3(pub [Vec3D; 3]);
+pub struct Mat3x3([Vec3D; 3]);
 
 impl<Idx> std::ops::Index<Idx> for Mat3x3
 where

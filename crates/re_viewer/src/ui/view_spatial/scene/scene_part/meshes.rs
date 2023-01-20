@@ -1,12 +1,13 @@
+use egui::Color32;
 use glam::Mat4;
-use re_arrow_store::LatestAtQuery;
+
 use re_data_store::{query::visit_type_data_1, FieldName, InstanceIdHash, ObjPath, ObjectProps};
 use re_log_types::{
     field_types::{ColorRGBA, Instance},
     msg_bundle::Component,
     IndexHash, Mesh3D, MsgId, ObjectType,
 };
-use re_query::{query_entity_with_primary, EntityView, QueryError};
+use re_query::{query_primary_with_history, EntityView, QueryError};
 
 use crate::{
     misc::ViewerContext,
@@ -47,7 +48,8 @@ impl ScenePart for MeshPartClassic {
             // TODO(andreas): This throws away perspective transformation!
             let world_from_obj_affine = glam::Affine3A::from_mat4(world_from_obj);
 
-            let highlighted_paths = ctx.hovered().is_path_selected(obj_path.hash());
+            let hovered_paths = ctx.hovered().check_obj_path(obj_path.hash());
+            let selected_paths = ctx.selection().check_obj_path(obj_path.hash());
 
             let visitor = |instance_index: Option<&IndexHash>,
                            _time: i64,
@@ -57,12 +59,11 @@ impl ScenePart for MeshPartClassic {
                 let instance_hash =
                     instance_hash_if_interactive(obj_path, instance_index, properties.interactive);
 
-                let additive_tint =
-                    if highlighted_paths.is_index_selected(instance_hash.instance_index_hash) {
-                        Some(SceneSpatial::HOVER_COLOR)
-                    } else {
-                        None
-                    };
+                let additive_tint = SceneSpatial::apply_hover_and_selection_effect_color(
+                    Color32::TRANSPARENT,
+                    hovered_paths.contains_index(instance_hash.instance_index_hash),
+                    selected_paths.contains_index(instance_hash.instance_index_hash),
+                );
 
                 if let Some(mesh) = ctx
                     .cache
@@ -112,7 +113,8 @@ impl MeshPart {
         let _default_color = DefaultColor::ObjPath(ent_path);
         let world_from_obj_affine = glam::Affine3A::from_mat4(world_from_obj);
 
-        let highlighted_paths = ctx.hovered().is_path_selected(ent_path.hash());
+        let hovered_paths = ctx.hovered().check_obj_path(ent_path.hash());
+        let selected_paths = ctx.selection().check_obj_path(ent_path.hash());
 
         let visitor =
             |instance: Instance, mesh: re_log_types::Mesh3D, _color: Option<ColorRGBA>| {
@@ -124,12 +126,11 @@ impl MeshPart {
                     }
                 };
 
-                let additive_tint =
-                    if highlighted_paths.is_index_selected(instance_hash.instance_index_hash) {
-                        Some(SceneSpatial::HOVER_COLOR)
-                    } else {
-                        None
-                    };
+                let additive_tint = SceneSpatial::apply_hover_and_selection_effect_color(
+                    Color32::TRANSPARENT,
+                    hovered_paths.contains_index(instance_hash.instance_index_hash),
+                    selected_paths.contains_index(instance_hash.instance_index_hash),
+                );
 
                 if let Some(mesh) = ctx
                     .cache
@@ -171,24 +172,27 @@ impl ScenePart for MeshPart {
                 continue;
             };
 
-            let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
-
-            match query_entity_with_primary::<Mesh3D>(
+            match query_primary_with_history::<Mesh3D, 3>(
                 &ctx.log_db.obj_db.arrow_store,
-                &timeline_query,
+                &query.timeline,
+                &query.latest_at,
+                &props.visible_history,
                 ent_path,
-                &[ColorRGBA::name()],
+                [Mesh3D::name(), Instance::name(), ColorRGBA::name()],
             )
-            .and_then(|entity_view| {
-                Self::process_entity_view(
-                    scene,
-                    query,
-                    &props,
-                    &entity_view,
-                    ent_path,
-                    world_from_obj,
-                    ctx,
-                )
+            .and_then(|entities| {
+                for entity in entities {
+                    Self::process_entity_view(
+                        scene,
+                        query,
+                        &props,
+                        &entity,
+                        ent_path,
+                        world_from_obj,
+                        ctx,
+                    )?;
+                }
+                Ok(())
             }) {
                 Ok(_) | Err(QueryError::PrimaryNotFound) => {}
                 Err(err) => {

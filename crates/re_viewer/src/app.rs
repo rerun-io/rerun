@@ -17,7 +17,7 @@ use re_ui::Command;
 
 use crate::{
     misc::{Caches, Options, RecordingConfig, ViewerContext},
-    ui::Blueprint,
+    ui::{data_ui::ComponentUiRegistry, Blueprint},
 };
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -48,6 +48,8 @@ pub struct StartupOptions {
 pub struct App {
     startup_options: StartupOptions,
     re_ui: re_ui::ReUi,
+
+    component_ui_registry: ComponentUiRegistry,
 
     rx: Option<Receiver<LogMsg>>,
 
@@ -158,6 +160,7 @@ impl App {
         Self {
             startup_options,
             re_ui,
+            component_ui_registry: Default::default(),
             rx,
             log_dbs,
             state,
@@ -317,10 +320,16 @@ impl App {
             }
 
             Command::SelectionPrevious => {
-                self.state.selection_history.select_previous();
+                let state = &mut self.state;
+                if let Some(rec_cfg) = state.recording_configs.get_mut(&state.selected_rec_id) {
+                    rec_cfg.selection_history.select_previous();
+                }
             }
             Command::SelectionNext => {
-                self.state.selection_history.select_next();
+                let state = &mut self.state;
+                if let Some(rec_cfg) = state.recording_configs.get_mut(&state.selected_rec_id) {
+                    rec_cfg.selection_history.select_next();
+                }
             }
             Command::ToggleCommandPalette => {
                 self.cmd_palette.toggle();
@@ -433,12 +442,18 @@ impl eframe::App for App {
             });
 
         let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
+        let selected_app_id = log_db
+            .recording_info()
+            .map_or_else(ApplicationId::unknown, |rec_info| {
+                rec_info.application_id.clone()
+            });
+        let blueprint = self.state.blueprints.entry(selected_app_id).or_default();
 
         self.state
             .recording_configs
             .entry(self.state.selected_rec_id)
             .or_default()
-            .on_frame_start();
+            .on_frame_start(log_db, blueprint);
 
         {
             // TODO(andreas): store the re_renderer somewhere else.
@@ -459,7 +474,13 @@ impl eframe::App for App {
                     });
                 });
             } else {
-                self.state.show(egui_ctx, render_ctx, log_db, &self.re_ui);
+                self.state.show(
+                    egui_ctx,
+                    render_ctx,
+                    log_db,
+                    &self.re_ui,
+                    &self.component_ui_registry,
+                );
             }
         }
 
@@ -719,7 +740,6 @@ struct AppState {
     event_log_view: crate::event_log_view::EventLogView,
 
     selection_panel: crate::selection_panel::SelectionPanel,
-    selection_history: crate::SelectionHistory,
     time_panel: crate::time_panel::TimePanel,
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -734,6 +754,7 @@ impl AppState {
         render_ctx: &mut re_renderer::RenderContext,
         log_db: &LogDb,
         re_ui: &re_ui::ReUi,
+        component_ui_registry: &ComponentUiRegistry,
     ) {
         crate::profile_function!();
 
@@ -746,7 +767,6 @@ impl AppState {
             event_log_view,
             blueprints,
             selection_panel,
-            selection_history,
             time_panel,
             #[cfg(not(target_arch = "wasm32"))]
                 profiler: _,
@@ -762,9 +782,9 @@ impl AppState {
         let mut ctx = ViewerContext {
             options,
             cache,
+            component_ui_registry,
             log_db,
             rec_cfg,
-            selection_history,
             re_ui,
             render_ctx,
         };
@@ -1286,7 +1306,9 @@ fn save_database_to_file(
                 .chronological_log_messages()
                 .filter(|msg| {
                     match msg {
-                        LogMsg::BeginRecordingMsg(_) | LogMsg::TypeMsg(_) => true, // timeless
+                        LogMsg::BeginRecordingMsg(_) | LogMsg::TypeMsg(_) | LogMsg::Goodbye(_) => {
+                            true // timeless
+                        }
                         LogMsg::DataMsg(DataMsg { time_point, .. })
                         | LogMsg::PathOpMsg(PathOpMsg { time_point, .. }) => {
                             time_point.is_timeless() || {

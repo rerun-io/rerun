@@ -1,16 +1,13 @@
 use re_data_store::{query::visit_type_data_2, FieldName};
 use re_log_types::{DataVec, IndexHash, MsgId, ObjectType};
-use re_renderer::Size;
+use re_renderer::{renderer::LineStripFlags, Size};
 
 use crate::{
     misc::ViewerContext,
     ui::{
         scene::SceneQuery,
         transform_cache::{ReferenceFromObjTransform, TransformCache},
-        view_spatial::{
-            scene::{apply_hover_effect, instance_hash_if_interactive, paint_properties},
-            SceneSpatial,
-        },
+        view_spatial::{scene::instance_hash_if_interactive, SceneSpatial},
         DefaultColor,
     },
 };
@@ -46,7 +43,8 @@ impl ScenePart for LineSegments2DPartClassic {
                 .batch("lines 2d")
                 .world_from_obj(world_from_obj);
 
-            let highlighted_paths = ctx.hovered().is_path_selected(obj_path.hash());
+            let hovered_paths = ctx.hovered().check_obj_path(obj_path.hash());
+            let selected_paths = ctx.selection().check_obj_path(obj_path.hash());
 
             let visitor = |instance_index: Option<&IndexHash>,
                            _time: i64,
@@ -62,12 +60,14 @@ impl ScenePart for LineSegments2DPartClassic {
 
                 // TODO(andreas): support class ids for line segments
                 let annotation_info = annotations.class_description(None).annotation_info();
-                let color = annotation_info.color(color, DefaultColor::ObjPath(obj_path));
-
-                let mut paint_props = paint_properties(color, stroke_width);
-                if highlighted_paths.is_index_selected(instance_hash.instance_index_hash) {
-                    apply_hover_effect(&mut paint_props);
-                }
+                let mut color = annotation_info.color(color, DefaultColor::ObjPath(obj_path));
+                let mut radius = stroke_width.map_or(Size::AUTO, |s| Size::new_scene(s * 0.5));
+                SceneSpatial::apply_hover_and_selection_effect(
+                    &mut radius,
+                    &mut color,
+                    hovered_paths.contains_index(instance_hash.instance_index_hash),
+                    selected_paths.contains_index(instance_hash.instance_index_hash),
+                );
 
                 line_batch
                     .add_segments_2d(points.chunks_exact(2).map(|chunk| {
@@ -76,8 +76,9 @@ impl ScenePart for LineSegments2DPartClassic {
                             glam::vec2(chunk[1][0], chunk[1][1]),
                         )
                     }))
-                    .color(paint_props.fg_stroke.color)
-                    .radius(Size::new_points(paint_props.fg_stroke.width * 0.5))
+                    .color(color)
+                    .radius(radius)
+                    .flags(LineStripFlags::NO_COLOR_GRADIENT)
                     .user_data(instance_hash);
             };
 

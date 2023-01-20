@@ -1,12 +1,11 @@
 use glam::Mat4;
-use re_arrow_store::LatestAtQuery;
 use re_data_store::{query::visit_type_data_3, FieldName, InstanceIdHash, ObjPath, ObjectProps};
 use re_log_types::{
     field_types::{ColorRGBA, Instance, Label, Radius},
     msg_bundle::Component,
     Arrow3D, IndexHash, MsgId, ObjectType,
 };
-use re_query::{query_entity_with_primary, EntityView, QueryError};
+use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::{renderer::LineStripFlags, Size};
 
 use crate::{
@@ -14,10 +13,7 @@ use crate::{
     ui::{
         scene::SceneQuery,
         transform_cache::{ReferenceFromObjTransform, TransformCache},
-        view_spatial::{
-            scene::{instance_hash_if_interactive, to_ecolor},
-            SceneSpatial,
-        },
+        view_spatial::{scene::instance_hash_if_interactive, SceneSpatial},
         DefaultColor,
     },
 };
@@ -47,7 +43,8 @@ impl ScenePart for Arrows3DPartClassic {
             let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(obj_path) else {
                 continue;
             };
-            let highlighted_paths = ctx.hovered().is_path_selected(obj_path.hash());
+            let hovered_paths = ctx.hovered().check_obj_path(obj_path.hash());
+            let selected_paths = ctx.selection().check_obj_path(obj_path.hash());
 
             let mut line_batch = scene
                 .primitives
@@ -70,7 +67,7 @@ impl ScenePart for Arrows3DPartClassic {
 
                 // TODO(andreas): support class ids for arrows
                 let annotation_info = annotations.class_description(None).annotation_info();
-                let color = annotation_info.color(color, default_color);
+                let mut color = annotation_info.color(color, default_color);
                 //let label = annotation_info.label(label);
 
                 let width_scale = Some(width);
@@ -86,11 +83,12 @@ impl ScenePart for Arrows3DPartClassic {
                 let vector_len = vector.length();
                 let end = origin + vector * ((vector_len - tip_length) / vector_len);
 
-                let mut color = to_ecolor(color);
-                if highlighted_paths.is_index_selected(instance_hash.instance_index_hash) {
-                    color = SceneSpatial::HOVER_COLOR;
-                    radius = SceneSpatial::hover_size_boost(radius);
-                }
+                SceneSpatial::apply_hover_and_selection_effect(
+                    &mut radius,
+                    &mut color,
+                    hovered_paths.contains_index(instance_hash.instance_index_hash),
+                    selected_paths.contains_index(instance_hash.instance_index_hash),
+                );
 
                 line_batch
                     .add_segment(origin, end)
@@ -134,7 +132,8 @@ impl Arrows3DPart {
             .batch("arrows")
             .world_from_obj(world_from_obj);
 
-        let highlighted_paths = ctx.hovered().is_path_selected(ent_path.hash());
+        let hovered_paths = ctx.hovered().check_obj_path(ent_path.hash());
+        let selected_paths = ctx.selection().check_obj_path(ent_path.hash());
 
         let visitor = |instance: Instance,
                        arrow: Arrow3D,
@@ -152,7 +151,7 @@ impl Arrows3DPart {
             // TODO(andreas): support labels
             // TODO(andreas): support class ids for arrows
             let annotation_info = annotations.class_description(None).annotation_info();
-            let color =
+            let mut color =
                 annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color);
             //let label = annotation_info.label(label);
 
@@ -161,16 +160,17 @@ impl Arrows3DPart {
             let vector = glam::Vec3::from(vector);
             let origin = glam::Vec3::from(origin);
 
-            let mut radius = radius.map_or(Size(0.5), |r| Size(r.0));
+            let mut radius = radius.map_or(Size::AUTO, |r| Size(r.0));
             let tip_length = LineStripFlags::get_triangle_cap_tip_length(radius.0);
             let vector_len = vector.length();
             let end = origin + vector * ((vector_len - tip_length) / vector_len);
 
-            let mut color = to_ecolor(color);
-            if highlighted_paths.is_index_selected(instance_hash.instance_index_hash) {
-                color = SceneSpatial::HOVER_COLOR;
-                radius = SceneSpatial::hover_size_boost(radius);
-            }
+            SceneSpatial::apply_hover_and_selection_effect(
+                &mut radius,
+                &mut color,
+                hovered_paths.contains_index(instance_hash.instance_index_hash),
+                selected_paths.contains_index(instance_hash.instance_index_hash),
+            );
 
             line_batch
                 .add_segment(origin, end)
@@ -201,24 +201,33 @@ impl ScenePart for Arrows3DPart {
                 continue;
             };
 
-            let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
-
-            match query_entity_with_primary::<Arrow3D>(
+            match query_primary_with_history::<Arrow3D, 5>(
                 &ctx.log_db.obj_db.arrow_store,
-                &timeline_query,
+                &query.timeline,
+                &query.latest_at,
+                &props.visible_history,
                 ent_path,
-                &[ColorRGBA::name(), Radius::name(), Label::name()],
+                [
+                    Arrow3D::name(),
+                    Instance::name(),
+                    ColorRGBA::name(),
+                    Radius::name(),
+                    Label::name(),
+                ],
             )
-            .and_then(|entity_view| {
-                Self::process_entity_view(
-                    scene,
-                    ctx,
-                    query,
-                    &props,
-                    &entity_view,
-                    ent_path,
-                    world_from_obj,
-                )
+            .and_then(|entities| {
+                for entity in entities {
+                    Self::process_entity_view(
+                        scene,
+                        ctx,
+                        query,
+                        &props,
+                        &entity,
+                        ent_path,
+                        world_from_obj,
+                    )?;
+                }
+                Ok(())
             }) {
                 Ok(_) | Err(QueryError::PrimaryNotFound) => {}
                 Err(err) => {

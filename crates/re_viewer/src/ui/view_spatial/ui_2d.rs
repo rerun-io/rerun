@@ -430,12 +430,7 @@ fn view_2d_scrollable(
         }
     }
 
-    // Clicking the last hovered object.
-    // TODO(andreas): Should this happen in a single global location?
-    // TODO(andreas): Multiselect.
-    if response.clicked() && !ctx.hovered().is_empty() {
-        ctx.set_selection(ctx.hovered().primary().unwrap().clone());
-    }
+    ctx.select_hovered_on_click(&response);
 
     // ------------------------------------------------------------------------
 
@@ -457,6 +452,8 @@ fn create_labels(
     parent_ui: &mut egui::Ui,
     hovered: &MultiSelection,
 ) -> Vec<Shape> {
+    crate::profile_function!();
+
     let mut label_shapes = Vec::with_capacity(scene.ui.labels_2d.len() * 2);
 
     for label in &scene.ui.labels_2d {
@@ -498,7 +495,7 @@ fn create_labels(
             Align2::CENTER_TOP.anchor_rect(Rect::from_min_size(text_anchor_pos, galley.size()));
         let bg_rect = text_rect.expand2(vec2(4.0, 2.0));
 
-        let fill_color = if hovered.is_instance_selected(label.labled_instance) {
+        let fill_color = if hovered.check_instance(label.labled_instance).is_included() {
             parent_ui.style().visuals.widgets.active.bg_fill
         } else {
             parent_ui.style().visuals.widgets.inactive.bg_fill

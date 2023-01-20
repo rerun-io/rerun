@@ -43,7 +43,7 @@ re_ws_comms = { path = "../re_ws_comms", optional = true, features = [
 re_viewer = { path = "../re_viewer", default-features = false, optional = true }
 re_web_server = { path = "../re_web_server", optional = true }
 
-eframe = { version = "0.20", default-features = false, optional = true }
+eframe = { workspace = true, default-features = false, optional = true }
 webbrowser = { version = "0.8", optional = true }
 
 # Native dependencies:
@@ -59,4 +59,3 @@ rand = "0.8"
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 clap = { version = "4.0", features = ["derive"] }
 mimalloc = "0.1.29"
-tracing-subscriber = "0.3"

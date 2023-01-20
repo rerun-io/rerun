@@ -2,7 +2,7 @@ use egui::{color_picker, Vec2};
 use itertools::Itertools;
 use re_log_types::{context::AnnotationInfo, AnnotationContext};
 
-use crate::ui::{annotations::auto_color_egui, Preview};
+use crate::ui::{annotations::auto_color, Preview};
 
 use super::DataUi;
 
@@ -162,7 +162,7 @@ fn annotation_info_table_ui<'a>(
                             ui.spacing_mut().item_spacing.x = 8.0;
                             let color = info
                                 .color
-                                .map_or_else(|| auto_color_egui(info.id), |color| color.into());
+                                .map_or_else(|| auto_color(info.id), |color| color.into());
                             color_picker::show_color(ui, color, Vec2::new(64.0, row_height));
                             if info.color.is_none() {
                                 ui.weak("(auto)").on_hover_text(

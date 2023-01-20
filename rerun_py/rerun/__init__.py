@@ -49,7 +49,7 @@ __all__ = [
 
 
 def rerun_shutdown() -> None:
-    bindings.flush()
+    bindings.shutdown()
 
 
 atexit.register(rerun_shutdown)
@@ -89,23 +89,77 @@ def set_recording_id(value: str) -> None:
     bindings.set_recording_id(value)
 
 
-def init(application_id: str) -> None:
+def init(application_id: str, spawn_and_connect: bool = False) -> None:
     """
     Initialize the Rerun SDK with a user-chosen application id (name).
 
-    Your Rerun recordings will be categorized by this application id, so
-    try to pick a unique one for each application that uses the Rerun SDK.
+    Parameters
+    ----------
+    application_id : str
+        Your Rerun recordings will be categorized by this application id, so
+        try to pick a unique one for each application that uses the Rerun SDK.
 
-    For instance, if you have one application doing object detection
-    and another doing camera calibration, you could have
-    `rerun.init("object_detector")` and `rerun.init("calibrator")`.
+        For instance, if you have one application doing object detection
+        and another doing camera calibration, you could have
+        `rerun.init("object_detector")` and `rerun.init("calibrator")`.
+
+    spawn_and_connect : bool
+        Spawn a Rerun Viewer and stream logging data to it.
+        Short for calling `spawn_and_connect` separately.
+        If you don't call this, log events will be buffered indefinitely until
+        you call either `connect`, `show`, or `save`
+
     """
     bindings.init(application_id)
 
+    if spawn_and_connect:
+        _spawn_and_connect()
+
+
+def spawn_and_connect(port: int = 9876) -> None:
+    """
+    Spawn a Rerun Viewer and stream logging data to it.
+
+    This is often the easiest and best way to use Rerun.
+    Just call this once at the start of your program.
+
+    See also: rerun.connect
+    """
+    spawn_viewer(port)
+    connect(f"127.0.0.1:{port}")
+
+
+_spawn_and_connect = spawn_and_connect  # we need this because Python scoping is horrible
+
 
 def connect(addr: Optional[str] = None) -> None:
-    """Connect to a remote Rerun Viewer on the given ip:port."""
+    """
+    Connect to a remote Rerun Viewer on the given ip:port.
+
+    Requires that you first start a Rerun Viewer, e.g. with 'python -m rerun'
+    """
     bindings.connect(addr)
+
+
+def spawn_viewer(port: int = 9876) -> None:
+    """Spawn a Rerun Viewer, listening on the given port."""
+    import subprocess
+    import sys
+    from time import sleep
+
+    # sys.executable: the absolute path of the executable binary for the Python interpreter
+    python_executable = sys.executable
+    if python_executable is None:
+        python_executable = "python3"
+
+    # start_new_session=True ensures the spawned process does NOT die when
+    # we hit ctrl-c in the terminal running the parent Python process.
+    rerun_process = subprocess.Popen([python_executable, "-m", "rerun", "--port", str(port)], start_new_session=True)
+    print(f"Spawned Rerun Viewer with pid {rerun_process.pid}")
+
+    # TODO(emilk): figure out a way to postpone connecting until the rerun viewer is listening.
+    # For instance, wait until it prints "Hosting a SDK server over TCP at …"
+    sleep(0.2)  # almost as good as waiting the correct amount of time
 
 
 def serve() -> None:

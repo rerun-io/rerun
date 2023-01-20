@@ -23,7 +23,7 @@ use crate::{get_component_with_instances, ComponentWithInstances, EntityView};
 /// ⚠ The semantics are subtle! See `examples/range.rs` for an example of use.
 pub fn range_entity_with_primary<'a, Primary: Component + 'a, const N: usize>(
     store: &'a DataStore,
-    query: &'a RangeQuery,
+    query: &RangeQuery,
     ent_path: &'a ObjPath,
     components: [ComponentName; N],
 ) -> impl Iterator<Item = (Option<TimeInt>, EntityView<Primary>)> + 'a {

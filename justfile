@@ -87,3 +87,7 @@ toml-lint:
 # https://github.com/rerun-io/documentation/blob/main/src/utils/tokens.ts and push to main.
 download-design-tokens:
     curl https://rerun-docs.netlify.app/api/tokens | jq > crates/re_ui/data/design_tokens.json
+
+# Update the results of `insta` snapshot regression tests
+update-insta-tests:
+    cargo test; cargo insta review
