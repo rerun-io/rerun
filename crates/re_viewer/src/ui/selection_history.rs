@@ -22,7 +22,7 @@ const MAX_SELECTION_HISTORY_LENGTH: usize = 100;
 // ---
 
 /// A stack of `Selection`s, used to implement "undo/redo"-like semantics for selections.
-#[derive(Default, Clone, Debug, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Default, Debug)]
 pub struct SelectionHistory {
     /// Index into [`Self::stack`].
     pub(crate) current: usize,

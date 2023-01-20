@@ -737,6 +737,7 @@ struct AppState {
     event_log_view: crate::event_log_view::EventLogView,
 
     selection_panel: crate::selection_panel::SelectionPanel,
+    #[serde(skip)]
     selection_history: crate::SelectionHistory,
     time_panel: crate::time_panel::TimePanel,
 
