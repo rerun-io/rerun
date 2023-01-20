@@ -21,7 +21,7 @@ pub(crate) use component_ui_registry::ComponentUiRegistry;
 
 /// Controls how large we show the data in [`DataUi`].
 #[derive(Clone, Copy, Debug)]
-pub(crate) enum Preview {
+pub enum Preview {
     /// Keep it small enough to fit on one row.
     Small,
 

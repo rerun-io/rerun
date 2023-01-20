@@ -20,7 +20,7 @@ type ComponentUiCallback =
     Box<dyn Fn(&mut ViewerContext<'_>, &mut egui::Ui, Preview, &ComponentWithInstances, &Instance)>;
 
 /// How to display components in a Ui
-pub(crate) struct ComponentUiRegistry {
+pub struct ComponentUiRegistry {
     components: BTreeMap<ComponentName, ComponentUiCallback>,
 }
 

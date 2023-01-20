@@ -17,7 +17,7 @@ pub struct ViewerContext<'a> {
     pub cache: &'a mut super::Caches,
 
     /// How to display components
-    pub(crate) component_ui_registry: &'a ComponentUiRegistry,
+    pub component_ui_registry: &'a ComponentUiRegistry,
 
     /// The current recording
     pub log_db: &'a LogDb,
