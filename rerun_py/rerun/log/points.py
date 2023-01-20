@@ -16,6 +16,7 @@ from rerun.log import (
 )
 
 from rerun import bindings
+from rerun.log.error_utils import _send_warning
 
 __all__ = [
     "log_point",
@@ -156,8 +157,6 @@ def log_points(
     else:
         positions = np.require(positions, dtype="float32")
 
-    identifiers = [] if identifiers is None else [str(s) for s in identifiers]
-
     colors = _normalize_colors(colors)
     radii = _normalize_radii(radii)
     labels = _normalize_labels(labels)
@@ -165,6 +164,7 @@ def log_points(
     keypoint_ids = _normalize_ids(keypoint_ids)
 
     if EXP_ARROW.classic_log_gate():
+        identifiers = [] if identifiers is None else [str(s) for s in identifiers]
         bindings.log_points(
             obj_path=obj_path,
             positions=positions,
@@ -184,6 +184,14 @@ def log_points(
         from rerun.components.label import LabelArray
         from rerun.components.point import Point2DArray, Point3DArray
 
+        identifiers_np = np.array((), dtype="int64")
+        if identifiers:
+            try:
+                identifiers = [int(id) for id in identifiers]
+                identifiers_np = np.array(identifiers, dtype="int64")
+            except ValueError:
+                _send_warning(f"Only integer identifies supported", 1)
+
         # 0 = instanced, 1 = splat
         comps = [{}, {}]  # type: ignore[var-annotated]
 
@@ -194,6 +202,9 @@ def log_points(
                 comps[0]["rerun.point3d"] = Point3DArray.from_numpy(positions)
             else:
                 raise TypeError("Positions should be either Nx2 or Nx3")
+
+        if len(identifiers_np):
+            comps[0]["rerun.instance"] = InstanceArray.from_numpy(identifiers_np)
 
         if len(colors):
             is_splat = len(colors.shape) == 1
