@@ -5,7 +5,7 @@ use re_log_types::{DataPath, MsgId, ObjPath, TimeInt, Timeline};
 
 use crate::ui::{
     data_ui::{ComponentUiRegistry, DataUi},
-    DataBlueprintGroupHandle, Preview, SelectionHistory, SpaceViewId,
+    Blueprint, DataBlueprintGroupHandle, Preview, SpaceViewId,
 };
 
 use super::selection::{MultiSelection, Selection};
@@ -26,8 +26,6 @@ pub struct ViewerContext<'a> {
 
     /// UI config for the current recording (found in [`LogDb`]).
     pub rec_cfg: &'a mut RecordingConfig,
-
-    pub selection_history: &'a mut SelectionHistory,
 
     /// The look and feel of the UI
     pub re_ui: &'a re_ui::ReUi,
@@ -249,8 +247,7 @@ impl<'a> ViewerContext<'a> {
     ///
     /// Returns the previous selection.
     pub fn set_single_selection(&mut self, item: Selection) -> MultiSelection {
-        self.rec_cfg
-            .set_selection(self.selection_history, std::iter::once(item))
+        self.rec_cfg.set_selection(std::iter::once(item))
     }
 
     /// Sets several objects to be selected, updating history as needed.
@@ -260,7 +257,7 @@ impl<'a> ViewerContext<'a> {
         &mut self,
         items: impl Iterator<Item = Selection>,
     ) -> MultiSelection {
-        self.rec_cfg.set_selection(self.selection_history, items)
+        self.rec_cfg.set_selection(items)
     }
 
     /// Clears the current selection.
@@ -284,8 +281,7 @@ impl<'a> ViewerContext<'a> {
             }
         }
 
-        self.rec_cfg
-            .set_selection(self.selection_history, selected_items.into_iter());
+        self.rec_cfg.set_selection(selected_items.into_iter());
     }
 
     /// Selects (or toggles selection if modifier is clicked) currently hovered elements on click.
@@ -347,6 +343,9 @@ pub struct RecordingConfig {
     /// The current time of the time panel, how fast it is moving, etc.
     pub time_ctrl: crate::TimeControl,
 
+    #[serde(skip)]
+    pub selection_history: crate::SelectionHistory,
+
     /// Currently selected things; shown in the [`crate::selection_panel::SelectionPanel`].
     ///
     /// Do not access this field directly! Use the helper methods instead, which will make sure
@@ -374,8 +373,10 @@ pub struct RecordingConfig {
 
 impl RecordingConfig {
     /// Called at the start of each frame
-    pub fn on_frame_start(&mut self) {
+    pub fn on_frame_start(&mut self, log_db: &LogDb, blueprint: &Blueprint) {
         crate::profile_function!();
+
+        self.selection_history.on_frame_start(log_db, blueprint);
 
         self.hovered_space_previous_frame =
             std::mem::replace(&mut self.hovered_space_this_frame, HoveredSpace::None);
@@ -385,13 +386,9 @@ impl RecordingConfig {
     /// Sets the current selection, updating history as needed.
     ///
     /// Returns the previous selection.
-    pub fn set_selection(
-        &mut self,
-        history: &mut SelectionHistory,
-        items: impl Iterator<Item = Selection>,
-    ) -> MultiSelection {
+    pub fn set_selection(&mut self, items: impl Iterator<Item = Selection>) -> MultiSelection {
         let new_selection = MultiSelection::new(items);
-        history.update_selection(&new_selection);
+        self.selection_history.update_selection(&new_selection);
         std::mem::replace(&mut self.selection, new_selection)
     }
 
