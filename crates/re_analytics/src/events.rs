@@ -17,6 +17,14 @@ impl Event {
             .with_prop("target".into(), target)
     }
 
+    // TODO(cmc): start_method
+    //
+    // We want to know (I think..?):
+    // - Loading rrd (either URL or file, whatever)
+    // - Standalone boot, waiting for network data
+    // - Standalone boot, feeding from another server (??)
+    // - SDK boot, show()
+    // - SDK book, spawn_and_connect()
     pub fn viewer_started() -> Self {
         Self::append("viewer_started".into())
     }
