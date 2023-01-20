@@ -140,6 +140,25 @@ impl MultiSelection {
         Self { selection }
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.selection.is_empty()
+    }
+
+    /// The primary/first selection.
+    pub fn primary(&self) -> Option<&Selection> {
+        self.selection.first()
+    }
+
+    pub fn selected(&self) -> &[Selection] {
+        &self.selection
+    }
+
+    /// Remove all invalid selections.
+    pub fn purge_invalid(&mut self, log_db: &LogDb, blueprint: &crate::ui::Blueprint) {
+        self.selection
+            .retain(|selection| selection.is_valid(log_db, blueprint));
+    }
+
     /// Whether an object path is part of the selection.
     pub fn check_obj_path(&self, obj_path_hash: ObjPathHash) -> ObjectPathSelectionScope {
         let mut partial = PartialObjectPathSelection::default();
@@ -298,18 +317,5 @@ impl MultiSelection {
             }
             SelectionScope::Indirect | SelectionScope::Exact => SelectionScope::Indirect,
         }
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.selection.is_empty()
-    }
-
-    /// The primary/first selection.
-    pub fn primary(&self) -> Option<&Selection> {
-        self.selection.first()
-    }
-
-    pub fn selected(&self) -> &[Selection] {
-        &self.selection
     }
 }
