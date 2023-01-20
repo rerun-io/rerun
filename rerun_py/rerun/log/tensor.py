@@ -95,6 +95,6 @@ def _log_tensor(
     if EXP_ARROW.arrow_log_gate():
         from rerun.components.tensor import TensorArray
 
-        comps = {"rerun.tensor": TensorArray.from_numpy(tensor, names, meaning)}
+        comps = {"rerun.tensor": TensorArray.from_numpy(tensor, names, meaning, meter)}
 
         bindings.log_arrow_msg(obj_path, components=comps, timeless=timeless)
