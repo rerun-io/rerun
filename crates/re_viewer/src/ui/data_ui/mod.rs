@@ -3,12 +3,12 @@
 //!
 
 use itertools::Itertools;
-use re_log_types::msg_bundle::ComponentBundle;
-use re_log_types::{PathOp, TimePoint};
+use re_log_types::{msg_bundle::ComponentBundle, PathOp, TimePoint};
 
-use crate::misc::ViewerContext;
+use crate::{misc::ViewerContext, ui::format_component_name};
 
 mod component;
+mod component_ui_registry;
 mod context;
 mod data;
 mod data_path;
@@ -17,9 +17,11 @@ mod log_msg;
 mod msg_id;
 mod object;
 
+pub(crate) use component_ui_registry::ComponentUiRegistry;
+
 /// Controls how large we show the data in [`DataUi`].
 #[derive(Clone, Copy, Debug)]
-pub(crate) enum Preview {
+pub enum Preview {
     /// Keep it small enough to fit on one row.
     Small,
 
@@ -52,15 +54,34 @@ impl DataUi for TimePoint {
     }
 }
 
-// TODO(jleibs): Better ArrowMsg view
 impl DataUi for [ComponentBundle] {
-    fn data_ui(&self, _ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, _preview: Preview) {
-        // TODO(john): more handling
-        ui.label(format!(
-            "Arrow Payload of {:?}",
-            self.iter().map(|bundle| &bundle.name).collect_vec()
-        ));
+    fn data_ui(&self, _ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, preview: Preview) {
+        let mut sorted = self.to_vec();
+        sorted.sort_by_key(|cb| cb.name);
+
+        match preview {
+            Preview::Small | Preview::MaxHeight(_) => {
+                ui.label(sorted.iter().map(format_component_bundle).join(", "));
+            }
+
+            Preview::Large => {
+                ui.vertical(|ui| {
+                    for component_bundle in &sorted {
+                        ui.label(format_component_bundle(component_bundle));
+                    }
+                });
+            }
+        }
     }
+}
+
+fn format_component_bundle(component_bundle: &ComponentBundle) -> String {
+    let ComponentBundle { name, value } = component_bundle;
+
+    use re_arrow_store::ArrayExt as _;
+    let num_instances = value.get_child_length(0);
+
+    format!("{}x {}", num_instances, format_component_name(name))
 }
 
 impl DataUi for PathOp {

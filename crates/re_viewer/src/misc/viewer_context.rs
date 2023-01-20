@@ -4,7 +4,8 @@ use re_data_store::{log_db::LogDb, InstanceId};
 use re_log_types::{DataPath, MsgId, ObjPath, TimeInt, Timeline};
 
 use crate::ui::{
-    data_ui::DataUi, DataBlueprintGroupHandle, Preview, SelectionHistory, SpaceViewId,
+    data_ui::{ComponentUiRegistry, DataUi},
+    DataBlueprintGroupHandle, Preview, SelectionHistory, SpaceViewId,
 };
 
 use super::selection::{MultiSelection, Selection};
@@ -16,6 +17,9 @@ pub struct ViewerContext<'a> {
 
     /// Things that need caching.
     pub cache: &'a mut super::Caches,
+
+    /// How to display components
+    pub component_ui_registry: &'a ComponentUiRegistry,
 
     /// The current recording
     pub log_db: &'a LogDb,

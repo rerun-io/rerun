@@ -11,8 +11,7 @@ Rerun assumes you are using `numpy` for any large chunks of data.
 ```python
 import rerun as rr
 
-rr.init("my_app")
-rr.spawn_and_connect() # Spawn a Rerun Viewer and stream log events to it
+rr.init("my_app", spawn_and_connect = True) # Spawn a Rerun Viewer and stream log events to it
 
 rr.log_image("rgb_image", image)
 ```

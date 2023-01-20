@@ -1,6 +1,8 @@
+-r api_demo/requirements.txt
 -r car/requirements.txt
 -r deep_sdf/requirements.txt
 -r dicom/requirements.txt
+-r hello_world/requirements.txt
 -r mp_pose/requirements.txt
 -r nyud/requirements.txt
 -r objectron/requirements.txt
