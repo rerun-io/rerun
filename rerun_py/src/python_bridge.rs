@@ -1861,6 +1861,7 @@ fn log_image_file(
                 ],
                 data: re_log_types::field_types::TensorData::JPEG(img_bytes.clone()),
                 meaning: re_log_types::field_types::TensorDataMeaning::Unknown,
+                meter: None,
             }]
             .try_into()
             .unwrap()],
