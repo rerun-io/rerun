@@ -109,6 +109,9 @@ def init(application_id: str, spawn_and_connect: bool = False, is_official_examp
         If you don't call this, log events will be buffered indefinitely until
         you call either `connect`, `show`, or `save`
 
+    is_official_example : bool
+        If set to True, the recording will be identified as an official example in
+        analytics.
     """
     bindings.init(application_id, is_official_example)
 
