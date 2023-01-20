@@ -460,7 +460,11 @@ impl TimePanel {
                             2.0,
                             ui.visuals().text_color(),
                         );
-                        ctx.data_path_button_to(ui, field_name.as_str(), &data_path);
+                        ctx.data_path_button_to(
+                            ui,
+                            super::format_field_or_component_name(field_name),
+                            &data_path,
+                        );
                     })
                     .response;
 
