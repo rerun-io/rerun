@@ -30,14 +30,14 @@ pub struct Config {
 
 impl Config {
     pub fn load() -> Result<Config, ConfigError> {
-        todo!()
+        todo!("web support")
     }
 
     pub fn save(&self) -> Result<(), ConfigError> {
-        todo!()
+        todo!("web support")
     }
 
     pub fn is_first_run(&self) -> bool {
-        todo!()
+        todo!("web support")
     }
 }
