@@ -144,14 +144,40 @@ impl MultiSelection {
         self.selection.is_empty()
     }
 
-    /// The primary/first selection.
-    // TODO(andreas): remove
-    pub fn primary(&self) -> Option<&Selection> {
+    /// Number of elements in this multiselection
+    pub fn len(&self) -> usize {
+        self.selection.len()
+    }
+
+    /// The first selected object if any.
+    pub fn first(&self) -> Option<&Selection> {
         self.selection.first()
     }
 
-    pub fn selected(&self) -> &[Selection] {
-        &self.selection
+    pub fn iter(&self) -> impl Iterator<Item = &Selection> {
+        self.selection.iter()
+    }
+
+    pub fn into_iter(self) -> impl Iterator<Item = Selection> {
+        self.selection.into_iter()
+    }
+
+    pub fn to_vec(&self) -> Vec<Selection> {
+        self.selection.clone()
+    }
+
+    pub fn are_all_same_kind(&self) -> Option<&'static str> {
+        if let Some(first_selection) = self.selection.first() {
+            if self
+                .selection
+                .iter()
+                .skip(1)
+                .all(|item| std::mem::discriminant(first_selection) == std::mem::discriminant(item))
+            {
+                return Some(first_selection.kind());
+            }
+        }
+        None
     }
 
     /// Remove all invalid selections.

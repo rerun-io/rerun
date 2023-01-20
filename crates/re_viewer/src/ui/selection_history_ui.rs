@@ -144,8 +144,8 @@ impl SelectionHistory {
                         ui.close_menu();
                     }
                 }
-                if sel.selected().len() == 1 {
-                    selection_kind_ui(ui, sel.selected().first().unwrap());
+                if sel.len() == 1 {
+                    selection_kind_ui(ui, sel.iter().next().unwrap());
                 }
             });
         }
@@ -160,20 +160,12 @@ fn selection_kind_ui(ui: &mut egui::Ui, sel: &Selection) {
 
 fn multi_selection_to_string(blueprint: &Blueprint, sel: &MultiSelection) -> String {
     assert!(!sel.is_empty()); // history never contains empty selections.
-    if sel.selected().len() == 1 {
-        single_selection_to_string(blueprint, sel.selected().first().unwrap())
+    if sel.len() == 1 {
+        single_selection_to_string(blueprint, sel.iter().next().unwrap())
+    } else if let Some(kind) = sel.are_all_same_kind() {
+        format!("{}x {}s", sel.len(), kind)
     } else {
-        let first_selection = sel.selected().first().unwrap();
-        let all_same_type =
-            sel.selected().iter().skip(1).all(|item| {
-                std::mem::discriminant(first_selection) == std::mem::discriminant(item)
-            });
-
-        if all_same_type {
-            format!("{}x {}s", sel.selected().len(), first_selection.kind())
-        } else {
-            "<multiple selections>".to_owned()
-        }
+        "<multiple selections>".to_owned()
     }
 }
 

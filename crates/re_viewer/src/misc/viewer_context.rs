@@ -1,11 +1,9 @@
-use ahash::HashSet;
-use itertools::Itertools;
 use re_data_store::{log_db::LogDb, InstanceId};
 use re_log_types::{DataPath, MsgId, ObjPath, TimeInt, Timeline};
 
 use crate::ui::{
     data_ui::{ComponentUiRegistry, DataUi},
-    Blueprint, DataBlueprintGroupHandle, Preview, SpaceViewId,
+    DataBlueprintGroupHandle, Preview, SpaceViewId,
 };
 
 use super::selection::{MultiSelection, Selection};
@@ -132,10 +130,18 @@ impl<'a> ViewerContext<'a> {
         data_path: &DataPath,
     ) -> egui::Response {
         // TODO(emilk): common hover-effect of all buttons for the same data_path!
-        let response =
-            ui.selectable_label(self.selection().check_data_path(data_path).is_exact(), text);
+        let response = ui.selectable_label(
+            self.rec_cfg
+                .selection_state
+                .current()
+                .check_data_path(data_path)
+                .is_exact(),
+            text,
+        );
         if response.clicked() {
-            self.set_single_selection(Selection::DataPath(data_path.clone()));
+            self.rec_cfg
+                .selection_state
+                .set_single_selection(Selection::DataPath(data_path.clone()));
         }
         response
     }
@@ -241,13 +247,14 @@ impl<'a> ViewerContext<'a> {
         response
     }
 
-    // TODO(andreas): Have another object for selection history, selection & hover which has all these helper functions
+    // ---------------------------------------------------------
+    // shortcuts for common selection/hover manipulation
 
     /// Sets a single selection, updating history as needed.
     ///
     /// Returns the previous selection.
     pub fn set_single_selection(&mut self, item: Selection) -> MultiSelection {
-        self.rec_cfg.set_selection(std::iter::once(item))
+        self.rec_cfg.selection_state.set_single_selection(item)
     }
 
     /// Sets several objects to be selected, updating history as needed.
@@ -257,39 +264,17 @@ impl<'a> ViewerContext<'a> {
         &mut self,
         items: impl Iterator<Item = Selection>,
     ) -> MultiSelection {
-        self.rec_cfg.set_selection(items)
-    }
-
-    /// Clears the current selection.
-    ///
-    /// Returns the previous selection.
-    pub fn clear_selection(&mut self) -> MultiSelection {
-        self.rec_cfg.clear_selection()
-    }
-
-    /// Select currently hovered objects.
-    pub fn toggle_selection(&mut self, items: impl Iterator<Item = Selection>) {
-        crate::profile_function!();
-
-        let mut selected_items = HashSet::default();
-        selected_items.extend(self.selection().selected().iter().cloned());
-
-        // Toggling means removing if it was there and add otherwise!
-        for item in items.unique() {
-            if !selected_items.remove(&item) {
-                selected_items.insert(item);
-            }
-        }
-
-        self.rec_cfg.set_selection(selected_items.into_iter());
+        self.rec_cfg.selection_state.set_multi_selection(items)
     }
 
     /// Selects (or toggles selection if modifier is clicked) currently hovered elements on click.
     pub fn select_hovered_on_click(&mut self, response: &egui::Response) {
         if response.clicked() {
-            let hovered = self.hovered().selected().to_vec();
+            let hovered = self.rec_cfg.selection_state.hovered().clone();
             if response.ctx.input().modifiers.command {
-                self.toggle_selection(hovered.into_iter());
+                self.rec_cfg
+                    .selection_state
+                    .toggle_selection(hovered.into_iter());
             } else {
                 self.set_multi_selection(hovered.into_iter());
             }
@@ -297,41 +282,27 @@ impl<'a> ViewerContext<'a> {
     }
 
     /// Returns the current selection.
-    pub fn selection(&self) -> MultiSelection {
-        self.rec_cfg.selection()
+    pub fn selection(&self) -> &MultiSelection {
+        self.rec_cfg.selection_state.current()
     }
 
     /// Returns the currently hovered objects.
     pub fn hovered(&self) -> &MultiSelection {
-        self.rec_cfg.hovered()
+        self.rec_cfg.selection_state.hovered()
     }
 
     /// Set the hovered objects. Will be in [`Self::hovered`] on the next frame.
     pub fn set_hovered(&mut self, hovered_objects: impl Iterator<Item = Selection>) {
-        self.rec_cfg.set_hovered(hovered_objects);
+        self.rec_cfg.selection_state.set_hovered(hovered_objects);
     }
-}
 
-// ----------------------------------------------------------------------------
+    pub fn selection_state(&self) -> &super::SelectionState {
+        &self.rec_cfg.selection_state
+    }
 
-#[derive(Clone, Default, Debug, PartialEq)]
-pub enum HoveredSpace {
-    #[default]
-    None,
-    /// Hovering in a 2D space.
-    TwoD {
-        space_2d: ObjPath,
-        /// Where in this 2D space (+ depth)?
-        pos: glam::Vec3,
-    },
-    /// Hovering in a 3D space.
-    ThreeD {
-        /// The 3D space with the camera(s)
-        space_3d: ObjPath,
-
-        /// 2D spaces and pixel coordinates (with Z=depth)
-        target_spaces: Vec<(ObjPath, Option<glam::Vec3>)>,
-    },
+    pub fn selection_state_mut(&mut self) -> &mut super::SelectionState {
+        &mut self.rec_cfg.selection_state
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -343,76 +314,8 @@ pub struct RecordingConfig {
     /// The current time of the time panel, how fast it is moving, etc.
     pub time_ctrl: crate::TimeControl,
 
-    #[serde(skip)]
-    pub selection_history: crate::SelectionHistory,
-
-    /// Currently selected things; shown in the [`crate::selection_panel::SelectionPanel`].
-    ///
-    /// Do not access this field directly! Use the helper methods instead, which will make sure
-    /// to properly maintain the undo/redo history.
-    selection: MultiSelection,
-
-    /// What objects are hovered? Read from this.
-    #[serde(skip)]
-    hovered_previous_frame: MultiSelection,
-
-    /// What objects are hovered? Write to this.
-    #[serde(skip)]
-    hovered_this_frame: MultiSelection,
-
-    /// What space is the pointer hovering over? Read from this.
-    /// TODO(andreas): Merge with [`RecordingConfig::hovered_previous_frame`]
-    #[serde(skip)]
-    pub hovered_space_previous_frame: HoveredSpace,
-
-    /// What space is the pointer hovering over? Write to this.
-    /// TODO(andreas): Merge with [`RecordingConfig::hovered_previous_frame`]
-    #[serde(skip)]
-    pub hovered_space_this_frame: HoveredSpace,
-}
-
-impl RecordingConfig {
-    /// Called at the start of each frame
-    pub fn on_frame_start(&mut self, log_db: &LogDb, blueprint: &Blueprint) {
-        crate::profile_function!();
-
-        self.selection_history.on_frame_start(log_db, blueprint);
-
-        self.hovered_space_previous_frame =
-            std::mem::replace(&mut self.hovered_space_this_frame, HoveredSpace::None);
-        self.hovered_previous_frame = std::mem::take(&mut self.hovered_this_frame);
-    }
-
-    /// Sets the current selection, updating history as needed.
-    ///
-    /// Returns the previous selection.
-    pub fn set_selection(&mut self, items: impl Iterator<Item = Selection>) -> MultiSelection {
-        let new_selection = MultiSelection::new(items);
-        self.selection_history.update_selection(&new_selection);
-        std::mem::replace(&mut self.selection, new_selection)
-    }
-
-    /// Clears the current selection.
-    ///
-    /// Returns the previous selection.
-    pub fn clear_selection(&mut self) -> MultiSelection {
-        std::mem::take(&mut self.selection)
-    }
-
-    /// Returns the current selection.
-    pub fn selection(&self) -> MultiSelection {
-        self.selection.clone()
-    }
-
-    /// Returns the currently hovered objects.
-    pub fn hovered(&self) -> &MultiSelection {
-        &self.hovered_previous_frame
-    }
-
-    /// Set the hovered objects. Will be in [`Self::hovered`] on the next frame.
-    pub fn set_hovered(&mut self, items: impl Iterator<Item = Selection>) {
-        self.hovered_this_frame = MultiSelection::new(items);
-    }
+    /// Selection & hovering state.
+    pub selection_state: super::SelectionState,
 }
 
 // ----------------------------------------------------------------------------

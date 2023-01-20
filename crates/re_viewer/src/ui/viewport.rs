@@ -695,7 +695,7 @@ fn space_view_options_link(
         .clicked()
     {
         if is_selected {
-            ctx.clear_selection();
+            ctx.selection_state_mut().clear_current();
             *selection_panel_expanded = false;
         } else {
             ctx.set_single_selection(Selection::SpaceView(space_view_id));
