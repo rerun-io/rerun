@@ -112,6 +112,7 @@ def init(application_id: str, spawn_and_connect: bool = False, is_official_examp
     is_official_example : bool
         If set to True, the recording will be identified as an official example in
         analytics.
+
     """
     bindings.init(application_id, is_official_example)
 
