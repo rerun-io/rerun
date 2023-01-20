@@ -5,7 +5,7 @@ use super::viewport::Viewport;
 /// Defines the layout of the whole Viewer (or will, eventually).
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
-pub(crate) struct Blueprint {
+pub struct Blueprint {
     pub blueprint_panel_expanded: bool,
     pub selection_panel_expanded: bool,
     pub time_panel_expanded: bool,

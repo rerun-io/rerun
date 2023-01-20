@@ -22,9 +22,12 @@ const MAX_SELECTION_HISTORY_LENGTH: usize = 100;
 // ---
 
 /// A stack of `Selection`s, used to implement "undo/redo"-like semantics for selections.
-#[derive(Default, Clone, Debug, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Default, Debug)]
 pub struct SelectionHistory {
-    pub(crate) current: usize, // index into `self.stack`
+    /// Index into [`Self::stack`].
+    pub(crate) current: usize,
+
+    /// Oldest first.
     pub(crate) stack: Vec<MultiSelection>,
 }
 
@@ -32,30 +35,19 @@ impl SelectionHistory {
     pub(crate) fn on_frame_start(&mut self, log_db: &LogDb, blueprint: &Blueprint) {
         crate::profile_function!();
 
-        // Prune all invalid elements from the stack.
-        self.stack = self
-            .stack
-            .drain(..)
-            .enumerate()
-            .filter_map(|(i, stack_element)| {
-                let valid_elements = stack_element
-                    .selected()
-                    .iter()
-                    .filter(|s| s.is_valid(log_db, blueprint))
-                    .collect::<Vec<_>>();
+        let mut i = 0;
+        self.stack.retain_mut(|selection| {
+            selection.purge_invalid(log_db, blueprint);
+            let retain = !selection.is_empty();
+            if !retain && i <= self.current {
+                self.current = self.current.saturating_sub(1);
+            }
+            i += 1;
+            retain
+        });
 
-                if valid_elements.is_empty() {
-                    if i <= self.current {
-                        self.current -= 1; // Ensure the current counter stays valid!
-                    }
-                    None
-                } else if valid_elements.len() == stack_element.selected().len() {
-                    Some(stack_element)
-                } else {
-                    Some(MultiSelection::new(valid_elements.into_iter().cloned()))
-                }
-            })
-            .collect();
+        // In case `self.current` was bad going in to this function:
+        self.current = self.current.min(self.stack.len().saturating_sub(1));
     }
 
     pub fn current(&self) -> Option<HistoricalSelection> {
@@ -66,7 +58,9 @@ impl SelectionHistory {
     }
 
     pub fn previous(&self) -> Option<HistoricalSelection> {
-        (self.current > 0).then(|| (self.current - 1, self.stack[self.current - 1].clone()).into())
+        let prev_index = self.current.checked_sub(1)?;
+        let prev = self.stack.get(prev_index)?;
+        Some((prev_index, prev.clone()).into())
     }
 
     pub fn next(&self) -> Option<HistoricalSelection> {
