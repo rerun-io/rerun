@@ -116,7 +116,7 @@ impl Analytics {
             trace!(?config, ?tick, "saved analytics config");
         }
 
-        let sink = PostHogSink::new()?;
+        let sink = PostHogSink::default();
         let pipeline = Pipeline::new(&config, tick, sink)?;
 
         if let Some(pipeline) = pipeline.as_ref() {
