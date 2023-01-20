@@ -69,7 +69,8 @@ impl SelectionHistory {
     }
 
     pub fn previous(&self) -> Option<HistoricalSelection> {
-        (self.current > 0).then(|| (self.current - 1, self.stack[self.current - 1].clone()).into())
+        (0 < self.current && self.current < self.stack.len())
+            .then(|| (self.current - 1, self.stack[self.current - 1].clone()).into())
     }
 
     pub fn next(&self) -> Option<HistoricalSelection> {
