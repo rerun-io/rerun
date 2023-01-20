@@ -1,4 +1,4 @@
-use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
+use std::sync::atomic::{AtomicUsize, Ordering::Relaxed};
 
 thread_local! {
     static LIVE_BYTES_IN_THREAD: AtomicUsize = AtomicUsize::new(0);
@@ -19,7 +19,7 @@ pub static GLOBAL_ALLOCATOR: TrackingAllocator = TrackingAllocator {
 unsafe impl std::alloc::GlobalAlloc for TrackingAllocator {
     #[allow(clippy::let_and_return)]
     unsafe fn alloc(&self, layout: std::alloc::Layout) -> *mut u8 {
-        LIVE_BYTES_IN_THREAD.with(|bytes| bytes.fetch_add(layout.size(), SeqCst));
+        LIVE_BYTES_IN_THREAD.with(|bytes| bytes.fetch_add(layout.size(), Relaxed));
 
         // SAFETY:
         // Just deferring
@@ -27,7 +27,7 @@ unsafe impl std::alloc::GlobalAlloc for TrackingAllocator {
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: std::alloc::Layout) {
-        LIVE_BYTES_IN_THREAD.with(|bytes| bytes.fetch_sub(layout.size(), SeqCst));
+        LIVE_BYTES_IN_THREAD.with(|bytes| bytes.fetch_sub(layout.size(), Relaxed));
 
         // SAFETY:
         // Just deferring
@@ -36,7 +36,7 @@ unsafe impl std::alloc::GlobalAlloc for TrackingAllocator {
 }
 
 fn live_bytes() -> usize {
-    LIVE_BYTES_IN_THREAD.with(|bytes| bytes.load(SeqCst))
+    LIVE_BYTES_IN_THREAD.with(|bytes| bytes.load(Relaxed))
 }
 
 // ----------------------------------------------------------------------------
