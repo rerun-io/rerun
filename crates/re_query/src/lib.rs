@@ -1,5 +1,10 @@
 //! Provide query-centric access to the `re_arrow_store`
-//! TODO(jleibs) better crate documentation.
+//!
+//! ## Feature flags
+#![doc = document_features::document_features!()]
+//!
+
+// TODO(jleibs) better crate documentation.
 
 mod entity_view;
 mod query;

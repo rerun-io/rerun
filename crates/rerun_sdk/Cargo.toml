@@ -43,7 +43,7 @@ re_ws_comms = { path = "../re_ws_comms", optional = true, features = [
 re_viewer = { path = "../re_viewer", default-features = false, optional = true }
 re_web_server = { path = "../re_web_server", optional = true }
 
-eframe = { version = "0.20", default-features = false, optional = true }
+eframe = { workspace = true, default-features = false, optional = true }
 webbrowser = { version = "0.8", optional = true }
 
 # Native dependencies:
