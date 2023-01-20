@@ -4,7 +4,9 @@ use arrow2::array::{Array, ListArray};
 
 use itertools::Itertools;
 use re_log::trace;
-use re_log_types::{ComponentName, ObjPath as EntityPath, TimeInt, TimeRange, Timeline};
+use re_log_types::{
+    ComponentName, MsgId, ObjPath as EntityPath, TimeInt, TimePoint, TimeRange, Timeline,
+};
 
 use crate::{
     ComponentBucket, ComponentTable, DataStore, IndexBucket, IndexBucketIndices, IndexRowNr,
@@ -103,12 +105,12 @@ impl DataStore {
 
         let timeless = self
             .timeless_indices
-            .get(ent_path_hash)
+            .get(&ent_path_hash)
             .map(|index| &index.all_components);
 
         let temporal = self
             .indices
-            .get(&(*timeline, *ent_path_hash))
+            .get(&(*timeline, ent_path_hash))
             .map(|index| &index.all_components);
 
         let components = match (timeless, temporal) {
@@ -215,7 +217,7 @@ impl DataStore {
 
         let row_indices = self
             .indices
-            .get(&(query.timeline, *ent_path_hash))
+            .get(&(query.timeline, ent_path_hash))
             .and_then(|index| {
                 let row_indices = index.latest_at(query.at, primary, components);
                 trace!(
@@ -237,7 +239,7 @@ impl DataStore {
             return row_indices;
         }
 
-        let row_indices_timeless = self.timeless_indices.get(ent_path_hash).and_then(|index| {
+        let row_indices_timeless = self.timeless_indices.get(&ent_path_hash).and_then(|index| {
             let row_indices = index.latest_at(primary, components);
             trace!(
                 kind = "latest_at",
@@ -404,7 +406,7 @@ impl DataStore {
 
         let temporal = self
             .indices
-            .get(&(query.timeline, *ent_path_hash))
+            .get(&(query.timeline, ent_path_hash))
             .map(|index| index.range(query.range, components))
             .into_iter()
             .flatten()
@@ -413,7 +415,7 @@ impl DataStore {
         if query.range.min == TimeInt::MIN {
             let timeless = self
                 .timeless_indices
-                .get(ent_path_hash)
+                .get(&ent_path_hash)
                 .map(|index| {
                     index
                         .range(components)
@@ -466,6 +468,10 @@ impl DataStore {
         }
 
         results
+    }
+
+    pub fn get_msg_metadata(&self, msg_id: &MsgId) -> Option<&TimePoint> {
+        self.messages.get(msg_id)
     }
 
     /// Sort all unsorted indices in the store.
@@ -1081,7 +1087,7 @@ impl PersistentComponentTable {
 
 impl ComponentTable {
     pub fn get(&self, row_idx: RowIndex) -> Option<Box<dyn Array>> {
-        let mut bucket_nr = self
+        let bucket_nr = self
             .buckets
             .partition_point(|bucket| row_idx.as_u64() >= bucket.row_offset);
 
@@ -1089,10 +1095,11 @@ impl ComponentTable {
         // strictly greater than the row index we're looking for, therefore we need to take a
         // step back to find what we're looking for.
         //
-        // Since component tables always spawn with a default bucket at offset 0, the smallest
-        // partition point that can ever be returned is one, thus this operation is overflow-safe.
-        debug_assert!(bucket_nr > 0);
-        bucket_nr -= 1;
+        // Component tables always spawn with a default bucket at offset 0, so the smallest
+        // partition point that can ever be returned is one, making this operation always
+        // overflow-safe... unless the garbage collector has ever run, in which case all bets are
+        // off!
+        let Some(bucket_nr) = bucket_nr.checked_sub(1) else { return None };
 
         if let Some(bucket) = self.buckets.get(bucket_nr) {
             trace!(
@@ -1103,7 +1110,7 @@ impl ComponentTable {
                 %bucket.row_offset,
                 "fetching component data"
             );
-            Some(bucket.get(row_idx))
+            bucket.get(row_idx)
         } else {
             trace!(
                 kind = "get",
@@ -1131,22 +1138,24 @@ impl ComponentBucket {
     }
 
     /// Returns a shallow clone of the row data present at the given `row_idx`.
-    pub fn get(&self, row_idx: RowIndex) -> Box<dyn Array> {
+    pub fn get(&self, row_idx: RowIndex) -> Option<Box<dyn Array>> {
         let row_idx = row_idx.as_u64() - self.row_offset;
         // This has to be safe to unwrap, otherwise it would never have made it past insertion.
         if self.archived {
             debug_assert_eq!(self.chunks.len(), 1);
-            self.chunks[0]
+            let list = self.chunks[0]
                 .as_any()
                 .downcast_ref::<ListArray<i32>>()
-                .unwrap()
-                .value(row_idx as _)
+                .unwrap();
+            (row_idx < list.len() as u64).then(|| list.value(row_idx as _))
         } else {
-            self.chunks[row_idx as usize]
-                .as_any()
-                .downcast_ref::<ListArray<i32>>()
-                .unwrap()
-                .value(0)
+            self.chunks.get(row_idx as usize).map(|chunk| {
+                chunk
+                    .as_any()
+                    .downcast_ref::<ListArray<i32>>()
+                    .unwrap()
+                    .value(0)
+            })
         }
     }
 

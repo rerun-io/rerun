@@ -1,4 +1,4 @@
-use glam::{vec3, Mat4, Vec3};
+use glam::{Mat4, Vec3};
 
 use re_arrow_store::LatestAtQuery;
 use re_data_store::{query::visit_type_data_4, FieldName, InstanceIdHash, ObjPath, ObjectProps};
@@ -25,52 +25,6 @@ use crate::{
 
 use super::ScenePart;
 
-lazy_static::lazy_static! {
-    /// Vertices for a unit cube at the origin
-    static ref UNIT_CUBE: [Vec3; 8] = [
-        vec3(-0.5, -0.5, -0.5),
-        vec3(-0.5, -0.5, 0.5),
-        vec3(-0.5, 0.5, -0.5),
-        vec3(-0.5, 0.5, 0.5),
-        vec3(0.5, -0.5, -0.5),
-        vec3(0.5, -0.5, 0.5),
-        vec3(0.5, 0.5, -0.5),
-        vec3(0.5, 0.5, 0.5),
-    ];
-}
-
-/// Create an iterator of line segments that build unit cube transformed by `transform`.
-fn transformed_box_segments(transform: glam::Affine3A) -> impl Iterator<Item = (Vec3, Vec3)> {
-    let corners = [
-        transform.transform_point3(UNIT_CUBE[0]),
-        transform.transform_point3(UNIT_CUBE[1]),
-        transform.transform_point3(UNIT_CUBE[2]),
-        transform.transform_point3(UNIT_CUBE[3]),
-        transform.transform_point3(UNIT_CUBE[4]),
-        transform.transform_point3(UNIT_CUBE[5]),
-        transform.transform_point3(UNIT_CUBE[6]),
-        transform.transform_point3(UNIT_CUBE[7]),
-    ];
-    [
-        // bottom:
-        (corners[0b000], corners[0b001]),
-        (corners[0b000], corners[0b010]),
-        (corners[0b011], corners[0b001]),
-        (corners[0b011], corners[0b010]),
-        // top:
-        (corners[0b100], corners[0b101]),
-        (corners[0b100], corners[0b110]),
-        (corners[0b111], corners[0b101]),
-        (corners[0b111], corners[0b110]),
-        // sides:
-        (corners[0b000], corners[0b100]),
-        (corners[0b001], corners[0b101]),
-        (corners[0b010], corners[0b110]),
-        (corners[0b011], corners[0b111]),
-    ]
-    .into_iter()
-}
-
 pub struct Boxes3DPartClassic;
 
 impl ScenePart for Boxes3DPartClassic {
@@ -80,7 +34,6 @@ impl ScenePart for Boxes3DPartClassic {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
-        hovered_instance: InstanceIdHash,
     ) {
         crate::profile_scope!("Boxes3DPartClassic");
 
@@ -95,6 +48,9 @@ impl ScenePart for Boxes3DPartClassic {
             let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(obj_path) else {
                 continue;
             };
+
+            let highlighted_paths = ctx.hovered().check_obj_path(obj_path.hash());
+
             let mut line_batch = scene
                 .primitives
                 .line_strips
@@ -125,7 +81,7 @@ impl ScenePart for Boxes3DPartClassic {
 
                 let instance_hash =
                     instance_hash_if_interactive(obj_path, instance_index, properties.interactive);
-                if instance_hash.is_some() && instance_hash == hovered_instance {
+                if highlighted_paths.contains_index(instance_hash.instance_index_hash) {
                     color = SceneSpatial::HOVER_COLOR;
                     line_radius = SceneSpatial::hover_size_boost(line_radius);
                 }
@@ -135,9 +91,8 @@ impl ScenePart for Boxes3DPartClassic {
                     glam::Quat::from_array(obb.rotation),
                     Vec3::from(obb.translation),
                 );
-
                 line_batch
-                    .add_segments(transformed_box_segments(transform))
+                    .add_box_outline(transform)
                     .radius(line_radius)
                     .color(color)
                     .user_data(instance_hash);
@@ -160,8 +115,8 @@ impl Boxes3DPart {
     #[allow(clippy::too_many_arguments)]
     fn process_entity_view(
         scene: &mut SceneSpatial,
+        ctx: &mut ViewerContext<'_>,
         props: &ObjectProps,
-        hovered_instance: InstanceIdHash,
         entity_view: &EntityView<Box3D>,
         ent_path: &ObjPath,
         world_from_obj: Mat4,
@@ -176,6 +131,8 @@ impl Boxes3DPart {
             .line_strips
             .batch("box 3d")
             .world_from_obj(world_from_obj);
+
+        let highlighted_paths = ctx.hovered().check_obj_path(ent_path.hash());
 
         let visitor = |instance: Instance,
                        half_size: Box3D,
@@ -201,7 +158,7 @@ impl Boxes3DPart {
                 annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color),
             );
 
-            if instance_hash.is_some() && instance_hash == hovered_instance {
+            if highlighted_paths.contains_index(instance_hash.instance_index_hash) {
                 color = SceneSpatial::HOVER_COLOR;
                 radius = SceneSpatial::hover_size_boost(radius);
             }
@@ -212,7 +169,7 @@ impl Boxes3DPart {
             let transform = glam::Affine3A::from_scale_rotation_translation(scale, rot, tran);
 
             line_batch
-                .add_segments(transformed_box_segments(transform))
+                .add_box_outline(transform)
                 .radius(radius)
                 .color(color)
                 .user_data(instance_hash);
@@ -236,7 +193,6 @@ impl ScenePart for Boxes3DPart {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
-        hovered_instance: InstanceIdHash,
     ) {
         crate::profile_scope!("Boxes3DPart");
 
@@ -263,8 +219,8 @@ impl ScenePart for Boxes3DPart {
             .and_then(|entity_view| {
                 Self::process_entity_view(
                     scene,
+                    ctx,
                     &props,
-                    hovered_instance,
                     &entity_view,
                     ent_path,
                     world_from_obj,

@@ -81,7 +81,7 @@ impl DataStore {
             return Ok(());
         }
 
-        let ent_path_hash = *ent_path.hash();
+        let ent_path_hash = ent_path.hash();
         let nb_rows = components[0].value.len();
 
         // Effectively the same thing as having a non-unit length batch, except it's really not
@@ -434,8 +434,9 @@ impl DataStore {
         }
     }
 
-    pub fn get_msg_metadata(&self, msg_id: &MsgId) -> Option<&TimePoint> {
-        self.messages.get(msg_id)
+    pub fn clear_msg_metadata(&mut self, drop_msg_ids: &ahash::HashSet<MsgId>) {
+        self.messages
+            .retain(|msg_id, _| !drop_msg_ids.contains(msg_id));
     }
 }
 

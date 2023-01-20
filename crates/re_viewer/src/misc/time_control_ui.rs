@@ -1,9 +1,7 @@
-use std::collections::BTreeMap;
-
 use egui::NumExt as _;
 
 use re_data_store::TimesPerTimeline;
-use re_log_types::{TimeInt, TimeRangeF, TimeReal, TimeType};
+use re_log_types::TimeType;
 
 use super::time_control::{Looping, TimeControl};
 
@@ -48,20 +46,6 @@ impl TimeControl {
         times_per_timeline: &TimesPerTimeline,
         ui: &mut egui::Ui,
     ) {
-        // Toggle with space
-        let anything_has_focus = ui.ctx().memory().focus().is_some();
-        if !anything_has_focus
-            && ui
-                .input_mut()
-                .consume_key(Default::default(), egui::Key::Space)
-        {
-            if self.is_playing() {
-                self.pause();
-            } else {
-                self.play(times_per_timeline);
-            }
-        }
-
         self.play_button_ui(re_ui, ui, times_per_timeline);
         self.pause_button_ui(re_ui, ui);
         self.step_time_button_ui(re_ui, ui, times_per_timeline);
@@ -77,7 +61,7 @@ impl TimeControl {
     ) {
         if re_ui
             .large_button_selected(ui, &re_ui::icons::PLAY, self.is_playing())
-            .on_hover_text("Play. Toggle with SPACE")
+            .on_hover_text(format!("Play.{}", toggle_playback_text(ui.ctx())))
             .clicked()
         {
             self.play(times_per_timeline);
@@ -87,7 +71,7 @@ impl TimeControl {
     fn pause_button_ui(&mut self, re_ui: &re_ui::ReUi, ui: &mut egui::Ui) {
         if re_ui
             .large_button_selected(ui, &re_ui::icons::PAUSE, !self.is_playing())
-            .on_hover_text("Pause. Toggle with SPACE")
+            .on_hover_text(format!("Pause.{}", toggle_playback_text(ui.ctx())))
             .clicked()
         {
             self.pause();
@@ -100,49 +84,20 @@ impl TimeControl {
         ui: &mut egui::Ui,
         times_per_timeline: &TimesPerTimeline,
     ) {
-        let Some(time_values) = times_per_timeline.get(self.timeline()) else { return; };
-
-        let anything_has_kb_focus = ui.ctx().memory().focus().is_some();
-        let step_back = re_ui
+        if re_ui
             .large_button(ui, &re_ui::icons::ARROW_LEFT)
             .on_hover_text("Step back to previous time with any new data (left arrow)")
-            .clicked();
-        let step_back = step_back
-            || !anything_has_kb_focus
-                && ui
-                    .input_mut()
-                    .consume_key(egui::Modifiers::NONE, egui::Key::ArrowLeft);
+            .clicked()
+        {
+            self.step_time_back(times_per_timeline);
+        }
 
-        let step_fwd = re_ui
+        if re_ui
             .large_button(ui, &re_ui::icons::ARROW_RIGHT)
             .on_hover_text("Step forwards to next time with any new data (right arrow)")
-            .clicked();
-        let step_fwd = step_fwd
-            || !anything_has_kb_focus
-                && ui
-                    .input_mut()
-                    .consume_key(egui::Modifiers::NONE, egui::Key::ArrowRight);
-
-        if step_back || step_fwd {
-            self.pause();
-
-            if let Some(time) = self.time() {
-                #[allow(clippy::collapsible_else_if)]
-                let new_time = if let Some(loop_range) = self.active_loop_selection() {
-                    if step_back {
-                        step_back_time_looped(time, time_values, &loop_range)
-                    } else {
-                        step_fwd_time_looped(time, time_values, &loop_range)
-                    }
-                } else {
-                    if step_back {
-                        step_back_time(time, time_values).into()
-                    } else {
-                        step_fwd_time(time, time_values).into()
-                    }
-                };
-                self.set_time(new_time);
-            }
+            .clicked()
+        {
+            self.step_time_fwd(times_per_timeline);
         }
     }
 
@@ -198,70 +153,10 @@ impl TimeControl {
     }
 }
 
-fn min<T>(values: &BTreeMap<TimeInt, T>) -> TimeInt {
-    *values.keys().next().unwrap()
-}
-
-fn max<T>(values: &BTreeMap<TimeInt, T>) -> TimeInt {
-    *values.keys().rev().next().unwrap()
-}
-
-fn step_fwd_time<T>(time: TimeReal, values: &BTreeMap<TimeInt, T>) -> TimeInt {
-    if let Some(next) = values
-        .range((
-            std::ops::Bound::Excluded(time.floor()),
-            std::ops::Bound::Unbounded,
-        ))
-        .next()
-    {
-        *next.0
+fn toggle_playback_text(egui_ctx: &egui::Context) -> String {
+    if let Some(shortcut) = re_ui::Command::PlaybackTogglePlayPause.kb_shortcut() {
+        format!(" Toggle with {}", egui_ctx.format_shortcut(&shortcut))
     } else {
-        min(values)
-    }
-}
-
-fn step_back_time<T>(time: TimeReal, values: &BTreeMap<TimeInt, T>) -> TimeInt {
-    if let Some(previous) = values.range(..time.ceil()).rev().next() {
-        *previous.0
-    } else {
-        max(values)
-    }
-}
-
-fn step_fwd_time_looped<T>(
-    time: TimeReal,
-    values: &BTreeMap<TimeInt, T>,
-    loop_range: &TimeRangeF,
-) -> TimeReal {
-    if time < loop_range.min || loop_range.max <= time {
-        loop_range.min
-    } else if let Some(next) = values
-        .range((
-            std::ops::Bound::Excluded(time.floor()),
-            std::ops::Bound::Included(loop_range.max.floor()),
-        ))
-        .next()
-    {
-        TimeReal::from(*next.0)
-    } else {
-        step_fwd_time(time, values).into()
-    }
-}
-
-fn step_back_time_looped<T>(
-    time: TimeReal,
-    values: &BTreeMap<TimeInt, T>,
-    loop_range: &TimeRangeF,
-) -> TimeReal {
-    if time <= loop_range.min || loop_range.max < time {
-        loop_range.max
-    } else if let Some(previous) = values
-        .range(loop_range.min.ceil()..time.ceil())
-        .rev()
-        .next()
-    {
-        TimeReal::from(*previous.0)
-    } else {
-        step_back_time(time, values).into()
+        Default::default()
     }
 }

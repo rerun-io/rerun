@@ -8,6 +8,7 @@ use egui::{
     NumExt, PointerButton, Pos2, Rect, Rgba, Shape, Stroke, Vec2,
 };
 
+use itertools::Itertools;
 use re_data_store::{InstanceId, ObjectTree};
 use re_log_types::{
     DataPath, Duration, MsgId, ObjPathComp, Time, TimeInt, TimeRange, TimeRangeF, TimeReal,
@@ -117,7 +118,7 @@ impl TimePanel {
 
                         // Draw separator between top bar and the rest:
                         ui.painter().hline(
-                            rop_row_rect.x_range(),
+                            0.0..=rop_row_rect.right(),
                             rop_row_rect.bottom(),
                             ui.visuals().widgets.noninteractive.bg_stroke,
                         );
@@ -209,7 +210,20 @@ impl TimePanel {
 
         let timeline_rect = {
             let top = ui.min_rect().bottom();
-            ui.add_space(32.0);
+
+            let size = egui::vec2(self.prev_col_width, 28.0);
+            ui.allocate_ui_with_layout(size, egui::Layout::top_down(egui::Align::Center), |ui| {
+                ui.set_min_size(size);
+                ui.add_space(4.0); // hack to vertically center the text
+                ui.strong("Streams");
+            })
+            .response
+            .on_hover_text(
+                "A hierarchial view of the paths used during logging.\n\
+                        \n\
+                        On the right you can see when there was a log event for a stream.",
+            );
+
             let bottom = ui.min_rect().bottom();
             Rect::from_x_y_ranges(time_fg_x_range.clone(), top..=bottom)
         };
@@ -226,7 +240,11 @@ impl TimePanel {
         let time_bg_area_painter = ui.painter().with_clip_rect(time_bg_area_rect);
         let time_area_painter = ui.painter().with_clip_rect(time_fg_area_rect);
 
-        ui.separator();
+        ui.painter().hline(
+            0.0..=ui.max_rect().right(),
+            timeline_rect.bottom(),
+            ui.visuals().widgets.noninteractive.bg_stroke,
+        );
 
         paint_time_ranges_and_ticks(
             &self.time_ranges_ui,
@@ -549,8 +567,11 @@ fn show_data_over_time(
 ) {
     crate::profile_function!();
 
-    let cur_selection = ctx.selection();
-    let is_selected = cur_selection.is_some() && select_on_click.as_ref() == Some(&cur_selection);
+    let is_selected = if let Some(select_on_click) = select_on_click.as_ref() {
+        ctx.selection().selected().iter().contains(select_on_click)
+    } else {
+        false
+    };
 
     // painting each data point as a separate circle is slow (too many circles!)
     // so we join time points that are close together.
@@ -687,7 +708,7 @@ fn show_data_over_time(
     if !hovered_messages.is_empty() {
         if time_area_response.clicked_by(egui::PointerButton::Primary) {
             if let Some(select_on_click) = select_on_click {
-                ctx.set_selection(select_on_click);
+                ctx.set_single_selection(select_on_click);
             } else {
                 ctx.clear_selection();
             }

@@ -35,7 +35,6 @@ impl ScenePart for Points2DPartClassic {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
-        hovered_instance: re_data_store::InstanceIdHash,
     ) {
         crate::profile_scope!("Points2DPartClassic");
 
@@ -53,6 +52,8 @@ impl ScenePart for Points2DPartClassic {
             let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(obj_path) else {
                 continue;
             };
+
+            let highlighted_paths = ctx.hovered().check_obj_path(obj_path.hash());
 
             // If keypoints ids show up we may need to connect them later!
             // We include time in the key, so that the "Visible history" (time range queries) feature works.
@@ -97,7 +98,7 @@ impl ScenePart for Points2DPartClassic {
                 let label = annotation_info.label(label);
 
                 let mut paint_props = paint_properties(color, radius);
-                if instance_hash.is_some() && hovered_instance == instance_hash {
+                if highlighted_paths.contains_index(instance_hash.instance_index_hash) {
                     apply_hover_effect(&mut paint_props);
                 }
 
@@ -148,9 +149,9 @@ impl Points2DPart {
     #[allow(clippy::too_many_arguments)]
     fn process_entity_view(
         scene: &mut SceneSpatial,
+        ctx: &mut ViewerContext<'_>,
         _query: &SceneQuery<'_>,
         props: &ObjectProps,
-        hovered_instance: InstanceIdHash,
         entity_view: &EntityView<Point2D>,
         ent_path: &ObjPath,
         world_from_obj: Mat4,
@@ -172,6 +173,8 @@ impl Points2DPart {
             .points
             .batch("2d points")
             .world_from_obj(world_from_obj);
+
+        let highlighted_paths = ctx.hovered().check_obj_path(ent_path.hash());
 
         let visitor = |instance: Instance,
                        pos: Point2D,
@@ -210,7 +213,7 @@ impl Points2DPart {
             let label = annotation_info.label(label.map(|l| l.0).as_ref());
 
             let mut paint_props = paint_properties(color, radius.map(|r| r.0).as_ref());
-            if instance_hash.is_some() && hovered_instance == instance_hash {
+            if highlighted_paths.contains_index(instance_hash.instance_index_hash) {
                 apply_hover_effect(&mut paint_props);
             }
 
@@ -252,7 +255,6 @@ impl ScenePart for Points2DPart {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
-        hovered_instance: re_data_store::InstanceIdHash,
     ) {
         crate::profile_scope!("Points2DPart");
 
@@ -278,9 +280,9 @@ impl ScenePart for Points2DPart {
             .and_then(|entity_view| {
                 Self::process_entity_view(
                     scene,
+                    ctx,
                     query,
                     &props,
-                    hovered_instance,
                     &entity_view,
                     ent_path,
                     world_from_obj,

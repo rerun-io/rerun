@@ -1,7 +1,7 @@
 use glam::Mat4;
 use re_data_store::{query::visit_type_data_4, FieldName, InstanceIdHash, ObjPath};
 use re_log_types::{
-    field_types::{ClassId, ColorRGBA, Rect2D},
+    field_types::{ClassId, ColorRGBA, Label, Radius, Rect2D},
     msg_bundle::Component,
     IndexHash, MsgId, ObjectType,
 };
@@ -9,7 +9,7 @@ use re_query::{query_entity_with_primary, QueryError};
 use re_renderer::Size;
 
 use crate::{
-    misc::ViewerContext,
+    misc::{ObjectPathSelectionScope, ViewerContext},
     ui::{
         scene::SceneQuery,
         transform_cache::{ReferenceFromObjTransform, TransformCache},
@@ -33,7 +33,6 @@ impl ScenePart for Boxes2DPartClassic {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
-        hovered_instance: InstanceIdHash,
     ) {
         crate::profile_scope!("Boxes2DPartClassic");
 
@@ -47,6 +46,8 @@ impl ScenePart for Boxes2DPartClassic {
             let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(obj_path) else {
                 continue;
             };
+
+            let highlighted_paths = ctx.hovered().check_obj_path(obj_path.hash());
 
             let mut line_batch = scene
                 .primitives
@@ -72,7 +73,7 @@ impl ScenePart for Boxes2DPartClassic {
                 let label = annotation_info.label(label);
 
                 let mut paint_props = paint_properties(color, stroke_width);
-                if instance_hash.is_some() && hovered_instance == instance_hash {
+                if highlighted_paths.contains_index(instance_hash.instance_index_hash) {
                     apply_hover_effect(&mut paint_props);
                 }
 
@@ -110,33 +111,29 @@ pub struct Boxes2DPart;
 
 impl Boxes2DPart {
     /// Build scene parts for a single box instance
+    #[allow(clippy::too_many_arguments)]
     fn visit_instance(
         scene: &mut SceneSpatial,
         obj_path: &ObjPath,
         world_from_obj: Mat4,
         instance: InstanceIdHash,
-        hovered_instance: InstanceIdHash,
         rect: &Rect2D,
         color: Option<ColorRGBA>,
+        radius: Option<Radius>,
+        label: Option<Label>,
+        class_id: Option<ClassId>,
+        highlighted_paths: &ObjectPathSelectionScope,
     ) {
         scene.num_logged_2d_objects += 1;
 
         let color = color.map(|c| c.to_array());
-
-        // TODO(jleibs): Lots of missing components
-        let class_id = Some(&1);
-        let label: Option<&String> = None;
-        let stroke_width: Option<&f32> = None;
-
         let annotations = scene.annotation_map.find(obj_path);
-        let annotation_info = annotations
-            .class_description(class_id.map(|i| ClassId(*i as _)))
-            .annotation_info();
+        let annotation_info = annotations.class_description(class_id).annotation_info();
         let color = annotation_info.color(color.as_ref(), DefaultColor::ObjPath(obj_path));
-        let label = annotation_info.label(label);
+        let label = annotation_info.label(label.map(|l| l.0).as_ref());
 
-        let mut paint_props = paint_properties(color, stroke_width);
-        if hovered_instance == instance {
+        let mut paint_props = paint_properties(color, radius.map(|r| r.0).as_ref());
+        if highlighted_paths.contains_index(instance.instance_index_hash) {
             apply_hover_effect(&mut paint_props);
         }
 
@@ -148,9 +145,9 @@ impl Boxes2DPart {
 
         line_batch
             .add_rectangle_outline_2d(
-                glam::vec2(rect.x, rect.y),
-                glam::vec2(rect.w, 0.0),
-                glam::vec2(0.0, rect.h),
+                rect.top_left_corner().into(),
+                glam::vec2(rect.width(), 0.0),
+                glam::vec2(0.0, rect.height()),
             )
             .color(paint_props.fg_stroke.color)
             .radius(Size::new_points(paint_props.fg_stroke.width * 0.5))
@@ -161,8 +158,8 @@ impl Boxes2DPart {
                 text: label,
                 color: paint_props.fg_stroke.color,
                 target: Label2DTarget::Rect(egui::Rect::from_min_size(
-                    egui::pos2(rect.x, rect.y),
-                    egui::vec2(rect.w, rect.h),
+                    rect.top_left_corner().into(),
+                    egui::vec2(rect.width(), rect.height()),
                 )),
                 labled_instance: instance,
             });
@@ -177,7 +174,6 @@ impl ScenePart for Boxes2DPart {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
-        hovered_instance: InstanceIdHash,
     ) {
         crate::profile_scope!("Boxes2DPart");
 
@@ -192,10 +188,17 @@ impl ScenePart for Boxes2DPart {
                 &ctx.log_db.obj_db.arrow_store,
                 &query,
                 ent_path,
-                &[ColorRGBA::name()],
+                &[
+                    ColorRGBA::name(),
+                    Radius::name(),
+                    Label::name(),
+                    ClassId::name(),
+                ],
             )
             .and_then(|entity_view| {
-                entity_view.visit2(|instance, rect, color| {
+                let highlighted_paths = ctx.hovered().check_obj_path(ent_path.hash());
+
+                entity_view.visit5(|instance, rect, color, radius, label, class_id| {
                     let instance_hash = {
                         if props.interactive {
                             InstanceIdHash::from_path_and_arrow_instance(ent_path, &instance)
@@ -209,9 +212,12 @@ impl ScenePart for Boxes2DPart {
                         ent_path,
                         world_from_obj,
                         instance_hash,
-                        hovered_instance,
                         &rect,
                         color,
+                        radius,
+                        label,
+                        class_id,
+                        &highlighted_paths,
                     );
                 })
             }) {

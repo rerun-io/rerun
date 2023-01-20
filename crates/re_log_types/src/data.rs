@@ -4,7 +4,7 @@ use half::f16;
 
 use crate::{field_types, impl_into_enum, AnnotationContext, Mesh3D, ObjPath, ViewCoordinates};
 
-pub use crate::field_types::{Pinhole, Rigid3, Transform};
+pub use crate::field_types::{Arrow3D, Pinhole, Rigid3, Transform};
 
 // ----------------------------------------------------------------------------
 
@@ -604,13 +604,6 @@ pub struct Box3 {
     pub half_size: [f32; 3],
 }
 
-#[derive(Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct Arrow3D {
-    pub origin: [f32; 3],
-    pub vector: [f32; 3],
-}
-
 /// Order: XYZW
 pub type Quaternion = [f32; 4];
 
@@ -926,6 +919,18 @@ impl field_types::TensorTrait for ClassicTensor {
 
     fn is_shaped_like_an_image(&self) -> bool {
         self.is_shaped_like_an_image()
+    }
+
+    fn is_vector(&self) -> bool {
+        self.is_vector()
+    }
+
+    fn meaning(&self) -> field_types::TensorDataMeaning {
+        self.meaning
+    }
+
+    fn get(&self, index: &[u64]) -> Option<TensorElement> {
+        self.get(index)
     }
 }
 

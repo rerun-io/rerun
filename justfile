@@ -26,6 +26,10 @@ py-dev-env:
     venv/bin/pip install -r rerun_py/requirements-lint.txt
     echo "Do 'source venv/bin/activate' to use the virtual environment!"
 
+# Run all examples
+py-run-all: py-build
+    fd main.py | xargs -I _ sh -c "echo _ && python3 _"
+
 # Build and install the package into the venv
 py-build:
     #!/usr/bin/env bash
@@ -54,10 +58,6 @@ py-lint:
 py-test:
     python -m pytest rerun_py/tests/unit/
 
-# Run all examples
-py-run-all:
-    fd main.py | xargs -I _ sh -c "echo _ && python3 _"
-
 ### Rust
 
 # Generate and open the documentation for Rerun and all of its Rust dependencies.
@@ -83,8 +83,10 @@ toml-lint:
 
 # Update the design_tokens.json used to style the GUI.
 # See https://rerun-design-guidelines.netlify.app/tokens for their meanings.
+# To update the upstream `design_tokens.json`, modify
+# https://github.com/rerun-io/documentation/blob/main/src/utils/tokens.ts and push to main.
 download-design-tokens:
-    curl https://rerun-design-guidelines.netlify.app/api/tokens | jq > crates/re_ui/data/design_tokens.json
+    curl https://rerun-docs.netlify.app/api/tokens | jq > crates/re_ui/data/design_tokens.json
 
 # Update the results of `insta` snapshot regression tests
 update-insta-tests:

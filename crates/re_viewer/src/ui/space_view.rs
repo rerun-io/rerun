@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use re_data_store::{InstanceId, ObjPath, ObjectTree, ObjectsProperties, TimeInt};
+use re_data_store::{InstanceId, ObjPath, ObjectTree, TimeInt};
 
 use nohash_hasher::IntSet;
 
@@ -195,15 +195,9 @@ impl SpaceView {
     }
 
     pub fn selection_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
-        egui::Grid::new("space_view").num_columns(2).show(ui, |ui| {
-            ui.label("Name:");
-            ui.text_edit_singleline(&mut self.name);
-            ui.end_row();
-
-            ui.label("Space path:");
-            ctx.obj_path_button(ui, &self.space_path);
-            ui.end_row();
-        });
+        ui.label("Space path:");
+        ctx.obj_path_button(ui, &self.space_path);
+        ui.end_row();
 
         ui.separator();
 
@@ -464,20 +458,9 @@ impl SpaceView {
 
             ViewCategory::Spatial => {
                 let mut scene = view_spatial::SceneSpatial::default();
-                scene.load_objects(
-                    ctx,
-                    &query,
-                    &self.cached_transforms,
-                    self.view_state.state_spatial.hovered_instance_hash(),
-                );
-                self.view_state.ui_spatial(
-                    ctx,
-                    ui,
-                    &self.space_path,
-                    reference_space_info,
-                    scene,
-                    self.data_blueprint.data_blueprints_projected(),
-                );
+                scene.load_objects(ctx, &query, &self.cached_transforms);
+                self.view_state
+                    .ui_spatial(ctx, ui, &self.space_path, reference_space_info, scene);
             }
 
             ViewCategory::Tensor => {
@@ -525,11 +508,10 @@ impl ViewState {
         space: &ObjPath,
         space_info: &SpaceInfo,
         scene: view_spatial::SceneSpatial,
-        obj_properties: &ObjectsProperties,
     ) {
         ui.vertical(|ui| {
             self.state_spatial
-                .view_spatial(ctx, ui, space, scene, space_info, obj_properties);
+                .view_spatial(ctx, ui, space, scene, space_info);
         });
     }
 

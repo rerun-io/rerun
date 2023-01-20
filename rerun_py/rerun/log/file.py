@@ -1,4 +1,3 @@
-import logging
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
@@ -6,7 +5,6 @@ from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
-from rerun.log import EXP_ARROW
 
 from rerun import bindings
 
@@ -84,8 +82,5 @@ def log_image_file(
     """
     img_format = getattr(img_format, "value", None)
 
-    if EXP_ARROW.classic_log_gate():
-        bindings.log_image_file(obj_path, img_path, img_format, timeless)
-
-    if EXP_ARROW.arrow_log_gate():
-        logging.warning("log_image_file() not yet implemented for Arrow.")
+    # Image file arrow handling happens inside the python bridge
+    bindings.log_image_file(obj_path, img_path, img_format, timeless)

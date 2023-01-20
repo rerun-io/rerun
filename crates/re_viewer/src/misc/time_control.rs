@@ -168,6 +168,46 @@ impl TimeControl {
         self.playing = false;
     }
 
+    pub fn step_time_back(&mut self, times_per_timeline: &TimesPerTimeline) {
+        let Some(time_values) = times_per_timeline.get(self.timeline()) else { return; };
+
+        self.pause();
+
+        if let Some(time) = self.time() {
+            #[allow(clippy::collapsible_else_if)]
+            let new_time = if let Some(loop_range) = self.active_loop_selection() {
+                step_back_time_looped(time, time_values, &loop_range)
+            } else {
+                step_back_time(time, time_values).into()
+            };
+            self.set_time(new_time);
+        }
+    }
+
+    pub fn step_time_fwd(&mut self, times_per_timeline: &TimesPerTimeline) {
+        let Some(time_values) = times_per_timeline.get(self.timeline()) else { return; };
+
+        self.pause();
+
+        if let Some(time) = self.time() {
+            #[allow(clippy::collapsible_else_if)]
+            let new_time = if let Some(loop_range) = self.active_loop_selection() {
+                step_fwd_time_looped(time, time_values, &loop_range)
+            } else {
+                step_fwd_time(time, time_values).into()
+            };
+            self.set_time(new_time);
+        }
+    }
+
+    pub fn toggle_play_pause(&mut self, times_per_timeline: &TimesPerTimeline) {
+        if self.is_playing() {
+            self.pause();
+        } else {
+            self.play(times_per_timeline);
+        }
+    }
+
     /// playback speed
     pub fn speed(&self) -> f32 {
         self.speed
@@ -335,4 +375,64 @@ fn default_time_line<'a>(timelines: impl Iterator<Item = &'a Timeline>) -> Optio
     }
 
     log_time_timeline
+}
+
+fn step_fwd_time<T>(time: TimeReal, values: &BTreeMap<TimeInt, T>) -> TimeInt {
+    if let Some(next) = values
+        .range((
+            std::ops::Bound::Excluded(time.floor()),
+            std::ops::Bound::Unbounded,
+        ))
+        .next()
+    {
+        *next.0
+    } else {
+        min(values)
+    }
+}
+
+fn step_back_time<T>(time: TimeReal, values: &BTreeMap<TimeInt, T>) -> TimeInt {
+    if let Some(previous) = values.range(..time.ceil()).rev().next() {
+        *previous.0
+    } else {
+        max(values)
+    }
+}
+
+fn step_fwd_time_looped<T>(
+    time: TimeReal,
+    values: &BTreeMap<TimeInt, T>,
+    loop_range: &TimeRangeF,
+) -> TimeReal {
+    if time < loop_range.min || loop_range.max <= time {
+        loop_range.min
+    } else if let Some(next) = values
+        .range((
+            std::ops::Bound::Excluded(time.floor()),
+            std::ops::Bound::Included(loop_range.max.floor()),
+        ))
+        .next()
+    {
+        TimeReal::from(*next.0)
+    } else {
+        step_fwd_time(time, values).into()
+    }
+}
+
+fn step_back_time_looped<T>(
+    time: TimeReal,
+    values: &BTreeMap<TimeInt, T>,
+    loop_range: &TimeRangeF,
+) -> TimeReal {
+    if time <= loop_range.min || loop_range.max < time {
+        loop_range.max
+    } else if let Some(previous) = values
+        .range(loop_range.min.ceil()..time.ceil())
+        .rev()
+        .next()
+    {
+        TimeReal::from(*previous.0)
+    } else {
+        step_back_time(time, values).into()
+    }
 }

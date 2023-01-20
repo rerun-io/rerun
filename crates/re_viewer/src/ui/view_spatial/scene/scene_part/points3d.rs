@@ -13,15 +13,18 @@ use re_log_types::{
 use re_query::{query_entity_with_primary, EntityView, QueryError};
 use re_renderer::Size;
 
-use crate::ui::{
-    annotations::ResolvedAnnotationInfo,
-    scene::SceneQuery,
-    transform_cache::ReferenceFromObjTransform,
-    view_spatial::{
-        scene::{instance_hash_if_interactive, to_ecolor, Keypoints},
-        Label3D, SceneSpatial,
+use crate::{
+    misc::ViewerContext,
+    ui::{
+        annotations::ResolvedAnnotationInfo,
+        scene::SceneQuery,
+        transform_cache::ReferenceFromObjTransform,
+        view_spatial::{
+            scene::{instance_hash_if_interactive, to_ecolor, Keypoints},
+            Label3D, SceneSpatial,
+        },
+        Annotations, DefaultColor,
     },
-    Annotations, DefaultColor,
 };
 
 use super::ScenePart;
@@ -35,7 +38,6 @@ impl ScenePart for Points3DPartClassic {
         ctx: &mut crate::misc::ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &crate::ui::transform_cache::TransformCache,
-        hovered_instance: InstanceIdHash,
     ) {
         crate::profile_scope!("Points3DPartClassic");
 
@@ -58,6 +60,8 @@ impl ScenePart for Points3DPartClassic {
             let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(obj_path) else {
                 continue;
             };
+
+            let highlighted_paths = ctx.hovered().check_obj_path(obj_path.hash());
 
             let mut point_batch = scene
                 .primitives
@@ -101,7 +105,7 @@ impl ScenePart for Points3DPartClassic {
                 let mut color = to_ecolor(annotation_info.color(color, default_color));
                 let mut radius = radius.copied().map_or(Size::AUTO, Size::new_scene);
 
-                if instance_hash.is_some() && instance_hash == hovered_instance {
+                if highlighted_paths.contains_index(instance_hash.instance_index_hash) {
                     color = SceneSpatial::HOVER_COLOR;
                     radius = SceneSpatial::hover_size_boost(radius);
                 }
@@ -187,19 +191,18 @@ impl Points3DPart {
     fn process_colors<'a>(
         entity_view: &'a EntityView<Point3D>,
         ent_path: &'a ObjPath,
-        hovered_instance: InstanceIdHash,
-        instance_hashes: &'a [InstanceIdHash],
+        highlighted: &'a [bool],
         annotation_infos: &'a [ResolvedAnnotationInfo],
     ) -> Result<impl Iterator<Item = egui::Color32> + 'a, QueryError> {
         let default_color = DefaultColor::ObjPath(ent_path);
 
         let colors = itertools::izip!(
-            instance_hashes.iter(),
+            highlighted.iter(),
             annotation_infos.iter(),
             entity_view.iter_component::<ColorRGBA>()?,
         )
-        .map(move |(instance_hash, annotation_info, color)| {
-            if instance_hash.is_some() && instance_hash.eq(&hovered_instance) {
+        .map(move |(highlighted, annotation_info, color)| {
+            if *highlighted {
                 SceneSpatial::HOVER_COLOR
             } else {
                 to_ecolor(
@@ -212,21 +215,17 @@ impl Points3DPart {
 
     fn process_radii<'a>(
         entity_view: &'a EntityView<Point3D>,
-        hovered_instance: InstanceIdHash,
-        instance_hashes: &'a [InstanceIdHash],
+        highlighted: &'a [bool],
     ) -> Result<impl Iterator<Item = Size> + 'a, QueryError> {
-        let radii = itertools::izip!(
-            instance_hashes.iter(),
-            entity_view.iter_component::<Radius>()?,
-        )
-        .map(move |(instance_hash, radius)| {
-            let radius = radius.map_or(Size::AUTO, |radius| Size::new_scene(radius.0));
-            if instance_hash.is_some() && instance_hash.eq(&hovered_instance) {
-                SceneSpatial::hover_size_boost(radius)
-            } else {
-                radius
-            }
-        });
+        let radii = itertools::izip!(highlighted.iter(), entity_view.iter_component::<Radius>()?,)
+            .map(move |(highlighted, radius)| {
+                let radius = radius.map_or(Size::AUTO, |radius| Size::new_scene(radius.0));
+                if *highlighted {
+                    SceneSpatial::hover_size_boost(radius)
+                } else {
+                    radius
+                }
+            });
         Ok(radii)
     }
 
@@ -257,9 +256,9 @@ impl Points3DPart {
     fn process_entity_view(
         &self,
         scene: &mut SceneSpatial,
+        ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         properties: &ObjectProps,
-        hovered_instance: InstanceIdHash,
         entity_view: &EntityView<Point3D>,
         ent_path: &ObjPath,
         world_from_obj: Mat4,
@@ -287,6 +286,8 @@ impl Points3DPart {
             point_positions.as_slice(),
         )?;
 
+        let highlighted_paths = ctx.hovered().check_obj_path(ent_path.hash());
+
         let instance_hashes = entity_view
             .iter_instances()?
             .map(|instance| {
@@ -297,16 +298,14 @@ impl Points3DPart {
                 }
             })
             .collect::<Vec<_>>();
+        let highlighted = instance_hashes
+            .iter()
+            .map(|hash| highlighted_paths.contains_index(hash.instance_index_hash))
+            .collect::<Vec<_>>();
 
-        let colors = Self::process_colors(
-            entity_view,
-            ent_path,
-            hovered_instance,
-            &instance_hashes,
-            &annotation_infos,
-        )?;
+        let colors = Self::process_colors(entity_view, ent_path, &highlighted, &annotation_infos)?;
 
-        let radii = Self::process_radii(entity_view, hovered_instance, &instance_hashes)?;
+        let radii = Self::process_radii(entity_view, &highlighted)?;
         let labels = Self::process_labels(entity_view, &annotation_infos, world_from_obj)?;
 
         if show_labels && instance_hashes.len() <= self.max_labels {
@@ -332,7 +331,6 @@ impl ScenePart for Points3DPart {
         ctx: &mut crate::misc::ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &crate::ui::transform_cache::TransformCache,
-        hovered_instance: InstanceIdHash,
     ) {
         crate::profile_scope!("Points3DPart");
 
@@ -358,9 +356,9 @@ impl ScenePart for Points3DPart {
             .and_then(|entity_view| {
                 self.process_entity_view(
                     scene,
+                    ctx,
                     query,
                     &props,
-                    hovered_instance,
                     &entity_view,
                     ent_path,
                     world_from_obj,

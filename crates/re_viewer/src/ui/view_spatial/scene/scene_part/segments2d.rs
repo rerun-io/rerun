@@ -1,4 +1,4 @@
-use re_data_store::{query::visit_type_data_2, FieldName, InstanceIdHash};
+use re_data_store::{query::visit_type_data_2, FieldName};
 use re_log_types::{DataVec, IndexHash, MsgId, ObjectType};
 use re_renderer::Size;
 
@@ -26,7 +26,6 @@ impl ScenePart for LineSegments2DPartClassic {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
-        hovered_instance: InstanceIdHash,
     ) {
         crate::profile_scope!("LineSegments2DPart");
 
@@ -47,6 +46,8 @@ impl ScenePart for LineSegments2DPartClassic {
                 .batch("lines 2d")
                 .world_from_obj(world_from_obj);
 
+            let highlighted_paths = ctx.hovered().check_obj_path(obj_path.hash());
+
             let visitor = |instance_index: Option<&IndexHash>,
                            _time: i64,
                            _msg_id: &MsgId,
@@ -64,7 +65,7 @@ impl ScenePart for LineSegments2DPartClassic {
                 let color = annotation_info.color(color, DefaultColor::ObjPath(obj_path));
 
                 let mut paint_props = paint_properties(color, stroke_width);
-                if instance_hash.is_some() && hovered_instance == instance_hash {
+                if highlighted_paths.contains_index(instance_hash.instance_index_hash) {
                     apply_hover_effect(&mut paint_props);
                 }
 

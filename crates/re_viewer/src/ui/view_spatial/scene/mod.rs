@@ -1,18 +1,16 @@
 use std::sync::Arc;
 
 use ahash::HashMap;
-use egui::NumExt as _;
-use glam::{vec3, Vec3};
-use re_data_store::{InstanceIdHash, ObjPath, ObjectsProperties};
+use re_data_store::{InstanceIdHash, ObjPath};
 use re_log_types::{
-    field_types::{ClassId, KeypointId},
+    field_types::{ClassId, KeypointId, Tensor},
     ClassicTensor, IndexHash, MeshId,
 };
 use re_renderer::{Color32, Size};
 
 use super::{eye::Eye, SpaceCamera3D, SpatialNavigationMode};
 use crate::{
-    misc::{mesh_loader::LoadedMesh, ViewerContext},
+    misc::{caches::AsDynamicImage, mesh_loader::LoadedMesh, ViewerContext},
     ui::{
         annotations::{auto_color_egui, AnnotationMap},
         transform_cache::TransformCache,
@@ -33,7 +31,10 @@ use scene_part::ScenePart;
 pub enum MeshSourceData {
     Mesh3D(re_log_types::Mesh3D),
 
-    /// e.g. the camera mesh
+    /// Static meshes that are embedded in the player
+    ///
+    /// Not used as of writing but may come back.
+    #[allow(dead_code)]
     StaticGlb(MeshId, &'static [u8]),
 }
 
@@ -55,10 +56,24 @@ pub struct MeshSource {
     pub additive_tint: Option<Color32>,
 }
 
+pub enum AnyTensor {
+    ClassicTensor(ClassicTensor),
+    ArrowTensor(Tensor),
+}
+
+impl AnyTensor {
+    pub fn as_ref(&self) -> &(dyn AsDynamicImage) {
+        match self {
+            Self::ClassicTensor(t) => t,
+            Self::ArrowTensor(t) => t,
+        }
+    }
+}
+
 pub struct Image {
     pub instance_hash: InstanceIdHash,
 
-    pub tensor: ClassicTensor,
+    pub tensor: AnyTensor,
     /// If this is a depth map, how long is a meter?
     ///
     /// For instance, with a `u16` dtype one might have
@@ -90,7 +105,7 @@ pub struct Label2D {
 pub struct Label3D {
     pub(crate) text: String,
     /// Origin of the label
-    pub(crate) origin: Vec3,
+    pub(crate) origin: glam::Vec3,
 }
 
 fn to_ecolor([r, g, b, a]: [u8; 4]) -> Color32 {
@@ -152,7 +167,6 @@ impl SceneSpatial {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
-        hovered: InstanceIdHash,
     ) {
         crate::profile_function!();
 
@@ -166,6 +180,7 @@ impl SceneSpatial {
             &scene_part::Boxes3DPart,
             &scene_part::Lines3DPartClassic,
             &scene_part::Lines3DPart,
+            &scene_part::Arrows3DPartClassic,
             &scene_part::Arrows3DPart,
             &scene_part::MeshPartClassic,
             &scene_part::MeshPart,
@@ -189,13 +204,15 @@ impl SceneSpatial {
         ];
 
         for part in parts {
-            part.load(self, ctx, query, transforms, hovered);
+            part.load(self, ctx, query, transforms);
         }
 
         self.primitives.recalculate_bounding_box();
     }
 
+    // TODO(andreas): Better ways to determine these?
     const HOVER_COLOR: Color32 = Color32::from_rgb(255, 200, 200);
+    const CAMERA_COLOR: Color32 = Color32::from_rgb(255, 128, 128);
 
     fn hover_size_boost(size: Size) -> Size {
         if size.is_auto() {
@@ -241,125 +258,6 @@ impl SceneSpatial {
                     .color(color)
                     .user_data(instance_hash);
             }
-        }
-    }
-
-    // ---
-
-    #[allow(clippy::too_many_arguments)]
-    pub(crate) fn add_cameras(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        scene_bbox: &macaw::BoundingBox,
-        viewport_size: egui::Vec2,
-        eye: &Eye,
-        hovered_instance: InstanceIdHash,
-        obj_properties: &ObjectsProperties,
-    ) {
-        crate::profile_function!();
-
-        // Size of a pixel (in meters), when projected out one meter:
-        let point_size_at_one_meter = eye.fov_y.unwrap() / viewport_size.y;
-
-        let eye_camera_plane =
-            macaw::Plane3::from_normal_point(eye.forward_in_world(), eye.pos_in_world());
-
-        for camera in &self.space_cameras {
-            let is_hovered = camera.instance == hovered_instance;
-
-            let (line_radius, line_color) = if is_hovered {
-                (Size::AUTO_LARGE, Self::HOVER_COLOR)
-            } else {
-                (Size::AUTO, Color32::from_rgb(255, 128, 128))
-            }; // TODO(emilk): camera color
-
-            let scale_based_on_scene_size = 0.05 * scene_bbox.size().length();
-            let dist_to_eye = eye_camera_plane.distance(camera.position()).at_least(0.0);
-            let scale_based_on_distance = dist_to_eye * point_size_at_one_meter * 50.0; // shrink as we get very close. TODO(emilk): fade instead!
-            let scale = scale_based_on_scene_size.min(scale_based_on_distance);
-
-            if ctx.options.show_camera_mesh_in_3d {
-                if let Some(world_from_rub_view) = camera.world_from_rub_view() {
-                    // The camera mesh file is 1m long in RUB (X=Right, Y=Up, Z=Back).
-                    // The lens is at the origin.
-
-                    let scale = Vec3::splat(scale);
-
-                    let mesh_id = MeshId(uuid::uuid!("0de12a29-64ea-40b9-898b-63686b5436af"));
-                    let world_from_mesh = world_from_rub_view * glam::Affine3A::from_scale(scale);
-
-                    if let Some(cpu_mesh) = ctx.cache.mesh.load(
-                        "camera_mesh",
-                        &MeshSourceData::StaticGlb(
-                            mesh_id,
-                            include_bytes!("../../../../data/camera.glb"),
-                        ),
-                        ctx.render_ctx,
-                    ) {
-                        let additive_tint = is_hovered.then_some(Self::HOVER_COLOR);
-
-                        self.primitives.meshes.push(MeshSource {
-                            instance_hash: camera.instance,
-                            world_from_mesh,
-                            mesh: cpu_mesh,
-                            additive_tint,
-                        });
-                    }
-                }
-            }
-
-            if ctx.options.show_camera_axes_in_3d {
-                self.primitives.add_axis_lines(
-                    camera.world_from_cam(),
-                    camera.instance,
-                    eye,
-                    viewport_size,
-                );
-            }
-
-            let mut frustum_length = scene_bbox.size().length() * 0.3;
-            if let (Some(pinhole), child_space) = (&camera.pinhole, &camera.obj_path) {
-                frustum_length = obj_properties
-                    .get(child_space)
-                    .pinhole_image_plane_distance(pinhole);
-            }
-
-            {
-                let world_from_image = camera.world_from_image().unwrap();
-                let [w, h] = camera.pinhole.unwrap().resolution.unwrap().0;
-
-                // TODO(emilk): there is probably a off-by-one or off-by-half error here.
-                // The image coordinates are in [0, w-1] range, so either we should use those limits
-                // or [-0.5, w-0.5] for the "pixels are tiny squares" interpretation of the frustum.
-
-                let corners = [
-                    world_from_image.transform_point3(frustum_length * vec3(0.0, 0.0, 1.0)),
-                    world_from_image.transform_point3(frustum_length * vec3(0.0, h, 1.0)),
-                    world_from_image.transform_point3(frustum_length * vec3(w, h, 1.0)),
-                    world_from_image.transform_point3(frustum_length * vec3(w, 0.0, 1.0)),
-                ];
-
-                let center = camera.position();
-
-                let segments = [
-                    (center, corners[0]),     // frustum corners
-                    (center, corners[1]),     // frustum corners
-                    (center, corners[2]),     // frustum corners
-                    (center, corners[3]),     // frustum corners
-                    (corners[0], corners[1]), // `d` distance plane sides
-                    (corners[1], corners[2]), // `d` distance plane sides
-                    (corners[2], corners[3]), // `d` distance plane sides
-                    (corners[3], corners[0]), // `d` distance plane sides
-                ];
-
-                self.primitives
-                    .line_strips
-                    .batch("camera frustum")
-                    .add_segments(segments.into_iter())
-                    .radius(line_radius)
-                    .color(line_color)
-                    .user_data(camera.instance);
-            };
         }
     }
 

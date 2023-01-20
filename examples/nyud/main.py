@@ -16,7 +16,7 @@ import numpy.typing as npt
 import requests
 from tqdm import tqdm
 
-import rerun
+import rerun as rr
 
 DEPTH_IMAGE_SCALING: Final = 1e4
 DATASET_DIR: Final = Path(os.path.dirname(__file__)) / "dataset"
@@ -79,12 +79,12 @@ def read_image(buf: bytes) -> npt.NDArray[np.uint8]:
 def log_nyud_data(recording_path: Path, subset_idx: int = 0, depth_image_interval: int = 1) -> None:
     depth_images_counter = 0
 
-    rerun.log_view_coordinates("world", up="-Y", timeless=True)
+    rr.log_view_coordinates("world", up="-Y", timeless=True)
 
     with zipfile.ZipFile(recording_path, "r") as archive:
         archive_dirs = [f.filename for f in archive.filelist if f.is_dir()]
 
-        print(f"Chose recording subset {subset_idx} ([0 - {len(archive_dirs) - 1}] available).")
+        print(f"Using recording subset {subset_idx} ([0 - {len(archive_dirs) - 1}] available).")
 
         dir_to_log = archive_dirs[subset_idx]
         subset = [
@@ -96,12 +96,12 @@ def log_nyud_data(recording_path: Path, subset_idx: int = 0, depth_image_interva
         files_with_timestamps.sort(key=lambda t: t[0])
 
         for time, f in files_with_timestamps:
-            rerun.set_time_seconds("time", time.timestamp())
+            rr.set_time_seconds("time", time.timestamp())
 
             if f.filename.endswith(".ppm"):
                 buf = archive.read(f)
                 img_rgb = read_image_rgb(buf)
-                rerun.log_image("world/camera/image/rgb", img_rgb)
+                rr.log_image("world/camera/image/rgb", img_rgb)
 
             elif f.filename.endswith(".pgm"):
                 if depth_images_counter % depth_image_interval == 0:
@@ -109,17 +109,17 @@ def log_nyud_data(recording_path: Path, subset_idx: int = 0, depth_image_interva
                     img_depth = read_image(buf)
 
                     point_cloud = back_project(depth_image=img_depth / DEPTH_IMAGE_SCALING)
-                    rerun.log_points("world/points", point_cloud, colors=np.array([255, 255, 255, 255]))
+                    rr.log_points("world/points", point_cloud, colors=np.array([255, 255, 255, 255]))
 
                     # Log the camera transforms:
                     translation = [0, 0, 0]
                     rotation_q = [0, 0, 0, 1]
-                    rerun.log_rigid3(
+                    rr.log_rigid3(
                         "world/camera",
                         parent_from_child=(translation, rotation_q),
                         xyz="RDF",  # X=Right, Y=Down, Z=Forward
                     )
-                    rerun.log_pinhole(
+                    rr.log_pinhole(
                         "world/camera/image",
                         child_from_parent=camera_intrinsics(img_depth),
                         width=img_depth.shape[1],
@@ -127,7 +127,7 @@ def log_nyud_data(recording_path: Path, subset_idx: int = 0, depth_image_interva
                     )
 
                     # Log the depth image to the cameras image-space:
-                    rerun.log_depth_image("world/camera/image/depth", img_depth, meter=DEPTH_IMAGE_SCALING)
+                    rr.log_depth_image("world/camera/image/depth", img_depth, meter=DEPTH_IMAGE_SCALING)
 
                 depth_images_counter += 1
 
@@ -191,13 +191,13 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    rerun.init("nyud")
+    rr.init("nyud")
 
     if args.connect:
         # Send logging data to separate `rerun` process.
         # You can ommit the argument to connect to the default address,
         # which is `127.0.0.1:9876`.
-        rerun.connect(args.addr)
+        rr.connect(args.addr)
 
     recording_path = ensure_recording_downloaded(args.recording)
 
@@ -209,7 +209,7 @@ if __name__ == "__main__":
     )
 
     if args.save is not None:
-        rerun.save(args.save)
+        rr.save(args.save)
     elif not args.connect:
         # Show the logged data inside the Python process:
-        rerun.show()
+        rr.show()

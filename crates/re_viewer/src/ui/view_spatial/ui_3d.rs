@@ -2,7 +2,7 @@ use egui::NumExt as _;
 use glam::Affine3A;
 use macaw::{vec3, BoundingBox, Quat, Vec3};
 
-use re_data_store::{InstanceId, InstanceIdHash, ObjectsProperties};
+use re_data_store::{InstanceId, InstanceIdHash};
 use re_log_types::{ObjPath, ViewCoordinates};
 use re_renderer::{
     view_builder::{Projection, TargetConfiguration},
@@ -10,7 +10,7 @@ use re_renderer::{
 };
 
 use crate::{
-    misc::HoveredSpace,
+    misc::{HoveredSpace, Selection},
     ui::{
         data_ui::{self, DataUi},
         view_spatial::{
@@ -166,12 +166,7 @@ impl View3DState {
         }
     }
 
-    pub fn settings_ui(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        scene_bbox_accum: &BoundingBox,
-    ) {
+    pub fn settings_ui(&mut self, ui: &mut egui::Ui, scene_bbox_accum: &BoundingBox) {
         {
             let up_response = if let Some(up) = self.space_specs.up {
                 if up == Vec3::X {
@@ -221,13 +216,6 @@ impl View3DState {
             .on_hover_text("Spin view");
         ui.checkbox(&mut self.show_axes, "Show origin axes")
             .on_hover_text("Show X-Y-Z axes");
-
-        if !self.space_camera.is_empty() {
-            ui.checkbox(
-                &mut ctx.options.show_camera_mesh_in_3d,
-                "Show camera meshes",
-            );
-        }
     }
 }
 
@@ -304,8 +292,7 @@ pub fn view_3d(
     state: &mut ViewSpatialState,
     space: &ObjPath,
     mut scene: SceneSpatial,
-    objects_properties: &ObjectsProperties,
-) -> egui::Response {
+) {
     crate::profile_function!();
 
     state.state_3d.space_camera = scene.space_cameras.clone();
@@ -329,30 +316,25 @@ pub fn view_3d(
     let orbit_eye = *orbit_eye;
     let eye = orbit_eye.to_eye();
 
-    // TODO(andreas): this should happen in the camera scene-part
-    {
-        let hovered_instance_hash = state
-            .hovered_instance
-            .as_ref()
-            .map_or(InstanceIdHash::NONE, |i| i.hash());
-        scene.add_cameras(
-            ctx,
-            &state.scene_bbox_accum,
-            rect.size(),
-            &eye,
-            hovered_instance_hash,
-            objects_properties,
-        );
-    }
-
     if did_interact_with_eye {
         state.state_3d.last_eye_interact_time = ui.input().time;
         state.state_3d.eye_interpolation = None;
         state.state_3d.tracked_camera = None;
     }
 
+    // TODO(andreas): This isn't part of the camera, but of the transform https://github.com/rerun-io/rerun/issues/753
+    for camera in &scene.space_cameras {
+        if ctx.options.show_camera_axes_in_3d {
+            let transform = camera.world_from_cam();
+            let axis_length =
+                eye.approx_pixel_world_size_at(transform.translation(), rect.size()) * 32.0;
+            scene
+                .primitives
+                .add_axis_lines(transform, camera.instance, axis_length);
+        }
+    }
+
     // TODO(andreas): We're very close making the hover reaction of ui2d and ui3d the same. Finish the job!
-    state.hovered_instance = None;
     if let Some(pointer_pos) = response.hover_pos() {
         let picking_result =
             scene.picking(glam::vec2(pointer_pos.x, pointer_pos.y), &rect, &eye, 5.0);
@@ -376,19 +358,19 @@ pub fn view_3d(
                 response
                     .on_hover_cursor(egui::CursorIcon::ZoomIn)
                     .on_hover_ui_at_pointer(|ui| {
-                        ui.set_max_width(400.0);
+                        ui.set_max_width(320.0);
 
                         ui.vertical(|ui| {
                             ui.label(instance_id.to_string());
                             instance_id.data_ui(ctx, ui, Preview::Small);
 
                             let tensor_view = ctx.cache.image.get_view_with_annotations(
-                                &image.tensor,
+                                image.tensor.as_ref(),
                                 &image.annotations,
                                 ctx.render_ctx,
                             );
 
-                            if let [h, w, ..] = image.tensor.shape() {
+                            if let [h, w, ..] = image.tensor.as_ref().shape() {
                                 ui.separator();
                                 ui.horizontal(|ui| {
                                     let (w, h) = (w.size as f32, h.size as f32);
@@ -407,35 +389,34 @@ pub fn view_3d(
                 // Hover ui for everything else
                 response.on_hover_ui_at_pointer(|ui| {
                     ctx.instance_id_button(ui, &instance_id);
-                    instance_id.data_ui(ctx, ui, crate::ui::Preview::Medium);
+                    instance_id.data_ui(ctx, ui, crate::ui::Preview::Large);
                 })
             };
         }
 
-        if let Some(closest_pick) = picking_result.iter_hits().last() {
-            // Save last known hovered object.
-            if let Some(instance_id) = closest_pick.instance_hash.resolve(&ctx.log_db.obj_db) {
-                state.state_3d.hovered_point = Some(picking_result.space_position(closest_pick));
-                state.hovered_instance = Some(instance_id);
-            }
-        }
-
-        if let Some(instance_id) = &state.hovered_instance {
-            // Click changes selection.
-            if ui.input().pointer.any_click() {
-                ctx.set_selection(crate::Selection::Instance(instance_id.clone()));
-            }
-        }
+        ctx.set_hovered(picking_result.iter_hits().filter_map(|pick| {
+            pick.instance_hash
+                .resolve(&ctx.log_db.obj_db)
+                // TODO(andreas): Associate current space view
+                .map(Selection::Instance)
+        }));
+        state.state_3d.hovered_point = picking_result
+            .opaque_hit
+            .as_ref()
+            .or_else(|| picking_result.transparent_hits.last())
+            .map(|hit| picking_result.space_position(hit));
 
         project_onto_other_spaces(ctx, &scene.space_cameras, &mut state.state_3d, space);
     }
+
+    ctx.select_hovered_on_click(&response);
 
     // Double click changes camera
     if response.double_clicked() {
         state.state_3d.tracked_camera = None;
 
         // While hovering an object, focuses the camera on it.
-        if let Some(instance_id) = &state.hovered_instance {
+        if let Some(Selection::Instance(instance_id)) = ctx.hovered().primary() {
             if let Some(camera) = find_camera(&scene.space_cameras, &instance_id.hash()) {
                 state.state_3d.interpolate_to_eye(camera);
                 state.state_3d.tracked_camera = Some(instance_id.clone());
@@ -460,12 +441,13 @@ pub fn view_3d(
     }
 
     show_projections_from_2d_space(ctx, &mut scene, &state.scene_bbox_accum);
+
     if state.state_3d.show_axes {
+        let axis_length = 1.0; // The axes are also a measuring stick
         scene.primitives.add_axis_lines(
             macaw::IsoTransform::IDENTITY,
             InstanceIdHash::NONE,
-            &eye,
-            rect.size(),
+            axis_length,
         );
     }
 
@@ -511,10 +493,8 @@ pub fn view_3d(
         &scene,
         ctx.render_ctx,
         &space.to_string(),
-        state.auto_size_config(),
+        state.auto_size_config(rect.size()),
     );
-
-    response
 }
 
 fn paint_view(
@@ -524,47 +504,53 @@ fn paint_view(
     scene: &SceneSpatial,
     render_ctx: &mut RenderContext,
     name: &str,
-    auto_size_config: re_renderer::Size,
+    auto_size_config: re_renderer::AutoSizeConfig,
 ) {
     crate::profile_function!();
 
     // Draw labels:
-    ui.with_layer_id(
-        egui::LayerId::new(egui::Order::Foreground, egui::Id::new("LabelsLayer")),
-        |ui| {
-            crate::profile_function!("labels");
-            let ui_from_world = eye.ui_from_world(&rect);
-            for label in &scene.ui.labels_3d {
-                let pos_in_ui = ui_from_world * label.origin.extend(1.0);
-                if pos_in_ui.w <= 0.0 {
-                    continue; // behind camera
-                }
-                let pos_in_ui = pos_in_ui / pos_in_ui.w;
+    {
+        let painter = ui
+            .painter()
+            .clone()
+            .with_layer_id(egui::LayerId::new(
+                egui::Order::Foreground,
+                egui::Id::new("LabelsLayer"),
+            ))
+            .with_clip_rect(ui.max_rect());
 
-                let font_id = egui::TextStyle::Monospace.resolve(ui.style());
-
-                let galley = ui.fonts().layout(
-                    (*label.text).to_owned(),
-                    font_id,
-                    ui.style().visuals.text_color(),
-                    100.0,
-                );
-
-                let text_rect = egui::Align2::CENTER_TOP.anchor_rect(egui::Rect::from_min_size(
-                    egui::pos2(pos_in_ui.x, pos_in_ui.y),
-                    galley.size(),
-                ));
-
-                let bg_rect = text_rect.expand2(egui::vec2(6.0, 2.0));
-                ui.painter().add(egui::Shape::rect_filled(
-                    bg_rect,
-                    3.0,
-                    ui.style().visuals.code_bg_color,
-                ));
-                ui.painter().add(egui::Shape::galley(text_rect.min, galley));
+        crate::profile_function!("labels");
+        let ui_from_world = eye.ui_from_world(&rect);
+        for label in &scene.ui.labels_3d {
+            let pos_in_ui = ui_from_world * label.origin.extend(1.0);
+            if pos_in_ui.w <= 0.0 {
+                continue; // behind camera
             }
-        },
-    );
+            let pos_in_ui = pos_in_ui / pos_in_ui.w;
+
+            let font_id = egui::TextStyle::Monospace.resolve(ui.style());
+
+            let galley = ui.fonts().layout(
+                (*label.text).to_owned(),
+                font_id,
+                ui.style().visuals.text_color(),
+                100.0,
+            );
+
+            let text_rect = egui::Align2::CENTER_TOP.anchor_rect(egui::Rect::from_min_size(
+                egui::pos2(pos_in_ui.x, pos_in_ui.y),
+                galley.size(),
+            ));
+
+            let bg_rect = text_rect.expand2(egui::vec2(6.0, 2.0));
+            painter.add(egui::Shape::rect_filled(
+                bg_rect,
+                3.0,
+                ui.style().visuals.code_bg_color,
+            ));
+            painter.add(egui::Shape::galley(text_rect.min, galley));
+        }
+    }
 
     // Determine view port resolution and position.
     let pixels_from_point = ui.ctx().pixels_per_point();
@@ -585,7 +571,6 @@ fn paint_view(
 
         pixels_from_point,
         auto_size_config,
-        auto_size_large_factor: 1.5,
     };
 
     let Ok(callback) = create_scene_paint_callback(

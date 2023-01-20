@@ -10,17 +10,21 @@ use polars_core::{
     prelude::{DataFrame, JoinType},
     series::Series,
 };
+use rand::Rng;
 use re_arrow_store::{
-    polars_util, test_bundle, DataStore, LatestAtQuery, RangeQuery, TimeRange, WriteError,
+    polars_util, test_bundle, DataStore, DataStoreConfig, GarbageCollectionTarget, LatestAtQuery,
+    RangeQuery, TimeRange, WriteError,
 };
 use re_log_types::{
     datagen::{
-        build_frame_nr, build_log_time, build_some_instances, build_some_point2d, build_some_rects,
+        build_frame_nr, build_log_time, build_some_colors, build_some_instances, build_some_point2d,
     },
-    external::arrow2_convert::serialize::TryIntoArrow,
-    field_types::{Instance, Point2D, Rect2D},
+    external::arrow2_convert::{
+        deserialize::arrow_array_deserialize_iterator, serialize::TryIntoArrow,
+    },
+    field_types::{ColorRGBA, Instance, Point2D},
     msg_bundle::{wrap_in_listarray, Component as _, ComponentBundle},
-    Duration, ObjPath as EntityPath, Time, TimeType, Timeline,
+    Duration, MsgId, ObjPath as EntityPath, Time, TimeType, Timeline,
 };
 
 // ---
@@ -293,9 +297,9 @@ fn range_join_across_single_row_impl(store: &mut DataStore) {
     let ent_path = EntityPath::from("this/that");
 
     let points = build_some_point2d(3);
-    let rects = build_some_rects(3);
+    let colors = build_some_colors(3);
     let bundle =
-        test_bundle!(ent_path @ [build_frame_nr(42.into())] => [points.clone(), rects.clone()]);
+        test_bundle!(ent_path @ [build_frame_nr(42.into())] => [points.clone(), colors.clone()]);
     store.insert(&bundle).unwrap();
 
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
@@ -303,7 +307,7 @@ fn range_join_across_single_row_impl(store: &mut DataStore) {
         timeline_frame_nr,
         TimeRange::new(i64::MIN.into(), i64::MAX.into()),
     );
-    let components = [Instance::name(), Point2D::name(), Rect2D::name()];
+    let components = [Instance::name(), Point2D::name(), ColorRGBA::name()];
     let dfs = polars_util::range_components(
         store,
         &query,
@@ -319,12 +323,12 @@ fn range_join_across_single_row_impl(store: &mut DataStore) {
             .try_into_arrow()
             .unwrap();
         let points: Box<dyn Array> = points.try_into_arrow().unwrap();
-        let rects: Box<dyn Array> = rects.try_into_arrow().unwrap();
+        let colors: Box<dyn Array> = colors.try_into_arrow().unwrap();
 
         DataFrame::new(vec![
             Series::try_from((Instance::name().as_str(), instances)).unwrap(),
             Series::try_from((Point2D::name().as_str(), points)).unwrap(),
-            Series::try_from((Rect2D::name().as_str(), rects)).unwrap(),
+            Series::try_from((ColorRGBA::name().as_str(), colors)).unwrap(),
         ])
         .unwrap()
     };
@@ -333,6 +337,101 @@ fn range_join_across_single_row_impl(store: &mut DataStore) {
     let (_, df) = dfs[0].clone().unwrap();
 
     assert_eq!(df_expected, df);
+}
+
+// ---
+
+#[test]
+fn gc_correct() {
+    init_logs();
+
+    let mut store = DataStore::new(
+        Instance::name(),
+        DataStoreConfig {
+            component_bucket_nb_rows: 0,
+            ..Default::default()
+        },
+    );
+
+    let mut rng = rand::thread_rng();
+
+    let nb_frames = rng.gen_range(0..=100);
+    let frames = (0..nb_frames).filter(|_| rand::thread_rng().gen());
+    for frame_nr in frames {
+        let nb_ents = 10;
+        for i in 0..nb_ents {
+            let ent_path = EntityPath::from(format!("this/that/{i}"));
+            let nb_instances = rng.gen_range(0..=1_000);
+            let bundle = test_bundle!(ent_path @ [build_frame_nr(frame_nr.into())] => [
+                build_some_colors(nb_instances),
+            ]);
+            store.insert(&bundle).unwrap();
+        }
+    }
+
+    if let err @ Err(_) = store.sanity_check() {
+        store.sort_indices_if_needed();
+        eprintln!("{store}");
+        err.unwrap();
+    }
+    _ = store.to_dataframe(); // simple way of checking that everything is still readable
+
+    let msg_id_chunks = store.gc(
+        GarbageCollectionTarget::DropAtLeastPercentage(1.0),
+        Timeline::new("frame_nr", TimeType::Sequence),
+        MsgId::name(),
+    );
+
+    let msg_ids = msg_id_chunks
+        .iter()
+        .flat_map(|chunk| arrow_array_deserialize_iterator::<Option<MsgId>>(&**chunk).unwrap())
+        .map(Option::unwrap) // MsgId is always present
+        .collect::<ahash::HashSet<_>>();
+    assert!(!msg_ids.is_empty());
+
+    if let err @ Err(_) = store.sanity_check() {
+        store.sort_indices_if_needed();
+        eprintln!("{store}");
+        err.unwrap();
+    }
+    _ = store.to_dataframe(); // simple way of checking that everything is still readable
+    for msg_id in &msg_ids {
+        assert!(store.get_msg_metadata(msg_id).is_some());
+    }
+
+    store.clear_msg_metadata(&msg_ids);
+
+    if let err @ Err(_) = store.sanity_check() {
+        store.sort_indices_if_needed();
+        eprintln!("{store}");
+        err.unwrap();
+    }
+    _ = store.to_dataframe(); // simple way of checking that everything is still readable
+    for msg_id in &msg_ids {
+        assert!(store.get_msg_metadata(msg_id).is_none());
+    }
+
+    let msg_id_chunks = store.gc(
+        GarbageCollectionTarget::DropAtLeastPercentage(1.0),
+        Timeline::new("frame_nr", TimeType::Sequence),
+        MsgId::name(),
+    );
+
+    let msg_ids = msg_id_chunks
+        .iter()
+        .flat_map(|chunk| arrow_array_deserialize_iterator::<Option<MsgId>>(&**chunk).unwrap())
+        .map(Option::unwrap) // MsgId is always present
+        .collect::<ahash::HashSet<_>>();
+    assert!(msg_ids.is_empty());
+
+    if let err @ Err(_) = store.sanity_check() {
+        store.sort_indices_if_needed();
+        eprintln!("{store}");
+        err.unwrap();
+    }
+    _ = store.to_dataframe(); // simple way of checking that everything is still readable
+
+    assert_eq!(2, store.total_temporal_component_rows());
 }
 
 // ---

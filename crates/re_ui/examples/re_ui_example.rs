@@ -1,3 +1,5 @@
+use re_ui::{Command, CommandPalette};
+
 fn main() -> eframe::Result<()> {
     let native_options = eframe::NativeOptions {
         initial_window_size: Some([1200.0, 800.0].into()),
@@ -23,6 +25,10 @@ fn main() -> eframe::Result<()> {
                 bottom_panel: true,
 
                 dummy_bool: true,
+
+                cmd_palette: CommandPalette::default(),
+                pending_commands: Default::default(),
+                latest_cmd: Default::default(),
             })
         }),
     )
@@ -36,6 +42,12 @@ pub struct ExampleApp {
     bottom_panel: bool,
 
     dummy_bool: bool,
+
+    cmd_palette: CommandPalette,
+
+    /// Commands to run at the end of the frame.
+    pending_commands: Vec<Command>,
+    latest_cmd: String,
 }
 
 impl eframe::App for ExampleApp {
@@ -70,7 +82,26 @@ impl eframe::App for ExampleApp {
             egui::warn_if_debug_build(ui);
             ui.label("Hover me for a tooltip")
                 .on_hover_text("This is a tooltip");
+
+            ui.label(format!("Latest command: {}", self.latest_cmd));
         });
+
+        if let Some(cmd) = self.cmd_palette.show(egui_ctx) {
+            self.pending_commands.push(cmd);
+        }
+        if let Some(cmd) = re_ui::Command::listen_for_kb_shortcut(egui_ctx) {
+            self.pending_commands.push(cmd);
+        }
+
+        for cmd in self.pending_commands.drain(..) {
+            self.latest_cmd = cmd.text().to_owned();
+
+            #[allow(clippy::single_match)]
+            match cmd {
+                Command::ToggleCommandPalette => self.cmd_palette.toggle(),
+                _ => {}
+            }
+        }
     }
 }
 
@@ -107,6 +138,8 @@ impl ExampleApp {
                     ui.set_height(top_bar_style.height);
                     ui.add_space(top_bar_style.indent);
 
+                    ui.menu_button("File", |ui| file_menu(ui, &mut self.pending_commands));
+
                     self.re_ui.medium_icon_toggle_button(
                         ui,
                         &re_ui::icons::LEFT_PANEL_TOGGLE,
@@ -129,6 +162,13 @@ impl ExampleApp {
                 });
             });
     }
+}
+
+fn file_menu(ui: &mut egui::Ui, pending_commands: &mut Vec<Command>) {
+    Command::Save.menu_button_ui(ui, pending_commands);
+    Command::SaveSelection.menu_button_ui(ui, pending_commands);
+    Command::Open.menu_button_ui(ui, pending_commands);
+    Command::Quit.menu_button_ui(ui, pending_commands);
 }
 
 fn selection_buttons(ui: &mut egui::Ui) {

@@ -14,7 +14,7 @@ import numpy.typing as npt
 import requests
 from PIL import Image
 
-import rerun
+import rerun as rr
 
 EXAMPLE_DIR: Final = Path(os.path.dirname(__file__))
 DATASET_DIR: Final = EXAMPLE_DIR / "dataset" / "tracking_sequences"
@@ -81,8 +81,8 @@ class Detector:
         _, _, scaled_height, scaled_width = inputs["pixel_values"].shape
         scaled_size = (scaled_width, scaled_height)
         rgb_scaled = cv.resize(rgb, scaled_size)
-        rerun.log_image("image/scaled/rgb", rgb_scaled)
-        rerun.log_unknown_transform("image/scaled")  # Note: Haven't implemented 2D transforms yet.
+        rr.log_image("image/scaled/rgb", rgb_scaled)
+        rr.log_unknown_transform("image/scaled")  # Note: Haven't implemented 2D transforms yet.
 
         logging.debug("Pass image to detection network")
         outputs = self.model(**inputs)
@@ -95,7 +95,7 @@ class Detector:
         )[0]
 
         mask = segmentation_mask.detach().cpu().numpy().astype(np.uint8)
-        rerun.log_segmentation_image("image/scaled/segmentation", mask)
+        rr.log_segmentation_image("image/scaled/segmentation", mask)
 
         boxes = detections["boxes"].detach().cpu().numpy()
         class_ids = detections["labels"].detach().cpu().numpy()
@@ -125,19 +125,19 @@ class Detector:
 
         thing_boxes = boxes[things_np, :]
         thing_class_ids = class_ids_np[things_np]
-        rerun.log_rects(
+        rr.log_rects(
             "image/scaled/detections/things",
             thing_boxes,
-            rect_format=rerun.log.rects.RectFormat.XYXY,
+            rect_format=rr.log.rects.RectFormat.XYXY,
             class_ids=thing_class_ids,
         )
 
         background_boxes = boxes[~things_np, :]
         background_class_ids = class_ids[~things_np]
-        rerun.log_rects(
+        rr.log_rects(
             "image/scaled/detections/background",
             background_boxes,
-            rect_format=rerun.log.rects.RectFormat.XYXY,
+            rect_format=rr.log.rects.RectFormat.XYXY,
             class_ids=background_class_ids,
         )
 
@@ -184,14 +184,14 @@ class Tracker:
 
     def log_tracked(self) -> None:
         if self.is_tracking:
-            rerun.log_rect(
+            rr.log_rect(
                 f"image/tracked/{self.tracking_id}",
                 self.tracked.bbox_xywh,
-                rect_format=rerun.log.rects.RectFormat.XYWH,
+                rect_format=rr.log.rects.RectFormat.XYWH,
                 class_id=self.tracked.class_id,
             )
         else:
-            rerun.log_rect(f"image/tracked/{self.tracking_id}", None)
+            rr.log_rect(f"image/tracked/{self.tracking_id}", None)
 
     def update_with_detection(self, detection: Detection, bgr: npt.NDArray[np.uint8]) -> None:
         self.num_recent_undetected_frames = 0
@@ -306,10 +306,9 @@ def track_objects(video_path: str) -> None:
     with open(COCO_CATEGORIES_PATH) as f:
         coco_categories = json.load(f)
     class_descriptions = [
-        rerun.log.annotation.AnnotationInfo(id=cat["id"], color=cat["color"], label=cat["name"])
-        for cat in coco_categories
+        rr.log.annotation.AnnotationInfo(id=cat["id"], color=cat["color"], label=cat["name"]) for cat in coco_categories
     ]
-    rerun.log_annotation_context("/", class_descriptions, timeless=True)
+    rr.log_annotation_context("/", class_descriptions, timeless=True)
 
     detector = Detector(coco_categories=coco_categories)
 
@@ -321,14 +320,14 @@ def track_objects(video_path: str) -> None:
     trackers = []  # type: List[Tracker]
     while cap.isOpened():
         ret, bgr = cap.read()
-        rerun.set_time_sequence("frame", frame_idx)
+        rr.set_time_sequence("frame", frame_idx)
 
         if not ret:
             logging.info("End of video")
             break
 
         rgb = cv.cvtColor(bgr, cv.COLOR_BGR2RGB)
-        rerun.log_image("image/rgb", rgb)
+        rr.log_image("image/rgb", rgb)
 
         if not trackers or frame_idx % 40 == 0:
             detections = detector.detect_objects_to_track(rgb=rgb, frame_idx=frame_idx)
@@ -364,7 +363,7 @@ def get_downloaded_path(dataset_dir: Path, video_name: str) -> str:
 
 def setup_looging() -> None:
     logger = logging.getLogger()
-    rerun_handler = rerun.log.text.LoggingHandler("logs")
+    rerun_handler = rr.log.text.LoggingHandler("logs")
     rerun_handler.setLevel(-1)
     logger.addHandler(rerun_handler)
     stream_handler = logging.StreamHandler()
@@ -391,7 +390,7 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    rerun.init("tracking_hf_opencv")
+    rr.init("tracking_hf_opencv")
 
     setup_looging()
 
@@ -403,16 +402,16 @@ def main() -> None:
         # Send logging data to separate `rerun` process.
         # You can ommit the argument to connect to the default address,
         # which is `127.0.0.1:9876`.
-        rerun.connect(args.addr)
+        rr.connect(args.addr)
 
     track_objects(video_path)
 
     if args.save is not None:
-        rerun.save(args.save)
+        rr.save(args.save)
     elif args.headless:
         pass
     elif not args.connect:
-        rerun.show()
+        rr.show()
 
 
 if __name__ == "__main__":

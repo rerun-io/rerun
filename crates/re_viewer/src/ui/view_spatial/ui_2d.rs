@@ -4,12 +4,12 @@ use egui::{
     TextFormat, TextStyle, Vec2,
 };
 use macaw::IsoTransform;
-use re_data_store::{InstanceIdHash, ObjPath};
+use re_data_store::ObjPath;
 use re_renderer::view_builder::TargetConfiguration;
 
 use super::{eye::Eye, scene::AdditionalPickingInfo, ViewSpatialState};
 use crate::{
-    misc::HoveredSpace,
+    misc::{HoveredSpace, MultiSelection, Selection},
     ui::{
         data_ui::{self, DataUi},
         view_spatial::{
@@ -302,7 +302,7 @@ fn view_2d_scrollable(
             space_from_ui,
             space_from_pixel,
             &space.to_string(),
-            state.auto_size_config(),
+            state.auto_size_config(response.rect.size()),
         ) else {
             return response;
         };
@@ -322,25 +322,17 @@ fn view_2d_scrollable(
     // ------------------------------------------------------------------------
 
     // Add egui driven labels on top of re_renderer content.
-    // Needs to come before hovering checks because it adds more objects for hovering.
-    {
-        let hovered_instance_hash = state
-            .hovered_instance
-            .as_ref()
-            .map_or(InstanceIdHash::NONE, |i| i.hash());
-        painter.extend(create_labels(
-            &mut scene,
-            ui_from_space,
-            space_from_ui,
-            parent_ui,
-            hovered_instance_hash,
-        ));
-    }
+    painter.extend(create_labels(
+        &mut scene,
+        ui_from_space,
+        space_from_ui,
+        parent_ui,
+        ctx.hovered(),
+    ));
 
     // ------------------------------------------------------------------------
 
     // Check if we're hovering any hover primitive.
-    state.hovered_instance = None;
     let mut depth_at_pointer = None;
     if let Some(pointer_pos_ui) = response.hover_pos() {
         let pointer_pos_space = space_from_ui.transform_pos(pointer_pos_ui);
@@ -373,7 +365,7 @@ fn view_2d_scrollable(
             response = if let Some((image, uv)) = picked_image_with_uv {
                 // TODO(andreas): This is different in 3d view.
                 if let Some(meter) = image.meter {
-                    if let Some(raw_value) = image.tensor.get(&[
+                    if let Some(raw_value) = image.tensor.as_ref().get(&[
                         pointer_pos_space.y.round() as _,
                         pointer_pos_space.x.round() as _,
                     ]) {
@@ -386,19 +378,19 @@ fn view_2d_scrollable(
                 response
                     .on_hover_cursor(egui::CursorIcon::ZoomIn)
                     .on_hover_ui_at_pointer(|ui| {
-                        ui.set_max_width(400.0);
+                        ui.set_max_width(320.0);
 
                         ui.vertical(|ui| {
                             ui.label(instance_id.to_string());
                             instance_id.data_ui(ctx, ui, Preview::Small);
 
                             let tensor_view = ctx.cache.image.get_view_with_annotations(
-                                &image.tensor,
+                                image.tensor.as_ref(),
                                 &image.annotations,
                                 ctx.render_ctx,
                             );
 
-                            if let [h, w, ..] = image.tensor.shape() {
+                            if let [h, w, ..] = image.tensor.as_ref().shape() {
                                 ui.separator();
                                 ui.horizontal(|ui| {
                                     // TODO(andreas): 3d skips the show_zoomed_image_region_rect part here.
@@ -425,25 +417,20 @@ fn view_2d_scrollable(
                 // Hover ui for everything else
                 response.on_hover_ui_at_pointer(|ui| {
                     ctx.instance_id_button(ui, &instance_id);
-                    instance_id.data_ui(ctx, ui, crate::ui::Preview::Medium);
+                    instance_id.data_ui(ctx, ui, crate::ui::Preview::Large);
                 })
             };
 
-            if let Some(closest_pick) = picking_result.iter_hits().last() {
-                // Save last known hovered object.
-                if let Some(instance_id) = closest_pick.instance_hash.resolve(&ctx.log_db.obj_db) {
-                    state.hovered_instance = Some(instance_id);
-                }
-            }
-
-            // Clicking the last hovered object.
-            if let Some(instance_id) = &state.hovered_instance {
-                if response.clicked() {
-                    ctx.set_selection(crate::Selection::Instance(instance_id.clone()));
-                }
-            }
+            ctx.set_hovered(picking_result.iter_hits().filter_map(|pick| {
+                pick.instance_hash
+                    .resolve(&ctx.log_db.obj_db)
+                    // TODO(andreas): Associate current space view
+                    .map(Selection::Instance)
+            }));
         }
     }
+
+    ctx.select_hovered_on_click(&response);
 
     // ------------------------------------------------------------------------
 
@@ -463,8 +450,10 @@ fn create_labels(
     ui_from_space: RectTransform,
     space_from_ui: RectTransform,
     parent_ui: &mut egui::Ui,
-    hovered_instance: InstanceIdHash,
+    hovered: &MultiSelection,
 ) -> Vec<Shape> {
+    crate::profile_function!();
+
     let mut label_shapes = Vec::with_capacity(scene.ui.labels_2d.len() * 2);
 
     for label in &scene.ui.labels_2d {
@@ -506,7 +495,7 @@ fn create_labels(
             Align2::CENTER_TOP.anchor_rect(Rect::from_min_size(text_anchor_pos, galley.size()));
         let bg_rect = text_rect.expand2(vec2(4.0, 2.0));
 
-        let fill_color = if label.labled_instance == hovered_instance {
+        let fill_color = if hovered.check_instance(label.labled_instance).is_included() {
             parent_ui.style().visuals.widgets.active.bg_fill
         } else {
             parent_ui.style().visuals.widgets.inactive.bg_fill
@@ -529,7 +518,7 @@ fn setup_target_config(
     space_from_ui: RectTransform,
     space_from_pixel: f32,
     space_name: &str,
-    auto_size: re_renderer::Size,
+    auto_size_config: re_renderer::AutoSizeConfig,
 ) -> anyhow::Result<TargetConfiguration> {
     let pixels_from_points = painter.ctx().pixels_per_point();
     let resolution_in_pixel = get_viewport(painter.clip_rect(), pixels_from_points);
@@ -551,8 +540,7 @@ fn setup_target_config(
                 far_plane_distance: 1000.0,
             },
             pixels_from_point: pixels_from_points,
-            auto_size_config: auto_size,
-            auto_size_large_factor: 1.5,
+            auto_size_config,
         }
     })
 }

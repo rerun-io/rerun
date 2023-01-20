@@ -8,15 +8,17 @@ use arrow2::array::{Array, UInt64Array};
 use nohash_hasher::IntMap;
 use polars_core::{prelude::*, series::Series};
 use polars_ops::prelude::DataFrameJoinOps;
+use rand::Rng;
 use re_arrow_store::{
-    polars_util, test_bundle, DataStore, DataStoreConfig, LatestAtQuery, RangeQuery, TimeInt,
-    TimeRange,
+    polars_util, test_bundle, DataStore, DataStoreConfig, GarbageCollectionTarget, LatestAtQuery,
+    RangeQuery, TimeInt, TimeRange,
 };
 use re_log_types::{
     datagen::{
         build_frame_nr, build_some_colors, build_some_instances, build_some_instances_from,
         build_some_point2d, build_some_rects,
     },
+    external::arrow2_convert::deserialize::arrow_array_deserialize_iterator,
     field_types::{ColorRGBA, Instance, Point2D, Rect2D},
     msg_bundle::{wrap_in_listarray, Component as _, MsgBundle},
     ComponentName, MsgId, ObjPath as EntityPath, TimeType, Timeline,
@@ -271,6 +273,12 @@ fn latest_at() {
     for config in re_arrow_store::test_util::all_configs() {
         let mut store = DataStore::new(Instance::name(), config.clone());
         latest_at_impl(&mut store);
+        store.gc(
+            GarbageCollectionTarget::DropAtLeastPercentage(1.0),
+            Timeline::new("frame_nr", TimeType::Sequence),
+            MsgId::name(),
+        );
+        latest_at_impl(&mut store);
     }
 }
 fn latest_at_impl(store: &mut DataStore) {
@@ -295,8 +303,9 @@ fn latest_at_impl(store: &mut DataStore) {
         store.insert(&bundle_timeless).unwrap();
     };
 
-    let (instances1, rects1) = (build_some_instances(3), build_some_rects(3));
-    let bundle1 = test_bundle!(ent_path @ [build_frame_nr(frame1)] => [instances1.clone(), rects1]);
+    let (instances1, colors1) = (build_some_instances(3), build_some_colors(3));
+    let bundle1 =
+        test_bundle!(ent_path @ [build_frame_nr(frame1)] => [instances1.clone(), colors1]);
     insert(store, &bundle1);
 
     let points2 = build_some_point2d(3);
@@ -307,8 +316,8 @@ fn latest_at_impl(store: &mut DataStore) {
     let bundle3 = test_bundle!(ent_path @ [build_frame_nr(frame3)] => [points3]);
     insert(store, &bundle3);
 
-    let rects4 = build_some_rects(5);
-    let bundle4 = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [rects4]);
+    let colors4 = build_some_colors(5);
+    let bundle4 = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [colors4]);
     insert(store, &bundle4);
 
     if let err @ Err(_) = store.sanity_check() {
@@ -320,7 +329,7 @@ fn latest_at_impl(store: &mut DataStore) {
     let mut assert_latest_components =
         |frame_nr: TimeInt, bundles: &[(ComponentName, &MsgBundle)]| {
             let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
-            let components_all = &[Rect2D::name(), Point2D::name()];
+            let components_all = &[ColorRGBA::name(), Point2D::name()];
 
             let df = polars_util::latest_components(
                 store,
@@ -341,26 +350,26 @@ fn latest_at_impl(store: &mut DataStore) {
 
     assert_latest_components(
         frame0,
-        &[(Rect2D::name(), &bundle4), (Point2D::name(), &bundle3)], // timeless
+        &[(ColorRGBA::name(), &bundle4), (Point2D::name(), &bundle3)], // timeless
     );
     assert_latest_components(
         frame1,
         &[
-            (Rect2D::name(), &bundle1),
+            (ColorRGBA::name(), &bundle1),
             (Point2D::name(), &bundle3), // timeless
         ],
     );
     assert_latest_components(
         frame2,
-        &[(Rect2D::name(), &bundle1), (Point2D::name(), &bundle2)],
+        &[(ColorRGBA::name(), &bundle1), (Point2D::name(), &bundle2)],
     );
     assert_latest_components(
         frame3,
-        &[(Rect2D::name(), &bundle1), (Point2D::name(), &bundle3)],
+        &[(ColorRGBA::name(), &bundle1), (Point2D::name(), &bundle3)],
     );
     assert_latest_components(
         frame4,
-        &[(Rect2D::name(), &bundle4), (Point2D::name(), &bundle3)],
+        &[(ColorRGBA::name(), &bundle4), (Point2D::name(), &bundle3)],
     );
 }
 
@@ -399,8 +408,8 @@ fn range_impl(store: &mut DataStore) {
     };
 
     let insts1 = build_some_instances(3);
-    let rects1 = build_some_rects(3);
-    let bundle1 = test_bundle!(ent_path @ [build_frame_nr(frame1)] => [insts1.clone(), rects1]);
+    let colors1 = build_some_colors(3);
+    let bundle1 = test_bundle!(ent_path @ [build_frame_nr(frame1)] => [insts1.clone(), colors1]);
     insert(store, &bundle1);
 
     let points2 = build_some_point2d(3);
@@ -412,14 +421,14 @@ fn range_impl(store: &mut DataStore) {
     insert(store, &bundle3);
 
     let insts4_1 = build_some_instances_from(20..25);
-    let rects4_1 = build_some_rects(5);
-    let bundle4_1 = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [insts4_1, rects4_1]);
+    let colors4_1 = build_some_colors(5);
+    let bundle4_1 = test_bundle!(ent_path @ [build_frame_nr(frame4)] => [insts4_1, colors4_1]);
     insert(store, &bundle4_1);
 
     let insts4_2 = build_some_instances_from(25..30);
-    let rects4_2 = build_some_rects(5);
+    let colors4_2 = build_some_colors(5);
     let bundle4_2 =
-        test_bundle!(ent_path @ [build_frame_nr(frame4)] => [insts4_2.clone(), rects4_2]);
+        test_bundle!(ent_path @ [build_frame_nr(frame4)] => [insts4_2.clone(), colors4_2]);
     insert(store, &bundle4_2);
 
     let points4_25 = build_some_point2d(5);
@@ -427,9 +436,9 @@ fn range_impl(store: &mut DataStore) {
     insert(store, &bundle4_25);
 
     let insts4_3 = build_some_instances_from(30..35);
-    let rects4_3 = build_some_rects(5);
+    let colors4_3 = build_some_colors(5);
     let bundle4_3 =
-        test_bundle!(ent_path @ [build_frame_nr(frame4)] => [insts4_3.clone(), rects4_3]);
+        test_bundle!(ent_path @ [build_frame_nr(frame4)] => [insts4_3.clone(), colors4_3]);
     insert(store, &bundle4_3);
 
     let points4_4 = build_some_point2d(5);
@@ -504,20 +513,23 @@ fn range_impl(store: &mut DataStore) {
 
     // TODO(cmc): bring back some log_time scenarios
 
-    // Unit ranges (Rect2D's PoV)
+    // Unit ranges (ColorRGBA's PoV)
 
     assert_range_components(
         TimeRange::new(frame1, frame1),
-        [Rect2D::name(), Point2D::name()],
+        [ColorRGBA::name(), Point2D::name()],
         &[
             (
                 Some(frame0),
-                &[(Rect2D::name(), &bundle4_3), (Point2D::name(), &bundle4_4)],
+                &[
+                    (ColorRGBA::name(), &bundle4_3),
+                    (Point2D::name(), &bundle4_4),
+                ],
             ), // timeless
             (
                 Some(frame1),
                 &[
-                    (Rect2D::name(), &bundle1),
+                    (ColorRGBA::name(), &bundle1),
                     (Point2D::name(), &bundle4_4), // timeless
                 ],
             ),
@@ -525,12 +537,12 @@ fn range_impl(store: &mut DataStore) {
     );
     assert_range_components(
         TimeRange::new(frame2, frame2),
-        [Rect2D::name(), Point2D::name()],
+        [ColorRGBA::name(), Point2D::name()],
         &[
             (
                 Some(frame1),
                 &[
-                    (Rect2D::name(), &bundle1),
+                    (ColorRGBA::name(), &bundle1),
                     (Point2D::name(), &bundle4_4), // timeless
                 ],
             ), //
@@ -538,43 +550,49 @@ fn range_impl(store: &mut DataStore) {
     );
     assert_range_components(
         TimeRange::new(frame3, frame3),
-        [Rect2D::name(), Point2D::name()],
+        [ColorRGBA::name(), Point2D::name()],
         &[
             (
                 Some(frame2),
-                &[(Rect2D::name(), &bundle1), (Point2D::name(), &bundle2)],
+                &[(ColorRGBA::name(), &bundle1), (Point2D::name(), &bundle2)],
             ), //
         ],
     );
     assert_range_components(
         TimeRange::new(frame4, frame4),
-        [Rect2D::name(), Point2D::name()],
+        [ColorRGBA::name(), Point2D::name()],
         &[
             (
                 Some(frame3),
-                &[(Rect2D::name(), &bundle1), (Point2D::name(), &bundle3)],
+                &[(ColorRGBA::name(), &bundle1), (Point2D::name(), &bundle3)],
             ),
             (
                 Some(frame4),
-                &[(Rect2D::name(), &bundle4_1), (Point2D::name(), &bundle3)],
+                &[(ColorRGBA::name(), &bundle4_1), (Point2D::name(), &bundle3)],
             ),
             (
                 Some(frame4),
-                &[(Rect2D::name(), &bundle4_2), (Point2D::name(), &bundle3)],
+                &[(ColorRGBA::name(), &bundle4_2), (Point2D::name(), &bundle3)],
             ),
             (
                 Some(frame4),
-                &[(Rect2D::name(), &bundle4_3), (Point2D::name(), &bundle4_25)], // !!!
+                &[
+                    (ColorRGBA::name(), &bundle4_3),
+                    (Point2D::name(), &bundle4_25),
+                ], // !!!
             ),
         ],
     );
     assert_range_components(
         TimeRange::new(frame5, frame5),
-        [Rect2D::name(), Point2D::name()],
+        [ColorRGBA::name(), Point2D::name()],
         &[
             (
                 Some(frame4),
-                &[(Rect2D::name(), &bundle4_3), (Point2D::name(), &bundle4_4)], // !!!
+                &[
+                    (ColorRGBA::name(), &bundle4_3),
+                    (Point2D::name(), &bundle4_4),
+                ], // !!!
             ), //
         ],
     );
@@ -583,102 +601,120 @@ fn range_impl(store: &mut DataStore) {
 
     assert_range_components(
         TimeRange::new(frame1, frame1),
-        [Point2D::name(), Rect2D::name()],
+        [Point2D::name(), ColorRGBA::name()],
         &[
             (
                 Some(frame0),
-                &[(Point2D::name(), &bundle4_4), (Rect2D::name(), &bundle4_3)],
+                &[
+                    (Point2D::name(), &bundle4_4),
+                    (ColorRGBA::name(), &bundle4_3),
+                ],
             ), // timeless
         ],
     );
     assert_range_components(
         TimeRange::new(frame2, frame2),
-        [Point2D::name(), Rect2D::name()],
+        [Point2D::name(), ColorRGBA::name()],
         &[
             (
                 Some(frame1),
                 &[
                     (Point2D::name(), &bundle4_4), // timeless
-                    (Rect2D::name(), &bundle1),
+                    (ColorRGBA::name(), &bundle1),
                 ],
             ),
             (
                 Some(frame2),
-                &[(Point2D::name(), &bundle2), (Rect2D::name(), &bundle1)],
+                &[(Point2D::name(), &bundle2), (ColorRGBA::name(), &bundle1)],
             ), //
         ],
     );
     assert_range_components(
         TimeRange::new(frame3, frame3),
-        [Point2D::name(), Rect2D::name()],
+        [Point2D::name(), ColorRGBA::name()],
         &[
             (
                 Some(frame2),
-                &[(Point2D::name(), &bundle2), (Rect2D::name(), &bundle1)],
+                &[(Point2D::name(), &bundle2), (ColorRGBA::name(), &bundle1)],
             ),
             (
                 Some(frame3),
-                &[(Point2D::name(), &bundle3), (Rect2D::name(), &bundle1)],
+                &[(Point2D::name(), &bundle3), (ColorRGBA::name(), &bundle1)],
             ),
         ],
     );
     assert_range_components(
         TimeRange::new(frame4, frame4),
-        [Point2D::name(), Rect2D::name()],
+        [Point2D::name(), ColorRGBA::name()],
         &[
             (
                 Some(frame3),
-                &[(Point2D::name(), &bundle3), (Rect2D::name(), &bundle1)],
+                &[(Point2D::name(), &bundle3), (ColorRGBA::name(), &bundle1)],
             ),
             (
                 Some(frame4),
-                &[(Point2D::name(), &bundle4_25), (Rect2D::name(), &bundle4_2)],
+                &[
+                    (Point2D::name(), &bundle4_25),
+                    (ColorRGBA::name(), &bundle4_2),
+                ],
             ),
             (
                 Some(frame4),
-                &[(Point2D::name(), &bundle4_4), (Rect2D::name(), &bundle4_3)],
+                &[
+                    (Point2D::name(), &bundle4_4),
+                    (ColorRGBA::name(), &bundle4_3),
+                ],
             ),
         ],
     );
     assert_range_components(
         TimeRange::new(frame5, frame5),
-        [Point2D::name(), Rect2D::name()],
+        [Point2D::name(), ColorRGBA::name()],
         &[
             (
                 Some(frame4),
-                &[(Point2D::name(), &bundle4_4), (Rect2D::name(), &bundle4_3)],
+                &[
+                    (Point2D::name(), &bundle4_4),
+                    (ColorRGBA::name(), &bundle4_3),
+                ],
             ), //
         ],
     );
 
-    // Full range (Rect2D's PoV)
+    // Full range (ColorRGBA's PoV)
 
     assert_range_components(
         TimeRange::new(frame1, frame5),
-        [Rect2D::name(), Point2D::name()],
+        [ColorRGBA::name(), Point2D::name()],
         &[
             (
                 Some(frame0),
-                &[(Rect2D::name(), &bundle4_3), (Point2D::name(), &bundle4_4)],
+                &[
+                    (ColorRGBA::name(), &bundle4_3),
+                    (Point2D::name(), &bundle4_4),
+                ],
             ), // timeless
             (
                 Some(frame1),
                 &[
-                    (Rect2D::name(), &bundle1),
+                    (ColorRGBA::name(), &bundle1),
                     (Point2D::name(), &bundle4_4), // timeless
                 ],
             ),
             (
                 Some(frame4),
-                &[(Rect2D::name(), &bundle4_1), (Point2D::name(), &bundle3)],
+                &[(ColorRGBA::name(), &bundle4_1), (Point2D::name(), &bundle3)],
             ),
             (
                 Some(frame4),
-                &[(Rect2D::name(), &bundle4_2), (Point2D::name(), &bundle3)],
+                &[(ColorRGBA::name(), &bundle4_2), (Point2D::name(), &bundle3)],
             ),
             (
                 Some(frame4),
-                &[(Rect2D::name(), &bundle4_3), (Point2D::name(), &bundle4_25)], // !!!
+                &[
+                    (ColorRGBA::name(), &bundle4_3),
+                    (Point2D::name(), &bundle4_25),
+                ], // !!!
             ),
         ],
     );
@@ -687,68 +723,83 @@ fn range_impl(store: &mut DataStore) {
 
     assert_range_components(
         TimeRange::new(frame1, frame5),
-        [Point2D::name(), Rect2D::name()],
+        [Point2D::name(), ColorRGBA::name()],
         &[
             (
                 Some(frame0),
-                &[(Point2D::name(), &bundle4_4), (Rect2D::name(), &bundle4_3)],
+                &[
+                    (Point2D::name(), &bundle4_4),
+                    (ColorRGBA::name(), &bundle4_3),
+                ],
             ), // timeless
             (
                 Some(frame2),
-                &[(Point2D::name(), &bundle2), (Rect2D::name(), &bundle1)],
+                &[(Point2D::name(), &bundle2), (ColorRGBA::name(), &bundle1)],
             ),
             (
                 Some(frame3),
-                &[(Point2D::name(), &bundle3), (Rect2D::name(), &bundle1)],
+                &[(Point2D::name(), &bundle3), (ColorRGBA::name(), &bundle1)],
             ),
             (
                 Some(frame4),
-                &[(Point2D::name(), &bundle4_25), (Rect2D::name(), &bundle4_2)],
+                &[
+                    (Point2D::name(), &bundle4_25),
+                    (ColorRGBA::name(), &bundle4_2),
+                ],
             ),
             (
                 Some(frame4),
-                &[(Point2D::name(), &bundle4_4), (Rect2D::name(), &bundle4_3)],
+                &[
+                    (Point2D::name(), &bundle4_4),
+                    (ColorRGBA::name(), &bundle4_3),
+                ],
             ),
         ],
     );
 
-    // Infinite range (Rect2D's PoV)
+    // Infinite range (ColorRGBA's PoV)
 
     assert_range_components(
         TimeRange::new(TimeInt::MIN, TimeInt::MAX),
-        [Rect2D::name(), Point2D::name()],
+        [ColorRGBA::name(), Point2D::name()],
         &[
-            (None, &[(Rect2D::name(), &bundle1)]),
+            (None, &[(ColorRGBA::name(), &bundle1)]),
             (
                 None,
-                &[(Rect2D::name(), &bundle4_1), (Point2D::name(), &bundle3)],
+                &[(ColorRGBA::name(), &bundle4_1), (Point2D::name(), &bundle3)],
             ),
             (
                 None,
-                &[(Rect2D::name(), &bundle4_2), (Point2D::name(), &bundle3)],
+                &[(ColorRGBA::name(), &bundle4_2), (Point2D::name(), &bundle3)],
             ),
             (
                 None,
-                &[(Rect2D::name(), &bundle4_3), (Point2D::name(), &bundle4_25)], // !!!
+                &[
+                    (ColorRGBA::name(), &bundle4_3),
+                    (Point2D::name(), &bundle4_25),
+                ], // !!!
             ),
             (
                 Some(frame1),
                 &[
-                    (Rect2D::name(), &bundle1),
+                    (ColorRGBA::name(), &bundle1),
                     (Point2D::name(), &bundle4_4), // timeless
                 ],
             ),
             (
                 Some(frame4),
-                &[(Rect2D::name(), &bundle4_1), (Point2D::name(), &bundle3)],
+                &[(ColorRGBA::name(), &bundle4_1), (Point2D::name(), &bundle3)],
             ),
             (
                 Some(frame4),
-                &[(Rect2D::name(), &bundle4_2), (Point2D::name(), &bundle3)],
+                &[(ColorRGBA::name(), &bundle4_2), (Point2D::name(), &bundle3)],
             ),
             (
                 Some(frame4),
-                &[(Rect2D::name(), &bundle4_3), (Point2D::name(), &bundle4_25)], // !!!
+                &[
+                    (ColorRGBA::name(), &bundle4_3),
+                    (Point2D::name(), &bundle4_25),
+                ], // !!!
             ),
         ],
     );
@@ -757,39 +808,51 @@ fn range_impl(store: &mut DataStore) {
 
     assert_range_components(
         TimeRange::new(TimeInt::MIN, TimeInt::MAX),
-        [Point2D::name(), Rect2D::name()],
+        [Point2D::name(), ColorRGBA::name()],
         &[
             (
                 None,
-                &[(Point2D::name(), &bundle2), (Rect2D::name(), &bundle1)],
+                &[(Point2D::name(), &bundle2), (ColorRGBA::name(), &bundle1)],
             ),
             (
                 None,
-                &[(Point2D::name(), &bundle3), (Rect2D::name(), &bundle1)],
+                &[(Point2D::name(), &bundle3), (ColorRGBA::name(), &bundle1)],
             ),
             (
                 None,
-                &[(Point2D::name(), &bundle4_25), (Rect2D::name(), &bundle4_2)],
+                &[
+                    (Point2D::name(), &bundle4_25),
+                    (ColorRGBA::name(), &bundle4_2),
+                ],
             ),
             (
                 None,
-                &[(Point2D::name(), &bundle4_4), (Rect2D::name(), &bundle4_3)],
+                &[
+                    (Point2D::name(), &bundle4_4),
+                    (ColorRGBA::name(), &bundle4_3),
+                ],
             ),
             (
                 Some(frame2),
-                &[(Point2D::name(), &bundle2), (Rect2D::name(), &bundle1)],
+                &[(Point2D::name(), &bundle2), (ColorRGBA::name(), &bundle1)],
             ),
             (
                 Some(frame3),
-                &[(Point2D::name(), &bundle3), (Rect2D::name(), &bundle1)],
+                &[(Point2D::name(), &bundle3), (ColorRGBA::name(), &bundle1)],
             ),
             (
                 Some(frame4),
-                &[(Point2D::name(), &bundle4_25), (Rect2D::name(), &bundle4_2)],
+                &[
+                    (Point2D::name(), &bundle4_25),
+                    (ColorRGBA::name(), &bundle4_2),
+                ],
             ),
             (
                 Some(frame4),
-                &[(Point2D::name(), &bundle4_4), (Rect2D::name(), &bundle4_3)],
+                &[
+                    (Point2D::name(), &bundle4_4),
+                    (ColorRGBA::name(), &bundle4_3),
+                ],
             ),
         ],
     );
@@ -841,6 +904,67 @@ fn joint_df(cluster_key: ComponentName, bundles: &[(ComponentName, &MsgBundle)])
     let df = polars_util::drop_all_nulls(&df, &cluster_key).unwrap();
 
     df.sort([cluster_key.as_str()], false).unwrap_or(df)
+}
+
+// --- GC ---
+
+#[test]
+fn gc() {
+    init_logs();
+
+    for config in re_arrow_store::test_util::all_configs() {
+        let mut store = DataStore::new(Instance::name(), config.clone());
+        gc_impl(&mut store);
+    }
+}
+fn gc_impl(store: &mut DataStore) {
+    let mut rng = rand::thread_rng();
+
+    for _ in 0..2 {
+        let nb_ents = 10;
+        for i in 0..nb_ents {
+            let ent_path = EntityPath::from(format!("this/that/{i}"));
+
+            let nb_frames = rng.gen_range(0..=100);
+            let frames = (0..nb_frames).filter(|_| rand::thread_rng().gen());
+            for frame_nr in frames {
+                let nb_instances = rng.gen_range(0..=1_000);
+                let bundle = test_bundle!(ent_path @ [build_frame_nr(frame_nr.into())] => [
+                    build_some_rects(nb_instances),
+                ]);
+                store.insert(&bundle).unwrap();
+            }
+        }
+
+        if let err @ Err(_) = store.sanity_check() {
+            store.sort_indices_if_needed();
+            eprintln!("{store}");
+            err.unwrap();
+        }
+        _ = store.to_dataframe(); // simple way of checking that everything is still readable
+
+        let msg_id_chunks = store.gc(
+            GarbageCollectionTarget::DropAtLeastPercentage(1.0 / 3.0),
+            Timeline::new("frame_nr", TimeType::Sequence),
+            MsgId::name(),
+        );
+
+        let msg_ids = msg_id_chunks
+            .iter()
+            .flat_map(|chunk| arrow_array_deserialize_iterator::<Option<MsgId>>(&**chunk).unwrap())
+            .map(Option::unwrap) // MsgId is always present
+            .collect::<ahash::HashSet<_>>();
+
+        for msg_id in &msg_ids {
+            assert!(store.get_msg_metadata(msg_id).is_some());
+        }
+
+        store.clear_msg_metadata(&msg_ids);
+
+        for msg_id in &msg_ids {
+            assert!(store.get_msg_metadata(msg_id).is_none());
+        }
+    }
 }
 
 // ---

@@ -1,5 +1,5 @@
 use arrow2::{
-    array::{Array, BooleanArray, ListArray, UInt64Array, Utf8Array},
+    array::{new_empty_array, Array, BooleanArray, ListArray, UInt64Array, Utf8Array},
     bitmap::Bitmap,
     compute::concatenate::concatenate,
     offset::Offsets,
@@ -265,9 +265,16 @@ fn component_as_series(
 
     // Bring everything together into one big list.
     let comp_values = ListArray::<i32>::new(
-        ListArray::<i32>::default_datatype(datatype),
+        ListArray::<i32>::default_datatype(datatype.clone()),
         Offsets::try_from_lengths(comp_lengths).unwrap().into(),
-        concatenate(comp_values.as_slice()).unwrap().to_boxed(),
+        // It's possible that all rows being referenced were already garbage collected (or simply
+        // never existed to begin with), at which point `comp_rows` will be empty... and you can't
+        // call `concatenate` on an empty list without panicking.
+        if comp_values.is_empty() {
+            new_empty_array(datatype)
+        } else {
+            concatenate(comp_values.as_slice()).unwrap().to_boxed()
+        },
         Some(Bitmap::from(comp_validity)),
     );
 
