@@ -12,7 +12,8 @@ class script(FuncDecorator):
     def decorate(self, func, *decorator_args, **decorator_kwargs):
         def decorator(*args, **kwargs):
             parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")
-            return func(*args, **kwargs)
+            return func(parser, *args, **kwargs)
+
         return decorator
 
 
