@@ -260,15 +260,28 @@ fn parse_index(s: String) -> PyResult<Index> {
 }
 
 // ----------------------------------------------------------------------------
-
 #[pyfunction]
 fn main(argv: Vec<String>) -> PyResult<()> {
-    tokio::runtime::Builder::new_multi_thread()
+    let res = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
         .unwrap()
-        .block_on(rerun::run(argv))
-        .map_err(|err| PyRuntimeError::new_err(re_error::format(err)))
+        .block_on(rerun::run(argv));
+
+    match res {
+        Ok(_) => Ok(()),
+        Err(err)
+            if err
+                .downcast_ref::<std::io::Error>()
+                .map_or(false, |io_err| {
+                    io_err.kind() == std::io::ErrorKind::AddrInUse
+                }) =>
+        {
+            re_log::warn!("{}. Another Rerun instance is probably running.", err);
+            Ok(())
+        }
+        Err(err) => Err(PyRuntimeError::new_err(re_error::format(err))),
+    }
 }
 
 #[pyfunction]
