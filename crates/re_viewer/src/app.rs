@@ -1,4 +1,7 @@
-use std::any::Any;
+use std::{
+    any::Any,
+    hash::{Hash, Hasher},
+};
 
 use ahash::HashMap;
 use egui_notify::Toasts;
@@ -85,6 +88,7 @@ pub struct App {
     cmd_palette: re_ui::CommandPalette,
 
     // TODO: or maybe we make analytics transparently handle this messy case?
+    #[cfg(feature = "analytics")]
     analytics: Option<Analytics>,
 }
 
@@ -509,8 +513,13 @@ impl App {
                         analytics.default_props_mut().extend([
                             (
                                 "application_id".into(),
-                                // TODO: hash
-                                msg.info.application_id.0.clone().into(),
+                                if !msg.info.is_official_example {
+                                    let mut hasher = ahash::AHasher::default();
+                                    msg.info.application_id.0.hash(&mut hasher);
+                                    format!("{:x}", hasher.finish()).into()
+                                } else {
+                                    msg.info.application_id.0.clone().into()
+                                },
                             ),
                             (
                                 "recording_id".into(),
