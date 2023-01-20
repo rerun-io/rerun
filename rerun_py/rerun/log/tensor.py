@@ -80,6 +80,11 @@ def _log_tensor(
         np.float64,
     ]
 
+    # We don't support float16 -- upscale to f32
+    # TODO(#854): Native F16 support for arrow tensors
+    if tensor.dtype == np.float16:
+        tensor = np.asarray(tensor, dtype="float32")
+
     if tensor.dtype not in SUPPORTED_DTYPES:
         _send_warning(f"Unsupported dtype: {tensor.dtype}. Expected a numeric type. Skipping this tensor.", 2)
         return
