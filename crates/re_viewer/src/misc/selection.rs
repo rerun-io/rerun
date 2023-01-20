@@ -145,6 +145,7 @@ impl MultiSelection {
     }
 
     /// The primary/first selection.
+    // TODO(andreas): remove
     pub fn primary(&self) -> Option<&Selection> {
         self.selection.first()
     }
