@@ -1,6 +1,6 @@
 use re_data_store::{query::visit_type_data_2, FieldName};
 use re_log_types::{DataVec, IndexHash, MsgId, ObjectType};
-use re_renderer::Size;
+use re_renderer::{renderer::LineStripFlags, Size};
 
 use crate::{
     misc::ViewerContext,
@@ -78,6 +78,7 @@ impl ScenePart for LineSegments2DPartClassic {
                     }))
                     .color(color)
                     .radius(radius)
+                    .flags(LineStripFlags::NO_COLOR_GRADIENT)
                     .user_data(instance_hash);
             };
 
