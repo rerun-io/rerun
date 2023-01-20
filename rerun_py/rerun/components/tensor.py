@@ -80,6 +80,8 @@ class TensorArray(pa.ExtensionArray):  # type: ignore[misc]
             child=pa.array([True], type=pa.bool_()),
         )
 
+        # Note: the pa.array mask is backwards from expectations
+        # Mask is True for elements which are not valid.
         if meter is None:
             meter = pa.array([0.0], mask=[True], type=pa.float32())
         else:
