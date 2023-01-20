@@ -112,7 +112,7 @@ where
             #[cfg(all(feature = "analytics", debug_assertions))]
             Commands::Analytics(analytics) => run_analytics(analytics).map_err(Into::into),
             #[cfg(not(all(feature = "analytics", debug_assertions)))]
-            _ => Ok(())
+            _ => Ok(()),
         }
     } else {
         run_impl(args).await
