@@ -134,7 +134,13 @@ impl Int64Histogram {
 
     /// Remove all data in the given range.
     ///
-    /// Returns how much count was removed
+    /// Returns how much count was removed.
+    ///
+    /// Currently the implementation is optimized for the case of removing
+    /// large continuous ranges.
+    /// Removing many small, scattered ranges (e.g. individual elements)
+    /// may cause performance problems!
+    /// This can be remedied with some more code.
     pub fn remove(&mut self, range: impl std::ops::RangeBounds<i64>) -> u64 {
         let range = range_u64_from_range_bounds(range);
         self.root.remove(0, ROOT_LEVEL, range)
@@ -272,6 +278,9 @@ impl Tree {
                 if node.is_empty() {
                     *self = Tree::SparseLeaf(SparseLeaf::default());
                 }
+                // TODO(emilk): if we only have leaf children (sparse or dense)
+                // and the number of keys in all of them is less then `MAX_SPARSE_LEAF_LEN`,
+                // then we should convert this BranchNode into a SparseLeaf.
                 count_loss
             }
             Tree::SparseLeaf(sparse) => sparse.remove(range),
