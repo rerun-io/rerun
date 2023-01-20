@@ -45,9 +45,7 @@ impl<'a> ViewerContext<'a> {
                 ui.separator();
                 msg_id.data_ui(self, ui, Preview::Small);
             });
-        if response.clicked() {
-            self.set_single_selection(Selection::MsgId(msg_id));
-        }
+        self.cursor_interact_with_selectable(&response, Selection::MsgId(msg_id));
         response
     }
 
@@ -73,12 +71,13 @@ impl<'a> ViewerContext<'a> {
                 ui.label(format!("Path: {obj_path}"));
                 obj_path.data_ui(self, ui, crate::ui::Preview::Large);
             });
-        if response.clicked() {
-            self.set_single_selection(Selection::Instance(InstanceId {
+        self.cursor_interact_with_selectable(
+            &response,
+            Selection::Instance(InstanceId {
                 obj_path: obj_path.clone(),
                 instance_index: None,
-            }));
-        }
+            }),
+        );
         response
     }
 
@@ -111,9 +110,8 @@ impl<'a> ViewerContext<'a> {
                 ui.label(format!("Path: {instance_id}"));
                 instance_id.data_ui(self, ui, crate::ui::Preview::Large);
             });
-        if response.clicked() {
-            self.set_single_selection(Selection::Instance(instance_id.clone()));
-        }
+
+        self.cursor_interact_with_selectable(&response, Selection::Instance(instance_id.clone()));
         response
     }
 
@@ -138,11 +136,7 @@ impl<'a> ViewerContext<'a> {
                 .is_exact(),
             text,
         );
-        if response.clicked() {
-            self.rec_cfg
-                .selection_state
-                .set_single_selection(Selection::DataPath(data_path.clone()));
-        }
+        self.cursor_interact_with_selectable(&response, Selection::DataPath(data_path.clone()));
         response
     }
 
@@ -156,9 +150,7 @@ impl<'a> ViewerContext<'a> {
         let response = ui
             .selectable_label(is_selected, text)
             .on_hover_text("Space View");
-        if response.clicked() {
-            self.set_single_selection(Selection::SpaceView(space_view_id));
-        }
+        self.cursor_interact_with_selectable(&response, Selection::SpaceView(space_view_id));
         response
     }
 
@@ -177,9 +169,10 @@ impl<'a> ViewerContext<'a> {
                 text,
             )
             .on_hover_text("Group");
-        if response.clicked() {
-            self.set_single_selection(Selection::DataBlueprintGroup(space_view_id, group_handle));
-        }
+        self.cursor_interact_with_selectable(
+            &response,
+            Selection::DataBlueprintGroup(space_view_id, group_handle),
+        );
         response
     }
 
@@ -201,9 +194,7 @@ impl<'a> ViewerContext<'a> {
                 ui.label(format!("Path: {obj_path}"));
                 obj_path.data_ui(self, ui, Preview::Large);
             });
-        if response.clicked() {
-            self.set_single_selection(selection);
-        }
+        self.cursor_interact_with_selectable(&response, selection);
         response
     }
 
@@ -278,6 +269,24 @@ impl<'a> ViewerContext<'a> {
             } else {
                 self.set_multi_selection(hovered.into_iter());
             }
+        }
+    }
+
+    pub fn cursor_interact_with_selectable(
+        &mut self,
+        response: &egui::Response,
+        selectable: Selection,
+    ) {
+        if response.hovered() {
+            self.rec_cfg
+                .selection_state
+                .set_hovered(std::iter::once(selectable.clone()));
+        }
+        if response.clicked() {
+            self.rec_cfg
+                .selection_state
+                .set_single_selection(selectable);
+            // TODO(andreas): How to deal with shift click for selecting ranges?
         }
     }
 
