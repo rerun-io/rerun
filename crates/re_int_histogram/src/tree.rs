@@ -2,6 +2,8 @@
 //!
 //! The branches are based on the next few bits of the key (also known as the "address").
 
+use smallvec::{smallvec, SmallVec};
+
 use crate::{i64_key_from_u64_key, u64_key_from_i64_key, RangeI64, RangeU64};
 
 // ----------------------------------------------------------------------------
@@ -42,6 +44,10 @@ const NUM_CHILDREN_IN_DENSE: u64 = 16;
 const ROOT_LEVEL: Level = 64 - LEVEL_STEP;
 static_assertions::const_assert_eq!(ROOT_LEVEL + LEVEL_STEP, 64);
 static_assertions::const_assert_eq!((ROOT_LEVEL - BOTTOM_LEVEL) % LEVEL_STEP, 0);
+const NUM_NODE_STEPS: u64 = (ROOT_LEVEL - BOTTOM_LEVEL) / LEVEL_STEP;
+#[allow(dead_code)] // used in static assert
+const NUM_STEPS_IN_DENSE_LEAF: u64 = 64 - NUM_NODE_STEPS * LEVEL_STEP;
+static_assertions::const_assert_eq!(1 << NUM_STEPS_IN_DENSE_LEAF, NUM_CHILDREN_IN_DENSE);
 
 const ADDR_MASK: u64 = (1 << LEVEL_STEP) - 1;
 const NUM_CHILDREN_IN_NODE: u64 = 1 << LEVEL_STEP;
@@ -133,7 +139,7 @@ impl Int64Histogram {
             iter: TreeIterator {
                 range,
                 cutoff_size,
-                stack: vec![NodeIterator {
+                stack: smallvec![NodeIterator {
                     level: ROOT_LEVEL,
                     abs_addr: 0,
                     node: &self.root,
@@ -220,8 +226,8 @@ struct SparseLeaf {
     /// Two vectors of equal lengths,
     /// making up (addr, count) pairs,
     /// sorted by `addr`.
-    addrs: smallvec::SmallVec<[u64; 3]>,
-    counts: smallvec::SmallVec<[u32; 3]>,
+    addrs: SmallVec<[u64; 3]>,
+    counts: SmallVec<[u32; 3]>,
 }
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -497,7 +503,7 @@ struct TreeIterator<'a> {
     /// You can stop recursing when you've reached this size
     cutoff_size: u64,
 
-    stack: Vec<NodeIterator<'a>>,
+    stack: SmallVec<[NodeIterator<'a>; (NUM_NODE_STEPS + 1) as usize]>,
 }
 
 struct NodeIterator<'a> {
