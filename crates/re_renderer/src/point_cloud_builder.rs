@@ -137,6 +137,8 @@ where
         &mut self,
         positions: impl Iterator<Item = glam::Vec3>,
     ) -> PointsBuilder<'_, PerPointUserData> {
+        crate::profile_function!();
+
         debug_assert_eq!(self.0.vertices.len(), self.0.colors.len());
         debug_assert_eq!(self.0.vertices.len(), self.0.user_data.len());
 
@@ -261,6 +263,7 @@ where
     /// If the iterator provides more values than there are points, the extra values will be ignored.
     #[inline]
     pub fn radii(self, radii: impl Iterator<Item = Size>) -> Self {
+        crate::profile_function!();
         for (point, radius) in self.vertices.iter_mut().zip(radii) {
             point.radius = radius;
         }
@@ -282,6 +285,7 @@ where
     /// If the iterator provides more values than there are points, the extra values will be ignored.
     #[inline]
     pub fn colors(self, colors: impl Iterator<Item = Color32>) -> Self {
+        crate::profile_function!();
         for (c, color) in self.colors.iter_mut().zip(colors) {
             *c = color;
         }
@@ -304,6 +308,7 @@ where
     /// User data is currently not available on the GPU.
     #[inline]
     pub fn user_data(self, data: impl Iterator<Item = PerPointUserData>) -> Self {
+        crate::profile_function!();
         for (d, data) in self.user_data.iter_mut().zip(data) {
             *d = data;
         }
