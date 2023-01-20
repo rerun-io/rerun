@@ -200,7 +200,9 @@ struct BranchNode {
 
 #[derive(Clone, Debug, Default)]
 struct SparseLeaf {
-    /// Sorted (addr, count) pairs
+    /// Two vectors of equal lengths,
+    /// making up (addr, count) pairs,
+    /// sorted by `addr`.
     addrs: smallvec::SmallVec<[u64; 3]>,
     counts: smallvec::SmallVec<[u32; 3]>,
 }
