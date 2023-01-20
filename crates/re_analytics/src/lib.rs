@@ -135,7 +135,7 @@ impl Analytics {
         &self.config
     }
 
-    pub fn default_props_mut(&mut self) -> &mut HashMap<Cow<'static, str>, Property> {
+    pub fn default_append_props_mut(&mut self) -> &mut HashMap<Cow<'static, str>, Property> {
         &mut self.default_append_props
     }
 

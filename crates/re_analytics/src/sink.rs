@@ -30,10 +30,10 @@ pub enum SinkError {
 
 #[derive(Default, Debug, Clone)]
 pub struct PostHogSink {
-    // NOTE: We need to lazily build the underlying HTTP client, so that we are guaranteed that it
-    // is initialized from one of the threads that we spawned ourselves.
-    // The reason for this is that `reqwest` will crash if it notices that a tokio runtime is
-    // running in that same thread.
+    // NOTE: We need to lazily build the underlying HTTP client, so that we can guarantee that it
+    // is initialized from a thread that is free of a Tokio runtime.
+    // This is necessary because `reqwest` will crash if we try and initialize a blocking HTTP
+    // client from within a thread that has a Tokio runtime instantiated.
     client: OnceCell<HttpClient>,
 }
 

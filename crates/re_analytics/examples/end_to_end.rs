@@ -10,7 +10,7 @@ fn main() {
     tracing_subscriber::fmt::init(); // log to stdout
 
     let mut analytics = Analytics::new(Duration::from_secs(3)).unwrap();
-    analytics.default_props_mut().extend([
+    analytics.default_append_props_mut().extend([
         (
             "application_id".into(),
             "end_to_end_example".to_owned().into(),
