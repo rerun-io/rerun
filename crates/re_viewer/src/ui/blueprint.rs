@@ -77,7 +77,8 @@ impl Blueprint {
                 ),
                 egui::Layout::right_to_left(egui::Align::Center),
                 |ui| {
-                    self.viewport.create_new_blueprint_ui(ctx, ui, spaces_info);
+                    self.viewport
+                        .add_new_spaceview_button_ui(ctx, ui, spaces_info);
                     self.reset_button_ui(ctx, ui, spaces_info);
                 },
             );

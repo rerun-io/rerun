@@ -528,7 +528,7 @@ impl Viewport {
         }
     }
 
-    pub fn create_new_blueprint_ui(
+    pub fn add_new_spaceview_button_ui(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
