@@ -161,7 +161,7 @@ pub enum TensorData {
     I32(Buffer<i32>),
     I64(Buffer<i64>),
     // ---
-    //TODO(john) F16
+    // TODO(#854): Native F16 support for arrow tensors
     //F16(Vec<arrow2::types::f16>),
     F32(Buffer<f32>),
     F64(Buffer<f64>),
