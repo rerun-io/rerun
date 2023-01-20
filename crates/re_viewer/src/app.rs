@@ -323,10 +323,16 @@ impl App {
             }
 
             Command::SelectionPrevious => {
-                self.state.selection_history.select_previous();
+                let state = &mut self.state;
+                if let Some(rec_cfg) = state.recording_configs.get_mut(&state.selected_rec_id) {
+                    rec_cfg.selection_history.select_previous();
+                }
             }
             Command::SelectionNext => {
-                self.state.selection_history.select_next();
+                let state = &mut self.state;
+                if let Some(rec_cfg) = state.recording_configs.get_mut(&state.selected_rec_id) {
+                    rec_cfg.selection_history.select_next();
+                }
             }
             Command::ToggleCommandPalette => {
                 self.cmd_palette.toggle();
@@ -450,9 +456,6 @@ impl eframe::App for App {
             .recording_configs
             .entry(self.state.selected_rec_id)
             .or_default()
-            .on_frame_start();
-        self.state
-            .selection_history
             .on_frame_start(log_db, blueprint);
 
         {
@@ -771,7 +774,6 @@ struct AppState {
     event_log_view: crate::event_log_view::EventLogView,
 
     selection_panel: crate::selection_panel::SelectionPanel,
-    selection_history: crate::SelectionHistory,
     time_panel: crate::time_panel::TimePanel,
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -799,7 +801,6 @@ impl AppState {
             event_log_view,
             blueprints,
             selection_panel,
-            selection_history,
             time_panel,
             #[cfg(not(target_arch = "wasm32"))]
                 profiler: _,
@@ -818,7 +819,6 @@ impl AppState {
             component_ui_registry,
             log_db,
             rec_cfg,
-            selection_history,
             re_ui,
             render_ctx,
         };

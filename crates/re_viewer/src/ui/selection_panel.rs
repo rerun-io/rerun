@@ -31,7 +31,7 @@ impl SelectionPanel {
             egui_ctx,
             blueprint.selection_panel_expanded,
             |ui: &mut egui::Ui| {
-                if let Some(selection) = ctx.selection_history.selection_ui(ui, blueprint) {
+                if let Some(selection) = ctx.rec_cfg.selection_history.selection_ui(ui, blueprint) {
                     ctx.set_multi_selection(selection.selected().iter().cloned());
                 }
 
