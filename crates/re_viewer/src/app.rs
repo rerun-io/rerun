@@ -105,28 +105,6 @@ impl App {
         )
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
-    pub(crate) fn from_log_db(
-        startup_options: StartupOptions,
-        re_ui: re_ui::ReUi,
-        storage: Option<&dyn eframe::Storage>,
-        log_db: LogDb,
-    ) -> Self {
-        Self::new(startup_options, re_ui, storage, None, log_db)
-    }
-
-    /// load a `.rrd` data file.
-    #[cfg(not(target_arch = "wasm32"))]
-    pub fn from_rrd_path(
-        startup_options: StartupOptions,
-        re_ui: re_ui::ReUi,
-        storage: Option<&dyn eframe::Storage>,
-        path: &std::path::Path,
-    ) -> Self {
-        let log_db = load_file_path(path).unwrap_or_default(); // TODO(emilk): exit on error.
-        Self::from_log_db(startup_options, re_ui, storage, log_db)
-    }
-
     fn new(
         startup_options: StartupOptions,
         re_ui: re_ui::ReUi,
