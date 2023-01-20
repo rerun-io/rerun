@@ -54,7 +54,6 @@ impl DataUi for TimePoint {
     }
 }
 
-// TODO(jleibs): Better ArrowMsg view
 impl DataUi for [ComponentBundle] {
     fn data_ui(&self, _ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui, preview: Preview) {
         let mut sorted = self.to_vec();
