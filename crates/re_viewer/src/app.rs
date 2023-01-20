@@ -1295,7 +1295,9 @@ fn save_database_to_file(
                 .chronological_log_messages()
                 .filter(|msg| {
                     match msg {
-                        LogMsg::BeginRecordingMsg(_) | LogMsg::TypeMsg(_) => true, // timeless
+                        LogMsg::BeginRecordingMsg(_) | LogMsg::TypeMsg(_) | LogMsg::Goodbye(_) => {
+                            true // timeless
+                        }
                         LogMsg::DataMsg(DataMsg { time_point, .. })
                         | LogMsg::PathOpMsg(PathOpMsg { time_point, .. }) => {
                             time_point.is_timeless() || {

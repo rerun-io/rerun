@@ -976,7 +976,6 @@ pub fn init_logs() {
         .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
         .is_ok()
     {
-        re_log::set_default_rust_log_env();
-        tracing_subscriber::fmt::init(); // log to stdout
+        re_log::setup_native_logging();
     }
 }

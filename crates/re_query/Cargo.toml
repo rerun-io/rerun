@@ -51,7 +51,6 @@ polars-core = { workspace = true, features = [
   "dtype-struct",
   "fmt",
 ] }
-tracing-subscriber = "0.3"
 
 
 [lib]

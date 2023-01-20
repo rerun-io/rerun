@@ -96,13 +96,11 @@ if __name__ == "__main__":
         # You can ommit the argument to connect to the default address,
         # which is `127.0.0.1:9876`.
         rr.connect(args.addr)
+    elif args.save is None and not args.headless:
+        rr.spawn_and_connect()
 
     dicom_files = ensure_dataset_downloaded()
     read_and_log_dicom_dataset(dicom_files)
 
     if args.save is not None:
         rr.save(args.save)
-    elif args.headless:
-        pass
-    elif not args.connect:
-        rr.show()

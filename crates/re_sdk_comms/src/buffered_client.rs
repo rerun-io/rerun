@@ -2,7 +2,7 @@ use std::net::SocketAddr;
 
 use crossbeam::channel::{select, Receiver, Sender};
 
-use re_log_types::LogMsg;
+use re_log_types::{LogMsg, MsgId};
 
 #[derive(Debug, PartialEq, Eq)]
 struct FlushedMsg;
@@ -30,6 +30,8 @@ enum PacketMsg {
 pub struct Client {
     msg_tx: Sender<MsgMsg>,
     flushed_rx: Receiver<FlushedMsg>,
+    encode_quit_tx: Sender<QuitMsg>,
+    send_quit_tx: Sender<QuitMsg>,
 }
 
 impl Default for Client {
@@ -64,14 +66,12 @@ impl Client {
             })
             .expect("Failed to spawn thread");
 
-        ctrlc::set_handler(move || {
-            re_log::debug!("Ctrl-C detected - Aborting before everything has been sent");
-            encode_quit_tx.send(QuitMsg).ok();
-            send_quit_tx.send(QuitMsg).ok();
-        })
-        .expect("Error setting Ctrl-C handler");
-
-        Self { msg_tx, flushed_rx }
+        Self {
+            msg_tx,
+            flushed_rx,
+            encode_quit_tx,
+            send_quit_tx,
+        }
     }
 
     pub fn set_addr(&mut self, addr: SocketAddr) {
@@ -107,7 +107,11 @@ impl Client {
 impl Drop for Client {
     /// Wait until everything has been sent.
     fn drop(&mut self) {
+        re_log::debug!("Shutting down the client connection…");
+        self.send(LogMsg::Goodbye(MsgId::random()));
         self.flush();
+        self.encode_quit_tx.send(QuitMsg).ok();
+        self.send_quit_tx.send(QuitMsg).ok();
         re_log::debug!("Sender has shut down.");
     }
 }

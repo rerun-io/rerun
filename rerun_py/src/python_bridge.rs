@@ -81,8 +81,7 @@ impl ThreadInfo {
 /// The python module is called "rerun_bindings".
 #[pymodule]
 fn rerun_bindings(py: Python<'_>, m: &PyModule) -> PyResult<()> {
-    re_log::set_default_rust_log_env();
-    tracing_subscriber::fmt::init();
+    re_log::setup_native_logging();
 
     global_session().set_recording_id(default_recording_id(py));
 
@@ -96,7 +95,7 @@ fn rerun_bindings(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(init, m)?)?;
     m.add_function(wrap_pyfunction!(connect, m)?)?;
     m.add_function(wrap_pyfunction!(serve, m)?)?;
-    m.add_function(wrap_pyfunction!(flush, m)?)?;
+    m.add_function(wrap_pyfunction!(shutdown, m)?)?;
 
     #[cfg(feature = "re_viewer")]
     {
@@ -325,10 +324,12 @@ fn serve() -> PyResult<()> {
     ))
 }
 
-/// Wait until all logged data have been sent to the remove server (if any).
 #[pyfunction]
-fn flush() {
-    global_session().flush();
+fn shutdown() {
+    re_log::debug!("Shutting down the Rerun SDK");
+    let mut session = global_session();
+    session.flush();
+    session.disconnect();
 }
 
 /// Disconnect from remote server (if any).
