@@ -284,7 +284,7 @@ def main() -> None:
     if args.run_forever:
         assert args.connect, "If you run forever, you need to --connect"
 
-    rr.init("objectron", is_official_example = True)
+    rr.init("objectron", is_official_example=True)
 
     if args.connect:
         # Send logging data to separate `rerun` process.

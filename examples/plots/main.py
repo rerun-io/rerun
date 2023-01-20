@@ -97,7 +97,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    rr.init("plot", is_official_example = True)
+    rr.init("plot", is_official_example=True)
 
     if args.serve:
         rr.serve()

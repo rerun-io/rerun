@@ -191,7 +191,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    rr.init("nyud", is_official_example = True)
+    rr.init("nyud", is_official_example=True)
 
     if args.connect:
         # Send logging data to separate `rerun` process.

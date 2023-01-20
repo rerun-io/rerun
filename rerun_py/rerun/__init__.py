@@ -89,7 +89,7 @@ def set_recording_id(value: str) -> None:
     bindings.set_recording_id(value)
 
 
-def init(application_id: str, spawn_and_connect: bool = False, is_official_example: bool = True) -> None:
+def init(application_id: str, spawn_and_connect: bool = False, is_official_example: bool = False) -> None:
     """
     Initialize the Rerun SDK with a user-chosen application id (name).
 

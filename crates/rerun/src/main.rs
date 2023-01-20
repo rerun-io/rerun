@@ -9,4 +9,3 @@ async fn main() -> anyhow::Result<()> {
     re_log::setup_native_logging();
     rerun::run(std::env::args()).await
 }
-

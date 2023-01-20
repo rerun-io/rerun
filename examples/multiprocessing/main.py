@@ -32,7 +32,7 @@ def main() -> None:
     parser.add_argument("--connect", dest="connect", action="store_true", help="Connect to an external viewer")
     args = parser.parse_args()
 
-    rr.init("multiprocessing", is_official_example = True)
+    rr.init("multiprocessing", is_official_example=True)
 
     if args.connect:
         task("main_task")

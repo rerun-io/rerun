@@ -87,7 +87,8 @@ pub struct App {
     pending_commands: Vec<Command>,
     cmd_palette: re_ui::CommandPalette,
 
-    // TODO: or maybe we make analytics transparently handle this messy case?
+    // NOTE: Optional because it is possible to have the `analytics` feature flag enabled while at
+    // the same time opting out of analytics.
     #[cfg(feature = "analytics")]
     analytics: Option<Analytics>,
 }

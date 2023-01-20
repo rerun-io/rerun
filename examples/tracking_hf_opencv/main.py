@@ -390,7 +390,7 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    rr.init("tracking_hf_opencv", is_official_example = True)
+    rr.init("tracking_hf_opencv", is_official_example=True)
 
     setup_looging()
 
