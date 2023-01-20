@@ -64,25 +64,18 @@ impl Blueprint {
             .default_width(200.0);
 
         panel.show_animated_inside(ui, self.blueprint_panel_expanded, |ui: &mut egui::Ui| {
-            ui.horizontal(|ui| {
-                ui.vertical_centered(|ui| {
-                    ui.strong("Blueprint").on_hover_text(
-                        "The Blueprint is where you can configure the Rerun Viewer.",
-                    );
-                });
-            });
+            ui.strong("Blueprint")
+                .on_hover_text("The Blueprint is where you can configure the Rerun Viewer.");
 
             ui.separator();
 
-            ui.vertical_centered(|ui| {
-                if ui
-                    .button("Auto-populate Viewport")
-                    .on_hover_text("Re-populate Viewport with automatically chosen Space Views")
-                    .clicked()
-                {
-                    self.viewport = Viewport::new(ctx, spaces_info);
-                }
-            });
+            if ui
+                .button("Auto-populate Viewport")
+                .on_hover_text("Re-populate Viewport with automatically chosen Space Views")
+                .clicked()
+            {
+                self.viewport = Viewport::new(ctx, spaces_info);
+            }
 
             ui.separator();
 
