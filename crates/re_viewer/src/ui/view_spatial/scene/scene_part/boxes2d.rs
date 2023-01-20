@@ -68,15 +68,14 @@ impl ScenePart for Boxes2DPartClassic {
                     .class_description(class_id.map(|i| ClassId(*i as _)))
                     .annotation_info();
                 let mut color = annotation_info.color(color, DefaultColor::ObjPath(obj_path));
-                let mut radius = stroke_width.map_or(Size::AUTO, |r| Size::new_scene(r * 0.5));
+                let mut radius = stroke_width.map_or(Size::AUTO, |w| Size::new_scene(w * 0.5));
                 let label = annotation_info.label(label);
 
                 SceneSpatial::apply_hover_and_selection_effect(
                     &mut radius,
                     &mut color,
-                    instance_hash.instance_index_hash,
-                    &hovered_paths,
-                    &selected_paths,
+                    hovered_paths.contains_index(instance_hash.instance_index_hash),
+                    selected_paths.contains_index(instance_hash.instance_index_hash),
                 );
 
                 line_batch
@@ -118,7 +117,7 @@ impl Boxes2DPart {
         scene: &mut SceneSpatial,
         obj_path: &ObjPath,
         world_from_obj: Mat4,
-        instance: InstanceIdHash,
+        instance_hash: InstanceIdHash,
         rect: &Rect2D,
         color: Option<ColorRGBA>,
         hovered_paths: &ObjectPathSelectionScope,
@@ -143,9 +142,8 @@ impl Boxes2DPart {
         SceneSpatial::apply_hover_and_selection_effect(
             &mut radius,
             &mut color,
-            instance.instance_index_hash,
-            hovered_paths,
-            selected_paths,
+            hovered_paths.contains_index(instance_hash.instance_index_hash),
+            selected_paths.contains_index(instance_hash.instance_index_hash),
         );
 
         let mut line_batch = scene
@@ -162,7 +160,7 @@ impl Boxes2DPart {
             )
             .color(color)
             .radius(radius)
-            .user_data(instance);
+            .user_data(instance_hash);
 
         if let Some(label) = label {
             scene.ui.labels_2d.push(Label2D {
@@ -172,7 +170,7 @@ impl Boxes2DPart {
                     egui::pos2(rect.x, rect.y),
                     egui::vec2(rect.w, rect.h),
                 )),
-                labled_instance: instance,
+                labled_instance: instance_hash,
             });
         }
     }

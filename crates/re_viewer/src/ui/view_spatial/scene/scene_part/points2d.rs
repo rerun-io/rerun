@@ -100,9 +100,8 @@ impl ScenePart for Points2DPartClassic {
                 SceneSpatial::apply_hover_and_selection_effect(
                     &mut radius,
                     &mut color,
-                    instance_hash.instance_index_hash,
-                    &hovered_paths,
-                    &selected_paths,
+                    hovered_paths.contains_index(instance_hash.instance_index_hash),
+                    selected_paths.contains_index(instance_hash.instance_index_hash),
                 );
                 point_batch
                     .add_point_2d(pos)
@@ -219,9 +218,8 @@ impl Points2DPart {
             SceneSpatial::apply_hover_and_selection_effect(
                 &mut radius,
                 &mut color,
-                instance_hash.instance_index_hash,
-                &hovered_paths,
-                &selected_paths,
+                hovered_paths.contains_index(instance_hash.instance_index_hash),
+                selected_paths.contains_index(instance_hash.instance_index_hash),
             );
 
             point_batch

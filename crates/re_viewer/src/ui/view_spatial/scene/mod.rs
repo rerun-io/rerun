@@ -10,9 +10,7 @@ use re_renderer::{Color32, Size};
 
 use super::{eye::Eye, SpaceCamera3D, SpatialNavigationMode};
 use crate::{
-    misc::{
-        caches::AsDynamicImage, mesh_loader::LoadedMesh, ObjectPathSelectionScope, ViewerContext,
-    },
+    misc::{caches::AsDynamicImage, mesh_loader::LoadedMesh, ViewerContext},
     ui::{
         annotations::{auto_color, AnnotationMap},
         transform_cache::TransformCache,
@@ -55,7 +53,7 @@ pub struct MeshSource {
     // TODO(andreas): Make this Conformal3 once glow is gone?
     pub world_from_mesh: macaw::Affine3A,
     pub mesh: Arc<LoadedMesh>,
-    pub additive_tint: Option<Color32>,
+    pub additive_tint: Color32,
 }
 
 pub enum AnyTensor {
@@ -212,7 +210,7 @@ impl SceneSpatial {
     const SELECTION_COLOR: Color32 = Color32::from_rgb(255, 170, 170);
     const CAMERA_COLOR: Color32 = Color32::from_rgb(255, 128, 128);
 
-    fn hover_size_boost(size: Size) -> Size {
+    fn size_boost(size: Size) -> Size {
         if size.is_auto() {
             Size::AUTO_LARGE
         } else {
@@ -223,17 +221,44 @@ impl SceneSpatial {
     fn apply_hover_and_selection_effect(
         size: &mut Size,
         color: &mut Color32,
-        index: IndexHash,
-        hovered_indices: &ObjectPathSelectionScope,
-        selected_indices: &ObjectPathSelectionScope,
+        hovered: bool,
+        selected: bool,
     ) {
-        if hovered_indices.contains_index(index) {
-            *size = Self::hover_size_boost(*size);
-            *color = Self::HOVER_COLOR;
-        } else if selected_indices.contains_index(index) {
-            *size = Self::hover_size_boost(*size);
+        if selected {
+            *size = Self::size_boost(*size);
             *color = Self::SELECTION_COLOR;
         }
+        if hovered {
+            *color = Self::HOVER_COLOR;
+        }
+    }
+
+    fn apply_hover_and_selection_effect_color(
+        color: Color32,
+        hovered: bool,
+        selected: bool,
+    ) -> Color32 {
+        let mut color = color;
+        // (counting on inlining to remove unused fields!)
+        Self::apply_hover_and_selection_effect(
+            &mut Size::AUTO.clone(),
+            &mut color,
+            hovered,
+            selected,
+        );
+        color
+    }
+
+    fn apply_hover_and_selection_effect_size(size: Size, hovered: bool, selected: bool) -> Size {
+        let mut size = size;
+        // (counting on inlining to remove unused fields!)
+        Self::apply_hover_and_selection_effect(
+            &mut size,
+            &mut Color32::WHITE.clone(),
+            hovered,
+            selected,
+        );
+        size
     }
 
     fn load_keypoint_connections(

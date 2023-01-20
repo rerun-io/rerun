@@ -7,7 +7,7 @@ use re_log_types::{
     msg_bundle::Component,
 };
 use re_query::{query_entity_with_primary, EntityView, QueryError};
-use re_renderer::Size;
+use re_renderer::{renderer::LineStripFlags, Size};
 
 use crate::{
     misc::ViewerContext,
@@ -69,15 +69,15 @@ impl Lines2DPart {
             SceneSpatial::apply_hover_and_selection_effect(
                 &mut radius,
                 &mut color,
-                instance_hash.instance_index_hash,
-                &hovered_paths,
-                &selected_paths,
+                hovered_paths.contains_index(instance_hash.instance_index_hash),
+                selected_paths.contains_index(instance_hash.instance_index_hash),
             );
 
             line_batch
                 .add_strip_2d(strip.0.into_iter().map(|v| v.into()))
                 .color(color)
                 .radius(radius)
+                .flags(LineStripFlags::NO_COLOR_GRADIENT)
                 .user_data(instance_hash);
         };
 

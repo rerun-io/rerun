@@ -108,7 +108,7 @@ impl SceneSpatialPrimitives {
                         gpu_mesh: instance.gpu_mesh.clone(),
                         mesh: None, // Don't care.
                         world_from_mesh: base_transform * instance.world_from_mesh,
-                        additive_tint: mesh.additive_tint.unwrap_or(Color32::TRANSPARENT),
+                        additive_tint: mesh.additive_tint,
                     })
             })
             .collect()

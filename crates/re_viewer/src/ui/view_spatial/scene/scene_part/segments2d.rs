@@ -65,9 +65,8 @@ impl ScenePart for LineSegments2DPartClassic {
                 SceneSpatial::apply_hover_and_selection_effect(
                     &mut radius,
                     &mut color,
-                    instance_hash.instance_index_hash,
-                    &hovered_paths,
-                    &selected_paths,
+                    hovered_paths.contains_index(instance_hash.instance_index_hash),
+                    selected_paths.contains_index(instance_hash.instance_index_hash),
                 );
 
                 line_batch

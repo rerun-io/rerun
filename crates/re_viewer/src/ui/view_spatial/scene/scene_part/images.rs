@@ -107,13 +107,18 @@ impl ScenePart for ImagesPartClassic {
                     .annotation_info()
                     .color(color, DefaultColor::OpaqueWhite);
 
+
                 let hovered = hovered_paths.contains_index(instance_hash.instance_index_hash);
-                if hovered || selected_paths.contains_index(instance_hash.instance_index_hash) {
-                    let color = if hovered {
-                        SceneSpatial::HOVER_COLOR
-                    } else {
-                        SceneSpatial::SELECTION_COLOR
-                    };
+                let selected = selected_paths.contains_index(instance_hash.instance_index_hash);
+                if hovered || selected {
+                    let mut color = SceneSpatial::HOVER_COLOR;
+                    let mut radius = Size::new_points(1.0);
+                    SceneSpatial::apply_hover_and_selection_effect(
+                        &mut radius,
+                        &mut color,
+                        hovered, selected
+                    );
+
                     let rect =
                         glam::vec2(tensor.shape()[1].size as f32, tensor.shape()[0].size as f32);
                     scene

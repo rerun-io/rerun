@@ -111,7 +111,7 @@ impl CamerasPart {
         obj_path: &ObjPath,
         props: &ObjectProps,
         transforms: &TransformCache,
-        instance: InstanceIdHash,
+        instance_hash: InstanceIdHash,
         pinhole: Pinhole,
         view_coordinates: ViewCoordinates,
         hovered_paths: &ObjectPathSelectionScope,
@@ -145,7 +145,7 @@ impl CamerasPart {
         //                  and https://github.com/rerun-io/rerun/issues/686 (Replace camera mesh with expressive camera gizmo (extension of current frustum)
         scene.space_cameras.push(SpaceCamera3D {
             obj_path: obj_path.clone(),
-            instance,
+            instance: instance_hash,
             view_coordinates,
             world_from_camera,
             pinhole: Some(pinhole),
@@ -202,9 +202,8 @@ impl CamerasPart {
         SceneSpatial::apply_hover_and_selection_effect(
             &mut radius,
             &mut color,
-            instance.instance_index_hash,
-            hovered_paths,
-            selected_paths,
+            hovered_paths.contains_index(instance_hash.instance_index_hash),
+            selected_paths.contains_index(instance_hash.instance_index_hash),
         );
 
         scene
@@ -220,7 +219,7 @@ impl CamerasPart {
                     | LineStripFlags::CAP_END_ROUND
                     | LineStripFlags::CAP_START_ROUND,
             )
-            .user_data(instance);
+            .user_data(instance_hash);
     }
 }
 

@@ -82,9 +82,8 @@ impl ScenePart for Boxes3DPartClassic {
                 SceneSpatial::apply_hover_and_selection_effect(
                     &mut radius,
                     &mut color,
-                    instance_hash.instance_index_hash,
-                    &hovered_paths,
-                    &selected_paths,
+                    hovered_paths.contains_index(instance_hash.instance_index_hash),
+                    selected_paths.contains_index(instance_hash.instance_index_hash),
                 );
 
                 let transform = glam::Affine3A::from_scale_rotation_translation(
@@ -162,9 +161,8 @@ impl Boxes3DPart {
             SceneSpatial::apply_hover_and_selection_effect(
                 &mut radius,
                 &mut color,
-                instance_hash.instance_index_hash,
-                &hovered_paths,
-                &selected_paths,
+                hovered_paths.contains_index(instance_hash.instance_index_hash),
+                selected_paths.contains_index(instance_hash.instance_index_hash),
             );
 
             let scale = glam::Vec3::from(half_size);
