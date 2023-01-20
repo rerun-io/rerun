@@ -120,9 +120,7 @@ impl Analytics {
         let pipeline = Pipeline::new(&config, tick, sink)?;
 
         if let Some(pipeline) = pipeline.as_ref() {
-            if config.is_first_run() {
-                pipeline.record(Event::update_metadata());
-            }
+            pipeline.record(Event::update_metadata());
         }
 
         Ok(Self {
