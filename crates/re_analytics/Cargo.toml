@@ -1,0 +1,36 @@
+[package]
+name = "re_analytics"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+
+[dependencies]
+# Internal
+re_log = { path = "../re_log" }
+# External
+crossbeam = "0.8"
+reqwest = { version = "0.11", default-features = false, features = [
+  "blocking",
+  "rustls-tls",
+] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+time = { version = "0.3", features = ["serde", "formatting", "parsing"] }
+uuid = { version = "1.1", features = ["serde", "v4", "js"] }
+# External (workspace)
+anyhow.workspace = true
+thiserror.workspace = true
+derive_more.workspace = true
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+directories-next = "2"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+web-sys = { version = "0.3.58", features = ["Storage"] }
+
+
+[dev-dependencies]
+tracing-subscriber = "0.3"
