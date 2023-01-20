@@ -130,7 +130,7 @@ where
                     io_err.kind() == std::io::ErrorKind::AddrInUse
                 }) =>
         {
-            re_log::warn!("{}. Another Rerun instance is probably running.", err);
+            re_log::warn!("{err}. Another Rerun instance is probably running.");
             Ok(1)
         }
         // Unclean failure -- re-raise exception
