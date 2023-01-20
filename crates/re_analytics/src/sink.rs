@@ -10,6 +10,7 @@ use crate::{Event, Property};
 // TODO(cmc): abstract away the concept of a `Sink` behind an actual trait when comes the time to
 // support more than just PostHog.
 
+// TODO(cmc): create a prod project and update this key.
 const PUBLIC_POSTHOG_PROJECT_KEY: &str = "phc_XD1QbqTGdPJbzdVCbvbA9zGOG38wJFTl8RAwqMwBvTY";
 
 // ---
