@@ -95,7 +95,11 @@ pub enum AnalyticsCommands {
     Config,
 }
 
-pub async fn run<I, T>(args: I) -> anyhow::Result<()>
+// Run the reun application and return an exit code
+// If we be nice to use `std::process::ExitCode` here but
+// then there's no good way to get back at the exit code from
+// python
+pub async fn run<I, T>(args: I) -> anyhow::Result<u8>
 where
     I: IntoIterator<Item = T>,
     T: Into<std::ffi::OsString> + Clone,
@@ -107,12 +111,30 @@ where
     use clap::Parser as _;
     let args = Args::parse_from(args);
 
-    if let Some(commands) = &args.commands {
+    let res = if let Some(commands) = &args.commands {
         match commands {
             Commands::Analytics(analytics) => run_analytics(analytics).map_err(Into::into),
         }
     } else {
         run_impl(args).await
+    };
+
+    match res {
+        // Clean success
+        Ok(_) => Ok(0),
+        // Clean failure -- known error AddrInUse
+        Err(err)
+            if err
+                .downcast_ref::<std::io::Error>()
+                .map_or(false, |io_err| {
+                    io_err.kind() == std::io::ErrorKind::AddrInUse
+                }) =>
+        {
+            re_log::warn!("{}. Another Rerun instance is probably running.", err);
+            Ok(1)
+        }
+        // Unclean failure -- re-raise exception
+        Err(err) => Err(err),
     }
 }
 
