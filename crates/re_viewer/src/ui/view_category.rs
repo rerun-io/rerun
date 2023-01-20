@@ -143,13 +143,15 @@ pub fn categorize_arrow_obj_path(
                     obj_path,
                     &[],
                 ) {
-                    for tensor in entity_view.iter_primary().unwrap().flatten() {
-                        if tensor.is_vector() {
-                            set.insert(ViewCategory::BarChart);
-                        } else if tensor.is_shaped_like_an_image() {
-                            set.insert(ViewCategory::Spatial);
-                        } else {
-                            set.insert(ViewCategory::Tensor);
+                    if let Ok(iter) = entity_view.iter_primary() {
+                        for tensor in iter.flatten() {
+                            if tensor.is_vector() {
+                                set.insert(ViewCategory::BarChart);
+                            } else if tensor.is_shaped_like_an_image() {
+                                set.insert(ViewCategory::Spatial);
+                            } else {
+                                set.insert(ViewCategory::Tensor);
+                            }
                         }
                     }
                 }
