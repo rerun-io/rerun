@@ -91,7 +91,7 @@ impl Blueprint {
 
     fn reset_button_ui(
         &mut self,
-        ctx: &mut ViewerContext,
+        ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         spaces_info: &SpacesInfo,
     ) {
