@@ -4,14 +4,13 @@ use egui::NumExt;
 use glam::Vec3;
 use itertools::Itertools;
 
-use re_arrow_store::LatestAtQuery;
 use re_data_store::{query::visit_type_data_2, FieldName, InstanceIdHash, ObjPath, ObjectProps};
 use re_log_types::{
-    field_types::{ColorRGBA, Tensor, TensorTrait},
+    field_types::{ColorRGBA, Instance, Tensor, TensorTrait},
     msg_bundle::Component,
     IndexHash, MsgId, ObjectType,
 };
-use re_query::{query_entity_with_primary, EntityView, QueryError};
+use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::Size;
 
 use crate::{
@@ -157,59 +156,62 @@ impl ScenePart for ImagesPartClassic {
             );
         }
 
-        // Handle layered rectangles that are on (roughly) the same plane and were logged in sequence.
-        // First, group by similar plane.
-        // TODO(andreas): Need planes later for picking as well!
-        let rects_grouped_by_plane = {
-            let mut cur_plane = macaw::Plane3::from_normal_dist(Vec3::NAN, std::f32::NAN);
-            let mut rectangle_group = Vec::new();
-            scene
-                .primitives
-                .textured_rectangles
-                .iter_mut()
-                .batching(move |it| {
-                    for rect in it.by_ref() {
-                        let prev_plane = cur_plane;
-                        cur_plane = macaw::Plane3::from_normal_point(
-                            rect.extent_u.cross(rect.extent_v).normalize(),
-                            rect.top_left_corner_position,
-                        );
+        handle_image_layering(scene);
+    }
+}
 
-                        // Are the image planes too unsimilar? Then this is a new group.
-                        if !rectangle_group.is_empty()
-                            && prev_plane.normal.dot(cur_plane.normal) < 0.99
-                            && (prev_plane.d - cur_plane.d) < 0.01
-                        {
-                            let previous_group =
-                                std::mem::replace(&mut rectangle_group, vec![rect]);
-                            return Some(previous_group);
-                        }
-                        rectangle_group.push(rect);
-                    }
-                    if !rectangle_group.is_empty() {
-                        Some(rectangle_group.drain(..).collect())
-                    } else {
-                        None
-                    }
-                })
-        };
-        // Then, change opacity & transformation for planes within group except the base plane.
-        for mut grouped_rects in rects_grouped_by_plane {
-            let total_num_images = grouped_rects.len();
-            for (idx, rect) in grouped_rects.iter_mut().enumerate() {
-                // Set depth offset for correct order and avoid z fighting when there is a 3d camera.
-                // Keep behind depth offset 0 for correct picking order.
-                rect.depth_offset =
-                    (idx as isize - total_num_images as isize) as re_renderer::DepthOffset;
+fn handle_image_layering(scene: &mut SceneSpatial) {
+    // Handle layered rectangles that are on (roughly) the same plane and were logged in sequence.
+    // First, group by similar plane.
+    // TODO(andreas): Need planes later for picking as well!
+    let rects_grouped_by_plane = {
+        let mut cur_plane = macaw::Plane3::from_normal_dist(Vec3::NAN, std::f32::NAN);
+        let mut rectangle_group = Vec::new();
+        scene
+            .primitives
+            .textured_rectangles
+            .iter_mut()
+            .batching(move |it| {
+                for rect in it.by_ref() {
+                    let prev_plane = cur_plane;
+                    cur_plane = macaw::Plane3::from_normal_point(
+                        rect.extent_u.cross(rect.extent_v).normalize(),
+                        rect.top_left_corner_position,
+                    );
 
-                // make top images transparent
-                let opacity = if idx == 0 {
-                    1.0
+                    // Are the image planes too unsimilar? Then this is a new group.
+                    if !rectangle_group.is_empty()
+                        && prev_plane.normal.dot(cur_plane.normal) < 0.99
+                        && (prev_plane.d - cur_plane.d) < 0.01
+                    {
+                        let previous_group = std::mem::replace(&mut rectangle_group, vec![rect]);
+                        return Some(previous_group);
+                    }
+                    rectangle_group.push(rect);
+                }
+                if !rectangle_group.is_empty() {
+                    Some(rectangle_group.drain(..).collect())
                 } else {
-                    1.0 / total_num_images.at_most(20) as f32
-                }; // avoid precision problems in framebuffer
-                rect.multiplicative_tint = rect.multiplicative_tint.multiply(opacity);
-            }
+                    None
+                }
+            })
+    };
+    // Then, change opacity & transformation for planes within group except the base plane.
+    for mut grouped_rects in rects_grouped_by_plane {
+        let total_num_images = grouped_rects.len();
+        for (idx, rect) in grouped_rects.iter_mut().enumerate() {
+            // Set depth offset for correct order and avoid z fighting when there is a 3d camera.
+            // Keep behind depth offset 0 for correct picking order.
+            rect.depth_offset =
+                (idx as isize - total_num_images as isize) as re_renderer::DepthOffset;
+
+            // make top images transparent
+            let opacity = if idx == 0 {
+                1.0
+            } else {
+                1.0 / total_num_images.at_most(20) as f32
+            }; // avoid precision problems in framebuffer
+            rect.multiplicative_tint = rect.multiplicative_tint.multiply(opacity);
         }
     }
 }
@@ -307,30 +309,31 @@ impl ScenePart for ImagesPart {
     ) {
         crate::profile_scope!("ImagesPart");
 
-        for ent_path in query.obj_paths {
+        for (ent_path, props) in query.iter_entities() {
             let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(ent_path) else {
                 continue;
             };
 
-            let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
-
-            let properties = query.obj_props.get(ent_path);
-
-            match query_entity_with_primary::<Tensor>(
+            match query_primary_with_history::<Tensor, 3>(
                 &ctx.log_db.obj_db.arrow_store,
-                &timeline_query,
+                &query.timeline,
+                &query.latest_at,
+                &props.visible_history,
                 ent_path,
-                &[ColorRGBA::name()],
+                [Tensor::name(), Instance::name(), ColorRGBA::name()],
             )
-            .and_then(|entity_view| {
-                Self::process_entity_view(
-                    &entity_view,
-                    scene,
-                    ctx,
-                    &properties,
-                    ent_path,
-                    world_from_obj,
-                )
+            .and_then(|entities| {
+                for entity in entities {
+                    Self::process_entity_view(
+                        &entity,
+                        scene,
+                        ctx,
+                        &props,
+                        ent_path,
+                        world_from_obj,
+                    )?;
+                }
+                Ok(())
             }) {
                 Ok(_) | Err(QueryError::PrimaryNotFound) => {}
                 Err(err) => {
@@ -338,5 +341,6 @@ impl ScenePart for ImagesPart {
                 }
             }
         }
+        handle_image_layering(scene);
     }
 }

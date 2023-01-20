@@ -1,11 +1,11 @@
 use glam::Mat4;
 use re_data_store::{query::visit_type_data_4, FieldName, InstanceIdHash, ObjPath};
 use re_log_types::{
-    field_types::{ClassId, ColorRGBA, Label, Radius, Rect2D},
+    field_types::{ClassId, ColorRGBA, Instance, Label, Radius, Rect2D},
     msg_bundle::Component,
     IndexHash, MsgId, ObjectType,
 };
-use re_query::{query_entity_with_primary, QueryError};
+use re_query::{query_primary_with_history, QueryError};
 use re_renderer::Size;
 
 use crate::{
@@ -190,46 +190,49 @@ impl ScenePart for Boxes2DPart {
                 continue;
             };
 
-            let query = re_arrow_store::LatestAtQuery::new(query.timeline, query.latest_at);
-
-            match query_entity_with_primary::<Rect2D>(
+            match query_primary_with_history::<Rect2D, 6>(
                 &ctx.log_db.obj_db.arrow_store,
-                &query,
+                &query.timeline,
+                &query.latest_at,
+                &props.visible_history,
                 ent_path,
-                &[
+                [
+                    Rect2D::name(),
+                    Instance::name(),
                     ColorRGBA::name(),
                     Radius::name(),
                     Label::name(),
                     ClassId::name(),
                 ],
             )
-            .and_then(|entity_view| {
-                let hovered_paths = ctx.hovered().check_obj_path(ent_path.hash());
-                let selected_paths = ctx.selection().check_obj_path(ent_path.hash());
-
-                entity_view.visit5(|instance, rect, color, radius, label, class_id| {
-                    let instance_hash = {
-                        if props.interactive {
-                            InstanceIdHash::from_path_and_arrow_instance(ent_path, &instance)
-                        } else {
-                            InstanceIdHash::NONE
-                        }
-                    };
-
-                    Self::visit_instance(
-                        scene,
-                        ent_path,
-                        world_from_obj,
-                        instance_hash,
-                        &rect,
-                        color,
-                        radius,
-                        label,
-                        class_id,
-                        &hovered_paths,
-                        &selected_paths,
-                    );
-                })
+            .and_then(|entities| {
+                for entity in entities {
+                    let hovered_paths = ctx.hovered().check_obj_path(ent_path.hash());
+                    let selected_paths = ctx.selection().check_obj_path(ent_path.hash());
+                    entity.visit5(|instance, rect, color, radius, label, class_id| {
+                        let instance_hash = {
+                            if props.interactive {
+                                InstanceIdHash::from_path_and_arrow_instance(ent_path, &instance)
+                            } else {
+                                InstanceIdHash::NONE
+                            }
+                        };
+                        Self::visit_instance(
+                            scene,
+                            ent_path,
+                            world_from_obj,
+                            instance_hash,
+                            &rect,
+                            color,
+                            radius,
+                            label,
+                            class_id,
+                            &hovered_paths,
+                            &selected_paths,
+                        );
+                    })?;
+                }
+                Ok(())
             }) {
                 Ok(_) | Err(QueryError::PrimaryNotFound) => {}
                 Err(err) => {

@@ -1,13 +1,13 @@
 use egui::Color32;
 use glam::Mat4;
-use re_arrow_store::LatestAtQuery;
+
 use re_data_store::{query::visit_type_data_1, FieldName, InstanceIdHash, ObjPath, ObjectProps};
 use re_log_types::{
     field_types::{ColorRGBA, Instance},
     msg_bundle::Component,
     IndexHash, Mesh3D, MsgId, ObjectType,
 };
-use re_query::{query_entity_with_primary, EntityView, QueryError};
+use re_query::{query_primary_with_history, EntityView, QueryError};
 
 use crate::{
     misc::ViewerContext,
@@ -172,24 +172,27 @@ impl ScenePart for MeshPart {
                 continue;
             };
 
-            let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
-
-            match query_entity_with_primary::<Mesh3D>(
+            match query_primary_with_history::<Mesh3D, 3>(
                 &ctx.log_db.obj_db.arrow_store,
-                &timeline_query,
+                &query.timeline,
+                &query.latest_at,
+                &props.visible_history,
                 ent_path,
-                &[ColorRGBA::name()],
+                [Mesh3D::name(), Instance::name(), ColorRGBA::name()],
             )
-            .and_then(|entity_view| {
-                Self::process_entity_view(
-                    scene,
-                    query,
-                    &props,
-                    &entity_view,
-                    ent_path,
-                    world_from_obj,
-                    ctx,
-                )
+            .and_then(|entities| {
+                for entity in entities {
+                    Self::process_entity_view(
+                        scene,
+                        query,
+                        &props,
+                        &entity,
+                        ent_path,
+                        world_from_obj,
+                        ctx,
+                    )?;
+                }
+                Ok(())
             }) {
                 Ok(_) | Err(QueryError::PrimaryNotFound) => {}
                 Err(err) => {
