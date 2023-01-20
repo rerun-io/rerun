@@ -183,7 +183,7 @@ impl<'a> ViewerContext<'a> {
         space_view_id: SpaceViewId,
         obj_path: &ObjPath,
     ) -> egui::Response {
-        let selection = Selection::SpaceViewObjPath(space_view_id, obj_path.clone());
+        let selection = Selection::DataBlueprint(space_view_id, obj_path.clone());
         let response = ui
             .selectable_label(
                 self.selection().check_obj_path(obj_path.hash()).is_exact(),

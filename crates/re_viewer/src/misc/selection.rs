@@ -13,7 +13,7 @@ pub enum Selection {
     DataPath(DataPath),
     SpaceView(crate::ui::SpaceViewId),
     /// An object within a space-view.
-    SpaceViewObjPath(crate::ui::SpaceViewId, ObjPath),
+    DataBlueprint(crate::ui::SpaceViewId, ObjPath),
     DataBlueprintGroup(crate::ui::SpaceViewId, crate::ui::DataBlueprintGroupHandle),
 }
 
@@ -24,7 +24,7 @@ impl std::fmt::Debug for Selection {
             Selection::Instance(s) => s.fmt(f),
             Selection::DataPath(s) => s.fmt(f),
             Selection::SpaceView(s) => write!(f, "{s:?}"),
-            Selection::SpaceViewObjPath(sid, path) => write!(f, "({sid:?}, {path})"),
+            Selection::DataBlueprint(sid, path) => write!(f, "({sid:?}, {path})"),
             Selection::DataBlueprintGroup(sid, handle) => write!(f, "({sid:?}, {handle:?})"),
         }
     }
@@ -36,7 +36,7 @@ impl Selection {
         match self {
             Selection::Instance(_) | Selection::DataPath(_) => true,
             Selection::MsgId(msg_id) => log_db.get_log_msg(msg_id).is_some(),
-            Selection::SpaceView(space_view_id) | Selection::SpaceViewObjPath(space_view_id, _) => {
+            Selection::SpaceView(space_view_id) | Selection::DataBlueprint(space_view_id, _) => {
                 blueprint.viewport.space_view(space_view_id).is_some()
             }
             Selection::DataBlueprintGroup(space_view_id, data_blueprint_group_handle) => {
@@ -58,7 +58,7 @@ impl Selection {
             Selection::Instance(_) => "Instance",
             Selection::DataPath(_) => "Field",
             Selection::SpaceView(_) => "SpaceView",
-            Selection::SpaceViewObjPath(_, _) => "Data Blueprint",
+            Selection::DataBlueprint(_, _) => "Data Blueprint",
             Selection::DataBlueprintGroup(_, _) => "Group",
         }
     }
@@ -218,7 +218,7 @@ impl MultiSelection {
                 // Selecting an entire spaceview doesn't mark each object as selected.
                 Selection::SpaceView(_) => {}
 
-                Selection::SpaceViewObjPath(_, obj_path) => {
+                Selection::DataBlueprint(_, obj_path) => {
                     if obj_path.hash() == obj_path_hash {
                         return SelectionScope::Indirect;
                     }
@@ -249,7 +249,7 @@ impl MultiSelection {
                 Selection::Instance(_) => {} // TODO(andreas): Check if this message logged on this instance.
                 Selection::DataPath(_) => {} // TODO(andreas): Check if this message logged this data path.
                 Selection::SpaceView(_) => {}
-                Selection::SpaceViewObjPath(_, _) => {} // TODO(andreas): Check if this message logged on this object path.
+                Selection::DataBlueprint(_, _) => {} // TODO(andreas): Check if this message logged on this object path.
                 Selection::DataBlueprintGroup(_, _) => {} // TODO(andreas): Check if this message logged on any of the objects in this group.
             };
         }
@@ -270,7 +270,7 @@ impl MultiSelection {
                     }
                 }
                 Selection::SpaceView(_) => {}
-                Selection::SpaceViewObjPath(_, _) => {} // TODO(andreas): Check if this message logged on this object path.
+                Selection::DataBlueprint(_, _) => {} // TODO(andreas): Check if this message logged on this object path.
                 Selection::DataBlueprintGroup(_, _) => {} // TODO(andreas): Check if this message logged on any of the objects in this group.
             };
         }
@@ -291,7 +291,7 @@ impl MultiSelection {
                         return SelectionScope::Exact;
                     }
                 }
-                Selection::SpaceViewObjPath(_, _) => {}
+                Selection::DataBlueprint(_, _) => {}
                 Selection::DataBlueprintGroup(_, _) => {}
             };
         }
@@ -312,7 +312,7 @@ impl MultiSelection {
                 Selection::Instance(_) => {}
                 Selection::DataPath(_) => {}
                 Selection::SpaceView(_) => {} // Should this be `Indirect`?
-                Selection::SpaceViewObjPath(_, _) => {}
+                Selection::DataBlueprint(_, _) => {}
                 Selection::DataBlueprintGroup(sid, bid) => {
                     if *sid == space_view && *bid == blueprint_group {
                         return SelectionScope::Exact;
@@ -345,4 +345,8 @@ impl MultiSelection {
             SelectionScope::Indirect | SelectionScope::Exact => SelectionScope::Indirect,
         }
     }
+
+    // pub fn check_selection(&self, selection: &Selection) -> SelectionScope<()> {
+    //     for
+    // }
 }

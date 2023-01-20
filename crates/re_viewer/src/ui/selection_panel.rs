@@ -120,7 +120,7 @@ fn what_is_selected_ui(
                 });
             }
         }
-        Selection::SpaceViewObjPath(space_view_id, obj_path) => {
+        Selection::DataBlueprint(space_view_id, obj_path) => {
             if let Some(space_view) = blueprint.viewport.space_view_mut(space_view_id) {
                 egui::Grid::new("space_view_id_obj_path").show(ui, |ui| {
                     ui.label("Object Path:");
@@ -176,7 +176,7 @@ fn data_ui(
         Selection::DataPath(data_path) => {
             data_path.data_ui(ctx, ui, preview);
         }
-        Selection::SpaceViewObjPath(_, obj_path) => {
+        Selection::DataBlueprint(_, obj_path) => {
             obj_path.data_ui(ctx, ui, preview);
         }
     }
@@ -217,7 +217,7 @@ fn blueprint_ui(
             }
         }
 
-        Selection::SpaceViewObjPath(space_view_id, obj_path) => {
+        Selection::DataBlueprint(space_view_id, obj_path) => {
             if let Some(space_view) = blueprint.viewport.space_view_mut(space_view_id) {
                 let data_blueprint = space_view.data_blueprint.data_blueprints_individual();
                 let mut props = data_blueprint.get(obj_path);
