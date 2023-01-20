@@ -172,7 +172,7 @@ fn msg_encode(
                     packet_tx
                         .send(packet_msg)
                         .expect("tcp_sender thread should live longer");
-                    msg_drop_tx.send(msg_msg).expect("Foo");
+                    msg_drop_tx.send(msg_msg).expect("Main thread should still be alive");
                 } else {
                     return; // channel has closed
                 }
