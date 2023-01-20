@@ -905,7 +905,6 @@ fn top_bar_ui(
     }
 
     if let Some(count) = re_memory::accounting_allocator::global_allocs() {
-        ui.separator();
         // we use monospace so the width doesn't fluctuate as the numbers change.
 
         let bytes_used_text = re_format::format_bytes(count.size as _);
