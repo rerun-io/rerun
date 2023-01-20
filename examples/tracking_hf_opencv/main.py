@@ -403,15 +403,13 @@ def main() -> None:
         # You can ommit the argument to connect to the default address,
         # which is `127.0.0.1:9876`.
         rr.connect(args.addr)
+    elif args.save is None and not args.headless:
+        rr.spawn_and_connect()
 
     track_objects(video_path)
 
     if args.save is not None:
         rr.save(args.save)
-    elif args.headless:
-        pass
-    elif not args.connect:
-        rr.show()
 
 
 if __name__ == "__main__":

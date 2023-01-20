@@ -259,5 +259,13 @@ fn table_row(
                 });
             }
         },
+        LogMsg::Goodbye(msg_id) => {
+            row.col(|ui| {
+                ctx.msg_id_button(ui, *msg_id);
+            });
+            row.col(|ui| {
+                ui.monospace("Goodbye");
+            });
+        }
     }
 }

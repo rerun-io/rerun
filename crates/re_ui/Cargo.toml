@@ -20,7 +20,7 @@ default = []
 
 [dependencies]
 egui = { version = "0.20.1", features = ["extra_debug_asserts", "tracing"] }
-egui_extras = { version = "0.20", features = ["tracing"] }
+egui_extras = { workspace = true, features = ["tracing"] }
 image = { version = "0.24", default-features = false, features = ["png"] }
 parking_lot = "0.12"
 serde = { version = "1", features = ["derive"] }
@@ -31,4 +31,4 @@ sublime_fuzzy = "0.7"
 
 
 [dev-dependencies]
-eframe = { version = "0.20", default-features = false, features = ["wgpu"] }
+eframe = { workspace = true, default-features = false, features = ["wgpu"] }

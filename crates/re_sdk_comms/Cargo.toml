@@ -24,9 +24,8 @@ ahash = "0.8"
 anyhow.workspace = true
 bincode = "1.3"
 crossbeam = "0.8"
-ctrlc = { version = "3.0", features = ["termination"] }
 document-features = "0.2"
 rand = { version = "0.8.5", features = ["small_rng"] }
 
 ## Optional dependencies:
-emath = { version = "0.20", optional = true }
+emath = { workspace = true, optional = true }

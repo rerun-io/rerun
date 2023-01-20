@@ -28,9 +28,7 @@ struct Args {
 }
 
 fn main() -> std::process::ExitCode {
-    // Make sure rerun logging goes to stdout
-    re_log::set_default_rust_log_env();
-    tracing_subscriber::fmt::init();
+    re_log::setup_native_logging();
 
     let mut session = rerun_sdk::Session::new();
 

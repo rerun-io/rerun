@@ -15,6 +15,9 @@ impl DataUi for LogMsg {
             LogMsg::DataMsg(msg) => msg.data_ui(ctx, ui, preview),
             LogMsg::PathOpMsg(msg) => msg.data_ui(ctx, ui, preview),
             LogMsg::ArrowMsg(msg) => msg.data_ui(ctx, ui, preview),
+            LogMsg::Goodbye(_) => {
+                ui.label("Goodbye");
+            }
         }
     }
 }
@@ -136,16 +139,15 @@ impl DataUi for ArrowMsg {
             }) => {
                 egui::Grid::new("fields").num_columns(2).show(ui, |ui| {
                     ui.monospace("obj_path:");
-                    ui.label(format!("{obj_path}"));
+                    ctx.obj_path_button(ui, &obj_path);
                     ui.end_row();
 
                     ui.monospace("time_point:");
                     time_point.data_ui(ctx, ui, preview);
                     ui.end_row();
 
-                    ui.monospace("data:");
+                    ui.monospace("components:");
                     components.as_slice().data_ui(ctx, ui, preview);
-                    ui.label("TODO(john)");
                     ui.end_row();
                 });
             }

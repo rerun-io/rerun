@@ -47,6 +47,8 @@ fn array_to_rust(
         if let Some(name) = field_name {
             if name == <field_types::Tensor as msg_bundle::Component>::name() {
                 field.data_type = <field_types::Tensor as re_log_types::external::arrow2_convert::field::ArrowField>::data_type();
+            } else if name == <field_types::Rect2D as msg_bundle::Component>::name() {
+                field.data_type = <field_types::Rect2D as re_log_types::external::arrow2_convert::field::ArrowField>::data_type();
             }
         }
 

@@ -282,6 +282,8 @@ def main() -> None:
         # You can ommit the argument to connect to the default address,
         # which is `127.0.0.1:9876`.
         rr.connect(args.addr)
+    elif args.save is None:
+        rr.spawn_and_connect()
 
     if args.demo == "all":
         print("Running all demos…")
@@ -300,9 +302,6 @@ def main() -> None:
 
     elif args.save is not None:
         rr.save(args.save)
-    elif not args.connect:
-        # Show the logged data inside the Python process:
-        rr.show()
 
 
 if __name__ == "__main__":

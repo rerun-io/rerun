@@ -7,7 +7,7 @@ use re_query::{get_component_with_instances, QueryError};
 
 use crate::{
     misc::ViewerContext,
-    ui::{annotations::AnnotationMap, Preview},
+    ui::{annotations::AnnotationMap, format_component_name, Preview},
 };
 
 use super::{
@@ -58,11 +58,12 @@ fn generic_arrow_ui(
 
     let query = re_arrow_store::LatestAtQuery::new(*timeline, time);
 
-    let Some(components) = store.all_components(timeline, &instance_id.obj_path)
+    let Some(mut components) = store.all_components(timeline, &instance_id.obj_path)
     else {
         ui.label("No Components");
         return ;
     };
+    components.sort();
 
     egui::Grid::new("entity_instance")
         .num_columns(2)
@@ -71,9 +72,13 @@ fn generic_arrow_ui(
                 let component_data =
                     get_component_with_instances(store, &query, &instance_id.obj_path, component);
 
+                if matches!(component_data, Err(QueryError::PrimaryNotFound)) {
+                    continue; // no need to show components that are unset
+                }
+
                 ctx.data_path_button_to(
                     ui,
-                    component.to_string(),
+                    format_component_name(&component),
                     &DataPath::new_arrow(instance_id.obj_path.clone(), component),
                 );
 
@@ -92,7 +97,7 @@ fn generic_arrow_ui(
                     }
                     // If the `instance_index` is an `ArrowInstance` show the value
                     (Ok(component_data), Some(Index::ArrowInstance(instance))) => {
-                        arrow_component_elem_ui(ctx, ui, &component_data, instance, Preview::Small);
+                        arrow_component_elem_ui(ctx, ui, Preview::Small, &component_data, instance);
                     }
                     // If the `instance_index` isn't an `ArrowInstance` something has gone wrong
                     // TODO(jleibs) this goes away once all indexes are just `Instances`
@@ -137,7 +142,7 @@ fn generic_instance_ui(
             for (field_name, field_store) in obj_store.iter() {
                 ctx.data_path_button_to(
                     ui,
-                    field_name.to_string(),
+                    format_component_name(field_name),
                     &DataPath::new(instance_id.obj_path.clone(), *field_name),
                 );
 

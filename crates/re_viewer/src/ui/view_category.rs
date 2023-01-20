@@ -5,7 +5,7 @@ use re_log_types::{
         Box3D, LineStrip2D, LineStrip3D, Point2D, Point3D, Rect2D, Tensor, TensorTrait, TextEntry,
     },
     msg_bundle::Component,
-    Arrow3D, DataPath, Mesh3D,
+    Arrow3D, DataPath, Mesh3D, Transform,
 };
 use re_query::query_entity_with_primary;
 
@@ -131,6 +131,7 @@ pub fn categorize_arrow_obj_path(
                 || component == LineStrip3D::name()
                 || component == Mesh3D::name()
                 || component == Arrow3D::name()
+                || component == Transform::name()
             {
                 set.insert(ViewCategory::Spatial);
             } else if component == Tensor::name() {

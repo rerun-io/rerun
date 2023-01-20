@@ -45,7 +45,7 @@ impl SelectionHistory {
                     .collect::<Vec<_>>();
 
                 if valid_elements.is_empty() {
-                    if i < self.current {
+                    if i <= self.current {
                         self.current -= 1; // Ensure the current counter stays valid!
                     }
                     None

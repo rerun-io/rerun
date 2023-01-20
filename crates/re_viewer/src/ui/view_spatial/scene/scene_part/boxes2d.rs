@@ -1,7 +1,7 @@
 use glam::Mat4;
 use re_data_store::{query::visit_type_data_4, FieldName, InstanceIdHash, ObjPath};
 use re_log_types::{
-    field_types::{ClassId, ColorRGBA, Rect2D},
+    field_types::{ClassId, ColorRGBA, Label, Radius, Rect2D},
     msg_bundle::Component,
     IndexHash, MsgId, ObjectType,
 };
@@ -113,6 +113,7 @@ pub struct Boxes2DPart;
 impl Boxes2DPart {
     /// Build scene parts for a single box instance
     #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     fn visit_instance(
         scene: &mut SceneSpatial,
         obj_path: &ObjPath,
@@ -120,24 +121,22 @@ impl Boxes2DPart {
         instance_hash: InstanceIdHash,
         rect: &Rect2D,
         color: Option<ColorRGBA>,
+        radius: Option<Radius>,
+        label: Option<Label>,
+        class_id: Option<ClassId>,
         hovered_paths: &ObjectPathSelectionScope,
         selected_paths: &ObjectPathSelectionScope,
     ) {
         scene.num_logged_2d_objects += 1;
 
-        let color = color.map(|c| c.to_array());
-
-        // TODO(jleibs): Lots of missing components
-        let class_id = Some(&1);
-        let label: Option<&String> = None;
-
         let annotations = scene.annotation_map.find(obj_path);
-        let annotation_info = annotations
-            .class_description(class_id.map(|i| ClassId(*i as _)))
-            .annotation_info();
-        let mut radius = Size::AUTO;
-        let mut color = annotation_info.color(color.as_ref(), DefaultColor::ObjPath(obj_path));
-        let label = annotation_info.label(label);
+        let annotation_info = annotations.class_description(class_id).annotation_info();
+        let mut color = annotation_info.color(
+            color.map(|c| c.to_array()).as_ref(),
+            DefaultColor::ObjPath(obj_path),
+        );
+        let mut radius = radius.map_or(Size::AUTO, |r| Size::new_scene(r.0));
+        let label = annotation_info.label(label.map(|l| l.0).as_ref());
 
         SceneSpatial::apply_hover_and_selection_effect(
             &mut radius,
@@ -154,9 +153,9 @@ impl Boxes2DPart {
 
         line_batch
             .add_rectangle_outline_2d(
-                glam::vec2(rect.x, rect.y),
-                glam::vec2(rect.w, 0.0),
-                glam::vec2(0.0, rect.h),
+                rect.top_left_corner().into(),
+                glam::vec2(rect.width(), 0.0),
+                glam::vec2(0.0, rect.height()),
             )
             .color(color)
             .radius(radius)
@@ -167,8 +166,8 @@ impl Boxes2DPart {
                 text: label,
                 color,
                 target: Label2DTarget::Rect(egui::Rect::from_min_size(
-                    egui::pos2(rect.x, rect.y),
-                    egui::vec2(rect.w, rect.h),
+                    rect.top_left_corner().into(),
+                    egui::vec2(rect.width(), rect.height()),
                 )),
                 labled_instance: instance_hash,
             });
@@ -197,13 +196,18 @@ impl ScenePart for Boxes2DPart {
                 &ctx.log_db.obj_db.arrow_store,
                 &query,
                 ent_path,
-                &[ColorRGBA::name()],
+                &[
+                    ColorRGBA::name(),
+                    Radius::name(),
+                    Label::name(),
+                    ClassId::name(),
+                ],
             )
             .and_then(|entity_view| {
                 let hovered_paths = ctx.hovered().check_obj_path(ent_path.hash());
                 let selected_paths = ctx.selection().check_obj_path(ent_path.hash());
 
-                entity_view.visit2(|instance, rect, color| {
+                entity_view.visit5(|instance, rect, color, radius, label, class_id| {
                     let instance_hash = {
                         if props.interactive {
                             InstanceIdHash::from_path_and_arrow_instance(ent_path, &instance)
@@ -219,6 +223,9 @@ impl ScenePart for Boxes2DPart {
                         instance_hash,
                         &rect,
                         color,
+                        radius,
+                        label,
+                        class_id,
                         &hovered_paths,
                         &selected_paths,
                     );
