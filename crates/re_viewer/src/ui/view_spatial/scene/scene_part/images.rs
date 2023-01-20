@@ -285,12 +285,12 @@ impl ImagesPart {
                 );
 
                 // TODO(jleibs): Meter should really be its own component
-                let meter = tensor.meter.clone();
+                let meter = tensor.meter;
 
                 scene.ui.images.push(Image {
                     instance_hash,
                     tensor: AnyTensor::ArrowTensor(tensor),
-                    meter: meter,
+                    meter,
                     annotations,
                 });
             }
