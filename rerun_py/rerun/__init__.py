@@ -89,18 +89,31 @@ def set_recording_id(value: str) -> None:
     bindings.set_recording_id(value)
 
 
-def init(application_id: str) -> None:
+def init(application_id: str, spawn_and_connect: bool = False) -> None:
     """
     Initialize the Rerun SDK with a user-chosen application id (name).
 
-    Your Rerun recordings will be categorized by this application id, so
-    try to pick a unique one for each application that uses the Rerun SDK.
+    Parameters
+    ----------
+    application_id : str
+        Your Rerun recordings will be categorized by this application id, so
+        try to pick a unique one for each application that uses the Rerun SDK.
 
-    For instance, if you have one application doing object detection
-    and another doing camera calibration, you could have
-    `rerun.init("object_detector")` and `rerun.init("calibrator")`.
+        For instance, if you have one application doing object detection
+        and another doing camera calibration, you could have
+        `rerun.init("object_detector")` and `rerun.init("calibrator")`.
+
+    spawn_and_connect : bool
+        Spawn a Rerun Viewer and stream logging data to it.
+        Short for calling `spawn_and_connect` separately.
+        If you don't call this, log events will be buffered indefinitely until
+        you call either `connect`, `show`, or `save`
+
     """
     bindings.init(application_id)
+
+    if spawn_and_connect:
+        _spawn_and_connect()
 
 
 def spawn_and_connect(port: int = 9876) -> None:
@@ -114,6 +127,9 @@ def spawn_and_connect(port: int = 9876) -> None:
     """
     spawn_viewer(port)
     connect(f"127.0.0.1:{port}")
+
+
+_spawn_and_connect = spawn_and_connect  # we need this because Python scoping is horrible
 
 
 def connect(addr: Optional[str] = None) -> None:
