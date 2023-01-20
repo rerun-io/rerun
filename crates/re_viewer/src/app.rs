@@ -322,13 +322,13 @@ impl App {
             Command::SelectionPrevious => {
                 let state = &mut self.state;
                 if let Some(rec_cfg) = state.recording_configs.get_mut(&state.selected_rec_id) {
-                    rec_cfg.selection_history.select_previous();
+                    rec_cfg.selection_state.select_previous();
                 }
             }
             Command::SelectionNext => {
                 let state = &mut self.state;
                 if let Some(rec_cfg) = state.recording_configs.get_mut(&state.selected_rec_id) {
-                    rec_cfg.selection_history.select_next();
+                    rec_cfg.selection_state.select_next();
                 }
             }
             Command::ToggleCommandPalette => {
@@ -453,6 +453,7 @@ impl eframe::App for App {
             .recording_configs
             .entry(self.state.selected_rec_id)
             .or_default()
+            .selection_state
             .on_frame_start(log_db, blueprint);
 
         {

@@ -31,8 +31,8 @@ impl SelectionPanel {
             egui_ctx,
             blueprint.selection_panel_expanded,
             |ui: &mut egui::Ui| {
-                if let Some(selection) = ctx.rec_cfg.selection_history.selection_ui(ui, blueprint) {
-                    ctx.set_multi_selection(selection.selected().iter().cloned());
+                if let Some(selection) = ctx.rec_cfg.selection_state.selection_ui(ui, blueprint) {
+                    ctx.set_multi_selection(selection.iter().cloned());
                 }
 
                 self.contents(ui, ctx, blueprint);
@@ -59,8 +59,9 @@ impl SelectionPanel {
                     return;
                 }
 
-                let num_selections = ctx.selection().selected().len();
-                for (i, selection) in ctx.selection().selected().iter().enumerate() {
+                let num_selections = ctx.selection().len();
+                let selection = ctx.selection().iter().cloned().collect::<Vec<_>>(); // borrow checker workaround.
+                for (i, selection) in selection.iter().enumerate() {
                     ui.push_id(i, |ui| {
                         what_is_selected_ui(ui, ctx, blueprint, selection);
 
@@ -199,7 +200,7 @@ fn blueprint_ui(
                 if ui.button("Remove from Viewport").clicked() {
                     blueprint.viewport.remove(space_view_id);
                     blueprint.viewport.mark_user_interaction();
-                    ctx.clear_selection();
+                    ctx.selection_state_mut().clear();
                 } else {
                     if ui.button("Clone Space View").clicked() {
                         let mut new_space_view = space_view.clone();
@@ -241,7 +242,7 @@ fn blueprint_ui(
 
                     ui.separator();
                 } else {
-                    ctx.clear_selection();
+                    ctx.selection_state_mut().clear();
                 }
             }
         }

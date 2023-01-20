@@ -572,7 +572,7 @@ fn show_data_over_time(
     crate::profile_function!();
 
     let is_selected = if let Some(select_on_click) = select_on_click.as_ref() {
-        ctx.selection().selected().iter().contains(select_on_click)
+        ctx.selection().iter().contains(select_on_click)
     } else {
         false
     };
@@ -714,7 +714,7 @@ fn show_data_over_time(
             if let Some(select_on_click) = select_on_click {
                 ctx.set_single_selection(select_on_click);
             } else {
-                ctx.clear_selection();
+                ctx.selection_state_mut().clear();
             }
 
             if let Some(hovered_time) = hovered_time {

@@ -416,7 +416,7 @@ pub fn view_3d(
         state.state_3d.tracked_camera = None;
 
         // While hovering an object, focuses the camera on it.
-        if let Some(Selection::Instance(instance_id)) = ctx.hovered().primary() {
+        if let Some(Selection::Instance(instance_id)) = ctx.hovered().first() {
             if let Some(camera) = find_camera(&scene.space_cameras, &instance_id.hash()) {
                 state.state_3d.interpolate_to_eye(camera);
                 state.state_3d.tracked_camera = Some(instance_id.clone());
@@ -589,7 +589,7 @@ fn show_projections_from_2d_space(
     scene: &mut SceneSpatial,
     scene_bbox_accum: &BoundingBox,
 ) {
-    if let HoveredSpace::TwoD { space_2d, pos } = &ctx.rec_cfg.hovered_space_previous_frame {
+    if let HoveredSpace::TwoD { space_2d, pos } = ctx.selection_state().hovered_space() {
         let mut point_batch = scene
             .primitives
             .points
@@ -649,10 +649,11 @@ fn project_onto_other_spaces(
             .and_then(|hovered_point| cam.project_onto_2d(hovered_point));
         target_spaces.push((cam.obj_path.clone(), point_in_2d));
     }
-    ctx.rec_cfg.hovered_space_this_frame = HoveredSpace::ThreeD {
-        space_3d: space.clone(),
-        target_spaces,
-    }
+    ctx.selection_state_mut()
+        .set_hovered_space(HoveredSpace::ThreeD {
+            space_3d: space.clone(),
+            target_spaces,
+        });
 }
 
 fn default_eye(scene_bbox: &macaw::BoundingBox, space_specs: &SpaceSpecs) -> OrbitEye {
