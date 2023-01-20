@@ -325,11 +325,15 @@ fn serve() -> PyResult<()> {
 }
 
 #[pyfunction]
-fn shutdown() {
-    re_log::debug!("Shutting down the Rerun SDK");
-    let mut session = global_session();
-    session.flush();
-    session.disconnect();
+fn shutdown(py: Python) {
+    // Release the GIL in case any flushing behavior needs to
+    // cleanup a python object.
+    py.allow_threads(|| {
+        re_log::debug!("Shutting down the Rerun SDK");
+        let mut session = global_session();
+        session.flush();
+        session.disconnect();
+    });
 }
 
 /// Disconnect from remote server (if any).
