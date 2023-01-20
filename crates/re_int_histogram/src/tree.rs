@@ -525,7 +525,6 @@ impl<'a> Iterator for TreeIterator<'a> {
                         }
                         it.index += 1;
                     }
-                    self.stack.pop();
                 }
                 Tree::SparseLeaf(sparse) => {
                     while let (Some(abs_addr), Some(count)) =
@@ -536,7 +535,6 @@ impl<'a> Iterator for TreeIterator<'a> {
                             return Some((RangeU64::single(*abs_addr), *count as u64));
                         }
                     }
-                    self.stack.pop();
                 }
                 Tree::DenseLeaf(dense) => {
                     while let Some(count) = dense.counts.get(it.index) {
@@ -546,9 +544,9 @@ impl<'a> Iterator for TreeIterator<'a> {
                             return Some((RangeU64::single(abs_addr), *count as u64));
                         }
                     }
-                    self.stack.pop();
                 }
             }
+            self.stack.pop();
         }
         None
     }
