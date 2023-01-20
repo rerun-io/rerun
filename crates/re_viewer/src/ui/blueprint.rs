@@ -64,24 +64,24 @@ impl Blueprint {
             .default_width(200.0);
 
         panel.show_animated_inside(ui, self.blueprint_panel_expanded, |ui: &mut egui::Ui| {
-            ui.strong("Blueprint")
-                .on_hover_text("The Blueprint is where you can configure the Rerun Viewer.");
+            ui.horizontal(|ui| {
+                ui.strong("Blueprint")
+                    .on_hover_text("The Blueprint is where you can configure the Rerun Viewer.");
 
-            ui.separator();
-
-            // TODO(emilk): an egui helper for right-to-left
-            ui.allocate_ui_with_layout(
-                egui::vec2(
-                    ui.available_size_before_wrap().x,
-                    ui.spacing().interact_size.y,
-                ),
-                egui::Layout::right_to_left(egui::Align::Center),
-                |ui| {
-                    self.viewport
-                        .add_new_spaceview_button_ui(ctx, ui, spaces_info);
-                    self.reset_button_ui(ctx, ui, spaces_info);
-                },
-            );
+                // TODO(emilk): an egui helper for right-to-left
+                ui.allocate_ui_with_layout(
+                    egui::vec2(
+                        ui.available_size_before_wrap().x,
+                        ui.spacing().interact_size.y,
+                    ),
+                    egui::Layout::right_to_left(egui::Align::Center),
+                    |ui| {
+                        self.viewport
+                            .add_new_spaceview_button_ui(ctx, ui, spaces_info);
+                        self.reset_button_ui(ctx, ui, spaces_info);
+                    },
+                );
+            });
 
             ui.separator();
 
