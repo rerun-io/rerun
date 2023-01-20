@@ -137,8 +137,7 @@ fn msg_drop(msg_drop_rx: &Receiver<MsgMsg>, quit_rx: &Receiver<QuitMsg>) {
     loop {
         select! {
             recv(msg_drop_rx) -> msg_msg => {
-                if let Ok(_) = msg_msg {
-                } else {
+                if msg_msg.is_err() {
                     return; // channel has closed
                 }
             }
@@ -165,7 +164,7 @@ fn msg_encode(
                             re_log::trace!("Encoded message of size {}", packet.len());
                             PacketMsg::Packet(packet)
                         }
-                        MsgMsg::SetAddr(new_addr) => PacketMsg::SetAddr(new_addr.clone()),
+                        MsgMsg::SetAddr(new_addr) => PacketMsg::SetAddr(*new_addr),
                         MsgMsg::Flush => PacketMsg::Flush,
                     };
 

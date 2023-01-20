@@ -325,7 +325,7 @@ fn serve() -> PyResult<()> {
 }
 
 #[pyfunction]
-fn shutdown(py: Python) {
+fn shutdown(py: Python<'_>) {
     // Release the GIL in case any flushing behavior needs to
     // cleanup a python object.
     py.allow_threads(|| {
