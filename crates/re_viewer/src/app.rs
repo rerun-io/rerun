@@ -1,7 +1,4 @@
-use std::{
-    any::Any,
-    hash::{Hash, Hasher},
-};
+use std::{any::Any, hash::Hash};
 
 use ahash::HashMap;
 use egui_notify::Toasts;
@@ -10,11 +7,9 @@ use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 use poll_promise::Promise;
 
-use re_analytics::Analytics;
 use re_arrow_store::DataStoreStats;
 use re_data_store::log_db::LogDb;
 use re_format::format_number;
-use re_log::error;
 use re_log_types::{ApplicationId, LogMsg, RecordingId};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::Receiver;
@@ -27,6 +22,9 @@ use crate::{
 
 #[cfg(not(target_arch = "wasm32"))]
 use re_log_types::TimeRangeF;
+
+#[cfg(not(target_arch = "wasm32"))]
+use re_analytics::Analytics;
 
 const WATERMARK: bool = false; // Nice for recording media material
 
@@ -152,7 +150,7 @@ impl App {
                 Some(analytics)
             }
             Err(err) => {
-                error!(%err, "failed to initialize analytics SDK");
+                re_log::error!(%err, "failed to initialize analytics SDK");
                 None
             }
         };
@@ -514,6 +512,7 @@ impl App {
 
                     #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
                     if let Some(analytics) = self.analytics.as_mut() {
+                        use std::hash::Hasher as _;
                         analytics.default_append_props_mut().extend([
                             (
                                 "application_id".into(),

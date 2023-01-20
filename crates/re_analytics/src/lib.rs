@@ -159,17 +159,39 @@ impl Analytics {
 
 // ---
 
-mod config;
-use self::config::{Config, ConfigError};
+#[cfg(not(target_arch = "wasm32"))]
+mod config_native;
+#[cfg(not(target_arch = "wasm32"))]
+use self::config_native::{Config, ConfigError};
 
-pub mod events;
+#[cfg(target_arch = "wasm32")]
+mod config_web;
+#[cfg(target_arch = "wasm32")]
+use self::config_web::{Config, ConfigError};
+
+#[cfg(not(target_arch = "wasm32"))]
+mod pipeline_native;
+#[cfg(not(target_arch = "wasm32"))]
+use self::pipeline_native::{Pipeline, PipelineError};
 
 // TODO(cmc): web pipeline
-mod pipeline;
-use self::pipeline::{Pipeline, PipelineError};
+#[cfg(target_arch = "wasm32")]
+mod pipeline_web;
+#[cfg(target_arch = "wasm32")]
+use self::pipeline_web::{Pipeline, PipelineError};
+
+#[cfg(not(target_arch = "wasm32"))]
+mod sink_native;
+#[cfg(not(target_arch = "wasm32"))]
+use self::sink_native::{PostHogSink, SinkError};
 
 // TODO(cmc): web sink
-mod sink;
-use self::sink::{PostHogSink, SinkError};
+#[cfg(target_arch = "wasm32")]
+mod sink_web;
+#[cfg(target_arch = "wasm32")]
+use self::sink_web::{PostHogSink, SinkError};
 
+#[cfg(not(target_arch = "wasm32"))]
 pub mod cli;
+
+pub mod events;
