@@ -163,6 +163,8 @@ impl Points3DPart {
         annotations: &Arc<Annotations>,
         point_positions: &[Vec3],
     ) -> Result<(Vec<ResolvedAnnotationInfo>, Keypoints), QueryError> {
+        crate::profile_function!();
+
         let mut keypoints: Keypoints = HashMap::new();
 
         let annotation_info = itertools::izip!(
@@ -197,6 +199,7 @@ impl Points3DPart {
         selected: &'a [bool],
         annotation_infos: &'a [ResolvedAnnotationInfo],
     ) -> Result<impl Iterator<Item = egui::Color32> + 'a, QueryError> {
+        crate::profile_function!();
         let default_color = DefaultColor::ObjPath(ent_path);
 
         let colors = itertools::izip!(
@@ -269,6 +272,8 @@ impl Points3DPart {
         ent_path: &ObjPath,
         world_from_obj: Mat4,
     ) -> Result<(), QueryError> {
+        crate::profile_function!();
+
         scene.num_logged_3d_objects += 1;
 
         let annotations = scene.annotation_map.find(ent_path);
@@ -280,10 +285,13 @@ impl Points3DPart {
             .batch("3d points")
             .world_from_obj(world_from_obj);
 
-        let point_positions = entity_view
-            .iter_primary()?
-            .filter_map(|pt| pt.map(glam::Vec3::from))
-            .collect::<Vec<_>>();
+        let point_positions = {
+            crate::profile_scope!("collect_points");
+            entity_view
+                .iter_primary()?
+                .filter_map(|pt| pt.map(glam::Vec3::from))
+                .collect::<Vec<_>>()
+        };
 
         let (annotation_infos, keypoints) = Self::process_annotations(
             query,
@@ -292,28 +300,37 @@ impl Points3DPart {
             point_positions.as_slice(),
         )?;
 
-        let instance_hashes = entity_view
-            .iter_instances()?
-            .map(|instance| {
-                if properties.interactive {
-                    InstanceIdHash::from_path_and_arrow_instance(ent_path, &instance)
-                } else {
-                    InstanceIdHash::NONE
-                }
-            })
-            .collect::<Vec<_>>();
+        let instance_hashes = {
+            crate::profile_scope!("instance_hashes");
+            entity_view
+                .iter_instances()?
+                .map(|instance| {
+                    if properties.interactive {
+                        InstanceIdHash::from_path_and_arrow_instance(ent_path, &instance)
+                    } else {
+                        InstanceIdHash::NONE
+                    }
+                })
+                .collect::<Vec<_>>()
+        };
 
         // TODO(andreas): lot of optimization potential here!
         let hovered_paths = ctx.hovered().check_obj_path(ent_path.hash());
         let selected_paths = ctx.selection().check_obj_path(ent_path.hash());
-        let hovered = instance_hashes
-            .iter()
-            .map(|hash| hovered_paths.contains_index(hash.instance_index_hash))
-            .collect::<Vec<_>>();
-        let selected = instance_hashes
-            .iter()
-            .map(|hash| selected_paths.contains_index(hash.instance_index_hash))
-            .collect::<Vec<_>>();
+        let hovered = {
+            crate::profile_scope!("hovered");
+            instance_hashes
+                .iter()
+                .map(|hash| hovered_paths.contains_index(hash.instance_index_hash))
+                .collect::<Vec<_>>()
+        };
+        let selected = {
+            crate::profile_scope!("selected");
+            instance_hashes
+                .iter()
+                .map(|hash| selected_paths.contains_index(hash.instance_index_hash))
+                .collect::<Vec<_>>()
+        };
 
         let colors = Self::process_colors(
             entity_view,
