@@ -1,13 +1,12 @@
 use glam::{Mat4, Vec3};
 
-use re_arrow_store::LatestAtQuery;
 use re_data_store::{query::visit_type_data_4, FieldName, InstanceIdHash, ObjPath, ObjectProps};
 use re_log_types::{
     field_types::{Box3D, ClassId, ColorRGBA, Instance, Label, Quaternion, Radius, Vec3D},
     msg_bundle::Component,
     IndexHash, MsgId, ObjectType,
 };
-use re_query::{query_entity_with_primary, EntityView, QueryError};
+use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::Size;
 
 use crate::{
@@ -203,13 +202,15 @@ impl ScenePart for Boxes3DPart {
                 continue;
             };
 
-            let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
-
-            match query_entity_with_primary::<Box3D>(
+            match query_primary_with_history::<Box3D, 8>(
                 &ctx.log_db.obj_db.arrow_store,
-                &timeline_query,
+                &query.timeline,
+                &query.latest_at,
+                &props.visible_history,
                 ent_path,
-                &[
+                [
+                    Box3D::name(),
+                    Instance::name(),
                     Vec3D::name(),      // obb.position
                     Quaternion::name(), // obb.rotation
                     ColorRGBA::name(),
@@ -218,15 +219,18 @@ impl ScenePart for Boxes3DPart {
                     ClassId::name(),
                 ],
             )
-            .and_then(|entity_view| {
-                Self::process_entity_view(
-                    scene,
-                    ctx,
-                    &props,
-                    &entity_view,
-                    ent_path,
-                    world_from_obj,
-                )
+            .and_then(|entities| {
+                for entity in entities {
+                    Self::process_entity_view(
+                        scene,
+                        ctx,
+                        &props,
+                        &entity,
+                        ent_path,
+                        world_from_obj,
+                    )?;
+                }
+                Ok(())
             }) {
                 Ok(_) | Err(QueryError::PrimaryNotFound) => {}
                 Err(err) => {

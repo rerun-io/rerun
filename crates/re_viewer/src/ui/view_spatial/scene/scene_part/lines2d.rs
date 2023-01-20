@@ -1,12 +1,11 @@
 use glam::Mat4;
 
-use re_arrow_store::LatestAtQuery;
 use re_data_store::{InstanceIdHash, ObjPath, ObjectProps};
 use re_log_types::{
     field_types::{ColorRGBA, Instance, LineStrip2D, Radius},
     msg_bundle::Component,
 };
-use re_query::{query_entity_with_primary, EntityView, QueryError};
+use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::{renderer::LineStripFlags, Size};
 
 use crate::{
@@ -102,24 +101,32 @@ impl ScenePart for Lines2DPart {
                 continue;
             };
 
-            let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
-
-            match query_entity_with_primary::<LineStrip2D>(
+            match query_primary_with_history::<LineStrip2D, 4>(
                 &ctx.log_db.obj_db.arrow_store,
-                &timeline_query,
+                &query.timeline,
+                &query.latest_at,
+                &props.visible_history,
                 ent_path,
-                &[ColorRGBA::name(), Radius::name()],
+                [
+                    LineStrip2D::name(),
+                    Instance::name(),
+                    ColorRGBA::name(),
+                    Radius::name(),
+                ],
             )
-            .and_then(|entity_view| {
-                Self::process_entity_view(
-                    scene,
-                    ctx,
-                    query,
-                    &props,
-                    &entity_view,
-                    ent_path,
-                    world_from_obj,
-                )
+            .and_then(|entities| {
+                for entity in entities {
+                    Self::process_entity_view(
+                        scene,
+                        ctx,
+                        query,
+                        &props,
+                        &entity,
+                        ent_path,
+                        world_from_obj,
+                    )?;
+                }
+                Ok(())
             }) {
                 Ok(_) | Err(QueryError::PrimaryNotFound) => {}
                 Err(err) => {

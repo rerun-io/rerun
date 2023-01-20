@@ -4,14 +4,13 @@ use egui::NumExt;
 use glam::Vec3;
 use itertools::Itertools;
 
-use re_arrow_store::LatestAtQuery;
 use re_data_store::{query::visit_type_data_2, FieldName, InstanceIdHash, ObjPath, ObjectProps};
 use re_log_types::{
-    field_types::{ColorRGBA, Tensor, TensorTrait},
+    field_types::{ColorRGBA, Instance, Tensor, TensorTrait},
     msg_bundle::Component,
     IndexHash, MsgId, ObjectType,
 };
-use re_query::{query_entity_with_primary, EntityView, QueryError};
+use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::Size;
 
 use crate::{
@@ -307,30 +306,31 @@ impl ScenePart for ImagesPart {
     ) {
         crate::profile_scope!("ImagesPart");
 
-        for ent_path in query.obj_paths {
+        for (ent_path, props) in query.iter_entities() {
             let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(ent_path) else {
                 continue;
             };
 
-            let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
-
-            let properties = query.obj_props.get(ent_path);
-
-            match query_entity_with_primary::<Tensor>(
+            match query_primary_with_history::<Tensor, 3>(
                 &ctx.log_db.obj_db.arrow_store,
-                &timeline_query,
+                &query.timeline,
+                &query.latest_at,
+                &props.visible_history,
                 ent_path,
-                &[ColorRGBA::name()],
+                [Tensor::name(), Instance::name(), ColorRGBA::name()],
             )
-            .and_then(|entity_view| {
-                Self::process_entity_view(
-                    &entity_view,
-                    scene,
-                    ctx,
-                    &properties,
-                    ent_path,
-                    world_from_obj,
-                )
+            .and_then(|entities| {
+                for entity in entities {
+                    Self::process_entity_view(
+                        &entity,
+                        scene,
+                        ctx,
+                        &props,
+                        ent_path,
+                        world_from_obj,
+                    )?;
+                }
+                Ok(())
             }) {
                 Ok(_) | Err(QueryError::PrimaryNotFound) => {}
                 Err(err) => {
