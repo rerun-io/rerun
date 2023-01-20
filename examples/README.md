@@ -1,4 +1,6 @@
 # Rerun Examples
+The simplest example is [`hello_world`](hello_world/main.py). You may want to start there!
+
 ## Setup
 First follow [the main setup instructions](https://github.com/rerun-io/rerun#setup).
 
