@@ -3,16 +3,16 @@ use std::sync::Arc;
 use ahash::HashMap;
 use re_data_store::{InstanceIdHash, ObjPath};
 use re_log_types::{
-    field_types::{ClassId, KeypointId},
+    field_types::{ClassId, KeypointId, Tensor},
     ClassicTensor, IndexHash, MeshId,
 };
 use re_renderer::{Color32, Size};
 
 use super::{eye::Eye, SpaceCamera3D, SpatialNavigationMode};
 use crate::{
-    misc::{mesh_loader::LoadedMesh, ViewerContext},
+    misc::{caches::AsDynamicImage, mesh_loader::LoadedMesh, ViewerContext},
     ui::{
-        annotations::{auto_color_egui, AnnotationMap},
+        annotations::{auto_color, AnnotationMap},
         transform_cache::TransformCache,
         Annotations, SceneQuery,
     },
@@ -53,13 +53,27 @@ pub struct MeshSource {
     // TODO(andreas): Make this Conformal3 once glow is gone?
     pub world_from_mesh: macaw::Affine3A,
     pub mesh: Arc<LoadedMesh>,
-    pub additive_tint: Option<Color32>,
+    pub additive_tint: Color32,
+}
+
+pub enum AnyTensor {
+    ClassicTensor(ClassicTensor),
+    ArrowTensor(Tensor),
+}
+
+impl AnyTensor {
+    pub fn as_ref(&self) -> &(dyn AsDynamicImage) {
+        match self {
+            Self::ClassicTensor(t) => t,
+            Self::ArrowTensor(t) => t,
+        }
+    }
 }
 
 pub struct Image {
     pub instance_hash: InstanceIdHash,
 
-    pub tensor: ClassicTensor,
+    pub tensor: AnyTensor,
     /// If this is a depth map, how long is a meter?
     ///
     /// For instance, with a `u16` dtype one might have
@@ -92,11 +106,6 @@ pub struct Label3D {
     pub(crate) text: String,
     /// Origin of the label
     pub(crate) origin: glam::Vec3,
-}
-
-fn to_ecolor([r, g, b, a]: [u8; 4]) -> Color32 {
-    // TODO(andreas): ecolor should have a utility to get an array
-    Color32::from_rgba_premultiplied(r, g, b, a)
 }
 
 /// Data necessary to setup the ui [`SceneSpatial`] but of no interest to `re_renderer`.
@@ -153,7 +162,6 @@ impl SceneSpatial {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
-        hovered: InstanceIdHash,
     ) {
         crate::profile_function!();
 
@@ -191,7 +199,7 @@ impl SceneSpatial {
         ];
 
         for part in parts {
-            part.load(self, ctx, query, transforms, hovered);
+            part.load(self, ctx, query, transforms);
         }
 
         self.primitives.recalculate_bounding_box();
@@ -199,14 +207,58 @@ impl SceneSpatial {
 
     // TODO(andreas): Better ways to determine these?
     const HOVER_COLOR: Color32 = Color32::from_rgb(255, 200, 200);
+    const SELECTION_COLOR: Color32 = Color32::from_rgb(255, 170, 170);
     const CAMERA_COLOR: Color32 = Color32::from_rgb(255, 128, 128);
 
-    fn hover_size_boost(size: Size) -> Size {
+    fn size_boost(size: Size) -> Size {
         if size.is_auto() {
             Size::AUTO_LARGE
         } else {
             size * 1.5
         }
+    }
+
+    fn apply_hover_and_selection_effect(
+        size: &mut Size,
+        color: &mut Color32,
+        hovered: bool,
+        selected: bool,
+    ) {
+        if selected {
+            *size = Self::size_boost(*size);
+            *color = Self::SELECTION_COLOR;
+        }
+        if hovered {
+            *color = Self::HOVER_COLOR;
+        }
+    }
+
+    fn apply_hover_and_selection_effect_color(
+        color: Color32,
+        hovered: bool,
+        selected: bool,
+    ) -> Color32 {
+        let mut color = color;
+        // (counting on inlining to remove unused fields!)
+        Self::apply_hover_and_selection_effect(
+            &mut Size::AUTO.clone(),
+            &mut color,
+            hovered,
+            selected,
+        );
+        color
+    }
+
+    fn apply_hover_and_selection_effect_size(size: Size, hovered: bool, selected: bool) -> Size {
+        let mut size = size;
+        // (counting on inlining to remove unused fields!)
+        Self::apply_hover_and_selection_effect(
+            &mut size,
+            &mut Color32::WHITE.clone(),
+            hovered,
+            selected,
+        );
+        size
     }
 
     fn load_keypoint_connections(
@@ -227,7 +279,7 @@ impl SceneSpatial {
             };
 
             let color = class_description.info.color.map_or_else(
-                || auto_color_egui(class_description.info.id),
+                || auto_color(class_description.info.id),
                 |color| color.into(),
             );
 
@@ -285,22 +337,4 @@ impl SceneSpatial {
             ui_interaction_radius,
         )
     }
-}
-
-pub struct ObjectPaintProperties {
-    pub fg_stroke: egui::Stroke,
-}
-
-// TODO(andreas): we're no longer using egui strokes. Replace this.
-fn paint_properties(color: [u8; 4], stroke_width: Option<&f32>) -> ObjectPaintProperties {
-    let fg_color = to_ecolor(color);
-    let stroke_width = stroke_width.map_or(2.0, |w| *w); // TODO(andreas): use re_renderer auto_size
-    let fg_stroke = egui::Stroke::new(stroke_width, fg_color);
-
-    ObjectPaintProperties { fg_stroke }
-}
-
-fn apply_hover_effect(paint_props: &mut ObjectPaintProperties) {
-    paint_props.fg_stroke.width *= 2.0;
-    paint_props.fg_stroke.color = Color32::WHITE;
 }

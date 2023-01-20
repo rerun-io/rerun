@@ -105,12 +105,12 @@ impl DataStore {
 
         let timeless = self
             .timeless_indices
-            .get(ent_path_hash)
+            .get(&ent_path_hash)
             .map(|index| &index.all_components);
 
         let temporal = self
             .indices
-            .get(&(*timeline, *ent_path_hash))
+            .get(&(*timeline, ent_path_hash))
             .map(|index| &index.all_components);
 
         let components = match (timeless, temporal) {
@@ -217,7 +217,7 @@ impl DataStore {
 
         let row_indices = self
             .indices
-            .get(&(query.timeline, *ent_path_hash))
+            .get(&(query.timeline, ent_path_hash))
             .and_then(|index| {
                 let row_indices = index.latest_at(query.at, primary, components);
                 trace!(
@@ -239,7 +239,7 @@ impl DataStore {
             return row_indices;
         }
 
-        let row_indices_timeless = self.timeless_indices.get(ent_path_hash).and_then(|index| {
+        let row_indices_timeless = self.timeless_indices.get(&ent_path_hash).and_then(|index| {
             let row_indices = index.latest_at(primary, components);
             trace!(
                 kind = "latest_at",
@@ -406,7 +406,7 @@ impl DataStore {
 
         let temporal = self
             .indices
-            .get(&(query.timeline, *ent_path_hash))
+            .get(&(query.timeline, ent_path_hash))
             .map(|index| index.range(query.range, components))
             .into_iter()
             .flatten()
@@ -415,7 +415,7 @@ impl DataStore {
         if query.range.min == TimeInt::MIN {
             let timeless = self
                 .timeless_indices
-                .get(ent_path_hash)
+                .get(&ent_path_hash)
                 .map(|index| {
                     index
                         .range(components)

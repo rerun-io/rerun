@@ -104,4 +104,4 @@ def log_obb(
             class_ids = _normalize_ids([class_id])
             comps["rerun.class_id"] = ClassIdArray.from_numpy(class_ids)
 
-        bindings.log_arrow_msg(f"{obj_path}/arrow", components=comps, timeless=timeless)
+        bindings.log_arrow_msg(f"{obj_path}", components=comps, timeless=timeless)

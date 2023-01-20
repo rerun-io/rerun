@@ -10,7 +10,7 @@ use re_renderer::{
 };
 
 use crate::{
-    misc::HoveredSpace,
+    misc::{HoveredSpace, Selection},
     ui::{
         data_ui::{self, DataUi},
         view_spatial::{
@@ -325,17 +325,16 @@ pub fn view_3d(
     // TODO(andreas): This isn't part of the camera, but of the transform https://github.com/rerun-io/rerun/issues/753
     for camera in &scene.space_cameras {
         if ctx.options.show_camera_axes_in_3d {
-            scene.primitives.add_axis_lines(
-                camera.world_from_cam(),
-                camera.instance,
-                &eye,
-                rect.size(),
-            );
+            let transform = camera.world_from_cam();
+            let axis_length =
+                eye.approx_pixel_world_size_at(transform.translation(), rect.size()) * 32.0;
+            scene
+                .primitives
+                .add_axis_lines(transform, camera.instance, axis_length);
         }
     }
 
     // TODO(andreas): We're very close making the hover reaction of ui2d and ui3d the same. Finish the job!
-    state.hovered_instance = None;
     if let Some(pointer_pos) = response.hover_pos() {
         let picking_result =
             scene.picking(glam::vec2(pointer_pos.x, pointer_pos.y), &rect, &eye, 5.0);
@@ -359,19 +358,19 @@ pub fn view_3d(
                 response
                     .on_hover_cursor(egui::CursorIcon::ZoomIn)
                     .on_hover_ui_at_pointer(|ui| {
-                        ui.set_max_width(400.0);
+                        ui.set_max_width(320.0);
 
                         ui.vertical(|ui| {
                             ui.label(instance_id.to_string());
                             instance_id.data_ui(ctx, ui, Preview::Small);
 
                             let tensor_view = ctx.cache.image.get_view_with_annotations(
-                                &image.tensor,
+                                image.tensor.as_ref(),
                                 &image.annotations,
                                 ctx.render_ctx,
                             );
 
-                            if let [h, w, ..] = image.tensor.shape() {
+                            if let [h, w, ..] = image.tensor.as_ref().shape() {
                                 ui.separator();
                                 ui.horizontal(|ui| {
                                     let (w, h) = (w.size as f32, h.size as f32);
@@ -390,35 +389,34 @@ pub fn view_3d(
                 // Hover ui for everything else
                 response.on_hover_ui_at_pointer(|ui| {
                     ctx.instance_id_button(ui, &instance_id);
-                    instance_id.data_ui(ctx, ui, crate::ui::Preview::Medium);
+                    instance_id.data_ui(ctx, ui, crate::ui::Preview::Large);
                 })
             };
         }
 
-        if let Some(closest_pick) = picking_result.iter_hits().last() {
-            // Save last known hovered object.
-            if let Some(instance_id) = closest_pick.instance_hash.resolve(&ctx.log_db.obj_db) {
-                state.state_3d.hovered_point = Some(picking_result.space_position(closest_pick));
-                state.hovered_instance = Some(instance_id);
-            }
-        }
-
-        if let Some(instance_id) = &state.hovered_instance {
-            // Click changes selection.
-            if ui.input().pointer.any_click() {
-                ctx.set_selection(crate::Selection::Instance(instance_id.clone()));
-            }
-        }
+        ctx.set_hovered(picking_result.iter_hits().filter_map(|pick| {
+            pick.instance_hash
+                .resolve(&ctx.log_db.obj_db)
+                // TODO(andreas): Associate current space view
+                .map(Selection::Instance)
+        }));
+        state.state_3d.hovered_point = picking_result
+            .opaque_hit
+            .as_ref()
+            .or_else(|| picking_result.transparent_hits.last())
+            .map(|hit| picking_result.space_position(hit));
 
         project_onto_other_spaces(ctx, &scene.space_cameras, &mut state.state_3d, space);
     }
+
+    ctx.select_hovered_on_click(&response);
 
     // Double click changes camera
     if response.double_clicked() {
         state.state_3d.tracked_camera = None;
 
         // While hovering an object, focuses the camera on it.
-        if let Some(instance_id) = &state.hovered_instance {
+        if let Some(Selection::Instance(instance_id)) = ctx.hovered().first() {
             if let Some(camera) = find_camera(&scene.space_cameras, &instance_id.hash()) {
                 state.state_3d.interpolate_to_eye(camera);
                 state.state_3d.tracked_camera = Some(instance_id.clone());
@@ -445,11 +443,11 @@ pub fn view_3d(
     show_projections_from_2d_space(ctx, &mut scene, &state.scene_bbox_accum);
 
     if state.state_3d.show_axes {
+        let axis_length = 1.0; // The axes are also a measuring stick
         scene.primitives.add_axis_lines(
             macaw::IsoTransform::IDENTITY,
             InstanceIdHash::NONE,
-            &eye,
-            rect.size(),
+            axis_length,
         );
     }
 
@@ -495,7 +493,7 @@ pub fn view_3d(
         &scene,
         ctx.render_ctx,
         &space.to_string(),
-        state.auto_size_config(),
+        state.auto_size_config(rect.size()),
     );
 }
 
@@ -506,7 +504,7 @@ fn paint_view(
     scene: &SceneSpatial,
     render_ctx: &mut RenderContext,
     name: &str,
-    auto_size_config: re_renderer::Size,
+    auto_size_config: re_renderer::AutoSizeConfig,
 ) {
     crate::profile_function!();
 
@@ -573,7 +571,6 @@ fn paint_view(
 
         pixels_from_point,
         auto_size_config,
-        auto_size_large_factor: 1.5,
     };
 
     let Ok(callback) = create_scene_paint_callback(
@@ -592,7 +589,7 @@ fn show_projections_from_2d_space(
     scene: &mut SceneSpatial,
     scene_bbox_accum: &BoundingBox,
 ) {
-    if let HoveredSpace::TwoD { space_2d, pos } = &ctx.rec_cfg.hovered_space_previous_frame {
+    if let HoveredSpace::TwoD { space_2d, pos } = ctx.selection_state().hovered_space() {
         let mut point_batch = scene
             .primitives
             .points
@@ -652,10 +649,11 @@ fn project_onto_other_spaces(
             .and_then(|hovered_point| cam.project_onto_2d(hovered_point));
         target_spaces.push((cam.obj_path.clone(), point_in_2d));
     }
-    ctx.rec_cfg.hovered_space_this_frame = HoveredSpace::ThreeD {
-        space_3d: space.clone(),
-        target_spaces,
-    }
+    ctx.selection_state_mut()
+        .set_hovered_space(HoveredSpace::ThreeD {
+            space_3d: space.clone(),
+            target_spaces,
+        });
 }
 
 fn default_eye(scene_bbox: &macaw::BoundingBox, space_specs: &SpaceSpecs) -> OrbitEye {

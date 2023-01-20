@@ -1,10 +1,12 @@
 use std::sync::Arc;
 
 use arrow2::array::{FixedSizeBinaryArray, MutableFixedSizeBinaryArray};
+use arrow2::buffer::Buffer;
 use arrow2_convert::deserialize::ArrowDeserialize;
 use arrow2_convert::field::ArrowField;
 use arrow2_convert::{serialize::ArrowSerialize, ArrowDeserialize, ArrowField, ArrowSerialize};
 
+use crate::TensorElement;
 use crate::{msg_bundle::Component, ClassicTensor, TensorDataStore};
 
 pub trait TensorTrait {
@@ -12,6 +14,9 @@ pub trait TensorTrait {
     fn shape(&self) -> &[TensorDimension];
     fn num_dim(&self) -> usize;
     fn is_shaped_like_an_image(&self) -> bool;
+    fn is_vector(&self) -> bool;
+    fn meaning(&self) -> TensorDataMeaning;
+    fn get(&self, index: &[u64]) -> Option<TensorElement>;
 }
 
 // ----------------------------------------------------------------------------
@@ -147,19 +152,19 @@ impl ArrowDeserialize for TensorId {
 #[arrow_field(type = "dense")]
 pub enum TensorData {
     U8(Vec<u8>),
-    U16(Vec<u16>),
-    U32(Vec<u32>),
-    U64(Vec<u64>),
+    U16(Buffer<u16>),
+    U32(Buffer<u32>),
+    U64(Buffer<u64>),
     // ---
-    I8(Vec<i8>),
-    I16(Vec<i16>),
-    I32(Vec<i32>),
-    I64(Vec<i64>),
+    I8(Buffer<i8>),
+    I16(Buffer<i16>),
+    I32(Buffer<i32>),
+    I64(Buffer<i64>),
     // ---
-    //TODO(john) F16
+    // TODO(#854): Native F16 support for arrow tensors
     //F16(Vec<arrow2::types::f16>),
-    F32(Vec<f32>),
-    F64(Vec<f64>),
+    F32(Buffer<f32>),
+    F64(Buffer<f64>),
     JPEG(Vec<u8>),
 }
 
@@ -283,7 +288,8 @@ pub enum TensorDataMeaning {
 ///                 UnionMode::Dense
 ///             ),
 ///             false
-///         )
+///         ),
+///         Field::new("meter", DataType::Float32, true),
 ///     ])
 /// );
 /// ```
@@ -298,6 +304,8 @@ pub struct Tensor {
     /// The per-element data meaning
     /// Used to indicated if the data should be interpreted as color, class_id, etc.
     pub meaning: TensorDataMeaning,
+    /// Reciprocal scale of meter unit for depth images
+    pub meter: Option<f32>,
 }
 
 impl TensorTrait for Tensor {
@@ -322,6 +330,41 @@ impl TensorTrait for Tensor {
                     1 | 3 | 4
                 )
             }
+    }
+
+    fn is_vector(&self) -> bool {
+        let shape = &self.shape;
+        shape.len() == 1 || { shape.len() == 2 && (shape[0].size == 1 || shape[1].size == 1) }
+    }
+
+    fn meaning(&self) -> TensorDataMeaning {
+        self.meaning
+    }
+
+    fn get(&self, index: &[u64]) -> Option<TensorElement> {
+        let mut stride: usize = 1;
+        let mut offset: usize = 0;
+        for (TensorDimension { size, .. }, index) in self.shape.iter().zip(index).rev() {
+            if size <= index {
+                return None;
+            }
+            offset += *index as usize * stride;
+            stride *= *size as usize;
+        }
+
+        match &self.data {
+            TensorData::U8(buf) => Some(TensorElement::U8(buf[offset])),
+            TensorData::U16(buf) => Some(TensorElement::U16(buf[offset])),
+            TensorData::U32(buf) => Some(TensorElement::U32(buf[offset])),
+            TensorData::U64(buf) => Some(TensorElement::U64(buf[offset])),
+            TensorData::I8(buf) => Some(TensorElement::I8(buf[offset])),
+            TensorData::I16(buf) => Some(TensorElement::I16(buf[offset])),
+            TensorData::I32(buf) => Some(TensorElement::I32(buf[offset])),
+            TensorData::I64(buf) => Some(TensorElement::I64(buf[offset])),
+            TensorData::F32(buf) => Some(TensorElement::F32(buf[offset])),
+            TensorData::F64(buf) => Some(TensorElement::F64(buf[offset])),
+            TensorData::JPEG(_) => None, // Too expensive to unpack here.
+        }
     }
 }
 
@@ -439,8 +482,9 @@ macro_rules! tensor_type {
                     .map(|slice| Tensor {
                         tensor_id: TensorId::random(),
                         shape,
-                        data: TensorData::$variant(slice.into()),
+                        data: TensorData::$variant(Vec::from(slice).into()),
                         meaning: TensorDataMeaning::Unknown,
+                        meter: None,
                     })
             }
         }
@@ -462,8 +506,9 @@ macro_rules! tensor_type {
                     .then(|| Tensor {
                         tensor_id: TensorId::random(),
                         shape,
-                        data: TensorData::$variant(value.into_raw_vec()),
+                        data: TensorData::$variant(value.into_raw_vec().into()),
                         meaning: TensorDataMeaning::Unknown,
+                        meter: None,
                     })
                     .ok_or(TensorCastError::NotContiguousStdOrder)
             }
@@ -519,8 +564,9 @@ fn test_arrow() {
                 size: 4,
                 name: None,
             }],
-            data: TensorData::U16(vec![1, 2, 3, 4]),
+            data: TensorData::U16(vec![1, 2, 3, 4].into()),
             meaning: TensorDataMeaning::Unknown,
+            meter: Some(1000.0),
         },
         Tensor {
             tensor_id: TensorId(std::default::Default::default()),
@@ -528,8 +574,9 @@ fn test_arrow() {
                 size: 2,
                 name: None,
             }],
-            data: TensorData::F32(vec![1.23, 2.45]),
+            data: TensorData::F32(vec![1.23, 2.45].into()),
             meaning: TensorDataMeaning::Unknown,
+            meter: None,
         },
     ];
 
@@ -553,6 +600,7 @@ fn test_concat_and_slice() {
         }],
         data: TensorData::JPEG(vec![1, 2, 3, 4]),
         meaning: TensorDataMeaning::Unknown,
+        meter: Some(1000.0),
     }];
 
     let tensor2 = vec![Tensor {
@@ -563,6 +611,7 @@ fn test_concat_and_slice() {
         }],
         data: TensorData::JPEG(vec![5, 6, 7, 8]),
         meaning: TensorDataMeaning::Unknown,
+        meter: None,
     }];
 
     let array1: Box<dyn arrow2::array::Array> = tensor1.iter().try_into_arrow().unwrap();

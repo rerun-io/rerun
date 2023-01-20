@@ -81,8 +81,7 @@ impl ThreadInfo {
 /// The python module is called "rerun_bindings".
 #[pymodule]
 fn rerun_bindings(py: Python<'_>, m: &PyModule) -> PyResult<()> {
-    re_log::set_default_rust_log_env();
-    tracing_subscriber::fmt::init();
+    re_log::setup_native_logging();
 
     global_session().set_recording_id(default_recording_id(py));
 
@@ -96,7 +95,7 @@ fn rerun_bindings(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(init, m)?)?;
     m.add_function(wrap_pyfunction!(connect, m)?)?;
     m.add_function(wrap_pyfunction!(serve, m)?)?;
-    m.add_function(wrap_pyfunction!(flush, m)?)?;
+    m.add_function(wrap_pyfunction!(shutdown, m)?)?;
 
     #[cfg(feature = "re_viewer")]
     {
@@ -261,9 +260,8 @@ fn parse_index(s: String) -> PyResult<Index> {
 }
 
 // ----------------------------------------------------------------------------
-
 #[pyfunction]
-fn main(argv: Vec<String>) -> PyResult<()> {
+fn main(argv: Vec<String>) -> PyResult<u8> {
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
@@ -325,10 +323,16 @@ fn serve() -> PyResult<()> {
     ))
 }
 
-/// Wait until all logged data have been sent to the remove server (if any).
 #[pyfunction]
-fn flush() {
-    global_session().flush();
+fn shutdown(py: Python<'_>) {
+    // Release the GIL in case any flushing behavior needs to
+    // cleanup a python object.
+    py.allow_threads(|| {
+        re_log::debug!("Shutting down the Rerun SDK");
+        let mut session = global_session();
+        session.flush();
+        session.disconnect();
+    });
 }
 
 /// Disconnect from remote server (if any).
@@ -1747,7 +1751,6 @@ fn log_mesh_file(
     };
 
     let mut session = global_session();
-    let obj_path = session.classic_prefix_obj_path(obj_path);
 
     let time_point = time(timeless);
 
@@ -1780,7 +1783,7 @@ fn log_mesh_file(
     }
 
     if session.classic_log_gate() {
-        let obj_path = session.arrow_prefix_obj_path(obj_path);
+        let obj_path = session.classic_prefix_obj_path(obj_path);
         session.register_type(obj_path.obj_type_path(), ObjectType::Mesh3D);
         session.send_data(
             &time_point,
@@ -1858,6 +1861,7 @@ fn log_image_file(
                 ],
                 data: re_log_types::field_types::TensorData::JPEG(img_bytes.clone()),
                 meaning: re_log_types::field_types::TensorDataMeaning::Unknown,
+                meter: None,
             }]
             .try_into()
             .unwrap()],

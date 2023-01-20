@@ -29,8 +29,7 @@ pub(crate) fn view_bar_chart(
         .clamp_grid(true)
         .show(ui, |plot_ui| {
             for (instance_id, bar_chart_values) in &scene.charts {
-                let [r, g, b, a] = auto_color(hash(instance_id) as _);
-                let color = egui::Color32::from_rgba_unmultiplied(r, g, b, a);
+                let color = auto_color(hash(instance_id) as _);
                 let fill = color.gamma_multiply(0.75).additive(); // make sure overlapping bars are obvious
 
                 plot_ui.bar_chart(

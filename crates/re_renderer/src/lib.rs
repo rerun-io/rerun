@@ -2,6 +2,10 @@
 //!
 //! A wgpu based renderer [wgpu](https://github.com/gfx-rs/wgpu/) for all your visualization needs.
 //! Used in `re_runner` to display the contents of any view contents other than pure UI.
+//!
+//! ## Feature flags
+#![doc = document_features::document_features!()]
+//!
 
 pub mod config;
 pub mod importer;
@@ -26,6 +30,7 @@ pub use depth_offset::DepthOffset;
 pub use line_strip_builder::{LineStripBuilder, LineStripSeriesBuilder};
 pub use point_cloud_builder::{PointCloudBatchBuilder, PointCloudBuilder};
 pub use size::Size;
+pub use view_builder::AutoSizeConfig;
 pub use wgpu_resources::WgpuResourcePoolStatistics;
 
 mod file_system;

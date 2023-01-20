@@ -81,7 +81,7 @@ impl DataStore {
             return Ok(());
         }
 
-        let ent_path_hash = *ent_path.hash();
+        let ent_path_hash = ent_path.hash();
         let nb_rows = components[0].value.len();
 
         // Effectively the same thing as having a non-unit length batch, except it's really not
@@ -520,7 +520,7 @@ impl IndexTable {
 
         if size_overflow || len_overflow {
             if let Some((min, second_half)) = bucket.split() {
-                debug!(
+                trace!(
                     kind = "insert",
                     timeline = %timeline.name(),
                     time = timeline.typ().format(time),
@@ -1082,7 +1082,7 @@ impl ComponentTable {
         let len_overflow = len > config.component_bucket_nb_rows;
 
         if size_overflow || len_overflow {
-            debug!(
+            trace!(
                 kind = "insert",
                 component = self.name.as_str(),
                 size_limit = config.component_bucket_size_bytes,

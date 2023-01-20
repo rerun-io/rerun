@@ -2,7 +2,7 @@ use std::net::SocketAddr;
 
 use crossbeam::channel::{select, Receiver, Sender};
 
-use re_log_types::LogMsg;
+use re_log_types::{LogMsg, MsgId};
 
 #[derive(Debug, PartialEq, Eq)]
 struct FlushedMsg;
@@ -30,6 +30,9 @@ enum PacketMsg {
 pub struct Client {
     msg_tx: Sender<MsgMsg>,
     flushed_rx: Receiver<FlushedMsg>,
+    encode_quit_tx: Sender<QuitMsg>,
+    send_quit_tx: Sender<QuitMsg>,
+    drop_quit_tx: Sender<QuitMsg>,
 }
 
 impl Default for Client {
@@ -43,16 +46,26 @@ impl Client {
         // TODO(emilk): keep track of how much memory is in each pipe
         // and apply back-pressure to not use too much RAM.
         let (msg_tx, msg_rx) = crossbeam::channel::unbounded();
+        let (msg_drop_tx, msg_drop_rx) = crossbeam::channel::unbounded();
         let (packet_tx, packet_rx) = crossbeam::channel::unbounded();
         let (flushed_tx, flushed_rx) = crossbeam::channel::unbounded();
         let (encode_quit_tx, encode_quit_rx) = crossbeam::channel::unbounded();
         let (send_quit_tx, send_quit_rx) = crossbeam::channel::unbounded();
+        let (drop_quit_tx, drop_quit_rx) = crossbeam::channel::unbounded();
 
         std::thread::Builder::new()
             .name("msg_encoder".into())
             .spawn(move || {
-                msg_encode(&msg_rx, &encode_quit_rx, &packet_tx);
+                msg_encode(&msg_rx, &msg_drop_tx, &encode_quit_rx, &packet_tx);
                 re_log::debug!("Shutting down msg encoder thread");
+            })
+            .expect("Failed to spawn thread");
+
+        std::thread::Builder::new()
+            .name("msg_dropper".into())
+            .spawn(move || {
+                msg_drop(&msg_drop_rx, &drop_quit_rx);
+                re_log::debug!("Shutting down msg dropper thread");
             })
             .expect("Failed to spawn thread");
 
@@ -64,14 +77,13 @@ impl Client {
             })
             .expect("Failed to spawn thread");
 
-        ctrlc::set_handler(move || {
-            re_log::debug!("Ctrl-C detected - Aborting before everything has been sent");
-            encode_quit_tx.send(QuitMsg).ok();
-            send_quit_tx.send(QuitMsg).ok();
-        })
-        .expect("Error setting Ctrl-C handler");
-
-        Self { msg_tx, flushed_rx }
+        Self {
+            msg_tx,
+            flushed_rx,
+            encode_quit_tx,
+            send_quit_tx,
+            drop_quit_tx,
+        }
     }
 
     pub fn set_addr(&mut self, addr: SocketAddr) {
@@ -107,13 +119,38 @@ impl Client {
 impl Drop for Client {
     /// Wait until everything has been sent.
     fn drop(&mut self) {
+        re_log::debug!("Shutting down the client connection…");
+        self.send(LogMsg::Goodbye(MsgId::random()));
         self.flush();
+        self.encode_quit_tx.send(QuitMsg).ok();
+        self.send_quit_tx.send(QuitMsg).ok();
+        self.drop_quit_tx.send(QuitMsg).ok();
         re_log::debug!("Sender has shut down.");
+    }
+}
+
+// We drop messages in a separate thread because the PyO3 + Arrow memory model
+// means in some cases these messages actually store pointers back to
+// python-managed memory. We don't want to block our send-thread waiting for the
+// GIL.
+fn msg_drop(msg_drop_rx: &Receiver<MsgMsg>, quit_rx: &Receiver<QuitMsg>) {
+    loop {
+        select! {
+            recv(msg_drop_rx) -> msg_msg => {
+                if msg_msg.is_err() {
+                    return; // channel has closed
+                }
+            }
+            recv(quit_rx) -> _quit_msg => {
+                return;
+            }
+        }
     }
 }
 
 fn msg_encode(
     msg_rx: &Receiver<MsgMsg>,
+    msg_drop_tx: &Sender<MsgMsg>,
     quit_rx: &Receiver<QuitMsg>,
     packet_tx: &Sender<PacketMsg>,
 ) {
@@ -121,19 +158,20 @@ fn msg_encode(
         select! {
             recv(msg_rx) -> msg_msg => {
                 if let Ok(msg_msg) = msg_msg {
-                    let packet_msg = match msg_msg {
+                    let packet_msg = match &msg_msg {
                         MsgMsg::LogMsg(log_msg) => {
-                            let packet = crate::encode_log_msg(&log_msg);
+                            let packet = crate::encode_log_msg(log_msg);
                             re_log::trace!("Encoded message of size {}", packet.len());
                             PacketMsg::Packet(packet)
                         }
-                        MsgMsg::SetAddr(new_addr) => PacketMsg::SetAddr(new_addr),
+                        MsgMsg::SetAddr(new_addr) => PacketMsg::SetAddr(*new_addr),
                         MsgMsg::Flush => PacketMsg::Flush,
                     };
 
                     packet_tx
                         .send(packet_msg)
                         .expect("tcp_sender thread should live longer");
+                    msg_drop_tx.send(msg_msg).expect("Main thread should still be alive");
                 } else {
                     return; // channel has closed
                 }

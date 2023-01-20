@@ -192,6 +192,16 @@ pub enum MeshFormat {
     Obj,
 }
 
+impl std::fmt::Display for MeshFormat {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MeshFormat::Gltf => "GLTF".fmt(f),
+            MeshFormat::Glb => "GLB".fmt(f),
+            MeshFormat::Obj => "OBJ".fmt(f),
+        }
+    }
+}
+
 /// A Generic 3D Mesh
 ///
 /// ```

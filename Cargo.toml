@@ -17,7 +17,13 @@ arrow2 = "0.15"
 arrow2_convert = "0.3"
 comfy-table = { version = "6.1", default-features = false }
 derive_more = "0.99"
-ecolor = { version = "0.20" }
+ecolor = "0.20.0"
+eframe = { version = "0.20.0", default-features = false }
+egui = "0.20.1"
+egui_extras = "0.20.0"
+egui-wgpu = "0.20.0"
+emath = "0.20.0"
+epaint = "0.20.0"
 image = "0.24"
 lazy_static = "1.4"
 ndarray = "0.15"
@@ -27,6 +33,13 @@ polars-ops = "0.26"
 puffin = "0.14"
 thiserror = "1.0"
 tokio = "1.24"
+wgpu = { version = "0.14", default-features = false }
+wgpu-core = { version = "0.14", default-features = false }
+
+
+# Because gltf hasn't published a new version: https://github.com/gltf-rs/gltf/issues/357
+gltf = { git = "https://github.com/rerun-io/gltf", rev = "3c14ded73755d1ce9e47010edb06db63cb7e2cca" }
+
 
 [profile.dev]
 opt-level = 1 # Make debug builds run faster
@@ -41,7 +54,19 @@ opt-level = 2
 [profile.bench]
 debug = true
 
+
 [patch.crates-io]
+# Try to avoid patching crates! It prevents us from publishing the crates on crates.io.
+# Prefer to put the crate you want to patch under [workspace.dependencies] above, if possible.
+# Of course, if the crates are used transitevly, that is not possible (e.g. polars uses arrow2).
+
+# Upstream PR https://github.com/jorgecarleitao/arrow2/pull/1360
+arrow2 = { git = "https://github.com/rerun-io/arrow2", rev = "c6ef5e3dde4a18c35c8a1d91d9a741835be0305f" }
+# Upstream PR https://github.com/DataEngineeringLabs/arrow2-convert/pull/91
+arrow2_convert = { git = "https://github.com/rerun-io/arrow2-convert", rev = "7e63de5ce71741aaea3c36572d3e6831658ec3ed" }
+# arrow2 = { path = "../arrow2" }
+# arrow2_convert = { path = "../arrow2-convert/arrow2_convert" }
+
 # 2022-01-16: prevent ctrl-p from opening the print dialog
 ecolor = { git = "https://github.com/emilk/egui", rev = "cd0f66b9ae661be737ce57f26fb305cf124f6b73" }
 eframe = { git = "https://github.com/emilk/egui", rev = "cd0f66b9ae661be737ce57f26fb305cf124f6b73" }
@@ -59,17 +84,7 @@ epaint = { git = "https://github.com/emilk/egui", rev = "cd0f66b9ae661be737ce57f
 # emath = { path = "../../egui/crates/emath" }
 # epaint = { path = "../../egui/crates/epaint" }
 
-# Because gltf hasn't published a new version: https://github.com/gltf-rs/gltf/issues/357
-gltf = { git = "https://github.com/rerun-io/gltf", rev = "3c14ded73755d1ce9e47010edb06db63cb7e2cca" }
-
 # 2022-10-12 - Alpha to coverage support for GLES
 wgpu = { git = "https://github.com/gfx-rs/wgpu.git", ref = "a377ae2b7fe6c1c9412751166f0917e617164e49" }
 wgpu-core = { git = "https://github.com/gfx-rs/wgpu.git", ref = "a377ae2b7fe6c1c9412751166f0917e617164e49" }
-#wgpu = { path = "../wgpu/wgpu" }
-
-# Upstream PR https://github.com/jorgecarleitao/arrow2/pull/1360
-arrow2 = { git = "https://github.com/rerun-io/arrow2", rev = "c6ef5e3dde4a18c35c8a1d91d9a741835be0305f" }
-# Upstream PR https://github.com/DataEngineeringLabs/arrow2-convert/pull/91
-arrow2_convert = { git = "https://github.com/rerun-io/arrow2-convert", rev = "aa48be082d0039e8c1a67b581ce5f697b89f3765" }
-#arrow2 = { path = "../arrow2" }
-#arrow2_convert = { path = "../arrow2-convert/arrow2_convert" }
+# wgpu = { path = "../wgpu/wgpu" }

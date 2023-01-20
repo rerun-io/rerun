@@ -165,6 +165,9 @@ pub enum LogMsg {
 
     /// Log an arrow message to a [`DataPath`].
     ArrowMsg(ArrowMsg),
+
+    /// Sent when the client shuts down the connection.
+    Goodbye(MsgId),
 }
 
 impl LogMsg {
@@ -175,6 +178,7 @@ impl LogMsg {
             Self::DataMsg(msg) => msg.msg_id,
             Self::PathOpMsg(msg) => msg.msg_id,
             Self::ArrowMsg(msg) => msg.msg_id,
+            Self::Goodbye(msg_id) => *msg_id,
         }
     }
 }

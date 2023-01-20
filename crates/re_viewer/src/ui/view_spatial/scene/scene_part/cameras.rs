@@ -7,7 +7,7 @@ use re_query::{query_entity_with_primary, QueryError};
 use re_renderer::renderer::LineStripFlags;
 
 use crate::{
-    misc::{space_info::query_view_coordinates, ViewerContext},
+    misc::{space_info::query_view_coordinates, ObjectPathSelectionScope, ViewerContext},
     ui::{
         scene::SceneQuery,
         transform_cache::{ReferenceFromObjTransform, TransformCache},
@@ -27,7 +27,6 @@ impl ScenePart for CamerasPartClassic {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
-        hovered_instance: InstanceIdHash,
     ) {
         crate::profile_scope!("CamerasPartClassic");
 
@@ -49,6 +48,8 @@ impl ScenePart for CamerasPartClassic {
                     InstanceIdHash::NONE
                 }
             };
+            let hovered_paths = ctx.hovered().check_obj_path(obj_path.hash());
+            let selected_paths = ctx.selection().check_obj_path(obj_path.hash());
 
             let view_coordinates = determine_view_coordinates(
                 &ctx.log_db.obj_db,
@@ -62,9 +63,10 @@ impl ScenePart for CamerasPartClassic {
                 &props,
                 transforms,
                 instance_hash,
-                hovered_instance,
                 pinhole,
                 view_coordinates,
+                &hovered_paths,
+                &selected_paths,
             );
         }
     }
@@ -109,10 +111,11 @@ impl CamerasPart {
         obj_path: &ObjPath,
         props: &ObjectProps,
         transforms: &TransformCache,
-        instance: InstanceIdHash,
-        hovered_instance: InstanceIdHash,
+        instance_hash: InstanceIdHash,
         pinhole: Pinhole,
         view_coordinates: ViewCoordinates,
+        hovered_paths: &ObjectPathSelectionScope,
+        selected_paths: &ObjectPathSelectionScope,
     ) {
         // The transform *at* this object path already has the pinhole transformation we got passed in!
         // This makes sense, since if there's an image logged here one would expect that the transform applies.
@@ -142,7 +145,7 @@ impl CamerasPart {
         //                  and https://github.com/rerun-io/rerun/issues/686 (Replace camera mesh with expressive camera gizmo (extension of current frustum)
         scene.space_cameras.push(SpaceCamera3D {
             obj_path: obj_path.clone(),
-            instance,
+            instance: instance_hash,
             view_coordinates,
             world_from_camera,
             pinhole: Some(pinhole),
@@ -194,31 +197,29 @@ impl CamerasPart {
             (up_triangle[2], up_triangle[0]),
         ];
 
-        let (line_radius, line_color) = if instance == hovered_instance {
-            (
-                re_renderer::Size::new_points(2.0),
-                SceneSpatial::HOVER_COLOR,
-            )
-        } else {
-            (
-                re_renderer::Size::new_points(1.0),
-                SceneSpatial::CAMERA_COLOR,
-            )
-        };
+        let mut radius = re_renderer::Size::new_points(1.0);
+        let mut color = SceneSpatial::CAMERA_COLOR;
+        SceneSpatial::apply_hover_and_selection_effect(
+            &mut radius,
+            &mut color,
+            hovered_paths.contains_index(instance_hash.instance_index_hash),
+            selected_paths.contains_index(instance_hash.instance_index_hash),
+        );
+
         scene
             .primitives
             .line_strips
             .batch("camera frustum")
             .world_from_obj(world_from_parent)
             .add_segments(segments.into_iter())
-            .radius(line_radius)
-            .color(line_color)
+            .radius(radius)
+            .color(color)
             .flags(
                 LineStripFlags::NO_COLOR_GRADIENT
                     | LineStripFlags::CAP_END_ROUND
                     | LineStripFlags::CAP_START_ROUND,
             )
-            .user_data(instance);
+            .user_data(instance_hash);
     }
 }
 
@@ -229,7 +230,6 @@ impl ScenePart for CamerasPart {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
-        hovered_instance: InstanceIdHash,
     ) {
         crate::profile_scope!("CamerasPart");
 
@@ -243,6 +243,9 @@ impl ScenePart for CamerasPart {
                 &[],
             )
             .and_then(|entity_view| {
+                let hovered_paths = ctx.hovered().check_obj_path(ent_path.hash());
+                let selected_paths = ctx.selection().check_obj_path(ent_path.hash());
+
                 entity_view.visit1(|instance, transform| {
                     let Transform::Pinhole(pinhole) = transform else {
                         return;
@@ -268,9 +271,10 @@ impl ScenePart for CamerasPart {
                         &props,
                         transforms,
                         instance_hash,
-                        hovered_instance,
                         pinhole,
                         view_coordinates,
+                        &hovered_paths,
+                        &selected_paths,
                     );
                 })
             }) {

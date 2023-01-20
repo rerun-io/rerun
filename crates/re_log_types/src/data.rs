@@ -920,6 +920,18 @@ impl field_types::TensorTrait for ClassicTensor {
     fn is_shaped_like_an_image(&self) -> bool {
         self.is_shaped_like_an_image()
     }
+
+    fn is_vector(&self) -> bool {
+        self.is_vector()
+    }
+
+    fn meaning(&self) -> field_types::TensorDataMeaning {
+        self.meaning
+    }
+
+    fn get(&self, index: &[u64]) -> Option<TensorElement> {
+        self.get(index)
+    }
 }
 
 impl ClassicTensor {

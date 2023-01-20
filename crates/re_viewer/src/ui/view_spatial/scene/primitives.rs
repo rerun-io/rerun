@@ -2,8 +2,6 @@ use egui::Color32;
 use re_data_store::InstanceIdHash;
 use re_renderer::{renderer::MeshInstance, LineStripSeriesBuilder, PointCloudBuilder};
 
-use crate::ui::view_spatial::eye::Eye;
-
 use super::MeshSource;
 
 /// Primitives sent off to `re_renderer`.
@@ -110,7 +108,7 @@ impl SceneSpatialPrimitives {
                         gpu_mesh: instance.gpu_mesh.clone(),
                         mesh: None, // Don't care.
                         world_from_mesh: base_transform * instance.world_from_mesh,
-                        additive_tint: mesh.additive_tint.unwrap_or(Color32::TRANSPARENT),
+                        additive_tint: mesh.additive_tint,
                     })
             })
             .collect()
@@ -120,15 +118,12 @@ impl SceneSpatialPrimitives {
         &mut self,
         transform: macaw::IsoTransform,
         instance: InstanceIdHash,
-        eye: &Eye,
-        viewport_size: egui::Vec2,
+        axis_length: f32,
     ) {
         use re_renderer::renderer::LineStripFlags;
 
         // TODO(andreas): It would be nice if could display the semantics (left/right/up) as a tooltip on hover.
-        let line_radius = re_renderer::Size::new_points(2.5);
-        let axis_length =
-            eye.approx_pixel_world_size_at(transform.translation(), viewport_size) * 32.0;
+        let line_radius = re_renderer::Size::new_scene(axis_length * 0.05);
         let origin = transform.translation();
 
         let mut line_batch = self.line_strips.batch("origin axis");

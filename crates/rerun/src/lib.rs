@@ -8,6 +8,7 @@
 
 use anyhow::Context;
 
+use clap::Subcommand;
 use re_format::parse_duration;
 use re_log_types::LogMsg;
 use re_smart_channel::Receiver;
@@ -64,9 +65,41 @@ struct Args {
     /// than Rerun can index it.
     #[clap(long)]
     drop_at_latency: Option<String>,
+
+    #[command(subcommand)]
+    commands: Option<Commands>,
 }
 
-pub async fn run<I, T>(args: I) -> anyhow::Result<()>
+#[derive(Debug, Clone, Subcommand)]
+enum Commands {
+    /// Configure the behaviour of our analytics.
+    #[cfg(feature = "analytics")]
+    #[command(subcommand)]
+    Analytics(AnalyticsCommands),
+}
+
+#[derive(Debug, Clone, Subcommand)]
+pub enum AnalyticsCommands {
+    /// Prints extra information about analytics.
+    Details,
+    /// Deletes everything related to analytics.
+    ///
+    /// This will remove all pending data that hasn't yet been sent to our servers, as well as
+    /// reset your analytics ID.
+    Clear,
+    /// Enable analytics.
+    Enable,
+    /// Disable analytics.
+    Disable,
+    /// Prints the current configuration.
+    Config,
+}
+
+// Run the reun application and return an exit code
+// If we be nice to use `std::process::ExitCode` here but
+// then there's no good way to get back at the exit code from
+// python
+pub async fn run<I, T>(args: I) -> anyhow::Result<u8>
 where
     I: IntoIterator<Item = T>,
     T: Into<std::ffi::OsString> + Clone,
@@ -77,7 +110,43 @@ where
 
     use clap::Parser as _;
     let args = Args::parse_from(args);
-    run_impl(args).await
+
+    let res = if let Some(commands) = &args.commands {
+        match commands {
+            Commands::Analytics(analytics) => run_analytics(analytics).map_err(Into::into),
+        }
+    } else {
+        run_impl(args).await
+    };
+
+    match res {
+        // Clean success
+        Ok(_) => Ok(0),
+        // Clean failure -- known error AddrInUse
+        Err(err)
+            if err
+                .downcast_ref::<std::io::Error>()
+                .map_or(false, |io_err| {
+                    io_err.kind() == std::io::ErrorKind::AddrInUse
+                }) =>
+        {
+            re_log::warn!("{err}. Another Rerun instance is probably running.");
+            Ok(1)
+        }
+        // Unclean failure -- re-raise exception
+        Err(err) => Err(err),
+    }
+}
+
+fn run_analytics(cmd: &AnalyticsCommands) -> Result<(), re_analytics::cli::CliError> {
+    match cmd {
+        #[allow(clippy::unit_arg)]
+        AnalyticsCommands::Details => Ok(re_analytics::cli::print_details()),
+        AnalyticsCommands::Clear => re_analytics::cli::clear(),
+        AnalyticsCommands::Enable => re_analytics::cli::opt(true),
+        AnalyticsCommands::Disable => re_analytics::cli::opt(false),
+        AnalyticsCommands::Config => re_analytics::cli::print_config(),
+    }
 }
 
 async fn run_impl(args: Args) -> anyhow::Result<()> {

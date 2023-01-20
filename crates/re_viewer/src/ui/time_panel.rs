@@ -8,6 +8,7 @@ use egui::{
     NumExt, PointerButton, Pos2, Rect, Rgba, Shape, Stroke, Vec2,
 };
 
+use itertools::Itertools;
 use re_data_store::{InstanceId, ObjectTree};
 use re_log_types::{
     DataPath, Duration, MsgId, ObjPathComp, Time, TimeInt, TimeRange, TimeRangeF, TimeReal,
@@ -459,7 +460,11 @@ impl TimePanel {
                             2.0,
                             ui.visuals().text_color(),
                         );
-                        ctx.data_path_button_to(ui, field_name.as_str(), &data_path);
+                        ctx.data_path_button_to(
+                            ui,
+                            super::format_field_or_component_name(field_name),
+                            &data_path,
+                        );
                     })
                     .response;
 
@@ -566,8 +571,12 @@ fn show_data_over_time(
 ) {
     crate::profile_function!();
 
-    let cur_selection = ctx.selection();
-    let is_selected = cur_selection.is_some() && select_on_click.as_ref() == Some(&cur_selection);
+    // TODO(andreas): Should pass through underlying instance id and be clever about selection vs hover state.
+    let is_selected = if let Some(select_on_click) = select_on_click.as_ref() {
+        ctx.selection().iter().contains(select_on_click)
+    } else {
+        false
+    };
 
     // painting each data point as a separate circle is slow (too many circles!)
     // so we join time points that are close together.
@@ -704,9 +713,9 @@ fn show_data_over_time(
     if !hovered_messages.is_empty() {
         if time_area_response.clicked_by(egui::PointerButton::Primary) {
             if let Some(select_on_click) = select_on_click {
-                ctx.set_selection(select_on_click);
+                ctx.set_single_selection(select_on_click);
             } else {
-                ctx.clear_selection();
+                ctx.selection_state_mut().clear_current();
             }
 
             if let Some(hovered_time) = hovered_time {

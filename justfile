@@ -83,5 +83,11 @@ toml-lint:
 
 # Update the design_tokens.json used to style the GUI.
 # See https://rerun-design-guidelines.netlify.app/tokens for their meanings.
+# To update the upstream `design_tokens.json`, modify
+# https://github.com/rerun-io/documentation/blob/main/src/utils/tokens.ts and push to main.
 download-design-tokens:
-    curl https://rerun-design-guidelines.netlify.app/api/tokens | jq > crates/re_ui/data/design_tokens.json
+    curl https://rerun-docs.netlify.app/api/tokens | jq > crates/re_ui/data/design_tokens.json
+
+# Update the results of `insta` snapshot regression tests
+update-insta-tests:
+    cargo test; cargo insta review

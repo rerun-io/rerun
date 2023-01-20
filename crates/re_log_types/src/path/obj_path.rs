@@ -110,8 +110,8 @@ impl ObjPath {
     }
 
     #[inline]
-    pub fn hash(&self) -> &ObjPathHash {
-        &self.hash
+    pub fn hash(&self) -> ObjPathHash {
+        self.hash
     }
 
     /// Precomputed 64-bit hash.

@@ -33,11 +33,22 @@ pub use self::annotations::{Annotations, DefaultColor, MISSING_ANNOTATIONS};
 pub use self::data_blueprint::DataBlueprintGroupHandle;
 pub use self::selection_history::{HistoricalSelection, SelectionHistory};
 
-// ----
+pub(crate) use data_ui::Preview;
+use re_log_types::FieldOrComponent;
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub(crate) enum Preview {
-    Small,
-    Medium,
-    Specific(f32),
+pub fn format_component_name(name: &re_data_store::FieldName) -> String {
+    let name = name.as_str();
+    if let Some(name) = name.strip_prefix("rerun.") {
+        name.into()
+    } else {
+        name.into()
+    }
+}
+
+pub fn format_field_or_component_name(name: &FieldOrComponent) -> String {
+    match name {
+        FieldOrComponent::Field(name) | FieldOrComponent::Component(name) => {
+            format_component_name(name)
+        }
+    }
 }

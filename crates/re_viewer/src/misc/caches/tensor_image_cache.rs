@@ -26,9 +26,9 @@ use crate::ui::{Annotations, DefaultColor, MISSING_ANNOTATIONS};
 /// In the case of images that leverage a `ColorMapping` this includes conversion from
 /// the native Tensor type A -> Color32 which is stored for the cached dynamic /
 /// retained images.
-pub struct TensorImageView<'store, 'cache, T> {
+pub struct TensorImageView<'store, 'cache> {
     /// Borrowed tensor from the object store
-    pub tensor: &'store T,
+    pub tensor: &'store dyn AsDynamicImage,
 
     /// Annotations used to create the view
     pub annotations: &'store Arc<Annotations>,
@@ -71,12 +71,12 @@ pub struct ImageCache {
 }
 
 impl ImageCache {
-    pub(crate) fn get_view_with_annotations<'store, 'cache, T: AsDynamicImage>(
+    pub(crate) fn get_view_with_annotations<'store, 'cache>(
         &'cache mut self,
-        tensor: &'store T,
+        tensor: &'store dyn AsDynamicImage,
         annotations: &'store Arc<Annotations>,
         render_ctx: &mut RenderContext,
-    ) -> TensorImageView<'store, 'cache, T> {
+    ) -> TensorImageView<'store, 'cache> {
         let ci = self
             .images
             .entry(ImageCacheKey {
@@ -104,7 +104,7 @@ impl ImageCache {
         &'cache mut self,
         tensor: &'store T,
         render_ctx: &mut RenderContext,
-    ) -> TensorImageView<'store, 'cache, T> {
+    ) -> TensorImageView<'store, 'cache> {
         self.get_view_with_annotations(tensor, &MISSING_ANNOTATIONS, render_ctx)
     }
 
@@ -165,7 +165,7 @@ impl CachedImage {
     fn from_tensor(
         render_ctx: &mut RenderContext,
         debug_name: String,
-        tensor: &impl AsDynamicImage,
+        tensor: &dyn AsDynamicImage,
         annotations: &Arc<Annotations>,
     ) -> Self {
         crate::profile_function!();
@@ -294,6 +294,7 @@ impl AsDynamicImage for ClassicTensor {
                                         .class_description(Some(ClassId(*p as u16)))
                                         .annotation_info()
                                         .color(None, DefaultColor::TransparentBlack)
+                                        .to_array()
                                 })
                                 .collect(),
                         )
@@ -313,6 +314,7 @@ impl AsDynamicImage for ClassicTensor {
                                         .class_description(Some(ClassId(*p)))
                                         .annotation_info()
                                         .color(None, DefaultColor::TransparentBlack)
+                                        .to_array()
                                 })
                                 .collect(),
                         )

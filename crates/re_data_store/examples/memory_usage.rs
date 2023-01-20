@@ -1,26 +1,16 @@
-use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
+use std::sync::atomic::{AtomicUsize, Ordering::Relaxed};
+
+thread_local! {
+    static LIVE_BYTES_IN_THREAD: AtomicUsize = AtomicUsize::new(0);
+}
 
 pub struct TrackingAllocator {
     allocator: std::alloc::System,
-
-    cumul_alloc_count: AtomicUsize,
-    cumul_alloc_size: AtomicUsize,
-    cumul_free_count: AtomicUsize,
-    cumul_free_size: AtomicUsize,
-
-    high_water_mark_bytes: AtomicUsize,
 }
 
 #[global_allocator]
 pub static GLOBAL_ALLOCATOR: TrackingAllocator = TrackingAllocator {
     allocator: std::alloc::System,
-
-    cumul_alloc_count: AtomicUsize::new(0),
-    cumul_alloc_size: AtomicUsize::new(0),
-    cumul_free_count: AtomicUsize::new(0),
-    cumul_free_size: AtomicUsize::new(0),
-
-    high_water_mark_bytes: AtomicUsize::new(0),
 };
 
 #[allow(unsafe_code)]
@@ -29,12 +19,7 @@ pub static GLOBAL_ALLOCATOR: TrackingAllocator = TrackingAllocator {
 unsafe impl std::alloc::GlobalAlloc for TrackingAllocator {
     #[allow(clippy::let_and_return)]
     unsafe fn alloc(&self, layout: std::alloc::Layout) -> *mut u8 {
-        self.cumul_alloc_count.fetch_add(1, SeqCst);
-        self.cumul_alloc_size.fetch_add(layout.size(), SeqCst);
-
-        let used = self.used_bytes();
-        self.high_water_mark_bytes
-            .store(self.high_water_mark_bytes.load(SeqCst).max(used), SeqCst);
+        LIVE_BYTES_IN_THREAD.with(|bytes| bytes.fetch_add(layout.size(), Relaxed));
 
         // SAFETY:
         // Just deferring
@@ -42,8 +27,7 @@ unsafe impl std::alloc::GlobalAlloc for TrackingAllocator {
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: std::alloc::Layout) {
-        self.cumul_free_count.fetch_add(1, SeqCst);
-        self.cumul_free_size.fetch_add(layout.size(), SeqCst);
+        LIVE_BYTES_IN_THREAD.with(|bytes| bytes.fetch_sub(layout.size(), Relaxed));
 
         // SAFETY:
         // Just deferring
@@ -51,10 +35,15 @@ unsafe impl std::alloc::GlobalAlloc for TrackingAllocator {
     }
 }
 
-impl TrackingAllocator {
-    fn used_bytes(&self) -> usize {
-        self.cumul_alloc_size.load(SeqCst) - self.cumul_free_size.load(SeqCst)
-    }
+/// Can be used to track amount of memory allocates,
+/// assuming all allocations are on the calling thread.
+///
+/// The reason we use thread-local counting is so that
+/// the counting won't be confused by any other running threads.
+/// This is not currently important, but would be important if this file were to
+/// be converted into a regression test instead (tests run in parallel).
+fn live_bytes() -> usize {
+    LIVE_BYTES_IN_THREAD.with(|bytes| bytes.load(Relaxed))
 }
 
 // ----------------------------------------------------------------------------
@@ -90,7 +79,7 @@ const OPTIMAL_BYTES_PER_POINT: usize = 3 * std::mem::size_of::<f32>(); // [f32; 
 pub static GLOBAL_MUTEXT: Option<std::sync::Mutex<()>> = None;
 
 fn tracking_points() {
-    let used_bytes_start = GLOBAL_ALLOCATOR.used_bytes();
+    let used_bytes_start = live_bytes();
 
     const NUM_FRAMES: usize = 10_000;
     const OVERLAP: usize = 100;
@@ -113,7 +102,7 @@ fn tracking_points() {
         }
     }
 
-    let used_bytes = GLOBAL_ALLOCATOR.used_bytes() - used_bytes_start;
+    let used_bytes = live_bytes() - used_bytes_start;
 
     let bytes_per_point = used_bytes as f32 / num_points as f32;
     let overhead_factor = bytes_per_point / OPTIMAL_BYTES_PER_POINT as f32;
@@ -125,7 +114,7 @@ fn tracking_points() {
 }
 
 fn big_clouds() {
-    let used_bytes_start = GLOBAL_ALLOCATOR.used_bytes();
+    let used_bytes_start = live_bytes();
 
     const NUM_CAMERAS: usize = 4;
     const NUM_FRAMES: usize = 100;
@@ -152,7 +141,7 @@ fn big_clouds() {
         }
     }
 
-    let used_bytes = GLOBAL_ALLOCATOR.used_bytes() - used_bytes_start;
+    let used_bytes = live_bytes() - used_bytes_start;
 
     let bytes_per_point = used_bytes as f32 / num_points as f32;
     let overhead_factor = bytes_per_point / OPTIMAL_BYTES_PER_POINT as f32;
@@ -162,7 +151,7 @@ fn big_clouds() {
 }
 
 fn big_clouds_batched() {
-    let used_bytes_start = GLOBAL_ALLOCATOR.used_bytes();
+    let used_bytes_start = live_bytes();
 
     const NUM_CAMERAS: usize = 4;
     const NUM_FRAMES: usize = 100;
@@ -196,7 +185,7 @@ fn big_clouds_batched() {
         }
     }
 
-    let used_bytes = GLOBAL_ALLOCATOR.used_bytes() - used_bytes_start;
+    let used_bytes = live_bytes() - used_bytes_start;
 
     let bytes_per_point = used_bytes as f32 / num_points as f32;
     let overhead_factor = bytes_per_point / OPTIMAL_BYTES_PER_POINT as f32;
@@ -208,7 +197,7 @@ fn big_clouds_batched() {
 }
 
 fn big_clouds_sequential_batched() {
-    let used_bytes_start = GLOBAL_ALLOCATOR.used_bytes();
+    let used_bytes_start = live_bytes();
 
     const NUM_CAMERAS: usize = 4;
     const NUM_FRAMES: usize = 100;
@@ -239,7 +228,7 @@ fn big_clouds_sequential_batched() {
         }
     }
 
-    let used_bytes = GLOBAL_ALLOCATOR.used_bytes() - used_bytes_start;
+    let used_bytes = live_bytes() - used_bytes_start;
 
     let bytes_per_point = used_bytes as f32 / num_points as f32;
     let overhead_factor = bytes_per_point / OPTIMAL_BYTES_PER_POINT as f32;
@@ -278,9 +267,9 @@ fn log_messages() {
     // The decoded size is often smaller, presumably because all buffers
     // (e.g. Vec) have just the right capacity.
     fn size_decoded(bytes: &[u8]) -> usize {
-        let used_bytes_start = GLOBAL_ALLOCATOR.used_bytes();
+        let used_bytes_start = live_bytes();
         let log_msg = Box::new(decode_log_msg(bytes));
-        let bytes_used = GLOBAL_ALLOCATOR.used_bytes() - used_bytes_start;
+        let bytes_used = live_bytes() - used_bytes_start;
         drop(log_msg);
         bytes_used
     }
@@ -294,22 +283,22 @@ fn log_messages() {
     time_point.insert(timeline, TimeInt::from(0));
 
     {
-        let used_bytes_start = GLOBAL_ALLOCATOR.used_bytes();
+        let used_bytes_start = live_bytes();
         let obj_path = obj_path!("points");
-        let used_bytes = GLOBAL_ALLOCATOR.used_bytes() - used_bytes_start;
+        let used_bytes = live_bytes() - used_bytes_start;
         println!("Short ObjPath uses {used_bytes} bytes in RAM");
         drop(obj_path);
     }
 
     {
-        let used_bytes_start = GLOBAL_ALLOCATOR.used_bytes();
+        let used_bytes_start = live_bytes();
         let log_msg = Box::new(LogMsg::DataMsg(DataMsg {
             msg_id: MsgId::random(),
             time_point: time_point.clone(),
             data_path: DataPath::new(obj_path!("points"), pos_field_name),
             data: Data::Vec2(POS).into(),
         }));
-        let log_msg_bytes = GLOBAL_ALLOCATOR.used_bytes() - used_bytes_start;
+        let log_msg_bytes = live_bytes() - used_bytes_start;
         let encoded = encode_log_msg(&log_msg);
         println!(
             "Classic LogMsg containing a Pos2 uses {}-{log_msg_bytes} bytes in RAM, and {} bytes encoded",
@@ -318,7 +307,7 @@ fn log_messages() {
     }
 
     {
-        let used_bytes_start = GLOBAL_ALLOCATOR.used_bytes();
+        let used_bytes_start = live_bytes();
         let msg_bundle = Box::new(
             try_build_msg_bundle1(
                 MsgId::random(),
@@ -328,9 +317,9 @@ fn log_messages() {
             )
             .unwrap(),
         );
-        let msg_bundle_bytes = GLOBAL_ALLOCATOR.used_bytes() - used_bytes_start;
+        let msg_bundle_bytes = live_bytes() - used_bytes_start;
         let log_msg = Box::new(LogMsg::ArrowMsg(ArrowMsg::try_from(*msg_bundle).unwrap()));
-        let log_msg_bytes = GLOBAL_ALLOCATOR.used_bytes() - used_bytes_start;
+        let log_msg_bytes = live_bytes() - used_bytes_start;
         println!("Arrow MsgBundle containing a Pos2 uses {msg_bundle_bytes} bytes in RAM");
         let encoded = encode_log_msg(&log_msg);
         println!(
@@ -343,7 +332,7 @@ fn log_messages() {
         use rand::Rng as _;
         let mut rng = rand::thread_rng();
 
-        let used_bytes_start = GLOBAL_ALLOCATOR.used_bytes();
+        let used_bytes_start = live_bytes();
         let log_msg = Box::new(LogMsg::DataMsg(DataMsg {
             msg_id: MsgId::random(),
             time_point: time_point.clone(),
@@ -357,7 +346,7 @@ fn log_messages() {
                 ),
             },
         }));
-        let log_msg_bytes = GLOBAL_ALLOCATOR.used_bytes() - used_bytes_start;
+        let log_msg_bytes = live_bytes() - used_bytes_start;
         let encoded = encode_log_msg(&log_msg);
         println!(
             "Classic LogMsg containing {NUM_POINTS}x Pos2 uses {}-{log_msg_bytes} bytes in RAM, and {} bytes encoded",
@@ -366,7 +355,7 @@ fn log_messages() {
     }
 
     {
-        let used_bytes_start = GLOBAL_ALLOCATOR.used_bytes();
+        let used_bytes_start = live_bytes();
         let msg_bundle = Box::new(
             try_build_msg_bundle1(
                 MsgId::random(),
@@ -376,9 +365,9 @@ fn log_messages() {
             )
             .unwrap(),
         );
-        let msg_bundle_bytes = GLOBAL_ALLOCATOR.used_bytes() - used_bytes_start;
+        let msg_bundle_bytes = live_bytes() - used_bytes_start;
         let log_msg = Box::new(LogMsg::ArrowMsg(ArrowMsg::try_from(*msg_bundle).unwrap()));
-        let log_msg_bytes = GLOBAL_ALLOCATOR.used_bytes() - used_bytes_start;
+        let log_msg_bytes = live_bytes() - used_bytes_start;
         println!("Arrow MsgBundle containing a Pos2 uses {msg_bundle_bytes} bytes in RAM");
         let encoded = encode_log_msg(&log_msg);
         println!(
