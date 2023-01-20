@@ -60,7 +60,7 @@ impl SelectionPanel {
                 }
 
                 let num_selections = ctx.selection().len();
-                let selection = ctx.selection().iter().cloned().collect::<Vec<_>>(); // borrow checker workaround.
+                let selection = ctx.selection().to_vec();
                 for (i, selection) in selection.iter().enumerate() {
                     ui.push_id(i, |ui| {
                         what_is_selected_ui(ui, ctx, blueprint, selection);
@@ -200,7 +200,7 @@ fn blueprint_ui(
                 if ui.button("Remove from Viewport").clicked() {
                     blueprint.viewport.remove(space_view_id);
                     blueprint.viewport.mark_user_interaction();
-                    ctx.selection_state_mut().clear();
+                    ctx.selection_state_mut().clear_current();
                 } else {
                     if ui.button("Clone Space View").clicked() {
                         let mut new_space_view = space_view.clone();
@@ -242,7 +242,7 @@ fn blueprint_ui(
 
                     ui.separator();
                 } else {
-                    ctx.selection_state_mut().clear();
+                    ctx.selection_state_mut().clear_current();
                 }
             }
         }

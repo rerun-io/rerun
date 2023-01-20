@@ -162,6 +162,24 @@ impl MultiSelection {
         self.selection.into_iter()
     }
 
+    pub fn to_vec(&self) -> Vec<Selection> {
+        self.selection.clone()
+    }
+
+    pub fn are_all_same_kind(&self) -> Option<&'static str> {
+        if let Some(first_selection) = self.selection.first() {
+            if self
+                .selection
+                .iter()
+                .skip(1)
+                .all(|item| std::mem::discriminant(first_selection) == std::mem::discriminant(item))
+            {
+                return Some(first_selection.kind());
+            }
+        }
+        None
+    }
+
     /// Remove all invalid selections.
     pub fn purge_invalid(&mut self, log_db: &LogDb, blueprint: &crate::ui::Blueprint) {
         self.selection

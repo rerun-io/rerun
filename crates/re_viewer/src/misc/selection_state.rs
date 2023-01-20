@@ -79,7 +79,7 @@ impl SelectionState {
     }
 
     /// Clears the current selection out.
-    pub fn clear(&mut self) {
+    pub fn clear_current(&mut self) {
         self.selection = MultiSelection::default();
     }
 
