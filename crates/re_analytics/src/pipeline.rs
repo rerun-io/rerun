@@ -145,8 +145,8 @@ fn flush_pending_events(config: &Config, sink: &PostHogSink) -> anyhow::Result<(
         let Ok(metadata) = entry.metadata() else { continue; };
         let path = entry.path();
 
-        if metadata.is_file() && name.ends_with(".json") {
-            let session_id = name.strip_suffix(".json").unwrap(); // can't fail
+        if metadata.is_file() {
+            let Some(session_id) = name.strip_suffix(".json") else { continue; };
 
             if session_id == current_session_id {
                 continue;
