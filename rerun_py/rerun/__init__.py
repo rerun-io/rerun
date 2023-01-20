@@ -93,20 +93,22 @@ def init(application_id: str, spawn_and_connect: bool = False) -> None:
     """
     Initialize the Rerun SDK with a user-chosen application id (name).
 
-    Your Rerun recordings will be categorized by this application id, so
-    try to pick a unique one for each application that uses the Rerun SDK.
-
-    For instance, if you have one application doing object detection
-    and another doing camera calibration, you could have
-    `rerun.init("object_detector")` and `rerun.init("calibrator")`.
-
     Parameters
     ----------
+    application_id : str
+        Your Rerun recordings will be categorized by this application id, so
+        try to pick a unique one for each application that uses the Rerun SDK.
+
+        For instance, if you have one application doing object detection
+        and another doing camera calibration, you could have
+        `rerun.init("object_detector")` and `rerun.init("calibrator")`.
+
     spawn_and_connect : bool
         Spawn a Rerun Viewer and stream logging data to it.
         Short for calling `spawn_and_connect` separately.
         If you don't call this, log events will be buffered indefinitely until
         you call either `connect`, `show`, or `save`
+
     """
     bindings.init(application_id)
 
