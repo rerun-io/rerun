@@ -35,6 +35,9 @@ const NUM_CHILDREN_IN_DENSE: u64 = 16;
 const ADDR_MASK: u64 = (1 << LEVEL_STEP) - 1;
 const NUM_CHILDREN_IN_NODE: u64 = 1 << LEVEL_STEP;
 
+/// When a [`SparseLeaf`] goes over this, it becomes a [`BranchNode`].
+const MAX_SPARSE_LEAF_LEN: usize = 32;
+
 fn child_level_and_size(level: Level) -> (Level, u64) {
     let child_level = level - LEVEL_STEP;
     let child_size = if child_level == 0 {
@@ -375,8 +378,7 @@ impl SparseLeaf {
             }
         }
 
-        const OVERFLOW_CUTOFF: usize = 32;
-        if self.addrs.len() < OVERFLOW_CUTOFF {
+        if self.addrs.len() < MAX_SPARSE_LEAF_LEN {
             self.addrs.insert(index, abs_addr);
             self.counts.insert(index, inc);
             Tree::SparseLeaf(self)
