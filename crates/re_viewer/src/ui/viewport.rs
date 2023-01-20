@@ -536,7 +536,8 @@ impl Viewport {
     ) {
         #![allow(clippy::collapsible_if)]
 
-        ui.menu_button("Add new space view…", |ui| {
+        // TODO(emilk): use a proper icon instead. Requires some egui changes so that an icon button can open a menu.
+        ui.menu_button("➕", |ui| {
             ui.style_mut().wrap = Some(false);
 
             let all_categories = enumset::EnumSet::<ViewCategory>::all();
@@ -584,7 +585,9 @@ impl Viewport {
                     }
                 }
             }
-        });
+        })
+        .response
+        .on_hover_text("Add new space view.");
     }
 }
 
