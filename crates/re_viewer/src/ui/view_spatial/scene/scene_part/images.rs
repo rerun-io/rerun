@@ -156,59 +156,62 @@ impl ScenePart for ImagesPartClassic {
             );
         }
 
-        // Handle layered rectangles that are on (roughly) the same plane and were logged in sequence.
-        // First, group by similar plane.
-        // TODO(andreas): Need planes later for picking as well!
-        let rects_grouped_by_plane = {
-            let mut cur_plane = macaw::Plane3::from_normal_dist(Vec3::NAN, std::f32::NAN);
-            let mut rectangle_group = Vec::new();
-            scene
-                .primitives
-                .textured_rectangles
-                .iter_mut()
-                .batching(move |it| {
-                    for rect in it.by_ref() {
-                        let prev_plane = cur_plane;
-                        cur_plane = macaw::Plane3::from_normal_point(
-                            rect.extent_u.cross(rect.extent_v).normalize(),
-                            rect.top_left_corner_position,
-                        );
+        handle_image_layering(scene);
+    }
+}
 
-                        // Are the image planes too unsimilar? Then this is a new group.
-                        if !rectangle_group.is_empty()
-                            && prev_plane.normal.dot(cur_plane.normal) < 0.99
-                            && (prev_plane.d - cur_plane.d) < 0.01
-                        {
-                            let previous_group =
-                                std::mem::replace(&mut rectangle_group, vec![rect]);
-                            return Some(previous_group);
-                        }
-                        rectangle_group.push(rect);
-                    }
-                    if !rectangle_group.is_empty() {
-                        Some(rectangle_group.drain(..).collect())
-                    } else {
-                        None
-                    }
-                })
-        };
-        // Then, change opacity & transformation for planes within group except the base plane.
-        for mut grouped_rects in rects_grouped_by_plane {
-            let total_num_images = grouped_rects.len();
-            for (idx, rect) in grouped_rects.iter_mut().enumerate() {
-                // Set depth offset for correct order and avoid z fighting when there is a 3d camera.
-                // Keep behind depth offset 0 for correct picking order.
-                rect.depth_offset =
-                    (idx as isize - total_num_images as isize) as re_renderer::DepthOffset;
+fn handle_image_layering(scene: &mut SceneSpatial) {
+    // Handle layered rectangles that are on (roughly) the same plane and were logged in sequence.
+    // First, group by similar plane.
+    // TODO(andreas): Need planes later for picking as well!
+    let rects_grouped_by_plane = {
+        let mut cur_plane = macaw::Plane3::from_normal_dist(Vec3::NAN, std::f32::NAN);
+        let mut rectangle_group = Vec::new();
+        scene
+            .primitives
+            .textured_rectangles
+            .iter_mut()
+            .batching(move |it| {
+                for rect in it.by_ref() {
+                    let prev_plane = cur_plane;
+                    cur_plane = macaw::Plane3::from_normal_point(
+                        rect.extent_u.cross(rect.extent_v).normalize(),
+                        rect.top_left_corner_position,
+                    );
 
-                // make top images transparent
-                let opacity = if idx == 0 {
-                    1.0
+                    // Are the image planes too unsimilar? Then this is a new group.
+                    if !rectangle_group.is_empty()
+                        && prev_plane.normal.dot(cur_plane.normal) < 0.99
+                        && (prev_plane.d - cur_plane.d) < 0.01
+                    {
+                        let previous_group = std::mem::replace(&mut rectangle_group, vec![rect]);
+                        return Some(previous_group);
+                    }
+                    rectangle_group.push(rect);
+                }
+                if !rectangle_group.is_empty() {
+                    Some(rectangle_group.drain(..).collect())
                 } else {
-                    1.0 / total_num_images.at_most(20) as f32
-                }; // avoid precision problems in framebuffer
-                rect.multiplicative_tint = rect.multiplicative_tint.multiply(opacity);
-            }
+                    None
+                }
+            })
+    };
+    // Then, change opacity & transformation for planes within group except the base plane.
+    for mut grouped_rects in rects_grouped_by_plane {
+        let total_num_images = grouped_rects.len();
+        for (idx, rect) in grouped_rects.iter_mut().enumerate() {
+            // Set depth offset for correct order and avoid z fighting when there is a 3d camera.
+            // Keep behind depth offset 0 for correct picking order.
+            rect.depth_offset =
+                (idx as isize - total_num_images as isize) as re_renderer::DepthOffset;
+
+            // make top images transparent
+            let opacity = if idx == 0 {
+                1.0
+            } else {
+                1.0 / total_num_images.at_most(20) as f32
+            }; // avoid precision problems in framebuffer
+            rect.multiplicative_tint = rect.multiplicative_tint.multiply(opacity);
         }
     }
 }
@@ -338,5 +341,6 @@ impl ScenePart for ImagesPart {
                 }
             }
         }
+        handle_image_layering(scene);
     }
 }
