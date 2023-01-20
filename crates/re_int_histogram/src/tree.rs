@@ -69,13 +69,13 @@ fn range_u64_from_range_bounds(range: impl std::ops::RangeBounds<i64>) -> RangeU
 /// optimizing for very fast range-queries.
 #[derive(Clone, Debug)]
 pub struct Int64Histogram {
-    tree: Tree,
+    root: Tree,
 }
 
 impl Default for Int64Histogram {
     fn default() -> Self {
         Self {
-            tree: Tree::SparseLeaf(SparseLeaf::default()),
+            root: Tree::SparseLeaf(SparseLeaf::default()),
         }
     }
 }
@@ -85,7 +85,7 @@ impl Int64Histogram {
     ///
     /// Incrementing with one is similar to inserting the key in a multi-set.
     pub fn increment(&mut self, key: i64, inc: u32) {
-        self.tree
+        self.root
             .increment(ROOT_LEVEL, u64_key_from_i64_key(key), inc);
     }
 
@@ -93,14 +93,14 @@ impl Int64Histogram {
     ///
     /// NOTE: this is NOT the number of unique keys.
     pub fn total_count(&self) -> u64 {
-        self.tree.total_count()
+        self.root.total_count()
     }
 
     /// What is the count of all the buckets in the given range?
     pub fn range_count(&self, range: impl std::ops::RangeBounds<i64>) -> u64 {
         let range = range_u64_from_range_bounds(range);
         if range.min <= range.max {
-            self.tree.range_count(0, ROOT_LEVEL, range)
+            self.root.range_count(0, ROOT_LEVEL, range)
         } else {
             0
         }
@@ -122,7 +122,7 @@ impl Int64Histogram {
                 stack: vec![NodeIterator {
                     level: ROOT_LEVEL,
                     abs_addr: 0,
-                    tree: &self.tree,
+                    tree: &self.root,
                     index: 0,
                 }],
             },
@@ -134,7 +134,7 @@ impl Int64Histogram {
     /// Returns how much count was removed
     pub fn remove(&mut self, range: impl std::ops::RangeBounds<i64>) -> u64 {
         let range = range_u64_from_range_bounds(range);
-        self.tree.remove(0, ROOT_LEVEL, range)
+        self.root.remove(0, ROOT_LEVEL, range)
     }
 }
 
