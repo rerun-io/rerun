@@ -325,7 +325,7 @@ impl Viewport {
             ui.horizontal(|ui| {
                 let name = path.iter().last().unwrap().to_string();
 
-                ctx.space_view_obj_path_button_to(ui, name, *space_view_id, path);
+                ctx.data_blueprint_button_to(ui, name, *space_view_id, path);
 
                 let mut properties = data_blueprint_tree.data_blueprints_individual().get(path);
                 if visibility_button(ui, group_is_visible, &mut properties.visible).changed() {
@@ -351,7 +351,7 @@ impl Viewport {
             )
             .show_header(ui, |ui| {
                 ui.label("📁");
-                ctx.datablueprint_group_button_to(
+                ctx.data_blueprint_group_button_to(
                     ui,
                     &child_group.display_name,
                     *space_view_id,

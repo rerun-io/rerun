@@ -154,7 +154,7 @@ impl<'a> ViewerContext<'a> {
         response
     }
 
-    pub fn datablueprint_group_button_to(
+    pub fn data_blueprint_group_button_to(
         &mut self,
         ui: &mut egui::Ui,
         text: impl Into<egui::WidgetText>,
@@ -176,17 +176,18 @@ impl<'a> ViewerContext<'a> {
         response
     }
 
-    pub fn space_view_obj_path_button_to(
+    pub fn data_blueprint_button_to(
         &mut self,
         ui: &mut egui::Ui,
         text: impl Into<egui::WidgetText>,
         space_view_id: SpaceViewId,
         obj_path: &ObjPath,
     ) -> egui::Response {
-        let selection = Selection::DataBlueprint(space_view_id, obj_path.clone());
         let response = ui
             .selectable_label(
-                self.selection().check_obj_path(obj_path.hash()).is_exact(),
+                self.selection()
+                    .check_data_blueprint(space_view_id, obj_path.hash())
+                    .is_exact(),
                 text,
             )
             .on_hover_ui(|ui| {
@@ -194,7 +195,10 @@ impl<'a> ViewerContext<'a> {
                 ui.label(format!("Path: {obj_path}"));
                 obj_path.data_ui(self, ui, Preview::Large);
             });
-        self.cursor_interact_with_selectable(&response, selection);
+        self.cursor_interact_with_selectable(
+            &response,
+            Selection::DataBlueprint(space_view_id, obj_path.clone()),
+        );
         response
     }
 

@@ -12,7 +12,6 @@ pub enum Selection {
     Instance(InstanceId),
     DataPath(DataPath),
     SpaceView(crate::ui::SpaceViewId),
-    /// An object within a space-view.
     DataBlueprint(crate::ui::SpaceViewId, ObjPath),
     DataBlueprintGroup(crate::ui::SpaceViewId, crate::ui::DataBlueprintGroupHandle),
 }
@@ -300,6 +299,40 @@ impl MultiSelection {
     }
 
     /// Whether a data blueprint group is part of the selection
+    pub fn check_data_blueprint(
+        &self,
+        space_view: SpaceViewId,
+        obj_path_hash: ObjPathHash,
+    ) -> SelectionScope<()> {
+        let mut indirect = false;
+        for selection in &self.selection {
+            #[allow(clippy::match_same_arms)]
+            match selection {
+                Selection::MsgId(_) => {} // TODO(andreas): Indirect possible.
+                Selection::Instance(instance) => {
+                    if instance.obj_path.hash() == obj_path_hash {
+                        indirect = true;
+                    }
+                }
+                Selection::DataPath(_) => {} // TODO(andreas): Partial possible.
+                Selection::SpaceView(_) => {} // Should this be `Indirect`?
+                Selection::DataBlueprint(sid, path) => {
+                    if space_view == *sid && obj_path_hash == path.hash() {
+                        return SelectionScope::Exact;
+                    }
+                }
+                Selection::DataBlueprintGroup(_, _) => {} // TODO(andreas): Indirect possible.
+            };
+        }
+
+        if indirect {
+            SelectionScope::Indirect
+        } else {
+            SelectionScope::None
+        }
+    }
+
+    /// Whether a data blueprint group is part of the selection
     pub fn check_data_blueprint_group(
         &self,
         space_view: SpaceViewId,
@@ -345,8 +378,4 @@ impl MultiSelection {
             SelectionScope::Indirect | SelectionScope::Exact => SelectionScope::Indirect,
         }
     }
-
-    // pub fn check_selection(&self, selection: &Selection) -> SelectionScope<()> {
-    //     for
-    // }
 }

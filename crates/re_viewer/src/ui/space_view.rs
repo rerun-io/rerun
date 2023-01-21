@@ -377,7 +377,7 @@ impl SpaceView {
         };
 
         if ctx
-            .space_view_obj_path_button_to(ui, label_text, self.id, path)
+            .data_blueprint_button_to(ui, label_text, self.id, path)
             .double_clicked()
             && is_space_info
         {
