@@ -9,7 +9,7 @@ use re_renderer::view_builder::TargetConfiguration;
 
 use super::{eye::Eye, scene::AdditionalPickingInfo, ViewSpatialState};
 use crate::{
-    misc::{HoveredSpace, MultiSelection, Selection},
+    misc::{HoveredSpace, Selection, SelectionHighlight, SelectionState},
     ui::{
         data_ui::{self, DataUi},
         view_spatial::{
@@ -327,7 +327,7 @@ fn view_2d_scrollable(
         ui_from_space,
         space_from_ui,
         parent_ui,
-        ctx.hovered(),
+        ctx.selection_state(),
     ));
 
     // ------------------------------------------------------------------------
@@ -425,7 +425,7 @@ fn view_2d_scrollable(
                 pick.instance_hash
                     .resolve(&ctx.log_db.obj_db)
                     // TODO(andreas): Associate current space view
-                    .map(Selection::Instance)
+                    .map(|instance| Selection::Instance(Some(scene.space_view_id), instance))
             }));
         }
     }
@@ -450,7 +450,7 @@ fn create_labels(
     ui_from_space: RectTransform,
     space_from_ui: RectTransform,
     parent_ui: &mut egui::Ui,
-    hovered: &MultiSelection,
+    selection_state: &SelectionState,
 ) -> Vec<Shape> {
     crate::profile_function!();
 
@@ -495,10 +495,19 @@ fn create_labels(
             Align2::CENTER_TOP.anchor_rect(Rect::from_min_size(text_anchor_pos, galley.size()));
         let bg_rect = text_rect.expand2(vec2(4.0, 2.0));
 
-        let fill_color = if hovered.check_instance(label.labled_instance).is_included() {
-            parent_ui.style().visuals.widgets.active.bg_fill
-        } else {
-            parent_ui.style().visuals.widgets.inactive.bg_fill
+        let hightlight = selection_state
+            .instance_interaction_highlight(Some(scene.space_view_id), label.labled_instance);
+        let fill_color = match hightlight.hover {
+            crate::misc::HoverHighlight::None => match hightlight.selection {
+                SelectionHighlight::None => parent_ui.style().visuals.widgets.inactive.bg_fill,
+                SelectionHighlight::SiblingSelection => {
+                    parent_ui.style().visuals.widgets.active.bg_fill
+                }
+                SelectionHighlight::Selection => parent_ui.style().visuals.widgets.active.bg_fill,
+            },
+            crate::misc::HoverHighlight::Hovered => {
+                parent_ui.style().visuals.widgets.hovered.bg_fill
+            }
         };
 
         label_shapes.push(Shape::rect_filled(bg_rect, 3.0, fill_color));

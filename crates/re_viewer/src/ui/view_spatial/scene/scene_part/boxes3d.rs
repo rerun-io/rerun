@@ -45,9 +45,6 @@ impl ScenePart for Boxes3DPartClassic {
                 continue;
             };
 
-            let hovered_paths = ctx.hovered().check_obj_path(obj_path.hash());
-            let selected_paths = ctx.selection().check_obj_path(obj_path.hash());
-
             let mut line_batch = scene
                 .primitives
                 .line_strips
@@ -81,8 +78,8 @@ impl ScenePart for Boxes3DPartClassic {
                 SceneSpatial::apply_hover_and_selection_effect(
                     &mut radius,
                     &mut color,
-                    hovered_paths.contains_index(instance_hash.instance_index_hash),
-                    selected_paths.contains_index(instance_hash.instance_index_hash),
+                    ctx.selection_state()
+                        .instance_interaction_highlight(Some(scene.space_view_id), instance_hash),
                 );
 
                 let transform = glam::Affine3A::from_scale_rotation_translation(
@@ -131,9 +128,6 @@ impl Boxes3DPart {
             .batch("box 3d")
             .world_from_obj(world_from_obj);
 
-        let hovered_paths = ctx.hovered().check_obj_path(ent_path.hash());
-        let selected_paths = ctx.selection().check_obj_path(ent_path.hash());
-
         let visitor = |instance: Instance,
                        half_size: Box3D,
                        position: Option<Vec3D>,
@@ -160,8 +154,8 @@ impl Boxes3DPart {
             SceneSpatial::apply_hover_and_selection_effect(
                 &mut radius,
                 &mut color,
-                hovered_paths.contains_index(instance_hash.instance_index_hash),
-                selected_paths.contains_index(instance_hash.instance_index_hash),
+                ctx.selection_state()
+                    .instance_interaction_highlight(Some(scene.space_view_id), instance_hash),
             );
 
             let scale = glam::Vec3::from(half_size);

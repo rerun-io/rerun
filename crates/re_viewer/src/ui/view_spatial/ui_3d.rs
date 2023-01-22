@@ -398,7 +398,7 @@ pub fn view_3d(
             pick.instance_hash
                 .resolve(&ctx.log_db.obj_db)
                 // TODO(andreas): Associate current space view
-                .map(Selection::Instance)
+                .map(|instance| Selection::Instance(Some(scene.space_view_id), instance))
         }));
         state.state_3d.hovered_point = picking_result
             .opaque_hit
@@ -416,7 +416,7 @@ pub fn view_3d(
         state.state_3d.tracked_camera = None;
 
         // While hovering an object, focuses the camera on it.
-        if let Some(Selection::Instance(instance_id)) = ctx.hovered().first() {
+        if let Some(Selection::Instance(_, instance_id)) = ctx.hovered().first() {
             if let Some(camera) = find_camera(&scene.space_cameras, &instance_id.hash()) {
                 state.state_3d.interpolate_to_eye(camera);
                 state.state_3d.tracked_camera = Some(instance_id.clone());

@@ -10,11 +10,14 @@ use re_renderer::{Color32, Size};
 
 use super::{eye::Eye, SpaceCamera3D, SpatialNavigationMode};
 use crate::{
-    misc::{caches::AsDynamicImage, mesh_loader::LoadedMesh, ViewerContext},
+    misc::{
+        caches::AsDynamicImage, mesh_loader::LoadedMesh, HoverHighlight, InteractionHighlight,
+        SelectionHighlight, ViewerContext,
+    },
     ui::{
         annotations::{auto_color, AnnotationMap},
         transform_cache::TransformCache,
-        Annotations, SceneQuery,
+        Annotations, SceneQuery, SpaceViewId,
     },
 };
 
@@ -122,8 +125,9 @@ pub struct SceneSpatialUiData {
     pub images: Vec<Image>,
 }
 
-#[derive(Default)]
 pub struct SceneSpatial {
+    /// The space view this scene belongs to.
+    pub space_view_id: SpaceViewId,
     pub annotation_map: AnnotationMap,
     pub primitives: SceneSpatialPrimitives,
     pub ui: SceneSpatialUiData,
@@ -156,6 +160,18 @@ fn instance_hash_if_interactive(
 pub type Keypoints = HashMap<(ClassId, i64), HashMap<KeypointId, glam::Vec3>>;
 
 impl SceneSpatial {
+    pub fn new(space_view_id: SpaceViewId) -> Self {
+        Self {
+            space_view_id,
+            annotation_map: Default::default(),
+            primitives: Default::default(),
+            ui: Default::default(),
+            num_logged_2d_objects: Default::default(),
+            num_logged_3d_objects: Default::default(),
+            space_cameras: Default::default(),
+        }
+    }
+
     /// Loads all 3D objects into the scene according to the given query.
     pub(crate) fn load_objects(
         &mut self,
@@ -208,6 +224,7 @@ impl SceneSpatial {
     // TODO(andreas): Better ways to determine these?
     const HOVER_COLOR: Color32 = Color32::from_rgb(255, 200, 200);
     const SELECTION_COLOR: Color32 = Color32::from_rgb(255, 170, 170);
+    const SIBLING_SELECTION_COLOR: Color32 = Color32::from_rgb(255, 150, 150);
     const CAMERA_COLOR: Color32 = Color32::from_rgb(255, 128, 128);
 
     fn size_boost(size: Size) -> Size {
@@ -221,43 +238,38 @@ impl SceneSpatial {
     fn apply_hover_and_selection_effect(
         size: &mut Size,
         color: &mut Color32,
-        hovered: bool,
-        selected: bool,
+        highlight: InteractionHighlight,
     ) {
-        if selected {
+        if highlight.selection != SelectionHighlight::None {
             *size = Self::size_boost(*size);
-            *color = Self::SELECTION_COLOR;
+            *color = match highlight.selection {
+                SelectionHighlight::None => unreachable!(),
+                SelectionHighlight::SiblingSelection => Self::SIBLING_SELECTION_COLOR,
+                SelectionHighlight::Selection => Self::SELECTION_COLOR,
+            };
         }
-        if hovered {
-            *color = Self::HOVER_COLOR;
+        match highlight.hover {
+            HoverHighlight::None => {}
+            HoverHighlight::Hovered => {
+                *color = Self::HOVER_COLOR;
+            }
         }
     }
 
     fn apply_hover_and_selection_effect_color(
         color: Color32,
-        hovered: bool,
-        selected: bool,
+        highlight: InteractionHighlight,
     ) -> Color32 {
         let mut color = color;
         // (counting on inlining to remove unused fields!)
-        Self::apply_hover_and_selection_effect(
-            &mut Size::AUTO.clone(),
-            &mut color,
-            hovered,
-            selected,
-        );
+        Self::apply_hover_and_selection_effect(&mut Size::AUTO.clone(), &mut color, highlight);
         color
     }
 
-    fn apply_hover_and_selection_effect_size(size: Size, hovered: bool, selected: bool) -> Size {
+    fn apply_hover_and_selection_effect_size(size: Size, highlight: InteractionHighlight) -> Size {
         let mut size = size;
         // (counting on inlining to remove unused fields!)
-        Self::apply_hover_and_selection_effect(
-            &mut size,
-            &mut Color32::WHITE.clone(),
-            hovered,
-            selected,
-        );
+        Self::apply_hover_and_selection_effect(&mut size, &mut Color32::WHITE.clone(), highlight);
         size
     }
 

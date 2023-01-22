@@ -410,10 +410,13 @@ impl TimePanel {
                     messages_over_time,
                     full_width_rect,
                     &self.time_ranges_ui,
-                    Some(Selection::Instance(InstanceId {
-                        obj_path: tree.path.clone(),
-                        instance_index: None,
-                    })),
+                    Some(Selection::Instance(
+                        None,
+                        InstanceId {
+                            obj_path: tree.path.clone(),
+                            instance_index: None,
+                        },
+                    )),
                 );
             }
         }

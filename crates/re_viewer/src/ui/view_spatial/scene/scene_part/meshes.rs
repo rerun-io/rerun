@@ -48,9 +48,6 @@ impl ScenePart for MeshPartClassic {
             // TODO(andreas): This throws away perspective transformation!
             let world_from_obj_affine = glam::Affine3A::from_mat4(world_from_obj);
 
-            let hovered_paths = ctx.hovered().check_obj_path(obj_path.hash());
-            let selected_paths = ctx.selection().check_obj_path(obj_path.hash());
-
             let visitor = |instance_index: Option<&IndexHash>,
                            _time: i64,
                            _msg_id: &MsgId,
@@ -61,8 +58,8 @@ impl ScenePart for MeshPartClassic {
 
                 let additive_tint = SceneSpatial::apply_hover_and_selection_effect_color(
                     Color32::TRANSPARENT,
-                    hovered_paths.contains_index(instance_hash.instance_index_hash),
-                    selected_paths.contains_index(instance_hash.instance_index_hash),
+                    ctx.selection_state()
+                        .instance_interaction_highlight(Some(scene.space_view_id), instance_hash),
                 );
 
                 if let Some(mesh) = ctx
@@ -113,9 +110,6 @@ impl MeshPart {
         let _default_color = DefaultColor::ObjPath(ent_path);
         let world_from_obj_affine = glam::Affine3A::from_mat4(world_from_obj);
 
-        let hovered_paths = ctx.hovered().check_obj_path(ent_path.hash());
-        let selected_paths = ctx.selection().check_obj_path(ent_path.hash());
-
         let visitor =
             |instance: Instance, mesh: re_log_types::Mesh3D, _color: Option<ColorRGBA>| {
                 let instance_hash = {
@@ -128,8 +122,8 @@ impl MeshPart {
 
                 let additive_tint = SceneSpatial::apply_hover_and_selection_effect_color(
                     Color32::TRANSPARENT,
-                    hovered_paths.contains_index(instance_hash.instance_index_hash),
-                    selected_paths.contains_index(instance_hash.instance_index_hash),
+                    ctx.selection_state()
+                        .instance_interaction_highlight(Some(scene.space_view_id), instance_hash),
                 );
 
                 if let Some(mesh) = ctx

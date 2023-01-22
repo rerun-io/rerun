@@ -9,7 +9,7 @@ use re_query::{query_primary_with_history, QueryError};
 use re_renderer::Size;
 
 use crate::{
-    misc::{ObjectPathSelectionScope, ViewerContext},
+    misc::ViewerContext,
     ui::{
         scene::SceneQuery,
         transform_cache::{ReferenceFromObjTransform, TransformCache},
@@ -44,9 +44,6 @@ impl ScenePart for Boxes2DPartClassic {
                 continue;
             };
 
-            let hovered_paths = ctx.hovered().check_obj_path(obj_path.hash());
-            let selected_paths = ctx.selection().check_obj_path(obj_path.hash());
-
             let mut line_batch = scene
                 .primitives
                 .line_strips
@@ -74,8 +71,8 @@ impl ScenePart for Boxes2DPartClassic {
                 SceneSpatial::apply_hover_and_selection_effect(
                     &mut radius,
                     &mut color,
-                    hovered_paths.contains_index(instance_hash.instance_index_hash),
-                    selected_paths.contains_index(instance_hash.instance_index_hash),
+                    ctx.selection_state()
+                        .instance_interaction_highlight(Some(scene.space_view_id), instance_hash),
                 );
 
                 line_batch
@@ -113,9 +110,9 @@ pub struct Boxes2DPart;
 impl Boxes2DPart {
     /// Build scene parts for a single box instance
     #[allow(clippy::too_many_arguments)]
-    #[allow(clippy::too_many_arguments)]
     fn visit_instance(
         scene: &mut SceneSpatial,
+        ctx: &mut ViewerContext<'_>,
         obj_path: &ObjPath,
         world_from_obj: Mat4,
         instance_hash: InstanceIdHash,
@@ -124,8 +121,6 @@ impl Boxes2DPart {
         radius: Option<Radius>,
         label: Option<Label>,
         class_id: Option<ClassId>,
-        hovered_paths: &ObjectPathSelectionScope,
-        selected_paths: &ObjectPathSelectionScope,
     ) {
         scene.num_logged_2d_objects += 1;
 
@@ -141,8 +136,8 @@ impl Boxes2DPart {
         SceneSpatial::apply_hover_and_selection_effect(
             &mut radius,
             &mut color,
-            hovered_paths.contains_index(instance_hash.instance_index_hash),
-            selected_paths.contains_index(instance_hash.instance_index_hash),
+            ctx.selection_state()
+                .instance_interaction_highlight(Some(scene.space_view_id), instance_hash),
         );
 
         let mut line_batch = scene
@@ -207,8 +202,6 @@ impl ScenePart for Boxes2DPart {
             )
             .and_then(|entities| {
                 for entity in entities {
-                    let hovered_paths = ctx.hovered().check_obj_path(ent_path.hash());
-                    let selected_paths = ctx.selection().check_obj_path(ent_path.hash());
                     entity.visit5(|instance, rect, color, radius, label, class_id| {
                         let instance_hash = {
                             if props.interactive {
@@ -219,6 +212,7 @@ impl ScenePart for Boxes2DPart {
                         };
                         Self::visit_instance(
                             scene,
+                            ctx,
                             ent_path,
                             world_from_obj,
                             instance_hash,
@@ -227,8 +221,6 @@ impl ScenePart for Boxes2DPart {
                             radius,
                             label,
                             class_id,
-                            &hovered_paths,
-                            &selected_paths,
                         );
                     })?;
                 }

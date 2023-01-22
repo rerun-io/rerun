@@ -39,7 +39,7 @@ fn query_scene_spatial(
         latest_at: TimeInt::MAX,
         obj_props: &Default::default(), // all visible
     };
-    let mut scene = SceneSpatial::default();
+    let mut scene = SceneSpatial::new(SpaceViewId::random());
     scene.load_objects(ctx, &query, transforms);
     scene
 }
@@ -687,8 +687,8 @@ fn space_view_options_link(
     ui: &mut egui::Ui,
     text: &str,
 ) {
-    let is_selected =
-        ctx.selection().check_space_view(space_view_id).is_exact() && *selection_panel_expanded;
+    let selection = Selection::SpaceView(space_view_id);
+    let is_selected = ctx.selection().contains(&selection) && *selection_panel_expanded;
     if ui
         .selectable_label(is_selected, text)
         .on_hover_text("Space View options")
@@ -698,7 +698,7 @@ fn space_view_options_link(
             ctx.selection_state_mut().clear_current();
             *selection_panel_expanded = false;
         } else {
-            ctx.set_single_selection(Selection::SpaceView(space_view_id));
+            ctx.set_single_selection(selection);
             *selection_panel_expanded = true;
         }
     }

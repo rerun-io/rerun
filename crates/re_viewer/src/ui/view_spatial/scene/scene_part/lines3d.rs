@@ -48,9 +48,6 @@ impl ScenePart for Lines3DPartClassic {
                 continue;
             };
 
-            let hovered_paths = ctx.hovered().check_obj_path(obj_path.hash());
-            let selected_paths = ctx.selection().check_obj_path(obj_path.hash());
-
             let mut line_batch = scene
                 .primitives
                 .line_strips
@@ -81,8 +78,8 @@ impl ScenePart for Lines3DPartClassic {
                 SceneSpatial::apply_hover_and_selection_effect(
                     &mut radius,
                     &mut color,
-                    hovered_paths.contains_index(instance_hash.instance_index_hash),
-                    selected_paths.contains_index(instance_hash.instance_index_hash),
+                    ctx.selection_state()
+                        .instance_interaction_highlight(Some(scene.space_view_id), instance_hash),
                 );
 
                 // Add renderer primitive
@@ -137,9 +134,6 @@ impl Lines3DPart {
             .batch("lines 3d")
             .world_from_obj(world_from_obj);
 
-        let hovered_paths = ctx.hovered().check_obj_path(ent_path.hash());
-        let selected_paths = ctx.selection().check_obj_path(ent_path.hash());
-
         let visitor = |instance: Instance,
                        strip: LineStrip3D,
                        color: Option<ColorRGBA>,
@@ -162,8 +156,8 @@ impl Lines3DPart {
             SceneSpatial::apply_hover_and_selection_effect(
                 &mut radius,
                 &mut color,
-                hovered_paths.contains_index(instance_hash.instance_index_hash),
-                selected_paths.contains_index(instance_hash.instance_index_hash),
+                ctx.selection_state()
+                    .instance_interaction_highlight(Some(scene.space_view_id), instance_hash),
             );
 
             line_batch

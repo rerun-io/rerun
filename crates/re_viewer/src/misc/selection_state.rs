@@ -1,8 +1,8 @@
 use ahash::HashSet;
 use itertools::Itertools;
-use re_data_store::{LogDb, ObjPath};
+use re_data_store::{InstanceIdHash, LogDb, ObjPath};
 
-use crate::ui::{Blueprint, HistoricalSelection, SelectionHistory};
+use crate::ui::{Blueprint, HistoricalSelection, SelectionHistory, SpaceViewId};
 
 use super::{MultiSelection, Selection};
 
@@ -24,6 +24,42 @@ pub enum HoveredSpace {
         /// 2D spaces and pixel coordinates (with Z=depth)
         target_spaces: Vec<(ObjPath, Option<glam::Vec3>)>,
     },
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Default)]
+pub enum SelectionHighlight {
+    /// No selection highlight at all.
+    #[default]
+    None,
+
+    /// A closely related object is selected, should apply similar highlight to selection.
+    /// (e.g. data in a different space view)
+    SiblingSelection,
+
+    /// Should apply selection highlight (i.e. the exact selection is highlighted).
+    Selection,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Default)]
+pub enum HoverHighlight {
+    /// No hover highlight.
+    #[default]
+    None,
+
+    /// Apply hover highlight, does *not* exclude a selection highlight.
+    Hovered,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Default)]
+pub struct InteractionHighlight {
+    pub selection: SelectionHighlight,
+    pub hover: HoverHighlight,
+}
+
+impl InteractionHighlight {
+    pub fn any(&self) -> bool {
+        self.selection != SelectionHighlight::None || self.hover != HoverHighlight::None
+    }
 }
 
 /// Selection and hover state
@@ -92,7 +128,9 @@ impl SelectionState {
 
     /// Sets several objects to be selected, updating history as needed.
     ///
-    /// Returns the previous selection.
+    /// Returns
+    /// the previous selection.
+    ///
     pub fn set_multi_selection(
         &mut self,
         items: impl Iterator<Item = Selection>,
@@ -148,5 +186,56 @@ impl SelectionState {
         blueprint: &mut Blueprint,
     ) -> Option<MultiSelection> {
         self.history.selection_ui(ui, blueprint)
+    }
+
+    pub fn instance_interaction_highlight(
+        &self,
+        space_view_id: Option<SpaceViewId>,
+        instance_hash: InstanceIdHash,
+    ) -> InteractionHighlight {
+        let mut selection_highlight = SelectionHighlight::None;
+        for current_selection in self.selection.iter() {
+            match current_selection {
+                Selection::MsgId(_)
+                | Selection::DataPath(_)
+                | Selection::SpaceView(_)
+                | Selection::DataBlueprintGroup(_, _) => {}
+
+                Selection::Instance(selected_space_view_context, selected_instance) => {
+                    if selected_instance.hash() == instance_hash {
+                        if *selected_space_view_context == space_view_id {
+                            selection_highlight = SelectionHighlight::Selection;
+                            break;
+                        } else {
+                            selection_highlight = SelectionHighlight::SiblingSelection;
+                        }
+                    }
+                }
+            };
+        }
+
+        let mut hover_highlight = HoverHighlight::None;
+        for current_hover in self.hovered_previous_frame.iter() {
+            #[allow(clippy::match_same_arms)]
+            match current_hover {
+                Selection::MsgId(_) => {} // TODO(andreas): Show hover effect on contained instances.
+                Selection::DataPath(_) => {} // TODO(andreas): Unclear if this should show hover effect.
+                Selection::SpaceView(_) => {}
+
+                // Hover doesn't care about the space view - the user knows where their cursor is!
+                Selection::Instance(_, selected_instance) => {
+                    if selected_instance.hash() == instance_hash {
+                        hover_highlight = HoverHighlight::Hovered;
+                    }
+                }
+
+                Selection::DataBlueprintGroup(_, _) => {} // TODO(andreas): Show hover effect on contained instances.
+            };
+        }
+
+        InteractionHighlight {
+            selection: selection_highlight,
+            hover: hover_highlight,
+        }
     }
 }

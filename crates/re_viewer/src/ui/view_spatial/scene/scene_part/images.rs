@@ -84,9 +84,6 @@ impl ScenePart for ImagesPartClassic {
                 continue;
             };
 
-            let hovered_paths = ctx.hovered().check_obj_path(obj_path.hash());
-            let selected_paths = ctx.selection().check_obj_path(obj_path.hash());
-
             let visitor = |instance_index: Option<&IndexHash>,
                            _time: i64,
                            _msg_id: &MsgId,
@@ -106,16 +103,16 @@ impl ScenePart for ImagesPartClassic {
                     .annotation_info()
                     .color(color, DefaultColor::OpaqueWhite);
 
-                let hovered = hovered_paths.contains_index(instance_hash.instance_index_hash);
-                let selected = selected_paths.contains_index(instance_hash.instance_index_hash);
-                if hovered || selected {
+                let highlight = ctx
+                    .selection_state()
+                    .instance_interaction_highlight(Some(scene.space_view_id), instance_hash);
+                if highlight.any() {
                     let mut color = SceneSpatial::HOVER_COLOR;
                     let mut radius = Size::new_points(1.0);
                     SceneSpatial::apply_hover_and_selection_effect(
                         &mut radius,
                         &mut color,
-                        hovered,
-                        selected,
+                        highlight,
                     );
 
                     let rect =
@@ -227,9 +224,6 @@ impl ImagesPart {
         ent_path: &ObjPath,
         world_from_obj: glam::Mat4,
     ) -> Result<(), QueryError> {
-        let hovered_paths = ctx.hovered().check_obj_path(ent_path.hash());
-        let selected_paths = ctx.selection().check_obj_path(ent_path.hash());
-
         for (instance, tensor, color) in itertools::izip!(
             entity_view.iter_instances()?,
             entity_view.iter_primary()?,
@@ -255,13 +249,14 @@ impl ImagesPart {
                     DefaultColor::OpaqueWhite,
                 );
 
-                let hovered = hovered_paths.contains_index(instance_hash.instance_index_hash);
-                if hovered || selected_paths.contains_index(instance_hash.instance_index_hash) {
-                    let color = if hovered {
-                        SceneSpatial::HOVER_COLOR
-                    } else {
-                        SceneSpatial::SELECTION_COLOR
-                    };
+                let highlight = ctx
+                    .selection_state()
+                    .instance_interaction_highlight(Some(scene.space_view_id), instance_hash);
+                if highlight.any() {
+                    let color = SceneSpatial::apply_hover_and_selection_effect_color(
+                        re_renderer::Color32::TRANSPARENT,
+                        highlight,
+                    );
                     let rect =
                         glam::vec2(tensor.shape()[1].size as f32, tensor.shape()[0].size as f32);
                     scene

@@ -457,7 +457,7 @@ impl SpaceView {
             }
 
             ViewCategory::Spatial => {
-                let mut scene = view_spatial::SceneSpatial::default();
+                let mut scene = view_spatial::SceneSpatial::new(self.id);
                 scene.load_objects(ctx, &query, &self.cached_transforms);
                 self.view_state
                     .ui_spatial(ctx, ui, &self.space_path, reference_space_info, scene);

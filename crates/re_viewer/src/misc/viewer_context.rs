@@ -35,17 +35,15 @@ impl<'a> ViewerContext<'a> {
     /// Show an [`MsgId`] and make it selectable
     pub fn msg_id_button(&mut self, ui: &mut egui::Ui, msg_id: MsgId) -> egui::Response {
         // TODO(emilk): common hover-effect
+        let selection = Selection::MsgId(msg_id);
         let response = ui
-            .selectable_label(
-                self.selection().check_msg_id(msg_id).is_exact(),
-                msg_id.to_string(),
-            )
+            .selectable_label(self.selection().contains(&selection), msg_id.to_string())
             .on_hover_ui(|ui| {
                 ui.label(format!("Message ID: {msg_id}"));
                 ui.separator();
                 msg_id.data_ui(self, ui, Preview::Small);
             });
-        self.cursor_interact_with_selectable(&response, Selection::MsgId(msg_id));
+        self.cursor_interact_with_selectable(&response, selection);
         response
     }
 
@@ -61,23 +59,21 @@ impl<'a> ViewerContext<'a> {
         text: impl Into<egui::WidgetText>,
         obj_path: &ObjPath,
     ) -> egui::Response {
+        let selection = Selection::Instance(
+            None,
+            InstanceId {
+                obj_path: obj_path.clone(),
+                instance_index: None,
+            },
+        );
         let response = ui
-            .selectable_label(
-                self.selection().check_obj_path(obj_path.hash()).is_exact(),
-                text,
-            )
+            .selectable_label(self.selection().contains(&selection), text)
             .on_hover_ui(|ui| {
                 ui.strong("Object");
                 ui.label(format!("Path: {obj_path}"));
                 obj_path.data_ui(self, ui, crate::ui::Preview::Large);
             });
-        self.cursor_interact_with_selectable(
-            &response,
-            Selection::Instance(InstanceId {
-                obj_path: obj_path.clone(),
-                instance_index: None,
-            }),
-        );
+        self.cursor_interact_with_selectable(&response, selection);
         response
     }
 
@@ -98,20 +94,16 @@ impl<'a> ViewerContext<'a> {
         instance_id: &InstanceId,
     ) -> egui::Response {
         // TODO(emilk): common hover-effect of all buttons for the same instance_id!
+        let selection = Selection::Instance(None, instance_id.clone());
         let response = ui
-            .selectable_label(
-                self.selection()
-                    .check_instance(instance_id.hash())
-                    .is_exact(),
-                text,
-            )
+            .selectable_label(self.selection().contains(&selection), text)
             .on_hover_ui(|ui| {
                 ui.strong("Object Instance");
                 ui.label(format!("Path: {instance_id}"));
                 instance_id.data_ui(self, ui, crate::ui::Preview::Large);
             });
 
-        self.cursor_interact_with_selectable(&response, Selection::Instance(instance_id.clone()));
+        self.cursor_interact_with_selectable(&response, selection);
         response
     }
 
@@ -128,15 +120,9 @@ impl<'a> ViewerContext<'a> {
         data_path: &DataPath,
     ) -> egui::Response {
         // TODO(emilk): common hover-effect of all buttons for the same data_path!
-        let response = ui.selectable_label(
-            self.rec_cfg
-                .selection_state
-                .current()
-                .check_data_path(data_path)
-                .is_exact(),
-            text,
-        );
-        self.cursor_interact_with_selectable(&response, Selection::DataPath(data_path.clone()));
+        let selection = Selection::DataPath(data_path.clone());
+        let response = ui.selectable_label(self.selection().contains(&selection), text);
+        self.cursor_interact_with_selectable(&response, selection);
         response
     }
 
@@ -146,11 +132,12 @@ impl<'a> ViewerContext<'a> {
         text: impl Into<egui::WidgetText>,
         space_view_id: SpaceViewId,
     ) -> egui::Response {
-        let is_selected = self.selection().check_space_view(space_view_id).is_exact();
+        let selection = Selection::SpaceView(space_view_id);
+        let is_selected = self.selection().contains(&selection);
         let response = ui
             .selectable_label(is_selected, text)
             .on_hover_text("Space View");
-        self.cursor_interact_with_selectable(&response, Selection::SpaceView(space_view_id));
+        self.cursor_interact_with_selectable(&response, selection);
         response
     }
 
@@ -161,18 +148,11 @@ impl<'a> ViewerContext<'a> {
         space_view_id: SpaceViewId,
         group_handle: DataBlueprintGroupHandle,
     ) -> egui::Response {
+        let selection = Selection::DataBlueprintGroup(space_view_id, group_handle);
         let response = ui
-            .selectable_label(
-                self.selection()
-                    .check_data_blueprint_group(space_view_id, group_handle)
-                    .is_exact(),
-                text,
-            )
+            .selectable_label(self.selection().contains(&selection), text)
             .on_hover_text("Group");
-        self.cursor_interact_with_selectable(
-            &response,
-            Selection::DataBlueprintGroup(space_view_id, group_handle),
-        );
+        self.cursor_interact_with_selectable(&response, selection);
         response
     }
 
@@ -183,22 +163,16 @@ impl<'a> ViewerContext<'a> {
         space_view_id: SpaceViewId,
         obj_path: &ObjPath,
     ) -> egui::Response {
+        let selection =
+            Selection::Instance(Some(space_view_id), InstanceId::new(obj_path.clone(), None));
         let response = ui
-            .selectable_label(
-                self.selection()
-                    .check_data_blueprint(space_view_id, obj_path.hash())
-                    .is_exact(),
-                text,
-            )
+            .selectable_label(self.selection().contains(&selection), text)
             .on_hover_ui(|ui| {
                 ui.strong("Space View Object");
                 ui.label(format!("Path: {obj_path}"));
                 obj_path.data_ui(self, ui, Preview::Large);
             });
-        self.cursor_interact_with_selectable(
-            &response,
-            Selection::DataBlueprint(space_view_id, obj_path.clone()),
-        );
+        self.cursor_interact_with_selectable(&response, selection);
         response
     }
 

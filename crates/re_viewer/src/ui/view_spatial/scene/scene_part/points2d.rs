@@ -51,9 +51,6 @@ impl ScenePart for Points2DPartClassic {
                 continue;
             };
 
-            let hovered_paths = ctx.hovered().check_obj_path(obj_path.hash());
-            let selected_paths = ctx.selection().check_obj_path(obj_path.hash());
-
             // If keypoints ids show up we may need to connect them later!
             // We include time in the key, so that the "Visible history" (time range queries) feature works.
             let mut keypoints: Keypoints = Default::default();
@@ -100,8 +97,8 @@ impl ScenePart for Points2DPartClassic {
                 SceneSpatial::apply_hover_and_selection_effect(
                     &mut radius,
                     &mut color,
-                    hovered_paths.contains_index(instance_hash.instance_index_hash),
-                    selected_paths.contains_index(instance_hash.instance_index_hash),
+                    ctx.selection_state()
+                        .instance_interaction_highlight(Some(scene.space_view_id), instance_hash),
                 );
                 point_batch
                     .add_point_2d(pos)
@@ -175,9 +172,6 @@ impl Points2DPart {
             .batch("2d points")
             .world_from_obj(world_from_obj);
 
-        let hovered_paths = ctx.hovered().check_obj_path(ent_path.hash());
-        let selected_paths = ctx.selection().check_obj_path(ent_path.hash());
-
         let visitor = |instance: Instance,
                        pos: Point2D,
                        color: Option<ColorRGBA>,
@@ -218,8 +212,8 @@ impl Points2DPart {
             SceneSpatial::apply_hover_and_selection_effect(
                 &mut radius,
                 &mut color,
-                hovered_paths.contains_index(instance_hash.instance_index_hash),
-                selected_paths.contains_index(instance_hash.instance_index_hash),
+                ctx.selection_state()
+                    .instance_interaction_highlight(Some(scene.space_view_id), instance_hash),
             );
 
             point_batch

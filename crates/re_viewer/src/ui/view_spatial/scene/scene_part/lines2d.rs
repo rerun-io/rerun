@@ -44,9 +44,6 @@ impl Lines2DPart {
             .batch("lines 2d")
             .world_from_obj(world_from_obj);
 
-        let hovered_paths = ctx.hovered().check_obj_path(ent_path.hash());
-        let selected_paths = ctx.selection().check_obj_path(ent_path.hash());
-
         let visitor = |instance: Instance,
                        strip: LineStrip2D,
                        color: Option<ColorRGBA>,
@@ -68,8 +65,8 @@ impl Lines2DPart {
             SceneSpatial::apply_hover_and_selection_effect(
                 &mut radius,
                 &mut color,
-                hovered_paths.contains_index(instance_hash.instance_index_hash),
-                selected_paths.contains_index(instance_hash.instance_index_hash),
+                ctx.selection_state()
+                    .instance_interaction_highlight(Some(scene.space_view_id), instance_hash),
             );
 
             line_batch

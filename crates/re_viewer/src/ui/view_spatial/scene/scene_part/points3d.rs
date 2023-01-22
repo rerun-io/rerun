@@ -13,7 +13,7 @@ use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::Size;
 
 use crate::{
-    misc::ViewerContext,
+    misc::{InteractionHighlight, ViewerContext},
     ui::{
         annotations::ResolvedAnnotationInfo,
         scene::SceneQuery,
@@ -60,9 +60,6 @@ impl ScenePart for Points3DPartClassic {
                 continue;
             };
 
-            let hovered_paths = ctx.hovered().check_obj_path(obj_path.hash());
-            let selected_paths = ctx.selection().check_obj_path(obj_path.hash());
-
             let mut point_batch = scene
                 .primitives
                 .points
@@ -108,8 +105,8 @@ impl ScenePart for Points3DPartClassic {
                 SceneSpatial::apply_hover_and_selection_effect(
                     &mut radius,
                     &mut color,
-                    hovered_paths.contains_index(instance_hash.instance_index_hash),
-                    selected_paths.contains_index(instance_hash.instance_index_hash),
+                    ctx.selection_state()
+                        .instance_interaction_highlight(Some(scene.space_view_id), instance_hash),
                 );
 
                 show_labels = batch_size < 10;
@@ -195,24 +192,21 @@ impl Points3DPart {
     fn process_colors<'a>(
         entity_view: &'a EntityView<Point3D>,
         ent_path: &'a ObjPath,
-        hovered: &'a [bool],
-        selected: &'a [bool],
+        highlights: &'a [InteractionHighlight],
         annotation_infos: &'a [ResolvedAnnotationInfo],
     ) -> Result<impl Iterator<Item = egui::Color32> + 'a, QueryError> {
         crate::profile_function!();
         let default_color = DefaultColor::ObjPath(ent_path);
 
         let colors = itertools::izip!(
-            hovered.iter(),
-            selected.iter(),
+            highlights.iter(),
             annotation_infos.iter(),
             entity_view.iter_component::<ColorRGBA>()?,
         )
-        .map(move |(hovered, selected, annotation_info, color)| {
+        .map(move |(highlight, annotation_info, color)| {
             SceneSpatial::apply_hover_and_selection_effect_color(
                 annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color),
-                *hovered,
-                *selected,
+                *highlight,
             )
         });
         Ok(colors)
@@ -220,21 +214,15 @@ impl Points3DPart {
 
     fn process_radii<'a>(
         entity_view: &'a EntityView<Point3D>,
-        hovered: &'a [bool],
-        selected: &'a [bool],
+        highlights: &'a [InteractionHighlight],
     ) -> Result<impl Iterator<Item = Size> + 'a, QueryError> {
-        let radii = itertools::izip!(
-            hovered.iter(),
-            selected.iter(),
-            entity_view.iter_component::<Radius>()?,
-        )
-        .map(move |(hovered, selected, radius)| {
-            SceneSpatial::apply_hover_and_selection_effect_size(
-                radius.map_or(Size::AUTO, |radius| Size::new_scene(radius.0)),
-                *hovered,
-                *selected,
-            )
-        });
+        let radii = itertools::izip!(highlights.iter(), entity_view.iter_component::<Radius>()?,)
+            .map(move |(highlight, radius)| {
+                SceneSpatial::apply_hover_and_selection_effect_size(
+                    radius.map_or(Size::AUTO, |radius| Size::new_scene(radius.0)),
+                    *highlight,
+                )
+            });
         Ok(radii)
     }
 
@@ -315,32 +303,20 @@ impl Points3DPart {
         };
 
         // TODO(andreas): lot of optimization potential here!
-        let hovered_paths = ctx.hovered().check_obj_path(ent_path.hash());
-        let selected_paths = ctx.selection().check_obj_path(ent_path.hash());
-        let hovered = {
+        let highlights = {
             crate::profile_scope!("hovered");
             instance_hashes
                 .iter()
-                .map(|hash| hovered_paths.contains_index(hash.instance_index_hash))
-                .collect::<Vec<_>>()
-        };
-        let selected = {
-            crate::profile_scope!("selected");
-            instance_hashes
-                .iter()
-                .map(|hash| selected_paths.contains_index(hash.instance_index_hash))
+                .map(|hash| {
+                    ctx.selection_state()
+                        .instance_interaction_highlight(Some(scene.space_view_id), *hash)
+                })
                 .collect::<Vec<_>>()
         };
 
-        let colors = Self::process_colors(
-            entity_view,
-            ent_path,
-            &hovered,
-            &selected,
-            &annotation_infos,
-        )?;
+        let colors = Self::process_colors(entity_view, ent_path, &highlights, &annotation_infos)?;
 
-        let radii = Self::process_radii(entity_view, &hovered, &selected)?;
+        let radii = Self::process_radii(entity_view, &highlights)?;
         let labels = Self::process_labels(entity_view, &annotation_infos, world_from_obj)?;
 
         if show_labels && instance_hashes.len() <= self.max_labels {

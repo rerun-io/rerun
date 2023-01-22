@@ -178,7 +178,7 @@ fn single_selection_to_string(blueprint: &Blueprint, sel: &Selection) -> String 
                 "<removed space view>".to_owned()
             }
         }
-        Selection::DataBlueprint(_, obj_path) => obj_path.to_string(),
+        Selection::Instance(_, obj_path) => obj_path.to_string(),
         Selection::DataBlueprintGroup(sid, handle) => {
             if let Some(space_view) = blueprint.viewport.space_view(sid) {
                 if let Some(group) = space_view.data_blueprint.get_group(*handle) {
@@ -191,7 +191,6 @@ fn single_selection_to_string(blueprint: &Blueprint, sel: &Selection) -> String 
             }
         }
         Selection::MsgId(s) => s.to_string(),
-        Selection::Instance(s) => s.to_string(),
         Selection::DataPath(s) => s.to_string(),
     }
 }
