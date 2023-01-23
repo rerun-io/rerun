@@ -219,7 +219,7 @@ impl SceneSpatial {
         if size.is_auto() {
             Size::AUTO_LARGE
         } else {
-            size * 1.5
+            size * 1.33
         }
     }
 
