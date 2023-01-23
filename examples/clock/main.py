@@ -7,7 +7,6 @@ An analog clock is built with Rerun Arrow3D primitives.
 
 import argparse
 import math
-import pathlib
 from typing import Final, Tuple
 
 import numpy as np

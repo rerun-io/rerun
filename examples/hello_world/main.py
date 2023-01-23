@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 """The simplest example of how to use Rerun."""
 
-import pathlib
-
 from PIL import Image
 
 import rerun as rr

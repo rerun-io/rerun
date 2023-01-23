@@ -15,7 +15,6 @@ python3 examples/dicom/main.py
 import argparse
 import io
 import os
-import pathlib
 import zipfile
 from pathlib import Path
 from typing import Final, Iterable, Tuple

@@ -6,7 +6,6 @@ For more info see: https://github.com/Stability-AI/stablediffusion
 """
 import argparse
 import os
-import pathlib
 import platform
 from pathlib import Path
 from typing import Final

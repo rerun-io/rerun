@@ -8,7 +8,6 @@ Example of using the Rerun SDK to log the Objectron dataset.
 import argparse
 import math
 import os
-import pathlib
 import sys
 import time
 from dataclasses import dataclass

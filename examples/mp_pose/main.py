@@ -3,7 +3,6 @@
 import argparse
 import logging
 import os
-import pathlib
 from contextlib import closing
 from dataclasses import dataclass
 from pathlib import Path

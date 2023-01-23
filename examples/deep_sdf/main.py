@@ -29,7 +29,6 @@ examples/deep_sdf/main.py
 
 import argparse
 import os
-import pathlib
 from pathlib import Path
 from timeit import default_timer as timer
 from typing import Tuple, cast

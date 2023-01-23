@@ -2,7 +2,6 @@
 """Shows how to use the Rerun SDK."""
 
 import argparse
-import pathlib
 from dataclasses import dataclass
 from time import sleep
 from typing import Iterator, Tuple

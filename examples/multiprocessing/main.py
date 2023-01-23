@@ -12,7 +12,6 @@ examples/multiprocessing/main.py --connect
 import argparse
 import multiprocessing
 import os
-import pathlib
 import threading
 
 import rerun as rr

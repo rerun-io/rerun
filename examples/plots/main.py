@@ -11,7 +11,6 @@ Run:
 
 
 import argparse
-import pathlib
 import random
 from math import cos, pi, sin, sqrt, tau
 
