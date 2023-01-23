@@ -71,16 +71,32 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
     egui_style.visuals.widgets.inactive.bg_fill =
         get_aliased_color(&json, "{Alias.Color.Action.Default.value}");
 
-    egui_style.visuals.widgets.hovered.optional_bg_fill =
-        get_aliased_color(&json, "{Alias.Color.Action.Hovered.value}");
-    egui_style.visuals.widgets.hovered.bg_fill =
-        get_aliased_color(&json, "{Alias.Color.Action.Hovered.value}");
+    {
+        // Background colors for menu buttons etc:
+        // let hovered_color = get_aliased_color(&json, "{Alias.Color.Action.Hovered.value}");
+        let hovered_color = Color32::from_gray(20); // TODO(emilk): change the content of the design_tokens.json origin instead
+        egui_style.visuals.widgets.hovered.optional_bg_fill = hovered_color;
+        egui_style.visuals.widgets.hovered.bg_fill = hovered_color;
+        egui_style.visuals.widgets.active.optional_bg_fill = hovered_color;
+        egui_style.visuals.widgets.active.bg_fill = hovered_color;
+        egui_style.visuals.widgets.open.optional_bg_fill = hovered_color;
+        egui_style.visuals.widgets.open.bg_fill = hovered_color;
+    }
 
-    // Turn of strokes around buttons:
-    egui_style.visuals.widgets.inactive.bg_stroke = Default::default();
-    egui_style.visuals.widgets.hovered.bg_stroke = Default::default();
-    egui_style.visuals.widgets.active.bg_stroke = Default::default();
-    egui_style.visuals.widgets.open.bg_stroke = Default::default();
+    {
+        // Turn of strokes around buttons:
+        egui_style.visuals.widgets.inactive.bg_stroke = Default::default();
+        egui_style.visuals.widgets.hovered.bg_stroke = Default::default();
+        egui_style.visuals.widgets.active.bg_stroke = Default::default();
+        egui_style.visuals.widgets.open.bg_stroke = Default::default();
+    }
+
+    {
+        // Expand hovered and active button frames:
+        egui_style.visuals.widgets.hovered.expansion = 2.0;
+        egui_style.visuals.widgets.active.expansion = 2.0;
+        egui_style.visuals.widgets.open.expansion = 2.0;
+    }
 
     let subudued = get_aliased_color(&json, "{Alias.Color.Text.Subdued.value}");
     let default = get_aliased_color(&json, "{Alias.Color.Text.Default.value}");
