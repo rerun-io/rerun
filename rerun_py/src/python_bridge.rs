@@ -294,7 +294,7 @@ fn set_recording_id(recording_id: &str) -> PyResult<()> {
 #[pyfunction]
 fn init(application_id: String, application_path: Option<PathBuf>) {
     // The sentinel file we use to identify the official examples directory.
-    const SENTINEL_FILENAME: &str = ".rerun";
+    const SENTINEL_FILENAME: &str = ".rerun_examples";
     let is_official_example = application_path.map_or(false, |mut path| {
         // more than 4 layers would be really pushing it
         for _ in 0..4 {

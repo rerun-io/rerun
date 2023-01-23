@@ -1,4 +1,4 @@
-use std::process::{Command, ExitCode, ExitStatus};
+use std::process::Command;
 
 fn main() {
     // target triple
