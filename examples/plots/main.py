@@ -98,7 +98,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    rr.init("plot", application_path=pathlib.Path(__file__).resolve())
+    rr.init("plot")
 
     if args.serve:
         rr.serve()

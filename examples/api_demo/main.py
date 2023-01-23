@@ -274,7 +274,7 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    rr.init("api_demo", application_path=pathlib.Path(__file__).resolve())
+    rr.init("api_demo")
 
     if args.serve:
         rr.serve()

@@ -76,7 +76,7 @@ if __name__ == "__main__":
     parser.add_argument("--steps", type=int, default=10_000, help="The number of time steps to log")
     args = parser.parse_args()
 
-    rr.init("clock", application_path=pathlib.Path(__file__).resolve())
+    rr.init("clock")
 
     if args.connect:
         # Send logging data to separate `rerun` process.

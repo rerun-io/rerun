@@ -192,7 +192,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    rr.init("nyud", application_path=pathlib.Path(__file__).resolve())
+    rr.init("nyud")
 
     if args.connect:
         # Send logging data to separate `rerun` process.

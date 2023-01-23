@@ -299,7 +299,7 @@ def main() -> None:
     parser.add_argument("--save", type=str, default=None, help="Save data to a .rrd file at this path")
     args = parser.parse_args()
 
-    rr.init("car", application_path=pathlib.Path(__file__).resolve())
+    rr.init("car")
 
     if args.serve:
         rr.serve()

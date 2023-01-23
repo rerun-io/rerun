@@ -86,7 +86,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    rr.init("logging", application_path=pathlib.Path(__file__).resolve())
+    rr.init("logging")
 
     if args.serve:
         rr.serve()

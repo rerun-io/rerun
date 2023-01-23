@@ -220,7 +220,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    rr.init("deep_sdf", application_path=pathlib.Path(__file__).resolve())
+    rr.init("deep_sdf")
 
     if args.serve:
         rr.serve()

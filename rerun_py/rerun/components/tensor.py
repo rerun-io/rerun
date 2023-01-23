@@ -51,7 +51,7 @@ class TensorArray(pa.ExtensionArray):  # type: ignore[misc]
         array: npt.NDArray[TensorDType],
         names: Iterable[str | None] | None = None,
         meaning: bindings.TensorDataMeaning = None,
-        meter: Optional[float] = None,
+        meter: float | None = None,
     ) -> TensorArray:
         """Build a `TensorArray` from an numpy array."""
         # Build a random tensor_id

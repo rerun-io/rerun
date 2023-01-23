@@ -90,10 +90,7 @@ def set_recording_id(value: str) -> None:
     bindings.set_recording_id(value)
 
 
-def init(application_id: str,
-         application_path: Optional[PosixPath] = None,
-         spawn_and_connect: bool = False,
-) -> None:
+def init(application_id: str, spawn_and_connect: bool = False) -> None:
     """
     Initialize the Rerun SDK with a user-chosen application id (name).
 
@@ -113,11 +110,23 @@ def init(application_id: str,
         If you don't call this, log events will be buffered indefinitely until
         you call either `connect`, `show`, or `save`
 
-    application_path : Optional[str]
-        Used to identify official examples.
-
     """
-    bindings.init(application_id, application_path)
+    app_path = None
+
+    # NOTE: It'd be even nicer to do such thing on the Rust-side so that this little trick would
+    # only need to be written once and just work for all languages out of the box... unfortunately
+    # we lose most of the details of the python part of the backtrace once we go over the bridge.
+    #
+    # Still, better than nothing!
+    try:
+        import inspect
+        import pathlib
+
+        app_path = pathlib.Path(inspect.stack()[1][1]).resolve()
+    except:
+        pass
+
+    bindings.init(application_id, app_path)
 
     if spawn_and_connect:
         _spawn_and_connect()

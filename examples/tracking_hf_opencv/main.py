@@ -391,7 +391,7 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    rr.init("tracking_hf_opencv", application_path=pathlib.Path(__file__).resolve())
+    rr.init("tracking_hf_opencv")
 
     setup_looging()
 
