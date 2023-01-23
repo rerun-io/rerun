@@ -66,6 +66,7 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
     egui_style.visuals.widgets.noninteractive.optional_bg_fill = panel_bg_color;
     egui_style.visuals.widgets.noninteractive.bg_fill = panel_bg_color;
 
+    egui_style.visuals.button_frame = true;
     egui_style.visuals.widgets.inactive.optional_bg_fill = Default::default(); // Buttons have no background color when inactive
     egui_style.visuals.widgets.inactive.bg_fill =
         get_aliased_color(&json, "{Alias.Color.Action.Default.value}");
@@ -84,8 +85,6 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
     let subudued = get_aliased_color(&json, "{Alias.Color.Text.Subdued.value}");
     let default = get_aliased_color(&json, "{Alias.Color.Text.Default.value}");
     let strong = get_aliased_color(&json, "{Alias.Color.Text.Strong.value}");
-
-    egui_style.visuals.button_frame = false;
 
     egui_style.visuals.widgets.noninteractive.fg_stroke.color = subudued; // non-interactive text
     egui_style.visuals.widgets.inactive.fg_stroke.color = default; // button text
