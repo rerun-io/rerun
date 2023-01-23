@@ -9,7 +9,7 @@ use re_query::{query_primary_with_history, QueryError};
 use re_renderer::Size;
 
 use crate::{
-    misc::ViewerContext,
+    misc::{OptionalSpaceViewObjectHighlight, SpaceViewHighlights, ViewerContext},
     ui::{
         scene::SceneQuery,
         transform_cache::{ReferenceFromObjTransform, TransformCache},
@@ -30,6 +30,7 @@ impl ScenePart for Boxes2DPartClassic {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
+        highlights: &SpaceViewHighlights,
     ) {
         crate::profile_scope!("Boxes2DPartClassic");
 
@@ -43,6 +44,7 @@ impl ScenePart for Boxes2DPartClassic {
             let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(obj_path) else {
                 continue;
             };
+            let object_highlight = highlights.object_highlight(obj_path.hash());
 
             let mut line_batch = scene
                 .primitives
@@ -71,8 +73,7 @@ impl ScenePart for Boxes2DPartClassic {
                 SceneSpatial::apply_hover_and_selection_effect(
                     &mut radius,
                     &mut color,
-                    ctx.selection_state()
-                        .instance_interaction_highlight(Some(scene.space_view_id), instance_hash),
+                    object_highlight.index_highlight(instance_hash.instance_index_hash),
                 );
 
                 line_batch
@@ -112,7 +113,6 @@ impl Boxes2DPart {
     #[allow(clippy::too_many_arguments)]
     fn visit_instance(
         scene: &mut SceneSpatial,
-        ctx: &mut ViewerContext<'_>,
         obj_path: &ObjPath,
         world_from_obj: Mat4,
         instance_hash: InstanceIdHash,
@@ -121,6 +121,7 @@ impl Boxes2DPart {
         radius: Option<Radius>,
         label: Option<Label>,
         class_id: Option<ClassId>,
+        object_highlight: OptionalSpaceViewObjectHighlight<'_>,
     ) {
         scene.num_logged_2d_objects += 1;
 
@@ -136,8 +137,7 @@ impl Boxes2DPart {
         SceneSpatial::apply_hover_and_selection_effect(
             &mut radius,
             &mut color,
-            ctx.selection_state()
-                .instance_interaction_highlight(Some(scene.space_view_id), instance_hash),
+            object_highlight.index_highlight(instance_hash.instance_index_hash),
         );
 
         let mut line_batch = scene
@@ -177,6 +177,7 @@ impl ScenePart for Boxes2DPart {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
+        highlights: &SpaceViewHighlights,
     ) {
         crate::profile_scope!("Boxes2DPart");
 
@@ -184,6 +185,8 @@ impl ScenePart for Boxes2DPart {
             let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(ent_path) else {
                 continue;
             };
+
+            let object_highlight = highlights.object_highlight(ent_path.hash());
 
             match query_primary_with_history::<Rect2D, 6>(
                 &ctx.log_db.obj_db.arrow_store,
@@ -212,7 +215,6 @@ impl ScenePart for Boxes2DPart {
                         };
                         Self::visit_instance(
                             scene,
-                            ctx,
                             ent_path,
                             world_from_obj,
                             instance_hash,
@@ -221,6 +223,7 @@ impl ScenePart for Boxes2DPart {
                             radius,
                             label,
                             class_id,
+                            object_highlight,
                         );
                     })?;
                 }

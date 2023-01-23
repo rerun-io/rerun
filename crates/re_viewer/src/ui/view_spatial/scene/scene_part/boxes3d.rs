@@ -10,7 +10,7 @@ use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::Size;
 
 use crate::{
-    misc::ViewerContext,
+    misc::{OptionalSpaceViewObjectHighlight, SpaceViewHighlights, ViewerContext},
     ui::{
         scene::SceneQuery,
         transform_cache::{ReferenceFromObjTransform, TransformCache},
@@ -30,6 +30,7 @@ impl ScenePart for Boxes3DPartClassic {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
+        highlights: &SpaceViewHighlights,
     ) {
         crate::profile_scope!("Boxes3DPartClassic");
 
@@ -44,6 +45,7 @@ impl ScenePart for Boxes3DPartClassic {
             let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(obj_path) else {
                 continue;
             };
+            let object_highlight = highlights.object_highlight(obj_path.hash());
 
             let mut line_batch = scene
                 .primitives
@@ -78,8 +80,7 @@ impl ScenePart for Boxes3DPartClassic {
                 SceneSpatial::apply_hover_and_selection_effect(
                     &mut radius,
                     &mut color,
-                    ctx.selection_state()
-                        .instance_interaction_highlight(Some(scene.space_view_id), instance_hash),
+                    object_highlight.index_highlight(instance_hash.instance_index_hash),
                 );
 
                 let transform = glam::Affine3A::from_scale_rotation_translation(
@@ -108,14 +109,13 @@ impl ScenePart for Boxes3DPartClassic {
 pub struct Boxes3DPart;
 
 impl Boxes3DPart {
-    #[allow(clippy::too_many_arguments)]
     fn process_entity_view(
         scene: &mut SceneSpatial,
-        ctx: &mut ViewerContext<'_>,
         props: &ObjectProps,
         entity_view: &EntityView<Box3D>,
         ent_path: &ObjPath,
         world_from_obj: Mat4,
+        object_highlight: OptionalSpaceViewObjectHighlight<'_>,
     ) -> Result<(), QueryError> {
         scene.num_logged_3d_objects += 1;
 
@@ -154,8 +154,7 @@ impl Boxes3DPart {
             SceneSpatial::apply_hover_and_selection_effect(
                 &mut radius,
                 &mut color,
-                ctx.selection_state()
-                    .instance_interaction_highlight(Some(scene.space_view_id), instance_hash),
+                object_highlight.index_highlight(instance_hash.instance_index_hash),
             );
 
             let scale = glam::Vec3::from(half_size);
@@ -188,6 +187,7 @@ impl ScenePart for Boxes3DPart {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
+        highlights: &SpaceViewHighlights,
     ) {
         crate::profile_scope!("Boxes3DPart");
 
@@ -195,6 +195,7 @@ impl ScenePart for Boxes3DPart {
             let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(ent_path) else {
                 continue;
             };
+            let object_highlight = highlights.object_highlight(ent_path.hash());
 
             match query_primary_with_history::<Box3D, 8>(
                 &ctx.log_db.obj_db.arrow_store,
@@ -217,11 +218,11 @@ impl ScenePart for Boxes3DPart {
                 for entity in entities {
                     Self::process_entity_view(
                         scene,
-                        ctx,
                         &props,
                         &entity,
                         ent_path,
                         world_from_obj,
+                        object_highlight,
                     )?;
                 }
                 Ok(())

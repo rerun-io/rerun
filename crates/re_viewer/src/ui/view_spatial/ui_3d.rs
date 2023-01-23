@@ -18,7 +18,7 @@ use crate::{
             ui_renderer_bridge::{create_scene_paint_callback, get_viewport, ScreenBackground},
             SceneSpatial, SpaceCamera3D,
         },
-        Preview,
+        Preview, SpaceViewId,
     },
     ViewerContext,
 };
@@ -291,6 +291,7 @@ pub fn view_3d(
     ui: &mut egui::Ui,
     state: &mut ViewSpatialState,
     space: &ObjPath,
+    space_view_id: SpaceViewId,
     mut scene: SceneSpatial,
 ) {
     crate::profile_function!();
@@ -397,8 +398,7 @@ pub fn view_3d(
         ctx.set_hovered(picking_result.iter_hits().filter_map(|pick| {
             pick.instance_hash
                 .resolve(&ctx.log_db.obj_db)
-                // TODO(andreas): Associate current space view
-                .map(|instance| Selection::Instance(Some(scene.space_view_id), instance))
+                .map(|instance| Selection::Instance(Some(space_view_id), instance))
         }));
         state.state_3d.hovered_point = picking_result
             .opaque_hit

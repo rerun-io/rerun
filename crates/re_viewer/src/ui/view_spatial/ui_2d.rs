@@ -9,14 +9,14 @@ use re_renderer::view_builder::TargetConfiguration;
 
 use super::{eye::Eye, scene::AdditionalPickingInfo, ViewSpatialState};
 use crate::{
-    misc::{HoveredSpace, Selection, SelectionHighlight, SelectionState},
+    misc::{HoveredSpace, Selection, SelectionHighlight, SpaceViewHighlights},
     ui::{
         data_ui::{self, DataUi},
         view_spatial::{
             ui_renderer_bridge::{create_scene_paint_callback, get_viewport, ScreenBackground},
             Label2DTarget, SceneSpatial,
         },
-        Preview,
+        Preview, SpaceViewId,
     },
     ViewerContext,
 };
@@ -217,6 +217,7 @@ pub const HELP_TEXT: &str = "Ctrl-scroll  to zoom (⌘-scroll or Mac).\n\
 
 /// Create the outer 2D view, which consists of a scrollable region
 /// TODO(andreas): Split into smaller parts, more re-use with `ui_3d`
+#[allow(clippy::too_many_arguments)]
 pub fn view_2d(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
@@ -224,6 +225,8 @@ pub fn view_2d(
     space: &ObjPath,
     scene: SceneSpatial,
     scene_rect_accum: Rect,
+    space_view_id: SpaceViewId,
+    highlights: &SpaceViewHighlights,
 ) -> egui::Response {
     crate::profile_function!();
 
@@ -253,6 +256,8 @@ pub fn view_2d(
             space,
             scene,
             scene_rect_accum,
+            space_view_id,
+            highlights,
         )
     });
 
@@ -275,6 +280,8 @@ fn view_2d_scrollable(
     space: &ObjPath,
     mut scene: SceneSpatial,
     scene_rect_accum: Rect,
+    space_view_id: SpaceViewId,
+    highlights: &SpaceViewHighlights,
 ) -> egui::Response {
     let (mut response, painter) =
         parent_ui.allocate_painter(desired_size, egui::Sense::click_and_drag());
@@ -327,7 +334,7 @@ fn view_2d_scrollable(
         ui_from_space,
         space_from_ui,
         parent_ui,
-        ctx.selection_state(),
+        highlights,
     ));
 
     // ------------------------------------------------------------------------
@@ -424,8 +431,7 @@ fn view_2d_scrollable(
             ctx.set_hovered(picking_result.iter_hits().filter_map(|pick| {
                 pick.instance_hash
                     .resolve(&ctx.log_db.obj_db)
-                    // TODO(andreas): Associate current space view
-                    .map(|instance| Selection::Instance(Some(scene.space_view_id), instance))
+                    .map(|instance| Selection::Instance(Some(space_view_id), instance))
             }));
         }
     }
@@ -450,7 +456,7 @@ fn create_labels(
     ui_from_space: RectTransform,
     space_from_ui: RectTransform,
     parent_ui: &mut egui::Ui,
-    selection_state: &SelectionState,
+    highlights: &SpaceViewHighlights,
 ) -> Vec<Shape> {
     crate::profile_function!();
 
@@ -495,8 +501,9 @@ fn create_labels(
             Align2::CENTER_TOP.anchor_rect(Rect::from_min_size(text_anchor_pos, galley.size()));
         let bg_rect = text_rect.expand2(vec2(4.0, 2.0));
 
-        let hightlight = selection_state
-            .instance_interaction_highlight(Some(scene.space_view_id), label.labled_instance);
+        let hightlight = highlights
+            .object_highlight(label.labled_instance.obj_path_hash)
+            .index_highlight(label.labled_instance.instance_index_hash);
         let fill_color = match hightlight.hover {
             crate::misc::HoverHighlight::None => match hightlight.selection {
                 SelectionHighlight::None => parent_ui.style().visuals.widgets.inactive.bg_fill,

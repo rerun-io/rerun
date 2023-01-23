@@ -12,12 +12,12 @@ use super::{eye::Eye, SpaceCamera3D, SpatialNavigationMode};
 use crate::{
     misc::{
         caches::AsDynamicImage, mesh_loader::LoadedMesh, HoverHighlight, InteractionHighlight,
-        SelectionHighlight, ViewerContext,
+        SelectionHighlight, SpaceViewHighlights, ViewerContext,
     },
     ui::{
         annotations::{auto_color, AnnotationMap},
         transform_cache::TransformCache,
-        Annotations, SceneQuery, SpaceViewId,
+        Annotations, SceneQuery,
     },
 };
 
@@ -125,9 +125,8 @@ pub struct SceneSpatialUiData {
     pub images: Vec<Image>,
 }
 
+#[derive(Default)]
 pub struct SceneSpatial {
-    /// The space view this scene belongs to.
-    pub space_view_id: SpaceViewId,
     pub annotation_map: AnnotationMap,
     pub primitives: SceneSpatialPrimitives,
     pub ui: SceneSpatialUiData,
@@ -160,24 +159,13 @@ fn instance_hash_if_interactive(
 pub type Keypoints = HashMap<(ClassId, i64), HashMap<KeypointId, glam::Vec3>>;
 
 impl SceneSpatial {
-    pub fn new(space_view_id: SpaceViewId) -> Self {
-        Self {
-            space_view_id,
-            annotation_map: Default::default(),
-            primitives: Default::default(),
-            ui: Default::default(),
-            num_logged_2d_objects: Default::default(),
-            num_logged_3d_objects: Default::default(),
-            space_cameras: Default::default(),
-        }
-    }
-
     /// Loads all 3D objects into the scene according to the given query.
     pub(crate) fn load_objects(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
+        highlights: &SpaceViewHighlights,
     ) {
         crate::profile_function!();
 
@@ -215,7 +203,7 @@ impl SceneSpatial {
         ];
 
         for part in parts {
-            part.load(self, ctx, query, transforms);
+            part.load(self, ctx, query, transforms, highlights);
         }
 
         self.primitives.recalculate_bounding_box();

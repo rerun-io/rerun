@@ -12,7 +12,7 @@ use re_data_store::{ObjPath, ObjectsProperties, TimeInt};
 use crate::{
     misc::{
         space_info::{SpaceInfo, SpacesInfo},
-        Selection, ViewerContext,
+        Selection, SpaceViewHighlights, ViewerContext,
     },
     ui::view_spatial::{SceneSpatial, SpatialNavigationMode},
 };
@@ -39,8 +39,8 @@ fn query_scene_spatial(
         latest_at: TimeInt::MAX,
         obj_props: &Default::default(), // all visible
     };
-    let mut scene = SceneSpatial::new(SpaceViewId::random());
-    scene.load_objects(ctx, &query, transforms);
+    let mut scene = SceneSpatial::default();
+    scene.load_objects(ctx, &query, transforms, &SpaceViewHighlights::default());
     scene
 }
 

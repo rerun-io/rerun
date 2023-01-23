@@ -7,7 +7,7 @@ use nohash_hasher::IntSet;
 use crate::{
     misc::{
         space_info::{SpaceInfo, SpacesInfo},
-        ViewerContext,
+        SpaceViewHighlights, ViewerContext,
     },
     ui::transform_cache::TransformCache,
     ui::view_category::categorize_obj_path,
@@ -457,10 +457,18 @@ impl SpaceView {
             }
 
             ViewCategory::Spatial => {
-                let mut scene = view_spatial::SceneSpatial::new(self.id);
-                scene.load_objects(ctx, &query, &self.cached_transforms);
-                self.view_state
-                    .ui_spatial(ctx, ui, &self.space_path, reference_space_info, scene);
+                let mut scene = view_spatial::SceneSpatial::default();
+                let highlights = ctx.selection_state().highlights_for_space_view(self.id);
+                scene.load_objects(ctx, &query, &self.cached_transforms, &highlights);
+                self.view_state.ui_spatial(
+                    ctx,
+                    ui,
+                    &self.space_path,
+                    reference_space_info,
+                    scene,
+                    self.id,
+                    &highlights,
+                );
             }
 
             ViewCategory::Tensor => {
@@ -501,6 +509,7 @@ pub(crate) struct ViewState {
 
 impl ViewState {
     // TODO(andreas): split into smaller parts, some of it shouldn't be part of the ui path and instead scene loading.
+    #[allow(clippy::too_many_arguments)]
     fn ui_spatial(
         &mut self,
         ctx: &mut ViewerContext<'_>,
@@ -508,10 +517,19 @@ impl ViewState {
         space: &ObjPath,
         space_info: &SpaceInfo,
         scene: view_spatial::SceneSpatial,
+        space_view_id: SpaceViewId,
+        highlights: &SpaceViewHighlights,
     ) {
         ui.vertical(|ui| {
-            self.state_spatial
-                .view_spatial(ctx, ui, space, scene, space_info);
+            self.state_spatial.view_spatial(
+                ctx,
+                ui,
+                space,
+                scene,
+                space_info,
+                space_view_id,
+                highlights,
+            );
         });
     }
 

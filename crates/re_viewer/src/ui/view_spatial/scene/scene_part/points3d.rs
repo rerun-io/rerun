@@ -13,11 +13,13 @@ use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::Size;
 
 use crate::{
-    misc::{InteractionHighlight, ViewerContext},
+    misc::{
+        InteractionHighlight, OptionalSpaceViewObjectHighlight, SpaceViewHighlights, ViewerContext,
+    },
     ui::{
         annotations::ResolvedAnnotationInfo,
         scene::SceneQuery,
-        transform_cache::ReferenceFromObjTransform,
+        transform_cache::{ReferenceFromObjTransform, TransformCache},
         view_spatial::{
             scene::{instance_hash_if_interactive, Keypoints},
             Label3D, SceneSpatial,
@@ -34,9 +36,10 @@ impl ScenePart for Points3DPartClassic {
     fn load(
         &self,
         scene: &mut SceneSpatial,
-        ctx: &mut crate::misc::ViewerContext<'_>,
+        ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        transforms: &crate::ui::transform_cache::TransformCache,
+        transforms: &TransformCache,
+        highlights: &SpaceViewHighlights,
     ) {
         crate::profile_scope!("Points3DPartClassic");
 
@@ -59,6 +62,7 @@ impl ScenePart for Points3DPartClassic {
             let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(obj_path) else {
                 continue;
             };
+            let object_highlight = highlights.object_highlight(obj_path.hash());
 
             let mut point_batch = scene
                 .primitives
@@ -105,8 +109,7 @@ impl ScenePart for Points3DPartClassic {
                 SceneSpatial::apply_hover_and_selection_effect(
                     &mut radius,
                     &mut color,
-                    ctx.selection_state()
-                        .instance_interaction_highlight(Some(scene.space_view_id), instance_hash),
+                    object_highlight.index_highlight(instance_hash.instance_index_hash),
                 );
 
                 show_labels = batch_size < 10;
@@ -253,12 +256,12 @@ impl Points3DPart {
     fn process_entity_view(
         &self,
         scene: &mut SceneSpatial,
-        ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         properties: &ObjectProps,
         entity_view: &EntityView<Point3D>,
         ent_path: &ObjPath,
         world_from_obj: Mat4,
+        object_highlight: OptionalSpaceViewObjectHighlight<'_>,
     ) -> Result<(), QueryError> {
         crate::profile_function!();
 
@@ -302,11 +305,6 @@ impl Points3DPart {
                 .collect::<Vec<_>>()
         };
 
-        let space_view_highlights = ctx
-            .selection_state()
-            .highlights_for_space_view(scene.space_view_id);
-        let object_highlight = space_view_highlights.object_highlight(ent_path.hash());
-
         // TODO(andreas): lot of optimization potential here!
         let highlights = {
             crate::profile_scope!("hovered");
@@ -341,9 +339,10 @@ impl ScenePart for Points3DPart {
     fn load(
         &self,
         scene: &mut SceneSpatial,
-        ctx: &mut crate::misc::ViewerContext<'_>,
+        ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
-        transforms: &crate::ui::transform_cache::TransformCache,
+        transforms: &TransformCache,
+        highlights: &SpaceViewHighlights,
     ) {
         crate::profile_scope!("Points3DPart");
 
@@ -351,6 +350,7 @@ impl ScenePart for Points3DPart {
             let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(ent_path) else {
                 continue;
             };
+            let object_highlight = highlights.object_highlight(ent_path.hash());
 
             match query_primary_with_history::<Point3D, 7>(
                 &ctx.log_db.obj_db.arrow_store,
@@ -372,12 +372,12 @@ impl ScenePart for Points3DPart {
                 for entity in entities {
                     self.process_entity_view(
                         scene,
-                        ctx,
                         query,
                         &props,
                         &entity,
                         ent_path,
                         world_from_obj,
+                        object_highlight,
                     )?;
                 }
                 Ok(())

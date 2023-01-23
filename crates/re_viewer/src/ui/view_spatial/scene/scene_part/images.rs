@@ -14,7 +14,7 @@ use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::Size;
 
 use crate::{
-    misc::{caches::AsDynamicImage, ViewerContext},
+    misc::{caches::AsDynamicImage, SpaceViewHighlights, ViewerContext},
     ui::{
         scene::SceneQuery,
         transform_cache::{ReferenceFromObjTransform, TransformCache},
@@ -71,6 +71,7 @@ impl ScenePart for ImagesPartClassic {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
+        highlights: &SpaceViewHighlights,
     ) {
         crate::profile_scope!("ImagesPartClassic");
 
@@ -103,9 +104,9 @@ impl ScenePart for ImagesPartClassic {
                     .annotation_info()
                     .color(color, DefaultColor::OpaqueWhite);
 
-                let highlight = ctx
-                    .selection_state()
-                    .instance_interaction_highlight(Some(scene.space_view_id), instance_hash);
+                let highlight = highlights
+                    .object_highlight(instance_hash.obj_path_hash)
+                    .index_highlight(instance_hash.instance_index_hash);
                 if highlight.any() {
                     let mut color = SceneSpatial::HOVER_COLOR;
                     let mut radius = Size::new_points(1.0);
@@ -223,6 +224,7 @@ impl ImagesPart {
         properties: &ObjectProps,
         ent_path: &ObjPath,
         world_from_obj: glam::Mat4,
+        highlights: &SpaceViewHighlights,
     ) -> Result<(), QueryError> {
         for (instance, tensor, color) in itertools::izip!(
             entity_view.iter_instances()?,
@@ -249,9 +251,9 @@ impl ImagesPart {
                     DefaultColor::OpaqueWhite,
                 );
 
-                let highlight = ctx
-                    .selection_state()
-                    .instance_interaction_highlight(Some(scene.space_view_id), instance_hash);
+                let highlight = highlights
+                    .object_highlight(instance_hash.obj_path_hash)
+                    .index_highlight(instance_hash.instance_index_hash);
                 if highlight.any() {
                     let color = SceneSpatial::apply_hover_and_selection_effect_color(
                         re_renderer::Color32::TRANSPARENT,
@@ -302,6 +304,7 @@ impl ScenePart for ImagesPart {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
+        highlights: &SpaceViewHighlights,
     ) {
         crate::profile_scope!("ImagesPart");
 
@@ -327,6 +330,7 @@ impl ScenePart for ImagesPart {
                         &props,
                         ent_path,
                         world_from_obj,
+                        highlights,
                     )?;
                 }
                 Ok(())

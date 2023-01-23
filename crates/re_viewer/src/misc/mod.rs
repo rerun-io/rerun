@@ -25,7 +25,8 @@ pub mod clipboard;
 
 pub use selection::{MultiSelection, Selection};
 pub use selection_state::{
-    HoverHighlight, HoveredSpace, InteractionHighlight, SelectionHighlight, SelectionState,
+    HoverHighlight, HoveredSpace, InteractionHighlight, OptionalSpaceViewObjectHighlight,
+    SelectionHighlight, SelectionState, SpaceViewHighlights,
 };
 
 // ----------------------------------------------------------------------------

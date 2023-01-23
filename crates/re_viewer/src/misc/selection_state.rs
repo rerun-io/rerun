@@ -1,7 +1,7 @@
 use ahash::HashSet;
 use itertools::Itertools;
 use nohash_hasher::IntMap;
-use re_data_store::{InstanceIdHash, LogDb, ObjPath};
+use re_data_store::{LogDb, ObjPath};
 use re_log_types::{IndexHash, ObjPathHash};
 
 use crate::ui::{Blueprint, HistoricalSelection, SelectionHistory, SpaceViewId};
@@ -82,6 +82,7 @@ pub struct SpaceViewObjectHighlight {
     instances: IntMap<IndexHash, InteractionHighlight>,
 }
 
+#[derive(Copy, Clone)]
 pub struct OptionalSpaceViewObjectHighlight<'a>(Option<&'a SpaceViewObjectHighlight>);
 
 impl<'a> OptionalSpaceViewObjectHighlight<'a> {
@@ -101,6 +102,7 @@ impl<'a> OptionalSpaceViewObjectHighlight<'a> {
 /// Highlights in a specific space view.
 ///
 /// Using this in bulk on many objects is faster than querying single objects.
+#[derive(Default)]
 pub struct SpaceViewHighlights {
     highlighted_object_paths: IntMap<ObjPathHash, SpaceViewObjectHighlight>,
 }
@@ -238,57 +240,6 @@ impl SelectionState {
         blueprint: &mut Blueprint,
     ) -> Option<MultiSelection> {
         self.history.selection_ui(ui, blueprint)
-    }
-
-    pub fn instance_interaction_highlight(
-        &self,
-        space_view_id: Option<SpaceViewId>,
-        instance_hash: InstanceIdHash,
-    ) -> InteractionHighlight {
-        let mut selection_highlight = SelectionHighlight::None;
-        for current_selection in self.selection.iter() {
-            match current_selection {
-                Selection::MsgId(_)
-                | Selection::DataPath(_)
-                | Selection::SpaceView(_)
-                | Selection::DataBlueprintGroup(_, _) => {}
-
-                Selection::Instance(selected_space_view_context, selected_instance) => {
-                    if selected_instance.hash() == instance_hash {
-                        if *selected_space_view_context == space_view_id {
-                            selection_highlight = SelectionHighlight::Selection;
-                            break;
-                        } else {
-                            selection_highlight = SelectionHighlight::SiblingSelection;
-                        }
-                    }
-                }
-            };
-        }
-
-        let mut hover_highlight = HoverHighlight::None;
-        for current_hover in self.hovered_previous_frame.iter() {
-            #[allow(clippy::match_same_arms)]
-            match current_hover {
-                Selection::MsgId(_) => {} // TODO(andreas): Show hover effect on contained instances.
-                Selection::DataPath(_) => {} // TODO(andreas): Unclear if this should show hover effect.
-                Selection::SpaceView(_) => {}
-
-                // Hover doesn't care about the space view - the user knows where their cursor is!
-                Selection::Instance(_, selected_instance) => {
-                    if selected_instance.hash() == instance_hash {
-                        hover_highlight = HoverHighlight::Hovered;
-                    }
-                }
-
-                Selection::DataBlueprintGroup(_, _) => {} // TODO(andreas): Show hover effect on contained instances.
-            };
-        }
-
-        InteractionHighlight {
-            selection: selection_highlight,
-            hover: hover_highlight,
-        }
     }
 
     pub fn highlights_for_space_view(&self, space_view_id: SpaceViewId) -> SpaceViewHighlights {

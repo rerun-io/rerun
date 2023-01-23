@@ -7,7 +7,10 @@ use re_query::{query_entity_with_primary, QueryError};
 use re_renderer::renderer::LineStripFlags;
 
 use crate::{
-    misc::{space_info::query_view_coordinates, ViewerContext},
+    misc::{
+        space_info::query_view_coordinates, OptionalSpaceViewObjectHighlight, SpaceViewHighlights,
+        ViewerContext,
+    },
     ui::{
         scene::SceneQuery,
         transform_cache::{ReferenceFromObjTransform, TransformCache},
@@ -27,6 +30,7 @@ impl ScenePart for CamerasPartClassic {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
+        highlights: &SpaceViewHighlights,
     ) {
         crate::profile_scope!("CamerasPartClassic");
 
@@ -48,6 +52,7 @@ impl ScenePart for CamerasPartClassic {
                     InstanceIdHash::NONE
                 }
             };
+            let object_highlight = highlights.object_highlight(obj_path.hash());
 
             let view_coordinates = determine_view_coordinates(
                 &ctx.log_db.obj_db,
@@ -57,13 +62,13 @@ impl ScenePart for CamerasPartClassic {
 
             CamerasPart::visit_instance(
                 scene,
-                ctx,
                 obj_path,
                 &props,
                 transforms,
                 instance_hash,
                 pinhole,
                 view_coordinates,
+                object_highlight,
             );
         }
     }
@@ -105,13 +110,13 @@ impl CamerasPart {
     #[allow(clippy::too_many_arguments)]
     fn visit_instance(
         scene: &mut SceneSpatial,
-        ctx: &mut ViewerContext<'_>,
         obj_path: &ObjPath,
         props: &ObjectProps,
         transforms: &TransformCache,
         instance_hash: InstanceIdHash,
         pinhole: Pinhole,
         view_coordinates: ViewCoordinates,
+        object_highlight: OptionalSpaceViewObjectHighlight<'_>,
     ) {
         // The transform *at* this object path already has the pinhole transformation we got passed in!
         // This makes sense, since if there's an image logged here one would expect that the transform applies.
@@ -198,8 +203,7 @@ impl CamerasPart {
         SceneSpatial::apply_hover_and_selection_effect(
             &mut radius,
             &mut color,
-            ctx.selection_state()
-                .instance_interaction_highlight(Some(scene.space_view_id), instance_hash),
+            object_highlight.index_highlight(instance_hash.instance_index_hash),
         );
 
         scene
@@ -226,6 +230,7 @@ impl ScenePart for CamerasPart {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
+        highlights: &SpaceViewHighlights,
     ) {
         crate::profile_scope!("CamerasPart");
 
@@ -243,6 +248,7 @@ impl ScenePart for CamerasPart {
                     let Transform::Pinhole(pinhole) = transform else {
                         return;
                     };
+                    let object_highlight = highlights.object_highlight(ent_path.hash());
 
                     let instance_hash = {
                         if props.interactive {
@@ -260,13 +266,13 @@ impl ScenePart for CamerasPart {
 
                     Self::visit_instance(
                         scene,
-                        ctx,
                         ent_path,
                         &props,
                         transforms,
                         instance_hash,
                         pinhole,
                         view_coordinates,
+                        object_highlight,
                     );
                 })
             }) {

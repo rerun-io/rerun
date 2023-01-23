@@ -3,7 +3,7 @@ use re_log_types::{DataVec, IndexHash, MsgId, ObjectType};
 use re_renderer::{renderer::LineStripFlags, Size};
 
 use crate::{
-    misc::ViewerContext,
+    misc::{SpaceViewHighlights, ViewerContext},
     ui::{
         scene::SceneQuery,
         transform_cache::{ReferenceFromObjTransform, TransformCache},
@@ -23,6 +23,7 @@ impl ScenePart for LineSegments2DPartClassic {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
+        highlights: &SpaceViewHighlights,
     ) {
         crate::profile_scope!("LineSegments2DPart");
 
@@ -36,6 +37,7 @@ impl ScenePart for LineSegments2DPartClassic {
             let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(obj_path) else {
                 continue;
             };
+            let object_highlight = highlights.object_highlight(obj_path.hash());
 
             let mut line_batch = scene
                 .primitives
@@ -62,8 +64,7 @@ impl ScenePart for LineSegments2DPartClassic {
                 SceneSpatial::apply_hover_and_selection_effect(
                     &mut radius,
                     &mut color,
-                    ctx.selection_state()
-                        .instance_interaction_highlight(Some(scene.space_view_id), instance_hash),
+                    object_highlight.index_highlight(instance_hash.instance_index_hash),
                 );
 
                 line_batch

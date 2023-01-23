@@ -9,7 +9,7 @@ use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::{renderer::LineStripFlags, Size};
 
 use crate::{
-    misc::ViewerContext,
+    misc::{SpaceViewHighlights, ViewerContext},
     ui::{
         scene::SceneQuery,
         transform_cache::{ReferenceFromObjTransform, TransformCache},
@@ -29,6 +29,7 @@ impl ScenePart for Arrows3DPartClassic {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
+        highlights: &SpaceViewHighlights,
     ) {
         crate::profile_scope!("Arrows3DPart");
 
@@ -43,6 +44,8 @@ impl ScenePart for Arrows3DPartClassic {
             let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(obj_path) else {
                 continue;
             };
+
+            let object_highlight = highlights.object_highlight(obj_path.hash());
 
             let mut line_batch = scene
                 .primitives
@@ -84,8 +87,7 @@ impl ScenePart for Arrows3DPartClassic {
                 SceneSpatial::apply_hover_and_selection_effect(
                     &mut radius,
                     &mut color,
-                    ctx.selection_state()
-                        .instance_interaction_highlight(Some(scene.space_view_id), instance_hash),
+                    object_highlight.index_highlight(instance_hash.instance_index_hash),
                 );
 
                 line_batch
@@ -112,17 +114,19 @@ impl Arrows3DPart {
     #[allow(clippy::too_many_arguments)]
     fn process_entity_view(
         scene: &mut SceneSpatial,
-        ctx: &mut ViewerContext<'_>,
         _query: &SceneQuery<'_>,
         props: &ObjectProps,
         entity_view: &EntityView<Arrow3D>,
         ent_path: &ObjPath,
         world_from_obj: Mat4,
+        highlights: &SpaceViewHighlights,
     ) -> Result<(), QueryError> {
         scene.num_logged_3d_objects += 1;
 
         let annotations = scene.annotation_map.find(ent_path);
         let default_color = DefaultColor::ObjPath(ent_path);
+
+        let object_highlight = highlights.object_highlight(ent_path.hash());
 
         let mut line_batch = scene
             .primitives
@@ -163,8 +167,7 @@ impl Arrows3DPart {
             SceneSpatial::apply_hover_and_selection_effect(
                 &mut radius,
                 &mut color,
-                ctx.selection_state()
-                    .instance_interaction_highlight(Some(scene.space_view_id), instance_hash),
+                object_highlight.index_highlight(instance_hash.instance_index_hash),
             );
 
             line_batch
@@ -188,6 +191,7 @@ impl ScenePart for Arrows3DPart {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
+        highlights: &SpaceViewHighlights,
     ) {
         crate::profile_scope!("Points2DPart");
 
@@ -214,12 +218,12 @@ impl ScenePart for Arrows3DPart {
                 for entity in entities {
                     Self::process_entity_view(
                         scene,
-                        ctx,
                         query,
                         &props,
                         &entity,
                         ent_path,
                         world_from_obj,
+                        highlights,
                     )?;
                 }
                 Ok(())
