@@ -13,6 +13,7 @@ from rerun.log import (
     _normalize_labels,
     _to_sequence,
 )
+from rerun.log.error_utils import _send_warning
 
 from rerun import bindings
 
@@ -138,13 +139,12 @@ def log_rects(
         rects = np.zeros((0, 4), dtype="float32")
     assert type(rects) is np.ndarray
 
-    identifiers = [] if identifiers is None else [str(s) for s in identifiers]
-
     colors = _normalize_colors(colors)
     class_ids = _normalize_ids(class_ids)
     labels = _normalize_labels(labels)
 
     if EXP_ARROW.classic_log_gate():
+        identifiers = [] if identifiers is None else [str(s) for s in identifiers]
         bindings.log_rects(
             obj_path=obj_path,
             rect_format=rect_format.value,
@@ -163,9 +163,20 @@ def log_rects(
         from rerun.components.label import LabelArray
         from rerun.components.rect2d import Rect2DArray
 
+        identifiers_np = np.array((), dtype="int64")
+        if identifiers:
+            try:
+                identifiers = [int(id) for id in identifiers]
+                identifiers_np = np.array(identifiers, dtype="int64")
+            except ValueError:
+                _send_warning("Only integer identifies supported", 1)
+
         # 0 = instanced, 1 = splat
         comps = [{}, {}]  # type: ignore[var-annotated]
         comps[0]["rerun.rect2d"] = Rect2DArray.from_numpy_and_format(rects, rect_format)
+
+        if len(identifiers_np):
+            comps[0]["rerun.instance"] = InstanceArray.from_numpy(identifiers_np)
 
         if len(colors):
             is_splat = len(colors.shape) == 1

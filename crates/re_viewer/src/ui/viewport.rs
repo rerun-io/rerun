@@ -528,7 +528,7 @@ impl Viewport {
         }
     }
 
-    pub fn create_new_blueprint_ui(
+    pub fn add_new_spaceview_button_ui(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
@@ -536,57 +536,58 @@ impl Viewport {
     ) {
         #![allow(clippy::collapsible_if)]
 
-        ui.vertical_centered(|ui| {
-            ui.menu_button("Add new space view…", |ui| {
-                ui.style_mut().wrap = Some(false);
+        // TODO(emilk): use a proper icon instead. Requires some egui changes so that an icon button can open a menu.
+        ui.menu_button("➕", |ui| {
+            ui.style_mut().wrap = Some(false);
 
-                let all_categories = enumset::EnumSet::<ViewCategory>::all();
+            let all_categories = enumset::EnumSet::<ViewCategory>::all();
 
-                for space_info in spaces_info.iter() {
-                    let transforms = TransformCache::determine_transforms(
-                        spaces_info,
+            for space_info in spaces_info.iter() {
+                let transforms = TransformCache::determine_transforms(
+                    spaces_info,
+                    space_info,
+                    &ObjectsProperties::default(),
+                );
+
+                for category in all_categories {
+                    let obj_paths = SpaceView::default_queried_objects(
+                        ctx,
+                        category,
                         space_info,
-                        &ObjectsProperties::default(),
+                        spaces_info,
+                        &transforms,
                     );
+                    if obj_paths.is_empty() {
+                        continue;
+                    }
 
-                    for category in all_categories {
-                        let obj_paths = SpaceView::default_queried_objects(
-                            ctx,
+                    if ui
+                        .button(format!("{} {}", category.icon(), space_info.path))
+                        .clicked()
+                    {
+                        ui.close_menu();
+
+                        let transforms = TransformCache::determine_transforms(
+                            spaces_info,
+                            space_info,
+                            &ObjectsProperties::default(),
+                        );
+
+                        let scene_spatial = query_scene_spatial(ctx, &obj_paths, &transforms);
+                        let new_space_view_id = self.add_space_view(SpaceView::new(
                             category,
                             space_info,
-                            spaces_info,
-                            &transforms,
-                        );
-                        if obj_paths.is_empty() {
-                            continue;
-                        }
-
-                        if ui
-                            .button(format!("{} {}", category.icon(), space_info.path))
-                            .clicked()
-                        {
-                            ui.close_menu();
-
-                            let transforms = TransformCache::determine_transforms(
-                                spaces_info,
-                                space_info,
-                                &ObjectsProperties::default(),
-                            );
-
-                            let scene_spatial = query_scene_spatial(ctx, &obj_paths, &transforms);
-                            let new_space_view_id = self.add_space_view(SpaceView::new(
-                                category,
-                                space_info,
-                                &obj_paths,
-                                scene_spatial.preferred_navigation_mode(&space_info.path),
-                                transforms.clone(),
-                            ));
-                            ctx.set_single_selection(Selection::SpaceView(new_space_view_id));
-                        }
+                            &obj_paths,
+                            scene_spatial.preferred_navigation_mode(&space_info.path),
+                            transforms.clone(),
+                        ));
+                        ctx.set_single_selection(Selection::SpaceView(new_space_view_id));
                     }
                 }
-            });
-        });
+            }
+        })
+        .response
+        .on_hover_text("Add new space view.");
     }
 }
 

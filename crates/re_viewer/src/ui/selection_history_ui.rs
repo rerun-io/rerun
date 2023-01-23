@@ -25,10 +25,20 @@ impl SelectionHistory {
         blueprint: &Blueprint,
     ) -> Option<HistoricalSelection> {
         ui.horizontal(|ui|{
-            let prev = self.prev_button_ui(ui, blueprint);
-            let next = self.next_button_ui(ui, blueprint);
             ui.strong("Selection").on_hover_text("The Selection View contains information and options about the currently selected object(s).");
-            prev.or(next)
+
+            // TODO(emilk): an egui helper for right-to-left
+            ui.allocate_ui_with_layout(
+                egui::vec2(
+                    ui.available_size_before_wrap().x,
+                    ui.spacing().interact_size.y,
+                ),
+                egui::Layout::right_to_left(egui::Align::Center),
+                |ui| {
+                    let next = self.next_button_ui(ui, blueprint);
+                    let prev = self.prev_button_ui(ui, blueprint);
+                    prev.or(next)
+                }).inner
         }).inner
     }
 
