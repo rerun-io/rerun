@@ -514,22 +514,22 @@ impl App {
                         debug_assertions
                     ))]
                     if let Some(analytics) = self.analytics.as_mut() {
-                        use std::hash::Hasher as _;
+                        use sha2::Digest as _;
                         analytics.default_append_props_mut().extend([
                             (
                                 "application_id".into(),
                                 if !msg.info.is_official_example {
-                                    let mut hasher = ahash::AHasher::default();
-                                    msg.info.application_id.0.hash(&mut hasher);
-                                    format!("{:x}", hasher.finish()).into()
+                                    let mut hasher = sha2::Sha256::default();
+                                    hasher.update(&msg.info.application_id.0);
+                                    format!("{:x}", hasher.finalize()).into()
                                 } else {
                                     msg.info.application_id.0.clone().into()
                                 },
                             ),
                             ("recording_id".into(), {
-                                let mut hasher = ahash::AHasher::default();
-                                msg.info.recording_id.hash(&mut hasher);
-                                format!("{:x}", hasher.finish()).into()
+                                let mut hasher = sha2::Sha256::default();
+                                hasher.update(msg.info.recording_id.to_string());
+                                format!("{:x}", hasher.finalize()).into()
                             }),
                             (
                                 "recording_source".into(),
