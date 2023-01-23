@@ -1,7 +1,6 @@
 """The Rerun Python SDK, which is a wrapper around the rerun_sdk crate."""
 
 import atexit
-from pathlib import PosixPath
 from typing import Optional
 
 import rerun.rerun_bindings as bindings  # type: ignore[attr-defined]
@@ -123,7 +122,7 @@ def init(application_id: str, spawn_and_connect: bool = False) -> None:
         import pathlib
 
         app_path = pathlib.Path(inspect.stack()[1][1]).resolve()
-    except:
+    except Exception:
         pass
 
     bindings.init(application_id, app_path)
