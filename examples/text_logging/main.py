@@ -12,6 +12,7 @@ Run:
 
 import argparse
 import logging
+import pathlib
 
 import rerun as rr
 
@@ -85,7 +86,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    rr.init("logging", is_official_example=True)
+    rr.init("logging", application_path=pathlib.Path(__file__).resolve())
 
     if args.serve:
         rr.serve()

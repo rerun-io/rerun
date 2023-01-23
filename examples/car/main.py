@@ -2,6 +2,7 @@
 """Shows how to use the Rerun SDK."""
 
 import argparse
+import pathlib
 from dataclasses import dataclass
 from time import sleep
 from typing import Iterator, Tuple
@@ -298,7 +299,7 @@ def main() -> None:
     parser.add_argument("--save", type=str, default=None, help="Save data to a .rrd file at this path")
     args = parser.parse_args()
 
-    rr.init("car", is_official_example=True)
+    rr.init("car", application_path=pathlib.Path(__file__).resolve())
 
     if args.serve:
         rr.serve()

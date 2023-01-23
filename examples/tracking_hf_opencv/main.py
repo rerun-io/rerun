@@ -4,6 +4,7 @@ import argparse
 import json
 import logging
 import os
+import pathlib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Final, List, Sequence
@@ -390,7 +391,7 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    rr.init("tracking_hf_opencv", is_official_example=True)
+    rr.init("tracking_hf_opencv", application_path=pathlib.Path(__file__).resolve())
 
     setup_looging()
 

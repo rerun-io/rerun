@@ -1,6 +1,7 @@
 """The Rerun Python SDK, which is a wrapper around the rerun_sdk crate."""
 
 import atexit
+from pathlib import PosixPath
 from typing import Optional
 
 import rerun.rerun_bindings as bindings  # type: ignore[attr-defined]
@@ -89,7 +90,10 @@ def set_recording_id(value: str) -> None:
     bindings.set_recording_id(value)
 
 
-def init(application_id: str, spawn_and_connect: bool = False, is_official_example: bool = False) -> None:
+def init(application_id: str,
+         application_path: Optional[PosixPath] = None,
+         spawn_and_connect: bool = False,
+) -> None:
     """
     Initialize the Rerun SDK with a user-chosen application id (name).
 
@@ -109,12 +113,11 @@ def init(application_id: str, spawn_and_connect: bool = False, is_official_examp
         If you don't call this, log events will be buffered indefinitely until
         you call either `connect`, `show`, or `save`
 
-    is_official_example : bool
-        If set to True, the recording will be identified as an official example in
-        analytics.
+    application_path : Optional[str]
+        Used to identify official examples.
 
     """
-    bindings.init(application_id, is_official_example)
+    bindings.init(application_id, application_path)
 
     if spawn_and_connect:
         _spawn_and_connect()

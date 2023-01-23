@@ -292,11 +292,18 @@ fn set_recording_id(recording_id: &str) -> PyResult<()> {
 }
 
 #[pyfunction]
-fn init(application_id: String, is_official_example: Option<bool>) {
-    global_session().set_application_id(
-        ApplicationId(application_id),
-        is_official_example.unwrap_or_default(),
-    );
+fn init(application_id: String, application_path: Option<PathBuf>) {
+    let is_official_example = application_path.map_or(false, |mut path| {
+        let rerun_suffix = PathBuf::from("rerun-io/rerun/examples");
+        // first iteration is always file name in our examples
+        while path.pop() {
+            if path.ends_with(&rerun_suffix) {
+                return true;
+            }
+        }
+        false
+    });
+    global_session().set_application_id(ApplicationId(application_id), is_official_example);
 }
 
 #[pyfunction]

@@ -12,6 +12,7 @@ examples/multiprocessing/main.py --connect
 import argparse
 import multiprocessing
 import os
+import pathlib
 import threading
 
 import rerun as rr
@@ -32,7 +33,7 @@ def main() -> None:
     parser.add_argument("--connect", dest="connect", action="store_true", help="Connect to an external viewer")
     args = parser.parse_args()
 
-    rr.init("multiprocessing", is_official_example=True)
+    rr.init("multiprocessing", application_path=pathlib.Path(__file__).resolve())
 
     if args.connect:
         task("main_task")

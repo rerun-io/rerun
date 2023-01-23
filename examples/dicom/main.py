@@ -15,6 +15,7 @@ python3 examples/dicom/main.py
 import argparse
 import io
 import os
+import pathlib
 import zipfile
 from pathlib import Path
 from typing import Final, Iterable, Tuple
@@ -89,7 +90,7 @@ if __name__ == "__main__":
     parser.add_argument("--headless", action="store_true", help="Don't show GUI")
     args = parser.parse_args()
 
-    rr.init("dicom", is_official_example=True)
+    rr.init("dicom", application_path=pathlib.Path(__file__).resolve())
 
     if args.connect:
         # Send logging data to separate `rerun` process.

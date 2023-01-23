@@ -11,6 +11,7 @@ Run:
 
 
 import argparse
+import pathlib
 import random
 from math import cos, pi, sin, sqrt, tau
 
@@ -97,7 +98,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    rr.init("plot", is_official_example=True)
+    rr.init("plot", application_path=pathlib.Path(__file__).resolve())
 
     if args.serve:
         rr.serve()

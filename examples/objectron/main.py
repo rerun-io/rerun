@@ -8,6 +8,7 @@ Example of using the Rerun SDK to log the Objectron dataset.
 import argparse
 import math
 import os
+import pathlib
 import sys
 import time
 from dataclasses import dataclass
@@ -284,7 +285,7 @@ def main() -> None:
     if args.run_forever:
         assert args.connect, "If you run forever, you need to --connect"
 
-    rr.init("objectron", is_official_example=True)
+    rr.init("objectron", application_path=pathlib.Path(__file__).resolve())
 
     if args.connect:
         # Send logging data to separate `rerun` process.

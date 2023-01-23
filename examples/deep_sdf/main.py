@@ -29,6 +29,7 @@ examples/deep_sdf/main.py
 
 import argparse
 import os
+import pathlib
 from pathlib import Path
 from timeit import default_timer as timer
 from typing import Tuple, cast
@@ -219,7 +220,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    rr.init("deep_sdf", is_official_example=True)
+    rr.init("deep_sdf", application_path=pathlib.Path(__file__).resolve())
 
     if args.serve:
         rr.serve()

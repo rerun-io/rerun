@@ -7,6 +7,7 @@ An analog clock is built with Rerun Arrow3D primitives.
 
 import argparse
 import math
+import pathlib
 from typing import Final, Tuple
 
 import numpy as np
@@ -75,7 +76,7 @@ if __name__ == "__main__":
     parser.add_argument("--steps", type=int, default=10_000, help="The number of time steps to log")
     args = parser.parse_args()
 
-    rr.init("clock", is_official_example=True)
+    rr.init("clock", application_path=pathlib.Path(__file__).resolve())
 
     if args.connect:
         # Send logging data to separate `rerun` process.

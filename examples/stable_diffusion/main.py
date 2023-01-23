@@ -6,6 +6,7 @@ For more info see: https://github.com/Stability-AI/stablediffusion
 """
 import argparse
 import os
+import pathlib
 import platform
 from pathlib import Path
 from typing import Final
@@ -143,7 +144,7 @@ expense of slower inference. This parameter will be modulated by `strength`.
 
     args = parser.parse_args()
 
-    rr.init("Depth Guided Stable Diffusion", is_official_example=True)
+    rr.init("Depth Guided Stable Diffusion", application_path=pathlib.Path(__file__).resolve())
 
     image_path = args.image_path  # type: str
     if not image_path:
