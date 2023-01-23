@@ -15,4 +15,5 @@ fn main() {
         .unwrap();
     let git_hash = String::from_utf8(output.stdout).unwrap();
     println!("cargo:rustc-env=__RERUN_GIT_HASH={}", git_hash);
+    println!("cargo:rerun-if-changed=.git/HEAD");
 }
