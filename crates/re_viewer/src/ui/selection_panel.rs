@@ -99,12 +99,6 @@ fn what_is_selected_ui(
                 ui.code(msg_id.to_string());
             });
         }
-        Selection::Instance(instance_id) => {
-            ui.horizontal(|ui| {
-                ui.label("Instance:");
-                ui.code(instance_id.to_string());
-            });
-        }
         Selection::DataPath(data_path) => {
             ui.horizontal(|ui| {
                 ui.label("Data path:");
@@ -119,18 +113,25 @@ fn what_is_selected_ui(
                 });
             }
         }
-        Selection::SpaceViewObjPath(space_view_id, obj_path) => {
-            if let Some(space_view) = blueprint.viewport.space_view_mut(space_view_id) {
-                egui::Grid::new("space_view_id_obj_path").show(ui, |ui| {
+        Selection::Instance(space_view_id, instance_id) => {
+            egui::Grid::new("space_view_id_obj_path").show(ui, |ui| {
+                if instance_id.instance_index.is_none() {
                     ui.label("Object Path:");
-                    ctx.obj_path_button(ui, obj_path);
-                    ui.end_row();
+                    ctx.obj_path_button(ui, &instance_id.obj_path);
+                } else {
+                    ui.label("Instance:");
+                    ctx.instance_id_button(ui, instance_id);
+                }
+                ui.end_row();
 
-                    ui.label("in Space View:");
-                    ctx.space_view_button_to(ui, &space_view.name, *space_view_id);
-                    ui.end_row();
-                });
-            }
+                if let Some(space_view_id) = space_view_id {
+                    if let Some(space_view) = blueprint.viewport.space_view_mut(space_view_id) {
+                        ui.label("in Space View:");
+                        ctx.space_view_button_to(ui, &space_view.name, *space_view_id);
+                        ui.end_row();
+                    }
+                }
+            });
         }
         Selection::DataBlueprintGroup(space_view_id, data_blueprint_group_handle) => {
             if let Some(space_view) = blueprint.viewport.space_view_mut(space_view_id) {
@@ -169,14 +170,11 @@ fn data_ui(
         Selection::MsgId(msg_id) => {
             msg_id.data_ui(ctx, ui, preview);
         }
-        Selection::Instance(instance_id) => {
-            instance_id.data_ui(ctx, ui, preview);
-        }
         Selection::DataPath(data_path) => {
             data_path.data_ui(ctx, ui, preview);
         }
-        Selection::SpaceViewObjPath(_, obj_path) => {
-            obj_path.data_ui(ctx, ui, preview);
+        Selection::Instance(_, instance_id) => {
+            instance_id.data_ui(ctx, ui, preview);
         }
     }
 }
@@ -189,8 +187,8 @@ fn blueprint_ui(
     selection: &Selection,
 ) {
     match selection {
-        Selection::MsgId(_) | Selection::Instance(_) | Selection::DataPath(_) => {
-            // TODO(emilk): look up which, if any, blueprints this instances/DataPath is part of.
+        Selection::MsgId(_) | Selection::DataPath(_) => {
+            // TODO(emilk): look up which, if any, blueprints this DataPath is part of.
             ui.weak("(nothing)");
         }
 
@@ -216,12 +214,23 @@ fn blueprint_ui(
             }
         }
 
-        Selection::SpaceViewObjPath(space_view_id, obj_path) => {
-            if let Some(space_view) = blueprint.viewport.space_view_mut(space_view_id) {
-                let data_blueprint = space_view.data_blueprint.data_blueprints_individual();
-                let mut props = data_blueprint.get(obj_path);
-                obj_props_ui(ctx, ui, Some(obj_path), &mut props, &space_view.view_state);
-                data_blueprint.set(obj_path.clone(), props);
+        Selection::Instance(space_view_id, instance_id) => {
+            if let (Some(space_view_id), None) = (space_view_id, &instance_id.instance_index) {
+                if let Some(space_view) = blueprint.viewport.space_view_mut(space_view_id) {
+                    let data_blueprint = space_view.data_blueprint.data_blueprints_individual();
+                    let mut props = data_blueprint.get(&instance_id.obj_path);
+                    obj_props_ui(
+                        ctx,
+                        ui,
+                        Some(&instance_id.obj_path),
+                        &mut props,
+                        &space_view.view_state,
+                    );
+                    data_blueprint.set(instance_id.obj_path.clone(), props);
+                }
+            } else {
+                // TODO(emilk): look up which, if any, blueprints this DataPath/instance is part of.
+                ui.weak("(nothing)");
             }
         }
 

@@ -23,8 +23,11 @@ pub(crate) mod profiler;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod clipboard;
 
-pub use selection::{MultiSelection, ObjectPathSelectionScope, Selection, SelectionScope};
-pub use selection_state::{HoveredSpace, SelectionState};
+pub use selection::{MultiSelection, Selection};
+pub use selection_state::{
+    HoverHighlight, HoveredSpace, InteractionHighlight, OptionalSpaceViewObjectHighlight,
+    SelectionHighlight, SelectionState, SpaceViewHighlights,
+};
 
 // ----------------------------------------------------------------------------
 

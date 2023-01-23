@@ -7,7 +7,10 @@ use re_query::{query_entity_with_primary, QueryError};
 use re_renderer::renderer::LineStripFlags;
 
 use crate::{
-    misc::{space_info::query_view_coordinates, ObjectPathSelectionScope, ViewerContext},
+    misc::{
+        space_info::query_view_coordinates, OptionalSpaceViewObjectHighlight, SpaceViewHighlights,
+        ViewerContext,
+    },
     ui::{
         scene::SceneQuery,
         transform_cache::{ReferenceFromObjTransform, TransformCache},
@@ -27,6 +30,7 @@ impl ScenePart for CamerasPartClassic {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
+        highlights: &SpaceViewHighlights,
     ) {
         crate::profile_scope!("CamerasPartClassic");
 
@@ -48,8 +52,7 @@ impl ScenePart for CamerasPartClassic {
                     InstanceIdHash::NONE
                 }
             };
-            let hovered_paths = ctx.hovered().check_obj_path(obj_path.hash());
-            let selected_paths = ctx.selection().check_obj_path(obj_path.hash());
+            let object_highlight = highlights.object_highlight(obj_path.hash());
 
             let view_coordinates = determine_view_coordinates(
                 &ctx.log_db.obj_db,
@@ -65,8 +68,7 @@ impl ScenePart for CamerasPartClassic {
                 instance_hash,
                 pinhole,
                 view_coordinates,
-                &hovered_paths,
-                &selected_paths,
+                object_highlight,
             );
         }
     }
@@ -114,8 +116,7 @@ impl CamerasPart {
         instance_hash: InstanceIdHash,
         pinhole: Pinhole,
         view_coordinates: ViewCoordinates,
-        hovered_paths: &ObjectPathSelectionScope,
-        selected_paths: &ObjectPathSelectionScope,
+        object_highlight: OptionalSpaceViewObjectHighlight<'_>,
     ) {
         // The transform *at* this object path already has the pinhole transformation we got passed in!
         // This makes sense, since if there's an image logged here one would expect that the transform applies.
@@ -202,8 +203,7 @@ impl CamerasPart {
         SceneSpatial::apply_hover_and_selection_effect(
             &mut radius,
             &mut color,
-            hovered_paths.contains_index(instance_hash.instance_index_hash),
-            selected_paths.contains_index(instance_hash.instance_index_hash),
+            object_highlight.index_highlight(instance_hash.instance_index_hash),
         );
 
         scene
@@ -230,6 +230,7 @@ impl ScenePart for CamerasPart {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
+        highlights: &SpaceViewHighlights,
     ) {
         crate::profile_scope!("CamerasPart");
 
@@ -243,13 +244,11 @@ impl ScenePart for CamerasPart {
                 &[],
             )
             .and_then(|entity_view| {
-                let hovered_paths = ctx.hovered().check_obj_path(ent_path.hash());
-                let selected_paths = ctx.selection().check_obj_path(ent_path.hash());
-
                 entity_view.visit1(|instance, transform| {
                     let Transform::Pinhole(pinhole) = transform else {
                         return;
                     };
+                    let object_highlight = highlights.object_highlight(ent_path.hash());
 
                     let instance_hash = {
                         if props.interactive {
@@ -273,8 +272,7 @@ impl ScenePart for CamerasPart {
                         instance_hash,
                         pinhole,
                         view_coordinates,
-                        &hovered_paths,
-                        &selected_paths,
+                        object_highlight,
                     );
                 })
             }) {

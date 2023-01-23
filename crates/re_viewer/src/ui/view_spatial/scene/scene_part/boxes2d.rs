@@ -9,7 +9,7 @@ use re_query::{query_primary_with_history, QueryError};
 use re_renderer::Size;
 
 use crate::{
-    misc::{ObjectPathSelectionScope, ViewerContext},
+    misc::{OptionalSpaceViewObjectHighlight, SpaceViewHighlights, ViewerContext},
     ui::{
         scene::SceneQuery,
         transform_cache::{ReferenceFromObjTransform, TransformCache},
@@ -30,6 +30,7 @@ impl ScenePart for Boxes2DPartClassic {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
+        highlights: &SpaceViewHighlights,
     ) {
         crate::profile_scope!("Boxes2DPartClassic");
 
@@ -43,9 +44,7 @@ impl ScenePart for Boxes2DPartClassic {
             let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(obj_path) else {
                 continue;
             };
-
-            let hovered_paths = ctx.hovered().check_obj_path(obj_path.hash());
-            let selected_paths = ctx.selection().check_obj_path(obj_path.hash());
+            let object_highlight = highlights.object_highlight(obj_path.hash());
 
             let mut line_batch = scene
                 .primitives
@@ -74,8 +73,7 @@ impl ScenePart for Boxes2DPartClassic {
                 SceneSpatial::apply_hover_and_selection_effect(
                     &mut radius,
                     &mut color,
-                    hovered_paths.contains_index(instance_hash.instance_index_hash),
-                    selected_paths.contains_index(instance_hash.instance_index_hash),
+                    object_highlight.index_highlight(instance_hash.instance_index_hash),
                 );
 
                 line_batch
@@ -113,7 +111,6 @@ pub struct Boxes2DPart;
 impl Boxes2DPart {
     /// Build scene parts for a single box instance
     #[allow(clippy::too_many_arguments)]
-    #[allow(clippy::too_many_arguments)]
     fn visit_instance(
         scene: &mut SceneSpatial,
         obj_path: &ObjPath,
@@ -124,8 +121,7 @@ impl Boxes2DPart {
         radius: Option<Radius>,
         label: Option<Label>,
         class_id: Option<ClassId>,
-        hovered_paths: &ObjectPathSelectionScope,
-        selected_paths: &ObjectPathSelectionScope,
+        object_highlight: OptionalSpaceViewObjectHighlight<'_>,
     ) {
         scene.num_logged_2d_objects += 1;
 
@@ -141,8 +137,7 @@ impl Boxes2DPart {
         SceneSpatial::apply_hover_and_selection_effect(
             &mut radius,
             &mut color,
-            hovered_paths.contains_index(instance_hash.instance_index_hash),
-            selected_paths.contains_index(instance_hash.instance_index_hash),
+            object_highlight.index_highlight(instance_hash.instance_index_hash),
         );
 
         let mut line_batch = scene
@@ -182,6 +177,7 @@ impl ScenePart for Boxes2DPart {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
+        highlights: &SpaceViewHighlights,
     ) {
         crate::profile_scope!("Boxes2DPart");
 
@@ -189,6 +185,8 @@ impl ScenePart for Boxes2DPart {
             let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(ent_path) else {
                 continue;
             };
+
+            let object_highlight = highlights.object_highlight(ent_path.hash());
 
             match query_primary_with_history::<Rect2D, 6>(
                 &ctx.log_db.obj_db.arrow_store,
@@ -207,8 +205,6 @@ impl ScenePart for Boxes2DPart {
             )
             .and_then(|entities| {
                 for entity in entities {
-                    let hovered_paths = ctx.hovered().check_obj_path(ent_path.hash());
-                    let selected_paths = ctx.selection().check_obj_path(ent_path.hash());
                     entity.visit5(|instance, rect, color, radius, label, class_id| {
                         let instance_hash = {
                             if props.interactive {
@@ -227,8 +223,7 @@ impl ScenePart for Boxes2DPart {
                             radius,
                             label,
                             class_id,
-                            &hovered_paths,
-                            &selected_paths,
+                            object_highlight,
                         );
                     })?;
                 }
