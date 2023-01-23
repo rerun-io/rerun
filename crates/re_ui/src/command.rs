@@ -9,11 +9,11 @@ use egui::{Key, KeyboardShortcut, Modifiers};
 pub enum Command {
     // Listed in the order they show up in the command palette by default!
     #[cfg(not(target_arch = "wasm32"))]
+    Open,
+    #[cfg(not(target_arch = "wasm32"))]
     Save,
     #[cfg(not(target_arch = "wasm32"))]
     SaveSelection,
-    #[cfg(not(target_arch = "wasm32"))]
-    Open,
     #[cfg(not(target_arch = "wasm32"))]
     Quit,
 
@@ -62,7 +62,7 @@ impl Command {
             ),
 
             #[cfg(not(target_arch = "wasm32"))]
-            Command::Open => ("Open", "Open a Rerun Data File (.rrd)"),
+            Command::Open => ("Open…", "Open a Rerun Data File (.rrd)"),
 
             #[cfg(not(target_arch = "wasm32"))]
             Command::Quit => ("Quit", "Close the Rerun Viewer"),
@@ -94,10 +94,9 @@ impl Command {
 
             Command::SelectionPrevious => ("Previous selection", "Go to previous selection"),
             Command::SelectionNext => ("Next selection", "Go to next selection"),
-            Command::ToggleCommandPalette => (
-                "Toggle command palette",
-                "Toggle the command palette window",
-            ),
+            Command::ToggleCommandPalette => {
+                ("Command palette…", "Toggle the command palette window")
+            }
 
             Command::PlaybackTogglePlayPause => {
                 ("Toggle play/pause", "Either play or pause the time")
