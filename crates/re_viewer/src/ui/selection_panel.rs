@@ -96,13 +96,13 @@ fn what_is_selected_ui(
         Selection::MsgId(msg_id) => {
             ui.horizontal(|ui| {
                 ui.label("Message ID:");
-                ui.code(msg_id.to_string());
+                ctx.msg_id_button(ui, &msg_id);
             });
         }
         Selection::DataPath(data_path) => {
             ui.horizontal(|ui| {
                 ui.label("Data path:");
-                ui.code(data_path.to_string());
+                ctx.data_path_button(ui, data_path);
             });
         }
         Selection::SpaceView(space_view_id) => {
