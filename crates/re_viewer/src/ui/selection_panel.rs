@@ -222,7 +222,6 @@ fn blueprint_ui(
                 .and_then(|space_view_id| blueprint.viewport.space_view_mut(&space_view_id))
             {
                 if instance_id.instance_index.is_some() {
-                    // Clarify that instances don't have blueprints and refer to its parent
                     ui.horizontal(|ui| {
                         ui.label("part of");
                         ctx.obj_path_button(ui, *space_view_id, &instance_id.obj_path);
