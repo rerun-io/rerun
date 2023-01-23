@@ -15,7 +15,6 @@ crossbeam = "0.8"
 once_cell = "1.17"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-time = { version = "0.3", features = ["serde", "formatting", "parsing"] }
 uuid = { version = "1.1", features = ["serde", "v4", "js"] }
 # External (workspace)
 anyhow.workspace = true
@@ -28,8 +27,10 @@ reqwest = { version = "0.11", default-features = false, features = [
   "blocking",
   "rustls-tls",
 ] }
+time = { version = "0.3", features = ["serde", "formatting", "parsing"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
+time = { version = "0.3", features = ["serde", "formatting", "parsing", "wasm-bindgen"] }
 web-sys = { version = "0.3.58", features = ["Storage"] }
 
 

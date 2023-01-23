@@ -10,6 +10,7 @@ use anyhow::Context;
 
 use clap::Subcommand;
 use re_format::parse_duration;
+use re_log::info;
 use re_log_types::LogMsg;
 use re_smart_channel::Receiver;
 

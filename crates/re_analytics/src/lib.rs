@@ -8,6 +8,18 @@ use std::time::Duration;
 use re_log::trace;
 use time::OffsetDateTime;
 
+// TODO:
+//
+// - where does one print a disclaimer when running on web..?
+//   - is console.log enough...? (is console.log even working right now?)
+//
+// - how does one clear their analytics state on web..?
+//   - should the doc (disclaimer and/or `details` command) just point them towards clearing their
+//     local store? is that enough?
+//   - what happens wrt to `rerun analytics clear` though?
+//
+// - should flushing be somehow driven by requestanimationframe? maybe?
+
 // ---
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -110,7 +122,10 @@ impl Analytics {
         trace!(?config, ?tick, "loaded analytics config");
 
         if config.is_first_run() {
+            #[cfg(not(target_arch = "wasm32"))]
             eprintln!("{DISCLAIMER}");
+            #[cfg(target_arch = "wasm32")]
+            re_log::info!("{DISCLAIMER}");
 
             config.save()?;
             trace!(?config, ?tick, "saved analytics config");

@@ -32,7 +32,7 @@ pub enum PipelineError {
 
 /// An eventual, at-least-once(-ish) event pipeline, backed by a write-ahead log on the local disk.
 ///
-/// Flushing of the WAL is entirely left up to the OS page cache, hance the -ish.
+/// Flushing of the WAL is entirely left up to the OS page cache, hence the -ish.
 #[derive(Debug)]
 pub struct Pipeline {
     event_tx: channel::Sender<Result<Event, RecvError>>,

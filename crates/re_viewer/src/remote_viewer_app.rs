@@ -1,3 +1,5 @@
+use re_log::info;
+
 use crate::App;
 
 /// Connects to a server over `WebSockets`.
