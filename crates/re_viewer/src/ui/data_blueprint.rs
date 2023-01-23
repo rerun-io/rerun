@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use nohash_hasher::{IntMap, IntSet};
 use re_data_store::{ObjPath, ObjectProps, ObjectsProperties};
 use slotmap::SlotMap;
@@ -24,7 +26,10 @@ pub struct DataBlueprintGroup {
 
     pub children: SmallVec<[DataBlueprintGroupHandle; 4]>,
 
-    pub objects: IntSet<ObjPath>,
+    /// Direct child objects of this blueprint group.
+    ///
+    /// Musn't be a `HashSet` because we want to preserve order of object paths.
+    pub objects: BTreeSet<ObjPath>,
 }
 
 /// Data blueprints for all object paths in a space view.
@@ -219,7 +224,7 @@ impl DataBlueprintTree {
             }
 
             // Remove group.
-            let single_object = leaf_group.objects.drain().next().unwrap();
+            let single_object = leaf_group.objects.iter().next().unwrap().clone();
             let parent_group_handle = leaf_group.parent;
             self.groups.remove(leaf_group_handle);
 
