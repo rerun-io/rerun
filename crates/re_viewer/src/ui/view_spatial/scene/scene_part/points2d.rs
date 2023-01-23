@@ -10,7 +10,7 @@ use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::Size;
 
 use crate::{
-    misc::ViewerContext,
+    misc::{OptionalSpaceViewObjectHighlight, SpaceViewHighlights, ViewerContext},
     ui::{
         scene::SceneQuery,
         transform_cache::{ReferenceFromObjTransform, TransformCache},
@@ -33,6 +33,7 @@ impl ScenePart for Points2DPartClassic {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
+        highlights: &SpaceViewHighlights,
     ) {
         crate::profile_scope!("Points2DPartClassic");
 
@@ -50,9 +51,7 @@ impl ScenePart for Points2DPartClassic {
             let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(obj_path) else {
                 continue;
             };
-
-            let hovered_paths = ctx.hovered().check_obj_path(obj_path.hash());
-            let selected_paths = ctx.selection().check_obj_path(obj_path.hash());
+            let object_highlight = highlights.object_highlight(obj_path.hash());
 
             // If keypoints ids show up we may need to connect them later!
             // We include time in the key, so that the "Visible history" (time range queries) feature works.
@@ -100,8 +99,7 @@ impl ScenePart for Points2DPartClassic {
                 SceneSpatial::apply_hover_and_selection_effect(
                     &mut radius,
                     &mut color,
-                    hovered_paths.contains_index(instance_hash.instance_index_hash),
-                    selected_paths.contains_index(instance_hash.instance_index_hash),
+                    object_highlight.index_highlight(instance_hash.instance_index_hash),
                 );
                 point_batch
                     .add_point_2d(pos)
@@ -150,12 +148,12 @@ impl Points2DPart {
     #[allow(clippy::too_many_arguments)]
     fn process_entity_view(
         scene: &mut SceneSpatial,
-        ctx: &mut ViewerContext<'_>,
         _query: &SceneQuery<'_>,
         props: &ObjectProps,
         entity_view: &EntityView<Point2D>,
         ent_path: &ObjPath,
         world_from_obj: Mat4,
+        object_highlight: OptionalSpaceViewObjectHighlight<'_>,
     ) -> Result<(), QueryError> {
         scene.num_logged_2d_objects += 1;
 
@@ -174,9 +172,6 @@ impl Points2DPart {
             .points
             .batch("2d points")
             .world_from_obj(world_from_obj);
-
-        let hovered_paths = ctx.hovered().check_obj_path(ent_path.hash());
-        let selected_paths = ctx.selection().check_obj_path(ent_path.hash());
 
         let visitor = |instance: Instance,
                        pos: Point2D,
@@ -218,8 +213,7 @@ impl Points2DPart {
             SceneSpatial::apply_hover_and_selection_effect(
                 &mut radius,
                 &mut color,
-                hovered_paths.contains_index(instance_hash.instance_index_hash),
-                selected_paths.contains_index(instance_hash.instance_index_hash),
+                object_highlight.index_highlight(instance_hash.instance_index_hash),
             );
 
             point_batch
@@ -260,6 +254,7 @@ impl ScenePart for Points2DPart {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
+        highlights: &SpaceViewHighlights,
     ) {
         crate::profile_scope!("Points2DPart");
 
@@ -267,6 +262,7 @@ impl ScenePart for Points2DPart {
             let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(ent_path) else {
                 continue;
             };
+            let object_highlight = highlights.object_highlight(ent_path.hash());
 
             match query_primary_with_history::<Point2D, 7>(
                 &ctx.log_db.obj_db.arrow_store,
@@ -288,12 +284,12 @@ impl ScenePart for Points2DPart {
                 for entity in entities {
                     Self::process_entity_view(
                         scene,
-                        ctx,
                         query,
                         &props,
                         &entity,
                         ent_path,
                         world_from_obj,
+                        object_highlight,
                     )?;
                 }
                 Ok(())

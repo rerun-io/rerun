@@ -10,7 +10,7 @@ use re_log_types::{
 use re_query::{query_primary_with_history, EntityView, QueryError};
 
 use crate::{
-    misc::ViewerContext,
+    misc::{SpaceViewHighlights, ViewerContext},
     ui::{
         scene::SceneQuery,
         transform_cache::{ReferenceFromObjTransform, TransformCache},
@@ -32,6 +32,7 @@ impl ScenePart for MeshPartClassic {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
+        highlights: &SpaceViewHighlights,
     ) {
         crate::profile_scope!("MeshPartClassic");
 
@@ -44,12 +45,10 @@ impl ScenePart for MeshPartClassic {
             let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(obj_path) else {
                 continue;
             };
+            let object_highlight = highlights.object_highlight(obj_path.hash());
 
             // TODO(andreas): This throws away perspective transformation!
             let world_from_obj_affine = glam::Affine3A::from_mat4(world_from_obj);
-
-            let hovered_paths = ctx.hovered().check_obj_path(obj_path.hash());
-            let selected_paths = ctx.selection().check_obj_path(obj_path.hash());
 
             let visitor = |instance_index: Option<&IndexHash>,
                            _time: i64,
@@ -61,8 +60,7 @@ impl ScenePart for MeshPartClassic {
 
                 let additive_tint = SceneSpatial::apply_hover_and_selection_effect_color(
                     Color32::TRANSPARENT,
-                    hovered_paths.contains_index(instance_hash.instance_index_hash),
-                    selected_paths.contains_index(instance_hash.instance_index_hash),
+                    object_highlight.index_highlight(instance_hash.instance_index_hash),
                 );
 
                 if let Some(mesh) = ctx
@@ -107,14 +105,13 @@ impl MeshPart {
         ent_path: &ObjPath,
         world_from_obj: Mat4,
         ctx: &mut ViewerContext<'_>,
+        highlights: &SpaceViewHighlights,
     ) -> Result<(), QueryError> {
         scene.num_logged_3d_objects += 1;
 
         let _default_color = DefaultColor::ObjPath(ent_path);
         let world_from_obj_affine = glam::Affine3A::from_mat4(world_from_obj);
-
-        let hovered_paths = ctx.hovered().check_obj_path(ent_path.hash());
-        let selected_paths = ctx.selection().check_obj_path(ent_path.hash());
+        let object_highlight = highlights.object_highlight(ent_path.hash());
 
         let visitor =
             |instance: Instance, mesh: re_log_types::Mesh3D, _color: Option<ColorRGBA>| {
@@ -128,8 +125,7 @@ impl MeshPart {
 
                 let additive_tint = SceneSpatial::apply_hover_and_selection_effect_color(
                     Color32::TRANSPARENT,
-                    hovered_paths.contains_index(instance_hash.instance_index_hash),
-                    selected_paths.contains_index(instance_hash.instance_index_hash),
+                    object_highlight.index_highlight(instance_hash.instance_index_hash),
                 );
 
                 if let Some(mesh) = ctx
@@ -164,6 +160,7 @@ impl ScenePart for MeshPart {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
+        highlights: &SpaceViewHighlights,
     ) {
         crate::profile_scope!("MeshPart");
 
@@ -190,6 +187,7 @@ impl ScenePart for MeshPart {
                         ent_path,
                         world_from_obj,
                         ctx,
+                        highlights,
                     )?;
                 }
                 Ok(())
