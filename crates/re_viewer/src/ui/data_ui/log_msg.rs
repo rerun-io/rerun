@@ -139,7 +139,7 @@ impl DataUi for ArrowMsg {
             }) => {
                 egui::Grid::new("fields").num_columns(2).show(ui, |ui| {
                     ui.monospace("obj_path:");
-                    ctx.obj_path_button(ui, &obj_path);
+                    ctx.obj_path_button(ui, None, &obj_path);
                     ui.end_row();
 
                     ui.monospace("time_point:");

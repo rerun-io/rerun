@@ -96,7 +96,7 @@ fn what_is_selected_ui(
         Selection::MsgId(msg_id) => {
             ui.horizontal(|ui| {
                 ui.label("Message ID:");
-                ctx.msg_id_button(ui, &msg_id);
+                ctx.msg_id_button(ui, *msg_id);
             });
         }
         Selection::DataPath(data_path) => {
@@ -117,11 +117,10 @@ fn what_is_selected_ui(
             egui::Grid::new("space_view_id_obj_path").show(ui, |ui| {
                 if instance_id.instance_index.is_none() {
                     ui.label("Object Path:");
-                    ctx.obj_path_button(ui, &instance_id.obj_path);
                 } else {
                     ui.label("Instance:");
-                    ctx.instance_id_button(ui, instance_id);
                 }
+                ctx.instance_id_button(ui, *space_view_id, instance_id);
                 ui.end_row();
 
                 if let Some(space_view_id) = space_view_id {
@@ -215,8 +214,16 @@ fn blueprint_ui(
         }
 
         Selection::Instance(space_view_id, instance_id) => {
-            if let (Some(space_view_id), None) = (space_view_id, &instance_id.instance_index) {
-                if let Some(space_view) = blueprint.viewport.space_view_mut(space_view_id) {
+            if let Some(space_view) = space_view_id
+                .and_then(|space_view_id| blueprint.viewport.space_view_mut(&space_view_id))
+            {
+                if instance_id.instance_index.is_some() {
+                    // Clarify that instances don't have blueprints and refer to its parent
+                    ui.horizontal(|ui| {
+                        ui.label("part of");
+                        ctx.obj_path_button(ui, *space_view_id, &instance_id.obj_path);
+                    });
+                } else {
                     let data_blueprint = space_view.data_blueprint.data_blueprints_individual();
                     let mut props = data_blueprint.get(&instance_id.obj_path);
                     obj_props_ui(
@@ -229,8 +236,32 @@ fn blueprint_ui(
                     data_blueprint.set(instance_id.obj_path.clone(), props);
                 }
             } else {
-                // TODO(emilk): look up which, if any, blueprints this DataPath/instance is part of.
-                ui.weak("(nothing)");
+                let space_views_with_path = blueprint
+                    .viewport
+                    .space_views_containing_obj_path(&instance_id.obj_path);
+
+                if space_views_with_path.is_empty() {
+                    ui.weak("(Not shown in any SpaceView)");
+                    // TODO(andreas): Offer options for adding?
+                } else {
+                    ui.label("Shown in:");
+                    egui::Grid::new("list of data blueprints").show(ui, |ui| {
+                        for space_view_id in &space_views_with_path {
+                            if let Some(space_view) =
+                                blueprint.viewport.space_view_mut(space_view_id)
+                            {
+                                // refer directly to the parent object if this is an instance
+                                ctx.obj_path_button_to(
+                                    ui,
+                                    Some(*space_view_id),
+                                    &instance_id.obj_path,
+                                    &space_view.name,
+                                );
+                                ui.end_row();
+                            }
+                        }
+                    });
+                }
             }
         }
 

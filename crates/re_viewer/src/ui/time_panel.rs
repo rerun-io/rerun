@@ -368,7 +368,7 @@ impl TimePanel {
                 collapsing_header_id,
                 default_open,
             )
-            .show_header(ui, |ui| ctx.obj_path_button_to(ui, text, &tree.path))
+            .show_header(ui, |ui| ctx.obj_path_button_to(ui, None, &tree.path, text))
             .body(|ui| {
                 self.show_children(ctx, time_area_response, time_area_painter, tree, ui);
             });
