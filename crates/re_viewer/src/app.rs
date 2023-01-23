@@ -901,15 +901,51 @@ fn rerun_menu_button_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &mut 
     let icon_image = app.re_ui.icon_image(&re_ui::icons::RERUN_MENU);
     let image_size = icon_image.size_vec2() / 2.0; // HACK: we save out icon files as 2x scale
     let texture_id = icon_image.texture_id(ui.ctx());
-    ui.menu_image_button(texture_id, image_size, |ui| {
-        #[cfg(not(target_arch = "wasm32"))]
-        ui.menu_button("File", |ui| {
-            file_menu(ui, app);
-        });
 
-        ui.menu_button("View", |ui| {
-            view_menu(ui, app, frame);
-        });
+    ui.menu_image_button(texture_id, image_size, |ui| {
+        ui.set_min_width(220.0);
+        let spacing = 12.0;
+
+        main_view_selector_ui(ui, app);
+
+        ui.add_space(spacing);
+
+        Command::ToggleCommandPalette.menu_button_ui(ui, &mut app.pending_commands);
+
+        ui.add_space(spacing);
+
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            #[cfg(not(target_arch = "wasm32"))]
+            Command::Open.menu_button_ui(ui, &mut app.pending_commands);
+
+            #[cfg(not(target_arch = "wasm32"))]
+            save_buttons_ui(ui, app);
+
+            ui.add_space(spacing);
+        }
+
+        {
+            // On the web the browser controls the zoom
+            if !frame.is_web() {
+                egui::gui_zoom::zoom_menu_buttons(ui, frame.info().native_pixels_per_point);
+            }
+            #[cfg(not(target_arch = "wasm32"))]
+            Command::ToggleFullscreen.menu_button_ui(ui, &mut app.pending_commands);
+        }
+
+        ui.add_space(spacing);
+
+        {
+            Command::ResetViewer.menu_button_ui(ui, &mut app.pending_commands);
+
+            #[cfg(not(target_arch = "wasm32"))]
+            Command::OpenProfiler.menu_button_ui(ui, &mut app.pending_commands);
+
+            Command::ToggleMemoryPanel.menu_button_ui(ui, &mut app.pending_commands);
+        }
+
+        ui.add_space(spacing);
 
         ui.menu_button("Recordings", |ui| {
             recordings_menu(ui, app);
@@ -922,7 +958,7 @@ fn rerun_menu_button_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &mut 
 
         #[cfg(not(target_arch = "wasm32"))]
         {
-            ui.add_space(4.0);
+            ui.add_space(spacing);
             Command::Quit.menu_button_ui(ui, &mut app.pending_commands);
         }
     });
@@ -1131,17 +1167,6 @@ fn file_saver_progress_ui(egui_ctx: &egui::Context, app: &mut App) {
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-fn file_menu(ui: &mut egui::Ui, app: &mut App) {
-    ui.set_min_width(220.0);
-
-    #[cfg(not(target_arch = "wasm32"))]
-    Command::Open.menu_button_ui(ui, &mut app.pending_commands);
-
-    #[cfg(not(target_arch = "wasm32"))]
-    save_buttons_ui(ui, app);
-}
-
 // TODO(emilk): support saving data on web
 #[cfg(not(target_arch = "wasm32"))]
 fn save_buttons_ui(ui: &mut egui::Ui, app: &mut App) {
@@ -1228,9 +1253,7 @@ fn save(app: &mut App, loop_selection: Option<(re_data_store::Timeline, TimeRang
     }
 }
 
-fn view_menu(ui: &mut egui::Ui, app: &mut App, frame: &mut eframe::Frame) {
-    ui.set_min_width(220.0);
-
+fn main_view_selector_ui(ui: &mut egui::Ui, app: &mut App) {
     if !app.log_db().is_empty() {
         ui.horizontal(|ui| {
             ui.label("Main view:");
@@ -1256,33 +1279,7 @@ fn view_menu(ui: &mut egui::Ui, app: &mut App, frame: &mut eframe::Frame) {
             }
         });
     }
-
-    ui.separator();
-
-    // On the web the browser controls the zoom
-    if !frame.is_web() {
-        egui::gui_zoom::zoom_menu_buttons(ui, frame.info().native_pixels_per_point);
-        ui.separator();
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        Command::ToggleFullscreen.menu_button_ui(ui, &mut app.pending_commands);
-        ui.separator();
-    }
-
-    Command::ResetViewer.menu_button_ui(ui, &mut app.pending_commands);
-
-    #[cfg(not(target_arch = "wasm32"))]
-    Command::OpenProfiler.menu_button_ui(ui, &mut app.pending_commands);
-
-    ui.separator();
-
-    Command::ToggleCommandPalette.menu_button_ui(ui, &mut app.pending_commands);
-    Command::ToggleMemoryPanel.menu_button_ui(ui, &mut app.pending_commands);
 }
-
-// ---
 
 fn recordings_menu(ui: &mut egui::Ui, app: &mut App) {
     let log_dbs = app
