@@ -260,9 +260,8 @@ fn parse_index(s: String) -> PyResult<Index> {
 }
 
 // ----------------------------------------------------------------------------
-
 #[pyfunction]
-fn main(argv: Vec<String>) -> PyResult<()> {
+fn main(argv: Vec<String>) -> PyResult<u8> {
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
@@ -1865,6 +1864,7 @@ fn log_image_file(
                 ],
                 data: re_log_types::field_types::TensorData::JPEG(img_bytes.clone()),
                 meaning: re_log_types::field_types::TensorDataMeaning::Unknown,
+                meter: None,
             }]
             .try_into()
             .unwrap()],

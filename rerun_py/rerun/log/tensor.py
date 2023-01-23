@@ -80,6 +80,11 @@ def _log_tensor(
         np.float64,
     ]
 
+    # We don't support float16 -- upscale to f32
+    # TODO(#854): Native F16 support for arrow tensors
+    if tensor.dtype == np.float16:
+        tensor = np.asarray(tensor, dtype="float32")
+
     if tensor.dtype not in SUPPORTED_DTYPES:
         _send_warning(f"Unsupported dtype: {tensor.dtype}. Expected a numeric type. Skipping this tensor.", 2)
         return
@@ -90,6 +95,6 @@ def _log_tensor(
     if EXP_ARROW.arrow_log_gate():
         from rerun.components.tensor import TensorArray
 
-        comps = {"rerun.tensor": TensorArray.from_numpy(tensor, names, meaning)}
+        comps = {"rerun.tensor": TensorArray.from_numpy(tensor, names, meaning, meter)}
 
         bindings.log_arrow_msg(obj_path, components=comps, timeless=timeless)

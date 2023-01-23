@@ -68,9 +68,13 @@ fn generic_arrow_ui(
     egui::Grid::new("entity_instance")
         .num_columns(2)
         .show(ui, |ui| {
-            for component in components {
-                let component_data =
-                    get_component_with_instances(store, &query, &instance_id.obj_path, component);
+            for component_name in components {
+                let component_data = get_component_with_instances(
+                    store,
+                    &query,
+                    &instance_id.obj_path,
+                    component_name,
+                );
 
                 if matches!(component_data, Err(QueryError::PrimaryNotFound)) {
                     continue; // no need to show components that are unset
@@ -78,8 +82,8 @@ fn generic_arrow_ui(
 
                 ctx.data_path_button_to(
                     ui,
-                    format_component_name(&component),
-                    &DataPath::new_arrow(instance_id.obj_path.clone(), component),
+                    format_component_name(&component_name),
+                    &DataPath::new_arrow(instance_id.obj_path.clone(), component_name),
                 );
 
                 match (component_data, &instance_id.instance_index) {

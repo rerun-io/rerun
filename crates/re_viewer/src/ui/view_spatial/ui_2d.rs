@@ -556,14 +556,15 @@ fn project_onto_other_spaces(
 ) {
     if let Some(pointer_in_screen) = response.hover_pos() {
         let pointer_in_space = space_from_ui.transform_pos(pointer_in_screen);
-        ctx.rec_cfg.hovered_space_this_frame = HoveredSpace::TwoD {
-            space_2d: space.clone(),
-            pos: glam::vec3(
-                pointer_in_space.x,
-                pointer_in_space.y,
-                z.unwrap_or(f32::INFINITY),
-            ),
-        };
+        ctx.selection_state_mut()
+            .set_hovered_space(HoveredSpace::TwoD {
+                space_2d: space.clone(),
+                pos: glam::vec3(
+                    pointer_in_space.x,
+                    pointer_in_space.y,
+                    z.unwrap_or(f32::INFINITY),
+                ),
+            });
     }
 }
 
@@ -574,7 +575,7 @@ fn show_projections_from_3d_space(
     ui_from_space: &RectTransform,
 ) -> Vec<Shape> {
     let mut shapes = Vec::new();
-    if let HoveredSpace::ThreeD { target_spaces, .. } = &ctx.rec_cfg.hovered_space_previous_frame {
+    if let HoveredSpace::ThreeD { target_spaces, .. } = ctx.selection_state().hovered_space() {
         for (space_2d, pos_2d) in target_spaces {
             if space_2d == space {
                 if let Some(pos_2d) = pos_2d {

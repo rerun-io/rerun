@@ -161,7 +161,7 @@ pub enum TensorData {
     I32(Buffer<i32>),
     I64(Buffer<i64>),
     // ---
-    //TODO(john) F16
+    // TODO(#854): Native F16 support for arrow tensors
     //F16(Vec<arrow2::types::f16>),
     F32(Buffer<f32>),
     F64(Buffer<f64>),
@@ -288,7 +288,8 @@ pub enum TensorDataMeaning {
 ///                 UnionMode::Dense
 ///             ),
 ///             false
-///         )
+///         ),
+///         Field::new("meter", DataType::Float32, true),
 ///     ])
 /// );
 /// ```
@@ -303,6 +304,8 @@ pub struct Tensor {
     /// The per-element data meaning
     /// Used to indicated if the data should be interpreted as color, class_id, etc.
     pub meaning: TensorDataMeaning,
+    /// Reciprocal scale of meter unit for depth images
+    pub meter: Option<f32>,
 }
 
 impl TensorTrait for Tensor {
@@ -481,6 +484,7 @@ macro_rules! tensor_type {
                         shape,
                         data: TensorData::$variant(Vec::from(slice).into()),
                         meaning: TensorDataMeaning::Unknown,
+                        meter: None,
                     })
             }
         }
@@ -504,6 +508,7 @@ macro_rules! tensor_type {
                         shape,
                         data: TensorData::$variant(value.into_raw_vec().into()),
                         meaning: TensorDataMeaning::Unknown,
+                        meter: None,
                     })
                     .ok_or(TensorCastError::NotContiguousStdOrder)
             }
@@ -561,6 +566,7 @@ fn test_arrow() {
             }],
             data: TensorData::U16(vec![1, 2, 3, 4].into()),
             meaning: TensorDataMeaning::Unknown,
+            meter: Some(1000.0),
         },
         Tensor {
             tensor_id: TensorId(std::default::Default::default()),
@@ -570,6 +576,7 @@ fn test_arrow() {
             }],
             data: TensorData::F32(vec![1.23, 2.45].into()),
             meaning: TensorDataMeaning::Unknown,
+            meter: None,
         },
     ];
 
@@ -593,6 +600,7 @@ fn test_concat_and_slice() {
         }],
         data: TensorData::JPEG(vec![1, 2, 3, 4]),
         meaning: TensorDataMeaning::Unknown,
+        meter: Some(1000.0),
     }];
 
     let tensor2 = vec![Tensor {
@@ -603,6 +611,7 @@ fn test_concat_and_slice() {
         }],
         data: TensorData::JPEG(vec![5, 6, 7, 8]),
         meaning: TensorDataMeaning::Unknown,
+        meter: None,
     }];
 
     let array1: Box<dyn arrow2::array::Array> = tensor1.iter().try_into_arrow().unwrap();

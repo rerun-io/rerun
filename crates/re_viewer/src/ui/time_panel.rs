@@ -212,7 +212,7 @@ impl TimePanel {
             let top = ui.min_rect().bottom();
 
             let size = egui::vec2(self.prev_col_width, 28.0);
-            ui.allocate_ui_with_layout(size, egui::Layout::top_down(egui::Align::Center), |ui| {
+            ui.allocate_ui_with_layout(size, egui::Layout::top_down(egui::Align::LEFT), |ui| {
                 ui.set_min_size(size);
                 ui.add_space(4.0); // hack to vertically center the text
                 ui.strong("Streams");
@@ -571,8 +571,9 @@ fn show_data_over_time(
 ) {
     crate::profile_function!();
 
+    // TODO(andreas): Should pass through underlying instance id and be clever about selection vs hover state.
     let is_selected = if let Some(select_on_click) = select_on_click.as_ref() {
-        ctx.selection().selected().iter().contains(select_on_click)
+        ctx.selection().iter().contains(select_on_click)
     } else {
         false
     };
@@ -714,7 +715,7 @@ fn show_data_over_time(
             if let Some(select_on_click) = select_on_click {
                 ctx.set_single_selection(select_on_click);
             } else {
-                ctx.clear_selection();
+                ctx.selection_state_mut().clear_current();
             }
 
             if let Some(hovered_time) = hovered_time {

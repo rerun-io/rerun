@@ -320,13 +320,13 @@ impl App {
             Command::SelectionPrevious => {
                 let state = &mut self.state;
                 if let Some(rec_cfg) = state.recording_configs.get_mut(&state.selected_rec_id) {
-                    rec_cfg.selection_history.select_previous();
+                    rec_cfg.selection_state.select_previous();
                 }
             }
             Command::SelectionNext => {
                 let state = &mut self.state;
                 if let Some(rec_cfg) = state.recording_configs.get_mut(&state.selected_rec_id) {
-                    rec_cfg.selection_history.select_next();
+                    rec_cfg.selection_state.select_next();
                 }
             }
             Command::ToggleCommandPalette => {
@@ -451,6 +451,7 @@ impl eframe::App for App {
             .recording_configs
             .entry(self.state.selected_rec_id)
             .or_default()
+            .selection_state
             .on_frame_start(log_db, blueprint);
 
         {
@@ -920,21 +921,6 @@ fn top_bar_ui(
         debug_menu(ui);
     });
 
-    if !app.log_db().is_empty() {
-        ui.separator();
-        ui.selectable_value(
-            &mut app.state.panel_selection,
-            PanelSelection::Viewport,
-            "Viewport",
-        );
-
-        ui.selectable_value(
-            &mut app.state.panel_selection,
-            PanelSelection::EventLog,
-            "Event Log",
-        );
-    }
-
     if let Some(frame_time) = app.frame_time_history.average() {
         ui.separator();
         let ms = frame_time * 1e3;
@@ -953,7 +939,6 @@ fn top_bar_ui(
     }
 
     if let Some(count) = re_memory::accounting_allocator::global_allocs() {
-        ui.separator();
         // we use monospace so the width doesn't fluctuate as the numbers change.
 
         let bytes_used_text = re_format::format_bytes(count.size as _);
@@ -1229,6 +1214,34 @@ fn save(app: &mut App, loop_selection: Option<(re_data_store::Timeline, TimeRang
 
 fn view_menu(ui: &mut egui::Ui, app: &mut App, frame: &mut eframe::Frame) {
     ui.set_min_width(220.0);
+
+    if !app.log_db().is_empty() {
+        ui.horizontal(|ui| {
+            ui.label("Main view:");
+            if ui
+                .selectable_value(
+                    &mut app.state.panel_selection,
+                    PanelSelection::Viewport,
+                    "Viewport",
+                )
+                .clicked()
+            {
+                ui.close_menu();
+            }
+            if ui
+                .selectable_value(
+                    &mut app.state.panel_selection,
+                    PanelSelection::EventLog,
+                    "Event Log",
+                )
+                .clicked()
+            {
+                ui.close_menu();
+            }
+        });
+    }
+
+    ui.separator();
 
     // On the web the browser controls the zoom
     if !frame.is_web() {
