@@ -1,6 +1,8 @@
 use ahash::HashSet;
 use itertools::Itertools;
+use nohash_hasher::IntMap;
 use re_data_store::{InstanceIdHash, LogDb, ObjPath};
+use re_log_types::{IndexHash, ObjPathHash};
 
 use crate::ui::{Blueprint, HistoricalSelection, SelectionHistory, SpaceViewId};
 
@@ -26,7 +28,8 @@ pub enum HoveredSpace {
     },
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Default)]
+/// Selection highlight, sorted from weakest to strongest.
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub enum SelectionHighlight {
     /// No selection highlight at all.
     #[default]
@@ -40,7 +43,8 @@ pub enum SelectionHighlight {
     Selection,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Default)]
+/// Hover highlight, sorted from weakest to strongest.
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub enum HoverHighlight {
     /// No hover highlight.
     #[default]
@@ -59,6 +63,54 @@ pub struct InteractionHighlight {
 impl InteractionHighlight {
     pub fn any(&self) -> bool {
         self.selection != SelectionHighlight::None || self.hover != HoverHighlight::None
+    }
+
+    pub fn max(&self, other: InteractionHighlight) -> Self {
+        Self {
+            selection: self.selection.max(other.selection),
+            hover: self.hover.max(other.hover),
+        }
+    }
+}
+
+/// Highlight of a specific object path in a specific space view.
+///
+/// Using this in bulk on many instances is faster than querying single objects.
+#[derive(Default)]
+pub struct SpaceViewObjectHighlight {
+    overall: InteractionHighlight,
+    instances: IntMap<IndexHash, InteractionHighlight>,
+}
+
+pub struct OptionalSpaceViewObjectHighlight<'a>(Option<&'a SpaceViewObjectHighlight>);
+
+impl<'a> OptionalSpaceViewObjectHighlight<'a> {
+    pub fn index_highlight(&self, index: IndexHash) -> InteractionHighlight {
+        match self.0 {
+            Some(object_highlight) => object_highlight
+                .instances
+                .get(&index)
+                .cloned()
+                .unwrap_or_default()
+                .max(object_highlight.overall),
+            None => InteractionHighlight::default(),
+        }
+    }
+}
+
+/// Highlights in a specific space view.
+///
+/// Using this in bulk on many objects is faster than querying single objects.
+pub struct SpaceViewHighlights {
+    highlighted_object_paths: IntMap<ObjPathHash, SpaceViewObjectHighlight>,
+}
+
+impl SpaceViewHighlights {
+    pub fn object_highlight(
+        &self,
+        obj_path_hash: ObjPathHash,
+    ) -> OptionalSpaceViewObjectHighlight<'_> {
+        OptionalSpaceViewObjectHighlight(self.highlighted_object_paths.get(&obj_path_hash))
     }
 }
 
@@ -236,6 +288,79 @@ impl SelectionState {
         InteractionHighlight {
             selection: selection_highlight,
             hover: hover_highlight,
+        }
+    }
+
+    pub fn highlights_for_space_view(&self, space_view_id: SpaceViewId) -> SpaceViewHighlights {
+        crate::profile_function!();
+
+        let mut highlighted_object_paths =
+            IntMap::<ObjPathHash, SpaceViewObjectHighlight>::default();
+
+        for current_selection in self.selection.iter() {
+            match current_selection {
+                Selection::MsgId(_)
+                | Selection::DataPath(_)
+                | Selection::SpaceView(_)
+                | Selection::DataBlueprintGroup(_, _) => {}
+
+                Selection::Instance(selected_space_view_context, selected_instance) => {
+                    let highlight = if *selected_space_view_context == Some(space_view_id) {
+                        SelectionHighlight::Selection
+                    } else {
+                        SelectionHighlight::SiblingSelection
+                    };
+
+                    let highlighted_object = highlighted_object_paths
+                        .entry(selected_instance.obj_path.hash())
+                        .or_default();
+
+                    let highlight_target =
+                        if let Some(selected_index) = &selected_instance.instance_index {
+                            &mut highlighted_object
+                                .instances
+                                .entry(selected_index.hash())
+                                .or_default()
+                                .selection
+                        } else {
+                            &mut highlighted_object.overall.selection
+                        };
+
+                    *highlight_target = (*highlight_target).max(highlight);
+                }
+            };
+        }
+
+        for current_hover in self.hovered_previous_frame.iter() {
+            match current_hover {
+                Selection::MsgId(_)
+                | Selection::DataPath(_)
+                | Selection::SpaceView(_)
+                | Selection::DataBlueprintGroup(_, _) => {}
+
+                Selection::Instance(_, selected_instance) => {
+                    let highlighted_object = highlighted_object_paths
+                        .entry(selected_instance.obj_path.hash())
+                        .or_default();
+
+                    let highlight_target =
+                        if let Some(selected_index) = &selected_instance.instance_index {
+                            &mut highlighted_object
+                                .instances
+                                .entry(selected_index.hash())
+                                .or_default()
+                                .hover
+                        } else {
+                            &mut highlighted_object.overall.hover
+                        };
+
+                    *highlight_target = HoverHighlight::Hovered;
+                }
+            };
+        }
+
+        SpaceViewHighlights {
+            highlighted_object_paths,
         }
     }
 }

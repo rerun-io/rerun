@@ -302,15 +302,17 @@ impl Points3DPart {
                 .collect::<Vec<_>>()
         };
 
+        let space_view_highlights = ctx
+            .selection_state()
+            .highlights_for_space_view(scene.space_view_id);
+        let object_highlight = space_view_highlights.object_highlight(ent_path.hash());
+
         // TODO(andreas): lot of optimization potential here!
         let highlights = {
             crate::profile_scope!("hovered");
             instance_hashes
                 .iter()
-                .map(|hash| {
-                    ctx.selection_state()
-                        .instance_interaction_highlight(Some(scene.space_view_id), *hash)
-                })
+                .map(|hash| object_highlight.index_highlight(hash.instance_index_hash))
                 .collect::<Vec<_>>()
         };
 
