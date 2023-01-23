@@ -36,7 +36,7 @@ def main(parser: ArgumentParser) -> None:
     model_path = Path(args.input_model).expanduser()
     (cameras, images, points3D) = read_model(model_path, args.input_format)
 
-    rr.init("colmap")
+    rr.init("colmap", spawn_and_connect=True)
     # if args.connect:
     #    rr.connect(args.addr)
 
@@ -57,23 +57,26 @@ def main(parser: ArgumentParser) -> None:
         for image_id in point.image_ids.tolist():
             points_by_image[image_id].append(point)
 
-    for image in images.values():
-        rr.set_time_sequence("img_seq", image.id)
+    for image in sorted(images.values(), key=lambda im: im.name):
+        img_seq = int(image.name[3:7])
+        rr.set_time_sequence("img_seq", img_seq)
+
+        # COLMAP uses wxyz quaternions while Rerun uses xyzw
+        quat_xyzw = image.qvec[[1, 2, 3, 0]]
+
         # Camera transform is "world to camera"
         rr.log_rigid3(
             f"world/camera{image.camera_id}",
-            child_from_parent=(image.tvec, image.qvec),
+            child_from_parent=(image.tvec, quat_xyzw),
             xyz="RDF",  # X=Right, Y=Down, Z=Forward
         )
 
         points = np.array([point.xyz for point in points_by_image[image.id]])
         point_colors = np.array([point.rgb for point in points_by_image[image.id]])
-        rr.log_points(f"world/camera/image/points", points, colors=point_colors)
+        rr.log_points(f"world/points", points, colors=point_colors)
 
-        rr.log_image_file(f"world/camera{image.camera_id}/image/rgb", model_path / "../images" / image.name)
+        rr.log_image_file(f"world/camera{image.camera_id}/image/rgb", model_path.parent / "images" / image.name)
         rr.log_points(f"world/camera{image.camera_id}/image/keypoints", image.xys)
-
-    rr.show()
 
 
 if __name__ == "__main__":
