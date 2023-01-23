@@ -54,6 +54,7 @@ pub enum HoverHighlight {
     Hovered,
 }
 
+/// Combination of selection & hover highlight which can occur independently.
 #[derive(Copy, Clone, PartialEq, Eq, Default)]
 pub struct InteractionHighlight {
     pub selection: SelectionHighlight,
@@ -61,10 +62,12 @@ pub struct InteractionHighlight {
 }
 
 impl InteractionHighlight {
+    /// Any active highlight at all.
     pub fn any(&self) -> bool {
         self.selection != SelectionHighlight::None || self.hover != HoverHighlight::None
     }
 
+    /// Picks the stronger selection & hover highlight from two highlight descriptions.
     pub fn max(&self, other: InteractionHighlight) -> Self {
         Self {
             selection: self.selection.max(other.selection),
@@ -73,7 +76,7 @@ impl InteractionHighlight {
     }
 }
 
-/// Highlight of a specific object path in a specific space view.
+/// Highlights of a specific object path in a specific space view.
 ///
 /// Using this in bulk on many instances is faster than querying single objects.
 #[derive(Default)]
@@ -182,9 +185,7 @@ impl SelectionState {
 
     /// Sets several objects to be selected, updating history as needed.
     ///
-    /// Returns
-    /// the previous selection.
-    ///
+    /// Returns the previous selection.
     pub fn set_multi_selection(
         &mut self,
         items: impl Iterator<Item = Selection>,
