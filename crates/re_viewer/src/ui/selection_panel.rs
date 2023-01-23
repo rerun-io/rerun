@@ -24,6 +24,7 @@ impl SelectionPanel {
         blueprint: &mut Blueprint,
     ) {
         let panel = egui::SidePanel::right("selection_view")
+            .default_width(300.0)
             .resizable(true)
             .frame(ctx.re_ui.panel_frame());
 
