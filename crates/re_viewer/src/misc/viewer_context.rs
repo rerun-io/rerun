@@ -251,7 +251,7 @@ impl<'a> ViewerContext<'a> {
         if response.hovered() {
             self.rec_cfg
                 .selection_state
-                .set_hovered(std::iter::once(selectable.clone()));
+                .set_hovered(std::iter::once(selectable));
         }
         self.select_hovered_on_click(&response);
         // TODO(andreas): How to deal with shift click for selecting ranges?
