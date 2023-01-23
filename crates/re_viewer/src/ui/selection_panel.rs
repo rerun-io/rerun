@@ -186,9 +186,13 @@ fn blueprint_ui(
     selection: &Selection,
 ) {
     match selection {
-        Selection::MsgId(_) | Selection::DataPath(_) => {
-            // TODO(emilk): look up which, if any, blueprints this DataPath is part of.
+        Selection::MsgId(_) => {
+            // TODO(andreas): Show space views that show objects from this message.
             ui.weak("(nothing)");
+        }
+
+        Selection::DataPath(data_path) => {
+            list_existing_data_blueprints(ui, ctx, data_path.obj_path(), blueprint);
         }
 
         Selection::SpaceView(space_view_id) => {
@@ -236,32 +240,7 @@ fn blueprint_ui(
                     data_blueprint.set(instance_id.obj_path.clone(), props);
                 }
             } else {
-                let space_views_with_path = blueprint
-                    .viewport
-                    .space_views_containing_obj_path(&instance_id.obj_path);
-
-                if space_views_with_path.is_empty() {
-                    ui.weak("(Not shown in any SpaceView)");
-                    // TODO(andreas): Offer options for adding?
-                } else {
-                    ui.label("Shown in:");
-                    egui::Grid::new("list of data blueprints").show(ui, |ui| {
-                        for space_view_id in &space_views_with_path {
-                            if let Some(space_view) =
-                                blueprint.viewport.space_view_mut(space_view_id)
-                            {
-                                // refer directly to the parent object if this is an instance
-                                ctx.obj_path_button_to(
-                                    ui,
-                                    Some(*space_view_id),
-                                    &instance_id.obj_path,
-                                    &space_view.name,
-                                );
-                                ui.end_row();
-                            }
-                        }
-                    });
-                }
+                list_existing_data_blueprints(ui, ctx, &instance_id.obj_path, blueprint);
             }
         }
 
@@ -285,6 +264,42 @@ fn blueprint_ui(
                 }
             }
         }
+    }
+}
+
+fn list_existing_data_blueprints(
+    ui: &mut egui::Ui,
+    ctx: &mut ViewerContext<'_>,
+    obj_path: &ObjPath,
+    blueprint: &Blueprint,
+) {
+    let space_views_with_path = blueprint.viewport.space_views_containing_obj_path(obj_path);
+
+    if space_views_with_path.is_empty() {
+        ui.weak("(Not shown in any Space View)");
+        // TODO(andreas): Offer options for adding?
+    } else {
+        ui.horizontal(|ui| {
+            ui.label("Object Path");
+            ctx.obj_path_button(ui, None, obj_path);
+            ui.label("is shown in:");
+        });
+
+        ui.indent("list of data blueprints indent", |ui| {
+            egui::Grid::new("list of data blueprints").show(ui, |ui| {
+                for space_view_id in &space_views_with_path {
+                    if let Some(space_view) = blueprint.viewport.space_view(space_view_id) {
+                        ctx.obj_path_button_to(
+                            ui,
+                            Some(*space_view_id),
+                            obj_path,
+                            &space_view.name,
+                        );
+                        ui.end_row();
+                    }
+                }
+            });
+        });
     }
 }
 
