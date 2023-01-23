@@ -65,38 +65,43 @@ impl Blueprint {
 
         panel.show_animated_inside(ui, self.blueprint_panel_expanded, |ui: &mut egui::Ui| {
             ui.horizontal(|ui| {
-                ui.vertical_centered(|ui| {
-                    ui.strong("Blueprint").on_hover_text(
-                        "The Blueprint is where you can configure the Rerun Viewer.",
-                    );
-                });
+                ui.strong("Blueprint")
+                    .on_hover_text("The Blueprint is where you can configure the Rerun Viewer.");
+
+                // TODO(emilk): an egui helper for right-to-left
+                ui.allocate_ui_with_layout(
+                    egui::vec2(
+                        ui.available_size_before_wrap().x,
+                        ui.spacing().interact_size.y,
+                    ),
+                    egui::Layout::right_to_left(egui::Align::Center),
+                    |ui| {
+                        self.viewport
+                            .add_new_spaceview_button_ui(ctx, ui, spaces_info);
+                        self.reset_button_ui(ctx, ui, spaces_info);
+                    },
+                );
             });
 
             ui.separator();
 
-            ui.vertical_centered(|ui| {
-                if ui
-                    .button("Auto-populate Viewport")
-                    .on_hover_text("Re-populate Viewport with automatically chosen Space Views")
-                    .clicked()
-                {
-                    self.viewport = Viewport::new(ctx, spaces_info);
-                }
-            });
-
-            ui.separator();
-
-            egui_extras::StripBuilder::new(ui)
-                .size(egui_extras::Size::remainder())
-                .size(egui_extras::Size::exact(20.0))
-                .vertical(|mut strip| {
-                    strip.cell(|ui| {
-                        self.viewport.tree_ui(ctx, ui);
-                    });
-                    strip.cell(|ui| {
-                        self.viewport.create_new_blueprint_ui(ctx, ui, spaces_info);
-                    });
-                });
+            self.viewport.tree_ui(ctx, ui);
         });
+    }
+
+    fn reset_button_ui(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        spaces_info: &SpacesInfo,
+    ) {
+        if ctx
+            .re_ui
+            .small_icon(ui, &re_ui::icons::RESET)
+            .on_hover_text("Re-populate Viewport with automatically chosen Space Views")
+            .clicked()
+        {
+            self.viewport = Viewport::new(ctx, spaces_info);
+        }
     }
 }

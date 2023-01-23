@@ -55,7 +55,6 @@ impl SelectionPanel {
             .auto_shrink([false; 2])
             .show(ui, |ui| {
                 if ctx.selection().is_empty() {
-                    ui.weak("(none)");
                     return;
                 }
 
