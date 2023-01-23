@@ -4,7 +4,10 @@ use re_format::format_f32;
 use egui::{NumExt, WidgetText};
 use macaw::BoundingBox;
 
-use crate::misc::{space_info::SpaceInfo, ViewerContext};
+use crate::{
+    misc::{space_info::SpaceInfo, SpaceViewHighlights, ViewerContext},
+    ui::SpaceViewId,
+};
 
 use super::{ui_2d::View2DState, ui_3d::View3DState, SceneSpatial, SpaceSpecs};
 
@@ -213,6 +216,7 @@ impl ViewSpatialState {
     }
 
     // TODO(andreas): split into smaller parts, some of it shouldn't be part of the ui path and instead scene loading.
+    #[allow(clippy::too_many_arguments)]
     pub fn view_spatial(
         &mut self,
         ctx: &mut ViewerContext<'_>,
@@ -220,6 +224,8 @@ impl ViewSpatialState {
         space: &ObjPath,
         scene: SceneSpatial,
         space_info: &SpaceInfo,
+        space_view_id: SpaceViewId,
+        highlights: &SpaceViewHighlights,
     ) {
         self.scene_bbox_accum = self.scene_bbox_accum.union(scene.primitives.bounding_box());
         self.scene_num_primitives = scene.primitives.num_primitives();
@@ -228,15 +234,23 @@ impl ViewSpatialState {
             SpatialNavigationMode::ThreeD => {
                 let coordinates = space_info.coordinates;
                 self.state_3d.space_specs = SpaceSpecs::from_view_coordinates(coordinates);
-
-                super::view_3d(ctx, ui, self, space, scene);
+                super::view_3d(ctx, ui, self, space, space_view_id, scene);
             }
             SpatialNavigationMode::TwoD => {
                 let scene_rect_accum = egui::Rect::from_min_max(
                     self.scene_bbox_accum.min.truncate().to_array().into(),
                     self.scene_bbox_accum.max.truncate().to_array().into(),
                 );
-                super::view_2d(ctx, ui, self, space, scene, scene_rect_accum);
+                super::view_2d(
+                    ctx,
+                    ui,
+                    self,
+                    space,
+                    scene,
+                    scene_rect_accum,
+                    space_view_id,
+                    highlights,
+                );
             }
         }
     }

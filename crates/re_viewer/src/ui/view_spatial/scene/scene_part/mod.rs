@@ -1,7 +1,7 @@
 //! Responsible for populating `SceneSpatialPrimitives` and `SceneSpatialUiData`
 
 use crate::{
-    misc::ViewerContext,
+    misc::{SpaceViewHighlights, ViewerContext},
     ui::{scene::SceneQuery, transform_cache::TransformCache},
 };
 
@@ -38,5 +38,6 @@ pub trait ScenePart {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
+        highlights: &SpaceViewHighlights,
     );
 }
