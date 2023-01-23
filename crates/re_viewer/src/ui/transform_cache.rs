@@ -110,13 +110,11 @@ impl TransformCache {
 
                     // TODO(andreas): If we don't have a resolution we don't know the FOV ergo we don't know how to project. Unclear what to do.
                     if let Some(resolution) = pinhole.resolution() {
-                        // Scaled with 0.5 since perspective_infinite_lh uses NDC, i.e. [-1; 1] range.
-                        // On Y since fov is given in y direction.
-                        let scale = resolution.y * 0.5;
                         let translation = pinhole.principal_point().extend(-100.0); // Large Y offset so this is in front of all 2d that came so far. TODO(andreas): Find better solution
                         reference_from_ancestor
                             * glam::Mat4::from_scale_rotation_translation(
-                                glam::vec3(scale, scale, 1.0),
+                                // Scaled with 0.5 since perspective_infinite_lh uses NDC, i.e. [-1; 1] range.
+                                (resolution * 0.5).extend(1.0),
                                 glam::Quat::IDENTITY,
                                 translation,
                             )
