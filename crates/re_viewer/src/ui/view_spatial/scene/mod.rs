@@ -228,9 +228,13 @@ impl SceneSpatial {
         color: &mut Color32,
         highlight: InteractionHighlight,
     ) {
+        // TODO(#889):
+        // We want to use outlines instead of color highlighting, but this is a bigger endeavour, so for now:
+
+        let mut highlight_color = *color;
         if highlight.selection != SelectionHighlight::None {
             *size = Self::size_boost(*size);
-            *color = match highlight.selection {
+            highlight_color = match highlight.selection {
                 SelectionHighlight::None => unreachable!(),
                 SelectionHighlight::SiblingSelection => Self::SIBLING_SELECTION_COLOR,
                 SelectionHighlight::Selection => Self::SELECTION_COLOR,
@@ -239,8 +243,20 @@ impl SceneSpatial {
         match highlight.hover {
             HoverHighlight::None => {}
             HoverHighlight::Hovered => {
-                *color = Self::HOVER_COLOR;
+                highlight_color = Self::HOVER_COLOR;
             }
+        }
+
+        if highlight.selection != SelectionHighlight::None
+            || highlight.hover != HoverHighlight::None
+        {
+            // Interpolate with factor 2/3 towards the highlight color (in gamma space for speed)
+            *color = Color32::from_rgba_premultiplied(
+                ((color.r() as u32 + highlight_color.r() as u32 * 2) / 3) as u8,
+                ((color.g() as u32 + highlight_color.g() as u32 * 2) / 3) as u8,
+                ((color.b() as u32 + highlight_color.b() as u32 * 2) / 3) as u8,
+                color.a(),
+            );
         }
     }
 
