@@ -137,21 +137,13 @@ impl TimePanel {
             .time_ctrl
             .play_pause_ui(ctx.re_ui, ctx.log_db.times_per_timeline(), ui);
 
-        ui.separator();
-
         ctx.rec_cfg
             .time_ctrl
             .timeline_selector_ui(ctx.log_db.times_per_timeline(), ui);
 
-        ui.separator();
-
         {
-            let time_range_width = 400.0;
             let mut time_range_rect = ui.available_rect_before_wrap();
-            time_range_rect.max.x = f32::min(
-                time_range_rect.max.x - 220.0, // save space for current time and help button,
-                time_range_rect.min.x + time_range_width,
-            );
+            time_range_rect.max.x -= 220.0; // save space for current time
 
             if time_range_rect.width() > 50.0 {
                 let time_ranges_ui =
@@ -527,17 +519,14 @@ fn top_row_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         .time_ctrl
         .play_pause_ui(ctx.re_ui, ctx.log_db.times_per_timeline(), ui);
 
-    ui.separator();
-
     ctx.rec_cfg
         .time_ctrl
         .timeline_selector_ui(ctx.log_db.times_per_timeline(), ui);
 
+    current_time_ui(ctx, ui);
+
     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
         help_button(ui);
-        ui.centered_and_justified(|ui| {
-            current_time_ui(ctx, ui);
-        });
     });
 }
 

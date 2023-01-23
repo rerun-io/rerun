@@ -28,12 +28,14 @@ impl TimeControl {
                     }
                 }
             });
+    }
 
+    fn fps_ui(&mut self, ui: &mut egui::Ui) {
         if self.time_type() == TimeType::Sequence {
             if let Some(mut fps) = self.fps() {
                 ui.add(
                     egui::DragValue::new(&mut fps)
-                        .prefix("FPS: ")
+                        .suffix(" FPS")
                         .speed(1)
                         .clamp_range(0.0..=f32::INFINITY),
                 )
@@ -54,6 +56,7 @@ impl TimeControl {
         self.step_time_button_ui(re_ui, ui, times_per_timeline);
         self.loop_button_ui(re_ui, ui);
         self.playback_speed_ui(ui);
+        self.fps_ui(ui);
     }
 
     fn play_button_ui(
