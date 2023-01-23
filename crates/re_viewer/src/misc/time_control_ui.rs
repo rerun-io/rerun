@@ -16,6 +16,9 @@ impl TimeControl {
         egui::ComboBox::from_id_source("timeline")
             .selected_text(self.timeline().name().as_str())
             .show_ui(ui, |ui| {
+                ui.style_mut().wrap = Some(false);
+                ui.set_min_width(64.0);
+
                 for timeline in times_per_timeline.timelines() {
                     if ui
                         .selectable_label(timeline == self.timeline(), timeline.name().as_str())

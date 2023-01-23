@@ -98,6 +98,10 @@ impl ReUi {
         20.0
     }
 
+    pub fn small_icon_size() -> egui::Vec2 {
+        egui::Vec2::splat(12.0)
+    }
+
     pub fn setup_table_header(_header: &mut egui_extras::TableRow<'_, '_>) {}
 
     pub fn setup_table_body(body: &mut egui_extras::TableBody<'_>) {
@@ -212,21 +216,17 @@ impl ReUi {
         TopBarStyle { height, indent }
     }
 
+    pub fn icon_image(&self, icon: &Icon) -> Arc<egui_extras::RetainedImage> {
+        self.static_image_cache.lock().get(icon.id, icon.png_bytes)
+    }
+
     pub fn small_icon(&self, ui: &mut egui::Ui, icon: &Icon) -> egui::Response {
-        let prev_style = ui.style().clone();
-        ui.style_mut().visuals.widgets.inactive.bg_fill = Default::default(); // No background color when inactive
-
-        let size_points = egui::Vec2::splat(12.0); // TODO(emilk): get from design tokens
-
-        let image = self.static_image_cache.lock().get(icon.id, icon.png_bytes);
+        let size_points = Self::small_icon_size();
+        let image = self.icon_image(icon);
         let texture_id = image.texture_id(ui.ctx());
         // TODO(emilk): change color and size on hover
         let tint = ui.visuals().widgets.inactive.fg_stroke.color;
-        let response = ui.add(egui::ImageButton::new(texture_id, size_points).tint(tint));
-
-        ui.set_style(prev_style);
-
-        response
+        ui.add(egui::ImageButton::new(texture_id, size_points).tint(tint))
     }
 
     pub fn medium_icon_toggle_button(
@@ -237,7 +237,7 @@ impl ReUi {
     ) -> egui::Response {
         let size_points = egui::Vec2::splat(16.0); // TODO(emilk): get from design tokens
 
-        let image = self.static_image_cache.lock().get(icon.id, icon.png_bytes);
+        let image = self.icon_image(icon);
         let texture_id = image.texture_id(ui.ctx());
         let tint = if *selected {
             ui.visuals().widgets.inactive.fg_stroke.color
@@ -259,7 +259,14 @@ impl ReUi {
         bg_fill: Option<Color32>,
         tint: Option<Color32>,
     ) -> egui::Response {
-        let image = self.static_image_cache.lock().get(icon.id, icon.png_bytes);
+        let prev_style = ui.style().clone();
+        {
+            // Enable a background color even when inactive:
+            let visuals = ui.visuals_mut();
+            visuals.widgets.inactive.optional_bg_fill = visuals.widgets.inactive.bg_fill;
+        }
+
+        let image = self.icon_image(icon);
         let texture_id = image.texture_id(ui.ctx());
 
         let button_size = Vec2::splat(28.0);
@@ -285,6 +292,8 @@ impl ReUi {
             mesh.add_rect_with_uv(image_rect, uv, tint);
             ui.painter().add(egui::Shape::mesh(mesh));
         }
+
+        ui.set_style(prev_style);
 
         response
     }

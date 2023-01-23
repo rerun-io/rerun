@@ -63,13 +63,23 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
     // let floating_color = get_aliased_color(&json, "{Alias.Color.Surface.Floating.value}");
     let floating_color = Color32::from_gray(38); // TODO(emilk): change the content of the design_tokens.json origin instead
 
+    egui_style.visuals.widgets.noninteractive.optional_bg_fill = panel_bg_color;
     egui_style.visuals.widgets.noninteractive.bg_fill = panel_bg_color;
 
+    egui_style.visuals.widgets.inactive.optional_bg_fill = Default::default(); // Buttons have no background color when inactive
     egui_style.visuals.widgets.inactive.bg_fill =
         get_aliased_color(&json, "{Alias.Color.Action.Default.value}");
 
+    egui_style.visuals.widgets.hovered.optional_bg_fill =
+        get_aliased_color(&json, "{Alias.Color.Action.Hovered.value}");
     egui_style.visuals.widgets.hovered.bg_fill =
         get_aliased_color(&json, "{Alias.Color.Action.Hovered.value}");
+
+    // Turn of strokes around buttons:
+    egui_style.visuals.widgets.inactive.bg_stroke = Default::default();
+    egui_style.visuals.widgets.hovered.bg_stroke = Default::default();
+    egui_style.visuals.widgets.active.bg_stroke = Default::default();
+    egui_style.visuals.widgets.open.bg_stroke = Default::default();
 
     let subudued = get_aliased_color(&json, "{Alias.Color.Text.Subdued.value}");
     let default = get_aliased_color(&json, "{Alias.Color.Text.Default.value}");
@@ -105,6 +115,8 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
     egui_style.visuals.faint_bg_color = Color32::from_additive_luminance(8);
 
     egui_style.debug.show_blocking_widget = false; // turn this on to debug interaction problems
+
+    egui_style.spacing.combo_width = 8.0; // minium width of ComboBox - keep them small, with the down-arrow close.
 
     ctx.set_style(egui_style);
 

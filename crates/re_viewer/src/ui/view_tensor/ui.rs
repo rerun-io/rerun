@@ -470,6 +470,9 @@ impl TextureSettings {
                 egui::ComboBox::from_label("Texture scaling")
                     .selected_text(self.scaling.to_string())
                     .show_ui(ui, |ui| {
+                        ui.style_mut().wrap = Some(false);
+                        ui.set_min_width(64.0);
+
                         let mut selectable_value = |ui: &mut egui::Ui, e| {
                             ui.selectable_value(&mut self.scaling, e, e.to_string())
                         };
@@ -499,6 +502,9 @@ fn texture_filter_ui(ui: &mut egui::Ui, label: &str, filter: &mut egui::TextureF
     egui::ComboBox::from_label(label)
         .selected_text(tf_to_string(*filter))
         .show_ui(ui, |ui| {
+            ui.style_mut().wrap = Some(false);
+            ui.set_min_width(64.0);
+
             let mut selectable_value =
                 |ui: &mut egui::Ui, e| ui.selectable_value(filter, e, tf_to_string(e));
             selectable_value(ui, egui::TextureFilter::Linear);
