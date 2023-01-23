@@ -1,4 +1,4 @@
-use std::net::SocketAddr;
+use std::{net::SocketAddr, thread::JoinHandle};
 
 use crossbeam::channel::{select, Receiver, Sender};
 
@@ -33,6 +33,9 @@ pub struct Client {
     encode_quit_tx: Sender<QuitMsg>,
     send_quit_tx: Sender<QuitMsg>,
     drop_quit_tx: Sender<QuitMsg>,
+    encode_join: Option<JoinHandle<()>>,
+    send_join: Option<JoinHandle<()>>,
+    drop_join: Option<JoinHandle<()>>,
 }
 
 impl Default for Client {
@@ -53,7 +56,7 @@ impl Client {
         let (send_quit_tx, send_quit_rx) = crossbeam::channel::unbounded();
         let (drop_quit_tx, drop_quit_rx) = crossbeam::channel::unbounded();
 
-        std::thread::Builder::new()
+        let encode_join = std::thread::Builder::new()
             .name("msg_encoder".into())
             .spawn(move || {
                 msg_encode(&msg_rx, &msg_drop_tx, &encode_quit_rx, &packet_tx);
@@ -61,19 +64,19 @@ impl Client {
             })
             .expect("Failed to spawn thread");
 
-        std::thread::Builder::new()
-            .name("msg_dropper".into())
-            .spawn(move || {
-                msg_drop(&msg_drop_rx, &drop_quit_rx);
-                re_log::debug!("Shutting down msg dropper thread");
-            })
-            .expect("Failed to spawn thread");
-
-        std::thread::Builder::new()
+        let send_join = std::thread::Builder::new()
             .name("tcp_sender".into())
             .spawn(move || {
                 tcp_sender(addr, &packet_rx, &send_quit_rx, &flushed_tx);
                 re_log::debug!("Shutting down TCP sender thread");
+            })
+            .expect("Failed to spawn thread");
+
+        let drop_join = std::thread::Builder::new()
+            .name("msg_dropper".into())
+            .spawn(move || {
+                msg_drop(&msg_drop_rx, &drop_quit_rx);
+                re_log::debug!("Shutting down msg dropper thread");
             })
             .expect("Failed to spawn thread");
 
@@ -83,6 +86,9 @@ impl Client {
             encode_quit_tx,
             send_quit_tx,
             drop_quit_tx,
+            encode_join: Some(encode_join),
+            send_join: Some(send_join),
+            drop_join: Some(drop_join),
         }
     }
 
@@ -125,6 +131,9 @@ impl Drop for Client {
         self.encode_quit_tx.send(QuitMsg).ok();
         self.send_quit_tx.send(QuitMsg).ok();
         self.drop_quit_tx.send(QuitMsg).ok();
+        self.encode_join.take().map(|j| j.join().ok());
+        self.send_join.take().map(|j| j.join().ok());
+        self.drop_join.take().map(|j| j.join().ok());
         re_log::debug!("Sender has shut down.");
     }
 }
