@@ -897,32 +897,48 @@ fn top_panel(
         });
 }
 
+fn rerun_menu_button_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &mut App) {
+    let icon_image = app.re_ui.icon_image(&re_ui::icons::RERUN_MENU);
+    let image_size = icon_image.size_vec2() / 2.0; // HACK: we save out icon files as 2x scale
+    let texture_id = icon_image.texture_id(ui.ctx());
+    ui.menu_image_button(texture_id, image_size, |ui| {
+        #[cfg(not(target_arch = "wasm32"))]
+        ui.menu_button("File", |ui| {
+            file_menu(ui, app);
+        });
+
+        ui.menu_button("View", |ui| {
+            view_menu(ui, app, frame);
+        });
+
+        ui.menu_button("Recordings", |ui| {
+            recordings_menu(ui, app);
+        });
+
+        #[cfg(debug_assertions)]
+        ui.menu_button("Debug", |ui| {
+            debug_menu(ui);
+        });
+
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            ui.add_space(4.0);
+            Command::Quit.menu_button_ui(ui, &mut app.pending_commands);
+        }
+    });
+}
+
 fn top_bar_ui(
     ui: &mut egui::Ui,
     frame: &mut eframe::Frame,
     app: &mut App,
     gpu_resource_stats: &WgpuResourcePoolStatistics,
 ) {
-    #[cfg(not(target_arch = "wasm32"))]
-    ui.menu_button("File", |ui| {
-        file_menu(ui, app);
-    });
-
-    ui.menu_button("View", |ui| {
-        view_menu(ui, app, frame);
-    });
-
-    ui.menu_button("Recordings", |ui| {
-        recordings_menu(ui, app);
-    });
-
-    #[cfg(debug_assertions)]
-    ui.menu_button("Debug", |ui| {
-        debug_menu(ui);
-    });
+    rerun_menu_button_ui(ui, frame, app);
 
     if let Some(frame_time) = app.frame_time_history.average() {
         ui.separator();
+
         let ms = frame_time * 1e3;
 
         let visuals = ui.visuals();
@@ -1119,61 +1135,61 @@ fn file_saver_progress_ui(egui_ctx: &egui::Context, app: &mut App) {
 fn file_menu(ui: &mut egui::Ui, app: &mut App) {
     ui.set_min_width(220.0);
 
-    // TODO(emilk): support saving data on web
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        let file_save_in_progress = app.promise_exists(FILE_SAVER_PROMISE);
-
-        let save_button = Command::Save.menu_button(ui.ctx());
-        let save_selection_button = Command::SaveSelection.menu_button(ui.ctx());
-
-        if file_save_in_progress {
-            ui.add_enabled_ui(false, |ui| {
-                ui.horizontal(|ui| {
-                    ui.add(save_button);
-                    ui.spinner();
-                });
-                ui.horizontal(|ui| {
-                    ui.add(save_selection_button);
-                    ui.spinner();
-                });
-            });
-        } else {
-            ui.add_enabled_ui(!app.log_db().is_empty(), |ui| {
-                if ui
-                    .add(save_button)
-                    .on_hover_text("Save all data to a Rerun data file (.rrd)")
-                    .clicked()
-                {
-                    ui.close_menu();
-                    app.pending_commands.push(Command::Save);
-                }
-
-                // We need to know the loop selection _before_ we can even display the
-                // button, as this will determine wether its grayed out or not!
-                // TODO(cmc): In practice the loop (green) selection is always there
-                // at the moment so...
-                let loop_selection = app.loop_selection();
-
-                if ui
-                    .add_enabled(loop_selection.is_some(), save_selection_button)
-                    .on_hover_text(
-                        "Save data for the current loop selection to a Rerun data file (.rrd)",
-                    )
-                    .clicked()
-                {
-                    ui.close_menu();
-                    app.pending_commands.push(Command::SaveSelection);
-                }
-            });
-        }
-    }
-
     #[cfg(not(target_arch = "wasm32"))]
     Command::Open.menu_button_ui(ui, &mut app.pending_commands);
 
     #[cfg(not(target_arch = "wasm32"))]
-    Command::Quit.menu_button_ui(ui, &mut app.pending_commands);
+    save_buttons_ui(ui, app);
+}
+
+// TODO(emilk): support saving data on web
+#[cfg(not(target_arch = "wasm32"))]
+fn save_buttons_ui(ui: &mut egui::Ui, app: &mut App) {
+    let file_save_in_progress = app.promise_exists(FILE_SAVER_PROMISE);
+
+    let save_button = Command::Save.menu_button(ui.ctx());
+    let save_selection_button = Command::SaveSelection.menu_button(ui.ctx());
+
+    if file_save_in_progress {
+        ui.add_enabled_ui(false, |ui| {
+            ui.horizontal(|ui| {
+                ui.add(save_button);
+                ui.spinner();
+            });
+            ui.horizontal(|ui| {
+                ui.add(save_selection_button);
+                ui.spinner();
+            });
+        });
+    } else {
+        ui.add_enabled_ui(!app.log_db().is_empty(), |ui| {
+            if ui
+                .add(save_button)
+                .on_hover_text("Save all data to a Rerun data file (.rrd)")
+                .clicked()
+            {
+                ui.close_menu();
+                app.pending_commands.push(Command::Save);
+            }
+
+            // We need to know the loop selection _before_ we can even display the
+            // button, as this will determine wether its grayed out or not!
+            // TODO(cmc): In practice the loop (green) selection is always there
+            // at the moment so...
+            let loop_selection = app.loop_selection();
+
+            if ui
+                .add_enabled(loop_selection.is_some(), save_selection_button)
+                .on_hover_text(
+                    "Save data for the current loop selection to a Rerun data file (.rrd)",
+                )
+                .clicked()
+            {
+                ui.close_menu();
+                app.pending_commands.push(Command::SaveSelection);
+            }
+        });
+    }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
