@@ -305,9 +305,8 @@ impl Points3DPart {
                 .collect::<Vec<_>>()
         };
 
-        // TODO(andreas): lot of optimization potential here!
         let highlights = {
-            crate::profile_scope!("hovered");
+            crate::profile_scope!("highlights");
             instance_hashes
                 .iter()
                 .map(|hash| object_highlight.index_highlight(hash.instance_index_hash))

@@ -43,8 +43,7 @@ impl<'a> ViewerContext<'a> {
                 ui.separator();
                 msg_id.data_ui(self, ui, Preview::Small);
             });
-        self.cursor_interact_with_selectable(&response, selection);
-        response
+        self.cursor_interact_with_selectable(response, selection)
     }
 
     /// Show a obj path and make it selectable.
@@ -73,8 +72,7 @@ impl<'a> ViewerContext<'a> {
                 ui.label(format!("Path: {obj_path}"));
                 obj_path.data_ui(self, ui, crate::ui::Preview::Large);
             });
-        self.cursor_interact_with_selectable(&response, selection);
-        response
+        self.cursor_interact_with_selectable(response, selection)
     }
 
     /// Show a instance id and make it selectable.
@@ -103,8 +101,7 @@ impl<'a> ViewerContext<'a> {
                 instance_id.data_ui(self, ui, crate::ui::Preview::Large);
             });
 
-        self.cursor_interact_with_selectable(&response, selection);
-        response
+        self.cursor_interact_with_selectable(response, selection)
     }
 
     /// Show a data path and make it selectable.
@@ -122,8 +119,7 @@ impl<'a> ViewerContext<'a> {
         // TODO(emilk): common hover-effect of all buttons for the same data_path!
         let selection = Selection::DataPath(data_path.clone());
         let response = ui.selectable_label(self.selection().contains(&selection), text);
-        self.cursor_interact_with_selectable(&response, selection);
-        response
+        self.cursor_interact_with_selectable(response, selection)
     }
 
     pub fn space_view_button_to(
@@ -137,8 +133,7 @@ impl<'a> ViewerContext<'a> {
         let response = ui
             .selectable_label(is_selected, text)
             .on_hover_text("Space View");
-        self.cursor_interact_with_selectable(&response, selection);
-        response
+        self.cursor_interact_with_selectable(response, selection)
     }
 
     pub fn data_blueprint_group_button_to(
@@ -152,8 +147,7 @@ impl<'a> ViewerContext<'a> {
         let response = ui
             .selectable_label(self.selection().contains(&selection), text)
             .on_hover_text("Group");
-        self.cursor_interact_with_selectable(&response, selection);
-        response
+        self.cursor_interact_with_selectable(response, selection)
     }
 
     pub fn data_blueprint_button_to(
@@ -172,8 +166,7 @@ impl<'a> ViewerContext<'a> {
                 ui.label(format!("Path: {obj_path}"));
                 obj_path.data_ui(self, ui, Preview::Large);
             });
-        self.cursor_interact_with_selectable(&response, selection);
-        response
+        self.cursor_interact_with_selectable(response, selection)
     }
 
     pub fn time_button(
@@ -252,20 +245,17 @@ impl<'a> ViewerContext<'a> {
 
     pub fn cursor_interact_with_selectable(
         &mut self,
-        response: &egui::Response,
+        response: egui::Response,
         selectable: Selection,
-    ) {
+    ) -> egui::Response {
         if response.hovered() {
             self.rec_cfg
                 .selection_state
                 .set_hovered(std::iter::once(selectable.clone()));
         }
-        if response.clicked() {
-            self.rec_cfg
-                .selection_state
-                .set_single_selection(selectable);
-            // TODO(andreas): How to deal with shift click for selecting ranges?
-        }
+        self.select_hovered_on_click(&response);
+        // TODO(andreas): How to deal with shift click for selecting ranges?
+        response
     }
 
     /// Returns the current selection.
