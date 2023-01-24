@@ -897,32 +897,79 @@ fn top_panel(
         });
 }
 
+fn rerun_menu_button_ui(ui: &mut egui::Ui, _frame: &mut eframe::Frame, app: &mut App) {
+    let icon_image = app.re_ui.icon_image(&re_ui::icons::RERUN_MENU);
+    let mut image_size = icon_image.size_vec2();
+    image_size = image_size * ui.max_rect().height() / image_size.y; // match bar height
+    let texture_id = icon_image.texture_id(ui.ctx());
+
+    ui.menu_image_button(texture_id, image_size, |ui| {
+        ui.set_min_width(220.0);
+        let spacing = 12.0;
+
+        main_view_selector_ui(ui, app);
+
+        ui.add_space(spacing);
+
+        Command::ToggleCommandPalette.menu_button_ui(ui, &mut app.pending_commands);
+
+        ui.add_space(spacing);
+
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            Command::Open.menu_button_ui(ui, &mut app.pending_commands);
+
+            save_buttons_ui(ui, app);
+
+            ui.add_space(spacing);
+
+            // On the web the browser controls the zoom
+            egui::gui_zoom::zoom_menu_buttons(ui, _frame.info().native_pixels_per_point);
+
+            Command::ToggleFullscreen.menu_button_ui(ui, &mut app.pending_commands);
+
+            ui.add_space(spacing);
+        }
+
+        {
+            Command::ResetViewer.menu_button_ui(ui, &mut app.pending_commands);
+
+            #[cfg(not(target_arch = "wasm32"))]
+            Command::OpenProfiler.menu_button_ui(ui, &mut app.pending_commands);
+
+            Command::ToggleMemoryPanel.menu_button_ui(ui, &mut app.pending_commands);
+        }
+
+        ui.add_space(spacing);
+
+        ui.menu_button("Recordings", |ui| {
+            recordings_menu(ui, app);
+        });
+
+        #[cfg(debug_assertions)]
+        ui.menu_button("Debug", |ui| {
+            debug_menu(ui);
+        });
+
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            ui.add_space(spacing);
+            Command::Quit.menu_button_ui(ui, &mut app.pending_commands);
+        }
+    });
+}
+
 fn top_bar_ui(
     ui: &mut egui::Ui,
     frame: &mut eframe::Frame,
     app: &mut App,
     gpu_resource_stats: &WgpuResourcePoolStatistics,
 ) {
-    #[cfg(not(target_arch = "wasm32"))]
-    ui.menu_button("File", |ui| {
-        file_menu(ui, app);
-    });
-
-    ui.menu_button("View", |ui| {
-        view_menu(ui, app, frame);
-    });
-
-    ui.menu_button("Recordings", |ui| {
-        recordings_menu(ui, app);
-    });
-
-    #[cfg(debug_assertions)]
-    ui.menu_button("Debug", |ui| {
-        debug_menu(ui);
-    });
+    rerun_menu_button_ui(ui, frame, app);
 
     if let Some(frame_time) = app.frame_time_history.average() {
         ui.separator();
+
         let ms = frame_time * 1e3;
 
         let visuals = ui.visuals();
@@ -1001,19 +1048,6 @@ fn top_bar_ui(
     }
 
     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-        if !WATERMARK {
-            let logo = app.re_ui.rerun_logo();
-            let response = ui
-                .add(egui::ImageButton::new(
-                    logo.texture_id(ui.ctx()),
-                    logo.size_vec2() * 16.0 / logo.size_vec2().y,
-                ))
-                .on_hover_text("https://rerun.io");
-            if response.clicked() {
-                ui.output().open_url = Some(egui::output::OpenUrl::new_tab("https://rerun.io"));
-            }
-        }
-
         if let Some(log_db) = app.log_dbs.get(&app.state.selected_rec_id) {
             let selected_app_id = log_db
                 .recording_info()
@@ -1115,65 +1149,54 @@ fn file_saver_progress_ui(egui_ctx: &egui::Context, app: &mut App) {
     }
 }
 
+// TODO(emilk): support saving data on web
 #[cfg(not(target_arch = "wasm32"))]
-fn file_menu(ui: &mut egui::Ui, app: &mut App) {
-    ui.set_min_width(220.0);
+fn save_buttons_ui(ui: &mut egui::Ui, app: &mut App) {
+    let file_save_in_progress = app.promise_exists(FILE_SAVER_PROMISE);
 
-    // TODO(emilk): support saving data on web
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        let file_save_in_progress = app.promise_exists(FILE_SAVER_PROMISE);
+    let save_button = Command::Save.menu_button(ui.ctx());
+    let save_selection_button = Command::SaveSelection.menu_button(ui.ctx());
 
-        let save_button = Command::Save.menu_button(ui.ctx());
-        let save_selection_button = Command::SaveSelection.menu_button(ui.ctx());
-
-        if file_save_in_progress {
-            ui.add_enabled_ui(false, |ui| {
-                ui.horizontal(|ui| {
-                    ui.add(save_button);
-                    ui.spinner();
-                });
-                ui.horizontal(|ui| {
-                    ui.add(save_selection_button);
-                    ui.spinner();
-                });
+    if file_save_in_progress {
+        ui.add_enabled_ui(false, |ui| {
+            ui.horizontal(|ui| {
+                ui.add(save_button);
+                ui.spinner();
             });
-        } else {
-            ui.add_enabled_ui(!app.log_db().is_empty(), |ui| {
-                if ui
-                    .add(save_button)
-                    .on_hover_text("Save all data to a Rerun data file (.rrd)")
-                    .clicked()
-                {
-                    ui.close_menu();
-                    app.pending_commands.push(Command::Save);
-                }
-
-                // We need to know the loop selection _before_ we can even display the
-                // button, as this will determine wether its grayed out or not!
-                // TODO(cmc): In practice the loop (green) selection is always there
-                // at the moment so...
-                let loop_selection = app.loop_selection();
-
-                if ui
-                    .add_enabled(loop_selection.is_some(), save_selection_button)
-                    .on_hover_text(
-                        "Save data for the current loop selection to a Rerun data file (.rrd)",
-                    )
-                    .clicked()
-                {
-                    ui.close_menu();
-                    app.pending_commands.push(Command::SaveSelection);
-                }
+            ui.horizontal(|ui| {
+                ui.add(save_selection_button);
+                ui.spinner();
             });
-        }
+        });
+    } else {
+        ui.add_enabled_ui(!app.log_db().is_empty(), |ui| {
+            if ui
+                .add(save_button)
+                .on_hover_text("Save all data to a Rerun data file (.rrd)")
+                .clicked()
+            {
+                ui.close_menu();
+                app.pending_commands.push(Command::Save);
+            }
+
+            // We need to know the loop selection _before_ we can even display the
+            // button, as this will determine wether its grayed out or not!
+            // TODO(cmc): In practice the loop (green) selection is always there
+            // at the moment so...
+            let loop_selection = app.loop_selection();
+
+            if ui
+                .add_enabled(loop_selection.is_some(), save_selection_button)
+                .on_hover_text(
+                    "Save data for the current loop selection to a Rerun data file (.rrd)",
+                )
+                .clicked()
+            {
+                ui.close_menu();
+                app.pending_commands.push(Command::SaveSelection);
+            }
+        });
     }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    Command::Open.menu_button_ui(ui, &mut app.pending_commands);
-
-    #[cfg(not(target_arch = "wasm32"))]
-    Command::Quit.menu_button_ui(ui, &mut app.pending_commands);
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -1212,9 +1235,7 @@ fn save(app: &mut App, loop_selection: Option<(re_data_store::Timeline, TimeRang
     }
 }
 
-fn view_menu(ui: &mut egui::Ui, app: &mut App, frame: &mut eframe::Frame) {
-    ui.set_min_width(220.0);
-
+fn main_view_selector_ui(ui: &mut egui::Ui, app: &mut App) {
     if !app.log_db().is_empty() {
         ui.horizontal(|ui| {
             ui.label("Main view:");
@@ -1240,33 +1261,7 @@ fn view_menu(ui: &mut egui::Ui, app: &mut App, frame: &mut eframe::Frame) {
             }
         });
     }
-
-    ui.separator();
-
-    // On the web the browser controls the zoom
-    if !frame.is_web() {
-        egui::gui_zoom::zoom_menu_buttons(ui, frame.info().native_pixels_per_point);
-        ui.separator();
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        Command::ToggleFullscreen.menu_button_ui(ui, &mut app.pending_commands);
-        ui.separator();
-    }
-
-    Command::ResetViewer.menu_button_ui(ui, &mut app.pending_commands);
-
-    #[cfg(not(target_arch = "wasm32"))]
-    Command::OpenProfiler.menu_button_ui(ui, &mut app.pending_commands);
-
-    ui.separator();
-
-    Command::ToggleCommandPalette.menu_button_ui(ui, &mut app.pending_commands);
-    Command::ToggleMemoryPanel.menu_button_ui(ui, &mut app.pending_commands);
 }
-
-// ---
 
 fn recordings_menu(ui: &mut egui::Ui, app: &mut App) {
     let log_dbs = app

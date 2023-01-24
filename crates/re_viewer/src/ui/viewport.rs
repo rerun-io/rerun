@@ -540,8 +540,9 @@ impl Viewport {
     ) {
         #![allow(clippy::collapsible_if)]
 
-        // TODO(emilk): use a proper icon instead. Requires some egui changes so that an icon button can open a menu.
-        ui.menu_button("➕", |ui| {
+        let icon_image = ctx.re_ui.icon_image(&re_ui::icons::ADD);
+        let texture_id = icon_image.texture_id(ui.ctx());
+        ui.menu_image_button(texture_id, re_ui::ReUi::small_icon_size(), |ui| {
             ui.style_mut().wrap = Some(false);
 
             let all_categories = enumset::EnumSet::<ViewCategory>::all();
