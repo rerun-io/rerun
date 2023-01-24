@@ -123,6 +123,7 @@ fn table_row(
                 recording_id,
                 started,
                 recording_source,
+                is_official_example,
             } = info;
 
             row.col(|ui| {
@@ -131,6 +132,7 @@ fn table_row(
             row.col(|ui| {
                 ui.monospace("BeginRecordingMsg");
                 ui.label(format!("Source: {recording_source}"));
+                ui.label(format!("Official example: {is_official_example}"));
             });
             for _ in ctx.log_db.timelines() {
                 row.col(|ui| {

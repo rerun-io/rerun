@@ -110,7 +110,22 @@ def init(application_id: str, spawn_and_connect: bool = False) -> None:
         you call either `connect`, `show`, or `save`
 
     """
-    bindings.init(application_id)
+    app_path = None
+
+    # NOTE: It'd be even nicer to do such thing on the Rust-side so that this little trick would
+    # only need to be written once and just work for all languages out of the box... unfortunately
+    # we lose most of the details of the python part of the backtrace once we go over the bridge.
+    #
+    # Still, better than nothing!
+    try:
+        import inspect
+        import pathlib
+
+        app_path = pathlib.Path(inspect.stack()[1][1]).resolve()
+    except Exception:
+        pass
+
+    bindings.init(application_id, app_path)
 
     if spawn_and_connect:
         _spawn_and_connect()

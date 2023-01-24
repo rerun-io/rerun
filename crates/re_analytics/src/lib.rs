@@ -105,10 +105,7 @@ pub struct Analytics {
 }
 
 impl Analytics {
-    pub fn new(
-        tick: Duration,
-        default_props: HashMap<Cow<'static, str>, Property>,
-    ) -> Result<Self, AnalyticsError> {
+    pub fn new(tick: Duration) -> Result<Self, AnalyticsError> {
         let config = Config::load()?;
         trace!(?config, ?tick, "loaded analytics config");
 
@@ -119,18 +116,16 @@ impl Analytics {
             trace!(?config, ?tick, "saved analytics config");
         }
 
-        let sink = PostHogSink::new()?;
+        let sink = PostHogSink::default();
         let pipeline = Pipeline::new(&config, tick, sink)?;
 
         if let Some(pipeline) = pipeline.as_ref() {
-            if config.is_first_run() {
-                pipeline.record(Event::update_metadata());
-            }
+            pipeline.record(Event::update_metadata());
         }
 
         Ok(Self {
             config,
-            default_append_props: default_props,
+            default_append_props: Default::default(),
             pipeline,
             event_id: AtomicU64::new(1),
         })
@@ -138,6 +133,10 @@ impl Analytics {
 
     pub fn config(&self) -> &Config {
         &self.config
+    }
+
+    pub fn default_append_props_mut(&mut self) -> &mut HashMap<Cow<'static, str>, Property> {
+        &mut self.default_append_props
     }
 
     pub fn record(&self, mut event: Event) {
@@ -160,17 +159,39 @@ impl Analytics {
 
 // ---
 
-mod config;
-use self::config::{Config, ConfigError};
+#[cfg(not(target_arch = "wasm32"))]
+mod config_native;
+#[cfg(not(target_arch = "wasm32"))]
+use self::config_native::{Config, ConfigError};
 
-pub mod events;
+#[cfg(target_arch = "wasm32")]
+mod config_web;
+#[cfg(target_arch = "wasm32")]
+use self::config_web::{Config, ConfigError};
+
+#[cfg(not(target_arch = "wasm32"))]
+mod pipeline_native;
+#[cfg(not(target_arch = "wasm32"))]
+use self::pipeline_native::{Pipeline, PipelineError};
 
 // TODO(cmc): web pipeline
-mod pipeline;
-use self::pipeline::{Pipeline, PipelineError};
+#[cfg(target_arch = "wasm32")]
+mod pipeline_web;
+#[cfg(target_arch = "wasm32")]
+use self::pipeline_web::{Pipeline, PipelineError};
+
+#[cfg(not(target_arch = "wasm32"))]
+mod sink_native;
+#[cfg(not(target_arch = "wasm32"))]
+use self::sink_native::{PostHogSink, SinkError};
 
 // TODO(cmc): web sink
-mod sink;
-use self::sink::{PostHogSink, SinkError};
+#[cfg(target_arch = "wasm32")]
+mod sink_web;
+#[cfg(target_arch = "wasm32")]
+use self::sink_web::{PostHogSink, SinkError};
 
+#[cfg(not(target_arch = "wasm32"))]
 pub mod cli;
+
+pub mod events;

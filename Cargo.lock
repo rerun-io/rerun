@@ -3184,9 +3184,9 @@ dependencies = [
 
 [[package]]
 name = "once_cell"
-version = "1.16.0"
+version = "1.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "86f0b0d4bf799edbc74508c1e8bf170ff5f41238e5f8225603ca7caaae2b7860"
+checksum = "6f61fba1741ea2b3d6a1e3178721804bb716a68a6aeba1149b5d52e3d464ea66"
 
 [[package]]
 name = "oorandom"
@@ -3723,6 +3723,7 @@ dependencies = [
  "crossbeam",
  "derive_more",
  "directories-next",
+ "once_cell",
  "re_log",
  "reqwest",
  "serde",
@@ -4093,6 +4094,7 @@ dependencies = [
  "puffin",
  "puffin_http",
  "rand",
+ "re_analytics",
  "re_arrow_store",
  "re_data_store",
  "re_error",
@@ -4109,6 +4111,7 @@ dependencies = [
  "re_ws_comms",
  "rfd",
  "serde",
+ "sha2",
  "slotmap",
  "smallvec",
  "tracing",
@@ -4621,6 +4624,17 @@ name = "sha-1"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "028f48d513f9678cda28f6e4064755b3fbb2af6acd672f2c209b62323f7aea0f"
+dependencies = [
+ "cfg-if",
+ "cpufeatures",
+ "digest",
+]
+
+[[package]]
+name = "sha2"
+version = "0.10.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "82e6b795fe2e3b1e845bafcb27aa35405c4d47cdfc92af5fc8d3002f76cebdc0"
 dependencies = [
  "cfg-if",
  "cpufeatures",

@@ -209,6 +209,9 @@ pub struct RecordingInfo {
     /// Should be unique for each recording.
     pub recording_id: RecordingId,
 
+    /// True if the recording is one of the official Rerun examples.
+    pub is_official_example: bool,
+
     /// When the recording started.
     ///
     /// Should be an absolute time, i.e. relative to Unix Epoch.

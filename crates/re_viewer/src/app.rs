@@ -1,4 +1,4 @@
-use std::any::Any;
+use std::{any::Any, hash::Hash};
 
 use ahash::HashMap;
 use egui_notify::Toasts;
@@ -81,6 +81,11 @@ pub struct App {
     /// Commands to run at the end of the frame.
     pending_commands: Vec<Command>,
     cmd_palette: re_ui::CommandPalette,
+
+    // NOTE: Optional because it is possible to have the `analytics` feature flag enabled while at
+    // the same time opting out of analytics at run-time.
+    #[cfg(all(not(target_arch = "wasm32"), feature = "analytics", debug_assertions))]
+    analytics: Option<re_analytics::Analytics>,
 }
 
 impl App {
@@ -98,28 +103,6 @@ impl App {
             Some(rx),
             Default::default(),
         )
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    pub(crate) fn from_log_db(
-        startup_options: StartupOptions,
-        re_ui: re_ui::ReUi,
-        storage: Option<&dyn eframe::Storage>,
-        log_db: LogDb,
-    ) -> Self {
-        Self::new(startup_options, re_ui, storage, None, log_db)
-    }
-
-    /// load a `.rrd` data file.
-    #[cfg(not(target_arch = "wasm32"))]
-    pub fn from_rrd_path(
-        startup_options: StartupOptions,
-        re_ui: re_ui::ReUi,
-        storage: Option<&dyn eframe::Storage>,
-        path: &std::path::Path,
-    ) -> Self {
-        let log_db = load_file_path(path).unwrap_or_default(); // TODO(emilk): exit on error.
-        Self::from_log_db(startup_options, re_ui, storage, log_db)
     }
 
     fn new(
@@ -157,6 +140,18 @@ impl App {
             log_dbs.insert(log_db.recording_id(), log_db);
         }
 
+        #[cfg(all(not(target_arch = "wasm32"), feature = "analytics", debug_assertions))]
+        let analytics = match re_analytics::Analytics::new(std::time::Duration::from_secs(2)) {
+            Ok(analytics) => {
+                analytics.record(re_analytics::Event::viewer_started());
+                Some(analytics)
+            }
+            Err(err) => {
+                re_log::error!(%err, "failed to initialize analytics SDK");
+                None
+            }
+        };
+
         Self {
             startup_options,
             re_ui,
@@ -178,6 +173,9 @@ impl App {
 
             pending_commands: Default::default(),
             cmd_palette: Default::default(),
+
+            #[cfg(all(not(target_arch = "wasm32"), feature = "analytics", debug_assertions))]
+            analytics,
         }
     }
 
@@ -509,6 +507,42 @@ impl App {
                 if let LogMsg::BeginRecordingMsg(msg) = &msg {
                     re_log::info!("Beginning a new recording: {:?}", msg.info);
                     self.state.selected_rec_id = msg.info.recording_id;
+
+                    #[cfg(all(
+                        not(target_arch = "wasm32"),
+                        feature = "analytics",
+                        debug_assertions
+                    ))]
+                    if let Some(analytics) = self.analytics.as_mut() {
+                        use sha2::Digest as _;
+                        analytics.default_append_props_mut().extend([
+                            (
+                                "application_id".into(),
+                                if !msg.info.is_official_example {
+                                    let mut hasher = sha2::Sha256::default();
+                                    hasher.update(&msg.info.application_id.0);
+                                    format!("{:x}", hasher.finalize()).into()
+                                } else {
+                                    msg.info.application_id.0.clone().into()
+                                },
+                            ),
+                            ("recording_id".into(), {
+                                let mut hasher = sha2::Sha256::default();
+                                hasher.update(msg.info.recording_id.to_string());
+                                format!("{:x}", hasher.finalize()).into()
+                            }),
+                            (
+                                "recording_source".into(),
+                                msg.info.recording_source.to_string().into(),
+                            ),
+                            (
+                                "is_official_example".into(),
+                                msg.info.is_official_example.into(),
+                            ),
+                        ]);
+
+                        analytics.record(re_analytics::Event::data_source_opened());
+                    }
                 }
 
                 let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
