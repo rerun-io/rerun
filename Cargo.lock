@@ -3731,6 +3731,7 @@ dependencies = [
  "serde_json",
  "thiserror",
  "time 0.3.17",
+ "tracing-subscriber",
  "uuid",
  "web-sys",
 ]

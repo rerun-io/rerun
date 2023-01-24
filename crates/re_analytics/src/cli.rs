@@ -1,12 +1,15 @@
 use std::path::Path;
 
-use crate::{Config, ConfigError};
+use crate::{Analytics, AnalyticsError, Config, ConfigError, Event, Property};
 // ---
 
 #[derive(thiserror::Error, Debug)]
 pub enum CliError {
     #[error(transparent)]
     Config(#[from] ConfigError),
+
+    #[error(transparent)]
+    Analytics(#[from] AnalyticsError),
 
     #[error(transparent)]
     Io(#[from] std::io::Error),
@@ -41,6 +44,20 @@ pub fn clear() -> Result<(), CliError> {
 
     // clear data dir
     delete_dir(config.data_dir())?;
+
+    Ok(())
+}
+
+pub fn set(
+    analytics: &Analytics,
+    props: impl IntoIterator<Item = (String, Property)>,
+) -> Result<(), CliError> {
+    let mut event = Event::update("set_extra".into());
+    for (name, value) in props {
+        event = event.with_prop(name.into(), value);
+    }
+
+    analytics.record(event);
 
     Ok(())
 }
