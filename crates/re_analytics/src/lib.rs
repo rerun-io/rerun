@@ -71,16 +71,21 @@ pub enum Property {
 const DISCLAIMER: &str = "
     Welcome to Rerun!
 
+    This open source library collects anonymous usage data to
+    help the Rerun team improve the library.
+
     Summary:
-    - This open source library collects anonymous usage data
-      to help the Rerun team improve the library.
-    - The data you pass to Rerun apps, such as point clouds, images, or text logs,
+    - The data you log to Rerun, such as point clouds, images, or text logs,
       will never be collected.
-    - Collected usage data is sent to and stored in servers within the EU.
-    - For more details and instructions on how to opt out, run: `rerun analytics details`.
+    - Usage data we do collect will be sent to and stored in servers within the EU.
+    - We don't log IP addresses.
+    - For more details and instructions on how to opt out,
+      run: `rerun analytics details` or `python -m rerun analytics details`.
 
     As this is this your first session, _no_ usage data has been sent yet,
-    giving you an opportunity to opt-out first.
+    giving you an opportunity to opt-out first if you wish.
+
+    Happy Rerunning!
 ";
 
 #[derive(thiserror::Error, Debug)]

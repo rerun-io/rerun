@@ -82,15 +82,44 @@ pub fn print_config() -> Result<(), CliError> {
 }
 
 const DETAILS: &str = "
-    If you'd like to opt out, run the following: `rerun analytics disable`.
+    * Anonymous Usage Data Collection in Rerun *
 
-    You can check out all of our telemetry events by following this github link:
-    https://github.com/rerun-io/rerun/blob/main/crates/re_analytics/src/events.rs
+    Opting out:
+    - Run `rerun analytics disable` to opt out of all usage data collection.
+
+    What data is collected?
+    - The exact set of analytics events and parameters can be found here:
+      https://github.com/rerun-io/rerun/blob/main/crates/re_analytics/src/events.rs
+    - We collect high level events about the usage of the Rerun Viewer. For example:
+      - The event 'Viewer Opened' helps us estimate how often Rerun is used.
+      - The event 'Data Source Connected' helps us understand if users tend to use live
+        data sources or recordings most, which helps us prioritize features.
+    - We associate events with:
+        - Metadata about the Rerun build (version, target platform, etc).
+        - A persistent and clearable random id that is used to associate events from
+          multiple sessions together. To clear it run `rerun analytics clear`.
+    - We may associate these events with a hashed `application_id` and `recording_id`,
+      so that we can understand if users are more likely to look at few applications often,
+      or tend to use Rerun for many temporary scripts. Again, this helps us prioritize.
+    - We may for instance add events that help us understand how well the auto-layout works.
+
+    What data is not collected?
+    - No Personally Identifiable Information, such as an IP address, is collected.
+      - This assumes you don't manually and explicitly associate your email with
+        the analytics events using the analytics helper cli.
+        (Don't do this, it's just meant for internal use for the Rerun team.)
+    - No user data logged to Rerun is collected.
+      - In some cases we collect secure hashes of user provided names (e.g. `application_id`),
+        but take great care do this only when we have a clear understanding of why it's needed
+        and it won't risk leaking anything potentially proprietary.
+
+    Why do we collect data?
+    - To improve the Rerun open source library.
+
+    Usage data we do collect will be sent to and stored in servers within the EU.
 
     You can audit the actual data being sent out by inspecting the Rerun data directory directly.
     Find out its location by running `rerun analytics config`.
-
-    Metadata of recordings (application name, recording name) are always hashed.
 ";
 
 pub fn print_details() {
