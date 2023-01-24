@@ -467,7 +467,7 @@ impl SpaceView {
                     reference_space_info,
                     scene,
                     self.id,
-                    &highlights,
+                    highlights,
                 );
             }
 
