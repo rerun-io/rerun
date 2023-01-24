@@ -52,6 +52,10 @@ polars-core = { workspace = true, features = [
   "fmt",
 ] }
 
+# Native dependencies:
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+puffin.workspace = true
+
 
 [lib]
 bench = false
