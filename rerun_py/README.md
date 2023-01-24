@@ -102,7 +102,11 @@ pip install -r rerun_py/requirements-doc.txt
 
 Serve the docs:
 ```
-cd rerun_py && mkdocs serve
+mkdocs serve -f rerun_py/mkdocs.yml -w rerun_py
+```
+or
+```
+just py-docs-serve
 ```
 
 

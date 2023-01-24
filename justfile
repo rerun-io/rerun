@@ -58,6 +58,10 @@ py-lint:
 py-test:
     python -m pytest rerun_py/tests/unit/
 
+# Run fast unittests
+py-docs-serve:
+    mkdocs serve -f rerun_py/mkdocs.yml -w rerun_py
+
 ### Rust
 
 # Generate and open the documentation for Rerun and all of its Rust dependencies.
