@@ -1386,9 +1386,9 @@ fn time_marker_ui(
             }
 
             let stroke = if response.dragged() {
-                ui.style().visuals.widgets.active.bg_stroke
+                ui.style().visuals.widgets.active.fg_stroke
             } else if is_hovering {
-                ui.style().visuals.widgets.hovered.bg_stroke
+                ui.style().visuals.widgets.hovered.fg_stroke
             } else {
                 ui.visuals().widgets.inactive.fg_stroke
             };
