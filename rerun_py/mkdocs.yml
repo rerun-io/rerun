@@ -18,7 +18,7 @@ theme:
 plugins:
   - search # https://squidfunk.github.io/mkdocs-material/setup/setting-up-site-search/
   - mkdocstrings: # https://mkdocstrings.github.io/usage/#global-options
-      custom_templates: docs/templates # Override the function template
+      custom_templates: rerun_py/docs/templates # Override the function template. NOTE: relative to working directory. (https://github.com/mkdocstrings/mkdocstrings/issues/477)
       handlers:
         python:
           paths: ["."] # Lookup python modules relative to this path
