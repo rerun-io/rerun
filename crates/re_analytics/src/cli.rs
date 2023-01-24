@@ -67,10 +67,13 @@ pub fn print_config() -> Result<(), CliError> {
 const DETAILS: &str = "
     If you'd like to opt out, run the following: `rerun analytics disable`.
 
-    You can check out all of our telemetry events in `re_analytics/src/events.rs`.
+    You can check out all of our telemetry events by following this github link:
+    https://github.com/rerun-io/rerun/blob/main/crates/re_analytics/src/events.rs
 
     You can audit the actual data being sent out by inspecting the Rerun data directory directly.
     Find out its location by running `rerun analytics config`.
+
+    Metadata of recordings (application name, recording name) are always hashed.
 ";
 
 pub fn print_details() {

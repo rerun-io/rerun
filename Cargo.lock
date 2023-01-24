@@ -1288,7 +1288,7 @@ checksum = "4f94fa09c2aeea5b8839e414b7b841bf429fd25b9c522116ac97ee87856d88b2"
 [[package]]
 name = "ecolor"
 version = "0.20.0"
-source = "git+https://github.com/emilk/egui?rev=cd0f66b9ae661be737ce57f26fb305cf124f6b73#cd0f66b9ae661be737ce57f26fb305cf124f6b73"
+source = "git+https://github.com/emilk/egui?rev=eee4cf6a824e21141bb893aae2aea7849c0e9e03#eee4cf6a824e21141bb893aae2aea7849c0e9e03"
 dependencies = [
  "bytemuck",
  "serde",
@@ -1297,7 +1297,7 @@ dependencies = [
 [[package]]
 name = "eframe"
 version = "0.20.1"
-source = "git+https://github.com/emilk/egui?rev=cd0f66b9ae661be737ce57f26fb305cf124f6b73#cd0f66b9ae661be737ce57f26fb305cf124f6b73"
+source = "git+https://github.com/emilk/egui?rev=eee4cf6a824e21141bb893aae2aea7849c0e9e03#eee4cf6a824e21141bb893aae2aea7849c0e9e03"
 dependencies = [
  "bytemuck",
  "directories-next",
@@ -1324,7 +1324,7 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.20.1"
-source = "git+https://github.com/emilk/egui?rev=cd0f66b9ae661be737ce57f26fb305cf124f6b73#cd0f66b9ae661be737ce57f26fb305cf124f6b73"
+source = "git+https://github.com/emilk/egui?rev=eee4cf6a824e21141bb893aae2aea7849c0e9e03#eee4cf6a824e21141bb893aae2aea7849c0e9e03"
 dependencies = [
  "accesskit",
  "ahash 0.8.2",
@@ -1347,7 +1347,7 @@ dependencies = [
 [[package]]
 name = "egui-wgpu"
 version = "0.20.0"
-source = "git+https://github.com/emilk/egui?rev=cd0f66b9ae661be737ce57f26fb305cf124f6b73#cd0f66b9ae661be737ce57f26fb305cf124f6b73"
+source = "git+https://github.com/emilk/egui?rev=eee4cf6a824e21141bb893aae2aea7849c0e9e03#eee4cf6a824e21141bb893aae2aea7849c0e9e03"
 dependencies = [
  "bytemuck",
  "epaint",
@@ -1361,7 +1361,7 @@ dependencies = [
 [[package]]
 name = "egui-winit"
 version = "0.20.1"
-source = "git+https://github.com/emilk/egui?rev=cd0f66b9ae661be737ce57f26fb305cf124f6b73#cd0f66b9ae661be737ce57f26fb305cf124f6b73"
+source = "git+https://github.com/emilk/egui?rev=eee4cf6a824e21141bb893aae2aea7849c0e9e03#eee4cf6a824e21141bb893aae2aea7849c0e9e03"
 dependencies = [
  "arboard",
  "egui",
@@ -1387,7 +1387,7 @@ dependencies = [
 [[package]]
 name = "egui_extras"
 version = "0.20.0"
-source = "git+https://github.com/emilk/egui?rev=cd0f66b9ae661be737ce57f26fb305cf124f6b73#cd0f66b9ae661be737ce57f26fb305cf124f6b73"
+source = "git+https://github.com/emilk/egui?rev=eee4cf6a824e21141bb893aae2aea7849c0e9e03#eee4cf6a824e21141bb893aae2aea7849c0e9e03"
 dependencies = [
  "egui",
  "serde",
@@ -1397,7 +1397,7 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.20.1"
-source = "git+https://github.com/emilk/egui?rev=cd0f66b9ae661be737ce57f26fb305cf124f6b73#cd0f66b9ae661be737ce57f26fb305cf124f6b73"
+source = "git+https://github.com/emilk/egui?rev=eee4cf6a824e21141bb893aae2aea7849c0e9e03#eee4cf6a824e21141bb893aae2aea7849c0e9e03"
 dependencies = [
  "bytemuck",
  "egui",
@@ -1419,7 +1419,7 @@ checksum = "90e5c1c8368803113bf0c9584fc495a58b86dc8a29edbf8fe877d21d9507e797"
 [[package]]
 name = "emath"
 version = "0.20.0"
-source = "git+https://github.com/emilk/egui?rev=cd0f66b9ae661be737ce57f26fb305cf124f6b73#cd0f66b9ae661be737ce57f26fb305cf124f6b73"
+source = "git+https://github.com/emilk/egui?rev=eee4cf6a824e21141bb893aae2aea7849c0e9e03#eee4cf6a824e21141bb893aae2aea7849c0e9e03"
 dependencies = [
  "bytemuck",
  "serde",
@@ -1465,7 +1465,7 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.20.0"
-source = "git+https://github.com/emilk/egui?rev=cd0f66b9ae661be737ce57f26fb305cf124f6b73#cd0f66b9ae661be737ce57f26fb305cf124f6b73"
+source = "git+https://github.com/emilk/egui?rev=eee4cf6a824e21141bb893aae2aea7849c0e9e03#eee4cf6a824e21141bb893aae2aea7849c0e9e03"
 dependencies = [
  "ab_glyph",
  "ahash 0.8.2",
@@ -3184,9 +3184,9 @@ dependencies = [
 
 [[package]]
 name = "once_cell"
-version = "1.16.0"
+version = "1.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "86f0b0d4bf799edbc74508c1e8bf170ff5f41238e5f8225603ca7caaae2b7860"
+checksum = "6f61fba1741ea2b3d6a1e3178721804bb716a68a6aeba1149b5d52e3d464ea66"
 
 [[package]]
 name = "oorandom"
@@ -3723,6 +3723,7 @@ dependencies = [
  "crossbeam",
  "derive_more",
  "directories-next",
+ "once_cell",
  "re_log",
  "reqwest",
  "serde",
@@ -3894,6 +3895,7 @@ dependencies = [
  "mimalloc",
  "nohash-hasher",
  "polars-core",
+ "puffin",
  "re_arrow_store",
  "re_data_store",
  "re_format",
@@ -4093,6 +4095,7 @@ dependencies = [
  "puffin",
  "puffin_http",
  "rand",
+ "re_analytics",
  "re_arrow_store",
  "re_data_store",
  "re_error",
@@ -4109,6 +4112,7 @@ dependencies = [
  "re_ws_comms",
  "rfd",
  "serde",
+ "sha2",
  "slotmap",
  "smallvec",
  "tracing",
@@ -4621,6 +4625,17 @@ name = "sha-1"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "028f48d513f9678cda28f6e4064755b3fbb2af6acd672f2c209b62323f7aea0f"
+dependencies = [
+ "cfg-if",
+ "cpufeatures",
+ "digest",
+]
+
+[[package]]
+name = "sha2"
+version = "0.10.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "82e6b795fe2e3b1e845bafcb27aa35405c4d47cdfc92af5fc8d3002f76cebdc0"
 dependencies = [
  "cfg-if",
  "cpufeatures",

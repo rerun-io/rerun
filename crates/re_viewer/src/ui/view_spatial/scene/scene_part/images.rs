@@ -39,6 +39,8 @@ fn push_tensor_texture<T: AsDynamicImage>(
     tensor: &T,
     tint: egui::Rgba,
 ) {
+    crate::profile_function!();
+
     let tensor_view =
         ctx.cache
             .image
@@ -159,6 +161,8 @@ impl ScenePart for ImagesPartClassic {
 }
 
 fn handle_image_layering(scene: &mut SceneSpatial) {
+    crate::profile_function!();
+
     // Handle layered rectangles that are on (roughly) the same plane and were logged in sequence.
     // First, group by similar plane.
     // TODO(andreas): Need planes later for picking as well!
@@ -226,11 +230,14 @@ impl ImagesPart {
         world_from_obj: glam::Mat4,
         highlights: &SpaceViewHighlights,
     ) -> Result<(), QueryError> {
+        crate::profile_function!();
+
         for (instance, tensor, color) in itertools::izip!(
             entity_view.iter_instances()?,
             entity_view.iter_primary()?,
             entity_view.iter_component::<ColorRGBA>()?
         ) {
+            crate::profile_scope!("loop_iter");
             if let Some(tensor) = tensor {
                 if !tensor.is_shaped_like_an_image() {
                     return Ok(());

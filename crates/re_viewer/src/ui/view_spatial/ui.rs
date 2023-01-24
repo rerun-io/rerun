@@ -172,6 +172,8 @@ impl ViewSpatialState {
                 .selected_text(self.nav_mode)
                 .show_ui(ui, |ui| {
                     ui.style_mut().wrap = Some(false);
+                    ui.set_min_width(64.0);
+
                     ui.selectable_value(
                         &mut self.nav_mode,
                         SpatialNavigationMode::TwoD,
@@ -281,10 +283,11 @@ fn size_ui(
 
     let mode_before = mode;
     egui::ComboBox::from_id_source("auto_size_mode")
-        .width(80.0)
         .selected_text(mode)
         .show_ui(ui, |ui| {
             ui.style_mut().wrap = Some(false);
+            ui.set_min_width(64.0);
+
             ui.selectable_value(&mut mode, AutoSizeUnit::Auto, AutoSizeUnit::Auto)
                 .on_hover_text("Determine automatically.");
             ui.selectable_value(&mut mode, AutoSizeUnit::UiPoints, AutoSizeUnit::UiPoints)

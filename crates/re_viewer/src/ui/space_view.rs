@@ -40,7 +40,7 @@ impl SpaceViewId {
 
 /// A view of a space.
 #[derive(Clone, serde::Deserialize, serde::Serialize)]
-pub(crate) struct SpaceView {
+pub struct SpaceView {
     pub id: SpaceViewId,
     pub name: String,
 
@@ -196,7 +196,8 @@ impl SpaceView {
 
     pub fn selection_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         ui.label("Space path:");
-        ctx.obj_path_button(ui, &self.space_path);
+        // specify no space view id since the path itself is not part of the space view.
+        ctx.obj_path_button(ui, None, &self.space_path);
         ui.end_row();
 
         ui.separator();
@@ -427,6 +428,7 @@ impl SpaceView {
         ui: &mut egui::Ui,
         reference_space_info: &SpaceInfo,
         latest_at: TimeInt,
+        highlights: &SpaceViewHighlights,
     ) {
         crate::profile_function!();
 
@@ -458,8 +460,7 @@ impl SpaceView {
 
             ViewCategory::Spatial => {
                 let mut scene = view_spatial::SceneSpatial::default();
-                let highlights = ctx.selection_state().highlights_for_space_view(self.id);
-                scene.load_objects(ctx, &query, &self.cached_transforms, &highlights);
+                scene.load_objects(ctx, &query, &self.cached_transforms, highlights);
                 self.view_state.ui_spatial(
                     ctx,
                     ui,
@@ -467,7 +468,7 @@ impl SpaceView {
                     reference_space_info,
                     scene,
                     self.id,
-                    &highlights,
+                    highlights,
                 );
             }
 
@@ -496,7 +497,7 @@ fn has_visualization_for_category(
 
 /// Camera position and similar.
 #[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
-pub(crate) struct ViewState {
+pub struct ViewState {
     /// Selects in [`Self::state_tensors`].
     selected_tensor: Option<InstanceId>,
 

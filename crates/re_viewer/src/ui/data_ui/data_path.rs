@@ -11,7 +11,7 @@ impl DataUi for DataPath {
     ) {
         ui.horizontal(|ui| {
             ui.label("Object path:");
-            ctx.obj_path_button(ui, &self.obj_path);
+            ctx.obj_path_button(ui, None, &self.obj_path);
         });
 
         let timeline = ctx.rec_cfg.time_ctrl.timeline();

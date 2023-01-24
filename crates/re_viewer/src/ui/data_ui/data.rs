@@ -65,7 +65,7 @@ impl DataUi for Data {
             Data::Tensor(tensor) => tensor.data_ui(ctx, ui, preview),
 
             Data::ObjPath(obj_path) => {
-                ctx.obj_path_button(ui, obj_path);
+                ctx.obj_path_button(ui, None, obj_path);
             }
 
             Data::DataVec(data_vec) => data_vec.data_ui(ctx, ui, preview),

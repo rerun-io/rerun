@@ -143,7 +143,7 @@ expense of slower inference. This parameter will be modulated by `strength`.
 
     args = parser.parse_args()
 
-    rr.init("Depth Guided Stable Diffusion ")
+    rr.init("Depth Guided Stable Diffusion")
 
     image_path = args.image_path  # type: str
     if not image_path:

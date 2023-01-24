@@ -73,7 +73,7 @@ struct Args {
 #[derive(Debug, Clone, Subcommand)]
 enum Commands {
     /// Configure the behaviour of our analytics.
-    #[cfg(feature = "analytics")]
+    #[cfg(all(feature = "analytics", debug_assertions))]
     #[command(subcommand)]
     Analytics(AnalyticsCommands),
 }
@@ -113,7 +113,10 @@ where
 
     let res = if let Some(commands) = &args.commands {
         match commands {
+            #[cfg(all(feature = "analytics", debug_assertions))]
             Commands::Analytics(analytics) => run_analytics(analytics).map_err(Into::into),
+            #[cfg(not(all(feature = "analytics", debug_assertions)))]
+            _ => Ok(()),
         }
     } else {
         run_impl(args).await
@@ -138,6 +141,7 @@ where
     }
 }
 
+#[cfg(all(feature = "analytics", debug_assertions))]
 fn run_analytics(cmd: &AnalyticsCommands) -> Result<(), re_analytics::cli::CliError> {
     match cmd {
         #[allow(clippy::unit_arg)]
