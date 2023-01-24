@@ -1053,19 +1053,6 @@ fn top_bar_ui(
     }
 
     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-        if !WATERMARK {
-            let logo = app.re_ui.rerun_logo();
-            let response = ui
-                .add(egui::ImageButton::new(
-                    logo.texture_id(ui.ctx()),
-                    logo.size_vec2() * 16.0 / logo.size_vec2().y,
-                ))
-                .on_hover_text("https://rerun.io");
-            if response.clicked() {
-                ui.output().open_url = Some(egui::output::OpenUrl::new_tab("https://rerun.io"));
-            }
-        }
-
         if let Some(log_db) = app.log_dbs.get(&app.state.selected_rec_id) {
             let selected_app_id = log_db
                 .recording_info()
