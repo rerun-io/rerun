@@ -916,25 +916,19 @@ fn rerun_menu_button_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &mut 
 
         #[cfg(not(target_arch = "wasm32"))]
         {
-            #[cfg(not(target_arch = "wasm32"))]
             Command::Open.menu_button_ui(ui, &mut app.pending_commands);
 
-            #[cfg(not(target_arch = "wasm32"))]
             save_buttons_ui(ui, app);
 
             ui.add_space(spacing);
-        }
 
-        {
             // On the web the browser controls the zoom
-            if !frame.is_web() {
-                egui::gui_zoom::zoom_menu_buttons(ui, frame.info().native_pixels_per_point);
-            }
-            #[cfg(not(target_arch = "wasm32"))]
-            Command::ToggleFullscreen.menu_button_ui(ui, &mut app.pending_commands);
-        }
+            egui::gui_zoom::zoom_menu_buttons(ui, frame.info().native_pixels_per_point);
 
-        ui.add_space(spacing);
+            Command::ToggleFullscreen.menu_button_ui(ui, &mut app.pending_commands);
+
+            ui.add_space(spacing);
+        }
 
         {
             Command::ResetViewer.menu_button_ui(ui, &mut app.pending_commands);
