@@ -44,13 +44,21 @@ def log_point(
 
     Logging again to the same `obj_path` will replace the previous point.
 
-    * `position`: 2x1 or 3x1 array
-    * `radius`: Optional radius (make it a sphere)
-    * `color`: Optional color of the point
-    * `label`: Optional text to show with the point
-    * `class_id`: Optional class id for the point.
+    Parameters
+    ----------
+    position:
+        2x1 or 3x1 array
+    radius:
+        Optional radius (make it a sphere)
+    color:
+        Optional color of the point
+    label:
+        Optional text to show with the point
+    class_id:
+        Optional class id for the point.
         The class id provides color and label if not specified explicitly.
-    * `keypoint_id`: Optional key point id for the point, identifying it within a class.
+    keypoint_id:
+        Optional key point id for the point, identifying it within a class.
         If keypoint_id is passed but no class_id was specified, class_id will be set to 0.
         This is useful to identify points within a single classification (which is identified with class_id).
         E.g. the classification might be 'Person' and the keypoints refer to joints on a detected skeleton.

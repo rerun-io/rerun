@@ -79,6 +79,7 @@ def get_recording_id() -> str:
     -------
     str
         The recording ID that this process is logging to.
+
     """
     return str(bindings.get_recording_id())
 
@@ -100,6 +101,7 @@ def set_recording_id(value: str) -> None:
     ----------
     value : str
         The recording ID to use for this process.
+
     """
     bindings.set_recording_id(value)
 
@@ -153,7 +155,15 @@ def spawn_and_connect(port: int = 9876) -> None:
     This is often the easiest and best way to use Rerun.
     Just call this once at the start of your program.
 
-    See also: rerun.connect
+    Parameters
+    ----------
+    port : int
+        The port to connect to
+
+    See Also
+    --------
+     * [rerun.connect][]
+
     """
     spawn_viewer(port)
     connect(f"127.0.0.1:{port}")
@@ -172,6 +182,7 @@ def connect(addr: Optional[str] = None) -> None:
     ----------
     addr : str
         The ip:port to connect to
+
     """
     bindings.connect(addr)
 
@@ -184,6 +195,7 @@ def spawn_viewer(port: int = 9876) -> None:
     ----------
     port : int
         The port to listen on.
+
     """
     import subprocess
     import sys
@@ -227,6 +239,7 @@ def show() -> None:
     This will clear the logged data after showing it.
 
     NOTE: There is a bug which causes this function to only work once on some platforms.
+
     """
     bindings.show()
 
@@ -243,6 +256,7 @@ def save(path: str) -> None:
     ----------
     path : str
         The path to save the data to.
+
     """
     bindings.save(path)
 
@@ -266,6 +280,7 @@ def set_time_sequence(timeline: str, sequence: Optional[int]) -> None:
         The name of the timeline to set the time for.
     sequence : int
         The current time on the timeline in integer units.
+
     """
     bindings.set_time_sequence(timeline, sequence)
 
@@ -295,6 +310,7 @@ def set_time_seconds(timeline: str, seconds: Optional[float]) -> None:
         The name of the timeline to set the time for.
     seconds : float
         The current time on the timeline in seconds.
+
     """
     bindings.set_time_seconds(timeline, seconds)
 
@@ -324,5 +340,6 @@ def set_time_nanos(timeline: str, nanos: Optional[int]) -> None:
         The name of the timeline to set the time for.
     nanos : int
         The current time on the timeline in nanoseconds.
+
     """
     bindings.set_time_nanos(timeline, nanos)
