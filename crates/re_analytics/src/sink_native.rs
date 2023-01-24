@@ -1,7 +1,7 @@
 use std::{collections::HashMap, time::Duration};
 
 use once_cell::sync::OnceCell;
-use reqwest::blocking::Client as HttpClient;
+use reqwest::{blocking::Client as HttpClient, Url};
 use time::OffsetDateTime;
 
 use re_log::{debug, error};
@@ -34,19 +34,24 @@ pub struct PostHogSink {
     // is initialized from a thread that is free of a Tokio runtime.
     // This is necessary because `reqwest` will crash if we try and initialize a blocking HTTP
     // client from within a thread that has a Tokio runtime instantiated.
-    client: OnceCell<HttpClient>,
+    //
+    // We also use this opportunity to upgrade our public HTTP endpoint into the final HTTP2/TLS
+    // URL by following all 301 redirects.
+    client: OnceCell<(Url, HttpClient)>,
 }
 
 impl PostHogSink {
+    /// Our public entrypoint; this will be resolved into an actual HTTP2/TLS URL when creating
+    /// the client.
+    const URL: &str = "http://tel.rerun.io";
+
     pub fn send(
         &self,
         analytics_id: &str,
         session_id: &str,
         events: &[Event],
     ) -> Result<(), SinkError> {
-        const URL: &str = "https://eu.posthog.com/capture";
-
-        let client = self.init()?;
+        let (resolved_url, client) = self.init()?;
 
         let events = events
             .iter()
@@ -55,12 +60,15 @@ impl PostHogSink {
         let batch = PostHogBatch::from_events(&events);
 
         debug!("{}", serde_json::to_string_pretty(&batch)?);
-        let resp = client.post(URL).body(serde_json::to_vec(&batch)?).send()?;
+        let resp = client
+            .post(resolved_url.clone())
+            .body(serde_json::to_vec(&batch)?)
+            .send()?;
 
         resp.error_for_status().map(|_| ()).map_err(Into::into)
     }
 
-    fn init(&self) -> Result<&HttpClient, SinkError> {
+    fn init(&self) -> Result<&(Url, HttpClient), SinkError> {
         self.client.get_or_try_init(|| {
             use reqwest::header;
             let mut headers = header::HeaderMap::new();
@@ -76,7 +84,9 @@ impl PostHogSink {
                 .default_headers(headers)
                 .build()?;
 
-            Ok(client)
+            let resolved_url = client.get(Self::URL).send()?.url().clone();
+
+            Ok((resolved_url, client))
         })
     }
 }
