@@ -116,7 +116,7 @@ impl DataBlueprintTree {
         self.groups.get_mut(handle)
     }
 
-    /// Calls the visitor function on every object of the given group and its descending groups.
+    /// Calls the visitor function on every object path in the given group and its descending groups.
     pub fn visit_group_objects_recursively(
         &self,
         handle: DataBlueprintGroupHandle,
