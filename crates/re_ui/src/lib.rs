@@ -261,9 +261,9 @@ impl ReUi {
     ) -> egui::Response {
         let prev_style = ui.style().clone();
         {
-            // Enable a background color even when inactive:
+            // For big buttons we have a background color even when inactive:
             let visuals = ui.visuals_mut();
-            visuals.widgets.inactive.optional_bg_fill = visuals.widgets.inactive.bg_fill;
+            visuals.widgets.inactive.weak_bg_fill = visuals.widgets.inactive.bg_fill;
         }
 
         let image = self.icon_image(icon);

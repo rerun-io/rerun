@@ -67,14 +67,14 @@ arrow2_convert = { git = "https://github.com/rerun-io/arrow2-convert", rev = "7e
 # arrow2 = { path = "../arrow2" }
 # arrow2_convert = { path = "../arrow2-convert/arrow2_convert" }
 
-# 2022-01-16: prevent ctrl-p from opening the print dialog
-ecolor = { git = "https://github.com/emilk/egui", rev = "cd0f66b9ae661be737ce57f26fb305cf124f6b73" }
-eframe = { git = "https://github.com/emilk/egui", rev = "cd0f66b9ae661be737ce57f26fb305cf124f6b73" }
-egui = { git = "https://github.com/emilk/egui", rev = "cd0f66b9ae661be737ce57f26fb305cf124f6b73" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "cd0f66b9ae661be737ce57f26fb305cf124f6b73" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "cd0f66b9ae661be737ce57f26fb305cf124f6b73" }
-emath = { git = "https://github.com/emilk/egui", rev = "cd0f66b9ae661be737ce57f26fb305cf124f6b73" }
-epaint = { git = "https://github.com/emilk/egui", rev = "cd0f66b9ae661be737ce57f26fb305cf124f6b73" }
+# 2022-01-24: allow hiding button backgrounds
+ecolor = { git = "https://github.com/emilk/egui", rev = "eee4cf6a824e21141bb893aae2aea7849c0e9e03" }
+eframe = { git = "https://github.com/emilk/egui", rev = "eee4cf6a824e21141bb893aae2aea7849c0e9e03" }
+egui = { git = "https://github.com/emilk/egui", rev = "eee4cf6a824e21141bb893aae2aea7849c0e9e03" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "eee4cf6a824e21141bb893aae2aea7849c0e9e03" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "eee4cf6a824e21141bb893aae2aea7849c0e9e03" }
+emath = { git = "https://github.com/emilk/egui", rev = "eee4cf6a824e21141bb893aae2aea7849c0e9e03" }
+epaint = { git = "https://github.com/emilk/egui", rev = "eee4cf6a824e21141bb893aae2aea7849c0e9e03" }
 
 # ecolor = { path = "../../egui/crates/ecolor" }
 # eframe = { path = "../../egui/crates/eframe" }

@@ -63,11 +63,11 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
     // let floating_color = get_aliased_color(&json, "{Alias.Color.Surface.Floating.value}");
     let floating_color = Color32::from_gray(38); // TODO(emilk): change the content of the design_tokens.json origin instead
 
-    egui_style.visuals.widgets.noninteractive.optional_bg_fill = panel_bg_color;
+    egui_style.visuals.widgets.noninteractive.weak_bg_fill = panel_bg_color;
     egui_style.visuals.widgets.noninteractive.bg_fill = panel_bg_color;
 
     egui_style.visuals.button_frame = true;
-    egui_style.visuals.widgets.inactive.optional_bg_fill = Default::default(); // Buttons have no background color when inactive
+    egui_style.visuals.widgets.inactive.weak_bg_fill = Default::default(); // Buttons have no background color when inactive
     egui_style.visuals.widgets.inactive.bg_fill =
         get_aliased_color(&json, "{Alias.Color.Action.Default.value}");
 
@@ -75,11 +75,11 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
         // Background colors for menu buttons etc:
         // let hovered_color = get_aliased_color(&json, "{Alias.Color.Action.Hovered.value}");
         let hovered_color = Color32::from_gray(20); // TODO(emilk): change the content of the design_tokens.json origin instead
-        egui_style.visuals.widgets.hovered.optional_bg_fill = hovered_color;
+        egui_style.visuals.widgets.hovered.weak_bg_fill = hovered_color;
         egui_style.visuals.widgets.hovered.bg_fill = hovered_color;
-        egui_style.visuals.widgets.active.optional_bg_fill = hovered_color;
+        egui_style.visuals.widgets.active.weak_bg_fill = hovered_color;
         egui_style.visuals.widgets.active.bg_fill = hovered_color;
-        egui_style.visuals.widgets.open.optional_bg_fill = hovered_color;
+        egui_style.visuals.widgets.open.weak_bg_fill = hovered_color;
         egui_style.visuals.widgets.open.bg_fill = hovered_color;
     }
 
