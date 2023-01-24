@@ -1,10 +1,10 @@
-use ahash::HashSet;
+use ahash::{HashMap, HashSet};
 use itertools::Itertools;
 use nohash_hasher::IntMap;
 use re_data_store::{LogDb, ObjPath};
 use re_log_types::{IndexHash, ObjPathHash};
 
-use crate::ui::{Blueprint, HistoricalSelection, SelectionHistory, SpaceViewId};
+use crate::ui::{Blueprint, HistoricalSelection, SelectionHistory, SpaceView, SpaceViewId};
 
 use super::{MultiSelection, Selection};
 
@@ -243,7 +243,11 @@ impl SelectionState {
         self.history.selection_ui(ui, blueprint)
     }
 
-    pub fn highlights_for_space_view(&self, space_view_id: SpaceViewId) -> SpaceViewHighlights {
+    pub fn highlights_for_space_view(
+        &self,
+        space_view_id: SpaceViewId,
+        space_views: &HashMap<SpaceViewId, SpaceView>,
+    ) -> SpaceViewHighlights {
         crate::profile_function!();
 
         let mut highlighted_object_paths =
@@ -251,10 +255,24 @@ impl SelectionState {
 
         for current_selection in self.selection.iter() {
             match current_selection {
-                Selection::MsgId(_)
-                | Selection::DataPath(_)
-                | Selection::SpaceView(_)
-                | Selection::DataBlueprintGroup(_, _) => {}
+                Selection::MsgId(_) | Selection::DataPath(_) | Selection::SpaceView(_) => {}
+
+                Selection::DataBlueprintGroup(group_space_view_id, group_handle) => {
+                    if *group_space_view_id == space_view_id {
+                        if let Some(space_view) = space_views.get(group_space_view_id) {
+                            space_view.data_blueprint.visit_group_objects_recursively(
+                                *group_handle,
+                                &mut |obj_path: &ObjPath| {
+                                    highlighted_object_paths
+                                        .entry(obj_path.hash())
+                                        .or_default()
+                                        .overall
+                                        .selection = SelectionHighlight::SiblingSelection;
+                                },
+                            );
+                        }
+                    }
+                }
 
                 Selection::Instance(selected_space_view_context, selected_instance) => {
                     let highlight = if *selected_space_view_context == Some(space_view_id) {
@@ -285,10 +303,26 @@ impl SelectionState {
 
         for current_hover in self.hovered_previous_frame.iter() {
             match current_hover {
-                Selection::MsgId(_)
-                | Selection::DataPath(_)
-                | Selection::SpaceView(_)
-                | Selection::DataBlueprintGroup(_, _) => {}
+                Selection::MsgId(_) | Selection::DataPath(_) | Selection::SpaceView(_) => {}
+
+                Selection::DataBlueprintGroup(group_space_view_id, group_handle) => {
+                    // Unlike for selected objects/data we are more picky for data blueprints with our hover highlights
+                    // since they are truly local to a space view.
+                    if *group_space_view_id == space_view_id {
+                        if let Some(space_view) = space_views.get(group_space_view_id) {
+                            space_view.data_blueprint.visit_group_objects_recursively(
+                                *group_handle,
+                                &mut |obj_path: &ObjPath| {
+                                    highlighted_object_paths
+                                        .entry(obj_path.hash())
+                                        .or_default()
+                                        .overall
+                                        .hover = HoverHighlight::Hovered;
+                                },
+                            );
+                        }
+                    }
+                }
 
                 Selection::Instance(_, selected_instance) => {
                     let highlighted_object = highlighted_object_paths
