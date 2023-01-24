@@ -37,46 +37,45 @@ def main(parser: ArgumentParser) -> None:
     (cameras, images, points3D) = read_model(model_path, args.input_format)
 
     rr.init("colmap", spawn_and_connect=True)
-    # if args.connect:
-    #    rr.connect(args.addr)
-
     rr.log_view_coordinates("world", up="-Y", timeless=True)
 
-    for camera in cameras.values():
-        # Log camera intrinsics
-        rr.log_pinhole(
-            f"world/camera{camera.id}/image",
-            child_from_parent=intrinsics_for_camera(camera),
-            width=camera.width,
-            height=camera.height,
-            timeless=True,
-        )
-
-    points_by_image = {id: [] for id in images.keys()}
-    for point in points3D.values():
-        for image_id in point.image_ids.tolist():
-            points_by_image[image_id].append(point)
+    # Filter out noisy points
+    filtered = {id: point for id, point in points3D.items() if point.rgb.any() and len(point.image_ids) > 4}
 
     for image in sorted(images.values(), key=lambda im: im.name):
-        img_seq = int(image.name[3:7])
+        img_seq = int(image.name[0:4])
+        quat_xyzw = image.qvec[[1, 2, 3, 0]]  # COLMAP uses wxyz quaternions
+        camera_from_world = (image.tvec, quat_xyzw)
+        camera = cameras[image.camera_id]
+        intrinsics = intrinsics_for_camera(camera)
+
+        visible_points = [filtered.get(id) for id in image.point3D_ids if id != -1]
+        visible_points = [point for point in visible_points if point is not None]
+
         rr.set_time_sequence("img_seq", img_seq)
 
-        # COLMAP uses wxyz quaternions while Rerun uses xyzw
-        quat_xyzw = image.qvec[[1, 2, 3, 0]]
+        points = [point.xyz for point in visible_points]
+        point_colors = [point.rgb for point in visible_points]
+        rr.log_points(f"world/points", points, colors=point_colors)
 
         # Camera transform is "world to camera"
         rr.log_rigid3(
-            f"world/camera{image.camera_id}",
-            child_from_parent=(image.tvec, quat_xyzw),
+            f"world/camera",
+            child_from_parent=camera_from_world,
             xyz="RDF",  # X=Right, Y=Down, Z=Forward
         )
 
-        points = np.array([point.xyz for point in points_by_image[image.id]])
-        point_colors = np.array([point.rgb for point in points_by_image[image.id]])
-        rr.log_points(f"world/points", points, colors=point_colors)
+        # Log camera intrinsics
+        rr.log_pinhole(
+            f"world/camera/image",
+            child_from_parent=intrinsics,
+            width=camera.width,
+            height=camera.height,
+        )
 
-        rr.log_image_file(f"world/camera{image.camera_id}/image/rgb", model_path.parent / "images" / image.name)
-        rr.log_points(f"world/camera{image.camera_id}/image/keypoints", image.xys)
+        rr.log_image_file(f"world/camera/image/rgb", model_path.parent / "images" / image.name)
+
+        rr.log_points(f"world/camera/image/keypoints", image.xys)
 
 
 if __name__ == "__main__":
