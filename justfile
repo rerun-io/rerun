@@ -58,7 +58,7 @@ py-lint:
 py-test:
     python -m pytest rerun_py/tests/unit/
 
-# Run fast unittests
+# Serve the python docs locally
 py-docs-serve:
     mkdocs serve -f rerun_py/mkdocs.yml -w rerun_py
 
