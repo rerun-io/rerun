@@ -1,6 +1,8 @@
 use cargo_metadata::{CargoOpt, Metadata, MetadataCommand, Package, PackageId};
 use std::{
     collections::{HashMap, HashSet},
+    fs,
+    path::Path,
     process::Stdio,
 };
 
@@ -82,6 +84,128 @@ impl<'a> Packages<'a> {
     }
 }
 
+// Port of build_web.sh
+fn build_web() {
+    let crate_name = "re_viewer";
+    let build_dir = "web_viewer";
+
+    let wasm_path = Path::new(build_dir).join(crate_name.to_owned() + "_bg.wasm");
+    fs::remove_file(wasm_path.clone()).ok();
+
+    let metadata = MetadataCommand::new()
+        .manifest_path("./Cargo.toml")
+        .features(CargoOpt::AllFeatures)
+        .exec()
+        .unwrap();
+
+    let target_wasm = metadata.target_directory.to_string() + "_wasm";
+    let release = std::env::var("PROFILE").unwrap() == "release";
+
+    let root_dir = metadata.target_directory.parent().unwrap();
+
+    // --------------------------------------------------------------------------------
+    // Compile rust to wasm
+
+    let mut cmd = std::process::Command::new("cargo");
+    cmd.current_dir(root_dir);
+    cmd.args([
+        "build",
+        "--target-dir",
+        &target_wasm,
+        "-p",
+        crate_name,
+        "--lib",
+        "--target",
+        "wasm32-unknown-unknown",
+    ]);
+    cmd.env("RUSTFLAGS", "--cfg=web_sys_unstable_apis");
+    cmd.env("CARGO_ENCODED_RUSTFLAGS", "");
+
+    if release {
+        cmd.arg("--release");
+    }
+
+    eprintln!("wasm build cmd: {:?}", cmd);
+
+    let output = cmd
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .output()
+        .expect("failed to compile re_viewer for wasm32");
+
+    eprintln!("compile status: {}", output.status);
+    eprintln!(
+        "compile stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    assert!(output.status.success());
+
+    // --------------------------------------------------------------------------------
+    // Generate JS bindings
+
+    let build = if release { "release" } else { "debug" };
+
+    let target_name = crate_name.to_owned() + ".wasm";
+    let target_path = Path::new(&target_wasm)
+        .join("wasm32-unknown-unknown")
+        .join(build)
+        .join(target_name);
+
+    let mut cmd = std::process::Command::new("wasm-bindgen");
+    cmd.current_dir(root_dir);
+    cmd.args([
+        target_path.to_str().unwrap(),
+        "--out-dir",
+        build_dir,
+        "--no-modules",
+        "--no-typescript",
+    ]);
+
+    eprintln!("wasm-bindgen cmd: {:?}", cmd);
+
+    let output = cmd
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .output()
+        .expect("failed to generate JS bindings");
+
+    eprintln!("wasm-bindgen status: {}", output.status);
+    eprintln!(
+        "wasm-bindgen stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    assert!(output.status.success());
+
+    // --------------------------------------------------------------------------------
+    // Optimize the wasm
+
+    if release {
+        let wasm_path = wasm_path.to_str().unwrap();
+
+        let mut cmd = std::process::Command::new("wasm-opt");
+        cmd.current_dir(root_dir);
+        cmd.args([wasm_path, "-O2", "--fast-math", "-o", wasm_path]);
+
+        eprintln!("wasm-opt cmd: {:?}", cmd);
+
+        let output = cmd
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
+            .output()
+            .expect("failed to optimize wasm");
+
+        eprintln!("wasm-opt status: {}", output.status);
+        eprintln!(
+            "wasm-opt stderr: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+
+        assert!(output.status.success());
+    }
+}
+
 // ---
 
 fn main() {
@@ -109,21 +233,6 @@ fn main() {
     } else {
         eprintln!("Build web viewer wasm…");
 
-        let mut cmd = std::process::Command::new("../../scripts/build_web.sh");
-
-        if std::env::var("PROFILE").unwrap() == "release" {
-            cmd.arg("--release");
-        }
-
-        let output = cmd
-            .stdout(Stdio::inherit())
-            .stderr(Stdio::inherit())
-            .output()
-            .expect("failed to build viewer for web");
-
-        eprintln!("status: {}", output.status);
-        eprintln!("stderr: {}", String::from_utf8_lossy(&output.stderr));
-
-        assert!(output.status.success());
+        build_web();
     }
 }
