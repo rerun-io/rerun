@@ -235,45 +235,20 @@ impl ObjectTree {
         msg_id: MsgId,
         time_point: &TimePoint,
     ) -> &mut Self {
-        let mut new_timeline = false;
-
         // If the time_point is timeless...
         if time_point.is_timeless() {
             // Save it so that we can duplicate it into future timelines
             self.timeless_msgs.insert(msg_id);
-
-            // Add it to any existing timelines
-            for (_, timeline) in self.prefix_times.iter_mut() {
-                timeline
-                    .entry(TimeInt::BEGINNING)
-                    .or_default()
-                    .insert(msg_id);
-            }
         } else {
             for (timeline, time_value) in time_point.iter() {
                 self.prefix_times
                     .0
                     .entry(*timeline)
-                    .or_insert_with(|| {
-                        new_timeline = true;
-                        if self.timeless_msgs.is_empty() {
-                            Default::default()
-                        } else {
-                            [(TimeInt::BEGINNING, self.timeless_msgs.clone())].into()
-                        }
-                    })
+                    .or_default()
                     .entry(*time_value)
                     .or_default()
                     .insert(msg_id);
             }
-        }
-
-        // If a new timeline was added at this path, touch all the fields
-        // to make sure deferred timeless msgs get inserted
-        if new_timeline {
-            self.fields.iter_mut().for_each(|(_, field)| {
-                field.populate_timeless(time_point);
-            });
         }
 
         match full_path.get(depth) {

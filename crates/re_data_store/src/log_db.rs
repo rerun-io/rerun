@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 
@@ -285,6 +287,10 @@ impl LogDb {
 
     pub fn times_per_timeline(&self) -> &TimesPerTimeline {
         &self.obj_db.tree.prefix_times
+    }
+
+    pub fn timeless_msgs(&self) -> &BTreeSet<MsgId> {
+        &self.obj_db.tree.timeless_msgs
     }
 
     pub fn is_empty(&self) -> bool {
