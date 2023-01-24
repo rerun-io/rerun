@@ -234,101 +234,95 @@ pub fn show_zoomed_image_region(
         let (x, y) = (image_position[0] as _, image_position[1] as _);
 
         tooltip_ui.vertical(|ui| {
-            if tensor_view.tensor.num_dim() == 2 {
-                if let Some(raw_value) = tensor_view.tensor.get(&[y, x]) {
-                    ui.monospace(format!("Raw value: {}", raw_value.as_f64()));
+            egui::Grid::new("hovered pixel properties").show(ui, |ui| {
+                ui.label("Position:");
+                ui.label(format!("{}, {}", image_position[0], image_position[1]));
+                ui.end_row();
 
-                    if let (TensorDataMeaning::ClassId, annotations, Some(u16_val)) = (
-                        tensor_view.tensor.meaning(),
-                        tensor_view.annotations,
-                        raw_value.try_as_u16(),
-                    ) {
-                        ui.monospace(format!(
-                            "Label: {}",
-                            annotations
-                                .class_description(Some(ClassId(u16_val)))
-                                .annotation_info()
-                                .label(None)
-                                .unwrap_or_default()
-                        ));
-                    };
-                }
-            } else if tensor_view.tensor.num_dim() == 3 {
-                let mut s = "Raw values:".to_owned();
-                for c in 0..tensor_view.tensor.shape()[2].size {
-                    if let Some(raw_value) = tensor_view.tensor.get(&[y, x, c]) {
-                        use std::fmt::Write as _;
-                        write!(&mut s, " {}", raw_value.as_f64()).unwrap();
+                if tensor_view.tensor.num_dim() == 2 {
+                    if let Some(raw_value) = tensor_view.tensor.get(&[y, x]) {
+                        if let (TensorDataMeaning::ClassId, annotations, Some(u16_val)) = (
+                            tensor_view.tensor.meaning(),
+                            tensor_view.annotations,
+                            raw_value.try_as_u16(),
+                        ) {
+                            ui.label("Label:");
+                            ui.label(
+                                annotations
+                                    .class_description(Some(ClassId(u16_val)))
+                                    .annotation_info()
+                                    .label(None)
+                                    .unwrap_or_default(),
+                            );
+                            ui.end_row();
+                        };
                     }
                 }
-                ui.monospace(s);
-            }
+                if let Some(meter) = meter {
+                    // This is a depth map
+                    if let Some(raw_value) = tensor_view.tensor.get(&[y, x]) {
+                        let raw_value = raw_value.as_f64();
+                        let meters = raw_value / meter as f64;
+                        ui.label("Depth:");
+                        if meters < 1.0 {
+                            ui.monospace(format!("{:.1} mm", meters * 1e3));
+                        } else {
+                            ui.monospace(format!("{meters:.3} m"));
+                        }
+                    }
+                }
+            });
+
+            use image::DynamicImage;
 
             let image::Rgba([r, g, b, a]) = color;
 
-            if let Some(meter) = meter {
-                // This is a depth map
-                if let Some(raw_value) = tensor_view.tensor.get(&[y, x]) {
-                    let raw_value = raw_value.as_f64();
-                    let meters = raw_value / meter as f64;
-                    if meters < 1.0 {
-                        ui.monospace(format!("Depth: {:.1} mm", meters * 1e3));
-                    } else {
-                        ui.monospace(format!("Depth: {meters:.3} m"));
-                    }
+            let text = match dynamic_img {
+                DynamicImage::ImageLuma8(_) => {
+                    format!("L: {}", r)
                 }
-            } else {
-                use image::DynamicImage;
 
-                let text = match dynamic_img {
-                    DynamicImage::ImageLuma8(_) => {
-                        format!("L: {}", r)
-                    }
+                DynamicImage::ImageLuma16(image) => {
+                    let l = image.get_pixel(x as _, y as _)[0];
+                    format!("L: {} ({:.5})", l, l as f32 / 65535.0)
+                }
 
-                    DynamicImage::ImageLuma16(image) => {
-                        let l = image.get_pixel(x as _, y as _)[0];
-                        format!("L: {} ({:.5})", l, l as f32 / 65535.0)
-                    }
+                DynamicImage::ImageLumaA8(_) | DynamicImage::ImageLumaA16(_) => {
+                    format!("L: {}, A: {}", r, a)
+                }
 
-                    DynamicImage::ImageLumaA8(_) | DynamicImage::ImageLumaA16(_) => {
-                        format!("L: {}, A: {}", r, a)
-                    }
+                DynamicImage::ImageRgb8(_)
+                | DynamicImage::ImageRgb16(_)
+                | DynamicImage::ImageRgb32F(_) => {
+                    // TODO(emilk): show 16-bit and 32f values differently
+                    format!("R: {}, G: {}, B: {}, #{:02X}{:02X}{:02X}", r, g, b, r, g, b)
+                }
 
-                    DynamicImage::ImageRgb8(_)
-                    | DynamicImage::ImageRgb16(_)
-                    | DynamicImage::ImageRgb32F(_) => {
-                        // TODO(emilk): show 16-bit and 32f values differently
-                        format!("R: {}, G: {}, B: {}, #{:02X}{:02X}{:02X}", r, g, b, r, g, b)
-                    }
+                DynamicImage::ImageRgba8(_)
+                | DynamicImage::ImageRgba16(_)
+                | DynamicImage::ImageRgba32F(_) => {
+                    // TODO(emilk): show 16-bit and 32f values differently
+                    format!(
+                        "R: {}, G: {}, B: {}, A: {}, #{:02X}{:02X}{:02X}{:02X}",
+                        r, g, b, a, r, g, b, a
+                    )
+                }
 
-                    DynamicImage::ImageRgba8(_)
-                    | DynamicImage::ImageRgba16(_)
-                    | DynamicImage::ImageRgba32F(_) => {
-                        // TODO(emilk): show 16-bit and 32f values differently
-                        format!(
-                            "R: {}, G: {}, B: {}, A: {}, #{:02X}{:02X}{:02X}{:02X}",
-                            r, g, b, a, r, g, b, a
-                        )
-                    }
+                _ => {
+                    re_log::warn_once!("Unknown image color type: {:?}", dynamic_img.color());
+                    format!(
+                        "R: {}, G: {}, B: {}, A: {}, #{:02X}{:02X}{:02X}{:02X}",
+                        r, g, b, a, r, g, b, a
+                    )
+                }
+            };
+            ui.label(text);
 
-                    _ => {
-                        re_log::warn_once!("Unknown image color type: {:?}", dynamic_img.color());
-                        format!(
-                            "R: {}, G: {}, B: {}, A: {}, #{:02X}{:02X}{:02X}{:02X}",
-                            r, g, b, a, r, g, b, a
-                        )
-                    }
-                };
-                ui.label(text);
-            }
-
-            if meter.is_none() {
-                color_picker::show_color(
-                    ui,
-                    Color32::from_rgba_unmultiplied(r, g, b, a),
-                    Vec2::splat(ui.available_height()),
-                );
-            }
+            color_picker::show_color(
+                ui,
+                Color32::from_rgba_unmultiplied(r, g, b, a),
+                Vec2::splat(ui.available_height()),
+            );
         });
     }
 }
