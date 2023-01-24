@@ -126,6 +126,7 @@ impl TextureManager2D {
         texture_pool: &mut GpuTexturePool,
         creation_desc: &Texture2DCreationDesc<'_>,
     ) -> GpuTexture2DHandle {
+        crate::profile_function!();
         let size = wgpu::Extent3d {
             width: creation_desc.width,
             height: creation_desc.height,

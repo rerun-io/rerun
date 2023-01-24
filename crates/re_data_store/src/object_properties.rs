@@ -144,6 +144,8 @@ fn query_transform_arrow(
     ent_path: &ObjPath,
     query_time: Option<i64>,
 ) -> Option<Transform> {
+    crate::profile_function!();
+
     // Although it would be nice to use the `re_query` helpers for this, we would need to move
     // this out of re_data_store to avoid a circular dep. Since we don't need to do a join for
     // transforms this is easy enough.

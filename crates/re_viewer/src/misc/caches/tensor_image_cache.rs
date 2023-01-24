@@ -191,6 +191,8 @@ impl CachedImage {
         debug_name: String,
         dynamic_img: DynamicImage,
     ) -> Self {
+        crate::profile_function!();
+
         let egui_color_image = dynamic_image_to_egui_color_image(&dynamic_img);
 
         let memory_used = egui_color_image.pixels.len() * std::mem::size_of::<egui::Color32>()
@@ -233,6 +235,7 @@ pub trait AsDynamicImage: field_types::TensorTrait {
 
 impl AsDynamicImage for field_types::Tensor {
     fn as_dynamic_image(&self, annotations: &Arc<Annotations>) -> anyhow::Result<DynamicImage> {
+        crate::profile_function!();
         let classic_tensor = ClassicTensor::from(self);
         classic_tensor.as_dynamic_image(annotations)
     }
@@ -240,9 +243,9 @@ impl AsDynamicImage for field_types::Tensor {
 
 impl AsDynamicImage for ClassicTensor {
     fn as_dynamic_image(&self, annotations: &Arc<Annotations>) -> anyhow::Result<DynamicImage> {
-        let tensor = self;
         crate::profile_function!();
         use anyhow::Context as _;
+        let tensor = self;
 
         let shape = &tensor.shape();
 
