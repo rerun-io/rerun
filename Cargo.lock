@@ -3895,6 +3895,7 @@ dependencies = [
  "mimalloc",
  "nohash-hasher",
  "polars-core",
+ "puffin",
  "re_arrow_store",
  "re_data_store",
  "re_format",
