@@ -9,21 +9,23 @@ nav = mkdocs_gen_files.Nav()
 nav["index"] = "index.md"
 
 for path in sorted(Path("rerun").rglob("*.py")):
-    module_path = path.relative_to(".").with_suffix("")
-    full_doc_path = path.relative_to(".").with_suffix(".md")
+    rel_path = path.relative_to(".")
+    module_path = rel_path.with_suffix("")
+    doc_path = rel_path.with_suffix(".md")
+    write_path = Path("package") / doc_path
 
-    parts = tuple(module_path.parts)
+    nav_parts = tuple(p + "/" for p in path.parts[:-1]) + (path.parts[-1],)
+    ident_parts = tuple(module_path.parts)
 
-    if parts[-1] == "__init__":
-        parts = parts[:-1]
-        full_doc_path = full_doc_path.with_name("index.md")
-    elif parts[-1] == "__main__":
+    if ident_parts[-1] == "__init__":
+        ident_parts = ident_parts[:-1]
+    elif ident_parts[-1] == "__main__":
         continue
 
-    nav[parts] = full_doc_path.as_posix()
+    nav[nav_parts] = doc_path.as_posix()
 
-    with mkdocs_gen_files.open(Path("package") / full_doc_path, "w") as fd:
-        ident = ".".join(parts)
+    with mkdocs_gen_files.open(write_path, "w") as fd:
+        ident = ".".join(ident_parts)
         fd.write(f"::: {ident}")
 
     # mkdocs_gen_files.set_edit_path(full_doc_path, Path("../") / path)
