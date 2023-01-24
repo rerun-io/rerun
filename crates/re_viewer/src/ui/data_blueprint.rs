@@ -104,16 +104,35 @@ impl DataBlueprintTree {
     }
 
     /// Resolves a data blueprint group handle.
-    pub fn get_group(&self, handle: DataBlueprintGroupHandle) -> Option<&DataBlueprintGroup> {
+    pub fn group(&self, handle: DataBlueprintGroupHandle) -> Option<&DataBlueprintGroup> {
         self.groups.get(handle)
     }
 
     /// Resolves a data blueprint group handle.
-    pub fn get_group_mut(
+    pub fn group_mut(
         &mut self,
         handle: DataBlueprintGroupHandle,
     ) -> Option<&mut DataBlueprintGroup> {
         self.groups.get_mut(handle)
+    }
+
+    /// Calls the visitor function on every object path in the given group and its descending groups.
+    pub fn visit_group_objects_recursively(
+        &self,
+        handle: DataBlueprintGroupHandle,
+        visitor: &mut impl FnMut(&ObjPath),
+    ) {
+        let Some(group) = self.groups.get(handle) else {
+            return;
+        };
+
+        for object in &group.objects {
+            visitor(object);
+        }
+
+        for child in &group.children {
+            self.visit_group_objects_recursively(*child, visitor);
+        }
     }
 
     /// Returns object properties with the hierarchy applied.

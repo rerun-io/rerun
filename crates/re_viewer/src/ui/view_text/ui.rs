@@ -396,7 +396,7 @@ fn table_ui(
                 // path
                 if state.filters.col_obj_path {
                     row.col(|ui| {
-                        ctx.obj_path_button(ui, &text_entry.obj_path);
+                        ctx.obj_path_button(ui, None, &text_entry.obj_path);
                     });
                 }
 
