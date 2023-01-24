@@ -898,9 +898,11 @@ fn top_panel(
 }
 
 fn rerun_menu_button_ui(ui: &mut egui::Ui, _frame: &mut eframe::Frame, app: &mut App) {
+    // let desired_icon_height = ui.max_rect().height() - 2.0 * ui.spacing_mut().button_padding.y;
+    let desired_icon_height = ui.max_rect().height() - 4.0; // TODO(emilk): figure out this fudge
+
     let icon_image = app.re_ui.icon_image(&re_ui::icons::RERUN_MENU);
-    let mut image_size = icon_image.size_vec2();
-    image_size = image_size * ui.max_rect().height() / image_size.y; // match bar height
+    let image_size = icon_image.size_vec2() * (desired_icon_height / icon_image.size_vec2().y);
     let texture_id = icon_image.texture_id(ui.ctx());
 
     ui.menu_image_button(texture_id, image_size, |ui| {
