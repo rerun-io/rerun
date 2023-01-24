@@ -247,9 +247,7 @@ impl SceneSpatial {
             }
         }
 
-        if highlight.selection != SelectionHighlight::None
-            || highlight.hover != HoverHighlight::None
-        {
+        if highlight.any() {
             // Interpolate with factor 2/3 towards the highlight color (in gamma space for speed)
             *color = Color32::from_rgba_premultiplied(
                 ((color.r() as u32 + highlight_color.r() as u32 * 2) / 3) as u8,
