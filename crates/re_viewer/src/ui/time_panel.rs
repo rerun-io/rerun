@@ -135,11 +135,7 @@ impl TimePanel {
     fn collapsed_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         ctx.rec_cfg
             .time_ctrl
-            .play_pause_ui(ctx.re_ui, ctx.log_db.times_per_timeline(), ui);
-
-        ctx.rec_cfg
-            .time_ctrl
-            .timeline_selector_ui(ctx.log_db.times_per_timeline(), ui);
+            .time_control_ui(ctx.re_ui, ctx.log_db.times_per_timeline(), ui);
 
         {
             let mut time_range_rect = ui.available_rect_before_wrap();
@@ -517,11 +513,7 @@ impl TimePanel {
 fn top_row_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
     ctx.rec_cfg
         .time_ctrl
-        .play_pause_ui(ctx.re_ui, ctx.log_db.times_per_timeline(), ui);
-
-    ctx.rec_cfg
-        .time_ctrl
-        .timeline_selector_ui(ctx.log_db.times_per_timeline(), ui);
+        .time_control_ui(ctx.re_ui, ctx.log_db.times_per_timeline(), ui);
 
     current_time_ui(ctx, ui);
 
