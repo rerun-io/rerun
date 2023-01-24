@@ -41,7 +41,7 @@ impl Selection {
                 if let Some(space_view) = blueprint.viewport.space_view(space_view_id) {
                     space_view
                         .data_blueprint
-                        .get_group(*data_blueprint_group_handle)
+                        .group(*data_blueprint_group_handle)
                         .is_some()
                 } else {
                     false

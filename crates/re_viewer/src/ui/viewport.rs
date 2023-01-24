@@ -310,7 +310,7 @@ impl Viewport {
         space_view_id: &SpaceViewId,
         space_view_visible: bool,
     ) {
-        let Some(group) = data_blueprint_tree.get_group(group_handle) else {
+        let Some(group) = data_blueprint_tree.group(group_handle) else {
             debug_assert!(false, "Invalid group handle in blueprint group tree");
             return;
         };
@@ -337,7 +337,7 @@ impl Viewport {
         }
 
         for child_group_handle in &children {
-            let Some(child_group) = data_blueprint_tree.get_group_mut(*child_group_handle) else {
+            let Some(child_group) = data_blueprint_tree.group_mut(*child_group_handle) else {
                 debug_assert!(false, "Data blueprint group {group_name} has an invalid child");
                 continue;
             };
@@ -467,13 +467,15 @@ impl Viewport {
             // nothing to show
         } else if num_space_views == 1 {
             let space_view_id = *tree.tabs().next().unwrap();
+            let highlights = ctx
+                .selection_state()
+                .highlights_for_space_view(space_view_id, &self.space_views);
             let space_view = self
                 .space_views
                 .get_mut(&space_view_id)
                 .expect("Should have been populated beforehand");
-
             let response = ui
-                .scope(|ui| space_view_ui(ctx, ui, spaces_info, space_view))
+                .scope(|ui| space_view_ui(ctx, ui, spaces_info, space_view, &highlights))
                 .response;
 
             let frame = ctx.re_ui.hovering_frame();
@@ -482,13 +484,15 @@ impl Viewport {
                 help_text_ui(ui, space_view);
             });
         } else if let Some(space_view_id) = self.maximized {
+            let highlights = ctx
+                .selection_state()
+                .highlights_for_space_view(space_view_id, &self.space_views);
             let space_view = self
                 .space_views
                 .get_mut(&space_view_id)
                 .expect("Should have been populated beforehand");
-
             let response = ui
-                .scope(|ui| space_view_ui(ctx, ui, spaces_info, space_view))
+                .scope(|ui| space_view_ui(ctx, ui, spaces_info, space_view, &highlights))
                 .response;
 
             let frame = ctx.re_ui.hovering_frame();
@@ -623,13 +627,17 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
     fn ui(&mut self, ui: &mut egui::Ui, space_view_id: &mut Self::Tab) {
         crate::profile_function!();
 
+        let highlights = self
+            .ctx
+            .selection_state()
+            .highlights_for_space_view(*space_view_id, self.space_views);
         let space_view = self
             .space_views
             .get_mut(space_view_id)
             .expect("Should have been populated beforehand");
 
         let response = ui
-            .scope(|ui| space_view_ui(self.ctx, ui, self.spaces_info, space_view))
+            .scope(|ui| space_view_ui(self.ctx, ui, self.spaces_info, space_view, &highlights))
             .response;
 
         // Show buttons for maximize and space view options:
@@ -722,6 +730,7 @@ fn space_view_ui(
     ui: &mut egui::Ui,
     spaces_info: &SpacesInfo,
     space_view: &mut SpaceView,
+    space_view_highlights: &SpaceViewHighlights,
 ) {
     let Some(reference_space_info) = spaces_info.get(&space_view.space_path) else {
         ui.centered_and_justified(|ui| {
@@ -737,7 +746,13 @@ fn space_view_ui(
         return
     };
 
-    space_view.scene_ui(ctx, ui, reference_space_info, latest_at);
+    space_view.scene_ui(
+        ctx,
+        ui,
+        reference_space_info,
+        latest_at,
+        space_view_highlights,
+    );
 }
 
 // ----------------------------------------------------------------------------

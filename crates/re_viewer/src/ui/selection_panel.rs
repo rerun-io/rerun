@@ -137,7 +137,7 @@ fn what_is_selected_ui(
             if let Some(space_view) = blueprint.viewport.space_view_mut(space_view_id) {
                 if let Some(group) = space_view
                     .data_blueprint
-                    .get_group_mut(*data_blueprint_group_handle)
+                    .group_mut(*data_blueprint_group_handle)
                 {
                     egui::Grid::new("data_blueprint_group")
                         .num_columns(2)
@@ -238,7 +238,7 @@ fn blueprint_ui(
             if let Some(space_view) = blueprint.viewport.space_view_mut(space_view_id) {
                 if let Some(group) = space_view
                     .data_blueprint
-                    .get_group_mut(*data_blueprint_group_handle)
+                    .group_mut(*data_blueprint_group_handle)
                 {
                     obj_props_ui(
                         ctx,
