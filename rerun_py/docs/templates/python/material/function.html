@@ -13,7 +13,7 @@
   {% set show_full_path = config.show_object_full_path %}
   {% endif %}
 
-  {% if not root or config.show_root_heading %}
+  {% if True %}
 
   {% filter heading(heading_level,
   role="function",
@@ -58,7 +58,7 @@
   {% set heading_level = heading_level - 1 %}
   {% endif %}
 
-  <div class="doc doc-contents {% if root %}first{% endif %}">
+  <div class="doc doc-contents {% if root %} {% endif %}">
     {% with docstring_sections = function.docstring.parsed %}
     {% include "docstring.html" with context %}
     {% endwith %}

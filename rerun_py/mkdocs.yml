@@ -5,8 +5,6 @@ repo_url: https://github.com/rerun-io/rerun/
 theme:
   name: "material"
   features:
-    #- navigation.tabs
-    #- navigation.tabs.sticky
     - navigation.instant
     - navigation.indexes
     - navigation.tracking
@@ -17,11 +15,14 @@ plugins:
       custom_templates: docs/templates
       handlers:
         python:
+          import:
+            - https://docs.python.org/3/objects.inv
+            - https://numpy.org/doc/stable/objects.inv
           options:
-            #show_signature_annotations: yes
-            merge_init_into_class: yes
             show_source: no
             docstring_style: numpy
+            members_order: source
+            heading_level: 3
   - gen-files:
       scripts:
         - docs/gen_ref_nav.py
@@ -29,6 +30,12 @@ plugins:
       nav_file: SUMMARY.txt
   - redirects:
       redirect_maps:
-        "index.md": "rerun/index.md"
+        "index.md": "common.md"
+
 markdown_extensions:
   - pymdownx.highlight
+  - toc:
+      toc_depth: 3
+
+extra_css:
+  - css/mkdocstrings.css
