@@ -109,12 +109,11 @@ impl SpacesInfo {
         fn add_children(
             obj_db: &ObjDb,
             timeline: &Timeline,
-            query_time: Option<i64>,
             spaces_info: &mut SpacesInfo,
             parent_space: &mut SpaceInfo,
             tree: &ObjectTree,
         ) {
-            if let Some(transform) = query_transform(obj_db, timeline, &tree.path, query_time) {
+            if let Some(transform) = query_transform(obj_db, timeline, &tree.path, None) {
                 // A set transform (likely non-identity) - create a new space.
                 parent_space
                     .child_spaces
@@ -130,7 +129,6 @@ impl SpacesInfo {
                     add_children(
                         obj_db,
                         timeline,
-                        query_time,
                         spaces_info,
                         &mut child_space_info,
                         child_tree,
@@ -146,27 +144,19 @@ impl SpacesInfo {
                     .insert(tree.path.clone()); // spaces includes self
 
                 for child_tree in tree.children.values() {
-                    add_children(
-                        obj_db,
-                        timeline,
-                        query_time,
-                        spaces_info,
-                        parent_space,
-                        child_tree,
-                    );
+                    add_children(obj_db, timeline, spaces_info, parent_space, child_tree);
                 }
             }
         }
 
         let timeline = time_ctrl.timeline();
-        let query_time = time_ctrl.time().map(|time| time.floor().as_i64());
 
         let mut spaces_info = Self::default();
 
         for tree in obj_db.tree.children.values() {
             // Each root object is its own space (or should be)
 
-            if query_transform(obj_db, timeline, &tree.path, query_time).is_some() {
+            if query_transform(obj_db, timeline, &tree.path, None).is_some() {
                 re_log::warn_once!(
                     "Root object '{}' has a _transform - this is not allowed!",
                     tree.path
@@ -174,14 +164,7 @@ impl SpacesInfo {
             }
 
             let mut space_info = SpaceInfo::new(tree.path.clone());
-            add_children(
-                obj_db,
-                timeline,
-                query_time,
-                &mut spaces_info,
-                &mut space_info,
-                tree,
-            );
+            add_children(obj_db, timeline, &mut spaces_info, &mut space_info, tree);
             spaces_info.spaces.insert(tree.path.clone(), space_info);
         }
 
@@ -209,7 +192,6 @@ fn query_view_coordinates_classic(
     time_ctrl: &TimeControl,
     obj_path: &ObjPath,
 ) -> Option<re_log_types::ViewCoordinates> {
-    let query_time = time_ctrl.time()?;
     let timeline = time_ctrl.timeline();
 
     let store = obj_db.store.get(timeline)?;
@@ -224,7 +206,7 @@ fn query_view_coordinates_classic(
         .ok()?;
 
     mono_field_store
-        .latest_at(&query_time.floor().as_i64())
+        .latest_at(&TimeInt::MAX.as_i64())
         .map(|(_time, _msg_id, system)| *system)
 }
 
@@ -234,10 +216,7 @@ fn query_view_coordinates_arrow(
     ent_path: &ObjPath,
 ) -> Option<re_log_types::ViewCoordinates> {
     let arrow_store = &obj_db.arrow_store;
-
-    let query_time = time_ctrl.time().map(|time| time.floor().as_i64())?;
-
-    let query = LatestAtQuery::new(*time_ctrl.timeline(), TimeInt::from(query_time));
+    let query = LatestAtQuery::new(*time_ctrl.timeline(), TimeInt::MAX);
 
     let entity_view =
         query_entity_with_primary::<ViewCoordinates>(arrow_store, &query, ent_path, &[]).ok()?;
