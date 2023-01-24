@@ -39,6 +39,8 @@ fn push_tensor_texture<T: AsDynamicImage>(
     tensor: &T,
     tint: egui::Rgba,
 ) {
+    crate::profile_function!();
+
     let tensor_view =
         ctx.cache
             .image
@@ -235,6 +237,7 @@ impl ImagesPart {
             entity_view.iter_primary()?,
             entity_view.iter_component::<ColorRGBA>()?
         ) {
+            crate::profile_scope!("loop_iter");
             if let Some(tensor) = tensor {
                 if !tensor.is_shaped_like_an_image() {
                     return Ok(());
