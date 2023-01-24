@@ -46,7 +46,7 @@ impl<'a> ViewerContext<'a> {
         self.cursor_interact_with_selectable(response, selection)
     }
 
-    /// Show a obj path and make it selectable.
+    /// Show an obj path and make it selectable.
     pub fn obj_path_button(
         &mut self,
         ui: &mut egui::Ui,
@@ -61,7 +61,7 @@ impl<'a> ViewerContext<'a> {
         )
     }
 
-    /// Show a obj path and make it selectable.
+    /// Show an obj path and make it selectable.
     pub fn obj_path_button_to(
         &mut self,
         ui: &mut egui::Ui,
@@ -77,7 +77,7 @@ impl<'a> ViewerContext<'a> {
         )
     }
 
-    /// Show a instance id and make it selectable.
+    /// Show an instance id and make it selectable.
     pub fn instance_id_button(
         &mut self,
         ui: &mut egui::Ui,
@@ -87,7 +87,7 @@ impl<'a> ViewerContext<'a> {
         self.instance_id_button_to(ui, space_view_id, instance_id, instance_id.to_string())
     }
 
-    /// Show a instance id and make it selectable.
+    /// Show an instance id and make it selectable.
     pub fn instance_id_button_to(
         &mut self,
         ui: &mut egui::Ui,

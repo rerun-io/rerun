@@ -223,7 +223,7 @@ fn blueprint_ui(
             {
                 if instance_id.instance_index.is_some() {
                     ui.horizontal(|ui| {
-                        ui.label("part of");
+                        ui.label("Part of");
                         ctx.obj_path_button(ui, *space_view_id, &instance_id.obj_path);
                     });
                 } else {
@@ -278,22 +278,14 @@ fn list_existing_data_blueprints(
         ui.weak("(Not shown in any Space View)");
         // TODO(andreas): Offer options for adding?
     } else {
-        ui.label("is shown in:");
+        ui.label("Is shown in:");
 
         ui.indent("list of data blueprints indent", |ui| {
-            egui::Grid::new("list of data blueprints").show(ui, |ui| {
-                for space_view_id in &space_views_with_path {
-                    if let Some(space_view) = blueprint.viewport.space_view(space_view_id) {
-                        ctx.obj_path_button_to(
-                            ui,
-                            Some(*space_view_id),
-                            obj_path,
-                            &space_view.name,
-                        );
-                        ui.end_row();
-                    }
+            for space_view_id in &space_views_with_path {
+                if let Some(space_view) = blueprint.viewport.space_view(space_view_id) {
+                    ctx.obj_path_button_to(ui, Some(*space_view_id), obj_path, &space_view.name);
                 }
-            });
+            }
         });
     }
 }
