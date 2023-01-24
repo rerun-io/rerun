@@ -897,7 +897,7 @@ fn top_panel(
         });
 }
 
-fn rerun_menu_button_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &mut App) {
+fn rerun_menu_button_ui(ui: &mut egui::Ui, _frame: &mut eframe::Frame, app: &mut App) {
     let icon_image = app.re_ui.icon_image(&re_ui::icons::RERUN_MENU);
     let mut image_size = icon_image.size_vec2();
     image_size = image_size * ui.max_rect().height() / image_size.y; // match bar height
@@ -924,7 +924,7 @@ fn rerun_menu_button_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &mut 
             ui.add_space(spacing);
 
             // On the web the browser controls the zoom
-            egui::gui_zoom::zoom_menu_buttons(ui, frame.info().native_pixels_per_point);
+            egui::gui_zoom::zoom_menu_buttons(ui, _frame.info().native_pixels_per_point);
 
             Command::ToggleFullscreen.menu_button_ui(ui, &mut app.pending_commands);
 
