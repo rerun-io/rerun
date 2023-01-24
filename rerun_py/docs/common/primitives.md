@@ -1,7 +1,3 @@
----
-title: Logging Primitives
----
-
 ::: rerun.log_point
 ::: rerun.log_points
 ::: rerun.log_rect
