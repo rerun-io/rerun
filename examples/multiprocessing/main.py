@@ -21,8 +21,9 @@ def task(title: str) -> None:
     # All processes spawned with `multiprocessing` will automatically
     # be assigned the same default recording_id.
     rr.connect()
-    rr.log_text_entry("log",
-        text=f"Logging from pid={os.getpid()}, thread={threading.get_ident()} using the rerun recording id {rr.get_recording_id()}"
+    rr.log_text_entry(
+        "log",
+        text=f"Logging from pid={os.getpid()}, thread={threading.get_ident()} using the rerun recording id {rr.get_recording_id()}",
     )
     rr.log_rect(title, [10, 20, 30, 40], label=title)
 
