@@ -196,7 +196,8 @@ impl SpaceView {
 
     pub fn selection_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         ui.label("Space path:");
-        ctx.obj_path_button(ui, &self.space_path);
+        // specify no space view id since the path itself is not part of the space view.
+        ctx.obj_path_button(ui, None, &self.space_path);
         ui.end_row();
 
         ui.separator();

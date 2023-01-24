@@ -423,7 +423,7 @@ fn view_2d_scrollable(
             } else {
                 // Hover ui for everything else
                 response.on_hover_ui_at_pointer(|ui| {
-                    ctx.instance_id_button(ui, &instance_id);
+                    ctx.instance_id_button(ui, Some(space_view_id), &instance_id);
                     instance_id.data_ui(ctx, ui, crate::ui::Preview::Large);
                 })
             };

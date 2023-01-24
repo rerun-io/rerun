@@ -593,6 +593,19 @@ impl Viewport {
         .response
         .on_hover_text("Add new space view.");
     }
+
+    pub fn space_views_containing_obj_path(&self, path: &ObjPath) -> Vec<SpaceViewId> {
+        self.space_views
+            .iter()
+            .filter_map(|(space_view_id, space_view)| {
+                if space_view.data_blueprint.contains_object(path) {
+                    Some(*space_view_id)
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
 }
 
 fn visibility_button(ui: &mut egui::Ui, enabled: bool, visible: &mut bool) -> egui::Response {
