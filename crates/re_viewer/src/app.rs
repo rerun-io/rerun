@@ -899,7 +899,7 @@ fn top_panel(
 
 fn rerun_menu_button_ui(ui: &mut egui::Ui, frame: &mut eframe::Frame, app: &mut App) {
     let icon_image = app.re_ui.icon_image(&re_ui::icons::RERUN_MENU);
-    let image_size = icon_image.size_vec2() / 2.0; // HACK: we save out icon files as 2x scale
+    let image_size = icon_image.size_vec2() / 2.0; // hack: we save out icon files as 2x scale
     let texture_id = icon_image.texture_id(ui.ctx());
 
     ui.menu_image_button(texture_id, image_size, |ui| {
