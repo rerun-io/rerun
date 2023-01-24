@@ -226,7 +226,7 @@ pub enum RecordingSource {
     /// The official Rerun Python Logging SDK
     PythonSdk,
 
-    /// Perhaps from som manual data ingestion?
+    /// Perhaps from some manual data ingestion?
     Other(String),
 }
 
