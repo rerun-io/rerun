@@ -84,7 +84,7 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
     }
 
     {
-        // Turn of strokes around buttons:
+        // Turn off strokes around buttons:
         egui_style.visuals.widgets.inactive.bg_stroke = Default::default();
         egui_style.visuals.widgets.hovered.bg_stroke = Default::default();
         egui_style.visuals.widgets.active.bg_stroke = Default::default();
