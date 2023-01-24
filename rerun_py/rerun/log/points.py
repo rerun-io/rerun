@@ -113,7 +113,7 @@ def log_point(
 
 def log_points(
     obj_path: str,
-    positions: Optional[npt.NDArray[np.float32]],
+    positions: Union[Sequence[Sequence[float]], Optional[npt.NDArray[np.float32]]],
     *,
     identifiers: Optional[Sequence[Union[str, int]]] = None,
     colors: Optional[Union[Color, Colors]] = None,
