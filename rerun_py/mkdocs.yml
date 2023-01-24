@@ -33,7 +33,7 @@ plugins:
       nav_file: SUMMARY.txt
   - redirects:
       redirect_maps:
-        "index.md": "common.md"
+        "index.md": "common/index.md"
 
 markdown_extensions:
   - admonition
