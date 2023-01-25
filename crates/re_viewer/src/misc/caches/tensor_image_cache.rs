@@ -495,11 +495,7 @@ fn dynamic_image_to_egui_color_image(
             pixels: gray
                 .pixels()
                 .map(|pixel| {
-                    crate::misc::color_map::turbo_color_map(egui::remap(
-                        pixel[0] as f32,
-                        0.0..=u16::MAX as f32,
-                        0.0..=1.0,
-                    ))
+                    crate::misc::color_map::turbo_color_map((pixel[0] as f32) / (u16::MAX as f32))
                 })
                 .collect(),
         },
