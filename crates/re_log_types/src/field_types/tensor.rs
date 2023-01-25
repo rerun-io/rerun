@@ -284,7 +284,8 @@ pub enum TensorDataMeaning {
 ///             DataType::Union(
 ///                 vec![
 ///                     Field::new("Unknown", DataType::Boolean, false),
-///                     Field::new("ClassId", DataType::Boolean, false)
+///                     Field::new("ClassId", DataType::Boolean, false),
+///                     Field::new("Depth", DataType::Boolean, false)
 ///                 ],
 ///                 None,
 ///                 UnionMode::Dense
