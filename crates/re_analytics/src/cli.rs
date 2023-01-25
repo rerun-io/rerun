@@ -104,7 +104,7 @@ const DETAILS: &str = "
     - We may for instance add events that help us understand how well the auto-layout works.
 
     What data is not collected?
-    - No Personally Identifiable Information, such as an IP address, is collected.
+    - No Personally Identifiable Information, such as user name or IP address, is collected.
       - This assumes you don't manually and explicitly associate your email with
         the analytics events using the analytics helper cli.
         (Don't do this, it's just meant for internal use for the Rerun team.)
