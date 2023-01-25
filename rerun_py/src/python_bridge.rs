@@ -2016,12 +2016,18 @@ fn log_cleared(obj_path: &str, recursive: bool) -> PyResult<()> {
 
 #[pyfunction]
 fn log_arrow_msg(obj_path: &str, components: &PyDict, timeless: bool) -> PyResult<()> {
-    let mut session = global_session();
+    let obj_path = {
+        let session = global_session();
+        let obj_path = parse_obj_path(obj_path)?;
+        session.arrow_prefix_obj_path(obj_path)
+    };
 
-    let obj_path = parse_obj_path(obj_path)?;
-    let obj_path = session.arrow_prefix_obj_path(obj_path);
-
+    // It's important that we don't hold the session lock while building our arrow component.
+    // the API we call to back through pyarrow temporarily releases the GIL, which can cause
+    // cause a deadlock.
     let msg = crate::arrow::build_chunk_from_components(&obj_path, components, &time(timeless))?;
+
+    let mut session = global_session();
     session.send(msg);
 
     Ok(())
