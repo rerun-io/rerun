@@ -17,7 +17,7 @@ keywords = ["computer-vision", "logging", "rerun"]
 license = { text = "MIT OR Apache-2.0" }
 requires-python = ">=3.7"
 
-dependencies = ["numpy==1.24.1", "pyarrow==10.0.1"]
+dependencies = ["numpy>=1.23", "pyarrow==10.0.1"]
 
 [project.optional-dependencies]
 tests = ["pytest==7.1.2"]
