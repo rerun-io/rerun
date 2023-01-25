@@ -96,7 +96,7 @@ pub struct TimeControl {
 
     speed: f32,
 
-    pub looping: Looping,
+    looping: Looping,
 }
 
 impl Default for TimeControl {
@@ -186,6 +186,22 @@ impl TimeControl {
             }
         } else {
             PlayState::Paused
+        }
+    }
+
+    pub fn looping(&self) -> Looping {
+        if self.play_state() == PlayState::Following {
+            Looping::Off
+        } else {
+            self.looping
+        }
+    }
+
+    pub fn set_looping(&mut self, looping: Looping) {
+        self.looping = looping;
+        if self.looping != Looping::Off {
+            // It makes no sense with looping and follow.
+            self.following = false;
         }
     }
 

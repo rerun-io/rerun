@@ -138,43 +138,39 @@ impl TimeControl {
     fn loop_button_ui(&mut self, re_ui: &re_ui::ReUi, ui: &mut egui::Ui) {
         let icon = &re_ui::icons::LOOP;
 
-        // Looping makes no sense in follow mode
-        let enabled = self.play_state() != PlayState::Following;
-        ui.add_enabled_ui(enabled, |ui| {
-            ui.scope(|ui| {
-                // Loop-button cycles between states:
-                match self.looping {
-                    Looping::Off => {
-                        if re_ui
-                            .large_button_selected(ui, icon, false)
-                            .on_hover_text("Looping is off")
-                            .clicked()
-                        {
-                            self.looping = Looping::All;
-                        }
-                    }
-                    Looping::All => {
-                        if re_ui
-                            .large_button_selected(ui, icon, true)
-                            .on_hover_text("Looping entire recording")
-                            .clicked()
-                        {
-                            self.looping = Looping::Selection;
-                        }
-                    }
-                    Looping::Selection => {
-                        ui.visuals_mut().selection.bg_fill = re_ui::ReUi::loop_selection_color();
-                        #[allow(clippy::collapsible_else_if)]
-                        if re_ui
-                            .large_button_selected(ui, icon, true)
-                            .on_hover_text("Looping selection")
-                            .clicked()
-                        {
-                            self.looping = Looping::Off;
-                        }
+        ui.scope(|ui| {
+            // Loop-button cycles between states:
+            match self.looping() {
+                Looping::Off => {
+                    if re_ui
+                        .large_button_selected(ui, icon, false)
+                        .on_hover_text("Looping is off")
+                        .clicked()
+                    {
+                        self.set_looping(Looping::All);
                     }
                 }
-            });
+                Looping::All => {
+                    if re_ui
+                        .large_button_selected(ui, icon, true)
+                        .on_hover_text("Looping entire recording")
+                        .clicked()
+                    {
+                        self.set_looping(Looping::Selection);
+                    }
+                }
+                Looping::Selection => {
+                    ui.visuals_mut().selection.bg_fill = re_ui::ReUi::loop_selection_color();
+                    #[allow(clippy::collapsible_else_if)]
+                    if re_ui
+                        .large_button_selected(ui, icon, true)
+                        .on_hover_text("Looping selection")
+                        .clicked()
+                    {
+                        self.set_looping(Looping::Off);
+                    }
+                }
+            }
         });
     }
 
