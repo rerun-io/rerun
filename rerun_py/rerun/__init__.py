@@ -18,7 +18,6 @@ from rerun.log.scalar import log_scalar
 from rerun.log.tensor import log_tensor
 from rerun.log.text import log_text_entry
 from rerun.log.transform import log_rigid3, log_unknown_transform, log_view_coordinates
-from rerun.script import script
 
 __all__ = [
     "bindings",
@@ -46,7 +45,6 @@ __all__ = [
     "log_text_entry",
     "log_unknown_transform",
     "log_view_coordinates",
-    "script",
 ]
 
 
