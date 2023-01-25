@@ -72,7 +72,7 @@ fn default_scene_bbox_accum() -> BoundingBox {
 impl Default for ViewSpatialState {
     fn default() -> Self {
         Self {
-            nav_mode: Default::default(),
+            nav_mode: SpatialNavigationMode::TwoD, // TODO:
             scene_bbox_accum: default_scene_bbox_accum(),
             scene_num_primitives: 0,
             state_2d: Default::default(),
@@ -229,7 +229,14 @@ impl ViewSpatialState {
         space_view_id: SpaceViewId,
         highlights: &SpaceViewHighlights,
     ) {
-        self.scene_bbox_accum = self.scene_bbox_accum.union(scene.primitives.bounding_box());
+        // If this is the first time the bounding box is set, (re-)determine the nav_mode.
+        // TODO(andreas): Keep track of user edits
+        if self.scene_bbox_accum.is_nothing() {
+            self.scene_bbox_accum = scene.primitives.bounding_box();
+            self.nav_mode = scene.preferred_navigation_mode(space);
+        } else {
+            self.scene_bbox_accum = self.scene_bbox_accum.union(scene.primitives.bounding_box());
+        }
         self.scene_num_primitives = scene.primitives.num_primitives();
 
         match self.nav_mode {

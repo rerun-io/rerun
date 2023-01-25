@@ -33,15 +33,6 @@ pub enum ReferenceFromObjTransform {
     Reachable(glam::Mat4),
 }
 
-impl ReferenceFromObjTransform {
-    pub fn is_reachable(&self) -> bool {
-        match self {
-            ReferenceFromObjTransform::Unreachable(_) => false,
-            ReferenceFromObjTransform::Reachable(_) => true,
-        }
-    }
-}
-
 impl TransformCache {
     /// Determines transforms for all objects relative to a `reference_space`.
     /// I.e. the resulting transforms are "reference from scene"

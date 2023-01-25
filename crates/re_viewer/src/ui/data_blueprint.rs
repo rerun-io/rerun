@@ -199,18 +199,18 @@ impl DataBlueprintTree {
     /// `base_path` indicates a path at which we short-circuit to the root group.
     ///
     /// Creates a group at *every* step of every path, unless a new group would only contain the object itself.
-    pub fn insert_objects_according_to_hierarchy(
+    pub fn insert_objects_according_to_hierarchy<'a>(
         &mut self,
-        paths: &IntSet<ObjPath>,
+        paths: impl Iterator<Item = &'a ObjPath>,
         base_path: &ObjPath,
     ) {
         crate::profile_function!();
 
-        self.object_paths.extend(paths.iter().cloned());
-
         let mut new_leaf_groups = Vec::new();
 
-        for path in paths.iter() {
+        for path in paths {
+            self.object_paths.insert(path.clone());
+
             // Is there already a group associated with this exact path? (maybe because a child was logged there earlier)
             // If so, we can simply move it under this existing group.
             let group_handle = if let Some(group_handle) = self.path_to_group.get(path) {
@@ -328,6 +328,7 @@ impl DataBlueprintTree {
     /// Removes an object from the data blueprint collection.
     ///
     /// If the object was not known by this data blueprint tree nothing happens.
+    #[allow(dead_code)] // TODO(andreas): Soon needed
     pub fn remove_object(&mut self, path: &ObjPath) {
         if let Some(group_handle) = self.path_to_group.get(path) {
             if let Some(group) = self.groups.get_mut(*group_handle) {
