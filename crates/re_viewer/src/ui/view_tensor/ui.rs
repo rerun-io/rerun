@@ -372,9 +372,9 @@ fn color_mapping_ui(
         ui.strong("Color map");
 
         egui::ComboBox::from_id_source("color map select")
-            .width(100.0)
             .selected_text(color_mapping.map.to_string())
             .show_ui(ui, |ui| {
+                ui.style_mut().wrap = Some(false);
                 ui.selectable_value(
                     &mut color_mapping.map,
                     ColorMap::Greyscale,
