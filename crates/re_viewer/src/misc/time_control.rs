@@ -68,8 +68,14 @@ pub enum Looping {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
 pub enum PlayState {
+    /// Time doesn't move
     Paused,
+
+    /// Time move steadily
     Playing,
+
+    /// Follow the latest available data
+    Following,
 }
 
 /// Controls the global view and progress of the time.
@@ -92,7 +98,7 @@ impl Default for TimeControl {
         Self {
             timeline: Default::default(),
             states: Default::default(),
-            play_state: PlayState::Playing,
+            play_state: PlayState::Following,
             speed: 1.0,
             looping: Looping::Off,
         }
@@ -104,50 +110,62 @@ impl TimeControl {
     pub fn move_time(&mut self, egui_ctx: &egui::Context, times_per_timeline: &TimesPerTimeline) {
         self.select_a_valid_timeline(times_per_timeline);
 
-        if self.play_state == PlayState::Paused {
-            // TODO: handle PlayState::Follow
-            return;
-        }
-
         let Some(full_range) = self.full_range(times_per_timeline) else {
             return;
         };
 
-        let dt = egui_ctx.input(|i| i.stable_dt).at_most(0.1) * self.speed;
+        match self.play_state {
+            PlayState::Paused => {}
+            PlayState::Playing => {
+                let dt = egui_ctx.input(|i| i.stable_dt).at_most(0.1) * self.speed;
 
-        let state = self
-            .states
-            .entry(self.timeline)
-            .or_insert_with(|| TimeState::new(full_range.min));
+                let state = self
+                    .states
+                    .entry(self.timeline)
+                    .or_insert_with(|| TimeState::new(full_range.min));
 
-        if self.looping == Looping::Off && state.time >= full_range.max {
-            // Don't pause or rewind, just stop moving time forward
-            // until we receive more data!
-            // This is important for "live view".
-            return;
-        }
+                if self.looping == Looping::Off && state.time >= full_range.max {
+                    // Don't pause or rewind, just stop moving time forward
+                    // until we receive more data!
+                    // This is important for "live view".
+                    return;
+                }
 
-        let loop_range = match self.looping {
-            Looping::Off => None,
-            Looping::Selection => state.loop_selection,
-            Looping::All => Some(full_range.into()),
-        };
+                let loop_range = match self.looping {
+                    Looping::Off => None,
+                    Looping::Selection => state.loop_selection,
+                    Looping::All => Some(full_range.into()),
+                };
 
-        if let Some(loop_range) = loop_range {
-            state.time = state.time.max(loop_range.min);
-        }
+                if let Some(loop_range) = loop_range {
+                    state.time = state.time.max(loop_range.min);
+                }
 
-        match self.timeline.typ() {
-            TimeType::Sequence => {
-                state.time += TimeReal::from(state.fps * dt);
+                match self.timeline.typ() {
+                    TimeType::Sequence => {
+                        state.time += TimeReal::from(state.fps * dt);
+                    }
+                    TimeType::Time => state.time += TimeReal::from(Duration::from_secs(dt)),
+                }
+                egui_ctx.request_repaint(); // keep playing next frame
+
+                if let Some(loop_range) = loop_range {
+                    if state.time > loop_range.max {
+                        state.time = loop_range.min;
+                    }
+                }
             }
-            TimeType::Time => state.time += TimeReal::from(Duration::from_secs(dt)),
-        }
-        egui_ctx.request_repaint(); // keep playing next frame
-
-        if let Some(loop_range) = loop_range {
-            if state.time > loop_range.max {
-                state.time = loop_range.min;
+            PlayState::Following => {
+                // Set the time to the max:
+                match self.states.entry(self.timeline) {
+                    std::collections::btree_map::Entry::Vacant(entry) => {
+                        entry.insert(TimeState::new(full_range.max));
+                    }
+                    std::collections::btree_map::Entry::Occupied(mut entry) => {
+                        entry.get_mut().time = full_range.max.into();
+                    }
+                }
+                // no need for request_repaint - we already repaint when new data arrives
             }
         }
     }
@@ -169,6 +187,21 @@ impl TimeControl {
             }
         }
         self.play_state = PlayState::Playing;
+    }
+
+    pub fn follow(&mut self, times_per_timeline: &TimesPerTimeline) {
+        if let Some(time_points) = times_per_timeline.get(&self.timeline) {
+            // Set the time to the max:
+            match self.states.entry(self.timeline) {
+                std::collections::btree_map::Entry::Vacant(entry) => {
+                    entry.insert(TimeState::new(max(time_points)));
+                }
+                std::collections::btree_map::Entry::Occupied(mut entry) => {
+                    entry.get_mut().time = max(time_points).into();
+                }
+            }
+        }
+        self.play_state = PlayState::Following;
     }
 
     pub fn pause(&mut self) {
@@ -212,7 +245,7 @@ impl TimeControl {
             PlayState::Paused => {
                 self.play(times_per_timeline);
             }
-            PlayState::Playing => {
+            PlayState::Playing | PlayState::Following => {
                 self.pause();
             }
         }

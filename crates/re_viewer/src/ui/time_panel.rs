@@ -1074,12 +1074,10 @@ fn loop_selection_ui(
         time_ctrl.looping = Looping::Off;
     }
 
-    // TODO(emilk): click to toggle on/off
-    // when off, you cannot modify, just drag out a new one.
-
     let selection_color = re_ui::ReUi::loop_selection_color();
 
-    let is_active = time_ctrl.looping == Looping::Selection;
+    let is_active =
+        time_ctrl.looping == Looping::Selection && time_ctrl.play_state() != PlayState::Following;
 
     let pointer_pos = ui.input(|i| i.pointer.hover_pos());
     let is_pointer_in_timeline =
@@ -1668,8 +1666,7 @@ impl TimeRangesUi {
 
     // Make sure playback time doesn't get stuck between non-continuos regions:
     fn snap_time_control(&self, ctx: &mut ViewerContext<'_>) {
-        if ctx.rec_cfg.time_ctrl.play_state() == PlayState::Paused {
-            // TODO: handle PlayState::Follow
+        if ctx.rec_cfg.time_ctrl.play_state() != PlayState::Playing {
             return;
         }
 
