@@ -54,7 +54,7 @@ pub(crate) fn view_text(
         .unwrap_or(state.latest_time);
 
     // Did the time cursor move since last time?
-    // - If it did, time to autoscroll appropriately.
+    // - If it did, autoscroll to the text log to reveal the current time.
     // - Otherwise, let the user scroll around freely!
     let time_cursor_moved = state.latest_time != time;
     let scroll_to_row = time_cursor_moved.then(|| {
@@ -296,8 +296,8 @@ fn table_ui(
 
     use egui_extras::Column;
 
-    let current_timeline = *ctx.rec_cfg.time_ctrl.timeline();
-    let current_time = ctx.rec_cfg.time_ctrl.time_int();
+    let global_timeline = *ctx.rec_cfg.time_ctrl.timeline();
+    let global_time = ctx.rec_cfg.time_ctrl.time_int();
 
     let mut table_builder = egui_extras::TableBuilder::new(ui)
         .resizable(true)
@@ -311,7 +311,7 @@ fn table_ui(
     }
 
     let mut body_clip_rect = None;
-    let mut current_time_y = None;
+    let mut current_time_y = None; // where to draw the current time indicator cursor
 
     {
         // timeline(s)
@@ -378,17 +378,24 @@ fn table_ui(
                 // timeline(s)
                 for timeline in &timelines {
                     row.col(|ui| {
-                        if let Some(value) = time_point.get(timeline).copied() {
-                            if let Some(current_time) = current_time {
-                                if current_time_y.is_none()
-                                    && *timeline == &current_timeline
-                                    && value >= current_time
-                                {
-                                    current_time_y = Some(ui.max_rect().top());
+                        if let Some(row_time) = time_point.get(timeline).copied() {
+                            ctx.time_button(ui, timeline, row_time);
+
+                            if let Some(global_time) = global_time {
+                                if *timeline == &global_timeline {
+                                    if global_time < row_time {
+                                        // We've past the global time - it is thus above this row.
+                                        if current_time_y.is_none() {
+                                            current_time_y = Some(ui.max_rect().top());
+                                        }
+                                    } else if global_time == row_time {
+                                        // This row is exactly at the current time.
+                                        // We could draw the current time exactly onto this row, but that would look bad,
+                                        // so let's draw it under instead. It looks better in the "following" mode.
+                                        current_time_y = Some(ui.max_rect().bottom());
+                                    }
                                 }
                             }
-
-                            ctx.time_button(ui, timeline, value);
                         }
                     });
                 }
