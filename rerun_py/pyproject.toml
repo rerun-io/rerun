@@ -15,9 +15,9 @@ classifiers = [
 description = "The Rerun Logging SDK"
 keywords = ["computer-vision", "logging", "rerun"]
 license = { text = "MIT OR Apache-2.0" }
-requires-python = ">=3.7"
+requires-python = ">=3.8"
 
-dependencies = ["numpy==1.23", "pyarrow==9.0"]
+dependencies = ["numpy>=1.23", "pyarrow==10.0.1"]
 
 [project.optional-dependencies]
 tests = ["pytest==7.1.2"]
