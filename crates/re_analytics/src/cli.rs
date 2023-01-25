@@ -89,7 +89,7 @@ const DETAILS: &str = "
 
     What data is collected?
     - The exact set of analytics events and parameters can be found here:
-      https://github.com/rerun-io/rerun/blob/main/crates/re_analytics/src/events.rs
+      https://github.com/rerun-io/rerun/blob/GIT_HASH/crates/re_analytics/src/events.rs
     - We collect high level events about the usage of the Rerun Viewer. For example:
       - The event 'Viewer Opened' helps us estimate how often Rerun is used.
       - The event 'Data Source Connected' helps us understand if users tend to use live
@@ -123,5 +123,6 @@ const DETAILS: &str = "
 ";
 
 pub fn print_details() {
-    eprintln!("{DETAILS}");
+    let git_hash = env!("__RERUN_GIT_HASH").replace("-dirty", "");
+    eprintln!("{}", DETAILS.replace("GIT_HASH", &git_hash));
 }
