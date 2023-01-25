@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-"""
-
-"""
+"""Example of using Rerun to log and visualize the output of COLMAP's sparse reconstruction."""
 import io
 import os
 import zipfile
@@ -75,20 +73,17 @@ def download_with_progress(url: str) -> io.BytesIO:
     return zip_file
 
 
-@rr.script("Visualize Colmap Data")
-def main(parser: ArgumentParser) -> None:
-    args = parser.parse_args()
-
-    dataset_path = get_downloaded_dataset_path()
-    print("Loading sparse colmap reconstruction")
+def read_and_log_sparse_reconstruction(dataset_path: Path) -> None:
+    print("Reading sparse COLMAP reconstruction")
     cameras, images, points3D = read_model(dataset_path / "sparse")
-
-    rr.init("colmap", spawn_and_connect=True)
-    rr.log_view_coordinates("world", up="-Y", timeless=True)
+    print("Building visualization by logging to Rerun")
 
     # Filter out noisy points
-    filtered = {id: point for id, point in points3D.items() if point.rgb.any() and len(point.image_ids) > 4}
+    filtered_points3D = {id: point for id, point in points3D.items() if point.rgb.any() and len(point.image_ids) > 4}
 
+    rr.log_view_coordinates("world", up="-Y", timeless=True)
+
+    # Iterate through images (video frames) logging data related to each frame.
     for image in sorted(images.values(), key=lambda im: im.name):  # type: ignore[no-any-return]
         frame_idx = int(image.name[0:4])  # COLMAP sets image ids that don't match the original video frame
         quat_xyzw = image.qvec[[1, 2, 3, 0]]  # COLMAP uses wxyz quaternions
@@ -96,7 +91,7 @@ def main(parser: ArgumentParser) -> None:
         camera = cameras[image.camera_id]
         intrinsics = intrinsics_for_camera(camera)
 
-        visible_points = [filtered.get(id) for id in image.point3D_ids if id != -1]
+        visible_points = [filtered_points3D.get(id) for id in image.point3D_ids if id != -1]
         visible_points = [point for point in visible_points if point is not None]
 
         rr.set_time_sequence("frame", frame_idx)
@@ -122,6 +117,48 @@ def main(parser: ArgumentParser) -> None:
         rr.log_image_file(f"world/camera/image/rgb", dataset_path / "images" / image.name)
 
         rr.log_points(f"world/camera/image/keypoints", image.xys)
+
+
+def main() -> None:
+    parser = ArgumentParser(description="Visualize the output of COLMAP's sparse reconstruction on a video.")
+    parser.add_argument("--headless", action="store_true", help="Don't show GUI")
+    parser.add_argument("--connect", dest="connect", action="store_true", help="Connect to an external viewer")
+    parser.add_argument("--addr", type=str, default=None, help="Connect to this ip:port")
+    parser.add_argument("--save", type=str, default=None, help="Save data to a .rrd file at this path")
+    parser.add_argument(
+        "--serve",
+        dest="serve",
+        action="store_true",
+        help="Serve a web viewer (WARNING: experimental feature)",
+    )
+    args = parser.parse_args()
+
+    rr.init("colmap")
+
+    if args.serve:
+        rr.serve()
+    elif args.connect:
+        # Send logging data to separate `rerun` process.
+        # You can omit the argument to connect to the default address,
+        # which is `127.0.0.1:9876`.
+        rr.connect(args.addr)
+    elif args.save is None and not args.headless:
+        rr.spawn_and_connect()
+
+    dataset_path = get_downloaded_dataset_path()
+
+    read_and_log_sparse_reconstruction(dataset_path)
+
+    if args.serve:
+        print("Sleeping while serving the web viewer. Abort with Ctrl-C")
+        try:
+            from time import sleep
+
+            sleep(100_000)
+        except:
+            pass
+    elif args.save is not None:
+        rr.save(args.save)
 
 
 if __name__ == "__main__":
