@@ -3721,6 +3721,7 @@ dependencies = [
  "crossbeam",
  "derive_more",
  "directories-next",
+ "glob",
  "once_cell",
  "re_log",
  "reqwest",
