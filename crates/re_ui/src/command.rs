@@ -167,20 +167,21 @@ impl Command {
     pub fn listen_for_kb_shortcut(egui_ctx: &egui::Context) -> Option<Command> {
         use strum::IntoEnumIterator as _;
 
-        let anything_has_focus = egui_ctx.memory().focus().is_some();
+        let anything_has_focus = egui_ctx.memory(|mem| mem.focus().is_some());
         if anything_has_focus {
             return None; // e.g. we're typing in a TextField
         }
 
-        let mut input = egui_ctx.input_mut();
-        for command in Command::iter() {
-            if let Some(kb_shortcut) = command.kb_shortcut() {
-                if input.consume_shortcut(&kb_shortcut) {
-                    return Some(command);
+        egui_ctx.input_mut(|input| {
+            for command in Command::iter() {
+                if let Some(kb_shortcut) = command.kb_shortcut() {
+                    if input.consume_shortcut(&kb_shortcut) {
+                        return Some(command);
+                    }
                 }
             }
-        }
-        None
+            None
+        })
     }
 
     /// Show this command as a menu-button.

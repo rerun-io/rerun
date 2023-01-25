@@ -78,21 +78,21 @@ fn tensor_dimension_ui(
                 ui.colored_label(ui.visuals().widgets.inactive.fg_stroke.color, label_text);
             });
 
-            if ui.memory().is_being_dragged(dim_ui_id) {
+            if ui.memory(|mem| mem.is_being_dragged(dim_ui_id)) {
                 *drop_source = location;
             }
         }
     })
     .response;
 
-    let is_being_dragged = ui.memory().is_anything_being_dragged();
+    let is_being_dragged = ui.memory(|mem| mem.is_anything_being_dragged());
     if is_being_dragged && response.hovered() {
         *drop_target = location;
     }
 }
 
 fn drag_source_ui(ui: &mut egui::Ui, id: egui::Id, body: impl FnOnce(&mut egui::Ui)) {
-    let is_being_dragged = ui.memory().is_being_dragged(id);
+    let is_being_dragged = ui.memory(|mem| mem.is_being_dragged(id));
 
     if !is_being_dragged {
         let response = ui.scope(body).response;
@@ -100,10 +100,10 @@ fn drag_source_ui(ui: &mut egui::Ui, id: egui::Id, body: impl FnOnce(&mut egui::
         // Check for drags:
         let response = ui.interact(response.rect, id, egui::Sense::drag());
         if response.hovered() {
-            ui.output().cursor_icon = egui::CursorIcon::Grab;
+            ui.ctx().set_cursor_icon(egui::CursorIcon::Grab);
         }
     } else {
-        ui.output().cursor_icon = egui::CursorIcon::Grabbing;
+        ui.ctx().set_cursor_icon(egui::CursorIcon::Grabbing);
 
         // Paint the body to a new layer:
         let layer_id = egui::LayerId::new(egui::Order::Tooltip, id);
@@ -129,7 +129,7 @@ fn drop_target_ui<R>(
     can_accept_dragged: bool,
     body: impl FnOnce(&mut egui::Ui) -> R,
 ) -> egui::InnerResponse<R> {
-    let is_being_dragged = ui.memory().is_anything_being_dragged();
+    let is_being_dragged = ui.memory(|mem| mem.is_anything_being_dragged());
 
     let margin = egui::Vec2::splat(4.0);
 
@@ -182,8 +182,7 @@ pub fn dimension_mapping_ui(
 
     let drag_context_id = ui.id();
     let can_accept_dragged = (0..shape.len()).any(|dim_idx| {
-        ui.memory()
-            .is_being_dragged(drag_source_ui_id(drag_context_id, dim_idx))
+        ui.memory(|mem| mem.is_being_dragged(drag_source_ui_id(drag_context_id, dim_idx)))
     });
 
     ui.horizontal(|ui| {
@@ -262,7 +261,7 @@ pub fn dimension_mapping_ui(
     });
 
     // persist drag/drop
-    if drop_target.is_some() && drop_source.is_some() && ui.input().pointer.any_released() {
+    if drop_target.is_some() && drop_source.is_some() && ui.input(|i| i.pointer.any_released()) {
         let previous_value_source = drop_source.read_from_address(dim_mapping);
         let previous_value_target = drop_target.read_from_address(dim_mapping);
         drop_source.write_to_address(dim_mapping, previous_value_target);

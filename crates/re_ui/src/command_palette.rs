@@ -19,15 +19,13 @@ impl CommandPalette {
     /// Show the command palette, if it is visible.
     #[must_use = "Returns the command that was selected"]
     pub fn show(&mut self, egui_ctx: &egui::Context) -> Option<Command> {
-        self.visible &= !egui_ctx
-            .input_mut()
-            .consume_key(Default::default(), Key::Escape);
+        self.visible &= !egui_ctx.input_mut(|i| i.consume_key(Default::default(), Key::Escape));
         if !self.visible {
             self.query.clear();
             return None;
         }
 
-        let screen_rect = egui_ctx.input().screen_rect();
+        let screen_rect = egui_ctx.screen_rect();
         let width = 300.0;
         let max_height = 320.0.at_most(screen_rect.height());
 
@@ -43,7 +41,7 @@ impl CommandPalette {
     #[must_use = "Returns the command that was selected"]
     fn window_content_ui(&mut self, ui: &mut egui::Ui) -> Option<Command> {
         // Check _before_ we add the `TextEdit`, so it doesn't steal it.
-        let enter_pressed = ui.input_mut().consume_key(Default::default(), Key::Enter);
+        let enter_pressed = ui.input_mut(|i| i.consume_key(Default::default(), Key::Enter));
 
         let text_response = ui.add(
             egui::TextEdit::singleline(&mut self.query)
@@ -78,8 +76,8 @@ impl CommandPalette {
         enter_pressed: bool,
         mut scroll_to_selected_alternative: bool,
     ) -> Option<Command> {
-        scroll_to_selected_alternative |= ui.input().key_pressed(Key::ArrowUp);
-        scroll_to_selected_alternative |= ui.input().key_pressed(Key::ArrowDown);
+        scroll_to_selected_alternative |= ui.input(|i| i.key_pressed(Key::ArrowUp));
+        scroll_to_selected_alternative |= ui.input(|i| i.key_pressed(Key::ArrowDown));
 
         let query = self.query.to_lowercase();
 
@@ -159,12 +157,10 @@ impl CommandPalette {
 
         // Move up/down in the list:
         self.selected_alternative = self.selected_alternative.saturating_sub(
-            ui.input_mut()
-                .count_and_consume_key(Default::default(), Key::ArrowUp),
+            ui.input_mut(|i| i.count_and_consume_key(Default::default(), Key::ArrowUp)),
         );
         self.selected_alternative = self.selected_alternative.saturating_add(
-            ui.input_mut()
-                .count_and_consume_key(Default::default(), Key::ArrowDown),
+            ui.input_mut(|i| i.count_and_consume_key(Default::default(), Key::ArrowDown)),
         );
 
         self.selected_alternative = self

@@ -282,9 +282,9 @@ impl OrbitEye {
 
         if response.hovered() {
             self.keyboard_navigation(&response.ctx);
-            let input = response.ctx.input();
-
-            let factor = input.zoom_delta() * (input.scroll_delta.y / 200.0).exp();
+            let factor = response
+                .ctx
+                .input(|i| i.zoom_delta() * (i.scroll_delta.y / 200.0).exp());
             if factor != 1.0 {
                 self.orbit_radius /= factor;
                 did_interact = true;
@@ -296,37 +296,38 @@ impl OrbitEye {
 
     /// Listen to WSAD and QE to move the eye.
     fn keyboard_navigation(&mut self, egui_ctx: &egui::Context) {
-        let anything_has_focus = egui_ctx.memory().focus().is_some();
+        let anything_has_focus = egui_ctx.memory(|mem| mem.focus().is_some());
         if anything_has_focus {
             return; // e.g. we're typing in a TextField
         }
 
-        let input = egui_ctx.input();
-        let dt = input.stable_dt.at_most(0.1);
+        let requires_repaint = egui_ctx.input(|input| {
+            let dt = input.stable_dt.at_most(0.1);
 
-        // X=right, Y=up, Z=back
-        let mut local_movement = Vec3::ZERO;
-        local_movement.z -= input.key_down(egui::Key::W) as i32 as f32;
-        local_movement.z += input.key_down(egui::Key::S) as i32 as f32;
-        local_movement.x -= input.key_down(egui::Key::A) as i32 as f32;
-        local_movement.x += input.key_down(egui::Key::D) as i32 as f32;
-        local_movement.y -= input.key_down(egui::Key::Q) as i32 as f32;
-        local_movement.y += input.key_down(egui::Key::E) as i32 as f32;
-        local_movement = local_movement.normalize_or_zero();
+            // X=right, Y=up, Z=back
+            let mut local_movement = Vec3::ZERO;
+            local_movement.z -= input.key_down(egui::Key::W) as i32 as f32;
+            local_movement.z += input.key_down(egui::Key::S) as i32 as f32;
+            local_movement.x -= input.key_down(egui::Key::A) as i32 as f32;
+            local_movement.x += input.key_down(egui::Key::D) as i32 as f32;
+            local_movement.y -= input.key_down(egui::Key::Q) as i32 as f32;
+            local_movement.y += input.key_down(egui::Key::E) as i32 as f32;
+            local_movement = local_movement.normalize_or_zero();
 
-        let speed = self.orbit_radius
-            * (if input.modifiers.shift { 10.0 } else { 1.0 })
-            * (if input.modifiers.ctrl { 0.1 } else { 1.0 });
-        let world_movement = self.world_from_view_rot * (speed * local_movement);
+            let speed = self.orbit_radius
+                * (if input.modifiers.shift { 10.0 } else { 1.0 })
+                * (if input.modifiers.ctrl { 0.1 } else { 1.0 });
+            let world_movement = self.world_from_view_rot * (speed * local_movement);
 
-        self.velocity = egui::lerp(
-            self.velocity..=world_movement,
-            egui::emath::exponential_smooth_factor(0.90, 0.2, dt),
-        );
-        self.orbit_center += self.velocity * dt;
+            self.velocity = egui::lerp(
+                self.velocity..=world_movement,
+                egui::emath::exponential_smooth_factor(0.90, 0.2, dt),
+            );
+            self.orbit_center += self.velocity * dt;
+            local_movement != Vec3::ZERO || self.velocity.length() > 0.01 * speed
+        });
 
-        drop(input); // avoid deadlock on request_repaint
-        if local_movement != Vec3::ZERO || self.velocity.length() > 0.01 * speed {
+        if requires_repaint {
             egui_ctx.request_repaint();
         }
     }
