@@ -113,10 +113,11 @@ impl Viewport {
                 SpaceView::default_queried_objects_by_category(ctx, space_info, &transforms)
             {
                 let scene_spatial = query_scene_spatial(ctx, &obj_paths, &transforms);
+                let preferred_navigation_mode =
+                    scene_spatial.preferred_navigation_mode(&space_info.path);
 
                 if category == ViewCategory::Spatial
-                    && scene_spatial.preferred_navigation_mode(&space_info.path)
-                        == SpatialNavigationMode::TwoD
+                    && preferred_navigation_mode == SpatialNavigationMode::TwoD
                     && scene_spatial.ui.images.len() > 1
                 {
                     // Multiple images (e.g. depth and rgb, or rgb and segmentation) in the same 2D scene.
@@ -181,7 +182,7 @@ impl Viewport {
                         category,
                         space_info,
                         &obj_paths,
-                        scene_spatial.preferred_navigation_mode(&space_info.path),
+                        preferred_navigation_mode,
                         transforms.clone(),
                     );
                     blueprint.add_space_view(space_view);
