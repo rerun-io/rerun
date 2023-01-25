@@ -350,7 +350,7 @@ impl AsDynamicImage for ClassicTensor {
 
                             // Convert to u16 so we can put them in an image.
                             // TODO(emilk): Eventually we want a renderer that can show f32 images natively.
-                            // One big downside of the approach below is that if we have two dept images
+                            // One big downside of the approach below is that if we have two depth images
                             // in the same range, they cannot be visually compared with each other,
                             // because their individual max-depths will be scaled to 65535.
 
