@@ -265,6 +265,14 @@ pub fn turbo_color_map(t: f32) -> [u8; 3] {
     TURBO_SRGB_BYTES[index]
 }
 
+/// LUT as defined [here](https://github.com/sjmgarnier/viridisLite/blob/ffc7061/R/zzz.R)
+///
+/// Converted to bytes using this python snippet:
+/// ```python
+/// for (r, g, b, asdf) in zip(R, G, B, opt):
+//      if asdf == 'D':
+//          print("[{}, {}, {}],".format(int(r * 255.0 + 0.5), int(g * 255.0 + 0.5), int(b * 255.0 + 0.5)))
+/// ```
 const VIRIDIS_SRGB_BYTES: [[u8; 3]; 256] = [
     [68, 1, 84],
     [68, 2, 86],
@@ -525,9 +533,6 @@ const VIRIDIS_SRGB_BYTES: [[u8; 3]; 256] = [
 ];
 
 /// Given a value in [0, 1], output `sRGB` in Viridis color map.
-///
-/// As defined [here](https://github.com/sjmgarnier/viridisLite/blob/ffc7061/R/zzz.R)
-/// (there only seems to be a LUT version)
 #[inline]
 pub fn viridis_color_map(t: f32) -> [u8; 3] {
     // TODO(andreas): interpolate
