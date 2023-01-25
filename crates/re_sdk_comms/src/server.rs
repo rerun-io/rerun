@@ -34,7 +34,9 @@ pub fn serve(
 ) -> anyhow::Result<Receiver<LogMsg>> {
     let listener = std::net::TcpListener::bind(addr)?;
 
-    let (tx, rx) = re_smart_channel::smart_channel(re_smart_channel::Source::Network);
+    // TODO: that's where we identify local vs. remote im guessing
+    let (tx, rx) =
+        re_smart_channel::smart_channel(re_smart_channel::Source::Network { local: true });
 
     std::thread::Builder::new()
         .name("sdk-server".into())

@@ -12,7 +12,7 @@ name = "rerun_bindings" # name of the .so library that the Python module will im
 
 
 [features]
-default = ["extension-module", "re_viewer"]
+default = ["extension-module", "re_viewer", "web"]
 
 ## Enable embedding the Rerun Viewer in the Python SDK.
 re_viewer = ["rerun_sdk/re_viewer"]

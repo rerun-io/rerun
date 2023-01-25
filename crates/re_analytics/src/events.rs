@@ -19,19 +19,38 @@ impl Event {
             .with_prop("git_hash".into(), git_hash)
     }
 
-    // TODO(cmc): start_method
-    //
-    // We want to know (I think..?):
-    // - Loading rrd (either URL or file, whatever)
-    // - Standalone boot, waiting for network data
-    // - Standalone boot, feeding from another server (??)
-    // - SDK boot, show()
-    // - SDK book, spawn_and_connect()
-    pub fn viewer_started() -> Self {
-        Self::append("viewer_started".into())
+    pub fn viewer_started(kind: &str) -> Self {
+        Self::append("viewer_started".into()).with_prop("kind".into(), kind.to_owned())
     }
 
-    pub fn data_source_opened() -> Self {
-        Self::append("data_source_opened".into())
+    // TODO: document exactly what gets fired when...
+
+    // TODO:
+    //
+    // for `viewer_started`:
+    //   - kind = [
+    //       # viewer started as a native app, whether that's a `show`, a `spawn_and_connect`,
+    //       # a `cargo run`...
+    //       "native",
+    //       # means that a web client connected to the websocket server.
+    //       "web",
+    //   ]
+    //
+    // for `data_source_opened`:
+    //   - source_type = [
+    //       # loading an rrd file from.. somewhere
+    //       "rrd",
+    //       # getting fed a real-time stream from a local TCP connection (`spawn_and_connect`)
+    //       "network_local",
+    //       # getting fed a real-time stream from a remote TCP connection (`connect`)
+    //       "network_remote",
+    //       # getting fed a "buffered real-time" stream from memory (`show`)
+    //       "buffered"
+    //   ]
+    //
+    // `cargo r --features web -- --web-viewer examples/out/avocado.rrd`:
+    // - viewer started on client connection (kind=web)
+    pub fn data_source_opened(kind: &str) -> Self {
+        Self::append("data_source_opened".into()).with_prop("kind".into(), kind.to_owned())
     }
 }

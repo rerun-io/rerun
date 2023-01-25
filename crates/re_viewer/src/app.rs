@@ -143,7 +143,7 @@ impl App {
         #[cfg(all(not(target_arch = "wasm32"), feature = "analytics", debug_assertions))]
         let analytics = match re_analytics::Analytics::new(std::time::Duration::from_secs(2)) {
             Ok(analytics) => {
-                analytics.record(re_analytics::Event::viewer_started());
+                analytics.record(re_analytics::Event::viewer_started("native"));
                 Some(analytics)
             }
             Err(err) => {
@@ -501,7 +501,9 @@ impl App {
     fn receive_messages(&mut self, egui_ctx: &egui::Context) {
         if let Some(rx) = &mut self.rx {
             crate::profile_function!();
+
             let start = instant::Instant::now();
+            let source = rx.source().to_string();
 
             while let Ok(msg) = rx.try_recv() {
                 if let LogMsg::BeginRecordingMsg(msg) = &msg {
@@ -541,7 +543,7 @@ impl App {
                             ),
                         ]);
 
-                        analytics.record(re_analytics::Event::data_source_opened());
+                        analytics.record(re_analytics::Event::data_source_opened(&source));
                     }
                 }
 
@@ -1071,8 +1073,8 @@ fn memory_use_label_ui(ui: &mut egui::Ui, gpu_resource_stats: &WgpuResourcePoolS
 fn input_latency_label_ui(ui: &mut egui::Ui, app: &mut App) {
     if let Some(rx) = &app.rx {
         let is_latency_interesting = match rx.source() {
-            re_smart_channel::Source::Network => true, // presumable live
-            re_smart_channel::Source::File => false,   // pre-recorded. latency doesn't matter
+            re_smart_channel::Source::Network { .. } => true, // presumable live
+            re_smart_channel::Source::File => false, // pre-recorded. latency doesn't matter
         };
 
         let queue_len = rx.len();

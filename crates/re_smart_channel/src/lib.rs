@@ -9,10 +9,29 @@ use crossbeam::channel::{RecvError, SendError, TryRecvError};
 use instant::Instant;
 
 /// Where is the messages coming from?
+// TODO: remote network, buffered stream
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Source {
-    Network,
+    /// Data is real-time stream coming from a local or remote TCP connection.
+    Network { local: bool },
+    /// Data is coming from an rrd file.
     File,
+}
+
+impl std::fmt::Display for Source {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            &Source::Network { local } => {
+                if local {
+                    "network_local"
+                } else {
+                    "network_remote"
+                }
+            }
+            Source::File => "file",
+        };
+        f.write_str(s)
+    }
 }
 
 pub fn smart_channel<T: Send>(source: Source) -> (Sender<T>, Receiver<T>) {
@@ -156,7 +175,7 @@ impl<T: Send> Receiver<T> {
 
 #[test]
 fn test_smart_channel() {
-    let (tx, rx) = smart_channel(Source::Network);
+    let (tx, rx) = smart_channel(Source::Network { local: true });
 
     assert_eq!(tx.len(), 0);
     assert_eq!(rx.len(), 0);

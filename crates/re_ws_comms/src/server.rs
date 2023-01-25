@@ -14,12 +14,17 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio_tungstenite::{accept_async, tungstenite::Error};
 
 use re_log_types::LogMsg;
-use re_smart_channel::Receiver;
+use re_smart_channel::{Receiver, Source};
 
 // ----------------------------------------------------------------------------
 
 pub struct Server {
     listener: TcpListener,
+
+    // NOTE: Optional because it is possible to have the `analytics` feature flag enabled while at
+    // the same time opting out of analytics at run-time.
+    #[cfg(all(not(target_arch = "wasm32"), feature = "analytics", debug_assertions))]
+    analytics: Option<re_analytics::Analytics>,
 }
 
 impl Server {
@@ -33,17 +38,32 @@ impl Server {
             .await
             .with_context(|| format!("Can't listen on {:?}", bind_addr))?;
 
+        // TODO: prob worth having a web_server_started
+        #[cfg(all(not(target_arch = "wasm32"), feature = "analytics", debug_assertions))]
+        let analytics = match re_analytics::Analytics::new(std::time::Duration::from_secs(2)) {
+            Ok(analytics) => Some(analytics),
+            Err(err) => {
+                re_log::error!(%err, "failed to initialize analytics SDK");
+                None
+            }
+        };
+
         eprintln!("Listening for websocket traffic on: {}", bind_addr);
 
-        Ok(Self { listener })
+        Ok(Self {
+            listener,
+
+            #[cfg(all(not(target_arch = "wasm32"), feature = "analytics", debug_assertions))]
+            analytics,
+        })
     }
 
     /// Accept new connections forever
     pub async fn listen(self, rx: Receiver<LogMsg>) -> anyhow::Result<()> {
         use anyhow::Context as _;
 
+        let source = &rx.source().to_string();
         let history = Arc::new(Mutex::new(Vec::new()));
-
         let log_stream = to_broadcast_stream(rx, history.clone());
 
         while let Ok((tcp_stream, _)) = self.listener.accept().await {
@@ -56,6 +76,12 @@ impl Server {
                 tcp_stream,
                 history.clone(),
             ));
+
+            #[cfg(all(not(target_arch = "wasm32"), feature = "analytics", debug_assertions))]
+            if let Some(analytics) = self.analytics.as_ref() {
+                analytics.record(re_analytics::Event::viewer_started("web"));
+                analytics.record(re_analytics::Event::data_source_opened(source));
+            }
         }
 
         Ok(())
@@ -66,6 +92,7 @@ fn to_broadcast_stream(
     log_rx: Receiver<LogMsg>,
     history: Arc<Mutex<Vec<Arc<[u8]>>>>,
 ) -> tokio::sync::broadcast::Sender<Arc<[u8]>> {
+    dbg!(log_rx.source());
     let (tx, _) = tokio::sync::broadcast::channel(1024 * 1024);
     let tx1 = tx.clone();
     tokio::task::spawn_blocking(move || {

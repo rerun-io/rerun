@@ -35,3 +35,7 @@ web-sys = { version = "0.3.58", features = ["Storage"] }
 
 [dev-dependencies]
 tracing-subscriber = "0.3"
+
+
+[build-dependencies]
+glob = "0.3"
