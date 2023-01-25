@@ -92,6 +92,25 @@ Now you can install `rerun` in any Python3 environment using:
 pip3 install target/wheels/*.whl
 ```
 
+## Viewing the docs locally
+The rerun python docs are generated using `mkdocs`
+
+Install the doc requirements:
+```
+pip install -r rerun_py/requirements-doc.txt
+```
+
+Serve the docs:
+```
+mkdocs serve -f rerun_py/mkdocs.yml -w rerun_py
+```
+or
+```
+just py-docs-serve
+```
+
+For information on how the docs system works, see: [docs/docs.md](docs/docs.md)
+
 
 ## Troubleshooting
 You can run with `RUST_LOG=debug` to get more output out of the rerun SDK.

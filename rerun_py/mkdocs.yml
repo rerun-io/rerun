@@ -1,0 +1,53 @@
+# mkdocs.yml
+# Top-level config for mkdocs
+# See: https://www.mkdocs.org/user-guide/configuration/
+site_name: Rerun Python APIs
+repo_url: https://github.com/rerun-io/rerun/
+
+# Use the material theme
+# Override some options for nav: https://squidfunk.github.io/mkdocs-material/setup/setting-up-navigation/
+theme:
+  name: "material"
+  features:
+    - navigation.tabs
+    - navigation.instant
+    - navigation.indexes
+    - navigation.tracking
+    - navigation.expand
+
+plugins:
+  - search # https://squidfunk.github.io/mkdocs-material/setup/setting-up-site-search/
+  - mkdocstrings: # https://mkdocstrings.github.io/usage/#global-options
+      custom_templates: rerun_py/docs/templates # Override the function template. NOTE: relative to working directory. (https://github.com/mkdocstrings/mkdocstrings/issues/477)
+      handlers:
+        python:
+          paths: ["."] # Lookup python modules relative to this path
+          import: # Cross-references for python and numpy
+            - https://docs.python.org/3/objects.inv
+            - https://numpy.org/doc/stable/objects.inv
+          options: # https://mkdocstrings.github.io/python/usage/#globallocal-options
+            show_source: no
+            docstring_style: numpy
+            members_order: source
+            heading_level: 3
+            show_root_heading: true
+  - gen-files: # https://oprypin.github.io/mkdocs-gen-files
+      scripts:
+        - docs/gen_package_index.py
+  - literate-nav: # https://oprypin.github.io/mkdocs-literate-nav
+      nav_file: SUMMARY.txt
+  - redirects: # https://github.com/mkdocs/mkdocs-redirects
+      redirect_maps:
+        "index.md": "common/index.md"
+
+# https://www.mkdocs.org/user-guide/configuration/#markdown_extensions
+# https://squidfunk.github.io/mkdocs-material/setup/extensions/python-markdown-extensions/
+markdown_extensions:
+  - admonition # https://squidfunk.github.io/mkdocs-material/reference/admonitions/
+  - pymdownx.highlight # https://mkdocstrings.github.io/theming/#syntax-highlighting
+  - toc:
+      toc_depth: 4
+
+# Some extra styling
+extra_css:
+  - css/mkdocstrings.css
