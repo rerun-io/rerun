@@ -253,6 +253,8 @@ pub enum TensorDataMeaning {
     /// The data is an annotated [`crate::field_types::ClassId`] which should be
     /// looked up using the appropriate [`crate::context::AnnotationContext`]
     ClassId,
+    /// Image data interpreted as depth map.
+    Depth,
 }
 
 /// A Multi-dimensional Tensor

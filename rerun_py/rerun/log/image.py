@@ -90,12 +90,12 @@ def log_depth_image(
     # Catch some errors early:
     if num_non_empty_dims != 2:
         _send_warning(f"Expected 2D depth image, got array of shape {shape}", 1)
-        _log_tensor(obj_path, image, timeless=timeless)
+        _log_tensor(obj_path, image, timeless=timeless, meaning=bindings.TensorDataMeaning.Depth)
     else:
         # TODO(#672): Don't squeeze once the image view can handle extra empty dimensions.
         if num_non_empty_dims != len(shape):
             image = np.squeeze(image)
-        _log_tensor(obj_path, image, meter=meter, timeless=timeless)
+        _log_tensor(obj_path, image, meter=meter, timeless=timeless, meaning=bindings.TensorDataMeaning.Depth)
 
 
 def log_segmentation_image(

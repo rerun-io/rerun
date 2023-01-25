@@ -1634,6 +1634,7 @@ fn log_obb(
 enum TensorDataMeaning {
     Unknown,
     ClassId,
+    Depth,
 }
 
 fn tensor_extract_helper(
@@ -1691,7 +1692,10 @@ fn log_tensor(
     // Convert from pyclass TensorDataMeaning -> re_log_types
     let meaning = match meaning {
         Some(TensorDataMeaning::ClassId) => re_log_types::field_types::TensorDataMeaning::ClassId,
-        _ => re_log_types::field_types::TensorDataMeaning::Unknown,
+        Some(TensorDataMeaning::Depth) => re_log_types::field_types::TensorDataMeaning::Depth,
+        None | Some(TensorDataMeaning::Unknown) => {
+            re_log_types::field_types::TensorDataMeaning::Unknown
+        }
     };
 
     let tensor = tensor_extract_helper(img, names, meaning)
