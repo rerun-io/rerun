@@ -58,7 +58,7 @@ pub use ecolor::{Color32, Rgba};
 
 // ---------------------------------------------------------------------------
 
-/// Profiling macro for feature "puffin"
+/// Profiling macro for puffin
 #[doc(hidden)]
 #[macro_export]
 macro_rules! profile_function {
@@ -68,7 +68,7 @@ macro_rules! profile_function {
     };
 }
 
-/// Profiling macro for feature "puffin"
+/// Profiling macro for puffin
 #[doc(hidden)]
 #[macro_export]
 macro_rules! profile_scope {

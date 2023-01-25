@@ -31,6 +31,7 @@ impl DataUi for BeginRecordingMsg {
             recording_id,
             started,
             recording_source,
+            is_official_example,
         } = info;
 
         egui::Grid::new("fields").num_columns(2).show(ui, |ui| {
@@ -48,6 +49,10 @@ impl DataUi for BeginRecordingMsg {
 
             ui.monospace("recording_source:");
             ui.label(format!("{recording_source}"));
+            ui.end_row();
+
+            ui.monospace("is_official_example:");
+            ui.label(format!("{is_official_example}"));
             ui.end_row();
         });
     }
@@ -139,7 +144,7 @@ impl DataUi for ArrowMsg {
             }) => {
                 egui::Grid::new("fields").num_columns(2).show(ui, |ui| {
                     ui.monospace("obj_path:");
-                    ctx.obj_path_button(ui, &obj_path);
+                    ctx.obj_path_button(ui, None, &obj_path);
                     ui.end_row();
 
                     ui.monospace("time_point:");

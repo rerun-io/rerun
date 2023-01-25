@@ -7,7 +7,7 @@ use nohash_hasher::IntSet;
 use crate::{
     misc::{
         space_info::{SpaceInfo, SpacesInfo},
-        ViewerContext,
+        SpaceViewHighlights, ViewerContext,
     },
     ui::transform_cache::TransformCache,
     ui::view_category::categorize_obj_path,
@@ -40,7 +40,7 @@ impl SpaceViewId {
 
 /// A view of a space.
 #[derive(Clone, serde::Deserialize, serde::Serialize)]
-pub(crate) struct SpaceView {
+pub struct SpaceView {
     pub id: SpaceViewId,
     pub name: String,
 
@@ -196,7 +196,8 @@ impl SpaceView {
 
     pub fn selection_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         ui.label("Space path:");
-        ctx.obj_path_button(ui, &self.space_path);
+        // specify no space view id since the path itself is not part of the space view.
+        ctx.obj_path_button(ui, None, &self.space_path);
         ui.end_row();
 
         ui.separator();
@@ -377,7 +378,7 @@ impl SpaceView {
         };
 
         if ctx
-            .space_view_obj_path_button_to(ui, label_text, self.id, path)
+            .data_blueprint_button_to(ui, label_text, self.id, path)
             .double_clicked()
             && is_space_info
         {
@@ -427,6 +428,7 @@ impl SpaceView {
         ui: &mut egui::Ui,
         reference_space_info: &SpaceInfo,
         latest_at: TimeInt,
+        highlights: &SpaceViewHighlights,
     ) {
         crate::profile_function!();
 
@@ -458,9 +460,16 @@ impl SpaceView {
 
             ViewCategory::Spatial => {
                 let mut scene = view_spatial::SceneSpatial::default();
-                scene.load_objects(ctx, &query, &self.cached_transforms);
-                self.view_state
-                    .ui_spatial(ctx, ui, &self.space_path, reference_space_info, scene);
+                scene.load_objects(ctx, &query, &self.cached_transforms, highlights);
+                self.view_state.ui_spatial(
+                    ctx,
+                    ui,
+                    &self.space_path,
+                    reference_space_info,
+                    scene,
+                    self.id,
+                    highlights,
+                );
             }
 
             ViewCategory::Tensor => {
@@ -488,7 +497,7 @@ fn has_visualization_for_category(
 
 /// Camera position and similar.
 #[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
-pub(crate) struct ViewState {
+pub struct ViewState {
     /// Selects in [`Self::state_tensors`].
     selected_tensor: Option<InstanceId>,
 
@@ -501,6 +510,7 @@ pub(crate) struct ViewState {
 
 impl ViewState {
     // TODO(andreas): split into smaller parts, some of it shouldn't be part of the ui path and instead scene loading.
+    #[allow(clippy::too_many_arguments)]
     fn ui_spatial(
         &mut self,
         ctx: &mut ViewerContext<'_>,
@@ -508,10 +518,19 @@ impl ViewState {
         space: &ObjPath,
         space_info: &SpaceInfo,
         scene: view_spatial::SceneSpatial,
+        space_view_id: SpaceViewId,
+        highlights: &SpaceViewHighlights,
     ) {
         ui.vertical(|ui| {
-            self.state_spatial
-                .view_spatial(ctx, ui, space, scene, space_info);
+            self.state_spatial.view_spatial(
+                ctx,
+                ui,
+                space,
+                scene,
+                space_info,
+                space_view_id,
+                highlights,
+            );
         });
     }
 

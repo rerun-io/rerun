@@ -1,4 +1,4 @@
-use std::any::Any;
+use std::{any::Any, hash::Hash};
 
 use ahash::HashMap;
 use egui_notify::Toasts;
@@ -81,6 +81,11 @@ pub struct App {
     /// Commands to run at the end of the frame.
     pending_commands: Vec<Command>,
     cmd_palette: re_ui::CommandPalette,
+
+    // NOTE: Optional because it is possible to have the `analytics` feature flag enabled while at
+    // the same time opting out of analytics at run-time.
+    #[cfg(all(not(target_arch = "wasm32"), feature = "analytics", debug_assertions))]
+    analytics: Option<re_analytics::Analytics>,
 }
 
 impl App {
@@ -98,28 +103,6 @@ impl App {
             Some(rx),
             Default::default(),
         )
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    pub(crate) fn from_log_db(
-        startup_options: StartupOptions,
-        re_ui: re_ui::ReUi,
-        storage: Option<&dyn eframe::Storage>,
-        log_db: LogDb,
-    ) -> Self {
-        Self::new(startup_options, re_ui, storage, None, log_db)
-    }
-
-    /// load a `.rrd` data file.
-    #[cfg(not(target_arch = "wasm32"))]
-    pub fn from_rrd_path(
-        startup_options: StartupOptions,
-        re_ui: re_ui::ReUi,
-        storage: Option<&dyn eframe::Storage>,
-        path: &std::path::Path,
-    ) -> Self {
-        let log_db = load_file_path(path).unwrap_or_default(); // TODO(emilk): exit on error.
-        Self::from_log_db(startup_options, re_ui, storage, log_db)
     }
 
     fn new(
@@ -157,6 +140,18 @@ impl App {
             log_dbs.insert(log_db.recording_id(), log_db);
         }
 
+        #[cfg(all(not(target_arch = "wasm32"), feature = "analytics", debug_assertions))]
+        let analytics = match re_analytics::Analytics::new(std::time::Duration::from_secs(2)) {
+            Ok(analytics) => {
+                analytics.record(re_analytics::Event::viewer_started());
+                Some(analytics)
+            }
+            Err(err) => {
+                re_log::error!(%err, "failed to initialize analytics SDK");
+                None
+            }
+        };
+
         Self {
             startup_options,
             re_ui,
@@ -178,6 +173,9 @@ impl App {
 
             pending_commands: Default::default(),
             cmd_palette: Default::default(),
+
+            #[cfg(all(not(target_arch = "wasm32"), feature = "analytics", debug_assertions))]
+            analytics,
         }
     }
 
@@ -509,6 +507,42 @@ impl App {
                 if let LogMsg::BeginRecordingMsg(msg) = &msg {
                     re_log::info!("Beginning a new recording: {:?}", msg.info);
                     self.state.selected_rec_id = msg.info.recording_id;
+
+                    #[cfg(all(
+                        not(target_arch = "wasm32"),
+                        feature = "analytics",
+                        debug_assertions
+                    ))]
+                    if let Some(analytics) = self.analytics.as_mut() {
+                        use sha2::Digest as _;
+                        analytics.default_append_props_mut().extend([
+                            (
+                                "application_id".into(),
+                                if !msg.info.is_official_example {
+                                    let mut hasher = sha2::Sha256::default();
+                                    hasher.update(&msg.info.application_id.0);
+                                    format!("{:x}", hasher.finalize()).into()
+                                } else {
+                                    msg.info.application_id.0.clone().into()
+                                },
+                            ),
+                            ("recording_id".into(), {
+                                let mut hasher = sha2::Sha256::default();
+                                hasher.update(msg.info.recording_id.to_string());
+                                format!("{:x}", hasher.finalize()).into()
+                            }),
+                            (
+                                "recording_source".into(),
+                                msg.info.recording_source.to_string().into(),
+                            ),
+                            (
+                                "is_official_example".into(),
+                                msg.info.is_official_example.into(),
+                            ),
+                        ]);
+
+                        analytics.record(re_analytics::Event::data_source_opened());
+                    }
                 }
 
                 let log_db = self.log_dbs.entry(self.state.selected_rec_id).or_default();
@@ -863,139 +897,86 @@ fn top_panel(
         });
 }
 
+fn rerun_menu_button_ui(ui: &mut egui::Ui, _frame: &mut eframe::Frame, app: &mut App) {
+    // let desired_icon_height = ui.max_rect().height() - 2.0 * ui.spacing_mut().button_padding.y;
+    let desired_icon_height = ui.max_rect().height() - 4.0; // TODO(emilk): figure out this fudge
+
+    let icon_image = app.re_ui.icon_image(&re_ui::icons::RERUN_MENU);
+    let image_size = icon_image.size_vec2() * (desired_icon_height / icon_image.size_vec2().y);
+    let texture_id = icon_image.texture_id(ui.ctx());
+
+    ui.menu_image_button(texture_id, image_size, |ui| {
+        ui.set_min_width(220.0);
+        let spacing = 12.0;
+
+        main_view_selector_ui(ui, app);
+
+        ui.add_space(spacing);
+
+        Command::ToggleCommandPalette.menu_button_ui(ui, &mut app.pending_commands);
+
+        ui.add_space(spacing);
+
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            Command::Open.menu_button_ui(ui, &mut app.pending_commands);
+
+            save_buttons_ui(ui, app);
+
+            ui.add_space(spacing);
+
+            // On the web the browser controls the zoom
+            egui::gui_zoom::zoom_menu_buttons(ui, _frame.info().native_pixels_per_point);
+
+            Command::ToggleFullscreen.menu_button_ui(ui, &mut app.pending_commands);
+
+            ui.add_space(spacing);
+        }
+
+        {
+            Command::ResetViewer.menu_button_ui(ui, &mut app.pending_commands);
+
+            #[cfg(not(target_arch = "wasm32"))]
+            Command::OpenProfiler.menu_button_ui(ui, &mut app.pending_commands);
+
+            Command::ToggleMemoryPanel.menu_button_ui(ui, &mut app.pending_commands);
+        }
+
+        ui.add_space(spacing);
+
+        ui.menu_button("Recordings", |ui| {
+            recordings_menu(ui, app);
+        });
+
+        #[cfg(debug_assertions)]
+        ui.menu_button("Debug", |ui| {
+            debug_menu(ui);
+        });
+
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            ui.add_space(spacing);
+            Command::Quit.menu_button_ui(ui, &mut app.pending_commands);
+        }
+    });
+}
+
 fn top_bar_ui(
     ui: &mut egui::Ui,
     frame: &mut eframe::Frame,
     app: &mut App,
     gpu_resource_stats: &WgpuResourcePoolStatistics,
 ) {
-    #[cfg(not(target_arch = "wasm32"))]
-    ui.menu_button("File", |ui| {
-        file_menu(ui, app);
-    });
+    rerun_menu_button_ui(ui, frame, app);
 
-    ui.menu_button("View", |ui| {
-        view_menu(ui, app, frame);
-    });
-
-    ui.menu_button("Recordings", |ui| {
-        recordings_menu(ui, app);
-    });
-
-    #[cfg(debug_assertions)]
-    ui.menu_button("Debug", |ui| {
-        debug_menu(ui);
-    });
-
-    if !app.log_db().is_empty() {
+    if cfg!(debug_assertions) {
         ui.separator();
-        ui.selectable_value(
-            &mut app.state.panel_selection,
-            PanelSelection::Viewport,
-            "Viewport",
-        );
-
-        ui.selectable_value(
-            &mut app.state.panel_selection,
-            PanelSelection::EventLog,
-            "Event Log",
-        );
-    }
-
-    if let Some(frame_time) = app.frame_time_history.average() {
-        ui.separator();
-        let ms = frame_time * 1e3;
-
-        let visuals = ui.visuals();
-        let color = if ms < 15.0 {
-            visuals.weak_text_color()
-        } else {
-            visuals.warn_fg_color
-        };
-
-        // we use monospace so the width doesn't fluctuate as the numbers change.
-        let text = format!("{ms:.1} ms");
-        ui.label(egui::RichText::new(text).monospace().color(color))
-            .on_hover_text("CPU time used by Rerun Viewer each frame. Lower is better.");
-    }
-
-    if let Some(count) = re_memory::accounting_allocator::global_allocs() {
-        ui.separator();
-        // we use monospace so the width doesn't fluctuate as the numbers change.
-
-        let bytes_used_text = re_format::format_bytes(count.size as _);
-        ui.label(
-            egui::RichText::new(&bytes_used_text)
-                .monospace()
-                .color(ui.visuals().weak_text_color()),
-        )
-        .on_hover_text(format!(
-            "Rerun Viewer is using {} of RAM in {} separate allocations,\n\
-            plus {} of GPU memory in {} textures and {} buffers.",
-            bytes_used_text,
-            format_number(count.count),
-            re_format::format_bytes(gpu_resource_stats.total_bytes() as _),
-            format_number(gpu_resource_stats.num_textures),
-            format_number(gpu_resource_stats.num_buffers),
-        ));
-    }
-
-    if let Some(rx) = &app.rx {
-        let is_latency_interesting = match rx.source() {
-            re_smart_channel::Source::Network => true, // presumable live
-            re_smart_channel::Source::File => false,   // pre-recorded. latency doesn't matter
-        };
-
-        let queue_len = rx.len();
-
-        // empty queue == unreliable latency
-        let latency_sec = rx.latency_ns() as f32 / 1e9;
-        if queue_len > 0
-            && (!is_latency_interesting || app.state.options.warn_latency < latency_sec)
-        {
-            // we use this to avoid flicker
-            app.latest_queue_interest = instant::Instant::now();
-        }
-
-        if app.latest_queue_interest.elapsed().as_secs_f32() < 1.0 {
-            ui.separator();
-            if is_latency_interesting {
-                let text = format!(
-                    "Latency: {:.2}s, queue: {}",
-                    latency_sec,
-                    format_number(queue_len),
-                );
-                let hover_text =
-                    "When more data is arriving over network than the Rerun Viewer can index, a queue starts building up, leading to latency and increased RAM use.\n\
-                    This latency does NOT include network latency.";
-
-                if latency_sec < app.state.options.warn_latency {
-                    ui.weak(text).on_hover_text(hover_text);
-                } else {
-                    ui.label(app.re_ui.warning_text(text))
-                        .on_hover_text(hover_text);
-                }
-            } else {
-                ui.weak(format!("Queue: {}", format_number(queue_len)))
-                    .on_hover_text("Number of messages in the inbound queue");
-            }
-        }
+        frame_time_label_ui(ui, app);
+        memory_use_label_ui(ui, gpu_resource_stats);
+        input_latency_label_ui(ui, app);
     }
 
     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-        if !WATERMARK {
-            let logo = app.re_ui.rerun_logo();
-            let response = ui
-                .add(egui::ImageButton::new(
-                    logo.texture_id(ui.ctx()),
-                    logo.size_vec2() * 16.0 / logo.size_vec2().y,
-                ))
-                .on_hover_text("https://rerun.io");
-            if response.clicked() {
-                ui.output().open_url = Some(egui::output::OpenUrl::new_tab("https://rerun.io"));
-            }
-        }
-
         if let Some(log_db) = app.log_dbs.get(&app.state.selected_rec_id) {
             let selected_app_id = log_db
                 .recording_info()
@@ -1048,6 +1029,89 @@ fn top_bar_ui(
     });
 }
 
+fn frame_time_label_ui(ui: &mut egui::Ui, app: &mut App) {
+    if let Some(frame_time) = app.frame_time_history.average() {
+        let ms = frame_time * 1e3;
+
+        let visuals = ui.visuals();
+        let color = if ms < 15.0 {
+            visuals.weak_text_color()
+        } else {
+            visuals.warn_fg_color
+        };
+
+        // we use monospace so the width doesn't fluctuate as the numbers change.
+        let text = format!("{ms:.1} ms");
+        ui.label(egui::RichText::new(text).monospace().color(color))
+            .on_hover_text("CPU time used by Rerun Viewer each frame. Lower is better.");
+    }
+}
+fn memory_use_label_ui(ui: &mut egui::Ui, gpu_resource_stats: &WgpuResourcePoolStatistics) {
+    if let Some(count) = re_memory::accounting_allocator::global_allocs() {
+        // we use monospace so the width doesn't fluctuate as the numbers change.
+
+        let bytes_used_text = re_format::format_bytes(count.size as _);
+        ui.label(
+            egui::RichText::new(&bytes_used_text)
+                .monospace()
+                .color(ui.visuals().weak_text_color()),
+        )
+        .on_hover_text(format!(
+            "Rerun Viewer is using {} of RAM in {} separate allocations,\n\
+            plus {} of GPU memory in {} textures and {} buffers.",
+            bytes_used_text,
+            format_number(count.count),
+            re_format::format_bytes(gpu_resource_stats.total_bytes() as _),
+            format_number(gpu_resource_stats.num_textures),
+            format_number(gpu_resource_stats.num_buffers),
+        ));
+    }
+}
+
+fn input_latency_label_ui(ui: &mut egui::Ui, app: &mut App) {
+    if let Some(rx) = &app.rx {
+        let is_latency_interesting = match rx.source() {
+            re_smart_channel::Source::Network => true, // presumable live
+            re_smart_channel::Source::File => false,   // pre-recorded. latency doesn't matter
+        };
+
+        let queue_len = rx.len();
+
+        // empty queue == unreliable latency
+        let latency_sec = rx.latency_ns() as f32 / 1e9;
+        if queue_len > 0
+            && (!is_latency_interesting || app.state.options.warn_latency < latency_sec)
+        {
+            // we use this to avoid flicker
+            app.latest_queue_interest = instant::Instant::now();
+        }
+
+        if app.latest_queue_interest.elapsed().as_secs_f32() < 1.0 {
+            ui.separator();
+            if is_latency_interesting {
+                let text = format!(
+                    "Latency: {:.2}s, queue: {}",
+                    latency_sec,
+                    format_number(queue_len),
+                );
+                let hover_text =
+                    "When more data is arriving over network than the Rerun Viewer can index, a queue starts building up, leading to latency and increased RAM use.\n\
+                    This latency does NOT include network latency.";
+
+                if latency_sec < app.state.options.warn_latency {
+                    ui.weak(text).on_hover_text(hover_text);
+                } else {
+                    ui.label(app.re_ui.warning_text(text))
+                        .on_hover_text(hover_text);
+                }
+            } else {
+                ui.weak(format!("Queue: {}", format_number(queue_len)))
+                    .on_hover_text("Number of messages in the inbound queue");
+            }
+        }
+    }
+}
+
 // ----------------------------------------------------------------------------
 
 const FILE_SAVER_PROMISE: &str = "file_saver";
@@ -1097,65 +1161,54 @@ fn file_saver_progress_ui(egui_ctx: &egui::Context, app: &mut App) {
     }
 }
 
+// TODO(emilk): support saving data on web
 #[cfg(not(target_arch = "wasm32"))]
-fn file_menu(ui: &mut egui::Ui, app: &mut App) {
-    ui.set_min_width(220.0);
+fn save_buttons_ui(ui: &mut egui::Ui, app: &mut App) {
+    let file_save_in_progress = app.promise_exists(FILE_SAVER_PROMISE);
 
-    // TODO(emilk): support saving data on web
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        let file_save_in_progress = app.promise_exists(FILE_SAVER_PROMISE);
+    let save_button = Command::Save.menu_button(ui.ctx());
+    let save_selection_button = Command::SaveSelection.menu_button(ui.ctx());
 
-        let save_button = Command::Save.menu_button(ui.ctx());
-        let save_selection_button = Command::SaveSelection.menu_button(ui.ctx());
-
-        if file_save_in_progress {
-            ui.add_enabled_ui(false, |ui| {
-                ui.horizontal(|ui| {
-                    ui.add(save_button);
-                    ui.spinner();
-                });
-                ui.horizontal(|ui| {
-                    ui.add(save_selection_button);
-                    ui.spinner();
-                });
+    if file_save_in_progress {
+        ui.add_enabled_ui(false, |ui| {
+            ui.horizontal(|ui| {
+                ui.add(save_button);
+                ui.spinner();
             });
-        } else {
-            ui.add_enabled_ui(!app.log_db().is_empty(), |ui| {
-                if ui
-                    .add(save_button)
-                    .on_hover_text("Save all data to a Rerun data file (.rrd)")
-                    .clicked()
-                {
-                    ui.close_menu();
-                    app.pending_commands.push(Command::Save);
-                }
-
-                // We need to know the loop selection _before_ we can even display the
-                // button, as this will determine wether its grayed out or not!
-                // TODO(cmc): In practice the loop (green) selection is always there
-                // at the moment so...
-                let loop_selection = app.loop_selection();
-
-                if ui
-                    .add_enabled(loop_selection.is_some(), save_selection_button)
-                    .on_hover_text(
-                        "Save data for the current loop selection to a Rerun data file (.rrd)",
-                    )
-                    .clicked()
-                {
-                    ui.close_menu();
-                    app.pending_commands.push(Command::SaveSelection);
-                }
+            ui.horizontal(|ui| {
+                ui.add(save_selection_button);
+                ui.spinner();
             });
-        }
+        });
+    } else {
+        ui.add_enabled_ui(!app.log_db().is_empty(), |ui| {
+            if ui
+                .add(save_button)
+                .on_hover_text("Save all data to a Rerun data file (.rrd)")
+                .clicked()
+            {
+                ui.close_menu();
+                app.pending_commands.push(Command::Save);
+            }
+
+            // We need to know the loop selection _before_ we can even display the
+            // button, as this will determine wether its grayed out or not!
+            // TODO(cmc): In practice the loop (green) selection is always there
+            // at the moment so...
+            let loop_selection = app.loop_selection();
+
+            if ui
+                .add_enabled(loop_selection.is_some(), save_selection_button)
+                .on_hover_text(
+                    "Save data for the current loop selection to a Rerun data file (.rrd)",
+                )
+                .clicked()
+            {
+                ui.close_menu();
+                app.pending_commands.push(Command::SaveSelection);
+            }
+        });
     }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    Command::Open.menu_button_ui(ui, &mut app.pending_commands);
-
-    #[cfg(not(target_arch = "wasm32"))]
-    Command::Quit.menu_button_ui(ui, &mut app.pending_commands);
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -1194,33 +1247,33 @@ fn save(app: &mut App, loop_selection: Option<(re_data_store::Timeline, TimeRang
     }
 }
 
-fn view_menu(ui: &mut egui::Ui, app: &mut App, frame: &mut eframe::Frame) {
-    ui.set_min_width(220.0);
-
-    // On the web the browser controls the zoom
-    if !frame.is_web() {
-        egui::gui_zoom::zoom_menu_buttons(ui, frame.info().native_pixels_per_point);
-        ui.separator();
+fn main_view_selector_ui(ui: &mut egui::Ui, app: &mut App) {
+    if !app.log_db().is_empty() {
+        ui.horizontal(|ui| {
+            ui.label("Main view:");
+            if ui
+                .selectable_value(
+                    &mut app.state.panel_selection,
+                    PanelSelection::Viewport,
+                    "Viewport",
+                )
+                .clicked()
+            {
+                ui.close_menu();
+            }
+            if ui
+                .selectable_value(
+                    &mut app.state.panel_selection,
+                    PanelSelection::EventLog,
+                    "Event Log",
+                )
+                .clicked()
+            {
+                ui.close_menu();
+            }
+        });
     }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        Command::ToggleFullscreen.menu_button_ui(ui, &mut app.pending_commands);
-        ui.separator();
-    }
-
-    Command::ResetViewer.menu_button_ui(ui, &mut app.pending_commands);
-
-    #[cfg(not(target_arch = "wasm32"))]
-    Command::OpenProfiler.menu_button_ui(ui, &mut app.pending_commands);
-
-    ui.separator();
-
-    Command::ToggleCommandPalette.menu_button_ui(ui, &mut app.pending_commands);
-    Command::ToggleMemoryPanel.menu_button_ui(ui, &mut app.pending_commands);
 }
-
-// ---
 
 fn recordings_menu(ui: &mut egui::Ui, app: &mut App) {
     let log_dbs = app

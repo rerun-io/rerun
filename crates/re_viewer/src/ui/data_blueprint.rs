@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use nohash_hasher::{IntMap, IntSet};
 use re_data_store::{ObjPath, ObjectProps, ObjectsProperties};
 use slotmap::SlotMap;
@@ -24,7 +26,10 @@ pub struct DataBlueprintGroup {
 
     pub children: SmallVec<[DataBlueprintGroupHandle; 4]>,
 
-    pub objects: IntSet<ObjPath>,
+    /// Direct child objects of this blueprint group.
+    ///
+    /// Musn't be a `HashSet` because we want to preserve order of object paths.
+    pub objects: BTreeSet<ObjPath>,
 }
 
 /// Data blueprints for all object paths in a space view.
@@ -99,16 +104,35 @@ impl DataBlueprintTree {
     }
 
     /// Resolves a data blueprint group handle.
-    pub fn get_group(&self, handle: DataBlueprintGroupHandle) -> Option<&DataBlueprintGroup> {
+    pub fn group(&self, handle: DataBlueprintGroupHandle) -> Option<&DataBlueprintGroup> {
         self.groups.get(handle)
     }
 
     /// Resolves a data blueprint group handle.
-    pub fn get_group_mut(
+    pub fn group_mut(
         &mut self,
         handle: DataBlueprintGroupHandle,
     ) -> Option<&mut DataBlueprintGroup> {
         self.groups.get_mut(handle)
+    }
+
+    /// Calls the visitor function on every object path in the given group and its descending groups.
+    pub fn visit_group_objects_recursively(
+        &self,
+        handle: DataBlueprintGroupHandle,
+        visitor: &mut impl FnMut(&ObjPath),
+    ) {
+        let Some(group) = self.groups.get(handle) else {
+            return;
+        };
+
+        for object in &group.objects {
+            visitor(object);
+        }
+
+        for child in &group.children {
+            self.visit_group_objects_recursively(*child, visitor);
+        }
     }
 
     /// Returns object properties with the hierarchy applied.
@@ -219,7 +243,7 @@ impl DataBlueprintTree {
             }
 
             // Remove group.
-            let single_object = leaf_group.objects.drain().next().unwrap();
+            let single_object = leaf_group.objects.iter().next().unwrap().clone();
             let parent_group_handle = leaf_group.parent;
             self.groups.remove(leaf_group_handle);
 

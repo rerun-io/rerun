@@ -12,6 +12,9 @@ impl Icon {
     }
 }
 
+pub const RERUN_MENU: Icon =
+    Icon::new("rerun_menu", include_bytes!("../data/icons/rerun_menu.png"));
+
 pub const PLAY: Icon = Icon::new("play", include_bytes!("../data/icons/play.png"));
 pub const PAUSE: Icon = Icon::new("pause", include_bytes!("../data/icons/pause.png"));
 pub const ARROW_LEFT: Icon =
@@ -37,3 +40,6 @@ pub const LEFT_PANEL_TOGGLE: Icon = Icon::new(
 
 pub const MINIMIZE: Icon = Icon::new("minimize", include_bytes!("../data/icons/minimize.png"));
 pub const MAXIMIZE: Icon = Icon::new("maximize", include_bytes!("../data/icons/maximize.png"));
+
+pub const ADD: Icon = Icon::new("add", include_bytes!("../data/icons/add.png"));
+pub const RESET: Icon = Icon::new("reset", include_bytes!("../data/icons/reset.png"));

@@ -12,7 +12,7 @@ use re_data_store::{ObjPath, ObjectsProperties, TimeInt};
 use crate::{
     misc::{
         space_info::{SpaceInfo, SpacesInfo},
-        Selection, ViewerContext,
+        Selection, SpaceViewHighlights, ViewerContext,
     },
     ui::view_spatial::{SceneSpatial, SpatialNavigationMode},
 };
@@ -40,7 +40,7 @@ fn query_scene_spatial(
         obj_props: &Default::default(), // all visible
     };
     let mut scene = SceneSpatial::default();
-    scene.load_objects(ctx, &query, transforms);
+    scene.load_objects(ctx, &query, transforms, &SpaceViewHighlights::default());
     scene
 }
 
@@ -310,7 +310,7 @@ impl Viewport {
         space_view_id: &SpaceViewId,
         space_view_visible: bool,
     ) {
-        let Some(group) = data_blueprint_tree.get_group(group_handle) else {
+        let Some(group) = data_blueprint_tree.group(group_handle) else {
             debug_assert!(false, "Invalid group handle in blueprint group tree");
             return;
         };
@@ -325,7 +325,7 @@ impl Viewport {
             ui.horizontal(|ui| {
                 let name = path.iter().last().unwrap().to_string();
 
-                ctx.space_view_obj_path_button_to(ui, name, *space_view_id, path);
+                ctx.data_blueprint_button_to(ui, name, *space_view_id, path);
 
                 let mut properties = data_blueprint_tree.data_blueprints_individual().get(path);
                 if visibility_button(ui, group_is_visible, &mut properties.visible).changed() {
@@ -337,7 +337,7 @@ impl Viewport {
         }
 
         for child_group_handle in &children {
-            let Some(child_group) = data_blueprint_tree.get_group_mut(*child_group_handle) else {
+            let Some(child_group) = data_blueprint_tree.group_mut(*child_group_handle) else {
                 debug_assert!(false, "Data blueprint group {group_name} has an invalid child");
                 continue;
             };
@@ -351,7 +351,7 @@ impl Viewport {
             )
             .show_header(ui, |ui| {
                 ui.label("📁");
-                ctx.datablueprint_group_button_to(
+                ctx.data_blueprint_group_button_to(
                     ui,
                     &child_group.display_name,
                     *space_view_id,
@@ -467,13 +467,15 @@ impl Viewport {
             // nothing to show
         } else if num_space_views == 1 {
             let space_view_id = *tree.tabs().next().unwrap();
+            let highlights = ctx
+                .selection_state()
+                .highlights_for_space_view(space_view_id, &self.space_views);
             let space_view = self
                 .space_views
                 .get_mut(&space_view_id)
                 .expect("Should have been populated beforehand");
-
             let response = ui
-                .scope(|ui| space_view_ui(ctx, ui, spaces_info, space_view))
+                .scope(|ui| space_view_ui(ctx, ui, spaces_info, space_view, &highlights))
                 .response;
 
             let frame = ctx.re_ui.hovering_frame();
@@ -482,13 +484,15 @@ impl Viewport {
                 help_text_ui(ui, space_view);
             });
         } else if let Some(space_view_id) = self.maximized {
+            let highlights = ctx
+                .selection_state()
+                .highlights_for_space_view(space_view_id, &self.space_views);
             let space_view = self
                 .space_views
                 .get_mut(&space_view_id)
                 .expect("Should have been populated beforehand");
-
             let response = ui
-                .scope(|ui| space_view_ui(ctx, ui, spaces_info, space_view))
+                .scope(|ui| space_view_ui(ctx, ui, spaces_info, space_view, &highlights))
                 .response;
 
             let frame = ctx.re_ui.hovering_frame();
@@ -528,7 +532,7 @@ impl Viewport {
         }
     }
 
-    pub fn create_new_blueprint_ui(
+    pub fn add_new_spaceview_button_ui(
         &mut self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
@@ -536,57 +540,72 @@ impl Viewport {
     ) {
         #![allow(clippy::collapsible_if)]
 
-        ui.vertical_centered(|ui| {
-            ui.menu_button("Add new space view…", |ui| {
-                ui.style_mut().wrap = Some(false);
+        let icon_image = ctx.re_ui.icon_image(&re_ui::icons::ADD);
+        let texture_id = icon_image.texture_id(ui.ctx());
+        ui.menu_image_button(texture_id, re_ui::ReUi::small_icon_size(), |ui| {
+            ui.style_mut().wrap = Some(false);
 
-                let all_categories = enumset::EnumSet::<ViewCategory>::all();
+            let all_categories = enumset::EnumSet::<ViewCategory>::all();
 
-                for space_info in spaces_info.iter() {
-                    let transforms = TransformCache::determine_transforms(
-                        spaces_info,
+            for space_info in spaces_info.iter() {
+                let transforms = TransformCache::determine_transforms(
+                    spaces_info,
+                    space_info,
+                    &ObjectsProperties::default(),
+                );
+
+                for category in all_categories {
+                    let obj_paths = SpaceView::default_queried_objects(
+                        ctx,
+                        category,
                         space_info,
-                        &ObjectsProperties::default(),
+                        spaces_info,
+                        &transforms,
                     );
+                    if obj_paths.is_empty() {
+                        continue;
+                    }
 
-                    for category in all_categories {
-                        let obj_paths = SpaceView::default_queried_objects(
-                            ctx,
+                    if ui
+                        .button(format!("{} {}", category.icon(), space_info.path))
+                        .clicked()
+                    {
+                        ui.close_menu();
+
+                        let transforms = TransformCache::determine_transforms(
+                            spaces_info,
+                            space_info,
+                            &ObjectsProperties::default(),
+                        );
+
+                        let scene_spatial = query_scene_spatial(ctx, &obj_paths, &transforms);
+                        let new_space_view_id = self.add_space_view(SpaceView::new(
                             category,
                             space_info,
-                            spaces_info,
-                            &transforms,
-                        );
-                        if obj_paths.is_empty() {
-                            continue;
-                        }
-
-                        if ui
-                            .button(format!("{} {}", category.icon(), space_info.path))
-                            .clicked()
-                        {
-                            ui.close_menu();
-
-                            let transforms = TransformCache::determine_transforms(
-                                spaces_info,
-                                space_info,
-                                &ObjectsProperties::default(),
-                            );
-
-                            let scene_spatial = query_scene_spatial(ctx, &obj_paths, &transforms);
-                            let new_space_view_id = self.add_space_view(SpaceView::new(
-                                category,
-                                space_info,
-                                &obj_paths,
-                                scene_spatial.preferred_navigation_mode(&space_info.path),
-                                transforms.clone(),
-                            ));
-                            ctx.set_single_selection(Selection::SpaceView(new_space_view_id));
-                        }
+                            &obj_paths,
+                            scene_spatial.preferred_navigation_mode(&space_info.path),
+                            transforms.clone(),
+                        ));
+                        ctx.set_single_selection(Selection::SpaceView(new_space_view_id));
                     }
                 }
-            });
-        });
+            }
+        })
+        .response
+        .on_hover_text("Add new space view.");
+    }
+
+    pub fn space_views_containing_obj_path(&self, path: &ObjPath) -> Vec<SpaceViewId> {
+        self.space_views
+            .iter()
+            .filter_map(|(space_view_id, space_view)| {
+                if space_view.data_blueprint.contains_object(path) {
+                    Some(*space_view_id)
+                } else {
+                    None
+                }
+            })
+            .collect()
     }
 }
 
@@ -622,13 +641,17 @@ impl<'a, 'b> egui_dock::TabViewer for TabViewer<'a, 'b> {
     fn ui(&mut self, ui: &mut egui::Ui, space_view_id: &mut Self::Tab) {
         crate::profile_function!();
 
+        let highlights = self
+            .ctx
+            .selection_state()
+            .highlights_for_space_view(*space_view_id, self.space_views);
         let space_view = self
             .space_views
             .get_mut(space_view_id)
             .expect("Should have been populated beforehand");
 
         let response = ui
-            .scope(|ui| space_view_ui(self.ctx, ui, self.spaces_info, space_view))
+            .scope(|ui| space_view_ui(self.ctx, ui, self.spaces_info, space_view, &highlights))
             .response;
 
         // Show buttons for maximize and space view options:
@@ -687,8 +710,8 @@ fn space_view_options_link(
     ui: &mut egui::Ui,
     text: &str,
 ) {
-    let is_selected =
-        ctx.selection().check_space_view(space_view_id).is_exact() && *selection_panel_expanded;
+    let selection = Selection::SpaceView(space_view_id);
+    let is_selected = ctx.selection().contains(&selection) && *selection_panel_expanded;
     if ui
         .selectable_label(is_selected, text)
         .on_hover_text("Space View options")
@@ -698,7 +721,7 @@ fn space_view_options_link(
             ctx.selection_state_mut().clear_current();
             *selection_panel_expanded = false;
         } else {
-            ctx.set_single_selection(Selection::SpaceView(space_view_id));
+            ctx.set_single_selection(selection);
             *selection_panel_expanded = true;
         }
     }
@@ -721,6 +744,7 @@ fn space_view_ui(
     ui: &mut egui::Ui,
     spaces_info: &SpacesInfo,
     space_view: &mut SpaceView,
+    space_view_highlights: &SpaceViewHighlights,
 ) {
     let Some(reference_space_info) = spaces_info.get(&space_view.space_path) else {
         ui.centered_and_justified(|ui| {
@@ -736,7 +760,13 @@ fn space_view_ui(
         return
     };
 
-    space_view.scene_ui(ctx, ui, reference_space_info, latest_at);
+    space_view.scene_ui(
+        ctx,
+        ui,
+        reference_space_info,
+        latest_at,
+        space_view_highlights,
+    );
 }
 
 // ----------------------------------------------------------------------------

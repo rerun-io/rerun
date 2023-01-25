@@ -15,12 +15,7 @@ enum StoreSelect {
     Mixed,
 }
 
-// TODO(#707): Make this the default for Debug-builds, and eventually release builds
-//#[cfg(debug_assertions)]
-//const DEFAULT_STORE: StoreSelect = StoreSelect::Arrow;
-
-//#[cfg(not(debug_assertions))]
-const DEFAULT_STORE: StoreSelect = StoreSelect::Classic;
+const DEFAULT_STORE: StoreSelect = StoreSelect::Arrow;
 
 lazy_static! {
     static ref ARROW_PREFIX: InternedString = "arrow".into();
@@ -38,6 +33,7 @@ pub struct Session {
 
     application_id: Option<ApplicationId>,
     recording_id: Option<RecordingId>,
+    is_official_example: Option<bool>,
 
     has_sent_begin_recording_msg: bool,
 
@@ -67,14 +63,16 @@ impl Session {
             registered_types: Default::default(),
             application_id: None,
             recording_id: None,
+            is_official_example: None,
             has_sent_begin_recording_msg: false,
             store_select,
         }
     }
 
-    pub fn set_application_id(&mut self, application_id: ApplicationId) {
+    pub fn set_application_id(&mut self, application_id: ApplicationId, is_official_example: bool) {
         if self.application_id.as_ref() != Some(&application_id) {
             self.application_id = Some(application_id);
+            self.is_official_example = Some(is_official_example);
             self.has_sent_begin_recording_msg = false;
         }
     }
@@ -213,6 +211,7 @@ impl Session {
                         info: RecordingInfo {
                             application_id,
                             recording_id,
+                            is_official_example: self.is_official_example.unwrap_or_default(),
                             started: Time::now(),
                             recording_source: re_log_types::RecordingSource::PythonSdk,
                         },

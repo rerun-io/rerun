@@ -113,6 +113,8 @@ pub fn query_entity_with_primary<Primary: Component>(
     ent_path: &ObjPath,
     components: &[ComponentName],
 ) -> crate::Result<EntityView<Primary>> {
+    crate::profile_function!();
+
     let primary = get_component_with_instances(store, query, ent_path, Primary::name())?;
 
     // TODO(jleibs): lots of room for optimization here. Once "instance" is

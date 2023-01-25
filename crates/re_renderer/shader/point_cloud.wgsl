@@ -173,7 +173,7 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
     // TODO(andreas): This doesn't even use the sphere's world position for shading, the world position used here is flat!
     var shading = 1.0;
     if has_any_flag(batch.flags, ENABLE_SHADING) {
-        shading = max(0.2, 1.2 - distance(in.point_center, in.world_position) / in.radius); // quick and dirty coloring)
+        shading = max(0.4, sqrt(1.2 - distance(in.point_center, in.world_position) / in.radius)); // quick and dirty coloring
     }
     return vec4(in.color.rgb * shading, coverage);
 }

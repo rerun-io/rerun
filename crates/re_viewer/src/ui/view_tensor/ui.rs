@@ -375,22 +375,23 @@ fn color_mapping_ui(
 #[derive(Copy, Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
 enum TextureScaling {
     /// No scaling, texture size will match the tensor's width/height dimensions.
-    None,
+    Original,
+
     /// Scale the texture for the largest possible fit in the UI container.
-    Fit,
+    Fill,
 }
 
 impl Default for TextureScaling {
     fn default() -> Self {
-        Self::Fit
+        Self::Fill
     }
 }
 
 impl Display for TextureScaling {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            TextureScaling::None => "None".fmt(f),
-            TextureScaling::Fit => "Fit".fmt(f),
+            TextureScaling::Original => "Original".fmt(f),
+            TextureScaling::Fill => "Fill".fmt(f),
         }
     }
 }
@@ -433,8 +434,8 @@ impl TextureSettings {
         let img_size = egui::vec2(image.size[0] as _, image.size[1] as _);
         let img_size = Vec2::max(Vec2::splat(1.0), img_size); // better safe than sorry
         let desired_size = match self.scaling {
-            TextureScaling::None => img_size + margin,
-            TextureScaling::Fit => {
+            TextureScaling::Original => img_size + margin,
+            TextureScaling::Fill => {
                 let desired_size = ui.available_size() - margin;
                 if self.keep_aspect_ratio {
                     let scale = (desired_size / img_size).min_elem();
@@ -465,45 +466,52 @@ impl TextureSettings {
 // ui
 impl TextureSettings {
     fn show(&mut self, ui: &mut egui::Ui) {
+        fn tf_to_string(tf: egui::TextureFilter) -> &'static str {
+            match tf {
+                egui::TextureFilter::Nearest => "Nearest",
+                egui::TextureFilter::Linear => "Linear",
+            }
+        }
+
         ui.group(|ui| {
-            ui.horizontal(|ui| {
-                egui::ComboBox::from_label("Texture scaling")
+            egui::Grid::new("texture_settings").show(ui, |ui| {
+                ui.label("Scale:");
+                egui::ComboBox::from_id_source("texture_scaling")
                     .selected_text(self.scaling.to_string())
                     .show_ui(ui, |ui| {
+                        ui.style_mut().wrap = Some(false);
+                        ui.set_min_width(64.0);
+
                         let mut selectable_value = |ui: &mut egui::Ui, e| {
                             ui.selectable_value(&mut self.scaling, e, e.to_string())
                         };
-                        selectable_value(ui, TextureScaling::None);
-                        selectable_value(ui, TextureScaling::Fit);
+                        selectable_value(ui, TextureScaling::Original);
+                        selectable_value(ui, TextureScaling::Fill);
                     });
-                ui.checkbox(&mut self.keep_aspect_ratio, "Keep aspect ratio");
+
+                if self.scaling == TextureScaling::Fill {
+                    ui.checkbox(&mut self.keep_aspect_ratio, "Keep aspect ratio");
+                }
+                ui.end_row();
+
+                ui.label("Filter:")
+                    .on_hover_text("Texture magnification filter");
+                egui::ComboBox::from_id_source("texture_filter")
+                    .selected_text(tf_to_string(self.options.magnification))
+                    .show_ui(ui, |ui| {
+                        ui.style_mut().wrap = Some(false);
+                        ui.set_min_width(64.0);
+
+                        let mut selectable_value = |ui: &mut egui::Ui, e| {
+                            ui.selectable_value(&mut self.options.magnification, e, tf_to_string(e))
+                        };
+                        selectable_value(ui, egui::TextureFilter::Linear);
+                        selectable_value(ui, egui::TextureFilter::Nearest);
+                    });
+                ui.end_row();
             });
-
-            texture_filter_ui(
-                ui,
-                "Texture magnification filter",
-                &mut self.options.magnification,
-            );
         });
     }
-}
-
-fn texture_filter_ui(ui: &mut egui::Ui, label: &str, filter: &mut egui::TextureFilter) {
-    fn tf_to_string(tf: egui::TextureFilter) -> &'static str {
-        match tf {
-            egui::TextureFilter::Nearest => "Nearest",
-            egui::TextureFilter::Linear => "Linear",
-        }
-    }
-
-    egui::ComboBox::from_label(label)
-        .selected_text(tf_to_string(*filter))
-        .show_ui(ui, |ui| {
-            let mut selectable_value =
-                |ui: &mut egui::Ui, e| ui.selectable_value(filter, e, tf_to_string(e));
-            selectable_value(ui, egui::TextureFilter::Linear);
-            selectable_value(ui, egui::TextureFilter::Nearest);
-        });
 }
 
 // ----------------------------------------------------------------------------

@@ -14,7 +14,7 @@ use re_query::{query_primary_with_history, EntityView, QueryError};
 use re_renderer::Size;
 
 use crate::{
-    misc::{caches::AsDynamicImage, ViewerContext},
+    misc::{caches::AsDynamicImage, SpaceViewHighlights, ViewerContext},
     ui::{
         scene::SceneQuery,
         transform_cache::{ReferenceFromObjTransform, TransformCache},
@@ -39,6 +39,8 @@ fn push_tensor_texture<T: AsDynamicImage>(
     tensor: &T,
     tint: egui::Rgba,
 ) {
+    crate::profile_function!();
+
     let tensor_view =
         ctx.cache
             .image
@@ -71,6 +73,7 @@ impl ScenePart for ImagesPartClassic {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
+        highlights: &SpaceViewHighlights,
     ) {
         crate::profile_scope!("ImagesPartClassic");
 
@@ -83,9 +86,6 @@ impl ScenePart for ImagesPartClassic {
             let ReferenceFromObjTransform::Reachable(world_from_obj) = transforms.reference_from_obj(obj_path) else {
                 continue;
             };
-
-            let hovered_paths = ctx.hovered().check_obj_path(obj_path.hash());
-            let selected_paths = ctx.selection().check_obj_path(obj_path.hash());
 
             let visitor = |instance_index: Option<&IndexHash>,
                            _time: i64,
@@ -106,16 +106,16 @@ impl ScenePart for ImagesPartClassic {
                     .annotation_info()
                     .color(color, DefaultColor::OpaqueWhite);
 
-                let hovered = hovered_paths.contains_index(instance_hash.instance_index_hash);
-                let selected = selected_paths.contains_index(instance_hash.instance_index_hash);
-                if hovered || selected {
+                let highlight = highlights
+                    .object_highlight(instance_hash.obj_path_hash)
+                    .index_highlight(instance_hash.instance_index_hash);
+                if highlight.any() {
                     let mut color = SceneSpatial::HOVER_COLOR;
                     let mut radius = Size::new_points(1.0);
                     SceneSpatial::apply_hover_and_selection_effect(
                         &mut radius,
                         &mut color,
-                        hovered,
-                        selected,
+                        highlight,
                     );
 
                     let rect =
@@ -161,6 +161,8 @@ impl ScenePart for ImagesPartClassic {
 }
 
 fn handle_image_layering(scene: &mut SceneSpatial) {
+    crate::profile_function!();
+
     // Handle layered rectangles that are on (roughly) the same plane and were logged in sequence.
     // First, group by similar plane.
     // TODO(andreas): Need planes later for picking as well!
@@ -226,15 +228,16 @@ impl ImagesPart {
         properties: &ObjectProps,
         ent_path: &ObjPath,
         world_from_obj: glam::Mat4,
+        highlights: &SpaceViewHighlights,
     ) -> Result<(), QueryError> {
-        let hovered_paths = ctx.hovered().check_obj_path(ent_path.hash());
-        let selected_paths = ctx.selection().check_obj_path(ent_path.hash());
+        crate::profile_function!();
 
         for (instance, tensor, color) in itertools::izip!(
             entity_view.iter_instances()?,
             entity_view.iter_primary()?,
             entity_view.iter_component::<ColorRGBA>()?
         ) {
+            crate::profile_scope!("loop_iter");
             if let Some(tensor) = tensor {
                 if !tensor.is_shaped_like_an_image() {
                     return Ok(());
@@ -255,13 +258,14 @@ impl ImagesPart {
                     DefaultColor::OpaqueWhite,
                 );
 
-                let hovered = hovered_paths.contains_index(instance_hash.instance_index_hash);
-                if hovered || selected_paths.contains_index(instance_hash.instance_index_hash) {
-                    let color = if hovered {
-                        SceneSpatial::HOVER_COLOR
-                    } else {
-                        SceneSpatial::SELECTION_COLOR
-                    };
+                let highlight = highlights
+                    .object_highlight(instance_hash.obj_path_hash)
+                    .index_highlight(instance_hash.instance_index_hash);
+                if highlight.any() {
+                    let color = SceneSpatial::apply_hover_and_selection_effect_color(
+                        re_renderer::Color32::TRANSPARENT,
+                        highlight,
+                    );
                     let rect =
                         glam::vec2(tensor.shape()[1].size as f32, tensor.shape()[0].size as f32);
                     scene
@@ -307,6 +311,7 @@ impl ScenePart for ImagesPart {
         ctx: &mut ViewerContext<'_>,
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
+        highlights: &SpaceViewHighlights,
     ) {
         crate::profile_scope!("ImagesPart");
 
@@ -332,6 +337,7 @@ impl ScenePart for ImagesPart {
                         &props,
                         ent_path,
                         world_from_obj,
+                        highlights,
                     )?;
                 }
                 Ok(())

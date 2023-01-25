@@ -135,23 +135,11 @@ impl TimePanel {
     fn collapsed_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
         ctx.rec_cfg
             .time_ctrl
-            .play_pause_ui(ctx.re_ui, ctx.log_db.times_per_timeline(), ui);
-
-        ui.separator();
-
-        ctx.rec_cfg
-            .time_ctrl
-            .timeline_selector_ui(ctx.log_db.times_per_timeline(), ui);
-
-        ui.separator();
+            .time_control_ui(ctx.re_ui, ctx.log_db.times_per_timeline(), ui);
 
         {
-            let time_range_width = 400.0;
             let mut time_range_rect = ui.available_rect_before_wrap();
-            time_range_rect.max.x = f32::min(
-                time_range_rect.max.x - 220.0, // save space for current time and help button,
-                time_range_rect.min.x + time_range_width,
-            );
+            time_range_rect.max.x -= 220.0; // save space for current time
 
             if time_range_rect.width() > 50.0 {
                 let time_ranges_ui =
@@ -212,7 +200,7 @@ impl TimePanel {
             let top = ui.min_rect().bottom();
 
             let size = egui::vec2(self.prev_col_width, 28.0);
-            ui.allocate_ui_with_layout(size, egui::Layout::top_down(egui::Align::Center), |ui| {
+            ui.allocate_ui_with_layout(size, egui::Layout::top_down(egui::Align::LEFT), |ui| {
                 ui.set_min_size(size);
                 ui.add_space(4.0); // hack to vertically center the text
                 ui.strong("Streams");
@@ -349,8 +337,9 @@ impl TimePanel {
         if !tree
             .prefix_times
             .has_timeline(ctx.rec_cfg.time_ctrl.timeline())
+            && tree.timeless_msgs.is_empty()
         {
-            return; // ignore objects that have no data for the current timeline
+            return; // ignore objects that have no data for the current timeline and no timeless data.
         }
 
         // The last part of the the path component
@@ -368,7 +357,7 @@ impl TimePanel {
                 collapsing_header_id,
                 default_open,
             )
-            .show_header(ui, |ui| ctx.obj_path_button_to(ui, text, &tree.path))
+            .show_header(ui, |ui| ctx.obj_path_button_to(ui, None, &tree.path, text))
             .body(|ui| {
                 self.show_children(ctx, time_area_response, time_area_painter, tree, ui);
             });
@@ -399,23 +388,29 @@ impl TimePanel {
         // show the data in the time area:
 
         if is_visible && is_closed {
-            if let Some(messages_over_time) =
-                tree.prefix_times.get(ctx.rec_cfg.time_ctrl.timeline())
-            {
-                show_data_over_time(
-                    ctx,
-                    time_area_response,
-                    time_area_painter,
-                    ui,
-                    messages_over_time,
-                    full_width_rect,
-                    &self.time_ranges_ui,
-                    Some(Selection::Instance(InstanceId {
+            let empty_messages_over_time = BTreeMap::default();
+            let messages_over_time = tree
+                .prefix_times
+                .get(ctx.rec_cfg.time_ctrl.timeline())
+                .unwrap_or(&empty_messages_over_time);
+
+            show_data_over_time(
+                ctx,
+                time_area_response,
+                time_area_painter,
+                ui,
+                &tree.timeless_msgs,
+                messages_over_time,
+                full_width_rect,
+                &self.time_ranges_ui,
+                Some(Selection::Instance(
+                    None,
+                    InstanceId {
                         obj_path: tree.path.clone(),
                         instance_index: None,
-                    })),
-                );
-            }
+                    },
+                )),
+            );
         }
     }
 
@@ -443,7 +438,9 @@ impl TimePanel {
             let indent = ui.spacing().indent;
 
             for (field_name, data) in &tree.fields {
-                if !data.times.contains_key(ctx.rec_cfg.time_ctrl.timeline()) {
+                if !data.times.contains_key(ctx.rec_cfg.time_ctrl.timeline())
+                    && data.timeless_msgs.is_empty()
+                {
                     continue; // ignore fields that have no data for the current timeline
                 }
 
@@ -497,22 +494,24 @@ impl TimePanel {
                 }
 
                 // show the data in the time area:
-
                 if is_visible {
-                    if let Some(messages_over_time) =
-                        data.times.get(ctx.rec_cfg.time_ctrl.timeline())
-                    {
-                        show_data_over_time(
-                            ctx,
-                            time_area_response,
-                            time_area_painter,
-                            ui,
-                            messages_over_time,
-                            full_width_rect,
-                            &self.time_ranges_ui,
-                            Some(Selection::DataPath(data_path)),
-                        );
-                    }
+                    let empty_messages_over_time = BTreeMap::default();
+                    let messages_over_time = data
+                        .times
+                        .get(ctx.rec_cfg.time_ctrl.timeline())
+                        .unwrap_or(&empty_messages_over_time);
+
+                    show_data_over_time(
+                        ctx,
+                        time_area_response,
+                        time_area_painter,
+                        ui,
+                        &data.timeless_msgs,
+                        messages_over_time,
+                        full_width_rect,
+                        &self.time_ranges_ui,
+                        Some(Selection::DataPath(data_path)),
+                    );
                 }
             }
         }
@@ -522,19 +521,12 @@ impl TimePanel {
 fn top_row_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
     ctx.rec_cfg
         .time_ctrl
-        .play_pause_ui(ctx.re_ui, ctx.log_db.times_per_timeline(), ui);
+        .time_control_ui(ctx.re_ui, ctx.log_db.times_per_timeline(), ui);
 
-    ui.separator();
-
-    ctx.rec_cfg
-        .time_ctrl
-        .timeline_selector_ui(ctx.log_db.times_per_timeline(), ui);
+    current_time_ui(ctx, ui);
 
     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
         help_button(ui);
-        ui.centered_and_justified(|ui| {
-            current_time_ui(ctx, ui);
-        });
     });
 }
 
@@ -564,6 +556,7 @@ fn show_data_over_time(
     time_area_response: &egui::Response,
     time_area_painter: &egui::Painter,
     ui: &mut egui::Ui,
+    timeless_msgs: &BTreeSet<MsgId>,
     messages_over_time: &BTreeMap<TimeInt, BTreeSet<MsgId>>,
     full_width_rect: Rect,
     time_ranges_ui: &TimeRangesUi,
@@ -666,8 +659,8 @@ fn show_data_over_time(
 
     let selected_time_range = ctx.rec_cfg.time_ctrl.active_loop_selection();
 
-    for (&time, msg_ids) in
-        messages_over_time.range(visible_time_range.min..=visible_time_range.max)
+    for (&time, msg_ids) in std::iter::once((&TimeInt::BEGINNING, timeless_msgs))
+        .chain(messages_over_time.range(visible_time_range.min..=visible_time_range.max))
     {
         if msg_ids.is_empty() {
             continue;
@@ -754,21 +747,38 @@ fn show_msg_ids_tooltip(ctx: &mut ViewerContext<'_>, egui_ctx: &egui::Context, m
 fn initialize_time_ranges_ui(
     ctx: &mut ViewerContext<'_>,
     time_x_range: RangeInclusive<f32>,
-    time_view: Option<TimeView>,
+    mut time_view: Option<TimeView>,
 ) -> TimeRangesUi {
     crate::profile_function!();
+
+    // If there's any timeless data, add the "beginning range" that contains timeless data.
+    let mut time_range = if !ctx.log_db.timeless_msgs().is_empty() {
+        vec![TimeRange {
+            min: TimeInt::BEGINNING,
+            max: TimeInt::BEGINNING,
+        }]
+    } else {
+        Vec::new()
+    };
+
     if let Some(times) = ctx
         .log_db
         .times_per_timeline()
         .get(ctx.rec_cfg.time_ctrl.timeline())
     {
         let timeline_axis = TimelineAxis::new(ctx.rec_cfg.time_ctrl.time_type(), times);
-        let time_view = time_view.unwrap_or_else(|| view_everything(&time_x_range, &timeline_axis));
-
-        TimeRangesUi::new(time_x_range, time_view, &timeline_axis.ranges)
-    } else {
-        Default::default()
+        time_view = time_view.or_else(|| Some(view_everything(&time_x_range, &timeline_axis)));
+        time_range.extend(timeline_axis.ranges);
     }
+
+    TimeRangesUi::new(
+        time_x_range,
+        time_view.unwrap_or(TimeView {
+            min: TimeReal::from(0),
+            time_spanned: 1.0,
+        }),
+        &time_range,
+    )
 }
 
 fn paint_time_ranges_and_ticks(
@@ -1376,9 +1386,9 @@ fn time_marker_ui(
             }
 
             let stroke = if response.dragged() {
-                ui.style().visuals.widgets.active.bg_stroke
+                ui.style().visuals.widgets.active.fg_stroke
             } else if is_hovering {
-                ui.style().visuals.widgets.hovered.bg_stroke
+                ui.style().visuals.widgets.hovered.fg_stroke
             } else {
                 ui.visuals().widgets.inactive.fg_stroke
             };

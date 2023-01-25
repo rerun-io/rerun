@@ -124,7 +124,6 @@ fn generic_instance_ui(
 ) {
     let timeline = ctx.rec_cfg.time_ctrl.timeline();
     let Some(store) = ctx.log_db.obj_db.store.get(timeline) else {
-        ui.label(ctx.re_ui.error_text("No store with timeline {timeline}."));
         return;
     };
     let Some(time_i64) = ctx.rec_cfg.time_ctrl.time_i64() else {
@@ -133,7 +132,7 @@ fn generic_instance_ui(
     };
     let time_query = re_data_store::TimeQuery::LatestAt(time_i64);
     let Some(obj_store) = store.get(&instance_id.obj_path) else {
-        ui.label(ctx.re_ui.error_text(format!("No object at path {}", instance_id.obj_path)));
+        ui.weak("No data logged.");
         return;
     };
 

@@ -25,10 +25,20 @@ impl SelectionHistory {
         blueprint: &Blueprint,
     ) -> Option<HistoricalSelection> {
         ui.horizontal(|ui|{
-            let prev = self.prev_button_ui(ui, blueprint);
-            let next = self.next_button_ui(ui, blueprint);
             ui.strong("Selection").on_hover_text("The Selection View contains information and options about the currently selected object(s).");
-            prev.or(next)
+
+            // TODO(emilk): an egui helper for right-to-left
+            ui.allocate_ui_with_layout(
+                egui::vec2(
+                    ui.available_size_before_wrap().x,
+                    ui.spacing().interact_size.y,
+                ),
+                egui::Layout::right_to_left(egui::Align::Center),
+                |ui| {
+                    let next = self.next_button_ui(ui, blueprint);
+                    let prev = self.prev_button_ui(ui, blueprint);
+                    prev.or(next)
+                }).inner
         }).inner
     }
 
@@ -178,10 +188,10 @@ fn single_selection_to_string(blueprint: &Blueprint, sel: &Selection) -> String 
                 "<removed space view>".to_owned()
             }
         }
-        Selection::SpaceViewObjPath(_, obj_path) => obj_path.to_string(),
+        Selection::Instance(_, obj_path) => obj_path.to_string(),
         Selection::DataBlueprintGroup(sid, handle) => {
             if let Some(space_view) = blueprint.viewport.space_view(sid) {
-                if let Some(group) = space_view.data_blueprint.get_group(*handle) {
+                if let Some(group) = space_view.data_blueprint.group(*handle) {
                     group.display_name.clone()
                 } else {
                     format!("<removed group in {}>", space_view.name)
@@ -191,7 +201,6 @@ fn single_selection_to_string(blueprint: &Blueprint, sel: &Selection) -> String 
             }
         }
         Selection::MsgId(s) => s.to_string(),
-        Selection::Instance(s) => s.to_string(),
         Selection::DataPath(s) => s.to_string(),
     }
 }

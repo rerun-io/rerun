@@ -1,8 +1,10 @@
-use ahash::HashSet;
+use ahash::{HashMap, HashSet};
 use itertools::Itertools;
+use nohash_hasher::IntMap;
 use re_data_store::{LogDb, ObjPath};
+use re_log_types::{IndexHash, ObjPathHash};
 
-use crate::ui::{Blueprint, HistoricalSelection, SelectionHistory};
+use crate::ui::{Blueprint, HistoricalSelection, SelectionHistory, SpaceView, SpaceViewId};
 
 use super::{MultiSelection, Selection};
 
@@ -24,6 +26,97 @@ pub enum HoveredSpace {
         /// 2D spaces and pixel coordinates (with Z=depth)
         target_spaces: Vec<(ObjPath, Option<glam::Vec3>)>,
     },
+}
+
+/// Selection highlight, sorted from weakest to strongest.
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
+pub enum SelectionHighlight {
+    /// No selection highlight at all.
+    #[default]
+    None,
+
+    /// A closely related object is selected, should apply similar highlight to selection.
+    /// (e.g. data in a different space view)
+    SiblingSelection,
+
+    /// Should apply selection highlight (i.e. the exact selection is highlighted).
+    Selection,
+}
+
+/// Hover highlight, sorted from weakest to strongest.
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
+pub enum HoverHighlight {
+    /// No hover highlight.
+    #[default]
+    None,
+
+    /// Apply hover highlight, does *not* exclude a selection highlight.
+    Hovered,
+}
+
+/// Combination of selection & hover highlight which can occur independently.
+#[derive(Copy, Clone, PartialEq, Eq, Default)]
+pub struct InteractionHighlight {
+    pub selection: SelectionHighlight,
+    pub hover: HoverHighlight,
+}
+
+impl InteractionHighlight {
+    /// Any active highlight at all.
+    pub fn any(&self) -> bool {
+        self.selection != SelectionHighlight::None || self.hover != HoverHighlight::None
+    }
+
+    /// Picks the stronger selection & hover highlight from two highlight descriptions.
+    pub fn max(&self, other: InteractionHighlight) -> Self {
+        Self {
+            selection: self.selection.max(other.selection),
+            hover: self.hover.max(other.hover),
+        }
+    }
+}
+
+/// Highlights of a specific object path in a specific space view.
+///
+/// Using this in bulk on many instances is faster than querying single objects.
+#[derive(Default)]
+pub struct SpaceViewObjectHighlight {
+    overall: InteractionHighlight,
+    instances: IntMap<IndexHash, InteractionHighlight>,
+}
+
+#[derive(Copy, Clone)]
+pub struct OptionalSpaceViewObjectHighlight<'a>(Option<&'a SpaceViewObjectHighlight>);
+
+impl<'a> OptionalSpaceViewObjectHighlight<'a> {
+    pub fn index_highlight(&self, index: IndexHash) -> InteractionHighlight {
+        match self.0 {
+            Some(object_highlight) => object_highlight
+                .instances
+                .get(&index)
+                .cloned()
+                .unwrap_or_default()
+                .max(object_highlight.overall),
+            None => InteractionHighlight::default(),
+        }
+    }
+}
+
+/// Highlights in a specific space view.
+///
+/// Using this in bulk on many objects is faster than querying single objects.
+#[derive(Default)]
+pub struct SpaceViewHighlights {
+    highlighted_object_paths: IntMap<ObjPathHash, SpaceViewObjectHighlight>,
+}
+
+impl SpaceViewHighlights {
+    pub fn object_highlight(
+        &self,
+        obj_path_hash: ObjPathHash,
+    ) -> OptionalSpaceViewObjectHighlight<'_> {
+        OptionalSpaceViewObjectHighlight(self.highlighted_object_paths.get(&obj_path_hash))
+    }
 }
 
 /// Selection and hover state
@@ -148,5 +241,112 @@ impl SelectionState {
         blueprint: &mut Blueprint,
     ) -> Option<MultiSelection> {
         self.history.selection_ui(ui, blueprint)
+    }
+
+    pub fn highlights_for_space_view(
+        &self,
+        space_view_id: SpaceViewId,
+        space_views: &HashMap<SpaceViewId, SpaceView>,
+    ) -> SpaceViewHighlights {
+        crate::profile_function!();
+
+        let mut highlighted_object_paths =
+            IntMap::<ObjPathHash, SpaceViewObjectHighlight>::default();
+
+        for current_selection in self.selection.iter() {
+            match current_selection {
+                Selection::MsgId(_) | Selection::DataPath(_) | Selection::SpaceView(_) => {}
+
+                Selection::DataBlueprintGroup(group_space_view_id, group_handle) => {
+                    if *group_space_view_id == space_view_id {
+                        if let Some(space_view) = space_views.get(group_space_view_id) {
+                            space_view.data_blueprint.visit_group_objects_recursively(
+                                *group_handle,
+                                &mut |obj_path: &ObjPath| {
+                                    highlighted_object_paths
+                                        .entry(obj_path.hash())
+                                        .or_default()
+                                        .overall
+                                        .selection = SelectionHighlight::SiblingSelection;
+                                },
+                            );
+                        }
+                    }
+                }
+
+                Selection::Instance(selected_space_view_context, selected_instance) => {
+                    let highlight = if *selected_space_view_context == Some(space_view_id) {
+                        SelectionHighlight::Selection
+                    } else {
+                        SelectionHighlight::SiblingSelection
+                    };
+
+                    let highlighted_object = highlighted_object_paths
+                        .entry(selected_instance.obj_path.hash())
+                        .or_default();
+
+                    let highlight_target =
+                        if let Some(selected_index) = &selected_instance.instance_index {
+                            &mut highlighted_object
+                                .instances
+                                .entry(selected_index.hash())
+                                .or_default()
+                                .selection
+                        } else {
+                            &mut highlighted_object.overall.selection
+                        };
+
+                    *highlight_target = (*highlight_target).max(highlight);
+                }
+            };
+        }
+
+        for current_hover in self.hovered_previous_frame.iter() {
+            match current_hover {
+                Selection::MsgId(_) | Selection::DataPath(_) | Selection::SpaceView(_) => {}
+
+                Selection::DataBlueprintGroup(group_space_view_id, group_handle) => {
+                    // Unlike for selected objects/data we are more picky for data blueprints with our hover highlights
+                    // since they are truly local to a space view.
+                    if *group_space_view_id == space_view_id {
+                        if let Some(space_view) = space_views.get(group_space_view_id) {
+                            space_view.data_blueprint.visit_group_objects_recursively(
+                                *group_handle,
+                                &mut |obj_path: &ObjPath| {
+                                    highlighted_object_paths
+                                        .entry(obj_path.hash())
+                                        .or_default()
+                                        .overall
+                                        .hover = HoverHighlight::Hovered;
+                                },
+                            );
+                        }
+                    }
+                }
+
+                Selection::Instance(_, selected_instance) => {
+                    let highlighted_object = highlighted_object_paths
+                        .entry(selected_instance.obj_path.hash())
+                        .or_default();
+
+                    let highlight_target =
+                        if let Some(selected_index) = &selected_instance.instance_index {
+                            &mut highlighted_object
+                                .instances
+                                .entry(selected_index.hash())
+                                .or_default()
+                                .hover
+                        } else {
+                            &mut highlighted_object.overall.hover
+                        };
+
+                    *highlight_target = HoverHighlight::Hovered;
+                }
+            };
+        }
+
+        SpaceViewHighlights {
+            highlighted_object_paths,
+        }
     }
 }
