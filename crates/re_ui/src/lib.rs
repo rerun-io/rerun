@@ -158,7 +158,7 @@ impl ReUi {
     /// Paint a watermark
     pub fn paint_watermark(&self) {
         let logo = self.rerun_logo();
-        let screen_rect = self.egui_ctx.input().screen_rect;
+        let screen_rect = self.egui_ctx.screen_rect();
         let size = logo.size_vec2();
         let rect = Align2::RIGHT_BOTTOM
             .align_size_within_rect(size, screen_rect)

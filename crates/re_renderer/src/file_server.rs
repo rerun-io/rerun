@@ -45,7 +45,10 @@ macro_rules! include_file {
             // filesystem.
             $crate::workspace_shaders::init();
 
-            let path = ::std::path::Path::new(file!())
+            // On windows file!() will return '\'-style paths, but this code may end up
+            // running in wasm where '\\' will cause issues. If we're actually running on
+            // windows, `Path` will do the right thing for us.
+            let path = ::std::path::Path::new(&file!().replace('\\', "/"))
                 .parent()
                 .unwrap()
                 .join($path);

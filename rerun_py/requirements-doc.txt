@@ -1,0 +1,8 @@
+mkdocs
+mkdocs-gen-files
+mkdocs-literate-nav
+mkdocs-material
+mkdocs-material-extensions
+mkdocs-redirects
+mkdocstrings
+mkdocstrings-python
