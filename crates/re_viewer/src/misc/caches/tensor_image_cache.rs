@@ -171,7 +171,9 @@ impl CachedImage {
         crate::profile_function!();
 
         match tensor.as_dynamic_image(annotations) {
-            Ok(dynamic_img) => Self::from_dynamic_image(render_ctx, debug_name, dynamic_img),
+            Ok(dynamic_img) => {
+                Self::from_dynamic_image(render_ctx, debug_name, dynamic_img, tensor.meaning())
+            }
             Err(err) => {
                 re_log::warn!("Bad image {debug_name:?}: {}", re_error::format(&err));
 
@@ -190,10 +192,14 @@ impl CachedImage {
         render_ctx: &mut RenderContext,
         debug_name: String,
         dynamic_img: DynamicImage,
+        meaning: TensorDataMeaning,
     ) -> Self {
         crate::profile_function!();
 
-        let egui_color_image = dynamic_image_to_egui_color_image(&dynamic_img);
+        // TODO(andreas): We should not need to create an egui image and instead pass re_renderer's texture to egui if need to be.
+        //                  This will save lots of time, memory and frees us up for more formats and colormapping.
+        //                  See also https://github.com/rerun-io/rerun/issues/910
+        let egui_color_image = dynamic_image_to_egui_color_image(&dynamic_img, meaning);
 
         let memory_used = egui_color_image.pixels.len() * std::mem::size_of::<egui::Color32>()
             + dynamic_img.as_bytes().len();
@@ -336,62 +342,58 @@ impl AsDynamicImage for ClassicTensor {
                             .context("Bad Luminance16")
                             .map(DynamicImage::ImageLuma16)
                     }
-                    (1, TensorDataType::F32, _) => {
-                        let assume_depth = true; // TODO(emilk): we should read some meta-data to check if this is luminance, alpha or a depth map.
-
-                        if assume_depth {
-                            if bytes.is_empty() {
-                                Ok(DynamicImage::ImageLuma16(Gray16Image::default()))
-                            } else {
-                                let floats = bytemuck::cast_slice(bytes);
-
-                                // Convert to u16 so we can put them in an image.
-                                // TODO(emilk): Eventually we want a renderer that can show f32 images natively.
-                                // One big downside of the approach below is that if we have two dept images
-                                // in the same range, they cannot be visually compared with each other,
-                                // because their individual max-depths will be scaled to 65535.
-
-                                let mut min = f32::INFINITY;
-                                let mut max = f32::NEG_INFINITY;
-                                for &float in floats {
-                                    min = min.min(float);
-                                    max = max.max(float);
-                                }
-
-                                anyhow::ensure!(
-                                    min.is_finite() && max.is_finite(),
-                                    "Depth image had non-finite values"
-                                );
-
-                                if min == max {
-                                    // Uniform image. We can't remap it to a 0-1 range, so do whatever:
-                                    let ints = floats.iter().map(|&float| float as u16).collect();
-                                    Gray16Image::from_raw(width, height, ints)
-                                        .context("Bad Luminance16")
-                                        .map(DynamicImage::ImageLuma16)
-                                } else {
-                                    let ints = floats
-                                        .iter()
-                                        .map(|&float| {
-                                            egui::remap(float, min..=max, 0.0..=65535.0) as u16
-                                        })
-                                        .collect();
-
-                                    Gray16Image::from_raw(width, height, ints)
-                                        .context("Bad Luminance16")
-                                        .map(DynamicImage::ImageLuma16)
-                                }
-                            }
+                    (1, TensorDataType::F32, TensorDataMeaning::Depth) => {
+                        if bytes.is_empty() {
+                            Ok(DynamicImage::ImageLuma16(Gray16Image::default()))
                         } else {
-                            let l: &[f32] = bytemuck::cast_slice(bytes);
-                            let colors: Vec<u8> =
-                                l.iter().copied().map(linear_u8_from_linear_f32).collect();
-                            image::GrayImage::from_raw(width, height, colors)
-                                .context("Bad Luminance f32")
-                                .map(DynamicImage::ImageLuma8)
+                            let floats = bytemuck::cast_slice(bytes);
+
+                            // Convert to u16 so we can put them in an image.
+                            // TODO(emilk): Eventually we want a renderer that can show f32 images natively.
+                            // One big downside of the approach below is that if we have two depth images
+                            // in the same range, they cannot be visually compared with each other,
+                            // because their individual max-depths will be scaled to 65535.
+
+                            let mut min = f32::INFINITY;
+                            let mut max = f32::NEG_INFINITY;
+                            for &float in floats {
+                                min = min.min(float);
+                                max = max.max(float);
+                            }
+
+                            anyhow::ensure!(
+                                min.is_finite() && max.is_finite(),
+                                "Depth image had non-finite values"
+                            );
+
+                            if min == max {
+                                // Uniform image. We can't remap it to a 0-1 range, so do whatever:
+                                let ints = floats.iter().map(|&float| float as u16).collect();
+                                Gray16Image::from_raw(width, height, ints)
+                                    .context("Bad Luminance16")
+                                    .map(DynamicImage::ImageLuma16)
+                            } else {
+                                let ints = floats
+                                    .iter()
+                                    .map(|&float| {
+                                        egui::remap(float, min..=max, 0.0..=65535.0) as u16
+                                    })
+                                    .collect();
+
+                                Gray16Image::from_raw(width, height, ints)
+                                    .context("Bad Luminance16")
+                                    .map(DynamicImage::ImageLuma16)
+                            }
                         }
                     }
-
+                    (1, TensorDataType::F32, _) => {
+                        let l: &[f32] = bytemuck::cast_slice(bytes);
+                        let colors: Vec<u8> =
+                            l.iter().copied().map(linear_u8_from_linear_f32).collect();
+                        image::GrayImage::from_raw(width, height, colors)
+                            .context("Bad Luminance f32")
+                            .map(DynamicImage::ImageLuma8)
+                    }
                     (3, TensorDataType::U8, _) => {
                         image::RgbImage::from_raw(width, height, bytes.to_vec())
                             .context("Bad RGB8")
@@ -480,37 +482,54 @@ impl AsDynamicImage for ClassicTensor {
     }
 }
 
-fn dynamic_image_to_egui_color_image(dynamic_image: &DynamicImage) -> ColorImage {
+fn dynamic_image_to_egui_color_image(
+    dynamic_image: &DynamicImage,
+    meaning: TensorDataMeaning,
+) -> ColorImage {
     crate::profile_function!();
-    match dynamic_image {
-        DynamicImage::ImageLuma8(gray) => ColorImage {
+
+    match (dynamic_image, meaning) {
+        // TODO(#910): Color maps shouldn't be hardcoded.
+        (DynamicImage::ImageLuma16(gray), TensorDataMeaning::Depth) => ColorImage {
+            size: [gray.width() as _, gray.height() as _],
+            pixels: gray
+                .pixels()
+                .map(|pixel| {
+                    crate::misc::color_map::turbo_color_map((pixel[0] as f32) / (u16::MAX as f32))
+                })
+                .collect(),
+        },
+        (DynamicImage::ImageLuma8(gray), _) => ColorImage {
             size: [gray.width() as _, gray.height() as _],
             pixels: gray
                 .pixels()
                 .map(|pixel| Color32::from_gray(pixel[0]))
                 .collect(),
         },
-        DynamicImage::ImageLuma16(gray) => ColorImage {
+        (DynamicImage::ImageLuma16(gray), _) => ColorImage {
             size: [gray.width() as _, gray.height() as _],
             pixels: gray
                 .pixels()
                 .map(|pixel| Color32::from_gray((pixel[0] / 256) as u8))
                 .collect(),
         },
-        DynamicImage::ImageRgb8(rgb) => ColorImage {
+        (DynamicImage::ImageRgb8(rgb), _) => ColorImage {
             size: [rgb.width() as _, rgb.height() as _],
             pixels: rgb
                 .pixels()
                 .map(|rgb| Color32::from_rgb(rgb[0], rgb[1], rgb[2]))
                 .collect(),
         },
-        DynamicImage::ImageRgba8(rgba) => ColorImage {
+        (DynamicImage::ImageRgba8(rgba), _) => ColorImage {
             size: [rgba.width() as _, rgba.height() as _],
             pixels: rgba
                 .pixels()
                 .map(|rgba| Color32::from_rgba_unmultiplied(rgba[0], rgba[1], rgba[2], rgba[3]))
                 .collect(),
         },
-        _ => dynamic_image_to_egui_color_image(&DynamicImage::ImageRgba8(dynamic_image.to_rgba8())),
+        _ => dynamic_image_to_egui_color_image(
+            &DynamicImage::ImageRgba8(dynamic_image.to_rgba8()),
+            meaning,
+        ),
     }
 }

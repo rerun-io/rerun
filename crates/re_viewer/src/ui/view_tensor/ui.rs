@@ -350,10 +350,7 @@ impl ColorMapping {
                 let lum = (f * 255.0 + 0.5) as u8;
                 Color32::from_gray(lum)
             }
-            ColorMap::Turbo => {
-                let [r, g, b] = crate::misc::color_map::turbo_color_map(f);
-                Color32::from_rgb(r, g, b)
-            }
+            ColorMap::Turbo => crate::misc::color_map::turbo_color_map(f),
             ColorMap::Virdis => {
                 let [r, g, b] = crate::misc::color_map::viridis_color_map(f);
                 Color32::from_rgb(r, g, b)
