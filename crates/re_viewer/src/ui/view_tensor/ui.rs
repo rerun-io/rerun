@@ -308,17 +308,34 @@ pub(crate) fn view_tensor(
 
 // ----------------------------------------------------------------------------
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+enum ColorMap {
+    Greyscale,
+    Turbo,
+    Virdis,
+}
+
+impl std::fmt::Display for ColorMap {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            ColorMap::Greyscale => "Greyscale",
+            ColorMap::Turbo => "Turbo",
+            ColorMap::Virdis => "Viridis",
+        })
+    }
+}
+
 /// How we map values to colors.
 #[derive(Copy, Clone, Debug, serde::Deserialize, serde::Serialize)]
 struct ColorMapping {
-    turbo: bool,
+    map: ColorMap,
     gamma: f32,
 }
 
 impl Default for ColorMapping {
     fn default() -> Self {
         Self {
-            turbo: true,
+            map: ColorMap::Virdis,
             gamma: 1.0,
         }
     }
@@ -328,12 +345,19 @@ impl ColorMapping {
     pub fn color_from_normalized(&self, f: f32) -> Color32 {
         let f = f.powf(self.gamma);
 
-        if self.turbo {
-            let [r, g, b] = crate::misc::color_map::turbo_color_map(f);
-            Color32::from_rgb(r, g, b)
-        } else {
-            let lum = (f * 255.0 + 0.5) as u8;
-            Color32::from_gray(lum)
+        match self.map {
+            ColorMap::Greyscale => {
+                let lum = (f * 255.0 + 0.5) as u8;
+                Color32::from_gray(lum)
+            }
+            ColorMap::Turbo => {
+                let [r, g, b] = crate::misc::color_map::turbo_color_map(f);
+                Color32::from_rgb(r, g, b)
+            }
+            ColorMap::Virdis => {
+                let [r, g, b] = crate::misc::color_map::viridis_color_map(f);
+                Color32::from_rgb(r, g, b)
+            }
         }
     }
 }
@@ -347,10 +371,26 @@ fn color_mapping_ui(
     ui.group(|ui| {
         ui.strong("Color map");
 
-        ui.horizontal(|ui| {
-            ui.radio_value(&mut color_mapping.turbo, false, "Grayscale");
-            ui.radio_value(&mut color_mapping.turbo, true, "Turbo");
-        });
+        egui::ComboBox::from_id_source("color map select")
+            .selected_text(color_mapping.map.to_string())
+            .show_ui(ui, |ui| {
+                ui.style_mut().wrap = Some(false);
+                ui.selectable_value(
+                    &mut color_mapping.map,
+                    ColorMap::Greyscale,
+                    ColorMap::Greyscale.to_string(),
+                );
+                ui.selectable_value(
+                    &mut color_mapping.map,
+                    ColorMap::Virdis,
+                    ColorMap::Virdis.to_string(),
+                );
+                ui.selectable_value(
+                    &mut color_mapping.map,
+                    ColorMap::Turbo,
+                    ColorMap::Turbo.to_string(),
+                );
+            });
 
         let mut brightness = 1.0 / color_mapping.gamma;
         ui.add(
