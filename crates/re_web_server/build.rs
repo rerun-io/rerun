@@ -89,7 +89,7 @@ fn build_web() {
     let crate_name = "re_viewer";
     let build_dir = "web_viewer";
 
-    let wasm_path = Path::new(build_dir).join(crate_name.to_owned() + "_bg.wasm");
+    let wasm_path = Path::new(build_dir).join([crate_name, "_bg.wasm"].concat());
     fs::remove_file(wasm_path.clone()).ok();
 
     let metadata = MetadataCommand::new()
@@ -98,7 +98,7 @@ fn build_web() {
         .exec()
         .unwrap();
 
-    let target_wasm = metadata.target_directory.to_string() + "_wasm";
+    let target_wasm = [metadata.target_directory.as_str(), "_wasm"].concat();
     let release = std::env::var("PROFILE").unwrap() == "release";
 
     let root_dir = metadata.target_directory.parent().unwrap();
@@ -146,7 +146,8 @@ fn build_web() {
 
     let build = if release { "release" } else { "debug" };
 
-    let target_name = crate_name.to_owned() + ".wasm";
+    let target_name = [crate_name, ".wasm"].concat();
+
     let target_path = Path::new(&target_wasm)
         .join("wasm32-unknown-unknown")
         .join(build)
