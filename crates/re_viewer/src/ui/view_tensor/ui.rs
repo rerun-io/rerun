@@ -329,8 +329,7 @@ impl ColorMapping {
         let f = f.powf(self.gamma);
 
         if self.turbo {
-            let [r, g, b] = crate::misc::color_map::turbo_color_map(f);
-            Color32::from_rgb(r, g, b)
+            crate::misc::color_map::turbo_color_map(f)
         } else {
             let lum = (f * 255.0 + 0.5) as u8;
             Color32::from_gray(lum)
