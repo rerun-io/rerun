@@ -96,8 +96,8 @@ const DETAILS: &str = "
         data sources or recordings most, which helps us prioritize features.
     - We associate events with:
         - Metadata about the Rerun build (version, target platform, etc).
-        - A persistent and clearable random id that is used to associate events from
-          multiple sessions together. To clear it run `rerun analytics clear`.
+        - A persistent random id that is used to associate events from
+          multiple sessions together. To regenerate it run `rerun analytics clear`.
     - We may associate these events with a hashed `application_id` and `recording_id`,
       so that we can understand if users are more likely to look at few applications often,
       or tend to use Rerun for many temporary scripts. Again, this helps us prioritize.
