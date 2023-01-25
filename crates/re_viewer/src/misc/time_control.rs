@@ -87,7 +87,13 @@ pub struct TimeControl {
 
     states: BTreeMap<Timeline, TimeState>,
 
-    play_state: PlayState,
+    /// If true, we are either in [`PlayState::Playing`] or [`PlayState::following`].
+    playing: bool,
+
+    /// If true, we are in "follow" mode (see `PlayState::Following`).
+    /// Ignored when [`Self.playing`] is `false`.
+    following: bool,
+
     speed: f32,
 
     pub looping: Looping,
@@ -98,7 +104,8 @@ impl Default for TimeControl {
         Self {
             timeline: Default::default(),
             states: Default::default(),
-            play_state: PlayState::Following,
+            playing: true,
+            following: true,
             speed: 1.0,
             looping: Looping::Off,
         }
@@ -114,7 +121,7 @@ impl TimeControl {
             return;
         };
 
-        match self.play_state {
+        match self.play_state() {
             PlayState::Paused => {}
             PlayState::Playing => {
                 let dt = egui_ctx.input(|i| i.stable_dt).at_most(0.1) * self.speed;
@@ -171,41 +178,59 @@ impl TimeControl {
     }
 
     pub fn play_state(&self) -> PlayState {
-        self.play_state
-    }
-
-    pub fn play(&mut self, times_per_timeline: &TimesPerTimeline) {
-        // Start from beginning if we are at the end:
-        if let Some(time_points) = times_per_timeline.get(&self.timeline) {
-            if let Some(state) = self.states.get_mut(&self.timeline) {
-                if state.time >= max(time_points) {
-                    state.time = min(time_points).into();
-                }
+        if self.playing {
+            if self.following {
+                PlayState::Following
             } else {
-                self.states
-                    .insert(self.timeline, TimeState::new(min(time_points)));
+                PlayState::Playing
             }
+        } else {
+            PlayState::Paused
         }
-        self.play_state = PlayState::Playing;
     }
 
-    pub fn follow(&mut self, times_per_timeline: &TimesPerTimeline) {
-        if let Some(time_points) = times_per_timeline.get(&self.timeline) {
-            // Set the time to the max:
-            match self.states.entry(self.timeline) {
-                std::collections::btree_map::Entry::Vacant(entry) => {
-                    entry.insert(TimeState::new(max(time_points)));
+    pub fn set_play_state(&mut self, times_per_timeline: &TimesPerTimeline, play_state: PlayState) {
+        match play_state {
+            PlayState::Paused => {
+                self.playing = false;
+            }
+            PlayState::Playing => {
+                self.playing = true;
+                self.following = false;
+
+                // Start from beginning if we are at the end:
+                if let Some(time_points) = times_per_timeline.get(&self.timeline) {
+                    if let Some(state) = self.states.get_mut(&self.timeline) {
+                        if state.time >= max(time_points) {
+                            state.time = min(time_points).into();
+                        }
+                    } else {
+                        self.states
+                            .insert(self.timeline, TimeState::new(min(time_points)));
+                    }
                 }
-                std::collections::btree_map::Entry::Occupied(mut entry) => {
-                    entry.get_mut().time = max(time_points).into();
+            }
+            PlayState::Following => {
+                self.playing = true;
+                self.following = true;
+
+                if let Some(time_points) = times_per_timeline.get(&self.timeline) {
+                    // Set the time to the max:
+                    match self.states.entry(self.timeline) {
+                        std::collections::btree_map::Entry::Vacant(entry) => {
+                            entry.insert(TimeState::new(max(time_points)));
+                        }
+                        std::collections::btree_map::Entry::Occupied(mut entry) => {
+                            entry.get_mut().time = max(time_points).into();
+                        }
+                    }
                 }
             }
         }
-        self.play_state = PlayState::Following;
     }
 
     pub fn pause(&mut self) {
-        self.play_state = PlayState::Paused;
+        self.playing = false;
     }
 
     pub fn step_time_back(&mut self, times_per_timeline: &TimesPerTimeline) {
@@ -241,12 +266,14 @@ impl TimeControl {
     }
 
     pub fn toggle_play_pause(&mut self, times_per_timeline: &TimesPerTimeline) {
-        match self.play_state {
-            PlayState::Paused => {
-                self.play(times_per_timeline);
-            }
-            PlayState::Playing | PlayState::Following => {
-                self.pause();
+        #[allow(clippy::collapsible_else_if)]
+        if self.playing {
+            self.pause();
+        } else {
+            if self.following {
+                self.set_play_state(times_per_timeline, PlayState::Following);
+            } else {
+                self.set_play_state(times_per_timeline, PlayState::Playing);
             }
         }
     }

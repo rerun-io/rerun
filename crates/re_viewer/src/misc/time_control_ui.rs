@@ -78,7 +78,7 @@ impl TimeControl {
             .on_hover_text(format!("Play.{}", toggle_playback_text(ui.ctx())))
             .clicked()
         {
-            self.play(times_per_timeline);
+            self.set_play_state(times_per_timeline, PlayState::Playing);
         }
     }
 
@@ -91,10 +91,13 @@ impl TimeControl {
         let is_following = self.play_state() == PlayState::Following;
         if re_ui
             .large_button_selected(ui, &re_ui::icons::FOLLOW, is_following)
-            .on_hover_text("Follow latest data.")
+            .on_hover_text(format!(
+                "Follow latest data.{}",
+                toggle_playback_text(ui.ctx())
+            ))
             .clicked()
         {
-            self.follow(times_per_timeline);
+            self.set_play_state(times_per_timeline, PlayState::Following);
         }
     }
 

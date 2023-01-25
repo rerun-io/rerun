@@ -383,6 +383,7 @@ fn table_ui(
 
                             if let Some(global_time) = global_time {
                                 if *timeline == &global_timeline {
+                                    #[allow(clippy::comparison_chain)]
                                     if global_time < row_time {
                                         // We've past the global time - it is thus above this row.
                                         if current_time_y.is_none() {
