@@ -464,7 +464,7 @@ impl Viewport {
                             if other_obj_path != obj_path {
                                 single_image_space_view
                                     .data_blueprint
-                                    .remove_object(other_obj_path)
+                                    .remove_object(other_obj_path);
                             }
                         }
                         single_image_space_view.allow_auto_adding_more_object = false;
