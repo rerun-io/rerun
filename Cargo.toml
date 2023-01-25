@@ -67,14 +67,14 @@ arrow2_convert = { git = "https://github.com/rerun-io/arrow2-convert", rev = "7e
 # arrow2 = { path = "../arrow2" }
 # arrow2_convert = { path = "../arrow2-convert/arrow2_convert" }
 
-# 2022-01-24: allow hiding button backgrounds
-ecolor = { git = "https://github.com/emilk/egui", rev = "eee4cf6a824e21141bb893aae2aea7849c0e9e03" }
-eframe = { git = "https://github.com/emilk/egui", rev = "eee4cf6a824e21141bb893aae2aea7849c0e9e03" }
-egui = { git = "https://github.com/emilk/egui", rev = "eee4cf6a824e21141bb893aae2aea7849c0e9e03" }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "eee4cf6a824e21141bb893aae2aea7849c0e9e03" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "eee4cf6a824e21141bb893aae2aea7849c0e9e03" }
-emath = { git = "https://github.com/emilk/egui", rev = "eee4cf6a824e21141bb893aae2aea7849c0e9e03" }
-epaint = { git = "https://github.com/emilk/egui", rev = "eee4cf6a824e21141bb893aae2aea7849c0e9e03" }
+# 2022-01-25 - egui deadlock fix
+ecolor = { git = "https://github.com/emilk/egui", rev = "7744da1fbe8ffc48cb54359c7301417729a21cca" }
+eframe = { git = "https://github.com/emilk/egui", rev = "7744da1fbe8ffc48cb54359c7301417729a21cca" }
+egui = { git = "https://github.com/emilk/egui", rev = "7744da1fbe8ffc48cb54359c7301417729a21cca" }
+egui_extras = { git = "https://github.com/emilk/egui", rev = "7744da1fbe8ffc48cb54359c7301417729a21cca" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "7744da1fbe8ffc48cb54359c7301417729a21cca" }
+emath = { git = "https://github.com/emilk/egui", rev = "7744da1fbe8ffc48cb54359c7301417729a21cca" }
+epaint = { git = "https://github.com/emilk/egui", rev = "7744da1fbe8ffc48cb54359c7301417729a21cca" }
 
 # ecolor = { path = "../../egui/crates/ecolor" }
 # eframe = { path = "../../egui/crates/eframe" }
@@ -83,6 +83,12 @@ epaint = { git = "https://github.com/emilk/egui", rev = "eee4cf6a824e21141bb893a
 # egui-wgpu = { path = "../../egui/crates/egui-wgpu" }
 # emath = { path = "../../egui/crates/emath" }
 # epaint = { path = "../../egui/crates/epaint" }
+
+# Forks of 3rd party egui crates, tracking latest egui/master:
+# egui_dock = { path = "../../forks/egui_dock" }
+# egui-notify = { path = "../../forks/egui-notify" }
+egui_dock = { git = "https://github.com/rerun-io/egui_dock", rev = "9466f30d3c621700dec476d32bd52c76a0a5b572" }
+egui-notify = { git = "https://github.com/rerun-io/egui-notify", rev = "7a9a259037108390e4189296a48dcad2b36c7008" }
 
 # 2022-10-12 - Alpha to coverage support for GLES
 wgpu = { git = "https://github.com/gfx-rs/wgpu.git", ref = "a377ae2b7fe6c1c9412751166f0917e617164e49" }
