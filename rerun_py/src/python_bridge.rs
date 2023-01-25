@@ -342,7 +342,7 @@ fn shutdown(py: Python<'_>) {
     py.allow_threads(|| {
         re_log::debug!("Shutting down the Rerun SDK");
         let mut session = global_session();
-        session.quit_if_disconnected();
+        session.drop_msgs_if_disconnected();
         session.flush();
         session.disconnect();
     });

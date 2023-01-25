@@ -123,7 +123,7 @@ impl Client {
         }
     }
 
-    pub fn quit_if_disconnected(&mut self) {
+    pub fn drop_if_disconnected(&mut self) {
         self.send_quit_tx.send(TcpQuitMsg::DropIfDisconnected).ok();
     }
 
