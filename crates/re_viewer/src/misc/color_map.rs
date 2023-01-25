@@ -537,5 +537,5 @@ const VIRIDIS_SRGB_BYTES: [[u8; 3]; 256] = [
 pub fn viridis_color_map(t: f32) -> [u8; 3] {
     // TODO(andreas): interpolate
     let index = (t * 255.0 + 0.5) as usize;
-    VIRIDIS_SRGB_BYTES[index]
+    VIRIDIS_SRGB_BYTES[index.min(255)]
 }
