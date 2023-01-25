@@ -1,10 +1,11 @@
-"""
+r"""
 Generate the code reference pages and navigation for the source tree.
 
 This helper is used by the [mkdocs-gen-files plugin](https://oprypin.github.io/mkdocs-gen-files)
 
 When building the documentation it will walk our python source-tree and create a collection
-of virtual files, as well as a `SUMMARY.txt` for use with the [mkdocs-literature-nav plugin](https://oprypin.github.io/mkdocs-literate-nav)
+of virtual files, as well as a `SUMMARY.txt` for use with the
+[mkdocs-literature-nav plugin](https://oprypin.github.io/mkdocs-literate-nav)
 
 Example virtual file:
 
@@ -30,8 +31,9 @@ Example virtual file:
 
 """
 
-import mkdocs_gen_files
 from pathlib import Path
+
+import mkdocs_gen_files
 
 root = Path(__file__).parent.parent.resolve()
 package_dir = Path("package")

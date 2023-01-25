@@ -109,6 +109,8 @@ or
 just py-docs-serve
 ```
 
+For information on how the docs system works, see: [docs/docs.md](docs/docs.md)
+
 
 ## Troubleshooting
 You can run with `RUST_LOG=debug` to get more output out of the rerun SDK.
