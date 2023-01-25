@@ -492,8 +492,10 @@ impl eframe::App for App {
 
         self.run_pending_commands(egui_ctx, frame);
 
-        self.frame_time_history
-            .add(egui_ctx.input().time, frame_start.elapsed().as_secs_f32());
+        self.frame_time_history.add(
+            egui_ctx.input(|i| i.time),
+            frame_start.elapsed().as_secs_f32(),
+        );
     }
 }
 
@@ -667,7 +669,7 @@ impl App {
 
         // Keep the style:
         let style = egui_ctx.style();
-        *egui_ctx.memory() = Default::default();
+        egui_ctx.memory_mut(|mem| *mem = Default::default());
         egui_ctx.set_style((*style).clone());
     }
 
@@ -684,13 +686,13 @@ impl App {
         preview_files_being_dropped(egui_ctx);
 
         // Collect dropped files:
-        if egui_ctx.input().raw.dropped_files.len() > 2 {
+        if egui_ctx.input(|i| i.raw.dropped_files.len()) > 2 {
             rfd::MessageDialog::new()
                 .set_level(rfd::MessageLevel::Error)
                 .set_description("Can only load one file at a time")
                 .show();
         }
-        if let Some(file) = egui_ctx.input().raw.dropped_files.first() {
+        if let Some(file) = egui_ctx.input(|i| i.raw.dropped_files.first().cloned()) {
             if let Some(bytes) = &file.bytes {
                 let mut bytes: &[u8] = &(*bytes)[..];
                 if let Some(log_db) = load_file_contents(&file.name, &mut bytes) {
@@ -715,22 +717,24 @@ fn preview_files_being_dropped(egui_ctx: &egui::Context) {
     use egui::{Align2, Color32, Id, LayerId, Order, TextStyle};
 
     // Preview hovering files:
-    if !egui_ctx.input().raw.hovered_files.is_empty() {
+    if !egui_ctx.input(|i| i.raw.hovered_files.is_empty()) {
         use std::fmt::Write as _;
 
         let mut text = "Drop to load:\n".to_owned();
-        for file in &egui_ctx.input().raw.hovered_files {
-            if let Some(path) = &file.path {
-                write!(text, "\n{}", path.display()).ok();
-            } else if !file.mime.is_empty() {
-                write!(text, "\n{}", file.mime).ok();
+        egui_ctx.input(|input| {
+            for file in &input.raw.hovered_files {
+                if let Some(path) = &file.path {
+                    write!(text, "\n{}", path.display()).ok();
+                } else if !file.mime.is_empty() {
+                    write!(text, "\n{}", file.mime).ok();
+                }
             }
-        }
+        });
 
         let painter =
             egui_ctx.layer_painter(LayerId::new(Order::Foreground, Id::new("file_drop_target")));
 
-        let screen_rect = egui_ctx.input().screen_rect();
+        let screen_rect = egui_ctx.screen_rect();
         painter.rect_filled(screen_rect, 0.0, Color32::from_black_alpha(192));
         painter.text(
             screen_rect.center(),

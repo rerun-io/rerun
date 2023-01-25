@@ -241,7 +241,7 @@ impl<'a> ViewerContext<'a> {
     pub fn select_hovered_on_click(&mut self, response: &egui::Response) {
         if response.clicked() {
             let hovered = self.rec_cfg.selection_state.hovered().clone();
-            if response.ctx.input().modifiers.command {
+            if response.ctx.input(|i| i.modifiers.command) {
                 self.rec_cfg
                     .selection_state
                     .toggle_selection(hovered.into_iter());

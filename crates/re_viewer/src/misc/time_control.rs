@@ -106,7 +106,7 @@ impl TimeControl {
             return;
         };
 
-        let dt = egui_ctx.input().stable_dt.at_most(0.1) * self.speed;
+        let dt = egui_ctx.input(|i| i.stable_dt).at_most(0.1) * self.speed;
 
         let state = self
             .states
