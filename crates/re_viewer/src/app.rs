@@ -84,7 +84,7 @@ pub struct App {
 
     // NOTE: Optional because it is possible to have the `analytics` feature flag enabled while at
     // the same time opting out of analytics at run-time.
-    #[cfg(all(not(target_arch = "wasm32"), feature = "analytics", debug_assertions))]
+    #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
     analytics: Option<re_analytics::Analytics>,
 }
 
@@ -140,7 +140,7 @@ impl App {
             log_dbs.insert(log_db.recording_id(), log_db);
         }
 
-        #[cfg(all(not(target_arch = "wasm32"), feature = "analytics", debug_assertions))]
+        #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
         let analytics = match re_analytics::Analytics::new(std::time::Duration::from_secs(2)) {
             Ok(analytics) => {
                 analytics.record(re_analytics::Event::viewer_started());
@@ -174,7 +174,7 @@ impl App {
             pending_commands: Default::default(),
             cmd_palette: Default::default(),
 
-            #[cfg(all(not(target_arch = "wasm32"), feature = "analytics", debug_assertions))]
+            #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
             analytics,
         }
     }
@@ -510,11 +510,7 @@ impl App {
                     re_log::info!("Beginning a new recording: {:?}", msg.info);
                     self.state.selected_rec_id = msg.info.recording_id;
 
-                    #[cfg(all(
-                        not(target_arch = "wasm32"),
-                        feature = "analytics",
-                        debug_assertions
-                    ))]
+                    #[cfg(all(not(target_arch = "wasm32"), feature = "analytics"))]
                     if let Some(analytics) = self.analytics.as_mut() {
                         use sha2::Digest as _;
                         analytics.default_append_props_mut().extend([
