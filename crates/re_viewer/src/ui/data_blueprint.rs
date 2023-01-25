@@ -328,7 +328,6 @@ impl DataBlueprintTree {
     /// Removes an object from the data blueprint collection.
     ///
     /// If the object was not known by this data blueprint tree nothing happens.
-    #[allow(dead_code)] // TODO(andreas): Soon needed
     pub fn remove_object(&mut self, path: &ObjPath) {
         if let Some(group_handle) = self.path_to_group.get(path) {
             if let Some(group) = self.groups.get_mut(*group_handle) {

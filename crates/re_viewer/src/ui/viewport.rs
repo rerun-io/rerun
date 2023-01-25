@@ -56,7 +56,9 @@ impl Viewport {
         crate::profile_function!();
 
         let mut blueprint = Self::default();
-        blueprint.add_default_created_space_views(ctx, spaces_info);
+        for space_view in Self::default_created_space_views(ctx, spaces_info) {
+            blueprint.add_space_view(space_view);
+        }
         blueprint
     }
 
@@ -87,12 +89,6 @@ impl Viewport {
 
         visible.remove(space_view_id);
         space_views.remove(space_view_id)
-    }
-
-    fn has_space(&self, space_path: &ObjPath) -> bool {
-        self.space_views
-            .values()
-            .any(|view| &view.space_path == space_path)
     }
 
     /// Show the blueprint panel tree view.
@@ -264,7 +260,17 @@ impl Viewport {
         }
 
         if !self.has_been_user_edited {
-            self.add_default_created_space_views(ctx, spaces_info);
+            for space_view_candidate in Self::default_created_space_views(ctx, spaces_info) {
+                // Take this space view, but only if it doesn't exist yet.
+                // (checking the root path alone is not enough since we may come up with new kind of default-populations!)
+                if !self.space_views.values().any(|existing_view| {
+                    existing_view.space_path == space_view_candidate.space_path
+                        && existing_view.data_blueprint.object_paths()
+                            == space_view_candidate.data_blueprint.object_paths()
+                }) {
+                    self.add_space_view(space_view_candidate);
+                }
+            }
         }
     }
 
@@ -385,22 +391,20 @@ impl Viewport {
         space_views
     }
 
-    fn add_default_created_space_views(
-        &mut self,
+    fn default_created_space_views(
         ctx: &ViewerContext<'_>,
         spaces_info: &SpacesInfo,
-    ) {
+    ) -> Vec<SpaceView> {
         crate::profile_function!();
 
         let timeline = ctx.rec_cfg.time_ctrl.timeline();
         let timeline_query = re_arrow_store::LatestAtQuery::new(*timeline, TimeInt::from(i64::MAX));
 
-        for space_view in Self::all_possible_space_views(ctx, spaces_info) {
-            if self.has_space(&space_view.space_path) {
+        let mut space_views = Vec::new();
+
+        for space_view_candidate in Self::all_possible_space_views(ctx, spaces_info) {
+            let Some(space_info) = spaces_info.get(&space_view_candidate.space_path)  else {
                 continue;
-            }
-            let Some(space_info) = spaces_info.get(&space_view.space_path)  else {
-                continue
             };
 
             // If it doesn't contain anything but the transform itself, skip,
@@ -408,75 +412,77 @@ impl Viewport {
                 continue;
             }
 
-            // No other restrictions so far for non-spatial views
-            if space_view.category != ViewCategory::Spatial {
-                self.add_space_view(space_view);
-                continue;
-            }
-
-            // Skip if connection to parent is via rigid (too trivial for a new space view!)
-            if let Some(parent_transform) = space_info.parent_transform() {
-                match parent_transform {
-                    re_log_types::Transform::Rigid3(_) => {
-                        continue;
+            if space_view_candidate.category == ViewCategory::Spatial {
+                // Skip if connection to parent is via rigid (too trivial for a new space view!)
+                if let Some(parent_transform) = space_info.parent_transform() {
+                    match parent_transform {
+                        re_log_types::Transform::Rigid3(_) => {
+                            continue;
+                        }
+                        re_log_types::Transform::Pinhole(_) | re_log_types::Transform::Unknown => {}
                     }
-                    re_log_types::Transform::Pinhole(_) | re_log_types::Transform::Unknown => {}
                 }
-            }
 
-            // Gather all images that are untransformed children of the space view candidate's root.
-            let images = space_info
-                .descendants_without_transform
-                .iter()
-                .filter_map(|obj_path| {
-                    if let Ok(entity_view) = re_query::query_entity_with_primary::<Tensor>(
-                        &ctx.log_db.obj_db.arrow_store,
-                        &timeline_query,
-                        obj_path,
-                        &[],
-                    ) {
-                        if let Ok(iter) = entity_view.iter_primary() {
-                            for tensor in iter.flatten() {
-                                if tensor.is_shaped_like_an_image() {
-                                    return Some((obj_path.clone(), tensor.shape));
+                // Gather all images that are untransformed children of the space view candidate's root.
+                let images = space_info
+                    .descendants_without_transform
+                    .iter()
+                    .filter_map(|obj_path| {
+                        if let Ok(entity_view) = re_query::query_entity_with_primary::<Tensor>(
+                            &ctx.log_db.obj_db.arrow_store,
+                            &timeline_query,
+                            obj_path,
+                            &[],
+                        ) {
+                            if let Ok(iter) = entity_view.iter_primary() {
+                                for tensor in iter.flatten() {
+                                    if tensor.is_shaped_like_an_image() {
+                                        return Some((obj_path.clone(), tensor.shape));
+                                    }
                                 }
                             }
                         }
+                        None
+                    })
+                    .collect::<Vec<_>>();
+
+                if images.len() > 1 {
+                    // Multiple images (e.g. depth and rgb, or rgb and segmentation) in the same 2D scene.
+                    // Stacking them on top of each other works, but is often confusing.
+                    // Let's create one space view for each image, where the other images are disabled:
+
+                    let mut image_sizes = BTreeSet::default();
+                    for (obj_path, shape) in &images {
+                        debug_assert!(matches!(shape.len(), 2 | 3));
+                        let image_size = (shape[0].size, shape[1].size);
+                        image_sizes.insert(image_size);
+
+                        // Space view with everything but the other images.
+                        // (note that other objects stay!)
+                        let mut single_image_space_view = space_view_candidate.clone();
+                        for (other_obj_path, _) in &images {
+                            if other_obj_path != obj_path {
+                                single_image_space_view
+                                    .data_blueprint
+                                    .remove_object(other_obj_path)
+                            }
+                        }
+                        single_image_space_view.allow_auto_adding_more_object = false;
+                        space_views.push(single_image_space_view);
                     }
-                    None
-                })
-                .collect::<Vec<_>>();
 
-            if images.len() > 1 {
-                // Multiple images (e.g. depth and rgb, or rgb and segmentation) in the same 2D scene.
-                // Stacking them on top of each other works, but is often confusing.
-                // Let's create one space view for each image, where the other images are disabled:
-
-                let mut image_sizes = BTreeSet::default();
-                for (obj_path, shape) in &images {
-                    debug_assert!(matches!(shape.len(), 2 | 3));
-                    let image_size = (shape[0].size, shape[1].size);
-                    image_sizes.insert(image_size);
-
-                    // Space view with only this image.
-                    let mut single_image_space_view = SpaceView::new(
-                        ViewCategory::Spatial,
-                        space_info,
-                        &std::iter::once(obj_path.clone()).collect(),
-                    );
-                    single_image_space_view.allow_auto_adding_more_object = false;
-                    self.add_space_view(single_image_space_view);
+                    // Only if all images have the same size, so we _also_ want to create the stacked version (e.g. rgb + segmentation)
+                    // TODO(andreas): What if there's also other objects that we want to show?
+                    if image_sizes.len() > 1 {
+                        continue;
+                    }
                 }
-
-                // If all images have the same size, so we _also_ want to create the stacked version (e.g. rgb + segmentation)
-                // TODO(andreas): What if there's also other objects that we want to show?
-                if image_sizes.len() == 1 {
-                    self.add_space_view(space_view);
-                }
-            } else {
-                self.add_space_view(space_view);
             }
+
+            space_views.push(space_view_candidate);
         }
+
+        space_views
     }
 
     pub fn add_new_spaceview_button_ui(
