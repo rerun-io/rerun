@@ -56,9 +56,7 @@ impl Viewport {
         crate::profile_function!();
 
         let mut blueprint = Self::default();
-        for space_view in Self::default_created_space_views(ctx, spaces_info) {
-            blueprint.add_space_view(space_view);
-        }
+        blueprint.add_default_created_space_views(ctx, spaces_info);
         blueprint
     }
 
@@ -266,18 +264,7 @@ impl Viewport {
         }
 
         if !self.has_been_user_edited {
-            if self.space_views.is_empty() {
-                *self = Self::new(ctx, spaces_info);
-            } else {
-                crate::profile_scope!("look for missing space views");
-                let mut blueprint = Self::default();
-                for space_view in Self::default_created_space_views(ctx, spaces_info) {
-                    // TODO: skip existing earlier
-                    if !self.has_space(&space_view.root_path) {
-                        blueprint.add_space_view(space_view);
-                    }
-                }
-            }
+            self.add_default_created_space_views(ctx, spaces_info);
         }
     }
 
@@ -375,7 +362,7 @@ impl Viewport {
     }
 
     fn all_possible_space_views(
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         spaces_info: &SpacesInfo,
     ) -> Vec<SpaceView> {
         crate::profile_function!();
@@ -398,18 +385,20 @@ impl Viewport {
         space_views
     }
 
-    fn default_created_space_views(
-        ctx: &mut ViewerContext<'_>,
+    fn add_default_created_space_views(
+        &mut self,
+        ctx: &ViewerContext<'_>,
         spaces_info: &SpacesInfo,
-    ) -> Vec<SpaceView> {
+    ) {
         crate::profile_function!();
-
-        let mut space_views = Vec::new();
 
         let timeline = ctx.rec_cfg.time_ctrl.timeline();
         let timeline_query = re_arrow_store::LatestAtQuery::new(*timeline, TimeInt::from(i64::MAX));
 
         for space_view in Self::all_possible_space_views(ctx, spaces_info) {
+            if self.has_space(&space_view.space_path) {
+                continue;
+            }
             let Some(space_info) = spaces_info.get(&space_view.space_path)  else {
                 continue
             };
@@ -421,7 +410,7 @@ impl Viewport {
 
             // No other restrictions so far for non-spatial views
             if space_view.category != ViewCategory::Spatial {
-                space_views.push(space_view);
+                self.add_space_view(space_view);
                 continue;
             }
 
@@ -476,20 +465,18 @@ impl Viewport {
                         &std::iter::once(obj_path.clone()).collect(),
                     );
                     single_image_space_view.allow_auto_adding_more_object = false;
-                    space_views.push(single_image_space_view);
+                    self.add_space_view(single_image_space_view);
                 }
 
                 // If all images have the same size, so we _also_ want to create the stacked version (e.g. rgb + segmentation)
                 // TODO(andreas): What if there's also other objects that we want to show?
                 if image_sizes.len() == 1 {
-                    space_views.push(space_view);
+                    self.add_space_view(space_view);
                 }
             } else {
-                space_views.push(space_view);
+                self.add_space_view(space_view);
             }
         }
-
-        space_views
     }
 
     pub fn add_new_spaceview_button_ui(

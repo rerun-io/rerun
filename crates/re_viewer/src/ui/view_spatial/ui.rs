@@ -72,7 +72,7 @@ fn default_scene_bbox_accum() -> BoundingBox {
 impl Default for ViewSpatialState {
     fn default() -> Self {
         Self {
-            nav_mode: SpatialNavigationMode::TwoD, // TODO:
+            nav_mode: SpatialNavigationMode::ThreeD,
             scene_bbox_accum: default_scene_bbox_accum(),
             scene_num_primitives: 0,
             state_2d: Default::default(),

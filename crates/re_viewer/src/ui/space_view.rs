@@ -115,6 +115,8 @@ impl SpaceView {
         ctx: &'a ViewerContext<'_>,
         space_info: &'a SpaceInfo,
         category: ViewCategory,
+        // TODO(andreas): Can we do this without `TransformCache` and just `SpacesInfo`?
+        //                  Needed right now because the later can't determine reachability, but this is fairly expensive.
         transforms: &'a TransformCache,
     ) -> impl Iterator<Item = &'a ObjPath> + 'a {
         crate::profile_function!();
@@ -133,6 +135,8 @@ impl SpaceView {
     pub fn default_queried_objects_by_category(
         ctx: &ViewerContext<'_>,
         space_info: &SpaceInfo,
+        // TODO(andreas): Can we do this without `TransformCache` and just `SpacesInfo`?
+        //                  Needed right now because the later can't determine reachability, but this is fairly expensive.
         transforms: &TransformCache,
     ) -> BTreeMap<ViewCategory, IntSet<ObjPath>> {
         let timeline = ctx.rec_cfg.time_ctrl.timeline();
