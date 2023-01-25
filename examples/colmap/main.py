@@ -2,15 +2,28 @@
 """
 
 """
-
+import io
+import os
 from pathlib import Path
+from typing import Any, Final
+from argparse import ArgumentParser
+import zipfile
+
 import rerun as rr
 import numpy as np
-from argparse import ArgumentParser
+import numpy.typing as npt
+import requests
+from tqdm import tqdm
+
 from read_write_model import read_model, Camera
 
+DATASET_DIR: Final = Path(os.path.dirname(__file__)) / "dataset"
+DATASET_URL_BASE: Final = "https://storage.googleapis.com/rerun-example-datasets/colmap"
+DATASET_NAME: Final = "colmap_rusty_car"
+DATASET_URL: Final = f"{DATASET_URL_BASE}/{DATASET_NAME}.zip"
 
-def intrinsics_for_camera(camera: Camera) -> np.array:
+
+def intrinsics_for_camera(camera: Camera) -> npt.NDArray[Any]:
     """Convert a colmap camera to a pinhole camera intrinsics matrix."""
     return np.vstack(
         [
@@ -27,14 +40,48 @@ def intrinsics_for_camera(camera: Camera) -> np.array:
     )
 
 
+def get_downloaded_dataset_path() -> Path:
+    recording_dir = DATASET_DIR / DATASET_NAME
+    if recording_dir.exists():
+        return recording_dir
+
+    os.makedirs(DATASET_DIR, exist_ok=True)
+
+    zip_file = download_with_progress(DATASET_URL)
+
+    with zipfile.ZipFile(zip_file) as zip_ref:
+        progress = tqdm(zip_ref.infolist(), "Extracting dataset", total=len(zip_ref.infolist()), unit="files")
+        for file in progress:
+            zip_ref.extract(file, DATASET_DIR)
+            progress.update()
+
+    return recording_dir
+
+
+def download_with_progress(url: str) -> io.BytesIO:
+    """Download file with tqdm progress bar."""
+    chunk_size = 8192
+    resp = requests.get(url, stream=True)
+    total_size = int(resp.headers.get("content-length", 0))
+    with tqdm(
+        desc=f"Downloading dataset", total=total_size, unit="B", unit_scale=True, unit_divisor=chunk_size
+    ) as progress:
+        zip_file = io.BytesIO()
+        for data in resp.iter_content(chunk_size):
+            zip_file.write(data)
+            progress.update(len(data))
+
+    zip_file.seek(0)
+    return zip_file
+
+
 @rr.script("Visualize Colmap Data")
 def main(parser: ArgumentParser) -> None:
-    parser.add_argument("--input_model", help="path to input model folder")
-    parser.add_argument("--input_format", choices=[".bin", ".txt"], help="input model format", default="")
     args = parser.parse_args()
 
-    model_path = Path(args.input_model).expanduser()
-    (cameras, images, points3D) = read_model(model_path, args.input_format)
+    dataset_path = get_downloaded_dataset_path()
+    # TODO: Read cameras and points3D up front but make a generator version of the read_images_bin function
+    cameras, images, points3D = read_model(dataset_path / "sparse")
 
     rr.init("colmap", spawn_and_connect=True)
     rr.log_view_coordinates("world", up="-Y", timeless=True)
@@ -73,7 +120,7 @@ def main(parser: ArgumentParser) -> None:
             height=camera.height,
         )
 
-        rr.log_image_file(f"world/camera/image/rgb", model_path.parent / "images" / image.name)
+        rr.log_image_file(f"world/camera/image/rgb", dataset_path / "images" / image.name)
 
         rr.log_points(f"world/camera/image/keypoints", image.xys)
 
