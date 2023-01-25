@@ -66,6 +66,12 @@ pub enum Looping {
     All,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
+pub enum PlayState {
+    Paused,
+    Playing,
+}
+
 /// Controls the global view and progress of the time.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
@@ -75,7 +81,7 @@ pub struct TimeControl {
 
     states: BTreeMap<Timeline, TimeState>,
 
-    playing: bool,
+    play_state: PlayState,
     speed: f32,
 
     pub looping: Looping,
@@ -86,7 +92,7 @@ impl Default for TimeControl {
         Self {
             timeline: Default::default(),
             states: Default::default(),
-            playing: true,
+            play_state: PlayState::Playing,
             speed: 1.0,
             looping: Looping::Off,
         }
@@ -98,7 +104,8 @@ impl TimeControl {
     pub fn move_time(&mut self, egui_ctx: &egui::Context, times_per_timeline: &TimesPerTimeline) {
         self.select_a_valid_timeline(times_per_timeline);
 
-        if !self.playing {
+        if self.play_state == PlayState::Paused {
+            // TODO: handle PlayState::Follow
             return;
         }
 
@@ -145,8 +152,8 @@ impl TimeControl {
         }
     }
 
-    pub fn is_playing(&self) -> bool {
-        self.playing
+    pub fn play_state(&self) -> PlayState {
+        self.play_state
     }
 
     pub fn play(&mut self, times_per_timeline: &TimesPerTimeline) {
@@ -161,11 +168,11 @@ impl TimeControl {
                     .insert(self.timeline, TimeState::new(min(time_points)));
             }
         }
-        self.playing = true;
+        self.play_state = PlayState::Playing;
     }
 
     pub fn pause(&mut self) {
-        self.playing = false;
+        self.play_state = PlayState::Paused;
     }
 
     pub fn step_time_back(&mut self, times_per_timeline: &TimesPerTimeline) {
@@ -201,10 +208,13 @@ impl TimeControl {
     }
 
     pub fn toggle_play_pause(&mut self, times_per_timeline: &TimesPerTimeline) {
-        if self.is_playing() {
-            self.pause();
-        } else {
-            self.play(times_per_timeline);
+        match self.play_state {
+            PlayState::Paused => {
+                self.play(times_per_timeline);
+            }
+            PlayState::Playing => {
+                self.pause();
+            }
         }
     }
 

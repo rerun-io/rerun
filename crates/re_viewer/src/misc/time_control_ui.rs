@@ -3,7 +3,7 @@ use egui::NumExt as _;
 use re_data_store::TimesPerTimeline;
 use re_log_types::TimeType;
 
-use super::time_control::{Looping, TimeControl};
+use super::time_control::{Looping, PlayState, TimeControl};
 
 impl TimeControl {
     pub fn time_control_ui(
@@ -72,7 +72,11 @@ impl TimeControl {
         times_per_timeline: &TimesPerTimeline,
     ) {
         if re_ui
-            .large_button_selected(ui, &re_ui::icons::PLAY, self.is_playing())
+            .large_button_selected(
+                ui,
+                &re_ui::icons::PLAY,
+                self.play_state() == PlayState::Playing,
+            )
             .on_hover_text(format!("Play.{}", toggle_playback_text(ui.ctx())))
             .clicked()
         {
@@ -82,7 +86,11 @@ impl TimeControl {
 
     fn pause_button_ui(&mut self, re_ui: &re_ui::ReUi, ui: &mut egui::Ui) {
         if re_ui
-            .large_button_selected(ui, &re_ui::icons::PAUSE, !self.is_playing())
+            .large_button_selected(
+                ui,
+                &re_ui::icons::PAUSE,
+                self.play_state() == PlayState::Paused,
+            )
             .on_hover_text(format!("Pause.{}", toggle_playback_text(ui.ctx())))
             .clicked()
         {

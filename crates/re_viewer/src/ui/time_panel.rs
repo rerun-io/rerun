@@ -16,8 +16,9 @@ use re_log_types::{
 };
 
 use crate::{
-    misc::time_control::Looping, time_axis::TimelineAxis, Selection, TimeControl, TimeView,
-    ViewerContext,
+    misc::time_control::{Looping, PlayState},
+    time_axis::TimelineAxis,
+    Selection, TimeControl, TimeView, ViewerContext,
 };
 
 use super::{data_ui::DataUi, Blueprint};
@@ -1667,7 +1668,8 @@ impl TimeRangesUi {
 
     // Make sure playback time doesn't get stuck between non-continuos regions:
     fn snap_time_control(&self, ctx: &mut ViewerContext<'_>) {
-        if !ctx.rec_cfg.time_ctrl.is_playing() {
+        if ctx.rec_cfg.time_ctrl.play_state() == PlayState::Paused {
+            // TODO: handle PlayState::Follow
             return;
         }
 
