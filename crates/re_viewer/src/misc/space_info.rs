@@ -109,11 +109,12 @@ impl SpacesInfo {
         fn add_children(
             obj_db: &ObjDb,
             timeline: &Timeline,
+            query_time: Option<i64>,
             spaces_info: &mut SpacesInfo,
             parent_space: &mut SpaceInfo,
             tree: &ObjectTree,
         ) {
-            if let Some(transform) = query_transform(obj_db, timeline, &tree.path, None) {
+            if let Some(transform) = query_transform(obj_db, timeline, &tree.path, query_time) {
                 // A set transform (likely non-identity) - create a new space.
                 parent_space
                     .child_spaces
@@ -129,6 +130,7 @@ impl SpacesInfo {
                     add_children(
                         obj_db,
                         timeline,
+                        query_time,
                         spaces_info,
                         &mut child_space_info,
                         child_tree,
@@ -144,12 +146,20 @@ impl SpacesInfo {
                     .insert(tree.path.clone()); // spaces includes self
 
                 for child_tree in tree.children.values() {
-                    add_children(obj_db, timeline, spaces_info, parent_space, child_tree);
+                    add_children(
+                        obj_db,
+                        timeline,
+                        query_time,
+                        spaces_info,
+                        parent_space,
+                        child_tree,
+                    );
                 }
             }
         }
 
         let timeline = time_ctrl.timeline();
+        let query_time = time_ctrl.time().map(|time| time.floor().as_i64());
 
         let mut spaces_info = Self::default();
 
@@ -164,7 +174,14 @@ impl SpacesInfo {
             }
 
             let mut space_info = SpaceInfo::new(tree.path.clone());
-            add_children(obj_db, timeline, &mut spaces_info, &mut space_info, tree);
+            add_children(
+                obj_db,
+                timeline,
+                query_time,
+                &mut spaces_info,
+                &mut space_info,
+                tree,
+            );
             spaces_info.spaces.insert(tree.path.clone(), space_info);
         }
 
