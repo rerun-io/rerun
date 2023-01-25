@@ -156,18 +156,18 @@ def download_progress(url: str, dst: Path) -> None:
     From: https://gist.github.com/yanqd0/c13ed29e29432e3cf3e7c38467f42f51"""
     resp = requests.get(url, stream=True)
     total = int(resp.headers.get("content-length", 0))
+    chunk_size = 1024 * 1024
     # Can also replace 'file' with a io.BytesIO object
     with open(dst, "wb") as file, tqdm(
         desc=dst.name,
         total=total,
         unit="iB",
         unit_scale=True,
-        unit_divisor=1024,
+        unit_divisor=chunk_size,
     ) as bar:
-        for data in resp.iter_content(chunk_size=1024):
+        for data in resp.iter_content(chunk_size=chunk_size):
             size = file.write(data)
             bar.update(size)
-            sleep(0.001)  # Sleep so that we can react to KeyboardInterupt
 
 
 if __name__ == "__main__":
