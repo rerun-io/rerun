@@ -151,7 +151,7 @@ fn query_transform_arrow(
     // transforms this is easy enough.
     let arrow_store = &obj_db.arrow_store;
 
-    let query = LatestAtQuery::new(*timeline, TimeInt::from(query_time?));
+    let query = LatestAtQuery::new(*timeline, query_time.map_or(TimeInt::MAX, TimeInt::from));
 
     let components = [Transform::name()];
 

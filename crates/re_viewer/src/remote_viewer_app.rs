@@ -78,7 +78,7 @@ impl eframe::App for RemoteViewerApp {
             ui.horizontal(|ui| {
                 ui.label("URL:");
                 if ui.text_edit_singleline(&mut self.url).lost_focus()
-                    && ui.input().key_pressed(egui::Key::Enter)
+                    && ui.input(|i| i.key_pressed(egui::Key::Enter))
                 {
                     if let Some(storage) = frame.storage_mut() {
                         if let Some((_, mut app)) = self.app.take() {

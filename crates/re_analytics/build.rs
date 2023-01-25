@@ -26,5 +26,7 @@ fn main() {
         git_hash,
         if clean { "" } else { "-dirty" }
     );
-    println!("cargo:rerun-if-changed=.git/HEAD");
+    for path in glob::glob("../../.git/refs/heads/**").unwrap() {
+        println!("cargo:rerun-if-changed={}", path.unwrap().to_string_lossy());
+    }
 }

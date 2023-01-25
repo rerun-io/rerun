@@ -290,7 +290,9 @@ impl MemoryPanel {
                                 .on_hover_text("Click to copy callstack to clipboard")
                                 .clicked()
                             {
-                                ui.output().copied_text = callstack.readable_backtrace.to_string();
+                                ui.output_mut(|o| {
+                                    o.copied_text = callstack.readable_backtrace.to_string();
+                                });
                             }
                         }
                     });

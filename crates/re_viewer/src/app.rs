@@ -492,8 +492,10 @@ impl eframe::App for App {
 
         self.run_pending_commands(egui_ctx, frame);
 
-        self.frame_time_history
-            .add(egui_ctx.input().time, frame_start.elapsed().as_secs_f32());
+        self.frame_time_history.add(
+            egui_ctx.input(|i| i.time),
+            frame_start.elapsed().as_secs_f32(),
+        );
     }
 }
 
@@ -667,7 +669,7 @@ impl App {
 
         // Keep the style:
         let style = egui_ctx.style();
-        *egui_ctx.memory() = Default::default();
+        egui_ctx.memory_mut(|mem| *mem = Default::default());
         egui_ctx.set_style((*style).clone());
     }
 
@@ -684,13 +686,13 @@ impl App {
         preview_files_being_dropped(egui_ctx);
 
         // Collect dropped files:
-        if egui_ctx.input().raw.dropped_files.len() > 2 {
+        if egui_ctx.input(|i| i.raw.dropped_files.len()) > 2 {
             rfd::MessageDialog::new()
                 .set_level(rfd::MessageLevel::Error)
                 .set_description("Can only load one file at a time")
                 .show();
         }
-        if let Some(file) = egui_ctx.input().raw.dropped_files.first() {
+        if let Some(file) = egui_ctx.input(|i| i.raw.dropped_files.first().cloned()) {
             if let Some(bytes) = &file.bytes {
                 let mut bytes: &[u8] = &(*bytes)[..];
                 if let Some(log_db) = load_file_contents(&file.name, &mut bytes) {
@@ -715,22 +717,24 @@ fn preview_files_being_dropped(egui_ctx: &egui::Context) {
     use egui::{Align2, Color32, Id, LayerId, Order, TextStyle};
 
     // Preview hovering files:
-    if !egui_ctx.input().raw.hovered_files.is_empty() {
+    if !egui_ctx.input(|i| i.raw.hovered_files.is_empty()) {
         use std::fmt::Write as _;
 
         let mut text = "Drop to load:\n".to_owned();
-        for file in &egui_ctx.input().raw.hovered_files {
-            if let Some(path) = &file.path {
-                write!(text, "\n{}", path.display()).ok();
-            } else if !file.mime.is_empty() {
-                write!(text, "\n{}", file.mime).ok();
+        egui_ctx.input(|input| {
+            for file in &input.raw.hovered_files {
+                if let Some(path) = &file.path {
+                    write!(text, "\n{}", path.display()).ok();
+                } else if !file.mime.is_empty() {
+                    write!(text, "\n{}", file.mime).ok();
+                }
             }
-        }
+        });
 
         let painter =
             egui_ctx.layer_painter(LayerId::new(Order::Foreground, Id::new("file_drop_target")));
 
-        let screen_rect = egui_ctx.input().screen_rect();
+        let screen_rect = egui_ctx.screen_rect();
         painter.rect_filled(screen_rect, 0.0, Color32::from_black_alpha(192));
         painter.text(
             screen_rect.center(),
@@ -898,9 +902,11 @@ fn top_panel(
 }
 
 fn rerun_menu_button_ui(ui: &mut egui::Ui, _frame: &mut eframe::Frame, app: &mut App) {
+    // let desired_icon_height = ui.max_rect().height() - 2.0 * ui.spacing_mut().button_padding.y;
+    let desired_icon_height = ui.max_rect().height() - 4.0; // TODO(emilk): figure out this fudge
+
     let icon_image = app.re_ui.icon_image(&re_ui::icons::RERUN_MENU);
-    let mut image_size = icon_image.size_vec2();
-    image_size = image_size * ui.max_rect().height() / image_size.y; // match bar height
+    let image_size = icon_image.size_vec2() * (desired_icon_height / icon_image.size_vec2().y);
     let texture_id = icon_image.texture_id(ui.ctx());
 
     ui.menu_image_button(texture_id, image_size, |ui| {
@@ -967,84 +973,11 @@ fn top_bar_ui(
 ) {
     rerun_menu_button_ui(ui, frame, app);
 
-    if let Some(frame_time) = app.frame_time_history.average() {
+    if cfg!(debug_assertions) {
         ui.separator();
-
-        let ms = frame_time * 1e3;
-
-        let visuals = ui.visuals();
-        let color = if ms < 15.0 {
-            visuals.weak_text_color()
-        } else {
-            visuals.warn_fg_color
-        };
-
-        // we use monospace so the width doesn't fluctuate as the numbers change.
-        let text = format!("{ms:.1} ms");
-        ui.label(egui::RichText::new(text).monospace().color(color))
-            .on_hover_text("CPU time used by Rerun Viewer each frame. Lower is better.");
-    }
-
-    if let Some(count) = re_memory::accounting_allocator::global_allocs() {
-        // we use monospace so the width doesn't fluctuate as the numbers change.
-
-        let bytes_used_text = re_format::format_bytes(count.size as _);
-        ui.label(
-            egui::RichText::new(&bytes_used_text)
-                .monospace()
-                .color(ui.visuals().weak_text_color()),
-        )
-        .on_hover_text(format!(
-            "Rerun Viewer is using {} of RAM in {} separate allocations,\n\
-            plus {} of GPU memory in {} textures and {} buffers.",
-            bytes_used_text,
-            format_number(count.count),
-            re_format::format_bytes(gpu_resource_stats.total_bytes() as _),
-            format_number(gpu_resource_stats.num_textures),
-            format_number(gpu_resource_stats.num_buffers),
-        ));
-    }
-
-    if let Some(rx) = &app.rx {
-        let is_latency_interesting = match rx.source() {
-            re_smart_channel::Source::Network => true, // presumable live
-            re_smart_channel::Source::File => false,   // pre-recorded. latency doesn't matter
-        };
-
-        let queue_len = rx.len();
-
-        // empty queue == unreliable latency
-        let latency_sec = rx.latency_ns() as f32 / 1e9;
-        if queue_len > 0
-            && (!is_latency_interesting || app.state.options.warn_latency < latency_sec)
-        {
-            // we use this to avoid flicker
-            app.latest_queue_interest = instant::Instant::now();
-        }
-
-        if app.latest_queue_interest.elapsed().as_secs_f32() < 1.0 {
-            ui.separator();
-            if is_latency_interesting {
-                let text = format!(
-                    "Latency: {:.2}s, queue: {}",
-                    latency_sec,
-                    format_number(queue_len),
-                );
-                let hover_text =
-                    "When more data is arriving over network than the Rerun Viewer can index, a queue starts building up, leading to latency and increased RAM use.\n\
-                    This latency does NOT include network latency.";
-
-                if latency_sec < app.state.options.warn_latency {
-                    ui.weak(text).on_hover_text(hover_text);
-                } else {
-                    ui.label(app.re_ui.warning_text(text))
-                        .on_hover_text(hover_text);
-                }
-            } else {
-                ui.weak(format!("Queue: {}", format_number(queue_len)))
-                    .on_hover_text("Number of messages in the inbound queue");
-            }
-        }
+        frame_time_label_ui(ui, app);
+        memory_use_label_ui(ui, gpu_resource_stats);
+        input_latency_label_ui(ui, app);
     }
 
     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -1098,6 +1031,89 @@ fn top_bar_ui(
             });
         }
     });
+}
+
+fn frame_time_label_ui(ui: &mut egui::Ui, app: &mut App) {
+    if let Some(frame_time) = app.frame_time_history.average() {
+        let ms = frame_time * 1e3;
+
+        let visuals = ui.visuals();
+        let color = if ms < 15.0 {
+            visuals.weak_text_color()
+        } else {
+            visuals.warn_fg_color
+        };
+
+        // we use monospace so the width doesn't fluctuate as the numbers change.
+        let text = format!("{ms:.1} ms");
+        ui.label(egui::RichText::new(text).monospace().color(color))
+            .on_hover_text("CPU time used by Rerun Viewer each frame. Lower is better.");
+    }
+}
+fn memory_use_label_ui(ui: &mut egui::Ui, gpu_resource_stats: &WgpuResourcePoolStatistics) {
+    if let Some(count) = re_memory::accounting_allocator::global_allocs() {
+        // we use monospace so the width doesn't fluctuate as the numbers change.
+
+        let bytes_used_text = re_format::format_bytes(count.size as _);
+        ui.label(
+            egui::RichText::new(&bytes_used_text)
+                .monospace()
+                .color(ui.visuals().weak_text_color()),
+        )
+        .on_hover_text(format!(
+            "Rerun Viewer is using {} of RAM in {} separate allocations,\n\
+            plus {} of GPU memory in {} textures and {} buffers.",
+            bytes_used_text,
+            format_number(count.count),
+            re_format::format_bytes(gpu_resource_stats.total_bytes() as _),
+            format_number(gpu_resource_stats.num_textures),
+            format_number(gpu_resource_stats.num_buffers),
+        ));
+    }
+}
+
+fn input_latency_label_ui(ui: &mut egui::Ui, app: &mut App) {
+    if let Some(rx) = &app.rx {
+        let is_latency_interesting = match rx.source() {
+            re_smart_channel::Source::Network => true, // presumable live
+            re_smart_channel::Source::File => false,   // pre-recorded. latency doesn't matter
+        };
+
+        let queue_len = rx.len();
+
+        // empty queue == unreliable latency
+        let latency_sec = rx.latency_ns() as f32 / 1e9;
+        if queue_len > 0
+            && (!is_latency_interesting || app.state.options.warn_latency < latency_sec)
+        {
+            // we use this to avoid flicker
+            app.latest_queue_interest = instant::Instant::now();
+        }
+
+        if app.latest_queue_interest.elapsed().as_secs_f32() < 1.0 {
+            ui.separator();
+            if is_latency_interesting {
+                let text = format!(
+                    "Latency: {:.2}s, queue: {}",
+                    latency_sec,
+                    format_number(queue_len),
+                );
+                let hover_text =
+                    "When more data is arriving over network than the Rerun Viewer can index, a queue starts building up, leading to latency and increased RAM use.\n\
+                    This latency does NOT include network latency.";
+
+                if latency_sec < app.state.options.warn_latency {
+                    ui.weak(text).on_hover_text(hover_text);
+                } else {
+                    ui.label(app.re_ui.warning_text(text))
+                        .on_hover_text(hover_text);
+                }
+            } else {
+                ui.weak(format!("Queue: {}", format_number(queue_len)))
+                    .on_hover_text("Number of messages in the inbound queue");
+            }
+        }
+    }
 }
 
 // ----------------------------------------------------------------------------

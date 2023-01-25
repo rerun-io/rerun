@@ -2,6 +2,7 @@
 
 A rough time-line of major user-facing things added, removed and changed. Newest on top.
 
+* 2022-01-25: Depth images are now color mapped with turbo color map. [#912](https://github.com/rerun-io/rerun/pull/912)
 * 2022-01-20: Arrow Storage is now the default storage backend for rerun. Use RERUN_STORE=classic to opt out. [#822](https://github.com/rerun-io/rerun/pull/822).
 * 2022-01-19: `rerun.spawn_and_connect` - the easiest way to use Rerun [#821](https://github.com/rerun-io/rerun/pull/821).
 * 2022-01-16: Added a command palette (Ctrl-P or Cmd-P) [#656](https://github.com/rerun-io/rerun/pull/656).
