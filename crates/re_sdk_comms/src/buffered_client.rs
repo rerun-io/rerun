@@ -211,6 +211,8 @@ fn tcp_sender(
     flushed_tx: &Sender<FlushedMsg>,
 ) {
     let mut tcp_client = crate::tcp_client::TcpClient::new(addr);
+    // Once this flag has been set, we will drop all messages if the tcp_client is
+    // no longer connected.
     let mut drop_if_disconnected = false;
 
     loop {
@@ -219,8 +221,6 @@ fn tcp_sender(
                 if let Ok(packet_msg) = packet_msg {
                     match packet_msg {
                         PacketMsg::Packet(packet) => {
-                            // send_until_success returns a QuitMsg if it fails
-                            // in this case we always want to exit
                             match send_until_success(&mut tcp_client, drop_if_disconnected, &packet, quit_rx) {
                                 Some(TcpQuitMsg::Immediate) => {return;}
                                 Some(TcpQuitMsg::DropIfDisconnected) => {
@@ -244,8 +244,8 @@ fn tcp_sender(
                 }
             },
             recv(quit_rx) -> quit_msg => { match quit_msg {
-                // Don't terminate on receiving a QuitIfDisconnected. If we're disconnected
-                // we'll end up quitting later anyway.
+                // Don't terminate on receiving a `DropIfDisconnected`. It's a soft-quit that allows
+                // us to flush the pipeline.
                 Ok(TcpQuitMsg::DropIfDisconnected) => {
                     drop_if_disconnected = true;
                 }
