@@ -166,6 +166,7 @@ impl SceneSpatial {
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
         highlights: &SpaceViewHighlights,
+        view_spatial_state: &super::ViewSpatialState,
     ) {
         crate::profile_function!();
 
@@ -203,7 +204,7 @@ impl SceneSpatial {
         ];
 
         for part in parts {
-            part.load(self, ctx, query, transforms, highlights);
+            part.load(self, ctx, query, transforms, highlights, view_spatial_state);
         }
 
         self.primitives.recalculate_bounding_box();

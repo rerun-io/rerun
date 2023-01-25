@@ -3201,7 +3201,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d84eb1409416d254e4a9c8fa56cc24701755025b458f0fcd8e59e1f5f40c23bf"
 dependencies = [
  "num-traits",
- "serde",
 ]
 
 [[package]]
@@ -3770,10 +3769,10 @@ dependencies = [
  "criterion",
  "document-features",
  "itertools",
+ "macaw",
  "mimalloc",
  "nohash-hasher",
  "once_cell",
- "ordered-float",
  "puffin",
  "rand",
  "re_arrow_store",
@@ -4090,7 +4089,6 @@ dependencies = [
  "mint",
  "ndarray",
  "nohash-hasher",
- "ordered-float",
  "poll-promise",
  "puffin",
  "puffin_http",

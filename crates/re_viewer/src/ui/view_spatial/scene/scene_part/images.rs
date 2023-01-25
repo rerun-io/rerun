@@ -74,6 +74,7 @@ impl ScenePart for ImagesPartClassic {
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
         highlights: &SpaceViewHighlights,
+        _view_spatial_state: &crate::ui::view_spatial::ViewSpatialState,
     ) {
         crate::profile_scope!("ImagesPartClassic");
 
@@ -312,6 +313,7 @@ impl ScenePart for ImagesPart {
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
         highlights: &SpaceViewHighlights,
+        _view_spatial_state: &crate::ui::view_spatial::ViewSpatialState,
     ) {
         crate::profile_scope!("ImagesPart");
 

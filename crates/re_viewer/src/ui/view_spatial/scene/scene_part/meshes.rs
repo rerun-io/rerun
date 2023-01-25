@@ -33,6 +33,7 @@ impl ScenePart for MeshPartClassic {
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
         highlights: &SpaceViewHighlights,
+        _view_spatial_state: &crate::ui::view_spatial::ViewSpatialState,
     ) {
         crate::profile_scope!("MeshPartClassic");
 
@@ -161,6 +162,7 @@ impl ScenePart for MeshPart {
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
         highlights: &SpaceViewHighlights,
+        _view_spatial_state: &crate::ui::view_spatial::ViewSpatialState,
     ) {
         crate::profile_scope!("MeshPart");
 

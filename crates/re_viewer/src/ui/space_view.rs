@@ -178,6 +178,7 @@ impl SpaceView {
             spaces_info,
             space_info,
             self.data_blueprint.data_blueprints_projected(),
+            &self.view_state.state_spatial.scene_bbox_accum,
         );
 
         if self.allow_auto_adding_more_object {
@@ -261,6 +262,7 @@ impl SpaceView {
                         &spaces_info,
                         reference_space,
                         self.data_blueprint.data_blueprints_projected(),
+                        &self.view_state.state_spatial.scene_bbox_accum,
                     );
                     self.obj_tree_children_ui(ctx, ui, &spaces_info, subtree, &transforms);
                 }
@@ -460,7 +462,13 @@ impl SpaceView {
 
             ViewCategory::Spatial => {
                 let mut scene = view_spatial::SceneSpatial::default();
-                scene.load_objects(ctx, &query, &self.cached_transforms, highlights);
+                scene.load_objects(
+                    ctx,
+                    &query,
+                    &self.cached_transforms,
+                    highlights,
+                    &self.view_state.state_spatial,
+                );
                 self.view_state.ui_spatial(
                     ctx,
                     ui,

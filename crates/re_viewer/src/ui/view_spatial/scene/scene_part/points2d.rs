@@ -34,6 +34,7 @@ impl ScenePart for Points2DPartClassic {
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
         highlights: &SpaceViewHighlights,
+        _view_spatial_state: &crate::ui::view_spatial::ViewSpatialState,
     ) {
         crate::profile_scope!("Points2DPartClassic");
 
@@ -255,6 +256,7 @@ impl ScenePart for Points2DPart {
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
         highlights: &SpaceViewHighlights,
+        _view_spatial_state: &crate::ui::view_spatial::ViewSpatialState,
     ) {
         crate::profile_scope!("Points2DPart");
 

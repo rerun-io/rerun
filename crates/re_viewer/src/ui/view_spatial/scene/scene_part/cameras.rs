@@ -31,6 +31,7 @@ impl ScenePart for CamerasPartClassic {
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
         highlights: &SpaceViewHighlights,
+        view_spatial_state: &crate::ui::view_spatial::ViewSpatialState,
     ) {
         crate::profile_scope!("CamerasPartClassic");
 
@@ -69,6 +70,7 @@ impl ScenePart for CamerasPartClassic {
                 pinhole,
                 view_coordinates,
                 object_highlight,
+                view_spatial_state,
             );
         }
     }
@@ -117,6 +119,7 @@ impl CamerasPart {
         pinhole: Pinhole,
         view_coordinates: ViewCoordinates,
         object_highlight: OptionalSpaceViewObjectHighlight<'_>,
+        view_spatial_state: &crate::ui::view_spatial::ViewSpatialState,
     ) {
         // The transform *at* this object path already has the pinhole transformation we got passed in!
         // This makes sense, since if there's an image logged here one would expect that the transform applies.
@@ -141,9 +144,6 @@ impl CamerasPart {
         // Actual primitives are generated later.
         // Currently, we need information about viewport to display it correctly.
         // TODO(andreas): Would be great if we add all the lines etc. right away!
-        //                  Let's attempt this as part of
-        //                  https://github.com/rerun-io/rerun/issues/681 (Improve camera frustum length heuristic & editability)
-        //                  and https://github.com/rerun-io/rerun/issues/686 (Replace camera mesh with expressive camera gizmo (extension of current frustum)
         scene.space_cameras.push(SpaceCamera3D {
             obj_path: obj_path.clone(),
             instance: instance_hash,
@@ -152,7 +152,8 @@ impl CamerasPart {
             pinhole: Some(pinhole),
         });
 
-        let frustum_length = props.pinhole_image_plane_distance(&pinhole);
+        let frustum_length =
+            props.pinhole_image_plane_distance(&view_spatial_state.scene_bbox_accum);
 
         // TODO(andreas): FOV fallback doesn't make much sense. What does pinhole without fov mean?
         let fov_y = pinhole.fov_y().unwrap_or(std::f32::consts::FRAC_PI_2);
@@ -231,6 +232,7 @@ impl ScenePart for CamerasPart {
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
         highlights: &SpaceViewHighlights,
+        view_spatial_state: &crate::ui::view_spatial::ViewSpatialState,
     ) {
         crate::profile_scope!("CamerasPart");
 
@@ -273,6 +275,7 @@ impl ScenePart for CamerasPart {
                         pinhole,
                         view_coordinates,
                         object_highlight,
+                        view_spatial_state,
                     );
                 })
             }) {

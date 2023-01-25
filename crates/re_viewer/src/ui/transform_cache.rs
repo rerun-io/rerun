@@ -55,6 +55,7 @@ impl TransformCache {
         spaces_info: &SpacesInfo,
         reference_space: &SpaceInfo,
         obj_properties: &ObjectsProperties,
+        scene_bbox: &macaw::BoundingBox,
     ) -> Self {
         crate::profile_function!();
 
@@ -70,6 +71,7 @@ impl TransformCache {
             glam::Mat4::IDENTITY,
             false,
             None,
+            scene_bbox,
         );
 
         // Walk up from the reference space to the highest reachable parent.
@@ -144,6 +146,7 @@ impl TransformCache {
                 reference_from_ancestor,
                 encountered_pinhole,
                 Some(&previous_space.path),
+                scene_bbox,
             );
             previous_space = parent_space;
         }
@@ -160,6 +163,7 @@ impl TransformCache {
         );
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn gather_descendents_transforms(
         &mut self,
         spaces_info: &SpacesInfo,
@@ -168,6 +172,7 @@ impl TransformCache {
         reference_from_obj: glam::Mat4,
         encountered_pinhole: bool,
         skipped_child_path: Option<&ObjPath>,
+        scene_bbox: &macaw::BoundingBox,
     ) {
         self.register_transform_for(
             space,
@@ -218,7 +223,7 @@ impl TransformCache {
 
                         let distance = obj_properties
                             .get(child_path)
-                            .pinhole_image_plane_distance(pinhole);
+                            .pinhole_image_plane_distance(scene_bbox);
 
                         let focal_length = pinhole.focal_length_in_pixels();
                         let focal_length = glam::vec2(focal_length.x(), focal_length.y());
@@ -243,6 +248,7 @@ impl TransformCache {
                     reference_from_obj_in_child,
                     encountered_pinhole,
                     None,
+                    scene_bbox,
                 );
             }
         }

@@ -39,5 +39,6 @@ pub trait ScenePart {
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
         highlights: &SpaceViewHighlights,
+        view_spatial_state: &crate::ui::view_spatial::ViewSpatialState,
     );
 }

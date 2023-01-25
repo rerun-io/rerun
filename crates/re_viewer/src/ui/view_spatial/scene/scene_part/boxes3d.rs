@@ -31,6 +31,7 @@ impl ScenePart for Boxes3DPartClassic {
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
         highlights: &SpaceViewHighlights,
+        _view_spatial_state: &crate::ui::view_spatial::ViewSpatialState,
     ) {
         crate::profile_scope!("Boxes3DPartClassic");
 
@@ -188,6 +189,7 @@ impl ScenePart for Boxes3DPart {
         query: &SceneQuery<'_>,
         transforms: &TransformCache,
         highlights: &SpaceViewHighlights,
+        _view_spatial_state: &crate::ui::view_spatial::ViewSpatialState,
     ) {
         crate::profile_scope!("Boxes3DPart");
 

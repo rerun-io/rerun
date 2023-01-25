@@ -31,37 +31,35 @@ impl ObjectsProperties {
 
 // ----------------------------------------------------------------------------
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[cfg_attr(feature = "serde", serde(default))]
 pub struct ObjectProps {
     pub visible: bool,
     pub visible_history: ExtraQueryHistory,
     pub interactive: bool,
-    pinhole_image_plane_distance: Option<ordered_float::NotNan<f32>>,
+    pinhole_image_plane_distance: Option<f32>,
 }
 
 impl ObjectProps {
-    /// If this has a pinhole camera transform, how far away is the image plane.
+    /// If this has a pinhole camera transform, how far away is the image plane (frustum far plane)?
     ///
-    /// Scale relative to the respective space the pinhole camera is in.
-    /// None indicates the user never edited this field (should use a meaningful default then).
-    ///
-    /// Method returns a pinhole camera specific default if the value hasn't been set yet.
-    pub fn pinhole_image_plane_distance(&self, pinhole: &re_log_types::Pinhole) -> f32 {
-        self.pinhole_image_plane_distance
-            .unwrap_or_else(|| {
-                let distance = pinhole
-                    .focal_length()
-                    .unwrap_or_else(|| pinhole.focal_length_in_pixels().y());
-                ordered_float::NotNan::new(distance).unwrap_or_default()
-            })
-            .into()
+    /// The method returns a heuristic (based on scene size) if the value hasn't been set yet.
+    pub fn pinhole_image_plane_distance(&self, scene_bbox: &macaw::BoundingBox) -> f32 {
+        self.pinhole_image_plane_distance.unwrap_or_else(|| {
+            // Let's use a heuristic:
+            let scene_size = scene_bbox.size().length();
+            if scene_size.is_finite() && scene_size > 0.0 {
+                scene_size * 0.05
+            } else {
+                1.0
+            }
+        })
     }
 
-    /// see `pinhole_image_plane_distance()`
+    /// See [`Self::pinhole_image_plane_distance`].
     pub fn set_pinhole_image_plane_distance(&mut self, distance: f32) {
-        self.pinhole_image_plane_distance = ordered_float::NotNan::new(distance).ok();
+        self.pinhole_image_plane_distance = Some(distance);
     }
 
     /// Multiply/and these together.

@@ -1,4 +1,4 @@
-use re_data_store::{query_transform, ObjPath, ObjectProps};
+use re_data_store::{ObjPath, ObjectProps};
 use re_log_types::TimeType;
 
 use crate::{
@@ -231,13 +231,7 @@ fn blueprint_ui(
                 } else {
                     let data_blueprint = space_view.data_blueprint.data_blueprints_individual();
                     let mut props = data_blueprint.get(&instance_id.obj_path);
-                    obj_props_ui(
-                        ctx,
-                        ui,
-                        Some(&instance_id.obj_path),
-                        &mut props,
-                        &space_view.view_state,
-                    );
+                    obj_props_ui(ctx, ui, &mut props, &space_view.view_state);
                     data_blueprint.set(instance_id.obj_path.clone(), props);
                 }
             } else {
@@ -254,7 +248,6 @@ fn blueprint_ui(
                     obj_props_ui(
                         ctx,
                         ui,
-                        None,
                         &mut group.properties_individual,
                         &space_view.view_state,
                     );
@@ -295,7 +288,6 @@ fn list_existing_data_blueprints(
 fn obj_props_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    obj_path: Option<&ObjPath>,
     obj_props: &mut ObjectProps,
     view_state: &ViewState,
 ) {
@@ -340,29 +332,22 @@ fn obj_props_ui(
     });
 
     if view_state.state_spatial.nav_mode == SpatialNavigationMode::ThreeD {
-        if let Some(obj_path) = obj_path {
-            let timeline = ctx.rec_cfg.time_ctrl.timeline();
-            let query_time = ctx.rec_cfg.time_ctrl.time_i64();
-            if let Some(re_log_types::Transform::Pinhole(pinhole)) =
-                query_transform(&ctx.log_db.obj_db, timeline, obj_path, query_time)
+        ui.horizontal(|ui| {
+            ui.label("Image plane distance:");
+            let mut distance =
+                obj_props.pinhole_image_plane_distance(&view_state.state_spatial.scene_bbox_accum);
+            let speed = (distance * 0.05).at_least(0.01);
+            if ui
+                .add(
+                    egui::DragValue::new(&mut distance)
+                        .clamp_range(0.0..=f32::INFINITY)
+                        .speed(speed),
+                )
+                .on_hover_text("Controls how far away the image plane is.")
+                .changed()
             {
-                ui.horizontal(|ui| {
-                    ui.label("Image plane distance:");
-                    let mut distance = obj_props.pinhole_image_plane_distance(&pinhole);
-                    let speed = (distance * 0.05).at_least(0.01);
-                    if ui
-                        .add(
-                            egui::DragValue::new(&mut distance)
-                                .clamp_range(0.0..=f32::INFINITY)
-                                .speed(speed),
-                        )
-                        .on_hover_text("Controls how far away the image plane is.")
-                        .changed()
-                    {
-                        obj_props.set_pinhole_image_plane_distance(distance);
-                    }
-                });
+                obj_props.set_pinhole_image_plane_distance(distance);
             }
-        }
+        });
     }
 }

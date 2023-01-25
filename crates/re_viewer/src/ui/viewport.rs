@@ -26,6 +26,8 @@ use super::{
 
 // ----------------------------------------------------------------------------
 
+/// Fills the scene, but doesn't care about visual flair like
+/// highlights or the sizes of camera frustums etc.
 fn query_scene_spatial(
     ctx: &mut ViewerContext<'_>,
     obj_paths: &nohash_hasher::IntSet<ObjPath>,
@@ -40,7 +42,13 @@ fn query_scene_spatial(
         obj_props: &Default::default(), // all visible
     };
     let mut scene = SceneSpatial::default();
-    scene.load_objects(ctx, &query, transforms, &SpaceViewHighlights::default());
+    scene.load_objects(
+        ctx,
+        &query,
+        transforms,
+        &SpaceViewHighlights::default(),
+        &Default::default(),
+    );
     scene
 }
 
@@ -107,6 +115,7 @@ impl Viewport {
                 spaces_info,
                 space_info,
                 &ObjectsProperties::default(),
+                &macaw::BoundingBox::nothing(),
             );
 
             for (category, obj_paths) in
@@ -399,6 +408,7 @@ impl Viewport {
             spaces_info,
             space_info,
             &ObjectsProperties::default(),
+            &macaw::BoundingBox::nothing(),
         );
         for (category, obj_paths) in
             SpaceView::default_queried_objects_by_category(ctx, space_info, &transforms)
@@ -553,6 +563,7 @@ impl Viewport {
                     spaces_info,
                     space_info,
                     &ObjectsProperties::default(),
+                    &macaw::BoundingBox::nothing(),
                 );
 
                 for category in all_categories {
@@ -572,12 +583,6 @@ impl Viewport {
                         .clicked()
                     {
                         ui.close_menu();
-
-                        let transforms = TransformCache::determine_transforms(
-                            spaces_info,
-                            space_info,
-                            &ObjectsProperties::default(),
-                        );
 
                         let scene_spatial = query_scene_spatial(ctx, &obj_paths, &transforms);
                         let new_space_view_id = self.add_space_view(SpaceView::new(

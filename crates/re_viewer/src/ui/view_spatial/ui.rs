@@ -54,6 +54,7 @@ pub struct ViewSpatialState {
     /// Specify default explicitly, otherwise it will be a box at 0.0 after deserialization.
     #[serde(skip, default = "default_scene_bbox_accum")]
     pub scene_bbox_accum: BoundingBox,
+
     /// Estimated number of primitives last frame. Used to inform some heuristics.
     #[serde(skip)]
     pub scene_num_primitives: usize,
