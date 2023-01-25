@@ -1,12 +1,7 @@
 #!/usr/bin/env python3
 
 """
-For this example, first start `rerun`, then run this example:
-
-```sh
-cargo r &
-examples/multiprocessing/main.py --connect
-```
+Shows how rerun can work with multiprocessing.
 """
 
 import argparse
@@ -20,7 +15,9 @@ import rerun as rr
 def task(title: str) -> None:
     # All processes spawned with `multiprocessing` will automatically
     # be assigned the same default recording_id.
+    # We just need to connect each process to the the rerun viewer:
     rr.connect()
+
     rr.log_text_entry(
         "log",
         text=f"Logging from pid={os.getpid()}, thread={threading.get_ident()} using the rerun recording id {rr.get_recording_id()}",
@@ -33,7 +30,7 @@ def main() -> None:
     args = parser.parse_args()
 
     rr.init("multiprocessing")
-    rr.spawn_viewer()
+    rr.spawn_viewer() # this is the viewer that each process will connect to
 
     task("main_task")
 
