@@ -87,10 +87,10 @@ pub struct TimeControl {
 
     states: BTreeMap<Timeline, TimeState>,
 
-    /// If true, we are either in [`PlayState::Playing`] or [`PlayState::following`].
+    /// If true, we are either in [`PlayState::Playing`] or [`PlayState::Following`].
     playing: bool,
 
-    /// If true, we are in "follow" mode (see `PlayState::Following`).
+    /// If true, we are in "follow" mode (see [`PlayState::Following`]).
     /// Ignored when [`Self.playing`] is `false`.
     following: bool,
 
