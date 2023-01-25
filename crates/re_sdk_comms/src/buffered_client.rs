@@ -11,6 +11,13 @@ struct FlushedMsg;
 #[derive(Debug, PartialEq, Eq)]
 struct QuitMsg;
 
+/// Sent to prematurely quit (before flushing).
+#[derive(Debug, PartialEq, Eq)]
+enum TcpQuitMsg {
+    DropIfDisconnected,
+    Immediate,
+}
+
 enum MsgMsg {
     LogMsg(LogMsg),
     SetAddr(SocketAddr),
@@ -31,7 +38,7 @@ pub struct Client {
     msg_tx: Sender<MsgMsg>,
     flushed_rx: Receiver<FlushedMsg>,
     encode_quit_tx: Sender<QuitMsg>,
-    send_quit_tx: Sender<QuitMsg>,
+    send_quit_tx: Sender<TcpQuitMsg>,
     drop_quit_tx: Sender<QuitMsg>,
     encode_join: Option<JoinHandle<()>>,
     send_join: Option<JoinHandle<()>>,
@@ -111,9 +118,13 @@ impl Client {
             }
             Err(_) => {
                 // This can happen on Ctrl-C
-                re_log::warn!("Failed to flush pipeline - not all messages were sent (Ctrl-C).");
+                re_log::warn!("Failed to flush pipeline - not all messages were sent.");
             }
         }
+    }
+
+    pub fn quit_if_disconnected(&mut self) {
+        self.send_quit_tx.send(TcpQuitMsg::DropIfDisconnected).ok();
     }
 
     fn send_msg_msg(&mut self, msg: MsgMsg) {
@@ -129,7 +140,7 @@ impl Drop for Client {
         self.send(LogMsg::Goodbye(MsgId::random()));
         self.flush();
         self.encode_quit_tx.send(QuitMsg).ok();
-        self.send_quit_tx.send(QuitMsg).ok();
+        self.send_quit_tx.send(TcpQuitMsg::Immediate).ok();
         self.drop_quit_tx.send(QuitMsg).ok();
         self.encode_join.take().map(|j| j.join().ok());
         self.send_join.take().map(|j| j.join().ok());
@@ -180,6 +191,7 @@ fn msg_encode(
                     packet_tx
                         .send(packet_msg)
                         .expect("tcp_sender thread should live longer");
+
                     msg_drop_tx.send(msg_msg).expect("Main thread should still be alive");
                 } else {
                     return; // channel has closed
@@ -195,10 +207,11 @@ fn msg_encode(
 fn tcp_sender(
     addr: SocketAddr,
     packet_rx: &Receiver<PacketMsg>,
-    quit_rx: &Receiver<QuitMsg>,
+    quit_rx: &Receiver<TcpQuitMsg>,
     flushed_tx: &Sender<FlushedMsg>,
 ) {
     let mut tcp_client = crate::tcp_client::TcpClient::new(addr);
+    let mut drop_if_disconnected = false;
 
     loop {
         select! {
@@ -206,8 +219,14 @@ fn tcp_sender(
                 if let Ok(packet_msg) = packet_msg {
                     match packet_msg {
                         PacketMsg::Packet(packet) => {
-                            if send_until_success(&mut tcp_client, &packet, quit_rx) == Some(QuitMsg) {
-                                return;
+                            // send_until_success returns a QuitMsg if it fails
+                            // in this case we always want to exit
+                            match send_until_success(&mut tcp_client, drop_if_disconnected, &packet, quit_rx) {
+                                Some(TcpQuitMsg::Immediate) => {return;}
+                                Some(TcpQuitMsg::DropIfDisconnected) => {
+                                    drop_if_disconnected = true;
+                                }
+                                None => {}
                             }
                         }
                         PacketMsg::SetAddr(new_addr) => {
@@ -223,20 +242,37 @@ fn tcp_sender(
                 } else {
                     return; // channel has closed
                 }
-            }
-            recv(quit_rx) -> _quit_msg => {
-                return;
-            }
+            },
+            recv(quit_rx) -> quit_msg => { match quit_msg {
+                // Don't terminate on receiving a QuitIfDisconnected. If we're disconnected
+                // we'll end up quitting later anyway.
+                Ok(TcpQuitMsg::DropIfDisconnected) => {
+                    drop_if_disconnected = true;
+                }
+                _ => return,
+            }}
         }
     }
 }
 
 fn send_until_success(
     tcp_client: &mut crate::tcp_client::TcpClient,
+    drop_if_disconnected: bool,
     packet: &[u8],
-    quit_rx: &Receiver<QuitMsg>,
-) -> Option<QuitMsg> {
+    quit_rx: &Receiver<TcpQuitMsg>,
+) -> Option<TcpQuitMsg> {
+    // Early exit if tcp_client is disconnected
+    if drop_if_disconnected && !tcp_client.is_connected() {
+        re_log::debug_once!("Dropping messages because we're disconnected.");
+        return None;
+    }
+
     if let Err(err) = tcp_client.send(packet) {
+        if drop_if_disconnected {
+            re_log::debug_once!("Dropping messages because we're disconnected.");
+            return None;
+        }
+        // If this is the first time we fail to send the message, produce a warning.
         re_log::warn!("Failed to send message: {err}");
 
         let mut sleep_ms = 100;
@@ -244,14 +280,22 @@ fn send_until_success(
         loop {
             select! {
                 recv(quit_rx) -> _quit_msg => {
-                    return Some(QuitMsg);
+                    return Some(_quit_msg.unwrap_or(TcpQuitMsg::Immediate));
                 }
                 default(std::time::Duration::from_millis(sleep_ms)) => {
                     if let Err(new_err) = tcp_client.send(packet) {
-                        if new_err.to_string() != err.to_string() {
-                            re_log::warn!("Failed to send message: {err}");
+                        const MAX_SLEEP : u64 = 3000;
+
+                        if drop_if_disconnected {
+                            re_log::debug_once!("Dropping messages because we're disconnected.");
+                            return None;
                         }
-                        sleep_ms = (sleep_ms * 2).min(3000);
+                        sleep_ms = (sleep_ms * 2).min(MAX_SLEEP);
+
+                        // Only produce subsequent warnings once we've saturated the back-off
+                        if sleep_ms == MAX_SLEEP && new_err.to_string() != err.to_string() {
+                                re_log::warn!("Still failing to send message: {err}");
+                        }
                     } else {
                         return None;
                     }

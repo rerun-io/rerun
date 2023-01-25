@@ -166,6 +166,13 @@ impl Session {
         }
     }
 
+    /// If the tcp session is disconnected, allow it to quit early and drop unsent messages
+    pub fn quit_if_disconnected(&mut self) {
+        if let Sender::Remote(sender) = &mut self.sender {
+            sender.quit_if_disconnected();
+        }
+    }
+
     pub fn drain_log_messages_buffer(&mut self) -> Vec<LogMsg> {
         match &mut self.sender {
             Sender::Remote(_) => vec![],
